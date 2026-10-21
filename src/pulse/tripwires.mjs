@@ -197,7 +197,14 @@ export const TRIPWIRES = Object.freeze({
   "route:inquiry": { impact: "customer", checks: ["trip:inquiry", "inquiry:case-stuck"] },
   "route:partners/approve": { impact: "customer", checks: ["trip:partner", "partner-pages:live"] },
   "route:public/affiliate-click": { impact: "customer", checks: ["trip:partner", "partners:referral-link"] },
-  "job:affiliate-payout-run": { impact: "money", checks: ["trip:partner", "partners:commission-payable", "partners:payout-stuck"] }
+  "job:affiliate-payout-run": { impact: "money", checks: ["trip:partner", "partners:commission-payable", "partners:payout-stuck", "partners:payout-overdue"] },
+  // Affiliate payouts through Plaid (495, 2026-10-20). Each goes red when an
+  // earned commission is past its due day and not paid, or a paid Plaid payout
+  // came back from the bank.
+  "route:affiliates/payouts": { impact: "money", checks: ["partners:payout-overdue", "partners:payout-returned", "partners:payout-stuck"] },
+  "route:affiliates/payout-account": { impact: "money", checks: ["partners:payout-overdue"] },
+  "route:read/affiliate-payouts": { impact: "money", checks: ["partners:payout-overdue"] },
+  "job:affiliate-payout-autopay": { impact: "money", checks: ["partners:payout-stuck", "partners:payout-overdue", "partners:payout-returned"] }
 });
 
 export const NOT_CUSTOMER_FACING = Object.freeze({
