@@ -32,8 +32,11 @@ import {
   isPlainRead,
   checkPageScripts,
   checkProgressRead,
-  checkPaidNeverSignedIn
+  checkPaidNeverSignedIn,
+  naVerify
 } from "./gap-portal.mjs";
+import { verifyNa } from "../na-conditions.mjs";
+import { OWNER_HOLD_CLIENTS } from "../owner-hold.mjs";
 import { PULSE_REGISTRY } from "./../registry.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -1202,6 +1205,68 @@ test("never signed in: a real waiting client is a FAIL beside left-out ones", as
   assert.equal(row.status, "FAIL");
   assert.match(row.detail, /^1 paying client has held/);
   assert.match(row.detail, /Left out: 1 test client, 1 with no payment event\./);
+});
+
+/* Owner hold (owner call 2026-10-09: Braum FH-000507 gets no sign-in link and no call). */
+const HELD = "FH-000507";
+
+test("owner hold: the list holds Braum only, owner-set 2026-10-09", () => {
+  assert.deepEqual(OWNER_HOLD_CLIENTS.map((c) => [c.clientCode, c.setOn]), [[HELD, "2026-10-09"]]);
+});
+
+test("never signed in: when the only waiting client is on the owner's hold, it is nothing to judge with a code the audit re-checks", async () => {
+  const { row } = await neverRow([holder({ client_code: HELD, days_held: "15.4" }), holder({ client_id: "t1", is_test: true })]);
+  assert.equal(row.status, "na");
+  assert.deepEqual(row.na, { code: "owner-hold-client", args: { check: "portal:paid-client-never-signed-in", orgId: ORG, clients: [HELD] } });
+  assert.match(row.detail, /^1 paying client has held portal access for over 72 hours and not signed in, and it is FH-000507, on the owner's no-contact hold\./);
+  assert.match(row.detail, /Judged again the day another paying client waits\. Left out: 1 test client, 0 with no payment event\./);
+  assert.equal(row.suggestedFix, null);
+});
+
+test("never signed in: a held client does not hide anyone else — another waiting client is a FAIL", async () => {
+  const { row } = await neverRow([holder({ client_code: HELD }), holder({ client_id: "c2", client_code: "FH-000999" })]);
+  assert.equal(row.status, "FAIL");
+  assert.match(row.detail, /^2 paying clients have held portal access for over 72 hours and have never signed in/);
+  const { row: noCode } = await neverRow([holder({ client_code: HELD }), holder({ client_id: "c3" })]);
+  assert.equal(noCode.status, "FAIL", "a waiting client with no code is not on the hold");
+});
+
+test("never signed in: a client not on the hold is a FAIL, and a held client who signed in is a plain PASS", async () => {
+  assert.equal((await neverRow([holder({ client_code: "FH-000508" })])).row.status, "FAIL");
+  const { row } = await neverRow([holder({ client_code: HELD, signed_in: true })]);
+  assert.equal(row.status, "PASS");
+});
+
+test("never signed in: the sql reads the client code the hold is judged on", () => {
+  assert.match(NEVER_SIGNED_IN_SQL, /c\.client_code,/);
+});
+
+test("naVerify owner-hold-client: true only while the held clients are exactly the ones waiting", async () => {
+  const args = { check: "portal:paid-client-never-signed-in", orgId: ORG, clients: [HELD] };
+  const ask = (signIns, a = args, opts = {}) => naVerify["owner-hold-client"](a, { db: fakeDb({ signIns, ...opts }) });
+  assert.equal(await ask([holder({ client_code: HELD })]), true);
+  assert.equal(await ask([holder({ client_code: HELD }), holder({ client_id: "c2", client_code: "FH-000999" })]), false, "a new waiting client");
+  assert.equal(await ask([]), false, "nobody waiting: the claim no longer fits");
+  assert.equal(await ask([holder({ client_code: HELD, signed_in: true })]), false, "he signed in");
+  assert.equal(await ask([holder({ client_code: HELD })], { ...args, check: "portal:something-else" }), false);
+  assert.equal(await ask([holder({ client_code: HELD })], { ...args, orgId: "" }), false);
+  assert.equal(await ask([holder({ client_code: HELD })], { ...args, clients: [HELD, "FH-000999"] }), false);
+  assert.equal(await naVerify["owner-hold-client"](args, {}), false, "no database");
+  await assert.rejects(ask([], args, { failOn: /gap:portal-never-signed-in/ }), "a failed read throws, and the audit counts a throw as false");
+});
+
+test("verifyNa: the owner-hold row passes the audit while true and fails the moment it is not", async () => {
+  const { row } = await neverRow([holder({ client_code: HELD })]);
+  const laneNaVerify = (signIns) => async (sliceId, code, a) => {
+    assert.equal(sliceId, "portal");
+    return naVerify[code](a, { db: fakeDb({ signIns }) });
+  };
+  assert.equal((await verifyNa(row, { laneNaVerify: laneNaVerify([holder({ client_code: HELD })]) })).ok, true);
+  assert.equal((await verifyNa(row, { laneNaVerify: laneNaVerify([holder({ client_code: HELD }), holder({ client_id: "c9", client_code: "FH-000777" })]) })).ok, false);
+  const forged = { ...row, na: { ...row.na, args: { ...row.na.args, clients: ["FH-000999"] } } };
+  const r = await verifyNa(forged, { laneNaVerify: laneNaVerify([holder({ client_code: "FH-000999" })]) });
+  assert.equal(r.ok, false);
+  assert.match(r.reason, /FH-000999 is not on the owner's hold list/);
 });
 
 test("never signed in: a database error is a skip with the reason, never a pass", async () => {
