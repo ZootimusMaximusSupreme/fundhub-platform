@@ -161,6 +161,56 @@ test("reads at most 64 KB and cancels the rest instead of pulling it", async () 
   assert.equal(small.bodySnippet.length, 2048);
 });
 
+test("apply.fundhub.ai alone is read up to 512 KB, so the card box tag near byte 195,000 is seen; every other host keeps 64 KB", async () => {
+  assert.deepEqual({ ...probeModule.LARGE_PAGE_HOSTS }, { "apply.fundhub.ai": 512 * 1024 }, "only our own funnel host is widened");
+  assert.equal(probeModule.bodyCapFor("https://apply.fundhub.ai/roadmap"), 512 * 1024);
+  assert.equal(probeModule.bodyCapFor("https://APPLY.fundhub.ai./order"), 512 * 1024);
+  for (const other of ["https://fundhub.ai/roadmap", "https://evil-apply.fundhub.ai.example.com/", "https://bank.example.com/apply", "not a url"]) {
+    assert.equal(probeModule.bodyCapFor(other), MAX_BODY_BYTES, other);
+  }
+
+  // A 268 KB /roadmap with the marker at byte 195,000 is read whole and the marker is in the body.
+  const body = `${"a".repeat(195_000)}SDK_SRC='https://cdn.embedded.fanbasis.io/embed/index.js'${"b".repeat(73_000)}`;
+  const f = createFakeFetch({ "GET https://apply.fundhub.ai/roadmap": page({ body }) });
+  const r = await probeGet("https://apply.fundhub.ai/roadmap", { env: LIVE, fetchImpl: f });
+  assert.equal(r.ok, true);
+  assert.equal(r.truncated, false);
+  assert.equal(r.body.length, body.length);
+  assert.match(r.body, /SDK_SRC='https:\/\/cdn\.embedded\.fanbasis\.io/);
+
+  // Past 512 KB it is still cut, and the rest is cancelled, not pulled.
+  const big = createFakeFetch({ "GET https://apply.fundhub.ai/huge": { status: 200, bytes: 5_000_000 } });
+  const cut = await probeGet("https://apply.fundhub.ai/huge", { env: LIVE, fetchImpl: big });
+  assert.equal(cut.truncated, true);
+  assert.equal(cut.bytes, 512 * 1024);
+  assert.ok(big.calls[0].pulled < 512 * 1024 + 4 * 8192 + 1, `pulled ${big.calls[0].pulled} bytes of 5,000,000`);
+
+  // The same big page on our main host is cut at 64 KB.
+  const main = await probeGet("https://fundhub.ai/roadmap", { env: LIVE, fetchImpl: createFakeFetch({ "GET https://fundhub.ai/roadmap": page({ body }) }) });
+  assert.equal(main.truncated, true);
+  assert.equal(main.bytes, MAX_BODY_BYTES);
+  assert.doesNotMatch(main.body, /SDK_SRC/);
+});
+
+test("a redirect off apply.fundhub.ai is read at the other host's 64 KB cap, and finalUrl names where it ended, without the query", async () => {
+  const body = "x".repeat(200_000);
+  const f = createFakeFetch({
+    "GET https://apply.fundhub.ai/order": { status: 302, headers: { location: "https://other.example.com/checkout?ecid=SECRET" } },
+    "GET https://other.example.com/checkout?ecid=SECRET": page({ body })
+  });
+  const r = await probeGet("https://apply.fundhub.ai/order", { env: LIVE, fetchImpl: f });
+  assert.equal(r.ok, true);
+  assert.equal(r.redirects, 1);
+  assert.equal(r.truncated, true);
+  assert.equal(r.bytes, MAX_BODY_BYTES);
+  assert.equal(r.finalUrl, "https://other.example.com/checkout");
+
+  const plain = await probeGet("https://apply.fundhub.ai/roadmap?fh_cb=1", { env: LIVE, fetchImpl: createFakeFetch({ "GET https://apply.fundhub.ai/roadmap?fh_cb=1": page() }) });
+  assert.equal(plain.finalUrl, "https://apply.fundhub.ai/roadmap");
+  const refused = await probeGet("http://apply.fundhub.ai/roadmap", { env: LIVE, fetchImpl: createFakeFetch({}) });
+  assert.equal(refused.finalUrl, null);
+});
+
 test("a slow or hung answer times out and says so; it never throws", async () => {
   const t0 = Date.now();
   const r = await probeGet("https://slow.example.com/", { env: LIVE, timeoutMs: 500, fetchImpl: createFakeFetch({ "https://slow.example.com/": { hang: true } }) });

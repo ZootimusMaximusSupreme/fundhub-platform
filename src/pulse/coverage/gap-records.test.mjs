@@ -29,7 +29,9 @@ import { CONSENT_VALID_SQL } from "../../consent/index.mjs";
 import { TEST_CLIENT_EMAIL_RE } from "./gap-consent.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const SRC = fs.readFileSync(path.join(HERE, "gap-records.mjs"), "utf8");
+// The lane and the shared truth it imports (src/pulse/beats/lib/records-truth.mjs) are read together.
+const SRC = fs.readFileSync(path.join(HERE, "gap-records.mjs"), "utf8") +
+  fs.readFileSync(path.join(HERE, "../beats/lib/records-truth.mjs"), "utf8");
 const NOW = new Date("2026-10-10T13:00:00.000Z");
 const ORG = "11111111-1111-4111-8111-111111111111";
 
@@ -210,6 +212,40 @@ test("bureau config FAIL: each gap is named, by bureau", () => {
   assert.equal(judgeBureauConfig([]).status, "FAIL");
 });
 
+// Owner answer B7 (2026-10-20): the numbers and menus are saved in the caller's own scripts.
+const scriptPlan = (over = {}) => DIALED_BUREAUS.map((code, i) => ({
+  code, name: code, number: `+1800555000${i}`, numberFrom: "script", numberOk: true, steps: 7, menuOk: true, problem: null,
+  ...(over[code] || {})
+}));
+
+test("bureau config PASS: an empty table passes when the caller's scripts carry a number and a menu for each", () => {
+  const r = judgeBureauConfig([], scriptPlan());
+  assert.equal(r.status, "PASS");
+  assert.match(r.detail, /The caller's scripts dial EX \+18005550000 \(7 menu steps\), EQ \+18005550001 \(7 menu steps\), TU \+18005550002 \(7 menu steps\)\./);
+});
+
+test("bureau config FAIL: a script with a bad number or too few menu steps is red, by bureau", () => {
+  const r = judgeBureauConfig([], scriptPlan({ EQ: { number: "****1234", numberOk: false }, TU: { steps: 1, menuOk: false } }));
+  assert.equal(r.status, "FAIL");
+  assert.match(r.detail, /no service number for EQ; no menu path for TU\./);
+  assert.match(r.suggestedFix, /EQUIFAX_DISPUTE_NUMBER/);
+  assert.match(r.suggestedFix, /Do not invent numbers/);
+  const thrown = judgeBureauConfig([], scriptPlan({ EX: { numberOk: false, menuOk: false, problem: "boom" } }));
+  assert.equal(thrown.status, "FAIL");
+  assert.match(thrown.detail, /The call script could not be read \(EX: boom\)/);
+  // The table still counts: a filled row covers a script that cannot be read.
+  const filled = [{ bureau_code: "EX", active: true, has_number: true, has_menu: true }];
+  assert.equal(judgeBureauConfig(filled, scriptPlan({ EX: { numberOk: false, menuOk: false, problem: "boom" } })).status, "PASS");
+});
+
+test("bureau config: the live lane reads the real call scripts, and they carry all three numbers and menus", async () => {
+  const db = dbFrom([erasure(), pii(), bureauRows([]), consent()]);
+  const rows = await gapChecks({ db, now: NOW, orgId: ORG });
+  const bureau = rows.find((r) => r.id === "bureau-config:complete");
+  assert.equal(bureau.status, "PASS", bureau.detail);
+  assert.match(bureau.detail, /The caller's scripts dial EX \+1\d{10} \(\d+ menu steps\), EQ \+1\d{10} \(\d+ menu steps\), TU \+1\d{10} \(\d+ menu steps\)\./);
+});
+
 test("bureau config: no company means the read is skipped, not passed", async () => {
   const rows = await gapChecks({ db: allGood(), now: NOW });
   const bureau = rows.find((r) => r.id === "bureau-config:complete");
@@ -268,9 +304,9 @@ test("a read that comes back with no rows is judged as zero counts, a failed rea
     bureauRows([]),
     { test: /gap:consent-recording-and-ads/, rows: [] }
   ]);
-  const rows = await gapChecks({ db: empty, now: NOW, orgId: ORG });
+  // No call script handed in either: an empty bureau table is then a real FAIL, nothing is filled in.
+  const rows = await gapChecks({ db: empty, now: NOW, orgId: ORG, dialPlan: [] });
   const by = Object.fromEntries(rows.map((r) => [r.id, r]));
-  // An empty bureau table is a real FAIL: nothing is filled in.
   assert.equal(by["bureau-config:complete"].status, "FAIL");
   const down = { async query() { throw new Error("connection terminated"); } };
   const dead = await gapChecks({ db: down, now: NOW, orgId: ORG });

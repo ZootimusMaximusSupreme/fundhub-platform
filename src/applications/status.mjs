@@ -19,6 +19,33 @@ export class ApplicationStatusError extends Error {
  * @param {import("pg").Pool|object} db
  * @param {object} opts
  */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/* The decisions a person makes by pressing a button. Each one is saved against the
+   exact staff member (application_decisions.staff_id, migration 494), and the
+   database refuses one without it. */
+const STAFF_DECISIONS = new Set(["bank_decision", "approval_excluded", "approval_reinstated"]);
+
+/** The staff member's id when it is a real id, else null. */
+function staffIdOf(staff) {
+  const id = staff && staff.id != null ? String(staff.id).trim() : "";
+  return UUID_RE.test(id) ? id : null;
+}
+
+/** The name saved beside the id: name, else email, else id. */
+function staffNameOf(staff) {
+  return staff ? String(staff.name || staff.email || staff.id || "").trim().slice(0, 200) : "";
+}
+
+function requireDecisionStaff(staff, what) {
+  if (!staffIdOf(staff) || !staffNameOf(staff)) {
+    throw new ApplicationStatusError(
+      `${what} is a decision that gets recorded against a person. No signed-in staff member, so nothing was saved.`,
+      { code: "staff_required", status: 403 }
+    );
+  }
+}
+
 function cleanPlayName(playName) {
   const s = String(playName || "").trim();
   return s ? s.slice(0, 120) : null;
@@ -88,6 +115,8 @@ export async function setApplicationStatus(db, {
       { code: "invalid_status" }
     );
   }
+  const decisionType = String(eventType || "status_change").slice(0, 80);
+  if (STAFF_DECISIONS.has(decisionType)) requireDecisionStaff(staff, "A bank answer");
 
   const sets = [
     "status = $3",
@@ -143,19 +172,20 @@ export async function setApplicationStatus(db, {
 
   await db.query(
     `INSERT INTO application_decisions (
-       org_id, application_id, event_type, status, lender_table, decided_at, created_by, notes, play_name
+       org_id, application_id, event_type, status, lender_table, decided_at, created_by, notes, play_name, staff_id
      ) VALUES (
-       $1::uuid, $2::uuid, $3, $4, $5::lender_table, now(), $6, $7, $8
+       $1::uuid, $2::uuid, $3, $4, $5::lender_table, now(), $6, $7, $8, $9::uuid
      )`,
     [
       orgId,
       row.id,
-      String(eventType || "status_change").slice(0, 80),
+      decisionType,
       next,
       row.lender_table || null,
-      staff ? String(staff.name || staff.email || staff.id || "").slice(0, 200) : null,
+      staffNameOf(staff) || null,
       notes || null,
-      cleanPlayName(playName)
+      cleanPlayName(playName),
+      staffIdOf(staff)
     ]
   );
 
@@ -178,9 +208,10 @@ export async function logBankDecision(db, {
   notes = null,
   approvedAmount = null
 } = {}) {
-  // Validate the money BEFORE any row is created, so a bad amount cannot leave
-  // a half-made application behind.
+  // Validate the money and the person BEFORE any row is created, so a bad
+  // amount or a missing staff member cannot leave a half-made application behind.
   const approvedDollars = normalizeApprovedAmount(approvedAmount);
+  requireDecisionStaff(staff, "A bank answer");
   let appId = applicationId;
   if (!appId) {
     if (!clientId || !lenderId) {
@@ -189,12 +220,27 @@ export async function logBankDecision(db, {
         { code: "application_id required" }
       );
     }
-    const found = await db.query(
-      `SELECT id FROM applications
-        WHERE org_id = $1::uuid AND client_id = $2::uuid AND lender_id = $3::uuid
-        ORDER BY updated_at DESC LIMIT 1`,
-      [orgId, clientId, lenderId]
+    /* THE ANSWER BELONGS TO THIS ROUND. We bill per round, and a funding sequence
+       has about six of them, often at the same banks. The lookup used to take the
+       newest row for this client and bank from ANY round, so a round-2 "Bank yes"
+       and its amount landed on the round-1 application: round 2 billed nothing for
+       it and round 1's settled bill moved. Now the row is looked for on the
+       client's current round (the newest one) only, and made there when missing. */
+    const current = await db.query(
+      `SELECT id FROM funding_rounds
+        WHERE org_id = $1::uuid AND client_id = $2::uuid
+        ORDER BY round_number DESC LIMIT 1`,
+      [orgId, clientId]
     );
+    const found = current.rows[0]
+      ? await db.query(
+        `SELECT id FROM applications
+          WHERE org_id = $1::uuid AND client_id = $2::uuid AND lender_id = $3::uuid
+            AND funding_round_id = $4::uuid
+          ORDER BY updated_at DESC LIMIT 1`,
+        [orgId, clientId, lenderId, current.rows[0].id]
+      )
+      : { rows: [] };
     if (found.rows[0]) {
       appId = found.rows[0].id;
     } else {
@@ -210,12 +256,7 @@ export async function logBankDecision(db, {
           status: 404
         });
       }
-      let round = await db.query(
-        `SELECT id FROM funding_rounds
-          WHERE org_id = $1::uuid AND client_id = $2::uuid
-          ORDER BY round_number DESC LIMIT 1`,
-        [orgId, clientId]
-      );
+      let round = current;
       if (!round.rows[0]) {
         round = await db.query(
           `INSERT INTO funding_rounds (org_id, client_id, round_number, status, product)
@@ -297,13 +338,20 @@ export async function setApprovalExclusion(db, {
   reason = null,
   staff = null
 } = {}) {
-  const who = staff
-    ? String(staff.name || staff.email || staff.id || "").trim().slice(0, 200)
-    : "";
-  if (!who) {
+  requireDecisionStaff(staff, excluded ? "Excluding an approval" : "Counting an approval again");
+  const who = staffNameOf(staff);
+
+  /* The reason is the record. "Doesn't count" takes an approval off the bill and
+     "Count again" puts it back, so both say why, in the person's own words. A
+     filler sentence used to stand in when none was sent, which made a record with
+     no reason look complete. */
+  const cleanReason = reason == null ? null : String(reason).trim().slice(0, 500) || null;
+  if (!cleanReason) {
     throw new ApplicationStatusError(
-      "Excluding an approval is a decision that gets recorded against a person. No signed-in staff member, so nothing was saved.",
-      { code: "staff_required", status: 403 }
+      excluded
+        ? "Say why this approval does not count. Nothing was changed."
+        : "Say why this approval counts again. Nothing was changed.",
+      { code: "reason_required" }
     );
   }
 
@@ -331,8 +379,6 @@ export async function setApprovalExclusion(db, {
     );
   }
 
-  const cleanReason = reason == null ? null : String(reason).trim().slice(0, 500) || null;
-
   const updated = await db.query(
     excluded
       ? `UPDATE applications
@@ -355,9 +401,9 @@ export async function setApprovalExclusion(db, {
 
   await db.query(
     `INSERT INTO application_decisions (
-       org_id, application_id, event_type, status, lender_table, decided_at, created_by, notes
+       org_id, application_id, event_type, status, lender_table, decided_at, created_by, notes, staff_id
      ) VALUES (
-       $1::uuid, $2::uuid, $3, NULL, $4::lender_table, now(), $5, $6
+       $1::uuid, $2::uuid, $3, NULL, $4::lender_table, now(), $5, $6, $7::uuid
      )`,
     [
       orgId,
@@ -365,10 +411,8 @@ export async function setApprovalExclusion(db, {
       excluded ? "approval_excluded" : "approval_reinstated",
       row.lender_table || null,
       who,
-      cleanReason
-        || (excluded
-          ? "Approval marked as not counting toward the round"
-          : "Approval put back — it counts toward the round again")
+      cleanReason,
+      staffIdOf(staff)
     ]
   );
 

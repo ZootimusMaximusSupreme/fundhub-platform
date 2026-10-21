@@ -60,40 +60,15 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 
 import { CFPB_MAIL_ADDRESS, agPostalAddress, agForState } from "../letters/ag-statutes.mjs";
-import { LETTER_TYPES } from "../letters/catalog.mjs";
+import {
+  COMPLAINT_TARGET, COMPLAINT_ROUND_TARGET, COMPLAINT_TARGET_TYPE, FILED_STATUSES, isComplaintTarget, complaintTargetForRound
+} from "../../pulse/beats/lib/complaint-targets.mjs";
 import { saveLetter } from "./store.mjs";
 
-/** Where a complaint goes. Neither is a bureau or a furnisher. */
-export const COMPLAINT_TARGET = Object.freeze({
-  CFPB: "cfpb",
-  STATE_AG: "state_ag"
-});
-
-/** Round → complaint target. Mirrors ROUND_LADDER in ../letters/catalog.mjs. */
-export const COMPLAINT_ROUND_TARGET = Object.freeze({
-  R4: COMPLAINT_TARGET.CFPB,
-  R5: COMPLAINT_TARGET.STATE_AG
-});
-
-/** Complaint target → the letter type it carries. */
-export const COMPLAINT_TARGET_TYPE = Object.freeze({
-  [COMPLAINT_TARGET.CFPB]: LETTER_TYPES.CFPB_COMPLAINT,
-  [COMPLAINT_TARGET.STATE_AG]: LETTER_TYPES.STATE_AG_COMPLAINT
-});
-
-/** A mailing only counts once the provider took it. 'generated' is not filed. */
-export const FILED_STATUSES = Object.freeze(["sent", "delivered"]);
-
-const TARGET_SET = new Set(Object.values(COMPLAINT_TARGET));
-
-export function isComplaintTarget(target) {
-  return TARGET_SET.has(String(target || "").trim().toLowerCase());
-}
-
-/** The complaint target a round mails to, or null for a bureau round. */
-export function complaintTargetForRound(round) {
-  return COMPLAINT_ROUND_TARGET[String(round || "").trim().toUpperCase()] || null;
-}
+/* COMPLAINT_TARGET, COMPLAINT_ROUND_TARGET, COMPLAINT_TARGET_TYPE, FILED_STATUSES, isComplaintTarget and
+   complaintTargetForRound live in src/pulse/beats/lib/complaint-targets.mjs (2026-10-20), unchanged, so the hourly
+   beat client-progress reads the same targets as the progress page. One copy; re-exported here. */
+export { COMPLAINT_TARGET, COMPLAINT_ROUND_TARGET, COMPLAINT_TARGET_TYPE, FILED_STATUSES, isComplaintTarget, complaintTargetForRound };
 
 /**
  * Where this complaint is mailed.

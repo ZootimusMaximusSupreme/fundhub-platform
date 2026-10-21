@@ -86,6 +86,13 @@ const ALLOWED_RAW_FETCH = {
     "owner's own session, to start the 15-minute writer the 26 s /api function cannot " +
     "hold (spec docs/specs/marketing-machine-2026-10-04.md §6 Step 4 names this wake). " +
     "Added 2026-10-05.",
+  "src/cron/clock.mjs":
+    "The cron clock's start call (owner 2026-10-20: every cron left Inngest for the Netlify clock). " +
+    "Its ONE call is a POST to our own deploy (process.env.URL or DEPLOY_URL) at " +
+    "/.netlify/functions/cron-worker-background with { job, slot } and an HMAC of them made with " +
+    "CRON_WORKER_SECRET, to start the 15-minute worker. Same shape as ad-video-sweeper above. " +
+    "Nothing leaves fundhub.ai and no vendor is reached; every job's own sends and vendor calls run " +
+    "inside the worker, through the providers and the fence, exactly as they did on Inngest.",
   "src/marketing/wake.mjs":
     "The marketing machine's wake (spec docs/specs/marketing-machine-2026-10-04.md §6 " +
     "Step 2: a save writes its outbox row, then wakes the worker). Its ONE call is a POST " +
@@ -128,6 +135,13 @@ const ALLOWED_RAW_FETCH = {
     + "the module exports no send function and issues no POST; gmailFetch() "
     + "defaults method to GET and every call site takes that default. Cannot "
     + "reach a client and cannot change a vendor record.",
+  "src/bookings/meet-link.mjs":
+    "Reads the host's Google Calendar to find the Meet link Google already put on a "
+    + "booked call (ClickFunnels' webhook carries none). One GET to calendar/v3 "
+    + "events with the host's own OAuth token; the token refresh goes through "
+    + "src/company-brain/auth.mjs above. Creates no event, sends no invite, writes "
+    + "nothing at Google and reaches no client. meet-link.test.mjs pins GET-only. "
+    + "Added 2026-10-20 (Set A item 11).",
   "src/handlers/inbound-mms-docs.mjs":
     "Downloads a photo the client already sent US, from the Twilio media URL "
     + "on the inbound webhook. Inbound only — GET with the account credentials, "

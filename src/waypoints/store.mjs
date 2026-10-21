@@ -13,6 +13,7 @@
 // decides they are legal. Deleting this file cannot make a bad row storable.
 
 import { sumComponents } from "./pricing.mjs";
+import { isOverdue, listWaypointRows } from "../pulse/beats/lib/waypoints-read.mjs";
 
 export class WaypointError extends Error {
   constructor(message, { status = 400, code = "waypoint" } = {}) {
@@ -23,34 +24,14 @@ export class WaypointError extends Error {
   }
 }
 
-/**
- * One client's checklist, in display order.
- * Returns rows exactly as stored — `overdue` is computed here rather than
- * stored, because it is a fact about the clock and the clock moves.
- */
+/* The checklist read and the overdue rule live in src/pulse/beats/lib/waypoints-read.mjs (2026-10-20), unchanged,
+   so the hourly beat client-progress builds the checklist the same way. listWaypoints keeps its id check here. */
 export async function listWaypoints(db, { orgId, clientId, now = new Date() } = {}) {
   if (!orgId || !clientId) throw new WaypointError("orgId and clientId are required");
-  const r = await db.query(
-    `SELECT * FROM client_waypoints
-      WHERE org_id = $1::uuid AND client_id = $2::uuid
-      ORDER BY position ASC, key ASC`,
-    [orgId, clientId]
-  );
-  return (r.rows || []).map((row) => ({ ...row, overdue: isOverdue(row, now) }));
+  return listWaypointRows(db, { orgId, clientId, now });
 }
 
-/**
- * Overdue is `due_at < now AND the row is still open`.
- *
- * NULL due_at is NOT overdue. It means nobody set a deadline (CLAUDE.md §12),
- * and treating unknown as breached would put a red flag on a client's screen
- * for a date that does not exist.
- */
-export function isOverdue(row, now = new Date()) {
-  if (!row || !row.due_at) return false;
-  if (row.state === "done" || row.state === "skipped") return false;
-  return new Date(row.due_at).getTime() < new Date(now).getTime();
-}
+export { isOverdue };
 
 /**
  * Create or update one waypoint, keyed on (client_id, key).

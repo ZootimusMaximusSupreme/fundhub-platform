@@ -180,7 +180,7 @@ flowchart TD
     Q -->|yes| R
     HW -->|"never asks the question,<br/>never the whole history"| R
     FH --> L
-    R["ONE insights call for the ad account, level=ad,<br/>a row per ad per day, Meta v26.0<br/>insightsRequestUrl(), :335<br/>fields now include inline_link_clicks"] --> L["campaigns, ad sets, ads walked to their end;<br/>account switched on; per-campaign saves<br/>(unchanged)"]
+    R["TWO insights calls for the ad account, level=ad,<br/>a row per ad per day, Meta v26.0:<br/>the money alone, then video + results<br/>(inline_link_clicks rides on the second)<br/>fetchInsightPull() → mergeInsightRows()<br/>money only from the first; a day cut short is held, not zeroed"] --> L["campaigns, ad sets, ads walked to their end;<br/>account switched on; per-campaign saves<br/>(unchanged)"]
     L --> S["ad_metrics_daily row per ad per day<br/>link_clicks = inline_link_clicks when Meta sent it,<br/>else the actions link_click line, else NULL<br/>linkClicks(), src/ads/meta-results.mjs:113, used at :155"]
     S --> D["visitor ad numbers, then the dying-ad buzz check<br/>(at most once per ad per day)<br/>api/campaigns/sync.mjs:1124"]
 ```

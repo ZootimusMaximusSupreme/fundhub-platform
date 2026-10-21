@@ -36,12 +36,23 @@ const RAW = {
 };
 const ARGS = { orgId: "o", partnerId: "p", adId: "a", day: "2026-09-30", raw: RAW };
 
+/* Two requests since 2026-10-21: the money on its own ("core") and the rest
+   ("detail") — Meta answers the combined list over many days with false zeros
+   (TWO INSIGHTS REQUESTS in api/campaigns/sync.mjs). The results fields ride
+   on the detail request. */
+const bothParts = (range) => ["core", "detail"]
+  .flatMap((part) => fieldsOf(insightsRequestUrl(connection, { part, ...range })));
+
 describe("the insights request", () => {
-  test("asks Meta for cost_per_action_type, and for actions once", () => {
-    const f = fieldsOf(insightsRequestUrl(connection, { since: "2026-09-01", until: "2026-09-28" }));
+  test("asks Meta for cost_per_action_type, and for actions once — on the second request", () => {
+    const f = fieldsOf(insightsRequestUrl(connection, { part: "detail", since: "2026-09-01", until: "2026-09-28" }));
     assert.ok(f.includes("cost_per_action_type"));
+    assert.ok(f.includes("inline_link_clicks"));
     assert.equal(f.filter((x) => x === "actions").length, 1, "a field asked for twice");
     assert.equal(new Set(f).size, f.length, "a field asked for twice");
+    const all = bothParts({ since: "2026-09-01", until: "2026-09-28" });
+    assert.equal(all.filter((x) => x === "actions").length, 1, "actions asked for on both requests");
+    assert.equal(all.filter((x) => x === "cost_per_action_type").length, 1);
   });
 
   test("every field it asks for is one Meta's SDK declares (no invented names)", () => {
@@ -57,7 +68,7 @@ describe("the insights request", () => {
       "video_p95_watched_actions", "video_p100_watched_actions", "video_thruplay_watched_actions",
       "video_play_curve_actions"
     ]);
-    for (const f of fieldsOf(insightsRequestUrl(connection, { since: "2026-09-01", until: "2026-09-28" }))) {
+    for (const f of bothParts({ since: "2026-09-01", until: "2026-09-28" })) {
       assert.ok(known.has(f), `${f} is not a field this file has checked against Meta`);
     }
   });

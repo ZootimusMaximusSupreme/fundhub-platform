@@ -27,6 +27,7 @@ import {
   READER_UNREAD_MS,
   RECEIVED_KINDS,
   REQUEST_FIELD,
+  SAMPLE_SQL,
   STORE_TIMEOUT_MS,
   VAULT_ASK_SOURCE,
   VAULT_RED_MS,
@@ -262,11 +263,14 @@ test("stuck processing: pending or failed delivery, an overdue read, or an unrea
 });
 
 test("the stuck reads leave demo rows out and only count a pending read", () => {
-  const delivery = SRC.slice(SRC.indexOf("const STUCK_DELIVERY_SQL"), SRC.indexOf("const STUCK_READER_SQL"));
+  // The stuck check lives in the hourly beat's lib (one judge, two clocks); the lane imports it back.
+  assert.match(SRC, /beats\/lib\/documents-truth\.mjs/);
+  const TRUTH = readFileSync(fileURLToPath(new URL("../beats/lib/documents-truth.mjs", import.meta.url)), "utf8");
+  const delivery = TRUTH.slice(TRUTH.indexOf("const STUCK_DELIVERY_SQL"), TRUTH.indexOf("const STUCK_READER_SQL"));
   assert.match(delivery, /delivery_status = 'pending' AND updated_at < \$2::timestamptz/);
   assert.match(delivery, /delivery_status IN \('failed', 'bounced'\)/);
   assert.match(delivery, /is_demo IS NOT TRUE/);
-  const reader = SRC.slice(SRC.indexOf("const STUCK_READER_SQL"), SRC.indexOf("async function checkStuckProcessing"));
+  const reader = TRUTH.slice(TRUTH.indexOf("const STUCK_READER_SQL"), TRUTH.indexOf("async function checkStuckProcessing"));
   assert.match(reader, /handler_name = \$2::text/);
   assert.match(reader, /status = 'pending'/);
   assert.match(reader, /coalesce\(next_attempt_at, last_seen_at\) < \$3::timestamptz/);
@@ -316,7 +320,8 @@ test("the open reads leave demo rows out and only ask about the current version'
   assert.match(open, /v\.id = d\.current_version_id/);
   assert.match(open, /v\.document_id = d\.id/);
   assert.match(open, /nullif\(btrim\(v\.storage_key\), ''\) IS NOT NULL/);
-  const sample = SRC.slice(SRC.indexOf("const SAMPLE_SQL"), SRC.indexOf("/** Is each sampled file"));
+  // SAMPLE_SQL moved to src/pulse/beats/lib/documents-upload-truth.mjs (2026-10-20); the lane re-exports it.
+  const sample = SAMPLE_SQL;
   assert.match(sample, /d\.is_demo IS NOT TRUE/);
   assert.match(sample, /ORDER BY v\.created_at DESC/);
   assert.match(sample, /LIMIT \$2::int/);

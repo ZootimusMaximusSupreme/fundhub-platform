@@ -31,7 +31,9 @@ import { TEST_CLIENT_EMAIL_RE as CONSENT_TEST_RE } from "./gap-consent.mjs";
 import { TEST_CLIENT_EMAIL_RE as PORTAL_TEST_RE } from "./gap-portal.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const SRC = fs.readFileSync(path.join(HERE, "gap-payments.mjs"), "utf8");
+// Three of the checks (and their SQL) live in the shared hourly truth file, so the source checks read both files.
+const SRC = fs.readFileSync(path.join(HERE, "gap-payments.mjs"), "utf8") + "\n" +
+  fs.readFileSync(path.join(HERE, "../beats/lib/payments-truth.mjs"), "utf8");
 const ORG = "11111111-1111-4111-8111-111111111111";
 
 function fakeDb(counts) {
@@ -844,7 +846,7 @@ test("gap payments tripwires: commas-inbox-waiting FAIL counts the three shapes 
     "3 Commas receipts waiting in the inbox that no clock is picking up: 1 never tried, 1 failed with tries left, 1 stuck mid-pass. " +
       "2 of them are paid receipts. The oldest came in 3 hours ago. (4 simulated receipts left out: no card was charged)"
   );
-  assert.match(hit.suggestedFix, /commas-inbox-sweeper and commas-inbox-drain/);
+  assert.match(hit.suggestedFix, /The inbox clock \(commas-inbox-sweeper, every 5 minutes/);
   const call = seen.find((c) => /gap:commas-inbox-waiting/.test(c.sql));
   assert.deepEqual(call.params, [ORG, "2026-10-08T14:50:00.000Z", "sim-pay-%", 10, "2026-10-08T14:40:00.000Z"]);
   // One receipt reads in the singular.

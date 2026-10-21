@@ -1782,7 +1782,7 @@
  },
  {
   "surface": "function:commas-inbox-sweeper",
-  "control": "commas-inbox-sweeper (netlify/functions/commas-inbox-sweeper.mjs): scheduled every minute: drains stored Commas payment webhooks (commas_inbox) into events and the money chain. The other half of the payment path. | sends or calls: emits payment events | writes: commas_inbox, events, transactions",
+  "control": "commas-inbox-sweeper (netlify/functions/commas-inbox-sweeper.mjs): scheduled every 5 minutes: drains stored Commas payment webhooks (commas_inbox) into events and the money chain. The other half of the payment path. | sends or calls: emits payment events | writes: commas_inbox, events, transactions",
   "kind": "job-cron",
   "calls": [
    "emits payment events"
@@ -1796,7 +1796,7 @@
   "coverage": "deep",
   "evidence": "result check: beat-pay-webhook.mjs (hourly; names this function in its fix guide) and gap-payments.mjs payments:commas-inbox-waiting read commas_inbox for rows the sweeper should have taken; gap-webhooks.mjs webhooks:stuck-failed counts failed rows; ping: job:commas-inbox-sweeper heartbeat (src/pulse/heartbeats.mjs NETLIFY_JOBS, schedule * * * * *, red after 3 times the schedule); tests: src/workflows/commas-inbox-drain.test.mjs; src/payments/sweeper-fontkit-in-zip.test.mjs; src/http/scheduled-functions-return.test.mjs; tripwire map: not on it (the map lists api doors, pages, desks, sends and the 100 Inngest workflows, not Netlify scheduled or background functions)",
   "file": "netlify/functions/commas-inbox-sweeper.mjs",
-  "schedule": "* * * * *"
+  "schedule": "*/5 * * * *"
  },
  {
   "surface": "function:creative-job-runner",
@@ -1919,7 +1919,7 @@
  },
  {
   "surface": "function:pulse-hourly",
-  "control": "pulse-hourly (netlify/functions/pulse-hourly.mjs): scheduled at minute 7 each hour: runs every beat read-only and texts Chris when a step does not come back | sends or calls: owner text (Chris) inside texting hours | writes: pulse_beats, pulse_incidents, pulse_bank_links, job_heartbeats",
+  "control": "pulse-hourly (netlify/functions/pulse-hourly.mjs): scheduled at minute 7 each hour: runs its shift of the beats (src/pulse/beats/shifts.mjs) read-only and texts Chris when a step does not come back | sends or calls: owner text (Chris) inside texting hours | writes: pulse_beats, pulse_incidents, pulse_bank_links, job_heartbeats",
   "kind": "job-cron",
   "calls": [
    "owner text (Chris) inside texting hours"
@@ -1935,6 +1935,60 @@
   "evidence": "no lane reads the outcome this function writes; ping: job:pulse-hourly heartbeat (src/pulse/heartbeats.mjs NETLIFY_JOBS, schedule 7 * * * *, red after 3 times the schedule); tests: src/pulse/pulse-hourly.test.mjs; tripwire map: not on it (the map lists api doors, pages, desks, sends and the 100 Inngest workflows, not Netlify scheduled or background functions)",
   "file": "netlify/functions/pulse-hourly.mjs",
   "schedule": "7 * * * *"
+ },
+ {
+  "surface": "function:pulse-hourly-b",
+  "control": "pulse-hourly-b (netlify/functions/pulse-hourly-b.mjs): scheduled at minute 37 each hour: runs the other shift of the beats (src/pulse/beats/shifts.mjs) read-only through the same runner and texts Chris when a step does not come back | sends or calls: owner text (Chris) inside texting hours | writes: pulse_beats, pulse_incidents, job_heartbeats",
+  "kind": "job-cron",
+  "calls": [
+   "owner text (Chris) inside texting hours"
+  ],
+  "tables": [
+   "pulse_beats",
+   "pulse_incidents",
+   "job_heartbeats"
+  ],
+  "impact": "staffOnly",
+  "coverage": "e2e",
+  "evidence": "no lane reads the outcome this function writes; ping: job:pulse-hourly-b heartbeat (src/pulse/heartbeats.mjs NETLIFY_JOBS, schedule 37 * * * *, red after 3 times the schedule); backup: pulse:runner-stale in src/pulse/instant-watch.mjs reads its receipt every 5 minutes; tests: src/pulse/pulse-hourly-b.test.mjs; src/pulse/beats/shifts.test.mjs; src/http/scheduled-functions-return.test.mjs; tripwire map: not on it (the map lists api doors, pages, desks, sends and the 100 Inngest workflows, not Netlify scheduled or background functions)",
+  "file": "netlify/functions/pulse-hourly-b.mjs",
+  "schedule": "37 * * * *"
+ },
+ {
+  "surface": "function:pulse-hourly-c",
+  "control": "pulse-hourly-c (netlify/functions/pulse-hourly-c.mjs): scheduled at minute 52 each hour: runs the third shift of the beats (src/pulse/beats/shifts.mjs) read-only through the same runner and texts Chris when a step does not come back | sends or calls: owner text (Chris) inside texting hours | writes: pulse_beats, pulse_incidents, job_heartbeats",
+  "kind": "job-cron",
+  "calls": [
+   "owner text (Chris) inside texting hours"
+  ],
+  "tables": [
+   "pulse_beats",
+   "pulse_incidents",
+   "job_heartbeats"
+  ],
+  "impact": "staffOnly",
+  "coverage": "e2e",
+  "evidence": "no lane reads the outcome this function writes; ping: job:pulse-hourly-c heartbeat (src/pulse/heartbeats.mjs NETLIFY_JOBS, schedule 52 * * * *, red after 3 times the schedule); backup: pulse:runner-stale in src/pulse/instant-watch.mjs reads its receipt every 5 minutes; tests: src/pulse/pulse-hourly-c.test.mjs; src/pulse/beats/shifts.test.mjs; src/http/scheduled-functions-return.test.mjs; tripwire map: not on it (the map lists api doors, pages, desks, sends and the 100 Inngest workflows, not Netlify scheduled or background functions)",
+  "file": "netlify/functions/pulse-hourly-c.mjs",
+  "schedule": "52 * * * *"
+ },
+ {
+  "surface": "function:pulse-hourly-d",
+  "control": "pulse-hourly-d (netlify/functions/pulse-hourly-d.mjs): scheduled at minute 22 each hour: runs the fourth shift of the beats (src/pulse/beats/shifts.mjs) read-only through the same runner and texts Chris when a step does not come back | sends or calls: owner text (Chris) inside texting hours | writes: pulse_beats, pulse_incidents, job_heartbeats",
+  "kind": "job-cron",
+  "calls": [
+   "owner text (Chris) inside texting hours"
+  ],
+  "tables": [
+   "pulse_beats",
+   "pulse_incidents",
+   "job_heartbeats"
+  ],
+  "impact": "staffOnly",
+  "coverage": "e2e",
+  "evidence": "no lane reads the outcome this function writes; ping: job:pulse-hourly-d heartbeat (src/pulse/heartbeats.mjs NETLIFY_JOBS, schedule 22 * * * *, red after 3 times the schedule); backup: pulse:runner-stale in src/pulse/instant-watch.mjs reads its receipt every 5 minutes; tests: src/pulse/pulse-hourly-d.test.mjs; src/pulse/beats/shifts.test.mjs; src/http/scheduled-functions-return.test.mjs; tripwire map: not on it (the map lists api doors, pages, desks, sends and the 100 Inngest workflows, not Netlify scheduled or background functions)",
+  "file": "netlify/functions/pulse-hourly-d.mjs",
+  "schedule": "22 * * * *"
  },
  {
   "surface": "function:pulse-outside-watch",

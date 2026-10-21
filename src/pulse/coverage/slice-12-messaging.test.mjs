@@ -29,7 +29,7 @@ test("slice 12-messaging: every check has id, schedule, redAfter, alreadyInRegis
 const WORKFLOW_FILES = {
   "message-dispatch-sweeper": "src/workflows/message-dispatch-sweeper.mjs",
   "waypoint-nudge-sweeper": "src/workflows/waypoint-nudge-sweeper.mjs",
-  "commas-inbox-drain": "src/workflows/commas-inbox-drain.mjs"
+  "commas-inbox-sweeper": "netlify/functions/commas-inbox-sweeper.mjs"
 };
 
 test("slice 12-messaging: workflow files exist on disk", () => {
@@ -49,6 +49,6 @@ test("slice 12-messaging: none are in MACHINE_CHECKS yet — all three are gaps"
   }
   assert.deepEqual(
     gaps().map((r) => r.id),
-    ["message-dispatch-sweeper", "waypoint-nudge-sweeper", "commas-inbox-drain"]
+    ["message-dispatch-sweeper", "waypoint-nudge-sweeper", "commas-inbox-sweeper"]
   );
 });

@@ -33,9 +33,14 @@ import {
   insightsRequestUrl,
   fetchInsightPages,
   groupInsightsByAd,
+  mergeInsightRows,
+  insightPullErrors,
   insightWindow,
   buildSyncResponse,
-  INSIGHT_WINDOW_DAYS
+  INSIGHT_WINDOW_DAYS,
+  INSIGHT_CORE_FIELDS,
+  INSIGHT_DETAIL_FIELDS,
+  INSIGHT_CORE_VALUES
 } from "../../api/campaigns/sync.mjs";
 
 const connection = { external_ad_account_id: "act_1234567890" };
@@ -57,15 +62,19 @@ const replyWith = (pages) => {
 // ── 1. one call, at the account, keyed by ad ────────────────────────────────
 
 describe("the insights request", () => {
+  /* Two requests since 2026-10-21 (the money, then the rest — see
+     campaigns-sync-false-zeros.test.mjs). Each one is still ONE request for
+     the whole ad account at level=ad, so every rule below holds for both. */
+  for (const part of ["core", "detail"]) describe(`the ${part} request`, () => {
   test("asks the ad account, not one ad", () => {
-    const url = insightsRequestUrl(connection, { since: "2026-09-01", until: "2026-09-08" });
+    const url = insightsRequestUrl(connection, { part, since: "2026-09-01", until: "2026-09-08" });
     assert.ok(url.includes("/act_1234567890/insights?"),
       `the request went to ${url} — it must be the ad account`);
   });
 
   test("asks for level=ad, which is what makes one call enough", () => {
     const url = decodeURIComponent(
-      insightsRequestUrl(connection, { since: "2026-09-01", until: "2026-09-08" })
+      insightsRequestUrl(connection, { part, since: "2026-09-01", until: "2026-09-08" })
     );
     assert.ok(url.includes("level=ad"),
       "without level=ad Meta answers with one lump for the account and every ad looks identical");
@@ -73,7 +82,7 @@ describe("the insights request", () => {
 
   test("asks for ad_id, or the rows cannot be tied back to an ad", () => {
     const url = decodeURIComponent(
-      insightsRequestUrl(connection, { since: "2026-09-01", until: "2026-09-08" })
+      insightsRequestUrl(connection, { part, since: "2026-09-01", until: "2026-09-08" })
     );
     assert.ok(/(^|[?&,])ad_id(,|&|$)/.test(url) || url.includes("fields=ad_id"),
       "ad_id is not in the field list");
@@ -81,11 +90,49 @@ describe("the insights request", () => {
 
   test("keeps the same date window and one row per day", () => {
     const url = decodeURIComponent(
-      insightsRequestUrl(connection, { since: "2026-09-01", until: "2026-09-08" })
+      insightsRequestUrl(connection, { part, since: "2026-09-01", until: "2026-09-08" })
     );
     assert.ok(url.includes('"since":"2026-09-01"'), "the start of the window moved");
     assert.ok(url.includes('"until":"2026-09-08"'), "the end of the window moved");
     assert.ok(url.includes("time_increment=1"), "the day-by-day breakdown was lost");
+  });
+  });
+
+  test("there is no combined request: a missing or unknown part is refused", () => {
+    for (const part of [undefined, "", "all", "combined", "__proto__"]) {
+      assert.throws(
+        () => insightsRequestUrl(connection, { part, since: "2026-09-01", until: "2026-09-08" }),
+        /part must be "core" or "detail"/,
+        String(part)
+      );
+    }
+  });
+
+  /* THE 2026-10-21 BREAK. Over many days Meta answers spend, impressions and
+     clicks with "0" when the same request also asks for `actions`,
+     `inline_link_clicks`, `cost_per_action_type` or any *_actions field. */
+  test("the money request is exactly the list Meta answered for real, and nothing that brings the zeros back", () => {
+    assert.deepEqual([...INSIGHT_CORE_FIELDS],
+      ["ad_id", "spend", "impressions", "clicks", "ctr", "purchase_roas", "date_start"]);
+    const fields = new URL(insightsRequestUrl(connection, { part: "core", since: "2026-09-01", until: "2026-09-08" }))
+      .searchParams.get("fields").split(",");
+    assert.deepEqual(fields, [...INSIGHT_CORE_FIELDS]);
+    for (const f of fields) {
+      assert.equal(f === "actions" || f === "inline_link_clicks" || f === "cost_per_action_type" || f.endsWith("_actions"),
+        false, `${f} on the money request brings Meta's false zeros back`);
+    }
+  });
+
+  test("the other request carries no money field, and every video and results field", () => {
+    const fields = new URL(insightsRequestUrl(connection, { part: "detail", since: "2026-09-01", until: "2026-09-08" }))
+      .searchParams.get("fields").split(",");
+    assert.deepEqual(fields, [...INSIGHT_DETAIL_FIELDS]);
+    for (const f of INSIGHT_CORE_VALUES) assert.equal(fields.includes(f), false, `${f} is on the second request`);
+    assert.deepEqual([...INSIGHT_CORE_VALUES], ["spend", "impressions", "clicks", "ctr", "purchase_roas"]);
+    for (const f of ["ad_id", "date_start", "actions", "cost_per_action_type", "inline_link_clicks", "video_play_curve_actions"]) {
+      assert.ok(fields.includes(f), `${f} is missing from the second request`);
+    }
+    assert.equal(new Set(fields).size, fields.length, "a field asked for twice");
   });
 
   /* WAS SEVEN DAYS, AND SEVEN DAYS LOST NUMBERS FOR GOOD — changed 2026-09-09.
@@ -108,7 +155,7 @@ describe("the insights request", () => {
       { data: [{ ad_id: "a1" }, { ad_id: "a2" }, { ad_id: "a3" }] }
     ]);
     const out = await fetchInsightPages({
-      url: insightsRequestUrl(connection, { since: "2026-09-01", until: "2026-09-08" }),
+      url: insightsRequestUrl(connection, { part: "core", since: "2026-09-01", until: "2026-09-08" }),
       token: "t",
       ctx: { fetch: fetchImpl }
     });
@@ -193,6 +240,92 @@ describe("matching the rows back to each ad", () => {
   test("a number for an ad id survives being a number", () => {
     const byAd = groupInsightsByAd([{ ad_id: 123456 }]);
     assert.equal(byAd.get("123456").length, 1, "a numeric ad id did not match");
+  });
+});
+
+describe("joining the money answer and the rest (mergeInsightRows)", () => {
+  const core = (rows, complete = true) => ({ rows, complete });
+  const detail = core;
+  const C = (ad, day, spend) => ({ ad_id: ad, date_start: day, spend, impressions: "10", clicks: "1", ctr: "10" });
+  const D = (ad, day, extra = {}) => ({ ad_id: ad, date_start: day, actions: [{ action_type: "link_click", value: "1" }], ...extra });
+
+  test("both answers: one row, money from the money answer, the rest from the other", () => {
+    const out = mergeInsightRows({
+      core: core([C("a1", "2026-10-01", "2.35")]),
+      detail: detail([D("a1", "2026-10-01", { spend: "0", impressions: "0", clicks: "0", ctr: "0", video_p25_watched_actions: [{ action_type: "video_view", value: "2" }] })])
+    });
+    assert.equal(out.rows.length, 1);
+    assert.equal(out.held, 0);
+    const r = out.rows[0];
+    assert.equal(r.spend, "2.35", "a money field came from the second answer");
+    assert.equal(r.impressions, "10");
+    assert.equal(r.clicks, "1");
+    assert.equal(r.ctr, "10");
+    assert.deepEqual(r.actions, [{ action_type: "link_click", value: "1" }]);
+    assert.deepEqual(r.video_p25_watched_actions, [{ action_type: "video_view", value: "2" }]);
+  });
+
+  test("a money field on the second answer never survives, even with no money row to join", () => {
+    const out = mergeInsightRows({
+      core: core([]),
+      detail: detail([D("a1", "2026-10-06", { spend: "0", impressions: "0", purchase_roas: [{ value: "9" }] })])
+    });
+    assert.equal(out.rows.length, 1);
+    for (const f of INSIGHT_CORE_VALUES) assert.equal(f in out.rows[0], false, `${f} came from the second answer`);
+  });
+
+  test("money row only, other answer complete: kept as it is (video and results stay unknown)", () => {
+    const out = mergeInsightRows({ core: core([C("a1", "2026-10-01", "5")]), detail: detail([]) });
+    assert.deepEqual(out.rows, [C("a1", "2026-10-01", "5")]);
+    assert.equal(out.held, 0);
+  });
+
+  test("money row only, other answer cut short: held, not written", () => {
+    const out = mergeInsightRows({ core: core([C("a1", "2026-10-01", "5")]), detail: detail([], false) });
+    assert.deepEqual(out.rows, []);
+    assert.equal(out.held, 1);
+    assert.deepEqual(out.heldBy, { core: 0, detail: 1 });
+  });
+
+  test("other row only, money answer complete: kept with no money fields (no delivery that day)", () => {
+    const out = mergeInsightRows({ core: core([]), detail: detail([D("a1", "2026-10-06")]) });
+    assert.deepEqual(out.rows, [D("a1", "2026-10-06")]);
+    assert.equal(out.held, 0);
+  });
+
+  test("other row only, money answer cut short: held — never a guessed 0", () => {
+    const out = mergeInsightRows({ core: core([], false), detail: detail([D("a1", "2026-10-06")]) });
+    assert.deepEqual(out.rows, []);
+    assert.equal(out.held, 1);
+    assert.deepEqual(out.heldBy, { core: 1, detail: 0 });
+  });
+
+  test("completeness must be said: an answer not marked complete counts as cut short", () => {
+    const out = mergeInsightRows({ core: { rows: [C("a1", "2026-10-01", "5")] }, detail: { rows: [D("a2", "2026-10-01")] } });
+    assert.deepEqual(out.rows, []);
+    assert.equal(out.held, 2);
+  });
+
+  test("rows match on ad AND day; a numeric ad id matches its text twin; a row with no ad or no day is dropped", () => {
+    const out = mergeInsightRows({
+      core: core([C(111, "2026-10-01", "1"), C("111", "2026-10-02", "2"), { spend: "9", date_start: "2026-10-01" }, { ad_id: "z", spend: "9" }]),
+      detail: detail([D("111", "2026-10-01"), D("111", "2026-10-03")])
+    });
+    const byKey = Object.fromEntries(out.rows.map((r) => [`${r.ad_id}|${r.date_start}`, r]));
+    assert.deepEqual(Object.keys(byKey).sort(), ["111|2026-10-01", "111|2026-10-02", "111|2026-10-03"]);
+    assert.equal(byKey["111|2026-10-01"].spend, "1");
+    assert.ok(byKey["111|2026-10-01"].actions, "the two halves of 10-01 were not joined");
+    assert.equal("spend" in byKey["111|2026-10-03"], false);
+  });
+
+  test("insightPullErrors: one line per cut answer, one for held days, none for a clean pull", () => {
+    assert.deepEqual(insightPullErrors({ held: 0, core: { pages: 2, truncated: false }, detail: { pages: 2, truncated: false } }), []);
+    const lines = insightPullErrors({ held: 3, core: { pages: 100, truncated: true }, detail: { pages: 100, truncated: true } });
+    assert.equal(lines.length, 3);
+    assert.match(lines[0], /stopped after 100 pages of spend numbers/);
+    assert.match(lines[1], /stopped after 100 pages of video and results numbers/);
+    assert.match(lines[2], /^3 days of numbers were not saved/);
+    assert.match(insightPullErrors({ held: 1, core: {}, detail: {} })[0], /^1 day of numbers was not saved/);
   });
 });
 

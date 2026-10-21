@@ -260,8 +260,13 @@ test("a read error fails that check with the reason and leaves the other one alo
 });
 
 test("the module only reads, and it does not repeat the repair workflow list", () => {
-  const src = fs.readFileSync(new URL("./gap-repair.mjs", import.meta.url), "utf8");
-  assert.match(src, /export async function gapChecks/);
+  // The lane is a thin adapter; its SQL and verdicts live in the hourly beat's lib (one judge, two clocks).
+  // Both files are read, so every rule below still binds the code that runs.
+  const lane = fs.readFileSync(new URL("./gap-repair.mjs", import.meta.url), "utf8");
+  const truth = fs.readFileSync(new URL("../beats/lib/repair-desk-truth.mjs", import.meta.url), "utf8");
+  assert.match(lane, /export async function gapChecks/);
+  assert.match(lane, /beats\/lib\/repair-desk-truth\.mjs/);
+  const src = `${lane}\n${truth}`;
   assert.match(src, /slice-15-repair\.mjs/);
   assert.doesNotMatch(src, /c-00-crs-soft-pull|ds-02-diy-letters|repair-bureau-response-reader/);
   assert.doesNotMatch(src, /\b(INSERT|UPDATE|DELETE|fetch\(|postgrid|sendRepair|analyzeAndGenerate|body_text|crs_)\b/i);

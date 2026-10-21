@@ -14,6 +14,8 @@
 
 import crypto from "node:crypto";
 import { emit } from "../events/bus.mjs";
+import { contactIdFromRecipient } from "../outreach/mail.mjs";
+import { recordBankerReply } from "../outreach/replies.mjs";
 import { recordOptOut } from "../lib/opt-out.mjs";
 import { createTask } from "../lib/create-task.mjs";
 import { fromCents } from "../commissions/money.mjs";
@@ -886,6 +888,20 @@ export async function handleMailgunWebhook({ db, body, signingKey }) {
      otherwise. */
   if (!verifyMailgunSignature(evt.timestamp, evt.token, evt.signature, signingKey)) {
     return { ok: false, status: 401, reason: "bad_signature", emitted: [] };
+  }
+
+  /* A BANKER ANSWERING BANK OUTREACH (495). Bank outreach email carries a
+     Reply-To of reply+bk-<contact id>@ (src/messaging/providers/resend.mjs), a
+     different local-part shape from a client's reply+<client id>@, so the two
+     never mix. The banker's words are saved on their bank record and read by
+     src/outreach/replies.mjs; they are not a client's bank statement, so no
+     mail.response is emitted for them. */
+  const bankerContactId = contactIdFromRecipient(evt.recipient);
+  if (bankerContactId) {
+    const saved = await recordBankerReply(db, {
+      contactId: bankerContactId, from: evt.from, subject: evt.subject, text: evt.text, messageId: evt.messageId || null
+    });
+    return { ok: true, status: 200, emitted: [], banker: saved };
   }
 
   const { event_type: classification } = classifyFull({

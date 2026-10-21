@@ -157,7 +157,42 @@ test("the slow apply-links capacity fixture keeps the full list and delayed runs
   assert.match(hourly, /const timingLimitMs = DELAYED_DEADLINE_MODE \? deadlineMs : deadlineMs \/ 2/);
   assert.match(hourly, /reached its unchanged \$\{deadlineMs\} ms deadline in artificial-delay mode/);
   assert.doesNotMatch(hourly, /r\.beatId === ["']money-funding["']/);
-  assert.match(hourly, /out\.ran !== loadedBeats\.length/);
+  // The full list still runs: the beats are split between the two hourly shifts, so the total across them counts.
+  assert.match(hourly, /ranTotal \+= out\.ran/);
+  assert.match(hourly, /SLOW_APPLY_LINKS_MS && ranTotal !== loadedBeats\.length/);
+});
+
+test("the hourly proof runs each shift on its own, the way the server runs it, and every guard holds per shift", () => {
+  const source = fs.readFileSync(path.join(HERE, "prove.mjs"), "utf8");
+  const hourly = source.slice(source.indexOf("async function proveBeats()"));
+
+  // Every shift function is built and loaded from its own bundle, on its own schedule.
+  assert.match(hourly, /const SHIFT_FUNCTIONS = Object\.freeze\(\[\s*\["pulse-hourly", "7 \* \* \* \*"\], \["pulse-hourly-b", "37 \* \* \* \*"\], \["pulse-hourly-c", "52 \* \* \* \*"\], \["pulse-hourly-d", "22 \* \* \* \*"\]\s*\]\);/);
+  assert.match(hourly, /rootFn = buildBundle\("netlify\/functions\/pulse-hourly\.mjs"\)/);
+  assert.match(hourly, /for \(const \[job\] of SHIFT_FUNCTIONS\.slice\(1\)\) shiftRoots\.set\(job, buildBundle\(`netlify\/functions\/\$\{job\}\.mjs`\)\)/);
+  assert.match(hourly, /entryModule\.SWEEP_CRON !== "7 \* \* \* \*"/);
+  assert.match(hourly, /if \(mod && mod\.SWEEP_CRON !== cron\) problems\.push/);
+  assert.match(hourly, /if \(mod && typeof mod\.default !== "function"\) problems\.push/);
+  assert.match(hourly, /const shiftFunctions = SHIFT_FUNCTIONS\.map\(\(\[job\]\) => \[job, shiftModules\.get\(job\)\]\)/);
+  // Every beat in exactly one shift, and each function runs exactly its shift on its shift's schedule.
+  assert.match(hourly, /shiftProblems\(loadedBeats\.map\(\(b\) => b\.id\)\)/);
+  assert.match(hourly, /mod\.SWEEP_CRON !== shift\.cron/);
+  assert.match(hourly, /JSON\.stringify\(\[\.\.\.\(mod\.BEATS \|\| \[\]\)\]\) !== JSON\.stringify\(\[\.\.\.shift\.beats\]\)/);
+  // One runPulse per shift, limited to that shift, judged on its own.
+  assert.match(hourly, /shiftJobs\.map\(\(job\) => \(\{ label: `shift \$\{job\}`, only: \[\.\.\.SHIFTS\[job\]\.beats\] \}\)\)/);
+  assert.match(hourly, /\.\.\.\(run\.only \? \{ only: run\.only \} : \{\}\)/);
+  assert.match(hourly, /for \(const \{ label, only, out, ms: runMs, pool: poolBefore \} of runs\)/);
+  assert.match(hourly, /const judgedBeats = \(proofBeats \|\| loadedBeats\)\.filter\(\(beat\) => !only \|\| only\.includes\(beat\.id\)\)/);
+  assert.match(hourly, /if \(runMs > RUN_BUDGET_MS\) problems\.push/);
+  assert.match(hourly, /if \(out\.timedOut\) problems\.push/);
+  assert.match(hourly, /if \(only && out\.ran !== judgedBeats\.length\) problems\.push/);
+  assert.match(hourly, /if \(poolBefore\.total > 0\) problems\.push/);
+  assert.match(hourly, /if \(out\.records\?\.written\) problems\.push/);
+  // Across the shifts, every listed beat ran exactly once.
+  assert.match(hourly, /these beats ran in no shift/);
+  assert.match(hourly, /these beats ran in more than one shift/);
+  // The box pool is read after each shift, before the next one starts.
+  assert.match(hourly, /run\.pool = \{ total: boxPool\.totalCount/);
 });
 
 test("hourly site timing trace keeps native GETs and the failed verdict intact", () => {

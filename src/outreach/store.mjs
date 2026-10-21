@@ -1,5 +1,10 @@
 import { withTransaction } from '../db/with-transaction.mjs';
 import { PROGRAM_KEY, MANAGER_ROLES, OUTREACH_ROLES, LENDER_TABLES, fail, text, uuid, httpUrl, dueAt, status, normalizeFacts, parseInstitutionCsv, lenderValues } from './model.mjs';
+import { stopSequence, arizonaDayStart } from './queue.mjs';
+import { stripQuoted, AGENT_CODE } from './replies.mjs';
+import { mailConfig, inSendWindow, BANK_EMAIL_KEYS, COLD_KEYS } from './mail.mjs';
+import { serperKey, SIGNUP_URL } from '../messaging/providers/serper-search.mjs';
+import { DEFAULT_SEARCHES_PER_DAY, DEFAULT_EMAILS_PER_DAY } from './automation.mjs';
 
 async function identity(db, staff) {
   if (!staff?.id || !staff?.org_id) fail('Sign in to your staff account', 401);
@@ -30,11 +35,35 @@ async function scopedSummary(db, staff) {
     count(*) FILTER(WHERE status='verified_partner')::int verified_partners,
     count(*) FILTER(WHERE status NOT IN ('paused','closed') AND (nullif(btrim(next_action),'') IS NULL OR next_due_at IS NULL))::int missing_next_action,
     count(*) FILTER(WHERE status NOT IN ('paused','closed') AND next_due_at<=now())::int due_now,
+    (SELECT count(*)::int FROM outreach_contact_leads l JOIN scope a ON a.id=l.account_id AND a.org_id=l.org_id WHERE l.status='suggested') leads_waiting,
+    (SELECT count(*)::int FROM outreach_inbound_emails r JOIN scope a ON a.id=r.account_id AND a.org_id=r.org_id WHERE r.status IN ('new','needs_human')) replies_waiting,
     (SELECT count(*)::int FROM outreach_products x JOIN scope a ON a.id=x.account_id AND a.org_id=x.org_id WHERE x.first_verified_at>=(date_trunc('week',now() AT TIME ZONE 'America/Phoenix') AT TIME ZONE 'America/Phoenix')) verified_products_week,
     (SELECT count(*)::int FROM outreach_products x JOIN scope a ON a.id=x.account_id AND a.org_id=x.org_id WHERE x.first_verified_at>=((date_trunc('week',now() AT TIME ZONE 'America/Phoenix')-interval '7 days') AT TIME ZONE 'America/Phoenix') AND x.first_verified_at<(date_trunc('week',now() AT TIME ZONE 'America/Phoenix') AT TIME ZONE 'America/Phoenix')) verified_products_previous_week
     FROM scope`, [staff.org_id, staff.canManage, staff.id, PROGRAM_KEY])).rows[0];
 }
-export async function readOutreach(db, { staff: input, query = {} } = {}) {
+// What the machine is doing and what it is waiting on. Managers only.
+async function automationStatus(db, staff, env) {
+  const dayStart = arizonaDayStart(new Date());
+  const cfg = mailConfig(env);
+  const [search, email, replies, templates, agent] = await Promise.all([
+    db.query(`SELECT (SELECT count(*)::int FROM outreach_search_runs WHERE created_at>=$2::timestamptz) used_today,
+      count(*) FILTER(WHERE a.banker_search_at IS NULL)::int never_searched, count(*)::int accounts
+      FROM outreach_accounts a JOIN outreach_programs p ON p.id=a.program_id AND p.org_id=a.org_id WHERE a.org_id=$1 AND p.key=$3`, [staff.org_id, dayStart, PROGRAM_KEY]),
+    db.query(`SELECT (SELECT count(*)::int FROM messages WHERE template_key=ANY($2::text[]) AND created_at>=$3::timestamptz) sent_today,
+      count(*) FILTER(WHERE status='active')::int active_sequences, count(*)::int sequences FROM outreach_email_sequences WHERE org_id=$1`, [staff.org_id, COLD_KEYS, dayStart]),
+    db.query(`SELECT count(*) FILTER(WHERE status='new')::int waiting, count(*) FILTER(WHERE status='needs_human')::int needs_human FROM outreach_inbound_emails WHERE org_id=$1`, [staff.org_id]),
+    db.query(`SELECT count(*) FILTER(WHERE compliance_passed)::int approved, count(*)::int total FROM message_templates WHERE org_id=$1 AND template_key=ANY($2::text[])`, [staff.org_id, BANK_EMAIL_KEYS]),
+    db.query(`SELECT status FROM agents WHERE org_id=$1 AND code=$2`, [staff.org_id, AGENT_CODE])
+  ]);
+  const perDay = (value, fallback) => { const n = Number.parseInt(value, 10); return Number.isFinite(n) && n >= 0 ? n : fallback; };
+  return {
+    search: { configured: !!serperKey(env), signup_url: SIGNUP_URL, per_day_cap: perDay(env.BANK_OUTREACH_SEARCHES_PER_DAY, DEFAULT_SEARCHES_PER_DAY), ...search.rows[0] },
+    email: { configured: cfg.ok, missing: cfg.missing, in_send_window: inSendWindow(new Date()), per_day_cap: perDay(env.BANK_OUTREACH_EMAILS_PER_DAY, DEFAULT_EMAILS_PER_DAY), templates_approved: templates.rows[0].approved, templates_total: BANK_EMAIL_KEYS.length, ...email.rows[0] },
+    replies: { agent_status: agent.rows[0]?.status || 'missing', ...replies.rows[0] }
+  };
+}
+
+export async function readOutreach(db, { staff: input, query = {}, env = process.env } = {}) {
   if (!query || typeof query !== 'object' || Array.isArray(query)) fail('Enter valid outreach filters');
   const staff = await identity(db, input);
   const base = { ok: true, canManage: staff.canManage, program: await program(db, staff) };
@@ -51,7 +80,10 @@ export async function readOutreach(db, { staff: input, query = {} } = {}) {
       if (activity.outcome === 'product_verified') return { ...activity, note: 'Product verified into Lenders' };
       return activity;
     });
-    return { ...base, account: a, contacts, activities: visibleActivities, products: visibleProducts };
+    const leads = (await db.query(`SELECT id,name,title,employer,linkedin_url,snippet,confidence,status,contact_id,reviewed_at,created_at FROM outreach_contact_leads WHERE org_id=$1 AND account_id=$2 ORDER BY (status='suggested') DESC,(confidence='high') DESC,created_at DESC,id LIMIT 100`, [staff.org_id, a.id])).rows;
+    const sequences = (await db.query(`SELECT id,contact_id,status,step,next_due_at,last_sent_at,stopped_at,stop_reason FROM outreach_email_sequences WHERE org_id=$1 AND account_id=$2 ORDER BY created_at,id`, [staff.org_id, a.id])).rows;
+    const replies = (await db.query(`SELECT id,contact_id,from_address,subject,body,received_at,status,kind,ai_mode,summary,suggested,suggestion_status,draft_reply,reply_message_id,error,processed_at FROM outreach_inbound_emails WHERE org_id=$1 AND account_id=$2 ORDER BY received_at DESC,id DESC LIMIT 100`, [staff.org_id, a.id])).rows;
+    return { ...base, account: a, contacts, activities: visibleActivities, products: visibleProducts, leads, sequences, replies };
   }
   const summary = await scopedSummary(db, staff);
   const seats = await reps(db, staff);
@@ -60,6 +92,10 @@ export async function readOutreach(db, { staff: input, query = {} } = {}) {
     const byRep = (await db.query(`SELECT s.id staff_id,s.name,count(a.id)::int total,count(a.id) FILTER(WHERE a.status='verified_partner')::int verified_partners,count(a.id) FILTER(WHERE a.next_due_at<=now() AND a.status NOT IN ('paused','closed'))::int due_now FROM staff s LEFT JOIN outreach_accounts a ON a.assigned_staff_id=s.id AND a.org_id=s.org_id LEFT JOIN outreach_programs p ON p.id=a.program_id AND p.org_id=a.org_id WHERE s.org_id=$1 AND s.status='active' AND s.role=ANY($2::text[]) AND (p.key=$3 OR p.id IS NULL) GROUP BY s.id,s.name ORDER BY s.name`, [staff.org_id, OUTREACH_ROLES, PROGRAM_KEY])).rows;
     const byState = (await db.query(`SELECT a.state,count(*)::int total,count(*) FILTER(WHERE a.status='verified_partner')::int verified_partners,count(*) FILTER(WHERE a.next_due_at<=now() AND a.status NOT IN ('paused','closed'))::int due_now FROM outreach_accounts a JOIN outreach_programs p ON p.id=a.program_id AND p.org_id=a.org_id WHERE a.org_id=$1 AND p.key=$2 GROUP BY a.state ORDER BY a.state`, [staff.org_id, PROGRAM_KEY])).rows;
     return { ...base, summary, byRep, byState, reps: seats };
+  }
+  if (query.view === 'automation') {
+    manager(staff);
+    return { ...base, summary, automation: await automationStatus(db, staff, env) };
   }
   const state = query.state ? text(query.state, 'state', { max: 2 }).toUpperCase() : null;
   if (state && !base.program.states.includes(state)) fail('Choose a program state');
@@ -70,7 +106,10 @@ export async function readOutreach(db, { staff: input, query = {} } = {}) {
   const params = [staff.org_id, staff.canManage, staff.id, PROGRAM_KEY, state, filterStatus, search ? `%${search.replace(/[\\%_]/g, '\\$&')}%` : null];
   const where = `a.org_id=$1 AND ($2::boolean OR a.assigned_staff_id=$3) AND p.key=$4 AND ($5::text IS NULL OR a.state=$5) AND ($6::text IS NULL OR a.status=$6) AND ($7::text IS NULL OR a.name ILIKE $7 OR a.city ILIKE $7)`;
   const total = (await db.query(`SELECT count(*)::int total FROM outreach_accounts a JOIN outreach_programs p ON p.id=a.program_id AND p.org_id=a.org_id WHERE ${where}`, params)).rows[0].total;
-  const items = (await db.query(`SELECT a.*,s.name assigned_staff_name FROM outreach_accounts a JOIN outreach_programs p ON p.id=a.program_id AND p.org_id=a.org_id LEFT JOIN staff s ON s.id=a.assigned_staff_id AND s.org_id=a.org_id WHERE ${where} ORDER BY (a.status IN ('paused','closed')) ASC,a.next_due_at ASC NULLS LAST,a.name,a.id LIMIT $8 OFFSET $9`, [...params, limit, offset])).rows;
+  const items = (await db.query(`SELECT a.*,s.name assigned_staff_name,
+    (SELECT count(*)::int FROM outreach_contact_leads l WHERE l.org_id=a.org_id AND l.account_id=a.id AND l.status='suggested') leads_waiting,
+    (SELECT count(*)::int FROM outreach_inbound_emails r WHERE r.org_id=a.org_id AND r.account_id=a.id AND r.status IN ('new','needs_human')) replies_waiting
+    FROM outreach_accounts a JOIN outreach_programs p ON p.id=a.program_id AND p.org_id=a.org_id LEFT JOIN staff s ON s.id=a.assigned_staff_id AND s.org_id=a.org_id WHERE ${where} ORDER BY (a.status IN ('paused','closed')) ASC,a.next_due_at ASC NULLS LAST,a.name,a.id LIMIT $8 OFFSET $9`, [...params, limit, offset])).rows;
   return { ...base, items, total, summary, reps: seats };
 }
 
@@ -157,6 +196,56 @@ async function verifyProduct(db, staff, id) {
   return { product: verified, lender_id: lender.id };
 }
 
+const FOUND_ACTION = /^Review \d+ found bankers? and connect on LinkedIn$/;
+// A found banker becomes a saved contact only when a rep says so.
+async function reviewLead(db, staff, a, body) {
+  const id = uuid(body.lead_id, 'found banker');
+  const lead = (await db.query(`SELECT * FROM outreach_contact_leads WHERE id=$1 AND org_id=$2 AND account_id=$3 FOR UPDATE`, [id, staff.org_id, a.id])).rows[0];
+  if (!lead) fail('Found banker not found', 404);
+  if (lead.status !== 'suggested') fail('This found banker was already reviewed', 409);
+  let contact = null;
+  if (body.action === 'accept_lead') {
+    contact = (await db.query(`INSERT INTO outreach_contacts(org_id,account_id,name,title,linkedin_url,created_by) VALUES($1,$2,$3,$4,$5,$6) RETURNING *`, [staff.org_id, a.id, lead.name, lead.title, lead.linkedin_url, staff.id])).rows[0];
+  }
+  const updated = (await db.query(`UPDATE outreach_contact_leads SET status=$3,contact_id=$4,reviewed_by=$5,reviewed_at=now(),updated_at=now() WHERE org_id=$1 AND id=$2 RETURNING *`, [staff.org_id, id, contact ? 'accepted' : 'dismissed', contact?.id || null, staff.id])).rows[0];
+  const left = (await db.query(`SELECT count(*)::int n FROM outreach_contact_leads WHERE org_id=$1 AND account_id=$2 AND status='suggested'`, [staff.org_id, a.id])).rows[0].n;
+  const next = FOUND_ACTION.test(a.next_action || '') ? (contact ? 'Connect with the saved banker on LinkedIn' : left ? `Review ${left} found banker${left === 1 ? '' : 's'} and connect on LinkedIn` : 'Find and contact a banker') : (a.next_action || 'Contact banker');
+  await appendActivity(db, staff, a, { next_action: next, next_due_at: a.next_due_at || undefined, contact_id: contact?.id }, { outcome: contact ? 'contact_saved' : 'found_banker_dismissed', note: lead.name });
+  return { lead: updated, contact };
+}
+
+// A banker reply: apply its suggested facts as a product draft, set them aside,
+// or mark the reply answered. A manager still verifies any product.
+async function reviewReply(db, staff, a, body) {
+  const id = uuid(body.reply_id, 'reply');
+  const reply = (await db.query(`SELECT * FROM outreach_inbound_emails WHERE id=$1 AND org_id=$2 AND account_id=$3 FOR UPDATE`, [id, staff.org_id, a.id])).rows[0];
+  if (!reply) fail('Reply not found', 404);
+  if (body.action === 'mark_reply_handled') {
+    if (reply.status === 'new') fail('This reply is still being read; try again in a few minutes', 409);
+    const updated = (await db.query(`UPDATE outreach_inbound_emails SET status='handled',handled_by=$3,updated_at=now() WHERE org_id=$1 AND id=$2 RETURNING id,status`, [staff.org_id, id, staff.id])).rows[0];
+    return { reply: updated };
+  }
+  if (reply.suggestion_status !== 'pending') fail('This reply has no facts waiting', 409);
+  if (body.action === 'dismiss_reply_suggestion') {
+    return { reply: (await db.query(`UPDATE outreach_inbound_emails SET suggestion_status='dismissed',handled_by=$3,updated_at=now() WHERE org_id=$1 AND id=$2 RETURNING id,suggestion_status`, [staff.org_id, id, staff.id])).rows[0] };
+  }
+  const s = reply.suggested || {};
+  const quote = s.evidence_quote || stripQuoted(reply.body).slice(0, 300);
+  const date = new Date(reply.received_at).toISOString().slice(0, 10);
+  let facts = s.facts || {}; let evidence = `Banker email from ${reply.from_address || 'the banker'} on ${date}: "${quote}"`;
+  let productId;
+  if (body.product_id) {
+    productId = uuid(body.product_id, 'product');
+    const existing = (await db.query(`SELECT facts,draft,evidence FROM outreach_products WHERE id=$1 AND org_id=$2 AND account_id=$3`, [productId, staff.org_id, a.id])).rows[0];
+    if (!existing) fail('Product not found', 404);
+    facts = { ...(existing.draft?.facts || existing.facts || {}), ...facts };
+    evidence = [existing.draft?.evidence ?? existing.evidence, evidence].filter(v => v && v.trim()).join('\n');
+  }
+  const saved = await saveProduct(db, staff, a, { id: productId, product_name: body.product_name ?? s.product_name, lender_table: body.lender_table ?? s.lender_table, facts, evidence });
+  await db.query(`UPDATE outreach_inbound_emails SET suggestion_status='applied',status='handled',handled_by=$3,updated_at=now() WHERE org_id=$1 AND id=$2`, [staff.org_id, id, staff.id]);
+  return saved;
+}
+
 export async function writeOutreach(db, { staff: input, body = {} } = {}) {
   if (!body || typeof body !== 'object' || Array.isArray(body)) fail('Enter a valid outreach action');
   return withTransaction(db, async tx => {
@@ -202,6 +291,15 @@ export async function writeOutreach(db, { staff: input, body = {} } = {}) {
       return { ...base, contact };
     }
     if (body.action === 'save_product') return { ...base, ...await saveProduct(tx, staff, a, body) };
+    if (body.action === 'accept_lead' || body.action === 'dismiss_lead') return { ...base, ...await reviewLead(tx, staff, a, body) };
+    if (['apply_reply_suggestion', 'dismiss_reply_suggestion', 'mark_reply_handled'].includes(body.action)) return { ...base, ...await reviewReply(tx, staff, a, body) };
+    if (body.action === 'stop_emails') {
+      const contactId = uuid(body.contact_id, 'contact');
+      if (!(await tx.query(`SELECT id FROM outreach_contacts WHERE id=$1 AND account_id=$2 AND org_id=$3`, [contactId, a.id, staff.org_id])).rows.length) fail('Contact not found', 404);
+      const stopped = await stopSequence(tx, { orgId: staff.org_id, contactId, reason: 'manual', staffId: staff.id });
+      if (stopped) await appendActivity(tx, staff, a, { next_action: a.next_action || 'Contact banker', next_due_at: a.next_due_at || undefined, contact_id: contactId }, { outcome: 'emails_stopped', note: 'Automatic emails stopped by staff' });
+      return { ...base, stopped };
+    }
     if (body.action === 'log_touch') {
       if (body.status) { status(body.status); if (body.status === 'verified_partner' && a.status !== 'verified_partner') fail('Verify a product before marking this partner verified'); }
       const activity = await appendActivity(tx, staff, a, body, { touch: true });

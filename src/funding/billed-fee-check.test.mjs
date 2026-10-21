@@ -262,7 +262,7 @@ test("the same decision pressed twice reissues once and makes one task", async (
 test("marking an approval as not counting on a billed round makes the bill follow too", async () => {
   const db = stubDb();
   await setApprovalExclusion(db, {
-    orgId: ORG, applicationId: APP, excluded: true, reason: "Withdrawn", staff: { name: "Advisor" }
+    orgId: ORG, applicationId: APP, excluded: true, reason: "Withdrawn", staff: { id: "55555555-5555-4555-8555-555555555555", name: "Advisor" }
   });
   assert.equal(db.invoices.find((i) => i.id === INVOICE).status, "void");
   assert.equal(db.invoices.length, 2);

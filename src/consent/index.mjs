@@ -47,6 +47,7 @@
 // BY, where it can be read.
 
 import { db as sharedDb } from "../db.mjs";
+import { CONSENT_VALID_SQL as VALID_PREDICATE } from "../pulse/beats/lib/consent-valid-sql.mjs";
 
 export class ConsentError extends Error {
   constructor(message, { status = 400, code = "consent_error" } = {}) {
@@ -112,11 +113,12 @@ const SELECT_COLUMNS = `
    NOTE THE BOUNDARIES, both chosen deliberately:
      expires_at > now()   — a consent expires AT its expiry, not after it.
      granted_at <= now()  — a consent is live from the instant it is given.
-   Together they mean a consent is never simultaneously not-yet and expired. */
-const VALID_PREDICATE = `
-  revoked_at IS NULL
-  AND (expires_at IS NULL OR expires_at > now())
-  AND granted_at <= now()`;
+   Together they mean a consent is never simultaneously not-yet and expired.
+
+   THE ONE COPY LIVES IN src/pulse/beats/lib/consent-valid-sql.mjs (2026-10-20),
+   unchanged, so the hourly beats read the same rule (a beat may import only from
+   the beat library). Imported back at the top of this file under its old name,
+   VALID_PREDICATE. */
 
 /* The same fragment, exported, so a reader that CANNOT call consentStatus()
    still cannot fork the rule.

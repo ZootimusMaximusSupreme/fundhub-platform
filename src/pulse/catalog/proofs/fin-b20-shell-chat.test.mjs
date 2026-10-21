@@ -129,7 +129,7 @@ test("chat widget: Message a teammate lists teammates, shows an existing thread,
   await page.locator("#fh-chat-input").fill("Done, called at 3.");
   await page.locator("#fh-chat-send").click();
   await until(() => callsTo(page, "/api/chat/messages", "POST").length === 1, { message: "the send" });
-  assert.deepEqual(JSON.parse(callsTo(page, "/api/chat/messages", "POST")[0].body), { kind: "internal", body: "Done, called at 3.", conversation_id: "conv-1" });
+  assert.deepEqual(JSON.parse(callsTo(page, "/api/chat/messages", "POST")[0].body), { kind: "internal", body: "Done, called at 3.", conversation_id: "conv-1", peer_staff_id: "peer-1" });
 
   // a teammate with no thread yet: the send names the person
   await page.locator("#fh-chat-peer").selectOption("peer-2");

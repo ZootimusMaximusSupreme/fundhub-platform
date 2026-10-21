@@ -17,6 +17,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { REAL_ROUND_SQL, countRealFunding, noRealFundingNa } from "../real-funding.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "../../..");
@@ -55,7 +56,7 @@ const STUCK_SQL = `
   SELECT count(*)::int AS n
     FROM funding_rounds fr
    WHERE fr.org_id = $1::uuid
-     AND COALESCE(fr.is_demo, false) = false
+     AND ${REAL_ROUND_SQL}
      AND lower(fr.status) <> ALL($2::text[])
      AND GREATEST(
            fr.updated_at,
@@ -85,6 +86,7 @@ const APPLY_SQL = `
      AND fr.org_id = a.org_id
    WHERE a.org_id = $1::uuid
      AND COALESCE(a.is_demo, false) = false
+     AND ${REAL_ROUND_SQL}
      AND a.status = 'Apply'
      AND a.submitted_date IS NULL
      AND a.updated_at < $2::timestamptz
@@ -130,8 +132,20 @@ const QUEUE_SQL = `
    LIMIT ${MAX_FILES_READ}
 `;
 
-function check(id, status, detail, suggestedFix = null) {
-  return { id, status, detail, suggestedFix };
+function check(id, status, detail, suggestedFix = null, na = null) {
+  return { id, status, detail, suggestedFix, ...(na ? { na } : {}) };
+}
+
+/* Owner fact 2026-10-20: "There are zero funding rounds." Every round today is test
+   data, and test data never raises a red. With no real round, receipt or bank decision
+   there is nothing to judge, and the row says so with a reason the morning audit
+   re-checks (na-conditions.mjs "no-real-funding-round"). Real work present: PASS. */
+async function passOrNothingToJudge(db, orgId, id, passDetail) {
+  const real = await countRealFunding(async (text, params) => (await db.query(text, params)).rows, orgId);
+  if (real.total === 0) {
+    return check(id, "na", "No real funding round exists yet. Test rounds are not judged.", null, noRealFundingNa(orgId));
+  }
+  return check(id, "PASS", passDetail);
 }
 
 function skipped() {
@@ -257,11 +271,8 @@ async function roundStuck(db, orgId, at) {
   const result = await db.query(STUCK_SQL, [orgId, [...TERMINAL_ROUND_STATUSES], at]);
   const n = countOf(result);
   if (n === 0) {
-    return check(
-      "funding:round-stuck",
-      "PASS",
-      "no open funding round has sat still for 72 hours or more (a bank row moving counts as the round moving)"
-    );
+    return passOrNothingToJudge(db, orgId, "funding:round-stuck",
+      "no open funding round has sat still for 72 hours or more (a bank row moving counts as the round moving)");
   }
   return check(
     "funding:round-stuck",
@@ -355,11 +366,8 @@ async function submitPath(db, orgId, at) {
   const result = await db.query(APPLY_SQL, [orgId, at, [...TERMINAL_ROUND_STATUSES]]);
   const n = countOf(result);
   if (n === 0) {
-    return check(
-      "funding:submit-path",
-      "PASS",
-      "no application has sat on Apply for 72 hours with no submit date"
-    );
+    return passOrNothingToJudge(db, orgId, "funding:submit-path",
+      "no application has sat on Apply for 72 hours with no submit date");
   }
   return check(
     "funding:submit-path",

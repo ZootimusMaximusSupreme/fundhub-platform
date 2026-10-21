@@ -33,6 +33,10 @@ import { JOBS, lastMonthlyFire } from "./heartbeats.mjs";
 import { hasWork, readWaitingWork, workerKinds } from "../marketing/clock.mjs";
 import { netlifyRegistry } from "../marketing/ai-runner.mjs";
 import { JOB_KINDS } from "../marketing/job-kinds.mjs";
+import { parkedFeature, parkedState, parksRow } from "./parked-features.mjs";
+import { countRealFunding, countRealWatchedClients, isFundingRoundRow } from "./real-funding.mjs";
+import { CLIENT_TAGS } from "../workflows/dpc-05-no-progress-escalation.mjs";
+import { onOwnerHold } from "./owner-hold.mjs";
 
 const PHOENIX = "America/Phoenix";
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -369,6 +373,106 @@ export const NA_CONDITIONS = Object.freeze({
     }
   }),
 
+  /* A future feature the owner has not set up yet (owner answer B6, 2026-10-20: Meta ad
+     sync and AI bureau calling). True while src/pulse/parked-features.mjs reads, through
+     the staff view, that the feature is still not in use. The row must be one that
+     feature parks, so the claim cannot be copied onto another row. The day the feature
+     is in use the claim is false and the row is "not checked", which is red. */
+  "feature-not-set-up": core({
+    say(args = {}) {
+      const what = parkedFeature(args.feature)?.what || "This feature";
+      return `${what} is a future feature the owner has not set up. Judged the day it is in use.`;
+    },
+    claim(args = {}) {
+      return `${parkedFeature(args.feature)?.what || "The feature"} is still not in use.`;
+    },
+    problem(args) {
+      const f = parkedFeature(args.feature);
+      return f && f.code === "feature-not-set-up" ? null : "feature is not a parked future feature";
+    },
+    rowProblem(row, args) {
+      return parksRow(args.feature, row && row.id) ? null : `This row is not one that ${args.feature} parks.`;
+    },
+    async look(args, ctx) {
+      const state = await parkedState(args.feature, ctx);
+      return state.parked ? { held: true, found: "" } : { held: false, found: `${parkedFeature(args.feature).what} is in use or cannot be read: ${state.why}.` };
+    }
+  }),
+
+  /* A feature the owner paused (owner answer B8, 2026-10-20: Lendflow). Same proof as
+     feature-not-set-up: the parked read must still say the feature is not in use. */
+  "owner-paused": core({
+    say(args = {}) {
+      const what = parkedFeature(args.feature)?.what || "This feature";
+      return `${what} is paused by the owner and not in use. Judged the day it is in use.`;
+    },
+    claim(args = {}) {
+      return `${parkedFeature(args.feature)?.what || "The feature"} is still paused and not in use.`;
+    },
+    problem(args) {
+      const f = parkedFeature(args.feature);
+      return f && f.code === "owner-paused" ? null : "feature is not an owner-paused feature";
+    },
+    rowProblem(row, args) {
+      return parksRow(args.feature, row && row.id) ? null : `This row is not one that ${args.feature} parks.`;
+    },
+    async look(args, ctx) {
+      const state = await parkedState(args.feature, ctx);
+      return state.parked ? { held: true, found: "" } : { held: false, found: `${parkedFeature(args.feature).what} is in use or cannot be read: ${state.why}.` };
+    }
+  }),
+
+  /* No real funding work (owner fact 2026-10-20: "There are zero funding rounds"). True while the
+     company has no real funding round, no real card-stacking round receipt and no real bank decision.
+     Real means not marked demo and not on a demo client (src/pulse/real-funding.mjs). Only the funding
+     stall rows and the round and lender-row display rows may carry it. The day one real round, receipt
+     or decision is saved, the claim fails and the row is judged by name. */
+  "no-real-funding-round": core({
+    say() {
+      return "No real funding round exists yet. Judged the day one is saved.";
+    },
+    claim() {
+      return "There is no real funding round, round receipt or bank decision.";
+    },
+    problem(args) {
+      return isText(args.orgId) ? null : "orgId is missing";
+    },
+    rowProblem(row) {
+      return isFundingRoundRow(row?.id) ? null : "A no-real-funding-round reason only fits a funding round row.";
+    },
+    async look(args, ctx) {
+      const seen = await countRealFunding((text, params) => readRows(ctx, text, params), args.orgId);
+      if (seen.total === 0) return { held: true, found: "" };
+      return {
+        held: false,
+        found: `Real funding work exists: ${seen.rounds} rounds, ${seen.receipts} round receipts, ${seen.decisions} bank decisions.`
+      };
+    }
+  }),
+
+  /* No real client on the 72-hour no-progress watch. True while no client outside demo carries a
+     DPC-05 client tag. Only the pipeline:clients row may carry it. */
+  "no-real-client-on-watch": core({
+    say() {
+      return "No real client is on the 72-hour watch yet. Judged the day one is.";
+    },
+    claim() {
+      return "No real client carries a funding or repair client tag.";
+    },
+    problem(args) {
+      return isText(args.orgId) ? null : "orgId is missing";
+    },
+    rowProblem(row) {
+      return row?.id === "pipeline:clients" ? null : "A no-real-client-on-watch reason only fits the pipeline:clients row.";
+    },
+    async look(args, ctx) {
+      const n = await countRealWatchedClients((text, params) => readRows(ctx, text, params), args.orgId, CLIENT_TAGS);
+      return n === 0
+        ? { held: true, found: "" }
+        : { held: false, found: `${n} real client${n === 1 ? " is" : "s are"} on the 72-hour watch.` };
+    }
+  }),
+
   /* The four lane codes. The lane file that made the row exports
      naVerify = { "<code>": async (args, ctx) => boolean } and the audit reaches
      it through ctx.laneNaVerify(sliceId, code, args). Their args are the lane's
@@ -636,6 +740,33 @@ export const NA_CONDITIONS = Object.freeze({
     },
     problem() {
       return null;
+    },
+    verify: "lane"
+  }),
+
+  /* Every client the check names is on the owner's no-contact hold (src/pulse/owner-hold.mjs;
+     owner call 2026-10-09: Braum FH-000507 gets no email, sign-in link, call or data step). The
+     row's job is to tell staff to reach out, and the owner said not to, so there is nothing a
+     person may do. The lane that made the row reads again on every audit
+     (portal:paid-client-never-signed-in, src/pulse/coverage/gap-portal.mjs,
+     naVerify["owner-hold-client"]) and answers true only while the clients it would name are
+     exactly the held ones. The day any other client is waiting, the row is red by name. */
+  "owner-hold-client": Object.freeze({
+    say(args = {}) {
+      const list = Array.isArray(args.clients) ? args.clients.filter(isText) : [];
+      const who = list.length ? list.join(" and ") : "The waiting client";
+      return `${who} ${list.length > 1 ? "are" : "is"} on the owner's no-contact hold. Judged the day another client waits.`;
+    },
+    claim() {
+      return "Every client this check names is on the owner's no-contact hold.";
+    },
+    problem(args = {}) {
+      if (!isText(args.check)) return "the check id is missing";
+      if (!isText(args.orgId)) return "orgId is missing";
+      const list = Array.isArray(args.clients) ? args.clients : [];
+      if (!list.length) return "no client is named";
+      const off = list.filter((c) => !onOwnerHold(c));
+      return off.length ? `${off.map(String).join(", ")} is not on the owner's hold list` : null;
     },
     verify: "lane"
   })

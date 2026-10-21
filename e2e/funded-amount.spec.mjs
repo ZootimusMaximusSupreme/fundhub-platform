@@ -572,7 +572,9 @@ test.describe("client control panel — an approval that does not count", () => 
     await expect(page.locator("#fh-funding-amounts-waiting")).toBeHidden();
   });
 
-  test("undo puts it back, and asks for no reason to do so", async ({ page }) => {
+  /* Owner, 2026-10-20 (Set A item 20): "Count again" is saved with the person, the time AND the
+     reason, the same as "Doesn't count". So putting it back asks why, and no answer changes nothing. */
+  test("undo puts it back only with a reason, and sends that reason", async ({ page }) => {
     const writes = [];
     await open(page, writes, [{
       id: "app-1", lender_id: LENDER_ID, lender_name: "Mesa Community Bank",
@@ -585,11 +587,22 @@ test.describe("client control panel — an approval that does not count", () => 
     // Who did it and why is readable without opening anything.
     await expect(skip(page)).toHaveAttribute("title", /Owner Olivia.*Approval withdrawn/);
 
-    await page.evaluate(() => { window.prompt = () => { window.__asked = true; return "x"; }; });
+    // Cancel, then a blank answer: nothing is sent, and the row stays not counted.
+    for (const answer of [null, "   "]) {
+      await page.evaluate((a) => { window.prompt = () => a; }, answer);
+      await skip(page).click();
+    }
+    await page.waitForTimeout(300);
+    expect(writes.length).toBe(0);
+    await expect(skip(page)).toHaveText("Not counted — undo");
+
+    await page.evaluate(() => { window.prompt = () => { window.__asked = true; return "  Client used the card after all "; }; });
     await skip(page).click();
     await expect.poll(() => writes.length, { timeout: 10_000 }).toBe(1);
     expect(writes[0].action).toBe("reinstate_approval");
-    expect(await page.evaluate(() => !!window.__asked)).toBe(false);
+    expect(writes[0].application_id).toBe("app-1");
+    expect(writes[0].reason).toBe("Client used the card after all");
+    expect(await page.evaluate(() => !!window.__asked)).toBe(true);
 
     // It counts again, so it is chased again.
     await expect(skip(page)).toHaveText("Doesn't count", { timeout: 10_000 });

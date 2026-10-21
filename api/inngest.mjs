@@ -20,7 +20,10 @@
 import { serve as serveNode } from "inngest/node";
 import { serve as serveEdge } from "inngest/edge";
 import { inngest } from "../src/workflows/client.mjs";
-import { functions } from "../src/workflows/index.mjs";
+/* Event workflows only. Every cron runs on the Netlify clock (netlify/functions/cron-clock.mjs) since
+   2026-10-20, because the Inngest free plan cannot carry them. Never pass `functions` here: that is the
+   whole registry, scheduled jobs included, and serving it would put every cron back on Inngest. */
+import { inngestFunctions as functions } from "../src/workflows/index.mjs";
 
 /* The Web-standard handler: (Request) => Promise<Response>. Netlify's adapter
    calls this directly — see the `inngest` entry in netlify/functions/api.mjs. */

@@ -29,7 +29,8 @@ import {
   judgeCounts,
   naVerify
 } from "./gap-pipeline-boards.mjs";
-import { BOARD_CARDS_SQL, BOARD_STAGES_SQL } from "./gap-crm-links.mjs";
+import { BOARD_CARDS_SQL } from "./gap-crm-links.mjs";
+import { BOARD_STAGES_ALL_SQL } from "../beats/lib/pipeline-boards-truth.mjs";
 import { TEST_CLIENT_EMAIL_RE } from "./gap-consent.mjs";
 import { GAP_FILES } from "./modules.mjs";
 import { runGapLane } from "./run-slices.mjs";
@@ -40,8 +41,11 @@ import { STAGE_SLA } from "../../repair/sla.mjs";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "../../..");
 // Code only. The header comments name the things this file refuses to do.
-const SRC = fs
-  .readFileSync(path.join(HERE, "gap-pipeline-boards.mjs"), "utf8")
+// Both files: the lane and the truth three of its checks moved into (src/pulse/beats/lib/pipeline-boards-truth.mjs).
+const SRC = [
+  fs.readFileSync(path.join(HERE, "gap-pipeline-boards.mjs"), "utf8"),
+  fs.readFileSync(path.join(ROOT, "src/pulse/beats/lib/pipeline-boards-truth.mjs"), "utf8")
+].join("\n")
   .split("\n")
   .filter((line) => !/^\s*(\/\/|\/\*|\*)/.test(line))
   .join("\n");
@@ -106,7 +110,7 @@ function mapOf({ counts, shown, over = {} } = {}) {
   return {
     [DEMO_SQL]: [{ demo_mode_enabled: false }],
     [TRUTH_SQL]: truthRows(counts),
-    [BOARD_STAGES_SQL]: (params) => stageRows(params[0]),
+    [BOARD_STAGES_ALL_SQL]: (params) => params[0].flatMap((key) => stageRows(key).map((r) => ({ pipeline_key: key, ...r }))),
     [BOARD_CARDS_SQL]: boardCards(shown),
     [HIRING_TRUTH_SQL]: [{ n: 0 }],
     [HIRING_PAINTED_SQL]: [{ n: 0 }],
@@ -273,7 +277,7 @@ test("count-true: a read that fails is a skip with the reason, never a PASS", as
   const noDemo = await gapChecks({ db: dbFrom(mapOf({ over: { [DEMO_SQL]: () => { throw new Error("no orgs table"); } } })), orgId: ORG, now: NOW });
   assert.equal(byId(noDemo)["pipeline:count-true"].status, "skip");
 
-  const noColumns = await gapChecks({ db: dbFrom(mapOf({ over: { [BOARD_STAGES_SQL]: [] } })), orgId: ORG, now: NOW });
+  const noColumns = await gapChecks({ db: dbFrom(mapOf({ over: { [BOARD_STAGES_ALL_SQL]: [] } })), orgId: ORG, now: NOW });
   const c = byId(noColumns)["pipeline:count-true"];
   assert.equal(c.status, "skip");
   assert.match(c.detail, /the board has no columns/);

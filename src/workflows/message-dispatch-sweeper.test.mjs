@@ -122,8 +122,9 @@ describe("what actually gates sending", () => {
      through the gate, this is what should go red. */
 
   test("the sweeper IS registered — the queue has something draining it", () => {
-    const index = fs.readFileSync(path.join(HERE, "index.mjs"), "utf8");
-    assert.ok(/messageDispatchSweeper/.test(index),
+    // On the Netlify cron clock's list since 2026-10-20 (Inngest serves event workflows only).
+    const scheduled = fs.readFileSync(path.join(HERE, "scheduled.mjs"), "utf8");
+    assert.ok(/^\s*messageDispatchSweeper,$/m.test(scheduled),
       "nothing drains the outbound queue — every client email would sit in the table forever");
   });
 
