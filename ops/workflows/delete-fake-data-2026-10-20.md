@@ -136,7 +136,7 @@ Each round ran as one transaction with the same guards: rebuild the plan inside 
 
 **Round 5 (committed):** 2 raw ClickFunnels booking captures in `webhook_captures` (`843d2310…`, `32ae1125…`, Oct 10, provider uids 74249 and 74237). Both were for FH-000567, a client deleted in round 3. With the booking gone, calls:booking-webhook counted them as lost bookings. Checked first: insureboost and the uids are in the payload, there is no booking or client left, and nothing links to them. Only those 2 rows changed. Backup: `.../round5/`. Other raw webhook captures for deleted clients were not swept.
 
-**Waiting on Chris (asked in chat):** the 2 test commission rules from the Aug 21 money-chain test. `bdd28f6e` "MC advisor 0.25% funded" is active and has no end date. It is the only funding-advisor rule on Card Stacking DFY, so a real funded deal would pay from it. `f7578579` "MC closer flat deposit" closed on 2026-08-23. They are listed with the fake staff and fake affiliates.
+**Round 6 (committed, owner yes relayed by the coordinator):** the 2 test commission rules from the Aug 21 money-chain test are deleted: `bdd28f6e` "MC advisor 0.25% funded" (it was active, had no end date, and was the only funding-advisor rule on Card Stacking DFY) and `f7578579` "MC closer flat deposit" (ended 2026-08-23). Nothing pointed at them (no ledger or other rows), so nothing had to be end-dated. commission_rules went 11 → 9. Every other table and row was unchanged, including the other rules, staff, products and the ledger. Backup: `.../round6/`. The fake staff "Money Chain Closer" (EMP-000042) is still there; fake staff wait on Chris.
 
 ## Left over (not done here)
 
