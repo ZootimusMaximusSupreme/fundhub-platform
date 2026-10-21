@@ -13,7 +13,8 @@
 //                              (the same GET to Commas with the checkout key)
 // Those are the exact deep checks src/pulse/tripwires.mjs names; the test holds every one of them to
 // an hourly step. payments:paid-no-entitlement also runs here: it is half of route:read/entitlements,
-// whose other half (portal:paid-entitlement) is not hourly yet, so that door is not on `covers`.
+// whose other half (portal:paid-entitlement) runs in the client-portal beat, so that door is on the
+// client-portal beat's `covers` with this step named as its other half.
 //
 // Read only: every read goes through ctx.read (the read box). No send, no write, no web call.
 

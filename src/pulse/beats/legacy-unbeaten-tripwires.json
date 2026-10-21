@@ -1,6 +1,5 @@
 [
   "desk:brand-studio.html",
-  "desk:client-portal.html",
   "desk:inquiry-remover.html",
   "desk:messaging.html",
   "desk:money-helper.html",
@@ -18,7 +17,6 @@
   "job:s-04-call-booked",
   "job:slo-pack-delivery",
   "job:slo-paid-form-nudge",
-  "page:portal-login.html",
   "page:progress.html",
   "page:roadmap/index.html",
   "page:roadmap/pay.html",
@@ -47,8 +45,6 @@
   "route:privacy/erasure",
   "route:public/slo-pull",
   "route:read/client-progress",
-  "route:read/entitlements",
-  "route:read/portal-summary",
   "route:repair/enroll",
   "route:repair/generate",
   "route:repair/inbound-mail",

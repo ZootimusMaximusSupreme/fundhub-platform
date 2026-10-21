@@ -9,8 +9,9 @@
 // What it guards, and why each surface is on `covers` (the exact deep checks tripwires.mjs names):
 //   route:auth/magic-link, route:auth/send-portal-link   gap:auth-magic-link-dead
 //   route:auth/magic-link-verify                         gap:auth-magic-link-dead, gap:auth-signin-no-session
-// page:portal-login.html also names portal:paid-client-never-signed-in, which is not hourly yet, so it
-// is not on `covers`.
+// page:portal-login.html also names portal:paid-client-never-signed-in, which runs hourly in the
+// client-portal beat, so page:portal-login.html is on that beat's `covers` (with this beat's
+// gap-auth-magic-link-dead step named there as its other half).
 //
 // Read only: every read goes through ctx.read (the read box). No send, no write, no web call.
 
