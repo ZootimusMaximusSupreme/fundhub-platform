@@ -36,7 +36,7 @@ import { JOB_KINDS } from "../marketing/job-kinds.mjs";
 import { parkedFeature, parkedState, parksRow } from "./parked-features.mjs";
 import { countRealFunding, countRealWatchedClients, isFundingRoundRow } from "./real-funding.mjs";
 import { CLIENT_TAGS } from "../workflows/dpc-05-no-progress-escalation.mjs";
-import { isHeldCode, ownerHoldSay } from "./owner-holds.mjs";
+import { onOwnerHold } from "./owner-hold.mjs";
 
 const PHOENIX = "America/Phoenix";
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -559,24 +559,6 @@ export const NA_CONDITIONS = Object.freeze({
     verify: "lane"
   }),
 
-  /* A late client file the owner put on hold (src/pulse/owner-holds.mjs; owner 2026-10-09 and 2026-10-20). True while
-     the lane that made the row runs the same read again and finds that the only late files are still the held ones
-     it named. The day another client's file is late, or the hold is lifted, the claim fails and the row goes red. */
-  "owner-hold": Object.freeze({
-    say(args = {}) {
-      return ownerHoldSay(Array.isArray(args.clients) ? args.clients : []);
-    },
-    claim() {
-      return "The only late files are still the ones on owner hold.";
-    },
-    problem(args) {
-      if (!isText(args?.check)) return "check is missing";
-      if (!Array.isArray(args.clients) || !args.clients.length) return "clients is not a list";
-      return args.clients.every(isHeldCode) ? null : "a named client is not on the owner hold list";
-    },
-    verify: "lane"
-  }),
-
   /* A board with no stage time limit written. True while the named setting for each named board is
      still off. The lane that made the row (gap-pipeline-boards) answers; it reads its own setting. */
   "no-limit-set": Object.freeze({
@@ -758,6 +740,33 @@ export const NA_CONDITIONS = Object.freeze({
     },
     problem() {
       return null;
+    },
+    verify: "lane"
+  }),
+
+  /* Every client the check names is on the owner's no-contact hold (src/pulse/owner-hold.mjs;
+     owner call 2026-10-09: Braum FH-000507 gets no email, sign-in link, call or data step). The
+     row's job is to tell staff to reach out, and the owner said not to, so there is nothing a
+     person may do. The lane that made the row reads again on every audit
+     (portal:paid-client-never-signed-in, src/pulse/coverage/gap-portal.mjs,
+     naVerify["owner-hold-client"]) and answers true only while the clients it would name are
+     exactly the held ones. The day any other client is waiting, the row is red by name. */
+  "owner-hold-client": Object.freeze({
+    say(args = {}) {
+      const list = Array.isArray(args.clients) ? args.clients.filter(isText) : [];
+      const who = list.length ? list.join(" and ") : "The waiting client";
+      return `${who} ${list.length > 1 ? "are" : "is"} on the owner's no-contact hold. Judged the day another client waits.`;
+    },
+    claim() {
+      return "Every client this check names is on the owner's no-contact hold.";
+    },
+    problem(args = {}) {
+      if (!isText(args.check)) return "the check id is missing";
+      if (!isText(args.orgId)) return "orgId is missing";
+      const list = Array.isArray(args.clients) ? args.clients : [];
+      if (!list.length) return "no client is named";
+      const off = list.filter((c) => !onOwnerHold(c));
+      return off.length ? `${off.map(String).join(", ")} is not on the owner's hold list` : null;
     },
     verify: "lane"
   })

@@ -39,7 +39,7 @@ import { STAGE_SLA, isBreached } from "../../repair/sla.mjs";
 import { LOOKBACK_MS } from "./gap-money-funding.mjs";
 import { PAID_GRACE_MS, SETTLE_GRACE_MS } from "./gap-pipeline-facts.mjs";
 import { INTERNAL_CLIENT_EMAIL_RE } from "./gap-portal.mjs";
-import { heldCodesOf, ownerHoldSay, splitHeld } from "../owner-holds.mjs";
+import { heldCodesOf, ownerHoldSay, splitHeld } from "../owner-hold.mjs";
 import {
   clip, nowOf, readRows, runnerOf, skipWhy
 } from "./money-reads.mjs";
@@ -320,7 +320,7 @@ export function tripParams(orgId, now) {
 }
 
 /**
- * Pure. The verdict, with the owner's holds (src/pulse/owner-holds.mjs) applied: a stuck trip on hold is not
+ * Pure. The verdict, with the owner's holds (src/pulse/owner-hold.mjs) applied: a stuck trip on hold is not
  * judged and is named in plain words. Every other customer is judged as before; one of them stuck is red.
  * Green here, not "nothing to judge", for the reason judgeTrip gives for an empty trip: the audit re-checks each
  * "nothing to judge" row inside a shared clock, and this SELECT is the heaviest trip read.

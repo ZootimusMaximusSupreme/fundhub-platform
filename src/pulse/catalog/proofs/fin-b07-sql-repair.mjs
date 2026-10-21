@@ -1,10 +1,10 @@
 // Finish-853 batch 07: the read-only SQL texts for the Repair queue, stage columns and repair letters live checks.
 // Each takes the company as $1::uuid and answers sample_count and bad_count. The common subset of
 // Postgres and SQLite on purpose (see fin-b07-display-contracts.mjs), so the test can run the text.
-// Imports only the owner's hold list (src/pulse/owner-holds.mjs, pure): a file on hold is not counted by the
+// Imports only the owner's hold list (src/pulse/owner-hold.mjs, pure): a file on hold is not counted by the
 // stage columns.
 
-import { heldCodesSqlList } from "../../owner-holds.mjs";
+import { heldCodesSqlList } from "../../owner-hold.mjs";
 
 const W60 = "now() - interval '60 days'";
 const W30 = "now() - interval '30 days'";

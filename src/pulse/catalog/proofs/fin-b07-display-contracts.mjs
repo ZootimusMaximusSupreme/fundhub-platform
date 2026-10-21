@@ -21,7 +21,7 @@
 // and fin-b07-sql-misc.mjs (this file imports only those). It is read at build time by
 // scripts/pulse/compile-catalog.mjs, and the live bundle reads the compiled copy in generated.json.
 
-import { ownerHoldNote } from "../../owner-holds.mjs";
+import { ownerHoldNote } from "../../owner-hold.mjs";
 import {
   CASE_CLOSE_SQL,
   CASE_CLEARED_SQL,

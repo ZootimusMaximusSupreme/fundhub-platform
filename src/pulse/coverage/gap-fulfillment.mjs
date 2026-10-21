@@ -20,7 +20,7 @@
 // Client Control Panel shows.
 
 import { STAGE_SLA, isBreached } from "../../repair/sla.mjs";
-import { OWNER_HOLD_CODE, heldCodesOf, ownerHoldRow, splitHeld, stillOwnerHold } from "../owner-holds.mjs";
+import { OWNER_HOLD_CODE, heldCodesOf, ownerHoldRow, splitHeld, stillOwnerHold } from "../owner-hold.mjs";
 
 export const REPAIR_PIPELINE = "optimization";
 export const FUNDING_PIPELINE = "funding_card_stacking";
@@ -226,7 +226,7 @@ async function checkNextAction({ db, orgId, now, step }) {
     assertSelect(NEXT_ACTION_SQL);
     const result = await db.query(NEXT_ACTION_SQL, [orgId, [...REPAIR_QUEUE_STAGES]]);
     const rows = Array.isArray(result && result.rows) ? result.rows : [];
-    // A late file the owner put on hold (src/pulse/owner-holds.mjs) is not judged. When it is the only late
+    // A late file the owner put on hold (src/pulse/owner-hold.mjs) is not judged. When it is the only late
     // file, the row says so by name instead of red or green.
     const { open: late, held } = splitHeld(rows.filter((row) => pastDefinedWait(row, now)), (row) => row.client_code);
     if (late.length === 0) {

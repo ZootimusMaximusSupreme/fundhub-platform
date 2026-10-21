@@ -26,7 +26,7 @@ import { BOARD_CARDS_SQL, BOARD_STAGES_SQL } from "./gap-crm-links.mjs";
 import { TEST_CLIENT_EMAIL_RE } from "./gap-consent.mjs";
 import { STAGE_SLA, isBreached } from "../../repair/sla.mjs";
 import { orgDemoModeEnabled } from "../../demo/exclude-demo.mjs";
-import { OWNER_HOLD_CODE, heldCodesOf, ownerHoldRow, splitHeld, stillOwnerHold } from "../owner-holds.mjs";
+import { OWNER_HOLD_CODE, heldCodesOf, ownerHoldRow, splitHeld, stillOwnerHold } from "../owner-hold.mjs";
 
 export const CHECK_IDS = Object.freeze([
   "pipeline:count-true",
@@ -567,7 +567,7 @@ async function checkAge(run, orgId, now) {
   const fix = `Open Pipeline and read the stage the card sits in. The time limit is written in code; a card past it is not moving. ${NO_AUTOFIX}`;
   const read1 = await read(run, AGE_SQL, [orgId, TEST_CLIENT_EMAIL_RE]);
   if (read1.error) return row(id, "skip", `could not read the cards and their ages: ${read1.error}`);
-  // A card for a file the owner put on hold (src/pulse/owner-holds.mjs) is not judged. When the held cards are
+  // A card for a file the owner put on hold (src/pulse/owner-hold.mjs) is not judged. When the held cards are
   // the only ones past a limit, the row names them instead of red or green.
   const { open, held } = splitHeld(read1.rows, (r) => r.client_code);
   const { over, judged } = judgeAges(open, now);

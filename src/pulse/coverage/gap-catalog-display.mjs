@@ -65,7 +65,7 @@ export function judgeDisplayResult(entry, stats = null, realFunding = null) {
 
   const samples = Number(stats?.sample_count || 0);
   const bad = Number(stats?.bad_count || 0);
-  // A read that leaves files on owner hold out (src/pulse/owner-holds.mjs) says so on its green line.
+  // A read that leaves files on owner hold out (src/pulse/owner-hold.mjs) says so on its green line.
   const held = typeof entry.contract.heldNote === "string" && entry.contract.heldNote ? ` ${entry.contract.heldNote}` : "";
   if (samples === 0 && entry.contract.emptyAs === "quiet") {
     // A control nobody has used yet leaves nothing to judge. It is green until the first wrong result,

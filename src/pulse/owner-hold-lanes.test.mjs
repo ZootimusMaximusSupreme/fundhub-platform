@@ -1,12 +1,12 @@
-// Owner holds (src/pulse/owner-holds.mjs): a late file on hold is named, not judged; any other late file is red.
+// Owner holds (src/pulse/owner-hold.mjs): a late file on hold is named, not judged; any other late file is red.
 // Tests both ways for the hold list, the "owner-hold" nothing-to-judge code, and every check that uses it.
 import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  HELD_CODES, OWNER_HOLD_CODE, OWNER_HOLDS, heldCodesOf, heldCodesSqlList, isHeldCode, ownerHoldNote,
+  HELD_CODES, OWNER_HOLD_CLIENTS, OWNER_HOLD_CODE, heldCodesOf, heldCodesSqlList, isHeldCode, ownerHoldNote,
   ownerHoldRow, splitHeld, stillOwnerHold
-} from "./owner-holds.mjs";
+} from "./owner-hold.mjs";
 import { NA_CONDITIONS, naProblem, verifyNa } from "./na-conditions.mjs";
 import * as fulfillment from "./coverage/gap-fulfillment.mjs";
 import * as repair from "./coverage/gap-repair.mjs";
@@ -28,7 +28,8 @@ const OTHER = "FH-000901";
 
 test("the hold list is the owner's one client, and only real client codes are held", () => {
   assert.deepEqual([...HELD_CODES], [HELD]);
-  assert.equal(OWNER_HOLDS[0].since, "2026-10-09");
+  assert.equal(OWNER_HOLD_CLIENTS[0].setOn, "2026-10-09");
+  assert.equal(OWNER_HOLD_CODE, "owner-hold-client");
   assert.equal(isHeldCode("fh-000507"), true);
   assert.equal(isHeldCode(OTHER), false);
   assert.equal(isHeldCode(null), false);
@@ -54,12 +55,12 @@ test("stillOwnerHold is true only for the same owner-hold claim", () => {
 
 /* ---------- the nothing-to-judge code ---------- */
 
-test("the owner-hold code accepts a held client and refuses anyone else", () => {
+test("the owner-hold-client code accepts a held client and refuses anyone else", () => {
   assert.equal(NA_CONDITIONS[OWNER_HOLD_CODE].verify, "lane");
   assert.equal(naProblem({ code: OWNER_HOLD_CODE, args: { check: "pipeline:age", orgId: ORG, clients: [HELD] } }), null);
-  assert.match(naProblem({ code: OWNER_HOLD_CODE, args: { check: "pipeline:age", clients: [OTHER] } }), /not on the owner hold list/);
-  assert.match(naProblem({ code: OWNER_HOLD_CODE, args: { check: "pipeline:age", clients: [] } }), /not a list/);
-  assert.match(naProblem({ code: OWNER_HOLD_CODE, args: { clients: [HELD] } }), /check is missing/);
+  assert.match(naProblem({ code: OWNER_HOLD_CODE, args: { check: "pipeline:age", orgId: ORG, clients: [OTHER] } }), /not on the owner's hold list/);
+  assert.match(naProblem({ code: OWNER_HOLD_CODE, args: { check: "pipeline:age", orgId: ORG, clients: [] } }), /no client is named/);
+  assert.match(naProblem({ code: OWNER_HOLD_CODE, args: { orgId: ORG, clients: [HELD] } }), /check id is missing/);
 });
 
 test("verifyNa asks the lane, and a lane that says no is not true", async () => {

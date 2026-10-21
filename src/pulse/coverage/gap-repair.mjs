@@ -23,7 +23,7 @@
 //    the step the screen shows. It is a different symptom, not a copy.
 
 import { STAGE_SLA, isBreached } from "../../repair/sla.mjs";
-import { OWNER_HOLD_CODE, heldCodesOf, ownerHoldRow, splitHeld, stillOwnerHold } from "../owner-holds.mjs";
+import { OWNER_HOLD_CODE, heldCodesOf, ownerHoldRow, splitHeld, stillOwnerHold } from "../owner-hold.mjs";
 
 const FENCE =
   "Recon (AG-07) is the only tripwire. Do not add a second watchdog. " +
@@ -249,7 +249,7 @@ async function letterCheck(db, orgId, now) {
   try {
     const grace = new Date(now.getTime() - LETTER_GRACE_MS);
     const inAnalysis = await readRows(db, CLOCK_CARDS_SQL, [orgId, [ENGINE_STAGE]]);
-    // A file the owner put on hold (src/pulse/owner-holds.mjs) is not judged. When the only waiting rounds
+    // A file the owner put on hold (src/pulse/owner-hold.mjs) is not judged. When the only waiting rounds
     // are held files, the row says so by name instead of red or green.
     const codeOf = (row) => row.client_code;
     const engineAll = splitHeld(breachedCards(inAnalysis, now), codeOf);
