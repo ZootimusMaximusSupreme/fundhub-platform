@@ -211,6 +211,15 @@ body.wording #flip{transform:none !important}
 #cam-shade{position:absolute;inset:0;background:#000;opacity:.55;pointer-events:none}
 #cam.glass #cam-shade{opacity:.55}
 #cam-corner{position:absolute;inset:0;margin:0;border:0;padding:0;background:transparent;pointer-events:none}
+/* Inside the Fundhub Prompter app the phone's own camera is drawn behind this
+   page, so the page is see-through there. It must look exactly like Safari:
+   black wherever Safari is black (no camera box yet, or the camera not live),
+   and the live camera under the same shade once the app says it is ready. The
+   app mirrors the front camera itself, so nothing here is flipped. */
+html.native-cam,html.native-cam body{background:transparent}
+html.native-cam #cam,html.native-cam #cam[hidden]{display:block !important;background:#000}
+html.native-cam.native-cam-live #cam:not([hidden]){background:transparent}
+html.native-cam #cam-video,html.native-cam #cam-hold{display:none}
 #rec{position:fixed;z-index:5;top:calc(6px + env(safe-area-inset-top,0px));left:8px;display:flex;align-items:center;gap:6px;padding:4px 8px;background:rgba(0,0,0,.6);border-radius:999px;font-family:var(--data-face);font-size:12px;font-weight:600}
 #rec-dot{width:10px;height:10px;border-radius:50%;background:var(--tally);flex:none}
 #b-save{position:fixed;z-index:6;top:calc(40px + env(safe-area-inset-top,0px));left:8px}
@@ -483,6 +492,6 @@ body.wording #flip{transform:none !important}
 
 <script src="teleprompter-edits.js?v=20261013-steady-camera"></script>
 <script src="teleprompter-take-store.js?v=20261012-1"></script>
-  <script src="teleprompter.js?v=20261013-steady-camera"></script>
+  <script src="teleprompter.js?v=20261021-native-camera"></script>
 </body>
 </html>
