@@ -26,8 +26,8 @@ No dependencies; all three run at once.
 
 | # | Id | Day | Unit | Class | Status |
 |---|---|---:|---|---|---|
-| 1 | `meta-sync` | 9 | W1 | B | fake: 4 test Meta accounts (2026-10-12) with bogus tokens; real account fine → on delete list |
-| 2 | `ads-number-unmapped` | 9 | W1 | B | fake: ads "AD", "Adspine numberless" on test accounts; 4 real ads all numbered → on delete list |
+| 1 | `meta-sync` | 9 | W1 | B | GREEN live 10-21 after the 4 fake Meta accounts were deleted (only the real account left, no error) |
+| 2 | `ads-number-unmapped` | 9 | W1 | B | GREEN live 10-21: 4 real ads spent in 28 days, all numbered |
 | 3 | `funding:round-stuck` | 6 | W1 | fixed | verified N/A live (`no-real-funding-round`), PR #97 shipped |
 | 4 | `partners:commission-payable` | 8 | W1 | B | GREEN live 10-21 02:2x UTC after the fake referrals were deleted |
 | 5 | `payments:invoice-stuck` | 8 | W1 | B | GREEN live after FH-000841's invoices were deleted |
@@ -39,7 +39,7 @@ No dependencies; all three run at once.
 | 11 | display: Do task (financeos#next) | 7 | W2 | C | live button, never pressed → quiet until first wrong result (owner 10-14). GREEN in branch, PR #102 |
 | 12 | display: I'm ready to get funded (financeos#next) | 7 | W2 | C | same as 11. GREEN in branch, PR #102 |
 | 13 | display: Funded amount prompt (pipeline) | 7 | W2 | fixed | verified N/A live (no real round), PR #97 |
-| 14 | display: Commission rule Close vN / open vN+1 | 7 | W2 | B | 2 test-fixture rules "MC …" (2026-08-21) → delete list, waiting on Chris's yes for non-client rows |
+| 14 | display: Commission rule Close vN / open vN+1 | 7 | W2 | B | GREEN live 10-21 after the 2 test-fixture rules were deleted (Chris yes) |
 | 15 | display: Approve selected (commissions) | 7 | W2 | C | never pressed → quiet; also now red if an approved row lacks its receipt. GREEN in branch, PR #102 |
 | 16 | display: Mark paid (commissions) | 7 | W2 | C | same as 15. GREEN in branch, PR #102 |
 | 17 | display: soft-pull approve submit | 3 | W2 | B | fake consent on FH-000522 already deleted → GREEN live |
