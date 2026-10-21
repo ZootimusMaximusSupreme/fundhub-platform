@@ -7,10 +7,10 @@ Board for the launch: `ops/workflows/launch-100-2026-10-20.md`. This job is one 
 | Step | Status |
 |---|---|
 | 1. Read-only map and plan (this file) | done |
-| 2. Backup of every row to be deleted or changed | done inside the delete transaction, same snapshot |
-| 3. One-transaction delete, recount inside, roll back on any mismatch | see "Result" |
-| 4. Read-back | see "Result" |
-| 5. Counts to the coordinator | see "Result" |
+| 2. Backup of every row to be deleted or changed | done (inside the delete transaction, same snapshot) |
+| 3. One-transaction delete, recount inside, roll back on any mismatch | done, committed |
+| 4. Read-back | done, clean |
+| 5. Counts to the coordinator | done |
 
 ## How it was mapped (read only)
 
@@ -28,7 +28,7 @@ Board for the launch: `ops/workflows/launch-100-2026-10-20.md`. This job is one 
 | Fake test clients | 100 | **Deleted**, with everything tied to them |
 | Braum (FH-000507) | 1 | Kept. Not touched (no-contact, no-change). |
 | App Store review login (FH-000844, `client@fundhub.ai`, `FDH-TEST-CLIENT-ROLE-ACCOUNT`) | 1 | Kept. Apple review needs it. |
-| FH-000513 ("Test Test", Chris's own Gmail) | 1 | Kept, marked demo. A $20 Plaid **sandbox** money transfer points at it. The database locks money transfers so they can never be deleted, and the app login has no delete right on them. The lock was not broken. Its 3 sandbox bank links, 14 sandbox accounts and 1,183 sandbox bank lines stay with it. |
+| FH-000513 ("Test Test", Chris's own Gmail) | 1 | Kept, not changed. A $20 Plaid **sandbox** money transfer points at it. The database locks money transfers so they can never be deleted, and the app login has no delete right on them. The lock was not broken. Its 3 sandbox bank links, 14 sandbox accounts and 1,183 sandbox bank lines stay with it. |
 | Real-looking people | 21 | **Held, not deleted.** Real names and real business emails. They came from ClickFunnels survey leads (16, August bookings), SLO ad buyers or leads (3), a website lead, and 1 lead added in the new CRM. One SLO buyer (FH-000530) has a real $32 Commas order. Two (FH-000531, FH-000532) have portal logins. One question went to the coordinator. |
 
 Fake = test email patterns only: `example.com`, `example.test`, `test.fundhub.ai`, `e2e+`, `demo.fundhub.local`, `csmq-*`, Chris's own test addresses (`stanbridgejchris*`, `bakerskater987*`, `stanbridgelargecoc*`, `stanbrdgejchris@gmsial.c.om`, `info@fundhub.ai`), `balls@gmail.com`, `bigboy@littleboy.com`.
@@ -87,6 +87,20 @@ Dry run (same script, rolled back): all checks passed, clients 124 → 24.
 
 Backup: `credentials/backups/delete-fake-data-2026-10-20/` (gitignored), one JSON file per table plus `manifest.json`.
 
-## Result
+## Result — committed 2026-10-20
 
-(filled in after the run)
+- One transaction, committed. Every statement hit exactly its planned count. All 310 tables were counted before and after. The 47 planned tables dropped by exactly the plan (817 rows). Every other table stayed the same.
+- Inside the transaction: Braum, the App Store login, FH-000513, the 21 held people, staff and 28 config tables had the same fingerprint before and after. The only change was the one test affiliate's balance recount (planned).
+- Backup: `credentials/backups/delete-fake-data-2026-10-20/`, 51 files (47 deleted tables, 2 set-blank files, 1 affiliate, `manifest.json`), 827 rows, 1.1 MB.
+- Read-back, fresh connection: 0 planned rows left. Clients 124 → 24. Braum unchanged (last changed 2026-10-07). App Store client and its login (`client`, `active`) unchanged. The 75 rows tied to the kept clients, 265 tied to the held people and 736 tied to FH-000513 all match the plan. Staff 35. Funding rounds 0. Invoices 0. Bookings 15 (all held people). Templates 198, lenders 1,106, bank list 11,568, products 11, agents 29.
+
+## Left over (not done here)
+
+1. **21 held real-looking people.** They need a yes or no from Chris. The same script removes them in one run if he says yes. Their 265 linked rows are ready to map.
+2. **FH-000513.** Kept because of the locked sandbox money transfer. It still owns 1,183 sandbox bank lines and FinanceOS sandbox data.
+3. **Test affiliate "payoutrun basic"** (made by the Oct 12 tests) is still an affiliate. It was out of scope (not a client).
+4. Fake data outside the client tree was not touched: raw webhook logs, `workflow_runs` and the `pulse_*` history. The app login has no delete right on those.
+
+## Restore
+
+Each file in the backup is a JSON array of full rows. To put a row back, insert parents before children (the reverse of the delete order above). Re-inserting a fake document needs its version first and the `current_version_id` link set after.
