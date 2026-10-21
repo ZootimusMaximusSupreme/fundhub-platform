@@ -62,15 +62,17 @@ gap-catalog-flow:flow:message:template-copy:SQL-seeded-only-keys-not-in-doc-sour
 
 ## Needs Chris
 
-Verified live, read-only, 2026-10-20 evening. Each is one decision only Chris can make.
+Chris answered items 1-7 on 2026-10-20 evening (relayed by the coordinator, his words quoted).
 
-1. **4 stuck video uploads (Sept 24):** SLO Portal Welcome Take 1, SLO VSL 1 Open, SLO VSL 1 Middle, SLO VSL 2 Booking (`ad_videos` b7e7b61e, f692a218, 802c10d5, 2d6b83eb). Pick one: (a) clear them and leave the takes failed — no cost; (b) upload again — spends 4 Submagic uploads; (c) drop them if re-filmed. Rows: `gap-door-batch-jobs:door-batch:ad-video-worker-result`, `gap-door-batch-webhooks:door-batch:webhook-ad-video-worker`.
-2. **Delete the Aug 16 belief flag** `f248a8af` (filed by Chris, "pain this period 0 vs last 0", no lead source)? yes/no. Row: sales-floor `Flag <belief>`. (W6 blocks new empty flags.)
-3. **Delete 2 old hand-made reset links** for affiliate David Ramirez (Sep 29, 7 days long, `f1732962`, `747f6546`)? yes/no. No code makes these. If no, the row stays red until Dec 28. Row: staff-teams `Reset password`.
-4. **Desk sweep:** OK to run `node scripts/live-playwright-sweep.mjs` on the Mac (it signs into the live staff desks with the test staff login) and install the nightly job from PR #103? yes/no. Row: `live-playwright:desks` (last run 303 h ago).
-5. **Booking page hosts:** Justice Nikkel and Sarah Blankstein are 13 days past due to join the booking page. Only a ClickFunnels team admin can add a host. Pick: more days, drop the ask, or add them. Row: `closer-setup:calendar-late`.
-6. **client@fundhub.ai bounces:** the App Store review login (FH-000844) got 2 sign-in emails that bounced (Oct 18, Oct 20). fundhub.ai mail is Google Workspace. Add client@fundhub.ai as a user or alias: https://admin.google.com/ac/users . Row: `gap-catalog-flow:flow:message:manual-proof:comms-map-2026-09-19` (goes red at 6:02 a.m. tomorrow).
-7. **Delete fake data:** already yes. Extra rows the client delete misses were sent to `delete-fake-data` (5 events with no client; Oct 12 staff-tool fixtures). Rows that clear when those go: `calls:booked-no-outcome`, `calls:booking-webhook`, creative-factory ×5, social-studio `Who approves posts`, `documents:cannot-open`.
+1. ~~4 stuck video uploads~~ — Chris: "delete" (drop). **Done 03:09 UTC**: 4 `ad_videos` rows deleted (guarded: status failed, last step submagicCreate, no Submagic project). Drive files untouched.
+2. ~~Aug 16 belief flag `f248a8af`~~ — Chris: delete. **Done**: 1 `marketing_flags` row deleted (guarded: count 0, no source, no setter).
+3. ~~David Ramirez's 2 old reset links~~ — Chris: "delete davids passwords links". **Done**: 2 `password_resets` rows deleted (guarded: expired, his account only).
+   Method for 1-3: one transaction as `fundhub_app` (staff view), every row backed up first to `credentials/backups/reds-records-staff-2026-10-20/` (gitignored, read back before delete), exact counts checked, dry run first, read-back on a fresh connection: 0 left.
+4. **Desk sweep** (`live-playwright:desks`): coordinator is clarifying with Chris. Not run. PR #103 holds the nightly job file, not installed.
+5. **Booking page hosts** (`closer-setup:calendar-late`): Chris adds Justice (new Google address) and Sarah (her own) in ClickFunnels himself. Reminder lane stays as built, no texts. The row clears when the asks are closed after they join.
+6. ~~client@fundhub.ai mailbox~~ — Chris: "ok idc". No mailbox. The template delivery check now leaves out the company's own @fundhub.ai logins (same rule as the portal check), so the App Store login's bounces do not turn it red.
+7. ~~Delete fake data~~ — done by `delete-fake-data` (4 rounds). Left: 2 raw ClickFunnels webhook logs for deleted client FH-000567 keep `calls:booking-webhook` red until they leave the 14-day window on Oct 24 (sent to `delete-fake-data`).
+8. **NEW — put back 118 message templates?** `template-copy:SQL-seeded-only-keys-not-in-doc-source` is red because the Oct 11-12 test runs deleted 123 of 133 seeded message templates from the live company (PR #95 restores 5). Putting the other 118 back turns those messages on again. Braum (FH-000507) has no opt-out on file, so to keep him no-contact we would first mark him "do not message" on every channel (an opt-out row on his file). yes/no: restore the 118 templates **and** add the opt-out for Braum.
 
 Owner calls applied (recorded, not re-asked): Braum FH-000507 is on owner hold (owner 2026-10-09 "dont worry about bram", 2026-10-20 no-contact/no-change), list in `src/pulse/owner-holds.mjs`. Lendflow paused (B8), bureau calls and Meta sync future (B6), bureau numbers in the caller scripts (B7) — already on main from PR #97.
 
@@ -178,3 +180,57 @@ No database write, no send, no delete. Tests run with `DATABASE_URL` unset. Migr
 - money-vault upload check reads a re-upload of the same bytes as a shared file (W1).
 - All Inngest crons stopped at 01:20 UTC (message dispatch, the 5-minute watch); told the coordinator at 02:05 UTC.
 - Morning audit: on the Mac, 1 of 2 runs the first "nothing to judge" re-check (`pipeline:clients`, a 24-row count) passed 2.5 s, and the audit then blocks every later re-check. Live server was fine this morning; watch `audit:na-verified` tomorrow.
+
+### W5 manifest (agent `notchecked-keys`, branch `claude/w5-notchecked-keys-2026-10-20`) — 5 ids, 2026-10-20 evening
+
+PR: https://github.com/ZootimusMaximusSupreme/fundhub-platform/pull/110 (commits aa54f4438, cbee48b0e, merge 584250d4a) . Not merged, not shipped. Every live read was `BEGIN READ ONLY` + `ROLLBACK` (staff view), Netlify read by names only.
+
+1. `meta-server-events` — CLASS N/A, already fixed on main. No change.
+   - The 6:02 "not checked" line is from before PR #97 shipped (01:38 UTC). Read live now: the row is `na` / `feature-not-set-up`
+     (meta-ads parked: 0 Meta ads switched on, 0 delivered in 7 days), and `verifyNa` re-checks it true (ok). Not a lane row, so no lane code applies.
+2. `gap-leads:lead:pipe-cut-with-traffic` — CLASS N/A (honest), code change.
+   - Cause: no ad row for the two ad days was always a skip. Measured: the Meta sync is NOT stale. The real connection
+     (`act_982103620742368`) pulled 2026-10-21 00:30 UTC with no error; the 7 real ads are PAUSED (status written 00:30 UTC); the newest ad day is 10-11.
+     Meta writes no row for a day with no delivery. (The `meta-sync` red is the 4 fake Oct 12 test connections failing to decrypt — not touched.)
+   - Fix (`src/pulse/coverage/gap-leads.mjs`): with no ad row, one more read (`AD_SYNC_SQL`). Meta pulled after both days closed + no ad switched on ->
+     `na` code `no-running-ad` (existing lane code), re-checked by `naVerify["no-running-ad"]` with the same two reads. Ads switched on, or no pull since the
+     days closed -> FAIL pointing at meta-sync (we cannot see = red, never N/A; a real customer check stands on its own, so not folded). Failed read -> skip.
+   - Live now: `na`, "No Meta ad ran on 2026-10-18 or 2026-10-19 ... Judged the day an ad runs.", re-verified true.
+   - Tests: `src/pulse/coverage/gap-leads.test.mjs` +12 (both ways, plus 2 SQL-meaning tests on shadow rows, run green read-only).
+3. `audit:not-checked` — goes green when #1 (live already) and #2 (this PR) are both live. Whole-morning proof below.
+4. `gap-door-batch-keys:door-batch:keys-live-proof` — CLASS C (stale check) + 1 CLASS A key.
+   - The check reads the right place (the live function's settings). It called every key the code names "required".
+     Netlify production (names only): 68 of 114 unset (63 not on Netlify, 5 set for previews only). The 69th on the 6:02 line was
+     `FINANCE_OS_SYSTEM_PULL_LIVE`, set at 21:26 UTC today.
+   - 67 are unset on purpose. `UNSET_IS_FINE` in `src/pulse/coverage/gap-door-batch-keys.mjs` names each: built-in value 30, no live reader 20,
+     fallback key 5 (must itself be set and well shaped), switched off 4, GoHighLevel cancelled 2, parked feature 4 (Meta ads, Lendflow — re-read every
+     run through the staff view), vercel-blob only 1, merge tag 1. A key that IS set is still shape-checked.
+   - Proof against the repo (`src/pulse/catalog/proofs/door-batch-key-health.test.mjs`, +10 tests): an import walk from netlify/functions finds every
+     live reader; each reader is listed with the line that copes when the key is unset; no-live-reader keys are not read by the build or by a built name
+     (this caught `PLAID_TOKEN_ENC_KEY_V2`, read as `PLAID_TOKEN_ENC_KEY_${id}`); the row goes red when a fallback, the vercel-blob store or a parked feature changes.
+   - CLASS A: `BOOKING_URL` is needed. Without it the vendored funding writer puts `www.fundhubbookingurl.template` in front of the client.
+     Set it (new key, not secret, production + deploy-preview + branch-deploy, also in `.env` and `credentials/env.full.snapshot`) to
+     `https://apply.fundhub.ai/funding-book-call` — the booking page every text already uses, and the code's own default for the same link.
+     Live after the next deploy. On the production settings view the lane now reads PASS 47/114 set, 67 unset on purpose.
+   - Lendflow keys treated as not connected (parked, owner-paused). Did not touch `gap-keys.mjs` or `parked-features.mjs`.
+5. `gap-catalog-flow:flow:message:template-copy:SQL-seeded-only-keys-not-in-doc-source` — CLASS A, NOT fixed here (data restore). Check is correct.
+   - The snapshot is fresh (`node scripts/pulse/fin-b22-sql-template-keys.mjs` -> fresh); the doc source did not move.
+   - Live: 123 of 133 SQL-only templates are missing from the Fundhub company (not wrong words: missing). Every one of the 198 rows there was
+     created 10-12 or 10-20; the seeded rows were deleted by the Oct 11-12 test runs, and their seed files are already marked applied, so no ship
+     puts them back. 0 of them sent since 10-12. PR #95 (open) restores 5 (welcome x2, booking confirm, contract send, doc request).
+   - Why not here: it is a production write of 123 customer messages (last approved words, byte for byte, from ~28 seed and migration files), and
+     restoring them re-opens sends to the fake test clients still in the database. Do it after `delete-fake-data` finishes. Prompt in leftover card L-W5-1.
+
+Leftover card L-W5-1 (not started):
+> Restore the 118 SQL-only message templates (the 123 in `src/pulse/catalog/proofs/fin-b22-sql-template-keys.json` that are not inactive, minus the 5
+> in PR #95) to the live Fundhub company. They were deleted by the Oct 11-12 test runs. Wait until session `delete-fake-data` reports done. Follow
+> PR #95's pattern: one new seed file sorted after every seed, ON CONFLICT DO NOTHING, the last approved words byte for byte from the source files
+> named in the snapshot, approval as the seed set it; tests both ways (byte parity, one-character change caught, the pulse check green on the new
+> state and red on the old). Prove with `node scripts/pulse/prove.mjs --repo --lanes=gap-catalog-flow`. Do not weaken the check.
+
+Proof:
+- `node --test src/pulse/coverage/gap-leads.test.mjs` 85 (70 pass + 15 SQL-meaning skip without a database; the 15 pass with it, read-only shadow rows).
+- `node --test src/pulse/catalog/proofs/door-batch-key-health.test.mjs` 13/13. Nearby pulse tests (na-conditions, self-audit, link, modules, tripwires, machine, parked-features) 229/229.
+- `node scripts/pulse/prove.mjs --repo --lanes=gap-door-batch-keys,gap-leads` OK; `audit:na-verified` all true. (Laptop keys row shows masks from the laptop `.env`; the production settings view is PASS.)
+- `npm run pulse:prove` (full bundle, read-only): NOT OK, 3 timing problems, all from the Mac being overloaded (load average 114 from other sessions): whole morning 96.0 s (limit 20; the targeted run earlier took 19.3 s), `coverage-gap-finance-os` 23.6 s, `portal:page-scripts-load` skip vs PASS (ran out of time). No SQL error, no write, no step threw. The audit's na re-checks hit the 15 s safety stop on `funding:round-stuck`, so the rows after it (including the 3 lead rows) could not be re-checked in that run; in the targeted run they re-checked true. Rerun on a quiet machine before ship.
+- `npm run lint`: clean (4111 files).
