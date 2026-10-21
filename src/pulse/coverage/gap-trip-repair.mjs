@@ -39,6 +39,7 @@ import { STAGE_SLA, isBreached } from "../../repair/sla.mjs";
 import { LOOKBACK_MS } from "./gap-money-funding.mjs";
 import { PAID_GRACE_MS, SETTLE_GRACE_MS } from "./gap-pipeline-facts.mjs";
 import { INTERNAL_CLIENT_EMAIL_RE } from "./gap-portal.mjs";
+import { heldCodesOf, ownerHoldSay, splitHeld } from "../owner-hold.mjs";
 import {
   clip, nowOf, readRows, runnerOf, skipWhy
 } from "./money-reads.mjs";
@@ -319,6 +320,34 @@ export function tripParams(orgId, now) {
 }
 
 /**
+ * Pure. The verdict, with the owner's holds (src/pulse/owner-hold.mjs) applied: a stuck trip on hold is not
+ * judged and is named in plain words. Every other customer is judged as before; one of them stuck is red.
+ * Green here, not "nothing to judge", for the reason judgeTrip gives for an empty trip: the audit re-checks each
+ * "nothing to judge" row inside a shared clock, and this SELECT is the heaviest trip read.
+ */
+export function judgeRepairWithHolds({ rows = [], now = new Date() } = {}) {
+  const all = judgeRepair({ rows, now });
+  if (all.status !== "FAIL") return all;
+  const codeOf = (r) => r.client_code;
+  const { open, held } = splitHeld(rows, codeOf);
+  if (!held.length) return all;
+  const openVerdict = judgeRepair({ rows: open, now });
+  if (openVerdict.status === "FAIL") return openVerdict;
+  const hold = ownerHoldSay(heldCodesOf(held, codeOf));
+  const days = Math.round(WINDOW_MS / DAY_MS);
+  const rest = open.length
+    ? ` The other ${open.length} judged: ${openVerdict.detail}`
+    : ` No other customer started the ${TRIP_NAME} trip in the last ${days} days; the first one not on hold is the first real test of every step.`;
+  return { ...openVerdict, status: "PASS", detail: `Not judged, on owner hold: ${hold}${rest}` };
+}
+
+async function tripRow(run, orgId, now) {
+  const got = await readRows(run, ID, "the repair trips", TRIP_SQL, tripParams(orgId, now));
+  if (got.skip) return got.skip;
+  return judgeRepairWithHolds({ rows: got.rows, now });
+}
+
+/**
  * @param {{ db?: object, scope?: Function, orgId?: string, now?: Date }} [ctx]
  */
 export async function gapChecks(ctx = {}) {
@@ -328,9 +357,7 @@ export async function gapChecks(ctx = {}) {
   if (why) return [skipRow(ID, why)];
   const now = nowOf(ctx);
   try {
-    const got = await readRows(run, ID, "the repair trips", TRIP_SQL, tripParams(orgId, now));
-    if (got.skip) return [got.skip];
-    return [judgeRepair({ rows: got.rows, now })];
+    return [await tripRow(run, orgId, now)];
   } catch (err) {
     return [skipRow(ID, `could not judge the repair trips: ${clip(err)}`)];
   }
