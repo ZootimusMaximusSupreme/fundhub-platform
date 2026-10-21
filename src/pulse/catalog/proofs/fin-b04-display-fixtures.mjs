@@ -277,7 +277,10 @@ const STAFF_SEND_IGNORED = [
   ["an internal note is not a client text or email", (t) => { t.messages[0].channel = "internal"; t.messages[0].client_id = null; }],
   ["a demo message is not judged", (t) => { t.messages[0].is_demo = true; t.messages[0].client_id = null; }],
   ["a message older than 30 days is not judged", (t) => { t.messages[0].created_at = LONG_AGO; t.messages[0].client_id = null; }],
-  ["a workflow message is not a staff reply", (t) => { t.messages[0].sender_kind = "system"; t.messages[0].client_id = null; }]
+  ["a workflow message is not a staff reply", (t) => { t.messages[0].sender_kind = "system"; t.messages[0].client_id = null; }],
+  ["an owner-ops text to the owner's own phone is not a staff reply", (t) => {
+    Object.assign(t.messages[0], { client_id: null, conversation_id: null, provider_ref: "owner-ops:teleprompter-2026-10-07" });
+  }]
 ];
 
 // ── contracts ───────────────────────────────────────────────────────────────

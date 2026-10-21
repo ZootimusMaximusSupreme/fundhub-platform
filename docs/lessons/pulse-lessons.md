@@ -25,6 +25,21 @@ WHERE closed_at > now() - interval '90 days'
 GROUP BY 1, 2 ORDER BY breaks DESC;
 ```
 
+## 2026-10-20 — email:provider-fail, msg:per-template-path — pulse_false_alarm
+- Cause: the App Store review login (FH-000844, client@fundhub.ai) asked for sign-in links. That mailbox does not exist, so Resend blocked both emails as bounces. The message checks did not know it was a test login, so they read it as "email is not reaching people".
+- Fix: the message checks leave out the one client with the review login's fixed key (FDH-TEST-CLIENT-ROLE-ACCOUNT), the same way they leave out demo clients. A customer's bounce still counts.
+- Guard added: `src/pulse/coverage/gap-msg.test.mjs` (key held to the seed), `src/pulse/coverage/gap-msg.pg.test.mjs` (review bounces left out, a customer's bounce still red).
+
+## 2026-10-20 — messaging Send button, Message > Client — pulse_false_alarm
+- Cause: a one-off owner text (the teleprompter link sent to Chris's own phone, 2026-10-07) is saved as a staff text with no client. The staff-reply check read it as a reply that lost its client.
+- Fix: the staff-reply check leaves out `owner-ops:` texts, like the chat widget check already did. The Send button never writes that marker.
+- Guard added: `src/pulse/catalog/proofs/fin-b04-display-fixtures.mjs` (owner-ops row ignored, a client-less staff reply still bad).
+
+## 2026-10-20 — handoff:lead-first-touches-missing — schema_or_data
+- Cause: the 2026-10-11/12 test run on production also deleted the finish-application email and all six never-booked chase messages. Those steps had nothing to send.
+- Fix: `db/seed/299_restore_lead_chase_templates_2026_10_20.sql` puts the last approved words back (insert only if missing).
+- Guard added: `src/messaging/restore-lead-chase-templates.test.mjs` (every byte held to seeds 013, 015, 295) and its `.pg.test.mjs`.
+
 ## 2026-10-20 — bureau-config:complete — pulse_false_alarm
 - Cause: the check read an empty CRM table. The AI caller never reads that table. Its numbers and phone menus live in its own call scripts (vendor/inquiry-remover/src/agents/*-prompt.js) and the *_DISPUTE_NUMBER settings.
 - Fix: the check reads what the caller really dials (src/inquiry-ops/bureau-dial-plan.mjs). Red only when neither the script nor the table has a number and a menu.
