@@ -195,8 +195,12 @@ import { isSyntheticRow } from "./synthetic.mjs";
    invoice-checkout-retirement-sweeper retires stale Commas links, and
    invoice-sent-recovery restores a missing first-notice event handoff.
    Both are cron-only, so the journey report names them as scheduled rather
-   than pretending a synthetic customer walk fired either one. */
-const REGISTERED = 104;
+   than pretending a synthetic customer walk fired either one.
+   Moved 104 -> 105 with bank-outreach-automation (2026-10-20): a 15-minute
+   cron that finds bankers, queues the bank emails and reads banker replies.
+   No journey event reaches it, so it stays visible in neverFired; its
+   saved-result proof is src/outreach/automation.pg.test.mjs. */
+const REGISTERED = 105;
 
 const N = (id, type, cfg = {}, branches) => ({ id, type, title: id, cfg, touches: [], branches });
 const cond = (id, lanes) => N(id, "condition", { field: "f", op: "is true" }, lanes);
@@ -291,6 +295,7 @@ test("every workflow is either fired or named in neverFired — none silently mi
   assert.equal(all.size, REGISTERED);
   for (const fn of functions) assert.ok(all.has(fn.id()), `${fn.id()} is unaccounted for`);
   assert.ok(never.some(workflow => workflow.id === "bank-outreach-checkins"), "scheduled bank reminders remain explicitly unreached, never falsely reported as fired");
+  assert.ok(never.some(workflow => workflow.id === "bank-outreach-automation"), "the bank outreach clock remains explicitly unreached, never falsely reported as fired");
 });
 
 // ── a full walk ───────────────────────────────────────────────────────────
