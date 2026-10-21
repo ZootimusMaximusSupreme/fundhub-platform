@@ -71,6 +71,10 @@ Dependency: every build lane waits on Q. B1 → B2/B3 can run together → B4 la
 - Tests: `payout-rail.test.mjs`, `payout-rail.pg.test.mjs` (scratch Postgres in CI), `affiliate-payouts-doors.test.mjs`, new gap-partners cases.
 - Docs: `docs/journeys/affiliate-payout-flow.md`, actual journeys regenerated, changelog.
 
+## Merge order
+
+- Migration is **495**. Set A (`claude/set-a-fix-2026-10-20`) holds 492–494 and lands on main first. After it lands, merge `origin/main` into PR #92 and rerun `npm run migrations:manifest` so `db/expected-migrations.mjs` lists 492–495 in order.
+
 ## Leftovers (not this task)
 
 - `src/affiliates/affiliate-model-open-questions.md` referenced by 033 but missing.
