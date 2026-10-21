@@ -44,8 +44,8 @@ flowchart TD
     CAN --> A_top_level[Everything else — 26 routes]
     CAN --> A_trials[trials — 2 routes]
     CAN --> A_webhooks[Incoming webhooks — 1 route]
-    WHO -->|Yes| CANT[Blocked — 164 routes]
-    CANT --> B_affiliates[affiliates — 1 blocked]
+    WHO -->|Yes| CANT[Blocked — 167 routes]
+    CANT --> B_affiliates[affiliates — 3 blocked]
     CANT --> B_auth[Signing in and out — 8 blocked]
     CANT --> B_banking[banking — 6 blocked]
     CANT --> B_brand[brand — 1 blocked]
@@ -67,7 +67,7 @@ flowchart TD
     CANT --> B_privacy[privacy — 1 blocked]
     CANT --> B_proxy[proxy — 2 blocked]
     CANT --> B_push[push — 5 blocked]
-    CANT --> B_read[Reading data — 19 blocked]
+    CANT --> B_read[Reading data — 20 blocked]
     CANT --> B_social[social — 3 blocked]
     CANT --> B_staff[staff — 2 blocked]
     CANT --> B_top_level[Everything else — 19 blocked]
@@ -76,7 +76,7 @@ flowchart TD
 
 ## What they can reach
 
-**167 of 331 routes.**
+**167 of 334 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -257,11 +257,13 @@ flowchart TD
 
 ## What they are blocked from
 
-**164 of 331 routes.**
+**167 of 334 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
 | `/api/ad-videos` | GET | owner, admin |
+| `/api/affiliates/payout-account` | POST | affiliate, client |
+| `/api/affiliates/payouts` | POST | owner, admin, sales_manager |
 | `/api/affiliates/refer` | POST | client |
 | `/api/ai-bureau-config` | POST | owner, admin, funding_advisor |
 | `/api/auth/admin-reset` | POST | owner, admin |
@@ -396,6 +398,7 @@ flowchart TD
 | `/api/push/preferences` | GET, PUT | client |
 | `/api/push/subscribe` | GET, POST | client |
 | `/api/push/unsubscribe` | DELETE, POST | client |
+| `/api/read/affiliate-payouts` | GET | owner, admin, sales_manager |
 | `/api/read/affiliates` | GET | employees: owner, admin, sales_manager<br>plus: affiliate, client |
 | `/api/read/bank-outreach` | GET | owner, admin, sales_manager, outbound_rep |
 | `/api/read/banking-surface` | GET | owner, admin, sales_manager |

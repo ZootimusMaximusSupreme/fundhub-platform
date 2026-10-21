@@ -16,7 +16,7 @@ flowchart TD
     AUTH -->|Yes| WHO{Recognised as client?}
     WHO -->|No| DENY[Refused — 403 forbidden]
     WHO -->|Yes| CAN[Can reach]
-    CAN --> A_affiliates[affiliates — 1 route]
+    CAN --> A_affiliates[affiliates — 2 routes]
     CAN --> A_auth[Signing in and out — 7 routes]
     CAN --> A_blueprint[blueprint — 1 route]
     CAN --> A_chat[chat — 1 route]
@@ -36,8 +36,9 @@ flowchart TD
     CAN --> A_top_level[Everything else — 10 routes]
     CAN --> A_trials[trials — 1 route]
     CAN --> A_webhooks[Incoming webhooks — 1 route]
-    WHO -->|Yes| CANT[Blocked — 252 routes]
+    WHO -->|Yes| CANT[Blocked — 254 routes]
     CANT --> B_adintel[adintel — 1 blocked]
+    CANT --> B_affiliates[affiliates — 1 blocked]
     CANT --> B_analytics[analytics — 4 blocked]
     CANT --> B_auth[Signing in and out — 7 blocked]
     CANT --> B_banking[banking — 7 blocked]
@@ -61,7 +62,7 @@ flowchart TD
     CANT --> B_partners[partners — 1 blocked]
     CANT --> B_privacy[privacy — 1 blocked]
     CANT --> B_proxy[proxy — 2 blocked]
-    CANT --> B_read[Reading data — 63 blocked]
+    CANT --> B_read[Reading data — 64 blocked]
     CANT --> B_repair[repair — 5 blocked]
     CANT --> B_scripts[scripts — 2 blocked]
     CANT --> B_social[social — 7 blocked]
@@ -72,10 +73,11 @@ flowchart TD
 
 ## What they can reach
 
-**79 of 331 routes.**
+**80 of 334 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
+| `/api/affiliates/payout-account` | POST | affiliate, client |
 | `/api/affiliates/refer` | POST | client |
 | `/api/auth/authorized-rep-file` | GET, POST | client |
 | `/api/auth/login` | GET | anyone |
@@ -163,12 +165,13 @@ flowchart TD
 
 ## What they are blocked from
 
-**252 of 331 routes.**
+**254 of 334 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
 | `/api/ad-videos` | GET | owner, admin |
 | `/api/adintel/board` | — | partner, staff |
+| `/api/affiliates/payouts` | POST | owner, admin, sales_manager |
 | `/api/agent-call` | POST | owner, admin, sales_manager, closer, setter, inquiry_specialist |
 | `/api/agents` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/ai-bureau-config` | POST | owner, admin, funding_advisor |
@@ -335,6 +338,7 @@ flowchart TD
 | `/api/read/ad-attribution` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/ad-books` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/ad-spine` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
+| `/api/read/affiliate-payouts` | GET | owner, admin, sales_manager |
 | `/api/read/agent-context` | — | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/agent-shadow-log` | — | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/agents` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |

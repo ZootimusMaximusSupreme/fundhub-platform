@@ -28,7 +28,7 @@ export const AFFILIATE_SQL = `
          a.activated_at, (a.partner_license_signed_at IS NOT NULL) AS license_ok,
          (a.tax_form_received_at IS NOT NULL) AS tax_ok, k.credited_n, k.first_click_at,
          ku.uncredited_n, rf.converted_n, rf.converted_at, rf.rated_n, rf.unrated_n,
-         rf.unconverted_paid_n, rf.payable_usd, po.paid_n, po.paid_at, po.held_n, po.stuck_n
+         rf.unconverted_paid_n, rf.payable_usd, po.paid_n, po.paid_at, po.held_n, po.stuck_n, po.waiting_n
     FROM affiliates a
     LEFT JOIN LATERAL (
       SELECT count(*)::int AS credited_n, min(c.occurred_at) AS first_click_at
@@ -82,7 +82,8 @@ export const AFFILIATE_SQL = `
       SELECT count(*) FILTER (WHERE p.status = 'paid')::int AS paid_n,
              min(p.paid_at) FILTER (WHERE p.status = 'paid') AS paid_at,
              count(*) FILTER (WHERE p.status = 'held' AND p.created_at < $10::timestamptz)::int AS held_n,
-             count(*) FILTER (WHERE p.status = 'processing' AND COALESCE(p.initiated_at, p.created_at) < $9::timestamptz)::int AS stuck_n
+             count(*) FILTER (WHERE p.status = 'processing' AND COALESCE(p.initiated_at, p.created_at) < $9::timestamptz)::int AS stuck_n,
+             count(*) FILTER (WHERE p.status = 'pending' AND p.created_at < $10::timestamptz)::int AS waiting_n
         FROM affiliate_payouts p
        WHERE p.org_id = $1::uuid AND p.affiliate_id = a.id
     ) po ON true
