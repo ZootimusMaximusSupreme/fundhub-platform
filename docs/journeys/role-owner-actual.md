@@ -17,6 +17,7 @@ flowchart TD
     WHO -->|No| DENY[Refused — 403 forbidden]
     WHO -->|Yes| CAN[Can reach]
     CAN --> A_adintel[adintel — 1 route]
+    CAN --> A_affiliates[affiliates — 1 route]
     CAN --> A_analytics[analytics — 4 routes]
     CAN --> A_auth[Signing in and out — 13 routes]
     CAN --> A_banking[banking — 7 routes]
@@ -47,7 +48,7 @@ flowchart TD
     CAN --> A_privacy[privacy — 1 route]
     CAN --> A_proxy[proxy — 2 routes]
     CAN --> A_public[public — 19 routes]
-    CAN --> A_read[Reading data — 68 routes]
+    CAN --> A_read[Reading data — 69 routes]
     CAN --> A_repair[repair — 5 routes]
     CAN --> A_scripts[scripts — 2 routes]
     CAN --> A_social[social — 7 routes]
@@ -55,8 +56,8 @@ flowchart TD
     CAN --> A_top_level[Everything else — 44 routes]
     CAN --> A_trials[trials — 4 routes]
     CAN --> A_webhooks[Incoming webhooks — 1 route]
-    WHO -->|Yes| CANT[Blocked — 10 routes]
-    CANT --> B_affiliates[affiliates — 1 blocked]
+    WHO -->|Yes| CANT[Blocked — 11 routes]
+    CANT --> B_affiliates[affiliates — 2 blocked]
     CANT --> B_auth[Signing in and out — 1 blocked]
     CANT --> B_chat[chat — 1 blocked]
     CANT --> B_push[push — 5 blocked]
@@ -66,12 +67,13 @@ flowchart TD
 
 ## What they can reach
 
-**321 of 331 routes.**
+**323 of 334 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
 | `/api/ad-videos` | GET | owner, admin |
 | `/api/adintel/board` | — | partner, staff |
+| `/api/affiliates/payouts` | POST | owner, admin, sales_manager |
 | `/api/agent-call` | POST | owner, admin, sales_manager, closer, setter, inquiry_specialist |
 | `/api/agents` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/ai-bureau-config` | POST | owner, admin, funding_advisor |
@@ -299,6 +301,7 @@ flowchart TD
 | `/api/read/ad-attribution` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/ad-books` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/ad-spine` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
+| `/api/read/affiliate-payouts` | GET | owner, admin, sales_manager |
 | `/api/read/affiliate-portal` | GET | staff, affiliate, client |
 | `/api/read/affiliates` | GET | employees: owner, admin, sales_manager<br>plus: affiliate, client |
 | `/api/read/agent-context` | — | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
@@ -401,10 +404,11 @@ flowchart TD
 
 ## What they are blocked from
 
-**10 of 331 routes.**
+**11 of 334 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
+| `/api/affiliates/payout-account` | POST | affiliate, client |
 | `/api/affiliates/refer` | POST | client |
 | `/api/auth/authorized-rep-file` | GET, POST | client |
 | `/api/chat/portal-message` | GET, POST | client |
