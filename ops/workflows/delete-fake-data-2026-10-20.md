@@ -154,6 +154,25 @@ Each round ran as one transaction with the same guards: rebuild the plan inside 
 - Clients 3, all unchanged: Braum, App Store login, FH-000513.
 - Events 7,161. Logins: 3 client, 6 affiliate, 10 partner, 1 authorized rep.
 
+**Round 8 (committed, Chris via the coordinator: "REMOVE 7 TEST LOGINS"):** 1,603 rows deleted:
+- staff 7: the TEST role logins owner@, admin@, closer@, advisor@, inquiry@, setter@ and sales@fundhub.ai
+- their staff sessions 1,454
+- TEST — Affiliate Role (AFF-000001), with its login affiliate@fundhub.ai, its account_sessions 134 and affiliate_link_clicks 6
+- Set to blank by the database: the "locked by" field on ad script "The Conveyor Belt" (fundhub-house). A TEST login locked it on Oct 7. It is still locked; only the record of who locked it is gone.
+- **Kept:** TEST — Client Role (AFF-000182). It is the App Store login's affiliate record (`accounts.affiliate_id`). The App Store login itself (client@fundhub.ai, FH-000844, client, active) is untouched, and the ship and preflight checks still find exactly 1 such account.
+- 88 sets outside the plan were unchanged. Backup: `.../round8/`. The logins can be rebuilt by hand with `scripts/seed-role-accounts.mjs`; nothing runs it on its own.
+- **Code that signed in with the deleted logins.** These need a new login. All are hand-run live browser checks in `e2e/`; nothing in the hourly or morning checks, the live functions, or GitHub's ship and test jobs signs in with them:
+  - `e2e/launch-proof-live.spec.mjs` (owner@)
+  - `e2e/live-run4-pass.spec.mjs` (owner@, admin@)
+  - `e2e/live-creative-factory-marketing-menu.spec.mjs` (owner@)
+  - `e2e/company-brain-chat.paused.spec.mjs` (owner@)
+  - `e2e/live-hole10.spec.mjs`
+  - `e2e/hole17-inquiry-upload.prove.mjs`
+  - `e2e/live-affiliate-onboard.spec.mjs` (affiliate@)
+  - `scripts/tmp/w8-try-role-login.mjs` (closer@, owner@, advisor@)
+  - The shared helper `e2e/live-auth.mjs` already defaults to chris@fundhub.ai.
+- Live now: staff 3 (Chris, Sarah Blankstein, Justice Nikkel). Affiliates 7: the 5 real-looking ones (not touched; the coordinator is asking Chris), TEST — Client Role, and the locked demo payee.
+
 ## Left over (not done here)
 
 1. ~~Fake staff and fake affiliates~~: done in round 7. Chris asked about these after rounds 3 and 4. They were outside every round so far. They are listed for his yes or no:

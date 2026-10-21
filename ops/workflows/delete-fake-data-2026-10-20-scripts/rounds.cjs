@@ -77,6 +77,20 @@ const FAKE_AFF_SQL = `SELECT a.id::text FROM affiliates a WHERE NOT (a.tracking_
 async function round7(c, sch) {
   const staff = (await c.query(FAKE_STAFF_SQL, [KEEP_STAFF_CODES])).rows.map((r) => r.id);
   const affs = (await c.query(FAKE_AFF_SQL, [KEEP_AFF])).rows.map((r) => r.id);
+  return staffAffRound(c, sch, staff, affs, KEEP_STAFF_CODES, KEEP_AFF);
+}
+// Round 8: the 7 TEST role staff logins and TEST — Affiliate Role (owner order 2026-10-20). TEST — Client Role (AFF-000182) is the App Store login's affiliate record: kept.
+const R8_STAFF = ["EMP-000007", "EMP-000008", "EMP-000009", "EMP-000010", "EMP-000011", "EMP-000012", "EMP-000034"];
+const R8_KEEP_STAFF = ["EMP-000001", "EMP-000038", "EMP-000062"];
+const R8_KEEP_AFF = ["AFF-000182", "AFF-000120", "AFF-000121", "AFF-000122", "AFF-000123", "AFF-000124", "AFF-000063"];
+async function round8(c, sch) {
+  const staff = (await c.query("SELECT id::text FROM staff WHERE employee_code = ANY($1) AND name LIKE 'TEST — %'", [R8_STAFF])).rows.map((r) => r.id);
+  if (staff.length !== 7) throw new Error("expected 7 TEST staff, got " + staff.length);
+  const affs = (await c.query("SELECT id::text FROM affiliates WHERE tracking_id = 'AFF-000001' AND name = 'TEST — Affiliate Role'")).rows.map((r) => r.id);
+  if (affs.length !== 1) throw new Error("TEST — Affiliate Role not found");
+  return staffAffRound(c, sch, staff, affs, R8_KEEP_STAFF, R8_KEEP_AFF);
+}
+async function staffAffRound(c, sch, staff, affs, KEEP_STAFF_CODES, KEEP_AFF) {
   const F = await closure(c, sch, staff, "staff", { affiliates: affs });
   // Protected: every row tied to the 3 kept clients, the kept staff and the kept affiliates.
   const keepClients = (await c.query("SELECT id::text FROM clients")).rows.map((r) => r.id);
@@ -121,6 +135,7 @@ async function round7(c, sch) {
   return { del: toObj(F.del), nulls: toObj(F.nulls), order: orderOf(sch, F.del), pks: Object.fromEntries([...F.del.keys()].map((t) => [t, sch.pks[t]])), demoClients: [], demoPartners: [], demoStaff, demoAffiliates: demoAff, pinned: toObj(new Map([...pinned].filter(([t]) => !t.startsWith("__")))), info: { staff: staff.length, affiliates: affs.length } };
 }
 module.exports.round7 = round7;
+module.exports.round8 = round8;
 
 // Round 4b: the client-less fake events round 4 missed (test emails only, not demo-flagged), after the escape fix.
 async function round4b(c, sch) {
