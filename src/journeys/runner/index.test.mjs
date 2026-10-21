@@ -198,8 +198,12 @@ import { isSyntheticRow } from "./synthetic.mjs";
    than pretending a synthetic customer walk fired either one.
    Moved 104 -> 105 with affiliate-payout-autopay (495, 2026-10-20): every 15
    minutes it pays earned affiliate commission through Plaid. Cron-only, so it
-   sits in neverFired; src/affiliates/payout-rail.pg.test.mjs proves it. */
-const REGISTERED = 105;
+   sits in neverFired; src/affiliates/payout-rail.pg.test.mjs proves it.
+   Moved 105 -> 106 the same day with bank-outreach-automation (2026-10-20): a 15-minute
+   cron that finds bankers, queues the bank emails and reads banker replies.
+   No journey event reaches it, so it stays visible in neverFired; its
+   saved-result proof is src/outreach/automation.pg.test.mjs. */
+const REGISTERED = 106;
 
 const N = (id, type, cfg = {}, branches) => ({ id, type, title: id, cfg, touches: [], branches });
 const cond = (id, lanes) => N(id, "condition", { field: "f", op: "is true" }, lanes);
@@ -294,6 +298,7 @@ test("every workflow is either fired or named in neverFired — none silently mi
   assert.equal(all.size, REGISTERED);
   for (const fn of functions) assert.ok(all.has(fn.id()), `${fn.id()} is unaccounted for`);
   assert.ok(never.some(workflow => workflow.id === "bank-outreach-checkins"), "scheduled bank reminders remain explicitly unreached, never falsely reported as fired");
+  assert.ok(never.some(workflow => workflow.id === "bank-outreach-automation"), "the bank outreach clock remains explicitly unreached, never falsely reported as fired");
 });
 
 // ── a full walk ───────────────────────────────────────────────────────────
