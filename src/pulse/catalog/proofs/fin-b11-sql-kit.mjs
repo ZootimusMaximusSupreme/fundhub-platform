@@ -15,6 +15,7 @@
 //
 // Tests only. Nothing here is imported by the live bundle.
 
+import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -141,15 +142,29 @@ export function portableSql(sql, { now = NOW } = {}) {
  * A stand-in database for the named tables. Each table holds the REAL columns of that table,
  * untyped. insert() refuses a column the real table does not have.
  */
-export function makeStandIn(tableNames, { now = NOW } = {}) {
+export function makeStandIn(tableNames, { now = NOW, defaults = false, clock = null } = {}) {
   const schema = schemaColumns();
   const db = new DatabaseSync(":memory:");
   const known = new Map();
+  // defaults: the real tables fill id (gen_random_uuid()) and created_at / updated_at (now()) when an
+  // INSERT leaves them out. A handler that inserts a row and reads it back needs that, so the stand-in
+  // can do it too. The clock is the one the caller's queries use, so a default and a now() agree.
+  if (defaults) {
+    const tick = clock || (() => new Date(now.getTime()));
+    db.function("fh_uuid", () => randomUUID());
+    db.function("fh_now", () => tick().toISOString());
+  }
   for (const name of tableNames) {
     const cols = schema.get(name);
     if (!cols || !cols.size) throw new Error(`no such table in db/schema or db/migrations: ${name}`);
     known.set(name, cols);
-    db.exec(`CREATE TABLE ${name} (${[...cols].map((c) => `"${c}"`).join(", ")})`);
+    const colSql = (c) => {
+      if (!defaults) return `"${c}"`;
+      if (c === "id") return `"${c}" DEFAULT (fh_uuid())`;
+      if (c === "created_at" || c === "updated_at") return `"${c}" DEFAULT (fh_now())`;
+      return `"${c}"`;
+    };
+    db.exec(`CREATE TABLE ${name} (${[...cols].map(colSql).join(", ")})`);
   }
   return {
     db,

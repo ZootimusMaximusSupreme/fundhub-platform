@@ -298,7 +298,12 @@ test("New chat: clears the chat, the highlight, the thread id and a 'gone' messa
   await clearShellOverlays(page);
   await waitFor(async () => (await page.locator("#threadList .threadbtn").count()) === 2, "two chats listed");
 
-  await proof.check(/^New chat button/, async () => {
+  // NOT A CLAIMED ROW (repair cycle 2). These assertions stay as a plain test: they hold today and a
+  // change that breaks them should be red. The row itself is not attached, because New chat has a known
+  // wrong result this test cannot assert as right without a product change: a chat that is still loading
+  // repaints over the empty chat once its slow read finishes (product finding 7, fin-b11-display-contracts
+  // FIN_B11_NOT_ATTACHABLE).
+  await (async () => {
     // A chat is open and marked; New chat takes the mark, the title and the words away.
     await page.locator(`#threadList [data-thread="${T1}"]`).click();
     await waitFor(async () => /Contracts SOP\.pdf/.test(await text(page, "#msgs")), "the chat opened");
@@ -337,7 +342,14 @@ test("New chat: clears the chat, the highlight, the thread id and a 'gone' messa
     await page.locator("#askBtn").click();
     await waitFor(() => log.asks.length === before + 1, "the fresh question");
     assert.deepEqual(log.asks[before], { question: "A fresh question" }, "no thread id after New chat");
-  });
+    await waitFor(async () => (await text(page, "#askBtn")) === "Send", "Send comes back");
+
+    // The question box gets the cursor, and words already typed stay where they are.
+    await page.locator("#q").fill("half a question");
+    await page.locator("#newChat").click();
+    assert.equal(await page.evaluate(() => document.activeElement && document.activeElement.id), "q", "the cursor goes to the question box");
+    assert.equal(await page.locator("#q").inputValue(), "half a question", "typed words are not thrown away");
+  })();
   await page.close();
 });
 
@@ -355,7 +367,10 @@ test("Send says a refusal in words and gives Send back", { timeout: 60_000 }, as
 });
 
 test("Past chats: the list, click to reopen, and the hamburger on a narrow screen", { timeout: 90_000 }, async () => {
-  await proof.check(/^Past chats list: click a chat to reopen it/, async () => {
+  // NOT A CLAIMED ROW (repair cycle 2): pressing chat A and then a slower chat B lets A's late answer
+  // overwrite B (product finding 7), and no assertion of the right behaviour can be green on today's page.
+  // What is asserted here holds and stays a plain test. See FIN_B11_NOT_ATTACHABLE.
+  await (async () => {
     const { page, log } = await openBrain();
     await clearShellOverlays(page);
     await waitFor(async () => (await page.locator("#threadList .threadbtn").count()) === 2, "two chats listed");
@@ -396,7 +411,7 @@ test("Past chats: the list, click to reopen, and the hamburger on a narrow scree
     await gone.page.locator(`#threadList [data-thread="${T1}"]`).click();
     await waitFor(async () => /That chat is gone\./.test(await text(gone.page, "#msgs")), "the gone message");
     await gone.page.close();
-  });
+  })();
 
   await proof.check(/^Past chats rail toggle/, async () => {
     const { page } = await openBrain({ viewport: { width: 700, height: 900 } });

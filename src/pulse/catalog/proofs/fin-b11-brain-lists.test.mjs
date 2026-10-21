@@ -178,6 +178,12 @@ test("the Files you added list holds this company's uploads, newest first, with 
   assert.equal(pending.sizeBytes, 2048);
   assert.equal(pending.uploadedByName, "Casey Owner");
   assert.equal(pending.chunkCount, 2);
+  // The time a file was added is when it was created, not when it was last changed: an approval or a
+  // re-sync moves updated_at and must not re-date the file (the fixture's updated_at is an hour old).
+  assert.equal(pending.uploadedAt, ago(20));
+  assert.equal(approved.uploadedAt, ago(5000));
+  assert.equal(rejected.uploadedAt, ago(9000));
+  assert.notEqual(pending.uploadedAt, ago(60), "not the last-changed time");
   assert.equal(approved.approvalStatus, "approved");
   assert.equal(approved.accessTier, "sales");
   assert.equal(approved.sizeBytes, 2 * 1048576);

@@ -30,6 +30,13 @@ export const FIN_B11_BRAIN_TEST = `${DIR}/fin-b11-company-brain.test.mjs`;
 export const FIN_B11_CREATIVE_TEST = `${DIR}/fin-b11-creative-factory.test.mjs`;
 export const FIN_B11_SMALL_TEST = `${DIR}/fin-b11-small-pages.test.mjs`;
 export const FIN_B11_BRAIN_LISTS_TEST = `${DIR}/fin-b11-brain-lists.test.mjs`;
+// Repair cycle 2: the real handlers over stand-in rows, the exhaustive quiz, and the page tests that
+// press what cycle 1 did not.
+export const FIN_B11_C2_BRAIN_HANDLERS_TEST = `${DIR}/fin-b11-c2-brain-handlers.test.mjs`;
+export const FIN_B11_C2_BRAIN_PAGE_TEST = `${DIR}/fin-b11-c2-brain-page.test.mjs`;
+export const FIN_B11_C2_QUIZ_TEST = `${DIR}/fin-b11-c2-quiz.test.mjs`;
+export const FIN_B11_C2_CREATIVE_HANDLERS_TEST = `${DIR}/fin-b11-c2-creative-handlers.test.mjs`;
+export const FIN_B11_C2_CREATIVE_PAGE_TEST = `${DIR}/fin-b11-c2-creative-page.test.mjs`;
 
 const DAYS = (n) => `now() - interval '${n} days'`;
 
@@ -62,7 +69,7 @@ SELECT count(*)::int AS sample_count,
 check({
   key: "brain-turns",
   control: "Send question (Send button, Enter key; Shift+Enter makes a line)",
-  requirement: "Every chat that holds a question must hold one saved answer for each question, and each answer must have words, name the engine that wrote it (model, extractive or none), and carry a thin flag that matches that engine.",
+  requirement: "Every chat that holds a question must hold exactly one saved answer for each question, and each answer must have words, name the engine that wrote it (model, extractive or none), carry a thin flag that matches that engine, and list the files it was written from when a model or the copy-out wrote it. The chat itself must have a title with no spaces around it.",
   from: "brain_threads t",
   where: `t.org_id = $1::uuid AND t.updated_at >= ${DAYS(60)} AND t.updated_at < now() - interval '2 minutes'
     AND EXISTS (SELECT 1 FROM brain_messages q WHERE q.thread_id = t.id AND q.role = 'user')`,
@@ -79,30 +86,29 @@ check({
          AND a.thin IS DISTINCT FROM (a.answer_source <> 'model'))`],
     ["a saved question is blank",
       `EXISTS (SELECT 1 FROM brain_messages q WHERE q.thread_id = t.id AND q.role = 'user'
-         AND NULLIF(BTRIM(COALESCE(q.text, '')), '') IS NULL)`]
+         AND NULLIF(BTRIM(COALESCE(q.text, '')), '') IS NULL)`],
+    // Every answer the model or the copy-out wrote is built from files the person's role may open, and
+    // the engine always attaches them (src/company-brain/answer.mjs). An answer saved with no files
+    // is the files lost on the way to the saved chat, and the reopened chat would show it uncited.
+    ["a written answer lists no files",
+      `EXISTS (SELECT 1 FROM brain_messages a WHERE a.thread_id = t.id AND a.role = 'assistant'
+         AND a.answer_source IN ('model', 'extractive')
+         AND CASE WHEN jsonb_typeof(a.sources) = 'array' THEN jsonb_array_length(a.sources) ELSE 0 END = 0)`],
+    // The chat is named after its first question (src/company-brain/threads.mjs titleFromQuestion).
+    ["the chat has no title, or one saved with spaces around it",
+      `NULLIF(BTRIM(COALESCE(t.title, '')), '') IS NULL OR t.title <> BTRIM(t.title)`]
   ]
 });
 
-check({
-  key: "brain-past-chats",
-  control: "Past chats list: click a chat to reopen it",
-  requirement: "Every past chat must be reopenable in full: each message must belong to the same company as the chat, the chat must belong to a staff member of that company, and the chat's last-changed time must not be older than its newest message, because the list is ordered by it.",
-  from: "brain_threads t",
-  where: `t.org_id = $1::uuid AND t.updated_at >= ${DAYS(60)}`,
-  bad: [
-    ["a message sits in another company",
-      `EXISTS (SELECT 1 FROM brain_messages m WHERE m.thread_id = t.id AND m.org_id <> t.org_id)`],
-    ["the list order is behind the newest message",
-      `t.updated_at < (SELECT max(m.created_at) FROM brain_messages m WHERE m.thread_id = t.id)`],
-    ["the chat belongs to a staff member of another company",
-      `EXISTS (SELECT 1 FROM staff s WHERE s.id = t.staff_id AND s.org_id <> t.org_id)`]
-  ]
-});
+// The "Past chats list" row has no live check any more. Its SQL (every message of a chat in the chat's
+// own company, the list order not behind the newest message, the chat's staff member in the chat's
+// company) was removed in repair cycle 2 together with the row: see FIN_B11_NOT_ATTACHABLE. The text is
+// in git at 941b987f6 and comes back when the page stops repainting an old chat over a newer one.
 
 check({
   key: "brain-uploads",
   control: "Files you added: list and Refresh button",
-  requirement: "Every uploaded file in the list must name who added it, hold real bytes and a name, carry an upload id, stay closed to everyone but the owner (file and every chunk) while it waits or was turned down, have a pending review the owner can act on while it waits, and once approved sit at the tier the review proposed.",
+  requirement: "Every uploaded file in the list must name who added it, hold real bytes and a name, carry an upload id, stay closed to everyone but the owner (file and every chunk) while it waits or was turned down, have a pending review the owner can act on while it waits, and once approved sit at the tier the review proposed with every chunk at that same tier.",
   from: "brain_files f",
   where: `f.org_id = $1::uuid AND f.source = 'upload'`,
   bad: [
@@ -120,6 +126,9 @@ check({
     ["an approved file is not at its approved tier",
       `f.approval_status = 'approved'
        AND (f.classification_status <> 'approved' OR f.access_tier IS DISTINCT FROM f.proposed_tier)`],
+    ["an approved file has a chunk at another tier",
+      `f.approval_status = 'approved'
+       AND EXISTS (SELECT 1 FROM brain_chunks c WHERE c.file_id = f.id AND c.access_tier IS DISTINCT FROM f.access_tier)`],
     ["a waiting file has no pending review, so nobody can approve it",
       `f.approval_status = 'pending' AND f.created_at < now() - interval '10 minutes'
        AND NOT EXISTS (SELECT 1 FROM brain_classification_reviews r
@@ -251,7 +260,7 @@ check({
 check({
   key: "job-enqueued",
   control: "Enqueue generation button (disabled until the allowance loads and is on)",
-  requirement: "Every generation job saved in the last 60 days must belong to a partner of this company, name an asker who really is a staff member of this company or an account of that partner, and any script or brand kit it names must exist for the same company and partner.",
+  requirement: "Every generation job saved in the last 60 days must belong to a partner of this company, name an asker (the only way a job is saved is a signed-in partner or staff member pressing the button) who really is a staff member of this company or an account of that partner, and any script or brand kit it names must exist for the same company and partner.",
   from: "generation_jobs j LEFT JOIN partners p ON p.id = j.partner_id",
   where: `j.org_id = $1::uuid AND j.created_at >= ${DAYS(60)}`,
   bad: [
@@ -268,7 +277,13 @@ check({
          WHERE sc.id::text = j.spec->>'scriptId' AND sc.org_id = j.org_id AND sc.partner_id = j.partner_id)`],
     ["the brand kit it names is not this partner's",
       `j.brand_kit_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM brand_kits k
-         WHERE k.id = j.brand_kit_id AND k.org_id = j.org_id AND k.partner_id = j.partner_id)`]
+         WHERE k.id = j.brand_kit_id AND k.org_id = j.org_id AND k.partner_id = j.partner_id)`],
+    // api/creative/generate.mjs is the only writer of generation_jobs, and it refuses a caller who is
+    // not a partner or staff session, so a job saved since the asker columns (migration 241, 2026-08-19)
+    // always names its asker. A job with nobody named is the asker lost on the way to the saved row
+    // (fin-b11-live-contracts.test.mjs scans the code and goes red if a second writer ever appears).
+    ["a job made from the screen names nobody as its asker",
+      `j.requested_by_kind IS NULL AND j.created_at >= '2026-08-20'`]
   ]
 });
 
@@ -318,7 +333,7 @@ check({
 check({
   key: "asset-approved",
   control: "Approve button (asks to confirm; marks the creative approved and CLEARS its blocked reasons)",
-  requirement: "Every approved creative must have an empty blocked-reasons list, belong to a partner of this company, and a written ad must have its words.",
+  requirement: "Every approved creative must have an empty blocked-reasons list, belong to a partner of this company, and a written ad must have its words. Two or more creatives of one partner approved at the very same instant are wrong, because one click approves exactly one, and so is a creative approved after it was archived.",
   from: "creative_assets a LEFT JOIN partners p ON p.id = a.partner_id",
   where: `a.org_id = $1::uuid AND a.compliance_state = 'approved'`,
   bad: [
@@ -329,7 +344,19 @@ check({
     ["an approved written ad has no words",
       `a.kind = 'copy' AND a.created_at >= '2026-09-08' AND NULLIF(BTRIM(COALESCE(a.copy_text, '')), '') IS NULL`],
     ["the creative was changed before it was made",
-      `a.updated_at < a.created_at`]
+      `a.updated_at < a.created_at`],
+    // One click approves one creative. A handler that lost "which creative" approves every creative of
+    // the partner in one statement, so they all carry one last-changed time. Every other writer of an
+    // approved row (the video loader) inserts one row per transaction.
+    ["several creatives of one partner were approved at the same instant",
+      `EXISTS (SELECT 1 FROM creative_assets o
+               WHERE o.org_id = a.org_id AND o.partner_id = a.partner_id AND o.id <> a.id
+                 AND o.updated_at = a.updated_at AND o.compliance_state = 'approved')`],
+    // Approve refuses an archived creative ("archived assets cannot be approved"), and Archive sets
+    // archived_at and updated_at together, so an approved creative changed after it was archived is an
+    // approval the handler should have refused.
+    ["a creative was approved after it was archived",
+      `a.archived_at IS NOT NULL AND a.updated_at > a.archived_at`]
   ]
 });
 
@@ -360,10 +387,32 @@ check({
   ]
 });
 
-// Archive has no live check. Archiving writes one thing, archived_at (and the last-changed time with
-// it), on the one creative named; it leaves no record of which creative was meant, so a wrong creative
-// archived, or an archive that did not happen, leaves a row no different from a healthy one. The
-// click is judged by its practice test (fin-b11-creative-factory.test.mjs) and says so on the row.
+// Archive writes one thing: archived_at (and the last-changed time with it) on the one creative named.
+// It keeps no record of which creative was meant, but the click is the only writer of archived_at, and
+// one click archives one creative, so a handler that lost "which creative" leaves several creatives of
+// one partner archived at one instant. That, a creative archived before it was made, and a last-changed
+// time behind the archive time are the wrong results the row can show. A handler that archives nothing
+// or archives the wrong single creative leaves a row no different from a healthy one; the handler test
+// (fin-b11-c2-creative-handlers.test.mjs) runs the real file over stand-in rows for those.
+check({
+  key: "asset-archived",
+  control: "Archive button (asks to confirm; hides the creative)",
+  requirement: "Every archived creative must belong to a partner of this company, must have been archived after it was made, must carry a last-changed time that is not behind its archive time, and must not share its archive instant with another creative of the same partner, because one click archives exactly one.",
+  from: "creative_assets a LEFT JOIN partners p ON p.id = a.partner_id",
+  where: `a.org_id = $1::uuid AND a.archived_at IS NOT NULL AND a.archived_at >= ${DAYS(60)}`,
+  bad: [
+    ["several creatives of one partner were archived at the same instant",
+      `EXISTS (SELECT 1 FROM creative_assets o
+               WHERE o.org_id = a.org_id AND o.partner_id = a.partner_id AND o.id <> a.id
+                 AND o.archived_at = a.archived_at)`],
+    ["archived before it was made",
+      `a.archived_at < a.created_at`],
+    ["the last-changed time is behind the archive time",
+      `a.updated_at < a.archived_at`],
+    ["the partner is missing or belongs to another company",
+      `p.id IS NULL OR p.org_id <> a.org_id`]
+  ]
+});
 
 check({
   key: "brand-approved",
@@ -394,7 +443,7 @@ check({
 check({
   key: "brand-sent-back",
   control: "Review queue (brand row): 'Send it back' button with required reason",
-  requirement: "Every brand that was sent back or is waiting must have no approval left on it, a sent-back brand (a draft that was sent for review) must hold a real written reason of at most 2000 characters, and a brand waiting for review must hold no reason from an earlier round.",
+  requirement: "Every brand that was sent back or is waiting must have no approval left on it, a sent-back brand (a draft that was sent for review) must hold a real written reason of at most 2000 characters with no spaces around it, and a brand waiting for review must hold no reason from an earlier round.",
   from: "partner_brand b LEFT JOIN partners p ON p.id = b.partner_id",
   where: `b.org_id = $1::uuid AND (b.review_note IS NOT NULL
     OR (b.approval_status <> 'approved' AND b.approved_by IS NOT NULL)
@@ -406,6 +455,8 @@ check({
       `b.review_note IS NOT NULL AND LENGTH(b.review_note) > 2000`],
     ["a brand was sent back with no reason saved",
       `b.approval_status = 'draft' AND b.submitted_at IS NOT NULL AND b.review_note IS NULL`],
+    ["the reason was saved with spaces around it",
+      `b.review_note IS NOT NULL AND b.review_note <> BTRIM(b.review_note)`],
     ["a reason sits on a brand that is approved",
       `b.review_note IS NOT NULL AND b.approval_status = 'approved'`],
     ["a brand waiting for review still holds an old reason",
@@ -461,15 +512,13 @@ const CF = "creative-factory.html";
  */
 export const FIN_B11_ROWS = Object.freeze([
   // Company Brain: the chat, the side panels, the owner review
-  ["Send question (Send button, Enter key; Shift+Enter makes a line)", BRAIN, "brain-turns", FIN_B11_BRAIN_TEST],
-  ["Past chats list: click a chat to reopen it", BRAIN, "brain-past-chats", FIN_B11_BRAIN_TEST],
-  ["Files you added: list and Refresh button", BRAIN, "brain-uploads", FIN_B11_BRAIN_TEST, [FIN_B11_BRAIN_LISTS_TEST]],
+  ["Send question (Send button, Enter key; Shift+Enter makes a line)", BRAIN, "brain-turns", FIN_B11_BRAIN_TEST, [FIN_B11_C2_BRAIN_HANDLERS_TEST, FIN_B11_C2_BRAIN_PAGE_TEST]],
+  ["Files you added: list and Refresh button", BRAIN, "brain-uploads", FIN_B11_BRAIN_TEST, [FIN_B11_BRAIN_LISTS_TEST, FIN_B11_C2_BRAIN_PAGE_TEST]],
   ["Owner: 'Waiting for your approval' panel and its Refresh button", BRAIN, "brain-review-queue", FIN_B11_BRAIN_TEST, [FIN_B11_BRAIN_LISTS_TEST]],
-  ["Owner: Approve a waiting file (button on the file row and in the review list)", BRAIN, "brain-review-approved", FIN_B11_BRAIN_TEST, [FIN_B11_BRAIN_LISTS_TEST]],
-  ["Owner: Turn down a waiting file", BRAIN, "brain-review-rejected", FIN_B11_BRAIN_TEST, [FIN_B11_BRAIN_LISTS_TEST]],
-  ["Class quiz: answer boxes and 'Check answers' (scored in the browser, nothing saved)", BRAIN, null, FIN_B11_BRAIN_TEST],
+  ["Owner: Approve a waiting file (button on the file row and in the review list)", BRAIN, "brain-review-approved", FIN_B11_BRAIN_TEST, [FIN_B11_BRAIN_LISTS_TEST, FIN_B11_C2_BRAIN_HANDLERS_TEST, FIN_B11_C2_BRAIN_PAGE_TEST]],
+  ["Owner: Turn down a waiting file", BRAIN, "brain-review-rejected", FIN_B11_BRAIN_TEST, [FIN_B11_BRAIN_LISTS_TEST, FIN_B11_C2_BRAIN_HANDLERS_TEST, FIN_B11_C2_BRAIN_PAGE_TEST]],
+  ["Class quiz: answer boxes and 'Check answers' (scored in the browser, nothing saved)", BRAIN, null, FIN_B11_BRAIN_TEST, [FIN_B11_C2_QUIZ_TEST]],
   ["Documents button (opens right-hand panel) and its Close button", BRAIN, null, FIN_B11_BRAIN_TEST],
-  ["New chat button", BRAIN, null, FIN_B11_BRAIN_TEST],
   ["Page itself: staff-only chat screen loads (shell, ramp-quizzes.js, data.js)", BRAIN, null, FIN_B11_BRAIN_TEST],
   ["Past chats rail toggle (hamburger, narrow screens)", BRAIN, null, FIN_B11_BRAIN_TEST],
   ["Role badge (reads fh_role from localStorage; shows 'owner' or 'staff' and decides whether approval controls draw)", BRAIN, null, FIN_B11_BRAIN_TEST],
@@ -479,33 +528,55 @@ export const FIN_B11_ROWS = Object.freeze([
   ["Link: 'Documents' (see contracts already sent)", "contracts.html", null, FIN_B11_SMALL_TEST],
   // Creative Factory
   ["Save this script button", CF, "script-save", FIN_B11_CREATIVE_TEST],
-  ["Enqueue generation button (disabled until the allowance loads and is on)", CF, "job-enqueued", FIN_B11_CREATIVE_TEST],
-  ["Generate form: Kind (static / copy / video), What is being sold, What to make, Name this batch", CF, "job-form", FIN_B11_CREATIVE_TEST],
+  ["Enqueue generation button (disabled until the allowance loads and is on)", CF, "job-enqueued", FIN_B11_CREATIVE_TEST, [FIN_B11_C2_CREATIVE_PAGE_TEST, FIN_B11_C2_CREATIVE_HANDLERS_TEST]],
+  ["Generate form: Kind (static / copy / video), What is being sold, What to make, Name this batch", CF, "job-form", FIN_B11_CREATIVE_TEST, [FIN_B11_C2_CREATIVE_PAGE_TEST, FIN_B11_C2_CREATIVE_HANDLERS_TEST]],
   ["Run queued jobs now button", CF, "job-run", FIN_B11_CREATIVE_TEST],
-  ["Approve button (asks to confirm; marks the creative approved and CLEARS its blocked reasons)", CF, "asset-approved", FIN_B11_CREATIVE_TEST],
-  ["Reject button (asks to confirm; marks the creative blocked)", CF, "asset-rejected", FIN_B11_CREATIVE_TEST],
-  ["Archive button (asks to confirm; hides the creative)", CF, null, FIN_B11_CREATIVE_TEST],
-  ["Review queue (brand row): reason box and 'Approve this brand' button (owner/admin only)", CF, "brand-approved", FIN_B11_CREATIVE_TEST],
-  ["Review queue (brand row): 'Send it back' button with required reason", CF, "brand-sent-back", FIN_B11_CREATIVE_TEST],
+  ["Approve button (asks to confirm; marks the creative approved and CLEARS its blocked reasons)", CF, "asset-approved", FIN_B11_CREATIVE_TEST, [FIN_B11_C2_CREATIVE_PAGE_TEST, FIN_B11_C2_CREATIVE_HANDLERS_TEST]],
+  ["Reject button (asks to confirm; marks the creative blocked)", CF, "asset-rejected", FIN_B11_CREATIVE_TEST, [FIN_B11_C2_CREATIVE_PAGE_TEST, FIN_B11_C2_CREATIVE_HANDLERS_TEST]],
+  ["Archive button (asks to confirm; hides the creative)", CF, "asset-archived", FIN_B11_CREATIVE_TEST, [FIN_B11_C2_CREATIVE_PAGE_TEST, FIN_B11_C2_CREATIVE_HANDLERS_TEST]],
+  ["Review queue (brand row): reason box and 'Approve this brand' button (owner/admin only)", CF, "brand-approved", FIN_B11_CREATIVE_TEST, [FIN_B11_C2_CREATIVE_PAGE_TEST, FIN_B11_C2_CREATIVE_HANDLERS_TEST]],
+  ["Review queue (brand row): 'Send it back' button with required reason", CF, "brand-sent-back", FIN_B11_CREATIVE_TEST, [FIN_B11_C2_CREATIVE_PAGE_TEST, FIN_B11_C2_CREATIVE_HANDLERS_TEST]],
   ["Monthly writing allowance panel (on/off, used, left, limit) and its enable note", CF, "allowance", FIN_B11_CREATIVE_TEST],
-  ["Brand kits: state chips, kit card click opens drawer, prev / next", CF, null, FIN_B11_CREATIVE_TEST],
+  ["Brand kits: state chips, kit card click opens drawer, prev / next", CF, null, FIN_B11_CREATIVE_TEST, [FIN_B11_C2_CREATIVE_PAGE_TEST]],
   ["Creative library: asset card click opens the detail drawer; prev / next pager", CF, null, FIN_B11_CREATIVE_TEST],
-  ["Creative library: state chips, kind chips, format chips, brand kit select, include archived select, 'show' size select", CF, null, FIN_B11_CREATIVE_TEST],
+  ["Creative library: state chips, kind chips, format chips, brand kit select, include archived select, 'show' size select", CF, null, FIN_B11_CREATIVE_TEST, [FIN_B11_C2_CREATIVE_PAGE_TEST]],
   ["Decide on one creative: creative picker (select)", CF, null, FIN_B11_CREATIVE_TEST],
   ["Detail drawer: close button, scrim click, Esc key", CF, null, FIN_B11_CREATIVE_TEST],
-  ["Generation jobs: 'show' size select and prev / next pager", CF, null, FIN_B11_CREATIVE_TEST],
-  ["Generation jobs: row click expands job detail (what went wrong, kit, times)", CF, null, FIN_B11_CREATIVE_TEST],
+  ["Generation jobs: 'show' size select and prev / next pager", CF, null, FIN_B11_CREATIVE_TEST, [FIN_B11_C2_CREATIVE_PAGE_TEST]],
+  ["Generation jobs: row click expands job detail (what went wrong, kit, times)", CF, null, FIN_B11_CREATIVE_TEST, [FIN_B11_C2_CREATIVE_PAGE_TEST]],
   ["Generation jobs: state filter chips (all, queued, running, succeeded, failed; several at once)", CF, null, FIN_B11_CREATIVE_TEST],
   ["Link: 'Brand Studio' (inside the allowance note when the suite is off)", CF, null, FIN_B11_CREATIVE_TEST],
   ["Page itself loads (partner or owner/admin; staff roles may use the script card)", CF, null, FIN_B11_CREATIVE_TEST],
   ["Partner picker (select) and ?partner_id= preselect", CF, null, FIN_B11_CREATIVE_TEST],
-  ["Reference section (4 closed panels: job states, AI labels, why creative gets stopped, engine settings table)", CF, null, FIN_B11_CREATIVE_TEST],
-  ["Review queue: 'Open the full creative' button on a row", CF, null, FIN_B11_CREATIVE_TEST],
-  ["Review queue: state chips (all, blocked, pending, awaiting_approval), 'show' size select, prev / next, row expand", CF, null, FIN_B11_CREATIVE_TEST],
+  ["Reference section (4 closed panels: job states, AI labels, why creative gets stopped, engine settings table)", CF, null, FIN_B11_CREATIVE_TEST, [FIN_B11_C2_CREATIVE_PAGE_TEST]],
+  ["Review queue: 'Open the full creative' button on a row", CF, null, FIN_B11_CREATIVE_TEST, [FIN_B11_C2_CREATIVE_PAGE_TEST]],
+  ["Review queue: state chips (all, blocked, pending, awaiting_approval), 'show' size select, prev / next, row expand", CF, null, FIN_B11_CREATIVE_TEST, [FIN_B11_C2_CREATIVE_PAGE_TEST]],
   ["Script picker list on the Generate form (rebuilt from saved scripts)", CF, null, FIN_B11_CREATIVE_TEST]
 ].map(([control, surface, liveKey, browserTest, extraTests = []]) => Object.freeze({
   sourceFile: "desks-b.json", surface, control, liveKey, browserTest, extraTests: Object.freeze(extraTests)
 })));
+
+/**
+ * Rows this batch looked at and could NOT honestly attach (repair cycle 2). They are not in
+ * FIN_B11_ROWS, have no live check and no proof case, so the coverage count keeps them open.
+ * The practice tests that press them stay in the repo as plain tests; they just do not claim the row.
+ */
+export const FIN_B11_NOT_ATTACHABLE = Object.freeze([
+  {
+    sourceFile: "desks-b.json",
+    surface: BRAIN,
+    control: "New chat button",
+    reason: "Product finding 7. Press a past chat, then New chat before the chat has loaded: when the slow read finishes, openThread() repaints the old chat's title and messages over the empty chat. The control's whole job is a clean empty chat, so a test that asserts that is red on today's page and a test that walks around it is green on a broken control. Needs a product change first: a stale-answer guard in openThread() (ignore an answer whose thread id is no longer state.threadId).",
+    tests: [FIN_B11_BRAIN_TEST]
+  },
+  {
+    sourceFile: "desks-b.json",
+    surface: BRAIN,
+    control: "Past chats list: click a chat to reopen it",
+    reason: "Product finding 7, from the click side. Press chat A (slow) then chat B: B paints, then A's late answer overwrites it while B is the highlighted chat and state.threadId, so the screen shows A's conversation under B's mark and the next question is sent into B. Asserting the right behaviour is red on today's page, and a green check would sit on a control that can show the wrong conversation. The live check that was here (every message in the chat's own company, list order not behind the newest message) was removed with the row. Needs the same stale-answer guard in openThread() as New chat.",
+    tests: [FIN_B11_BRAIN_TEST, FIN_B11_BRAIN_LISTS_TEST, FIN_B11_C2_BRAIN_HANDLERS_TEST]
+  }
+]);
 
 /**
  * Proof cases for display-proof-cases.mjs. A row with a live check is a "deep" case that names the lane,

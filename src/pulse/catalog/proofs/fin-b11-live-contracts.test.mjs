@@ -40,9 +40,12 @@ const FIXTURES = new Map();
 // ── brain-turns ─────────────────────────────────────────────────────────────
 {
   const thread = (id, over = {}) => ({ id, org_id: ORG, staff_id: u(900), title: "A question", created_at: ago(DAY), updated_at: ago(2 * HOUR), ...over });
+  // A written answer (model or copy-out) always carries the files it was built from; a "none" answer
+  // carries none. That is what src/company-brain/answer.mjs hands saveTurn.
+  const FILES = [{ n: 1, fileName: "Contracts SOP.pdf", webViewLink: null, accessTier: "staff", excerpt: "Press Send." }];
   const msg = (id, thread_id, role, over = {}) => ({
     id, org_id: ORG, thread_id, role, text: role === "user" ? "How do I send a contract?" : "Open the client and press Send.",
-    sources: [], answer_source: role === "user" ? null : "model", thin: false, created_at: ago(2 * HOUR + 5), ...over
+    sources: role === "user" ? [] : FILES, answer_source: role === "user" ? null : "model", thin: false, created_at: ago(2 * HOUR + 5), ...over
   });
   FIXTURES.set("brain-turns", {
     tables: {
@@ -50,12 +53,16 @@ const FIXTURES = new Map();
       brain_messages: [
         msg(u(11), u(1), "user"), msg(u(12), u(1), "assistant"),
         msg(u(21), u(2), "user"), msg(u(22), u(2), "assistant", { answer_source: "extractive", thin: true }),
-        msg(u(31), u(3), "user"), msg(u(32), u(3), "assistant", { answer_source: "none", thin: true })
+        msg(u(31), u(3), "user"), msg(u(32), u(3), "assistant", { answer_source: "none", thin: true, sources: [] })
       ]
     },
     sample: 3,
     breaks: {
-      "a question has no saved answer": [["answer never saved", (t) => drop(t.brain_messages, u(12))]],
+      "a question has no saved answer": [
+        ["answer never saved", (t) => drop(t.brain_messages, u(12))],
+        // The same question answered twice: more answers than questions is as wrong as fewer.
+        ["a question answered twice", (t) => { t.brain_messages.push(msg(u(13), u(1), "assistant", { created_at: ago(2 * HOUR + 4) })); }]
+      ],
       "an answer is blank or names no engine": [
         ["blank answer", (t) => { find(t.brain_messages, u(12)).text = "   "; }],
         ["no engine named", (t) => { find(t.brain_messages, u(22)).answer_source = null; }],
@@ -63,9 +70,21 @@ const FIXTURES = new Map();
       ],
       "an answer's thin flag disagrees with its engine": [
         ["model answer marked thin", (t) => { find(t.brain_messages, u(12)).thin = true; }],
-        ["extractive answer marked full", (t) => { find(t.brain_messages, u(22)).thin = false; }]
+        ["extractive answer marked full", (t) => { find(t.brain_messages, u(22)).thin = false; }],
+        ["an answer that matched nothing marked full", (t) => { find(t.brain_messages, u(32)).thin = false; }]
       ],
-      "a saved question is blank": [["blank question", (t) => { find(t.brain_messages, u(11)).text = ""; }]]
+      "a saved question is blank": [["blank question", (t) => { find(t.brain_messages, u(11)).text = ""; }]],
+      "a written answer lists no files": [
+        ["model answer saved with no files", (t) => { find(t.brain_messages, u(12)).sources = []; }],
+        ["copy-out answer saved with no files", (t) => { find(t.brain_messages, u(22)).sources = []; }],
+        ["files saved as something that is not a list", (t) => { find(t.brain_messages, u(12)).sources = {}; }]
+      ],
+      "the chat has no title, or one saved with spaces around it": [
+        ["blank title", (t) => { find(t.brain_threads, u(1)).title = ""; }],
+        ["title of spaces", (t) => { find(t.brain_threads, u(1)).title = "   "; }],
+        ["title with a trailing space", (t) => { find(t.brain_threads, u(1)).title = "A question "; }],
+        ["title with a leading space", (t) => { find(t.brain_threads, u(1)).title = " A question"; }]
+      ]
     },
     ignored: [
       ["a chat changed a minute ago may still be getting its answer", (t) => {
@@ -76,29 +95,6 @@ const FIXTURES = new Map();
         find(t.brain_threads, u(1)).updated_at = ago(61 * DAY);
         drop(t.brain_messages, u(12));
       }]
-    ]
-  });
-}
-
-// ── brain-past-chats ────────────────────────────────────────────────────────
-{
-  const thread = (id, over = {}) => ({ id, org_id: ORG, staff_id: u(900), title: "A chat", created_at: ago(DAY), updated_at: ago(30), ...over });
-  const msg = (id, thread_id, over = {}) => ({ id, org_id: ORG, thread_id, role: "user", text: "q", created_at: ago(40), ...over });
-  FIXTURES.set("brain-past-chats", {
-    tables: {
-      brain_threads: [thread(u(1)), thread(u(2), { staff_id: u(901) })],
-      brain_messages: [msg(u(11), u(1)), msg(u(12), u(1), { role: "assistant", created_at: ago(35) }), msg(u(21), u(2))],
-      staff: [{ id: u(900), org_id: ORG, role: "closer" }, { id: u(901), org_id: ORG, role: "csm" }]
-    },
-    sample: 2,
-    breaks: {
-      "a message sits in another company": [["message in another company", (t) => { find(t.brain_messages, u(11)).org_id = OTHER; }]],
-      "the list order is behind the newest message": [["thread older than its newest message", (t) => { find(t.brain_threads, u(1)).updated_at = ago(HOUR); }]],
-      "the chat belongs to a staff member of another company": [["staff member of another company", (t) => { find(t.staff, u(900)).org_id = OTHER; }]]
-    },
-    ignored: [
-      ["a chat whose staff member was removed is allowed to stay", (t) => { drop(t.staff, u(901)); }],
-      ["a chat with no messages", (t) => { drop(t.brain_messages, u(21)); }]
     ]
   });
 }
@@ -140,6 +136,10 @@ const FIXTURES = new Map();
       "an approved file is not at its approved tier": [
         ["tier still owner", (t) => { find(t.brain_files, u(2)).access_tier = "owner"; }],
         ["classification never approved", (t) => { find(t.brain_files, u(2)).classification_status = "pending"; }]
+      ],
+      "an approved file has a chunk at another tier": [
+        ["approved at staff, a chunk still owner-only", (t) => { find(t.brain_chunks, u(12)).access_tier = "owner"; }],
+        ["approved at staff, a chunk open to public", (t) => { find(t.brain_chunks, u(12)).access_tier = "public"; }]
       ],
       "a waiting file has no pending review, so nobody can approve it": [["review gone", (t) => { drop(t.brain_classification_reviews, u(21)); }]]
     },
@@ -392,11 +392,20 @@ FIXTURES.set("brain-review-rejected", decisionFixture("rejected"));
       "the brand kit it names is not this partner's": [
         ["kit of another partner", (t) => { find(t.brand_kits, u(700)).partner_id = u(501); }],
         ["kit gone", (t) => { drop(t.brand_kits, u(700)); }]
+      ],
+      "a job made from the screen names nobody as its asker": [
+        ["asker lost on a staff job", (t) => { const j = find(t.generation_jobs, u(1)); j.requested_by_kind = null; j.requested_by_staff_id = null; }],
+        ["asker lost on a partner job", (t) => { const j = find(t.generation_jobs, u(2)); j.requested_by_kind = null; j.requested_by_account_id = null; }]
       ]
     },
     ignored: [
       ["a job older than 60 days", (t) => { find(t.generation_jobs, u(1)).created_at = ago(61 * DAY); drop(t.staff, u(900)); }],
-      ["an unattributed job (the cron) has no asker to check", (t) => { find(t.generation_jobs, u(2)).requested_by_kind = null; find(t.generation_jobs, u(2)).requested_by_account_id = null; drop(t.accounts, u(800)); }]
+      ["a job saved before the asker columns existed (2026-08-19) has nobody to name", (t) => {
+        const j = find(t.generation_jobs, u(2));
+        j.created_at = "2026-08-18T00:00:00.000Z";
+        j.requested_by_kind = null;
+        j.requested_by_account_id = null;
+      }]
     ]
   });
 }
@@ -502,7 +511,8 @@ FIXTURES.set("brain-review-rejected", decisionFixture("rejected"));
   FIXTURES.set("asset-approved", {
     tables: {
       partners: partners(),
-      creative_assets: [asset(u(1)), asset(u(2), { kind: "copy", copy_text: "Working capital for owners." })]
+      // Two approvals by two clicks: they carry two different last-changed times.
+      creative_assets: [asset(u(1)), asset(u(2), { kind: "copy", copy_text: "Working capital for owners.", updated_at: ago(3 * DAY) })]
     },
     sample: 2,
     breaks: {
@@ -512,9 +522,27 @@ FIXTURES.set("brain-review-rejected", decisionFixture("rejected"));
       ],
       "the partner is missing or belongs to another company": [["partner in another company", (t) => { find(t.partners, u(500)).org_id = OTHER; }, 2]],
       "an approved written ad has no words": [["copy asset with no words", (t) => { find(t.creative_assets, u(2)).copy_text = " "; }]],
-      "the creative was changed before it was made": [["updated before created", (t) => { find(t.creative_assets, u(1)).updated_at = ago(11 * DAY); }]]
+      "the creative was changed before it was made": [["updated before created", (t) => { find(t.creative_assets, u(1)).updated_at = ago(11 * DAY); }]],
+      "several creatives of one partner were approved at the same instant": [
+        // An Approve that lost its "which creative" condition approves every creative of the partner in
+        // one statement. Both rows carry one time, and each of them is a wrong result.
+        ["a second creative approved at the same instant", (t) => {
+          t.creative_assets.push(asset(u(3), { updated_at: ago(2 * DAY) }));
+        }, 2, 3],
+        ["the other creative is a different partner's", (t) => {
+          t.partners.push({ id: u(501), org_id: ORG, slug: "q", name: "Q" });
+          t.creative_assets.push(asset(u(3), { partner_id: u(501), updated_at: ago(2 * DAY) }));
+        }, 0, 3]
+      ],
+      "a creative was approved after it was archived": [
+        ["archived a day before it was approved", (t) => { find(t.creative_assets, u(1)).archived_at = ago(3 * DAY); }]
+      ]
     },
     ignored: [
+      ["approved first and archived after (both share one time)", (t) => {
+        const a = find(t.creative_assets, u(1));
+        a.archived_at = a.updated_at;
+      }],
       ["a blocked creative with reasons is not an approval", (t) => { find(t.creative_assets, u(1)).compliance_state = "blocked"; find(t.creative_assets, u(1)).blocked_reasons = [{ code: "x", message: "m" }]; }],
       ["an old copy asset from before words were saved", (t) => { find(t.creative_assets, u(2)).copy_text = null; find(t.creative_assets, u(2)).created_at = "2026-08-01T00:00:00.000Z"; }]
     ]
@@ -562,6 +590,67 @@ FIXTURES.set("brain-review-rejected", decisionFixture("rejected"));
       }],
       ["two creatives blocked by the screening engine at the same instant are not people's rejections", (t) => {
         find(t.creative_assets, u(2)).updated_at = ago(2 * DAY);
+      }]
+    ]
+  });
+}
+
+// ── asset-archived ──────────────────────────────────────────────────────────
+{
+  const archived = (id, over = {}) => ({
+    id, org_id: ORG, partner_id: u(500), kind: "static", format: "1x1", compliance_state: "passed", blocked_reasons: [],
+    copy_text: null, created_at: ago(10 * DAY), archived_at: ago(2 * DAY), updated_at: ago(2 * DAY), ...over
+  });
+  FIXTURES.set("asset-archived", {
+    tables: {
+      partners: [{ id: u(500), org_id: ORG, slug: "p", name: "P" }, { id: u(501), org_id: ORG, slug: "q", name: "Q" }],
+      creative_assets: [
+        archived(u(1)),
+        // Two clicks, two moments, one partner.
+        archived(u(2), { compliance_state: "approved", archived_at: ago(3 * DAY), updated_at: ago(3 * DAY) }),
+        // The same instant is fine across partners: they are two different people's clicks.
+        archived(u(3), { partner_id: u(501), archived_at: ago(2 * DAY), updated_at: ago(2 * DAY) }),
+        // A live creative is not an archive result.
+        archived(u(4), { archived_at: null, updated_at: ago(DAY) })
+      ]
+    },
+    sample: 3,
+    breaks: {
+      "several creatives of one partner were archived at the same instant": [
+        // An Archive that lost its "which creative" condition archives every creative of the partner in
+        // one statement, so they all carry one archive time. Each of them is a wrong result.
+        ["a second creative archived at the same instant", (t) => {
+          t.creative_assets.push(archived(u(5), { archived_at: ago(2 * DAY), updated_at: ago(2 * DAY) }));
+        }, 2, 4],
+        ["the live creative was archived by the same statement", (t) => {
+          const live = find(t.creative_assets, u(4));
+          live.archived_at = ago(2 * DAY);
+          live.updated_at = ago(2 * DAY);
+        }, 2, 4]
+      ],
+      "archived before it was made": [["archived a day before it existed", (t) => {
+        const a = find(t.creative_assets, u(1));
+        a.created_at = ago(DAY);
+      }]],
+      "the last-changed time is behind the archive time": [["updated before archived", (t) => {
+        find(t.creative_assets, u(2)).updated_at = ago(5 * DAY);
+      }]],
+      "the partner is missing or belongs to another company": [
+        ["partner in another company", (t) => { find(t.partners, u(501)).org_id = OTHER; }],
+        ["partner gone", (t) => { drop(t.partners, u(501)); }]
+      ]
+    },
+    ignored: [
+      ["an archive older than 60 days", (t) => {
+        const a = find(t.creative_assets, u(1));
+        a.archived_at = ago(70 * DAY);
+        a.updated_at = ago(70 * DAY);
+        a.created_at = ago(80 * DAY);
+      }],
+      ["a creative that was never archived is not an archive", (t) => {
+        const a = find(t.creative_assets, u(1));
+        a.archived_at = null;
+        a.updated_at = ago(DAY);
       }]
     ]
   });
@@ -627,6 +716,7 @@ FIXTURES.set("brain-review-rejected", decisionFixture("rejected"));
     breaks: {
       "the reason is blank": [
         ["blank reason", (t) => { find(t.partner_brand, u(1)).review_note = "   "; }],
+        ["empty reason", (t) => { find(t.partner_brand, u(1)).review_note = ""; }],
         ["blank reason on a draft that was never sent", (t) => { const b = find(t.partner_brand, u(1)); b.submitted_at = null; b.review_note = "  "; }]
       ],
       "the reason is longer than 2000 characters": [["a 2001 character reason", (t) => { find(t.partner_brand, u(1)).review_note = "x".repeat(2001); }]],
@@ -634,6 +724,10 @@ FIXTURES.set("brain-review-rejected", decisionFixture("rejected"));
         // The Send it back button's whole point is the required reason. A brand that went back to draft
         // with the time it was sent and no reason at all is that reason lost.
         ["sent back to draft, reason not saved", (t) => { find(t.partner_brand, u(1)).review_note = null; }]
+      ],
+      "the reason was saved with spaces around it": [
+        ["a trailing space", (t) => { find(t.partner_brand, u(1)).review_note = "Fix the logo colours. "; }],
+        ["a leading space", (t) => { find(t.partner_brand, u(1)).review_note = " Fix the logo colours."; }]
       ],
       "a reason sits on a brand that is approved": [["approved with a reason", (t) => { const b = find(t.partner_brand, u(1)); b.approval_status = "approved"; b.approved_at = ago(DAY); }]],
       "a brand waiting for review still holds an old reason": [["review with a reason", (t) => { find(t.partner_brand, u(3)).review_note = "old complaint"; }, 1, 3]],
@@ -826,9 +920,9 @@ test("every contract is a read-only, company-scoped query with the two counts", 
   assert.equal(new Set(FIN_B11_RESULT_CONTRACTS.map((c) => c.sql)).size, FIN_B11_RESULT_CONTRACTS.length);
 });
 
-test("the batch lists each of its 40 rows once, and every live check is on a row", () => {
-  assert.equal(FIN_B11_ROWS.length, 40);
-  assert.equal(new Set(FIN_B11_ROWS.map((r) => `${r.surface}\0${r.control}`)).size, 40);
+test("the batch lists each of its 38 rows once, and every live check is on a row", () => {
+  assert.equal(FIN_B11_ROWS.length, 38);
+  assert.equal(new Set(FIN_B11_ROWS.map((r) => `${r.surface}\0${r.control}`)).size, 38);
   const keys = FIN_B11_ROWS.filter((r) => r.liveKey).map((r) => r.liveKey).sort();
   assert.deepEqual(keys, FIN_B11_CHECKS.map((c) => c.key).sort());
   for (const row of FIN_B11_ROWS.filter((r) => r.liveKey)) {
