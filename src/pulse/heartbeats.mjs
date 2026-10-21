@@ -80,6 +80,10 @@ export const NETLIFY_JOBS = Object.freeze([
   ["cron-clock", "*/5 * * * *"]
 ]);
 
+/** Every workflow cron, whichever runner starts it: the list a "does this cron have a job row?"
+    check reads. INNGEST_JOBS is empty since 2026-10-20, so today this is CLOCK_JOBS. */
+export const CRON_JOBS = Object.freeze([...INNGEST_JOBS, ...CLOCK_JOBS]);
+
 /** The function that runs each CLOCK_JOBS job, named in that job's fix line. */
 export const CLOCK_FUNCTION = "cron-clock";
 

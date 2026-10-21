@@ -844,7 +844,7 @@ test("gap payments tripwires: commas-inbox-waiting FAIL counts the three shapes 
     "3 Commas receipts waiting in the inbox that no clock is picking up: 1 never tried, 1 failed with tries left, 1 stuck mid-pass. " +
       "2 of them are paid receipts. The oldest came in 3 hours ago. (4 simulated receipts left out: no card was charged)"
   );
-  assert.match(hit.suggestedFix, /commas-inbox-sweeper and commas-inbox-drain/);
+  assert.match(hit.suggestedFix, /The inbox clock \(commas-inbox-sweeper, every 5 minutes/);
   const call = seen.find((c) => /gap:commas-inbox-waiting/.test(c.sql));
   assert.deepEqual(call.params, [ORG, "2026-10-08T14:50:00.000Z", "sim-pay-%", 10, "2026-10-08T14:40:00.000Z"]);
   // One receipt reads in the singular.

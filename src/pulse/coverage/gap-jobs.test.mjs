@@ -189,7 +189,7 @@ test("a job that reports a run but is not on the heartbeat list fails and names 
   assertShape(hit);
   assert.equal(hit.status, "FAIL");
   assert.match(hit.detail, /2 scheduled jobs report a run but are not on the heartbeat list: brand-new-cron, other-new-cron/);
-  assert.match(hit.suggestedFix, /INNGEST_JOBS or NETLIFY_JOBS/);
+  assert.match(hit.suggestedFix, /CLOCK_JOBS or NETLIFY_JOBS/);
   assert.match(hit.suggestedFix, /Do not add a second watcher/);
 
   const one = byId(await gapChecks({ db: fakeDb({ unlisted: { recent_jobs: 3, unlisted: ["solo"] } }), now: NOW, jobs: [] }), "job-heartbeats-unlisted");

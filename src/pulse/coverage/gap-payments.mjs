@@ -790,7 +790,7 @@ async function checkCommasInboxWaiting({ db, orgId, now }) {
     `${plural(n, "Commas receipt")} waiting in the inbox that no clock is picking up: ` +
       `${intOf(r.pending_n)} never tried, ${intOf(r.failed_n)} failed with tries left, ${intOf(r.processing_n)} stuck mid-pass. ` +
       `${n === 1 ? (paidN === 1 ? "It is a paid receipt." : "It is not a paid receipt.") : `${paidN} of them ${paidN === 1 ? "is a paid receipt" : "are paid receipts"}.`}${oldest}${simNote}`,
-    `${RECON} Read commas_inbox for those rows. The two inbox clocks (commas-inbox-sweeper and commas-inbox-drain) should have taken them. Commas never sends a notice twice, so keep the row bytes as they are.`
+    `${RECON} Read commas_inbox for those rows. The inbox clock (commas-inbox-sweeper, every 5 minutes; its Inngest twin commas-inbox-drain is retired) should have taken them. Commas never sends a notice twice, so keep the row bytes as they are.`
   );
 }
 

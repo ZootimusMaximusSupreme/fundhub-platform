@@ -6,10 +6,7 @@
 
 import { coverageKey, PULSE_REGISTRY } from "../registry.mjs";
 import { MACHINE_CHECKS } from "../machine.mjs";
-import {
-  SWEEP_CRON as COMMAS_CRON,
-  SOURCE_WORKFLOW as COMMAS_ID
-} from "../../workflows/commas-inbox-drain.mjs";
+import { NETLIFY_JOBS } from "../heartbeats.mjs";
 import {
   SWEEP_CRON as CHECKOUT_EXPIRY_CRON,
   SOURCE_WORKFLOW as CHECKOUT_EXPIRY_ID
@@ -28,6 +25,13 @@ import {
   SWEEP_CRON as NUDGE_CRON,
   SOURCE_WORKFLOW as NUDGE_ID
 } from "../../workflows/waypoint-nudge-sweeper.mjs";
+
+/* The Commas payment queue's clock. Since 2026-10-20 that is only the Netlify scheduled function
+   commas-inbox-sweeper (every 5 minutes): its Inngest twin commas-inbox-drain is retired, so it has
+   no job row and no receipts any more (board ops/workflows/inngest-diet-2026-10-20.md). */
+const COMMAS_ID = "commas-inbox-sweeper";
+const COMMAS_FILE = "netlify/functions/commas-inbox-sweeper.mjs";
+const COMMAS_CRON = new Map(NETLIFY_JOBS).get(COMMAS_ID);
 
 export const SLICE_ID = "26-client-journey";
 
@@ -100,7 +104,7 @@ export const CHECKS = [
   // Pay — checkout till and payment inbox
   door("public/funnel-checkout"),
   door("payment-success.html"),
-  sweeper(COMMAS_ID, "src/workflows/commas-inbox-drain.mjs", COMMAS_CRON, "1m"),
+  sweeper(COMMAS_ID, COMMAS_FILE, COMMAS_CRON, "5m"),
   sweeper(
     CHECKOUT_EXPIRY_ID,
     "src/workflows/paid-checkout-expiry-sweeper.mjs",

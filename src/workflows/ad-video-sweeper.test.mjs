@@ -276,8 +276,10 @@ describe("a whole pass", () => {
 
 describe("what actually gates this", () => {
   test("it IS registered — a take nobody looks for is a take nobody edits", () => {
-    const index = fs.readFileSync(path.join(HERE, "index.mjs"), "utf8");
-    assert.ok(/adVideoSweeper/.test(index));
+    // The registry notes moved with the crons to scheduled.mjs on 2026-10-20; the real clock is
+    // netlify/functions/ad-video-sweeper.mjs.
+    const registry = fs.readFileSync(path.join(HERE, "index.mjs"), "utf8") + fs.readFileSync(path.join(HERE, "scheduled.mjs"), "utf8");
+    assert.ok(/adVideoSweeper/.test(registry));
   });
 
   test("it is defined and it is one reviewable file", () => {

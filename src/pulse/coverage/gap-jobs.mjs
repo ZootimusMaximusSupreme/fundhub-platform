@@ -178,7 +178,7 @@ async function unlistedJobsCheck(db, now, jobs) {
         id,
         "FAIL",
         `${unlisted.length} scheduled ${unlisted.length === 1 ? "job reports" : "jobs report"} a run but ${unlisted.length === 1 ? "is" : "are"} not on the heartbeat list: ${unlisted.join(", ")}. Nobody would hear if ${unlisted.length === 1 ? "it" : "they"} went quiet.`,
-        "Add each name to INNGEST_JOBS or NETLIFY_JOBS in src/pulse/heartbeats.mjs. Do not add a second watcher from this pulse."
+        "Add each name to CLOCK_JOBS or NETLIFY_JOBS in src/pulse/heartbeats.mjs. Do not add a second watcher from this pulse."
       );
     }
     return check(id, "PASS", `all ${recent} jobs that reported a run in the last 3 days are on the heartbeat list`);

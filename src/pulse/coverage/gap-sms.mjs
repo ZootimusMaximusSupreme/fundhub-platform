@@ -55,7 +55,7 @@ export const ALREADY_WATCHED = Object.freeze([
 export const NOT_DUPLICATED = Object.freeze([
   "message-dispatch-sweeper",
   "waypoint-nudge-sweeper",
-  "commas-inbox-drain"
+  "commas-inbox-sweeper"
 ]);
 
 /**

@@ -13,7 +13,7 @@ Read-only helpers only. No parallel prompts for this batch.
 | 1. Measure: Inngest free limits, every cron, every event workflow | this session | done |
 | 2. Netlify clock + background worker; crons off Inngest | this session | done |
 | 3. Heartbeat law: JOBS, tripwires, beats, tests | this session | done |
-| 4. Lint, typecheck, tests, pulse:prove, PR, merge | this session | in progress |
+| 4. Lint, typecheck, tests, pulse:prove, PR #113, merge | this session | in progress |
 | 5. Coordinator ships; confirm runner='netlify' receipts live | coordinator, then this session | pending |
 
 ## The free plan (read 2026-10-20 from https://www.inngest.com/pricing)
@@ -103,6 +103,28 @@ per job run (≈ 75,000), and the two payment sweepers drop from 86,400 to 17,28
 Files: see the PR. Routes: none. Journeys: none change for a customer. Heartbeat: every moved
 job keeps its `job:` row (runner now `netlify`); new `job:cron-clock`; tripwires sorted for every
 scheduled job whatever its runner.
+
+## Proof so far
+
+- Lint: clean (4,135 files). Typecheck: clean.
+- Targeted tests (clock, runner, worker door, registry, heartbeats, tripwires, beats, coverage,
+  self-audit, scheduled-function shape, outbound fence): all pass. Two self-audit timer tests flip
+  under this Mac's load (load average ~100); they pass on rerun and do not touch this change.
+- `CRON_WORKER_SECRET`: written to `.env`, `credentials/env.full.snapshot`, and Netlify
+  (production, deploy-preview, branch-deploy, no `--secret`); Netlify read-back matches.
+- Background functions already run on this plan: `ad-video-sweeper` woke its background worker
+  286 times in the last day with a 202.
+- PR: https://github.com/ZootimusMaximusSupreme/fundhub-platform/pull/113
+
+## Leftover cards (seen in passing, not fixed here)
+
+- Netlify scheduled functions (commas/whop sweepers, staff-message-sweeper, …) are not surfaces in the
+  tripwire map; only Inngest-registry jobs are. With the Inngest payment drains retired, the payment
+  queue clocks are guarded by the pay-webhook and whop-billing beats and the payment gap checks, but
+  have no tripwire row of their own.
+- `workflow_runs` (run receipts for event workflows) has no rows since 2026-10-10.
+- `src/pulse/coverage/gap-outside-inngest.mjs` PASS note still says the outside clock "is not built
+  yet"; `pulse-outside-watch` has run since 2026-10-09.
 
 ## Blockers / questions
 
