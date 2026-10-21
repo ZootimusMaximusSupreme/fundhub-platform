@@ -262,11 +262,14 @@ test("stuck processing: pending or failed delivery, an overdue read, or an unrea
 });
 
 test("the stuck reads leave demo rows out and only count a pending read", () => {
-  const delivery = SRC.slice(SRC.indexOf("const STUCK_DELIVERY_SQL"), SRC.indexOf("const STUCK_READER_SQL"));
+  // The stuck check lives in the hourly beat's lib (one judge, two clocks); the lane imports it back.
+  assert.match(SRC, /beats\/lib\/documents-truth\.mjs/);
+  const TRUTH = readFileSync(fileURLToPath(new URL("../beats/lib/documents-truth.mjs", import.meta.url)), "utf8");
+  const delivery = TRUTH.slice(TRUTH.indexOf("const STUCK_DELIVERY_SQL"), TRUTH.indexOf("const STUCK_READER_SQL"));
   assert.match(delivery, /delivery_status = 'pending' AND updated_at < \$2::timestamptz/);
   assert.match(delivery, /delivery_status IN \('failed', 'bounced'\)/);
   assert.match(delivery, /is_demo IS NOT TRUE/);
-  const reader = SRC.slice(SRC.indexOf("const STUCK_READER_SQL"), SRC.indexOf("async function checkStuckProcessing"));
+  const reader = TRUTH.slice(TRUTH.indexOf("const STUCK_READER_SQL"), TRUTH.indexOf("async function checkStuckProcessing"));
   assert.match(reader, /handler_name = \$2::text/);
   assert.match(reader, /status = 'pending'/);
   assert.match(reader, /coalesce\(next_attempt_at, last_seen_at\) < \$3::timestamptz/);

@@ -13,11 +13,8 @@
   "job:blueprint-finance-os-alerts",
   "job:c-00-crs-soft-pull-request",
   "job:c-03-inquiry-removed-resume-or-hold",
-  "job:doc-check",
-  "job:doc-check-retry-sweeper",
   "job:finance-os-card-due-reminders",
   "job:inquiry-call-sweeper",
-  "job:repair-bureau-response-reader",
   "job:s-00-welcome",
   "job:s-04-call-booked",
   "job:slo-pack-delivery",
@@ -55,10 +52,5 @@
   "route:read/client-progress",
   "route:read/entitlements",
   "route:read/portal-summary",
-  "route:repair/enroll",
-  "route:repair/generate",
-  "route:repair/inbound-mail",
-  "route:repair/send",
-  "route:soft-pull-approve",
-  "send:src/metro2/delivery/send.mjs"
+  "route:soft-pull-approve"
 ]

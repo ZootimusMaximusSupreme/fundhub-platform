@@ -16,10 +16,18 @@
 import { cronIntervalMs, STALE_MULTIPLE } from "../heartbeats.mjs";
 import { SWEEP_CRON as VAULT_CHASE_CRON } from "../../workflows/document-vault-chase.mjs";
 import { SWEEP_CRON as DOC_CHECK_RETRY_CRON } from "../../workflows/doc-check-retry-sweeper.mjs";
+// ONE JUDGE, TWO CLOCKS (2026-10-20). documents:stuck-processing (its SQL, its words) and the helpers every
+// check here uses live in src/pulse/beats/lib/documents-truth.mjs, so this lane and the hourly beat
+// repair-trip judge stuck documents with the same code. This lane hands it its own three windows below.
+import {
+  DAY_MS, ID_STUCK, MIN_MS, READER_HANDLER, check, checkStuckProcessing as checkStuckWith, clip, countOf, fix,
+  hasDb, nowOf, readFailedRow, selectOnly, windowLabel
+} from "../beats/lib/documents-truth.mjs";
+
+export { ID_STUCK, READER_HANDLER, STUCK_DELIVERY_SQL, STUCK_READER_SQL } from "../beats/lib/documents-truth.mjs";
 
 export const ID_STORE = "documents:upload-store";
 export const ID_UNCHASED = "documents:required-unchased";
-export const ID_STUCK = "documents:stuck-processing";
 export const ID_OPEN = "documents:cannot-open";
 
 /** clients.custom_fields key written by the doc request (inquiry-docs DOC_01_LOCK). */
@@ -62,9 +70,6 @@ export const STAFF_CHASE_SOURCES = Object.freeze([
   "doc-check"
 ]);
 
-/** failed_events.handler_name for a document the reader has not finished. */
-export const READER_HANDLER = "doc-check";
-
 /** The store names that keep files after a cold start. "memory" does not. */
 export const REAL_STORES = Object.freeze(["netlify-blobs", "vercel-blob"]);
 
@@ -74,60 +79,10 @@ export const OPEN_SAMPLE = 5;
 /** One store answer may take this long. A store that hangs must not hang the morning pulse. */
 export const STORE_TIMEOUT_MS = 8000;
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-const MIN_MS = 60 * 1000;
-
 export const VAULT_RED_MS = STALE_MULTIPLE * (cronIntervalMs(VAULT_CHASE_CRON) || DAY_MS);
 export const READER_RED_MS = STALE_MULTIPLE * (cronIntervalMs(DOC_CHECK_RETRY_CRON) || (20 * MIN_MS));
 /** The reader backs off to once a day, so a read still pending after 3 of those has not worked. */
 export const READER_UNREAD_MS = STALE_MULTIPLE * DAY_MS;
-
-const RECON =
-  "Recon (AG-07) reports this on the morning pulse. Do not build a second watchdog. Do not upload a file from this check. Do not email a client.";
-
-function check(id, status, detail, suggestedFix = null) {
-  return { id, status, detail, suggestedFix };
-}
-
-function fix(lead) {
-  return `${lead} ${RECON}`;
-}
-
-function clip(s, n = 180) {
-  return String((s && s.message) || s || "").replace(/\s+/g, " ").trim().slice(0, n);
-}
-
-function windowLabel(ms) {
-  if (ms % DAY_MS === 0) {
-    const days = ms / DAY_MS;
-    return `${days} day${days === 1 ? "" : "s"}`;
-  }
-  const minutes = Math.round(ms / MIN_MS);
-  return `${minutes} minutes`;
-}
-
-function countOf(result, key = "n") {
-  const n = Number(result && result.rows && result.rows[0] && result.rows[0][key]);
-  return Number.isFinite(n) && n >= 0 ? n : 0;
-}
-
-function hasDb(ctx) {
-  return !!(ctx && ctx.db && typeof ctx.db.query === "function" && ctx.orgId);
-}
-
-function nowOf(ctx) {
-  const n = ctx && ctx.now;
-  if (n instanceof Date && Number.isFinite(n.getTime())) return n;
-  return new Date();
-}
-
-async function selectOnly(db, sql, params) {
-  const stripped = String(sql).replace(/\/\*[\s\S]*?\*\//g, " ").trim();
-  if (!/^select\b/i.test(stripped)) {
-    throw new Error("documents gap checks are read-only");
-  }
-  return db.query(sql, params);
-}
 
 /**
  * The store the upload door writes to. Returns a provider with `name` and `exists`.
@@ -296,72 +251,9 @@ async function checkRequiredUnchased(ctx) {
 }
 checkRequiredUnchased.checkId = ID_UNCHASED;
 
-const STUCK_DELIVERY_SQL = `
-SELECT count(*) FILTER (WHERE delivery_status = 'pending' AND updated_at < $2::timestamptz)::int AS pending,
-       count(*) FILTER (WHERE delivery_status IN ('failed', 'bounced'))::int AS failed
-  FROM documents
- WHERE org_id = $1::uuid
-   AND is_demo IS NOT TRUE
-   AND delivery_status IN ('pending', 'failed', 'bounced')`;
-
-const STUCK_READER_SQL = `
-SELECT count(*) FILTER (WHERE coalesce(next_attempt_at, last_seen_at) < $3::timestamptz)::int AS overdue,
-       count(*) FILTER (WHERE first_seen_at < $4::timestamptz)::int AS unread
-  FROM failed_events
- WHERE org_id = $1::uuid
-   AND handler_name = $2::text
-   AND status = 'pending'`;
-
+/** documents:stuck-processing, judged by the shared truth with this lane's own windows. */
 async function checkStuckProcessing(ctx) {
-  if (!hasDb(ctx)) {
-    return check(ID_STUCK, "skip", "no database in this run — stuck document rows not read");
-  }
-  const now = nowOf(ctx);
-  const deliveryCutoff = new Date(now.getTime() - VAULT_RED_MS);
-  const readerCutoff = new Date(now.getTime() - READER_RED_MS);
-  const unreadCutoff = new Date(now.getTime() - READER_UNREAD_MS);
-  const [delivery, reader] = await Promise.all([
-    selectOnly(ctx.db, STUCK_DELIVERY_SQL, [ctx.orgId, deliveryCutoff.toISOString()]),
-    selectOnly(ctx.db, STUCK_READER_SQL, [
-      ctx.orgId,
-      READER_HANDLER,
-      readerCutoff.toISOString(),
-      unreadCutoff.toISOString()
-    ])
-  ]);
-  const pending = countOf(delivery, "pending");
-  const failed = countOf(delivery, "failed");
-  const overdue = countOf(reader, "overdue");
-  const unread = countOf(reader, "unread");
-  const pendingLabel = windowLabel(VAULT_RED_MS);
-  const readLabel = windowLabel(READER_RED_MS);
-  const unreadLabel = windowLabel(READER_UNREAD_MS);
-  if (pending === 0 && failed === 0 && overdue === 0 && unread === 0) {
-    return check(
-      ID_STUCK,
-      "PASS",
-      `no document row stuck pending past ${pendingLabel} or failed to deliver, and no doc-check read overdue past ${readLabel} or unread past ${unreadLabel}`
-    );
-  }
-  const parts = [];
-  if (pending > 0) {
-    parts.push(`${pending} document row${pending === 1 ? "" : "s"} stuck pending past ${pendingLabel}`);
-  }
-  if (failed > 0) {
-    parts.push(`${failed} document row${failed === 1 ? "" : "s"} failed or bounced on delivery`);
-  }
-  if (overdue > 0) {
-    parts.push(`${overdue} document read${overdue === 1 ? "" : "s"} still processing past ${readLabel}`);
-  }
-  if (unread > 0) {
-    parts.push(`${unread} document${unread === 1 ? "" : "s"} still unread after ${unreadLabel} of retries`);
-  }
-  return check(
-    ID_STUCK,
-    "FAIL",
-    parts.join("; "),
-    fix("Read documents stuck at delivery_status pending, failed or bounced, and failed_events for handler doc-check. The retry sweeper already owns the read; if it keeps failing, look at why the reader cannot answer.")
-  );
+  return checkStuckWith(ctx, { vaultRedMs: VAULT_RED_MS, readerRedMs: READER_RED_MS, readerUnreadMs: READER_UNREAD_MS });
 }
 checkStuckProcessing.checkId = ID_STUCK;
 
@@ -435,12 +327,7 @@ export async function gapChecks(ctx = {}) {
     try {
       return await fn(ctx);
     } catch (err) {
-      return check(
-        fn.checkId,
-        "FAIL",
-        `read failed: ${clip(err)}`,
-        fix("Read the document gap query. Do not write from this check.")
-      );
+      return readFailedRow(fn.checkId, err);
     }
   }));
 }
