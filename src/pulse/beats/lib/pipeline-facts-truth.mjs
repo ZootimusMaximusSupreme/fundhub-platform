@@ -28,8 +28,10 @@
 //
 // ONE JUDGE, TWO CLOCKS (2026-10-20). This file used to be src/pulse/coverage/gap-pipeline-facts.mjs.
 // It moved here, unchanged except for the read path, so the morning lane (gap-pipeline-facts.mjs,
-// now a thin adapter) and the hourly beat (beat-pipeline-boards.mjs) run the same SQL and the same
-// verdicts. A beat may import only from src/pulse/beats/lib, so the truth lives here.
+// now a thin adapter) and the hourly beat (beat-pipeline-facts.mjs) run the same SQL and the same
+// verdicts. A beat may import only from src/pulse/beats/lib, so the truth lives here. One local name
+// changed too: checkTwoRecords' month window was a variable called `window`, which the beat pin reads as
+// the browser's global object.
 
 /* A test client is one nobody is selling to: the demo flag, the synthetic flag,
    the +walk-N / +sim-N tags the sim seeder writes into every address, or an
@@ -684,12 +686,12 @@ async function checkTwoRecords(run, orgId, now) {
   const id = "pipeline:two-records";
   const fix = `Open Pipeline and the record that disagrees. Two tables hold one fact and say two things. ${NO_AUTOFIX}`;
   const settleCut = new Date(now.getTime() - SETTLE_GRACE_MS).toISOString();
-  const window = monthWindow(now);
+  const month = monthWindow(now);
   const r = await readAll(run, {
     roundNoCard: [ROUND_NO_CARD_SQL, [orgId, TEST_CLIENT_EMAIL_RE, settleCut]],
     cardNoRound: [CARD_NO_ROUND_SQL, [orgId, TEST_CLIENT_EMAIL_RE, [...FUNDING_AFTER_START]]],
     repair: [REPAIR_CASE_CARD_SQL, [orgId, TEST_CLIENT_EMAIL_RE, [...REPAIR_BEFORE_SEND], [...REPAIR_AFTER_SEND]]],
-    floor: [FLOOR_VS_BOARD_SQL, [orgId, TEST_CLIENT_EMAIL_RE, window.start.toISOString(), window.end.toISOString()]]
+    floor: [FLOOR_VS_BOARD_SQL, [orgId, TEST_CLIENT_EMAIL_RE, month.start.toISOString(), month.end.toISOString()]]
   });
   const found = [];
   const failed = [];

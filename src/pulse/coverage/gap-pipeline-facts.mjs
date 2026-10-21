@@ -29,7 +29,7 @@
 //
 // ONE JUDGE, TWO CLOCKS (2026-10-20). The SQL and the verdicts live in
 // src/pulse/beats/lib/pipeline-facts-truth.mjs, so this morning lane and the hourly beat
-// pipeline-boards judge with the same code. This file only hands the lane its reader: ctx.db (the
+// pipeline-facts judge with the same code. This file only hands the lane its reader: ctx.db (the
 // plain role the read routes use) when it has one, else the staff scope. It never sends BEGIN,
 // COMMIT or SET on the shared pool.
 
