@@ -43,8 +43,9 @@ const tableStubs = ({ there = true, n = 0 } = {}) => [
   { match: /to_regclass/, rows: [{ there }] },
   { match: /FROM pulse_bank_links/, rows: [{ n }] }
 ];
-async function go({ urls = [], state = null, http = () => page(), read, env, table, stateExtra = {} } = {}) {
+async function go({ urls = [], state = null, http = () => page(), read, env, table, stateExtra = {}, now } = {}) {
   const ctx = makeFakeCtx(beat, {
+    now,
     read: [...(read ?? [{ match: /FROM lenders/, rows: sqlRows(urls) }]), ...tableStubs(table)],
     state: state === null ? null : { bankLinks: state, ...stateExtra },
     http,
@@ -194,12 +195,16 @@ test("the second read: a first-read break that turns into a bot wall is green (a
   assert.equal(rows[0].lastClass, "WALL");
 });
 
-test("the second read: a first-read break that turns into a timeout is green (unproven is never red)", async () => {
+test("the second read: a first-read break whose second read gets no answer is green, and stays a suspect for next hour", async () => {
   const urls = banks(1);
   let n = 0;
   const { result, rows } = await go({ urls, state: [wasGood(urls[0])], http: () => (++n === 1 ? gone() : { class: "timeout", status: 0, error: "timed out after 8000ms" }) });
-  assert.equal(result.ok, true);
-  assert.equal(rows[0].lastClass, "SLOW");
+  assert.equal(result.ok, true, "unproven is never red");
+  assert.equal(n, 2);
+  assert.match(result.detail, /1 broken not confirmed yet/);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].lastClass, "HARD", "the first read stays on record, so it is a suspect and is read first next hour");
+  assert.equal(rows[0].lastGoodAt, "2026-10-08T10:00:00.000Z");
 });
 
 /* ---------------- WALL, SLOW, first pass, never good: never red ---------------- */
@@ -228,11 +233,66 @@ test("WALL: every kind of wall on a good link stays green (403, 429, 200 with a 
   assert.ok(rows.every((r) => r.lastClass === "WALL"), JSON.stringify(rows.map((r) => r.lastClass)));
 });
 
-test("SLOW: a timeout on a good link is never red", async () => {
+test("UNANSWERED: a timeout on a good link is never red; saved SLOW with its OLD date, so it is read again next hour", async () => {
   const urls = banks(2);
-  const { result, rows } = await go({ urls, state: urls.map((u) => wasGood(u)), http: (m, url) => (url === urls[0] ? { class: "timeout", status: 0, error: "timed out after 8000ms" } : page()) });
+  const timeout = { class: "timeout", status: 0, error: "timed out after 8000ms" };
+  const { result, rows } = await go({ urls, state: urls.map((u) => wasGood(u)), http: (m, url) => (url === urls[0] ? timeout : page()) });
   assert.equal(result.ok, true);
-  assert.equal(rowFor(rows, urls[0]).lastClass, "SLOW");
+  const row = rowFor(rows, urls[0]);
+  assert.equal(row.lastClass, "SLOW");
+  assert.equal(row.lastCheckedAt, "2026-10-08T10:00:00.000Z", "keeps its old check date: front of the line next hour");
+  assert.equal(row.lastGoodAt, "2026-10-08T10:00:00.000Z");
+  assert.equal(rowFor(rows, urls[1]).lastClass, "OK");
+  assert.match(result.detail, /1 gave no answer in time \(not an alarm\)/);
+  assert.equal(result.evidence.unanswered, 1);
+  assert.equal(result.evidence.counts.SLOW, 1);
+});
+
+test("UNANSWERED: read again first the next hour; a second silence is dated now and goes to the back of the line", async () => {
+  // 100 links: after two hours there are still more than 40 links older than quiet's second date.
+  const urls = banks(100);
+  const quiet = urls[99];
+  const timeout = { class: "timeout", status: 0, error: "no answer in 2.5 s" };
+  const http = (m, url) => (url === quiet ? timeout : page());
+  // Every link was read on its own minute yesterday; quiet is the oldest of all.
+  const state = urls.map((u, i) => wasGood(u, { lastCheckedAt: new Date(Date.UTC(2026, 9, 20, 1, u === quiet ? 0 : i + 1)).toISOString() }));
+  const kept = new Map(state.map((r) => [r.urlHash, r]));
+  const hour = async (n) => {
+    const out = await go({ urls, state: [...kept.values()], http, now: new Date(Date.UTC(2026, 9, 21, n)) });
+    for (const r of out.rows) kept.set(r.urlHash, r);
+    return out;
+  };
+  const run1 = await hour(1);
+  assert.equal(run1.result.ok, true);
+  assert.equal(rowFor(run1.rows, quiet).lastCheckedAt, "2026-10-20T01:00:00.000Z", "first silence keeps the old date");
+  const run2 = await hour(2);
+  const second = rowFor(run2.rows, quiet);
+  assert.ok(second, "read again the next hour");
+  assert.equal(second.lastClass, "SLOW");
+  assert.equal(second.lastCheckedAt, "2026-10-21T02:00:00.000Z", "second silence: dated now, back of the line");
+  const run3 = await hour(3);
+  assert.equal(rowFor(run3.rows, quiet), undefined, "not read in the third hour: older links go first");
+  assert.equal(run3.rows.length, 40, "the third hour still reads 40 links");
+});
+
+test("UNANSWERED: a never-read link with no answer is saved SLOW with no check date, so it is still read first next hour", async () => {
+  const urls = banks(2);
+  const timeout = { class: "timeout", status: 0, error: "no answer in 2.5 s" };
+  const { result, rows } = await go({ urls, state: [wasGood(urls[1])], http: (m, url) => (url === urls[0] ? timeout : page()) });
+  assert.equal(result.ok, true);
+  const row = rowFor(rows, urls[0]);
+  assert.equal(row.lastClass, "SLOW");
+  assert.equal(row.lastCheckedAt, null);
+});
+
+test("UNANSWERED: a suspect with no answer is not saved, so it stays a suspect and is read first again", async () => {
+  const urls = banks(2);
+  const suspect = wasGood(urls[0], { lastClass: "HARD", lastStatus: 0, lastCheckedAt: "2026-10-21T00:07:00.000Z" });
+  const timeout = { class: "timeout", status: 0, error: "no answer in 2.5 s" };
+  const { result, rows, log } = await go({ urls, state: [suspect, wasGood(urls[1])], http: (m, url) => (url === urls[0] ? timeout : page()) });
+  assert.equal(result.ok, true, "no answer is never red");
+  assert.equal(rowFor(rows, urls[0]), undefined);
+  assert.equal(callsTo(log, urls[0]), 1, "no second read for a read that never answered");
 });
 
 test("FIRST PASS: empty state, every link dead -> green, nothing raised, no second reads, state filled", async () => {
@@ -321,15 +381,15 @@ test("CONFIRM TIMING: a once-good Apply page is confirmed while other bank reads
     http: async (method, url) => {
       if (url === broken) {
         brokenReads += 1;
-        await sleep(brokenReads === 1 ? 100 : 2500);
+        await sleep(brokenReads === 1 ? 100 : 2000);
         return notFound();
       }
-      await sleep(4200);
+      await sleep(1800);
       return page();
     }
   });
   const took = Date.now() - t0;
-  assert.ok(took < 6000, `the real broken-link alert took ${took} ms`);
+  assert.ok(took < 4300, `the real broken-link alert took ${took} ms`);
   assert.equal(result.ok, false);
   assert.equal(result.step, "confirm");
   assert.match(result.detail, /BAD_URL 404/);
@@ -520,7 +580,7 @@ test("A hop the probe will not follow is SLOW, never a bad link, never red (live
 
 /* ---------------- time ---------------- */
 
-test("TIME: no new read starts after 4 s, a read is given up on at 4.5 s, and the beat finishes well before 12 s", { timeout: 20000 }, async () => {
+test("TIME: all reads start at once, a bank with no answer is cut at 2.5 s as unanswered, and the beat ends near 3 s", { timeout: 20000 }, async () => {
   const urls = banks(30);
   const hang = () => new Promise(() => {});
   const fake = (answers) => {
@@ -537,46 +597,77 @@ test("TIME: no new read starts after 4 s, a read is given up on at 4.5 s, and th
   const t0 = Date.now();
   const [a, b] = await Promise.all([runBeat(beat, some), runBeat(beat, none)]);
   const took = Date.now() - t0;
-  assert.ok(took >= 4400 && took < 8000, `took ${took} ms`);
+  assert.ok(took >= 2400 && took < 3300, `took ${took} ms (every first read ends by 3 s)`);
+  assert.ok(a.ms < 3300 && b.ms < 3300, `beat times ${a.ms} and ${b.ms} ms`);
 
   assert.equal(a.ok, true, a.detail);
-  // 20 lanes start; the 3 that answer at once start 3 more, which hang; then nothing new starts.
-  assert.equal(a.evidence.read, 23, "23 reads started, then no more");
-  assert.match(a.detail, /7 not started \(time\)/);
+  assert.equal(a.evidence.read, 30, "all 30 reads started together, none left waiting");
+  assert.doesNotMatch(a.detail, /not started/);
   assert.equal(a.evidence.counts.OK, 3);
-  assert.equal(a.evidence.counts.SLOW, 20, "the 20 that hung are SLOW, never red");
-  assert.ok(a.evidence.bankLinks.filter((r) => r.lastClass === "SLOW").every((r) => /no answer in 4\.5 s/.test(r.lastDetail)));
+  assert.equal(a.evidence.counts.SLOW, 27, "the 27 that hung are SLOW, never red");
+  assert.equal(a.evidence.unanswered, 27);
+  assert.match(a.detail, /27 gave no answer in time \(not an alarm\)/);
+  const slow = a.evidence.bankLinks.filter((r) => r.lastClass === "SLOW");
+  assert.equal(slow.length, 27);
+  assert.ok(slow.every((r) => /no answer in 2\.5 s/.test(r.lastDetail)), slow[0] && slow[0].lastDetail);
+  assert.ok(slow.every((r) => r.lastCheckedAt === null), "never read before: still first in line next hour");
   assert.equal(ctxLog(some).http.length, 3, "only the 3 that answered were logged");
 
-  // Nothing answered at all, from 20 different banks: the pulse is blind, not 20 slow banks.
+  // Nothing answered at all, from 30 different banks: the pulse is blind, not 30 slow banks.
   assert.equal(b.ok, false);
   assert.equal(b.step, "fetch");
-  assert.match(b.detail, /No bank page answered, not one of 20/);
+  assert.match(b.detail, /No bank page answered, not one of 30/);
 });
 
-test("TIME: no second read starts after 6 s, so a slow first phase never runs the beat into its 12 s deadline", { timeout: 20000 }, async () => {
+test("TIME: a second read must end by 4.2 s, so a slow first phase and a silent second read still end well under 6 s", { timeout: 20000 }, async () => {
   const urls = banks(21);
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  let calls = 0;
-  // The first 20 reads (all 20 lanes) answer after 3.9 s, call 1 with HARD. A lane that frees at 3.9 s (before the 4 s
-  // stop) starts read 21, which answers HARD after 4.4 s (under the 4.5 s limit). The first phase ends near 8.3 s.
-  const http = async () => {
-    const n = ++calls;
-    if (n <= 20) { await sleep(3900); return n === 1 ? gone() : page(); }
-    if (n === 21) { await sleep(4400); return gone(); }
-    return gone(); // a second read, if one ever started, would come back dead at once
+  const hang = () => new Promise(() => {});
+  const reads = new Map();
+  // Every first read answers late (2.4 s, just under the 2.5 s read limit). urls[0] answers 404 (a real answer, so its
+  // second read starts at once), urls[1] cannot connect (its second read starts after the first phase). Both
+  // second reads never answer.
+  const http = async (method, url) => {
+    const n = (reads.get(url) ?? 0) + 1;
+    reads.set(url, n);
+    if (n > 1) return hang();
+    await sleep(2400);
+    if (url === urls[0]) return notFound();
+    if (url === urls[1]) return gone();
+    return page();
   };
   const t0 = Date.now();
-  const { result, rows, log } = await go({ urls, state: urls.map((u) => wasGood(u)), http });
+  const { result, rows } = await go({ urls, state: urls.map((u) => wasGood(u)), http });
   const took = Date.now() - t0;
-  assert.ok(took >= 8000 && took < 11000, `took ${took} ms (the first phase should end near 8.3 s)`);
-  assert.equal(calls, 21, "21 first reads and NO second read after 6 s");
-  assert.equal(log.http.length, 21);
-  assert.equal(result.ok, true, `must not go red at confirm or deadline: ${result.step} ${result.detail}`);
+  assert.ok(took >= 4000 && took < 4500, `took ${took} ms (second reads end at 4.2 s)`);
+  assert.ok(result.ms < 4500, `beat time ${result.ms} ms`);
+  assert.equal(reads.get(urls[0]), 2, "the 404 got its second read");
+  assert.equal(reads.get(urls[1]), 2, "the dead connection got its second read");
+  assert.equal([...reads.values()].reduce((s, n) => s + n, 0), 23, "21 first reads and 2 second reads");
+  assert.equal(result.ok, true, `no answer to a second read is never red: ${result.step} ${result.detail}`);
   assert.match(result.detail, /2 broken not confirmed yet/);
   assert.equal(rows.length, 21, "every row learned is kept");
-  assert.equal(rows.filter((r) => r.lastClass === "HARD").length, 2, "both dead links are saved HARD, so they stay suspects and are read first next hour");
+  assert.equal(rowFor(rows, urls[0]).lastClass, "BAD_URL", "the first read stays on record: a suspect, read first next hour");
+  assert.equal(rowFor(rows, urls[1]).lastClass, "HARD");
   assert.equal(result.evidence.confirmed, undefined);
+});
+
+test("TIME: a real dead link that was good is still red, confirmed inside the time ends", { timeout: 20000 }, async () => {
+  const urls = banks(40);
+  const dead = urls[7];
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const http = async (method, url) => {
+    await sleep(url === dead ? 300 : 1200);
+    return url === dead ? notFound() : page();
+  };
+  const t0 = Date.now();
+  const { result, rows } = await go({ urls, state: urls.map((u) => wasGood(u)), http });
+  const took = Date.now() - t0;
+  assert.ok(took < 2000, `took ${took} ms`);
+  assert.equal(result.ok, false);
+  assert.equal(result.step, "confirm");
+  assert.match(result.detail, /BAD_URL 404/);
+  assert.equal(rowFor(rows, dead).lastClass, "BAD_URL");
 });
 
 /* ---------------- the saved list is empty: first pass, or not loaded? ---------------- */
