@@ -25,6 +25,18 @@ WHERE closed_at > now() - interval '90 days'
 GROUP BY 1, 2 ORDER BY breaks DESC;
 ```
 
+## 2026-10-21 — apply-links (ship proof timing) — timeout_or_capacity
+- Cause: a ship needs every hourly beat under half its deadline (6 s of 12 s). apply-links read 40 bank pages in two waves of 20 and gave each read 4.5 s. About 2 of every 100 bank reads never answer, so about every other run waited the full 4.5 s on one bank. Live runs took 2.0 to 5.9 s; on the GitHub runner it took 6.4 s (run 39645331437) and the ship stopped.
+- Fix: all 40 reads start together, and every phase has a hard end from the start of the beat: first reads end by 3 s (at most 2.5 s each), second "is it really dead?" reads by 4.2 s (src/pulse/beats/lib/bank-classify.mjs TIMING, readBudgetMs). A bank with no answer in time is unanswered, never broken: it keeps its old date and is read again first next hour; a second silence in a row is saved SLOW and goes to the back (unansweredRow). Still 40 links a run; the deadline and the half-deadline rule are unchanged.
+- Guard added: src/pulse/beats/beat-apply-links.test.mjs TIME tests (a hung bank ends the beat near 3 s; a silent second read ends it by 4.5 s; a real dead link is still red) and UNANSWERED tests; src/pulse/beats/lib/bank-classify.test.mjs pins TIMING (confirmEndMs at most 4.5 s) and all reads starting together.
+- Incident: none (a ship proof stop, not an hourly incident)  PR: claude/apply-links-speed-2026-10-21
+
+## 2026-10-21 — apply-links — bank_site_changed
+- Cause: two banks moved their card pages. Blue Ridge Bank rebuilt its site (old page 404 since 2026-10-19); Landmark National Bank took its business credit card off its site (old page 404 since 2026-10-20, home page names no credit card).
+- Fix: db/migrations/502_bank_apply_links_2026_10_21.sql. Blue Ridge points at its new Business Credit Cards page; Landmark's Apply address is cleared and the bank kept (the fix guide rule). Green at the 18:07 UTC hourly run.
+- Guard added: src/lenders/bank-apply-links-2026-10-21.test.mjs and .pg.test.mjs (the pulse's own judges read the old answers BAD_URL and the new page OK; the update only fires while the dead address is still there).
+- Incident: not closed from here (no pulse_incidents write in this session)  PR: https://github.com/ZootimusMaximusSupreme/fundhub-platform/pull/95
+
 ## 2026-10-21 — ads-metrics-false-zeros (Meta numbers pull) — vendor_changed
 - Cause: Meta started answering spend, impressions and clicks with "0" when one many-day, day-by-day request also asks for actions, link clicks or any *_actions field. The nightly pull saved those zeros over 12 days of real spend (2026-09-26 to 2026-10-07) and said ok, because a 0 looks like a real number.
 - Fix: the sync asks for the money on its own and the rest in a second request, joined on ad + day; money comes only from the first answer, and a day whose other half was cut off is held back, never written as 0 (api/campaigns/sync.mjs, fetchInsightPull / mergeInsightRows). The live rows heal at the next nightly pull after the ship (its 28 days reach back to 09-23).
