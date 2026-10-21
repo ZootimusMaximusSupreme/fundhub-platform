@@ -28,11 +28,12 @@ Source of the ids: today's 6:02 a.m. scorecard (`pulse_scorecards` 2026-10-20), 
 
 | # | Unit | Ids | Owner | Status |
 |---|---|---|---|---|
-| W0 | Quiet-until-first-result for 9 "no saved receipt" controls; Braum owner hold; Needs-Chris list | 9 display rows + 7 Braum rows + 4 vendor rows | this session | claimed |
-| W1 | Records data rows: which failing rows are fake, which are real | 12 | agent `records-data` | claimed |
-| W2 | Staff data rows: which failing rows are fake, which are real | 13 | agent `staff-data` | claimed |
-| W3 | Staff page breaks: Closer Deck / Credit Snapshot links, private leads page, climate map | 5 | agent `staff-pages` | claimed |
-| W4 | Jobs: ClickFunnels night job, desk sweep age, inquiry-call-sweeper practice run | 3 | agent `jobs` | claimed |
+| W0 | Quiet rule for first-batch controls; Braum owner hold; reset-link and demo-brand checks; Needs-Chris list | 20 | this session | done — branch `claude/hungry-clarke-3e9917` |
+| W1 | Records data rows: which failing rows are fake, which are real | 12 | agent `records-data` | done — notes `w1-records-data-2026-10-20.md` |
+| W2 | Staff data rows: which failing rows are fake, which are real | 13 | agent `staff-data` | done — notes `w2-staff-data-2026-10-20.md` |
+| W3 | Staff page breaks: Closer Deck / Credit Snapshot links, private leads page, climate map | 5 | agent `staff-pages` | done — PR #105 |
+| W4 | Jobs: ClickFunnels night job, desk sweep age, inquiry-call-sweeper practice run | 3 | agent `jobs` | done — PR #103 |
+| W6 | Staff product fixes: Drive file names read as client ids (+ migration), reset-link stamp, empty belief flags | 3 | agent `staff-fixes` | claimed |
 | W5 | Not-checked + keys + template list: meta-server-events, pipe-cut-with-traffic, keys-live-proof, SQL-seeded template keys, audit:not-checked | 5 | agent `notchecked-keys` | claimed |
 
 ## Ids by unit
@@ -61,11 +62,33 @@ gap-catalog-flow:flow:message:template-copy:SQL-seeded-only-keys-not-in-doc-sour
 
 ## Needs Chris
 
-(filled by W0 once each item is verified)
+Verified live, read-only, 2026-10-20 evening. Each is one decision only Chris can make.
+
+1. **4 stuck video uploads (Sept 24):** SLO Portal Welcome Take 1, SLO VSL 1 Open, SLO VSL 1 Middle, SLO VSL 2 Booking (`ad_videos` b7e7b61e, f692a218, 802c10d5, 2d6b83eb). Pick one: (a) clear them and leave the takes failed — no cost; (b) upload again — spends 4 Submagic uploads; (c) drop them if re-filmed. Rows: `gap-door-batch-jobs:door-batch:ad-video-worker-result`, `gap-door-batch-webhooks:door-batch:webhook-ad-video-worker`.
+2. **Delete the Aug 16 belief flag** `f248a8af` (filed by Chris, "pain this period 0 vs last 0", no lead source)? yes/no. Row: sales-floor `Flag <belief>`. (W6 blocks new empty flags.)
+3. **Delete 2 old hand-made reset links** for affiliate David Ramirez (Sep 29, 7 days long, `f1732962`, `747f6546`)? yes/no. No code makes these. If no, the row stays red until Dec 28. Row: staff-teams `Reset password`.
+4. **Desk sweep:** OK to run `node scripts/live-playwright-sweep.mjs` on the Mac (it signs into the live staff desks with the test staff login) and install the nightly job from PR #103? yes/no. Row: `live-playwright:desks` (last run 303 h ago).
+5. **Booking page hosts:** Justice Nikkel and Sarah Blankstein are 13 days past due to join the booking page. Only a ClickFunnels team admin can add a host. Pick: more days, drop the ask, or add them. Row: `closer-setup:calendar-late`.
+6. **client@fundhub.ai bounces:** the App Store review login (FH-000844) got 2 sign-in emails that bounced (Oct 18, Oct 20). fundhub.ai mail is Google Workspace. Add client@fundhub.ai as a user or alias: https://admin.google.com/ac/users . Row: `gap-catalog-flow:flow:message:manual-proof:comms-map-2026-09-19` (goes red at 6:02 a.m. tomorrow).
+7. **Delete fake data:** already yes. Extra rows the client delete misses were sent to `delete-fake-data` (5 events with no client; Oct 12 staff-tool fixtures). Rows that clear when those go: `calls:booked-no-outcome`, `calls:booking-webhook`, creative-factory ×5, social-studio `Who approves posts`, `documents:cannot-open`.
+
+Owner calls applied (recorded, not re-asked): Braum FH-000507 is on owner hold (owner 2026-10-09 "dont worry about bram", 2026-10-20 no-contact/no-change), list in `src/pulse/owner-holds.mjs`. Lendflow paused (B8), bureau calls and Meta sync future (B6), bureau numbers in the caller scripts (B7) — already on main from PR #97.
 
 ## Change manifests
 
 (each workflow appends its manifest here when done)
+
+### W0 manifest (this session, branch `claude/hungry-clarke-3e9917`)
+
+- `src/pulse/owner-holds.mjs` (new) + `src/pulse/owner-holds.test.mjs` (new, 15 tests both ways): the owner's hold list (FH-000507).
+- `src/pulse/na-conditions.mjs` (+ test): new lane code `owner-hold`.
+- `src/pulse/coverage/gap-fulfillment.mjs`, `gap-repair.mjs`, `gap-pipeline-boards.mjs`: when the only late file is held, the row is "nothing to judge" / `owner-hold`, re-checked by the lane (57-156 ms live); any other late file is red by name. `gap-trip-repair.mjs`: green with the hold named (its read is too heavy for the audit clock, same reason as judgeTrip's empty trip).
+- `src/pulse/catalog/proofs/fin-b07-sql-repair.mjs`, `fin-b07-display-contracts.mjs`, `src/pulse/coverage/gap-catalog-display.mjs`: the 12 repair stage columns leave held files out and say so on the green line.
+- `src/pulse/catalog/proofs/display-saved-result.mjs` (+ `display-saved-result-quiet.test.mjs`): owner rule 2026-10-14 `emptyAs: "quiet"` for helper suggestions, contract wording list, PDF boxes, CSM answers (the round and lender controls were done on main as `no-real-funding`).
+- `src/pulse/catalog/proofs/fin-b21-display-contracts.mjs` (+ test): reset-link check knows a link ended by a newer one is not a use.
+- `src/pulse/catalog/proofs/fin-b11-display-contracts.mjs` (+ test): brand approval check skips demo partners, like its siblings.
+- `src/pulse/catalog/generated.json` regenerated. No route, job, journey or screen changed.
+- Proof: `prove.mjs --repo` full morning on live data, read-only (22.3 s): every W0 row green or owner-hold; `audit:na-verified` 304 of 304 still true.
 
 ### W4 manifest (agent `jobs`, branch `claude/w4-jobs-2026-10-20`) — 3 ids, 2026-10-20 evening
 
@@ -101,3 +124,39 @@ Evidence read live, read-only (every query `BEGIN READ ONLY` + `ROLLBACK`; Click
 - Also seen (not mine, not touched): between 01:20 and about 01:52 UTC the Inngest minute/5-minute crons did not run (`message-dispatch-sweeper`, `inquiry-call-sweeper`,
   `pulse-instant-watch` last heartbeats 01:15-01:20 UTC at 01:56 UTC; `commas-inbox-drain` back at 01:52). 11 job rows were red from it in my lane run. Recheck.
 - Checks run: `node --test src/pulse/live-playwright-check.test.mjs scripts/live-playwright-launchd.test.mjs` 7/7; `node scripts/pulse/prove.mjs --repo --lanes=gap-door-batch-jobs` OK (no write, no step over 20 s).
+### W3 manifest (agent `staff-pages`, branch `claude/w3-staff-pages-2026-10-20`) — 5 ids, 2026-10-20 evening
+
+PR: https://github.com/ZootimusMaximusSupreme/fundhub-platform/pull/105 (commit e716b1199). Not merged, not shipped.
+Live reads before the change (`prove.mjs --repo --lanes=gap-catalog-display,gap-catalog-flow,gap-catalog-reads`, read-only, GET only): ids 1-3 PASS, ids 4-5 FAIL.
+
+1. `catalog-display:desks-a.json:client-control-panel.html:Quick launch links…` — already fixed on main (PR #97 / commit 781743160, `CLOSER_DECK` in
+   `public/app/shell.js`, live in d1de88a1). Live read now PASS for all 8 staff roles. No change.
+2. `catalog-display:desks-a.json:client-control-panel.html:More menu: Open Credit Snapshot link` — same, PASS live. No change.
+3. `catalog-display:public-pages.json:page:leads/<32-hex>/index.html…` — CLASS C. The 6:02 page was the real list the GitHub ship writes from
+   `PRIVATE_LEADS_PAGE_B64` (ship run 39419900845, deploy 6ad75b96…). Its only "send" is a tap-to-text link `a.href = 'sms:' + lead.phone;`.
+   Re-pointed the judge, not weakened: allows only plain `.href =` + a string that is only `sms:`/`tel:` (+ optional number) + at most one property
+   read + `; , ) }`. Body, second piece, web address, `+=`, other setter, call on the string, no closing mark, `mailto:` all stay red.
+   - Files: `src/pulse/coverage/fin-b07-leads-page.mjs` (`isPhoneLink`, `setsAnAddress`; lexer also returns `strings`),
+     `src/pulse/coverage/fin-b07-leads-page.test.mjs` (4 green shapes, 11 red shapes). 6:02 page judged offline: green.
+4. `gap-catalog-flow:flow:journey:journey:climate-lead-magnet-intended#2-reading-and-map` — CLASS A. The built chunk still inlined the Darwin pack's 5 boxes;
+   the 51 real us-atlas outlines in `public/climate/maps/us-states-paths.json` (since 10-18) were never read by the page.
+   - Files: `public/climate/_next/static/chunks/375-9c2ed26a6c945538.js` (those exact outlines inlined; viewBox `0 0 400 340` -> `0 0 975 610`, the us-atlas
+     frame; no style change). Tests that pinned "red today" now hold the shipped page green and the same page with the 5 boxes put back red:
+     `src/pulse/catalog/proofs/fin-b22-page-reads.test.mjs`, `src/pulse/catalog/proofs/fin-b27-h-read-contracts.test.mjs`, `src/pulse/coverage/gap-catalog-flow.test.mjs`.
+   - Proof: real climate judge on the patched page (local server, live `/api/climate` GET passthrough) PASS "draws all 51"; `e2e/live-climate.spec.mjs`
+     desktop + phone 2/2 on the patched page; 51 paths drawn.
+5. `gap-catalog-reads:catalog-read:climate-map` — same cause and fix as 4. Goes green on the live site after the next ship.
+- Checks: 11 related test files pass; `npm run lint` clean (4111 files); `npx tsc --noEmit` clean.
+- Leftover cards (not fixed): (a) which leads page is live flips with who ships — a GitHub ship writes the real list from the secret, a Mac/worktree ship
+  writes the empty shell from the repo (live right now); the main checkout's untracked copy loads `icloud-leads.js` and has other columns (red if shipped).
+  (b) Codex/design: on desktop the climate map card is ~15 px shorter than the map, so the bottom edge of Hawaii is covered.
+  (c) `docs/journeys/` has no `climate-lead-magnet-actual.md`, so no actual journey was updated.
+
+## Leftover cards (not fixed; one line each)
+
+- ClickFunnels night job: lists only `active` connections, so one failed pull stops it; per-account errors are swallowed so the heartbeat reads ok (W4).
+- Private leads page: which page goes live flips with who ships (GitHub ship = real list from the secret; Mac ship = empty shell) (W3).
+- Codex design card: on desktop the climate map card is about 15 px too short and covers the bottom of Hawaii (W3).
+- Bookings: no-shows never reach a re-keyed booking (`comms.mjs:452`, `dpc-02-call-outcome-enforcement.mjs:82`) (W1).
+- money-vault upload check reads a re-upload of the same bytes as a shared file (W1).
+- All Inngest crons stopped at 01:20 UTC (message dispatch, the 5-minute watch); told the coordinator at 02:05 UTC.
