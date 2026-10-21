@@ -55,18 +55,19 @@ test("the shift list is frozen, and shiftBeats refuses a job with no shift", () 
     assert.ok(Object.isFrozen(SHIFTS[job].beats));
     assert.equal(shiftBeats(job), SHIFTS[job].beats);
   }
-  assert.throws(() => shiftBeats("pulse-hourly-d"), /no hourly shift is named "pulse-hourly-d"/);
+  assert.throws(() => shiftBeats("pulse-hourly-e"), /no hourly shift is named "pulse-hourly-e"/);
   assert.throws(() => shiftBeats("toString"), /no hourly shift/);
 });
 
-test("three shifts: pulse-hourly at minute 7, pulse-hourly-b at 37, pulse-hourly-c at 52, each hourly, on its own minute", () => {
-  assert.deepEqual([...SHIFT_JOBS], ["pulse-hourly", "pulse-hourly-b", "pulse-hourly-c"]);
+test("four shifts: pulse-hourly at minute 7, -d at 22, -b at 37, -c at 52, each hourly, a quarter hour apart", () => {
+  assert.deepEqual([...SHIFT_JOBS], ["pulse-hourly", "pulse-hourly-b", "pulse-hourly-c", "pulse-hourly-d"]);
   assert.equal(SHIFTS["pulse-hourly"].cron, "7 * * * *");
   assert.equal(SHIFTS["pulse-hourly-b"].cron, "37 * * * *");
   assert.equal(SHIFTS["pulse-hourly-c"].cron, "52 * * * *");
+  assert.equal(SHIFTS["pulse-hourly-d"].cron, "22 * * * *");
   const minutes = SHIFT_JOBS.map((job) => Number(SHIFTS[job].cron.split(" ")[0]));
   assert.equal(new Set(minutes).size, minutes.length, "no two shifts start on the same minute");
-  assert.deepEqual([...minutes].sort((a, b) => a - b), minutes, "SHIFT_JOBS is in schedule order");
+  assert.deepEqual([...minutes].sort((a, b) => a - b), [7, 22, 37, 52], "the shifts are a quarter hour apart");
   for (const job of SHIFT_JOBS) {
     const { cron } = SHIFTS[job];
     assert.equal(cronIntervalMs(cron), 3600 * 1000, `${job} runs once an hour, so every beat still runs once an hour`);

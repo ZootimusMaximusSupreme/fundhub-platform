@@ -6,7 +6,7 @@
 //   npm run pulse:prove -- --repo       skip the build, run from this checkout (faster, less true)
 //   npm run pulse:prove -- --lanes=gap-sms,gap-email
 //   npm run pulse:prove -- --beats      the HOURLY pulse: build every hourly shift (netlify/functions/pulse-hourly.mjs,
-//                                       pulse-hourly-b.mjs, pulse-hourly-c.mjs) the way Netlify does, unzip them, and
+//                                       pulse-hourly-b.mjs, -c.mjs, -d.mjs) the way Netlify does, unzip them, and
 //                                       run each shift's beats from inside the bundle, one shift after the other, each
 //                                       in its own budget
 //                                       (see proveBeats() at the bottom)
@@ -333,7 +333,8 @@ function guardedFetch() {
 /* =====================================================================================================
    --beats : prove the HOURLY pulse from a built bundle, against live data, READ ONLY.
 
-   WHAT RUNS. Every hourly shift function (pulse-hourly at minute 7, pulse-hourly-b at 37, pulse-hourly-c at 52; the
+   WHAT RUNS. Every hourly shift function (pulse-hourly at minute 7, pulse-hourly-d at 22, pulse-hourly-b at 37,
+   pulse-hourly-c at 52; the
    literal SHIFT_FUNCTIONS list below) is built the way
    Netlify builds them (same bundler, same netlify.toml settings), unzipped, and src/pulse/runner.mjs is imported from
    INSIDE an unzipped folder. Every beat must be in exactly one shift (src/pulse/beats/shifts.mjs), and each
@@ -412,7 +413,9 @@ async function proveBeats() {
   const href = (dir, rel) => pathToFileURL(path.join(dir, rel)).href;
   /* The hourly shift functions and the schedule each must have. src/pulse/beats/shifts.mjs must name exactly these,
      in this order; each function must run exactly its shift. */
-  const SHIFT_FUNCTIONS = Object.freeze([["pulse-hourly", "7 * * * *"], ["pulse-hourly-b", "37 * * * *"], ["pulse-hourly-c", "52 * * * *"]]);
+  const SHIFT_FUNCTIONS = Object.freeze([
+    ["pulse-hourly", "7 * * * *"], ["pulse-hourly-b", "37 * * * *"], ["pulse-hourly-c", "52 * * * *"], ["pulse-hourly-d", "22 * * * *"]
+  ]);
   let rootFn = REPO;
   const shiftRoots = new Map(SHIFT_FUNCTIONS.map(([job]) => [job, REPO]));
   let rootWatch = REPO;

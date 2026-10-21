@@ -15,8 +15,8 @@
 //            org, open incidents,                    three shared-queue workers            cannot start later      best effort
 //            last results, bank links                                                     than 16 s from entry
 //
-// SHIFTS (2026-10-20, a third on 2026-10-21). Three scheduled functions call this runner, each with `only` set to its
-// own shift from src/pulse/beats/shifts.mjs (pulse-hourly at minute 7, pulse-hourly-b at 37, pulse-hourly-c at 52).
+// SHIFTS (2026-10-20, four on 2026-10-21). Four scheduled functions call this runner, each with `only` set to its own
+// shift from src/pulse/beats/shifts.mjs (pulse-hourly at minute 7, -d at 22, -b at 37, -c at 52).
 // Every beat is in exactly one shift, so the clock below is per shift: each gets the whole 13 s beat window and the
 // 22 s budget.
 //

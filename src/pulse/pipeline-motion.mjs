@@ -3,8 +3,10 @@
 
 import { CLIENT_TAGS, ESCALATED_TAG, isHardStopped, isStalled } from "../workflows/dpc-05-no-progress-escalation.mjs";
 import { NO_REAL_WATCHED_CLIENT_CODE } from "./real-funding.mjs";
+// The repair half (its stages, its SQL and its verdict) lives in the hourly beat's lib, so the morning
+// pulse and the hourly beat repair-trip judge pipeline:repair with the same code (one judge, two clocks).
+import { REPAIR_STUCK_SQL, REPAIR_STUCK_STAGES, judgeRepairMotion } from "./beats/lib/repair-motion-truth.mjs";
 
-const REPAIR_STUCK_STAGES = Object.freeze(["stalled", "letters_generated", "ready_to_send", "response_received"]);
 const OUTBOUND_STUCK_MINUTES = 30;
 
 function row(id, status, detail, suggestedFix = null, customerSees = null, na = null) {
@@ -16,15 +18,7 @@ export async function readPipelineMotionCounts(db, { orgId, now = new Date() } =
     return { ok: false, reason: "no_db", repair_stuck: 0, client_stalled: 0, client_watched: 0, outbound_stuck: 0 };
   }
   const [repair, outbound, clients] = await Promise.all([
-    db.query(
-      `SELECT count(*)::int AS n
-         FROM cards c
-         JOIN pipeline_stages ps ON ps.id = c.stage_id
-         JOIN pipelines p ON p.id = c.pipeline_id AND p.key = 'optimization'
-        WHERE c.org_id = $1::uuid
-          AND ps.key = ANY($2::text[])`,
-      [orgId, REPAIR_STUCK_STAGES]
-    ),
+    db.query(REPAIR_STUCK_SQL, [orgId, REPAIR_STUCK_STAGES]),
     db.query(
       `SELECT count(*)::int AS n
          FROM messages
@@ -71,17 +65,7 @@ export async function checkPipelineMotion({ db, orgId, now = new Date() } = {}) 
   }
   const n = await readPipelineMotionCounts(db, { orgId, now });
   const out = [];
-  if (n.repair_stuck > 0) {
-    out.push(row(
-      "pipeline:repair",
-      "FAIL",
-      `${n.repair_stuck} repair file${n.repair_stuck === 1 ? "" : "s"} need staff (stuck stage or letters waiting).`,
-      "Open Repair desk and work the stuck queue. Do not auto-fix from this pulse.",
-      "A repair client may be waiting on letters or a bureau answer with no one moving their file."
-    ));
-  } else {
-    out.push(row("pipeline:repair", "PASS", "no repair files in a stuck need-me stage"));
-  }
+  out.push(judgeRepairMotion(n.repair_stuck));
   if (n.client_stalled > 0) {
     out.push(row(
       "pipeline:clients",

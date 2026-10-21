@@ -102,3 +102,20 @@ on `ops/workflows/hourly-beats-capacity-2026-10-14.md` (option 3) is two schedul
 
 All four start from W3's branch. W5-W7 never edit the runner, pulse-hourly function or prove.mjs (W4 owns them);
 they append to `src/pulse/beats/index.mjs` only. Merge order: W3 → W4 → W5/W6/W7, catalog regenerated at each merge.
+
+## Status 2026-10-21 ~06:00 UTC
+
+- PR #102 merged (490185e2), 28/28 green. Sent to the coordinator to ship.
+- Money 17: 16 GREEN or verified N/A live (after #102 ships), 1 left: `catalog:hourly-proof-linked`.
+- Hourly beats: W3 23, W5 12, W6 19, W7 24 surfaces closed (78 of 85). Integration branch
+  `claude/money-hourly-beats-2026-10-21` (worktree `.claude/worktrees/money-hourly-beats`) holds W3+W4+W5+W6.
+  W7 joins after PR #107 merges (W7 carries #107).
+- Clashes settled at merge: gap-leads (main's Meta-sync change ported into beats/lib/lead-truth.mjs);
+  gap-keys (W5 + W6 moves combined, one copy of the setting helpers).
+- Two shifts are too tight once all new beats land (~30 s more box time; ship's `pulse:prove --beats`
+  would block every ship if a beat is cut). W4 is adding a third shift and rebalancing.
+- W8 (agent) is covering the last 7 surfaces: progress page + route, money helper desk + route,
+  money-banks desk, sales floor, documents upload — by moving code into beats/lib, no copies.
+- Leftovers seen, not mine: apply-links beat red (one bank Apply link www.mybrb.bank 404 again);
+  `consent:dispute-required` red live (1 repair client, no signed authorization); main checkout's
+  `node_modules/node_modules` self-link breaks bundling/browser tests in worktrees that copy it.

@@ -62,6 +62,9 @@ test("netlify.toml schedules the timed jobs this test covers", () => {
     /* Added 2026-10-21 (hourly capacity, fix 4). Shift C of the hourly pulse: the same runner, the third share of
        the beats, at minute 52. With no DATABASE_URL it does nothing at all. */
     "pulse-hourly-c",
+    /* Added 2026-10-21 (hourly capacity, fix 4). Shift D of the hourly pulse: the same runner, the fourth share of
+       the beats, at minute 22. With no DATABASE_URL it does nothing at all. */
+    "pulse-hourly-d",
     /* Added 2026-10-09 (outside watch). Every 5 minutes on Netlify's clock: runs the engine-alive beat
        and texts Chris if the 5-minute alarms stopped. With no DATABASE_URL it does nothing at all. */
     "pulse-outside-watch",

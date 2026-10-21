@@ -81,15 +81,15 @@ flowchart TD
     CRIT -->|No| NOW["Text Chris now<br/>at most once an hour per break"]
 ```
 
-The two pulse clocks close a circuit. The hourly pulse checks that the 5-minute workflow clock is alive. The 5-minute instant watch reads the newest receipt of each hourly shift (`pulse-hourly`, `pulse-hourly-b` and `pulse-hourly-c`). If either shift has not returned a receipt for more than three hours, `pulse:runner-stale` goes red, names that shift, and uses the instant watch's owner alert. Before a shift's first receipt ever exists, it waits for that shift instead of inventing a pass or a break.
+The two pulse clocks close a circuit. The hourly pulse checks that the 5-minute workflow clock is alive. The 5-minute instant watch reads the newest receipt of each hourly shift (`pulse-hourly`, `pulse-hourly-b`, `pulse-hourly-c` and `pulse-hourly-d`). If either shift has not returned a receipt for more than three hours, `pulse:runner-stale` goes red, names that shift, and uses the instant watch's owner alert. Before a shift's first receipt ever exists, it waits for that shift instead of inventing a pass or a break.
 
 ## The hourly pulse (added 2026-10-09)
 
-Every hour three small Netlify scheduled functions (outside Inngest, so they run even if Inngest is down) test the company on purpose. **Shifts (two on 2026-10-20, three on 2026-10-21):** the beats no longer fit one run's 13 s window, so they are split in one literal list, `src/pulse/beats/shifts.mjs`. `netlify/functions/pulse-hourly.mjs` runs shift A at minute 7, `netlify/functions/pulse-hourly-b.mjs` runs shift B at minute 37 and `netlify/functions/pulse-hourly-c.mjs` runs shift C at minute 52. A beat whose file has not landed waits on `PENDING_SHIFT_BEATS` with its shift. Every beat is in exactly one shift (a test and the ship proof fail otherwise), so each beat still runs once an hour, and each shift gets its own 13 s window and 22 s budget. The pulse is the **read-only half**: each beat reads data through one of three boxes where Postgres itself refuses writes, and reads the web with GET and HEAD only. A beat cannot save, send or call a vendor with a write.
+Every hour four small Netlify scheduled functions (outside Inngest, so they run even if Inngest is down) test the company on purpose. **Shifts (two on 2026-10-20, four on 2026-10-21):** the beats no longer fit one run's 13 s window, so they are split in one literal list, `src/pulse/beats/shifts.mjs`. `netlify/functions/pulse-hourly.mjs` runs shift A at minute 7, `netlify/functions/pulse-hourly-d.mjs` runs shift D at minute 22, `netlify/functions/pulse-hourly-b.mjs` runs shift B at minute 37 and `netlify/functions/pulse-hourly-c.mjs` runs shift C at minute 52. A beat whose file has not landed waits on `PENDING_SHIFT_BEATS` with its shift. Every beat is in exactly one shift (a test and the ship proof fail otherwise), so each beat still runs once an hour, and each shift gets its own 13 s window and 22 s budget. The pulse is the **read-only half**: each beat reads data through one of three boxes where Postgres itself refuses writes, and reads the web with GET and HEAD only. A beat cannot save, send or call a vendor with a write.
 
 ```mermaid
 flowchart TD
-    CLOCK["Every hour, three shifts (src/pulse/beats/shifts.mjs)<br/>pulse-hourly at minute 7, pulse-hourly-b at 37, pulse-hourly-c at 52<br/>each runs only its own beats, same runner"] --> PRE["Prefetch: default org, open incidents,<br/>last results, saved bank links (2 s)"]
+    CLOCK["Every hour, four shifts (src/pulse/beats/shifts.mjs)<br/>pulse-hourly :07, pulse-hourly-d :22, pulse-hourly-b :37, pulse-hourly-c :52<br/>each runs only its own beats, same runner"] --> PRE["Prefetch: default org, open incidents,<br/>last results, saved bank links (2 s)"]
     PRE --> BOX["Open up to 3 read boxes<br/>never more boxes than beats<br/>BEGIN READ ONLY, staff scope, always rolled back"]
     BOX --> BEATS["Three workers pull this shift's beats from one shared queue<br/>each beat gets its own deadline when it starts<br/>13 s phase inside the 22 s run"]
     BEATS --> B1["apply-links<br/>40 bank Apply pages an hour"]
@@ -112,7 +112,7 @@ flowchart TD
     B9 --> DECIDE
     DECIDE --> TEXT["TEXT FIRST (6 s): Chris, and ntfy if the text fails"]
     TEXT --> REC["Then save (2.5 s): pulse_beats, pulse_incidents, pulse_bank_links"]
-    REC --> BEAT["job heartbeats pulse-hourly, pulse-hourly-b, pulse-hourly-c<br/>each red at the 6 a.m. check if it stops for 3 hours"]
+    REC --> BEAT["job heartbeats pulse-hourly, -b, -c, -d<br/>each red at the 6 a.m. check if it stops for 3 hours"]
     DECIDE -.->|database down| FALL["No state: text every hour while red"]
 ```
 

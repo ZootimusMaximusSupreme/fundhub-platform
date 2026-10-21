@@ -25,8 +25,8 @@ export const CRITICAL_CHECK_IDS = Object.freeze([
   "pulse:runner-stale"
 ]);
 
-/* The hourly pulse runs in shifts (src/pulse/beats/shifts.mjs): pulse-hourly, pulse-hourly-b and pulse-hourly-c,
-   each with its own share of the beats. Any one going quiet leaves its beats unrun, so the circuit closes only when
+/* The hourly pulse runs in shifts (src/pulse/beats/shifts.mjs): pulse-hourly, pulse-hourly-b, pulse-hourly-c and
+   pulse-hourly-d, each with its own share of the beats. Any one going quiet leaves its beats unrun, so the circuit closes only when
    every shift that has ever run left a fresh receipt. */
 export const PULSE_RUNNER_JOBS = SHIFT_JOBS;
 

@@ -759,6 +759,21 @@ test("staff-reset-link: a link of 55 and of 65 minutes is fine, 49 and 71 are re
   assert.equal(at(71).bad_count, 1);
 });
 
+test("staff-reset-link: an expired link stamped when a newer link was made is ended, not used; a late use is red", () => {
+  const spec = SPEC.get("staff-reset-link");
+  const st = person();
+  const stampedAt = HOURS_AGO(5);
+  const ended = runRows(spec, [R("staff", st),
+    R("password_resets", link(st, { created_at: HOURS_AGO(10), expires_at: HOURS_AGO(9), used_at: stampedAt })),
+    R("password_resets", link(st, { created_at: new Date(Date.parse(stampedAt) + 61).toISOString(),
+      expires_at: new Date(Date.parse(stampedAt) + 61 + 3_600_000).toISOString(), used_at: null }))]);
+  assert.equal(ended.bad_count, 0);
+  const late = runRows(spec, [R("staff", st),
+    R("password_resets", link(st, { created_at: HOURS_AGO(10), expires_at: HOURS_AGO(9), used_at: stampedAt })),
+    R("password_resets", link(st, { created_at: HOURS_AGO(3), expires_at: HOURS_AGO(2), used_at: null }))]);
+  assert.equal(late.bad_count, 1);
+});
+
 test("staff-new-person: a 7 day invite is fine to the minute, and a 6 day one is red", () => {
   const spec = SPEC.get("staff-new-person");
   const st = person({ status: "invited" });

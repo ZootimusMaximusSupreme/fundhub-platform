@@ -226,6 +226,12 @@
 [functions."pulse-hourly-c"]
   schedule = "52 * * * *"
 
+# The hourly pulse, shift D: the fourth share of the beats, at minute 22, through the same runner.
+# Every beat is in exactly one shift (src/pulse/beats/shifts.mjs), so each still runs once an hour.
+# SWEEP_CRON in netlify/functions/pulse-hourly-d.mjs must match, and so must its cron in shifts.mjs.
+[functions."pulse-hourly-d"]
+  schedule = "22 * * * *"
+
 # The outside watch: every 5 minutes, runs ONE beat (engine-alive) through the same runner and texts Chris
 # if the 5-minute alarms stopped. Netlify's clock keeps ticking when the workflow engine stalls.
 # SWEEP_CRON in netlify/functions/pulse-outside-watch.mjs must match.

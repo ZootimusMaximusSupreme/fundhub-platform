@@ -1,12 +1,14 @@
-// The three hourly shifts: which scheduled function runs which beat.
+// The four hourly shifts: which scheduled function runs which beat.
 //
 // WHY SHIFTS (ops/workflows/hourly-beats-capacity-2026-10-14.md, fixes 3 and 4). One run gives the beats three read
 // boxes for 13 s (39 s of box time) inside a 22 s run, and Netlify cuts the function at about 30 s. 26 beats already
 // used 23 to 30 s of that box time, and with 120 ms of network delay per round trip 8 of them were cut. So on
-// 2026-10-20 the beats were split in two. By 2026-10-21 there were 37 beats and 6 more waiting (about 65 s of box
-// time in all), too much for two shifts, so there are three:
+// 2026-10-20 the beats were split in two. On 2026-10-21 there were 43 beats: about 67 s of box time in a normal run
+// and about 114 s with 120 ms added per round trip. Three shifts (117 s) cannot hold the delayed run, so there are
+// four, a quarter hour apart (156 s):
 //
 //   pulse-hourly     minute 7    netlify/functions/pulse-hourly.mjs
+//   pulse-hourly-d   minute 22   netlify/functions/pulse-hourly-d.mjs
 //   pulse-hourly-b   minute 37   netlify/functions/pulse-hourly-b.mjs
 //   pulse-hourly-c   minute 52   netlify/functions/pulse-hourly-c.mjs
 //
@@ -45,13 +47,18 @@
 //
 // THE BALANCE (2026-10-21, balanced by time, not by count). Box time = the sum of each beat's own time; each shift
 // has 3 boxes x 13 s = 39 s. The Mac's load average was 100 to 280 from other sessions, so Mac timings are noisy.
-// The estimate below uses, for a beat that is live, its live p90 (pulse_beats, last 24 hours); for a beat not live
-// yet, the time its builder measured on an unloaded Mac:
-//                    now (37 beats)              with the 6 pending beats (43)
-//   pulse-hourly     21.6 s (55%), 14 beats      21.6 s (55%), 14 beats
-//   pulse-hourly-b   18.3 s (47%), 17 beats      21.0 s (54%), 19 beats
-//   pulse-hourly-c   14.0 s (36%), 6 beats       22.3 s (57%), 10 beats
-// Measured runs are on the capacity board. Every shift stays under 60% of its box time with the pending beats in.
+// "Normal" uses, for a beat that is live, its live p90 (pulse_beats, last 24 hours); for a beat not live yet, the
+// time its builder measured on an unloaded Mac (or the Mac's own plain median when that was higher). "Delay" is this
+// Mac with --read-delay=120. "Window" is when the shift's last beat would end with 3 workers taking the beats in list
+// order (pipeline-boards left out of the delayed window: see below).
+//                    normal             delay              window normal / delay
+//   pulse-hourly     18.3 s (47%), 9    27.2 s (70%)       6.7 s / 9.1 s
+//   pulse-hourly-b   18.3 s (47%), 12   29.5 s (76%)       6.6 s / 10.3 s
+//   pulse-hourly-c   12.3 s (31%), 11   28.0 s (72%)       4.4 s / 10.2 s
+//   pulse-hourly-d   17.6 s (45%), 11   29.2 s (75%)       6.6 s / 6.2 s
+// Every shift is under 50% normal, and has about 20 s free for the next beats. pipeline-boards makes about 25 reads,
+// so 120 ms per round trip adds about 9 s on its own: it reaches its own 10 s deadline in the delayed proof in any
+// shift. That is the beat's read count, not the shift.
 //
 // NO IMPORTS. The 5-minute instant watch reads SHIFT_JOBS to check every shift left a fresh receipt.
 
@@ -62,15 +69,10 @@ export const SHIFTS = Object.freeze({
       "apply-links",
       "bank-links",
       "bank-outreach",
-      "consent-capture",
-      "contract-signing",
-      "db-health",
-      "engine-alive",
       "funding-trip",
-      "money-alerts",
       "money-funding",
+      "money-operations",
       "money-tasks",
-      "native-push",
       "partner-pages",
       "partner-trip"
     ])
@@ -78,53 +80,63 @@ export const SHIFTS = Object.freeze({
   "pulse-hourly-b": Object.freeze({
     cron: "37 * * * *",
     beats: Object.freeze([
-      "built-funnels",
+      "auth-links",
+      "call-bookings",
       "checkout-doors",
-      "doors-live",
-      "email-path",
-      "invoice-checkout-retirement",
-      "invoice-notice-recovery",
+      "client-portal",
+      "consent-capture",
+      "db-health",
       "lead-handoff",
       "lead-pipe",
+      "money-alerts",
       "money-checkout",
       "pay-links",
-      "pay-webhook",
-      "roadmap-delivery",
-      "roadmap-pages",
-      "soft-pull",
-      "text-path",
-      "vendor-keys",
-      "whop-billing"
+      "pay-webhook"
     ])
   }),
   "pulse-hourly-c": Object.freeze({
     cron: "52 * * * *",
     beats: Object.freeze([
-      "auth-links",
       "blueprint-delivery",
+      "built-funnels",
+      "contract-signing",
+      "email-path",
+      "inquiry-trip",
+      "message-health",
+      "native-push",
+      "repair-trip",
+      "text-path",
+      "vendor-keys",
+      "whop-billing"
+    ])
+  }),
+  "pulse-hourly-d": Object.freeze({
+    cron: "22 * * * *",
+    beats: Object.freeze([
       "brief-link",
-      "client-portal",
       "customer-records",
-      "money-operations"
+      "doors-live",
+      "engine-alive",
+      "invoice-checkout-retirement",
+      "invoice-notice-recovery",
+      "pipeline-boards",
+      "pipeline-facts",
+      "roadmap-delivery",
+      "roadmap-pages",
+      "soft-pull"
     ])
   })
 });
 
 /**
- * Beats whose files have not landed yet, and the shift each will join (W7, PR #107). NOT RUN and not counted: a
- * shift may only name a beat that is on BEAT_FILES. When a file lands, move its id from here into that shift.
- * shiftProblems() names the shift to use if a pending beat lands with no shift, and fails if an id is in both.
+ * Beats whose files have not landed yet, and the shift each will join: { "<beat id>": "<shift job>" }. NOT RUN and
+ * not counted: a shift may only name a beat that is on BEAT_FILES. When a file lands, move its id from here into that
+ * shift. shiftProblems() names the shift to use if a pending beat lands with no shift, and fails if an id is in both.
+ * Empty today: the six W7 beats that waited here landed on 2026-10-21 and are in their shifts.
  */
-export const PENDING_SHIFT_BEATS = Object.freeze({
-  "call-bookings": "pulse-hourly-b",
-  "message-health": "pulse-hourly-b",
-  "pipeline-boards": "pulse-hourly-c",
-  "pipeline-facts": "pulse-hourly-c",
-  "repair-trip": "pulse-hourly-c",
-  "inquiry-trip": "pulse-hourly-c"
-});
+export const PENDING_SHIFT_BEATS = Object.freeze({});
 
-/** The scheduled functions that run a shift, in schedule order. Each is a job in src/pulse/heartbeats.mjs. */
+/** The scheduled functions that run a shift: A, B, C, D (D runs at minute 22). Each is a job in src/pulse/heartbeats.mjs. */
 export const SHIFT_JOBS = Object.freeze(Object.keys(SHIFTS));
 
 /** The beat ids one scheduled function runs. Throws on a job that has no shift, so a typo cannot run nothing quietly. */

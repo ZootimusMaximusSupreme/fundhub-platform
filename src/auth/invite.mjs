@@ -96,10 +96,12 @@ export async function inviteStaff(db, { actor, email, name, role, orgId, ttl = I
     )).rows[0];
   }
 
-  // A fresh invite invalidates any earlier unused one for this person.
+  // A fresh invite invalidates any earlier unused one for this person. Only a link that is
+  // still alive is ended: one that already ran out stays as it is, so it never reads as
+  // "used" after it expired.
   await db.query(
     `UPDATE password_resets SET used_at = now()
-      WHERE staff_id = $1 AND kind = 'invite' AND used_at IS NULL`,
+      WHERE staff_id = $1 AND kind = 'invite' AND used_at IS NULL AND expires_at > now()`,
     [staff.id]
   );
 
@@ -133,7 +135,7 @@ export async function requestPasswordReset(db, { email, orgId, ttl = RESET_TTL_M
 
     await db.query(
       `UPDATE password_resets SET used_at = now()
-        WHERE staff_id = $1 AND kind = 'reset' AND used_at IS NULL`,
+        WHERE staff_id = $1 AND kind = 'reset' AND used_at IS NULL AND expires_at > now()`,
       [staff.id]
     );
 
@@ -158,7 +160,7 @@ export async function requestPasswordReset(db, { email, orgId, ttl = RESET_TTL_M
 
   await db.query(
     `UPDATE password_resets SET used_at = now()
-      WHERE account_id = $1 AND kind = 'reset' AND used_at IS NULL`,
+      WHERE account_id = $1 AND kind = 'reset' AND used_at IS NULL AND expires_at > now()`,
     [account.id]
   );
 

@@ -136,7 +136,7 @@ function shiftReceiptDb(lastAtByJob) {
   };
 }
 
-const SHIFT_IDS = ["pulse-hourly", "pulse-hourly-b", "pulse-hourly-c"];
+const SHIFT_IDS = ["pulse-hourly", "pulse-hourly-b", "pulse-hourly-c", "pulse-hourly-d"];
 
 test("backup pulse circuit reads a receipt for every hourly shift, and closes only when all are fresh", async () => {
   const now = new Date("2026-10-09T19:00:00.000Z");
@@ -147,10 +147,10 @@ test("backup pulse circuit reads a receipt for every hourly shift, and closes on
   const row = await checkPulseRunnerReceipt(db, { now });
   assert.deepEqual(db.asked, SHIFT_IDS);
   assert.equal(row.status, "PASS");
-  assert.match(row.detail, /^All 3 hourly pulse shifts left a fresh receipt/);
+  assert.match(row.detail, /^All 4 hourly pulse shifts left a fresh receipt/);
 });
 
-for (const job of ["pulse-hourly-b", "pulse-hourly-c"]) {
+for (const job of ["pulse-hourly-b", "pulse-hourly-c", "pulse-hourly-d"]) {
   test(`backup pulse circuit goes red when only ${job} stops, and names it`, async () => {
     const now = new Date("2026-10-09T19:00:00.000Z");
     const fresh = new Date(now.getTime() - 60 * 60 * 1000);
@@ -169,8 +169,8 @@ test("backup pulse circuit goes red when every shift stops, and names every one"
   const old = new Date(now.getTime() - PULSE_RUNNER_STALE_MS - 1);
   const row = await checkPulseRunnerReceipt(shiftReceiptDb(Object.fromEntries(SHIFT_IDS.map((job) => [job, old]))), { now });
   assert.equal(row.status, "FAIL");
-  assert.match(row.detail, /^The hourly pulse has not run for 3 h\. pulse-hourly-b has not run for 3 h either\. pulse-hourly-c has not run for 3 h either\./);
-  assert.equal(row.suggestedFix, "Check the pulse-hourly, pulse-hourly-b and pulse-hourly-c function log on Netlify.");
+  assert.match(row.detail, /^The hourly pulse has not run for 3 h\. pulse-hourly-b has not run for 3 h either\. pulse-hourly-c has not run for 3 h either\. pulse-hourly-d has not run for 3 h either\./);
+  assert.equal(row.suggestedFix, "Check the pulse-hourly, pulse-hourly-b, pulse-hourly-c and pulse-hourly-d function log on Netlify.");
 });
 
 test("a shift that has never run is not judged yet; before any shift has run there is nothing to judge", async () => {

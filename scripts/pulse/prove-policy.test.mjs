@@ -167,7 +167,7 @@ test("the hourly proof runs each shift on its own, the way the server runs it, a
   const hourly = source.slice(source.indexOf("async function proveBeats()"));
 
   // Every shift function is built and loaded from its own bundle, on its own schedule.
-  assert.match(hourly, /const SHIFT_FUNCTIONS = Object\.freeze\(\[\["pulse-hourly", "7 \* \* \* \*"\], \["pulse-hourly-b", "37 \* \* \* \*"\], \["pulse-hourly-c", "52 \* \* \* \*"\]\]\);/);
+  assert.match(hourly, /const SHIFT_FUNCTIONS = Object\.freeze\(\[\s*\["pulse-hourly", "7 \* \* \* \*"\], \["pulse-hourly-b", "37 \* \* \* \*"\], \["pulse-hourly-c", "52 \* \* \* \*"\], \["pulse-hourly-d", "22 \* \* \* \*"\]\s*\]\);/);
   assert.match(hourly, /rootFn = buildBundle\("netlify\/functions\/pulse-hourly\.mjs"\)/);
   assert.match(hourly, /for \(const \[job\] of SHIFT_FUNCTIONS\.slice\(1\)\) shiftRoots\.set\(job, buildBundle\(`netlify\/functions\/\$\{job\}\.mjs`\)\)/);
   assert.match(hourly, /entryModule\.SWEEP_CRON !== "7 \* \* \* \*"/);
