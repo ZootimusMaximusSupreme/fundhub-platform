@@ -1,0 +1,35 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "INPUT=$(cat); if command -v jq >/dev/null 2>&1; then P=$(echo \"$INPUT\" | jq -r '.tool_input.file_path // empty'); else P=$(echo \"$INPUT\" | grep -o '\"file_path\":\"[^\"]*' | cut -d'\"' -f4); fi; case \"$P\" in *-intended.md) echo '{\"decision\":\"block\",\"reason\":\"intended journey files are human-authored. If code needs a step not in the intended journey, stop and ask.\"}'; exit 2 ;; esac; exit 0"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "printf '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"MANDATORY FIRST STEP — CLAUDE.md section 0. State the workflow split, parallel work and dependencies, this session owner, and shared ops/workflows board. Put self-contained prompts on the board. OWNER RULE 2026-10-19: split, then do. Start available agents and proceed immediately; NEVER stop for split approval or repeat approval already given. If it cannot be split, explain in one line and continue. Ask only for an owner decision that genuinely blocks safe, in-scope work. Existing tool permissions, intended-journey protection, and production go-live rules remain unchanged. Branch: %s\"}}' \"$(git branch --show-current 2>/dev/null || echo unknown)\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"${CLAUDE_PROJECT_DIR:-.}\" || exit 0; [ ! -d node_modules ] && exit 0; [ ! -f package.json ] && exit 0; ! grep -q '\"lint\"' package.json && exit 0; FAIL=''; npm run lint --silent >/tmp/cc-lint.txt 2>&1 || FAIL=\"lint\"; if [ -f package.json ] && grep -q '\"typescript\"' package.json && command -v npx >/dev/null 2>&1; then npx tsc --noEmit >/tmp/cc-tsc.txt 2>&1 || FAIL=\"$FAIL typecheck\"; fi; if [ -n \"$FAIL\" ]; then echo '{\"systemMessage\":\"NOT DONE — failing: '$FAIL'. Fix before reporting complete.\"}'; exit 2; fi; exit 0"
+          }
+        ]
+      }
+    ]
+  }
+}
