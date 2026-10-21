@@ -60,7 +60,9 @@ test("497 carries exactly the copy the repo's SQL seeds produce", { skip: SKIP }
 async function setUp(client) {
   const org = await privateOrg(client);
   await client.query(org.sql);
-  const first = (await client.query(`SELECT ${FIELDS} FROM message_templates WHERE org_id = $1 ORDER BY template_key`, [org.id])).rows;
+  // Byte order, the same order buildRestoreSql sorts 497 in (a database collation like en_US mixes
+  // upper and lower case and puts payment_link_notice somewhere else).
+  const first = (await client.query(`SELECT ${FIELDS} FROM message_templates WHERE org_id = $1 ORDER BY template_key COLLATE "C"`, [org.id])).rows;
   assert.deepEqual(first, ROWS, "decoded rows match 497's JSON exactly");
   const gone = ["SMS-S00-WELCOME", "CONTRACT-SEND-EMAIL"];
   const edited = "EMAIL-S00-WELCOME";
