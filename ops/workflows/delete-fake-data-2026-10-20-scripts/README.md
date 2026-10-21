@@ -8,3 +8,4 @@ Run from this folder with Node. They connect as `fundhub_app` using `DATABASE_UR
 - `lib.cjs`: the shared foreign-key walk. `FAKE_SQL` decides who counts as fake.
 
 `plan-final.json` holds row ids only, no names or emails. It is the plan that was committed on 2026-10-20.
+- `plan2.cjs` / `exec2.cjs` / `plan2.json`: round 2 (client-less fake events + 2 test payments), same guards.

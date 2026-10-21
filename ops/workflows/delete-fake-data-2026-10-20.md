@@ -94,12 +94,34 @@ Backup: `credentials/backups/delete-fake-data-2026-10-20/` (gitignored), one JSO
 - Backup: `credentials/backups/delete-fake-data-2026-10-20/`, 51 files (47 deleted tables, 2 set-blank files, 1 affiliate, `manifest.json`), 827 rows, 1.1 MB.
 - Read-back, fresh connection: 0 planned rows left. Clients 124 → 24. Braum unchanged (last changed 2026-10-07). App Store client and its login (`client`, `active`) unchanged. The 75 rows tied to the kept clients, 265 tied to the held people and 736 tied to FH-000513 all match the plan. Staff 35. Funding rounds 0. Invoices 0. Bookings 15 (all held people). Templates 198, lenders 1,106, bank list 11,568, products 11, agents 29.
 
+## Round 2 — fake records with no client attached (committed 2026-10-20)
+
+The lanes found fake rows with no client link, so round 1 could not reach them. In scope here: fake leads, bookings, calls and rounds with no client, plus 2 test payments.
+
+- **Deleted: 793 events and 2 transactions**, in one committed transaction with the same guards. All 310 tables were counted before and after. 76 sets had the same fingerprint before and after: every client's rows, config, and all other events and payments.
+  - The events: entry.captured 429, survey.submitted 226, booking.created 56, booking.noshow 15, slo.contact_started 16, call.completed 10, slo.checkout_started 9, round.started 11, round.submitted 5 (the 4 demo seeds included), round.closeout 5, round.approved 4, round.funded 4, booking.cancelled 1 (and the `bk_pg1` fixture), repair.round.escalated 1, rb2b.visitor_identified 1.
+  - Rule: no client, and either flagged demo with no email, or every email inside is a test address. The test addresses are example.com, e2e+, Chris's own test addresses, `*+fhtest`, `demo+proof` and `info@fundhub.ai`.
+  - The 2 payments: `2b057970…` (gauntlet, bakerskater987+test) and `c3301a1f…` (ORD-SYNTH, test+crs@fundhub.ai). Both were $32, both had no client.
+- **Not deleted, on purpose:**
+  - 3 fake events that rows in the `failed_events` log point at. That log can never be deleted from, and blanking its link breaks its one-row-per-event rule.
+  - 564 client-less events that carry real-looking emails. These include August ClickFunnels bookings and surveys from the held people and from people who are not in `clients` at all. A lane called the August bookings fake. They are not proved fake.
+  - About 7,000 anonymous site events (funnel.*, slo.visit, slo.engagement). That is real traffic.
+  - FH-000567 and FH-000843 events: those clients are held.
+- Backup: `credentials/backups/delete-fake-data-2026-10-20/round2/` (795 rows).
+- Read-back: 0 planned rows left. Clients still 24. Braum unchanged. Transactions 6, events 8,899.
+
 ## Left over (not done here)
 
 1. **21 held real-looking people.** They need a yes or no from Chris. The same script removes them in one run if he says yes. Their 265 linked rows are ready to map.
 2. **FH-000513.** Kept because of the locked sandbox money transfer. It still owns 1,183 sandbox bank lines and FinanceOS sandbox data.
 3. **Test affiliate "payoutrun basic"** (made by the Oct 12 tests) is still an affiliate. It was out of scope (not a client).
 4. Fake data outside the client tree was not touched: raw webhook logs, `workflow_runs` and the `pulse_*` history. The app login has no delete right on those.
+5. Fake test data that is not a client, lead, booking or round. This is outside the brief, and the question went to the coordinator:
+   - about 1,100 other client-less fake events (message.queued, payment.*, deposit.paid, contract.*, docs.received and others)
+   - 32 test partners (the money lane lists them, and also says which one to keep)
+   - 4 fake Meta and 17 fake TikTok ad accounts, with their 9 ads, campaigns, ad sets and metrics
+   - 10 test social_posts
+   - 1 demo marketing_content_queue row
 
 ## Restore
 
