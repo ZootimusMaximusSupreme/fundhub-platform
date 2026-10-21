@@ -26,6 +26,7 @@ export const BEAT_FILES = Object.freeze([
   ["beat-invoice-checkout-retirement.mjs", () => import("./beat-invoice-checkout-retirement.mjs")],
   ["beat-invoice-notice-recovery.mjs", () => import("./beat-invoice-notice-recovery.mjs")],
   ["beat-lead-handoff.mjs", () => import("./beat-lead-handoff.mjs")],
+  ["beat-lead-pipe.mjs", () => import("./beat-lead-pipe.mjs")],
   ["beat-money-checkout.mjs", () => import("./beat-money-checkout.mjs")],
   ["beat-money-funding.mjs", () => import("./beat-money-funding.mjs")],
   ["beat-money-operations.mjs", () => import("./beat-money-operations.mjs")],
