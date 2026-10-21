@@ -1,0 +1,158 @@
+# Mac Bridge — 2026-10-20
+
+Goal (Chris's note, 2026-10-20): an iPhone app that shows Claude Code and Codex chats, and the commands they run on the Mac, while Chris is away. Public App Store app later.
+
+Contract both sides build to: `docs/specs/mac-bridge-protocol-v1.md`.
+Branch: `feat/mac-bridge-v1` in worktree `.claude/worktrees/mac-bridge`.
+
+## Split
+
+| # | Workflow | Owner | Status | Files |
+|---|---|---|---|---|
+| 0 | Protocol + board | this session | done | `docs/specs/mac-bridge-protocol-v1.md`, this board |
+| 1 | Mac helper (Node) | agent: mac-helper | done | `tools/mac-bridge/agent/**` |
+| 2 | iPhone app (SwiftUI) | agent: ios-app | done | `tools/mac-bridge/ios/**` |
+| 3 | Join test: phone app in Simulator reads the real helper | this session | done: paired by link, real session list live, real feed shows commands | none new |
+| 4 | Away mode | Chris | Tailscale (owner-set) | — |
+| 5 | Send from phone into a session | — | replaced by 6 + 7 | — |
+| 6 | v2 Mac helper: tasks, router (Jev off), + Cursor as 3rd tool | agent: mac-tasks | done | `tools/mac-bridge/agent/**`, spec tool lists |
+| 7 | v2 iPhone: new task, reply box, running strip | agent: ios-tasks | done | `tools/mac-bridge/ios/**` |
+| 8 | Plug into Codex, Claude, Cursor (MCP server + installs) | agent: mcp-install | done | `tools/mac-bridge/mcp/**`, `tools/mac-bridge/install/**`, user configs (not in git) |
+
+1 and 2 run at the same time. No dependency between them; both read the protocol file. 3 waits for both.
+
+## Copy-paste prompts
+
+### 1 — Mac helper
+
+Work only in `/Users/chrisstanbridge/Developer/fundhub-platform/.claude/worktrees/mac-bridge`. Build the Mac helper in `tools/mac-bridge/agent/` exactly to `docs/specs/mac-bridge-protocol-v1.md`. Node 22, ES modules, built-in modules only (`node:http`, `node:crypto`, `node:fs`), hand-roll the WebSocket server (RFC 6455 text frames, ping/pong, close). Parse real Claude Code (`~/.claude/projects/**/*.jsonl`) and Codex (`~/.codex/sessions/**/*.jsonl`) files; sample real lines first to learn the shapes. Never write to those folders. Watch for changes with `fs.watch` plus a 2-second poll fallback. Print the pairing link and a terminal QR code (write a tiny QR encoder or skip QR and print the link if that is too big — say which). Add `tools/mac-bridge/agent/README.md` (how to start) and tests run with `node --test tools/mac-bridge/agent/` covering: token reject, session list, event parsing for both tools from fixture lines, seq stability, WebSocket subscribe gets a new event. Run the tests and a live start on port 7878 with curl proof. Do not commit. Write a short manifest under row 1 on `ops/workflows/mac-bridge-2026-10-20.md` when done.
+
+### 2 — iPhone app
+
+Work only in `/Users/chrisstanbridge/Developer/fundhub-platform/.claude/worktrees/mac-bridge`. Build the iPhone app in `tools/mac-bridge/ios/` exactly to `docs/specs/mac-bridge-protocol-v1.md`. SwiftUI, iOS 17+, no third-party packages. Model the hand-written Xcode project on `tools/teleprompter-ios/FundhubPrompter.xcodeproj` (copy its shape, new names: target `MacBridge`, bundle id `ai.fundhub.macbridge`). QR scan with AVFoundation, Bonjour browse with `NWBrowser`, token in Keychain, WebSocket with `URLSessionWebSocketTask`, reconnect with backoff. Screens: Pair, Session list, Session feed. Include a unit-test target with JSON decode tests for Session and Event. Build with `xcodebuild` for the iOS Simulator and run the tests. Do not commit. Write a short manifest under row 2 on `ops/workflows/mac-bridge-2026-10-20.md` when done.
+
+## Manifests
+
+(agents write here)
+
+### 1 — Mac helper
+
+- **Files (all new, under `tools/mac-bridge/agent/`):** `bin/mac-bridge.mjs` (entry); `src/server.mjs` (HTTP + WebSocket + auth), `src/sessions.mjs` (find files, lazy index, watch, stream), `src/parse.mjs` (Claude and Codex lines to Events), `src/ws.mjs` (hand-written RFC 6455), `src/qr.mjs` (hand-written QR encoder), `src/token.mjs`, `src/bonjour.mjs`; `test/*.test.mjs` plus `test/_helpers.mjs` and `test/index.js` (a 10-line loader: Node 22 cannot take a folder argument without it); `README.md`. Node 22, built-ins only, no package.json anywhere.
+- **Run:** `node tools/mac-bridge/agent/bin/mac-bridge.mjs` (port 7878, or `--port` / `MAC_BRIDGE_PORT`). It prints the pairing link and a QR code. Flags `--no-qr`, `--no-bonjour`. Token is made on first run at `~/.mac-bridge/token` (0600, 64 hex).
+- **Tests:** `node --test tools/mac-bridge/agent/test/` gives `tests 29, pass 29, fail 0, skipped 0`. They use fake files in a temp folder and never read the real folders. Covered: 401 on missing, wrong and longer tokens; health; session list (both tools, newest first, title, project, count, live, 200 cap); Claude and Codex parsing from fixture lines; seq stable on re-read, on append and on a half-written last line; events `after` / `limit` (capped 500) across a resume point; WebSocket (Node's own client) hello, subscribe gets a new event, unsubscribe, a line written in two pieces streams once, new sessions reach everyone; RFC 6455 frame lengths (7-bit, 16-bit, 64-bit), masking, split chunks; token file mode; folders untouched. I broke the code on purpose twice (accept any token; swallow a half-written line) and the tests failed both times.
+- **Live run (real home folders, port 7878):** no token gave `401`; with token `/v1/health` gave `{"ok":true,"name":"CHRISs-Mac-mini.local","version":"1"}`; `/v1/sessions` gave 159 sessions in about 10 ms (47 Claude, 112 Codex). A real Claude session returned 16 events (user, command, output, tool, assistant). A real Codex session returned 478 events including 239 commands with outputs; `after`/`limit` paging worked; an unknown id gave `404 {"error":"not_found"}`. A WebSocket subscribed to a live Claude session received real new events with the right seq while it was being written. The `dns-sd` Bonjour child was running, and was gone after the helper stopped. The process is stopped.
+- **QR:** done, hand-written (byte mode, level L, versions 1 to 10). I checked it with Apple's own decoder (CoreImage) at versions 1, 4 to 10: every code decoded to the exact text.
+- **Choices to know about (contract not changed):**
+  1. **Guardian files hidden.** 379 of 491 Codex files on this Mac are internal safety-review runs (`thread_source: guardian_review`), not chats. Left in, they filled 192 of the 200 list slots. They are hidden by default; `MAC_BRIDGE_SHOW_GUARDIAN=1` shows them. Codex sub-agent chats are kept.
+  2. **`exitCode` rides on the `output` event**, not the `command` event, because the code is not known when the command is first seen and `seq` must never change. Claude gives it in the result text; Codex gives it for normal shell calls. Missing means unknown.
+  3. **Which results show.** Only shell results become `output`. Results of other tools (Read, Grep and so on) are not shown, only the call as a `tool` event. Thinking blocks, injected context (AGENTS.md text, environment tags, system reminders) and sub-agent side chains are skipped.
+  4. **Codex `exec` scripts:** newer Codex runs shell through a JS `exec` wrapper. The helper pulls every `cmd:` string out of it as a `command` event and the script result as one `output`. Code that builds a command in some other way shows as a plain `tool` event.
+  5. **`eventCount`:** exact for files up to 1 MB at list time and for any file once the background indexer has read it (newest first, starts at boot). A very large file may show 0 for a few seconds after start.
+  6. **WebSocket:** subscribing to an unknown session is ignored (no new message type was invented). HTTP needs the header token; only the WebSocket takes `?token=`.
+  7. **Subscribe sends only new events.** History comes from the HTTP events call; reading a long session pages cheaply because the helper resumes from a saved point every 100 events.
+- **Not done / not tested:** no iPhone or Simulator join (row 3). No run over Tailscale. The helper listens on all interfaces with a token and no encryption (plain HTTP), as the spec says; do not expose the port to the public internet. Not committed. Note: the live run created `~/.mac-bridge/token` on this Mac (0600); it is real and now paired to nothing.
+
+### 2 — iPhone app
+
+- **Files (all new, under `tools/mac-bridge/ios/`):** `MacBridge.xcodeproj/project.pbxproj` (hand-written, shape of FundhubPrompter, synced folders), `MacBridge.xcodeproj/xcshareddata/xcschemes/MacBridge.xcscheme`, `Config/MacBridge-Info.plist`, `README.md`; `MacBridge/App/MacBridgeApp.swift`; `MacBridge/Core/` Models, PairingLink, Backoff, PairedMac (UserDefaults + Keychain), BridgeAPI, BridgeSocket, BonjourBrowser; `MacBridge/UI/` AppModel, PairView, QRScannerView, StatusPill, SessionListView, FeedModel, SessionFeedView; `MacBridgeTests/` ModelDecodeTests, PairingLinkTests, BackoffTests.
+- **App:** target `MacBridge`, bundle id `ai.fundhub.macbridge`, name "Mac Bridge", iOS 17, Swift 5, no packages, automatic signing with no team. Info.plist has local network text, Bonjour `_macbridge._tcp`, camera text, ATS local networking, and the `macbridge://` URL scheme (checked in the built app).
+- **Build/test:** `xcodebuild -project tools/mac-bridge/ios/MacBridge.xcodeproj -scheme MacBridge -destination 'platform=iOS Simulator,name=iPhone 17' build test` → `** BUILD SUCCEEDED **`, `Executed 37 tests, with 0 failures`, `** TEST SUCCEEDED **`. Zero compiler warnings.
+- **Simulator:** iPhone 17 (Xcode 27.1). The app opened on the Pair screen and already listed `CHRISs-Mac-mini.local` through Bonjour (the helper from row 1 was running).
+- **Not done:** no full pair-and-read run against the live helper (that is row 3). QR scan cannot run in the Simulator (no camera); paste-link and typed pairing work there. No app icon yet. Not committed.
+- **Contract notes (not changed):** (a) ATS `NSAllowsLocalNetworking` blocks Tailscale MagicDNS names, so away use must type the `100.x` address. (b) The spec has no "last N events" read, so a long session loads every page from `after=0` on open. A `before=`/tail read would fix that in v2.
+
+### 6 — v2 Mac helper
+
+- **New files (under `tools/mac-bridge/agent/`):** `src/tasks.mjs` (task runner: find program, spawn, read session id, stop, keep 50), `src/router.mjs` (`auto` picker), `src/jev.mjs` (Jev slot, off, stub), `test/tasks.test.mjs`, `test/cursor.test.mjs`.
+- **Changed:** `src/server.mjs` (POST/GET `/v1/tasks`, POST `/v1/tasks/:id/stop`, 64 KB JSON body limit, WebSocket `{type:"task"}` to all clients, Cursor in the events route, `cursorDir`), `src/sessions.mjs` (Cursor transcripts), `src/parse.mjs` (Cursor parser), `bin/mac-bridge.mjs` (help text), `test/_helpers.mjs` (temp `cursorDir`, so tests never read the real `~/.cursor`), `README.md`. Also `docs/specs/mac-bridge-protocol-v1.md` and `-v2-tasks.md`: tool lists now `claude | codex | cursor`, Cursor paths and command, the 400/413 error words, `error` carries the tool's own reason.
+- **How a task runs:** `child_process.spawn` with an args array (never a shell; a test proves `$(touch …)`, `;` and backticks in a prompt do nothing), cwd `MAC_BRIDGE_REPO` (default the main repo folder). Claude `claude -p --output-format stream-json --verbose [--resume id] -- <prompt>`. Codex `codex exec --json [resume -- id] -- <prompt>`, default sandbox. Cursor `cursor-agent -p --output-format stream-json [--resume id] -- <prompt>`. **No guard-loosening flag anywhere** (a test checks all three tools, with and without resume). Max 3 running (429 `busy`), prompt max 20,000, stop = SIGINT then SIGTERM after 5 s, last 50 kept in memory. Missing program → task `failed` with `claude_not_found` / `codex_not_found` / `cursor_not_found`.
+- **Finding programs on this Mac:** Codex → `MAC_BRIDGE_CODEX_BIN`, PATH, then inside an app (`/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex` exists here). Right now `codex` is also on PATH in the nvm bin. Cursor → `MAC_BRIDGE_CURSOR_BIN`, `cursor-agent` or Cursor's own `agent` (only if it links into `cursor-agent/`) on PATH or `~/.local/bin`; found `~/.local/bin/cursor-agent`.
+- **Owner change applied:** no safety check. No rule list, no 422, no Jev safety slot. (I had built one; it was deleted with its tests before anything was wired to it.)
+- **Router (`auto`):** Jev picker only if `MAC_BRIDGE_JEV=on` AND `JEV_API_KEY`. **STUB:** Jev's API is not in the repo, so when switched on it throws `jev not wired` and the repo rules pick, with that said in `pickReason`. Off = zero network calls (test spies on fetch/http/https/net/tls). Repo rules: reads `AGENTS.md`, `CLAUDE.md`, `.claude/rules/*.md`; one lane today, screens/website/design → Claude, live only while the sentence in `.claude/rules/grok-no-displays.md` exists. Everything else → Claude. Not applied on purpose: "Codex builds, Claude tests" in `monday-100-percent.md` (it is the Monday-sweep rule, and the lane table waits on Chris, see third note). `auto` + `resumeSessionId` stays in that chat's own tool.
+- **Two fixes found by the live run:** (1) a run started from a helper that itself runs inside a Claude Code session inherited that session's wiring (`CLAUDECODE`, `CLAUDE_CODE_*`, its login relay `ANTHROPIC_BASE_URL`); those are now left out of the child's env (nothing added). (2) `error` now carries the tool's own reason from its JSON (Claude/Cursor `result.is_error`, Codex `error`/`turn.failed`) instead of only "exited with code 1".
+- **Cursor sessions:** `~/.cursor/projects/<slug>/agent-transcripts/<id>/<id>.jsonl` listed as tool `cursor` (sub-agents skipped, project name from the folder). Cursor transcripts have no per-line time (time comes from the `<timestamp>` in each user message) and no tool results, so Cursor shell calls show as `command` without `output`. **Cursor CLI chats live in SQLite (`store.db`) and are skipped.** Not proven: whether `cursor-agent -p` also writes an agent transcript (the CLI is not logged in, so no run happened).
+- **Tests:** `node --test tools/mac-bridge/agent/test/` → `# tests 50`, `# pass 50`, `# fail 0`, `# skipped 0` (the 29 old ones unchanged and green, plus 21 new). Fake `claude` / `codex` / `cursor-agent` programs in a temp folder; the real ones are never started by tests. Broke it on purpose (no SIGTERM, no busy cap): the stop and busy tests failed.
+- **Live proof (helper on port 7879, real home folders; 7878 untouched; helper stopped after):** no token POST → `401`. Claude task → `202 starting` → `failed`, `sessionId` captured (`caa0b87d-…`), `error: "exited with code 1: Failed to authenticate: OAuth session expired and could not be refreshed"`. Its 2 events showed at `GET /v1/sessions/claude/<id>/events` and in `/v1/sessions` (live, project fundhub-platform). `claude auth status` says `loggedIn: false` on this Mac. Codex task → thread id captured, failed: the ChatGPT account hit its usage limit (Codex says until Oct 26th, 2026). Cursor task → failed: `Authentication required. Please run 'agent login' first`. Real list: 49 Claude, 114 Codex, 37 Cursor sessions; a real Cursor chat served 68 events. **So no task reached `done` live: all three tools are logged out or out of credit on this Mac.** The bridge side (start, session id, feed, error text, stop route) is proven.
+- **To get a live `done`:** Chris signs in once on the Mac: `claude` then `/login` (Claude), `cursor-agent login` (Cursor). Codex waits for its limit to reset or more credit.
+- **Not done:** no live `done` (logins above). No real stop of a live run (covered by the fake tests). Tasks are in memory only (gone when the helper restarts). Not committed.
+
+### 7 — v2 iPhone
+
+- **New files (under `tools/mac-bridge/ios/`):** `MacBridge/Core/Tasks.swift` (task model `BridgeTask` with the spec field names, `TaskStatus`, `TaskTool`, `NewTaskRequest`, `TaskResponse`/`TasksResponse`, live-list rules `TaskList`), `MacBridge/UI/TaskViews.swift` (New task sheet, Running row, status badge, task card, reply bar), `MacBridgeTests/TaskTests.swift` (22 tests).
+- **Changed files:** `Core/BridgeAPI.swift` (POST /v1/tasks, GET /v1/tasks, POST /v1/tasks/:id/stop, bearer as v1; one error mapper: 401 pair again, 404, 429 busy, 400 with the Mac's error word, anything else "error <code>"), `Core/Models.swift` (`{"type":"task"}` stream message), `Core/BridgeSocket.swift` (`onTask`, `onHello`), `UI/AppModel.swift` (live task list, start, stop, refresh on open/return/reconnect), `UI/SessionListView.swift` (New task button, Running strip with Stop + confirm, opens the feed by itself), `UI/SessionFeedView.swift` (reply bar pinned at the bottom, "waiting for the session to start"), `UI/FeedModel.swift` (a brand-new session with 0 events waits up to 30 s and re-subscribes each second, because the helper ignores a subscribe to a session it does not know yet), `README.md`.
+- **`project.pbxproj` not changed, on purpose:** the project uses synced folders (`PBXFileSystemSynchronizedRootGroup`), so new files join their target by themselves. Adding them by hand would build them twice.
+- **Owner change applied:** no safety check. No "blocked" status, no 422 screen, no blocked tests. Any unexpected error shows its code in plain words.
+- **Build/test:** `xcodebuild -project tools/mac-bridge/ios/MacBridge.xcodeproj -scheme MacBridge -destination 'platform=iOS Simulator,id=2A5B9D1A-9B97-4270-AB23-3A7DF69BF1A9' -derivedDataPath <scratch> build test` → `** BUILD SUCCEEDED **`, `Executed 59 tests, with 0 failures (0 unexpected)`, `** TEST SUCCEEDED **`. The 37 old tests are unchanged and green, plus 22 new. Zero Swift warnings.
+- **Checked against the helper's code in progress (read only):** same field names, `{type:"task"}` on every change, 429 `busy`, 202 `{task}`. On a reply the helper sets `sessionId` to the resumed id right away. The reply bar also tracks its own task id, so it stays busy even if the Mac writes the reply into a new session id, and then shows a link to that session.
+- **Not done:** no tap-through in the Simulator (no access granted) and no live run against the v2 helper. Not committed.
+
+### 8 — Plug into Codex, Claude, Cursor
+
+- **What it is:** a small plug-in (MCP server) that all three tools load. Each tool gets 5 new tools: `list_sessions`, `read_session`, `delegate_task` (claude, codex, cursor, auto), `list_tasks`, `stop_task`. So Claude can hand work to Codex or Cursor, and the other way round.
+- **New files:** `tools/mac-bridge/mcp/server.mjs` (stdio MCP, JSON-RPC 2.0 one message per line, Node 22 built-ins only, stdout is protocol only, logs to stderr; talks to `http://127.0.0.1:${MAC_BRIDGE_PORT||7878}` with `~/.mac-bridge/token`, `MAC_BRIDGE_TOKEN_FILE` overrides), `tools/mac-bridge/mcp/test/server.test.mjs`, `tools/mac-bridge/mcp/README.md`, `tools/mac-bridge/install/register-mcp.mjs` (re-runnable, `--server <path>`, `--node`, `--only`, `--dry-run`), `tools/mac-bridge/install/test/register.test.mjs`, `tools/mac-bridge/install/README.md`. Nothing in `tools/mac-bridge/agent/**` touched.
+- **Installed on this Mac:** Codex CLI `codex-cli 0.163.0` (`npm install -g @openai/codex`, at `~/.nvm/versions/node/v22.23.2/bin/codex`), `codex login status` = "Logged in using ChatGPT" (auth.json not touched). Cursor CLI `2026.10.19-6bbf2c4` from `https://cursor.com/install` (links `~/.local/bin/agent` and `~/.local/bin/cursor-agent`, `~/.local/bin` is on PATH). Cursor CLI is **not logged in** yet. The `cursor` editor command exists at `/Applications/Cursor.app/Contents/Resources/app/bin/cursor` but is not on PATH (not needed for the bridge).
+- **Where it is registered (user level, all point at this worktree's `server.mjs` for now):** Claude Code `~/.claude.json` via `claude mcp add --scope user` → `claude mcp get mac-bridge` says `Status: ✔ Connected`. Codex `~/.codex/config.toml` `[mcp_servers.mac-bridge]` appended (backup `~/.codex/config.toml.bak-macbridge`; diff = only the 5 new lines) → `codex mcp get mac-bridge` shows `enabled: true`. Cursor `~/.cursor/mcp.json` (new file) + `agent mcp enable mac-bridge` → `agent mcp list` says `mac-bridge: ready`, `agent mcp list-tools mac-bridge` lists all 5 tools. Second run of the script: "already set" for all three.
+- **After merge:** `node tools/mac-bridge/install/register-mcp.mjs --server /Users/chrisstanbridge/Developer/fundhub-platform/tools/mac-bridge/mcp/server.mjs` re-points all three.
+- **Tests:** `node --test tools/mac-bridge/mcp/test/*.test.mjs tools/mac-bridge/install/test/*.test.mjs` → `# tests 13`, `# pass 13`, `# fail 0`, `# skipped 0`. Fake helper on a random port; never the real one. Covers handshake, ping, unknown method, tools/list, each tool's happy path, 404 / 429 busy / bad tool / missing arg, helper down (all 5 tools give "Mac Bridge helper is not running — start it with node tools/mac-bridge/agent/bin/mac-bridge.mjs"), missing and wrong token, older watch-only helper, stdout only JSON-RPC. Broke it on purpose (wrong bearer): 4 tests failed.
+- **Live proof:** (1) Real helper on 7878 (pid 31828): initialize OK, `list_sessions` → "5 session(s) shown, 168 on the Mac", real Claude sessions with titles. That helper is the **older v1 build**, so `list_tasks` there says "older watch-only version, so it cannot take tasks". (2) v2 helper from this worktree on spare port 7879 (stopped after; 7878 untouched): `list_sessions tool=cursor` → 2 real Cursor chats; `delegate_task tool=claude` → task started; `list_tasks` → task `failed`, sessionId captured; `read_session` on that id → 2 events (the prompt, then "Failed to authenticate: OAuth session expired and could not be refreshed"). So the bridge round trip works; the Claude command-line login on this Mac is expired.
+- **Logins Chris must do (one each):** Cursor: open the link from `agent login` (a login is waiting now; link saved in `~/.mac-bridge/cursor-login.log`) or run `agent login` in Terminal and click approve. Claude command line: run `claude auth login` and click approve. Codex: logged in, but row 6 found its ChatGPT usage limit hit until Oct 26.
+- **Not done:** 7878 still runs the older helper; restart it from this worktree to take tasks from the phone and the plug-in. No Codex-from-Codex or Cursor-from-Cursor tool call run (each needs a model turn; Codex is out of credit, Cursor logged out). Not committed.
+
+### 7b — Cursor in the iPhone app
+
+- **Changed (under `tools/mac-bridge/ios/`):** `Core/Models.swift` (one shared `ToolName` label list: Claude, Codex, Cursor), `Core/Tasks.swift` (picker order Claude / Codex / Cursor / Auto; `cursor_not_found` in plain words), `Core/BridgeAPI.swift` (413 `too_large` shows as a plain "did not take this task" like 400), `UI/SessionListView.swift` (badge colors: Claude orange, Codex blue, Cursor purple; empty-list text names Cursor), `Config/MacBridge-Info.plist` + `project.pbxproj` (local network text names Cursor), `README.md`. The reply box already reads "Reply to Cursor" from the session's tool label.
+- **New:** `MacBridgeTests/CursorTests.swift` (8 tests: Cursor session, event and task decode, task stream message, picker order, new-task and reply bodies, own badge color, 413).
+- **Build/test:** same xcodebuild line as row 7 → `** BUILD SUCCEEDED **`, `Executed 67 tests, with 0 failures (0 unexpected)`, `** TEST SUCCEEDED **`. Zero Swift warnings.
+- **Simulator:** `xcrun simctl install booted <MacBridge.app>` → exit 0; `xcrun simctl launch booted ai.fundhub.macbridge` → `ai.fundhub.macbridge: 40646`. A read-only screenshot shows it paired to `CHRISs-Mac-mini.local`, live, with the New task button. No taps (no access). Not committed.
+
+## Leftovers
+
+- Apple App Store upload needs the App Store Connect API key, which is not saved yet (see memory: apple-developer-account).
+
+## Owner calls — 2026-10-20 (second note)
+
+- **Away mode = Tailscale on the Mac and iPhone.** Owner-set. Row 4 (hosted relay) is not needed for Chris's own use.
+- **Bigger goal: a router.** Any local tool (IDE, Claude Code, Codex) plugs in. Tasks get routed to Claude or Codex, and an agent can hand work to another agent. The phone app is the remote for it.
+- **Why not Claude Remote Control:** Chris tried it many times. It is janky, the terminal breaks often, and setup does not work.
+- **Jev** (TypeSafe AI, released Sept 2026) is a fast decision model, not a chat or coding model. It answers typed questions (pick one, score, yes/no) with a probability. Fit: the router's brain — pick Claude or Codex for a task, and score how risky a command is before it runs. Later, not v1.
+- "Tim" was a mic slip. Ignore.
+
+## Owner calls — 2026-10-20 (third note)
+
+- **It is Chris's own operating system, not a product for any business.** Chat with the always-on Mac from the phone. Code stays in this repo.
+- **It is a delegation agent.** Chris sends a task; it hands the task to the right AI.
+- **It follows this repo's rules** (CLAUDE.md, AGENTS.md, `.claude/rules/`, `.cursor/rules/`).
+- ~~Safety check is required~~ — replaced: **no safety check** (owner-set, fourth note).
+- **CRM work too:** some tasks act inside the Fundhub CRM.
+- **Lanes (as spoken, needs one clear-up):** "Codex only touches dashboards. Claude only touches this." Today's repo law says only Claude changes screens (`.claude/rules/grok-no-displays.md`) and "Codex builds, Claude tests" (`.claude/rules/monday-100-percent.md`). Waiting on Chris for the exact lane table.
+
+## Owner calls — 2026-10-20 (fourth note)
+
+- **Main goal: build from the computer, from the phone.** v2 contract: `docs/specs/mac-bridge-protocol-v2-tasks.md`.
+- **Jev: build the slot, leave it off.** Chris does not want to pay for Jev yet.
+- **Delegation reads the repo rules.** No separate lane table for now.
+- **No safety check.** Chris: "No need for safety check." The repo's own guards stay as they are.
+
+## Owner calls — 2026-10-20 (fifth note)
+
+- **Install it into Codex, Claude and Cursor.** Each of the three can plug into the bridge and hand tasks to the others. Cursor becomes a third tool next to Claude and Codex.
+- Chris on the app: "the app is really good actually."
+
+## Leftovers (own product, small)
+
+- Session titles show raw `<pasted_content …>` tags when the first message was a paste. Strip tags in the title.
+
+## Owner calls — 2026-10-20 (sixth note): friends can use it
+
+Chris: a friend downloads the app, plugs in his own tools on his own Mac, and never sees Chris's stuff. iOS look, keep it simple — it is just chatting.
+
+What it takes (plan, not started):
+1. **Own home for the code.** The friend must not need the Fundhub repo. Move Mac Bridge to its own GitHub repo. (Owner decision: yes + name.)
+2. **Easy Mac setup for anyone.** One install command that sets up the helper, starts it by itself at login, asks which project folders to use, plugs into Claude/Codex/Cursor, and shows the QR code.
+3. **Take out Chris-only parts.** No Fundhub paths or Fundhub rules built in. The friend picks his folders; the router reads that folder's own rules.
+4. **Lock the line.** Encrypt phone-to-Mac traffic, not just a secret code, before anyone else uses it.
+5. **iOS look, simple.** Chat list like Messages, chat screen with bubbles, one text box. System colors, dark mode.
+6. **Get it on his phone.** TestFlight first (needs the App Store Connect key saved). Public App Store later.
+7. **Away from home.** Friend uses Tailscale too, same as Chris.
+
+Each person's phone pairs only with their own Mac. There is no shared server, so nobody can see anybody else's chats.

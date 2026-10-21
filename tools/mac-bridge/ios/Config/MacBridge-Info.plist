@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Mac Bridge finds and talks to the Mac helper on your network to show your Claude Code, Codex and Cursor sessions.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Mac Bridge uses the camera to scan the pairing QR code your Mac shows.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_macbridge._tcp</string>
+	</array>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>ai.fundhub.macbridge.pair</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>macbridge</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

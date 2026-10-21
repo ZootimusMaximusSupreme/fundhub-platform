@@ -1,0 +1,204 @@
+import SwiftUI
+
+struct SessionListView: View {
+    @EnvironmentObject private var model: AppModel
+    @EnvironmentObject private var socket: BridgeSocket
+    @State private var confirmForget = false
+    @State private var path: [Session] = []
+    @State private var showNewTask = false
+    @State private var stopCandidate: BridgeTask?
+
+    var body: some View {
+        NavigationStack(path: $path) {
+            List {
+                if !model.runningTasks.isEmpty {
+                    Section("Running") {
+                        ForEach(model.runningTasks) { t in
+                            runningRow(t)
+                        }
+                    }
+                }
+                if socket.state == .unauthorized {
+                    Section {
+                        Label("The Mac rejected this phone's token. Forget this Mac and pair again.", systemImage: "lock.trianglebadge.exclamationmark")
+                            .foregroundStyle(.red)
+                    }
+                }
+                if let err = model.listError {
+                    Section {
+                        Label(err, systemImage: "wifi.exclamationmark")
+                            .foregroundStyle(.orange)
+                            .textSelection(.enabled)
+                    }
+                }
+                ForEach(model.sessions, id: \.key) { s in
+                    NavigationLink(value: s) {
+                        SessionRow(session: s)
+                    }
+                }
+            }
+            .listStyle(.insetGrouped)
+            .overlay {
+                if model.sessions.isEmpty && model.runningTasks.isEmpty && model.listError == nil {
+                    if model.isLoadingSessions {
+                        ProgressView()
+                    } else {
+                        ContentUnavailableView(
+                            "No sessions yet",
+                            systemImage: "text.bubble",
+                            description: Text("Claude Code, Codex and Cursor chats on your Mac show up here.")
+                        )
+                    }
+                }
+            }
+            .refreshable { await model.refreshSessions() }
+            .navigationTitle(model.mac?.name ?? "Sessions")
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationDestination(for: Session.self) { s in
+                if let api = model.api {
+                    SessionFeedView(session: s, api: api, socket: model.socket)
+                }
+            }
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    StatusPill()
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showNewTask = true
+                    } label: {
+                        Label("New task", systemImage: "square.and.pencil")
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        if let mac = model.mac {
+                            Text("\(mac.host):\(String(mac.port))")
+                        }
+                        Button {
+                            Task { await model.refreshSessions() }
+                        } label: {
+                            Label("Refresh", systemImage: "arrow.clockwise")
+                        }
+                        Button(role: .destructive) {
+                            confirmForget = true
+                        } label: {
+                            Label("Forget this Mac", systemImage: "trash")
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                    }
+                }
+            }
+            .confirmationDialog("Forget this Mac?", isPresented: $confirmForget, titleVisibility: .visible) {
+                Button("Forget and pair again", role: .destructive) { model.forget() }
+            } message: {
+                Text("The token is removed from this phone. Your Mac is not changed.")
+            }
+            .confirmationDialog(
+                "Stop this task?",
+                isPresented: Binding(
+                    get: { stopCandidate != nil },
+                    set: { if !$0 { stopCandidate = nil } }
+                ),
+                titleVisibility: .visible,
+                presenting: stopCandidate
+            ) { t in
+                Button("Stop task", role: .destructive) {
+                    stopCandidate = nil
+                    Task { await model.stopTask(id: t.id) }
+                }
+            } message: { t in
+                Text("\(t.toolLabel): \(t.firstLine)\nThe Mac asks it to stop, then ends it after 5 seconds.")
+            }
+            .sheet(isPresented: $showNewTask) {
+                NewTaskView { s in
+                    path = [s]
+                }
+                .environmentObject(model)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func runningRow(_ t: BridgeTask) -> some View {
+        let row = RunningTaskRow(task: t) { stopCandidate = t }
+        if let s = model.session(for: t) {
+            NavigationLink(value: s) { row }
+        } else {
+            row
+        }
+    }
+}
+
+struct SessionRow: View {
+    let session: Session
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 30)) { ctx in
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    ToolBadge(tool: session.tool, label: session.toolLabel)
+                    Text(session.project.isEmpty ? "—" : session.project)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                    Spacer(minLength: 4)
+                    if session.isLive(now: ctx.date) {
+                        Circle()
+                            .fill(.green)
+                            .frame(width: 8, height: 8)
+                            .accessibilityLabel("Live")
+                    }
+                    Text(RelativeTime.string(session.updatedDate, now: ctx.date))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+                Text(session.title.isEmpty ? "(no title)" : session.title)
+                    .font(.body)
+                    .lineLimit(2)
+                    .foregroundStyle(.primary)
+            }
+            .padding(.vertical, 2)
+        }
+    }
+}
+
+struct ToolBadge: View {
+    let tool: String
+    let label: String
+
+    var body: some View {
+        Text(label)
+            .font(.caption2.weight(.semibold))
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(Capsule().fill(Self.tint(for: tool).opacity(0.18)))
+            .foregroundStyle(Self.tint(for: tool))
+    }
+
+    /// Each tool has its own color: Claude orange, Codex blue, Cursor purple.
+    static func tint(for tool: String) -> Color {
+        switch tool {
+        case "claude": return .orange
+        case "codex": return .blue
+        case "cursor": return .purple
+        default: return .gray
+        }
+    }
+}
+
+enum RelativeTime {
+    private static let formatter: RelativeDateTimeFormatter = {
+        let f = RelativeDateTimeFormatter()
+        f.unitsStyle = .abbreviated
+        return f
+    }()
+
+    static func string(_ date: Date?, now: Date = Date()) -> String {
+        guard let date else { return "" }
+        if abs(now.timeIntervalSince(date)) < 45 { return "now" }
+        return formatter.localizedString(for: date, relativeTo: now)
+    }
+}
