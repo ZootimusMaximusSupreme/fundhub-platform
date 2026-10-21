@@ -13,7 +13,11 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+// The roadmap drip check and the read helpers live in the shared hourly truth file (one judge, two clocks).
+import { RECON, check, judgeDrip, plural, readDrip, safeRead, unreadRow } from "../beats/lib/email-truth.mjs";
 import { ROLE_TEST_CLIENT_KEY } from "./gap-msg.mjs";
+
+export { DRIP_SQL } from "../beats/lib/email-truth.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = path.resolve(HERE, "../../..");
@@ -105,37 +109,6 @@ SELECT count(*)::int AS n
    )
 `.trim();
 
-/* The roadmap drip (src/workflows/slo-infinite-drip.mjs, 8:00 a.m. Arizona) moves a
-   person's slo_drip_step up by one each time it queues their email. So a person
-   whose step is higher than the number of drip emails they have is a person the
-   drip skipped. This reads the result in the database, which is the one place
-   that works when the source file is not on disk.
-   Measured 2026-10-08: sendTemplated was called with eventId null, so the ref was
-   workflow:<template>:null and every person after the first deduped into the
-   first person's row. Fixed 2026-10-09: the key is person + step, and the step
-   moves only when email.sent is true. */
-export const DRIP_SQL = `
-SELECT count(*)::int AS n,
-       COALESCE(sum(gap), 0)::int AS missing
-  FROM (
-    SELECT s.step - s.sent AS gap
-      FROM (
-        SELECT CASE WHEN c.custom_fields->>'slo_drip_step' ~ '^[0-9]+$'
-                    THEN (c.custom_fields->>'slo_drip_step')::int ELSE 0 END AS step,
-               (SELECT count(*) FROM messages m
-                 WHERE m.org_id = c.org_id
-                   AND m.client_id = c.id
-                   AND m.channel = 'email'
-                   AND m.template_key LIKE 'EMAIL-SLO-DRIP-%')::int AS sent
-          FROM clients c
-         WHERE c.org_id = $1::uuid
-           AND COALESCE(c.is_demo, false) = false
-           AND c.custom_fields->>'slo_drip_on' = '1'
-      ) s
-     WHERE s.step > s.sent
-  ) g
-`.trim();
-
 /* Morning jobs that queue email. The file is the place the send result
    is supposed to be read. slo-infinite-drip is 8:00 a.m. Arizona.
    contract-chaser is 10:00 UTC. document-vault-chase is 9:45 a.m. Arizona. */
@@ -158,13 +131,6 @@ export const MORNING_EMAIL_PATHS = Object.freeze([
 ]);
 
 const FAILURE_CHECK = /\.sent\b|notQueued|template_pending|send_failed|nothing_queued/;
-
-const RECON =
-  "Report it on the morning pulse (Recon AG-07). Do not send email from this check. Do not flip outbound. Do not build a second watchdog.";
-
-function check(id, status, detail, suggestedFix = null) {
-  return { id, status, detail, suggestedFix };
-}
 
 function canQuery(db) {
   return !!(db && typeof db.query === "function");
@@ -262,35 +228,6 @@ function morningCheck(sources) {
   return check(id, "PASS", `Morning email paths check whether the mail queued: ${names}.`);
 }
 
-/** One read. rows[0] with every named column a real number, or a reason. */
-async function safeRead(db, sql, params, columns) {
-  try {
-    const { rows } = await db.query(sql, params);
-    const got = rows && rows[0];
-    if (!got) return { ok: false, error: "no row came back", unreadable: true };
-    const out = {};
-    for (const col of columns) {
-      const raw = got[col];
-      const n = raw == null || raw === "" ? NaN : Number(raw);
-      if (!Number.isFinite(n)) return { ok: false, error: `${col} came back unreadable`, unreadable: true };
-      out[col] = n > 0 ? Math.floor(n) : 0;
-    }
-    return { ok: true, ...out };
-  } catch (err) {
-    return { ok: false, error: String((err && err.message) || err).slice(0, 160) };
-  }
-}
-
-/** A read that failed is a FAIL (we cannot see the break). A count that came back blank is a skip. */
-function unreadRow(id, result, fix) {
-  if (result.unreadable) return check(id, "skip", `could not read: ${result.error}`);
-  return check(id, "FAIL", `could not read: ${result.error}`, fix);
-}
-
-function plural(n, one, many) {
-  return n === 1 ? one : many;
-}
-
 function sendingDetail(n) {
   if (n === 1) return `1 outbound email has been on sending for more than ${SENDING_STUCK_MINUTES} minutes.`;
   return `${n} outbound emails have been on sending for more than ${SENDING_STUCK_MINUTES} minutes.`;
@@ -307,10 +244,6 @@ function providerDetail(failed, bounced) {
 function magicDetail(n) {
   if (n === 1) return "1 magic-link sign-in was issued and no email was queued.";
   return `${n} magic-link sign-ins were issued and no email was queued.`;
-}
-
-function dripDetail(n, missing) {
-  return `${n} ${plural(n, "person is", "people are")} on the roadmap drip with ${missing} ${plural(missing, "step", "steps")} that never queued an email.`;
 }
 
 /**
@@ -334,12 +267,11 @@ export async function gapChecks(ctx = {}) {
     const sendingFix = `The dispatcher picked this email up and never wrote a result, and nothing puts it back. Read the messages rows still on sending. ${RECON}`;
     const providerFix = `Read last_error on the failed email, or the bounce on the bounced one. ${RECON}`;
     const magicFix = `requestMagicLink queues ${MAGIC_LINK_TEMPLATE_KEY} and then stops. Read why that email row is missing. ${RECON}`;
-    const dripFix = `The drip moved their step and no email row exists. Read slo_drip_step on the client and the EMAIL-SLO-DRIP rows. sendTemplated ignores a repeat provider_ref. ${RECON}`;
     const [sending, failed, magic, drip] = await Promise.all([
       safeRead(ctx.db, SENDING_STUCK_SQL, [ctx.orgId, sendingBefore], ["n"]),
       safeRead(ctx.db, PROVIDER_FAIL_SQL, [ctx.orgId, failedSince], ["failed_n", "bounced_n"]),
       safeRead(ctx.db, MAGIC_LINK_SQL, [ctx.orgId, magicSince, MAGIC_LINK_TEMPLATE_KEY], ["n"]),
-      safeRead(ctx.db, DRIP_SQL, [ctx.orgId], ["n", "missing"])
+      readDrip(ctx.db, ctx.orgId)
     ]);
     rows.push(!sending.ok
       ? unreadRow("email:sending-stuck", sending, sendingFix)
@@ -356,11 +288,7 @@ export async function gapChecks(ctx = {}) {
       : magic.n > 0
         ? check("email:magic-link-unqueued", "FAIL", magicDetail(magic.n), magicFix)
         : check("email:magic-link-unqueued", "PASS", `no issued magic link in the last ${MAGIC_LINK_HOURS} hours is missing its email`));
-    rows.push(!drip.ok
-      ? unreadRow("email:drip-step-no-email", drip, dripFix)
-      : drip.n > 0
-        ? check("email:drip-step-no-email", "FAIL", dripDetail(drip.n, drip.missing), dripFix)
-        : check("email:drip-step-no-email", "PASS", "every person on the roadmap drip has an email row for each step the drip took"));
+    rows.push(judgeDrip(drip));
   }
   rows.push(morningCheck(loadMorningSources(ctx)));
   return rows;

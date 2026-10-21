@@ -29,8 +29,21 @@
 //   * A suspended closer who took sales this month is left off the floor on purpose
 //     (the floor lists active closers). That used to read FAIL for the rest of the
 //     month. It is not a miss now.
+//
+// ONE JUDGE, TWO CLOCKS (2026-10-20). The totals verdict (totalsProblems, judgeTotals) and the
+// SQL and math behind the team totals live in src/pulse/beats/lib/sales-totals-truth.mjs. This
+// lane judges salesFloor()'s whole answer with it each morning; the hourly beat sales-totals
+// judges the same totals (floorTotals, which salesFloor runs) every hour. Drive and the
+// recordings are not part of the totals and stay here, behind readOnlyDb.
 
 import { orgDemoModeEnabled } from "../../demo/exclude-demo.mjs";
+import {
+  SALES_RECON as RECON,
+  clip,
+  judgeTotals,
+  row,
+  totalsProblems
+} from "../beats/lib/sales-totals-truth.mjs";
 import {
   belongsOnCloserBoard,
   closerMyNumbers,
@@ -82,30 +95,10 @@ export const NUMBERS_STAFF_SQL = `
    LIMIT 1
 `;
 
-const RECON =
-  "Recon (AG-07) is the one tripwire. Leave that agent on the morning pulse. " +
-  "Do not auto-fix. Do not add another watcher. Do not open the closer desk.";
-
 const READ_TIMEOUT_MS = 12000;
-
-function row(id, status, detail, suggestedFix = null) {
-  return { id, status, detail, suggestedFix };
-}
-
-function clip(err) {
-  return String(err?.message || err).replace(/\s+/g, " ").trim().slice(0, 180);
-}
 
 function hasSales(seller) {
   return Number(seller?.deposits || 0) > 0 || Number(seller?.cash_cents || 0) > 0;
-}
-
-function num(value) {
-  return value != null && value !== "" && Number.isFinite(Number(value));
-}
-
-function rateOk(value) {
-  return value == null || (num(value) && Number(value) >= 0 && Number(value) <= 1);
 }
 
 // Comments and quoted text are blanked first. A word like "update" inside a note or a
@@ -219,21 +212,8 @@ export function mineShapeProblem(mine) {
   return null;
 }
 
-/** Why the team numbers on the floor cannot be trusted, in plain words. Empty means fine. */
-export function totalsProblems(floor) {
-  const hero = floor && floor.hero;
-  const funnel = floor && floor.funnel;
-  if (!hero || !funnel) return ["the team numbers block is missing"];
-  const out = [];
-  if (!num(hero.cash_cents) || Number(hero.cash_cents) < 0) out.push("team cash is not a number");
-  for (const [key, label] of [["booked", "booked calls"], ["held", "held calls"], ["deposits", "deposits"]]) {
-    if (!num(funnel[key]) || Number(funnel[key]) < 0) out.push(`${label} is not a number`);
-  }
-  if (!rateOk(funnel.show_rate)) out.push("show rate is not between 0 and 1");
-  if (!rateOk(funnel.close_rate)) out.push("close rate is not between 0 and 1");
-  if (!rateOk(hero.deposit_to_funded)) out.push("deposit to funded rate is not between 0 and 1");
-  return out;
-}
+/** Why the team numbers on the floor cannot be trusted (the shared verdict, re-exported for callers). */
+export { totalsProblems };
 
 async function readFloor({ ro, orgId, now, reads, timeoutMs }) {
   try {
@@ -295,34 +275,9 @@ function checkReadApi({ floorRead, mineRead }) {
   return row(id, "PASS", `sales floor and my numbers reads worked for a signed-in manager${tail}`);
 }
 
+/** sales-manager:totals, judged by the shared verdict in src/pulse/beats/lib/sales-totals-truth.mjs. */
 function checkTotals({ floorRead }) {
-  const id = "sales-manager:totals";
-  if (!floorRead) {
-    return row(id, "skip", "no database in this run — manager totals not read");
-  }
-  if (!floorRead.ok) {
-    return row(
-      id,
-      "FAIL",
-      `manager totals cannot be read: ${floorRead.error}`,
-      `${RECON} Read team cash, show rate, and close rate on the sales floor.`
-    );
-  }
-  const bad = totalsProblems(floorRead.floor);
-  if (bad.length > 0) {
-    return row(
-      id,
-      "FAIL",
-      `manager totals cannot be read (${bad.join("; ")}).`,
-      `${RECON} Read team cash, show rate, and close rate on the sales floor.`
-    );
-  }
-  const f = floorRead.floor.funnel;
-  return row(
-    id,
-    "PASS",
-    `manager totals can be read (team cash, show rate, and close rate): ${Number(f.booked)} booked, ${Number(f.held)} held, ${Number(f.deposits)} deposits this month.`
-  );
+  return judgeTotals({ floorRead });
 }
 
 function droppedDetail(people) {

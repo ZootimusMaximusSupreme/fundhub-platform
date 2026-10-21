@@ -208,11 +208,29 @@
 [functions."marketing-clock"]
   schedule = "*/15 * * * *"
 
-# The hourly pulse: runs every beat inside one READ ONLY box and texts Chris on a break.
+# The hourly pulse: runs its shift of the beats inside READ ONLY boxes and texts Chris on a break.
 # Minute 7, not minute 0 (three Inngest jobs already fire at minute 0).
-# SWEEP_CRON in netlify/functions/pulse-hourly.mjs must match.
+# SWEEP_CRON in netlify/functions/pulse-hourly.mjs must match, and so must its cron in src/pulse/beats/shifts.mjs.
 [functions."pulse-hourly"]
   schedule = "7 * * * *"
+
+# The hourly pulse, shift B: the rest of the beats, 30 minutes after shift A, through the same runner.
+# Every beat is in exactly one shift (src/pulse/beats/shifts.mjs), so each still runs once an hour.
+# SWEEP_CRON in netlify/functions/pulse-hourly-b.mjs must match, and so must its cron in shifts.mjs.
+[functions."pulse-hourly-b"]
+  schedule = "37 * * * *"
+
+# The hourly pulse, shift C: the third share of the beats, at minute 52, through the same runner.
+# Every beat is in exactly one shift (src/pulse/beats/shifts.mjs), so each still runs once an hour.
+# SWEEP_CRON in netlify/functions/pulse-hourly-c.mjs must match, and so must its cron in shifts.mjs.
+[functions."pulse-hourly-c"]
+  schedule = "52 * * * *"
+
+# The hourly pulse, shift D: the fourth share of the beats, at minute 22, through the same runner.
+# Every beat is in exactly one shift (src/pulse/beats/shifts.mjs), so each still runs once an hour.
+# SWEEP_CRON in netlify/functions/pulse-hourly-d.mjs must match, and so must its cron in shifts.mjs.
+[functions."pulse-hourly-d"]
+  schedule = "22 * * * *"
 
 # The outside watch: every 5 minutes, runs ONE beat (engine-alive) through the same runner and texts Chris
 # if the 5-minute alarms stopped. Netlify's clock keeps ticking when the workflow engine stalls.

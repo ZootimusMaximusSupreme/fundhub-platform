@@ -27,7 +27,9 @@ import { EXECUTION_GRACE_DAYS } from "../../finance/money-transfers.mjs";
 import { CSM_PREP_SOURCE as REAL_PREP_SOURCE, PREP_CALL_DEDUPE } from "../../blueprint/closer-ready.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const SRC = fs.readFileSync(path.join(HERE, "gap-money-helper.mjs"), "utf8");
+// The SQL and the verdict live in the shared hourly truth file, so the source checks read both files.
+const SRC = fs.readFileSync(path.join(HERE, "gap-money-helper.mjs"), "utf8") + "\n" +
+  fs.readFileSync(path.join(HERE, "../beats/lib/money-helper-truth.mjs"), "utf8");
 const NOW = new Date("2026-10-10T13:00:00.000Z");
 const ORG = "11111111-1111-4111-8111-111111111111";
 

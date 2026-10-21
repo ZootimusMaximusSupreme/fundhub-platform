@@ -65,6 +65,9 @@ export const NETLIFY_JOBS = Object.freeze([
   ["whop-billing-inbox-sweeper", "* * * * *"],
   ["marketing-clock", "*/15 * * * *"],
   ["pulse-hourly", "7 * * * *"],
+  ["pulse-hourly-b", "37 * * * *"],
+  ["pulse-hourly-c", "52 * * * *"],
+  ["pulse-hourly-d", "22 * * * *"],
   ["pulse-outside-watch", "*/5 * * * *"]
 ]);
 

@@ -413,7 +413,9 @@ test("the read guard accepts SELECT and WITH and refuses every write word", () =
 });
 
 test("the module does not record consent or start another monitor", () => {
-  const src = fs.readFileSync(path.join(HERE, "gap-consent.mjs"), "utf8");
+  // The lane and the shared truth it imports (src/pulse/beats/lib/consent-truth.mjs) are read together.
+  const src = fs.readFileSync(path.join(HERE, "gap-consent.mjs"), "utf8") +
+    fs.readFileSync(path.join(HERE, "../beats/lib/consent-truth.mjs"), "utf8");
   assert.doesNotMatch(src, /captureConsent/);
   assert.doesNotMatch(src, /\bINSERT\b/);
   assert.doesNotMatch(src, /\bUPDATE\b/);

@@ -335,7 +335,9 @@ test("gap email: the drip read uses the drip's own field names and template pref
 });
 
 test("gap email: this module does not send and does not touch the outbound switch", () => {
-  const src = fs.readFileSync(path.join(HERE, "gap-email.mjs"), "utf8");
+  // The drip check and the read helpers live in the shared hourly truth file, so both files are read.
+  const src = fs.readFileSync(path.join(HERE, "gap-email.mjs"), "utf8") + "\n" +
+    fs.readFileSync(path.join(HERE, "../beats/lib/email-truth.mjs"), "utf8");
   assert.doesNotMatch(src, /^import\s+.*providers\/(resend|mailgun)/m);
   assert.doesNotMatch(src, /^import\s+.*\bsendTemplated\b/m);
   assert.doesNotMatch(src, /^import\s+.*\b(drainAll|dispatchOne)\b/m);

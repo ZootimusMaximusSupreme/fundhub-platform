@@ -777,6 +777,82 @@ describe("one text an hour", () => {
   });
 });
 
+/* Two hourly shifts (src/pulse/beats/shifts.mjs): pulse-hourly and pulse-hourly-b each call runPulse with `only` set
+   to their own beats, half an hour apart, against ONE records database. Every beat is in one shift, so exactly one
+   run an hour touches its incident: no break is texted twice, and no break is dropped or closed by the other run. */
+describe("two shifts, one record", () => {
+  const SHIFT_A = ["a", "b"];
+  const SHIFT_B = ["c", "d"];
+
+  test("a break in shift A is texted once by A; shift B's run neither re-texts, claims nor closes it", async () => {
+    const h = harness([redBeat("a"), greenBeat("b"), greenBeat("c"), greenBeat("d")]);
+    const a = await h.go({ only: SHIFT_A });
+    assert.deepEqual(a.alerts.newBreaks, ["a"]);
+    assert.equal(h.sinks.calls.text.length, 1);
+    assert.match(h.sinks.calls.text[0], /^Fundhub BROKEN: Beat a\./);
+    assert.equal(h.rdb.state.claims, 1);
+
+    const b = await h.go({ only: SHIFT_B });
+    assert.equal(b.ok, true);
+    assert.equal(b.ran, 2);
+    assert.equal(h.sinks.calls.text.length, 1, "shift B says nothing about a beat it did not run");
+    assert.deepEqual(b.alerts.healed, [], "a green shift B run never reads as 'fixed' for shift A's break");
+    assert.deepEqual(b.alerts.healedQuiet, []);
+    assert.equal(h.rdb.state.closes, 0, "shift A's incident is still open");
+    assert.equal(h.rdb.state.claims, 1, "and was not claimed again");
+    assert.equal(h.rdb.state.incidents.filter((i) => i.beat_id === "a" && !i.closed_at).length, 1);
+
+    const again = await h.go({ only: SHIFT_A });
+    assert.deepEqual(again.alerts.quiet, ["a"], "a retry of shift A inside the hour stays quiet");
+    assert.equal(h.sinks.calls.text.length, 1);
+    assert.equal(h.rdb.state.opens, 1);
+  });
+
+  test("a break in each shift: each shift texts its own break once, and never the other's", async () => {
+    const h = harness([redBeat("a"), greenBeat("b"), redBeat("c"), greenBeat("d")]);
+    await h.go({ only: SHIFT_A });
+    await h.go({ only: SHIFT_B });
+    assert.equal(h.sinks.calls.text.length, 2);
+    assert.match(h.sinks.calls.text[0], /^Fundhub BROKEN: Beat a\./);
+    assert.doesNotMatch(h.sinks.calls.text[0], /Beat c/);
+    assert.match(h.sinks.calls.text[1], /^Fundhub BROKEN: Beat c\./);
+    assert.doesNotMatch(h.sinks.calls.text[1], /Beat a/);
+    assert.equal(h.rdb.state.opens, 2);
+    assert.equal(h.rdb.state.claims, 2);
+    await h.go({ only: SHIFT_A });
+    await h.go({ only: SHIFT_B });
+    assert.equal(h.sinks.calls.text.length, 2, "re-runs of both shifts in the same hour send nothing new");
+  });
+
+  test("a healed break: only the shift that owns the beat sends FIXED and closes it", async () => {
+    const flag = { red: true };
+    const h = harness([flipBeat("a", flag), greenBeat("b"), greenBeat("c"), greenBeat("d")]);
+    await h.go({ only: SHIFT_A });
+    assert.equal(h.sinks.calls.text.length, 1);
+    flag.red = false;
+    await h.go({ only: SHIFT_B });
+    assert.equal(h.sinks.calls.text.length, 1, "shift B cannot see that a healed");
+    assert.equal(h.rdb.state.closes, 0);
+    const healed = await h.go({ only: SHIFT_A });
+    assert.deepEqual(healed.alerts.healed, ["a"]);
+    assert.equal(h.sinks.calls.text.length, 2);
+    assert.match(h.sinks.calls.text[1], /^Fundhub FIXED: Beat a\./);
+    assert.equal(h.rdb.state.closes, 1);
+  });
+
+  test("across the two shifts every beat is recorded once, and each run records only its own beats", async () => {
+    const h = harness([greenBeat("a"), greenBeat("b"), greenBeat("c"), greenBeat("d")]);
+    const a = await h.go({ only: SHIFT_A });
+    const b = await h.go({ only: SHIFT_B });
+    assert.notEqual(a.runId, b.runId);
+    const byRun = (runId) => h.rdb.state.beats.filter((r) => r.run_id === runId).map((r) => r.beat_id).sort();
+    assert.deepEqual(byRun(a.runId), SHIFT_A);
+    assert.deepEqual(byRun(b.runId), SHIFT_B);
+    assert.deepEqual(h.rdb.state.beats.map((r) => r.beat_id).sort(), ["a", "b", "c", "d"]);
+    assert.equal(h.sinks.calls.text.length, 0);
+  });
+});
+
 describe("healed", () => {
   test("red, then green: one FIXED text, the incident closes, and a third green hour says nothing", async () => {
     const flag = { red: true };

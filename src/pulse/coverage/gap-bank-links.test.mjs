@@ -25,7 +25,9 @@ import { SWEEP_CRON } from "../../workflows/merchant-pull-sweeper.mjs";
 import { cronIntervalMs } from "../heartbeats.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const SRC = fs.readFileSync(path.join(HERE, "gap-bank-links.mjs"), "utf8");
+// The SQL and verdicts live in the shared hourly truth file, so the source checks read both files.
+const SRC = fs.readFileSync(path.join(HERE, "gap-bank-links.mjs"), "utf8") + "\n" +
+  fs.readFileSync(path.join(HERE, "../beats/lib/bank-links-truth.mjs"), "utf8");
 const NOW = new Date("2026-10-10T13:00:00.000Z");
 const ORG = "11111111-1111-4111-8111-111111111111";
 const KEYS = ["detail", "id", "status", "suggestedFix"];
