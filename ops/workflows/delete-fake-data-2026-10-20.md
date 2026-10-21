@@ -1,0 +1,92 @@
+# Delete fake test data — 2026-10-20
+
+Owner order (Chris, 2026-10-20), answering "Delete the fake test data — every client, lead, booking and funding round except Braum? yes/no": **"delete data yes"**. This is the CLAUDE.md §11 ask-first item, answered.
+
+Board for the launch: `ops/workflows/launch-100-2026-10-20.md`. This job is one session, one transaction. It can't be split.
+
+| Step | Status |
+|---|---|
+| 1. Read-only map and plan (this file) | done |
+| 2. Backup of every row to be deleted or changed | done inside the delete transaction, same snapshot |
+| 3. One-transaction delete, recount inside, roll back on any mismatch | see "Result" |
+| 4. Read-back | see "Result" |
+| 5. Counts to the coordinator | see "Result" |
+
+## How it was mapped (read only)
+
+- Live database, as `fundhub_app` on the 6543 pooler, inside `BEGIN READ ONLY` (no bare `SET`). `fundhub.actor=staff` set with `set_config(..., true)` for this transaction only, so tables split by partner are visible.
+- Walked all 820 foreign keys down from the fake clients until nothing new turned up. Every table has a primary key. There are 310 tables.
+- No client-less bookings exist. There is no separate leads table: a lead is a `clients` row tagged `lead:*`.
+- Every row in the plan was checked against the rows tied to the kept, held and locked clients. Overlap: **none**.
+
+## Who goes, who stays
+
+124 clients today.
+
+| Group | Count | What happens |
+|---|---:|---|
+| Fake test clients | 100 | **Deleted**, with everything tied to them |
+| Braum (FH-000507) | 1 | Kept. Not touched (no-contact, no-change). |
+| App Store review login (FH-000844, `client@fundhub.ai`, `FDH-TEST-CLIENT-ROLE-ACCOUNT`) | 1 | Kept. Apple review needs it. |
+| FH-000513 ("Test Test", Chris's own Gmail) | 1 | Kept, marked demo. A $20 Plaid **sandbox** money transfer points at it. The database locks money transfers so they can never be deleted, and the app login has no delete right on them. The lock was not broken. Its 3 sandbox bank links, 14 sandbox accounts and 1,183 sandbox bank lines stay with it. |
+| Real-looking people | 21 | **Held, not deleted.** Real names and real business emails. They came from ClickFunnels survey leads (16, August bookings), SLO ad buyers or leads (3), a website lead, and 1 lead added in the new CRM. One SLO buyer (FH-000530) has a real $32 Commas order. Two (FH-000531, FH-000532) have portal logins. One question went to the coordinator. |
+
+Fake = test email patterns only: `example.com`, `example.test`, `test.fundhub.ai`, `e2e+`, `demo.fundhub.local`, `csmq-*`, Chris's own test addresses (`stanbridgejchris*`, `bakerskater987*`, `stanbridgelargecoc*`, `stanbrdgejchris@gmsial.c.om`, `info@fundhub.ai`), `balls@gmail.com`, `bigboy@littleboy.com`.
+
+Fake client codes (100): csmq-13750, csmq-453, csmq-55225, csmq-98724, FH-000504, 508–512, 514–529, 533, 534, 537–566, 670–672, 677, 689, 691, 694, 702, 705, 709–711, 714, 715, 721, 723, 725, 727, 728, 730, 731, 738, 759, 761, 763, 769, 773, 774, 777–785, 794, 799, 803, 811, 841.
+
+Held codes (21): FH-000530, 531, 532, 567, 713, 719, 724, 732, 786–793, 795–798, 843.
+
+## The plan: 817 rows in 47 tables
+
+| Table | Rows | Table | Rows |
+|---|---:|---|---:|
+| clients | 100 | events | 192 |
+| tasks | 76 | client_waypoints | 45 |
+| cards | 44 | entitlements | 37 |
+| transactions | 36 | conversations | 27 |
+| documents | 24 | messages | 23 |
+| invoices | 22 | payment_links | 19 |
+| document_versions | 18 | accounts (client logins only) | 14 |
+| bookings | 14 | client_ad_attribution | 14 |
+| sales | 13 | client_custom_fields | 11 |
+| sale_payments | 11 | repair_programs | 7 |
+| funding_rounds | 5 | funding_round_sales | 5 |
+| client_consents | 4 | crs_results | 4 |
+| card_liabilities | 4 | card_liability_history | 4 |
+| tradelines | 4 | pii_identity | 3 |
+| commission_ledger | 3 | clarity_payments | 3 |
+| clarity_payment_installments | 3 | sale_attributions | 3 |
+| subscriptions | 3 | waypoint_nudges | 3 |
+| money_agent_tasks | 3 | affiliate_referrals | 2 |
+| client_authorized_reps | 2 | dispute_items | 2 |
+| money_agent_log | 2 | contracts | 1 |
+| pii_access_log | 1 | soft_pull_requests | 1 |
+| account_sessions | 1 | account_magic_links | 1 |
+| dispute_letters | 1 | dispute_cases | 1 |
+| blueprint_bank_relationship_todos | 1 | | |
+
+Rows that are changed, not deleted:
+- `clients.is_demo = true` on the 100 fake clients first. This is the switch the delete guards already honor for test rows (invoices, documents, contracts, entitlements, commission ledger, affiliate referrals). No guard was turned off.
+- `documents.current_version_id` cleared on the 24 fake documents, so each document and its versions can go (they point at each other).
+- The database's own "set to blank" links: `agent_runs.client_id` (6 rows) and `account_sessions.active_client_id` (3 rows).
+- The 2 fake affiliate referrals belong to a test affiliate ("payoutrun basic", made Oct 12). Deleting them makes the database recount that affiliate's balance. That one affiliate row is the only config row that changes.
+
+Not touched: staff, message templates, lenders, the bank list (`outreach_accounts`), products, offers, agents, settings, pipelines, contract templates, partners, affiliates (other than that one recount). No schema change, no send, no charge, no deploy.
+
+## Guards in the delete transaction
+
+`REPEATABLE READ`, one transaction:
+1. Recount the fake, kept and held lists and the whole 817-row map. Any difference from this plan → roll back.
+2. Count all 310 tables. Fingerprint the rows of Braum, the App Store login, FH-000513, the 21 held people, staff and every config table.
+3. Write the backup (every deleted or changed row, one JSON file per table) and read it back. Short → roll back.
+4. Delete children before parents. Each statement must hit exactly its planned count.
+5. Run the end-of-transaction checks early. Every table must drop by exactly its planned count; every other table must be unchanged. Every fingerprint must be unchanged, except that one test affiliate. Otherwise → roll back.
+
+Dry run (same script, rolled back): all checks passed, clients 124 → 24.
+
+Backup: `credentials/backups/delete-fake-data-2026-10-20/` (gitignored), one JSON file per table plus `manifest.json`.
+
+## Result
+
+(filled in after the run)
