@@ -1955,6 +1955,24 @@
   "schedule": "37 * * * *"
  },
  {
+  "surface": "function:pulse-hourly-c",
+  "control": "pulse-hourly-c (netlify/functions/pulse-hourly-c.mjs): scheduled at minute 52 each hour: runs the third shift of the beats (src/pulse/beats/shifts.mjs) read-only through the same runner and texts Chris when a step does not come back | sends or calls: owner text (Chris) inside texting hours | writes: pulse_beats, pulse_incidents, job_heartbeats",
+  "kind": "job-cron",
+  "calls": [
+   "owner text (Chris) inside texting hours"
+  ],
+  "tables": [
+   "pulse_beats",
+   "pulse_incidents",
+   "job_heartbeats"
+  ],
+  "impact": "staffOnly",
+  "coverage": "e2e",
+  "evidence": "no lane reads the outcome this function writes; ping: job:pulse-hourly-c heartbeat (src/pulse/heartbeats.mjs NETLIFY_JOBS, schedule 52 * * * *, red after 3 times the schedule); backup: pulse:runner-stale in src/pulse/instant-watch.mjs reads its receipt every 5 minutes; tests: src/pulse/pulse-hourly-c.test.mjs; src/pulse/beats/shifts.test.mjs; src/http/scheduled-functions-return.test.mjs; tripwire map: not on it (the map lists api doors, pages, desks, sends and the 100 Inngest workflows, not Netlify scheduled or background functions)",
+  "file": "netlify/functions/pulse-hourly-c.mjs",
+  "schedule": "52 * * * *"
+ },
+ {
   "surface": "function:pulse-outside-watch",
   "control": "pulse-outside-watch (netlify/functions/pulse-outside-watch.mjs): scheduled every 5 minutes on the Netlify clock: runs the engine-alive beat so a stalled workflow engine is caught outside the engine | sends or calls: owner text (Chris) inside texting hours | writes: pulse_beats, pulse_incidents",
   "kind": "job-cron",
