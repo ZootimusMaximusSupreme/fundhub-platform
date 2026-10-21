@@ -154,3 +154,17 @@ async function round9(c, sch) {
   return staffAffRound(c, sch, [], affs, ["EMP-000001", "EMP-000038", "EMP-000062"], ["AFF-000182", "AFF-000120", "AFF-000121", "AFF-000123", "AFF-000124", "AFF-000063"]);
 }
 module.exports.round9 = round9;
+
+// Round 10: Elena Brooks's 3 "chat thread check" test notes and their internal thread (owner yes via coordinator).
+async function round10(c, sch) {
+  const T = "bf3f5650-8960-4a4c-aa8f-845efcf42a00";
+  const M = ["6cd618af-4318-4282-bae0-ddaedd16d0c1", "55606313-4295-4e47-9062-5f23fece4cc9", "5b16500b-4786-4ebf-a2cb-c55f5682ca1d"];
+  const ok = (await c.query("SELECT count(*)::int n FROM messages WHERE id::text = ANY($1) AND conversation_id::text = $2 AND channel = 'internal' AND client_id IS NULL AND rendered_body LIKE 'chat thread check%'", [M, T])).rows[0].n;
+  const inThread = (await c.query("SELECT count(*)::int n FROM messages WHERE conversation_id::text = $1", [T])).rows[0].n;
+  const conv = (await c.query("SELECT count(*)::int n FROM conversations WHERE id::text = $1 AND kind = 'internal' AND client_id IS NULL", [T])).rows[0].n;
+  if (ok !== 3 || inThread !== 3 || conv !== 1) throw new Error(`not as described: notes ${ok}, in thread ${inThread}, thread ${conv}`);
+  const F = await closure(c, sch, [T], "conversations", { messages: M });
+  dropNullsInDel(F);
+  return { del: toObj(F.del), nulls: toObj(F.nulls), order: orderOf(sch, F.del), pks: Object.fromEntries([...F.del.keys()].map((t) => [t, sch.pks[t]])), demoClients: [], demoPartners: [], info: { messages: 3, thread: 1 } };
+}
+module.exports.round10 = round10;

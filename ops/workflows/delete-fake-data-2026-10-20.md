@@ -175,6 +175,8 @@ Each round ran as one transaction with the same guards: rebuild the plan inside 
 
 **Round 9 (committed, Chris via the coordinator: "delete it"):** affiliate Wardell Brooks (AFF-000122). The read-only check said nothing pointed at it, but the guarded map found 1 login (americafundinglending@…), 1 session and 2 link clicks. All 5 rows are deleted. 87 sets outside the plan were unchanged. Backup: `.../round9/`. Affiliates now: Brandon Elliott, David Ramirez, Colin Schmidt, Blake Evertsen, TEST — Client Role (App Store login), and the locked demo payee.
 
+**Round 10 (committed, owner yes via the coordinator):** Elena Brooks's 3 internal test notes ("chat thread check", Sep 26, sender blanked in round 7) and their internal thread `bf3f5650…`, which held only those notes. Nothing locked pointed at them, so nothing needed a demo flag. 4 rows deleted. 87 sets outside the plan were unchanged. Backup: `.../round10/`. No internal message without a sender is left.
+
 ## Left over (not done here)
 
 1. ~~Fake staff and fake affiliates~~: done in round 7. Chris asked about these after rounds 3 and 4. They were outside every round so far. They are listed for his yes or no:
