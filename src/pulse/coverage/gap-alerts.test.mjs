@@ -21,7 +21,11 @@ import { GAP_FILES } from "./modules.mjs";
 import { TEST_ADDRESS_RE } from "./gap-sms.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const SRC = fs.readFileSync(path.join(HERE, "gap-alerts.mjs"), "utf8");
+// The SQL and verdict live in the shared hourly truth file, and the card-due planner it runs lives next to it,
+// so the source checks read the lane and every file it now runs.
+const SRC = ["gap-alerts.mjs", "../beats/lib/alerts-truth.mjs", "../beats/lib/card-due-plan.mjs", "../beats/lib/card-due-helpers.mjs"]
+  .map((file) => fs.readFileSync(path.join(HERE, file), "utf8"))
+  .join("\n");
 const ORG = "11111111-1111-4111-8111-111111111111";
 const ID = "alerts:texts-went-out";
 // 06:00 Arizona, 13:00 UTC: the 6 a.m. pulse. The job's last pass was yesterday's 16:00 UTC.
