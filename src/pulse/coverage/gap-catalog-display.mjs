@@ -65,10 +65,12 @@ export function judgeDisplayResult(entry, stats = null, realFunding = null) {
 
   const samples = Number(stats?.sample_count || 0);
   const bad = Number(stats?.bad_count || 0);
+  // A read that leaves files on owner hold out (src/pulse/owner-hold.mjs) says so on its green line.
+  const held = typeof entry.contract.heldNote === "string" && entry.contract.heldNote ? ` ${entry.contract.heldNote}` : "";
   if (samples === 0 && entry.contract.emptyAs === "quiet") {
     // A control nobody has used yet leaves nothing to judge. It is green until the first wrong result,
     // and it says so in plain words (owner-set 2026-10-14: deep checks that wait for the first real result).
-    return result(entry.id, "PASS", `${entry.control}: no saved results yet, so none are wrong. This check goes red on the first wrong result. ${entry.contract.requirement}`);
+    return result(entry.id, "PASS", `${entry.control}: no saved results yet, so none are wrong. This check goes red on the first wrong result. ${entry.contract.requirement}${held}`);
   }
   if (samples === 0 && entry.contract.emptyAs === "no-real-funding") {
     // Owner fact 2026-10-20: there are zero real funding rounds. With no real round, receipt or bank
@@ -90,7 +92,7 @@ export function judgeDisplayResult(entry, stats = null, realFunding = null) {
     );
   }
   if (bad === 0) {
-    return result(entry.id, "PASS", `${entry.control}: ${samples} saved result${samples === 1 ? "" : "s"} passed the exact check. ${entry.contract.requirement}`);
+    return result(entry.id, "PASS", `${entry.control}: ${samples} saved result${samples === 1 ? "" : "s"} passed the exact check. ${entry.contract.requirement}${held}`);
   }
   return result(
     entry.id,

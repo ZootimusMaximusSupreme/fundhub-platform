@@ -20,6 +20,7 @@
 // Client Control Panel shows.
 
 import { STAGE_SLA, isBreached } from "../../repair/sla.mjs";
+import { OWNER_HOLD_CODE, heldCodesOf, ownerHoldRow, splitHeld, stillOwnerHold } from "../owner-hold.mjs";
 
 export const REPAIR_PIPELINE = "optimization";
 export const FUNDING_PIPELINE = "funding_card_stacking";
@@ -65,6 +66,7 @@ export const NEXT_ACTION_SQL = `
 /* gap:fulfillment-next-action */
 SELECT c.id::text AS id,
        c.client_id::text AS client_id,
+       cl.client_code AS client_code,
        ps.key AS stage_key,
        c.entered_at,
        c.updated_at,
@@ -224,8 +226,11 @@ async function checkNextAction({ db, orgId, now, step }) {
     assertSelect(NEXT_ACTION_SQL);
     const result = await db.query(NEXT_ACTION_SQL, [orgId, [...REPAIR_QUEUE_STAGES]]);
     const rows = Array.isArray(result && result.rows) ? result.rows : [];
-    const late = rows.filter((row) => pastDefinedWait(row, now));
+    // A late file the owner put on hold (src/pulse/owner-hold.mjs) is not judged. When it is the only late
+    // file, the row says so by name instead of red or green.
+    const { open: late, held } = splitHeld(rows.filter((row) => pastDefinedWait(row, now)), (row) => row.client_code);
     if (late.length === 0) {
+      if (held.length > 0) return ownerHoldRow(id, orgId, heldCodesOf(held, (row) => row.client_code));
       return check(id, "PASS", "no repair file is past its clock");
     }
     const looked = late.slice(0, MAX_FILES_READ);
@@ -369,6 +374,20 @@ async function checkApplyBlocked({ db, orgId, now }) {
  * ctx: { db, orgId, now, readShownStep }. A fetch is not used.
  * Each row is { id, status, detail, suggestedFix }. Status is PASS, FAIL, or skip.
  */
+/** The audit asks the lane to prove a "nothing to judge" row again: the same read, the same clock. */
+export const naVerify = Object.freeze({
+  [OWNER_HOLD_CODE]: async (args, ctx = {}) => {
+    if (!args || args.check !== "fulfillment:next-action") return false;
+    const db = ctx.db || null;
+    const orgId = args.orgId || ctx.orgId || null;
+    if (!db || !orgId) return false;
+    const now = ctx.now instanceof Date ? ctx.now : new Date();
+    // A late file that is not held would need the screen read; here it simply means the claim no longer holds.
+    const step = async () => ({ ok: false, error: "not read by the audit" });
+    return stillOwnerHold(await checkNextAction({ db, orgId, now, step }), args);
+  }
+});
+
 export async function gapChecks(ctx = {}) {
   const db = ctx.db || null;
   const orgId = ctx.orgId || null;

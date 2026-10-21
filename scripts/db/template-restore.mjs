@@ -236,7 +236,7 @@ export async function stageSeedRows(client, { root = ROOT, keys = RESTORE_KEYS }
     `SELECT ${FIELDS.map((f) => `t.${f}`).join(", ")}
        FROM ${STAGE_TABLE} t JOIN orgs o ON o.id = t.org_id AND o.slug = $1
       WHERE t.template_key = ANY($2::text[])
-      ORDER BY t.template_key`,
+      ORDER BY t.template_key COLLATE "C"`,
     [ORG_SLUG, [...keys]]
   );
   return rows.map((r) => Object.fromEntries(FIELDS.map((f) => [f, r[f] ?? null])));

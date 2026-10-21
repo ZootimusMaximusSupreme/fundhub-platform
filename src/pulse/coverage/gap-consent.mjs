@@ -12,7 +12,7 @@
 
 import { CONSENT_VALID_SQL } from "../../consent/index.mjs";
 import { coverageKey, PULSE_REGISTRY } from "../registry.mjs";
-import { onOwnerHold } from "../owner-hold.mjs";
+import { OWNER_HOLD_CODE, isHeldCode, ownerHoldRow, stillOwnerHold } from "../owner-hold.mjs";
 
 export const CONSENT_PAGE_PATH = "/app/consent-capture.html";
 export const CONSENT_API_PATH = "/api/consent/capture";
@@ -313,29 +313,25 @@ const DISPUTE_ID = "consent:dispute-required";
 /* The held client codes when the reading named every row it counted and EVERY one is a
    client on the owner's no-contact hold, else null. */
 function heldOnly(reading) {
-  const list = Array.isArray(reading.codes) ? reading.codes.map((c) => (c == null ? "" : String(c))) : [];
-  if (!list.length || list.length !== reading.n || !list.every(onOwnerHold)) return null;
+  const list = Array.isArray(reading.codes) ? reading.codes.map((c) => (c == null ? "" : String(c).trim().toUpperCase())) : [];
+  if (!list.length || list.length !== reading.n || !list.every(isHeldCode)) return null;
   return [...new Set(list)].sort();
 }
 
 /* Owner call 2026-10-09, said again 2026-10-20: Braum (FH-000507) gets no email, sign-in
    link, call or data step, so nobody may chase his signature. When every client this row
-   finds is on that hold, the row is "nothing to judge" (owner-hold-client) and the audit
+   finds is on that hold, the row is "nothing to judge" (OWNER_HOLD_CODE) and the audit
    reads it again every morning (naVerify below). Any other client keeps it red. */
 function disputeRow(dispute, orgId, skipDetail) {
   if (!dispute.skip && !dispute.fail && dispute.n > 0) {
     const held = heldOnly(dispute);
     if (held) {
-      return {
-        ...check(
-          DISPUTE_ID,
-          "na",
+      return ownerHoldRow(DISPUTE_ID, orgId, held, {
+        detail:
           `${dispute.n} active repair ${dispute.n === 1 ? "client has" : "clients have"} no dispute authorization and no signed repair agreement, ` +
-            `and ${dispute.n === 1 ? "it is" : "they are"} ${held.join(" and ")}, on the owner's no-contact hold. ` +
-            `Judged again the day another repair client is missing them.`
-        ),
-        na: { code: "owner-hold-client", args: { check: DISPUTE_ID, orgId, clients: held } }
-      };
+          `and ${dispute.n === 1 ? "it is" : "they are"} ${held.join(" and ")}, on the owner's no-contact hold. ` +
+          `Judged again the day another repair client is missing them.`
+      });
     }
   }
   return countRow(
@@ -425,13 +421,10 @@ export async function gapChecks(ctx = {}) {
    the same read still finds clients missing both papers and every one is a client the row
    named and the owner holds. A failed read, another client, or nobody at all is false. */
 export const naVerify = Object.freeze({
-  "owner-hold-client": async (args, ctx = {}) => {
+  [OWNER_HOLD_CODE]: async (args, ctx = {}) => {
     if (!args || args.check !== DISPUTE_ID || typeof args.orgId !== "string" || !UUID_RE.test(args.orgId)) return false;
     if (!canQuery(ctx)) return false;
-    const named = Array.isArray(args.clients) ? [...args.clients].map(String).sort() : [];
     const now = await countReading(ctx, DISPUTE_SQL, [args.orgId, false, TEST_CLIENT_EMAIL_RE]);
-    if (now.fail || now.skip || !(now.n > 0)) return false;
-    const held = heldOnly(now);
-    return !!held && held.length === named.length && held.every((code, i) => code === named[i]);
+    return stillOwnerHold(disputeRow(now, args.orgId, ""), args);
   }
 });
