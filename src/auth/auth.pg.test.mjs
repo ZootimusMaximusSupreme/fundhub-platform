@@ -226,6 +226,35 @@ test("an expired invite token is refused", opts, async () => {
   assert.equal(out.error, "invalid_or_expired_token");
 });
 
+test("a new invite or reset link ends the earlier LIVE one and leaves an expired one as it was", opts, async () => {
+  const usedAt = async (token) => (await db.query(
+    `SELECT used_at FROM password_resets WHERE token_hash=$1`, [hashToken(token)]
+  )).rows[0].used_at;
+  const runOut = (token) => db.query(
+    `UPDATE password_resets SET expires_at = now() - interval '1 minute' WHERE token_hash=$1`, [hashToken(token)]
+  );
+
+  // Invites: first one runs out, second is live, third ends the second only.
+  await db.query(`DELETE FROM staff WHERE lower(email)=$1`, [EMAIL2]);
+  const i1 = await inviteStaff(db, { actor: OWNER, email: EMAIL2, name: "Link Ends", role: "setter" });
+  await runOut(i1.token);
+  const i2 = await inviteStaff(db, { actor: OWNER, email: EMAIL2, name: "Link Ends" });
+  const i3 = await inviteStaff(db, { actor: OWNER, email: EMAIL2, name: "Link Ends" });
+  assert.equal(await usedAt(i1.token), null, "an expired invite is not stamped as used");
+  assert.notEqual(await usedAt(i2.token), null, "the earlier live invite is ended");
+  assert.equal(await usedAt(i3.token), null, "the newest invite stays live");
+
+  // Resets: same order, for an active person.
+  const email = "pg_auth_owner@fundhub.test";
+  const r1 = await requestPasswordReset(db, { email });
+  await runOut(r1.token);
+  const r2 = await requestPasswordReset(db, { email });
+  const r3 = await requestPasswordReset(db, { email });
+  assert.equal(await usedAt(r1.token), null, "an expired reset link is not stamped as used");
+  assert.notEqual(await usedAt(r2.token), null, "the earlier live reset link is ended");
+  assert.equal(await usedAt(r3.token), null, "the newest reset link stays live");
+});
+
 test("password reset issues a working token and kills existing sessions", opts, async () => {
   const before = await login(db, { email: EMAIL, password: PASSWORD, ip: IP });
   assert.ok(await verifySession(db, before.token));

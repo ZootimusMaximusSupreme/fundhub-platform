@@ -368,6 +368,11 @@ const drop = (rows, id) => rows.splice(rows.findIndex((r) => r.id === id), 1);
     },
     ignored: [
       ["one old row is not enough to judge", (t) => t.messages.push(sent(u(5), "SMS-C", { status: "sent" })), { sample: 3 }],
+      // The App Store review login is ours (client@fundhub.ai); its bounced sign-in mail is not a client's delivery.
+      ["two bounced sends to the company's own @fundhub.ai login", (t) => {
+        t.messages.push(sent(u(5), "EMAIL-M", { channel: "email", status: "bounced", to_address: "client@fundhub.ai" }));
+        t.messages.push(sent(u(6), "EMAIL-M", { channel: "email", status: "bounced", to_address: "client@fundhub.ai" }));
+      }],
       ["one failure after the last delivery is not enough", (t) => {
         t.messages.push(sent(u(5), "SMS-C", { created_at: ago(10 * DAY) }));
         t.messages.push(sent(u(6), "SMS-C", { status: "failed", created_at: ago(3 * DAY) }));
