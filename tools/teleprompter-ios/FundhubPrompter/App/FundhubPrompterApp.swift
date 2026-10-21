@@ -26,6 +26,7 @@ enum Brand {
 
 struct RootView: View {
     @EnvironmentObject var model: AppModel
+    @EnvironmentObject var camera: CameraController
     @Environment(\.scenePhase) private var phase
 
     var body: some View {
@@ -33,6 +34,12 @@ struct RootView: View {
         .onChange(of: phase) { _, p in
             if p == .active { model.startPolling() } else { model.stopPolling() }
         }
-        .onAppear { model.startPolling() }
+        .onAppear {
+            let uploader = model.uploader
+            camera.onTake = { file, name, offerKey, inPhotos, diagnostics in
+                uploader.add(file: file, name: name, offerKey: offerKey, inPhotos: inPhotos, diagnostics: diagnostics)
+            }
+            model.startPolling()
+        }
     }
 }

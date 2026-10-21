@@ -28,53 +28,51 @@ enum CaptureChoice {
         var shortfall: String?
     }
 
-    /// Front-camera filming rate. Apple's iPhone 17 Pro Max front camera films
-    /// normal video at 60 fps (4K and 1080p). 120 fps is slow motion, not this mode.
-    /// https://support.apple.com/en-us/125091
-    static let filmingFPS = 60
+    /// Long form (VSL, thank-you, testimonial): 4K at 60 fps (owner call 2026-10-21).
+    static let longFormFPS = 60
+    /// Ads: 1080p at the highest normal-speed rate the lens has, up to 120 fps
+    /// (owner call 2026-10-21: "1080p max settings, like 120fps"). 240 is slow
+    /// motion and is never used.
+    static let adMaxFPS = 120
+    /// Kept for older callers: the 60 fps long-form rate.
+    static let filmingFPS = longFormFPS
 
     /// The chosen size (3840×2160 or 1920×1080) at 60 fps. Never a smaller
     /// picture under the bigger name, and never the slow-motion rate.
     static func pickHighest(_ formats: [FormatInfo], width: Int, height: Int, wantStabilization: Bool) -> Pick? {
-        pick(formats, width: width, height: height, fps: filmingFPS, wantStabilization: wantStabilization)
+        pick(formats, width: width, height: height, fps: longFormFPS, wantStabilization: wantStabilization)
     }
 
-    /// Front camera: 1920×1080, 60 fps, then 30. Never a 4K format.
-    /// A 30 fps 1080p picture is the planned fallback, not an error.
-    static func pickFront1080(_ formats: [FormatInfo], wantStabilization: Bool) -> Pick? {
-        guard let p = pick(formats, width: 1920, height: 1080, fps: filmingFPS, wantStabilization: wantStabilization) else { return nil }
-        if p.width == 1920 && p.height == 1080 {
-            return Pick(index: p.index, width: p.width, height: p.height, fps: p.fps, shortfall: nil)
-        }
-        return p
+    /// Long form: 3840×2160 at 60 fps. A camera that cannot says so in red.
+    static func pickLongForm(_ formats: [FormatInfo], wantStabilization: Bool) -> Pick? {
+        pick(formats, width: 3840, height: 2160, fps: longFormFPS, wantStabilization: wantStabilization)
     }
 
-    /// Back camera (the phone that sits and films him): best steady 1080p.
-    /// Steady means a normal rate (not slow motion) that can hold still,
-    /// then the higher of 60 or 30. Never 4K. This app has no proven 4K back recording.
-    static func pickStable1080(_ formats: [FormatInfo], wantStabilization: Bool) -> Pick? {
+    /// Ads: 1920×1080 at the fastest rate this lens films, capped at 120.
+    /// The lens's own top rate is the goal, so a 60 fps lens is not a shortfall.
+    static func pickAd(_ formats: [FormatInfo], wantStabilization: Bool) -> Pick? {
         let hd = formats.filter { $0.width == 1920 && $0.height == 1080 }
-        if hd.isEmpty {
-            return pick(formats, width: 1920, height: 1080, fps: 30, wantStabilization: wantStabilization)
+        guard let top = hd.map({ min(Double(adMaxFPS), $0.maxFPS) }).max(), top >= 1 else {
+            return pick(formats, width: 1920, height: 1080, fps: longFormFPS, wantStabilization: wantStabilization)
         }
-        let normal = hd.filter { $0.maxFPS <= 60.5 }
-        let pool = normal.isEmpty ? hd : normal
-        func score(_ f: FormatInfo) -> [Int] {
-            let stab = (f.stabilization || !wantStabilization) ? 1 : 0
-            let fps = Int(min(60.0, f.maxFPS).rounded(.down))
-            return [stab, fps, f.hdr ? 1 : 0, f.videoRange ? 1 : 0, -f.index]
-        }
-        guard let f = pool.max(by: { score($0).lexicographicallyPrecedes(score($1)) }) else { return nil }
-        let run = f.maxFPS + 0.01 >= 60 ? 60 : max(1, Int(f.maxFPS.rounded(.down)))
-        return Pick(index: f.index, width: f.width, height: f.height, fps: run, shortfall: nil)
+        let rate = Int((top + 0.01).rounded(.down))
+        return pick(formats, width: 1920, height: 1080, fps: rate, wantStabilization: wantStabilization)
     }
 
-    /// Which lens. "back" is the sitting phone. Anything else is the front camera.
-    static func pickForLens(_ formats: [FormatInfo], lens: String, wantStabilization: Bool) -> Pick? {
-        if lens == "back" || lens == "environment" {
-            return pickStable1080(formats, wantStabilization: wantStabilization)
-        }
-        return pickFront1080(formats, wantStabilization: wantStabilization)
+    /// Kept for older callers: an ad pick.
+    static func pickFront1080(_ formats: [FormatInfo], wantStabilization: Bool) -> Pick? {
+        pickAd(formats, wantStabilization: wantStabilization)
+    }
+
+    /// Back camera kept for older callers: an ad pick.
+    static func pickStable1080(_ formats: [FormatInfo], wantStabilization: Bool) -> Pick? {
+        pickAd(formats, wantStabilization: wantStabilization)
+    }
+
+    /// The pick for this script. Both lenses follow the same rule.
+    static func pickForLens(_ formats: [FormatInfo], lens: String, longForm: Bool = false, wantStabilization: Bool) -> Pick? {
+        longForm ? pickLongForm(formats, wantStabilization: wantStabilization)
+                 : pickAd(formats, wantStabilization: wantStabilization)
     }
 
     /// The best format for the quality and frame rate Chris picked.
@@ -83,7 +81,7 @@ enum CaptureChoice {
     /// then the lowest index (Apple lists the plainest format first).
     static func pick(_ formats: [FormatInfo], width: Int, height: Int, fps: Int, wantStabilization: Bool) -> Pick? {
         guard !formats.isEmpty else { return nil }
-        let asked = min(fps, filmingFPS)
+        let asked = fps
         func score(_ f: FormatInfo) -> [Int] {
             let normalSpeed = f.maxFPS <= Double(asked) + 0.5 ? 1 : 0
             return [normalSpeed, f.stabilization || !wantStabilization ? 1 : 0, f.hdr ? 1 : 0, f.videoRange ? 1 : 0, -f.index]
