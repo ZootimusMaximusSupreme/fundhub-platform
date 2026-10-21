@@ -22,6 +22,12 @@
 //   failed because there was nowhere to send it. They are read only like the rest. Test traffic is left out
 //   of the message reads: a demo flag, a synthetic client, or a test address (TEST_ADDRESS_RE).
 //   gapChecks returns the three gap:sms-* rows first, then the five gap:msg-* rows.
+//
+// ONE JUDGE, TWO CLOCKS (2026-10-20). This file used to be src/pulse/coverage/gap-sms.mjs.
+// It moved here, unchanged except that smsChecks and msgChecks are exported and take an
+// optional `only` list, so the morning lane (gap-sms.mjs, now a thin adapter) and the hourly
+// beat (beat-message-health.mjs) run the same SQL and the same verdicts. A beat may import
+// only from src/pulse/beats/lib, so the truth lives here. This file has no imports.
 
 export const SENDING_STUCK_MINUTES = 15;
 export const FAILED_LOOKBACK_DAYS = 7;
@@ -225,7 +231,7 @@ SELECT count(*)::int AS n,
    )`.trim();
 }
 
-const SENDING_SQL = `
+export const SENDING_SQL = `
 SELECT count(*) FILTER (WHERE sender_staff_id IS NULL)::int AS customer_n,
        count(*) FILTER (WHERE sender_staff_id IS NOT NULL)::int AS staff_n
   FROM messages
@@ -238,7 +244,7 @@ SELECT count(*) FILTER (WHERE sender_staff_id IS NULL)::int AS customer_n,
 // The dispatcher writes "the client has no phone to send to" when a person gave no number
 // (src/messaging/dispatch.mjs, no_address). That is a hole in the client record, not the phone
 // company saying no, so it is left out. gap-email.mjs drops the same class.
-const FAILED_SQL = `
+export const FAILED_SQL = `
 SELECT count(*) FILTER (WHERE sender_staff_id IS NULL)::int AS customer_n,
        count(*) FILTER (WHERE sender_staff_id IS NOT NULL)::int AS staff_n
   FROM messages
@@ -256,28 +262,41 @@ function namesOf(value) {
   return [String(value)];
 }
 
+export const SMS_CHECK_IDS = Object.freeze([
+  "gap:sms-sending-stuck",
+  "gap:sms-provider-failed",
+  "gap:sms-journey-zero"
+]);
+
+/** Keep only the rows whose id is on `only` (null keeps all). The lane passes null; the hourly beat a list. */
+function wanted(only) {
+  return (id) => !Array.isArray(only) || only.includes(id);
+}
+
 /**
  * smsChecks — missing SMS breaks only (the three gap:sms-* rows).
- * ctx: { db, orgId, now }. SELECT only. Never sends.
+ * io: { db, orgId, now } (db is anything with query(sql, params)). SELECT only. Never sends.
  * Returns { id, status, detail, suggestedFix } with status PASS, FAIL, or skip.
+ * `only`: the ids to read; a check not on it is neither read nor returned.
  */
-async function smsChecks(ctx = {}) {
-  const db = ctx.db;
-  const orgId = ctx.orgId;
-  const now = ctx.now instanceof Date ? ctx.now : new Date();
+export async function smsChecks(io = {}, { only = null } = {}) {
+  const want = wanted(only);
+  const db = io.db;
+  const orgId = io.orgId;
+  const now = io.now instanceof Date ? io.now : new Date();
   if (!db || typeof db.query !== "function") {
     return [
       row("gap:sms-sending-stuck", "skip", "No database in this run. SMS gap not read."),
       row("gap:sms-provider-failed", "skip", "No database in this run. SMS gap not read."),
       row("gap:sms-journey-zero", "skip", "No database in this run. SMS gap not read.")
-    ];
+    ].filter((r) => want(r.id));
   }
   if (!orgId) {
     return [
       row("gap:sms-sending-stuck", "skip", "No company in this run. SMS gap not read."),
       row("gap:sms-provider-failed", "skip", "No company in this run. SMS gap not read."),
       row("gap:sms-journey-zero", "skip", "No company in this run. SMS gap not read.")
-    ];
+    ].filter((r) => want(r.id));
   }
 
   const sendingBefore = new Date(now.getTime() - SENDING_STUCK_MINUTES * 60 * 1000);
@@ -295,17 +314,20 @@ async function smsChecks(ctx = {}) {
       return { error: row(id, "skip", `SMS read failed: ${String((err && err.message) || err).slice(0, 160)}`) };
     }
   };
+  const not = Promise.resolve(null);
   const [sending, failed, journey] = await Promise.all([
-    read("gap:sms-sending-stuck", SENDING_SQL, [orgId, sendingBefore.toISOString()]),
-    read("gap:sms-provider-failed", FAILED_SQL, [orgId, failedSince.toISOString()]),
-    read("gap:sms-journey-zero", buildJourneyZeroSql(), [orgId, journeyBefore.toISOString(), journeySince.toISOString()])
+    want("gap:sms-sending-stuck") ? read("gap:sms-sending-stuck", SENDING_SQL, [orgId, sendingBefore.toISOString()]) : not,
+    want("gap:sms-provider-failed") ? read("gap:sms-provider-failed", FAILED_SQL, [orgId, failedSince.toISOString()]) : not,
+    want("gap:sms-journey-zero")
+      ? read("gap:sms-journey-zero", buildJourneyZeroSql(), [orgId, journeyBefore.toISOString(), journeySince.toISOString()])
+      : not
   ]);
 
   return [
-    sending.error || sendingRow(sending.row),
-    failed.error || failedRow(failed.row),
-    journey.error || journeyRow(journey.row)
-  ];
+    sending && (sending.error || sendingRow(sending.row)),
+    failed && (failed.error || failedRow(failed.row)),
+    journey && (journey.error || journeyRow(journey.row))
+  ].filter(Boolean);
 }
 
 function sendingRow(got) {
@@ -783,56 +805,59 @@ function noAddressRow(got) {
 }
 
 /**
- * msgChecks — the five gap:msg-* rows. ctx: { db, orgId, now }. SELECT only. Never sends.
+ * msgChecks — the five gap:msg-* rows. io: { db, orgId, now } (db is anything with query(sql, params)). SELECT only. Never sends.
  * One failed read is one skip row with the reason. It never turns into a PASS.
+ * `only`: the ids to read; a check not on it is neither read nor returned.
  */
-async function msgChecks(ctx = {}) {
-  const db = ctx.db;
-  const orgId = ctx.orgId;
-  const now = ctx.now instanceof Date ? ctx.now : new Date();
+export async function msgChecks(io = {}, { only = null } = {}) {
+  const want = wanted(only);
+  const db = io.db;
+  const orgId = io.orgId;
+  const now = io.now instanceof Date ? io.now : new Date();
   if (!db || typeof db.query !== "function") {
-    return msgSkips("No database in this run. Message queue gap not read.");
+    return msgSkips("No database in this run. Message queue gap not read.").filter((r) => want(r.id));
   }
   if (!orgId) {
-    return msgSkips("No company in this run. Message queue gap not read.");
+    return msgSkips("No company in this run. Message queue gap not read.").filter((r) => want(r.id));
   }
 
   const ago = (ms) => new Date(now.getTime() - ms).toISOString();
   const HOUR = 60 * 60 * 1000;
   const DAY = 24 * HOUR;
+  const not = Promise.resolve(null);
 
   const [receipt, copy, blocked, reply, address] = await Promise.all([
-    readRows(db, MSG_CHECK_IDS[0], SENT_NO_RECEIPT_SQL, [
+    want(MSG_CHECK_IDS[0]) ? readRows(db, MSG_CHECK_IDS[0], SENT_NO_RECEIPT_SQL, [
       orgId,
       ago(RECEIPT_AFTER_HOURS * HOUR),
       ago(RECEIPT_LOOKBACK_DAYS * DAY),
       TEST_ADDRESS_RE
-    ]),
-    readRows(db, MSG_CHECK_IDS[1], BAD_COPY_SQL, [orgId]),
-    readRows(db, MSG_CHECK_IDS[2], BLOCKED_SQL, [orgId, ago(BLOCKED_LOOKBACK_DAYS * DAY), TEST_ADDRESS_RE]),
-    readRows(db, MSG_CHECK_IDS[3], REPLY_SQL, [
+    ]) : not,
+    want(MSG_CHECK_IDS[1]) ? readRows(db, MSG_CHECK_IDS[1], BAD_COPY_SQL, [orgId]) : not,
+    want(MSG_CHECK_IDS[2]) ? readRows(db, MSG_CHECK_IDS[2], BLOCKED_SQL, [orgId, ago(BLOCKED_LOOKBACK_DAYS * DAY), TEST_ADDRESS_RE]) : not,
+    want(MSG_CHECK_IDS[3]) ? readRows(db, MSG_CHECK_IDS[3], REPLY_SQL, [
       orgId,
       ago(REPLY_LOOKBACK_DAYS * DAY),
       ago(REPLY_GRACE_MINUTES * 60 * 1000)
-    ]),
-    readRows(db, MSG_CHECK_IDS[4], NO_ADDRESS_SQL, [orgId, ago(NO_ADDRESS_LOOKBACK_DAYS * DAY), TEST_ADDRESS_RE])
+    ]) : not,
+    want(MSG_CHECK_IDS[4]) ? readRows(db, MSG_CHECK_IDS[4], NO_ADDRESS_SQL, [orgId, ago(NO_ADDRESS_LOOKBACK_DAYS * DAY), TEST_ADDRESS_RE]) : not
   ]);
 
   return [
-    receipt.error || receiptRow(receipt.rows, now),
-    copy.error || badCopyRow(copy.rows),
-    blocked.error || blockedRow(blocked.rows),
-    reply.error || replyRow(reply.rows && reply.rows[0]),
-    address.error || noAddressRow(address.rows)
-  ];
+    receipt && (receipt.error || receiptRow(receipt.rows, now)),
+    copy && (copy.error || badCopyRow(copy.rows)),
+    blocked && (blocked.error || blockedRow(blocked.rows)),
+    reply && (reply.error || replyRow(reply.rows && reply.rows[0])),
+    address && (address.error || noAddressRow(address.rows))
+  ].filter(Boolean);
 }
 
 /**
- * gapChecks — the message queue. The three gap:sms-* rows first, then the five gap:msg-* rows.
- * ctx: { db, orgId, now }. SELECT only. Never sends.
+ * runSmsLane — the message queue. The three gap:sms-* rows first, then the five gap:msg-* rows.
+ * io: { db, orgId, now } (db is anything with query(sql, params)). SELECT only. Never sends. (The morning lane gap-sms.mjs calls this as gapChecks.)
  * Returns { id, status, detail, suggestedFix } with status PASS, FAIL, or skip.
  */
-export async function gapChecks(ctx = {}) {
-  const [sms, msg] = await Promise.all([smsChecks(ctx), msgChecks(ctx)]);
+export async function runSmsLane(io = {}) {
+  const [sms, msg] = await Promise.all([smsChecks(io), msgChecks(io)]);
   return [...sms, ...msg];
 }
