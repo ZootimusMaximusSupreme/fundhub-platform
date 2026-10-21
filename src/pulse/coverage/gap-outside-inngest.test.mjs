@@ -108,13 +108,14 @@ test("the ids are the two planned ones, then the morning-pulse one the checker a
   ]);
 });
 
-test("both watched jobs are on the job list and run every 5 minutes", () => {
+test("both watched jobs are on the job list and tick on the schedule this lane assumes", () => {
   for (const w of WATCHED_JOBS) {
     const hit = JOBS.find((j) => j.job === w.job);
     assert.ok(hit, `${w.job} left the job list: update this lane`);
     assert.equal(hit.runner, "inngest");
-    assert.equal(cronIntervalMs(hit.cron), TICK_MS, `${w.job} no longer runs every 5 minutes`);
+    assert.equal(cronIntervalMs(hit.cron), w.tickMs, `${w.job} no longer runs every ${w.tickMs / MIN} minutes`);
   }
+  assert.equal(WATCHED_JOBS[0].tickMs, TICK_MS, "the text and email sender still ticks every 5 minutes");
   assert.equal(DARK_AFTER_MS, 20 * MIN);
   assert.equal(LOOKBACK_MS, 24 * HOUR);
 });
@@ -948,4 +949,22 @@ test("health-down-text: a watch that really sends nothing is still red at night"
   const quiet = async () => ({ ok: true });
   const r = await healthDownText({ runWatch: quiet, now: new Date("2026-10-10T04:50:00Z") });
   assert.equal(r.status, "FAIL");
+});
+
+test("the 10-minute watch: a 30-minute hole is PASS, a 50-minute hole is FAIL with a 40-minute limit", async () => {
+  const at = (iso) => Date.parse(iso);
+  const tenMinute = (hole) => steady().filter((t) => Math.round((t - (NOW_MS - 2 * MIN)) / TICK_MS) % 2 === 0)
+    .filter((t) => !(t > hole[0] && t < hole[1]));
+  const ok = await inngestCronsStale({
+    db: fakeDb({ receipts: { "message-dispatch-sweeper": steady(), "pulse-instant-watch": tenMinute([at("2026-10-09T08:00:00Z"), at("2026-10-09T08:25:00Z")]) } }),
+    now: NOW
+  });
+  assert.equal(ok.status, "PASS", ok.detail);
+  const dark = await inngestCronsStale({
+    db: fakeDb({ receipts: { "message-dispatch-sweeper": steady(), "pulse-instant-watch": tenMinute([at("2026-10-09T08:00:00Z"), at("2026-10-09T08:40:00Z")]) } }),
+    now: NOW
+  });
+  assert.equal(dark.status, "FAIL");
+  assert.match(dark.detail, /limit 40 min;/);
+  assert.match(dark.detail, /pulse-instant-watch saved no run/);
 });

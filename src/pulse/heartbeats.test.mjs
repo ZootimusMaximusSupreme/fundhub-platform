@@ -161,3 +161,22 @@ function netlifySchedules(toml) {
   }
   return jobs;
 }
+
+/* 2026-10-20: the Inngest Free plan allows 50,000 runs a month. The timed jobs used about 150,000 and every
+   Inngest job stopped at 6:20 p.m. Arizona. Owner-set: stay on the Free plan. Inngest counted about 1.4 per timed
+   run (5,516 timed runs used 7,728 between its two usage emails, 2026-10-12 06:17 and 2026-10-13 22:46 UTC),
+   because event runs and steps count too. A 31-day month must stay under 90% of the plan. */
+test("the Inngest timed jobs fit the Free plan's 50,000 runs a month", () => {
+  const FREE_PLAN_RUNS = 50000;
+  const PER_TIMED_RUN = 1.4;
+  let perDay = 0;
+  for (const [job, cron] of INNGEST_JOBS) {
+    const ms = cronIntervalMs(cron);
+    if (ms) { perDay += 86400000 / ms; continue; }
+    // A day-of-month schedule ("0 3 1 * *") runs once a month.
+    assert.match(cron, /^\d+ \d+ \d+ \* \*$/, `${job} has a schedule the budget can read (${cron})`);
+    perDay += 1 / 31;
+  }
+  const month = Math.round(perDay * 31 * PER_TIMED_RUN);
+  assert.ok(month <= 0.9 * FREE_PLAN_RUNS, `Inngest timed jobs project ${month} runs a month; the Free plan allows ${FREE_PLAN_RUNS}`);
+});

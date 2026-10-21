@@ -48,7 +48,7 @@ test("slice 11-hiring: workflow files exist and crons match", () => {
   assert.equal(bench.schedule, "daily");
   assert.equal(outreach.schedule, "30m");
   assert.equal(BENCH_CRON, "30 13 * * *");
-  assert.equal(OUTREACH_CRON, "*/30 * * * *");
+  assert.equal(OUTREACH_CRON, "45 * * * *");
 });
 
 test("slice 11-hiring: a workflow id that is not in the bundled list is not registered", () => {

@@ -90,7 +90,7 @@ function fakeDb(seed) {
 }
 
 test("recovery is capped and SQL excludes unlinked, unfunded and paid invoices", async () => {
-  assert.equal(SWEEP_CRON, "*/30 * * * *");
+  assert.equal(SWEEP_CRON, "35 * * * *");
   for (const guard of [
     "i.sale_id IS NOT NULL", "r.product = 'card_stacking'", "r.status = 'funded'",
     "b.open_balance > 0", "pl.provider = 'commas'", "pl.amount_cents = ROUND(b.open_balance * 100)::bigint",

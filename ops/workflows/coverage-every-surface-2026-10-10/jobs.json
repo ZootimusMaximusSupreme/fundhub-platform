@@ -1,7 +1,7 @@
 [
  {
   "surface": "workflow:af-01-affiliate-drip",
-  "control": "af-01-affiliate-drip (src/workflows/af-01-affiliate-drip.mjs): trigger cron */15 * * * *. queues affiliate email AF1 for plus-tag affiliate sims that never got it (backfill) | sends or calls: queues messages (AF1) through sendTemplated | writes: messages",
+  "control": "af-01-affiliate-drip (src/workflows/af-01-affiliate-drip.mjs): trigger cron 20 * * * *. queues affiliate email AF1 for plus-tag affiliate sims that never got it (backfill) | sends or calls: queues messages (AF1) through sendTemplated | writes: messages",
   "kind": "job-cron",
   "calls": [
    "queues messages (AF1) through sendTemplated"
@@ -13,7 +13,7 @@
   "coverage": "e2e",
   "evidence": "no lane reads the outcome this job writes; ping: job:af-01-affiliate-drip heartbeat (src/pulse/heartbeats.mjs, schedule */15 * * * *, red after 3 times the schedule); tests: af-01-affiliate-drip.test.mjs; tripwire map: on src/pulse/tripwires-baseline.json (not yet sorted as money or customer)",
   "file": "src/workflows/af-01-affiliate-drip.mjs",
-  "trigger": "cron */15 * * * *"
+  "trigger": "cron 20 * * * *"
  },
  {
   "surface": "workflow:af-02-referral-ownership-capture",
@@ -148,7 +148,7 @@
  },
  {
   "surface": "workflow:blake-lead-watch",
-  "control": "blake-lead-watch (src/workflows/blake-lead-watch.mjs): trigger cron */5 * * * *. watches Blake referral mail and texts Chris the name and phone (never texts the lead) | sends or calls: owner text through src/staff/blake-lead-watch.mjs",
+  "control": "blake-lead-watch (src/workflows/blake-lead-watch.mjs): trigger cron */30 * * * *. watches Blake referral mail and texts Chris the name and phone (never texts the lead) | sends or calls: owner text through src/staff/blake-lead-watch.mjs",
   "kind": "job-cron",
   "calls": [
    "owner text through src/staff/blake-lead-watch.mjs"
@@ -158,7 +158,7 @@
   "coverage": "e2e",
   "evidence": "no lane reads the outcome this job writes; ping: job:blake-lead-watch heartbeat (src/pulse/heartbeats.mjs, schedule */5 * * * *, red after 3 times the schedule); tests: blake-lead-watch.test.mjs; tripwire map: on src/pulse/tripwires-baseline.json (not yet sorted as money or customer)",
   "file": "src/workflows/blake-lead-watch.mjs",
-  "trigger": "cron */5 * * * *"
+  "trigger": "cron */30 * * * *"
  },
  {
   "surface": "workflow:bs-01-precall-launcher",
@@ -253,7 +253,7 @@
  },
  {
   "surface": "workflow:commas-inbox-drain",
-  "control": "commas-inbox-drain (src/workflows/commas-inbox-drain.mjs): trigger cron * * * * *. every minute drains stored Commas payment webhooks into events and the money chain | sends or calls: emits payment events | writes: commas_inbox, events, transactions",
+  "control": "commas-inbox-drain (src/workflows/commas-inbox-drain.mjs): trigger cron 10 * * * *. every hour (backup to the every-minute Netlify sweeper) drains stored Commas payment webhooks into events and the money chain | sends or calls: emits payment events | writes: commas_inbox, events, transactions",
   "kind": "job-cron",
   "calls": [
    "emits payment events"
@@ -267,7 +267,7 @@
   "coverage": "deep",
   "evidence": "result check: beat-pay-webhook.mjs (covers job:commas-inbox-drain) reads commas_inbox and job_heartbeats every hour; gap-payments.mjs payments:commas-inbox-waiting reads commas_inbox; ping: job:commas-inbox-drain heartbeat (src/pulse/heartbeats.mjs, schedule * * * * *, red after 3 times the schedule); tests: commas-inbox-drain.test.mjs; tripwire map: sorted on the tripwire map (money) with checks: payments:commas-inbox-waiting, payments:paid-no-entitlement",
   "file": "src/workflows/commas-inbox-drain.mjs",
-  "trigger": "cron * * * * *"
+  "trigger": "cron 10 * * * *"
  },
  {
   "surface": "workflow:hiring-bench-sweeper",
@@ -288,7 +288,7 @@
  },
  {
   "surface": "workflow:hiring-outreach-cadence",
-  "control": "hiring-outreach-cadence (src/workflows/hiring-outreach-cadence.mjs): trigger cron */30 * * * *. every 30 minutes queues the next follow-up email or text to a job applicant (4 touches over 10 days) | sends or calls: queues messages | writes: messages, candidate_outreach",
+  "control": "hiring-outreach-cadence (src/workflows/hiring-outreach-cadence.mjs): trigger cron 45 * * * *. every hour queues the next follow-up email or text to a job applicant (4 touches over 10 days) | sends or calls: queues messages | writes: messages, candidate_outreach",
   "kind": "job-cron",
   "calls": [
    "queues messages"
@@ -301,7 +301,7 @@
   "coverage": "ping",
   "evidence": "no lane reads the outcome this job writes; ping: job:hiring-outreach-cadence heartbeat (src/pulse/heartbeats.mjs, schedule */30 * * * *, red after 3 times the schedule); tripwire map: on src/pulse/tripwires-baseline.json (not yet sorted as money or customer)",
   "file": "src/workflows/hiring-outreach-cadence.mjs",
-  "trigger": "cron */30 * * * *"
+  "trigger": "cron 45 * * * *"
  },
  {
   "surface": "workflow:waypoint-nudge-sweeper",
@@ -445,7 +445,7 @@
  },
  {
   "surface": "workflow:finance-os-money-transfers",
-  "control": "finance-os-money-transfers (src/workflows/finance-os-money-transfers.mjs): trigger cron */15 * * * *. every 15 minutes expires old proposals, sends approved moves through Plaid, tracks transfer events | sends or calls: Plaid transfer authorize, create, event sync (only when switched on) | writes: money_transfers, money_transfer_events, money_transfer_sync_cursors",
+  "control": "finance-os-money-transfers (src/workflows/finance-os-money-transfers.mjs): trigger cron */30 * * * *. every 30 minutes expires old proposals, sends approved moves through Plaid, tracks transfer events | sends or calls: Plaid transfer authorize, create, event sync (only when switched on) | writes: money_transfers, money_transfer_events, money_transfer_sync_cursors",
   "kind": "job-cron",
   "calls": [
    "Plaid transfer authorize, create, event sync (only when switched on)"
@@ -459,7 +459,7 @@
   "coverage": "deep",
   "evidence": "result check: gap-money-moves.mjs money-moves:stuck reads money_transfers, money_transfer_events and money_agent_tasks; ping: job:finance-os-money-transfers heartbeat (src/pulse/heartbeats.mjs, schedule */15 * * * *, red after 3 times the schedule); tests: finance-os-money-transfers.test.mjs; tripwire map: sorted on the tripwire map (money) with checks: money-moves:stuck",
   "file": "src/workflows/finance-os-money-transfers.mjs",
-  "trigger": "cron */15 * * * *"
+  "trigger": "cron */30 * * * *"
  },
  {
   "surface": "workflow:blueprint-next-funding-sequence-sweeper",
@@ -535,7 +535,7 @@
  },
  {
   "surface": "workflow:pulse-instant-watch",
-  "control": "pulse-instant-watch (src/workflows/pulse-instant-watch.mjs): trigger cron */5 * * * *. every 5 minutes checks critical doors and stuck outbound and texts Chris on a break | sends or calls: owner text (Chris) | writes: agent_runs",
+  "control": "pulse-instant-watch (src/workflows/pulse-instant-watch.mjs): trigger cron */10 * * * *. every 10 minutes checks critical doors and stuck outbound and texts Chris on a break | sends or calls: owner text (Chris) | writes: agent_runs",
   "kind": "job-cron",
   "calls": [
    "owner text (Chris)"
@@ -547,7 +547,7 @@
   "coverage": "deep",
   "evidence": "result check: beat-engine-alive.mjs (hourly) and pulse-outside-watch.mjs (every 5 minutes) read its job heartbeat; gap-outside-inngest.mjs outside:inngest-crons-stale; ping: job:pulse-instant-watch heartbeat (src/pulse/heartbeats.mjs, schedule */5 * * * *, red after 3 times the schedule); tripwire map: on src/pulse/tripwires-baseline.json (not yet sorted as money or customer)",
   "file": "src/workflows/pulse-instant-watch.mjs",
-  "trigger": "cron */5 * * * *"
+  "trigger": "cron */10 * * * *"
  },
  {
   "surface": "workflow:affiliate-payout-run",
@@ -566,7 +566,7 @@
  },
  {
   "surface": "workflow:meet-transcript-sweeper",
-  "control": "meet-transcript-sweeper (src/workflows/meet-transcript-sweeper.mjs): trigger cron */10 * * * *. every 10 minutes picks new Meet recordings from Drive and pulls the words onto call outcomes | sends or calls: Drive read; Whisper or Google transcript | writes: call_outcomes, brain_files",
+  "control": "meet-transcript-sweeper (src/workflows/meet-transcript-sweeper.mjs): trigger cron 50 * * * *. every hour picks new Meet recordings from Drive and pulls the words onto call outcomes | sends or calls: Drive read; Whisper or Google transcript | writes: call_outcomes, brain_files",
   "kind": "job-cron",
   "calls": [
    "Drive read",
@@ -580,7 +580,7 @@
   "coverage": "deep",
   "evidence": "result check: gap-meet.mjs meet:recording-no-transcript and meet:transcript-unreadable read call_outcomes and brain_files; ping: job:meet-transcript-sweeper heartbeat (src/pulse/heartbeats.mjs, schedule */10 * * * *, red after 3 times the schedule); tripwire map: on src/pulse/tripwires-baseline.json (not yet sorted as money or customer)",
   "file": "src/workflows/meet-transcript-sweeper.mjs",
-  "trigger": "cron */10 * * * *"
+  "trigger": "cron 50 * * * *"
  },
  {
   "surface": "workflow:meta-campaign-sync-sweeper",
@@ -1110,7 +1110,7 @@
  },
  {
   "surface": "workflow:inquiry-call-sweeper",
-  "control": "inquiry-call-sweeper (src/workflows/inquiry-call-sweeper.mjs): trigger cron */15 * * * *. every 15 minutes places the AI bureau calls whose wait has elapsed (call_due_at) | sends or calls: Bland placeCall to a bureau | writes: inquiry_removal_cases, outbound_calls",
+  "control": "inquiry-call-sweeper (src/workflows/inquiry-call-sweeper.mjs): trigger cron 15 * * * *. every hour places the AI bureau calls whose wait has elapsed (call_due_at) | sends or calls: Bland placeCall to a bureau | writes: inquiry_removal_cases, outbound_calls",
   "kind": "job-cron",
   "calls": [
    "Bland placeCall to a bureau"
@@ -1123,7 +1123,7 @@
   "coverage": "ping",
   "evidence": "no lane reads the outcome this job writes; ping: job:inquiry-call-sweeper heartbeat (src/pulse/heartbeats.mjs, schedule */15 * * * *, red after 3 times the schedule); tripwire map: on src/pulse/tripwires-baseline.json (not yet sorted as money or customer)",
   "file": "src/workflows/inquiry-call-sweeper.mjs",
-  "trigger": "cron */15 * * * *"
+  "trigger": "cron 15 * * * *"
  },
  {
   "surface": "workflow:n-01-cold-nurture",
@@ -1217,7 +1217,7 @@
  },
  {
   "surface": "workflow:next-action-catch-up",
-  "control": "next-action-catch-up (src/workflows/next-action-catch-up.mjs): trigger cron */5 * * * *. every 5 minutes re-saves each client's next step so it matches the Client Control Panel | writes: clients.custom_fields",
+  "control": "next-action-catch-up (src/workflows/next-action-catch-up.mjs): trigger cron 5 * * * *. every hour re-saves each client's next step so it matches the Client Control Panel | writes: clients.custom_fields",
   "kind": "job-cron",
   "calls": [],
   "tables": [
@@ -1227,7 +1227,7 @@
   "coverage": "e2e",
   "evidence": "no lane reads the outcome this job writes; ping: job:next-action-catch-up heartbeat (src/pulse/heartbeats.mjs, schedule */5 * * * *, red after 3 times the schedule); tests: next-action-catch-up.test.mjs; tripwire map: on src/pulse/tripwires-baseline.json (not yet sorted as money or customer)",
   "file": "src/workflows/next-action-catch-up.mjs",
-  "trigger": "cron */5 * * * *"
+  "trigger": "cron 5 * * * *"
  },
  {
   "surface": "workflow:repair-bureau-response-reader",

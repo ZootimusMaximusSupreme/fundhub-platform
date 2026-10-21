@@ -84,9 +84,9 @@ test("gap meet: the transcriber-failed row is gone because job:meet-transcript-s
 });
 
 test("gap meet: the wait is 3 times the sweeper schedule, imported from the sweeper", () => {
-  assert.equal(SWEEP_CRON, "*/10 * * * *");
+  assert.equal(SWEEP_CRON, "50 * * * *");
   assert.equal(TRANSCRIPT_WAIT_MS, STALE_MULTIPLE * cronIntervalMs(SWEEP_CRON));
-  assert.equal(TRANSCRIPT_WAIT_MS, 30 * 60 * 1000);
+  assert.equal(TRANSCRIPT_WAIT_MS, 3 * 60 * 60 * 1000);
 });
 
 test("gap meet: no database or no company skips both rows, with a reason", async () => {
@@ -103,17 +103,17 @@ test("gap meet: no call with a tape link and no words is PASS; the wait and wind
   const db = fakeDb();
   const by = await run(db);
   assert.equal(by["meet:recording-no-transcript"].status, "PASS");
-  assert.match(by["meet:recording-no-transcript"].detail, /30-minute wait/);
+  assert.match(by["meet:recording-no-transcript"].detail, /180-minute wait/);
   const sent = db.calls.find((c) => /meet-recording-no-transcript/.test(c.sql)).params;
   assert.equal(sent[0], ORG);
-  assert.equal(sent[1], new Date(NOW.getTime() - 30 * 60 * 1000).toISOString());
+  assert.equal(sent[1], new Date(NOW.getTime() - 180 * 60 * 1000).toISOString());
   assert.equal(sent[2], new Date(NOW.getTime() - 14 * 24 * 3600e3).toISOString());
 });
 
 test("gap meet: calls with a tape link and no words fail, with the count", async () => {
   const one = await run(fakeDb({ recording: [{ key: "c1" }] }));
   assert.equal(one["meet:recording-no-transcript"].status, "FAIL");
-  assert.match(one["meet:recording-no-transcript"].detail, /1 logged call with a recording link and no transcript after the 30-minute wait/);
+  assert.match(one["meet:recording-no-transcript"].detail, /1 logged call with a recording link and no transcript after the 180-minute wait/);
   const two = await run(fakeDb({ recording: [{ key: "c1" }, { key: "c2" }] }));
   assert.match(two["meet:recording-no-transcript"].detail, /2 logged calls with a recording link/);
 });
@@ -160,7 +160,7 @@ test("gap meet: the candidate query gets the window, the wait, and a cap on clie
   const sent = db.calls.find((c) => /meet-transcript-unreadable/.test(c.sql)).params;
   assert.equal(sent[0], ORG);
   assert.equal(sent[1], new Date(NOW.getTime() - 14 * 24 * 3600e3).toISOString());
-  assert.equal(sent[2], new Date(NOW.getTime() - 30 * 60 * 1000).toISOString());
+  assert.equal(sent[2], new Date(NOW.getTime() - 180 * 60 * 1000).toISOString());
   assert.equal(sent[3], CLIENT_CAP);
   assert.equal(CLIENT_CAP, 15);
 });

@@ -6,7 +6,8 @@
 // Nothing live said so. The morning scorecard (outside:inngest-crons-stale) found it the next day.
 // The engine cannot watch itself, but this beat runs on the Netlify clock, which kept ticking.
 //
-//   receipts-fresh      Each job saved a receipt in the last 20 minutes (4 missed ticks). Red now.
+//   receipts-fresh      Each job saved a receipt within 4 missed ticks (20 minutes for the 5-minute sender,
+//                       40 for the 10-minute instant watch since 2026-10-20). Red now.
 //   no-quiet-stretch    No gap over 20 minutes between receipts in the last 70 minutes. Catches a
 //                       stall that has already ended (the hourly run lands after it healed).
 //
@@ -25,8 +26,12 @@ export const deadlineMs = 8000;
 export const steps = ["receipts-fresh", "no-quiet-stretch"];
 
 export const WATCHED_JOBS = Object.freeze(["message-dispatch-sweeper", "pulse-instant-watch"]);
-/** Both jobs tick every 5 minutes. 4 missed ticks in a row is dark. */
+/** message-dispatch-sweeper ticks every 5 minutes. 4 missed ticks in a row is dark. */
 export const DARK_AFTER_MIN = 20;
+/** pulse-instant-watch ticks every 10 minutes since 2026-10-20 (the Inngest Free plan run limit), so it is
+    dark after 4 missed ticks too: 40 minutes. */
+export const DARK_AFTER_BY_JOB = Object.freeze({ "message-dispatch-sweeper": DARK_AFTER_MIN, "pulse-instant-watch": 40 });
+const darkAfter = (job) => DARK_AFTER_BY_JOB[job] ?? DARK_AFTER_MIN;
 /** The hourly run sees a stall that ended since the last hourly run, plus slack. */
 export const LOOKBACK_MIN = 70;
 /** How far back the single read goes (the newest receipt before the look-back sets the first gap). */
@@ -80,7 +85,7 @@ export async function run(ctx) {
       const newest = Math.max(...times);
       const age = Math.floor((nowMs - newest) / MIN_MS);
       evidence.jobs[job] = { ageMin: age };
-      if (age > DARK_AFTER_MIN) stale.push(`${jobWord(job)} last ran ${age} minutes ago (${arizonaTime(newest)})`);
+      if (age > darkAfter(job)) stale.push(`${jobWord(job)} last ran ${age} minutes ago (${arizonaTime(newest)})`);
     }
     if (stale.length) throw ctx.fail("receipts-fresh", `${stale.join("; ")}. The workflow engine may be down`);
   });
@@ -93,7 +98,7 @@ export async function run(ctx) {
       let worst = 0;
       for (let i = 1; i < sorted.length; i += 1) {
         const gap = (sorted[i] - sorted[i - 1]) / MIN_MS;
-        if (sorted[i] >= since && gap > DARK_AFTER_MIN && gap > worst) {
+        if (sorted[i] >= since && gap > darkAfter(job) && gap > worst) {
           worst = gap;
           dark.push({ job, gap: Math.round(gap), from: sorted[i - 1], to: sorted[i] });
         }
@@ -117,7 +122,7 @@ export const fixGuide = [
   "The 5-minute alarms stopped or went quiet. Texts and the instant door alarm were not running in that stretch.",
   "",
   "Likely causes:",
-  "- The Inngest plan ran out of runs for the month (Free plan is 50,000). Inngest then stops calling with no error and no backlog. Search Gmail for mail from inngest.com about the monthly execution limit; fix is a plan upgrade at https://app.inngest.com/billing (2026-10-20).",
+  "- The Inngest plan ran out of runs for the month (Free plan is 50,000). Inngest then stops calling with no error and no backlog. Search Gmail for mail from inngest.com about the monthly execution limit. Owner-set 2026-10-20: stay on Free, so cut runs; src/pulse/heartbeats.test.mjs fails when the timed jobs project over the plan.",
   "- The workflow engine (Inngest) paused or fell behind. Its dashboard shows the stretch. A burst of catch-up runs afterward is the sign.",
   "- A deploy or re-register changed the app address and the engine could not reach the functions for a while.",
   "- The database was slow or down, so receipts could not be saved (check db-health and the site health door).",

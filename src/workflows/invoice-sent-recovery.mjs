@@ -9,7 +9,7 @@ import {
 } from "./invoice-sent-recovery-query.mjs";
 
 export const SOURCE_WORKFLOW = "invoice-sent-recovery";
-export const SWEEP_CRON = "*/30 * * * *";
+export const SWEEP_CRON = "35 * * * *";
 export const MAX_INVOICES_PER_SWEEP = 4;
 
 async function announceMissingEvent(conn, invoice) {

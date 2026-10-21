@@ -5,7 +5,8 @@
 // screen showed — see src/workflows/index.test.mjs, which now fails if a
 // workflow on disk is neither served nor explicitly listed as unserved.
 //
-// This places real outbound calls every 15 minutes. The gate that remains is
+// This places real outbound calls every hour (every 15 minutes until 2026-10-20,
+// slowed for the Inngest Free plan run limit). The gate that remains is
 // call_due_at: fireDueCalls only touches rows whose wait has elapsed.
 
 import { inngest } from "./client.mjs";
@@ -21,7 +22,7 @@ export async function handle({ db: database = db, step } = {}) {
 
 export const inquiryCallSweeper = inngest.createFunction(
   { id: "inquiry-call-sweeper", name: "Inquiry call sweeper (delivery + configured wait)" },
-  { cron: "*/15 * * * *" },
+  { cron: "15 * * * *" },
   async ({ step }) => handle({ db, step })
 );
 

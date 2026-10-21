@@ -6,7 +6,7 @@ import { drainWhopBillingInbox, readWhopBillingHealth } from '../payments/whop-b
 import { reconcileWhopBilling } from '../payments/whop-billing-reconcile.mjs';
 import { recordHeartbeat } from '../pulse/heartbeats.mjs';
 
-export const SWEEP_CRON = '* * * * *';
+export const SWEEP_CRON = '40 * * * *';
 export const SOURCE_WORKFLOW = 'whop-billing-inbox-drain';
 
 export async function sweepWhopBillingInbox(db, options = {}) {

@@ -73,19 +73,21 @@ const MIN = 60 * 1000;
 const HOUR = 60 * MIN;
 
 /**
- * The two jobs that tell us the engine is alive. Both run every 5 minutes on
- * Inngest (src/pulse/heartbeats.mjs INNGEST_JOBS). The sweeper hands waiting
- * texts and emails to the sender. The watch is the 5-minute alarm. A test fails
- * if either name leaves that list or stops running every 5 minutes.
+ * The two jobs that tell us the engine is alive, on Inngest
+ * (src/pulse/heartbeats.mjs INNGEST_JOBS). The sweeper hands waiting texts and
+ * emails to the sender every 5 minutes. The watch is the door alarm, every 10
+ * minutes since 2026-10-20 (the Inngest Free plan run limit). A test fails if
+ * either name leaves that list or its tick here stops matching its schedule.
  */
+export const TICK_MS = 5 * MIN;
 export const WATCHED_JOBS = Object.freeze([
-  { job: "message-dispatch-sweeper", does: "hands waiting texts and emails to the sender" },
-  { job: "pulse-instant-watch", does: "texts Chris when a door breaks" }
+  { job: "message-dispatch-sweeper", does: "hands waiting texts and emails to the sender", tickMs: TICK_MS },
+  { job: "pulse-instant-watch", does: "texts Chris when a door breaks", tickMs: 2 * TICK_MS }
 ]);
 
-/** Both jobs tick every 5 minutes. 4 missed ticks in a row is a dark stretch. */
-export const TICK_MS = 5 * MIN;
+/** 4 missed ticks in a row is a dark stretch: 20 minutes for the sweeper, 40 for the watch. */
 export const DARK_AFTER_MS = 4 * TICK_MS;
+export const darkAfterFor = (w) => 4 * w.tickMs;
 
 /** Look back one day: the last morning text to this one. */
 export const LOOKBACK_MS = 24 * HOUR;
@@ -212,7 +214,7 @@ export function findDarkStretches(times, { windowStartMs, nowMs, darkAfterMs = D
 export async function inngestCronsStale({
   db,
   now = new Date(),
-  darkAfterMs = DARK_AFTER_MS,
+  darkAfterMs = null,
   lookbackMs = LOOKBACK_MS
 } = {}) {
   const id = "outside:inngest-crons-stale";
@@ -250,6 +252,7 @@ export async function inngestCronsStale({
   const unread = [];
   const facts = [];
   for (const w of WATCHED_JOBS) {
+    const limitMs = darkAfterMs ?? darkAfterFor(w);
     const inWindow = timesByJob.get(w.job).sort((a, b) => a - b);
     const priorMs = priorByJob.has(w.job) ? priorByJob.get(w.job) : null;
     if (priorMs == null && !inWindow.length) {
@@ -263,9 +266,9 @@ export async function inngestCronsStale({
     const longestMs = all.reduce((m, s) => Math.max(m, s.ms), 0);
     // No receipt before the window, and the first one came well after it opened:
     // the part of the 24 hours before that cannot be proved either way.
-    const beginsAtMs = priorMs == null && inWindow[0] - windowStartMs > darkAfterMs ? inWindow[0] : null;
+    const beginsAtMs = priorMs == null && inWindow[0] - windowStartMs > limitMs ? inWindow[0] : null;
     facts.push({ job: w.job, runs: inWindow.length, longestMs, beginsAtMs });
-    for (const s of all) if (s.ms > darkAfterMs) dark.push({ job: w.job, ...s });
+    for (const s of all) if (s.ms > limitMs) dark.push({ job: w.job, limitMs, ...s });
   }
 
   if (dark.length) {
@@ -280,7 +283,7 @@ export async function inngestCronsStale({
     return row(
       id,
       "FAIL",
-      `The engine that runs our alarms went quiet (limit ${spanText(darkAfterMs)}; times are Arizona time). ${shown.join(". ")}.${more} ` +
+      `The engine that runs our alarms went quiet (limit ${spanText(dark[0].limitMs)}; times are Arizona time). ${shown.join(". ")}.${more} ` +
         `In that time nothing ran: ${does}. The cause is the workflow engine or the database.`,
       FIX.dark
     );

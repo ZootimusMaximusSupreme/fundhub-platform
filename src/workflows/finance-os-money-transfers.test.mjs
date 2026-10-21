@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { sweep, SWEEP_CRON, financeOsMoneyTransfers } from "./finance-os-money-transfers.mjs";
 
 test("every 15 minutes, under its own id", () => {
-  assert.equal(SWEEP_CRON, "*/15 * * * *");
+  assert.equal(SWEEP_CRON, "*/30 * * * *");
   assert.equal(financeOsMoneyTransfers.id(), "finance-os-money-transfers");
 });
 

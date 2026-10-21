@@ -51,7 +51,7 @@ test("slice 17-affiliates: every check has id, schedule, redAfter, alreadyInRegi
 });
 
 test("slice 17-affiliates: workflow files exist and crons match modules", () => {
-  assert.equal(AF01_CRON, "*/15 * * * *");
+  assert.equal(AF01_CRON, "20 * * * *");
   assert.equal(PAYOUT_CRON, "0 3 1 * *");
   for (const [id, file] of Object.entries(WORKFLOW_FILES)) {
     assert.ok(fs.existsSync(path.join(ROOT, file)), `${id} workflow file missing`);

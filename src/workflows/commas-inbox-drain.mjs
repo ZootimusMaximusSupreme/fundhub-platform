@@ -38,10 +38,15 @@ import { drain } from "../payments/commas-inbox.mjs";
 import { processCommasInboxRow } from "../adapters/commas.mjs";
 import { ensureRegistered } from "../register-all.mjs";
 
-/* Every minute — the same cadence as the Netlify sweeper, for the same reason
-   its header gives: the delay between a client paying and the system knowing
-   they paid is this number, and a human can feel it. */
-export const SWEEP_CRON = "* * * * *";
+/* Hourly, as the backup clock. The Netlify sweeper still drains every minute,
+   so a payment lands within a minute while that clock is alive. This pass only
+   bounds the delay (one hour) if the Netlify clock dies again.
+
+   It ran every minute until 2026-10-20. That was 1,440 Inngest runs a day,
+   about 43,000 a month, nearly all of the 50,000 the Inngest Free plan allows;
+   the account ran out and every Inngest job stopped at 6:20 p.m. Arizona.
+   Owner-set the same night: stay on the Free plan, cut runs. */
+export const SWEEP_CRON = "10 * * * *";
 
 export const SOURCE_WORKFLOW = "commas-inbox-drain";
 

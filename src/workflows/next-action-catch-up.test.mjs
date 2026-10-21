@@ -188,8 +188,8 @@ test("never throws: a broken database is an answer, not a crash", async () => {
   assert.equal(empty.checked, 0);
 });
 
-test("registered every five minutes, and callable the way the journey runner calls it", async () => {
-  assert.equal(CATCH_UP_CRON, "*/5 * * * *");
+test("registered hourly, and callable the way the journey runner calls it", async () => {
+  assert.equal(CATCH_UP_CRON, "5 * * * *");
   assert.ok(functions.includes(nextActionCatchUp), "nextActionCatchUp is not in src/workflows/index.mjs");
   assert.equal(nextActionCatchUp.id(), "next-action-catch-up");
   const steps = [];

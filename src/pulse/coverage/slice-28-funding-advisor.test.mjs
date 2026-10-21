@@ -55,7 +55,7 @@ test("slice 28-funding-advisor: every check has id, schedule, redAfter, alreadyI
 });
 
 test("slice 28-funding-advisor: next-action catch-up cron; gaps are registry and machine holes only", () => {
-  assert.equal(CATCH_UP_CRON, "*/5 * * * *");
+  assert.equal(CATCH_UP_CRON, "5 * * * *");
 
   const catchUp = CHECKS.find((r) => r.id === "next-action-catch-up");
   assert.ok(catchUp);

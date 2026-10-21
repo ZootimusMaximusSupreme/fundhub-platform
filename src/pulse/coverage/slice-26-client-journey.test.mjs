@@ -108,7 +108,7 @@ test("slice 26-client-journey: every check has id, schedule, redAfter, alreadyIn
 });
 
 test("slice 26-client-journey: pay sweepers and gaps match registry and machine today", () => {
-  assert.equal(COMMAS_CRON, "* * * * *");
+  assert.equal(COMMAS_CRON, "10 * * * *");
   assert.equal(CHECKOUT_EXPIRY_CRON, "0 * * * *");
 
   const machineFiles = new Set(MACHINE_CHECKS.map((r) => r.file));

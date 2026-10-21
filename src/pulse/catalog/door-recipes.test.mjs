@@ -115,7 +115,7 @@ test("job recipes preserve trigger and schedule metadata and use result plus rec
   const workflow = rows.find((row) => row.surface === "workflow:af-01-affiliate-drip");
   const scheduledFunction = rows.find((row) => row.surface === "function:pulse-hourly");
 
-  assert.equal(makeRecipe("jobs.json", workflow).schedule, "cron */15 * * * *");
+  assert.equal(makeRecipe("jobs.json", workflow).schedule, "cron 20 * * * *");
   assert.equal(makeRecipe("jobs.json", workflow).mode, "receipt");
   assert.equal(makeRecipe("jobs.json", workflow).proof.depth, "deep");
   assert.match(makeRecipe("jobs.json", workflow).proof.evidence, /door-batch-job-result\.test\.mjs/);

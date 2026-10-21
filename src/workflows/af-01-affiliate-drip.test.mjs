@@ -16,7 +16,7 @@ test("affiliate drip sweeper is registered and uses plus-tag SQL", () => {
 });
 
 test("cron is a bounded sweep, not a 12-email sequence", () => {
-  assert.equal(SWEEP_CRON, "*/15 * * * *");
+  assert.equal(SWEEP_CRON, "20 * * * *");
   assert.equal(af01AffiliateDrip.id(), "af-01-affiliate-drip");
 });
 

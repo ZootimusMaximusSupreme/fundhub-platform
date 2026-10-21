@@ -4,7 +4,7 @@
 import { inngest } from "./client.mjs";
 import { watchBlakeLeads } from "../staff/blake-lead-watch.mjs";
 
-export const BLAKE_LEAD_CRON = "*/5 * * * *";
+export const BLAKE_LEAD_CRON = "*/30 * * * *";
 
 export async function handle({ step, env = process.env } = {}) {
   const run = step?.run ? (name, fn) => step.run(name, fn) : (_n, fn) => fn();

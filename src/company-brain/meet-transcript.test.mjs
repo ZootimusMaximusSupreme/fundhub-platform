@@ -214,8 +214,8 @@ test("sweepMeetTranscripts stops other orgs after a credit miss", async () => {
   assert.ok(orgsSeen <= 1);
 });
 
-test("Meet word sweeper stays on a ten-minute keep-alive", () => {
-  assert.equal(SWEEP_CRON, "*/10 * * * *");
+test("Meet word sweeper stays on an hourly keep-alive (Inngest Free plan run limit, 2026-10-20)", () => {
+  assert.equal(SWEEP_CRON, "50 * * * *");
 });
 
 test("applyMeetWords still stamps the sales call when Brain embed is down", async () => {

@@ -6,7 +6,7 @@ import { inngest } from "./client.mjs";
 import { db } from "../db.mjs";
 import { sweepAffiliateDrips } from "../affiliates/drip.mjs";
 
-export const SWEEP_CRON = "*/15 * * * *";
+export const SWEEP_CRON = "20 * * * *";
 export const SOURCE_WORKFLOW = "af-01-affiliate-drip";
 
 export async function sweep(handleDb, options = {}) {

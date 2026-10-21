@@ -50,7 +50,7 @@ import { sweepCandidateOutreach, SWEEP_CAP } from "../hiring/outreach.mjs";
     only thing this interval decides is how late a due step can be — half an
     hour, worst case, which is invisible against a two-day gap. A tighter clock
     would buy nothing and scan the same table more often. */
-export const SWEEP_CRON = "*/30 * * * *";
+export const SWEEP_CRON = "45 * * * *";
 
 export const SOURCE_WORKFLOW = "hiring-outreach-cadence";
 

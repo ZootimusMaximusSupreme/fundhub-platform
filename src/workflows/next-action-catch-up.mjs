@@ -1,4 +1,5 @@
-// The next-step catch-up — every five minutes, the saved step is put back in
+// The next-step catch-up — every hour (every five minutes until 2026-10-20, slowed
+// for the Inngest Free plan run limit), the saved step is put back in
 // line with the step the Client Control Panel shows.
 //
 // Hole 12, round 3, 2026-09-18. Measured live that afternoon: all six files
@@ -41,7 +42,7 @@ import { db } from "../db.mjs";
 import { shownStepLabel } from "../fulfillment/client-step.mjs";
 import { NEXT_ACTION_KEY } from "./custom-fields.mjs";
 
-export const CATCH_UP_CRON = "*/5 * * * *";
+export const CATCH_UP_CRON = "5 * * * *";
 export const CATCH_UP_BATCH = 100;
 export const SOURCE_WORKFLOW = "next-action-catch-up";
 const SLOT_MS = 5 * 60 * 1000;

@@ -32,11 +32,11 @@ test("slice 13-calls: every check has id, schedule, redAfter, alreadyInRegistry,
 });
 
 test("slice 13-calls: cron constants match workflow files", () => {
-  assert.equal(MEET_TRANSCRIPT_CRON, "*/10 * * * *");
-  assert.equal(BLAKE_LEAD_CRON, "*/5 * * * *");
-  assert.equal(INQUIRY_CALL_CRON, "*/15 * * * *");
+  assert.equal(MEET_TRANSCRIPT_CRON, "50 * * * *");
+  assert.equal(BLAKE_LEAD_CRON, "*/30 * * * *");
+  assert.equal(INQUIRY_CALL_CRON, "15 * * * *");
   const inquirySrc = fs.readFileSync(path.join(ROOT, "src/workflows/inquiry-call-sweeper.mjs"), "utf8");
-  assert.match(inquirySrc, /\{ cron: "\*\/15 \* \* \* \*" \}/);
+  assert.match(inquirySrc, /\{ cron: "15 \* \* \* \*" \}/);
 });
 
 test("slice 13-calls: sweepers are MACHINE_CHECKS gaps; bookings is in PULSE_REGISTRY", () => {

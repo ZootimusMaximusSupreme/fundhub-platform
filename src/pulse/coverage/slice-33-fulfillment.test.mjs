@@ -158,7 +158,7 @@ test("slice 33-fulfillment: cron jobs match their source clocks and heartbeats",
     assert.equal(row.alreadyInRegistry, true, id);
     assert.equal(row.proof, "PASS");
   }
-  assert.match(read("src/workflows/next-action-catch-up.mjs"), /CATCH_UP_CRON = "\*\/5 \* \* \* \*"/);
+  assert.match(read("src/workflows/next-action-catch-up.mjs"), /CATCH_UP_CRON = "5 \* \* \* \*"/);
   assert.match(read("src/workflows/doc-check-retry-sweeper.mjs"), /SWEEP_CRON = "\*\/20 \* \* \* \*"/);
   assert.match(read("src/workflows/document-vault-chase.mjs"), /SWEEP_CRON = "45 16 \* \* \*"/);
 });

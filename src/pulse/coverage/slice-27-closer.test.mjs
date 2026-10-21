@@ -67,7 +67,7 @@ test("slice 27-closer: every check has id, schedule, redAfter, alreadyInRegistry
 });
 
 test("slice 27-closer: sweepers use live cron constants; gaps are registry and machine holes only", () => {
-  assert.equal(MEET_TRANSCRIPT_CRON, "*/10 * * * *");
+  assert.equal(MEET_TRANSCRIPT_CRON, "50 * * * *");
   assert.equal(CHASE_CRON, "0 10 * * *");
 
   const meet = CHECKS.find((r) => r.id === "meet-transcript-sweeper");

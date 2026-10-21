@@ -1,11 +1,11 @@
-// Instant pulse — every 5 minutes, critical doors + outbound stuck → Chris SMS.
+// Instant pulse — every 10 minutes (5 until 2026-10-20; Inngest Free plan run limit), critical doors + outbound stuck → Chris SMS.
 // Cooldown: one text per failure fingerprint per hour (agent_runs).
 
 import { inngest } from "./client.mjs";
 import { db as defaultDb } from "../db.mjs";
 import { runInstantWatch } from "../pulse/instant-watch.mjs";
 
-export const PULSE_INSTANT_CRON = "*/5 * * * *";
+export const PULSE_INSTANT_CRON = "*/10 * * * *";
 
 export async function handle({ db, step, env = process.env, fetchImpl } = {}) {
   const run = step?.run ? (name, fn) => step.run(name, fn) : (_n, fn) => fn();

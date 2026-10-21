@@ -39,7 +39,9 @@ test("engine-alive: valid, covers the two real 5-minute jobs, and the fix guide 
   for (const job of beat.WATCHED_JOBS) {
     const row = JOBS.find((j) => j.job === job);
     assert.ok(row, `${job} is a registered job`);
-    assert.equal(row.cron, "*/5 * * * *", `${job} ticks every 5 minutes`);
+    const every = Number((/^\*\/(\d+) \* \* \* \*$/.exec(row.cron) || [])[1]);
+    assert.ok(every > 0 && every <= 10, `${job} ticks every 10 minutes or faster (${row.cron})`);
+    assert.equal(beat.DARK_AFTER_BY_JOB[job], 4 * every, `${job} is dark after 4 missed ticks`);
   }
   assert.deepEqual(beat.steps, ["receipts-fresh", "no-quiet-stretch"]);
   const { paths, missing } = missingFixGuidePaths(beat.fixGuide, (p) => fs.existsSync(path.join(ROOT, p)));
@@ -106,4 +108,15 @@ test("engine-alive: a failed read is red, never green, and says no secret", asyn
   const result = await runBeat(beat, ctx);
   assert.equal(result.ok, false);
   assert.doesNotMatch(JSON.stringify(result), /postgres:|secret|@host/);
+});
+
+test("engine-alive: the 10-minute alarm job is green at 30 minutes quiet and red at 45", async () => {
+  const sweeper = rowsFor(SWEEPER, every5());
+  const tenMin = (from, to) => { const out = []; for (let m = from; m >= to; m -= 10) out.push(m); return out; };
+  const ok = await go([...sweeper, ...rowsFor(WATCH, tenMin(92, 32))]);
+  assert.equal(ok.result.ok, true, ok.result.detail);
+  const dark = await go([...sweeper, ...rowsFor(WATCH, tenMin(87, 47))]);
+  assert.equal(dark.result.ok, false);
+  assert.equal(dark.result.step, "receipts-fresh");
+  assert.match(dark.result.detail, /pulse-instant-watch last ran 47 minutes ago/);
 });

@@ -29,7 +29,7 @@ function fakeDb(rows) {
 }
 
 test("30-minute recovery is capped and never touches non-fee or Whop rows", async () => {
-  assert.equal(SWEEP_CRON, "*/30 * * * *");
+  assert.equal(SWEEP_CRON, "55 * * * *");
   const rows = [candidate("not-whop", { provider: "whop" }), candidate("not-fee", { source: "deposit" }),
     ...Array.from({ length: 10 }, (_, index) => candidate(`link-${index}`))];
   const db = fakeDb(rows);

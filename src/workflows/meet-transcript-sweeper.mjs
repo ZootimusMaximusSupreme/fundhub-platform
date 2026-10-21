@@ -7,7 +7,7 @@ import { inngest } from "./client.mjs";
 import { db } from "../db.mjs";
 import { sweepMeetTranscripts } from "../company-brain/meet-transcript.mjs";
 
-export const SWEEP_CRON = "*/10 * * * *";
+export const SWEEP_CRON = "50 * * * *";
 
 export async function handle({
   db: database = db,

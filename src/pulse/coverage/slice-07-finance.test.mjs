@@ -62,7 +62,7 @@ test("slice 07-finance: crons match workflow modules", () => {
   assert.equal(CARD_DUE_CRON, "0 16 * * *");
   assert.equal(MONEY_AGENT_CRON, "30 16 * * *");
   assert.equal(TRENDS_CRON, "30 7 * * *");
-  assert.equal(TRANSFERS_CRON, "*/15 * * * *");
+  assert.equal(TRANSFERS_CRON, "*/30 * * * *");
   assert.equal(BLUEPRINT_ALERTS_CRON, "30 7 * * *");
 });
 

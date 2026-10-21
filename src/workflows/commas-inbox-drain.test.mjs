@@ -83,8 +83,8 @@ describe("the payment inbox drain", () => {
     assert.match(res.error, /database is gone/);
   });
 
-  test("it runs every minute — the money path, and a human feels this delay", () => {
-    assert.strictEqual(SWEEP_CRON, "* * * * *");
+  test("it runs hourly as the backup clock — the Netlify sweeper drains every minute (Inngest Free plan run limit, 2026-10-20)", () => {
+    assert.strictEqual(SWEEP_CRON, "10 * * * *");
   });
 
   /* HOLE N6, 2026-09-18. This drain went sixteen hours on live without ever

@@ -62,7 +62,7 @@ test("slice 29-inquiry-remover: inquiry-call-sweeper cron matches heartbeats", (
     path.join(ROOT, "src/workflows/inquiry-call-sweeper.mjs"),
     "utf8"
   );
-  assert.match(sweeperSrc, /\{ cron: "\*\/15 \* \* \* \*" \}/);
+  assert.match(sweeperSrc, /\{ cron: "15 \* \* \* \*" \}/);
   const row = CHECKS.find((c) => c.id === "inquiry-call-sweeper");
   assert.equal(row.schedule, "15 minutes");
 });

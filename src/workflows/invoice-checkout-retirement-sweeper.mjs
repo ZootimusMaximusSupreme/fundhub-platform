@@ -6,7 +6,7 @@ import { db } from "../db.mjs";
 import { retireInvoiceCheckoutLink } from "../payment-links/retire-invoice-checkout.mjs";
 
 export const SOURCE_WORKFLOW = "invoice-checkout-retirement-sweeper";
-export const SWEEP_CRON = "*/30 * * * *";
+export const SWEEP_CRON = "55 * * * *";
 export const MAX_LINKS_PER_SWEEP = 4;
 
 export async function sweepInvoiceCheckoutRetirement(conn = db, {

@@ -26,7 +26,7 @@ import { inngest } from "./client.mjs";
 import { db } from "../db.mjs";
 import { runTransfersPass } from "../finance/money-transfers.mjs";
 
-export const SWEEP_CRON = "*/15 * * * *";
+export const SWEEP_CRON = "*/30 * * * *";
 export const SOURCE_WORKFLOW = "finance-os-money-transfers";
 
 /** One pass. db, env, clock and provider are arguments so tests drive it

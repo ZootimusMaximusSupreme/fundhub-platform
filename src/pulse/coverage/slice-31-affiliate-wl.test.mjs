@@ -58,7 +58,7 @@ test("slice 31-affiliate-wl: every check has id, schedule, redAfter, alreadyInRe
 });
 
 test("slice 31-affiliate-wl: workflow files exist and crons match modules", () => {
-  assert.equal(AF01_CRON, "*/15 * * * *");
+  assert.equal(AF01_CRON, "20 * * * *");
   assert.equal(PAYOUT_CRON, "0 3 1 * *");
   assert.equal(PARTNER_FLOOR_CRON, "0 14 1 * *");
   for (const [id, file] of Object.entries(WORKFLOW_FILES)) {

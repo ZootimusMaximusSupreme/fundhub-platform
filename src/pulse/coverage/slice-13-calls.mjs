@@ -11,7 +11,7 @@ import { BLAKE_LEAD_CRON } from "../../workflows/blake-lead-watch.mjs";
 export const SLICE_ID = "13-calls";
 
 /** Matches src/workflows/inquiry-call-sweeper.mjs createFunction cron. */
-export const INQUIRY_CALL_CRON = "*/15 * * * *";
+export const INQUIRY_CALL_CRON = "15 * * * *";
 
 const listed = new Set(PULSE_REGISTRY.map((row) => coverageKey(row)));
 const machineWorkflowFiles = new Set(MACHINE_CHECKS.map((row) => row.file));
