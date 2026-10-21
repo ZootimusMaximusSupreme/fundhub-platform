@@ -246,11 +246,21 @@ test("the two page-read rows are judged by what the live public page holds, and 
   const rows = await gapChecks({ fetchImpl: liveSiteFetch(), now: NOW });
   const climate = rows.find((row) => row.id === CLIMATE_ROW);
   const consulting = rows.find((row) => row.id === CONSULTING_ROW);
-  assert.equal(climate.status, "FAIL");
-  assert.match(climate.detail, /draws 5 of 51 state outlines/);
+  assert.equal(climate.status, "PASS", climate.detail);
+  assert.match(climate.detail, /draws all 51 state outlines/);
   assert.equal(consulting.status, "PASS");
   assert.match(consulting.detail, /opens an email to support@fhconsulting\.online, the support address the page lists/);
   for (const row of [climate, consulting]) assert.notEqual(row.status, "NOT_PROVED");
+
+  // the same page with the old five placeholder boxes put back in its map chunk is red
+  const chunk = "/climate/_next/static/chunks/375-9c2ed26a6c945538.js";
+  const shipped = fs.readFileSync(path.join(REPO_ROOT, "public", chunk), "utf8");
+  const five = '{"AZ":"M120,200 L200,200 L200,260 L120,260 Z","CA":"M60,180 L110,180 L110,260 L60,260 Z","NY":"M330,140 L380,140 L380,190 L330,190 Z","TX":"M200,240 L280,240 L280,300 L200,300 Z","FL":"M300,260 L340,260 L340,310 L300,310 Z"}';
+  const broken = shipped.replace(/var a=JSON\.parse\('[^']*'\)/, `var a=JSON.parse('${five}')`);
+  assert.notEqual(broken, shipped, "the shipped chunk still holds its outline list");
+  const red = (await gapChecks({ fetchImpl: liveSiteFetch({ [chunk]: broken }), now: NOW })).find((row) => row.id === CLIMATE_ROW);
+  assert.equal(red.status, "FAIL");
+  assert.match(red.detail, /draws 5 of 51 state outlines/);
 });
 
 test("the climate row goes green when the page draws all 51, and the consulting row goes red when the form takes a card", async () => {
