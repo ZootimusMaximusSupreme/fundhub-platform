@@ -116,6 +116,16 @@ scheduled job whatever its runner.
   286 times in the last day with a 202.
 - PR: https://github.com/ZootimusMaximusSupreme/fundhub-platform/pull/113
 
+- `pulse:prove`, built bundle, run from a copy outside the repo (the worktree's packages folder
+  holds a stray link back to the main repo's packages, which drops `pg-types` from the bundle):
+  hourly beats **OK**. Morning: every listed file in the bundle, no step threw, no SQL error, no
+  write; the only "not checked" rows are the 6 laptop-only key masks. It still exits 1 on load
+  timing: whole run 28.8 s (limit 20 s) and two sales-manager reads timing out at 12 s. Main's own
+  code on the same machine minutes later: 23.2 s, same limit problem. Load average ~100 here.
+- Retired jobs: `RETIRED_JOBS` in `src/pulse/heartbeats.mjs`. The morning unlisted-jobs check
+  ignores a retired job that went quiet and goes red if one still runs (that would mean Inngest was
+  not re-synced after the deploy and is still burning runs).
+
 ## Leftover cards (seen in passing, not fixed here)
 
 - Netlify scheduled functions (commas/whop sweepers, staff-message-sweeper, …) are not surfaces in the

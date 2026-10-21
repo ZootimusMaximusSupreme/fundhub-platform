@@ -80,6 +80,16 @@ export const NETLIFY_JOBS = Object.freeze([
   ["cron-clock", "*/5 * * * *"]
 ]);
 
+/* Jobs retired on purpose, with the schedule they last ran on and what replaced them. Their old
+   receipts stay in job_heartbeats for a while; the morning unlisted-jobs check
+   (src/pulse/coverage/gap-jobs.mjs) ignores a retired job that has gone quiet, and goes red if one
+   still reports runs (for the two Inngest drains: the Inngest app was not re-synced and is still
+   running them, still burning the free plan). */
+export const RETIRED_JOBS = Object.freeze([
+  ["commas-inbox-drain", "* * * * *", "commas-inbox-sweeper"],
+  ["whop-billing-inbox-drain", "* * * * *", "whop-billing-inbox-sweeper"]
+]);
+
 /** Every workflow cron, whichever runner starts it: the list a "does this cron have a job row?"
     check reads. INNGEST_JOBS is empty since 2026-10-20, so today this is CLOCK_JOBS. */
 export const CRON_JOBS = Object.freeze([...INNGEST_JOBS, ...CLOCK_JOBS]);

@@ -204,6 +204,35 @@ test("a job that reports a run but is not on the heartbeat list fails and names 
   assert.ok(call.params[1].includes("ad-video-sweeper"));
 });
 
+test("a retired job that went quiet is history, not unlisted; one that still runs is red; others still count", async () => {
+  // commas-inbox-drain was retired 2026-10-20 (RETIRED_JOBS, old schedule every minute: quiet after 3 min).
+  const quiet = byId(await gapChecks({
+    db: fakeDb({ unlisted: { recent_jobs: 40, unlisted: ["commas-inbox-drain"], unlisted_at: [new Date(NOW.getTime() - 60 * 60 * 1000).toISOString()] } }),
+    now: NOW
+  }), "job-heartbeats-unlisted");
+  assert.equal(quiet.status, "PASS", quiet.detail);
+
+  const running = byId(await gapChecks({
+    db: fakeDb({ unlisted: { recent_jobs: 40, unlisted: ["whop-billing-inbox-drain"], unlisted_at: [new Date(NOW.getTime() - 30 * 1000).toISOString()] } }),
+    now: NOW
+  }), "job-heartbeats-unlisted");
+  assert.equal(running.status, "FAIL");
+  assert.match(running.detail, /1 retired job still reports runs: whop-billing-inbox-drain \(replaced by whop-billing-inbox-sweeper\)/);
+  assert.match(running.suggestedFix, /re-synced/);
+
+  // No time read for a retired job: it cannot be shown quiet, so it stays red.
+  const unknown = byId(await gapChecks({ db: fakeDb({ unlisted: { recent_jobs: 40, unlisted: ["commas-inbox-drain"] } }), now: NOW }), "job-heartbeats-unlisted");
+  assert.equal(unknown.status, "FAIL");
+
+  // A quiet retired job does not hide a real unlisted one.
+  const mixed = byId(await gapChecks({
+    db: fakeDb({ unlisted: { recent_jobs: 40, unlisted: ["brand-new-cron", "commas-inbox-drain"], unlisted_at: [NOW.toISOString(), new Date(NOW.getTime() - 86400000).toISOString()] } }),
+    now: NOW
+  }), "job-heartbeats-unlisted");
+  assert.equal(mixed.status, "FAIL");
+  assert.match(mixed.detail, /1 scheduled job reports a run but is not on the heartbeat list: brand-new-cron\./);
+});
+
 test("every job that reported is on the list passes; nothing reported skips; a read error never passes", async () => {
   const ok = byId(await gapChecks({ db: fakeDb({ unlisted: { recent_jobs: 40, unlisted: null } }), now: NOW }), "job-heartbeats-unlisted");
   assertShape(ok);

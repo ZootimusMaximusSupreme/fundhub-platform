@@ -27,7 +27,7 @@
 // .localhost) came from a test walk, not a customer. It is counted and left
 // out of the failure. Measured 2026-10-08: all 24 pending rows were that.
 
-import { JOBS, STALE_MULTIPLE, cronIntervalMs } from "../heartbeats.mjs";
+import { JOBS, RETIRED_JOBS, STALE_MULTIPLE, cronIntervalMs } from "../heartbeats.mjs";
 
 /** Same string as doc-check-retry-sweeper.mjs SWEEP_CRON. */
 export const DOC_CHECK_RETRY_CRON = "*/20 * * * *";
@@ -76,7 +76,8 @@ WITH recent AS (
    GROUP BY job
 )
 SELECT count(*)::int AS recent_jobs,
-       (array_agg(job ORDER BY last_at DESC) FILTER (WHERE NOT (job = ANY($2::text[]))))[1:10] AS unlisted
+       (array_agg(job ORDER BY last_at DESC) FILTER (WHERE NOT (job = ANY($2::text[]))))[1:20] AS unlisted,
+       (array_agg(last_at ORDER BY last_at DESC) FILTER (WHERE NOT (job = ANY($2::text[]))))[1:20] AS unlisted_at
   FROM recent
 `.trim();
 
@@ -172,7 +173,28 @@ async function unlistedJobsCheck(db, now, jobs) {
     if (!Number.isFinite(recent) || recent === 0) {
       return check(id, "skip", "no job reported a run in the last 3 days, so there is nothing to compare to the list");
     }
-    const unlisted = Array.isArray(row.unlisted) ? row.unlisted.map((name) => String(name).slice(0, 80)) : [];
+    const names = Array.isArray(row.unlisted) ? row.unlisted.map((name) => String(name).slice(0, 80)) : [];
+    const lastAt = Array.isArray(row.unlisted_at) ? row.unlisted_at : [];
+    /* A job retired on purpose (RETIRED_JOBS) that has gone quiet is not unlisted: its old
+       receipts are history. One that still reports a run inside 3 times its old schedule is red. */
+    const retired = new Map(RETIRED_JOBS.map(([job, cron, replacedBy]) => [job, { cron, replacedBy }]));
+    const stillRunning = [];
+    const unlisted = [];
+    names.forEach((name, i) => {
+      const r = retired.get(name);
+      if (!r) return unlisted.push(name);
+      const at = lastAt[i] ? new Date(lastAt[i]).getTime() : NaN;
+      const window = STALE_MULTIPLE * (cronIntervalMs(r.cron) || 0);
+      if (!Number.isFinite(at) || now.getTime() - at <= window) stillRunning.push(`${name} (replaced by ${r.replacedBy})`);
+    });
+    if (stillRunning.length > 0) {
+      return check(
+        id,
+        "FAIL",
+        `${stillRunning.length} retired ${stillRunning.length === 1 ? "job still reports" : "jobs still report"} runs: ${stillRunning.join(", ")}. Something still runs ${stillRunning.length === 1 ? "it" : "them"} beside the replacement.`,
+        "A retired Inngest cron that still runs means the Inngest app was not re-synced after the deploy (PUT /api/inngest). Re-sync it; do not put the job back on a heartbeat list."
+      );
+    }
     if (unlisted.length > 0) {
       return check(
         id,

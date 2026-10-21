@@ -1782,7 +1782,7 @@
  },
  {
   "surface": "function:commas-inbox-sweeper",
-  "control": "commas-inbox-sweeper (netlify/functions/commas-inbox-sweeper.mjs): scheduled every minute: drains stored Commas payment webhooks (commas_inbox) into events and the money chain. The other half of the payment path. | sends or calls: emits payment events | writes: commas_inbox, events, transactions",
+  "control": "commas-inbox-sweeper (netlify/functions/commas-inbox-sweeper.mjs): scheduled every 5 minutes: drains stored Commas payment webhooks (commas_inbox) into events and the money chain. The other half of the payment path. | sends or calls: emits payment events | writes: commas_inbox, events, transactions",
   "kind": "job-cron",
   "calls": [
    "emits payment events"
@@ -1796,7 +1796,7 @@
   "coverage": "deep",
   "evidence": "result check: beat-pay-webhook.mjs (hourly; names this function in its fix guide) and gap-payments.mjs payments:commas-inbox-waiting read commas_inbox for rows the sweeper should have taken; gap-webhooks.mjs webhooks:stuck-failed counts failed rows; ping: job:commas-inbox-sweeper heartbeat (src/pulse/heartbeats.mjs NETLIFY_JOBS, schedule * * * * *, red after 3 times the schedule); tests: src/workflows/commas-inbox-drain.test.mjs; src/payments/sweeper-fontkit-in-zip.test.mjs; src/http/scheduled-functions-return.test.mjs; tripwire map: not on it (the map lists api doors, pages, desks, sends and the 100 Inngest workflows, not Netlify scheduled or background functions)",
   "file": "netlify/functions/commas-inbox-sweeper.mjs",
-  "schedule": "* * * * *"
+  "schedule": "*/5 * * * *"
  },
  {
   "surface": "function:creative-job-runner",
