@@ -28,3 +28,49 @@ Implemented against the owner-approved [intended journey](bank-outreach-intended
 - Pre-alignment f97bc66ac completed all14 full PR checks in run39392526856. Dedicated run39392520939 still failed the morning timing limit at32.1seconds while its actual outreach checks passed2/2 and hourly proof passed. The unchanged morning command now follows the same canonical Mac/scratch-app-role proof path as hourly, with safe failure-only request timing added; all17 focused policy/diagnostic tests and independent review pass locally. Its new remote result is still required, and these checks do not cover the pending Astra alignment.
 - Pre-alignment `c85208bc2` passed all 14 full checks in run `39395516665` (1699 browser passes, three existing skips retained). Dedicated run `39395509784` passed all three jobs, including the full unchanged morning proof in 9.4 seconds, outreach 2 PASS/0 FAIL and hourly Bank 43ms with its predeploy live door explicitly skipped. All 47 database reads succeeded with read-only rollback/destruction and no commits. This closes the preceding morning-runner failure for that source, not the new alignment or production proof.
 - No live rep seats, customer records, external outreach or production deployment were created by this build.
+
+## Automatic half — no Apollo, no Salesforge (2026-10-20, not live)
+
+Owner, 2026-10-20: "make this as automated as possible without paying for those two services". Board: `ops/workflows/bank-outreach-auto-2026-10-20.md`. Traced from `src/outreach/automation.mjs`, `src/outreach/replies.mjs`, `src/outreach/store.mjs`, `src/messaging/gate.mjs`, `src/messaging/dispatch.mjs`, `src/messaging/providers/resend.mjs`, `src/adapters/mailgun.mjs` and migration 495.
+
+```mermaid
+flowchart TD
+    J[bank-outreach-automation, every 15 min] --> S{SERPER_API_KEY set?}
+    S -->|no| S0[Find step does nothing: no_search_key]
+    S -->|yes| S1[Claim up to 6 rows under the daily search cap: rep-owned, never searched, AZ/SC/FL/CA first; again after 30 days]
+    S1 --> S2[One search: site:linkedin.com/in + bank + 4 titles + state]
+    S2 --> S3[Rules keep only linkedin.com/in profiles that name this bank]
+    S3 --> S4[outreach_contact_leads: suggested]
+    S4 --> R1{Rep}
+    R1 -->|accept_lead| C[outreach_contacts]
+    R1 -->|dismiss_lead| D[dismissed]
+    C --> E0{Banker has an email?}
+    E0 -->|yes, bank still new/researching/contacted| E1[outreach_email_sequences: active]
+    E1 --> E2{Approved copy + BANK_OUTREACH_FROM + postal address + reply domain + Arizona weekday 6-14 + daily cap?}
+    E2 -->|no| E3[Step waits; nothing queued]
+    E2 -->|yes| E4[messages row queued: step 1, then day 4, then day 9]
+    E4 --> G{Gate: saved banker, not opted out, wording rules}
+    G -->|blocked| GB[blocked, recorded]
+    G -->|allowed| X[Dispatcher: banker From, Reply-To reply+bk-id@, List-Unsubscribe; Resend sends]
+    X --> M[Banker replies → Mailgun webhook → outreach_inbound_emails new; STOP or any real reply stops the sequence at once]
+    M --> A{Agent BANK-OUTREACH-REPLY}
+    A -->|draft| A1[Rules only: STOP / out-of-office / bounce; else needs_human]
+    A -->|shadow| A2[Model returns JSON: kind + facts. Suggestion pending + drafted reply, nothing sent, needs_human]
+    A -->|live| A3[Reviewed reply template queued; asks only missing data points]
+    A2 --> P[Rep: apply_reply_suggestion → product draft with the banker's words as evidence]
+    A3 --> P
+    P --> V[Manager verifies into Lenders — unchanged]
+    U[Unsubscribe page, channel banker_email] --> O[outreach_contacts.email_opt_out_at; sequence stopped]
+```
+
+What is true in code (none of it is live until migration 495 ships and the settings are set):
+
+1. Search only through `src/messaging/providers/serper-search.mjs` behind the ADAPTERS fence. No LinkedIn or bank website is opened. With no key nothing runs. Default cap 80 searches a day (`BANK_OUTREACH_SEARCHES_PER_DAY`); a fence hold un-marks every claimed row.
+2. Found bankers stay suggestions until a rep accepts. The machine replaces only its own next-action wording, never a rep's.
+3. Cold email: three reviewed templates seeded `compliance_passed=false`. A step waits (never burns) while copy or settings are missing. Default cap 40 a day (`BANK_OUTREACH_EMAILS_PER_DAY`). Each email carries the mailing address and both ways out.
+4. The gate allows the seven bank keys with no client only for a saved banker address in the same company that has not opted out. Resend refuses a From outside its sending domains.
+5. Replies: the model never writes words a banker reads. Facts are suggestions a rep applies; Lenders changes only through manager verification. At most 3 automatic answers per banker per 30 days.
+6. Machine history rows are `actor='automation'` with no staff id.
+7. Monitoring: job heartbeat (`*/15`), morning checks `bank-outreach:email-safety` and `bank-outreach:reply-waiting`, hourly beat step `email-safety`.
+
+Gap with the intended journey (finding, not reconciled): `bank-outreach-intended.md` step 3 says "Fundhub does not send messages, scrape sites or incur data credits" and step 8 says "No automated external sends occur". The owner's 2026-10-20 order asks for automatic finding, email and replies. The intended file is the owner's to update; this build keeps sending behind copy approval, mail settings and the agent switch.

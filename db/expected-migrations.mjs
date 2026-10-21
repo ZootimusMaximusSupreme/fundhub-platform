@@ -357,6 +357,7 @@ export const EXPECTED_MIGRATIONS = Object.freeze([
   "migrations/493_funding_and_repair_agreement_text.sql",
   "migrations/494_application_decision_staff.sql",
   "migrations/495_affiliate_payout_rail.sql",
+  "migrations/495_bank_outreach_automation.sql",
   "migrations/496_credit_repair_fee_upfront.sql",
   "migrations/497_restore_missing_sql_templates.sql",
   "seed/002_pipelines.sql",
@@ -396,7 +397,8 @@ export const EXPECTED_MIGRATIONS = Object.freeze([
   "seed/037_credit_repair_fee_upfront.sql",
   "seed/295_sms_copy_2026_09.sql",
   "seed/296_marketing_copy_writer_house.sql",
-  "seed/297_marketing_funnels.sql"
+  "seed/297_marketing_funnels.sql",
+  "seed/299_restore_u02_pack_email_2026_10_20.sql"
 ]);
 
 export default EXPECTED_MIGRATIONS;
