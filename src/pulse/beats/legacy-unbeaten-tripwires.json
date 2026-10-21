@@ -23,8 +23,6 @@
   "job:slo-paid-form-nudge",
   "page:portal-login.html",
   "page:progress.html",
-  "page:roadmap/index.html",
-  "page:roadmap/pay.html",
   "page:roadmap/pull.html",
   "route:banking/link-exchange",
   "route:banking/link-token",
