@@ -1,5 +1,4 @@
 [
-  "desk:brand-studio.html",
   "desk:client-portal.html",
   "desk:inquiry-remover.html",
   "desk:messaging.html",
@@ -46,8 +45,6 @@
   "route:money/connections",
   "route:money/helper",
   "route:money/tasks",
-  "route:partner-brand",
-  "route:partner-pages",
   "route:pii",
   "route:pipeline-clients",
   "route:privacy/erasure",
