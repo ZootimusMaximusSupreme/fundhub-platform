@@ -1,0 +1,59 @@
+{
+ "del": {
+  "events": [
+   "02744962-d30b-42ab-a5a4-92d7aa7fea1f",
+   "042857f9-d424-43ee-85c7-643a29e2bd92",
+   "0bc264a3-e1dc-42d0-ae87-18b96a4a7ad4",
+   "1f358c87-099f-4f6e-8e16-ea289cc4fc01",
+   "25b466ee-19b0-4043-9c90-333349603d8d",
+   "29a9de39-e8c5-4623-a777-05a5837f52cb",
+   "30654463-3614-43b3-b7ff-56e85a5a7a4f",
+   "30c28498-ae74-493e-bcde-84756d032d8c",
+   "3660eed6-04eb-4798-9997-fc6dde0d0206",
+   "3aa60eab-ea05-4776-86fb-a6dae5c1cdfb",
+   "43578c8d-049c-40fa-b558-5b01816a1dc6",
+   "4473a0e3-fa6a-465c-9eb9-dccaf8cdd843",
+   "472f73eb-5c03-470e-8216-8f6f6f610e1b",
+   "4b86f183-6a09-438f-8015-4eec04faff76",
+   "51b08fd7-94a0-46c2-9f62-00160ca21d33",
+   "5201f087-2ceb-4da0-8363-63effc41d0bc",
+   "5e8cfaab-0377-4b6b-9f69-b514f22559e9",
+   "629d54f6-1ee3-4b04-9903-9ec984f1a9ff",
+   "6935a88a-6563-4f89-980f-970a9ec28d8f",
+   "712fdd87-e0a6-4aae-9f0b-8e7705503c29",
+   "7bf5751f-f5f2-4a96-9219-1ce7a4ea409d",
+   "8bc50990-b10a-4df9-92f1-a2926c94645e",
+   "90985569-9d27-47a7-911b-2bb8b9d22dbb",
+   "92eb4870-8d3d-446c-b5d1-9ffbffaf8af3",
+   "972ccddf-1bcc-43ed-b55d-1f50022ebfea",
+   "9ed4b802-ab70-42ea-978a-35b88ffe7f54",
+   "a68eedca-1db0-4106-8b0d-a52c6b4f0fa9",
+   "a82c4092-be7c-42ce-8d12-4ec836827e70",
+   "aea87143-5f0c-4e5d-9bdb-fa50bb9aaa83",
+   "b6d77a59-10f0-4999-8736-90c8c1cc88a6",
+   "c9751f20-eb44-463d-b2fe-baab41fa0d68",
+   "def57c2c-f978-490a-ab90-ac1ec0828f64",
+   "e00a8f19-4a21-485d-973f-f6c6712e5e64",
+   "e1dd7195-fe58-47bb-8566-74c923f208f0",
+   "ea7b7d54-b339-49e3-85ca-edb6ca3ab782",
+   "ed0c1015-445d-4061-bc05-8612628b7d8d",
+   "ee763f7f-3aef-49a9-a308-0f69ca835934",
+   "fe909c99-3622-491d-86b1-73d9ffc10e59"
+  ]
+ },
+ "nulls": {},
+ "order": [
+  "events"
+ ],
+ "pks": {
+  "events": [
+   "id"
+  ]
+ },
+ "demoClients": [],
+ "demoPartners": [],
+ "info": {
+  "events": 38
+ },
+ "made_at": "2026-10-21T05:09:11.876Z"
+}

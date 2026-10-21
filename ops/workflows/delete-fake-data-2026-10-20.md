@@ -138,9 +138,25 @@ Each round ran as one transaction with the same guards: rebuild the plan inside 
 
 **Round 6 (committed, owner yes relayed by the coordinator):** the 2 test commission rules from the Aug 21 money-chain test are deleted: `bdd28f6e` "MC advisor 0.25% funded" (it was active, had no end date, and was the only funding-advisor rule on Card Stacking DFY) and `f7578579` "MC closer flat deposit" (ended 2026-08-23). Nothing pointed at them (no ledger or other rows), so nothing had to be end-dated. commission_rules went 11 → 9. Every other table and row was unchanged, including the other rules, staff, products and the ledger. Backup: `.../round6/`. The fake staff "Money Chain Closer" (EMP-000042) is still there; fake staff wait on Chris.
 
+**Round 7 (committed, Chris: "duh / remove elenda", "go"): fake staff and fake affiliates.** 142 rows deleted:
+- staff 25: the 5 Jul-31 seed people (Sarah Whitfield, Jordan Blake, Nina Castellano, Marcus Webb, Alvin Torres), 3 DEMO staff, Mock Closer Sign, Elena Brooks, Adv Closer, Money Chain Closer, and 13 Oct-12 test fixtures
+- affiliates 16: the E2E, Sim, t10affstats, DEMO and principalread ones
+- the rows tied to them: sessions 69, account_sessions 11, accounts 10 (all fake affiliate logins), affiliate_link_clicks 6, staff_events 2, conversation_participants 2, shifts 1
+- Set to blank by the database: 3 internal team messages from Elena Brooks lose their sender, and the demo partner's brand and login lose their "approved by" and "invited by" link.
+- Kept, locked: AFF-000063 t10affstats-payee owns a payout the database never lets go. It is now `is_demo = true`.
+- 93 sets outside the plan were unchanged. Backup: `.../round7/`.
+
+**Round 4b (committed):** 38 more fake client-less events (payment.*, deposit.paid, diagnostic.paid and others; test emails only). Round 4 missed them because of a double-escaped pattern in `rounds.cjs`. That bug only made round 4 delete less: all 1,016 events it removed were demo-flagged, had no client, and held only test emails (checked against the backup). 1 fake payment.received event is kept, because FH-000513's entitlement points at it. Backup: `.../round4b/`.
+
+**Live after all rounds:**
+- Staff 10: Chris, Sarah Blankstein, Justice Nikkel and the 7 TEST role logins.
+- Affiliates 8: the 5 real-looking ones, TEST — Affiliate Role, TEST — Client Role (App Store login), and the locked demo payee.
+- Clients 3, all unchanged: Braum, App Store login, FH-000513.
+- Events 7,161. Logins: 3 client, 6 affiliate, 10 partner, 1 authorized rep.
+
 ## Left over (not done here)
 
-1. **Fake staff and fake affiliates.** Chris asked about these after rounds 3 and 4. They were outside every round so far. They are listed for his yes or no:
+1. ~~Fake staff and fake affiliates~~: done in round 7. Chris asked about these after rounds 3 and 4. They were outside every round so far. They are listed for his yes or no:
    - Staff: 14 Oct-12 test fixtures (example.com), 3 DEMO staff, Mock Closer Sign, and 5 made-up seed people from Jul 31, all suspended and never logged in.
    - Affiliates: about 18 test or sim or demo affiliates.
    - Kept no matter what: Chris, Sarah Blankstein, Justice Nikkel, the TEST role logins that agents use for checks, TEST — Client Role (the App Store login), and the 5 real-looking affiliates.

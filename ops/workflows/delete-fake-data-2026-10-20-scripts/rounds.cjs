@@ -1,7 +1,7 @@
 // Plan builders for rounds 3 and 4. Each returns { del, nulls, order, pks, demoClients, demoPartners, info } from live data.
 const { closure, keyExpr, qi, KEEP_SQL } = require("./lib.cjs");
 const { REAL_EVENT_SQL, LOCKED } = require("./plan3c.cjs");
-const TEST_EMAIL_RE = "(@example\\\\.(com|test)$|@test\\\\.fundhub\\\\.ai$|^e2e\\\\+|@demo\\\\.fundhub\\\\.local$|^csmq-|^stanbridgejchris|^bakerskater987|^stanbridgelargecoc|^stanbrdgejchris@|^balls@gmail\\\\.com$|^bigboy@littleboy\\\\.com$|@fundhub\\\\.ai$)";
+const TEST_EMAIL_RE = "(@example\\.(com|test)$|@test\\.fundhub\\.ai$|^e2e\\+|@demo\\.fundhub\\.local$|^csmq-|^stanbridgejchris|^bakerskater987|^stanbridgelargecoc|^stanbrdgejchris@|^balls@gmail\\.com$|^bigboy@littleboy\\.com$|@fundhub\\.ai$)";
 const toObj = (m) => Object.fromEntries([...m].map(([t, s]) => [t, [...s].sort()]));
 function orderOf(sch, del) {
   const edges = sch.fks.filter((f) => del.has(f.child) && del.has(f.parent) && f.child !== f.parent);
@@ -28,9 +28,9 @@ const TEST_PARTNER_SQL = `SELECT id::text FROM partners WHERE created_at >= '202
 const FAKE_OTHER_EVENT_SQL = `
   WITH ev AS (
     SELECT e.id::text AS id, e.is_demo, e.payload::text AS p,
-      ARRAY(SELECT DISTINCT lower(m[1]) FROM regexp_matches(e.payload::text, '([A-Za-z0-9._%+\\\\-]+@[A-Za-z0-9.\\\\-]+\\\\.[A-Za-z]+)', 'g') m) AS ems
+      ARRAY(SELECT DISTINCT lower(m[1]) FROM regexp_matches(e.payload::text, '([A-Za-z0-9._%+\\-]+@[A-Za-z0-9.\\-]+\\.[A-Za-z]+)', 'g') m) AS ems
     FROM events e WHERE e.client_id IS NULL AND NOT EXISTS (SELECT 1 FROM failed_events f WHERE f.event_id = e.id))
-  SELECT id FROM ev WHERE p !~* '(bramselleslach|client@fundhub\\\\.ai)'
+  SELECT id FROM ev WHERE p !~* '(bramselleslach|client@fundhub\\.ai)' AND NOT EXISTS (SELECT 1 FROM entitlements en WHERE en.source_event_id::text = ev.id)
     AND ((cardinality(ems) = 0 AND is_demo) OR (cardinality(ems) > 0 AND NOT EXISTS (SELECT 1 FROM unnest(ems) x WHERE x !~ '${TEST_EMAIL_RE}')))`;
 const CONTENT_QUEUE_DEMO = ["60735863-198a-402e-9cf7-5204bef5c93f"];
 const TEST_AFFILIATE = ["25626700-0785-468e-b48b-fe3f3b92d0da"];
@@ -65,3 +65,69 @@ async function round4(c, sch) {
   return { del: toObj(F.del), nulls: toObj(F.nulls), order: orderOf(sch, F.del), pks: Object.fromEntries([...F.del.keys()].map((t) => [t, sch.pks[t]])), demoClients: [], demoPartners, pinned: toObj(pinned), protectClients: [], info: { partners: partners.length, events: ev.length, contentQueue: cq.length } };
 }
 module.exports = { round3, round4 };
+
+// Round 7: fake staff (incl. Elena Brooks) and fake affiliates. Real staff, TEST role logins, App Store login, real-looking affiliates stay.
+const KEEP_STAFF_CODES = ["EMP-000001", "EMP-000038", "EMP-000062", "EMP-000007", "EMP-000008", "EMP-000009", "EMP-000010", "EMP-000011", "EMP-000012", "EMP-000034"];
+const FAKE_STAFF_SQL = `SELECT id::text FROM staff WHERE NOT (employee_code = ANY($1)) AND (
+    email ~* '(@example\\.(com|test)$|@demo\\.fundhub\\.local$)' OR is_demo
+    OR employee_code IN ('EMP-000002','EMP-000003','EMP-000004','EMP-000005','EMP-000006','EMP-000063','EMP-000082'))`;
+const KEEP_AFF = ["AFF-000001", "AFF-000182", "AFF-000120", "AFF-000121", "AFF-000122", "AFF-000123", "AFF-000124"];
+const FAKE_AFF_SQL = `SELECT a.id::text FROM affiliates a WHERE NOT (a.tracking_id = ANY($1)) AND (
+    a.is_demo OR a.tracking_id IN ('AFF-000002','AFF-000003','AFF-000004','AFF-000053','AFF-000059','AFF-000060','AFF-000061','AFF-000062','AFF-000063','AFF-000064','AFF-000065','AFF-000066','AFF-000067','AFF-000068','AFF-000069','principalread-aff'))`;
+async function round7(c, sch) {
+  const staff = (await c.query(FAKE_STAFF_SQL, [KEEP_STAFF_CODES])).rows.map((r) => r.id);
+  const affs = (await c.query(FAKE_AFF_SQL, [KEEP_AFF])).rows.map((r) => r.id);
+  const F = await closure(c, sch, staff, "staff", { affiliates: affs });
+  // Protected: every row tied to the 3 kept clients, the kept staff and the kept affiliates.
+  const keepClients = (await c.query("SELECT id::text FROM clients")).rows.map((r) => r.id);
+  const keepStaff = (await c.query("SELECT id::text FROM staff WHERE employee_code = ANY($1)", [KEEP_STAFF_CODES])).rows.map((r) => r.id);
+  const keepAff = (await c.query("SELECT id::text FROM affiliates WHERE tracking_id = ANY($1)", [KEEP_AFF])).rows.map((r) => r.id);
+  const P = await closure(c, sch, keepClients, "clients", { staff: keepStaff, affiliates: keepAff });
+  const hard = (await c.query(`SELECT DISTINCT t.tgrelid::regclass::text AS t FROM pg_trigger t JOIN pg_proc p ON p.oid=t.tgfoid
+      WHERE NOT t.tgisinternal AND (t.tgtype & 8) <> 0 AND (t.tgtype & 2) <> 0 AND t.tgrelid IN (SELECT oid FROM pg_class WHERE relnamespace='public'::regnamespace)
+        AND pg_get_functiondef(p.oid) !~* 'is_demo'`)).rows.map((r) => r.t);
+  const nopriv = (await c.query(`SELECT relname FROM pg_class WHERE relnamespace='public'::regnamespace AND relkind='r' AND NOT has_table_privilege('fundhub_app', oid, 'DELETE')`)).rows.map((r) => r.relname);
+  const pinned = new Map();
+  const pin = (t, k) => { if (!pinned.has(t)) pinned.set(t, new Set()); const s = pinned.get(t); if (s.has(k)) return false; s.add(k); return true; };
+  for (const [t, s] of F.del) { const p = P.del.get(t); for (const k of s) if (hard.includes(t) || nopriv.includes(t) || (p && p.has(k))) pin(t, k); }
+  // A row that would be blanked (set null) and is protected or locked pins its parent too.
+  for (const [key, s] of F.nulls) { const t = key.split(".")[0]; const p = P.del.get(t); for (const k of s) if ((p && p.has(k)) || hard.includes(t) || nopriv.includes(t)) pin(`__nullchild:${key}`, k); }
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const fk of sch.fks) {
+      const ps = pinned.get(fk.child); const pd = F.del.get(fk.parent);
+      const nullPins = pinned.get(`__nullchild:${fk.child}.${fk.ccols.join("+")}`);
+      for (const src of [ps, nullPins]) {
+        if (!src || !src.size || !pd) continue;
+        const rows = (await c.query(`SELECT DISTINCT ${keyExpr(sch.pks[fk.parent], "p.")} AS k FROM ${qi(fk.parent)} p JOIN ${qi(fk.child)} ch ON (${fk.ccols.map((x, i) => `ch.${qi(x)} = p.${qi(fk.pcols[i])}`).join(" AND ")}) WHERE ${keyExpr(sch.pks[fk.child], "ch.")} = ANY($1) AND ${keyExpr(sch.pks[fk.parent], "p.")} = ANY($2)`, [[...src], [...pd]])).rows.map((r) => r.k);
+        for (const k of rows) if (pin(fk.parent, k)) grew = true;
+      }
+    }
+  }
+  for (const [t, s] of pinned) { if (t.startsWith("__")) continue; const d = F.del.get(t); if (!d) continue; for (const k of s) d.delete(k); if (!d.size) F.del.delete(t); }
+  // Re-walk: rows still in the delete set whose parent got pinned stay deletable; set-null effects from pinned parents disappear.
+  const delParents = new Map([...F.del].map(([t, s]) => [t, s]));
+  for (const [key, s] of [...F.nulls]) {
+    const t = key.split(".")[0]; const cols = key.split(".")[1].split("+");
+    const fk = sch.fks.find((f) => f.child === t && f.ccols.join("+") === cols.join("+") && (f.del === "n" || f.del === "d"));
+    const pd = fk && delParents.get(fk.parent);
+    if (!pd) { F.nulls.delete(key); continue; }
+    const keepK = (await c.query(`SELECT DISTINCT ${keyExpr(sch.pks[t], "ch.")} AS k FROM ${qi(t)} ch JOIN ${qi(fk.parent)} p ON (${fk.ccols.map((x, i) => `ch.${qi(x)} = p.${qi(fk.pcols[i])}`).join(" AND ")}) WHERE ${keyExpr(sch.pks[fk.parent], "p.")} = ANY($1)`, [[...pd]])).rows.map((r) => r.k);
+    F.nulls.set(key, new Set(keepK)); if (!keepK.length) F.nulls.delete(key);
+  }
+  dropNullsInDel(F);
+  const demoStaff = [...(pinned.get("staff") || [])]; const demoAff = [...(pinned.get("affiliates") || [])];
+  return { del: toObj(F.del), nulls: toObj(F.nulls), order: orderOf(sch, F.del), pks: Object.fromEntries([...F.del.keys()].map((t) => [t, sch.pks[t]])), demoClients: [], demoPartners: [], demoStaff, demoAffiliates: demoAff, pinned: toObj(new Map([...pinned].filter(([t]) => !t.startsWith("__")))), info: { staff: staff.length, affiliates: affs.length } };
+}
+module.exports.round7 = round7;
+
+// Round 4b: the client-less fake events round 4 missed (test emails only, not demo-flagged), after the escape fix.
+async function round4b(c, sch) {
+  const ev = (await c.query(FAKE_OTHER_EVENT_SQL)).rows.map((r) => r.id);
+  const F = await closure(c, sch, ev, "events");
+  dropNullsInDel(F);
+  if (F.nulls.size) throw new Error("set-null effects: " + [...F.nulls.keys()].join(","));
+  return { del: toObj(F.del), nulls: toObj(F.nulls), order: orderOf(sch, F.del), pks: Object.fromEntries([...F.del.keys()].map((t) => [t, sch.pks[t]])), demoClients: [], demoPartners: [], info: { events: ev.length } };
+}
+module.exports.round4b = round4b;
