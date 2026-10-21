@@ -117,3 +117,21 @@ No new route, page or dependency. Journey gap: `bank-outreach-intended.md` still
 - Not approved: the 7 bank templates. Chris's own rule (2026-08-01, `api/message-templates.mjs`): approval needs the exact words read by an owner or admin. No bank email can send until then.
 - After deploy: switch agent `BANK-OUTREACH-REPLY` to `live` (features stay on; it can only send approved copy).
 - CI notes on #96, not caused by this branch, each passed here or on other runs: `creative assets cannot be hard-deleted` (run 39523796193), `Send this one to` browser timeout (passes locally 2/2), `pipeline-new-archive` refusal (1 of 1,743), and the `template-restore` collation failure on every PR since #112 (fix rides #108/#107, per coordinator).
+
+## UI audit of the bank outreach screens (PR #111) — fundhub-ui-auditor checklist vs docs/rules/UI-STANDARDS.md
+
+Owner, relayed 2026-10-20: "claude is fine as long as they are perfect. do it for me now." Audited at 1440, 390 and 320 with fictional fixtures, as manager and as rep. Evidence: `ops/workflows/build-evidence/bank-outreach-auto/*-MARKED.png` (15 shots, red numbered boxes, legend under each picture).
+
+| Screen | Role | Standard | Expected | Observed | Evidence | Severity | Result |
+|---|---|---|---|---|---|---|---|
+| Automation panel | Manager | §6.3 true status | "On" only when email can actually go out | "Automatic emails On" when settings were saved but only 3 of 7 emails approved | `1440-manager-automation-MARKED.png` | HIGH | Fixed: On / Waiting on copy / Off, plus "Only approved emails go out. X of 7 are approved." New test for 7 of 7 = On |
+| Banker emails | Rep | §5 destructive confirm | Confirm naming the result | "Stop emails" stopped the cadence on one click; it cannot be restarted | `*-rep-automatic-emails-MARKED.png` | HIGH | Fixed: confirm "Stop automatic emails to <name>? The emails not sent yet will never go out. This cannot be undone." Cancel sends nothing (tested) |
+| Found bankers | Rep | §5 buttons say what happens | Verb naming the result | "Accept" / "Dismiss" | `*-rep-found-bankers-MARKED.png` | MEDIUM | Fixed: "Save as banker" / "Not a match"; statuses "Saved as banker" / "Not a match" |
+| All new cards | Both | §11 widths | 1440, 390 and 320 | New cards tested at 1440 and 390 only | — | MEDIUM | Fixed: 320 added (5 more tests); no sideways scroll, 16px body, 13px captions, 44px targets measured at all three |
+| Found bankers | Rep | §9 progressive disclosure | Reviewed rows stay short | Reviewed rows repeated the full search snippet | `*-rep-found-bankers-MARKED.png` | LOW | Fixed: snippet only on rows still needing review (tested) |
+| Automation panel | Manager | §11 phone fit | Caption on one line | "4 started in / all" broke at 320 | `320-manager-automation-MARKED.png` | LOW | Fixed |
+| Evidence | — | CLAUDE.md §8 | Marks never hide the content | Yellow arrows and legend drawn over the screen | old shots | LOW | Fixed: numbered boxes, legend in a band under the picture, no arrows |
+
+Checked and passing with no change: §1 no new primary button (the only primary in the diff is the existing Import banks); §2 8/16/24/32 spacing and the 3-column automation grid (equal spans, one column under 1100px); §3 type floors measured and tabular numbers on panel values; §4 Automation tab renders for managers only, reps never see or read it (tested); §6 Automation panel loading / empty (with Import banks) / failed read with retry / full, and empty text for replies; §7 relative time under 24h, absolute after, every panel count beside its cap or total; §8 filters above the queue; §10 rep's first question ("Who do I work next?") still leads; state filter lists every program state (56 live), tested. Open question: none.
+
+Proof on the final screen code: bank outreach Chromium spec 63/63 (41 existing unchanged + 22 new), WebKit proof 27/27, screen-standard / status tokens / rounded font / nav reachability / fluid shell 67/67, lint clean.

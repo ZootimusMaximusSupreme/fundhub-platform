@@ -79,4 +79,5 @@
 .bank-outreach-page .automation-empty .button{margin-top:16px}
 .bank-outreach-page .automation-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
 .bank-outreach-page .automation-grid h3{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.bank-outreach-page .automation-grid dd span{white-space:nowrap}
 @media(max-width:1100px){.bank-outreach-page .automation-grid{grid-template-columns:minmax(0,1fr);gap:24px}}

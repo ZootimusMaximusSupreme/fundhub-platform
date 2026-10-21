@@ -8,7 +8,7 @@
   var list = [], reps = [], canManage = false, offset = 0, total = 0, detail = null, section = 'touch', view = 'queue', requestNumber = 0, detailNumber = 0, initialized = false, searchTimer, returnFocus, returnBankId, importReturnFocus;
   // Automation words. The server owns every status; these maps only name them.
   var EMAIL_STEPS = 3, automationNumber = 0, programStates = null;
-  var leadStatus = { suggested: 'Needs review', accepted: 'Accepted', dismissed: 'Dismissed' };
+  var leadStatus = { suggested: 'Needs review', accepted: 'Saved as banker', dismissed: 'Not a match' };
   var replyStatus = { new: 'New', needs_human: 'Needs you', handled: 'Done' };
   var replyKinds = { interested: 'Interested', data: 'Sent product facts', call: 'Wants a call', not_now: 'Not now', wrong_person: 'Wrong person', opt_out: 'Asked to stop', auto_reply: 'Automatic reply', bounce: 'Bounced', other: 'Other reply' };
   var readModes = { rules: 'Read by rules', shadow: 'Read by AI in practice mode', live: 'Read by AI' };
@@ -87,6 +87,12 @@
   }
   // Managers only. The server refuses reps; reps never see the control.
   function onOff(on) { return '<span class="status-tag' + (on ? ' verified' : '') + '">' + (on ? 'On' : 'Off') + '</span>'; }
+  // Settings alone send nothing: an email goes out only when its copy is approved too.
+  function emailStatus(email) {
+    var approved = Number(email.templates_approved) || 0, total = Number(email.templates_total) || 0;
+    if (!email.configured) return '<span class="status-tag">Off</span>';
+    return total && approved >= total ? '<span class="status-tag verified">On</span>' : '<span class="status-tag">Waiting on copy</span>';
+  }
   function automationRow(label, value) { return '<div><dt>' + esc(label) + '</dt><dd>' + value + '</dd></div>'; }
   function automationHtml(auto) {
     var search = auto.search || {}, email = auto.email || {}, replies = auto.replies || {}, missing = email.missing || [], signup = safeUrl(search.signup_url);
@@ -95,8 +101,8 @@
     return empty + '<div class="team-grid automation-grid">' +
       '<section aria-labelledby="automation-search"><h3 id="automation-search">Banker search ' + onOff(search.configured) + '</h3><dl>' + automationRow('Searches today', count(search.used_today) + ' of ' + count(search.per_day_cap)) + automationRow('Banks never searched', count(search.never_searched) + ' of ' + count(search.accounts)) + '</dl>' +
         (search.configured ? '<p class="caption">Fundhub searches LinkedIn results for bankers every 15 minutes until the daily cap.</p>' : '<p>Search is off. It starts when the search key is saved.</p>' + (signup ? '<div class="bank-links"><a href="' + esc(signup) + '" target="_blank" rel="noopener noreferrer">Get a search key at serper.dev ↗</a></div>' : '')) + '</section>' +
-      '<section aria-labelledby="automation-email"><h3 id="automation-email">Automatic emails ' + onOff(email.configured) + '</h3><dl>' + automationRow('Email copy approved', count(email.templates_approved) + ' of ' + count(email.templates_total)) + automationRow('Sent today', count(email.sent_today) + ' of ' + count(email.per_day_cap)) + automationRow('Bankers getting emails', count(email.active_sequences) + ' active<span class="caption">' + count(email.sequences) + ' started in all</span>') + automationRow('Send window', email.in_send_window ? 'Open now' : 'Closed now') + '</dl><p class="caption">Emails go out on Arizona weekdays, 6 a.m. to 2 p.m.</p>' +
-        (missing.length ? '<p>Email is off until these settings are saved: ' + esc(listWords(missing.map(function (name) { return settingNames[name] || name; }))) + '.</p>' : '') + (Number(email.templates_approved) === 0 ? '<p>No email goes out until the email copy is approved.</p>' : '') + '</section>' +
+      '<section aria-labelledby="automation-email"><h3 id="automation-email">Automatic emails ' + emailStatus(email) + '</h3><dl>' + automationRow('Email copy approved', count(email.templates_approved) + ' of ' + count(email.templates_total)) + automationRow('Sent today', count(email.sent_today) + ' of ' + count(email.per_day_cap)) + automationRow('Bankers getting emails', count(email.active_sequences) + ' active<span class="caption">' + count(email.sequences) + ' started in all</span>') + automationRow('Send window', email.in_send_window ? 'Open now' : 'Closed now') + '</dl><p class="caption">Emails go out on Arizona weekdays, 6 a.m. to 2 p.m.</p>' +
+        (missing.length ? '<p>Email is off until these settings are saved: ' + esc(listWords(missing.map(function (name) { return settingNames[name] || name; }))) + '.</p>' : '') + (Number(email.templates_approved) === 0 ? '<p>No email goes out until the email copy is approved.</p>' : Number(email.templates_approved) < Number(email.templates_total) ? '<p>Only approved emails go out. ' + count(email.templates_approved) + ' of ' + count(email.templates_total) + ' are approved.</p>' : '') + '</section>' +
       '<section aria-labelledby="automation-replies"><h3 id="automation-replies">Reply reading</h3><dl>' + automationRow('Mode', esc(mode[0])) + automationRow('Waiting to be read', count(replies.waiting)) + automationRow('Need a person', count(replies.needs_human)) + '</dl><p class="caption">' + esc(mode[1]) + '</p></section></div>';
   }
   async function loadAutomation() {
@@ -120,12 +126,12 @@
   function leadCard(leads) {
     if (!leads.length) return '';
     var waiting = leads.filter(function (l) { return l.status === 'suggested'; }).length;
-    return '<section class="found-bankers" aria-labelledby="found-bankers-title"><h3 id="found-bankers-title">Found bankers</h3><p class="caption section-note">' + (waiting ? plural(waiting, 'banker', 'bankers') + ' from a LinkedIn search ' + (waiting === 1 ? 'needs' : 'need') + ' review. Accept saves the person as a banker. Connecting on LinkedIn stays your click.' : 'Every found banker is reviewed.') + '</p><div id="lead-list">' + leads.map(function (l) {
+    return '<section class="found-bankers" aria-labelledby="found-bankers-title"><h3 id="found-bankers-title">Found bankers</h3><p class="caption section-note">' + (waiting ? plural(waiting, 'banker', 'bankers') + ' from a LinkedIn search ' + (waiting === 1 ? 'needs' : 'need') + ' review. Save as banker adds the person to your bankers. Connecting on LinkedIn stays your click.' : 'Every found banker is reviewed.') + '</p><div id="lead-list">' + leads.map(function (l) {
       var link = safeUrl(l.linkedin_url), open = l.status === 'suggested';
       return '<article class="saved-record" data-lead="' + esc(l.id) + '"><div class="record-heading"><div><strong>' + esc(l.name) + '</strong><p class="caption">' + esc([l.title || 'Title not found', l.employer].filter(Boolean).join(' · ')) + '</p></div><span class="status-tag' + (l.status === 'accepted' ? ' verified' : '') + '">' + esc(leadStatus[l.status] || l.status) + '</span></div>' +
-        '<p class="caption">' + esc(l.confidence === 'high' ? 'High confidence match' : 'Medium confidence match') + ' · Found ' + date(l.created_at) + '</p>' + (l.snippet ? '<p>' + esc(l.snippet) + '</p>' : '') +
+        '<p class="caption">' + esc(l.confidence === 'high' ? 'High confidence match' : 'Medium confidence match') + ' · Found ' + date(l.created_at) + '</p>' + (open && l.snippet ? '<p>' + esc(l.snippet) + '</p>' : '') +
         (link ? '<div class="bank-links banker-contact-links"><a href="' + esc(link) + '" target="_blank" rel="noopener noreferrer" aria-label="Open ' + esc(l.name) + ' on LinkedIn">Open on LinkedIn ↗</a></div>' : '') +
-        (open ? '<div class="record-actions"><button class="button" type="button" data-accept-lead="' + esc(l.id) + '" aria-label="Accept ' + esc(l.name) + '">Accept</button><button class="button" type="button" data-dismiss-lead="' + esc(l.id) + '" aria-label="Dismiss ' + esc(l.name) + '">Dismiss</button></div>' : '') + '</article>';
+        (open ? '<div class="record-actions"><button class="button" type="button" data-accept-lead="' + esc(l.id) + '" aria-label="Save ' + esc(l.name) + ' as a banker">Save as banker</button><button class="button" type="button" data-dismiss-lead="' + esc(l.id) + '" aria-label="' + esc(l.name) + ' is not a match">Not a match</button></div>' : '') + '</article>';
     }).join('') + '</div></section>';
   }
   function emailState(c) {
@@ -198,12 +204,17 @@
   }
   var quickActions = [
     ['acceptLead', 'accept_lead', 'lead_id', 'lead', 'Banker saved. Connect with them on LinkedIn next.'],
-    ['dismissLead', 'dismiss_lead', 'lead_id', 'lead', 'Found banker dismissed.'],
+    ['dismissLead', 'dismiss_lead', 'lead_id', 'lead', 'Marked not a match.'],
     ['stopEmails', 'stop_emails', 'contact_id', 'contact', 'Automatic emails stopped for this banker.'],
     ['dismissReply', 'dismiss_reply_suggestion', 'reply_id', 'reply', 'Suggested facts set aside.'],
     ['replyDone', 'mark_reply_handled', 'reply_id', 'reply', 'Reply marked done.']
   ];
-  function quickAction(button) { quickActions.forEach(function (q) { var id = button.dataset[q[0]]; if (!id) return; var body = { action: q[1], account_id: detail.account.id }; body[q[2]] = id; act(button, body, q[4], '[data-' + q[3] + '="' + CSS.escape(id) + '"]'); }); }
+  // Stopping emails cannot be undone, so it asks first and names the result.
+  function confirmStop(id) {
+    var c = (detail.contacts || []).find(function (x) { return x.id === id; }), name = c ? c.name : 'this banker';
+    return window.confirm('Stop automatic emails to ' + name + '? The emails not sent yet will never go out. This cannot be undone.');
+  }
+  function quickAction(button) { quickActions.forEach(function (q) { var id = button.dataset[q[0]]; if (!id) return; if (q[0] === 'stopEmails' && !confirmStop(id)) return; var body = { action: q[1], account_id: detail.account.id }; body[q[2]] = id; act(button, body, q[4], '[data-' + q[3] + '="' + CSS.escape(id) + '"]'); }); }
   function openImport() { if (this && typeof this.focus === 'function') this.focus(); importReturnFocus = document.activeElement; message('import-message', ''); $('import-dialog').showModal(); $('import-form select').focus(); }
   $('status').innerHTML = options(labels, '', 'All statuses');
   $('queue-filters').onsubmit = function (event) { event.preventDefault(); clearTimeout(searchTimer); offset = 0; loadQueue(); };

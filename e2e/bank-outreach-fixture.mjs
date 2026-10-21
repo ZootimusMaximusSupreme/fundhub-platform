@@ -49,11 +49,17 @@ const autoData = () => ({
     { id: 'act-1', actor: 'staff', staff_id: 'rep-1', staff_name: 'Casey Reed', channel: 'linkedin', outcome: 'contact_saved', note: 'Jordan Pike', next_action: 'Contact banker', next_due_at: '2026-10-06T16:00:00Z', created_at: '2026-10-06T16:00:00Z' }
   ]
 });
-const automationView = (config, empty) => empty
+const automationViewFor = (config, empty) => empty
   ? { search: { configured: true, signup_url: 'https://serper.dev', per_day_cap: 80, used_today: 0, never_searched: 0, accounts: 0 }, email: { configured: true, missing: [], in_send_window: true, per_day_cap: 40, sent_today: 0, templates_approved: 3, templates_total: 7, active_sequences: 0, sequences: 0 }, replies: { agent_status: 'shadow', waiting: 0, needs_human: 0 } }
   : config === 'unset'
     ? { search: { configured: false, signup_url: 'https://serper.dev', per_day_cap: 80, used_today: 0, never_searched: 27, accounts: 27 }, email: { configured: false, missing: ['BANK_OUTREACH_FROM', 'BANK_OUTREACH_POSTAL_ADDRESS'], in_send_window: false, per_day_cap: 40, sent_today: 0, templates_approved: 0, templates_total: 7, active_sequences: 0, sequences: 0 }, replies: { agent_status: 'draft', waiting: 0, needs_human: 0 } }
     : { search: { configured: true, signup_url: 'https://serper.dev', per_day_cap: 80, used_today: 12, never_searched: 9, accounts: 27 }, email: { configured: true, missing: [], in_send_window: true, per_day_cap: 40, sent_today: 1, templates_approved: 3, templates_total: 7, active_sequences: 1, sequences: 4 }, replies: { agent_status: 'shadow', waiting: 0, needs_human: 2 } };
+// 'approved': every setting saved and all 7 bank emails approved.
+const automationView = (config, empty) => {
+  const view = automationViewFor(config === 'approved' ? 'ready' : config, empty);
+  if (config === 'approved') view.email.templates_approved = view.email.templates_total;
+  return view;
+};
 // The store's own 409 words for a second review of the same row.
 const CONFLICT = { accept_lead: 'This found banker was already reviewed', dismiss_lead: 'This found banker was already reviewed', apply_reply_suggestion: 'This reply has no facts waiting', dismiss_reply_suggestion: 'This reply has no facts waiting' };
 

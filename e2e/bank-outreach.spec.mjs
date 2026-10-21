@@ -333,7 +333,7 @@ async function openAutomationBank(page) {
   await page.locator('#work-next').click(); await expect(page.locator('#bank-title')).toHaveText('Mesa Community Bank');
 }
 
-for (const width of [1440, 390]) {
+for (const width of [1440, 390, 320]) {
   test.describe(`${width}px automation cards`, () => {
     test.use({ viewport: { width, height: 1000 }, deviceScaleFactor: width < 600 ? 2 : 1 });
 
@@ -349,7 +349,7 @@ for (const width of [1440, 390]) {
       await expect(page.locator('#leads-waiting')).toHaveText('7'); await expect(page.locator('#replies-waiting')).toHaveText('5');
       await expectAstraControls(page, testInfo, `${width}-auto-queue`, '#outreach-main');
       if (width < 600) {
-        await markShot(page, '390-rep-queue-counts.png', '390 rep · queue counts (fictional fixture)', [
+        await markShot(page, `${width}-rep-queue-counts.png`, `${width} rep · queue counts (fictional fixture)`, [
           [page.locator('#leads-waiting').locator('xpath=..'), 'Found bankers to review, all banks'],
           [page.locator('#replies-waiting').locator('xpath=..'), 'Banker replies waiting, all banks'],
           [rows.nth(0).locator('.row-chips'), 'Chips on the bank that has them'],
@@ -367,8 +367,10 @@ for (const width of [1440, 390]) {
       await expect(lead(page, 'lead-1')).toContainText('Helps local owners with business cards and lines of credit.');
       await expect(lead(page, 'lead-1').locator('.status-tag')).toHaveText('Needs review');
       await expect(lead(page, 'lead-2')).toContainText('Medium confidence match');
-      for (const [id, status] of [['lead-3', 'Accepted'], ['lead-4', 'Dismissed']]) {
+      for (const [id, status, snippet] of [['lead-3', 'Saved as banker', 'Business relationship manager at Mesa Community Bank.'], ['lead-4', 'Not a match', 'Teller at a Mesa Community Bank branch.']]) {
         await expect(lead(page, id).locator('.status-tag')).toHaveText(status);
+        await expect(lead(page, id)).not.toContainText(snippet); // Reviewed rows stay short.
+        await expect(lead(page, id).getByRole('link', { name: /on LinkedIn/ })).toHaveCount(1);
         await expect(lead(page, id).getByRole('button')).toHaveCount(0);
       }
       const linkedin = lead(page, 'lead-1').getByRole('link', { name: 'Open Taylor Brooks on LinkedIn' });
@@ -386,37 +388,57 @@ for (const width of [1440, 390]) {
         await markShot(page, '1440-rep-found-bankers-and-emails.png', '1440 rep · found bankers, emails (fixture)', [
           [lead(page, 'lead-1').locator('.record-heading'), 'Found banker: name, title, bank, status'],
           [linkedin, 'Open on LinkedIn: a rep click, new tab'],
-          [lead(page, 'lead-1').getByRole('button', { name: 'Accept Taylor Brooks' }), 'Accept saves the person as a banker'],
-          [lead(page, 'lead-1').getByRole('button', { name: 'Dismiss Taylor Brooks' }), 'Dismiss sets the result aside'],
+          [lead(page, 'lead-1').getByRole('button', { name: 'Save Taylor Brooks as a banker' }), 'Save as banker adds the person to your bankers'],
+          [lead(page, 'lead-1').getByRole('button', { name: 'Taylor Brooks is not a match' }), 'Not a match sets the result aside'],
           [lead(page, 'lead-3').locator('.status-tag'), 'Reviewed rows: status, no buttons'],
           [contactCard(page, 'contact-1').locator('.email-state strong'), 'Email 1 of 3 sent, next one due'],
           [contactCard(page, 'contact-1').getByRole('button', { name: 'Stop emails to Avery Lane' }), 'Stop emails for this banker']
         ], { height: 1800 });
+      } else {
+        await markShot(page, `${width}-rep-found-bankers.png`, `${width} rep · found bankers (fixture)`, [
+          [lead(page, 'lead-1').locator('.record-heading'), 'Found banker: name, title, bank, status'],
+          [linkedin, 'Open on LinkedIn: a rep click'],
+          [lead(page, 'lead-1').getByRole('button', { name: 'Save Taylor Brooks as a banker' }), 'Save as banker'],
+          [lead(page, 'lead-1').getByRole('button', { name: 'Taylor Brooks is not a match' }), 'Not a match']
+        ], { height: 1400 });
+        await markShot(page, `${width}-rep-automatic-emails.png`, `${width} rep · automatic emails (fixture)`, [
+          [contactCard(page, 'contact-1').locator('.email-state strong'), 'Email 1 of 3 sent, next one due'],
+          [contactCard(page, 'contact-1').getByRole('button', { name: 'Stop emails to Avery Lane' }), 'Stop emails asks first']
+        ], { height: 1400 });
       }
       // LinkedIn stays a rep click: it opens a new tab and saves nothing.
       const popupReady = page.waitForEvent('popup'); await linkedin.click(); await (await popupReady).close();
       expect(env.posts).toEqual([]);
 
       let reads = detailReads(env);
-      await lead(page, 'lead-1').getByRole('button', { name: 'Accept Taylor Brooks' }).click();
+      await lead(page, 'lead-1').getByRole('button', { name: 'Save Taylor Brooks as a banker' }).click();
       await expect.poll(() => env.posts.at(-1)).toEqual({ action: 'accept_lead', account_id: 'bank-0', lead_id: 'lead-1' });
       await expect(page.locator('#drawer-message')).toHaveText('Banker saved. Connect with them on LinkedIn next.');
       expect(detailReads(env)).toBe(reads + 1);
-      await expect(lead(page, 'lead-1').locator('.status-tag')).toHaveText('Accepted'); await expect(lead(page, 'lead-1').getByRole('button')).toHaveCount(0);
+      await expect(lead(page, 'lead-1').locator('.status-tag')).toHaveText('Saved as banker'); await expect(lead(page, 'lead-1').getByRole('button')).toHaveCount(0);
       await expect(page.locator('#contact-list')).toContainText('Taylor Brooks');
       await expect(page.locator('[data-section="contacts"]')).toHaveText('Bankers · 1 found');
       await expect(lead(page, 'lead-1').getByRole('link', { name: 'Open Taylor Brooks on LinkedIn' })).toBeFocused();
 
       reads = detailReads(env);
-      await lead(page, 'lead-2').getByRole('button', { name: 'Dismiss Dana Ruiz' }).click();
+      await lead(page, 'lead-2').getByRole('button', { name: 'Dana Ruiz is not a match' }).click();
       await expect.poll(() => env.posts.at(-1)).toEqual({ action: 'dismiss_lead', account_id: 'bank-0', lead_id: 'lead-2' });
-      await expect(page.locator('#drawer-message')).toHaveText('Found banker dismissed.');
+      await expect(page.locator('#drawer-message')).toHaveText('Marked not a match.');
       expect(detailReads(env)).toBe(reads + 1);
-      await expect(lead(page, 'lead-2').locator('.status-tag')).toHaveText('Dismissed'); await expect(lead(page, 'lead-2').getByRole('button')).toHaveCount(0);
+      await expect(lead(page, 'lead-2').locator('.status-tag')).toHaveText('Not a match'); await expect(lead(page, 'lead-2').getByRole('button')).toHaveCount(0);
       await expect(page.locator('[data-section="contacts"]')).toHaveText('Bankers');
       await expect(page.locator('#detail-contacts')).toContainText('Every found banker is reviewed.');
 
+      // Stopping cannot be undone: it asks first, names the result, and "Cancel" sends nothing.
+      const postsBefore = env.posts.length;
+      let ask = null;
+      page.once('dialog', dialog => { ask = { type: dialog.type(), message: dialog.message() }; return dialog.dismiss(); });
+      await contactCard(page, 'contact-1').getByRole('button', { name: 'Stop emails to Avery Lane' }).click();
+      await expect.poll(() => ask).toEqual({ type: 'confirm', message: 'Stop automatic emails to Avery Lane? The emails not sent yet will never go out. This cannot be undone.' });
+      await expect(contactCard(page, 'contact-1').getByRole('button', { name: 'Stop emails to Avery Lane' })).toBeEnabled();
+      expect(env.posts.length).toBe(postsBefore);
       reads = detailReads(env);
+      page.once('dialog', dialog => dialog.accept());
       await contactCard(page, 'contact-1').getByRole('button', { name: 'Stop emails to Avery Lane' }).click();
       await expect.poll(() => env.posts.at(-1)).toEqual({ action: 'stop_emails', account_id: 'bank-0', contact_id: 'contact-1' });
       await expect(page.locator('#drawer-message')).toHaveText('Automatic emails stopped for this banker.');
@@ -474,6 +496,19 @@ for (const width of [1440, 390]) {
           [jordan.getByRole('button', { name: 'Set aside' }), 'Set aside the suggested facts'],
           [jordan.getByRole('button', { name: 'Mark done' }), 'Mark the reply done']
         ], { height: 1800 });
+      } else {
+        await markShot(page, `${width}-rep-banker-reply.png`, `${width} rep · banker reply (fixture)`, [
+          [jordan.locator('.record-heading'), 'Reply: subject, sender, time, status'],
+          [body, 'Banker message, escaped'],
+          [jordan.locator('.reply-facts'), 'Suggested facts']
+        ], { height: 1600 });
+        await markShot(page, `${width}-rep-banker-reply-actions.png`, `${width} rep · reply actions (fixture)`, [
+          [jordan.getByLabel('Product name'), 'Product name'],
+          [jordan.getByLabel('Product category'), 'Product category'],
+          [jordan.getByRole('button', { name: 'Apply facts' }), 'Apply facts'],
+          [jordan.getByRole('button', { name: 'Set aside' }), 'Set aside'],
+          [jordan.getByRole('button', { name: 'Mark done' }), 'Mark done']
+        ], { height: 1400 });
       }
 
       let reads = detailReads(env);
@@ -525,8 +560,10 @@ for (const width of [1440, 390]) {
       await expect(value('automation-search', 'Searches today')).toHaveText('12 of 80');
       await expect(value('automation-search', 'Banks never searched')).toHaveText('9 of 27');
       await expect(group('automation-search').getByRole('link')).toHaveCount(0);
-      await expect(group('automation-email').locator('h3')).toHaveText('Automatic emails On');
+      // Settings saved but only 3 of 7 emails approved: it is not "On".
+      await expect(group('automation-email').locator('h3')).toHaveText('Automatic emails Waiting on copy');
       await expect(value('automation-email', 'Email copy approved')).toHaveText('3 of 7');
+      await expect(group('automation-email')).toContainText('Only approved emails go out. 3 of 7 are approved.');
       await expect(value('automation-email', 'Sent today')).toHaveText('1 of 40');
       await expect(value('automation-email', 'Bankers getting emails')).toContainText('1 active');
       await expect(value('automation-email', 'Bankers getting emails').locator('.caption')).toHaveText('4 started in all');
@@ -546,6 +583,13 @@ for (const width of [1440, 390]) {
           [group('automation-email'), 'Automatic emails: copy, sent today, window'],
           [group('automation-replies'), 'Reply reading: mode, waiting, needs a person']
         ], { height: 1300 });
+      } else {
+        await markShot(page, `${width}-manager-automation.png`, `${width} manager · automation (fixture)`, [
+          [page.locator('#automation-view'), 'Automation view: managers only'],
+          [group('automation-search'), 'Banker search'],
+          [group('automation-email'), 'Automatic emails: waiting on copy'],
+          [group('automation-replies'), 'Reply reading']
+        ], { height: 2400 });
       }
       await page.locator('#queue-view').click();
       await expect(page.locator('#automation-section')).toBeHidden(); await expect(page.locator('#queue-rows tr')).toHaveCount(25);
@@ -579,6 +623,18 @@ for (const width of [1440, 390]) {
     });
   });
 }
+
+test('the email status says On only when the settings are saved and all 7 emails are approved', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 1000 });
+  await fixture(page, { manager: true, automation: true, autoConfig: 'approved' });
+  await page.locator('#automation-view').click();
+  const email = page.locator('[aria-labelledby="automation-email"]');
+  await expect(email.locator('h3')).toHaveText('Automatic emails On');
+  await expect(email.locator('dt').filter({ hasText: /^Email copy approved$/ }).locator('+ dd')).toHaveText('7 of 7');
+  await expect(email).not.toContainText('Only approved emails go out');
+  await expect(email).not.toContainText('No email goes out');
+  await geometry(page);
+});
 
 test('390px manager automation panel names missing settings in plain words and links the search sign-up', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 1000 });
@@ -645,12 +701,12 @@ test('apply facts sends no product fields when the banker named them; a conflict
   env.faults.conflict = 'accept_lead';
   await page.locator('[data-section="contacts"]').click();
   const reads = detailReads(env);
-  await lead(page, 'lead-1').getByRole('button', { name: 'Accept Taylor Brooks' }).click();
+  await lead(page, 'lead-1').getByRole('button', { name: 'Save Taylor Brooks as a banker' }).click();
   await expect.poll(() => env.posts.at(-1)).toEqual({ action: 'accept_lead', account_id: 'bank-0', lead_id: 'lead-1' });
   await expect(page.locator('#drawer-message')).toHaveText('This found banker was already reviewed');
   await expect(page.locator('#drawer-message')).toHaveClass(/error/);
   expect(detailReads(env)).toBe(reads + 1);
-  await expect(lead(page, 'lead-1').locator('.status-tag')).toHaveText('Accepted'); await expect(lead(page, 'lead-1').getByRole('button')).toHaveCount(0);
+  await expect(lead(page, 'lead-1').locator('.status-tag')).toHaveText('Saved as banker'); await expect(lead(page, 'lead-1').getByRole('button')).toHaveCount(0);
 
   env.faults.conflict = 'dismiss_reply_suggestion';
   await page.locator('[data-section="replies"]').click();
@@ -673,6 +729,7 @@ test('a failed apply or stop keeps the card, the typed product name and category
   await expect(jordan.getByLabel('Product name')).toHaveValue('Business rewards card'); await expect(jordan.getByLabel('Product category')).toHaveValue('OnlineBizCC');
   await expect(jordan.getByRole('button', { name: 'Apply facts' })).toBeEnabled();
   await page.locator('[data-section="contacts"]').click();
+  page.once('dialog', dialog => dialog.accept());
   await contactCard(page, 'contact-1').getByRole('button', { name: 'Stop emails to Avery Lane' }).click();
   await expect(page.locator('#drawer-message')).toContainText('Save failed');
   await expect.poll(() => env.posts.at(-1)).toEqual({ action: 'stop_emails', account_id: 'bank-0', contact_id: 'contact-1' });
