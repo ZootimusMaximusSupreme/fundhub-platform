@@ -15,7 +15,10 @@ export const covers = [
   "desk:money-payments.html",
   "desk:money-transfers.html",
   "desk:campaign-manager.html",
-  "job:finance-os-money-transfers"
+  "job:finance-os-money-transfers",
+  // The sweeper's whole job is the past-due plan. subscriptions:past-due (step subscriptions-past-due,
+  // the same SQL and verdict as the daily lane) goes red when a past-due plan is left unworked.
+  "job:subscription-billing-sweeper"
 ];
 export const box = false;
 export const reads = [{ host: "graph.facebook.com", methods: ["GET"] }];

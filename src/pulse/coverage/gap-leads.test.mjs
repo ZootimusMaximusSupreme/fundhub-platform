@@ -238,8 +238,12 @@ test("lead lane: no email, phone or name is ever selected", () => {
 });
 
 test("lead lane: no web call, no send, no repo read in the source", () => {
-  const code = SRC.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
-  assert.doesNotMatch(code, /\bfetch\s*\(|\bhttps?\.request\b|node:fs|readFileSync|\bsendTemplated\b|\bfetchImpl\b/);
+  // The lane is a thin adapter; the SQL and verdicts live in the shared hourly truth file. Both are read.
+  const truth = fs.readFileSync(path.join(HERE, "../beats/lib/lead-truth.mjs"), "utf8");
+  for (const src of [SRC, truth]) {
+    const code = src.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
+    assert.doesNotMatch(code, /\bfetch\s*\(|\bhttps?\.request\b|node:fs|readFileSync|\bsendTemplated\b|\bfetchImpl\b/);
+  }
 });
 
 test("lead lane: the two ad days are Arizona days, not UTC days", () => {
