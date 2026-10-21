@@ -29,6 +29,10 @@
                                                                  current_s, duration_s }
      faq_open      a <details> opened, or a [data-fh-faq] question pressed open   { question }
      carousel      next, prev or play on a testimonial row     { carousel, action, index }
+     app_download_tap  a press on the Apple link (TestFlight or App Store) in the
+                   app-download card on /thank-you, every press   { }
+                   The first press per session also reaches Cortana as
+                   book_call_app_download_tap. It is a tap: a page never sees an install.
 
    Passed on from the framed booking calendar (window "message" from
    https://apply.fundhub.ai with data.fh === "track"):
@@ -270,7 +274,8 @@
   /* Cortana's hub is async in the funnel head. These are observations of the
      FREE book-a-call path only; no browser event below reports a paid sale or
      a durable booking conversion. The Fundhub track post remains the source
-     of truth when the hub is blocked. */
+     of truth when the hub is blocked. book_call_app_download_tap is a tap on
+     Apple's link, never an install. */
   var cortanaPending = [], cortanaTimer = null, cortanaWaits = 0, cortanaBusy = false;
   var CORTANA_PENDING_KEY = "fh_dr_pending_v1";
   var CORTANA_MAX_PENDING = 12;
@@ -282,7 +287,8 @@
     book_call_calendar_view: { "/apply": 1, "/funding-book-call": 1 },
     book_call_time_selected: { "/apply": 1, "/funding-book-call": 1 },
     book_call_booking_observed: { "/apply": 1, "/funding-book-call": 1 },
-    book_call_thank_you_view: { "/thank-you": 1 }
+    book_call_thank_you_view: { "/thank-you": 1 },
+    book_call_app_download_tap: { "/thank-you": 1 }
   };
   var CORTANA_HUB_SRC = "https://app.directroas.com/api/hub/v1/cmsdutl8e00mukv041vwuo39w";
   var cortanaHubChecked = false;
@@ -412,6 +418,7 @@
       if (page === "/thank-you") return ["book_call_thank_you_view"];
       return [];
     }
+    if (event === "app_download_tap") return page === "/thank-you" ? ["book_call_app_download_tap"] : [];
     if (page !== "/apply" && page !== "/funding-book-call") return [];
     if (event === "survey_answer" && page === "/apply") {
       return props.last === true
@@ -685,6 +692,23 @@
     props.nth = hit.nth;
     send("click", props);
     tell(hit.label);
+  }
+
+  /* ── the app-download button on /thank-you ────────────────────────────── */
+
+  /* The app card on /thank-you (public/funnel/fundhub-prompter-download.js, or
+     any card that replaces it) ends in one link to Apple: TestFlight today,
+     the App Store once Apple approves the listing. The link is what is
+     recognised here, not the card's class names or the setting key it reads, so
+     a new key, a new look or a new card still counts and the card script does
+     not change. The host is matched whole, so apps.apple.com.example is not
+     Apple. This page sees the TAP on that link and never the install. Every
+     press is saved (as a click is); Cortana hears the first press per session. */
+  var APP_LINK = /^https:\/\/(testflight|apps|itunes)\.apple\.com\//i;
+  function appDownloadPress(node) {
+    if (pagePath() !== "/thank-you") return;
+    var link = closest(node, "a[href]");
+    if (link && APP_LINK.test(String(attr(link, "href") || "").replace(/^\s+/, ""))) send("app_download_tap", {});
   }
 
   /* ── carousels ────────────────────────────────────────────────────────── */
@@ -999,6 +1023,7 @@
     try { onPress(node); } catch (e) {}
     try { carouselPress(node); } catch (e) {}
     try { faqPress(node); } catch (e) {}
+    try { appDownloadPress(node); } catch (e) {}
   }, true);
 
   // Media events do not bubble; the capture phase on the document hears them.
