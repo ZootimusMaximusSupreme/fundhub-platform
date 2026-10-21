@@ -637,8 +637,10 @@ describe("gap-calls SQL on the Postgres engine, over fixture rows", { skip: HAVE
   const capture = (body, o = {}) => ({ id: uid(), org_id: null, provider: "clickfunnels", raw_body: body, created_at: ago(2), ...o });
   const josh = (o = {}) => ({ org_id: org, code: "AG-04", status: "live", runtime: "bland", prompt: "You are Josh", ...o });
 
+  /* NOW is 2026-10-08, before join links were kept, so these cases count the join-link feed from the start of
+     time; the JOIN_FEED_SINCE cut-off has its own case at the end of this block. */
   async function status(id, rows, ctx = {}) {
-    const out = await gapChecks({ db: fixtureDb(rows), orgId: org, now: NOW, env: OPEN_ENV, fetchImpl: null, ...ctx });
+    const out = await gapChecks({ db: fixtureDb(rows), orgId: org, now: NOW, env: OPEN_ENV, fetchImpl: null, joinFeedSince: new Date(0), ...ctx });
     const row = out.find((r) => r.id === id);
     assert.ok(row, id);
     return row.status;
@@ -761,7 +763,7 @@ describe("gap-calls SQL on the Postgres engine, over fixture rows", { skip: HAVE
     // Five real bookings made 200 days ago and no link: red, with no newer booking to rescue it.
     assert.equal(await status(JOINID, { events: oldFive() }), "FAIL");
     assert.equal(await status(JOINID, { events: oldFive(900) }), "FAIL");
-    const out = await gapChecks({ db: fixtureDb({ events: oldFive() }), orgId: org, now: NOW, env: OPEN_ENV, fetchImpl: null });
+    const out = await gapChecks({ db: fixtureDb({ events: oldFive() }), orgId: org, now: NOW, env: OPEN_ENV, fetchImpl: null, joinFeedSince: new Date(0) });
     assert.match(out.find((r) => r.id === JOINID).detail, /the newest real booking was made 200 days ago\)/);
     // A link on the newest of them: the feed worked when it last ran.
     const withLink = oldFive();
@@ -771,6 +773,18 @@ describe("gap-calls SQL on the Postgres engine, over fixture rows", { skip: HAVE
     assert.equal(await status(JOINID, { events: oldFive().slice(0, 2) }), "PASS");
     // A booking made 130 days ago for a call 24 hours from now is still a call ahead with no link.
     assert.equal(await status(JOINID, { events: [jev({ created_at: ago(24 * 130) })] }), "FAIL");
+  });
+
+  test("no-join-link feed cut-off: bookings from before links were kept say nothing; three new ones with no link are red; a call ahead is never cut", async () => {
+    const since = new Date(NOW.getTime() - 24 * 3600e3);
+    const cut = { joinFeedSince: since };
+    const before = [6, 7, 8, 9, 10].map((n) => jev({ created_at: ago(24 + n), payload: jpay({ bookingUid: `b${n}`, email: `b${n}@acme.com`, startTime: ago(48 + n) }) }));
+    const after = [1, 2, 3].map((n) => jev({ created_at: ago(3 + n), payload: jpay({ bookingUid: `a${n}`, email: `a${n}@acme.com`, startTime: ago(48 + n) }) }));
+    assert.equal(await status(JOINID, { events: before }, cut), "PASS");
+    assert.equal(await status(JOINID, { events: [...after, ...before] }, cut), "FAIL");
+    assert.equal(await status(JOINID, { events: [jev({ created_at: ago(24 * 130) })] }, cut), "FAIL");
+    // With no cut-off given, the real one (2026-10-21) applies, and these 2026-10-08 bookings fall before it.
+    assert.equal(await status(JOINID, { events: [...after, ...before] }, { joinFeedSince: undefined }), "PASS");
   });
 });
 
