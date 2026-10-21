@@ -1,0 +1,32 @@
+{
+ "del": {
+  "conversations": [
+   "bf3f5650-8960-4a4c-aa8f-845efcf42a00"
+  ],
+  "messages": [
+   "55606313-4295-4e47-9062-5f23fece4cc9",
+   "5b16500b-4786-4ebf-a2cb-c55f5682ca1d",
+   "6cd618af-4318-4282-bae0-ddaedd16d0c1"
+  ]
+ },
+ "nulls": {},
+ "order": [
+  "messages",
+  "conversations"
+ ],
+ "pks": {
+  "conversations": [
+   "id"
+  ],
+  "messages": [
+   "id"
+  ]
+ },
+ "demoClients": [],
+ "demoPartners": [],
+ "info": {
+  "messages": 3,
+  "thread": 1
+ },
+ "made_at": "2026-10-21T13:37:40.485Z"
+}

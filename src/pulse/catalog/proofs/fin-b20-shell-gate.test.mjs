@@ -156,12 +156,16 @@ test("clock: Arizona time, the date when the bar is wide, only the time when nar
   await account.locator("summary").first().click();
   await diagnostics.locator("summary").click();
   await clock.waitFor({ state: "visible" });
+  // The page's clock and this process's clock are read a moment apart, so a minute (or midnight)
+  // can turn over in between: accept Phoenix's reading from just before or just after the read.
+  const readStart = new Date();
   const wide = (await clock.textContent()).trim();
+  const readEnd = new Date();
   assert.match(wide, /^[A-Z][a-z]{2}, [A-Z][a-z]{2} \d{1,2}, \d{1,2}:\d{2}:\d{2} (AM|PM) MST$/);
-  const phoenixDay = new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "America/Phoenix" });
-  assert.equal(wide.startsWith(`${phoenixDay}, `), true, `the day is Phoenix's (${phoenixDay})`);
-  const phoenixClock = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Phoenix" });
-  assert.equal(wide.includes(phoenixClock.replace(/ (AM|PM)$/, "")), true, `the hour and minute are Phoenix's (${phoenixClock})`);
+  const phoenixDays = [readStart, readEnd].map((d) => d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "America/Phoenix" }));
+  assert.equal(phoenixDays.some((day) => wide.startsWith(`${day}, `)), true, `the day is Phoenix's (${phoenixDays.join(" or ")})`);
+  const phoenixClocks = [readStart, readEnd].map((d) => d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Phoenix" }).replace(/ (AM|PM)$/, ""));
+  assert.equal(phoenixClocks.some((hm) => wide.includes(hm)), true, `the hour and minute are Phoenix's (${phoenixClocks.join(" or ")})`);
   await until(async () => (await clock.textContent()).trim() !== wide, { timeout: 4000, message: "the clock to tick" });
   await page.setViewportSize({ width: 1150, height: 900 });
   assert.match((await clock.textContent()).trim(), /^[A-Z][a-z]{2}, [A-Z][a-z]{2} \d{1,2}, \d{1,2}:\d{2}:\d{2} (AM|PM) MST$/, "the technical clock keeps its full Arizona face when the header narrows");

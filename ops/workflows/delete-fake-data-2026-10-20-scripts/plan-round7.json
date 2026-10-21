@@ -1,0 +1,243 @@
+{
+ "del": {
+  "staff": [
+   "12d46929-e5c9-4b44-bcfe-f3ecb58278ed",
+   "3f15e101-8a09-4a8b-9e57-648dda31a74d",
+   "43f0306c-2788-4577-bf86-e0f035e7d5c8",
+   "47a8a6c2-e235-4a97-a045-cc3e0355b2ba",
+   "483a7df2-c658-4593-bb7e-01abd2d7cb95",
+   "50362751-7cab-43ec-8a84-bf45847350dd",
+   "525d1f75-da43-42b0-977b-bd737712d7ee",
+   "56180eae-8bdd-4e72-b53d-2e214d4d3f37",
+   "5ed27e4e-b762-456e-a761-5a2eec1ac32f",
+   "64be167d-9057-4b7e-abb1-7c5a22ffe75c",
+   "696c85b0-72c9-4615-8d94-c0b44e66e21b",
+   "6ec4e592-4e60-4501-a3ee-ecc2b4b88146",
+   "70e143da-cf05-4add-8a7c-8f22e46358ad",
+   "73386247-1f1c-42b4-b374-9fbfec4d79b8",
+   "7752a1d7-1607-420e-98a2-6d6a07280fee",
+   "84acf320-ebe0-44f1-8673-3eb2f825ac0c",
+   "a955864b-2521-4ddc-96f6-018d4ebe5824",
+   "af9500f4-8a03-488d-b98b-dbc8c2989232",
+   "cb481472-ca19-4543-a900-ff6803b508c0",
+   "d9860cd2-d802-4de4-8899-0f88d80b8ae3",
+   "de8b80b6-fa62-450d-9642-16a42d1ee586",
+   "e62d23d2-fdda-4585-871e-59fd6e86159c",
+   "e9be97f6-d41a-4dd5-961a-7d560ff2fc9e",
+   "eab9f5d7-a986-481b-9dfc-511674c1d6bb",
+   "f8fcfbb8-ce90-4242-aa9a-2d1a111aa18b"
+  ],
+  "affiliates": [
+   "08e53a5f-0b30-4ecc-90cd-6afa42878b44",
+   "0b9d5a16-3e0a-4540-aa1c-de4a13d3f91f",
+   "41c6f1fc-5197-4da2-871f-9ca04fca756a",
+   "5f5559c7-a3ac-43c5-984a-c64be29042fc",
+   "649686e4-9e9d-43c7-af95-c4a2d90880ce",
+   "6856d850-e55b-4a2c-9371-69277a9f81e8",
+   "745ed762-c914-492f-9cc1-7ad0612bf8b4",
+   "7ca3382c-6d03-4c74-a8f7-c79d1137d098",
+   "9a58ffc4-b983-4b2a-a30d-bfb5ba45f1c8",
+   "a0079b2e-060e-4a86-a020-c6188e2ab6a6",
+   "ac70766d-a4ed-49dd-91e2-35d42d27f61f",
+   "c6d3d1c7-dbcb-4861-a809-293d306d0ff3",
+   "d8c55946-8740-40eb-b565-52179ed435bd",
+   "eba1ceab-4dce-4b25-b2b1-1cd1b8c364cf",
+   "ec814fe0-684c-4b92-abf6-332b79a84cb2",
+   "ff75a0fe-6215-4aac-b492-0b2a0f4e1fc7"
+  ],
+  "shifts": [
+   "b905b243-b0e8-4070-b2c7-06b913095a52"
+  ],
+  "staff_events": [
+   "48593dd8-1889-4c83-b349-5557067c6f04",
+   "4a9ae700-26aa-405e-adb6-a278b4eb70c6"
+  ],
+  "sessions": [
+   "01657005-cb2b-48f1-8dde-407463cda05c",
+   "081db044-ee98-4bcc-9379-e7efe15fed62",
+   "183a521a-68c9-4101-b114-2a9ec1526469",
+   "1d23b875-a063-4aac-a341-b09d73487baf",
+   "1ef6b3a7-79eb-4b3d-a08f-bc7dcf17a1f3",
+   "22e04073-69aa-4968-a83d-3a6f8db9fc08",
+   "257671fd-f858-4c1e-90aa-79253a8f0408",
+   "25fbec45-6867-4c8c-9e89-def25f3ffc6d",
+   "2c857c18-630c-49d1-b629-c898ac0aa493",
+   "2cd4b243-208d-4f86-9651-d339fd761455",
+   "304cea14-2581-4a49-9a7f-41aeb9ce5621",
+   "310ad9a8-441d-49ec-9cce-eda61658d81f",
+   "31a2c0c3-0d3d-43e8-a93e-521b2edc8c16",
+   "3292cfb9-9e86-48a2-8219-1d53a9a9df6d",
+   "387046c2-cd30-490e-8322-e7e46e52c6d9",
+   "3b73aa55-a2a0-4975-a0e9-82b69531e226",
+   "3c2fbbc8-93f2-4838-8c72-437b70c7ba99",
+   "408fdbf6-0c1c-4a63-94c1-1b6a57db4e72",
+   "50c054d0-84ea-40fd-b921-b0b279dd47cd",
+   "5208e2a3-92f1-436a-af84-eeb0eb7d29d8",
+   "52ec58e9-e106-4956-b526-d1f315d7fcd3",
+   "548382a5-8a19-441e-a132-71d62923e37d",
+   "581078aa-ef71-45cd-9591-ac6192eff6c5",
+   "5be87c00-7ba0-4496-8f4a-f963061c59d9",
+   "5fcaf870-ecdc-4d8c-855b-c3492703e974",
+   "667cff6d-8ce4-4990-b85a-c0929a8b8bb1",
+   "6756f18c-914e-4ae0-a1c6-7d9404e64b4d",
+   "67ed8eb4-c65d-41ba-ab64-07a2113bfc33",
+   "6db0090b-9d12-4a15-b551-9b0ab3a5eee5",
+   "714b4a0c-66ca-4a97-90c4-e79fd4616b3a",
+   "7aa4ae84-5ebc-44fd-b960-88a311d8cb23",
+   "7d267015-de69-463c-9ff4-38a8c74b5321",
+   "7d387c18-b355-4ac6-a27c-ff1b43248f84",
+   "8488069a-92ea-4942-b663-4a4def15a2cf",
+   "848de500-9edc-4bec-926e-7f929755fefa",
+   "87e0980d-7fb1-4d64-a6a1-a7c97760b886",
+   "8b75cca7-1bbe-4304-b7d0-7e18204cbfa3",
+   "92acfcc4-f1a6-4677-a677-da684fc82d1f",
+   "934df6ab-f527-4315-a22c-dffe228908a3",
+   "9a871fc6-1991-424e-8b35-602c647e8174",
+   "9d9df4d7-8281-43b2-a1f4-a04df0e1b4aa",
+   "9e25dce1-fc1d-43f5-b98b-547ec20c6ecb",
+   "a08c838e-f631-40c5-b6e4-f75d8487d3b0",
+   "a4f26574-50bc-44fe-a3e1-2a1c402269a5",
+   "a717309b-a8f4-4b21-a377-0033f7335ab8",
+   "a9e94c65-fbe9-41a8-835c-7de33db60566",
+   "ab575e25-6295-4167-a3ea-a5fcbbc0dcc4",
+   "b12f5e8a-27cb-4945-a719-bcedcb4dbe12",
+   "b42c60ef-f278-4913-9976-1b3609999fdb",
+   "bdab5996-5f6d-486b-87be-ac815030cb82",
+   "bf91c04a-5888-4871-bd3f-4dcdd5056e0d",
+   "c46943ac-2dc9-46a5-ad1b-f6257cff511d",
+   "c5926dd7-8a73-4ddd-9ad3-3f94fc98c418",
+   "ca6dc0f6-953e-44f3-b6f9-24bfd320a74a",
+   "cc44b7c4-df59-4071-b118-363fe03b7191",
+   "cc93e114-7527-4b7f-b205-021c1f98fcd5",
+   "d4659661-d823-4da1-8e42-393a4ed4d2af",
+   "d914b093-3501-4c04-bc2e-1588f0d4702d",
+   "dea9333c-8663-4f94-9ac7-20a5d0099cd1",
+   "e8c0ed19-ab35-4511-b6a9-d94471a7c80b",
+   "e97fa9d0-2242-4df3-8686-b3fd0d296bb5",
+   "e998bbba-6d02-482d-8d85-f9249fa5e7dc",
+   "eaf5b412-ae89-4841-82d7-1e74af3afecb",
+   "edc0d95a-f439-4225-a4ab-b831869a47f1",
+   "efd79f59-56c0-40c6-90c3-a530c268b800",
+   "f4434241-b2fe-46b0-8263-4131d1039846",
+   "fa6a219e-f175-473b-b764-5a57850dec93",
+   "fc824283-5b8a-4101-94b3-cd68c1705a63",
+   "fd555915-c35e-4a00-9cc9-bf19fd520e02"
+  ],
+  "conversation_participants": [
+   "bf3f5650-8960-4a4c-aa8f-845efcf42a00|483a7df2-c658-4593-bb7e-01abd2d7cb95",
+   "bf3f5650-8960-4a4c-aa8f-845efcf42a00|e9be97f6-d41a-4dd5-961a-7d560ff2fc9e"
+  ],
+  "affiliate_link_clicks": [
+   "0005f9d2-a99b-43d2-93c6-8575d183b43f",
+   "1490608e-c88e-4162-a010-fa38f8d1e5ad",
+   "2d8d5ddb-4147-46f4-968e-5b8d6fec001f",
+   "b5aea766-cd0e-44e5-a438-4f100e84c76a",
+   "bd17a6e7-0ed3-412a-bfdc-795860d67ebe",
+   "d5e34fb0-4f0a-44d6-9136-7a450960bd9d"
+  ],
+  "accounts": [
+   "0c99602b-c891-4e74-8eec-e3313f1d271c",
+   "0d7f23a0-d0e0-4f0c-acfd-9f2af559746b",
+   "1458251a-35f4-4ae5-b2eb-04b5d174570b",
+   "206ece79-8d03-4e04-b137-b85e0d6ee4fb",
+   "24fd135d-81f0-4239-9501-bfd0d24bd7f1",
+   "5ea5fa36-ed33-4973-a352-23ac95237641",
+   "618f41e6-688b-4c0f-ab65-f01de7781434",
+   "81da3ca4-27c9-46dd-84e2-666908cc5d6a",
+   "ae6a2fcc-c42e-4777-88c9-b289be786dcb",
+   "cdddf23e-f60d-41fd-95a7-871da363affa"
+  ],
+  "account_sessions": [
+   "01b15a04-0a88-46bb-a31b-cbbe9681400a",
+   "127aa0d6-4e98-4c51-bbe1-67bbf988bacb",
+   "1aee2bbd-12e2-4499-a35f-49ae718c18f4",
+   "1c2a86b8-2c5a-4772-91a8-442dd6d3309b",
+   "344499a9-a329-4694-b82f-895ce29465f1",
+   "643cd01a-99af-4a54-b870-be4fafbe925c",
+   "67ffb93a-1d7e-485a-8f12-41305faafd94",
+   "a2086c8e-6472-489b-989e-0788eb3098c4",
+   "ad5fec6e-c14e-4d55-b379-39ec58556829",
+   "b386d2c6-bacf-4c2b-905d-6a5b09572ffc",
+   "d12fc5bb-6516-4423-bac9-330916ca6fd5"
+  ]
+ },
+ "nulls": {
+  "partner_brand.approved_by": [
+   "d01e6cc6-af3a-4e42-aa04-11587318371a"
+  ],
+  "accounts.invited_by": [
+   "3a1d4551-3447-4c07-97a7-8d6506103f38"
+  ],
+  "messages.sender_staff_id": [
+   "55606313-4295-4e47-9062-5f23fece4cc9",
+   "5b16500b-4786-4ebf-a2cb-c55f5682ca1d",
+   "6cd618af-4318-4282-bae0-ddaedd16d0c1"
+  ]
+ },
+ "order": [
+  "staff_events",
+  "shifts",
+  "sessions",
+  "account_sessions",
+  "accounts",
+  "conversation_participants",
+  "staff",
+  "affiliate_link_clicks",
+  "affiliates"
+ ],
+ "pks": {
+  "staff": [
+   "id"
+  ],
+  "affiliates": [
+   "id"
+  ],
+  "shifts": [
+   "id"
+  ],
+  "staff_events": [
+   "id"
+  ],
+  "sessions": [
+   "id"
+  ],
+  "conversation_participants": [
+   "conversation_id",
+   "staff_id"
+  ],
+  "affiliate_link_clicks": [
+   "id"
+  ],
+  "accounts": [
+   "id"
+  ],
+  "account_sessions": [
+   "id"
+  ]
+ },
+ "demoClients": [],
+ "demoPartners": [],
+ "demoStaff": [],
+ "demoAffiliates": [
+  "b084093e-9473-4759-a4ec-4adf3808f67b"
+ ],
+ "pinned": {
+  "affiliate_payouts": [
+   "904367c9-e9da-49b2-a1e7-0dd170116d3a"
+  ],
+  "affiliate_payout_lines": [
+   "fb26dd22-f313-4e50-b587-8243b9ddfbf2"
+  ],
+  "affiliates": [
+   "b084093e-9473-4759-a4ec-4adf3808f67b"
+  ],
+  "affiliate_referrals": [
+   "f71736ac-8ca1-4434-a180-61c493f5fc7b"
+  ]
+ },
+ "info": {
+  "staff": 25,
+  "affiliates": 17
+ },
+ "made_at": "2026-10-21T05:05:05.861Z"
+}
