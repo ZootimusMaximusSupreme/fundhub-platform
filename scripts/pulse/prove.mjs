@@ -5,9 +5,10 @@
 //   npm run pulse:prove                 build the api bundle, run every coverage step from inside it
 //   npm run pulse:prove -- --repo       skip the build, run from this checkout (faster, less true)
 //   npm run pulse:prove -- --lanes=gap-sms,gap-email
-//   npm run pulse:prove -- --beats      the HOURLY pulse: build both hourly shifts (netlify/functions/pulse-hourly.mjs and
-//                                       pulse-hourly-b.mjs) the way Netlify does, unzip them, and run each shift's beats
-//                                       from inside the bundle, one shift after the other, each in its own budget
+//   npm run pulse:prove -- --beats      the HOURLY pulse: build every hourly shift (netlify/functions/pulse-hourly.mjs,
+//                                       pulse-hourly-b.mjs, pulse-hourly-c.mjs) the way Netlify does, unzip them, and
+//                                       run each shift's beats from inside the bundle, one shift after the other, each
+//                                       in its own budget
 //                                       (see proveBeats() at the bottom)
 //   npm run pulse:prove -- --beats --read-delay=120  add 120 ms before every database round trip
 //   npm run pulse:prove -- --beats --slow-apply-links=10500 --read-delay=120
@@ -332,7 +333,8 @@ function guardedFetch() {
 /* =====================================================================================================
    --beats : prove the HOURLY pulse from a built bundle, against live data, READ ONLY.
 
-   WHAT RUNS. Both hourly shift functions (pulse-hourly at minute 7, pulse-hourly-b at minute 37) are built the way
+   WHAT RUNS. Every hourly shift function (pulse-hourly at minute 7, pulse-hourly-b at 37, pulse-hourly-c at 52; the
+   literal SHIFT_FUNCTIONS list below) is built the way
    Netlify builds them (same bundler, same netlify.toml settings), unzipped, and src/pulse/runner.mjs is imported from
    INSIDE an unzipped folder. Every beat must be in exactly one shift (src/pulse/beats/shifts.mjs), and each
    function's BEATS must be its shift. Then, ONE SHIFT AT A TIME, the way the server runs them (two invocations half
@@ -408,16 +410,20 @@ async function proveBeats() {
        B. a proof entry that re-exports runPulse, the fake sinks and the beat list from the same repo files, built
           with the same settings. Same bundler, same graph, so the code inside B is the code inside A. */
   const href = (dir, rel) => pathToFileURL(path.join(dir, rel)).href;
+  /* The hourly shift functions and the schedule each must have. src/pulse/beats/shifts.mjs must name exactly these,
+     in this order; each function must run exactly its shift. */
+  const SHIFT_FUNCTIONS = Object.freeze([["pulse-hourly", "7 * * * *"], ["pulse-hourly-b", "37 * * * *"], ["pulse-hourly-c", "52 * * * *"]]);
   let rootFn = REPO;
-  let rootFnB = REPO;
+  const shiftRoots = new Map(SHIFT_FUNCTIONS.map(([job]) => [job, REPO]));
   let rootWatch = REPO;
   let rootProof = REPO;
   let proofEntryFile = null;
   if (!FROM_REPO) {
     try {
       rootFn = buildBundle("netlify/functions/pulse-hourly.mjs");
-      // Shift B of the hourly pulse is its own function (src/pulse/beats/shifts.mjs): build it the same way.
-      rootFnB = buildBundle("netlify/functions/pulse-hourly-b.mjs");
+      shiftRoots.set("pulse-hourly", rootFn);
+      // Every other hourly shift is its own function (src/pulse/beats/shifts.mjs): build each the same way.
+      for (const [job] of SHIFT_FUNCTIONS.slice(1)) shiftRoots.set(job, buildBundle(`netlify/functions/${job}.mjs`));
       // The 5-minute outside watch (one beat, the same runner) is a second function: build it the same way.
       rootWatch = buildBundle("netlify/functions/pulse-outside-watch.mjs");
       // The entry sits inside the repo for the few seconds of the build (the bundler needs it under its base path)
@@ -441,14 +447,18 @@ async function proveBeats() {
     }
   }
   const t0 = Date.now();
-  let BEAT_FILES, loadBeats, runPulse, recordingSinks, SHIFTS, shiftProblems, RUN_BUDGET_MS = BEAT_RUN_LIMIT_MS, BEATS_PHASE_MS = 13000, READ_BOX_COUNT = 3, entryModule, entryModuleB;
+  let BEAT_FILES, loadBeats, runPulse, recordingSinks, SHIFTS, shiftProblems, RUN_BUDGET_MS = BEAT_RUN_LIMIT_MS, BEATS_PHASE_MS = 13000, READ_BOX_COUNT = 3, entryModule;
+  const shiftModules = new Map();
   const fnRel = "netlify/functions/pulse-hourly.mjs";
-  const fnRelB = "netlify/functions/pulse-hourly-b.mjs";
   try {
     if (!fs.existsSync(path.join(rootFn, fnRel))) problems.push("the function bundle does not hold netlify/functions/pulse-hourly.mjs");
     else entryModule = await import(href(rootFn, fnRel));
-    if (!fs.existsSync(path.join(rootFnB, fnRelB))) problems.push("the shift B bundle does not hold netlify/functions/pulse-hourly-b.mjs");
-    else entryModuleB = await import(href(rootFnB, fnRelB));
+    shiftModules.set("pulse-hourly", entryModule);
+    for (const [job] of SHIFT_FUNCTIONS.slice(1)) {
+      const rel = `netlify/functions/${job}.mjs`;
+      if (!fs.existsSync(path.join(shiftRoots.get(job), rel))) problems.push(`the ${job} bundle does not hold ${rel}`);
+      else shiftModules.set(job, await import(href(shiftRoots.get(job), rel)));
+    }
     if (FROM_REPO) {
       ({ BEAT_FILES, loadBeats } = await import(href(REPO, "src/pulse/beats/index.mjs")));
       ({ SHIFTS, shiftProblems } = await import(href(REPO, "src/pulse/beats/shifts.mjs")));
@@ -479,14 +489,17 @@ async function proveBeats() {
   if (unlisted.length) problems.push(`${unlisted.length} beat file(s) are on disk but not on the list, so they would ship nowhere: ${unlisted.join(", ")}`);
   if (entryModule && entryModule.SWEEP_CRON !== "7 * * * *") problems.push(`pulse-hourly SWEEP_CRON is ${entryModule.SWEEP_CRON}`);
   if (entryModule && typeof entryModule.default !== "function") problems.push("the bundled pulse-hourly has no default export");
-  if (entryModuleB && entryModuleB.SWEEP_CRON !== "37 * * * *") problems.push(`pulse-hourly-b SWEEP_CRON is ${entryModuleB.SWEEP_CRON}`);
-  if (entryModuleB && typeof entryModuleB.default !== "function") problems.push("the bundled pulse-hourly-b has no default export");
+  for (const [job, cron] of SHIFT_FUNCTIONS.slice(1)) {
+    const mod = shiftModules.get(job);
+    if (mod && mod.SWEEP_CRON !== cron) problems.push(`${job} SWEEP_CRON is ${mod.SWEEP_CRON}`);
+    if (mod && typeof mod.default !== "function") problems.push(`the bundled ${job} has no default export`);
+  }
   // The two hourly shifts. Every listed beat is in exactly one shift, and each function runs exactly its own shift,
   // on its own shift's schedule. A beat in no shift would ship and never run; that fails here, before any ship.
   const shiftJobs = Object.keys(SHIFTS || {});
   for (const p of shiftProblems ? shiftProblems(loadedBeats.map((b) => b.id)) : ["the shift list did not load"]) problems.push(`shifts: ${p}`);
-  const shiftFunctions = [["pulse-hourly", entryModule], ["pulse-hourly-b", entryModuleB]];
-  if (shiftJobs.join(",") !== shiftFunctions.map(([job]) => job).join(",")) problems.push(`the shift list names ${shiftJobs.join(", ") || "no shift"}, expected pulse-hourly, pulse-hourly-b`);
+  const shiftFunctions = SHIFT_FUNCTIONS.map(([job]) => [job, shiftModules.get(job)]);
+  if (shiftJobs.join(",") !== shiftFunctions.map(([job]) => job).join(",")) problems.push(`the shift list names ${shiftJobs.join(", ") || "no shift"}, expected ${SHIFT_FUNCTIONS.map(([job]) => job).join(", ")}`);
   for (const [job, mod] of shiftFunctions) {
     const shift = SHIFTS?.[job];
     if (!mod || !shift) continue;

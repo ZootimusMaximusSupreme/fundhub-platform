@@ -214,7 +214,7 @@ export const NOT_CUSTOMER_FACING = Object.freeze({
   "route:public/morning-brief":
     "Owner-only report data behind a secret link code, answers the same 404 to everyone without the exact code, never reaches a customer. Its guard is the brief-link beat.",
   "send:src/pulse/alerts.mjs":
-    "Owner-only: the hourly pulse's alert texts and buzzes go to Chris's own number and ntfy topic. It never reaches a customer. Both hourly shifts send through it; their heartbeats are jobs pulse-hourly and pulse-hourly-b.",
+    "Owner-only: the hourly pulse's alert texts and buzzes go to Chris's own number and ntfy topic. It never reaches a customer. All three hourly shifts send through it; their heartbeats are jobs pulse-hourly, pulse-hourly-b and pulse-hourly-c.",
   "route:ops/notify-owner":
     "Owner-only: one text to Chris's own pulse number for an agent on the Mac, behind a secret. It never reaches a customer. Its ping is reg:ops/notify-owner.",
   // W4 messages truth, 2026-10-10. Each of these sends to Chris or to a staff member. A wrong address is
