@@ -98,9 +98,27 @@ const textLiteral = (value) => {
   const s = String(value).replace(/'/g, "''");
   return s.includes("$") ? s.split("$").map((part) => `'${part}'`).join(" || '$' || ") : `'${s}'`;
 };
+/* THE CLOSER MAY SET TWO FIGURES ON THE CALL (owner-set 2026-10-20): Justice may
+   agree a different deposit and success-fee percent on the sales call without
+   Chris's approval. So on the funding wordings those two blanks are not held to
+   the price list; they must hold a sane typed value instead: a dollar amount of
+   at least $1 for the deposit, and a percent from 1 to 100 of APPROVED funding for
+   the success fee (the fee base is the approved figure, never "funded amount").
+   Every other blank the price list fills still has to be the price list's figure.
+   The patterns hold no dollar sign next to a digit (see textLiteral). */
+export const CLOSER_SET_BLANKS = Object.freeze({
+  "FUNDING-AGREEMENT": Object.freeze(["deposit", "success_fee"]),
+  "REPAIR-AND-FUNDING-AGREEMENT": Object.freeze(["deposit", "success_fee"])
+});
+const CLOSER_SET_PATTERNS = Object.freeze({
+  deposit: "^\\$([1-9][0-9]{0,2}(,[0-9]{3})*|[1-9][0-9]*)(\\.[0-9]{2})?$",
+  success_fee: "^(100|[1-9][0-9]?)(\\.[0-9]{1,2})?%( of approved funding)?$"
+});
 const BLANK_NOT_THE_PRICE_LIST = SALE_CONTRACT_KEYS.flatMap((key) =>
   Object.entries(CONTRACT_DEFAULTS[key]).map(([field, value]) =>
-    `(c.template_key = '${key}' AND c.merge_values->>'${field}' IS DISTINCT FROM ${textLiteral(value)})`
+    (CLOSER_SET_BLANKS[key] || []).includes(field)
+      ? `(c.template_key = '${key}' AND COALESCE(c.merge_values->>'${field}', '') !~ '${CLOSER_SET_PATTERNS[field]}')`
+      : `(c.template_key = '${key}' AND c.merge_values->>'${field}' IS DISTINCT FROM ${textLiteral(value)})`
   )
 ).join("\n         OR ");
 
@@ -192,8 +210,8 @@ ${DECK_CONTRACT_KEYS.map((key) => `         NOT ${hasRealWording(key)}`).join("\
 // Every required blank the wording declares (contract_templates.manual_fields,
 // rows of {key, label, required}) must hold a value in the contract's
 // merge_values, and each blank the catalogue fills (defaultContractValues) must
-// hold the catalogue's value: nobody types these, so a different figure is the
-// contract quoting a price the pay link does not charge. The wording itself must be
+// hold the catalogue's value, except the closer-set deposit and success fee on the
+// funding wordings (CLOSER_SET_BLANKS above), which must be a sane typed figure. The wording itself must be
 // one the chosen offer sells.
 export const CONTRACT_BLANKS_SQL = `
 SELECT count(DISTINCT c.id)::int AS sample_count,

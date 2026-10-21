@@ -31,6 +31,18 @@
 --   * right to cancel: Chris's executed agreements, section 7.1-7.3
 --     (db/migrations/288_real_contract_text.sql), with the seller named Fundhub LLC.
 --
+-- CREDIT-FILE-RIGHTS-DISCLOSURE (new wording). The written statement 15 U.S.C.
+-- 1679c(a) requires a credit repair organization to give the consumer before any
+-- agreement is executed, as a separate document (1679c(b)), with a signed
+-- receipt kept for 2 years (1679c(c)). The statement is copied word for word from
+-- the official text, fetched 2026-10-20 from
+--   https://www.govinfo.gov/content/pkg/USCODE-2023-title15/html/USCODE-2023-title15-chap41-subchapII-A-sec1679c.htm
+-- (uscode.house.gov was down for maintenance at the time). Same file in the repo:
+-- docs/agreements/CREDIT-FILE-RIGHTS-DISCLOSURE.txt. It is an ordinary wording on
+-- the Send contract panel; the client signs a receipt on the normal signing page.
+-- Kind 'authorization', subtype 'credit_file_rights_disclosure' (never the
+-- soft-pull pair, so signing it unlocks nothing).
+--
 -- Guarded: each statement only touches a wording that still carries the
 -- placeholder marker, so an edit made on the Contracts screen is never
 -- overwritten. Contracts already sent, viewed or signed hold their own frozen
@@ -76,3 +88,43 @@ WE ASK YOU TO CONTACT FUNDHUB FIRST ABOUT A PAYMENT OR SERVICE CONCERN SO WE CAN
        updated_at = now()
  WHERE template_key = 'CREDIT-REPAIR-AGREEMENT'
    AND strpos(body, 'NOT THE REAL AGREEMENT TEXT') > 0;
+
+DO $croa$
+DECLARE
+  v_org   uuid;
+  v_staff uuid;
+BEGIN
+  SELECT id INTO v_org FROM orgs WHERE slug = 'fundhub' LIMIT 1;
+  IF v_org IS NULL THEN
+    RAISE NOTICE 'skipped credit file rights disclosure: no org fundhub';
+    RETURN;
+  END IF;
+  SELECT id INTO v_staff FROM staff
+   WHERE org_id = v_org AND lower(btrim(role)) = 'owner'
+   ORDER BY created_at LIMIT 1;
+  IF v_staff IS NULL THEN
+    SELECT id INTO v_staff FROM staff WHERE org_id = v_org ORDER BY created_at LIMIT 1;
+  END IF;
+  IF v_staff IS NULL THEN
+    RAISE NOTICE 'skipped credit file rights disclosure: no staff';
+    RETURN;
+  END IF;
+
+  INSERT INTO contract_templates
+    (org_id, template_key, name, kind, subtype, body, manual_fields,
+     signature_required, signature_statement, created_by)
+  VALUES (
+    v_org,
+    'CREDIT-FILE-RIGHTS-DISCLOSURE',
+    'Consumer Credit File Rights (send before the Credit Repair Agreement)',
+    'authorization',
+    'credit_file_rights_disclosure',
+    E'Consumer Credit File Rights Under State and Federal Law\n\nDate: {{today}}\nName: {{contact.full_name}}\nEmail: {{contact.email}}\n\nFundhub LLC gives you this statement before you sign any credit repair agreement with it. Federal law (15 U.S.C. 1679c) requires it, word for word, as a document separate from the agreement. The statement follows.\n\nYou have a right to dispute inaccurate information in your credit report by contacting the credit bureau directly. However, neither you nor any ''credit repair'' company or credit repair organization has the right to have accurate, current, and verifiable information removed from your credit report. The credit bureau must remove accurate, negative information from your report only if it is over 7 years old. Bankruptcy information can be reported for 10 years.\n\nYou have a right to obtain a copy of your credit report from a credit bureau. You may be charged a reasonable fee. There is no fee, however, if you have been turned down for credit, employment, insurance, or a rental dwelling because of information in your credit report within the preceding 60 days. The credit bureau must provide someone to help you interpret the information in your credit file. You are entitled to receive a free copy of your credit report if you are unemployed and intend to apply for employment in the next 60 days, if you are a recipient of public welfare assistance, or if you have reason to believe that there is inaccurate information in your credit report due to fraud.\n\nYou have a right to sue a credit repair organization that violates the Credit Repair Organization Act. This law prohibits deceptive practices by credit repair organizations.\n\nYou have the right to cancel your contract with any credit repair organization for any reason within 3 business days from the date you signed it.\n\nCredit bureaus are required to follow reasonable procedures to ensure that the information they report is accurate. However, mistakes may occur.\n\nYou may, on your own, notify a credit bureau in writing that you dispute the accuracy of information in your credit file. The credit bureau must then reinvestigate and modify or remove inaccurate or incomplete information. The credit bureau may not charge any fee for this service. Any pertinent information and copies of all documents you have concerning an error should be given to the credit bureau.\n\nIf the credit bureau''s reinvestigation does not resolve the dispute to your satisfaction, you may send a brief statement to the credit bureau, to be kept in your file, explaining why you think the record is inaccurate. The credit bureau must include a summary of your statement about disputed information with any report it issues about you.\n\nThe Federal Trade Commission regulates credit bureaus and credit repair organizations. For more information contact:\n\nThe Public Reference Branch\nFederal Trade Commission\nWashington, D.C. 20580\n\nSIGNATURES\n\nFundhub LLC\n218 Bostick Rd 64, Bowling Green, FL 33834\nSigned by: an authorised signer of Fundhub LLC\nDate: {{today}}\n\n{{contact.full_name}}\n{{contact.email}}\nSigned by: ______________________________\nDate: ______________________________\n\nYou sign by typing your name and ticking the box on the signing page. Your typed name, the date and time you signed, and the exact wording above are saved together as the signed record, and you can ask us for a copy at any time.',
+    '[]'::jsonb,
+    true,
+    'I received this statement before signing any credit repair agreement with Fundhub LLC. Typing my name here is my signature.',
+    v_staff
+  )
+  ON CONFLICT (org_id, template_key) DO NOTHING;
+END
+$croa$;
