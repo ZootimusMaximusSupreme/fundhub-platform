@@ -11,6 +11,7 @@ import { NA_CONDITIONS, naProblem, verifyNa } from "./na-conditions.mjs";
 import * as fulfillment from "./coverage/gap-fulfillment.mjs";
 import * as repair from "./coverage/gap-repair.mjs";
 import * as boards from "./coverage/gap-pipeline-boards.mjs";
+import * as consent from "./coverage/gap-consent.mjs";
 import { judgeRepair, judgeRepairWithHolds } from "./coverage/gap-trip-repair.mjs";
 import { judgeDisplayResult } from "./coverage/gap-catalog-display.mjs";
 import { STAGE_ANALYSIS_SQL } from "./catalog/proofs/fin-b07-sql-repair.mjs";
@@ -218,4 +219,37 @@ test("the stage columns leave held files out of the count, and their green line 
   assert.match(quiet.detail, /not counted: FH-000507/);
   const wrong = judgeDisplayResult(entry, { sample_count: 2, bad_count: 1 });
   assert.equal(wrong.status, "FAIL");
+});
+
+/* ---------- consent:dispute-required ---------- */
+
+function consentDb(codes) {
+  return {
+    async query(sql) {
+      const text = String(sql);
+      if (text.includes("FROM repair_programs rp")) return { rows: [{ n: codes.length, codes }] };
+      return { rows: [{ n: 0 }] };
+    }
+  };
+}
+
+test("consent:dispute-required: only the held client missing both papers -> owner-hold, re-checks true", async () => {
+  const db = consentDb([HELD]);
+  const row = (await consent.gapChecks({ db, orgId: ORG })).find((r) => r.id === "consent:dispute-required");
+  assert.equal(row.status, "na");
+  assert.equal(row.na.code, OWNER_HOLD_CODE);
+  assert.deepEqual(row.na.args, { check: "consent:dispute-required", orgId: ORG, clients: [HELD] });
+  assert.match(row.detail, /FH-000507, on the owner's no-contact hold/);
+  assert.equal(naProblem(row.na), null);
+  assert.equal(await consent.naVerify[OWNER_HOLD_CODE](row.na.args, { db }), true);
+});
+
+test("consent:dispute-required: another client missing both papers -> red, and the hold claim fails", async () => {
+  const db = consentDb([HELD, OTHER]);
+  const row = (await consent.gapChecks({ db, orgId: ORG })).find((r) => r.id === "consent:dispute-required");
+  assert.equal(row.status, "FAIL");
+  assert.equal(row.na, undefined);
+  assert.equal(await consent.naVerify[OWNER_HOLD_CODE]({ check: "consent:dispute-required", orgId: ORG, clients: [HELD] }, { db }), false);
+  const none = (await consent.gapChecks({ db: consentDb([]), orgId: ORG })).find((r) => r.id === "consent:dispute-required");
+  assert.equal(none.status, "PASS", "nobody missing them is green, not a hold");
 });

@@ -13,6 +13,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { ROLE_TEST_CLIENT_KEY } from "./gap-msg.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = path.resolve(HERE, "../../..");
@@ -42,7 +43,9 @@ SELECT count(*)::int AS n
 /* failed is the provider give-up. bounced is the provider saying the mail did not
    arrive (src/adapters/resend-events.mjs, mailgun.mjs). Test-address and synthetic
    holds are not a provider outage. A missing address is not one either. A failed row
-   with no error text still counts. */
+   with no error text still counts. Mail to the App Store review login is not a
+   customer's either: its address has no mailbox, so its sign-in emails always bounce
+   (ROLE_TEST_CLIENT_KEY in gap-msg.mjs). */
 export const PROVIDER_FAIL_SQL = `
 SELECT count(*) FILTER (WHERE status = 'failed')::int AS failed_n,
        count(*) FILTER (WHERE status = 'bounced')::int AS bounced_n
@@ -59,6 +62,11 @@ SELECT count(*) FILTER (WHERE status = 'failed')::int AS failed_n,
        AND coalesce(last_error, '') NOT ILIKE '%test record from a journey run%'
        AND coalesce(last_error, '') NOT ILIKE '%to send to%'
      )
+   )
+   AND NOT EXISTS (
+     SELECT 1 FROM clients d
+      WHERE d.id = messages.client_id
+        AND COALESCE(d.client_master_key, '') = '${ROLE_TEST_CLIENT_KEY}'
    )
 `.trim();
 

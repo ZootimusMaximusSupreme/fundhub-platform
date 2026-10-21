@@ -55,6 +55,31 @@ GROUP BY 1, 2 ORDER BY breaks DESC;
 - Guard added: src/http/marketing-flags-handler.test.mjs (nine refused shapes, one stored).
 - Incident: none (6:02 a.m. scorecard row, not an hourly incident)  PR: claude/w6-staff-fixes-2026-10-20
 
+## 2026-10-20 — consent:dispute-required — schema_or_data
+- Cause: the only repair client with no dispute authorization and no signed repair agreement is Braum (FH-000507). The owner put him on a no-contact, no-change hold, so nobody may chase his signature. The row stayed red with nothing a person may do.
+- Fix: the check names the clients it counts. When every one is on the owner's hold (`src/pulse/owner-hold.mjs`), the row is "nothing to judge" with code `owner-hold-client`, and the consent lane re-reads it every morning (`naVerify`). Any other client keeps it red.
+- Guard added: `src/pulse/coverage/gap-consent.test.mjs` (held client alone is nothing to judge; any other client, a mixed list, or a count the names do not match stays red; the re-check is false the day anything changes).
+
+## 2026-10-20 — calls:booked-no-join-link — pulse_false_alarm
+- Cause: the check judged the 5 newest bookings at any age. Nothing kept a join link before 2026-10-21 01:38 UTC (ship d1de88a1), so every older booking can never have one, and the check stayed red with no new booking to judge. Owner: "Old bookings do not matter. Only new bookings."
+- Fix: the feed question counts bookings only from that moment (`JOIN_FEED_SINCE`). The "call still ahead with no link" question is not cut, so the first new booking with no link is red 10 minutes after it lands.
+- Guard added: `src/pulse/coverage/gap-calls.test.mjs` (old bookings say nothing; 3+ new ones with no link still red; a call ahead is never hidden).
+
+## 2026-10-20 — email:provider-fail, msg:per-template-path — pulse_false_alarm
+- Cause: the App Store review login (FH-000844, client@fundhub.ai) asked for sign-in links. That mailbox does not exist, so Resend blocked both emails as bounces. The message checks did not know it was a test login, so they read it as "email is not reaching people".
+- Fix: the message checks leave out the one client with the review login's fixed key (FDH-TEST-CLIENT-ROLE-ACCOUNT), the same way they leave out demo clients. A customer's bounce still counts.
+- Guard added: `src/pulse/coverage/gap-msg.test.mjs` (key held to the seed), `src/pulse/coverage/gap-msg.pg.test.mjs` (review bounces left out, a customer's bounce still red).
+
+## 2026-10-20 — messaging Send button, Message > Client — pulse_false_alarm
+- Cause: a one-off owner text (the teleprompter link sent to Chris's own phone, 2026-10-07) is saved as a staff text with no client. The staff-reply check read it as a reply that lost its client.
+- Fix: the staff-reply check leaves out `owner-ops:` texts, like the chat widget check already did. The Send button never writes that marker.
+- Guard added: `src/pulse/catalog/proofs/fin-b04-display-fixtures.mjs` (owner-ops row ignored, a client-less staff reply still bad).
+
+## 2026-10-20 — handoff:lead-first-touches-missing — schema_or_data
+- Cause: the 2026-10-11/12 test run on production also deleted the finish-application email and all six never-booked chase messages. Those steps had nothing to send.
+- Fix: `db/migrations/497_restore_missing_sql_templates.sql` (PR #112) put all 125 missing templates back, these 7 included, byte for byte the repo words (checked live 2026-10-21).
+- Guard added: `scripts/db/template-restore.test.mjs`; the template-deleting database tests now run only on a scratch database (PR #112).
+
 ## 2026-10-20 — bureau-config:complete — pulse_false_alarm
 - Cause: the check read an empty CRM table. The AI caller never reads that table. Its numbers and phone menus live in its own call scripts (vendor/inquiry-remover/src/agents/*-prompt.js) and the *_DISPUTE_NUMBER settings.
 - Fix: the check reads what the caller really dials (src/inquiry-ops/bureau-dial-plan.mjs). Red only when neither the script nor the table has a number and a menu.
