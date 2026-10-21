@@ -64,6 +64,7 @@ auth/session
 auth/staff-role
 auth/suspend
 bank-outreach-checkins — daily 7:00 a.m. Phoenix Inngest job; heartbeats.mjs checks its job_heartbeats receipt. gap-bank-outreach.mjs checks verified product/lender facts and missing next actions daily; beat-bank-outreach.mjs checks saved facts hourly and the protected GET /api/read/bank-outreach after release.
+bank-outreach-automation — every-15-minute Inngest job (find bankers, queue bank emails, read banker replies); heartbeats.mjs checks its job_heartbeats receipt (red after 45 minutes). gap-bank-outreach.mjs checks daily that no bank email went to an unsaved address, after a stop, or a cold step after a reply (bank-outreach:email-safety) and that no banker reply waited over an hour for the reader (bank-outreach:reply-waiting); beat-bank-outreach.mjs asks the email-safety question hourly.
 bank-outreach.html
 banking/sync-accounts
 banking/sync-liabilities
