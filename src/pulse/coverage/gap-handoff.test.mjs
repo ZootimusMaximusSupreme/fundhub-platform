@@ -165,11 +165,14 @@ test("handoff: each query uses exactly the placeholders the check hands it", asy
 });
 
 test("handoff: no repo file is read and nothing is fetched at run time", () => {
-  const src = fs.readFileSync(path.join(HERE, "gap-handoff.mjs"), "utf8");
-  assert.doesNotMatch(src, /from\s+["']node:(fs|path|child_process|http|https)["']/);
-  assert.doesNotMatch(src, /readFileSync|readdirSync|\bfetch\s*\(|import\.meta\.url|require\(/);
-  assert.doesNotMatch(src, /from\s+["']\.\.\/\.\.\/(workflows|db|messaging|handlers|events)/);
-  assert.doesNotMatch(src, /sendTemplated|inngest\.send|emit\(/);
+  // The lane is a thin adapter; the SQL and verdicts live in the shared hourly truth file. Both are read.
+  for (const file of [path.join(HERE, "gap-handoff.mjs"), path.join(HERE, "../beats/lib/handoff-truth.mjs")]) {
+    const src = fs.readFileSync(file, "utf8");
+    assert.doesNotMatch(src, /from\s+["']node:(fs|path|child_process|http|https)["']/, file);
+    assert.doesNotMatch(src, /readFileSync|readdirSync|\bfetch\s*\(|import\.meta\.url|require\(/, file);
+    assert.doesNotMatch(src, /from\s+["']\.\.\/\.\.\/(workflows|db|messaging|handlers|events)/, file);
+    assert.doesNotMatch(src, /sendTemplated|inngest\.send|emit\(/, file);
+  }
 });
 
 /* ------------------------------------------------------------------ PASS and shape */
