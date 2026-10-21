@@ -9,7 +9,7 @@ Session: `outreach-auto` (Claude, Opus). Branch: `claude/funny-sinoussi-765e2b`.
 | ID | Owner | What | Status |
 |---|---|---|---|
 | A | `outreach-auto` (this session) | Database, store, banker finder, email steps, reply reader, jobs, tests, heartbeat rows | done — PR #96, coordinator ships |
-| B | Codex | Rep screen cards for found bankers, email steps and banker replies (cards below) | pending — waits on A's API shape |
+| B | `outreach-auto` helper (Chris in session: "make screens as well") | Cards 1–7 built | draft PR #111, stacked on #96 — coordinator relays the 10-20 rule that Codex owns dashboard design, so #111 waits for Chris/Codex to decide |
 
 No other piece is separate. Finder, email steps and reply reader share one new migration and one store file. Two writers there would collide.
 
@@ -68,7 +68,7 @@ Free search tools, checked on each vendor's own page (2026-10-20):
 4. `BANK_OUTREACH_POSTAL_ADDRESS` — Fundhub's mailing address for the footer. It is not in the repo (the Phoenix address on the sales pages belongs to a sample client). Nothing queues without it.
 5. For AI replies: set agent `BANK-OUTREACH-REPLY` to `shadow` or `live`.
 
-## Leftovers for Codex (screens — Claude does not touch them)
+## Leftovers for Codex (screens) — built in draft PR #111; Codex may take them over instead
 
 All on `public/app/bank-outreach.html` / `bank-outreach.js`. API is ready; fields below.
 
@@ -106,3 +106,14 @@ No new route, page or dependency. Journey gap: `bank-outreach-intended.md` still
 - Local full `npm test` (no database): 28,456 tests, 28,376 pass, 55 fail. Fixed from that run: diagrams stale, journey-runner count, heartbeat coverage note. The rest are browser tests that fail only in this worktree: two Playwright copies load (worktree `node_modules` + root). No screen or browser test was changed.
 - GitHub real PostgreSQL, first commit: 6 of 7 new automation database tests passed (search, rep review, email steps, STOP/reply stops, AI draft/shadow/live, both deep checks on real rows). Two reds fixed in `b7c5f5ecc`: the actor constraint lookup was schema-wide, and the agent registry pin (25 → 26) for the new agent. Final CI result: see PR #96.
 - Not run: `npm run pulse:prove` against live data. Migration 495 is not applied, so the two new check queries would fail on missing tables. `scripts/ship.mjs` runs the bundle proofs after applying migrations and before deploy, so the ship is the proof point.
+
+### Owner GO (Chris in session, 2026-10-20 evening): "GREAT PLEASE GET IT DONE", then "make screens as well"
+
+- Live settings set (Netlify production, deploy-preview, branch-deploy, no `--secret`; also `.env` and `credentials/env.full.snapshot`):
+  - `BANK_OUTREACH_FROM` = `Fundhub Bank Partnerships <relationships@fundhub.ai>` (the plan's warm inbox; fundhub.ai is the only Resend sending domain, and a new domain costs money). Said once: cold email from fundhub.ai shares the client domain's reputation; the 40-a-day cap keeps volume small.
+  - `BANK_OUTREACH_POSTAL_ADDRESS` = `218 Bostick Rd 64, Bowling Green, FL 33834` (Fundhub LLC's address in `docs/agreements/FUNDING-AGREEMENT-ready-to-send.txt` and `db/seed/021_funding_mastery_agreement.sql`).
+  - Both take effect at the next deploy.
+- Not set: `SERPER_API_KEY` (Chris is signing up at https://serper.dev; search starts at the first deploy after it is set).
+- Not approved: the 7 bank templates. Chris's own rule (2026-08-01, `api/message-templates.mjs`): approval needs the exact words read by an owner or admin. No bank email can send until then.
+- After deploy: switch agent `BANK-OUTREACH-REPLY` to `live` (features stay on; it can only send approved copy).
+- CI notes on #96, not caused by this branch, each passed here or on other runs: `creative assets cannot be hard-deleted` (run 39523796193), `Send this one to` browser timeout (passes locally 2/2), `pipeline-new-archive` refusal (1 of 1,743), and the `template-restore` collation failure on every PR since #112 (fix rides #108/#107, per coordinator).
