@@ -1,7 +1,6 @@
 [
   "desk:brand-studio.html",
   "desk:client-portal.html",
-  "desk:hiring.html",
   "desk:inquiry-remover.html",
   "desk:messaging.html",
   "desk:money-accounts.html",
@@ -34,7 +33,6 @@
   "job:slo-no-reply-197",
   "job:slo-pack-delivery",
   "job:slo-paid-form-nudge",
-  "job:subscription-billing-sweeper",
   "page:portal-login.html",
   "page:progress.html",
   "page:roadmap/index.html",
