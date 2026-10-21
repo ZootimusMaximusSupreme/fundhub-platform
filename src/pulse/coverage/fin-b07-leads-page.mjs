@@ -12,7 +12,9 @@
 //   2. it tells search engines to keep it out (noindex, in a robots meta tag or the X-Robots-Tag header);
 //   3. its table has the five columns Name, Number, Follow up date, Response, Status, in that order;
 //   4. nothing is sent from it: no network call, form, frame, outside script or outside file, and no
-//      script that moves the visitor, opens a window, sets an address, or builds code from text;
+//      script that moves the visitor, opens a window, sets an address, or builds code from text (a
+//      tap-to-text or tap-to-call link to one number, "sms:" + lead.phone, opens the phone's own app and
+//      is the one address a script may set besides a file made in the browser);
 //   5. edits are kept in the browser: the script itself reads and writes localStorage. A word in a
 //      comment or in a string is not a use of it.
 //
@@ -60,17 +62,49 @@ export const SEND_PATTERNS = Object.freeze([
 
 /* What the script itself does, read on the code view (comments and string contents blanked). Any hit is red.
    An address made by URL.createObjectURL is a file made inside the browser (a download of the visitor's own
-   rows), not an address that leaves it, so it is the one assignment that is allowed. */
+   rows), not an address that leaves it, so it is allowed. The only other allowed address is a phone link to one
+   number (see isPhoneLink below). */
+const ADDRESS_SINK = /\.\s*(?:href|src|formAction|ping|srcset|poster)\s*\+?=(?!=)(?!\s*(?:window\s*\.\s*)?URL\s*\.\s*createObjectURL\s*\()/;
 export const CODE_SINKS = Object.freeze([
   ["moves the visitor from script (location)", /\blocation\b/],
   ["opens a window from script (open)", /\bopen\s*\(/],
   ["writes into the document from script (write)", /\.\s*write(?:ln)?\s*\(/],
-  ["sets an address from script (href, src, formAction, ping, srcset, poster)", /\.\s*(?:href|src|formAction|ping|srcset|poster)\s*\+?=(?!=)(?!\s*(?:window\s*\.\s*)?URL\s*\.\s*createObjectURL\s*\()/],
+  ["sets an address from script (href, src, formAction, ping, srcset, poster)", ADDRESS_SINK],
   ["builds code from text (eval, Function)", /\beval\s*\(|\bnew\s+Function\b|\bFunction\s*\(/],
   ["posts a message out of the page (postMessage)", /\bpostMessage\s*\(/],
   ["starts a worker", /\b(?:Worker|SharedWorker|serviceWorker)\b/],
   ["imports a module (import)", /\bimport\b/],
 ]);
+
+/* A tap-to-text or tap-to-call link to one number: `a.href = "sms:" + lead.phone;` (or "tel:"). The address
+   starts with that literal, so its scheme is fixed: tapping it opens the phone's own Messages or Phone app to
+   that number, with no message in it, and nothing goes to any server. It is allowed only in exactly this shape:
+   a plain `.href =` (never `+=`, never src or another setter), a string that is only "sms:" or "tel:" and an
+   optional number, then at most ONE plain property read (`+ lead.phone`), then `;` `,` `)` or `}`. Anything more
+   (a "?body=", a second piece, a call on the string, no closing mark) can carry the page's rows and stays red,
+   the same as a mailto link with a body. The literal is found by its place: on the code view every string is a
+   pair of quotes, in the same order as `strings`. */
+const PHONE_LINK_LITERAL = /^(?:sms|tel):[+\d\s().-]*$/i;
+const PHONE_LINK_TAIL = /^\s*(["'])\1(?:\s*\+\s*[A-Za-z_$][\w$]*(?:\s*\.\s*[A-Za-z_$][\w$]*)*)?[ \t]*[;,)}]/;
+
+export function isPhoneLink(code, strings, match) {
+  if (!/^\.\s*href\s*=$/.test(match[0])) return false;
+  const start = match.index + match[0].length;
+  const tail = PHONE_LINK_TAIL.exec(code.slice(start));
+  if (!tail) return false;
+  const quoteAt = start + tail[0].indexOf(tail[1]);
+  const index = (code.slice(0, quoteAt).match(/["']/g) || []).length / 2;
+  return Number.isInteger(index) && PHONE_LINK_LITERAL.test(String((strings || [])[index] ?? "x"));
+}
+
+/** True when a read script sets an address other than a browser-made file or one phone link. */
+export function setsAnAddress(lexed) {
+  const code = String(lexed?.code || "");
+  for (const match of code.matchAll(new RegExp(ADDRESS_SINK.source, "g"))) {
+    if (!isPhoneLink(code, lexed.strings, match)) return true;
+  }
+  return false;
+}
 
 /* setAttribute is read with string contents kept, because the attribute NAME is the string. A name that
    is not a plain string cannot be read, so it is a hit too. */
@@ -80,9 +114,10 @@ export const SET_ATTRIBUTE_SINK = Object.freeze([
 ]);
 
 /**
- * Read one script with a small JavaScript lexer. Returns { ok, code, full }:
- *   code  comments and string / template / regex contents blanked: what the script DOES;
- *   full  only comments blanked: the strings are still there to be read.
+ * Read one script with a small JavaScript lexer. Returns { ok, code, full, strings }:
+ *   code     comments and string / template / regex contents blanked: what the script DOES;
+ *   full     only comments blanked: the strings are still there to be read;
+ *   strings  the text of each quoted string, in order (on the code view each one is a pair of quotes).
  * ok is false when the script ends inside a string, comment or template: it was not read to the end.
  */
 export function lexScript(source) {
@@ -90,6 +125,7 @@ export function lexScript(source) {
   const n = s.length;
   let code = "";
   let full = "";
+  const strings = [];
   let i = 0;
   let last = "";
   let failed = false;
@@ -147,6 +183,7 @@ export function lexScript(source) {
         }
         if (j >= n) { failed = true; return; }
         push(c + c, s.slice(i, j + 1));
+        strings.push(s.slice(i + 1, j));
         i = j + 1;
         last = "s";
         continue;
@@ -202,7 +239,7 @@ export function lexScript(source) {
   }
 
   run(false);
-  return { ok: !failed, code, full };
+  return { ok: !failed, code, full, strings };
 }
 
 const ENTITIES = Object.freeze({ "&quot;": '"', "&#34;": '"', "&apos;": "'", "&#39;": "'", "&amp;": "&", "&lt;": "<", "&gt;": ">" });
@@ -266,7 +303,10 @@ export function judgeLeadsHtml(html, { robotsHeader = "" } = {}) {
   const lexed = scriptBodies(page).map((body) => lexScript(body));
   const code = lexed.map((l) => l.code).join("\n");
   const full = lexed.map((l) => l.full).join("\n");
-  for (const [words, pattern] of CODE_SINKS) if (pattern.test(code)) sends.push(words);
+  for (const [words, pattern] of CODE_SINKS) {
+    const hit = pattern === ADDRESS_SINK ? lexed.some(setsAnAddress) : pattern.test(code);
+    if (hit) sends.push(words);
+  }
   if (SET_ATTRIBUTE_SINK[1].test(full)) sends.push(SET_ATTRIBUTE_SINK[0]);
   const unreadable = lexed.some((l) => !l.ok);
   if (unreadable) sends.push("has a script that could not be read to its end, so nothing can be said about what it sends");

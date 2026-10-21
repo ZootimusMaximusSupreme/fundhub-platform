@@ -16,6 +16,29 @@ export const PRIVILEGED_ROLE_ERROR =
 export const LIVE_CLIENTS_ERROR =
   "verify:e2e will not run here: this database has live client files. The harness pauses company sending and must only run on a scratch database.";
 
+/* Scratch-only lock for PG tests that delete or rewrite shared rows.
+
+   Defect (2026-10-20): src/messaging/seed/seed.pg.test.mjs ran whenever
+   DATABASE_URL was set and deleted every Fundhub message template on the live
+   database; 137 seeded templates were gone, including the welcome email and text.
+   A test that clears or rewrites real company rows runs only when DATABASE_URL is
+   a loopback host AND the database name says it is disposable (ci, test or scratch
+   as its own word: fundhub_ci, fundhub_test, scratch). Anything else skips. */
+const LOOPBACK = new Set(["127.0.0.1", "localhost", "[::1]", "::1"]);
+
+export function isLocalScratchDatabaseUrl(value) {
+  if (!value) return false;
+  try {
+    const url = new URL(String(value));
+    if (!["postgres:", "postgresql:"].includes(url.protocol)) return false;
+    if (!LOOPBACK.has(url.hostname)) return false;
+    const name = decodeURIComponent(url.pathname.replace(/^\//, ""));
+    return /(?:^|[_-])(?:ci|test|scratch)(?:$|[_-])/i.test(name);
+  } catch {
+    return false;
+  }
+}
+
 export async function assertHarnessSafe(db) {
   if (!db || typeof db.query !== "function") {
     throw new Error("assertHarnessSafe requires a database");

@@ -19,7 +19,17 @@ import {
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
 const FLOW_CLIMATE_ID = `flow:journey:${CLIMATE_READING_SURFACE}`;
 
-function localClimateSite() {
+/** The map chunk the live page ships, and the same chunk with the old five placeholder boxes put back. */
+const MAP_CHUNK = "/climate/_next/static/chunks/375-9c2ed26a6c945538.js";
+function chunkWithFiveBoxes() {
+  const shipped = fs.readFileSync(path.join(ROOT, "public", MAP_CHUNK), "utf8");
+  const five = '{"AZ":"M120,200 L200,200 L200,260 L120,260 Z","CA":"M60,180 L110,180 L110,260 L60,260 Z","NY":"M330,140 L380,140 L380,190 L330,190 Z","TX":"M200,240 L280,240 L280,300 L200,300 Z","FL":"M300,260 L340,260 L340,310 L300,310 Z"}';
+  const broken = shipped.replace(/var a=JSON\.parse\('[^']*'\)/, `var a=JSON.parse('${five}')`);
+  assert.notEqual(broken, shipped, "the shipped chunk still holds its outline list");
+  return broken;
+}
+
+function localClimateSite(overrides = {}) {
   const html = fs.readFileSync(path.join(ROOT, "public/climate/index.html"), "utf8");
   const routes = new Map([
     ["/api/climate", JSON.stringify({
@@ -40,6 +50,7 @@ function localClimateSite() {
     if (!match[1].startsWith("/climate/")) continue;
     routes.set(match[1], fs.readFileSync(path.join(ROOT, "public", match[1]), "utf8"));
   }
+  for (const [key, body] of Object.entries(overrides)) routes.set(key, body);
 
   return async (url) => {
     const key = String(url).replace(DEFAULT_BASE_URL, "");
@@ -57,8 +68,16 @@ test("the climate catalog row owns the exact live read and focused proof files",
   assert.match(CATALOG_CLIMATE_READ.evidence, /fin-b27-h-read-contracts\.test\.mjs/);
 });
 
-test("the safe climate read maps the shipped five-shape page to the exact catalog row and stays red", async () => {
+test("the safe climate read maps the shipped 51-state page to the exact catalog row and is green", async () => {
   const rows = await runFinB27HReadResults({ fetchImpl: localClimateSite() });
+  const row = rows.get(CATALOG_CLIMATE_READ.id);
+  assert.equal(row.id, "catalog-read:climate-map");
+  assert.equal(row.status, "PASS", row.detail);
+  assert.match(row.detail, /draws all 51 state outlines/);
+});
+
+test("the safe climate read maps the page with the old five boxes put back to the exact catalog row and is red", async () => {
+  const rows = await runFinB27HReadResults({ fetchImpl: localClimateSite({ [MAP_CHUNK]: chunkWithFiveBoxes() }) });
   const row = rows.get(CATALOG_CLIMATE_READ.id);
   assert.equal(row.id, "catalog-read:climate-map");
   assert.equal(row.status, "FAIL");

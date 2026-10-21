@@ -20,6 +20,7 @@ import { fileURLToPath } from "node:url";
 import pg from "pg";
 
 import {
+  AD_SYNC_SQL,
   CF_COPY_GO_LIVE,
   CF_FORM_PAGES,
   CHECK_IDS,
@@ -102,7 +103,7 @@ function silent(over = {}) {
   return contactRow({ cf_ok: null, ...over });
 }
 
-function scopeFor({ facts = factsRow(), contacts = [], factsError = null, contactsError = null } = {}, seen = []) {
+function scopeFor({ facts = factsRow(), contacts = [], factsError = null, contactsError = null, sync, syncError = null } = {}, seen = []) {
   const tx = {
     async query(sql, params) {
       seen.push({ sql, params });
@@ -113,6 +114,11 @@ function scopeFor({ facts = factsRow(), contacts = [], factsError = null, contac
       if (sql === CONTACTS_SQL) {
         if (contactsError) throw contactsError;
         return { rows: contacts };
+      }
+      // The Meta sync read answers only when a test hands it rows; otherwise it is an unexpected query.
+      if (sql === AD_SYNC_SQL && (sync !== undefined || syncError)) {
+        if (syncError) throw syncError;
+        return { rows: [sync] };
       }
       throw new Error(`unexpected query: ${String(sql).slice(0, 80)}`);
     }
@@ -125,9 +131,9 @@ function byId(rows) {
 }
 
 const NA_CODE = {
-  "lead:pipe-cut-with-traffic": "low-traffic",
-  "lead:clickfunnels-posts-silent": "low-traffic",
-  "lead:slo-contact-not-in-clickfunnels": "no-real-lead"
+  "lead:pipe-cut-with-traffic": ["low-traffic", "no-running-ad"],
+  "lead:clickfunnels-posts-silent": ["low-traffic"],
+  "lead:slo-contact-not-in-clickfunnels": ["no-real-lead"]
 };
 
 function assertShape(r) {
@@ -139,7 +145,7 @@ function assertShape(r) {
   assert.ok(r.detail.length > 0);
   assert.doesNotMatch(r.detail, /@/, "no email address in a detail line");
   if (r.status === "na") {
-    assert.equal(r.na.code, NA_CODE[r.id]);
+    assert.ok(NA_CODE[r.id].includes(r.na.code), `${r.id} may not carry ${r.na.code}`);
     assert.equal(r.na.args.check, r.id);
     assert.match(r.detail, /Judged the day/);
   }
@@ -339,6 +345,73 @@ test("pipe: no ad row at all is a skip that says so (ads paused or sync late)", 
   assertShape(r);
   assert.equal(r.status, "skip");
   assert.match(r.detail, /no row for 2026-10-03 or 2026-10-04/);
+});
+
+// The two ad days for NOW are 10-03 and 10-04. They are over at midnight Arizona on 10-05, 07:00 UTC.
+const WINDOW_CLOSED = new Date("2026-10-05T07:00:00Z");
+// What pg hands back for AD_SYNC_SQL: a time, a count, a time.
+const syncRow = (over = {}) => ({
+  pulled_at: new Date("2026-10-05T12:30:00Z"),
+  running: 0,
+  window_closed: WINDOW_CLOSED,
+  ...over
+});
+const syncOf = (over) => {
+  const r = syncRow(over);
+  return { pulledAt: r.pulled_at, running: r.running, windowClosed: r.window_closed };
+};
+
+test("pipe: no ad row, a Meta pull after both days closed, nothing switched on -> na no-running-ad", () => {
+  const r = pipeCheck(facts({ ad_rows: 0, ad_clicks: "0", road_views: 0 }), NOW, syncOf());
+  assertShape(r);
+  assert.equal(r.status, "na");
+  assert.equal(r.na.code, "no-running-ad");
+  assert.deepEqual(r.na.args, {
+    check: "lead:pipe-cut-with-traffic",
+    first: "2026-10-03",
+    last: "2026-10-04",
+    pulledAt: "2026-10-05T12:30:00.000Z"
+  });
+  assert.match(r.detail, /No Meta ad ran on 2026-10-03 or 2026-10-04/);
+  assert.match(r.detail, /no ad is switched on/);
+  assert.match(r.detail, /Zero real people saved on \/roadmap since 2026-10-03/);
+});
+
+test("pipe: no ad row while ads are switched on -> FAIL that names the count and points at meta-sync", () => {
+  const r = pipeCheck(facts({ ad_rows: 0, ad_clicks: "0" }), NOW, syncOf({ running: 2 }));
+  assertShape(r);
+  assert.equal(r.status, "FAIL");
+  assert.match(r.detail, /^2 Meta ads are switched on, but the ad table has no row for 2026-10-03 or 2026-10-04/);
+  assert.match(r.suggestedFix, /meta-sync/);
+  assert.match(pipeCheck(facts({ ad_rows: 0 }), NOW, syncOf({ running: 1 })).detail, /^1 Meta ad is switched on/);
+});
+
+test("pipe: no ad row and a Meta sync that has not pulled since the days closed -> FAIL, never na", () => {
+  // One millisecond before the window closed is too old: that pull never saw the whole of 10-04.
+  const stale = pipeCheck(facts({ ad_rows: 0 }), NOW, syncOf({ pulled_at: new Date(WINDOW_CLOSED.getTime() - 1) }));
+  assertShape(stale);
+  assert.equal(stale.status, "FAIL");
+  assert.match(stale.detail, /the Meta sync has not pulled since .*, before 2026-10-04 closed/);
+  assert.match(stale.detail, /Fix the meta-sync row first/);
+  const never = pipeCheck(facts({ ad_rows: 0 }), NOW, syncOf({ pulled_at: null }));
+  assert.equal(never.status, "FAIL");
+  assert.match(never.detail, /the Meta sync has never pulled/);
+  // A pull at the very moment the window closed has seen both days.
+  assert.equal(pipeCheck(facts({ ad_rows: 0 }), NOW, syncOf({ pulled_at: WINDOW_CLOSED })).status, "na");
+});
+
+test("pipe: no ad row and a Meta sync read that failed -> skip with the reason, never na", () => {
+  const r = pipeCheck(facts({ ad_rows: 0 }), NOW, { error: "permission denied for table ad_platform_connections" });
+  assertShape(r);
+  assert.equal(r.status, "skip");
+  assert.match(r.detail, /the Meta sync could not be read \(permission denied for table ad_platform_connections\)/);
+});
+
+test("pipe: with ad rows the Meta sync never changes the answer", () => {
+  for (const sync of [syncOf(), syncOf({ running: 3 }), syncOf({ pulled_at: null })]) {
+    assert.equal(pipeCheck(facts({ ad_rows: 1, ad_clicks: "0" }), NOW, sync).na.code, "low-traffic");
+    assert.equal(pipeCheck(facts({ ad_rows: 2, ad_clicks: "400" }), NOW, sync).status, "FAIL");
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -612,6 +685,47 @@ test("lane: quiet day (ads paused, no ad row) -> pipe stays a skip, the other tw
   assert.deepEqual(rows.map((r) => r.status), ["skip", "na", "na"]);
 });
 
+test("lane: quiet day, the Meta sync pulled after the days closed and no ad is on -> three na", async () => {
+  // Measured live 2026-10-20: ad table empty for 10-18 and 10-19, 7 real ads PAUSED, pulled 00:30 UTC.
+  const seen = [];
+  const rows = await gapChecks({
+    scope: scopeFor({ facts: factsRow({ ad_rows: 0, ad_clicks: "0", road_views: 0, form_views: 0 }), contacts: [], sync: syncRow() }, seen),
+    now: NOW,
+    orgId: ORG
+  });
+  rows.forEach(assertShape);
+  assert.deepEqual(rows.map((r) => r.status), ["na", "na", "na"]);
+  assert.deepEqual(rows.map((r) => r.na.code), ["no-running-ad", "low-traffic", "no-real-lead"]);
+  assert.equal(rows[0].na.args.orgId, ORG);
+  const syncRead = seen.find((q) => q.sql === AD_SYNC_SQL);
+  assert.deepEqual(syncRead.params, [ORG, "2026-10-04"]);
+});
+
+test("lane: quiet day with ads switched on, or a late sync -> the pipe is red; a failed sync read is a skip", async () => {
+  const quiet = (over) => ({ facts: factsRow({ ad_rows: 0, ad_clicks: "0", road_views: 0, form_views: 0 }), contacts: [], ...over });
+  const on = await gapChecks({ scope: scopeFor(quiet({ sync: syncRow({ running: 4 }) })), now: NOW, orgId: ORG });
+  on.forEach(assertShape);
+  assert.deepEqual(on.map((r) => r.status), ["FAIL", "na", "na"]);
+  const late = await gapChecks({ scope: scopeFor(quiet({ sync: syncRow({ pulled_at: new Date("2026-10-03T12:00:00Z") }) })), now: NOW, orgId: ORG });
+  assert.deepEqual(late.map((r) => r.status), ["FAIL", "na", "na"]);
+  const broken = await gapChecks({ scope: scopeFor(quiet({ syncError: new Error("timeout") })), now: NOW, orgId: ORG });
+  broken.forEach(assertShape);
+  assert.deepEqual(broken.map((r) => r.status), ["skip", "na", "na"]);
+  assert.match(broken[0].detail, /the Meta sync could not be read \(timeout\)/);
+  const noRow = await gapChecks({ scope: scopeFor(quiet({ sync: null })), now: NOW, orgId: ORG });
+  assert.equal(noRow[0].status, "skip");
+  assert.match(noRow[0].detail, /came back with no row/);
+  const noCount = await gapChecks({ scope: scopeFor(quiet({ sync: syncRow({ running: null }) })), now: NOW, orgId: ORG });
+  assert.equal(noCount[0].status, "skip");
+  assert.match(noCount[0].detail, /without running/);
+});
+
+test("lane: with ad rows on file the Meta sync is never read", async () => {
+  const seen = [];
+  await gapChecks({ scope: scopeFor({ contacts: [] }, seen), now: NOW, orgId: ORG });
+  assert.equal(seen.some((q) => q.sql === AD_SYNC_SQL), false);
+});
+
 test("lane: ads sent clicks but under the minimum, no lead anywhere -> three na, each with its code", async () => {
   // Measured live 2026-10-09: ad_rows 1, ad_clicks 0, form_views 0, no contact rows.
   const rows = await gapChecks({
@@ -844,6 +958,37 @@ test("naVerify no-real-lead: true with no real lead in the window, false with on
     naVerify["no-real-lead"](CONTACT, { scope: scopeFor({ contactsError: new Error("boom") }), now: NOW }),
     /boom/
   );
+});
+
+test("naVerify no-running-ad: true while the table is empty, the pull is fresh and no ad is on; false the moment any is not", async () => {
+  const quiet = (over = {}, facts = {}) => scopeFor({ facts: factsRow({ ad_rows: 0, ad_clicks: "0", ...facts }), sync: syncRow(over) });
+  const seen = [];
+  assert.equal(await naVerify["no-running-ad"](PIPE, { scope: scopeFor({ facts: factsRow({ ad_rows: 0 }), sync: syncRow() }, seen), now: NOW }), true);
+  assert.deepEqual(seen.map((q) => q.sql), [FACTS_SQL, AD_SYNC_SQL]);
+  assert.deepEqual(seen[1].params, [null, "2026-10-04"]);
+  assert.equal(await naVerify["no-running-ad"](PIPE, { scope: quiet({}, { ad_rows: 1 }), now: NOW }), false, "an ad row came");
+  assert.equal(await naVerify["no-running-ad"](PIPE, { scope: quiet({ running: 1 }), now: NOW }), false, "an ad is on");
+  assert.equal(await naVerify["no-running-ad"](PIPE, { scope: quiet({ pulled_at: new Date(WINDOW_CLOSED.getTime() - 1) }), now: NOW }), false, "late pull");
+  assert.equal(await naVerify["no-running-ad"](PIPE, { scope: quiet({ pulled_at: null }), now: NOW }), false, "never pulled");
+  assert.equal(await naVerify["no-running-ad"](POSTS, { scope: quiet(), now: NOW }), false, "another check");
+  assert.equal(await naVerify["no-running-ad"](undefined, { scope: quiet(), now: NOW }), false);
+  assert.equal(await naVerify["no-running-ad"](PIPE, { now: NOW }), false, "no database");
+  await assert.rejects(
+    naVerify["no-running-ad"](PIPE, { scope: scopeFor({ facts: factsRow({ ad_rows: 0 }), syncError: new Error("boom") }), now: NOW }),
+    /boom/
+  );
+  // The company on the row is the company both reads use.
+  const both = [];
+  await naVerify["no-running-ad"]({ ...PIPE, orgId: ORG }, { scope: scopeFor({ facts: factsRow({ ad_rows: 0 }), sync: syncRow() }, both), now: NOW, orgId: ORG_B });
+  assert.deepEqual(both.map((q) => q.params[0]), [ORG, ORG]);
+});
+
+test("round trip: the no-running-ad row's own args pass naVerify, and fail the moment an ad is switched on", async () => {
+  const quiet = { facts: factsRow({ ad_rows: 0, ad_clicks: "0", form_views: 0 }), contacts: [], sync: syncRow() };
+  const [pipe] = await gapChecks({ scope: scopeFor(quiet), now: NOW, orgId: ORG });
+  assert.equal(pipe.na.code, "no-running-ad");
+  assert.equal(await naVerify[pipe.na.code](pipe.na.args, { scope: scopeFor(quiet), now: NOW }), true);
+  assert.equal(await naVerify[pipe.na.code](pipe.na.args, { scope: scopeFor({ ...quiet, sync: syncRow({ running: 1 }) }), now: NOW }), false);
 });
 
 test("naVerify: db.query works when scope is omitted", async () => {
@@ -1207,6 +1352,7 @@ function shadowScope(client, fixture) {
       async query(sql, params) {
         if (sql === FACTS_SQL) return client.query(shadowFacts(sql), [...params, json]);
         if (sql === CONTACTS_SQL) return client.query(shadowContacts(sql), [...params, json]);
+        if (sql === AD_SYNC_SQL) return client.query(shadowAdSync(sql), [...params, json]);
         throw new Error(`unexpected query: ${String(sql).slice(0, 60)}`);
       }
     });
@@ -1276,4 +1422,83 @@ test("sql meaning, whole lane: a lead that ClickFunnels already held, and a lost
   assert.equal(bad["lead:slo-contact-not-in-clickfunnels"].status, "FAIL");
   assert.match(bad["lead:slo-contact-not-in-clickfunnels"].detail, /1 of 2 real roadmap leads/);
   assert.match(bad["lead:slo-contact-not-in-clickfunnels"].detail, /no ClickFunnels answer was ever recorded/);
+});
+
+// The four tables AD_SYNC_SQL reads, as WITH names over the same JSON parameter ($3).
+function shadowAdSync(sql) {
+  assert.ok(/\*\/\s*SELECT/.test(sql), "AD_SYNC_SQL is a comment, then SELECT");
+  return sql.replace(/\*\/\s*SELECT/, `*/ WITH
+  ad_platform_connections AS (SELECT * FROM jsonb_to_recordset(($3::jsonb)->'conns')
+             AS x(org_id uuid, platform text, last_synced_at timestamptz)),
+  campaigns AS (SELECT * FROM jsonb_to_recordset(($3::jsonb)->'campaigns') AS x(id uuid, status text)),
+  ad_sets AS (SELECT * FROM jsonb_to_recordset(($3::jsonb)->'adSets') AS x(id uuid, status text)),
+  ads AS (SELECT * FROM jsonb_to_recordset(($3::jsonb)->'adsTable')
+             AS x(org_id uuid, ad_set_id uuid, campaign_id uuid, status text))
+  SELECT`);
+}
+
+async function readAdSyncShadow(fixture, org = ORG, lastDay = "2026-10-04") {
+  return withReadOnly(async (c) => {
+    const r = await c.query(shadowAdSync(AD_SYNC_SQL), [org, lastDay, JSON.stringify(fixture)]);
+    assert.equal(r.rows.length, 1);
+    return r.rows[0];
+  });
+}
+
+test("sql meaning: the Meta sync read - newest Meta pull, ads on only when ad, ad set and campaign are all ACTIVE, Arizona midnight", { skip: SQL_SKIP }, async () => {
+  const camp = uuid();
+  const pausedCamp = uuid();
+  const set = uuid();
+  const pausedSet = uuid();
+  const fixture = {
+    conns: [
+      { org_id: ORG, platform: "meta", last_synced_at: "2026-10-05T12:30:00Z" },
+      { org_id: ORG, platform: "meta", last_synced_at: null }, // a fake test connection that never pulled
+      { org_id: ORG, platform: "tiktok", last_synced_at: "2026-10-05T13:00:00Z" }, // not Meta
+      { org_id: ORG_B, platform: "meta", last_synced_at: "2026-10-05T12:59:00Z" } // another company
+    ],
+    campaigns: [{ id: camp, status: "ACTIVE" }, { id: pausedCamp, status: "PAUSED" }],
+    adSets: [{ id: set, status: "active" }, { id: pausedSet, status: "PAUSED" }],
+    adsTable: [
+      { org_id: ORG, ad_set_id: set, campaign_id: camp, status: "ACTIVE" }, // on
+      { org_id: ORG, ad_set_id: pausedSet, campaign_id: camp, status: "ACTIVE" }, // its ad set is paused
+      { org_id: ORG, ad_set_id: set, campaign_id: pausedCamp, status: "ACTIVE" }, // its campaign is paused
+      { org_id: ORG, ad_set_id: set, campaign_id: camp, status: "PAUSED" }, // paused
+      { org_id: ORG, ad_set_id: set, campaign_id: camp, status: null }, // a test ad with no status
+      { org_id: ORG_B, ad_set_id: set, campaign_id: camp, status: "ACTIVE" } // another company
+    ]
+  };
+  const mine = await readAdSyncShadow(fixture, ORG);
+  assert.equal(iso(mine.pulled_at), "2026-10-05T12:30:00.000Z");
+  assert.equal(mine.running, 1);
+  assert.equal(iso(mine.window_closed), WINDOW_CLOSED.toISOString(), "midnight Arizona after 10-04 is 07:00 UTC on 10-05");
+  const all = await readAdSyncShadow(fixture, null);
+  assert.equal(iso(all.pulled_at), "2026-10-05T12:59:00.000Z");
+  assert.equal(all.running, 2);
+  const none = await readAdSyncShadow({ conns: [], campaigns: [], adSets: [], adsTable: [] }, ORG);
+  assert.equal(none.pulled_at, null);
+  assert.equal(none.running, 0);
+});
+
+test("sql meaning, whole lane: no ad row, a fresh pull, every ad paused -> the pipe is na no-running-ad", { skip: SQL_SKIP }, async () => {
+  const camp = uuid();
+  const set = uuid();
+  const fixture = {
+    ads: [],
+    conns: [{ org_id: ORG, platform: "meta", last_synced_at: "2026-10-05T12:30:00Z" }],
+    campaigns: [{ id: camp, status: "PAUSED" }],
+    adSets: [{ id: set, status: "PAUSED" }],
+    adsTable: [{ org_id: ORG, ad_set_id: set, campaign_id: camp, status: "PAUSED" }]
+  };
+  const quiet = byId(await withReadOnly((c) => gapChecks({ scope: shadowScope(c, fixture), now: NOW, orgId: ORG })));
+  assert.equal(quiet["lead:pipe-cut-with-traffic"].status, "na");
+  assert.equal(quiet["lead:pipe-cut-with-traffic"].na.code, "no-running-ad");
+  const ok = await withReadOnly((c) => naVerify["no-running-ad"](quiet["lead:pipe-cut-with-traffic"].na.args, { scope: shadowScope(c, fixture), now: NOW }));
+  assert.equal(ok, true);
+  // The same day with the ad switched back on is red.
+  fixture.campaigns[0].status = "ACTIVE";
+  fixture.adSets[0].status = "ACTIVE";
+  fixture.adsTable[0].status = "ACTIVE";
+  const on = byId(await withReadOnly((c) => gapChecks({ scope: shadowScope(c, fixture), now: NOW, orgId: ORG })));
+  assert.equal(on["lead:pipe-cut-with-traffic"].status, "FAIL");
 });

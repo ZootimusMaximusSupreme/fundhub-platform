@@ -258,6 +258,7 @@ table.grid th:nth-child(3),table.grid th:nth-child(5),table.grid th:nth-child(6)
           <button class="tab on" data-tab="products">Products</button>
           <button class="tab" data-tab="rules">Commission rules</button>
           <button class="tab" data-tab="slo" id="sloTab" hidden>SLO connections</button>
+          <button class="tab" data-tab="affpay" id="affPayTab" hidden>Affiliate payouts</button>
         </div>
 
         <!-- PRODUCTS -->
@@ -333,6 +334,31 @@ table.grid th:nth-child(3),table.grid th:nth-child(5),table.grid th:nth-child(6)
           </div>
         </div>
 
+        <!-- AFFILIATE PAYOUTS (495). Finance staff only: the tab stays hidden for
+             anyone else, and the read and the actions refuse them anyway.
+             Logic: src/affiliates/payout-rail.mjs. Flow: docs/journeys/affiliate-payout-flow.md. -->
+        <div class="tabpane" id="tab-affpay">
+          <div class="card-hd">
+            <div>
+              <div class="eyebrow">AFFILIATE PAYOUTS</div>
+              <div id="apSummary" class="mono" style="font-size:var(--fs-metric);font-weight:600;margin-top:8px">—</div>
+              <div id="apHint" style="font-size:var(--fs-caption);color:var(--gray);margin-top:2px">Paid as soon as the client's payment clears. Due the next day.</div>
+            </div>
+            <div class="spacer"></div>
+            <select id="apFilter" aria-label="Show payouts" style="border:1px solid var(--line);border-radius:7px;padding:6px 9px;font-size:var(--fs-body);background:#fff;min-height:44px">
+              <option value="">Open and recent</option><option value="pending">Pending</option><option value="held">Held</option><option value="processing">Sending</option><option value="paid">Paid</option><option value="void">Cancelled</option>
+            </select>
+          </div>
+          <div id="apRail" class="note" style="padding:10px 16px;border-bottom:1px solid var(--line);background:var(--soft)" role="status">Loading payouts…</div>
+          <div id="apMsg" class="note" role="status" style="padding:10px 16px" hidden></div>
+          <div style="overflow-x:auto"><table class="grid">
+            <thead><tr>
+              <th>Affiliate</th><th>Earned</th><th>Due</th><th style="text-align:right">Amount</th><th>Status</th><th>Bank</th><th>Proof</th><th>Actions</th>
+            </tr></thead>
+            <tbody id="apBody"><tr><td colspan="8" class="empty">Loading payouts…</td></tr></tbody>
+          </table></div>
+        </div>
+
         <!-- LEDGER -->
         <div class="tabpane" id="tab-ledger">
           <div class="card-hd"><button class="btn sm mono" id="ledgerBack">← Back to rules</button>
@@ -366,6 +392,24 @@ table.grid th:nth-child(3),table.grid th:nth-child(5),table.grid th:nth-child(6)
   </div>
 </div>
 
+<dialog id="apPaidDialog" aria-labelledby="apPaidTitle" style="border:1px solid var(--line);border-radius:10px;padding:20px;max-width:420px;width:92vw">
+  <form method="dialog" id="apPaidForm">
+    <h3 id="apPaidTitle" style="margin-bottom:6px">Mark payout paid</h3>
+    <p class="note" id="apPaidWho" style="margin-bottom:12px"></p>
+    <p class="note" style="margin-bottom:12px">This does not send money. It records that you already paid.</p>
+    <div class="field"><label for="apMethod">How you paid</label>
+      <select id="apMethod" style="min-height:44px"><option value="ach">ACH from the bank</option><option value="wire">Wire</option><option value="check">Check</option><option value="manual">Other</option></select></div>
+    <div class="field" style="margin-top:10px"><label for="apRef">Reference</label>
+      <input id="apRef" maxlength="200" placeholder="Bank trace, wire or check number" style="min-height:44px"></div>
+    <div class="field" style="margin-top:10px"><label for="apDate">Paid on</label>
+      <input id="apDate" type="date" style="min-height:44px"></div>
+    <p class="note" id="apPaidErr" role="alert" style="margin-top:10px;color:var(--alert)" hidden></p>
+    <div style="display:flex;gap:9px;margin-top:16px">
+      <button class="btn dark mono" type="submit" id="apPaidSave" style="min-height:44px">Record payment</button>
+      <button class="btn mono" type="button" id="apPaidCancel" style="min-height:44px">Cancel</button>
+    </div>
+  </form>
+</dialog>
 <div class="scrim" id="scrim"></div>
 <aside class="editor" id="editor">
   <div class="editor-hd"><div><div class="eyebrow"><span id="edMode">EDIT PRODUCT</span></div><div id="edTitle" style="font-size:var(--fs-title);font-weight:600;margin-top:5px">—</div></div><button class="xbtn" id="edClose">✕</button></div>
@@ -975,6 +1019,7 @@ fillPersonFilter();
 renderProducts(); renderRules(); renderLedger(); renderStats();
 </script>
 <script defer src="data.js"></script>
+<script defer src="affiliate-payouts.js"></script>
 <script>
 
 /* Products & Commissions — the product ladder from /api/read/products and the

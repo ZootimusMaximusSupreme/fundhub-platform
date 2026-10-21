@@ -150,6 +150,19 @@ function config(env) {
   };
 }
 
+const domainOf = (address) => {
+  const m = /@([A-Za-z0-9.-]+\.[A-Za-z]{2,})\s*>?\s*$/.exec(String(address || "").trim());
+  return m ? m[1].toLowerCase() : null;
+};
+/** The From to use, or null when its domain is not one this account sends for. */
+export function allowedFrom(requested, defaultFrom, env = process.env) {
+  const value = String(requested || "").trim();
+  const domain = domainOf(value);
+  if (!domain || /[\r\n]/.test(value)) return null;
+  const allowed = new Set([domainOf(defaultFrom), ...String(env.RESEND_EXTRA_FROM_DOMAINS || "").split(",").map((d) => d.trim().toLowerCase())].filter(Boolean));
+  return allowed.has(domain) ? value : null;
+}
+
 export async function send(message = {}, options = {}) {
   try {
     return await attempt(message, options);
@@ -171,8 +184,18 @@ async function attempt(message, { fetchImpl, timeoutMs, signal, env = process.en
   if (!body) return rejection("message body is empty");
 
   const looksHtml = /<!DOCTYPE\s+html|<html[\s>]|<table[\s>]/i.test(body);
+  /* A message may name its own From (bank outreach, 495), but only on a domain
+     this account already sends for: RESEND_FROM's own domain or one listed in
+     RESEND_EXTRA_FROM_DOMAINS. Anything else is refused rather than sent from
+     an address Resend has not verified, or quietly swapped for the default. */
+  let from = cfg.from;
+  if (message.from) {
+    const allowed = allowedFrom(message.from, cfg.from, env);
+    if (!allowed) return rejection("the message's From address is not on a sending domain this account uses");
+    from = allowed;
+  }
   const payload = {
-    from: cfg.from,
+    from,
     to: [to],
     subject: message.subject ? String(message.subject) : "(no subject)"
   };
@@ -212,7 +235,11 @@ async function attempt(message, { fetchImpl, timeoutMs, signal, env = process.en
      configuration fact — which domain receives mail — and the code refuses to
      assume one. */
   const replyDomain = String(cfg.replyToDomain || "").trim();
-  if (replyDomain && message.clientId) {
+  const replyTag = String(message.replyTag || "");
+  if (replyDomain && /^bk-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(replyTag)) {
+    // A banker (495): src/adapters/mailgun.mjs routes reply+bk-<contact>@ to bank outreach.
+    payload.reply_to = `reply+${replyTag}@${replyDomain}`;
+  } else if (replyDomain && message.clientId) {
     payload.reply_to = `reply+${message.clientId}@${replyDomain}`;
   }
 

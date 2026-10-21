@@ -28,6 +28,7 @@ import {
   productCreatesChecklist
 } from "../../waypoints/purchase.mjs";
 import { listClientLibrary } from "../../documents/retrieve.mjs";
+import { onOwnerHold } from "../owner-hold.mjs";
 
 export const DEFAULT_BASE_URL = "https://fundhub.ai";
 export const PORTAL_SHELL_PATH = "/app/client-portal.html";
@@ -500,6 +501,7 @@ WITH access AS (
    GROUP BY org_id, client_id
 )
 SELECT h.client_id::text AS client_id,
+       c.client_code,
        EXTRACT(EPOCH FROM (now() - h.since)) / 86400.0 AS days_held,
        (c.is_demo IS TRUE
         OR COALESCE(c.custom_fields ->> 'synthetic', '') = 'true'
@@ -985,16 +987,33 @@ export async function checkProgressRead({
    A client who paid, was given access, and has not signed in. The sign-in link
    creates the account the first time it is used, so a client with no account row
    at all has not signed in either. */
+const NEVER_SIGNED_IN_ID = "portal:paid-client-never-signed-in";
+
+async function readNeverSignedIn(run, orgId) {
+  return raceTimeout(run(async (tx) => {
+    const r = await tx.query(NEVER_SIGNED_IN_SQL, [orgId, INTERNAL_CLIENT_EMAIL_RE]);
+    return (r && r.rows) || [];
+  }), READ_TIMEOUT_MS);
+}
+
+/* Paying clients past the 72 hours who have not signed in: real, paid through the door. */
+function waitingOf(rows) {
+  return rows.filter((r) => r.is_test !== true && r.paid_through_door === true && r.signed_in !== true);
+}
+
+/* The held client codes when EVERY waiting client is on the owner's no-contact hold, else null. */
+function heldOnly(waiting) {
+  if (!waiting.length || !waiting.every((r) => onOwnerHold(r.client_code))) return null;
+  return [...new Set(waiting.map((r) => r.client_code))].sort();
+}
+
 export async function checkPaidNeverSignedIn({ run, orgId } = {}) {
-  const id = "portal:paid-client-never-signed-in";
+  const id = NEVER_SIGNED_IN_ID;
   if (typeof run !== "function") return check(id, "skip", "no database in this run — client sign-ins not read");
   if (!orgId) return check(id, "skip", "no org in this run — client sign-ins not read");
   let rows;
   try {
-    rows = await raceTimeout(run(async (tx) => {
-      const r = await tx.query(NEVER_SIGNED_IN_SQL, [orgId, INTERNAL_CLIENT_EMAIL_RE]);
-      return (r && r.rows) || [];
-    }), READ_TIMEOUT_MS);
+    rows = await readNeverSignedIn(run, orgId);
   } catch (err) {
     return check(id, "skip", `could not read who has signed in: ${err && err.isTimeout ? "no answer in time" : clip(err)}`);
   }
@@ -1002,7 +1021,23 @@ export async function checkPaidNeverSignedIn({ run, orgId } = {}) {
   const testCount = rows.filter((r) => r.is_test === true).length;
   const unpaidCount = rows.filter((r) => r.is_test !== true && r.paid_through_door !== true).length;
   const left = `Left out: ${testCount} test client${testCount === 1 ? "" : "s"}, ${unpaidCount} with no payment event.`;
-  const waiting = real.filter((r) => r.signed_in !== true);
+  const waiting = waitingOf(rows);
+  const held = heldOnly(waiting);
+  if (held) {
+    // Owner call 2026-10-09: no sign-in link and no call for these clients (src/pulse/owner-hold.mjs).
+    // The audit asks this lane again (naVerify below); any other waiting client makes this red by name.
+    const n = waiting.length;
+    return {
+      ...check(
+        id,
+        "na",
+        `${n} paying client${n === 1 ? " has" : "s have"} held portal access for over ${SIGN_IN_GRACE} and not signed in, ` +
+          `and ${n === 1 ? "it is" : "they are"} ${held.join(" and ")}, on the owner's no-contact hold. ` +
+          `Judged again the day another paying client waits. ${left}`
+      ),
+      na: { code: "owner-hold-client", args: { check: id, orgId: String(orgId), clients: held } }
+    };
+  }
   if (!waiting.length) {
     return check(
       id,
@@ -1023,6 +1058,20 @@ export async function checkPaidNeverSignedIn({ run, orgId } = {}) {
     "Send each of them their sign-in link from the staff screen, or call them. Do not auto-fix from this pulse."
   );
 }
+
+/* The audit asks the lane again (src/pulse/self-audit.mjs, makeLaneNaVerify). True only when
+   the same read still finds waiting clients and every one is a client the row named and the
+   owner holds. A failed read, a new waiting client, or nobody waiting at all is false. */
+export const naVerify = Object.freeze({
+  "owner-hold-client": async (args, ctx = {}) => {
+    if (!args || args.check !== NEVER_SIGNED_IN_ID || typeof args.orgId !== "string" || !args.orgId) return false;
+    const named = Array.isArray(args.clients) ? [...args.clients].sort() : [];
+    const run = readerFor(ctx);
+    if (!run) return false;
+    const held = heldOnly(waitingOf(await readNeverSignedIn(run, args.orgId)));
+    return !!held && held.length === named.length && held.every((code, i) => code === named[i]);
+  }
+});
 
 /** Reads go through the staff scope when the run has one, and the shared pool
     when it does not. Every statement is a plain read. */

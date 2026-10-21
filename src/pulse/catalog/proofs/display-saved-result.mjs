@@ -47,6 +47,17 @@ function fundingQuery(control, requirement, key, body) {
   return Object.freeze({ ...query(control, requirement, key, body), emptyAs: "no-real-funding" });
 }
 
+/* A live control nobody has pressed for real yet. With no saved result there is nothing to judge, so
+   it reads green and says so, and it goes red on the first wrong result (owner-set 2026-10-14). Used
+   only where the press is on the live screen today and a practice test runs the real writer through
+   this exact SQL (display-unused-money-controls.test.mjs). Also used (2026-10-20, records and staff lane)
+   for the first-batch helper suggestions, contract wording list, PDF boxes and CSM answers: Braum (FH-000507)
+   is the only real client and has none of those, so an empty table there means "not used yet"
+   (display-saved-result-quiet.test.mjs). */
+function quietQuery(control, requirement, key, body) {
+  return Object.freeze({ ...query(control, requirement, key, body), emptyAs: "quiet" });
+}
+
 function gap(control, requirement) {
   return Object.freeze({ control, mode: "always-red", requirement, sql: null });
 }
@@ -283,28 +294,56 @@ SELECT count(*)::int AS sample_count,
    AND newer.stacking = old.stacking AND newer.effective_from = old.effective_to
  WHERE old.org_id = $1::uuid AND old.effective_to IS NOT NULL`;
 
+/* 'Approve selected' (src/commissions/payout.mjs approveCommissions) is the only writer that moves a
+   ledger row out of earned, and it writes one commission.approved receipt per row. Both directions are
+   judged: every receipt must match its row, and every approved or paid row (not demo) must have its
+   receipt, so a press that saved the row but not the receipt is red even while the control is new. */
 const COMMISSION_APPROVED_SQL = `
 SELECT count(*)::int AS sample_count,
-       count(*) FILTER (WHERE l.id IS NULL OR l.status IS NULL OR l.status NOT IN ('approved','paid')
+       count(*) FILTER (WHERE r.bad)::int AS bad_count
+  FROM (
+    SELECT (l.id IS NULL OR l.status IS NULL OR l.status NOT IN ('approved','paid')
          OR l.approved_at IS NULL OR l.amount IS NULL
          OR NULLIF(BTRIM(COALESCE(l.approved_by, '')), '') IS NULL
          OR e.payload->>'ledger_id' IS DISTINCT FROM l.id::text
          OR CASE WHEN COALESCE(e.payload->>'amount', '') ~ '^-?[0-9]+([.][0-9]+)?$'
-              THEN (e.payload->>'amount')::numeric END IS DISTINCT FROM l.amount)::int AS bad_count
-  FROM events e
-  LEFT JOIN commission_ledger l ON l.org_id = e.org_id AND l.id::text = e.payload->>'ledger_id'
- WHERE e.org_id = $1::uuid AND e.name = 'commission.approved'`;
+              THEN (e.payload->>'amount')::numeric END IS DISTINCT FROM l.amount) AS bad
+      FROM events e
+      LEFT JOIN commission_ledger l ON l.org_id = e.org_id AND l.id::text = e.payload->>'ledger_id'
+     WHERE e.org_id = $1::uuid AND e.name = 'commission.approved'
+    UNION ALL
+    SELECT true AS bad
+      FROM commission_ledger l
+     WHERE l.org_id = $1::uuid AND l.status IN ('approved', 'paid')
+       AND COALESCE(l.is_demo, false) = false
+       AND NOT EXISTS (SELECT 1 FROM events e
+                        WHERE e.org_id = l.org_id AND e.name = 'commission.approved'
+                          AND e.payload->>'ledger_id' = l.id::text)
+  ) r`;
 
+/* 'Mark paid...' (markCommissionsPaid) is the only writer that sets paid, with one commission.paid
+   receipt per row. Same two directions as the approval check. */
 const COMMISSION_PAID_SQL = `
 SELECT count(*)::int AS sample_count,
-       count(*) FILTER (WHERE l.id IS NULL OR l.status IS DISTINCT FROM 'paid' OR l.paid_at IS NULL OR l.amount IS NULL
+       count(*) FILTER (WHERE r.bad)::int AS bad_count
+  FROM (
+    SELECT (l.id IS NULL OR l.status IS DISTINCT FROM 'paid' OR l.paid_at IS NULL OR l.amount IS NULL
          OR NULLIF(BTRIM(COALESCE(l.paid_by, '')), '') IS NULL OR NULLIF(BTRIM(COALESCE(l.payout_ref, '')), '') IS NULL
          OR e.payload->>'payout_ref' IS DISTINCT FROM l.payout_ref
          OR CASE WHEN COALESCE(e.payload->>'amount', '') ~ '^-?[0-9]+([.][0-9]+)?$'
-              THEN (e.payload->>'amount')::numeric END IS DISTINCT FROM l.amount)::int AS bad_count
-  FROM events e
-  LEFT JOIN commission_ledger l ON l.org_id = e.org_id AND l.id::text = e.payload->>'ledger_id'
- WHERE e.org_id = $1::uuid AND e.name = 'commission.paid'`;
+              THEN (e.payload->>'amount')::numeric END IS DISTINCT FROM l.amount) AS bad
+      FROM events e
+      LEFT JOIN commission_ledger l ON l.org_id = e.org_id AND l.id::text = e.payload->>'ledger_id'
+     WHERE e.org_id = $1::uuid AND e.name = 'commission.paid'
+    UNION ALL
+    SELECT true AS bad
+      FROM commission_ledger l
+     WHERE l.org_id = $1::uuid AND l.status = 'paid'
+       AND COALESCE(l.is_demo, false) = false
+       AND NOT EXISTS (SELECT 1 FROM events e
+                        WHERE e.org_id = l.org_id AND e.name = 'commission.paid'
+                          AND e.payload->>'ledger_id' = l.id::text)
+  ) r`;
 
 const REFERRAL_LINK_SQL = `
 SELECT count(*)::int AS sample_count,
@@ -325,23 +364,23 @@ export const DISPLAY_RESULT_CONTRACTS = Object.freeze([
   fundingQuery("Lender row: Declined button", "Every real Denied bank decision must link to the exact application and to the staff member who pressed it, by staff id in the same company.", "denied-decision", DENIED_DECISION_SQL),
   fundingQuery("Lender row: Doesn't count / Count again button (exclude or reinstate an approval, asks for a reason)", "Every real exclusion or reinstatement must link the application, the staff member by id, the time, and the reason the person typed.", "approval-exclusion", EXCLUSION_SQL),
   query("Send: message box, Send button, Enter key (20,000 character cap)", "A saved helper turn must retain the input and a completed reply, brain, and answer time on the same row.", "helper-send", HELPER_TURN_SQL),
-  query("Suggestion buttons (3: due this week, which card first, got declined paste the letter)", "Each exact suggestion input must finish on the same helper-turn row with a reply, brain, and answer time.", "helper-suggestions", HELPER_SUGGESTION_SQL),
-  query("'Do task' button on a step the helper or a person can do", "The task-assigned log must link the exact money task, client, task key, assignee, and idempotency key.", "do-task", DO_TASK_SQL),
-  query("'I'm ready to get funded' button (opens the Capital Blueprint closing-prep call task)", "The ready-to-fund log must link the exact Blueprint prep task, client, round, process, and FinanceOS source.", "ready-to-fund", READY_TO_FUND_SQL),
+  quietQuery("Suggestion buttons (3: due this week, which card first, got declined paste the letter)", "Each exact suggestion input must finish on the same helper-turn row with a reply, brain, and answer time.", "helper-suggestions", HELPER_SUGGESTION_SQL),
+  quietQuery("'Do task' button on a step the helper or a person can do", "The task-assigned log must link the exact money task, client, task key, assignee, and idempotency key.", "do-task", DO_TASK_SQL),
+  quietQuery("'I'm ready to get funded' button (opens the Capital Blueprint closing-prep call task)", "The ready-to-fund log must link the exact Blueprint prep task, client, round, process, and FinanceOS source.", "ready-to-fund", READY_TO_FUND_SQL),
   query("Tier assignment: one welcome-video select per product tier and one for Default", "Every saved tier selection must link to a real video in the same company with a title and storage object.", "content-tier-map", CONTENT_VIDEO_MAP_SQL),
   query("Upload welcome video: Upload button (then saves the tier map)", "The saved tier map must link the uploaded video row to its title and storage object in the same company.", "content-video-upload", CONTENT_VIDEO_MAP_SQL),
   query("Page itself loads; lists contract wordings", "Every active wording shown by the library must have the exact text-or-PDF shape the endpoint returns.", "contract-library", CONTRACT_LIBRARY_SQL),
-  query("Wording list: click a row to edit it", "Each PDF wording row must link to its document and have one stored page size per page.", "contract-pdf", CONTRACT_PDF_SQL),
-  query("PDF editor: Save boxes", "A saved PDF wording must contain real boxes whose page, signer, type, and label are valid.", "contract-fields", CONTRACT_FIELDS_SQL),
+  quietQuery("Wording list: click a row to edit it", "Each PDF wording row must link to its document and have one stored page size per page.", "contract-pdf", CONTRACT_PDF_SQL),
+  quietQuery("PDF editor: Save boxes", "A saved PDF wording must contain real boxes whose page, signer, type, and label are valid.", "contract-fields", CONTRACT_FIELDS_SQL),
   // The signed contract is the consent (owner decision 2026-10-20): consent-from-contract.mjs.
   ...CONSENT_FROM_CONTRACT_CONTRACTS,
-  query("Save these answers button (needs at least one answer)", "A saved insight must link the client, recorder, non-empty answers, and task when one was submitted.", "customer-insight", INSIGHT_SQL),
+  quietQuery("Save these answers button (needs at least one answer)", "A saved insight must link the client, recorder, non-empty answers, and task when one was submitted.", "customer-insight", INSIGHT_SQL),
   fundingQuery("Funded amount prompt (window.prompt, up to 3 tries; blank or cancel abandons the move, never sends zero)", "A valid prompt submission must reach the round.funded receipt and equal the amount saved on that funding round.", "funded-prompt", ROUND_FUNDED_SQL),
   query("Page open: commission ledger (ACCRUED and PAID MTD tiles, payout table)", "Every non-demo ledger row returned to the page must link staff and carry a valid state with its required timestamps and payout reference.", "commission-ledger", COMMISSION_LEDGER_SQL),
   query("Page open: commission rules and versions", "Every rule returned to the page must carry the exact method fields and valid product, staff, or tier links it names.", "commission-rules", COMMISSION_RULES_SQL),
   query("Commission rule 'Close v<N> - open v<N+1>': saves a new effective-dated rate and reason", "Each closed rule must link to its replacement at the exact boundary and keep the submitted reason on the new row.", "commission-supersede", COMMISSION_SUPERSEDE_SQL),
-  query("'Approve selected': moves Accrued rows to Approved", "Each commission.approved receipt must link to the same ledger amount and an approved timestamp and actor.", "commission-approved", COMMISSION_APPROVED_SQL),
-  query("'Mark paid...': asks for the ACH / check / payroll id, marks Approved rows Paid (records only, moves no money)", "Each commission.paid receipt must link to the same paid ledger amount and exact payout reference.", "commission-paid", COMMISSION_PAID_SQL),
+  quietQuery("'Approve selected': moves Accrued rows to Approved", "Each commission.approved receipt must link to the same ledger amount and an approved timestamp and actor, and every approved or paid ledger row must have its approval receipt.", "commission-approved", COMMISSION_APPROVED_SQL),
+  quietQuery("'Mark paid...': asks for the ACH / check / payroll id, marks Approved rows Paid (records only, moves no money)", "Each commission.paid receipt must link to the same paid ledger amount and exact payout reference, and every paid ledger row must have its paid receipt.", "commission-paid", COMMISSION_PAID_SQL),
   query("Ledger table (date, person, client, product, rule version, basis, rate, payout, status)", "Every non-demo ledger row shown in this money table must link its staff, client, frozen rule version, product, basis amount, rule rate, payout, date, and status.", "commission-ledger-table", COMMISSION_LEDGER_TABLE_SQL),
   query("Refer a friend: Get my link button", "A client account with a referral link must point to one active same-company affiliate with a real tracking code.", "referral-link", REFERRAL_LINK_SQL),
   ...FIN_B01_DISPLAY_RESULT_CONTRACTS,

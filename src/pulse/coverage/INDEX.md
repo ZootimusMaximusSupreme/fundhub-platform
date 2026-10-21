@@ -2,6 +2,8 @@
 
 Morning pulse coverage notes. A job is red after 3 times its schedule.
 
+affiliate-payout-autopay — owner-set 2026-10-20 pay-on-clear affiliate payouts through Plaid (495): gap-partners.mjs partners:payout-overdue (unsent past the due day, or earned with no payout record after a day) and partners:payout-returned; the hourly partner-trip beat covers the job and affiliates/payouts, affiliates/payout-account, read/affiliate-payouts.
+
 whop-billing-inbox-drain — durable Fundhub billing receipts and provider GET recovery; hourly whop-billing beat and gap-whop-billing.mjs check overdue receipts and paid buyers missing access.
 
 blueprint:real-advisor / blueprint:monthly-delivery — gap-blueprint.mjs and the hourly blueprint-delivery beat check active paid clients for a real eligible human assignment and keep failed saved-result delivery exceptions red, even after the included year ends. Tripwire surfaces are csm-queue.html and finance-os-pull-sweeper.
@@ -43,6 +45,7 @@ slice-40-more.mjs
 ad-video-sweeper
 af-01-affiliate-drip
 af-02-referral-ownership-capture
+affiliate-payout-autopay
 affiliate-payout-run
 affiliate.html
 affiliates/refer
@@ -64,6 +67,7 @@ auth/session
 auth/staff-role
 auth/suspend
 bank-outreach-checkins — daily 7:00 a.m. Phoenix Inngest job; heartbeats.mjs checks its job_heartbeats receipt. gap-bank-outreach.mjs checks verified product/lender facts and missing next actions daily; beat-bank-outreach.mjs checks saved facts hourly and the protected GET /api/read/bank-outreach after release.
+bank-outreach-automation — every-15-minute Inngest job (find bankers, queue bank emails, read banker replies); heartbeats.mjs checks its job_heartbeats receipt (red after 45 minutes). gap-bank-outreach.mjs checks daily that no bank email went to an unsaved address, after a stop, or a cold step after a reply (bank-outreach:email-safety) and that no banker reply waited over an hour for the reader (bank-outreach:reply-waiting); beat-bank-outreach.mjs asks the email-safety question hourly.
 bank-outreach.html
 banking/sync-accounts
 banking/sync-liabilities

@@ -25,10 +25,10 @@ function fakeDb(answer) {
 
 const fn = (id, opts = {}) => ({ opts: { id, triggers: [], ...opts } });
 
-test("the list of codes is closed: exactly these twenty-two", () => {
+test("the list of codes is closed: exactly these twenty-five", () => {
   assert.deepEqual([...NA_CODES].sort(), [
     "catalog-data-empty", "catalog-display-control-not-shipped", "catalog-display-hidden-section-head", "catalog-display-owner-removed", "catalog-display-retired-autopsy", "catalog-display-retired-control", "catalog-flow-step-not-shipped", "catalog-route-retired-action", "feature-not-set-up", "low-traffic", "monthly-not-due", "no-card-on-stage", "no-demand", "no-limit-set", "no-real-client-on-watch", "no-real-funding-round", "no-real-lead",
-    "no-running-ad", "no-sender", "no-trigger", "no-work-waiting", "not-connected", "not-registered", "owner-paused"
+    "no-running-ad", "no-sender", "no-trigger", "no-work-waiting", "not-connected", "not-registered", "owner-hold-client", "owner-paused"
   ]);
   assert.equal(Object.isFrozen(NA_CONDITIONS), true);
   for (const code of NA_CODES) assert.equal(Object.isFrozen(NA_CONDITIONS[code]), true, code);
@@ -41,7 +41,7 @@ test("the nine core codes verify here; the lane codes say \"lane\"", () => {
   for (const code of ["no-demand", "no-trigger", "not-registered", "monthly-not-due", "no-work-waiting", "feature-not-set-up", "owner-paused", "no-real-funding-round", "no-real-client-on-watch"]) {
     assert.equal(typeof NA_CONDITIONS[code].verify, "function", code);
   }
-  for (const code of ["no-running-ad", "low-traffic", "no-real-lead", "not-connected", "no-card-on-stage", "no-limit-set", "no-sender", "catalog-data-empty", "catalog-display-retired-autopsy", "catalog-display-retired-control", "catalog-route-retired-action", "catalog-display-control-not-shipped", "catalog-display-hidden-section-head", "catalog-display-owner-removed", "catalog-flow-step-not-shipped"]) {
+  for (const code of ["no-running-ad", "low-traffic", "no-real-lead", "not-connected", "no-card-on-stage", "no-limit-set", "no-sender", "catalog-data-empty", "catalog-display-retired-autopsy", "catalog-display-retired-control", "catalog-route-retired-action", "catalog-display-control-not-shipped", "catalog-display-hidden-section-head", "catalog-display-owner-removed", "catalog-flow-step-not-shipped", "owner-hold-client"]) {
     assert.equal(NA_CONDITIONS[code].verify, "lane", code);
   }
 });
@@ -70,7 +70,8 @@ test("every reason sentence is short, plain, ends with a period, and spells Fund
     "catalog-display-owner-removed": { sourceFile: "desks-f.json", surface: "teleprompter.html", control: "Header bar" },
     "catalog-flow-step-not-shipped": { family: "journey", surface: "journey:climate-lead-magnet-intended#1-headline-button" },
     "feature-not-set-up": { feature: "bureau-calls" },
-    "owner-paused": { feature: "lendflow" }
+    "owner-paused": { feature: "lendflow" },
+    "owner-hold-client": { check: "portal:paid-client-never-signed-in", orgId: "11111111-1111-4111-8111-111111111111", clients: ["FH-000507"] }
   };
   for (const code of NA_CODES) {
     const text = NA_CONDITIONS[code].say(samples[code], NOW);

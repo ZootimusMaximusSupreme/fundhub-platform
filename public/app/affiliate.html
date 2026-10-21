@@ -345,9 +345,17 @@ table.grid tbody tr:hover{background:var(--soft)}
 
         <div class="tabpane" id="tab-payouts" role="tabpanel" aria-labelledby="switch-payouts">
           <div class="card-hd"><div class="eyebrow">PAYOUT HISTORY</div>
-            <div class="spacer"></div><span class="mono" style="font-size:var(--fs-caption);color:var(--gray2);letter-spacing:.1em">FRIDAYS · ACH</span></div>
+            <div class="spacer"></div><span class="mono" style="font-size:var(--fs-caption);color:var(--gray2);letter-spacing:.1em">PAID WHEN IT CLEARS</span></div>
+          <!-- Where payouts go (495). Plaid Link, product "transfer": the
+               affiliate links their own bank; the token never reaches this page. -->
+          <div class="card-bd" id="payBankBox" hidden style="border-bottom:1px solid var(--line)">
+            <div class="eyebrow" style="margin-bottom:6px">PAYOUT BANK</div>
+            <p id="payBankText" class="note" style="margin-bottom:10px">Loading your payout bank…</p>
+            <button class="btn dark mono" type="button" id="payBankLink" style="min-height:44px" hidden>Link your bank</button>
+            <p id="payBankMsg" class="note" role="status" style="margin-top:8px"></p>
+          </div>
           <div class="affiliate-table-scroll fh-astra-table-wrap" role="region" aria-label="Payout details, scroll horizontally for all columns" tabindex="0"><table class="grid fh-astra-table" aria-label="Payout history">
-            <thead><tr><th>Run date</th><th>Period covered</th><th>Clients</th><th>Method</th><th style="text-align:right">Amount</th><th>Status</th></tr></thead>
+            <thead><tr><th>Paid / due</th><th>Period covered</th><th>Clients</th><th>Method</th><th style="text-align:right">Amount</th><th>Status</th></tr></thead>
             <tbody id="payBody"></tbody>
           </table></div>
         </div>
@@ -365,7 +373,7 @@ table.grid tbody tr:hover{background:var(--soft)}
                    payment on the sale, success fee included (W0 decision). -->
               <dt>Attribution</dt><dd>First touch. The first affiliate link a client arrives through is credited, and that credit does not expire. A later click on another affiliate's link does not move it.</dd>
               <dt>Qualifying products</dt><dd>Business Financial Assessment ($32) · Consulting Services Deposit ($3,000) · Consulting Services Package (~$1,000 DIY) · Credit Optimization Bundle ($2,000) · Inquiry Removal. On a funding sale the 10% success fee counts too: your rate applies to the deposit and the success fee alike.</dd>
-              <dt>Payout schedule</dt><dd>Fridays, ACH, on balances above $50. Below that the balance rolls to the next run.</dd>
+              <dt>Payout schedule</dt><dd>As soon as your client's payment clears, your commission is paid to the bank you link on the Payouts tab. No minimum and no monthly wait.</dd>
               <dt>Clawback</dt><dd>A refund inside 30 days reverses the commission on the next run. After 30 days it stands.</dd>
               <dt>Partner license</dt><dd>Payouts accrue but do not release until the license is signed.</dd>
               <dt>What you can see</dt><dd>Business name, referral date, status, and your own commission. Client contact details, credit data and outcome tiers are outside the Affiliate role.</dd>
@@ -1262,18 +1270,20 @@ renderLeads(); renderPayouts();
 
       window.PAYOUTS = (d.payouts || []).map(function (p) {
         return {
-          d: day(p.paidAt || p.periodEnd),
+          // 495: a paid run shows the day it was paid; an open one its due day.
+          d: p.paidAt ? day(p.paidAt) : (p.dueOn ? "Due " + day(p.dueOn) : day(p.periodEnd)),
           per: day(p.periodStart) + " → " + day(p.periodEnd),
           n: p.lineCount,
-          m: p.method || "—",
+          m: (p.method || "—") + (p.reference ? " · " + p.reference : ""),
           amt: p.amount,
           st: PAYOUT_WORD[p.status] || p.status,
-          why: p.holdReason || ""
+          why: ({ partner_license_unsigned: "partner license not signed", tax_form_missing: "we have no tax form on file", no_bank_linked: "link your bank below" })[p.holdReason] || p.holdReason || ""
         };
       });
 
       if (typeof renderLeads === "function") renderLeads();
       if (typeof renderPayouts === "function") renderPayouts();
+      if (window.FHPayoutBank) window.FHPayoutBank.paint(d.payoutBank || null);
     }).catch(function () {
       status.textContent = "We could not load your dashboard. Referral and payout figures are unavailable; try again.";
       if (retry) retry.hidden = false;
@@ -1288,6 +1298,7 @@ renderLeads(); renderPayouts();
   }
 })();
 </script>
+<script defer src="/app/affiliate-payout-bank.js"></script>
 
 </body>
 </html>

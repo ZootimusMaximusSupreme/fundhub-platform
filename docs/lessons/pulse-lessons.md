@@ -28,11 +28,29 @@ GROUP BY 1, 2 ORDER BY breaks DESC;
 ## 2026-10-20 — engine-alive — config_or_env
 - Cause: the Inngest account is on the Free plan (50,000 runs a month). It passed the limit on 2026-10-13 (email "You've reached your monthly execution limit", 51,228 of 50,000). Inngest kept going for a week, then stopped calling /api/inngest at 6:20:07 p.m. Arizona on 2026-10-20 (01:20:07 UTC). Every timed and event job stopped, with no backlog. No deploy happened at 6:20; the 6:38 p.m. ship re-registered fine and did not help. Our logs show no error: Inngest just stopped calling.
 - Biggest user: `commas-inbox-drain` runs every minute on Inngest (1,440 runs a day, about 43,000 a month alone). All Inngest jobs together ran about 3,300 times a day, about 100,000 a month.
-- Fix: owner-set 2026-10-20: stay on the Free plan. Timed jobs cut from about 4,800 to about 950 runs a day (about 41,000 counted a month). The text and email sender stays every 5 minutes. The instant door alarm runs every 10. The two payment drains are hourly backups; the Netlify sweepers still drain every minute. Blake referrals and finance money transfers every 30 minutes. Next-step catch-up, affiliate drip, meet transcripts, bureau calls, invoice recovery, checkout retirement and hiring outreach hourly. The doc-check retry stays every 20 minutes so a stuck document read still goes red after 1 hour.
+- Fix: owner-set 2026-10-20: stay on the Free plan. Timed jobs cut from about 5,000 to about 1,000 runs a day (about 43,500 counted a month). The text and email sender stays every 5 minutes. The instant door alarm runs every 10. The two payment drains are hourly backups; the Netlify sweepers still drain every minute. Blake referrals and finance money transfers every 30 minutes. Next-step catch-up, affiliate drip, meet transcripts, bureau calls, invoice recovery, checkout retirement, hiring outreach, affiliate payout autopay and bank outreach automation hourly. The doc-check retry stays every 20 minutes so a stuck document read still goes red after 1 hour.
 - Guard added: `src/pulse/heartbeats.test.mjs` fails when the Inngest timed jobs project over 90% of 50,000 a month (1.4 counted per timed run, measured). engine-alive has a per-job dark limit (4 missed ticks). The engine-alive fix guide names the plan limit first and says to search Gmail for Inngest usage mail. The usage emails (81%, 87%, 102%, limit reached) went to stanbridgejchris@gmail.com and nobody acted on them.
 - Restart: Inngest started calling again at 7:24 p.m. Arizona with a catch-up burst. Nothing on our side caused it (no deploy, no sync). Whatever Inngest changed on the account at 7:24 is the reason; on Free it can stop again until 2026-11-01. A small burst at 6:52 p.m. also came and went.
 - Also seen: Inngest locked the login at 6:45 p.m. after 5 failed sign-ins (email "Your account has been locked", unlocked 7:45 p.m.). That was Chris; nothing was wrong with the account.
 - Incident: not closed from here (no pulse_incidents write in this session).  PR: see git log
+
+## 2026-10-20 — sales-floor Recording rows — code_bug
+- Cause: the Drive sync read any UUID in a file name as a client id and saved it without checking the client exists. iPhone exports are named `<UUID>.mp4`, so 14 recordings pointed at clients that exist nowhere.
+- Fix: `upsertExtractedFile` keeps a sniffed client id only when that client exists in the same company, else NULL (src/company-brain/store.mjs). Migration 499 clears the 14 saved rows (client_id to NULL only; no delete). The Drive files and links are untouched.
+- Guard added: src/company-brain/store.test.mjs (kept both ways, non-UUID never queried) and src/company-brain/brain-client-id-migration.test.mjs (what 499 may touch). The check itself already goes red on a made-up client id.
+- Incident: none (6:02 a.m. scorecard row, not an hourly incident)  PR: claude/w6-staff-fixes-2026-10-20
+
+## 2026-10-20 — staff-reset-link — code_bug
+- Cause: a new invite or reset link ended the person's earlier unused links with `used_at = now()` even when the earlier link had already run out, so it read as "used after it ran out".
+- Fix: the three "end the earlier link" UPDATEs in src/auth/invite.mjs only touch links that are still live (`expires_at > now()`). Old rows age out; nothing was rewritten.
+- Guard added: src/auth/invite.test.mjs (live link ended, expired link left alone, for invite, staff reset and affiliate reset) and a real-database case in src/auth/auth.pg.test.mjs.
+- Incident: none (6:02 a.m. scorecard row, not an hourly incident)  PR: claude/w6-staff-fixes-2026-10-20
+
+## 2026-10-20 — sales-floor Flag belief — code_bug
+- Cause: the writer saved a belief flag with an outcome count of 0 and no lead source or setter ("pain this period 0 vs last 0"). Such a flag can never match a real call.
+- Fix: `createMarketingFlag` (src/sales/call-outcomes.mjs) refuses it with a plain 400: "There are no calls behind this belief yet, so there is nothing to flag." The page shows it through its existing error alert; its look did not change.
+- Guard added: src/http/marketing-flags-handler.test.mjs (nine refused shapes, one stored).
+- Incident: none (6:02 a.m. scorecard row, not an hourly incident)  PR: claude/w6-staff-fixes-2026-10-20
 
 ## 2026-10-20 — bureau-config:complete — pulse_false_alarm
 - Cause: the check read an empty CRM table. The AI caller never reads that table. Its numbers and phone menus live in its own call scripts (vendor/inquiry-remover/src/agents/*-prompt.js) and the *_DISPUTE_NUMBER settings.

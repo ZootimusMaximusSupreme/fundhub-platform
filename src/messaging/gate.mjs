@@ -50,6 +50,7 @@
 import { isOptedOut } from "../lib/opt-out.mjs";
 import { loadRules, appliesTo, toRegex } from "../compliance/screen.mjs";
 import { createTask } from "../lib/create-task.mjs";
+import { BANK_EMAIL_KEYS } from "../outreach/mail.mjs";
 
 /* Who owns a held message.
    `admin` rather than a client-facing role: the fix is editing a template, which
@@ -85,6 +86,11 @@ export const PARTNER_WELCOME_SMS_KEYS = new Set(["SMS-PARTNER-WELCOME"]);
 
 /** Voluntary EEO self-ID invite — candidate has no clients row (053_eeo_selfid.sql). */
 export const CANDIDATE_EEO_EMAIL_KEYS = new Set(["EMAIL-CANDIDATE-EEO-INVITE"]);
+
+/** Bank outreach email to a banker (495). A banker is not a client row; their
+    opt-out lives on outreach_contacts, so that is what this gate reads. The
+    address must belong to a saved banker in this company, or it is refused. */
+export const BANK_OUTREACH_EMAIL_KEYS = new Set(BANK_EMAIL_KEYS);
 
 /** A destination we could actually text. Deliberately stricter than the email
     branch's `includes("@")`: a partner text with no real number on the row
@@ -277,7 +283,21 @@ async function run(db, message, { now = () => new Date(), timeZone = QUIET_HOURS
     || (channel === "sms" && PARTNER_WELCOME_SMS_KEYS.has(welcomeKey) && E164.test(welcomeTo));
   const candidateEeoWelcome =
     channel === "email" && CANDIDATE_EEO_EMAIL_KEYS.has(welcomeKey) && welcomeTo.includes("@");
-  if (!clientId && !partnerWelcome && !candidateEeoWelcome) {
+  const bankOutreach =
+    !clientId && channel === "email" && BANK_OUTREACH_EMAIL_KEYS.has(welcomeKey) && welcomeTo.includes("@");
+  if (bankOutreach) {
+    const banker = (await db.query(
+      `SELECT count(*)::int AS saved, count(*) FILTER (WHERE email_opt_out_at IS NOT NULL)::int AS opted_out
+         FROM outreach_contacts WHERE org_id = $1 AND lower(btrim(email)) = lower(btrim($2))`,
+      [orgId, welcomeTo])).rows[0] || {};
+    if (!Number(banker.saved)) {
+      reasons.push(r("recipient_unknown", "consent",
+        "This bank outreach email is not addressed to a saved banker, so it was not sent."));
+    } else if (Number(banker.opted_out)) {
+      reasons.push(r("opted_out", "consent",
+        "This banker asked us to stop emailing them. It was not sent.", { citation: "CAN-SPAM 15 U.S.C. 7704(a)(4)" }));
+    }
+  } else if (!clientId && !partnerWelcome && !candidateEeoWelcome) {
     reasons.push(r("recipient_unknown", "consent",
       "This message has no client attached, so we cannot check whether they asked us to stop. It was not sent."));
   } else if (clientId && await isOptedOut(db, clientId, channel)) {

@@ -46,8 +46,8 @@ flowchart TD
     CAN --> A_top_level[Everything else — 27 routes]
     CAN --> A_trials[trials — 2 routes]
     CAN --> A_webhooks[Incoming webhooks — 1 route]
-    WHO -->|Yes| CANT[Blocked — 141 routes]
-    CANT --> B_affiliates[affiliates — 1 blocked]
+    WHO -->|Yes| CANT[Blocked — 144 routes]
+    CANT --> B_affiliates[affiliates — 3 blocked]
     CANT --> B_auth[Signing in and out — 8 blocked]
     CANT --> B_banking[banking — 2 blocked]
     CANT --> B_brand[brand — 1 blocked]
@@ -67,7 +67,7 @@ flowchart TD
     CANT --> B_privacy[privacy — 1 blocked]
     CANT --> B_proxy[proxy — 2 blocked]
     CANT --> B_push[push — 5 blocked]
-    CANT --> B_read[Reading data — 20 blocked]
+    CANT --> B_read[Reading data — 21 blocked]
     CANT --> B_repair[repair — 1 blocked]
     CANT --> B_social[social — 3 blocked]
     CANT --> B_staff[staff — 2 blocked]
@@ -77,7 +77,7 @@ flowchart TD
 
 ## What they can reach
 
-**190 of 331 routes.**
+**190 of 334 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -281,11 +281,13 @@ flowchart TD
 
 ## What they are blocked from
 
-**141 of 331 routes.**
+**144 of 334 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
 | `/api/ad-videos` | GET | owner, admin |
+| `/api/affiliates/payout-account` | POST | affiliate, client |
+| `/api/affiliates/payouts` | POST | owner, admin, sales_manager |
 | `/api/affiliates/refer` | POST | client |
 | `/api/ai-bureau-config` | POST | owner, admin, funding_advisor |
 | `/api/auth/admin-reset` | POST | owner, admin |
@@ -395,6 +397,7 @@ flowchart TD
 | `/api/push/preferences` | GET, PUT | client |
 | `/api/push/subscribe` | GET, POST | client |
 | `/api/push/unsubscribe` | DELETE, POST | client |
+| `/api/read/affiliate-payouts` | GET | owner, admin, sales_manager |
 | `/api/read/affiliates` | GET | employees: owner, admin, sales_manager<br>plus: affiliate, client |
 | `/api/read/bank-outreach` | GET | owner, admin, sales_manager, outbound_rep |
 | `/api/read/banking-surface` | GET | owner, admin, sales_manager |
