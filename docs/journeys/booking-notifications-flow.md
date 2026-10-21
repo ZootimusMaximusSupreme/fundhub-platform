@@ -216,7 +216,9 @@ flowchart TD
     C -->|No| S0[Stop]
     C -->|Yes| ST{Start time readable?}
     ST -->|No| S1[Stop: unreadable start time]
-    ST -->|Yes| PAST{Has the call already started?}
+    ST -->|Yes| WAIT2[Wait 2 minutes]
+    WAIT2 --> KEEP[Read the host's Google Calendar event for this call<br/>same start, customer is a guest<br/>keep its Meet link on the booking and the call task<br/>src/bookings/meet-link.mjs, step keep-meet-link]
+    KEEP --> PAST{Has the call already started?}
     PAST -->|Yes| S2[Stop: appointment already started]
     PAST -->|No| NEAR{Is 15 minutes before<br/>still in the future?}
     NEAR -->|No| S3[Stop: booked inside 15 minutes]
@@ -230,7 +232,11 @@ flowchart TD
     L1 -->|Yes| USE[Use it]
     L1 -->|No| L2{On the saved booking row?}
     L2 -->|Yes| USE
-    L2 -->|No| L3[Use the customer's portal sign-in page]
+    L2 -->|No| L2B{On the host calendar event now?}
+    L2B -->|Yes, keep it too| USE
+    L2B -->|No| L2C{On this client's latest saved booking?}
+    L2C -->|Yes| USE
+    L2C -->|No| L3[Use the customer's portal sign-in page]
     L3 --> USE
     USE --> TXT[Send the handoff text<br/>ONE per customer per call time]
     TXT --> TASK[File the advisor follow-up task<br/>ONE per customer per call time]
@@ -249,8 +255,22 @@ two runs for one call time can never queue two texts.
 
 The text used to end "link: ." — it asked for a meeting location and was given
 no context at all, so the tag rendered as nothing. ClickFunnels supplies no
-meeting link on any booking it takes, so a fallback that always answers is not
-an edge case, it is the ordinary path.
+meeting link on any booking it takes.
+
+**Where the real join link comes from (2026-10-20).** ClickFunnels books each
+call on the host's Google Calendar, and Google puts a Meet link on that event
+and emails the customer the invite. Measured read-only on 2026-10-20: all 11
+"Funding Strategy Meeting" events on the host calendar since 2026-09-03 carry a
+Meet link, the customer as a guest, and the booking's exact start time. So two
+minutes after a booking the run reads that event (one GET, the host's own Google
+token, which carries calendar read) and keeps its Meet link on the bookings row
+and the closer's call task. The 15-minute text uses it, and reads the calendar
+again if the early read missed. The portal sign-in page is now only the last
+resort. A miss is recorded on the run as a reason (`no_calendar_scope`,
+`no_matching_event`, `token_refused`), and the pulse row
+`calls:booked-no-join-link` goes red when a booked call still has no link. Only
+the host calendar the token can read is searched; a second host's calls need
+that host's calendar shared with the token's account.
 
 **Known and not fixed here.** The fallback is the customer's portal sign-in
 page. It is a real, working address, but the wording live in the database today

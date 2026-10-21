@@ -25,11 +25,47 @@ WHERE closed_at > now() - interval '90 days'
 GROUP BY 1, 2 ORDER BY breaks DESC;
 ```
 
+## 2026-10-21 — full morning ship proof (catalog-display Automation sidebar head) — pulse_false_alarm
+- Cause: the same Linux ship runner road, one step later. The live `/app/shell.js` sent its headers in 83 ms and then no more of its body for 15 s, so the hidden-head check's own 4 s read timed out in one of the proof's two runs. The proof compares the app-role run with the staff-access run, saw "na" against "skip", and stopped every ship (run 39552478955). Not data and not a role: the check reads the live file over the web, not the database.
+- Fix: `scripts/pulse/site-hedge.mjs` now also reads the whole body of a site GET. If the body is not complete 2 s after the answer started, it sends one more identical GET and keeps whichever full body arrives first; the stalled download is then cut off. The caller's own deadline still covers every request, and a body that never completes is still a failure. No check, gate or timeout changed. The live pulse is unchanged.
+- Guard added: `scripts/pulse/site-hedge.test.mjs` (a stalled body gets exactly one more request and the full body comes from it; a body that never completes on either request still fails by the caller's deadline; a fast body is read once; a redirect keeps its status and location). Every proof run lists body hedges in "site requests that needed a second connection".
+- Incident: none (caught by GitHub ship run 39552478955)  PR: claude/hedge-body-stall-2026-10-21
+
+## 2026-10-20 — sales-floor Recording rows — code_bug
+- Cause: the Drive sync read any UUID in a file name as a client id and saved it without checking the client exists. iPhone exports are named `<UUID>.mp4`, so 14 recordings pointed at clients that exist nowhere.
+- Fix: `upsertExtractedFile` keeps a sniffed client id only when that client exists in the same company, else NULL (src/company-brain/store.mjs). Migration 499 clears the 14 saved rows (client_id to NULL only; no delete). The Drive files and links are untouched.
+- Guard added: src/company-brain/store.test.mjs (kept both ways, non-UUID never queried) and src/company-brain/brain-client-id-migration.test.mjs (what 499 may touch). The check itself already goes red on a made-up client id.
+- Incident: none (6:02 a.m. scorecard row, not an hourly incident)  PR: claude/w6-staff-fixes-2026-10-20
+
+## 2026-10-20 — staff-reset-link — code_bug
+- Cause: a new invite or reset link ended the person's earlier unused links with `used_at = now()` even when the earlier link had already run out, so it read as "used after it ran out".
+- Fix: the three "end the earlier link" UPDATEs in src/auth/invite.mjs only touch links that are still live (`expires_at > now()`). Old rows age out; nothing was rewritten.
+- Guard added: src/auth/invite.test.mjs (live link ended, expired link left alone, for invite, staff reset and affiliate reset) and a real-database case in src/auth/auth.pg.test.mjs.
+- Incident: none (6:02 a.m. scorecard row, not an hourly incident)  PR: claude/w6-staff-fixes-2026-10-20
+
+## 2026-10-20 — sales-floor Flag belief — code_bug
+- Cause: the writer saved a belief flag with an outcome count of 0 and no lead source or setter ("pain this period 0 vs last 0"). Such a flag can never match a real call.
+- Fix: `createMarketingFlag` (src/sales/call-outcomes.mjs) refuses it with a plain 400: "There are no calls behind this belief yet, so there is nothing to flag." The page shows it through its existing error alert; its look did not change.
+- Guard added: src/http/marketing-flags-handler.test.mjs (nine refused shapes, one stored).
+- Incident: none (6:02 a.m. scorecard row, not an hourly incident)  PR: claude/w6-staff-fixes-2026-10-20
+
+## 2026-10-20 — bureau-config:complete — pulse_false_alarm
+- Cause: the check read an empty CRM table. The AI caller never reads that table. Its numbers and phone menus live in its own call scripts (vendor/inquiry-remover/src/agents/*-prompt.js) and the *_DISPUTE_NUMBER settings.
+- Fix: the check reads what the caller really dials (src/inquiry-ops/bureau-dial-plan.mjs). Red only when neither the script nor the table has a number and a menu.
+- Guard added: src/inquiry-ops/bureau-dial-plan.test.mjs, src/pulse/coverage/gap-records.test.mjs (script plan PASS and FAIL).
+- Incident: none (morning row, not an hourly beat)  PR: none yet
+
+## 2026-10-20 — meta-sync, meta-server-events, Lendflow contract, AI bureau call job — pulse_false_alarm
+- Cause: owner answers B6 and B8. Meta ad sync and AI bureau calling are future features, and Lendflow is paused. Their rows stayed red every day for features nobody uses yet.
+- Fix: not turned off. Each row's real check still runs. It says "nothing to judge" only while src/pulse/parked-features.mjs reads, through the staff view, that the feature is still not in use (codes feature-not-set-up and owner-paused). The day it is in use, the real red is back.
+- Guard added: src/pulse/parked-features.test.mjs, src/pulse/na-conditions.test.mjs
+- Incident: none (morning rows, not hourly beats)  PR: none yet
+
 ## 2026-10-20 — hourly ship proof (doors-live, db-health, checkout-doors, money-checkout) — pulse_false_alarm
 - Cause: from a GitHub Ubuntu runner, some connections to fundhub.ai's front door (Netlify's apex load balancer, 75.2.60.5 and 99.83.231.61) go silent. TCP connects, the server acknowledges our bytes, and then no answer ever comes. 59 of 1,120 TLS handshakes went silent with 14 at once, 3 of 600 one at a time. curl and Node both, with either TLS key share. DNS and TCP were clean. One GET stuck for the probe's full 8 s stopped every Linux ship on 2026-10-20 at the hourly bundle proof. The Mac and the live hourly pulse on Netlify (0 timeouts in 73 runs) do not see it.
 - Fix: the proof's own fetch to the site sends one more identical GET or HEAD after 1 s of silence, and one more after 2 s, and uses whichever answers first (`scripts/pulse/site-hedge.mjs`). One extra try was not enough: the silence comes in clumps (74 of 700 handshakes at once, often 5 or 6 in the same instant; Netlify's ordinary edge road 3 of 700; one at a time 0 of 150), and ship run 39522194091 lost GET /roadmap on both of its two connections. No deadline, no half-deadline rule and no probe timeout changed. The live pulse-probe is unchanged. A door that answers none of the requests is still red. On the runner (run 39524495899): plain fetch 17 of 840 hung, hedged 0 of 840; the real proof passed 6 of 6, one of them only on the third request.
 - Guard added: `scripts/pulse/site-hedge.test.mjs` (asked once when the site answers; at most two more requests, a hedge time apart, while it is silent; still fails when none answer; fast errors, 5xx, other hosts and other methods untouched). Every proof run prints "site requests that needed another connection".
-- Incident: none (caught by GitHub ship runs 39486073918, 39496970203, 39501099350, 39502479109, 39505729133, 39511244534, 39522194091; diagnosis runs 39508925935, 39513051795, 39516992055, 39523413721, 39524495899).  PR: https://github.com/ZootimusMaximusSupreme/fundhub-platform/pull/93 and its follow-up
+- Incident: none (caught by GitHub ship runs 39486073918, 39496970203, 39501099350, 39502479109, 39505729133, 39511244534, 39522194091; with the one-retry version on main, 39526344188, 39527582000, 39532137188, 39542103433 and 39558443237 still lost a door on both connections; diagnosis runs 39508925935, 39513051795, 39516992055, 39523413721, 39524495899).  PR: https://github.com/ZootimusMaximusSupreme/fundhub-platform/pull/93 and its follow-up
 
 ## 2026-10-12 — full catalog ship proof — timeout_or_capacity
 - Cause: the full catalog added 1,762 honest red findings. The proof printed every red line, which overflowed the GitHub ship log. A dead old live site also made the rotating CRM file check take 45 seconds.

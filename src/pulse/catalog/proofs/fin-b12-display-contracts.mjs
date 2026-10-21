@@ -103,7 +103,8 @@ check({
   parts: [
     {
       from: "generation_jobs j",
-      where: ORG("j"),
+      // Demo partners are left out, as in the sibling brand, social and recording checks (2026-10-20).
+      where: `${ORG("j")} AND NOT EXISTS (SELECT 1 FROM partners dp WHERE dp.id = j.partner_id AND dp.is_demo = true)`,
       bad: [
         ["a failed job carries no reason", `j.status = 'failed' AND ${BLANK("j.error")}`],
         ["a finished job has no finish time", `j.status IN ('succeeded', 'failed') AND j.finished_at IS NULL`],
@@ -201,7 +202,8 @@ check({
   requirement: "Every script written by a person or an agent must carry labels in settled form with a dictionary entry each, a rewrite must name a parent that exists at the next version under the same root, and a version that was rewritten must no longer be live.",
   parts: [{
     from: "ad_scripts s",
-    where: `${ORG("s")} AND s.source IN ('chris', 'agent')`,
+    // Demo partners are left out, as in the sibling brand, social and recording checks (2026-10-20).
+    where: `${ORG("s")} AND s.source IN ('chris', 'agent') AND NOT EXISTS (SELECT 1 FROM partners dp WHERE dp.id = s.partner_id AND dp.is_demo = true)`,
     bad: [
       ...LABEL_BAD("angle_key", "angle"),
       ...LABEL_BAD("hook_key", "hook"),

@@ -4852,20 +4852,25 @@ document.addEventListener("DOMContentLoaded", function () {
               action: undo ? "reinstate_approval" : "exclude_approval",
               application_id: appId
             };
-            if (!undo) {
-              var why = window.prompt(
-                "This approval will stop counting toward the round, so it will not "
-                + "be billed.\n\nThe bank's yes is not changed.\n\n"
-                + "Why does it not count? (for example: client never used it, "
-                + "or the bank withdrew it)",
-                ""
-              );
-              if (why === null || !String(why).trim()) {
-                statusEl.textContent = "No reason given, so nothing was changed.";
-                return;
-              }
-              payload.reason = String(why).trim();
+            /* Both ways ask why. Taking an approval off the bill and putting it
+               back are both saved with the person's name, the time and their
+               reason (src/applications/status.mjs setApprovalExclusion). */
+            var why = window.prompt(
+              undo
+                ? "This approval will count toward the round again, so it will be "
+                  + "billed once it has a dollar amount.\n\n"
+                  + "Why does it count again? (for example: the client used it after all)"
+                : "This approval will stop counting toward the round, so it will not "
+                  + "be billed.\n\nThe bank's yes is not changed.\n\n"
+                  + "Why does it not count? (for example: client never used it, "
+                  + "or the bank withdrew it)",
+              ""
+            );
+            if (why === null || !String(why).trim()) {
+              statusEl.textContent = "No reason given, so nothing was changed.";
+              return;
             }
+            payload.reason = String(why).trim();
             var hh = { accept: "application/json", "content-type": "application/json" };
             if (t) hh.authorization = "Bearer " + t;
             fetch("/api/applications", {

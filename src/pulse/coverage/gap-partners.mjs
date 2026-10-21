@@ -2,10 +2,11 @@
 // Report only. Read-only SELECT. Never pays anyone. Never creates a partner.
 //
 // Slice 17 and slice 31 already watch the morning list and cron silence.
-// This file does not repeat those rows. It looks for four breaks they miss:
+// This file does not repeat those rows. It looks for six breaks they miss:
 // a referral link that matches nobody, commission the payout rules say is
-// payable but is not, a partner login door that cannot open, and a payout
-// run left in processing.
+// payable but is not, a partner login door that cannot open, a payout
+// run left in processing, earned commission past its due day and not paid
+// (495), and a paid Plaid payout the bank sent back (495).
 //
 // Tripwire is existing Recon (AG-07). No second watchdog.
 //
@@ -30,6 +31,7 @@ import { fileURLToPath } from "node:url";
 
 import { ROUTES } from "../../../netlify/functions/api.mjs";
 import { PAYOUT_DEFAULTS, previousMonth } from "../../affiliates/payouts.mjs";
+import { PLAID_METHOD } from "../../affiliates/payout-due.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const START_HTML = path.resolve(HERE, "../../../public/start.html");
@@ -131,6 +133,59 @@ export const PAYOUT_STUCK_SQL = `
       WHERE org_id = $1
         AND status = 'processing'
         AND coalesce(initiated_at, created_at) < $2) AS partner_stuck`;
+
+/* THE PAYOUT TRIPWIRE (495). Owner-set 2026-10-20: an affiliate is paid as
+   soon as the client's payment clears ("Once it clears, we just pay it"). The
+   autopay job (every 15 minutes) builds and sends it; a run is due the day
+   after the money cleared. Two ways to be late:
+     late_on_run — it is on a run still PENDING (not sent) past its due day.
+                   A run already sent (processing) is watched by payout-stuck.
+     no_run      — earned more than a day ago and on no run at all: autopay
+                   did not pick it up.
+   A run HELD on the affiliate (license, tax form, no bank linked) is a
+   person's setup step, so it is counted in the detail and not failed
+   (heartbeat rule 18). Demo affiliates are left out. Void runs carry no
+   money and are ignored. */
+const OWED_COMMISSION = `
+    SELECT r.affiliate_id, r.commission_due, r.converted_at,
+           run.status AS run_status, run.due_on AS run_due_on
+      FROM affiliate_referrals r
+      JOIN affiliates a ON a.id = r.affiliate_id AND a.org_id = r.org_id
+      LEFT JOIN LATERAL (
+        SELECT p.status, p.due_on
+          FROM affiliate_payout_lines l
+          JOIN affiliate_payouts p ON p.id = l.payout_id
+         WHERE l.referral_id = r.id AND l.kind = 'commission' AND p.status <> 'void'
+         LIMIT 1
+      ) run ON true
+     WHERE r.org_id = $1
+       AND COALESCE(a.is_demo, false) = false
+       AND r.status = 'converted'
+       AND r.commission_due IS NOT NULL
+       AND r.commission_due > 0`;
+
+/* Starts with SELECT on purpose: assertSelect below refuses anything else. */
+export const PAYOUT_OVERDUE_SQL = `
+  SELECT
+    count(*) FILTER (WHERE o.run_status = 'pending' AND o.run_due_on < $2::date)::int AS late_on_run,
+    COALESCE(sum(o.commission_due) FILTER (WHERE o.run_status = 'pending' AND o.run_due_on < $2::date), 0)::float8 AS late_on_run_usd,
+    count(*) FILTER (WHERE o.run_status = 'held' AND o.run_due_on < $2::date)::int AS late_held,
+    count(DISTINCT o.affiliate_id) FILTER (WHERE o.run_status IS NULL AND o.converted_at < $3::timestamptz)::int AS no_run_affiliates,
+    COALESCE(sum(o.commission_due) FILTER (WHERE o.run_status IS NULL AND o.converted_at < $3::timestamptz), 0)::float8 AS no_run_usd,
+    count(*)::int AS owed_n
+    FROM (${OWED_COMMISSION}) o`;
+
+/* A payout Plaid settled and then the bank sent back. The run is frozen as
+   paid, but the affiliate does not have the money. */
+export const PAYOUT_RETURNED_SQL = `
+  SELECT count(*)::int AS n, COALESCE(sum(p.amount), 0)::float8 AS usd
+    FROM affiliate_payouts p
+    JOIN affiliates a ON a.id = p.affiliate_id AND a.org_id = p.org_id
+   WHERE p.org_id = $1
+     AND COALESCE(a.is_demo, false) = false
+     AND p.status = 'paid'
+     AND p.method = $2
+     AND p.plaid_transfer_status IN ('returned', 'failed')`;
 
 function check(id, status, detail, suggestedFix = null) {
   return { id, status, detail, suggestedFix };
@@ -395,8 +450,64 @@ async function payoutStuck(db, orgId, now) {
   }
 }
 
+const usd = (n) => `$${(Math.round(Number(n) * 100) / 100).toLocaleString("en-US")}`;
+
+/** Autopay picks up earned commission within 15 minutes; a day is the grace. */
+export const PAYOUT_GRACE_MS = 24 * 60 * 60 * 1000;
+
+async function payoutOverdue(db, orgId, now) {
+  const id = "partners:payout-overdue";
+  if (!db || !orgId) {
+    return check(id, "skip", `${db ? "no org id" : "no database"} in this run — payout due days not read`);
+  }
+  const today = now.toISOString().slice(0, 10);
+  const cutoff = new Date(now.getTime() - PAYOUT_GRACE_MS);
+  try {
+    const row = await readRow(db, PAYOUT_OVERDUE_SQL, [orgId, today, cutoff]);
+    const lateOnRun = num(row.late_on_run);
+    const noRun = num(row.no_run_affiliates);
+    const held = num(row.late_held);
+    const heldNote = held > 0
+      ? ` ${held} earned commission${held === 1 ? " is" : "s are"} waiting on the affiliate (license, tax form or bank link) — a reminder, not a break.`
+      : "";
+    if (lateOnRun === 0 && noRun === 0) {
+      const owed = num(row.owed_n);
+      return check(id, "PASS",
+        owed === 0
+          ? `no earned commission is waiting to be paid.${heldNote}`
+          : `every earned commission was sent within a day of the client's payment clearing.${heldNote}`);
+    }
+    const parts = [];
+    if (lateOnRun > 0) parts.push(`${lateOnRun} earned commission${lateOnRun === 1 ? "" : "s"} (${usd(row.late_on_run_usd)}) past the due day and still not sent`);
+    if (noRun > 0) parts.push(`${noRun} affiliate${noRun === 1 ? "" : "s"} owed ${usd(row.no_run_usd)} for over a day with no payout record at all`);
+    return check(id, "FAIL", `Payout late: ${parts.join("; ")}.${heldNote}`,
+      fix("Open /app/products-commissions.html#affiliate-payouts and read the reason on the run. If Plaid is not live yet, pay by hand and Mark paid with the reference. If there is no run, the affiliate-payout-autopay job did not build one: read its run receipt. Do not mark anything paid from the pulse."));
+  } catch (err) {
+    return check(id, "FAIL", `Could not read payout due days: ${String((err && err.message) || err).slice(0, 160)}`,
+      fix("Read affiliate_referrals and affiliate_payouts. Do not mark anyone paid."));
+  }
+}
+
+async function payoutReturned(db, orgId) {
+  const id = "partners:payout-returned";
+  if (!db || !orgId) {
+    return check(id, "skip", `${db ? "no org id" : "no database"} in this run — Plaid payout returns not read`);
+  }
+  try {
+    const row = await readRow(db, PAYOUT_RETURNED_SQL, [orgId, PLAID_METHOD]);
+    const n = num(row.n);
+    if (n === 0) return check(id, "PASS", "no paid Plaid payout came back from the bank");
+    return check(id, "FAIL",
+      `${n} paid Plaid payout${n === 1 ? "" : "s"} (${usd(row.usd)}) came back from the affiliate's bank after settling. The affiliate does not have that money.`,
+      fix("Open /app/products-commissions.html#affiliate-payouts, read the return reason, ask the affiliate to link a good bank, and pay the amount on a new run as an adjustment. Do not edit the paid run."));
+  } catch (err) {
+    return check(id, "FAIL", `Could not read Plaid payout returns: ${String((err && err.message) || err).slice(0, 160)}`,
+      fix("Read affiliate_payouts. Do not mark anyone paid."));
+  }
+}
+
 /**
- * Four gap checks. ctx: { db, orgId, now, fetchImpl (or fetch), baseUrl, routes, startHtml, loginHandlesPartners }.
+ * Six gap checks. ctx: { db, orgId, now, fetchImpl (or fetch), baseUrl, routes, startHtml, loginHandlesPartners }.
  * status is PASS, FAIL, or skip. Never writes.
  */
 export async function gapChecks(ctx = {}) {
@@ -404,11 +515,13 @@ export async function gapChecks(ctx = {}) {
   const orgId = ctx.orgId || null;
   const now = ctx.now instanceof Date ? ctx.now : new Date();
   const routes = ctx.routes || ROUTES;
-  const [referral, commission, login, payout] = await Promise.all([
+  const [referral, commission, login, payout, overdue, returned] = await Promise.all([
     referralLink(ctx, routes, db, orgId, now),
     commissionPayable(ctx, db, orgId, now),
     partnerLogin(ctx, routes, db, orgId),
-    payoutStuck(db, orgId, now)
+    payoutStuck(db, orgId, now),
+    payoutOverdue(db, orgId, now),
+    payoutReturned(db, orgId)
   ]);
-  return [referral, commission, login, payout];
+  return [referral, commission, login, payout, overdue, returned];
 }

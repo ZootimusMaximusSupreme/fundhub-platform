@@ -111,7 +111,15 @@ check({
       bad: [
         ["the link does not run for one hour",
           `EXTRACT(EPOCH FROM (r.expires_at - r.created_at)) < ${50 * 60} OR EXTRACT(EPOCH FROM (r.expires_at - r.created_at)) > ${70 * 60}`],
-        ["the link was used after it ran out", `r.used_at IS NOT NULL AND r.used_at > r.expires_at`],
+        // Until 2026-10-20 a new link also stamped used_at on the person's EXPIRED earlier links (src/auth/invite.mjs,
+        // the "end the earlier link" UPDATE). That stamp lands within a second of the newer link being made and is
+        // not a use, so it is not counted as one.
+        ["the link was used after it ran out", `r.used_at IS NOT NULL AND r.used_at > r.expires_at
+          AND NOT EXISTS (SELECT 1 FROM password_resets n
+                           WHERE n.org_id = r.org_id AND n.id <> r.id AND n.kind = r.kind
+                             AND (n.staff_id = r.staff_id OR n.account_id = r.account_id)
+                             AND EXTRACT(EPOCH FROM (n.created_at - r.used_at)) >= 0
+                             AND EXTRACT(EPOCH FROM (n.created_at - r.used_at)) < 5)`],
         ["the link belongs to nobody", `r.staff_id IS NULL AND r.account_id IS NULL`],
         ["the link names a person from another company", `st.id IS NOT NULL AND st.org_id <> r.org_id`]
       ]

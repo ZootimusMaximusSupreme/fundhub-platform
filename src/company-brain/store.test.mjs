@@ -113,6 +113,87 @@ test("upsertExtractedFile writes file + chunks through db mock", async () => {
   assert.equal(rows.chunks[0][4], "owner"); // access_tier
 });
 
+// A Drive file named <UUID>.mp4 (an iPhone export) must not be tagged with a client that
+// does not exist. The id sniffed from a name is kept only for a real client of the same company.
+const SNIFFED = "45741577-919b-4791-8a70-3abf0baaf181";
+
+function recordingDb({ clientExists, rows }) {
+  return {
+    async query(sql, params) {
+      rows.queries.push({ sql, params });
+      if (/FROM clients WHERE id/i.test(sql)) {
+        return { rows: clientExists ? [{ id: params[0] }] : [] };
+      }
+      if (/INSERT INTO brain_files/i.test(sql)) {
+        rows.insert = params;
+        return { rows: [{ id: "file-rec" }] };
+      }
+      return { rows: [] };
+    }
+  };
+}
+
+const RECORDING = {
+  fileId: "drive-rec",
+  name: `${SNIFFED.toUpperCase()}.mp4`,
+  mimeType: "video/mp4",
+  webViewLink: "https://drive.google.com/file/d/drive-rec",
+  needsTranscription: true,
+  clientId: SNIFFED,
+  unattached: false,
+  ok: true
+};
+
+test("upsertExtractedFile keeps a sniffed client id when that client exists in the company", async () => {
+  const rows = { queries: [], insert: null };
+  const out = await upsertExtractedFile(recordingDb({ clientExists: true, rows }), {
+    orgId: "org-1",
+    extracted: { ...RECORDING },
+    classify: false
+  });
+  assert.equal(out.ok, true);
+  const lookup = rows.queries.find((q) => /FROM clients WHERE id/i.test(q.sql));
+  assert.deepEqual(lookup.params, [SNIFFED, "org-1"], "the lookup is limited to this company");
+  assert.equal(rows.insert[6], SNIFFED, "client_id kept");
+  assert.equal(rows.insert[7], false, "not unattached");
+});
+
+test("upsertExtractedFile saves NULL when the sniffed client id is not a client of the company", async () => {
+  const rows = { queries: [], insert: null };
+  const out = await upsertExtractedFile(recordingDb({ clientExists: false, rows }), {
+    orgId: "org-1",
+    extracted: { ...RECORDING },
+    classify: false
+  });
+  assert.equal(out.ok, true);
+  assert.equal(rows.insert[6], null, "client_id is NULL, not the made-up id");
+  assert.equal(rows.insert[7], true, "the file is unattached");
+});
+
+test("upsertExtractedFile never asks the database about an id that is not a UUID", async () => {
+  const rows = { queries: [], insert: null };
+  const out = await upsertExtractedFile(recordingDb({ clientExists: true, rows }), {
+    orgId: "org-1",
+    extracted: { ...RECORDING, clientId: "cid-1" },
+    classify: false
+  });
+  assert.equal(out.ok, true);
+  assert.equal(rows.queries.some((q) => /FROM clients WHERE id/i.test(q.sql)), false);
+  assert.equal(rows.insert[6], null);
+  assert.equal(rows.insert[7], true);
+});
+
+test("upsertExtractedFile makes no client lookup for a file with no client id", async () => {
+  const rows = { queries: [], insert: null };
+  await upsertExtractedFile(recordingDb({ clientExists: true, rows }), {
+    orgId: "org-1",
+    extracted: { ...RECORDING, clientId: null, unattached: true },
+    classify: false
+  });
+  assert.equal(rows.queries.some((q) => /FROM clients WHERE id/i.test(q.sql)), false);
+  assert.equal(rows.insert[6], null);
+});
+
 test("replaceFileChunks embeds text onto an existing file via OpenAI", async () => {
   const chunks = [];
   const updates = [];

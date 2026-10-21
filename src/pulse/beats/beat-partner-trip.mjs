@@ -7,7 +7,13 @@ export const covers = [
   "route:read/affiliates",
   "route:partners/approve",
   "route:public/affiliate-click",
-  "job:affiliate-payout-run"
+  "job:affiliate-payout-run",
+  // Affiliate autopay through Plaid (495). A payout ready over a day and not
+  // sent, held over a day, or stuck in processing turns this beat red.
+  "route:affiliates/payouts",
+  "route:affiliates/payout-account",
+  "route:read/affiliate-payouts",
+  "job:affiliate-payout-autopay"
 ];
 export const box = false;
 export const reads = [{ host: "SITE", methods: ["GET"] }];

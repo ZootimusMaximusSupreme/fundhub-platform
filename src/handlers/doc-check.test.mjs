@@ -226,6 +226,17 @@ test("clientContextLines: formats on-file address for the model", async () => {
   assert.ok(lines.some((l) => /1005 W Hudson Way/.test(l)));
 });
 
+test("clientContextLines: the reader must first confirm the file is the stated document type", async () => {
+  const { clientContextLines } = await import("./doc-check.mjs");
+  const rule = clientContextLines({}).find((l) => /FIRST confirm the file really IS the stated type/.test(l));
+  assert.ok(rule, "type-confirmation rule missing from the reader's instructions");
+  assert.match(rule, /id_document/);
+  assert.match(rule, /ssn_card/);
+  assert.match(rule, /proof_of_address/);
+  assert.match(rule, /request_more/);
+  assert.match(rule, /altered, the outcome must be hold/);
+});
+
 test("parseAgentJson reads fenced JSON", () => {
   const obj = parseAgentJson("```json\n{\"outcome\":\"request_more\"}\n```");
   assert.equal(obj.outcome, "request_more");

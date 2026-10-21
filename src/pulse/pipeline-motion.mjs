@@ -2,17 +2,18 @@
 // Audit only. SELECT only. Never fixes, never sends.
 
 import { CLIENT_TAGS, ESCALATED_TAG, isHardStopped, isStalled } from "../workflows/dpc-05-no-progress-escalation.mjs";
+import { NO_REAL_WATCHED_CLIENT_CODE } from "./real-funding.mjs";
 
 const REPAIR_STUCK_STAGES = Object.freeze(["stalled", "letters_generated", "ready_to_send", "response_received"]);
 const OUTBOUND_STUCK_MINUTES = 30;
 
-function row(id, status, detail, suggestedFix = null, customerSees = null) {
-  return { id, status, detail, suggestedFix, customerSees };
+function row(id, status, detail, suggestedFix = null, customerSees = null, na = null) {
+  return { id, status, detail, suggestedFix, customerSees, ...(na ? { na } : {}) };
 }
 
 export async function readPipelineMotionCounts(db, { orgId, now = new Date() } = {}) {
   if (!db || !orgId) {
-    return { ok: false, reason: "no_db", repair_stuck: 0, client_stalled: 0, outbound_stuck: 0 };
+    return { ok: false, reason: "no_db", repair_stuck: 0, client_stalled: 0, client_watched: 0, outbound_stuck: 0 };
   }
   const [repair, outbound, clients] = await Promise.all([
     db.query(
@@ -32,15 +33,18 @@ export async function readPipelineMotionCounts(db, { orgId, now = new Date() } =
           AND coalesce(scheduled_at, created_at) < $2::timestamptz`,
       [orgId, new Date(now.getTime() - OUTBOUND_STUCK_MINUTES * 60 * 1000)]
     ),
+    // Real clients only (owner fact 2026-10-20): a client marked demo is test data and never raises a red.
     db.query(
       `SELECT tags, custom_fields
          FROM clients
         WHERE org_id = $1::uuid
-          AND tags && $2::text[]`,
+          AND tags && $2::text[]
+          AND COALESCE(is_demo, false) = false`,
       [orgId, CLIENT_TAGS]
     )
   ]);
   let clientStalled = 0;
+  const clientWatched = (clients.rows || []).length;
   for (const r of clients.rows || []) {
     const tags = r.tags || [];
     if (tags.includes(ESCALATED_TAG)) continue;
@@ -51,6 +55,7 @@ export async function readPipelineMotionCounts(db, { orgId, now = new Date() } =
     ok: true,
     repair_stuck: Number(repair.rows[0]?.n || 0),
     client_stalled: clientStalled,
+    client_watched: clientWatched,
     outbound_stuck: Number(outbound.rows[0]?.n || 0)
   };
 }
@@ -84,6 +89,17 @@ export async function checkPipelineMotion({ db, orgId, now = new Date() } = {}) 
       `${n.client_stalled} paying client${n.client_stalled === 1 ? "" : "s"} with no progress in 72+ hours (not escalated yet).`,
       "Check Client Control Panel and DPC-05 escalations. Do not auto-fix from this pulse.",
       "A client may feel ignored before anyone on staff notices."
+    ));
+  } else if (n.client_watched === 0) {
+    // No real client is on the watch, so there is nothing to judge. The morning audit
+    // re-counts real watched clients (na-conditions.mjs) before this may stand.
+    out.push(row(
+      "pipeline:clients",
+      "na",
+      "No real client is on the 72-hour watch yet. Test clients are not judged.",
+      null,
+      null,
+      { code: NO_REAL_WATCHED_CLIENT_CODE, args: { orgId: String(orgId || "") } }
     ));
   } else {
     out.push(row("pipeline:clients", "PASS", "no active clients past the 72-hour no-progress line"));
