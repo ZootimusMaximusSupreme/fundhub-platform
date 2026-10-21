@@ -2,7 +2,7 @@
 //
 // WHY THIS EXISTS. Owner, 2026-10-20: "ingest is maxed out i cant afford 99 a month, stop burning
 // ingests". Every cron used to run on Inngest, where a run costs 1 execution plus 1 per step and
-// the free plan stops at 50,000 a month. The crons cost about 296,000. Board:
+// the free plan stops at 50,000 a month. The crons cost about 300,000. Board:
 // ops/workflows/inngest-diet-2026-10-20.md.
 //
 // HOW IT RUNS. netlify/functions/cron-clock.mjs ticks every 5 minutes. Each tick is one 5-minute

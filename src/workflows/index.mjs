@@ -67,7 +67,7 @@ import { u05DataHealthMonitor } from './u-05-data-health-monitor.mjs';
 
 /* SERVED TO INNGEST: EVENT WORKFLOWS ONLY. No cron is served to Inngest (owner, 2026-10-20:
    "ingest is maxed out i cant afford 99 a month, stop burning ingests"). The free plan is 50,000
-   executions a month and the crons alone cost about 296,000. api/inngest.mjs serves this list and
+   executions a month and the crons alone cost about 300,000. api/inngest.mjs serves this list and
    nothing else; index.test.mjs fails if a cron trigger comes back into it.
    Board: ops/workflows/inngest-diet-2026-10-20.md */
 export const inngestFunctions = [

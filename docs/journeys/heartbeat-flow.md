@@ -86,7 +86,7 @@ The two pulse clocks close a circuit. The hourly pulse checks that the 5-minute 
 ## Where the crons run (changed 2026-10-20)
 
 Every cron used to run on Inngest. Its free plan is 50,000 executions a month and the crons cost
-about 296,000, so on 2026-10-20 (owner: "stop burning ingests") every cron moved to one Netlify
+about 300,000, so on 2026-10-20 (owner: "stop burning ingests") every cron moved to one Netlify
 clock. Inngest now runs event workflows only (`inngestFunctions` in `src/workflows/index.mjs`).
 Board: `ops/workflows/inngest-diet-2026-10-20.md`.
 

@@ -2,7 +2,7 @@
 //
 // Owner, 2026-10-20: "ingest is maxed out i cant afford 99 a month, stop burning ingests".
 // Inngest's free plan is 50,000 executions a month, and a run costs 1 plus 1 for each step. The
-// crons cost about 296,000 a month; the two every-minute payment drains alone were 172,800. So no
+// crons cost about 300,000 a month; the two every-minute payment drains alone were 172,800. So no
 // cron is served to Inngest any more: src/workflows/index.mjs serves event workflows only, and
 // index.test.mjs fails if a cron trigger goes back there.
 //

@@ -44,6 +44,7 @@ Per cron, at runs × (steps + 1), 30-day month:
 | affiliate-payout-autopay | `*/15 * * * *` | 2,880 | 1 | 5,760 | none |
 | finance-os-money-transfers | `*/15 * * * *` | 2,880 | 1 | 5,760 | none |
 | inquiry-call-sweeper | `*/15 * * * *` | 2,880 | 1 | 5,760 | none |
+| bank-outreach-automation (landed on main mid-change) | `*/15 * * * *` | 2,880 | 3 | 11,520 | none |
 | doc-check-retry-sweeper | `*/20 * * * *` | 2,160 | 1 | 4,320 | none |
 | hiring-outreach-cadence | `*/30 * * * *` | 1,440 | 1 | 2,880 | none |
 | invoice-checkout-retirement-sweeper | `*/30 * * * *` | 1,440 | 1 | 2,880 | none |
@@ -56,7 +57,7 @@ Per cron, at runs × (steps + 1), 30-day month:
 | daily-pulse | `TZ=America/Phoenix 0 6 * * *` | 30 | ~40 | 1,230 | none |
 | 18 more daily jobs | daily | 30 each | 1–3 | 60–120 each | none |
 | affiliate-payout-run, partner-production-floor | monthly | 1 | 1 | 2 each | none |
-| **All 40 crons** | | | | **≈ 296,000** | |
+| **All 41 crons** | | | | **≈ 308,000** | |
 
 Six times the free plan. The two every-minute payment drains alone were 172,800.
 

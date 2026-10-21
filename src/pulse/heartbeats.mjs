@@ -16,7 +16,7 @@
    (src/workflows/scheduled.mjs) or netlify.toml. */
 
 /* No cron runs on Inngest (owner, 2026-10-20: "stop burning ingests" — the free plan is 50,000
-   executions a month and the crons cost about 296,000). Empty on purpose; the test above keeps it
+   executions a month and the crons cost about 300,000). Empty on purpose; the test above keeps it
    equal to the crons in src/workflows/index.mjs, and index.test.mjs keeps that at zero. */
 export const INNGEST_JOBS = Object.freeze([]);
 
