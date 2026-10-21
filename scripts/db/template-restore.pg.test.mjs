@@ -44,6 +44,11 @@ async function privateOrg(client, sql = SQL) {
   return { id, sql: sql.replace(ORG_FILTER, ` WHERE o.slug = '${slug}'\n`) };
 }
 
+/* Compare by key in code-point order on both sides. Postgres ORDER BY uses the
+   database collation, which on CI sorts lowercase keys (payment_link_notice)
+   among the uppercase ones; the generated 497 JSON uses code-point order. */
+const byKey = (rows) => [...rows].sort((a, b) => (a.template_key < b.template_key ? -1 : a.template_key > b.template_key ? 1 : 0));
+
 const snapshot = async (client, orgId) => (await client.query(
   `SELECT ctid::text AS ctid, ${FIELDS} FROM message_templates WHERE org_id = $1 ORDER BY template_key`, [orgId]
 )).rows;
@@ -52,7 +57,7 @@ test("497 carries exactly the copy the repo's SQL seeds produce", { skip: SKIP }
   await inRollback(async (client) => {
     const staged = await stageSeedRows(client, { root: ROOT });
     assert.equal(staged.length, RESTORE_KEYS.length);
-    assert.deepEqual(ROWS, staged);
+    assert.deepEqual(byKey(ROWS), byKey(staged));
   });
 });
 
@@ -61,7 +66,7 @@ async function setUp(client) {
   const org = await privateOrg(client);
   await client.query(org.sql);
   const first = (await client.query(`SELECT ${FIELDS} FROM message_templates WHERE org_id = $1 ORDER BY template_key`, [org.id])).rows;
-  assert.deepEqual(first, ROWS, "decoded rows match 497's JSON exactly");
+  assert.deepEqual(byKey(first), byKey(ROWS), "decoded rows match 497's JSON exactly");
   const gone = ["SMS-S00-WELCOME", "CONTRACT-SEND-EMAIL"];
   const edited = "EMAIL-S00-WELCOME";
   await client.query(`DELETE FROM message_templates WHERE org_id = $1 AND template_key = ANY($2::text[])`, [org.id, gone]);
