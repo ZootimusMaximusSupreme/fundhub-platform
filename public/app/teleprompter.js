@@ -2513,6 +2513,13 @@
     takeStopped(null);
     camLine(e.message || "The take did not record.", true);
   }
+  /* The phone's volume buttons, sent by the app (Apple's camera button
+     events): one press is one step on volumeLadder, same as in Safari. */
+  function nativeVolume(e) {
+    var dir = e.dir === 1 ? 1 : e.dir === -1 ? -1 : 0;
+    if (!dir || takeDialog.open) return;
+    volumeStep(dir);
+  }
   function nativeReceive(e) {
     if (!e || typeof e !== "object") return;
     try {
@@ -2521,6 +2528,7 @@
       else if (e.type === "recording") cam.started = Date.now();
       else if (e.type === "take") nativeTake(e);
       else if (e.type === "take-error") nativeTakeError(e);
+      else if (e.type === "volume") nativeVolume(e);
       else if (e.type === "upload" && e.text) {
         var st = e.state === "error" ? "failed" : e.state === "saved" ? "saved" : "saving";
         videoSaveStatus(String(e.text), st, st !== "saved");

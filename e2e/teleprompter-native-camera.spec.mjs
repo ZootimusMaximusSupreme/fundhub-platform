@@ -135,3 +135,21 @@ test("it looks like Safari: black until the app's camera is live, then the live 
   expect(after.transform).toBe("none");
   expect(errors).toEqual([]);
 });
+
+test("the phone's volume buttons, sent by the app, walk the same speed ladder as Safari", async ({ page }) => {
+  await open(page);
+  await expect.poll(async () => (await posted(page)).some((m) => m.type === "open")).toBe(true);
+  const wpm = () => page.evaluate(() => JSON.parse(localStorage.getItem("fhtp.settings") || "{}").wpm);
+  const press = (dir) => page.evaluate((d) => window.FundhubNativeCamera.receive({ type: "volume", dir: d }), dir);
+  // Paused: down slows by 5 each press.
+  await press(-1);
+  await press(-1);
+  await expect.poll(wpm).toBe(190);
+  // Up from paused rolls forward; another up speeds up by 5.
+  await press(1);
+  await press(1);
+  await expect.poll(wpm).toBe(195);
+  // A stray value is ignored.
+  await press(7);
+  await expect.poll(wpm).toBe(195);
+});

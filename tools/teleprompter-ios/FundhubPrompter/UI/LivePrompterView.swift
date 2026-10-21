@@ -1,6 +1,7 @@
 import SwiftUI
 import UIKit
 import WebKit
+import AVKit
 
 /// The existing public Shoot Day read serves the default company's current shoot.
 /// The separate iPhone app opens that same filming page directly.
@@ -40,6 +41,17 @@ private struct WebPrompter: UIViewRepresentable {
         view.backgroundColor = .clear
         view.scrollView.backgroundColor = .clear
         bridge.webView = view
+        // The volume buttons, through Apple's camera button events: a press
+        // never changes the sound level, and up/down arrive apart.
+        // Volume down is the primary event, volume up the secondary.
+        if #available(iOS 17.2, *) {
+            let buttons = AVCaptureEventInteraction(primary: { [weak bridge] e in
+                if e.phase == .ended { Task { @MainActor in bridge?.volume(-1) } }
+            }, secondary: { [weak bridge] e in
+                if e.phase == .ended { Task { @MainActor in bridge?.volume(1) } }
+            })
+            view.addInteraction(buttons)
+        }
         view.scrollView.isScrollEnabled = false
         view.uiDelegate = context.coordinator
         view.navigationDelegate = context.coordinator

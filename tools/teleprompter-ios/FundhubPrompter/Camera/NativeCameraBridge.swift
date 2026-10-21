@@ -1,3 +1,4 @@
+import AVKit
 import Combine
 import Foundation
 import Network
@@ -109,6 +110,12 @@ final class NativeCameraBridge: NSObject, ObservableObject {
         default:
             break
         }
+    }
+
+    /// One press of a phone volume button: +1 up, -1 down. The screen walks
+    /// its speed ladder (owner law 2026-10-10, public/app/teleprompter.js volumeLadder).
+    func volume(_ dir: Int) {
+        send(["type": "volume", "dir": dir > 0 ? 1 : -1])
     }
 
     // MARK: - Takes
