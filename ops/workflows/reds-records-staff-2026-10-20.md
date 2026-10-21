@@ -33,7 +33,7 @@ Source of the ids: today's 6:02 a.m. scorecard (`pulse_scorecards` 2026-10-20), 
 | W2 | Staff data rows: which failing rows are fake, which are real | 13 | agent `staff-data` | done — notes `w2-staff-data-2026-10-20.md` |
 | W3 | Staff page breaks: Closer Deck / Credit Snapshot links, private leads page, climate map | 5 | agent `staff-pages` | done — PR #105 |
 | W4 | Jobs: ClickFunnels night job, desk sweep age, inquiry-call-sweeper practice run | 3 | agent `jobs` | done — PR #103 |
-| W6 | Staff product fixes: Drive file names read as client ids (+ migration), reset-link stamp, empty belief flags | 3 | agent `staff-fixes` | claimed |
+| W6 | Staff product fixes: Drive file names read as client ids (+ migration), reset-link stamp, empty belief flags | 3 | agent `staff-fixes` | done — PR #108 (migration 499) |
 | W5 | Not-checked + keys + template list: meta-server-events, pipe-cut-with-traffic, keys-live-proof, SQL-seeded template keys, audit:not-checked | 5 | agent `notchecked-keys` | claimed |
 
 ## Ids by unit
@@ -80,8 +80,7 @@ Owner calls applied (recorded, not re-asked): Braum FH-000507 is on owner hold (
 
 ### W0 manifest (this session, branch `claude/hungry-clarke-3e9917`)
 
-- `src/pulse/owner-holds.mjs` (new) + `src/pulse/owner-holds.test.mjs` (new, 15 tests both ways): the owner's hold list (FH-000507).
-- `src/pulse/na-conditions.mjs` (+ test): new lane code `owner-hold`.
+- Owner hold: uses the money lane's `src/pulse/owner-hold.mjs` and code `owner-hold-client` (PR #102; this branch merges it, so #102 lands first). Late-file helpers added to that file; `src/pulse/owner-hold-lanes.test.mjs` (15 tests both ways). One list, one code.
 - `src/pulse/coverage/gap-fulfillment.mjs`, `gap-repair.mjs`, `gap-pipeline-boards.mjs`: when the only late file is held, the row is "nothing to judge" / `owner-hold`, re-checked by the lane (57-156 ms live); any other late file is red by name. `gap-trip-repair.mjs`: green with the hold named (its read is too heavy for the audit clock, same reason as judgeTrip's empty trip).
 - `src/pulse/catalog/proofs/fin-b07-sql-repair.mjs`, `fin-b07-display-contracts.mjs`, `src/pulse/coverage/gap-catalog-display.mjs`: the 12 repair stage columns leave held files out and say so on the green line.
 - `src/pulse/catalog/proofs/display-saved-result.mjs` (+ `display-saved-result-quiet.test.mjs`): owner rule 2026-10-14 `emptyAs: "quiet"` for helper suggestions, contract wording list, PDF boxes, CSM answers (the round and lender controls were done on main as `no-real-funding`).
@@ -152,6 +151,24 @@ Live reads before the change (`prove.mjs --repo --lanes=gap-catalog-display,gap-
   (b) Codex/design: on desktop the climate map card is ~15 px shorter than the map, so the bottom edge of Hawaii is covered.
   (c) `docs/journeys/` has no `climate-lead-magnet-actual.md`, so no actual journey was updated.
 
+### W6 manifest (agent `staff-fixes`, branch `claude/w6-staff-fixes-2026-10-20`, PR #108) — 3 code fixes, 2026-10-20 evening
+
+No database write, no send, no delete. Tests run with `DATABASE_URL` unset. Migration 499 was NOT run anywhere; the coordinator ships it.
+
+1. Recording rows (`sales-floor Recording rows`, 14 of 120 red).
+   - Code: `src/company-brain/store.mjs` `upsertExtractedFile` keeps a sniffed client id only when `clients` has that id in the same org, else `client_id` NULL and `unattached` true. A non-UUID id is dropped without asking the database.
+   - Migration: `db/migrations/499_brain_files_clear_made_up_client_ids.sql` (checked origin and every branch/worktree: 492-497 taken, 495 and 496 each used twice by other branches, 498 used in a worktree; 499 was free). Sets `brain_files.client_id = NULL` only where `client_id IS NOT NULL` and no `clients` row matches id AND org. Guarded on both tables existing, one UPDATE, no DELETE, only the `client_id` column (the table trigger stamps `updated_at`), second run matches 0 rows. `db/expected-migrations.mjs` regenerated (`npm run migrations:manifest`); other branches that add 495/497/498 will conflict on that one generated file, re-run the manifest after merging.
+   - Effect on the 14 rows: client_id NULL passes the check (`bf.client_id IS NOT NULL AND c2.id IS NULL` is false). `unattached` on those old rows stays as saved (owner brief: nothing else touched); nothing reads it.
+   - Tests: `src/company-brain/store.test.mjs` (+4), `src/company-brain/brain-client-id-migration.test.mjs` (new, 5).
+2. Password links (`staff-reset-link`, "used after it ran out").
+   - Code: `src/auth/invite.mjs` three UPDATEs (invite, staff reset, affiliate/partner reset) add `AND expires_at > now()`.
+   - Tests: `src/auth/invite.test.mjs` (+4, all fail on the old code, checked), `src/auth/auth.pg.test.mjs` (+1 real-database case, skips locally, runs in CI). The old red rows age out on their own (2026-11-10 / 2026-12-28 per W2 notes); nothing was rewritten.
+3. Empty belief flags (`sales-floor Flag belief`).
+   - Code: `src/sales/call-outcomes.mjs` `createMarketingFlag` throws `CallOutcomeError` (400, `bad_request`) "There are no calls behind this belief yet, so there is nothing to flag." when outcome count is not above 0, or lead source or setter is empty/blank. The page's existing `alert(r.error...)` in `public/app/sales-floor.js` shows the message (`FHData.write` prefers the server's `message`); no page change, no design change.
+   - Tests: `src/http/marketing-flags-handler.test.mjs` (+10: nine refused shapes, one stored). The existing flag in `marketing_flags` (`f248a8af`, count unknown, real staff) is untouched; whether it was a test is still a Needs-Chris item from W2.
+- Also: `docs/lessons/pulse-lessons.md` has three new entries (heartbeat rule 13). No journey `-actual.md` change: the route tables for these flows did not change.
+- Checks run: `npm run lint` clean; `src/company-brain`, `src/auth`, `src/sales`, `src/http/marketing-flags-handler`, `src/http/staff-invite`, health/migration guards, `src/security`, and the fin-b19/fin-b21/gap-auth/gap-staff pulse tests: 0 fail (33 database tests skipped, as with no `DATABASE_URL`).
+
 ## Leftover cards (not fixed; one line each)
 
 - ClickFunnels night job: lists only `active` connections, so one failed pull stops it; per-account errors are swallowed so the heartbeat reads ok (W4).
@@ -160,3 +177,4 @@ Live reads before the change (`prove.mjs --repo --lanes=gap-catalog-display,gap-
 - Bookings: no-shows never reach a re-keyed booking (`comms.mjs:452`, `dpc-02-call-outcome-enforcement.mjs:82`) (W1).
 - money-vault upload check reads a re-upload of the same bytes as a shared file (W1).
 - All Inngest crons stopped at 01:20 UTC (message dispatch, the 5-minute watch); told the coordinator at 02:05 UTC.
+- Morning audit: on the Mac, 1 of 2 runs the first "nothing to judge" re-check (`pipeline:clients`, a 24-row count) passed 2.5 s, and the audit then blocks every later re-check. Live server was fine this morning; watch `audit:na-verified` tomorrow.
