@@ -33,7 +33,7 @@ No dependencies; all three run at once.
 | 5 | `payments:invoice-stuck` | 8 | W1 | B | GREEN live after FH-000841's invoices were deleted |
 | 6 | `payments:paid-product-unmapped` | 1 | W1 | B | GREEN live after the 2 test payments were deleted |
 | 7 | `portal:paid-client-never-signed-in` | 12 | W1 | owner hold | the 1 is Braum FH-000507 (real, no-contact). Verified N/A `owner-hold-client`, re-checked every run; any other client stays red. Commit d39a27ae5 |
-| 8 | `gap-underwrite:uw-pack-email-not-queued` | 9 | W1 | A | template EMAIL-U02 deleted by the Oct test run; restored byte for byte by seed/299. Commit 3594cdd47 |
+| 8 | `gap-underwrite:uw-pack-email-not-queued` | 9 | W1 | A | GREEN live 10-21: template EMAIL-U02 restored by migration 497 (PR #112, shipped). My duplicate seed/299 was dropped from PR #102 |
 | 9 | `catalog:hourly-proof-linked` | 7 | W3 | | pending |
 | 10 | display: Mark funded (client-control-panel) | 7 | W2 | fixed | verified N/A live (no real round), PR #97 |
 | 11 | display: Do task (financeos#next) | 7 | W2 | C | live button, never pressed → quiet until first wrong result (owner 10-14). GREEN in branch, PR #102 |
