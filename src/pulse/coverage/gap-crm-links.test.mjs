@@ -45,12 +45,8 @@ import {
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 // Code only. The header comments name the things this file refuses to do.
-// The lender checks' SQL, verdicts and helpers live in the shared hourly truth file, so the source checks read both files.
-const SRC = [
-  fs.readFileSync(path.join(HERE, "gap-crm-links.mjs"), "utf8"),
-  fs.readFileSync(path.join(HERE, "../beats/lib/crm-lenders-truth.mjs"), "utf8")
-]
-  .join("\n")
+const SRC = fs
+  .readFileSync(path.join(HERE, "gap-crm-links.mjs"), "utf8")
   .split("\n")
   .filter((line) => !/^\s*\/\//.test(line))
   .join("\n");

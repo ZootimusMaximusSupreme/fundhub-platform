@@ -38,36 +38,10 @@
 //   * The "already on the desk list" set is now desk pages only. It used to hold
 //     every registry row, so a link such as careers.html (a public page, not an
 //     /app page) looked watched when /app/careers.html would 404.
-//   * One judge, two clocks (Claude, 2026-10-20): crm-data:lenders and
-//     crm-data:lender-matches, their SQL, and the helpers they lean on (row,
-//     clip, errText, one, the client pick) moved unchanged into
-//     src/pulse/beats/lib/crm-lenders-truth.mjs. This lane imports them back, so
-//     the morning pulse and the hourly beat lender-book run the same code.
-//     Every other check stays here exactly as it was.
 
 import { coverageKey, PULSE_REGISTRY } from "../registry.mjs";
 import { orgDemoModeEnabled } from "../../demo/exclude-demo.mjs";
 import { unpricedApprovalConditions } from "../../funding/success-fee.mjs";
-import {
-  CLIENT_PICK_SQL,
-  LENDER_COUNT_SQL,
-  NO_DB_WHY,
-  NO_ORG_WHY,
-  RECON,
-  UUID_RE,
-  checkLenderMatches,
-  checkLenders,
-  clip,
-  errText,
-  noClientRow,
-  one,
-  pickClient,
-  readLenderCount,
-  readersMissingRow,
-  row
-} from "../beats/lib/crm-lenders-truth.mjs";
-
-export { CLIENT_PICK_SQL, LENDER_COUNT_SQL, checkLenderMatches, checkLenders, pickClient, readLenderCount };
 
 export const SCREEN_FILES = Object.freeze([
   "pipeline.html",
@@ -120,9 +94,30 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 // and the database proof even when the old live site is down during a ship.
 export const CRM_FETCH_TIMEOUT_MS = 2000;
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const LINK_TOKEN = /(?:href\s*=\s*|location\.href\s*=\s*|\.href\s*=\s*|window\.open\(\s*)["']([^"']+)["']/gi;
 const QUOTED_PAGE = /["']((?:\/app\/|https?:\/\/[^"'/]+\/app\/)?[A-Za-z0-9][A-Za-z0-9_-]*\.html(?:\?[^"']*)?)["']/gi;
 const SCRIPT_SRC = /<script\b[^>]*?\bsrc\s*=\s*["']([^"']+)["']/gi;
+
+const RECON = "Recon (AG-07) is the one tripwire. Do not auto-fix from this pulse.";
+
+function clip(s, n = 400) {
+  return String(s == null ? "" : s).replace(/\s+/g, " ").trim().slice(0, n);
+}
+
+function row(id, status, detail, suggestedFix = null) {
+  return {
+    id,
+    status,
+    detail: clip(detail, 500),
+    suggestedFix: suggestedFix ? clip(suggestedFix, 300) : null
+  };
+}
+
+function errText(err) {
+  return clip(err && err.message ? err.message : err, 140);
+}
 
 /** A relative or /app/ page name. External sites and hashes are not app links. */
 export function appPageFile(raw) {
@@ -270,6 +265,11 @@ function bind(ctx) {
   if (ctx.db && typeof ctx.db.query === "function") return (fn) => fn(ctx.db);
   if (typeof ctx.scope === "function") return (fn) => ctx.scope(fn);
   return null;
+}
+
+async function one(run, sql, params) {
+  const out = await run((tx) => tx.query(sql, params));
+  return (out && out.rows && out.rows[0]) || {};
 }
 
 async function all(run, sql, params) {
@@ -546,6 +546,16 @@ export const PIPELINE_CARDS_SQL = `
    ORDER BY p.key ASC
 `;
 
+export const CLIENT_PICK_SQL = `
+  /* gap:crm-client */
+  SELECT id::text AS id
+    FROM clients
+   WHERE org_id = $1::uuid
+     AND COALESCE(is_demo, false) = false
+   ORDER BY created_at DESC
+   LIMIT 1
+`;
+
 /** The two reads api/dashboard/client.mjs makes besides readClientStepRows. One row is enough. */
 export const CLIENT_TX_SQL = `
   /* gap:crm-client-transactions */
@@ -563,6 +573,14 @@ export const CLIENT_MSG_SQL = `
    WHERE client_id = $1::uuid AND org_id = $2::uuid
    ORDER BY created_at DESC
    LIMIT 1
+`;
+
+export const LENDER_COUNT_SQL = `
+  /* gap:crm-lender-count */
+  SELECT count(*)::int AS n
+    FROM lenders
+   WHERE org_id = $1::uuid
+     AND COALESCE(is_demo, false) = false
 `;
 
 /**
@@ -869,6 +887,36 @@ async function loadReaders(ctx) {
   };
 }
 
+async function checkLenders(db, readers, orgId) {
+  const id = "crm-data:lenders";
+  try {
+    const count = Number((await one((fn) => fn(db), LENDER_COUNT_SQL, [orgId])).n);
+    const list = await readers.listLenders(db, { orgId, limit: 5 });
+    if (!Array.isArray(list)) {
+      return row(id, "FAIL", "the bank list read did not return a list", `Open Lenders. Restore listLenders. ${RECON}`);
+    }
+    if (!Number.isFinite(count) || count === 0) {
+      return row(
+        id,
+        "FAIL",
+        "the bank book is empty, so the client control panel has no bank to open",
+        `Load the lender book on Lenders. ${RECON}`
+      );
+    }
+    if (list.length === 0) {
+      return row(
+        id,
+        "FAIL",
+        `${count} banks are on file and the bank list read came back empty`,
+        `Open Lenders from the client control panel. The list should show. ${RECON}`
+      );
+    }
+    return row(id, "PASS", `${count} banks on file and the bank list read returned banks`);
+  } catch (err) {
+    return row(id, "FAIL", `the bank list read threw: ${errText(err)}`, `Open Lenders. Restore the bank list read. ${RECON}`);
+  }
+}
+
 async function checkClient(db, readers, orgId, clientId) {
   const id = "crm-data:client";
   const fix = `Open the client control panel for that person. Restore the client file read. ${RECON}`;
@@ -882,6 +930,34 @@ async function checkClient(db, readers, orgId, clientId) {
     return row(id, "PASS", "the client control panel read returned a client on file, with their credit pulls, tasks, rounds, invoices, payments and messages readable");
   } catch (err) {
     return row(id, "FAIL", `the client control panel read threw: ${errText(err)}`, fix);
+  }
+}
+
+async function checkLenderMatches(db, readers, orgId, clientId, lenderCount) {
+  const id = "crm-data:lender-matches";
+  try {
+    const result = await readers.matchForClient(db, { orgId, clientId });
+    if (!result || !result.summary || !Array.isArray(result.matches)) {
+      return row(
+        id,
+        "FAIL",
+        result ? "the bank match read did not return a match list for a client on file" : "a client is on file and the bank match read says there is no such client",
+        `Open the client control panel. Restore the bank match read. ${RECON}`
+      );
+    }
+    const book = result.summary.lender_count;
+    if (lenderCount > 0 && Number(book) === 0) {
+      return row(
+        id,
+        "FAIL",
+        "banks are on file but the client match read says the bank book is empty",
+        `Open Lenders and the client control panel. The bank list should show. ${RECON}`
+      );
+    }
+    const n = result.summary.match_count == null ? result.matches.length : result.summary.match_count;
+    return row(id, "PASS", `the bank match read answered for a client on file with ${n} matches`);
+  } catch (err) {
+    return row(id, "FAIL", `the bank match read threw: ${errText(err)}`, `Open the client control panel. Restore the bank match read. ${RECON}`);
   }
 }
 
@@ -925,9 +1001,9 @@ export async function gapChecks(ctx = {}) {
     for (const idName of RECORD_IDS) reads.push(row(idName, "skip", why));
   };
   if (!db) {
-    skipReads(NO_DB_WHY);
+    skipReads("no database in this run — records not read");
   } else if (!orgId) {
-    skipReads(NO_ORG_WHY);
+    skipReads("no org id in this run — records not read");
   } else {
     let readers = null;
     let loadError = null;
@@ -936,18 +1012,35 @@ export async function gapChecks(ctx = {}) {
     } catch (err) {
       loadError = errText(err);
     }
-    const { clientId, pickError } = await pickClient(db, orgId);
+    let clientId = null;
+    let pickError = null;
+    try {
+      const picked = await one((fn) => fn(db), CLIENT_PICK_SQL, [orgId]);
+      clientId = UUID_RE.test(String(picked.id || "")) ? String(picked.id) : null;
+    } catch (err) {
+      pickError = errText(err);
+    }
     // The three Pipeline route reads need no library code and no client. They run either way.
     reads.push(...(await checkRouteReads(db, readers, orgId, !!clientId)));
 
     if (!readers) {
-      for (const idName of LIBRARY_IDS) reads.push(readersMissingRow(idName, loadError));
+      for (const idName of LIBRARY_IDS) {
+        reads.push(row(idName, "FAIL", `the record read code would not load: ${loadError}`, `Restore src/lenders/store.mjs and src/tradelines/store.mjs. ${RECON}`));
+      }
     } else {
       reads.push(await checkLenders(db, readers, orgId));
       if (!clientId) {
-        for (const idName of LIBRARY_IDS.slice(1)) reads.push(noClientRow(idName, pickError));
+        const why = pickError ? `could not pick a client (${pickError})` : "no client on file — the record reads were not run";
+        const status = pickError ? "FAIL" : "skip";
+        const fix = pickError ? `Read the clients table. ${RECON}` : null;
+        for (const idName of LIBRARY_IDS.slice(1)) reads.push(row(idName, status, why, fix));
       } else {
-        const lenderCount = await readLenderCount(db, orgId);
+        let lenderCount = 0;
+        try {
+          lenderCount = Number((await one((fn) => fn(db), LENDER_COUNT_SQL, [orgId])).n) || 0;
+        } catch {
+          lenderCount = 0;
+        }
         reads.push(await checkClient(db, readers, orgId, clientId));
         reads.push(await checkLenderMatches(db, readers, orgId, clientId, lenderCount));
         reads.push(await checkTradelines(db, readers, orgId, clientId));
