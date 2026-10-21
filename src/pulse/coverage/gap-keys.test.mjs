@@ -153,9 +153,11 @@ test("check ids are not used by any other lane", () => {
 });
 
 test("the lane reads no repo file at run time, sends nothing, and writes nothing", () => {
-  // keys:launch-secrets-present lives in the shared hourly truth file, so this reads both files.
+  // keys:launch-secrets-present and keys:credit-pull-live-allowed live in the shared hourly truth files
+  // (src/pulse/beats/lib/keys-truth.mjs, credit-pull-key-truth.mjs), so this reads all three files.
   const src = fs.readFileSync(path.join(HERE, "gap-keys.mjs"), "utf8") + "\n" +
-    fs.readFileSync(path.join(HERE, "../beats/lib/keys-truth.mjs"), "utf8");
+    fs.readFileSync(path.join(HERE, "../beats/lib/keys-truth.mjs"), "utf8") + "\n" +
+    fs.readFileSync(path.join(HERE, "../beats/lib/credit-pull-key-truth.mjs"), "utf8");
   const code = src.split("\n").filter((l) => !l.trim().startsWith("//") && !l.trim().startsWith("*")).join("\n");
   assert.ok(!/from\s+["']node:fs/.test(code) && !/readFile/.test(code), "no file reads");
   assert.ok(!/method:\s*["'](POST|PUT|PATCH|DELETE)/i.test(code), "GET only");

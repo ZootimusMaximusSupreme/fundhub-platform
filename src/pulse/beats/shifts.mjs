@@ -55,13 +55,18 @@ export const SHIFTS = Object.freeze({
       "apply-links",
       "bank-links",
       "bank-outreach",
+      "client-portal",
       "db-health",
       "engine-alive",
       "funding-trip",
+      "money-alerts",
       "money-funding",
       "money-operations",
+      "money-tasks",
       "native-push",
-      "partner-trip"
+      "partner-trip",
+      "roadmap-delivery",
+      "soft-pull"
     ])
   }),
   "pulse-hourly-b": Object.freeze({
@@ -70,7 +75,11 @@ export const SHIFTS = Object.freeze({
       "auth-links",
       "blueprint-delivery",
       "brief-link",
+      "built-funnels",
       "checkout-doors",
+      "consent-capture",
+      "contract-signing",
+      "customer-records",
       "doors-live",
       "email-path",
       "invoice-checkout-retirement",
@@ -78,8 +87,10 @@ export const SHIFTS = Object.freeze({
       "lead-handoff",
       "lead-pipe",
       "money-checkout",
+      "partner-pages",
       "pay-links",
       "pay-webhook",
+      "roadmap-pages",
       "text-path",
       "vendor-keys",
       "whop-billing"

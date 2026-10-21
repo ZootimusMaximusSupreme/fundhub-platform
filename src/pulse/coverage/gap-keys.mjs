@@ -31,7 +31,6 @@
 // judges the launch keys with the same function as this lane.
 
 import { fenceVerdict, MESSAGING_DRY_RUN, ADAPTERS_DRY_RUN } from "../../lib/dry-run.mjs";
-import { livePullAllowed, isProductionHost, isSandboxHost, normalizeHost } from "../../finance/crs-identities.mjs";
 // The checkout mint picks its key and its address here. The check asks the vendor
 // about the SAME key the mint would use, so the two cannot drift apart.
 import { checkoutConfig, CHECKOUT_API_KEY_ENVS } from "../../payments/commas-api.mjs";
@@ -40,7 +39,12 @@ import {
   FIX, SAY, SKIP_NO_ENV, TAIL, keyState, launchSecretsPresent, lendflowParkedKeys, row, settingsGate
 } from "../beats/lib/keys-truth.mjs";
 
+import { creditPullLiveAllowed } from "../beats/lib/credit-pull-key-truth.mjs";
+
 export * from "../beats/lib/keys-truth.mjs";
+// keys:credit-pull-live-allowed lives in src/pulse/beats/lib/credit-pull-key-truth.mjs (2026-10-20), so the
+// hourly beat soft-pull judges it with the same function as this lane.
+export { CRS_LOGIN_KEYS, creditPullLiveAllowed } from "../beats/lib/credit-pull-key-truth.mjs";
 
 export const CHECK_IDS = Object.freeze([
   "keys:send-fence-open",
@@ -53,9 +57,6 @@ export const CHECK_IDS = Object.freeze([
 
 /** The two keys between the app and the workflow engine (src/workflows/index.mjs says both). */
 export const INNGEST_KEYS = Object.freeze(["INNGEST_EVENT_KEY", "INNGEST_SIGNING_KEY"]);
-
-/** The three settings a real credit pull needs, besides the allow-live switch and the host. */
-export const CRS_LOGIN_KEYS = Object.freeze(["CRS_API_USERNAME", "CRS_API_PASSWORD"]);
 
 export const TWILIO_DEFAULT_BASE = "https://api.twilio.com";
 export const RESEND_DEFAULT_BASE = "https://api.resend.com";
@@ -187,36 +188,6 @@ export function inngestEventKey(env) {
   }
   if (parts.length) return row(id, "FAIL", parts.join(" "), FIX.inngest);
   return row(id, "PASS", "Both Inngest keys are set to real values. The app can hand work to the workflow engine, and the engine can call back.");
-}
-
-// ── 4. A real credit pull ──────────────────────────────────────────────────
-// The plan named a CRS_PROVIDER setting. There is none: the provider is a
-// constant, and "simulated" is an argument a caller passes, never a setting.
-// What decides real or fake is the host, the allow-live switch and the login.
-
-export function creditPullLiveAllowed(env) {
-  const id = "keys:credit-pull-live-allowed";
-  const gate = settingsGate(id, env);
-  if (gate) return gate;
-
-  const bad = [];
-  if (!livePullAllowed(env)) {
-    bad.push("CRS_ALLOW_LIVE is not set to an explicit on value (1, true, yes or on), so the pull refuses the real credit host");
-  }
-  const host = normalizeHost(env.CRS_API_HOST);
-  if (!host) {
-    bad.push("CRS_API_HOST is not set, so no pull can start");
-  } else if (isSandboxHost(host)) {
-    bad.push("CRS_API_HOST points at the vendor's test host, so a pull returns the vendor's made-up people, not the buyer");
-  } else if (!isProductionHost(host)) {
-    bad.push("CRS_API_HOST is not a host the credit pull accepts");
-  }
-  for (const name of CRS_LOGIN_KEYS) {
-    const state = keyState(env, name);
-    if (state !== "ok") bad.push(`${name} ${SAY[state]}`);
-  }
-  if (bad.length) return row(id, "FAIL", `A paying customer would not get a real credit pull. ${bad.join(". ")}.`, FIX.crs);
-  return row(id, "PASS", "A real credit pull is allowed: CRS_ALLOW_LIVE is on, CRS_API_HOST is the production credit host, and the CRS login is set.");
 }
 
 // ── 5. Do the text and email keys work? ────────────────────────────────────

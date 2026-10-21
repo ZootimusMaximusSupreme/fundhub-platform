@@ -20,76 +20,29 @@
 // detail says how many it read. Nothing is written. No repo file is read.
 //
 // Custom domains are not read (a verified domain serves the same pages by host).
+//
+// ONE JUDGE, TWO CLOCKS (2026-10-20). The SQL, the page read and the verdict live in
+// src/pulse/beats/lib/partner-pages-truth.mjs, so this morning lane and the hourly beat
+// partner-pages run the same code. This file picks the reader and the web client.
 
-export const PAGE_CAP = 60;
-export const PAGE_TIMEOUT_MS = 8000;
-export const DEFAULT_BASE_URL = "https://fundhub.ai";
-/** The words on the miss page (netlify/functions/partner-site.mjs NOT_LIVE_HTML). */
-export const NOT_LIVE_MARK = "Nothing is live at this web address";
+import { check, checkPublishedPages } from "../beats/lib/partner-pages-truth.mjs";
 
-export const CHECK_IDS = Object.freeze(["partner-pages:live"]);
-
-export const PUBLISHED_SQL = `
-  /* gap:partner-pages-published */
-  SELECT pp.id::text AS id, pp.partner_id::text AS partner_id, pp.slug
-    FROM partner_pages pp
-   WHERE pp.status = 'published'
-     AND ($1::uuid IS NULL OR pp.org_id = $1::uuid)
-   ORDER BY pp.published_at NULLS LAST, pp.id
-   LIMIT 500`;
-
-const ID = "partner-pages:live";
-const DAY_MS = 24 * 60 * 60 * 1000;
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,62}$/;
-
-function check(status, detail, suggestedFix = null) {
-  return { id: ID, status, detail, suggestedFix };
-}
+export {
+  PAGE_CAP,
+  PAGE_TIMEOUT_MS,
+  DEFAULT_BASE_URL,
+  NOT_LIVE_MARK,
+  CHECK_IDS,
+  PUBLISHED_SQL,
+  pickPages,
+  readPage
+} from "../beats/lib/partner-pages-truth.mjs";
 
 function reader(ctx) {
   if (ctx && typeof ctx.scope === "function") return ctx.scope;
   const db = ctx && ctx.db;
   if (db && typeof db.query === "function") return (fn) => fn(db);
   return null;
-}
-
-function clip(s, n = 120) {
-  return String(s == null ? "" : (s && s.message) || s).replace(/\s+/g, " ").trim().slice(0, n);
-}
-
-/** Which pages to read today: all of them, or a rotating slice of PAGE_CAP. */
-export function pickPages(rows, now, cap = PAGE_CAP) {
-  if (rows.length <= cap) return rows.slice();
-  const day = Math.floor(now.getTime() / DAY_MS);
-  const start = (day * cap) % rows.length;
-  const out = [];
-  for (let i = 0; i < cap; i += 1) out.push(rows[(start + i) % rows.length]);
-  return out;
-}
-
-/** One page. { ok, why }. A 200 that is the miss page is not live. */
-export async function readPage(fetchImpl, origin, row, timeoutMs = PAGE_TIMEOUT_MS) {
-  const url = `${origin}/sites/${row.partner_id}/${row.slug}`;
-  try {
-    const init = { method: "GET", headers: { accept: "text/html" } };
-    if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function") {
-      init.signal = AbortSignal.timeout(timeoutMs);
-    }
-    const res = await fetchImpl(url, init);
-    const status = res && res.status;
-    if (status !== 200) return { ok: false, why: `answered ${status}` };
-    let body = "";
-    try {
-      body = res && typeof res.text === "function" ? String(await res.text()) : "";
-    } catch {
-      body = "";
-    }
-    if (body.includes(NOT_LIVE_MARK)) return { ok: false, why: "answered 200 with the not-live page" };
-    return { ok: true, why: "" };
-  } catch (err) {
-    return { ok: false, why: `did not answer (${clip(err, 60)})` };
-  }
 }
 
 /**
@@ -101,44 +54,5 @@ export async function gapChecks(ctx = {}) {
   if (!run) return [check("skip", "No database in this run, so the published partner pages were not listed.")];
   const fetchImpl = typeof ctx.fetchImpl === "function" ? ctx.fetchImpl : (typeof ctx.fetch === "function" ? ctx.fetch : null);
   if (!fetchImpl) return [check("skip", "No web client came with this run, so no partner page was opened.")];
-
-  const now = ctx.now instanceof Date && Number.isFinite(ctx.now.getTime()) ? ctx.now : new Date();
-  let rows;
-  try {
-    const res = await run((db) => db.query(PUBLISHED_SQL, [ctx.orgId || null]));
-    rows = res && Array.isArray(res.rows) ? res.rows : null;
-  } catch (err) {
-    return [check("skip", `The published partner pages could not be listed: ${clip(err)}.`)];
-  }
-  if (!rows) return [check("skip", "The published partner pages came back as no list, so none was opened.")];
-
-  // A row that could not make a real address is its own failure: the page cannot be live.
-  const bad = rows.filter((r) => !UUID_RE.test(String(r.partner_id)) || !SLUG_RE.test(String(r.slug)));
-  const good = rows.filter((r) => !bad.includes(r));
-  if (!rows.length) return [check("PASS", "No partner page is published, so none can be dead.")];
-
-  const origin = String(ctx.baseUrl || DEFAULT_BASE_URL).replace(/\/+$/, "");
-  const picked = pickPages(good, now);
-  const results = await Promise.all(picked.map((row) => readPage(fetchImpl, origin, row)));
-
-  const failures = [];
-  for (const r of bad) failures.push(`${String(r.partner_id).slice(0, 8)}/${clip(r.slug, 30)} has a slug or partner id that cannot be a web address`);
-  results.forEach((r, i) => {
-    if (!r.ok) failures.push(`${String(picked[i].partner_id).slice(0, 8)}…/${picked[i].slug} ${r.why}`);
-  });
-
-  const total = rows.length;
-  const readN = picked.length;
-  const slice = good.length > readN ? ` (a rotating ${readN} of ${good.length} today)` : "";
-  if (!failures.length) {
-    return [check("PASS", `All ${readN} published partner ${readN === 1 ? "page answers" : "pages answer"} 200 at /sites/<partner>/<slug>${slice}.`)];
-  }
-  const shown = failures.slice(0, 5).join("; ");
-  const more = failures.length > 5 ? `; and ${failures.length - 5} more` : "";
-  return [check(
-    "FAIL",
-    `${failures.length} published partner ${failures.length === 1 ? "page is" : "pages are"} not live (of ${total} published${slice}): ${shown}${more}.`,
-    "Open Brand Studio for that partner and press Publish again, or read the partner-site function log. " +
-      "A published row that answers 404 means the page, the brand row or the route is missing. Do not auto-fix. Chris fixes reds."
-  )];
+  return checkPublishedPages({ run, web: fetchImpl, now: ctx.now, orgId: ctx.orgId || null, baseUrl: ctx.baseUrl });
 }
