@@ -213,3 +213,12 @@ test("money: cents to dollars, null is a dash", () => {
   assert.equal(M.money(null), "—");
   assert.equal(M.money(-500), "−$5.00");
 });
+
+test('connection management precedes optional additional setup without losing controls', () => {
+  const html = M.render(fixture(), null);
+  assert.ok(html.indexOf('data-conn=') < html.indexOf('class="connection-setup"'));
+  assert.match(html, /<summary>Connect another business<\/summary>/);
+  assert.match(html, /data-act="create"/);
+  const empty = M.render({ connections: [], containers: fixture().containers, summary: {} }, null);
+  assert.match(empty, /<details class="connection-setup" open><summary>Set up connection/);
+});

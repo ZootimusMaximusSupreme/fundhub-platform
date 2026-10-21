@@ -1,5 +1,13 @@
 # TODO — unfinished work
 
+## Today — 2026-10-16 (carried from PR #53 on 2026-10-21; Chris, say if these are still open)
+
+Owner has a batch of MCA and SBA deals open now and wants them pushed through. Set this up today.
+
+- [ ] Get a new MCA referral link from Crafty (the loan broker Fundhub sends MCA deals to). The email flow needs this link.
+- [ ] Set up the MCA email flow for the current MCA and SBA deals, using Crafty's new referral link.
+- [ ] Push the current MCA and SBA deals through.
+
 ## Company-wide UX refresh — added 2026-10-18
 
 - [ ] Start a new-agent-led refresh of Fundhub's full experience across the website, funnels, client and team portals, CRM, Finance OS, and Mac/iPhone apps. Use `ops/workflows/company-ux-refresh-2026-10-18-reference.png` (the Mac welcome screen) as the visual reference: generous space, bold and clear type, simple navigation, restrained black-and-white controls, and a polished Apple-like feel. First map the screens and agree on shared design rules; then split the upgrade among agents while preserving each working journey.

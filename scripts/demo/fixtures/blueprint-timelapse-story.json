@@ -1,0 +1,45 @@
+{
+  "_source": "SIMULATION for scripts/demo/blueprint-timelapse.mjs. One sample person: the portal sample client in src/demo/client-portal-sample-bundle.json ('Portal Sample', Sample Consulting LLC, Plaid sandbox bank v3) and the one credit file src/finance/sample-credit-file.mjs builds from that bundle's Personal Visa (limit $8,000, balance $3,127 on 2026-10-17; one old 30-day late on a closed Toyota loan; three hard inquiries). Simulated here: the dates, the Visa balance at each monthly pull after Day 0, the client's clicks, uploads and replies, which server-owned question the coach chooses, and the coach call's words. The person already runs an LLC with business checking and a Business Amex (bundle facts), so the LLC / EIN / business checking steps are ticked in week 1 as already done. No coach text exists on Day 0 in shipped code: the first coach message is the reminder ladder on the paydown due date.",
+  "person": {
+    "first": "Portal",
+    "last": "Sample",
+    "home": { "line1": "200 SAMPLE AVE APT 12", "city": "PHOENIX", "state": "AZ", "zip": "85004" }
+  },
+  "package_fee": "$5,000",
+  "package_amount_dollars": 5000,
+  "pulls": [
+    { "at": "2026-10-17T12:00:00.000Z", "visa_balance_cents": 312700 },
+    { "at": "2026-11-16T12:00:00.000Z", "visa_balance_cents": 245000 },
+    { "at": "2026-12-16T12:00:00.000Z", "visa_balance_cents": 172000 },
+    { "at": "2027-01-15T12:00:00.000Z", "visa_balance_cents": 105000 },
+    { "at": "2027-02-14T12:00:00.000Z", "visa_balance_cents": 78000 },
+    { "at": "2027-03-16T12:00:00.000Z", "visa_balance_cents": 64000 },
+    { "at": "2027-04-15T12:00:00.000Z", "visa_balance_cents": 56000 }
+  ],
+  "beats": [
+    { "at": "2026-10-17T12:00:00.000Z", "kind": "pull", "label": "Soft pull on file: Visa $3,127 of $8,000" },
+    { "at": "2026-10-17T16:10:00.000Z", "kind": "contract_signed", "label": "Capital Blueprint agreement signed · $5,000" },
+    { "at": "2026-10-17T16:25:00.000Z", "kind": "payment", "label": "Payment received · access opens · checklist built" },
+    { "at": "2026-10-17T16:30:00.000Z", "kind": "pack", "label": "Blueprint pack saved: reports and letters" },
+    { "at": "2026-10-19T17:00:00.000Z", "kind": "tick", "keys": ["form_llc", "get_ein", "business_checking"], "label": "LLC, EIN and business checking already open · ticked" },
+    { "at": "2026-10-26T18:00:00.000Z", "kind": "tick", "keys": ["blueprint_dispute_mail_letters"], "label": "Dispute letters mailed · ticked" },
+    { "at": "2026-10-29T18:00:00.000Z", "kind": "tick", "keys": ["personal_loan"], "label": "Week 2 · personal-loan talk with the team · ticked" },
+    { "at": "2026-11-02T17:30:00.000Z", "kind": "upload", "doc_kind": "client_upload", "doc_subtype": "dispute_mail_receipt", "doc_title": "Mailing receipt", "label": "Mailing proof uploaded" },
+    { "at": "2026-11-02T18:07:00.000Z", "kind": "verify", "label": "Proof checked · step closed" },
+    { "at": "2026-11-16T12:00:00.000Z", "kind": "pull", "label": "Month 1 pull: Visa $2,450 · not at the $800 target yet" },
+    { "at": "2026-11-16T17:07:00.000Z", "kind": "coach", "channel": "sms", "intent": "ask_progress", "status": "delivered", "provider": "twilio", "label": "Paydown due · AI coach text 1" },
+    { "at": "2026-11-18T17:07:00.000Z", "kind": "coach", "channel": "email", "intent": "explain_proof", "subject": "Your current Capital Blueprint step", "status": "delivered", "label": "2 days late · AI coach email" },
+    { "at": "2026-11-21T17:07:00.000Z", "kind": "coach", "channel": "sms", "intent": "ask_blocker", "status": "delivered", "provider": "twilio", "label": "5 days late · AI coach text 2" },
+    { "at": "2026-11-21T18:07:00.000Z", "kind": "coach_call", "waypoint": "paydown_first_platypus_bank", "ended_at": "2026-11-21T18:11:00.000Z", "summary": "SIMULATED call summary: client is paying the Visa down every month and has no blocker. Step stays open until a saved credit result meets the $800 target.", "transcript": "SIMULATED: I am putting about $700 a month on the Visa. It should be under $800 by February.", "label": "Two texts unanswered · AI coach call" },
+    { "at": "2026-11-21T19:30:00.000Z", "kind": "client_reply", "channel": "sms", "body": "SIMULATED reply: About $700 a month on the Visa. Should be under $800 by February.", "label": "Client replies" },
+    { "at": "2026-11-21T19:31:00.000Z", "kind": "progress_note", "waypoint": "paydown_first_platypus_bank", "event": "sms-reply", "reply": "About $700 a month on the Visa. Should be under $800 by February.", "label": "Coach saves a progress note · step stays open" },
+    { "at": "2026-11-21T19:31:30.000Z", "kind": "coach", "channel": "sms", "body": "Fundhub AI coach: Your progress note is saved. The step is still open until completion is verified. Reply STOP to opt out.", "status": "delivered", "provider": "twilio", "label": "Coach confirms the saved note" },
+    { "at": "2026-11-24T18:00:00.000Z", "kind": "upload", "doc_kind": "bureau_response", "doc_title": "Bureau response", "label": "Bureau response uploaded" },
+    { "at": "2026-11-24T18:07:00.000Z", "kind": "verify", "label": "Upload checked · step closed" },
+    { "at": "2026-12-16T12:00:00.000Z", "kind": "pull", "label": "Month 2 pull: Visa $1,720 · letters regenerated" },
+    { "at": "2027-01-15T12:00:00.000Z", "kind": "pull", "label": "Month 3 pull: Visa $1,050 · letters regenerated" },
+    { "at": "2027-02-14T12:00:00.000Z", "kind": "pull", "label": "Month 4 pull: Visa $780 · under target · paydown verified done" },
+    { "at": "2027-03-16T12:00:00.000Z", "kind": "pull", "label": "Month 5 pull: Visa $640 · letters regenerated" },
+    { "at": "2027-04-15T12:00:00.000Z", "kind": "pull", "label": "Month 6 pull: Visa $560 · every step done" }
+  ]
+}

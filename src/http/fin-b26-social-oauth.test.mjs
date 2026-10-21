@@ -51,17 +51,52 @@ function stand({ existing = [] } = {}) {
   return { t, rules };
 }
 
-function platform({ pages, userToken = "user-access-value", tokenFails = false } = {}) {
+/** The redirect the callback must send back to the platform: the same address the dialog started with. */
+const REDIRECT = (channel) => `https://app.example.test/api/social/oauth?action=callback&channel=${channel}`;
+const USER_TOKEN = "user-access-value";
+
+/**
+ * The platform, played the way the real one answers: a request the real platform would refuse is refused
+ * here. Meta's token endpoint wants the app id, the app secret, the same redirect the dialog used and the
+ * code; its page list wants the user's token and the fields that carry each page's token and Instagram
+ * account; LinkedIn's token endpoint wants a form POST with the grant type, code, redirect, id and secret.
+ * A refusal comes back as the platform's error body, so the product sees no token and saves nothing.
+ */
+function platform({ pages, userToken = USER_TOKEN, tokenFails = false, channel = "facebook", code = "c" } = {}) {
   const calls = [];
-  const fetchImpl = async (url, init) => {
+  const refused = { json: async () => ({ error: { message: "the platform refused the request" } }) };
+  const fetchImpl = async (url, init = {}) => {
     calls.push({ url: String(url), init });
-    const text = String(url);
-    if (/oauth\/access_token/.test(text)) return { json: async () => (tokenFails ? { error: "bad code" } : { access_token: userToken, expires_in: 5000 }) };
-    if (/\/me\/accounts/.test(text)) return { json: async () => ({ data: pages ?? [] }) };
-    if (/linkedin\.com\/oauth\/v2\/accessToken/.test(text)) {
-      return { json: async () => (tokenFails ? { error: "bad code" } : { access_token: "li-access-value", expires_in: 3600, refresh_token: "li-refresh-value" }) };
+    const u = new URL(String(url));
+    const q = u.searchParams;
+    if (u.hostname === "graph.facebook.com" && /^\/v\d+\.\d+\/oauth\/access_token$/.test(u.pathname)) {
+      const ok = !tokenFails
+        && q.get("client_id") === ENV.META_APP_ID
+        && q.get("client_secret") === ENV.META_APP_SECRET
+        && q.get("redirect_uri") === REDIRECT(channel)
+        && q.get("code") === code;
+      return ok ? { json: async () => ({ access_token: userToken, expires_in: 5000 }) } : refused;
     }
-    throw new Error(`unexpected platform call ${text}`);
+    if (u.hostname === "graph.facebook.com" && /^\/v\d+\.\d+\/me\/accounts$/.test(u.pathname)) {
+      const fields = String(q.get("fields") || "").split(",");
+      const ok = q.get("access_token") === userToken
+        && ["id", "name", "access_token", "instagram_business_account"].every((f) => fields.includes(f));
+      return ok ? { json: async () => ({ data: pages ?? [] }) } : refused;
+    }
+    if (u.origin + u.pathname === "https://www.linkedin.com/oauth/v2/accessToken") {
+      const headers = Object.fromEntries(Object.entries(init.headers || {}).map(([k, v]) => [k.toLowerCase(), v]));
+      const form = new URLSearchParams(String(init.body || ""));
+      const ok = !tokenFails
+        && init.method === "POST"
+        && headers["content-type"] === "application/x-www-form-urlencoded"
+        && form.get("grant_type") === "authorization_code"
+        && form.get("code") === code
+        && form.get("redirect_uri") === REDIRECT("linkedin")
+        && form.get("client_id") === ENV.LINKEDIN_CLIENT_ID
+        && form.get("client_secret") === ENV.LINKEDIN_CLIENT_SECRET;
+      return ok ? { json: async () => ({ access_token: "li-access-value", expires_in: 3600, refresh_token: "li-refresh-value" }) } : refused;
+    }
+    throw new Error(`unexpected platform call ${u}`);
   };
   return { calls, fetchImpl };
 }
@@ -83,10 +118,15 @@ describe("GET /api/social/oauth, start", () => {
     const url = new URL(res.body.url);
     assert.equal(url.hostname, "www.facebook.com");
     assert.match(url.pathname, /\/dialog\/oauth$/);
+    assert.match(url.pathname, /^\/v\d+\.\d+\/dialog\/oauth$/, "the versioned dialog address");
     assert.equal(url.searchParams.get("client_id"), ENV.META_APP_ID);
     assert.equal(url.searchParams.get("redirect_uri"), "https://app.example.test/api/social/oauth?action=callback&channel=facebook");
     assert.equal(url.searchParams.get("state"), res.body.state);
-    assert.match(url.searchParams.get("scope"), /pages_manage_posts/);
+    assert.equal(url.searchParams.get("response_type"), "code", "the authorization-code flow is asked for");
+    assert.deepEqual(url.searchParams.get("scope").split(","),
+      ["pages_show_list", "pages_manage_posts", "pages_read_engagement", "instagram_basic", "instagram_content_publish"],
+      "every permission a page post and an Instagram post need");
+    assert.deepEqual([...url.searchParams.keys()].sort(), ["client_id", "redirect_uri", "response_type", "scope", "state"]);
     const state = verifyState(res.body.state, ENV);
     assert.equal(state.partnerId, FOREIGN_PARTNER);
     assert.equal(state.channel, "facebook");
@@ -95,6 +135,17 @@ describe("GET /api/social/oauth, start", () => {
     assert.equal(wrote(fake), false);
     assert.equal(pf.calls.length, 0, "starting calls no platform");
     assert.deepEqual(sqlOf(fake, /FROM partners/)[0].params, [FOREIGN_PARTNER]);
+  });
+
+  test("an Instagram start asks Meta for the same dialog, with Instagram's own return address", async () => {
+    const { res } = await call(owner, { action: "start", channel: "instagram", partner_id: PARTNER });
+    assert.equal(res.statusCode, 200);
+    const url = new URL(res.body.url);
+    assert.equal(url.hostname, "www.facebook.com");
+    assert.equal(url.searchParams.get("redirect_uri"), "https://app.example.test/api/social/oauth?action=callback&channel=instagram");
+    assert.equal(url.searchParams.get("response_type"), "code");
+    assert.ok(url.searchParams.get("scope").split(",").includes("instagram_content_publish"), "the permission to publish to Instagram");
+    assert.equal(verifyState(res.body.state, ENV).channel, "instagram");
   });
 
   test("a state signed with another key does not verify; an expired one does not either", async () => {
@@ -112,7 +163,14 @@ describe("GET /api/social/oauth, start", () => {
     assert.equal(ok.res.statusCode, 200);
     const url = new URL(ok.res.body.url);
     assert.equal(url.hostname, "www.linkedin.com");
+    assert.equal(url.pathname, "/oauth/v2/authorization");
     assert.equal(url.searchParams.get("client_id"), ENV.LINKEDIN_CLIENT_ID);
+    assert.equal(url.searchParams.get("response_type"), "code");
+    assert.equal(url.searchParams.get("redirect_uri"), "https://app.example.test/api/social/oauth?action=callback&channel=linkedin");
+    assert.equal(url.searchParams.get("state"), ok.res.body.state);
+    assert.deepEqual(url.searchParams.get("scope").split(" "), ["openid", "profile", "email", "w_member_social"],
+      "w_member_social is the permission to post for the organization");
+    assert.deepEqual([...url.searchParams.keys()].sort(), ["client_id", "redirect_uri", "response_type", "scope", "state"]);
     assert.equal(verifyState(ok.res.body.state, ENV).external_account_id, "urn:li:organization:777");
     const withOrgEnv = { ...ENV, LINKEDIN_ORG_ID: "urn:li:organization:888" };
     const viaEnv = await call(owner, { action: "start", channel: "linkedin", partner_id: PARTNER }, { env: withOrgEnv });
@@ -156,7 +214,7 @@ describe("GET /api/social/oauth, callback", () => {
     // The state names the partner's own company and partner. The staff member and the address differ on purpose:
     // the row must follow the signed state, never the person who happened to click.
     const state = goodState({ partnerId: FOREIGN_PARTNER, orgId: OTHER_ORG_ID });
-    const { res, t, pf, fake } = await call(owner, { action: "callback", channel: "facebook", state, code: "the-code", partner_id: PARTNER }, { pf: platform({ pages }) });
+    const { res, t, pf, fake } = await call(owner, { action: "callback", channel: "facebook", state, code: "the-code", partner_id: PARTNER }, { pf: platform({ pages, code: "the-code" }) });
     assert.equal(res.statusCode, 200);
     assert.deepEqual(res.body.channels, [{ channel: "facebook", external_account_id: "page-9" }]);
     assert.equal(t.social_channels.length, 1);
@@ -172,11 +230,20 @@ describe("GET /api/social/oauth, callback", () => {
     assert.doesNotMatch(String(row.encrypted_access_token), new RegExp(PAGE_TOKEN));
     assert.equal(decryptToken(row.encrypted_access_token, { partnerId: FOREIGN_PARTNER, env: ENV }), PAGE_TOKEN);
     assert.throws(() => decryptToken(row.encrypted_access_token, { partnerId: PARTNER, env: ENV }), undefined, "bound to the partner it was stored for");
-    // The code went to Meta's token endpoint with the same redirect it started with.
-    const exchange = pf.calls[0];
-    assert.match(exchange.url, /oauth\/access_token\?/);
-    assert.equal(new URL(exchange.url).searchParams.get("code"), "the-code");
-    assert.equal(new URL(exchange.url).searchParams.get("redirect_uri"), "https://app.example.test/api/social/oauth?action=callback&channel=facebook");
+    // The code went to Meta's token endpoint with the app id, the app secret and the same redirect it started with;
+    // the page list was then asked for with the user's token and the fields that carry each page's token.
+    const exchange = new URL(pf.calls[0].url);
+    assert.equal(exchange.hostname, "graph.facebook.com");
+    assert.match(exchange.pathname, /\/oauth\/access_token$/);
+    assert.deepEqual(Object.fromEntries(exchange.searchParams), {
+      client_id: ENV.META_APP_ID, client_secret: ENV.META_APP_SECRET, code: "the-code",
+      redirect_uri: "https://app.example.test/api/social/oauth?action=callback&channel=facebook",
+    });
+    assert.equal(pf.calls.length, 2, "one token exchange, one page list");
+    const list = new URL(pf.calls[1].url);
+    assert.match(list.pathname, /\/me\/accounts$/);
+    assert.equal(list.searchParams.get("access_token"), USER_TOKEN, "the page list is asked for with the user's token, not the app secret");
+    assert.deepEqual(list.searchParams.get("fields").split(","), ["id", "name", "access_token", "instagram_business_account"]);
     // The write runs as staff inside its own transaction, and the response carries no token.
     assert.deepEqual(fake.calls.find((c) => /set_config\('fundhub\.actor'/.test(c.sql)).params, ["staff"]);
     assert.doesNotMatch(JSON.stringify(res.body), new RegExp(PAGE_TOKEN));
@@ -189,7 +256,7 @@ describe("GET /api/social/oauth, callback", () => {
       { id: "page-1", name: "No IG", access_token: PAGE_TOKEN },
       { id: "page-2", name: "With IG", access_token: PAGE_TOKEN, instagram_business_account: { id: "ig-2" } },
     ];
-    const { res, t } = await call(owner, { action: "callback", channel: "instagram", state: goodState({ channel: "instagram" }), code: "c" }, { pf: platform({ pages }) });
+    const { res, t } = await call(owner, { action: "callback", channel: "instagram", state: goodState({ channel: "instagram" }), code: "c" }, { pf: platform({ pages, channel: "instagram" }) });
     assert.equal(res.statusCode, 200);
     assert.deepEqual(res.body.channels, [{ channel: "instagram", external_account_id: "ig-2" }]);
     assert.deepEqual(t.social_channels.map((r) => [r.channel, r.external_account_id]), [["instagram", "ig-2"]]);
@@ -201,7 +268,7 @@ describe("GET /api/social/oauth, callback", () => {
     assert.equal(decryptToken(ig.encrypted_access_token, { partnerId: PARTNER, env: ENV }), PAGE_TOKEN);
     assert.throws(() => decryptToken(ig.encrypted_access_token, { partnerId: FOREIGN_PARTNER, env: ENV }), undefined, "bound to the partner");
     const none = await call(owner, { action: "callback", channel: "instagram", state: goodState({ channel: "instagram" }), code: "c" },
-      { pf: platform({ pages: [{ id: "page-1", name: "No IG", access_token: PAGE_TOKEN }] }) });
+      { pf: platform({ pages: [{ id: "page-1", name: "No IG", access_token: PAGE_TOKEN }], channel: "instagram" }) });
     assert.equal(none.res.statusCode, 400);
     assert.equal(none.res.body.error, "no_matching_accounts");
     assert.equal(none.t.social_channels.length, 0);
@@ -216,7 +283,7 @@ describe("GET /api/social/oauth, callback", () => {
 
   test("linkedin: the organization number comes from the state, the access and refresh tokens are stored encrypted", async () => {
     const state = goodState({ channel: "linkedin", external_account_id: "urn:li:organization:777" });
-    const { res, t, pf } = await call(owner, { action: "callback", channel: "linkedin", state, code: "li-code" });
+    const { res, t, pf } = await call(owner, { action: "callback", channel: "linkedin", state, code: "li-code" }, { pf: platform({ code: "li-code" }) });
     assert.equal(res.statusCode, 200);
     assert.deepEqual(res.body, { ok: true, channel: "linkedin", external_account_id: "777" });
     const row = t.social_channels[0];
@@ -226,8 +293,14 @@ describe("GET /api/social/oauth, callback", () => {
     assert.equal(row.connection_state, "active");
     assert.deepEqual(row.scopes, ["openid", "profile", "email", "w_member_social"]);
     assert.deepEqual(row.token_expires_at, { plusSeconds: 3600 }, "the token runs out an hour from now, not an hour ago");
+    // The exchange is a form POST with all five fields; the platform stand-in refuses any request missing one.
+    assert.equal(pf.calls[0].url, "https://www.linkedin.com/oauth/v2/accessToken");
     assert.equal(pf.calls[0].init.method, "POST");
-    assert.equal(new URLSearchParams(pf.calls[0].init.body).get("code"), "li-code");
+    assert.deepEqual(Object.fromEntries(new URLSearchParams(pf.calls[0].init.body)), {
+      grant_type: "authorization_code", code: "li-code", redirect_uri: REDIRECT("linkedin"),
+      client_id: ENV.LINKEDIN_CLIENT_ID, client_secret: ENV.LINKEDIN_CLIENT_SECRET,
+    });
+    assert.equal(Object.entries(pf.calls[0].init.headers).find(([k]) => k.toLowerCase() === "content-type")[1], "application/x-www-form-urlencoded");
     const noOrg = await call(owner, { action: "callback", channel: "linkedin", state: goodState({ channel: "linkedin", external_account_id: null }), code: "c" });
     assert.equal(noOrg.res.statusCode, 400);
     assert.equal(noOrg.res.body.error, "needs_org");
@@ -244,7 +317,7 @@ describe("GET /api/social/oauth, callback", () => {
     // Facebook and Instagram.
     for (const [channel, account] of [["facebook", "page-9"], ["instagram", "ig-9"]]) {
       const s = stand({ existing: [old({ channel, external_account_id: account })] });
-      const { res, t } = await call(owner, { action: "callback", channel, state: goodState({ channel }), code: "c" }, { pf: platform({ pages }), s });
+      const { res, t } = await call(owner, { action: "callback", channel, state: goodState({ channel }), code: "c" }, { pf: platform({ pages, channel }), s });
       assert.equal(res.statusCode, 200, channel);
       assert.equal(t.social_channels.length, 1, `${channel}: the same account is refreshed, not added twice`);
       const row = t.social_channels[0];
@@ -258,7 +331,7 @@ describe("GET /api/social/oauth, callback", () => {
       channel: "linkedin", external_account_id: "777", encrypted_refresh_token: "old-refresh-ciphertext", token_expires_at: { plusSeconds: -10 },
     })] });
     const state = goodState({ channel: "linkedin", external_account_id: "urn:li:organization:777" });
-    const { res, t } = await call(owner, { action: "callback", channel: "linkedin", state, code: "li-code" }, { s });
+    const { res, t } = await call(owner, { action: "callback", channel: "linkedin", state, code: "li-code" }, { s, pf: platform({ code: "li-code" }) });
     assert.equal(res.statusCode, 200);
     assert.equal(t.social_channels.length, 1);
     const row = t.social_channels[0];
