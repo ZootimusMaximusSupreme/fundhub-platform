@@ -15,7 +15,7 @@ Every result below was read live, read-only (`BEGIN READ ONLY`, role `fundhub_ap
 | 2 | `gap:sms-sending-stuck` | B, already cleared | GREEN | Same delete. Lane run: "No customer or staff text is stuck on sending". |
 | 3 | `email:provider-fail` | C, fixed in this PR | GREEN with PR | Both bounces were sign-in links to the App Store review login FH-000844 (client@fundhub.ai, no mailbox, Resend blocks it). Check now skips that one login. |
 | 4 | `msg:per-template-path` | C, fixed in this PR | GREEN with PR | Same two bounces were the only email in 7 days. Same fix. |
-| 5 | `handoff:lead-first-touches-missing` | A + B | GREEN (after delete) | Real: 7 lead templates were deleted on live (finish-application email + 6 never-booked chase messages). Restored by seed 299 in this PR. The red row itself is fake lead FH-000843 → delete. |
+| 5 | `handoff:lead-first-touches-missing` | A + B | GREEN (after delete) | Real: 7 lead templates were deleted on live (finish-application email + 6 never-booked chase messages). Restored on live by migration 497 (PR #112, 2026-10-21 03:44 UTC), byte for byte the same words this lane had prepared, so this PR no longer carries its own copy. The red row itself is fake lead FH-000843 → delete. |
 | 6 | `consent:dispute-required` | Needs Chris | red | The 1 row is Braum (FH-000507): repair program active since 10-05, no signed agreement of any kind, no consent row. Braum is no-contact / no-change. |
 | 7 | `calls:booked-no-join-link` | C, fixed in this PR | GREEN with PR | Set A (PR #97, live) saves the Google Meet link on new bookings. The check still judged old bookings, which can never carry a link (19 August ClickFunnels bookings with real-looking emails stay; the delete session kept them). Owner: "Old bookings do not matter. Only new bookings." The feed now counts from the fix's ship (2026-10-21 01:38 UTC); a call ahead with no link is still red. Live: PASS. |
 | 8 | Closer desk: Send contract button | fixed by Set A | GREEN | Migration 493 (PR #97) put the real Funding and Credit Repair agreement words live. 12 wordings, 0 bad. |
@@ -62,9 +62,7 @@ Owner said yes (2026-10-20). Handed to session `delete-fake-data`. Do NOT delete
 - `src/pulse/coverage/gap-msg.mjs`: `ROLE_TEST_CLIENT_KEY`; `real()` skips the review login.
 - `src/pulse/coverage/gap-email.mjs`: PROVIDER_FAIL_SQL skips the review login.
 - `src/pulse/coverage/gap-msg.test.mjs`, `gap-msg.pg.test.mjs`: tests both ways.
-- `db/seed/299_restore_lead_chase_templates_2026_10_20.sql`: restores 7 templates, insert-if-missing, Fundhub only.
-- `src/messaging/restore-lead-chase-templates.test.mjs`, `.pg.test.mjs`: byte-for-byte and database tests.
 - `src/pulse/coverage/gap-calls.mjs`: `JOIN_FEED_SINCE`; the feed question counts bookings from the link fix's ship. `gap-calls.test.mjs`: tests both ways.
-- `src/pulse/catalog/generated.json`, `src/pulse/catalog/proofs/fin-b22-sql-template-keys.json`: regenerated.
+- `src/pulse/catalog/generated.json`: regenerated.
 - `docs/lessons/pulse-lessons.md`: 3 entries.
 - No route, job, page, money rule or journey changed.

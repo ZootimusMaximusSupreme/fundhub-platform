@@ -42,8 +42,8 @@ GROUP BY 1, 2 ORDER BY breaks DESC;
 
 ## 2026-10-20 — handoff:lead-first-touches-missing — schema_or_data
 - Cause: the 2026-10-11/12 test run on production also deleted the finish-application email and all six never-booked chase messages. Those steps had nothing to send.
-- Fix: `db/seed/299_restore_lead_chase_templates_2026_10_20.sql` puts the last approved words back (insert only if missing).
-- Guard added: `src/messaging/restore-lead-chase-templates.test.mjs` (every byte held to seeds 013, 015, 295) and its `.pg.test.mjs`.
+- Fix: `db/migrations/497_restore_missing_sql_templates.sql` (PR #112) put all 125 missing templates back, these 7 included, byte for byte the repo words (checked live 2026-10-21).
+- Guard added: `scripts/db/template-restore.test.mjs`; the template-deleting database tests now run only on a scratch database (PR #112).
 
 ## 2026-10-20 — bureau-config:complete — pulse_false_alarm
 - Cause: the check read an empty CRM table. The AI caller never reads that table. Its numbers and phone menus live in its own call scripts (vendor/inquiry-remover/src/agents/*-prompt.js) and the *_DISPUTE_NUMBER settings.
