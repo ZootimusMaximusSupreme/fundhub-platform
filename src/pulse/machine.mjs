@@ -19,6 +19,7 @@
 import { diesBefore25Percent } from "../ops/watch-curve.mjs";
 import { SWEEP_CRON as CF_SWEEP_CRON } from "../workflows/clickfunnels-analytics-sweeper.mjs";
 import { SWEEP_CRON as MEET_TRANSCRIPT_CRON } from "../workflows/meet-transcript-sweeper.mjs";
+import { parkRow } from "./parked-features.mjs";
 
 /** A daily job that has not written in this long has missed a day. */
 export const FRESH_HOURS = 36;
@@ -393,7 +394,9 @@ export const MACHINE_CHECKS = [
     id: "meta-sync",
     watches: "Meta ad numbers pull, daily 07:00 UTC",
     file: "src/workflows/meta-campaign-sync-sweeper.mjs",
-    run: checkMetaSync
+    run: checkMetaSync,
+    // Owner answer B6 (2026-10-20): Meta ad sync is a future feature. src/pulse/parked-features.mjs.
+    park: "meta-ads"
   },
   {
     id: "clickfunnels-night-job",
@@ -405,7 +408,8 @@ export const MACHINE_CHECKS = [
     id: "meta-server-events",
     watches: "Meta Conversions API sends from funnel pages",
     file: "src/meta/track-send.mjs",
-    run: checkMetaServerEvents
+    run: checkMetaServerEvents,
+    park: "meta-ads"
   },
   {
     id: "dying-ad-scan",
@@ -425,6 +429,11 @@ export const MACHINE_CHECKS = [
  * Run every machine row. `scope(fn)` runs fn(tx) with staff visibility; with
  * only `db`, rows run on it directly (a fake in tests, or an owner connection).
  * One broken row never takes the pulse down: its error becomes its FAIL.
+ *
+ * A row with `park` is one of a parked feature (owner answer B6). Its real check
+ * runs first, unchanged. A red or skip answer becomes "nothing to judge" only
+ * while parkRow() reads, through the staff view, that the feature is still not in
+ * use. Without a staff view nothing is parked.
  */
 export async function checkMachine({ db = null, scope = null, now = new Date(), checks = MACHINE_CHECKS } = {}) {
   const run = scope || (db && typeof db.query === "function" ? (fn) => fn(db) : null);
@@ -434,7 +443,8 @@ export async function checkMachine({ db = null, scope = null, now = new Date(), 
   const out = [];
   for (const c of checks) {
     try {
-      out.push(await c.run({ scope: run, now }));
+      const result = await c.run({ scope: run, now });
+      out.push(c.park ? await parkRow(result, c.park, { scope, now }) : result);
     } catch (err) {
       out.push(row(
         c.id,

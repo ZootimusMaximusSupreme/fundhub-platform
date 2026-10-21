@@ -33,8 +33,12 @@
 // bureau's number and phone-menu path ships empty on purpose (migration 140,
 // "do not invent phone numbers"). Measured 2026-10-10: nothing that places the
 // call reads service_number or menu_path from this table (the call builders in
-// vendor/inquiry-remover carry their own). The check still follows the owner's
-// brief: a number and a menu path for each of the three, or red.
+// vendor/inquiry-remover carry their own). Owner answer B7 (2026-10-20): the
+// numbers and menu steps are already saved, so the check reads them where they
+// really live: the caller's own scripts (src/inquiry-ops/bureau-dial-plan.mjs,
+// the number from the Netlify *_DISPUTE_NUMBER setting or the script, the menu
+// from the script's IVR steps). A bureau passes when the script OR the table
+// gives it a usable number and a menu. Red when neither does.
 //
 // CONSENT. call_recording and marketing_use (migration 291). Two readings, one
 // row:
@@ -48,6 +52,7 @@
 
 import { CONSENT_VALID_SQL } from "../../consent/index.mjs";
 import { TEST_CLIENT_EMAIL_RE } from "./gap-consent.mjs";
+import { bureauDialPlan } from "../../inquiry-ops/bureau-dial-plan.mjs";
 
 export const ERASURE_WINDOW_MS = 24 * 60 * 60 * 1000;
 export const PII_LOOKBACK_DAYS = 7;
@@ -254,31 +259,46 @@ export function judgePiiCompany(row) {
 
 // ── bureau-config:complete ───────────────────────────────────────────────────
 
-export function judgeBureauConfig(rows) {
+/**
+ * rows: the ai_bureau_config read. plan: what the caller's own scripts dial
+ * (bureauDialPlan()). An empty plan judges the table alone.
+ */
+export function judgeBureauConfig(rows, plan = []) {
   const id = "bureau-config:complete";
   const byCode = new Map();
   for (const r of rows) byCode.set(String(r.bureau_code || "").toUpperCase(), r);
+  const planBy = new Map();
+  for (const p of plan || []) planBy.set(String(p?.code || "").toUpperCase(), p);
   const missing = [];
   const noNumber = [];
   const noMenu = [];
   for (const code of DIALED_BUREAUS) {
     const r = byCode.get(code);
-    if (!r) { missing.push(code); continue; }
-    if (!r.has_number) noNumber.push(code);
-    if (!r.has_menu) noMenu.push(code);
+    const p = planBy.get(code);
+    if (!r && !p) { missing.push(code); continue; }
+    if (!(r?.has_number || p?.numberOk === true)) noNumber.push(code);
+    if (!(r?.has_menu || p?.menuOk === true)) noMenu.push(code);
   }
   if (!missing.length && !noNumber.length && !noMenu.length) {
-    return check(id, "PASS", `All ${DIALED_BUREAUS.length} bureaus the AI caller dials (${DIALED_BUREAUS.join(", ")}) have a number and a menu path.`);
+    const fromScripts = DIALED_BUREAUS
+      .map((code) => planBy.get(code))
+      .filter((p) => p && p.numberOk === true && p.menuOk === true)
+      .map((p) => `${p.code} ${p.number} (${p.steps} menu steps)`);
+    const where = fromScripts.length ? ` The caller's scripts dial ${fromScripts.join(", ")}.` : "";
+    return check(id, "PASS", `All ${DIALED_BUREAUS.length} bureaus the AI caller dials (${DIALED_BUREAUS.join(", ")}) have a number and a menu path.${where}`);
   }
   const parts = [];
   if (missing.length) parts.push(`no row for ${missing.join(", ")}`);
   if (noNumber.length) parts.push(`no service number for ${noNumber.join(", ")}`);
   if (noMenu.length) parts.push(`no menu path for ${noMenu.join(", ")}`);
+  const broken = (plan || []).filter((p) => p && p.problem).map((p) => `${p.code}: ${clip(p.problem, 80)}`);
   return check(
     id,
     "FAIL",
-    `The AI bureau config is not filled in: ${parts.join("; ")}.`,
-    `Fill each bureau's service number and menu path on the Lenders page, AI bureau config tab (or POST /api/ai-bureau-config). Do not invent numbers: copy them from the bureau. ${TAIL}`
+    `The AI bureau config is not filled in: ${parts.join("; ")}.${broken.length ? ` The call script could not be read (${broken.join("; ")}).` : ""}`,
+    "The caller takes each number from EXPERIAN_DISPUTE_NUMBER, EQUIFAX_DISPUTE_NUMBER or TRANSUNION_DISPUTE_NUMBER " +
+      "(else the number in its script) and its menu from the script in vendor/inquiry-remover/src/agents/. " +
+      `Do not invent numbers: copy them from the bureau. ${TAIL}`
   );
 }
 
@@ -312,7 +332,7 @@ export function judgeRecordingConsent(row) {
 
 /**
  * gapChecks(ctx) → [{ id, status, detail, suggestedFix }]
- * ctx: { db } or { scope }, optional { now, orgId, demoOn }. SELECT only.
+ * ctx: { db } or { scope }, optional { now, orgId, demoOn, dialPlan }. SELECT only.
  */
 export async function gapChecks(ctx = {}) {
   const run = reader(ctx);
@@ -324,6 +344,8 @@ export async function gapChecks(ctx = {}) {
   const erasureCut = new Date(now.getTime() - ERASURE_WINDOW_MS).toISOString();
   const piiFrom = new Date(now.getTime() - PII_LOOKBACK_MS).toISOString();
   const demoOn = ctx.demoOn === true;
+  // What the caller's own scripts dial (owner answer B7). Tests hand in their own plan.
+  const dialPlan = Array.isArray(ctx.dialPlan) ? ctx.dialPlan : bureauDialPlan();
 
   const erasure = rowsOf(run, ERASURE_SQL, [orgId, erasureCut])
     .then((rows) => judgeErasure(rows[0] || {}, now))
@@ -334,7 +356,7 @@ export async function gapChecks(ctx = {}) {
   const bureau = !orgId
     ? Promise.resolve(check("bureau-config:complete", "skip", "No company came with this run, so the bureau config was not read."))
     : rowsOf(run, BUREAU_SQL, [orgId])
-      .then((rows) => judgeBureauConfig(rows))
+      .then((rows) => judgeBureauConfig(rows, dialPlan))
       .catch((err) => readFailed("bureau-config:complete", err));
   const consent = !orgId
     ? Promise.resolve(check("consent:recording-and-ads", "skip", "No company came with this run, so the recordings were not read."))

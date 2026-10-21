@@ -11,7 +11,9 @@
 // Rules this file keeps:
 //   - Names only in any output. A value is never printed, not even a flag value.
 //   - GET only. Nothing is sent, nothing is written, no AI call, no credit pull.
-//     The one database read is a single SELECT. No BEGIN, COMMIT or SET.
+//     The database reads are one SELECT on ctx.db (the send switch), no BEGIN,
+//     COMMIT or SET on it, and one SELECT through the staff view (ctx.scope) that
+//     asks whether Lendflow is still paused (src/pulse/parked-features.mjs).
 //   - A vendor key goes only to that vendor's own host, never follows a redirect
 //     (redirect: "manual"), and is never printed.
 //   - No repo file is read at run time. The live bundle does not carry them.
@@ -29,6 +31,7 @@ import { livePullAllowed, isProductionHost, isSandboxHost, normalizeHost } from 
 // The checkout mint picks its key and its address here. The check asks the vendor
 // about the SAME key the mint would use, so the two cannot drift apart.
 import { checkoutConfig, CHECKOUT_API_KEY_ENVS } from "../../payments/commas-api.mjs";
+import { parkedState } from "../parked-features.mjs";
 
 export const CHECK_IDS = Object.freeze([
   "keys:send-fence-open",
@@ -300,25 +303,38 @@ export function inngestEventKey(env) {
 
 // ── 3. Every key the launch needs ──────────────────────────────────────────
 
-export function launchSecretsPresent(env) {
+/**
+ * `parked` (optional): [{ name, why }] keys of a feature the owner parked, which the caller
+ * has just proved is still not in use (src/pulse/parked-features.mjs). An unset parked key
+ * is named as not judged, never counted as set. A parked key that IS set is judged as usual.
+ */
+export function launchSecretsPresent(env, { parked = [] } = {}) {
   const id = "keys:launch-secrets-present";
   const gate = settingsGate(id, env);
   if (gate) return gate;
 
+  const parkedBy = new Map((Array.isArray(parked) ? parked : []).map((p) => [p && p.name, p]));
   const bad = [];
+  const notJudged = [];
   for (const { name, what, setOnly } of LAUNCH_SECRETS) {
     const state = keyState(env, name);
     if (state === "ok") continue;
     // A set-only key is red when it is empty and fine when it holds anything (see the list above).
     if (setOnly && state === "mask") continue;
+    if (parkedBy.has(name)) {
+      notJudged.push(`${name} (${parkedBy.get(name).why})`);
+      continue;
+    }
     bad.push({ name, what, state });
   }
+  const tail = notJudged.length ? ` Not judged: ${notJudged.join("; ")}.` : "";
   if (!bad.length) {
-    return row(id, "PASS", `All ${LAUNCH_SECRETS.length} launch keys are set to real values on the live site.`);
+    const judged = LAUNCH_SECRETS.length - notJudged.length;
+    return row(id, "PASS", `All ${judged} launch keys ${notJudged.length ? "judged " : ""}are set to real values on the live site.${tail}`);
   }
   const list = bad.map((b) => `${b.name} ${SAY[b.state]} (${b.what})`).join("; ");
   const noun = bad.length === 1 ? "key" : "keys";
-  return row(id, "FAIL", `${bad.length} launch ${noun} not usable on the live site: ${list}.`, FIX.secrets);
+  return row(id, "FAIL", `${bad.length} launch ${noun} not usable on the live site: ${list}.${tail}`, FIX.secrets);
 }
 
 // ── 4. A real credit pull ──────────────────────────────────────────────────
@@ -557,7 +573,8 @@ export async function checkoutKeyRead({ env, fetchImpl, timeoutMs = PROBE_TIMEOU
 
 /**
  * Six tripwires on the settings and keys behind launch-day texts, emails, payments and credit pulls.
- * ctx: { env, db, orgId, fetchImpl | fetch }. The only database read is one SELECT of the company send switch.
+ * ctx: { env, db, scope, orgId, now, fetchImpl | fetch }. One SELECT of the company send switch on db, and one
+ * read-only Lendflow park read through scope.
  */
 export async function gapChecks(ctx = {}) {
   const c = ctx || {};
@@ -570,9 +587,17 @@ export async function gapChecks(ctx = {}) {
   } catch (err) {
     rows.push(row("keys:send-fence-open", "skip", `The locks on customer messages could not be read: ${clip(err)}.`));
   }
+  // Owner answer B8 (2026-10-20): Lendflow is paused. Its webhook secret is not judged
+  // only while the same read the Lendflow row uses says it is still not in use.
+  const lendflow = env
+    ? await parkedState("lendflow", { scope: typeof c.scope === "function" ? c.scope : null, env, now: c.now })
+    : { parked: false };
+  const parked = lendflow.parked
+    ? [{ name: "LENDFLOW_WEBHOOK_SECRET", why: `Lendflow is paused by the owner and not in use: ${lendflow.why}` }]
+    : [];
   rows.push(
     inngestEventKey(env),
-    launchSecretsPresent(env),
+    launchSecretsPresent(env, { parked }),
     creditPullLiveAllowed(env)
   );
   // The vendor reads run side by side, so the lane stays under one probe time, not three.
