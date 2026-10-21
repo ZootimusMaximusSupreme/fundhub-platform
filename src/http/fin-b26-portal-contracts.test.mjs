@@ -77,12 +77,13 @@ function world(over = {}) {
       { org_id: ORG_ID, template_key: "FUNDING-AGREEMENT", name: "Funding Agreement" },
     ],
     contract_signers: [
-      signer(SG(1), C(1), 0),
+      // Not yet sent: loading the page mints the link and the signer becomes "sent".
+      signer(SG(1), C(1), 0, { status: "pending" }),
       signer(SG(2), C(2), 0, { status: "viewed" }),
       signer(SG(3), C(3), 0, { status: "signed", signed_at: "2026-10-02T00:00:00.000Z" }),
       signer(SG(6), C(6), 0),
       // A second signer, the counterparty: index 0 is somebody else, the client is index 1.
-      signer(SG(9), C(9), 0, { client_id: null, name: "Counter Party" }),
+      signer(SG(9), C(9), 0, { client_id: null, name: "Counter Party", status: "pending" }),
       signer(SG(10), C(9), 1),
       signer("db000000-0000-4000-8000-00000000000b", "ca000000-0000-4000-8000-00000000000a", 0),
       // The client has signed; the counterparty has not. The agreement is open, but nothing is owed by this client.
@@ -164,10 +165,10 @@ describe("GET /api/read/portal-contracts", () => {
   test("a fresh sign link is minted only for an agreement the client still owes: sent or viewed, not signed, not declined", async () => {
     const t = world({
       contract_signers: [
-        signer(SG(1), C(1), 0), signer(SG(2), C(2), 0, { status: "viewed" }),
+        signer(SG(1), C(1), 0, { status: "pending" }), signer(SG(2), C(2), 0, { status: "viewed" }),
         signer(SG(3), C(3), 0, { status: "signed", signed_at: "2026-10-02T00:00:00.000Z" }),
         signer(SG(6), C(6), 0, { status: "declined" }),
-        signer(SG(9), C(9), 0, { client_id: null }), signer(SG(10), C(9), 1),
+        signer(SG(9), C(9), 0, { client_id: null, status: "pending" }), signer(SG(10), C(9), 1),
         signer("db000000-0000-4000-8000-00000000000b", "ca000000-0000-4000-8000-00000000000a", 0),
         signer(SG_SIGNED, CS, 0, { status: "signed", signed_at: "2026-10-10T00:00:00.000Z" }),
         signer(SG_OTHER, CS, 1, { client_id: null, name: "Counter Party" }),
@@ -221,6 +222,26 @@ describe("GET /api/read/portal-contracts", () => {
     assert.equal(t.contract_signers.find((r) => r.id === SG_THIRD).link_expires_at, undefined,
       "a person who already signed keeps their row as it was, even when another signer's link is renewed on the same agreement");
     assert.ok(t.contract_signers.find((r) => r.id === SG_SECOND).link_expires_at, "the one who still owes a signature gets the new link life");
+
+    // What the page load does to each signer's STATE, read from the signer rows after the call: a signer
+    // who was never sent becomes "sent"; a signer who has already looked ("viewed") is NOT reset to "sent";
+    // a signer who signed or declined is left as they were; a signer on an agreement nothing is owed on is not touched.
+    const state = (id) => t.contract_signers.find((r) => r.id === id);
+    assert.equal(state(SG(1)).status, "sent", "pending becomes sent when its link is minted");
+    assert.equal(state(SG(9)).status, "sent", "the counterparty on a two-signer agreement is sent too");
+    assert.equal(state(SG(10)).status, "sent", "an already-sent signer stays sent");
+    assert.equal(state(SG(2)).status, "viewed", "a signer who has looked is not reset by someone loading the page");
+    assert.equal(state(SG(3)).status, "signed");
+    assert.equal(state(SG(3)).signed_at, "2026-10-02T00:00:00.000Z");
+    assert.equal(state(SG_THIRD).status, "signed", "a signer who has signed keeps their status when a fellow signer's link is renewed");
+    assert.equal(state(SG_SIGNED).status, "signed");
+    assert.equal(state(SG(6)).status, "declined", "a declined signer is not asked again and not changed");
+    assert.equal(state(SG(6)).link_expires_at, undefined);
+    assert.equal(typeof state(SG(1)).updated_at, "string", "a touched signer row says when");
+    assert.equal(state(SG_THIRD).updated_at, undefined, "an untouched one does not");
+    // The link life written is the one the link carries: the signer row and the link agree to the second.
+    const linkExp = Number(new URL(byId[C(1)].sign_url).searchParams.get("exp"));
+    assert.equal(Math.floor(new Date(state(SG(1)).link_expires_at).getTime() / 1000), linkExp);
   });
 
   test("with two signers the link is the client's own, not the first person's", async () => {

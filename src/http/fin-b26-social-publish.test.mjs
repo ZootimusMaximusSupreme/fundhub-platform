@@ -244,6 +244,67 @@ describe("POST /api/social/publish", () => {
     failFor = new Set();
   });
 
+  test("a channel with no adapter registered is a failure that goes back in the queue, and a task on the third try; it is never reported as posted", async () => {
+    const withMastodon = (attempt) => {
+      const t = world();
+      t.social_channels.push({ id: "ch-mast", partner_id: PARTNER, channel: "mastodon", connection_state: "active", encrypted_access_token: null, external_account_id: "m-1" });
+      t.social_posts.push(post("p-mast", PARTNER, { channel_id: "ch-mast", scheduled_for: ago(2), attempt }));
+      return t;
+    };
+    // First try: back in the queue, the reason on the post, no task yet.
+    const first = withMastodon(0);
+    const a = await call(asPartner(PARTNER), {}, { t: first });
+    const r1 = a.res.body.results.find((r) => r.id === "p-mast");
+    assert.equal(r1.ok, false, "a post nobody could send is not 'ok'");
+    assert.equal(r1.gaveUp, false);
+    assert.match(r1.error, /no adapter registered for channel mastodon/);
+    const row1 = first.social_posts.find((p) => p.id === "p-mast");
+    assert.equal(row1.status, "queued", "it will be tried again; it is not left 'posting' and not marked posted");
+    assert.equal(row1.attempt, 1);
+    assert.match(row1.last_error, /no adapter registered for channel mastodon/);
+    assert.equal(row1.posted_at, undefined, "never stamped as posted");
+    assert.equal(row1.external_post_id, undefined);
+    assert.equal(sent.some((s) => s.id === "p-mast"), false, "no platform was asked");
+    assert.equal(first.onboarding_tasks.length, 0);
+    // Third try: given up, and a person is told.
+    const third = withMastodon(2);
+    const b = await call(asPartner(PARTNER), {}, { t: third });
+    const r3 = b.res.body.results.find((r) => r.id === "p-mast");
+    assert.deepEqual([r3.ok, r3.gaveUp], [false, true]);
+    assert.equal(third.social_posts.find((p) => p.id === "p-mast").status, "failed");
+    const task = third.onboarding_tasks.find((x) => /mastodon/.test(x.title));
+    assert.ok(task, "a post given up on reaches a person");
+    assert.match(task.title, /mastodon post failed after 3 attempts/);
+    assert.match(task.detail, /no adapter registered for channel mastodon/);
+  });
+
+  test("publishing for all partners hands each partner's own company to its run, and each batch keeps what happened to each post", async () => {
+    const t = world();
+    // p-due-1 has already used two tries, so a failure now is the third and is given up on.
+    t.social_posts.find((p) => p.id === "p-due-1").attempt = 2;
+    failFor = new Set(["p-due-1"]);
+    const { res } = await call(asRole("owner"), { all: true }, { t });
+    failFor = new Set();
+    assert.equal(res.statusCode, 200);
+    const byPartner = Object.fromEntries(res.body.batches.map((b) => [b.partner_id, b.results]));
+    // Each batch lists every post its partner had due, with the outcome of each.
+    const outcome = (r) => (r.skipped ? `skipped:${r.skipped}` : r.ok ? "posted" : r.gaveUp ? "gave-up" : "retry");
+    assert.deepEqual(Object.fromEntries(byPartner[PARTNER].map((r) => [r.id, outcome(r)])),
+      { "p-due-1": "gave-up", "p-due-2": "posted", "p-dead-channel": "skipped:channel_not_active" });
+    assert.deepEqual(byPartner[OTHER_PARTNER].map((r) => [r.id, outcome(r)]), [["o-due", "posted"]]);
+    assert.equal(byPartner[PARTNER].find((r) => r.id === "p-due-2").external_post_id, "ext-p-due-2");
+    assert.match(byPartner[PARTNER].find((r) => r.id === "p-due-1").error, /platform said no/);
+    // The company each run was handed is the partner's own: on every action-log row and on every task.
+    assert.equal(t.action_log.length, 3);
+    assert.ok(t.action_log.every((l) => l.org_id === ORG_ID), "every logged post names its company");
+    assert.deepEqual(t.action_log.map((l) => [l.target_id, l.partner_id]).sort(),
+      [["o-due", OTHER_PARTNER], ["p-due-1", PARTNER], ["p-due-2", PARTNER]]);
+    assert.equal(t.onboarding_tasks.length, 1);
+    assert.deepEqual([t.onboarding_tasks[0].org_id, t.onboarding_tasks[0].partner_id], [ORG_ID, PARTNER], "the failure task names the company");
+    assert.equal(t.internal_tasks.length, 1);
+    assert.equal(t.internal_tasks[0].org_id, ORG_ID, "and so does the follow-up for the Fundhub admin");
+  });
+
   test("staff name a partner and publish that partner's posts; the company is read from the partner; every staff role may", async () => {
     const none = await call(asRole("owner"));
     assert.equal(none.res.statusCode, 400);

@@ -6,10 +6,14 @@
 // uses it (journeys, staff). Caller: staff, company from the session.
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 
 import handler from "../../api/read/message-templates.mjs";
+import { describeUsage } from "../messaging/template-usage.mjs";
+import { listWorkflowFiles, stringLiterals, REPO_ROOT } from "../messaging/seed/workflow-audit.mjs";
 import {
-  run, req, asRole, asPartner, asClient, asAffiliate, inSql, sqlOf, wrote, pinned,
+  run, req, asRole, asPartner, asClient, asAffiliate, sqlOf, wrote, pinned,
   ORG_ID, OTHER_ORG_ID, PARTNER, ALL_STAFF_ROLES, STAFF_ID,
 } from "../testing/fin-b26-kit.mjs";
 import { cleanSql, selectList, projectRow, evalSql, orderRows, orderOf, whereOf, keep } from "../testing/fin-b26-sql.mjs";
@@ -30,6 +34,10 @@ function world(over = {}) {
       // A journey step points at it by nickname.
       T("t3", "EMAIL-QQ-JOURNEY-ONLY", "email"),
       T("t4", "SMS-ZZ-ANOTHER", "sms"),
+      // Named by workflow code in TWO different files (the cadence and the seed list): "sent by 2 automations".
+      T("t5", "SMS-AISET03-MSG1", "sms"),
+      // Named by exactly one workflow file: "sent by 1 automation", singular.
+      T("t6", "EMAIL-AR-01-FIRST-NOTICE", "email"),
       T("t9", "SMS-FOREIGN-COPY", "sms", { org_id: OTHER_ORG_ID, body: "another company's words" }),
     ],
     staff: [{ id: STAFF_ID, name: "Olive Owner" }],
@@ -42,6 +50,12 @@ function world(over = {}) {
     ],
     ...over,
   };
+}
+
+/** The different workflow files that name a template key as a string, counted here from each file's own literals. */
+function filesNaming(key) {
+  return listWorkflowFiles(REPO_ROOT).filter((rel) =>
+    stringLiterals(fs.readFileSync(path.join(REPO_ROOT, rel), "utf8")).some((lit) => lit.value === key));
 }
 
 function rulesFor(t, { journeysFail = false } = {}) {
@@ -61,7 +75,14 @@ function rulesFor(t, { journeysFail = false } = {}) {
         return projectRow(items, { params: p, rows: { t: r, s } });
       });
     }],
-    [/FROM journeys WHERE org_id = \$1/i, (sql, p) => (journeysFail ? new Error("journeys table missing") : inSql(t.journeys, sql, p))],
+    // The journeys read: its WHERE as written (so an OR TRUE is a leak) and only the columns its SELECT names
+    // (so a journey that loses `nodes`, `key` or `name` loses its link to the template).
+    [/FROM journeys WHERE org_id = \$1/i, (sql, p) => {
+      if (journeysFail) return new Error("journeys table missing");
+      const items = selectList(sql, 0);
+      return keep(t.journeys, whereOf(sql), p, { alias: "journeys" })
+        .map((r) => projectRow(items, { params: p, row: r, rows: { journeys: r } }));
+    }],
   ];
 }
 
@@ -73,9 +94,9 @@ describe("GET /api/read/message-templates", () => {
     const { res, fake } = await get(asRole("closer"));
     assert.equal(res.statusCode, 200);
     assert.deepEqual(res.body.items.map((i) => i.template_key),
-      ["EMAIL-F03-ROUND-SUBMITTED", "EMAIL-QQ-JOURNEY-ONLY", "SMS-ZZ-ANOTHER", "SMS-ZZ-NOTHING-USES-THIS"]);
+      ["EMAIL-AR-01-FIRST-NOTICE", "EMAIL-F03-ROUND-SUBMITTED", "EMAIL-QQ-JOURNEY-ONLY", "SMS-AISET03-MSG1", "SMS-ZZ-ANOTHER", "SMS-ZZ-NOTHING-USES-THIS"]);
     assert.ok(res.body.items.every((i) => i.template_key !== "SMS-FOREIGN-COPY"), "another company's copy is not shown");
-    const first = res.body.items[0];
+    const first = res.body.items.find((i) => i.template_key === "EMAIL-F03-ROUND-SUBMITTED");
     assert.equal(first.body, "Body words of EMAIL-F03-ROUND-SUBMITTED", "the words are returned, not just a length");
     assert.equal(first.subject, "Subject of EMAIL-F03-ROUND-SUBMITTED");
     assert.equal(first.approved_by_name, "Olive Owner");
@@ -104,7 +125,7 @@ describe("GET /api/read/message-templates", () => {
     const { res, fake } = await get(asRole("owner"), { org_id: OTHER_ORG_ID, orgId: OTHER_ORG_ID });
     assert.equal(res.statusCode, 200);
     assert.ok(res.body.items.every((i) => i.template_key !== "SMS-FOREIGN-COPY"));
-    assert.equal(res.body.items.length, 4);
+    assert.equal(res.body.items.length, 6);
     assert.equal(sqlOf(fake, /FROM message_templates t/)[0].params[4], ORG_ID);
     assert.deepEqual(sqlOf(fake, /FROM journeys/)[0].params, [ORG_ID]);
   });
@@ -115,26 +136,76 @@ describe("GET /api/read/message-templates", () => {
     const code = byKey["EMAIL-F03-ROUND-SUBMITTED"].used_by;
     assert.equal(code.locked, true);
     assert.ok(code.workflows.some((w) => w.file === "src/workflows/f-03-round-submitted.mjs"));
-    assert.match(code.summary, /sent by \d+ automation/);
+    // The sentence counts the DIFFERENT files that name the key, worked out here from the files themselves.
+    const one = filesNaming("EMAIL-F03-ROUND-SUBMITTED");
+    assert.ok(one.length >= 2, `fixture drift: ${one.join(", ")}`);
+    assert.equal(code.summary, `sent by ${one.length} automations`, "the plural, and the number of different files");
+    assert.deepEqual([...new Set(code.workflows.map((w) => w.file))].sort(), one.sort());
+    assert.deepEqual(code.journeys, []);
+    assert.ok(code.workflows.every((w) => Number.isInteger(w.line) && w.line > 0), "each place says its line");
 
+    // A key exactly one file names: the singular, with no "s".
+    const solo = filesNaming("EMAIL-AR-01-FIRST-NOTICE");
+    assert.equal(solo.length, 1, `fixture drift: ${solo.join(", ")}`);
+    assert.equal(byKey["EMAIL-AR-01-FIRST-NOTICE"].used_by.summary, "sent by 1 automation");
+    assert.equal(byKey["EMAIL-AR-01-FIRST-NOTICE"].used_by.locked, true);
+
+    // The same count for another key, so a sentence that always says one number is not enough.
+    const many = filesNaming("SMS-AISET03-MSG1");
+    assert.ok(many.length >= 2, `fixture drift: ${many.join(", ")}`);
+    const multi = byKey["SMS-AISET03-MSG1"].used_by;
+    assert.equal(multi.locked, true);
+    assert.equal(multi.summary, `sent by ${many.length} automations`);
+    assert.deepEqual([...new Set(multi.workflows.map((w) => w.file))].sort(), many.sort());
+
+    // A journey step points at it: the step, the label it used, the journey's own key and name, and the path to the step.
     const viaJourney = byKey["EMAIL-QQ-JOURNEY-ONLY"].used_by;
-    assert.equal(viaJourney.locked, true);
+    assert.equal(viaJourney.locked, true, "a saved journey locks it even though no code names it");
     assert.deepEqual(viaJourney.workflows, []);
-    assert.deepEqual(viaJourney.journeys.map((j) => [j.journeyKey, j.step]), [["welcome", "Send the note"]]);
+    assert.deepEqual(viaJourney.journeys, [
+      { journeyKey: "welcome", journeyName: "Welcome", label: "QQ-JOURNEY", step: "Send the note", path: "Send the note" },
+    ]);
     assert.equal(viaJourney.summary, "used by the Welcome journey");
 
     const nested = byKey["SMS-ZZ-ANOTHER"].used_by;
-    assert.deepEqual(nested.journeys.map((j) => j.step), ["Later"], "a step inside a branch is found; a non-template touch is not");
+    assert.deepEqual(nested.journeys, [
+      { journeyKey: "welcome", journeyName: "Welcome", label: "ANOTHER", step: "Later", path: "Branch \u203a yes \u203a Later" },
+    ], "a step inside a branch is found with the whole path to it; a non-template touch is not");
+    assert.equal(nested.summary, "used by the Welcome journey");
 
     const none = byKey["SMS-ZZ-NOTHING-USES-THIS"].used_by;
     assert.equal(none.locked, false);
     assert.equal(none.summary, "nothing points at this yet");
     assert.deepEqual(none.journeys, [], "another company's journey is not read for this company's templates");
+    assert.deepEqual(none.workflows, []);
+  });
+
+  test("the sentence counts automations (files), not the places inside them", () => {
+    // The scan hands over one place per file today, but the sentence is the editor's own wording for
+    // "how many automations send this", so two places in one file are one automation.
+    assert.equal(describeUsage([{ file: "src/workflows/a.mjs", line: 3 }, { file: "src/workflows/a.mjs", line: 90 }], []),
+      "sent by 1 automation");
+    assert.equal(describeUsage([{ file: "src/workflows/a.mjs", line: 3 }, { file: "src/workflows/b.mjs", line: 9 }], []),
+      "sent by 2 automations");
+    assert.equal(describeUsage([], [{ journeyName: "Welcome" }, { journeyName: "Welcome" }]), "used by the Welcome journey");
+    assert.equal(describeUsage([{ file: "src/workflows/a.mjs", line: 3 }], [{ journeyName: "A" }, { journeyName: "B" }]),
+      "used by the A and B journeys, sent by 1 automation");
+  });
+
+  test("a journey read that is not this company's reaches no template: its own words are never mixed in", async () => {
+    // The foreign journey names NOTHING-USES. Only a read that is bound to the signed-in company keeps it out.
+    const { res, fake } = await get(asRole("owner"));
+    const none = res.body.items.find((i) => i.template_key === "SMS-ZZ-NOTHING-USES-THIS").used_by;
+    assert.equal(none.journeys.length, 0);
+    assert.equal(none.locked, false);
+    const read = sqlOf(fake, /FROM journeys/)[0];
+    assert.deepEqual(read.params, [ORG_ID]);
+    pinned(read.sql, "the journeys read names the company and the columns the usage scan needs", "SELECT key, name, nodes FROM journeys WHERE org_id = $1");
   });
 
   test("the channel and search filters narrow the list in the database; paging says there is more", async () => {
     const sms = await get(asRole("owner"), { channel: "sms" });
-    assert.deepEqual(sms.res.body.items.map((i) => i.template_key), ["SMS-ZZ-ANOTHER", "SMS-ZZ-NOTHING-USES-THIS"]);
+    assert.deepEqual(sms.res.body.items.map((i) => i.template_key), ["SMS-AISET03-MSG1", "SMS-ZZ-ANOTHER", "SMS-ZZ-NOTHING-USES-THIS"]);
     assert.equal(sqlOf(sms.fake, /FROM message_templates t/)[0].params[2], "sms");
     const search = await get(asRole("owner"), { q: "journey" });
     assert.deepEqual(search.res.body.items.map((i) => i.template_key), ["EMAIL-QQ-JOURNEY-ONLY"]);

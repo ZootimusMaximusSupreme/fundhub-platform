@@ -8,6 +8,7 @@ import assert from "node:assert/strict";
 
 import handler from "../../api/trials/dashboard.mjs";
 import { trialDashboard } from "../trials/dashboard.mjs";
+import { listTrialEvents } from "../trials/store.mjs";
 import { strictFakeDb } from "../testing/s3-handler-call.mjs";
 import {
   run, req, asRole, asPartner, asClient, asAffiliate, sqlOf, wrote, pinned,
@@ -158,6 +159,16 @@ describe("GET /api/trials/dashboard", () => {
     assert.equal(res.body.trial.of_days, 7);
     assert.equal(res.body.trial.day, 3);
     assert.equal(res.body.trial.days_remaining, 5);
+    // The whole trial block a buyer reads: what they paid, when the seven days began and end, until when the
+    // screen stays readable after it is over, and whether the clock was held. Each is its own stored value.
+    const row = t.live_trials[0];
+    assert.deepEqual(res.body.trial, {
+      id: TRIAL_ID, status: "running", phase: "running", held_start: false, day: 3, of_days: 7, days_remaining: 5,
+      started_at: row.started_at, ends_at: row.ends_at, frozen_until: row.frozen_until, price_cents: 29700,
+      live: true, readable_until: row.frozen_until,
+    });
+    assert.notEqual(row.started_at, row.ends_at, "the fixture would not notice a swap if these matched");
+    assert.notEqual(row.ends_at, row.frozen_until);
     assert.deepEqual(res.body.events.map((e) => [e.id, e.kind]), [["e1", "clock_started"]], "only this company's events");
     assert.deepEqual(res.body.plan.map((d) => [d.day, d.title, d.human]), [
       [1, "First spend, first clicks, first leads", false], [2, "First optimisation pass", false], [3, "Mid-trial check", true],
@@ -205,6 +216,11 @@ describe("GET /api/trials/dashboard", () => {
     assert.equal(res.body.notes[0].key, "held_start");
     assert.equal(res.body.trial.phase, "held_start");
     assert.equal(res.body.trial.live, false, "a trial whose clock has not started is not live");
+    const held = t.live_trials[0];
+    assert.deepEqual(res.body.trial, {
+      id: TRIAL_ID, status: "held_start", phase: "held_start", held_start: true, day: null, of_days: 7, days_remaining: null,
+      started_at: null, ends_at: null, frozen_until: held.frozen_until, price_cents: 29700, live: false, readable_until: held.frozen_until,
+    }, "what was paid, that the clock is being held, and until when the screen stays readable");
     assert.deepEqual(res.body.events.map((e) => e.id), ["e1"], "the activity strip still shows this trial's events");
     assert.equal(res.body.plan.length, 8);
     assert.equal(sqlOf(fake, /FROM clients|FROM ad_metrics_daily|FROM bookings/).length, 0, "no window, nothing counted");
@@ -232,6 +248,32 @@ describe("GET /api/trials/dashboard", () => {
     const running = await get({}, asPartner(PARTNER));
     assert.equal(running.res.body.trial.live, true);
     assert.equal(running.res.body.trial.phase, "running");
+  });
+
+  test("the activity strip shows the newest twenty-five events of this trial, newest first, for a running trial and a held one", async () => {
+    const many = (t) => {
+      for (let k = 0; k < 30; k += 1) {
+        t.live_trial_events.push({
+          id: `ev-${String(k).padStart(2, "0")}`, org_id: ORG_ID, live_trial_id: TRIAL_ID, kind: "note", detail: {},
+          actor_staff_id: null, occurred_at: new Date(Date.now() - k * 3600e3).toISOString(),
+        });
+      }
+      return t;
+    };
+    const wantIds = Array.from({ length: 25 }, (_, k) => `ev-${String(k).padStart(2, "0")}`);
+    const running = await get({}, asPartner(PARTNER), many(world()));
+    assert.deepEqual(running.res.body.events.map((e) => e.id), wantIds, "twenty-five, the newest first; the 'clock_started' from two days ago and the older notes fall off");
+    assert.equal(sqlOf(running.fake, /FROM live_trial_events/)[0].params[2], 25);
+    const heldWorld = many(world({ live_trials: [trialRow({ status: "held_start", held_start: true, started_at: null, ends_at: null })] }));
+    const held = await get({}, asPartner(PARTNER), heldWorld);
+    assert.deepEqual(held.res.body.events.map((e) => e.id), wantIds, "the held trial's strip is bounded the same way");
+    assert.equal(sqlOf(held.fake, /FROM live_trial_events/)[0].params[2], 25);
+    // The events library has its own bounds for any other caller: 200 at most, 50 when it is not a usable number.
+    for (const [limit, want] of [[undefined, 50], [5000, 200], [0, 50], [-3, 50], [Number.NaN, 50], [10, 10]]) {
+      const lib = strictFakeDb(rulesFor(world()));
+      await listTrialEvents(lib, { orgId: ORG_ID, liveTrialId: TRIAL_ID, ...(limit === undefined ? {} : { limit }) });
+      assert.equal(sqlOf(lib, /FROM live_trial_events/)[0].params[2], want, String(limit));
+    }
   });
 
   test("bookings are capped at a hundred on one screen", async () => {

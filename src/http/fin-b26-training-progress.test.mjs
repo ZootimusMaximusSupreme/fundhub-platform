@@ -30,10 +30,18 @@ function world({ partners, modules, progress = [], decisions = [], seeded = true
       { id: "a4000000-0000-4000-8000-000000000004", org_id: ORG_ID, status: "active", agreement_signed_at: null },
       { id: FOREIGN_PARTNER, org_id: OTHER_ORG_ID, status: "active", agreement_signed_at: SIGNED },
     ],
-    training_modules: modules || (seeded ? MODULES.map((m) => ({
-      id: `mod-${m.code}`, org_id: ORG_ID, code: m.code, position: m.position, title: m.title,
-      week_no: m.weekNo, gate_code: m.gateCode, certified: m.certified,
-    })) : []),
+    training_modules: [
+      // ANOTHER company's seeded curriculum comes first in the table, with the same codes and its own ids.
+      // A read that forgets the company finds these first, and none of them has a progress row for this partner.
+      ...MODULES.map((m) => ({
+        id: `fmod-${m.code}`, org_id: OTHER_ORG_ID, code: m.code, position: m.position, title: `Foreign ${m.title}`,
+        week_no: m.weekNo, gate_code: m.gateCode, certified: m.certified,
+      })),
+      ...(modules || (seeded ? MODULES.map((m) => ({
+        id: `mod-${m.code}`, org_id: ORG_ID, code: m.code, position: m.position, title: m.title,
+        week_no: m.weekNo, gate_code: m.gateCode, certified: m.certified,
+      })) : [])),
+    ],
     training_gates: [
       ...GATES.map((g) => ({ org_id: ORG_ID, code: g.code, position: g.position, title: g.title, week_due: g.weekDue, blocks: `blocks ${g.code}` })),
       // Another company's catalogue: other titles and other words for what each gate blocks.
@@ -130,7 +138,14 @@ describe("POST /api/training-progress", () => {
     const m1 = first.res.body.modules.find((m) => m.code === "m1");
     assert.equal(m1.status, "attended");
     assert.equal(first.res.body.modules_complete, 0);
-    assert.equal(first.res.body.modules_total, 13);
+    assert.equal(first.res.body.modules_total, 13, "this company's thirteen, not the other company's as well");
+    // The curriculum is read in DELIVERY order (position), which is not the order of the module numbers.
+    const delivery = [...MODULES].sort((a, b) => a.position - b.position).map((m) => m.code);
+    assert.deepEqual(first.res.body.modules.map((m) => m.code), delivery);
+    assert.notDeepEqual(delivery, [...delivery].sort(), "the fixture would not notice a sort by code if these were the same");
+    assert.deepEqual(first.res.body.modules.map((m) => m.title), [...MODULES].sort((a, b) => a.position - b.position).map((m) => m.title),
+      "this company's own titles");
+    assert.equal(first.res.body.next_module.code, "m1", "attended is not complete: it is still the next one");
 
     const done = await post({ ...mod(PARTNER, "m1", "complete") }, asRole("admin", { staff_id: SECOND_STAFF }), t);
     assert.equal(done.res.statusCode, 200);
@@ -141,6 +156,8 @@ describe("POST /api/training-progress", () => {
     assert.ok(done.res.body.recorded.attended_at, "and an attendance date");
     assert.equal(done.res.body.recorded.attended_at, first.res.body.recorded.attended_at, "the first attendance date stands");
     assert.equal(done.res.body.modules_complete, 1);
+    assert.equal(done.res.body.next_module.code, "m2", "the next in delivery order after m1, not m10 as a sort by code would say");
+    assert.equal(done.res.body.next_gate.code, "G1");
     assert.equal(t.partner_training_progress.length, 1, "one row per partner and module, updated in place");
 
     const insert = sqlOf(done.fake, /INSERT INTO partner_training_progress/)[0];
@@ -171,6 +188,7 @@ describe("POST /api/training-progress", () => {
     const early = await post(gate(PARTNER, "G1", "passed"), asRole("owner"), t);
     assert.equal(early.res.statusCode, 409);
     assert.equal(early.res.body.error, "modules_incomplete");
+    assert.match(early.res.body.message, /module taught in this gate's week has to be complete first/, "a sentence a person reads, not the code");
     assert.equal(t.partner_training_gates.length, 0);
 
     await post(mod(PARTNER, "m1", "complete"), asRole("owner"), t);
@@ -195,6 +213,9 @@ describe("POST /api/training-progress", () => {
     assert.equal(g1.res.statusCode, 200);
     assert.equal(g1.res.body.recorded.outcome, "passed");
     assert.equal(g1.res.body.recorded.decided_by_staff_id, STAFF_ID);
+    assert.equal(g1.res.body.recorded.notes, "cleared", "the note written with the decision is stored with it");
+    assert.equal(g1.res.body.gates.find((g) => g.code === "G1").notes, "cleared", "and read back on the gate");
+    assert.equal(t.partner_training_gates[0].notes, "cleared");
     assert.equal(g1.res.body.gates.find((g) => g.code === "G1").passed, true);
     assert.equal(g1.res.body.may_sell_supervised, false, "G2 and G3 are still open");
     assert.deepEqual(g1.res.body.gates_outstanding, ["G2", "G3", "G4"]);
@@ -204,6 +225,8 @@ describe("POST /api/training-progress", () => {
     const skip = await post(gate(PARTNER, "G3", "passed"), asRole("owner"), t);
     assert.equal(skip.res.statusCode, 409);
     assert.equal(skip.res.body.error, "out_of_order");
+    assert.match(skip.res.body.message, /gates are passed in order/);
+    assert.notEqual(skip.res.body.message, "out_of_order");
 
     // A failure is recorded whatever the order or attendance: the attempt is the record.
     const failed = await post(gate(PARTNER, "G4", "failed"), asRole("owner"), t);
@@ -217,6 +240,7 @@ describe("POST /api/training-progress", () => {
     const none = await post(gate(PARTNER, "G1", "revoked"), asRole("owner"), t);
     assert.equal(none.res.statusCode, 409);
     assert.equal(none.res.body.error, "not_passed");
+    assert.match(none.res.body.message, /nothing to revoke/);
     for (const code of ["m1", "m2"]) await post(mod(PARTNER, code, "complete"), asRole("owner"), t);
     await post(gate(PARTNER, "G1", "passed"), asRole("owner"), t);
     const revoked = await post(gate(PARTNER, "G1", "revoked"), asRole("admin"), t);
@@ -358,16 +382,37 @@ describe("POST /api/training-progress", () => {
       [{ partner_id: PARTNER, action: "erase" }, 400, "unknown_action"],
       [{ ...mod("not-a-uuid", "m1") }, 400, "partner_id must be a uuid"],
     ];
+    const sentence = {
+      unknown_module: /thirteen modules/, unknown_status: /attended.*complete/, unknown_gate: /four gates/,
+      unknown_outcome: /passed.*failed.*revoked/, unknown_action: /module.*gate/,
+    };
     for (const [body, status, error] of cases) {
       const t = world();
       const { res, fake } = await post(body, asRole("owner"), t);
       assert.equal(res.statusCode, status, JSON.stringify(body));
       assert.equal(res.body.error, error, JSON.stringify(body));
       assert.equal(wrote(fake), false, JSON.stringify(body));
+      if (sentence[error]) {
+        assert.match(res.body.message, sentence[error], `${error}: the caller is told in words`);
+        assert.notEqual(res.body.message, error);
+      }
     }
     const unseeded = await post(mod(PARTNER, "m1"), asRole("owner"), world({ seeded: false }));
     assert.equal(unseeded.res.statusCode, 409);
-    assert.equal(unseeded.res.body.error, "module_not_seeded");
+    assert.equal(unseeded.res.body.error, "module_not_seeded", "another company's curriculum is not this company's");
+    assert.match(unseeded.res.body.message, /no curriculum seeded/);
+    assert.equal(unseeded.t.partner_training_progress.length, 0);
+  });
+
+  test("the action word is read without regard to capitals or spaces", async () => {
+    const t = world();
+    const one = await post({ partner_id: PARTNER, action: "  MODULE ", module: "m1", status: "attended" }, asRole("owner"), t);
+    assert.equal(one.res.statusCode, 200);
+    assert.equal(one.res.body.recorded.status, "attended");
+    for (const code of ["m1", "m2"]) await post(mod(PARTNER, code, "complete"), asRole("owner"), t);
+    const two = await post({ partner_id: PARTNER, action: "Gate", gate: "G1", outcome: "passed" }, asRole("owner"), t);
+    assert.equal(two.res.statusCode, 200);
+    assert.equal(two.res.body.recorded.outcome, "passed");
   });
 
   test("notes are trimmed and capped at 2,000 characters; only POST answers", async () => {

@@ -106,6 +106,30 @@ describe("GET /api/social/settings", () => {
     assert.equal(res.body.settings.stored, true);
   });
 
+  test("autopilot, launch and the marketing suite are each read as their own stored value: off reads as off, one at a time", async () => {
+    for (const column of ["autopilot_enabled", "launch_enabled", "marketing_suite_enabled"]) {
+      // Only this one is off; the other two are on. A read that fixes any of the three to "on" shows up here.
+      const t = world({ partner_module_settings: [stored(PARTNER, ORG_ID, { [column]: false })] });
+      const { res } = await call("GET", asRole("owner"), { query: { partner_id: PARTNER } }, t);
+      const want = {
+        stored: true, approve_before_launch: true, weekly_asset_target: 5, max_concurrent_jobs: 3,
+        autopilot_enabled: true, launch_enabled: true, marketing_suite_enabled: true, updated_at: "2026-10-01T00:00:00.000Z",
+        [column]: false,
+      };
+      assert.deepEqual(res.body.settings, want, column);
+    }
+    // And all three off together, with the approval switch on, as a brand-new partner is switched.
+    const allOff = world({ partner_module_settings: [stored(PARTNER, ORG_ID, { autopilot_enabled: false, launch_enabled: false, marketing_suite_enabled: false })] });
+    const { res } = await call("GET", asRole("admin"), { query: { partner_id: PARTNER } }, allOff);
+    assert.deepEqual([res.body.settings.autopilot_enabled, res.body.settings.launch_enabled, res.body.settings.marketing_suite_enabled, res.body.settings.approve_before_launch],
+      [false, false, false, true]);
+    // A stored null (not yet decided) is not "on" either.
+    const unset = world({ partner_module_settings: [stored(PARTNER, ORG_ID, { autopilot_enabled: null, launch_enabled: null, marketing_suite_enabled: null })] });
+    const nulls = await call("GET", asRole("owner"), { query: { partner_id: PARTNER } }, unset);
+    assert.deepEqual([nulls.res.body.settings.autopilot_enabled, nulls.res.body.settings.launch_enabled, nulls.res.body.settings.marketing_suite_enabled],
+      [false, false, false]);
+  });
+
   test("the owning partner reads their own; another partner's id is refused", async () => {
     const own = await call("GET", asPartner(PARTNER), { query: { partner_id: PARTNER } });
     assert.equal(own.res.statusCode, 200);
