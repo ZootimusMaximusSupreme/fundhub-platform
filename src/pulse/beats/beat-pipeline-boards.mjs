@@ -5,34 +5,33 @@
 // lib/pipeline-boards-truth.mjs). count-true runs the board route's own reads (held copies of
 // api/dashboard/pipeline.mjs STAGES_SQL and CARDS_SQL) and counts what each column really gets back.
 //
-// Three of the lane's five checks run here. pipeline:age needs the Repair clocks and the owner hold, and
-// pipeline:age-no-limit is a setting, so both stay daily. The facts half of the boards (is each card where
-// its facts say, do two records agree) is its own beat, pipeline-facts, so each beat has room in its clock:
-// this one makes about 25 reads.
+// One of the lane's five checks runs here: count-true. pipeline:nobody-lost and pipeline:dead-stage run in
+// beat pipeline-lost (split out 2026-10-21: this beat made about 25 reads and took 6.2 s of its 10 s deadline on
+// the GitHub ship runner, which stopped the ship). Every board's columns now come from ONE read
+// (BOARD_STAGES_ALL_SQL), then the route's own card read per board: about 13 reads. pipeline:age needs the Repair
+// clocks and the owner hold, and pipeline:age-no-limit is a setting, so both stay daily. The facts half of the
+// boards (is each card where its facts say, do two records agree) is its own beat, pipeline-facts.
 //
 // What it guards, and why each surface is on `covers` (the deep checks src/pulse/tripwires.mjs names):
 //   route:dashboard/pipeline        pipeline:count-true
-//   route:dashboard/client-archive  pipeline:nobody-lost
-//   route:pipeline-clients          pipeline:count-true, pipeline:nobody-lost
-//   desk:pipeline.html              pipeline:count-true, pipeline:nobody-lost (stage-vs-fact: pipeline-facts)
-//   route:inquiry-cases             pipeline:dead-stage (stage-vs-fact: pipeline-facts)
+//   route:pipeline-clients          pipeline:count-true (nobody-lost: pipeline-lost)
+//   desk:pipeline.html              pipeline:count-true (nobody-lost: pipeline-lost, stage-vs-fact: pipeline-facts)
+// route:dashboard/client-archive and route:inquiry-cases moved to pipeline-lost's covers with their checks.
 //
-// pipeline:dead-stage says "nothing to judge" while no card sits on a dead stage; that is a skipped step,
-// not a red. Read only: every read goes through ctx.read (the read box). No send, no write, no web call.
+// Read only: every read goes through ctx.read (the read box). No send, no write, no web call.
 
 import { laneSelfTest, runLaneBeat } from "./lib/money-hourly.mjs";
 import { clockedRun } from "./lib/pipeline-read-clock.mjs";
 import {
-  BOARD_CARDS_SQL, BOARD_STAGES_SQL, DEAD_CARDS_SQL, HIRING_PAINTED_SQL, HIRING_TRUTH_SQL, PAID_NO_CARD_SQL,
-  TRUTH_SQL, runBoardsChecks
+  BOARD_CARDS_SQL, BOARD_STAGES_ALL_SQL, HIRING_PAINTED_SQL, HIRING_TRUTH_SQL, TRUTH_SQL, runBoardsChecks
 } from "./lib/pipeline-boards-truth.mjs";
 
-export const HOURLY_CHECK_IDS = Object.freeze(["pipeline:count-true", "pipeline:nobody-lost", "pipeline:dead-stage"]);
+export const HOURLY_CHECK_IDS = Object.freeze(["pipeline:count-true"]);
 
 const ONE_BOARD = Object.freeze([Object.freeze({ pipeline: "sales", stage: "booked", sort_order: 0, n: 1 })]);
 const PASS_ROWS = Object.freeze([
   Object.freeze([TRUTH_SQL, ONE_BOARD]),
-  Object.freeze([BOARD_STAGES_SQL, Object.freeze([Object.freeze({ id: "stage-1", key: "booked", name: "Booked", sort_order: 0 })])]),
+  Object.freeze([BOARD_STAGES_ALL_SQL, Object.freeze([Object.freeze({ pipeline_key: "sales", id: "stage-1", key: "booked", name: "Booked", sort_order: 0 })])]),
   Object.freeze([BOARD_CARDS_SQL, Object.freeze([Object.freeze({ id: "card-1", stage_id: "stage-1" })])]),
   Object.freeze([HIRING_TRUTH_SQL, Object.freeze([Object.freeze({ n: 0 })])]),
   Object.freeze([HIRING_PAINTED_SQL, Object.freeze([Object.freeze({ n: 0 })])])
@@ -41,11 +40,7 @@ const PASS_ROWS = Object.freeze([
 /** One red per check, each on its own: what the fake database answers to turn that check red. */
 export const RED_ROWS = Object.freeze({
   // The board holds a card the board read does not hand back.
-  "pipeline-count-true": Object.freeze([BOARD_CARDS_SQL, Object.freeze([])]),
-  // A client paid for funding and has no card on the Funding board.
-  "pipeline-nobody-lost": Object.freeze([PAID_NO_CARD_SQL, Object.freeze([Object.freeze({ client_id: "aaaaaaaa-0000-4000-8000-000000000001", category: "funding", paid_at: "2026-10-09T10:00:00.000Z", has_sale: true, total: 1 })])]),
-  // A card landed on Sales Confirmed, which no code moves a card to.
-  "pipeline-dead-stage": Object.freeze([DEAD_CARDS_SQL, Object.freeze([Object.freeze({ pipeline: "sales", stage: "confirmed", n: 1 })])])
+  "pipeline-count-true": Object.freeze([BOARD_CARDS_SQL, Object.freeze([])])
 });
 
 export const LANE = Object.freeze({
@@ -53,20 +48,18 @@ export const LANE = Object.freeze({
   run: async (io) => runBoardsChecks({ run: clockedRun(io.read), orgId: io.orgId, now: io.now }, { only: HOURLY_CHECK_IDS }),
   selfTest: Object.freeze({
     passRows: PASS_ROWS,
-    // A paying client with no card on the board that owns what they bought: the beat stops at nobody-lost.
-    failRows: Object.freeze([RED_ROWS["pipeline-nobody-lost"]])
+    // The board holds a card the board read does not hand back: the beat stops at count-true.
+    failRows: Object.freeze([RED_ROWS["pipeline-count-true"]])
   })
 });
 
 export const id = "pipeline-boards";
-export const title = "Every board shows every card and loses nobody";
+export const title = "Every board shows every card the database holds";
 export const kind = "probe";
 export const covers = [
   "route:dashboard/pipeline",
-  "route:dashboard/client-archive",
   "route:pipeline-clients",
-  "desk:pipeline.html",
-  "route:inquiry-cases"
+  "desk:pipeline.html"
 ];
 export const box = false;
 export const reads = [];
@@ -80,17 +73,15 @@ export async function run(ctx) {
 }
 
 export const fixGuide = [
-  "A pipeline board hides a card the database holds, or a paying client is on no board.",
+  "A pipeline board hides a card the database holds.",
   "",
   "Likely causes:",
   "- The board read (api/dashboard/pipeline.mjs) changed and now drops cards, or a board passed its 500-card limit.",
-  "- A funding or repair payment was saved and the move that puts the client on that board never fired.",
-  "- A client was archived and then paid, or a card sits on a stage from another board.",
-  "- A person dropped a card on a stage no code moves a card to, so nothing watches it next.",
+  "- A card sits on a stage that is not one of its board's columns, so the route drops it.",
   "",
   "Steps:",
-  "- Run node scripts/pulse/run-beat.mjs pipeline-boards and read the red step: it names the board and the client ids.",
-  "- Open Pipeline and the client. Find why the card is missing, hidden or on that stage.",
+  "- Run node scripts/pulse/run-beat.mjs pipeline-boards and read the red step: it names the board and the column.",
+  "- Open Pipeline. Find why the card is hidden.",
   "- Fix the read or the handler that should have placed the card. Do not move cards from the pulse; the beat only reads.",
   "Files: src/pulse/beats/lib/pipeline-boards-truth.mjs, api/dashboard/pipeline.mjs, src/handlers/client-lifecycle.mjs, src/handlers/purchase-routing.mjs"
 ].join("\n");

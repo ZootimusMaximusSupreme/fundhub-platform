@@ -125,6 +125,7 @@ export const SHIFTS = Object.freeze({
       "invoice-notice-recovery",
       "pipeline-boards",
       "pipeline-facts",
+      "pipeline-lost",
       "roadmap-delivery",
       "roadmap-pages",
       "sales-totals",

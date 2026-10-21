@@ -11,7 +11,8 @@ import { laneSelfTest } from "./lib/money-hourly.mjs";
 import { TRIPWIRES } from "../tripwires.mjs";
 
 const OTHER_BEATS = { "repair-trip": repairTrip };
-const withEnv = (env) => ({ ...laneSelfTest(beat.LANE), env });
+// Settings as the live server has them: a Lambda marker plus the store (off the server the step is a skip).
+const withEnv = (env) => ({ ...laneSelfTest(beat.LANE), env: { LAMBDA_TASK_ROOT: "/var/task", ...env } });
 const ORG = "11111111-1111-4111-8111-111111111111";
 
 test("upload-door is valid, green on netlify-blobs, red at documents-upload-store when the setting is gone", async () => {
@@ -86,4 +87,14 @@ test("upload-door: every check route:documents-upload names runs hourly, here or
   }
   // repair-trip does not claim the upload door itself; this beat does.
   assert.ok(!repairTrip.covers.includes("route:documents-upload"));
+});
+
+test("upload-door: judged only on the live server; a runner or laptop copy of the settings is a skip, never a red", async () => {
+  const [offServer] = await beat.LANE.run({ env: {} });
+  assert.equal(offServer.status, "skip");
+  assert.match(offServer.detail, /not the live server|No settings came with this run/);
+  const [onServer] = await beat.LANE.run({ env: { NETLIFY: "true" } });
+  assert.equal(onServer.status, "FAIL", "on the live server an unset store is still red");
+  const [good] = await beat.LANE.run({ env: { NETLIFY: "true", DOCUMENT_STORE_PROVIDER: "netlify-blobs" } });
+  assert.equal(good.status, "PASS");
 });

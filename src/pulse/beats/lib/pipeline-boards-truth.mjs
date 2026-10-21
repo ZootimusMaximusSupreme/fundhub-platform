@@ -111,6 +111,27 @@ export const BOARD_STAGES_SQL = `
    ORDER BY s.sort_order ASC, s.name ASC
 `;
 
+/* Every board's columns in ONE read: the route's own stages read (BOARD_STAGES_SQL) for all board keys at once,
+   with the board key on each row. Built from BOARD_STAGES_SQL, so the two cannot drift: a change to the route's
+   read that these three swaps no longer fit throws when this file loads. One read instead of one per board keeps
+   the hourly beat inside half its deadline on a slow link (ship 2026-10-21 on the GitHub runner: about 25 reads,
+   6.2 s against a 10 s deadline, which stopped the ship). */
+function allBoardsStagesSql(one) {
+  const swaps = [
+    ["SELECT s.id, s.key, s.name, s.sort_order", "SELECT p.key AS pipeline_key, s.id, s.key, s.name, s.sort_order"],
+    ["WHERE p.key = $1 AND p.org_id = $2", "WHERE p.key = ANY($1::text[]) AND p.org_id = $2"],
+    ["ORDER BY s.sort_order ASC, s.name ASC", "ORDER BY p.key ASC, s.sort_order ASC, s.name ASC"]
+  ];
+  let out = one;
+  for (const [from, to] of swaps) {
+    if (!out.includes(from)) throw new Error(`BOARD_STAGES_SQL changed: "${from}" is gone, so the all-boards read cannot be built`);
+    out = out.replace(from, to);
+  }
+  return out;
+}
+
+export const BOARD_STAGES_ALL_SQL = allBoardsStagesSql(BOARD_STAGES_SQL);
+
 export const BOARD_CARDS_SQL = `
   SELECT
     cd.id,
@@ -479,9 +500,18 @@ export async function checkCountTrue(run, orgId) {
   const boardKeys = [...new Set(truth.map((r) => String(r.pipeline)))];
   const painted = new Map();
   const unread = [];
+  // Every board's columns in one read (BOARD_STAGES_ALL_SQL); the cards stay one read per board, as the route reads them.
+  const allStages = await read(run, BOARD_STAGES_ALL_SQL, [boardKeys, orgId]);
+  const stagesByBoard = new Map(boardKeys.map((key) => [key, []]));
+  if (!allStages.error) {
+    for (const s of allStages.rows) {
+      const key = String(s.pipeline_key);
+      if (stagesByBoard.has(key)) stagesByBoard.get(key).push(s);
+    }
+  }
   for (const key of boardKeys) {
-    const stagesRead = await read(run, BOARD_STAGES_SQL, [key, orgId]);
-    if (stagesRead.error) { unread.push(`${boardName(key)} (${stagesRead.error})`); continue; }
+    if (allStages.error) { unread.push(`${boardName(key)} (${allStages.error})`); continue; }
+    const stagesRead = { rows: stagesByBoard.get(key) };
     if (!stagesRead.rows.length) { unread.push(`${boardName(key)} (the board has no columns)`); continue; }
     const cardsRead = await read(run, BOARD_CARDS_SQL, [key, orgId, BOARD_READ_LIMIT, demoOn]);
     if (cardsRead.error) { unread.push(`${boardName(key)} (${cardsRead.error})`); continue; }
