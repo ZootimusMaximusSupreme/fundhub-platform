@@ -8,24 +8,38 @@ enum TeleprompterDestination {
     static let url = URL(string: "https://fundhub.ai/app/teleprompter.html")!
 }
 
+/// Chris's teleprompter screen, exactly as Safari shows it, with the iPhone's
+/// own camera filming behind it (NativeCameraBridge).
 struct LivePrompterView: View {
+    @StateObject private var bridge = NativeCameraBridge()
+
     var body: some View {
-        WebPrompter(url: TeleprompterDestination.url)
-            .ignoresSafeArea()
+        ZStack {
+            CameraPreview(session: bridge.camera.session)
+                .ignoresSafeArea()
+            WebPrompter(url: TeleprompterDestination.url, bridge: bridge)
+                .ignoresSafeArea()
+        }
+        .background(Color.black.ignoresSafeArea())
     }
 }
 
 private struct WebPrompter: UIViewRepresentable {
     let url: URL
+    let bridge: NativeCameraBridge
 
     func makeUIView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
         configuration.allowsInlineMediaPlayback = true
         configuration.mediaTypesRequiringUserActionForPlayback = []
         configuration.websiteDataStore = .default()
+        bridge.install(into: configuration)
         let view = WKWebView(frame: .zero, configuration: configuration)
+        // Clear, so the camera behind shows through where the screen is clear.
         view.isOpaque = false
-        view.backgroundColor = .black
+        view.backgroundColor = .clear
+        view.scrollView.backgroundColor = .clear
+        bridge.webView = view
         view.scrollView.isScrollEnabled = false
         view.uiDelegate = context.coordinator
         view.navigationDelegate = context.coordinator

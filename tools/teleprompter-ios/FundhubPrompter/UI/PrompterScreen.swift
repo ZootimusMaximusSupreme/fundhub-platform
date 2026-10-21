@@ -115,7 +115,6 @@ struct PrompterScreen: View {
                 if let s = camera.shortfall { Text(s).font(.caption.weight(.semibold)).foregroundStyle(Brand.bad) }
                 if let e = camera.lastError { Text(e).font(.caption).foregroundStyle(Brand.bad) }
                 else if let ok = camera.lastSaved { Text(ok).font(.caption).foregroundStyle(Brand.good).lineLimit(2) }
-                UploadLine(uploader: model.uploader)
             }
             Spacer()
         }
@@ -372,24 +371,6 @@ struct RecDot: View {
             }
             .padding(.horizontal, 8).padding(.vertical, 4)
             .background(.black.opacity(0.6), in: Capsule())
-        }
-    }
-}
-
-/// One line under the take name: where the last takes are on their way to Drive.
-struct UploadLine: View {
-    @ObservedObject var uploader: TakeUploader
-    var body: some View {
-        if !uploader.status.isEmpty {
-            Button { Task { await uploader.retry() } } label: {
-                Text(uploader.status)
-                    .font(.caption)
-                    .foregroundStyle(uploader.items.contains { $0.error != nil } ? Brand.bad : Color.gray)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
-            }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("upload")
         }
     }
 }

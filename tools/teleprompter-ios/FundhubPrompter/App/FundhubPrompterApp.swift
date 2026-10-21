@@ -2,14 +2,9 @@ import SwiftUI
 
 @main
 struct FundhubPrompterApp: App {
-    @StateObject private var model = AppModel()
-    @StateObject private var camera = CameraController()
-
     var body: some Scene {
         WindowGroup {
             RootView()
-                .environmentObject(model)
-                .environmentObject(camera)
                 .preferredColorScheme(.dark)
                 .tint(Brand.amber)
         }

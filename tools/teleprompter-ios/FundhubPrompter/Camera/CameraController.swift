@@ -45,9 +45,28 @@ final class CameraController: NSObject, ObservableObject {
     private var longForm = false
     /// What the camera was really set to when the take started (for the Drive description).
     private var lastPick: CaptureChoice.Pick?
-    /// A finished take: (file, take name, offer key, saved in Photos, measured settings).
-    /// Called on the main queue. The receiver owns the file.
-    var onTake: (@MainActor (URL, String, String?, Bool, [String: AnyCodable]) -> Void)?
+    /// The back lens when true. The front lens (a mirror) when false.
+    private var wantBack = false
+    /// A finished take: (file, take name, offer key, measured settings), on the
+    /// main queue, before anything is kept. The receiver owns the file.
+    var onTake: (@MainActor (URL, String, String?, [String: AnyCodable]) -> Void)?
+    /// The camera is set: what it really films.
+    var onReady: (@MainActor (Info) -> Void)?
+    /// The take really started recording.
+    var onRecordingStarted: (@MainActor () -> Void)?
+    /// A take that failed to record. No file.
+    var onTakeFailed: (@MainActor (String) -> Void)?
+
+    struct Info: Equatable {
+        var back: Bool
+        var longForm: Bool
+        /// The recorded picture, upright (a phone held up films 1080×1920 or 2160×3840).
+        var width: Int
+        var height: Int
+        var fps: Int
+        var summary: String
+        var shortfall: String?
+    }
     private var configured = false
 
     /// Ask for camera and microphone, then set the camera up.
@@ -86,6 +105,32 @@ final class CameraController: NSObject, ObservableObject {
         }
     }
 
+    /// Front (mirror) or back lens. Never changes the camera in the middle of a take.
+    func setFacing(back: Bool) {
+        queue.async {
+            guard self.wantBack != back else { return }
+            self.wantBack = back
+            guard self.configured, !self.movieOutput.isRecording else { return }
+            self.swapLens()
+        }
+    }
+
+    /// Put the chosen lens in, then pick its format again. Runs on the camera queue.
+    private func swapLens() {
+        guard let cam = filmingCamera(), cam.uniqueID != device?.uniqueID else { configureFormat(); return }
+        session.beginConfiguration()
+        if let old = videoInput { session.removeInput(old); videoInput = nil }
+        do {
+            let vi = try AVCaptureDeviceInput(device: cam)
+            if session.canAddInput(vi) { session.addInput(vi); videoInput = vi; device = cam }
+        } catch {
+            DispatchQueue.main.async { self.lastError = "That camera did not start: \(error.localizedDescription)" }
+        }
+        session.commitConfiguration()
+        if let d = device { rotation = AVCaptureDevice.RotationCoordinator(device: d, previewLayer: nil) }
+        configureFormat()
+    }
+
     /// Settings changed (quality, frame rate, codec, steady, exposure, mirror).
     func apply(_ s: PrompterSettings) {
         settings = s
@@ -104,9 +149,9 @@ final class CameraController: NSObject, ObservableObject {
                                          mediaType: .video, position: .back).devices.first
     }
 
-    /// Front camera when this phone has one. Otherwise the back camera, so the preview stays up.
+    /// The lens asked for, else the other one, so the preview stays up.
     private func filmingCamera() -> AVCaptureDevice? {
-        frontCamera() ?? backCamera()
+        wantBack ? (backCamera() ?? frontCamera()) : (frontCamera() ?? backCamera())
     }
 
     private func configure(withAudio: Bool) {
@@ -204,9 +249,17 @@ final class CameraController: NSObject, ObservableObject {
         }
         lastPick = pick
         let kind = longForm ? "Long form" : "Ad"
+        let angle = rotation?.videoRotationAngleForHorizonLevelCapture ?? 90
+        let upright = Int(angle.rounded()) % 180 != 0
+        let line = "\(kind) · \(who) · \(size) · \(pick.fps) fps · \(codecWord)" + (front ? " · mirrored" : "")
+        let info = Info(back: !front, longForm: longForm,
+                        width: upright ? min(pick.width, pick.height) : max(pick.width, pick.height),
+                        height: upright ? max(pick.width, pick.height) : min(pick.width, pick.height),
+                        fps: pick.fps, summary: line, shortfall: note)
         DispatchQueue.main.async {
-            self.summary = "\(kind) · \(who) · \(size) · \(pick.fps) fps · \(codecWord)" + (front ? " · mirrored" : "")
+            self.summary = line
             self.shortfall = note
+            self.onReady?(info)
         }
     }
 
@@ -275,30 +328,29 @@ extension CameraController: AVCaptureFileOutputRecordingDelegate {
         let finished = (error as NSError?)?.userInfo[AVErrorRecordingSuccessfullyFinishedKey] as? Bool ?? (error == nil)
         DispatchQueue.main.async { self.state = .saving }
         guard finished else {
+            let why = "The take did not record: \(error?.localizedDescription ?? "unknown")"
             DispatchQueue.main.async {
                 self.state = .ready
-                self.lastError = "The take did not record: \(error?.localizedDescription ?? "unknown")"
+                self.lastError = why
+                self.onTakeFailed?(why)
             }
             return
         }
         let offerKey = pendingOfferKey
         let diagnostics = takeDiagnostics()
         Task {
-            // One MP4 copy, no re-encode. Photos gets its own copy; the upload
-            // list keeps this file until Drive has every byte.
+            // One MP4 copy, no re-encode. Nothing is kept until Chris says Yes.
             let file = await PhotosSaver.remuxToMP4(url) ?? url
             if file != url { try? FileManager.default.removeItem(at: url) }
-            let result = await PhotosSaver.save(movie: file, takeName: name, moveFile: false)
             await MainActor.run {
                 self.state = .ready
-                var inPhotos = false
-                switch result {
-                case .success(let saved): self.lastSaved = "Saved to Photos: \(saved)"; self.lastError = nil; inPhotos = true
-                case .failure(let e): self.lastError = e.message
-                }
-                if let take = self.onTake { take(file, name, offerKey, inPhotos, diagnostics) }
+                if let take = self.onTake { take(file, name, offerKey, diagnostics) }
             }
         }
+    }
+
+    func fileOutput(_ output: AVCaptureFileOutput, didStartRecordingTo fileURL: URL, from connections: [AVCaptureConnection]) {
+        DispatchQueue.main.async { self.onRecordingStarted?() }
     }
 
     /// What the camera filmed, in the fields the take route keeps

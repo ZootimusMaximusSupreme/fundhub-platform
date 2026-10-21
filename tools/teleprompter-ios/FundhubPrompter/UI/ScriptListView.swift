@@ -25,11 +25,7 @@ struct ScriptListView: View {
             .refreshable { await model.refresh(); await model.queue.flush() }
             .navigationTitle(model.listTitle)
             .safeAreaInset(edge: .bottom) {
-                VStack(alignment: .leading, spacing: 4) {
-                    UploadLine(uploader: model.uploader)
-                    PulseBar(root: nil)
-                }
-                .padding(.horizontal).padding(.bottom, 6)
+                PulseBar(root: nil).padding(.horizontal).padding(.bottom, 6)
             }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {

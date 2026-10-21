@@ -26,8 +26,6 @@ final class AppModel: ObservableObject {
     let transport: Transport
     let queue: SaveQueue
     let isDemo: Bool
-    /// Finished takes on their way to Drive.
-    let uploader: TakeUploader
 
     private var poll: Timer?
     private let monitor = NWPathMonitor()
@@ -47,8 +45,6 @@ final class AppModel: ObservableObject {
         signIn = saved
         api = APIClient(baseURL: URL(string: s.serverAddress) ?? URL(string: "https://fundhub.ai")!, token: saved?.token)
         transport = isDemo ? DemoTransport() : api
-        let server = api
-        uploader = TakeUploader(baseURL: { server.baseURL })
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         cacheURL = dir.appendingPathComponent(isDemo ? "demo-shoot.json" : "shoot-cache.json")
@@ -64,7 +60,6 @@ final class AppModel: ObservableObject {
             Task { @MainActor in
                 self?.queue.networkCameBack()
                 await self?.queue.flush()
-                await self?.uploader.retry()
             }
         }
         monitor.start(queue: DispatchQueue(label: "ai.fundhub.prompter.net"))
@@ -116,7 +111,7 @@ final class AppModel: ObservableObject {
                 await self?.queue.flush()
             }
         }
-        Task { await refresh(); await queue.flush(); await uploader.run() }
+        Task { await refresh(); await queue.flush() }
     }
 
     func stopPolling() {
