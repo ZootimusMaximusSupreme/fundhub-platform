@@ -231,13 +231,15 @@ final class CaptureChoiceTests: XCTestCase {
         XCTAssertNil(p.shortfall)
     }
 
-    func testBackCameraPrefersSteady1080Over4K() {
+    /// Owner call 2026-10-21 replaced "steady 30 over 120": an ad films 1080p at the
+    /// lens's top normal rate, up to 120. It still never films an ad in 4K.
+    func testBackCameraAdTakesTopRate1080Not4K() {
         let formats = [f(0, 3840, 2160, 60), f(1, 1920, 1080, 60, stab: false), f(2, 1920, 1080, 30), f(3, 1920, 1080, 120)]
         let p = CaptureChoice.pickStable1080(formats, wantStabilization: true)!
-        XCTAssertEqual(p.index, 2, "a steady 30 beats an unsteady 60 and slow motion")
+        XCTAssertEqual(p.index, 3)
         XCTAssertEqual(p.width, 1920)
         XCTAssertEqual(p.height, 1080)
-        XCTAssertEqual(p.fps, 30)
+        XCTAssertEqual(p.fps, 120)
         XCTAssertNil(p.shortfall)
     }
 
