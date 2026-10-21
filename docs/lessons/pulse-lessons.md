@@ -25,6 +25,11 @@ WHERE closed_at > now() - interval '90 days'
 GROUP BY 1, 2 ORDER BY breaks DESC;
 ```
 
+## 2026-10-20 — consent:dispute-required — schema_or_data
+- Cause: the only repair client with no dispute authorization and no signed repair agreement is Braum (FH-000507). The owner put him on a no-contact, no-change hold, so nobody may chase his signature. The row stayed red with nothing a person may do.
+- Fix: the check names the clients it counts. When every one is on the owner's hold (`src/pulse/owner-hold.mjs`), the row is "nothing to judge" with code `owner-hold-client`, and the consent lane re-reads it every morning (`naVerify`). Any other client keeps it red.
+- Guard added: `src/pulse/coverage/gap-consent.test.mjs` (held client alone is nothing to judge; any other client, a mixed list, or a count the names do not match stays red; the re-check is false the day anything changes).
+
 ## 2026-10-20 — calls:booked-no-join-link — pulse_false_alarm
 - Cause: the check judged the 5 newest bookings at any age. Nothing kept a join link before 2026-10-21 01:38 UTC (ship d1de88a1), so every older booking can never have one, and the check stayed red with no new booking to judge. Owner: "Old bookings do not matter. Only new bookings."
 - Fix: the feed question counts bookings only from that moment (`JOIN_FEED_SINCE`). The "call still ahead with no link" question is not cut, so the first new booking with no link is red 10 minutes after it lands.

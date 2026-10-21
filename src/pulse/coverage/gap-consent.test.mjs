@@ -28,8 +28,10 @@ import {
   assertSelect,
   consentDoorsListed,
   doorUp,
-  gapChecks
+  gapChecks,
+  naVerify
 } from "./gap-consent.mjs";
+import { NA_CONDITIONS } from "../na-conditions.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ORG = "11111111-1111-4111-8111-111111111111";
@@ -40,7 +42,10 @@ function db(counts = { required: 0, store: 0, slo: 0, dispute: 0 }, calls = []) 
     query: async (sql, params) => {
       calls.push({ sql, params });
       const text = String(sql);
-      if (text.includes("FROM repair_programs rp")) return { rows: [{ n: counts.dispute ?? 0 }] };
+      if (text.includes("FROM repair_programs rp")) {
+        if (counts.disputeError) throw counts.disputeError;
+        return { rows: [{ n: counts.dispute ?? 0, ...(counts.codes ? { codes: counts.codes } : {}) }] };
+      }
       if (text.includes("FROM payment_links pl")) return { rows: [{ n: counts.slo ?? 0 }] };
       if (text.includes("FROM contracts ct")) return { rows: [{ n: counts.store }] };
       if (text.includes("FROM clients c")) return { rows: [{ n: counts.required }] };
@@ -479,4 +484,54 @@ test("the repair sql accepts the same agreement the letter gate accepts", () => 
   assert.ok(gate.includes('kind: "dispute_authorization"'));
   const analyze = fs.readFileSync(path.join(HERE, "../../repair/analyze.mjs"), "utf8").replace(/\s+/g, " ");
   assert.ok(analyze.includes("const authorized = hasAgreement || (await hasDisputeAuthorization(db, { orgId, clientId }))"));
+});
+
+/* The owner's no-contact hold (src/pulse/owner-hold.mjs): Braum, FH-000507. */
+
+test("the repair reading names the clients it counts, by client code", () => {
+  assert.match(DISPUTE_SQL, /array_agg\(c\.client_code ORDER BY c\.client_code\)/);
+  assert.equal((DISPUTE_SQL.match(/NOT EXISTS/g) || []).length, 3, "the population is unchanged");
+});
+
+test("only the held client missing both papers is nothing to judge, with the owner-hold code and the client named", async () => {
+  const rows = await gapChecks({ orgId: ORG, db: db({ dispute: 1, codes: ["FH-000507"] }), fetchImpl: page() });
+  const row = rows.find((r) => r.id === "consent:dispute-required");
+  assert.equal(row.status, "na");
+  assert.equal(row.suggestedFix, null);
+  assert.match(row.detail, /FH-000507, on the owner's no-contact hold/);
+  assert.deepEqual(row.na, { code: "owner-hold-client", args: { check: "consent:dispute-required", orgId: ORG, clients: ["FH-000507"] } });
+  assert.equal(NA_CONDITIONS["owner-hold-client"].problem(row.na.args), null, "the code accepts these args");
+  for (const other of rows.filter((r) => r.id !== "consent:dispute-required")) assert.notEqual(other.status, "na");
+});
+
+test("any other client missing both papers keeps the row red, held client or not", async () => {
+  const cases = [
+    { dispute: 2, codes: ["FH-000507", "FH-000999"] },
+    { dispute: 1, codes: ["FH-000999"] },
+    { dispute: 2, codes: ["FH-000507"] },
+    { dispute: 1, codes: [null] },
+    { dispute: 1 }
+  ];
+  for (const c of cases) {
+    const rows = await gapChecks({ orgId: ORG, db: db(c), fetchImpl: page() });
+    const row = rows.find((r) => r.id === "consent:dispute-required");
+    assert.equal(row.status, "FAIL", JSON.stringify(c));
+    assert.equal(row.na, undefined, JSON.stringify(c));
+    assert.match(row.detail, /neither a live dispute authorization nor a signed repair agreement/);
+  }
+});
+
+test("the audit re-check holds only while the same held client is still the only one", async () => {
+  const verify = naVerify["owner-hold-client"];
+  const args = { check: "consent:dispute-required", orgId: ORG, clients: ["FH-000507"] };
+  assert.equal(await verify(args, { db: db({ dispute: 1, codes: ["FH-000507"] }) }), true);
+  assert.equal(await verify(args, { scope: (fn) => fn(db({ dispute: 1, codes: ["FH-000507"] })) }), true, "reads through the staff scope");
+  assert.equal(await verify(args, { db: db({ dispute: 2, codes: ["FH-000507", "FH-000999"] }) }), false, "another client is waiting");
+  assert.equal(await verify(args, { db: db({ dispute: 0, codes: [] }) }), false, "nobody is waiting: the row should be a PASS, not a hold");
+  assert.equal(await verify(args, { db: db({ dispute: 1, codes: ["FH-000999"] }) }), false);
+  assert.equal(await verify(args, { db: db({ disputeError: new Error("boom") }) }), false, "a failed read is false");
+  assert.equal(await verify(args, {}), false, "no database is false");
+  assert.equal(await verify({ ...args, check: "portal:paid-client-never-signed-in" }, { db: db({ dispute: 1, codes: ["FH-000507"] }) }), false);
+  assert.equal(await verify({ ...args, orgId: "not-a-uuid" }, { db: db({ dispute: 1, codes: ["FH-000507"] }) }), false);
+  assert.equal(await verify({ ...args, clients: ["FH-000999"] }, { db: db({ dispute: 1, codes: ["FH-000507"] }) }), false);
 });

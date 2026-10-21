@@ -12,6 +12,7 @@
 
 import { CONSENT_VALID_SQL } from "../../consent/index.mjs";
 import { coverageKey, PULSE_REGISTRY } from "../registry.mjs";
+import { onOwnerHold } from "../owner-hold.mjs";
 
 export const CONSENT_PAGE_PATH = "/app/consent-capture.html";
 export const CONSENT_API_PATH = "/api/consent/capture";
@@ -167,9 +168,12 @@ SELECT count(*)::int AS n
    signing. A client who withdrew an authorization (any revoked row) said no on
    purpose, which is not a break, the same way a withdrawal after signing is not
    a failed store above. Funding-offer clients also sign this paper but have no
-   program row to read, so they are not in this population. */
+   program row to read, so they are not in this population.
+   It also names the clients (client codes), so a client on the owner's no-contact
+   hold (src/pulse/owner-hold.mjs) can be told apart from everyone else. */
 export const DISPUTE_SQL = `
-SELECT count(*)::int AS n
+SELECT count(*)::int AS n,
+       COALESCE(array_agg(c.client_code ORDER BY c.client_code), ARRAY[]::text[]) AS codes
   FROM repair_programs rp
   JOIN clients c ON c.id = rp.client_id AND c.org_id = rp.org_id
  WHERE rp.org_id = $1::uuid
@@ -297,10 +301,51 @@ async function countReading(ctx, sql, params) {
     const raw = res && res.rows && res.rows[0] ? res.rows[0].n : null;
     const n = raw == null || raw === "" ? NaN : Number(raw);
     if (!Number.isFinite(n)) return { fail: "The consent read did not return a count." };
-    return { n };
+    const codes = res.rows[0].codes;
+    return Array.isArray(codes) ? { n, codes } : { n };
   } catch (err) {
     return { fail: `Could not read consent rows: ${clip(err && err.message)}` };
   }
+}
+
+const DISPUTE_ID = "consent:dispute-required";
+
+/* The held client codes when the reading named every row it counted and EVERY one is a
+   client on the owner's no-contact hold, else null. */
+function heldOnly(reading) {
+  const list = Array.isArray(reading.codes) ? reading.codes.map((c) => (c == null ? "" : String(c))) : [];
+  if (!list.length || list.length !== reading.n || !list.every(onOwnerHold)) return null;
+  return [...new Set(list)].sort();
+}
+
+/* Owner call 2026-10-09, said again 2026-10-20: Braum (FH-000507) gets no email, sign-in
+   link, call or data step, so nobody may chase his signature. When every client this row
+   finds is on that hold, the row is "nothing to judge" (owner-hold-client) and the audit
+   reads it again every morning (naVerify below). Any other client keeps it red. */
+function disputeRow(dispute, orgId, skipDetail) {
+  if (!dispute.skip && !dispute.fail && dispute.n > 0) {
+    const held = heldOnly(dispute);
+    if (held) {
+      return {
+        ...check(
+          DISPUTE_ID,
+          "na",
+          `${dispute.n} active repair ${dispute.n === 1 ? "client has" : "clients have"} no dispute authorization and no signed repair agreement, ` +
+            `and ${dispute.n === 1 ? "it is" : "they are"} ${held.join(" and ")}, on the owner's no-contact hold. ` +
+            `Judged again the day another repair client is missing them.`
+        ),
+        na: { code: "owner-hold-client", args: { check: DISPUTE_ID, orgId, clients: held } }
+      };
+    }
+  }
+  return countRow(
+    DISPUTE_ID,
+    dispute,
+    `No active repair client older than ${DISPUTE_GRACE_DAYS} days is missing a dispute authorization or a signed repair agreement.`,
+    (n) => `${n} active repair ${n === 1 ? "client has" : "clients have"} been enrolled over ${DISPUTE_GRACE_DAYS} days and ${n === 1 ? "has" : "have"} neither a live dispute authorization nor a signed repair agreement.`,
+    DISPUTE_FIX,
+    skipDetail
+  );
 }
 
 /**
@@ -362,14 +407,7 @@ export async function gapChecks(ctx = {}) {
         SLO_FIX,
         skipDetail
       ),
-      countRow(
-        "consent:dispute-required",
-        dispute,
-        `No active repair client older than ${DISPUTE_GRACE_DAYS} days is missing a dispute authorization or a signed repair agreement.`,
-        (n) => `${n} active repair ${n === 1 ? "client has" : "clients have"} been enrolled over ${DISPUTE_GRACE_DAYS} days and ${n === 1 ? "has" : "have"} neither a live dispute authorization nor a signed repair agreement.`,
-        DISPUTE_FIX,
-        skipDetail
-      )
+      disputeRow(dispute, orgId, skipDetail)
     ];
   } catch (err) {
     const detail = `Consent check stopped: ${clip(err && err.message)}`;
@@ -382,3 +420,18 @@ export async function gapChecks(ctx = {}) {
     ];
   }
 }
+
+/* The audit asks the lane again (src/pulse/self-audit.mjs, makeLaneNaVerify). True only when
+   the same read still finds clients missing both papers and every one is a client the row
+   named and the owner holds. A failed read, another client, or nobody at all is false. */
+export const naVerify = Object.freeze({
+  "owner-hold-client": async (args, ctx = {}) => {
+    if (!args || args.check !== DISPUTE_ID || typeof args.orgId !== "string" || !UUID_RE.test(args.orgId)) return false;
+    if (!canQuery(ctx)) return false;
+    const named = Array.isArray(args.clients) ? [...args.clients].map(String).sort() : [];
+    const now = await countReading(ctx, DISPUTE_SQL, [args.orgId, false, TEST_CLIENT_EMAIL_RE]);
+    if (now.fail || now.skip || !(now.n > 0)) return false;
+    const held = heldOnly(now);
+    return !!held && held.length === named.length && held.every((code, i) => code === named[i]);
+  }
+});

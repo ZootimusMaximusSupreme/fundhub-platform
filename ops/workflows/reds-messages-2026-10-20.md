@@ -16,7 +16,7 @@ Every result below was read live, read-only (`BEGIN READ ONLY`, role `fundhub_ap
 | 3 | `email:provider-fail` | C, fixed in this PR | GREEN with PR | Both bounces were sign-in links to the App Store review login FH-000844 (client@fundhub.ai, no mailbox, Resend blocks it). Check now skips that one login. |
 | 4 | `msg:per-template-path` | C, fixed in this PR | GREEN with PR | Same two bounces were the only email in 7 days. Same fix. |
 | 5 | `handoff:lead-first-touches-missing` | A + B | GREEN (after delete) | Real: 7 lead templates were deleted on live (finish-application email + 6 never-booked chase messages). Restored on live by migration 497 (PR #112, 2026-10-21 03:44 UTC), byte for byte the same words this lane had prepared, so this PR no longer carries its own copy. The red row itself is fake lead FH-000843 → delete. |
-| 6 | `consent:dispute-required` | Needs Chris | red | The 1 row is Braum (FH-000507): repair program active since 10-05, no signed agreement of any kind, no consent row. Braum is no-contact / no-change. |
+| 6 | `consent:dispute-required` | owner hold, fixed in this PR | NOTHING TO JUDGE with PR (verified) | The 1 row is Braum (FH-000507): no signed agreement of any kind. Owner rule: Braum is no-contact / no-change (2026-10-09, 2026-10-20), so nobody chases his signature. The check now names its clients; when every one is on the owner hold (`src/pulse/owner-hold.mjs`, from PR #102) it is "nothing to judge" with code `owner-hold-client`, re-read every morning. Any other client keeps it red. Live: na, re-check true. |
 | 7 | `calls:booked-no-join-link` | C, fixed in this PR | GREEN with PR | Set A (PR #97, live) saves the Google Meet link on new bookings. The check still judged old bookings, which can never carry a link (19 August ClickFunnels bookings with real-looking emails stay; the delete session kept them). Owner: "Old bookings do not matter. Only new bookings." The feed now counts from the fix's ship (2026-10-21 01:38 UTC); a call ahead with no link is still red. Live: PASS. |
 | 8 | Closer desk: Send contract button | fixed by Set A | GREEN | Migration 493 (PR #97) put the real Funding and Credit Repair agreement words live. 12 wordings, 0 bad. |
 | 9 | Closer desk: Contract panel blanks | fixed by Set A | GREEN | Demo client contract no longer counted. 0 results, quiet. |
@@ -34,9 +34,9 @@ Every result below was read live, read-only (`BEGIN READ ONLY`, role `fundhub_ap
 | 21 | Social Studio: Queue it | B | GREEN (after delete) | Queued row `60735863-198a-402e-9cf7-5204bef5c93f` of "DEMO Partner — Northlight Capital" (marked demo). |
 | 22 | Social Studio: Approve it | B | GREEN (after delete) | Post `ca70eef7-d5e4-431f-b61b-309240342b03`, one of 10 test posts made 2026-10-12 18:12 UTC for test partners clean/blocked/croa/unscreened/hold/holddue/holdgate/nohold/publish/failing. |
 
-Count (re-read live 2026-10-21 ~02:30 UTC, after the fake-data delete removed FH-000843, its events and the social test rows): 16 green now · 5 green once this PR ships (3, 4, 7, 16, 19; each reads green live with this branch's code) · 1 Needs Chris (6).
+Count (re-read live 2026-10-21 ~04:30 UTC): 16 green now · 6 settled once this PR ships — 5 green (3, 4, 7, 16, 19) and 1 verified nothing to judge (6, Braum owner hold). Left for Chris: nothing. This PR must merge after PR #102 (it uses PR #102's owner-hold code) and after PR #108 (fixes the shared database test).
 
-## Needs Chris: delete fake data (rows behind my reds)
+## Fake-data delete (done 2026-10-21 by `delete-fake-data`, owner yes)
 
 Owner said yes (2026-10-20). Handed to session `delete-fake-data`. Do NOT delete FH-000844 (App Store review login; ship.yml fails without exactly one).
 
@@ -45,9 +45,9 @@ Owner said yes (2026-10-20). Handed to session `delete-fake-data`. Do NOT delete
 - Social: the 10 Fundhub `social_posts` rows from 2026-10-12 18:12 UTC and their test partners; `marketing_content_queue` `60735863-198a-402e-9cf7-5204bef5c93f`.
 - Keep: messages row `5c413fad-40d0-40af-ba9d-128eab2e97aa` (real owner text to Chris).
 
-## Needs Chris (one decision)
+## Needs Chris
 
-- `consent:dispute-required`: Braum's repair file has no signed agreement. You said leave Braum alone. Keep this one red as a known Braum item, or get his signature? (No skip code exists for "owner left this client alone".)
+- Nothing. (Braum's consent row follows the standing owner rule: no contact, no change. Coordinator, 2026-10-21.)
 
 ## Leftovers (not fixed here)
 
@@ -63,6 +63,8 @@ Owner said yes (2026-10-20). Handed to session `delete-fake-data`. Do NOT delete
 - `src/pulse/coverage/gap-email.mjs`: PROVIDER_FAIL_SQL skips the review login.
 - `src/pulse/coverage/gap-msg.test.mjs`, `gap-msg.pg.test.mjs`: tests both ways.
 - `src/pulse/coverage/gap-calls.mjs`: `JOIN_FEED_SINCE`; the feed question counts bookings from the link fix's ship. `gap-calls.test.mjs`: tests both ways.
+- `src/pulse/coverage/gap-consent.mjs`: the dispute check names its clients; owner-hold path + `naVerify`. `gap-consent.test.mjs`: tests both ways.
+- Merges PR #102's branch (owner-hold code) — merge #102 first.
 - `src/pulse/catalog/generated.json`: regenerated.
 - `docs/lessons/pulse-lessons.md`: 3 entries.
 - No route, job, page, money rule or journey changed.
