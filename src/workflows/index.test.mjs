@@ -41,7 +41,16 @@ const DELIBERATELY_UNSERVED = {
      adapter's daily counter lives in credentials/, which Netlify cannot write.
      The marketing machine spec (docs/specs/marketing-machine-2026-10-04.md §3,
      Clarity row) already records it as "not registered, so it never runs". */
-  "clarity-insights-sweeper": "owner law: one Clarity export pull per time Chris asks; a daily cron would pull unasked"
+  "clarity-insights-sweeper": "owner law: one Clarity export pull per time Chris asks; a daily cron would pull unasked",
+
+  /* Retired 2026-10-20 when the Inngest free plan ran out (owner: "stop burning ingests"). Both
+     were Inngest twins of a Netlify scheduled function that drains the same queue with the same
+     pass: netlify/functions/commas-inbox-sweeper.mjs and whop-billing-inbox-sweeper.mjs. Those are
+     now the only clocks on the two payment queues. Putting these back anywhere would double the
+     clock (and, on Inngest, cost 86,400 executions a month each). Board:
+     ops/workflows/inngest-diet-2026-10-20.md */
+  "commas-inbox-drain": "retired 2026-10-20: netlify/functions/commas-inbox-sweeper.mjs drains the same Commas queue",
+  "whop-billing-inbox-drain": "retired 2026-10-20: netlify/functions/whop-billing-inbox-sweeper.mjs drains the same Whop queue"
 };
 
 /* EVERY WORKFLOW THIS REPO SERVES, BY NAME.
@@ -84,7 +93,6 @@ const EXPECTED_WORKFLOW_IDS = [
   "c-03-inquiry-removed-resume-or-hold",
   "c-05-pre-funding-review",
   "c-06-crs-results-router",
-  "commas-inbox-drain",
   "contract-chaser",
   "daily-pulse",
   "evening-brief",
@@ -167,7 +175,6 @@ const EXPECTED_WORKFLOW_IDS = [
   "u-04-promote-crs-primary",
   "u-05-data-health-monitor",
   "waypoint-nudge-sweeper",
-  "whop-billing-inbox-drain",
   "blueprint-closer-ready-sweeper",
 ];
 
@@ -225,6 +232,12 @@ test("index serves exactly the workflows on disk, and the count is pinned", asyn
      added, in the words of the person who added it. The counts named in it are
      the historical record of what the pin said at the time; the pin itself is
      EXPECTED_WORKFLOW_IDS at the top of this file now, not a number.
+
+     Moved every cron to the Netlify clock (2026-10-20, owner: "stop burning ingests"). The
+     registry `functions` is unchanged in meaning — every workflow that runs — but Inngest is now
+     given only `inngestFunctions` (the event workflows); the 38 scheduled jobs run from
+     src/workflows/scheduled.mjs on netlify/functions/cron-clock.mjs. commas-inbox-drain and
+     whop-billing-inbox-drain left the served set (see DELIBERATELY_UNSERVED).
 
      Added bank-outreach-checkins (2026-10-19) — daily Arizona partner next
      actions for the approved bank relationship workspace. It never sends
@@ -425,6 +438,29 @@ test("index serves exactly the workflows on disk, and the count is pinned", asyn
   for (const fn of functions) {
     assert.ok(fn && typeof fn === "object", "each entry should be an Inngest function object");
   }
+});
+
+test("no cron is served to Inngest: Inngest gets the event workflows only, the clock gets the crons", async () => {
+  const { functions, inngestFunctions, scheduled } = await import("./index.mjs");
+  const triggersOf = (fn) => (fn.opts && fn.opts.triggers) || [];
+  const cronsServed = inngestFunctions.filter((fn) => triggersOf(fn).some((t) => t.cron)).map((fn) => fn.id());
+  assert.deepEqual(cronsServed, [],
+    "these cron jobs are in inngestFunctions, so Inngest would run them and burn the free plan " +
+    "(owner 2026-10-20: \"stop burning ingests\"). Put them in src/workflows/scheduled.mjs instead");
+  for (const fn of scheduled) {
+    const t = triggersOf(fn);
+    assert.equal(t.length, 1, `${fn.id()}: a scheduled job has exactly one trigger`);
+    assert.ok(t[0].cron && !t[0].event, `${fn.id()}: a scheduled job is a cron, not an event workflow`);
+    assert.equal(typeof fn["fn"], "function", `${fn.id()}: the clock needs the handler Inngest would have called`);
+  }
+  assert.deepEqual(functions, [...inngestFunctions, ...scheduled], "the registry is exactly the two lists");
+  const ids = functions.map((fn) => fn.id());
+  assert.equal(new Set(ids).size, ids.length, "a job is in both lists");
+
+  /* The serve endpoint must be handed inngestFunctions, never the whole registry. */
+  const serveSrc = fs.readFileSync(path.resolve(HERE, "../../api/inngest.mjs"), "utf8");
+  assert.match(serveSrc, /import \{ inngestFunctions as functions \} from "\.\.\/src\/workflows\/index\.mjs";/);
+  assert.ok(!/import \{ functions[ ,}]/.test(serveSrc), "api/inngest.mjs must not import the whole registry");
 });
 
 test("api/inngest serve endpoint imports without throwing", async () => {

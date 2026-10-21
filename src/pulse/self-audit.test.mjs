@@ -31,7 +31,7 @@ import {
   middlewareNames,
   notLiveIds
 } from "./self-audit.mjs";
-import { INNGEST_JOBS, JOBS } from "./heartbeats.mjs";
+import { CLOCK_JOBS, JOBS } from "./heartbeats.mjs";
 import { PULSE_REGISTRY } from "./registry.mjs";
 import { runDailyPulse } from "./daily-pulse.mjs";
 import { loadGapModules, loadSliceModules, namespaceGapId, runCoverageSlices, runGapLane } from "./coverage/run-slices.mjs";
@@ -44,7 +44,8 @@ import { inngest } from "../workflows/client.mjs";
 const NOW = new Date("2026-10-09T13:00:00Z"); // 6:00 a.m. in Arizona; yesterday is 2026-10-08
 const SHARED = { name: "the shared client" };
 const OTHER = { name: "some other client" };
-const CRON_JOB = INNGEST_JOBS[0][0];
+// A real listed cron. Every cron is a clock job since 2026-10-20 (INNGEST_JOBS is empty).
+const CRON_JOB = CLOCK_JOBS[0][0];
 
 /* The status mapping the batch contract gives the scorecard (piece A): `na`
    with a valid na object lands na; PASS/up needs a proof line to be green. */
@@ -770,12 +771,12 @@ test("audit:workflow-coverage goes red for a workflow not made on the shared cli
   assert.doesNotMatch(r.detail, /receipts/, "run receipts are not built yet, so the line must not promise them");
 });
 
-test("audit:workflow-coverage goes red for a cron that is not on INNGEST_JOBS", async () => {
+test("audit:workflow-coverage goes red for a cron that is not on INNGEST_JOBS or CLOCK_JOBS", async () => {
   const fx = fixture();
   fx.functions.push(fn("not-a-listed-job", [{ cron: "0 * * * *" }]));
   const r = rowOf(await run({}, fx), "audit:workflow-coverage");
   assert.equal(r.status, "FAIL");
-  assert.match(r.detail, /not-a-listed-job \(a cron that is not on INNGEST_JOBS\)/);
+  assert.match(r.detail, /not-a-listed-job \(a cron that is not on INNGEST_JOBS or CLOCK_JOBS\)/);
 });
 
 test("audit:workflow-coverage goes red for an event workflow with no wf: row", async () => {
@@ -808,7 +809,7 @@ test("a function with a cron and an event is a wf: row like piece B's, not a cro
   const bad = rowOf(await run({}, fx), "audit:workflow-coverage");
   assert.equal(bad.status, "FAIL");
   assert.match(bad.detail, /both-kinds \(no wf: row\)/);
-  assert.doesNotMatch(bad.detail, /both-kinds \(a cron that is not on INNGEST_JOBS\)/);
+  assert.doesNotMatch(bad.detail, /both-kinds \(a cron that is not on/);
   // With its wf: row it is green.
   fx.checks.push({ id: "wf:both-kinds", kind: "coverage", group: "jobs", status: "PASS", detail: "ran" });
   assert.equal(rowOf(await run({}, fx), "audit:workflow-coverage").status, "PASS");

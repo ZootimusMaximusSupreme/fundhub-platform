@@ -49,6 +49,10 @@ test("netlify.toml schedules the timed jobs this test covers", () => {
     "ad-video-sweeper",
     "commas-inbox-sweeper",
     "creative-job-runner",
+    /* Added 2026-10-20 (owner: "stop burning ingests"). Every 5 minutes: starts each scheduled job
+       due in that slot in cron-worker-background (15 minutes). The jobs used to be Inngest crons.
+       With no site URL or secret (this test's child run) it starts nothing and still answers 200. */
+    "cron-clock",
     "hubstaff-poll-sweeper",
     /* Added 2026-10-06 (marketing machine, plan unit U22). The 15-minute clock: reads,
        writes its heartbeat and wakes marketing-worker-background; no real work. */

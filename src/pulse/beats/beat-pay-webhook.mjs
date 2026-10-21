@@ -5,7 +5,7 @@
 //   secret-present    is COMMAS_WEBHOOK_SECRET set on the server?            (live only)
 //   door-mounted      does GET /api/webhooks/commas answer 405?              (one GET to our own site)
 //   verifier-accepts  does the real signature check accept a signed body?    (SKIPPED, see the step)
-//   sweeper-alive     did the commas-inbox-sweeper clock run in the last 3 minutes?
+//   sweeper-alive     did the commas-inbox-sweeper clock run in the last 15 minutes?
 //   inbox-not-stuck   is any paid notice waiting in commas_inbox, or gone for good?
 //
 // WHAT THIS CAN NEVER PROVE. That Commas still SENDS notices to us, and that the signing secret
@@ -15,7 +15,7 @@
 //
 // Sources of the rules (read, not invented):
 //   door      api/webhooks/[provider].mjs      a GET answers 405 {"ok":false,"error":"Method not allowed"}
-//   clocks    src/pulse/heartbeats.mjs         3 x the 1 minute schedule; src/pulse/coverage/gap-payments.mjs
+//   clocks    src/pulse/heartbeats.mjs         3 x the 5 minute schedule; src/pulse/coverage/gap-payments.mjs
 //   inbox     src/pulse/coverage/gap-payments.mjs  COMMAS_INBOX_WAITING_SQL and gap-webhooks.mjs STUCK_SQL
 //             (those were proven on live data; this beat reads the same columns the same way)
 
@@ -25,7 +25,9 @@ export const id = "pay-webhook";
 export const title = "Payment notice door";
 export const kind = "infra";
 // webhook:commas is a key of the router's provider table (src/http/router.mjs, STD.commas).
-export const covers = ["job:commas-inbox-drain", "webhook:commas"];
+// job:commas-inbox-drain left this list on 2026-10-20: that Inngest clock is retired (the free plan
+// ran out) and commas-inbox-sweeper, a Netlify function this beat already reads, is the only clock.
+export const covers = ["webhook:commas"];
 export const box = false;
 export const reads = [{ host: "SITE", methods: ["GET"] }];
 export const steps = ["secret-present", "door-mounted", "verifier-accepts", "sweeper-alive", "inbox-not-stuck"];
@@ -42,7 +44,7 @@ Likely causes:
 Steps:
 - For the secret: copy the signing secret from the Commas webhook settings and set COMMAS_WEBHOOK_SECRET on Netlify production WITHOUT --secret. Never delete the old value first. Then ship once.
 - For the door: restore the webhooks/ prefix in netlify/functions/api.mjs, then ship once.
-- For the clock: open the Netlify scheduled function commas-inbox-sweeper and read its last run. The Inngest clock commas-inbox-drain also drains the inbox.
+- For the clock: open the Netlify scheduled function commas-inbox-sweeper and read its last run. It is the only clock on the inbox (every 5 minutes).
 - For a waiting notice: keep the row bytes as they are. Commas never sends a notice twice.
 - This beat cannot prove that Commas still sends, or that its secret matches ours. If this is green and payments stop, check the Commas webhook log.
 Files: api/webhooks/[provider].mjs, netlify/functions/api.mjs, netlify/functions/commas-inbox-sweeper.mjs, src/payments/commas-inbox.mjs, src/adapters/commas.mjs
@@ -59,7 +61,7 @@ export const WAIT_MINUTES = 10;
 export const PROCESSING_WAIT_MINUTES = 20;
 export const GAVE_UP_HOURS = 24;
 export const SWEEPER_JOB = "commas-inbox-sweeper";
-export const SWEEPER_SCHEDULE_MS = 60 * 1000;
+export const SWEEPER_SCHEDULE_MS = 5 * 60 * 1000;
 export const SWEEPER_STALE_MS = 3 * SWEEPER_SCHEDULE_MS;
 export const DOOR_PATH = "/api/webhooks/commas";
 
@@ -189,7 +191,7 @@ export async function run(ctx) {
     }
     const ageMs = ctx.now.getTime() - last;
     if (ageMs > SWEEPER_STALE_MS) {
-      throw ctx.fail("sweeper-alive", `${SWEEPER_JOB} last ran ${minutes(ageMs / 1000)} ago (it runs every minute). Paid notices are not being picked up.`);
+      throw ctx.fail("sweeper-alive", `${SWEEPER_JOB} last ran ${minutes(ageMs / 1000)} ago (it runs every 5 minutes). Paid notices are not being picked up.`);
     }
     if (row.last_outcome === "error") {
       throw ctx.fail("sweeper-alive", `${SWEEPER_JOB} ran ${minutes(ageMs / 1000)} ago but that pass ended in an error. Read its job_heartbeats row.`);
@@ -222,7 +224,7 @@ export async function run(ctx) {
 
   const skipped = ctx.live ? "" : " The signing secret was not checked (laptop).";
   return ctx.done(
-    `Door answers 405, sweeper ran in the last 3 min, inbox is clear.${skipped} The signature check itself was NOT run, so a wrong signing secret at Commas would not show here. Cannot prove Commas still sends.`,
+    `Door answers 405, sweeper ran in the last 15 min, inbox is clear.${skipped} The signature check itself was NOT run, so a wrong signing secret at Commas would not show here. Cannot prove Commas still sends.`,
     inbox ? { inbox } : null
   );
 }

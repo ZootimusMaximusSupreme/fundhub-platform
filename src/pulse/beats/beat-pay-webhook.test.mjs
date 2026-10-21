@@ -45,9 +45,11 @@ const redAt = (r, step) => { assert.equal(r.ok, false, `expected red, got green:
 test("it is a valid beat: id, covers, reads, fix guide, self test, static pin", async () => {
   const { functions } = await import("../../workflows/index.mjs");
   const surfaces = new Set(functions.map((f) => `job:${f.opts.id}`));
-  assert.ok(surfaces.has("job:commas-inbox-drain"), "the Inngest job named in covers exists");
+  // The Inngest twin commas-inbox-drain is retired (2026-10-20); it is not a job any more, so the
+  // beat covers the webhook only. The sweeper it reads is commas-inbox-sweeper (SWEEPER_JOB).
+  assert.ok(!surfaces.has("job:commas-inbox-drain"), "the retired Inngest clock is not served");
   assert.deepEqual(validateBeat(beat, { file: "beat-pay-webhook.mjs", surfaces }), []);
-  assert.deepEqual(beat.covers, ["job:commas-inbox-drain", "webhook:commas"]);
+  assert.deepEqual(beat.covers, ["webhook:commas"]);
   assert.equal(beat.kind, "infra");
   assert.equal(beat.damp, 1);
   assert.deepEqual(beat.reads, [{ host: "SITE", methods: ["GET"] }]);
@@ -106,7 +108,7 @@ test("PASS: on a laptop the secret is a mask, so that step is skipped and the re
   assert.deepEqual(ok.skipped.sort(), ["secret-present", "verifier-accepts"]);
   assert.match(ok.detail, /not checked \(laptop\)/);
   redAt(await go({ ...laptop, http: { [DOOR]: { status: 404 } } }), "door-mounted");
-  redAt(await go({ ...laptop, read: [sweeper({ last_at: new Date(FAKE_NOW.getTime() - 10 * 60_000) }), inbox()] }), "sweeper-alive");
+  redAt(await go({ ...laptop, read: [sweeper({ last_at: new Date(FAKE_NOW.getTime() - 20 * 60_000) }), inbox()] }), "sweeper-alive");
 });
 
 /* ---------------- secret-present ---------------- */
@@ -182,17 +184,17 @@ test("verifier-accepts is skipped, never green and never red, and the reason say
 
 /* ---------------- sweeper-alive ---------------- */
 
-test("PASS sweeper-alive: 30 seconds, and exactly 3 minutes, are alive", async () => {
+test("PASS sweeper-alive: 30 seconds, and exactly 15 minutes (3 x the 5-minute clock), are alive", async () => {
   assert.equal((await go({})).ok, true);
-  const edge = await go({ read: [sweeper({ last_at: new Date(FAKE_NOW.getTime() - 3 * 60_000) }), inbox()] });
+  const edge = await go({ read: [sweeper({ last_at: new Date(FAKE_NOW.getTime() - 15 * 60_000) }), inbox()] });
   assert.equal(edge.ok, true, edge.detail);
   const iso = await go({ read: [sweeper({ last_at: new Date(FAKE_NOW.getTime() - 5_000).toISOString() }), inbox()] });
   assert.equal(iso.ok, true, "a time that arrives as text is read too");
 });
 
-test("FAIL sweeper-alive: 3 minutes and a second is a dead clock", async () => {
-  const r = redAt(await go({ read: [sweeper({ last_at: new Date(FAKE_NOW.getTime() - 3 * 60_000 - 1000) }), inbox()] }), "sweeper-alive");
-  assert.match(r.detail, /commas-inbox-sweeper last ran 3 min ago.*every minute/);
+test("FAIL sweeper-alive: 15 minutes and a second is a dead clock", async () => {
+  const r = redAt(await go({ read: [sweeper({ last_at: new Date(FAKE_NOW.getTime() - 15 * 60_000 - 1000) }), inbox()] }), "sweeper-alive");
+  assert.match(r.detail, /commas-inbox-sweeper last ran 15 min ago.*every 5 minutes/);
   const old = redAt(await go({ read: [sweeper({ last_at: new Date(FAKE_NOW.getTime() - 50 * 60_000) }), inbox()] }), "sweeper-alive");
   assert.match(old.detail, /50 min ago/);
 });
