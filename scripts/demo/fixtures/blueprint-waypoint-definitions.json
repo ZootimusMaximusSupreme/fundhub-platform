@@ -1,0 +1,68 @@
+{
+  "_source": "waypoint_definitions rows as the shipped migrations leave them: db/migrations/362_waypoint_definitions_seed.sql (six base steps, text already equal to 363's corrected copy), db/migrations/400_blueprint_dispute_waypoint_definitions.sql (three Capital Blueprint dispute steps), with the 'our team' wording from the parallel fix db/migrations/498_waypoint_steps_fundhub_team.sql (branch fix/blueprint-step-words) mirrored on personal_loan and no_new_credit. Every row active, no paid alternative (the column defaults to NULL in 361).",
+  "definitions": [
+    {
+      "key": "paydown_revolving_account", "expands": "per_revolving_account",
+      "title": "Pay {creditor} down to {target}",
+      "detail": "You do not have to do it in one payment. Anything you put against this card moves the balance toward the target.",
+      "position": 10, "owner_kind": "client", "due_offset_days": 30, "verify_kind": "paydown",
+      "paid_alternative_price_cents": null, "paid_alternative_label": null, "paid_alternative_kind": null, "active": true
+    },
+    {
+      "key": "blueprint_dispute_mail_letters", "expands": "once",
+      "title": "Print and mail your dispute letters",
+      "detail": "Print the letters from your pack, sign where marked, and mail a copy to each bureau address in the instructions. Keep your post office receipt.",
+      "position": 12, "owner_kind": "client", "due_offset_days": 14, "verify_kind": null,
+      "paid_alternative_price_cents": null, "paid_alternative_label": null, "paid_alternative_kind": null, "active": true
+    },
+    {
+      "key": "blueprint_dispute_mail_receipt", "expands": "once",
+      "title": "Upload your mailing proof",
+      "detail": "Take a clear photo of your post office receipt or the stamped envelopes. Upload it here when you are done.",
+      "position": 14, "owner_kind": "client", "due_offset_days": 21, "verify_kind": "dispute_mail_receipt",
+      "paid_alternative_price_cents": null, "paid_alternative_label": null, "paid_alternative_kind": null, "active": true
+    },
+    {
+      "key": "blueprint_dispute_bureau_response", "expands": "once",
+      "title": "Upload bureau responses when they arrive",
+      "detail": "When a bureau writes back, photograph or scan the letter and upload it here.",
+      "position": 16, "owner_kind": "client", "due_offset_days": 45, "verify_kind": "bureau_response_upload",
+      "paid_alternative_price_cents": null, "paid_alternative_label": null, "paid_alternative_kind": null, "active": true
+    },
+    {
+      "key": "no_new_credit", "expands": "once",
+      "title": "Do not open new credit while we work on your file",
+      "detail": "A new card adds a hard inquiry and lowers the average age of your accounts. Talk to our team before you apply for anything.",
+      "position": 20, "owner_kind": "client", "due_offset_days": null, "verify_kind": "no_new_credit",
+      "paid_alternative_price_cents": null, "paid_alternative_label": null, "paid_alternative_kind": null, "active": true
+    },
+    {
+      "key": "personal_loan", "expands": "once",
+      "title": "Talk to our team about a personal loan",
+      "detail": "Raise it early, before any of the optimization work changes your accounts. Our team will walk you through whether it fits your plan.",
+      "position": 30, "owner_kind": "client", "due_offset_days": 14, "verify_kind": null,
+      "paid_alternative_price_cents": null, "paid_alternative_label": null, "paid_alternative_kind": null, "active": true
+    },
+    {
+      "key": "form_llc", "expands": "once",
+      "title": "File your LLC",
+      "detail": "File online with the Secretary of State{state_clause}. Send us the filing confirmation once you have it.",
+      "position": 40, "owner_kind": "client", "due_offset_days": 30, "verify_kind": null,
+      "paid_alternative_price_cents": null, "paid_alternative_label": null, "paid_alternative_kind": null, "active": true
+    },
+    {
+      "key": "get_ein", "expands": "once",
+      "title": "Get your EIN from the IRS",
+      "detail": "You can apply for one on IRS.gov at no cost. Your business bank account will ask for it.",
+      "position": 50, "owner_kind": "client", "due_offset_days": null, "verify_kind": null,
+      "paid_alternative_price_cents": null, "paid_alternative_label": null, "paid_alternative_kind": null, "active": true
+    },
+    {
+      "key": "business_checking", "expands": "once",
+      "title": "Open a business checking account",
+      "detail": "Open it in the LLC name, using the EIN. Take your filing paperwork and your EIN letter with you.",
+      "position": 60, "owner_kind": "client", "due_offset_days": null, "verify_kind": null,
+      "paid_alternative_price_cents": null, "paid_alternative_label": null, "paid_alternative_kind": null, "active": true
+    }
+  ]
+}
