@@ -325,7 +325,7 @@ export const functions = [
      COMPLIANCE REVIEW REQUIRED: payment rails. */
   affiliatePayoutRun,
 
-  /* AFFILIATE AUTOPAY (492, owner-set 2026-10-20: "Paid them out immediately
+  /* AFFILIATE AUTOPAY (495, owner-set 2026-10-20: "Paid them out immediately
      upon receiving the money. Once it clears, we just pay it."). Every 15
      minutes: earned commission goes on its own run, Plaid Transfer sends it
      with no approval click, and Plaid's answer marks it paid or back to

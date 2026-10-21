@@ -155,7 +155,7 @@ const PAYOUTS_SQL = `
    ORDER BY po.period_end DESC
    LIMIT ${PAYOUT_LIMIT}`;
 
-/* The bank the affiliate linked for payouts through Plaid (492). Never the
+/* The bank the affiliate linked for payouts through Plaid (495). Never the
    token: only what the affiliate needs to recognise their own account. */
 const PAYOUT_ACCOUNT_SQL = `
   SELECT id, environment, institution_name, account_name, account_mask, account_subtype, status, created_at
@@ -343,13 +343,13 @@ export default async function handler(req, res, deps = {}) {
         holdReason: p.hold_reason || null,
         method: p.method || null,
         paidAt: p.paid_at,
-        // 492: when it is due, and the proof once it is paid.
+        // 495: when it is due, and the proof once it is paid.
         dueOn: p.due_on ? new Date(p.due_on).toISOString().slice(0, 10) : null,
         reference: p.status === "paid" ? (p.external_ref || null) : null,
         transferStatus: p.plaid_transfer_status || null,
         lineCount: Number(p.line_count || 0)
       })),
-      /* Where payouts go (492). null = no bank linked yet; the screen shows the
+      /* Where payouts go (495). null = no bank linked yet; the screen shows the
          Link button. testData = linked on Plaid's sandbox, which cannot be paid. */
       payoutBank: shapeAccount(bank && bank.rows ? bank.rows[0] : null)
     });

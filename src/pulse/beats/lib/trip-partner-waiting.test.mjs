@@ -1,4 +1,4 @@
-// 492 / owner-set 2026-10-20: an affiliate is paid as soon as the client's
+// 495 / owner-set 2026-10-20: an affiliate is paid as soon as the client's
 // money clears. A payout ready to send for over a day is a break the hourly
 // partner beat names. Both directions, so the rule cannot silently go dead.
 import { test } from "node:test";

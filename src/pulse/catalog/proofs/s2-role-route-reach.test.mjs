@@ -48,7 +48,7 @@ const VALIDATES_BODY_FIRST = [
 /* A client signed in to their own file reaches these; the static reading draws
    them as staff-only because it does not follow the client branch. */
 const CLIENT_OWN_FILE = ["banking/link-exchange", "banking/link-token"];
-/* 492: the payout-bank door admits the affiliate and client KINDS, then pins
+/* 495: the payout-bank door admits the affiliate and client KINDS, then pins
    the caller to the affiliate id on their own session (a client only when a
    light affiliate, accounts.affiliate_id). The probe sessions carry no
    affiliate id, so the door answers 403 not_an_affiliate — correct; the static

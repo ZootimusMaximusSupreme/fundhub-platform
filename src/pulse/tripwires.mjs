@@ -197,7 +197,7 @@ export const TRIPWIRES = Object.freeze({
   "route:partners/approve": { impact: "customer", checks: ["trip:partner", "partner-pages:live"] },
   "route:public/affiliate-click": { impact: "customer", checks: ["trip:partner", "partners:referral-link"] },
   "job:affiliate-payout-run": { impact: "money", checks: ["trip:partner", "partners:commission-payable", "partners:payout-stuck", "partners:payout-overdue"] },
-  // Affiliate payouts through Plaid (492, 2026-10-20). Each goes red when an
+  // Affiliate payouts through Plaid (495, 2026-10-20). Each goes red when an
   // earned commission is past its due day and not paid, or a paid Plaid payout
   // came back from the bank.
   "route:affiliates/payouts": { impact: "money", checks: ["partners:payout-overdue", "partners:payout-returned", "partners:payout-stuck"] },

@@ -1,4 +1,4 @@
--- 492_affiliate_payout_rail.sql — affiliate payout tracking through Plaid.
+-- 495_affiliate_payout_rail.sql — affiliate payout tracking through Plaid.
 --
 -- Owner ask, 2026-10-20 (board ops/workflows/affiliate-payout-plaid-2026-10-20.md):
 -- "affiliate payout tracking must be built and finished 100%, and it runs through
@@ -216,6 +216,6 @@ BEGIN
 END $$;
 
 COMMENT ON TABLE affiliate_payout_accounts IS
-  'An affiliate''s own bank, linked through Plaid Link (product transfer). One active row each. Token encrypted, bound to plaid_item_id. 492.';
+  'An affiliate''s own bank, linked through Plaid Link (product transfer). One active row each. Token encrypted, bound to plaid_item_id. 495.';
 COMMENT ON COLUMN affiliate_payouts.due_on IS
-  'Day the run must be sent by. Autopay: the day after the client payment cleared (owner-set 2026-10-20). Default when unset: period_end + 14. 492.';
+  'Day the run must be sent by. Autopay: the day after the client payment cleared (owner-set 2026-10-20). Default when unset: period_end + 14. 495.';

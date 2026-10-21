@@ -196,7 +196,7 @@ import { isSyntheticRow } from "./synthetic.mjs";
    invoice-sent-recovery restores a missing first-notice event handoff.
    Both are cron-only, so the journey report names them as scheduled rather
    than pretending a synthetic customer walk fired either one.
-   Moved 104 -> 105 with affiliate-payout-autopay (492, 2026-10-20): every 15
+   Moved 104 -> 105 with affiliate-payout-autopay (495, 2026-10-20): every 15
    minutes it pays earned affiliate commission through Plaid. Cron-only, so it
    sits in neverFired; src/affiliates/payout-rail.pg.test.mjs proves it. */
 const REGISTERED = 105;

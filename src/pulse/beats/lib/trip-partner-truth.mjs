@@ -78,7 +78,7 @@ export function toAffiliateRow(value) {
   if (intOf(value.held_n) > 0) defects.push({ key: "payout_paid", why: `${plural(intOf(value.held_n), "payout")} on hold for over a day: ${heldWhy(value, "affiliate")}` });
   else if (intOf(value.stuck_n) > 0) defects.push({ key: "payout_paid", why: `${plural(intOf(value.stuck_n), "payout")} stuck in processing for over 7 days` });
   /* Owner-set 2026-10-20: paid as soon as the client's money clears. A run
-     ready to send for over a day has not gone out (492 autopay). */
+     ready to send for over a day has not gone out (495 autopay). */
   else if (intOf(value.waiting_n) > 0) defects.push({ key: "payout_paid", why: `${plural(intOf(value.waiting_n), "payout")} ready to send for over a day and not sent` });
   else if (Number(value.payable_usd) >= PAYOUT_MINIMUM_USD && value.license_ok === true && value.tax_ok === true) defects.push({
     key: "payout_paid",

@@ -1,4 +1,4 @@
-// Affiliate payouts (492): the finance staff tab on products-commissions.html
+// Affiliate payouts (495): the finance staff tab on products-commissions.html
 // and the affiliate's payout-bank block on affiliate.html. Every request is
 // faked; nothing leaves the browser and no Plaid window opens. Each test
 // presses one control and checks the exact request it sends.

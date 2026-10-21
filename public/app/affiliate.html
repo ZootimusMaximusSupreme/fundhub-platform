@@ -346,7 +346,7 @@ table.grid tbody tr:hover{background:var(--soft)}
         <div class="tabpane" id="tab-payouts" role="tabpanel" aria-labelledby="switch-payouts">
           <div class="card-hd"><div class="eyebrow">PAYOUT HISTORY</div>
             <div class="spacer"></div><span class="mono" style="font-size:var(--fs-caption);color:var(--gray2);letter-spacing:.1em">PAID WHEN IT CLEARS</span></div>
-          <!-- Where payouts go (492). Plaid Link, product "transfer": the
+          <!-- Where payouts go (495). Plaid Link, product "transfer": the
                affiliate links their own bank; the token never reaches this page. -->
           <div class="card-bd" id="payBankBox" hidden style="border-bottom:1px solid var(--line)">
             <div class="eyebrow" style="margin-bottom:6px">PAYOUT BANK</div>
@@ -1270,7 +1270,7 @@ renderLeads(); renderPayouts();
 
       window.PAYOUTS = (d.payouts || []).map(function (p) {
         return {
-          // 492: a paid run shows the day it was paid; an open one its due day.
+          // 495: a paid run shows the day it was paid; an open one its due day.
           d: p.paidAt ? day(p.paidAt) : (p.dueOn ? "Due " + day(p.dueOn) : day(p.periodEnd)),
           per: day(p.periodStart) + " → " + day(p.periodEnd),
           n: p.lineCount,

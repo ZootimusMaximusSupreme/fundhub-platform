@@ -62,7 +62,7 @@ Dependency: every build lane waits on Q. B1 → B2/B3 can run together → B4 la
 
 ## Manifest (PR #92, branch claude/nervous-swanson-5eba12)
 
-- `db/migrations/492_affiliate_payout_rail.sql` — `affiliate_payout_accounts`; payout columns (`due_on`, approver, bank, Plaid ids/status, `rail_attempts`); rules: paid needs method + reference, sandbox never pays a real affiliate, processing needs a tax form; paid run marks its referrals paid.
+- `db/migrations/495_affiliate_payout_rail.sql` — `affiliate_payout_accounts`; payout columns (`due_on`, approver, bank, Plaid ids/status, `rail_attempts`); rules: paid needs method + reference, sandbox never pays a real affiliate, processing needs a tax form; paid run marks its referrals paid.
 - `src/affiliates/payout-rail.mjs`, `src/affiliates/payout-due.mjs` — the rail.
 - Routes: `affiliates/payouts` (POST, finance), `affiliates/payout-account` (POST, affiliate/light-affiliate client), `read/affiliate-payouts` (GET, finance). `read/affiliate-portal` adds `dueOn`, `reference`, `transferStatus`, `payoutBank`.
 - Job: `affiliate-payout-autopay` `*/15 * * * *` — build, send, sync (heartbeat row, tripwire row, trip:partner beat covers it).

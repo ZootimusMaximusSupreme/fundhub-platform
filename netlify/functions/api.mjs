@@ -514,7 +514,7 @@ export const ROUTES = {
      Routed with its handler and its migration for the same reason as every
      other line here. Not under "read/" — it writes. */
   "affiliates/refer": affiliatesRefer,
-  /* AFFILIATE PAYOUTS, start to paid (492, 2026-10-20). Staff send through
+  /* AFFILIATE PAYOUTS, start to paid (495, 2026-10-20). Staff send through
      Plaid, mark paid by hand with a reference, hold, release, void, and record
      the two paperwork gates; the affiliate links their own bank. Flow:
      docs/journeys/affiliate-payout-flow.md. */

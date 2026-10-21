@@ -452,7 +452,7 @@ test("the Products and Commission rules tabs swap their panes, and SLO connectio
   await proof.check(/^Tabs: Products, Commission rules, SLO connections/, async () => {
     const { page, errors, log } = await openPage({ session: asRole("owner") });
     await page.waitForFunction(() => !document.getElementById("sloTab").hidden);
-    // 492: finance staff (the owner here) also get the Affiliate payouts tab.
+    // 495: finance staff (the owner here) also get the Affiliate payouts tab.
     await page.waitForFunction(() => !document.getElementById("affPayTab").hidden);
     assert.deepEqual(await paneState(page), {
       tabs: [["products", "Products", true], ["rules", "Commission rules", false], ["slo", "SLO connections", false], ["affpay", "Affiliate payouts", false]],

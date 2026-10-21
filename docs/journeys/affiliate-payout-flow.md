@@ -1,7 +1,7 @@
 # Affiliate payout flow — earned to paid
 
 Built 2026-10-20 for Set B item B4. Board: `ops/workflows/affiliate-payout-plaid-2026-10-20.md`.
-Database: `db/migrations/033_affiliates.sql` + `db/migrations/492_affiliate_payout_rail.sql`.
+Database: `db/migrations/033_affiliates.sql` + `db/migrations/495_affiliate_payout_rail.sql`.
 Code: `src/affiliates/payout-rail.mjs` (autopay and everything after), `src/affiliates/payouts.mjs` (the older monthly run, now a backstop).
 
 **Owner-set 2026-10-20 (Chris):** "Plaid's going to take care of everything. ... Paid them out immediately
@@ -56,10 +56,10 @@ stateDiagram-v2
 ## Rules the database enforces (not the screen)
 
 - Only the moves in the picture. A paid run is frozen. One commission line per referral, ever.
-- processing or paid needs a signed partner license (033) **and** a tax form (492).
-- paid needs a method and a reference (492).
-- A Plaid payout is paid only when Plaid says `settled`, and a sandbox transfer can never pay a real affiliate (492).
-- A paid run marks its referrals `paid` (492).
+- processing or paid needs a signed partner license (033) **and** a tax form (495).
+- paid needs a method and a reference (495).
+- A Plaid payout is paid only when Plaid says `settled`, and a sandbox transfer can never pay a real affiliate (495).
+- A paid run marks its referrals `paid` (495).
 
 ## The heartbeat
 

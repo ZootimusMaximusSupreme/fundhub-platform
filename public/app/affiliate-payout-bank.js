@@ -1,4 +1,4 @@
-/* The affiliate's payout bank, on affiliate.html's Payouts tab (492).
+/* The affiliate's payout bank, on affiliate.html's Payouts tab (495).
  *
  * POST /api/affiliates/payout-account { action: "link_token" } → Plaid Link
  * (product "transfer") → { action: "exchange", public_token } saves the bank.

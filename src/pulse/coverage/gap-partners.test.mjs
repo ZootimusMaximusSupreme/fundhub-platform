@@ -338,7 +338,7 @@ test("gap-partners: ctx.fetch is accepted as an alias for ctx.fetchImpl", async 
   assert.equal(f.calls.length >= 1, true);
 });
 
-/* ── 492: the payout tripwire ─────────────────────────────────────────────── */
+/* ── 495: the payout tripwire ─────────────────────────────────────────────── */
 
 const isOverdue = (sql) => sql === PAYOUT_OVERDUE_SQL;
 const isReturned = (sql) => sql === PAYOUT_RETURNED_SQL;

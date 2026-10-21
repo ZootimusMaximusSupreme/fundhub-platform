@@ -5,7 +5,7 @@
  * 15th of the month after the month the commission was earned. The monthly run
  * (src/affiliates/payouts.mjs) is built on the 1st for the month before, so its
  * period_end is the 1st and the due day is period_end + 14 days. The same rule
- * is in the database: db/migrations/492_affiliate_payout_rail.sql.
+ * is in the database: db/migrations/495_affiliate_payout_rail.sql.
  */
 
 export const DUE_DAYS_AFTER_PERIOD = 14;

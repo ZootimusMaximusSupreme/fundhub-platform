@@ -1,4 +1,4 @@
-/* Affiliate payouts tab on products-commissions.html (492).
+/* Affiliate payouts tab on products-commissions.html (495).
  *
  * Reads GET /api/read/affiliate-payouts; acts through POST /api/affiliates/payouts.
  * Finance staff only (owner, admin, sales manager): the tab stays hidden for

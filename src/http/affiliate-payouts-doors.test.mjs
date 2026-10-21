@@ -1,4 +1,4 @@
-// Who may call the three affiliate payout doors (492). No database.
+// Who may call the three affiliate payout doors (495). No database.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import payouts from "../../api/affiliates/payouts.mjs";

@@ -8,7 +8,7 @@ export const covers = [
   "route:partners/approve",
   "route:public/affiliate-click",
   "job:affiliate-payout-run",
-  // Affiliate autopay through Plaid (492). A payout ready over a day and not
+  // Affiliate autopay through Plaid (495). A payout ready over a day and not
   // sent, held over a day, or stuck in processing turns this beat red.
   "route:affiliates/payouts",
   "route:affiliates/payout-account",
