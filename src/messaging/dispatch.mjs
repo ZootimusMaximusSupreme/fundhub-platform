@@ -43,6 +43,7 @@ import { destinationAddress } from "../auth/authorized-rep.mjs";
 import { sendNativeToClient } from "../push/native-send.mjs";
 import { sendToClient } from "../push/send.mjs";
 import { notificationForSentMessage } from "../push/message-policy.mjs";
+import { bankEnvelope } from "../outreach/mail.mjs";
 
 /* If the document-check agent is retired, leftover queued SMS-DOC-02 must not
    transmit. The code below treats "no row" as retired, so this literal MUST
@@ -694,6 +695,18 @@ export async function dispatchOne(db, message, options = {}) {
       }
     }
 
+    /* ---- 2e. A BANKER EMAIL ------------------------------------------------
+       Bank outreach mail (495) leaves from its own From, carries a reply tag
+       naming the banker, and its unsubscribe link is on the banker's record.
+       Its footer was rendered into the approved body at queue time. A banker
+       email whose settings are missing is refused here, never sent from the
+       default client address. */
+    const bank = message.channel === "email" && !message.client_id ? bankEnvelope(message, env || process.env) : null;
+    if (bank?.error) {
+      return await finalise(db, message, "blocked", OUTCOME.BLOCKED, bank.error, null);
+    }
+    if (bank) unsubscribeUrl = bank.unsubscribeUrl;
+
     // ---- 3. Send -----------------------------------------------------------
     let result;
     try {
@@ -710,7 +723,8 @@ export async function dispatchOne(db, message, options = {}) {
         // the RFC 8058 List-Unsubscribe headers, which are metadata rather than
         // message content — so setting them does not break the never-mutate rule.
         unsubscribeUrl,
-        attachments: message.attachments || null
+        attachments: message.attachments || null,
+        ...(bank ? { from: bank.from, replyTag: bank.replyTag } : {})
       }, { fetchImpl, timeoutMs, signal, env });
     } catch (error) {
       if (smsDedup?.batchKey) smsDedupBatchKeys?.delete(smsDedup.batchKey);

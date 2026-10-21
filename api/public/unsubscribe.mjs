@@ -21,6 +21,7 @@ import { db } from "../../src/db.mjs";
 import { verifyUnsubscribeRequest, UNSUBSCRIBE_LINK_SOURCE } from "../../src/messaging/unsubscribe.mjs";
 import { recordOptOut, isOptedOut } from "../../src/lib/opt-out.mjs";
 import { safeError } from "../../src/http/health.mjs";
+import { BANKER_CHANNEL } from "../../src/outreach/mail.mjs";
 
 /* Read the token from the query string or the posted body. The page sends it
    both ways for the two verbs, and the shape matches api/soft-pull-approve.mjs
@@ -61,6 +62,32 @@ export default async function handler(req, res) {
   }
 
   try {
+    /* A banker's link (495): same signed scheme, channel banker_email, and the
+       id is their outreach contact. The channel is inside the signature, so a
+       client's link can never reach this branch, nor a banker's link the other. */
+    if (token.channel === BANKER_CHANNEL) {
+      const invalid = () => res.status(400).json({
+        ok: false,
+        error: "invalid_or_expired",
+        message: "This unsubscribe link is not valid any more. Reply to any of our emails with the word STOP and we will take you off the list."
+      });
+      if (method === "GET") {
+        const row = (await db.query(
+          `SELECT email_opt_out_at FROM outreach_contacts WHERE id = $1 AND org_id = $2`,
+          [token.clientId, token.orgId])).rows[0];
+        if (!row) return invalid();
+        return res.status(200).json({ ok: true, channel: "email", already_unsubscribed: !!row.email_opt_out_at });
+      }
+      const done = await db.query(
+        `UPDATE outreach_contacts SET email_opt_out_at = COALESCE(email_opt_out_at, now()), updated_at = now()
+          WHERE id = $1 AND org_id = $2 RETURNING id`, [token.clientId, token.orgId]);
+      if (!done.rows.length) return invalid();
+      await db.query(
+        `UPDATE outreach_email_sequences SET status = 'stopped', stopped_at = now(), stop_reason = 'opted_out', updated_at = now()
+          WHERE org_id = $1 AND contact_id = $2 AND status = 'active'`, [token.orgId, token.clientId]);
+      return res.status(200).json({ ok: true, channel: "email", unsubscribed: true });
+    }
+
     if (method === "GET") {
       // Report only. See the header: a scanner following this link must not
       // change anything.

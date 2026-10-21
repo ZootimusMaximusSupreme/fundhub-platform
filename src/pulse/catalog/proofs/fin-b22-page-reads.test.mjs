@@ -76,8 +76,26 @@ function liveSite(over = {}) {
 
 // ── climate: the reading and the map ─────────────────────────────────────────
 
-test("the climate reading on the live page is red today: five outlines for 51 states", async () => {
-  const fetchImpl = liveSite();
+/** The map chunk the live page ships, and the same chunk with the old five placeholder boxes put back. */
+const MAP_CHUNK = "/climate/_next/static/chunks/375-9c2ed26a6c945538.js";
+const FIVE_BOXES = '{"AZ":"M120,200 L200,200 L200,260 L120,260 Z","CA":"M60,180 L110,180 L110,260 L60,260 Z","NY":"M330,140 L380,140 L380,190 L330,190 Z","TX":"M200,240 L280,240 L280,300 L200,300 Z","FL":"M300,260 L340,260 L340,310 L300,310 Z"}';
+function chunkWithFiveBoxes() {
+  const shipped = read(path.join("public", MAP_CHUNK));
+  const broken = shipped.replace(/var a=JSON\.parse\('[^']*'\)/, `var a=JSON.parse('${FIVE_BOXES}')`);
+  assert.notEqual(broken, shipped, "the shipped chunk still holds its outline list");
+  return broken;
+}
+
+test("the climate reading on the live page is green: the shipped chunk draws all 51 real state outlines", async () => {
+  const row = (await runFinB22PageReads({ fetchImpl: liveSite() })).get(CLIMATE_ID);
+  assert.equal(row.status, "PASS", row.detail);
+  assert.match(row.detail, /draws all 51 state outlines/);
+  // us-atlas outlines: every state its own shape
+  assert.match(row.detail, /plain boxes, 51 different shapes\)/);
+});
+
+test("the shipped page with the old five placeholder boxes put back is red: five outlines for 51 states", async () => {
+  const fetchImpl = liveSite({ [MAP_CHUNK]: chunkWithFiveBoxes() });
   const row = (await runFinB22PageReads({ fetchImpl })).get(CLIMATE_ID);
   assert.equal(row.status, "FAIL");
   assert.match(row.detail, /draws 5 of 51 state outlines/);
@@ -390,7 +408,7 @@ test("the whole run has its own time limit: three slow stages in a row end as a 
   const hold = setTimeout(() => {}, 5000);
   try {
     const whole = await runFinB22PageReads({ fetchImpl: slow(fast), readTimeoutMs: 1000, runTimeoutMs: 5000 });
-    assert.equal(whole.get(CLIMATE_ID).status, "FAIL", "inside the run's time limit it answers");
+    assert.equal(whole.get(CLIMATE_ID).status, "PASS", "inside the run's time limit it answers");
     const cut = await runFinB22PageReads({ fetchImpl: slow(fast), readTimeoutMs: 1000, runTimeoutMs: 300 });
     assert.equal(cut.get(CLIMATE_ID).status, "skip", "past the run's time limit it is a skip");
     assert.match(cut.get(CLIMATE_ID).detail, /was not checked/);
