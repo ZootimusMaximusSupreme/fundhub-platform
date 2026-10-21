@@ -190,6 +190,11 @@ SELECT count(*)::int AS sample_count,
  * cannot shield a template that fails every send since. One bounce to one bad address is still not a dead path
  * (the two-row floor).
  */
+/* The template delivery proof also leaves out the company's own @fundhub.ai logins, such as the App Store review
+   client (client@fundhub.ai): mail to our own test inbox is not a client's delivery. Same rule as the portal check
+   (gap-portal.mjs INTERNAL_CLIENT_EMAIL_RE). Owner 2026-10-20: no mailbox will be made for client@fundhub.ai. */
+export const TEMPLATE_PROOF_SKIP_RE = `${TEST_ADDRESS_RE}|@fundhub\\.ai$`;
+
 export const TEMPLATE_DELIVERY_SQL = `
 WITH sends AS (
   SELECT m.template_key, m.channel, m.status, m.created_at
@@ -435,7 +440,7 @@ export const FIN_B22_LIVE = Object.freeze([
     emptyAs: "quiet",
     requirement: `Every client template sent in the last ${TEMPLATE_PATH_LOOKBACK_DAYS} days is still delivering: no template has ${TEMPLATE_PATH_MIN_ROWS} or more sends older than ${RECEIPT_AFTER_HOURS} hours that came after its last delivery (the hand-run delivery proof, read again from the messages the company really sent).`,
     sql: TEMPLATE_DELIVERY_SQL,
-    params: (ctx) => [ctx.orgId, when(ctx, TEMPLATE_PATH_LOOKBACK_DAYS * DAY), when(ctx, RECEIPT_AFTER_HOURS * HOUR), TEST_ADDRESS_RE],
+    params: (ctx) => [ctx.orgId, when(ctx, TEMPLATE_PATH_LOOKBACK_DAYS * DAY), when(ctx, RECEIPT_AFTER_HOURS * HOUR), TEMPLATE_PROOF_SKIP_RE],
   }),
   Object.freeze({
     surface: "workflow:waypoint-nudge-sweeper",
