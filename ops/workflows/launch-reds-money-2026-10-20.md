@@ -26,8 +26,8 @@ No dependencies; all three run at once.
 
 | # | Id | Day | Unit | Class | Status |
 |---|---|---:|---|---|---|
-| 1 | `meta-sync` | 9 | W1 | B | fake: 4 test Meta accounts (2026-10-12) with bogus tokens; real account fine → on delete list |
-| 2 | `ads-number-unmapped` | 9 | W1 | B | fake: ads "AD", "Adspine numberless" on test accounts; 4 real ads all numbered → on delete list |
+| 1 | `meta-sync` | 9 | W1 | B | GREEN live 10-21 after the 4 fake Meta accounts were deleted (only the real account left, no error) |
+| 2 | `ads-number-unmapped` | 9 | W1 | B | GREEN live 10-21: 4 real ads spent in 28 days, all numbered |
 | 3 | `funding:round-stuck` | 6 | W1 | fixed | verified N/A live (`no-real-funding-round`), PR #97 shipped |
 | 4 | `partners:commission-payable` | 8 | W1 | B | GREEN live 10-21 02:2x UTC after the fake referrals were deleted |
 | 5 | `payments:invoice-stuck` | 8 | W1 | B | GREEN live after FH-000841's invoices were deleted |
@@ -39,7 +39,7 @@ No dependencies; all three run at once.
 | 11 | display: Do task (financeos#next) | 7 | W2 | C | live button, never pressed → quiet until first wrong result (owner 10-14). GREEN in branch, PR #102 |
 | 12 | display: I'm ready to get funded (financeos#next) | 7 | W2 | C | same as 11. GREEN in branch, PR #102 |
 | 13 | display: Funded amount prompt (pipeline) | 7 | W2 | fixed | verified N/A live (no real round), PR #97 |
-| 14 | display: Commission rule Close vN / open vN+1 | 7 | W2 | B | 2 test-fixture rules "MC …" (2026-08-21) → delete list, waiting on Chris's yes for non-client rows |
+| 14 | display: Commission rule Close vN / open vN+1 | 7 | W2 | B | GREEN live 10-21 after the 2 test-fixture rules were deleted (Chris yes) |
 | 15 | display: Approve selected (commissions) | 7 | W2 | C | never pressed → quiet; also now red if an approved row lacks its receipt. GREEN in branch, PR #102 |
 | 16 | display: Mark paid (commissions) | 7 | W2 | C | same as 15. GREEN in branch, PR #102 |
 | 17 | display: soft-pull approve submit | 3 | W2 | B | fake consent on FH-000522 already deleted → GREEN live |
@@ -84,3 +84,21 @@ ORD-SYNTH-C18117792FFE); 2 rounds on FH-000691 / FH-000727.
 ## Change manifest
 
 (filled in at the end)
+
+## W3 result and the follow-on split (2026-10-21 ~03:30 UTC)
+
+W3 (agent, branch `worktree-agent-aa5838507093130b0`, 8 commits on fce0573aa): `catalog:hourly-proof-linked`
+85 → 62. New beats lead-handoff, lead-pipe, pay-links, bank-links, auth-links; money-operations covers the
+billing sweeper; hiring desk moved to NOT_CUSTOMER_FACING (staff recruiting only). `pulse:prove -- --beats` OK.
+Stopped because the hourly run (13 s beat window, 3 read connections) is near its limit. The agreed next step
+on `ops/workflows/hourly-beats-capacity-2026-10-14.md` (option 3) is two scheduled hourly functions.
+
+| Unit | Owner | Status |
+|---|---|---|
+| W4: split the hourly run into two scheduled functions (runPulse `only`) | agent | claimed |
+| W5: beats for portal (6), money helper (3), money alerts (4), launch keys (3), lenders (1) | agent | claimed |
+| W6: beats for soft pull + roadmap delivery (7), roadmap pages (2), built funnels (1), partner pages (3), records/consent/contracts (6) | agent | claimed |
+| W7: beats for pipelines + sales floor (7), messages (4), inquiry (4), calls (2), repair + documents (9) | agent | claimed |
+
+All four start from W3's branch. W5-W7 never edit the runner, pulse-hourly function or prove.mjs (W4 owns them);
+they append to `src/pulse/beats/index.mjs` only. Merge order: W3 → W4 → W5/W6/W7, catalog regenerated at each merge.
