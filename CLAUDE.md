@@ -189,10 +189,6 @@ When Chris asks for a rule, a skill, or a law, write it for Claude and for Curso
 
 The company is **Fundhub**. Never write FundHub. Domain stays `fundhub.ai`. Same law: `.cursor/rules/fundhub-company-name.mdc` and `.claude/rules/fundhub-company-name.md`.
 
-### Fresh thread when the chat gets long (owner-set 2026-09-21)
-
-When a chat gets long, or the named task is done, remind Chris once: the loud `/summarize` line, then the picture that spells BITCH in hash letters. A long chat resends the whole history every reply. Same law: `.cursor/rules/fresh-thread-when-long.mdc` and `.claude/rules/fresh-thread-when-long.md`.
-
 ### 4th grade English (owner-set 2026-10-05)
 
 Talk to Chris at a 4th grade reading level. Short words. Short sentences. One idea each. This is the current owner-set level throughout this file. Same law: `.cursor/rules/fourth-grade-english.mdc` and `.claude/rules/fourth-grade-english.md`.
