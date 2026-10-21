@@ -84,3 +84,21 @@ ORD-SYNTH-C18117792FFE); 2 rounds on FH-000691 / FH-000727.
 ## Change manifest
 
 (filled in at the end)
+
+## W3 result and the follow-on split (2026-10-21 ~03:30 UTC)
+
+W3 (agent, branch `worktree-agent-aa5838507093130b0`, 8 commits on fce0573aa): `catalog:hourly-proof-linked`
+85 → 62. New beats lead-handoff, lead-pipe, pay-links, bank-links, auth-links; money-operations covers the
+billing sweeper; hiring desk moved to NOT_CUSTOMER_FACING (staff recruiting only). `pulse:prove -- --beats` OK.
+Stopped because the hourly run (13 s beat window, 3 read connections) is near its limit. The agreed next step
+on `ops/workflows/hourly-beats-capacity-2026-10-14.md` (option 3) is two scheduled hourly functions.
+
+| Unit | Owner | Status |
+|---|---|---|
+| W4: split the hourly run into two scheduled functions (runPulse `only`) | agent | claimed |
+| W5: beats for portal (6), money helper (3), money alerts (4), launch keys (3), lenders (1) | agent | claimed |
+| W6: beats for soft pull + roadmap delivery (7), roadmap pages (2), built funnels (1), partner pages (3), records/consent/contracts (6) | agent | claimed |
+| W7: beats for pipelines + sales floor (7), messages (4), inquiry (4), calls (2), repair + documents (9) | agent | claimed |
+
+All four start from W3's branch. W5-W7 never edit the runner, pulse-hourly function or prove.mjs (W4 owns them);
+they append to `src/pulse/beats/index.mjs` only. Merge order: W3 → W4 → W5/W6/W7, catalog regenerated at each merge.
