@@ -1,0 +1,53 @@
+{
+ "del": {
+  "staff": [],
+  "affiliates": [
+   "e27c5e78-5ddd-4066-befe-6eda8857a45e"
+  ],
+  "affiliate_link_clicks": [
+   "4dc7b3b1-e4ff-457a-97b1-df7d4ce1b20f",
+   "78f91152-ee4b-4458-a282-cf1cd8c6b32d"
+  ],
+  "accounts": [
+   "8f2aa274-0f85-432e-b878-a9946a128c9a"
+  ],
+  "account_sessions": [
+   "aba1aa72-2c04-4132-acd5-cbf536f4d6e2"
+  ]
+ },
+ "nulls": {},
+ "order": [
+  "account_sessions",
+  "accounts",
+  "staff",
+  "affiliate_link_clicks",
+  "affiliates"
+ ],
+ "pks": {
+  "staff": [
+   "id"
+  ],
+  "affiliates": [
+   "id"
+  ],
+  "affiliate_link_clicks": [
+   "id"
+  ],
+  "accounts": [
+   "id"
+  ],
+  "account_sessions": [
+   "id"
+  ]
+ },
+ "demoClients": [],
+ "demoPartners": [],
+ "demoStaff": [],
+ "demoAffiliates": [],
+ "pinned": {},
+ "info": {
+  "staff": 0,
+  "affiliates": 1
+ },
+ "made_at": "2026-10-21T05:43:10.948Z"
+}

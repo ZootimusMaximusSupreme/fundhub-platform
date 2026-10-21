@@ -173,6 +173,8 @@ Each round ran as one transaction with the same guards: rebuild the plan inside 
   - The shared helper `e2e/live-auth.mjs` already defaults to chris@fundhub.ai.
 - Live now: staff 3 (Chris, Sarah Blankstein, Justice Nikkel). Affiliates 7: the 5 real-looking ones (not touched; the coordinator is asking Chris), TEST — Client Role, and the locked demo payee.
 
+**Round 9 (committed, Chris via the coordinator: "delete it"):** affiliate Wardell Brooks (AFF-000122). The read-only check said nothing pointed at it, but the guarded map found 1 login (americafundinglending@…), 1 session and 2 link clicks. All 5 rows are deleted. 87 sets outside the plan were unchanged. Backup: `.../round9/`. Affiliates now: Brandon Elliott, David Ramirez, Colin Schmidt, Blake Evertsen, TEST — Client Role (App Store login), and the locked demo payee.
+
 ## Left over (not done here)
 
 1. ~~Fake staff and fake affiliates~~: done in round 7. Chris asked about these after rounds 3 and 4. They were outside every round so far. They are listed for his yes or no:

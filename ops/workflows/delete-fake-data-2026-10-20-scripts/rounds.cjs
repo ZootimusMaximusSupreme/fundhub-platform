@@ -146,3 +146,11 @@ async function round4b(c, sch) {
   return { del: toObj(F.del), nulls: toObj(F.nulls), order: orderOf(sch, F.del), pks: Object.fromEntries([...F.del.keys()].map((t) => [t, sch.pks[t]])), demoClients: [], demoPartners: [], info: { events: ev.length } };
 }
 module.exports.round4b = round4b;
+
+// Round 9: affiliate Wardell Brooks (AFF-000122) only, owner order via coordinator 2026-10-20.
+async function round9(c, sch) {
+  const affs = (await c.query("SELECT id::text FROM affiliates WHERE id = 'e27c5e78-5ddd-4066-befe-6eda8857a45e' AND tracking_id = 'AFF-000122' AND name = 'Wardell Brooks'")).rows.map((r) => r.id);
+  if (affs.length !== 1) throw new Error("Wardell Brooks AFF-000122 not found as described");
+  return staffAffRound(c, sch, [], affs, ["EMP-000001", "EMP-000038", "EMP-000062"], ["AFF-000182", "AFF-000120", "AFF-000121", "AFF-000123", "AFF-000124", "AFF-000063"]);
+}
+module.exports.round9 = round9;
