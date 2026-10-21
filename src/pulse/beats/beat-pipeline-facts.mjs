@@ -13,9 +13,9 @@
 //   desk:inquiry-remover.html  pipeline:stage-vs-fact, pipeline:two-records
 //   desk:pipeline.html         pipeline:stage-vs-fact (count-true and nobody-lost: pipeline-boards)
 //   route:inquiry-cases        pipeline:stage-vs-fact (dead-stage: pipeline-boards)
-// Not here: desk:sales-floor.html also needs sales-manager:totals, which runs the app's own salesFloor
-// (src/sales/metrics.mjs, which also reads Drive and attaches recordings). A beat cannot import it, and a
-// copy is what that lane was rebuilt to stop trusting. It stays on the morning pulse.
+// Not here: desk:sales-floor.html also needs sales-manager:totals. Since 2026-10-20 that runs hourly in beat
+// sales-totals (the floor's totals SQL and math moved, one copy, into lib/sales-totals-truth.mjs, which
+// src/sales/metrics.mjs imports back), and that beat covers the desk, naming pipeline:two-records here.
 //
 // Read only: every read goes through ctx.read (the read box). No send, no write, no web call.
 

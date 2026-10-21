@@ -53,6 +53,7 @@ export const BEAT_FILES = Object.freeze([
   ["beat-repair-trip.mjs", () => import("./beat-repair-trip.mjs")],
   ["beat-roadmap-delivery.mjs", () => import("./beat-roadmap-delivery.mjs")],
   ["beat-roadmap-pages.mjs", () => import("./beat-roadmap-pages.mjs")],
+  ["beat-sales-totals.mjs", () => import("./beat-sales-totals.mjs")],
   ["beat-soft-pull.mjs", () => import("./beat-soft-pull.mjs")],
   ["beat-text-path.mjs", () => import("./beat-text-path.mjs")],
   ["beat-vendor-keys.mjs", () => import("./beat-vendor-keys.mjs")],
