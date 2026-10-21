@@ -90,7 +90,7 @@ export const CAN_DO_RULES = Object.freeze([
     why: "There is no exact amount to propose, so nothing can be set up. The client pays it in their bank or card app."
   }),
   Object.freeze({
-    when: "Checklist step personal_loan (\"Talk to your advisor about a personal loan\").",
+    when: "Checklist step personal_loan (\"Talk to our team about a personal loan\").",
     can_do: "person",
     why: "The step is a talk with a person on our team."
   }),

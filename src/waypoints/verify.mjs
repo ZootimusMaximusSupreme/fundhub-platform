@@ -208,8 +208,8 @@ export function newAccountReason(newAccounts = []) {
   const names = newAccounts.map((a) => a.creditor).filter(Boolean);
   const one = newAccounts.length === 1;
   const tail = one
-    ? "Let your advisor know if this is not yours."
-    : "Let your advisor know if any of these are not yours.";
+    ? "Let our team know if this is not yours."
+    : "Let our team know if any of these are not yours.";
   if (!names.length) {
     return one
       ? `Your credit file now shows an account that was not on it when you enrolled. ${tail}`
