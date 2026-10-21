@@ -37,6 +37,12 @@ GROUP BY 1, 2 ORDER BY breaks DESC;
 - Guard added: src/pulse/parked-features.test.mjs, src/pulse/na-conditions.test.mjs
 - Incident: none (morning rows, not hourly beats)  PR: none yet
 
+## 2026-10-20 — hourly ship proof (doors-live, db-health, checkout-doors, money-checkout) — pulse_false_alarm
+- Cause: from a GitHub Ubuntu runner, some connections to fundhub.ai's front door (Netlify's apex load balancer, 75.2.60.5 and 99.83.231.61) go silent. TCP connects, the server acknowledges our bytes, and then no answer ever comes. 59 of 1,120 TLS handshakes went silent with 14 at once, 3 of 600 one at a time. curl and Node both, with either TLS key share. DNS and TCP were clean. One GET stuck for the probe's full 8 s stopped every Linux ship on 2026-10-20 at the hourly bundle proof. The Mac and the live hourly pulse on Netlify (0 timeouts in 73 runs) do not see it.
+- Fix: the proof's own fetch to the site sends one more identical GET or HEAD after 1 s of silence and uses whichever answers first (`scripts/pulse/site-hedge.mjs`). No deadline, no half-deadline rule and no probe timeout changed. The live pulse-probe is unchanged. A door that answers neither request is still red. On the runner: plain fetch 11 of 630 hung, hedged 0 of 630; the real proof passed 3 of 3.
+- Guard added: `scripts/pulse/site-hedge.test.mjs` (asked once when the site answers; exactly one more request when it is silent; still fails when both are silent; fast errors, other hosts and other methods untouched). Every proof run prints "site requests that needed a second connection".
+- Incident: none (caught by GitHub ship runs 39486073918, 39496970203, 39501099350, 39502479109, 39505729133, 39511244534; diagnosis runs 39508925935, 39513051795, 39516992055).  PR: this change
+
 ## 2026-10-12 — full catalog ship proof — timeout_or_capacity
 - Cause: the full catalog added 1,762 honest red findings. The proof printed every red line, which overflowed the GitHub ship log. A dead old live site also made the rotating CRM file check take 45 seconds.
 - Fix: the proof prints the first 80 findings plus the remaining count. Live red and not-checked results stay in the scorecard but do not pretend the proof engine crashed. CRM file reads stop after two seconds, and the 51-logo sample runs in batches of 20 so a slow GitHub network still leaves room for the rest of the lane.
