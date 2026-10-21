@@ -1,5 +1,11 @@
 // Real-Postgres integration test for the message_templates seeder.
-// SKIPS unless DATABASE_URL is set (and unless fundhub-docs is checked out).
+// Runs ONLY on a local scratch database (127.0.0.1/localhost, name with ci, test or
+// scratch) and only with fundhub-docs present. Anything else skips.
+//
+// Defect (2026-10-20): this file used to DELETE every template of the 'fundhub' org
+// whenever DATABASE_URL was set. Run against production it wiped 137 live seeded
+// templates (welcome email and text, booking confirm, contract email, document asks).
+// It now seeds a throwaway org of its own and never touches Fundhub's rows.
 //
 // Proves what the unit tests cannot: the upsert actually round-trips against the
 // real schema, re-running converges instead of duplicating, and the copy that
@@ -11,7 +17,9 @@ import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 import { db, close } from "../../db.mjs";
+import { isLocalScratchDatabaseUrl } from "../../verification/scratch-guard.mjs";
 import { collect, findDocsDir } from "./collect.mjs";
 import { seedTemplates } from "./seed.mjs";
 
@@ -21,32 +29,41 @@ const HAS_DB = !!process.env.DATABASE_URL;
 // swallowed EVERY error into a skip, which would have hidden a real bug in the
 // resolver as "nothing to test".
 const docsDir = findDocsDir();
-const RUN = HAS_DB && !!docsDir;
+const RUN = isLocalScratchDatabaseUrl(process.env.DATABASE_URL) && !!docsDir;
+const ORG_SLUG = `message-seed-pg-${randomUUID()}`;
 
 let seedable = [];
+let orgId = null;
 
 before(async () => {
   if (!RUN) return;
   seedable = collect(docsDir).seedable;
-  await db.query(`DELETE FROM message_templates WHERE org_id IN (SELECT id FROM orgs WHERE slug='fundhub')`);
+  orgId = (await db.query(
+    `INSERT INTO orgs (slug, name) VALUES ($1, 'Message Seeder PG Test') RETURNING id`,
+    [ORG_SLUG]
+  )).rows[0].id;
 });
 
 after(async () => {
+  if (orgId) {
+    await db.query(`DELETE FROM message_templates WHERE org_id = $1`, [orgId]);
+    await db.query(`DELETE FROM orgs WHERE id = $1`, [orgId]);
+  }
   if (HAS_DB) await close();
 });
 
 test("seeds every parsed template into a real message_templates table", { skip: !RUN }, async () => {
-  const r = await seedTemplates(db, seedable);
+  const r = await seedTemplates(db, seedable, { orgSlug: ORG_SLUG });
   assert.equal(r.inserted, seedable.length);
   assert.equal(r.updated, 0);
-  const { rows } = await db.query(`SELECT count(*)::int AS n FROM message_templates`);
+  const { rows } = await db.query(`SELECT count(*)::int AS n FROM message_templates WHERE org_id = $1`, [orgId]);
   assert.equal(rows[0].n, seedable.length);
 });
 
 test("re-running is idempotent — same row count, all updates, no duplicates", { skip: !RUN }, async () => {
-  const before2 = (await db.query(`SELECT count(*)::int AS n FROM message_templates`)).rows[0].n;
-  const r = await seedTemplates(db, seedable);
-  const after2 = (await db.query(`SELECT count(*)::int AS n FROM message_templates`)).rows[0].n;
+  const before2 = (await db.query(`SELECT count(*)::int AS n FROM message_templates WHERE org_id = $1`, [orgId])).rows[0].n;
+  const r = await seedTemplates(db, seedable, { orgSlug: ORG_SLUG });
+  const after2 = (await db.query(`SELECT count(*)::int AS n FROM message_templates WHERE org_id = $1`, [orgId])).rows[0].n;
   assert.equal(r.inserted, 0);
   assert.equal(r.updated, seedable.length);
   assert.equal(after2, before2);
@@ -54,12 +71,12 @@ test("re-running is idempotent — same row count, all updates, no duplicates", 
 
 test("an edited doc body overwrites the stored row rather than adding one", { skip: !RUN }, async () => {
   const key = seedable[0].templateKey;
-  const before2 = (await db.query(`SELECT count(*)::int AS n FROM message_templates`)).rows[0].n;
-  await seedTemplates(db, [{ ...seedable[0], body: "EDITED IN THE DOC" }]);
-  const row = await db.query(`SELECT body FROM message_templates WHERE template_key=$1`, [key]);
+  const before2 = (await db.query(`SELECT count(*)::int AS n FROM message_templates WHERE org_id = $1`, [orgId])).rows[0].n;
+  await seedTemplates(db, [{ ...seedable[0], body: "EDITED IN THE DOC" }], { orgSlug: ORG_SLUG });
+  const row = await db.query(`SELECT body FROM message_templates WHERE org_id = $1 AND template_key = $2`, [orgId, key]);
   assert.equal(row.rows[0].body, "EDITED IN THE DOC");
-  assert.equal((await db.query(`SELECT count(*)::int AS n FROM message_templates`)).rows[0].n, before2);
-  await seedTemplates(db, [seedable[0]]); // restore
+  assert.equal((await db.query(`SELECT count(*)::int AS n FROM message_templates WHERE org_id = $1`, [orgId])).rows[0].n, before2);
+  await seedTemplates(db, [seedable[0]], { orgSlug: ORG_SLUG }); // restore
 });
 
 test("channel split and compliance flags land as specified", { skip: !RUN }, async () => {
@@ -68,7 +85,8 @@ test("channel split and compliance flags land as specified", { skip: !RUN }, asy
             count(*)::int AS n,
             count(*) FILTER (WHERE compliance_passed)::int AS compliant,
             count(*) FILTER (WHERE subject IS NOT NULL)::int AS with_subject
-       FROM message_templates GROUP BY channel ORDER BY channel`
+       FROM message_templates WHERE org_id = $1 GROUP BY channel ORDER BY channel`,
+    [orgId]
   );
   const byChannel = Object.fromEntries(rows.map((r) => [r.channel, r]));
   // The audited SMS are all compliance_passed; the emails are all unaudited.
@@ -79,7 +97,7 @@ test("channel split and compliance flags land as specified", { skip: !RUN }, asy
 });
 
 test("no row was seeded with an empty body", { skip: !RUN }, async () => {
-  const { rows } = await db.query(`SELECT template_key FROM message_templates WHERE btrim(body) = ''`);
+  const { rows } = await db.query(`SELECT template_key FROM message_templates WHERE org_id = $1 AND btrim(body) = ''`, [orgId]);
   assert.deepEqual(rows, []);
 });
 
@@ -92,7 +110,7 @@ test("stored copy is byte-identical to the source doc — nothing was rewritten"
     return cache.get(sourceDoc);
   };
 
-  const { rows } = await db.query(`SELECT template_key, channel, subject, body, source_doc FROM message_templates`);
+  const { rows } = await db.query(`SELECT template_key, channel, subject, body, source_doc FROM message_templates WHERE org_id = $1`, [orgId]);
   const mismatched = [];
   for (const r of rows) {
     const doc = docText(r.source_doc);
@@ -108,6 +126,6 @@ test("stored copy is byte-identical to the source doc — nothing was rewritten"
 });
 
 test("source_doc is recorded for every row", { skip: !RUN }, async () => {
-  const { rows } = await db.query(`SELECT count(*)::int AS n FROM message_templates WHERE source_doc IS NULL`);
+  const { rows } = await db.query(`SELECT count(*)::int AS n FROM message_templates WHERE org_id = $1 AND source_doc IS NULL`, [orgId]);
   assert.equal(rows[0].n, 0);
 });

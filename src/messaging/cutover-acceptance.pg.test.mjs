@@ -23,8 +23,12 @@ import { handle as n06Handle } from "../workflows/n-06-renewal-second-wave.mjs";
 import { replay } from "../events/bus.mjs";
 import { recordOptOut } from "../lib/opt-out.mjs";
 import { clearRuleCache } from "../compliance/screen.mjs";
+import { isLocalScratchDatabaseUrl } from "../verification/scratch-guard.mjs";
 
-const RUN = !!process.env.DATABASE_URL;
+// Scratch only. This file upserts test copy over the default company's live
+// EMAIL-N06-RENEWAL / SMS-N06-RENEWAL templates and deletes them afterwards; on
+// production that erased real copy (2026-10-20). A loopback scratch database only.
+const RUN = isLocalScratchDatabaseUrl(process.env.DATABASE_URL);
 
 const TAG = "cutover-acceptance";
 const EMAIL_TPL = "EMAIL-N06-RENEWAL";

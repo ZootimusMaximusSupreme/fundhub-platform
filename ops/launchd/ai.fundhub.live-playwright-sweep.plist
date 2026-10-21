@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Nightly live desk sweep, so the pulse row `live-playwright:desks` stays fresh.
+
+  WHAT IT RUNS: node scripts/live-playwright-sweep.mjs, from the main checkout (that is where the
+  gitignored .env lives). It clicks the live desks on fundhub.ai and apply.fundhub.ai with the staff
+  login from .env (STAFF_E2E_PASSWORD), then writes ONE agent_runs row for the morning pulse.
+
+  WHEN: every day at 03:30 on the Mac clock (Arizona time, UTC-7). The pulse reads the newest row and
+  goes red after 26 hours (src/pulse/live-playwright-check.mjs), so a daily run always lands inside it.
+
+  NOT INSTALLED BY ANY AGENT. The owner installs it (or says to):
+
+    cp ops/launchd/ai.fundhub.live-playwright-sweep.plist ~/Library/LaunchAgents/
+    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/ai.fundhub.live-playwright-sweep.plist
+
+  Run it once now to test the wiring (does the same thing as 03:30):
+
+    launchctl kickstart gui/$(id -u)/ai.fundhub.live-playwright-sweep
+
+  Remove it:
+
+    launchctl bootout gui/$(id -u)/ai.fundhub.live-playwright-sweep
+    rm ~/Library/LaunchAgents/ai.fundhub.live-playwright-sweep.plist
+
+  Log: ~/Library/Logs/fundhub-live-playwright-sweep.log
+
+  The node path below is the one nvm gave this Mac on 2026-10-20 (v22.23.2). If node is upgraded,
+  change that one path and bootout/bootstrap again. No secret lives in this file.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>ai.fundhub.live-playwright-sweep</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/chrisstanbridge/.nvm/versions/node/v22.23.2/bin/node</string>
+    <string>/Users/chrisstanbridge/Developer/fundhub-platform/scripts/live-playwright-sweep.mjs</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/chrisstanbridge/Developer/fundhub-platform</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/Users/chrisstanbridge/.nvm/versions/node/v22.23.2/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    <key>HOME</key>
+    <string>/Users/chrisstanbridge</string>
+  </dict>
+
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>3</integer>
+    <key>Minute</key>
+    <integer>30</integer>
+  </dict>
+
+  <key>StandardOutPath</key>
+  <string>/Users/chrisstanbridge/Library/Logs/fundhub-live-playwright-sweep.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/chrisstanbridge/Library/Logs/fundhub-live-playwright-sweep.log</string>
+
+  <key>RunAtLoad</key>
+  <false/>
+</dict>
+</plist>

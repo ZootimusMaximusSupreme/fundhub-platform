@@ -48,8 +48,14 @@ const VALIDATES_BODY_FIRST = [
 /* A client signed in to their own file reaches these; the static reading draws
    them as staff-only because it does not follow the client branch. */
 const CLIENT_OWN_FILE = ["banking/link-exchange", "banking/link-token"];
+/* 495: the payout-bank door admits the affiliate and client KINDS, then pins
+   the caller to the affiliate id on their own session (a client only when a
+   light affiliate, accounts.affiliate_id). The probe sessions carry no
+   affiliate id, so the door answers 403 not_an_affiliate — correct; the static
+   reading only sees the kinds. */
+const CLIENT_LIGHT_AFFILIATE = ["affiliates/payout-account"];
 const EXPECTED_DISAGREEMENTS = {
-  client: [...CLIENT_OWN_FILE, "auth/authorized-rep-file"],
+  client: [...CLIENT_OWN_FILE, ...CLIENT_LIGHT_AFFILIATE, "auth/authorized-rep-file"],
   "role-sales-manager": VALIDATES_BODY_FIRST,
   // A closer may create a payment link and is refused every other action: the
   // empty probe lands on an action the closer is refused.
@@ -59,7 +65,7 @@ const EXPECTED_DISAGREEMENTS = {
   // This route has two doors. The static journey sees its signed playback URL;
   // the session-only probe sends no signature and therefore reaches the
   // metadata door, which correctly refuses affiliate and partner sessions.
-  affiliate: ["content/welcome-video", "money/setup"],
+  affiliate: ["content/welcome-video", "money/setup", ...CLIENT_LIGHT_AFFILIATE],
   "white-label": ["content/welcome-video", "money/setup"],
 };
 

@@ -391,12 +391,20 @@ async function aiDialNoFailure({ db, orgId, now, env }) {
 /* ------------------------------------------------------------------------
    calls:booked-no-join-link — does a booked customer have a way to join?
 
-   WHAT THE PRODUCT DOES TODAY (read from the code, 2026-10-09):
-   ClickFunnels is the booking page. Its appointment webhook has no field for a
-   join link (the adapter sets meetingUrl: null on every booking it takes). So
-   nothing on a booking, a booking task or a booking event holds a link, the
-   closer's Join Call button on the calendar stays off, and the 15-minute text
-   hands the customer the portal sign-in page where a link should be.
+   WHERE THE LINK COMES FROM (2026-10-20): ClickFunnels is the booking page and
+   puts each call on the host's Google Calendar, where Google adds a Meet link.
+   ClickFunnels' webhook carries no link (the adapter sets meetingUrl: null), so
+   AI-SET-04 reads the host calendar about two minutes after a booking
+   (src/bookings/meet-link.mjs) and keeps the Meet link on the bookings row and
+   the closer's call task (step "keep-meet-link"). The 15-minute text reads it
+   from there. Before 2026-10-20 nothing kept a link, so every older booking has
+   none; the feed question below turns green on the first new booking that does.
+
+   ONE BOOKING, TWO IDS. The calendar form post makes the booking.created event
+   under the form message id; the appointment webhook then re-keys the bookings
+   row to the call's own id and emits nothing. So a bookings row is matched to a
+   call by id OR by the same email at the same start time. Matching by id alone
+   missed every kept link.
 
    staff.meeting_url is NOT read here and is not a red. It is a standing room
    that only hiring interviews read (src/hiring/booking.mjs). Nothing sends a
@@ -405,7 +413,9 @@ async function aiDialNoFailure({ db, orgId, now, env }) {
 
    Two questions, one row:
    A. A real booked call still ahead (or begun in the last 2 hours) with no
-      link on the event, the bookings row or the task.
+      link on the event, the bookings row or the task. A call first seen in
+      the last 10 minutes is not judged yet: the link is read 2 minutes after
+      the booking, and the booking-webhook check waits the same 10 minutes.
    B. The feed itself. Of the newest real bookings, does ANY carry a link? If
       none of the newest 5 do (and there are at least 3), no future booking
       will have one either. This is what turns red BEFORE a customer is hit.
@@ -423,6 +433,8 @@ const JOIN_ID = "calls:booked-no-join-link";
 const DAY_MS = 24 * 60 * 60 * 1000;
 const JOIN_AHEAD_MS = 45 * DAY_MS;
 const JOIN_STARTED_GRACE_MS = 2 * 60 * 60 * 1000;
+/** A call booked this recently has not had its link read yet (AI-SET-04 waits 2 minutes). */
+const JOIN_FRESH_MS = 10 * 60 * 1000;
 const JOIN_FEED_SAMPLE = 5;
 const JOIN_FEED_MIN = 3;
 const JOIN_EVENT_LIMIT = 1500;
@@ -580,20 +592,30 @@ async function bookedNoJoinLink({ db, orgId, now }) {
     .slice(0, JOIN_FEED_SAMPLE);
 
   // A link can also be on the bookings row or on the closer's task for that uid.
-  const uids = [...new Set([...ahead, ...sample].flatMap((c) => c.uids))];
+  // A bookings row is also matched by the call's email and start (see ONE
+  // BOOKING, TWO IDS above): the row carries the call id, the event the form id.
+  const judged = [...ahead, ...sample];
+  const uids = [...new Set(judged.flatMap((c) => c.uids))];
+  const keys = [...new Set(judged.filter((c) => c.start).map((c) => c.key))];
   const saved = new Set();
-  if (uids.length > 0) {
+  const savedKeys = new Set();
+  if (uids.length > 0 || keys.length > 0) {
     try {
-      const params = [orgId, uids];
       const [b, t] = [
         await db.query(
           `/* gap-calls:no-join-link:bookings */
-           SELECT b.provider_uid AS uid, b.meeting_url
+           SELECT b.provider_uid AS uid,
+                  lower(btrim(b.attendee_email)) || '|' ||
+                    (extract(epoch FROM b.starts_at) * 1000)::bigint::text AS call_key,
+                  b.meeting_url
              FROM bookings b
             WHERE b.org_id = $1::uuid
-              AND b.provider_uid = ANY($2::text[])
+              AND (b.provider_uid = ANY($2::text[])
+                   OR (b.starts_at IS NOT NULL AND b.attendee_email IS NOT NULL
+                       AND lower(btrim(b.attendee_email)) || '|' ||
+                           (extract(epoch FROM b.starts_at) * 1000)::bigint::text = ANY($3::text[])))
               AND btrim(COALESCE(b.meeting_url, '')) <> ''`,
-          params
+          [orgId, uids, keys]
         ),
         await db.query(
           `/* gap-calls:no-join-link:tasks */
@@ -602,17 +624,23 @@ async function bookedNoJoinLink({ db, orgId, now }) {
             WHERE t.org_id = $1::uuid
               AND t.body = ANY($2::text[])
               AND btrim(COALESCE(t.meeting_url, '')) <> ''`,
-          params
+          [orgId, uids]
         )
       ];
-      for (const r of [...rowsOf(b), ...rowsOf(t)]) if (isLink(r?.meeting_url)) saved.add(String(r.uid));
+      for (const r of [...rowsOf(b), ...rowsOf(t)]) {
+        if (!isLink(r?.meeting_url)) continue;
+        if (r.uid != null) saved.add(String(r.uid));
+        if (r.call_key != null) savedKeys.add(String(r.call_key));
+      }
     } catch (err) {
       return check(id, "skip", `booking and task links not read (${clip(err)}), so join links are unchecked`);
     }
   }
-  const hasLink = (c) => c.feedLink || c.uids.some((u) => saved.has(u));
+  const hasLink = (c) => c.feedLink || c.uids.some((u) => saved.has(u)) || (c.start && savedKeys.has(c.key));
 
-  const missing = ahead.filter((c) => !hasLink(c));
+  // A call first seen in the last 10 minutes has not had its link read yet.
+  const fresh = (c) => c.firstSeen.getTime() > now.getTime() - JOIN_FRESH_MS;
+  const missing = ahead.filter((c) => !fresh(c) && !hasLink(c));
   const withLink = sample.filter(hasLink).length;
   const feedDead = sample.length >= JOIN_FEED_MIN && withLink === 0;
 
@@ -636,19 +664,25 @@ async function bookedNoJoinLink({ db, orgId, now }) {
       id,
       "FAIL",
       `${why.join("; ")}. The 15-minute text sends the portal sign-in page where the link should be.`,
-      `Decide where a customer gets the call link, and make every booking keep it. ClickFunnels sends none. ` +
-        `If the link is in the ClickFunnels confirmation, tell the team that is the plan. ${RECON}`
+      `The link comes from the host's Google Calendar event (ClickFunnels puts a Meet link there). ` +
+        `Open the AI-SET-04 run for that booking and read its "keep-meet-link" step: the reason names the miss ` +
+        `(no_calendar_scope means the Google token needs calendar read; no_matching_event means the call is not ` +
+        `on the host calendar the token reads). ${RECON}`
     );
   }
   const feedNote =
     sample.length >= JOIN_FEED_MIN
       ? `${withLink} of the newest ${sample.length} real bookings carry a link`
       : `fewer than ${JOIN_FEED_MIN} real bookings so far, so the feed is not judged yet`;
-  return check(
-    id,
-    "PASS",
-    `${ahead.length === 0 ? "no real booked call is ahead" : `all ${ahead.length} booked ${ahead.length === 1 ? "call" : "calls"} ahead have a join link`}; ${feedNote}`
-  );
+  const judgedAhead = ahead.filter((c) => !fresh(c)).length;
+  const freshAhead = ahead.length - judgedAhead;
+  const aheadNote = judgedAhead === 0
+    ? "no real booked call is ahead"
+    : `all ${judgedAhead} booked ${judgedAhead === 1 ? "call" : "calls"} ahead have a join link`;
+  const freshNote = freshAhead > 0
+    ? `; ${freshAhead} booked in the last 10 minutes, link not read yet`
+    : "";
+  return check(id, "PASS", `${aheadNote}${freshNote}; ${feedNote}`);
 }
 
 export async function gapChecks(ctx) {

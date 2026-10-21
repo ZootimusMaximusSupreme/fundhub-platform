@@ -39,6 +39,10 @@ function fakeDb(answers = {}) {
       calls.push({ sql: text, params });
       if (!/^\s*SELECT\b/i.test(text)) throw new Error(`write sql is not allowed: ${text}`);
       if (/FROM agents\b/.test(text)) throw new Error("this lane must not read agents (daily-pulse does)");
+      // How much REAL funding work exists (src/pulse/real-funding.mjs). One real round by default.
+      if (/AS rounds/.test(text) && /AS receipts/.test(text) && /AS decisions/.test(text)) {
+        return { rows: [{ rounds: answers.realRounds ?? 1, receipts: answers.realReceipts ?? 0, decisions: 0 }] };
+      }
       if (/FROM clients c\b/.test(text) && /EXISTS/.test(text)) {
         return { rows: answers.doorClient === null ? [] : [{ id: answers.doorClient ?? CLIENT }] };
       }
@@ -110,10 +114,13 @@ test("gap funding: a clear desk is five PASS rows, only reads, and never reads R
   assert.match(stuck.sql, /FROM applications a/);
   assert.match(stuck.sql, /a\.funding_round_id = fr\.id/);
   assert.match(stuck.sql, /COALESCE\(fr\.is_demo, false\) = false/);
+  // A round on a test (demo) client is test data and never raises a red (owner fact 2026-10-20).
+  assert.match(stuck.sql, /rdc\.id = fr\.client_id AND COALESCE\(rdc\.is_demo, false\) = true/);
   const apply = db.calls.find((call) => /a\.status = 'Apply'/.test(call.sql));
   assert.deepEqual(apply.params[2], [...TERMINAL_ROUND_STATUSES]);
   assert.equal(apply.params[1].getTime(), cut);
   assert.match(apply.sql, /a\.submitted_date IS NULL/);
+  assert.match(apply.sql, /rdc\.id = fr\.client_id AND COALESCE\(rdc\.is_demo, false\) = true/);
   const queue = db.calls.find((call) => /FROM cards c\b/.test(call.sql));
   assert.deepEqual(queue.params[1], [...WAITING_STAGE_KEYS]);
   assert.equal(queue.params[2].getTime(), cut);
@@ -121,7 +128,7 @@ test("gap funding: a clear desk is five PASS rows, only reads, and never reads R
   assert.match(queue.sql, /entered_at/);
   // The door ran the real handler: the two reads it makes for one client, with
   // the company id that came from the stand-in staff session.
-  const decisions = db.calls.find((call) => /FROM application_decisions\b/.test(call.sql));
+  const decisions = db.calls.find((call) => /FROM application_decisions\b/.test(call.sql) && !/AS decisions/.test(call.sql));
   assert.deepEqual(decisions.params, [ORG, CLIENT, 50]);
   const banks = db.calls.find((call) => /FROM applications\s+WHERE org_id/.test(call.sql));
   assert.deepEqual(banks.params, [ORG, CLIENT, 200]);
@@ -466,4 +473,22 @@ test("gap funding: the real handler answers 200 for a client with bank rows and 
   const stranger = { async query() { return { rows: [] }; } };
   await handler({ method: "GET", headers: {}, query: { client_id: CLIENT } }, res, { db: stranger });
   assert.equal(res.statusCode, 401);
+});
+
+/* Owner fact 2026-10-20: "There are zero funding rounds." Test rounds never raise a red, and with no
+   real round the stall rows say "nothing to judge" with a reason the morning audit re-checks. */
+test("gap funding: with no real funding round the two stall rows are nothing to judge, with a checkable reason", async () => {
+  const hit = byId(await gapChecks({ db: fakeDb({ realRounds: 0 }), orgId: ORG, now: NOW, bookRows: 306 }));
+  for (const id of ["funding:round-stuck", "funding:submit-path"]) {
+    assert.equal(hit[id].status, "na", id);
+    assert.deepEqual(hit[id].na, { code: "no-real-funding-round", args: { orgId: ORG } }, id);
+    assert.match(hit[id].detail, /No real funding round/);
+  }
+  assert.equal(hit["funding:lender-book"].status, "PASS");
+});
+
+test("gap funding: a REAL stalled round is still a FAIL even when it is the only real round", async () => {
+  const hit = byId(await gapChecks({ db: fakeDb({ stuck: 1, realRounds: 1 }), orgId: ORG, now: NOW, bookRows: 306 }));
+  assert.equal(hit["funding:round-stuck"].status, "FAIL");
+  assert.equal(hit["funding:round-stuck"].na, undefined);
 });

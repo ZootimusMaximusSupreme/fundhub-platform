@@ -40,6 +40,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { DB_SETTINGS_SQL } from "../../src/pulse/beats/readbox.mjs";
 import { isPartialLaneOnlyNotChecked, isRunnerOnlyNotChecked, unknownRequestedLanes } from "./prove-policy.mjs";
 import { formatProofFetchTrace, makeProofFetchTrace, proofFetch } from "./prove-fetch-trace.mjs";
+import { hedgedSiteFetch } from "./site-hedge.mjs";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const STEP_LIMIT_MS = 20000;
@@ -48,6 +49,9 @@ const args = process.argv.slice(2);
 const FROM_REPO = args.includes("--repo");
 const LANES = (args.find((a) => a.startsWith("--lanes=")) || "").slice(8).split(",").filter(Boolean);
 const clip = (s, n = 200) => String(s == null ? "" : s).replace(/\s+/g, " ").trim().slice(0, n);
+// The live site host. A request to it that stays silent gets one more connection (scripts/pulse/site-hedge.mjs).
+const SITE_HOST = new URL(process.env.URL || "https://fundhub.ai").host;
+const hedgeLine = (rows) => `  site requests that needed a second connection: ${rows.length}${rows.length ? ` (${rows.map((r) => `${r.method} ${r.path} -> ${r.winner ? `answer ${r.winner}` : "no answer"} ${r.ms} ms`).join("; ")})` : ""}`;
 
 /* The hourly pulse proof is a separate flow. It runs here, before the morning-pulse flow below, and exits. Everything
    it needs is a function declaration (hoisted) or a const above this line; it must not touch the consts below. */
@@ -66,7 +70,8 @@ if (!REAL_DATABASE_URL) fail("DATABASE_URL is not set (.env).");
 process.env.DATABASE_URL = "postgres://escape-blocked.invalid:5432/blocked";
 process.env.MIGRATION_DATABASE_URL = "postgres://escape-blocked.invalid:5432/blocked";
 const pg = createRequire(path.join(REPO, "package.json"))("pg");
-const realFetch = globalThis.fetch;
+const siteHedges = [];
+const realFetch = hedgedSiteFetch(globalThis.fetch, { siteHost: SITE_HOST, log: siteHedges });
 
 const root = FROM_REPO ? REPO : buildBundle();
 const listed = (await import(pathToFileURL(path.join(REPO, "src/pulse/coverage/modules.mjs")).href));
@@ -191,6 +196,7 @@ const problems = [
   ...log.refused.map((x) => `refused: ${x}`),
   ...blindRows.map((r) => `${r.id} is ${r.status} on the app role but ${byId.get(r.id)} with staff access — the check cannot see the rows`)
 ];
+if (siteHedges.length || problems.length) console.log(hedgeLine(siteHedges));
 if (problems.length) {
   for (const entry of webTrace.slowOrFailed()) console.log(`  web timing: ${formatProofFetchTrace(entry)}`);
   console.log(`\nPROBLEMS (${problems.length}):`);
@@ -377,7 +383,9 @@ async function proveBeats() {
   process.env.DATABASE_URL = "postgres://escape-blocked.invalid:5432/blocked";
   process.env.MIGRATION_DATABASE_URL = "postgres://escape-blocked.invalid:5432/blocked";
   const pgMod = createRequire(path.join(REPO, "package.json"))("pg");
-  const realFetch = globalThis.fetch;
+  const nativeFetch = globalThis.fetch;
+  const siteHedges = [];
+  const realFetch = hedgedSiteFetch(nativeFetch, { siteHost: SITE_HOST, log: siteHedges });
 
   process.on("uncaughtException", (err) => { crashes.push(`uncaught exception: ${clip(err && err.message)}`); });
   const lateRejections = [];
@@ -651,7 +659,7 @@ async function proveBeats() {
   if (plainSettings) { try { await plainSettings.end(); } catch { /* closing */ } }
   const poolBefore = { total: boxPool.totalCount, idle: boxPool.idleCount, waiting: boxPool.waitingCount };
   try { await boxPool.end(); } catch { /* closing */ }
-  globalThis.fetch = realFetch;
+  globalThis.fetch = nativeFetch;
 
   // 5. Judge.
   if (out) {
@@ -713,6 +721,7 @@ async function proveBeats() {
   for (const q of refusedReads) problems.push(`Postgres refused a write on the reading connection: ${q.sql}`);
   if (lateRejections.length) console.log(`  note: ${lateRejections.length} late rejection(s) were caught by the function's guard (not a failure): ${lateRejections.slice(0, 2).join(" | ")}`);
   console.log(`  web reads made: ${fetchLog.length}${fetchLog.length ? ` (${[...new Set(fetchLog)].slice(0, 4).join(", ")})` : ""}; sink calls: text ${sinks.calls.text.length}, buzz ${sinks.calls.ntfy.length}`);
+  console.log(hedgeLine(siteHedges));
 
   if (problems.length) {
     for (const trace of siteFetchTrace) console.log(`  site fetch headers: ${trace.path} ${trace.status} ${trace.ms} ms${trace.error ? ` (${trace.error}${trace.code ? ` ${trace.code}` : ""}; aborted=${trace.aborted})` : ""}`);

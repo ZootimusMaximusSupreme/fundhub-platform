@@ -25,10 +25,10 @@ function fakeDb(answer) {
 
 const fn = (id, opts = {}) => ({ opts: { id, triggers: [], ...opts } });
 
-test("the list of codes is closed: exactly these twenty", () => {
+test("the list of codes is closed: exactly these twenty-five", () => {
   assert.deepEqual([...NA_CODES].sort(), [
-    "catalog-data-empty", "catalog-display-control-not-shipped", "catalog-display-hidden-section-head", "catalog-display-owner-removed", "catalog-display-retired-autopsy", "catalog-display-retired-control", "catalog-flow-step-not-shipped", "catalog-route-retired-action", "low-traffic", "monthly-not-due", "no-card-on-stage", "no-demand", "no-limit-set", "no-real-lead",
-    "no-running-ad", "no-sender", "no-trigger", "no-work-waiting", "not-connected", "not-registered"
+    "catalog-data-empty", "catalog-display-control-not-shipped", "catalog-display-hidden-section-head", "catalog-display-owner-removed", "catalog-display-retired-autopsy", "catalog-display-retired-control", "catalog-flow-step-not-shipped", "catalog-route-retired-action", "feature-not-set-up", "low-traffic", "monthly-not-due", "no-card-on-stage", "no-demand", "no-limit-set", "no-real-client-on-watch", "no-real-funding-round", "no-real-lead",
+    "no-running-ad", "no-sender", "no-trigger", "no-work-waiting", "not-connected", "not-registered", "owner-hold-client", "owner-paused"
   ]);
   assert.equal(Object.isFrozen(NA_CONDITIONS), true);
   for (const code of NA_CODES) assert.equal(Object.isFrozen(NA_CONDITIONS[code]), true, code);
@@ -37,11 +37,11 @@ test("the list of codes is closed: exactly these twenty", () => {
   assert.equal(isNaCode("toString"), false, "an inherited property is not a code");
 });
 
-test("the five core codes verify here; the ten lane codes say \"lane\"", () => {
-  for (const code of ["no-demand", "no-trigger", "not-registered", "monthly-not-due", "no-work-waiting"]) {
+test("the nine core codes verify here; the lane codes say \"lane\"", () => {
+  for (const code of ["no-demand", "no-trigger", "not-registered", "monthly-not-due", "no-work-waiting", "feature-not-set-up", "owner-paused", "no-real-funding-round", "no-real-client-on-watch"]) {
     assert.equal(typeof NA_CONDITIONS[code].verify, "function", code);
   }
-  for (const code of ["no-running-ad", "low-traffic", "no-real-lead", "not-connected", "no-card-on-stage", "no-limit-set", "no-sender", "catalog-data-empty", "catalog-display-retired-autopsy", "catalog-display-retired-control", "catalog-route-retired-action", "catalog-display-control-not-shipped", "catalog-display-hidden-section-head", "catalog-display-owner-removed", "catalog-flow-step-not-shipped"]) {
+  for (const code of ["no-running-ad", "low-traffic", "no-real-lead", "not-connected", "no-card-on-stage", "no-limit-set", "no-sender", "catalog-data-empty", "catalog-display-retired-autopsy", "catalog-display-retired-control", "catalog-route-retired-action", "catalog-display-control-not-shipped", "catalog-display-hidden-section-head", "catalog-display-owner-removed", "catalog-flow-step-not-shipped", "owner-hold-client"]) {
     assert.equal(NA_CONDITIONS[code].verify, "lane", code);
   }
 });
@@ -53,6 +53,8 @@ test("every reason sentence is short, plain, ends with a period, and spells Fund
     "not-registered": { id: "clarity-insights-sweeper" },
     "monthly-not-due": { cron: "0 12 1 * *" },
     "no-work-waiting": { what: "worker" },
+    "no-real-funding-round": { orgId: "11111111-1111-4111-8111-111111111111" },
+    "no-real-client-on-watch": { orgId: "11111111-1111-4111-8111-111111111111" },
     "no-running-ad": {},
     "low-traffic": { count: 0, min: 360, what: "ad clicks", days: 2 },
     "no-real-lead": { days: 3 },
@@ -66,7 +68,10 @@ test("every reason sentence is short, plain, ends with a period, and spells Fund
     "catalog-display-control-not-shipped": { sourceFile: "public-pages.json", surface: "button:climate/index.html#See how many banks in our bo", control: "See how many banks in our book fit your state" },
     "catalog-display-hidden-section-head": { sourceFile: "desks-e.json", surface: "public/app/shell.js (shared chrome)", control: "Sidebar group 'Home' header (fold/unfold) and its links: partner-galaxy.html" },
     "catalog-display-owner-removed": { sourceFile: "desks-f.json", surface: "teleprompter.html", control: "Header bar" },
-    "catalog-flow-step-not-shipped": { family: "journey", surface: "journey:climate-lead-magnet-intended#1-headline-button" }
+    "catalog-flow-step-not-shipped": { family: "journey", surface: "journey:climate-lead-magnet-intended#1-headline-button" },
+    "feature-not-set-up": { feature: "bureau-calls" },
+    "owner-paused": { feature: "lendflow" },
+    "owner-hold-client": { check: "portal:paid-client-never-signed-in", orgId: "11111111-1111-4111-8111-111111111111", clients: ["FH-000507"] }
   };
   for (const code of NA_CODES) {
     const text = NA_CONDITIONS[code].say(samples[code], NOW);
@@ -552,4 +557,63 @@ test("no-work-waiting: a proof for one beat cannot sit on another row", async ()
   const other = await verifyNa({ id: "wf:s-09", na: { code: "no-work-waiting", args: { what: "worker" } } }, { scope });
   assert.equal(other.ok, false);
   assert.equal(naProblem({ code: "no-work-waiting", args: { what: "nonsense" } }) !== null, true);
+});
+
+/* ---------- no-real-funding-round / no-real-client-on-watch (Set A 2026-10-20) ---------- */
+
+const FUNDING_ORG = "11111111-1111-4111-8111-111111111111";
+const ROUND_ROW = (id) => ({ id, na: { code: "no-real-funding-round", args: { orgId: FUNDING_ORG } } });
+const fundingDb = (counts) => fakeDb(() => [{ rounds: 0, receipts: 0, decisions: 0, ...counts }]);
+
+test("no-real-funding-round holds while no real round, receipt or bank decision exists, and reads only real rows", async () => {
+  const db = fundingDb({});
+  const out = await verifyNa(ROUND_ROW("funding:round-stuck"), { db, now: NOW });
+  assert.equal(out.ok, true);
+  assert.equal(db.calls.length, 1);
+  assert.match(db.calls[0].text, /FROM funding_rounds fr/);
+  assert.match(db.calls[0].text, /FROM events e/);
+  assert.match(db.calls[0].text, /FROM application_decisions d/);
+  assert.match(db.calls[0].text, /is_demo, false\) = true/, "demo rows and rows on demo clients are left out");
+  assert.deepEqual(db.calls[0].params, [FUNDING_ORG]);
+});
+
+test("no-real-funding-round fails the day one real round, receipt or bank decision is saved", async () => {
+  for (const counts of [{ rounds: 1 }, { receipts: 2 }, { decisions: 1 }]) {
+    const out = await verifyNa(ROUND_ROW("funding:submit-path"), { db: fundingDb(counts), now: NOW });
+    assert.equal(out.ok, false, JSON.stringify(counts));
+    assert.match(out.reason, /Real funding work exists/);
+  }
+});
+
+test("no-real-funding-round fits only the funding stall rows and the round and lender-row display rows", async () => {
+  const fits = [
+    "funding:round-stuck",
+    "funding:submit-path",
+    "catalog-display:desks-a.json:client-control-panel.html:Mark round submitted button",
+    "catalog-display:desks-a.json:client-control-panel.html:Close round button",
+    "catalog-display:desks-a.json:client-control-panel.html:Lender row: Approved button",
+    "catalog-display:desks-e.json:public/app/pipeline.html:Funded amount prompt (window.prompt, up to 3 tries; blank or cancel abandons the move, never sends zero)"
+  ];
+  for (const id of fits) assert.equal((await verifyNa(ROUND_ROW(id), { db: fundingDb({}), now: NOW })).ok, true, id);
+  for (const id of ["funding:lender-book", "pipeline:clients", "catalog-display:desks-a.json:client-control-panel.html:Lender row: Pending button", "wf:s-09"]) {
+    const db = fundingDb({});
+    const out = await verifyNa(ROUND_ROW(id), { db, now: NOW });
+    assert.equal(out.ok, false, id);
+    assert.equal(db.calls.length, 0, "a proof about the wrong row never reaches the database");
+  }
+  assert.equal((await verifyNa({ id: "funding:round-stuck", na: { code: "no-real-funding-round", args: {} } }, { db: fundingDb({}), now: NOW })).ok, false);
+});
+
+test("no-real-client-on-watch holds with no real watched client, fails with one, and fits only pipeline:clients", async () => {
+  const row = { id: "pipeline:clients", na: { code: "no-real-client-on-watch", args: { orgId: FUNDING_ORG } } };
+  const none = fakeDb(() => [{ n: 0 }]);
+  assert.equal((await verifyNa(row, { db: none, now: NOW })).ok, true);
+  assert.match(none.calls[0].text, /COALESCE\(is_demo, false\) = false/);
+  assert.deepEqual(none.calls[0].params[1], ["client:funding", "client:repair-referral", "client:diy-letters"]);
+  const one = await verifyNa(row, { db: fakeDb(() => [{ n: 1 }]), now: NOW });
+  assert.equal(one.ok, false);
+  assert.match(one.reason, /1 real client is on the 72-hour watch/);
+  const other = fakeDb(() => [{ n: 0 }]);
+  assert.equal((await verifyNa({ ...row, id: "pipeline:repair" }, { db: other, now: NOW })).ok, false);
+  assert.equal(other.calls.length, 0);
 });

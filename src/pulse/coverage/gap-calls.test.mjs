@@ -358,10 +358,13 @@ test("join link: a real booked call still ahead with no link anywhere fails, nam
   assert.doesNotMatch(row.detail, /lead@acme/);
   assert.match(row.detail, /portal sign-in page/);
   assert.match(row.suggestedFix, /Recon \(AG-07\)/);
-  // The bookings row and the closer's task are asked about that one uid, in this company.
+  // The bookings row and the closer's task are asked about that one uid, in this company;
+  // the bookings row also by that call's email and start (one booking, two ids).
   const asked = db.calls.filter((c) => /no-join-link:(bookings|tasks)/.test(c.text));
   assert.equal(asked.length, 2);
-  for (const c of asked) assert.deepEqual(c.params, [ORG, ["u1"]]);
+  const key = `lead@acme.com|${new Date(fromNow(24)).getTime()}`;
+  assert.deepEqual(asked.find((c) => /no-join-link:bookings/.test(c.text)).params, [ORG, ["u1"], [key]]);
+  assert.deepEqual(asked.find((c) => /no-join-link:tasks/.test(c.text)).params, [ORG, ["u1"]]);
   // Everything else on the lane is untouched by this row.
   const others = (await joinRow({ joinEvents: [jev()] })).rows.filter((r) => r.id !== JOIN);
   assert.ok(others.every((r) => r.status === "PASS"));
@@ -434,6 +437,37 @@ test("join link: one call that ClickFunnels reported under two ids is counted on
   assert.match(miss.row.detail, /^1 booked call still ahead has/);
   assert.equal((await joinRow({ joinEvents: dup, joinTasks: [{ uid: "72964", meeting_url: LINK }] })).row.status, "PASS");
   assert.equal((await joinRow({ joinEvents: [dup[0], { ...dup[1], payload: { ...dup[1].payload, meetingUrl: LINK } }] })).row.status, "PASS");
+});
+
+test("join link: a link kept on the bookings row under the call's own id counts, matched by email and start", async () => {
+  // The event carries the form message id; the row was re-keyed to the call id
+  // (74249) and holds the Meet link the host calendar gave it.
+  const key = `lead@acme.com|${new Date(fromNow(24)).getTime()}`;
+  const kept = await joinRow({ joinEvents: [jev()], joinBookings: [{ uid: "74249", call_key: key, meeting_url: LINK }] });
+  assert.equal(kept.row.status, "PASS");
+  assert.match(kept.row.detail, /all 1 booked call ahead have a join link/);
+  // Same call id but a different person or time is not this call.
+  const otherKey = `other@acme.com|${new Date(fromNow(24)).getTime()}`;
+  assert.equal((await joinRow({ joinEvents: [jev()], joinBookings: [{ uid: "74249", call_key: otherKey, meeting_url: LINK }] })).row.status, "FAIL");
+  // A kept value that is not a web link does not count.
+  assert.equal((await joinRow({ joinEvents: [jev()], joinBookings: [{ uid: "74249", call_key: key, meeting_url: "tbd" }] })).row.status, "FAIL");
+  // The feed counts the kept link too: one new booking with a link clears five old ones without.
+  const past = [2, 3, 4, 5].map((n) => other(n));
+  const newest = other(1);
+  const newestKey = `cust1@acme.com|${new Date(newest.payload.startTime).getTime()}`;
+  const feed = await joinRow({ joinEvents: [newest, ...past], joinBookings: [{ uid: "999", call_key: newestKey, meeting_url: LINK }] });
+  assert.equal(feed.row.status, "PASS");
+  assert.match(feed.row.detail, /1 of the newest 5 real bookings carry a link/);
+});
+
+test("join link: a call booked in the last 10 minutes is not judged yet; after that it is", async () => {
+  const justNow = await joinRow({ joinEvents: [jev({ created_at: new Date(NOW.getTime() - 5 * 60e3).toISOString() })] });
+  assert.equal(justNow.row.status, "PASS");
+  assert.match(justNow.row.detail, /1 booked in the last 10 minutes, link not read yet/);
+  const later = await joinRow({ joinEvents: [jev({ created_at: new Date(NOW.getTime() - 11 * 60e3).toISOString() })] });
+  assert.equal(later.row.status, "FAIL");
+  assert.match(later.row.detail, /^1 booked call still ahead has no join link/);
+  assert.match(later.row.suggestedFix, /keep-meet-link/);
 });
 
 test("join link: calls are counted and the next one is the soonest", async () => {
@@ -688,6 +722,9 @@ describe("gap-calls SQL on the Postgres engine, over fixture rows", { skip: HAVE
     assert.equal(await status(JOINID, { events: [jev({ payload: jpay({ meetingUrl: "https://meet.google.com/abc" }) })] }), "PASS");
     assert.equal(await status(JOINID, { events: [jev()], bookings: [booking({ provider_uid: "72964", meeting_url: "https://zoom.us/j/1" })] }), "PASS");
     assert.equal(await status(JOINID, { events: [jev()], tasks: [{ org_id: org, body: "72964", meeting_url: "https://zoom.us/j/1" }] }), "PASS");
+    // The row re-keyed to the call's own id still counts: same email (any case) at the same start.
+    assert.equal(await status(JOINID, { events: [jev()], bookings: [booking({ provider_uid: "74249", attendee_email: " Lead@Acme.com ", starts_at: ago(-24), meeting_url: "https://meet.google.com/abc-defg-hij" })] }), "PASS");
+    assert.equal(await status(JOINID, { events: [jev()], bookings: [booking({ provider_uid: "74249", attendee_email: "lead@acme.com", starts_at: ago(-25), meeting_url: "https://meet.google.com/abc-defg-hij" })] }), "FAIL");
     // Junk text, an empty string, and a link kept for another call or another company do not count.
     assert.equal(await status(JOINID, { events: [jev()], bookings: [booking({ provider_uid: "72964", meeting_url: "n/a" })] }), "FAIL");
     assert.equal(await status(JOINID, { events: [jev()], bookings: [booking({ provider_uid: "72964", meeting_url: "" })] }), "FAIL");

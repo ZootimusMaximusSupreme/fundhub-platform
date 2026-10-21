@@ -220,7 +220,8 @@ check({
   from: `ad_scripts s
   LEFT JOIN partners p ON p.id = s.partner_id
   LEFT JOIN ad_scripts pr ON pr.id = s.parent_script_id`,
-  where: `s.org_id = $1::uuid AND s.created_at >= ${DAYS(60)}`,
+  // Demo partners are left out, as in the sibling brand, social and recording checks (2026-10-20).
+  where: `s.org_id = $1::uuid AND s.created_at >= ${DAYS(60)} AND COALESCE(p.is_demo, false) = false`,
   bad: [
     ["the partner is missing or belongs to another company",
       `p.id IS NULL OR p.org_id <> s.org_id`],
@@ -277,7 +278,9 @@ check({
   control: "Generate form: Kind (static / copy / video), What is being sold, What to make, Name this batch",
   requirement: "Every generation job saved since 2026-09-08 must carry a kind the factory knows (static, video, copy or resize), an offer the compliance screen accepts (funding, credit_cards or credit_repair), a batch name that is not blank or padded with spaces, and, when a script was picked, a script id the right length. A job the form made carries all three of what to make, the shapes and the number of versions together, so one of them missing while another is present is wrong.",
   from: "generation_jobs j",
-  where: `j.org_id = $1::uuid AND j.created_at >= '2026-09-08' AND j.created_at >= ${DAYS(60)}`,
+  // Demo partners are left out, as in the sibling brand, social and recording checks (2026-10-20).
+  where: `j.org_id = $1::uuid AND j.created_at >= '2026-09-08' AND j.created_at >= ${DAYS(60)}
+    AND NOT EXISTS (SELECT 1 FROM partners dp WHERE dp.id = j.partner_id AND dp.is_demo = true)`,
   bad: [
     ["the kind is missing or unknown",
       `COALESCE(j.spec->>'assetKind', '') NOT IN ('static', 'video', 'copy', 'resize')`],
@@ -298,7 +301,8 @@ check({
   control: "Run queued jobs now button",
   requirement: "Every generation job touched in the last 60 days must tell the truth about how it ended: a succeeded job stored at least one creative, is stamped finished and has no error; a failed job has a reason and a finish time; a job that ran was counted as an attempt; no retry is waiting past three tries; and nothing has sat in running for more than an hour.",
   from: "generation_jobs j",
-  where: `j.org_id = $1::uuid AND j.updated_at >= ${DAYS(60)}`,
+  // Demo partners are left out, as in the sibling brand, social and recording checks (2026-10-20).
+  where: `j.org_id = $1::uuid AND j.updated_at >= ${DAYS(60)} AND NOT EXISTS (SELECT 1 FROM partners dp WHERE dp.id = j.partner_id AND dp.is_demo = true)`,
   bad: [
     ["a succeeded job stored nothing",
       `j.status = 'succeeded' AND NOT EXISTS (SELECT 1 FROM generation_job_assets x WHERE x.job_id = j.id)`],
@@ -371,7 +375,9 @@ check({
   requirement: "Every approved brand must carry its approval time, name an approver who is a staff member of the same company, have been sent for review before it was approved, hold no leftover reason note, and belong to a partner of this company. A brand approved by a person must have been sent for review first, and in the last 90 days its approver must be an owner or admin of this company.",
   from: `partner_brand b
   LEFT JOIN partners p ON p.id = b.partner_id`,
-  where: `b.org_id = $1::uuid AND b.approval_status = 'approved'`,
+  // Demo partners are left out, as in the sibling brand, social and recording checks: the demo seed
+  // (db/migrations/094_demo_logins.sql) approves its brand without a send-for-review time.
+  where: `b.org_id = $1::uuid AND b.approval_status = 'approved' AND COALESCE(p.is_demo, false) = false`,
   bad: [
     ["no approval time",
       `b.approved_at IS NULL`],

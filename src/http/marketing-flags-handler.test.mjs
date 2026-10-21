@@ -75,4 +75,41 @@ describe("POST /api/marketing-flags", () => {
     assert.match(res.body.message, /period_start and period_end/);
     assert.equal(fake.find(/INSERT INTO marketing_flags/).length, 0);
   });
+
+  // The page can offer a belief with no calls behind it ("pain this period 0 vs last 0",
+  // no lead source, no setter). Such a flag can never match a real call, so it is refused.
+  const NO_CALLS = "There are no calls behind this belief yet, so there is nothing to flag.";
+  for (const [label, patch] of [
+    ["an outcome count of 0", { outcome_count: 0 }],
+    ["an outcome count of 0 sent as text", { outcome_count: "0" }],
+    ["no outcome count", { outcome_count: undefined }],
+    ["a count that is not a number", { outcome_count: "many" }],
+    ["a negative count", { outcome_count: -3 }],
+    ["no lead source", { lead_source: undefined }],
+    ["an empty lead source", { lead_source: "   " }],
+    ["no setter", { setter_label: undefined }],
+    ["an empty setter", { setter_label: "" }]
+  ]) {
+    test(`a flag with ${label} is refused: 400, nothing stored`, async () => {
+      const { res, fake } = await call(
+        req("POST", { body: { ...GOOD, ...patch } }),
+        [staffSession({ role: "sales_manager" }),
+          [/INSERT INTO marketing_flags/, () => [{ id: "f1" }]]]
+      );
+      assert.equal(res.statusCode, 400);
+      assert.equal(res.body.ok, false);
+      assert.equal(res.body.message, NO_CALLS);
+      assert.equal(fake.find(/INSERT INTO marketing_flags/).length, 0);
+    });
+  }
+
+  test("a flag with one real call, a lead source and a setter is stored: 201", async () => {
+    const { res, fake } = await call(
+      req("POST", { body: { ...GOOD, outcome_count: 1 } }),
+      [staffSession({ role: "sales_manager" }),
+        [/INSERT INTO marketing_flags/, (_s, p) => [{ id: "f2", org_id: p[0], flagged_by: p[1], belief: p[2] }]]]
+    );
+    assert.equal(res.statusCode, 201);
+    assert.equal(fake.find(/INSERT INTO marketing_flags/).length, 1);
+  });
 });

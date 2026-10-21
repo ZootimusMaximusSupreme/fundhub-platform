@@ -261,6 +261,99 @@ test("a new reset token burns any earlier unused one", async () => {
   assert.ok(db.calls.some((c) => /UPDATE password_resets SET used_at/.test(c.sql) && /kind = 'reset'/.test(c.sql)));
 });
 
+// A tiny stand-in for the password_resets table, for the "a new link ends the earlier one" UPDATE.
+// It reads the WHERE the code wrote, the way Postgres would: if the code stops saying
+// `expires_at > now()`, an expired link is stamped "used" too and these tests fail.
+function withLinks(inner, links) {
+  return {
+    calls: inner.calls,
+    stmts: inner.stmts,
+    async query(sql, params = []) {
+      const m = /UPDATE password_resets SET used_at = now\(\)\s+WHERE (staff_id|account_id) = \$1 AND kind = '(\w+)' AND used_at IS NULL/.exec(sql);
+      if (!m) return inner.query(sql, params);
+      inner.calls.push({ sql, params });
+      const onlyAlive = /AND expires_at > now\(\)/.test(sql);
+      let n = 0;
+      for (const l of links) {
+        if (l[m[1]] !== params[0] || l.kind !== m[2] || l.used_at !== null) continue;
+        if (onlyAlive && !(l.expires_at > Date.now())) continue;
+        l.used_at = Date.now();
+        n += 1;
+      }
+      return { rows: [], rowCount: n };
+    }
+  };
+}
+
+const HOUR = 60 * 60 * 1000;
+function link(owner, kind, hoursFromNow) {
+  return { ...owner, kind, used_at: null, expires_at: Date.now() + hoursFromNow * HOUR };
+}
+
+test("a new invite ends the earlier LIVE invite and leaves an expired one alone", async () => {
+  _resetOrgCache();
+  const live = link({ staff_id: "staff-9" }, "invite", 24);
+  const expired = link({ staff_id: "staff-9" }, "invite", -24);
+  const otherPerson = link({ staff_id: "staff-other" }, "invite", 24);
+  const otherKind = link({ staff_id: "staff-9" }, "reset", 1);
+  const db = withLinks(
+    fakeDb({ existingStaff: { id: "staff-9", status: "invited", name: "Old", role: "closer" } }),
+    [live, expired, otherPerson, otherKind]
+  );
+  const out = await inviteStaff(db, { actor: OWNER, email: "dana@fundhub.test" });
+  assert.equal(out.ok, true);
+  assert.notEqual(live.used_at, null, "the earlier live invite is ended");
+  assert.equal(expired.used_at, null, "an expired invite is not stamped as used");
+  assert.equal(otherPerson.used_at, null, "another person's invite is untouched");
+  assert.equal(otherKind.used_at, null, "a reset link is untouched by an invite");
+});
+
+test("a new staff reset ends the earlier LIVE reset and leaves an expired one alone", async () => {
+  _resetOrgCache();
+  const live = link({ staff_id: "s" }, "reset", 0.5);
+  const expired = link({ staff_id: "s" }, "reset", -2);
+  const otherPerson = link({ staff_id: "s-other" }, "reset", 0.5);
+  const db = withLinks(fakeDb({ existingStaff: { id: "s", status: "active" } }), [live, expired, otherPerson]);
+  const out = await requestPasswordReset(db, { email: "x@y.z" });
+  assert.equal(out.ok, true);
+  assert.notEqual(live.used_at, null, "the earlier live reset link is ended");
+  assert.equal(expired.used_at, null, "an expired reset link is not stamped as used");
+  assert.equal(otherPerson.used_at, null);
+});
+
+test("a new affiliate reset ends the earlier LIVE reset and leaves an expired one alone", async () => {
+  _resetOrgCache();
+  const live = link({ account_id: "acct-a" }, "reset", 0.5);
+  const expired = link({ account_id: "acct-a" }, "reset", -2);
+  const otherAccount = link({ account_id: "acct-b" }, "reset", 0.5);
+  const db = withLinks(
+    fakeDb({ existingAccount: { id: "acct-a", status: "active", kind: "affiliate" } }),
+    [live, expired, otherAccount]
+  );
+  const out = await requestPasswordReset(db, { email: "e2e+aff-click26@fundhub.ai" });
+  assert.equal(out.accountId, "acct-a");
+  assert.notEqual(live.used_at, null, "the earlier live reset link is ended");
+  assert.equal(expired.used_at, null, "an expired reset link is not stamped as used");
+  assert.equal(otherAccount.used_at, null);
+});
+
+test("every 'end the earlier link' UPDATE only reaches links that have not expired", async () => {
+  _resetOrgCache();
+  const staffDb = fakeDb({ existingStaff: { id: "s", status: "active" } });
+  await requestPasswordReset(staffDb, { email: "x@y.z" });
+  _resetOrgCache();
+  const acctDb = fakeDb({ existingAccount: { id: "acct-a", status: "active", kind: "affiliate" } });
+  await requestPasswordReset(acctDb, { email: "e2e+aff-click26@fundhub.ai" });
+  _resetOrgCache();
+  const inviteDb = fakeDb({ existingStaff: { id: "staff-9", status: "invited" } });
+  await inviteStaff(inviteDb, { actor: OWNER, email: "dana@fundhub.test" });
+  for (const db of [staffDb, acctDb, inviteDb]) {
+    const ends = db.calls.filter((c) => /UPDATE password_resets SET used_at = now\(\)\s+WHERE (staff_id|account_id) = \$1/.test(c.sql));
+    assert.equal(ends.length, 1);
+    assert.match(ends[0].sql, /used_at IS NULL AND expires_at > now\(\)/);
+  }
+});
+
 test("requestPasswordReset mails affiliate and partner accounts, not clients", async () => {
   _resetOrgCache();
   const aff = await requestPasswordReset(
