@@ -8,7 +8,7 @@ Session: `outreach-auto` (Claude, Opus). Branch: `claude/funny-sinoussi-765e2b`.
 
 | ID | Owner | What | Status |
 |---|---|---|---|
-| A | `outreach-auto` (this session) | Database, store, banker finder, email steps, reply reader, jobs, tests, heartbeat rows | claimed |
+| A | `outreach-auto` (this session) | Database, store, banker finder, email steps, reply reader, jobs, tests, heartbeat rows | done — PR #96, coordinator ships |
 | B | Codex | Rep screen cards for found bankers, email steps and banker replies (cards below) | pending — waits on A's API shape |
 
 No other piece is separate. Finder, email steps and reply reader share one new migration and one store file. Two writers there would collide.
@@ -97,3 +97,12 @@ Branch `claude/funny-sinoussi-765e2b`. Nothing live; no email sent; no real sear
 | Tests | `src/outreach/{finder,mail,replies}.test.mjs`, `src/outreach/automation.pg.test.mjs` (real PostgreSQL, runs in CI), `src/messaging/gate-banker.test.mjs`, `src/messaging/providers/{serper-search,resend-banker}.test.mjs`, `src/workflows/bank-outreach-automation.test.mjs`, extended `gap-bank-outreach.test.mjs`, `beat-bank-outreach.test.mjs` |
 
 No new route, page or dependency. Journey gap: `bank-outreach-intended.md` still says no automated sends (owner's file to update).
+
+### Proof so far (2026-10-20)
+
+- Lint clean (4,108 files). TypeScript clean.
+- New unit tests: 25 + 6 banker gate + 9 check/beat, all pass. All 7 bank emails pass the real restricted-word rules.
+- Guard tests (registry, heartbeats, tripwires, beats, modules, workflows, fence, providers, gate, dispatch, unsubscribe): 300/300.
+- Local full `npm test` (no database): 28,456 tests, 28,376 pass, 55 fail. Fixed from that run: diagrams stale, journey-runner count, heartbeat coverage note. The rest are browser tests that fail only in this worktree: two Playwright copies load (worktree `node_modules` + root). No screen or browser test was changed.
+- GitHub real PostgreSQL, first commit: 6 of 7 new automation database tests passed (search, rep review, email steps, STOP/reply stops, AI draft/shadow/live, both deep checks on real rows). Two reds fixed in `b7c5f5ecc`: the actor constraint lookup was schema-wide, and the agent registry pin (25 → 26) for the new agent. Final CI result: see PR #96.
+- Not run: `npm run pulse:prove` against live data. Migration 495 is not applied, so the two new check queries would fail on missing tables. `scripts/ship.mjs` runs the bundle proofs after applying migrations and before deploy, so the ship is the proof point.
