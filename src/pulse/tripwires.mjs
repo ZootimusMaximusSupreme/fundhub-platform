@@ -162,7 +162,6 @@ export const TRIPWIRES = Object.freeze({
   "route:pipeline-clients": { impact: "customer", checks: ["pipeline:count-true", "pipeline:nobody-lost"] },
   "route:inquiry-cases": { impact: "customer", checks: ["pipeline:stage-vs-fact", "pipeline:dead-stage"] },
   "desk:inquiry-remover.html": { impact: "customer", checks: ["pipeline:stage-vs-fact", "pipeline:two-records"] },
-  "desk:hiring.html": { impact: "customer", checks: ["pipeline:count-true", "pipeline:dead-stage"] },
   "desk:csm-queue.html": { impact: "customer", checks: ["csm:overdue-unassigned", "csm:missing-step", "blueprint:real-advisor"] },
   "desk:sales-floor.html": { impact: "money", checks: ["sales-manager:totals", "pipeline:two-records"] },
   // W4 messages truth, 2026-10-10 (ops/workflows/coverage-every-surface-2026-10-10.md). What a customer reads
@@ -236,6 +235,12 @@ export const NOT_CUSTOMER_FACING = Object.freeze({
     "Staff-only: tells a closer or sales manager their commission was paid or a deal closed. Never a customer. msg:staff-template-to-client reads the text half for a wrong address.",
   "send:src/workflows/ad-video-sweeper.mjs":
     "Owner-only: the sweeper's ready-ad buzz goes to Chris through notify-fanout. It never reaches a customer. Its heartbeat is job ad-video-sweeper.",
+  // Hourly coverage pass, 2026-10-20. hiring.html was on TRIPWIRES as "customer", but it is the staff
+  // recruiting desk: it reads and writes only job applicants through /api/hiring/* (postings, candidates,
+  // decisions, bench, funnel). The routes behind it are staff-only on the baseline. The daily lane
+  // gap-pipeline-boards.mjs still reads the hiring board's truth (pipeline:count-true, pipeline:dead-stage).
+  "desk:hiring.html":
+    "Staff-only recruiting desk: it shows job applicants from /api/hiring/* and moves them between hiring stages. No client, lead, payment or customer message is read or written there.",
   "send:src/push/send.mjs":
     "Dead today: nothing in the app calls sendToClient (only scripts/push/send-test-push.mjs does), so no customer is sent anything through it. Move this entry to TRIPWIRES the day a caller is added.",
 });

@@ -31,7 +31,9 @@ import { TEST_CLIENT_EMAIL_RE as CONSENT_TEST_RE } from "./gap-consent.mjs";
 import { TEST_CLIENT_EMAIL_RE as PORTAL_TEST_RE } from "./gap-portal.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const SRC = fs.readFileSync(path.join(HERE, "gap-payments.mjs"), "utf8");
+// Three of the checks (and their SQL) live in the shared hourly truth file, so the source checks read both files.
+const SRC = fs.readFileSync(path.join(HERE, "gap-payments.mjs"), "utf8") + "\n" +
+  fs.readFileSync(path.join(HERE, "../beats/lib/payments-truth.mjs"), "utf8");
 const ORG = "11111111-1111-4111-8111-111111111111";
 
 function fakeDb(counts) {

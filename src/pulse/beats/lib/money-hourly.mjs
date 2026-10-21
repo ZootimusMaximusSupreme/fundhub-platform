@@ -243,11 +243,11 @@ function webReader(ctx) {
   };
 }
 
-export async function runLaneBeat(ctx, lane) {
+export async function runLaneBeat(ctx, lane, { noun = "money" } = {}) {
   let results = [];
   await ctx.step("read", async () => {
     const orgId = await defaultOrg(ctx);
-    if (!orgId) throw ctx.fail("read", "the default company could not be read, so the money checks did not run");
+    if (!orgId) throw ctx.fail("read", `the default company could not be read, so the ${noun} checks did not run`);
     results = await lane.run(Object.freeze({
       read: (sql, params) => ctx.read(sql, params),
       readWeb: webReader(ctx),
@@ -259,7 +259,7 @@ export async function runLaneBeat(ctx, lane) {
     }));
     const got = new Set(results.map((result) => result?.id));
     const missing = lane.checks.filter((check) => !got.has(check.id)).map((check) => check.id);
-    if (missing.length) throw ctx.fail("read", `the money truth returned no result for ${missing.join(", ")}`);
+    if (missing.length) throw ctx.fail("read", `the ${noun} truth returned no result for ${missing.join(", ")}`);
   });
 
   let passed = 0;
@@ -281,5 +281,5 @@ export async function runLaneBeat(ctx, lane) {
       });
     }
   }
-  return ctx.done(`${passed} money checks passed${skipped ? `; ${skipped} had nothing safe to judge` : ""}`);
+  return ctx.done(`${passed} ${noun} checks passed${skipped ? `; ${skipped} had nothing safe to judge` : ""}`);
 }
