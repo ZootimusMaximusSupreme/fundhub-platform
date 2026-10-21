@@ -2,8 +2,9 @@
 //
 // WHY A SECOND FUNCTION (ops/workflows/hourly-beats-capacity-2026-10-14.md, fix 3). One run gives the beats three
 // read boxes for 13 s inside a 22 s budget, and Netlify cuts the function at about 30 s. The beats no longer fit in
-// one run, so they are split in two. Which beat runs where is ONE literal list, src/pulse/beats/shifts.mjs; every
-// beat is in exactly one shift, so each beat still runs once an hour.
+// one run, so they are split into shifts (now four: pulse-hourly-d at 22 and pulse-hourly-c at 52). Which beat runs
+// where is ONE literal list, src/pulse/beats/shifts.mjs; every beat is in exactly one shift, so each beat still
+// runs once an hour.
 //
 // NO NEW TEXT PATH. It is the hourly runner (src/pulse/runner.mjs) limited to this shift's beats: the same three
 // READ ONLY boxes, GET and HEAD only, the same incident record (one open incident per beat, one text, one "fixed"

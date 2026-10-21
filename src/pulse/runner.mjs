@@ -15,9 +15,10 @@
 //            org, open incidents,                    three shared-queue workers            cannot start later      best effort
 //            last results, bank links                                                     than 16 s from entry
 //
-// TWO SHIFTS (2026-10-20). Two scheduled functions call this runner, half an hour apart, each with `only` set to its
-// own shift from src/pulse/beats/shifts.mjs (pulse-hourly at minute 7, pulse-hourly-b at minute 37). Every beat is in
-// exactly one shift, so the clock below is per shift: each gets the whole 13 s beat window and the 22 s budget.
+// SHIFTS (2026-10-20, four on 2026-10-21). Four scheduled functions call this runner, each with `only` set to its own
+// shift from src/pulse/beats/shifts.mjs (pulse-hourly at minute 7, -d at 22, -b at 37, -c at 52).
+// Every beat is in exactly one shift, so the clock below is per shift: each gets the whole 13 s beat window and the
+// 22 s budget.
 //
 // The beats phase ends at the earlier of entry + 13 s and entry + 22 s - 6 s, so the text always has its 6 s.
 // A beat still running at the cut is recorded red, at the step it was in, "cut at the 13 s beat budget", with

@@ -1,9 +1,10 @@
 // The hourly pulse, shift A. Every hour the system tests itself on purpose and texts Chris if a step does not come back.
 //
-// TWO SHIFTS (ops/workflows/hourly-beats-capacity-2026-10-14.md, fix 3). The beats are split between this function
-// (minute 7) and netlify/functions/pulse-hourly-b.mjs (minute 37), so each run fits its 13 s beat window and 22 s
-// budget. Which beat runs where is ONE literal list, src/pulse/beats/shifts.mjs; every beat is in exactly one shift.
-// This file runs only its own shift (`only`), through the same runner as shift B.
+// SHIFTS (ops/workflows/hourly-beats-capacity-2026-10-14.md, fixes 3 and 4). The beats are split between this function
+// (minute 7), netlify/functions/pulse-hourly-d.mjs (minute 22), netlify/functions/pulse-hourly-b.mjs (minute 37) and
+// netlify/functions/pulse-hourly-c.mjs (minute 52), so each run fits its 13 s beat window and 22 s budget. Which beat
+// runs where is ONE literal list, src/pulse/beats/shifts.mjs; every beat is in exactly one shift. This file runs only
+// its own shift (`only`), through the same runner as the other shifts.
 //
 // Pulse v1 (ops/workflows/pulse-layer-2026-10-09-v1.md): the READ-ONLY half. Every beat reads data through one
 // READ ONLY box and reads the web with GET and HEAD. Nothing here saves a customer record, sends to a customer,

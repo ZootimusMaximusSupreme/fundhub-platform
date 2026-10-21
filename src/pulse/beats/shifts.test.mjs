@@ -9,7 +9,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-import { SHIFTS, SHIFT_JOBS, shiftBeats, shiftProblems } from "./shifts.mjs";
+import { SHIFTS, SHIFT_JOBS, PENDING_SHIFT_BEATS, shiftBeats, shiftProblems } from "./shifts.mjs";
 import { BEAT_FILES, loadBeats } from "./index.mjs";
 import { NETLIFY_JOBS, cronIntervalMs } from "../heartbeats.mjs";
 
@@ -55,14 +55,19 @@ test("the shift list is frozen, and shiftBeats refuses a job with no shift", () 
     assert.ok(Object.isFrozen(SHIFTS[job].beats));
     assert.equal(shiftBeats(job), SHIFTS[job].beats);
   }
-  assert.throws(() => shiftBeats("pulse-hourly-c"), /no hourly shift is named "pulse-hourly-c"/);
+  assert.throws(() => shiftBeats("pulse-hourly-e"), /no hourly shift is named "pulse-hourly-e"/);
   assert.throws(() => shiftBeats("toString"), /no hourly shift/);
 });
 
-test("two shifts: pulse-hourly at minute 7 and pulse-hourly-b at minute 37, each hourly, half an hour apart", () => {
-  assert.deepEqual([...SHIFT_JOBS], ["pulse-hourly", "pulse-hourly-b"]);
+test("four shifts: pulse-hourly at minute 7, -d at 22, -b at 37, -c at 52, each hourly, a quarter hour apart", () => {
+  assert.deepEqual([...SHIFT_JOBS], ["pulse-hourly", "pulse-hourly-b", "pulse-hourly-c", "pulse-hourly-d"]);
   assert.equal(SHIFTS["pulse-hourly"].cron, "7 * * * *");
   assert.equal(SHIFTS["pulse-hourly-b"].cron, "37 * * * *");
+  assert.equal(SHIFTS["pulse-hourly-c"].cron, "52 * * * *");
+  assert.equal(SHIFTS["pulse-hourly-d"].cron, "22 * * * *");
+  const minutes = SHIFT_JOBS.map((job) => Number(SHIFTS[job].cron.split(" ")[0]));
+  assert.equal(new Set(minutes).size, minutes.length, "no two shifts start on the same minute");
+  assert.deepEqual([...minutes].sort((a, b) => a - b), [7, 22, 37, 52], "the shifts are a quarter hour apart");
   for (const job of SHIFT_JOBS) {
     const { cron } = SHIFTS[job];
     assert.equal(cronIntervalMs(cron), 3600 * 1000, `${job} runs once an hour, so every beat still runs once an hour`);
@@ -92,15 +97,46 @@ test("each shift is a scheduled function on the same cron, with its heartbeat, a
 });
 
 test("beats that break from one cause, or guard the same door, share a shift (one cause, one text)", () => {
-  const shiftOf = (id) => SHIFT_JOBS.find((job) => SHIFTS[job].beats.includes(id));
+  // A beat whose file has not landed counts by the shift it waits for on PENDING_SHIFT_BEATS.
+  const shiftOf = (id) => SHIFT_JOBS.find((job) => SHIFTS[job].beats.includes(id)) ?? PENDING_SHIFT_BEATS[id];
   for (const group of [
-    ["text-path", "email-path", "vendor-keys"],
+    ["text-path", "email-path", "vendor-keys", "message-health"],
     ["apply-links", "bank-links", "bank-outreach"],
-    ["lead-pipe", "lead-handoff"],
+    ["lead-pipe", "lead-handoff", "call-bookings"],
     ["money-checkout", "checkout-doors", "pay-links", "pay-webhook"],
-    ["money-funding", "funding-trip", "partner-trip", "apply-links"]
+    ["money-funding", "funding-trip", "partner-trip", "partner-pages", "apply-links"],
+    ["soft-pull", "roadmap-delivery", "roadmap-pages"],
+    ["auth-links", "client-portal"],
+    ["pipeline-boards", "pipeline-facts"],
+    ["repair-trip", "inquiry-trip"]
   ]) {
     const homes = new Set(group.map(shiftOf));
+    assert.ok(!homes.has(undefined), `${group.join(", ")}: every one is in a shift or on the pending list`);
     assert.equal(homes.size, 1, `${group.join(", ")} are split across shifts: ${[...homes].join(", ")}`);
   }
+});
+
+test("the pending list names only beats that have not landed, each waiting for a real shift", async () => {
+  const ids = new Set((await loadBeats()).map((b) => b.id));
+  assert.ok(Object.isFrozen(PENDING_SHIFT_BEATS));
+  for (const [id, job] of Object.entries(PENDING_SHIFT_BEATS)) {
+    assert.ok(SHIFT_JOBS.includes(job), `${id} waits for ${job}, which is not a shift`);
+    assert.ok(!ids.has(id), `${id} has landed on BEAT_FILES: move it from PENDING_SHIFT_BEATS into shift ${job}`);
+    assert.ok(!SHIFT_JOBS.some((shift) => SHIFTS[shift].beats.includes(id)), `${id} is in a shift and still pending`);
+  }
+});
+
+test("a pending beat that lands with no shift fails, and the message names the shift it waits for", () => {
+  const ids = [...SHIFT_JOBS.flatMap((job) => [...SHIFTS[job].beats]), "landed-beat"];
+  const problems = shiftProblems(ids, SHIFTS, { "landed-beat": "pulse-hourly-c" });
+  assert.equal(problems.length, 1, problems.join("\n"));
+  assert.match(problems[0], /beat "landed-beat" has landed but is still pending, so it would never run: move it from PENDING_SHIFT_BEATS into shift pulse-hourly-c/);
+});
+
+test("a beat in a shift that is also still pending fails, and so does a pending beat waiting for a shift that is not there", () => {
+  const shifts = { one: { beats: ["a", "b"] } };
+  const both = shiftProblems(["a", "b"], shifts, { b: "one" });
+  assert.ok(both.some((p) => /beat "b" is in shift one and still on PENDING_SHIFT_BEATS/.test(p)), both.join("\n"));
+  const nowhere = shiftProblems(["a", "b"], shifts, { c: "two" });
+  assert.ok(nowhere.some((p) => /pending beat "c" waits for shift two, which does not exist/.test(p)), nowhere.join("\n"));
 });

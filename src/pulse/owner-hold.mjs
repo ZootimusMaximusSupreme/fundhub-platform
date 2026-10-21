@@ -1,9 +1,12 @@
 // Clients the owner put on hold: no contact and no change.
 //
-// ONE LIST, TWO CLOCKS (2026-10-20). The list and its helpers moved, unchanged, to
-// src/pulse/beats/lib/owner-hold.mjs, so the morning lanes and the hourly beat that judges late
-// repair files read the same hold. A beat may import only from src/pulse/beats/lib. Every
-// importer of this file keeps working through the re-export below. Add or remove a code only
-// when Chris says so, in that file.
+// Owner call 2026-10-09 (ops/workflows/fix-batch-2026-10-09.md), said again 2026-10-20:
+// Braum, FH-000507, gets no email, no sign-in link, no call and no data step. He is the
+// only real client (owner fact 2026-10-20).
+//
+// THE LIST AND ITS HELPERS LIVE IN src/pulse/beats/lib/owner-hold.mjs (2026-10-20), so the
+// hourly beats and the morning lanes read ONE list (a beat may import only from the beat
+// library). This file re-exports all of it, so every caller imports from here as before.
+// Add or remove a code there, and only when Chris says so.
 
 export * from "./beats/lib/owner-hold.mjs";

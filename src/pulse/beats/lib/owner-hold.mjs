@@ -12,10 +12,10 @@
 //
 // The list is client codes, owner-set. Add or remove a code only when Chris says so.
 //
-// ONE LIST, TWO CLOCKS (2026-10-20). This file used to be src/pulse/owner-hold.mjs. It moved here,
-// unchanged, so the hourly beats (beat-client-portal.mjs, beat-repair-trip.mjs) read the same hold as
-// the morning lanes (gap-portal.mjs and the records lane); a beat may import only from
-// src/pulse/beats/lib. src/pulse/owner-hold.mjs re-exports it. Pure: no imports, no I/O.
+// WHY THIS FILE IS IN THE BEAT LIBRARY (2026-10-20): the hourly beat client-portal reads
+// the same list as the morning lane gap-portal.mjs, and a beat may import only from
+// src/pulse/beats/lib. src/pulse/owner-hold.mjs re-exports everything here, so every
+// other caller imports from there unchanged. There is ONE list.
 
 export const OWNER_HOLD_CLIENTS = Object.freeze([
   Object.freeze({

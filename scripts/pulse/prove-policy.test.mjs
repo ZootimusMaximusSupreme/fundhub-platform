@@ -166,11 +166,14 @@ test("the hourly proof runs each shift on its own, the way the server runs it, a
   const source = fs.readFileSync(path.join(HERE, "prove.mjs"), "utf8");
   const hourly = source.slice(source.indexOf("async function proveBeats()"));
 
-  // Both shift functions are built and loaded from their own bundles, on their own schedules.
+  // Every shift function is built and loaded from its own bundle, on its own schedule.
+  assert.match(hourly, /const SHIFT_FUNCTIONS = Object\.freeze\(\[\s*\["pulse-hourly", "7 \* \* \* \*"\], \["pulse-hourly-b", "37 \* \* \* \*"\], \["pulse-hourly-c", "52 \* \* \* \*"\], \["pulse-hourly-d", "22 \* \* \* \*"\]\s*\]\);/);
   assert.match(hourly, /rootFn = buildBundle\("netlify\/functions\/pulse-hourly\.mjs"\)/);
-  assert.match(hourly, /rootFnB = buildBundle\("netlify\/functions\/pulse-hourly-b\.mjs"\)/);
+  assert.match(hourly, /for \(const \[job\] of SHIFT_FUNCTIONS\.slice\(1\)\) shiftRoots\.set\(job, buildBundle\(`netlify\/functions\/\$\{job\}\.mjs`\)\)/);
   assert.match(hourly, /entryModule\.SWEEP_CRON !== "7 \* \* \* \*"/);
-  assert.match(hourly, /entryModuleB\.SWEEP_CRON !== "37 \* \* \* \*"/);
+  assert.match(hourly, /if \(mod && mod\.SWEEP_CRON !== cron\) problems\.push/);
+  assert.match(hourly, /if \(mod && typeof mod\.default !== "function"\) problems\.push/);
+  assert.match(hourly, /const shiftFunctions = SHIFT_FUNCTIONS\.map\(\(\[job\]\) => \[job, shiftModules\.get\(job\)\]\)/);
   // Every beat in exactly one shift, and each function runs exactly its shift on its shift's schedule.
   assert.match(hourly, /shiftProblems\(loadedBeats\.map\(\(b\) => b\.id\)\)/);
   assert.match(hourly, /mod\.SWEEP_CRON !== shift\.cron/);

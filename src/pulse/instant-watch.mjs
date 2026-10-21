@@ -25,10 +25,13 @@ export const CRITICAL_CHECK_IDS = Object.freeze([
   "pulse:runner-stale"
 ]);
 
-/* The hourly pulse runs in two shifts (src/pulse/beats/shifts.mjs): pulse-hourly and pulse-hourly-b, each with its
-   own half of the beats. Either one going quiet leaves half the beats unrun, so the circuit closes only when every
-   shift that has ever run left a fresh receipt. */
+/* The hourly pulse runs in shifts (src/pulse/beats/shifts.mjs): pulse-hourly, pulse-hourly-b, pulse-hourly-c and
+   pulse-hourly-d, each with its own share of the beats. Any one going quiet leaves its beats unrun, so the circuit closes only when
+   every shift that has ever run left a fresh receipt. */
 export const PULSE_RUNNER_JOBS = SHIFT_JOBS;
+
+/** "a", "a and b", "a, b and c". */
+const andList = (items) => (items.length < 2 ? items.join("") : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`);
 
 export async function checkPulseRunnerReceipt(db, { now = new Date() } = {}) {
   if (!db || typeof db.query !== "function") return null;
@@ -58,13 +61,13 @@ export async function checkPulseRunnerReceipt(db, { now = new Date() } = {}) {
       id: "pulse:runner-stale",
       status: "FAIL",
       detail: `${which} has not run for ${first.hours} h.${more} The backup pulse circuit did not close.`,
-      suggestedFix: `Check the ${stale.map((s) => s.job).join(" and ")} function log on Netlify.`
+      suggestedFix: `Check the ${andList(stale.map((s) => s.job))} function log on Netlify.`
     };
   }
   return {
     id: "pulse:runner-stale",
     status: "PASS",
-    detail: `${judged > 1 ? "Both hourly pulse shifts" : "The hourly pulse"} left a fresh receipt, so the backup pulse circuit closed.`,
+    detail: `${judged === 1 ? "The hourly pulse" : judged === 2 ? "Both hourly pulse shifts" : `All ${judged} hourly pulse shifts`} left a fresh receipt, so the backup pulse circuit closed.`,
     suggestedFix: null
   };
 }
