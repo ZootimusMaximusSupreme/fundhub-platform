@@ -8,8 +8,9 @@
 //   - checklistProductCodes and readClientLibrary are copies of code a beat cannot
 //     import (src/waypoints/purchase.mjs, src/documents/retrieve.mjs). gap-portal.test.mjs
 //     holds each copy equal to its original.
-// The real progress read (portal:progress-read-real-client) stays in the lane: it runs
-// src/progress/read.mjs, which a beat may never import.
+// The real progress read (portal:progress-read-real-client) is not here: it lives in
+// ./progress-check.mjs with the read it runs (./progress-read.mjs), and runs in the hourly
+// beat client-progress (2026-10-20).
 //
 // Read only: SELECT for the database, GET for the web. Report only. Never auto-fix.
 

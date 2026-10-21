@@ -23,9 +23,9 @@
 //                               payments-paid-no-entitlement step of the pay-links beat
 //   page:portal-login.html      portal:paid-client-never-signed-in here; gap:auth-magic-link-dead is the
 //                               gap-auth-magic-link-dead step of the auth-links beat
-// page:progress.html and route:read/client-progress name portal:progress-read-real-client, which runs
-// the real src/progress/read.mjs (a beat may not import it, and the live door needs a signed-in client),
-// so it stays on the morning pulse and those two are not on `covers`.
+// page:progress.html and route:read/client-progress name portal:progress-read-real-client, the real
+// progress read. The beat client-progress runs it hourly (lib/progress-check.mjs), so those two are that
+// beat's surfaces, not on this beat's `covers`.
 //
 // Read only: every read goes through ctx.read (the read box), the web through ctx.http (GET, our own
 // site only). No send, no write, no sign-in.

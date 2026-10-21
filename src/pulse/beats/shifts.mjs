@@ -135,7 +135,17 @@ export const SHIFTS = Object.freeze({
  * shift. shiftProblems() names the shift to use if a pending beat lands with no shift, and fails if an id is in both.
  * Empty today: the six W7 beats that waited here landed on 2026-10-21 and are in their shifts.
  */
-export const PENDING_SHIFT_BEATS = Object.freeze({});
+export const PENDING_SHIFT_BEATS = Object.freeze({
+  // The last money/customer surfaces (2026-10-21). Each sits with the beat that guards the same door, so one
+  // cause is one text: client-progress with client-portal, lender-book with apply-links (the lender book and
+  // desk), sales-totals with pipeline-facts (the sales floor desk), upload-door with repair-trip
+  // (documents:stuck-processing on the same upload door). Live times on the Mac: client-progress 3.4 s,
+  // lender-book 2.3 to 3.4 s, sales-totals 0.9 s, upload-door 0.1 s.
+  "client-progress": "pulse-hourly-b",
+  "lender-book": "pulse-hourly",
+  "sales-totals": "pulse-hourly-d",
+  "upload-door": "pulse-hourly-c"
+});
 
 /** The scheduled functions that run a shift: A, B, C, D (D runs at minute 22). Each is a job in src/pulse/heartbeats.mjs. */
 export const SHIFT_JOBS = Object.freeze(Object.keys(SHIFTS));

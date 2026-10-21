@@ -23,6 +23,7 @@ export const BEAT_FILES = Object.freeze([
   ["beat-call-bookings.mjs", () => import("./beat-call-bookings.mjs")],
   ["beat-checkout-doors.mjs", () => import("./beat-checkout-doors.mjs")],
   ["beat-client-portal.mjs", () => import("./beat-client-portal.mjs")],
+  ["beat-client-progress.mjs", () => import("./beat-client-progress.mjs")],
   ["beat-consent-capture.mjs", () => import("./beat-consent-capture.mjs")],
   ["beat-contract-signing.mjs", () => import("./beat-contract-signing.mjs")],
   ["beat-customer-records.mjs", () => import("./beat-customer-records.mjs")],

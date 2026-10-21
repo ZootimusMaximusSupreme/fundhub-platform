@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import * as beat from "./beat-client-portal.mjs";
 import * as payLinks from "./beat-pay-links.mjs";
 import * as authLinks from "./beat-auth-links.mjs";
+import * as clientProgress from "./beat-client-progress.mjs";
 import * as truth from "./lib/portal-truth.mjs";
 import * as lane from "../coverage/gap-portal.mjs";
 import { checkBeatSelfTest, runBeat, validateBeat } from "./contract.mjs";
@@ -188,9 +189,12 @@ test("client-portal: every surface it covers has every named deep check run hour
       assert.ok(OTHER_BEATS[otherId].steps.includes(step), `${otherId} has no step ${step}`);
     }
   }
-  // The two progress surfaces need the real progress read, which only the morning lane can run.
+  // The two progress surfaces need the real progress read: the beat client-progress runs it hourly
+  // (lib/progress-check.mjs), so they are that beat's surfaces, not this one's.
   for (const surface of ["page:progress.html", "route:read/client-progress"]) {
     assert.ok(!beat.covers.includes(surface), surface);
     assert.ok(TRIPWIRES[surface].checks.includes("portal:progress-read-real-client"));
+    assert.ok(clientProgress.covers.includes(surface), surface);
   }
+  assert.deepEqual(clientProgress.HOURLY_CHECK_IDS, ["portal:progress-read-real-client"]);
 });
