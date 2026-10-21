@@ -64,6 +64,9 @@
 //    a row per ad per day in ONE paged response. Same date window, same field
 //    list. Rows are keyed back to each ad by the `ad_id` Meta puts on every row
 //    — see insightsRequestUrl / fetchInsightPages / groupInsightsByAd below.
+//    Since 2026-10-21 that is TWO account-level requests, the money and the
+//    rest, because Meta answers the combined list over many days with false
+//    zeros — see TWO INSIGHTS REQUESTS and fetchInsightPull below.
 //
 // 2. ONE SHORT TRANSACTION PER CAMPAIGN, NOT ONE FOR THE WHOLE RUN. Everything
 //    used to happen inside a single withPartnerScope transaction that stayed
@@ -311,21 +314,85 @@ function tokenFor(connection) {
   return token;
 }
 
-/* ── the one insights call ────────────────────────────────────────────────── */
+/* ── the two insights calls ───────────────────────────────────────────────── */
 
-/* insightsRequestUrl — the AD ACCOUNT's insights at level=ad.
+/* ═══════════════════════════════════════════════════════════════════════════
+   TWO INSIGHTS REQUESTS, NOT ONE — 2026-10-21. META SENT ZEROS FOR THE MONEY.
+
+   WHAT BROKE. The nightly pull at 2026-10-21 07:00 UTC wrote spend 0,
+   impressions 0 and clicks 0 over every real ad day from 2026-09-26 to
+   2026-10-07, while ctr, the video counts and link clicks on the same rows
+   stayed filled (SLO1 on 10-01: ctr 4.35%, 0 impressions). The run said ok.
+   The night before it had saved about $915 of real spend there. No code in
+   this path changed between the two runs. Meta changed.
+
+   MEASURED, with read-only GETs to the Fundhub ad account (level=ad,
+   time_increment=1, v26.0) on 2026-10-21:
+     one day, every field                        → the real numbers
+     2 to 28 days, every field                   → spend "0", impressions "0",
+                                                   clicks "0" on every row,
+                                                   ctr still real
+     2 to 28 days, ONLY INSIGHT_CORE_FIELDS       → the real numbers
+     core + any one of actions, inline_link_clicks,
+       cost_per_action_type, video_play_curve_actions → the zeros again
+   (Without time_increment the full list still answers real spend, which is
+   why fetchInsights in src/adplatforms/meta.mjs is not affected.)
+
+   THE FIX. The money numbers are asked for on their own (INSIGHT_CORE_FIELDS)
+   and everything else in a second request (INSIGHT_DETAIL_FIELDS): same ad
+   account, same level, same window, same page size. mergeInsightRows joins
+   them back on (ad_id, date_start).
+
+   THE MONEY COMES ONLY FROM THE CORE REQUEST. If a detail row ever carries
+   spend, impressions, clicks, ctr or purchase_roas, it is thrown away. Meta's
+   false zeros can no longer reach the money columns.
+
+   THE LISTS ARE NOT EDITED HERE. The video names (eight counts plus the play
+   curve) come from one exported list in src/adplatforms/meta.mjs, and the
+   results names (`actions`, `cost_per_action_type`, `inline_link_clicks`) from
+   one exported list in src/ads/meta-results.mjs, so what we ask Meta for and
+   what the parser reads can never drift apart. A name is asked for once. */
+
+/* The money numbers, plus the two keys. Exactly the list measured above to
+   answer real values over a many-day window. Do not add an *_actions field,
+   `actions`, `inline_link_clicks` or `cost_per_action_type` here: any one of
+   them brings Meta's zeros back. */
+export const INSIGHT_CORE_FIELDS = Object.freeze([
+  "ad_id", "spend", "impressions", "clicks", "ctr", "purchase_roas", "date_start"
+]);
+
+/* The two keys every row is joined on. Both requests ask for them. */
+export const INSIGHT_KEY_FIELDS = Object.freeze(["ad_id", "date_start"]);
+
+/* The columns that belong to the core request: core minus the keys. */
+export const INSIGHT_CORE_VALUES = Object.freeze(
+  INSIGHT_CORE_FIELDS.filter((f) => !INSIGHT_KEY_FIELDS.includes(f))
+);
+
+/* Everything else: the purchases / leads count (`actions`), the eight video
+   counts and the play curve, and the results fields. Never a money field. */
+export const INSIGHT_DETAIL_FIELDS = Object.freeze([...new Set([
+  ...INSIGHT_KEY_FIELDS,
+  "actions",
+  ...VIDEO_INSIGHT_REQUEST_FIELDS,
+  ...MONEY_INSIGHT_REQUEST_FIELDS
+])].filter((f) => !INSIGHT_CORE_VALUES.includes(f)));
+
+/* The two requests by name. insightsRequestUrl refuses any other name. */
+export const INSIGHT_REQUEST_PARTS = Object.freeze({
+  core: INSIGHT_CORE_FIELDS,
+  detail: INSIGHT_DETAIL_FIELDS
+});
+
+/* insightsRequestUrl — the AD ACCOUNT's insights at level=ad, for one part.
 
    `level=ad` is the whole trick: it turns one request into a row per ad rather
    than one request per ad. `ad_id` is asked for by name so each row can be tied
-   back to our own ad row; Meta includes it at this level anyway, and asking
-   costs nothing.
+   back to our own ad row.
 
-   THE FIELD LIST IS NOT EDITED HERE. The video names (eight counts plus the
-   play curve) come from one exported list in src/adplatforms/meta.mjs, and
-   the money names (`actions` plus `cost_per_action_type`, 2026-10-05) from one
-   exported list in src/ads/meta-results.mjs, so that what we ask Meta for and
-   what the parser knows how to read can never drift apart. A name already on
-   the list is not asked for twice.
+   `part` is "core" or "detail" (INSIGHT_REQUEST_PARTS). There is no default
+   and no combined list: the combined list is the request Meta answers with
+   false zeros.
 
    `datePreset: "maximum"` (2026-10-05) replaces the date window with Meta's
    own "everything this account has" — up to 37 months, cut into days in the
@@ -334,16 +401,15 @@ function tokenFor(connection) {
    (scripts/meta-backfill-ad-days.mjs). `maximum` is a DatePreset in Meta's own
    SDK (facebook_business/adobjects/adsinsights.py). */
 export function insightsRequestUrl(connection, {
-  since, until, datePreset = null, version = API_VERSION()
+  part, since, until, datePreset = null, version = API_VERSION()
 } = {}) {
-  const params = new URLSearchParams({
-    fields: [...new Set([
-      "ad_id", "spend", "impressions", "clicks", "ctr", "actions",
-      "purchase_roas", "date_start",
-      ...VIDEO_INSIGHT_REQUEST_FIELDS,
-      ...MONEY_INSIGHT_REQUEST_FIELDS
-    ])].join(",")
-  });
+  const fields = Object.hasOwn(INSIGHT_REQUEST_PARTS, String(part))
+    ? INSIGHT_REQUEST_PARTS[part]
+    : null;
+  if (!fields) {
+    throw new Error(`insightsRequestUrl: part must be "core" or "detail", not ${JSON.stringify(part)}`);
+  }
+  const params = new URLSearchParams({ fields: fields.join(",") });
   if (datePreset) params.set("date_preset", datePreset);
   else params.set("time_range", JSON.stringify({ since, until }));
   params.set("time_increment", "1");
@@ -476,6 +542,132 @@ export function groupInsightsByAd(rows) {
     byAd.get(key).push(row);
   }
   return byAd;
+}
+
+/* mergeInsightRows({ core, detail }) → { rows, held, heldBy: { core, detail } }
+
+   `core` and `detail` are { rows, complete }: the rows each request answered,
+   and whether that request was read to its end (not cut by the page cap).
+   One row comes out per (ad_id, date_start). The rules, decided 2026-10-21:
+
+     both rows              → the detail row's fields, then the core row's
+                              money fields over them. Spend, impressions,
+                              clicks, ctr and purchase_roas come ONLY from core.
+     core row only          → written as it is when the detail request was
+                              complete: Meta had no video or results line for
+                              that day, so those columns are NULL (the same
+                              rule as a photo ad, insightUpsertParams). When
+                              the detail request was cut short, its line may
+                              be on a page we never read, so the day is HELD:
+                              not written, counted, and the stored row keeps
+                              its numbers.
+     detail row only        → written with spend 0, impressions 0 and clicks 0
+                              ONLY when the core request was complete: then
+                              Meta really had no delivery for that ad that day.
+                              When the core request was cut short, the money
+                              for that day is unknown, so the day is HELD. A
+                              guess of 0 is the exact bug this fixes.
+     no ad_id or no day     → dropped. It could never be saved: groupInsightsByAd
+                              drops a row with no ad, storeInsights one with no day.
+
+   A money field on a detail row is removed before anything is merged, so a
+   detail answer can never write the money columns. */
+export function mergeInsightRows({ core = {}, detail = {} } = {}) {
+  const keyOf = (row) => {
+    const ad = row?.ad_id != null ? String(row.ad_id) : "";
+    const day = row?.date_start ? String(row.date_start) : "";
+    return ad && day ? `${ad}|${day}` : null;
+  };
+  const withoutMoney = (row) => {
+    const out = { ...row };
+    for (const f of INSIGHT_CORE_VALUES) delete out[f];
+    return out;
+  };
+
+  const details = new Map();
+  for (const row of detail.rows || []) {
+    const key = keyOf(row);
+    if (key) details.set(key, withoutMoney(row));
+  }
+
+  const rows = [];
+  const held = { core: 0, detail: 0 };
+  const used = new Set();
+  for (const row of core.rows || []) {
+    const key = keyOf(row);
+    if (!key || used.has(key)) continue;
+    used.add(key);
+    const extra = details.get(key);
+    if (extra) {
+      const money = {};
+      for (const f of INSIGHT_CORE_VALUES) if (f in row) money[f] = row[f];
+      rows.push({ ...extra, ...money, ad_id: row.ad_id, date_start: row.date_start });
+    } else if (detail.complete === true) {
+      rows.push({ ...row });
+    } else {
+      held.detail += 1;   // its video and results line may be on an unread page
+    }
+  }
+  for (const [key, row] of details) {
+    if (used.has(key)) continue;
+    used.add(key);
+    if (core.complete === true) rows.push(row);
+    else held.core += 1;  // its money is on an unread page, or nowhere we read
+  }
+  return { rows, held: held.core + held.detail, heldBy: held };
+}
+
+/* fetchInsightPull → { rows, held, heldBy, truncated, pages, core, detail }
+
+   The two requests, one after the other (core first: if Meta refuses the
+   money, the second call is not spent), each walked to its end by
+   fetchAllPages, then joined by mergeInsightRows. `range` is either
+   { since, until } or { datePreset }. A refused request throws, exactly as the
+   one request did before, so the caller's fallback and error paths are
+   unchanged. `truncated` is true when EITHER request was cut short. */
+export async function fetchInsightPull({
+  connection, token, ctx = {}, since, until, datePreset = null, maxPages = INSIGHT_MAX_PAGES
+}) {
+  const range = datePreset ? { datePreset } : { since, until };
+  const core = await fetchAllPages({
+    url: insightsRequestUrl(connection, { ...range, part: "core" }), token, ctx, maxPages
+  });
+  const detail = await fetchAllPages({
+    url: insightsRequestUrl(connection, { ...range, part: "detail" }), token, ctx, maxPages
+  });
+  const merged = mergeInsightRows({
+    core: { rows: core.rows, complete: !core.truncated },
+    detail: { rows: detail.rows, complete: !detail.truncated }
+  });
+  return {
+    rows: merged.rows,
+    held: merged.held,
+    heldBy: merged.heldBy,
+    truncated: core.truncated || detail.truncated,
+    pages: core.pages + detail.pages,
+    core: { rows: core.rows.length, pages: core.pages, truncated: core.truncated },
+    detail: { rows: detail.rows.length, pages: detail.pages, truncated: detail.truncated }
+  };
+}
+
+/* insightPullErrors(pull) → the plain sentences a short pull puts in `errors`.
+   One per request that was cut short, and one for the days held back. Empty
+   when both requests were read to their end. */
+export function insightPullErrors(pull = {}) {
+  const out = [];
+  if (pull.core?.truncated) {
+    out.push(listTruncationMessage({ pages: pull.core.pages, listed: "spend numbers", missing: "days" }));
+  }
+  if (pull.detail?.truncated) {
+    out.push(listTruncationMessage({ pages: pull.detail.pages, listed: "video and results numbers", missing: "days" }));
+  }
+  if (pull.held > 0) {
+    out.push(
+      `${plural(pull.held, "day of numbers was", "days of numbers were")} not saved: ` +
+      "Meta's answer was cut short, so half of each was missing. The saved days keep their old numbers."
+    );
+  }
+  return out;
 }
 
 /* The date window the pull covers: the last INSIGHT_WINDOW_DAYS days, one row
@@ -1025,17 +1217,14 @@ export async function syncPartnerConnections({
         ).catch(() => undefined)
         : undefined;
 
-      /* ONE call for every ad's numbers, instead of one call per ad. Done
+      /* TWO calls for every ad's numbers (the money, then the rest — see
+         TWO INSIGHTS REQUESTS above), instead of one call per ad. Done
          before the walk so each ad's days are already in hand when its row is
          written, which keeps the write transactions short. */
       let pull = null;
       if (plan.mayReadWholeHistory && needsFullHistory({ earliestStored: earliest, since })) {
         try {
-          pull = await fetchAllPages({
-            url: insightsRequestUrl(connection, { datePreset: "maximum" }),
-            token,
-            ctx: deps
-          });
+          pull = await fetchInsightPull({ connection, token, ctx: deps, datePreset: "maximum" });
           stats.full_history.push({ connection: connection.id, ok: true, days: pull.rows.length });
         } catch (err) {
           stats.full_history.push({
@@ -1048,20 +1237,13 @@ export async function syncPartnerConnections({
         }
       }
       if (!pull) {
-        pull = await fetchAllPages({
-          url: insightsRequestUrl(connection, { since, until }),
-          token,
-          ctx: deps
-        });
+        pull = await fetchInsightPull({ connection, token, ctx: deps, since, until });
       }
       const insightsByAd = groupInsightsByAd(pull.rows);
-      if (pull.truncated) {
-        stats.errors.push({
-          connection: connection.id,
-          error: listTruncationMessage({
-            pages: pull.pages, listed: "numbers", missing: "days"
-          })
-        });
+      /* A request cut short, and any day held back because half its numbers
+         were on an unread page, each say so. A short pull is never ok:true. */
+      for (const error of insightPullErrors(pull)) {
+        stats.errors.push({ connection: connection.id, error });
       }
 
       /* THE CAMPAIGN LIST, FOLLOWED TO ITS END. This used to read one page.

@@ -16,7 +16,7 @@
 
 import { coverageKey, PULSE_REGISTRY } from "../registry.mjs";
 import {
-  PAGE_FIX, REQUIRED_FIX, STORE_FIX, SLO_FIX, DISPUTE_FIX, check, clip, consentDbChecks
+  OWNER_HOLD_CODE, PAGE_FIX, REQUIRED_FIX, STORE_FIX, SLO_FIX, DISPUTE_FIX, check, clip, consentDbChecks, verifyDisputeHold
 } from "../beats/lib/consent-truth.mjs";
 
 export {
@@ -118,3 +118,9 @@ export async function gapChecks(ctx = {}) {
     ];
   }
 }
+
+/* The audit asks the lane again (src/pulse/self-audit.mjs, makeLaneNaVerify) for
+   consent:dispute-required's owner-hold claim. The read and the rule are the truth file's. */
+export const naVerify = Object.freeze({
+  [OWNER_HOLD_CODE]: (args, ctx = {}) => verifyDisputeHold(args, ctx)
+});

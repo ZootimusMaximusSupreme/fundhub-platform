@@ -128,6 +128,9 @@ export async function bookedNoOutcome({ db, orgId, now }) {
       The newest 5 are judged at ANY age. There is no look-back window: if the
       bookings go quiet, nothing about the product has changed, so the red must
       not fade by itself. The red says how old the newest booking is.
+      The feed is counted only from JOIN_FEED_SINCE, when the link started being
+      kept (see below). An older booking can never carry one, so it says
+      nothing about the feed today. Question A still reads every call ahead.
 
    Real means: not a demo event, a readable email, not a test address (the
    company domain, example domains, e2e / sim / test words, the fhtest tag, or
@@ -143,6 +146,13 @@ const JOIN_STARTED_GRACE_MS = 2 * 60 * 60 * 1000;
 const JOIN_FRESH_MS = 10 * 60 * 1000;
 const JOIN_FEED_SAMPLE = 5;
 const JOIN_FEED_MIN = 3;
+/* WHEN THE FEED IS COUNTED FROM. Nothing kept a join link before AI-SET-04's
+   "keep-meet-link" step went live (ship d1de88a1, 2026-10-21 01:38 UTC), so no
+   booking from before then can ever carry one. The owner set it the same day:
+   "Old bookings do not matter. Only new bookings." So question B reads only
+   bookings first seen after this moment. Question A is not cut: any call still
+   ahead with no link is red 10 minutes after it lands, old or new. */
+export const JOIN_FEED_SINCE = new Date("2026-10-21T01:38:16.000Z");
 const JOIN_EVENT_LIMIT = 1500;
 const LINK_RE = /^https?:\/\/\S+$/i;
 const ISO_RE = /^\d{4}-\d{2}-\d{2}T/;
@@ -298,7 +308,7 @@ export const JOIN_TASKS_SQL = `/* gap-calls:no-join-link:tasks */
               AND t.body = ANY($2::text[])
               AND btrim(COALESCE(t.meeting_url, '')) <> ''`;
 
-export async function bookedNoJoinLink({ db, orgId, now }) {
+export async function bookedNoJoinLink({ db, orgId, now, feedSince = JOIN_FEED_SINCE }) {
   const id = JOIN_ID;
   if (!db || !orgId) return check(id, "skip", "no database in this run — booked calls not read");
   let calls;
@@ -318,7 +328,7 @@ export async function bookedNoJoinLink({ db, orgId, now }) {
     .filter((c) => !c.cancelled && !c.movedAway && c.start && c.start.getTime() >= lo && c.start.getTime() <= hi)
     .sort((a, b) => a.start - b.start);
   const sample = calls
-    .filter((c) => c.created)
+    .filter((c) => c.created && c.firstSeen.getTime() >= feedSince.getTime())
     .sort((a, b) => b.firstSeen - a.firstSeen)
     .slice(0, JOIN_FEED_SAMPLE);
 
@@ -388,7 +398,8 @@ export async function bookedNoJoinLink({ db, orgId, now }) {
   const feedNote =
     sample.length >= JOIN_FEED_MIN
       ? `${withLink} of the newest ${sample.length} real bookings carry a link`
-      : `fewer than ${JOIN_FEED_MIN} real bookings so far, so the feed is not judged yet`;
+      : `fewer than ${JOIN_FEED_MIN} real bookings so far (counted from ${feedSince.toISOString().slice(0, 10)}, ` +
+        `when join links started being kept), so the feed is not judged yet`;
   const judgedAhead = ahead.filter((c) => !fresh(c)).length;
   const freshAhead = ahead.length - judgedAhead;
   const aheadNote = judgedAhead === 0

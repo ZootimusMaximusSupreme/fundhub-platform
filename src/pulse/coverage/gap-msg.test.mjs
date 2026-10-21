@@ -22,6 +22,7 @@ import {
   LINK_CAP,
   OWNER_ALERTS_SQL,
   PAUSED_SENDS_SQL,
+  ROLE_TEST_CLIENT_KEY,
   SETTINGS_SQL,
   STAFF_TEMPLATE_KEYS,
   STAFF_TO_CLIENT_SQL,
@@ -38,6 +39,7 @@ import { GAP_FILES } from "./modules.mjs";
 import { NA_CODES, verifyNa } from "../na-conditions.mjs";
 import { makeLaneNaVerify } from "../self-audit.mjs";
 import { TEST_ADDRESS_RE } from "./gap-sms.mjs";
+import { PROVIDER_FAIL_SQL } from "./gap-email.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 // Five of the nine checks live in the beat-safe truth file (2026-10-20). Every source check below reads both
@@ -562,4 +564,18 @@ test("help reply: our own test lines and the grace time go into the read, so a f
   assert.equal(call.params[2], "2026-10-10T12:30:00.000Z");
   assert.equal(call.params[3], 24);
   assert.match(HELP_SQL, /IN \(\s*SELECT right\(regexp_replace\(ev\.payload->>'to'/);
+});
+
+test("gap msg: the App Store review login is test traffic in every message read, known by the seed's own master key", () => {
+  // The key is the one src/auth/seed-role-accounts.mjs makes the review client with. If the seed's key moved, the
+  // review login's bounced sign-in mail would turn the message checks red again, so the two are held together.
+  const seed = fs.readFileSync(path.join(HERE, "../../auth/seed-role-accounts.mjs"), "utf8");
+  assert.equal(seed.match(/const CLIENT_TEST_KEY = "([^"]+)";/)[1], ROLE_TEST_CLIENT_KEY);
+  assert.match(ROLE_TEST_CLIENT_KEY, /^[A-Z-]+$/, "it is pasted into SQL, so it may hold no quote");
+  const condition = `OR COALESCE(d.client_master_key, '') = '${ROLE_TEST_CLIENT_KEY}')`;
+  for (const [name, sql] of Object.entries({ BLANKS_SQL, TEMPLATE_PATH_SQL, PAUSED_SENDS_SQL })) {
+    assert.ok(sql.includes(condition), `${name} leaves the review login out`);
+  }
+  assert.ok(PROVIDER_FAIL_SQL.includes(`AND COALESCE(d.client_master_key, '') = '${ROLE_TEST_CLIENT_KEY}'`), "email provider-fail leaves it out too");
+  assert.doesNotMatch(PROVIDER_FAIL_SQL + TEMPLATE_PATH_SQL, /client_master_key LIKE/, "only the one review login, never a pattern");
 });

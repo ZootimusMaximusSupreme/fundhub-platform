@@ -53,13 +53,25 @@ test("call-bookings: a booked call ahead with no join link is red at the join-li
   assert.deepEqual(result.steps.map((step) => step.name), ["read", "calls-booked-no-join-link"]);
 });
 
-test("call-bookings: the dead feed goes red before any customer is hit", async () => {
-  // Three real bookings, all in the past, none with a link: nobody is ahead, and the next booking will have none.
+test("call-bookings: bookings first seen before join links were kept are not judged as a dead feed", async () => {
+  // JOIN_FEED_SINCE (owner 2026-10-21: "Old bookings do not matter. Only new bookings."). The self-test clock is
+  // 2026-10-09, so three past bookings with no link are before the cut-off: the feed is not judged, the beat is green.
   const old = [1, 2, 3].map((n) => booking(n, { seenAgo: 40 * 24 * HOUR, startsIn: -39 * 24 * HOUR }));
   const result = await runBeat(beat, makeFakeCtx(beat, spec([[truth.JOIN_EVENTS_SQL, old]])));
-  assert.equal(result.ok, false);
-  assert.equal(result.step, "calls-booked-no-join-link");
-  assert.match(result.detail, /0 of the newest 3 real bookings carried a join link/);
+  assert.notEqual(result.step, "calls-booked-no-join-link");
+});
+
+test("call-bookings: the dead feed the beat runs goes red before any customer is hit (bookings after the cut-off)", async () => {
+  // The same function the beat calls, with the cut-off moved before the fixture, as the lane test does.
+  const old = [1, 2, 3].map((n) => booking(n, { seenAgo: 40 * 24 * HOUR, startsIn: -39 * 24 * HOUR }));
+  const db = { query: async (sql) => ({ rows: sql === truth.JOIN_EVENTS_SQL ? old : [] }) };
+  const row = await truth.bookedNoJoinLink({
+    db, orgId: "11111111-1111-4111-8111-111111111111", now: SELF_TEST_NOW, feedSince: new Date(0)
+  });
+  assert.equal(row.status, "FAIL");
+  assert.match(row.detail, /0 of the newest 3 real bookings carried a join link/);
+  const cut = await truth.bookedNoJoinLink({ db, orgId: "11111111-1111-4111-8111-111111111111", now: SELF_TEST_NOW });
+  assert.notEqual(cut.status, "FAIL", "with the real cut-off these old bookings are not judged");
 });
 
 test("call-bookings: a link on the event, a tester, an interview or a fresh booking is not red", async () => {

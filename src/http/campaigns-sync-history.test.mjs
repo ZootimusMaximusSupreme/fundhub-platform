@@ -24,18 +24,22 @@ import {
 const connection = { external_ad_account_id: "act_982103620742368" };
 
 describe("the whole-history request", () => {
-  test("date_preset=maximum replaces the date window, everything else is the same request", () => {
-    const max = new URL(insightsRequestUrl(connection, { datePreset: "maximum" }));
-    const win = new URL(insightsRequestUrl(connection, { since: "2026-09-08", until: "2026-10-05" }));
-    assert.equal(max.searchParams.get("date_preset"), "maximum");
-    assert.equal(max.searchParams.get("time_range"), null, "both a preset and a range were sent");
-    assert.equal(win.searchParams.get("date_preset"), null);
-    assert.equal(win.searchParams.get("time_range"), '{"since":"2026-09-08","until":"2026-10-05"}');
-    for (const k of ["fields", "time_increment", "level", "limit"]) {
-      assert.equal(max.searchParams.get(k), win.searchParams.get(k), k);
-    }
-    assert.equal(max.pathname, win.pathname, "the whole history must be asked of the same ad account");
-  });
+  /* Both requests — the money and the rest (2026-10-21, TWO INSIGHTS
+     REQUESTS in api/campaigns/sync.mjs) — take the preset the same way. */
+  for (const part of ["core", "detail"]) {
+    test(`date_preset=maximum replaces the date window, everything else is the same request (${part})`, () => {
+      const max = new URL(insightsRequestUrl(connection, { part, datePreset: "maximum" }));
+      const win = new URL(insightsRequestUrl(connection, { part, since: "2026-09-08", until: "2026-10-05" }));
+      assert.equal(max.searchParams.get("date_preset"), "maximum");
+      assert.equal(max.searchParams.get("time_range"), null, "both a preset and a range were sent");
+      assert.equal(win.searchParams.get("date_preset"), null);
+      assert.equal(win.searchParams.get("time_range"), '{"since":"2026-09-08","until":"2026-10-05"}');
+      for (const k of ["fields", "time_increment", "level", "limit"]) {
+        assert.equal(max.searchParams.get(k), win.searchParams.get(k), k);
+      }
+      assert.equal(max.pathname, win.pathname, "the whole history must be asked of the same ad account");
+    });
+  }
 });
 
 describe("needsFullHistory — when a pull reaches back past its window", () => {
@@ -87,9 +91,9 @@ describe("earliestStoredDay", () => {
 describe("the sync falls back when Meta refuses the whole history", () => {
   const src = readFileSync(new URL("../../api/campaigns/sync.mjs", import.meta.url), "utf8");
   test("a refused whole-history pull is reported in full_history and the window pull still runs", () => {
-    const i = src.indexOf('insightsRequestUrl(connection, { datePreset: "maximum" })');
+    const i = src.indexOf('fetchInsightPull({ connection, token, ctx: deps, datePreset: "maximum" })');
     const j = src.indexOf("whole history refused, used the");
-    const k = src.indexOf("insightsRequestUrl(connection, { since, until })", j);
+    const k = src.indexOf("fetchInsightPull({ connection, token, ctx: deps, since, until })", j);
     assert.ok(i > 0 && j > i && k > j, "the fallback to the window is not after the refused whole-history pull");
   });
 });

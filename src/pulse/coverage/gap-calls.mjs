@@ -17,13 +17,13 @@ import {
 import { isInterviewBooking } from "../../insights/meet.mjs";
 import { fenceVerdict, MESSAGING_DRY_RUN } from "../../lib/dry-run.mjs";
 import {
-  RECON, bookedNoJoinLink, bookedNoOutcome, check, clip, rowsOf, sinceIso
+  JOIN_FEED_SINCE, RECON, bookedNoJoinLink, bookedNoOutcome, check, clip, rowsOf, sinceIso
 } from "../beats/lib/calls-truth.mjs";
 
 // booked-no-outcome and booked-no-join-link (the SQL and the verdicts) live in
 // src/pulse/beats/lib/calls-truth.mjs, so this morning lane and the hourly beat call-bookings judge with
 // the same code. The small helpers below them moved too; this lane imports them back.
-export { joinCalls } from "../beats/lib/calls-truth.mjs";
+export { JOIN_FEED_SINCE, joinCalls } from "../beats/lib/calls-truth.mjs";
 
 export const CHECK_IDS = Object.freeze([
   "calls:booked-no-outcome",
@@ -330,6 +330,6 @@ export async function gapChecks(ctx) {
     await calendarPage({ fetchImpl, baseUrl: c.baseUrl }),
     await bookingWebhook({ db, orgId, now }),
     await aiDialNoFailure({ db, orgId, now, env: c.env }),
-    await bookedNoJoinLink({ db, orgId, now })
+    await bookedNoJoinLink({ db, orgId, now, feedSince: c.joinFeedSince instanceof Date ? c.joinFeedSince : JOIN_FEED_SINCE })
   ];
 }

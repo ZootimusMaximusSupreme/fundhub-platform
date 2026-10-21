@@ -30,7 +30,8 @@
 //   * A failed read is a skip with the reason. A skip is never a PASS.
 //   * A claim of "nothing to judge" carries a code the audit re-reads every morning (naVerify below).
 //   * No repo file is read at run time. The dead-template list is data in msg-dead-templates.mjs.
-//   * Test traffic is not a customer: demo flag, synthetic client, test address (same filter as gap-sms.mjs).
+//   * Test traffic is not a customer: demo flag, synthetic client, test address (same filter as gap-sms.mjs),
+//     and the App Store review login (ROLE_TEST_CLIENT_KEY).
 //   * Under 20 seconds. The reads run side by side; the link opens are capped in number and in time.
 //
 // Not duplicated here (already read by the gap-sms, gap-email and gap-opt-out lanes, and by pipeline:outbound):
@@ -177,9 +178,16 @@ export function tally(items, max = 5) {
   return shown.join(", ");
 }
 
+/* The App Store review login ("TEST — Client Role", client@fundhub.ai, made by src/auth/seed-role-accounts.mjs).
+   It is a test client that never goes away: nobody sells to it, and its address has no mailbox, so every sign-in
+   email to it bounces (two on 2026-10-18 and 2026-10-20 turned msg:per-template-path and email:provider-fail red).
+   Its address is not a test-style address, so it is known by its fixed master key. A test holds this to the seed. */
+export const ROLE_TEST_CLIENT_KEY = "FDH-TEST-CLIENT-ROLE-ACCOUNT";
+
 /* Test traffic is not a customer. A message flagged demo, a message whose client is demo or synthetic or
-   has a test address, and a message sent to a test address are all left out. `p` is the number of the query
-   parameter that holds TEST_ADDRESS_RE. Same rule as gap-sms.mjs (realMessageSql). */
+   has a test address or is the App Store review login, and a message sent to a test address are all left out.
+   `p` is the number of the query parameter that holds TEST_ADDRESS_RE. Same rule as gap-sms.mjs (realMessageSql),
+   plus the review login. */
 export function real(alias, p) {
   return `COALESCE(${alias}.is_demo, false) = false
    AND NOT EXISTS (
@@ -187,7 +195,8 @@ export function real(alias, p) {
       WHERE d.id = ${alias}.client_id
         AND (COALESCE(d.is_demo, false) = true
           OR COALESCE(d.custom_fields ->> 'synthetic', '') = 'true'
-          OR COALESCE(d.email, '') ~* ${p}::text)
+          OR COALESCE(d.email, '') ~* ${p}::text
+          OR COALESCE(d.client_master_key, '') = '${ROLE_TEST_CLIENT_KEY}')
    )
    AND COALESCE(${alias}.to_address, '') !~* ${p}::text`;
 }

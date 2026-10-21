@@ -21,7 +21,8 @@
 //   * A failed read is a skip with the reason. A skip is never a PASS.
 //   * A claim of "nothing to judge" carries a code the audit re-reads every morning (naVerify below).
 //   * No repo file is read at run time. The dead-template list is data in msg-dead-templates.mjs.
-//   * Test traffic is not a customer: demo flag, synthetic client, test address (same filter as gap-sms.mjs).
+//   * Test traffic is not a customer: demo flag, synthetic client, test address (same filter as gap-sms.mjs),
+//     and the App Store review login (ROLE_TEST_CLIENT_KEY).
 //   * Under 20 seconds. The reads run side by side; the link opens are capped in number and in time.
 //
 // Not duplicated here (already read by the gap-sms, gap-email and gap-opt-out lanes, and by pipeline:outbound):

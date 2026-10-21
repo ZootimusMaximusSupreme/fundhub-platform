@@ -158,12 +158,18 @@ const STAFF_SEND_JOINS = `
        AND ev.detail->>'message_id' = m.id::text
   LEFT JOIN shifts sh ON sh.org_id = ev.org_id AND sh.id = ev.shift_id`;
 
+// An owner-ops text (provider_ref 'owner-ops:...') is not a staff reply either: the
+// one on 2026-10-07 was the teleprompter link an agent texted to the owner's own
+// phone, with no client and no thread. composeAndSend writes provider_ref NULL or
+// 'staff:...', never 'owner-ops:', so leaving that marker out hides no Send-button
+// row. It was the one "bad" row behind the Send button and Message > Client reds.
 export const STAFF_MESSAGE_SQL = `
 SELECT count(DISTINCT m.id)::int AS sample_count,
        count(DISTINCT m.id) FILTER (WHERE ${STAFF_SEND_BAD})::int AS bad_count
   FROM messages m${STAFF_SEND_JOINS}
  WHERE m.org_id = $1::uuid AND m.sender_kind = 'staff'
    AND m.channel IN ('sms', 'email') AND m.is_demo = false
+   AND COALESCE(m.provider_ref, '') NOT LIKE 'owner-ops:%'
    AND m.created_at > now() - interval '30 days'`;
 
 // The chat widget on every desk. Two of its four modes leave a saved row:
