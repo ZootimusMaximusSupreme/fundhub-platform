@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import * as beat from "./beat-lead-handoff.mjs";
 import * as truth from "./lib/handoff-truth.mjs";
 import * as lane from "../coverage/gap-handoff.mjs";
+import * as emailTruth from "./lib/email-truth.mjs";
+import * as emailLane from "../coverage/gap-email.mjs";
 import { checkBeatSelfTest, runBeat, validateBeat } from "./contract.mjs";
 import { makeFakeCtx } from "./ctx.mjs";
 import { laneSelfTest } from "./lib/money-hourly.mjs";
@@ -13,7 +15,7 @@ test("lead-handoff is valid, goes green on zero misses and red at the contact st
   assert.deepEqual(await checkBeatSelfTest(beat), []);
   const passed = await runBeat(beat, makeFakeCtx(beat, beat.selfTest.pass()));
   assert.equal(passed.ok, true);
-  assert.match(passed.detail, /^4 hand-off checks passed$/);
+  assert.match(passed.detail, /^5 hand-off checks passed$/);
   const failed = await runBeat(beat, makeFakeCtx(beat, beat.selfTest.fail()));
   assert.equal(failed.ok, false);
   assert.equal(failed.step, "handoff-contact-no-followup");
@@ -22,15 +24,16 @@ test("lead-handoff is valid, goes green on zero misses and red at the contact st
   assert.deepEqual(failed.steps.map((step) => step.name), beat.steps.slice(0, beat.steps.indexOf("handoff-contact-no-followup") + 1));
 });
 
-test("lead-handoff: each of its four checks can go red on its own", async () => {
+test("lead-handoff: each of its five checks can go red on its own", async () => {
   const red = {
     "handoff-lead-first-touches-missing": truth.WELCOME_SQL,
     "handoff-contact-no-followup": truth.CONTACT_197_SQL,
     "handoff-booking-no-confirm": truth.CONFIRM_SQL,
-    "handoff-reminder-missing": truth.REMIND_2H_SQL
+    "handoff-reminder-missing": truth.REMIND_2H_SQL,
+    "email-drip-step-no-email": emailTruth.DRIP_SQL
   };
   for (const [step, sql] of Object.entries(red)) {
-    const spec = laneSelfTest({ ...beat.LANE, selfTest: { passRows: beat.LANE.selfTest.passRows, failRows: [[sql, [{ n: 2, newest: null, sample: null, silent_n: 0 }]]] } }, true);
+    const spec = laneSelfTest({ ...beat.LANE, selfTest: { passRows: beat.LANE.selfTest.passRows, failRows: [[sql, [{ n: 2, missing: 3, newest: null, sample: null, silent_n: 0 }]]] } }, true);
     const result = await runBeat(beat, makeFakeCtx(beat, spec));
     assert.equal(result.ok, false, step);
     assert.equal(result.step, step);
@@ -41,7 +44,7 @@ test("lead-handoff: an unreadable count is never green", async () => {
   // No rows at all for every branch: the lane cannot read a count, so each check is skip, never PASS.
   const result = await runBeat(beat, makeFakeCtx(beat, laneSelfTest({ ...beat.LANE, selfTest: {} })));
   assert.equal(result.ok, true);
-  assert.match(result.detail, /^0 hand-off checks passed; 4 had nothing safe to judge$/);
+  assert.match(result.detail, /^0 hand-off checks passed; 5 had nothing safe to judge$/);
   assert.ok(result.steps.filter((step) => step.name !== "read").every((step) => step.skipped));
 });
 
@@ -50,7 +53,9 @@ test("lead-handoff: the daily lane and the hourly beat share one SQL and one jud
   assert.equal(lane.WELCOME_SQL, truth.WELCOME_SQL);
   assert.equal(lane.CONTACT_M1_SQL, truth.CONTACT_M1_SQL);
   assert.equal(lane.REMIND_24H_SQL, truth.REMIND_24H_SQL);
-  for (const checkId of beat.HOURLY_CHECK_IDS) assert.ok(truth.CHECK_IDS.includes(checkId), checkId);
+  for (const checkId of beat.HANDOFF_CHECK_IDS) assert.ok(truth.CHECK_IDS.includes(checkId), checkId);
+  assert.equal(emailLane.DRIP_SQL, emailTruth.DRIP_SQL);
+  assert.ok(beat.HOURLY_CHECK_IDS.includes(emailTruth.DRIP_CHECK_ID));
 });
 
 test("lead-handoff: every surface it covers is a tripwire whose deep checks it runs", () => {

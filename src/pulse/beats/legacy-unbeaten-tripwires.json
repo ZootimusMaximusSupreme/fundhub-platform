@@ -20,7 +20,6 @@
   "job:repair-bureau-response-reader",
   "job:s-00-welcome",
   "job:s-04-call-booked",
-  "job:slo-infinite-drip",
   "job:slo-pack-delivery",
   "job:slo-paid-form-nudge",
   "page:portal-login.html",
