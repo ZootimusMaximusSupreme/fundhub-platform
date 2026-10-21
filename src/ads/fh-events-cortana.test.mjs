@@ -217,142 +217,162 @@ test("the spec names every Cortana milestone the tracker can send, and no other"
 });
 
 // ── the app-download tap on /thank-you ──────────────────────────────────────
-// The real card script (public/funnel/fundhub-prompter-download.js) runs on the
-// fake page beside the real tracker, against a fake setting, and its own button is
-// pressed. Which links count, and on which pages, is src/ads/fh-events-track.test.mjs.
+// Every card script in public/funnel/ named *-download.js (the Prompter card today,
+// the company app card when it lands) runs on the fake page beside the real tracker,
+// against a fake setting, and its own button is pressed. The setting carries every
+// key a card has read or may read, so these tests do not pin which one it is. Which
+// links count, and on which pages: src/ads/fh-events-track.test.mjs.
 // Spec: docs/tracking/tracking-spec.md, "App download tap".
 
-const CARD_SRC = fs.readFileSync(new URL("../../public/funnel/fundhub-prompter-download.js", import.meta.url), "utf8");
-const CARD_SETTING = "https://fundhub.ai/funnel/fundhub-prompter-download.json";
 const TESTFLIGHT = "https://testflight.apple.com/join/AbC123xyz";
+const APP_STORE = "https://apps.apple.com/us/app/fundhub/id1234567890";
+const APPLE = /^https:\/\/(testflight|apps)\.apple\.com\//;
+const SETTING = { testflight_url: TESTFLIGHT, app_store_url: APP_STORE, listing_verified: true };
+const NO_LINK = [
+  {},
+  { testflight_url: "", app_store_url: "", listing_verified: true },
+  { testflight_url: "https://example.com/join/AbC123xyz", app_store_url: "https://example.com/app/id1234567890", listing_verified: true }
+];
 const TAP = "book_call_app_download_tap";
+const CARDS = fs.readdirSync(new URL("../../public/funnel/", import.meta.url)).filter((f) => /-download\.js$/.test(f)).sort();
 
 async function settle() { for (let i = 0; i < 10; i++) await Promise.resolve(); }
 
-/** /thank-you the way ClickFunnels serves it (a .fh-root with a .hero), then the tracker, then the card. */
-async function thanks({ config = { testflight_url: TESTFLIGHT }, ...opts } = {}) {
+/** /thank-you the way ClickFunnels serves it (a .fh-root with a .hero), then the tracker, then one card script. */
+async function thanks(cardSrc, { config = SETTING, ...opts } = {}) {
   const p = makePage({ pathname: "/thank-you", cortana: true, fetchJson: config, ...opts,
     storage: { fh_sid: SID, ...(opts.storage || {}) } });
   p.addHtml('<div class="fh-root"><div class="hero"></div></div>');
-  p.run().runScript(CARD_SRC);
+  p.run().runScript(cardSrc);
   await settle();
   return p;
 }
 
-const downloadButton = (p) => p.document.querySelector("a.fh-prompter-download__button");
+/** The card's button: the one link on the page that goes to Apple. */
+const downloadButton = (p) => p.document.querySelectorAll("a[href]").find((a) => APPLE.test(a.getAttribute("href"))) || null;
 
-test("a press on the card's Download button is one Fundhub event each time and one Cortana milestone", async () => {
-  const p = await thanks({
-    cookie: "ak_tid=tid-12345678",
-    storage: { fh_attribution: JSON.stringify({ utm_source: "meta", utm_content: "ad-42", email: "hidden@example.com" }) }
+test("there is at least one card script to run", () => {
+  assert.ok(CARDS.length >= 1, "public/funnel/ has no *-download.js");
+});
+
+for (const file of CARDS) {
+  const src = fs.readFileSync(new URL(`../../public/funnel/${file}`, import.meta.url), "utf8");
+
+  test(`${file}: a press on the card's button is one Fundhub event each time and one Cortana milestone`, async () => {
+    const p = await thanks(src, {
+      cookie: "ak_tid=tid-12345678",
+      storage: { fh_attribution: JSON.stringify({ utm_source: "meta", utm_content: "ad-42", email: "hidden@example.com" }) }
+    });
+    assert.equal(p.fetchCalls.length, 1, "the card read its setting");
+    assert.match(p.fetchCalls[0], /^https:\/\/fundhub\.ai\/funnel\/.+\.json$/);
+    const button = downloadButton(p);
+    assert.ok(button, "the card drew its button");
+    assert.deepEqual(names(p), ["book_call_thank_you_view"], "seeing the card is not a tap");
+    assert.equal(p.events("app_download_tap").length, 0);
+
+    p.click(button.children[0] || button); // the arrow inside the link, when there is one
+    assert.deepEqual(names(p), ["book_call_thank_you_view", TAP]);
+    const [, data] = p.cortanaCalls[1];
+    assert.deepEqual(Object.keys(data).sort(), [
+      "ak_tid", "event_id", "funnel", "occurred_at", "page_path", "schema_version", "session_id", "stage",
+      "utm_content", "utm_source"
+    ], "the same envelope as the other eight");
+    assert.equal(data.event_id, `dr.b.${TAP}.${SID}`);
+    assert.equal(data.schema_version, "fh-cortana-v1");
+    assert.equal(data.funnel, "book_call");
+    assert.equal(data.stage, TAP);
+    assert.equal(data.page_path, "/thank-you");
+    assert.equal(data.session_id, SID);
+    assert.equal(data.ak_tid, "tid-12345678");
+    assert.equal(data.utm_content, "ad-42");
+    assert.ok(data.occurred_at.endsWith("Z"));
+    assert.equal(JSON.stringify(data).includes("apple.com"), false, "the link is not sent to Cortana");
+    assert.equal(JSON.stringify(data).includes("hidden@example.com"), false);
+
+    const taps = p.events("app_download_tap");
+    assert.equal(taps.length, 1);
+    assert.deepEqual(taps[0].props, {});
+    assert.equal(taps[0].page, "/thank-you");
+    assert.equal(p.events("click").length, 1, "the press is still an ordinary click too");
+
+    p.click(button);
+    p.click(button);
+    assert.equal(p.events("app_download_tap").length, 3, "every press is saved, as a click is");
+    assert.deepEqual(names(p), ["book_call_thank_you_view", TAP], "Cortana hears the first press only");
+    assert.equal(p.store[`fh_dr_${TAP}`], "1");
+
+    const reload = await thanks(src, { storage: p.store });
+    reload.click(downloadButton(reload));
+    assert.deepEqual(names(reload), [], "a reload does not count it again");
+    assert.equal(reload.events("app_download_tap").length, 1);
   });
-  assert.deepEqual(p.fetchCalls, [CARD_SETTING], "the real card read its setting");
-  const button = downloadButton(p);
-  assert.equal(button.getAttribute("href"), TESTFLIGHT);
-  assert.deepEqual(names(p), ["book_call_thank_you_view"], "seeing the card is not a tap");
-  assert.equal(p.events("app_download_tap").length, 0);
 
-  p.click(button.children[0]); // the arrow inside the link
-  assert.deepEqual(names(p), ["book_call_thank_you_view", TAP]);
-  const [, data] = p.cortanaCalls[1];
-  assert.deepEqual(Object.keys(data).sort(), [
-    "ak_tid", "event_id", "funnel", "occurred_at", "page_path", "schema_version", "session_id", "stage",
-    "utm_content", "utm_source"
-  ], "the same envelope as the other eight");
-  assert.equal(data.event_id, `dr.b.${TAP}.${SID}`);
-  assert.equal(data.schema_version, "fh-cortana-v1");
-  assert.equal(data.funnel, "book_call");
-  assert.equal(data.stage, TAP);
-  assert.equal(data.page_path, "/thank-you");
-  assert.equal(data.session_id, SID);
-  assert.equal(data.ak_tid, "tid-12345678");
-  assert.equal(data.utm_content, "ad-42");
-  assert.ok(data.occurred_at.endsWith("Z"));
-  assert.equal(JSON.stringify(data).includes("apple.com"), false, "the link is not sent to Cortana");
-  assert.equal(JSON.stringify(data).includes("hidden@example.com"), false);
+  test(`${file}: drawing the card, reloading and pressing anything but its link is never a tap`, async () => {
+    const p = await thanks(src);
+    const button = downloadButton(p);
+    assert.ok(button, "the card drew its button");
+    p.click(button.parentNode); // the card, off its link
+    const [back] = p.addHtml('<a id="back" href="https://apply.fundhub.ai/watch">Back to the video</a>');
+    p.click(back);
+    assert.deepEqual(names(p), ["book_call_thank_you_view"]);
+    assert.equal(p.events("app_download_tap").length, 0);
+    const again = await thanks(src, { storage: p.store });
+    assert.deepEqual(names(again), []);
+    assert.equal(again.events("app_download_tap").length, 0);
 
-  const taps = p.events("app_download_tap");
-  assert.equal(taps.length, 1);
-  assert.deepEqual(taps[0].props, {});
-  assert.equal(taps[0].page, "/thank-you");
-  assert.equal(p.events("click").length, 1, "the press is still an ordinary click too");
+    // The live setting is empty today: no card is drawn, so there is nothing to tap.
+    for (const config of NO_LINK) {
+      const none = await thanks(src, { config });
+      assert.equal(downloadButton(none), null, JSON.stringify(config));
+      assert.deepEqual(names(none), ["book_call_thank_you_view"]);
+    }
+  });
 
-  p.click(button);
-  p.click(button);
-  assert.equal(p.events("app_download_tap").length, 3, "every press is saved, as a click is");
-  assert.deepEqual(names(p), ["book_call_thank_you_view", TAP], "Cortana hears the first press only");
-  assert.equal(p.store[`fh_dr_${TAP}`], "1");
+  test(`${file}: a missing or broken hub never blocks the Fundhub event; the tap waits and is sent once the hub is there`, async () => {
+    const missing = await thanks(src, { cortana: false });
+    missing.click(downloadButton(missing));
+    assert.equal(missing.events("app_download_tap").length, 1);
+    assert.deepEqual(JSON.parse(missing.store.fh_dr_pending_v1).map((item) => item.name), ["book_call_thank_you_view", TAP]);
+    const got = [];
+    missing.win.akTracking = { trackEvent: (name) => got.push(name) };
+    missing.advance(250);
+    assert.deepEqual(got, ["book_call_thank_you_view", TAP]);
+    assert.equal(missing.store[`fh_dr_${TAP}`], "1");
+    assert.deepEqual(JSON.parse(missing.store.fh_dr_pending_v1), []);
+    missing.advance(10_000);
+    assert.equal(got.length, 2, "sent once");
 
-  const reload = await thanks({ storage: p.store });
-  reload.click(downloadButton(reload));
-  assert.deepEqual(names(reload), [], "a reload does not count it again");
-  assert.equal(reload.events("app_download_tap").length, 1);
-});
+    const broken = await thanks(src, { cortana: false });
+    broken.win.akTracking = { trackEvent() { throw new Error("provider down"); } };
+    broken.click(downloadButton(broken));
+    broken.advance(1_000);
+    assert.equal(broken.events("app_download_tap").length, 1);
+    assert.ok(JSON.parse(broken.store.fh_dr_pending_v1).some((item) => item.name === TAP), "a thrown call stays queued");
+    assert.equal(broken.store[`fh_dr_${TAP}`], undefined);
+  });
 
-test("drawing the card, reloading and pressing anything but its link is never a tap", async () => {
-  const p = await thanks();
-  assert.ok(downloadButton(p));
-  p.click(p.document.querySelector(".fh-prompter-download")); // the card, off its link
-  const [back] = p.addHtml('<a id="back" href="https://apply.fundhub.ai/watch">Back to the video</a>');
-  p.click(back);
-  assert.deepEqual(names(p), ["book_call_thank_you_view"]);
-  assert.equal(p.events("app_download_tap").length, 0);
-  const again = await thanks({ storage: p.store });
-  assert.deepEqual(names(again), []);
-  assert.equal(again.events("app_download_tap").length, 0);
+  test(`${file}: an automated browser never reaches Cortana, but the Fundhub event goes, marked webdriver`, async () => {
+    const bot = await thanks(src, { webdriver: true });
+    bot.click(downloadButton(bot));
+    assert.deepEqual(names(bot), []);
+    assert.equal(bot.store.fh_dr_pending_v1, undefined);
+    assert.deepEqual(bot.events("app_download_tap").map((b) => b.webdriver), [true]);
+  });
 
-  // The live setting is empty today: no card is drawn, so there is nothing to tap.
-  for (const config of [{ testflight_url: "" }, {}, { testflight_url: "https://example.com/join/AbC123xyz" }]) {
-    const none = await thanks({ config });
-    assert.equal(downloadButton(none), null);
-    assert.deepEqual(names(none), ["book_call_thank_you_view"]);
-  }
-});
+  test(`${file}: a tap saved while the hub was away goes out after a reload, once; a saved tap for another page is dropped`, async () => {
+    const first = await thanks(src, { cortana: false });
+    first.click(downloadButton(first));
+    const back = await thanks(src, { storage: first.store });
+    assert.deepEqual(names(back), ["book_call_thank_you_view", TAP]);
+    assert.equal(back.cortanaCalls[1][1].event_id, `dr.b.${TAP}.${SID}`);
+    assert.deepEqual(JSON.parse(back.store.fh_dr_pending_v1), []);
+    assert.deepEqual(names(await thanks(src, { storage: back.store })), []);
 
-test("a missing or broken hub never blocks the Fundhub event; the tap waits and is sent once the hub is there", async () => {
-  const missing = await thanks({ cortana: false });
-  missing.click(downloadButton(missing));
-  assert.equal(missing.events("app_download_tap").length, 1);
-  assert.deepEqual(JSON.parse(missing.store.fh_dr_pending_v1).map((item) => item.name), ["book_call_thank_you_view", TAP]);
-  const got = [];
-  missing.win.akTracking = { trackEvent: (name) => got.push(name) };
-  missing.advance(250);
-  assert.deepEqual(got, ["book_call_thank_you_view", TAP]);
-  assert.equal(missing.store[`fh_dr_${TAP}`], "1");
-  assert.deepEqual(JSON.parse(missing.store.fh_dr_pending_v1), []);
-  missing.advance(10_000);
-  assert.equal(got.length, 2, "sent once");
-
-  const broken = await thanks({ cortana: false });
-  broken.win.akTracking = { trackEvent() { throw new Error("provider down"); } };
-  broken.click(downloadButton(broken));
-  broken.advance(1_000);
-  assert.equal(broken.events("app_download_tap").length, 1);
-  assert.ok(JSON.parse(broken.store.fh_dr_pending_v1).some((item) => item.name === TAP), "a thrown call stays queued");
-  assert.equal(broken.store[`fh_dr_${TAP}`], undefined);
-});
-
-test("an automated browser never reaches Cortana, but the Fundhub event goes, marked webdriver", async () => {
-  const bot = await thanks({ webdriver: true });
-  bot.click(downloadButton(bot));
-  assert.deepEqual(names(bot), []);
-  assert.equal(bot.store.fh_dr_pending_v1, undefined);
-  assert.deepEqual(bot.events("app_download_tap").map((b) => b.webdriver), [true]);
-});
-
-test("a tap saved while the hub was away goes out after a reload, once; a saved tap for another page is dropped", async () => {
-  const first = await thanks({ cortana: false });
-  first.click(downloadButton(first));
-  const back = await thanks({ storage: first.store });
-  assert.deepEqual(names(back), ["book_call_thank_you_view", TAP]);
-  assert.equal(back.cortanaCalls[1][1].event_id, `dr.b.${TAP}.${SID}`);
-  assert.deepEqual(JSON.parse(back.store.fh_dr_pending_v1), []);
-  assert.deepEqual(names(await thanks({ storage: back.store })), []);
-
-  const otherPages = JSON.stringify(["/watch", "/apply", "/order"].map((page) => ({ name: TAP, page, sid: SID, at: 1_000_000 })));
-  const dropped = await thanks({ storage: { fh_dr_pending_v1: otherPages } });
-  assert.deepEqual(names(dropped), ["book_call_thank_you_view"]);
-});
+    const otherPages = JSON.stringify(["/watch", "/apply", "/order"].map((page) => ({ name: TAP, page, sid: SID, at: 1_000_000 })));
+    const dropped = await thanks(src, { storage: { fh_dr_pending_v1: otherPages } });
+    assert.deepEqual(names(dropped), ["book_call_thank_you_view"]);
+  });
+}
 
 test("a card with other markup, an App Store link and another setting key counts the same", () => {
   const p = page({ pathname: "/thank-you" });
