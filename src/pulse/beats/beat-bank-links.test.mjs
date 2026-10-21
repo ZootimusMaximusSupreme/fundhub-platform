@@ -53,7 +53,7 @@ test("bank-links: the daily lanes and the hourly beat share one SQL, one judge a
   assert.equal(banksLane.STALE_SQL, banksTruth.STALE_SQL);
   assert.deepEqual({ ...beat.SYNC_SCHEDULE }, { ...banksLane.SYNC_SCHEDULE });
   for (const checkId of beat.LINK_CHECK_IDS) assert.ok(linksTruth.CHECK_IDS.includes(checkId), checkId);
-  for (const checkId of beat.SCREEN_CHECK_IDS) assert.ok(banksTruth.CHECK_IDS.includes(checkId), checkId);
+  for (const checkId of beat.SCREEN_CHECK_IDS) assert.ok(banksTruth.BANK_SCREEN_CHECK_IDS.includes(checkId), checkId);
 });
 
 test("bank-links: every surface it covers has every named deep check run here", () => {

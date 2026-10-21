@@ -239,7 +239,9 @@ async function one(run, id, sql, params, judge) {
   }
 }
 
-export const CHECK_IDS = Object.freeze([
+// Named BANK_SCREEN_CHECK_IDS, not CHECK_IDS: gap-banks.mjs re-exports this file, and a lane CHECK_IDS
+// list joins the morning self-audit manifest. This move does not change that manifest.
+export const BANK_SCREEN_CHECK_IDS = Object.freeze([
   "banks-plaid-item-error",
   "banks-linked-not-on-screen",
   "banks-sync-stale",
@@ -251,10 +253,10 @@ export const CHECK_IDS = Object.freeze([
  * status is PASS, FAIL, or skip.
  * io: { run, now, orgId, schedule: { redAfterMs, cron, job } }. run(fn) hands fn something with
  * query(sql, params): the staff scope in the morning lane, the read box in the hourly beat.
- * opts.only: the check ids to run (default all four, in CHECK_IDS order).
+ * opts.only: the check ids to run (default all four, in BANK_SCREEN_CHECK_IDS order).
  * SELECT only. Never calls Plaid.
  */
-export async function runBanksChecks(io = {}, { only = CHECK_IDS } = {}) {
+export async function runBanksChecks(io = {}, { only = BANK_SCREEN_CHECK_IDS } = {}) {
   const run = typeof io.run === "function" ? io.run : null;
   if (!run) {
     return [
@@ -274,5 +276,5 @@ export async function runBanksChecks(io = {}, { only = CHECK_IDS } = {}) {
     "banks-sync-stale": () => one(run, "banks-sync-stale", STALE_SQL, [orgId, staleBefore.toISOString()], (row) => judgeStale(row, now, schedule)),
     "banks-active-link-no-accounts": () => one(run, "banks-active-link-no-accounts", EMPTY_SQL, [orgId], judgeEmpty)
   };
-  return Promise.all(CHECK_IDS.filter((id) => only.includes(id)).map((id) => reads[id]()));
+  return Promise.all(BANK_SCREEN_CHECK_IDS.filter((id) => only.includes(id)).map((id) => reads[id]()));
 }
