@@ -731,8 +731,9 @@ describe("the two placeholder agreements carry real words", () => {
     assert.match(terms, /Round one goes out the day you sign this agreement/);
     assert.match(terms, /up to six dispute rounds/);
     assert.match(terms, /30 to 45 days/);
-    assert.match(terms, /not charged or received until all services specified in this agreement have been fully performed/);
-    assert.match(terms, /you may request return of any fee paid/);
+    assert.match(terms, /The fee in WHAT YOU PAY below is charged when you sign this agreement/);
+    assert.doesNotMatch(terms, /not charged or received until all services/);
+    assert.match(terms, /you may request return of the fee you paid/);
     assert.match(terms, /THIRD BUSINESS DAY AFTER THE DATE YOU SIGNED IT/);
     assert.match(terms, /support@tryfundhub\.com/);
   });
