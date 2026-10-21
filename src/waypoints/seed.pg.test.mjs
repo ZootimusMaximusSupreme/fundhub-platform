@@ -669,7 +669,7 @@ describe("a renamed card, a genuinely new card, and the way back", { skip: !HAVE
     assert.equal(w.completed_at, null);
     assert.equal(
       w.state_reason,
-      "Your credit file now shows an account that was not on it when you enrolled: Brand New Bank Card. Let your advisor know if this is not yours."
+      "Your credit file now shows an account that was not on it when you enrolled: Brand New Bank Card. Let our team know if this is not yours."
     );
     // Not an accusation, no dollar figure, no claim about what happens next.
     const text = w.state_reason.toLowerCase();

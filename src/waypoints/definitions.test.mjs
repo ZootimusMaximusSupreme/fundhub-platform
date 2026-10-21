@@ -471,13 +471,13 @@ describe("what the blocked row says to the client", () => {
     const one = say([{ creditor: "Brand New Bank Card" }]);
     assert.equal(
       one,
-      "Your credit file now shows an account that was not on it when you enrolled: Brand New Bank Card. Let your advisor know if this is not yours."
+      "Your credit file now shows an account that was not on it when you enrolled: Brand New Bank Card. Let our team know if this is not yours."
     );
     assert.ok(!/opened/i.test(one), "the client is not told they opened it");
   });
 
   test("more than one reads as a sentence too, and a nameless one still does", () => {
-    assert.match(say([{ creditor: "A" }, { creditor: "B" }]), /^Your credit file now shows accounts .*: A, B\. Let your advisor know if any of these are not yours\.$/);
+    assert.match(say([{ creditor: "A" }, { creditor: "B" }]), /^Your credit file now shows accounts .*: A, B\. Let our team know if any of these are not yours\.$/);
     assert.match(say([{ creditor: "" }, { creditor: "" }]), /shows 2 accounts that were not on it when you enrolled\./);
   });
 
