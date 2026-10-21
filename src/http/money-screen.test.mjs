@@ -135,6 +135,21 @@ test("tip is printed verbatim, billing line says the count and when pricing is u
   assert.match(text(M.render(d)), /\$49\.00 per container · \$98\.00 a month/);
 });
 
+test("unknown pricing says it is unavailable without inventing an amount or calling it free", () => {
+  for (const missing of [null, undefined]) {
+    const d = fixture();
+    d.billing.price_per_container_cents = missing;
+    const billing = text(M.render(d).match(/<p class="billing caption">[\s\S]*?<\/p>/)[0]);
+    assert.match(billing, /Your plan: 2 containers · Pricing is not available/);
+    assert.doesNotMatch(billing, /\$|\bfree\b|\bzero\b/i);
+  }
+  const knownZero = fixture();
+  knownZero.billing.price_per_container_cents = 0;
+  const billing = text(M.render(knownZero).match(/<p class="billing caption">[\s\S]*?<\/p>/)[0]);
+  assert.match(billing, /\$0\.00 per container · \$0\.00 a month/);
+  assert.doesNotMatch(billing, /unavailable/);
+});
+
 test("containers list their own accounts with masks and card details", () => {
   const html = M.render(fixture());
   assert.equal((html.match(/class="card box"/g) || []).length, 2);
