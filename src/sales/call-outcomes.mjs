@@ -360,6 +360,15 @@ export async function createMarketingFlag(db, {
   if (!periodStart || !periodEnd) {
     throw new CallOutcomeError("period_start and period_end are required");
   }
+  // A flag is a belief seen on real calls. With no calls behind it, or no lead source or
+  // setter to route it by, it can never match a call, so it is refused instead of stored.
+  if (
+    !((Number(outcomeCount) || 0) > 0)
+    || !String(leadSource ?? "").trim()
+    || !String(setterLabel ?? "").trim()
+  ) {
+    throw new CallOutcomeError("There are no calls behind this belief yet, so there is nothing to flag.");
+  }
 
   const r = await db.query(
     `INSERT INTO marketing_flags (
