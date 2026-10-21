@@ -73,10 +73,12 @@ const MIN = 60 * 1000;
 const HOUR = 60 * MIN;
 
 /**
- * The two jobs that tell us the engine is alive. Both run every 5 minutes on
- * Inngest (src/pulse/heartbeats.mjs INNGEST_JOBS). The sweeper hands waiting
- * texts and emails to the sender. The watch is the 5-minute alarm. A test fails
- * if either name leaves that list or stops running every 5 minutes.
+ * The two jobs that tell us the engine is alive. Both run every 5 minutes. Since 2026-10-20 the
+ * engine is the Netlify cron clock (netlify/functions/cron-clock.mjs, CLOCK_JOBS in
+ * src/pulse/heartbeats.mjs), not Inngest: every cron left Inngest when its free plan ran out. The
+ * check id still says "inngest" because ids are what the scorecard history keys on. The sweeper
+ * hands waiting texts and emails to the sender. The watch is the 5-minute alarm. A test fails if
+ * either name leaves the job list or stops running every 5 minutes.
  */
 export const WATCHED_JOBS = Object.freeze([
   { job: "message-dispatch-sweeper", does: "hands waiting texts and emails to the sender" },
@@ -126,7 +128,7 @@ SELECT job, max(finished_at) AS last_at
 
 const FIX = Object.freeze({
   dark:
-    "Read the engine's run list and the Netlify function log for the stretch named. Find out if the engine, a sync after a deploy, or the database was down, and fix that. " +
+    "Read job_heartbeats for cron-clock and the Netlify function log of cron-clock and cron-worker-background for the stretch named. Find out if the clock, the worker, a deploy, or the database was down, and fix that. " +
     "This pulse only reports. It does not restart anything.",
   outage:
     "In src/pulse/instant-watch.mjs, catch the failed read of the default org (defaultOrgId) so a dead database still sends the text with the web failures. " +
@@ -281,7 +283,7 @@ export async function inngestCronsStale({
       id,
       "FAIL",
       `The engine that runs our alarms went quiet (limit ${spanText(darkAfterMs)}; times are Arizona time). ${shown.join(". ")}.${more} ` +
-        `In that time nothing ran: ${does}. The cause is the workflow engine or the database.`,
+        `In that time nothing ran: ${does}. The cause is the cron clock, its worker, or the database.`,
       FIX.dark
     );
   }

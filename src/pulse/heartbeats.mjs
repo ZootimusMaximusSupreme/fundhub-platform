@@ -1,8 +1,10 @@
 // Job heartbeats — did every scheduled job actually run? (MB2, gap 2)
 //
-// Writers: the Inngest heartbeat add-on in src/workflows/client.mjs (every cron
-// run, one place, so no job file can forget) and the seven Netlify scheduled
-// functions in netlify/functions/ (one line each). Table: db/migrations/430.
+// Writers: the Netlify clock's worker (src/cron/run-job.mjs, every CLOCK_JOBS
+// run, one place, so no job file can forget), the Netlify scheduled functions
+// in netlify/functions/ (one line each), and the Inngest heartbeat add-on in
+// src/workflows/client.mjs (any Inngest cron; none since 2026-10-20).
+// Table: db/migrations/430.
 //
 // Reader: checkJobHeartbeats(), called by the daily pulse (Recon AG-07).
 // A job is red when its newest heartbeat is older than 3x its schedule. Audit
@@ -10,8 +12,19 @@
 
 /* Every scheduled job, with the schedule it is registered on. Two runners.
    src/pulse/heartbeats.test.mjs fails if this list drifts from the registered
-   Inngest crons (src/workflows/index.mjs) or from netlify.toml. */
-export const INNGEST_JOBS = Object.freeze([
+   Inngest crons (src/workflows/index.mjs), the clock's job table
+   (src/workflows/scheduled.mjs) or netlify.toml. */
+
+/* No cron runs on Inngest (owner, 2026-10-20: "stop burning ingests" — the free plan is 50,000
+   executions a month and the crons cost about 300,000). Empty on purpose; the test above keeps it
+   equal to the crons in src/workflows/index.mjs, and index.test.mjs keeps that at zero. */
+export const INNGEST_JOBS = Object.freeze([]);
+
+/* The jobs netlify/functions/cron-clock.mjs starts, one 5-minute slot at a time, each run in
+   netlify/functions/cron-worker-background.mjs. Same ids and schedules they had on Inngest; the
+   worker writes their receipts with runner 'netlify'. This is the clock's own copy (it must not
+   load every workflow module); the test fails unless it matches src/workflows/scheduled.mjs. */
+export const CLOCK_JOBS = Object.freeze([
   ["af-01-affiliate-drip", "*/15 * * * *"],
   ["affiliate-payout-autopay", "*/15 * * * *"],
   ["affiliate-payout-run", "0 3 1 * *"],
@@ -22,7 +35,6 @@ export const INNGEST_JOBS = Object.freeze([
   ["blueprint-finance-os-alerts", "30 7 * * *"],
   ["blueprint-next-funding-sequence-sweeper", "30 6 * * *"],
   ["clickfunnels-analytics-sweeper", "15 7 * * *"],
-  ["commas-inbox-drain", "* * * * *"],
   ["contract-chaser", "0 10 * * *"],
   ["daily-pulse", "TZ=America/Phoenix 0 6 * * *"],
   ["doc-check-retry-sweeper", "*/20 * * * *"],
@@ -51,8 +63,7 @@ export const INNGEST_JOBS = Object.freeze([
   ["slo-infinite-drip", "0 15 * * *"],
   ["subscription-billing-sweeper", "17 * * * *"],
   ["watch-curve-diagnosis-sweeper", "30 7 * * *"],
-  ["waypoint-nudge-sweeper", "0 * * * *"],
-  ["whop-billing-inbox-drain", "* * * * *"]
+  ["waypoint-nudge-sweeper", "0 * * * *"]
 ]);
 
 export const NETLIFY_JOBS = Object.freeze([
@@ -61,19 +72,38 @@ export const NETLIFY_JOBS = Object.freeze([
   ["creative-job-runner", "*/2 * * * *"],
   ["hubstaff-poll-sweeper", "*/10 * * * *"],
   ["ad-video-sweeper", "*/5 * * * *"],
-  ["commas-inbox-sweeper", "* * * * *"],
-  ["whop-billing-inbox-sweeper", "* * * * *"],
+  ["commas-inbox-sweeper", "*/5 * * * *"],
+  ["whop-billing-inbox-sweeper", "*/5 * * * *"],
   ["marketing-clock", "*/15 * * * *"],
   ["pulse-hourly", "7 * * * *"],
   ["pulse-hourly-b", "37 * * * *"],
   ["pulse-hourly-c", "52 * * * *"],
   ["pulse-hourly-d", "22 * * * *"],
-  ["pulse-outside-watch", "*/5 * * * *"]
+  ["pulse-outside-watch", "*/5 * * * *"],
+  ["cron-clock", "*/5 * * * *"]
 ]);
+
+/* Jobs retired on purpose, with the schedule they last ran on and what replaced them. Their old
+   receipts stay in job_heartbeats for a while; the morning unlisted-jobs check
+   (src/pulse/coverage/gap-jobs.mjs) ignores a retired job that has gone quiet, and goes red if one
+   still reports runs (for the two Inngest drains: the Inngest app was not re-synced and is still
+   running them, still burning the free plan). */
+export const RETIRED_JOBS = Object.freeze([
+  ["commas-inbox-drain", "* * * * *", "commas-inbox-sweeper"],
+  ["whop-billing-inbox-drain", "* * * * *", "whop-billing-inbox-sweeper"]
+]);
+
+/** Every workflow cron, whichever runner starts it: the list a "does this cron have a job row?"
+    check reads. INNGEST_JOBS is empty since 2026-10-20, so today this is CLOCK_JOBS. */
+export const CRON_JOBS = Object.freeze([...INNGEST_JOBS, ...CLOCK_JOBS]);
+
+/** The function that runs each CLOCK_JOBS job, named in that job's fix line. */
+export const CLOCK_FUNCTION = "cron-clock";
 
 export const JOBS = Object.freeze([
   ...INNGEST_JOBS.map(([job, cron]) => Object.freeze({ job, cron, runner: "inngest" })),
-  ...NETLIFY_JOBS.map(([job, cron]) => Object.freeze({ job, cron, runner: "netlify" }))
+  ...NETLIFY_JOBS.map(([job, cron]) => Object.freeze({ job, cron, runner: "netlify" })),
+  ...CLOCK_JOBS.map(([job, cron]) => Object.freeze({ job, cron, runner: "netlify", via: CLOCK_FUNCTION }))
 ]);
 
 export const STALE_MULTIPLE = 3;
@@ -238,7 +268,9 @@ export async function checkJobHeartbeats({ db, now = new Date(), jobs = JOBS } =
       ? nowMs - STALE_MULTIPLE * interval
       : monthly.getTime();
     const graceMs = interval != null ? 0 : DAY;
-    const fix = `Open the ${row.runner === "netlify" ? "Netlify scheduled function" : "Inngest function"} "${row.job}" and read its last run. Do not re-run it from this pulse.`;
+    const fix = row.via
+      ? `"${row.job}" runs on the Netlify clock: read the log of netlify/functions/${row.via}.mjs and cron-worker-background.mjs for "${row.job}", and its last job_heartbeats row. Do not re-run it from this pulse.`
+      : `Open the ${row.runner === "netlify" ? "Netlify scheduled function" : "Inngest function"} "${row.job}" and read its last run. Do not re-run it from this pulse.`;
     const sees = `${row.job} has stopped running, so whatever it does on a schedule is not happening.`;
 
     if (!hit) {

@@ -37,13 +37,14 @@ import { drain } from "../../src/payments/commas-inbox.mjs";
 import { processCommasInboxRow } from "../../src/adapters/commas.mjs";
 import { ensureRegistered } from "../../src/register-all.mjs";
 
-/* Every minute.
+/* Every 5 minutes (owner 2026-10-20, board ops/workflows/inngest-diet-2026-10-20.md).
  *
- * FASTER THAN THE OTHER SWEEPERS ON PURPOSE. This is the money path. The delay
- * between a client paying and the system knowing they paid is this number, and
- * that delay is visible to a human: it gates the onboarding email, the CRM
- * card moving, and whether the closer chasing them can see the deposit landed.
- * Five minutes of "did my payment go through?" is a support conversation.
+ * It was every minute, and the retired Inngest commas-inbox-drain drained the same queue every
+ * minute too. Both were cut when the Inngest free plan ran out ("stop burning ingests"): the
+ * Inngest twin is gone and this clock is now the only one under the Commas queue, at the same
+ * 5 minutes as the other sweepers. No written owner rule needs faster. The delay between a client
+ * paying and the system knowing is at most this number; the hourly pay-webhook beat calls the
+ * clock stale at 3 times it.
  *
  * THE SCHEDULE IS DECLARED IN netlify.toml, NOT HERE. Netlify reads it from a
  * [functions."<name>"] block or the @netlify/functions schedule() wrapper; the
@@ -51,7 +52,7 @@ import { ensureRegistered } from "../../src/register-all.mjs";
  * CLAUDE.md §8 does not allow one for something a two-line config block
  * already does. This constant is the documented value and what the test
  * asserts netlify.toml agrees with. */
-export const SWEEP_CRON = "* * * * *";
+export const SWEEP_CRON = "*/5 * * * *";
 
 /* Rows per claim, and claims per pass.
  *
@@ -59,8 +60,8 @@ export const SWEEP_CRON = "* * * * *";
  * at, and a row killed mid-process is left in 'processing'. That case is
  * recovered (claim() reclaims stale rows after STALE_CLAIM_MINUTES) but it
  * costs a delay, so the pass is sized to finish comfortably. 25 × 4 = 100
- * payments a minute is far beyond any realistic volume here, and anything
- * above it is worked through by the next pass sixty seconds later. Nothing is
+ * payments a pass is far beyond any realistic volume here, and anything
+ * above it is worked through by the next pass five minutes later. Nothing is
  * lost by stopping: an unclaimed row is still pending. */
 export const BATCH = 25;
 export const MAX_BATCHES_PER_PASS = 4;
@@ -100,7 +101,7 @@ export async function sweepCommasInbox(db, options = {}) {
 
    Answers 200 even on a failed pass, deliberately: a non-2xx from a scheduled
    function is a deploy-level alarm, and one failed sweep is not one — the next
-   pass a minute later is the retry. The outcome is in the body and the log.
+   pass five minutes later is the retry. The outcome is in the body and the log.
 
    A web Response, NOT { statusCode, body }. The default export below makes
    Netlify run this as its newer function style, which accepts only a Response

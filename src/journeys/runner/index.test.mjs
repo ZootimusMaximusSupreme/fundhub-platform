@@ -202,8 +202,12 @@ import { isSyntheticRow } from "./synthetic.mjs";
    Moved 105 -> 106 the same day with bank-outreach-automation (2026-10-20): a 15-minute
    cron that finds bankers, queues the bank emails and reads banker replies.
    No journey event reaches it, so it stays visible in neverFired; its
-   saved-result proof is src/outreach/automation.pg.test.mjs. */
-const REGISTERED = 106;
+   saved-result proof is src/outreach/automation.pg.test.mjs.
+   Moved 106 -> 104 on 2026-10-20 (owner: "stop burning ingests"): commas-inbox-drain and
+   whop-billing-inbox-drain are retired. They were Inngest twins of the Netlify sweepers that
+   drain the same payment queues; those sweepers are now the only clocks. Every other cron is
+   still in the registry, run by the Netlify cron clock instead of Inngest. */
+const REGISTERED = 104;
 
 const N = (id, type, cfg = {}, branches) => ({ id, type, title: id, cfg, touches: [], branches });
 const cond = (id, lanes) => N(id, "condition", { field: "f", op: "is true" }, lanes);

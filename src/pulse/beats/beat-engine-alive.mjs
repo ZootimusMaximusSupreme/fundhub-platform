@@ -6,6 +6,11 @@
 // Nothing live said so. The morning scorecard (outside:inngest-crons-stale) found it the next day.
 // The engine cannot watch itself, but this beat runs on the Netlify clock, which kept ticking.
 //
+// SINCE 2026-10-20 the "engine" for both jobs is the Netlify cron clock (netlify/functions/cron-clock.mjs,
+// each job run in cron-worker-background.mjs), not Inngest: every cron left Inngest when its free plan ran
+// out. This beat runs in pulse-hourly and pulse-outside-watch, separate functions from that clock, so it
+// still watches from outside.
+//
 //   receipts-fresh      Each job saved a receipt in the last 20 minutes (4 missed ticks). Red now.
 //   no-quiet-stretch    No gap over 20 minutes between receipts in the last 70 minutes. Catches a
 //                       stall that has already ended (the hourly run lands after it healed).
@@ -117,14 +122,14 @@ export const fixGuide = [
   "The 5-minute alarms stopped or went quiet. Texts and the instant door alarm were not running in that stretch.",
   "",
   "Likely causes:",
-  "- The workflow engine (Inngest) paused or fell behind. Its dashboard shows the stretch. A burst of catch-up runs afterward is the sign.",
-  "- A deploy or re-register changed the app address and the engine could not reach the functions for a while.",
+  "- The cron clock stopped: netlify/functions/cron-clock.mjs did not tick, or could not start cron-worker-background (its own job:cron-clock receipt says why).",
+  "- The worker cannot load or cannot reach the database, so each job ran but saved no receipt, or saved an error receipt that names the cause.",
   "- The database was slow or down, so receipts could not be saved (check db-health and the site health door).",
   "Steps:",
-  "- Open the Inngest dashboard for the Fundhub app and look at the runs for pulse-instant-watch in that stretch.",
+  "- Read job_heartbeats for cron-clock, pulse-instant-watch and message-dispatch-sweeper in that stretch, and the Netlify function log of cron-clock and cron-worker-background.",
   "- Run node scripts/pulse/run-beat.mjs engine-alive to see which step stopped and which job.",
-  "- If it is still down, check https://fundhub.ai/api/health and re-sync the app in Inngest. Do not unset INNGEST_EVENT_KEY.",
-  "Files: src/pulse/heartbeats.mjs, src/pulse/instant-watch.mjs, src/pulse/coverage/gap-outside-inngest.mjs, src/workflows/index.mjs"
+  "- If it is still down, check https://fundhub.ai/api/health and that CRON_WORKER_SECRET is set on Netlify (never delete or overwrite it). Do not move the jobs back to Inngest.",
+  "Files: src/pulse/heartbeats.mjs, src/pulse/instant-watch.mjs, src/pulse/coverage/gap-outside-inngest.mjs, src/workflows/scheduled.mjs, src/cron/clock.mjs, netlify/functions/cron-clock.mjs, netlify/functions/cron-worker-background.mjs"
 ].join("\n");
 
 /* ---------------- self test: no network, no database ---------------- */

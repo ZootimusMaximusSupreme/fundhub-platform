@@ -13,6 +13,10 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "../..");
 const INDEX = path.join(HERE, "coverage/INDEX.md");
 const WORKFLOWS = path.join(ROOT, "src/workflows/index.mjs");
+/* Since 2026-10-20 the registry is two literal lists: the event workflows Inngest runs
+   (index.mjs inngestFunctions) and the crons the Netlify clock runs (scheduled.mjs scheduled).
+   Every id in either one needs a coverage note. */
+const SCHEDULED = path.join(ROOT, "src/workflows/scheduled.mjs");
 const RULES = [
   path.join(ROOT, ".cursor/rules/heartbeat-on-every-build.mdc"),
   path.join(ROOT, ".claude/rules/heartbeat-on-every-build.md")
@@ -35,8 +39,11 @@ test("heartbeat law: rule files exist and name the 3 times schedule rule", () =>
 test("heartbeat law: a workflow id with no pulse coverage note fails", () => {
   if (!fs.existsSync(INDEX)) return;
 
-  const ids = registeredWorkflowIds(WORKFLOWS);
-  assert.ok(ids.length > 0, "src/workflows/index.mjs listed no workflow ids");
+  const eventIds = registeredWorkflowIds(WORKFLOWS, "export const inngestFunctions = [");
+  const clockIds = registeredWorkflowIds(SCHEDULED, "export const scheduled = [");
+  assert.ok(eventIds.length > 0, "src/workflows/index.mjs listed no workflow ids");
+  assert.ok(clockIds.length > 0, "src/workflows/scheduled.mjs listed no workflow ids");
+  const ids = [...eventIds, ...clockIds];
   const notes = coverageNotes(INDEX);
   const missing = ids.filter((id) => !hasCoverageNote(notes, id));
   assert.deepEqual(
@@ -64,7 +71,7 @@ function hasCoverageNote(notes, id) {
   return new RegExp(`(?:^|[^A-Za-z0-9-])${escaped}(?=$|[^A-Za-z0-9-])`).test(notes);
 }
 
-function registeredWorkflowIds(indexPath) {
+function registeredWorkflowIds(indexPath, header) {
   const text = fs.readFileSync(indexPath, "utf8");
   const imports = new Map();
   const importRe = /^import\s+\{([^}]+)\}\s+from\s+["'](\.\/[^"']+)["'];/gm;
@@ -81,9 +88,8 @@ function registeredWorkflowIds(indexPath) {
     }
   }
 
-  const header = "export const functions = [";
   const start = text.indexOf(header);
-  assert.ok(start >= 0, "src/workflows/index.mjs has no functions array");
+  assert.ok(start >= 0, `${path.basename(indexPath)} has no "${header}" array`);
   const open = start + header.length - 1;
   let depth = 0;
   let end = -1;
@@ -97,7 +103,7 @@ function registeredWorkflowIds(indexPath) {
       }
     }
   }
-  assert.ok(end > open, "src/workflows/index.mjs functions array does not close");
+  assert.ok(end > open, `${path.basename(indexPath)} workflow array does not close`);
 
   const body = text
     .slice(open + 1, end)

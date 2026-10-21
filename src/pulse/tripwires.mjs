@@ -18,7 +18,8 @@
 //   route:<ROUTES key in netlify/functions/api.mjs>
 //   desk:<file in public/app>
 //   page:<path under public, outside app>
-//   job:<Inngest function id in src/workflows/index.mjs>
+//   job:<workflow id in src/workflows/index.mjs `functions`: event workflows on Inngest and the
+//        scheduled jobs on the Netlify clock (src/workflows/scheduled.mjs)>
 //   send:<file named in SEND_PATHS in src/pulse/registry.mjs>
 //
 // Check ids are the ids the lanes write (src/pulse/coverage/gap-*.mjs, slice-*.mjs) or the pulse's
@@ -46,10 +47,8 @@ export const TRIPWIRES = Object.freeze({
   "route:public/slo-interest": { impact: "money", checks: ["lead:pipe-cut-with-traffic", "handoff:contact-no-followup"] },
   "route:public/survey-submit": { impact: "money", checks: ["lead:pipe-cut-with-traffic", "handoff:lead-first-touches-missing"] },
   "route:payment-links": { impact: "money", checks: ["payments:pay-link-webhook", "payments:checkout-started-no-link", "payments:whop-paid-no-access"] },
-  "job:whop-billing-inbox-drain": { impact: "money", checks: ["payments:whop-inbox-waiting", "payments:whop-paid-no-access"] },
   "job:finance-os-pull-sweeper": { impact: "customer", checks: ["blueprint:monthly-delivery"] },
   "job:waypoint-nudge-sweeper": { impact: "customer", checks: ["blueprint:coach-call-delivery", "gap:sms-sending-stuck"] },
-  "job:commas-inbox-drain": { impact: "money", checks: ["payments:commas-inbox-waiting", "payments:paid-no-entitlement"] },
   "job:invoice-checkout-retirement-sweeper": { impact: "money", checks: ["payments:invoice-checkout-retirement"] },
   "job:invoice-sent-recovery": { impact: "money", checks: ["payments:invoice-sent-recovery"] },
   "job:s-01-new-lead-intake": { impact: "money", checks: ["handoff:lead-first-touches-missing"] },

@@ -16,7 +16,7 @@
 import { functions } from "../../workflows/index.mjs";
 import { coverageKey, PULSE_REGISTRY } from "../registry.mjs";
 import {
-  INNGEST_JOBS,
+  CRON_JOBS,
   NETLIFY_JOBS,
   STALE_MULTIPLE,
   cronIntervalMs
@@ -30,7 +30,7 @@ export const U05_ID = "u-05-data-health-monitor";
 export const MONTHLY_MS = 31 * 24 * 60 * 60 * 1000;
 
 const heartbeatCron = new Map([
-  ...INNGEST_JOBS,
+  ...CRON_JOBS,
   ...NETLIFY_JOBS
 ]);
 
@@ -101,7 +101,7 @@ function cronRow(id, cron) {
   let proof;
   if (listedCron == null) {
     proof =
-      `Add ${id} to INNGEST_JOBS in src/pulse/heartbeats.mjs (cron ${cron}). ` +
+      `Add ${id} to CLOCK_JOBS in src/pulse/heartbeats.mjs and to src/workflows/scheduled.mjs (cron ${cron}). ` +
       `Red after ${redAfter} with no heartbeat. Do not auto-fix from this pulse.`;
   } else if (listedCron !== cron) {
     proof =
