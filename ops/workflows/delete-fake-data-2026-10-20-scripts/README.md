@@ -10,3 +10,4 @@ Run from this folder with Node. They connect as `fundhub_app` using `DATABASE_UR
 `plan-final.json` holds row ids only, no names or emails. It is the plan that was committed on 2026-10-20.
 - `plan2.cjs` / `exec2.cjs` / `plan2.json`: round 2 (client-less fake events + 2 test payments), same guards.
 - `plan3.cjs`: read-only map of the non-client test partners (waiting on owner yes). 14 of 32 can go fully; 18 own locked rows.
+- `rounds.cjs` + `planr.cjs` + `execg.cjs`: rounds 3 (21 held clients + real-email lead events) and 4 (non-client test data; locked partners kept as demo). `node execg.cjs round3|round4 [--commit]`.

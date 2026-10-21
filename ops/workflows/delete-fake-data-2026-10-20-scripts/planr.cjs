@@ -1,0 +1,10 @@
+const fs = require("fs"); const { connect, schema } = require("./lib.cjs"); const R = require("./rounds.cjs");
+const which = process.argv[2];
+(async () => { const c = await connect(); try { await c.query("BEGIN READ ONLY"); await c.query("SELECT set_config('fundhub.actor','staff',true)");
+  const sch = await schema(c); const p = await R[which](c, sch); p.made_at = new Date().toISOString();
+  fs.writeFileSync(`plan-${which}.json`, JSON.stringify(p, null, 1));
+  console.log(which, JSON.stringify(p.info), "| demo partners kept:", p.demoPartners.length);
+  console.log("delete:", p.order.map((t) => `${t}=${p.del[t].length}`).join("  "), "| total", Object.values(p.del).reduce((a, x) => a + x.length, 0));
+  console.log("set-null:", JSON.stringify(Object.fromEntries(Object.entries(p.nulls).map(([t, a]) => [t, a.length]))));
+  if (p.pinned) console.log("locked (stay):", Object.entries(p.pinned).map(([t, a]) => `${t}=${a.length}`).join("  "));
+} finally { await c.query("ROLLBACK").catch(() => {}); await c.end(); } })().catch((e) => { console.error("ERR", e.message); process.exit(1); });

@@ -110,19 +110,39 @@ The lanes found fake rows with no client link, so round 1 could not reach them. 
 - Backup: `credentials/backups/delete-fake-data-2026-10-20/round2/` (795 rows).
 - Read-back: 0 planned rows left. Clients still 24. Braum unchanged. Transactions 6, events 8,899.
 
+## Rounds 3 and 4 — owner said "DELETE YES — I HAVE THOSE LEADS SAVED" (committed 2026-10-20)
+
+Each round ran as one transaction with the same guards: rebuild the plan inside the transaction, back up, delete at exact counts, run the end checks early, count every table (311) and fingerprint everything outside the plan.
+
+**Round 3: the 21 held clients and lead events with real emails.** 829 rows deleted: events 684 (564 client-less lead events with real emails, plus 120 tied to the 21), clients 21, messages 34, cards 20, tasks 19, client_custom_fields 14, bookings 14, conversations 8, client_ad_attribution 4, account_magic_links 3, payment_links 3, transactions 2, accounts 2 (client logins), entitlements 1. 96 sets outside the plan were unchanged. Backup: `.../round3/`.
+
+**Round 4: test data that is not a client.** 1,189 rows deleted:
+- events 1,016 (other client-less fake events: message.queued, docs.received, analysis.completed, decision.rendered, payment.*, contract.* and others)
+- 26 test ad accounts (4 Meta, 22 TikTok), with campaigns 26, ads 9, ad_sets 4, ad_metrics_daily 7 and spend_ceilings 1
+- partner_module_settings 24, social_channels 22, social_posts 10, partner_ai_usage 9, partner_onboarding_tasks 6, cards 6
+- 14 test partners, with 3 partner logins (example.com) and 2 of their sessions
+- generation_jobs 1, partner_brand 1
+- test affiliate AFF-000180 "payoutrun basic"
+- the demo marketing_content_queue row
+
+101 sets outside the plan were unchanged. Backup: `.../round4/` (it also holds the 18 partner rows as they were before the demo flag).
+- **Kept, locked:** 18 test partners own rows the database never lets go (action_log 11, creative_assets 10, compliance_screenings 9, creative_usage_events 4). Those also pin 4 test ad_scripts and 1 brand kit. These 18 partners are now `is_demo = true`. Their posts, ad accounts, settings and logins are gone.
+
+**Live after all four rounds (fresh read-back):**
+- Clients 3: Braum FH-000507 (unchanged since 2026-10-07), App Store login FH-000844 (login active), FH-000513 (kept because of the locked sandbox money transfer).
+- Bookings 1, transactions 4, events 7,199, social_posts 0.
+- Ad accounts 1 (the real Meta account). Partners 31 (19 demo; real ones are fundhub-house, fundhub-direct, gpn-funding).
+- Affiliates 24, staff 35. Neither is touched yet; see below.
+
 ## Left over (not done here)
 
-1. **21 held real-looking people.** They need a yes or no from Chris. The same script removes them in one run if he says yes. Their 265 linked rows are ready to map.
-2. **FH-000513.** Kept because of the locked sandbox money transfer. It still owns 1,183 sandbox bank lines and FinanceOS sandbox data.
-3. **Test affiliate "payoutrun basic"** (made by the Oct 12 tests) is still an affiliate. It was out of scope (not a client).
-4. Fake data outside the client tree was not touched: raw webhook logs, `workflow_runs` and the `pulse_*` history. The app login has no delete right on those.
-5. Fake test data that is not a client, lead, booking or round. This is outside the brief, and the question went to the coordinator:
-   - about 1,100 other client-less fake events (message.queued, payment.*, deposit.paid, contract.*, docs.received and others)
-   - 32 test partners (the money lane lists them, and also says which one to keep)
-   - 4 fake Meta and 17 fake TikTok ad accounts, with their 9 ads, campaigns, ad sets and metrics
-   - 10 test social_posts
-   - 1 demo marketing_content_queue row
-   - Read-only map (`plan3.cjs`): the 32 Oct-12 test partners and affiliate AFF-000180 reach 233 rows. 14 partners can go completely. 18 own rows the database locks forever (action_log 11, creative_assets 10, compliance_screenings 9, creative_usage_events 4), so those partner rows would stay, marked demo.
+1. **Fake staff and fake affiliates.** Chris asked about these after rounds 3 and 4. They were outside every round so far. They are listed for his yes or no:
+   - Staff: 14 Oct-12 test fixtures (example.com), 3 DEMO staff, Mock Closer Sign, and 5 made-up seed people from Jul 31, all suspended and never logged in.
+   - Affiliates: about 18 test or sim or demo affiliates.
+   - Kept no matter what: Chris, Sarah Blankstein, Justice Nikkel, the TEST role logins that agents use for checks, TEST — Client Role (the App Store login), and the 5 real-looking affiliates.
+2. **FH-000513** and the 18 locked test partners stay. Their locks can't be broken without a schema change.
+3. 3 fake events still have rows in `failed_events` pointing at them, so they stay.
+4. Not touched: raw webhook logs, `workflow_runs`, the `pulse_*` history, anonymous site events, and older Aug test partners (test-role-partner, e2e-wl-*, sim-wl-*, demo-partner).
 
 ## Restore
 
