@@ -120,7 +120,7 @@ are routine and have to stay harmless.
 
 ## A bank answer, and who it is saved against (2026-10-20)
 
-Files: `api/applications.mjs`, `src/applications/status.mjs`, `db/migrations/492_application_decision_staff.sql`,
+Files: `api/applications.mjs`, `src/applications/status.mjs`, `db/migrations/494_application_decision_staff.sql`,
 `public/app/client-control-panel.html`.
 
 ```mermaid
@@ -148,7 +148,7 @@ flowchart TD
   success-fee bill (the client never used the card, or the bank pulled it), or puts it back. The
   bank's yes stays as it was. Both ways now ask for a reason, and a filler sentence is never saved
   in place of one.
-* **The database holds the rule.** Migration 492 adds `application_decisions.staff_id` and refuses a
+* **The database holds the rule.** Migration 494 adds `application_decisions.staff_id` and refuses a
   new bank-answer, not-counting or counting-again row with no staff id or name, and a not-counting or
   counting-again row with no reason.
 * **The bank's email is a suggestion only.** A bank email that reaches the client's Fundhub funding

@@ -88,7 +88,7 @@ describe("approval now, amount later (pg)", { skip: !HAS_DB ? "no DATABASE_URL" 
     orgId = await resolveDefaultOrg(db);
     await wipe();
 
-    // Every bank answer is saved against a real staff member (migration 492).
+    // Every bank answer is saved against a real staff member (migration 494).
     const staffId = (await db.query(
       `INSERT INTO staff (org_id, email, name, role, status)
        VALUES ($1, $2, 'Funding Advisor', 'funding_advisor', 'active') RETURNING id`,

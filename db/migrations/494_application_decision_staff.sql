@@ -1,4 +1,4 @@
--- 492: every bank decision and every "Doesn't count / Count again" names the exact staff member.
+-- 494: every bank decision and every "Doesn't count / Count again" names the exact staff member.
 --
 -- Owner ask (2026-10-20, Set A items 18-20): the record of a Bank yes, Bank no, Doesn't count or
 -- Count again must name the exact application and the staff member who pressed it, and the

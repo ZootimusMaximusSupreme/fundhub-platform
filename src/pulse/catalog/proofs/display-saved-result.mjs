@@ -114,7 +114,7 @@ SELECT count(*)::int AS sample_count,
    AND ${REAL_DECISION_SQL}`;
 
 /* The decision names the exact application and the staff member who pressed it: a staff row in the
-   same company, by id (migration 492), not only a typed name. */
+   same company, by id (migration 494), not only a typed name. */
 const APPROVED_DECISION_SQL = `
 SELECT count(*)::int AS sample_count,
        count(*) FILTER (WHERE a.id IS NULL OR d.application_id IS NULL OR d.decided_at IS NULL

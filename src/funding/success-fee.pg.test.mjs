@@ -143,7 +143,7 @@ describe("success fee on confirmed approvals (pg)",
       `SELECT id FROM products WHERE org_id = $1 AND code = 'card-stacking-dfy' LIMIT 1`, [orgId]
     )).rows[0]?.id;
     assert.ok(productId, "card-stacking-dfy product must exist");
-    // "Doesn't count" is saved against a real staff member (migration 492).
+    // "Doesn't count" is saved against a real staff member (migration 494).
     await db.query(`DELETE FROM staff WHERE email LIKE $1`, [`${MARK}%`]).catch(() => {});
     const staffId = (await db.query(
       `INSERT INTO staff (org_id, email, name, role, status)

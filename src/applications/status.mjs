@@ -22,7 +22,7 @@ export class ApplicationStatusError extends Error {
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /* The decisions a person makes by pressing a button. Each one is saved against the
-   exact staff member (application_decisions.staff_id, migration 492), and the
+   exact staff member (application_decisions.staff_id, migration 494), and the
    database refuses one without it. */
 const STAFF_DECISIONS = new Set(["bank_decision", "approval_excluded", "approval_reinstated"]);
 

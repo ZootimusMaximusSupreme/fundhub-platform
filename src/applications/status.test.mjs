@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { setApplicationStatus, logBankDecision, listClientDecisionPlays, setApprovalExclusion, ApplicationStatusError } from "./status.mjs";
 
 // The signed-in staff member who presses Bank yes / Bank no / Doesn't count. A bank answer is
-// saved against this exact person (application_decisions.staff_id, migration 492).
+// saved against this exact person (application_decisions.staff_id, migration 494).
 const STAFF = { id: "55555555-5555-4555-8555-555555555555", name: "Advisor" };
 const ROUND_NOW = "66666666-6666-4666-8666-666666666666";
 
