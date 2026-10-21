@@ -27,7 +27,13 @@
 // the code and in ops/workflows/heartbeat-gaps-2026-10-08/keys.md.
 
 import { fenceVerdict, MESSAGING_DRY_RUN, ADAPTERS_DRY_RUN } from "../../lib/dry-run.mjs";
-import { livePullAllowed, isProductionHost, isSandboxHost, normalizeHost } from "../../finance/crs-identities.mjs";
+// ONE JUDGE, TWO CLOCKS (2026-10-20). keys:credit-pull-live-allowed and the setting helpers it shares
+// with the other checks here (onServer, keyState, the laptop gate) live in
+// src/pulse/beats/lib/credit-pull-key-truth.mjs, so this lane and the hourly beat soft-pull give the
+// same verdict. The credit host rules there are copies of src/finance/crs-identities.mjs (drift test).
+import {
+  CRS_FIX, SAY, SKIP_NO_ENV, creditPullLiveAllowed, keyState, onServer, settingsGate
+} from "../beats/lib/credit-pull-key-truth.mjs";
 // The checkout mint picks its key and its address here. The check asks the vendor
 // about the SAME key the mint would use, so the two cannot drift apart.
 import { checkoutConfig, CHECKOUT_API_KEY_ENVS } from "../../payments/commas-api.mjs";
@@ -113,8 +119,7 @@ export const LAUNCH_SECRETS = Object.freeze([
   { name: "TWILIO_AUTH_TOKEN", what: "inbound texts and text delivery receipts" }
 ].map((row) => Object.freeze(row)));
 
-/** The three settings a real credit pull needs, besides the allow-live switch and the host. */
-export const CRS_LOGIN_KEYS = Object.freeze(["CRS_API_USERNAME", "CRS_API_PASSWORD"]);
+export { CRS_LOGIN_KEYS, creditPullLiveAllowed, keyState, onServer } from "../beats/lib/credit-pull-key-truth.mjs";
 
 export const TWILIO_DEFAULT_BASE = "https://api.twilio.com";
 export const RESEND_DEFAULT_BASE = "https://api.resend.com";
@@ -141,9 +146,7 @@ const FIX = Object.freeze({
     "Get the full value of each named key from the vendor's own dashboard and set it on Netlify (production). " +
     "Do not copy it from credentials/env.full.snapshot: most keys there are rows of asterisks. " +
     "Never delete the old value first. Ship once. " + TAIL,
-  crs:
-    "Fix the named CRS setting on Netlify (production): CRS_ALLOW_LIVE must be 1, CRS_API_HOST must be the production credit host, " +
-    "and CRS_API_USERNAME and CRS_API_PASSWORD must be the full values from the credit vendor. Ship once. " + TAIL,
+  crs: CRS_FIX,
   vendor:
     "The vendor refused the key we hold. Check the key in the vendor's own dashboard and set a good one on Netlify (production). " +
     "Never delete the old value first. " + TAIL,
@@ -159,32 +162,6 @@ function row(id, status, detail, suggestedFix = null) {
 
 function clip(value, n = 160) {
   return String((value && value.message) || value || "").replace(/\s+/g, " ").trim().slice(0, n);
-}
-
-/** True inside the deployed function (Netlify runs functions on Lambda), false on a laptop. */
-export function onServer(env) {
-  return !!(env && (env.AWS_LAMBDA_FUNCTION_NAME || env.LAMBDA_TASK_ROOT || env.NETLIFY));
-}
-
-/** "ok", "empty" (unset or blank) or "mask" (a row of asterisks, the Netlify list placeholder). */
-export function keyState(env, name) {
-  const v = String(env && env[name] != null ? env[name] : "").trim();
-  if (!v) return "empty";
-  if (/\*{4,}/.test(v)) return "mask";
-  return "ok";
-}
-
-const SAY = Object.freeze({ empty: "is not set", mask: "is a row of asterisks, not a real value" });
-
-const SKIP_NO_ENV = "No settings came with this run, so nothing was read.";
-const SKIP_LAPTOP =
-  "This run is not the live server (no Netlify or Lambda marker), so its settings are a laptop copy and were not read as the live site's.";
-
-/** A skip row when the settings cannot speak for the live site, else null. */
-function settingsGate(id, env) {
-  if (!env || typeof env !== "object") return row(id, "skip", SKIP_NO_ENV);
-  if (!onServer(env)) return row(id, "skip", SKIP_LAPTOP);
-  return null;
 }
 
 // ── 1. The locks on customer messages ──────────────────────────────────────
@@ -338,34 +315,7 @@ export function launchSecretsPresent(env, { parked = [] } = {}) {
 }
 
 // ── 4. A real credit pull ──────────────────────────────────────────────────
-// The plan named a CRS_PROVIDER setting. There is none: the provider is a
-// constant, and "simulated" is an argument a caller passes, never a setting.
-// What decides real or fake is the host, the allow-live switch and the login.
-
-export function creditPullLiveAllowed(env) {
-  const id = "keys:credit-pull-live-allowed";
-  const gate = settingsGate(id, env);
-  if (gate) return gate;
-
-  const bad = [];
-  if (!livePullAllowed(env)) {
-    bad.push("CRS_ALLOW_LIVE is not set to an explicit on value (1, true, yes or on), so the pull refuses the real credit host");
-  }
-  const host = normalizeHost(env.CRS_API_HOST);
-  if (!host) {
-    bad.push("CRS_API_HOST is not set, so no pull can start");
-  } else if (isSandboxHost(host)) {
-    bad.push("CRS_API_HOST points at the vendor's test host, so a pull returns the vendor's made-up people, not the buyer");
-  } else if (!isProductionHost(host)) {
-    bad.push("CRS_API_HOST is not a host the credit pull accepts");
-  }
-  for (const name of CRS_LOGIN_KEYS) {
-    const state = keyState(env, name);
-    if (state !== "ok") bad.push(`${name} ${SAY[state]}`);
-  }
-  if (bad.length) return row(id, "FAIL", `A paying customer would not get a real credit pull. ${bad.join(". ")}.`, FIX.crs);
-  return row(id, "PASS", "A real credit pull is allowed: CRS_ALLOW_LIVE is on, CRS_API_HOST is the production credit host, and the CRS login is set.");
-}
+// creditPullLiveAllowed lives in src/pulse/beats/lib/credit-pull-key-truth.mjs (exported above).
 
 // ── 5. Do the text and email keys work? ────────────────────────────────────
 // One GET to each vendor. Nothing is sent. The answer bodies are read for a
