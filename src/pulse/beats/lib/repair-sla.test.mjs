@@ -1,9 +1,15 @@
-// The pulse's copy of the repair stage clocks must say exactly what the desk's clocks say.
+// The repair stage clocks: one copy (this lib file), handed out unchanged by src/repair/sla.mjs.
 import test from "node:test";
 import assert from "node:assert/strict";
 
 import * as app from "../../../repair/sla.mjs";
 import * as copy from "./repair-sla.mjs";
+
+test("repair-sla: src/repair/sla.mjs hands out this file's own clocks, not a second copy", () => {
+  assert.equal(app.STAGE_SLA, copy.STAGE_SLA);
+  assert.equal(app.isBreached, copy.isBreached);
+  assert.equal(app.STALLED_STAGE, copy.STALLED_STAGE);
+});
 
 test("repair-sla: the copy holds the same clocks and the same stalled stage as src/repair/sla.mjs", () => {
   assert.deepEqual(copy.STAGE_SLA, app.STAGE_SLA);

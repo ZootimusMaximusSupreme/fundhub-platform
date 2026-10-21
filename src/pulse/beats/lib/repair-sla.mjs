@@ -1,10 +1,10 @@
-// The repair desk's stage clocks, for the pulse. A COPY of src/repair/sla.mjs.
+// The repair desk's stage clocks. THE ONE COPY (2026-10-20).
 //
-// src/repair/sla.mjs is app code (the desk's Stuck chip and the SLA sweeper read it), so it stays
-// where it is. A beat may import only from src/pulse/beats/lib, so the clocks the repair checks judge
-// with are copied here word for word. repair-sla.test.mjs fails the moment the two drift: the same
-// STAGE_SLA, the same STALLED_STAGE and the same isBreached answer on a grid of stages and ages.
-// Change the clocks in src/repair/sla.mjs first, then copy them here. Pure: no imports, no I/O.
+// This file used to be a word-for-word copy of src/repair/sla.mjs for the pulse. src/repair/sla.mjs now
+// re-exports this file, so the desk's Stuck chip, the SLA sweeper, the progress timeline and the hourly
+// repair beats all read these clocks (a beat may import only from src/pulse/beats/lib).
+// repair-sla.test.mjs holds that the app file hands out these very objects. Change the clocks here.
+// Pure: no imports, no I/O.
 
 export const STAGE_SLA = Object.freeze({
   intake: { days: 3, businessDays: true, task: "chase_contract" },
