@@ -231,13 +231,15 @@ final class CaptureChoiceTests: XCTestCase {
         XCTAssertNil(p.shortfall)
     }
 
-    func testBackCameraPrefersSteady1080Over4K() {
+    /// Owner call 2026-10-21 replaced "steady 30 over 120": an ad films 1080p at the
+    /// lens's top normal rate, up to 120. It still never films an ad in 4K.
+    func testBackCameraAdTakesTopRate1080Not4K() {
         let formats = [f(0, 3840, 2160, 60), f(1, 1920, 1080, 60, stab: false), f(2, 1920, 1080, 30), f(3, 1920, 1080, 120)]
         let p = CaptureChoice.pickStable1080(formats, wantStabilization: true)!
-        XCTAssertEqual(p.index, 2, "a steady 30 beats an unsteady 60 and slow motion")
+        XCTAssertEqual(p.index, 3)
         XCTAssertEqual(p.width, 1920)
         XCTAssertEqual(p.height, 1080)
-        XCTAssertEqual(p.fps, 30)
+        XCTAssertEqual(p.fps, 120)
         XCTAssertNil(p.shortfall)
     }
 
@@ -265,5 +267,56 @@ final class CaptureChoiceTests: XCTestCase {
         XCTAssertEqual(CaptureChoice.takeName(for: s), "SLO Ad 92 — Inquiries off first Take 1.mp4")
         XCTAssertEqual(CaptureChoice.takeName(for: s, localExtra: 1), "SLO Ad 92 — Inquiries off first Take 2.mp4")
         XCTAssertEqual(CaptureChoice.safeFileName("a/b:c"), "a-b-c")
+    }
+}
+
+/// Owner call 2026-10-21: long form films 4K60, ads film 1080p at the lens's top rate (up to 120).
+final class FilmModeTests: XCTestCase {
+    func f(_ i: Int, _ w: Int, _ h: Int, _ fps: Double) -> CaptureChoice.FormatInfo {
+        CaptureChoice.FormatInfo(index: i, width: w, height: h, maxFPS: fps, stabilization: true, videoRange: true, hdr: false)
+    }
+
+    func testLongFormPicks4K60() {
+        let formats = [f(0, 1920, 1080, 60), f(1, 3840, 2160, 30), f(2, 3840, 2160, 60), f(3, 1920, 1080, 120)]
+        let p = CaptureChoice.pickForLens(formats, lens: "front", longForm: true, wantStabilization: true)!
+        XCTAssertEqual([p.width, p.height, p.fps, p.index], [3840, 2160, 60, 2])
+        XCTAssertNil(p.shortfall)
+    }
+
+    func testLongFormSaysWhen4K60IsMissing() {
+        let p = CaptureChoice.pickForLens([f(0, 3840, 2160, 30)], lens: "front", longForm: true, wantStabilization: true)!
+        XCTAssertEqual(p.fps, 30)
+        XCTAssertNotNil(p.shortfall)
+    }
+
+    func testAdPicks1080At120NotSlowMotion240() {
+        let formats = [f(0, 1920, 1080, 60), f(1, 1920, 1080, 120), f(2, 1920, 1080, 240), f(3, 3840, 2160, 60)]
+        let p = CaptureChoice.pickForLens(formats, lens: "front", longForm: false, wantStabilization: true)!
+        XCTAssertEqual([p.width, p.height, p.fps, p.index], [1920, 1080, 120, 1])
+        XCTAssertNil(p.shortfall)
+    }
+
+    func testAdUsesTheLensTopRateWithNoShortfall() {
+        let p = CaptureChoice.pickForLens([f(0, 1920, 1080, 30), f(1, 1920, 1080, 60)], lens: "back", longForm: false, wantStabilization: true)!
+        XCTAssertEqual([p.fps, p.index], [60, 1])
+        XCTAssertNil(p.shortfall)
+    }
+
+    func testOnly240LensIsCappedAt120() {
+        let p = CaptureChoice.pickForLens([f(0, 1920, 1080, 240)], lens: "front", longForm: false, wantStabilization: true)!
+        XCTAssertEqual(p.fps, 120)
+    }
+
+    func testLongFormRuleMatchesTheWebsite() {
+        func s(_ title: String, format: String? = nil) -> Script {
+            var x = Script(id: "a", rootScriptId: "a", version: 1, title: title, body: "x")
+            x.scriptFormat = format
+            return x
+        }
+        XCTAssertTrue(s("/watch VSL (book-a-call)").isLongForm)
+        XCTAssertTrue(s("/watch thank-you video").isLongForm)
+        XCTAssertTrue(s("Anything", format: "vsl").isLongForm)
+        XCTAssertFalse(s("Direct Book Ad 13 — 700 and up, hundreds of clients").isLongForm)
+        XCTAssertFalse(s("Capital Blueprint Ad 3 — 600 and up, the shortest path").isLongForm)
     }
 }

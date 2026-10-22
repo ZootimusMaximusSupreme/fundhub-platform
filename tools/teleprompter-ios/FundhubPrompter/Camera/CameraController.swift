@@ -2,9 +2,11 @@ import AVFoundation
 import Photos
 import UIKit
 
-/// Films at 1080p. The front camera tries 60 fps, then 30. It never asks for 4K.
-/// The back wide camera is the phone that sits and films him: the steadiest 1080p,
-/// and only if this phone has no front camera. The front preview stays a mirror.
+/// Native AVFoundation filming (owner call 2026-10-21): long form (VSL,
+/// thank-you, testimonial) at 4K 3840×2160, 60 fps; ads at 1080p at the
+/// fastest normal-speed rate the lens has, up to 120 fps. The front camera
+/// films; the back wide camera only if this phone has no front camera.
+/// The front preview stays a mirror.
 /// The back camera is not mirrored. HEVC, no bitrate cap, Dolby Vision when the
 /// camera has it. Each take is saved to Photos under its take name
 /// (marketing/ads/NAMING.md). Sources in tools/teleprompter-ios/README.md.
@@ -37,6 +39,34 @@ final class CameraController: NSObject, ObservableObject {
     private var rotation: AVCaptureDevice.RotationCoordinator?
     private var settings = PrompterSettings()
     private var pendingName: String = "Take.mp4"
+    private var pendingOfferKey: String?
+    private var recordStarted: Date?
+    /// Long form films 4K60. Set per script by the shoot screen.
+    private var longForm = false
+    /// What the camera was really set to when the take started (for the Drive description).
+    private var lastPick: CaptureChoice.Pick?
+    /// The back lens when true. The front lens (a mirror) when false.
+    private var wantBack = false
+    /// A finished take: (file, take name, offer key, measured settings), on the
+    /// main queue, before anything is kept. The receiver owns the file.
+    var onTake: (@MainActor (URL, String, String?, [String: AnyCodable]) -> Void)?
+    /// The camera is set: what it really films.
+    var onReady: (@MainActor (Info) -> Void)?
+    /// The take really started recording.
+    var onRecordingStarted: (@MainActor () -> Void)?
+    /// A take that failed to record. No file.
+    var onTakeFailed: (@MainActor (String) -> Void)?
+
+    struct Info: Equatable {
+        var back: Bool
+        var longForm: Bool
+        /// The recorded picture, upright (a phone held up films 1080×1920 or 2160×3840).
+        var width: Int
+        var height: Int
+        var fps: Int
+        var summary: String
+        var shortfall: String?
+    }
     private var configured = false
 
     /// Ask for camera and microphone, then set the camera up.
@@ -64,6 +94,43 @@ final class CameraController: NSObject, ObservableObject {
         }
     }
 
+    /// The script on screen changed: 4K60 for long form, 1080p max rate for ads.
+    /// Never changes the camera in the middle of a take.
+    func setLongForm(_ on: Bool) {
+        queue.async {
+            guard self.longForm != on else { return }
+            self.longForm = on
+            guard self.configured, !self.movieOutput.isRecording else { return }
+            self.configureFormat()
+        }
+    }
+
+    /// Front (mirror) or back lens. Never changes the camera in the middle of a take.
+    func setFacing(back: Bool) {
+        queue.async {
+            guard self.wantBack != back else { return }
+            self.wantBack = back
+            guard self.configured, !self.movieOutput.isRecording else { return }
+            self.swapLens()
+        }
+    }
+
+    /// Put the chosen lens in, then pick its format again. Runs on the camera queue.
+    private func swapLens() {
+        guard let cam = filmingCamera(), cam.uniqueID != device?.uniqueID else { configureFormat(); return }
+        session.beginConfiguration()
+        if let old = videoInput { session.removeInput(old); videoInput = nil }
+        do {
+            let vi = try AVCaptureDeviceInput(device: cam)
+            if session.canAddInput(vi) { session.addInput(vi); videoInput = vi; device = cam }
+        } catch {
+            DispatchQueue.main.async { self.lastError = "That camera did not start: \(error.localizedDescription)" }
+        }
+        session.commitConfiguration()
+        if let d = device { rotation = AVCaptureDevice.RotationCoordinator(device: d, previewLayer: nil) }
+        configureFormat()
+    }
+
     /// Settings changed (quality, frame rate, codec, steady, exposure, mirror).
     func apply(_ s: PrompterSettings) {
         settings = s
@@ -82,9 +149,9 @@ final class CameraController: NSObject, ObservableObject {
                                          mediaType: .video, position: .back).devices.first
     }
 
-    /// Front camera when this phone has one. Otherwise the back camera, so the preview stays up.
+    /// The lens asked for, else the other one, so the preview stays up.
     private func filmingCamera() -> AVCaptureDevice? {
-        frontCamera() ?? backCamera()
+        wantBack ? (backCamera() ?? frontCamera()) : (frontCamera() ?? backCamera())
     }
 
     private func configure(withAudio: Bool) {
@@ -136,7 +203,7 @@ final class CameraController: NSObject, ObservableObject {
                 hdr: f.isVideoHDRSupported && sub != kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange && sub != kCVPixelFormatType_420YpCbCr8BiPlanarFullRange)
         }
         let lens = cam.position == .back ? "back" : "front"
-        guard let pick = CaptureChoice.pickForLens(infos, lens: lens, wantStabilization: want != .off) else {
+        guard let pick = CaptureChoice.pickForLens(infos, lens: lens, longForm: longForm, wantStabilization: want != .off) else {
             DispatchQueue.main.async { self.shortfall = "This camera has no 16:9 video format." }
             return
         }
@@ -148,7 +215,7 @@ final class CameraController: NSObject, ObservableObject {
             let frame = CMTime(value: 1, timescale: CMTimeScale(pick.fps))
             cam.activeVideoMinFrameDuration = frame
             cam.activeVideoMaxFrameDuration = frame
-            if format.isVideoHDRSupported {
+            if format.isVideoHDRSupported && pick.fps <= 60 {
                 cam.automaticallyAdjustsVideoHDREnabled = false
                 cam.isVideoHDREnabled = true
             }
@@ -177,12 +244,22 @@ final class CameraController: NSObject, ObservableObject {
         else { size = "\(pick.width)×\(pick.height)" }
         let who = front ? "Front camera" : "Back camera"
         var note = pick.shortfall
-        if note == nil && s.quality == .uhd4K && pick.width == 1920 && pick.height == 1080 {
-            note = "1920×1080 is 1080p. It is not 4K."
+        if note == nil && longForm && !(pick.width == 3840 && pick.height == 2160) {
+            note = "This is long form, and this camera did not give 4K."
         }
+        lastPick = pick
+        let kind = longForm ? "Long form" : "Ad"
+        let angle = rotation?.videoRotationAngleForHorizonLevelCapture ?? 90
+        let upright = Int(angle.rounded()) % 180 != 0
+        let line = "\(kind) · \(who) · \(size) · \(pick.fps) fps · \(codecWord)" + (front ? " · mirrored" : "")
+        let info = Info(back: !front, longForm: longForm,
+                        width: upright ? min(pick.width, pick.height) : max(pick.width, pick.height),
+                        height: upright ? max(pick.width, pick.height) : min(pick.width, pick.height),
+                        fps: pick.fps, summary: line, shortfall: note)
         DispatchQueue.main.async {
-            self.summary = "\(who) · \(size) · \(pick.fps) fps · \(codecWord)" + (front ? " · mirrored" : "")
+            self.summary = line
             self.shortfall = note
+            self.onReady?(info)
         }
     }
 
@@ -217,9 +294,11 @@ final class CameraController: NSObject, ObservableObject {
     var isRecording: Bool { if case .recording = state { return true } else { return false } }
 
     /// Start a take. `name` is the take file name from the server.
-    func startRecording(name: String) {
+    func startRecording(name: String, offerKey: String? = nil) {
         guard case .ready = state else { return }
         pendingName = name
+        pendingOfferKey = offerKey
+        recordStarted = Date()
         let angle = rotation?.videoRotationAngleForHorizonLevelCapture ?? 90
         queue.async {
             guard let conn = self.movieOutput.connection(with: .video) else { return }
@@ -249,22 +328,45 @@ extension CameraController: AVCaptureFileOutputRecordingDelegate {
         let finished = (error as NSError?)?.userInfo[AVErrorRecordingSuccessfullyFinishedKey] as? Bool ?? (error == nil)
         DispatchQueue.main.async { self.state = .saving }
         guard finished else {
+            let why = "The take did not record: \(error?.localizedDescription ?? "unknown")"
             DispatchQueue.main.async {
                 self.state = .ready
-                self.lastError = "The take did not record: \(error?.localizedDescription ?? "unknown")"
+                self.lastError = why
+                self.onTakeFailed?(why)
             }
             return
         }
+        let offerKey = pendingOfferKey
+        let diagnostics = takeDiagnostics()
         Task {
-            let result = await PhotosSaver.save(movie: url, takeName: name)
+            // One MP4 copy, no re-encode. Nothing is kept until Chris says Yes.
+            let file = await PhotosSaver.remuxToMP4(url) ?? url
+            if file != url { try? FileManager.default.removeItem(at: url) }
             await MainActor.run {
                 self.state = .ready
-                switch result {
-                case .success(let saved): self.lastSaved = "Saved to Photos: \(saved)"; self.lastError = nil
-                case .failure(let e): self.lastError = e.message
-                }
+                if let take = self.onTake { take(file, name, offerKey, diagnostics) }
             }
         }
+    }
+
+    func fileOutput(_ output: AVCaptureFileOutput, didStartRecordingTo fileURL: URL, from connections: [AVCaptureConnection]) {
+        DispatchQueue.main.async { self.onRecordingStarted?() }
+    }
+
+    /// What the camera filmed, in the fields the take route keeps
+    /// (src/marketing/take-upload.mjs takeCaptureDescription).
+    private func takeDiagnostics() -> [String: AnyCodable] {
+        var d: [String: AnyCodable] = [:]
+        let ms = Int((Date().timeIntervalSince(recordStarted ?? Date())) * 1000)
+        d["elapsed_ms"] = AnyCodable(max(1, ms))
+        if let p = lastPick {
+            d["start_width"] = AnyCodable(p.width)
+            d["start_height"] = AnyCodable(p.height)
+            d["start_frame_rate"] = AnyCodable(Double(p.fps))
+            d["target_fps"] = AnyCodable(Double(p.fps))
+        }
+        d["start_facing"] = AnyCodable(device?.position == .back ? "environment" : "user")
+        return d
     }
 }
 

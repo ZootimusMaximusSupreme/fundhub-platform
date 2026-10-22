@@ -2,14 +2,9 @@ import SwiftUI
 
 @main
 struct FundhubPrompterApp: App {
-    @StateObject private var model = AppModel()
-    @StateObject private var camera = CameraController()
-
     var body: some Scene {
         WindowGroup {
             RootView()
-                .environmentObject(model)
-                .environmentObject(camera)
                 .preferredColorScheme(.dark)
                 .tint(Brand.amber)
         }
@@ -25,14 +20,8 @@ enum Brand {
 }
 
 struct RootView: View {
-    @EnvironmentObject var model: AppModel
-    @Environment(\.scenePhase) private var phase
-
     var body: some View {
-        ScriptListView()
-        .onChange(of: phase) { _, p in
-            if p == .active { model.startPolling() } else { model.stopPolling() }
-        }
-        .onAppear { model.startPolling() }
+        // The teleprompter Chris built: the live website screen.
+        LivePrompterView()
     }
 }

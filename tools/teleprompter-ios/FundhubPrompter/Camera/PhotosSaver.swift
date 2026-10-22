@@ -11,16 +11,18 @@ import Photos
 enum PhotosSaver {
     struct SaveError: Error { var message: String }
 
-    static func save(movie: URL, takeName: String) async -> Result<String, SaveError> {
+    static func save(movie: URL, takeName: String, moveFile: Bool = true) async -> Result<String, SaveError> {
         let status = await PHPhotoLibrary.requestAuthorization(for: .addOnly)
         guard status == .authorized || status == .limited else {
             return .failure(SaveError(message: "Photos is off for Fundhub Prompter. Turn on Settings › Fundhub Prompter › Photos › Add Photos Only. The take is still on this phone until the app closes."))
         }
         var file = movie
         var name = takeName.hasSuffix(".mp4") ? takeName : takeName + ".mp4"
-        if let mp4 = await remuxToMP4(movie) {
+        if movie.pathExtension.lowercased() == "mp4" {
+            // Already an MP4 box.
+        } else if let mp4 = await remuxToMP4(movie) {
             file = mp4
-            try? FileManager.default.removeItem(at: movie)
+            if moveFile { try? FileManager.default.removeItem(at: movie) }
         } else {
             name = String(name.dropLast(4)) + ".mov"
         }
@@ -29,7 +31,7 @@ enum PhotosSaver {
                 let req = PHAssetCreationRequest.forAsset()
                 let opts = PHAssetResourceCreationOptions()
                 opts.originalFilename = name
-                opts.shouldMoveFile = true
+                opts.shouldMoveFile = moveFile
                 req.addResource(with: .video, fileURL: file, options: opts)
             }
             return .success(name)

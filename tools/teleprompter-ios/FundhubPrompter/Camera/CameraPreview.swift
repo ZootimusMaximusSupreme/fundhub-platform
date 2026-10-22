@@ -13,10 +13,14 @@ struct CameraPreview: UIViewRepresentable {
         private var coordinator: AVCaptureDevice.RotationCoordinator?
         private var watch: NSKeyValueObservation?
 
+        private var leveledDevice: String?
+
         func level() {
-            guard coordinator == nil,
-                  let input = previewLayer.session?.inputs.compactMap({ $0 as? AVCaptureDeviceInput })
-                    .first(where: { $0.device.hasMediaType(.video) }) else { return }
+            guard let input = previewLayer.session?.inputs.compactMap({ $0 as? AVCaptureDeviceInput })
+                    .first(where: { $0.device.hasMediaType(.video) }),
+                  input.device.uniqueID != leveledDevice else { return }
+            leveledDevice = input.device.uniqueID
+            watch = nil
             let c = AVCaptureDevice.RotationCoordinator(device: input.device, previewLayer: previewLayer)
             coordinator = c
             applyMirror(angle: c.videoRotationAngleForHorizonLevelPreview)

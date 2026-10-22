@@ -23,6 +23,8 @@ struct PrompterScreen: View {
     private var paragraphs: [Paragraph] { script.map(ScriptText.paragraphs) ?? [] }
     private var rolling: Bool { [.rolling, .countdown, .holding].contains(prompter.mode) }
     private var cameraOn: Bool { model.settings.recordOnThisDevice && !model.isDemo }
+    /// Script edits need a staff sign-in or a film key; the open app has neither.
+    private var canEdit: Bool { model.isDemo || model.signIn != nil }
 
     var body: some View {
         GeometryReader { _ in
@@ -79,6 +81,7 @@ struct PrompterScreen: View {
         .persistentSystemOverlays(.hidden)
         .onAppear(perform: appear)
         .onDisappear(perform: disappear)
+        .onChange(of: root) { _, _ in camera.setLongForm(script?.isLongForm ?? false) }
         .onChange(of: model.settings) { old, s in
             if s.recordOnThisDevice != old.recordOnThisDevice {
                 if cameraOn { camera.start(with: s) } else { camera.stop() }
@@ -154,8 +157,10 @@ struct PrompterScreen: View {
                 prompter.togglePlay()
             }
             .accessibilityIdentifier("play")
-            RoundButton(icon: "pencil", label: "Edit") { openEdit(prompter.currentParagraph()) }
-                .accessibilityIdentifier("edit")
+            if canEdit {
+                RoundButton(icon: "pencil", label: "Edit") { openEdit(prompter.currentParagraph()) }
+                    .accessibilityIdentifier("edit")
+            }
             if cameraOn {
                 RoundButton(icon: camera.isRecording ? "stop.fill" : "record.circle", label: camera.isRecording ? "Stop" : "Record",
                             tint: Brand.bad) { toggleRecord() }
@@ -231,6 +236,7 @@ struct PrompterScreen: View {
         prompter.onLearned = { slot, key in
             model.settings.learnedKeys = RemoteKeys.learn(key, for: slot, into: model.settings.learnedKeys)
         }
+        camera.setLongForm(script?.isLongForm ?? false)
         if cameraOn { camera.start(with: model.settings) }
         // Screenshot demo only (launch arguments, never on Chris's phone).
         if model.isDemo {
@@ -259,7 +265,7 @@ struct PrompterScreen: View {
     private func openEdit(_ i: Int) {
         // Pause the words only. The camera keeps recording this one take.
         prompter.pause()
-        guard let s = script, i >= 0, i < paragraphs.count else { return }
+        guard canEdit, let s = script, i >= 0, i < paragraphs.count else { return }
         editing = EditTarget(root: s.rootScriptId, index: i, text: paragraphs[i].text, title: s.displayName)
     }
 
@@ -276,7 +282,7 @@ struct PrompterScreen: View {
         if takeWaiting { countTake(s, gotIt: false) }
         takeWaiting = false
         lastRecordedHere = true
-        camera.startRecording(name: takeName)
+        camera.startRecording(name: takeName, offerKey: s.offerKey)
         if prompter.mode != .rolling && prompter.mode != .countdown { prompter.togglePlay() }
     }
 
@@ -307,7 +313,7 @@ struct PrompterScreen: View {
             // The camera needs a moment to finish saving the last take.
             Task { @MainActor in
                 for _ in 0..<40 where camera.state != .ready { try? await Task.sleep(nanoseconds: 100_000_000) }
-                if camera.state == .ready { camera.startRecording(name: takeName) }
+                if camera.state == .ready { camera.startRecording(name: takeName, offerKey: s.offerKey) }
             }
         }
     }

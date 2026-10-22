@@ -33,14 +33,15 @@ final class AppModel: ObservableObject {
 
     init() {
         let args = ProcessInfo.processInfo.arguments
-        // The App Store build is a self-contained prompter. It never asks for
-        // a Fundhub account before it can open and film.
-        isDemo = true
+        // No login (owner call 2026-10-18): the app reads the open shoot, marks
+        // takes and uploads them the same way the website teleprompter does.
+        // The built-in sample shoot is for screenshots only (launch arguments).
+        isDemo = args.contains { $0.hasPrefix("-FundhubDemo") }
         let big = UIDevice.current.userInterfaceIdiom == .pad
         var s = PrompterSettings.load(bigScreen: big)
         if isDemo && args.contains("-FundhubDemoMirror") { s.mirror = true }
         settings = s
-        let saved = isDemo ? SignIn(token: "demo", expiresAt: nil, name: "Sample", email: nil, role: "owner") : Keychain.load()
+        let saved = isDemo ? SignIn(token: "demo", expiresAt: nil, name: "Sample", email: nil, role: "owner") : nil
         signIn = saved
         api = APIClient(baseURL: URL(string: s.serverAddress) ?? URL(string: "https://fundhub.ai")!, token: saved?.token)
         transport = isDemo ? DemoTransport() : api
@@ -119,7 +120,7 @@ final class AppModel: ObservableObject {
     }
 
     func refresh() async {
-        guard signIn != nil, !loading else { return }
+        guard !loading else { return }
         loading = true
         defer { loading = false }
         let wpm = PromptClock.clampWPM(settings.wpm)
@@ -134,13 +135,8 @@ final class AppModel: ObservableObject {
             loadNote = nil
             lastLoaded = Date()
             take(a)
-        case 401:
-            loadNote = "Your sign-in ran out. Sign in again. Edits on this phone are kept."
-            Keychain.clear()
-            api.token = nil
-            signIn = nil
-        case 403:
-            loadNote = "The teleprompter is for the owner and admins."
+        case 401, 403:
+            loadNote = "The shoot did not open (code \(r.status)). Showing the copy on this phone."
         case 0:
             loadNote = answer == nil ? "No connection, and no shoot is saved on this phone yet." : "No connection. Showing the shoot saved on this phone."
         default:

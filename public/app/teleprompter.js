@@ -2392,6 +2392,152 @@
   var wantRec = false;
   var cameraTapUntil = 0;
 
+  /* ── the phone app's own camera ───────────────────────────────────────
+     Inside the Fundhub Prompter iPhone app the phone's own camera films:
+     4K at 60 fps for long form and 1080p at up to 120 fps for ads, which the
+     browser camera cannot give (owner call 2026-10-21). The app draws the live
+     camera behind this page and writes the file. This page keeps every button,
+     the words and the save question. It only tells the app open, record, stop,
+     keep or discard, and shows what the app answers. With no app around none
+     of this runs, and the page films with the browser camera as before.
+       page → app  root.webkit.messageHandlers.fundhubCamera.postMessage(...)
+       app → page  root.FundhubNativeCamera.receive(event)  */
+  var NATIVE_CAM = !!(root.FundhubNativeCamera && root.FundhubNativeCamera.version >= 1 &&
+    root.webkit && root.webkit.messageHandlers && root.webkit.messageHandlers.fundhubCamera);
+  if (NATIVE_CAM) doc.documentElement.classList.add("native-cam");
+  function nativePost(msg) {
+    try {
+      root.webkit.messageHandlers.fundhubCamera.postMessage(msg);
+      return true;
+    } catch (e) {
+      camLine("The phone app did not answer. Close the app and open it again.", true);
+      return false;
+    }
+  }
+  /* Open the camera, or change it for a new script or lens. Never during a take. */
+  function nativeOpen() {
+    if (cam.rec && cam.rec.state === "recording") return;
+    if (cam.stopping) return;
+    var mode = activeMode();
+    var wanted = cam.wantedFacing === "environment" ? "environment" : "user";
+    cam.opening = mode + ":" + wanted;
+    cam.nativeMode = mode;
+    if (!cam.previewReady) cameraMessage("Starting " + (wanted === "environment" ? "back" : "front") + " camera…", false);
+    paintPicks();
+    if (!nativePost({ type: "open", mode: mode, facing: wanted })) cam.opening = "";
+  }
+  function nativeCameraReady(e) {
+    // A ready for a size this script no longer wants: the newer open is on its way.
+    if (cam.nativeMode && e.mode !== cam.nativeMode) return;
+    cam.facing = e.facing === "environment" ? "environment" : "user";
+    cam.wantedFacing = cam.facing;
+    cam.applied = e.mode === "4k" ? "4k" : "1080p";
+    cam.opening = "";
+    cam.previewReady = true;
+    cam.nativeSettings = { width: e.width, height: e.height, frameRate: e.fps };
+    syncMicMeter();
+    var box = $("cam");
+    if (box) box.hidden = false;
+    doc.documentElement.classList.add("native-cam-live");
+    cameraMessage("", false);
+    camLine(e.shortfall || e.summary || ((cam.facing === "environment" ? "Back" : "Front") + " camera"), !!e.shortfall);
+    paintCameraFlip();
+    paintPicks();
+    showFace();
+    if (cam.applied !== activeMode()) { ensureCamera(); return; }
+    if (cam.startAfterOpen && wantRec) {
+      cam.startAfterOpen = false;
+      beginRec();
+    }
+  }
+  function nativeCameraError(e) {
+    var msg = e.message || "The camera did not start.";
+    doc.documentElement.classList.remove("native-cam-live");
+    cam.opening = "";
+    cam.previewReady = false;
+    cam.applied = "";
+    cameraMessage(msg, true);
+    camLine(msg, true);
+    if (wantRec && !(cam.rec && cam.rec.state === "recording")) {
+      wantRec = false;
+      cam.startAfterOpen = false;
+      setRecLabel();
+    }
+  }
+  function nativeBeginRec() {
+    if (!wantRec || !cam.previewReady) return;
+    if (cam.rec && cam.rec.state === "recording") return;
+    if (cam.stopping) { cam.again = true; return; }
+    var s = scripts[cur];
+    cam.fileName = (s && s.take_file_name) ? s.take_file_name : "Take.mp4";
+    cam.fileOfferKey = s && s.offer_key ? String(s.offer_key) : "";
+    cam.fileFunnelTag = s && s.funnel_tag ? String(s.funnel_tag) : "";
+    cam.started = Date.now();
+    // Stands in for a MediaRecorder, so every "is it recording" check reads the same.
+    cam.rec = {
+      state: "recording",
+      stop: function () { this.state = "inactive"; nativePost({ type: "stop" }); }
+    };
+    if (!nativePost({ type: "record", name: cam.fileName, offer_key: cam.fileOfferKey || null, funnel_tag: cam.fileFunnelTag || null })) {
+      cam.rec = null;
+      wantRec = false; cam.startAfterOpen = false; setRecLabel();
+      return;
+    }
+    setRecLabel();
+    var dot = $("rec");
+    if (dot) dot.hidden = false;
+    var tm = $("rec-time");
+    if (tm) tm.textContent = "0:00";
+    clearTimeout(cam.tick);
+    cam.tick = setTimeout(tickRec, 500);
+  }
+  /* The take stopped without a Stop tap (a call came in, the app went away). */
+  function nativeStoppedByItself() {
+    if (cam.stopping) return;
+    wantRec = false;
+    cam.startAfterOpen = false;
+    setRecLabel();
+  }
+  function nativeTake(e) {
+    nativeStoppedByItself();
+    var file = { name: e.name || cam.fileName || "Take.mp4", size: e.bytes || 0, type: "video/mp4",
+      nativeId: String(e.id || ""), nativeUrl: String(e.url || "") };
+    var offerKey = cam.fileOfferKey || "", funnelTag = cam.fileFunnelTag || "";
+    takeStopped(function (resume) {
+      cam.pending.push({ file: file, then: resume, offerKey: offerKey, funnelTag: funnelTag, diagnostics: e.diagnostics || null });
+      askToSaveTake();
+    });
+  }
+  function nativeTakeError(e) {
+    nativeStoppedByItself();
+    takeStopped(null);
+    camLine(e.message || "The take did not record.", true);
+  }
+  /* The phone's volume buttons, sent by the app (Apple's camera button
+     events): one press is one step on volumeLadder, same as in Safari. */
+  function nativeVolume(e) {
+    var dir = e.dir === 1 ? 1 : e.dir === -1 ? -1 : 0;
+    if (!dir || takeDialog.open) return;
+    volumeStep(dir);
+  }
+  function nativeReceive(e) {
+    if (!e || typeof e !== "object") return;
+    try {
+      if (e.type === "camera" && e.state === "ready") nativeCameraReady(e);
+      else if (e.type === "camera" && e.state === "error") nativeCameraError(e);
+      else if (e.type === "recording") cam.started = Date.now();
+      else if (e.type === "take") nativeTake(e);
+      else if (e.type === "take-error") nativeTakeError(e);
+      else if (e.type === "volume") nativeVolume(e);
+      else if (e.type === "upload" && e.text) {
+        var st = e.state === "error" ? "failed" : e.state === "saved" ? "saved" : "saving";
+        videoSaveStatus(String(e.text), st, st !== "saved");
+      }
+    } catch (err) {
+      camLine("The phone app sent something this page could not read.", true);
+    }
+  }
+
   /* Read-only input meter: this never replaces the track used by MediaRecorder.
      Safari may hide the device label; the app names RØDE only when iOS does. */
   var micMonitor = { track: null, ctx: null, source: null, analyser: null, timer: null };
@@ -2416,6 +2562,14 @@
     var el = $("mic-monitor");
     if (!el) return;
     var nameEl = $("mic-name");
+    if (NATIVE_CAM) {
+      // The phone app records the sound with the picture.
+      stopMicMeter();
+      nameEl.textContent = "Phone app mic";
+      el.dataset.state = "live";
+      el.dataset.level = "0";
+      return;
+    }
     var track = cam.audioTrack && cam.audioTrack.readyState === "live" ? cam.audioTrack : null;
     if (!track) {
       stopMicMeter();
@@ -2480,6 +2634,7 @@
   var micAfterTake = false;
   function micRecording() { return !!(cam.rec && cam.rec.state === "recording"); }
   function followMic() {
+    if (NATIVE_CAM) { syncMicMeter(); return; }
     var md = root.navigator.mediaDevices;
     if (!md || !md.enumerateDevices || !md.getUserMedia) { syncMicMeter(); return; }
     md.enumerateDevices().then(function (devs) {
@@ -2547,6 +2702,12 @@
     clearTakePreview(id, key);
     var video = $(id);
     if (!video || !file) return;
+    if (file.nativeUrl) {
+      // The phone app's file plays from the app; there is no browser copy to free.
+      video.src = file.nativeUrl;
+      video.hidden = false;
+      return;
+    }
     try {
       takePreviewUrls[key] = root.URL.createObjectURL(file);
       video.src = takePreviewUrls[key];
@@ -2594,7 +2755,7 @@
   function paintCameraQuality() {
     var el = $("camera-quality");
     if (!el) return;
-    var settings = captureCameraSettings(cam.stream);
+    var settings = NATIVE_CAM ? (cam.nativeSettings || {}) : captureCameraSettings(cam.stream);
     var width = settings.width || settings.previewWidth;
     var height = settings.height || settings.previewHeight;
     if (!cam.previewReady || !width || !height) { el.hidden = true; return; }
@@ -2739,6 +2900,8 @@
     if (!cam.pending.length || takeDialog.open) return;
     stop();
     $("take-save-name").textContent = cam.pending[0].file.name;
+    var phoneBtn = $("take-save-phone");
+    if (phoneBtn) phoneBtn.hidden = !!cam.pending[0].file.nativeId;
     showTakePreview("take-save-preview", "save", cam.pending[0].file);
     takeDialog.showModal();
   }
@@ -2747,7 +2910,11 @@
     var take = cam.pending.shift();
     clearTakePreview("take-save-preview", "save");
     takeDialog.close();
-    if (yes) {
+    if (take.file && take.file.nativeId) {
+      // The app keeps it in Photos and sends it to Drive, or throws it away.
+      nativePost({ type: yes ? "keep" : "discard", id: take.file.nativeId });
+      if (!yes) say("Video discarded.");
+    } else if (yes) {
       setLastWatchFile(take.file);
       queueVideoSave(take.file, take.offerKey, take.funnelTag, take.diagnostics);
     }
@@ -3029,6 +3196,7 @@
     return out;
   }
   function beginRec() {
+    if (NATIVE_CAM) { nativeBeginRec(); return; }
     if (!wantRec || !cam.stream) return;
     if (cam.rec && cam.rec.state === "recording") return;
     if (cam.stopping) { cam.again = true; return; }
@@ -3149,6 +3317,13 @@
         try { track.stop(); } catch (e) { /* recorder is already stopping */ }
       });
     }
+    var chunks = cam.chunks;
+    cam.chunks = [];
+    takeStopped(chunks.length ? function (resume) { keepFile(chunks, resume, diagnostics); } : null);
+  }
+  /* A take has stopped, from the browser recorder or the phone app. `keep`
+     gets the file to the save question and calls resume when it is answered. */
+  function takeStopped(keep) {
     cam.recordStream = null;
     cam.rec = null;
     cam.stopping = false;
@@ -3156,8 +3331,6 @@
     var dot = $("rec");
     if (dot) dot.hidden = true;
     clearTimeout(cam.tick);
-    var chunks = cam.chunks;
-    cam.chunks = [];
     var next = cam.after;
     cam.after = null;
     var again = cam.again;
@@ -3167,7 +3340,7 @@
       else if (next) next();
       ensureCamera();
     }
-    if (chunks.length) keepFile(chunks, resume, diagnostics);
+    if (keep) keep(resume);
     else resume();
   }
   function endRec(then) {
@@ -3184,7 +3357,7 @@
   }
   function ensureRecording() {
     wantRec = true;
-    if (!cam.stream || cam.opening || !cam.previewReady) { cam.startAfterOpen = true; return; }
+    if ((!NATIVE_CAM && !cam.stream) || cam.opening || !cam.previewReady) { cam.startAfterOpen = true; return; }
     cam.startAfterOpen = false;
     beginRec();
   }
@@ -3378,6 +3551,7 @@
      The last picture stays on screen while it does. Never during a take. */
   var camCheckTimer = 0;
   function checkCameraAlive(waitMs) {
+    if (NATIVE_CAM) return;   // the app reopens its own camera
     root.clearTimeout(camCheckTimer);
     camCheckTimer = root.setTimeout(function () {
       if (doc.visibilityState === "hidden") return;
@@ -3396,6 +3570,13 @@
   function ensureCamera() {
     if (cam.rec && cam.rec.state === "recording") return;
     if (cam.stopping) return;
+    if (NATIVE_CAM) {
+      var want = activeMode() + ":" + (cam.wantedFacing === "environment" ? "environment" : "user");
+      if (cam.previewReady && cam.applied === activeMode() && cam.facing === cam.wantedFacing) { paintPicks(); return; }
+      if (cam.opening === want) return;
+      nativeOpen();
+      return;
+    }
     var mode = activeMode();
     if (cam.stream && cam.applied === mode && cam.facing === cam.wantedFacing) {
       var track = cam.stream.getVideoTracks()[0];
@@ -3406,6 +3587,7 @@
     openCamera();
   }
   function openCamera() {
+    if (NATIVE_CAM) { nativeOpen(); return; }
     try {
       var md = root.navigator.mediaDevices;
       if (!md || !md.getUserMedia) { camLine("This browser cannot use the camera. The words still roll.", true); return; }
@@ -3519,6 +3701,14 @@
   }
   function switchCamera() {
     if (cam.opening) return;
+    if (NATIVE_CAM) {
+      // The app films one file per take, so the lens changes between takes.
+      if (wantRec || cam.stopping || (cam.rec && cam.rec.state === "recording")) { say("Stop the take, then switch cameras."); return; }
+      cam.wantedFacing = cam.facing === "environment" ? "user" : "environment";
+      cam.applied = "";
+      nativeOpen();
+      return;
+    }
     /* Switching the lens never changes wantRec, recorder state, or clip count.
        The stable recorder canvas continues with its last frame until the new
        live camera is actually drawing. */
@@ -4492,6 +4682,14 @@
   pulse();
   root.addEventListener("pagehide", function () { endRec(); stopMicMeter(); });
   restoreQueuedVideos();
+  if (NATIVE_CAM) {
+    // Events the app sent before this page was ready wait in its queue, in order.
+    var nativeBridge = root.FundhubNativeCamera;
+    var early = Array.isArray(nativeBridge.queue) ? nativeBridge.queue.slice() : [];
+    nativeBridge.queue = [];
+    nativeBridge.receive = nativeReceive;
+    early.forEach(nativeReceive);
+  }
   if (queue.length) { $("pending").hidden = false; }
   load(true).then(function () { flush(); poll(); checkHealth(true); });
 

@@ -21,6 +21,8 @@ struct Script: Codable, Equatable, Identifiable {
     var parts: [ScriptPart]?
     var scriptFormat: String?
     var style: String?
+    var offerKey: String?
+    var funnelKey: String?
     var filmOrder: Int?
     var needsRetake: Bool?
     var updatedAt: String?
@@ -47,6 +49,8 @@ struct Script: Codable, Equatable, Identifiable {
         case title, body, parts
         case scriptFormat = "script_format"
         case style
+        case offerKey = "offer_key"
+        case funnelKey = "funnel_key"
         case filmOrder = "film_order"
         case needsRetake = "needs_retake"
         case updatedAt = "updated_at"
@@ -89,6 +93,8 @@ struct Script: Codable, Equatable, Identifiable {
         parts = try? c.decodeIfPresent([ScriptPart].self, forKey: .parts)
         scriptFormat = try? c.decodeIfPresent(String.self, forKey: .scriptFormat)
         style = try? c.decodeIfPresent(String.self, forKey: .style)
+        offerKey = try? c.decodeIfPresent(String.self, forKey: .offerKey)
+        funnelKey = try? c.decodeIfPresent(String.self, forKey: .funnelKey)
         filmOrder = Lenient.int(c, .filmOrder)
         needsRetake = try? c.decodeIfPresent(Bool.self, forKey: .needsRetake)
         updatedAt = try? c.decodeIfPresent(String.self, forKey: .updatedAt)
@@ -104,6 +110,17 @@ struct Script: Codable, Equatable, Identifiable {
         teleprompterText = try? c.decodeIfPresent(String.self, forKey: .teleprompterText)
         words = Lenient.int(c, .words)
         readSeconds = try? c.decodeIfPresent(Double.self, forKey: .readSeconds)
+    }
+
+    /// VSLs, thank-you videos and testimonials are long form: 4K. Ads are not.
+    /// Same rule as stays4K() in public/app/teleprompter.js.
+    var isLongForm: Bool {
+        let format = (scriptFormat ?? "").lowercased()
+        if format.range(of: #"^(vsl|testimonial|thank[_ -]?you)$"#, options: .regularExpression) != nil { return true }
+        let blob = [title, angleName, takeFileName, funnelKey, style].compactMap { $0 }.joined(separator: " ").lowercased()
+        if blob.range(of: #"\bvsl\b"#, options: .regularExpression) != nil { return true }
+        if blob.range(of: #"thank[- ]?you|testimonial"#, options: .regularExpression) != nil { return true }
+        return false
     }
 
     /// "Ad 91 · Lenders read two files" — the name Chris sees in the list.
