@@ -11,7 +11,7 @@ enum FundhubAPIError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .unavailable: return "We could not reach Fundhub. Check your connection and try again."
-        case .invalidSession: return "That sign-in did not work. Check your details and try again."
+        case .invalidSession: return "Wrong email or password. Check them and try again."
         case .refused(let message): return message
         case .invalidResponse: return "Fundhub did not send a usable reply. Please try again."
         }
@@ -95,8 +95,20 @@ struct FundhubAPI {
         catch { throw FundhubAPIError.unavailable }
         guard let http = response as? HTTPURLResponse else { throw FundhubAPIError.invalidResponse }
         guard (200..<300).contains(http.statusCode) else {
-            if http.statusCode == 401 { throw FundhubAPIError.invalidSession }
+            if http.statusCode == 401 {
+                // A dead link explains itself; a bad password and a dead session do not.
+                if path == "/api/auth/magic-link-verify",
+                   let reason = try? JSONDecoder().decode(ServerRefusal.self, from: data), let text = reason.message {
+                    throw FundhubAPIError.refused(text)
+                }
+                throw FundhubAPIError.invalidSession
+            }
             if http.statusCode >= 500 { throw FundhubAPIError.unavailable }
+            // 403 and 429 carry a plain reason from the server. Show it.
+            if let reason = try? JSONDecoder().decode(ServerRefusal.self, from: data), let text = reason.message, !text.isEmpty {
+                throw FundhubAPIError.refused(text)
+            }
+            if http.statusCode == 429 { throw FundhubAPIError.refused("Too many tries. Wait a few minutes and try again.") }
             throw FundhubAPIError.refused("Fundhub could not complete this request. Please try again.")
         }
         do { return try JSONDecoder().decode(T.self, from: data) }
@@ -106,6 +118,10 @@ struct FundhubAPI {
 
 private struct LinkReply: Decodable {
     let ok: Bool
+    let message: String?
+}
+
+private struct ServerRefusal: Decodable {
     let message: String?
 }
 

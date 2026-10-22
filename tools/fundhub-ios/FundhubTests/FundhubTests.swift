@@ -149,6 +149,37 @@ final class FundhubTests: XCTestCase {
         }
     }
 
+    func testRefusedLoginShowsTheServersReason() async throws {
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [StubURLProtocol.self]
+        let api = FundhubAPI(session: URLSession(configuration: config))
+        defer { StubURLProtocol.handler = nil }
+
+        StubURLProtocol.handler = { _ in (403, Data(#"{"ok":false,"error":"demo_logins_disabled","message":"Demo sign-ins are off."}"#.utf8)) }
+        do {
+            _ = try await api.login(email: "a@b.co", password: "x")
+            XCTFail("A 403 must not sign in")
+        } catch FundhubAPIError.refused(let text) {
+            XCTAssertEqual(text, "Demo sign-ins are off.")
+        }
+
+        StubURLProtocol.handler = { _ in (429, Data(#"{"ok":false,"error":"rate_limited"}"#.utf8)) }
+        do {
+            _ = try await api.login(email: "a@b.co", password: "x")
+            XCTFail("A 429 must not sign in")
+        } catch FundhubAPIError.refused(let text) {
+            XCTAssertTrue(text.hasPrefix("Too many tries"))
+        }
+
+        StubURLProtocol.handler = { _ in (401, Data(#"{"ok":false,"error":"invalid_credentials"}"#.utf8)) }
+        do {
+            _ = try await api.login(email: "a@b.co", password: "x")
+            XCTFail("A 401 must not sign in")
+        } catch FundhubAPIError.invalidSession {
+            XCTAssertEqual(FundhubAPIError.invalidSession.errorDescription, "Wrong email or password. Check them and try again.")
+        }
+    }
+
     func testWebSignOutDestinationIsExact() {
         XCTAssertTrue(WorkspaceNavigation.isSignOutDestination(URL(string: "https://fundhub.ai/portal-login.html")!))
         XCTAssertTrue(WorkspaceNavigation.isSignOutDestination(URL(string: "https://fundhub.ai/login.html")!))

@@ -202,7 +202,7 @@ private struct SignInView: View {
     @EnvironmentObject private var store: FundhubSessionStore
     @State private var email = ""
     @State private var password = ""
-    @State private var showingTeamSignIn = false
+    @State private var showingLink = false
     @State private var sendingLink = false
     @State private var localMessage: String?
     @FocusState private var focusedField: Field?
@@ -244,16 +244,18 @@ private struct SignInView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 16) {
-                    Text(showingTeamSignIn ? "Team access" : "Client access")
+                    Text("Sign in")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(mutedInk)
 
                     TextField("Email address", text: $email, prompt: Text("Email address").foregroundColor(mutedInk))
-                        .textContentType(.emailAddress)
+                        .textContentType(.username)
                         .keyboardType(.emailAddress)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
+                        .submitLabel(showingLink ? .send : .next)
                         .focused($focusedField, equals: .email)
+                        .onSubmit { if showingLink { requestClientLink() } else { focusedField = .password } }
                         .font(.body)
                         .foregroundStyle(ink)
                         .padding(.horizontal, 16)
@@ -263,10 +265,18 @@ private struct SignInView: View {
                         .accessibilityIdentifier("signInEmail")
                         .onChange(of: email) { _, _ in localMessage = nil }
 
-                    if showingTeamSignIn {
+                    if showingLink {
+                        primaryButton(
+                            title: sendingLink ? "Sending your link…" : "Email me a sign-in link",
+                            busy: sendingLink, action: requestClientLink
+                        )
+                        .accessibilityIdentifier("signInSendLink")
+                    } else {
                         SecureField("Password", text: $password, prompt: Text("Password").foregroundColor(mutedInk))
                             .textContentType(.password)
+                            .submitLabel(.go)
                             .focused($focusedField, equals: .password)
+                            .onSubmit(signInWithPassword)
                             .font(.body)
                             .foregroundStyle(ink)
                             .padding(.horizontal, 16)
@@ -275,60 +285,40 @@ private struct SignInView: View {
                             .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color(.separator), lineWidth: 1))
                             .accessibilityIdentifier("signInPassword")
 
-                        Button(action: signInTeam) {
-                            HStack(spacing: 8) {
-                                if store.signingIn { ProgressView().tint(store.hasSavedSession ? ink : .white) }
-                                Text(store.signingIn ? "Signing in…" : "Sign in to workspace")
-                            }
-                            .frame(maxWidth: .infinity, minHeight: 52)
-                        }
-                        .buttonStyle(.plain)
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(store.hasSavedSession ? ink : .white)
-                        .background(store.hasSavedSession ? .white : ink, in: RoundedRectangle(cornerRadius: 16))
-                        .overlay(RoundedRectangle(cornerRadius: 16).stroke(store.hasSavedSession ? Color(.separator) : .clear, lineWidth: 1))
-                        .disabled(store.signingIn)
-                    } else {
-                        Button(action: requestClientLink) {
-                            HStack(spacing: 8) {
-                                if sendingLink { ProgressView().tint(store.hasSavedSession ? ink : .white) }
-                                Text(sendingLink ? "Sending your link…" : "Email me a sign-in link")
-                            }
-                            .frame(maxWidth: .infinity, minHeight: 52)
-                        }
-                        .buttonStyle(.plain)
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(store.hasSavedSession ? ink : .white)
-                        .background(store.hasSavedSession ? .white : ink, in: RoundedRectangle(cornerRadius: 16))
-                        .overlay(RoundedRectangle(cornerRadius: 16).stroke(store.hasSavedSession ? Color(.separator) : .clear, lineWidth: 1))
-                        .disabled(sendingLink)
+                        primaryButton(
+                            title: store.signingIn ? "Signing in…" : "Sign in",
+                            busy: store.signingIn, action: signInWithPassword
+                        )
+                        .accessibilityIdentifier("signInSubmit")
                     }
                 }
                 .padding(.top, store.hasSavedSession ? 24 : 32)
 
-                Button {
-                    localMessage = nil
-                    Task { await store.pasteLink(UIPasteboard.general.string) }
-                } label: {
-                    Label("Paste a sign-in link", systemImage: "doc.on.clipboard")
-                        .frame(maxWidth: .infinity, minHeight: 52)
+                if showingLink {
+                    Button {
+                        localMessage = nil
+                        Task { await store.pasteLink(UIPasteboard.general.string) }
+                    } label: {
+                        Label("Paste a sign-in link", systemImage: "doc.on.clipboard")
+                            .frame(maxWidth: .infinity, minHeight: 52)
+                    }
+                    .buttonStyle(.plain)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(ink)
+                    .background(.white, in: RoundedRectangle(cornerRadius: 16))
+                    .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color(.separator), lineWidth: 1))
+                    .padding(.top, 16)
                 }
-                .buttonStyle(.plain)
-                .font(.body.weight(.semibold))
-                .foregroundStyle(ink)
-                .background(.white, in: RoundedRectangle(cornerRadius: 16))
-                .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color(.separator), lineWidth: 1))
-                .padding(.top, 16)
 
                 Button {
-                    showingTeamSignIn.toggle()
+                    showingLink.toggle()
                     localMessage = nil
                     store.message = nil
                 } label: {
                     HStack {
-                        Text(showingTeamSignIn ? "Signing in as a client?" : "Fundhub team?")
+                        Text(showingLink ? "Have a password?" : "No password?")
                             .foregroundStyle(mutedInk)
-                        Text(showingTeamSignIn ? "Use an email link" : "Use your password")
+                        Text(showingLink ? "Sign in with it" : "Email me a sign-in link")
                             .fontWeight(.semibold)
                         Image(systemName: "arrow.right").font(.caption.weight(.semibold))
                     }
@@ -338,6 +328,7 @@ private struct SignInView: View {
                 .buttonStyle(.plain)
                 .foregroundStyle(ink)
                 .padding(.top, 16)
+                .accessibilityIdentifier("signInSwitchMode")
 
                 if let message = localMessage ?? store.message {
                     Label(message, systemImage: "info.circle")
@@ -379,19 +370,36 @@ private struct SignInView: View {
         }
     }
 
-    private func signInTeam() {
+    private func signInWithPassword() {
         guard !email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            localMessage = "Enter your work email address."
+            localMessage = "Enter your email address."
             focusedField = .email
             return
         }
         guard !password.isEmpty else {
-            localMessage = "Enter your password to open your workspace."
+            localMessage = "Enter your password."
             focusedField = .password
             return
         }
         localMessage = nil
+        focusedField = nil
         Task { await store.signIn(email: email, password: password) }
+    }
+
+    private func primaryButton(title: String, busy: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                if busy { ProgressView().tint(store.hasSavedSession ? ink : .white) }
+                Text(title)
+            }
+            .frame(maxWidth: .infinity, minHeight: 52)
+        }
+        .buttonStyle(.plain)
+        .font(.body.weight(.semibold))
+        .foregroundStyle(store.hasSavedSession ? ink : .white)
+        .background(store.hasSavedSession ? .white : ink, in: RoundedRectangle(cornerRadius: 16))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(store.hasSavedSession ? Color(.separator) : .clear, lineWidth: 1))
+        .disabled(busy)
     }
 }
 
