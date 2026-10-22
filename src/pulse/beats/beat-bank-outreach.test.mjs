@@ -4,6 +4,8 @@ import * as beat from "./beat-bank-outreach.mjs";
 import { checkBeatSelfTest, runBeat, validateBeat } from "./contract.mjs";
 import { makeFakeCtx } from "./ctx.mjs";
 import { VERIFIED_SQL as DAILY_VERIFIED_SQL } from "../coverage/gap-bank-outreach.mjs";
+import { assertReadOnlySql } from "./readbox.mjs";
+import { FIELD_CATALOG, LENDER_EXTRA_COLUMNS } from "../../outreach/model.mjs";
 
 test("bank outreach beat contract and PASS/FAIL self-test", async () => {
   assert.deepEqual(validateBeat(beat, { file: "beat-bank-outreach.mjs" }), []);
@@ -46,4 +48,15 @@ test("a bank email after a stop or reply turns the hourly beat red at email-safe
   const result = await runBeat(beat, makeFakeCtx(beat, fixture));
   assert.equal(result.ok, false);
   assert.equal(result.step, "email-safety");
+});
+
+test("the hourly saved-result SQL compares every extra Lenders column a pushed product fills, and the read box accepts it", () => {
+  const kindOf = (type) => type === "yesno" ? "yesno" : ["money", "pct", "months", "years", "score"].includes(type) ? "number" : "text";
+  const keys = Object.keys(LENDER_EXTRA_COLUMNS);
+  for (const key of keys) {
+    const row = `('${key}', '${kindOf(FIELD_CATALOG[key].type)}', to_jsonb(l.${LENDER_EXTRA_COLUMNS[key]}))`;
+    assert.equal(beat.VERIFIED_SQL.split(row).length - 1, 1, `${key} must be compared exactly once as ${row}`);
+  }
+  assert.match(beat.VERIFIED_SQL, /WHERE p\.facts \? ex\.key\s+AND coalesce\(ex\.actual, 'null'::jsonb\) IS DISTINCT FROM CASE ex\.kind/);
+  assert.doesNotThrow(() => assertReadOnlySql(beat.VERIFIED_SQL));
 });

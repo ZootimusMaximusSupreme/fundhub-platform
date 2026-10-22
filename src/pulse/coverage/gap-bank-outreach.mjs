@@ -25,6 +25,41 @@ SELECT count(*)::int AS total,
          OR l.minimum_revenue_threshold IS DISTINCT FROM expected.revenue
          OR l.stated_requirements IS DISTINCT FROM expected.requirements
          OR l.notes IS DISTINCT FROM expected.notes
+         -- Pushed answers beyond the nine base facts: each key the product saved must match its Lenders column.
+         -- A key the product never saved (older products) is not checked. unknown and n/a mean NULL.
+         OR EXISTS (
+           SELECT 1
+             FROM (VALUES
+               ('double_pull', 'yesno', to_jsonb(l.double_pull)),
+               ('relationship_required', 'yesno', to_jsonb(l.relationship_required)),
+               ('requires_account_opening', 'yesno', to_jsonb(l.requires_account_opening)),
+               ('minimum_deposit', 'number', to_jsonb(l.minimum_deposit)),
+               ('prequal_soft_pull', 'yesno', to_jsonb(l.prequal_soft_pull)),
+               ('business_bureau_pulled', 'text', to_jsonb(l.business_bureau_pulled)),
+               ('underwriter', 'text', to_jsonb(l.underwriter_interaction)),
+               ('intro_offers', 'text', to_jsonb(l.intro_offers)),
+               ('multiple_llc_allowed', 'yesno', to_jsonb(l.multiple_llc_allowed)),
+               ('application_method', 'text', to_jsonb(l.application_method)),
+               ('typical_amount', 'number', to_jsonb(l.typical_approval_range)),
+               ('apr_pct', 'number', to_jsonb(l.apr_range_pct)),
+               ('repayment_months', 'number', to_jsonb(l.repayment_terms_months)),
+               ('funding_speed', 'text', to_jsonb(l.funding_speed)),
+               ('average_starting_line', 'number', to_jsonb(l.average_starting_loc)),
+               ('max_line', 'number', to_jsonb(l.max_known_loc)),
+               ('draw_and_renewal', 'text', to_jsonb(l.draw_period_renewal)),
+               ('documents_required', 'text', to_jsonb(l.docs_requested)),
+               ('collateral_required', 'yesno', to_jsonb(l.collateral_required)),
+               ('line_type', 'text', to_jsonb(l.loc_type))
+             ) ex(key, kind, actual)
+            WHERE p.facts ? ex.key
+              AND coalesce(ex.actual, 'null'::jsonb) IS DISTINCT FROM CASE ex.kind
+                    WHEN 'yesno' THEN CASE p.facts->ex.key
+                      WHEN 'true'::jsonb THEN '"Yes"'::jsonb WHEN 'false'::jsonb THEN '"No"'::jsonb ELSE 'null'::jsonb END
+                    WHEN 'number' THEN CASE WHEN jsonb_typeof(p.facts->ex.key) = 'number' THEN p.facts->ex.key ELSE 'null'::jsonb END
+                    ELSE CASE WHEN jsonb_typeof(p.facts->ex.key) = 'string' AND (p.facts->>ex.key) NOT IN ('unknown', 'n/a')
+                      THEN p.facts->ex.key ELSE 'null'::jsonb END
+                  END
+         )
          OR nullif(btrim(p.evidence), '') IS NULL
          OR NOT EXISTS (
            SELECT 1 FROM outreach_contacts c
