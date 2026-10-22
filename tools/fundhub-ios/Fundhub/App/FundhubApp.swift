@@ -244,7 +244,7 @@ private struct SignInView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 16) {
-                    Text("Sign in")
+                    Text("Client or Fundhub team sign-in")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(mutedInk)
 
