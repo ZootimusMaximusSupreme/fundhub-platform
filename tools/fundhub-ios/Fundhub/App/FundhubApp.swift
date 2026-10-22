@@ -461,130 +461,34 @@ private struct SignInView: View {
 private struct HomeView: View {
     @EnvironmentObject private var store: FundhubSessionStore
     @ObservedObject private var push = NativePushCenter.shared
-    @State private var showingWorkspace = false
+    @State private var reloadId = UUID()
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
-                    if store.identity?.principal == "client" { clientHome }
-                    else { staffHome }
-                    if let message = store.message,
-                       store.identity?.principal != "client" || store.summary != nil {
-                        Text(message).foregroundStyle(.secondary)
-                    }
-                }
-                .frame(maxWidth: 660, alignment: .leading)
-                .padding(24)
-            }
-            .background(Color(.systemGroupedBackground))
-            .navigationTitle("Fundhub")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Sign out") { Task { await store.signOut() } }
-                }
-            }
-            .safeAreaInset(edge: .bottom) {
-                Link("Privacy policy", destination: URL(string: "https://fundhub.ai/privacy/")!)
-                    .font(.caption)
-                    .padding(8)
-            }
-            .sheet(isPresented: $showingWorkspace) {
-                if let token = store.token, let identity = store.identity {
-                    NavigationStack {
-                        WorkspaceWebView(
-                            token: token,
-                            principal: identity.principal,
-                            identity: identity.staff,
-                            path: FundhubRole.workspacePath(
-                                principal: identity.principal,
-                                role: identity.staff.role
-                            ),
-                            onWebSignOut: {
-                                showingWorkspace = false
-                                Task { await store.signOut() }
-                            }
-                        )
-                        .navigationTitle(identity.principal == "client" ? "Client portal" : "My workspace")
-                        .navigationBarTitleDisplayMode(.inline)
-                        .toolbar {
-                            ToolbarItem(placement: .topBarTrailing) {
-                                Button("Done") { showingWorkspace = false }
-                            }
-                        }
-                    }
-                }
-            }
-            .task(id: push.portalOpenRequestId) {
-                guard push.takePortalOpenRequest() else { return }
-                guard store.identity?.principal == "client" else { return }
-                // A tapped alert is never a navigation URL or an assertion that
-                // a call still exists. Verify this session again, then let the
-                // portal read the client's current call under that session.
-                await store.refreshSession()
-                guard store.phase == .signedIn, store.identity?.principal == "client" else { return }
-                showingWorkspace = true
-            }
-        }
-    }
-
-    private var clientHome: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            Text("Your file").font(.largeTitle.bold())
-            if store.summaryLoading && store.summary == nil {
-                ProgressView("Loading your file")
-                    .frame(maxWidth: .infinity, minHeight: 180)
-            } else if let summary = store.summary {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("CURRENT STATUS").font(.caption.weight(.bold)).foregroundStyle(.secondary)
-                    Text(summary.stage.title).font(.title2.bold())
-                }
-                .fundhubCard()
-                if let advisor = summary.advisor {
-                    detailRow("Your advisor", value: advisor.name, icon: "person.crop.circle")
-                }
-                detailRow("Documents", value: "\(summary.documents.count) on your file", icon: "doc.text")
-                if let due = summary.invoiceDue {
-                    detailRow("Amount due", value: due.count == 0 ? "Nothing due" : due.totalDisplay, icon: "creditcard")
-                } else {
-                    detailRow("Amount due", value: "Could not check right now", icon: "creditcard")
-                }
+        Group {
+            if let token = store.token, let identity = store.identity {
+                // Signing in goes straight to the Fundhub workspace. No home page in between.
+                WorkspaceWebView(
+                    token: token,
+                    principal: identity.principal,
+                    identity: identity.staff,
+                    path: FundhubRole.workspacePath(principal: identity.principal, role: identity.staff.role),
+                    onWebSignOut: { Task { await store.signOut() } }
+                )
+                .id(reloadId)
             } else {
-                ContentUnavailableView("File unavailable", systemImage: "arrow.clockwise", description: Text(store.message ?? "Pull down to try again."))
+                ProgressView("Connecting to Fundhub")
             }
-            Button("Open full portal") { showingWorkspace = true }
-                .buttonStyle(.borderedProminent).controlSize(.large)
-            NativePushCard()
         }
-        .refreshable { await store.loadSummary() }
-    }
-
-    private var staffHome: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            Text("My work").font(.largeTitle.bold())
-            VStack(alignment: .leading, spacing: 8) {
-                Text("SIGNED IN AS").font(.caption.weight(.bold)).foregroundStyle(.secondary)
-                Text(store.identity?.staff.name ?? "Fundhub team").font(.title2.bold())
-                Text(FundhubRole.title(store.identity?.staff.role)).foregroundStyle(.secondary)
-            }
-            .fundhubCard()
-            Text("Open your Fundhub workspace to see your current work and take action.")
-                .foregroundStyle(.secondary)
-            Button("Open my work") { showingWorkspace = true }
-                .buttonStyle(.borderedProminent).controlSize(.large)
+        .task(id: push.portalOpenRequestId) {
+            guard push.takePortalOpenRequest() else { return }
+            guard store.identity?.principal == "client" else { return }
+            // A tapped alert is never a navigation URL or an assertion that
+            // a call still exists. Verify this session again, then let the
+            // portal read the client's current call under that session.
+            await store.refreshSession()
+            guard store.phase == .signedIn, store.identity?.principal == "client" else { return }
+            reloadId = UUID()
         }
-    }
-
-    private func detailRow(_ title: String, value: String, icon: String) -> some View {
-        HStack(spacing: 16) {
-            Image(systemName: icon).frame(width: 28)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title).font(.caption).foregroundStyle(.secondary)
-                Text(value).font(.body.weight(.semibold))
-            }
-            Spacer()
-        }
-        .fundhubCard()
     }
 }
 
@@ -616,13 +520,5 @@ private struct BrandMark: View {
                 .frame(height: 3)
                 .accessibilityHidden(true)
         }
-    }
-}
-
-private extension View {
-    func fundhubCard() -> some View {
-        self.frame(maxWidth: .infinity, alignment: .leading)
-            .padding(20)
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
     }
 }
