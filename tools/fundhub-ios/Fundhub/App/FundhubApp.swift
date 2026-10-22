@@ -202,12 +202,14 @@ private struct SignInView: View {
     @EnvironmentObject private var store: FundhubSessionStore
     @State private var email = ""
     @State private var password = ""
+    @State private var audience: Audience?
     @State private var showingLink = false
     @State private var sendingLink = false
     @State private var localMessage: String?
     @FocusState private var focusedField: Field?
 
     private enum Field { case email, password }
+    private enum Audience { case team, client }
 
     private var ink: Color { Color(red: 10 / 255, green: 10 / 255, blue: 10 / 255) }
     private var mutedInk: Color { Color(red: 72 / 255, green: 72 / 255, blue: 72 / 255) }
@@ -243,92 +245,119 @@ private struct SignInView: View {
                     .padding(.top, 32)
                 }
 
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("Client or Fundhub team sign-in")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(mutedInk)
-
-                    TextField("Email address", text: $email, prompt: Text("Email address").foregroundColor(mutedInk))
-                        .textContentType(.username)
-                        .keyboardType(.emailAddress)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .submitLabel(showingLink ? .send : .next)
-                        .focused($focusedField, equals: .email)
-                        .onSubmit { if showingLink { requestClientLink() } else { focusedField = .password } }
-                        .font(.body)
+                if let audience {
+                    VStack(alignment: .leading, spacing: 16) {
+                        Button {
+                            self.audience = nil
+                            showingLink = false
+                            password = ""
+                            localMessage = nil
+                            store.message = nil
+                        } label: {
+                            Label("Back", systemImage: "chevron.left")
+                                .font(.subheadline.weight(.semibold))
+                                .frame(minHeight: 44)
+                        }
+                        .buttonStyle(.plain)
                         .foregroundStyle(ink)
-                        .padding(.horizontal, 16)
-                        .frame(minHeight: 52)
-                        .background(.white, in: RoundedRectangle(cornerRadius: 16))
-                        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color(.separator), lineWidth: 1))
-                        .accessibilityIdentifier("signInEmail")
-                        .onChange(of: email) { _, _ in localMessage = nil }
+                        .accessibilityIdentifier("signInBack")
 
-                    if showingLink {
-                        primaryButton(
-                            title: sendingLink ? "Sending your link…" : "Email me a sign-in link",
-                            busy: sendingLink, action: requestClientLink
-                        )
-                        .accessibilityIdentifier("signInSendLink")
-                    } else {
-                        SecureField("Password", text: $password, prompt: Text("Password").foregroundColor(mutedInk))
-                            .textContentType(.password)
-                            .submitLabel(.go)
-                            .focused($focusedField, equals: .password)
-                            .onSubmit(signInWithPassword)
+                        Text(audience == .team ? "Team sign-in" : "Client sign-in")
+                            .font(.title3.weight(.bold))
+                            .foregroundStyle(ink)
+
+                        TextField("Email address", text: $email, prompt: Text("Email address").foregroundColor(mutedInk))
+                            .textContentType(.username)
+                            .keyboardType(.emailAddress)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .submitLabel(showingLink ? .send : .next)
+                            .focused($focusedField, equals: .email)
+                            .onSubmit { if showingLink { requestClientLink() } else { focusedField = .password } }
                             .font(.body)
                             .foregroundStyle(ink)
                             .padding(.horizontal, 16)
                             .frame(minHeight: 52)
                             .background(.white, in: RoundedRectangle(cornerRadius: 16))
                             .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color(.separator), lineWidth: 1))
-                            .accessibilityIdentifier("signInPassword")
+                            .accessibilityIdentifier("signInEmail")
+                            .onChange(of: email) { _, _ in localMessage = nil }
 
-                        primaryButton(
-                            title: store.signingIn ? "Signing in…" : "Sign in",
-                            busy: store.signingIn, action: signInWithPassword
-                        )
-                        .accessibilityIdentifier("signInSubmit")
-                    }
-                }
-                .padding(.top, store.hasSavedSession ? 24 : 32)
+                        if showingLink {
+                            primaryButton(
+                                title: sendingLink ? "Sending your link…" : "Email me a sign-in link",
+                                busy: sendingLink, action: requestClientLink
+                            )
+                            .accessibilityIdentifier("signInSendLink")
+                        } else {
+                            SecureField("Password", text: $password, prompt: Text("Password").foregroundColor(mutedInk))
+                                .textContentType(.password)
+                                .submitLabel(.go)
+                                .focused($focusedField, equals: .password)
+                                .onSubmit(signInWithPassword)
+                                .font(.body)
+                                .foregroundStyle(ink)
+                                .padding(.horizontal, 16)
+                                .frame(minHeight: 52)
+                                .background(.white, in: RoundedRectangle(cornerRadius: 16))
+                                .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color(.separator), lineWidth: 1))
+                                .accessibilityIdentifier("signInPassword")
 
-                if showingLink {
-                    Button {
-                        localMessage = nil
-                        Task { await store.pasteLink(UIPasteboard.general.string) }
-                    } label: {
-                        Label("Paste a sign-in link", systemImage: "doc.on.clipboard")
-                            .frame(maxWidth: .infinity, minHeight: 52)
+                            primaryButton(
+                                title: store.signingIn ? "Signing in…" : "Sign in",
+                                busy: store.signingIn, action: signInWithPassword
+                            )
+                            .accessibilityIdentifier("signInSubmit")
+                        }
                     }
-                    .buttonStyle(.plain)
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(ink)
-                    .background(.white, in: RoundedRectangle(cornerRadius: 16))
-                    .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color(.separator), lineWidth: 1))
-                    .padding(.top, 16)
-                }
+                    .padding(.top, store.hasSavedSession ? 24 : 32)
 
-                Button {
-                    showingLink.toggle()
-                    localMessage = nil
-                    store.message = nil
-                } label: {
-                    HStack {
-                        Text(showingLink ? "Have a password?" : "No password?")
-                            .foregroundStyle(mutedInk)
-                        Text(showingLink ? "Sign in with it" : "Email me a sign-in link")
-                            .fontWeight(.semibold)
-                        Image(systemName: "arrow.right").font(.caption.weight(.semibold))
+                    if audience == .client {
+                        if showingLink {
+                            Button {
+                                localMessage = nil
+                                Task { await store.pasteLink(UIPasteboard.general.string) }
+                            } label: {
+                                Label("Paste a sign-in link", systemImage: "doc.on.clipboard")
+                                    .frame(maxWidth: .infinity, minHeight: 52)
+                            }
+                            .buttonStyle(.plain)
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(ink)
+                            .background(.white, in: RoundedRectangle(cornerRadius: 16))
+                            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color(.separator), lineWidth: 1))
+                            .padding(.top, 16)
+                        }
+
+                        Button {
+                            showingLink.toggle()
+                            localMessage = nil
+                            store.message = nil
+                        } label: {
+                            HStack {
+                                Text(showingLink ? "Have a password?" : "No password?")
+                                    .foregroundStyle(mutedInk)
+                                Text(showingLink ? "Sign in with it" : "Email me a sign-in link")
+                                    .fontWeight(.semibold)
+                                Image(systemName: "arrow.right").font(.caption.weight(.semibold))
+                            }
+                            .font(.subheadline)
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(ink)
+                        .padding(.top, 16)
+                        .accessibilityIdentifier("signInSwitchMode")
                     }
-                    .font(.subheadline)
-                    .frame(maxWidth: .infinity, minHeight: 44)
+                } else {
+                    VStack(spacing: 12) {
+                        audienceButton("Team sign-in", filled: !store.hasSavedSession) { choose(.team) }
+                            .accessibilityIdentifier("signInChooseTeam")
+                        audienceButton("Client sign-in", filled: false) { choose(.client) }
+                            .accessibilityIdentifier("signInChooseClient")
+                    }
+                    .padding(.top, store.hasSavedSession ? 24 : 32)
                 }
-                .buttonStyle(.plain)
-                .foregroundStyle(ink)
-                .padding(.top, 16)
-                .accessibilityIdentifier("signInSwitchMode")
 
                 if let message = localMessage ?? store.message {
                     Label(message, systemImage: "info.circle")
@@ -354,6 +383,32 @@ private struct SignInView: View {
             .padding(24)
         }
         .background(paper)
+    }
+
+    private func choose(_ choice: Audience) {
+        localMessage = nil
+        store.message = nil
+        showingLink = false
+        audience = choice
+        focusedField = .email
+    }
+
+    private func audienceButton(_ title: String, filled: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack {
+                Text(title)
+                Spacer()
+                Image(systemName: "arrow.up.right").font(.subheadline.weight(.semibold))
+            }
+            .padding(.horizontal, 20)
+            .frame(maxWidth: .infinity, minHeight: 56)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .font(.body.weight(.semibold))
+        .foregroundStyle(filled ? .white : ink)
+        .background(filled ? ink : .white, in: RoundedRectangle(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(filled ? .clear : Color(.separator), lineWidth: 1))
     }
 
     private func requestClientLink() {
