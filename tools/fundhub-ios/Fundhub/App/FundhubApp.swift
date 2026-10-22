@@ -203,6 +203,8 @@ private struct SignInView: View {
     @State private var email = ""
     @State private var password = ""
     @State private var showingTeamSignIn = false
+    /// nil = the welcome screen, the same one the Mac app opens on.
+    @State private var route: SignInRoute?
     @State private var sendingLink = false
     @State private var localMessage: String?
     @FocusState private var focusedField: Field?
@@ -214,10 +216,39 @@ private struct SignInView: View {
     private var paper: Color { Color(red: 252 / 255, green: 252 / 255, blue: 252 / 255) }
 
     var body: some View {
+        if route == nil {
+            WelcomeView(hasSavedSession: store.hasSavedSession,
+                        unlockLabel: store.savedSessionUnlockLabel,
+                        unlock: { Task { await store.restore() } },
+                        message: store.message) { picked in
+                showingTeamSignIn = picked == .team
+                localMessage = nil
+                store.message = nil
+                route = picked
+            }
+        } else {
+            signInForm
+        }
+    }
+
+    private var signInForm: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
+                Button {
+                    route = nil
+                    localMessage = nil
+                    store.message = nil
+                } label: {
+                    Label("Back", systemImage: "chevron.left")
+                        .font(.body.weight(.semibold))
+                        .frame(minHeight: 44)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(ink)
+                .accessibilityIdentifier("signInBack")
+
                 BrandMark()
-                    .padding(.top, 16)
+                    .padding(.top, 8)
 
                 VStack(alignment: .leading, spacing: 16) {
                     Text("Your file,\nin focus.")
@@ -322,6 +353,7 @@ private struct SignInView: View {
 
                 Button {
                     showingTeamSignIn.toggle()
+                    route = showingTeamSignIn ? .team : .client
                     localMessage = nil
                     store.message = nil
                 } label: {
@@ -561,5 +593,157 @@ private extension View {
         self.frame(maxWidth: .infinity, alignment: .leading)
             .padding(20)
             .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+    }
+}
+
+// MARK: - Welcome screen
+// Same code as the Mac app (tools/fundhub-mac/FundhubMac.swift: Brand,
+// SignInRoute, SpectrumBar, FundhubMark, WelcomeView), sized for iPhone.
+// Team sign-in opens the team password sign-in; Client sign-in opens the
+// client email-link sign-in. Owner call 2026-10-21: the phone opens like the Mac.
+
+private enum Brand {
+    static let ink = Color(red: 12 / 255, green: 16 / 255, blue: 20 / 255)
+    static let paper = Color(red: 248 / 255, green: 248 / 255, blue: 246 / 255)
+    static let muted = Color(red: 99 / 255, green: 106 / 255, blue: 111 / 255)
+    static let spectrum: [Color] = [
+        Color(red: 42 / 255, green: 153 / 255, blue: 227 / 255),
+        Color(red: 44 / 255, green: 185 / 255, blue: 173 / 255),
+        Color(red: 132 / 255, green: 198 / 255, blue: 99 / 255),
+        Color(red: 236 / 255, green: 197 / 255, blue: 78 / 255),
+        Color(red: 239 / 255, green: 143 / 255, blue: 85 / 255),
+        Color(red: 216 / 255, green: 96 / 255, blue: 146 / 255)
+    ]
+}
+
+private enum SignInRoute {
+    case team
+    case client
+}
+
+private struct SpectrumBar: View {
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(Brand.spectrum.indices, id: \.self) { index in
+                Brand.spectrum[index].frame(height: 4)
+            }
+        }
+        .accessibilityHidden(true)
+    }
+}
+
+private struct FundhubMark: View {
+    var body: some View {
+        HStack(spacing: 12) {
+            Text("f.")
+                .font(.system(size: 22, weight: .black, design: .rounded))
+                .foregroundStyle(.white)
+                .frame(width: 42, height: 42)
+                .background(Brand.ink, in: RoundedRectangle(cornerRadius: 11))
+            Text("fundhub")
+                .font(.system(size: 22, weight: .bold, design: .rounded))
+                .tracking(-0.8)
+                .foregroundStyle(Brand.ink)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Fundhub")
+    }
+}
+
+private struct WelcomeView: View {
+    let hasSavedSession: Bool
+    let unlockLabel: String
+    let unlock: () -> Void
+    let message: String?
+    let open: (SignInRoute) -> Void
+
+    var body: some View {
+        ZStack {
+            Brand.paper.ignoresSafeArea()
+            VStack(alignment: .leading, spacing: 0) {
+                FundhubMark()
+                Spacer(minLength: 32)
+                Text("Your work,\nin focus.")
+                    .font(.system(size: 50, weight: .semibold, design: .rounded))
+                    .tracking(-2.2)
+                    .lineSpacing(-5)
+                    .foregroundStyle(Brand.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text("Your Fundhub workspace, right here on your iPhone.")
+                    .font(.system(size: 17))
+                    .foregroundStyle(Brand.muted)
+                    .padding(.top, 20)
+
+                VStack(spacing: 12) {
+                    if hasSavedSession {
+                        Button(action: unlock) {
+                            HStack {
+                                Text(unlockLabel)
+                                Spacer()
+                                Image(systemName: "faceid")
+                            }
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 20)
+                            .frame(height: 52)
+                            .background(Brand.ink, in: RoundedRectangle(cornerRadius: 12))
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    Button { open(.team) } label: {
+                        HStack {
+                            Text("Team sign-in")
+                            Spacer()
+                            Image(systemName: "arrow.up.right")
+                        }
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 20)
+                        .frame(height: 52)
+                        .background(Brand.ink, in: RoundedRectangle(cornerRadius: 12))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("welcomeTeam")
+
+                    Button { open(.client) } label: {
+                        HStack {
+                            Text("Client sign-in")
+                            Spacer()
+                            Image(systemName: "arrow.up.right")
+                        }
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(Brand.ink)
+                        .padding(.horizontal, 20)
+                        .frame(height: 52)
+                        .background(.white, in: RoundedRectangle(cornerRadius: 12))
+                        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Brand.ink.opacity(0.18)))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("welcomeClient")
+                }
+                .frame(maxWidth: 420)
+                .padding(.top, 40)
+
+                if let message {
+                    Text(message)
+                        .font(.subheadline)
+                        .foregroundStyle(Brand.muted)
+                        .padding(.top, 16)
+                }
+
+                Spacer(minLength: 32)
+                HStack(spacing: 20) {
+                    Link("Privacy", destination: URL(string: "https://fundhub.ai/privacy/")!)
+                    Link("Support", destination: URL(string: "mailto:support@fundhub.ai")!)
+                }
+                .font(.system(size: 13))
+                .foregroundStyle(Brand.muted)
+            }
+            .padding(.horizontal, 28)
+            .padding(.vertical, 32)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        }
+        .overlay(alignment: .bottom) { SpectrumBar().ignoresSafeArea(edges: .bottom) }
     }
 }
