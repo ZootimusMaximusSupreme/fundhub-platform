@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { CHECK_IDS, VERIFIED_SQL, NEXT_ACTION_SQL, EMAIL_SAFETY_SQL, REPLY_WAITING_SQL, gapChecks } from "./gap-bank-outreach.mjs";
 import { VERIFIED_SQL as HOURLY_VERIFIED_SQL } from "../beats/beat-bank-outreach.mjs";
+import { assertReadOnlySql } from "../beats/readbox.mjs";
+import { FIELD_CATALOG, LENDER_EXTRA_COLUMNS } from "../../outreach/model.mjs";
 
 const SAFE = { total: 4, unknown_recipient: 0, after_opt_out: 0, after_reply: 0 };
 const QUIET = { waiting: 1, stuck: 0 };
@@ -65,4 +67,30 @@ test("n/a is accepted exactly where unknown is for the two business-only keys, i
   }
   const withoutTag = (sql) => sql.replace(/^\/\*[^*]*\*\//, "").trim();
   assert.equal(withoutTag(VERIFIED_SQL), withoutTag(HOURLY_VERIFIED_SQL));
+});
+
+// The check names each Lenders column on purpose (it is an independent oracle, not the writer's own
+// mapping), so this test makes the model and the SQL agree: add a column to one, fail until the other has it.
+const kindOf = (type) => type === "yesno" ? "yesno" : ["money", "pct", "months", "years", "score"].includes(type) ? "number" : "text";
+
+test("the morning check and the hourly beat compare every extra Lenders column a pushed product fills, once each", () => {
+  const keys = Object.keys(LENDER_EXTRA_COLUMNS);
+  assert.equal(keys.length, 20);
+  for (const sql of [VERIFIED_SQL, HOURLY_VERIFIED_SQL]) {
+    for (const key of keys) {
+      const row = `('${key}', '${kindOf(FIELD_CATALOG[key].type)}', to_jsonb(l.${LENDER_EXTRA_COLUMNS[key]}))`;
+      assert.equal(sql.split(row).length - 1, 1, `${key} must be compared exactly once as ${row}`);
+    }
+    // No other row in that list: every VALUES row is a catalog key.
+    assert.equal((sql.match(/\('[a-z_]+', '(?:yesno|number|text)', to_jsonb\(l\.[a-z_]+\)\)/g) || []).length, keys.length);
+    // Absent key is not checked; present key must equal the column (yes/no as Yes/No; unknown and n/a as NULL).
+    assert.match(sql, /WHERE p\.facts \? ex\.key\s+AND coalesce\(ex\.actual, 'null'::jsonb\) IS DISTINCT FROM CASE ex\.kind/);
+    assert.match(sql, /WHEN 'true'::jsonb THEN '"Yes"'::jsonb WHEN 'false'::jsonb THEN '"No"'::jsonb/);
+    assert.match(sql, /NOT IN \('unknown', 'n\/a'\)/);
+    // Read-only, and the base comparisons are all still there.
+    assert.doesNotThrow(() => assertReadOnlySql(sql));
+    for (const base of ["l.application_url", "l.eligible_states", "l.bureaus_pulled", "l.minimum_time_in_business_years", "l.minimum_revenue_threshold", "l.stated_requirements", "l.notes"]) {
+      assert.match(sql, new RegExp(`OR ${base.replace(/\./g, "\\.")} IS DISTINCT FROM `));
+    }
+  }
 });
