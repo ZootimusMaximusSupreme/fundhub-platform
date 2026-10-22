@@ -12,6 +12,43 @@ const contacts = [{ id: 'contact-1', name: 'Avery Lane', title: 'Business banker
 export const facts = { minimum_score: 'unknown', minimum_time_in_business_years: 2, minimum_revenue_threshold: 250000, bureaus_pulled: ['EX', 'EQ'], inquiry_tolerance: 'Up to 3 in 6 months', stated_income: false, eligible_states: ['AZ', 'CA'], application_url: 'https://bank.example/apply', paper_application_url: 'unknown' };
 const product = { id: 'product-1', product_name: 'Business working capital line', lender_table: 'BizLOC_Documented', facts, evidence: 'Avery Lane · banker email · October 19, 2026', verified_at: null };
 
+// The product field catalog, copied from the build spec's tables
+// (docs/specs/bank-outreach-manual-first-2026-10-21.md §1). Order is the catalog order.
+// A spec case proves this copy equals the server's productFields().
+const FIELD_ROWS = [
+  ['minimum_score', 'Minimum credit score', 'score'], ['minimum_time_in_business_years', 'Minimum years in business', 'years'],
+  ['minimum_revenue_threshold', 'Minimum yearly revenue', 'money'], ['bureaus_pulled', 'Bureaus pulled', 'bureaus'],
+  ['inquiry_tolerance', 'Inquiries they accept', 'text'], ['stated_income', 'Accepts stated income', 'yesno'],
+  ['eligible_states', 'States served', 'states'], ['application_url', 'Online application link', 'url'],
+  ['paper_application_url', 'Paper application link', 'url'], ['double_pull', 'Pulls two bureaus', 'yesno'],
+  ['relationship_required', 'Needs an existing relationship', 'yesno'], ['requires_account_opening', 'Must open an account first', 'yesno'],
+  ['minimum_deposit', 'Minimum deposit', 'money'], ['prequal_soft_pull', 'Soft-pull pre-qualification', 'yesno'],
+  ['business_bureau_pulled', 'Business bureau pulled', 'text'], ['underwriter', 'Who underwrites it', 'text'],
+  ['intro_offers', 'Intro offer', 'text'], ['multiple_llc_allowed', 'More than one LLC allowed', 'yesno'],
+  ['application_method', 'How clients apply', 'text'], ['typical_amount', 'Typical approved amount', 'money'],
+  ['apr_pct', 'APR (percent)', 'pct'], ['repayment_months', 'Repayment months', 'months'],
+  ['funding_speed', 'How fast it funds', 'text'], ['average_starting_line', 'Usual starting line', 'money'],
+  ['max_line', 'Largest line', 'money'], ['draw_and_renewal', 'Draw period and renewal', 'text'],
+  ['documents_required', 'Documents required', 'text'], ['collateral_required', 'Collateral required', 'yesno'],
+  ['line_type', 'Line type', 'text']
+];
+const EVERY_PRODUCT = ['minimum_score', 'bureaus_pulled', 'double_pull', 'inquiry_tolerance', 'stated_income', 'eligible_states', 'application_url', 'paper_application_url', 'relationship_required', 'requires_account_opening', 'minimum_deposit', 'prequal_soft_pull'];
+const BUSINESS_ONLY = ['minimum_time_in_business_years', 'minimum_revenue_threshold'];
+const BIZ_CARD = [...BUSINESS_ONLY, 'business_bureau_pulled', 'underwriter', 'intro_offers', 'multiple_llc_allowed'];
+const BIZ_LINE = [...BUSINESS_ONLY, 'business_bureau_pulled', 'average_starting_line', 'max_line', 'apr_pct', 'draw_and_renewal', 'documents_required', 'collateral_required', 'line_type'];
+const ADDS = { OnlineBizCC: BIZ_CARD, InBranchBizCC: BIZ_CARD, BizLOC_Stated: BIZ_LINE, BizLOC_Documented: BIZ_LINE, PersonalCC: ['underwriter', 'intro_offers'], PersonalLOC: ['average_starting_line', 'max_line', 'apr_pct', 'draw_and_renewal', 'collateral_required'], PersonalLoans: ['application_method', 'typical_amount', 'apr_pct', 'repayment_months', 'funding_speed'] };
+const inCatalogOrder = keys => FIELD_ROWS.map(([key]) => key).filter(key => keys.includes(key));
+export const PRODUCT_FIELDS = Object.freeze({
+  fields: Object.fromEntries(FIELD_ROWS.map(([key, label, type]) => [key, { label, type }])),
+  types: Object.fromEntries(Object.entries(ADDS).map(([table, adds]) => [table, inCatalogOrder([...EVERY_PRODUCT, ...adds])])),
+  notApplicable: Object.fromEntries(Object.entries(ADDS).map(([table, adds]) => [table, BUSINESS_ONLY.filter(key => !adds.includes(key))]))
+});
+// Fictional warm-up copy for Avery Lane. It carries characters a mailto:/sms: link must encode.
+export const WARMUP = {
+  email: { subject: 'Arizona clients for Mesa Community Bank & a quick call?', body: "Hi Avery,\n\nI'm Casey with Fundhub. I have Arizona clients who need business cards and lines of credit. Can we hop on a quick call so I learn what you look for?\n\nCasey Reed\nFundhub" },
+  text: "Hi Avery, it's Casey with Fundhub. I have Arizona clients for Mesa Community Bank. Can we set up a quick call this week? Reply STOP to opt out."
+};
+
 // Automation data for one fictional bank (bank-0). Every row agrees with the others:
 // the two bankers who replied have stopped emails, the STOP reply opted Riley out,
 // and the queue counts match the found bankers and replies still waiting.
@@ -63,14 +100,18 @@ const automationView = (config, empty) => {
 // The store's own 409 words for a second review of the same row.
 const CONFLICT = { accept_lead: 'This found banker was already reviewed', dismiss_lead: 'This found banker was already reviewed', apply_reply_suggestion: 'This reply has no facts waiting', dismiss_reply_suggestion: 'This reply has no facts waiting' };
 
-export async function fixture(page, { manager = false, state = 'full', failWrite = false, published = false, draft = false, filteredEmpty = false, filteredInactive = false, automation = false, autoConfig = 'ready', states = STATE_CODES } = {}) {
+// catalog: answer like the server that sends productFields and banker warm-ups.
+// Without it, every response has today's shape (the fallback the screen must keep).
+export async function fixture(page, { manager = false, state = 'full', failWrite = false, published = false, draft = false, filteredEmpty = false, filteredInactive = false, automation = false, autoConfig = 'ready', states = STATE_CODES, catalog = false } = {}) {
   const posts = [], reads = [], faults = { detail: false, team: false, automation: false, conflict: null }, gates = {}, data = { account: account(0), contacts: structuredClone(contacts), products: [{ ...structuredClone(product), verified_at: published ? '2026-10-19T15:00:00Z' : null }] };
   if (automation) Object.assign(data, autoData());
+  if (catalog) data.contacts[0].warmup = structuredClone(WARMUP);
   const hold = name => { let open; gates[name] = new Promise(resolve => { open = resolve; }); return () => { delete gates[name]; open(); }; };
   if (draft) data.products[0].draft = { ...structuredClone(product), product_name: 'Proposed business line', facts: { ...facts, minimum_score: 680 } };
   let release; const pending = new Promise(resolve => { release = resolve; });
   await page.route(/^https?:\/\/(?!127\.0\.0\.1|localhost)/, route => route.abort());
-  const base = { ok: true, canManage: manager, program: { states: [...states] }, summary: state === 'empty' ? Object.fromEntries(Object.keys(summary).map(key => [key, 0])) : automation ? { ...summary, ...autoTotals } : summary, reps: [{ id: 'rep-1', name: 'Casey Reed' }, { id: 'rep-2', name: 'Morgan Ellis' }] };
+  // Like the server: a rep's seat list holds only their own seat.
+  const base = { ok: true, canManage: manager, program: { states: [...states] }, summary: state === 'empty' ? Object.fromEntries(Object.keys(summary).map(key => [key, 0])) : automation ? { ...summary, ...autoTotals } : summary, reps: manager ? [{ id: 'rep-1', name: 'Casey Reed' }, { id: 'rep-2', name: 'Morgan Ellis' }] : [{ id: 'rep-1', name: 'Casey Reed' }], ...(catalog ? { productFields: structuredClone(PRODUCT_FIELDS) } : {}) };
   const item = i => (automation ? { ...account(i), ...autoCounts(i), ...(i === 0 ? { status: data.account.status, next_action: data.account.next_action, next_due_at: data.account.next_due_at } : {}) } : account(i));
   await openScreen(page, '/app/bank-outreach.html', manager ? OWNER : REP, {
     '/api/read/bank-outreach': async (route, { url }) => {
@@ -119,7 +160,7 @@ export async function fixture(page, { manager = false, state = 'full', failWrite
         }
       }
       if (body.action === 'save_contact') { const contact = { ...body, id: body.id || 'contact-2' }; const index = data.contacts.findIndex(c => c.id === contact.id); if (index < 0) data.contacts.push(contact); else data.contacts[index] = contact; }
-      if (body.action === 'log_touch') { data.account.next_action = body.next_action; }
+      if (body.action === 'log_touch') { data.account.next_action = body.next_action; if (body.next_due_at) data.account.next_due_at = body.next_due_at; }
       if (body.action === 'save_product') { data.products = [{ ...body, id: body.id || 'product-2', verified_at: null }]; }
       if (body.action === 'verify_product') data.products[0].verified_at = new Date().toISOString();
       if (body.action === 'set_status') Object.assign(data.account, { status: body.status, next_action: body.next_action, partner_activity: body.partner_activity });

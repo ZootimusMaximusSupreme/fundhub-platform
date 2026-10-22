@@ -1,6 +1,7 @@
 import test, { after } from "node:test";
 import assert from "node:assert/strict";
 import { VERIFIED_SQL, NEXT_ACTION_SQL } from "./gap-bank-outreach.mjs";
+import { VERIFIED_SQL as HOURLY_VERIFIED_SQL } from "../beats/beat-bank-outreach.mjs";
 import { HAS_DB, ORG, OTHER_ORG, closeShadowDb, runShadowSql, shadow, withShadows } from "./money-test-kit.mjs";
 import { lenderValues } from "../../outreach/model.mjs";
 
@@ -92,4 +93,40 @@ test("active work without a next action is red; paused work is not counted", { s
   assert.deepEqual((await runShadowSql(query(NEXT_ACTION_SQL))).rows[0], { active: 1, missing: 0 });
   assert.deepEqual((await runShadowSql(query(NEXT_ACTION_SQL, { account: { next_action: null } }))).rows[0], { active: 1, missing: 1 });
   assert.deepEqual((await runShadowSql(query(NEXT_ACTION_SQL, { account: { status: "paused", next_action: null } }))).rows[0], { active: 0, missing: 0 });
+});
+
+// A personal product has no years-in-business or revenue to ask: the server stores "n/a" and Lenders keeps NULL.
+const personalFacts = { ...facts, minimum_time_in_business_years: "n/a", minimum_revenue_threshold: "n/a" };
+const personal = (over = {}) => ({
+  product: { lender_table: "PersonalLoans", facts: personalFacts, ...(over.product || {}) },
+  lender: { lender_table: "PersonalLoans", minimum_time_in_business_years: null, minimum_revenue_threshold: null, ...(over.lender || {}) }
+});
+
+test("n/a on the two business-only keys is a sound personal product, in the morning check and the hourly beat", { skip: !HAS_DB && "DATABASE_URL not set" }, async () => {
+  for (const sql of [VERIFIED_SQL, HOURLY_VERIFIED_SQL]) {
+    assert.deepEqual((await runShadowSql(query(sql, personal()))).rows[0], { total: 1, broken: 0 });
+    // Only one of the two may be n/a; unknown still counts for the other.
+    const mixed = personal({ product: { facts: { ...personalFacts, minimum_revenue_threshold: "unknown" } } });
+    assert.deepEqual((await runShadowSql(query(sql, mixed))).rows[0], { total: 1, broken: 0 });
+  }
+});
+
+test("n/a is red anywhere unknown would be wrong: another key, a spelling variant, or a Lenders row that kept a number", { skip: !HAS_DB && "DATABASE_URL not set" }, async () => {
+  const bad = [
+    personal({ product: { facts: { ...personalFacts, minimum_score: "n/a" } } }),
+    personal({ product: { facts: { ...personalFacts, stated_income: "n/a" } } }),
+    personal({ product: { facts: { ...personalFacts, eligible_states: "n/a" } } }),
+    personal({ product: { facts: { ...personalFacts, bureaus_pulled: "n/a" } } }),
+    personal({ product: { facts: { ...personalFacts, application_url: "n/a", paper_application_url: "n/a" } } }),
+    personal({ product: { facts: { ...personalFacts, minimum_time_in_business_years: "N/A" } } }),
+    personal({ product: { facts: { ...personalFacts, minimum_revenue_threshold: "na" } } }),
+    personal({ product: { facts: { ...personalFacts, minimum_time_in_business_years: "" } } }),
+    personal({ lender: { minimum_time_in_business_years: 3 } }),
+    personal({ lender: { minimum_revenue_threshold: 100000 } })
+  ];
+  for (const fixture of bad) {
+    for (const sql of [VERIFIED_SQL, HOURLY_VERIFIED_SQL]) {
+      assert.equal((await runShadowSql(query(sql, fixture))).rows[0].broken, 1, JSON.stringify(fixture));
+    }
+  }
 });

@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { CHECK_IDS, VERIFIED_SQL, NEXT_ACTION_SQL, EMAIL_SAFETY_SQL, REPLY_WAITING_SQL, gapChecks } from "./gap-bank-outreach.mjs";
+import { VERIFIED_SQL as HOURLY_VERIFIED_SQL } from "../beats/beat-bank-outreach.mjs";
 
 const SAFE = { total: 4, unknown_recipient: 0, after_opt_out: 0, after_reply: 0 };
 const QUIET = { waiting: 1, stuck: 0 };
@@ -51,4 +52,17 @@ test("empty setup is green; missing read is not a pass; SQL checks org links", a
   assert.match(VERIFIED_SQL, /c\.org_id = p\.org_id/);
   assert.match(VERIFIED_SQL, /p\.facts/);
   assert.match(NEXT_ACTION_SQL, /a\.next_due_at IS NULL/);
+});
+
+test("n/a is accepted exactly where unknown is for the two business-only keys, in the morning check and the hourly beat alike", () => {
+  const clause = `ELSE f.value = '"unknown"'::jsonb OR f.value = '"n/a"'::jsonb END`;
+  for (const sql of [VERIFIED_SQL, HOURLY_VERIFIED_SQL]) {
+    // The branch for the two business-only keys is the only place "n/a" is allowed.
+    assert.equal(sql.split(clause).length - 1, 1);
+    assert.equal((sql.match(/"n\/a"/g) || []).length, 1);
+    const branch = sql.slice(sql.indexOf("WHEN f.key IN ('minimum_time_in_business_years','minimum_revenue_threshold')"));
+    assert.ok(branch.indexOf(clause) > 0 && branch.indexOf(clause) < branch.indexOf("WHEN f.key = 'stated_income'"));
+  }
+  const withoutTag = (sql) => sql.replace(/^\/\*[^*]*\*\//, "").trim();
+  assert.equal(withoutTag(VERIFIED_SQL), withoutTag(HOURLY_VERIFIED_SQL));
 });

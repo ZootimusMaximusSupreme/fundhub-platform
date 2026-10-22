@@ -1,6 +1,6 @@
 import { withTransaction } from '../db/with-transaction.mjs';
-import { PROGRAM_KEY, MANAGER_ROLES, OUTREACH_ROLES, LENDER_TABLES, fail, text, uuid, httpUrl, dueAt, status, normalizeFacts, parseInstitutionCsv, lenderValues } from './model.mjs';
-import { stopSequence, arizonaDayStart } from './queue.mjs';
+import { PROGRAM_KEY, MANAGER_ROLES, OUTREACH_ROLES, LENDER_TABLES, fail, text, uuid, httpUrl, dueAt, status, normalizeFacts, parseInstitutionCsv, lenderValues, lenderExtras, productFields, factsForType } from './model.mjs';
+import { stopSequence, arizonaDayStart, templateFor, renderWarmup, WARMUP_EMAIL_KEY, WARMUP_SMS_KEY } from './queue.mjs';
 import { stripQuoted, AGENT_CODE } from './replies.mjs';
 import { mailConfig, inSendWindow, BANK_EMAIL_KEYS, COLD_KEYS } from './mail.mjs';
 import { serperKey, SIGNUP_URL } from '../messaging/providers/serper-search.mjs';
@@ -66,10 +66,16 @@ async function automationStatus(db, staff, env) {
 export async function readOutreach(db, { staff: input, query = {}, env = process.env } = {}) {
   if (!query || typeof query !== 'object' || Array.isArray(query)) fail('Enter valid outreach filters');
   const staff = await identity(db, input);
-  const base = { ok: true, canManage: staff.canManage, program: await program(db, staff) };
+  const base = { ok: true, canManage: staff.canManage, program: await program(db, staff), productFields: productFields() };
   if (query.id) {
     const a = await account(db, staff, query.id);
-    const contacts = (await db.query(`SELECT * FROM outreach_contacts WHERE org_id=$1 AND account_id=$2 ORDER BY created_at,id`, [staff.org_id, a.id])).rows;
+    const saved = (await db.query(`SELECT * FROM outreach_contacts WHERE org_id=$1 AND account_id=$2 ORDER BY created_at,id`, [staff.org_id, a.id])).rows;
+    // First-contact words for the rep to send by hand, signed by the bank's rep (or the person reading it).
+    // Rendered from the stored templates whether or not they are approved; a missing one is null.
+    const assignedRep = a.assigned_staff_id ? (await db.query(`SELECT name FROM staff WHERE id=$1 AND org_id=$2`, [a.assigned_staff_id, staff.org_id])).rows[0] : null;
+    const emailTemplate = await templateFor(db, staff.org_id, WARMUP_EMAIL_KEY, { approvedOnly: false });
+    const smsTemplate = await templateFor(db, staff.org_id, WARMUP_SMS_KEY, { approvedOnly: false, channel: 'sms' });
+    const contacts = saved.map(contact => ({ ...contact, warmup: renderWarmup({ emailTemplate, smsTemplate }, { account: a, contact, repName: assignedRep?.name || staff.name }) }));
     const activities = (await db.query(`SELECT x.*,s.name staff_name FROM outreach_activities x LEFT JOIN staff s ON s.id=x.staff_id AND s.org_id=x.org_id WHERE x.org_id=$1 AND x.account_id=$2 ORDER BY x.created_at DESC,x.id DESC LIMIT 500`, [staff.org_id, a.id])).rows;
     const products = (await db.query(`SELECT * FROM outreach_products WHERE org_id=$1 AND account_id=$2 ORDER BY created_at,id`, [staff.org_id, a.id])).rows;
     // Pending manager amendments are not published banker facts. Keep them out
@@ -128,7 +134,7 @@ async function appendActivity(db, staff, a, body, { outcome, note, touch = false
 async function saveProduct(db, staff, a, body) {
   const name = text(body.product_name, 'product name', { required: true, max: 250 });
   if (!LENDER_TABLES.includes(body.lender_table)) fail('Choose an existing lender product category');
-  const facts = normalizeFacts(body.facts || {});
+  const facts = normalizeFacts(body.facts || {}, { lenderTable: body.lender_table });
   const evidence = text(body.evidence, 'evidence') || '';
   let previous;
   if (body.id) {
@@ -165,29 +171,40 @@ async function saveProduct(db, staff, a, body) {
   return { product: result };
 }
 
+// A manager verifies any product. A rep pushes their own bank's first complete product to Lenders:
+// account() already limits a rep to banks assigned to them. A product that is already published, or
+// that holds a manager's pending amendment, stays a manager's call.
 async function verifyProduct(db, staff, id) {
-  manager(staff); uuid(id, 'product');
+  uuid(id, 'product');
   // Lock account first, consistent with every other product write.
   const ref = (await db.query(`SELECT account_id FROM outreach_products WHERE id=$1 AND org_id=$2`, [id, staff.org_id])).rows[0];
   if (!ref) fail('Product not found', 404);
   const a = await account(db, staff, ref.account_id, true);
   const published = (await db.query(`SELECT * FROM outreach_products WHERE id=$1 AND org_id=$2 AND account_id=$3 FOR UPDATE`, [id, staff.org_id, a.id])).rows[0];
+  if (published.verified_at || published.draft) manager(staff);
   const product = { ...published, ...(published.draft || {}) };
   if (published.verified_at && product.lender_table !== published.lender_table) fail('Keep the approved product category; add a new product for another category');
-  const facts = normalizeFacts(product.facts, { complete: true });
+  const facts = normalizeFacts(product.facts, { complete: true, lenderTable: product.lender_table });
   if (!product.evidence.trim() || ['unknown', 'none', 'n/a', 'tbd'].includes(product.evidence.trim().toLowerCase())) fail('Add source evidence before verification');
   const contacts = (await db.query(`SELECT id FROM outreach_contacts WHERE org_id=$1 AND account_id=$2 AND nullif(btrim(name),'') IS NOT NULL AND (nullif(btrim(email),'') IS NOT NULL OR nullif(btrim(phone),'') IS NOT NULL OR nullif(btrim(linkedin_url),'') IS NOT NULL) LIMIT 1`, [staff.org_id, a.id])).rows;
   if (!contacts.length) fail('Add a reachable banker before verification');
   const values = lenderValues(a, product, facts, staff);
+  // Typed columns for the answers beyond the base twelve. Names come from the field catalog, never from input.
+  const extras = lenderExtras(product.lender_table, facts);
+  const extraColumns = Object.keys(extras);
+  const extraValues = Object.values(extras);
   let lender; let priorLender = null;
   if (product.lender_id) {
     priorLender = (await db.query(`SELECT * FROM lenders WHERE org_id=$1 AND id=$2 FOR UPDATE`, [staff.org_id, product.lender_id])).rows[0];
     if (!priorLender) fail('Linked lender is missing from this organization');
     if (!priorLender.active || priorLender.lender_table !== product.lender_table) fail('Linked lender changed; choose an active lender in this product category', 409);
-    lender = (await db.query(`UPDATE lenders SET lender_table=$2,name=$3,product_name=$4,application_url=$5,eligible_states=$6,bureaus_pulled=$7,stated_requirements=$8,minimum_time_in_business_years=$9,minimum_revenue_threshold=$10,notes=$11,last_updated_by=$12,last_updated_date=current_date,updated_at=now() WHERE org_id=$1 AND id=$13 AND active AND lender_table=$2 RETURNING id`, [...values, product.lender_id])).rows[0];
+    const extraSet = extraColumns.map((column, i) => `,${column}=$${14 + i}`).join('');
+    lender = (await db.query(`UPDATE lenders SET lender_table=$2,name=$3,product_name=$4,application_url=$5,eligible_states=$6,bureaus_pulled=$7,stated_requirements=$8,minimum_time_in_business_years=$9,minimum_revenue_threshold=$10,notes=$11,last_updated_by=$12,last_updated_date=current_date,updated_at=now()${extraSet} WHERE org_id=$1 AND id=$13 AND active AND lender_table=$2 RETURNING id`, [...values, product.lender_id, ...extraValues])).rows[0];
     if (!lender) fail('Linked lender is missing from this organization');
   } else {
-    lender = (await db.query(`INSERT INTO lenders(org_id,lender_table,name,product_name,application_url,eligible_states,bureaus_pulled,stated_requirements,minimum_time_in_business_years,minimum_revenue_threshold,notes,last_updated_by,last_updated_date) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,current_date) RETURNING id`, values)).rows[0];
+    const extraNames = extraColumns.map(column => `,${column}`).join('');
+    const extraParams = extraColumns.map((_, i) => `,$${13 + i}`).join('');
+    lender = (await db.query(`INSERT INTO lenders(org_id,lender_table,name,product_name,application_url,eligible_states,bureaus_pulled,stated_requirements,minimum_time_in_business_years,minimum_revenue_threshold,notes,last_updated_by,last_updated_date${extraNames}) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,current_date${extraParams}) RETURNING id`, [...values, ...extraValues])).rows[0];
   }
   const verified = (await db.query(`UPDATE outreach_products SET lender_id=$3,verified_at=now(),first_verified_at=COALESCE(first_verified_at,now()),verified_by=$4,product_name=$5,lender_table=$6,facts=$7::jsonb,evidence=$8,draft=NULL,updated_at=now() WHERE org_id=$1 AND id=$2 RETURNING *`, [staff.org_id, product.id, lender.id, staff.id, product.product_name, product.lender_table, JSON.stringify(facts), product.evidence])).rows[0];
   const checkin = (await db.query(`SELECT now()+CASE WHEN $1::text='quiet' THEN interval '3 months' ELSE interval '1 month' END due`, [a.partner_activity])).rows[0].due;
@@ -241,7 +258,10 @@ async function reviewReply(db, staff, a, body) {
     facts = { ...(existing.draft?.facts || existing.facts || {}), ...facts };
     evidence = [existing.draft?.evidence ?? existing.evidence, evidence].filter(v => v && v.trim()).join('\n');
   }
-  const saved = await saveProduct(db, staff, a, { id: productId, product_name: body.product_name ?? s.product_name, lender_table: body.lender_table ?? s.lender_table, facts, evidence });
+  const lenderTable = body.lender_table ?? s.lender_table;
+  // A suggestion can name a fact this kind of product does not ask for; drop it rather than refuse the whole save.
+  if (LENDER_TABLES.includes(lenderTable)) facts = factsForType(lenderTable, facts);
+  const saved = await saveProduct(db, staff, a, { id: productId, product_name: body.product_name ?? s.product_name, lender_table: lenderTable, facts, evidence });
   await db.query(`UPDATE outreach_inbound_emails SET suggestion_status='applied',status='handled',handled_by=$3,updated_at=now() WHERE org_id=$1 AND id=$2`, [staff.org_id, id, staff.id]);
   return saved;
 }

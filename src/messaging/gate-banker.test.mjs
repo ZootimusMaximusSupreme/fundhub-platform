@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 import { gate, BANK_OUTREACH_EMAIL_KEYS } from "./gate.mjs";
 import { clearRuleCache } from "../compliance/screen.mjs";
 import { BANK_EMAIL_KEYS } from "../outreach/mail.mjs";
+import { renderWarmup } from "../outreach/queue.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ORG = "00000000-0000-4000-8000-000000000001";
@@ -85,5 +86,18 @@ test("every bank email in migration 495 passes the restricted-word rules", async
   for (const [, key, subject, body] of bodies) {
     const res = await gate(fakeDb(), msg({ templateKey: key, body: `${subject}\n${body}` }), { now: MIDDAY });
     assert.equal(res.state, "allowed", `${key}: ${JSON.stringify(codes(res))}`);
+  }
+});
+
+test("every warm-up email in migration 503 passes the restricted-word rules, as written and as a banker reads it", async () => {
+  const sql = fs.readFileSync(path.join(HERE, "../../db/migrations/503_bank_outreach_manual_first.sql"), "utf8");
+  const bodies = [...sql.matchAll(/\('(EMAIL-BANK-OUTREACH-[0-9])',\s*\$old\$[\s\S]*?\$old\$,\s*'([^']*)',\s*\$new\$([\s\S]*?)\$new\$\)/g)];
+  assert.equal(bodies.length, 3);
+  for (const [, key, subject, body] of bodies) {
+    const raw = await gate(fakeDb(), msg({ templateKey: key, body: `${subject}\n${body}` }), { now: MIDDAY });
+    assert.equal(raw.state, "allowed", `${key}: ${JSON.stringify(codes(raw))}`);
+    const read = renderWarmup({ emailTemplate: { subject, body } }, { account: { name: "First Bank of Arizona", state: "AZ" }, contact: { name: "Jane Doe" }, repName: "Mike Rep" }).email;
+    const rendered = await gate(fakeDb(), msg({ templateKey: key, body: `${read.subject}\n${read.body}` }), { now: MIDDAY });
+    assert.equal(rendered.state, "allowed", `${key} rendered: ${JSON.stringify(codes(rendered))}`);
   }
 });

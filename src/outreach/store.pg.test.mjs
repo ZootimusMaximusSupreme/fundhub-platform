@@ -8,10 +8,15 @@ import pg from 'pg';
 import { readOutreach, writeOutreach, schedulePartnerCheckins } from './store.mjs';
 import writeHandler from '../../api/bank-outreach.mjs';
 import readHandler from '../../api/read/bank-outreach.mjs';
+import { VERIFIED_SQL } from '../pulse/coverage/gap-bank-outreach.mjs';
 
 const url = process.env.DATABASE_URL;
 const schema = `outreach_test_${randomUUID().replaceAll('-', '')}`;
-const facts = { minimum_score: 680, minimum_time_in_business_years: 'unknown', minimum_revenue_threshold: 'unknown', bureaus_pulled: ['EX'], inquiry_tolerance: 'Three inquiries in six months', stated_income: false, eligible_states: ['AZ', 'CA'], application_url: 'https://bank.example/apply', paper_application_url: 'unknown' };
+// A complete business card online (OnlineBizCC): every field its type asks for is answered or "unknown".
+const facts = { minimum_score: 680, minimum_time_in_business_years: 'unknown', minimum_revenue_threshold: 'unknown', bureaus_pulled: ['EX'], inquiry_tolerance: 'Three inquiries in six months', stated_income: false, eligible_states: ['AZ', 'CA'], application_url: 'https://bank.example/apply', paper_application_url: 'unknown', double_pull: false, relationship_required: false, requires_account_opening: false, minimum_deposit: 'unknown', prequal_soft_pull: false, business_bureau_pulled: 'D&B/SBFE', underwriter: 'Underwritten by Elan', intro_offers: '0% intro APR for 12 months', multiple_llc_allowed: 'unknown' };
+const everyProduct = { minimum_score: 700, bureaus_pulled: ['EX', 'EQ'], double_pull: true, inquiry_tolerance: 'Up to four in six months', stated_income: false, eligible_states: ['AZ'], application_url: 'https://bank.example/apply-here', paper_application_url: 'unknown', relationship_required: true, requires_account_opening: false, minimum_deposit: 'unknown', prequal_soft_pull: true };
+const personalLoan = { ...everyProduct, application_method: 'Online or in a branch', typical_amount: 15000, apr_pct: 9.99, repayment_months: 48, funding_speed: 'Next business day' };
+const businessLine = { ...everyProduct, minimum_time_in_business_years: 2, minimum_revenue_threshold: 120000.5, business_bureau_pulled: 'None', average_starting_line: 25000, max_line: 250000, apr_pct: 11.5, draw_and_renewal: '24 month draw, yearly renewal', documents_required: 'Two years of tax returns', collateral_required: false, line_type: 'revolving' };
 
 describe('bank outreach disposable PostgreSQL', { skip: !url ? 'no DATABASE_URL: PostgreSQL proof not run' : false }, () => {
   let pool; let db; let org; let otherOrg; let owner; let rep; let secondRep; let otherOwner;
@@ -46,7 +51,8 @@ describe('bank outreach disposable PostgreSQL', { skip: !url ? 'no DATABASE_URL:
       CREATE TABLE staff(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),org_id uuid NOT NULL REFERENCES orgs(id),name text NOT NULL,email text,role text,status text,active boolean DEFAULT true);
       CREATE TABLE staff_roles(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),org_id uuid NOT NULL REFERENCES orgs(id),key text NOT NULL,name text NOT NULL,active boolean DEFAULT true);
       CREATE TYPE ${schema}.lender_table AS ENUM ('OnlineBizCC','InBranchBizCC','BizLOC_Stated','BizLOC_Documented','PersonalCC','PersonalLoans','PersonalLOC');
-      CREATE TABLE lenders(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),org_id uuid NOT NULL REFERENCES orgs(id),lender_table lender_table NOT NULL,name text NOT NULL,product_name text,application_url text,eligible_states text,bureaus_pulled text,stated_requirements text,minimum_time_in_business_years numeric(6,2),minimum_revenue_threshold numeric(14,2),notes text,last_updated_by text,last_updated_date date,active boolean DEFAULT true,updated_at timestamptz DEFAULT now());`);
+      CREATE TABLE lenders(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),org_id uuid NOT NULL REFERENCES orgs(id),lender_table lender_table NOT NULL,name text NOT NULL,product_name text,application_url text,eligible_states text,bureaus_pulled text,stated_requirements text,minimum_time_in_business_years numeric(6,2),minimum_revenue_threshold numeric(14,2),notes text,last_updated_by text,last_updated_date date,active boolean DEFAULT true,updated_at timestamptz DEFAULT now(),
+        double_pull text,relationship_required text,requires_account_opening text,minimum_deposit numeric(14,2),prequal_soft_pull text,business_bureau_pulled text,underwriter_interaction text,intro_offers text,multiple_llc_allowed text,application_method text,typical_approval_range numeric(14,2),apr_range_pct numeric(8,4),repayment_terms_months integer,funding_speed text,average_starting_loc numeric(14,2),max_known_loc numeric(14,2),draw_period_renewal text,docs_requested text,collateral_required text,loc_type text);`);
     org = (await db.query(`INSERT INTO orgs(name) VALUES('Outreach test') RETURNING id`)).rows[0].id;
     otherOrg = (await db.query(`INSERT INTO orgs(name) VALUES('Other outreach test') RETURNING id`)).rows[0].id;
     await db.query(await readFile(new URL('../../db/migrations/483_bank_outreach.sql', import.meta.url), 'utf8'));
@@ -142,6 +148,10 @@ describe('bank outreach disposable PostgreSQL', { skip: !url ? 'no DATABASE_URL:
     const lender = (await db.query(`SELECT * FROM lenders WHERE id=$1`, [saved.lender_id])).rows[0];
     assert.equal(lender.name, a.name); assert.equal(lender.product_name, 'Business card'); assert.equal(lender.application_url, facts.application_url);
     assert.equal(lender.minimum_time_in_business_years, null); assert.equal(lender.minimum_revenue_threshold, null); assert.match(lender.stated_requirements, /680/); assert.match(lender.stated_requirements, /Stated income: no/);
+    // The answers beyond the base twelve land in their own typed columns; "unknown" stays NULL, never "No" or zero.
+    assert.deepEqual({ d: lender.double_pull, r: lender.relationship_required, o: lender.requires_account_opening, p: lender.prequal_soft_pull, b: lender.business_bureau_pulled, u: lender.underwriter_interaction, i: lender.intro_offers }, { d: 'No', r: 'No', o: 'No', p: 'No', b: 'D&B/SBFE', u: 'Underwritten by Elan', i: '0% intro APR for 12 months' });
+    assert.equal(lender.multiple_llc_allowed, null); assert.equal(lender.minimum_deposit, null);
+    assert.equal(lender.average_starting_loc, null); assert.equal(lender.loc_type, null);
     await write(owner, { action: 'verify_product', id: product.id });
     assert.equal((await db.query(`SELECT count(*)::int n FROM lenders WHERE id=$1`, [saved.lender_id])).rows[0].n, 1);
     const edit = await write(owner, { action: 'save_product', id: product.id, account_id: a.id, product_name: 'Business card updated', lender_table: 'OnlineBizCC', facts: { ...facts, minimum_score: 700 }, evidence: 'Updated banker terms' });
@@ -292,7 +302,10 @@ describe('bank outreach disposable PostgreSQL', { skip: !url ? 'no DATABASE_URL:
     assert.equal((await http(rep, 'POST', { action: 'save_contact', account_id: a.id, name: 'HTTP Banker', email: 'http-banker@bank.example' })).statusCode, 200);
     const draft = await http(rep, 'POST', { action: 'save_product', account_id: a.id, product_name: 'HTTP Business Card', lender_table: 'OnlineBizCC', facts, evidence: 'Banker email confirming terms and application link' });
     assert.equal(draft.statusCode, 200); assert.equal(draft.body.product.verified_at, null);
-    assert.equal((await http(rep, 'POST', { action: 'verify_product', id: draft.body.product.id })).statusCode, 403);
+    // A rep on another rep's bank cannot push it; the assigned rep can (owner 2026-10-21: a human in the loop is the rep).
+    assert.equal((await http(secondRep, 'POST', { action: 'verify_product', id: draft.body.product.id })).statusCode, 404);
+    const pushed = await http(rep, 'POST', { action: 'verify_product', id: draft.body.product.id });
+    assert.equal(pushed.statusCode, 200); assert.equal(pushed.body.product.verified_by, rep.id);
     const verified = await http(owner, 'POST', { action: 'verify_product', id: draft.body.product.id });
     assert.equal(verified.statusCode, 200); assert.ok(verified.body.product.verified_at);
     const saved = await http(rep, 'GET', { id: a.id });
@@ -303,6 +316,58 @@ describe('bank outreach disposable PostgreSQL', { skip: !url ? 'no DATABASE_URL:
     assert.equal((await http(otherOwner, 'GET', { id: a.id })).statusCode, 404);
     assert.equal((await http(secondRep, 'POST', { action: 'log_touch', account_id: a.id, channel: 'note', outcome: 'guessed', next_action: 'Read' })).statusCode, 404);
     assert.equal((await http(otherOwner, 'POST', { action: 'save_product', account_id: a.id, product_name: 'Cross org overwrite', lender_table: 'OnlineBizCC', facts, evidence: 'x' })).statusCode, 404);
+  });
+  test('a rep pushes a personal loan and a business line from their own bank into typed Lenders columns; nothing else gets through', async () => {
+    const a = await target(190); const other = await target(191);
+    await write(owner, { action: 'assign', id: a.id, staff_id: rep.id });
+    await write(owner, { action: 'assign', id: other.id, staff_id: secondRep.id });
+    await write(rep, { action: 'save_contact', account_id: a.id, name: 'Loan Banker', email: 'loans@bank190.example' });
+    const loan = (await write(rep, { action: 'save_product', account_id: a.id, product_name: 'Personal loan', lender_table: 'PersonalLoans', facts: personalLoan, evidence: 'Banker email dated 2026-10-21 with the loan terms' })).product;
+    // The two business-only answers do not apply to a personal product: the server stores "n/a"; nobody types it.
+    assert.equal(loan.facts.minimum_time_in_business_years, 'n/a'); assert.equal(loan.facts.minimum_revenue_threshold, 'n/a');
+    const line = (await write(rep, { action: 'save_product', account_id: a.id, product_name: 'Business line', lender_table: 'BizLOC_Stated', facts: businessLine, evidence: 'Banker email dated 2026-10-21 with the line terms' })).product;
+    // Incomplete is refused and named by its on-screen label; a made-up category, a wrong-type answer and a typo'd value are refused at save.
+    const gap = (await write(rep, { action: 'save_product', account_id: a.id, product_name: 'Half a loan', lender_table: 'PersonalLoans', facts: { ...personalLoan, repayment_months: undefined }, evidence: 'Banker email' })).product;
+    await assert.rejects(write(rep, { action: 'verify_product', id: gap.id }), { statusCode: 400, message: /Repayment months/ });
+    await assert.rejects(write(rep, { action: 'save_product', account_id: a.id, product_name: 'Wrong key', lender_table: 'PersonalLoans', facts: { ...personalLoan, max_line: 5000 }, evidence: 'x' }), { statusCode: 400, message: /does not apply/ });
+    await assert.rejects(write(rep, { action: 'save_product', account_id: a.id, product_name: 'Years on a loan', lender_table: 'PersonalLoans', facts: { ...personalLoan, minimum_time_in_business_years: 3 }, evidence: 'x' }), { statusCode: 400, message: /does not apply/ });
+    await assert.rejects(write(rep, { action: 'save_product', account_id: a.id, product_name: 'Bad pct', lender_table: 'PersonalLoans', facts: { ...personalLoan, apr_pct: 101 }, evidence: 'x' }), { statusCode: 400 });
+    await assert.rejects(write(rep, { action: 'save_product', account_id: a.id, product_name: 'Bad yes/no', lender_table: 'BizLOC_Stated', facts: { ...businessLine, collateral_required: 'yes' }, evidence: 'x' }), { statusCode: 400 });
+    // Another rep's bank is out of reach for read, save and push.
+    await assert.rejects(write(secondRep, { action: 'verify_product', id: loan.id }), { statusCode: 404 });
+    await assert.rejects(write(secondRep, { action: 'save_product', account_id: a.id, product_name: 'Hijack', lender_table: 'PersonalLoans', facts: personalLoan, evidence: 'x' }), { statusCode: 404 });
+    await assert.rejects(write(otherOwner, { action: 'verify_product', id: loan.id }), { statusCode: 404 });
+    assert.equal((await db.query(`SELECT count(*)::int n FROM lenders WHERE name=$1`, [a.name])).rows[0].n, 0, 'nothing reached Lenders yet');
+
+    const pushedLoan = await write(rep, { action: 'verify_product', id: loan.id });
+    const pushedLine = await write(rep, { action: 'verify_product', id: line.id });
+    assert.equal(pushedLoan.product.verified_by, rep.id); assert.equal(pushedLine.product.verified_by, rep.id);
+    const loanRow = (await db.query(`SELECT * FROM lenders WHERE id=$1`, [pushedLoan.lender_id])).rows[0];
+    assert.equal(loanRow.lender_table, 'PersonalLoans'); assert.equal(loanRow.minimum_time_in_business_years, null); assert.equal(loanRow.minimum_revenue_threshold, null);
+    assert.deepEqual({ d: loanRow.double_pull, r: loanRow.relationship_required, o: loanRow.requires_account_opening, q: loanRow.prequal_soft_pull, dep: loanRow.minimum_deposit, m: loanRow.application_method, amt: loanRow.typical_approval_range, apr: loanRow.apr_range_pct, mo: loanRow.repayment_terms_months, f: loanRow.funding_speed, u: loanRow.underwriter_interaction, loc: loanRow.loc_type }, { d: 'Yes', r: 'Yes', o: 'No', q: 'Yes', dep: null, m: 'Online or in a branch', amt: '15000.00', apr: '9.9900', mo: 48, f: 'Next business day', u: null, loc: null });
+    assert.equal(loanRow.bureaus_pulled, 'EX/EQ'); assert.match(loanRow.stated_requirements, /Minimum credit score 700\./);
+    const lineRow = (await db.query(`SELECT * FROM lenders WHERE id=$1`, [pushedLine.lender_id])).rows[0];
+    assert.equal(lineRow.lender_table, 'BizLOC_Stated'); assert.equal(lineRow.minimum_time_in_business_years, '2.00'); assert.equal(lineRow.minimum_revenue_threshold, '120000.50');
+    assert.deepEqual({ b: lineRow.business_bureau_pulled, s: lineRow.average_starting_loc, mx: lineRow.max_known_loc, apr: lineRow.apr_range_pct, dr: lineRow.draw_period_renewal, docs: lineRow.docs_requested, col: lineRow.collateral_required, t: lineRow.loc_type, am: lineRow.application_method }, { b: 'None', s: '25000.00', mx: '250000.00', apr: '11.5000', dr: '24 month draw, yearly renewal', docs: 'Two years of tax returns', col: 'No', t: 'revolving', am: null });
+    // The live deep check reads these two promoted rows as sound, "n/a" included.
+    const scoped = VERIFIED_SQL.replace('p.verified_at IS NOT NULL', `p.verified_at IS NOT NULL AND p.id = ANY('{${loan.id},${line.id}}'::uuid[])`);
+    assert.notEqual(scoped, VERIFIED_SQL);
+    assert.deepEqual((await db.query(scoped)).rows[0], { total: 2, broken: 0 });
+    // Once published, the product is a manager's: no second push, no rep edit, and a pending amendment stays hidden from a rep push.
+    await assert.rejects(write(rep, { action: 'verify_product', id: loan.id }), { statusCode: 403 });
+    await assert.rejects(write(rep, { action: 'save_product', id: loan.id, account_id: a.id, product_name: 'Rep edit', lender_table: 'PersonalLoans', facts: personalLoan, evidence: 'x' }), { statusCode: 403 });
+    await write(owner, { action: 'save_product', id: loan.id, account_id: a.id, product_name: 'Personal loan', lender_table: 'PersonalLoans', facts: { ...personalLoan, typical_amount: 20000 }, evidence: 'Updated terms' });
+    await assert.rejects(write(rep, { action: 'verify_product', id: loan.id }), { statusCode: 403 });
+    assert.equal((await db.query(`SELECT typical_approval_range FROM lenders WHERE id=$1`, [pushedLoan.lender_id])).rows[0].typical_approval_range, '15000.00');
+    await write(owner, { action: 'verify_product', id: loan.id });
+    assert.equal((await db.query(`SELECT typical_approval_range FROM lenders WHERE id=$1`, [pushedLoan.lender_id])).rows[0].typical_approval_range, '20000.00');
+    // The screen's field catalog rides on every read.
+    const detail = await read(rep, { id: a.id });
+    assert.deepEqual(Object.keys(detail.productFields.types), ['OnlineBizCC', 'InBranchBizCC', 'BizLOC_Stated', 'BizLOC_Documented', 'PersonalCC', 'PersonalLoans', 'PersonalLOC']);
+    assert.deepEqual(detail.productFields.notApplicable.PersonalLoans, ['minimum_time_in_business_years', 'minimum_revenue_threshold']);
+    assert.equal(detail.productFields.fields.apr_pct.type, 'pct');
+    assert.ok((await read(rep)).productFields.types.PersonalLOC.includes('max_line'));
+    assert.ok((await read(owner, { view: 'team' })).productFields);
   });
   test('migration repeat keeps schema and staff catalog idempotent', async () => {
     await db.query(await readFile(new URL('../../db/migrations/483_bank_outreach.sql', import.meta.url), 'utf8'));

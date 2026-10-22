@@ -54,3 +54,32 @@ test('which reply, and when a person must look', () => {
   assert.equal(needsPerson('not_now', 'live'), false);
   assert.equal(needsPerson('other', 'rules'), true);
 });
+
+test('the model answer understands the whole field catalog; once the product type is named, only that type\'s keys', () => {
+  const reply = (table, facts) => parseModelReply(JSON.stringify({ kind: 'data', lender_table: table, facts }));
+  // No product type named: any valid catalog key is accepted, bad values are dropped.
+  assert.deepEqual(reply(null, { double_pull: true, apr_pct: 9.5, max_line: 'bad', funding_speed: 'Next day', typical_amount: 15000, repayment_months: 0 }).facts, { double_pull: true, apr_pct: 9.5, funding_speed: 'Next day', typical_amount: 15000 });
+  // A personal loan: its own keys come through; a key from another product type is dropped, not coerced.
+  assert.deepEqual(reply('PersonalLoans', { minimum_score: 700, repayment_months: 48, apr_pct: 9.99, max_line: 5000, underwriter: 'Elan', minimum_time_in_business_years: 3 }).facts, { minimum_score: 700, repayment_months: 48, apr_pct: 9.99 });
+  assert.deepEqual(reply('BizLOC_Stated', { max_line: 250000, collateral_required: false, underwriter: 'Elan', minimum_revenue_threshold: 90000 }).facts, { max_line: 250000, collateral_required: false, minimum_revenue_threshold: 90000 });
+  // "unknown" is an answer; blank is not.
+  assert.deepEqual(reply('PersonalCC', { intro_offers: 'unknown', underwriter: '', double_pull: null }).facts, { intro_offers: 'unknown' });
+  assert.deepEqual(reply('OnlineBizCC', { made_up_key: 1 }).facts, {});
+});
+
+test('the reply asks the questions for the product type it knows, and the original nine when it does not', () => {
+  const none = new Set(['products']);
+  const loan = missingQuestions(none, { lenderTable: 'PersonalLoans' });
+  assert.equal(loan.length, 16);
+  assert.ok(loan.some(q => /usual|typical approved amount/i.test(q)) && loan.some(q => /How many months is repayment/.test(q)) && loan.some(q => /What APR/.test(q)));
+  assert.ok(!loan.some(q => /How long does a business need to be open|minimum yearly revenue/.test(q)), 'business-only questions are not asked of a personal product');
+  assert.ok(!loan.some(q => /largest line|collateral/i.test(q)));
+  assert.match(loan[0], /^1\. What is the minimum credit score/);
+  const line = missingQuestions(new Set(['products', 'minimum_score', 'max_line', 'application_url', 'apr_pct']), { lenderTable: 'BizLOC_Stated' });
+  assert.ok(!line.some(q => /minimum credit score|largest line|What APR|apply\?/i.test(q)));
+  assert.ok(line.some(q => /How long does a business need to be open/.test(q)) && line.some(q => /collateral/.test(q)) && line.some(q => /revolving/.test(q)));
+  // An unknown product type, or none, keeps the original nine exactly.
+  assert.equal(missingQuestions(new Set()).length, 9);
+  assert.equal(missingQuestions(new Set(), { lenderTable: 'Mortgage' }).length, 9);
+  assert.equal(missingQuestions(new Set(), { lenderTable: null }).length, 9);
+});

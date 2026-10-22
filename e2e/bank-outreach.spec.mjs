@@ -3,6 +3,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fixture, facts, expectAstraControls, inspectExpandedShell, captureAstra } from './bank-outreach-fixture.mjs';
 import { STATE_CODES } from '../src/outreach/model.mjs';
+import { PRODUCT_FIELDS, WARMUP } from './bank-outreach-fixture.mjs';
+import { productFields } from '../src/outreach/model.mjs';
 
 // Safe browser fixtures prove UI controls, not live bank facts or database writes.
 const OUT = path.resolve('ops/workflows/build-evidence/bank-outreach');
@@ -736,3 +738,292 @@ test('a failed apply or stop keeps the card, the typed product name and category
   await expect(contactCard(page, 'contact-1')).toContainText('Email 1 of 3 sent');
   await expect(contactCard(page, 'contact-1').getByRole('button', { name: 'Stop emails to Avery Lane' })).toBeEnabled();
 });
+
+// ── Manual first (2026-10-21): product fields per category, a rep pushes, warm-up messages ──
+// Fictional fixture rows answered in the server's new shape (catalog: true). Every case above
+// keeps the older response shape, so it proves the fallback still works unchanged.
+const MANUAL_OUT = path.resolve('ops/workflows/build-evidence/bank-outreach-manual');
+const FIELDS = PRODUCT_FIELDS.fields, TYPES = PRODUCT_FIELDS.types, labelsFor = table => TYPES[table].map(key => FIELDS[key].label);
+// Numbered red boxes (number on the top-right edge, off the words), the legend under the picture. Off unless BANK_OUTREACH_MANUAL_CAPTURE is set.
+async function manualShot(page, file, title, marks, { height } = {}) {
+  if (!process.env.BANK_OUTREACH_MANUAL_CAPTURE) return;
+  fs.mkdirSync(MANUAL_OUT, { recursive: true });
+  const before = page.viewportSize();
+  if (height) await page.setViewportSize({ width: before.width, height });
+  await marks[0][0].evaluate(el => { el.scrollIntoView({ block: 'start' }); const dialog = el.closest('dialog'); if (dialog) dialog.scrollBy(0, -24); else window.scrollBy(0, -160); });
+  const view = page.viewportSize(), boxes = [];
+  for (const [index, [locator, caption]] of marks.entries()) {
+    const box = await locator.boundingBox();
+    expect(box && box.y >= 0 && box.y + box.height <= view.height, `mark ${index + 1} (${caption}) is inside the picture`).toBe(true);
+    boxes.push({ n: index + 1, caption, box });
+  }
+  const picture = (await page.screenshot()).toString('base64');
+  if (height) await page.setViewportSize(before);
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const sheet = await page.context().newPage();
+  try {
+    await sheet.setViewportSize({ width: view.width, height: 400 });
+    await sheet.setContent(`<!doctype html><style>body{margin:0;background:#fff;color:#111;font:14px/1.4 system-ui,sans-serif}.shot{position:relative;width:${view.width}px;height:${view.height}px}.shot img{display:block;width:100%;height:100%}.box{position:absolute;box-sizing:border-box;border:3px solid #d32323}.box b{position:absolute;right:-3px;top:-12px;min-width:20px;height:20px;padding:0 4px;background:#d32323;color:#fff;font:700 13px/20px system-ui,sans-serif;text-align:center}.legend{border-top:4px solid #d32323;padding:12px 16px 16px}.legend h1{margin:0 0 8px;font-size:15px}.legend ol{margin:0;padding:0;list-style:none}.legend li{display:flex;gap:8px;align-items:flex-start;margin:6px 0}.legend li b{flex:0 0 auto;min-width:20px;background:#d32323;color:#fff;text-align:center;font-size:13px}</style>
+      <div class="shot"><img src="data:image/png;base64,${picture}" alt="">${boxes.map(({ n, box }) => `<div class="box" style="left:${box.x - 3}px;top:${box.y - 3}px;width:${box.width + 6}px;height:${box.height + 6}px"><b${box.y < 12 ? ' style="top:-3px"' : ''}>${n}</b></div>`).join('')}</div>
+      <div class="legend"><h1>${esc(title)}</h1><ol>${boxes.map(({ n, caption }) => `<li><b>${n}</b><span>${esc(caption)}</span></li>`).join('')}</ol></div>`);
+    await sheet.screenshot({ path: path.join(MANUAL_OUT, file), fullPage: true });
+  } finally { await sheet.close(); }
+}
+async function openCatalogBank(page, section) {
+  await page.locator('#work-next').click(); await expect(page.locator('#bank-title')).toHaveText('Mesa Community Bank');
+  if (section) await page.locator(`[data-section="${section}"]`).click();
+}
+async function fieldsShown(page) {
+  return page.locator('#product-fields label').evaluateAll(labels => labels.map(label => {
+    const control = label.querySelector('[name]');
+    return { label: label.firstChild.textContent, name: control.name, tag: control.tagName, type: control.type, options: control.tagName === 'SELECT' ? [...control.options].map(o => [o.value, o.textContent]) : null };
+  }));
+}
+async function factsShown(card) {
+  const [labels, values] = [await card.locator('.record-facts dt').allTextContents(), await card.locator('.record-facts dd').allTextContents()];
+  return { labels, values: Object.fromEntries(labels.map((label, i) => [label, values[i]])) };
+}
+async function fillFacts(editor, values) {
+  for (const [key, value] of Object.entries(values)) {
+    const control = editor.locator(`[name="${key}"]`);
+    if (await control.evaluate(el => el.tagName) === 'SELECT') await control.selectOption(value); else await control.fill(value);
+  }
+}
+// Mail and text apps are outside the test. Record the link and keep the page here.
+async function holdAppLinks(page) {
+  await page.evaluate(() => { window.__appLinks = []; document.addEventListener('click', event => { const link = event.target.closest('a[data-warmup]'); if (link) { event.preventDefault(); window.__appLinks.push(link.getAttribute('href')); } }, true); });
+}
+const YES_NO = [['', 'Not asked yet'], ['true', 'Yes'], ['false', 'No'], ['unknown', 'Unknown']];
+const PERSONAL_LOAN = { minimum_score: 660, bureaus_pulled: ['TU'], inquiry_tolerance: 'unknown', stated_income: true, eligible_states: ['AZ'], application_url: 'https://bank.example/personal-loan', paper_application_url: 'unknown', double_pull: false, relationship_required: 'unknown', requires_account_opening: false, minimum_deposit: 0, prequal_soft_pull: true, application_method: 'Online or in branch', typical_amount: 15000, apr_pct: 11.99, repayment_months: 60, funding_speed: 'unknown' };
+const EVIDENCE = 'Avery Lane · banker call · October 21, 2026';
+const EMAIL_HREF = "mailto:avery@bank.example?subject=Arizona%20clients%20for%20Mesa%20Community%20Bank%20%26%20a%20quick%20call%3F&body=Hi%20Avery%2C%0A%0AI'm%20Casey%20with%20Fundhub.%20I%20have%20Arizona%20clients%20who%20need%20business%20cards%20and%20lines%20of%20credit.%20Can%20we%20hop%20on%20a%20quick%20call%20so%20I%20learn%20what%20you%20look%20for%3F%0A%0ACasey%20Reed%0AFundhub";
+const TEXT_HREF = "sms:+16025550101?&body=Hi%20Avery%2C%20it's%20Casey%20with%20Fundhub.%20I%20have%20Arizona%20clients%20for%20Mesa%20Community%20Bank.%20Can%20we%20set%20up%20a%20quick%20call%20this%20week%3F%20Reply%20STOP%20to%20opt%20out.";
+const NOW = new Date('2026-10-21T17:00:00Z'), FOLLOW_UP_DUE = '2026-10-24T17:00:00.000Z';
+const warmupLog = channel => ({ action: 'log_touch', account_id: 'bank-0', contact_id: 'contact-1', channel, outcome: channel === 'email' ? 'Warm-up email sent' : 'Warm-up text sent', note: null, next_action: 'Follow up with Avery Lane', next_due_at: FOLLOW_UP_DUE });
+
+test('the fixture field catalog is exactly the server catalog', () => {
+  expect(PRODUCT_FIELDS).toEqual(productFields());
+});
+
+for (const width of [1440, 390, 320]) {
+  test.describe(`${width}px manual first`, () => {
+    test.use({ viewport: { width, height: 1000 }, deviceScaleFactor: width < 600 ? 2 : 1 });
+
+    test(`${width}px product form shows each category's fields in order; a new category keeps shared answers`, async ({ page }, testInfo) => {
+      const env = await fixture(page, { catalog: true });
+      await openCatalogBank(page, 'products');
+      const saved = await factsShown(page.locator('[data-product="product-1"]'));
+      expect(saved.labels).toEqual(labelsFor('BizLOC_Documented'));
+      expect(saved.values).toMatchObject({ 'Minimum credit score': 'Unknown', 'Minimum years in business': '2', 'Minimum yearly revenue': '250000', 'Bureaus pulled': 'EX, EQ', 'Accepts stated income': 'No', 'States served': 'AZ, CA', 'Paper application link': 'Unknown', 'Pulls two bureaus': 'Not asked yet', 'Line type': 'Not asked yet' });
+      await page.locator('#new-product').click();
+      const editor = page.locator('#product-editor');
+      await expect(editor.locator('[name="lender_table"]')).toHaveValue('OnlineBizCC');
+      for (const table of Object.keys(TYPES)) {
+        await editor.locator('[name="lender_table"]').selectOption(table);
+        const shown = await fieldsShown(page);
+        expect(shown.map(f => f.name), table).toEqual(TYPES[table]);
+        expect(shown.map(f => f.label), table).toEqual(labelsFor(table));
+        for (const f of shown) {
+          if (FIELDS[f.name].type === 'yesno') { expect(f.tag, f.name).toBe('SELECT'); expect(f.options, f.name).toEqual(YES_NO); }
+          else { expect(f.tag, f.name).toBe('INPUT'); expect(f.type, f.name + ' accepts typed unknown').toBe('text'); }
+        }
+        if (table.startsWith('Personal')) for (const key of ['minimum_time_in_business_years', 'minimum_revenue_threshold']) expect(shown.map(f => f.name), table).not.toContain(key);
+        if (table === 'BizLOC_Stated') {
+          await expectAstraControls(page, testInfo, `${width}-catalog-business-line-form`, '#bank-drawer');
+          if (width === 1440) await manualShot(page, '1440-product-form-business-line.png', '1440 rep · product facts for a business line (fictional fixture)', [
+            [editor.locator('[name="lender_table"]'), 'Product category picks the fields that show'],
+            [editor.locator('[name="minimum_revenue_threshold"]'), 'Number fields keep what you type; unknown is allowed'],
+            [editor.locator('[name="double_pull"]'), 'Yes / no questions: Not asked yet, Yes, No, Unknown'],
+            [editor.locator('[name="line_type"]'), 'Business line fields only show for business lines'],
+            [editor.getByRole('button', { name: 'Save product facts', exact: true }), 'Save product facts (the one main button)']
+          ], { height: 1700 });
+        }
+      }
+      await editor.locator('[name="lender_table"]').selectOption('OnlineBizCC');
+      await fillFacts(editor, { minimum_score: '700', minimum_time_in_business_years: '3', underwriter: 'Underwritten by Elan', multiple_llc_allowed: 'true', stated_income: 'unknown' });
+      await editor.locator('[name="lender_table"]').selectOption('PersonalLoans');
+      await expect(editor.locator('[name="minimum_score"]')).toHaveValue('700'); await expect(editor.locator('[name="stated_income"]')).toHaveValue('unknown');
+      await expect(editor.locator('[name="minimum_time_in_business_years"],[name="underwriter"],[name="multiple_llc_allowed"]')).toHaveCount(0);
+      await editor.locator('[name="lender_table"]').selectOption('PersonalCC');
+      await expect(editor.locator('[name="underwriter"]')).toHaveValue('Underwritten by Elan'); await expect(editor.locator('[name="minimum_score"]')).toHaveValue('700');
+      await editor.locator('[name="lender_table"]').selectOption('OnlineBizCC');
+      await expect(editor.locator('[name="minimum_time_in_business_years"]')).toHaveValue('3'); await expect(editor.locator('[name="multiple_llc_allowed"]')).toHaveValue('true');
+      await geometry(page);
+      expect(env.posts).toEqual([]);
+    });
+
+    test(`${width}px saves a personal loan and a business line with exact bodies`, async ({ page }, testInfo) => {
+      const env = await fixture(page, { catalog: true });
+      await openCatalogBank(page, 'products');
+      const editor = page.locator('#product-editor');
+      await page.locator('#new-product').click();
+      await editor.locator('[name="product_name"]').fill('Fixture personal loan');
+      await editor.locator('[name="lender_table"]').selectOption('PersonalLoans');
+      await fillFacts(editor, { minimum_score: '660', bureaus_pulled: 'tu', inquiry_tolerance: 'unknown', stated_income: 'true', eligible_states: 'az', application_url: 'https://bank.example/personal-loan', paper_application_url: 'Unknown', double_pull: 'false', relationship_required: 'unknown', requires_account_opening: 'false', minimum_deposit: '0', prequal_soft_pull: 'true', application_method: 'Online or in branch', typical_amount: '$15,000', apr_pct: '11.99%', repayment_months: '60', funding_speed: 'unknown' });
+      await editor.locator('[name="evidence"]').fill(EVIDENCE);
+      await expectAstraControls(page, testInfo, `${width}-catalog-personal-loan-form`, '#bank-drawer');
+      if (width === 320) await manualShot(page, '320-product-form-personal-loan.png', '320 rep · product facts for a personal loan (fictional fixture)', [
+        [editor.locator('[name="lender_table"]'), 'Personal loan: no business-only fields'],
+        [editor.locator('[name="typical_amount"]'), 'Typical approved amount, typed as written'],
+        [editor.locator('[name="repayment_months"]'), 'Repayment months'],
+        [editor.locator('[name="funding_speed"]'), 'Unknown is a real answer']
+      ], { height: 1900 });
+      await editor.getByRole('button', { name: 'Save product facts', exact: true }).click();
+      await expect.poll(() => env.posts.at(-1)).toEqual({ action: 'save_product', account_id: 'bank-0', product_name: 'Fixture personal loan', lender_table: 'PersonalLoans', evidence: EVIDENCE, facts: PERSONAL_LOAN });
+      await expect(page.locator('#drawer-message')).toHaveText('Saved. Your bank queue is up to date.');
+      const loan = page.locator('[data-product="product-2"]');
+      const shownLoan = await factsShown(loan);
+      expect(shownLoan.labels).toEqual(labelsFor('PersonalLoans'));
+      expect(shownLoan.labels).not.toContain('Minimum years in business'); expect(shownLoan.labels).not.toContain('Minimum yearly revenue');
+      expect(shownLoan.values).toMatchObject({ 'Typical approved amount': '15000', 'APR (percent)': '11.99', 'Accepts stated income': 'Yes', 'How fast it funds': 'Unknown', 'Bureaus pulled': 'TU' });
+      await expect(loan.locator('.push-gaps')).toHaveCount(0); await expect(loan.getByRole('button', { name: 'Push to Lenders', exact: true })).toBeVisible();
+
+      await page.locator('#new-product').click();
+      await editor.locator('[name="product_name"]').fill('Fixture business line');
+      await editor.locator('[name="lender_table"]').selectOption('BizLOC_Stated');
+      await fillFacts(editor, { minimum_score: '700', minimum_time_in_business_years: '2', minimum_revenue_threshold: '250,000', bureaus_pulled: 'EX, EQ', stated_income: 'true', eligible_states: 'AZ, SC', application_url: 'https://bank.example/business-line', apr_pct: '9.5', average_starting_line: '25000', max_line: '100000', documents_required: 'unknown', collateral_required: 'false', line_type: 'Revolving' });
+      await editor.locator('[name="evidence"]').fill(EVIDENCE);
+      await editor.getByRole('button', { name: 'Save product facts', exact: true }).click();
+      await expect.poll(() => env.posts.at(-1)).toEqual({ action: 'save_product', account_id: 'bank-0', product_name: 'Fixture business line', lender_table: 'BizLOC_Stated', evidence: EVIDENCE, facts: { minimum_score: 700, minimum_time_in_business_years: 2, minimum_revenue_threshold: 250000, bureaus_pulled: ['EX', 'EQ'], stated_income: true, eligible_states: ['AZ', 'SC'], application_url: 'https://bank.example/business-line', apr_pct: 9.5, average_starting_line: 25000, max_line: 100000, documents_required: 'unknown', collateral_required: false, line_type: 'Revolving' } });
+      const line = page.locator('[data-product="product-2"]');
+      await expect(line).toContainText('Fixture business line');
+      const shownLine = await factsShown(line);
+      expect(shownLine.labels).toEqual(labelsFor('BizLOC_Stated'));
+      expect(shownLine.values).toMatchObject({ 'Minimum yearly revenue': '250000', 'Collateral required': 'No', 'Documents required': 'Unknown', 'Pulls two bureaus': 'Not asked yet', 'Draw period and renewal': 'Not asked yet' });
+      await expect(line.locator('.push-gaps')).toHaveText('Push to Lenders still needs 9 more facts answered or marked unknown.');
+      await geometry(page);
+      expect(env.posts).toHaveLength(2);
+    });
+
+    test(`${width}px a rep pushes a complete product on their own bank, never on another rep's bank`, async ({ page }, testInfo) => {
+      const complete = { id: 'product-1', product_name: 'Fixture personal loan', lender_table: 'PersonalLoans', facts: { ...PERSONAL_LOAN, minimum_time_in_business_years: 'n/a', minimum_revenue_threshold: 'n/a' }, evidence: EVIDENCE, verified_at: null };
+      let env = await fixture(page, { catalog: true }); env.data.products = [structuredClone(complete)];
+      await openCatalogBank(page, 'products');
+      const card = page.locator('[data-product="product-1"]'), push = card.getByRole('button', { name: 'Push to Lenders', exact: true });
+      await expect(card.locator('.record-facts dt')).toHaveText(labelsFor('PersonalLoans'));
+      await expect(card).not.toContainText('Does not apply');
+      await expect(card.locator('.push-gaps')).toHaveCount(0);
+      await expect(push).toBeVisible();
+      await expectAstraControls(page, testInfo, `${width}-catalog-rep-push`, '#bank-drawer');
+      if (width === 390) await manualShot(page, '390-rep-push-to-lenders.png', '390 rep · push a complete product to Lenders (fictional fixture)', [
+        [card.locator('.record-heading'), 'Product, category and status: needs verification'],
+        [card.locator('.record-facts'), 'Every personal loan fact answered or unknown'],
+        [push, 'Push to Lenders: the rep checks it, then pushes']
+      ], { height: 1800 });
+      await push.click();
+      await expect.poll(() => env.posts.at(-1)).toEqual({ action: 'verify_product', id: 'product-1' });
+      await expect(page.locator('#drawer-message')).toHaveText('Verified product saved to Lenders.');
+      await expect(card.locator('.status-tag')).toHaveText('Verified in Lenders');
+      await expect(page.locator('[data-verify]')).toHaveCount(0);
+      await expect(card).toContainText('Published facts are read-only');
+      expect(env.posts).toHaveLength(1);
+      await page.locator('#drawer-close').click();
+
+      env = await fixture(page, { catalog: true });
+      await openCatalogBank(page, 'products');
+      await expect(page.locator('[data-verify="product-1"]')).toHaveText('Push to Lenders');
+      await expect(page.locator('[data-product="product-1"] .push-gaps')).toHaveText('Push to Lenders still needs 13 more facts answered or marked unknown.');
+      await page.locator('#drawer-close').click();
+
+      env = await fixture(page, { catalog: true }); env.data.account.assigned_staff_id = 'rep-2'; env.data.account.assigned_staff_name = 'Morgan Ellis'; env.data.products = [structuredClone(complete)];
+      await openCatalogBank(page, 'products');
+      await expect(page.locator('[data-product="product-1"]')).toContainText('Fixture personal loan');
+      await expect(page.locator('[data-verify]')).toHaveCount(0); await expect(page.locator('.push-gaps')).toHaveCount(0);
+      expect(env.posts).toEqual([]);
+      await page.locator('#drawer-close').click();
+
+      env = await fixture(page, { catalog: true, manager: true }); env.data.products = [structuredClone(complete)];
+      await page.locator('#queue-view').click(); await openCatalogBank(page, 'products');
+      await expect(page.locator('[data-verify="product-1"]')).toHaveText('Push to Lenders');
+      expect(env.posts).toEqual([]);
+    });
+
+    test(`${width}px Email banker and Text banker open the rep's own apps with the warm-up and log the touch`, async ({ page }, testInfo) => {
+      await page.clock.setFixedTime(NOW);
+      const env = await fixture(page, { catalog: true });
+      env.data.contacts.push({ id: 'contact-2', name: 'Branch desk', title: 'Branch office', email: 'desk@bank.example', phone: '+1 602-555-0102 ext. 42', linkedin_url: '', warmup: structuredClone(WARMUP) });
+      env.data.contacts.push({ id: 'contact-3', name: 'Opted out banker', title: 'Lending officer', email: 'out@bank.example', phone: '', linkedin_url: '', email_opt_out_at: '2026-10-16T17:20:00Z', warmup: structuredClone(WARMUP) });
+      env.data.contacts.push({ id: 'contact-4', name: 'No warm-up saved', title: 'Lending officer', email: 'none@bank.example', phone: '+16025550104', linkedin_url: '', warmup: { email: null, text: null } });
+      await openCatalogBank(page, 'contacts');
+      const avery = contactCard(page, 'contact-1');
+      const email = avery.getByRole('link', { name: 'Send warm-up email to Avery Lane' }), text = avery.getByRole('link', { name: 'Send warm-up text to Avery Lane' });
+      await expect(email).toHaveText('Email banker'); await expect(text).toHaveText('Text banker');
+      await expect(email).toHaveAttribute('href', EMAIL_HREF); await expect(text).toHaveAttribute('href', TEXT_HREF);
+      expect(await email.evaluate(a => { const u = new URL(a.href); return [u.pathname, u.searchParams.get('subject'), u.searchParams.get('body')]; })).toEqual(['avery@bank.example', WARMUP.email.subject, WARMUP.email.body]);
+      expect(await text.evaluate(a => { const u = new URL(a.href); return [u.pathname, u.searchParams.get('body')]; })).toEqual(['+16025550101', WARMUP.text]);
+      await expect(contactCard(page, 'contact-2').getByRole('link', { name: 'Send warm-up email to Branch desk' })).toHaveCount(1);
+      await expect(contactCard(page, 'contact-2').getByRole('link', { name: /warm-up text/ })).toHaveCount(0); // An extension cannot get a text.
+      await expect(contactCard(page, 'contact-3').locator('.warmup')).toHaveCount(0); // Opted out, and no phone.
+      await expect(contactCard(page, 'contact-4').locator('.warmup')).toHaveCount(0);
+      await avery.locator('.warmup-preview summary').click();
+      await expect(avery.locator('.warmup-preview')).toHaveAttribute('open', '');
+      expect(await avery.getByRole('region', { name: 'Warm-up email to Avery Lane' }).evaluate(el => el.innerText)).toBe(WARMUP.email.body);
+      expect(await avery.getByRole('region', { name: 'Warm-up text to Avery Lane' }).evaluate(el => el.innerText)).toBe(WARMUP.text);
+      await expect(avery.locator('.warmup-preview')).toContainText(WARMUP.email.subject);
+      await expectAstraControls(page, testInfo, `${width}-catalog-warmup-open`, '#bank-drawer');
+      await geometry(page);
+      if (width === 390) await manualShot(page, '390-warmup-email-and-text.png', '390 rep · warm-up email and text for one banker (fictional fixture)', [
+        [email, 'Email banker opens your own email app with the warm-up'],
+        [text, 'Text banker opens your own text app with the warm-up'],
+        [avery.locator('.warmup-preview summary'), 'Read the words before you send'],
+        [avery.getByRole('region', { name: 'Warm-up text to Avery Lane' }), 'The text asks for a call, not product facts']
+      ], { height: 1900 });
+      expect(env.posts).toEqual([]);
+
+      await holdAppLinks(page);
+      await email.click();
+      await expect.poll(() => env.posts.at(-1)).toEqual(warmupLog('email'));
+      await expect(page.locator('#drawer-message')).toHaveText('Warm-up email logged. Next action: Follow up with Avery Lane in 3 days.');
+      await expect(page.locator('#bank-next-action')).toHaveText('Follow up with Avery Lane');
+      await expect(page.locator('#bank-next-due')).toHaveText('Scheduled · Oct 24, 10:00 AM Arizona');
+      await expect(email).toBeFocused();
+      if (width === 320) await manualShot(page, '320-warmup-email-logged.png', '320 rep · warm-up email logged (fictional fixture)', [
+        [page.locator('.bank-next'), 'Next action saved: follow up in 3 days, Arizona time'],
+        [page.locator('#drawer-message'), 'The logged result'],
+        [email, 'Focus stays on Email banker']
+      ], { height: 1300 });
+      await text.click();
+      await expect.poll(() => env.posts.at(-1)).toEqual(warmupLog('note'));
+      await expect(page.locator('#drawer-message')).toHaveText('Warm-up text logged. Next action: Follow up with Avery Lane in 3 days.');
+      await expect(text).toBeFocused();
+      expect(await page.evaluate(() => window.__appLinks)).toEqual([EMAIL_HREF, TEXT_HREF]);
+      expect(env.posts).toEqual([warmupLog('email'), warmupLog('note')]);
+    });
+
+    test(`${width}px a failed warm-up log or product save keeps the card and every typed input`, async ({ page }, testInfo) => {
+      await page.clock.setFixedTime(NOW);
+      const env = await fixture(page, { catalog: true, failWrite: true });
+      await openCatalogBank(page);
+      await page.locator('[name="outcome"]').fill('Keep this touch note'); await page.locator('[data-action="log_touch"] [name="next_action"]').fill('Call Avery Friday');
+      await page.locator('[data-section="contacts"]').click();
+      await page.getByRole('button', { name: 'Edit banker', exact: true }).click(); await page.locator('#contact-editor [name="title"]').fill('Typed title stays');
+      await holdAppLinks(page);
+      const email = contactCard(page, 'contact-1').getByRole('link', { name: 'Send warm-up email to Avery Lane' });
+      await email.click();
+      await expect(page.locator('#drawer-message')).toHaveText('Warm-up email not logged. Save failed. Your notes are still here. Save it in Log touch so the follow-up is kept.');
+      await expect(page.locator('#drawer-message')).toHaveClass(/error/);
+      expect(env.posts).toEqual([warmupLog('email')]);
+      await expect(email).toHaveText('Email banker'); await expect(email).not.toHaveAttribute('aria-disabled', 'true');
+      await expect(contactCard(page, 'contact-1')).toContainText('Avery Lane');
+      await expect(page.locator('#contact-editor [name="title"]')).toHaveValue('Typed title stays');
+      await expectAstraControls(page, testInfo, `${width}-catalog-warmup-failed`, '#bank-drawer');
+      await page.locator('[data-section="touch"]').click();
+      await expect(page.locator('[name="outcome"]')).toHaveValue('Keep this touch note'); await expect(page.locator('[data-action="log_touch"] [name="next_action"]')).toHaveValue('Call Avery Friday');
+
+      await page.locator('[data-section="products"]').click(); await page.locator('#new-product').click();
+      const editor = page.locator('#product-editor');
+      await editor.locator('[name="product_name"]').fill('Fixture personal loan'); await editor.locator('[name="lender_table"]').selectOption('PersonalLoans');
+      await fillFacts(editor, { minimum_score: 'about 660', typical_amount: '$15,000', double_pull: 'false' });
+      await editor.getByRole('button', { name: 'Save product facts', exact: true }).click();
+      await expect(page.locator('#drawer-message')).toHaveText('Minimum credit score needs a number or unknown.');
+      expect(env.posts).toHaveLength(1); // A number the screen cannot read is never sent.
+      await editor.locator('[name="minimum_score"]').fill('660');
+      await editor.getByRole('button', { name: 'Save product facts', exact: true }).click();
+      await expect(page.locator('#drawer-message')).toHaveText('Save failed. Your notes are still here.');
+      expect(env.posts.at(-1)).toEqual({ action: 'save_product', account_id: 'bank-0', product_name: 'Fixture personal loan', lender_table: 'PersonalLoans', evidence: '', facts: { minimum_score: 660, typical_amount: 15000, double_pull: false } });
+      await expect(editor.locator('[name="lender_table"]')).toHaveValue('PersonalLoans');
+      await expect(editor.locator('[name="typical_amount"]')).toHaveValue('$15,000'); await expect(editor.locator('[name="double_pull"]')).toHaveValue('false');
+      await geometry(page);
+    });
+  });
+}

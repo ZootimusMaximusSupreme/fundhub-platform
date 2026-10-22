@@ -50,3 +50,10 @@ test('footer carries the mailing address and both ways out; window is Arizona we
   assert.equal(inSendWindow(new Date('2026-10-24T16:00:00Z')), false); // Sat
   assert.equal(mailContext({ account: { name: 'Bank' }, contact: { name: 'Jane Doe' }, replySubject: 'RE: Clients' }).reply.subject, 'Clients');
 });
+
+test('the rep\'s name is a merge tag; with no rep it signs as the partnerships team, never blank', () => {
+  assert.equal(mailContext({ account: { name: 'Bank' }, contact: { name: 'Jane Doe' }, repName: ' Mike Rep ' }).rep.name, 'Mike Rep');
+  assert.equal(mailContext({ account: { name: 'Bank' }, contact: { name: 'Jane Doe' } }).rep.name, 'Fundhub Bank Partnerships');
+  assert.equal(mailContext({ account: { name: 'Bank' }, contact: { name: 'Jane Doe' }, repName: '   ' }).rep.name, 'Fundhub Bank Partnerships');
+  assert.equal(mailContext({ account: { name: 'Bank' }, contact: { name: 'Jane Doe' }, repName: 'Mike' }).banker.first_name, 'Jane');
+});

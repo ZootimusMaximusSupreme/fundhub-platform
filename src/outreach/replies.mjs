@@ -3,7 +3,7 @@
 // SAME SHAPE AS THE BLUEPRINT COACH. The model returns one JSON object (what
 // kind of reply, which facts the banker stated). It never writes words a banker
 // reads: every reply email is a reviewed template, and the only dynamic part is
-// the list of questions still unanswered, built here from FACT_KEYS.
+// the list of questions still unanswered, built here from the field catalog.
 //
 // FACTS STAY SUGGESTIONS. Pulled facts are saved on the reply. A rep applies
 // them into a product draft (src/outreach/store.mjs apply_reply_suggestion) and
@@ -14,7 +14,7 @@
 //   shadow — the model sorts and suggests; the reply is drafted, not sent.
 //   live   — the chosen reply is queued (still needs approved copy and mail config).
 import { callModel } from '../agents/model.mjs';
-import { FACT_KEYS, LENDER_TABLES, normalizeFacts } from './model.mjs';
+import { FIELD_KEYS, FIELD_CATALOG, TYPE_FIELDS, LENDER_TABLES, normalizeFact } from './model.mjs';
 import { REPLY_KEYS, refFor } from './mail.mjs';
 import { templateFor, loadTarget, renderBankEmail, queueBankEmail, logAutomation, stopSequence, iso } from './queue.mjs';
 
@@ -54,10 +54,12 @@ export function parseModelReply(textValue) {
   if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return null;
   const kind = KINDS.includes(obj.kind) && obj.kind !== 'bounce' ? obj.kind : 'other';
   const facts = {};
+  const table = LENDER_TABLES.includes(obj.lender_table) ? obj.lender_table : null;
   if (obj.facts && typeof obj.facts === 'object' && !Array.isArray(obj.facts)) {
-    for (const key of FACT_KEYS) {
-      if (!Object.hasOwn(obj.facts, key)) continue;
-      try { Object.assign(facts, normalizeFacts({ [key]: obj.facts[key] })); } catch { /* not a valid fact: dropped */ }
+    // The whole catalog is accepted; once the reply names a product type, only the keys that type asks for.
+    for (const key of FIELD_KEYS) {
+      if (!Object.hasOwn(obj.facts, key) || (table && !TYPE_FIELDS[table].includes(key))) continue;
+      try { const value = normalizeFact(key, obj.facts[key]); if (value !== undefined) facts[key] = value; } catch { /* not a valid fact: dropped */ }
     }
   }
   const short = (v, max) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : null);
@@ -71,7 +73,7 @@ export function parseModelReply(textValue) {
     kind,
     summary: short(obj.summary, 200),
     product_name: short(obj.product_name, 120),
-    lender_table: LENDER_TABLES.includes(obj.lender_table) ? obj.lender_table : null,
+    lender_table: table,
     facts,
     evidence_quote: short(obj.evidence_quote, 300),
     referral
@@ -89,10 +91,45 @@ const QUESTIONS = [
   ['eligible_states', 'Which states do you serve?'],
   ['application', 'Where do clients apply? (an online link or a paper application)']
 ];
-/* The questions still open, numbered. An answer of "unknown" counts as answered. */
-export function missingQuestions(known) {
+// The rest of the catalog. A question is asked only for the keys the product type asks for.
+const FIELD_QUESTIONS = {
+  double_pull: 'Do you pull more than one credit bureau?',
+  relationship_required: 'Does a client need an existing relationship with you?',
+  requires_account_opening: 'Does a client have to open an account first?',
+  minimum_deposit: 'What minimum deposit do you need?',
+  prequal_soft_pull: 'Do you offer pre-qualification with a soft pull?',
+  business_bureau_pulled: 'Which business credit bureau do you pull?',
+  underwriter: 'Who underwrites the product?',
+  intro_offers: 'What intro offer do you have?',
+  multiple_llc_allowed: 'Can one owner hold more than one LLC with you?',
+  application_method: 'How do clients apply?',
+  typical_amount: 'What is the typical approved amount?',
+  apr_pct: 'What APR do you charge?',
+  repayment_months: 'How many months is repayment?',
+  funding_speed: 'How fast does it fund?',
+  average_starting_line: 'What is the usual starting line?',
+  max_line: 'What is the largest line you give?',
+  draw_and_renewal: 'What are the draw period and renewal terms?',
+  documents_required: 'Which documents do you require?',
+  collateral_required: 'Do you require collateral?',
+  line_type: 'Is the line revolving, non-revolving or secured?'
+};
+const questionsFor = (lenderTable) => {
+  if (!TYPE_FIELDS[lenderTable]) return QUESTIONS;
+  const text = Object.fromEntries(QUESTIONS);
+  const list = [];
+  for (const key of TYPE_FIELDS[lenderTable]) {
+    if (key === 'application_url') list.push(['application', text.application]);
+    else if (key === 'paper_application_url') continue;
+    else list.push([key, text[key] || FIELD_QUESTIONS[key] || `What is ${FIELD_CATALOG[key].label.toLowerCase()}?`]);
+  }
+  return list;
+};
+/* The questions still open, numbered. An answer of "unknown" counts as answered.
+   With a product type: that type's questions only. Without one: the original nine. */
+export function missingQuestions(known, { lenderTable = null } = {}) {
   const has = key => key === 'application' ? known.has('application_url') || known.has('paper_application_url') : known.has(key);
-  return QUESTIONS.filter(([key]) => !has(key)).map(([, q], i) => `${i + 1}. ${q}`);
+  return questionsFor(lenderTable).filter(([key]) => !has(key)).map(([, q], i) => `${i + 1}. ${q}`);
 }
 
 async function knownFacts(db, row, parsed) {
@@ -206,7 +243,7 @@ export async function handleReply(db, row, { env = process.env, now = new Date()
 
   let replyMessageId = null; let replyReason = null; let draft = null;
   const known = HUMAN_KINDS.has(kind) ? await knownFacts(db, row, suggested) : new Set();
-  const missing = missingQuestions(known);
+  const missing = missingQuestions(known, { lenderTable: parsed?.lender_table });
   const replyKind = mode === 'rules' ? null : chooseReply(kind, { missing, referral: parsed?.referral });
   if (replyKind) {
     const key = REPLY_KEYS[replyKind];

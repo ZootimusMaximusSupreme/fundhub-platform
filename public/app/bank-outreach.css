@@ -81,3 +81,13 @@
 .bank-outreach-page .automation-grid h3{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 .bank-outreach-page .automation-grid dd span{white-space:nowrap}
 @media(max-width:1100px){.bank-outreach-page .automation-grid{grid-template-columns:minmax(0,1fr);gap:24px}}
+/* Warm-up messages per banker and the push readiness line. Secondary controls only. */
+.bank-outreach-page .warmup{margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
+.bank-outreach-page .warmup .record-actions{margin-top:8px}
+.bank-outreach-page .warmup-preview{margin-top:8px}
+.bank-outreach-page .warmup-preview>summary{display:flex;align-items:center;gap:8px;min-height:44px;cursor:pointer;list-style:none;color:var(--ink);font-size:var(--fs-body);font-weight:600}
+.bank-outreach-page .warmup-preview>summary::-webkit-details-marker{display:none}
+.bank-outreach-page .warmup-preview>summary::before{content:"+";font-weight:700}
+.bank-outreach-page .warmup-preview[open]>summary::before{content:"−"}
+.bank-outreach-page .warmup a.button[aria-disabled=true]{opacity:.5;cursor:default}
+.bank-outreach-page .push-gaps{margin-top:16px}
