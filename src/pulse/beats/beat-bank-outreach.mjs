@@ -60,7 +60,8 @@ SELECT count(*)::int AS total,
                   THEN (f.value #>> '{}')::numeric BETWEEN 300 AND 850 ELSE f.value = '"unknown"'::jsonb END
                 WHEN f.key IN ('minimum_time_in_business_years','minimum_revenue_threshold')
                   THEN CASE WHEN jsonb_typeof(f.value) = 'number'
-                    THEN (f.value #>> '{}')::numeric >= 0 ELSE f.value = '"unknown"'::jsonb END
+                    THEN (f.value #>> '{}')::numeric >= 0
+                    ELSE f.value = '"unknown"'::jsonb OR f.value = '"n/a"'::jsonb END
                 WHEN f.key = 'stated_income' THEN jsonb_typeof(f.value) = 'boolean' OR f.value = '"unknown"'::jsonb
                 WHEN f.key IN ('bureaus_pulled','eligible_states') THEN CASE
                   WHEN jsonb_typeof(f.value) = 'array' THEN jsonb_array_length(f.value) > 0

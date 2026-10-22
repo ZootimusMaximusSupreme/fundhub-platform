@@ -74,3 +74,38 @@ What is true in code (none of it is live until migration 495 ships and the setti
 7. Monitoring: job heartbeat (`*/15`), morning checks `bank-outreach:email-safety` and `bank-outreach:reply-waiting`, hourly beat step `email-safety`.
 
 Gap with the intended journey (finding, not reconciled): `bank-outreach-intended.md` step 3 says "Fundhub does not send messages, scrape sites or incur data credits" and step 8 says "No automated external sends occur". The owner's 2026-10-20 order asks for automatic finding, email and replies. The intended file is the owner's to update; this build keeps sending behind copy approval, mail settings and the agent switch.
+
+## Manual first — product fields per type, rep push, warm-up (2026-10-21, back end, not live)
+
+Owner, 2026-10-21: "We start manually, we move to AI." Build spec: `docs/specs/bank-outreach-manual-first-2026-10-21.md`. Traced from `src/outreach/model.mjs`, `src/outreach/store.mjs`, `src/outreach/queue.mjs`, `src/outreach/mail.mjs`, `src/outreach/replies.mjs`, `src/pulse/coverage/gap-bank-outreach.mjs`, `src/pulse/beats/beat-bank-outreach.mjs` and migration 503. Nothing is turned on: search is still the key, automatic emails are still template approval, the reply agent is still `draft`. The screen side (product form per type, Push to Lenders, Email/Text banker buttons) is built separately and is UNVERIFIED here.
+
+```mermaid
+flowchart TD
+    R[Rep opens an assigned bank: GET /api/read/bank-outreach?id=] --> W[Each contact comes back with warmup: email subject+body and a text, rendered from EMAIL-BANK-OUTREACH-1 and SMS-BANK-OUTREACH-1 whether or not approved]
+    W --> W1{Template missing or still a DRAFT marker?}
+    W1 -->|yes| W0[That channel is null; no words are invented]
+    W1 -->|no| S[Rep sends it by hand from their own email or phone; nothing leaves Fundhub's servers; the screen logs the touch with log_touch]
+    S --> C[Banker talks to the rep on a call, not by form]
+    C --> P[Rep saves a product draft: save_product with the product type]
+    P --> F{normalizeFacts for that type}
+    F -->|a key the type does not ask for, or a bad value| FX[Refused 400 with the field's on-screen label]
+    F -->|ok| D[outreach_products.facts: the type's answers, unknown kept as unknown, n/a stored by the server for the two business-only keys on personal products]
+    D --> V{Rep or manager presses Push to Lenders: verify_product}
+    V -->|rep on a bank assigned to someone else| V404[404, same as every other rep write]
+    V -->|rep and the product is already pushed or holds a manager amendment| V403[403, a manager must do this]
+    V -->|incomplete: any asked field blank, no evidence, no reachable banker, no real application link| V400[400 names the first missing field]
+    V -->|complete| L[One transaction: lenders row gets the 12 base columns exactly as before plus the typed columns for this type: Yes/No text, numbers, NULL for unknown and n/a; verified_by is whoever pressed it]
+    L --> K[Deep check bank-outreach:verified-product and the hourly beat recompute the base columns; n/a counts the same as unknown for the two business-only keys]
+```
+
+What is true in code:
+
+1. **Field catalog** (`FIELD_CATALOG`, 29 keys) lives in `model.mjs`. The first nine keys are the original facts and keep their names, types and storage. `productFields()` returns `{ fields, types, notApplicable }` and rides on every read response (list, team, automation, bank detail). Changing the product type changes the list; adding a type (MCA) is one row in `TYPE_ADDS`.
+2. **Completeness is per type.** `normalizeFacts(facts, { complete, lenderTable })` needs every field that type asks for answered or `"unknown"`. Without `lenderTable` it behaves exactly as before (the nine keys). `"unknown"` is never turned into zero, false or "all states".
+3. **n/a.** Personal cards, lines and loans do not ask the two business-only keys; the server stores `"n/a"` and Lenders keeps NULL. `lenderValues` nulls `"n/a"` for those two keys only; a banker's own typed "n/a" elsewhere stays text.
+4. **Push to Lenders.** `verify_product` is allowed for an `outbound_rep` only on a bank assigned to them (the same `account()` scope as every rep write) and only for a product that is not yet pushed and holds no manager amendment. Managers are unchanged. The twelve base columns keep their exact formats; `lenderExtras()` adds one typed column per answer the type asks for (`double_pull`, `relationship_required`, `requires_account_opening`, `minimum_deposit`, `prequal_soft_pull`, `business_bureau_pulled`, `underwriter_interaction`, `intro_offers`, `multiple_llc_allowed`, `application_method`, `typical_approval_range`, `apr_range_pct`, `repayment_terms_months`, `funding_speed`, `average_starting_loc`, `max_known_loc`, `draw_period_renewal`, `docs_requested`, `collateral_required`, `loc_type`) in the same insert or update.
+5. **Warm-up.** Migration 503 rewrites `EMAIL-BANK-OUTREACH-1..3` to ask for a call and never for data points, only where the row is unapproved and still holds the exact 495 words, and adds `SMS-BANK-OUTREACH-1` (unapproved, under 300 characters, ends with the opt-out words). Merge tags: `banker.first_name`, `bank.name`, `bank.state_name`, `rep.name` (the assigned rep, else the signed-in staff member). The same `rep.name` tag now signs the automatic emails (assigned rep, else "Fundhub Bank Partnerships") if they are ever approved.
+6. **Replies.** `parseModelReply` accepts any valid catalog key and, once the reply names a product type, only that type's keys; `missingQuestions` asks that type's questions when the type is known, the original nine when it is not. `apply_reply_suggestion` drops a suggested key the chosen type does not ask for instead of refusing the save.
+7. **Monitoring.** No new route, page, job or send path, so no new registry row. The two verified-product SQL copies (morning check and hourly beat) accept `"n/a"` exactly where they accept `"unknown"` for the two business-only keys and stay identical.
+
+Gaps with the intended journey (findings, not reconciled; the intended file is the owner's): `bank-outreach-intended.md` step 6 says a manager verifies, and the roles section says reps collect facts while managers verify; the owner's 2026-10-21 order lets the assigned rep push a complete product to Lenders ("a human in the loop ... that's what the point of these reps are for"). Step 5 says "Unanswered fields remain unanswered or explicitly unknown", which now applies per product type. The model prompt on the `BANK-OUTREACH-REPLY` agent row (495) still lists only the original nine fact keys; it is unchanged because the agent stays `draft`.

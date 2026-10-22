@@ -12,8 +12,8 @@ export const iso = now => (now instanceof Date ? now : new Date(now ?? Date.now(
 
 /* Approved, non-draft copy, or null. Same three refusals sendTemplated makes:
    missing, draft, unapproved. Missing copy is a named wait, never invented. */
-export async function templateFor(db, orgId, key, { approvedOnly = true } = {}) {
-  const row = (await db.query(`SELECT template_key, subject, body, compliance_passed FROM message_templates WHERE org_id=$1 AND template_key=$2 AND channel='email' LIMIT 1`, [orgId, key])).rows[0];
+export async function templateFor(db, orgId, key, { approvedOnly = true, channel = 'email' } = {}) {
+  const row = (await db.query(`SELECT template_key, subject, body, compliance_passed FROM message_templates WHERE org_id=$1 AND template_key=$2 AND channel=$3 LIMIT 1`, [orgId, key, channel])).rows[0];
   if (!row || isDraftTemplateRow(row)) return null;
   if (approvedOnly && !row.compliance_passed) return null;
   return row;
@@ -21,9 +21,10 @@ export async function templateFor(db, orgId, key, { approvedOnly = true } = {}) 
 
 export async function loadTarget(db, { orgId, contactId }) {
   return (await db.query(`SELECT c.id contact_id,c.org_id,c.account_id,c.name contact_name,c.email,c.email_opt_out_at,
-      a.name account_name,a.state,a.status,a.next_action,a.next_due_at,a.assigned_staff_id
+      a.name account_name,a.state,a.status,a.next_action,a.next_due_at,a.assigned_staff_id,rep.name rep_name
     FROM outreach_contacts c JOIN outreach_accounts a ON a.id=c.account_id AND a.org_id=c.org_id
     JOIN outreach_programs p ON p.id=a.program_id AND p.org_id=a.org_id
+    LEFT JOIN staff rep ON rep.id=a.assigned_staff_id AND rep.org_id=a.org_id
     WHERE c.org_id=$1 AND c.id=$2 AND p.key=$3`, [orgId, contactId, PROGRAM_KEY])).rows[0] || null;
 }
 
@@ -41,9 +42,30 @@ export function renderBankEmail(tpl, target, { env = process.env, missingQuestio
     stateName: stateName(target.state),
     footerText: footer({ postal: cfg.postal, unsubscribeUrl }),
     missingQuestions,
-    replySubject
+    replySubject,
+    repName: target.rep_name
   });
   return { subject: renderTemplate(tpl.subject || '', ctx), body: renderTemplate(tpl.body, ctx) };
+}
+
+/* The first-contact words a rep sends by hand from their own email or phone.
+   Rendered from the same two templates whether or not they are approved:
+   approval only gates automatic sending. No footer (the rep signs it), no
+   sending here, and a missing template is null, never invented words. */
+export const WARMUP_EMAIL_KEY = 'EMAIL-BANK-OUTREACH-1';
+export const WARMUP_SMS_KEY = 'SMS-BANK-OUTREACH-1';
+export function renderWarmup({ emailTemplate = null, smsTemplate = null } = {}, { account, contact, repName }) {
+  const ctx = mailContext({
+    account: { name: account.name, search_name: searchName(account.name), state: account.state },
+    contact,
+    stateName: stateName(account.state),
+    footerText: '',
+    repName
+  });
+  return {
+    email: emailTemplate ? { subject: renderTemplate(emailTemplate.subject || '', ctx).trim(), body: renderTemplate(emailTemplate.body, ctx).trimEnd() } : null,
+    text: smsTemplate ? renderTemplate(smsTemplate.body, ctx).trim() : null
+  };
 }
 
 /* The queued row and nothing else. Idempotent per provider_ref through 004's

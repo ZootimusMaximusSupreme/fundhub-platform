@@ -77,10 +77,12 @@ export function bankEnvelope(message, env = process.env) {
 
 const firstNameOf = full => String(full || '').trim().split(/\s+/)[0] || 'there';
 /** Merge tags the bank templates may use, and no others. */
-export function mailContext({ account, contact, stateName, footerText, missingQuestions = '', replySubject = '' }) {
+export const DEFAULT_REP_NAME = 'Fundhub Bank Partnerships';
+export function mailContext({ account, contact, stateName, footerText, missingQuestions = '', replySubject = '', repName = '' }) {
   return {
     banker: { first_name: firstNameOf(contact?.name) },
     bank: { name: account?.search_name || account?.name || '', state_name: stateName || account?.state || '' },
+    rep: { name: String(repName || '').trim() || DEFAULT_REP_NAME },
     outreach: { footer: footerText, missing_questions: missingQuestions },
     reply: { subject: String(replySubject || 'Fundhub').replace(/^\s*(re|fwd?):\s*/i, '').slice(0, 200) || 'Fundhub' }
   };

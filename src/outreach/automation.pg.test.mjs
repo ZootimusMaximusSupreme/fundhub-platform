@@ -51,7 +51,7 @@ describe('bank outreach automation on disposable PostgreSQL', { skip: !url ? 'no
       CREATE TABLE lenders(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),org_id uuid NOT NULL REFERENCES orgs(id),lender_table lender_table NOT NULL,name text NOT NULL,product_name text,application_url text,eligible_states text,bureaus_pulled text,stated_requirements text,minimum_time_in_business_years numeric(6,2),minimum_revenue_threshold numeric(14,2),notes text,last_updated_by text,last_updated_date date,active boolean DEFAULT true,updated_at timestamptz DEFAULT now());
       CREATE TABLE messages(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),org_id uuid NOT NULL,client_id uuid,direction text,channel text,template_key text,rendered_body text,provider text,provider_ref text,status text,compliance_check_passed boolean,to_address text,subject text,created_at timestamptz NOT NULL DEFAULT now(),updated_at timestamptz DEFAULT now());
       CREATE UNIQUE INDEX messages_ref_uniq ON messages(org_id, provider_ref) WHERE provider_ref IS NOT NULL;
-      CREATE TABLE message_templates(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),org_id uuid NOT NULL,template_key text NOT NULL,channel text NOT NULL,subject text,body text NOT NULL,compliance_passed boolean NOT NULL DEFAULT false,UNIQUE(org_id,template_key));
+      CREATE TABLE message_templates(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),org_id uuid NOT NULL,template_key text NOT NULL,channel text NOT NULL,subject text,body text NOT NULL,compliance_passed boolean NOT NULL DEFAULT false,updated_at timestamptz DEFAULT now(),UNIQUE(org_id,template_key));
       CREATE TABLE agents(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),org_id uuid NOT NULL,code text NOT NULL,status text NOT NULL,prompt text,UNIQUE(org_id,code));`);
     org = (await one(`INSERT INTO orgs(name) VALUES('Automation test') RETURNING id`)).id;
     await db.query(await readFile(new URL('../../db/migrations/483_bank_outreach.sql', import.meta.url), 'utf8'));
@@ -264,5 +264,80 @@ describe('bank outreach automation on disposable PostgreSQL', { skip: !url ? 'no
     assert.equal(auto.automation.replies.agent_status, 'live');
     assert.equal(typeof auto.automation.search.never_searched, 'number');
     await assert.rejects(read(rep, { view: 'automation' }), /manager/i);
+  });
+
+  test('503 rewrites only untouched unapproved 495 words; every contact gets its own warm-up signed by the rep; automatic emails sign the same way', async () => {
+    const copy = /\('(EMAIL-BANK-OUTREACH-[A-Z0-9-]+)', '([^']*)',\s*\$c\$([\s\S]*?)\$c\$\)/g;
+    const m495 = await readFile(new URL('../../db/migrations/495_bank_outreach_automation.sql', import.meta.url), 'utf8');
+    const m503 = await readFile(new URL('../../db/migrations/503_bank_outreach_manual_first.sql', import.meta.url), 'utf8');
+    const snapshot = async () => Object.fromEntries((await db.query(`SELECT template_key,channel,subject,body,compliance_passed FROM message_templates WHERE org_id=$1`, [org])).rows.map(r => [r.template_key, r]));
+    // Start from the 495 words, unapproved, as a fresh company has them. One was approved and one edited by a person since.
+    await db.query(`DELETE FROM message_templates WHERE org_id=$1`, [org]);
+    for (const [, key, subject, body] of m495.matchAll(copy)) await db.query(`INSERT INTO message_templates(org_id,template_key,channel,subject,body,compliance_passed) VALUES($1,$2,'email',$3,$4,false)`, [org, key, subject, body]);
+    await db.query(`UPDATE message_templates SET compliance_passed=true WHERE org_id=$1 AND template_key='EMAIL-BANK-OUTREACH-2'`, [org]);
+    await db.query(`UPDATE message_templates SET body=body||E'\n\nP.S. edited by a person' WHERE org_id=$1 AND template_key='EMAIL-BANK-OUTREACH-3'`, [org]);
+    const before = await snapshot();
+    await db.query(m503);
+    const after = await snapshot();
+    assert.notEqual(after['EMAIL-BANK-OUTREACH-1'].body, before['EMAIL-BANK-OUTREACH-1'].body);
+    assert.equal(after['EMAIL-BANK-OUTREACH-1'].compliance_passed, false, 'rewritten copy is still unapproved');
+    assert.match(after['EMAIL-BANK-OUTREACH-1'].body, /I'm \{\{rep\.name\}\} with Fundhub/);
+    assert.doesNotMatch(after['EMAIL-BANK-OUTREACH-1'].body, /three answers/);
+    assert.ok(after['EMAIL-BANK-OUTREACH-1'].body.endsWith('{{outreach.footer}}'));
+    assert.deepEqual(after['EMAIL-BANK-OUTREACH-2'], before['EMAIL-BANK-OUTREACH-2'], 'approved copy is never rewritten');
+    assert.deepEqual(after['EMAIL-BANK-OUTREACH-3'], before['EMAIL-BANK-OUTREACH-3'], 'copy a person edited is never rewritten');
+    for (const key of Object.keys(before).filter(k => /REPLY/.test(k))) assert.deepEqual(after[key], before[key], key);
+    await db.query(m503);
+    assert.deepEqual(await snapshot(), after, 'a second run changes nothing');
+    // Three cold emails: the third was edited, the second approved; take both back to the 495 words for the rewrite of all three.
+    await db.query(`DELETE FROM message_templates WHERE org_id=$1 AND template_key IN ('EMAIL-BANK-OUTREACH-2','EMAIL-BANK-OUTREACH-3')`, [org]);
+    for (const [, key, subject, body] of m495.matchAll(copy)) if (/OUTREACH-[23]$/.test(key)) await db.query(`INSERT INTO message_templates(org_id,template_key,channel,subject,body,compliance_passed) VALUES($1,$2,'email',$3,$4,false)`, [org, key, subject, body]);
+    await db.query(m503);
+    const all = await snapshot();
+    for (const key of ['EMAIL-BANK-OUTREACH-1', 'EMAIL-BANK-OUTREACH-2', 'EMAIL-BANK-OUTREACH-3']) { assert.match(all[key].body, /\{\{rep\.name\}\}\nFundhub\n\n\{\{outreach\.footer\}\}$/, key); assert.doesNotMatch(all[key].body, /credit score|bureau|application link/i, key); }
+    // The guarded seed skips this slug-less schema, so the text is loaded the way the seed would load it: unapproved.
+    const smsBody = m503.match(/'SMS-BANK-OUTREACH-1', 'sms', NULL,\s*\$c\$([\s\S]*?)\$c\$, false/)[1];
+    await db.query(`INSERT INTO message_templates(org_id,template_key,channel,subject,body,compliance_passed) VALUES($1,'SMS-BANK-OUTREACH-1','sms',NULL,$2,false)`, [org, smsBody]);
+
+    await db.query(`UPDATE staff SET name='Mike Rep' WHERE id=$1`, [rep.id]);
+    await db.query(`UPDATE staff SET name='Olivia Owner' WHERE id=$1`, [owner.id]);
+    const a = await target(971); const b = await target(972);
+    await write(owner, { action: 'assign', account_id: a.id, staff_id: rep.id });
+    const jane = await banker(a, 'jane@bank971.example', 'Jane Doe'); const sam = await banker(a, 'sam@bank971.example', 'Sam Stone');
+    const una = await banker(b, 'una@bank972.example', 'Una Unassigned');
+    // One warm-up per contact, from templates that are not approved: approval only gates automatic sending.
+    const view = await read(rep, { id: a.id });
+    const warm = Object.fromEntries(view.contacts.map(c => [c.name, c.warmup]));
+    assert.equal(warm['Jane Doe'].email.subject, 'A quick call about Test Bank 971');
+    assert.match(warm['Jane Doe'].email.body, /^Hi Jane,\n\nI'm Mike Rep with Fundhub\. We have clients in Arizona who need credit cards, lines of credit and loans, and I want to send them to Test Bank 971\./);
+    assert.ok(warm['Jane Doe'].email.body.endsWith('Mike Rep\nFundhub'));
+    assert.match(warm['Sam Stone'].email.body, /^Hi Sam,/);
+    assert.match(warm['Jane Doe'].text, /^Hi Jane, this is Mike Rep with Fundhub\. I have clients in Arizona/);
+    assert.match(warm['Sam Stone'].text, /^Hi Sam, /);
+    assert.ok(warm['Jane Doe'].text.length < 300 && warm['Jane Doe'].text.endsWith('Reply STOP to opt out.'));
+    for (const w of Object.values(warm)) for (const out of [w.email.subject, w.email.body, w.text]) assert.doesNotMatch(out, /\{\{|unsubscribe|Phoenix/);
+    assert.equal((await one(`SELECT compliance_passed FROM message_templates WHERE org_id=$1 AND template_key='EMAIL-BANK-OUTREACH-1'`, [org])).compliance_passed, false);
+    // A manager reading the same bank sees the assigned rep's name; a bank with no rep shows the reader's.
+    assert.match((await read(owner, { id: a.id })).contacts[0].warmup.email.body, /I'm Mike Rep with Fundhub/);
+    assert.match((await read(owner, { id: b.id })).contacts[0].warmup.email.body, /I'm Olivia Owner with Fundhub/);
+    assert.match((await read(owner, { id: b.id })).contacts[0].warmup.text, /this is Olivia Owner with Fundhub/);
+    // The warm-up is read-only: nothing queued, nothing logged as a touch.
+    assert.equal((await one(`SELECT count(*)::int n FROM messages WHERE org_id=$1 AND provider_ref IN ($2,$3)`, [org, `bank-outreach:${jane.id}:step1`, `bank-outreach:${sam.id}:step1`])).n, 0);
+
+    // The automatic email, if it is ever approved and turned on, signs the same way.
+    await db.query(`UPDATE message_templates SET compliance_passed=true WHERE org_id=$1 AND template_key='EMAIL-BANK-OUTREACH-1'`, [org]);
+    await sequenceSweep(db, { env: ENV, now: at(WED, 14) });
+    const sentJane = await one(`SELECT rendered_body,subject FROM messages WHERE provider_ref=$1`, [`bank-outreach:${jane.id}:step1`]);
+    assert.match(sentJane.rendered_body, /^Hi Jane,\n\nI'm Mike Rep with Fundhub\./);
+    assert.match(sentJane.rendered_body, /Mike Rep\nFundhub\n\nFundhub · 100 Test Street, Phoenix, AZ 85001\nTo stop these emails, reply STOP or open https:\/\/fundhub\.ai\/unsubscribe\.html/);
+    assert.equal(sentJane.subject, 'A quick call about Test Bank 971');
+    assert.match((await one(`SELECT rendered_body FROM messages WHERE provider_ref=$1`, [`bank-outreach:${una.id}:step1`])).rendered_body, /I'm Fundhub Bank Partnerships with Fundhub/);
+
+    // A missing template is null for that channel; placeholder copy is never shown either.
+    await db.query(`DELETE FROM message_templates WHERE org_id=$1 AND template_key='SMS-BANK-OUTREACH-1'`, [org]);
+    const noText = (await read(rep, { id: a.id })).contacts[0].warmup;
+    assert.equal(noText.text, null); assert.ok(noText.email.body.startsWith('Hi '));
+    await db.query(`UPDATE message_templates SET body='[DRAFT] write the first note' WHERE org_id=$1 AND template_key='EMAIL-BANK-OUTREACH-1'`, [org]);
+    assert.deepEqual((await read(rep, { id: a.id })).contacts[0].warmup, { email: null, text: null });
   });
 });
