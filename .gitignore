@@ -39,3 +39,6 @@ marketing/broll/out/
 
 # Original filmed takes on this Mac (scripts/receive-filmed-take.mjs). Not Drive. Not recompressed.
 marketing/ads/filmed/
+
+# Codex local settings: holds a real access token and Mac paths. Never commit (owner law: no secrets in git).
+.codex/config.toml
