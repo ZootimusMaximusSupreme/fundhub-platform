@@ -435,10 +435,10 @@
   }
   function after(node, add) { node.parentNode.insertBefore(add, node.nextSibling); }
   function setText(node, text) { if (node) node.textContent = text; }
-  var VIDEO_SRC = "";
+  var VIDEO_SRC = "https://fundhub.ai/funnel/thank-you-video.mp4";
   function buildVideo() {
     var inner = VIDEO_SRC
-      ? '<video id="fh-ty-vid" autoplay muted playsinline preload="auto" src="' + VIDEO_SRC + '"></video>' +
+      ? '<video id="fh-ty-vid" autoplay muted playsinline preload="auto" poster="https://fundhub.ai/funnel/thank-you-video-poster.jpg" src="' + VIDEO_SRC + '"></video>' +
         '<div class="fhv-unmute" id="fh-ty-unmute"><span class="fhv-pill">' +
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor" stroke="none"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>' +
         "Tap for sound</span></div>"
