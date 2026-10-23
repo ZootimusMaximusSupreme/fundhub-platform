@@ -38,16 +38,16 @@ Builders: Opus 5.5, high effort, one per unit, each in its own git worktree. Thi
 
 | Unit | What | Serves | Status |
 |---|---|---|---|
-| W1 | Wide + see-through-ready versions of FileItems, HiddenDataPoints, SoftPull, StepPath, QualifyToday | VSL, thank-you | done (branch worktree-agent-a9b7eda08b78fa061, b1075e019) |
+| W1 | Wide + see-through-ready versions of FileItems, HiddenDataPoints, SoftPull, StepPath, QualifyToday | VSL, thank-you | done, merged |
 | W2 | Wide versions of InquiriesOff, FundingRounds, LenderMatchScroll, ProofWall, BookCall | VSL, thank-you | claimed |
-| N1 | New: MoneyClimb (amounts stepping up, a range, a monthly ladder) | VSL, Ad 13, Ad 10, Ad 11 | claimed |
-| N2 | New: DeadlineClocks and FundingStack | VSL, Ad 13, Ad 14, Ad 16 | claimed |
-| N3 | New: BureauMatch and PathCards | thank-you, VSL, Ad 14 | claimed |
+| N1 | New: MoneyClimb (amounts stepping up, a range, a monthly ladder) | VSL, Ad 13, Ad 10, Ad 11 | done, merged |
+| N2 | New: DeadlineClocks and FundingStack | VSL, Ad 13, Ad 14, Ad 16 | done, merged |
+| N3 | New: BureauMatch and PathCards | thank-you, VSL, Ad 14 | done, merged |
 | N4 | New: FundabilityMeter and ScoreBadge | VSL, Blueprint Ad 3, Ad 16 | claimed |
-| N5 | New: StampCard and PriceTag | Ads 12, 5, 16, 13, Blueprint Ad 1 | pending |
-| N6 | New: SplitBar and IconCount | Ad 12, Blueprint Ads 1 and 2 | pending |
-| N7 | New: TwoPeople, ReturnMultiple, CalendarStrip | Ads 9, 4 | pending |
-| Merge | Merge branches, rebuild catalog, re-plan VSL and thank-you densely | — | pending (this session) |
+| N5 | New: StampCard and PriceTag | Ads 12, 5, 16, 13, Blueprint Ad 1 | claimed |
+| N6 | New: SplitBar and IconCount | Ad 12, Blueprint Ads 1 and 2 | claimed |
+| N7 | New: TwoPeople, ReturnMultiple, CalendarStrip | Ads 9, 4 | claimed |
+| Merge | Merge branches, rebuild catalog, re-plan VSL and thank-you densely | — | in progress: branch `animations-2026-10-22` (worktree `.claude/worktrees/animations-merge`), based on origin/main |
 
 No dependencies between W1, W2, N1, N2, N3. Merge waits on them. Batch 2 starts when slots free up (5 builders at a time).
 
@@ -57,3 +57,6 @@ No dependencies between W1, W2, N1, N2, N3. Merge waits on them. Batch 2 starts 
 - W1: add `QualifyTodayWide` to `DATA_TIED` in `src/marketing/animation-plan.mjs` and to the list at `src/marketing/catalog.test.mjs` line ~114, then rebuild the catalog.
 - W1 changed the see-through look of its five templates: content now sits on one white card inside the safe band (page-on look unchanged, 15/15 pixel-identical).
 - `Root.tsx` and `catalog.json` will clash across branches; resolve by keeping every registration, then rebuild the catalog.
+- Builder worktrees start from origin/main, not the local working branch. Merge them on `animations-2026-10-22` (also based on origin/main), never into the main checkout.
+- N3 put the Fundhub wordmark at the top of its wide side panel (not a script word). Later builders were told not to. Decide at review.
+- Done at merge: `QualifyTodayWide` added to `DATA_TIED` and to the catalog test.
