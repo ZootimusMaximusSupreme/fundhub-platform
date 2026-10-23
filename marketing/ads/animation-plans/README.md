@@ -9,16 +9,19 @@ Each entry has:
 - `plan`: the animations that fit the timing limits,
 - `check`: the result from `src/marketing/animation-plan.mjs`.
 
-**All 14 plans pass the checker.** Across the 14 scripts:
-- 94 key points were found,
-- 46 animations are in the plans,
-- 46 key points need a new animation. They are listed in `new-animations-needed.md`, and several repeat across videos.
+**All 14 plans pass the checker: 110 animations in total** (redone 2026-10-23 with the 14 new animations from `ops/workflows/animation-builds-2026-10-22.md`). The VSL has 26 and the thank-you video has 8; both use only the sideways (`*Wide`) versions with a `side` prop, so they stay off the face and the captions. The 12 ads use the upright versions.
+
+Each entry also has `timing`: the start second of every animation, its length and the gap to the next one. These come from an even speaking pace, so the real cut moves each start by a second or two. `src/ad-videos/animations.mjs` re-checks the real timing when the overlay step runs and drops any clip that lands too close to another.
+
+27 key points still have no animation. Almost all are blocked by the timing rules (the first sentence, the call-to-action line, or 4 seconds of face between two animations), not by a missing animation. They are listed in `new-animations-needed.md`.
 
 ## Known weak spots
 
-- **ProofWall always shows its fixed lines:** "A decade", "Hundreds of files", "Thousands of data points" and "A little over a million dollars funded for myself". In Ad 16, Ad 12 and Ad 5, some of those lines are not said in the script.
-- **ToolMatch is a stretch in Ad 9 and Ad 11.** Ad 9 uses it for the two-people comparison and the highest limit card. Ad 11 uses it for own cash vs. other people's money. Nothing closer exists yet.
-- **QualifyToday shows its own sample amounts** (199,350 today, 221,500 once fixed). It never shows the script's numbers.
+- **ProofWall always shows its fixed lines** ("A decade", "Hundreds of files", "Thousands of data points", "A little over a million dollars funded for myself"). Ads 12 and 13 and the thank-you video never say some of them.
+- **QualifyToday shows its own sample client's amounts** (199,350 today, 221,500 once fixed), never the script's numbers.
+- **Words not in the script:** a "$0" stamp for "you owe us nothing" (Ads 13 and 14); "Report 1/2/3" labels on BureauMatch in the ads; the three bureau names on the VSL and thank-you clips come from the template.
+- **The call-to-action line is a guess.** The plans treat the closing "click below" paragraph as the call to action. Ads 13 and 14 treat their closing guarantee paragraph as a normal line; if it is part of the call to action, the overlay step skips the clocks there.
+- **LenderMatchScrollWide runs 3.5 seconds**, past the 3-second cap. It is used once in the VSL and once in the thank-you video.
 
 ## Script sources
 
