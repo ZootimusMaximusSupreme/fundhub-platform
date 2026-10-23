@@ -72,6 +72,17 @@
       var first = sec.querySelector('.fhp-flow .st');
       first.querySelector('.t').innerHTML = '<a href="' + PORTAL_APP_URL + '" target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:underline;text-underline-offset:3px">Get the app</a>';
       first.querySelector('.d').textContent = 'Fundhub Portal for iPhone';
+      /* Lean page (Chris, 2026-10-23: "too much going on"): the UnderwriteIQ analysis box, the "Best fit"
+         badges and the paragraphs under each path title are hidden on /thank-you. /watch keeps them. */
+      if (!document.getElementById('fhp-lean-css')) {
+        var lean = document.createElement('style');
+        lean.id = 'fhp-lean-css';
+        lean.textContent = '.fhp[data-mode="thankyou"] #fhp-ai,.fhp[data-mode="thankyou"] .rec-badge,.fhp[data-mode="thankyou"] .fhp-card header p{display:none}' +
+          '.fhp[data-mode="thankyou"] .fhp-card,.fhp[data-mode="thankyou"] .fhp-card.rec{min-height:0}' +
+          '.fhp[data-mode="thankyou"] .fhp-card.rec{border-color:var(--line);box-shadow:0 1px 2px rgba(12,12,13,.06),0 10px 24px -14px rgba(12,12,13,.28)}' +
+          '.fhp[data-mode="thankyou"] .fhp-grid{margin-top:28px}';
+        document.head.appendChild(lean);
+      }
     }
     anchor.parentNode.insertBefore(wrap, anchor.nextSibling);
     run();
