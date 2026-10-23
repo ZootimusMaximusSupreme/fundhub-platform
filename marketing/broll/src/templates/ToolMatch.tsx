@@ -36,6 +36,8 @@ export type ToolMatchProps = {
   eyebrow: string;
   /** 2 to 4 rows, top to bottom. Extra rows are dropped. */
   rows: ToolRow[];
+  /** Optional: when each row starts, in base-timeline frames (clip frame x 105 / durationInFrames), so a row can land on the word it shows. Default: the even stagger. */
+  rowAt?: number[];
   /** Row index (0 = top) that lifts at the end, or null for none (the default). */
   highlight?: number | null;
   /** Optional chip on the lifted row, for example "The hammer". Leave out (or null) for none. */
@@ -136,7 +138,7 @@ const fitSize = (texts: string[], width: number, lines: number, max: number, min
   return min;
 };
 
-export const ToolMatch: React.FC<ToolMatchProps> = ({eyebrow, rows: rowsIn, highlight = null, highlightLabel, finalCard, durationInFrames, showSafeZones, transparent}) => {
+export const ToolMatch: React.FC<ToolMatchProps> = ({eyebrow, rows: rowsIn, rowAt, highlight = null, highlightLabel, finalCard, durationInFrames, showSafeZones, transparent}) => {
   const L = TOOL_MATCH_BASE;
   const {f, fps} = useToolTimeline(L, durationInFrames, TOOL_MATCH_MIN, TOOL_MATCH_MAX);
   const rows = (rowsIn ?? []).slice(0, 4);
@@ -204,7 +206,7 @@ export const ToolMatch: React.FC<ToolMatchProps> = ({eyebrow, rows: rowsIn, high
               }}
             />
             {rows.map((r, i) => {
-              const t0 = rowStart + i * rowGap;
+              const t0 = rowAt && rowAt[i] !== undefined ? rowAt[i] : rowStart + i * rowGap;
               const sitIn = enter(f, fps, t0, 12);
               const lineIn = seg(f, t0 + 4, t0 + 11);
               const badgeIn = enter(f, fps, t0 + 5, 10);

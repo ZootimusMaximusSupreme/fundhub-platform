@@ -7,8 +7,8 @@ DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 plan = {c["id"]: c for c in json.load(open(os.path.join(DIR, "plan.json")))}
 boxes = {int(k): v for k, v in json.load(open(os.path.join(DIR, "tools", "clip-boxes.json"))).items()}
 PLACE = {  # id: (scale, X, Y)
- 1: (1.0, 76, 470), 2: (1.1, 60, 20), 3: (0.8, 300, 15), 4: (0.8, 20, 20), 5: (0.8, 570, 20),
- 6: (1.0, 77, 1215), 7: (0.9, 200, 20), 8: (1.0, 77, 1260), 9: (0.9, 15, 15), 10: (0.9, 120, 15),
+ 1: (1.0, 75, 330), 2: (0.8, 30, 20), 3: (0.6, 540, 30), 4: (0.8, 570, 20), 5: (0.55, 20, 20),
+ 6: (0.7, 440, 30), 7: (0.8, 470, 12), 8: (0.9, 20, 11), 9: (0.9, 144, 1195),
 }
 PAD = 10
 clips = []

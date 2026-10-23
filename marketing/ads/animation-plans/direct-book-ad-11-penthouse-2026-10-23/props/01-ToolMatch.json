@@ -1,0 +1,25 @@
+{
+ "eyebrow": "Nobody seems to talk about it",
+ "rows": [
+  {
+   "situation": "Your parents",
+   "tool": "Won't tell you"
+  },
+  {
+   "situation": "Your friends",
+   "tool": "Won't tell you"
+  },
+  {
+   "situation": "Your business partner",
+   "tool": "Maybe not even"
+  }
+ ],
+ "highlight": null,
+ "rowAt": [
+  0,
+  30.5,
+  64.6
+ ],
+ "transparent": true,
+ "durationInFrames": 120
+}

@@ -1,0 +1,16 @@
+{
+ "format": "vertical",
+ "side": "left",
+ "amount": null,
+ "paidCheck": false,
+ "drain": [],
+ "transparent": true,
+ "durationInFrames": 120,
+ "object": "card",
+ "eyebrow": "The one thing he figured out",
+ "title": "Your credit",
+ "stamp": "Leveraged",
+ "stampSub": null,
+ "tone": "ok",
+ "subline": "How to leverage your credit correctly"
+}

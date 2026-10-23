@@ -44,6 +44,7 @@ for i, c in enumerate(C, 1):
         g.append(f"[{prev}][a{i}]overlay=x={c['dx']}:y={c['dy']}:eof_action=pass:enable='{en}'[v{i}]")
         prev = f"v{i}"
         x0, y0, x1, y1 = c["front_rect"]
+        x0, y0, x1, y1 = max(x0, c['dx']), max(y0, c['dy']), min(x1, c['dx'] + sw), min(y1, c['dy'] + sh)  # rectangle must lie inside the scaled clip
         g.append(f"[b{i}]crop={x1 - x0}:{y1 - y0}:{x0 - c['dx']}:{y0 - c['dy']}[c{i}]")
         rects.append((f"[c{i}]", x0, y0, en))
         g.append(f"[a{i}]nullsink") if False else None

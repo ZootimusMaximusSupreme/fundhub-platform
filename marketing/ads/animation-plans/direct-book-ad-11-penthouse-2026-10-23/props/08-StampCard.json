@@ -1,0 +1,16 @@
+{
+ "format": "vertical",
+ "side": "left",
+ "amount": null,
+ "paidCheck": false,
+ "drain": [],
+ "transparent": true,
+ "durationInFrames": 120,
+ "object": "card",
+ "eyebrow": null,
+ "title": "Only your own cash",
+ "stamp": "Slowest",
+ "stampSub": "way to build wealth",
+ "tone": "bad",
+ "subline": null
+}

@@ -1,8 +1,6 @@
 {
  "format": "vertical",
  "side": "left",
- "transparent": true,
- "durationInFrames": 90,
  "eyebrow": null,
  "tag": {
   "amount": 1500000,
@@ -14,5 +12,7 @@
  "pileLabel": null,
  "pile": [],
  "pileCount": 0,
- "subline": null
+ "subline": "He was struggling",
+ "transparent": true,
+ "durationInFrames": 90
 }

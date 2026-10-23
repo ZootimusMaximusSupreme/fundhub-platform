@@ -1,0 +1,16 @@
+{
+ "format": "vertical",
+ "side": "left",
+ "amount": null,
+ "paidCheck": false,
+ "drain": [],
+ "transparent": true,
+ "durationInFrames": 120,
+ "object": "card",
+ "eyebrow": "Give me a lever long enough",
+ "title": "Credit",
+ "stamp": "That lever",
+ "stampSub": null,
+ "tone": "ok",
+ "subline": null
+}
