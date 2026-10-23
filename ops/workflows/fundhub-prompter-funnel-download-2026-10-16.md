@@ -38,3 +38,12 @@ App Store Connect browser access was denied by a saved permission. Chris supplie
 - Step 1 of the three-step strip on /thank-you is now "Get the app / Fundhub Portal for iPhone", linked to the App Store (`public/funnel/funding-paths.js`, thank-you only). Chris approved the words.
 - Card styles carry a `.fh-root` prefix; the page's `.fh-root *` reset had blanked its padding and button text.
 - Live check 2026-10-23: card shows under the hero, button is dark text on white, both links open https://apps.apple.com/us/app/fundhub-portal/id6823985032.
+
+### Final state of /thank-you, 2026-10-23 (all live, checked in a browser)
+
+- Order: headline, video, confirm your call, what happens on the call, before we talk, Fundhub Portal app card (white card), your three paths, approvals, FAQ, sign-off. "What the call decides" is cut.
+- Video: `public/funnel/thank-you-video.mp4` (Submagic re-export with the four caption words fixed, animations behind him, -14.27 LUFS). See `marketing/ads/animation-plans/thank-you-test-2026-10-23/AUDIO-REPORT.md`.
+- Three paths on this page only: the UnderwriteIQ analysis box, the "Best fit" badges and the paragraphs under each path title are hidden (`#fhp-lean-css` in `funding-paths.js`). /watch keeps them.
+- Path 3 (Capital Blueprint) now lists 9 steps from the owner's definition (`marketing/offers/capital-blueprint-owner-definition-2026-10-14.md`). That list is shared with /watch.
+- Open for Chris: `docs/journeys/fundhub-prompter-funnel-download-intended.md` still says the card sits under the headline and names the old Prompter app. Only Chris edits intended files.
+- Rollback of the page body: `ops/workflows/cf-push-snapshots/page-25752378-custom-html.html` is the body before the reorder; `marketing/landing-pages/preview/05-thank-you.before-reorg.html` is the old fragment.
