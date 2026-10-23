@@ -23,6 +23,7 @@ import {
   progressBetween,
 } from '../brand';
 import {SeeThrough} from '../brand/Grid';
+import {Sticker, WidePanel, type WideFormat, type WideSide} from '../brand/widePanel';
 import {useClipTimeline} from './clipTimeline';
 
 // A funding sequence that runs round by round (3 to 6 rounds). Each round
@@ -54,6 +55,10 @@ export type FundingRoundsProps = {
   amounts?: number[] | null;
   durationInFrames?: number;
   showSafeZones?: boolean;
+  /** "vertical" (1080x1920, ads) or "wide" (3840x2160, the VSL). Default vertical. */
+  format?: WideFormat;
+  /** Wide only: the side panel the scene sits in. Default left. */
+  side?: WideSide;
   /** See-through: no page and no grid, so the clip renders with alpha (README.md). Default false. */
   transparent?: boolean;
 };
@@ -175,7 +180,10 @@ export const FundingRounds: React.FC<FundingRoundsProps> = ({
   durationInFrames,
   showSafeZones,
   transparent,
+  format,
+  side,
 }) => {
+  const wide = format === 'wide';
   const N = clampRounds(rounds);
   const L = fundingRoundsBase(N);
   const {f, fps} = useClipTimeline(L, durationInFrames);
@@ -203,7 +211,7 @@ export const FundingRounds: React.FC<FundingRoundsProps> = ({
 
   const page = (
     <BrandFrame
-      showSafeZones={showSafeZones}
+      showSafeZones={wide ? false : showSafeZones}
       backdrop={
         <>
           <BackdropStage f={f} length={L}>
@@ -402,5 +410,20 @@ export const FundingRounds: React.FC<FundingRoundsProps> = ({
       </Decor>
     </BrandFrame>
   );
-  return <SeeThrough on={transparent}>{page}</SeeThrough>;
+  const look = (
+    <Sticker on={transparent} band={!wide}>
+      {page}
+    </Sticker>
+  );
+  return (
+    <SeeThrough on={transparent}>
+      {wide ? (
+        <WidePanel side={side} showSafeZones={showSafeZones}>
+          {look}
+        </WidePanel>
+      ) : (
+        look
+      )}
+    </SeeThrough>
+  );
 };

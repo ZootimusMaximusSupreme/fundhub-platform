@@ -4,6 +4,14 @@ Remotion templates for the animation clips in our ads. Vertical 1080x1920 at
 30 fps for ads; two templates also have a wide 3840x2160 (4K) version for the
 horizontal VSL (`BankPocketsWide`, `ProofFloodWide`).
 
+Side-panel wide versions (animation-builds-2026-10-22, W2): `InquiriesOffWide`,
+`FundingRoundsWide`, `LenderMatchScrollWide`, `ProofWallWide`, `BookCallWide`.
+They show the clip's own vertical scene in ONE side panel, picked by `side`
+(`"left"`, the default, x 192-1500; or `"right"`, x 2340-3648; both y 108-1512),
+so the face in the middle and the captions low in the middle stay clear.
+Helper: `src/brand/widePanel.tsx`. Caption-safe scan for vertical and wide
+see-through renders: `python3 scripts/wide-panel-zone-scan.py [--side right] <png or folder>`.
+
 - Templates: `src/templates/` (the 8 in `registry.tsx`, the rest registered
   from their own files in `src/Root.tsx`).
 - Brand look: `src/brand/` (colors, grid, wordmark, depth kit, money).

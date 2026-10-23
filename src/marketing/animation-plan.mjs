@@ -35,10 +35,10 @@
 
 /* The data-tied templates. Spec §7.3 names QualifyToday, LettersWritten,
    ProofWall, the ApprovalCarousel family and the ProofFlood family. Only
-   QualifyToday, ProofWall and ProofFlood (with ProofFloodWide) exist in the kit
+   QualifyToday, ProofWall (with ProofWallWide) and ProofFlood (with ProofFloodWide) exist in the kit
    today; LettersWritten and any ApprovalCarousel are matched by name prefix so
    they are tied the day they are added. */
-export const DATA_TIED = Object.freeze(new Set(["QualifyToday", "ProofWall", "ProofFlood", "ProofFloodWide"]));
+export const DATA_TIED = Object.freeze(new Set(["QualifyToday", "ProofWall", "ProofWallWide", "ProofFlood", "ProofFloodWide"]));
 export const DATA_TIED_PREFIXES = Object.freeze(["ApprovalCarousel", "LettersWritten", "ProofFlood"]);
 
 export function isDataTied(templateId) {

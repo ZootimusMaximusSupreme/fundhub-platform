@@ -16,6 +16,7 @@ import {
   fadeUp,
 } from '../brand';
 import {SeeThrough} from '../brand/Grid';
+import {Sticker, WidePanel, type WideFormat, type WideSide} from '../brand/widePanel';
 import {SCROLL_BANKS, type ScrollBank} from '../data/lenderMatchScroll';
 import {useClipTimeline} from './clipTimeline';
 
@@ -45,6 +46,10 @@ export type LenderMatchScrollProps = {
   countLabel: string;
   durationInFrames?: number;
   showSafeZones?: boolean;
+  /** "vertical" (1080x1920, ads) or "wide" (3840x2160, the VSL). Default vertical. */
+  format?: WideFormat;
+  /** Wide only: the side panel the scene sits in. Default left. */
+  side?: WideSide;
   /** See-through: no page and no grid, so the clip renders with alpha (README.md). Default false. */
   transparent?: boolean;
 };
@@ -198,7 +203,10 @@ export const LenderMatchScroll: React.FC<LenderMatchScrollProps> = ({
   durationInFrames,
   showSafeZones,
   transparent,
+  format,
+  side,
 }) => {
+  const wide = format === 'wide';
   const L = LENDER_MATCH_SCROLL_BASE;
   const {f, fps} = useClipTimeline(L, durationInFrames, LENDER_MATCH_SCROLL_MIN, LENDER_MATCH_SCROLL_MAX);
   const {p, v} = scrollAt(f);
@@ -237,7 +245,7 @@ export const LenderMatchScroll: React.FC<LenderMatchScrollProps> = ({
 
   const page = (
     <BrandFrame
-      showSafeZones={showSafeZones}
+      showSafeZones={wide ? false : showSafeZones}
       backdrop={
         <BackdropStage f={f} length={L}>
           {/* faint cash drifting down both sides, behind the list */}
@@ -340,5 +348,20 @@ export const LenderMatchScroll: React.FC<LenderMatchScrollProps> = ({
       </Stage3D>
     </BrandFrame>
   );
-  return <SeeThrough on={transparent}>{page}</SeeThrough>;
+  const look = (
+    <Sticker on={transparent} band={!wide}>
+      {page}
+    </Sticker>
+  );
+  return (
+    <SeeThrough on={transparent}>
+      {wide ? (
+        <WidePanel side={side} showSafeZones={showSafeZones}>
+          {look}
+        </WidePanel>
+      ) : (
+        look
+      )}
+    </SeeThrough>
+  );
 };

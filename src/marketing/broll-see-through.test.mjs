@@ -42,7 +42,7 @@ function templatePropsTypes() {
 }
 
 test("every catalog entry offers transparent, and it defaults to false", () => {
-  assert.equal(catalog.length, 22, "the kit registers 22 ad clips today");
+  assert.equal(catalog.length, 27, "the kit registers 27 ad clips today");
   for (const e of catalog) {
     assert.ok(Object.hasOwn(e.default_props, "transparent"), `${e.id}: default_props has no transparent`);
     assert.equal(e.default_props.transparent, false, `${e.id}: transparent must default to false`);
