@@ -103,7 +103,7 @@ def main(tid, vertical, wide_left, wide_right, out, extras):
     d.text((pad, legend_top - 10), "Legend", fill=(10, 10, 10), font=f_num)
     lines = [
         "1  Vertical allowed zone: y 269-1248 (text-safe band). Nothing in the top 14% or the bottom 35%.",
-        "2  Wide, side \"left\": everything inside x 192-1500, y 108-1512. No wordmark in the wide format.",
+        "2  Wide, side \"left\": everything inside x 192-1500, y 108-1512. No logo on see-through renders.",
         "3  Wide, side \"right\": everything inside x 2340-3648, y 108-1512.",
         "Faint red on the wide stills: the middle column (x 1500-2340, the face) and the bottom 30% (the captions). Must stay empty.",
         "Checkerboard = see-through (alpha 0). Every word sits on a solid card, chip, tag or plate so it reads over film.",
