@@ -21,6 +21,9 @@ import {SplitBarCompositions} from './templates/SplitBar';
 import {IconCountCompositions} from './templates/IconCount';
 import {FundabilityMeterCompositions} from './templates/FundabilityMeter';
 import {ScoreBadgeCompositions} from './templates/ScoreBadge';
+import {TwoPeopleCompositions} from './templates/TwoPeople';
+import {ReturnMultipleCompositions} from './templates/ReturnMultiple';
+import {CalendarStripCompositions} from './templates/CalendarStrip';
 
 // The contact sheet is a Composition, not a Still: Remotion clamps every
 // frame to the composition's length, and a 1-frame Still would freeze each
@@ -48,6 +51,9 @@ export const RemotionRoot: React.FC = () => (
     <IconCountCompositions />
     <FundabilityMeterCompositions />
     <ScoreBadgeCompositions />
+    <TwoPeopleCompositions />
+    <ReturnMultipleCompositions />
+    <CalendarStripCompositions />
     <Composition
       id="ContactSheet"
       component={ContactSheet}

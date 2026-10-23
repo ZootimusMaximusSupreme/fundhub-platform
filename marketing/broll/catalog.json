@@ -1262,5 +1262,185 @@
     },
     "purpose": "ScoreBadge: credit scores on a 3D card, in one of three modes picked by `mode`. \"range\": a score gauge whose whole arc, from the low score to the high one, sweeps in lit and gets a green check (we work with every score in it). \"threshold\": a marker rides the gauge up to one score; that score lands big in the middle and the arc from it to the top lights up (\"or higher\"). \"program\": three score badges drop into one dark program box and come out the other side as three identical gray badges, the numbers gone.",
     "data_tied": false
+  },
+  {
+    "id": "TwoPeople",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "min_frames": 90,
+    "max_frames": 120,
+    "default_props": {
+      "mode": "compare",
+      "eyebrow": "Same bank, same week",
+      "left": {
+        "who": "A guy",
+        "earnsLabel": "Making",
+        "earns": "$300,000 a year",
+        "outcomeLabel": "Approved for",
+        "amount": 8000
+      },
+      "right": {
+        "who": "His buddy",
+        "earnsLabel": "Making",
+        "earns": "Half that",
+        "outcomeLabel": "Walks out with",
+        "amount": 80000
+      },
+      "card": {
+        "label": "Your highest limit card",
+        "tag": "Highest limit",
+        "limit": null
+      },
+      "approvals": {
+        "label": "One to two times that amount",
+        "low": 1,
+        "high": 2
+      },
+      "footer": "One thing on their credit reports",
+      "format": "vertical",
+      "side": "left",
+      "transparent": false
+    },
+    "purpose": "TwoPeople (Unit N7, ops/workflows/animation-builds-2026-10-22.md): two people side by side and what each one walks out of the bank with, or one highest-limit card and the new approvals banks size from it.",
+    "data_tied": false
+  },
+  {
+    "id": "TwoPeopleWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 90,
+    "max_frames": 120,
+    "default_props": {
+      "mode": "compare",
+      "eyebrow": "Same bank, same week",
+      "left": {
+        "who": "A guy",
+        "earnsLabel": "Making",
+        "earns": "$300,000 a year",
+        "outcomeLabel": "Approved for",
+        "amount": 8000
+      },
+      "right": {
+        "who": "His buddy",
+        "earnsLabel": "Making",
+        "earns": "Half that",
+        "outcomeLabel": "Walks out with",
+        "amount": 80000
+      },
+      "card": {
+        "label": "Your highest limit card",
+        "tag": "Highest limit",
+        "limit": null
+      },
+      "approvals": {
+        "label": "One to two times that amount",
+        "low": 1,
+        "high": 2
+      },
+      "footer": "One thing on their credit reports",
+      "format": "wide",
+      "side": "left",
+      "transparent": false
+    },
+    "purpose": "TwoPeople (Unit N7, ops/workflows/animation-builds-2026-10-22.md): two people side by side and what each one walks out of the bank with, or one highest-limit card and the new approvals banks size from it.",
+    "data_tied": false
+  },
+  {
+    "id": "ReturnMultiple",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 120,
+    "default_props": {
+      "eyebrow": "Every dollar I put into Meta",
+      "inLabel": "In",
+      "inAmount": 200000,
+      "multiple": {
+        "lead": "About",
+        "value": 4
+      },
+      "systemLabel": "Proven returns",
+      "outLabel": "Out",
+      "outText": "A LOT more than $200,000",
+      "footer": "That's on the low end",
+      "format": "vertical",
+      "side": "left",
+      "transparent": false
+    },
+    "purpose": "ReturnMultiple (Unit N7, ops/workflows/animation-builds-2026-10-22.md): money goes into a system with proven returns and comes back bigger, about 4x, with no made-up total.",
+    "data_tied": false
+  },
+  {
+    "id": "ReturnMultipleWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 120,
+    "default_props": {
+      "eyebrow": "Every dollar I put into Meta",
+      "inLabel": "In",
+      "inAmount": 200000,
+      "multiple": {
+        "lead": "About",
+        "value": 4
+      },
+      "systemLabel": "Proven returns",
+      "outLabel": "Out",
+      "outText": "A LOT more than $200,000",
+      "footer": "That's on the low end",
+      "format": "wide",
+      "side": "left",
+      "transparent": false
+    },
+    "purpose": "ReturnMultiple (Unit N7, ops/workflows/animation-builds-2026-10-22.md): money goes into a system with proven returns and comes back bigger, about 4x, with no made-up total.",
+    "data_tied": false
+  },
+  {
+    "id": "CalendarStrip",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 120,
+    "default_props": {
+      "eyebrow": "In the next 15 to 30 days",
+      "fromDay": 15,
+      "toDay": 30,
+      "windowLabel": "15 to 30 days",
+      "accountLabel": "Sitting in your account",
+      "amount": null,
+      "footer": "Depending on what your roadmap takes",
+      "format": "vertical",
+      "side": "left",
+      "transparent": false
+    },
+    "purpose": "CalendarStrip (Unit N7, ops/workflows/animation-builds-2026-10-22.md): a strip of days fills across, the window of days lights up in blue, and the money lands in the account at the end.",
+    "data_tied": false
+  },
+  {
+    "id": "CalendarStripWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 120,
+    "default_props": {
+      "eyebrow": "In the next 15 to 30 days",
+      "fromDay": 15,
+      "toDay": 30,
+      "windowLabel": "15 to 30 days",
+      "accountLabel": "Sitting in your account",
+      "amount": null,
+      "footer": "Depending on what your roadmap takes",
+      "format": "wide",
+      "side": "left",
+      "transparent": false
+    },
+    "purpose": "CalendarStrip (Unit N7, ops/workflows/animation-builds-2026-10-22.md): a strip of days fills across, the window of days lights up in blue, and the money lands in the account at the end.",
+    "data_tied": false
   }
 ]
