@@ -12,6 +12,7 @@ import {ProofWallComposition} from './templates/ProofWall';
 import {ProofFloodCompositions} from './templates/ProofFlood';
 import {BankPocketsCompositions} from './templates/BankPockets';
 import {MoneyClimbCompositions} from './templates/MoneyClimb';
+import {FundhubLogoCompositions} from './templates/FundhubLogo';
 import {ToolAnalogyCompositions} from './templates/toolAnalogy';
 import {DeadlineClocksCompositions} from './templates/DeadlineClocks';
 import {FundingStackCompositions} from './templates/FundingStack';
@@ -44,6 +45,7 @@ export const RemotionRoot: React.FC = () => (
     <ProofFloodCompositions />
     <BankPocketsCompositions />
     <MoneyClimbCompositions />
+    <FundhubLogoCompositions />
     <ToolAnalogyCompositions />
     <DeadlineClocksCompositions />
     <FundingStackCompositions />
