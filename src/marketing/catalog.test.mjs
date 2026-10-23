@@ -111,7 +111,7 @@ test("sizes: vertical 1080x1920, the two wide versions 3840x2160", () => {
 
 test("data-tied: QualifyToday, ProofWall and the ProofFlood family, and nothing else in the kit today", () => {
   const tied = committed.filter((e) => e.data_tied).map((e) => e.id).sort();
-  assert.deepEqual(tied, ["ProofFlood", "ProofFloodWide", "ProofWall", "QualifyToday"]);
+  assert.deepEqual(tied, ["ProofFlood", "ProofFloodWide", "ProofWall", "QualifyToday", "QualifyTodayWide"]);
 });
 
 test("default props are read from the source, spreads included", () => {

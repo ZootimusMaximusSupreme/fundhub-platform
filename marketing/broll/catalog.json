@@ -184,7 +184,7 @@
       "side": "left"
     },
     "purpose": "QualifyTodayWide: the QualifyToday clip (today and once-fixed amounts roll up beside 3D cash stacks; the gap stacks on top in blue) in 3840x2160 for the sideways 4K VSL and thank-you video. Same sample-client numbers as QualifyToday. Everything sits in one side panel (`side`: left or right) so the face and the captions in the middle stay clear.",
-    "data_tied": false
+    "data_tied": true
   },
   {
     "id": "FileItemsWide",
