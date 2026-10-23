@@ -493,5 +493,85 @@
     },
     "purpose": "ToolMatch: a 3D tool board. Each credit situation gets its matching tool, one row at a time: the situation slides in on the left, a blue tool badge pops on the line between, and the tool's card hangs on the board at the right. Then one row lifts off the board and the others dim (with an optional chip, for example \"The hammer\"). An optional final card lands in front at the end, for example the roadmap and its price.",
     "data_tied": false
+  },
+  {
+    "id": "SplitBar",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 120,
+    "default_props": {
+      "format": "vertical",
+      "side": "left",
+      "knownPercent": 80,
+      "missingPercent": 20,
+      "knownLabel": "right",
+      "missingLabel": "they're missing",
+      "headline": "decides how much funding you actually get",
+      "fillGap": false,
+      "sources": [],
+      "transparent": false
+    },
+    "purpose": "One bar split into the part you have and the part you are missing: the big part grows in, the missing part pulses, and it can fill in at the end.",
+    "data_tied": false
+  },
+  {
+    "id": "SplitBarWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 120,
+    "default_props": {
+      "format": "wide",
+      "side": "left",
+      "knownPercent": 80,
+      "missingPercent": 20,
+      "knownLabel": "right",
+      "missingLabel": "they're missing",
+      "headline": "decides how much funding you actually get",
+      "fillGap": false,
+      "sources": [],
+      "transparent": false
+    },
+    "purpose": "One bar split into the part you have and the part you are missing: the big part grows in, the missing part pulses, and it can fill in at the end.",
+    "data_tied": false
+  },
+  {
+    "id": "IconCount",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 120,
+    "default_props": {
+      "format": "vertical",
+      "side": "left",
+      "total": 8,
+      "lit": 1,
+      "caption": "people finish an online course they sign up for.",
+      "transparent": false
+    },
+    "purpose": "A row of people where only some light up: \"1 in 8\" as a picture, with the caption under it.",
+    "data_tied": false
+  },
+  {
+    "id": "IconCountWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 120,
+    "default_props": {
+      "format": "wide",
+      "side": "left",
+      "total": 8,
+      "lit": 1,
+      "caption": "people finish an online course they sign up for.",
+      "transparent": false
+    },
+    "purpose": "A row of people where only some light up: \"1 in 8\" as a picture, with the caption under it.",
+    "data_tied": false
   }
 ]
