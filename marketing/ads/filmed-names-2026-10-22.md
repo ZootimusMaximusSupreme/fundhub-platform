@@ -17,8 +17,8 @@ How each name was proved:
 | Direct Book Ad 13 — 700 and up, hundreds of clients | 1 | Maximize Business Funding | Words, renamed |
 | Direct Book Ad 14 — 780 and up, 13 optimization points | 1 | 780+ | Words, renamed |
 | Capital Blueprint Ad 3 — 600 and up, the shortest path | 1 | Funding Success Blueprint | Words, renamed |
-| Direct Book Ad 16 — Advanced funding algorithm | 1 | Advanced Funding Algorithm | Words (not renamed yet) |
-| Direct Book Ad 12 — Industry slam | 1 | Credit Funding Strategies | Words, bytes (not renamed yet) |
+| Direct Book Ad 16 — Advanced funding algorithm | 1 | Advanced Funding Algorithm | Words, renamed |
+| Direct Book Ad 12 — Industry slam | 1 | Credit Funding Strategies | Words, bytes, renamed |
 | Direct Book Ad 11 — The penthouse | 3 | Credit Leverage Success | Words, bytes, renamed |
 | Capital Blueprint Ad 1 — Industry call-out | 4 | Funding Blueprint System | Words, bytes, renamed |
 | Capital Blueprint Ad 2 — Learn it yourself | 2 | My Project | Words, bytes, renamed |
