@@ -430,6 +430,36 @@
     "data_tied": false
   },
   {
+    "id": "FundhubLogo",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "min_frames": 60,
+    "max_frames": 90,
+    "default_props": {
+      "format": "vertical",
+      "side": "left",
+      "transparent": false
+    },
+    "purpose": "FundhubLogo: the Fundhub brand sting. The real \"fundhub.\" wordmark on a white plate: a thin brand-spectrum line draws across, the letters rise up out of it one by one, then the line gathers into the period, which lands in the spectrum colors, sends out one soft ring and settles to ink. The only place the logo shows on the videos.",
+    "data_tied": false
+  },
+  {
+    "id": "FundhubLogoWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 60,
+    "max_frames": 90,
+    "default_props": {
+      "format": "wide",
+      "side": "left",
+      "transparent": false
+    },
+    "purpose": "FundhubLogo: the Fundhub brand sting. The real \"fundhub.\" wordmark on a white plate: a thin brand-spectrum line draws across, the letters rise up out of it one by one, then the line gathers into the period, which lands in the spectrum colors, sends out one soft ring and settles to ink. The only place the logo shows on the videos.",
+    "data_tied": false
+  },
+  {
     "id": "FlatTireHammer",
     "width": 1080,
     "height": 1920,
