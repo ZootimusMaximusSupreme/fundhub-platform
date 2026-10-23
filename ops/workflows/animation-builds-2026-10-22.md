@@ -39,13 +39,13 @@ Builders: Opus 5.5, high effort, one per unit, each in its own git worktree. Thi
 | Unit | What | Serves | Status |
 |---|---|---|---|
 | W1 | Wide + see-through-ready versions of FileItems, HiddenDataPoints, SoftPull, StepPath, QualifyToday | VSL, thank-you | done, merged |
-| W2 | Wide versions of InquiriesOff, FundingRounds, LenderMatchScroll, ProofWall, BookCall | VSL, thank-you | claimed |
+| W2 | Wide versions of InquiriesOff, FundingRounds, LenderMatchScroll, ProofWall, BookCall | VSL, thank-you | done, merged |
 | N1 | New: MoneyClimb (amounts stepping up, a range, a monthly ladder) | VSL, Ad 13, Ad 10, Ad 11 | done, merged |
 | N2 | New: DeadlineClocks and FundingStack | VSL, Ad 13, Ad 14, Ad 16 | done, merged |
 | N3 | New: BureauMatch and PathCards | thank-you, VSL, Ad 14 | done, merged |
 | N4 | New: FundabilityMeter and ScoreBadge | VSL, Blueprint Ad 3, Ad 16 | claimed |
 | N5 | New: StampCard and PriceTag | Ads 12, 5, 16, 13, Blueprint Ad 1 | claimed |
-| N6 | New: SplitBar and IconCount | Ad 12, Blueprint Ads 1 and 2 | claimed |
+| N6 | New: SplitBar and IconCount | Ad 12, Blueprint Ads 1 and 2 | done, merged |
 | N7 | New: TwoPeople, ReturnMultiple, CalendarStrip | Ads 9, 4 | claimed |
 | Merge | Merge branches, rebuild catalog, re-plan VSL and thank-you densely | — | in progress: branch `animations-2026-10-22` (worktree `.claude/worktrees/animations-merge`), based on origin/main |
 
@@ -60,3 +60,6 @@ No dependencies between W1, W2, N1, N2, N3. Merge waits on them. Batch 2 starts 
 - Builder worktrees start from origin/main, not the local working branch. Merge them on `animations-2026-10-22` (also based on origin/main), never into the main checkout.
 - N3 put the Fundhub wordmark at the top of its wide side panel (not a script word). Later builders were told not to. Decide at review.
 - Done at merge: `QualifyTodayWide` added to `DATA_TIED` and to the catalog test.
+- N6: IconCount shows "1 in 8" without the script's "Only about" (the stat is 12.6%). Check at review.
+- W1 and W2 added a white card / white edge behind words in see-through mode so they read over dark film. Page-on look unchanged.
+- Wide layout code exists in three places (KitFrame.tsx, sidePanel.tsx, widePanel.tsx) plus inline copies. Fold into one helper in a later refactor.
