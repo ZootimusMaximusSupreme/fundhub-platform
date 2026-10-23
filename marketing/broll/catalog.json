@@ -493,5 +493,167 @@
     },
     "purpose": "ToolMatch: a 3D tool board. Each credit situation gets its matching tool, one row at a time: the situation slides in on the left, a blue tool badge pops on the line between, and the tool's card hangs on the board at the right. Then one row lifts off the board and the others dim (with an optional chip, for example \"The hammer\"). An optional final card lands in front at the end, for example the roadmap and its price.",
     "data_tied": false
+  },
+  {
+    "id": "BureauMatch",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "min_frames": 90,
+    "max_frames": 135,
+    "default_props": {
+      "format": "vertical",
+      "side": "left",
+      "eyebrow": "All three bureaus",
+      "headline": "Your information has to match on every report",
+      "bureaus": [
+        "Experian",
+        "Equifax",
+        "TransUnion"
+      ],
+      "flagged": 1,
+      "mismatchTag": "Doesn't match",
+      "matchTag": "Matches",
+      "stages": [
+        {
+          "state": "mismatch",
+          "approved": 1,
+          "kicker": "Only",
+          "count": "1 in 3",
+          "label": "banks approve you"
+        },
+        {
+          "state": "match",
+          "approved": 2,
+          "kicker": "When it matches",
+          "count": "2 in 3",
+          "label": "banks approve you"
+        },
+        {
+          "state": "match",
+          "approved": 3,
+          "kicker": "Sometimes",
+          "count": "3 out of 3",
+          "label": "banks approve you"
+        }
+      ],
+      "transparent": false
+    },
+    "purpose": "BureauMatch (Unit N3, animation-builds-2026-10-22). Three credit reports side by side, and three banks under them: when one report does not match, only some banks light up; when all three match, more banks light up. Thank-you video: \"Different banks pull different bureaus, so your information has to match on every report. When it doesn't match, only 1 in 3 banks approve you. When it MATCHES, it's 2 in 3, and sometimes 3 out of 3.\" Direct Book Ad 14: \"A mismatch on one of your three credit reports cuts your approvals in HALF\".",
+    "data_tied": false
+  },
+  {
+    "id": "BureauMatchWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 90,
+    "max_frames": 135,
+    "default_props": {
+      "format": "wide",
+      "side": "left",
+      "eyebrow": "All three bureaus",
+      "headline": "Your information has to match on every report",
+      "bureaus": [
+        "Experian",
+        "Equifax",
+        "TransUnion"
+      ],
+      "flagged": 1,
+      "mismatchTag": "Doesn't match",
+      "matchTag": "Matches",
+      "stages": [
+        {
+          "state": "mismatch",
+          "approved": 1,
+          "kicker": "Only",
+          "count": "1 in 3",
+          "label": "banks approve you"
+        },
+        {
+          "state": "match",
+          "approved": 2,
+          "kicker": "When it matches",
+          "count": "2 in 3",
+          "label": "banks approve you"
+        },
+        {
+          "state": "match",
+          "approved": 3,
+          "kicker": "Sometimes",
+          "count": "3 out of 3",
+          "label": "banks approve you"
+        }
+      ],
+      "transparent": false
+    },
+    "purpose": "BureauMatch (Unit N3, animation-builds-2026-10-22). Three credit reports side by side, and three banks under them: when one report does not match, only some banks light up; when all three match, more banks light up. Thank-you video: \"Different banks pull different bureaus, so your information has to match on every report. When it doesn't match, only 1 in 3 banks approve you. When it MATCHES, it's 2 in 3, and sometimes 3 out of 3.\" Direct Book Ad 14: \"A mismatch on one of your three credit reports cuts your approvals in HALF\".",
+    "data_tied": false
+  },
+  {
+    "id": "PathCards",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 135,
+    "default_props": {
+      "format": "vertical",
+      "side": "left",
+      "eyebrow": null,
+      "cards": [
+        {
+          "title": "Your file is ready",
+          "line": "We go get the capital."
+        },
+        {
+          "title": "Something is holding you back",
+          "line": "We optimize your credit for you, and fund you once your file is ready."
+        },
+        {
+          "title": "Do the work yourself",
+          "line": "That's the Capital Blueprint."
+        }
+      ],
+      "highlight": null,
+      "tone": "info",
+      "layout": "stack",
+      "transparent": false
+    },
+    "purpose": "PathCards (Unit N3, animation-builds-2026-10-22). Two or three numbered cards, each a short title and one line, revealed one by one, with an optional highlight on one card. VSL three paths: \"If your file is ready, we go get the capital.\" / \"If something on your report is holding you back, we show you exactly what it is, optimize your credit for you, and fund you once your file is ready.\" / \"And if you'd rather do the work yourself, that's the Capital Blueprint.\" Also the VSL's three mistakes, with tone \"bad\".",
+    "data_tied": false
+  },
+  {
+    "id": "PathCardsWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 135,
+    "default_props": {
+      "format": "wide",
+      "side": "left",
+      "eyebrow": null,
+      "cards": [
+        {
+          "title": "Your file is ready",
+          "line": "We go get the capital."
+        },
+        {
+          "title": "Something is holding you back",
+          "line": "We optimize your credit for you, and fund you once your file is ready."
+        },
+        {
+          "title": "Do the work yourself",
+          "line": "That's the Capital Blueprint."
+        }
+      ],
+      "highlight": null,
+      "tone": "info",
+      "layout": "stack",
+      "transparent": false
+    },
+    "purpose": "PathCards (Unit N3, animation-builds-2026-10-22). Two or three numbered cards, each a short title and one line, revealed one by one, with an optional highlight on one card. VSL three paths: \"If your file is ready, we go get the capital.\" / \"If something on your report is holding you back, we show you exactly what it is, optimize your credit for you, and fund you once your file is ready.\" / \"And if you'd rather do the work yourself, that's the Capital Blueprint.\" Also the VSL's three mistakes, with tone \"bad\".",
+    "data_tied": false
   }
 ]
