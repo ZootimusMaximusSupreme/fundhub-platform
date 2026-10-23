@@ -1,0 +1,440 @@
+{
+ "video": "Direct Book Ad 14 — 780 and up, 13 optimization points",
+ "mode": "overlay; plates behind him (person cut-out on top) or in front of him (drawn after the cut-out)",
+ "width": 1080,
+ "height": 1920,
+ "fps": 30,
+ "video_seconds": 74.13333333333334,
+ "clips": [
+  {
+   "n": 1,
+   "template": "FundhubLogo",
+   "clip": "01-FundhubLogo.mov",
+   "start_s": 1.9,
+   "start_frame": 57,
+   "frames": 60,
+   "end_s": 3.9,
+   "scale": 1.1,
+   "width_pct_of_frame": 80,
+   "words_on_video_box": [
+    106,
+    40,
+    974,
+    333
+   ],
+   "dx": -54,
+   "dy": -650,
+   "in_front": false,
+   "front": false,
+   "spot": "top, behind him (he says Fundhub)",
+   "fade_in_s": 0.1,
+   "fade_out": true,
+   "card_start_frames": [
+    1
+   ],
+   "cards": [
+    [
+     1.9,
+     "FunHub",
+     "the fundhub. logo"
+    ]
+   ]
+  },
+  {
+   "n": 2,
+   "template": "PathCards",
+   "clip": "02-PathCards.mov",
+   "start_s": 5.067,
+   "start_frame": 152,
+   "frames": 94,
+   "end_s": 8.2,
+   "scale": 1.0,
+   "width_pct_of_frame": 88,
+   "words_on_video_box": [
+    66,
+    40,
+    1013,
+    364
+   ],
+   "dx": -15,
+   "dy": -609,
+   "in_front": false,
+   "front": false,
+   "spot": "top, behind him",
+   "fade_in_s": 0,
+   "fade_out": true,
+   "card_start_frames": [
+    0,
+    46
+   ],
+   "cards": [
+    [
+     5.18,
+     "personal,",
+     "Personal, business, or both"
+    ],
+    [
+     6.7,
+     "in",
+     "In the shortest amount of time"
+    ]
+   ]
+  },
+  {
+   "n": 3,
+   "template": "PathCards",
+   "clip": "03-PathCards.mov",
+   "start_s": 9.633,
+   "start_frame": 289,
+   "frames": 163,
+   "end_s": 15.067,
+   "scale": 1.0,
+   "width_pct_of_frame": 88,
+   "words_on_video_box": [
+    65,
+    55,
+    1015,
+    596
+   ],
+   "dx": -15,
+   "dy": -486,
+   "in_front": true,
+   "front": false,
+   "spot": "in front of him, over his hair and forehead",
+   "fade_in_s": 0,
+   "fade_out": true,
+   "card_start_frames": [
+    0,
+    66,
+    122
+   ],
+   "cards": [
+    [
+     9.72,
+     "Having",
+     "A high score is all that matters"
+    ],
+    [
+     11.94,
+     "Banks",
+     "Banks don't ask you for tax returns"
+    ],
+    [
+     13.8,
+     "they",
+     "They don't ask you for bank statements"
+    ]
+   ]
+  },
+  {
+   "n": 4,
+   "template": "PathCards",
+   "clip": "04-PathCards.mov",
+   "start_s": 15.133,
+   "start_frame": 454,
+   "frames": 192,
+   "end_s": 21.533,
+   "scale": 1.0,
+   "width_pct_of_frame": 87,
+   "words_on_video_box": [
+    70,
+    75,
+    1011,
+    593
+   ],
+   "dx": -10,
+   "dy": -477,
+   "in_front": true,
+   "front": false,
+   "spot": "in front of him, over his hair and forehead",
+   "fade_in_s": 0,
+   "fade_out": true,
+   "card_start_frames": [
+    0,
+    63,
+    141
+   ],
+   "cards": [
+    [
+     15.22,
+     "Whatever",
+     "Whatever funding you're after"
+    ],
+    [
+     17.34,
+     "at",
+     "At the lowest terms and the fastest timelines"
+    ],
+    [
+     19.94,
+     "so",
+     "So you get the maximum amount"
+    ]
+   ]
+  },
+  {
+   "n": 5,
+   "template": "PathCards",
+   "clip": "05-PathCards.mov",
+   "start_s": 21.6,
+   "start_frame": 648,
+   "frames": 200,
+   "end_s": 28.267,
+   "scale": 1.0,
+   "width_pct_of_frame": 88,
+   "words_on_video_box": [
+    67,
+    100,
+    1013,
+    593
+   ],
+   "dx": -13,
+   "dy": -465,
+   "in_front": true,
+   "front": false,
+   "spot": "in front of him, over his hair and forehead",
+   "fade_in_s": 0,
+   "fade_out": true,
+   "card_start_frames": [
+    0,
+    52,
+    97
+   ],
+   "cards": [
+    [
+     21.7,
+     "Credit",
+     "Credit cards and lines of credit"
+    ],
+    [
+     23.42,
+     "SBA,",
+     "SBA and MCA"
+    ],
+    [
+     24.93,
+     "even",
+     "Even personal funding"
+    ]
+   ]
+  },
+  {
+   "n": 6,
+   "template": "PathCards",
+   "clip": "06-PathCards.mov",
+   "start_s": 28.3,
+   "start_frame": 849,
+   "frames": 275,
+   "end_s": 37.467,
+   "scale": 1.0,
+   "width_pct_of_frame": 88,
+   "words_on_video_box": [
+    65,
+    30,
+    1015,
+    595
+   ],
+   "dx": -15,
+   "dy": -499,
+   "in_front": true,
+   "front": false,
+   "spot": "in front of him, over his hair and forehead",
+   "fade_in_s": 0,
+   "fade_out": true,
+   "card_start_frames": [
+    0,
+    119,
+    215
+   ],
+   "cards": [
+    [
+     28.41,
+     "A",
+     "A mismatch cuts your approvals in half"
+    ],
+    [
+     32.37,
+     "we",
+     "We check every file on 13 optimization points"
+    ],
+    [
+     35.58,
+     "before",
+     "Before a single application goes out"
+    ]
+   ]
+  },
+  {
+   "n": 7,
+   "template": "PathCards",
+   "clip": "07-PathCards.mov",
+   "start_s": 37.567,
+   "start_frame": 1127,
+   "frames": 249,
+   "end_s": 45.867,
+   "scale": 1.0,
+   "width_pct_of_frame": 88,
+   "words_on_video_box": [
+    66,
+    55,
+    1014,
+    596
+   ],
+   "dx": -14,
+   "dy": -486,
+   "in_front": true,
+   "front": false,
+   "spot": "in front of him, over his hair and forehead",
+   "fade_in_s": 0,
+   "fade_out": true,
+   "card_start_frames": [
+    0,
+    40,
+    144
+   ],
+   "cards": [
+    [
+     37.68,
+     "optimize",
+     "Optimize those 13 points"
+    ],
+    [
+     39.01,
+     "double",
+     "Double your approval odds with every lender"
+    ],
+    [
+     42.46,
+     "fewer",
+     "Fewer denials: every application goes to a bank that approves you"
+    ]
+   ]
+  },
+  {
+   "n": 8,
+   "template": "PathCards",
+   "clip": "08-PathCards.mov",
+   "start_s": 45.867,
+   "start_frame": 1376,
+   "frames": 224,
+   "end_s": 53.333,
+   "scale": 1.0,
+   "width_pct_of_frame": 88,
+   "words_on_video_box": [
+    68,
+    55,
+    1013,
+    596
+   ],
+   "dx": -12,
+   "dy": -486,
+   "in_front": true,
+   "front": false,
+   "spot": "in front of him, over his hair and forehead",
+   "fade_in_s": 0,
+   "fade_out": true,
+   "card_start_frames": [
+    0,
+    51,
+    142
+   ],
+   "cards": [
+    [
+     45.96,
+     "Our",
+     "Our AI matching system"
+    ],
+    [
+     47.68,
+     "a",
+     "A much bigger list of banks than anyone else"
+    ],
+    [
+     50.7,
+     "we",
+     "We send out more applications to banks that fit your file"
+    ]
+   ]
+  },
+  {
+   "n": 9,
+   "template": "PathCards",
+   "clip": "09-PathCards.mov",
+   "start_s": 53.333,
+   "start_frame": 1600,
+   "frames": 162,
+   "end_s": 58.733,
+   "scale": 1.0,
+   "width_pct_of_frame": 87,
+   "words_on_video_box": [
+    68,
+    30,
+    1012,
+    400
+   ],
+   "dx": -13,
+   "dy": -596,
+   "in_front": false,
+   "front": false,
+   "spot": "top, behind him",
+   "fade_in_s": 0,
+   "fade_out": true,
+   "card_start_frames": [
+    0,
+    91
+   ],
+   "cards": [
+    [
+     53.42,
+     "We",
+     "We remove the inquiries after every round"
+    ],
+    [
+     56.45,
+     "so",
+     "So we run each round faster than everyone else"
+    ]
+   ]
+  },
+  {
+   "n": 10,
+   "template": "PathCards",
+   "clip": "10-PathCards.mov",
+   "start_s": 58.733,
+   "start_frame": 1762,
+   "frames": 462,
+   "end_s": 74.133,
+   "scale": 1.0,
+   "width_pct_of_frame": 87,
+   "words_on_video_box": [
+    69,
+    40,
+    1011,
+    364
+   ],
+   "dx": -12,
+   "dy": -609,
+   "in_front": false,
+   "front": false,
+   "spot": "top, behind him, stays to the end",
+   "fade_in_s": 0,
+   "fade_out": true,
+   "card_start_frames": [
+    0,
+    30
+   ],
+   "cards": [
+    [
+     58.82,
+     "Click",
+     "Click the link below"
+    ],
+    [
+     59.82,
+     "and",
+     "And we'll pull your reports"
+    ]
+   ]
+  }
+ ]
+}

@@ -1,5 +1,5 @@
 import React from 'react';
-import {AbsoluteFill, Composition} from 'remotion';
+import {AbsoluteFill, Composition, useCurrentFrame} from 'remotion';
 import {
   BrandFrame,
   COLORS,
@@ -65,6 +65,12 @@ export type PathCardsProps = {
   /** "stack" (one under the other, default) or "row" (side by side; best for two cards). */
   layout?: 'stack' | 'row';
   durationInFrames?: number;
+  /**
+   * Timed to speech: the clip frame (30 fps, real time, no stretching) where each card starts to
+   * slide in. When set, the clip runs exactly `durationInFrames` (not clamped to 75-135) and the
+   * cards come in on these frames instead of the fixed stagger.
+   */
+  cardStarts?: number[];
   showSafeZones?: boolean;
   /** See-through: no page and no grid, so the clip renders with alpha (README.md). Default false. */
   transparent?: boolean;
@@ -93,8 +99,8 @@ export const PATH_CARDS_MAX = 135;
 /** Frame (on the base timeline) where every card is in and the highlight has landed. */
 export const PATH_CARDS_HERO = 90;
 
-export const pathCardsDuration = (requested?: number): number =>
-  clampClip(requested, PATH_CARDS_BASE, PATH_CARDS_MIN, PATH_CARDS_MAX);
+export const pathCardsDuration = (requested?: number, cardStarts?: number[]): number =>
+  cardStarts && cardStarts.length > 0 && requested ? Math.max(1, Math.round(requested)) : clampClip(requested, PATH_CARDS_BASE, PATH_CARDS_MIN, PATH_CARDS_MAX);
 
 /** The wide frame (4K, 30 fps) and its two side panels (owner-set caption-safe rule, 2026-10-22). */
 export const PATH_CARDS_WIDE = {width: 3840, height: 2160, fps: 30} as const;
@@ -203,7 +209,7 @@ const Disc: React.FC<{n: number; size: number; tone: 'info' | 'bad'; pop: number
 // ---------------------------------------------------------------------------
 // The scene, drawn at `u` times the vertical design size (900 px wide).
 
-const Scene: React.FC<PathCardsProps & {f: number; fps: number; u: number}> = ({f, fps, u, eyebrow, cards, highlight, tone = 'info', layout = 'stack'}) => {
+const Scene: React.FC<PathCardsProps & {f: number; fps: number; u: number}> = ({f, fps, u, eyebrow, cards, highlight, tone = 'info', layout = 'stack', cardStarts}) => {
   const list = cards.slice(0, 3);
   const n = list.length;
   const row = layout === 'row' && n > 1;
@@ -228,7 +234,7 @@ const Scene: React.FC<PathCardsProps & {f: number; fps: number; u: number}> = ({
       ) : null}
       <div style={{display: 'flex', flexDirection: row ? 'row' : 'column', alignItems: row ? 'stretch' : 'center', gap, width, ...P3D}}>
         {list.map((card, i) => {
-          const start = cardStart(i, n);
+          const start = cardStarts?.[i] ?? cardStart(i, n);
           const p = enter(f, fps, start, 16);
           const words = enter(f, fps, start + 4, 14);
           const isHi = i === hi;
@@ -342,7 +348,11 @@ const Wide: React.FC<PathCardsProps & {f: number; fps: number}> = (props) => {
 // ---------------------------------------------------------------------------
 
 export const PathCards: React.FC<PathCardsProps> = (props) => {
-  const {f, fps} = useClipTimeline(PATH_CARDS_BASE, props.durationInFrames, PATH_CARDS_MIN, PATH_CARDS_MAX);
+  const timeline = useClipTimeline(PATH_CARDS_BASE, props.durationInFrames, PATH_CARDS_MIN, PATH_CARDS_MAX);
+  const frame = useCurrentFrame();
+  const timed = Boolean(props.cardStarts && props.cardStarts.length > 0);
+  const f = timed ? frame : timeline.f;
+  const fps = timeline.fps;
   const page = props.format === 'wide' ? <Wide {...props} f={f} fps={fps} /> : <Vertical {...props} f={f} fps={fps} />;
   return <SeeThrough on={props.transparent}>{page}</SeeThrough>;
 };
@@ -363,7 +373,7 @@ export const PathCardsCompositions: React.FC = () => (
       width={FRAME.width}
       height={FRAME.height}
       defaultProps={pathCardsDefaults}
-      calculateMetadata={({props}) => ({durationInFrames: pathCardsDuration(props.durationInFrames), ...size(props.format)})}
+      calculateMetadata={({props}) => ({durationInFrames: pathCardsDuration(props.durationInFrames, props.cardStarts), ...size(props.format)})}
     />
     <Composition
       id="PathCardsWide"
@@ -373,7 +383,7 @@ export const PathCardsCompositions: React.FC = () => (
       width={PATH_CARDS_WIDE.width}
       height={PATH_CARDS_WIDE.height}
       defaultProps={{...pathCardsDefaults, format: 'wide' as const}}
-      calculateMetadata={({props}) => ({durationInFrames: pathCardsDuration(props.durationInFrames), ...size(props.format)})}
+      calculateMetadata={({props}) => ({durationInFrames: pathCardsDuration(props.durationInFrames, props.cardStarts), ...size(props.format)})}
     />
   </>
 );
