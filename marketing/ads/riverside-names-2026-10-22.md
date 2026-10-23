@@ -4,11 +4,12 @@ Riverside makes up its own titles. This maps each one to its name under `marketi
 
 How each match was made:
 - **Bytes** — the Riverside download in `~/Downloads/Fundhub Ads originals` is the same file, byte for byte, as the named copy in `~/Desktop/Fundhub Ads`.
+- **Words** — first 35 seconds transcribed on the Mac (faster-whisper) and read against the script. Every named Desktop copy was checked this way on 2026-10-22 and its words match its name.
 - **Title** — no download to compare. Matched on the Riverside title words and the scripts filmed that day.
 
 | Riverside title | Takes | Real name | Match |
 |---|---|---|---|
-| Credit Funding Secrets VSL 4K | 8 | Direct Book VSL 1 — Watch page | Bytes (Takes 2, 4) |
+| Credit Funding Secrets VSL 4K | 8 | Direct Book VSL 1 — Watch page | Bytes for Take 4; words for the rest (download (7) is Take 2's words, download (1) is Take 3's words) |
 | Funding Call Thank You 4k | 1 | Direct Book Thank You | Title |
 | 780+ | 1 | Direct Book Ad 14 — 780 and up, 13 optimization points | Title |
 | Advanced Funding Algorithm | 1 | Direct Book Ad 16 — Advanced funding algorithm | Title |
@@ -23,6 +24,13 @@ How each match was made:
 | Funding Blueprint System | 4 | Capital Blueprint Ad 1 — Industry call-out | Bytes |
 | My Project | 2 | Capital Blueprint Ad 2 — Learn it yourself | Bytes |
 
+## Older versions (words checked)
+
+| Riverside title | Takes | What it is |
+|---|---|---|
+| Funding Call Prep | 2 | The older call thank-you script ("In the next few minutes you're going to see exactly what happens on the call"), `marketing/ads/scripts/2026-10-13.md` section 5. Not the 10-15 thank-you that was filmed today. Name: `Direct Book Thank You 2 — Call prep` |
+| Smart Funding Strategy | 1 | An older read of the VSL opening ("ten thousand, twenty thousand ... even a million"). Name: `Direct Book VSL 1 — Watch page` older take |
+
 ## Not matched yet
 
 No download and no named copy on the Mac. The words have to be checked before these get a name.
@@ -30,6 +38,4 @@ No download and no named copy on the Mac. The words have to be checked before th
 - Lifetime Funding Blueprint
 - Credit Funding Blueprint
 - Funding Course Comparison (the title points at the green screen note "funding course vs. Blueprint", `marketing/ads/scripts/2026-10-13.md` section 4)
-- Funding Call Prep (2 downloads)
-- Smart Funding Strategy (1 download)
 - The last 2 tiles on the screenshot (titles cut off)
