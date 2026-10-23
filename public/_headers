@@ -82,3 +82,9 @@
 
 /reset-password.html
   Cache-Control: public, max-age=0, must-revalidate
+
+# The /thank-you App Store card (public/funnel/fundhub-prompter-download.js) runs on
+# apply.fundhub.ai and reads its link from this file on fundhub.ai. Without this
+# header the browser blocks the read and the card never draws.
+/funnel/fundhub-prompter-download.json
+  Access-Control-Allow-Origin: https://apply.fundhub.ai
