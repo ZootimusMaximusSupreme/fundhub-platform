@@ -1,0 +1,83 @@
+{
+ "video": "Direct Book Ad 16 \u2014 Advanced funding algorithm",
+ "caption_lead_s": 0.15,
+ "anchors": [
+  {
+   "phrase": "they're working with is usually out of date",
+   "match": 0.8,
+   "start_s": 13.4,
+   "end_s": 15.6,
+   "heard": "DATA WORKING WITH USUALLY OUT OF DATE",
+   "n": 1,
+   "template": "StampCard",
+   "clip_seconds": 2.5,
+   "planned_start_s": 21.9
+  },
+  {
+   "phrase": "I built Fundhub on everything",
+   "match": 0.89,
+   "start_s": 23.4,
+   "end_s": 24.5,
+   "heard": "BUILT FUNDHUB ON EVERYTHING",
+   "n": 2,
+   "template": "FundhubLogo",
+   "clip_seconds": 2,
+   "planned_start_s": 34.1
+  },
+  {
+   "phrase": "pulls from six to seven different data feeds",
+   "match": 1.0,
+   "start_s": 27.5,
+   "end_s": 29.8,
+   "heard": "PULLS FROM SIX TO SEVEN DIFFERENT DATA FEEDS",
+   "n": 3,
+   "template": "HiddenDataPoints",
+   "clip_seconds": 3,
+   "planned_start_s": 40.4
+  },
+  {
+   "phrase": "So we know where the lending is hottest right now",
+   "match": 1.0,
+   "start_s": 37.4,
+   "end_s": 39.6,
+   "heard": "SO WE KNOW WHERE THE LENDING IS HOTTEST RIGHT NOW",
+   "n": 4,
+   "template": "LenderList",
+   "clip_seconds": 2,
+   "planned_start_s": 52.6
+  },
+  {
+   "phrase": "We work with credit scores anywhere from 400 to 850",
+   "match": 1.0,
+   "start_s": 41.0,
+   "end_s": 44.5,
+   "heard": "WE WORK WITH CREDIT SCORES ANYWHERE FROM 400 TO 850",
+   "n": 5,
+   "template": "ScoreBadge",
+   "clip_seconds": 2.5,
+   "planned_start_s": 59.6
+  },
+  {
+   "phrase": "or we'll set it up to do it yourself",
+   "match": 1.0,
+   "start_s": 46.6,
+   "end_s": 48.2,
+   "heard": "OR WE'LL SET IT UP TO DO IT YOURSELF",
+   "n": 6,
+   "template": "PathCards",
+   "clip_seconds": 3,
+   "planned_start_s": 67.4
+  },
+  {
+   "phrase": "get approved or denied before your file ever goes to a bank",
+   "match": 0.96,
+   "start_s": 53.8,
+   "end_s": 57.5,
+   "heard": "GET APPROVED OR DENIED BEFORE YOUR FILE EVER GOES TO BANK",
+   "n": 7,
+   "template": "StampCard",
+   "clip_seconds": 3,
+   "planned_start_s": 80
+  }
+ ]
+}

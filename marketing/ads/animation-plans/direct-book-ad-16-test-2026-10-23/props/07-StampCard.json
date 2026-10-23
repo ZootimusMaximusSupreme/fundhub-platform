@@ -1,0 +1,14 @@
+{
+ "object": "file",
+ "eyebrow": "Because of that algorithm",
+ "title": "Your file",
+ "amount": null,
+ "paidCheck": false,
+ "stamp": "Approved",
+ "stampSub": "Or denied",
+ "tone": "ok",
+ "drain": [],
+ "subline": "We know before your file ever goes to a bank",
+ "transparent": true,
+ "durationInFrames": 120
+}

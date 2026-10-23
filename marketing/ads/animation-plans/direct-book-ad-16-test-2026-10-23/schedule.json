@@ -1,0 +1,235 @@
+{
+ "video": "Direct Book Ad 16 — Advanced funding algorithm",
+ "mode": "overlay (see-through), behind him (person cut-out laid back on top)",
+ "width": 1080,
+ "height": 1920,
+ "fps": 30,
+ "video_seconds": 67.6,
+ "rule_note": "Overlay mode forbids overlaps only. The full-frame 4 s face gap / 3 s cap / 35% share do not apply.",
+ "clips": [
+  {
+   "n": 1,
+   "template": "StampCard",
+   "clip": "01-StampCard.mov",
+   "start_s": 14.05,
+   "start_frame": 422,
+   "frames": 90,
+   "end_s": 17.05,
+   "timing": "REAL (read from the burned-in captions, then moved so the payoff lands on the words)",
+   "anchor_phrase": "they're working with is usually out of date",
+   "anchor_start_s": 13.4,
+   "anchor_end_s": 15.6,
+   "anchor_match": 0.8,
+   "plan_start_s": 21.9,
+   "spot": "right, upper middle",
+   "scale": 0.47,
+   "words_x": 818,
+   "words_y": 420,
+   "words_box_clip_xy": [
+    300,
+    456
+   ],
+   "words_on_video_box": [
+    818,
+    420,
+    1067,
+    675
+   ],
+   "dx": 677,
+   "dy": 206,
+   "why": "OUT OF DATE stamp slams 0.9 s into the clip (14.95 s) and settles at 15.1 s, on 'out of date'; the card lands on 'usually'"
+  },
+  {
+   "n": 2,
+   "template": "FundhubLogo",
+   "clip": "02-FundhubLogo.mov",
+   "start_s": 23.3,
+   "start_frame": 699,
+   "frames": 60,
+   "end_s": 25.3,
+   "timing": "REAL (read from the burned-in captions, then moved so the payoff lands on the words)",
+   "anchor_phrase": "I built Fundhub on everything",
+   "anchor_start_s": 23.4,
+   "anchor_end_s": 24.5,
+   "anchor_match": 0.89,
+   "plan_start_s": 34.1,
+   "spot": "center, above his head",
+   "scale": 0.8,
+   "words_x": 288,
+   "words_y": 272,
+   "words_box_clip_xy": [
+    225,
+    690
+   ],
+   "words_on_video_box": [
+    288,
+    272,
+    791,
+    372
+   ],
+   "dx": 108,
+   "dy": -280,
+   "why": "letters rise 0.33-0.67 s in, on 'Fundhub' (caption 23.6 s); 2 seconds, only where he says Fundhub"
+  },
+  {
+   "n": 3,
+   "template": "HiddenDataPoints",
+   "clip": "03-HiddenDataPoints.mov",
+   "start_s": 27.0,
+   "start_frame": 810,
+   "frames": 90,
+   "end_s": 30.0,
+   "timing": "REAL (read from the burned-in captions, then moved so the payoff lands on the words)",
+   "anchor_phrase": "pulls from six to seven different data feeds",
+   "anchor_start_s": 27.5,
+   "anchor_end_s": 29.8,
+   "anchor_match": 1.0,
+   "plan_start_s": 40.4,
+   "spot": "left, top",
+   "scale": 0.44,
+   "words_x": 11,
+   "words_y": 271,
+   "words_box_clip_xy": [
+    214,
+    508
+   ],
+   "words_on_video_box": [
+    11,
+    271,
+    315,
+    544
+   ],
+   "dx": -83,
+   "dy": 47,
+   "why": "the count reaches 7 about 1.6 s in (28.6 s), on 'seven'; 'different data feeds' lands about 1.9 s in (28.9 s), on 'different'"
+  },
+  {
+   "n": 4,
+   "template": "LenderList",
+   "clip": "04-LenderList.mov",
+   "start_s": 37.8,
+   "start_frame": 1134,
+   "frames": 60,
+   "end_s": 39.8,
+   "timing": "REAL (read from the burned-in captions, then moved so the payoff lands on the words)",
+   "anchor_phrase": "So we know where the lending is hottest right now",
+   "anchor_start_s": 37.4,
+   "anchor_end_s": 39.6,
+   "anchor_match": 1.0,
+   "plan_start_s": 52.6,
+   "spot": "right, top",
+   "scale": 0.49,
+   "words_x": 698,
+   "words_y": 271,
+   "words_box_clip_xy": [
+    191,
+    455
+   ],
+   "words_on_video_box": [
+    698,
+    271,
+    1068,
+    376
+   ],
+   "dx": 604,
+   "dy": 48,
+   "why": "headline is up 0.3 s in, on 'where the lending is hottest'; the five rows fill while he says 'hottest right now'"
+  },
+  {
+   "n": 5,
+   "template": "ScoreBadge",
+   "clip": "05-ScoreBadge.mov",
+   "start_s": 41.3,
+   "start_frame": 1239,
+   "frames": 96,
+   "end_s": 44.5,
+   "timing": "REAL (read from the burned-in captions, then moved so the payoff lands on the words)",
+   "anchor_phrase": "We work with credit scores anywhere from 400 to 850",
+   "anchor_start_s": 41.0,
+   "anchor_end_s": 44.5,
+   "anchor_match": 1.0,
+   "plan_start_s": 59.6,
+   "spot": "right, low",
+   "scale": 0.37,
+   "words_x": 791,
+   "words_y": 833,
+   "words_box_clip_xy": [
+    170,
+    479
+   ],
+   "words_on_video_box": [
+    791,
+    833,
+    1067,
+    1078
+   ],
+   "dx": 728,
+   "dy": 656,
+   "why": "eyebrow on 'we work with credit scores', gauge sweeps on 'anywhere from 400', check lands at 43.5 s on 'to' and 'Anywhere from 400 to 850' is complete at 43.9 s, on '850'"
+  },
+  {
+   "n": 6,
+   "template": "PathCards",
+   "clip": "06-PathCards.mov",
+   "start_s": 44.5,
+   "start_frame": 1335,
+   "frames": 135,
+   "end_s": 49.0,
+   "timing": "REAL (read from the burned-in captions, then moved so the payoff lands on the words)",
+   "anchor_phrase": "or we'll set it up to do it yourself",
+   "anchor_start_s": 46.6,
+   "anchor_end_s": 48.2,
+   "anchor_match": 1.0,
+   "plan_start_s": 67.4,
+   "spot": "left, top",
+   "scale": 0.37,
+   "words_x": 10,
+   "words_y": 271,
+   "words_box_clip_xy": [
+    82,
+    585
+   ],
+   "words_on_video_box": [
+    10,
+    271,
+    303,
+    440
+   ],
+   "dx": -20,
+   "dy": 55,
+   "why": "stretched to the longest allowed (4.5 s): cards land at about 45.2, 45.9 and 46.6 s, on 'for you', 'with you', 'set it up'"
+  },
+  {
+   "n": 7,
+   "template": "StampCard",
+   "clip": "07-StampCard.mov",
+   "start_s": 53.15,
+   "start_frame": 1594,
+   "frames": 120,
+   "end_s": 57.15,
+   "timing": "REAL (read from the burned-in captions, then moved so the payoff lands on the words)",
+   "anchor_phrase": "get approved or denied before your file ever goes to a bank",
+   "anchor_start_s": 53.8,
+   "anchor_end_s": 57.5,
+   "anchor_match": 0.96,
+   "plan_start_s": 80,
+   "spot": "right, lower middle",
+   "scale": 0.47,
+   "words_x": 800,
+   "words_y": 600,
+   "words_box_clip_xy": [
+    281,
+    436
+   ],
+   "words_on_video_box": [
+    800,
+    600,
+    1066,
+    949
+   ],
+   "dx": 668,
+   "dy": 395,
+   "why": "folder lands on 'going to get', APPROVED / OR DENIED stamp slams about 1.2 s in (54.35 s) and settles at 54.6 s, on 'approved or denied'; subline at about 54.85 s"
+  }
+ ]
+}

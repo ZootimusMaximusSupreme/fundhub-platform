@@ -1,0 +1,9 @@
+{
+ "mode": "range",
+ "eyebrow": "We work with credit scores",
+ "low": 400,
+ "high": 850,
+ "rangeLead": "Anywhere from",
+ "transparent": true,
+ "durationInFrames": 96
+}

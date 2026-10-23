@@ -1,0 +1,22 @@
+{
+ "eyebrow": null,
+ "cards": [
+  {
+   "title": "We'll do it for you",
+   "line": null
+  },
+  {
+   "title": "We'll do it with you",
+   "line": null
+  },
+  {
+   "title": "We'll set it up to do it yourself",
+   "line": null
+  }
+ ],
+ "highlight": null,
+ "tone": "info",
+ "layout": "stack",
+ "transparent": true,
+ "durationInFrames": 135
+}
