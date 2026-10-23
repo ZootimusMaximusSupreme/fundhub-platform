@@ -129,3 +129,11 @@ Builder plan gate for A: role = signed-in client; one job = notice a delivered m
 - Uploaded to the `APP_IPHONE_61` set through the App Store Connect API (all three `COMPLETE`), removed the old sign-in screenshot, marked the rejected item resolved and resubmitted. API and the App Store Connect page both read **WAITING_FOR_REVIEW** for the submission and iOS 1.0. Not approved, not live.
 - The app is iPhone-only (`TARGETED_DEVICE_FAMILY = 1`), so no iPad screenshot set was added. Fundhub Prompter iOS 1.0 is still `PREPARE_FOR_SUBMISSION`; it was never sent to Apple.
 - fundhub.ai and `/api/health` returned 200 (database up, 0 pending) during this check; the website was not down.
+
+## Portal app live check — 2026-10-23
+
+- App Store Connect API (read at 2026-10-23 21:29 UTC): **Fundhub Portal** (`ai.fundhub.app`, app 6823985032) iOS **1.0 is READY_FOR_SALE** (Ready for Distribution). Submission `042bc18d…` reads COMPLETE.
+- Public store page returns 200: https://apps.apple.com/us/app/fundhub-portal/id6823985032 (title "Fundhub Portal App - App Store"). The iTunes lookup API still returned 0 results at the same moment; that search index lags behind the page.
+- iOS **1.0.1** was submitted today (submission `beabaddf…`) and is **WAITING_FOR_REVIEW**. It is not live yet; 1.0 is what people download now.
+- Fundhub Prompter iOS 1.0 and the Portal Mac 1.0 are still PREPARE_FOR_SUBMISSION (never sent to Apple).
+- fundhub.ai `/api/health` 200, database up, 0 pending.
