@@ -43,7 +43,7 @@ Builders: Opus 5.5, high effort, one per unit, each in its own git worktree. Thi
 | N1 | New: MoneyClimb (amounts stepping up, a range, a monthly ladder) | VSL, Ad 13, Ad 10, Ad 11 | done, merged |
 | N2 | New: DeadlineClocks and FundingStack | VSL, Ad 13, Ad 14, Ad 16 | done, merged |
 | N3 | New: BureauMatch and PathCards | thank-you, VSL, Ad 14 | done, merged |
-| N4 | New: FundabilityMeter and ScoreBadge | VSL, Blueprint Ad 3, Ad 16 | claimed |
+| N4 | New: FundabilityMeter and ScoreBadge | VSL, Blueprint Ad 3, Ad 16 | done, merged |
 | N5 | New: StampCard and PriceTag | Ads 12, 5, 16, 13, Blueprint Ad 1 | claimed |
 | N6 | New: SplitBar and IconCount | Ad 12, Blueprint Ads 1 and 2 | done, merged |
 | N7 | New: TwoPeople, ReturnMultiple, CalendarStrip | Ads 9, 4 | claimed |
@@ -63,3 +63,4 @@ No dependencies between W1, W2, N1, N2, N3. Merge waits on them. Batch 2 starts 
 - N6: IconCount shows "1 in 8" without the script's "Only about" (the stat is 12.6%). Check at review.
 - W1 and W2 added a white card / white edge behind words in see-through mode so they read over dark film. Page-on look unchanged.
 - Wide layout code exists in three places (KitFrame.tsx, sidePanel.tsx, widePanel.tsx) plus inline copies. Fold into one helper in a later refactor.
+- Dense re-plan of the VSL and thank-you video started (Sonnet, read-only), using only the wide templates.
