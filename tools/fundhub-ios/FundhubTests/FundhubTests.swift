@@ -155,6 +155,14 @@ final class FundhubTests: XCTestCase {
         XCTAssertFalse(WorkspaceNavigation.isSignOutDestination(URL(string: "https://fundhub.ai/app/client-portal.html")!))
         XCTAssertFalse(WorkspaceNavigation.isSignOutDestination(URL(string: "https://evil.example/login.html")!))
     }
+
+    func testWorkspaceReloadsOnlyAfterLongAwayOnFundhub() {
+        let portal = URL(string: "https://fundhub.ai/app/client-portal.html")!
+        XCTAssertTrue(WorkspaceNavigation.shouldReload(url: portal, awaySeconds: 5 * 60))
+        XCTAssertFalse(WorkspaceNavigation.shouldReload(url: portal, awaySeconds: 30))
+        XCTAssertFalse(WorkspaceNavigation.shouldReload(url: URL(string: "https://evil.example/")!, awaySeconds: 3600))
+        XCTAssertFalse(WorkspaceNavigation.shouldReload(url: nil, awaySeconds: 3600))
+    }
 }
 
 private final class StubURLProtocol: URLProtocol {

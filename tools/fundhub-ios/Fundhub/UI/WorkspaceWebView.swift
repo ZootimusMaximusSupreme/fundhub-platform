@@ -33,6 +33,7 @@ struct WorkspaceWebView: UIViewRepresentable {
         webView.navigationDelegate = context.coordinator
         webView.uiDelegate = context.coordinator
         webView.allowsBackForwardNavigationGestures = true
+        context.coordinator.webView = webView
         webView.load(URLRequest(url: FundhubAPI.base.appendingPathComponent(String(path.dropFirst()))))
         return webView
     }
@@ -46,9 +47,28 @@ struct WorkspaceWebView: UIViewRepresentable {
 
     final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
         let onWebSignOut: () -> Void
+        weak var webView: WKWebView?
+        private var leftAt: Date?
 
         init(onWebSignOut: @escaping () -> Void) {
             self.onWebSignOut = onWebSignOut
+            super.init()
+            let center = NotificationCenter.default
+            center.addObserver(self, selector: #selector(didLeave),
+                               name: UIApplication.didEnterBackgroundNotification, object: nil)
+            center.addObserver(self, selector: #selector(didReturn),
+                               name: UIApplication.willEnterForegroundNotification, object: nil)
+        }
+
+        @objc private func didLeave() { leftAt = Date() }
+
+        // Pick up CRM updates when the app comes back after a while away.
+        @objc private func didReturn() {
+            defer { leftAt = nil }
+            guard let leftAt, let webView,
+                  WorkspaceNavigation.shouldReload(url: webView.url, awaySeconds: Date().timeIntervalSince(leftAt))
+            else { return }
+            webView.reload()
         }
 
         func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
@@ -79,6 +99,13 @@ struct WorkspaceWebView: UIViewRepresentable {
 }
 
 enum WorkspaceNavigation {
+    static let reloadAfterSeconds: TimeInterval = 5 * 60
+
+    static func shouldReload(url: URL?, awaySeconds: TimeInterval) -> Bool {
+        guard let url, url.scheme == "https", url.host == "fundhub.ai" else { return false }
+        return awaySeconds >= reloadAfterSeconds
+    }
+
     static func isSignOutDestination(_ url: URL) -> Bool {
         url.scheme == "https" && url.host == "fundhub.ai"
             && (url.path == "/login.html" || url.path == "/portal-login.html")
