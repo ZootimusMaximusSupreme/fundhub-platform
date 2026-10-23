@@ -11,6 +11,9 @@
         },
         "template": "FileItems",
         "props": {
+          "eyebrow": "Everything holding you back",
+          "docTitle": "Credit Analysis Report",
+          "docSubtitle": "All three bureaus",
           "items": [
             {
               "label": "Your personal data"
@@ -18,9 +21,18 @@
             {
               "label": "Your business codes"
             }
-          ]
+          ],
+          "tag": "Holding you back"
         },
         "seconds": 3
+      },
+      {
+        "anchor": {
+          "phrase": "I learned the funding game ten years ago"
+        },
+        "template": "ProofWall",
+        "props": {},
+        "seconds": 4
       },
       {
         "anchor": {
@@ -32,11 +44,21 @@
       },
       {
         "anchor": {
-          "phrase": "So we remove the inquiries between EVERY round"
+          "phrase": "Every application leaves a hard inquiry"
+        },
+        "template": "InquiriesOff",
+        "props": {},
+        "seconds": 3
+      },
+      {
+        "anchor": {
+          "phrase": "a funding sequence runs 3 to 6 rounds"
         },
         "template": "FundingRounds",
-        "props": {},
-        "seconds": 3.5
+        "props": {
+          "rounds": 6
+        },
+        "seconds": 4
       },
       {
         "anchor": {
@@ -52,7 +74,7 @@
       },
       {
         "anchor": {
-          "phrase": "It tells you which balances to bring down"
+          "phrase": "which negative items to get removed"
         },
         "template": "StepPath",
         "props": {
@@ -68,26 +90,193 @@
       },
       {
         "anchor": {
-          "phrase": "We've worked hundreds of files"
-        },
-        "template": "ProofWall",
-        "props": {},
-        "seconds": 4
-      },
-      {
-        "anchor": {
           "phrase": "You pay $32, and there's no impact on your score"
         },
         "template": "SoftPull",
-        "props": {},
+        "props": {
+          "score": null,
+          "scoreLabel": "Credit score",
+          "headline": "No impact on your score.",
+          "chip": "No impact"
+        },
         "seconds": 2.5
       }
     ],
-    "gaps": [
-      "\"Credit cards ... lines of credit, SBA loans, merchant cash advances and personal funding, stacked together\" — no stacking animation exists",
-      "\"I've funded a little over $1 million for myself\" — no animation of Chris's own approvals"
-    ],
-    "check": "pass"
+    "check": "pass",
+    "key_points": [
+      {
+        "phrase": "$20,000 in funding or $400,000, even a million",
+        "kind": "comparison",
+        "template": null,
+        "props": {},
+        "seconds": 0,
+        "in_plan": false,
+        "skipped_reason": "In the first sentence, where nothing may play.",
+        "new_animation": "Three money amounts stepping up: $20,000, then $400,000, then a million across businesses."
+      },
+      {
+        "phrase": "Small details in your file, like your personal data and your business codes",
+        "kind": "claim",
+        "template": "FileItems",
+        "props": {
+          "eyebrow": "Everything holding you back",
+          "docTitle": "Credit Analysis Report",
+          "docSubtitle": "All three bureaus",
+          "items": [
+            {
+              "label": "Your personal data"
+            },
+            {
+              "label": "Your business codes"
+            }
+          ],
+          "tag": "Holding you back"
+        },
+        "seconds": 3,
+        "in_plan": true,
+        "skipped_reason": null,
+        "new_animation": null
+      },
+      {
+        "phrase": "I learned the funding game ten years ago, and I've funded a little over $1 million for myself",
+        "kind": "number",
+        "template": "ProofWall",
+        "props": {},
+        "seconds": 4,
+        "in_plan": true,
+        "skipped_reason": null,
+        "new_animation": null
+      },
+      {
+        "phrase": "A bank denies you / you walk away with two approvals and a report full of hard inquiries / you skip applying",
+        "kind": "comparison",
+        "template": null,
+        "props": {},
+        "seconds": 0,
+        "in_plan": false,
+        "skipped_reason": "No existing template shows three separate mistakes side by side.",
+        "new_animation": "Three failure cards in a row: a denied bank with no reason, two approvals beside a pile of hard inquiries, a skipped application that shows nothing."
+      },
+      {
+        "phrase": "find the 30 to 50 that fit you",
+        "kind": "number",
+        "template": "LenderMatchScroll",
+        "props": {},
+        "seconds": 4,
+        "in_plan": true,
+        "skipped_reason": null,
+        "new_animation": null
+      },
+      {
+        "phrase": "Every application leaves a hard inquiry, and when the next round goes out with those still on your report, the next lender approves less",
+        "kind": "comparison",
+        "template": "InquiriesOff",
+        "props": {},
+        "seconds": 3,
+        "in_plan": true,
+        "skipped_reason": null,
+        "new_animation": null
+      },
+      {
+        "phrase": "a funding sequence runs 3 to 6 rounds",
+        "kind": "number",
+        "template": "FundingRounds",
+        "props": {
+          "rounds": 6
+        },
+        "seconds": 4,
+        "in_plan": true,
+        "skipped_reason": null,
+        "new_animation": null
+      },
+      {
+        "phrase": "$250,000 to $400,000",
+        "kind": "number",
+        "template": null,
+        "props": {},
+        "seconds": 0,
+        "in_plan": false,
+        "skipped_reason": "No template shows a target range.",
+        "new_animation": "A range bar with a marker for $250,000 and one for $400,000, with the money climbing between them."
+      },
+      {
+        "phrase": "within 24 business hours ... within 72",
+        "kind": "number",
+        "template": null,
+        "props": {},
+        "seconds": 0,
+        "in_plan": false,
+        "skipped_reason": "No template shows two time limits.",
+        "new_animation": "Two clock faces: an advisor starts by 24 business hours, applications out by 72."
+      },
+      {
+        "phrase": "the 13 optimization points",
+        "kind": "number",
+        "template": "HiddenDataPoints",
+        "props": {
+          "eyebrow": "The Capital Blueprint",
+          "label": "optimization points",
+          "subline": "In the order that actually gets you funded"
+        },
+        "seconds": 2.5,
+        "in_plan": true,
+        "skipped_reason": null,
+        "new_animation": null
+      },
+      {
+        "phrase": "which balances to bring down ... which negative items to get removed ... what to add / banks, deposits, business data",
+        "kind": "step",
+        "template": "StepPath",
+        "props": {
+          "steps": [
+            "Bring balances down",
+            "Get negative items removed",
+            "Add to your file",
+            "Build bank relationships",
+            "Set up your business data"
+          ]
+        },
+        "seconds": 3,
+        "in_plan": true,
+        "skipped_reason": null,
+        "new_animation": null
+      },
+      {
+        "phrase": "If something on your report is holding you back, we show you exactly what it is, optimize your credit for you, and fund you once your file is ready",
+        "kind": "step",
+        "template": null,
+        "props": {},
+        "seconds": 0,
+        "in_plan": false,
+        "skipped_reason": "Too close to the 13 optimization points animation (under 4 seconds of face).",
+        "new_animation": "Three paths side by side: file ready, file held back, do it yourself."
+      },
+      {
+        "phrase": "We've worked hundreds of files and collected thousands of data points",
+        "kind": "claim",
+        "template": "ProofWall",
+        "props": {},
+        "seconds": 4,
+        "in_plan": false,
+        "skipped_reason": "Same proof lines already shown in the ten years animation.",
+        "new_animation": null
+      },
+      {
+        "phrase": "You pay $32, and there's no impact on your score",
+        "kind": "number",
+        "template": "SoftPull",
+        "props": {
+          "score": null,
+          "scoreLabel": "Credit score",
+          "headline": "No impact on your score.",
+          "chip": "No impact"
+        },
+        "seconds": 2.5,
+        "in_plan": true,
+        "skipped_reason": null,
+        "new_animation": null
+      }
+    ]
   },
   {
     "video": "Direct Book Thank You",
@@ -100,7 +289,12 @@
           "phrase": "You pay $32, and there's no impact on your score"
         },
         "template": "SoftPull",
-        "props": {},
+        "props": {
+          "score": null,
+          "scoreLabel": "Credit score",
+          "headline": "No impact on your score.",
+          "chip": "No impact"
+        },
         "seconds": 2.5
       },
       {
@@ -108,8 +302,11 @@
           "phrase": "Different banks pull different bureaus"
         },
         "template": "LenderMatchScroll",
-        "props": {},
-        "seconds": 4
+        "props": {
+          "count": "",
+          "countLabel": "Different banks pull different bureaus"
+        },
+        "seconds": 3.5
       },
       {
         "anchor": {
@@ -126,12 +323,111 @@
         "template": "ProofWall",
         "props": {},
         "seconds": 4
+      },
+      {
+        "anchor": {
+          "phrase": "have your entity name"
+        },
+        "template": "StepPath",
+        "props": {
+          "eyebrow": "If you're going after business funding",
+          "steps": [
+            "Your entity name",
+            "How long you've been in business",
+            "Your average monthly revenue"
+          ]
+        },
+        "seconds": 3
       }
     ],
-    "gaps": [
-      "\"When it doesn't match, only 1 in 3 banks approve you. When it MATCHES, it's 2 in 3\" — no approval-odds animation exists"
-    ],
-    "check": "pass"
+    "check": "pass",
+    "key_points": [
+      {
+        "phrase": "Your call is BOOKED ... accept the calendar invite",
+        "kind": "step",
+        "template": null,
+        "props": {},
+        "seconds": 0,
+        "in_plan": false,
+        "skipped_reason": "In the first sentence, where nothing may play.",
+        "new_animation": "A calendar invite with an Accept button that flips to Locked in."
+      },
+      {
+        "phrase": "You pay $32, and there's no impact on your score",
+        "kind": "number",
+        "template": "SoftPull",
+        "props": {
+          "score": null,
+          "scoreLabel": "Credit score",
+          "headline": "No impact on your score.",
+          "chip": "No impact"
+        },
+        "seconds": 2.5,
+        "in_plan": true,
+        "skipped_reason": null,
+        "new_animation": null
+      },
+      {
+        "phrase": "Different banks pull different bureaus",
+        "kind": "comparison",
+        "template": "LenderMatchScroll",
+        "props": {
+          "count": "",
+          "countLabel": "Different banks pull different bureaus"
+        },
+        "seconds": 3.5,
+        "in_plan": true,
+        "skipped_reason": null,
+        "new_animation": null
+      },
+      {
+        "phrase": "only 1 in 3 banks approve you / MATCHES, it's 2 in 3, and sometimes 3 out of 3",
+        "kind": "comparison",
+        "template": null,
+        "props": {},
+        "seconds": 0,
+        "in_plan": false,
+        "skipped_reason": "No template shows a mismatch against a match.",
+        "new_animation": "Two columns: mismatched reports with 1 of 3 banks lit, matched reports with 2 of 3 and then 3 of 3 lit."
+      },
+      {
+        "phrase": "Then UnderwriteIQ runs your file, and you see how much you qualify for",
+        "kind": "claim",
+        "template": "QualifyToday",
+        "props": {},
+        "seconds": 3,
+        "in_plan": true,
+        "skipped_reason": null,
+        "new_animation": null
+      },
+      {
+        "phrase": "That system is built on ten years of my own funding and hundreds of client files",
+        "kind": "number",
+        "template": "ProofWall",
+        "props": {},
+        "seconds": 4,
+        "in_plan": true,
+        "skipped_reason": null,
+        "new_animation": null
+      },
+      {
+        "phrase": "have your entity name, how long you've been in business, and your average monthly revenue ready",
+        "kind": "step",
+        "template": "StepPath",
+        "props": {
+          "eyebrow": "If you're going after business funding",
+          "steps": [
+            "Your entity name",
+            "How long you've been in business",
+            "Your average monthly revenue"
+          ]
+        },
+        "seconds": 3,
+        "in_plan": true,
+        "skipped_reason": null,
+        "new_animation": null
+      }
+    ]
   },
   {
     "video": "Direct Book Ad 13 — 700 and up, hundreds of clients",
@@ -152,14 +448,75 @@
           "phrase": "Our bank matching system picks the banks that approve files like yours"
         },
         "template": "LenderList",
-        "props": {},
+        "props": {
+          "eyebrow": "Bank & Lender Match List",
+          "headline": "The banks that approve files like yours",
+          "footer": "As many rounds as possible",
+          "rows": 5,
+          "names": []
+        },
         "seconds": 3
       }
     ],
-    "gaps": [
-      "\"$100,000 to $300,000\" on a 700 score — no animation for that range"
-    ],
-    "check": "pass"
+    "check": "pass",
+    "key_points": [
+      {
+        "phrase": "$100,000 to $300,000",
+        "kind": "number",
+        "template": null,
+        "props": {},
+        "seconds": 0,
+        "in_plan": false,
+        "skipped_reason": "In the first sentence, where nothing may play.",
+        "new_animation": "Two amounts side by side, $100,000 and $300,000, with a cash stack growing between them."
+      },
+      {
+        "phrase": "if you qualify and we come up empty, you owe us NOTHING",
+        "kind": "claim",
+        "template": null,
+        "props": {},
+        "seconds": 0,
+        "in_plan": false,
+        "skipped_reason": "No template shows a pay-nothing guarantee.",
+        "new_animation": "A $0 invoice stamp landing on a funding file that came up empty."
+      },
+      {
+        "phrase": "We've done this for HUNDREDS of clients",
+        "kind": "number",
+        "template": "ProofWall",
+        "props": {},
+        "seconds": 4,
+        "in_plan": true,
+        "skipped_reason": null,
+        "new_animation": null
+      },
+      {
+        "phrase": "Our bank matching system picks the banks that approve files like yours",
+        "kind": "claim",
+        "template": "LenderList",
+        "props": {
+          "eyebrow": "Bank & Lender Match List",
+          "headline": "The banks that approve files like yours",
+          "footer": "As many rounds as possible",
+          "rows": 5,
+          "names": []
+        },
+        "seconds": 3,
+        "in_plan": true,
+        "skipped_reason": null,
+        "new_animation": null
+      },
+      {
+        "phrase": "within 24 business hours, applications are out inside 72",
+        "kind": "number",
+        "template": null,
+        "props": {},
+        "seconds": 0,
+        "in_plan": false,
+        "skipped_reason": "Last line sits against the call to action; no template shows two time limits.",
+        "new_animation": "Two clocks: advisor on your file by 24 business hours, applications out by 72."
+      }
+    ]
   },
   {
     "video": "Direct Book Ad 14 — 780 and up, 13 optimization points",
@@ -184,7 +541,13 @@
           "phrase": "Our AI matching system works from a much bigger list of banks"
         },
         "template": "LenderList",
-        "props": {},
+        "props": {
+          "eyebrow": "Bank & Lender Match List",
+          "headline": "The banks that approve files like yours",
+          "footer": "A much bigger list of banks",
+          "rows": 5,
+          "names": []
+        },
         "seconds": 3
       },
       {
@@ -193,14 +556,102 @@
         },
         "template": "InquiriesOff",
         "props": {},
-        "seconds": 2.5
+        "seconds": 3
       }
     ],
-    "gaps": [
-      "\"Credit cards, lines of credit, SBA, MCA, even personal funding ... stack ALL of it\" — no stacking animation exists",
-      "\"Banks don't ask for your tax returns ... bank statements\" — no animation exists"
-    ],
-    "check": "pass"
+    "check": "pass",
+    "key_points": [
+      {
+        "phrase": "780 or higher credit score",
+        "kind": "number",
+        "template": null,
+        "props": {},
+        "seconds": 0,
+        "in_plan": false,
+        "skipped_reason": "In the first sentence, where nothing may play.",
+        "new_animation": "A 780 score badge with the funding amount rising next to it."
+      },
+      {
+        "phrase": "Banks don't ask for your tax returns, and they don't ask for your bank statements",
+        "kind": "comparison",
+        "template": null,
+        "props": {},
+        "seconds": 0,
+        "in_plan": false,
+        "skipped_reason": "No template shows what banks do not ask for.",
+        "new_animation": "Tax returns and bank statements crossed out, with the score left standing."
+      },
+      {
+        "phrase": "Credit cards, lines of credit, SBA, MCA, even personal funding",
+        "kind": "step",
+        "template": null,
+        "props": {},
+        "seconds": 0,
+        "in_plan": false,
+        "skipped_reason": "No template stacks five funding types.",
+        "new_animation": "Five funding types sliding into one blended stack."
+      },
+      {
+        "phrase": "A mismatch on one of your three credit reports cuts your approvals in HALF",
+        "kind": "comparison",
+        "template": null,
+        "props": {},
+        "seconds": 0,
+        "in_plan": false,
+        "skipped_reason": "No template shows three reports with one that does not match.",
+        "new_animation": "Three report cards where one mismatch cuts the approvals bar in half."
+      },
+      {
+        "phrase": "we check every file on 13 optimization points",
+        "kind": "number",
+        "template": "HiddenDataPoints",
+        "props": {
+          "eyebrow": "Before a single application goes out",
+          "label": "optimization points",
+          "subline": "We double your approval odds"
+        },
+        "seconds": 2.5,
+        "in_plan": true,
+        "skipped_reason": null,
+        "new_animation": null
+      },
+      {
+        "phrase": "Our AI matching system works from a much bigger list of banks",
+        "kind": "comparison",
+        "template": "LenderList",
+        "props": {
+          "eyebrow": "Bank & Lender Match List",
+          "headline": "The banks that approve files like yours",
+          "footer": "A much bigger list of banks",
+          "rows": 5,
+          "names": []
+        },
+        "seconds": 3,
+        "in_plan": true,
+        "skipped_reason": null,
+        "new_animation": null
+      },
+      {
+        "phrase": "We remove the inquiries after EVERY round of funding",
+        "kind": "step",
+        "template": "InquiriesOff",
+        "props": {},
+        "seconds": 3,
+        "in_plan": true,
+        "skipped_reason": null,
+        "new_animation": null
+      },
+      {
+        "phrase": "within 24 business hours ... within 72",
+        "kind": "number",
+        "template": null,
+        "props": {},
+        "seconds": 0,
+        "in_plan": false,
+        "skipped_reason": "Last line sits against the end of the ad; no template shows two time limits.",
+        "new_animation": "Two clocks: advisor on your file by 24 business hours, applications out by 72."
+      }
+    ]
   },
   {
     "video": "Capital Blueprint Ad 3 — 600 and up, the shortest path",
@@ -237,10 +688,71 @@
         "seconds": 3
       }
     ],
-    "gaps": [
-      "\"you watch your fundability go up as you finish each step\" — no fundability meter animation exists"
-    ],
-    "check": "pass"
+    "check": "pass",
+    "key_points": [
+      {
+        "phrase": "600 or higher credit score",
+        "kind": "number",
+        "template": null,
+        "props": {},
+        "seconds": 0,
+        "in_plan": false,
+        "skipped_reason": "In the first sentence, where nothing may play.",
+        "new_animation": "A 600 score badge with an arrow along the shortest path up to the maximum amount."
+      },
+      {
+        "phrase": "Your file has 13 points that decide how much funding you get",
+        "kind": "number",
+        "template": "HiddenDataPoints",
+        "props": {
+          "eyebrow": "Your file",
+          "label": "points that decide your funding",
+          "subline": "Optimized in the right order"
+        },
+        "seconds": 2.5,
+        "in_plan": true,
+        "skipped_reason": null,
+        "new_animation": null
+      },
+      {
+        "phrase": "which cards to pay down, which items to remove, which to add, banks, deposits, business",
+        "kind": "step",
+        "template": "StepPath",
+        "props": {
+          "steps": [
+            "Pay down the right cards",
+            "Remove items from your file",
+            "Add the right items",
+            "Open the right bank accounts",
+            "Set up your business"
+          ]
+        },
+        "seconds": 3,
+        "in_plan": true,
+        "skipped_reason": null,
+        "new_animation": null
+      },
+      {
+        "phrase": "a timeline for when you'll be fundable, and you watch your fundability go up as you finish each step",
+        "kind": "claim",
+        "template": null,
+        "props": {},
+        "seconds": 0,
+        "in_plan": false,
+        "skipped_reason": "No template shows a fundability meter that rises with each step.",
+        "new_animation": "A fundability meter that climbs one notch as each step is checked off."
+      },
+      {
+        "phrase": "Instead of watching a course about the process, you go through the process on your own file",
+        "kind": "comparison",
+        "template": null,
+        "props": {},
+        "seconds": 0,
+        "in_plan": false,
+        "skipped_reason": "No template shows watching a course against doing it on your own file.",
+        "new_animation": "A course video crossed out beside your own file being worked step by step."
+      }
+    ]
   },
   {
     "video": "Direct Book Ad 16 — Advanced funding algorithm",
@@ -258,18 +770,144 @@
       },
       {
         "anchor": {
-          "phrase": "we know whether you're going to get approved or denied"
+          "phrase": "pulls from six to seven different data feeds"
+        },
+        "template": "HiddenDataPoints",
+        "props": {
+          "eyebrow": "A real underwriting algorithm",
+          "count": 7,
+          "label": "different data feeds",
+          "subline": "Six to seven data feeds"
+        },
+        "seconds": 3
+      },
+      {
+        "anchor": {
+          "phrase": "we know where the lending is hottest right now"
         },
         "template": "LenderList",
-        "props": {},
+        "props": {
+          "eyebrow": "Watching the lending environment",
+          "headline": "Where the lending is hottest right now",
+          "footer": "That's where we send you"
+        },
+        "seconds": 3
+      },
+      {
+        "anchor": {
+          "phrase": "we'll do it for you, we'll do it with you, or we'll set it up to do it yourself"
+        },
+        "template": "StepPath",
+        "props": {
+          "eyebrow": "Your choice",
+          "steps": [
+            "We'll do it for you",
+            "We'll do it with you",
+            "Set it up to do it yourself"
+          ]
+        },
         "seconds": 3
       }
     ],
-    "gaps": [
-      "\"pulls from six to seven different data feeds\" — no data-feed animation exists",
-      "\"watching the lending environment nationally and state by state\" — no map animation exists"
-    ],
-    "check": "pass"
+    "check": "pass",
+    "key_points": [
+      {
+        "phrase": "whether your credit is an 850, 400, 500",
+        "kind": "comparison",
+        "template": null,
+        "props": {},
+        "seconds": 0,
+        "in_plan": false,
+        "skipped_reason": "No template shows one program applied to every score.",
+        "new_animation": "Three credit scores (850, 400, 500) all pushed through the same identical program box and coming out the same."
+      },
+      {
+        "phrase": "I've been doing this for 10 years",
+        "kind": "number",
+        "template": "ProofWall",
+        "props": {},
+        "seconds": 4,
+        "in_plan": true,
+        "skipped_reason": null,
+        "new_animation": null
+      },
+      {
+        "phrase": "pulls from six to seven different data feeds",
+        "kind": "number",
+        "template": "HiddenDataPoints",
+        "props": {
+          "eyebrow": "A real underwriting algorithm",
+          "count": 7,
+          "label": "different data feeds",
+          "subline": "Six to seven data feeds"
+        },
+        "seconds": 3,
+        "in_plan": true,
+        "skipped_reason": null,
+        "new_animation": null
+      },
+      {
+        "phrase": "We work with credit scores anywhere from 400 to 850",
+        "kind": "number",
+        "template": null,
+        "props": {},
+        "seconds": 0,
+        "in_plan": false,
+        "skipped_reason": "No template fits; SoftPull dial defaults to a score the script does not say.",
+        "new_animation": "A score dial sweeping from 400 to 850 with the whole range lit as accepted."
+      },
+      {
+        "phrase": "we know where the lending is hottest right now",
+        "kind": "claim",
+        "template": "LenderList",
+        "props": {
+          "eyebrow": "Watching the lending environment",
+          "headline": "Where the lending is hottest right now",
+          "footer": "That's where we send you"
+        },
+        "seconds": 3,
+        "in_plan": true,
+        "skipped_reason": null,
+        "new_animation": null
+      },
+      {
+        "phrase": "we'll do it for you, we'll do it with you, or we'll set it up to do it yourself",
+        "kind": "step",
+        "template": "StepPath",
+        "props": {
+          "eyebrow": "Your choice",
+          "steps": [
+            "We'll do it for you",
+            "We'll do it with you",
+            "Set it up to do it yourself"
+          ]
+        },
+        "seconds": 3,
+        "in_plan": true,
+        "skipped_reason": null,
+        "new_animation": null
+      },
+      {
+        "phrase": "credit cards, SBA loans, MCA and more",
+        "kind": "step",
+        "template": null,
+        "props": {},
+        "seconds": 0,
+        "in_plan": false,
+        "skipped_reason": "Too close to the step animation before it; no template shows product tiles.",
+        "new_animation": "Tiles for credit cards, SBA loans, MCA and more popping in one by one."
+      },
+      {
+        "phrase": "we know whether you're going to get approved or denied",
+        "kind": "claim",
+        "template": null,
+        "props": {},
+        "seconds": 0,
+        "in_plan": false,
+        "skipped_reason": "Last 30 words are the call to action; no room for 4 s of face after the lender list.",
+        "new_animation": "A file stamped Approved or Denied before it reaches a bank."
+      }
+    ]
   },
   {
     "video": "Direct Book Ad 12 — Industry slam",
@@ -283,9 +921,12 @@
         },
         "template": "HiddenDataPoints",
         "props": {
-          "subline": "Your name, addresses and employers matching on every report"
+          "eyebrow": "Banks look at before they decide how much to approve you for",
+          "count": 13,
+          "label": "hidden data points",
+          "subline": "Your name, addresses and employers matching on every single report"
         },
-        "seconds": 2.5
+        "seconds": 3
       },
       {
         "anchor": {
@@ -293,23 +934,125 @@
         },
         "template": "CompanyLine",
         "props": {
-          "headline": "More companies, each one funded off the same personal file"
+          "eyebrow": "Set up more companies",
+          "headline": "Fund every one of them off of the same personal file"
         },
         "seconds": 3
       },
       {
         "anchor": {
-          "phrase": "Our system has collected thousands of data points"
+          "phrase": "We'll give you the steps to get qualified"
+        },
+        "template": "StepPath",
+        "props": {
+          "eyebrow": "If your file isn't ready",
+          "steps": [
+            "The steps to get qualified",
+            "The education to make the right decisions",
+            "Your file is ready",
+            "The maximum amount of funding"
+          ]
+        },
+        "seconds": 3
+      },
+      {
+        "anchor": {
+          "phrase": "I've been in this industry for 10 years"
         },
         "template": "ProofWall",
         "props": {},
         "seconds": 4
       }
     ],
-    "gaps": [
-      "\"some of them run credit sweeps\" — no animation exists"
-    ],
-    "check": "pass"
+    "check": "pass",
+    "key_points": [
+      {
+        "phrase": "about 80% right and the 20% they're missing",
+        "kind": "comparison",
+        "template": null,
+        "props": {},
+        "seconds": 0,
+        "in_plan": false,
+        "skipped_reason": "No template shows an 80/20 split.",
+        "new_animation": "A bar 80% filled with a missing 20% slice pulsing, labeled with what they are missing."
+      },
+      {
+        "phrase": "There are 13 hidden data points banks look at",
+        "kind": "number",
+        "template": "HiddenDataPoints",
+        "props": {
+          "eyebrow": "Banks look at before they decide how much to approve you for",
+          "count": 13,
+          "label": "hidden data points",
+          "subline": "Your name, addresses and employers matching on every single report"
+        },
+        "seconds": 3,
+        "in_plan": true,
+        "skipped_reason": null,
+        "new_animation": null
+      },
+      {
+        "phrase": "how to set up more companies and fund every one of them",
+        "kind": "step",
+        "template": "CompanyLine",
+        "props": {
+          "eyebrow": "Set up more companies",
+          "headline": "Fund every one of them off of the same personal file"
+        },
+        "seconds": 3,
+        "in_plan": true,
+        "skipped_reason": null,
+        "new_animation": null
+      },
+      {
+        "phrase": "some of them run credit sweeps, which is illegal",
+        "kind": "claim",
+        "template": null,
+        "props": {},
+        "seconds": 0,
+        "in_plan": false,
+        "skipped_reason": "No template shows an illegal stamp on a credit sweep.",
+        "new_animation": "A credit-sweep document stamped Illegal with the file and freedom at risk."
+      },
+      {
+        "phrase": "if that information happens to fit your file",
+        "kind": "comparison",
+        "template": null,
+        "props": {},
+        "seconds": 0,
+        "in_plan": false,
+        "skipped_reason": "No template shows fits-vs-doesn't-fit; also close to the steps animation.",
+        "new_animation": "A fork: file fits the recycled info and gets funded, or does not and ends with a few small approvals and a report full of inquiries."
+      },
+      {
+        "phrase": "We'll give you the steps to get qualified",
+        "kind": "step",
+        "template": "StepPath",
+        "props": {
+          "eyebrow": "If your file isn't ready",
+          "steps": [
+            "The steps to get qualified",
+            "The education to make the right decisions",
+            "Your file is ready",
+            "The maximum amount of funding"
+          ]
+        },
+        "seconds": 3,
+        "in_plan": true,
+        "skipped_reason": null,
+        "new_animation": null
+      },
+      {
+        "phrase": "I've been in this industry for 10 years",
+        "kind": "number",
+        "template": "ProofWall",
+        "props": {},
+        "seconds": 4,
+        "in_plan": true,
+        "skipped_reason": null,
+        "new_animation": null
+      }
+    ]
   },
   {
     "video": "Direct Book Ad 4 — High earners",
@@ -319,22 +1062,99 @@
     "plan": [
       {
         "anchor": {
-          "phrase": "Every business qualifies for funding on its own"
+          "phrase": "One business is $100,000 at a minimum"
         },
         "template": "CompanyLine",
         "props": {
-          "headline": "Every business qualifies for funding on its own",
+          "eyebrow": "One business",
+          "headline": "$100,000 at a minimum, up to $300,000",
+          "count": 1
+        },
+        "seconds": 3
+      },
+      {
+        "anchor": {
+          "phrase": "If you have one, that's up to $300,000"
+        },
+        "template": "CompanyLine",
+        "props": {
+          "eyebrow": "The businesses you aren't using",
+          "headline": "One is up to $300,000, two is $600,000, three is $900,000",
           "count": 3
         },
         "seconds": 3
       }
     ],
-    "gaps": [
-      "\"Every dollar I put into Meta comes back about FOUR times\" — no return animation exists",
-      "\"If you have one, that's up to $300,000 ... THREE, that's up to $900,000\" — no money-per-company animation exists"
-    ],
-    "check": [
-      "plan: A standard script needs at least 2 animations. This plan has 1."
+    "check": "pass",
+    "key_points": [
+      {
+        "phrase": "Making a million dollars takes TWO things",
+        "kind": "step",
+        "template": null,
+        "props": {},
+        "seconds": 0,
+        "in_plan": false,
+        "skipped_reason": "Inside the first sentence (first 3 seconds); nothing may play there.",
+        "new_animation": "Two blocks, a proven investment and access to capital, locking together."
+      },
+      {
+        "phrase": "Every dollar I put into Meta comes back about FOUR times",
+        "kind": "number",
+        "template": null,
+        "props": {},
+        "seconds": 0,
+        "in_plan": false,
+        "skipped_reason": "No template shows a return multiple.",
+        "new_animation": "$200,000 going into a system and coming out as about four times that."
+      },
+      {
+        "phrase": "One business is $100,000 at a minimum",
+        "kind": "number",
+        "template": "CompanyLine",
+        "props": {
+          "eyebrow": "One business",
+          "headline": "$100,000 at a minimum, up to $300,000",
+          "count": 1
+        },
+        "seconds": 3,
+        "in_plan": true,
+        "skipped_reason": null,
+        "new_animation": null
+      },
+      {
+        "phrase": "If you have one, that's up to $300,000",
+        "kind": "number",
+        "template": "CompanyLine",
+        "props": {
+          "eyebrow": "The businesses you aren't using",
+          "headline": "One is up to $300,000, two is $600,000, three is $900,000",
+          "count": 3
+        },
+        "seconds": 3,
+        "in_plan": true,
+        "skipped_reason": null,
+        "new_animation": null
+      },
+      {
+        "phrase": "sitting in your account in the next 15 to 30 days",
+        "kind": "number",
+        "template": null,
+        "props": {},
+        "seconds": 0,
+        "in_plan": false,
+        "skipped_reason": "No template shows a 15 to 30 day timeline.",
+        "new_animation": "A calendar strip filling from day 15 to day 30 with cash landing in an account."
+      },
+      {
+        "phrase": "Then ask yourself ONE question.",
+        "kind": "step",
+        "template": null,
+        "props": {},
+        "seconds": 0,
+        "in_plan": false,
+        "skipped_reason": "Too close to the company animation and near the call to action; no template fits.",
+        "new_animation": "A single question card flipping up."
+      }
     ]
   },
   {
@@ -345,7 +1165,7 @@
     "plan": [
       {
         "anchor": {
-          "phrase": "I've funded a little over $1 million for myself"
+          "phrase": "In those ten years I've funded a little over $1 million for myself"
         },
         "template": "ProofWall",
         "props": {},
@@ -356,28 +1176,197 @@
           "phrase": "our system catches costly moves like that BEFORE they ever happen"
         },
         "template": "FileItems",
-        "props": {},
+        "props": {
+          "eyebrow": "Our system catches costly moves",
+          "docTitle": "Your file",
+          "docSubtitle": "Before they ever happen",
+          "items": [
+            {
+              "label": "Paying off a card and closing it"
+            }
+          ],
+          "tag": "Costly move"
+        },
         "seconds": 3
       }
     ],
-    "gaps": [
-      "\"Paying off a card and CLOSING it\" — no closed-card animation exists"
-    ],
-    "check": "pass"
+    "check": "pass",
+    "key_points": [
+      {
+        "phrase": "it feels like the responsible thing to do",
+        "kind": "claim",
+        "template": null,
+        "props": {},
+        "seconds": 0,
+        "in_plan": false,
+        "skipped_reason": "No template fits; also inside the hook zone.",
+        "new_animation": "A \"~$300,000\" tag on a responsible-looking move."
+      },
+      {
+        "phrase": "In those ten years I've funded a little over $1 million for myself",
+        "kind": "number",
+        "template": "ProofWall",
+        "props": {},
+        "seconds": 4,
+        "in_plan": true,
+        "skipped_reason": null,
+        "new_animation": null
+      },
+      {
+        "phrase": "Paying off a card and CLOSING it",
+        "kind": "step",
+        "template": null,
+        "props": {},
+        "seconds": 0,
+        "in_plan": false,
+        "skipped_reason": "No template shows a card closing.",
+        "new_animation": "A paid-off card stamped Closed with its limit and history draining out of the file."
+      },
+      {
+        "phrase": "Close a $20,000 card and every approval after it comes in $20,000 to $40,000 SMALLER",
+        "kind": "comparison",
+        "template": null,
+        "props": {},
+        "seconds": 0,
+        "in_plan": false,
+        "skipped_reason": "No template shows approvals shrinking after a limit is lost.",
+        "new_animation": "Two approval stacks side by side: with the $20,000 card and without it, the second $20,000 to $40,000 smaller."
+      },
+      {
+        "phrase": "Five approvals on one company is $100,000 to $200,000 gone",
+        "kind": "number",
+        "template": null,
+        "props": {},
+        "seconds": 0,
+        "in_plan": false,
+        "skipped_reason": "No template shows money disappearing; CompanyLine shows funded, the opposite.",
+        "new_animation": "Five approvals losing $20,000 to $40,000 each, adding up to $100,000 to $200,000 gone, then $300,000 across companies."
+      },
+      {
+        "phrase": "our system catches costly moves like that BEFORE they ever happen",
+        "kind": "claim",
+        "template": "FileItems",
+        "props": {
+          "eyebrow": "Our system catches costly moves",
+          "docTitle": "Your file",
+          "docSubtitle": "Before they ever happen",
+          "items": [
+            {
+              "label": "Paying off a card and closing it"
+            }
+          ],
+          "tag": "Costly move"
+        },
+        "seconds": 3,
+        "in_plan": true,
+        "skipped_reason": null,
+        "new_animation": null
+      }
+    ]
   },
   {
     "video": "Direct Book Ad 9 — The bank",
     "source": "ad_scripts 100",
     "scriptFormat": "standard",
     "body": "The bank behind me already decided how much they'd give you, and how much money you make barely factors into it.\n\nOne thing on your credit report decides it, and it outweighs your income and your score.\n\nA guy making three hundred thousand dollars a year with perfect payment history gets approved for eight thousand dollars, while his buddy making half that walks out of the same bank the same week with eighty. Same bank, same week, and the only real difference between them is one thing on their credit reports.\n\nIt's been on your report for years, and it sets your approvals every time you apply. Fixing it is a simple tweak, and once you do, every approval after that comes in bigger.\n\nIt's your highest limit card. Banks look at the biggest limit another bank has already given you, and they'll approve you for one to two times that amount depending on the bank. The guy with eighty thousand had a big limit on his report, and the guy with eight didn't.\n\nHere at Fundhub, we make sure you get the highest limits possible so you can maximize your fundability across the board. We set your profile up so you get funded over and over again, and you're never the guy walking out of a bank with eight thousand dollars again.\n\nClick the link below. Your highest limit is one of 13 things on your file that decide how much you get, and your advisor will walk you through the other 12 so you can maximize your fundability.",
-    "plan": [],
-    "gaps": [
-      "\"$300,000 a year ... approved for eight thousand ... his buddy ... eighty\" — no two-people comparison animation exists",
-      "\"It's your highest limit card\" — no highest-limit animation exists",
-      "\"one of 13 things\" sits on the ask line, where animations are not allowed"
+    "plan": [
+      {
+        "anchor": {
+          "phrase": "A guy making three hundred thousand dollars a year"
+        },
+        "template": "ToolMatch",
+        "props": {
+          "eyebrow": "Same bank, same week",
+          "rows": [
+            {
+              "situation": "Making three hundred thousand dollars a year",
+              "tool": "Approved for eight thousand dollars"
+            },
+            {
+              "situation": "Making half that",
+              "tool": "Approved for eighty thousand dollars"
+            }
+          ]
+        },
+        "seconds": 3
+      },
+      {
+        "anchor": {
+          "phrase": "It's your highest limit card."
+        },
+        "template": "ToolMatch",
+        "props": {
+          "eyebrow": "Your highest limit card",
+          "rows": [
+            {
+              "situation": "The biggest limit another bank has given you",
+              "tool": "One to two times that amount"
+            },
+            {
+              "situation": "The guy with eighty thousand",
+              "tool": "A big limit on his report"
+            }
+          ]
+        },
+        "seconds": 3
+      }
     ],
-    "check": [
-      "plan: A standard script needs at least 2 animations. This plan has 0."
+    "check": "pass",
+    "key_points": [
+      {
+        "phrase": "A guy making three hundred thousand dollars a year",
+        "kind": "comparison",
+        "template": "ToolMatch",
+        "props": {
+          "eyebrow": "Same bank, same week",
+          "rows": [
+            {
+              "situation": "Making three hundred thousand dollars a year",
+              "tool": "Approved for eight thousand dollars"
+            },
+            {
+              "situation": "Making half that",
+              "tool": "Approved for eighty thousand dollars"
+            }
+          ]
+        },
+        "seconds": 3,
+        "in_plan": true,
+        "skipped_reason": null,
+        "new_animation": "A dedicated two-people side-by-side (8 thousand vs 80 thousand) would show it better; ToolMatch is the closest fit."
+      },
+      {
+        "phrase": "It's your highest limit card.",
+        "kind": "claim",
+        "template": "ToolMatch",
+        "props": {
+          "eyebrow": "Your highest limit card",
+          "rows": [
+            {
+              "situation": "The biggest limit another bank has given you",
+              "tool": "One to two times that amount"
+            },
+            {
+              "situation": "The guy with eighty thousand",
+              "tool": "A big limit on his report"
+            }
+          ]
+        },
+        "seconds": 3,
+        "in_plan": true,
+        "skipped_reason": null,
+        "new_animation": "A dedicated highest-limit card picture would show it better; ToolMatch is the closest fit."
+      },
+      {
+        "phrase": "one of 13 things on your file that decide how much you get",
+        "kind": "number",
+        "template": null,
+        "props": {},
+        "seconds": 0,
+        "in_plan": false,
+        "skipped_reason": "On the call-to-action line; nothing may play there.",
+        "new_animation": "Thirteen dots lighting up on the file."
+      }
     ]
   },
   {
@@ -388,10 +1377,29 @@
     "plan": [
       {
         "anchor": {
+          "phrase": "More spend gets you more data"
+        },
+        "template": "StepPath",
+        "props": {
+          "eyebrow": "Turn your spending UP",
+          "steps": [
+            "More spend",
+            "More data",
+            "Your ads perform better"
+          ]
+        },
+        "seconds": 3
+      },
+      {
+        "anchor": {
           "phrase": "Interest rates just went up, banks are giving out less money"
         },
         "template": "BankPockets",
-        "props": {},
+        "props": {
+          "eyebrow": "Interest rates",
+          "headline": "Interest rates just went up",
+          "subline": "Banks are giving out less money"
+        },
         "seconds": 3
       },
       {
@@ -400,8 +1408,9 @@
         },
         "template": "StepPath",
         "props": {
+          "eyebrow": "Here's the plan",
           "steps": [
-            "Fix up your credit first",
+            "Fix up your credit FIRST",
             "Open your businesses and build their credit",
             "Apply to the banks that fit, in the right order"
           ]
@@ -414,34 +1423,228 @@
         },
         "template": "CompanyLine",
         "props": {
+          "eyebrow": "Your personal credit is the main one",
           "headline": "Every business you add multiplies it"
         },
         "seconds": 3
       },
       {
         "anchor": {
-          "phrase": "You need to know exactly which banks fit your credit profile"
+          "phrase": "apply to them in the right order"
         },
         "template": "LenderList",
-        "props": {},
+        "props": {
+          "eyebrow": "Exactly which banks fit",
+          "headline": "Your credit profile and your business profile",
+          "footer": "Apply in the right order"
+        },
         "seconds": 3
       }
     ],
-    "gaps": [],
-    "check": "pass"
+    "check": "pass",
+    "key_points": [
+      {
+        "phrase": "Putting MORE money into your business is the fastest way to stop running out of cash",
+        "kind": "claim",
+        "template": null,
+        "props": {},
+        "seconds": 0,
+        "in_plan": false,
+        "skipped_reason": "Sits in the first sentence (first 3 seconds are off limits).",
+        "new_animation": null
+      },
+      {
+        "phrase": "More spend gets you more data",
+        "kind": "step",
+        "template": "StepPath",
+        "props": {
+          "eyebrow": "Turn your spending UP",
+          "steps": [
+            "More spend",
+            "More data",
+            "Your ads perform better"
+          ]
+        },
+        "seconds": 3,
+        "in_plan": true,
+        "skipped_reason": null,
+        "new_animation": null
+      },
+      {
+        "phrase": "Maybe your business makes $10,000 a month",
+        "kind": "number",
+        "template": null,
+        "props": {},
+        "seconds": 0,
+        "in_plan": false,
+        "skipped_reason": "No template shows a climb from $10,000, $20,000, $50,000 a month to $100,000.",
+        "new_animation": "A money ladder: three boxes read $10,000, $20,000 and $50,000 a month and a bar climbs from them to $100,000 a month."
+      },
+      {
+        "phrase": "Interest rates just went up, banks are giving out less money",
+        "kind": "comparison",
+        "template": "BankPockets",
+        "props": {
+          "eyebrow": "Interest rates",
+          "headline": "Interest rates just went up",
+          "subline": "Banks are giving out less money"
+        },
+        "seconds": 3,
+        "in_plan": true,
+        "skipped_reason": null,
+        "new_animation": null
+      },
+      {
+        "phrase": "Step one, fix up your credit FIRST",
+        "kind": "step",
+        "template": "StepPath",
+        "props": {
+          "eyebrow": "Here's the plan",
+          "steps": [
+            "Fix up your credit FIRST",
+            "Open your businesses and build their credit",
+            "Apply to the banks that fit, in the right order"
+          ]
+        },
+        "seconds": 3,
+        "in_plan": true,
+        "skipped_reason": null,
+        "new_animation": null
+      },
+      {
+        "phrase": "every business you add MULTIPLIES it",
+        "kind": "claim",
+        "template": "CompanyLine",
+        "props": {
+          "eyebrow": "Your personal credit is the main one",
+          "headline": "Every business you add multiplies it"
+        },
+        "seconds": 3,
+        "in_plan": true,
+        "skipped_reason": null,
+        "new_animation": null
+      },
+      {
+        "phrase": "apply to them in the right order",
+        "kind": "step",
+        "template": "LenderList",
+        "props": {
+          "eyebrow": "Exactly which banks fit",
+          "headline": "Your credit profile and your business profile",
+          "footer": "Apply in the right order"
+        },
+        "seconds": 3,
+        "in_plan": true,
+        "skipped_reason": null,
+        "new_animation": null
+      },
+      {
+        "phrase": "I used to drive to every single bank in my state",
+        "kind": "comparison",
+        "template": null,
+        "props": {},
+        "seconds": 0,
+        "in_plan": false,
+        "skipped_reason": "Too close to the lender list clip; the stronger picture is the lender list.",
+        "new_animation": "Do-it-yourself vs with someone who knows every bank: a car driving bank to bank while a clock runs, against one advisor and a short list."
+      }
+    ]
   },
   {
     "video": "Direct Book Ad 11 — The penthouse",
     "source": "ad_scripts 102",
     "scriptFormat": "standard",
     "body": "The guys up there figured out one thing that nobody seems to talk about. Your parents won't tell you, your friends won't, maybe not even your business partner, and you won't find it online.\n\nWhen I used to live here, I knew a guy up there with a $1.5 million penthouse, and he was struggling. He was struggling mentally to get his businesses and his other ventures off the ground, sitting in a penthouse he owned outright.\n\nSo he moved out of state and cut out the distractions. He optimized his credit, then put it to work alongside investors and credit partners, and within six months his income was over $400,000 a year.\n\nThe one thing he figured out is how to leverage your credit correctly. I know plenty of people up here who run companies and scale businesses, and the ones who do it most efficiently use other people's money. Archimedes said, \"Give me a lever long enough and I can move the world.\" Credit is that lever, and building with only your own cash is the slowest way to build wealth there is.\n\nClick the link below. Wherever your credit is right now, we'll walk you through how to optimize it and how to get your own funding, and if you want us to help along the way, we'll do that too.",
-    "plan": [],
-    "gaps": [
-      "\"within six months his income was over $400,000\" — no income animation exists",
-      "\"Credit is that lever\" — no lever animation exists"
+    "plan": [
+      {
+        "anchor": {
+          "phrase": "I know plenty of people up here who run companies and scale businesses"
+        },
+        "template": "CompanyLine",
+        "props": {
+          "eyebrow": "The ones who do it most efficiently",
+          "headline": "Run companies and scale businesses with other people's money"
+        },
+        "seconds": 3
+      },
+      {
+        "anchor": {
+          "phrase": "Credit is that lever"
+        },
+        "template": "ToolMatch",
+        "props": {
+          "eyebrow": "The slowest way vs the lever",
+          "rows": [
+            {
+              "situation": "Building with only your own cash",
+              "tool": "The slowest way to build wealth"
+            },
+            {
+              "situation": "Other people's money",
+              "tool": "Credit is that lever"
+            }
+          ]
+        },
+        "seconds": 3
+      }
     ],
-    "check": [
-      "plan: A standard script needs at least 2 animations. This plan has 0."
+    "check": "pass",
+    "key_points": [
+      {
+        "phrase": "a $1.5 million penthouse",
+        "kind": "number",
+        "template": null,
+        "props": {},
+        "seconds": 0,
+        "in_plan": false,
+        "skipped_reason": "No template shows a penthouse value.",
+        "new_animation": "A big number card: $1.5 million penthouse, with a struggling-owner tag."
+      },
+      {
+        "phrase": "within six months his income was over $400,000 a year",
+        "kind": "number",
+        "template": null,
+        "props": {},
+        "seconds": 0,
+        "in_plan": false,
+        "skipped_reason": "No template shows one person's income climbing to $400,000 a year; ProofFlood shows other clients' real approvals, which would mislead.",
+        "new_animation": "A before and after income bar that climbs to $400,000 a year in six months."
+      },
+      {
+        "phrase": "I know plenty of people up here who run companies and scale businesses",
+        "kind": "claim",
+        "template": "CompanyLine",
+        "props": {
+          "eyebrow": "The ones who do it most efficiently",
+          "headline": "Run companies and scale businesses with other people's money"
+        },
+        "seconds": 3,
+        "in_plan": true,
+        "skipped_reason": null,
+        "new_animation": null
+      },
+      {
+        "phrase": "the ones who do it most efficiently use other people's money",
+        "kind": "comparison",
+        "template": "ToolMatch",
+        "props": {
+          "eyebrow": "The slowest way vs the lever",
+          "rows": [
+            {
+              "situation": "Building with only your own cash",
+              "tool": "The slowest way to build wealth"
+            },
+            {
+              "situation": "Other people's money",
+              "tool": "Credit is that lever"
+            }
+          ]
+        },
+        "seconds": 3,
+        "in_plan": true,
+        "skipped_reason": null,
+        "new_animation": null
+      }
     ]
   },
   {
@@ -463,23 +1666,87 @@
           "phrase": "your dashboard lays out every step"
         },
         "template": "StepPath",
-        "props": {},
-        "seconds": 3
-      },
-      {
-        "anchor": {
-          "phrase": "I've done tens of MILLIONS of dollars in funding"
+        "props": {
+          "eyebrow": "Every step, in the exact order",
+          "steps": [
+            "Every step has a due date and a reminder",
+            "Each one clears when you upload proof",
+            "A real person checks in if you fall behind"
+          ]
         },
-        "template": "ProofWall",
-        "props": {},
-        "seconds": 4
+        "seconds": 3
       }
     ],
-    "gaps": [
-      "\"Only about 1 in 8 people finish an online course\" — no animation exists",
-      "\"$5,000 to $10,000 and HUNDREDS of hours\" — no course-cost animation exists"
-    ],
-    "check": "pass"
+    "check": "pass",
+    "key_points": [
+      {
+        "phrase": "costs you $5,000 to $10,000 and HUNDREDS of hours",
+        "kind": "number",
+        "template": null,
+        "props": {},
+        "seconds": 0,
+        "in_plan": false,
+        "skipped_reason": "In the first sentence (hook), off limits.",
+        "new_animation": "A cost tag: $5,000 to $10,000 and hundreds of hours piling up."
+      },
+      {
+        "phrase": "$2,000 a MONTH for the one piece that decides how much you get approved for",
+        "kind": "number",
+        "template": null,
+        "props": {},
+        "seconds": 0,
+        "in_plan": false,
+        "skipped_reason": "No template shows a price tag; sits at a ~10 s mark but the QualifyToday picture is the stronger one nearby.",
+        "new_animation": "A price tag that ticks $2,000 a MONTH over the words \"the one piece that decides how much you get approved for\"."
+      },
+      {
+        "phrase": "reviews your file the way a lender does and shows you how much we think you'll qualify for right now",
+        "kind": "claim",
+        "template": "QualifyToday",
+        "props": {},
+        "seconds": 3,
+        "in_plan": true,
+        "skipped_reason": null,
+        "new_animation": null
+      },
+      {
+        "phrase": "your dashboard lays out every step",
+        "kind": "step",
+        "template": "StepPath",
+        "props": {
+          "eyebrow": "Every step, in the exact order",
+          "steps": [
+            "Every step has a due date and a reminder",
+            "Each one clears when you upload proof",
+            "A real person checks in if you fall behind"
+          ]
+        },
+        "seconds": 3,
+        "in_plan": true,
+        "skipped_reason": null,
+        "new_animation": null
+      },
+      {
+        "phrase": "Only about 1 in 8 people finish an online course",
+        "kind": "number",
+        "template": null,
+        "props": {},
+        "seconds": 0,
+        "in_plan": false,
+        "skipped_reason": "No template shows a 1 in 8 count.",
+        "new_animation": "Eight person icons, one lights up: 1 in 8 finish an online course."
+      },
+      {
+        "phrase": "I've done tens of MILLIONS of dollars in funding",
+        "kind": "number",
+        "template": null,
+        "props": {},
+        "seconds": 0,
+        "in_plan": false,
+        "skipped_reason": "ProofWall and ProofFlood show only $1 million to $2.4 million of real approvals, which does not match \"tens of MILLIONS\".",
+        "new_animation": "A running total climbing to tens of millions of dollars in funding over a decade."
+      }
+    ]
   },
   {
     "video": "Capital Blueprint Ad 2 — Learn it yourself",
@@ -489,25 +1756,149 @@
     "plan": [
       {
         "anchor": {
-          "phrase": "a dashboard that walks you through the whole process one waypoint at a time"
+          "phrase": "from where you are right now to HUNDREDS of thousands of dollars in funding"
         },
-        "template": "StepPath",
+        "template": "QualifyToday",
         "props": {},
         "seconds": 3
       },
       {
         "anchor": {
-          "phrase": "You'll know which letters to send to optimize your credit and which banks to apply to"
+          "phrase": "You'll know which letters to send to optimize your credit"
         },
-        "template": "LenderList",
-        "props": {},
+        "template": "StepPath",
+        "props": {
+          "eyebrow": "What you'll know",
+          "steps": [
+            "Which letters to send",
+            "Which banks to apply to, in the EXACT order",
+            "Which banks to open accounts with",
+            "How to start and optimize your businesses"
+          ]
+        },
+        "seconds": 3
+      },
+      {
+        "anchor": {
+          "phrase": "buy a $5,000 course or pay someone $2,000 a MONTH for data points"
+        },
+        "template": "ToolMatch",
+        "props": {
+          "eyebrow": "Course vs Blueprint",
+          "rows": [
+            {
+              "situation": "A $5,000 course",
+              "tool": "Hours of videos and note-taking"
+            },
+            {
+              "situation": "$2,000 a MONTH for data points",
+              "tool": "People who don't know what they're doing"
+            },
+            {
+              "situation": "The Blueprint",
+              "tool": "Straight to the next move on your own file"
+            }
+          ]
+        },
         "seconds": 3
       }
     ],
-    "gaps": [
-      "\"Higher interest rates\" is the first line, where animations are not allowed",
-      "\"Only about 1 in 8 people finish an online course\" — no animation exists"
-    ],
-    "check": "pass"
+    "check": "pass",
+    "key_points": [
+      {
+        "phrase": "Higher interest rates, harder application sequences and extra verification",
+        "kind": "comparison",
+        "template": null,
+        "props": {},
+        "seconds": 0,
+        "in_plan": false,
+        "skipped_reason": "In the first sentence (hook), off limits.",
+        "new_animation": null
+      },
+      {
+        "phrase": "from where you are right now to HUNDREDS of thousands of dollars in funding",
+        "kind": "comparison",
+        "template": "QualifyToday",
+        "props": {},
+        "seconds": 3,
+        "in_plan": true,
+        "skipped_reason": null,
+        "new_animation": null
+      },
+      {
+        "phrase": "a dashboard that walks you through the whole process one waypoint at a time",
+        "kind": "step",
+        "template": null,
+        "props": {},
+        "seconds": 0,
+        "in_plan": false,
+        "skipped_reason": "Too close to the letters and banks list; the list is the stronger picture.",
+        "new_animation": null
+      },
+      {
+        "phrase": "which letters to send to optimize your credit and which banks to apply to, in the EXACT order",
+        "kind": "step",
+        "template": "StepPath",
+        "props": {
+          "eyebrow": "What you'll know",
+          "steps": [
+            "Which letters to send",
+            "Which banks to apply to, in the EXACT order",
+            "Which banks to open accounts with",
+            "How to start and optimize your businesses"
+          ]
+        },
+        "seconds": 3,
+        "in_plan": true,
+        "skipped_reason": null,
+        "new_animation": null
+      },
+      {
+        "phrase": "Only about 1 in 8 people finish an online course",
+        "kind": "number",
+        "template": null,
+        "props": {},
+        "seconds": 0,
+        "in_plan": false,
+        "skipped_reason": "No template shows a 1 in 8 count.",
+        "new_animation": "Eight person icons, one lights up: 1 in 8 finish an online course."
+      },
+      {
+        "phrase": "buy a $5,000 course or pay someone $2,000 a MONTH for data points",
+        "kind": "comparison",
+        "template": "ToolMatch",
+        "props": {
+          "eyebrow": "Course vs Blueprint",
+          "rows": [
+            {
+              "situation": "A $5,000 course",
+              "tool": "Hours of videos and note-taking"
+            },
+            {
+              "situation": "$2,000 a MONTH for data points",
+              "tool": "People who don't know what they're doing"
+            },
+            {
+              "situation": "The Blueprint",
+              "tool": "Straight to the next move on your own file"
+            }
+          ]
+        },
+        "seconds": 3,
+        "in_plan": true,
+        "skipped_reason": null,
+        "new_animation": null
+      },
+      {
+        "phrase": "for 10 years",
+        "kind": "number",
+        "template": null,
+        "props": {},
+        "seconds": 0,
+        "in_plan": false,
+        "skipped_reason": "No template shows a years counter; weaker than the plan clips.",
+        "new_animation": "A 10-year timeline bar with the data points stacking into UnderwriteIQ."
+      }
+    ]
   }
 ]
