@@ -162,6 +162,123 @@
     "data_tied": false
   },
   {
+    "id": "QualifyTodayWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 60,
+    "max_frames": 90,
+    "default_props": {
+      "eyebrow": "How much you qualify for",
+      "today": {
+        "label": "Today",
+        "value": 199350
+      },
+      "after": {
+        "label": "Once your file is fixed",
+        "value": 221500
+      },
+      "gapLabel": "left on the table",
+      "transparent": false,
+      "format": "wide",
+      "side": "left"
+    },
+    "purpose": "QualifyTodayWide: the QualifyToday clip (today and once-fixed amounts roll up beside 3D cash stacks; the gap stacks on top in blue) in 3840x2160 for the sideways 4K VSL and thank-you video. Same sample-client numbers as QualifyToday. Everything sits in one side panel (`side`: left or right) so the face and the captions in the middle stay clear.",
+    "data_tied": false
+  },
+  {
+    "id": "FileItemsWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 60,
+    "max_frames": 90,
+    "default_props": {
+      "eyebrow": "Everything holding you back",
+      "docTitle": "Credit Analysis Report",
+      "docSubtitle": "All three bureaus",
+      "items": [
+        {
+          "label": "Cards sitting too high"
+        },
+        {
+          "label": "Harmful items"
+        },
+        {
+          "label": "Personal data that doesn't match"
+        }
+      ],
+      "tag": "Costing you money",
+      "transparent": false,
+      "format": "wide",
+      "side": "left"
+    },
+    "purpose": "FileItemsWide: the FileItems clip (items on the credit report: the report floats on a stack of pages; red chips send a bill flying off, green chips flip in a gold coin) in 3840x2160 for the sideways 4K VSL and thank-you video. Everything sits in one side panel (`side`: left or right) so the face and the captions in the middle stay clear.",
+    "data_tied": false
+  },
+  {
+    "id": "HiddenDataPointsWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 60,
+    "max_frames": 90,
+    "default_props": {
+      "eyebrow": "Even with perfect credit",
+      "count": 13,
+      "label": "hidden data points",
+      "subline": "An additional $100,000+ in low-interest funding",
+      "transparent": false,
+      "format": "wide",
+      "side": "left"
+    },
+    "purpose": "HiddenDataPointsWide: the HiddenDataPoints clip (thirteen glossy dots light up on a tilted orbit around the count; the dots are never labeled) in 3840x2160 for the sideways 4K VSL and thank-you video. Everything sits in one side panel (`side`: left or right) so the face and the captions in the middle stay clear.",
+    "data_tied": false
+  },
+  {
+    "id": "StepPathWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 60,
+    "max_frames": 90,
+    "default_props": {
+      "eyebrow": "The order to do it in",
+      "steps": [
+        "See what you qualify for today",
+        "Find the gap and fix your personal credit",
+        "Build the trust in the business",
+        "Set up the businesses",
+        "Apply in the right order"
+      ],
+      "transparent": false,
+      "format": "wide",
+      "side": "left"
+    },
+    "purpose": "StepPathWide: the StepPath clip (numbered discs flip from gray to blue as the line runs down the steps) in 3840x2160 for the sideways 4K VSL and thank-you video. Everything sits in one side panel (`side`: left or right) so the face and the captions in the middle stay clear.",
+    "data_tied": false
+  },
+  {
+    "id": "SoftPullWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 60,
+    "max_frames": 90,
+    "default_props": {
+      "eyebrow": "Soft pull only",
+      "score": 762,
+      "scoreLabel": "Credit score",
+      "headline": "Zero impact on your score.",
+      "chip": "Score doesn't move",
+      "transparent": false,
+      "format": "wide",
+      "side": "left"
+    },
+    "purpose": "SoftPullWide: the SoftPull clip (a scan passes over a thick 3D dial and the score stays put) in 3840x2160 for the sideways 4K VSL and thank-you video. Everything sits in one side panel (`side`: left or right) so the face and the captions in the middle stay clear.",
+    "data_tied": false
+  },
+  {
     "id": "CompanyLine",
     "width": 1080,
     "height": 1920,

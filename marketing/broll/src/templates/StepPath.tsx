@@ -1,7 +1,15 @@
 import React from 'react';
 import {interpolate} from 'remotion';
-import {BackdropStage, BrandFrame, COLORS, DEPTH, Eyebrow, MoneyGutters, P3D, Stage3D, TRACK, enter, progressBetween, useTimeline} from '../brand';
+import {BackdropStage, COLORS, DEPTH, Eyebrow, MoneyGutters, P3D, Stage3D, TRACK, enter, progressBetween, useTimeline} from '../brand';
 import {SeeThrough} from '../brand/Grid';
+import {KitFrame, type KitFormat, type KitSide} from '../brand/KitFrame';
+
+// StepPathWide: the StepPath clip (numbered discs flip from gray to blue as the line runs down the
+// steps) in 3840x2160 for the sideways 4K VSL and thank-you video. Everything sits in one side
+// panel (`side`: left or right) so the face and the captions in the middle stay clear.
+//
+// The vertical look, words and default props are unchanged; KitFrame (src/brand/KitFrame.tsx)
+// draws the wide side panel and the see-through card.
 
 export type StepPathProps = {
   eyebrow: string;
@@ -11,6 +19,10 @@ export type StepPathProps = {
   showSafeZones?: boolean;
   /** See-through: no page and no grid, so the clip renders with alpha (README.md). Default false. */
   transparent?: boolean;
+  /** "vertical" (1080x1920, ads; the default) or "wide" (3840x2160, the sideways 4K VSL and thank-you video). */
+  format?: KitFormat;
+  /** Wide only: the side panel everything sits in, so the face and the captions in the middle stay clear. Default "left". */
+  side?: KitSide;
 };
 
 export const STEP_PATH_BASE = 90;
@@ -83,7 +95,7 @@ const StepDisc: React.FC<{label: string; on: number}> = ({label, on}) => {
   );
 };
 
-export const StepPath: React.FC<StepPathProps> = ({eyebrow, steps, durationInFrames, showSafeZones, transparent}) => {
+export const StepPath: React.FC<StepPathProps> = ({eyebrow, steps, durationInFrames, showSafeZones, transparent, format, side}) => {
   const {f, fps} = useTimeline(STEP_PATH_BASE, durationInFrames);
   const L = STEP_PATH_BASE;
   const list = steps.slice(0, 6);
@@ -93,7 +105,9 @@ export const StepPath: React.FC<StepPathProps> = ({eyebrow, steps, durationInFra
   const lineH = (n - 1) * (rowH + ROW_GAP);
 
   const page = (
-    <BrandFrame
+    <KitFrame
+      format={format}
+      side={side}
       showSafeZones={showSafeZones}
       backdrop={
         <BackdropStage f={f} length={L}>
@@ -185,7 +199,7 @@ export const StepPath: React.FC<StepPathProps> = ({eyebrow, steps, durationInFra
           })}
         </div>
       </Stage3D>
-    </BrandFrame>
+    </KitFrame>
   );
   return <SeeThrough on={transparent}>{page}</SeeThrough>;
 };

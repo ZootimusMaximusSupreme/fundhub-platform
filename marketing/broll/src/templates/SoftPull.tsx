@@ -1,7 +1,6 @@
 import React from 'react';
 import {
   BackdropStage,
-  BrandFrame,
   COLORS,
   Eyebrow,
   GroundShadow,
@@ -16,6 +15,14 @@ import {
   useTimeline,
 } from '../brand';
 import {SeeThrough} from '../brand/Grid';
+import {KitFrame, type KitFormat, type KitSide} from '../brand/KitFrame';
+
+// SoftPullWide: the SoftPull clip (a scan passes over a thick 3D dial and the score stays put) in
+// 3840x2160 for the sideways 4K VSL and thank-you video. Everything sits in one side panel (`side`:
+// left or right) so the face and the captions in the middle stay clear.
+//
+// The vertical look, words and default props are unchanged; KitFrame (src/brand/KitFrame.tsx)
+// draws the wide side panel and the see-through card.
 
 export type SoftPullProps = {
   eyebrow: string;
@@ -32,6 +39,10 @@ export type SoftPullProps = {
   showSafeZones?: boolean;
   /** See-through: no page and no grid, so the clip renders with alpha (README.md). Default false. */
   transparent?: boolean;
+  /** "vertical" (1080x1920, ads; the default) or "wide" (3840x2160, the sideways 4K VSL and thank-you video). */
+  format?: KitFormat;
+  /** Wide only: the side panel everything sits in, so the face and the captions in the middle stay clear. Default "left". */
+  side?: KitSide;
 };
 
 export const SOFT_PULL_BASE = 75;
@@ -71,7 +82,7 @@ const arc = (t0: number, t1: number) => {
   return `M ${a.x} ${a.y} A ${R} ${R} 0 0 1 ${b.x} ${b.y}`;
 };
 
-export const SoftPull: React.FC<SoftPullProps> = ({eyebrow, score, scoreLabel, headline, chip, durationInFrames, showSafeZones, transparent}) => {
+export const SoftPull: React.FC<SoftPullProps> = ({eyebrow, score, scoreLabel, headline, chip, durationInFrames, showSafeZones, transparent, format, side}) => {
   const {f, fps} = useTimeline(SOFT_PULL_BASE, durationInFrames);
   const L = SOFT_PULL_BASE;
   const t = score === null ? NO_SCORE_AT : Math.max(0, Math.min(1, (score - MIN) / (MAX - MIN)));
@@ -83,7 +94,9 @@ export const SoftPull: React.FC<SoftPullProps> = ({eyebrow, score, scoreLabel, h
   const pulse = Math.max(0, 1 - Math.abs(scan - t) * 6) * scanOn;
 
   const page = (
-    <BrandFrame
+    <KitFrame
+      format={format}
+      side={side}
       showSafeZones={showSafeZones}
       backdrop={
         <BackdropStage f={f} length={L}>
@@ -193,7 +206,7 @@ export const SoftPull: React.FC<SoftPullProps> = ({eyebrow, score, scoreLabel, h
           {headline}
         </div>
       </Stage3D>
-    </BrandFrame>
+    </KitFrame>
   );
   return <SeeThrough on={transparent}>{page}</SeeThrough>;
 };
