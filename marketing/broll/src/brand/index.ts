@@ -4,6 +4,7 @@ export * from './motion';
 export * from './format';
 export {BrandFrame} from './BrandFrame';
 export {Eyebrow} from './Eyebrow';
+export {ReadPlate} from './ReadPlate';
 export {GradientDash} from './GradientDash';
 export {Grid} from './Grid';
 export {SafeZoneGuide} from './SafeZoneGuide';

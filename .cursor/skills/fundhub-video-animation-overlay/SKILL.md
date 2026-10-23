@@ -1,0 +1,78 @@
+---
+name: fundhub-video-animation-overlay
+description: Lay the see-through Fundhub animations (marketing/broll) over a finished, captioned video so each one lands on the words it matches. Use when Chris says animations, overlay, load animations, anchor words, thank-you video, VSL animations, or hands over an edited video "ready for animations". Covers the word timeline, anchor matching, start times, clip lengths, face-safe sides, script-only words, readability, the one-encode build and the checks.
+---
+
+# Fundhub video animation overlay
+
+Built 2026-10-23 on the Direct Book Thank You video. Board: `ops/workflows/animation-builds-2026-10-22.md`.
+Worked example, tools and numbers: `marketing/ads/animation-plans/thank-you-test-2026-10-23/` (README first).
+
+## What this is, in one line
+
+The video is finished and captioned. The animations go on last, as see-through clips, so each one appears when the words it shows are spoken, and never on the face or the captions. The original file is never changed. Output is a test copy first.
+
+## The order. Do not skip ahead.
+
+1. **Read the plan.** `marketing/ads/animation-plans/2026-10-22.json`, the entry for the video: templates, props, `side`, and each anchor phrase. Read `marketing/broll/README.md` and `marketing/broll/catalog.json` (length range per template).
+2. **Get the real word times.** The plan's starts are even-pace estimates and ran 0.5 s to 10.3 s off on the thank-you video. Sources, best first:
+   - the script text plus a real transcript, if a speech-to-text tool exists on the machine;
+   - the **burned-in captions**: read the caption strip at 10 frames a second, find the highlighted word in each frame (`tools/ocr.swift`, `tools/words.py` in the example folder). This is free and is what was used. Captions run about 0.15 s ahead of the voice.
+   - never the plan's estimates, unless you say plainly that they are estimates.
+   The repo's transcribers call the paid OpenAI API. Do not use them without Chris saying so. Do not install anything big for this.
+3. **Find the anchors.** `tools/align-anchors.py` matches each plan anchor phrase to the timeline and writes `anchors.json` (first word time, next word time, match score). Anything under 0.8 is a failed match: read the words and fix by hand.
+4. **Set the schedule.** One row per animation in `schedule.json`: start, frames, side, why. Rules below.
+5. **Render the clips.** From `marketing/broll`, one per row: `npx remotion render <Template> <clip>.mov --props=<props file> --codec=prores --prores-profile=4444 --image-format=png --pixel-format=yuva444p10le --scale=<video width / 3840>` (ProofWallWide also needs `--gl=angle`). Keep the props files in the folder.
+6. **Lay them on.** `tools/build-from-schedule.py <clips_dir> <out.mp4>`: one encode, audio copied.
+7. **Check it** (list below), send Chris the video and a contact sheet, and **save every round to the repo**.
+
+## The rules for the schedule
+
+- **Mode.** See-through clips run in overlay mode. In `src/ad-videos/animations.mjs` the 4 s face gap, 3 s clip cap and 35% share belong to `fullframe` mode only; overlay mode forbids overlaps and nothing else. Do not drop animations for the full-frame limits.
+- **Land the payoff on the words.** Do not start every clip at its anchor's first word. Make a frame strip of the clip (3 frames a second) and note when each part appears; start the clip so that moment hits the word. Examples: "Booked / Locked in" at "locked in"; "No impact on your score" at "no impact"; "2 in 3" at "two and three".
+- **Stretch to fit the speech.** If his speech is longer than the clip, render the clip longer, inside its catalog range (`min_frames` to `max_frames`), and re-measure the strip. Steps scale with the length.
+- **No overlap, and no gaps that look dead.** Two see-through clips never share a frame.
+- **First 3 s and the closing ask:** keep clear of them unless Chris says otherwise.
+
+## Behind him (green-screen style) and varied spots (owner-set 2026-10-23)
+
+- Chris: "get the animations behind the body and face, like greenscreen" and "they don't have to always be in the same spot."
+- **Cut him out.** `swiftc -O tools/matte.swift -o matte`, then `./matte <video> <masks_dir> "start,end;start,end"` (windows from `schedule.json`). It writes `m_%05d.png` (white = person) for the frames inside the windows only. It uses Apple Vision person segmentation, no network, no API.
+- **Lay him back on top.** `tools/build-from-schedule.py <clips_dir> <out.mp4> --behind <masks_dir>`: animations go on the video, then his cut-out goes over them. A card that reaches behind his head is hidden by him. Captions are part of the original frames and are not touched.
+- **Vary the spot.** Per clip in `schedule.json`: `side`, `dx`, `dy`. Mix left and right, upper and lower, and tuck a card behind his head now and then. Find his face box first (`tools/face.swift` on a few frames). Words stay clear of the face box and above the caption band; only decoration (cash stacks, card margins) goes behind him. Never hide the start or end of a line.
+- A person who sits off-center leaves one side narrow. Check the narrow side's room before putting a full-width panel there.
+- Do not run `rm -rf` (denied in this repo's settings). Use new folders.
+
+## The rules for what is on screen
+
+- **Face.** Pick `side` by where the face is. On the thank-you video Chris sits right of center: use `left`. A right panel covered his temple and ear. Check frames with the face tool (`tools/face.swift`) or by eye at the middle of every clip.
+- **Captions.** Nothing is drawn in the caption band or below y 1007 on a 1440-high video. Compare the caption band to the original; the numbers must match the first pass.
+- **Script words only.** Props carry the words. Use the script's own words for eyebrows, chips and lines. Template defaults that print words or numbers the script never says must be changed or the animation dropped:
+  - `ProofWallWide`: set `proofLines` to what he says ("Ten years of my own funding", "Hundreds of client files").
+  - `QualifyTodayWide`: its amounts come from the one sample client (UnderwriteIQ on the roadmap sample file). Label it: eyebrow "Sample file: how much you qualify for". Never present those amounts as the viewer's.
+  - `BookCallWide`: a generic calendar by design (generic month, no name). Leave it.
+  - Never invent a number, bank, name or claim. Company name is Fundhub. Certain words only.
+- **Readable over film.** Words that float outside a card sit on a white plate in see-through mode (`brand/ReadPlate.tsx`, used by `Eyebrow` and the LenderMatch closing line). If a new template floats words, wrap them in `ReadPlate`. Check readability on real frames, not on the proof sheet.
+- **Logo.** Only `FundhubLogo*`, only where the script says "Fundhub".
+
+## Checks before you say it works
+
+- Output duration within 0.1 s of the original, same frame count, same fps.
+- Audio stream is a bit-for-bit copy: `ffmpeg -i out.mp4 -map 0:a:0 -c copy -f md5 -` equals the same on the original.
+- Caption band (y 1100-1360 on 2560x1440) compared with the first pass: same numbers.
+- A contact sheet with one frame per animation taken at its anchor line, captions visible. Look at it.
+- Face clear in every animation window.
+- `cd marketing/broll && npx tsc --noEmit`, `npm run lint`, and the see-through tests (`node --test src/marketing/catalog.test.mjs src/marketing/broll-see-through.test.mjs`).
+
+## Never
+
+- Open, edit or overwrite the original video. Outputs go in a scratch folder, not the repo (a test copy is about 250 MB).
+- Say "the rule requires dropping animations" without reading which mode the rule is in.
+- Wire this into the pipeline without Chris saying so. `src/ad-videos/animations.mjs` still only handles 1080x1920 ads and skips wide clips; `build-from-schedule.py` stands in for it.
+- Ask Chris to confirm a choice a rule here already settles. Do it, and say what you did.
+
+## Known gaps (2026-10-23)
+
+- The overlay code cannot place wide clips on a 2560x1440 video.
+- The SoftPull chip ("You pay $32") shows with the headline, about 1.5 s after he says it.
+- No local speech-to-text. If Chris approves an API or a local tool later, replace step 2's caption reading and keep `align-anchors.py`.

@@ -217,6 +217,10 @@ Every video that is not a paid ad — VSLs, welcome and portal videos, testimoni
 
 Grok and Composer do not touch websites or design HTML. Claude does that work. Same law: `.cursor/rules/grok-no-displays.mdc` and `.claude/rules/grok-no-displays.md`.
 
+### Animations land on the spoken words (owner-set 2026-10-23)
+
+Animations go on a finished video last. Find the real word times first (transcript or burned-in captions), start each clip so its payoff lands on its words, cut him out so animations sit behind him, vary where they sit, keep words clear of the face and captions, use only script words, and keep the original untouched. See-through clips run in overlay mode: overlaps are the only limit. Same law: `.cursor/rules/animation-overlay-on-spoken-words.mdc` and `.claude/rules/animation-overlay-on-spoken-words.md`. Skill: `.cursor/skills/fundhub-video-animation-overlay/SKILL.md`.
+
 ### Ad video — best of all clips (owner-set 2026-09-24)
 
 For each ad, agents merge every take and clip into one best-of master, kill the editor defects in that law (dead air, repeats, false starts, filler, audio, captions, B-roll, and the rest), and never ship a lone take when others exist; one video per ad and one video per VSL (the portal welcome counts as its own long video), takes joined in script order; Chris never opens Submagic. Same law: `.cursor/rules/ad-video-best-of-clips.mdc` and `.claude/rules/ad-video-best-of-clips.md`.

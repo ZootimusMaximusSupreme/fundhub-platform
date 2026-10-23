@@ -8,6 +8,7 @@ import {
   CONTENT_WIDTH,
   Card3D,
   Eyebrow,
+  ReadPlate,
   MoneyField,
   Stage3D,
   TAG,
@@ -329,6 +330,7 @@ export const LenderMatchScroll: React.FC<LenderMatchScrollProps> = ({
         </Card3D>
         <div style={{height: 44}} />
         <div style={{...fadeUp(result, 22), display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 26}}>
+          <ReadPlate gap={26}>
           {count ? <span style={{fontSize: 108, fontWeight: 800, letterSpacing: TRACK.num, lineHeight: 1, color: COLORS.accent, whiteSpace: 'nowrap'}}>{count}</span> : null}
           <span
             style={{
@@ -344,6 +346,7 @@ export const LenderMatchScroll: React.FC<LenderMatchScrollProps> = ({
           >
             {countLabel}
           </span>
+          </ReadPlate>
         </div>
       </Stage3D>
     </BrandFrame>

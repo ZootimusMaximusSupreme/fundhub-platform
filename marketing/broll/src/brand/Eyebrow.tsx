@@ -1,5 +1,6 @@
 import React from 'react';
 import {GradientDash} from './GradientDash';
+import {ReadPlate} from './ReadPlate';
 import {COLORS, DASH, TRACK, TYPE} from './tokens';
 
 /**
@@ -20,6 +21,7 @@ export const Eyebrow: React.FC<{text: string; progress?: number; align?: 'center
       opacity: progress,
     }}
   >
+    <ReadPlate gap={DASH.width * 0.56}>
     <GradientDash grow={progress} />
     <span
       style={{
@@ -34,5 +36,6 @@ export const Eyebrow: React.FC<{text: string; progress?: number; align?: 'center
     >
       {text}
     </span>
+    </ReadPlate>
   </div>
 );

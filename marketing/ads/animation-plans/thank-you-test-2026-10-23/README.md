@@ -10,7 +10,7 @@ Chris's finished thank-you video (2560x1440, 30 fps, 63.24 s, Submagic captions 
 | `anchors.json` | Each plan anchor line matched to that timeline (all 8 matched at 1.0). `tools/align-anchors.py` makes it. |
 | `schedule.json` | The readjusted schedule: start, length, side, and why, per animation. |
 | `props/` | The exact Remotion props each clip was rendered with (incl. `durationInFrames`). |
-| `contact-sheet-v2.jpg` | One frame per animation from the v2 test copy, taken at the moment of its anchor line. |
+| `contact-sheet-final.jpg` | One frame per animation from the final test copy, taken at the moment of its anchor line. |
 | `tools/` | `align-anchors.py`, `build-from-schedule.py` (lays the clips on the video in one encode), plus the helper's `ocr.swift` / `face.swift` / `words.py` (the timeline) and the first-pass `build-test-video.sh` / `make-sheet.sh`. |
 
 ## Redo it
@@ -28,10 +28,17 @@ Chris's finished thank-you video (2560x1440, 30 fps, 63.24 s, Submagic captions 
 - Starts were set so each animation's payoff shows when the matching words are spoken (measured from frame strips of each clip, 3 per second). Three clips were rendered longer so their steps follow the speech: BureauMatchWide 3.0 -> 4.5 s, LenderMatchScrollWide 3.5 -> 4.5 s (closing line now holds 0.5 s), PathCardsWide 2.5 -> 3.5 s, QualifyTodayWide 2.5 -> 3.0 s. All inside each template's catalog length range.
 - Caption band (y 1100-1360) and audio: the audio stream is a bit-for-bit copy. Nothing is drawn below y 1007.
 
-## Open problems (not fixed)
+## Round 3 (2026-10-23, same day): behind him, varied spots, script words
 
-1. SoftPullWide (right) covers a strip of Chris's right temple around 12.5 s, and BureauMatchWide (right) touches his right ear. He sits right of center. Putting both on the left panel would clear his face.
-2. Words and numbers not in this script: QualifyTodayWide shows a sample client's $199,350 / $221,500 / "$22,150 left on the table"; ProofWallWide shows "Thousands of data points", "A little over a million dollars funded for myself" and approvals of $15,000 / $50,000 / $74,000; BookCallWide's Booked card says "Wed 15 · 2:30 PM"; LenderMatchScrollWide names real banks; BureauMatchWide names the three bureaus.
-3. LenderMatchScrollWide's thin gray eyebrow and its blue closing line are hard to read over the trees.
-4. `src/ad-videos/animations.mjs` only handles 1080x1920 ads. It would skip every wide clip. `build-from-schedule.py` stands in for it on this video.
-5. SoftPullWide's chip ("You pay $32") shows with the headline at 1.7 s in, about 1.5 s after he says it.
+- **Behind him, green-screen style.** `tools/matte.swift` cuts him out of the video (macOS Vision person segmentation, one gray PNG per frame for the animation windows only). `build-from-schedule.py <clips> <out.mp4> --behind <masks_dir>` lays his cut-out back on top of the finished composite, so any card that reaches behind his head is hidden by him, hair edges included. Captions stay as they were (they are part of the original frames). 864 masks took about 5 minutes.
+- **Not always in the same spot.** `schedule.json` now carries `side`, `dx` and `dy` per clip. This video uses upper-left, upper-right (tucked 100 px toward him), lower-left, mid-left, lower-right and a card tucked behind his head (QualifyToday, 130 px). Rule: words stay clear of his face box (x 935-1760, y 400-1220 here) and above the caption band (y 1170); only decoration (cash stacks, card margins) goes behind him.
+- **Face.** SoftPull moved right and tucked, BureauMatch moved left. With the cut-out on, nothing can cover his face.
+- **Script words.** ProofWall `proofLines` are "Ten years of my own funding" and "Hundreds of client files". QualifyToday reads "Today · sample file" beside the amount. BookCall stays a generic calendar by design.
+- **Readable over film.** `marketing/broll/src/brand/ReadPlate.tsx`: in see-through mode `Eyebrow` and LenderMatch's closing line sit on a white plate. Page-on renders are unchanged. `tsc`, lint, catalog and see-through tests pass.
+
+## Still open
+
+1. `src/ad-videos/animations.mjs` only handles 1080x1920 ads and skips wide clips; `build-from-schedule.py` stands in for it. Nothing here is wired into the pipeline.
+2. SoftPullWide's chip ("You pay $32") shows with the headline, about 1.5 s after he says it.
+3. BureauMatchWide names the three bureaus and LenderMatchScrollWide lists real bank names (template design).
+4. The cut-out is per-frame (no temporal smoothing); check hair edges on new footage.
