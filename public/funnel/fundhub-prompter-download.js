@@ -36,9 +36,7 @@
       '<div><p class="fh-prompter-download__eyebrow">Get the app</p><h2 class="fh-prompter-download__title">Fundhub Portal</h2>' +
       '<p class="fh-prompter-download__copy">See where your Fundhub file stands and open your portal for the next step.</p></div>' +
       '</div>' +
-      '<a class="fh-prompter-download__button" href="' + url + '" target="_blank" rel="noopener noreferrer">Get it on the App Store <span aria-hidden="true">→</span></a>' +
-      /* No login yet: api/soft-pull-approve.mjs opens the portal account on the call. */
-      '<p class="fh-prompter-download__note">Download it now. Your login is made on your call, when your advisor runs your soft pull.</p>';
+      '<a class="fh-prompter-download__button" href="' + url + '" target="_blank" rel="noopener noreferrer">Get it on the App Store <span aria-hidden="true">→</span></a>';
     if (slot) slot.appendChild(section);
     else hero.parentNode.insertBefore(section, hero.nextSibling);
   }
