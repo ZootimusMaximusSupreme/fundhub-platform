@@ -279,6 +279,28 @@
     "data_tied": false
   },
   {
+    "id": "InquiriesOffWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 60,
+    "max_frames": 90,
+    "default_props": {
+      "eyebrow": "Between each funding round",
+      "fromLabel": "This funding round",
+      "itemLabel": "Hard inquiries",
+      "beforeTag": "On your report",
+      "afterTag": "Removed",
+      "toLabel": "Next funding round",
+      "toNote": "Goes in clean",
+      "transparent": false,
+      "format": "wide",
+      "side": "left"
+    },
+    "purpose": "InquiriesOff: hard inquiries are struck off a floating card, then bills ride the line down into the next funding round. Vertical 1080x1920 for ads; InquiriesOffWide is the 4K version for the sideways VSL and the thank-you video, with the whole scene in one side panel (`side`: left or right) so the face and the captions in the middle stay clear.",
+    "data_tied": false
+  },
+  {
     "id": "CompanyLine",
     "width": 1080,
     "height": 1920,
@@ -365,6 +387,33 @@
     "data_tied": false
   },
   {
+    "id": "BookCallWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 105,
+    "default_props": {
+      "eyebrow": "Free call · Google Meet",
+      "line": "Hop on a call",
+      "pickDay": 15,
+      "times": [
+        "9:00 AM",
+        "11:30 AM",
+        "2:30 PM",
+        "4:00 PM"
+      ],
+      "pickTime": 2,
+      "booked": "Booked",
+      "detail": "Soft pull on the call, zero score impact",
+      "transparent": false,
+      "format": "wide",
+      "side": "left"
+    },
+    "purpose": "BookCall: the call to action for the book-a-call funnel (/watch). A 3D calendar flips down into place, a day gets picked, time slots appear, one is picked, and a \"Booked\" card lands in front. Generic days and times only: no month name, no year, no person's name.",
+    "data_tied": false
+  },
+  {
     "id": "LenderSlots",
     "width": 1080,
     "height": 1920,
@@ -406,6 +455,28 @@
     "data_tied": false
   },
   {
+    "id": "FundingRoundsWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 120,
+    "default_props": {
+      "eyebrow": "Funding sequence",
+      "rounds": 4,
+      "roundLabel": "Round",
+      "inquiryChip": "Inquiries",
+      "captionStruck": "Hard inquiries",
+      "captionRest": "removed between rounds",
+      "amounts": null,
+      "transparent": false,
+      "format": "wide",
+      "side": "left"
+    },
+    "purpose": "A funding sequence that runs round by round (3 to 6 rounds). Each round lights up on the track and stacks another strapped bundle onto one cash tower while bills and coins pour down onto it; between rounds a hard-inquiries chip pops up, gets struck off and leaves before the next round lights. Every piece of loose money is masked to the tower area or the side gutters, so none of it ever sits on a word.",
+    "data_tied": false
+  },
+  {
     "id": "LenderMatchScroll",
     "width": 1080,
     "height": 1920,
@@ -425,6 +496,32 @@
       "count": "30–50",
       "countLabel": "lenders matched to your file",
       "transparent": false
+    },
+    "purpose": "A list of 59 real banks scrolls from the top of the list to the bottom on a 3D drum. Each row has the bank's logo (the CRM's own logo file) and the three bureaus with a status for each, heavily blurred: you can tell the data is there, but you cannot read it. The list slows and settles, then one clear line lands: \"30–50 lenders matched to your file\" (9/30 /watch VSL P4).",
+    "data_tied": false
+  },
+  {
+    "id": "LenderMatchScrollWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 105,
+    "max_frames": 135,
+    "default_props": {
+      "eyebrow": "Matching your file",
+      "bankHeader": "Bank",
+      "bureauHeaders": [
+        "Experian",
+        "Equifax",
+        "TransUnion"
+      ],
+      "pulledLabel": "Pulls",
+      "notPulledLabel": "No pull",
+      "count": "30–50",
+      "countLabel": "lenders matched to your file",
+      "transparent": false,
+      "format": "wide",
+      "side": "left"
     },
     "purpose": "A list of 59 real banks scrolls from the top of the list to the bottom on a 3D drum. Each row has the bank's logo (the CRM's own logo file) and the three bureaus with a status for each, heavily blurred: you can tell the data is there, but you cannot read it. The list slows and settles, then one clear line lands: \"30–50 lenders matched to your file\" (9/30 /watch VSL P4).",
     "data_tied": false
@@ -454,6 +551,37 @@
       ],
       "speed": 1,
       "transparent": false
+    },
+    "purpose": "ProofWall: the real client approvals turn past on a 3D carousel of floating screens. Each screen is one approval picture exactly as it is (the branded win card from marketing/landing-pages/slo/client-wins/deck, copied to public/proof-wall/ by scripts/proof-wall-approvals.py). Built to read on a phone: few approvals per clip, each one held in front about a second, the front screen big and square to the camera, the side screens pushed back, dimmed and softened. A chip pinned to the front screen repeats its amount and lender from that picture's manifest entry (the figure read off the picture), never anything else. No name or face is added. Under the carousel the proof lines build up: \"A decade\", \"Hundreds of files\", \"Thousands of data points\" pop in as chips, then \"A little over a million dollars funded for myself\" lands big and holds. Bills drift behind the screens.",
+    "data_tied": true
+  },
+  {
+    "id": "ProofWallWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 90,
+    "max_frames": 120,
+    "default_props": {
+      "eyebrow": "Client approvals",
+      "approvals": [
+        "win-15000-fnbo",
+        "win-50000-keybank",
+        "win-74000-chase",
+        "win-20000-truist",
+        "win-16000-bankunited",
+        "win-12000-bank-of-america-2"
+      ],
+      "proofLines": [
+        "A decade",
+        "Hundreds of files",
+        "Thousands of data points",
+        "A little over a million dollars funded for myself"
+      ],
+      "speed": 1,
+      "transparent": false,
+      "format": "wide",
+      "side": "left"
     },
     "purpose": "ProofWall: the real client approvals turn past on a 3D carousel of floating screens. Each screen is one approval picture exactly as it is (the branded win card from marketing/landing-pages/slo/client-wins/deck, copied to public/proof-wall/ by scripts/proof-wall-approvals.py). Built to read on a phone: few approvals per clip, each one held in front about a second, the front screen big and square to the camera, the side screens pushed back, dimmed and softened. A chip pinned to the front screen repeats its amount and lender from that picture's manifest entry (the figure read off the picture), never anything else. No name or face is added. Under the carousel the proof lines build up: \"A decade\", \"Hundreds of files\", \"Thousands of data points\" pop in as chips, then \"A little over a million dollars funded for myself\" lands big and holds. Bills drift behind the screens.",
     "data_tied": true

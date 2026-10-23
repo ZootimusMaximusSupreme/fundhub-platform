@@ -4,6 +4,7 @@ import {CONTACT_SHEET, ContactSheet} from './ContactSheet';
 import {DEPTH_KIT_DEMO_FRAMES, DepthKitDemo} from './DepthKitDemo';
 import {FRAME} from './brand';
 import {RegistryWideCompositions, TEMPLATES} from './templates/registry';
+import {InquiriesOffWideComposition} from './templates/InquiriesOff';
 import {OFFER_CTA_COMPOSITIONS} from './templates/offer-cta';
 import {LenderMatchingCompositions} from './templates/lenderMatching';
 import {companyLineComposition} from './templates/CompanyLine';
@@ -26,6 +27,7 @@ export const RemotionRoot: React.FC = () => (
   <>
     {TEMPLATES.map((t) => t.composition())}
     <RegistryWideCompositions />
+    <InquiriesOffWideComposition />
     {companyLineComposition()}
     {OFFER_CTA_COMPOSITIONS}
     <LenderMatchingCompositions />

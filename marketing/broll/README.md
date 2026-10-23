@@ -14,6 +14,14 @@ these five sit on one white card (the plate) so every word reads over any
 film. Zone scan: `scripts/kit-frame-zone-scan.py`; proof sheets:
 `previews/<id>-overlay.png`.
 
+Side-panel wide versions (animation-builds-2026-10-22, W2): `InquiriesOffWide`,
+`FundingRoundsWide`, `LenderMatchScrollWide`, `ProofWallWide`, `BookCallWide`.
+They show the clip's own vertical scene in ONE side panel, picked by `side`
+(`"left"`, the default, x 192-1500; or `"right"`, x 2340-3648; both y 108-1512),
+so the face in the middle and the captions low in the middle stay clear.
+Helper: `src/brand/widePanel.tsx`. Caption-safe scan for vertical and wide
+see-through renders: `python3 scripts/wide-panel-zone-scan.py [--side right] <png or folder>`.
+
 - Templates: `src/templates/` (the 8 in `registry.tsx`, the rest registered
   from their own files in `src/Root.tsx`).
 - Brand look: `src/brand/` (colors, grid, wordmark, depth kit, money).

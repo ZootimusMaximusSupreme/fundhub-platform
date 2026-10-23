@@ -70,7 +70,8 @@ test("every composition the kit registers is in the catalog, except the two kit 
 test("the catalog holds the 8 registry templates and every module Root.tsx registers", () => {
   for (const id of ["QualifyToday", "FileItems", "HiddenDataPoints", "InquiriesOff", "LenderList", "StepPath", "RatesRising", "SoftPull",
     "CompanyLine", "OfferStack", "BookCall", "LenderSlots", "FundingRounds", "LenderMatchScroll", "ProofWall", "ProofFlood",
-    "ProofFloodWide", "BankPockets", "BankPocketsWide", "FlatTireHammer", "JackFix", "ToolMatch"]) {
+    "ProofFloodWide", "BankPockets", "BankPocketsWide", "FlatTireHammer", "JackFix", "ToolMatch",
+    "InquiriesOffWide", "FundingRoundsWide", "LenderMatchScrollWide", "ProofWallWide", "BookCallWide"]) {
     assert.ok(byId.has(id), `${id} is missing`);
   }
 });
@@ -111,7 +112,7 @@ test("sizes: vertical 1080x1920, the two wide versions 3840x2160", () => {
 
 test("data-tied: QualifyToday, ProofWall and the ProofFlood family, and nothing else in the kit today", () => {
   const tied = committed.filter((e) => e.data_tied).map((e) => e.id).sort();
-  assert.deepEqual(tied, ["ProofFlood", "ProofFloodWide", "ProofWall", "QualifyToday", "QualifyTodayWide"]);
+  assert.deepEqual(tied, ["ProofFlood", "ProofFloodWide", "ProofWall", "ProofWallWide", "QualifyToday", "QualifyTodayWide"]);
 });
 
 test("default props are read from the source, spreads included", () => {

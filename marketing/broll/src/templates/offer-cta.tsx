@@ -1,5 +1,6 @@
 import {Composition} from 'remotion';
 import {FRAME} from '../brand';
+import {WIDE, wideSize} from '../brand/widePanel';
 import {BOOK_CALL_BASE, BookCall, bookCallDefaults} from './BookCall';
 import {OFFER_STACK_BASE, OfferStack, offerStackDefaults} from './OfferStack';
 import {clampOfferCta} from './offer-cta-timeline';
@@ -28,6 +29,17 @@ export const OFFER_CTA_COMPOSITIONS = (
       height={FRAME.height}
       defaultProps={bookCallDefaults}
       calculateMetadata={({props}) => ({durationInFrames: clampOfferCta(props.durationInFrames, BOOK_CALL_BASE)})}
+    />
+    {/* BookCall at 4K for the sideways VSL and thank-you video: the whole scene in one side panel ("side": "left" or "right"). */}
+    <Composition
+      id="BookCallWide"
+      component={BookCall}
+      durationInFrames={BOOK_CALL_BASE}
+      fps={WIDE.fps}
+      width={WIDE.width}
+      height={WIDE.height}
+      defaultProps={{...bookCallDefaults, format: 'wide' as const, side: 'left' as const}}
+      calculateMetadata={({props}) => ({durationInFrames: clampOfferCta(props.durationInFrames, BOOK_CALL_BASE), ...wideSize(props.format)})}
     />
   </>
 );

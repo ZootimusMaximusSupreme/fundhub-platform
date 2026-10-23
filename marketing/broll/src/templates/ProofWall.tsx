@@ -20,6 +20,7 @@ import {
   formatDollars,
 } from '../brand';
 import {SeeThrough} from '../brand/Grid';
+import {Sticker, WIDE, WidePanel, type WideFormat, type WideSide, wideSize} from '../brand/widePanel';
 import {PROOF_APPROVALS, type ProofApproval} from './proofWallApprovals';
 
 // ProofWall: the real client approvals turn past on a 3D carousel of floating
@@ -54,6 +55,10 @@ export type ProofWallProps = {
   /** 90 to 120 frames (3 to 4 seconds). Default 120. */
   durationInFrames?: number;
   showSafeZones?: boolean;
+  /** "vertical" (1080x1920, ads) or "wide" (3840x2160, the VSL). Default vertical. */
+  format?: WideFormat;
+  /** Wide only: the side panel the scene sits in. Default left. */
+  side?: WideSide;
   /** See-through: no page and no grid, so the clip renders with alpha (README.md). Default false. */
   transparent?: boolean;
 };
@@ -204,7 +209,8 @@ const Screen: React.FC<{a: ProofApproval; theta: number; alpha: number; bob: num
   );
 };
 
-export const ProofWall: React.FC<ProofWallProps> = ({eyebrow, approvals, proofLines, speed, durationInFrames, showSafeZones, transparent}) => {
+export const ProofWall: React.FC<ProofWallProps> = ({eyebrow, approvals, proofLines, speed, durationInFrames, showSafeZones, transparent, format, side}) => {
+  const wide = format === 'wide';
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
   const L = PROOF_WALL_BASE;
@@ -255,7 +261,7 @@ export const ProofWall: React.FC<ProofWallProps> = ({eyebrow, approvals, proofLi
 
   const page = (
     <BrandFrame
-      showSafeZones={showSafeZones}
+      showSafeZones={wide ? false : showSafeZones}
       backdrop={
         <BackdropStage f={f} length={L}>
           <MoneyField
@@ -405,19 +411,50 @@ export const ProofWall: React.FC<ProofWallProps> = ({eyebrow, approvals, proofLi
       </Stage3D>
     </BrandFrame>
   );
-  return <SeeThrough on={transparent}>{page}</SeeThrough>;
+  const look = (
+    <Sticker on={transparent} band={!wide}>
+      {page}
+    </Sticker>
+  );
+  return (
+    <SeeThrough on={transparent}>
+      {wide ? (
+        <WidePanel side={side} showSafeZones={showSafeZones}>
+          {look}
+        </WidePanel>
+      ) : (
+        look
+      )}
+    </SeeThrough>
+  );
 };
 
-/** Registered in Root.tsx. Its own composition because it runs 3 to 4 seconds, longer than the kit's 2 to 3. */
+/**
+ * Registered in Root.tsx. Its own composition because it runs 3 to 4 seconds, longer than the kit's 2 to 3.
+ * ProofWallWide is the same clip at 4K for the sideways VSL and thank-you video: the carousel and the proof
+ * lines sit in one side panel ("side": "left" or "right"), the same approvals and the same lines.
+ */
 export const ProofWallComposition: React.FC = () => (
-  <Composition
-    id="ProofWall"
-    component={ProofWall}
-    durationInFrames={PROOF_WALL_BASE}
-    fps={FRAME.fps}
-    width={FRAME.width}
-    height={FRAME.height}
-    defaultProps={proofWallDefaults}
-    calculateMetadata={({props}) => ({durationInFrames: clampProofWall(props.durationInFrames)})}
-  />
+  <>
+    <Composition
+      id="ProofWall"
+      component={ProofWall}
+      durationInFrames={PROOF_WALL_BASE}
+      fps={FRAME.fps}
+      width={FRAME.width}
+      height={FRAME.height}
+      defaultProps={proofWallDefaults}
+      calculateMetadata={({props}) => ({durationInFrames: clampProofWall(props.durationInFrames)})}
+    />
+    <Composition
+      id="ProofWallWide"
+      component={ProofWall}
+      durationInFrames={PROOF_WALL_BASE}
+      fps={WIDE.fps}
+      width={WIDE.width}
+      height={WIDE.height}
+      defaultProps={{...proofWallDefaults, format: 'wide' as const, side: 'left' as const}}
+      calculateMetadata={({props}) => ({durationInFrames: clampProofWall(props.durationInFrames), ...wideSize(props.format)})}
+    />
+  </>
 );

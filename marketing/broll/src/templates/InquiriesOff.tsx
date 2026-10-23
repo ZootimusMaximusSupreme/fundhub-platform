@@ -1,4 +1,5 @@
 import React from 'react';
+import {Composition} from 'remotion';
 import {
   BrandFrame,
   COLORS,
@@ -11,12 +12,16 @@ import {
   TAG,
   Tag,
   TRACK,
+  clampDuration,
   enter,
   fadeRight,
   progressBetween,
   useTimeline,
 } from '../brand';
 import {SeeThrough} from '../brand/Grid';
+import {Sticker, WIDE, WidePanel, type WideFormat, type WideSide, wideSize} from '../brand/widePanel';
+
+// InquiriesOff: hard inquiries are struck off a floating card, then bills ride the line down into the next funding round. Vertical 1080x1920 for ads; InquiriesOffWide is the 4K version for the sideways VSL and the thank-you video, with the whole scene in one side panel (`side`: left or right) so the face and the captions in the middle stay clear.
 
 export type InquiriesOffProps = {
   eyebrow: string;
@@ -28,6 +33,10 @@ export type InquiriesOffProps = {
   toNote: string;
   durationInFrames?: number;
   showSafeZones?: boolean;
+  /** "vertical" (1080x1920, ads) or "wide" (3840x2160, the VSL). Default vertical. */
+  format?: WideFormat;
+  /** Wide only: the side panel the scene sits in. Default left. */
+  side?: WideSide;
   /** See-through: no page and no grid, so the clip renders with alpha (README.md). Default false. */
   transparent?: boolean;
 };
@@ -89,7 +98,10 @@ export const InquiriesOff: React.FC<InquiriesOffProps> = ({
   durationInFrames,
   showSafeZones,
   transparent,
+  format,
+  side,
 }) => {
+  const wide = format === 'wide';
   const {f, fps} = useTimeline(INQUIRIES_OFF_BASE, durationInFrames);
   const L = INQUIRIES_OFF_BASE;
   const aIn = enter(f, fps, 4, 12);
@@ -105,7 +117,7 @@ export const InquiriesOff: React.FC<InquiriesOffProps> = ({
   const diagramH = B_Y + 120;
 
   const page = (
-    <BrandFrame showSafeZones={showSafeZones}>
+    <BrandFrame showSafeZones={wide ? false : showSafeZones}>
       <Stage3D f={f} length={L}>
         <Eyebrow text={eyebrow} progress={enter(f, fps, 0, 14)} />
         <div style={{height: 80}} />
@@ -224,5 +236,35 @@ export const InquiriesOff: React.FC<InquiriesOffProps> = ({
       </Stage3D>
     </BrandFrame>
   );
-  return <SeeThrough on={transparent}>{page}</SeeThrough>;
+  const look = (
+    <Sticker on={transparent} band={!wide}>
+      {page}
+    </Sticker>
+  );
+  return (
+    <SeeThrough on={transparent}>
+      {wide ? (
+        <WidePanel side={side} showSafeZones={showSafeZones}>
+          {look}
+        </WidePanel>
+      ) : (
+        look
+      )}
+    </SeeThrough>
+  );
 };
+
+// Still:  npx remotion still src/index.ts InquiriesOffWide out/inquiries-off-wide.png --frame=86
+// Add "side":"right" to put the scene in the right panel.
+export const InquiriesOffWideComposition: React.FC = () => (
+  <Composition
+    id="InquiriesOffWide"
+    component={InquiriesOff}
+    durationInFrames={INQUIRIES_OFF_BASE}
+    fps={WIDE.fps}
+    width={WIDE.width}
+    height={WIDE.height}
+    defaultProps={{...inquiriesOffDefaults, format: 'wide' as const, side: 'left' as const}}
+    calculateMetadata={({props}) => ({durationInFrames: clampDuration(props.durationInFrames, INQUIRIES_OFF_BASE), ...wideSize(props.format)})}
+  />
+);
