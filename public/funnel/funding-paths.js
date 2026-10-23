@@ -215,14 +215,22 @@
   }
 
   /* ---------- PATH 3: step-by-step plan ---------- */
+  /* Path 3 is the Capital Blueprint. The steps are what Chris says it walks you through
+     (marketing/offers/capital-blueprint-owner-definition-2026-10-14.md): which banks to open accounts with and where to
+     deposit, which cards to pay down, which items come off and go on the file, when you will be fundable, how your
+     business data points look to a bank, and an advisor who keeps you moving the right way. */
   var STEPS = [
     'Pay down balances in the right order',
+    'Open the right bank accounts, deposit in the right place',
     'Fix how your companies are set up',
     'Open or age companies',
     'Mail your optimization letters',
+    'Add what your file is missing',
+    'See when you\'ll be fundable, updated as you go',
+    'Check in with your advisor, who keeps you moving the right way',
     'File ready for funding'
   ];
-  var VALS = [100000, 130000, 180000, 250000, 320000, 400000];
+  var VALS = [100000, 125000, 150000, 180000, 215000, 250000, 290000, 330000, 370000, 400000];
   var MAX3 = 400000;
   var list3 = $('fhp-s3-steps');
   var steps = STEPS.map(function (s, i) {
