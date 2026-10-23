@@ -493,5 +493,111 @@
     },
     "purpose": "ToolMatch: a 3D tool board. Each credit situation gets its matching tool, one row at a time: the situation slides in on the left, a blue tool badge pops on the line between, and the tool's card hangs on the board at the right. Then one row lifts off the board and the others dim (with an optional chip, for example \"The hammer\"). An optional final card lands in front at the end, for example the roadmap and its price.",
     "data_tied": false
+  },
+  {
+    "id": "DeadlineClocks",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 120,
+    "default_props": {
+      "format": "vertical",
+      "side": "left",
+      "clocks": [
+        {
+          "lead": "Within",
+          "hours": 24,
+          "unit": "business hours",
+          "label": "A funding advisor starts on your file"
+        },
+        {
+          "lead": "Within",
+          "hours": 72,
+          "unit": "hours",
+          "label": "Your first applications go out"
+        }
+      ],
+      "guarantee": "If you qualify and we can't fund you, you don't pay.",
+      "transparent": false
+    },
+    "purpose": "DeadlineClocks (Unit N2, animation-builds-2026-10-22). Two time limits with a guarantee: two stopwatch cards (24 business hours, 72 hours) fill their rings and land, then the guarantee line comes in under them.",
+    "data_tied": false
+  },
+  {
+    "id": "DeadlineClocksWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 120,
+    "default_props": {
+      "format": "wide",
+      "side": "left",
+      "clocks": [
+        {
+          "lead": "Within",
+          "hours": 24,
+          "unit": "business hours",
+          "label": "A funding advisor starts on your file"
+        },
+        {
+          "lead": "Within",
+          "hours": 72,
+          "unit": "hours",
+          "label": "Your first applications go out"
+        }
+      ],
+      "guarantee": "If you qualify and we can't fund you, you don't pay.",
+      "transparent": false
+    },
+    "purpose": "DeadlineClocks (Unit N2, animation-builds-2026-10-22). Two time limits with a guarantee: two stopwatch cards (24 business hours, 72 hours) fill their rings and land, then the guarantee line comes in under them.",
+    "data_tied": false
+  },
+  {
+    "id": "FundingStack",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 120,
+    "default_props": {
+      "format": "vertical",
+      "side": "left",
+      "types": [
+        "Credit cards",
+        "Lines of credit",
+        "SBA loans",
+        "Merchant cash advances",
+        "Personal funding"
+      ],
+      "caption": "Stacked together at the lowest rates",
+      "transparent": false
+    },
+    "purpose": "FundingStack (Unit N2, animation-builds-2026-10-22). Funding types slide in from the sides one at a time and stack up, then the stack closes into one block with a single outline, and the caption comes in under it.",
+    "data_tied": false
+  },
+  {
+    "id": "FundingStackWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 120,
+    "default_props": {
+      "format": "wide",
+      "side": "left",
+      "types": [
+        "Credit cards",
+        "Lines of credit",
+        "SBA loans",
+        "Merchant cash advances",
+        "Personal funding"
+      ],
+      "caption": "Stacked together at the lowest rates",
+      "transparent": false
+    },
+    "purpose": "FundingStack (Unit N2, animation-builds-2026-10-22). Funding types slide in from the sides one at a time and stack up, then the stack closes into one block with a single outline, and the caption comes in under it.",
+    "data_tied": false
   }
 ]
