@@ -1,1 +1,20 @@
-{"format":"vertical","side":"left","eyebrow":null,"cards":[{"title":"Credit is that lever","line":null},{"title":"Only your own cash","line":"The slowest way to build wealth"}],"highlight":null,"tone":"info","layout":"stack","transparent":true,"durationInFrames":135}
+{
+ "format": "vertical",
+ "side": "left",
+ "eyebrow": null,
+ "cards": [
+  {
+   "title": "The one thing he figured out is how to leverage your credit correctly",
+   "line": null
+  }
+ ],
+ "highlight": null,
+ "tone": "info",
+ "layout": "stack",
+ "cardAt": [
+  0.0
+ ],
+ "pop": 8,
+ "transparent": true,
+ "durationInFrames": 75
+}

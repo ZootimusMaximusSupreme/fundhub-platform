@@ -1,226 +1,533 @@
 {
  "video": "Direct Book Ad 11 — The penthouse (1)",
- "mode": "overlay, behind him; words box also in front over hair",
  "width": 1080,
  "height": 1920,
  "fps": 30,
  "video_seconds": 53.84,
  "clips": [
   {
-   "n": 1,
+   "id": 1,
    "template": "PathCards",
    "clip": "01-PathCards.mov",
-   "start_s": 3.7,
+   "mode": "front",
+   "spot": "center, over the building B-roll",
+   "start_s": 3.699,
    "start_frame": 111,
-   "frames": 135,
-   "end_s": 8.2,
+   "render_frames": 88,
+   "total_frames": 153,
+   "hold_frames": 65,
+   "end_s": 8.8,
+   "cta": false,
+   "entrances": [
+    {
+     "text": "Your parents won't tell you",
+     "word": "your",
+     "word_t": 3.76,
+     "entrance_t": 3.76
+    },
+    {
+     "text": "Your friends won't",
+     "word": "your",
+     "word_t": 4.92,
+     "entrance_t": 4.92
+    },
+    {
+     "text": "Maybe not even your business partner",
+     "word": "maybe",
+     "word_t": 6.22,
+     "entrance_t": 6.22
+    }
+   ],
    "scale": 1.0,
-   "width_pct_of_frame": 86,
-   "words_x": 77,
-   "words_y": 330,
+   "words_x": 76,
+   "words_y": 470,
    "words_box_clip": [
     80,
     555,
-    1007,
-    1069
+    1008,
+    1071
    ],
    "words_on_video_box": [
-    77,
-    330,
+    76,
+    470,
     1004,
-    844
+    986
    ],
-   "dx": -3,
-   "dy": -225,
-   "front": false,
+   "width_pct_of_frame": 86,
+   "dx": -4,
+   "dy": -85,
    "front_rect": [
-    67,
-    320,
+    66,
+    460,
     1014,
-    854
+    996
    ],
-   "spot": "center, over the building B-roll (he is not on screen until 8.9 s)",
-   "why": "card 1 solid 0.7 s in (4.4 s) on 'your parents won't tell you' (3.8-4.6 s); card 2 about 5.3 s on 'your friends won't' (5.1-5.8 s); card 3 about 6.2 s on 'maybe not even your business partner' (6.1-7.2 s)"
+   "fade_out": true
   },
   {
-   "n": 2,
+   "id": 2,
    "template": "PriceTag",
    "clip": "02-PriceTag.mov",
-   "start_s": 10.3,
-   "start_frame": 309,
-   "frames": 90,
-   "end_s": 13.3,
-   "scale": 1.2,
-   "width_pct_of_frame": 68,
-   "words_x": 40,
-   "words_y": 10,
+   "mode": "behind",
+   "spot": "top, left",
+   "start_s": 10.5,
+   "start_frame": 315,
+   "render_frames": 90,
+   "total_frames": 58,
+   "hold_frames": 0,
+   "end_s": 12.45,
+   "cta": false,
+   "entrances": [
+    {
+     "text": "Penthouse $1,500,000",
+     "word": "one",
+     "word_t": 10.7,
+     "entrance_t": 10.7
+    }
+   ],
+   "scale": 1.1,
+   "words_x": 60,
+   "words_y": 20,
    "words_box_clip": [
     241,
     620,
-    856,
-    1023
+    857,
+    1025
    ],
    "words_on_video_box": [
-    40,
-    10,
-    778,
-    494
+    60,
+    20,
+    738,
+    466
    ],
-   "dx": -249,
-   "dy": -734,
-   "front": true,
+   "width_pct_of_frame": 63,
+   "dx": -205,
+   "dy": -662,
    "front_rect": [
-    30,
-    0,
-    788,
-    504
+    50,
+    10,
+    748,
+    476
    ],
-   "spot": "top, left",
-   "why": "tag settles 0.5 s in (10.8 s) on 'one and a half million' (10.8-11.7 s); held through 'dollar penthouse' (11.7-12.4 s) and 'he was struggling'"
+   "fade_out": true
   },
   {
-   "n": 3,
+   "id": 3,
    "template": "PathCards",
    "clip": "03-PathCards.mov",
-   "start_s": 19.2,
-   "start_frame": 576,
-   "frames": 105,
-   "end_s": 22.7,
-   "scale": 0.85,
-   "width_pct_of_frame": 73,
-   "words_x": 258,
-   "words_y": 12,
+   "mode": "behind",
+   "spot": "top",
+   "start_s": 12.556,
+   "start_frame": 377,
+   "render_frames": 135,
+   "total_frames": 189,
+   "hold_frames": 54,
+   "end_s": 18.85,
+   "cta": false,
+   "entrances": [
+    {
+     "text": "He was struggling",
+     "word": "he",
+     "word_t": 12.65,
+     "entrance_t": 12.65
+    },
+    {
+     "text": "Get his businesses off the ground",
+     "word": "to",
+     "word_t": 14.5,
+     "entrance_t": 14.5
+    },
+    {
+     "text": "Sitting in a penthouse he owned outright",
+     "word": "sitting",
+     "word_t": 16.9,
+     "entrance_t": 16.9
+    }
+   ],
+   "scale": 0.8,
+   "words_x": 300,
+   "words_y": 15,
+   "words_box_clip": [
+    81,
+    544,
+    1013,
+    1083
+   ],
+   "words_on_video_box": [
+    300,
+    15,
+    1046,
+    446
+   ],
+   "width_pct_of_frame": 69,
+   "dx": 235,
+   "dy": -420,
+   "front_rect": [
+    290,
+    5,
+    1056,
+    456
+   ],
+   "fade_out": true
+  },
+  {
+   "id": 4,
+   "template": "PathCards",
+   "clip": "04-PathCards.mov",
+   "mode": "behind",
+   "spot": "top, right",
+   "start_s": 19.538,
+   "start_frame": 586,
+   "render_frames": 89,
+   "total_frames": 149,
+   "hold_frames": 60,
+   "end_s": 24.5,
+   "cta": false,
+   "entrances": [
+    {
+     "text": "Cut out the distractions",
+     "word": "cut",
+     "word_t": 19.6,
+     "entrance_t": 19.6
+    },
+    {
+     "text": "Optimized his credit",
+     "word": "optimize",
+     "word_t": 20.8,
+     "entrance_t": 20.8
+    },
+    {
+     "text": "Put it to work alongside investors and credit partners",
+     "word": "put",
+     "word_t": 22.1,
+     "entrance_t": 22.1
+    }
+   ],
+   "scale": 0.8,
+   "words_x": 20,
+   "words_y": 20,
    "words_box_clip": [
     80,
     555,
-    1007,
-    1069
+    1008,
+    1071
    ],
    "words_on_video_box": [
-    258,
-    12,
-    1046,
-    449
+    20,
+    20,
+    762,
+    433
    ],
-   "dx": 190,
-   "dy": -460,
-   "front": true,
+   "width_pct_of_frame": 69,
+   "dx": -44,
+   "dy": -424,
    "front_rect": [
-    248,
-    2,
-    1056,
-    459
+    10,
+    10,
+    772,
+    443
    ],
-   "spot": "top, right",
-   "why": "card 1 at about 19.9 s on 'cut out the distractions' (19.5-20.4 s); card 2 about 20.8 s on 'optimize his credit' (20.7-21.6 s); card 3 about 21.7 s on 'put it to work alongside investors and credit partners' (21.9-24.0 s)"
+   "fade_out": true
   },
   {
-   "n": 4,
+   "id": 5,
    "template": "PriceTag",
-   "clip": "04-PriceTag.mov",
-   "start_s": 25.2,
-   "start_frame": 756,
-   "frames": 90,
+   "clip": "05-PriceTag.mov",
+   "mode": "behind",
+   "spot": "top, right",
+   "start_s": 25.25,
+   "start_frame": 758,
+   "render_frames": 90,
+   "total_frames": 88,
+   "hold_frames": 0,
    "end_s": 28.2,
+   "cta": false,
+   "entrances": [
+    {
+     "text": "His income, over $400,000 a month",
+     "word": "his",
+     "word_t": 25.45,
+     "entrance_t": 25.45
+    }
+   ],
    "scale": 0.8,
-   "width_pct_of_frame": 46,
    "words_x": 570,
-   "words_y": 25,
+   "words_y": 20,
    "words_box_clip": [
     241,
     571,
-    860,
-    1072
+    861,
+    1074
    ],
    "words_on_video_box": [
     570,
-    25,
-    1065,
-    426
+    20,
+    1066,
+    422
    ],
+   "width_pct_of_frame": 46,
    "dx": 377,
-   "dy": -432,
-   "front": true,
+   "dy": -437,
    "front_rect": [
     560,
-    15,
-    1075,
-    436
+    10,
+    1076,
+    432
    ],
-   "spot": "top, right",
-   "why": "tag settles 0.5 s in (25.7 s) on 'his income was over'; '$400,000 a month' on the tag while he says '$400,000' (26.4 s) and 'a month' (27.6 s)"
+   "fade_out": true
   },
   {
-   "n": 5,
-   "template": "PathCards",
-   "clip": "05-PathCards.mov",
-   "start_s": 34.0,
-   "start_frame": 1020,
-   "frames": 105,
-   "end_s": 37.5,
-   "scale": 1.0,
-   "width_pct_of_frame": 86,
-   "words_x": 70,
-   "words_y": 15,
-   "words_box_clip": [
-    81,
-    629,
-    1006,
-    996
-   ],
-   "words_on_video_box": [
-    70,
-    15,
-    995,
-    382
-   ],
-   "dx": -11,
-   "dy": -614,
-   "front": true,
-   "front_rect": [
-    60,
-    5,
-    1005,
-    392
-   ],
-   "spot": "top, full width",
-   "why": "card 1 at about 34.7 s on 'scale businesses' (33.6-34.5 s); card 2 about 35.6 s on 'most efficiently use other people's money' (35.3-37.3 s)"
-  },
-  {
-   "n": 6,
+   "id": 6,
    "template": "PathCards",
    "clip": "06-PathCards.mov",
-   "start_s": 39.9,
-   "start_frame": 1197,
-   "frames": 135,
-   "end_s": 44.4,
+   "mode": "front",
+   "spot": "chest band, in front of him",
+   "start_s": 28.248,
+   "start_frame": 847,
+   "render_frames": 75,
+   "total_frames": 89,
+   "hold_frames": 14,
+   "end_s": 31.2,
+   "cta": false,
+   "entrances": [
+    {
+     "text": "The one thing he figured out is how to leverage your credit correctly",
+     "word": "the",
+     "word_t": 28.3,
+     "entrance_t": 28.3
+    }
+   ],
    "scale": 1.0,
-   "width_pct_of_frame": 86,
-   "words_x": 118,
-   "words_y": 15,
+   "words_x": 77,
+   "words_y": 1215,
    "words_box_clip": [
     81,
-    639,
-    1006,
-    986
+    699,
+    1007,
+    926
    ],
    "words_on_video_box": [
-    118,
-    15,
-    1043,
-    362
+    77,
+    1215,
+    1003,
+    1442
    ],
-   "dx": 37,
-   "dy": -624,
-   "front": true,
+   "width_pct_of_frame": 86,
+   "dx": -4,
+   "dy": 516,
    "front_rect": [
-    108,
-    5,
-    1053,
+    67,
+    1205,
+    1013,
+    1452
+   ],
+   "fade_out": true
+  },
+  {
+   "id": 7,
+   "template": "PathCards",
+   "clip": "07-PathCards.mov",
+   "mode": "behind",
+   "spot": "top",
+   "start_s": 31.223,
+   "start_frame": 937,
+   "render_frames": 111,
+   "total_frames": 182,
+   "hold_frames": 71,
+   "end_s": 37.3,
+   "cta": false,
+   "entrances": [
+    {
+     "text": "Plenty of people up here run companies and scale businesses",
+     "word": "I",
+     "word_t": 31.3,
+     "entrance_t": 31.3
+    },
+    {
+     "text": "Once you do it most efficiently, use other people's money",
+     "word": "and",
+     "word_t": 34.55,
+     "entrance_t": 34.55
+    }
+   ],
+   "scale": 0.9,
+   "words_x": 200,
+   "words_y": 20,
+   "words_box_clip": [
+    80,
+    603,
+    1007,
+    1023
+   ],
+   "words_on_video_box": [
+    200,
+    20,
+    1034,
+    398
+   ],
+   "width_pct_of_frame": 77,
+   "dx": 128,
+   "dy": -523,
+   "front_rect": [
+    190,
+    10,
+    1044,
+    408
+   ],
+   "fade_out": true
+  },
+  {
+   "id": 8,
+   "template": "PathCards",
+   "clip": "08-PathCards.mov",
+   "mode": "front",
+   "spot": "chest band, in front of him",
+   "start_s": 37.348,
+   "start_frame": 1120,
+   "render_frames": 75,
+   "total_frames": 86,
+   "hold_frames": 11,
+   "end_s": 40.2,
+   "cta": false,
+   "entrances": [
+    {
+     "text": "Give me a lever long enough and I can move the world",
+     "word": "give",
+     "word_t": 37.4,
+     "entrance_t": 37.4
+    }
+   ],
+   "scale": 1.0,
+   "words_x": 77,
+   "words_y": 1260,
+   "words_box_clip": [
+    81,
+    725,
+    1006,
+    900
+   ],
+   "words_on_video_box": [
+    77,
+    1260,
+    1002,
+    1435
+   ],
+   "width_pct_of_frame": 86,
+   "dx": -4,
+   "dy": 535,
+   "front_rect": [
+    67,
+    1250,
+    1012,
+    1445
+   ],
+   "fade_out": true
+  },
+  {
+   "id": 9,
+   "template": "PathCards",
+   "clip": "09-PathCards.mov",
+   "mode": "behind",
+   "spot": "top",
+   "start_s": 40.248,
+   "start_frame": 1207,
+   "render_frames": 75,
+   "total_frames": 131,
+   "hold_frames": 56,
+   "end_s": 44.6,
+   "cta": false,
+   "entrances": [
+    {
+     "text": "Credit is that lever",
+     "word": "credit",
+     "word_t": 40.3,
+     "entrance_t": 40.3
+    },
+    {
+     "text": "And building with only your own cash is the slowest way to build wealth",
+     "word": "and",
+     "word_t": 41.25,
+     "entrance_t": 41.25
+    }
+   ],
+   "scale": 0.9,
+   "words_x": 15,
+   "words_y": 15,
+   "words_box_clip": [
+    80,
+    614,
+    1007,
+    1011
+   ],
+   "words_on_video_box": [
+    15,
+    15,
+    849,
     372
    ],
-   "spot": "top, full width",
-   "why": "card 1 solid at about 40.6 s on 'credit is that lever' (40.2-41.2 s); card 2 about 41.5 s on 'building with only your own cash' (41.3-43.0 s), subline 'the slowest way to build wealth' (43.3-44.3 s)"
+   "width_pct_of_frame": 77,
+   "dx": -57,
+   "dy": -538,
+   "front_rect": [
+    5,
+    5,
+    859,
+    382
+   ],
+   "fade_out": true
+  },
+  {
+   "id": 10,
+   "template": "PathCards",
+   "clip": "10-PathCards.mov",
+   "mode": "behind",
+   "spot": "top (CTA, stays to the end)",
+   "start_s": 44.686,
+   "start_frame": 1341,
+   "render_frames": 92,
+   "total_frames": 275,
+   "hold_frames": 183,
+   "end_s": 53.84,
+   "cta": true,
+   "entrances": [
+    {
+     "text": "Click the link below",
+     "word": "click",
+     "word_t": 44.75,
+     "entrance_t": 44.75
+    },
+    {
+     "text": "We'll walk you through how to optimize it and how to get your own funding",
+     "word": "we'll",
+     "word_t": 47.35,
+     "entrance_t": 47.35
+    }
+   ],
+   "scale": 0.9,
+   "words_x": 120,
+   "words_y": 15,
+   "words_box_clip": [
+    80,
+    614,
+    1007,
+    1011
+   ],
+   "words_on_video_box": [
+    120,
+    15,
+    954,
+    372
+   ],
+   "width_pct_of_frame": 77,
+   "dx": 48,
+   "dy": -538,
+   "front_rect": [
+    110,
+    5,
+    964,
+    382
+   ],
+   "fade_out": false
   }
  ]
 }

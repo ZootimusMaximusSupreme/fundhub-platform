@@ -1,18 +1,20 @@
-import json,subprocess,sys
+import json,subprocess
 from PIL import Image,ImageDraw,ImageFont
 FF='/Users/chrisstanbridge/.local/bin/ffmpeg'
 V="/Users/chrisstanbridge/Downloads/Direct Book Ad 11 — The penthouse (1) Animated.mp4"
-S=json.load(open('/Users/chrisstanbridge/Developer/fundhub-platform/.claude/worktrees/ad11-anim/marketing/ads/animation-plans/direct-book-ad-11-penthouse-2026-10-23/schedule.json'))
-BOX={c['n']:c['words_on_video_box'] for c in S['clips']}; PCT={c['n']:c['width_pct_of_frame'] for c in S['clips']}
-SH=[(1,6.6,"1 PathCards, hook (parents/friends/partner)"),(2,11.4,"2 PriceTag $1.5M penthouse"),(3,22.0,"3 PathCards: his three steps"),(4,26.8,"4 PriceTag: $400,000 a month"),(5,36.2,"5 PathCards: other people's money"),(6,42.0,"6 PathCards: credit is that lever")]
-TW,TH=432,768; f=ImageFont.load_default(size=16); tiles=[]
+S=json.load(open('/Users/chrisstanbridge/Developer/fundhub-platform/.claude/worktrees/ad11-anim/marketing/ads/animation-plans/direct-book-ad-11-penthouse-2026-10-23/schedule.json'))['clips']
+BOX={c['id']:c['words_on_video_box'] for c in S}; PCT={c['id']:c['width_pct_of_frame'] for c in S}; MODE={c['id']:c['mode'] for c in S}
+SH=[(1,7.3,"1 hook cards (over B-roll)"),(2,11.9,"2 tag: penthouse"),(3,17.6,"3 he was struggling"),(4,23.2,"4 his three steps"),(5,27.2,"5 tag: $400,000 a month"),(6,29.9,"6 leverage (in front, chest)"),
+ (7,36.5,"7 other people's money"),(8,39.0,"8 lever quote (in front, chest)"),(9,43.5,"9 credit is that lever"),(10,45.6,"10 CTA: click the link below"),(10,52.5,"10 CTA at the end (still up)")]
+TW,TH=324,576; f=ImageFont.load_default(size=14); tiles=[]
 for n,t,l in SH:
-    subprocess.run([FF,'-hide_banner','-loglevel','error','-y','-ss',str(t),'-i',V,'-frames:v','1',f'cs_{n}.png'],check=True)
-    raw=Image.open(f'cs_{n}.png').convert('RGB').resize((TW,TH-24)); im=Image.new('RGB',(TW,TH),(20,20,20)); im.paste(raw,(0,24)); d=ImageDraw.Draw(im); k=TW/1080*(TH-24)/768*768/ (TH-24)*(TH-24)/ (TW/1080*1920) if False else (TH-24)/1920
-    x0,y0,x1,y1=BOX[n]; kx=TW/1080; d.rectangle([x0*kx-3,24+y0*k-3,x1*kx+3,24+y1*k+3],outline=(230,30,30),width=3)
-    d.text((5,3),f"{l} - {PCT[n]}% wide",fill=(255,255,255),font=f); tiles.append(im)
-sh=Image.new('RGB',(TW*3,TH*2+60),(0,0,0))
-for i,im in enumerate(tiles): sh.paste(im,((i%3)*TW,(i//3)*TH))
-d=ImageDraw.Draw(sh); d.text((10,TH*2+8),"Red box = words of that animation (width % of frame in the title). Words stay off his face and above the captions; plates sit behind him, words box may cover hair. No Fundhub line, so no logo.",fill=(255,255,255),font=f)
-d.text((10,TH*2+32),"Frames taken at the payoff of each animation, captions visible.",fill=(255,255,255),font=f)
+    subprocess.run([FF,'-hide_banner','-loglevel','error','-y','-ss',str(t),'-i',V,'-frames:v','1','cs_t.png'],check=True)
+    raw=Image.open('cs_t.png').convert('RGB').resize((TW,TH-22)); im=Image.new('RGB',(TW,TH),(20,20,20)); im.paste(raw,(0,22)); d=ImageDraw.Draw(im)
+    kx=TW/1080; ky=(TH-22)/1920; x0,y0,x1,y1=BOX[n]; d.rectangle([x0*kx-2,22+y0*ky-2,x1*kx+2,22+y1*ky+2],outline=(230,30,30),width=2)
+    d.text((4,3),f"{l} - {PCT[n]}% wide",fill=(255,255,255),font=f); tiles.append(im)
+cols=4; rows=3
+sh=Image.new('RGB',(TW*cols,TH*rows),(0,0,0))
+for i,im in enumerate(tiles): sh.paste(im,((i%cols)*TW,(i//cols)*TH))
+d=ImageDraw.Draw(sh); x=(len(tiles)%cols)*TW+10; y=(len(tiles)//cols)*TH+10
+for j,line in enumerate(["Legend","Red box = the words of that animation","(width % of the frame in the title).","Words stay off his face and above","the captions. 6 and 8 sit IN FRONT of","his body (chest band). The rest sit above","his head and cover only hair.","1 is over the B-roll (he is not on screen).","CTA (10) stays up to the last frame.","No Fundhub line, so no logo.","Frames taken once every card is in."]): d.text((x,y+j*20),line,fill=(255,255,255),font=f)
 sh.save('contact-sheet-final.jpg',quality=82,optimize=True)

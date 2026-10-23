@@ -1,0 +1,25 @@
+{
+ "format": "vertical",
+ "side": "left",
+ "eyebrow": null,
+ "cards": [
+  {
+   "title": "Click the link below",
+   "line": null
+  },
+  {
+   "title": "We'll walk you through how to optimize it and how to get your own funding",
+   "line": null
+  }
+ ],
+ "highlight": null,
+ "tone": "info",
+ "layout": "stack",
+ "cardAt": [
+  0.0,
+  81.391
+ ],
+ "pop": 8,
+ "transparent": true,
+ "durationInFrames": 92
+}

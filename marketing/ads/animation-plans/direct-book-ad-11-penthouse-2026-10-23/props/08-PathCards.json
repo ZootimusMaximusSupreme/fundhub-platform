@@ -1,0 +1,20 @@
+{
+ "format": "vertical",
+ "side": "left",
+ "eyebrow": null,
+ "cards": [
+  {
+   "title": "Give me a lever long enough and I can move the world",
+   "line": null
+  }
+ ],
+ "highlight": null,
+ "tone": "info",
+ "layout": "stack",
+ "cardAt": [
+  0.0
+ ],
+ "pop": 8,
+ "transparent": true,
+ "durationInFrames": 75
+}

@@ -1,1 +1,30 @@
-{"format":"vertical","side":"left","eyebrow":null,"cards":[{"title":"Cut out the distractions","line":null},{"title":"Optimized his credit","line":null},{"title":"Put it to work alongside investors and credit partners","line":null}],"highlight":null,"tone":"info","layout":"stack","transparent":true,"durationInFrames":105}
+{
+ "format": "vertical",
+ "side": "left",
+ "eyebrow": null,
+ "cards": [
+  {
+   "title": "He was struggling",
+   "line": null
+  },
+  {
+   "title": "Get his businesses off the ground",
+   "line": null
+  },
+  {
+   "title": "Sitting in a penthouse he owned outright",
+   "line": null
+  }
+ ],
+ "highlight": null,
+ "tone": "info",
+ "layout": "stack",
+ "cardAt": [
+  0.0,
+  39.467,
+  90.667
+ ],
+ "pop": 8,
+ "transparent": true,
+ "durationInFrames": 135
+}

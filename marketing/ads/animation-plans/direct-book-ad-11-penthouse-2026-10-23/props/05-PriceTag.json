@@ -1,0 +1,18 @@
+{
+ "format": "vertical",
+ "side": "left",
+ "transparent": true,
+ "durationInFrames": 90,
+ "eyebrow": null,
+ "tag": {
+  "amount": 400000,
+  "upTo": null,
+  "per": "a month",
+  "label": "His income, over"
+ },
+ "second": null,
+ "pileLabel": null,
+ "pile": [],
+ "pileCount": 0,
+ "subline": null
+}

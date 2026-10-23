@@ -1,0 +1,276 @@
+[
+ {
+  "id": 1,
+  "template": "PathCards",
+  "clip": "01-PathCards.mov",
+  "mode": "front",
+  "spot": "center, over the building B-roll",
+  "start_s": 3.699,
+  "start_frame": 111,
+  "render_frames": 88,
+  "total_frames": 153,
+  "hold_frames": 65,
+  "end_s": 8.8,
+  "cta": false,
+  "entrances": [
+   {
+    "text": "Your parents won't tell you",
+    "word": "your",
+    "word_t": 3.76,
+    "entrance_t": 3.76
+   },
+   {
+    "text": "Your friends won't",
+    "word": "your",
+    "word_t": 4.92,
+    "entrance_t": 4.92
+   },
+   {
+    "text": "Maybe not even your business partner",
+    "word": "maybe",
+    "word_t": 6.22,
+    "entrance_t": 6.22
+   }
+  ]
+ },
+ {
+  "id": 2,
+  "template": "PriceTag",
+  "clip": "02-PriceTag.mov",
+  "mode": "behind",
+  "spot": "top, left",
+  "start_s": 10.5,
+  "start_frame": 315,
+  "render_frames": 90,
+  "total_frames": 58,
+  "hold_frames": 0,
+  "end_s": 12.45,
+  "cta": false,
+  "entrances": [
+   {
+    "text": "Penthouse $1,500,000",
+    "word": "one",
+    "word_t": 10.7,
+    "entrance_t": 10.7
+   }
+  ]
+ },
+ {
+  "id": 3,
+  "template": "PathCards",
+  "clip": "03-PathCards.mov",
+  "mode": "behind",
+  "spot": "top",
+  "start_s": 12.556,
+  "start_frame": 377,
+  "render_frames": 135,
+  "total_frames": 189,
+  "hold_frames": 54,
+  "end_s": 18.85,
+  "cta": false,
+  "entrances": [
+   {
+    "text": "He was struggling",
+    "word": "he",
+    "word_t": 12.65,
+    "entrance_t": 12.65
+   },
+   {
+    "text": "Get his businesses off the ground",
+    "word": "to",
+    "word_t": 14.5,
+    "entrance_t": 14.5
+   },
+   {
+    "text": "Sitting in a penthouse he owned outright",
+    "word": "sitting",
+    "word_t": 16.9,
+    "entrance_t": 16.9
+   }
+  ]
+ },
+ {
+  "id": 4,
+  "template": "PathCards",
+  "clip": "04-PathCards.mov",
+  "mode": "behind",
+  "spot": "top, right",
+  "start_s": 19.538,
+  "start_frame": 586,
+  "render_frames": 89,
+  "total_frames": 149,
+  "hold_frames": 60,
+  "end_s": 24.5,
+  "cta": false,
+  "entrances": [
+   {
+    "text": "Cut out the distractions",
+    "word": "cut",
+    "word_t": 19.6,
+    "entrance_t": 19.6
+   },
+   {
+    "text": "Optimized his credit",
+    "word": "optimize",
+    "word_t": 20.8,
+    "entrance_t": 20.8
+   },
+   {
+    "text": "Put it to work alongside investors and credit partners",
+    "word": "put",
+    "word_t": 22.1,
+    "entrance_t": 22.1
+   }
+  ]
+ },
+ {
+  "id": 5,
+  "template": "PriceTag",
+  "clip": "05-PriceTag.mov",
+  "mode": "behind",
+  "spot": "top, right",
+  "start_s": 25.25,
+  "start_frame": 758,
+  "render_frames": 90,
+  "total_frames": 88,
+  "hold_frames": 0,
+  "end_s": 28.2,
+  "cta": false,
+  "entrances": [
+   {
+    "text": "His income, over $400,000 a month",
+    "word": "his",
+    "word_t": 25.45,
+    "entrance_t": 25.45
+   }
+  ]
+ },
+ {
+  "id": 6,
+  "template": "PathCards",
+  "clip": "06-PathCards.mov",
+  "mode": "front",
+  "spot": "chest band, in front of him",
+  "start_s": 28.248,
+  "start_frame": 847,
+  "render_frames": 75,
+  "total_frames": 89,
+  "hold_frames": 14,
+  "end_s": 31.2,
+  "cta": false,
+  "entrances": [
+   {
+    "text": "The one thing he figured out is how to leverage your credit correctly",
+    "word": "the",
+    "word_t": 28.3,
+    "entrance_t": 28.3
+   }
+  ]
+ },
+ {
+  "id": 7,
+  "template": "PathCards",
+  "clip": "07-PathCards.mov",
+  "mode": "behind",
+  "spot": "top",
+  "start_s": 31.223,
+  "start_frame": 937,
+  "render_frames": 111,
+  "total_frames": 182,
+  "hold_frames": 71,
+  "end_s": 37.3,
+  "cta": false,
+  "entrances": [
+   {
+    "text": "Plenty of people up here run companies and scale businesses",
+    "word": "I",
+    "word_t": 31.3,
+    "entrance_t": 31.3
+   },
+   {
+    "text": "Once you do it most efficiently, use other people's money",
+    "word": "and",
+    "word_t": 34.55,
+    "entrance_t": 34.55
+   }
+  ]
+ },
+ {
+  "id": 8,
+  "template": "PathCards",
+  "clip": "08-PathCards.mov",
+  "mode": "front",
+  "spot": "chest band, in front of him",
+  "start_s": 37.348,
+  "start_frame": 1120,
+  "render_frames": 75,
+  "total_frames": 86,
+  "hold_frames": 11,
+  "end_s": 40.2,
+  "cta": false,
+  "entrances": [
+   {
+    "text": "Give me a lever long enough and I can move the world",
+    "word": "give",
+    "word_t": 37.4,
+    "entrance_t": 37.4
+   }
+  ]
+ },
+ {
+  "id": 9,
+  "template": "PathCards",
+  "clip": "09-PathCards.mov",
+  "mode": "behind",
+  "spot": "top",
+  "start_s": 40.248,
+  "start_frame": 1207,
+  "render_frames": 75,
+  "total_frames": 131,
+  "hold_frames": 56,
+  "end_s": 44.6,
+  "cta": false,
+  "entrances": [
+   {
+    "text": "Credit is that lever",
+    "word": "credit",
+    "word_t": 40.3,
+    "entrance_t": 40.3
+   },
+   {
+    "text": "And building with only your own cash is the slowest way to build wealth",
+    "word": "and",
+    "word_t": 41.25,
+    "entrance_t": 41.25
+   }
+  ]
+ },
+ {
+  "id": 10,
+  "template": "PathCards",
+  "clip": "10-PathCards.mov",
+  "mode": "behind",
+  "spot": "top (CTA, stays to the end)",
+  "start_s": 44.686,
+  "start_frame": 1341,
+  "render_frames": 92,
+  "total_frames": 275,
+  "hold_frames": 183,
+  "end_s": 53.84,
+  "cta": true,
+  "entrances": [
+   {
+    "text": "Click the link below",
+    "word": "click",
+    "word_t": 44.75,
+    "entrance_t": 44.75
+   },
+   {
+    "text": "We'll walk you through how to optimize it and how to get your own funding",
+    "word": "we'll",
+    "word_t": 47.35,
+    "entrance_t": 47.35
+   }
+  ]
+ }
+]
