@@ -1,51 +1,49 @@
 {
- "video": "Direct Book Ad 11 — The penthouse",
- "source": "whisper small.en on the audio (words-timeline.txt); numbers and 'a month' confirmed on the burned-in captions",
+ "video": "Direct Book Ad 11 — The penthouse (1), 53.84 s",
+ "source": "whisper small.en on this file's audio (words-timeline.txt); numbers confirmed on the burned-in captions",
  "anchors": [
   {
    "n": 1,
-   "template": "PriceTag",
-   "phrase": "a $1.5 million penthouse, and he was struggling",
-   "start_s": 11.9,
-   "end_s": 14.1,
-   "planned_start_s": 17.41,
-   "note": "filmed words differ from the script: 'one and a half million dollar penthouse', 'a month' (script says 'a year'); the Archimedes quote was not filmed"
+   "template": "PathCards",
+   "phrase": "Your parents won't tell you, your friends won't, maybe not even your business partner",
+   "start_s": 3.5,
+   "end_s": 7.2
   },
   {
    "n": 2,
-   "template": "StepPath",
-   "phrase": "He optimized his credit, then put it to work alongside investors and credit partners",
-   "start_s": 24.4,
-   "end_s": 29.7,
-   "planned_start_s": 32.59,
-   "note": "filmed words differ from the script: 'one and a half million dollar penthouse', 'a month' (script says 'a year'); the Archimedes quote was not filmed"
+   "template": "PriceTag",
+   "phrase": "a one and a half million dollar penthouse, and he was struggling",
+   "start_s": 10.8,
+   "end_s": 13.7
   },
   {
    "n": 3,
-   "template": "MoneyClimb",
-   "phrase": "was over $400,000 a year",
-   "start_s": 31.9,
-   "end_s": 35.4,
-   "planned_start_s": 40.0,
-   "note": "filmed words differ from the script: 'one and a half million dollar penthouse', 'a month' (script says 'a year'); the Archimedes quote was not filmed"
+   "template": "PathCards",
+   "phrase": "cut out the distractions, optimize his credit, then put it to work alongside investors and credit partners",
+   "start_s": 19.5,
+   "end_s": 24.0
   },
   {
    "n": 4,
-   "template": "CompanyLine",
-   "phrase": "who do it most efficiently use other people's money",
-   "start_s": 47.1,
-   "end_s": 49.9,
-   "planned_start_s": 52.59,
-   "note": "filmed words differ from the script: 'one and a half million dollar penthouse', 'a month' (script says 'a year'); the Archimedes quote was not filmed"
+   "template": "PriceTag",
+   "phrase": "within six months his income was over $400,000 a month",
+   "start_s": 24.7,
+   "end_s": 27.9
   },
   {
    "n": 5,
    "template": "PathCards",
-   "phrase": "Credit is that lever, and building with only your own cash",
-   "start_s": 54.1,
-   "end_s": 58.8,
-   "planned_start_s": 61.11,
-   "note": "filmed words differ from the script: 'one and a half million dollar penthouse', 'a month' (script says 'a year'); the Archimedes quote was not filmed"
+   "phrase": "run companies and scale businesses ... most efficiently use other people's money",
+   "start_s": 32.8,
+   "end_s": 37.3
+  },
+  {
+   "n": 6,
+   "template": "PathCards",
+   "phrase": "Credit is that lever, and building with only your own cash is the slowest way to build wealth",
+   "start_s": 40.2,
+   "end_s": 44.3
   }
- ]
+ ],
+ "note": "Filmed words differ from the script: 'one and a half million dollar penthouse', 'a month' (script: 'a year'); Archimedes lines not filmed. He first appears on camera at 8.9 s; 0-8.9 s is building B-roll."
 }

@@ -1,150 +1,226 @@
 {
- "video": "Direct Book Ad 11 — The penthouse",
- "mode": "overlay (see-through), behind him (person cut-out laid back on top)",
+ "video": "Direct Book Ad 11 — The penthouse (1)",
+ "mode": "overlay, behind him; words box also in front over hair",
  "width": 1080,
  "height": 1920,
  "fps": 30,
- "video_seconds": 69.8,
+ "video_seconds": 53.84,
  "clips": [
   {
    "n": 1,
-   "template": "PriceTag",
-   "clip": "01-PriceTag.mov",
-   "start_s": 12.3,
-   "start_frame": 369,
-   "frames": 90,
-   "end_s": 15.3,
-   "scale": 0.41,
-   "words_x": 817,
-   "words_y": 835,
+   "template": "PathCards",
+   "clip": "01-PathCards.mov",
+   "start_s": 3.7,
+   "start_frame": 111,
+   "frames": 135,
+   "end_s": 8.2,
+   "scale": 1.0,
+   "width_pct_of_frame": 86,
+   "words_x": 77,
+   "words_y": 330,
    "words_box_clip": [
-    243,
-    485,
-    860,
-    1135
+    80,
+    555,
+    1007,
+    1069
    ],
    "words_on_video_box": [
-    817,
-    835,
-    1070,
-    1102
+    77,
+    330,
+    1004,
+    844
    ],
-   "dx": 717,
-   "dy": 636,
-   "spot": "right, lower middle",
-   "why": "tag settles 0.5 s in (12.8 s) on 'dollar penthouse' (12.8-13.1 s); 'He was struggling' appears 1.6 s in (13.9 s), on 'struggling' (13.9 s)"
+   "dx": -3,
+   "dy": -225,
+   "front": false,
+   "front_rect": [
+    67,
+    320,
+    1014,
+    854
+   ],
+   "spot": "center, over the building B-roll (he is not on screen until 8.9 s)",
+   "why": "card 1 solid 0.7 s in (4.4 s) on 'your parents won't tell you' (3.8-4.6 s); card 2 about 5.3 s on 'your friends won't' (5.1-5.8 s); card 3 about 6.2 s on 'maybe not even your business partner' (6.1-7.2 s)"
   },
   {
    "n": 2,
-   "template": "StepPath",
-   "clip": "02-StepPath.mov",
-   "start_s": 25.3,
-   "start_frame": 759,
+   "template": "PriceTag",
+   "clip": "02-PriceTag.mov",
+   "start_s": 10.3,
+   "start_frame": 309,
    "frames": 90,
-   "end_s": 28.3,
-   "scale": 0.31,
-   "words_x": 14,
-   "words_y": 273,
+   "end_s": 13.3,
+   "scale": 1.2,
+   "width_pct_of_frame": 68,
+   "words_x": 40,
+   "words_y": 10,
    "words_box_clip": [
-    150,
+    241,
     620,
-    865,
-    1000
+    856,
+    1023
    ],
    "words_on_video_box": [
-    14,
-    273,
-    236,
-    391
+    40,
+    10,
+    778,
+    494
    ],
-   "dx": -32,
-   "dy": 81,
-   "spot": "left, top",
-   "why": "step 1 lights 0.5 s in (25.8 s) on 'his credit' (25.6-26.0 s); step 2 lights 2.0 s in (27.3 s) on 'put it to work' (27.1-27.5 s)"
+   "dx": -249,
+   "dy": -734,
+   "front": true,
+   "front_rect": [
+    30,
+    0,
+    788,
+    504
+   ],
+   "spot": "top, left",
+   "why": "tag settles 0.5 s in (10.8 s) on 'one and a half million' (10.8-11.7 s); held through 'dollar penthouse' (11.7-12.4 s) and 'he was struggling'"
   },
   {
    "n": 3,
-   "template": "MoneyClimb",
-   "clip": "03-MoneyClimb.mov",
-   "start_s": 30.0,
-   "start_frame": 900,
-   "frames": 120,
-   "end_s": 34.0,
-   "scale": 0.45,
-   "words_x": 757,
-   "words_y": 275,
+   "template": "PathCards",
+   "clip": "03-PathCards.mov",
+   "start_s": 19.2,
+   "start_frame": 576,
+   "frames": 105,
+   "end_s": 22.7,
+   "scale": 0.85,
+   "width_pct_of_frame": 73,
+   "words_x": 258,
+   "words_y": 12,
    "words_box_clip": [
-    120,
-    400,
-    805,
-    1000
+    80,
+    555,
+    1007,
+    1069
    ],
    "words_on_video_box": [
-    757,
-    275,
-    1065,
-    545
+    258,
+    12,
+    1046,
+    449
    ],
-   "dx": 703,
-   "dy": 95,
-   "spot": "right, top",
-   "why": "'Within six months' at 30.0 s on 'within six months' (29.9-30.5 s); count reaches $400,000 at 2.6 s in (32.6 s) on '$400,000' (32.6 s); 'a month' printed at 2.7 s (32.7 s), said at 34.8 s"
+   "dx": 190,
+   "dy": -460,
+   "front": true,
+   "front_rect": [
+    248,
+    2,
+    1056,
+    459
+   ],
+   "spot": "top, right",
+   "why": "card 1 at about 19.9 s on 'cut out the distractions' (19.5-20.4 s); card 2 about 20.8 s on 'optimize his credit' (20.7-21.6 s); card 3 about 21.7 s on 'put it to work alongside investors and credit partners' (21.9-24.0 s)"
   },
   {
    "n": 4,
-   "template": "CompanyLine",
-   "clip": "04-CompanyLine.mov",
-   "start_s": 46.5,
-   "start_frame": 1395,
-   "frames": 105,
-   "end_s": 50.0,
-   "scale": 0.42,
-   "words_x": 680,
-   "words_y": 272,
+   "template": "PriceTag",
+   "clip": "04-PriceTag.mov",
+   "start_s": 25.2,
+   "start_frame": 756,
+   "frames": 90,
+   "end_s": 28.2,
+   "scale": 0.8,
+   "width_pct_of_frame": 46,
+   "words_x": 570,
+   "words_y": 25,
    "words_box_clip": [
-    75,
-    405,
-    1000,
-    660
+    241,
+    571,
+    860,
+    1072
    ],
    "words_on_video_box": [
-    680,
-    272,
-    1068,
-    379
+    570,
+    25,
+    1065,
+    426
    ],
-   "dx": 648,
-   "dy": 102,
-   "spot": "right, top",
-   "why": "headline up 0.3 s in (46.8 s), the whole line on screen while he says 'the ones who do it most efficiently use other people's money' (47.0-49.9 s)"
+   "dx": 377,
+   "dy": -432,
+   "front": true,
+   "front_rect": [
+    560,
+    15,
+    1075,
+    436
+   ],
+   "spot": "top, right",
+   "why": "tag settles 0.5 s in (25.7 s) on 'his income was over'; '$400,000 a month' on the tag while he says '$400,000' (26.4 s) and 'a month' (27.6 s)"
   },
   {
    "n": 5,
    "template": "PathCards",
    "clip": "05-PathCards.mov",
-   "start_s": 54.2,
-   "start_frame": 1626,
-   "frames": 120,
-   "end_s": 58.2,
-   "scale": 0.34,
-   "words_x": 758,
-   "words_y": 955,
+   "start_s": 34.0,
+   "start_frame": 1020,
+   "frames": 105,
+   "end_s": 37.5,
+   "scale": 1.0,
+   "width_pct_of_frame": 86,
+   "words_x": 70,
+   "words_y": 15,
    "words_box_clip": [
-    86,
-    640,
-    1000,
-    990
+    81,
+    629,
+    1006,
+    996
    ],
    "words_on_video_box": [
-    758,
-    955,
-    1069,
-    1074
+    70,
+    15,
+    995,
+    382
    ],
-   "dx": 729,
-   "dy": 737,
-   "spot": "right, lower middle",
-   "why": "card 1 solid 0.7 s in (54.9 s) on 'credit is that lever' (54.1-55.1 s); card 2 lands 1.6 s in (55.8 s) on 'building with only your own cash' (55.3-56.7 s)"
+   "dx": -11,
+   "dy": -614,
+   "front": true,
+   "front_rect": [
+    60,
+    5,
+    1005,
+    392
+   ],
+   "spot": "top, full width",
+   "why": "card 1 at about 34.7 s on 'scale businesses' (33.6-34.5 s); card 2 about 35.6 s on 'most efficiently use other people's money' (35.3-37.3 s)"
+  },
+  {
+   "n": 6,
+   "template": "PathCards",
+   "clip": "06-PathCards.mov",
+   "start_s": 39.9,
+   "start_frame": 1197,
+   "frames": 135,
+   "end_s": 44.4,
+   "scale": 1.0,
+   "width_pct_of_frame": 86,
+   "words_x": 118,
+   "words_y": 15,
+   "words_box_clip": [
+    81,
+    639,
+    1006,
+    986
+   ],
+   "words_on_video_box": [
+    118,
+    15,
+    1043,
+    362
+   ],
+   "dx": 37,
+   "dy": -624,
+   "front": true,
+   "front_rect": [
+    108,
+    5,
+    1053,
+    372
+   ],
+   "spot": "top, full width",
+   "why": "card 1 solid at about 40.6 s on 'credit is that lever' (40.2-41.2 s); card 2 about 41.5 s on 'building with only your own cash' (41.3-43.0 s), subline 'the slowest way to build wealth' (43.3-44.3 s)"
   }
  ]
 }
