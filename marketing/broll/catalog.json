@@ -1442,5 +1442,109 @@
     },
     "purpose": "CalendarStrip (Unit N7, ops/workflows/animation-builds-2026-10-22.md): a strip of days fills across, the window of days lights up in blue, and the money lands in the account at the end.",
     "data_tied": false
+  },
+  {
+    "id": "StampCard",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 120,
+    "default_props": {
+      "format": "vertical",
+      "side": "left",
+      "object": "document",
+      "eyebrow": null,
+      "title": "Credit sweep",
+      "amount": null,
+      "paidCheck": false,
+      "stamp": "Illegal",
+      "stampSub": null,
+      "tone": "bad",
+      "drain": [],
+      "subline": "puts your whole file and your freedom at risk",
+      "transparent": false
+    },
+    "purpose": "StampCard (unit N5, ops/workflows/animation-builds-2026-10-22.md). A document, a card, a file or an invoice lands, and a rubber stamp slams onto it: \"Illegal\", \"Closed\", \"Approved\", \"Denied\" or \"$0\". An optional row of bars drains away after the stamp (a closed card losing its history and its limit).",
+    "data_tied": false
+  },
+  {
+    "id": "StampCardWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 120,
+    "default_props": {
+      "format": "wide",
+      "side": "left",
+      "object": "document",
+      "eyebrow": null,
+      "title": "Credit sweep",
+      "amount": null,
+      "paidCheck": false,
+      "stamp": "Illegal",
+      "stampSub": null,
+      "tone": "bad",
+      "drain": [],
+      "subline": "puts your whole file and your freedom at risk",
+      "transparent": false
+    },
+    "purpose": "StampCard (unit N5, ops/workflows/animation-builds-2026-10-22.md). A document, a card, a file or an invoice lands, and a rubber stamp slams onto it: \"Illegal\", \"Closed\", \"Approved\", \"Denied\" or \"$0\". An optional row of bars drains away after the stamp (a closed card losing its history and its limit).",
+    "data_tied": false
+  },
+  {
+    "id": "PriceTag",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 120,
+    "default_props": {
+      "format": "vertical",
+      "side": "left",
+      "eyebrow": "Some of them still charge you",
+      "tag": {
+        "amount": 2000,
+        "upTo": null,
+        "per": "a month",
+        "label": null
+      },
+      "second": null,
+      "pileLabel": null,
+      "pile": [],
+      "pileCount": 0,
+      "subline": "for the one piece that decides how much you get approved for",
+      "transparent": false
+    },
+    "purpose": "PriceTag (unit N5, ops/workflows/animation-builds-2026-10-22.md). A price tag swings in on its string and settles, with an optional second tag beside it and an optional pile of cards stacking up under it (\"Hundreds of hours\" of \"Outdated videos\" and \"Zoom calls\").",
+    "data_tied": false
+  },
+  {
+    "id": "PriceTagWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 120,
+    "default_props": {
+      "format": "wide",
+      "side": "left",
+      "eyebrow": "Some of them still charge you",
+      "tag": {
+        "amount": 2000,
+        "upTo": null,
+        "per": "a month",
+        "label": null
+      },
+      "second": null,
+      "pileLabel": null,
+      "pile": [],
+      "pileCount": 0,
+      "subline": "for the one piece that decides how much you get approved for",
+      "transparent": false
+    },
+    "purpose": "PriceTag (unit N5, ops/workflows/animation-builds-2026-10-22.md). A price tag swings in on its string and settles, with an optional second tag beside it and an optional pile of cards stacking up under it (\"Hundreds of hours\" of \"Outdated videos\" and \"Zoom calls\").",
+    "data_tied": false
   }
 ]
