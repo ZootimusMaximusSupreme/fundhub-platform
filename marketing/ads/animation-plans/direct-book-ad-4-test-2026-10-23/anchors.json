@@ -1,0 +1,121 @@
+{
+ "video": "Direct Book Ad 4 \u2014 High earners",
+ "caption_lead_s": 0.15,
+ "anchors": [
+  {
+   "phrase": "comes back about FOUR times",
+   "match": 1.0,
+   "start_s": 24.7,
+   "end_s": 26.2,
+   "heard": "COMES BACK ABOUT FOUR TIMES",
+   "read_by_hand_s": [
+    28.0,
+    33.3
+   ],
+   "note": "match under 0.8 = the heuristic is unsure; read_by_hand_s is the span read straight off words-timeline-from-captions.txt",
+   "n": 1,
+   "template": "ReturnMultiple",
+   "clip_seconds": 3,
+   "planned_start_s": 43,
+   "scheduled_start_s": 30.0,
+   "lands_on": {
+    "match": 1.0,
+    "start_s": 28.0,
+    "end_s": 33.7,
+    "heard": "SO 200 K RUN THROUGH A SYSTEM THAT ALREADY HAS PROVEN RETURNS TURNS INTO 800 K PRETTY QUICKLY"
+   }
+  },
+  {
+   "phrase": "at a minimum, and an older one gets up to $300,000",
+   "match": 0.78,
+   "start_s": 47.4,
+   "end_s": 50.4,
+   "heard": "K AT MINIMUM THE OLDER ONE GETS UP TO 300 K",
+   "read_by_hand_s": [
+    46.1,
+    50.0
+   ],
+   "note": "match under 0.8 = the heuristic is unsure; read_by_hand_s is the span read straight off words-timeline-from-captions.txt",
+   "n": 2,
+   "template": "MoneyClimb",
+   "clip_seconds": 3,
+   "planned_start_s": 73,
+   "scheduled_start_s": 46.6,
+   "lands_on": {
+    "match": 0.97,
+    "start_s": 46.1,
+    "end_s": 50.4,
+    "heard": "ONE BUSINESS IS 100 K AT MINIMUM THE OLDER ONE GETS UP TO 300 K"
+   }
+  },
+  {
+   "phrase": "two, that's up to $600,000, and if you have THREE",
+   "match": 0.76,
+   "start_s": 56.9,
+   "end_s": 59.4,
+   "heard": "YOU HAVE TWO THAT'S UP TO 600 K HAVE THREE",
+   "read_by_hand_s": [
+    55.0,
+    61.0
+   ],
+   "note": "match under 0.8 = the heuristic is unsure; read_by_hand_s is the span read straight off words-timeline-from-captions.txt",
+   "n": 3,
+   "template": "MoneyClimb",
+   "clip_seconds": 3,
+   "planned_start_s": 85.2,
+   "scheduled_start_s": 56.8,
+   "lands_on": {
+    "match": 0.79,
+    "start_s": 53.3,
+    "end_s": 61.0,
+    "heard": "ALREADY HAVE YOU'RE NOT USING YOU HAVE ONE UP TO 300 K YOU HAVE TWO THAT'S UP TO 600 K HAVE THREE UP TO 900 K"
+   }
+  },
+  {
+   "phrase": "30 days, depending on what your roadmap takes",
+   "match": 0.27,
+   "start_s": 61.9,
+   "end_s": 63.4,
+   "heard": "THE NEXT 7 TO 9 30 DAYS",
+   "read_by_hand_s": [
+    61.0,
+    63.2
+   ],
+   "note": "match under 0.8 = the heuristic is unsure; read_by_hand_s is the span read straight off words-timeline-from-captions.txt",
+   "n": 4,
+   "template": "CalendarStrip",
+   "clip_seconds": 3,
+   "planned_start_s": 93.7,
+   "scheduled_start_s": 61.0,
+   "lands_on": {
+    "match": 0.91,
+    "start_s": 61.0,
+    "end_s": 63.4,
+    "heard": "SITTING IN YOUR ACCOUNT THE NEXT 7 TO 9 30 DAYS"
+   }
+  },
+  {
+   "phrase": "capital to put into the proven system you already make money with",
+   "match": 0.87,
+   "start_s": 65.9,
+   "end_s": 69.4,
+   "heard": "THAT CAPITAL PUT INTO PROVEN SYSTEM YOU ALREADY MAKE MONEY WITH",
+   "read_by_hand_s": [
+    63.4,
+    69.3
+   ],
+   "note": "match under 0.8 = the heuristic is unsure; read_by_hand_s is the span read straight off words-timeline-from-captions.txt",
+   "n": 5,
+   "template": "PathCards",
+   "clip_seconds": 3,
+   "planned_start_s": 102.2,
+   "scheduled_start_s": 64.6,
+   "lands_on": {
+    "match": 0.89,
+    "start_s": 62.9,
+    "end_s": 69.4,
+    "heard": "30 DAYS JUST ASK YOURSELF ONE QUESTION YOU WANT ACCESS TO THAT CAPITAL PUT INTO PROVEN SYSTEM YOU ALREADY MAKE MONEY WITH"
+   }
+  }
+ ]
+}
