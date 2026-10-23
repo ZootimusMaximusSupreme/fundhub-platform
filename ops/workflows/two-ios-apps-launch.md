@@ -137,3 +137,14 @@ Builder plan gate for A: role = signed-in client; one job = notice a delivered m
 - iOS **1.0.1** was submitted today (submission `beabaddf…`) and is **WAITING_FOR_REVIEW**. It is not live yet; 1.0 is what people download now.
 - Fundhub Prompter iOS 1.0 and the Portal Mac 1.0 are still PREPARE_FOR_SUBMISSION (never sent to Apple).
 - fundhub.ai `/api/health` 200, database up, 0 pending.
+
+## Portal Mac submission — 2026-10-23
+
+- Turned on Mac Catalyst for the existing `Fundhub` target. Bundle id stays `ai.fundhub.app`, so the Mac app joins the same App Store Connect record (universal purchase). Project changes: `SUPPORTS_MACCATALYST = YES`, `DERIVE_MACCATALYST_PRODUCT_BUNDLE_IDENTIFIER = NO`, `TARGETED_DEVICE_FAMILY = "1,6"` (iPhone plus Mac, no iPad), `LSMinimumSystemVersion 14.0`, and Mac-only entitlement files `Fundhub.Mac.entitlements` / `Fundhub.Mac.Release.entitlements` (App Sandbox, network client, camera, photo library, user-selected files, `com.apple.developer.aps-environment`). The Mac entitlements apply only to the macOS SDK, so the iOS build still uses its two original entitlement files. No Swift code needed changes; Catalyst built clean.
+- iOS effect: none. Still iPhone-only (family 1,6 does not add iPad), so no iPad screenshot rule changes. `FundhubTests` on the iOS simulator: 14 tests, 0 failures.
+- To sign the Mac development profile, this Mac mini (Provisioning UDID ending 420C01E) was registered as a MAC_OS device in the developer team through the API.
+- Archive + upload: `Fundhub.xcarchive`, version 1.0, **build 5** (builds 1-4 were iOS), uploaded to App Store Connect with cloud-managed distribution signing. Build processed to VALID (min macOS 14.0). Export compliance set: `usesNonExemptEncryption = false`, same as iOS.
+- MAC_OS 1.0 filled in from iOS 1.0: description (iPhone to Mac), keywords, promo text, support URL, copyright `2026 FUNDHUB LLC`, release MANUAL, review contact, demo account (same test client, password read from the iOS 1.0 review detail, not written here) and Mac-specific review notes. Category FINANCE, age rating and privacy URL are app-level and already shared.
+- Four 1280 × 800 screenshots (signed in as the test client: Home, Money, Progress, Documents) are in `ops/workflows/two-ios-apps-launch/mac-app-store-screenshots/`, uploaded to the `APP_DESKTOP` set, all `UPLOAD_COMPLETE`.
+- Separate review submission `acb738c1-7f7a-4b99-bad5-9553eb707c92` (platform MAC_OS) created and submitted 2026-10-23 21:51 UTC. Read back: submission `WAITING_FOR_REVIEW`; MAC_OS 1.0 `WAITING_FOR_REVIEW`. iOS 1.0.1 still `WAITING_FOR_REVIEW`, iOS 1.0 still `READY_FOR_SALE`, both untouched.
+- Open: Apple has not reviewed it. The window shows the phone-width layout centered on dark sides at 1280 × 800; Apple could ask about that. The old local `ai.fundhub.mac` Prompter app is unrelated and unchanged.
