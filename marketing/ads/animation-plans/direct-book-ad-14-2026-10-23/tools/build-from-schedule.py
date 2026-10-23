@@ -51,10 +51,12 @@ late = []
 for i, c in enumerate(SCHED["clips"], 1):
     sf, fr, sc = c["start_frame"], c["frames"], c["scale"]
     sw, sh = round(W * sc), round(H * sc)
+    tp = f"tpad=stop_mode=clone:stop_duration={c['hold_frames'] / FPS:.5f}," if c.get("hold_frames") else ""
+    ef = c.get("play_frames", fr)
     fin = c.get("fade_in_s", 0.2)
     fi = f"fade=t=in:st=0:d={fin}:alpha=1," if fin > 0 else ""
     fo = f"fade=t=out:st={(fr-6)/FPS:.4f}:d=0.2:alpha=1," if c.get("fade_out", True) else ""
-    g.append(f"[{i}:v]trim=end_frame={fr},format=rgba,{fi}{fo}setpts=PTS-STARTPTS+{sf}/({FPS}*TB),scale={sw}:{sh}:flags=lanczos,split[a{i}][b{i}]")
+    g.append(f"[{i}:v]trim=end_frame={ef},{tp}format=rgba,{fi}{fo}setpts=PTS-STARTPTS+{sf}/({FPS}*TB),scale={sw}:{sh}:flags=lanczos,split[a{i}][b{i}]")
     en = f"between(t,{(sf - 0.5) / FPS:.6f},{(sf + fr - 0.5) / FPS:.6f})"
     if c.get("in_front"):
         late.append((i, c, en))

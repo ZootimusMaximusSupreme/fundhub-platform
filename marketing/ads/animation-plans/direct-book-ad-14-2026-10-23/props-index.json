@@ -1,0 +1,193 @@
+{
+ "01-FundhubLogo": {
+  "template": "FundhubLogo",
+  "props": {
+   "transparent": true,
+   "durationInFrames": 60
+  }
+ },
+ "02-ScoreBadge": {
+  "template": "ScoreBadge",
+  "props": {
+   "format": "vertical",
+   "side": "left",
+   "mode": "threshold",
+   "eyebrow": "A high score is all that matters",
+   "low": 400,
+   "high": 850,
+   "rangeLead": "Anywhere from",
+   "score": 780,
+   "scoreNote": "or higher",
+   "scores": [
+    850,
+    400,
+    500
+   ],
+   "programLabel": "",
+   "transparent": true,
+   "durationInFrames": 75
+  }
+ },
+ "03-StampCard": {
+  "template": "StampCard",
+  "props": {
+   "format": "vertical",
+   "side": "left",
+   "object": "document",
+   "eyebrow": "Banks don't ask for",
+   "title": "Your tax returns",
+   "amount": null,
+   "paidCheck": false,
+   "stamp": "Not asked",
+   "stampSub": null,
+   "tone": "ok",
+   "drain": [],
+   "subline": "They don't ask for your bank statements",
+   "transparent": true,
+   "durationInFrames": 162
+  }
+ },
+ "04-FundingStack": {
+  "template": "FundingStack",
+  "props": {
+   "format": "vertical",
+   "side": "left",
+   "types": [
+    "Credit cards",
+    "Lines of credit",
+    "SBA",
+    "MCA",
+    "Personal funding"
+   ],
+   "caption": "Stack all of it and blend it together",
+   "transparent": true,
+   "durationInFrames": 276
+  }
+ },
+ "05-BureauMatch": {
+  "template": "BureauMatch",
+  "props": {
+   "format": "vertical",
+   "side": "left",
+   "eyebrow": "Your three credit reports",
+   "headline": "A mismatch on one of them",
+   "bureaus": [
+    "Credit report",
+    "Credit report",
+    "Credit report"
+   ],
+   "flagged": 1,
+   "mismatchTag": "Mismatch",
+   "matchTag": null,
+   "stages": [
+    {
+     "state": "match",
+     "approved": 2,
+     "kicker": null,
+     "count": null,
+     "label": null
+    },
+    {
+     "state": "mismatch",
+     "approved": 1,
+     "kicker": "Cuts your approvals in",
+     "count": "HALF",
+     "label": null
+    }
+   ],
+   "transparent": true,
+   "durationInFrames": 125
+  }
+ },
+ "06-HiddenDataPoints": {
+  "template": "HiddenDataPoints",
+  "props": {
+   "format": "vertical",
+   "eyebrow": "We check every file on",
+   "count": 13,
+   "label": "optimization points",
+   "subline": "Before a single application goes out",
+   "transparent": true,
+   "durationInFrames": 104
+  }
+ },
+ "07-HiddenDataPoints": {
+  "template": "HiddenDataPoints",
+  "props": {
+   "format": "vertical",
+   "eyebrow": "When we optimize those",
+   "count": 13,
+   "label": "points",
+   "subline": "We double your approval odds",
+   "transparent": true,
+   "durationInFrames": 77
+  }
+ },
+ "08-StampCard": {
+  "template": "StampCard",
+  "props": {
+   "format": "vertical",
+   "side": "left",
+   "object": "file",
+   "eyebrow": "Fewer denials",
+   "title": "Every application goes to a bank",
+   "amount": null,
+   "paidCheck": false,
+   "stamp": "Approves you",
+   "stampSub": null,
+   "tone": "ok",
+   "drain": [],
+   "subline": null,
+   "transparent": true,
+   "durationInFrames": 212
+  }
+ },
+ "09-LenderList": {
+  "template": "LenderList",
+  "props": {
+   "eyebrow": "Our AI matching system",
+   "headline": "A much bigger list of banks",
+   "footer": "Than anyone else",
+   "rows": 5,
+   "names": [],
+   "transparent": true,
+   "durationInFrames": 171
+  }
+ },
+ "10-InquiriesOff": {
+  "template": "InquiriesOff",
+  "props": {
+   "eyebrow": "After every round of funding",
+   "fromLabel": "This round of funding",
+   "itemLabel": "Inquiries",
+   "beforeTag": "On your file",
+   "afterTag": "Removed",
+   "toLabel": "Next round",
+   "toNote": "Faster than everyone else",
+   "format": "vertical",
+   "transparent": true,
+   "durationInFrames": 162
+  }
+ },
+ "11-BookCall": {
+  "template": "BookCall",
+  "props": {
+   "eyebrow": "Click the link below",
+   "line": null,
+   "pickDay": 15,
+   "times": [
+    "9:00 AM",
+    "11:30 AM",
+    "2:30 PM",
+    "4:00 PM"
+   ],
+   "pickTime": 2,
+   "booked": "We'll pull your reports",
+   "detail": null,
+   "format": "vertical",
+   "transparent": true,
+   "durationInFrames": 84,
+   "showPicked": false
+  }
+ }
+}

@@ -1,77 +1,75 @@
-# Direct Book Ad 14 (780 and up, 13 optimization points) - animation build, 74.13 s (2026-10-23)
+# Direct Book Ad 14 (780 and up, 13 optimization points) - animation build v2, diagrams only (2026-10-23)
 
-Input `~/Downloads/Direct Book Ad 14 — 780 and up, 13 optimization points.mp4` (1080x1920, 30 fps, 2224 frames, captions burned in, he is on camera the whole ad). Output `~/Downloads/Direct Book Ad 14 — 780 and up, 13 optimization points Animated.mp4` (152 MB, not in the repo). Animations only: no cut, no sound change, no timing change. Input never modified.
+Redo. v1 was numbered PathCards word lists and was rejected ("1234 isn't what I want", "animations should be diagrams"). v2 has no PathCards and no numbered list: every animation is a picture/diagram from the plan `marketing/ads/animation-plans/2026-10-22.json` (entry "Direct Book Ad 14"), with his filmed words only.
 
-Method: same as Ad 11 (`../direct-book-ad-11-penthouse-2026-10-23/README.md`, skill `.cursor/skills/fundhub-video-animation-overlay/SKILL.md`). Word times: whisper small.en on this file's audio (`words-timeline.txt`); checked against the audio energy onset (within about 0.1 s).
+Input `~/Downloads/Direct Book Ad 14 — 780 and up, 13 optimization points.mp4` (1080x1920, 30 fps, 2224 frames, 74.14 s, captions burned in, never modified). Output `~/Downloads/Direct Book Ad 14 — 780 and up, 13 optimization points Animated.mp4` (151 MB, not in the repo). Animations only: no cut, audio stream-copied.
 
-## Animations (size = width of the words box as % of 1080)
+## Animations (size = width of the diagram as % of 1080)
 
-| # | Template | Window | Cards (his words) | Size | Where |
+| # | Window | Template | What it shows | Size | Where |
 |---|---|---|---|---|---|
-| 1 | FundhubLogo | 1.9-3.9 s | the fundhub. logo | 80% | behind him |
-| 2 | PathCards | 5.1-8.2 s | Personal, business, or both; In the shortest amount of time | 88% | behind him |
-| 3 | PathCards | 9.6-15.1 s | A high score is all that matters; Banks don't ask you for tax returns; They don't ask you for bank statements | 88% | in front (over hair, never face) |
-| 4 | PathCards | 15.1-21.5 s | Whatever funding you're after; At the lowest terms and the fastest timelines; So you get the maximum amount | 87% | in front (over hair, never face) |
-| 5 | PathCards | 21.6-28.3 s | Credit cards and lines of credit; SBA and MCA; Even personal funding | 88% | in front (over hair, never face) |
-| 6 | PathCards | 28.3-37.5 s | A mismatch cuts your approvals in half; We check every file on 13 optimization points; Before a single application goes out | 88% | in front (over hair, never face) |
-| 7 | PathCards | 37.6-45.9 s | Optimize those 13 points; Double your approval odds with every lender; Fewer denials: every application goes to a bank that approves you | 88% | in front (over hair, never face) |
-| 8 | PathCards | 45.9-53.3 s | Our AI matching system; A much bigger list of banks than anyone else; We send out more applications to banks that fit your file | 88% | in front (over hair, never face) |
-| 9 | PathCards | 53.3-58.7 s | We remove the inquiries after every round; So we run each round faster than everyone else | 87% | behind him |
-| 10 | PathCards | 58.7-74.1 s | Click the link below; And we'll pull your reports | 87% | behind him |
+| 1 | 1.9-3.9 s | FundhubLogo | the fundhub. logo | 81% | behind him |
+| 2 | 9.5-11.3 s | ScoreBadge | score gauge, 780 or higher | 69% | in front of his hair |
+| 3 | 11.3-15.0 s | StampCard | tax-return document stamped Not asked, bank-statements plate | 55% | in front of his hair |
+| 4 | 20.5-28.2 s | FundingStack | funding types stack into one block | 79% | in front of his hair |
+| 5 | 28.2-32.1 s | BureauMatch | three credit reports, one mismatch, approvals cut in HALF | 83% | in front of his hair |
+| 6 | 32.2-37.1 s | HiddenDataPoints | 13 dots around the count 13 optimization points | 69% | in front of his hair |
+| 7 | 37.2-41.6 s | HiddenDataPoints | 13 dots, we double your approval odds | 69% | in front of his hair |
+| 8 | 42.9-45.8 s | StampCard | folder stamped Approves you | 55% | in front of his hair |
+| 9 | 45.9-53.0 s | LenderList | a much bigger list of banks, row by row | 66% | in front of his hair |
+| 10 | 53.1-58.7 s | InquiriesOff | inquiries struck off, money rides to the next round | 57% | in front of his hair |
+| 11 | 58.8-74.1 s | BookCall | calendar picks a time, We'll pull your reports | 71% | in front of his hair |
 
-10 animations, no overlaps, each rides along with the whole idea (3-15 s) instead of popping and leaving. #1 starts at 1.9 s on the hook line ("Fundhub gets you the maximum amount of funding"). The logo is the only logo and sits on the one time he says Fundhub (whisper writes "FunHub"; the captions spell it Fundhub). #10 is the call to action, in his exact closing ask, and stays to the end.
+11 animations, none overlap, none is a numbered list. #1 (logo) starts at 1.9 s on "Fundhub"; #2 (score gauge) starts inside the first 10 s (9.5 s) and lands 780 on "score". #11 is the CTA on "click the link below" and stays to the end.
 
-## Cadence: his word vs the card on screen
-Entrance = first frame the card is visibly on screen (about 12-25% of its area), read from the rendered clips. Card 2 and 3 enter on their own words, not on a fixed stagger.
+## Why these templates (plan vs filmed)
+The plan was written for the script, the filmed take differs: no "you owe us nothing", no "if either deadline slips", no spoken paragraph about the three paths (PathCards in the plan: dropped, owner says no lists), and the 24/72 hour line is the last sentence under the CTA (DeadlineClocks dropped: the CTA holds to the end). "780 or higher" is spoken in the first sentence, so the gauge plays on his later "Having a high score is all that matters" (the plan note: ScoreBadge threshold). Plan props are kept, words changed only to what he says:
+- StampCard (document): "Banks don't ask for / Your tax returns", stamp "Not asked", "They don't ask for your bank statements" (plan, verbatim).
+- FundingStack: Credit cards, Lines of credit, SBA, MCA, Personal funding / "Stack all of it and blend it together" (plan, verbatim).
+- BureauMatch: "Your three credit reports / A mismatch on one of them", three "Credit report" cards, stage 1 matches, stage 2 mismatch "Cuts your approvals in HALF" (plan, bureau names are not said so generic).
+- HiddenDataPoints x2: "We check every file on 13 optimization points / Before a single application goes out" and "When we optimize those 13 points / We double your approval odds".
+- StampCard (folder): "Fewer denials / Every application goes to a bank / Approves you" (the stamp has to come after the folder, so the tag carries the first half of his sentence).
+- LenderList: "Our AI matching system / A much bigger list of banks / Than anyone else", names blank (no bank named).
+- InquiriesOff: his words: "After every round of funding", "This round of funding", "Inquiries", "Removed", "Next round", "Faster than everyone else".
+- BookCall (CTA): eyebrow "Click the link below", confirmation "We'll pull your reports". The picked-day chip ("Wed 15 - 2:30 PM") is hidden (new prop `showPicked: false`), so no day or time is named. The calendar grid and slot times are the template's generic art.
+Not covered (no template that says it without inventing words): 0.1-9.5 s except the logo, 15.1-20.4 s (lowest terms, fastest timelines, maximum amount), 50.5-53 s ("send out more applications"), and the last paragraph.
 
-| # | Word | He says it | Card visible | Late by | Card |
-|---|---|---|---|---|---|
-| 1 | FunHub | 1.90 s | 1.93 s | +0.03 s | plate visible frame 1 of clip (soft), solid frame 5 |
-| 2 | personal | 5.18 s | 5.20 s | +0.02 s | Personal, business, or both |
-| 2 | in | 6.70 s | 6.73 s | +0.03 s | In the shortest amount of time |
-| 3 | Having | 9.72 s | 9.77 s | +0.05 s | A high score is all that matters |
-| 3 | Banks | 11.94 s | 11.97 s | +0.03 s | Banks don't ask you for tax returns |
-| 3 | they | 13.80 s | 13.83 s | +0.03 s | They don't ask you for bank statements |
-| 4 | Whatever | 15.22 s | 15.27 s | +0.05 s | Whatever funding you're after |
-| 4 | at | 17.34 s | 17.37 s | +0.03 s | At the lowest terms and the fastest timelines |
-| 4 | so | 19.94 s | 19.97 s | +0.03 s | So you get the maximum amount |
-| 5 | Credit | 21.70 s | 21.73 s | +0.03 s | Credit cards and lines of credit |
-| 5 | SBA | 23.42 s | 23.47 s | +0.05 s | SBA and MCA |
-| 5 | even | 24.93 s | 24.97 s | +0.04 s | Even personal funding |
-| 6 | A | 28.41 s | 28.43 s | +0.02 s | A mismatch cuts your approvals in half |
-| 6 | we | 32.37 s | 32.40 s | +0.03 s | We check every file on 13 optimization points |
-| 6 | before | 35.58 s | 35.60 s | +0.02 s | Before a single application goes out |
-| 7 | optimize | 37.68 s | 37.70 s | +0.02 s | Optimize those 13 points |
-| 7 | double | 39.01 s | 39.03 s | +0.02 s | Double your approval odds with every lender |
-| 7 | fewer | 42.46 s | 42.50 s | +0.04 s | Fewer denials: every application goes to a bank that approves you |
-| 8 | Our | 45.96 s | 46.00 s | +0.04 s | Our AI matching system |
-| 8 | a | 47.68 s | 47.70 s | +0.02 s | A much bigger list of banks than anyone else |
-| 8 | we | 50.70 s | 50.73 s | +0.03 s | We send out more applications to banks that fit your file |
-| 9 | We | 53.42 s | 53.47 s | +0.05 s | We remove the inquiries after every round |
-| 9 | so | 56.45 s | 56.50 s | +0.05 s | So we run each round faster than everyone else |
-| 10 | Click | 58.82 s | 58.87 s | +0.05 s | Click the link below |
-| 10 | and | 59.82 s | 59.87 s | +0.05 s | And we'll pull your reports |
+## Timing: payoff on his word (skill rules "land the payoff" and "stretch to fit")
+Each clip was rendered at a stretch k (length L = default length x k, `REMOTION_UNCLAMP=1`, so past the catalog's 2.5-4.5 s cap) and started so its parts hit his words (word times from whisper small.en, `words-timeline.txt`). Held pictures use frame hold (`hold_frames`) so a diagram stays up through the whole thought.
 
-Each animation holds about 0.4 s after his last word (#8 and #9 hold less: the next animation starts at his next word, and no two overlap).
+| Moment | He says | On screen (from start + frame x k) |
+|---|---|---|
+| #1 | "Fundhub" 1.90 | plate 1.93 s, letters land 2.4 s |
+| #2 | "high score" 10.2-10.7 | gauge marker rides 9.8-10.4, 780 lands 10.67 s |
+| #3 | "tax returns" 13.1 / "bank statements" 14.5 | stamp slams 12.97, settles 13.2; plate 14.3 |
+| #4 | credit cards 21.7, lines 22.5, SBA 23.4, MCA 24.1, personal 24.9 | rows 21.8, 22.5, 23.2, 24.0, 24.8; block closes 26.6; caption 27.2 ("blend it together" 27.4) |
+| #5 | "mismatch" 28.5, "half" 31.5 | title 28.4; mismatch card 31.1; HALF 31.3 |
+| #6 | "13" 33.7 | count reaches 13 at 33.9 |
+| #7 | "13 points" 38.3, "double" 39.0 | 13 at 38.5; "We double your approval odds" 38.9 |
+| #8 | "every application" 43.5, "approves" 45.3 | folder 43.4; stamp slams 45.1, settles 45.4 |
+| #9 | "Our AI matching" 46.0, "than anyone else" 49.4 | title 46.3; rows 46.8-48.7 (early by about 1 s); footer 49.6 |
+| #10 | "remove" 53.4, "after every round" 54.8, "so we run each round" 56.5, "faster than everyone else" 57.3 | start 53.2; struck 55.6; Next round 56.8; note 57.3 |
+| #11 | "click the link below" 58.8, "pull your reports" 60.3-60.9 | pill 58.9; day 59.6, time 60.4; "We'll pull your reports" 60.8 |
 
-## Template change (additive, `marketing/broll/src/templates/PathCards.tsx`)
-New optional prop `cardStarts` (clip frames, real time): cards enter on those frames, not on the fixed stagger, and the clip runs exactly `durationInFrames` (not clamped to 75-135). Without it nothing changes. tsc and the see-through tests pass.
+## Where plates sit
+His head fills the middle: hairline y about 600, eyebrows 770, captions from y 1500. Free band: y 10-655. All diagrams sit in it, in front of his hair (never below y 662), alternating left, centre and right. The logo sits behind him. A few transients (stamp slam, mismatch card) can touch y 700 for about 0.2 s (frame PSNR on y 670-1450 min 33.4, mean 44.6). There is no room for a plate over his chest: chin y 1275, captions 1500.
 
-## Where the plates sit
-He fills the middle: hair top y 419, face box y 642-1275 (Vision), captions from y about 1500. Free: the band above his face. Plates are 87-88% wide (80% for the logo), y 30-596, never below y 600, so they never touch his face or the captions.
-- Behind him (#1, 2, 9, 10): above his hair, he is cut out (Apple Vision) and laid back on top.
-- In front of him (#3-8): the three-card plates are too tall to sit above his hair, so the whole plate is drawn in front of his hair and forehead (bottom edge 596 or higher, face starts 642).
-- No plate sits over his chest: the chest strip between chin (y 1275) and captions (1500) is only 225 px tall and one card is 150 px.
+## Template changes (additive, all off by default)
+- `clipTimeline.ts`, `brand/format.ts`: `REMOTION_UNCLAMP=1` lifts the 2.5-4.5 s length cap for timed renders.
+- `PathCards`: optional `cardStarts` (kept from v1, unused in v2).
+- `BookCall`: optional `showPicked` (hide the day-and-time chip).
+- `LenderList`, `InquiriesOff`: floating words sit on the white `ReadPlate` in see-through mode (unreadable over film before). Page-on renders are unchanged.
 
 ## Checks
 - Duration 74.14 s, 2224 frames, 30 fps, 1080x1920 in both. Audio stream copy md5 identical (050e755a5e6cf49cf17bb5db0779029a).
-- Caption band y 1450-1850 frame by frame: PSNR min 45.8, mean 50.1 (re-encode only). Face band y 640-1340: min 40.4, mean 44.2.
-- Every words box is 10 px or more inside the frame (schedule asserts it); contact sheet looked at: `contact-sheet-final.jpg`.
+- Caption band y 1450-1850 frame by frame: PSNR min 45.9, mean 50.0.
+- Every diagram is at least 10 px inside the frame (schedule asserts it). Contact sheet looked at: `contact-sheet-final.jpg`.
 
 ## Open
-- Plates in front cover his hair and forehead (never the face). The plate position barely differs between "front" and "behind" because his head is big in this selfie.
-- Card text is shown in full when the card enters, so a long card (#7 card 3, #8 card 3) is on screen a second or two before he finishes saying it.
-- Not wired into the pipeline. Plate renders are in the scratch folder, not the repo.
+- Sizes 55-84% wide: tall templates (StampCard 55%, InquiriesOff 57%, LenderList 66%, Score/Hidden 69%) do not reach 70% in the 650 px free band.
+- #9 title and rows are early against his words (stretch compromise); #6 subline and #3 stamp pop a little early/late (see table).
+- Repeat: #6 and #7 are the same template back to back (the plan used HiddenDataPoints for both lines).
+- Not wired into the pipeline; clip renders are in the scratch folder.
 
 ## Redo
-`python3 -I tools/make-schedule.py`; render clips from `marketing/broll` (`npx remotion render src/index.ts PathCards <n>-PathCards.mov --props=props/<n>-PathCards.json --codec=prores --prores-profile=4444 --image-format=png --pixel-format=yuva444p10le`; logo: `FundhubLogo` with props/01); matte windows with `tools/matte.swift`; `python3 -I tools/build-from-schedule.py <clips_dir> <out.mp4> <in.mp4> --behind <masks_dir>`; `python3 tools/contact-sheet.py <out.mp4> contact-sheet-final.jpg`.
+`python3 -I tools/make-schedule.py`; render each clip from `marketing/broll` with `REMOTION_UNCLAMP=1 npx remotion render src/index.ts <Template> <clip>.mov --props=props/<key>.json --codec=prores --prores-profile=4444 --image-format=png --pixel-format=yuva444p10le` (`props-index.json` has template and props per clip); masks with `tools/matte.swift`; `python3 -I tools/build-from-schedule.py <clips_dir> <out.mp4> <in.mp4> --behind <masks_dir>`; `python3 tools/contact-sheet.py <out.mp4> contact-sheet-final.jpg`.
