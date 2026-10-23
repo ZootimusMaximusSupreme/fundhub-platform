@@ -1,0 +1,94 @@
+{
+ "video": "Direct Book Thank You",
+ "caption_lead_s": 0.15,
+ "anchors": [
+  {
+   "phrase": "so the time your advisor is holding for you is locked in",
+   "match": 1.0,
+   "start_s": 4.3,
+   "end_s": 7.4,
+   "heard": "SO THE TIME YOUR ADVISOR IS HOLDING FOR YOU IS LOCKED IN",
+   "n": 1,
+   "template": "BookCallWide",
+   "clip_seconds": 3,
+   "planned_start_s": 4.85
+  },
+  {
+   "phrase": "runs a 3-bureau report",
+   "match": 1.0,
+   "start_s": 10.8,
+   "end_s": 12.9,
+   "heard": "RUNS A THREE BUREAU REPORT",
+   "n": 2,
+   "template": "SoftPullWide",
+   "clip_seconds": 2.5,
+   "planned_start_s": 13.64
+  },
+  {
+   "phrase": "Different banks pull different bureaus",
+   "match": 1.0,
+   "start_s": 18.1,
+   "end_s": 19.6,
+   "heard": "DIFFERENT BANKS PULL DIFFERENT BUREAUS",
+   "n": 3,
+   "template": "LenderMatchScrollWide",
+   "clip_seconds": 3.5,
+   "planned_start_s": 20.61
+  },
+  {
+   "phrase": "When it MATCHES",
+   "match": 1.0,
+   "start_s": 24.5,
+   "end_s": 25.5,
+   "heard": "WHEN IT MATCHES",
+   "n": 4,
+   "template": "BureauMatchWide",
+   "clip_seconds": 3,
+   "planned_start_s": 28.19
+  },
+  {
+   "phrase": "based on where you're at right now",
+   "match": 1.0,
+   "start_s": 31.5,
+   "end_s": 33.0,
+   "heard": "BASED ON WHERE YOU'RE AT RIGHT NOW",
+   "n": 5,
+   "template": "QualifyTodayWide",
+   "clip_seconds": 2.5,
+   "planned_start_s": 36.07
+  },
+  {
+   "phrase": "That system is built on ten years of my own funding",
+   "match": 1.0,
+   "start_s": 37.0,
+   "end_s": 39.4,
+   "heard": "THAT SYSTEM IS BUILT ON TEN YEARS OF MY OWN FUNDING",
+   "n": 6,
+   "template": "ProofWallWide",
+   "clip_seconds": 4,
+   "planned_start_s": 43.65
+  },
+  {
+   "phrase": "and EVERYTHING is in writing",
+   "match": 1.0,
+   "start_s": 43.7,
+   "end_s": 45.1,
+   "heard": "AND EVERYTHING IS IN WRITING",
+   "n": 7,
+   "template": "PathCardsWide",
+   "clip_seconds": 2.5,
+   "planned_start_s": 52.14
+  },
+  {
+   "phrase": "have your entity name",
+   "match": 1.0,
+   "start_s": 50.9,
+   "end_s": 52.1,
+   "heard": "HAVE YOUR ENTITY NAME",
+   "n": 8,
+   "template": "StepPathWide",
+   "clip_seconds": 3,
+   "planned_start_s": 61.24
+  }
+ ]
+}

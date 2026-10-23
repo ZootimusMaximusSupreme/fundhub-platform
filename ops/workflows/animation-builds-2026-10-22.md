@@ -76,3 +76,7 @@ No dependencies between W1, W2, N1, N2, N3. Merge waits on them. Batch 2 starts 
 - `npm test`: 29,241 tests, 0 fail, 27 skipped (main suite); database suite 1,130 tests, 0 fail, 1,047 skipped (no DATABASE_URL in this worktree; this branch touches no database code).
 - 2026-10-23: logo removed from every see-through animation (commit 826a1fcdd); `FundhubLogo` added (merged from worktree-agent-ab8025292055057d2); all 24 proof sheets rebuilt without the logo (b5c863936). Sheet builders for MoneyClimb and the W2 wide panels added to `marketing/broll/scripts/`.
 - 2026-10-23: the Fundhub logo is placed on all 6 "Fundhub" lines (VSL x2, Ads 13, 14, 16, 9), 2 seconds each; 4 animations that sat too close were dropped. 112 placements, all pass.
+
+## Thank-you video test (2026-10-23)
+
+Chris's finished "Direct Book Thank You" video (2560x1440, 63.24 s) with the 8 planned animations laid on as a test copy. Saved in `marketing/ads/animation-plans/thank-you-test-2026-10-23/` (README, word timeline from the burned-in captions, anchors, schedule, props, tools). Real anchor times replace the plan's even-pace estimates; limits for see-through (overlay) mode are overlaps only, not the full-frame 4 s / 3 s / 35% limits. Open: face overlap on the two right-side clips, words not in the script, one hard-to-read line, and the overlay code does not handle wide video yet. Nothing is wired into the pipeline.
