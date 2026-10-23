@@ -64,3 +64,9 @@ No dependencies between W1, W2, N1, N2, N3. Merge waits on them. Batch 2 starts 
 - W1 and W2 added a white card / white edge behind words in see-through mode so they read over dark film. Page-on look unchanged.
 - Wide layout code exists in three places (KitFrame.tsx, sidePanel.tsx, widePanel.tsx) plus inline copies. Fold into one helper in a later refactor.
 - Dense re-plan of the VSL and thank-you video started (Sonnet, read-only), using only the wide templates.
+
+## Proof on branch animations-2026-10-22 (after all 9 builders merged)
+
+- 60 catalog entries (34 template files). `catalog.mjs --check` up to date.
+- `npx tsc --noEmit` in marketing/broll: clean. Repo `npx tsc --noEmit`: clean. `npm run lint`: 4298 files clean.
+- `npm test`: 29,241 tests, 0 fail, 27 skipped (main suite); database suite 1,130 tests, 0 fail, 1,047 skipped (no DATABASE_URL in this worktree; this branch touches no database code).
