@@ -10,13 +10,16 @@
 #     "end": 78.25,             # last moment kept
 #     "mess": [[44.58, 45.48, "so that way - false start"], ...] }
 #
+#   optional: "pause_max": 0.28, "pause_keep": 0.20
+#
 # Only the "mess" cuts remove words. Pauses are found by ffmpeg and only shortened
-# (anything over 0.45 s becomes 0.30 s), so no word is ever cut by the pause step.
+# (anything over 0.28 s becomes 0.20 s), so no word is ever cut by the pause step.
+# Chris 2026-10-23: 0.45 -> 0.30 was not tight enough.
 # The source picture size is kept. The input file is never changed.
 import json, os, re, subprocess, sys
 
 FPS = 30
-PAUSE_MAX, PAUSE_KEEP = 0.45, 0.30
+PAUSE_MAX, PAUSE_KEEP = 0.28, 0.20
 FADE = 0.012  # 12 ms fade at every cut so a join never clicks
 CHAIN = ("highpass=f=70,afftdn=nr=8:nf=-50:tn=1,"
          "acompressor=threshold=-30dB:ratio=2.5:attack=8:release=150:knee=6")
@@ -29,7 +32,7 @@ def run(args):
 
 
 def silences(src):
-    log = run(["-i", src, "-vn", "-af", "silencedetect=noise=-35dB:d=0.3", "-f", "null", "-"])
+    log = run(["-i", src, "-vn", "-af", "silencedetect=noise=-35dB:d=0.2", "-f", "null", "-"])
     s = [float(x) for x in re.findall(r"silence_start: ([\d.]+)", log)]
     e = [float(x) for x in re.findall(r"silence_end: ([\d.]+)", log)]
     return list(zip(s, e))
@@ -37,10 +40,11 @@ def silences(src):
 
 def keep_list(plan, sil):
     start, end = plan["start"], plan["end"]
+    pmax, pkeep = plan.get("pause_max", PAUSE_MAX), plan.get("pause_keep", PAUSE_KEEP)
     cuts = [(a, b) for a, b, *_ in plan["mess"]]
     for a, b in sil:
-        if b - a > PAUSE_MAX and start < a and b < end:
-            cuts.append((a + PAUSE_KEEP / 2, b - PAUSE_KEEP / 2))
+        if b - a > pmax and start < a and b < end:
+            cuts.append((a + pkeep / 2, b - pkeep / 2))
     cuts.sort()
     merged = []
     for a, b in cuts:  # a pause inside a mess cut is already gone
@@ -95,13 +99,13 @@ def main():
                     "-ar", "48000", "-movflags", "+faststart", out], check=True)
 
     # check the result
-    log = run(["-i", out, "-vn", "-af", "silencedetect=noise=-35dB:d=0.3,ebur128=peak=true",
+    log = run(["-i", out, "-vn", "-af", "silencedetect=noise=-35dB:d=0.2,ebur128=peak=true",
                "-f", "null", "-"])
     summary = log[log.rfind("Summary"):]
     loud = float(re.search(r"I:\s+(-?[\d.]+) LUFS", summary).group(1))
     peak = float(re.search(r"Peak:\s+(-?[\d.]+) dBFS", summary).group(1))
     longest = max([float(x) for x in re.findall(r"silence_duration: ([\d.]+)", log)] or [0])
-    ok = abs(loud + 14) <= 1 and peak <= -1.5 and longest <= PAUSE_MAX
+    ok = abs(loud + 14) <= 1 and peak <= -1.5 and longest <= plan.get("pause_max", PAUSE_MAX) + 0.02
     print(f"loudness {loud} LUFS, peak {peak} dBFS, longest pause {longest:.2f}s -> "
           f"{'PASS' if ok else 'FAIL'}")
     sys.exit(0 if ok else 1)

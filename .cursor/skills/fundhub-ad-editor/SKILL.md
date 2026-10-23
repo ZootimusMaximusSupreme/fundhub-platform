@@ -8,7 +8,7 @@ description: Edit one Fundhub talking-head video BEFORE Submagic. Cut real mess-
 Owner-set 2026-10-23. Chris: Submagic cuts badly. We do the cutting and the sound on the Mac, for free.
 Submagic only does captions, clean audio and eye contact.
 
-Proven on Ad 16 (2026-10-23): 80.4 s raw → 71.6 s, 4 mess-ups and 7 long pauses cut,
+Proven on Ad 16 (2026-10-23): 80.4 s raw → 69.5 s, 4 mess-ups cut and 16 pauses tightened,
 -27.8 → -14.1 LUFS, no word lost.
 
 ## The law
@@ -39,7 +39,7 @@ Proven on Ad 16 (2026-10-23): 80.4 s raw → 71.6 s, 4 mess-ups and 7 long pause
    ```bash
    python3 scripts/ad-video-edit/edit.py cuts.json "<take>.mp4" "<name> Edited.mp4"
    ```
-   It shortens every pause over 0.45 s to 0.30 s (pauses only, never words), adds 12 ms fades at each cut,
+   It shortens every pause over 0.28 s to 0.20 s (pauses only, never words; Chris asked for tighter than 0.45 → 0.30), adds 12 ms fades at each cut,
    removes low rumble and light hiss, gently evens the voice, sets -14 LUFS with peaks under -1.5,
    and prints PASS or FAIL.
 6. **Check no word is lost.** Transcribe the edited file. Compare word lists before and after.
