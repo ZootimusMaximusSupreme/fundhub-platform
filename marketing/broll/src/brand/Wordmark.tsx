@@ -7,18 +7,13 @@ import {WORDMARK_ASPECT, WORDMARK_GROUP_TRANSFORM, WORDMARK_PATHS, WORDMARK_VIEW
  * The lowercase "fundhub." wordmark with the period, drawn from the page's own vector.
  *
  * Owner rule (Chris, 2026-10-23): no logo on the see-through clips laid over his
- * videos; the brand shows in its own logo animation instead. So inside
- * <SeeThrough on> the wordmark draws nothing, unless `keepInSeeThrough` is set
- * (only the logo animation sets it). The page-on look is unchanged.
+ * videos; the brand shows in its own logo animation (FundhubLogo, which draws the
+ * paths itself). So inside <SeeThrough on> the wordmark draws nothing. The
+ * page-on look is unchanged.
  */
-export const Wordmark: React.FC<{width: number; color?: string; style?: React.CSSProperties; keepInSeeThrough?: boolean}> = ({
-  width,
-  color = COLORS.ink,
-  style,
-  keepInSeeThrough = false,
-}) => {
+export const Wordmark: React.FC<{width: number; color?: string; style?: React.CSSProperties}> = ({width, color = COLORS.ink, style}) => {
   const seeThrough = useSeeThrough();
-  if (seeThrough && !keepInSeeThrough) return null;
+  if (seeThrough) return null;
   return (
     <svg
       width={width}

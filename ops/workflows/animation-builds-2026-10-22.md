@@ -23,6 +23,8 @@ Builders: Opus 5.5, high effort, one per unit, each in its own git worktree. Thi
 4. Keep `showSafeZones` (draws the zones for review) and honor `checkTextOnly` (see `src/brand/depth.tsx`) so a pixel scan can check the words alone.
 5. Declare its length range the way the catalog reads it (`src/marketing/catalog.mjs` header: the composition's calculateMetadata clamp) and `durationInFrames` in its props.
 
+**No logo on see-through (owner-set 2026-10-23).** Chris: remove the logo from the see-through animations; the brand shows in ONE logo animation (`FundhubLogo` / `FundhubLogoWide`). `Wordmark` draws nothing inside `<SeeThrough on>`. Page-on renders are unchanged.
+
 **Words.** Only the script words named in your brief. Never invent a number, a bank, a name or a claim. Company name: **Fundhub**. Certain words only: never "we think", "might", "maybe", "could", "likely".
 
 **Proof before you finish (all of it):**
@@ -70,3 +72,4 @@ No dependencies between W1, W2, N1, N2, N3. Merge waits on them. Batch 2 starts 
 - 60 catalog entries (34 template files). `catalog.mjs --check` up to date.
 - `npx tsc --noEmit` in marketing/broll: clean. Repo `npx tsc --noEmit`: clean. `npm run lint`: 4298 files clean.
 - `npm test`: 29,241 tests, 0 fail, 27 skipped (main suite); database suite 1,130 tests, 0 fail, 1,047 skipped (no DATABASE_URL in this worktree; this branch touches no database code).
+- 2026-10-23: logo removed from every see-through animation (commit 826a1fcdd); `FundhubLogo` added (merged from worktree-agent-ab8025292055057d2); all 24 proof sheets rebuilt without the logo (b5c863936). Sheet builders for MoneyClimb and the W2 wide panels added to `marketing/broll/scripts/`.
