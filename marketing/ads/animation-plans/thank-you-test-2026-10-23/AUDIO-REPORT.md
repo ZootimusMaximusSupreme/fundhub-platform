@@ -66,3 +66,7 @@ These are Submagic caption mistakes in the finished picture, with the time they 
 4. 40.9-42.4 s: "ADVISOR YOUR WALKS YOU THROUGH THE OPTIONS" (he says "your advisor walks you")
 
 One wording note: at 30.1 s he says "how much you're qualified for"; the script line reads "how much you qualify for".
+
+## Update, 2026-10-23: corrected captions
+
+Chris re-exported the video from Submagic with the four caption words fixed ("YOUR CALL IS BOOKED.", "WHEN IT DOESN'T MATCH,", "WHEN IT MATCHES 2 IN 3", "YOUR ADVISOR WALKS YOU"). The new file (`Direct Book Thank You .mp4`, 2560x1440, 63.24 s) has the same timeline as the first one: SSIM 0.9986 on the top band, audio packet md5 `0d3a5cc18542eb8c89699b4ead168669` (identical). So the same animation schedule and person cut-outs were reused. The web file was rebuilt with the same pass-2 filter and encode settings above: 58,910,375 bytes, I -14.27 LUFS, TP -1.84 dBTP, LRA 2.00, moov at the front. The caption mistakes listed above are fixed in `public/funnel/thank-you-video.mp4`.
