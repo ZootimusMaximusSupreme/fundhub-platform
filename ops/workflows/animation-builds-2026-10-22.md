@@ -46,7 +46,7 @@ Builders: Opus 5.5, high effort, one per unit, each in its own git worktree. Thi
 | N4 | New: FundabilityMeter and ScoreBadge | VSL, Blueprint Ad 3, Ad 16 | done, merged |
 | N5 | New: StampCard and PriceTag | Ads 12, 5, 16, 13, Blueprint Ad 1 | claimed |
 | N6 | New: SplitBar and IconCount | Ad 12, Blueprint Ads 1 and 2 | done, merged |
-| N7 | New: TwoPeople, ReturnMultiple, CalendarStrip | Ads 9, 4 | claimed |
+| N7 | New: TwoPeople, ReturnMultiple, CalendarStrip | Ads 9, 4 | done, merged |
 | Merge | Merge branches, rebuild catalog, re-plan VSL and thank-you densely | — | in progress: branch `animations-2026-10-22` (worktree `.claude/worktrees/animations-merge`), based on origin/main |
 
 No dependencies between W1, W2, N1, N2, N3. Merge waits on them. Batch 2 starts when slots free up (5 builders at a time).
