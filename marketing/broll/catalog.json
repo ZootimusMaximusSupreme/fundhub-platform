@@ -493,5 +493,111 @@
     },
     "purpose": "ToolMatch: a 3D tool board. Each credit situation gets its matching tool, one row at a time: the situation slides in on the left, a blue tool badge pops on the line between, and the tool's card hangs on the board at the right. Then one row lifts off the board and the others dim (with an optional chip, for example \"The hammer\"). An optional final card lands in front at the end, for example the roadmap and its price.",
     "data_tied": false
+  },
+  {
+    "id": "FundabilityMeter",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "min_frames": 90,
+    "max_frames": 120,
+    "default_props": {
+      "format": "vertical",
+      "side": "left",
+      "eyebrow": "Every step comes with a timeline",
+      "steps": [
+        "Bring balances down",
+        "Get negative items removed",
+        "Add to your file",
+        "Build bank relationships",
+        "Set up your business data"
+      ],
+      "meterLabel": "Fundability",
+      "maxLabel": "Maximum",
+      "transparent": false
+    },
+    "purpose": "FundabilityMeter: a fundability meter climbs one notch as each step is checked off. On a floating card the steps sit on a timeline rail, first step at the bottom; as each one is checked, the meter beside it fills that notch and its pointer climbs, until the last step tops it out and the Maximum chip lights. No percentages, no amounts.",
+    "data_tied": false
+  },
+  {
+    "id": "FundabilityMeterWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 90,
+    "max_frames": 120,
+    "default_props": {
+      "format": "wide",
+      "side": "left",
+      "eyebrow": "Every step comes with a timeline",
+      "steps": [
+        "Bring balances down",
+        "Get negative items removed",
+        "Add to your file",
+        "Build bank relationships",
+        "Set up your business data"
+      ],
+      "meterLabel": "Fundability",
+      "maxLabel": "Maximum",
+      "transparent": false
+    },
+    "purpose": "FundabilityMeter: a fundability meter climbs one notch as each step is checked off. On a floating card the steps sit on a timeline rail, first step at the bottom; as each one is checked, the meter beside it fills that notch and its pointer climbs, until the last step tops it out and the Maximum chip lights. No percentages, no amounts.",
+    "data_tied": false
+  },
+  {
+    "id": "ScoreBadge",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 120,
+    "default_props": {
+      "format": "vertical",
+      "side": "left",
+      "mode": "range",
+      "eyebrow": "We work with credit scores",
+      "low": 400,
+      "high": 850,
+      "rangeLead": "Anywhere from",
+      "score": 780,
+      "scoreNote": "or higher",
+      "scores": [
+        850,
+        400,
+        500
+      ],
+      "programLabel": "The exact same program",
+      "transparent": false
+    },
+    "purpose": "ScoreBadge: credit scores on a 3D card, in one of three modes picked by `mode`. \"range\": a score gauge whose whole arc, from the low score to the high one, sweeps in lit and gets a green check (we work with every score in it). \"threshold\": a marker rides the gauge up to one score; that score lands big in the middle and the arc from it to the top lights up (\"or higher\"). \"program\": three score badges drop into one dark program box and come out the other side as three identical gray badges, the numbers gone.",
+    "data_tied": false
+  },
+  {
+    "id": "ScoreBadgeWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 120,
+    "default_props": {
+      "format": "wide",
+      "side": "left",
+      "mode": "range",
+      "eyebrow": "We work with credit scores",
+      "low": 400,
+      "high": 850,
+      "rangeLead": "Anywhere from",
+      "score": 780,
+      "scoreNote": "or higher",
+      "scores": [
+        850,
+        400,
+        500
+      ],
+      "programLabel": "The exact same program",
+      "transparent": false
+    },
+    "purpose": "ScoreBadge: credit scores on a 3D card, in one of three modes picked by `mode`. \"range\": a score gauge whose whole arc, from the low score to the high one, sweeps in lit and gets a green check (we work with every score in it). \"threshold\": a marker rides the gauge up to one score; that score lands big in the middle and the arc from it to the top lights up (\"or higher\"). \"program\": three score badges drop into one dark program box and come out the other side as three identical gray badges, the numbers gone.",
+    "data_tied": false
   }
 ]
