@@ -42,7 +42,7 @@ function templatePropsTypes() {
 }
 
 test("every catalog entry offers transparent, and it defaults to false", () => {
-  assert.equal(catalog.length, 46, "the kit registers 46 ad clips today");
+  assert.equal(catalog.length, 50, "the kit registers 50 ad clips today");
   for (const e of catalog) {
     assert.ok(Object.hasOwn(e.default_props, "transparent"), `${e.id}: default_props has no transparent`);
     assert.equal(e.default_props.transparent, false, `${e.id}: transparent must default to false`);
@@ -51,7 +51,7 @@ test("every catalog entry offers transparent, and it defaults to false", () => {
 
 test("every template's props type declares transparent?: boolean", () => {
   const types = templatePropsTypes();
-  assert.equal(types.length, 27, `27 template files today, found ${types.map((t) => t.file).join(", ")}`);
+  assert.equal(types.length, 29, `29 template files today, found ${types.map((t) => t.file).join(", ")}`);
   for (const t of types) {
     assert.match(t.body, /\n {2}transparent\?: boolean;/, `${t.file}: ${t.name}Props has no transparent?: boolean`);
   }
