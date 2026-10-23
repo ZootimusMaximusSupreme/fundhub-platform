@@ -547,6 +547,76 @@
     "data_tied": false
   },
   {
+    "id": "MoneyClimb",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 120,
+    "default_props": {
+      "format": "vertical",
+      "side": "left",
+      "mode": "steps",
+      "eyebrow": "The condition of your credit decides",
+      "headline": null,
+      "amounts": [
+        {
+          "value": 20000,
+          "label": "In funding"
+        },
+        {
+          "value": 400000
+        },
+        {
+          "value": 1000000,
+          "prefix": "Even",
+          "label": "Across multiple businesses"
+        }
+      ],
+      "goal": null,
+      "unit": null,
+      "footer": null,
+      "transparent": false
+    },
+    "purpose": "MoneyClimb (Unit N1, animation-builds-2026-10-22). Dollar amounts climbing, in four modes picked by props, so one template serves every \"how much money\" line: steps (amounts stepping up, $20,000 to $400,000 to a million), range (a target range, $250,000 to $400,000), ladder (a monthly ladder up to a goal, $10,000 a month up to past $100,000 a month) and single (one income bar climbing to over $400,000).",
+    "data_tied": false
+  },
+  {
+    "id": "MoneyClimbWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 120,
+    "default_props": {
+      "format": "wide",
+      "side": "left",
+      "mode": "steps",
+      "eyebrow": "The condition of your credit decides",
+      "headline": null,
+      "amounts": [
+        {
+          "value": 20000,
+          "label": "In funding"
+        },
+        {
+          "value": 400000
+        },
+        {
+          "value": 1000000,
+          "prefix": "Even",
+          "label": "Across multiple businesses"
+        }
+      ],
+      "goal": null,
+      "unit": null,
+      "footer": null,
+      "transparent": false
+    },
+    "purpose": "MoneyClimb (Unit N1, animation-builds-2026-10-22). Dollar amounts climbing, in four modes picked by props, so one template serves every \"how much money\" line: steps (amounts stepping up, $20,000 to $400,000 to a million), range (a target range, $250,000 to $400,000), ladder (a monthly ladder up to a goal, $10,000 a month up to past $100,000 a month) and single (one income bar climbing to over $400,000).",
+    "data_tied": false
+  },
+  {
     "id": "FlatTireHammer",
     "width": 1080,
     "height": 1920,

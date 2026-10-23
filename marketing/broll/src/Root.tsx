@@ -10,6 +10,7 @@ import {companyLineComposition} from './templates/CompanyLine';
 import {ProofWallComposition} from './templates/ProofWall';
 import {ProofFloodCompositions} from './templates/ProofFlood';
 import {BankPocketsCompositions} from './templates/BankPockets';
+import {MoneyClimbCompositions} from './templates/MoneyClimb';
 import {ToolAnalogyCompositions} from './templates/toolAnalogy';
 
 // The contact sheet is a Composition, not a Still: Remotion clamps every
@@ -27,6 +28,7 @@ export const RemotionRoot: React.FC = () => (
     <ProofWallComposition />
     <ProofFloodCompositions />
     <BankPocketsCompositions />
+    <MoneyClimbCompositions />
     <ToolAnalogyCompositions />
     <Composition
       id="ContactSheet"
