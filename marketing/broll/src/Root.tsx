@@ -14,6 +14,8 @@ import {MoneyClimbCompositions} from './templates/MoneyClimb';
 import {ToolAnalogyCompositions} from './templates/toolAnalogy';
 import {DeadlineClocksCompositions} from './templates/DeadlineClocks';
 import {FundingStackCompositions} from './templates/FundingStack';
+import {BureauMatchCompositions} from './templates/BureauMatch';
+import {PathCardsCompositions} from './templates/PathCards';
 
 // The contact sheet is a Composition, not a Still: Remotion clamps every
 // frame to the composition's length, and a 1-frame Still would freeze each
@@ -34,6 +36,8 @@ export const RemotionRoot: React.FC = () => (
     <ToolAnalogyCompositions />
     <DeadlineClocksCompositions />
     <FundingStackCompositions />
+    <BureauMatchCompositions />
+    <PathCardsCompositions />
     <Composition
       id="ContactSheet"
       component={ContactSheet}
