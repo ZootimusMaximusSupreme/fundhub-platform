@@ -34,6 +34,7 @@ import {
   FH_ATTRIBUTION_SRC,
   FH_EVENTS_SRC,
   CLARITY_SRC,
+  DEFER_FOOTER_SRCS,
   ga4HeadHtml,
 } from "../marketing/landing-pages/tracking-manifest.mjs";
 
@@ -774,6 +775,68 @@ async function pushApplySurveyReplace(creds, workspaceId, row, ctx, dryRun) {
   };
 }
 
+/** The page on a funnel step, found by the step's path (the page id changes when a step is swapped). */
+async function pageOnStep(creds, workspaceId, funnelName, stepPath, ctx) {
+  const pages = await listPages(creds, workspaceId, ctx);
+  for (const p of pages.filter((x) => x.funnel_name === funnelName)) {
+    const body = await getPage(creds, p.id, ctx);
+    if (body?.show_page_step?.current_path === stepPath) return body;
+  }
+  return null;
+}
+
+/**
+ * Whole-step custom HTML page built from one fragment. A custom page gets no funnel
+ * head code, so the pixel, Direct ROAS and every footer script ride inside the document.
+ * First run: the step holds a builder page, so a custom page is made on the same step
+ * (the builder page is left in place, never deleted). Later runs: PUT the same page.
+ */
+function buildStepDocument(row, pageToken, pixelId) {
+  let body = readFragment(row.fragment);
+  const headClarity = Boolean(String(process.env.CLARITY_PROJECT_ID ?? "").trim());
+  for (const src of [FH_ATTRIBUTION_SRC, ...(row.extraFooterScripts ?? [])]) {
+    if (src === CLARITY_SRC && headClarity) continue;
+    if (!hasScriptSrc(body, src)) body += `\n${footerScriptTag(src, { defer: DEFER_FOOTER_SRCS.has(src) })}`;
+  }
+  const html = wrapCustomHtmlDocument({
+    bodyHtml: body,
+    pageToken,
+    pixelId,
+    includeVslBeacon: !!row.vslBeacon,
+    headFirstHtml: [directRoasHeadHtml(process.env), headBlocksHtml(row, readFragment)].filter(Boolean).join("\n"),
+    env: process.env,
+  });
+  return row.title ? html.replace("<title>Fundhub</title>", `<title>${row.title}</title>`) : html;
+}
+
+async function pushCustomHtmlStep(creds, workspaceId, row, pixelId, ctx, dryRun, snapDir) {
+  const current = await pageOnStep(creds, workspaceId, row.funnelName, row.stepPath, ctx);
+  if (!current) return { ok: false, error: "step_page_not_found" };
+  const stepId = current.show_page_step.public_id;
+  if (current.custom_html_page) {
+    const html = buildStepDocument(row, current.sdk?.token, pixelId);
+    if (!dryRun) await snapshotCustomHtml(creds, current.id, ctx, snapDir);
+    const r = await putCustomHtml(creds, current.id, html, ctx, dryRun);
+    return { ...r, mode: "custom_html_put", pageId: current.id, bytes: html.length };
+  }
+  const first = buildStepDocument(row, null, pixelId);
+  if (dryRun) {
+    return { ok: true, dryRun: true, mode: "custom_html_create", replaces_builder_page: current.id, showPageStepId: stepId, bytes: first.length };
+  }
+  const created = await createCustomHtmlPage(
+    creds,
+    workspaceId,
+    { name: row.title || row.key, description: `Custom HTML ${row.stepPath}`, custom_html: first, current_path: row.path, funnel: { show_page_step_id: stepId } },
+    ctx,
+    false,
+  );
+  const body = created.body?.page ?? created.body;
+  const newId = body?.id;
+  const token = body?.sdk?.token;
+  if (newId && token) await putCustomHtml(creds, newId, buildStepDocument(row, token, pixelId), ctx, false);
+  return { ok: Boolean(newId), mode: "custom_html_create", pageId: newId ?? null, replaced_builder_page: current.id, showPageStepId: stepId, sdk_token: Boolean(token) };
+}
+
 async function cmdPush(creds, { dryRun = false, only = null } = {}) {
   const ctx = {};
   const workspaceId = await resolveWorkspaceId(creds, ctx);
@@ -809,6 +872,12 @@ async function cmdPush(creds, { dryRun = false, only = null } = {}) {
           error: redactSecret(err.message, secret),
         });
       }
+      continue;
+    }
+    if (row.strategy === "custom_html_step") {
+      const r = await pushCustomHtmlStep(creds, workspaceId, row, pixel.id, ctx, dryRun, snapDir);
+      if (!r.ok) process.exitCode = 1;
+      results.push({ key: row.key, liveUrl: row.liveUrl, pixel_env: pixel.envName, ...r });
       continue;
     }
     if (row.strategy === "funnel_head_pixel") {

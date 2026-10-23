@@ -3,7 +3,7 @@
  * adjacent JSON file. That keeps the live funnel free of dead download links. */
 (function () {
   var CONFIG_URL = "https://fundhub.ai/funnel/fundhub-prompter-download.json";
-  var LINK = /^https:\/\/apps\.apple\.com\/(?:[a-z]{2}\/)?app\/(?:[^?#/]+\/)?id6823985032\/?$/;
+  var LINK = /^https:\/\/apps\.apple\.com\/(?:[a-z]{2}\/)?app\/(?:[^?#/]+\/)?id[0-9]+\/?$/;
 
   function addStyles() {
     if (document.getElementById("fh-prompter-download-css")) return;
