@@ -1,0 +1,150 @@
+{
+ "video": "Direct Book Ad 11 — The penthouse",
+ "mode": "overlay (see-through), behind him (person cut-out laid back on top)",
+ "width": 1080,
+ "height": 1920,
+ "fps": 30,
+ "video_seconds": 69.8,
+ "clips": [
+  {
+   "n": 1,
+   "template": "PriceTag",
+   "clip": "01-PriceTag.mov",
+   "start_s": 12.3,
+   "start_frame": 369,
+   "frames": 90,
+   "end_s": 15.3,
+   "scale": 0.41,
+   "words_x": 817,
+   "words_y": 835,
+   "words_box_clip": [
+    243,
+    485,
+    860,
+    1135
+   ],
+   "words_on_video_box": [
+    817,
+    835,
+    1070,
+    1102
+   ],
+   "dx": 717,
+   "dy": 636,
+   "spot": "right, lower middle",
+   "why": "tag settles 0.5 s in (12.8 s) on 'dollar penthouse' (12.8-13.1 s); 'He was struggling' appears 1.6 s in (13.9 s), on 'struggling' (13.9 s)"
+  },
+  {
+   "n": 2,
+   "template": "StepPath",
+   "clip": "02-StepPath.mov",
+   "start_s": 25.3,
+   "start_frame": 759,
+   "frames": 90,
+   "end_s": 28.3,
+   "scale": 0.31,
+   "words_x": 14,
+   "words_y": 273,
+   "words_box_clip": [
+    150,
+    620,
+    865,
+    1000
+   ],
+   "words_on_video_box": [
+    14,
+    273,
+    236,
+    391
+   ],
+   "dx": -32,
+   "dy": 81,
+   "spot": "left, top",
+   "why": "step 1 lights 0.5 s in (25.8 s) on 'his credit' (25.6-26.0 s); step 2 lights 2.0 s in (27.3 s) on 'put it to work' (27.1-27.5 s)"
+  },
+  {
+   "n": 3,
+   "template": "MoneyClimb",
+   "clip": "03-MoneyClimb.mov",
+   "start_s": 30.0,
+   "start_frame": 900,
+   "frames": 120,
+   "end_s": 34.0,
+   "scale": 0.45,
+   "words_x": 757,
+   "words_y": 275,
+   "words_box_clip": [
+    120,
+    400,
+    805,
+    1000
+   ],
+   "words_on_video_box": [
+    757,
+    275,
+    1065,
+    545
+   ],
+   "dx": 703,
+   "dy": 95,
+   "spot": "right, top",
+   "why": "'Within six months' at 30.0 s on 'within six months' (29.9-30.5 s); count reaches $400,000 at 2.6 s in (32.6 s) on '$400,000' (32.6 s); 'a month' printed at 2.7 s (32.7 s), said at 34.8 s"
+  },
+  {
+   "n": 4,
+   "template": "CompanyLine",
+   "clip": "04-CompanyLine.mov",
+   "start_s": 46.5,
+   "start_frame": 1395,
+   "frames": 105,
+   "end_s": 50.0,
+   "scale": 0.42,
+   "words_x": 680,
+   "words_y": 272,
+   "words_box_clip": [
+    75,
+    405,
+    1000,
+    660
+   ],
+   "words_on_video_box": [
+    680,
+    272,
+    1068,
+    379
+   ],
+   "dx": 648,
+   "dy": 102,
+   "spot": "right, top",
+   "why": "headline up 0.3 s in (46.8 s), the whole line on screen while he says 'the ones who do it most efficiently use other people's money' (47.0-49.9 s)"
+  },
+  {
+   "n": 5,
+   "template": "PathCards",
+   "clip": "05-PathCards.mov",
+   "start_s": 54.2,
+   "start_frame": 1626,
+   "frames": 120,
+   "end_s": 58.2,
+   "scale": 0.34,
+   "words_x": 758,
+   "words_y": 955,
+   "words_box_clip": [
+    86,
+    640,
+    1000,
+    990
+   ],
+   "words_on_video_box": [
+    758,
+    955,
+    1069,
+    1074
+   ],
+   "dx": 729,
+   "dy": 737,
+   "spot": "right, lower middle",
+   "why": "card 1 solid 0.7 s in (54.9 s) on 'credit is that lever' (54.1-55.1 s); card 2 lands 1.6 s in (55.8 s) on 'building with only your own cash' (55.3-56.7 s)"
+  }
+ ]
+}

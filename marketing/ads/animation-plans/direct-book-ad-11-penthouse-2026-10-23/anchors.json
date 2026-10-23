@@ -1,0 +1,51 @@
+{
+ "video": "Direct Book Ad 11 — The penthouse",
+ "source": "whisper small.en on the audio (words-timeline.txt); numbers and 'a month' confirmed on the burned-in captions",
+ "anchors": [
+  {
+   "n": 1,
+   "template": "PriceTag",
+   "phrase": "a $1.5 million penthouse, and he was struggling",
+   "start_s": 11.9,
+   "end_s": 14.1,
+   "planned_start_s": 17.41,
+   "note": "filmed words differ from the script: 'one and a half million dollar penthouse', 'a month' (script says 'a year'); the Archimedes quote was not filmed"
+  },
+  {
+   "n": 2,
+   "template": "StepPath",
+   "phrase": "He optimized his credit, then put it to work alongside investors and credit partners",
+   "start_s": 24.4,
+   "end_s": 29.7,
+   "planned_start_s": 32.59,
+   "note": "filmed words differ from the script: 'one and a half million dollar penthouse', 'a month' (script says 'a year'); the Archimedes quote was not filmed"
+  },
+  {
+   "n": 3,
+   "template": "MoneyClimb",
+   "phrase": "was over $400,000 a year",
+   "start_s": 31.9,
+   "end_s": 35.4,
+   "planned_start_s": 40.0,
+   "note": "filmed words differ from the script: 'one and a half million dollar penthouse', 'a month' (script says 'a year'); the Archimedes quote was not filmed"
+  },
+  {
+   "n": 4,
+   "template": "CompanyLine",
+   "phrase": "who do it most efficiently use other people's money",
+   "start_s": 47.1,
+   "end_s": 49.9,
+   "planned_start_s": 52.59,
+   "note": "filmed words differ from the script: 'one and a half million dollar penthouse', 'a month' (script says 'a year'); the Archimedes quote was not filmed"
+  },
+  {
+   "n": 5,
+   "template": "PathCards",
+   "phrase": "Credit is that lever, and building with only your own cash",
+   "start_s": 54.1,
+   "end_s": 58.8,
+   "planned_start_s": 61.11,
+   "note": "filmed words differ from the script: 'one and a half million dollar penthouse', 'a month' (script says 'a year'); the Archimedes quote was not filmed"
+  }
+ ]
+}
