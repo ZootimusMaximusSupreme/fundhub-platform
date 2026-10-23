@@ -1,6 +1,7 @@
 import React from 'react';
 import {Composition} from 'remotion';
 import {FRAME, clampDuration} from '../brand';
+import {KIT_WIDE} from '../brand/KitFrame';
 import {FILE_ITEMS_BASE, FILE_ITEMS_HERO, FileItems, fileItemsDefaults} from './FileItems';
 import {HIDDEN_DATA_POINTS_BASE, HIDDEN_DATA_POINTS_HERO, HiddenDataPoints, hiddenDataPointsDefaults} from './HiddenDataPoints';
 import {INQUIRIES_OFF_BASE, INQUIRIES_OFF_HERO, InquiriesOff, inquiriesOffDefaults} from './InquiriesOff';
@@ -142,3 +143,73 @@ export const TEMPLATES: TemplateEntry[] = [
     defaultProps: softPullDefaults,
   }),
 ];
+
+// The wide 4K versions (3840x2160) for the sideways VSL and thank-you video.
+// Same component, same words and the same 2 to 3 second clamp as the vertical
+// one; `format: 'wide'` puts it all in one side panel and `side` picks the
+// panel (left by default), so the face and the captions in the middle stay
+// clear. Still: npx remotion still src/index.ts FileItemsWide out/file-items-wide.png --frame=72
+export const RegistryWideCompositions: React.FC = () => (
+  <>
+    <Composition
+      id="QualifyTodayWide"
+      component={QualifyToday}
+      durationInFrames={QUALIFY_TODAY_BASE}
+      fps={KIT_WIDE.fps}
+      width={KIT_WIDE.width}
+      height={KIT_WIDE.height}
+      defaultProps={{...qualifyTodayDefaults, format: 'wide' as const, side: 'left' as const}}
+      calculateMetadata={({props}) => ({
+        durationInFrames: clampDuration(typeof props.durationInFrames === 'number' ? props.durationInFrames : undefined, QUALIFY_TODAY_BASE),
+      })}
+    />
+    <Composition
+      id="FileItemsWide"
+      component={FileItems}
+      durationInFrames={FILE_ITEMS_BASE}
+      fps={KIT_WIDE.fps}
+      width={KIT_WIDE.width}
+      height={KIT_WIDE.height}
+      defaultProps={{...fileItemsDefaults, format: 'wide' as const, side: 'left' as const}}
+      calculateMetadata={({props}) => ({
+        durationInFrames: clampDuration(typeof props.durationInFrames === 'number' ? props.durationInFrames : undefined, FILE_ITEMS_BASE),
+      })}
+    />
+    <Composition
+      id="HiddenDataPointsWide"
+      component={HiddenDataPoints}
+      durationInFrames={HIDDEN_DATA_POINTS_BASE}
+      fps={KIT_WIDE.fps}
+      width={KIT_WIDE.width}
+      height={KIT_WIDE.height}
+      defaultProps={{...hiddenDataPointsDefaults, format: 'wide' as const, side: 'left' as const}}
+      calculateMetadata={({props}) => ({
+        durationInFrames: clampDuration(typeof props.durationInFrames === 'number' ? props.durationInFrames : undefined, HIDDEN_DATA_POINTS_BASE),
+      })}
+    />
+    <Composition
+      id="StepPathWide"
+      component={StepPath}
+      durationInFrames={STEP_PATH_BASE}
+      fps={KIT_WIDE.fps}
+      width={KIT_WIDE.width}
+      height={KIT_WIDE.height}
+      defaultProps={{...stepPathDefaults, format: 'wide' as const, side: 'left' as const}}
+      calculateMetadata={({props}) => ({
+        durationInFrames: clampDuration(typeof props.durationInFrames === 'number' ? props.durationInFrames : undefined, STEP_PATH_BASE),
+      })}
+    />
+    <Composition
+      id="SoftPullWide"
+      component={SoftPull}
+      durationInFrames={SOFT_PULL_BASE}
+      fps={KIT_WIDE.fps}
+      width={KIT_WIDE.width}
+      height={KIT_WIDE.height}
+      defaultProps={{...softPullDefaults, format: 'wide' as const, side: 'left' as const}}
+      calculateMetadata={({props}) => ({
+        durationInFrames: clampDuration(typeof props.durationInFrames === 'number' ? props.durationInFrames : undefined, SOFT_PULL_BASE),
+      })}
+    />
+  </>
+);

@@ -16,6 +16,7 @@ import {
   progressBetween,
 } from '../brand';
 import {SeeThrough} from '../brand/Grid';
+import {Sticker, WidePanel, type WideFormat, type WideSide} from '../brand/widePanel';
 import {useOfferCtaTimeline} from './offer-cta-timeline';
 
 // BookCall: the call to action for the book-a-call funnel (/watch). A 3D
@@ -39,6 +40,10 @@ export type BookCallProps = {
   detail: string | null;
   durationInFrames?: number;
   showSafeZones?: boolean;
+  /** "vertical" (1080x1920, ads) or "wide" (3840x2160, the VSL). Default vertical. */
+  format?: WideFormat;
+  /** Wide only: the side panel the scene sits in. Default left. */
+  side?: WideSide;
   /** See-through: no page and no grid, so the clip renders with alpha (README.md). Default false. */
   transparent?: boolean;
 };
@@ -121,7 +126,21 @@ const BinderRing: React.FC<{left: number}> = ({left}) => (
   />
 );
 
-export const BookCall: React.FC<BookCallProps> = ({eyebrow, line, pickDay, times, pickTime, booked, detail, durationInFrames, showSafeZones, transparent}) => {
+export const BookCall: React.FC<BookCallProps> = ({
+  eyebrow,
+  line,
+  pickDay,
+  times,
+  pickTime,
+  booked,
+  detail,
+  durationInFrames,
+  showSafeZones,
+  transparent,
+  format,
+  side,
+}) => {
+  const wide = format === 'wide';
   const {f, fps} = useOfferCtaTimeline(BOOK_CALL_BASE, durationInFrames);
   const L = BOOK_CALL_BASE;
 
@@ -157,7 +176,7 @@ export const BookCall: React.FC<BookCallProps> = ({eyebrow, line, pickDay, times
 
   const page = (
     <BrandFrame
-      showSafeZones={showSafeZones}
+      showSafeZones={wide ? false : showSafeZones}
       backdrop={
         <BackdropStage f={f} length={L}>
           <MoneyField f={f} mode="drift" count={7} seed="book-call-drift" size={[160, 230]} depth={[-950, -320]} opacity={0.26} blur={3} />
@@ -435,5 +454,20 @@ export const BookCall: React.FC<BookCallProps> = ({eyebrow, line, pickDay, times
       </Stage3D>
     </BrandFrame>
   );
-  return <SeeThrough on={transparent}>{page}</SeeThrough>;
+  const look = (
+    <Sticker on={transparent} band={!wide}>
+      {page}
+    </Sticker>
+  );
+  return (
+    <SeeThrough on={transparent}>
+      {wide ? (
+        <WidePanel side={side} showSafeZones={showSafeZones}>
+          {look}
+        </WidePanel>
+      ) : (
+        look
+      )}
+    </SeeThrough>
+  );
 };

@@ -162,6 +162,145 @@
     "data_tied": false
   },
   {
+    "id": "QualifyTodayWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 60,
+    "max_frames": 90,
+    "default_props": {
+      "eyebrow": "How much you qualify for",
+      "today": {
+        "label": "Today",
+        "value": 199350
+      },
+      "after": {
+        "label": "Once your file is fixed",
+        "value": 221500
+      },
+      "gapLabel": "left on the table",
+      "transparent": false,
+      "format": "wide",
+      "side": "left"
+    },
+    "purpose": "QualifyTodayWide: the QualifyToday clip (today and once-fixed amounts roll up beside 3D cash stacks; the gap stacks on top in blue) in 3840x2160 for the sideways 4K VSL and thank-you video. Same sample-client numbers as QualifyToday. Everything sits in one side panel (`side`: left or right) so the face and the captions in the middle stay clear.",
+    "data_tied": true
+  },
+  {
+    "id": "FileItemsWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 60,
+    "max_frames": 90,
+    "default_props": {
+      "eyebrow": "Everything holding you back",
+      "docTitle": "Credit Analysis Report",
+      "docSubtitle": "All three bureaus",
+      "items": [
+        {
+          "label": "Cards sitting too high"
+        },
+        {
+          "label": "Harmful items"
+        },
+        {
+          "label": "Personal data that doesn't match"
+        }
+      ],
+      "tag": "Costing you money",
+      "transparent": false,
+      "format": "wide",
+      "side": "left"
+    },
+    "purpose": "FileItemsWide: the FileItems clip (items on the credit report: the report floats on a stack of pages; red chips send a bill flying off, green chips flip in a gold coin) in 3840x2160 for the sideways 4K VSL and thank-you video. Everything sits in one side panel (`side`: left or right) so the face and the captions in the middle stay clear.",
+    "data_tied": false
+  },
+  {
+    "id": "HiddenDataPointsWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 60,
+    "max_frames": 90,
+    "default_props": {
+      "eyebrow": "Even with perfect credit",
+      "count": 13,
+      "label": "hidden data points",
+      "subline": "An additional $100,000+ in low-interest funding",
+      "transparent": false,
+      "format": "wide",
+      "side": "left"
+    },
+    "purpose": "HiddenDataPointsWide: the HiddenDataPoints clip (thirteen glossy dots light up on a tilted orbit around the count; the dots are never labeled) in 3840x2160 for the sideways 4K VSL and thank-you video. Everything sits in one side panel (`side`: left or right) so the face and the captions in the middle stay clear.",
+    "data_tied": false
+  },
+  {
+    "id": "StepPathWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 60,
+    "max_frames": 90,
+    "default_props": {
+      "eyebrow": "The order to do it in",
+      "steps": [
+        "See what you qualify for today",
+        "Find the gap and fix your personal credit",
+        "Build the trust in the business",
+        "Set up the businesses",
+        "Apply in the right order"
+      ],
+      "transparent": false,
+      "format": "wide",
+      "side": "left"
+    },
+    "purpose": "StepPathWide: the StepPath clip (numbered discs flip from gray to blue as the line runs down the steps) in 3840x2160 for the sideways 4K VSL and thank-you video. Everything sits in one side panel (`side`: left or right) so the face and the captions in the middle stay clear.",
+    "data_tied": false
+  },
+  {
+    "id": "SoftPullWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 60,
+    "max_frames": 90,
+    "default_props": {
+      "eyebrow": "Soft pull only",
+      "score": 762,
+      "scoreLabel": "Credit score",
+      "headline": "Zero impact on your score.",
+      "chip": "Score doesn't move",
+      "transparent": false,
+      "format": "wide",
+      "side": "left"
+    },
+    "purpose": "SoftPullWide: the SoftPull clip (a scan passes over a thick 3D dial and the score stays put) in 3840x2160 for the sideways 4K VSL and thank-you video. Everything sits in one side panel (`side`: left or right) so the face and the captions in the middle stay clear.",
+    "data_tied": false
+  },
+  {
+    "id": "InquiriesOffWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 60,
+    "max_frames": 90,
+    "default_props": {
+      "eyebrow": "Between each funding round",
+      "fromLabel": "This funding round",
+      "itemLabel": "Hard inquiries",
+      "beforeTag": "On your report",
+      "afterTag": "Removed",
+      "toLabel": "Next funding round",
+      "toNote": "Goes in clean",
+      "transparent": false,
+      "format": "wide",
+      "side": "left"
+    },
+    "purpose": "InquiriesOff: hard inquiries are struck off a floating card, then bills ride the line down into the next funding round. Vertical 1080x1920 for ads; InquiriesOffWide is the 4K version for the sideways VSL and the thank-you video, with the whole scene in one side panel (`side`: left or right) so the face and the captions in the middle stay clear.",
+    "data_tied": false
+  },
+  {
     "id": "CompanyLine",
     "width": 1080,
     "height": 1920,
@@ -248,6 +387,33 @@
     "data_tied": false
   },
   {
+    "id": "BookCallWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 105,
+    "default_props": {
+      "eyebrow": "Free call · Google Meet",
+      "line": "Hop on a call",
+      "pickDay": 15,
+      "times": [
+        "9:00 AM",
+        "11:30 AM",
+        "2:30 PM",
+        "4:00 PM"
+      ],
+      "pickTime": 2,
+      "booked": "Booked",
+      "detail": "Soft pull on the call, zero score impact",
+      "transparent": false,
+      "format": "wide",
+      "side": "left"
+    },
+    "purpose": "BookCall: the call to action for the book-a-call funnel (/watch). A 3D calendar flips down into place, a day gets picked, time slots appear, one is picked, and a \"Booked\" card lands in front. Generic days and times only: no month name, no year, no person's name.",
+    "data_tied": false
+  },
+  {
     "id": "LenderSlots",
     "width": 1080,
     "height": 1920,
@@ -289,6 +455,28 @@
     "data_tied": false
   },
   {
+    "id": "FundingRoundsWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 120,
+    "default_props": {
+      "eyebrow": "Funding sequence",
+      "rounds": 4,
+      "roundLabel": "Round",
+      "inquiryChip": "Inquiries",
+      "captionStruck": "Hard inquiries",
+      "captionRest": "removed between rounds",
+      "amounts": null,
+      "transparent": false,
+      "format": "wide",
+      "side": "left"
+    },
+    "purpose": "A funding sequence that runs round by round (3 to 6 rounds). Each round lights up on the track and stacks another strapped bundle onto one cash tower while bills and coins pour down onto it; between rounds a hard-inquiries chip pops up, gets struck off and leaves before the next round lights. Every piece of loose money is masked to the tower area or the side gutters, so none of it ever sits on a word.",
+    "data_tied": false
+  },
+  {
     "id": "LenderMatchScroll",
     "width": 1080,
     "height": 1920,
@@ -308,6 +496,32 @@
       "count": "30–50",
       "countLabel": "lenders matched to your file",
       "transparent": false
+    },
+    "purpose": "A list of 59 real banks scrolls from the top of the list to the bottom on a 3D drum. Each row has the bank's logo (the CRM's own logo file) and the three bureaus with a status for each, heavily blurred: you can tell the data is there, but you cannot read it. The list slows and settles, then one clear line lands: \"30–50 lenders matched to your file\" (9/30 /watch VSL P4).",
+    "data_tied": false
+  },
+  {
+    "id": "LenderMatchScrollWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 105,
+    "max_frames": 135,
+    "default_props": {
+      "eyebrow": "Matching your file",
+      "bankHeader": "Bank",
+      "bureauHeaders": [
+        "Experian",
+        "Equifax",
+        "TransUnion"
+      ],
+      "pulledLabel": "Pulls",
+      "notPulledLabel": "No pull",
+      "count": "30–50",
+      "countLabel": "lenders matched to your file",
+      "transparent": false,
+      "format": "wide",
+      "side": "left"
     },
     "purpose": "A list of 59 real banks scrolls from the top of the list to the bottom on a 3D drum. Each row has the bank's logo (the CRM's own logo file) and the three bureaus with a status for each, heavily blurred: you can tell the data is there, but you cannot read it. The list slows and settles, then one clear line lands: \"30–50 lenders matched to your file\" (9/30 /watch VSL P4).",
     "data_tied": false
@@ -337,6 +551,37 @@
       ],
       "speed": 1,
       "transparent": false
+    },
+    "purpose": "ProofWall: the real client approvals turn past on a 3D carousel of floating screens. Each screen is one approval picture exactly as it is (the branded win card from marketing/landing-pages/slo/client-wins/deck, copied to public/proof-wall/ by scripts/proof-wall-approvals.py). Built to read on a phone: few approvals per clip, each one held in front about a second, the front screen big and square to the camera, the side screens pushed back, dimmed and softened. A chip pinned to the front screen repeats its amount and lender from that picture's manifest entry (the figure read off the picture), never anything else. No name or face is added. Under the carousel the proof lines build up: \"A decade\", \"Hundreds of files\", \"Thousands of data points\" pop in as chips, then \"A little over a million dollars funded for myself\" lands big and holds. Bills drift behind the screens.",
+    "data_tied": true
+  },
+  {
+    "id": "ProofWallWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 90,
+    "max_frames": 120,
+    "default_props": {
+      "eyebrow": "Client approvals",
+      "approvals": [
+        "win-15000-fnbo",
+        "win-50000-keybank",
+        "win-74000-chase",
+        "win-20000-truist",
+        "win-16000-bankunited",
+        "win-12000-bank-of-america-2"
+      ],
+      "proofLines": [
+        "A decade",
+        "Hundreds of files",
+        "Thousands of data points",
+        "A little over a million dollars funded for myself"
+      ],
+      "speed": 1,
+      "transparent": false,
+      "format": "wide",
+      "side": "left"
     },
     "purpose": "ProofWall: the real client approvals turn past on a 3D carousel of floating screens. Each screen is one approval picture exactly as it is (the branded win card from marketing/landing-pages/slo/client-wins/deck, copied to public/proof-wall/ by scripts/proof-wall-approvals.py). Built to read on a phone: few approvals per clip, each one held in front about a second, the front screen big and square to the camera, the side screens pushed back, dimmed and softened. A chip pinned to the front screen repeats its amount and lender from that picture's manifest entry (the figure read off the picture), never anything else. No name or face is added. Under the carousel the proof lines build up: \"A decade\", \"Hundreds of files\", \"Thousands of data points\" pop in as chips, then \"A little over a million dollars funded for myself\" lands big and holds. Bills drift behind the screens.",
     "data_tied": true
@@ -430,6 +675,106 @@
     "data_tied": false
   },
   {
+    "id": "MoneyClimb",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 120,
+    "default_props": {
+      "format": "vertical",
+      "side": "left",
+      "mode": "steps",
+      "eyebrow": "The condition of your credit decides",
+      "headline": null,
+      "amounts": [
+        {
+          "value": 20000,
+          "label": "In funding"
+        },
+        {
+          "value": 400000
+        },
+        {
+          "value": 1000000,
+          "prefix": "Even",
+          "label": "Across multiple businesses"
+        }
+      ],
+      "goal": null,
+      "unit": null,
+      "footer": null,
+      "transparent": false
+    },
+    "purpose": "MoneyClimb (Unit N1, animation-builds-2026-10-22). Dollar amounts climbing, in four modes picked by props, so one template serves every \"how much money\" line: steps (amounts stepping up, $20,000 to $400,000 to a million), range (a target range, $250,000 to $400,000), ladder (a monthly ladder up to a goal, $10,000 a month up to past $100,000 a month) and single (one income bar climbing to over $400,000).",
+    "data_tied": false
+  },
+  {
+    "id": "MoneyClimbWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 120,
+    "default_props": {
+      "format": "wide",
+      "side": "left",
+      "mode": "steps",
+      "eyebrow": "The condition of your credit decides",
+      "headline": null,
+      "amounts": [
+        {
+          "value": 20000,
+          "label": "In funding"
+        },
+        {
+          "value": 400000
+        },
+        {
+          "value": 1000000,
+          "prefix": "Even",
+          "label": "Across multiple businesses"
+        }
+      ],
+      "goal": null,
+      "unit": null,
+      "footer": null,
+      "transparent": false
+    },
+    "purpose": "MoneyClimb (Unit N1, animation-builds-2026-10-22). Dollar amounts climbing, in four modes picked by props, so one template serves every \"how much money\" line: steps (amounts stepping up, $20,000 to $400,000 to a million), range (a target range, $250,000 to $400,000), ladder (a monthly ladder up to a goal, $10,000 a month up to past $100,000 a month) and single (one income bar climbing to over $400,000).",
+    "data_tied": false
+  },
+  {
+    "id": "FundhubLogo",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "min_frames": 60,
+    "max_frames": 90,
+    "default_props": {
+      "format": "vertical",
+      "side": "left",
+      "transparent": false
+    },
+    "purpose": "FundhubLogo: the Fundhub brand sting. The real \"fundhub.\" wordmark on a white plate: a thin brand-spectrum line draws across, the letters rise up out of it one by one, then the line gathers into the period, which lands in the spectrum colors, sends out one soft ring and settles to ink. The only place the logo shows on the videos.",
+    "data_tied": false
+  },
+  {
+    "id": "FundhubLogoWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 60,
+    "max_frames": 90,
+    "default_props": {
+      "format": "wide",
+      "side": "left",
+      "transparent": false
+    },
+    "purpose": "FundhubLogo: the Fundhub brand sting. The real \"fundhub.\" wordmark on a white plate: a thin brand-spectrum line draws across, the letters rise up out of it one by one, then the line gathers into the period, which lands in the spectrum colors, sends out one soft ring and settles to ink. The only place the logo shows on the videos.",
+    "data_tied": false
+  },
+  {
     "id": "FlatTireHammer",
     "width": 1080,
     "height": 1920,
@@ -492,6 +837,744 @@
       "transparent": false
     },
     "purpose": "ToolMatch: a 3D tool board. Each credit situation gets its matching tool, one row at a time: the situation slides in on the left, a blue tool badge pops on the line between, and the tool's card hangs on the board at the right. Then one row lifts off the board and the others dim (with an optional chip, for example \"The hammer\"). An optional final card lands in front at the end, for example the roadmap and its price.",
+    "data_tied": false
+  },
+  {
+    "id": "DeadlineClocks",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 120,
+    "default_props": {
+      "format": "vertical",
+      "side": "left",
+      "clocks": [
+        {
+          "lead": "Within",
+          "hours": 24,
+          "unit": "business hours",
+          "label": "A funding advisor starts on your file"
+        },
+        {
+          "lead": "Within",
+          "hours": 72,
+          "unit": "hours",
+          "label": "Your first applications go out"
+        }
+      ],
+      "guarantee": "If you qualify and we can't fund you, you don't pay.",
+      "transparent": false
+    },
+    "purpose": "DeadlineClocks (Unit N2, animation-builds-2026-10-22). Two time limits with a guarantee: two stopwatch cards (24 business hours, 72 hours) fill their rings and land, then the guarantee line comes in under them.",
+    "data_tied": false
+  },
+  {
+    "id": "DeadlineClocksWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 120,
+    "default_props": {
+      "format": "wide",
+      "side": "left",
+      "clocks": [
+        {
+          "lead": "Within",
+          "hours": 24,
+          "unit": "business hours",
+          "label": "A funding advisor starts on your file"
+        },
+        {
+          "lead": "Within",
+          "hours": 72,
+          "unit": "hours",
+          "label": "Your first applications go out"
+        }
+      ],
+      "guarantee": "If you qualify and we can't fund you, you don't pay.",
+      "transparent": false
+    },
+    "purpose": "DeadlineClocks (Unit N2, animation-builds-2026-10-22). Two time limits with a guarantee: two stopwatch cards (24 business hours, 72 hours) fill their rings and land, then the guarantee line comes in under them.",
+    "data_tied": false
+  },
+  {
+    "id": "FundingStack",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 120,
+    "default_props": {
+      "format": "vertical",
+      "side": "left",
+      "types": [
+        "Credit cards",
+        "Lines of credit",
+        "SBA loans",
+        "Merchant cash advances",
+        "Personal funding"
+      ],
+      "caption": "Stacked together at the lowest rates",
+      "transparent": false
+    },
+    "purpose": "FundingStack (Unit N2, animation-builds-2026-10-22). Funding types slide in from the sides one at a time and stack up, then the stack closes into one block with a single outline, and the caption comes in under it.",
+    "data_tied": false
+  },
+  {
+    "id": "FundingStackWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 120,
+    "default_props": {
+      "format": "wide",
+      "side": "left",
+      "types": [
+        "Credit cards",
+        "Lines of credit",
+        "SBA loans",
+        "Merchant cash advances",
+        "Personal funding"
+      ],
+      "caption": "Stacked together at the lowest rates",
+      "transparent": false
+    },
+    "purpose": "FundingStack (Unit N2, animation-builds-2026-10-22). Funding types slide in from the sides one at a time and stack up, then the stack closes into one block with a single outline, and the caption comes in under it.",
+    "data_tied": false
+  },
+  {
+    "id": "BureauMatch",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "min_frames": 90,
+    "max_frames": 135,
+    "default_props": {
+      "format": "vertical",
+      "side": "left",
+      "eyebrow": "All three bureaus",
+      "headline": "Your information has to match on every report",
+      "bureaus": [
+        "Experian",
+        "Equifax",
+        "TransUnion"
+      ],
+      "flagged": 1,
+      "mismatchTag": "Doesn't match",
+      "matchTag": "Matches",
+      "stages": [
+        {
+          "state": "mismatch",
+          "approved": 1,
+          "kicker": "Only",
+          "count": "1 in 3",
+          "label": "banks approve you"
+        },
+        {
+          "state": "match",
+          "approved": 2,
+          "kicker": "When it matches",
+          "count": "2 in 3",
+          "label": "banks approve you"
+        },
+        {
+          "state": "match",
+          "approved": 3,
+          "kicker": "Sometimes",
+          "count": "3 out of 3",
+          "label": "banks approve you"
+        }
+      ],
+      "transparent": false
+    },
+    "purpose": "BureauMatch (Unit N3, animation-builds-2026-10-22). Three credit reports side by side, and three banks under them: when one report does not match, only some banks light up; when all three match, more banks light up. Thank-you video: \"Different banks pull different bureaus, so your information has to match on every report. When it doesn't match, only 1 in 3 banks approve you. When it MATCHES, it's 2 in 3, and sometimes 3 out of 3.\" Direct Book Ad 14: \"A mismatch on one of your three credit reports cuts your approvals in HALF\".",
+    "data_tied": false
+  },
+  {
+    "id": "BureauMatchWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 90,
+    "max_frames": 135,
+    "default_props": {
+      "format": "wide",
+      "side": "left",
+      "eyebrow": "All three bureaus",
+      "headline": "Your information has to match on every report",
+      "bureaus": [
+        "Experian",
+        "Equifax",
+        "TransUnion"
+      ],
+      "flagged": 1,
+      "mismatchTag": "Doesn't match",
+      "matchTag": "Matches",
+      "stages": [
+        {
+          "state": "mismatch",
+          "approved": 1,
+          "kicker": "Only",
+          "count": "1 in 3",
+          "label": "banks approve you"
+        },
+        {
+          "state": "match",
+          "approved": 2,
+          "kicker": "When it matches",
+          "count": "2 in 3",
+          "label": "banks approve you"
+        },
+        {
+          "state": "match",
+          "approved": 3,
+          "kicker": "Sometimes",
+          "count": "3 out of 3",
+          "label": "banks approve you"
+        }
+      ],
+      "transparent": false
+    },
+    "purpose": "BureauMatch (Unit N3, animation-builds-2026-10-22). Three credit reports side by side, and three banks under them: when one report does not match, only some banks light up; when all three match, more banks light up. Thank-you video: \"Different banks pull different bureaus, so your information has to match on every report. When it doesn't match, only 1 in 3 banks approve you. When it MATCHES, it's 2 in 3, and sometimes 3 out of 3.\" Direct Book Ad 14: \"A mismatch on one of your three credit reports cuts your approvals in HALF\".",
+    "data_tied": false
+  },
+  {
+    "id": "PathCards",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 135,
+    "default_props": {
+      "format": "vertical",
+      "side": "left",
+      "eyebrow": null,
+      "cards": [
+        {
+          "title": "Your file is ready",
+          "line": "We go get the capital."
+        },
+        {
+          "title": "Something is holding you back",
+          "line": "We optimize your credit for you, and fund you once your file is ready."
+        },
+        {
+          "title": "Do the work yourself",
+          "line": "That's the Capital Blueprint."
+        }
+      ],
+      "highlight": null,
+      "tone": "info",
+      "layout": "stack",
+      "transparent": false
+    },
+    "purpose": "PathCards (Unit N3, animation-builds-2026-10-22). Two or three numbered cards, each a short title and one line, revealed one by one, with an optional highlight on one card. VSL three paths: \"If your file is ready, we go get the capital.\" / \"If something on your report is holding you back, we show you exactly what it is, optimize your credit for you, and fund you once your file is ready.\" / \"And if you'd rather do the work yourself, that's the Capital Blueprint.\" Also the VSL's three mistakes, with tone \"bad\".",
+    "data_tied": false
+  },
+  {
+    "id": "PathCardsWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 135,
+    "default_props": {
+      "format": "wide",
+      "side": "left",
+      "eyebrow": null,
+      "cards": [
+        {
+          "title": "Your file is ready",
+          "line": "We go get the capital."
+        },
+        {
+          "title": "Something is holding you back",
+          "line": "We optimize your credit for you, and fund you once your file is ready."
+        },
+        {
+          "title": "Do the work yourself",
+          "line": "That's the Capital Blueprint."
+        }
+      ],
+      "highlight": null,
+      "tone": "info",
+      "layout": "stack",
+      "transparent": false
+    },
+    "purpose": "PathCards (Unit N3, animation-builds-2026-10-22). Two or three numbered cards, each a short title and one line, revealed one by one, with an optional highlight on one card. VSL three paths: \"If your file is ready, we go get the capital.\" / \"If something on your report is holding you back, we show you exactly what it is, optimize your credit for you, and fund you once your file is ready.\" / \"And if you'd rather do the work yourself, that's the Capital Blueprint.\" Also the VSL's three mistakes, with tone \"bad\".",
+    "data_tied": false
+  },
+  {
+    "id": "SplitBar",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 120,
+    "default_props": {
+      "format": "vertical",
+      "side": "left",
+      "knownPercent": 80,
+      "missingPercent": 20,
+      "knownLabel": "right",
+      "missingLabel": "they're missing",
+      "headline": "decides how much funding you actually get",
+      "fillGap": false,
+      "sources": [],
+      "transparent": false
+    },
+    "purpose": "One bar split into the part you have and the part you are missing: the big part grows in, the missing part pulses, and it can fill in at the end.",
+    "data_tied": false
+  },
+  {
+    "id": "SplitBarWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 120,
+    "default_props": {
+      "format": "wide",
+      "side": "left",
+      "knownPercent": 80,
+      "missingPercent": 20,
+      "knownLabel": "right",
+      "missingLabel": "they're missing",
+      "headline": "decides how much funding you actually get",
+      "fillGap": false,
+      "sources": [],
+      "transparent": false
+    },
+    "purpose": "One bar split into the part you have and the part you are missing: the big part grows in, the missing part pulses, and it can fill in at the end.",
+    "data_tied": false
+  },
+  {
+    "id": "IconCount",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 120,
+    "default_props": {
+      "format": "vertical",
+      "side": "left",
+      "total": 8,
+      "lit": 1,
+      "caption": "people finish an online course they sign up for.",
+      "transparent": false
+    },
+    "purpose": "A row of people where only some light up: \"1 in 8\" as a picture, with the caption under it.",
+    "data_tied": false
+  },
+  {
+    "id": "IconCountWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 120,
+    "default_props": {
+      "format": "wide",
+      "side": "left",
+      "total": 8,
+      "lit": 1,
+      "caption": "people finish an online course they sign up for.",
+      "transparent": false
+    },
+    "purpose": "A row of people where only some light up: \"1 in 8\" as a picture, with the caption under it.",
+    "data_tied": false
+  },
+  {
+    "id": "FundabilityMeter",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "min_frames": 90,
+    "max_frames": 120,
+    "default_props": {
+      "format": "vertical",
+      "side": "left",
+      "eyebrow": "Every step comes with a timeline",
+      "steps": [
+        "Bring balances down",
+        "Get negative items removed",
+        "Add to your file",
+        "Build bank relationships",
+        "Set up your business data"
+      ],
+      "meterLabel": "Fundability",
+      "maxLabel": "Maximum",
+      "transparent": false
+    },
+    "purpose": "FundabilityMeter: a fundability meter climbs one notch as each step is checked off. On a floating card the steps sit on a timeline rail, first step at the bottom; as each one is checked, the meter beside it fills that notch and its pointer climbs, until the last step tops it out and the Maximum chip lights. No percentages, no amounts.",
+    "data_tied": false
+  },
+  {
+    "id": "FundabilityMeterWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 90,
+    "max_frames": 120,
+    "default_props": {
+      "format": "wide",
+      "side": "left",
+      "eyebrow": "Every step comes with a timeline",
+      "steps": [
+        "Bring balances down",
+        "Get negative items removed",
+        "Add to your file",
+        "Build bank relationships",
+        "Set up your business data"
+      ],
+      "meterLabel": "Fundability",
+      "maxLabel": "Maximum",
+      "transparent": false
+    },
+    "purpose": "FundabilityMeter: a fundability meter climbs one notch as each step is checked off. On a floating card the steps sit on a timeline rail, first step at the bottom; as each one is checked, the meter beside it fills that notch and its pointer climbs, until the last step tops it out and the Maximum chip lights. No percentages, no amounts.",
+    "data_tied": false
+  },
+  {
+    "id": "ScoreBadge",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 120,
+    "default_props": {
+      "format": "vertical",
+      "side": "left",
+      "mode": "range",
+      "eyebrow": "We work with credit scores",
+      "low": 400,
+      "high": 850,
+      "rangeLead": "Anywhere from",
+      "score": 780,
+      "scoreNote": "or higher",
+      "scores": [
+        850,
+        400,
+        500
+      ],
+      "programLabel": "The exact same program",
+      "transparent": false
+    },
+    "purpose": "ScoreBadge: credit scores on a 3D card, in one of three modes picked by `mode`. \"range\": a score gauge whose whole arc, from the low score to the high one, sweeps in lit and gets a green check (we work with every score in it). \"threshold\": a marker rides the gauge up to one score; that score lands big in the middle and the arc from it to the top lights up (\"or higher\"). \"program\": three score badges drop into one dark program box and come out the other side as three identical gray badges, the numbers gone.",
+    "data_tied": false
+  },
+  {
+    "id": "ScoreBadgeWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 120,
+    "default_props": {
+      "format": "wide",
+      "side": "left",
+      "mode": "range",
+      "eyebrow": "We work with credit scores",
+      "low": 400,
+      "high": 850,
+      "rangeLead": "Anywhere from",
+      "score": 780,
+      "scoreNote": "or higher",
+      "scores": [
+        850,
+        400,
+        500
+      ],
+      "programLabel": "The exact same program",
+      "transparent": false
+    },
+    "purpose": "ScoreBadge: credit scores on a 3D card, in one of three modes picked by `mode`. \"range\": a score gauge whose whole arc, from the low score to the high one, sweeps in lit and gets a green check (we work with every score in it). \"threshold\": a marker rides the gauge up to one score; that score lands big in the middle and the arc from it to the top lights up (\"or higher\"). \"program\": three score badges drop into one dark program box and come out the other side as three identical gray badges, the numbers gone.",
+    "data_tied": false
+  },
+  {
+    "id": "TwoPeople",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "min_frames": 90,
+    "max_frames": 120,
+    "default_props": {
+      "mode": "compare",
+      "eyebrow": "Same bank, same week",
+      "left": {
+        "who": "A guy",
+        "earnsLabel": "Making",
+        "earns": "$300,000 a year",
+        "outcomeLabel": "Approved for",
+        "amount": 8000
+      },
+      "right": {
+        "who": "His buddy",
+        "earnsLabel": "Making",
+        "earns": "Half that",
+        "outcomeLabel": "Walks out with",
+        "amount": 80000
+      },
+      "card": {
+        "label": "Your highest limit card",
+        "tag": "Highest limit",
+        "limit": null
+      },
+      "approvals": {
+        "label": "One to two times that amount",
+        "low": 1,
+        "high": 2
+      },
+      "footer": "One thing on their credit reports",
+      "format": "vertical",
+      "side": "left",
+      "transparent": false
+    },
+    "purpose": "TwoPeople (Unit N7, ops/workflows/animation-builds-2026-10-22.md): two people side by side and what each one walks out of the bank with, or one highest-limit card and the new approvals banks size from it.",
+    "data_tied": false
+  },
+  {
+    "id": "TwoPeopleWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 90,
+    "max_frames": 120,
+    "default_props": {
+      "mode": "compare",
+      "eyebrow": "Same bank, same week",
+      "left": {
+        "who": "A guy",
+        "earnsLabel": "Making",
+        "earns": "$300,000 a year",
+        "outcomeLabel": "Approved for",
+        "amount": 8000
+      },
+      "right": {
+        "who": "His buddy",
+        "earnsLabel": "Making",
+        "earns": "Half that",
+        "outcomeLabel": "Walks out with",
+        "amount": 80000
+      },
+      "card": {
+        "label": "Your highest limit card",
+        "tag": "Highest limit",
+        "limit": null
+      },
+      "approvals": {
+        "label": "One to two times that amount",
+        "low": 1,
+        "high": 2
+      },
+      "footer": "One thing on their credit reports",
+      "format": "wide",
+      "side": "left",
+      "transparent": false
+    },
+    "purpose": "TwoPeople (Unit N7, ops/workflows/animation-builds-2026-10-22.md): two people side by side and what each one walks out of the bank with, or one highest-limit card and the new approvals banks size from it.",
+    "data_tied": false
+  },
+  {
+    "id": "ReturnMultiple",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 120,
+    "default_props": {
+      "eyebrow": "Every dollar I put into Meta",
+      "inLabel": "In",
+      "inAmount": 200000,
+      "multiple": {
+        "lead": "About",
+        "value": 4
+      },
+      "systemLabel": "Proven returns",
+      "outLabel": "Out",
+      "outText": "A LOT more than $200,000",
+      "footer": "That's on the low end",
+      "format": "vertical",
+      "side": "left",
+      "transparent": false
+    },
+    "purpose": "ReturnMultiple (Unit N7, ops/workflows/animation-builds-2026-10-22.md): money goes into a system with proven returns and comes back bigger, about 4x, with no made-up total.",
+    "data_tied": false
+  },
+  {
+    "id": "ReturnMultipleWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 120,
+    "default_props": {
+      "eyebrow": "Every dollar I put into Meta",
+      "inLabel": "In",
+      "inAmount": 200000,
+      "multiple": {
+        "lead": "About",
+        "value": 4
+      },
+      "systemLabel": "Proven returns",
+      "outLabel": "Out",
+      "outText": "A LOT more than $200,000",
+      "footer": "That's on the low end",
+      "format": "wide",
+      "side": "left",
+      "transparent": false
+    },
+    "purpose": "ReturnMultiple (Unit N7, ops/workflows/animation-builds-2026-10-22.md): money goes into a system with proven returns and comes back bigger, about 4x, with no made-up total.",
+    "data_tied": false
+  },
+  {
+    "id": "CalendarStrip",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 120,
+    "default_props": {
+      "eyebrow": "In the next 15 to 30 days",
+      "fromDay": 15,
+      "toDay": 30,
+      "windowLabel": "15 to 30 days",
+      "accountLabel": "Sitting in your account",
+      "amount": null,
+      "footer": "Depending on what your roadmap takes",
+      "format": "vertical",
+      "side": "left",
+      "transparent": false
+    },
+    "purpose": "CalendarStrip (Unit N7, ops/workflows/animation-builds-2026-10-22.md): a strip of days fills across, the window of days lights up in blue, and the money lands in the account at the end.",
+    "data_tied": false
+  },
+  {
+    "id": "CalendarStripWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 120,
+    "default_props": {
+      "eyebrow": "In the next 15 to 30 days",
+      "fromDay": 15,
+      "toDay": 30,
+      "windowLabel": "15 to 30 days",
+      "accountLabel": "Sitting in your account",
+      "amount": null,
+      "footer": "Depending on what your roadmap takes",
+      "format": "wide",
+      "side": "left",
+      "transparent": false
+    },
+    "purpose": "CalendarStrip (Unit N7, ops/workflows/animation-builds-2026-10-22.md): a strip of days fills across, the window of days lights up in blue, and the money lands in the account at the end.",
+    "data_tied": false
+  },
+  {
+    "id": "StampCard",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 120,
+    "default_props": {
+      "format": "vertical",
+      "side": "left",
+      "object": "document",
+      "eyebrow": null,
+      "title": "Credit sweep",
+      "amount": null,
+      "paidCheck": false,
+      "stamp": "Illegal",
+      "stampSub": null,
+      "tone": "bad",
+      "drain": [],
+      "subline": "puts your whole file and your freedom at risk",
+      "transparent": false
+    },
+    "purpose": "StampCard (unit N5, ops/workflows/animation-builds-2026-10-22.md). A document, a card, a file or an invoice lands, and a rubber stamp slams onto it: \"Illegal\", \"Closed\", \"Approved\", \"Denied\" or \"$0\". An optional row of bars drains away after the stamp (a closed card losing its history and its limit).",
+    "data_tied": false
+  },
+  {
+    "id": "StampCardWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 120,
+    "default_props": {
+      "format": "wide",
+      "side": "left",
+      "object": "document",
+      "eyebrow": null,
+      "title": "Credit sweep",
+      "amount": null,
+      "paidCheck": false,
+      "stamp": "Illegal",
+      "stampSub": null,
+      "tone": "bad",
+      "drain": [],
+      "subline": "puts your whole file and your freedom at risk",
+      "transparent": false
+    },
+    "purpose": "StampCard (unit N5, ops/workflows/animation-builds-2026-10-22.md). A document, a card, a file or an invoice lands, and a rubber stamp slams onto it: \"Illegal\", \"Closed\", \"Approved\", \"Denied\" or \"$0\". An optional row of bars drains away after the stamp (a closed card losing its history and its limit).",
+    "data_tied": false
+  },
+  {
+    "id": "PriceTag",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 120,
+    "default_props": {
+      "format": "vertical",
+      "side": "left",
+      "eyebrow": "Some of them still charge you",
+      "tag": {
+        "amount": 2000,
+        "upTo": null,
+        "per": "a month",
+        "label": null
+      },
+      "second": null,
+      "pileLabel": null,
+      "pile": [],
+      "pileCount": 0,
+      "subline": "for the one piece that decides how much you get approved for",
+      "transparent": false
+    },
+    "purpose": "PriceTag (unit N5, ops/workflows/animation-builds-2026-10-22.md). A price tag swings in on its string and settles, with an optional second tag beside it and an optional pile of cards stacking up under it (\"Hundreds of hours\" of \"Outdated videos\" and \"Zoom calls\").",
+    "data_tied": false
+  },
+  {
+    "id": "PriceTagWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 120,
+    "default_props": {
+      "format": "wide",
+      "side": "left",
+      "eyebrow": "Some of them still charge you",
+      "tag": {
+        "amount": 2000,
+        "upTo": null,
+        "per": "a month",
+        "label": null
+      },
+      "second": null,
+      "pileLabel": null,
+      "pile": [],
+      "pileCount": 0,
+      "subline": "for the one piece that decides how much you get approved for",
+      "transparent": false
+    },
+    "purpose": "PriceTag (unit N5, ops/workflows/animation-builds-2026-10-22.md). A price tag swings in on its string and settles, with an optional second tag beside it and an optional pile of cards stacking up under it (\"Hundreds of hours\" of \"Outdated videos\" and \"Zoom calls\").",
     "data_tied": false
   }
 ]

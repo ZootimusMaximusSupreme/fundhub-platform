@@ -1,7 +1,6 @@
 import React from 'react';
 import {
   BackdropStage,
-  BrandFrame,
   COLORS,
   Card3D,
   CashStack,
@@ -18,6 +17,15 @@ import {
   useTimeline,
 } from '../brand';
 import {SeeThrough} from '../brand/Grid';
+import {KitFrame, type KitFormat, type KitSide} from '../brand/KitFrame';
+
+// QualifyTodayWide: the QualifyToday clip (today and once-fixed amounts roll up beside 3D cash
+// stacks; the gap stacks on top in blue) in 3840x2160 for the sideways 4K VSL and thank-you video.
+// Same sample-client numbers as QualifyToday. Everything sits in one side panel (`side`: left or
+// right) so the face and the captions in the middle stay clear.
+//
+// The vertical look, words and default props are unchanged; KitFrame (src/brand/KitFrame.tsx)
+// draws the wide side panel and the see-through card.
 
 /** A dollar amount (counts up) or a phrase such as "Several hundred thousand" (fades in). */
 export type Amount = {label: string; value?: number; text?: string};
@@ -35,6 +43,10 @@ export type QualifyTodayProps = {
   showSafeZones?: boolean;
   /** See-through: no page and no grid, so the clip renders with alpha (README.md). Default false. */
   transparent?: boolean;
+  /** "vertical" (1080x1920, ads; the default) or "wide" (3840x2160, the sideways 4K VSL and thank-you video). */
+  format?: KitFormat;
+  /** Wide only: the side panel everything sits in, so the face and the captions in the middle stay clear. Default "left". */
+  side?: KitSide;
 };
 
 export const QUALIFY_TODAY_BASE = 75;
@@ -94,7 +106,7 @@ const Row: React.FC<{
   </div>
 );
 
-export const QualifyToday: React.FC<QualifyTodayProps> = ({eyebrow, today, after, gapLabel, durationInFrames, showSafeZones, transparent}) => {
+export const QualifyToday: React.FC<QualifyTodayProps> = ({eyebrow, today, after, gapLabel, durationInFrames, showSafeZones, transparent, format, side}) => {
   const {f, fps} = useTimeline(QUALIFY_TODAY_BASE, durationInFrames);
   const L = QUALIFY_TODAY_BASE;
 
@@ -118,7 +130,9 @@ export const QualifyToday: React.FC<QualifyTodayProps> = ({eyebrow, today, after
   const afterStackIn = enter(f, fps, 24, 12);
 
   const page = (
-    <BrandFrame
+    <KitFrame
+      format={format}
+      side={side}
       showSafeZones={showSafeZones}
       backdrop={
         <BackdropStage f={f} length={L}>
@@ -199,7 +213,7 @@ export const QualifyToday: React.FC<QualifyTodayProps> = ({eyebrow, today, after
           </div>
         ) : null}
       </Stage3D>
-    </BrandFrame>
+    </KitFrame>
   );
   return <SeeThrough on={transparent}>{page}</SeeThrough>;
 };

@@ -9,7 +9,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  validateAnimationPlan, isDataTied, DATA_TIED, MIN_ANIMATIONS, DEFAULT_MIN_ANIMATIONS, SCRIPT_FORMATS
+  validateAnimationPlan, isDataTied, isLogoTemplate, DATA_TIED, MIN_ANIMATIONS, DEFAULT_MIN_ANIMATIONS, SCRIPT_FORMATS
 } from "./animation-plan.mjs";
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -280,10 +280,34 @@ test("the API contract's two example scripts pass against the real catalog.json"
 test("every template in the real catalog accepts its own default props and its own length range", () => {
   for (const e of REAL_CATALOG) {
     const props = e.data_tied ? {} : e.default_props;
+    // The logo may only sit on a line that says Fundhub (rule 7), so it gets one.
+    const [body, phrase] = isLogoTemplate(e.id) ? [`${BODY}\n\nI run Fundhub.`, "I run Fundhub"] : [BODY, "they say yes"];
     for (const seconds of [e.min_frames / e.fps, e.max_frames / e.fps]) {
-      const r = validateAnimationPlan([{ anchor: { phrase: "they say yes" }, template: e.id, props, seconds }],
-        { catalog: REAL_CATALOG, body: BODY, parts: PARTS, style: "words", scriptFormat: "sorting" });
+      const r = validateAnimationPlan([{ anchor: { phrase }, template: e.id, props, seconds }],
+        { catalog: REAL_CATALOG, body, parts: PARTS, style: "words", scriptFormat: "sorting" });
       assert.deepEqual(r, { ok: true, errors: [] }, `${e.id} at ${seconds}s`);
     }
   }
+});
+
+// 7. The logo only where the script says Fundhub (owner rule 2026-10-23) ----------
+
+const LOGO_CATALOG = [...CATALOG, { id: "FundhubLogo", width: 1080, height: 1920, fps: 30, min_frames: 60, max_frames: 90, default_props: {}, purpose: null, data_tied: false }];
+const LOGO_BODY = "I'm Chris, I run Fundhub.\n\nWe check both files before you apply.";
+const logo = (phrase) => ({ anchor: { phrase }, template: "FundhubLogo", props: {}, seconds: 2.5 });
+
+test("the logo anchored on a line that says Fundhub passes", () => {
+  const r = validateAnimationPlan([logo("I run Fundhub")], { catalog: LOGO_CATALOG, body: LOGO_BODY, style: "words", scriptFormat: "vsl" });
+  assert.deepEqual(r, { ok: true, errors: [] });
+});
+
+test("the logo anchored anywhere the script does not say Fundhub is refused", () => {
+  const r = validateAnimationPlan([logo("before you apply")], { catalog: LOGO_CATALOG, body: LOGO_BODY, style: "words", scriptFormat: "vsl" });
+  assert.equal(r.ok, false);
+  assert.deepEqual(codes(r), ["logo_not_on_fundhub"]);
+});
+
+test("the logo rule only applies to the logo animation", () => {
+  const r = validateAnimationPlan([{ ...logo("before you apply"), template: "StepPath" }], { catalog: LOGO_CATALOG, body: LOGO_BODY, style: "words", scriptFormat: "vsl" });
+  assert.deepEqual(r, { ok: true, errors: [] });
 });

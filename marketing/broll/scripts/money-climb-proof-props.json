@@ -1,0 +1,7 @@
+{
+  "steps-vsl": {},
+  "range-vsl": {"mode":"range","eyebrow":"Most of the people we work with","headline":"Are aiming for","amounts":[{"value":250000},{"value":400000}],"goal":null,"unit":null,"footer":null},
+  "range-ad13": {"mode":"range","eyebrow":"Banks will fund you","headline":null,"amounts":[{"value":100000},{"value":300000}],"goal":null,"unit":null,"footer":"For yourself or for your business"},
+  "ladder-ad10": {"mode":"ladder","eyebrow":"Your business makes","headline":null,"amounts":[{"value":10000},{"value":20000},{"value":50000}],"goal":{"value":100000,"prefix":"Past","label":"You need capital to get there"},"unit":"a month","footer":null},
+  "single-ad11": {"mode":"single","eyebrow":"Within six months","headline":"His income was","amounts":[{"value":400000,"prefix":"Over"}],"goal":null,"unit":null,"footer":null}
+}

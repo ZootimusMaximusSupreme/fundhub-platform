@@ -1,7 +1,6 @@
 import React from 'react';
 import {
   BackdropStage,
-  BrandFrame,
   CARD_EDGE,
   COLORS,
   Card3D,
@@ -21,6 +20,15 @@ import {
   useTimeline,
 } from '../brand';
 import {SeeThrough} from '../brand/Grid';
+import {KitFrame, type KitFormat, type KitSide} from '../brand/KitFrame';
+
+// FileItemsWide: the FileItems clip (items on the credit report: the report floats on a stack of
+// pages; red chips send a bill flying off, green chips flip in a gold coin) in 3840x2160 for the
+// sideways 4K VSL and thank-you video. Everything sits in one side panel (`side`: left or right) so
+// the face and the captions in the middle stay clear.
+//
+// The vertical look, words and default props are unchanged; KitFrame (src/brand/KitFrame.tsx)
+// draws the wide side panel and the see-through card.
 
 export type FileItem = {label: string; tag?: string};
 
@@ -41,6 +49,10 @@ export type FileItemsProps = {
   showSafeZones?: boolean;
   /** See-through: no page and no grid, so the clip renders with alpha (README.md). Default false. */
   transparent?: boolean;
+  /** "vertical" (1080x1920, ads; the default) or "wide" (3840x2160, the sideways 4K VSL and thank-you video). */
+  format?: KitFormat;
+  /** Wide only: the side panel everything sits in, so the face and the captions in the middle stay clear. Default "left". */
+  side?: KitSide;
 };
 
 export const FILE_ITEMS_BASE = 75;
@@ -95,6 +107,8 @@ export const FileItems: React.FC<FileItemsProps> = ({
   durationInFrames,
   showSafeZones,
   transparent,
+  format,
+  side,
 }) => {
   const {f, fps} = useTimeline(FILE_ITEMS_BASE, durationInFrames);
   const L = FILE_ITEMS_BASE;
@@ -117,7 +131,9 @@ export const FileItems: React.FC<FileItemsProps> = ({
   );
 
   const page = (
-    <BrandFrame
+    <KitFrame
+      format={format}
+      side={side}
       showSafeZones={showSafeZones}
       backdrop={
         <BackdropStage f={f} length={L}>
@@ -229,7 +245,7 @@ export const FileItems: React.FC<FileItemsProps> = ({
           </Card3D>
         </div>
       </Stage3D>
-    </BrandFrame>
+    </KitFrame>
   );
   return <SeeThrough on={transparent}>{page}</SeeThrough>;
 };
