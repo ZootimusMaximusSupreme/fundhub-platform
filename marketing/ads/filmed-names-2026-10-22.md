@@ -34,12 +34,6 @@ How each name was proved:
 | Direct Book Thank You 2 — Call prep | 2 | Funding Call Prep | The older thank-you script ("In the next few minutes you're going to see exactly what happens on the call"), `marketing/ads/scripts/2026-10-13.md` section 5. The angle name is a placeholder; Chris has not set it. |
 | Direct Book VSL 1 — Watch page (older take) | 1 | Smart Funding Strategy | An older read of the VSL opening. |
 
-## Not named yet
-
-No copy is on the Mac, so the words cannot be checked yet:
-
-- Lifetime Funding Blueprint
-- Credit Funding Blueprint
-- Funding Course Comparison (the title points at the green screen note "funding course vs. Blueprint", `marketing/ads/scripts/2026-10-13.md` section 4)
+## Other
 
 The project "Direct Book Ad 9 — The bank" from 19 days ago shows a document icon and no video.
