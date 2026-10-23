@@ -1,0 +1,513 @@
+[
+  {
+    "video": "Direct Book VSL 1 — Watch page",
+    "source": "ad_scripts 103",
+    "scriptFormat": "vsl",
+    "body": "The condition of your credit decides whether you walk away with $20,000 in funding or $400,000, even a million across multiple businesses, plus personal funding if you want it.\n\nYour score is only part of that. Small details in your file, like your personal data and your business codes, hold back even 800 scores from the MAXIMUM amount of funding.\n\nAnd there's one step most people miss that makes the biggest difference of all. ↑\n\nI'm Chris, I run Fundhub. I learned the funding game ten years ago, and I've funded a little over $1 million for myself since then.\n\nWhen a bank denies you and never tells you why, nobody checked your file against what that bank approves.\n\nWhen someone sends your file to every lender on their list, you walk away with two approvals and a report full of hard inquiries.\n\nAnd when you skip applying because you don't want a hard pull, you never find out what you qualify for.\n\nAll three come from the same mistake. Nobody checks your file against what each bank approves before the applications go out.\n\nOur underwriting software, UnderwriteIQ, catches those small details before anything goes out, so we fix them first.\n\nThen it matches your file against thousands of lenders to find the 30 to 50 that fit you, and we apply in funding rounds, in the order that protects your score.\n\nCredit cards are where most people start, and we also get you lines of credit, SBA loans, merchant cash advances and personal funding, stacked together at the lowest rates.\n\nHere's the step most people miss. ↑ Every application leaves a hard inquiry, and when the next round goes out with those still on your report, the next lender approves less.\n\nSo we remove the inquiries between EVERY round. Your file goes into each round clean, and that's how a funding sequence runs 3 to 6 rounds and builds real capital.\n\nWe're the only company in this industry that runs your file this way.\n\nMost of the people we work with are aiming for $250,000 to $400,000. Some files are ready for that today, and a lot aren't yet, which is completely normal.\n\nWherever your file is right now, Fundhub has a solution for that phase.\n\nIf your file is ready, we go get the capital. A funding advisor starts on your file within 24 business hours, and your first applications go out within 72.\n\nIf you qualify and we can't fund you, you don't pay.\n\nIf something on your report is holding you back, we show you exactly what it is, optimize your credit for you, and fund you once your file is ready.\n\nAnd if you'd rather do the work yourself, that's the Capital Blueprint. It puts your file through the 13 optimization points in the order that actually gets you funded.\n\nIt tells you which balances to bring down and by how much, which negative items to get removed, and what to add to your file to make it stronger.\n\nIt shows you which banks to build relationships with, where to keep your deposits, and how to set up your business data so banks see a company they trust.\n\nEvery step comes with a timeline, and as you finish each one, you see your fundability climb toward the maximum.\n\nYou learn funding by doing it on your own file, with an advisor checking in and answering your questions the whole way.\n\nWe GUARANTEE it's the last tool you'll need to learn the funding game, and when your file is ready, we go get the funding with you.\n\nWe've worked hundreds of files and collected thousands of data points on what lenders approve, so we know exactly what your file qualifies for.\n\nClick the button below, fill out the 10-second application, and pick a time for your call.\n\nYour advisor meets with you on a Google Meet and runs a 3-bureau report. You pay $32, and there's no impact on your score.\n\nYou'll see how much you qualify for based on where you're at right now, what's holding your file back, and the fastest way to the maximum amount of funding.\n\nIf you've been told no before, or you just want to know what's possible, this call is where you find out. Click the button below and book your call.",
+    "plan": [
+      {
+        "anchor": {
+          "phrase": "Small details in your file"
+        },
+        "template": "FileItems",
+        "props": {
+          "items": [
+            {
+              "label": "Your personal data"
+            },
+            {
+              "label": "Your business codes"
+            }
+          ]
+        },
+        "seconds": 3
+      },
+      {
+        "anchor": {
+          "phrase": "find the 30 to 50 that fit you"
+        },
+        "template": "LenderMatchScroll",
+        "props": {},
+        "seconds": 4
+      },
+      {
+        "anchor": {
+          "phrase": "So we remove the inquiries between EVERY round"
+        },
+        "template": "FundingRounds",
+        "props": {},
+        "seconds": 3.5
+      },
+      {
+        "anchor": {
+          "phrase": "the 13 optimization points"
+        },
+        "template": "HiddenDataPoints",
+        "props": {
+          "eyebrow": "The Capital Blueprint",
+          "label": "optimization points",
+          "subline": "In the order that actually gets you funded"
+        },
+        "seconds": 2.5
+      },
+      {
+        "anchor": {
+          "phrase": "It tells you which balances to bring down"
+        },
+        "template": "StepPath",
+        "props": {
+          "steps": [
+            "Bring balances down",
+            "Get negative items removed",
+            "Add to your file",
+            "Build bank relationships",
+            "Set up your business data"
+          ]
+        },
+        "seconds": 3
+      },
+      {
+        "anchor": {
+          "phrase": "We've worked hundreds of files"
+        },
+        "template": "ProofWall",
+        "props": {},
+        "seconds": 4
+      },
+      {
+        "anchor": {
+          "phrase": "You pay $32, and there's no impact on your score"
+        },
+        "template": "SoftPull",
+        "props": {},
+        "seconds": 2.5
+      }
+    ],
+    "gaps": [
+      "\"Credit cards ... lines of credit, SBA loans, merchant cash advances and personal funding, stacked together\" — no stacking animation exists",
+      "\"I've funded a little over $1 million for myself\" — no animation of Chris's own approvals"
+    ],
+    "check": "pass"
+  },
+  {
+    "video": "Direct Book Thank You",
+    "source": "ad_scripts 104",
+    "scriptFormat": "long",
+    "body": "Your call is BOOKED. Before anything else, open the confirmation email and accept the calendar invite, so the time your advisor is holding for you is locked in.\n\nHere's exactly what happens on the call. Your advisor meets with you on a Google Meet and runs a 3-bureau report. You pay $32, and there's no impact on your score.\n\nWe pull all THREE bureaus for a reason. ↑ Different banks pull different bureaus, so your information has to match on every report.\n\nWhen it doesn't match, only 1 in 3 banks approve you. When it MATCHES, it's 2 in 3, and sometimes 3 out of 3.\n\nThen UnderwriteIQ runs your file, and you see how much you qualify for based on where you're at right now.\n\nYou also see what's holding your file back and the FASTEST way to the maximum amount of funding. That system is built on ten years of my own funding and hundreds of client files.\n\nYour advisor walks you through the options and pricing for your path, and EVERYTHING is in writing.\n\nJoin from a COMPUTER somewhere quiet, because your advisor shares their screen and goes through your file with you.\n\nIf you're going after business funding, have your entity name, how long you've been in business, and your average monthly revenue ready, so your advisor can run the business side too.\n\nIf something comes up, use the reschedule link on this page, so you keep your spot.\n\nThank you for booking, and I'll see you on the call.",
+    "plan": [
+      {
+        "anchor": {
+          "phrase": "You pay $32, and there's no impact on your score"
+        },
+        "template": "SoftPull",
+        "props": {},
+        "seconds": 2.5
+      },
+      {
+        "anchor": {
+          "phrase": "Different banks pull different bureaus"
+        },
+        "template": "LenderMatchScroll",
+        "props": {},
+        "seconds": 4
+      },
+      {
+        "anchor": {
+          "phrase": "Then UnderwriteIQ runs your file"
+        },
+        "template": "QualifyToday",
+        "props": {},
+        "seconds": 3
+      },
+      {
+        "anchor": {
+          "phrase": "That system is built on ten years of my own funding"
+        },
+        "template": "ProofWall",
+        "props": {},
+        "seconds": 4
+      }
+    ],
+    "gaps": [
+      "\"When it doesn't match, only 1 in 3 banks approve you. When it MATCHES, it's 2 in 3\" — no approval-odds animation exists"
+    ],
+    "check": "pass"
+  },
+  {
+    "video": "Direct Book Ad 13 — 700 and up, hundreds of clients",
+    "source": "ad_scripts 105",
+    "scriptFormat": "standard",
+    "body": "If you have a 700 or higher credit score, banks will fund you $100,000 to $300,000 for yourself or for your business.\n\nFundhub runs your whole funding sequence for you, and if you qualify and we come up empty, you owe us NOTHING.\n\nThis is for you if you've been paying for growth out of the same account that pays the mortgage.\n\nWe've done this for HUNDREDS of clients, and our proprietary AI system makes sure your file is 100% optimized before a single application goes out.\n\nOur bank matching system picks the banks that approve files like yours, and we run as many rounds as possible in the shortest amount of time.\n\nThat's what gets you the MAXIMUM amount of funding, and no other company in this industry does all of it. ↑\n\nGrab a time below, and your advisor will show you how much you qualify for based on where you're at right now.\n\nAn advisor is on your file inside 24 business hours, applications are out inside 72, and if we miss either one, you pay us nothing.",
+    "plan": [
+      {
+        "anchor": {
+          "phrase": "We've done this for HUNDREDS of clients"
+        },
+        "template": "ProofWall",
+        "props": {},
+        "seconds": 4
+      },
+      {
+        "anchor": {
+          "phrase": "Our bank matching system picks the banks that approve files like yours"
+        },
+        "template": "LenderList",
+        "props": {},
+        "seconds": 3
+      }
+    ],
+    "gaps": [
+      "\"$100,000 to $300,000\" on a 700 score — no animation for that range"
+    ],
+    "check": "pass"
+  },
+  {
+    "video": "Direct Book Ad 14 — 780 and up, 13 optimization points",
+    "source": "ad_scripts 106",
+    "scriptFormat": "standard",
+    "body": "If you have a 780 or higher credit score, Fundhub gets you the MAXIMUM amount of funding your file qualifies for, personal, business, or both, in the shortest amount of time.\n\nIf you qualify and we can't fund you, you owe us nothing. Here's exactly how we do it. ↑\n\nHaving a high score is ALL that matters. Banks don't ask for your tax returns, and they don't ask for your bank statements.\n\nWhatever kind of funding you're after, we go get it at the lowest terms and the fastest timelines, so you get the maximum amount.\n\nCredit cards, lines of credit, SBA, MCA, even personal funding, we know how to stack ALL of it and blend it together.\n\nA mismatch on one of your three credit reports cuts your approvals in HALF, so we check every file on 13 optimization points before a single application goes out.\n\nWhen we optimize those 13 points, we DOUBLE your approval odds with every single lender we work with.\n\nThat means fewer denials, because every application goes to a bank that approves you.\n\nOur AI matching system works from a much bigger list of banks than anyone else, so we send out more applications to banks that fit your file.\n\nWe remove the inquiries after EVERY round of funding, so we run each round faster than everyone else.\n\nClick the link below, and we'll pull your reports and see where they're at.\n\nNo matter where you are in the process, we have a solution for you: optimizing your credit, a plan to do the funding yourself with an advisor, or doing the funding for you.\n\nAn advisor starts on your file within 24 business hours, and your applications go out within 72. If either deadline slips, you don't pay.",
+    "plan": [
+      {
+        "anchor": {
+          "phrase": "we check every file on 13 optimization points"
+        },
+        "template": "HiddenDataPoints",
+        "props": {
+          "eyebrow": "Before a single application goes out",
+          "label": "optimization points",
+          "subline": "We double your approval odds"
+        },
+        "seconds": 2.5
+      },
+      {
+        "anchor": {
+          "phrase": "Our AI matching system works from a much bigger list of banks"
+        },
+        "template": "LenderList",
+        "props": {},
+        "seconds": 3
+      },
+      {
+        "anchor": {
+          "phrase": "We remove the inquiries after EVERY round of funding"
+        },
+        "template": "InquiriesOff",
+        "props": {},
+        "seconds": 2.5
+      }
+    ],
+    "gaps": [
+      "\"Credit cards, lines of credit, SBA, MCA, even personal funding ... stack ALL of it\" — no stacking animation exists",
+      "\"Banks don't ask for your tax returns ... bank statements\" — no animation exists"
+    ],
+    "check": "pass"
+  },
+  {
+    "video": "Capital Blueprint Ad 3 — 600 and up, the shortest path",
+    "source": "ad_scripts 107",
+    "scriptFormat": "standard",
+    "body": "If you have a 600 or higher credit score, I built a system that takes you down the shortest path to the MAXIMUM amount of funding, from wherever you are right now.\n\nYour file has 13 points that decide how much funding you get, and optimizing them is a process that only works in the right ORDER. ↑\n\nThe Capital Blueprint walks you through every step of it: which cards to pay down, which items to remove from your file, and which ones to add.\n\nIt tells you which banks to open accounts with, where to deposit your money, and how to set up your business so it looks established to a bank.\n\nIt gives you a timeline for when you'll be fundable, and you watch your fundability go up as you finish each step.\n\nInstead of watching a course about the process, you go through the process on your own file, and that's how you actually learn it.\n\nYou have support and accountability built into the system, plus an advisor who answers your questions and makes sure you're moving the right way.\n\nIt's built for anyone who wants their next round of applications to bring in the most funding it possibly can.\n\nWe GUARANTEE it's the last tool you'll ever use to learn the funding game.\n\nClick the link below, and we'll pull your file and show you how much you qualify for based on where you're at right now.",
+    "plan": [
+      {
+        "anchor": {
+          "phrase": "Your file has 13 points that decide how much funding you get"
+        },
+        "template": "HiddenDataPoints",
+        "props": {
+          "eyebrow": "Your file",
+          "label": "points that decide your funding",
+          "subline": "Optimized in the right order"
+        },
+        "seconds": 2.5
+      },
+      {
+        "anchor": {
+          "phrase": "The Capital Blueprint walks you through every step of it"
+        },
+        "template": "StepPath",
+        "props": {
+          "steps": [
+            "Pay down the right cards",
+            "Remove items from your file",
+            "Add the right items",
+            "Open the right bank accounts",
+            "Set up your business"
+          ]
+        },
+        "seconds": 3
+      }
+    ],
+    "gaps": [
+      "\"you watch your fundability go up as you finish each step\" — no fundability meter animation exists"
+    ],
+    "check": "pass"
+  },
+  {
+    "video": "Direct Book Ad 16 — Advanced funding algorithm",
+    "source": "words said on the take (no written script exists)",
+    "scriptFormat": "standard",
+    "body": "To be honest with you, most funny companies out there are running on a program they bought from somebody else. And there's one thing we do with your file before it ever goes to a bank that almost nobody in this industry can do. Most of these programs are a business in a box system. So the bank data they're working with is usually out of date. And they run everybody through the exact same program, whether your credit is an 850, 400, 500. I've been doing this for 10 years and I built FunHub on everything I learned along the way. I built a real underwriting algorithm that pulls from six to seven different data feeds. And it uses the same systems the bank use to approve and deny applications. We're constantly watching the lending environment nationally and state by state. So we know where the lending is hottest right now. So that way, and that's where we send you. We work with credit scores anywhere from 400 to 850. And we'll do it for you, we'll do it with you, or we'll set it up to do it yourself. That goes for credit cards, SBA loans, MCA and more. So here's the one thing, because of that algorithm, we know whether you're going to get approved or denied before your file ever goes to a bank. You show up to that bank already pre-vetted and we hand you over white glove. If you're serious about getting access to capital, book a call below and we'll see how much fun you qualify for based on where you're at right now.",
+    "plan": [
+      {
+        "anchor": {
+          "phrase": "I've been doing this for 10 years"
+        },
+        "template": "ProofWall",
+        "props": {},
+        "seconds": 4
+      },
+      {
+        "anchor": {
+          "phrase": "we know whether you're going to get approved or denied"
+        },
+        "template": "LenderList",
+        "props": {},
+        "seconds": 3
+      }
+    ],
+    "gaps": [
+      "\"pulls from six to seven different data feeds\" — no data-feed animation exists",
+      "\"watching the lending environment nationally and state by state\" — no map animation exists"
+    ],
+    "check": "pass"
+  },
+  {
+    "video": "Direct Book Ad 12 — Industry slam",
+    "source": "words said on the take (a looser read of ad_scripts 94, It's a skill)",
+    "scriptFormat": "standard",
+    "body": "I'm gonna be honest with you. This probably isn't the first funding company you've seen an ad from and it's probably not going to be the last But almost every one of them is working off information that's about 80% right and the 20% they're missing decides how much funding you actually get Look up how long most of them have been in business. They usually just got started They bought a course they finance some mentorship from one of those big companies selling them and those guys have no idea what they're doing either Here Here's a perfect example There are 13 hidden data points banks look at before they decide how much to approve you for Things like your name your addresses and your employers matching on every single report If they don't match you get approved for less and most of these companies never even check They almost miss they also miss how to set up more companies and fund every one of them off of the same personal file and Some and some of them run credit sweeps, which is illegal and puts your whole file and your freedom at risk So what you get from them is the recycled information the whole industry runs on and if that information happens to fit your file You get funded and if it doesn't you walk away with a few small approvals and a report full of inquiries We're never gonna burn your file or just to close a deal So if your file isn't ready, we won't take out we won't take you on as a funding client We'll give you the steps to get qualified Or the education to make the right decisions with your credit When your file is ready, we'll get you the maximum amount of funding as quickly as possible with the strategies that have been proven to work I've been in this industry for 10 years and Our system has collected thousands of data points from hundreds of files That's where the other 20% comes from click below and book a call and We'll keep it real with you about how much funding you actually qualify for right now",
+    "plan": [
+      {
+        "anchor": {
+          "phrase": "There are 13 hidden data points banks look at"
+        },
+        "template": "HiddenDataPoints",
+        "props": {
+          "subline": "Your name, addresses and employers matching on every report"
+        },
+        "seconds": 2.5
+      },
+      {
+        "anchor": {
+          "phrase": "how to set up more companies and fund every one of them"
+        },
+        "template": "CompanyLine",
+        "props": {
+          "headline": "More companies, each one funded off the same personal file"
+        },
+        "seconds": 3
+      },
+      {
+        "anchor": {
+          "phrase": "Our system has collected thousands of data points"
+        },
+        "template": "ProofWall",
+        "props": {},
+        "seconds": 4
+      }
+    ],
+    "gaps": [
+      "\"some of them run credit sweeps\" — no animation exists"
+    ],
+    "check": "pass"
+  },
+  {
+    "video": "Direct Book Ad 4 — High earners",
+    "source": "ad_scripts 95",
+    "scriptFormat": "standard",
+    "body": "Making a million dollars takes TWO things, a proven investment and access to capital.\n\nYou might have good credit and a high income and still be MISSING the second one.\n\nMaybe you've paid cash your whole life, or you've got credit you never use. Or maybe you have an old LLC or a company you forgot about.\n\nThat company is worth a LOT of money to a bank.\n\nYou built your income by being a professional and managing money well, and that's EXACTLY why banks want to lend to you. I'm not going to tell you where to put the money, but here's what capital does in the right hands.\n\nEvery dollar I put into Meta comes back about FOUR times, and that's on the low end, so $200,000 run through a system that already has proven returns turns into a LOT more than $200,000.\n\nCapital lets you grow on a proven system MUCH faster than cash flow ever will.\n\nHere's what that company you forgot about is worth. ↑\n\nEvery business qualifies for funding on its own, and the older the business is, the MORE capital it gets, just from having that age. One business is $100,000 at a minimum, and an older one gets up to $300,000.\n\nSo look at the businesses you have that you aren't using.\n\nIf you have one, that's up to $300,000. If you have two, that's up to $600,000, and if you have THREE, that's up to $900,000, sitting in your account in the next 15 to 30 days, depending on what your roadmap takes to get you there.\n\nThen ask yourself ONE question. ↑\n\nDo you want access to that capital to put into the proven system you already make money with? ↑\n\nIf the answer is yes, book a call below, and your advisor will show you what your file and every one of your companies are worth to a bank right now.\n\nIf the answer is no, keep doing what you're doing.",
+    "plan": [
+      {
+        "anchor": {
+          "phrase": "Every business qualifies for funding on its own"
+        },
+        "template": "CompanyLine",
+        "props": {
+          "headline": "Every business qualifies for funding on its own",
+          "count": 3
+        },
+        "seconds": 3
+      }
+    ],
+    "gaps": [
+      "\"Every dollar I put into Meta comes back about FOUR times\" — no return animation exists",
+      "\"If you have one, that's up to $300,000 ... THREE, that's up to $900,000\" — no money-per-company animation exists"
+    ],
+    "check": [
+      "plan: A standard script needs at least 2 animations. This plan has 1."
+    ]
+  },
+  {
+    "video": "Direct Book Ad 5 — Paying for speed",
+    "source": "marketing/ads/scripts/book-a-call-final-2026-10-03.md section 5 (ad_scripts 96 holds the wrong words)",
+    "scriptFormat": "standard",
+    "body": "You can spend the next year figuring out how credit turns into money, or you can get my last TEN years of it on one call.\n\nThere's ONE move I see on most of the files I review that costs about $300,000 in funding, and it feels like the responsible thing to do. ↑\n\nIn those ten years I've funded a little over $1 million for myself, worked hundreds of other people's files, and made every expensive mistake there is, including this one.\n\nHere it is.\n\nPaying off a card and CLOSING it.\n\nWhen you close a card, you lose years of history you can't buy back, and you lose that limit with it. Close a $20,000 card and every approval after it comes in $20,000 to $40,000 SMALLER, because banks size you off the limits you already have.\n\nFive approvals on one company is $100,000 to $200,000 gone, and across two or three companies you're at $300,000 or more.\n\nWhen you work with us, our system catches costly moves like that BEFORE they ever happen, so you get the maximum amount of funding and keep access to capital whenever you want it, for the rest of your life.\n\nI learned every one of those moves the hard way so you don't have to. Click below and book a call, and your advisor will go through your file with you.",
+    "plan": [
+      {
+        "anchor": {
+          "phrase": "I've funded a little over $1 million for myself"
+        },
+        "template": "ProofWall",
+        "props": {},
+        "seconds": 4
+      },
+      {
+        "anchor": {
+          "phrase": "our system catches costly moves like that BEFORE they ever happen"
+        },
+        "template": "FileItems",
+        "props": {},
+        "seconds": 3
+      }
+    ],
+    "gaps": [
+      "\"Paying off a card and CLOSING it\" — no closed-card animation exists"
+    ],
+    "check": "pass"
+  },
+  {
+    "video": "Direct Book Ad 9 — The bank",
+    "source": "ad_scripts 100",
+    "scriptFormat": "standard",
+    "body": "The bank behind me already decided how much they'd give you, and how much money you make barely factors into it.\n\nOne thing on your credit report decides it, and it outweighs your income and your score.\n\nA guy making three hundred thousand dollars a year with perfect payment history gets approved for eight thousand dollars, while his buddy making half that walks out of the same bank the same week with eighty. Same bank, same week, and the only real difference between them is one thing on their credit reports.\n\nIt's been on your report for years, and it sets your approvals every time you apply. Fixing it is a simple tweak, and once you do, every approval after that comes in bigger.\n\nIt's your highest limit card. Banks look at the biggest limit another bank has already given you, and they'll approve you for one to two times that amount depending on the bank. The guy with eighty thousand had a big limit on his report, and the guy with eight didn't.\n\nHere at Fundhub, we make sure you get the highest limits possible so you can maximize your fundability across the board. We set your profile up so you get funded over and over again, and you're never the guy walking out of a bank with eight thousand dollars again.\n\nClick the link below. Your highest limit is one of 13 things on your file that decide how much you get, and your advisor will walk you through the other 12 so you can maximize your fundability.",
+    "plan": [],
+    "gaps": [
+      "\"$300,000 a year ... approved for eight thousand ... his buddy ... eighty\" — no two-people comparison animation exists",
+      "\"It's your highest limit card\" — no highest-limit animation exists",
+      "\"one of 13 things\" sits on the ask line, where animations are not allowed"
+    ],
+    "check": [
+      "plan: A standard script needs at least 2 animations. This plan has 0."
+    ]
+  },
+  {
+    "video": "Direct Book Ad 10 — Scale without your own cash",
+    "source": "ad_scripts 101",
+    "scriptFormat": "long",
+    "body": "Putting MORE money into your business is the fastest way to stop running out of cash.\n\nAnd you can do it without using your own cash. ↑\n\nHere's what I found scaling my own businesses. Jeremy Haynes, one of the biggest names in ads, explains this all the time. When your business is stuck with limited cash, you have to turn your spending UP. More spend gets you more data, your ads perform better, and you can finally pay for the people and tools that help you break free.\n\nMaybe your business makes $10,000 a month, maybe $20,000 a month, maybe $50,000 a month. Or maybe you don't have a business yet and you're looking to start one. Wherever you're starting, if you want to get past $100,000 a month, you need capital to get there.\n\nI'm in my early 30s, and I know how hard it is to build real freedom on limited capital. It's hard to save for retirement, and it's even harder to buy back the time with your family that you missed the last few years while you were grinding on your business.\n\nEverybody knows it. I know it, because I've been there. Sometimes you're not taking the right action, and sometimes you just don't have enough capital to take the right action.\n\nYou already know what your business needs. Maybe you don't have the money to do it. Or maybe you have the money, but it's your savings, and you don't want to risk it. ↑\n\nYour family wants you to take that leap. Your mom, your brother, your sister, your son, your daughter. They want to see you win, and they want more of your time when you do.\n\nThe hard part is that the savings you'd use to take that leap are the same savings that keep your family safe. Funding lets you take the leap and keep that safety net right where it is.\n\nMark Zuckerberg said, \"The biggest risk is not taking any risk.\"\n\nYou might not be ready to take that risk yet, and that's okay. But start getting ready NOW. The economy is getting harder for entrepreneurs. Interest rates just went up, banks are giving out less money, and the business owners who get ready FIRST are the ones who still get funded.\n\nHere's the plan, and one step in it took me years of driving bank to bank to figure out. ↑\n\nStep one, fix up your credit FIRST. If it's not with me, do it with somebody. I want you to win either way. Just get it right.\n\nStep two, open your businesses and build their credit. If you have extra cash, buy an older company. Those are assets banks will fund. Your personal credit is the main one, and every business you add MULTIPLIES it.\n\nStep three is the one that took me years. You need to know exactly which banks fit your credit profile and your business profile, and apply to them in the right order. ↑\n\nI used to drive to every single bank in my state to learn what each one looks for. You'll learn a lot doing that, and it's worth doing. But it takes a TON of time when you also have a business to run. That's time away from your business and your family, and it makes everything harder.\n\nWorking with someone who already knows every bank and every detail they look for saves you all of that time.\n\nOnce you have that plan, you have everything you need to get funded. If you feel confident doing it yourself, go do it. Or work with someone who's done this their whole career. That's the plan while interest rates rise.\n\nAnd that's how you scale without touching your own cash. We get you funding on your credit and your businesses, so you put that money into growth, your cash stays right where it is, and you finally get the freedom and the time back that you've been working for.\n\nClick the link below, and your advisor will walk you through the plan for where your credit is right now and show you how much funding you can get to grow your business.",
+    "plan": [
+      {
+        "anchor": {
+          "phrase": "Interest rates just went up, banks are giving out less money"
+        },
+        "template": "BankPockets",
+        "props": {},
+        "seconds": 3
+      },
+      {
+        "anchor": {
+          "phrase": "Step one, fix up your credit FIRST"
+        },
+        "template": "StepPath",
+        "props": {
+          "steps": [
+            "Fix up your credit first",
+            "Open your businesses and build their credit",
+            "Apply to the banks that fit, in the right order"
+          ]
+        },
+        "seconds": 3
+      },
+      {
+        "anchor": {
+          "phrase": "every business you add MULTIPLIES it"
+        },
+        "template": "CompanyLine",
+        "props": {
+          "headline": "Every business you add multiplies it"
+        },
+        "seconds": 3
+      },
+      {
+        "anchor": {
+          "phrase": "You need to know exactly which banks fit your credit profile"
+        },
+        "template": "LenderList",
+        "props": {},
+        "seconds": 3
+      }
+    ],
+    "gaps": [],
+    "check": "pass"
+  },
+  {
+    "video": "Direct Book Ad 11 — The penthouse",
+    "source": "ad_scripts 102",
+    "scriptFormat": "standard",
+    "body": "The guys up there figured out one thing that nobody seems to talk about. Your parents won't tell you, your friends won't, maybe not even your business partner, and you won't find it online.\n\nWhen I used to live here, I knew a guy up there with a $1.5 million penthouse, and he was struggling. He was struggling mentally to get his businesses and his other ventures off the ground, sitting in a penthouse he owned outright.\n\nSo he moved out of state and cut out the distractions. He optimized his credit, then put it to work alongside investors and credit partners, and within six months his income was over $400,000 a year.\n\nThe one thing he figured out is how to leverage your credit correctly. I know plenty of people up here who run companies and scale businesses, and the ones who do it most efficiently use other people's money. Archimedes said, \"Give me a lever long enough and I can move the world.\" Credit is that lever, and building with only your own cash is the slowest way to build wealth there is.\n\nClick the link below. Wherever your credit is right now, we'll walk you through how to optimize it and how to get your own funding, and if you want us to help along the way, we'll do that too.",
+    "plan": [],
+    "gaps": [
+      "\"within six months his income was over $400,000\" — no income animation exists",
+      "\"Credit is that lever\" — no lever animation exists"
+    ],
+    "check": [
+      "plan: A standard script needs at least 2 animations. This plan has 0."
+    ]
+  },
+  {
+    "video": "Capital Blueprint Ad 1 — Industry call-out",
+    "source": "marketing/ads/scripts/2026-10-13.md section 1",
+    "scriptFormat": "standard",
+    "body": "The way this industry teaches funding costs you $5,000 to $10,000 and HUNDREDS of hours of outdated videos and Zoom calls that pull you away from your business.\n\nAnd after all of that, some of them still charge you $2,000 a MONTH for the one piece that decides how much you get approved for. ↑\n\nThey all say they want to help you, but anyone who really wanted to help would look at YOUR file and tell you exactly what to do next.\n\nSo I built the Capital Blueprint, which reviews your file the way a lender does and shows you how much we think you'll qualify for right now.\n\nFrom there, your dashboard lays out every step to get your file to the MAXIMUM amount of funding, in the exact order you need to take them.\n\nAnd the Blueprint gets you past the exact point where most people give up on learning funding. ↑\n\nEvery step has a due date and a reminder, and each one clears only when you upload proof that you finished.\n\nA real person on our team checks in with you whenever you fall behind, and once your file is ready, you're set up to fund YOURSELF.\n\nAfter that, the system tells you when you're ready for your next funding sequence, so the Blueprint becomes your own operating system for funding.\n\nOnly about 1 in 8 people finish an online course they sign up for, which is why every step in the Blueprint has a deadline and a person behind it.\n\nYou learn funding by taking action on your own file, and since you end up funded, the Blueprint is worth more than any course.\n\nIf you'd rather have us handle everything, we're happy to optimize your credit or run your funding for you.\n\nThat $2,000-a-month piece is the bank data, meaning what each bank approves and why, and you get it from day one.\n\nI've done tens of MILLIONS of dollars in funding over the last decade, and every data point from all of that is built into UnderwriteIQ, the software behind your Blueprint.\n\nClick the link below and hop on a call, and we'll figure out which path gets your file to the maximum amount of funding.",
+    "plan": [
+      {
+        "anchor": {
+          "phrase": "reviews your file the way a lender does"
+        },
+        "template": "QualifyToday",
+        "props": {},
+        "seconds": 3
+      },
+      {
+        "anchor": {
+          "phrase": "your dashboard lays out every step"
+        },
+        "template": "StepPath",
+        "props": {},
+        "seconds": 3
+      },
+      {
+        "anchor": {
+          "phrase": "I've done tens of MILLIONS of dollars in funding"
+        },
+        "template": "ProofWall",
+        "props": {},
+        "seconds": 4
+      }
+    ],
+    "gaps": [
+      "\"Only about 1 in 8 people finish an online course\" — no animation exists",
+      "\"$5,000 to $10,000 and HUNDREDS of hours\" — no course-cost animation exists"
+    ],
+    "check": "pass"
+  },
+  {
+    "video": "Capital Blueprint Ad 2 — Learn it yourself",
+    "source": "marketing/ads/scripts/2026-10-13.md section 2",
+    "scriptFormat": "standard",
+    "body": "Higher interest rates, harder application sequences and extra verification on credit cards make funding harder to get every single year.\n\nBut one part of getting funded has stayed exactly the same for the 10 years I've been doing this, and it decides who still gets approved for the MOST. ↑\n\nThat part works the same whether your credit is great or somewhere in the middle, and whether you have a business yet or not.\n\nIf you take the time to learn this and work a system, you go from where you are right now to HUNDREDS of thousands of dollars in funding.\n\nAnd you keep repeating that process for as long as the banking system exists.\n\nSo I built the Capital Blueprint, a dashboard that walks you through the whole process one waypoint at a time.\n\nThe Blueprint also gets you past the exact point where most people give up on learning funding. ↑\n\nEach waypoint tells you exactly what move to make next and shows you how to get there.\n\nYou'll know which letters to send to optimize your credit and which banks to apply to, in the EXACT order.\n\nYou'll also know which banks to open accounts with when you need them, and how to start and optimize your businesses.\n\nThe system holds you accountable and nudges you along, so every move you make is the right one while you focus on making money.\n\nOnly about 1 in 8 people finish an online course they sign up for.\n\nWith the Blueprint, you skip the hours of videos and note-taking and go straight to making the next move on your own file.\n\nOr you can buy a $5,000 course or pay someone $2,000 a MONTH for data points, even though a lot of the people selling funding don't know what they're doing.\n\nEvery data point I've collected over the last decade is built into UnderwriteIQ, the software behind your Blueprint, so you have the data from day one.\n\nThe part that's stayed the same for 10 years is how your file is optimized and set up before you ever apply.\n\nWhen you get that right, you give yourself the best possible chance at the MAXIMUM amount of funding, no matter what the banks change.\n\nClick the link below and hop on a call, and we'll look at where your file is right now and map out your first moves.",
+    "plan": [
+      {
+        "anchor": {
+          "phrase": "a dashboard that walks you through the whole process one waypoint at a time"
+        },
+        "template": "StepPath",
+        "props": {},
+        "seconds": 3
+      },
+      {
+        "anchor": {
+          "phrase": "You'll know which letters to send to optimize your credit and which banks to apply to"
+        },
+        "template": "LenderList",
+        "props": {},
+        "seconds": 3
+      }
+    ],
+    "gaps": [
+      "\"Higher interest rates\" is the first line, where animations are not allowed",
+      "\"Only about 1 in 8 people finish an online course\" — no animation exists"
+    ],
+    "check": "pass"
+  }
+]
