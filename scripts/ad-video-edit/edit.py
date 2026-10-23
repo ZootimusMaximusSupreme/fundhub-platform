@@ -31,11 +31,36 @@ def run(args):
                           capture_output=True, text=True).stderr
 
 
-def silences(src):
-    log = run(["-i", src, "-vn", "-af", "silencedetect=noise=-35dB:d=0.2", "-f", "null", "-"])
-    s = [float(x) for x in re.findall(r"silence_start: ([\d.]+)", log)]
-    e = [float(x) for x in re.findall(r"silence_end: ([\d.]+)", log)]
-    return list(zip(s, e))
+def silences(src, min_len=0.2):
+    """Pauses, including HANGING TAILS: the dead air after a trailing word
+    ("somebody else......"), with any breath or room noise in it.
+
+    ffmpeg's silencedetect misses these: it checks single sample peaks, so a
+    breath or room hiss in the gap reads as sound. This uses loudness over
+    40 ms windows instead. Quiet = under the room's own noise + 9 dB.
+    """
+    import numpy as np
+    pcm = subprocess.run([FFMPEG, "-loglevel", "error", "-i", src, "-vn", "-ac", "1",
+                          "-ar", "16000", "-f", "s16le", "-"], capture_output=True).stdout
+    x = np.frombuffer(pcm, np.int16).astype(np.float32) / 32768
+    hop, win = 160, 640  # 10 ms steps, 40 ms windows
+    n = max(0, (len(x) - win) // hop)
+    db = np.array([10 * np.log10(np.mean(x[i * hop:i * hop + win] ** 2) + 1e-10) for i in range(n)])
+    quiet = db < np.percentile(db, 10) + 9
+    out, i = [], 0
+    while i < n:
+        if quiet[i]:
+            j = i
+            while j < n and quiet[j]:
+                j += 1
+            # window i covers i*hop .. i*hop+win; the quiet part is its middle
+            a, b = (i * hop + win / 2) / 16000, ((j - 1) * hop + win / 2) / 16000
+            if b - a >= min_len:
+                out.append((a, b))
+            i = j
+        else:
+            i += 1
+    return out
 
 
 def keep_list(plan, sil):
@@ -44,7 +69,9 @@ def keep_list(plan, sil):
     cuts = [(a, b) for a, b, *_ in plan["mess"]]
     for a, b in sil:
         if b - a > pmax and start < a and b < end:
-            cuts.append((a + pkeep / 2, b - pkeep / 2))
+            # 70% of the kept air goes after the word: word ends ("-s", "-th") fade
+            # out softly and get clipped first; word starts are sharp.
+            cuts.append((a + pkeep * 0.7, b - pkeep * 0.3))
     cuts.sort()
     merged = []
     for a, b in cuts:  # a pause inside a mess cut is already gone
@@ -99,12 +126,11 @@ def main():
                     "-ar", "48000", "-movflags", "+faststart", out], check=True)
 
     # check the result
-    log = run(["-i", out, "-vn", "-af", "silencedetect=noise=-35dB:d=0.2,ebur128=peak=true",
-               "-f", "null", "-"])
+    log = run(["-i", out, "-vn", "-af", "ebur128=peak=true", "-f", "null", "-"])
     summary = log[log.rfind("Summary"):]
     loud = float(re.search(r"I:\s+(-?[\d.]+) LUFS", summary).group(1))
     peak = float(re.search(r"Peak:\s+(-?[\d.]+) dBFS", summary).group(1))
-    longest = max([float(x) for x in re.findall(r"silence_duration: ([\d.]+)", log)] or [0])
+    longest = max([b - a for a, b in silences(out, 0.05)] or [0])
     ok = abs(loud + 14) <= 1 and peak <= -1.5 and longest <= plan.get("pause_max", PAUSE_MAX) + 0.02
     print(f"loudness {loud} LUFS, peak {peak} dBFS, longest pause {longest:.2f}s -> "
           f"{'PASS' if ok else 'FAIL'}")

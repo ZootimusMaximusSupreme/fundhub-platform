@@ -18,6 +18,10 @@ Proven on Ad 16 (2026-10-23): 80.4 s raw → 69.5 s, 4 mess-ups cut and 16 pause
 - **A mess-up is:** the same words said twice in a row ("before your, before your file"), a false
   start ("getting cap- access"), or a half line he drops and restarts ("so that way, and that's where").
   Keep the LAST, clean try. Cut the earlier one.
+- **Hanging tails go.** A hanging tail is a word that trails off, then dead air before the next line
+  ("somebody else……and there's"). Chris named these 2026-10-23: they break the flow. The gap often holds a
+  breath or room hiss, so a plain silence check misses it. `edit.py` finds them by loudness over 40 ms
+  windows (quiet = the room's noise + 9 dB) and cuts the gap down like any other pause. Never cut the word itself.
 - **Fix only what you can notice.** Long pauses, quiet sound, room hiss, visible shake. If it is fine, leave it.
 - **Never change the raw file.** Write a new `<name> Edited.mp4` next to it.
 - **Keep the picture size.** 4K stays 4K.
@@ -39,7 +43,9 @@ Proven on Ad 16 (2026-10-23): 80.4 s raw → 69.5 s, 4 mess-ups cut and 16 pause
    ```bash
    python3 scripts/ad-video-edit/edit.py cuts.json "<take>.mp4" "<name> Edited.mp4"
    ```
-   It shortens every pause over 0.28 s to 0.20 s (pauses only, never words; Chris asked for tighter than 0.45 → 0.30), adds 12 ms fades at each cut,
+   It shortens every pause and hanging tail over 0.28 s to 0.20 s (pauses only, never words; Chris asked
+   for tighter than 0.45 → 0.30). Of the 0.20 s kept, 0.14 s stays after the word so soft endings ("-s")
+   are not clipped. It adds 12 ms fades at each cut,
    removes low rumble and light hiss, gently evens the voice, sets -14 LUFS with peaks under -1.5,
    and prints PASS or FAIL.
 6. **Check no word is lost.** Transcribe the edited file. Compare word lists before and after.

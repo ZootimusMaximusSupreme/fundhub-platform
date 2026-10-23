@@ -101,3 +101,31 @@ within 60 ms, fill gaps with the take's own room tone instead of hard silence, a
 ## Leftovers (not this task)
 
 - The Thank You video is 2560x1440, not 4K (`video-4k-unless-ad` law).
+
+## Cursor prompt — edit dead space inside Submagic (owner-asked 2026-10-23)
+
+Chris asked for Cursor to log into Submagic in a browser and do the cuts there, all videos.
+Owner call. Submagic's API cannot make exact cuts on an existing project (Update Project only has
+its own `removeSilencePace` and `removeBadTakes`), so the browser editor is the only way to do it there.
+
+Paste into Cursor (agent mode, browser on):
+
+> Open https://app.submagic.co in the browser. I am already logged in; if a login page shows, stop and tell me.
+> Read `.cursor/skills/fundhub-ad-editor/SKILL.md` first. Those rules apply here.
+>
+> Do ONE video first: the newest Direct Book ad project. Stop and show me before doing the rest.
+>
+> In each project, open the editor and use the transcript/timeline to remove:
+> 1. Dead space: any pause longer than about a quarter second. Leave a short natural breath.
+> 2. Hanging tails: a word that trails off, then dead air before the next line ("somebody else…… and there's"). Cut the air, never the word.
+> 3. Mess-ups only: the same words said twice in a row, a false start ("getting cap- access"), or a half line he restarts. Keep the LAST clean try.
+>
+> Never remove:
+> - A good word. When unsure, keep it.
+> - Improv. Chris goes off script on purpose. A new line that makes sense stays.
+> - Captions, eye contact, or clean audio settings that are already on.
+>
+> Do NOT use Submagic's automatic "remove silences", "remove bad takes", AI edit, magic zooms or magic B-roll. Cut by hand in the editor.
+> Do not export, publish or delete anything. Do not change billing, plan or account settings.
+> After each video, write one line here: project name, how many cuts, longest pause left.
+> If the editor will not let you cut something, say so and move on. Never claim a cut you did not make.
