@@ -1,0 +1,20 @@
+<!-- fh-ty-fit:start v1 -->
+<!--
+  /thank-you — PHONE fit layer (page 25063539, builder page).
+  Pushed into the page's head_code as one marked block by
+  scripts/cf-push-custom-html.mjs (manifest key "apply-thank-you-fit", strategy
+  code_block_upsert). The body, 05-thank-you.html and the footer scripts are never touched.
+
+  Phone (under 768px): the content ran in 222px of a 390px screen. Two ClickFunnels
+  section + row layers each added 15px a side, then .wrap added 24px a side. Now the
+  layers carry no side padding and .wrap keeps one 16px gutter, so content gets 358px.
+  Desktop is untouched: every rule sits inside the phone media query.
+-->
+<style>
+@media (max-width:767px){
+  [data-page-element="SectionContainer/V1"],
+  [data-page-element="RowContainer/V1"]{padding-left:0!important;padding-right:0!important}
+  .fh-root .wrap{padding-left:16px!important;padding-right:16px!important}
+}
+</style>
+<!-- fh-ty-fit:end -->

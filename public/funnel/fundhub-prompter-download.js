@@ -1,9 +1,9 @@
-/* Fundhub Prompter download card for the apply.fundhub.ai /thank-you builder page.
- * The card only renders after the signed TestFlight invite URL is placed in the
+/* Fundhub Portal download card for the apply.fundhub.ai /thank-you builder page.
+ * The card only renders after the live App Store URL is placed in the
  * adjacent JSON file. That keeps the live funnel free of dead download links. */
 (function () {
   var CONFIG_URL = "https://fundhub.ai/funnel/fundhub-prompter-download.json";
-  var LINK = /^https:\/\/testflight\.apple\.com\/join\/[A-Za-z0-9]+$/;
+  var LINK = /^https:\/\/apps\.apple\.com\/(?:[a-z]{2}\/)?app\/(?:[^?#/]+\/)?id6823985032\/?$/;
 
   function addStyles() {
     if (document.getElementById("fh-prompter-download-css")) return;
@@ -24,14 +24,14 @@
     var section = document.createElement("section");
     section.id = "fh-prompter-download";
     section.className = "fh-prompter-download";
-    section.setAttribute("aria-label", "Fundhub Prompter for iPhone and iPad");
+    section.setAttribute("aria-label", "Fundhub Portal for iPhone");
     section.innerHTML =
       '<div class="fh-prompter-download__top">' +
       '<img class="fh-prompter-download__icon" src="https://fundhub.ai/apple-touch-icon.png" alt="Fundhub" width="54" height="54">' +
-      '<div><p class="fh-prompter-download__eyebrow">Fundhub mobile app</p><h2 class="fh-prompter-download__title">Fundhub Prompter</h2></div>' +
-      '</div><p class="fh-prompter-download__copy">Read your script and record your take from your iPhone or iPad—built for your next Fundhub filming session.</p>' +
-      '<a class="fh-prompter-download__button" href="' + url + '" target="_blank" rel="noopener noreferrer">Download for iPhone <span aria-hidden="true">→</span></a>' +
-      '<p class="fh-prompter-download__note">Opens in Apple TestFlight. Install TestFlight if Apple asks.</p>';
+      '<div><p class="fh-prompter-download__eyebrow">Fundhub mobile app</p><h2 class="fh-prompter-download__title">Fundhub Portal</h2></div>' +
+      '</div><p class="fh-prompter-download__copy">Keep your Fundhub file close. See where things stand and open your portal for the next step.</p>' +
+      '<a class="fh-prompter-download__button" href="' + url + '" target="_blank" rel="noopener noreferrer">Get it on the App Store <span aria-hidden="true">→</span></a>' +
+      '<p class="fh-prompter-download__note">Sign in with your Fundhub account. Opens the official Apple App Store listing.</p>';
     hero.parentNode.insertBefore(section, hero.nextSibling);
   }
 
@@ -40,7 +40,7 @@
     window.fetch(CONFIG_URL, { credentials: "omit", cache: "no-store" })
       .then(function (response) { return response.ok ? response.json() : null; })
       .then(function (config) {
-        var url = String(config && config.testflight_url || "").trim();
+        var url = String(config && config.app_store_url || "").trim();
         if (LINK.test(url)) card(url);
       })
       .catch(function () {});

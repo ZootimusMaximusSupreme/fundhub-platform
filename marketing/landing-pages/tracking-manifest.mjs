@@ -101,7 +101,7 @@ export const CLARITY_SRC = "https://fundhub.ai/js/clarity.js";
 export const DEFER_FOOTER_SRCS = new Set([FUNDING_PATHS_SRC, CLARITY_SRC]);
 /** /thank-you booking check + "What the call decides" + real approvals and texts (public/funnel/thankyou-sort.js). */
 export const THANKYOU_SORT_SRC = "https://fundhub.ai/funnel/thankyou-sort.js";
-/** Fundhub Prompter TestFlight card on /thank-you; hidden until its public invite setting is ready. */
+/** Fundhub Portal App Store card on /thank-you; hidden until its App Store URL is set. */
 export const FUNDHUB_PROMPTER_DOWNLOAD_SRC = "https://fundhub.ai/funnel/fundhub-prompter-download.js";
 
 export function footerScriptTag(src, { defer = false } = {}) {
