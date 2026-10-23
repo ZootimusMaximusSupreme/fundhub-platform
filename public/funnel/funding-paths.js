@@ -5,7 +5,8 @@
  * Load on /watch and /thank-you:  <script src="https://fundhub.ai/funnel/funding-paths.js" defer></script>
  *   /watch      -> inserted right after the approvals/testimonials section (#fh-watch-proof),
  *                  with the Get Started button (links to /apply).
- *   /thank-you  -> inserted right after the approvals section (#fh-proof, or .expect if proof is hidden),
+ *   /thank-you  -> inserted right after the app card slot (#fh-ty-app-slot, owner reorder 2026-10-23),
+ *                  or after .expect on a page without the slot,
  *                  kicker/sub reworded for someone already booked, no CTA button.
  * All CSS is scoped under .fhp. Every amount and score is labeled "Sample".
  * Animations start when a card is on screen, stop off screen, and are off under reduced motion.
@@ -20,6 +21,9 @@
   var PORTAL_APP_URL = 'https://apps.apple.com/us/app/fundhub-portal/id6823985032';
   function findAnchor() {
     if (onThankYou) {
+      /* Under the app card, which fills #fh-ty-app-slot after "Before we talk". */
+      var slot = document.getElementById('fh-ty-app-slot');
+      if (slot) return slot;
       var proof = document.getElementById('fh-proof');
       return proof && !proof.hidden ? proof : document.querySelector('.fh-root .expect');
     }
@@ -61,8 +65,10 @@
     var sec = wrap.firstChild;
     if (onThankYou) {
       sec.setAttribute('data-mode', 'thankyou');
-      sec.querySelector('.fhp-kicker').textContent = 'What happens on your call';
-      sec.querySelector('.fhp-sub').textContent = 'Your advisor runs a tri-bureau soft pull plus an Experian business report with you. What your file shows puts you on one of these three paths.';
+      sec.querySelector('.fhp-kicker').textContent = 'Your three paths';
+      sec.querySelector('.fhp-sub').textContent = 'What your file shows on the call puts you on one of these three paths. Nobody gets turned away.';
+      /* Fundhub is not the lender (this page's FAQ and footer). */
+      sec.querySelector('#fhp-p2 header p').textContent = 'We show you exactly what\'s holding your file back and optimize your credit for you.';
       var first = sec.querySelector('.fhp-flow .st');
       first.querySelector('.t').innerHTML = '<a href="' + PORTAL_APP_URL + '" target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:underline;text-underline-offset:3px">Get the app</a>';
       first.querySelector('.d').textContent = 'Fundhub Portal for iPhone';

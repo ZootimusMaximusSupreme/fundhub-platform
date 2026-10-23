@@ -760,10 +760,11 @@ describe("/thank-you sorting hat hook (public/funnel/thankyou-sort.js)", () => {
     assert.deepEqual(openThanks({ body: "<div></div>" }).events(), []);
   });
 
-  test("the page still does its job: booked headline, decides block, approvals", () => {
+  test("the page still does its job: booked headline, approvals, and no repeat of the call steps", () => {
     const page = openThanks();
     assert.equal(page.doc.querySelector("h1.sec").textContent, "Your Call Is Booked.");
-    assert.ok(page.doc.getElementById("fh-ty-decides"));
+    // "What the call decides" was cut in the owner reorder of 2026-10-23: it repeated step 03 and the three paths.
+    assert.equal(page.doc.getElementById("fh-ty-decides"), null);
     assert.ok(page.doc.getElementById("fh-ty-proof"));
   });
 });

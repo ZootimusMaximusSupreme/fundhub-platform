@@ -467,7 +467,9 @@ describe("the fragments and the push manifest load the scripts once", () => {
     assert.ok(html.includes(`<script src="${THANKYOU_SORT_SRC}"></script>`));
     assert.equal(html.includes("T14-01: nothing on this page may claim"), false, "the check lives in thankyou-sort.js now");
     assert.equal(html.includes("You get your exact funding number"), false);
-    assert.ok(html.includes('<div class="t">You get one of three roads</div>'));
+    // Owner reorder 2026-10-23: "paths", the word the three-paths section uses (it said "roads").
+    assert.ok(html.includes('<div class="t">You get one of three paths</div>'));
+    assert.equal(html.includes("three roads"), false, "one word for the three paths");
     assert.equal(html.includes("You leave knowing your road"), false, "the step 03 title must not repeat its own text");
   });
 

@@ -39,19 +39,40 @@ full size; a click or Escape closes it.
 
 ## /thank-you
 
+Regenerated from code on 2026-10-23 (branch `claude/ty-page-reorg`, owner reorder; not live until
+Chris approves the marked draft and the page is pushed). The page is now its own custom HTML page
+(25752378) on the /thank-you step, so `marketing/landing-pages/05-thank-you.html` is the body and
+the footer scripts below fill it in.
+
 ```mermaid
 flowchart TD
-    A["Visitor lands on /thank-you<br/>(after booking, or sent here by the homepage survey)"] --> B["thankyou-sort.js runs<br/>run() — public/funnel/thankyou-sort.js"]
+    A["Visitor lands on /thank-you<br/>(after booking, or sent here by the homepage survey)<br/>body: 05-thank-you.html"] --> B["thankyou-sort.js runs<br/>run() — public/funnel/thankyou-sort.js<br/>sends survey_route once"]
     B --> C{"fhIsBooked(fh_booking_v1, referrer)?<br/>came straight from /funding-book-call,<br/>start/end, name + email,<br/>submittedAt or capturedAt under 6h,<br/>start still in the future"}
-    C -->|yes| D["Confirmed · Your Call Is Booked.<br/>Call steps, prep list, calendar buttons shown"]
-    C -->|no| E["Received · We've Got Your Application.<br/>One step left: pick a time for your call.<br/>Call steps, prep list, calendar hidden"]
-    E --> F["Pick your call time → /funding-book-call"]
-    D --> G["What the call decides<br/>(three roads, nobody turned away)"]
-    F --> G
-    G --> H["Step 03 reads: You get one of three roads<br/>(booked view only — steps are hidden otherwise)"]
-    H --> I["Real approvals, real screenshots<br/>$74,000 · $50,000 KeyBank · $25,000 Highland<br/>(no client texts) — any screenshot opens full size"]
-    I --> J["FAQ (unchanged)"]
+    C -->|yes| D["Apple / Outlook (.ics) button shown"]
+    C -->|no| E[".ics button hidden"]
+    D --> F
+    E --> F["Everyone: Confirmed · You're All Set. · Your Call Is Booked.<br/>Video under the headline (buildVideo, VIDEO_SRC)<br/>Confirm your call: accept the invite in your email,<br/>Add to Google Calendar (+ .ics, + open your inbox when known)"]
+    F --> G["What happens on the call<br/>(step 03: You get one of three paths)"]
+    G --> H["Before we talk<br/>(prep list, Reschedule your call link)"]
+    H --> I{"fundhub-prompter-download.json<br/>holds an apps.apple.com link?"}
+    I -->|yes| J["Fundhub Portal card fills #fh-ty-app-slot<br/>public/funnel/fundhub-prompter-download.js<br/>tap = app_download_tap (fh-events.js)"]
+    I -->|no| K["No card; the slot stays empty"]
+    J --> L
+    K --> L["Your three paths: funding-paths.js,<br/>placed after #fh-ty-app-slot<br/>(step 1 of its strip: Get the app)"]
+    L --> M["Real approvals, real screenshots<br/>$74,000 · $50,000 KeyBank · $25,000 Highland<br/>(no client texts) — any screenshot opens full size"]
+    M --> N["FAQ"]
 ```
+
+"What the call decides" was cut on 2026-10-23: it repeated step 03 and the three paths. A page
+body without `#fh-ty-app-slot` (the old one) still works: the card goes under the headline and the
+three paths go after the call steps, as before.
+
+GAP: `docs/journeys/fundhub-prompter-funnel-download-intended.md` still says the card shows "below
+the confirmation hero" and names the Prompter and TestFlight. The code now puts the Fundhub Portal
+card under "Before we talk", as Chris asked on 2026-10-23. The intended file is Chris's to update.
+
+Since 2026-10-01 everyone sees the booked page, so the booking check below only decides the .ics
+button. The "Pick your call time" lines further down are history from before that.
 
 Since 2026-10-02 the live /funding-book-call page stamps `submittedAt` from a
 footer block (`marketing/landing-pages/04e-book-confirm.html`, marker

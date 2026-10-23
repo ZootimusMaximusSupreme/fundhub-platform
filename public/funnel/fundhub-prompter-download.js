@@ -9,18 +9,22 @@
     if (document.getElementById("fh-prompter-download-css")) return;
     var style = document.createElement("style");
     style.id = "fh-prompter-download-css";
-    /* .fh-root rules on the page (margin/padding 0, links inherit color) load after this; the .fh-root prefix outranks them. */
-    style.textContent =
-      ".fh-root .fh-prompter-download{box-sizing:border-box;width:min(100% - 32px,680px);margin:28px auto 0;padding:20px;border:1px solid #202024;border-radius:18px;background:#0c0c0d;color:#fff;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;box-shadow:0 18px 42px -24px rgba(0,0,0,.55)}" +
-      ".fh-root .fh-prompter-download *{box-sizing:border-box}.fh-root .fh-prompter-download__top{display:flex;align-items:center;gap:14px;text-align:left}.fh-root .fh-prompter-download__icon{width:54px;height:54px;flex:0 0 54px;border-radius:13px;background:#0c0c0d}.fh-root .fh-prompter-download__eyebrow{margin:0 0 3px;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#b9b9c0}.fh-root .fh-prompter-download__title{margin:0;font-size:20px;line-height:1.1;letter-spacing:-.03em;color:#fff}.fh-root .fh-prompter-download__copy{margin:16px 0 0;max-width:51ch;font-size:15px;line-height:1.55;color:#d0d0d4;text-align:left}.fh-root .fh-prompter-download__button{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:48px;margin-top:18px;padding:0 18px;border-radius:10px;background:#fff;color:#0c0c0d;font-size:15px;font-weight:750;line-height:1;text-decoration:none;transition:transform .18s ease,background .18s ease}.fh-root .fh-prompter-download__button:hover{background:#f0f0f2;transform:translateY(-1px)}.fh-root .fh-prompter-download__button:focus-visible{outline:3px solid #9b9ba3;outline-offset:3px}.fh-root .fh-prompter-download__note{margin:11px 0 0;font-size:12px;line-height:1.45;color:#aaaab1;text-align:left}@media(max-width:480px){.fh-root .fh-prompter-download{width:calc(100% - 24px);padding:17px}.fh-root .fh-prompter-download__title{font-size:18px}.fh-root .fh-prompter-download__copy{font-size:14px}}";
+    /* .fh-root rules on the page (margin/padding 0, links inherit color) load after this; the .fh-root prefix outranks them.
+       Owner reorder 2026-10-23: a white card like "Before we talk", with an outline button, so the blue
+       calendar button stays the page's one main button. */
+    style.textContent = ".fh-root .fh-prompter-download{box-sizing:border-box;display:grid;grid-template-columns:minmax(0,1fr);gap:16px;width:100%;max-width:660px;margin:30px auto 0;padding:20px 22px;border:1px solid #E4E4E7;border-radius:12px;background:#FFFFFF;color:#0A0A0A;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;text-align:left;box-shadow:0 1px 3px rgba(10,10,10,.05)}.fh-root .fh-prompter-download *{box-sizing:border-box}.fh-root .fh-prompter-download__top{display:flex;align-items:flex-start;gap:14px;min-width:0}.fh-root .fh-prompter-download__icon{display:block;width:52px;height:52px;flex:0 0 52px;border-radius:12px;background:#0A0A0A}.fh-root .fh-prompter-download__eyebrow{margin:0 0 4px;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,monospace;font-size:10.5px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;color:#8A8A93}.fh-root .fh-prompter-download__title{margin:0;font-size:19px;font-weight:700;line-height:1.2;letter-spacing:-.02em;color:#0A0A0A}.fh-root .fh-prompter-download__copy{margin:6px 0 0;font-size:15px;line-height:1.6;color:#52525B}.fh-root .fh-prompter-download__button{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:48px;padding:0 20px;border:1px solid #0A0A0A;border-radius:9px;background:#FFFFFF;color:#0A0A0A;font-size:15px;font-weight:600;line-height:1;text-decoration:none;white-space:nowrap;transition:background .15s}.fh-root .fh-prompter-download__button:hover{background:#F4F4F5}.fh-root .fh-prompter-download__button:focus-visible{outline:2px solid #0A0A0A;outline-offset:3px}.fh-root .fh-prompter-download__note{margin:0;padding-top:14px;border-top:1px solid #E4E4E7;font-size:13px;line-height:1.5;color:#71717A}@media(min-width:640px){.fh-root .fh-prompter-download{grid-template-columns:minmax(0,1fr) auto;column-gap:24px;align-items:center}.fh-root .fh-prompter-download__note{grid-column:1 / -1}}@media(max-width:639.98px){.fh-root .fh-prompter-download{padding:20px 18px}.fh-root .fh-prompter-download__button{width:100%}}";
     (document.head || document.documentElement).appendChild(style);
   }
 
   function card(url) {
     if (document.getElementById("fh-prompter-download")) return;
     var root = document.querySelector(".fh-root");
-    var hero = root && root.querySelector(".hero");
-    if (!hero || !hero.parentNode) return;
+    if (!root) return;
+    /* Owner, 2026-10-23: "the download the app should be beneath". The card fills #fh-ty-app-slot,
+       under "Before we talk". A page body without the slot keeps the old spot under the headline. */
+    var slot = document.getElementById("fh-ty-app-slot");
+    var hero = root.querySelector(".hero");
+    if (!slot && (!hero || !hero.parentNode)) return;
     addStyles();
     var section = document.createElement("section");
     section.id = "fh-prompter-download";
@@ -28,12 +32,15 @@
     section.setAttribute("aria-label", "Fundhub Portal for iPhone");
     section.innerHTML =
       '<div class="fh-prompter-download__top">' +
-      '<img class="fh-prompter-download__icon" src="https://fundhub.ai/apple-touch-icon.png" alt="Fundhub" width="54" height="54">' +
-      '<div><p class="fh-prompter-download__eyebrow">Fundhub mobile app</p><h2 class="fh-prompter-download__title">Fundhub Portal</h2></div>' +
-      '</div><p class="fh-prompter-download__copy">Keep your Fundhub file close. See where things stand and open your portal for the next step.</p>' +
+      '<img class="fh-prompter-download__icon" src="https://fundhub.ai/apple-touch-icon.png" alt="Fundhub" width="52" height="52">' +
+      '<div><p class="fh-prompter-download__eyebrow">Get the app</p><h2 class="fh-prompter-download__title">Fundhub Portal</h2>' +
+      '<p class="fh-prompter-download__copy">See where your Fundhub file stands and open your portal for the next step.</p></div>' +
+      '</div>' +
       '<a class="fh-prompter-download__button" href="' + url + '" target="_blank" rel="noopener noreferrer">Get it on the App Store <span aria-hidden="true">→</span></a>' +
-      '<p class="fh-prompter-download__note">Sign in with your Fundhub account. Opens the official Apple App Store listing.</p>';
-    hero.parentNode.insertBefore(section, hero.nextSibling);
+      /* No login yet: api/soft-pull-approve.mjs opens the portal account on the call. */
+      '<p class="fh-prompter-download__note">Download it now. Your login is made on your call, when your advisor runs your soft pull.</p>';
+    if (slot) slot.appendChild(section);
+    else hero.parentNode.insertBefore(section, hero.nextSibling);
   }
 
   function run() {

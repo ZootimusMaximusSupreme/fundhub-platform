@@ -9,13 +9,14 @@
  *   1. Owner, 2026-10-01: everyone sees "Your Call Is Booked.", a video spot under
  *      the headline, and the confirm-your-call buttons. fhIsBooked now only decides
  *      whether the .ics button shows (it needs a stored booking time).
- *   2. "What the call decides" after the hero: one call, three roads.
- *   3. Step 03 reads "You get one of three roads".
- *   4. "Real approvals, real screenshots" before the FAQ: three approvals. No
+ *   2. Step 03 reads "You get one of three paths".
+ *   3. "Real approvals, real screenshots" before the FAQ: three approvals. No
  *      client-text cards (owner, 2026-09-22: "don't put what clients texted us").
  *      Any screenshot opens full size on tap or click.
  * The FAQ, the calendar, the prep list, the $32 wording and the speed wording are
  * not touched. No links off the page.
+ * Owner reorder 2026-10-23 (marketing/landing-pages/preview/thank-you-reorg-draft-build.mjs):
+ * "What the call decides" is cut, because it repeated step 03 and the three paths.
  *
  * Proof law (.claude/rules/proof-cards-from-source.md): every card is the
  * proof-card template's own markup, amounts read off the screenshots, photo off,
@@ -346,8 +347,6 @@
     "#fh-ty-video .fhv-unmute.hidden{opacity:0;pointer-events:none}",
     "#fh-ty-video .fhv-pill{display:flex;align-items:center;gap:10px;background:#188bf6;color:#fff;font-family:'JetBrains Mono',ui-monospace,Menlo,monospace;font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;padding:14px 22px;border-radius:999px;box-shadow:0 10px 30px rgba(10,10,10,.35)}",
     "#fh-ty-video .fhv-pill svg{width:16px;height:16px;flex:0 0 auto}",
-    "#fh-ty-decides{max-width:660px;margin:36px auto 0;text-align:center}",
-    "#fh-ty-decides p{max-width:52ch;margin:12px auto 0;font-size:16.5px;line-height:1.62;color:#52525B}",
     "#fh-ty-proof{max-width:660px;margin:36px auto 0;text-align:center}",
     /* Phones: one sideways swipe row that runs to both screen edges. */
     "#fh-ty-proof .fhy-row{display:flex;align-items:flex-start;gap:10px;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scrollbar-width:none;-webkit-overflow-scrolling:touch;margin:14px calc(50% - 50vw) 0;padding:3px calc(50vw - 50%) 8px}",
@@ -493,7 +492,7 @@
           The .ics button needs a real booking time, so it shows only when one is stored. */
     setText(hero.querySelector(".eyebrow"), "Confirmed · Funding Path");
     setText(hero.querySelector("h1.sec"), "Your Call Is Booked.");
-    setText(hero.querySelector(".lede"), "We'll see you then. Here's what to expect.");
+    setText(hero.querySelector(".lede"), "Your advisor is holding this time for you.");
     setText(prose && prose.querySelector("p:not(.lead)"), "Check your email for the confirmation and calendar invite.");
     show(expect, true);
     show(prep, true);
@@ -505,27 +504,19 @@
        the video is filmed; the box shows a placeholder until then. */
     after(hero, buildVideo());
 
-    var anchor = prose || hero;
-    if (cal && prose) { after(prose, cal); anchor = cal; }
+    /* An older copy of the page body still has .prose: the confirm block goes under it there.
+       The current body already has the confirm block right under the headline. */
+    if (cal && prose) after(prose, cal);
 
-    /* 2. What the call decides. */
-    var decides = el(
-      '<section id="fh-ty-decides">' +
-        '<span class="kicker">What the call decides</span>' +
-        "<p>We read your file the way a bank does. Then you get one of three roads: get funded now, fix the file first, or learn to do it yourself. Nobody gets turned away.</p>" +
-      "</section>"
-    );
-    after(anchor, decides);
-
-    /* 3. Step 03. */
+    /* 2. Step 03. */
     if (expect) {
       var titles = expect.querySelectorAll(".step .t");
       for (var i = 0; i < titles.length; i++) {
-        if (/exact funding number/i.test(titles[i].textContent)) titles[i].textContent = "You get one of three roads";
+        if (/exact funding number|three roads/i.test(titles[i].textContent)) titles[i].textContent = "You get one of three paths";
       }
     }
 
-    /* 4. Real approvals — before the FAQ. */
+    /* 3. Real approvals — before the FAQ. */
     var proof = el(
       '<section id="fh-ty-proof" aria-label="Client approvals">' +
         '<span class="kicker">Real approvals, real screenshots</span>' +
@@ -533,7 +524,7 @@
       "</section>"
     );
     if (faq && faq.parentNode) faq.parentNode.insertBefore(proof, faq);
-    else after(decides, proof);
+    else after(prep || expect || hero, proof);
     zoomable(proof);
   }
 
