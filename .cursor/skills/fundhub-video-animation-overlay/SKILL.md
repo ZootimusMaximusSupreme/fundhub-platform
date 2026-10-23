@@ -55,6 +55,21 @@ The video is finished and captioned. The animations go on last, as see-through c
 - **Readable over film.** Words that float outside a card sit on a white plate in see-through mode (`brand/ReadPlate.tsx`, used by `Eyebrow` and the LenderMatch closing line). If a new template floats words, wrap them in `ReadPlate`. Check readability on real frames, not on the proof sheet.
 - **Logo.** Only `FundhubLogo*`, only where the script says "Fundhub".
 
+## Portrait ads (1080x1920), learned on Direct Book Ad 4 and Ad 16 (2026-10-23)
+
+Worked examples: `marketing/ads/animation-plans/direct-book-ad-4-test-2026-10-23/` and `direct-book-ad-16-test-2026-10-23/` (each has its README, schedule, props and tools).
+
+- **Use vertical template ids** (no `Wide`), 1080x1920, render at scale 1. Each vertical see-through clip is one white plate about 1000 px wide inside the words band y 269-1248. Captions sit below that band (Ad 16: y 1480-1740; Ad 4: from y 1560).
+- **A close selfie leaves almost no room.** His head and hair fill the middle and his shoulders cover the full width from about y 1100. Free room: the top corners, the sky above his hair, and thin side strips. Expect clip scales of 0.4-0.7. Find the room with the person cut-out (union of his outline over the clip's window; `tools/person-union-maps.py`, `tools/fit-search.py` in the Ad 16 folder), not with the face box (the Vision face box was 90 px wider than his real outline).
+- **Words clear, plates may go behind him.** Give each clip a word box. Plates, list rows and money may go behind him. Words stay at least 10-20 px outside his outline and above the captions.
+- **Re-read the numbers from the captions.** Filmed words differ from the written script ("7 to 30 days" not "15 to 30", "800K" not "a lot more than $200,000"). Rewrite the props from the word timeline. The caption reader can mis-hear ("media" for Meta, "funny companies" for funding companies): never print a word the captions get wrong.
+- **Fade the plates.** Plate templates are fully opaque on their first and last frame. Fade each clip in and out over about 0.2 s so it does not pop.
+- **Short chips are unreadable at 0.4 scale** (eyebrows 6-8 px, sublines about 11 px). Prefer clips whose main words are big (stamps, numbers, titles), or shorten or drop the chips.
+- **Two-line captions:** use `ocr2.swift` (adds the highlight's height) and dedupe repeats. Run the Python tools without `-I` when they need Pillow.
+- **Compare frames by index.** ffmpeg's `psnr` filter pairs frames by timestamp on these files and shows false misses; use `tools/band-compare.py` (Ad 16) or `setpts=N/(30*TB)`.
+- **Length caps bite.** MoneyClimb steps tops out at 4 s and PathCards at 4.5 s, so a step can land late on a slow talker. Pick the start by the payoff beat and write down which step is late.
+- **Open design question:** a close portrait selfie needs narrower, portrait-first layouts to show bigger animations. Until they exist, keep the small clips and say so.
+
 ## Checks before you say it works
 
 - Output duration within 0.1 s of the original, same frame count, same fps.
