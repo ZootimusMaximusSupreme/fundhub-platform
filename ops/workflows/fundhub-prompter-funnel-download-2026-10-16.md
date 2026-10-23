@@ -35,3 +35,6 @@ App Store Connect browser access was denied by a saved permission. Chris supplie
 - What changed for visitors: the page is the repo copy, not the old builder body. The words match line for line except the reschedule line, which now links to https://apply.fundhub.ai/funding-book-call.
 - Slip, fixed in about a minute: the first create sent `current_path: "/thank-you-page"`, which moved the step to that path. It was set back to `/thank-you` with `PUT /pages/25752378`. The script now sends the step path.
 - The card's link file needed an allow-origin header for apply.fundhub.ai (`public/_headers`). Before that the browser blocked the read, so the card never drew.
+- Step 1 of the three-step strip on /thank-you is now "Get the app / Fundhub Portal for iPhone", linked to the App Store (`public/funnel/funding-paths.js`, thank-you only). Chris approved the words.
+- Card styles carry a `.fh-root` prefix; the page's `.fh-root *` reset had blanked its padding and button text.
+- Live check 2026-10-23: card shows under the hero, button is dark text on white, both links open https://apps.apple.com/us/app/fundhub-portal/id6823985032.
