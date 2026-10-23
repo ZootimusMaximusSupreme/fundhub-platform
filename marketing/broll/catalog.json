@@ -1076,5 +1076,85 @@
     },
     "purpose": "PathCards (Unit N3, animation-builds-2026-10-22). Two or three numbered cards, each a short title and one line, revealed one by one, with an optional highlight on one card. VSL three paths: \"If your file is ready, we go get the capital.\" / \"If something on your report is holding you back, we show you exactly what it is, optimize your credit for you, and fund you once your file is ready.\" / \"And if you'd rather do the work yourself, that's the Capital Blueprint.\" Also the VSL's three mistakes, with tone \"bad\".",
     "data_tied": false
+  },
+  {
+    "id": "SplitBar",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 120,
+    "default_props": {
+      "format": "vertical",
+      "side": "left",
+      "knownPercent": 80,
+      "missingPercent": 20,
+      "knownLabel": "right",
+      "missingLabel": "they're missing",
+      "headline": "decides how much funding you actually get",
+      "fillGap": false,
+      "sources": [],
+      "transparent": false
+    },
+    "purpose": "One bar split into the part you have and the part you are missing: the big part grows in, the missing part pulses, and it can fill in at the end.",
+    "data_tied": false
+  },
+  {
+    "id": "SplitBarWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 120,
+    "default_props": {
+      "format": "wide",
+      "side": "left",
+      "knownPercent": 80,
+      "missingPercent": 20,
+      "knownLabel": "right",
+      "missingLabel": "they're missing",
+      "headline": "decides how much funding you actually get",
+      "fillGap": false,
+      "sources": [],
+      "transparent": false
+    },
+    "purpose": "One bar split into the part you have and the part you are missing: the big part grows in, the missing part pulses, and it can fill in at the end.",
+    "data_tied": false
+  },
+  {
+    "id": "IconCount",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 120,
+    "default_props": {
+      "format": "vertical",
+      "side": "left",
+      "total": 8,
+      "lit": 1,
+      "caption": "people finish an online course they sign up for.",
+      "transparent": false
+    },
+    "purpose": "A row of people where only some light up: \"1 in 8\" as a picture, with the caption under it.",
+    "data_tied": false
+  },
+  {
+    "id": "IconCountWide",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 120,
+    "default_props": {
+      "format": "wide",
+      "side": "left",
+      "total": 8,
+      "lit": 1,
+      "caption": "people finish an online course they sign up for.",
+      "transparent": false
+    },
+    "purpose": "A row of people where only some light up: \"1 in 8\" as a picture, with the caption under it.",
+    "data_tied": false
   }
 ]
