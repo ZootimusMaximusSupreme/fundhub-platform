@@ -27,3 +27,11 @@ App Store Connect browser access was denied by a saved permission. Chris supplie
 - Listing: https://apps.apple.com/us/app/fundhub-portal/id6823985032 (page title "Fundhub Portal App - App Store").
 - The /thank-you card now points at the Portal listing, with words from the Portal's own App Store promo text. Prompter is not on the funnel: its store version was never submitted, and its TestFlight invite still turns people away.
 - Footer script added to page 25063539 by `scripts/cf-push-custom-html.mjs push --only=apply-thank-you`. JSON ships with commit d7f94c3d6.
+
+### Fresh thank-you page (Chris: "push fresh page", 2026-10-23)
+
+- /thank-you is now custom HTML page **25752378**, made by API on step `pyOryn`. Copy edits: change `marketing/landing-pages/05-thank-you.html`, then `node scripts/cf-push-custom-html.mjs push --only=apply-thank-you`.
+- The old builder page 25063539 is off the step, kept, not deleted. Rollback: `PUT /pages/25063539` with `funnel.show_page_step_id = "pyOryn"`, then set the step path back to `/thank-you`.
+- What changed for visitors: the page is the repo copy, not the old builder body. The words match line for line except the reschedule line, which now links to https://apply.fundhub.ai/funding-book-call.
+- Slip, fixed in about a minute: the first create sent `current_path: "/thank-you-page"`, which moved the step to that path. It was set back to `/thank-you` with `PUT /pages/25752378`. The script now sends the step path.
+- The card's link file needed an allow-origin header for apply.fundhub.ai (`public/_headers`). Before that the browser blocked the read, so the card never drew.

@@ -826,7 +826,7 @@ async function pushCustomHtmlStep(creds, workspaceId, row, pixelId, ctx, dryRun,
   const created = await createCustomHtmlPage(
     creds,
     workspaceId,
-    { name: row.title || row.key, description: `Custom HTML ${row.stepPath}`, custom_html: first, current_path: row.path, funnel: { show_page_step_id: stepId } },
+    { name: row.title || row.key, description: `Custom HTML ${row.stepPath}`, custom_html: first, current_path: row.stepPath, funnel: { show_page_step_id: stepId } },
     ctx,
     false,
   );

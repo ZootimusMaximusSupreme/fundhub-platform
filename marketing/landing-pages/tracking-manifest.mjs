@@ -560,7 +560,7 @@ export const PUSH_MANIFEST = [
     vslBeacon: false,
     extraFooterScripts: [THANKYOU_SORT_SRC, FUNDING_PATHS_SRC, FH_EVENTS_SRC, CLARITY_SRC, FUNDHUB_PROMPTER_DOWNLOAD_SRC],
     strategy: "custom_html_step",
-    note: "Custom HTML page on the /thank-you step (2026-10-23). Edit 05-thank-you.html and push; the old builder page 25063539 stays off the step.",
+    note: "Custom HTML page 25752378 on the /thank-you step (2026-10-23). Edit 05-thank-you.html and push. The old builder page 25063539 is off the step, kept, not deleted.",
   },
   {
     key: "apply-thank-you-fit",
