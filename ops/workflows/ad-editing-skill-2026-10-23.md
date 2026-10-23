@@ -110,7 +110,7 @@ its own `removeSilencePace` and `removeBadTakes`), so the browser editor is the 
 
 Paste into Cursor (agent mode, browser on):
 
-> Open https://app.submagic.co in the browser. I am already logged in; if a login page shows, stop and tell me.
+> Open https://app.submagic.co in the browser and log in yourself.
 > Read `.cursor/skills/fundhub-ad-editor/SKILL.md` first. Those rules apply here.
 >
 > Do ONE video first: the newest Direct Book ad project. Stop and show me before doing the rest.
