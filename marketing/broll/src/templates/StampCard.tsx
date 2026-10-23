@@ -180,23 +180,8 @@ export const PanelFrame: React.FC<{
       <Grid />
       <div style={{position: 'absolute', left: 0, right: 0, top: SAFE.top, height: SAFE_HEIGHT, overflow: 'hidden'}}>
         <div style={{position: 'absolute', left: 0, right: 0, top: WORDMARK.top - SAFE.top, display: 'flex', justifyContent: 'center'}}>
-          {seeThrough ? (
-            // Over film the wordmark sits on a white pill, or it would not read.
-            <div
-              style={{
-                marginTop: -14,
-                padding: '14px 30px',
-                borderRadius: 999,
-                background: COLORS.white,
-                border: '2px solid #ECECEF',
-                boxShadow: '0 6px 14px rgba(10,10,10,.12)',
-              }}
-            >
-              <Wordmark width={WORDMARK.width * 0.86} />
-            </div>
-          ) : (
-            <Wordmark width={WORDMARK.width} />
-          )}
+          {/* No logo over film (owner rule 2026-10-23): the wordmark draws nothing in see-through. */}
+          {seeThrough ? null : <Wordmark width={WORDMARK.width} />}
         </div>
         <div style={{position: 'absolute', left: VERTICAL_BOX.x, top: VERTICAL_BOX.y - SAFE.top, width: VERTICAL_BOX.w, height: VERTICAL_BOX.h}}>
           {children({u: 1, w: VERTICAL_BOX.w, h: VERTICAL_BOX.h})}

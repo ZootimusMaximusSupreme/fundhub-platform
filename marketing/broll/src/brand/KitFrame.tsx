@@ -44,7 +44,9 @@ export const WIDE_PANEL = {
 /** The see-through plate, in vertical frame pixels. Its shadow stays inside the text-safe band. */
 export const PLATE = {left: 36, right: FRAME.width - 36, top: 277, bottom: 1222, radius: 40} as const;
 const PLATE_W = PLATE.right - PLATE.left; // 1008
-const PLATE_H = PLATE.bottom - PLATE.top; // 945
+/** The card's own top. The logo no longer sits on the card (owner rule 2026-10-23), so the card starts just above the content. */
+const CARD_TOP = CONTENT.top - 44; // 356
+const CARD_H = PLATE.bottom - CARD_TOP; // 866
 
 /** Room left between the plate and the panel edge for the plate's shadow, in 4K pixels. */
 const WIDE_SHADOW_ROOM = 40;
@@ -65,9 +67,9 @@ const Plate: React.FC = () => (
     style={{
       position: 'absolute',
       left: PLATE.left,
-      top: PLATE.top - SAFE.top,
+      top: CARD_TOP - SAFE.top,
       width: PLATE_W,
-      height: PLATE_H,
+      height: CARD_H,
       borderRadius: PLATE.radius,
       background: 'linear-gradient(170deg, #FFFFFF 0%, #FFFFFF 60%, #FAFAFB 100%)',
       border: '2px solid #ECECEF',
@@ -106,7 +108,7 @@ const Page: React.FC<{plate: boolean; soft: boolean; backdrop?: React.ReactNode;
             top: -SAFE.top,
             width: FRAME.width,
             height: FRAME.height,
-            clipPath: `inset(${PLATE.top}px ${FRAME.width - PLATE.right}px ${FRAME.height - PLATE.bottom}px ${PLATE.left}px round ${PLATE.radius}px)`,
+            clipPath: `inset(${CARD_TOP}px ${FRAME.width - PLATE.right}px ${FRAME.height - PLATE.bottom}px ${PLATE.left}px round ${PLATE.radius}px)`,
           }}
         >
           {backdrop}
