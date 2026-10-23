@@ -76,11 +76,13 @@
       },
       {
         "anchor": {
-          "phrase": "I learned the funding game ten years ago"
+          "phrase": "I run Fundhub"
         },
-        "template": "ProofWallWide",
-        "props": {},
-        "seconds": 4
+        "template": "FundhubLogoWide",
+        "props": {
+          "side": "left"
+        },
+        "seconds": 2
       },
       {
         "anchor": {
@@ -306,32 +308,13 @@
       },
       {
         "anchor": {
-          "phrase": "Wherever your file is right now"
+          "phrase": "Fundhub has a solution for that phase"
         },
-        "template": "PathCardsWide",
+        "template": "FundhubLogoWide",
         "props": {
-          "format": "wide",
-          "side": "left",
-          "eyebrow": "Wherever your file is right now",
-          "cards": [
-            {
-              "title": "Your file is ready",
-              "line": "We go get the capital."
-            },
-            {
-              "title": "Something is holding you back",
-              "line": "We optimize your credit for you, and fund you once your file is ready."
-            },
-            {
-              "title": "Do the work yourself",
-              "line": "That's the Capital Blueprint."
-            }
-          ],
-          "highlight": null,
-          "tone": "info",
-          "layout": "stack"
+          "side": "left"
         },
-        "seconds": 3
+        "seconds": 2
       },
       {
         "anchor": {
@@ -565,8 +548,8 @@
         "template": "ProofWallWide",
         "props": {},
         "seconds": 4,
-        "in_plan": true,
-        "skipped_reason": null,
+        "in_plan": false,
+        "skipped_reason": "Too close to the Fundhub logo, which plays where the script says Fundhub (owner rule 2026-10-23).",
         "new_animation": null
       },
       {
@@ -842,8 +825,8 @@
           "layout": "stack"
         },
         "seconds": 3,
-        "in_plan": true,
-        "skipped_reason": null,
+        "in_plan": false,
+        "skipped_reason": "Too close to the Fundhub logo, which plays where the script says Fundhub (owner rule 2026-10-23).",
         "new_animation": null
       },
       {
@@ -1076,214 +1059,162 @@
     "timing": [
       {
         "phrase": "$20,000 in funding or $400,000, even a million",
-        "template": "MoneyClimbWide",
-        "start_s": 3.73,
+        "start_s": 3.7,
         "seconds": 3,
-        "end_s": 6.73,
-        "gap_to_next_s": 5.47
+        "gap_to_next_s": 5.5
       },
       {
         "phrase": "Small details in your file",
-        "template": "FileItemsWide",
         "start_s": 12.2,
         "seconds": 2,
-        "end_s": 14.2,
         "gap_to_next_s": 4.1
       },
       {
         "phrase": "from the MAXIMUM amount of funding",
-        "template": "ScoreBadgeWide",
         "start_s": 18.3,
         "seconds": 3,
-        "end_s": 21.3,
-        "gap_to_next_s": 5.81
+        "gap_to_next_s": 4.8
       },
       {
-        "phrase": "I learned the funding game ten years ago",
-        "template": "ProofWallWide",
-        "start_s": 27.11,
-        "seconds": 4,
-        "end_s": 31.11,
-        "gap_to_next_s": 4.47
+        "phrase": "I run Fundhub",
+        "start_s": 26.1,
+        "seconds": 2,
+        "gap_to_next_s": 7.5
       },
       {
         "phrase": "and never tells you why",
-        "template": "PathCardsWide",
-        "start_s": 35.58,
+        "start_s": 35.6,
         "seconds": 2.5,
-        "end_s": 38.08,
-        "gap_to_next_s": 4.28
+        "gap_to_next_s": 4.3
       },
       {
         "phrase": "every lender on their list",
-        "template": "FileItemsWide",
-        "start_s": 42.36,
+        "start_s": 42.4,
         "seconds": 2,
-        "end_s": 44.36,
-        "gap_to_next_s": 4.78
+        "gap_to_next_s": 4.8
       },
       {
         "phrase": "you skip applying",
-        "template": "StepPathWide",
-        "start_s": 49.14,
+        "start_s": 49.2,
         "seconds": 2,
-        "end_s": 51.14,
         "gap_to_next_s": 4.1
       },
       {
         "phrase": "All three come from the same mistake",
-        "template": "PathCardsWide",
-        "start_s": 55.24,
+        "start_s": 55.3,
         "seconds": 3,
-        "end_s": 58.24,
-        "gap_to_next_s": 4.12
+        "gap_to_next_s": 4.1
       },
       {
         "phrase": "Our underwriting software",
-        "template": "QualifyTodayWide",
-        "start_s": 62.35,
+        "start_s": 62.4,
         "seconds": 2.3,
-        "end_s": 64.65,
-        "gap_to_next_s": 4.14
+        "gap_to_next_s": 4.1
       },
       {
         "phrase": "matches your file against thousands of lenders",
-        "template": "LenderMatchScrollWide",
-        "start_s": 68.79,
+        "start_s": 68.8,
         "seconds": 3.5,
-        "end_s": 72.29,
-        "gap_to_next_s": 4.97
+        "gap_to_next_s": 5
       },
       {
         "phrase": "that protects your score",
-        "template": "SoftPullWide",
-        "start_s": 77.26,
+        "start_s": 77.3,
         "seconds": 2,
-        "end_s": 79.26,
-        "gap_to_next_s": 4.44
+        "gap_to_next_s": 4.4
       },
       {
         "phrase": "SBA loans, merchant cash advances and personal funding",
-        "template": "FundingStackWide",
         "start_s": 83.7,
         "seconds": 3,
-        "end_s": 86.7,
-        "gap_to_next_s": 4.12
+        "gap_to_next_s": 4.1
       },
       {
         "phrase": "Every application leaves a hard inquiry",
-        "template": "StepPathWide",
-        "start_s": 90.82,
+        "start_s": 90.8,
         "seconds": 3,
-        "end_s": 93.82,
-        "gap_to_next_s": 5.13
+        "gap_to_next_s": 5.1
       },
       {
         "phrase": "So we remove the inquiries between EVERY round",
-        "template": "InquiriesOffWide",
-        "start_s": 98.95,
+        "start_s": 99,
         "seconds": 2.5,
-        "end_s": 101.45,
-        "gap_to_next_s": 4.28
+        "gap_to_next_s": 4.3
       },
       {
         "phrase": "sequence runs 3 to 6 rounds",
-        "template": "FundingRoundsWide",
-        "start_s": 105.73,
+        "start_s": 105.8,
         "seconds": 3,
-        "end_s": 108.73,
         "gap_to_next_s": 7.5
       },
       {
         "phrase": "aiming for $250,000 to $400,000",
-        "template": "MoneyClimbWide",
-        "start_s": 116.23,
+        "start_s": 116.3,
         "seconds": 3,
-        "end_s": 119.23,
-        "gap_to_next_s": 4.12
+        "gap_to_next_s": 6.2
       },
       {
-        "phrase": "Wherever your file is right now",
-        "template": "PathCardsWide",
-        "start_s": 123.35,
-        "seconds": 3,
-        "end_s": 126.35,
-        "gap_to_next_s": 7.17
+        "phrase": "Fundhub has a solution for that phase",
+        "start_s": 125.4,
+        "seconds": 2,
+        "gap_to_next_s": 6.1
       },
       {
         "phrase": "within 24 business hours",
-        "template": "DeadlineClocksWide",
-        "start_s": 133.51,
+        "start_s": 133.6,
         "seconds": 3,
-        "end_s": 136.51,
-        "gap_to_next_s": 4.79
+        "gap_to_next_s": 4.8
       },
       {
         "phrase": "If something on your report is holding you back",
-        "template": "FileItemsWide",
-        "start_s": 141.31,
+        "start_s": 141.4,
         "seconds": 3,
-        "end_s": 144.31,
-        "gap_to_next_s": 10.89
+        "gap_to_next_s": 10.9
       },
       {
         "phrase": "It puts your file through the 13 optimization points",
-        "template": "HiddenDataPointsWide",
-        "start_s": 155.2,
+        "start_s": 155.3,
         "seconds": 2.5,
-        "end_s": 157.7,
-        "gap_to_next_s": 4.28
+        "gap_to_next_s": 4.3
       },
       {
         "phrase": "which balances to bring down",
-        "template": "StepPathWide",
-        "start_s": 161.98,
+        "start_s": 162,
         "seconds": 3,
-        "end_s": 164.98,
-        "gap_to_next_s": 6.83
+        "gap_to_next_s": 6.8
       },
       {
         "phrase": "which banks to build relationships with",
-        "template": "FundingStackWide",
-        "start_s": 171.8,
+        "start_s": 171.9,
         "seconds": 3,
-        "end_s": 174.8,
-        "gap_to_next_s": 5.81
+        "gap_to_next_s": 5.8
       },
       {
         "phrase": "Every step comes with a timeline",
-        "template": "FundabilityMeterWide",
-        "start_s": 180.62,
+        "start_s": 180.7,
         "seconds": 3,
-        "end_s": 183.62,
-        "gap_to_next_s": 20.04
+        "gap_to_next_s": 20.1
       },
       {
         "phrase": "We've worked hundreds of files and collected thousands of data points",
-        "template": "ProofWallWide",
-        "start_s": 203.66,
+        "start_s": 203.7,
         "seconds": 4,
-        "end_s": 207.66,
-        "gap_to_next_s": 12.94
+        "gap_to_next_s": 12.9
       },
       {
         "phrase": "runs a 3-bureau report",
-        "template": "SoftPullWide",
-        "start_s": 220.6,
+        "start_s": 220.7,
         "seconds": 3,
-        "end_s": 223.6,
-        "gap_to_next_s": 5.13
+        "gap_to_next_s": 5.1
       },
       {
         "phrase": "you're at right now",
-        "template": "QualifyTodayWide",
-        "start_s": 228.73,
+        "start_s": 228.8,
         "seconds": 2.5,
-        "end_s": 231.23,
         "gap_to_next_s": null
       }
     ],
-    "animation_share": 0.301,
+    "animation_share": 0.289,
     "notes": [
       "EXCEPTION: LenderMatchScrollWide cannot run shorter than 3.5 s, over the 3 s full-frame cap (it draws in a side panel only)",
       "Used more than twice (the script repeats the idea): FileItemsWide x3, PathCardsWide x3, StepPathWide x3",
@@ -1737,6 +1668,14 @@
     "plan": [
       {
         "anchor": {
+          "phrase": "Fundhub runs your whole funding sequence"
+        },
+        "template": "FundhubLogo",
+        "props": {},
+        "seconds": 2
+      },
+      {
+        "anchor": {
           "phrase": "you owe us NOTHING"
         },
         "template": "StampCard",
@@ -1899,6 +1838,12 @@
     ],
     "timing": [
       {
+        "phrase": "Fundhub runs your whole funding sequence",
+        "start_s": 8.1,
+        "seconds": 2,
+        "gap_to_next_s": 4.3
+      },
+      {
         "phrase": "you owe us NOTHING",
         "start_s": 14.4,
         "seconds": 3,
@@ -1914,16 +1859,16 @@
         "phrase": "picks the banks that approve files like yours",
         "start_s": 33.7,
         "seconds": 3,
-        "gap_to_next_s": 24.4
+        "gap_to_next_s": 24.8
       },
       {
         "phrase": "applications are out inside 72",
-        "start_s": 61.1,
+        "start_s": 61.5,
         "seconds": 3,
         "gap_to_next_s": null
       }
     ],
-    "animation_share": 0.195
+    "animation_share": 0.224
   },
   {
     "video": "Direct Book Ad 14 — 780 and up, 13 optimization points",
@@ -1931,6 +1876,14 @@
     "scriptFormat": "standard",
     "body": "If you have a 780 or higher credit score, Fundhub gets you the MAXIMUM amount of funding your file qualifies for, personal, business, or both, in the shortest amount of time.\n\nIf you qualify and we can't fund you, you owe us nothing. Here's exactly how we do it. ↑\n\nHaving a high score is ALL that matters. Banks don't ask for your tax returns, and they don't ask for your bank statements.\n\nWhatever kind of funding you're after, we go get it at the lowest terms and the fastest timelines, so you get the maximum amount.\n\nCredit cards, lines of credit, SBA, MCA, even personal funding, we know how to stack ALL of it and blend it together.\n\nA mismatch on one of your three credit reports cuts your approvals in HALF, so we check every file on 13 optimization points before a single application goes out.\n\nWhen we optimize those 13 points, we DOUBLE your approval odds with every single lender we work with.\n\nThat means fewer denials, because every application goes to a bank that approves you.\n\nOur AI matching system works from a much bigger list of banks than anyone else, so we send out more applications to banks that fit your file.\n\nWe remove the inquiries after EVERY round of funding, so we run each round faster than everyone else.\n\nClick the link below, and we'll pull your reports and see where they're at.\n\nNo matter where you are in the process, we have a solution for you: optimizing your credit, a plan to do the funding yourself with an advisor, or doing the funding for you.\n\nAn advisor starts on your file within 24 business hours, and your applications go out within 72. If either deadline slips, you don't pay.",
     "plan": [
+      {
+        "anchor": {
+          "phrase": "Fundhub gets you the MAXIMUM amount"
+        },
+        "template": "FundhubLogo",
+        "props": {},
+        "seconds": 2
+      },
       {
         "anchor": {
           "phrase": "you owe us nothing"
@@ -2345,61 +2298,67 @@
     ],
     "timing": [
       {
+        "phrase": "Fundhub gets you the MAXIMUM amount",
+        "start_s": 3.3,
+        "seconds": 2,
+        "gap_to_next_s": 9.1
+      },
+      {
         "phrase": "you owe us nothing",
         "start_s": 14.4,
         "seconds": 3,
-        "gap_to_next_s": 5.5
+        "gap_to_next_s": 5.9
       },
       {
         "phrase": "tax returns, and they don't ask for your bank statements",
-        "start_s": 23,
+        "start_s": 23.3,
         "seconds": 3,
         "gap_to_next_s": 11.4
       },
       {
         "phrase": "SBA, MCA, even personal funding, we know how to stack ALL of it",
-        "start_s": 37.4,
+        "start_s": 37.8,
         "seconds": 3,
         "gap_to_next_s": 5.5
       },
       {
         "phrase": "three credit reports cuts your approvals in HALF",
-        "start_s": 45.9,
+        "start_s": 46.3,
         "seconds": 3,
         "gap_to_next_s": 5.5
       },
       {
         "phrase": "When we optimize those 13 points, we DOUBLE your approval odds",
-        "start_s": 54.4,
+        "start_s": 54.8,
         "seconds": 3,
         "gap_to_next_s": 10.3
       },
       {
         "phrase": "works from a much bigger list of banks than anyone else",
-        "start_s": 67.8,
+        "start_s": 68.1,
         "seconds": 3,
         "gap_to_next_s": 5.5
       },
       {
         "phrase": "We remove the inquiries after EVERY round of funding",
-        "start_s": 76.3,
+        "start_s": 76.7,
         "seconds": 3,
         "gap_to_next_s": 15.1
       },
       {
         "phrase": "a plan to do the funding yourself with an advisor",
-        "start_s": 94.4,
+        "start_s": 94.8,
         "seconds": 3,
         "gap_to_next_s": 6.3
       },
       {
         "phrase": "hours, and your applications go out within 72",
-        "start_s": 103.7,
+        "start_s": 104.1,
         "seconds": 3,
         "gap_to_next_s": null
       }
     ],
-    "animation_share": 0.247
+    "animation_share": 0.265
   },
   {
     "video": "Capital Blueprint Ad 3 — 600 and up, the shortest path",
@@ -2705,9 +2664,9 @@
   },
   {
     "video": "Direct Book Ad 16 — Advanced funding algorithm",
-    "source": "words said on the take (no written script exists)",
+    "source": "words said on the take (no written script exists); the transcript heard the company name as \"FunHub\", corrected to Fundhub",
     "scriptFormat": "standard",
-    "body": "To be honest with you, most funny companies out there are running on a program they bought from somebody else. And there's one thing we do with your file before it ever goes to a bank that almost nobody in this industry can do. Most of these programs are a business in a box system. So the bank data they're working with is usually out of date. And they run everybody through the exact same program, whether your credit is an 850, 400, 500. I've been doing this for 10 years and I built FunHub on everything I learned along the way. I built a real underwriting algorithm that pulls from six to seven different data feeds. And it uses the same systems the bank use to approve and deny applications. We're constantly watching the lending environment nationally and state by state. So we know where the lending is hottest right now. So that way, and that's where we send you. We work with credit scores anywhere from 400 to 850. And we'll do it for you, we'll do it with you, or we'll set it up to do it yourself. That goes for credit cards, SBA loans, MCA and more. So here's the one thing, because of that algorithm, we know whether you're going to get approved or denied before your file ever goes to a bank. You show up to that bank already pre-vetted and we hand you over white glove. If you're serious about getting access to capital, book a call below and we'll see how much fun you qualify for based on where you're at right now.",
+    "body": "To be honest with you, most funny companies out there are running on a program they bought from somebody else. And there's one thing we do with your file before it ever goes to a bank that almost nobody in this industry can do. Most of these programs are a business in a box system. So the bank data they're working with is usually out of date. And they run everybody through the exact same program, whether your credit is an 850, 400, 500. I've been doing this for 10 years and I built Fundhub on everything I learned along the way. I built a real underwriting algorithm that pulls from six to seven different data feeds. And it uses the same systems the bank use to approve and deny applications. We're constantly watching the lending environment nationally and state by state. So we know where the lending is hottest right now. So that way, and that's where we send you. We work with credit scores anywhere from 400 to 850. And we'll do it for you, we'll do it with you, or we'll set it up to do it yourself. That goes for credit cards, SBA loans, MCA and more. So here's the one thing, because of that algorithm, we know whether you're going to get approved or denied before your file ever goes to a bank. You show up to that bank already pre-vetted and we hand you over white glove. If you're serious about getting access to capital, book a call below and we'll see how much fun you qualify for based on where you're at right now.",
     "plan": [
       {
         "anchor": {
@@ -2730,20 +2689,11 @@
       },
       {
         "anchor": {
-          "phrase": "an 850, 400, 500"
+          "phrase": "I built Fundhub on everything"
         },
-        "template": "ScoreBadge",
-        "props": {
-          "mode": "program",
-          "eyebrow": "They run everybody through",
-          "scores": [
-            850,
-            400,
-            500
-          ],
-          "programLabel": "The exact same program"
-        },
-        "seconds": 3
+        "template": "FundhubLogo",
+        "props": {},
+        "seconds": 2
       },
       {
         "anchor": {
@@ -2871,8 +2821,8 @@
           "programLabel": "The exact same program"
         },
         "seconds": 3,
-        "in_plan": true,
-        "skipped_reason": null,
+        "in_plan": false,
+        "skipped_reason": "Too close to the Fundhub logo, which plays where the script says Fundhub (owner rule 2026-10-23).",
         "new_animation": null
       },
       {
@@ -2998,13 +2948,13 @@
         "phrase": "they're working with is usually out of date",
         "start_s": 21.9,
         "seconds": 2.5,
-        "gap_to_next_s": 5.3
+        "gap_to_next_s": 9.7
       },
       {
-        "phrase": "an 850, 400, 500",
-        "start_s": 29.6,
-        "seconds": 3,
-        "gap_to_next_s": 7.7
+        "phrase": "I built Fundhub on everything",
+        "start_s": 34.1,
+        "seconds": 2,
+        "gap_to_next_s": 4.3
       },
       {
         "phrase": "pulls from six to seven different data feeds",
@@ -3037,7 +2987,7 @@
         "gap_to_next_s": null
       }
     ],
-    "animation_share": 0.189
+    "animation_share": 0.179
   },
   {
     "video": "Direct Book Ad 12 — Industry slam",
@@ -4031,20 +3981,11 @@
       },
       {
         "anchor": {
-          "phrase": "maximize your fundability across the board"
+          "phrase": "Here at Fundhub"
         },
-        "template": "FundabilityMeter",
-        "props": {
-          "eyebrow": "Maximize your fundability",
-          "steps": [
-            "The highest limits possible",
-            "Your profile set up",
-            "Funded over and over again"
-          ],
-          "meterLabel": "Fundability",
-          "maxLabel": "Maximum"
-        },
-        "seconds": 3
+        "template": "FundhubLogo",
+        "props": {},
+        "seconds": 2
       }
     ],
     "check": "pass",
@@ -4116,8 +4057,8 @@
           "maxLabel": "Maximum"
         },
         "seconds": 3,
-        "in_plan": true,
-        "skipped_reason": null,
+        "in_plan": false,
+        "skipped_reason": "Too close to the Fundhub logo, which plays where the script says Fundhub (owner rule 2026-10-23).",
         "new_animation": null
       },
       {
@@ -4139,24 +4080,24 @@
     "timing": [
       {
         "phrase": "the same bank the same week with eighty",
-        "start_s": 24.07,
+        "start_s": 24.1,
         "seconds": 3,
-        "gap_to_next_s": 25.89
+        "gap_to_next_s": 25.9
       },
       {
         "phrase": "approve you for one to two times that amount depending on the bank",
-        "start_s": 52.96,
+        "start_s": 53,
         "seconds": 3,
-        "gap_to_next_s": 14.04
+        "gap_to_next_s": 8.5
       },
       {
-        "phrase": "maximize your fundability across the board",
-        "start_s": 70,
-        "seconds": 3,
+        "phrase": "Here at Fundhub",
+        "start_s": 64.4,
+        "seconds": 2,
         "gap_to_next_s": null
       }
     ],
-    "animation_share": 0.093
+    "animation_share": 0.083
   },
   {
     "video": "Direct Book Ad 10 — Scale without your own cash",

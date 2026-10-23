@@ -9,11 +9,17 @@ Each entry has:
 - `plan`: the animations that fit the timing limits,
 - `check`: the result from `src/marketing/animation-plan.mjs`.
 
-**All 14 plans pass the checker: 110 animations in total** (redone 2026-10-23 with the 14 new animations from `ops/workflows/animation-builds-2026-10-22.md`). The VSL has 26 and the thank-you video has 8; both use only the sideways (`*Wide`) versions with a `side` prop, so they stay off the face and the captions. The 12 ads use the upright versions.
+**All 14 plans pass the checker: 112 animations in total, including the Fundhub logo 6 times** (redone 2026-10-23 with the 14 new animations from `ops/workflows/animation-builds-2026-10-22.md`). The VSL has 26 and the thank-you video has 8; both use only the sideways (`*Wide`) versions with a `side` prop, so they stay off the face and the captions. The 12 ads use the upright versions.
 
 Each entry also has `timing`: the start second of every animation, its length and the gap to the next one. These come from an even speaking pace, so the real cut moves each start by a second or two. `src/ad-videos/animations.mjs` re-checks the real timing when the overlay step runs and drops any clip that lands too close to another.
 
 27 key points still have no animation. Almost all are blocked by the timing rules (the first sentence, the call-to-action line, or 4 seconds of face between two animations), not by a missing animation. They are listed in `new-animations-needed.md`.
+
+## The Fundhub logo (owner rule, 2026-10-23)
+
+The logo animation (`FundhubLogo` upright, `FundhubLogoWide` sideways) plays only where the script says "Fundhub", for 2 seconds. `src/marketing/animation-plan.mjs` refuses a logo anchored anywhere else (`logo_not_on_fundhub`). No other see-through animation shows the logo.
+
+It is placed 6 times: the VSL ("I run Fundhub", "Fundhub has a solution for that phase"), Ad 13, Ad 14, Ad 16 and Ad 9. The other 8 videos never say Fundhub. Where an animation sat too close to the logo, the logo won: the VSL lost a ProofWall and a PathCards, Ad 16 lost the 400-to-850 ScoreBadge, and Ad 9 lost the FundabilityMeter. In Ad 14 the logo starts about 3.3 seconds in, just past the 3-second limit, so a faster real cut can push it out.
 
 ## Known weak spots
 

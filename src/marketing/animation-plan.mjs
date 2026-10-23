@@ -28,6 +28,9 @@
 // 6. How many: a standard ad needs at least 2, a sorting-hat short at least 1,
 //    and every other format at least 1 (Appendix B; spec §7.6 "Every ad gets
 //    at least one animation").
+// 7. The logo animation (FundhubLogo, FundhubLogoWide) plays only where the
+//    script says "Fundhub" (owner rule, Chris, 2026-10-23): its anchor phrase
+//    (or bullets keyword) must contain the word Fundhub.
 //
 // Errors are {item, code, message}: item is the plan index (null for the plan
 // as a whole), code is a short word a program can branch on, and message is a
@@ -40,6 +43,10 @@
    they are tied the day they are added. */
 export const DATA_TIED = Object.freeze(new Set(["QualifyToday", "QualifyTodayWide", "ProofWall", "ProofWallWide", "ProofFlood", "ProofFloodWide"]));
 export const DATA_TIED_PREFIXES = Object.freeze(["ApprovalCarousel", "LettersWritten", "ProofFlood"]);
+
+/** The logo animation's ids. It may only sit on a line that says "Fundhub" (rule 7). */
+export const isLogoTemplate = (templateId) => typeof templateId === "string" && templateId.startsWith("FundhubLogo");
+const SAYS_FUNDHUB = /\bfundhub\b/i;
 
 export function isDataTied(templateId) {
   if (typeof templateId !== "string") return false;
@@ -194,6 +201,14 @@ export function validateAnimationPlan(plan, { catalog, body, parts, style, scrip
         if (!containsOnWordEdges(cueText, squash(a.keyword).toLowerCase())) {
           add(i, "keyword_not_in_cue", `Animation ${n} looks for "${squash(a.keyword)}" in cue ${a.cue}, but that cue says "${squash(cues[a.cue - 1].text ?? "")}".`);
         }
+      }
+    }
+
+    // 7. The logo only where the script says Fundhub.
+    if (isLogoTemplate(item.template) && isPlainObject(a)) {
+      const said = style === "bullets" ? a.keyword : a.phrase;
+      if (typeof said === "string" && !SAYS_FUNDHUB.test(said)) {
+        add(i, "logo_not_on_fundhub", `Animation ${n} plays the Fundhub logo on "${squash(said)}". The logo only plays where the script says Fundhub, so anchor it on words that include Fundhub.`);
       }
     }
   });
