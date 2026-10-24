@@ -153,7 +153,7 @@ Owner answers, written into the rules on branch `claude/rules-owner-answers` (lo
 
 Still open. Chris gave no answer on this one.
 
-6. **Command Center vs chat.** CLAUDE.md 3c (2026-09-06): "build marketing tooling as a skill plus a rules pack... never a job" vs memory 2026-10-05: "use the dashboard to run marketing, not Claude Code". Does 3c still hold for ad scripts?
+(none left: item 6 decided 2026-10-24, chat now with skills, Command Center is the goal; CLAUDE.md 3c)
 
 Still outside this change (not rules; text outside the allowed paths): `docs/journeys/ad-video-flow.md`, `marketing/ads/video-pipeline-plan.md` and the `marketing/ads/slo/trigger-maps/` files still describe Submagic placing B-roll. `docs/specs/marketing-machine-2026-10-04.md` already plans that fix.
 
