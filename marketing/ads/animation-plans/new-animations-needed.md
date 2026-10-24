@@ -64,3 +64,7 @@ From `2026-10-22.json` (`key_points` with `in_plan: false`). Most are blocked by
 - "Higher interest rates, harder application sequences and extra verification" — In the first sentence (hook), off limits.
 - "a dashboard that walks you through the whole process one waypoint at a time" — No waypoint is named in this line; the step clip at "You'll know which letters to send" shows them.
 - "for 10 years" — No template shows a years counter. New animation idea: A 10-year timeline bar with the data points stacking into UnderwriteIQ.
+
+## Idea from Chris (2026-10-24) — option, not an order
+
+- **ApprovalSlots (slot-machine approvals).** For credit card funding lines. A reel at the top of the screen rolls like a slot machine through banks from our bank list (Chase and others), and each stop lands "Approved" with that card, the approvals stacking up. Like LenderMatchScroll (the bank picker), but rolling. It can run across the whole screen BEHIND his head (his cut-out stays on top), never in front of his face (Chris, 2026-10-24: "never go over my face… it could go behind my head across the whole screen"). Real bank names from the bank list only; never an invented dollar amount (use amounts only from a real source, per proof-cards-from-source). Opus builds it; Sonnet places it.
