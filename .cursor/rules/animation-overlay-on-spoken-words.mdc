@@ -13,7 +13,7 @@ alwaysApply: true
 - Start each clip so its payoff lands on its words. Stretch a clip inside its catalog length range when the speech runs longer.
 - See-through clips run in overlay mode: no overlaps, and nothing else. The 4 s gap, 3 s cap and 35% share are full-frame rules.
 - Cut him out and put the animations behind him (`--behind`); vary side, height and tuck from clip to clip. Words clear of the face box and the captions; only decoration goes behind him.
-- Use the script's own words. Label sample-client numbers as a sample. Never invent a number, bank, name or claim.
+- Use the script's facts, never his sentence copied (see animation-no-echo, owner-set 2026-10-24). Label sample-client numbers as a sample. Never invent a number, bank, name or claim.
 - Test copy first. The original video is never changed. Save every round to the repo.
 
 ## Never

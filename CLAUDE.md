@@ -221,6 +221,10 @@ Grok and Composer do not touch websites or design HTML. Claude does that work. S
 
 Animations go on a finished video last. Find the real word times first (transcript or burned-in captions), start each clip so its payoff lands on its words, cut him out so animations sit behind him, vary where they sit, keep words clear of the face and captions, use only script words, and keep the original untouched. See-through clips run in overlay mode: overlaps are the only limit. Same law: `.cursor/rules/animation-overlay-on-spoken-words.mdc` and `.claude/rules/animation-overlay-on-spoken-words.md`. Skill: `.cursor/skills/fundhub-video-animation-overlay/SKILL.md`.
 
+### Animations never repeat his words (owner-set 2026-10-24)
+
+The captions already show what Chris says. Animation words never copy his sentence: the picture carries the point, and any label is about 5 words, said a new way, with no drift in meaning (no new fact, number or claim). No 4-word run he says within 3 seconds. Same law: `.cursor/rules/animation-no-echo.mdc` and `.claude/rules/animation-no-echo.md`.
+
 ### Ad video — best of all clips (owner-set 2026-09-24)
 
 For each ad, agents merge every take and clip into one best-of master, kill the editor defects in that law (dead air, repeats, false starts, filler, audio, captions, B-roll, and the rest), and never ship a lone take when others exist; one video per ad and one video per VSL (the portal welcome counts as its own long video), takes joined in script order; Chris never opens Submagic. Same law: `.cursor/rules/ad-video-best-of-clips.mdc` and `.claude/rules/ad-video-best-of-clips.md`.
