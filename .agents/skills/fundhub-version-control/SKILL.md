@@ -5,13 +5,12 @@ description: >-
   vs never commit, small commits, no amend/force without ask, evidence commit
   policy, protect main, stash/WIP boards. Use when Chris says version control,
   VC check, losing work, commit policy, branch cleanup, stash, or "don't lose
-  this." Never commits unless he asks.
+  this." Commits finished work locally in the same session.
 ---
 
 # Fundhub Version Control
 
-You keep git from eating Chris’s work. You do **not** commit unless he says
-commit.
+You keep git from eating Chris’s work. Commit finished work locally in the same session (CLAUDE.md, owner-set 2026-09-08), then push it to GitHub with `node scripts/github-push-whole-repo.mjs`. Claude Code: CLAUDE.md section 8 and "Commit locally, every session" are the commit and PR steps.
 
 Repo clutter / evidence trees / ignore proposals → also load
 `fundhub-repo-hygiene` when both apply. Prefer hygiene for “organize the mess,”
@@ -23,7 +22,7 @@ this skill for “make sure we don’t lose it.”
 |---|---|---|
 | `fundhub-auditor` / `fixer` / `builder` / `ui-auditor` / `perf-auditor` / `orchestrator` | `.cursor/skills/fundhub-*` | Product audit/fix/build |
 | `fundhub-repo-hygiene` | `.cursor/skills/fundhub-repo-hygiene/` | KEEP/ARCHIVE/GITIGNORE/MOVE |
-| Codex: autopilot, split-to-prs | `~/.cursor/skills-cursor/` | PR readiness / split |
+| Cursor: autopilot, split-to-prs | `~/.cursor/skills-cursor/` | PR readiness / split |
 | Git safety | User rules (committing-changes / creating-PRs) | Exact commit/PR steps |
 
 ## Why work gets lost here (check these first)
@@ -41,13 +40,13 @@ Prove with `git status` / `git stash list` / branch list — don’t invent:
 - `.env`, `.env.*` (except `.env.example`)
 - `credentials/`
 - Secrets, tokens, passwords, raw SSN/bank/ID packs
-- Anything Chris did not ask to commit
+- Evidence dumps or files that are not part of the finished work
 
 Confirm secrets by **name only**. Never print values.
 
-## Commit only when asked
+## Commit every session
 
-- Follow user git safety rules: status + diff + log, HEREDOC message, no `--no-verify`, no force-push to main, no amend unless the amend rules all pass.
+- Commit finished work locally in the same session. Follow git safety rules: status + diff + log, HEREDOC message, no `--no-verify`, no force-push to main, no amend unless the amend rules all pass.
 - Prefer **small commits** (one unit / one board row set).
 - Protect **`main`**: feature branches for real work; don’t dump multi-day WIP on main without his go.
 
@@ -65,16 +64,15 @@ If unsure: propose on the board; wait.
 ## How not to lose work (order)
 
 1. **Named board** — `ops/workflows/<batch>.md` with status + claim (CLAUDE.md §5).
-2. **Named branch** — one concern per branch; push when he asks.
-3. **Commit when he asks** — small, green-enough units.
+2. **Named branch** — one concern per branch; push it to GitHub.
+3. **Commit every session** — small, green-enough units.
 4. **Stash only as short parking** — if you stash, write the stash reason + restore steps on the board the same turn. Stash is not the archive.
-5. **Before switching branches** — status clean, or stash+board, or commit (if asked). Never “just checkout” over a dirty tree of product work.
+5. **Before switching branches** — status clean, or stash+board, or commit. Never “just checkout” over a dirty tree of product work.
 
 ## Branch hygiene (propose, don’t mass-delete)
 
 - List local vs remote, merged vs open.
-- Propose delete only for **merged** remotes / clearly dead locals — wait for go.
-- Do not delete branches that still have unique commits or open PRs.
+- Merged branch: delete remote and local at once (CLAUDE.md section 8). Do not delete a branch with unique commits or an open PR: open a PR first. Unmerged and done: name what was on it in the task report, then delete.
 - Note worktrees (`git worktree list`) if present.
 
 ## VC check output (for Chris)
@@ -93,7 +91,7 @@ Short plain list:
 - Force-push / hard reset unless he explicitly asked in this message
 - Amend pushed commits
 - `git add -A` when evidence dumps or `.env` could sneak in
-- Commit to “clean up” without ask
+- Commit to “clean up” the tree: commit finished work only
 
 ## Done bar
 

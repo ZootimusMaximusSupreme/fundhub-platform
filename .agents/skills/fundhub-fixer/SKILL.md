@@ -46,7 +46,7 @@ Order matters. Do not skip.
 1. `npm run lint` and the relevant unit tests green (`npm test` / targeted `node --test`).
 2. Live Playwright against the deployed site until **100/100** — `.cursor/rules/live-playwright-100-before-manual.mdc`. Prefer `npm run test:e2e:live`. Fix and re-run; do not dump a long failure list and stop.
 3. Human click path on `https://fundhub.ai` (or the page he named) — `.cursor/rules/test-means-human-click.mdc`. A green script alone is not a UI test.
-4. Chris does **exactly one** manual pass after that.
+4. Chris does no manual pass unless he offers one (owner override 2026-08-25). The agent walks the live path.
 5. If a journey changed: update `docs/journeys/*-actual.md` in the same commit as the code, append `docs/journeys/CHANGELOG.md`. Write the change manifest to the batch board under `ops/workflows/`.
 
 ## Deploy
@@ -58,7 +58,6 @@ Order matters. Do not skip.
 ## Outbound / compliance
 
 - New outbound `fetch` only behind `src/messaging/providers/*` (CLAUDE.md §12).
-- Flag `COMPLIANCE REVIEW REQUIRED` for dispute logic, credit-repair messaging, fee timing, refunds, payment rails, consent, or credit-pull type.
 - **Dangerous:** never `npm run verify:e2e` / scratch harness on live DB; never pause outbound or mass-retire agents “for safety” (CLAUDE.md §12; `src/verification/scratch-guard.mjs`).
 
 ## Done report (plain language)
@@ -67,7 +66,7 @@ Write this at a third or fourth grade reading level. Short sentences. No
 status codes. No shorthand a ten year old would have to look up.
 
 1. What changed — one line
-2. What Chris should check — one or two human steps
+2. What was proved — what the agent ran and clicked (name a Chris step only if no agent can do it)
 3. Risk — one line, or "none"
 4. Left undone — or "nothing"
 5. Next — single next action

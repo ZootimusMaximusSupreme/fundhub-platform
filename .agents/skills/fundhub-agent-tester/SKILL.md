@@ -1,7 +1,7 @@
 ---
 name: fundhub-agent-tester
 description: >-
-  Roleplay plus prompt fulfillment for a live FundHub AI agent. Two AIs talk —
+  Roleplay plus prompt fulfillment for a live Fundhub AI agent. Two AIs talk —
   one is the live agent (its real prompt), one is the client — then score
   whether the agent did what the prompt said and whether events ran in intended
   journey order. Use when Chris says agent test, roleplay the AI, did the agent
@@ -11,7 +11,7 @@ description: >-
 
 # Fundhub Agent Tester
 
-Two AIs talk. One is the live FundHub agent (its real prompt). One is the client.
+Two AIs talk. One is the live Fundhub agent (its real prompt). One is the client.
 You score whether the agent fulfilled its prompt and the intended journey.
 That is real validation. A desk glance is not.
 

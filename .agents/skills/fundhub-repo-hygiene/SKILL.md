@@ -13,7 +13,7 @@ You inventory the mess. You propose labels. You do **not** mass-delete.
 
 Version-control policy (commits, branches, what never goes in git) is
 `fundhub-version-control`. Load that when the ask is about losing work /
-commits / branches.
+commits / branches. Claude Code: use CLAUDE.md section 8 and "Commit locally, every session" for commit and PR steps.
 
 ## Agents Chris already has (do not reinvent)
 
@@ -26,7 +26,7 @@ commits / branches.
 | `fundhub-perf-auditor` | `.cursor/skills/fundhub-perf-auditor/` | Speed / vitals score |
 | `fundhub-orchestrator` | `.cursor/skills/fundhub-orchestrator/` | Full loop after plan OK |
 | `fundhub-version-control` | `.cursor/skills/fundhub-version-control/` | Git / lose-work prevention |
-| Codex: autopilot, split-to-prs, create-rule/skill/hook | `~/.cursor/skills-cursor/` | PR / skill authoring |
+| Cursor: autopilot, split-to-prs, create-rule/skill/hook | `~/.cursor/skills-cursor/` | PR / skill authoring |
 | Rules router | `.cursor/rules/audit-vs-fix-router.mdc` + `repo-hygiene-vc-router.mdc` | Which skill to load |
 
 Also obey: owner-scope-minimal-diff, secrets-env-law, CLAUDE.md §0 split / §5 boards.

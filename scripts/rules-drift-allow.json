@@ -1,17 +1,14 @@
 {
-  "_about": "Exceptions for scripts/rules-drift-check.mjs. Every entry needs a one-line reason. Adding an entry is an owner-visible decision; do not add one just to turn the check green.",
+  "_about": "Exceptions for scripts/rules-drift-check.mjs. Every entry needs a one-line reason. Adding an entry is an owner-visible decision; do not add one just to turn the check green. Layout since 2026-10-24: rules are real in .ai/rules with links in .cursor/rules and .claude/rules; skills are real in .agents/skills with links in .cursor/skills and .claude/skills.",
   "cursorOnlyRules": {
-    "no-claude-in-cursor": "About Cursor agents not calling Claude; Claude Code has nothing to obey.",
-    "grok-lattice-overseer-perpetual": "Glob rule for the Grok overseer in Cursor.",
-    "ui-standards": "Glob rule that only points Cursor at docs/rules/UI-STANDARDS.md; Claude reads that doc through CLAUDE.md."
+    "no-claude-in-cursor": "About Cursor agents not calling Claude; Claude Code has nothing to obey, so it gets no .claude/rules link.",
+    "grok-lattice-overseer-perpetual": "Glob rule for the Grok overseer in Cursor, so it gets no .claude/rules link.",
+    "ui-standards": "Glob rule that only points Cursor at docs/rules/UI-STANDARDS.md; Claude reads that doc through CLAUDE.md, so it gets no .claude/rules link."
   },
-  "claudeOnlyRules": {},
-  "realSkillFolders": {
-    "clickfunnels-developers-docs": "Claude-side skill is a real folder; its Cursor twin is a rule (clickfunnels-developers-docs.mdc).",
-    "fundhub-clickfunnels-html-push": "Claude-side is a real folder with a short stub (listed in RULES-INDEX.md)."
+  "codexOnlySkills": {
+    "source-command-flywheel": "Codex's migrated copy of .claude/commands/flywheel.md (same text). It is left as is and gets no .cursor or .claude link."
   },
   "claudeMdLineExempt": {},
-  "twinWordsExempt": {},
   "indexExempt": {},
   "pointerExempt": [],
   "undatedLineExempt": []

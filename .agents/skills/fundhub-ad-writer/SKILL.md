@@ -13,11 +13,13 @@ description: >-
 
 # Fundhub Ad Writer
 
+**Owner set aside, 2026-10-02:** do not apply or flag `marketing/ads/RULES.md`, `VOICE.md` or the `ads:check` checker against a script. Keep the files. The rules get rebuilt later. Newer owner laws (`copy-certainty`, `ad-no-recycled-lines`, `ad-second-line`, `fourth-grade-english`) still apply.
+
 ## Fast path (default — use this unless Chris asked for net-new concepts)
 
 Chris wants **ads**, not a company audit.
 
-- **Do not** run `CLAUDE.md` section 0 (no split, no workflow board, no parallel agent prompts).
+- Run `CLAUDE.md` section 0 in one line ("cannot be split, one script, no dependencies"), then write. No board, no extra prompts.
 - **Do not** read journeys, CRM code, Creative Factory UI, or run the full repo test suite to write a hook.
 - **Do read** only:
   1. `marketing/ads/RULES.md`
@@ -32,7 +34,7 @@ Run the checker (below) before every handoff. That is the required gate — not 
 
 ## How you write to Chris
 
-5th grade reading level. Short sentences. One idea each. No jargon — if you
+4th grade reading level (`fourth-grade-english`, owner law 2026-10-05). The ad SCRIPT itself is written at a 5th grade level (owner-set 2026-10-24): conversational, simple words. This 4th grade level is for how you talk to Chris. Short sentences. One idea each. No jargon — if you
 have to use a technical word, explain it in plain words right there. Say
 what a rule does, not what the code does. This is CLAUDE.md section 10, and
 it applies to every message you send him, not just the finished script.
@@ -50,7 +52,8 @@ it applies to every message you send him, not just the finished script.
    2026-09-06: *"never make naming a blocker, never ask Chris to name ads
    before something else can proceed, and never call an untitled ad a
    defect."* Ads are found by number (`utm_content`), not by name. Leave
-   the title blank. A blank title is not a problem to fix.
+   the title blank. A blank title is not a problem to fix. This is about the
+   tracking title only. Drive file names follow `marketing/ads/NAMING.md`.
 4. **You never add a page, tab, or menu row.** Not for this feature, not
    for anything. That is a standing rule across this whole repo.
 5. **The rule loader is swappable — the generator is not.** You never read

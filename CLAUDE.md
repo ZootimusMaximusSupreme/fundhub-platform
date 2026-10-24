@@ -187,7 +187,7 @@ When Chris asks where to go, or asks for a link, the reply is the direct URL. Sa
 
 ### Rules and skills for both (owner-set 2026-09-21)
 
-When Chris asks for a rule, a skill, or a law, write it for Claude and for Cursor in the same change. Cursor rules live in `.cursor/rules/`. Claude rules live in `.claude/rules/`. Skills live in `.cursor/skills/<name>/` with a symlink at `.claude/skills/<name>`. Same law: `.cursor/rules/rules-for-claude-and-cursor.mdc` and `.claude/rules/rules-for-claude-and-cursor.md`.
+When Chris asks for a rule, a skill, or a law, write it for Claude and for Cursor in the same change. Layout changed 2026-10-24: each rule has ONE real file, `.ai/rules/<name>.md`, with a link at `.cursor/rules/<name>.mdc` and a link at `.claude/rules/<name>.md`. Each skill has ONE real folder, `.agents/skills/<name>/`, with a link at `.cursor/skills/<name>` and a link at `.claude/skills/<name>`. Edit the real file. A second real copy in `.cursor/` or `.claude/` fails `npm run rules:check`. Same law: `.ai/rules/rules-for-claude-and-cursor.md` (linked at `.cursor/rules/rules-for-claude-and-cursor.mdc` and `.claude/rules/rules-for-claude-and-cursor.md`).
 
 ### Company name is Fundhub (owner-set 2026-09-21)
 

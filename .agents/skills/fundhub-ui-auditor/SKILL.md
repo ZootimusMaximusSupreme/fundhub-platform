@@ -36,6 +36,6 @@ Severity: CRITICAL = dead/forbidden control, false error text, fake data as real
 
 ## Workflow
 
-1. Enumerate screens reachable per role (reuse route probes in ops/workflows/e2e-verify-run5-evidence/_tools/ where present).
+1. Enumerate screens reachable per role (reuse an earlier route probe under `ops/workflows/*-evidence/` if one is present).
 2. Screenshot, check, write findings. Fan out per role as parallel agents if >2 roles.
 3. Stop when the board is written. Chris names fixes; ui-standards.mdc governs the rebuild.

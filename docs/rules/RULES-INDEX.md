@@ -1,10 +1,25 @@
 # Rules index
 
+## Where things live
+
+Each rule and each skill has ONE real home. The Cursor and Claude folders hold links to it, not copies. Edit the real file.
+
+| What | The one real home | Link for Cursor | Link for Claude | Codex |
+|---|---|---|---|---|
+| Rule | `.ai/rules/<name>.md` | `.cursor/rules/<name>.mdc` | `.claude/rules/<name>.md` | reads `AGENTS.md` |
+| Skill | `.agents/skills/<name>/` | `.cursor/skills/<name>` | `.claude/skills/<name>` | reads `.agents/skills/` itself |
+
+- A rule link points at `../../.ai/rules/<name>.md`. A skill link points at `../../.agents/skills/<name>`.
+- A real file or real folder inside `.cursor/` or `.claude/` is a copy. `npm run rules:check` fails it.
+- A rule marked **Cursor-only on purpose** has the Cursor link and no Claude link.
+- `.agents/skills/source-command-flywheel` is Codex's own copy of `.claude/commands/flywheel.md`. It has no links.
+- The picture, the counts, and how to undo this layout: `ops/workflows/drift-cleanup-2026-10-24/phase-2-layout.md`.
+
 All rules, sorted by topic. Owner-set 2026-10-24 (`rules-no-drift`): when a rule is added or changed, this file changes in the same commit.
 
-Newest owner-set line wins. CLAUDE.md holds the short owner-set line for each law. Every rule below is in both homes (`.cursor/rules/<name>.mdc` and `.claude/rules/<name>.md`, same words) unless marked **Cursor-only on purpose**.
+Newest owner-set line wins. CLAUDE.md holds the short owner-set line for each law. Every rule below has its real file in `.ai/rules/<name>.md` and is linked for both Cursor and Claude, unless marked **Cursor-only on purpose**.
 
-Legend: **both homes** = Cursor and Claude twins. **Cursor-only on purpose** = about Cursor or Grok agents, or a glob rule that points at a doc. **skill** = `.cursor/skills/<name>/`, linked at `.claude/skills/<name>`. **doc** = a book or standard.
+Legend: **both homes** = one real file in `.ai/rules`, linked for Cursor and for Claude. **Cursor-only on purpose** = linked for Cursor only: about Cursor or Grok agents, or a glob rule that points at a doc. **skill** = real folder `.agents/skills/<name>/`, linked at `.cursor/skills/<name>` and `.claude/skills/<name>`. **doc** = a book or standard.
 
 
 ## 1. Talking to Chris
@@ -34,7 +49,7 @@ Legend: **both homes** = Cursor and Claude twins. **Cursor-only on purpose** = a
 - `build-spec-then-backend-then-frontend` (both homes): New work is spec → review → backend → front end. Never HTML first.
 - `model-by-job` (both homes): Which model runs which job (owner calls on Sonnet and Opus).
 - `rules-for-claude-and-cursor` (both homes): A rule or skill Chris asks for is written for Claude and Cursor.
-- `rules-no-drift` (both homes): A new rule updates every line that says otherwise, adds both homes, and updates the index.
+- `rules-no-drift` (both homes): A new rule updates every line that says otherwise, is added once with both links, and updates the index.
 - `no-claude-in-cursor` (Cursor-only on purpose): Cursor agents must not invoke Claude or Anthropic models.
 - `grok-no-displays` (both homes): Grok and Composer never touch websites or design HTML — only Claude.
 - `grok-lattice-overseer-perpetual` (Cursor-only on purpose): The Grok overseer stays on the launch lattice and respawns Composer on a fail (glob rule).
@@ -115,7 +130,7 @@ Legend: **both homes** = Cursor and Claude twins. **Cursor-only on purpose** = a
 
 ## Skills
 
-All of these live in `.cursor/skills/<name>/SKILL.md` and are linked for Claude at `.claude/skills/<name>`.
+All of these live in `.agents/skills/<name>/SKILL.md` and are linked for Cursor at `.cursor/skills/<name>` and for Claude at `.claude/skills/<name>`.
 
 - `fundhub-auditor`, `fundhub-ui-auditor`, `fundhub-perf-auditor`, `fundhub-agent-tester`, `fundhub-system-map` (skill): read-only audits and checks. `audit-vs-fix-router` says which to load.
 - `fundhub-fixer`, `fundhub-builder`, `fundhub-orchestrator` (skill): the named repair, new builds, and the full build-to-verified loop.
@@ -124,9 +139,9 @@ All of these live in `.cursor/skills/<name>/SKILL.md` and are linked for Claude 
 - `fundhub-ad-editor` (skill): cuts mess-ups and levels the sound before Submagic. Runs on Sonnet. Mac only (it needs whisper under `credentials/`).
 - `fundhub-video-animation-overlay` (skill): places see-through animations on finished videos.
 - `fundhub-testimonial-thumbnails` (skill): turns testimonial video into live page cards.
-- `fundhub-clickfunnels-html-push` (skill): pushes funnel HTML by API. In `.claude/skills/` it is a real folder with a short stub, not a link (left as is; see the board).
-- `clickfunnels-developers-docs` (skill): the Claude side is a real folder in `.claude/skills/`, not a link (left as is; see the board).
-- Outside tools: `higgsfield-*` (8), `supabase`, `supabase-postgres-best-practices` (skill) link to `.agents/skills/`. They are third-party. `.agents/skills/source-command-flywheel` belongs to Codex.
+- `fundhub-clickfunnels-html-push` (skill): pushes funnel HTML by API.
+- `clickfunnels-developers-docs` (skill): read the ClickFunnels developer docs first; never guess endpoints. A rule of the same name sits in section 8.
+- Outside tools: `higgsfield-*` (8), `supabase`, `supabase-postgres-best-practices` (skill) are third-party, listed in `skills-lock.json`. They sit in `.agents/skills/` and are linked for Cursor and Claude like ours. `.agents/skills/source-command-flywheel` belongs to Codex and has no links.
 - Marketing workflow skills live in `.claude/workflows/`: `copy`, `offer`, `avatar-builder`, `ad-research`, `ad-strategy`, `deep-research`.
 
 ## Docs and books
