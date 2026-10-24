@@ -2,7 +2,7 @@
  "format": "wide",
  "transparent": true,
  "eyebrow": "Click the link below",
- "line": "Book your call today",
+ "line": null,
  "pickDay": 15,
  "times": [
   "9:00 AM",
@@ -11,8 +11,9 @@
   "4:00 PM"
  ],
  "pickTime": 2,
- "booked": "Booked",
+ "booked": "Book your call today",
  "detail": null,
+ "showPicked": false,
  "side": "left",
  "durationInFrames": 93
 }

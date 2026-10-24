@@ -41,6 +41,9 @@ Width = the drawing's box as % of the 2560 frame. These are the side-panel templ
 | 29 | 176.15-185.03 s | QualifyToday | sample file: how much you qualify for | 35% | right, low |
 | 30 | 186.20-189.30 s | BookCall | CTA: click the link below, book your call (held to the last frame) | 32% | left, mid |
 
+## Round 2 (2026-10-23): BookCall words only
+#27 and #30 no longer show a made-up day-and-time chip or a "Booked" card (`showPicked: false`). #27 reads "Click the button below" / "Fill out the 10 second application" / "Pick a time for your call"; #30 reads "Click the link below" / "Book your call today". The calendar grid, the highlighted day and the slot times are the template's generic art (no month, no name), as in Ad 14.
+
 ## Words (Whisper small.en, `words-timeline.txt`)
 Word times come from whisper.cpp small.en on his audio (not caption reading). Filmed words beat the script: "24 hours" (not business hours), "or just denies you", "funny game" is whisper's mis-hearing of "funding game" and is never printed (the burned-in Submagic captions say "funny game"; that is the input, not ours). `anchors.json` lists his phrase and word time for every part. Props print only his words, except the labelled sample file in QualifyToday and the labels below.
 

@@ -13,6 +13,7 @@
  "pickTime": 2,
  "booked": "Pick a time for your call",
  "detail": null,
+ "showPicked": false,
  "side": "right",
  "durationInFrames": 138
 }

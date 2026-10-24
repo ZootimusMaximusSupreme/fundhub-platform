@@ -85,7 +85,8 @@ FIX = {
  8: {"object": "document"},
  17: {"eyebrow": "Most of the people we work with are aiming for", "footer": None},
  22: {"tag": None},
- 27: {"line": "Fill out the 10 second application", "booked": "Pick a time for your call"},
+ 27: {"line": "Fill out the 10 second application", "booked": "Pick a time for your call", "showPicked": False},
+ 30: {"line": None, "booked": "Book your call today", "showPicked": False},
 }
 def main():
     out = []
