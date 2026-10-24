@@ -223,7 +223,7 @@ Grok and Composer do not touch websites or design HTML. Claude does that work. S
 
 ### Animations land on the spoken words (owner-set 2026-10-23)
 
-Animations go on a finished video last. Find the real word times first (transcript or burned-in captions), start each clip so its payoff lands on its words, cut him out so animations can sit behind him (some go in front), vary where they sit, keep words clear of the face and captions, use script facts but never his sentence, and keep the original untouched. See-through clips run in overlay mode: overlaps are the only limit. Same law: `.cursor/rules/animation-overlay-on-spoken-words.mdc` and `.claude/rules/animation-overlay-on-spoken-words.md`. Skill: `.cursor/skills/fundhub-video-animation-overlay/SKILL.md`.
+Animations go on a finished video last. Find the real word times first (transcript or burned-in captions), start each clip so its payoff lands on its words, cut him out so animations can sit behind him (never in front of his face or head), vary where they sit, keep words clear of the face and captions, use script facts but never his sentence, and keep the original untouched. See-through clips run in overlay mode: overlaps are the only limit. Same law: `.cursor/rules/animation-overlay-on-spoken-words.mdc` and `.claude/rules/animation-overlay-on-spoken-words.md`. Skill: `.cursor/skills/fundhub-video-animation-overlay/SKILL.md`.
 
 ### Opus builds animations, Sonnet places them (owner-set 2026-10-24)
 
@@ -317,7 +317,7 @@ See-through animations carry no logo. The logo animation plays only on a line wh
 
 ### Ad animation style (owner-set 2026-10-23)
 
-Big (70 to 90 percent width), on the spoken word, one in the first 10 seconds, a CTA at the end, diagrams only. Same law: `.cursor/rules/animation-ad-style.mdc` and `.claude/rules/animation-ad-style.md`.
+Big (70 to 90 percent width), on the spoken word, one in the first 10 seconds, a CTA at the end, diagrams only. Never in front of his face or head, hair included; behind his head is fine (owner-set 2026-10-24). Chris picks the trigger words first. Same law: `.cursor/rules/animation-ad-style.mdc` and `.claude/rules/animation-ad-style.md`.
 
 ### Ad editing on the Mac (owner-set 2026-10-23)
 

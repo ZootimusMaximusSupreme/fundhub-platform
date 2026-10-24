@@ -14,7 +14,9 @@ alwaysApply: true
 - Each card pops in on the exact word he says it. No fixed stagger.
 - A CTA animation on the closing ask, up to the end.
 - Animations can be long and ride the whole idea.
-- Mix behind him and in front of him. Never over his face or the captions.
+- **Never in front of his face or head, hair included (owner-set 2026-10-24).** Chris: "It should never go over my face." Behind his head is fine, even across the whole screen: his cut-out stays on top (`--behind`). Beside him, or over his chest above the captions, is fine.
+- Never over the captions.
+- Chris picks the trigger words (owner-set 2026-10-24): send him the numbered trigger list first, he changes it, then Sonnet places.
 - Diagrams only, on all of them. Start from the video's entry in `marketing/ads/animation-plans/2026-10-22.json` (skill step 1).
 
 ## Never

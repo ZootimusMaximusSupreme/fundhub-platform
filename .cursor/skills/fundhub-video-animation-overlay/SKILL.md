@@ -33,7 +33,9 @@ The video is finished and captioned. The animations go on last, as see-through c
 - **One animation inside the first 10 seconds,** on the hook.
 - **On the word.** Each part pops in on the word he says it, not on a fixed stagger.
 - **A CTA graphic** on the closing ask ("click the link below"), held to the last frame.
-- **Long is fine.** An animation can ride the whole idea. Mix behind him and in front of him (never the face or captions).
+- **Long is fine.** An animation can ride the whole idea.
+- **Never in front of his face or head, hair included (owner-set 2026-10-24).** Behind his head is fine, even full width (cut-out on top). Beside him or over his chest above the captions is fine.
+- **Chris picks the trigger words first (owner-set 2026-10-24).** Send the numbered trigger list; place only after he answers.
 - **Anchors come from the script; labels never copy his sentence (owner-set 2026-10-24).** An anchor phrase is exact, word for word from the script. Each animation lands at the time that word is said on the recorded, edited video. The label is short and new.
 - **Never repeat his words (owner-set 2026-10-24).** The captions already show them. The picture carries the point; labels about 5 words, said a new way, no drift (no new fact, number or claim). No run of 4+ words he says within 3 s; no eyebrow that restates his line; no filler like "Your file". Rule: `.cursor/rules/animation-no-echo.mdc`.
 - **Opus builds, Sonnet places (owner-set 2026-10-24).** A Sonnet placer never edits `marketing/broll/src/` or adds a template. A missing or changed template goes in `marketing/ads/animation-plans/new-animations-needed.md` for Opus. Rule: `.cursor/rules/animation-builders-opus-placers-sonnet.mdc`.
