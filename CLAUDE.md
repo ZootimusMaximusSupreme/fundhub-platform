@@ -221,6 +221,10 @@ Grok and Composer do not touch websites or design HTML. Claude does that work. S
 
 Animations go on a finished video last. Find the real word times first (transcript or burned-in captions), start each clip so its payoff lands on its words, cut him out so animations sit behind him, vary where they sit, keep words clear of the face and captions, use only script words, and keep the original untouched. See-through clips run in overlay mode: overlaps are the only limit. Same law: `.cursor/rules/animation-overlay-on-spoken-words.mdc` and `.claude/rules/animation-overlay-on-spoken-words.md`. Skill: `.cursor/skills/fundhub-video-animation-overlay/SKILL.md`.
 
+### Opus builds animations, Sonnet places them (owner-set 2026-10-24)
+
+Only Opus builds a new animation or changes one (`marketing/broll/src/`, the catalog, the broll tests). Sonnet only places finished animations on a video. A Sonnet placer that needs a missing or changed template writes it in `marketing/ads/animation-plans/new-animations-needed.md` and keeps placing the rest. Same law: `.cursor/rules/animation-builders-opus-placers-sonnet.mdc` and `.claude/rules/animation-builders-opus-placers-sonnet.md`.
+
 ### Animations never repeat his words (owner-set 2026-10-24)
 
 The captions already show what Chris says. Animation words never copy his sentence: the picture carries the point, and any label is about 5 words, said a new way, with no drift in meaning (no new fact, number or claim). No 4-word run he says within 3 seconds. Same law: `.cursor/rules/animation-no-echo.mdc` and `.claude/rules/animation-no-echo.md`.
