@@ -1,5 +1,13 @@
 # TODO — unfinished work
 
+## Animation words repeat Chris — added 2026-10-24 (remind Chris)
+
+Chris set the no-echo rule (`.cursor/rules/animation-no-echo.mdc`) and said: save the rule, keep moving, remind me to fix. These finished videos still print his own sentences on the animations:
+
+- [ ] Direct Book VSL 1, Watch page (live on https://apply.fundhub.ai/watch). Plan: `marketing/ads/animation-plans/direct-book-vsl-1-watch-page-2026-10-23/` on branch `claude/vsl-animations`.
+- [ ] Ads 4, 11, 14 and 16, and the thank-you video (in Drive folder 1lu1Jzn302TMBdfPS6r2XuOvNdMaWA9Ry). Plans on branches `claude/ad11-penthouse-animations` and `claude/ad14-animations`.
+- [ ] When fixing: reword each plate short, with no drift; add the echo checker (fail on 4 or more of his words in a row); set sound to -14 LUFS; replace the files in Drive and the live VSL.
+
 ## Today — 2026-10-16 (carried from PR #53 on 2026-10-21; Chris, say if these are still open)
 
 Owner has a batch of MCA and SBA deals open now and wants them pushed through. Set this up today.
