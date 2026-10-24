@@ -4,6 +4,7 @@
 
 - [ ] Decommission banks (which banks: not named yet).
 - [ ] Load the new funding sequence. Planner: `docs/finance/next-funding-sequence-planner.md`.
+- [ ] Make the Direct Book animated videos sharp. The animation step is not the cause: the edited videos it starts from are already soft. Ads 4, 11, 14, 16 are 1080x1920 from the phone front camera. The Thank You is 2560x1440, not 4K. Its 4K raw ("Funding Call Thank You 4k") is not on this Mac or on Drive. Rebuild from the 4K raw when found.
 
 ## Tomorrow — 2026-10-18: company-wide UX refresh
 
