@@ -1,6 +1,6 @@
 # ClickFunnels developers docs — read first
 
-**Owner law:** For ANY ClickFunnels question — API, workspace, page, funnel, Custom HTML, webhook, or SDK — **fetch or read https://developers.myclickfunnels.com/ FIRST** before answering or changing code.
+**Owner law (2026-09-20):** For ANY ClickFunnels question — API, workspace, page, funnel, Custom HTML, webhook, or SDK — **fetch or read https://developers.myclickfunnels.com/ FIRST** before answering or changing code.
 
 Extra (not a substitute): https://changelog.myclickfunnels.com/
 

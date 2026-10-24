@@ -60,7 +60,7 @@ Never write: "credit repair" (it is credit optimization), "it's not X, it's Y",
 slogans, metaphors ("game changer" is out even when the client says it), a
 two-sentence setup with the punchline second, "your number", "the number", EIN,
 DUNS, net-30 vendors, "no guarantees". Cause before effect. **Fundhub**, never
-FundHub.
+Fundhub.
 
 Caption format: `Name, business type. One sentence about what happened, in their
 own terms.`

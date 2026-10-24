@@ -1,4 +1,4 @@
-# UI-STANDARDS.md — FUNDHUB LAYOUT LAW
+# UI-STANDARDS.md — Fundhub LAYOUT LAW
 
 Read before building or changing any screen. This is the authoritative UI rulebook; editor rules point here. Brand assets and tenant selection stay in the existing brand, font and shell files. Apply the owner's recorded approval; flag an unresolved conflict without reopening a decision already made.
 

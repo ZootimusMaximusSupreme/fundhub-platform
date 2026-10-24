@@ -1,6 +1,6 @@
 # Test means click like a human
 
-**Owner law:** When Chris says test, he wants every motion a person would make. Open the live page. Type. Click. Look at the screen.
+**Owner law (2026-08-16):** When Chris says test, he wants every motion a person would make. Open the live page. Type. Click. Look at the screen.
 
 Automated checks still run. They are not the finish.
 

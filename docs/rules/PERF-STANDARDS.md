@@ -1,4 +1,4 @@
-# PERF-STANDARDS.md — FUNDHUB SPEED LAW
+# PERF-STANDARDS.md — Fundhub SPEED LAW
 ### Ground truth for how fast every surface must be. Read before building. Audited by fundhub-perf-auditor.
 
 ---

@@ -29,7 +29,7 @@ Sims / Full E2E: assume paid and skip ClickFunnels apply — see `sim-assume-pai
 ## Act-as-you limits
 
 - Agent may: read prove Gmail, click portal/magic links, upload docs, sign **sim** contracts, text from the **agent** number
-- Agent may not: change bank passwords, buy numbers without Chris, or treat “Gmail live” as full life-admin access outside FundHub prove paths
+- Agent may not: change bank passwords, buy numbers without Chris, or treat “Gmail live” as full life-admin access outside Fundhub prove paths
 - Full End-To-End Audit: always **5 sim files** (Funding / Repair / Combo / Inquiry / Course — different scenarios to try to break it) with **simulated credit files**; one scenario each walks that file’s event path — **not** a 5×5 cartesian unless the company-sim list says that (the original board is not in the repo); do not fork five copies of the same person. **ClickFunnels one-pass:** new plus-tag per funnel attempt — do not score a second pass on the same contact as a product FAIL.
 
 ## Audit vs fix

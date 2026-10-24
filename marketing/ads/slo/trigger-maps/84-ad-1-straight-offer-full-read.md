@@ -1,6 +1,6 @@
 # Trigger map
 
-There is **no per-script trigger table in the repo**. At export time `src/ad-videos/broll.mjs` (`planBroll`) reads Submagic word timings and matches **clip file names** to spoken words. Clip order comes from `src/messaging/providers/google-drive-write.mjs` (`listBrollClips`): deliverables folder first, then portal, then approvals; videos before stills inside each folder.
+There is **no per-script trigger table in the repo**. B-roll is our animations and screen recordings only; Submagic does captions (owner-set 2026-10-24). The old code path, `src/ad-videos/broll.mjs` (`planBroll`), still reads Submagic word timings and matches **clip file names** to spoken words until it is switched off. Clip order comes from `src/messaging/providers/google-drive-write.mjs` (`listBrollClips`): deliverables folder first, then portal, then approvals; videos before stills inside each folder.
 
 **Script words:** `marketing/ads/slo/fundhub-297/FundHub-LOCKED-ADS.md`
 

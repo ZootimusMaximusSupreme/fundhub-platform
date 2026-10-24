@@ -25,7 +25,7 @@ raw takes. About 100 ads a month. Chris films and approves. Nothing else.
 | 7 | Turn the talking into words | Deepgram |
 | 8 | Match those words to a script. Now we know the ad number and the take number. | Claude |
 | 9 | Rename the raw file so it says what it is | Worker |
-| 10 | Send it to Submagic for captions and B-roll | Worker |
+| 10 | Send it to Submagic for captions (B-roll is our animations and screen recordings only; owner-set 2026-10-24) | Worker |
 | 11 | Submagic finishes and pings us back | Submagic webhook |
 | 12 | Save the finished video. Buzz Chris's phone. | Worker |
 | 13 | **Approve or reject** | **Chris** |
@@ -256,7 +256,7 @@ R2 or S3) and handed over as a signed link. That same link feeds the transcriber
 **Composer 2.5 cannot be in this.** It is Cursor's coding model — text only, inside Cursor, no API.
 Claude matches the words to a script and writes the Submagic settings.
 
-**The B-roll timing risk, and our pick.** Submagic never says whether B-roll times are measured on
+**The B-roll timing risk, and our pick.** (Owner-set 2026-10-24: B-roll is our animations and screen recordings only; Submagic does captions. This risk applies only while the old Submagic B-roll placement is still in code.) Submagic never says whether B-roll times are measured on
 the original video or on the shortened one after auto-cutting. So we take the option where the
 question cannot come up: **leave silence-cutting and bad-take removal off.** The timeline never
 changes, so times cannot drift. It is also one API call instead of four, and exports are capped at

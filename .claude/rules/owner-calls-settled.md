@@ -1,6 +1,6 @@
 # Owner calls already settled
 
-**Owner law:** These calls are made. Do not put them on a decision list. Do not re-ask.
+**Owner law (2026-10-24):** These calls are made. Do not put them on a decision list. Do not re-ask.
 
 | Call | Owner date | What it means |
 |---|---|---|

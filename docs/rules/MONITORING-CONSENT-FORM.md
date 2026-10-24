@@ -1,7 +1,7 @@
 # Employee monitoring — written notice
 
 **Form version:** 2026-08-04  
-**Product:** FundHub staff deep monitoring (Hubstaff)
+**Product:** Fundhub staff deep monitoring (Hubstaff)
 
 > **Legal note.** State and country notice rules vary. This is a plain-language
 > draft for operators to adapt. **Get legal review before you use it with real
@@ -11,7 +11,7 @@
 
 ## What this notice is
 
-FundHub can optionally record work activity while you are clocked in, using
+Fundhub can optionally record work activity while you are clocked in, using
 Hubstaff (or a similar tool). That monitoring is **off by default**. It only
 turns on after you sign this notice and an owner records that signature in the
 Staff & Teams screen.
@@ -22,7 +22,7 @@ If you do not sign, the system will not pull or store Hubstaff activity for you.
 
 ## What may be collected
 
-While monitoring is on **and** you are clocked in on a shift, FundHub may receive
+While monitoring is on **and** you are clocked in on a shift, Fundhub may receive
 and store summaries of:
 
 1. **Activity levels** — how often the keyboard and mouse were active (not the
@@ -38,7 +38,7 @@ This data is merged onto the same work timeline as your clock-in and clock-out.
 
 ## When it is collected
 
-- **Only during clocked-in shifts** in FundHub.
+- **Only during clocked-in shifts** in Fundhub.
 - Time when you are clocked out is not in scope for this merge.
 - If consent is revoked, future pulls stop. Past records already stored are not
   automatically erased by a revoke.
@@ -77,7 +77,7 @@ for you.
 
 ---
 
-## Operator checklist (FundHub)
+## Operator checklist (Fundhub)
 
 1. Employee signs this form (or a lawyer-approved replacement).
 2. Owner opens **Staff & Teams → Clock & consent** and records consent.

@@ -1,11 +1,11 @@
 ---
 name: fundhub-clickfunnels-html-push
-description: Push FundHub funnel HTML and tracking to live ClickFunnels via Custom HTML Pages API (GA 2026-09-18). Use when shipping marketing/landing-pages, apply.fundhub.ai pages, $297 slo HTML, thank-you, UTM catcher, Meta pixel, or vsl-watch beacon. Never tell Chris to paste into the builder as the default path.
+description: Push Fundhub funnel HTML and tracking to live ClickFunnels via Custom HTML Pages API (GA 2026-09-18). Use when shipping marketing/landing-pages, apply.fundhub.ai pages, $297 slo HTML, thank-you, UTM catcher, Meta pixel, or vsl-watch beacon. Never tell Chris to paste into the builder as the default path.
 ---
 
 **Docs first:** https://developers.myclickfunnels.com/ (changelog: https://changelog.myclickfunnels.com/)
 
-# FundHub ClickFunnels HTML push (API)
+# Fundhub ClickFunnels HTML push (API)
 
 ## When to use
 

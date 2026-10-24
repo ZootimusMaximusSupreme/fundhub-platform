@@ -723,7 +723,7 @@ Submagic sees never has an animation in it.
 
 **Status: built and tested, not wired in.** Nothing live imports
 `animations.mjs` (a test fails if anything but its own test does). The live
-pipeline still places B-roll **inside Submagic, before its export**
+pipeline still places B-roll **inside Submagic, before its export** (against owner-set 2026-10-24: B-roll is our animations and screen recordings only; Submagic does captions)
 (`src/ad-videos/broll.mjs` via `pipeline.mjs` `placeBrollAndExport()`, the
 `matched` row in "Who does each move" above). That is the old order. When the
 worker's `render_and_overlay` job goes live with this file, that Submagic
@@ -784,7 +784,7 @@ word on a kept line lands on that line's start, flagged `fallback`.
 
 **Gaps (found, not reconciled):**
 
-1. **The old Submagic B-roll placement is still live** (`broll.mjs`,
+1. **The old Submagic B-roll placement is still live, against owner-set 2026-10-24 (B-roll is our animations and screen recordings only; Submagic does captions)** (`broll.mjs`,
    `placeBrollAndExport`). It has to be switched off when this goes live, or the
    animations land twice.
 2. **Overlay mode cannot render on main yet.** The kit's `transparent` switch
