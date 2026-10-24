@@ -6,7 +6,7 @@
 
 - Keep **full** values in gitignored `.env` and refresh from Netlify when a line looks masked.
 - Run **`node scripts/env-audit-masks.mjs`** to count mask placeholders.
-- Run **`node scripts/env-refresh-local-from-netlify.mjs`** after pasting reveals into **`credentials/env.revealed`** (Netlify API/CLI **cannot** unmask `--secret` vars — masks in `.env` are usually copy-paste from `netlify env:list`, not real keys).
+- Run **`node scripts/env-refresh-local-from-netlify.mjs`** after putting full values into **`credentials/env.revealed`** (this works only for vars that were not set with `--secret`; Netlify API/CLI **cannot** unmask `--secret` vars — masks in `.env` are usually copy-paste from `netlify env:list`, not real keys).
 - Regenerate **`credentials/cloud-env-for-claude.txt`** with that script before Chris pastes cloud env vars.
 - Read **`credentials/README.md`** for file names.
 
@@ -14,11 +14,11 @@
 
 - Write or leave `****************` in `.env` “for safety”
 - Paste cloud env from a block that still contains masks
-- Use **`netlify env:set` without `--secret`** for keys the laptop or cloud must read (see `secrets-env-law.md` banned table)
+- Use **`netlify env:set ... --secret`** for keys the laptop or cloud must read (see `secrets-env-law.md` banned table)
 
 ## When refresh cannot unmask
 
-Report the **key names** still masked. Chris reveals them once in Netlify **Site configuration → Environment variables** (production), updates `.env`, then re-run the script. Do not guess.
+Report the **key names** still masked. Recover each from `credentials/env.full.snapshot` or an old backup. If neither has it, reset it at the vendor and set the new value yourself, without `--secret`. Never tell Chris to reveal it in Netlify. Do not guess.
 
 ## Example
 

@@ -1,5 +1,5 @@
 ---
-description: Push FundHub funnel HTML to live ClickFunnels via Custom HTML Pages API — not manual paste
+description: Push Fundhub funnel HTML to live ClickFunnels via Custom HTML Pages API — not manual paste
 globs: marketing/landing-pages/**
 alwaysApply: false
 ---

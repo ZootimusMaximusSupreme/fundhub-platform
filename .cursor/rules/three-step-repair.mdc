@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Three-step repair
 
-**Owner law (2026-08-26):** Each named hole is one paste, one chat, three steps in order. Chris copies one box. That chat does VERIFY, then FIX, then FINISH. Never skip VERIFY. Never two holes in one chat.
+**Owner law (2026-08-26):** Each named hole is one paste, one chat, three steps in order. The agent starts that chat from the board prompt; Chris does not have to copy anything. That chat does VERIFY, then FIX, then FINISH. Never skip VERIFY. Never two holes in one chat.
 
 ## The three steps
 
@@ -18,7 +18,7 @@ alwaysApply: true
 - Skip VERIFY and go straight to FIX
 - Fix after VERIFY said **NOT A PROBLEM**
 - Start a second hole in the same chat
-- Ask Chris to paste VERIFY, then FIX, then FINISH as three chats
+- Make Chris open VERIFY, then FIX, then FINISH as three chats
 
 ## Example
 

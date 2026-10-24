@@ -8,7 +8,7 @@ alwaysApply: true
 **Owner law (2026-09-19):** New work always uses this order. Do not skip a step. Do not reverse it.
 
 1. **Build spec** — write what the thing does. Spec is not code.
-2. **Review / perfect** — Chris reviews and perfects the spec. Wait. Do not start backend in the same turn.
+2. **Review / perfect** — Chris reviews and perfects the spec. Wait. Do not start backend in the same turn. If Chris already gave GO for this build, record the spec on the board and continue to backend. Wait only when the spec holds a decision only he can make (`owner-go-no-repeat-approval`, 2026-10-19).
 3. **Backend / revise perfect** — prove the data path. If truth moved, revise the spec. Then stop.
 4. **Front end** — last. Only after backend is proven and the spec matches truth.
 

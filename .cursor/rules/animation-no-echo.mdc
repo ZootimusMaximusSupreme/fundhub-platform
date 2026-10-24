@@ -33,4 +33,4 @@ against what that bank approves."
 ✅ Card stamped DENIED, chip "Never matched to the bank".
 ```
 
-Skill: `.cursor/skills/fundhub-video-animation-overlay/SKILL.md`. Older rule it narrows: `animation-overlay-on-spoken-words.mdc` ("use the script's own words" now means facts from the script, not his sentence copied).
+Skill: `.cursor/skills/fundhub-video-animation-overlay/SKILL.md`. Older rule it narrows: `animation-overlay-on-spoken-words.mdc` (it now says script facts, not his sentence copied).

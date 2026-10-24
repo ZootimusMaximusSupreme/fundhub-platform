@@ -12,7 +12,7 @@ alwaysApply: true
 | Chris said something like… | Load this skill | Do |
 |---|---|---|
 | organize repo, repo hygiene, messy repo, declutter, clean up evidence, agentify hygiene | `fundhub-repo-hygiene` | Inventory → KEEP/ARCHIVE/GITIGNORE/MOVE. **No delete without ask.** |
-| version control, VC check, losing work, commit policy, branch cleanup, stash, “don’t lose this” | `fundhub-version-control` | Branch/commit/evidence policy. **Commit only if he asked.** |
+| version control, VC check, losing work, commit policy, branch cleanup, stash, “don’t lose this” | `fundhub-version-control` | Branch/commit/evidence policy. **Commit finished work locally in the same session (CLAUDE.md, 2026-09-08).** |
 
 Skill paths:
 

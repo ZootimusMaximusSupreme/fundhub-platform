@@ -4,7 +4,7 @@
 
 **Owner law (2026-08-24), corrected same day:** Two modes. Do not mix them.
 
-Applies to Meta Business Suite, Facebook developers, Google Ads, Netlify, GHL, fundhub.ai CRM, ClickFunnels, and any other dashboard.
+Applies to Meta Business Suite, Facebook developers, Google Ads, Netlify, fundhub.ai CRM, ClickFunnels, and any other dashboard.
 
 ## Default — he did **not** ask for a walkthrough
 
@@ -20,7 +20,7 @@ These **are** button-by-button click instructions on the UI. That is correct.
 
 1. A URL may open the **starting** page of the batch.
 2. The walkthrough itself is **individual clicks** — do not replace those steps with “just open this URL and you’re done.”
-3. Still obey `one-step-adhd.mdc`: one next action, then stop.
+3. Still obey `one-step-adhd`: one next action, then stop.
 
 ## Which mode
 

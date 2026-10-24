@@ -35,5 +35,5 @@ Same law, no pushback. See `.claude/rules/dictator-owner-overrides.md`.
 Ask: "Push to GitHub and make sure the token works."
 
 ❌ "Export GITHUB_TOKEN=ghp_… then run git push."
-✅ Read .env, curl api.github.com/user (200?), git push github main — report SUCCESS/FAIL only.
+✅ Read .env, curl api.github.com/user (200?), `git push origin main` (or `node scripts/github-push-whole-repo.mjs`) — report SUCCESS/FAIL only.
 ```

@@ -5,7 +5,7 @@ alwaysApply: true
 
 # 4th grade English
 
-**Owner law (2026-10-05):** Talk to Chris at a 4th grade reading level. He asked for it by name. This replaces the 5th grade level in `CLAUDE.md` §10. Where they differ, this wins.
+**Owner law (2026-10-05):** Talk to Chris at a 4th grade reading level. He asked for it by name. This is the level used in `CLAUDE.md` §10. Where they differ, this wins.
 
 ## Always
 
@@ -16,6 +16,10 @@ alwaysApply: true
 - If a hard word has to stay, say what it means in the same sentence.
 - Lead with the answer. Then the reason.
 - Short lists, not long paragraphs.
+
+## Short is not clipped (owner-set 2026-10-21)
+
+Chris said: "Can you use complete English, please? Full sentences." Write every point as a complete sentence that says who does what and why it matters, still at a 4th grade level. Being brief means fewer points, never fewer words per point. The same goes for what you save to the repo and to memory: keep the context, do not shrink it to labels.
 
 ## Never
 

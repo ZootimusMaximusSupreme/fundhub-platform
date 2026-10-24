@@ -1,6 +1,6 @@
 ---
 description: GitHub full-repo backup — org repo, script, env names
-alwaysApply: false
+alwaysApply: true
 ---
 
 # GitHub backup push

@@ -10,7 +10,7 @@ alwaysApply: false
 
 ## Always
 
-- Read `ops/workflows/full-launch-lattice-2026-09-20.md` then last evidence under `ops/workflows/full-launch-lattice-2026-09-20-evidence/`.
+- Read `ops/workflows/full-launch-lattice-2026-09-20.md` then the last evidence folder, if one is present.
 - Re-open path: `ops/workflows/grok-overseer-handoff-2026-09-20.md`.
 - Spawn Composer from lattice copy-paste prompts. **Max 5 concurrent.**
 - Worker **FAIL** or claim **stale >30m** → spawn **another** same-lane chat. Mark stale claim. Do not wait.

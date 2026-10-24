@@ -18,6 +18,7 @@ alwaysApply: true
 | fix, ship, repair, wire, "make X work", unblock | `fundhub-fixer` | Change **only** what he named. Then prove. |
 | build, create, add a screen, new dashboard, new feature, scaffold, make me a | `fundhub-builder` | Not for fixing (`fundhub-fixer`) or auditing (`fundhub-auditor`). No trigger matched → normal dev under existing rules. |
 | agent test / roleplay the AI / did the agent follow its prompt | `fundhub-agent-tester` | Two AIs talk. Score prompt + intended journey. |
+| before any PASS / e2e-done / "we tested it" claim | `fundhub-system-map` | Discovery only. Read it before claiming PASS. |
 
 Skill paths:
 
@@ -36,7 +37,7 @@ Read the matching skill **before** any other work on that request.
 
 If he said **Full End-To-End Audit**, that door wins. Do **not** run read-only `fundhub-auditor` first and skip sends. Full End-To-End Audit beats CLAUDE.md §0 — gate first; do not dump a split.
 
-Otherwise: run **Auditor** first. Stop with findings. Wait for Chris to name what to fix. Do not start Fixer in the same turn.
+Otherwise: run **Auditor** first. Stop with findings. Wait for Chris to name what to fix. Do not start Fixer in the same turn. (If Chris already asked for the audit, the Auditor writes the board and goes on; it stops only for a missing owner decision.)
 
 ## Ambiguous "test"
 
@@ -47,7 +48,7 @@ Otherwise: run **Auditor** first. Stop with findings. Wait for Chris to name wha
 
 ## Named-hole repair (owner-set 2026-08-26)
 
-One issue per thread (`.cursor/rules/one-issue-per-thread.mdc`). Verify → Fix → Finish in **one paste, one chat** (`.cursor/rules/three-step-repair.mdc`). Chris copies each hole himself.
+One issue per thread (`.cursor/rules/one-issue-per-thread.mdc`). Verify → Fix → Finish in **one paste, one chat** (`.cursor/rules/three-step-repair.mdc`). Each named hole is one task with one owner chat; the agent starts it from the board prompt. Chris does not copy anything.
 
 ## Never
 
@@ -62,6 +63,6 @@ Day work = **Skills + Orchestrator + `ops/workflows/` boards**. Manual sequences
 
 Default loop: **Audit → stop → Chris names the fix → Fixer.** Full build-to-done chains load `fundhub-orchestrator` after plan approval.
 
-Parallel work: CLAUDE.md §0 boards; Chris launches the extra chats. Agents coordinate only through the shared board.
+Parallel work: CLAUDE.md §0 boards. The agent starts available agents itself and puts copy-paste prompts on the board. Agents coordinate only through the shared board.
 
 **Cursor Automations:** only if Chris explicitly asks for a schedule or event job. Never use Automations for ad-hoc A→B handoffs.

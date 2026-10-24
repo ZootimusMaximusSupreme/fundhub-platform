@@ -4,6 +4,8 @@
 
 **Owner update (2026-10-19):** Keep the marked draft, but do not ask again when Chris has already authorized publication of this work. A ship/deploy/GO choice for the release carries across turns. See `owner-go-no-repeat-approval.md`.
 
+**Owner update (2026-10-23):** Show the marked draft, but do not block on his answer once he has said push. Push, then prove the live page.
+
 ## How
 
 1. **Never touch the live page first.** Build a draft copy with a script. The script reads the live file and does not change it.

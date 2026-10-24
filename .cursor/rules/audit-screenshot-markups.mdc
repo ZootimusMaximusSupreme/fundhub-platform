@@ -15,7 +15,7 @@ alwaysApply: false
 3. Burn marks into the PNG Chris opens. Raw unmarked copies live in `shots/_raw/`.
 4. Review copy must say what each circle means and what KEEP / KILL / WIRE-UP / FIX does.
 
-Tooling: `ops/workflows/*-evidence/_mark-shots.mjs` + `_apply-marks.py` + `shot-marks.json`.
+Tooling: older runs kept `_mark-shots.mjs` and `_apply-marks.py` under `ops/workflows/*-evidence/`. None is on `main` as of 2026-10-24. Write a small marker script and save it in `scripts/`.
 
 ## Chris draws (owner decision path — preferred)
 

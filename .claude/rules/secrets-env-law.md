@@ -56,7 +56,7 @@ Never recommend, suggest, or ask Chris to rotate, regenerate, or re-paste an API
 - Security hygiene lectures ≠ rotate.
 - If the key works, leave it alone and say nothing about rotation.
 
-If a probe is blocked because CLI output is masked, read local `.env` / `credentials/env.full.snapshot`. If those are masked too, the key must be reset at the vendor and re-set on Netlify **without** `--secret` if the laptop needs it. Do **not** ask Chris to paste or rotate as a workaround unless the key is proven dead.
+If a probe is blocked because CLI output is masked, read local `.env` / `credentials/env.full.snapshot`. If those are masked too, the key must be reset at the vendor and re-set on Netlify **without** `--secret` if the laptop needs it. Only a mask placeholder (a value that contains `*`) may be replaced. Never overwrite a value that still works. Removal and overwrite: see CLAUDE.md "Never remove a key". Do **not** ask Chris to paste or rotate as a workaround unless the key is proven dead.
 
 ## Examples
 

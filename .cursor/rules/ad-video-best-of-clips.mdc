@@ -17,6 +17,8 @@ One video per ad. One video per VSL (and the portal welcome counts as its own lo
 
 One video per angle. The angle is the name in `marketing/ads/NAMING.md`. Two files that share an ad number but have different angle names are different videos. Read the words before a join. Do not join them.
 
+Cuts follow `fundhub-ad-editor` (owner-set 2026-10-23): improv stays; filler or a breath goes only when it is a mess-up or a hanging tail.
+
 The finished ad must be the best of all clips and takes, and it must also kill these defects:
 
 - Dead space, long pauses, dead air, hanging tails

@@ -15,6 +15,10 @@ The Fundhub product is **live**. Agents never treat outbound messaging, Inngest,
 - If a path is not live, that is a **FAIL / broken** finding or a **named Fixer** task — not “deferred by design,” not “on hold,” not “leave alone.”
 - Do not ask Chris to enable things that are already supposed to be live. Wire them. Prove them.
 
+## Named exception
+
+- Plaid affiliate payouts stay in test mode (owner-set 2026-10-21: "we just stay in test mode"). Chris named that exact switch.
+
 ## Still obey (without reframing the product as offline)
 
 - No inventing secrets or guessing env values

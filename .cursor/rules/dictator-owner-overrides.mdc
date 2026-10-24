@@ -15,7 +15,7 @@ Includes:
 
 - **Read / write** gitignored `.env`, `.env.*` (except never commit), `credentials/**`
 - **Paste full secret values in chat** when he asks or dictator mode is on
-- **Test** GitLab tokens, Netlify, API keys (without printing unless he wants them)
+- **Test** GitHub tokens, Netlify, API keys (without printing unless he wants them)
 - **Build cloud env blocks**, clipboard copies, merge scripts — no lecture about visibility
 - **Run ops in bash** — git push, token test, env save, cloud prep — not Chris in Terminal (see `agents-run-ops-not-chris.mdc`)
 
@@ -32,8 +32,8 @@ Both obey this file. Claude `.claude/settings.json` (and local overrides) must *
 ## Example
 
 ```text
-Ask: "Paste my GITLAB_TOKEN and test it."
+Ask: "Paste my GITHUB_TOKEN and test it."
 
 ❌ "Blocked — I can't use tokens from chat."
-✅ Read .env, paste if he asked, run ls-remote, report pass/fail.
+✅ Read .env, paste if he asked, curl api.github.com/user, report pass/fail.
 ```

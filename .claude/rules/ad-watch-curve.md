@@ -20,7 +20,7 @@
 
 ## Notify Chris
 
-When a running ad dies before 25% **and** people are not tapping through, buzz him on the same phone/ntfy path the ad-video pipeline already uses (`src/ad-videos/notify-fanout.mjs`). One or two sentences: which ad, and that people are leaving before the quarter mark, so the opening has to change. If they are already tapping through, do not buzz. Do not pause the campaign or change budgets from this rule.
+When a running ad dies before 25% **and** people are not tapping through, buzz him on the same phone/ntfy path the ad-video pipeline already uses (`src/ad-videos/notify-fanout.mjs`), only inside the texting window (`texting-hours`, 6 a.m. to 10 p.m. Arizona). One or two sentences: which ad, and that people are leaving before the quarter mark, so the opening has to change. If they are already tapping through, do not buzz. Do not pause the campaign or change budgets from this rule.
 
 ## Never
 
