@@ -279,26 +279,26 @@ INSERT INTO lenders (
   last_updated_by, last_updated_date, is_demo
 )
 SELECT l.org_id, 'OnlineBizCC'::lender_table, v.name, v.product_name, v.application_url, v.logo_path,
-       'All States', v.bureaus_pulled, v.stated_requirements, v.notes, true,
+       'All States', v.bureau, v.stated_requirements, v.notes, true,
        'giovanni list 2026-10-24', DATE '2026-10-24', false
   FROM lenders l
   JOIN (VALUES
-    ('Intuit', 'Intuit Business Credit Card', 'https://www.intuit.com/credit-card/', NULL::text,
+    ('Intuit', 'Intuit Business Credit Card', 'https://www.intuit.com/credit-card/', NULL::text, 'EX',
      'Giovanni list: Experian pre-approval. Soft check. Issued by WebBank.',
      'Added 2026-10-24. No official logo file was saved.'),
-    ('QuickBooks Capital', 'QuickBooks Line of Credit', 'https://quickbooks.intuit.com/business-banking/loans/', NULL::text,
+    ('QuickBooks Capital', 'QuickBooks Line of Credit', 'https://quickbooks.intuit.com/business-banking/loans/', NULL::text, 'EX',
      'Giovanni list: Experian pre-approval. Soft check. Apply inside QuickBooks. Issued by WebBank.',
      'Added 2026-10-24. No official logo file was saved.'),
-    ('Barclays', 'Business credit cards', 'https://cards.barclaycardus.com/banking/Business/', '/assets/lenders/barclays-wordmark.svg',
+    ('Barclays', 'Business credit cards', 'https://cards.barclaycardus.com/banking/Business/', '/assets/lenders/barclays-wordmark.svg', 'TU',
      'Giovanni list: TransUnion. This is the business-card list. There is no single Barclays business card.',
      'Added 2026-10-24.'),
-    ('Wings Credit Union', 'Wings Business Rewards Visa', 'https://www.ent.com/business/borrow/ent-business-rewards-visa-credit-card/', '/assets/lenders/wings-wordmark.svg',
+    ('Wings Credit Union', 'Wings Business Rewards Visa', 'https://www.ent.com/business/borrow/ent-business-rewards-visa-credit-card/', '/assets/lenders/wings-wordmark.svg', 'EX',
      'Giovanni list: Experian. No online business-card form was found. Apply by phone at 800-525-9623 or in a branch. Membership is required.',
      'Added 2026-10-24. The business page says phone or branch. Personal cards on wingscu.com have an online form. This row uses the business page.'),
-    ('Langley Federal Credit Union', 'Platinum Visa Business', 'https://www.langleyfcu.org/business-credit-cards', NULL::text,
+    ('Langley Federal Credit Union', 'Platinum Visa Business', 'https://www.langleyfcu.org/business-credit-cards', NULL::text, NULL::text,
      'Giovanni list: no bureau stated. Membership is required. No separate online card form was found on this page.',
      'Added 2026-10-24. No official logo file was saved.')
-  ) AS v(name, product_name, application_url, logo_path, stated_requirements, notes) ON true
+  ) AS v(name, product_name, application_url, logo_path, bureau, stated_requirements, notes) ON true
  WHERE l.id = '97f2ce2d-d996-46ca-80eb-ea2432604aec'::uuid
    AND NOT EXISTS (
      SELECT 1 FROM lenders x
