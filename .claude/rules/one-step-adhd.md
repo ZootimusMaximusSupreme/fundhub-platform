@@ -1,6 +1,6 @@
 # One step only
 
-When guiding Chris through UI setup, dashboards, GHL, Mailgun, Bland, Netlify, or any click-path:
+When guiding Chris through UI setup, dashboards, Mailgun, Bland, Netlify, or any click-path:
 
 1. Give **exactly one** next action. One sentence. Optional: one short "why" after.
 2. **Stop.** Wait for Chris to reply (done / stuck / screenshot).

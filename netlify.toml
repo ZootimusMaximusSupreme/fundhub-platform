@@ -1,6 +1,5 @@
-# Netlify deploy for fundhub-platform — static screens from public/ plus the
-# existing Vercel-style api/ handlers running as one Netlify function.
-# The Vercel files are untouched; when that account clears, both targets work.
+# Netlify is the live host. Static screens come from public/, and the api/
+# handlers run as one Netlify function (CLAUDE.md section 11).
 
 [build]
   publish = "public"

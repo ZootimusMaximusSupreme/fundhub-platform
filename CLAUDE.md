@@ -8,11 +8,13 @@ Read `AGENTS.md` first for the short rules shared by Codex, Claude, and Cursor. 
 
 Domain facts, business rules, and architecture live in `docs/`. Read them when a task touches them. Do not restate them here.
 
+All rules, sorted by topic: `docs/rules/RULES-INDEX.md`.
+
 ## 0. Split the work first — then proceed
 
 This is a hard rule. It fires at the start of every new project, task, or build request. No exceptions, except Full End-To-End Audit (next paragraph).
 
-**Exception — Full End-To-End Audit:** If Chris said **Full End-To-End Audit** (or full e2e audit / full end to end), skip the split in this turn. Follow `.cursor/rules/full-end-to-end-audit.mdc` — two questions, then stop. Split only after he answers yes + live/sandbox.
+**Exception — Full End-To-End Audit:** If Chris said **Full End-To-End Audit** (or full e2e audit / full end to end), skip the split in this turn. Follow `.cursor/rules/full-end-to-end-audit.mdc` (twin: `.claude/rules/full-end-to-end-audit.md`) — two questions, then stop. Split only after he answers yes + live/sandbox.
 
 Before you plan, before you read code, before you write anything: state how to split this into parallel workflows, then start them.
 
@@ -22,11 +24,11 @@ I forget to do this. When I forget, a ten-minute job takes ten hours. Your job i
 
 1. The split. How many workflows, and what each one owns.
 2. What runs at the same time vs. what has to wait. Name any real dependency. If there is none, say "no dependencies — all parallel."
-3. A copy-paste prompt for each workflow. Written so I can open a new session, paste it, and go. Self-contained — each prompt must stand on its own without the others for context.
+3. A copy-paste prompt for each workflow, written to stand alone and saved on the board. The agent starts the agents; Chris pastes nothing.
 4. Which workflow **this session** owns. Put optional parallel prompts on the shared board — not a bash checklist for Chris.
 5. The shared board. Name the `ops/workflows/<batch>.md` file all workflows will read and write.
 
-**Owner rule, 2026-10-19: split, then do.** Start available agents and carry out the requested work immediately. Do not ask me to approve the split, repeat an approval already given, or open sessions myself. Keep copy-paste prompts on the shared board. Ask only when a missing owner decision genuinely blocks safe, in-scope work; the split itself is never an approval gate. A continuation or context summary does not reset approval.
+**Owner rule, 2026-10-19: split, then do.** Start available agents and carry out the requested work immediately. Do not ask me to approve the split, repeat an approval already given, or open sessions myself. Keep copy-paste prompts on the shared board. Ask only when a missing owner decision genuinely blocks safe, in-scope work; the split itself is never an approval gate. A continuation or context summary does not reset approval. Same law: `.cursor/rules/split-and-proceed.mdc` and `.claude/rules/split-and-proceed.md`.
 
 ### If it truly cannot be split
 
@@ -51,10 +53,12 @@ Rough mapping:
 * Haiku — mechanical and fully specified. Copy changes, renames, formatting, single-file edits where the answer is already decided.
 * Sonnet — normal build work. Building a component from a clear spec, writing tests, wiring a route.
 * Opus — anything where being wrong is expensive. Architecture, debugging something that already failed once, refactors across many files, anything touching a hard rule, or work the agent cannot verify with repo tools and live proof.
+* Animation templates and changes (`marketing/broll/src`, the catalog, broll tests) are always Opus. Sonnet only places finished animations (owner-set 2026-10-24).
+* Owner calls on tier (`model-by-job`): back-end build units run on Sonnet, then the front end on Opus (2026-10-06); video ad editing (`fundhub-ad-editor`) runs on Sonnet (2026-10-23).
 
 Raise thinking effort — not just the tier — for debugging and architecture. Lower it for mechanical work.
 
-**Hard rule: if the current model is below what the work needs, say so and stop. Do not proceed underpowered and hope.** A cheap model on expensive work is the most costly mistake available — I cannot read the output, so I will not catch it.
+**Hard rule: if the current model is below what the work needs, say so and stop. Do not proceed underpowered and hope.** (Per the 2026-10-12 owner rule, stop only the step that needs the higher tier. Do the safe parts a lower tier can do in the meantime: reads, the board, mechanical edits.) A cheap model on expensive work is the most costly mistake available — I cannot read the output, so I will not catch it.
 
 Overshooting is fine. If in doubt, ask for the higher tier.
 
@@ -66,7 +70,7 @@ This repo only. Do not read, reference, or modify systems outside it to "stay co
 
 Ask him only when you are blocked on a decision only he can make (yes/no, live vs sandbox, delete data, repoint the database). When you do have to ask, ask that one decision, then wait. Do not ask and proceed in the same turn.
 
-Outside the approved-launch release-check exception below, do not proceed when any of these are true:
+Outside the approved-task release-check exception below (`finish-the-requested-job`, 2026-10-20, widened from launches only), do not proceed when any of these are true:
 
 * You are about to add a step, field, route, or dependency that was not explicitly asked for
 * You are about to change a file he did not ask to change
@@ -153,7 +157,7 @@ Every take is a hard 30 fps until the iPhone app. The front camera is saved mirr
 
 ### GitHub ships main (owner-set 2026-10-09)
 
-A push to `main` on GitHub goes live by itself. `.github/workflows/ship.yml` runs the same `npm run ship` the Mac runs, so Claude cloud on the phone ships exactly like the Mac: merge or push to `main`, GitHub does the rest. Netlify's own auto build stays off. Same law: `.cursor/rules/github-ships-main.mdc` and `.claude/rules/github-ships-main.md`.
+A push to `main` on GitHub goes live by itself. `.github/workflows/ship.yml` runs the same `npm run ship` the Mac runs, so Claude cloud on the phone ships exactly like the Mac: merge or push to `main`, GitHub does the rest. Netlify's own auto build stays off. A cloud session needs only GitHub. Do not run the Mac ship and the workflow at once. Same law: `.cursor/rules/github-ships-main.mdc` and `.claude/rules/github-ships-main.md`.
 
 ### Never ask permission to run a tool (owner-set 2026-09-08)
 
@@ -199,7 +203,7 @@ Any text to Chris goes out only from 6:00 a.m. to 10:00 p.m. Mountain Standard T
 
 ### Chris never clicks ClickFunnels (owner-set 2026-09-21)
 
-Chris never logs into ClickFunnels admin. Agents push funnel HTML via API using `CLICKFUNNELS_API_KEY`. Same law: `.cursor/rules/chris-never-clickfunnels.mdc` and `.claude/rules/chris-never-clickfunnels.md`.
+Chris never logs into ClickFunnels admin. Agents push funnel HTML via API using `CLICKFUNNELS_API_KEY`. Read https://developers.myclickfunnels.com/ first; never invent endpoints (`.cursor/rules/clickfunnels-developers-docs.mdc`, `.claude/rules/clickfunnels-html-api-push.md`). Same law: `.cursor/rules/chris-never-clickfunnels.mdc` and `.claude/rules/chris-never-clickfunnels.md`.
 
 ### Proof cards come from the picture (owner-set 2026-09-21)
 
@@ -235,7 +239,7 @@ For each ad, agents merge every take and clip into one best-of master, kill the 
 
 ### Ad file names (owner-set 2026-09-24)
 
-Drive names are Offer, ad number, angle name, then take number. The angle is the script name. Same angle joins. A different angle is a different video. Book: `marketing/ads/NAMING.md`. Same law: `.cursor/rules/ad-naming.mdc` and `.claude/rules/ad-naming.md`.
+Drive names are Offer, ad number, angle name, then take number. The angle is the script name. Same angle joins. A different angle is a different video. The offer word can be SLO, Direct Book or Capital Blueprint; VSLs and Thank You videos use the same pattern. Never use the recording app's title. Book: `marketing/ads/NAMING.md`. Same law: `.cursor/rules/ad-naming.mdc` and `.claude/rules/ad-naming.md`.
 
 ### SLO filmed video — one folder (owner-set 2026-09-24)
 
@@ -289,12 +293,136 @@ By **Monday 2026-10-19** the whole company is 100% coded, wired and working, pro
 
 Every new live page, routed api handler, Inngest job, or outbound send path gets a heartbeat row in the same change. The morning pulse checks it. A job is red if it has not run in 3 times its schedule. The pulse only reports. It never auto-fixes. Chris fixes reds. Missing heartbeat on a new build is a failed change. Anything that touches money or a paying customer also gets a tripwire (owner-set 2026-10-09): a deep gap check that goes red when the customer's result is wrong, on the `src/pulse/coverage/modules.mjs` list, proven with `npm run pulse:prove`. Every hour a read-only pulse (`src/pulse/beats/`, `netlify/functions/pulse-hourly.mjs`) tests the money doors, texts, payments and keys and texts Chris on a break; a new money or customer surface gets a beat (`npm run pulse:prove -- --beats`), and every fixed break is written to `docs/lessons/pulse-lessons.md`. Nothing live is ever "not checked" (owner-set 2026-10-09): every live thing is green, red, or a verified "nothing to judge", the pulse audits itself (`src/pulse/self-audit.mjs`), and every event workflow leaves a run receipt. Picture: `docs/journeys/heartbeat-flow.md`. Same law: `.cursor/rules/heartbeat-on-every-build.mdc` and `.claude/rules/heartbeat-on-every-build.md`.
 
+### Second line of the ad (owner-set 2026-09-28)
+
+Sentence two of an ad does one job: the win, the proof, the stakes, one new detail, or the reassure. Book: `marketing/ads/SECOND-LINE.md`. Same law: `.cursor/rules/ad-second-line.mdc` and `.claude/rules/ad-second-line.md`.
+
+### GoHighLevel is blacklisted (owner-set 2026-09-19)
+
+Fundhub does not use GoHighLevel. Never add its keys, adapters or routes, and never send Chris to it. Same law: `.cursor/rules/ghl-blacklisted.mdc` and `.claude/rules/ghl-blacklisted.md`.
+
+### Sound level (owner-set 2026-10-23)
+
+Every finished video is -14 LUFS with true peak at or under -1.5 dB. Same law: `.cursor/rules/ad-sound-level.mdc` and `.claude/rules/ad-sound-level.md`.
+
+### Animation logo (owner-set 2026-10-23)
+
+See-through animations carry no logo. The logo animation plays only on a line where the script says "Fundhub". Same law: `.cursor/rules/animation-logo-only-on-fundhub.mdc` and `.claude/rules/animation-logo-only-on-fundhub.md`.
+
+### Ad animation style (owner-set 2026-10-23)
+
+Big (70 to 90 percent width), on the spoken word, one in the first 10 seconds, a CTA at the end, diagrams only. Same law: `.cursor/rules/animation-ad-style.mdc` and `.claude/rules/animation-ad-style.md`.
+
+### Ad editing on the Mac (owner-set 2026-10-23)
+
+We cut mess-ups and level the sound ourselves with the `fundhub-ad-editor` skill. Submagic does captions only. The skill runs on a Sonnet agent. Skill: `.cursor/skills/fundhub-ad-editor/` (linked at `.claude/skills/fundhub-ad-editor`).
+
+### Product is live (owner-set 2026-08-21)
+
+Everything is live. Never call a broken path on hold, sandbox or dry-run unless Chris names that exact switch in the current message. Same law: `.cursor/rules/product-is-live.mdc` and `.claude/rules/product-is-live.md`.
+
+### Features stay on (owner-set 2026-10-20)
+
+Turn every feature on and keep it on. Turn one off only when Chris asks for an emergency. Same law: `.cursor/rules/features-stay-on.mdc` and `.claude/rules/features-stay-on.md`.
+
+### Verify is scratch-only (owner-set 2026-08-24)
+
+`npm run verify:e2e` and the scratch harness never touch the live database (see section 12). Same law: `.cursor/rules/verify-scratch-only.mdc` and `.claude/rules/verify-scratch-only.md`.
+
+### Commas catalog hands off (owner-set 2026-08-27)
+
+No agent adds, renames, duplicates or edits a Commas product. Titles live in `src/config/offers.mjs`. Same law: `.cursor/rules/commas-catalog-hands-off.mdc` and `.claude/rules/commas-catalog-hands-off.md`.
+
+### Sims assume paid (owner-set 2026-08-25)
+
+A sim file assumes paid and skips the ClickFunnels apply. Mint it straight into the CRM. Never charge a real card. Same law: `.cursor/rules/sim-assume-paid.mdc` and `.claude/rules/sim-assume-paid.md`.
+
+### Repo hygiene and version control doors (owner-set 2026-08-24)
+
+Organizing the repo and "things keep getting lost" are their own doors. Load `fundhub-repo-hygiene` or `fundhub-version-control` first. No delete without a KEEP/KILL row. Same law: `.cursor/rules/repo-hygiene-vc-router.mdc` and `.claude/rules/repo-hygiene-vc-router.md`.
+
+### Smallest diff (owner-set 2026-08-16)
+
+Change only what Chris named. No drive-by edits. Same law: `.cursor/rules/owner-scope-minimal-diff.mdc` and `.claude/rules/owner-scope-minimal-diff.md`.
+
+### One hole, three steps (owner-set 2026-08-26)
+
+One named hole is one task with one owner. VERIFY, then FIX, then FINISH. Same law: `.cursor/rules/one-issue-per-thread.mdc`, `.cursor/rules/three-step-repair.mdc`, and the same names in `.claude/rules/`.
+
+### Named-fix gate (owner-set 2026-09-18)
+
+A hole is real only if you saw it on the live site. A fix is real only if a different tester cannot recreate it. Same law: `.cursor/rules/named-fix-regression-gate.mdc` and `.claude/rules/named-fix-regression-gate.md`.
+
+### Audit and fix are two doors (owner-set 2026-08-16)
+
+Never audit and fix in one pass. `fundhub-auditor` is read-only. Same law: `.cursor/rules/audit-vs-fix-router.mdc` and `.claude/rules/audit-vs-fix-router.md`.
+
+### Full End-To-End Audit (owner-set 2026-08-25)
+
+Two gate questions, then walk every live path in order. The agent proves the mail, the texts and the on-screen data. Same law: `.cursor/rules/full-end-to-end-audit.mdc` and `.claude/rules/full-end-to-end-audit.md`.
+
+### Audit hard stops (owner-set 2026-08-24)
+
+No live credit pull, card charge or bureau mail in an audit without an explicit GO. Same law: `.cursor/rules/agentic-audit-guardrails.mdc` and `.claude/rules/agentic-audit-guardrails.md`.
+
+### Test means click (owner-set 2026-08-25)
+
+Run live Playwright to 100, then the agent clicks the live site like a person. Chris does no QA unless he offers. Same law: `.cursor/rules/live-playwright-100-before-manual.mdc` and `.claude/rules/live-playwright-100-before-manual.md`.
+
+### Redundancy before polish (owner-set 2026-08-20)
+
+Kill redundant controls first and polish last. The Present and closer-context flow is protected. Same law: `.cursor/rules/redundancy-before-ui-polish.mdc` and `.claude/rules/redundancy-before-ui-polish.md`.
+
+### One step at a time (owner rule, date not recorded)
+
+When coaching clicks, give one next action and stop. Same law: `.cursor/rules/one-step-adhd.mdc` and `.claude/rules/one-step-adhd.md`.
+
+### Cursor-side agents (owner-set 2026-09-18, 2026-09-20)
+
+Agents in Cursor do not call Claude or Anthropic models, and they do not do display or animation work (that is Claude work; leave it on the board). The Grok overseer stays on the launch lattice. Rules (Cursor only): `.cursor/rules/no-claude-in-cursor.mdc`, `.cursor/rules/grok-lattice-overseer-perpetual.mdc`.
+
+### No Remote Control (owner-set 2026-10-09)
+
+Never offer Remote Control. Phone work goes through Claude cloud and GitHub. Same law: `.cursor/rules/no-remote-control.mdc` and `.claude/rules/no-remote-control.md`.
+
+### No SSN before checkout step 3 (owner-set 2026-09-29)
+
+Sales copy never names the Social Security number. Only checkout step 3 asks. Say "soft pull". Same law: `.cursor/rules/no-ssn-before-checkout-step-3.mdc` and `.claude/rules/no-ssn-before-checkout-step-3.md`.
+
+### Outcome-first copy (owner-set 2026-09-29)
+
+Lead every block with why the buyer cares, then the facts. The words "number", "funding gap" and "Funding Snapshot" are banned in sales copy. Same law: `.cursor/rules/outcome-first-copy.mdc` and `.claude/rules/outcome-first-copy.md`.
+
+### Funding sequence, not round two (owner-set 2026-10-06)
+
+Say "next funding sequence". Say "round" only for one batch inside a sequence. Same law: `.cursor/rules/funding-sequence-term.mdc` and `.claude/rules/funding-sequence-term.md`.
+
+### No API spend for now (owner-set 2026-10-06)
+
+No paid Anthropic API jobs. Dashboard AI jobs run through the local Claude Code bridge. Do not ask for credit. Same law: `.cursor/rules/no-api-spend-for-now.mdc` and `.claude/rules/no-api-spend-for-now.md`.
+
+### Owner calls already settled (owner-set 2026-10-09 to 2026-10-21)
+
+The nightly screen check is declined. Plaid payouts stay in test mode. Client FH-000507 gets no outreach. The signed agreement is the consent. Do not list these as open decisions. Same law: `.cursor/rules/owner-calls-settled.mdc` and `.claude/rules/owner-calls-settled.md`.
+
+### Model by job (owner-set 2026-10-06 and 2026-10-23)
+
+Back end on Sonnet, front end on Opus. Video ad editing on Sonnet. Animations: Opus builds, Sonnet places. Same law: `.cursor/rules/model-by-job.mdc` and `.claude/rules/model-by-job.md`.
+
+### Stop asking, follow the rules (owner-set 2026-10-23)
+
+When the rules settle a choice, make it and say what you did. Same law: `.cursor/rules/stop-asking-follow-the-rules.mdc` and `.claude/rules/stop-asking-follow-the-rules.md`.
+
+### Rules never drift (owner-set 2026-10-24)
+
+When Chris sets a new rule, the same change updates every rule, skill, board and CLAUDE.md line that says otherwise, adds the Claude and Cursor twin, and updates `docs/rules/RULES-INDEX.md`. Same law: `.cursor/rules/rules-no-drift.mdc` and `.claude/rules/rules-no-drift.md`.
+
 ## 3. Before writing any code
 
 1. Read the relevant code. Symbol lookup before file reads (Grep patterns, not full file reads).
 2. Read the intended journey for any flow you are touching.
 3. Produce a plan in plain English. Name: files to be touched, journeys affected, how the change will be verified.
-4. Wait for approval. Do not write code in the same turn as the plan.
+4. State the plan and proceed. Wait only for a missing owner decision, genuinely new scope, or a real tool-enforced approval (`owner-go-no-repeat-approval`, 2026-10-19). Do not write code before the plan is stated, but do not stop for a go-ahead on approved work.
 
 Touching anything under `public/app/`? `docs/rules/UI-STANDARDS.md` is law. Read it first.
 
@@ -302,7 +430,8 @@ Touching anything under `public/app/`? `docs/rules/UI-STANDARDS.md` is law. Read
 
 For anything new, this order, no exceptions:
 
-1. **Workflow first.** Before any schema, ask Chris one question at a time until you are 95% confident you understand the workflow — how it works today, what data and entities it creates, what state a record moves through. Then propose the schema. Do not propose a schema before the questions.
+0. **Spec first (owner-set 2026-09-19).** Write the build spec in words Chris can read, have him perfect it, then go to the back end. If he already gave GO, record the spec on the board and continue; wait only for a decision only he can make. Law: `.cursor/rules/build-spec-then-backend-then-frontend.mdc` and `.claude/rules/build-spec-then-backend-then-frontend.md`.
+1. **Workflow first.** Unless a rule already settles it or he already gave GO (`stop-asking-follow-the-rules`, 2026-10-23), ask Chris one question at a time until you are 95% confident you understand the workflow — how it works today, what data and entities it creates, what state a record moves through. Then propose the schema. Do not propose a schema before the questions.
 2. **Schema → migration.** Constraints, enums, and guards live in the database, not in the UI.
 3. **Read endpoint → test that proves it.** Green tests must run against a real `DATABASE_URL`; a skipped `.pg.test.mjs` is not green.
 4. **Diagram it.** One page: the states a record moves through and the event that fires each transition. Save to `docs/journeys/<feature>-flow.md`. The front end is a window onto this diagram.
@@ -524,7 +653,7 @@ Config lives in Netlify env vars. Schema lives in `db/schema`, `db/migrations`, 
 
 ### Do these without asking
 
-* **Ship with `npm run ship` — once, at the end of any session that changed main (owner-set 2026-09-16).**
+* **Ship by pushing `main` to GitHub (owner-set 2026-10-09): `.github/workflows/ship.yml` runs `npm run ship`.** Run `npm run ship` on the Mac once, at the end, only when `main` changed without a GitHub push. Never run both at once. The rest of this bullet (owner-set 2026-09-16) describes what `npm run ship` does.
   Chris does nothing for Netlify or the database. `scripts/ship.mjs` checks, applies pending
   database changes through the Supabase key the MCP already uses (`SUPABASE_ACCESS_TOKEN`),
   deploys once, confirms `/api/health` reads pending 0, and logs the ship in
@@ -611,7 +740,7 @@ Do not ask to flip it. Do not propose flipping it. If it is missing from an envi
 These have already cost time. Read them before you trust a green result.
 
 * **`npm test`'s glob is `src/**` and `scripts/**` only.** A test placed under `api/` silently never runs. Endpoint tests live at `src/http/<name>.pg.test.mjs` and import the `api/` handler.
-* **The suite is not as green as it looks.** With `DATABASE_URL` unset, **442** `.pg.test.mjs` tests skip and the suite reports **3730 passing, 0 failing** — measured 2026-08-01 on this branch. That number is real but partial: it proves nothing about anything that needs a database.
+* **The suite is not as green as it looks.** Both counts below are dated history (2026-08-01 and 2026-08-27); the schema has moved since (346 migration files). Re-measure before quoting. With `DATABASE_URL` unset, **442** `.pg.test.mjs` tests skip and the suite reports **3730 passing, 0 failing** — measured 2026-08-01 on this branch. That number is real but partial: it proves nothing about anything that needs a database.
 
   Against a real Postgres there are pre-existing failures, and **the recorded count has never been stable**: 24 and 29 were recorded against one environment, 45 against a local Postgres 16.13 on `main` at `e67e2db` (2026-07-31). Do not trust any of these three as *the* number. Measure it yourself, and **record where you ran it** — the environment demonstrably moves the count.
 
@@ -619,7 +748,7 @@ These have already cost time. Read them before you trust a green result.
   **MEASURED 2026-08-27 — the new number is 0.** Local Postgres 16.14 (Homebrew, macOS), a scratch database created for the run, all 210 migrations applied to it empty, suite run as the database owner exactly as CI does: **6867 tests, 6866 pass, 1 fail, 0 skipped.** The single failure was `the app's database role holds no superuser-level privilege`, which is an artifact of connecting as the owner — that guard is written to run as `fundhub_app`. Re-run as `fundhub_app`: `npm run guard:db` 3/3 pass, `npm run guard:rls` 4/4 pass. So the real count is **zero failures and zero skips**, measured on branch `fix/full-width-shell-v2`. The superuser fix is CONFIRMED. The historic 24 / 29 / 45 / 39 / 30 are all dead — do not quote them. Re-measure rather than quoting this line if the schema has moved since.
 
   Either way: diff against the baseline commit before concluding you broke something.
-* **`npm run verify:e2e` is scratch-only, as `fundhub_app`.** The harness used to resolve the default company and set `messaging_settings.outbound_enabled=false`. Pointing it at production (2026-08-22) paused live sending; snapshot-and-restore is not a safeguard if the run dies. An admin/superuser login also makes the isolation journeys a false green — that login bypasses row-level security. `src/verification/scratch-guard.mjs` refuses both before any write. Never run it against the live database.
+* **`npm run verify:e2e` is scratch-only, as `fundhub_app`.** The harness used to resolve the default company and set `messaging_settings.outbound_enabled=false`. Pointing it at production (2026-08-22) paused live sending; snapshot-and-restore is not a safeguard if the run dies. An admin/superuser login also makes the isolation journeys a false green — that login bypasses row-level security. `src/verification/scratch-guard.mjs` refuses both before any write. Never run it against the live database. Law: `.cursor/rules/verify-scratch-only.mdc` and `.claude/rules/verify-scratch-only.md`.
 * **A handler file is not a route.** `netlify/functions/api.mjs` holds a hardcoded `ROUTES` map; a handler absent from it 404s locally and deployed. This has shipped twice. `src/http/routes.test.mjs` now fails if a handler is neither routed nor on an explicit allow-list — keep it passing.
 * **`requireAuth` ignores a `roles` key.** It forwards `opts` to `authenticate()`, which reads only `db` and `env`. Gate with `requireRole` after it. `src/http/auth-gate.test.mjs` fails on the broken shape.
 * **Editing an applied migration is a silent no-op.** `migrate.mjs` records each file in `schema_migrations` keyed `<dir>/<file>`. Supersede it with a new file instead.
@@ -629,4 +758,4 @@ These have already cost time. Read them before you trust a green result.
   Three call sites predate this rule and are exceptions, not precedent — do not cite them to justify a fourth: `src/adapters/lendflow.mjs` (submits an application), and `src/workflows/ds-02-diy-letters.mjs` plus `src/workflows/c-06-crs-results-router.mjs` (both POST to the same letter-delivery URL). Anything new that transmits belongs behind a provider module.
 
   `sendTemplated` still only writes `messages` rows with `status='queued'`. Handing those rows to a provider is the dispatcher's job (`src/messaging/dispatch.mjs`). The dispatcher is scheduled by `src/workflows/message-dispatch-sweeper.mjs`, which is registered in `src/workflows/index.mjs` on cron `*/5 * * * *`.
-* **`src/mail/` mails nothing, deliberately.** No scheduler, no send path, no activation flag. Prescreen data needs a firm offer of credit under FCRA; nothing drops until the FCRA report is in, Deluxe compliance reviews the piece, and a lawyer signs off on the broker/lender-of-record structure. The build is not gated — the drop is.
+* **`src/mail/` mails nothing, deliberately.** No scheduler, no send path, no activation flag. The build is not gated; the drop is not built.

@@ -1,10 +1,10 @@
 # Fundhub Agent Working Rules
 
-These shared rules apply to Codex, Claude, Cursor, and anyone working in this repository. Codex reads this file automatically; use it as the shared working contract. Read the feature's existing specs and relevant rules in `docs/` before changing it. Consult `CLAUDE.md` for detailed repo notes when relevant, while keeping its Claude-specific tool and model rules with Claude.
+These shared rules apply to Codex, Claude, Cursor, and anyone working in this repository. Codex reads this file automatically; use it as the shared working contract. Read the feature's existing specs and relevant rules in `docs/` before changing it. Consult `CLAUDE.md` for detailed repo notes when relevant, while keeping its Claude-specific tool and model rules with Claude. All rules, sorted by topic: `docs/rules/RULES-INDEX.md`.
 
 ## Start with the split
 
-Before reading code or planning a new task, state the parallel workflows, what can run together and what must wait, which workflow this session owns, and the shared `ops/workflows/` board path. Put self-contained copy-paste prompts on that board, start available agents, and proceed immediately. **Owner rule, 2026-10-19: split, then do; never stop for approval of the split.** If the task truly cannot be split, say why in one line and continue. Ask only when a missing owner decision genuinely blocks safe, in-scope work; a workflow split is not such a decision. A continuation or context summary does not reset approval.
+Before reading code or planning a new task, state the parallel workflows, what can run together and what must wait, which workflow this session owns, and the shared `ops/workflows/` board path. Put self-contained copy-paste prompts on that board, start available agents, and proceed immediately. **Owner rule, 2026-10-19: split, then do; never stop for approval of the split.** If the task truly cannot be split, say why in one line and continue. Exception: if Chris said Full End-To-End Audit (or full e2e), skip the split this turn and follow `.cursor/rules/full-end-to-end-audit.mdc` (two gate questions, then stop). Ask only when a missing owner decision genuinely blocks safe, in-scope work; a workflow split is not such a decision. A continuation or context summary does not reset approval.
 
 ## Keep the owner moving
 
@@ -58,7 +58,7 @@ Before any teleprompter camera or recording repair, follow [`docs/rules/TELEPROM
 
 The front camera must open to a usable, slightly soft preview. Switching front/back must not start, stop, or split the recording. The Record button controls starts and manual stops; reaching the script end adds an exact two-second tail before automatic stop.
 
-Ads use full-frame 1080p and target 60 fps or higher when the phone grants it. VSLs, thank-you videos, and testimonials use full-frame 4K and target 30–60 fps. Never infer the saved frame rate from the request; measure the original Drive video before claiming smooth filming.
+Ads use full-frame 1080p at a hard 30 fps. VSLs, thank-you videos, and testimonials use full-frame 4K at a hard 30 fps. 60 fps waits for the iPhone app (owner call 2026-10-13). Never infer the saved frame rate from the request; measure the original Drive video before claiming smooth filming.
 
 When a take is accepted, save it on the device first, then queue it for upload. Filming the next take must not pause or delete older queued takes. Reopening the app must recover saved queued takes. Never promise that an unfinished iPhone browser recording survives force-closing the app.
 
