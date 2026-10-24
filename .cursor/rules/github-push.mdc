@@ -15,13 +15,15 @@ Fundhub’s canonical git remote is **GitHub**. GitLab is retired — do not pus
 
 ## How to push
 
-From repo root:
+**The repo is public (owner-set 2026-10-24).** Push only `main` and branches headed to a PR:
 
 ```bash
-node scripts/github-push-whole-repo.mjs
+git push origin <branch>
 ```
 
-The script adds or updates remote **`origin`**, pushes **`main`** only when it can fast-forward, every local branch not yet merged into GitHub `main`, and all tags. Merged branch refs stay deleted. It removes remote **`gitlab`** if present. It never removes GitHub remotes.
+No backup branches. Each pushed branch starts the CI jobs. `node scripts/github-push-whole-repo.mjs` is not the default anymore. Scan before any push.
+
+The old whole-repo script (kept, not the default) adds or updates remote **`origin`**, pushes **`main`** only when it can fast-forward, every local branch not yet merged into GitHub `main`, and all tags. Merged branch refs stay deleted. It removes remote **`gitlab`** if present. It never removes GitHub remotes.
 
 ## Credentials (names only — values in gitignored `.env`)
 
@@ -45,4 +47,5 @@ Compare against **`origin/main`**, not GitLab.
 - Push or treat **`ZootimusMaximusBackup/*`** as the write target — Fundhub git writes go to **`ZootimusMaximusSupreme/fundhub-platform`** only
 - Run `node scripts/gitlab-push-whole-repo.mjs` — it exits with “use GitHub script”
 - Push to `gitlab.com`
+- Push a backup branch, or every local branch, to GitHub
 - Print or commit `GITHUB_TOKEN`

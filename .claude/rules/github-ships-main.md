@@ -8,7 +8,7 @@
 - It keeps every guard ship already has: lint, guard tests, pending database changes first, one production deploy, the /api/health check, the Inngest re-register, the ship log, the push back.
 - It skips when nothing that ships changed, and it never runs on its own `ship:` log commit.
 - Secrets live in the repo's Actions secrets: `NETLIFY_AUTH_TOKEN`, `NETLIFY_SITE_ID`, `SUPABASE_ACCESS_TOKEN`, `SHIP_GITHUB_TOKEN`. Never in git.
-- Netlify's own auto build stays OFF (`stop_builds`). One push is one deploy.
+- Netlify cannot auto build (owner-set 2026-10-24, looked up): the Netlify site has no linked repo. Only `.github/workflows/ship.yml` deploys. One push is one deploy.
 
 ## Cloud session rule
 
@@ -16,7 +16,7 @@ A cloud session needs only GitHub: push a branch, open the pull request, merge i
 
 ## Never
 
-- Turn Netlify's auto build back on while this workflow exists. That would deploy twice.
+- Link the Netlify site to the repo while this workflow exists. That would deploy twice.
 - Put a secret value in the workflow file, a board, or a log.
 - Remove or narrow the `ship:` skip. It stops a loop.
 

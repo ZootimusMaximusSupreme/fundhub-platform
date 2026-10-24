@@ -8,7 +8,7 @@
 - Run **`node scripts/env-audit-masks.mjs`** to count mask placeholders.
 - Run **`node scripts/env-refresh-local-from-netlify.mjs`** after putting full values into **`credentials/env.revealed`** (this works only for vars that were not set with `--secret`; Netlify API/CLI **cannot** unmask `--secret` vars — masks in `.env` are usually copy-paste from `netlify env:list`, not real keys).
 - Regenerate **`credentials/cloud-env-for-claude.txt`** with that script before Chris pastes cloud env vars.
-- Read **`credentials/README.md`** for file names.
+- Read **`credentials/README.md`** for file names (it exists on the Mac, looked up 2026-10-24; it is gitignored, so main cannot show it).
 
 ## Never
 

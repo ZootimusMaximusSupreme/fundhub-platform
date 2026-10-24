@@ -4,7 +4,7 @@ Owner order: "organize them, then fix it so we can get back on track."
 Branch: `claude/rules-drift-fix` (local, not pushed). Worktree: `.claude/worktrees/rules-drift`.
 Index of every rule: `docs/rules/RULES-INDEX.md`. Guard so it stays fixed: `rules-no-drift` (both homes).
 
-Status: done. Waiting on Chris: the "Chris decides" list below.
+Status: done. 16 of 17 decided 2026-10-24 (table below). Waiting on Chris: item 6 only.
 
 ## Counts
 
@@ -126,27 +126,36 @@ Outside the allowed paths (marketing books and a doc); the fix text is in the fi
 - A S8: `marketing/ads/notes-green-screen.md:6-9` names "optimize".
 - A: "FundHub" spelling in `docs/rules/MONITORING-CONSENT-FORM.md`, marketing README, NEXT, CONTROLS (existing strings stay unless asked).
 
+## Decided 2026-10-24
+
+Owner answers, written into the rules on branch `claude/rules-owner-answers` (local, not pushed).
+
+| # | Item | Answer | Files changed |
+|---|---|---|---|
+| 1 | Netlify auto build | Looked up: the Netlify site has no linked repo, so it cannot auto build. Only ship.yml deploys. | github-ships-main (both), CLAUDE.md GitHub ships main line |
+| 2 | Direct Book folder | Direct Book has its own Drive folder (`DIRECT_BOOK_ADS_FOLDER_ID`). The SLO one-folder law is SLO only. | slo-one-filmed-folder (both), CLAUDE.md SLO line, RULES-INDEX |
+| 3 | Fresh session line | Stopped too. Keep writing state to the board, never tell Chris to start a fresh session. | CLAUDE.md section 8 checkpoint |
+| 4 | GitHub is public | Push only `main` and PR branches. No backup branches. Whole-repo script is not the default (script file untouched). | github-push (both), agents-run-ops-not-chris (both), CLAUDE.md GitHub line, RULES-INDEX |
+| 5 | Delete test rows | Allowed without asking for proven test or sim rows and test logins (`is_demo`, `+sim`, TEST names). Real-looking people still ask. | CLAUDE.md section 11 and the Exceptions line in Agents run the work, AGENTS.md, features-stay-on, agents-run-ops-not-chris, finish-the-answer, product-is-live (both each) |
+| 7 | Commas titles | Letters, Insights, Retainer, Introductions: "not sure, probably not." Recorded as unconfirmed, nothing else changed. | commas-catalog-hands-off (both), CLAUDE.md Commas line |
+| 8 | Script reading level | Ad scripts are 5th grade. Talking to Chris stays 4th grade. | fundhub-ad-writer skill, fourth-grade-english (both), CLAUDE.md 4th grade line, RULES-INDEX |
+| 9 | Testimonial card size | Testimonial card videos on pages do not need 4K. | video-4k-unless-ad (both), fundhub-testimonial-thumbnails skill, CLAUDE.md 4K line, RULES-INDEX |
+| 10 | Who owns B-roll | B-roll is only our animations and screen recordings. Never Submagic B-roll (`magicBrolls` stays false). | ad-video-best-of-clips (both), fundhub-ad-editor skill, CLAUDE.md best-of-clips line, RULES-INDEX |
+| 11 | Sol and Luna | They are Claude agents. | docs/rules/TELEPROMPTER-VIDEO.md |
+| 12 | Branch delete | Looked up: `git push origin --delete` works from the Mac now. 403 advice kept for cloud. | CLAUDE.md section 8 |
+| 13 | Audit or fix | Do not ask. Default to the read-only audit, report, fix only what he names. | audit-vs-fix-router (both), CLAUDE.md audit line, RULES-INDEX |
+| 14 | Missing dates | 2026-08-25 on one-step-adhd and live-playwright-100-before-manual. | both rules (both homes), CLAUDE.md one-step line |
+| 15 | Builder standing GO | Allowed when the exact task is a named row on the board; otherwise owner-scope-minimal-diff applies. | fundhub-builder skill, owner-scope-minimal-diff (both), CLAUDE.md scope line |
+| 16 | Anchors | Anchors come from the script; each animation lands when that word is said on the recorded, edited video. Labels never copy his sentence. | animation-no-echo (both), fundhub-video-animation-overlay skill, CLAUDE.md animation line, RULES-INDEX |
+| 17 | credentials/README.md | Looked up: it exists on the Mac (gitignored). | env-full-copies-never-masked (both) |
+
 ## Chris decides
 
-One line each. Both quotes given. Nothing below was changed.
+Still open. Chris gave no answer on this one.
 
-1. **Netlify auto build.** `github-ships-main`: "Netlify's own auto build stays OFF (`stop_builds`)." vs `netlify.toml`: `ignore = "node scripts/netlify-ignore-machine-only.mjs"` (that only skips machine-only pushes, so it implies Netlify builds). Only the Netlify setting can tell; if it is ON, a push to main builds twice.
-2. **Direct Book folder.** `slo-one-filmed-folder`: "all filmed MP4s land here" (the one SLO Ads folder) vs AGENTS.md: "Never place Direct Book recordings in the SLO folder" (code uses `DIRECT_BOOK_ADS_FOLDER_ID`). Which folder holds Direct Book?
-3. **Fresh session line.** CLAUDE.md section 8: "note that a fresh session is recommended" vs memory 2026-10-21: "never post the /summarize reminder". Does the one-line recommendation also stop?
-4. **GitHub is public.** CLAUDE.md and `github-push`: push "every unmerged local branch" vs memory 2026-10-21: "no backup branches to GitHub... each pushed branch starts 28 jobs... Chris decides on private". Push only branches headed to a PR?
-5. **Delete test rows without asking.** CLAUDE.md section 11 "Ask me first: anything that deletes data" vs memory 2026-10-20 "Chris has already said yes to this class of delete" (guarded delete of test rows and test logins). Make it a written exception?
 6. **Command Center vs chat.** CLAUDE.md 3c (2026-09-06): "build marketing tooling as a skill plus a rules pack... never a job" vs memory 2026-10-05: "use the dashboard to run marketing, not Claude Code". Does 3c still hold for ad scripts?
-7. **Commas titles.** `commas-catalog-hands-off` keeps 10 titles incl. "Business Financial Assessment" vs `src/config/offers.mjs` (no such title; adds Letters, Insights, Retainer, Introductions). Do those four exist in Commas? (Twin copied as is.)
-8. **Script reading level.** RULES.md rule 12: "5th grade" for scripts vs `fourth-grade-english` (names chat, reports, boards, not scripts). Should ad scripts be 4th grade?
-9. **Testimonial card size.** `fundhub-testimonial-thumbnails`: "608 wide is correct" vs `video-4k-unless-ad`: "a non-ad video that comes back under 4K is a defect". Does the card video need 4K?
-10. **Who owns B-roll.** `fundhub-ad-editor`: `magicBrolls` is NOT sent vs `ad-video-best-of-clips`: "Submagic's job is captions and our B-roll". Which stage owns B-roll?
-11. **Sol and Luna.** `docs/rules/TELEPROMPTER-VIDEO.md:9`: "Use Sol for requested screen changes and Luna for recording/settings checks" vs `grok-no-displays`: "Only Claude may change what people see." Are Sol and Luna Claude agents?
-12. **Branch delete from hosted env.** CLAUDE.md section 8: `git push origin --delete` returns 403 (measured 2026-08-31) vs memory: diag branches were deleted later. Still true on the Mac or in cloud?
-13. **Audit or fix.** `audit-vs-fix-router`: "ask one question: audit or fix? Wait." vs `stop-asking-follow-the-rules`: "if the rules settle a choice, make it". Default to the read-only audit and report?
-14. **Missing dates.** `one-step-adhd` and `live-playwright-100-before-manual` ("Owner law", undated; the override line is 2026-08-25). What date goes on them?
-15. **Standing GO in the builder skill.** `fundhub-builder`: "Standing GO... Build it" for a row Fixer handed over vs `owner-scope-minimal-diff`: a route he did not request is stop-and-ask. Fine if the row is named?
-16. **Anchors.** `animation-plan.mjs` says "Copy the phrase exactly" for the anchor; `animation-no-echo` says never print his sentence. Add "anchors are exact, labels are not"?
-17. **`credentials/README.md`.** Named by `env-full-copies-never-masked`; the file is gitignored, so main cannot show it. Does it exist on the Mac?
+
+Still outside this change (not rules; text outside the allowed paths): `docs/journeys/ad-video-flow.md`, `marketing/ads/video-pipeline-plan.md` and the `marketing/ads/slo/trigger-maps/` files still describe Submagic placing B-roll. `docs/specs/marketing-machine-2026-10-04.md` already plans that fix.
 
 ## Not done (kept small on purpose)
 

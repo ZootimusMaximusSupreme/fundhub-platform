@@ -5,7 +5,9 @@ alwaysApply: true
 
 # SLO filmed video — one folder
 
-**Owner law (2026-09-24):** Chris films ads and VSLs. **One Drive folder** holds every filmed file. That is it.
+**Owner law (2026-09-24):** Chris films ads and VSLs. **One Drive folder** holds every filmed SLO file. That is it.
+
+**SLO only (owner-set 2026-10-24).** This law is for SLO. Direct Book filmed videos go in their own Drive folder (`DIRECT_BOOK_ADS_FOLDER_ID`), never in SLO Ads. Never place Direct Book recordings in the SLO folder.
 
 ## The folder
 

@@ -49,7 +49,7 @@ Always-on mirrors: `.cursor/rules/finish-the-requested-job.mdc` and `.claude/rul
 - Run the checks that cover the change. For code, include lint, TypeScript, and the relevant automated tests; check a changed UI with Playwright. State any check you could not run. Database tests that skip without `DATABASE_URL` are not proof.
 - `npm test` finds tests under `src/` and `scripts/`, not `api/`. `npm run verify:e2e` uses a scratch database with the `fundhub_app` role; never point it at production. A handler is live only when routed in `netlify/functions/api.mjs`.
 - GitHub `origin` is canonical; compare with `origin/main`. Commit finished work locally, then push it to GitHub. Keep unmerged work visible in a pull request. A push to `main` runs `.github/workflows/ship.yml` with `npm run ship`; verify that run and the live result before saying it shipped. If `main` changes without a GitHub push, run `npm run ship` once at the end.
-- Do not commit secrets or customer data. Never delete, unset, or overwrite an existing credential. Ask the owner before deleting data or repointing `DATABASE_URL`. Never turn off `INNGEST_EVENT_KEY`.
+- Do not commit secrets or customer data. Never delete, unset, or overwrite an existing credential. Ask the owner before deleting data (proven test rows and test logins excepted, owner-set 2026-10-24) or repointing `DATABASE_URL`. Never turn off `INNGEST_EVENT_KEY`.
 - For page edits, show the marked draft. Publish only with owner authorization; an existing ship/deploy/GO choice for that release is enough, without another go-live question. For ad video names, use `marketing/ads/NAMING.md`; for SLO filmed files, use the SLO Ads root. The company name is **Fundhub**.
 
 ## Teleprompter acceptance checklist

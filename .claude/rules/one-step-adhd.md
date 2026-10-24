@@ -1,5 +1,7 @@
 # One step only
 
+**Owner law (2026-08-25):** One step at a time when coaching Chris.
+
 When guiding Chris through UI setup, dashboards, Mailgun, Bland, Netlify, or any click-path:
 
 1. Give **exactly one** next action. One sentence. Optional: one short "why" after.

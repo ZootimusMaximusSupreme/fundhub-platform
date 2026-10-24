@@ -17,6 +17,8 @@ From `src/config/offers.mjs`:
 - Consulting Services Deposit
 - Business Financial Assessment
 
+**Unconfirmed (owner-set 2026-10-24):** `src/config/offers.mjs` also lists Letters, Insights, Retainer and Introductions. Asked whether they exist in Commas, Chris said "not sure, probably not." Recorded as unconfirmed. Nothing else changes.
+
 ## Never
 
 - `POST /public-api/products/create`

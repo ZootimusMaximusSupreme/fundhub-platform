@@ -24,7 +24,7 @@ Otherwise stop. Ask **one** question. Wait for his answer.
 
 Do not ask and edit in the same turn. Do not touch the file and mention it after.
 
-Adding a route, field, or dependency he did not explicitly request is a stop-and-ask unless it is required to repair a failed required check in an approved task and preserves the intended behavior.
+Adding a route, field, or dependency he did not explicitly request is a stop-and-ask. The one exception besides a failed required check: the exact task is a named row on the board (the fundhub-builder standing GO, owner-set 2026-10-24). Also stop-and-ask unless it is required to repair a failed required check in an approved task and preserves the intended behavior.
 
 ## Copy rounds (owner-set 2026-10-01)
 

@@ -22,7 +22,7 @@ The Fundhub product is **live**. Agents never treat outbound messaging, Inngest,
 ## Still obey (without reframing the product as offline)
 
 - No inventing secrets or guessing env values
-- No deleting data without ask
+- No deleting data without ask (proven test rows and test logins excepted, owner-set 2026-10-24)
 - No rotating keys unless that exact key is proven broken right now
 - Audits stay read-only: no charging, mailing, or credit-pulling without his go in that message
 

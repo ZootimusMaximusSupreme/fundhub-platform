@@ -11,13 +11,14 @@ alwaysApply: true
 
 - VSLs (sales page, booking page, any long form)
 - Welcome and portal videos
-- Testimonial and client-win videos
+- Client-win videos (not the testimonial card videos on pages, see below)
 - Walkthroughs, demos, course and training videos
 - Anything that lives on a page, in the portal, or in a deliverable
 
 ## 1080p is fine
 
-- Paid ad creative only (Meta compresses it anyway)
+- Paid ad creative (Meta compresses it anyway)
+- Testimonial card videos on pages do NOT need 4K (owner-set 2026-10-24). The 9:16 card crop of a 1080p source is fine. Do not report it as a defect.
 
 ## What this means for agents
 

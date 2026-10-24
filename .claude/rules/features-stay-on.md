@@ -16,6 +16,6 @@
 ## Still true
 
 - Never delete a key (CLAUDE.md "Never remove a key").
-- The two ask-first items in CLAUDE.md section 11 stay: delete data, and repoint `DATABASE_URL`.
+- The two ask-first items in CLAUDE.md section 11 stay: delete data (except proven test rows and test logins, owner-set 2026-10-24), and repoint `DATABASE_URL`.
 - `INNGEST_EVENT_KEY` stays on (`product-is-live`).
 - Plaid affiliate payouts stay in test mode. Chris named that switch (`owner-calls-settled`).

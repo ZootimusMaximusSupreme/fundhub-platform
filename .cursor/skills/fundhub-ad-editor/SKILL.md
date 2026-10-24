@@ -6,7 +6,7 @@ description: Edit one Fundhub talking-head video BEFORE Submagic. Cut real mess-
 # Fundhub ad editor
 
 Owner-set 2026-10-23. Chris: Submagic cuts badly. We do the cutting and the sound on the Mac, for free.
-Submagic only does captions, clean audio and eye contact.
+Submagic only does captions, clean audio and eye contact. B-roll is only our own animations and screen recordings, never Submagic B-roll (owner-set 2026-10-24).
 Run this skill on a Sonnet agent (owner-set 2026-10-23, `model-by-job`).
 
 Proven on Ad 16 (2026-10-23): 80.4 s raw → 69.5 s, 4 mess-ups cut and 16 pauses tightened,
@@ -67,7 +67,7 @@ After Submagic, measure again; if it moved more than 1 LU, set it back to -14.
 
 ## Submagic gets only this
 
-`cleanAudio: true`, a caption template, `dictionary`. `magicZooms`, `magicBrolls`, `removeBadTakes`,
+`cleanAudio: true`, a caption template, `dictionary`. `magicZooms`, `magicBrolls` (never on: B-roll is only ours), `removeBadTakes`,
 `autoRender` false. Never send `removeSilencePace`, `aiEditTemplate` or `presetId` — those cut and
 add things. Eye contact has no API switch; it is in the Submagic app only. An agent runs it; Chris never opens the app (`chris-never-submagic`).
 Code: `src/messaging/providers/submagic.mjs`.

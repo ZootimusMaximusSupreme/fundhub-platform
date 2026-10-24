@@ -37,7 +37,7 @@ has to explain what is going on.
 
 Answer all seven in one block.
 
-**Standing GO:** Fixer handed you an endpoint (or other new code) needed to close a named board row. Do not wait. Do not text Chris. Build it.
+**Standing GO:** Fixer handed you an endpoint (or other new code) needed to close a named board row. Do not wait. Do not text Chris. Build it. Allowed only when the exact task is a named row on the board (owner-set 2026-10-24); otherwise `owner-scope-minimal-diff` applies and a route or field he did not request is stop-and-ask.
 
 **Wait for "go"** only on genuinely new scope (a new screen or feature he has not already named), missing data, or a real judgment call. One word from Chris proceeds; anything else revises. Never skip that gate, never guess an answer. That is what reaches his phone. Use the relay only for a real owner decision, never for a GO already given (`owner-go-no-repeat-approval`, 2026-10-19).
 

@@ -68,7 +68,7 @@ This repo only. Do not read, reference, or modify systems outside it to "stay co
 
 **Look it up when you are not certain.** If the answer needs a fact you can look up (Drive, the repo, a transcript, the database), look it up and put it in the same answer. Do not stop and make Chris ask "how do you know" or "find out." Do not end on a question he has to ask next.
 
-Ask him only when you are blocked on a decision only he can make (yes/no, live vs sandbox, delete data, repoint the database). When you do have to ask, ask that one decision, then wait. Do not ask and proceed in the same turn.
+Ask him only when you are blocked on a decision only he can make (yes/no, live vs sandbox, delete data except proven test rows and test logins, repoint the database). When you do have to ask, ask that one decision, then wait. Do not ask and proceed in the same turn.
 
 Outside the approved-task release-check exception below (`finish-the-requested-job`, 2026-10-20, widened from launches only), do not proceed when any of these are true:
 
@@ -141,7 +141,7 @@ So: commit to the local repository in the same session the work is done, every t
 The full repo on GitHub: **ZootimusMaximusSupreme/fundhub-platform**.
 https://github.com/ZootimusMaximusSupreme/fundhub-platform
 
-Remote name **`origin`**. Push with `node scripts/github-push-whole-repo.mjs` — `main`, every unmerged local branch, and every tag, then drop remote **`gitlab`** if it still exists. Merged branch refs stay deleted. Never push to gitlab.com. An unpushed commit is a problem. Law: `.cursor/rules/github-push.mdc` and `.claude/rules/github-push.md`.
+Remote name **`origin`**. The repo is public (owner-set 2026-10-24): push only `main` and branches headed to a PR, with `git push origin <branch>`. No backup branches. `node scripts/github-push-whole-repo.mjs` is not the default anymore. Merged branch refs stay deleted. Never push to gitlab.com. An unpushed commit is a problem. Law: `.cursor/rules/github-push.mdc` and `.claude/rules/github-push.md`.
 
 * Compare against **`origin/main`**, not GitLab.
 * Still commit locally every session. Then push that commit to GitHub when auth allows.
@@ -157,7 +157,7 @@ Every take is a hard 30 fps until the iPhone app. The front camera is saved mirr
 
 ### GitHub ships main (owner-set 2026-10-09)
 
-A push to `main` on GitHub goes live by itself. `.github/workflows/ship.yml` runs the same `npm run ship` the Mac runs, so Claude cloud on the phone ships exactly like the Mac: merge or push to `main`, GitHub does the rest. Netlify's own auto build stays off. A cloud session needs only GitHub. Do not run the Mac ship and the workflow at once. Same law: `.cursor/rules/github-ships-main.mdc` and `.claude/rules/github-ships-main.md`.
+A push to `main` on GitHub goes live by itself. `.github/workflows/ship.yml` runs the same `npm run ship` the Mac runs, so Claude cloud on the phone ships exactly like the Mac: merge or push to `main`, GitHub does the rest. The Netlify site has no linked repo, so it cannot auto build; only the workflow deploys (owner-set 2026-10-24). A cloud session needs only GitHub. Do not run the Mac ship and the workflow at once. Same law: `.cursor/rules/github-ships-main.mdc` and `.claude/rules/github-ships-main.md`.
 
 ### Never ask permission to run a tool (owner-set 2026-09-08)
 
@@ -179,7 +179,7 @@ repointing `DATABASE_URL`.
 
 Chris decides; agents operate. Run bash, lint, tests, `npm run ship`, env reads from gitignored `.env`, migrations through ship or the §11 commands, and UI proof (live Playwright when required, then a human-like click path on the live site). Do not tell Chris to run commands, paste secrets, deploy, check inboxes, or do routine QA clicks.
 
-**Exceptions only:** Mac permission dialogs he alone can approve (mic, Accessibility); explicit product gates he must answer (yes/no, live vs sandbox on Full E2E); the two §11 ask-first items (delete data, repoint `DATABASE_URL`).
+**Exceptions only:** Mac permission dialogs he alone can approve (mic, Accessibility); explicit product gates he must answer (yes/no, live vs sandbox on Full E2E); the two §11 ask-first items (delete data except proven test rows and test logins, repoint `DATABASE_URL`).
 
 ### Direct URL only (owner-set 2026-09-21)
 
@@ -195,7 +195,7 @@ The company is **Fundhub**. Never write FundHub. Domain stays `fundhub.ai`. Same
 
 ### 4th grade English (owner-set 2026-10-05)
 
-Talk to Chris at a 4th grade reading level. Short words. Short sentences. One idea each. This is the current owner-set level throughout this file. Same law: `.cursor/rules/fourth-grade-english.mdc` and `.claude/rules/fourth-grade-english.md`.
+Talk to Chris at a 4th grade reading level. Short words. Short sentences. One idea each. This is the current owner-set level throughout this file. It is for talking to Chris; ad scripts are written at a 5th grade level (owner-set 2026-10-24). Same law: `.cursor/rules/fourth-grade-english.mdc` and `.claude/rules/fourth-grade-english.md`.
 
 ### Texting hours (owner-set 2026-10-09)
 
@@ -215,7 +215,7 @@ Approval cards, client wins, and testimonials are built from the source screensh
 Every sample client is one realistic person: one credit file, run through UnderwriteIQ, and every number, negative item, letter, and roadmap step in the set follows from that file. No stitching two files together; if no single file tells the story, say so and stop. Same law: `.cursor/rules/sample-clients-consistent.mdc` and `.claude/rules/sample-clients-consistent.md`.
 ### 4K unless it is an ad (owner-set 2026-09-22)
 
-Every video that is not a paid ad — VSLs, welcome and portal videos, testimonials, walkthroughs — is shot and exported in 4K. Ads may stay 1080p. Name any tool that caps at 1080p before filming, never after. Same law: `.cursor/rules/video-4k-unless-ad.mdc` and `.claude/rules/video-4k-unless-ad.md`.
+Every video that is not a paid ad — VSLs, welcome and portal videos, client wins, walkthroughs — is shot and exported in 4K. Ads may stay 1080p. Testimonial card videos on pages do not need 4K (owner-set 2026-10-24). Name any tool that caps at 1080p before filming, never after. Same law: `.cursor/rules/video-4k-unless-ad.mdc` and `.claude/rules/video-4k-unless-ad.md`.
 
 ### Grok and Composer do not touch websites (owner-set 2026-09-21)
 
@@ -231,11 +231,11 @@ Only Opus builds a new animation or changes one (`marketing/broll/src/`, the cat
 
 ### Animations never repeat his words (owner-set 2026-10-24)
 
-The captions already show what Chris says. Animation words never copy his sentence: the picture carries the point, and any label is about 5 words, said a new way, with no drift in meaning (no new fact, number or claim). No 4-word run he says within 3 seconds. Same law: `.cursor/rules/animation-no-echo.mdc` and `.claude/rules/animation-no-echo.md`.
+The captions already show what Chris says. Anchors (trigger words) come from the script and each animation lands when that word is said on the recorded, edited video; labels never copy his sentence. Animation words never copy his sentence: the picture carries the point, and any label is about 5 words, said a new way, with no drift in meaning (no new fact, number or claim). No 4-word run he says within 3 seconds. Same law: `.cursor/rules/animation-no-echo.mdc` and `.claude/rules/animation-no-echo.md`.
 
 ### Ad video — best of all clips (owner-set 2026-09-24)
 
-For each ad, agents merge every take and clip into one best-of master, kill the editor defects in that law (dead air, repeats, false starts, filler, audio, captions, B-roll, and the rest), and never ship a lone take when others exist; one video per ad and one video per VSL (the portal welcome counts as its own long video), takes joined in script order; Chris never opens Submagic. Same law: `.cursor/rules/ad-video-best-of-clips.mdc` and `.claude/rules/ad-video-best-of-clips.md`.
+For each ad, agents merge every take and clip into one best-of master, kill the editor defects in that law (dead air, repeats, false starts, filler, audio, captions, B-roll, and the rest); B-roll is only our own animations and screen recordings, never Submagic B-roll (owner-set 2026-10-24), and never ship a lone take when others exist; one video per ad and one video per VSL (the portal welcome counts as its own long video), takes joined in script order; Chris never opens Submagic. Same law: `.cursor/rules/ad-video-best-of-clips.mdc` and `.claude/rules/ad-video-best-of-clips.md`.
 
 ### Ad file names (owner-set 2026-09-24)
 
@@ -243,7 +243,7 @@ Drive names are Offer, ad number, angle name, then take number. The angle is the
 
 ### SLO filmed video — one folder (owner-set 2026-09-24)
 
-All filmed SLO MP4s live in **SLO Ads** Drive root only (`13ZOjA56MNuM-PHSRK5fQK0bovRwR8raZ`). `DRIVE_RAW_FOLDER_ID` is that same id. No Raw subfolder for Chris. Same law: `.cursor/rules/slo-one-filmed-folder.mdc` and `.claude/rules/slo-one-filmed-folder.md`.
+All filmed SLO MP4s live in **SLO Ads** Drive root only (`13ZOjA56MNuM-PHSRK5fQK0bovRwR8raZ`). `DRIVE_RAW_FOLDER_ID` is that same id. No Raw subfolder for Chris. SLO only: Direct Book filmed videos go in their own Drive folder (`DIRECT_BOOK_ADS_FOLDER_ID`), never in SLO Ads (owner-set 2026-10-24). Same law: `.cursor/rules/slo-one-filmed-folder.mdc` and `.claude/rules/slo-one-filmed-folder.md`.
 
 ### API only, no logins (owner-set 2026-09-24)
 
@@ -331,7 +331,7 @@ Turn every feature on and keep it on. Turn one off only when Chris asks for an e
 
 ### Commas catalog hands off (owner-set 2026-08-27)
 
-No agent adds, renames, duplicates or edits a Commas product. Titles live in `src/config/offers.mjs`. Same law: `.cursor/rules/commas-catalog-hands-off.mdc` and `.claude/rules/commas-catalog-hands-off.md`.
+No agent adds, renames, duplicates or edits a Commas product. Titles live in `src/config/offers.mjs`. Whether Letters, Insights, Retainer and Introductions exist in Commas is unconfirmed: "not sure, probably not" (owner-set 2026-10-24). Same law: `.cursor/rules/commas-catalog-hands-off.mdc` and `.claude/rules/commas-catalog-hands-off.md`.
 
 ### Sims assume paid (owner-set 2026-08-25)
 
@@ -343,7 +343,7 @@ Organizing the repo and "things keep getting lost" are their own doors. Load `fu
 
 ### Smallest diff (owner-set 2026-08-16)
 
-Change only what Chris named. No drive-by edits. Same law: `.cursor/rules/owner-scope-minimal-diff.mdc` and `.claude/rules/owner-scope-minimal-diff.md`.
+Change only what Chris named. No drive-by edits. The one exception: the exact task is a named row on the board (fundhub-builder standing GO, owner-set 2026-10-24). Same law: `.cursor/rules/owner-scope-minimal-diff.mdc` and `.claude/rules/owner-scope-minimal-diff.md`.
 
 ### One hole, three steps (owner-set 2026-08-26)
 
@@ -355,7 +355,7 @@ A hole is real only if you saw it on the live site. A fix is real only if a diff
 
 ### Audit and fix are two doors (owner-set 2026-08-16)
 
-Never audit and fix in one pass. `fundhub-auditor` is read-only. Same law: `.cursor/rules/audit-vs-fix-router.mdc` and `.claude/rules/audit-vs-fix-router.md`.
+Never audit and fix in one pass. `fundhub-auditor` is read-only. Do not ask "audit or fix?": default to the read-only audit, report, then fix only what he names (owner-set 2026-10-24). Same law: `.cursor/rules/audit-vs-fix-router.mdc` and `.claude/rules/audit-vs-fix-router.md`.
 
 ### Full End-To-End Audit (owner-set 2026-08-25)
 
@@ -373,7 +373,7 @@ Run live Playwright to 100, then the agent clicks the live site like a person. C
 
 Kill redundant controls first and polish last. The Present and closer-context flow is protected. Same law: `.cursor/rules/redundancy-before-ui-polish.mdc` and `.claude/rules/redundancy-before-ui-polish.md`.
 
-### One step at a time (owner rule, date not recorded)
+### One step at a time (owner-set 2026-08-25)
 
 When coaching clicks, give one next action and stop. Same law: `.cursor/rules/one-step-adhd.mdc` and `.claude/rules/one-step-adhd.md`.
 
@@ -593,9 +593,9 @@ So, every time:
 
 Before you report a task complete, run `git branch -r --no-merged origin/main` and account for every line it prints. An unexplained branch in that list is an unfinished task, not a housekeeping detail.
 
-**Agents cannot do the deleting from the hosted environment (measured 2026-08-31).** `git push origin --delete <branch>` returns `HTTP 403` from the egress proxy — a policy denial, the same class as `api.netlify.com` in §11 — and the GitHub MCP server has `create_branch` and `list_branches` but no delete. Ordinary pushes are unaffected. Record safe-to-delete branches with a one-line verdict each in the task report. Do not retry the 403 and do not route around it.
+**Deleting branches (looked up 2026-10-24).** From the Mac, `git push origin --delete <branch>` works now; it no longer returns 403. Delete merged branches from the Mac. From the hosted (cloud) environment it returned `HTTP 403` from the egress proxy (measured 2026-08-31) — a policy denial, the same class as `api.netlify.com` in §11 — and the GitHub MCP server has no delete. There, record safe-to-delete branches with a one-line verdict each in the task report, do not retry the 403, and do not route around it.
 
-**Checkpoint when context fills.** If a session is long or has gone sideways, write current state to the workflow file and note that a fresh session is recommended. Do not push a degraded session forward. Quality drops well before you run out of room.
+**Checkpoint when context fills.** If a session is long or has gone sideways, write current state to the workflow file and keep going from there. Never tell Chris to start a fresh session (owner-set 2026-10-24; context reminders are off since 2026-10-21). Quality drops well before you run out of room, so keep the board current.
 
 **Conventions.** Simplest thing that works, no speculative abstraction. No new dependencies without asking. Match existing patterns in the file you are editing over your own preference. Never commit secrets — no keys, tokens, or PII in code, fixtures, or logs. Delete dead code you create.
 
@@ -636,7 +636,7 @@ If you catch yourself writing a sentence I would have to look up, rewrite it.
 * Lead with the answer, reasoning after.
 * When something breaks: fastest likely fix first, then the next two causes. No troubleshooting trees.
 * Flag risk in one line, not a paragraph. Skip obvious warnings.
-* Ask him only when you are blocked on a decision only he can make (yes/no, live vs sandbox, delete data, repoint the database). Do not end on a question he has to ask next. If the next fact is in Drive, the repo, a transcript, or the database, look it up and put it in the same answer.
+* Ask him only when you are blocked on a decision only he can make (yes/no, live vs sandbox, delete data except proven test rows and test logins, repoint the database). Do not end on a question he has to ask next. If the next fact is in Drive, the repo, a transcript, or the database, look it up and put it in the same answer.
 
 ## 11. Deployment and infrastructure
 
@@ -722,7 +722,7 @@ What this means for you:
 
 ### Ask me first — these two only
 
-1. Anything that **deletes data**.
+1. Anything that **deletes data**. Written exception (owner-set 2026-10-24): deleting test rows and test logins that are proven test or sim (`is_demo`, `+sim` emails, TEST names) is allowed without asking. Real-looking people still ask.
 2. Anything that **repoints `DATABASE_URL`** at a different database.
 
 ### `INNGEST_EVENT_KEY` stays ON permanently (owner-set 2026-08-20)

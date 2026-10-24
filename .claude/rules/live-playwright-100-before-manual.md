@@ -1,6 +1,6 @@
 # Live Playwright gate before manual review
 
-**Owner law:** Chris does **no** manual QA / visual review until an **AI-run Playwright suite against the deployed site** scores **100/100**. After that score, Chris does **exactly one** manual pass. **Owner override (2026-08-25):** do not ask him. Agent walks it. Only if he *offers* a pass, then he does one.
+**Owner law (2026-08-25):** Chris does **no** manual QA / visual review until an **AI-run Playwright suite against the deployed site** scores **100/100**. After that score, Chris does **exactly one** manual pass. **Owner override (2026-08-25):** do not ask him. Agent walks it. Only if he *offers* a pass, then he does one.
 
 ## Live targets
 

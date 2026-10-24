@@ -9,7 +9,7 @@ Legend: **both homes** = Cursor and Claude twins. **Cursor-only on purpose** = a
 
 ## 1. Talking to Chris
 
-- `fourth-grade-english` (both homes): Talk to Chris at a 4th grade reading level.
+- `fourth-grade-english` (both homes): Talk to Chris at a 4th grade reading level; ad scripts are 5th grade.
 - `ux-guidance-urls-first` (both homes): When Chris asks where to go, the reply is the direct URL.
 - `one-step-adhd` (both homes): One-step-at-a-time coaching for Chris (ADHD-friendly). No multi-step dumps.
 - `finish-the-answer` (both homes): Look up the next fact and finish the answer in the same reply.
@@ -30,7 +30,7 @@ Legend: **both homes** = Cursor and Claude twins. **Cursor-only on purpose** = a
 - `one-issue-per-thread` (both homes): One named hole per chat — the agent starts each chat from the board.
 - `three-step-repair` (both homes): Verify → Fix → Finish in one paste; one hole per chat.
 - `named-fix-regression-gate` (both homes): Named-fix hard gate — hole must be real on live; fix must be real on live; no invented holes or fake PASS.
-- `audit-vs-fix-router` (both homes): Route audit vs fix — never mix them in one pass.
+- `audit-vs-fix-router` (both homes): Route audit vs fix — never mix them in one pass; default to the read-only audit, never ask which.
 - `build-spec-then-backend-then-frontend` (both homes): New work is spec → review → backend → front end. Never HTML first.
 - `model-by-job` (both homes): Which model runs which job (owner calls on Sonnet and Opus).
 - `rules-for-claude-and-cursor` (both homes): A rule or skill Chris asks for is written for Claude and Cursor.
@@ -71,8 +71,8 @@ Legend: **both homes** = Cursor and Claude twins. **Cursor-only on purpose** = a
 - `show-secrets-when-chris-asks` (both homes): When Chris asks for a token, paste the full value from .env or credentials.
 - `env-full-copies-never-masked` (both homes): Local and cloud env must hold full secrets — never asterisk masks.
 - `agents-run-ops-not-chris` (both homes): Agents run git push, auth, env, and cloud prep — not Chris in Terminal.
-- `github-push` (both homes): GitHub is canonical; the push script (fast-forward only) and its env names.
-- `github-ships-main` (both homes): A push to `main` ships live through GitHub Actions.
+- `github-push` (both homes): GitHub is canonical and public; push only `main` and PR branches, no backup branches; env names.
+- `github-ships-main` (both homes): A push to `main` ships live through GitHub Actions; Netlify has no linked repo so it cannot auto build.
 - `repo-hygiene-vc-router` (both homes): Repo clean-up and "things keep getting lost" are their own doors; load the hygiene or version-control skill first.
 
 ## 6. Copy and ads
@@ -90,15 +90,15 @@ Legend: **both homes** = Cursor and Claude twins. **Cursor-only on purpose** = a
 
 ## 7. Video and animation
 
-- `video-4k-unless-ad` (both homes): Film and export 4K unless the video is a paid ad.
-- `ad-video-best-of-clips` (both homes): Finished ad video must be the best of every clip and take for that ad.
+- `video-4k-unless-ad` (both homes): Film and export 4K unless the video is a paid ad or a testimonial card video on a page.
+- `ad-video-best-of-clips` (both homes): Finished ad video must be the best of every clip and take for that ad; B-roll is only our animations and screen recordings, never Submagic's.
 - `ad-sound-level` (both homes): Every finished video is -14 LUFS with true peak at or under -1.5 dB.
-- `slo-one-filmed-folder` (both homes): All filmed SLO video lives in one Drive folder — SLO Ads root only.
+- `slo-one-filmed-folder` (both homes): All filmed SLO video lives in one Drive folder — SLO Ads root only. SLO only; Direct Book has its own folder.
 - `teleprompter-speed` (both homes): Teleprompter speed is held to 130-320 words a minute.
 - `teleprompter-camera` (both homes): Teleprompter camera and editing are locked (30 fps, front mirrored, never black, copy and paste only, clean screen, Rode on).
 - `animation-overlay-on-spoken-words` (both homes): See-through animations land on the words they show; face and captions stay clear.
 - `animation-ad-style` (both homes): Style Chris asked for on ad animations: big, on the word, diagrams only.
-- `animation-no-echo` (both homes): Animation words never repeat what Chris is saying; show the point in new, short words with no drift in meaning.
+- `animation-no-echo` (both homes): Anchors come from the script and land when the word is said on the edited video; animation words never repeat what Chris is saying; show the point in new, short words with no drift in meaning.
 - `animation-logo-only-on-fundhub` (both homes): See-through animations carry no logo; the logo plays only on the word Fundhub.
 - `animation-builders-opus-placers-sonnet` (both homes): Opus builds and changes animation templates; Sonnet only places finished animations on videos.
 

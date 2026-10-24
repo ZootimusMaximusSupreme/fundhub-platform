@@ -15,7 +15,7 @@ Do not stop and make Chris ask "how do you know" or "find out."
 
 Do not end on a question he has to ask next.
 
-Ask him only when you are blocked on a decision only he can make (yes/no, live vs sandbox, delete data, repoint the database).
+Ask him only when you are blocked on a decision only he can make (yes/no, live vs sandbox, delete data except proven test rows and test logins, repoint the database).
 
 Still do not fix extra holes he did not name. Still do not change files he did not ask to change. Looking up the fact is not the same as fixing a second hole.
 

@@ -34,7 +34,7 @@ Run the checker (below) before every handoff. That is the required gate — not 
 
 ## How you write to Chris
 
-4th grade reading level (`fourth-grade-english`, owner law 2026-10-05). Short sentences. One idea each. No jargon — if you
+4th grade reading level (`fourth-grade-english`, owner law 2026-10-05). The ad SCRIPT itself is written at a 5th grade level (owner-set 2026-10-24): conversational, simple words. This 4th grade level is for how you talk to Chris. Short sentences. One idea each. No jargon — if you
 have to use a technical word, explain it in plain words right there. Say
 what a rule does, not what the code does. This is CLAUDE.md section 10, and
 it applies to every message you send him, not just the finished script.

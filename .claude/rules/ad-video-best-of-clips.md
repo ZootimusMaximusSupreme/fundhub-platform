@@ -28,9 +28,9 @@ The finished ad must be the best of all clips and takes, and it must also kill t
 - Black frames and flash frames
 - B-roll that does not match the words being said
 
-Chris never opens Submagic. Agents run merge, trim, upload, captions, and B-roll in the pipeline.
+Chris never opens Submagic. Agents run merge, trim, upload, captions, and B-roll in the pipeline. B-roll is only our own animations and our own screen recordings (owner-set 2026-10-24). Never Submagic B-roll (`magicBrolls` stays false).
 
-Joining and editorial cuts happen **before** Submagic sees the film (Submagic takes one upload per project). Submagic's job is captions and our B-roll on top of the already-merged master.
+Joining and editorial cuts happen **before** Submagic sees the film (Submagic takes one upload per project). Submagic's job is captions only (and clean audio) on the already-merged master. Our animations and screen recordings go on last, after captions.
 
 ## Never
 

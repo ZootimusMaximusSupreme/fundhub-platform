@@ -7,6 +7,10 @@ alwaysApply: true
 
 **Owner law (2026-10-24):** Chris, on the Direct Book VSL: the captions already show his words. When the animation prints the same sentence, it reads like the words are being rewrapped while he talks, it is redundant, and it looks bad. "Make it a rule. Ensure no drift."
 
+## Anchors vs labels (owner-set 2026-10-24)
+
+Trigger words (anchors) come from the script, word for word. Each animation is placed at the time that word is said on the recorded, edited video, not at an estimate from the script. Labels never copy his sentence.
+
 ## Always
 
 - The picture carries the point: a stamp, a gauge, a number, a list of things, a before and after.

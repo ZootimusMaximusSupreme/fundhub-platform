@@ -97,8 +97,8 @@ true 9:16 a 1080-tall frame allows. Centre it on the face, sample frames across
 the whole runtime, and look at them before you encode.
 
 **Never upscale.** 608 wide is correct; stretching to 720 is not. Never call
-1080p 4K. And per `.claude/rules/video-4k-unless-ad.md`, a non-ad video that
-comes back under 4K is a defect to report, not to quietly fix.
+1080p 4K. Testimonial card videos on pages do NOT need 4K (owner-set 2026-10-24,
+`.claude/rules/video-4k-unless-ad.md`), so a 608x1080 card is not a defect.
 
 Cropping chops the burned-in captions mid-word. That is expected and it is why
 the wash exists.

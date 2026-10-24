@@ -39,7 +39,7 @@ Otherwise: run **Auditor** first. Stop with findings. Wait for Chris to name wha
 - If he said **Full End-To-End Audit**, that is this door — gate, then walk. Not “audit or fix?”
 - If he pasted a named hole → that chat does VERIFY then FIX then FINISH (`three-step-repair.md`).
 - If a fix already landed this session **and he did not name a hole** → Fixer prove path (suite → live Playwright 100 → human click).
-- Otherwise → ask one question: "audit or fix?" Wait.
+- Otherwise → do not ask "audit or fix?" (owner-set 2026-10-24, `stop-asking-follow-the-rules`). Default to the read-only audit, report, then fix only what he names.
 
 ## Named-hole repair (owner-set 2026-08-26)
 

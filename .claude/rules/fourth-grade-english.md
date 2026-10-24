@@ -2,6 +2,8 @@
 
 **Owner law (2026-10-05):** Talk to Chris at a 4th grade reading level. He asked for it by name. This is the level used in `CLAUDE.md` §10. Where they differ, this wins.
 
+**Ad scripts are 5th grade (owner-set 2026-10-24).** This law is for talking to Chris: chat, reports, boards. Ad scripts are written at a 5th grade level.
+
 ## Always
 
 - Short words. Say "use," not "utilize." Say "fix," not "remediate."
