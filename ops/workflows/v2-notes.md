@@ -28,10 +28,11 @@ One row per fix. Fill all five boxes.
 | 9 | 2026-10-24 | Commission ledger is empty. | Commission ledger page tiles + table | Red two times on the scorecard for one break. | V2 — not this weekend |
 | 10 | 2026-10-24 | One creative-factory script is missing a label. | Creative factory scripts (1 of 35) | Red on the scorecard. | V2 — not this weekend |
 | 11 | 2026-10-24 | Ad-to-teleprompter pipeline drift. | Grok's plan: `ops/workflows/drift-free-plan-2026-10-24.md` | Chris named it. Grok owns the plan. | V2 — not this weekend |
-| 12 | 2026-10-24 | Cut bank links down to Giovanni's banks only. | `lenders` table (1,106 rows, 1,057 Apply links); shown on `/app/lenders.html`, the lender match list, `/app/money-banks.html` | Chris wants only Giovanni's banks. His list is not in the repo or database yet. | V2 — not this weekend. Needs the list first. |
+| 12 | 2026-10-24 | Cut bank links down to Giovanni's banks only. | `lenders` table (1,106 rows, 1,057 Apply links); shown on `/app/lenders.html`, the lender match list, `/app/money-banks.html` | List received 2026-10-24. Prep is in `ops/workflows/giovanni-banks-2026-10-24.md`. 1,073 rows would be hidden. | V2 — not this weekend. Waiting on Chris to say go. |
 | 13 | 2026-10-24 | Old ClickFunnels `/order` page can still take a real $297 payment. Nothing links to it. | https://apply.fundhub.ai/order | Landing page cleanup. From `docs/tracking/page-inventory.md` row 9. | V2 — not this weekend |
 | 14 | 2026-10-24 | Old $297 pages are still up: `/roadmap/`, `/roadmap/pay.html`, `/roadmap/pull.html` on fundhub.ai. | https://fundhub.ai/roadmap/ | Landing page cleanup. Live traffic uses apply.fundhub.ai/roadmap. | V2 — not this weekend |
 | 15 | 2026-10-24 | The "Meeting with Chris" calendar carries none of our tracking. | https://apply.fundhub.ai/schedule/phonecall | Landing page cleanup. Packs and `/optimize` link here. | V2 — not this weekend |
 | 16 | 2026-10-24 | Cortana: named funnel events, ad-to-booking ID, and the server feed are still missing. | `ops/workflows/cortana-link-audit-2026-10-20.md` | Pages have the tag. Cortana can not yet match a booking to an ad. | V2 — not this weekend |
+| 17 | 2026-10-24 | Apply Giovanni bank list (hide others, fix links/logos) — prepared in giovanni-banks-2026-10-24.md, waiting on Chris go. | `lenders` table; `ops/workflows/giovanni-banks-2026-10-24.md` | The list is in. The cut and the link fixes are written down. Nothing was changed in the app. | V2 — not this weekend. Waiting on Chris go. |
 
-Add new rows under row 16 as Chris talks.
+Add new rows under row 17 as Chris talks.
