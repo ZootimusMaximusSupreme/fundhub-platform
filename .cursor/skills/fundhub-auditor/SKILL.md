@@ -32,14 +32,14 @@ That is the Fixer skill (`fundhub-fixer`).
 
 ## Three-step workflow
 
-Never skip. Never merge. Stop between 1 and 2 for Chris approval.
+Never skip. Never merge. Stop between 1 and 2 only if the board shows a missing owner decision. If Chris already asked for the audit, write the board and go to Step 2.
 
 ### Step 1 — Discovery (read-only)
 
 1. Read the relevant `docs/journeys/*-intended.md` files.
 2. Trace the same paths in code. Do not edit.
 3. Write a board at `ops/workflows/<batch>.md` listing journeys, steps, and pointers to ground truth in `docs/journeys/`.
-4. **Stop.** Wait for Chris to approve the board before Step 2.
+4. Stop only if the board shows a missing owner decision. Otherwise go to Step 2.
 
 ### Step 2 — Spec writing (only after approval)
 
@@ -51,7 +51,7 @@ Never skip. Never merge. Stop between 1 and 2 for Chris approval.
 
 ### Step 3 — Run
 
-Preferred: Chris or CI runs Playwright. You may read the report to list passes/failures.
+Preferred: the agent or CI runs Playwright and reads the report. Chris does not run it. You may read the report to list passes/failures.
 
 You may run Playwright **only** to gather evidence for the report. You must not edit the app, the test, a baseline, or a hook to turn red into green.
 

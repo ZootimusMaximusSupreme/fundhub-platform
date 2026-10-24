@@ -123,6 +123,8 @@ Starting one testimonial pauses the others.
 
 ### 7. Ship
 
+Show Chris the marked draft of the sales page (red marks, then green) first. Push live when he authorizes; an existing ship or GO for this release is enough (`page-edits-marked-draft`, 2026-10-19).
+
 Assets go to `public/funnel/` and reach `fundhub.ai/funnel/*` through Netlify, so
 **`npm run ship` has to land before the ClickFunnels push**, or a new video 404s
 on a live page. Then

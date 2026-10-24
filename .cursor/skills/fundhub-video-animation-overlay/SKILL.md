@@ -24,7 +24,7 @@ The video is finished and captioned. The animations go on last, as see-through c
 4. **Set the schedule.** One row per animation in `schedule.json`: start, frames, side, why. Rules below.
 5. **Render the clips.** From `marketing/broll`, one per row: `npx remotion render <Template> <clip>.mov --props=<props file> --codec=prores --prores-profile=4444 --image-format=png --pixel-format=yuva444p10le --scale=<video width / 3840>` (ProofWallWide also needs `--gl=angle`). Keep the props files in the folder.
 6. **Lay them on.** `tools/build-from-schedule.py <clips_dir> <out.mp4>`: one encode, audio copied (the sound is fixed next, in step 7).
-7. **Fix the sound (owner-set 2026-10-23).** Submagic downloads come back quiet (measured -27 to -30 LUFS on Ads 4, 11, 14, 16). Every finished video gets set to **-14 LUFS, true peak at or under -1.5 dB**, picture copied, no re-encode of the video. Two-pass `loudnorm` with `I=-14:TP=-2.2:LRA=11:linear=true` (TP -1.5 lands peaks at -1.2 to -1.4, too hot), `-c:v copy -c:a aac -b:a 320k -ar 48000`. Measure the result with `ebur128=peak=true` and write both numbers in the report. A video that is not at -14 is not done.
+7. **Fix the sound (owner-set 2026-10-23).** Submagic downloads come back quiet (measured -27 to -30 LUFS on Ads 4, 11, 14, 16). Every finished video gets set to **-14 LUFS, true peak at or under -1.5 dB**, picture copied, no re-encode of the video. Two-pass `loudnorm` with `I=-14:TP=-2.2:LRA=11:linear=true` (TP -1.5 lands peaks at -1.2 to -1.4, too hot), `-c:v copy -c:a aac -b:a 320k -ar 48000`. Measure the result with `ebur128=peak=true` and write both numbers in the report. A video that is not at -14 is not done. Rule: `ad-sound-level`.
 8. **Check it** (list below), send Chris the video and a contact sheet, and **save every round to the repo**.
 
 **What Chris wants on screen (owner-set 2026-10-23, Ads 11 and 14):**
@@ -64,7 +64,7 @@ The video is finished and captioned. The animations go on last, as see-through c
   - `BookCallWide`: a generic calendar by design (generic month, no name). Leave it.
   - Never invent a number, bank, name or claim. Company name is Fundhub. Certain words only.
 - **Readable over film.** Words that float outside a card sit on a white plate in see-through mode (`brand/ReadPlate.tsx`, used by `Eyebrow` and the LenderMatch closing line). If a new template floats words, wrap them in `ReadPlate`. Check readability on real frames, not on the proof sheet.
-- **Logo.** Only `FundhubLogo*`, only where the script says "Fundhub".
+- **Logo.** Only `FundhubLogo*`, only where the script says "Fundhub". Rule: `animation-logo-only-on-fundhub` (owner-set 2026-10-23).
 
 ## Portrait ads (1080x1920), learned on Direct Book Ad 4 and Ad 16 (2026-10-23)
 

@@ -39,7 +39,7 @@ Answer all seven in one block.
 
 **Standing GO:** Fixer handed you an endpoint (or other new code) needed to close a named board row. Do not wait. Do not text Chris. Build it.
 
-**Wait for "go"** only on genuinely new scope (a new screen or feature he has not already named), missing data, or a real judgment call. One word from Chris proceeds; anything else revises. Never skip that gate, never guess an answer. That is what reaches his phone.
+**Wait for "go"** only on genuinely new scope (a new screen or feature he has not already named), missing data, or a real judgment call. One word from Chris proceeds; anything else revises. Never skip that gate, never guess an answer. That is what reaches his phone. Use the relay only for a real owner decision, never for a GO already given (`owner-go-no-repeat-approval`, 2026-10-19).
 
 When the gate-relay process is running on this Mac, do not only wait in the IDE. Write `.fundhub-relay/gates/<id>.json` with `{ question, options, context, session }`. `question` is the full ask in plain English — what is ready and what he is deciding — never a stub like "Build?" and never status. He answers in one word. Example: "Plan ready — closer now-and-next read, one role, no new buttons. Reply GO or REVISE." Then `node scripts/gate-relay/index.mjs wait <id>`. Read the decision file and proceed. The relay never edits app code.
 
