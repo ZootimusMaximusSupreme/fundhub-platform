@@ -384,3 +384,37 @@ Do not change Elan, Navy, Intuit, Barclays, Wings, Langley, or TCM until he answ
 - Leave Chase, Bank of America, and PNC logos. They already look right.
 
 **New rows, only if he says yes:** Intuit Business Credit Card, one Barclays card, Wings, Langley Federal, Navy Federal business card, and one TCM partner. No row exists for those today.
+
+## Live test — 2026-10-24 evening
+
+Chris said go. This is what is live now.
+
+**Ship.** The bank change is on main. The ship that put it live is green: https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/40125454354. A later ship only wrote the ship log and skipped. https://fundhub.ai/api/health says pending 0. Migration `migrations/504_giovanni_banks_2026_10_24.sql` is in the database. The first ship rolled back. The fix in PR #133 is the one that landed. PR #132 and PR #133 are both merged.
+
+**The book.** Before: 1,106 rows, all on. After: 1,111 rows. 43 are on. 1,068 are off. None were deleted. The 5 new rows are Intuit, QuickBooks Capital, Barclays, Wings Credit Union, and Langley Federal.
+
+**Changed on the rows that stayed.** 13 apply links. 7 logos. 29 bureaus. 16 state lists.
+
+**Rules.** All 3 PNC rows say Experian and "Checking account open for 45 days." All 17 TCM partner rows say Experian and 2 years in business.
+
+**Personal cards turned off.** Chase Freedom, both Sapphires, and the Chase personal loan. Four Amex personal cards. Wells Fargo Reflect and the Wells personal loan. Bank of America cash card and the Bank of America personal loan. Navy Federal was changed from a personal loan into the business card. It stayed on.
+
+**Checks.** Lint: 4,299 files clean. Bank tests: 137 pass, 0 fail. Morning pulse: OK. Hourly beats: OK. The apply-link check only reads banks that are turned on. The other bank check (`gap-bank-links`) watches logins and store connections, not this list.
+
+**Click test.** I could not sign in. The staff password saved on this computer is a mask, and the host would not hand back the real one. There is no sample client, so I did not open a real client's portal. I opened each saved bank link in a browser, twice.
+
+**Link results.** 28 of 43 opened both times and have a marked picture. Pictures: `ops/workflows/giovanni-banks-2026-10-24-live-*.png`. Each has a red bar with the bank number and a red box.
+
+**Did not open cleanly in that browser.**
+
+- No link at all: BSNB, Eagle Bank, Franklin Bank, New Field National Bank. Franklin's old link was a dead page, so it was cleared.
+- Spirit Bank: the address does not exist.
+- Origin Bank: timed out both times.
+- Citizens: the browser got blocked (403). A normal check of the same page answered 200.
+- Truist and one Wells Fargo row: the browser trip was messy. A normal check answered 200 and landed on the Wells business card.
+- Shore United: the browser trip was messy. A normal check answered 200.
+- PNC and QuickBooks Capital: this computer's browser could not open them. A page read still showed the real PNC business-card page and the real QuickBooks Capital page.
+- Chase answered 200 both times. The saved picture is blank.
+- No logo file: Intuit, QuickBooks Capital, Langley Federal. The other 40 logo files answer on fundhub.ai.
+
+**Still not verified inside the app.** I did not click Apply on the staff screen or the portal. Sign-in failed, and there is no sample client.
