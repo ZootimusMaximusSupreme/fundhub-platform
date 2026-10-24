@@ -10,12 +10,7 @@
  *   1. "Real approvals. Real screenshots." — all 16 client approvals from the deck
  *      ("put 10 more approvals here"; the /roadmap page shows the same 16). The row
  *      slides to the right as the page scrolls down. It never holds the page.
- *   2. "From our clients" — three vertical video testimonial placeholders, the same
- *      dark 9:16 slot as /roadmap, sized to fill the row (owner, 2026-09-22: "the
- *      padding on the testimonials is too much — make the video testimonial cards
- *      larger"). Placeholders only: no names, quotes or faces.
- *      No client-text cards ("don't put what clients texted us").
- *   3. "One call. Three roads. Nobody gets turned away." + a second Get Started.
+ *   2. "One call. Three roads. Nobody gets turned away." + a second Get Started.
  *
  * It also lines the page up with /roadmap (only where this script runs):
  *   - the builder containers around the page lose their side padding, so the text
@@ -77,9 +72,6 @@
     { id: "d-500k-loc", amount: "$500,000", w: 1200, h: 900, alt: "Commercial Line of Credit approval showing $500,000",
       src: "https://statics.myclickfunnels.com/workspace/edLgGE/image/23715346/file/2ebcf1ec2959eafec36ed810cdcef6f5.jpg" }
   ];
-
-  /* Vertical video testimonial placeholders. Chris drops in real clips. */
-  var VIDEOS = ["[ VIDEO TESTIMONIAL 1 ]", "[ VIDEO TESTIMONIAL 2 ]", "[ VIDEO TESTIMONIAL 3 ]"];
 
   function esc(s) {
     return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -381,15 +373,6 @@
     "#fh-watch-proof .fh-card .fh-amount{font-size:24px;font-weight:600;line-height:1.05;margin-top:2px;color:#0C0C0D}",
     "#fh-watch-proof .fh-card>.fh-shot{padding:5px}",
     "#fh-watch-proof .fh-card>.fh-mark{--fh-mark-h:14px}",
-    /* Video testimonial placeholders: the /roadmap slot, word for word (.fh-b .vslot in
-       marketing/landing-pages/slo/slo-01-sales.html); a test fails if they drift. Only the
-       size cap is lifted below: /roadmap's 300px height cap left three 169px cards floating
-       in an 852px row, which is the padding the owner asked us to take out. The cards grow
-       to fill the row instead; the look, the 9:16 shape and the label are untouched. */
-    "#fh-watch-proof .fhx-vgrid{display:flex;align-items:flex-start;justify-content:center;gap:8px;margin:16px auto 0}",
-    "#fh-watch-proof .fhx-vslot{aspect-ratio:9/16;max-height:300px;border-radius:12px;background:#111113;border:1px solid #26262B;display:flex;align-items:center;justify-content:center;text-align:center;padding:14px}",
-    "#fh-watch-proof .fhx-vslot span{color:#8A8A93;font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;line-height:1.5}",
-    "#fh-watch-proof .fhx-vgrid>.fhx-vslot{flex:1 1 0;min-width:0;max-width:300px;max-height:none}",
     "#fh-watch-proof .fhx-roads p{max-width:52ch;margin:12px auto 0;font-size:16px;line-height:1.6;color:#52525B}",
     "#fh-watch-proof .fhx-roads .btn{margin-top:22px}",
     ".fhz{position:fixed;inset:0;z-index:2147483000;box-sizing:border-box;display:flex;align-items:center;justify-content:center;padding:64px 16px 24px;background:rgba(12,12,13,.88);cursor:zoom-out}",
@@ -403,17 +386,6 @@
     "#fh-watch-proof .fhx-rail{margin:16px 0 -20px;-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 24px,#000 calc(100% - 24px),transparent 100%);mask-image:linear-gradient(90deg,transparent 0,#000 24px,#000 calc(100% - 24px),transparent 100%)}",
     "#fh-watch-proof .fhx-track{gap:14px}",
     "#fh-watch-proof .fhx-track>.fh-card{flex-basis:216px;width:216px}",
-    "#fh-watch-proof .fhx-vgrid{margin-top:20px;gap:16px;padding:0 24px}",
-    "#fh-watch-proof .fhx-vgrid>.fhx-vslot span{font-size:12px}",
-    "}",
-    /* Phones: one video testimonial per row, the same law and the same 699px
-       break as the /roadmap .proofgrid. display:block, not
-       flex-direction:column, because the slots carry flex:1 1 0 and in a column
-       that basis would collapse their height. */
-    "@media(max-width:699px){",
-    "#fh-watch-proof .fhx-vgrid{display:block}",
-    "#fh-watch-proof .fhx-vgrid>.fhx-vslot{width:100%;max-width:380px;margin:0 auto}",
-    "#fh-watch-proof .fhx-vgrid>.fhx-vslot+.fhx-vslot{margin-top:16px}",
     "}"
   ].join("\n");
 
@@ -579,12 +551,8 @@
   function build() {
     var sec = document.createElement("section");
     sec.id = SECTION_ID;
-    sec.setAttribute("aria-label", "Client video testimonials");
+    sec.setAttribute("aria-label", "Get started");
     sec.innerHTML =
-      '<div class="fhx-sec fhx-vids">' +
-        '<h2 class="fhx-h">From our clients</h2>' +
-        '<div class="fhx-vgrid">' + VIDEOS.map(function (v) { return '<div class="fhx-vslot"><span>' + esc(v) + "</span></div>"; }).join("") + "</div>" +
-      "</div>" +
       '<div class="fhx-sec fhx-roads">' +
         '<h2 class="fhx-h">One call. Three roads. Nobody gets turned away.</h2>' +
         "<p>Funding now, fix the file first, or learn to do it yourself. Soft pull only. No obligation.</p>" +

@@ -148,18 +148,20 @@ describe("no client texts in the watch funnel (owner, 2026-09-22)", () => {
   });
 });
 
-describe("/watch is one organized column: video testimonials, three roads", () => {
+describe("/watch is one organized column: three roads (client video testimonials removed, owner 2026-10-23)", () => {
   const build = WATCH.slice(WATCH.indexOf("function build()"), WATCH.indexOf("function run()"));
 
-  test("the two blocks come in order under the first Get Started, with no approvals row", () => {
+  test("the roads block sits under the first Get Started, with no approvals row and no video testimonials", () => {
     // Approvals row removed from /watch (owner, 2026-10-01).
     const at = (s) => build.indexOf(s);
     assert.equal(at("Real approvals. Real screenshots."), -1, "no approvals row on /watch");
     assert.equal(at("fhx-rail"), -1);
-    const vids = at('<h2 class="fhx-h">From our clients</h2>');
+    assert.equal(at("From our clients"), -1, "no video testimonial section on /watch");
+    assert.equal(at("fhx-vgrid"), -1);
+    assert.equal(WATCH.includes("VIDEO TESTIMONIAL"), false, "no empty video placeholders");
     const roads = at('<h2 class="fhx-h">One call. Three roads. Nobody gets turned away.</h2>');
-    assert.ok(vids > -1 && roads > vids, "videos, then roads");
-    assert.equal((build.match(/<h2 class="fhx-h">/g) || []).length, 2);
+    assert.ok(roads > -1);
+    assert.equal((build.match(/<h2 class="fhx-h">/g) || []).length, 1);
     assert.ok(at('<a class="btn" href="/apply"') > roads, "the second Get Started closes the section");
     assert.ok(WATCH.includes(String.raw`var anchor = root.querySelector(".cta-note") || root.querySelector('a.btn[href="/apply"]');`));
   });
@@ -171,15 +173,6 @@ describe("/watch is one organized column: video testimonials, three roads", () =
       assert.ok(h2.includes(decl), `/roadmap .h2 has ${decl}`);
       assert.ok(mine.includes(decl), `/watch heading has ${decl}`);
     }
-  });
-
-  test("three vertical video placeholders, the /roadmap slot word for word, nothing invented", () => {
-    assert.deepEqual(arrayLiteral(WATCH, "VIDEOS"), ["[ VIDEO TESTIMONIAL 1 ]", "[ VIDEO TESTIMONIAL 2 ]", "[ VIDEO TESTIMONIAL 3 ]"]);
-    assert.ok(build.includes(String.raw`'<div class="fhx-vgrid">' + VIDEOS.map(function (v) { return '<div class="fhx-vslot"><span>' + esc(v) + "</span></div>"; }).join("") + "</div>"`));
-    assert.equal(cssBody(WATCH, "#fh-watch-proof .fhx-vslot"), cssBody(ROADMAP, ".fh-b .vslot"));
-    assert.equal(cssBody(WATCH, "#fh-watch-proof .fhx-vslot span"), cssBody(ROADMAP, ".fh-b .vslot span"));
-    assert.ok(cssBody(ROADMAP, ".fh-b .vslot").includes("background:#111113"));
-    assert.ok(cssBody(ROADMAP, ".fh-b .vslot").includes("aspect-ratio:9/16"));
   });
 });
 
@@ -212,17 +205,6 @@ describe("the card sizes the owner set on 2026-09-22", () => {
     // Bigger card, same source crop: nothing is cut off and nothing is blown up past its pixels.
     assert.ok(TEMPLATE_CSS.includes("object-fit: contain"), "the template never crops a screenshot");
     for (const w of arrayLiteral(WATCH, "WINS")) assert.equal(w.w > 1000 && w.h > 700, true, `${w.id} is a full-size crop`);
-  });
-
-  test("the video testimonials fill the row instead of floating in the middle of it", () => {
-    const slot = cssBody(WATCH, "#fh-watch-proof .fhx-vgrid>.fhx-vslot");
-    assert.ok(slot.includes("flex:1 1 0"), "the slots share the row");
-    assert.ok(slot.includes("max-width:300px"), "the 169px cap is gone");
-    assert.ok(slot.includes("max-height:none"), "/roadmap's 300px height cap is what held them small");
-    assert.ok(cssBody(WATCH, "#fh-watch-proof .fhx-vgrid").includes("gap:8px"), "phone gap 12 -> 8");
-    assert.ok(WATCH.includes('"#fh-watch-proof .fhx-vgrid{margin-top:20px;gap:16px;padding:0 24px}"'), "desktop: the row is the approvals band, 24px in");
-    // The shape and the dark look are untouched: the test above holds the slot to /roadmap.
-    assert.ok(cssBody(WATCH, "#fh-watch-proof .fhx-vslot").includes("aspect-ratio:9/16"));
   });
 });
 
