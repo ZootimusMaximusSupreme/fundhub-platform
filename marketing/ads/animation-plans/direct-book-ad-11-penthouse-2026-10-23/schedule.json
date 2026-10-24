@@ -1,0 +1,507 @@
+{
+ "video": "Direct Book Ad 11 — The penthouse (1)",
+ "width": 1080,
+ "height": 1920,
+ "fps": 30,
+ "video_seconds": 53.84,
+ "clips": [
+  {
+   "id": 1,
+   "template": "ToolMatch",
+   "clip": "01-ToolMatch.mov",
+   "mode": "front",
+   "spot": "center, over the building B-roll",
+   "shows": "Who won't tell you: Your parents / Your friends / Your business partner, each joined to what they do",
+   "start_s": 3.51,
+   "start_frame": 105,
+   "render_frames": 120,
+   "total_frames": 159,
+   "hold_frames": 39,
+   "end_s": 8.8,
+   "cta": false,
+   "entrances": [
+    {
+     "text": "row: Your parents - Won't tell you",
+     "word": "your",
+     "word_t": 3.76,
+     "entrance_t": 3.76
+    },
+    {
+     "text": "row: Your friends - Won't tell you",
+     "word": "your",
+     "word_t": 4.92,
+     "entrance_t": 4.92
+    },
+    {
+     "text": "row: Your business partner - Maybe not even",
+     "word": "maybe",
+     "word_t": 6.22,
+     "entrance_t": 6.22
+    }
+   ],
+   "scale": 1.0,
+   "words_x": 75,
+   "words_y": 330,
+   "words_box_clip": [
+    83,
+    397,
+    1012,
+    1143
+   ],
+   "words_on_video_box": [
+    75,
+    330,
+    1004,
+    1076
+   ],
+   "width_pct_of_frame": 86,
+   "dx": -8,
+   "dy": -67,
+   "front_rect": [
+    65,
+    320,
+    1014,
+    1086
+   ],
+   "fade_out": true
+  },
+  {
+   "id": 2,
+   "template": "PriceTag",
+   "clip": "02-PriceTag.mov",
+   "mode": "behind",
+   "spot": "top, left",
+   "shows": "Price tag: Penthouse $1,500,000, then the chip \"He was struggling\"",
+   "start_s": 11.0,
+   "start_frame": 330,
+   "render_frames": 90,
+   "total_frames": 236,
+   "hold_frames": 146,
+   "end_s": 18.85,
+   "cta": false,
+   "entrances": [
+    {
+     "text": "tag settles: Penthouse $1,500,000",
+     "word": "million",
+     "word_t": 11.3,
+     "entrance_t": 11.2
+    },
+    {
+     "text": "chip: He was struggling",
+     "word": "he",
+     "word_t": 12.65,
+     "entrance_t": 12.6
+    }
+   ],
+   "scale": 0.8,
+   "words_x": 30,
+   "words_y": 20,
+   "words_box_clip": [
+    241,
+    551,
+    857,
+    1084
+   ],
+   "words_on_video_box": [
+    30,
+    20,
+    523,
+    446
+   ],
+   "width_pct_of_frame": 46,
+   "dx": -163,
+   "dy": -421,
+   "front_rect": [
+    20,
+    10,
+    533,
+    456
+   ],
+   "fade_out": true
+  },
+  {
+   "id": 3,
+   "template": "StampCard",
+   "clip": "03-StampCard.mov",
+   "mode": "behind",
+   "spot": "top, right",
+   "shows": "Credit card \"His credit\" stamped OPTIMIZED, then \"Put it to work alongside investors and credit partners\"",
+   "start_s": 19.65,
+   "start_frame": 590,
+   "render_frames": 120,
+   "total_frames": 146,
+   "hold_frames": 26,
+   "end_s": 24.5,
+   "cta": false,
+   "entrances": [
+    {
+     "text": "card lands: He moved out of state / His credit",
+     "word": "cut",
+     "word_t": 19.6,
+     "entrance_t": 19.95
+    },
+    {
+     "text": "stamp slams: OPTIMIZED",
+     "word": "optimize",
+     "word_t": 20.8,
+     "entrance_t": 20.95
+    },
+    {
+     "text": "line: Put it to work alongside investors and credit partners",
+     "word": "put",
+     "word_t": 22.1,
+     "entrance_t": 21.75
+    }
+   ],
+   "scale": 0.6,
+   "words_x": 540,
+   "words_y": 30,
+   "words_box_clip": [
+    101,
+    457,
+    974,
+    1160
+   ],
+   "words_on_video_box": [
+    540,
+    30,
+    1064,
+    452
+   ],
+   "width_pct_of_frame": 49,
+   "dx": 479,
+   "dy": -244,
+   "front_rect": [
+    530,
+    20,
+    1074,
+    462
+   ],
+   "fade_out": true
+  },
+  {
+   "id": 4,
+   "template": "PriceTag",
+   "clip": "04-PriceTag.mov",
+   "mode": "behind",
+   "spot": "top, right",
+   "shows": "Price tag: His income, over $400,000 a month",
+   "start_s": 25.25,
+   "start_frame": 758,
+   "render_frames": 90,
+   "total_frames": 88,
+   "hold_frames": 0,
+   "end_s": 28.2,
+   "cta": false,
+   "entrances": [
+    {
+     "text": "tag settles: His income, over $400,000 a month",
+     "word": "his",
+     "word_t": 25.45,
+     "entrance_t": 25.45
+    }
+   ],
+   "scale": 0.8,
+   "words_x": 570,
+   "words_y": 20,
+   "words_box_clip": [
+    241,
+    571,
+    861,
+    1074
+   ],
+   "words_on_video_box": [
+    570,
+    20,
+    1066,
+    422
+   ],
+   "width_pct_of_frame": 46,
+   "dx": 377,
+   "dy": -437,
+   "front_rect": [
+    560,
+    10,
+    1076,
+    432
+   ],
+   "fade_out": true
+  },
+  {
+   "id": 5,
+   "template": "StampCard",
+   "clip": "05-StampCard.mov",
+   "mode": "behind",
+   "spot": "top, left",
+   "shows": "Credit card \"Your credit\" stamped LEVERAGED, with \"How to leverage your credit correctly\"",
+   "start_s": 28.5,
+   "start_frame": 855,
+   "render_frames": 120,
+   "total_frames": 84,
+   "hold_frames": 0,
+   "end_s": 31.3,
+   "cta": false,
+   "entrances": [
+    {
+     "text": "card lands: The one thing he figured out / Your credit",
+     "word": "the",
+     "word_t": 28.3,
+     "entrance_t": 28.8
+    },
+    {
+     "text": "stamp slams: LEVERAGED",
+     "word": "leverage",
+     "word_t": 29.8,
+     "entrance_t": 29.8
+    },
+    {
+     "text": "line: How to leverage your credit correctly",
+     "word": "correctly",
+     "word_t": 30.6,
+     "entrance_t": 30.6
+    }
+   ],
+   "scale": 0.55,
+   "words_x": 20,
+   "words_y": 20,
+   "words_box_clip": [
+    101,
+    456,
+    974,
+    1160
+   ],
+   "words_on_video_box": [
+    20,
+    20,
+    500,
+    407
+   ],
+   "width_pct_of_frame": 44,
+   "dx": -36,
+   "dy": -231,
+   "front_rect": [
+    10,
+    10,
+    510,
+    417
+   ],
+   "fade_out": true
+  },
+  {
+   "id": 6,
+   "template": "StampCard",
+   "clip": "06-StampCard.mov",
+   "mode": "behind",
+   "spot": "top, right",
+   "shows": "Card \"Other people's money\" under \"Run companies and scale businesses\", stamped MOST EFFICIENTLY",
+   "start_s": 34.05,
+   "start_frame": 1021,
+   "render_frames": 120,
+   "total_frames": 98,
+   "hold_frames": 0,
+   "end_s": 37.3,
+   "cta": false,
+   "entrances": [
+    {
+     "text": "card lands: Run companies and scale businesses / Other people's money",
+     "word": "and",
+     "word_t": 34.5,
+     "entrance_t": 34.35
+    },
+    {
+     "text": "stamp slams: MOST EFFICIENTLY",
+     "word": "most",
+     "word_t": 35.35,
+     "entrance_t": 35.35
+    }
+   ],
+   "scale": 0.7,
+   "words_x": 440,
+   "words_y": 30,
+   "words_box_clip": [
+    97,
+    556,
+    978,
+    1069
+   ],
+   "words_on_video_box": [
+    440,
+    30,
+    1057,
+    389
+   ],
+   "width_pct_of_frame": 57,
+   "dx": 372,
+   "dy": -359,
+   "front_rect": [
+    430,
+    20,
+    1067,
+    399
+   ],
+   "fade_out": true
+  },
+  {
+   "id": 7,
+   "template": "StampCard",
+   "clip": "07-StampCard.mov",
+   "mode": "behind",
+   "spot": "top, right",
+   "shows": "Card \"Credit\" under \"Give me a lever long enough\", stamped THAT LEVER",
+   "start_s": 38.95,
+   "start_frame": 1168,
+   "render_frames": 120,
+   "total_frames": 70,
+   "hold_frames": 0,
+   "end_s": 41.3,
+   "cta": false,
+   "entrances": [
+    {
+     "text": "card lands: Give me a lever long enough / Credit",
+     "word": "give",
+     "word_t": 37.4,
+     "entrance_t": 39.25
+    },
+    {
+     "text": "stamp slams: THAT LEVER",
+     "word": "credit",
+     "word_t": 40.3,
+     "entrance_t": 40.25
+    }
+   ],
+   "scale": 0.8,
+   "words_x": 470,
+   "words_y": 12,
+   "words_box_clip": [
+    167,
+    556,
+    909,
+    1070
+   ],
+   "words_on_video_box": [
+    470,
+    12,
+    1064,
+    423
+   ],
+   "width_pct_of_frame": 55,
+   "dx": 336,
+   "dy": -433,
+   "front_rect": [
+    460,
+    2,
+    1074,
+    433
+   ],
+   "fade_out": true
+  },
+  {
+   "id": 8,
+   "template": "StampCard",
+   "clip": "08-StampCard.mov",
+   "mode": "behind",
+   "spot": "top, left",
+   "shows": "Card \"Only your own cash\" stamped SLOWEST (way to build wealth)",
+   "start_s": 41.9,
+   "start_frame": 1257,
+   "render_frames": 120,
+   "total_frames": 81,
+   "hold_frames": 0,
+   "end_s": 44.6,
+   "cta": false,
+   "entrances": [
+    {
+     "text": "card lands: Only your own cash",
+     "word": "only",
+     "word_t": 42.0,
+     "entrance_t": 42.2
+    },
+    {
+     "text": "stamp slams: SLOWEST way to build wealth",
+     "word": "slowest",
+     "word_t": 43.3,
+     "entrance_t": 43.2
+    }
+   ],
+   "scale": 0.9,
+   "words_x": 20,
+   "words_y": 11,
+   "words_box_clip": [
+    223,
+    606,
+    856,
+    1016
+   ],
+   "words_on_video_box": [
+    20,
+    11,
+    590,
+    380
+   ],
+   "width_pct_of_frame": 53,
+   "dx": -181,
+   "dy": -534,
+   "front_rect": [
+    10,
+    1,
+    600,
+    390
+   ],
+   "fade_out": true
+  },
+  {
+   "id": 9,
+   "template": "LinkButton",
+   "clip": "09-LinkButton.mov",
+   "mode": "front",
+   "spot": "chest band, in front of him (CTA, stays to the end)",
+   "shows": "Button \"Click the link below\", a cursor presses it, an arrow points down at the link",
+   "start_s": 44.6,
+   "start_frame": 1338,
+   "render_frames": 120,
+   "total_frames": 277,
+   "hold_frames": 157,
+   "end_s": 53.84,
+   "cta": true,
+   "entrances": [
+    {
+     "text": "button drops in: Click the link below",
+     "word": "click",
+     "word_t": 44.75,
+     "entrance_t": 44.8
+    },
+    {
+     "text": "cursor presses it",
+     "word": "link",
+     "word_t": 45.3,
+     "entrance_t": 46.0
+    }
+   ],
+   "scale": 0.9,
+   "words_x": 144,
+   "words_y": 1195,
+   "words_box_clip": [
+    100,
+    601,
+    980,
+    889
+   ],
+   "words_on_video_box": [
+    144,
+    1195,
+    936,
+    1454
+   ],
+   "width_pct_of_frame": 73,
+   "dx": 54,
+   "dy": 654,
+   "front_rect": [
+    134,
+    1185,
+    946,
+    1464
+   ],
+   "fade_out": false
+  }
+ ]
+}

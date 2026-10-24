@@ -1,0 +1,500 @@
+{
+ "video": "Direct Book VSL 1 - Watch page",
+ "word_times": "whisper small.en (credentials/hormozi-kb-work), words-timeline.txt",
+ "anchors": [
+  {
+   "n": 1,
+   "template": "MoneyClimbWide",
+   "start_s": 1.0,
+   "his_words": [
+    {
+     "phrase": "$20,000",
+     "word_start_s": 2.55
+    },
+    {
+     "phrase": "$400,000",
+     "word_start_s": 3.89
+    },
+    {
+     "phrase": "even a million",
+     "word_start_s": 5.16
+    },
+    {
+     "phrase": "plus personal funding",
+     "word_start_s": 7.2
+    }
+   ]
+  },
+  {
+   "n": 2,
+   "template": "FileItemsWide",
+   "start_s": 10.7,
+   "his_words": [
+    {
+     "phrase": "your personal data",
+     "word_start_s": 12.06
+    },
+    {
+     "phrase": "your business codes",
+     "word_start_s": 13.02
+    }
+   ]
+  },
+  {
+   "n": 3,
+   "template": "ScoreBadgeWide",
+   "start_s": 13.45,
+   "his_words": [
+    {
+     "phrase": "800 scores",
+     "word_start_s": 14.62
+    },
+    {
+     "phrase": "from the maximum amount of funding",
+     "word_start_s": 15.37
+    }
+   ]
+  },
+  {
+   "n": 4,
+   "template": "FundhubLogoWide",
+   "start_s": 20.85,
+   "his_words": [
+    {
+     "phrase": "Fundhub (I run Fundhub)",
+     "word_start_s": 21.54
+    }
+   ]
+  },
+  {
+   "n": 5,
+   "template": "MoneyClimbWide",
+   "start_s": 22.9,
+   "his_words": [
+    {
+     "phrase": "a little over a million dollars for myself",
+     "word_start_s": 24.19
+    }
+   ]
+  },
+  {
+   "n": 6,
+   "template": "StampCardWide",
+   "start_s": 26.7,
+   "his_words": [
+    {
+     "phrase": "a bank denies you",
+     "word_start_s": 26.75
+    },
+    {
+     "phrase": "nobody checks your file against what that bank approves",
+     "word_start_s": 28.83
+    }
+   ]
+  },
+  {
+   "n": 7,
+   "template": "FileItemsWide",
+   "start_s": 34.5,
+   "his_words": [
+    {
+     "phrase": "two approvals",
+     "word_start_s": 36.07
+    },
+    {
+     "phrase": "hard inquiries",
+     "word_start_s": 37.71
+    }
+   ]
+  },
+  {
+   "n": 8,
+   "template": "StampCardWide",
+   "start_s": 38.8,
+   "his_words": [
+    {
+     "phrase": "you skip applying",
+     "word_start_s": 39.26
+    },
+    {
+     "phrase": "you never find out what you qualify for",
+     "word_start_s": 41.36
+    }
+   ]
+  },
+  {
+   "n": 9,
+   "template": "StampCardWide",
+   "start_s": 44.6,
+   "his_words": [
+    {
+     "phrase": "Nobody checks your file",
+     "word_start_s": 45.6
+    },
+    {
+     "phrase": "against what each bank approves",
+     "word_start_s": 46.72
+    }
+   ]
+  },
+  {
+   "n": 10,
+   "template": "QualifyTodayWide",
+   "start_s": 49.95,
+   "his_words": [
+    {
+     "phrase": "UnderwriteIQ",
+     "word_start_s": 51.27
+    },
+    {
+     "phrase": "fix them first",
+     "word_start_s": 54.78
+    }
+   ]
+  },
+  {
+   "n": 11,
+   "template": "LenderMatchScrollWide",
+   "start_s": 56.2,
+   "his_words": [
+    {
+     "phrase": "thousands of lenders",
+     "word_start_s": 57.65
+    },
+    {
+     "phrase": "30 to 50",
+     "word_start_s": 59.1
+    }
+   ]
+  },
+  {
+   "n": 12,
+   "template": "SoftPullWide",
+   "start_s": 60.5,
+   "his_words": [
+    {
+     "phrase": "we apply in funding rounds",
+     "word_start_s": 60.52
+    },
+    {
+     "phrase": "in the order that protects your score",
+     "word_start_s": 61.82
+    }
+   ]
+  },
+  {
+   "n": 13,
+   "template": "FundingStackWide",
+   "start_s": 64.0,
+   "his_words": [
+    {
+     "phrase": "credit cards",
+     "word_start_s": 64.04
+    },
+    {
+     "phrase": "lines of credit",
+     "word_start_s": 66.64
+    },
+    {
+     "phrase": "SBA loans",
+     "word_start_s": 67.44
+    },
+    {
+     "phrase": "merchant cash advances",
+     "word_start_s": 67.9
+    },
+    {
+     "phrase": "personal funding",
+     "word_start_s": 69.27
+    },
+    {
+     "phrase": "stacked together at the lowest rates",
+     "word_start_s": 70.09
+    }
+   ]
+  },
+  {
+   "n": 14,
+   "template": "FileItemsWide",
+   "start_s": 73.4,
+   "his_words": [
+    {
+     "phrase": "every application leaves a hard inquiry",
+     "word_start_s": 73.52
+    },
+    {
+     "phrase": "the next lender approves less",
+     "word_start_s": 78.08
+    },
+    {
+     "phrase": "or just denies you",
+     "word_start_s": 79.73
+    }
+   ]
+  },
+  {
+   "n": 15,
+   "template": "InquiriesOffWide",
+   "start_s": 79.9,
+   "his_words": [
+    {
+     "phrase": "we remove the inquiries between every round",
+     "word_start_s": 80.98
+    },
+    {
+     "phrase": "your file goes into each round clean",
+     "word_start_s": 83.39
+    }
+   ]
+  },
+  {
+   "n": 16,
+   "template": "FundingRoundsWide",
+   "start_s": 84.6,
+   "his_words": [
+    {
+     "phrase": "a funding sequence runs three to six rounds",
+     "word_start_s": 85.68
+    },
+    {
+     "phrase": "builds real capital",
+     "word_start_s": 88.13
+    }
+   ]
+  },
+  {
+   "n": 17,
+   "template": "MoneyClimbWide",
+   "start_s": 93.0,
+   "his_words": [
+    {
+     "phrase": "aiming for 250K to 400,000",
+     "word_start_s": 93.77
+    }
+   ]
+  },
+  {
+   "n": 18,
+   "template": "FundhubLogoWide",
+   "start_s": 100.8,
+   "his_words": [
+    {
+     "phrase": "Fundhub (has a solution for that phase)",
+     "word_start_s": 101.34
+    }
+   ]
+  },
+  {
+   "n": 19,
+   "template": "DeadlineClocksWide",
+   "start_s": 105.7,
+   "his_words": [
+    {
+     "phrase": "within 24 hours",
+     "word_start_s": 106.96
+    },
+    {
+     "phrase": "within 72",
+     "word_start_s": 109.42
+    },
+    {
+     "phrase": "you don't pay",
+     "word_start_s": 112.35
+    }
+   ]
+  },
+  {
+   "n": 20,
+   "template": "FileItemsWide",
+   "start_s": 112.95,
+   "his_words": [
+    {
+     "phrase": "something on your report is holding you back",
+     "word_start_s": 113.28
+    },
+    {
+     "phrase": "we show you exactly what it is",
+     "word_start_s": 115.33
+    }
+   ]
+  },
+  {
+   "n": 21,
+   "template": "HiddenDataPointsWide",
+   "start_s": 121.5,
+   "his_words": [
+    {
+     "phrase": "13 optimization points",
+     "word_start_s": 124.45
+    },
+    {
+     "phrase": "in the order that actually gets you funded",
+     "word_start_s": 125.73
+    }
+   ]
+  },
+  {
+   "n": 22,
+   "template": "FileItemsWide",
+   "start_s": 127.9,
+   "his_words": [
+    {
+     "phrase": "which balances to bring down",
+     "word_start_s": 128.84
+    },
+    {
+     "phrase": "which negative items to get removed",
+     "word_start_s": 130.58
+    },
+    {
+     "phrase": "what to add to your file",
+     "word_start_s": 132.39
+    }
+   ]
+  },
+  {
+   "n": 23,
+   "template": "FundingStackWide",
+   "start_s": 135.2,
+   "his_words": [
+    {
+     "phrase": "which banks to build relationships with",
+     "word_start_s": 135.43
+    },
+    {
+     "phrase": "where to keep your deposits",
+     "word_start_s": 137.45
+    },
+    {
+     "phrase": "your business data",
+     "word_start_s": 139.48
+    },
+    {
+     "phrase": "so banks see a company they can trust",
+     "word_start_s": 140.49
+    }
+   ]
+  },
+  {
+   "n": 24,
+   "template": "FundabilityMeterWide",
+   "start_s": 143.0,
+   "his_words": [
+    {
+     "phrase": "Every step comes with a timeline",
+     "word_start_s": 142.63
+    },
+    {
+     "phrase": "you see your fundability climb",
+     "word_start_s": 145.32
+    },
+    {
+     "phrase": "towards the maximum",
+     "word_start_s": 146.81
+    }
+   ]
+  },
+  {
+   "n": 25,
+   "template": "StampCardWide",
+   "start_s": 152.5,
+   "his_words": [
+    {
+     "phrase": "We guarantee",
+     "word_start_s": 153.12
+    },
+    {
+     "phrase": "the last tool you'll ever need",
+     "word_start_s": 153.89
+    }
+   ]
+  },
+  {
+   "n": 26,
+   "template": "ProofWallWide",
+   "start_s": 159.5,
+   "his_words": [
+    {
+     "phrase": "hundreds of files",
+     "word_start_s": 159.91
+    },
+    {
+     "phrase": "thousands of data points",
+     "word_start_s": 161.19
+    }
+   ]
+  },
+  {
+   "n": 27,
+   "template": "BookCallWide",
+   "start_s": 165.9,
+   "his_words": [
+    {
+     "phrase": "Click the button below",
+     "word_start_s": 165.9
+    },
+    {
+     "phrase": "fill out the 10 second application",
+     "word_start_s": 167.0
+    },
+    {
+     "phrase": "pick a time for your call",
+     "word_start_s": 168.84
+    }
+   ]
+  },
+  {
+   "n": 28,
+   "template": "SoftPullWide",
+   "start_s": 170.15,
+   "his_words": [
+    {
+     "phrase": "a three bureau report",
+     "word_start_s": 172.12
+    },
+    {
+     "phrase": "You pay $32",
+     "word_start_s": 173.14
+    },
+    {
+     "phrase": "no impact on your score",
+     "word_start_s": 174.49
+    }
+   ]
+  },
+  {
+   "n": 29,
+   "template": "QualifyTodayWide",
+   "start_s": 176.15,
+   "his_words": [
+    {
+     "phrase": "how much you qualify for",
+     "word_start_s": 176.53
+    },
+    {
+     "phrase": "where you're at right now",
+     "word_start_s": 177.74
+    },
+    {
+     "phrase": "the maximum amount of funding",
+     "word_start_s": 181.41
+    }
+   ]
+  },
+  {
+   "n": 30,
+   "template": "BookCallWide",
+   "start_s": 186.2,
+   "his_words": [
+    {
+     "phrase": "Click the link below",
+     "word_start_s": 187.46
+    },
+    {
+     "phrase": "book your call today",
+     "word_start_s": 188.28
+    }
+   ]
+  }
+ ]
+}

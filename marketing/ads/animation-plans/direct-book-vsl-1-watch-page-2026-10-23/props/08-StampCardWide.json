@@ -1,0 +1,16 @@
+{
+ "format": "wide",
+ "transparent": true,
+ "object": "document",
+ "eyebrow": "Because you don't want a hard pull",
+ "title": "Your application",
+ "amount": null,
+ "paidCheck": false,
+ "stamp": "Skipped",
+ "stampSub": null,
+ "tone": "bad",
+ "drain": [],
+ "subline": "You never find out what you qualify for",
+ "side": "left",
+ "durationInFrames": 150
+}

@@ -10,6 +10,7 @@ import {
   GradientDash,
   MoneyGutters,
   P3D,
+  ReadPlate,
   Stage3D,
   TRACK,
   enter,
@@ -108,7 +109,7 @@ export const LenderList: React.FC<LenderListProps> = ({eyebrow, headline, footer
             textAlign: 'center',
           }}
         >
-          {headline}
+          <ReadPlate>{headline}</ReadPlate>
         </div>
         <div style={{marginTop: 36, width: '100%', display: 'flex', flexDirection: 'column', gap, ...P3D}}>
           {Array.from({length: n}, (_, i) => {
@@ -174,8 +175,10 @@ export const LenderList: React.FC<LenderListProps> = ({eyebrow, headline, footer
               gap: 18,
             }}
           >
-            <GradientDash />
-            <span style={{fontSize: 40, fontWeight: 700, letterSpacing: TRACK.body, color: COLORS.ink}}>{footer}</span>
+            <ReadPlate gap={18}>
+              <GradientDash />
+              <span style={{fontSize: 40, fontWeight: 700, letterSpacing: TRACK.body, color: COLORS.ink}}>{footer}</span>
+            </ReadPlate>
           </div>
         ) : null}
       </Stage3D>

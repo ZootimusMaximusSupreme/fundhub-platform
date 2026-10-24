@@ -1,0 +1,13 @@
+{
+ "format": "wide",
+ "transparent": true,
+ "eyebrow": "Between every round",
+ "fromLabel": "This funding round",
+ "itemLabel": "Hard inquiries",
+ "beforeTag": "On your report",
+ "afterTag": "Removed",
+ "toLabel": "Next funding round",
+ "toNote": "Goes in clean",
+ "side": "right",
+ "durationInFrames": 150
+}

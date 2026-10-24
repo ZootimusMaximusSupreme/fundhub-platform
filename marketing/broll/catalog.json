@@ -1576,5 +1576,21 @@
     },
     "purpose": "PriceTag (unit N5, ops/workflows/animation-builds-2026-10-22.md). A price tag swings in on its string and settles, with an optional second tag beside it and an optional pile of cards stacking up under it (\"Hundreds of hours\" of \"Outdated videos\" and \"Zoom calls\").",
     "data_tied": false
+  },
+  {
+    "id": "LinkButton",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "min_frames": 60,
+    "max_frames": 120,
+    "default_props": {
+      "label": "Click the link below",
+      "note": null,
+      "noteAt": 54,
+      "transparent": false
+    },
+    "purpose": "LinkButton: the call to action as a picture. A big blue button drops in and says what to do (\"Click the link below\"), a cursor glides over, presses it and a ring spreads out; a small arrow points down at the link; an optional line on a white plate comes in under it. Every word is a prop. No numbers, no logo.",
+    "data_tied": false
   }
 ]

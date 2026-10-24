@@ -64,6 +64,10 @@ export type PathCardsProps = {
   tone?: 'info' | 'bad';
   /** "stack" (one under the other, default) or "row" (side by side; best for two cards). */
   layout?: 'stack' | 'row';
+  /** Optional: when each card starts, in base-timeline frames (clip frame x 96 / durationInFrames), so a card can pop on the word it shows. Default: the even stagger. */
+  cardAt?: number[];
+  /** Optional: how long a card takes to pop in, in base-timeline frames. Default 16. */
+  pop?: number;
   durationInFrames?: number;
   showSafeZones?: boolean;
   /** See-through: no page and no grid, so the clip renders with alpha (README.md). Default false. */
@@ -203,7 +207,7 @@ const Disc: React.FC<{n: number; size: number; tone: 'info' | 'bad'; pop: number
 // ---------------------------------------------------------------------------
 // The scene, drawn at `u` times the vertical design size (900 px wide).
 
-const Scene: React.FC<PathCardsProps & {f: number; fps: number; u: number}> = ({f, fps, u, eyebrow, cards, highlight, tone = 'info', layout = 'stack'}) => {
+const Scene: React.FC<PathCardsProps & {f: number; fps: number; u: number}> = ({f, fps, u, eyebrow, cards, highlight, tone = 'info', layout = 'stack', cardAt, pop}) => {
   const list = cards.slice(0, 3);
   const n = list.length;
   const row = layout === 'row' && n > 1;
@@ -228,9 +232,10 @@ const Scene: React.FC<PathCardsProps & {f: number; fps: number; u: number}> = ({
       ) : null}
       <div style={{display: 'flex', flexDirection: row ? 'row' : 'column', alignItems: row ? 'stretch' : 'center', gap, width, ...P3D}}>
         {list.map((card, i) => {
-          const start = cardStart(i, n);
-          const p = enter(f, fps, start, 16);
-          const words = enter(f, fps, start + 4, 14);
+          const start = cardAt && cardAt[i] !== undefined ? cardAt[i] : cardStart(i, n);
+          const pd = pop ?? 16;
+          const p = enter(f, fps, start, pd);
+          const words = enter(f, fps, start + pd / 4, (pd * 14) / 16);
           const isHi = i === hi;
           const lift = isHi ? hl : 0;
           // The others dim their words only; the card stays solid so it still reads over film.
@@ -267,7 +272,7 @@ const Scene: React.FC<PathCardsProps & {f: number; fps: number; u: number}> = ({
                 }}
               />
               <div style={{display: 'flex', flexDirection: row ? 'column' : 'row', alignItems: row ? 'flex-start' : 'center', gap: (row ? 22 : 32) * u, opacity: dim}}>
-                <Disc n={i + 1} size={discSize} tone={tone} pop={enter(f, fps, start + 3, 14)} />
+                <Disc n={i + 1} size={discSize} tone={tone} pop={enter(f, fps, start + (pd * 3) / 16, (pd * 14) / 16)} />
                 <div style={{...fadeUp(words, 14 * u), display: 'flex', flexDirection: 'column', minWidth: 0}}>
                   <div style={{fontSize: titleSize, fontWeight: 800, letterSpacing: TRACK.h2, lineHeight: 1.08, color: COLORS.ink, textWrap: 'balance'}}>
                     {card.title}

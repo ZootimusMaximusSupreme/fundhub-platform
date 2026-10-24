@@ -1,0 +1,12 @@
+{
+ "format": "wide",
+ "transparent": true,
+ "types": [
+  "Bank relationships",
+  "Your deposits",
+  "Your business data"
+ ],
+ "caption": "So banks see a company they can trust",
+ "side": "right",
+ "durationInFrames": 270
+}

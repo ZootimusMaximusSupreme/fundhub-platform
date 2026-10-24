@@ -1,0 +1,19 @@
+{
+ "format": "wide",
+ "transparent": true,
+ "mode": "single",
+ "eyebrow": "10 years ago I learned the funding game",
+ "headline": null,
+ "amounts": [
+  {
+   "value": 1000000,
+   "prefix": "A little over",
+   "label": "Funded for myself"
+  }
+ ],
+ "goal": null,
+ "unit": null,
+ "footer": null,
+ "side": "right",
+ "durationInFrames": 93
+}

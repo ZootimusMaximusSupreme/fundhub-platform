@@ -1,0 +1,15 @@
+{
+ "format": "wide",
+ "transparent": true,
+ "eyebrow": "We show you exactly what it is",
+ "docTitle": "Your report",
+ "docSubtitle": "",
+ "items": [
+  {
+   "label": "Something on your report"
+  }
+ ],
+ "tag": "Holding you back",
+ "side": "left",
+ "durationInFrames": 180
+}

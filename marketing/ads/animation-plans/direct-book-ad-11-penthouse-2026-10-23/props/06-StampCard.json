@@ -1,0 +1,16 @@
+{
+ "format": "vertical",
+ "side": "left",
+ "object": "card",
+ "eyebrow": "Run companies and scale businesses",
+ "title": "Other people's money",
+ "amount": null,
+ "paidCheck": false,
+ "stamp": "Most efficiently",
+ "stampSub": null,
+ "tone": "ok",
+ "drain": [],
+ "subline": null,
+ "transparent": true,
+ "durationInFrames": 120
+}

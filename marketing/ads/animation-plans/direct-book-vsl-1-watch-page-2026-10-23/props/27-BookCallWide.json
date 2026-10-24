@@ -1,0 +1,19 @@
+{
+ "format": "wide",
+ "transparent": true,
+ "eyebrow": "Click the button below",
+ "line": "Fill out the 10 second application",
+ "pickDay": 15,
+ "times": [
+  "9:00 AM",
+  "11:30 AM",
+  "2:30 PM",
+  "4:00 PM"
+ ],
+ "pickTime": 2,
+ "booked": "Pick a time for your call",
+ "detail": null,
+ "showPicked": false,
+ "side": "right",
+ "durationInFrames": 138
+}

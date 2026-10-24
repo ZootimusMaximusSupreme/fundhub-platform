@@ -8,6 +8,7 @@ import {
   Eyebrow,
   MoneyField,
   P3D,
+  ReadPlate,
   Stage3D,
   TAG,
   Tag,
@@ -150,7 +151,7 @@ export const InquiriesOff: React.FC<InquiriesOffProps> = ({
               lineHeight: 1.2,
             }}
           >
-            {fromLabel}
+            <ReadPlate>{fromLabel}</ReadPlate>
           </div>
 
           {/* the report card in between, floating off the wall */}
@@ -227,10 +228,14 @@ export const InquiriesOff: React.FC<InquiriesOffProps> = ({
 
           <Node y={B_Y} filled={bFill} scale={0.8 + 0.2 * Math.max(aIn, bFill)} opacity={aIn} />
           <div style={{...fadeRight(bText, 24), position: 'absolute', left: LINE_X + 60, top: B_Y - 30}}>
-            <div style={{fontSize: 50, fontWeight: 700, letterSpacing: TRACK.h2, lineHeight: 1.2}}>{toLabel}</div>
-            <div style={{marginTop: 14, opacity: note, fontSize: 40, fontWeight: 600, color: COLORS.accent, letterSpacing: TRACK.body}}>
-              {toNote}
-            </div>
+            <ReadPlate>
+              <div>
+                <div style={{fontSize: 50, fontWeight: 700, letterSpacing: TRACK.h2, lineHeight: 1.2}}>{toLabel}</div>
+                <div style={{marginTop: 14, opacity: note, fontSize: 40, fontWeight: 600, color: COLORS.accent, letterSpacing: TRACK.body}}>
+                  {toNote}
+                </div>
+              </div>
+            </ReadPlate>
           </div>
         </div>
       </Stage3D>

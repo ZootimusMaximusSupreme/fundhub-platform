@@ -1,0 +1,11 @@
+{
+ "format": "wide",
+ "transparent": true,
+ "eyebrow": "Sample file: how much you qualify for",
+ "today": {
+  "label": "Today · sample file",
+  "value": 199350
+ },
+ "side": "right",
+ "durationInFrames": 225
+}

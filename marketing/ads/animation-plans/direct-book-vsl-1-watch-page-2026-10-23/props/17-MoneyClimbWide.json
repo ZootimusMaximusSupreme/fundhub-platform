@@ -1,0 +1,20 @@
+{
+ "format": "wide",
+ "transparent": true,
+ "mode": "range",
+ "eyebrow": "Most of the people we work with are aiming for",
+ "headline": null,
+ "amounts": [
+  {
+   "value": 250000
+  },
+  {
+   "value": 400000
+  }
+ ],
+ "goal": null,
+ "unit": null,
+ "footer": null,
+ "side": "right",
+ "durationInFrames": 150
+}

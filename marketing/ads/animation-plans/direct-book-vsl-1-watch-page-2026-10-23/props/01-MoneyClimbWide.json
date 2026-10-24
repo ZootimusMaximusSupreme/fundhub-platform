@@ -1,0 +1,26 @@
+{
+ "format": "wide",
+ "transparent": true,
+ "mode": "steps",
+ "eyebrow": "The condition of your credit decides",
+ "headline": null,
+ "amounts": [
+  {
+   "value": 20000,
+   "label": "In funding"
+  },
+  {
+   "value": 400000
+  },
+  {
+   "value": 1000000,
+   "prefix": "Even",
+   "label": "Across multiple businesses"
+  }
+ ],
+ "goal": null,
+ "unit": null,
+ "footer": "Plus personal funding if you want it",
+ "side": "right",
+ "durationInFrames": 186
+}

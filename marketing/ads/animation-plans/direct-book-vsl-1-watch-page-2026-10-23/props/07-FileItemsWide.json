@@ -1,0 +1,19 @@
+{
+ "format": "wide",
+ "transparent": true,
+ "eyebrow": "Your file to every lender on their list",
+ "docTitle": "Your report",
+ "docSubtitle": "",
+ "items": [
+  {
+   "label": "Two approvals"
+  },
+  {
+   "label": "Hard inquiries",
+   "tag": "A report full of them"
+  }
+ ],
+ "tag": null,
+ "side": "right",
+ "durationInFrames": 210
+}
