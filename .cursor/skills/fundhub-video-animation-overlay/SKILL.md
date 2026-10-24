@@ -32,7 +32,7 @@ The video is finished and captioned. The animations go on last, as see-through c
 - **Big.** Aim for 70-90% of the frame width. Under 50% was "so small".
 - **One animation inside the first 10 seconds,** on the hook.
 - **On the word.** Each part pops in on the word he says it, not on a fixed stagger.
-- **A CTA graphic** on the closing ask ("click the link below"), held to the last frame.
+- **A CTA only when it fits (owner-set 2026-10-24).** Not every ad needs one and it is never big by default ("we don't need a massive CTA all the time"). A closing diagram can hold to the last frame instead.
 - **Long is fine.** An animation can ride the whole idea.
 - **Never in front of his face or head, hair included (owner-set 2026-10-24).** Behind his head is fine, even full width (cut-out on top). Beside him or over his chest above the captions is fine.
 - **Chris picks the trigger words first (owner-set 2026-10-24).** Send the numbered trigger list; place only after he answers.

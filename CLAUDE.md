@@ -317,7 +317,7 @@ See-through animations carry no logo. The logo animation plays only on a line wh
 
 ### Ad animation style (owner-set 2026-10-23)
 
-Big (70 to 90 percent width), on the spoken word, one in the first 10 seconds, a CTA at the end, diagrams only. Never in front of his face or head, hair included; behind his head is fine (owner-set 2026-10-24). Chris picks the trigger words first. Same law: `.cursor/rules/animation-ad-style.mdc` and `.claude/rules/animation-ad-style.md`.
+Big (70 to 90 percent width), on the spoken word, one in the first 10 seconds, a CTA at the end only when it fits and never big by default, diagrams only. Never in front of his face or head, hair included; behind his head is fine (owner-set 2026-10-24). Chris picks the trigger words first. Same law: `.cursor/rules/animation-ad-style.mdc` and `.claude/rules/animation-ad-style.md`.
 
 ### Ad editing on the Mac (owner-set 2026-10-23)
 

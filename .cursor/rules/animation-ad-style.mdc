@@ -12,7 +12,7 @@ alwaysApply: true
 - Big: the words box is 70 to 90 percent of the frame width. 42 percent was "so small."
 - One animation inside the first 10 seconds, on the hook.
 - Each card pops in on the exact word he says it. No fixed stagger.
-- A CTA animation on the closing ask, up to the end.
+- The closing ask can carry a CTA animation, but not every ad needs one, and it is never big by default (owner-set 2026-10-24: "we don't need a massive CTA all the time"). A closing diagram can hold to the end instead.
 - Animations can be long and ride the whole idea.
 - **Never in front of his face or head, hair included (owner-set 2026-10-24).** Chris: "It should never go over my face." Behind his head is fine, even across the whole screen: his cut-out stays on top (`--behind`). Beside him, or over his chest above the captions, is fine.
 - Never over the captions.
