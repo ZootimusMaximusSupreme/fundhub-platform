@@ -1,0 +1,87 @@
+{
+  "_about": "Phrases a newer owner law killed. A live rule, skill or CLAUDE.md line that still teaches one fails scripts/rules-drift-check.mjs. Lines that start with Never / Do not, lines with a red X, lines under a Never or Banned heading, and lines that say retired / removed / dead / banned / superseded are treated as quoting the phrase and are allowed. Add 'allow' ({file, line}) for any other exception. Default paths: CLAUDE.md, AGENTS.md, .cursor/rules, .claude/rules, .cursor/skills, docs/rules.",
+  "phrases": [
+    {
+      "id": "brand-spelling",
+      "regex": "\\bFundHub\\b|\\bFUNDHUB\\b|\\bFund Hub\\b",
+      "flags": "",
+      "killedBy": "fundhub-company-name (owner law 2026-09-21): the company is Fundhub",
+      "fix": "Write Fundhub. The domain stays fundhub.ai."
+    },
+    {
+      "id": "gitlab-push-target",
+      "regex": "push(?:es|ing)?\\s+(?:\\w+\\s+)?to\\s+gitlab|git push gitlab|gitlab-push-whole-repo|Test GitLab tokens|GITLAB_TOKEN",
+      "killedBy": "CLAUDE.md 'GitHub is canonical. GitLab is retired' (owner-set 2026-10-05)",
+      "fix": "Use GitHub: remote origin, node scripts/github-push-whole-repo.mjs, GITHUB_TOKEN."
+    },
+    {
+      "id": "vercel-neon-host",
+      "regex": "\\bVercel\\b|\\bNeon\\b",
+      "flags": "",
+      "killedBy": "CLAUDE.md section 11: Netlify is the live host, Supabase is the database",
+      "fix": "Name Netlify (host) and Supabase (database), or remove the line."
+    },
+    {
+      "id": "compliance-review-label",
+      "regex": "COMPLIANCE REVIEW REQUIRED",
+      "flags": "",
+      "killedBy": "CLAUDE.md section 7 (owner-set 2026-09-08): no compliance label, ever",
+      "fix": "Delete the line. No compliance label or rider in any summary."
+    },
+    {
+      "id": "wait-for-approval",
+      "regex": "wait for approval|wait for chris to approve|wait for chris'?s? approval|for chris approval|do not write code in the same turn as the plan",
+      "killedBy": "owner-go-no-repeat-approval (owner law 2026-10-19) and finish-the-requested-job (2026-10-20): state the plan and keep going",
+      "fix": "State the plan and proceed. Stop only for a decision only Chris can make."
+    },
+    {
+      "id": "reveal-in-netlify",
+      "regex": "reveal\\w*\\b[^.\\n]{0,30}\\bNetlify",
+      "killedBy": "secrets-env-law (owner law 2026-10-04): Netlify --secret vars cannot be revealed; agents do the env work",
+      "fix": "Remove the 'reveal in Netlify' step. Agents read .env / credentials/env.full.snapshot or reset the key at the vendor."
+    },
+    {
+      "id": "script-own-words-for-animation",
+      "regex": "use the script'?s? (?:own|exact) words",
+      "killedBy": "animation-no-echo (owner law 2026-10-24): animation words never repeat what Chris says",
+      "fix": "Say: use the script's facts in new, short words; never his sentence copied."
+    },
+    {
+      "id": "commit-only-when-asked",
+      "regex": "commit only when (?:he |chris )?(?:asks|asked|says)|\\bcommits? unless he (?:asks|says)|do \\*{0,2}not\\*{0,2} commit unless",
+      "killedBy": "CLAUDE.md 'Commit locally, every session' (owner-set 2026-09-08): commit in the same session, every time",
+      "fix": "Commit finished work locally in the same session, then push it to GitHub."
+    },
+    {
+      "id": "submagic-broll-on",
+      "regex": "magicBrolls\\s*[:=]?\\s*(?:true|on)\\b",
+      "killedBy": "fundhub-ad-editor (owner-set 2026-10-23): magicBrolls is not sent to Submagic",
+      "fix": "Remove it. Submagic gets captions and clean audio only."
+    },
+    {
+      "id": "summarize-reminder",
+      "regex": "/summarize|\\bBITCH\\b|HEY REMINDER",
+      "flags": "",
+      "killedBy": "no-context-reminder (owner call 2026-10-21): never post the /summarize reminder",
+      "fix": "Delete the reminder line and the picture."
+    },
+    {
+      "id": "fresh-session-recommended",
+      "regex": "fresh session is recommended",
+      "killedBy": "no-context-reminder (owner call 2026-10-21): no nudge to start a fresh session",
+      "fix": "Write current state to the workflow file and keep going. Do not recommend a fresh session."
+    },
+    {
+      "id": "chris-opens-sessions",
+      "regex": "Chris (?:copies (?:each|one)\\b|launches the extra chats)|Chris copies each hole",
+      "killedBy": "split-and-proceed (owner law 2026-10-19): agents start the agents; prompts live on the board",
+      "fix": "The agent starts the sessions and puts the copy-paste prompts on the shared board."
+    },
+    {
+      "id": "sixty-fps-target",
+      "regex": "target 60 fps|60 fps or higher",
+      "killedBy": "teleprompter-camera (owner law 2026-10-13): every take is a hard 30 fps; 60 fps waits for the iPhone app",
+      "fix": "Say a hard 30 fps."
+    }
+  ]
+}

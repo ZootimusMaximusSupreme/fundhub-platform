@@ -9,6 +9,7 @@
   },
   "scripts": {
     "lint": "node scripts/lint.mjs",
+    "rules:check": "node scripts/rules-drift-check.mjs",
     "migrate": "node db/migrate.mjs",
     "ship": "node scripts/ship.mjs",
     "migrations:manifest": "node scripts/db/expected-migrations.mjs",

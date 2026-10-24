@@ -1,0 +1,18 @@
+{
+  "_about": "Exceptions for scripts/rules-drift-check.mjs. Every entry needs a one-line reason. Adding an entry is an owner-visible decision; do not add one just to turn the check green.",
+  "cursorOnlyRules": {
+    "no-claude-in-cursor": "About Cursor agents not calling Claude; Claude Code has nothing to obey.",
+    "grok-lattice-overseer-perpetual": "Glob rule for the Grok overseer in Cursor.",
+    "ui-standards": "Glob rule that only points Cursor at docs/rules/UI-STANDARDS.md; Claude reads that doc through CLAUDE.md."
+  },
+  "claudeOnlyRules": {},
+  "realSkillFolders": {
+    "clickfunnels-developers-docs": "Claude-side skill is a real folder; its Cursor twin is a rule (clickfunnels-developers-docs.mdc).",
+    "fundhub-clickfunnels-html-push": "Claude-side is a real folder with a short stub (listed in RULES-INDEX.md)."
+  },
+  "claudeMdLineExempt": {},
+  "twinWordsExempt": {},
+  "indexExempt": {},
+  "pointerExempt": [],
+  "undatedLineExempt": []
+}
