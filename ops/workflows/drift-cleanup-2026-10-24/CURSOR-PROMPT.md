@@ -25,10 +25,12 @@ READ FIRST, in this order
 3. ops/workflows/drift-cleanup-2026-10-24/phase-3-decisions.md   Chris's deciding rules and the 50 calls
 4. ops/workflows/drift-cleanup-2026-10-24/phase-3-conflicts.md   both sides of each fight, with exact quotes
 The two plan files are huge. NEVER read them whole. To read the plan for ONE file:
-  sh ops/workflows/drift-cleanup-2026-10-24/plans/show.sh dedupe copy-certainty
-  sh ops/workflows/drift-cleanup-2026-10-24/plans/show.sh stale copy-certainty
-  grep -n -F 'copy-certainty' ops/workflows/drift-cleanup-2026-10-24/plans/stale-plan.md
-(replace copy-certainty with any part of the file name)
+  sh ops/workflows/drift-cleanup-2026-10-24/plans/show.sh dedupe fundhub-ad-editor
+  sh ops/workflows/drift-cleanup-2026-10-24/plans/show.sh stale fundhub-ad-editor
+  grep -n -F 'fundhub-ad-editor' ops/workflows/drift-cleanup-2026-10-24/plans/stale-plan.md
+(replace fundhub-ad-editor with any part of the file name. If show.sh says "no
+edit planned", that file has nothing in that plan. It may still be the OWNER of
+a repeat: then grep -n -F its name in plans/dedupe-plan.md to see its cluster.)
 
 HARD RULES
 1. Edit only REAL files: rules at .ai/rules/<name>.md, skills at
