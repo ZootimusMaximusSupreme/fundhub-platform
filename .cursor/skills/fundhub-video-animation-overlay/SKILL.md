@@ -24,7 +24,18 @@ The video is finished and captioned. The animations go on last, as see-through c
 4. **Set the schedule.** One row per animation in `schedule.json`: start, frames, side, why. Rules below.
 5. **Render the clips.** From `marketing/broll`, one per row: `npx remotion render <Template> <clip>.mov --props=<props file> --codec=prores --prores-profile=4444 --image-format=png --pixel-format=yuva444p10le --scale=<video width / 3840>` (ProofWallWide also needs `--gl=angle`). Keep the props files in the folder.
 6. **Lay them on.** `tools/build-from-schedule.py <clips_dir> <out.mp4>`: one encode, audio copied.
-7. **Check it** (list below), send Chris the video and a contact sheet, and **save every round to the repo**.
+7. **Fix the sound (owner-set 2026-10-23).** Submagic downloads come back quiet (measured -27 to -30 LUFS on Ads 4, 11, 14, 16). Every finished video gets set to **-14 LUFS, true peak at or under -1.5 dB**, picture copied, no re-encode of the video. Two-pass `loudnorm` with `I=-14:TP=-2.2:LRA=11:linear=true` (TP -1.5 lands peaks at -1.2 to -1.4, too hot), `-c:v copy -c:a aac -b:a 320k -ar 48000`. Measure the result with `ebur128=peak=true` and write both numbers in the report. A video that is not at -14 is not done.
+8. **Check it** (list below), send Chris the video and a contact sheet, and **save every round to the repo**.
+
+**What Chris wants on screen (owner-set 2026-10-23, Ads 11 and 14):**
+- **Diagrams, on all of them.** Never numbered "01 02 03" card lists (PathCards, StepPath) or text-only plates. Start from the plan's templates (step 1).
+- **Big.** Aim for 70-90% of the frame width. Under 50% was "so small".
+- **One animation inside the first 10 seconds,** on the hook.
+- **On the word.** Each part pops in on the word he says it, not on a fixed stagger.
+- **A CTA graphic** on the closing ask ("click the link below"), held to the last frame.
+- **Long is fine.** An animation can ride the whole idea. Mix behind him and in front of him (never the face or captions).
+- **Never repeat his words (owner-set 2026-10-24).** The captions already show them. The picture carries the point; labels about 5 words, said a new way, no drift (no new fact, number or claim). No run of 4+ words he says within 3 s; no eyebrow that restates his line; no filler like "Your file". Rule: `.cursor/rules/animation-no-echo.mdc`.
+- **Opus builds, Sonnet places (owner-set 2026-10-24).** A Sonnet placer never edits `marketing/broll/src/` or adds a template. A missing or changed template goes in `marketing/ads/animation-plans/new-animations-needed.md` for Opus. Rule: `.cursor/rules/animation-builders-opus-placers-sonnet.mdc`.
 
 ## The rules for the schedule
 
@@ -47,7 +58,7 @@ The video is finished and captioned. The animations go on last, as see-through c
 
 - **Face.** Pick `side` by where the face is. On the thank-you video Chris sits right of center: use `left`. A right panel covered his temple and ear. Check frames with the face tool (`tools/face.swift`) or by eye at the middle of every clip.
 - **Captions.** Nothing is drawn in the caption band or below y 1007 on a 1440-high video. Compare the caption band to the original; the numbers must match the first pass.
-- **Script words only.** Props carry the words. Use the script's own words for eyebrows, chips and lines. Template defaults that print words or numbers the script never says must be changed or the animation dropped:
+- **Script facts only, never his sentence.** Props carry the words. Facts, numbers and names come from what he says; the wording is short and new (see the no-echo line above). Template defaults that print words or numbers the script never says must be changed or the animation dropped:
   - `ProofWallWide`: set `proofLines` to what he says ("Ten years of my own funding", "Hundreds of client files").
   - `QualifyTodayWide`: its amounts come from the one sample client (UnderwriteIQ on the roadmap sample file). Label it: eyebrow "Sample file: how much you qualify for". Never present those amounts as the viewer's.
   - `BookCallWide`: a generic calendar by design (generic month, no name). Leave it.
@@ -68,12 +79,12 @@ Worked examples: `marketing/ads/animation-plans/direct-book-ad-4-test-2026-10-23
 - **Two-line captions:** use `ocr2.swift` (adds the highlight's height) and dedupe repeats. Run the Python tools without `-I` when they need Pillow.
 - **Compare frames by index.** ffmpeg's `psnr` filter pairs frames by timestamp on these files and shows false misses; use `tools/band-compare.py` (Ad 16) or `setpts=N/(30*TB)`.
 - **Length caps bite.** MoneyClimb steps tops out at 4 s and PathCards at 4.5 s, so a step can land late on a slow talker. Pick the start by the payoff beat and write down which step is late.
-- **Open design question:** a close portrait selfie needs narrower, portrait-first layouts to show bigger animations. Until they exist, keep the small clips and say so.
+- **Open design question:** a close portrait selfie needs narrower, portrait-first layouts to show bigger animations. Until they exist, scale and place the plan's diagrams as big as the free space allows (owner wants big), and say which ones fall under 70%.
 
 ## Checks before you say it works
 
 - Output duration within 0.1 s of the original, same frame count, same fps.
-- Audio stream is a bit-for-bit copy: `ffmpeg -i out.mp4 -map 0:a:0 -c copy -f md5 -` equals the same on the original.
+- Before step 7: the audio stream is a bit-for-bit copy (`ffmpeg -i out.mp4 -map 0:a:0 -c copy -f md5 -` equals the same on the original). After step 7: -14 LUFS (±0.5), true peak at or under -1.5 dB.
 - Caption band (y 1100-1360 on 2560x1440) compared with the first pass: same numbers.
 - A contact sheet with one frame per animation taken at its anchor line, captions visible. Look at it.
 - Face clear in every animation window.
