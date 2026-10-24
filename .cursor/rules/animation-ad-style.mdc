@@ -1,0 +1,25 @@
+---
+description: Style Chris asked for on ad animations: big, on the word, diagrams only
+alwaysApply: true
+---
+
+# Ad animation style
+
+**Owner law (2026-10-23):** What Chris asked for on Direct Book Ad 11. It joins `animation-overlay-on-spoken-words`.
+
+## Always
+
+- Big: the words box is 70 to 90 percent of the frame width. 42 percent was "so small."
+- One animation inside the first 10 seconds, on the hook.
+- Each card pops in on the exact word he says it. No fixed stagger.
+- A CTA animation on the closing ask, up to the end.
+- Animations can be long and ride the whole idea.
+- Mix behind him and in front of him. Never over his face or the captions.
+- Diagrams only, on all of them. Start from the video's entry in `marketing/ads/animation-plans/2026-10-22.json` (skill step 1).
+
+## Never
+
+- Numbered word lists ("not 1234") or text-only plates. They were rejected on Ads 11 and 14.
+- CompanyLine (text over art) at small size. It was unreadable.
+
+"Run the skills" on a downloaded Submagic ad means add animations only: no cuts, no sound edit.
