@@ -1,0 +1,10 @@
+{
+ "format": "wide",
+ "transparent": true,
+ "proofLines": [
+  "Hundreds of files",
+  "Thousands of data points"
+ ],
+ "side": "left",
+ "durationInFrames": 108
+}

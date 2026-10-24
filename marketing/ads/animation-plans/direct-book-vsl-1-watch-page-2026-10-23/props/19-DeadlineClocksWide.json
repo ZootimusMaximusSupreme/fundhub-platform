@@ -1,0 +1,21 @@
+{
+ "format": "wide",
+ "transparent": true,
+ "clocks": [
+  {
+   "lead": "Within",
+   "hours": 24,
+   "unit": "hours",
+   "label": "A funding advisor starts on your file"
+  },
+  {
+   "lead": "Within",
+   "hours": 72,
+   "unit": "hours",
+   "label": "Your first applications go out"
+  }
+ ],
+ "guarantee": "If you qualify and we can't fund you, you don't pay.",
+ "side": "right",
+ "durationInFrames": 216
+}

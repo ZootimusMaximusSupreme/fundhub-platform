@@ -10,7 +10,8 @@ export const OFFER_CTA_MIN = 75; // 2.5 s at 30 fps
 export const OFFER_CTA_MAX = 105; // 3.5 s at 30 fps
 
 export const clampOfferCta = (frames: number | undefined, fallback: number): number =>
-  Math.min(OFFER_CTA_MAX, Math.max(OFFER_CTA_MIN, Math.round(frames ?? fallback)));
+  // REMOTION_UNCLAMP=1 lifts the cap for timed-to-speech renders (animation plans). Off by default.
+  typeof process !== 'undefined' && process.env.REMOTION_UNCLAMP === '1' ? Math.max(30, Math.round(frames ?? fallback)) : Math.min(OFFER_CTA_MAX, Math.max(OFFER_CTA_MIN, Math.round(frames ?? fallback)));
 
 export const useOfferCtaTimeline = (base: number, requested?: number): {f: number; fps: number} => {
   const frame = useCurrentFrame();

@@ -1,0 +1,10 @@
+{
+ "format": "wide",
+ "transparent": true,
+ "mode": "threshold",
+ "eyebrow": "Small details hold back even",
+ "score": 800,
+ "scoreNote": "from the MAXIMUM amount",
+ "side": "right",
+ "durationInFrames": 99
+}

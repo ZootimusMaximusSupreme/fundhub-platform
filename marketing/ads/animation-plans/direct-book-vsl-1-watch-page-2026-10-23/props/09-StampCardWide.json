@@ -1,0 +1,16 @@
+{
+ "format": "wide",
+ "transparent": true,
+ "object": "file",
+ "eyebrow": "All three come from the same mistake",
+ "title": "Your file",
+ "amount": null,
+ "paidCheck": false,
+ "stamp": "Not checked",
+ "stampSub": null,
+ "tone": "bad",
+ "drain": [],
+ "subline": "Nobody checks it against what each bank approves",
+ "side": "right",
+ "durationInFrames": 108
+}

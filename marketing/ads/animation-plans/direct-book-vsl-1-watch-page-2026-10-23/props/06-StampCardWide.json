@@ -1,0 +1,16 @@
+{
+ "format": "wide",
+ "transparent": true,
+ "object": "document",
+ "eyebrow": "When a bank denies you",
+ "title": "Your file",
+ "amount": null,
+ "paidCheck": false,
+ "stamp": "Denied",
+ "stampSub": null,
+ "tone": "bad",
+ "drain": [],
+ "subline": "Nobody checks your file against what that bank approves",
+ "side": "left",
+ "durationInFrames": 132
+}

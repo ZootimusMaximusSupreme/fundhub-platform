@@ -1,0 +1,13 @@
+{
+ "format": "wide",
+ "transparent": true,
+ "eyebrow": "A funding sequence",
+ "rounds": 6,
+ "roundLabel": "Round",
+ "inquiryChip": "Inquiries",
+ "captionStruck": "Hard inquiries",
+ "captionRest": "removed between rounds",
+ "amounts": null,
+ "side": "left",
+ "durationInFrames": 132
+}

@@ -1,0 +1,16 @@
+{
+ "format": "wide",
+ "transparent": true,
+ "eyebrow": "Every step comes with a timeline",
+ "steps": [
+  "Bring balances down",
+  "Get negative items removed",
+  "Add to your file",
+  "Build bank relationships",
+  "Set up your business data"
+ ],
+ "meterLabel": "Fundability",
+ "maxLabel": "Maximum",
+ "side": "left",
+ "durationInFrames": 156
+}

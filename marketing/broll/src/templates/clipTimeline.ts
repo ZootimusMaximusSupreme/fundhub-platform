@@ -12,7 +12,8 @@ export const CLIP_MAX = 120;
 
 /** Clamp a requested clip length to 2.5 to 4 seconds at 30 fps (or a clip's own range). */
 export const clampClip = (frames: number | undefined, fallback: number, min = CLIP_MIN, max = CLIP_MAX): number =>
-  Math.min(max, Math.max(min, Math.round(frames ?? fallback)));
+  // REMOTION_UNCLAMP=1 lifts the cap for timed-to-speech renders (animation plans). Off by default.
+  typeof process !== 'undefined' && process.env.REMOTION_UNCLAMP === '1' ? Math.max(30, Math.round(frames ?? fallback)) : Math.min(max, Math.max(min, Math.round(frames ?? fallback)));
 
 /**
  * The template's own frame `f`, stretched so the idea lands before the clip

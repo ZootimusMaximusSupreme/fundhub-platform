@@ -38,6 +38,8 @@ export type BookCallProps = {
   booked: string;
   /** One small line under the confirmation, or null. */
   detail: string | null;
+  /** Show the picked day-and-time chip on the confirmation card. Default true; false hides it (no day or time is named). */
+  showPicked?: boolean;
   durationInFrames?: number;
   showSafeZones?: boolean;
   /** "vertical" (1080x1920, ads) or "wide" (3840x2160, the VSL). Default vertical. */
@@ -134,6 +136,7 @@ export const BookCall: React.FC<BookCallProps> = ({
   pickTime,
   booked,
   detail,
+  showPicked = true,
   durationInFrames,
   showSafeZones,
   transparent,
@@ -408,7 +411,7 @@ export const BookCall: React.FC<BookCallProps> = ({
               <div style={{fontSize: 84, fontWeight: 800, letterSpacing: TRACK.h1, color: COLORS.ink, lineHeight: 1}}>{booked}</div>
             </div>
             {/* the day and time that were picked */}
-            <div
+            {showPicked ? <div
               style={{
                 marginTop: 24,
                 display: 'inline-flex',
@@ -431,7 +434,7 @@ export const BookCall: React.FC<BookCallProps> = ({
                 <path d="M3.5 10 H20.5 M8 3 V7 M16 3 V7" />
               </svg>
               {`${WEEKDAY_NAMES[pc.col]} ${day} · ${times[slot] ?? ''}`}
-            </div>
+            </div> : null}
             {detail ? (
               <div
                 style={{

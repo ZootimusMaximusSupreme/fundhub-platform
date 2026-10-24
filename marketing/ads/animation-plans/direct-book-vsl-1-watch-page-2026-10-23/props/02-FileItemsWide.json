@@ -1,0 +1,18 @@
+{
+ "format": "wide",
+ "transparent": true,
+ "eyebrow": "Small details in your file",
+ "docTitle": "Your file",
+ "docSubtitle": "",
+ "items": [
+  {
+   "label": "Your personal data"
+  },
+  {
+   "label": "Your business codes"
+  }
+ ],
+ "tag": "Holding you back",
+ "side": "left",
+ "durationInFrames": 138
+}

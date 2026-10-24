@@ -1,0 +1,21 @@
+{
+ "format": "wide",
+ "transparent": true,
+ "eyebrow": "It tells you",
+ "docTitle": "Your file",
+ "docSubtitle": "",
+ "items": [
+  {
+   "label": "Which balances to bring down"
+  },
+  {
+   "label": "Which negative items to get removed"
+  },
+  {
+   "label": "What to add to your file"
+  }
+ ],
+ "tag": null,
+ "side": "left",
+ "durationInFrames": 255
+}

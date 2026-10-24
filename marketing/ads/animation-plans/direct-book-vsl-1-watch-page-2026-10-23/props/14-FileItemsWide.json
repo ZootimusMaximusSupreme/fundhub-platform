@@ -1,0 +1,20 @@
+{
+ "format": "wide",
+ "transparent": true,
+ "eyebrow": "The step most people miss",
+ "docTitle": "Your report",
+ "docSubtitle": "",
+ "items": [
+  {
+   "label": "Hard inquiries",
+   "tag": "From every application"
+  },
+  {
+   "label": "The next lender approves less",
+   "tag": "Or just denies you"
+  }
+ ],
+ "tag": null,
+ "side": "left",
+ "durationInFrames": 285
+}

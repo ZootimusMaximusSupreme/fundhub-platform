@@ -1,0 +1,16 @@
+{
+ "format": "wide",
+ "transparent": true,
+ "object": "document",
+ "eyebrow": null,
+ "title": "Capital Blueprint",
+ "amount": null,
+ "paidCheck": false,
+ "stamp": "Guaranteed",
+ "stampSub": null,
+ "tone": "ok",
+ "drain": [],
+ "subline": "The last tool you'll ever need to learn the funding game",
+ "side": "right",
+ "durationInFrames": 84
+}

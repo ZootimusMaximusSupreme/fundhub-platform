@@ -70,7 +70,8 @@ const MIN_FRAMES = 90;
 const MAX_FRAMES = 120;
 
 export const clampProofWall = (frames: number | undefined): number =>
-  Math.min(MAX_FRAMES, Math.max(MIN_FRAMES, Math.round(frames ?? PROOF_WALL_BASE)));
+  // REMOTION_UNCLAMP=1 lifts the cap for timed-to-speech renders (animation plans). Off by default.
+  typeof process !== 'undefined' && process.env.REMOTION_UNCLAMP === '1' ? Math.max(30, Math.round(frames ?? PROOF_WALL_BASE)) : Math.min(MAX_FRAMES, Math.max(MIN_FRAMES, Math.round(frames ?? PROOF_WALL_BASE)));
 
 // Default carousel: crisp approvals that each print their amount and whose
 // manifest entry names the lender, none of them needing a blur. In front, in

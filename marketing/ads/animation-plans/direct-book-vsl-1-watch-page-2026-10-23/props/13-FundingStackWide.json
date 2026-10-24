@@ -1,0 +1,14 @@
+{
+ "format": "wide",
+ "transparent": true,
+ "types": [
+  "Credit cards",
+  "Lines of credit",
+  "SBA loans",
+  "Merchant cash advances",
+  "Personal funding"
+ ],
+ "caption": "Stacked together at the lowest rates",
+ "side": "right",
+ "durationInFrames": 285
+}
