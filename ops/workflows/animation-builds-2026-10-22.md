@@ -27,7 +27,7 @@ Builders: Opus 5.5, high effort, one per unit, each in its own git worktree. Thi
 
 **The logo plays only where the script says Fundhub (owner-set 2026-10-23).** `validateAnimationPlan` refuses `FundhubLogo*` on any other line (`logo_not_on_fundhub`).
 
-**Words.** Only the script words named in your brief. Never invent a number, a bank, a name or a claim. Company name: **Fundhub**. Certain words only: never "we think", "might", "maybe", "could", "likely".
+**Words.** Facts, numbers and names only from the script; the wording is short and never copies his sentence (owner-set 2026-10-24, `.cursor/rules/animation-no-echo.mdc`). Builders are Opus; Sonnet only places (`.cursor/rules/animation-builders-opus-placers-sonnet.mdc`). Never invent a number, a bank, a name or a claim. Company name: **Fundhub**. Certain words only: never "we think", "might", "maybe", "could", "likely".
 
 **Proof before you finish (all of it):**
 - `cd marketing/broll && npx tsc --noEmit` passes.

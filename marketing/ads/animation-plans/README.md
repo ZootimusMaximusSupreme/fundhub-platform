@@ -2,6 +2,8 @@
 
 The plans are in `2026-10-22.json`. There is one entry per filmed video (14). They were made with the writer's rule (`src/marketing/writer-prompt.mjs`): one animation per number, step or comparison, plus one.
 
+**Read with the newer rules (owner-set 2026-10-23/24).** These plans came first. When placing: diagrams only (swap PathCards / StepPath picks for a diagram), big, one in the first 10 s, a CTA at the end, and never copy his sentence onto a plate (`.cursor/rules/animation-no-echo.mdc`). Skill: `.cursor/skills/fundhub-video-animation-overlay/SKILL.md`.
+
 Each entry has:
 - `body`: the script words the plan is anchored to,
 - `source`: where those words came from,

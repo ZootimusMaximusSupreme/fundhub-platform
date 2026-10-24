@@ -14,7 +14,7 @@ The video is finished and captioned. The animations go on last, as see-through c
 
 ## The order. Do not skip ahead.
 
-1. **Read the plan.** `marketing/ads/animation-plans/2026-10-22.json`, the entry for the video: templates, props, `side`, and each anchor phrase. Read `marketing/broll/README.md` and `marketing/broll/catalog.json` (length range per template).
+1. **Read the plan.** `marketing/ads/animation-plans/2026-10-22.json`, the entry for the video: templates, props, `side`, and each anchor phrase. The plan is older than the 2026-10-23/24 rules: swap any PathCards or StepPath pick for a diagram, and reword every prop that copies his sentence (no-echo rule below). Read `marketing/broll/README.md` and `marketing/broll/catalog.json` (length range per template).
 2. **Get the real word times.** The plan's starts are even-pace estimates and ran 0.5 s to 10.3 s off on the thank-you video. Sources, best first:
    - the script text plus a real transcript, if a speech-to-text tool exists on the machine;
    - the **burned-in captions**: read the caption strip at 10 frames a second, find the highlighted word in each frame (`tools/ocr.swift`, `tools/words.py` in the example folder). This is free and is what was used. Captions run about 0.15 s ahead of the voice.
@@ -23,7 +23,7 @@ The video is finished and captioned. The animations go on last, as see-through c
 3. **Find the anchors.** `tools/align-anchors.py` matches each plan anchor phrase to the timeline and writes `anchors.json` (first word time, next word time, match score). Anything under 0.8 is a failed match: read the words and fix by hand.
 4. **Set the schedule.** One row per animation in `schedule.json`: start, frames, side, why. Rules below.
 5. **Render the clips.** From `marketing/broll`, one per row: `npx remotion render <Template> <clip>.mov --props=<props file> --codec=prores --prores-profile=4444 --image-format=png --pixel-format=yuva444p10le --scale=<video width / 3840>` (ProofWallWide also needs `--gl=angle`). Keep the props files in the folder.
-6. **Lay them on.** `tools/build-from-schedule.py <clips_dir> <out.mp4>`: one encode, audio copied.
+6. **Lay them on.** `tools/build-from-schedule.py <clips_dir> <out.mp4>`: one encode, audio copied (the sound is fixed next, in step 7).
 7. **Fix the sound (owner-set 2026-10-23).** Submagic downloads come back quiet (measured -27 to -30 LUFS on Ads 4, 11, 14, 16). Every finished video gets set to **-14 LUFS, true peak at or under -1.5 dB**, picture copied, no re-encode of the video. Two-pass `loudnorm` with `I=-14:TP=-2.2:LRA=11:linear=true` (TP -1.5 lands peaks at -1.2 to -1.4, too hot), `-c:v copy -c:a aac -b:a 320k -ar 48000`. Measure the result with `ebur128=peak=true` and write both numbers in the report. A video that is not at -14 is not done.
 8. **Check it** (list below), send Chris the video and a contact sheet, and **save every round to the repo**.
 
@@ -78,7 +78,7 @@ Worked examples: `marketing/ads/animation-plans/direct-book-ad-4-test-2026-10-23
 - **Short chips are unreadable at 0.4 scale** (eyebrows 6-8 px, sublines about 11 px). Prefer clips whose main words are big (stamps, numbers, titles), or shorten or drop the chips.
 - **Two-line captions:** use `ocr2.swift` (adds the highlight's height) and dedupe repeats. Run the Python tools without `-I` when they need Pillow.
 - **Compare frames by index.** ffmpeg's `psnr` filter pairs frames by timestamp on these files and shows false misses; use `tools/band-compare.py` (Ad 16) or `setpts=N/(30*TB)`.
-- **Length caps bite.** MoneyClimb steps tops out at 4 s and PathCards at 4.5 s, so a step can land late on a slow talker. Pick the start by the payoff beat and write down which step is late.
+- **Length caps bite.** Templates clamp to their catalog range (MoneyClimb steps top out at 4 s). `REMOTION_UNCLAMP=1` lifts the cap so a clip can ride the whole idea; otherwise hold the last frame. Pick the start by the payoff beat and write down which step is late.
 - **Open design question:** a close portrait selfie needs narrower, portrait-first layouts to show bigger animations. Until they exist, scale and place the plan's diagrams as big as the free space allows (owner wants big), and say which ones fall under 70%.
 
 ## Checks before you say it works
