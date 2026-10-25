@@ -30,3 +30,4 @@
 [x] backup/cortana-fee-invoices-2026-10-21 — SKIP. LEFT. Tip 3c3584949. Changes db/migrations/499_cortana_payment_feed.sql. Not merged. The Cortana payment-feed workflow was not taken.
 [x] codex/fundhub-crm-html-export — SKIP. LEFT. Tip 9be2c0146, 13 commits ahead. 6782 files in the branch diff, 322 under db/migrations/. Not merged.
 [x] codex/recover-consent-capture — SKIP. LEFT. Tip bd60b0819. Missing on main: e2e/consent-capture-workspace.spec.mjs, ops/workflows/build-evidence/crm-live-font-reconcile-2026-10-18/consent-capture-recovery.md, public/app/consent-capture-workspace.css. Conflicts on public/app/consent-capture.html. Not merged.
+[x] codex/recover-automations — SKIP. LEFT. Tip 1e5d3313f. Missing on main: e2e/automations-layout.spec.mjs, ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-automations.md. Conflicts on public/app/automations.html. Not merged.
