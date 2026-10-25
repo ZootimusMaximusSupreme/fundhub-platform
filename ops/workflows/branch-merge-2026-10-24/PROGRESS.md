@@ -26,3 +26,4 @@
 [x] codex/recover-my-numbers — REDONE. Tip edea97eb6. Older layout. Every file it changes already exists (5 files, 0 missing). Not merged.
 [x] codex/recover-sales-floor — REDONE. Tip 2fe9a5994. Older layout. Every file it changes already exists (9 files, 0 missing). Not merged.
 [x] feat/mac-bridge-v1 — SKIP. Tip ab2a231aa, 15 commits ahead. Owner rule: Mac Bridge moved to its own repo on purpose. Not left as a question. Not merged.
+[x] tier1-banks-2026-10-23 — SKIP. LEFT. Tip bcc0e6f2b. Changes db/migrations/504_tier1_banks_2026_10_23.sql. Not merged. docs/funding/tier-1-banks.md was not taken because of that migration.
