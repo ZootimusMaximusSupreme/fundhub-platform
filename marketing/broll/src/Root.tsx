@@ -28,6 +28,7 @@ import {CalendarStripCompositions} from './templates/CalendarStrip';
 import {StampCardCompositions} from './templates/StampCard';
 import {PriceTagCompositions} from './templates/PriceTag';
 import {LinkButtonCompositions} from './templates/LinkButton';
+import {BlueprintDashboardRealCompositions} from './templates/BlueprintDashboardReal';
 
 // The contact sheet is a Composition, not a Still: Remotion clamps every
 // frame to the composition's length, and a 1-frame Still would freeze each
@@ -62,6 +63,7 @@ export const RemotionRoot: React.FC = () => (
     <StampCardCompositions />
     <PriceTagCompositions />
     <LinkButtonCompositions />
+    <BlueprintDashboardRealCompositions />
     <Composition
       id="ContactSheet"
       component={ContactSheet}

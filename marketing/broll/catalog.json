@@ -1592,5 +1592,277 @@
     },
     "purpose": "LinkButton: the call to action as a picture. A big blue button drops in and says what to do (\"Click the link below\"), a cursor glides over, presses it and a ring spreads out; a small arrow points down at the link; an optional line on a white plate comes in under it. Every word is a prop. No numbers, no logo.",
     "data_tied": false
+  },
+  {
+    "id": "BlueprintDashboardReal",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "min_frames": 90,
+    "max_frames": 120,
+    "default_props": {
+      "sampleTag": "Sample file",
+      "shots": [
+        {
+          "from": 0,
+          "src": 0.7,
+          "rate": 0,
+          "cam": {
+            "x": 500,
+            "y": 172,
+            "w": 1400
+          },
+          "camTo": {
+            "x": 500,
+            "y": 176,
+            "w": 1360
+          },
+          "focus": null,
+          "lens": {
+            "crop": {
+              "x": 50,
+              "y": 280,
+              "w": 290,
+              "h": 400
+            },
+            "src": 0.7,
+            "label": "Your dashboard",
+            "top": 400,
+            "width": null
+          }
+        },
+        {
+          "from": 84,
+          "src": 1.8,
+          "rate": 0,
+          "cam": {
+            "x": 2680,
+            "y": 614,
+            "w": 1100
+          },
+          "camTo": {
+            "x": 2690,
+            "y": 616,
+            "w": 1080
+          },
+          "focus": null,
+          "lens": {
+            "crop": {
+              "x": 2760,
+              "y": 544,
+              "w": 190,
+              "h": 68
+            },
+            "src": 1.8,
+            "label": "Next waypoint",
+            "top": 420,
+            "width": null
+          }
+        },
+        {
+          "from": 168,
+          "src": 2.5,
+          "rate": 1,
+          "cam": {
+            "x": 540,
+            "y": 120,
+            "w": 1200
+          },
+          "camTo": null,
+          "focus": null,
+          "lens": {
+            "crop": {
+              "x": 548,
+              "y": 1522,
+              "w": 290,
+              "h": 124
+            },
+            "src": 4,
+            "label": "Steps clear",
+            "top": 440,
+            "width": null
+          }
+        },
+        {
+          "from": 273,
+          "src": 6,
+          "rate": 0,
+          "cam": {
+            "x": 540,
+            "y": 120,
+            "w": 1200
+          },
+          "camTo": null,
+          "focus": null,
+          "lens": null
+        },
+        {
+          "from": 294,
+          "src": 4,
+          "rate": 0,
+          "cam": {
+            "x": 560,
+            "y": 150,
+            "w": 1150
+          },
+          "camTo": {
+            "x": 575,
+            "y": 152,
+            "w": 1120
+          },
+          "focus": {
+            "x": 548,
+            "y": 160,
+            "w": 830,
+            "h": 125
+          },
+          "lens": {
+            "crop": {
+              "x": 720,
+              "y": 226,
+              "w": 300,
+              "h": 50
+            },
+            "src": 4,
+            "label": "Due date",
+            "top": 396,
+            "width": 312
+          }
+        },
+        {
+          "from": 486,
+          "src": 4,
+          "rate": 0,
+          "cam": {
+            "x": 560,
+            "y": 386,
+            "w": 1150
+          },
+          "camTo": {
+            "x": 575,
+            "y": 388,
+            "w": 1120
+          },
+          "focus": {
+            "x": 548,
+            "y": 395,
+            "w": 700,
+            "h": 125
+          },
+          "lens": {
+            "crop": {
+              "x": 720,
+              "y": 458,
+              "w": 280,
+              "h": 52
+            },
+            "src": 4,
+            "label": "Letters",
+            "top": 396,
+            "width": 312
+          }
+        },
+        {
+          "from": 556,
+          "src": 12.2,
+          "rate": 0,
+          "cam": {
+            "x": 880,
+            "y": 268,
+            "w": 1150
+          },
+          "camTo": {
+            "x": 890,
+            "y": 270,
+            "w": 1120
+          },
+          "focus": null,
+          "lens": {
+            "crop": {
+              "x": 500,
+              "y": 640,
+              "w": 300,
+              "h": 650
+            },
+            "src": 12.2,
+            "label": "Bank order",
+            "top": 400,
+            "width": null
+          }
+        },
+        {
+          "from": 636,
+          "src": 12.1,
+          "rate": 0.5,
+          "cam": {
+            "x": 880,
+            "y": 268,
+            "w": 1150
+          },
+          "camTo": {
+            "x": 880,
+            "y": 268,
+            "w": 1100
+          },
+          "focus": null,
+          "lens": {
+            "crop": {
+              "x": 2020,
+              "y": 1492,
+              "w": 240,
+              "h": 170
+            },
+            "src": null,
+            "label": "Balance down",
+            "top": 460,
+            "width": null
+          }
+        },
+        {
+          "from": 804,
+          "src": 14.9,
+          "rate": 0,
+          "cam": {
+            "x": 880,
+            "y": 268,
+            "w": 1100
+          },
+          "camTo": null,
+          "focus": null,
+          "lens": null
+        },
+        {
+          "from": 822,
+          "src": 15.7,
+          "rate": 0,
+          "cam": {
+            "x": 540,
+            "y": 690,
+            "w": 1150
+          },
+          "camTo": {
+            "x": 540,
+            "y": 1060,
+            "w": 1150
+          },
+          "focus": null,
+          "lens": {
+            "crop": {
+              "x": 500,
+              "y": 44,
+              "w": 300,
+              "h": 540
+            },
+            "src": 14.2,
+            "label": "Alerts on",
+            "top": 400,
+            "width": null
+          }
+        }
+      ],
+      "transparent": false
+    },
+    "purpose": "BlueprintDashboardReal: the real Capital Blueprint dashboard, from the 6-month sample-file screen recording, playing in a full-width window behind Chris. A camera moves through the recording one waypoint at a time: each shot lands the line that matters in the open strip above his head, and a lens card in the open column right of his head shows one more real piece of the same screen up close (the menu, the next move, a check mark, a balance), with a short chip. Everything on screen is the recorded app, never a mock-up.",
+    "data_tied": false
   }
 ]

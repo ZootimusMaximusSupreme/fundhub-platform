@@ -66,7 +66,7 @@ test("the Capital Blueprint Ad 1 layout Chris rejected fails (scale 0.48-0.52 ch
 });
 
 test("a template file is not real content, a hand-typed visible share is not a measurement, words in the top 14% fail", () => {
-  assert.ok(run([dash({ content_source: "marketing/broll/src/templates/BlueprintDashboardOS.tsx" })]).fails.some((f) => /not footage/.test(f)));
+  assert.ok(run([dash({ content_source: "marketing/broll/src/templates/BlueprintDashboardReal.tsx" })]).fails.some((f) => /not footage/.test(f)));
   assert.ok(run([dash({ visible_measured_by: undefined })]).fails.some((f) => /not measured/.test(f)));
   assert.ok(run([beside({ words_on_video_box: [64, 0, 1022, 628] })]).fails.some((f) => /words band/.test(f)));
 });
