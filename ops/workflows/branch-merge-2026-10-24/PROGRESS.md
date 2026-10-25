@@ -43,3 +43,4 @@
 [x] codex/heartbeat-display-26-33 — SKIP. LEFT. Tip 86ff159f7. Every file already exists and the branch conflicts on live pages or pulse proofs. Kept main. Not sure the old proof is already in main. Not merged.
 [x] codex/heartbeat-display-34-36 — SKIP. LEFT. Tip c235f41e6. Every file already exists and the branch conflicts on live pages or pulse proofs. Kept main. Not sure the old proof is already in main. Not merged.
 [x] codex/heartbeat-display-37-45 — SKIP. LEFT. Tip 6e1ff1c95. Every file already exists and the branch conflicts on live pages or pulse proofs. Kept main. Not sure the old proof is already in main. Not merged.
+[x] codex/heartbeat-display-repair-i — SKIP. LEFT. Tip 81f117a3d. Every file already exists and the branch conflicts on live pages or pulse proofs. Kept main. Not sure the old proof is already in main. Not merged.
