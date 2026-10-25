@@ -1,1 +1,0 @@
-Owner 2026-08-17: Gate relay runs on this Mac while it is awake. Lid-closed-but-awake is the intended daily use. Computer-off / cloud engine is later, not now. Chris is usually at the computer anyway. Do not turn the relay into an always-on launchd/caffeinate service until he says to turn it on.

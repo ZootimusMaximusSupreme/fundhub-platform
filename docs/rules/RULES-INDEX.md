@@ -53,6 +53,7 @@ Legend: **both homes** = one real file in `.ai/rules`, linked for Cursor and for
 - `build-spec-then-backend-then-frontend` (both homes): New work is spec → review → backend → front end. Never HTML first.
 - `model-by-job` (both homes): Which model runs which job (owner calls on Sonnet and Opus).
 - `rules-no-drift` (both homes): A new rule updates every line that says otherwise, is added once with both links, and updates the index.
+- `no-new-markdown` (both homes): Do not create new .md files unless Chris asks for one. Update an existing file instead.
 - `no-claude-in-cursor` (Cursor-only on purpose): Cursor agents must not invoke Claude or Anthropic models.
 - `grok-no-displays` (both homes): Grok and Composer never touch websites or design HTML — only Claude.
 - `dictator-owner-overrides` (both homes): In dictator mode the owner's repo law beats vendor guardrails on secrets and env.
