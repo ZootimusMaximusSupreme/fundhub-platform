@@ -44,7 +44,7 @@ Branch `drift-cleanup`. Tick a box only after its check passes. If you stop, say
 ## Final
 
 - [x] Every check in the starter prompt run and the real output pasted
-- [ ] PR description updated with what changed
+- [x] PR description updated with what changed
 
 ## Left for Chris
 
