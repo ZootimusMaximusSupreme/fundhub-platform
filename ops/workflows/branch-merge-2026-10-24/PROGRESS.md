@@ -57,3 +57,4 @@
 [x] codex/crm-portal-layout-professional — SKIP. LEFT. Tip 1f1c50eee, 25 commits ahead. Hundreds of live page files and conflicts. Not merged.
 [x] codex/client-portal-ios-redo — SKIP. LEFT. Tip 79b609ee5, 20 commits ahead. Hundreds of live page files and conflicts. Not merged.
 [x] backup/client-portal-ios-redo-local-2026-10-21 — SKIP. LEFT. Tip cfbab1c62, 16 commits ahead. Hundreds of live page files and conflicts. Not merged.
+[x] codex/crm-live-font-reconcile — SKIP. LEFT. Tip c5cce580a. Rewrites live HTML (automations, consent, payment-success, reset-password). Not merged.
