@@ -1,0 +1,20 @@
+{
+  "verdict": "Not acceptable",
+  "final_mux": "/tmp/cap-blueprint-ad2-2026-10-25/Capital Blueprint Ad 2 — Learn it yourself Animated review.mp4",
+  "reviewed_at": "2026-10-25T16:50:00-07:00",
+  "frames_sampled": [0.3, 1.5, 3.3, 6.3, 8, 16, 24, 32, 33.4, 34, 38, 42, 46, 50, 54, 58, 62, 66.5, 70, 76.1, 80, 87.2, 92, 100, 108, 110.5, 114],
+  "evidence": ["contact-sheet-final.jpg", "/tmp/cap-blueprint-ad2-2026-10-25/frame-review/"],
+  "audio": {"integrated_lufs": -14.0, "true_peak_db": -2.2, "smooth_pass": true, "clipping_found": false},
+  "placed_beats_ok": [
+    "Beat 1 RatesRising 0.19-6.52 s: headline above his head, chart behind him, face and hair clear.",
+    "Beat 2 BlueprintDashboardReal 33.29-66.99 s: real sped-up dashboard recording behind him, key line readable above his head, lens card right of his head, Sample file tag on, face clear."
+  ],
+  "fixes": [
+    "06.5-33.3 s: no animation for about 27 s. Breaks the one-every-10-seconds law.",
+    "67.0-115.6 s: no animation for about 49 s. Breaks the one-every-10-seconds law.",
+    "76.0 s beat 3 ChessRightMove held out: needs a behind-him layout (Opus).",
+    "87.1 s beat 4 LenderMatchScroll held out: needs a behind-him layout (Opus).",
+    "110.5 s beat 5 ChessCallCTA held out: needs a behind-him layout (Opus)."
+  ],
+  "learnings": "Scratch source.mp4 in /tmp/cap-blueprint-ad2-2026-10-25 is a 1:37.9 file, not the Desktop master; use source-clean.mp4 (md5 matches Desktop)."
+}
