@@ -88,6 +88,9 @@ function compose(topics, count) {
   if (topics === null) lines.push("RULES-INDEX.md could not be read, so there is no topic list.");
   else if (topics.length) lines.push(`Topics in RULES-INDEX.md: ${topics.join("; ")}.`);
   if (count) lines.push(`${count.n} rule file${count.n === 1 ? "" : "s"} in ${count.home}.`);
+  lines.push(
+    "Ad video, broll, Remotion, or animation overlays: read .ai/rules/animation-rules.md and marketing/ads/ANIMATION-RULES.md from disk before plan or edit — not memory."
+  );
   lines.push("Editing a rule, skill, CLAUDE.md or AGENTS.md needs Chris's approval.");
   return lines.join("\n");
 }

@@ -108,6 +108,7 @@ Legend: **both homes** = one real file in `.ai/rules`, linked for Cursor and for
 
 ## 7. Video and animation
 
+- `animation-rules` (both homes): Master animation law — overlays last, see-through only, matte, ~every 10 s, anchors and credibility; book `marketing/ads/ANIMATION-RULES.md`. Code may lag until marketing system is 100% wired.
 - `video-4k-unless-ad` (both homes): Film and export 4K unless the video is a paid ad or a testimonial card video on a page.
 - `ad-video-best-of-clips` (both homes): Finished ad video must be the best of every clip and take for that ad; B-roll is only our animations and screen recordings, never Submagic's.
 - `ad-sound-level` (both homes): Every finished video is -14 LUFS with true peak at or under -1.5 dB.

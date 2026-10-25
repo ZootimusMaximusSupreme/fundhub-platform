@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Animations land on the spoken words
 
-**Owner law (2026-10-23):** Chris: "Get the transcript to find those anchor words, then readjust." Animations go on a finished video last, and each one appears when the words it shows are spoken. Skill: `.cursor/skills/fundhub-video-animation-overlay/SKILL.md`.
+**Owner law (2026-10-23):** Chris: "Get the transcript to find those anchor words, then readjust." Animations go on a finished video last, and each one appears when the words it shows are spoken. Skill: `.agents/skills/fundhub-video-animation-overlay/SKILL.md`. Master law and book: `.ai/rules/animation-rules.md`, `marketing/ads/ANIMATION-RULES.md` (owner-set 2026-10-25 wins on frequency, no full-frame, matte, and anchor types).
 
 ## Always
 

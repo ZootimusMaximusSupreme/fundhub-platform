@@ -48,6 +48,7 @@ Proof cards come from the picture (owner-set 2026-09-21). Same law: `.ai/rules/p
 Sample clients make sense (owner-set 2026-10-02). Same law: `.ai/rules/sample-clients-consistent.md`
 4K unless it is an ad (owner-set 2026-09-22). Testimonial card videos on pages do not need 4K (owner-set 2026-10-24). Same law: `.ai/rules/video-4k-unless-ad.md`
 Grok and Composer do not touch websites (owner-set 2026-09-21). Same law: `.ai/rules/grok-no-displays.md`
+Animation rules — master law (owner-set 2026-10-25). Book: `marketing/ads/ANIMATION-RULES.md`. Same law: `.ai/rules/animation-rules.md`
 Animations land on the spoken words (owner-set 2026-10-23). Same law: `.ai/rules/animation-overlay-on-spoken-words.md`
 Opus builds animations, Sonnet places them (owner-set 2026-10-24). Same law: `.ai/rules/animation-builders-opus-placers-sonnet.md`
 Animations never repeat his words (owner-set 2026-10-24). Same law: `.ai/rules/animation-no-echo.md`
