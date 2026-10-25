@@ -28,3 +28,4 @@
 [x] feat/mac-bridge-v1 — SKIP. Tip ab2a231aa, 15 commits ahead. Owner rule: Mac Bridge moved to its own repo on purpose. Not left as a question. Not merged.
 [x] tier1-banks-2026-10-23 — SKIP. LEFT. Tip bcc0e6f2b. Changes db/migrations/504_tier1_banks_2026_10_23.sql. Not merged. docs/funding/tier-1-banks.md was not taken because of that migration.
 [x] backup/cortana-fee-invoices-2026-10-21 — SKIP. LEFT. Tip 3c3584949. Changes db/migrations/499_cortana_payment_feed.sql. Not merged. The Cortana payment-feed workflow was not taken.
+[x] codex/fundhub-crm-html-export — SKIP. LEFT. Tip 9be2c0146, 13 commits ahead. 6782 files in the branch diff, 322 under db/migrations/. Not merged.
