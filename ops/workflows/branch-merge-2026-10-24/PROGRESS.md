@@ -39,3 +39,4 @@
 [x] codex/recover-staff-teams — SKIP. LEFT. Tip 611854616. Missing on main: e2e/staff-teams-layout.spec.mjs, ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-staff-teams.md, public/app/staff-teams.css, public/app/staff-teams.js. Conflicts on public/app/staff-teams.html. Not merged.
 [x] codex/heartbeat-catalog-four — SKIP. LEFT. Tip 638b20583. Every file already exists and the branch conflicts on live pages or pulse proofs. Kept main. Not sure the old proof is already in main. Not merged.
 [x] codex/heartbeat-display-13-19-work — SKIP. LEFT. Tip c639af64b. Every file already exists and the branch conflicts on live pages or pulse proofs. Kept main. Not sure the old proof is already in main. Not merged.
+[x] codex/heartbeat-display-20-25 — SKIP. LEFT. Tip 8abef1814. Every file already exists and the branch conflicts on live pages or pulse proofs. Kept main. Not sure the old proof is already in main. Not merged.
