@@ -31,7 +31,9 @@
 //               .cursor/skills or .claude/skills is a copy and fails; no dangling links
 //   pointer  d  every rule/skill path named in the rule homes exists
 //   index    e  every rule and skill is in docs/rules/RULES-INDEX.md
-//   claudemd f  every always-on owner law is named in CLAUDE.md
+//   claudemd f  CLAUDE.md names docs/rules/RULES-INDEX.md, has headings 0-12
+//               (including 3a, 3b, 3c), every path it names exists, and the
+//               size caps hold (CLAUDE.md 220 lines, AGENTS.md 90)
 //   retired  g  no live rule still teaches a phrase a newer owner law killed
 //   dates    h  every "Owner law" / "owner-set" line carries a YYYY-MM-DD date
 //
@@ -50,7 +52,7 @@ export const CHECKS = {
   skills: "Skills: a skill is missing a link, has a second real copy, or a link points at nothing",
   pointer: "Pointer: a named rule or skill path does not exist",
   index: "Index: not listed in docs/rules/RULES-INDEX.md",
-  claudemd: "CLAUDE.md line: always-on owner law is not named in CLAUDE.md",
+  claudemd: "CLAUDE.md: missing RULES-INDEX, a heading 0-12, a named path, or over the size cap",
   retired: "Retired words: a phrase a newer owner law killed is still live",
   dates: "Dates: an owner-law line has no YYYY-MM-DD date",
 };
@@ -128,11 +130,31 @@ export function splitFrontMatter(text) {
   return { fm: "", body: text, bodyStart: 1, lines };
 }
 
-/** A rule is always on when its front matter says alwaysApply: true. With no front matter at all, Claude still loads it every time, so it counts as on. */
-function isAlwaysOn(text) {
-  const { fm } = splitFrontMatter(text);
-  if (!fm) return true;
-  return /^alwaysApply:\s*true\s*$/m.test(fm);
+/** Hard caps for the short index files. Do not tighten these numbers. */
+export const CLAUDE_MD_MAX_LINES = 220;
+export const AGENTS_MD_MAX_LINES = 90;
+const CLAUDE_MD_HEADINGS = ["0", "1", "2", "3", "3a", "3b", "3c", "4", "5", "6", "7", "8", "9", "10", "11", "12"];
+
+/** Backtick paths in CLAUDE.md that must exist. Skip globs, placeholders, env, and credentials. */
+export function namedClaudePaths(text) {
+  const out = [];
+  const re = /`([^`]+)`/g;
+  let m;
+  while ((m = re.exec(text))) {
+    const raw = m[1].trim();
+    if (!raw) continue;
+    if (/[*<{]/.test(raw)) continue;
+    if (/\s/.test(raw)) continue;
+    if (/^https?:\/\//i.test(raw)) continue;
+    if (/^(?:\.env|credentials)\b/.test(raw)) continue;
+    if (!/\/|\.(md|mdc|mjs|js|json|yml|yaml|toml|html|css)$/i.test(raw) && !/^(?:AGENTS|CLAUDE|README)\.md$/i.test(raw)) continue;
+    out.push({ path: raw, index: m.index });
+  }
+  return out;
+}
+
+function lineAt(text, index) {
+  return text.slice(0, index).split("\n").length;
 }
 
 // ---------------------------------------------------------------- the checks
@@ -287,20 +309,48 @@ export function checkRules({ root = SCRIPT_ROOT, allow = {}, retired = [] } = {}
     }
   }
 
-  // f. CLAUDE.md LINE ---------------------------------------------------------
+  // f. CLAUDE.md (short index) -----------------------------------------------
   const claudeMdPath = path.join(root, "CLAUDE.md");
-  const claudeMdExempt = allow.claudeMdLineExempt || {};
-  if (isFile(claudeMdPath)) {
+  if (!isFile(claudeMdPath)) {
+    fail("claudemd", "CLAUDE.md", 1, "CLAUDE.md is missing.", "Restore CLAUDE.md as the short index.");
+  } else {
     const claudeMd = read(claudeMdPath);
-    const inClaudeMd = (n) => new RegExp(`(?<![\\w-])${n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\w-])`).test(claudeMd);
-    for (const n of rules) {
-      const text = read(path.join(rulesHome, `${n}.md`));
-      if (!isAlwaysOn(text)) continue;
-      if (!/owner[- ]law|owner[- ]set/i.test(text)) continue;
-      if (inClaudeMd(n) || n in claudeMdExempt) continue;
-      fail("claudemd", `${RULES_HOME}/${n}.md`, 1,
-        `Always-on owner law "${n}" is not named in CLAUDE.md.`,
-        `Add one short owner-set line to CLAUDE.md that ends "Same law: ${RULES_HOME}/${n}.md." (or list it in claudeMdLineExempt with a reason).`);
+    const claudeLines = claudeMd.split("\n");
+    if (!claudeMd.includes("docs/rules/RULES-INDEX.md")) {
+      fail("claudemd", "CLAUDE.md", 1, "CLAUDE.md does not name docs/rules/RULES-INDEX.md.",
+        "Add the path docs/rules/RULES-INDEX.md so the short file points at the full index.");
+    }
+    const foundHeadings = new Set();
+    claudeMd.split("\n").forEach((line) => {
+      const hm = /^(#{1,6})\s+(3a|3b|3c|\d+)\b/.exec(line);
+      if (hm) foundHeadings.add(hm[2]);
+    });
+    for (const h of CLAUDE_MD_HEADINGS) {
+      if (!foundHeadings.has(h)) {
+        fail("claudemd", "CLAUDE.md", 1, `CLAUDE.md is missing heading ${h}.`,
+          `Keep heading ${h} (0 to 12, including 3a, 3b, and 3c). Do not delete a numbered heading.`);
+      }
+    }
+    for (const named of namedClaudePaths(claudeMd)) {
+      const p = named.path.replace(/\/+$/, "");
+      if (!exists(path.join(root, p)) && !exists(path.join(root, named.path))) {
+        fail("claudemd", "CLAUDE.md", lineAt(claudeMd, named.index), `Names "${named.path}" but it does not exist.`,
+          "Fix the path to a real file, or remove the line if the path is gone.");
+      }
+    }
+    if (claudeLines.length > CLAUDE_MD_MAX_LINES) {
+      fail("claudemd", "CLAUDE.md", CLAUDE_MD_MAX_LINES + 1,
+        `CLAUDE.md is ${claudeLines.length} lines; the cap is ${CLAUDE_MD_MAX_LINES}.`,
+        "Keep CLAUDE.md as a short index. Move law text into .ai/rules. Do not delete a numbered heading.");
+    }
+  }
+  const agentsMdPath = path.join(root, "AGENTS.md");
+  if (isFile(agentsMdPath)) {
+    const agentsLines = read(agentsMdPath).split("\n");
+    if (agentsLines.length > AGENTS_MD_MAX_LINES) {
+      fail("claudemd", "AGENTS.md", AGENTS_MD_MAX_LINES + 1,
+        `AGENTS.md is ${agentsLines.length} lines; the cap is ${AGENTS_MD_MAX_LINES}.`,
+        "Keep AGENTS.md as a short shared contract. Do not tighten this cap.");
     }
   }
 

@@ -17,7 +17,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { checkRules, formatReport, loadConfig } from "../../scripts/rules-drift-check.mjs";
+import { checkRules, formatReport, loadConfig, CLAUDE_MD_MAX_LINES, AGENTS_MD_MAX_LINES } from "../../scripts/rules-drift-check.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -89,6 +89,53 @@ function addSkill(root, n, text = `---\nname: ${n}\n---\nSkill body.\n`, { links
   }
 }
 
+/** A short CLAUDE.md that passes the index checks: names RULES-INDEX, headings 0-12. */
+function goodClaudeMd() {
+  return [
+    "# Claude",
+    "All rules: `docs/rules/RULES-INDEX.md`.",
+    "",
+    "## 0. Split",
+    "",
+    "## 1. Model",
+    "",
+    "## 2. Ground",
+    "",
+    "## 3. Before code",
+    "",
+    "### 3a. Backend",
+    "",
+    "### 3b. Repo",
+    "",
+    "### 3c. Marketing",
+    "",
+    "## 4. Journeys",
+    "",
+    "## 5. Orchestration",
+    "",
+    "## 6. Done",
+    "",
+    "## 7. Compliance",
+    "",
+    "## 8. Guardrails",
+    "",
+    "## 9. Report",
+    "",
+    "## 10. Talk",
+    "",
+    "## 11. Deploy",
+    "",
+    "## 12. Traps",
+    "",
+  ].join("\n");
+}
+
+function padToLines(text, n) {
+  const lines = text.split("\n");
+  while (lines.length < n) lines.push("");
+  return lines.join("\n");
+}
+
 /** A tiny repo with one rule, one skill and one index, all consistent. */
 function goodRepo() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "rules-drift-"));
@@ -96,7 +143,7 @@ function goodRepo() {
   addRule(root, "demo", FM + "# Demo\n\n**Owner law (2026-10-24):** Do the thing. See `.cursor/rules/demo.mdc`.\n");
   addSkill(root, "demo-skill");
   put(root, "docs/rules/RULES-INDEX.md", "# Index\n- `demo` rule\n- `demo-skill` skill\n");
-  put(root, "CLAUDE.md", "# Claude\nDemo law (owner-set 2026-10-24). Same law: .ai/rules/demo.md.\n");
+  put(root, "CLAUDE.md", goodClaudeMd());
   put(root, "AGENTS.md", "# Agents\nShort rules.\n");
   return root;
 }
@@ -114,7 +161,6 @@ test("mirror: a rule with no links fails; a missing Claude link fails; the allow
   const root = goodRepo();
   put(root, ".ai/rules/lonely.md", FM + "Lonely. (owner-set 2026-10-24)\n");
   put(root, "docs/rules/RULES-INDEX.md", "`demo` `demo-skill` `lonely`");
-  put(root, "CLAUDE.md", "demo lonely");
   let f = run(root);
   assert.deepEqual(kinds(f), ["mirror"]);
   assert.equal(f.length, 2, "no Cursor link and no Claude link");
@@ -277,18 +323,65 @@ test("index: a rule or skill missing from RULES-INDEX.md fails", () => {
 
 // ---- f. claudemd -------------------------------------------------------------
 
-test("claudemd: an always-on owner law not named in CLAUDE.md fails; a glob rule is not required", () => {
+test("claudemd size caps stay at 220 and 90", () => {
+  assert.equal(CLAUDE_MD_MAX_LINES, 220);
+  assert.equal(AGENTS_MD_MAX_LINES, 90);
+});
+
+test("claudemd: CLAUDE.md must name docs/rules/RULES-INDEX.md", () => {
   const root = goodRepo();
-  put(root, "CLAUDE.md", "# Claude\nNothing here.\n");
-  let f = run(root);
-  assert.deepEqual(kinds(f), ["claudemd"]);
-  assert.equal(f[0].file, ".ai/rules/demo.md");
-  assert.deepEqual(run(root, { allow: { claudeMdLineExempt: { demo: "Covered by AGENTS.md." } } }), []);
-  put(root, ".ai/rules/demo.md", "---\ndescription: x\nalwaysApply: false\n---\n# Demo\n\n**Owner law (2026-10-24):** Do the thing. See `.cursor/rules/demo.mdc`.\n");
-  assert.deepEqual(run(root), []);
-  // No front matter at all: Claude still loads it every time, so it needs its CLAUDE.md line.
-  put(root, ".ai/rules/demo.md", "# Demo\n\n**Owner law (2026-10-24):** Do the thing.\n");
-  assert.deepEqual(kinds(run(root)), ["claudemd"]);
+  put(root, "CLAUDE.md", goodClaudeMd().replace("`docs/rules/RULES-INDEX.md`", "the rules index"));
+  let f = run(root).filter((x) => x.check === "claudemd");
+  assert.equal(f.length, 1);
+  assert.match(f[0].message, /docs\/rules\/RULES-INDEX\.md/);
+  put(root, "CLAUDE.md", goodClaudeMd());
+  assert.deepEqual(run(root).filter((x) => x.check === "claudemd"), []);
+});
+
+test("claudemd: CLAUDE.md must keep headings 0 to 12 including 3a, 3b, and 3c", () => {
+  const root = goodRepo();
+  put(root, "CLAUDE.md", goodClaudeMd().replace("### 3a. Backend\n\n", ""));
+  let f = run(root).filter((x) => x.check === "claudemd");
+  assert.equal(f.length, 1);
+  assert.match(f[0].message, /heading 3a/);
+  put(root, "CLAUDE.md", goodClaudeMd().replace("## 12. Traps\n", ""));
+  f = run(root).filter((x) => x.check === "claudemd");
+  assert.equal(f.length, 1);
+  assert.match(f[0].message, /heading 12/);
+  put(root, "CLAUDE.md", goodClaudeMd());
+  assert.deepEqual(run(root).filter((x) => x.check === "claudemd"), []);
+});
+
+test("claudemd: a path named in CLAUDE.md that does not exist fails; globs, placeholders, env and real paths pass", () => {
+  const root = goodRepo();
+  put(root, "CLAUDE.md", goodClaudeMd() + "See `docs/rules/ghost.md`.\n");
+  let f = run(root).filter((x) => x.check === "claudemd");
+  assert.equal(f.length, 1);
+  assert.equal(f[0].file, "CLAUDE.md");
+  assert.match(f[0].message, /ghost\.md/);
+  put(root, "docs/rules/ghost.md", "ok\n");
+  assert.deepEqual(run(root).filter((x) => x.check === "claudemd"), []);
+  put(root, "CLAUDE.md", goodClaudeMd() +
+    "Pattern `docs/rules/<name>.md`, glob `docs/rules/*.md`, env `.env`, secrets `credentials/**`.\n");
+  assert.deepEqual(run(root).filter((x) => x.check === "claudemd"), []);
+});
+
+test("claudemd: CLAUDE.md over 220 lines fails; AGENTS.md over 90 lines fails", () => {
+  const root = goodRepo();
+  put(root, "CLAUDE.md", padToLines(goodClaudeMd(), CLAUDE_MD_MAX_LINES + 1));
+  let f = run(root).filter((x) => x.check === "claudemd");
+  assert.equal(f.length, 1);
+  assert.equal(f[0].file, "CLAUDE.md");
+  assert.match(f[0].message, new RegExp(`CLAUDE\\.md is ${CLAUDE_MD_MAX_LINES + 1} lines; the cap is ${CLAUDE_MD_MAX_LINES}`));
+  put(root, "CLAUDE.md", padToLines(goodClaudeMd(), CLAUDE_MD_MAX_LINES));
+  assert.deepEqual(run(root).filter((x) => x.check === "claudemd"), []);
+  put(root, "AGENTS.md", padToLines("# Agents\nShort rules.\n", AGENTS_MD_MAX_LINES + 1));
+  f = run(root).filter((x) => x.check === "claudemd");
+  assert.equal(f.length, 1);
+  assert.equal(f[0].file, "AGENTS.md");
+  assert.match(f[0].message, new RegExp(`AGENTS\\.md is ${AGENTS_MD_MAX_LINES + 1} lines; the cap is ${AGENTS_MD_MAX_LINES}`));
+  put(root, "AGENTS.md", padToLines("# Agents\nShort rules.\n", AGENTS_MD_MAX_LINES));
+  assert.deepEqual(run(root).filter((x) => x.check === "claudemd"), []);
 });
 
 // ---- g. retired --------------------------------------------------------------

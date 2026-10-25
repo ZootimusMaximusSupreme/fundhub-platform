@@ -135,7 +135,7 @@ All of these live in `.agents/skills/<name>/SKILL.md` and are linked for Cursor 
 - `fundhub-auditor`, `fundhub-ui-auditor`, `fundhub-perf-auditor`, `fundhub-agent-tester`, `fundhub-system-map` (skill): read-only audits and checks. `audit-vs-fix-router` says which to load.
 - `fundhub-fixer`, `fundhub-builder`, `fundhub-orchestrator` (skill): the named repair, new builds, and the full build-to-verified loop.
 - `fundhub-version-control`, `fundhub-repo-hygiene` (skill): git hygiene and repo clutter. `repo-hygiene-vc-router` routes to them.
-- `fundhub-ad-writer` (skill): writes ad scripts. The ad rule books it reads were set aside by the owner on 2026-10-02.
+- `fundhub-ad-writer` (skill): writes ad scripts. The ad rule books it reads are in force: RULES.md Part 0, the other parts, and the checker, as amended by Part 0 and the newer owner rules. Where a book line fights a newer rule, the newer rule wins.
 - `fundhub-ad-editor` (skill): cuts mess-ups and levels the sound before Submagic. Runs on Sonnet. Mac only (it needs whisper under `credentials/`).
 - `fundhub-video-animation-overlay` (skill): places see-through animations on finished videos.
 - `fundhub-testimonial-thumbnails` (skill): turns testimonial video into live page cards.
@@ -150,9 +150,27 @@ All of these live in `.agents/skills/<name>/SKILL.md` and are linked for Cursor 
 - `docs/rules/TELEPROMPTER-VIDEO.md` (doc): the teleprompter acceptance checklist.
 - `docs/rules/compliance/` (doc): product rules, read when a task touches them.
 - `marketing/ads/NAMING.md`, `SECOND-LINE.md`, `watch-curve.md` (doc): ad naming, hook line two, and the Meta watch curve.
-- `marketing/ads/RULES.md` and `rules-data.mjs` (doc): set aside by the owner on 2026-10-02. Kept. Not applied. Rebuilt later.
+- `marketing/ads/RULES.md` and `rules-data.mjs` (doc): in force. RULES.md Part 0, the other parts, and the checker are in force, as amended by Part 0 and the newer owner rules. Where a book line fights a newer rule, the newer rule wins.
 - `docs/journeys/heartbeat-flow.md` (doc): the heartbeat picture.
 - `AGENTS.md` (doc): the short rules shared by Codex, Claude and Cursor. `CLAUDE.md` holds the long form.
+
+## Archived on 2026-10-24
+
+These rules were moved to `ops/archive/ai-instructions-2026-10-24/`. They are not live. Do not link them as current law.
+
+- `stop-asking-follow-the-rules`
+- `approved-launch-release-blockers`
+- `one-issue-per-thread`
+- `rules-for-claude-and-cursor`
+- `grok-lattice-overseer-perpetual`
+- `env-full-copies-never-masked`
+- `clickfunnels-html-api-push`
+- `ui-standards`
+- `animation-ad-style`
+- `live-playwright-100-before-manual`
+- `pulse-registry`
+- `monday-100-percent`
+- `redundancy-before-ui-polish`
 
 ## Open calls and drift fixes
 

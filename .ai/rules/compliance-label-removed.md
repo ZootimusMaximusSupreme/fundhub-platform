@@ -1,5 +1,5 @@
 ---
-description: No COMPLIANCE REVIEW REQUIRED label. Section 7 is kept for references.
+description: Removed the compliance-review label. Section 7 is kept for references.
 alwaysApply: true
 ---
 
