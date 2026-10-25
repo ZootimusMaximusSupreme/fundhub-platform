@@ -1,6 +1,6 @@
-# locked controls (filmed August 2026) — DO NOT EDIT
+# LIVE — DO NOT EDIT
 
-These are the ads, locked controls (filmed August 2026). They are the baseline every new ad gets measured against.
+These are the ads running right now. They are the baseline every new ad gets measured against.
 Nothing in this file gets rewritten, "improved," or reworded. If you want a variation, write it
 somewhere else.
 
@@ -10,7 +10,7 @@ Shot in a room. Production looks it, CPMs run high because of it — and they st
 $32–36. So the offer converts and the copy converts. What's holding it back is how it looks and how
 few distinct hooks are in rotation. Sedona fixes the first. `CONCEPTS.md` fixes the second.
 
-**locked controls (filmed August 2026):** `Ad_1_Denial` · `Ad_2_Broker_Burn` · `Ad_3_Competitor` ·
+**Filmed and running:** `Ad_1_Denial` · `Ad_2_Broker_Burn` · `Ad_3_Competitor` ·
 `Ad_4_Blind_Application` · `VSL_Script_DirectROAS_v1`
 
 ---
