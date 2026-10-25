@@ -1,1 +1,0 @@
-../../.ai/rules/monday-100-percent.md

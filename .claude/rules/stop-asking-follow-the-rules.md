@@ -1,1 +1,0 @@
-../../.ai/rules/stop-asking-follow-the-rules.md

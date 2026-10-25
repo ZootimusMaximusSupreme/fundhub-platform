@@ -1,1 +1,0 @@
-../../.ai/rules/live-playwright-100-before-manual.md

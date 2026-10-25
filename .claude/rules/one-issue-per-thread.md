@@ -1,1 +1,0 @@
-../../.ai/rules/one-issue-per-thread.md

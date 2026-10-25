@@ -49,3 +49,4 @@ Branch `drift-cleanup`. Tick a box only after its check passes. If you stop, say
 ## Left for Chris
 
 - Two code comments still name the old pulse-registry rule: `src/pulse/registry.mjs` line 5 and `src/pulse/machine.mjs` line 10. This cleanup does not edit app code. They should point at `heartbeat-on-every-build` when a code change is allowed.
+- The comment in `db/migrations/407_ad_number_from_meta.sql` still names the old ad-scripts board path. This cleanup does not edit db/. Leave the migration as it is.

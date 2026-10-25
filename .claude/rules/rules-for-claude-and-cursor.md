@@ -1,1 +1,0 @@
-../../.ai/rules/rules-for-claude-and-cursor.md
