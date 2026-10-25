@@ -254,6 +254,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = "Fundhub Prompter";
 				INFOPLIST_KEY_CFBundleIconName = AppIcon;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Fundhub Prompter films you with the front camera while you read.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Fundhub Prompter records your voice with the video.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Fundhub Prompter saves each take to Photos with its take name.";
@@ -289,6 +290,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = "Fundhub Prompter";
 				INFOPLIST_KEY_CFBundleIconName = AppIcon;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Fundhub Prompter films you with the front camera while you read.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Fundhub Prompter records your voice with the video.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Fundhub Prompter saves each take to Photos with its take name.";
