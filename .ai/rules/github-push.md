@@ -27,7 +27,7 @@ The old whole-repo script (kept, not the default) adds or updates remote **`orig
 
 ## Commit locally, every session (owner-set 2026-09-08)
 
-A laptop died on 2026-09-07 holding uncommitted work. Four marketing skills and 83 ad scripts were never in git and are gone. So commit to the local repository in the same session the work is done, every time, whether or not a push is possible. An unpushed commit survives. An uncommitted file does not. If you cannot push, commit anyway and say so. Then push that commit to GitHub when auth allows.
+A laptop died on 2026-09-07 holding uncommitted work. Four marketing skills and 83 ad scripts were never in git. The 83 ad scripts were rebuilt on 2026-10-03. So commit to the local repository in the same session the work is done, every time, whether or not a push is possible. An unpushed commit survives. An uncommitted file does not. If you cannot push, commit anyway and say so. Then push that commit to GitHub when auth allows.
 
 ## Credentials (names only — values in gitignored `.env`)
 

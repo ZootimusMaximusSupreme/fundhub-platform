@@ -131,7 +131,7 @@ Included:
 
 Also in the pack (show as part of the letter pack, not as extra SKUs): six rounds of letters **as documents they receive**, plus later-round escalation letters, plus advisors they can reach, plus the community from day one.
 
-The existing order summary on `slo-02-order.html` lists six assets. Keep that shape. Sneak-peek **pictures** of the files belong on the **sales page** (`slo-01-sales.html` Section 4), not as a wall of PDFs on checkout. See `SNEAK-PEEKS-FOR-CLAUDE.md`.
+The existing order summary on `slo-02-order.html` lists six assets. Keep that shape. Sneak-peek **pictures** of the files belong on the **sales page** (`slo-01-sales.html` Section 4), not as a wall of PDFs on checkout. See the sample cards on `slo-01-sales.html` (`.ai/rules/sample-clients-consistent.md`).
 
 ---
 
@@ -206,7 +206,7 @@ Mobile: one column. Thumb can hit the pay button. No tiny type on the card field
 
 Do **not** edit `public/app/` CRM screens. Do **not** change Commas products. Do **not** collect SSN.
 
-Sneak-peek document thumbnails: `SNEAK-PEEKS-FOR-CLAUDE.md` + hole already marked on `slo-01-sales.html` (`SLOT-SNEAK-PEEKS`).
+Sneak-peek document thumbnails: the sample cards on `slo-01-sales.html` (`.ai/rules/sample-clients-consistent.md`).
 
 ---
 

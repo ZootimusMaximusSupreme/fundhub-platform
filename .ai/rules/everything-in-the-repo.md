@@ -16,6 +16,4 @@ alwaysApply: true
 | `docs/` | `rules/` (UI, speed, compliance standards, an archived brand css; live brand tokens are in `public/app/fundhub-brand.css`), `sops/` (runbook, playbooks), `journeys/`, `specs/`, `finance/`, `diagrams/`, `legacy-strong/`, `metro2/`, `underwriteiq/` |
 | `ops/` | `workflows/` (work boards, `<batch>.md`), ops notes, `ship-log.md` |
 
-**Measured 2026-09-06: this rule is being broken where it costs the most.** The 83 ad scripts and the VSLs live in a chat window. `fundhub-scripts.md` and `fundhub-vsl.md` are not in the repo, not on any branch, and not anywhere on this Mac. `marketing/ads/registry.json` was built without them, which is why 21 of its 24 ads have no title. See `ops/2026-09-06-self-analysis.md`.
-
 **§3b is about where approved work is saved, not about what work to start.** It never authorizes writing, committing or pushing something you were not asked for. If §3b and §0, §2, §3 or §8 appear to disagree, those win — §3b applies only once the work itself is approved.

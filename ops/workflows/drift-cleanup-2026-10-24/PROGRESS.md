@@ -13,7 +13,7 @@ Branch `drift-cleanup`. Tick a box only after its check passes. If you stop, say
 - [x] Marketing books: RULES.md, VOICE.md, RECIPES.md, ASSET-BANK.md, ANGLE-GENERATOR.md, SECOND-LINE.md, NAMING.md, watch-curve.md, WRITE-ADS-FROM-HERE.md, notes-green-screen.md, video-pipeline-plan.md, slo/SLO-CHAT-PROMPT.md, reference/locked-ads-2026-09.md, ascension, COPY-DIRECTIVES.md, CHECKOUT-FOR-CLAUDE.md, CHRIS-DO-THIS-FIRST.md
 - [x] Docs and ops notes: RUNBOOK.md, docs/sops/README.md, postgres-least-privilege.md banner, README.md, specs W1 W3 W4 W6 W7, TELEPROMPTER-VIDEO.md, journeys/ad-video-flow.md line 265, animation-builds board line 5, pulse-layer brief 04 line 65
 - [x] Archive these boards and files: ops/workflows/codex-build-claude-test-2026-10-13.md, ops/workflows/ad-scripts-2026-10-02.md (first check each standing rule in it is in RULES.md Part 0), marketing/ads/slo/slo-297-prompt-2026-09-18.md (only if no code reads it), plus the "Archive whole files" list in plans/stale-plan.md
-- [ ] Stale lines removed and archived (44, plans/stale-plan.md) and dead references fixed
+- [x] Stale lines removed and archived (44, plans/stale-plan.md) and dead references fixed
 - [x] `node scripts/rules-drift-check.mjs` read; pointer failures to archived rules fixed
 
 ## Item 3: short CLAUDE.md and AGENTS.md

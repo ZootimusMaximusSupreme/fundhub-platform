@@ -174,5 +174,5 @@ These rules were moved to `ops/archive/ai-instructions-2026-10-24/`. They are no
 
 ## Open calls and drift fixes
 
-The 2026-10-24 drift pass is on the board `ops/workflows/rules-drift-2026-10-24.md`, including what Chris still has to decide.
+The 2026-10-24 drift cleanup is on the board `ops/workflows/drift-cleanup-2026-10-24/BOARD.md`.
 

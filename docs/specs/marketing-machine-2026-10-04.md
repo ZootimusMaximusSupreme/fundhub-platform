@@ -22,7 +22,7 @@ Two files make up the spec:
 - **Target:** Chris films 10 ads in one session. By that evening, all 10 are cut, captioned, animated and waiting for his approval, and the approved ones load into Meta with one tap.
 - **Chris's whole job:** film, and do a bit of editing when it's needed. The machine does the rest, and every decision stays his.
 
-**Top rule.** Chris's word beats any written rule. Rules guide the machine, and nobody reads them so literally that they block what Chris asked for. When Chris says something different, his words win and the rule gets updated in all three homes in the same change: the CLAUDE.md line, `.claude/rules/<name>.md`, and `.cursor/rules/<name>.mdc` (law: `.claude/rules/rules-for-claude-and-cursor.md`).
+**Top rule.** Chris's word beats any written rule. Rules guide the machine, and nobody reads them so literally that they block what Chris asked for. When Chris says something different, his words win and the rule gets updated in its one home in the same change (law: `.ai/rules/rules-no-drift.md`).
 
 ## Contents
 

@@ -198,42 +198,38 @@ that touch a creative or a campaign directly:
 These are things the code does not do, or does not carry. They are recorded here
 rather than filled in.
 
-1. **This folder did not exist.** `CLAUDE.md` §7 says domain rules live in
-   `docs/compliance/`. Before this file, that folder was not in the repository at
-   all. This page creates it.
-
-2. **Campaign checking is not switched on.** The campaign guard at
+1. **Campaign checking is not switched on.** The campaign guard at
    `src/adplatforms/index.mjs:70` only runs when it is handed something to check.
    Neither of its two callers hands it anything — `api/campaigns/write.mjs` and
    `src/optimize/run.mjs` both only pause, resume or change a budget, which the
    code says are correctly exempt. So no live path checks a campaign today.
 
-3. **Nothing creates a campaign or an ad set.** `createCampaign`, `createAdSet`
+2. **Nothing creates a campaign or an ad set.** `createCampaign`, `createAdSet`
    and `createAd` in `src/adplatforms/meta.mjs` have no caller outside tests, and
    no route reaches them. Because the nine Facebook targeting rules fire from
    inside ad-set creation, **none of the nine can fire today.** They are written,
    tested and correct — they are simply not reachable yet.
 
-4. **The audit helper is unused.** `screenAndRecord` in
+3. **The audit helper is unused.** `screenAndRecord` in
    `src/compliance/screen.mjs:231` exists to record every check. Nothing calls it.
    The two paths that do keep records — generated creatives and social posts —
    write their own record directly. Website copy and queued marketing copy are
    checked but leave no screening record at all.
 
-5. **No warnings exist.** All twelve saved rules ship set to `block`. The `warn`
+4. **No warnings exist.** All twelve saved rules ship set to `block`. The `warn`
    setting is built and never used, so the Severity column has exactly one value
    in it everywhere.
 
-6. **A typo in a severity would become a stop.** The code counts anything that is
+5. **A typo in a severity would become a stop.** The code counts anything that is
    not exactly the word `warn` as a stop. A rule saved as `warning` would silently
    become a hard stop. This is safe in the sense that it never lets something
    through by accident.
 
-7. **The kind of work is recorded but never used.** The checker accepts a `kind`
+6. **The kind of work is recorded but never used.** The checker accepts a `kind`
    value and only writes it to the audit record. It never picks rules with it. The
    database allows an `ad_set` kind that the checker's own notes do not list.
 
-8. **No invented rules were found.** Every one of the twenty-nine rows shown on
+7. **No invented rules were found.** Every one of the twenty-nine rows shown on
    the Creative Factory screen traces to real code. Nothing on that screen is made
    up, and nothing there is missing from this page.
 

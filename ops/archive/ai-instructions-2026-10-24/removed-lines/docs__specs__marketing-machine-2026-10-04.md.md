@@ -15,3 +15,11 @@ These lines were cut from the live file. The meaning named in the reason stays i
   - $10K, $20K and $50K a month, climbing to $100K
   - rates going up while banks lend less
 ```
+
+## Dead reference to `rules-for-claude-and-cursor`
+
+Reason: that rule now lives under `ops/archive/ai-instructions-2026-10-24/`. The live law is `.ai/rules/rules-no-drift.md`.
+
+```
+When Chris says something different, his words win and the rule gets updated in all three homes in the same change: the CLAUDE.md line, `.claude/rules/<name>.md`, and `.cursor/rules/<name>.mdc` (law: `.claude/rules/rules-for-claude-and-cursor.md`).
+```
