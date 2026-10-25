@@ -55,3 +55,4 @@
 [x] codex/live-ios-teleprompter — SKIP. LEFT. Tip 160332b06. Conflicts in the prompter Swift app. Not merged.
 [x] codex/fundhub-prompter-appstore — SKIP. LEFT. Tip ea9e92c83. Changes LoginView.swift, SettingsView.swift, and the Xcode project. Not merged.
 [x] codex/crm-portal-layout-professional — SKIP. LEFT. Tip 1f1c50eee, 25 commits ahead. Hundreds of live page files and conflicts. Not merged.
+[x] codex/client-portal-ios-redo — SKIP. LEFT. Tip 79b609ee5, 20 commits ahead. Hundreds of live page files and conflicts. Not merged.
