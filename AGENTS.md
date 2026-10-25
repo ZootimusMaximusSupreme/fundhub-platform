@@ -38,6 +38,7 @@ Before reading code or planning a new task, state the parallel workflows, what c
 - Look up facts you can check in the repo, Drive, logs, or the live site. Before claiming something is missing, search the places it could live, including `src/`, `scripts/`, `db/`, and `docs/`. Never invent a result or call a skipped check a pass.
 - For `public/app/` work, read `docs/rules/UI-STANDARDS.md`. Keep a new live page, API route, job, or send path covered by the heartbeat rules in `docs/journeys/heartbeat-flow.md`; money or customer paths also need their tripwire proof.
 - Mark screenshots used as review or fix evidence with numbered red circles and yellow arrows around the exact issue and a short caption. Keep approved deliverables and decisions in this repo, not only in chat.
+- Do not create new .md files unless I ask for one. Update an existing file instead. (owner-set 2026-10-24). Law: `.ai/rules/no-new-markdown.md`.
 
 ## Proof, Git, and release
 

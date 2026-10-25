@@ -6,6 +6,18 @@
         "command": "node .cursor/hooks/warn-secret-stage.cjs",
         "matcher": "git\\s+(add|commit|stage|rm|mv)\\b",
         "failClosed": false
+      },
+      {
+        "command": "node scripts/hooks/guard-new-markdown.mjs",
+        "matcher": "\\.md\\b",
+        "failClosed": false
+      }
+    ],
+    "preToolUse": [
+      {
+        "command": "node scripts/hooks/guard-new-markdown.mjs",
+        "matcher": "Write|Edit|TabWrite",
+        "failClosed": false
       }
     ],
     "afterFileEdit": [

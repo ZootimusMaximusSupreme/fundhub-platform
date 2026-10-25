@@ -48,6 +48,14 @@ export const HOOK_SET = [
       matcher: "Write|Edit|MultiEdit|apply_patch|Bash",
       hooks: [{ type: "command", command: cmd("scripts/hooks/guard-env-masks.mjs") }]
     }
+  },
+  {
+    id: "guard-new-markdown.mjs",
+    event: "PreToolUse",
+    entry: {
+      matcher: "Write|Edit|MultiEdit|apply_patch|Bash",
+      hooks: [{ type: "command", command: cmd("scripts/hooks/guard-new-markdown.mjs") }]
+    }
   }
 ];
 

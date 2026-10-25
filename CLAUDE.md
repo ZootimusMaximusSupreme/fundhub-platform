@@ -98,6 +98,7 @@ Owner calls already settled (owner-set 2026-10-09 to 2026-10-21). Same law: `.ai
 Model by job (owner-set 2026-10-06 and 2026-10-23). Same law: `.ai/rules/model-by-job.md`
 When the rules settle a choice, make it and say what you did (owner-set 2026-10-23). Same law: `.ai/rules/owner-go-no-repeat-approval.md`
 Rules never drift (owner-set 2026-10-24). Same law: `.ai/rules/rules-no-drift.md`
+No new markdown files (owner-set 2026-10-24). Do not create new .md files unless I ask for one. Update an existing file instead. Same law: `.ai/rules/no-new-markdown.md`
 
 ## 3. Before writing any code
 

@@ -24,6 +24,8 @@ import { mergeHookSet } from "./wire.mjs";
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const HOOK_DIR = path.join(REPO, ".claude", "hooks");
 const ENV_HOOK = path.join(REPO, "scripts", "hooks", "guard-env-masks.mjs");
+const MD_HOOK = path.join(REPO, "scripts", "hooks", "guard-new-markdown.mjs");
+const mdShown = { block: 0, allow: 0 };
 const CHECKER = path.join(REPO, "scripts", "ads", "check-script.mjs");
 
 // ---------------------------------------------------------------------------
@@ -421,10 +423,12 @@ function testWire() {
   if (!emptyText.includes("guard-rule-edits.mjs")) fail("wire: adds guard-rule-edits", emptyText);
   if (!emptyText.includes("check-ad-script.mjs")) fail("wire: adds check-ad-script", emptyText);
   if (!emptyText.includes("guard-env-masks.mjs")) fail("wire: adds guard-env-masks", emptyText);
+  if (!emptyText.includes("guard-new-markdown.mjs")) fail("wire: adds guard-new-markdown", emptyText);
   checks += 1;
 
   const twice = mergeHookSet(empty);
   if ((JSON.stringify(twice).split("guard-env-masks.mjs").length - 1) !== 1) fail("wire: running twice does not duplicate", JSON.stringify(twice));
+  if ((JSON.stringify(twice).split("guard-new-markdown.mjs").length - 1) !== 1) fail("wire: running twice does not duplicate guard-new-markdown", JSON.stringify(twice));
   if ((JSON.stringify(twice).split("session-rules.mjs").length - 1) !== 1) fail("wire: running twice does not duplicate session-rules", JSON.stringify(twice));
   checks += 1;
 
@@ -444,6 +448,8 @@ function testWire() {
   if (!c.includes("guard-env-masks.mjs")) fail("wire: hooks.json has the env hook", c);
   if ((s.split("guard-env-masks.mjs").length - 1) !== 1) fail("wire: settings.json has the env hook once", s);
   if ((c.split("guard-env-masks.mjs").length - 1) !== 1) fail("wire: hooks.json has the env hook once", c);
+  if ((s.split("guard-new-markdown.mjs").length - 1) !== 1) fail("wire: settings.json has the markdown hook once", s);
+  if ((c.split("guard-new-markdown.mjs").length - 1) !== 1) fail("wire: hooks.json has the markdown hook once", c);
   if (!s.includes("intended journey")) fail("wire: settings.json kept the intended-journey hook", s);
   checks += 1;
 }
@@ -467,12 +473,54 @@ function main() {
   testGuard(proj);
   testAdCheck(proj);
   testEnvMasks(proj);
+  testNewMarkdown();
   testWire();
+  if (mdShown.block !== 1 || mdShown.allow !== 1) {
+    fail("new md: self-test must show one block and one allow", JSON.stringify(mdShown));
+  }
+}
+
+function testNewMarkdown() {
+  const outside = path.join(tmpRoot, "md-outside");
+  fs.mkdirSync(outside, { recursive: true });
+  const blockTarget = path.join(outside, "scripts", "new-note.md");
+  const blockRun = runHook(MD_HOOK, {
+    hook_event_name: "PreToolUse",
+    tool_name: "Write",
+    cwd: outside,
+    tool_input: { file_path: blockTarget }
+  });
+  if (blockRun.status !== 2) {
+    fail("new md: block a new file outside the folders", `exit ${blockRun.status}\n${blockRun.stdout}\n${blockRun.stderr}`);
+  }
+  let answer;
+  try { answer = JSON.parse(blockRun.stdout); }
+  catch { fail("new md: block answer is JSON", blockRun.stdout); }
+  if (answer.decision !== "block" || answer.permission !== "deny") {
+    fail("new md: block decision", JSON.stringify(answer));
+  }
+  const rule = "Do not create new .md files unless I ask for one. Update an existing file instead.";
+  if (!String(answer.reason || "").startsWith(rule)) fail("new md: reason starts with the rule", answer.reason);
+  mdShown.block += 1;
+  checks += 1;
+
+  const allowRun = runHook(MD_HOOK, {
+    hook_event_name: "PreToolUse",
+    tool_name: "Write",
+    cwd: outside,
+    tool_input: { file_path: path.join(outside, "docs", "new-note.md") }
+  });
+  if (allowRun.status !== 0 || allowRun.stdout.trim() !== "") {
+    fail("new md: allow a new file inside docs/", `exit ${allowRun.status}\n${allowRun.stdout}\n${allowRun.stderr}`);
+  }
+  mdShown.allow += 1;
+  checks += 1;
 }
 
 try {
   main();
-  console.log(`hooks self-test OK: ${checks} checks passed (session-rules, guard-rule-edits, check-ad-script, guard-env-masks)`);
+  console.log(`guard-new-markdown: ${mdShown.block} block (a new .md outside the folders), ${mdShown.allow} allow (a new .md inside docs/)`);
+  console.log(`hooks self-test OK: ${checks} checks passed (session-rules, guard-rule-edits, check-ad-script, guard-env-masks, guard-new-markdown)`);
 } catch (err) {
   if (err instanceof SelfTestFailure) console.error(`hooks self-test FAILED at: ${err.message}`);
   else console.error(`hooks self-test CRASHED: ${err && err.stack ? err.stack : err}`);
