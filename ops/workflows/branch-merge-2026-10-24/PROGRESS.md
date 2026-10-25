@@ -48,3 +48,4 @@
 [x] codex/heartbeat-shell-sidebar-current-main — SKIP. LEFT. Tip 9c1c5184b. Every file already exists and the branch conflicts on live pages or pulse proofs. Kept main. Not sure the old proof is already in main. Not merged.
 [x] codex/heartbeat-messaging-c — SKIP. LEFT. Tip 335ab6c9b. Conflict on the text-send path (dispatch.mjs / sms-dedup). Not merged.
 [x] codex/heartbeat-messaging-c-main — SKIP. LEFT. Tip 978f04a5b. Conflict on the text-send path (dispatch.mjs / sms-dedup). Not merged.
+[x] claude/inngest-stop-2026-10-20 — SKIP. LEFT. Tip e6d924cef. Changes schedules of live jobs (45 files, 0 new files). Not merged.
