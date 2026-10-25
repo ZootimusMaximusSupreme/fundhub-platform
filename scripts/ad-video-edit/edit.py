@@ -10,7 +10,8 @@
 #     "end": 78.25,             # last moment kept
 #     "mess": [[44.58, 45.48, "so that way - false start"], ...] }
 #
-#   optional: "pause_max": 0.28, "pause_keep": 0.20
+#   optional: "pause_max": 0.28, "pause_keep": 0.20,
+#             "quiet_margin_db": 9   (lower it for a noisy outdoor take, so soft words are not read as pauses)
 #
 # Only the "mess" cuts remove words. Pauses are found by ffmpeg and only shortened
 # (anything over 0.28 s becomes 0.20 s), so no word is ever cut by the pause step.
@@ -31,7 +32,7 @@ def run(args):
                           capture_output=True, text=True).stderr
 
 
-def silences(src, min_len=0.2):
+def silences(src, min_len=0.2, margin=9):
     """Pauses, including HANGING TAILS: the dead air after a trailing word
     ("somebody else......"), with any breath or room noise in it.
 
@@ -46,7 +47,7 @@ def silences(src, min_len=0.2):
     hop, win = 160, 640  # 10 ms steps, 40 ms windows
     n = max(0, (len(x) - win) // hop)
     db = np.array([10 * np.log10(np.mean(x[i * hop:i * hop + win] ** 2) + 1e-10) for i in range(n)])
-    quiet = db < np.percentile(db, 10) + 9
+    quiet = db < np.percentile(db, 10) + margin
     out, i = [], 0
     while i < n:
         if quiet[i]:
@@ -105,7 +106,7 @@ def graph(keep, tail, video):
 def main():
     plan_path, src, out = sys.argv[1:4]
     plan = json.load(open(plan_path))
-    keep, cuts = keep_list(plan, silences(src))
+    keep, cuts = keep_list(plan, silences(src, margin=plan.get("quiet_margin_db", 9)))
     for a, b in cuts:
         print(f"cut {a:.2f}-{b:.2f}")
     print(f"{len(keep)} pieces, new length {sum(b - a for a, b in keep):.2f}s")
@@ -130,7 +131,7 @@ def main():
     summary = log[log.rfind("Summary"):]
     loud = float(re.search(r"I:\s+(-?[\d.]+) LUFS", summary).group(1))
     peak = float(re.search(r"Peak:\s+(-?[\d.]+) dBFS", summary).group(1))
-    longest = max([b - a for a, b in silences(out, 0.05)] or [0])
+    longest = max([b - a for a, b in silences(out, 0.05, plan.get("quiet_margin_db", 9))] or [0])
     ok = abs(loud + 14) <= 1 and peak <= -1.5 and longest <= plan.get("pause_max", PAUSE_MAX) + 0.02
     print(f"loudness {loud} LUFS, peak {peak} dBFS, longest pause {longest:.2f}s -> "
           f"{'PASS' if ok else 'FAIL'}")
