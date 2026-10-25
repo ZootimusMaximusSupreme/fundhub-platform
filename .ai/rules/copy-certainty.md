@@ -18,6 +18,7 @@ alwaysApply: true
 - you might, you may, maybe, could, could be, can possibly
 - probably, likely, most likely, hopefully, chances are
 - "Maybe your bank denied you" style openers. Use "When a bank denies you..." instead.
+- Never state a day count. The page's refund line says "within 7 days". Ads never state a day count. (owner-set 2026-10-02)
 
 ## Example
 

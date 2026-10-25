@@ -22,7 +22,7 @@ After those, a report-only list for code, generated files and files outside the 
 5. Ran the scanner a second time after I found a retired folder name it had missed (`clickfunnels-fragments/`, now `marketing/landing-pages/`). Also scanned the hook and settings files: no dead path there.
 6. Checked every quote in this plan against the committed file with a script: 91 quoted pieces in the Remove-lines list, each found within three lines of the line I cite. The quotes in the archive table and the Maybe list were read against their files the same way; the few that did not match word for word are my own proposed wording or come from another file, and I checked those by hand.
 
-**Already decided in Phase 3 and not repeated:** the five archived rules (`monday-100-percent`, `grok-lattice-overseer-perpetual`, `pulse-registry`, `approved-launch-release-blockers`, `ui-standards`), the two archived boards (`codex-build-claude-test-2026-10-13.md`, `ad-scripts-2026-10-02.md`), the paste prompt `slo-297-prompt-2026-09-18.md`, the 50 calls, and the 15 fixes in #44. Where a find touches a decided file I say so and add only the new part. The pointer table below lists every live line that still names the archived rules, because a retired rule loses every pointer.
+**Already decided in Phase 3 and not repeated:** the five archived rules (`monday-100-percent`, `grok-lattice-overseer-perpetual`, `pulse-registry`, `approved-launch-release-blockers`, `ui-standards`), the two archived boards (`codex-build-claude-test-2026-10-13.md`, `ops/archive/ai-instructions-2026-10-24/ops/workflows/ad-scripts-2026-10-02.md`), the paste prompt `slo-297-prompt-2026-09-18.md`, the 50 calls, and the 15 fixes in #44. Where a find touches a decided file I say so and add only the new part. The pointer table below lists every live line that still names the archived rules, because a retired rule loses every pointer.
 
 **Archive note format.** When a line is removed, append its old text, the date and the reason to `ops/archive/ai-instructions-2026-10-24/removed-lines/<path with / replaced by __>.md` (for `CLAUDE.md` that is `CLAUDE.md.md`). Move whole files into `ops/archive/ai-instructions-2026-10-24/` and keep their relative path.
 
@@ -283,7 +283,7 @@ The folder `clickfunnels-fragments/` became `marketing/landing-pages/` on 2026-1
 - `.cursor/hooks.json` runs `but cursor after-edit` and `but cursor stop`. `but` is not installed on this Mac. Phase 7 already reports this (`phase-7-hooks.md:37`), so I do not list it again.
 - `.ai/rules/agentic-audit-guardrails.md:53` and `.ai/rules/chris-never-clickfunnels.md:35` show `ops/workflows/…` and `marketing/landing-pages/slo/…`. These are ellipsis placeholders.
 - `marketing/ads/slo/SLO-CHAT-PROMPT.md` and `marketing/ads/slo/fundhub-297/*`: the scanner found no dead path.
-- `ops/workflows/ad-scripts-2026-10-02.md` has 13 dead paths (10 old-prefix) and `ops/workflows/full-launch-lattice-2026-09-20.md` has 23. Phase 3 and A1 archive them; no edit needed.
+- `ops/archive/ai-instructions-2026-10-24/ops/workflows/ad-scripts-2026-10-02.md` has 13 dead paths (10 old-prefix) and `ops/workflows/full-launch-lattice-2026-09-20.md` has 23. Phase 3 and A1 archive them; no edit needed.
 
 ---
 

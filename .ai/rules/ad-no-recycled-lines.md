@@ -18,6 +18,7 @@ alwaysApply: true
 
 - Copy a sentence, a call to action, or a proof story from another ad because it already worked in a draft.
 - Reuse the same opener shape across a batch (for example "This is for you if" in two ads).
+- No "Not another ___, but..." openers. "Not another ___, but…". (owner-set 2026-10-02)
 
 ## Example
 

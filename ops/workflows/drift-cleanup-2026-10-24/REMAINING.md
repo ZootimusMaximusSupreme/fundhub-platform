@@ -22,7 +22,7 @@ Read `phase-3-decisions.md`, then `phase-3-conflicts.md` for the exact quotes. C
 ### 2. Merge duplicates and archive stale files
 - `plans/dedupe-plan.md`: 134 file sections of exact actions (replace a repeat with a pointer, fold a unique fact into the owner file, at most 8 file merges).
 - `plans/stale-plan.md`: files to archive, 44 lines to remove (append each to the archive), a dead-reference fix list, and an "Order I would work in" section at the end.
-- Also archive what `phase-3-decisions.md` lists: rules `monday-100-percent`, `pulse-registry`, `grok-lattice-overseer-perpetual`, `ui-standards`, `approved-launch-release-blockers` (fold anything unique into `finish-the-requested-job` first), the board `ops/workflows/codex-build-claude-test-2026-10-13.md`, and the board `ops/workflows/ad-scripts-2026-10-02.md` (first check each standing rule in it is in `marketing/ads/RULES.md` Part 0).
+- Also archive what `phase-3-decisions.md` lists: rules `monday-100-percent`, `pulse-registry`, `grok-lattice-overseer-perpetual`, `ui-standards`, `approved-launch-release-blockers` (fold anything unique into `finish-the-requested-job` first), the board `ops/workflows/codex-build-claude-test-2026-10-13.md`, and the board `ops/archive/ai-instructions-2026-10-24/ops/workflows/ad-scripts-2026-10-02.md` (opener ban in `.ai/rules/ad-no-recycled-lines.md`, day count in `.ai/rules/copy-certainty.md`).
 - Archive folder: `ops/archive/ai-instructions-2026-10-24/`. Move, never delete. Text you cut goes to `removed-lines/<path with / as __>.md` in that folder.
 - Add new rule `no-test-data-on-production` (call 2).
 
