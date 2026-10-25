@@ -1,1 +1,0 @@
-Owner law (Chris 2026-08-16): Never change anything Chris did not specifically describe. AI often changes unrelated things when making "simple" fixes. Operational/build strategy needs stronger guardrails — only touch what was named. Chris was working on this with Claude separately; do not implement guardrails until he asks.
