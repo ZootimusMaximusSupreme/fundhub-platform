@@ -1,7 +1,8 @@
 # Manual SOPs — until SMS / email / AI calling are automated
 
+Written before the owner laws of Aug to Oct 2026. Where this page and CLAUDE.md disagree, CLAUDE.md wins.
+
 **Owner:** Chris  
-**Stack (owner-set 2026-08-14):** SMS = Twilio (prove Monday) · Email = Resend · Voice = Bland · CRS = sandbox today  
 **Rule:** No secrets in these files. If a link is not known from the repo, it says **UNKNOWN**.
 
 Use these when the app is not yet sending texts, emails, or calls by itself. When a channel goes live in code, still run the [daily handoff checklist](./daily-handoff-checklist.md) until that channel is proven.
@@ -18,7 +19,6 @@ Use these when the app is not yet sending texts, emails, or calls by itself. Whe
 
 ## Hard rules (all SOPs)
 
-1. Do not dump the paused outbound queue.
-2. Do not put API keys, passwords, or tokens in notes, tickets, or these docs.
-3. Log every manual send in the CRM client record (date, channel, who, what, outcome).
-4. Dispute letters: **downsell / DIRTY / REPAIR_ONLY only**. Never for a funding-path client.
+1. Do not put API keys, passwords, or tokens in notes, tickets, or these docs.
+2. Log every manual send in the CRM client record (date, channel, who, what, outcome).
+3. Dispute letters: **downsell / DIRTY / REPAIR_ONLY only**. Never for a funding-path client.

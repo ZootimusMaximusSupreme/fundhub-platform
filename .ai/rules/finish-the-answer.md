@@ -15,20 +15,18 @@ Do not stop and make Chris ask "how do you know" or "find out."
 
 Do not end on a question he has to ask next.
 
-Ask him only when you are blocked on a decision only he can make (yes/no, live vs sandbox, delete data except proven test rows and test logins, repoint the database).
+Ask him only when you are blocked on a decision only he can make. The owner-only decisions are these and no others: yes/no and live-or-sandbox calls; anything that deletes data; anything that repoints `DATABASE_URL` at a different database. Written exception (owner-set 2026-10-24): deleting test rows and test logins that are proven test or sim (`is_demo`, `+sim` emails, TEST names) is allowed without asking. Real-looking people still ask. When you do ask, ask that one decision, then wait; do not ask and proceed in the same turn.
 
-Still do not fix extra holes he did not name. Still do not change files he did not ask to change. Looking up the fact is not the same as fixing a second hole.
+Law: no-extra-holes (.ai/rules/no-extra-holes.md) - looking up a fact never licenses fixing a second hole or editing a file Chris did not name.
 
 ## Never
 
 - Stop after part of the answer and wait for him to ask the next fact
 - Ask him to look up something you can look up
-- Fix a second hole, or edit a file he did not name, because you looked something up
 
-## Always
+## Never invent
 
-- Look up the fact and include it in the same answer
-- Ask only when the next step is a decision only he can make
+If you looked and the fact is not there, that absence is the finding. Report it. Do not fill the gap with a guess. A finding is not confirmed until you have looked everywhere it could live: search `src/`, `scripts/`, `db/` and `docs/` before you call something missing, empty or broken. Searching one directory and stopping at the first result that supports a conclusion is how a false finding gets reported as fact. Data in this repo loads from CSVs and scripts, not only from migrations. Measured 2026-09-11: the `lenders` table was reported empty on the strength of one grep for `INSERT`; the book holds 313 banks in `docs/legacy-strong/lenders-legacy-strong.csv`, loaded by `scripts/lenders-import-alec.mjs`. Read the file before you change it; do not ask Chris what is in a file you can open.
 
 ## Example
 

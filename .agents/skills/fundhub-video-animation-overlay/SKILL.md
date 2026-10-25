@@ -17,43 +17,34 @@ The video is finished and captioned. The animations go on last, as see-through c
 1. **Read the plan.** `marketing/ads/animation-plans/2026-10-22.json`, the entry for the video: templates, props, `side`, and each anchor phrase. The plan is older than the 2026-10-23/24 rules: swap any PathCards or StepPath pick for a diagram, and reword every prop that copies his sentence (no-echo rule below). Read `marketing/broll/README.md` and `marketing/broll/catalog.json` (length range per template).
 2. **Get the real word times.** The plan's starts are even-pace estimates and ran 0.5 s to 10.3 s off on the thank-you video. Sources, best first:
    - the script text plus a real transcript, if a speech-to-text tool exists on the machine;
-   - the **burned-in captions**: read the caption strip at 10 frames a second, find the highlighted word in each frame (`tools/ocr.swift`, `tools/words.py` in the example folder). This is free and is what was used. Captions run about 0.15 s ahead of the voice.
+   - the **burned-in captions**: read the caption strip at 10 frames a second, find the highlighted word in each frame (`tools/ocr.swift`, `tools/words.py` in `marketing/ads/animation-plans/thank-you-test-2026-10-23/tools/`). This is free and is what was used. Captions run about 0.15 s ahead of the voice.
    - never the plan's estimates, unless you say plainly that they are estimates.
    The repo's transcribers call the paid OpenAI API. Do not use them without Chris saying so. Do not install anything big for this.
 3. **Find the anchors.** `tools/align-anchors.py` matches each plan anchor phrase to the timeline and writes `anchors.json` (first word time, next word time, match score). Anything under 0.8 is a failed match: read the words and fix by hand.
 4. **Set the schedule.** One row per animation in `schedule.json`: start, frames, side, why. Rules below.
 5. **Render the clips.** From `marketing/broll`, one per row: `npx remotion render <Template> <clip>.mov --props=<props file> --codec=prores --prores-profile=4444 --image-format=png --pixel-format=yuva444p10le --scale=<video width / 3840>` (ProofWallWide also needs `--gl=angle`). Keep the props files in the folder.
 6. **Lay them on.** `tools/build-from-schedule.py <clips_dir> <out.mp4>`: one encode, audio copied (the sound is fixed next, in step 7).
-7. **Fix the sound (owner-set 2026-10-23).** Submagic downloads come back quiet (measured -27 to -30 LUFS on Ads 4, 11, 14, 16). Every finished video gets set to **-14 LUFS, true peak at or under -1.5 dB**, picture copied, no re-encode of the video. Two-pass `loudnorm` with `I=-14:TP=-2.2:LRA=11:linear=true` (TP -1.5 lands peaks at -1.2 to -1.4, too hot), `-c:v copy -c:a aac -b:a 320k -ar 48000`. Measure the result with `ebur128=peak=true` and write both numbers in the report. A video that is not at -14 is not done. Rule: `ad-sound-level`.
-8. **Check it** (list below), send Chris the video and a contact sheet, and **save every round to the repo**.
+7. **Fix the sound (owner-set 2026-10-23).** Law: ad-sound-level (.ai/rules/ad-sound-level.md) - every finished video is -14 LUFS with true peak at or under -1.5 dB; measure with ebur128=peak=true and write both numbers. Two-pass `loudnorm` with `I=-14:TP=-2.2:LRA=11:linear=true` (TP -1.5 lands peaks at -1.2 to -1.4, too hot), `-c:v copy -c:a aac -b:a 320k -ar 48000`.
+8. **Check it** (list below), send Chris the video and a contact sheet. Video files go in a scratch folder. Small files (the schedule, the plan, the notes) go in the repo.
 
 **What Chris wants on screen (owner-set 2026-10-23, Ads 11 and 14):**
-- **Diagrams, on all of them.** Never numbered "01 02 03" card lists (PathCards, StepPath) or text-only plates. Start from the plan's templates (step 1).
-- **Big.** Aim for 70-90% of the frame width. Under 50% was "so small".
-- **One animation inside the first 10 seconds,** on the hook.
-- **On the word.** Each part pops in on the word he says it, not on a fixed stagger.
-- **A CTA only when it fits (owner-set 2026-10-24).** Not every ad needs one and it is never big by default ("we don't need a massive CTA all the time"). A closing diagram can hold to the last frame instead.
-- **Long is fine.** An animation can ride the whole idea.
-- **Never in front of his face or head, hair included (owner-set 2026-10-24).** Behind his head is fine, even full width (cut-out on top). Beside him or over his chest above the captions is fine.
-- **Chris picks the trigger words first (owner-set 2026-10-24).** Send the numbered trigger list; place only after he answers.
-- **Anchors come from the script; labels never copy his sentence (owner-set 2026-10-24).** An anchor phrase is exact, word for word from the script. Each animation lands at the time that word is said on the recorded, edited video. The label is short and new.
-- **Never repeat his words (owner-set 2026-10-24).** The captions already show them. The picture carries the point; labels about 5 words, said a new way, no drift (no new fact, number or claim). No run of 4+ words he says within 3 s; no eyebrow that restates his line; no filler like "Your file". Rule: `.cursor/rules/animation-no-echo.mdc`.
-- **Opus builds, Sonnet places (owner-set 2026-10-24).** A Sonnet placer never edits `marketing/broll/src/` or adds a template. A missing or changed template goes in `marketing/ads/animation-plans/new-animations-needed.md` for Opus. Rule: `.cursor/rules/animation-builders-opus-placers-sonnet.mdc`.
+- Law: animation-overlay-on-spoken-words (.ai/rules/animation-overlay-on-spoken-words.md) - what Chris wants on screen: big, diagrams only, one in the first 10 seconds, on the word, never in front of his face.
+- Law: animation-no-echo (.ai/rules/animation-no-echo.md) - anchors come from the script; labels are about 5 words, said a new way; never repeat his sentence.
+- Law: animation-builders-opus-placers-sonnet (.ai/rules/animation-builders-opus-placers-sonnet.md) - a Sonnet placer never edits marketing/broll/src/; missing templates go in new-animations-needed.md.
 
 ## The rules for the schedule
 
-- **Mode.** See-through clips run in overlay mode. In `src/ad-videos/animations.mjs` the 4 s face gap, 3 s clip cap and 35% share belong to `fullframe` mode only; overlay mode forbids overlaps and nothing else. Do not drop animations for the full-frame limits.
+- Law: animation-overlay-on-spoken-words (.ai/rules/animation-overlay-on-spoken-words.md) - see-through clips run in overlay mode; only overlaps are forbidden; the 4 s gap, 3 s cap and 35% share are full-frame limits.
 - **Land the payoff on the words.** Do not start every clip at its anchor's first word. Make a frame strip of the clip (3 frames a second) and note when each part appears; start the clip so that moment hits the word. Examples: "Booked / Locked in" at "locked in"; "No impact on your score" at "no impact"; "2 in 3" at "two and three".
 - **Stretch to fit the speech.** If his speech is longer than the clip, render the clip longer, inside its catalog range (`min_frames` to `max_frames`), and re-measure the strip. Steps scale with the length.
-- **No overlap, and no gaps that look dead.** Two see-through clips never share a frame.
-- **First 3 s and the closing ask:** keep clear of them unless Chris says otherwise.
+- **First 3 s:** keep clear unless Chris says otherwise. **Closing ask:** the closing ask can carry a CTA animation, but not every ad needs one, and it is never big by default (owner-set 2026-10-24). A closing diagram can hold to the end instead.
 
 ## Behind him (green-screen style) and varied spots (owner-set 2026-10-23)
 
 - Chris: "get the animations behind the body and face, like greenscreen" and "they don't have to always be in the same spot."
 - **Cut him out.** `swiftc -O tools/matte.swift -o matte`, then `./matte <video> <masks_dir> "start,end;start,end"` (windows from `schedule.json`). It writes `m_%05d.png` (white = person) for the frames inside the windows only. It uses Apple Vision person segmentation, no network, no API.
 - **Lay him back on top.** `tools/build-from-schedule.py <clips_dir> <out.mp4> --behind <masks_dir>`: animations go on the video, then his cut-out goes over them. A card that reaches behind his head is hidden by him. Captions are part of the original frames and are not touched.
-- **Vary the spot.** Per clip in `schedule.json`: `side`, `dx`, `dy`. Mix left and right, upper and lower, and tuck a card behind his head now and then. Find his face box first (`tools/face.swift` on a few frames). Words stay clear of the face box and above the caption band; only decoration (cash stacks, card margins) goes behind him. Never hide the start or end of a line.
+- **Vary the spot.** Per clip in `schedule.json`: `side`, `dx`, `dy`. Mix left and right, upper and lower, and tuck a card behind his head now and then. Find his face box first (`tools/face.swift` on a few frames). Law: animation-overlay-on-spoken-words (.ai/rules/animation-overlay-on-spoken-words.md) - words stay clear of the face box and the captions. Behind his head is fine, even across the whole screen (owner-set 2026-10-24); his cut-out stays on top.
 - A person who sits off-center leaves one side narrow. Check the narrow side's room before putting a full-width panel there.
 - Do not run `rm -rf` (denied in this repo's settings). Use new folders.
 
@@ -61,11 +52,11 @@ The video is finished and captioned. The animations go on last, as see-through c
 
 - **Face.** Pick `side` by where the face is. On the thank-you video Chris sits right of center: use `left`. A right panel covered his temple and ear. Check frames with the face tool (`tools/face.swift`) or by eye at the middle of every clip.
 - **Captions.** Nothing is drawn in the caption band or below y 1007 on a 1440-high video. Compare the caption band to the original; the numbers must match the first pass.
-- **Script facts only, never his sentence.** Props carry the words. Facts, numbers and names come from what he says; the wording is short and new (see the no-echo line above). Template defaults that print words or numbers the script never says must be changed or the animation dropped:
+- Law: animation-no-echo (.ai/rules/animation-no-echo.md) - props carry facts from the script in short new words; never his sentence copied. Template defaults that print words or numbers the script never says must be changed or the animation dropped:
   - `ProofWallWide`: set `proofLines` to what he says ("Ten years of my own funding", "Hundreds of client files").
   - `QualifyTodayWide`: its amounts come from the one sample client (UnderwriteIQ on the roadmap sample file). Label it: eyebrow "Sample file: how much you qualify for". Never present those amounts as the viewer's.
   - `BookCallWide`: a generic calendar by design (generic month, no name). Leave it.
-  - Never invent a number, bank, name or claim. Company name is Fundhub. Certain words only.
+  - Law: animation-overlay-on-spoken-words (.ai/rules/animation-overlay-on-spoken-words.md) - never invent a number, bank, name or claim; label sample-client numbers as a sample. Company name is Fundhub.
 - **Readable over film.** Words that float outside a card sit on a white plate in see-through mode (`brand/ReadPlate.tsx`, used by `Eyebrow` and the LenderMatch closing line). If a new template floats words, wrap them in `ReadPlate`. Check readability on real frames, not on the proof sheet.
 - **Logo.** Only `FundhubLogo*`, only where the script says "Fundhub". Rule: `animation-logo-only-on-fundhub` (owner-set 2026-10-23).
 
@@ -95,13 +86,13 @@ Worked examples: `marketing/ads/animation-plans/direct-book-ad-4-test-2026-10-23
 
 ## Never
 
-- Open, edit or overwrite the original video. Outputs go in a scratch folder, not the repo (a test copy is about 250 MB).
+- Open, edit or overwrite the original video. Video outputs go in a scratch folder, not the repo (a test copy is about 250 MB). Small files (the schedule, the plan, the notes) go in the repo.
 - Say "the rule requires dropping animations" without reading which mode the rule is in.
 - Wire this into the pipeline without Chris saying so. `src/ad-videos/animations.mjs` still only handles 1080x1920 ads and skips wide clips; `build-from-schedule.py` stands in for it.
-- Ask Chris to confirm a choice a rule here already settles. Do it, and say what you did.
+- Law: owner-go-no-repeat-approval (.ai/rules/owner-go-no-repeat-approval.md) - if a rule settles the choice, make it, finish the work and say what you did.
 
 ## Known gaps (2026-10-23)
 
 - The overlay code cannot place wide clips on a 2560x1440 video.
 - The SoftPull chip ("You pay $32") shows with the headline, about 1.5 s after he says it.
-- No local speech-to-text. If Chris approves an API or a local tool later, replace step 2's caption reading and keep `align-anchors.py`.
+- On the Mac, use the whisper step from `fundhub-ad-editor`. Keep `align-anchors.py`. Caption reading stays the fallback when whisper is not on the machine.

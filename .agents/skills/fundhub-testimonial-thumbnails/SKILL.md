@@ -56,11 +56,7 @@ admission. Vary the shape across the set so three cards do not read the same.
 claim they did not say.** Sarah had not been funded yet, so hers says "set to be
 approved", not "got".
 
-Never write: "credit repair" (it is credit optimization), "it's not X, it's Y",
-slogans, metaphors ("game changer" is out even when the client says it), a
-two-sentence setup with the punchline second, "your number", "the number", EIN,
-DUNS, net-30 vendors, "no guarantees". Cause before effect. **Fundhub**, never
-Fundhub.
+Law: RULES Part 0 (marketing/ads/RULES.md) and outcome-first-copy - no 'credit repair', no 'it's not X, it's Y', no slogans, no 'your number', no EIN or DUNS; cause before effect; the name is Fundhub.
 
 Caption format: `Name, business type. One sentence about what happened, in their
 own terms.`
@@ -97,8 +93,7 @@ true 9:16 a 1080-tall frame allows. Centre it on the face, sample frames across
 the whole runtime, and look at them before you encode.
 
 **Never upscale.** 608 wide is correct; stretching to 720 is not. Never call
-1080p 4K. Testimonial card videos on pages do NOT need 4K (owner-set 2026-10-24,
-`.claude/rules/video-4k-unless-ad.md`), so a 608x1080 card is not a defect.
+1080p 4K. Law: video-4k-unless-ad (.ai/rules/video-4k-unless-ad.md) - testimonial card videos on pages do not need 4K, so a 608x1080 card is not a defect.
 
 Cropping chops the burned-in captions mid-word. That is expected and it is why
 the wash exists.
@@ -123,7 +118,7 @@ Starting one testimonial pauses the others.
 
 ### 7. Ship
 
-Show Chris the marked draft of the sales page (red marks, then green) first. Push live when he authorizes; an existing ship or GO for this release is enough (`page-edits-marked-draft`, 2026-10-19).
+Law: page-edits-marked-draft (.ai/rules/page-edits-marked-draft.md) - show the marked draft, then push when he authorizes; an existing ship or GO for the release is enough.
 
 Assets go to `public/funnel/` and reach `fundhub.ai/funnel/*` through Netlify, so
 **`npm run ship` has to land before the ClickFunnels push**, or a new video 404s

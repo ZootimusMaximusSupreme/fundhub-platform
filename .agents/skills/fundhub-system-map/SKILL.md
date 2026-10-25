@@ -20,7 +20,7 @@ You find the real order. You do not fix the app.
 3. Walk **live fire** (`src/workflows/`) for that path. Editor trees in `src/journeys/seed-journeys.mjs` are the story, not proof.
 4. Voice agents: load `.cursor/skills/fundhub-agent-tester/SKILL.md`. Use the **live** Agent Editor prompt. Count letters. A short stub that is “ready” still beats a long unused file on disk.
 
-## Instant FAIL (tonight’s lies)
+## Instant FAIL
 
 - Desk or page **loaded**
 - One API write (play name, expected inquiry, KPI JSON)

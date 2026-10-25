@@ -5,14 +5,14 @@ alwaysApply: true
 
 # Show secrets when Chris asks
 
-**Owner law (2026-10-04):** When Chris asks where a token is, to show a token, or to paste a token (or names a key and wants the value), agents **must** read gitignored `.env`, `.env.*`, and `credentials/**` and paste the **full** value in chat.
+**Owner law (2026-10-04):** When Chris asks where a token is, to show a token, or to paste a token (or names a key and wants the value), agents **must** read gitignored `.env`, `.env.*`, and `credentials/**` and paste the **full** value in chat. Dictator mode counts as that ask. First set 2026-09-25 in secrets-env-law, restated 2026-10-04. If the key is not in `.env` or `credentials/`, read the full string from Netlify or host env.
 
 ## Always
 
 - Treat “show token,” “paste token,” “what is `KEY`,” and “I need the ghp / API key” as an explicit value request.
 - Read the working copy first: `.env`, then `credentials/` files that hold that key.
 - Paste the complete string in the reply. No truncation, no “last four characters.”
-- Still **never** put secret values in **commits**, tracked files, boards, or evidence JSON.
+- Law: secrets-env-law (.ai/rules/secrets-env-law.md) - secret values never go into commits, tracked files, boards, evidence JSON or logs.
 
 ## Never
 
@@ -22,7 +22,7 @@ alwaysApply: true
 
 ## Default (he did not ask for the value)
 
-Follow `secrets-env-law.mdc`: read silently; name the key only unless he asked to see it.
+Law: secrets-env-law (.ai/rules/secrets-env-law.md) - when he did not ask for the value, read .env silently and confirm the key by name only.
 
 ## Example
 

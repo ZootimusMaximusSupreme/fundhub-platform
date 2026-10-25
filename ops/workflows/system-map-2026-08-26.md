@@ -130,7 +130,7 @@ That is **not** the Josh job. It does not say “you are Josh.” It does not sa
 
 **What sits unused on disk:** `vendor/inquiry-remover/src/agents/setter-prompt.js` — **3,750 letters.** Says: you are **Josh**. Confirm the Strategy Session. No UnderwriteIQ, no pre-approval dollars, no pulled credit. Call flow: open/confirm → credit pulled **on** the Advisor call → light set from survey only → show-up close. Workflow `ai-set-01-josh-setter.mjs` **would** use this file only if the live row were missing or not ready. A 169-letter row **counts as ready** (`agentReadiness` only checks “is there any prompt?”). So Bland gets the stub.
 
-**First agent-tester roleplay (2026-08-26):** **FAIL.** Board: `docs/workflows/agent-tester-2026-08-26.md`. Skill: `.cursor/skills/fundhub-agent-tester/SKILL.md`. Two AIs talked on the **live 169-letter** script. The agent called itself **Sarah**, then said “Have a great day, Josh.” It did not confirm the sim name, did not say credit is pulled on the Advisor call, did not confirm survey dollars/use, did not ask for a computer. Guardrail held: no score, no approval dollar.  
+**First agent-tester roleplay (2026-08-26):** **FAIL.** Skill: `.cursor/skills/fundhub-agent-tester/SKILL.md`. Two AIs talked on the **live 169-letter** script. The agent called itself **Sarah**, then said “Have a great day, Josh.” It did not confirm the sim name, did not say credit is pulled on the Advisor call, did not confirm survey dollars/use, did not ask for a computer. Guardrail held: no score, no approval dollar.  
 `client-intended.md` has **no talk order** → sequence **UNVERIFIED** → overall cannot be PASS.
 
 An 8-second or **0.13-second** Bland ring is also **FAIL** for “call sequence” (same skill).
@@ -193,7 +193,7 @@ Repair invoices ($200 trial / $1,000 full) are **not** this AR success-fee chain
 
 ## 4. Repair escalation (trial vs $1,000, rounds, hold)
 
-**Cite:** Specialist intended desk path + `docs/workflows/repair-build-spec-2026-08-21.md` + `src/repair/*`.
+**Cite:** Specialist intended desk path + `src/repair/*`.
 
 | | Trial | Full ($1,000) |
 |---|---|---|
@@ -316,4 +316,4 @@ Sources: `launch-readiness-2026-08-26.md`, `night-ship-2026-08-26.md`, `full-e2e
 - Repair enroll / stages: `src/repair/enroll.mjs`, `src/repair/pipeline.mjs`
 - Josh workflow: `src/workflows/ai-set-01-josh-setter.mjs`
 - Unused Josh script: `vendor/inquiry-remover/src/agents/setter-prompt.js`
-- First roleplay FAIL: `docs/workflows/agent-tester-2026-08-26.md`
+- First roleplay FAIL.

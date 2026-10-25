@@ -12,7 +12,7 @@ The speed law is separate: `.cursor/rules/teleprompter-speed.mdc`.
 ## Law
 
 - **30 fps, every take.** Front or back, Ad or VSL, the camera ask is a hard 30 fps (`HARD_FPS` in `public/app/teleprompter.js`). One ask opens the lens. 60 fps waits for the iPhone app. In Safari, extra 60 fps asks take the lens away and black out the screen.
-- **Size.** Ads film at 1080p. VSLs, thank-you videos and testimonials film at 4K (`.cursor/rules/video-4k-unless-ad.mdc`).
+- **Size.** Law: video-4k-unless-ad (.ai/rules/video-4k-unless-ad.md) - ads film at 1080p; every other video films at 4K; testimonial card videos on pages do not need 4K.
 - **Mirror.** The front camera is saved mirrored, on the 1080p path and the 4K path. The back camera is saved as the world looks.
 - **The camera never goes black.** A flip during a take stays one take. The last picture stays on screen while the next lens opens. The camera ask that worked is remembered and tried first. A camera that drops reopens by itself.
 - **Editing is copy and paste only.** A double-tap shows Copy script, Paste script and X. No keyboard. Holding a line does nothing. Chris fixes the words in Claude and pastes the whole script back.

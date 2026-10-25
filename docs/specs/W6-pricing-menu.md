@@ -1,7 +1,7 @@
 # W6 — The pricing menu
 
 > **COMPLIANCE REVIEW REQUIRED** — this document sets fee timing and a recurring
-> payment schedule. Per CLAUDE.md §7 the label stays on it. It is a marker, not a
+> payment schedule. It is a marker, not a
 > recommendation, and nothing here asks anyone to revisit an owner decision.
 
 **Status:** specification only. No code, no migrations, nothing built.

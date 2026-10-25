@@ -12,7 +12,7 @@ alwaysApply: true
 | Chris said something like… | Load this skill | Do |
 |---|---|---|
 | organize repo, repo hygiene, messy repo, declutter, clean up evidence, agentify hygiene | `fundhub-repo-hygiene` | Inventory → KEEP/ARCHIVE/GITIGNORE/MOVE. **No delete without ask.** |
-| version control, VC check, losing work, commit policy, branch cleanup, stash, “don’t lose this” | `fundhub-version-control` | Branch/commit/evidence policy. **Commit finished work locally in the same session (CLAUDE.md, 2026-09-08).** |
+| version control, VC check, losing work, commit policy, branch cleanup, stash, “don’t lose this” | `fundhub-version-control` | Branch/commit/evidence policy. Law: github-push (.ai/rules/github-push.md) - commit locally every session (owner-set 2026-09-08). |
 
 Skill paths:
 
@@ -28,6 +28,6 @@ Run **hygiene inventory** (or read the board) first. Hand VC details to `fundhub
 ## Never
 
 - Mass-delete `*-evidence/` without KEEP/KILL rows + go
-- Commit `.env` / `credentials/` / secrets
+- Law: secrets-env-law (.ai/rules/secrets-env-law.md) - never git add .env, .env.* (except .env.example) or credentials/.
 - Force-push or amend unless he explicitly asked
 - Drive-by refactors of live product code during organize

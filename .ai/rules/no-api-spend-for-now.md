@@ -17,5 +17,5 @@ alwaysApply: true
 
 - Ask him to add Anthropic credit.
 - Start dashboard jobs that call the paid model on the live system.
-- Remove or change the Anthropic key (CLAUDE.md "Never remove a key").
+- Remove or change the Anthropic key. Law: secrets-env-law (.ai/rules/secrets-env-law.md) - never delete, unset, clear or overwrite a stored credential.
 - Build a Lithos AI provider until he asks.

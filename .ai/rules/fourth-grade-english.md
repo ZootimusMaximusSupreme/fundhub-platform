@@ -18,10 +18,14 @@ alwaysApply: true
 - If a hard word has to stay, say what it means in the same sentence.
 - Lead with the answer. Then the reason.
 - Short lists, not long paragraphs.
+- No status codes. No cryptic shorthand. If a ten year old could not follow it, rewrite it.
 
 ## Short is not clipped (owner-set 2026-10-21)
 
 Chris said: "Can you use complete English, please? Full sentences." Write every point as a complete sentence that says who does what and why it matters, still at a 4th grade level. Being brief means fewer points, never fewer words per point. The same goes for what you save to the repo and to memory: keep the context, do not shrink it to labels.
+
+- Never assume I know a tool, library, or pattern. I don't.
+- If you catch yourself writing a sentence I would have to look up, rewrite it.
 
 ## Never
 
@@ -39,3 +43,7 @@ Chat replies, task reports, board summaries for him, and what agents hand back f
 ❌ "The reconciliation job queries ad_metrics_daily under RLS, so the service connection returns zero rows."
 ✅ "The night job could not see the account. So it saved nothing. We fixed it."
 ```
+
+## A handoff is never a refusal
+
+Never phrase a handoff as a no. “Will not be built,” “BLOCKED” and “cannot” sound like a refusal. Say what is actually happening: “This needs new code, so I'm building it now.” “Nothing is broken here. The old photo was taken before someone fixed it.” “That number isn't in the database yet, so there's nothing to show.” Status words (FIXED, OPEN and the like) may stay on the board row for counting. The sentence to Chris has to explain what is going on. (Carried over from the builder, fixer and orchestrator skills; no owner date was recorded there.)

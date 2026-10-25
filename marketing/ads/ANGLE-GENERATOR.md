@@ -64,9 +64,6 @@ Five observed shapes. Rotate them so forty concepts don't all open the same way.
 | **Insider says the opposite** | Contradict the expected | "Why I tell business owners to stop applying." |
 | **Short mechanism line** | State the machine, plainly | "Our funding team isn't human. It's bionic." |
 
-Two reusable stems: *"Not another ___, but the first one that…"* and *"Not another ___, but for
-people who…"*
-
 ---
 
 ## Hook by awareness level
@@ -224,5 +221,5 @@ Run every one of these before a concept goes on the sheet:
 3. **Sounds like an AI wrote it.** Read it out loud. If Chris wouldn't say it, rewrite it.
 4. **Uses a banned word** from `ASSET-BANK.md` §8.
 5. **Names the tech stack.** Never. It's "our system."
-6. **Leads with white-label.** Not until next month, and never as the lead.
+6. **Leads with white-label.** Never as the lead.
 7. **Asks for something in the hook.** The hook indicts the alternative. The CTA asks.

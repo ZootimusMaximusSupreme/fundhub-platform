@@ -9,9 +9,9 @@ Read-only. Findings only. Ground truth is `docs/rules/PERF-STANDARDS.md`. Same d
 
 ## Prime rules
 
-1. READ-ONLY on app/config/env/tests. No fixes, no commits, no branches.
+1. READ-ONLY on app/config/env/tests. No fixes and no app-code changes; commit your board and evidence files like any session.
 2. **Every finding cites a number.** Lighthouse score, a metric value, or a specific network waterfall entry with its size and blocking time. "Feels slow" is not a finding.
-3. Measure on **mobile emulation, Slow 4G, 4x CPU throttle**. Desktop-on-wifi numbers are not evidence. Run each page 3 times, report the median — single runs are noise.
+3. Law: PERF-STANDARDS section 1 (docs/rules/PERF-STANDARDS.md) - measure on mobile, Slow 4G, 4x CPU, never desktop on wifi. Run each page 3 times, report the median — single runs are noise.
 4. Test the LIVE site. Localhost has no network latency and will lie.
 5. Save the full Lighthouse JSON + HTML report per page to the evidence folder. The board cites paths.
 

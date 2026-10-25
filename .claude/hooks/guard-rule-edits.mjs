@@ -26,7 +26,7 @@ import { fileURLToPath } from "node:url";
 
 const SCRIPT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const RULE_DIRS = [".ai/rules", ".cursor/rules", ".claude/rules", ".agents/skills", ".cursor/skills", ".claude/skills"];
-const RULE_NAMES = new Set(["CLAUDE.md", "AGENTS.md", "RULES-INDEX.md"]);
+const RULE_NAMES = new Set(["claude.md", "agents.md", "rules-index.md"]); // any letter case; this disk ignores case
 // If the caller names a tool, only these count. A Read of a rule file must never ask.
 const EDIT_TOOLS = /^(Write|Edit|MultiEdit|NotebookEdit|apply_patch|ApplyPatch)$/i;
 
@@ -79,13 +79,34 @@ function pathsIn(input) {
   for (const key of ["file_path", "path", "notebook_path", "filePath"]) {
     if (typeof ti[key] === "string" && ti[key]) out.push(ti[key]);
   }
-  // Codex edits with apply_patch, and the patch text names the files. This reading
-  // is a guess at the Codex shape. It has not been proven in Codex.
-  for (const value of Object.values(ti)) {
-    if (typeof value !== "string" || !value.includes("*** ")) continue;
-    for (const m of value.matchAll(/^\*\*\* (?:Add File|Update File|Delete File|Move to):\s*(.+?)\s*$/gm)) out.push(m[1]);
+  // Codex edits with apply_patch, and the patch text names the files. Read those
+  // lines only for apply_patch, never when a Write merely quotes them.
+  if (/^(apply_patch|ApplyPatch)$/i.test(String(input.tool_name || ""))) {
+    for (const value of Object.values(ti)) {
+      if (typeof value !== "string" || !value.includes("*** ")) continue;
+      for (const m of value.matchAll(/^\*\*\* (?:Add File|Update File|Delete File|Move to):\s*(.+?)\s*$/gm)) out.push(m[1]);
+    }
   }
   return out;
+}
+
+/** The checkout that owns a worktree, from that worktree's .git file and commondir. Not a guessed path. */
+function ownerCheckout(root) {
+  if (typeof root !== "string" || !root) return null;
+  const gitPath = path.join(root, ".git");
+  let st;
+  try { st = fs.lstatSync(gitPath); } catch { return null; }
+  if (st.isDirectory()) return path.resolve(root);
+  if (!st.isFile()) return null;
+  let text;
+  try { text = fs.readFileSync(gitPath, "utf8"); } catch { return null; }
+  const m = /^\s*gitdir:\s*(.+?)\s*$/m.exec(text);
+  if (!m) return null;
+  const gitdir = path.resolve(root, m[1].trim());
+  let commonRel;
+  try { commonRel = fs.readFileSync(path.join(gitdir, "commondir"), "utf8").trim(); } catch { return null; }
+  if (!commonRel) return null;
+  return path.dirname(path.resolve(gitdir, commonRel));
 }
 
 /** The project roots to measure a path against. Both the given and the real spelling of each. */
@@ -96,6 +117,11 @@ function rootsFor(input) {
     const abs = path.resolve(r);
     roots.add(abs);
     roots.add(realLoose(abs));
+    const owner = ownerCheckout(abs);
+    if (owner) {
+      roots.add(owner);
+      roots.add(realLoose(owner));
+    }
   }
   return roots;
 }
@@ -119,7 +145,8 @@ function relativesOf(raw, input, roots) {
 function isRuleRelative(rel) {
   // A worktree folder inside the main checkout holds its own copy of the repo.
   const inside = rel.replace(/^\.claude\/worktrees\/[^/]+\//, "");
-  if (RULE_NAMES.has(inside.slice(inside.lastIndexOf("/") + 1))) return true;
+  const base = inside.slice(inside.lastIndexOf("/") + 1).toLowerCase();
+  if (RULE_NAMES.has(base)) return true;
   return RULE_DIRS.some((dir) => inside.startsWith(dir + "/"));
 }
 

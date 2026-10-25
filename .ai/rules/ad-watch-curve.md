@@ -9,11 +9,7 @@ alwaysApply: true
 
 ## What the numbers mean (Meta)
 
-- A **play** means the video started. Replays do not count.
-- **25% / 50% / 75% / 100%** means they reached that fraction of the length (including people who skipped to that point).
-- **ThruPlay** means they watched 15 seconds, or they finished a video shorter than that.
-- There is **no 3-second field**. Do not invent one. Closest opening signal we store is 2-second continuous plays.
-- The second-by-second curve is Meta field `video_play_curve_actions`, stored as `ad_metrics_daily.video_play_curve`.
+Law: watch-curve (marketing/ads/watch-curve.md) - Meta's own definitions of play, 25/50/75/100%, ThruPlay and the second-by-second curve; there is no 3-second field.
 
 ## What to fix when it dies
 
@@ -25,10 +21,8 @@ alwaysApply: true
 
 ## Notify Chris
 
-When a running ad dies before 25% **and** people are not tapping through, buzz him on the same phone/ntfy path the ad-video pipeline already uses (`src/ad-videos/notify-fanout.mjs`), only inside the texting window (`texting-hours`, 6 a.m. to 10 p.m. Arizona). One or two sentences: which ad, and that people are leaving before the quarter mark, so the opening has to change. If they are already tapping through, do not buzz. Do not pause the campaign or change budgets from this rule.
+Law: watch-curve (marketing/ads/watch-curve.md), Dying ping - a running ad that dies before 25% with no tap-through buzzes Chris through the ad-video notify path, inside the texting window only. Do not pause the campaign or change budgets from this rule.
 
 ## Never
 
-- Invent a 3-second Meta field
-- Recut the ending first when people leave before 25%
 - Build a new notify vendor for this buzz

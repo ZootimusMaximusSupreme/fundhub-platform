@@ -4,8 +4,7 @@
 
 The rules that repeat this law:
 
-- `.cursor/rules/ad-naming.mdc`
-- `.claude/rules/ad-naming.md`
+- `.ai/rules/ad-naming.md`
 
 ## The structure
 
@@ -31,6 +30,8 @@ The angle is the name. It is not optional. A file with the angle left off is the
 `{Offer} Ad {number} — {angle} Take {number}.mp4`
 
 Spaces stay. The dash before the angle is ` — ` (space, em dash, space). The take words are `Take 1`, not `t01`, not `Take1`.
+
+The offer word is `SLO`, `Direct Book` or `Capital Blueprint`. The live list of filmed names is `marketing/ads/filmed-names-2026-10-22.md`. `Capital Blueprint` is not in that book yet. It is still in CLAUDE.md until Phase 5.
 
 ## The seven SLO ads
 
@@ -60,7 +61,7 @@ The book-a-call ads are the **Direct Book** offer. Its offer word is `Direct Boo
 
 **The angle is only the name.** An old label or a film note in a script's title is not the angle. `Ad 19 — Over and over (broad, film first)` is the angle `Over and over`.
 
-The eleven ads, numbered in film order:
+The first eleven Direct Book ads, numbered in film order (the 2026-10-10 list):
 
 | Ad | File name for take 1 |
 |---|---|
@@ -123,6 +124,6 @@ These are wrong on Drive:
 
 ## Where this applies
 
-Google Drive file names for these ads. **Filmed files live in SLO Ads root only** (see `.cursor/rules/slo-one-filmed-folder.mdc`).
+Google Drive file names for these ads. Law: slo-one-filmed-folder (.ai/rules/slo-one-filmed-folder.md) - filmed SLO files live in the SLO Ads root only; Direct Book has its own folder.
 
 A new offer uses its own offer word in the first slot. The other three slots do not change.

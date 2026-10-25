@@ -5,7 +5,7 @@
 Custom HTML Pages + SDK went **GA 2026-09-18**:
 https://changelog.myclickfunnels.com/2026-09-18-the-clickfunnels-sdk-and-custom-html-pages-are-here
 
-Agents push FundHub HTML and tracking with **`scripts/cf-push-custom-html.mjs`**. Manual paste is fallback only if API auth is truly missing.
+Agents push FundHub HTML and tracking with **`scripts/cf-push-custom-html.mjs`**. Law: chris-never-clickfunnels (.ai/rules/chris-never-clickfunnels.md) - if the API key is missing, report the env name and stop; never ask Chris to paste.
 
 ## Env names (values in `.env` / Netlify only)
 
@@ -35,7 +35,7 @@ node scripts/cf-push-custom-html.mjs push --only=apply-book
 | URL | Headline (2026-09-20) | Push mode |
 |-----|------------------------|-----------|
 | https://apply.fundhub.ai/watch | Get $50,000 to $1,000,000… | Tracking inject or custom HTML if page type allows |
-| https://apply.fundhub.ai/apply | Let's See What You Qualify For | Inject tracking — keep native survey |
+| https://apply.fundhub.ai/apply | Let's See What You Qualify For | Custom HTML (apply survey), pushed by manifest key `apply-survey` |
 | https://apply.fundhub.ai/funding-book-call | You Are Qualified | **Inject only** — native calendar |
 | https://apply.fundhub.ai/thank-you | You're All Set | Custom HTML or inject |
 
@@ -79,9 +79,7 @@ The calendar page also loads inside the `/roadmap-book` frame; `fh-events.js` an
 
 ## Tracking (must be on pushed pages)
 
-- `https://fundhub.ai/funnel/fh-attribution.js` — UTM catcher (Creative Factory)
-- `https://fundhub.ai/funnel/vsl-watch-beacon.js` — **watch only**
-- Meta pixel base + PageView (custom HTML head, or already on apply via CF site code — verify view-source)
+- Law: chris-never-clickfunnels (.ai/rules/chris-never-clickfunnels.md) - tracking goes on every pushed page; fh-attribution.js everywhere, vsl-watch-beacon.js on watch only, Meta pixel.
 - `clickfunnels-fragments/06-utm-hidden-fields.html` — **do not** duplicate if `fh-attribution.js` is loaded
 - `07-vsl-watch-beacon.html` — same as beacon script on watch
 
@@ -89,7 +87,7 @@ Meta pixel ground truth (if env empty): `docs/workflows/archive/ads-revenue-mode
 
 ## Calendar rule
 
-Full custom HTML **replaces the step**. Native booking calendar **does not** survive. Never full-replace `/funding-book-call`.
+Law: chris-never-clickfunnels (.ai/rules/chris-never-clickfunnels.md) - never full-replace /funding-book-call; a custom-HTML page removes the native booking calendar.
 
 The $297 booking page (`/roadmap-book`) shows this same calendar in a frame. Its frame-only look lives in
 `clickfunnels-fragments/04c-book-framed.html`, pushed as one marked block into the calendar page's
@@ -114,10 +112,9 @@ node scripts/cf-push-custom-html.mjs push --only=apply-book-fit
 
 ## Skills / rules
 
-- Cursor: `.cursor/skills/fundhub-clickfunnels-html-push/SKILL.md`
-- Cursor rule: `.cursor/rules/clickfunnels-html-api-push.mdc`
-- Claude Code: `.claude/skills/fundhub-clickfunnels-html-push/SKILL.md`
+- Skill: `.agents/skills/fundhub-clickfunnels-html-push/SKILL.md` (linked at `.cursor/skills/` and `.claude/skills/`).
+- Rule: `.ai/rules/chris-never-clickfunnels.md`.
 
 ## Prove
 
-View-source each live URL for `fbq('init'` and `fh-attribution.js`. Click calendar on book page (look only). No pay, no SSN.
+Law: chris-never-clickfunnels (.ai/rules/chris-never-clickfunnels.md) - prove by view-source on each live URL; look at the calendar only; no pay, no SSN. Look for `fbq('init'` and `fh-attribution.js`.

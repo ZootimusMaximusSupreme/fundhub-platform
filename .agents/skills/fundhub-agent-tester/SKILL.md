@@ -27,8 +27,8 @@ You do not fix the agent in the same pass. Score. Write the board. Stop.
 - Roleplay the full event sequence (not one hello).
 - Score PASS only if the agent did what the prompt said AND events fired in intended order.
 - One 8-second or 0.1s Bland call is FAIL for “call sequence.”
-- Do not ask Chris to listen. Do not charge cards. Do not live CRS. Do not paper mail.
-- Plus-tag sims only. Agent phone +16616054248. Never his personal prove phone.
+- Do not ask Chris to listen.
+- Law: agentic-audit-guardrails (.ai/rules/agentic-audit-guardrails.md) - sims use plus-tag emails and the one agent phone; no live credit pull, card charge, bureau mail or personal prove phone.
 - After a named fix: run the roleplay twice.
 
 ## Load the script (never invent it)
@@ -62,10 +62,7 @@ Copy this list and check it:
 
 Sim identity:
 
-- Email: plus-tag only (`+sim-…@` or `e2e+…@`)
-- Phone: `+16616054248` only
-- Never Chris’s personal prove phone
-- Never a real client’s file
+Law: agentic-audit-guardrails (.ai/rules/agentic-audit-guardrails.md) - sim email is plus-tag (+sim-...@ or e2e+...@); the phone is the one agent phone; never Chris's personal prove phone or a real client's file.
 
 Fill prompt `{{placeholders}}` from the sim’s survey / file only. Skip empty. Never invent credit, dollars, or docs.
 
@@ -83,7 +80,7 @@ Stop when the intended list is done, or the agent ends the call / thread for a r
 
 Do **not** place a live Bland call to “prove” talk. If a live Bland call already happened and it lasted 8 seconds or 0.1s, that row is FAIL for call sequence. Do not ask Chris to listen.
 
-Do not send extra SMS. Do not charge a card. Do not live CRS. Do not paper mail.
+Do not send extra SMS.
 
 ## Score
 
@@ -128,5 +125,5 @@ Do not claim done in chat if the board is overall FAIL.
 - Score from memory of the journey
 - Audit the Specialist desk and call it an agent test
 - Fix the prompt or the workflow in the same pass
-- Use a real client, a real card, live CRS, or paper mail
+- Law: agentic-audit-guardrails (.ai/rules/agentic-audit-guardrails.md) - no real client, real card, live credit pull or paper mail in an agent test.
 - Call a 8s / 0.1s Bland dial a talk-sequence PASS

@@ -24,21 +24,19 @@ Sims / Full E2E: assume paid and skip ClickFunnels apply — see `sim-assume-pai
 - **Plus-tag emails only** for sim people (`+sim-…@`)
 - One dedicated **agent phone** for inbound/outbound sim (`661-605-4248`), never the personal prove line for blasts
 - Raw ID/SSN/bank stay in **gitignored** folders; only blurred packs in evidence when sharing
+- Never use a real client or a real client's file for a sim, a roleplay or an agent test.
 - Never print secrets, SSN, full account numbers, or passwords in chat/boards
 
 ## Act-as-you limits
 
 - Agent may: read prove Gmail, click portal/magic links, upload docs, sign **sim** contracts, text from the **agent** number
 - Agent may not: change bank passwords, buy numbers without Chris, or treat “Gmail live” as full life-admin access outside Fundhub prove paths
-- Full End-To-End Audit: always **5 sim files** (Funding / Repair / Combo / Inquiry / Course — different scenarios to try to break it) with **simulated credit files**; one scenario each walks that file’s event path — **not** a 5×5 cartesian unless the company-sim list says that (the original board is not in the repo); do not fork five copies of the same person. **ClickFunnels one-pass:** new plus-tag per funnel attempt — do not score a second pass on the same contact as a product FAIL.
+- Law: full-end-to-end-audit (`.ai/rules/full-end-to-end-audit.md`) - always five sim files, one scenario each, no 5x5 grid; the ClickFunnels one-pass rule means a new plus-tag per funnel attempt.
 
 ## Audit vs fix
 
-- Bare **audit** / “what’s broken” = read-only prove (`fundhub-auditor`), write findings to the board
-- **Full End-To-End Audit** = send + walk + prove every live path in order (`.cursor/rules/full-end-to-end-audit.mdc`). Not a read-only glance. Beats CLAUDE.md §0 — no split until yes + live/sandbox. Gate first (run everything? CRS live or sandbox?). Then walk the **dictator checklist** (five horsemen, fulfillment, AI call, doc chase, FTC upload, Meet → `fetchContext`, beta every-button). Skip any of those = not e2e done. Then stop — do not fix in the same pass. Do not ask Chris to click. **ClickFunnels apply is owner-ok** — do not score, nag, or touch.
-- **Fix** = only named holes after Chris says fix
-- Never audit-and-fix in one pass; never “turn red green” by editing the test
-- Load the matching skill via `audit-vs-fix-router.mdc` (`fundhub-auditor` / `fundhub-fixer` / `fundhub-builder` / UI / perf)
+- Law: audit-vs-fix-router (`.ai/rules/audit-vs-fix-router.md`) - audit and fix are two doors; a bare audit is read-only; a Full End-To-End Audit follows its own rule; fix only what Chris names.
+- Never “turn red green” by editing the test.
 
 ## Blast / automation safety
 
@@ -46,7 +44,7 @@ Sims / Full E2E: assume paid and skip ClickFunnels apply — see `sim-assume-pai
 - Cap outbound SMS/email per run (e.g. max N messages) **unless** Chris said **Full End-To-End Audit** and answered **yes** to run everything — then do not cap; walk every live send on that path
 - Live **CRS / bureau pull** only after he picked **live** on the Full End-To-End Audit gate (question 2). Sandbox = no live pull.
 - Test/sim runs bypass quiet hours so fire can be proven. This never bypasses `texting-hours` for texts to Chris.
-- Product is **live**; `INNGEST_EVENT_KEY` stays **on** — don’t flip live switches “for safety”
+- Law: product-is-live (`.ai/rules/product-is-live.md`) - INNGEST_EVENT_KEY stays on; never flip a live switch for safety.
 
 ## Parallel agents
 
@@ -57,11 +55,8 @@ Sims / Full E2E: assume paid and skip ClickFunnels apply — see `sim-assume-pai
 
 ## Prove bar
 
-- Script green ≠ done
-- Live Playwright **100/100** when UI changed
-- Then one **human-like** walk — the **agent** clicks the live page. For named live ships, do not ask Chris to “open X and confirm.”
-- **Owner override (2026-08-25):** do not ask him to QA. Only if he *offers* a pass, then he does one.
-- **Full End-To-End Audit exception:** Chris does **not** check Gmail, spam, or texts. The agent reads prove Gmail + the agent phone and writes the scorecard. Asking him to “check Updates / All Mail / your texts” is a FAIL.
+- Law: test-means-human-click (`.ai/rules/test-means-human-click.md`) - a green script is not done; live Playwright to 100/100, then the agent clicks the live page; Chris does no QA unless he offers.
+- Law: full-end-to-end-audit (`.ai/rules/full-end-to-end-audit.md`) - in a Full End-To-End Audit the agent reads Gmail and the agent phone; asking Chris to check mail or texts is a FAIL.
 
 ## Doc Check specifically
 

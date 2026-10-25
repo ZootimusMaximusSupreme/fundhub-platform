@@ -13,13 +13,11 @@ Chris never logs into Submagic, ClickFunnels, or any other tool an agent can run
 
 Agents use the API. A browser login is not the path.
 
-Same pattern as ClickFunnels: Chris never logs in. Agents use the API.
-
 ## Never
 
 - Tell Chris to open a login page, paste a password, or click around an admin site
 - Switch to a browser login when the API refuses
-- Print API keys, passwords, or `.env` values in chat or commits
+- Law: secrets-env-law (.ai/rules/secrets-env-law.md) - never print key values in chat or commits unless Chris asks for the value (show-secrets-when-chris-asks).
 
 ## Always
 

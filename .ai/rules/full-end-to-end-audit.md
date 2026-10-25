@@ -22,7 +22,7 @@ Wait for yes + live/sandbox. Then run.
 
 ## After yes — what “everything” means
 
-**Five horsemen** (default — not one empty file). Different client scenarios to try to break it, from the historical company-sim list (the original board is not in the repo): **Funding**, **Repair**, **Combo**, **Inquiry**, **Course**. Plus-tag email per file + agent SMS `+16616054248`. Never his personal prove phone. Do not mint five copies of the same person.
+**Five horsemen** (default — not one empty file). Different client scenarios to try to break it, from the historical company-sim list (the original board is not in the repo): **Funding**, **Repair**, **Combo**, **Inquiry**, **Course**. Law: agentic-audit-guardrails (`.ai/rules/agentic-audit-guardrails.md`) - sims use plus-tag emails and the one agent phone, never Chris's personal prove phone. Do not mint five copies of the same person. Law: no-test-data-on-production (`.ai/rules/no-test-data-on-production.md`) - no test rows and no test logins are left on production; tests run on scratch databases. The one carve-out: a Full End-To-End Audit that Chris orders by name may make these sim people on live while it runs, and the agent removes them right after with the guarded delete (allowed since 2026-10-24).
 
 Build **sample CRS + sample businesses** on those five so letters, Present / Underwrite snapshot, dash, and suggestions have data to read. Sandbox CRS still means **no live bureau pull** unless he picked **live** on question 2.
 
@@ -60,7 +60,6 @@ After a **named fix**: live-click the path **twice**. 100% certainty before you 
 
 - Email: read prove Gmail (`src/gmail/`). Search anywhere — not Inbox-only.
 - SMS: Twilio accepted to the agent number. 401 = that lane FAIL; keep going on the rest.
-- Test/sim runs bypass quiet hours so fire can be proven.
 - Provider “delivered” is not PASS.
 - On-screen data must match the file.
 
@@ -71,19 +70,18 @@ Write the scorecard at `ops/workflows/full-e2e-audit-YYYY-MM-DD.md`. PASS / FAIL
 **Owner-set (2026-08-25):** When he says Full End-To-End Audit / everything, this list **must run**. A glance, a desk load, or a green script is not enough. **You cannot claim e2e done** if any row below was skipped.
 
 1. **Five horsemen** — Funding / Repair / Combo / Inquiry / Course. Sample CRS + sample businesses. Full event fire. **No extra SMS.**
-2. **Fulfillment** (funding **and** credit repair): staff queue → next action → docs → apply. **Mint invoices / pay links. Do not pay.** Then **AI agent outbound CALL** to `+16616054248`. **AI doc follow-up.** **FTC / portal / inquiry / repair uploads** (sim packs only).
+2. **Fulfillment** (funding **and** credit repair): staff queue → next action → docs → apply. **Mint invoices / pay links. Do not pay.** Then **AI agent outbound CALL** to the agent phone (`agentic-audit-guardrails`). **AI doc follow-up.** **FTC / portal / inquiry / repair uploads** (sim packs only).
 3. **Meet tape → transcriber → closer context fetch** (`fetchContext`). Prove the spoken words land in the closer pack.
 4. **Beta** after live is hashed: **every button** on every beta/ops screen. A page cannot PASS if a main button is broken.
 5. On-screen data must match the file. Employees must **finish** the desk motion.
 6. Offers, contracts, UnderwriteIQ, AR, workflows, and agents that fire on those files.
 7. Incorporation date ask + closer verify SOP when multi-biz / age is needed.
-8. Agent does **all** testing. Do not ask Chris to check mail **or click**. After a named fix: live click **twice**. 100% certainty.
 
 Skip fulfillment, AI call, AI doc chase, FTC/portal/inquiry/repair upload, or Meet → context and still say “e2e done” = **FAIL** (the run is incomplete).
 
 ## Hard stops unless he named them in the yes
 
-Wipe real people. Personal prove phone. Forbidden files. Secret rotation. Charge his real card. Live CRS if he picked **sandbox**. Live bureau mail / PostGrid.
+Law: agentic-audit-guardrails (`.ai/rules/agentic-audit-guardrails.md`) - the hard stops (credit pull, card charge, bureau mail, wiping people, prove phone, secret rotation) hold unless he names them in the yes.
 
 ## Examples
 

@@ -2,7 +2,7 @@
 
 > **COMPLIANCE REVIEW REQUIRED** — this document puts FundHub's regulated
 > consumer-finance advertising under a third party's brand before any partner
-> agreement is signed. Per CLAUDE.md §7 that label stays on it. It is a marker,
+> agreement is signed. It is a marker,
 > not a recommendation, and nothing here asks anyone to revisit an owner decision.
 
 **Status:** specification only. No code, no migrations, nothing applied.

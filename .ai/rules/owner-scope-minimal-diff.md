@@ -19,17 +19,17 @@ Unless the request named it:
 - Rewriting, weakening, or deleting tests
 - New routes, new fields, new config
 
-"While I was in there" is not a reason. Find something worth fixing? Write it down in the summary. Do not fix it.
+"While I was in there" is not a reason. Law: no-extra-holes (.ai/rules/no-extra-holes.md) - write anything else you find on the shared board as one leftover card and stop; do not fix it.
 
 ## When the fix needs a file he did not name
 
-For any approved task (`finish-the-requested-job`, 2026-10-20), a failed required build, verification, dependency or release check is in scope. Repair its code or test in the smallest safe diff and rerun it without asking again. See `approved-launch-release-blockers.mdc`.
+For any approved task (`finish-the-requested-job`, 2026-10-20), a failed required build, verification, dependency or release check is in scope. Repair its code or test in the smallest safe diff and rerun it without asking again.
 
 Otherwise stop. Ask **one** question. Wait for his answer.
 
 Do not ask and edit in the same turn. Do not touch the file and mention it after.
 
-Adding a route, field, or dependency he did not explicitly request is a stop-and-ask. The one exception besides a failed required check: the exact task is a named row on the board (the fundhub-builder standing GO, owner-set 2026-10-24). Also stop-and-ask unless it is required to repair a failed required check in an approved task and preserves the intended behavior.
+Adding a route, field, or dependency he did not explicitly request is a stop-and-ask. The one exception besides a failed required check: the exact task is a named row on the board (the fundhub-builder standing GO, owner-set 2026-10-24). Third exception (owner-set 2026-09-18): same named hole, same symptom, real cause one layer over in a file he did not name: fix it without asking, and say which file. Everything else stays stop-and-ask.
 
 ## Copy rounds (owner-set 2026-10-01)
 

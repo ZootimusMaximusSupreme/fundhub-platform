@@ -11,7 +11,7 @@ alwaysApply: true
 
 From `.env`, `.env.*`, and `credentials/**` (read silently unless he asked for the value — see `show-secrets-when-chris-asks.mdc`):
 
-- **Git push / fetch** — configure auth from env (`GITHUB_TOKEN`, etc.), test, push. Push `main` or the branch headed to a PR with `git push origin <branch>`; the whole-repo script is not the default (repo is public, owner-set 2026-10-24).
+- **Git push / fetch** — configure auth from env (`GITHUB_TOKEN`, etc.), test, push. Law: github-push (.ai/rules/github-push.md) - push only main and branches headed to a PR with git push origin <branch>; the repo is public (owner-set 2026-10-24).
 - **`gh` auth** — when a token exists: `GH_TOKEN` / `GITHUB_TOKEN` non-interactive use, or `gh auth login --with-token` from a pipe the agent runs. Test with `gh auth status` or API curl.
 - **Token test** — curl vendor `/user` or equivalent; report pass/fail only, **never** print the token in chat.
 - **Env save** — write full values to `.env` and `credentials/env.full.snapshot`, then Netlify per `secrets-env-law.mdc`.
@@ -28,7 +28,13 @@ From `.env`, `.env.*`, and `credentials/**` (read silently unless he asked for t
 
 - **Browser OAuth one click** — e.g. `gh auth login -w` when no token exists: agent runs the command or opens the URL, then **one line**: “Click approve in browser.” Not a full token-paste tutorial.
 - **Mac permission dialogs** — mic, Accessibility, etc.
-- **Decisions only he can make** — yes/no, live vs sandbox, delete data (not proven test rows or test logins, owner-set 2026-10-24), repoint `DATABASE_URL` (see `CLAUDE.md` §11).
+- Law: finish-the-answer (.ai/rules/finish-the-answer.md) - Chris is asked first only for yes/no and live-or-sandbox calls, deleting data (not proven test rows or test logins, owner-set 2026-10-24), and repointing DATABASE_URL.
+
+## Agents run the work (owner-set 2026-09-16)
+
+Chris decides; agents operate. Run bash, lint, tests, `npm run ship`, env reads from gitignored `.env`, migrations through ship or the §11 commands, and UI proof (live Playwright when required, then a human-like click path on the live site). Do not tell Chris to run commands, paste secrets, deploy, check inboxes, or do routine QA clicks.
+
+**Exceptions only:** Mac permission dialogs he alone can approve (mic, Accessibility); explicit product gates he must answer (yes/no, live vs sandbox on Full E2E); the two §11 ask-first items (delete data except proven test rows and test logins, repoint `DATABASE_URL`); Chris checks the shipped teleprompter on a real iPhone (owner-set 2026-10-13).
 
 ## Dictator mode
 

@@ -35,7 +35,7 @@ Also obey: owner-scope-minimal-diff, secrets-env-law, CLAUDE.md §0 split / §5 
 
 1. **Read-only inventory first.** Status, sizes, tracked vs untracked. No deletes in the same pass as inventoring unless Chris already marked rows KEEP/KILL and said go.
 2. **Never delete without ask.** Prefer `KEEP` / `ARCHIVE` / `GITIGNORE` / `MOVE`. Deletes only after he marks rows and says go.
-3. **Never touch** `.env`, `credentials/`, or print secrets. PII packs stay gitignored.
+3. **Never touch** `.env` or `credentials/` (do not move or open them while inventorying). Law: secrets-env-law (.ai/rules/secrets-env-law.md) - never print key values in chat or commits unless Chris asks; PII packs stay gitignored (agentic-audit-guardrails).
 4. **Never force-push.** Never mass-delete large `*-evidence/` trees in one pass without a KEEP/KILL board.
 5. **No live product code** (`src/`, `api/`, `public/app` core) unless he named that path in this message.
 6. **Extend, don’t fight** in-flight agent work under `.cursor/skills/` / `.cursor/rules/` (e.g. agentic-audit guardrails). Cross-link; don’t rewrite those files.
@@ -52,7 +52,7 @@ Also obey: owner-scope-minimal-diff, secrets-env-law, CLAUDE.md §0 split / §5 
 
 ## Workflow
 
-1. Read the shared board if present: `ops/workflows/repo-hygiene-*.md` (newest date). Also check older purge boards (e.g. `repo-purge-candidates-2026-08-21.md`) — reuse KEEP/KILL rows; do not re-inventory from zero.
+1. Read the shared board if present: `ops/workflows/repo-hygiene-*.md` (newest date). Also check older purge boards — reuse KEEP/KILL rows; do not re-inventory from zero.
 2. Categorize mess (examples):
    - Untracked `ops/workflows/*-evidence/` dumps
    - Huge **tracked** evidence (git bloat)
@@ -68,7 +68,7 @@ Also obey: owner-scope-minimal-diff, secrets-env-law, CLAUDE.md §0 split / §5 
 
 - Prefer keep on disk until Chris picks ARCHIVE vs GITIGNORE.
 - Annotated screenshots for decisions must follow `audit-screenshot-markups.mdc`.
-- Do not commit raw ID/SSN/bank; those belong under gitignored paths only.
+- Law: agentic-audit-guardrails (.ai/rules/agentic-audit-guardrails.md) - raw ID, SSN and bank files stay in gitignored folders; only blurred packs go in evidence.
 
 ## Out of scope
 

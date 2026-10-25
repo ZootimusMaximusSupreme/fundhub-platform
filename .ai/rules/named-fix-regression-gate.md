@@ -7,7 +7,7 @@ alwaysApply: true
 
 **Owner law (2026-09-18):** AI must not make shit up. AI must not ship a fix that is not real. This gate wins on **done** over `three-step-repair.mdc` FINISH. Board: `ops/workflows/live-prove-2026-09-17-notes.md`.
 
-This gate covers named live-site hole tickets. A failed required CI or release check in an approved launch follows `approved-launch-release-blockers.mdc`: reproduce and repair the check, then verify the release. Do not require a live-site defect before repairing a CI-only failure.
+This gate covers named live-site hole tickets. A failed required CI or release check in an approved launch follows `finish-the-requested-job` (.ai/rules/finish-the-requested-job.md): reproduce and repair the check, then verify the release. Do not require a live-site defect before repairing a CI-only failure.
 
 ## Law
 
@@ -19,18 +19,17 @@ This gate covers named live-site hole tickets. A failed required CI or release c
 
 ## Dirty leftover
 
-If live prove of this hole turns up a **new** break on a path that used to work, card it as a **new hole** on the board. Stop. Do not fix it in this chat. That is not the headline.
+Law: no-extra-holes (.ai/rules/no-extra-holes.md) - a new break found while proving this hole goes on the board as a new hole card; stop and do not fix it here.
 
 ## Never
 
 - Skip live VERIFY and “fix” from a story or a code maybe
-- Invent extra holes from reading files
+- Law: no-extra-holes (.ai/rules/no-extra-holes.md) - never invent or hunt extra holes from reading files.
 - Mark PASS from tests, comments, or a file change
 - Let the fixer mark done
 - Start the next hole after a FAKE fix
 - Run full e2e as the per-hole prove
-- Flip `messaging_settings.outbound_enabled`
-- Run `npm run verify:e2e` (or the scratch harness) on the live database
+- Law: verify-scratch-only (.ai/rules/verify-scratch-only.md) - never flip messaging_settings.outbound_enabled or run verify:e2e or the scratch harness against the live database.
 
 ## Example
 
@@ -43,4 +42,4 @@ Paste: hole 12.
    Bug gone → done. Bug still there → FAKE. Not done.
 ```
 
-See also `one-issue-per-thread.mdc`, `owner-scope-minimal-diff.mdc`, `verify-scratch-only.mdc`.
+See also `three-step-repair` (.ai/rules/three-step-repair.md), `owner-scope-minimal-diff` and `verify-scratch-only`.

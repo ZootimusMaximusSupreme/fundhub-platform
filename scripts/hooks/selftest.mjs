@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// scripts/hooks/selftest.mjs — proves the three AI hooks in .claude/hooks/ do what
-// their doc says (ops/workflows/drift-cleanup-2026-10-24/phase-7-hooks.md).
+// scripts/hooks/selftest.mjs — proves the AI hooks do what their doc says
+// (ops/workflows/drift-cleanup-2026-10-24/phase-7-hooks.md).
 //
 //   node scripts/hooks/selftest.mjs
 //   node --test src/hooks/hooks-selftest.test.mjs      (the same run, inside npm test)
@@ -19,9 +19,11 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { mergeHookSet } from "./wire.mjs";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const HOOK_DIR = path.join(REPO, ".claude", "hooks");
+const ENV_HOOK = path.join(REPO, "scripts", "hooks", "guard-env-masks.mjs");
 const CHECKER = path.join(REPO, "scripts", "ads", "check-script.mjs");
 
 // ---------------------------------------------------------------------------
@@ -81,7 +83,8 @@ function fail(name, detail) {
 }
 
 function runHook(hook, input, env = {}) {
-  const r = spawnSync(process.execPath, [path.join(HOOK_DIR, hook)], {
+  const script = path.isAbsolute(hook) ? hook : path.join(HOOK_DIR, hook);
+  const r = spawnSync(process.execPath, [script], {
     input: typeof input === "string" ? input : JSON.stringify(input),
     encoding: "utf8",
     timeout: 15000,
@@ -117,6 +120,16 @@ function expectAsk(name, r) {
   if (out.hookEventName !== "PreToolUse") fail(name, `hookEventName was ${out.hookEventName}`);
   if (out.permissionDecision !== "ask") fail(name, `permissionDecision was ${out.permissionDecision}, expected "ask"`);
   if (!/approval/i.test(String(out.permissionDecisionReason))) fail(name, `the reason does not mention approval: ${out.permissionDecisionReason}`);
+  checks += 1;
+}
+
+function expectDeny(name, r, needle) {
+  const j = expectJson(name, r);
+  const out = j.hookSpecificOutput || {};
+  const denied = j.decision === "block" || out.permissionDecision === "deny";
+  if (!denied) fail(name, `expected deny/block, got decision=${j.decision} permissionDecision=${out.permissionDecision}`);
+  const reason = String(j.reason || out.permissionDecisionReason || "");
+  if (!reason.includes(needle)) fail(name, `the reason does not name ${needle}:\n${reason}`);
   checks += 1;
 }
 
@@ -233,12 +246,20 @@ function testGuard(proj) {
 
   // A relative path is read from cwd.
   expectAsk("guard: relative path CLAUDE.md", call("Write", "CLAUDE.md"));
+  expectAsk("guard: claude.md any letter case", call("Write", at("claude.md")));
+  expectAsk("guard: agents.md any letter case", call("Edit", at("Agents.md")));
+  expectAsk("guard: rules-index.md any letter case", call("Edit", at("docs/rules/rules-index.md")));
+  expectAsk("guard: FUNDHUB_RULES_APPROVED=0 still asks", call("Edit", at("CLAUDE.md"), proj, { FUNDHUB_RULES_APPROVED: "0" }));
 
   // Silent for everything else.
   expectSilent("guard: ordinary source file", call("Edit", at("src/foo.mjs")));
   expectSilent("guard: ads README", call("Edit", at("marketing/ads/scripts/README.md")));
   expectSilent("guard: a read tool never asks", call("Read", at("CLAUDE.md")));
   expectSilent("guard: approved with FUNDHUB_RULES_APPROVED=1", call("Edit", at("CLAUDE.md"), proj, { FUNDHUB_RULES_APPROVED: "1" }));
+  expectSilent(
+    "guard: Write that quotes Update File does not ask",
+    call("Write", at("src/foo.mjs"), proj, {}, { content: "*** Begin Patch\n*** Update File: CLAUDE.md\n@@\n-old\n+new\n*** End Patch\n" })
+  );
   expectSilent("guard: garbage stdin", runHook("guard-rule-edits.mjs", "not json", { CLAUDE_PROJECT_DIR: proj }));
   expectSilent("guard: empty stdin", runHook("guard-rule-edits.mjs", "", { CLAUDE_PROJECT_DIR: proj }));
   expectSilent("guard: tool_input is null", runHook("guard-rule-edits.mjs", { tool_name: "Edit", tool_input: null }, { CLAUDE_PROJECT_DIR: proj }));
@@ -249,6 +270,20 @@ function testGuard(proj) {
   const codex = (file) => runHook("guard-rule-edits.mjs", { hook_event_name: "PreToolUse", tool_name: "apply_patch", cwd: proj, tool_input: patch(file) }, { CLAUDE_PROJECT_DIR: proj });
   expectAsk("guard: apply_patch on CLAUDE.md (guessed Codex shape)", codex("CLAUDE.md"));
   expectSilent("guard: apply_patch on a source file (guessed Codex shape)", codex("src/foo.mjs"));
+
+  // A worktree session must also guard the main checkout that owns it (from .git + commondir).
+  const mainRepo = path.join(tmpRoot, "main-checkout");
+  const wt = path.join(tmpRoot, "linked-worktree");
+  put(mainRepo, "CLAUDE.md");
+  put(mainRepo, "AGENTS.md");
+  put(mainRepo, "src/foo.mjs");
+  put(mainRepo, ".git/HEAD", "ref: refs/heads/main\n");
+  put(mainRepo, ".git/worktrees/w1/commondir", "../..\n");
+  put(wt, "CLAUDE.md");
+  put(wt, "src/foo.mjs");
+  fs.writeFileSync(path.join(wt, ".git"), `gitdir: ${path.join(mainRepo, ".git", "worktrees", "w1")}\n`);
+  expectAsk("guard: main checkout CLAUDE.md from a worktree session", call("Edit", path.join(mainRepo, "CLAUDE.md"), wt));
+  expectSilent("guard: main checkout source file from a worktree session", call("Edit", path.join(mainRepo, "src/foo.mjs"), wt));
 
   // The real repo.
   const real = (tool, rel) => call(tool, path.join(REPO, rel), REPO);
@@ -284,6 +319,7 @@ function testAdCheck(proj) {
   const elsewhere = put(proj, "src/note-2099-01-01.md", BAD_DRAFT);
   const noDate = put(proj, "marketing/ads/scripts/draft.md", BAD_DRAFT);
   const wrongType = put(proj, "marketing/ads/scripts/2099-01-01.txt", BAD_DRAFT);
+  const sortingHat = put(proj, "marketing/ads/scripts/2026-10-02.md", BAD_DRAFT);
   const missing = path.join(proj, "marketing/ads/scripts/2099-02-02.md");
 
   const call = (tool, file, env = {}) =>
@@ -305,6 +341,8 @@ function testAdCheck(proj) {
   expectSilent("ad check: a dated file outside marketing/ads/scripts is not checked", call("Write", elsewhere));
   expectSilent("ad check: a file with no date is not checked", call("Write", noDate));
   expectSilent("ad check: a .txt file is not checked", call("Write", wrongType));
+  expectSilent("ad check: 2026-10-02.md is not checked", call("Write", sortingHat));
+  expectSilent("ad check: a Read never blocks", call("Read", badFile));
   expectSilent("ad check: a file that is not there", call("Write", missing));
   expectSilent("ad check: FUNDHUB_AD_CHECK=off", call("Write", badFile, { FUNDHUB_AD_CHECK: "off" }));
   expectSilent("ad check: garbage stdin", runHook("check-ad-script.mjs", "not json", { CLAUDE_PROJECT_DIR: proj }));
@@ -339,6 +377,76 @@ function testAdCheck(proj) {
 }
 
 // ---------------------------------------------------------------------------
+// 4. guard-env-masks.mjs
+// ---------------------------------------------------------------------------
+
+function testEnvMasks(proj) {
+  const call = (tool, file, extra = {}, env = {}) =>
+    runHook(ENV_HOOK, { hook_event_name: "PreToolUse", tool_name: tool, cwd: proj, tool_input: { file_path: file, ...extra } }, { CLAUDE_PROJECT_DIR: proj, ...env });
+  const at = (rel) => path.join(proj, rel);
+  put(proj, ".env", "TWILIO_AUTH_TOKEN=realvalue\n");
+  put(proj, ".env.example", "TWILIO_AUTH_TOKEN=\n");
+  put(proj, ".env.local", "X=1\n");
+  put(proj, "credentials/env.full.snapshot", "X=1\n");
+
+  expectDeny("env: deny a mask in .env", call("Write", at(".env"), { content: "TWILIO_AUTH_TOKEN=****************abcd\n" }), "8 or more stars");
+  expectDeny("env: deny a mask in .env.local", call("Write", at(".env.local"), { content: "KEY=********\n" }), "8 or more stars");
+  expectDeny("env: deny a mask in credentials/", call("Edit", at("credentials/env.full.snapshot"), { new_string: "KEY=********xxxx\n" }), "8 or more stars");
+  expectDeny(
+    "env: deny netlify env:list redirected into .env",
+    runHook(ENV_HOOK, { hook_event_name: "PreToolUse", tool_name: "Bash", cwd: proj, tool_input: { command: "netlify env:list --plain > .env" } }, { CLAUDE_PROJECT_DIR: proj }),
+    "env:list"
+  );
+  expectDeny(
+    "env: deny netlify env:get redirected into credentials/",
+    runHook(ENV_HOOK, { hook_event_name: "PreToolUse", tool_name: "Bash", cwd: proj, tool_input: { command: "netlify env:get TWILIO_AUTH_TOKEN >> credentials/env.full.snapshot" } }, { CLAUDE_PROJECT_DIR: proj }),
+    "env:get"
+  );
+  expectDeny(
+    "env: deny pasted env:list output in .env",
+    call("Write", at(".env"), { content: "Environment variables for production\nTWILIO_AUTH_TOKEN=real\n" }),
+    "env:list"
+  );
+  expectSilent("env: allow Read of .env", call("Read", at(".env")));
+  expectSilent("env: allow a normal .env line", call("Write", at(".env"), { content: "TWILIO_AUTH_TOKEN=ACrealvaluewithnospaces\n" }));
+  expectSilent("env: allow .env.example even with stars", call("Write", at(".env.example"), { content: "TWILIO_AUTH_TOKEN=****************\n" }));
+  expectSilent("env: allow a source file that quotes stars", call("Write", at("src/foo.mjs"), { content: "const mask = '****************';\n" }));
+  expectSilent("env: garbage stdin", runHook(ENV_HOOK, "not json", { CLAUDE_PROJECT_DIR: proj }));
+}
+
+function testWire() {
+  const empty = mergeHookSet({});
+  const emptyText = JSON.stringify(empty);
+  if (!emptyText.includes("session-rules.mjs")) fail("wire: adds session-rules", emptyText);
+  if (!emptyText.includes("guard-rule-edits.mjs")) fail("wire: adds guard-rule-edits", emptyText);
+  if (!emptyText.includes("check-ad-script.mjs")) fail("wire: adds check-ad-script", emptyText);
+  if (!emptyText.includes("guard-env-masks.mjs")) fail("wire: adds guard-env-masks", emptyText);
+  checks += 1;
+
+  const twice = mergeHookSet(empty);
+  if ((JSON.stringify(twice).split("guard-env-masks.mjs").length - 1) !== 1) fail("wire: running twice does not duplicate", JSON.stringify(twice));
+  if ((JSON.stringify(twice).split("session-rules.mjs").length - 1) !== 1) fail("wire: running twice does not duplicate session-rules", JSON.stringify(twice));
+  checks += 1;
+
+  const withExtra = mergeHookSet({
+    PreToolUse: [{ matcher: "Write", hooks: [{ type: "command", command: "echo unrelated" }] }]
+  });
+  const extraText = JSON.stringify(withExtra);
+  if (!extraText.includes("echo unrelated")) fail("wire: keeps unrelated hooks", extraText);
+  if (!extraText.includes("guard-env-masks.mjs")) fail("wire: still adds the env hook next to unrelated", extraText);
+  checks += 1;
+
+  const settings = JSON.parse(fs.readFileSync(path.join(REPO, ".claude", "settings.json"), "utf8"));
+  const codex = JSON.parse(fs.readFileSync(path.join(REPO, ".codex", "hooks.json"), "utf8"));
+  const s = JSON.stringify(settings);
+  const c = JSON.stringify(codex);
+  if (!s.includes("guard-env-masks.mjs")) fail("wire: settings.json has the env hook", s);
+  if (!c.includes("guard-env-masks.mjs")) fail("wire: hooks.json has the env hook", c);
+  if ((s.split("guard-env-masks.mjs").length - 1) !== 1) fail("wire: settings.json has the env hook once", s);
+  if ((c.split("guard-env-masks.mjs").length - 1) !== 1) fail("wire: hooks.json has the env hook once", c);
+  if (!s.includes("intended journey")) fail("wire: settings.json kept the intended-journey hook", s);
+  checks += 1;
+}
 
 function main() {
   tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "fundhub-hooks-"));
@@ -358,11 +466,13 @@ function main() {
   testSessionRules(proj);
   testGuard(proj);
   testAdCheck(proj);
+  testEnvMasks(proj);
+  testWire();
 }
 
 try {
   main();
-  console.log(`hooks self-test OK: ${checks} checks passed (session-rules, guard-rule-edits, check-ad-script)`);
+  console.log(`hooks self-test OK: ${checks} checks passed (session-rules, guard-rule-edits, check-ad-script, guard-env-masks)`);
 } catch (err) {
   if (err instanceof SelfTestFailure) console.error(`hooks self-test FAILED at: ${err.message}`);
   else console.error(`hooks self-test CRASHED: ${err && err.stack ? err.stack : err}`);

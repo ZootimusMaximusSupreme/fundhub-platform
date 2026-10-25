@@ -20,7 +20,7 @@ alwaysApply: true
 
 ## Still true
 
-- Never delete a key (CLAUDE.md "Never remove a key").
-- The two ask-first items in CLAUDE.md section 11 stay: delete data (except proven test rows and test logins, owner-set 2026-10-24), and repoint `DATABASE_URL`.
+- Never delete a key. Law: secrets-env-law (`.ai/rules/secrets-env-law.md`) - never delete, unset, clear or overwrite a stored credential.
+- Law: finish-the-answer (`.ai/rules/finish-the-answer.md`) - Chris is asked first only to delete data (not proven test rows or test logins) or to repoint DATABASE_URL.
 - `INNGEST_EVENT_KEY` stays on (`product-is-live`).
 - Plaid affiliate payouts stay in test mode. Chris named that switch (`owner-calls-settled`).

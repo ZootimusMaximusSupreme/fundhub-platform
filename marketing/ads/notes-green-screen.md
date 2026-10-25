@@ -3,10 +3,7 @@
 Oct 2, 2026 · Chris Stanbridge. Saved to the repo 2026-10-02 from Chris's concept doc. The tool
 analogy ads were rewritten the same day to be funnier (flat tire and a hammer, owner ask).
 
-**Owner-set 2026-10-02: this doc's copy rules win over the ad checker.** `npm run ads:check` flags
-these scripts for "optimize" (banned in `marketing/ads/rules-data.mjs`) and for the missing RULES.md 3.6
-close (no hard pull, nothing moves without consent). Chris overruled both: those checker rules are
-outdated. The scripts stay as written.
+These scripts follow `marketing/ads/RULES.md` Part 0.
 
 ## The concept
 
@@ -323,18 +320,11 @@ These rules apply to every script in this concept.
 
 - **Length:** SLO ads run about a minute (around 150 words, up to about 1:15). Sorting hat ads run
   115 to 125 words with no introduction.
-- **Structure:** hook first, cause first. Line 2 is a bridge with an open loop.
-- **Certainty:** no "could," "potentially" or "no guarantees." Say what's most likely based on the
-  data.
-- **Voice:** second person, straight at the viewer. Never make them feel stupid.
-- **Words to avoid:** "credit repair" (say optimize your credit), "your number" or "the number,"
-  "carry," EIN, DUNS and net-30.
-- **Constructions to avoid:** "it's not X, it's Y," two-sentence parallels, slogans, cute images,
-  and telling them what something isn't.
+- Law: RULES Part 0 (marketing/ads/RULES.md) - every rule there applies to these scripts: cause-first hook, certainty, second person, the banned words and constructions.
 - **Refund line:** "If you're not happy with what you get, email us and we'll refund you." Never
   state a day count.
-- **Terms:** a funding sequence holds several rounds, so the next one is never "round two."
-- **Handoff for filming:** plain text paragraphs with blank lines between them and no markdown, so
+- Law: funding-sequence-term (.ai/rules/funding-sequence-term.md) - say next funding sequence, never round two; a funding sequence holds several rounds.
+- **Handoff for filming:** Notes ads are bullet cues (Part 0 rule 43). Plain text, no markdown, so
   it pastes into BigVU in one go.
 
 ## Open items

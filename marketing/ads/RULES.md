@@ -35,11 +35,11 @@ Part 0 wins over Parts 1–4. Where another part says something different, follo
 
 **Words**
 1. Never write "credit repair." Say "credit optimization" or "optimize your credit."
-2. Never say "your number" or "the number." Spell it out, for example: "how much we think you'll qualify for based on where you're at right now."
+2. Never say "your number" or "the number." Spell it out, for example: "how much you qualify for based on where you're at right now."
 3. Never write "carry" or "carries" for what a file is worth. Say how much funding it can get them.
 4. Never write "shelf company" or "sitting on a shelf." Say "an LLC or a company you forgot about."
 5. Never mention EIN, DUNS, net-30 vendors or gas cards.
-6. Never write "no guarantees." Say what's most likely based on the data.
+6. Never write "no guarantees." Say what the data shows.
 7. "Maximum amount of funding" stays exactly as written.
 8. Say "review your file the way a lender does."
 9. A "funding sequence" holds several rounds. Never call the next sequence "round two."
@@ -94,7 +94,7 @@ Part 0 wins over Parts 1–4. Where another part says something different, follo
 43. Green screen and Notes ads are bullet cues. No internal labels like "Payoffs."
 44. Long ads keep every point Chris gave. Never cut them down.
 
-*Note for the writer: rules 39 and 42 describe the words style. Since Chris's 10/4 plan, standard ads default to the bullets style in Appendix B.*
+*Note for the writer: rules 39 and 42 describe the words style. Teleprompter scripts are full flowing sentences in paragraphs (Part 0 rule 39, 2026-10-05). Bullets are for Notes and green-screen cue ads only (Part 0 rule 43).*
 
 ---
 ---
@@ -116,13 +116,13 @@ the ones that are.
 |---|---|
 | "Your score will go up." | We cannot know that. It is a banned claim for us. |
 | "We'll get you funded." / "We will get you funded." | We are not the lender. Lenders decide. |
-| Any dollar amount a bank **will** give them | Same reason. "Up to", with the conditions said out loud, is the only safe shape. |
+| Any dollar amount a bank **will** give them | Same reason. |
 | A bad item **will** come off | Nobody can promise a deletion. Concept 3 makes the honest refusal the whole ad — do that instead. |
 | "0% interest" / "0% interest business credit" | A competitor's line. Not our offer. |
 | "No damage to credit" / "We protect your score" | A promise we cannot keep. |
 | "1–2 inquiries max" | Same. A number we do not control. |
 | "$50K–$250K" as what they get | A competitor's range. Not a Fundhub promise. |
-| "$8,000" or "$10,000" as our price | Not our offer. Do not sell it, do not say it. |
+| "$8,000" or "$10,000" as our price | Not our offer. Do not sell it, do not say it. $10,000 once is the Ascension offer, not this one. |
 | "Negatives off in five days" | A competitor's claim. |
 | "Overnight letters" | We send **expedited** US mail. Never say overnight, UPS or FedEx to a bureau. |
 | "No denials." | A guarantee. See the compliance rules below. |
@@ -234,7 +234,7 @@ advance-fee block. If the offer type on the campaign is wrong, the screening is 
 | # | Rule | In plain English |
 |---|---|---|
 | 7 | Guaranteed approval | No "guaranteed", "100%", "assured" or "everyone is approved" next to approve, accept or qualify. |
-| 8 | Guaranteed funding amount | Do not guarantee a dollar figure. "Up to", with the conditions said, is the only allowed shape. |
+| 8 | Guaranteed funding amount | Do not guarantee a dollar figure. |
 | 9 | Fabricated testimonial | Testimonials must be real people saying real things. The phrase "results are typical" is itself a block. |
 | 10 | Income and distress targeting | No "are you broke", "bad credit? no problem", "low-income families only", "if you make less than $…". This one catches ordinary-sounding ad lines, so read it twice. |
 
@@ -250,9 +250,7 @@ advance-fee block. If the offer type on the campaign is wrong, the screening is 
 |---|---|---|
 | 12 | TikTok and credit repair | TikTok bans credit repair and debt relief outright. No account, no wording, no creative gets around it. Do not write repair ads for TikTok. |
 
-**COMPLIANCE REVIEW REQUIRED** goes at the top of any summary for a script that touches dispute
-logic, credit-repair messaging, fee timing, refunds, payment rails, consent, or the type of credit
-pull. That is `CLAUDE.md` §7 and it is a label Chris asked for, not advice.
+No compliance label on a script summary (CLAUDE.md §7, owner-set 2026-09-08).
 
 ## 1.6 What kills a concept
 
@@ -397,14 +395,6 @@ A hook is the first **two sentences**. All four must pass.
 **Part 0 shapes the hook too, and wins where it differs:** rule 21 (open on what their file is
 worth), rule 26 (tell them something they don't already know) and rule 27 (line 2 is a bridge).
 
-### Examples that pass
-
-Three examples sat here until 2026-10-05 (Ad 1's denial hook, Concept 1's "who takes them off"
-hook and Concept 28's round-two hook). They passed the four checks but break Part 0, so they were
-cut: a sentence that says what it isn't (rules 13 and 15), a two-sentence pair where the second
-sentence lands the point (rule 16), chopped fragments (rule 17) and an em dash (rule 10). The four
-checks still hold. Part 0 decides how the sentences sound.
-
 ### Three that fail
 
 None of these are bad ads. They open the wrong way, and the fix is one line.
@@ -515,7 +505,7 @@ Every concept gets a gate. Default is 600.
 | Premium / strict | ~15% |
 | Open, no gate | ~10% |
 
-### 3.6 The close carries two promises, always
+### 3.6 Close promises (no longer required)
 
 **Corrected 2026-09-07 after checking all five running ads by hand.** An earlier draft of this
 rule said the close is "the same in all five running ads" and quoted one exact sentence. That was
@@ -526,13 +516,13 @@ wrong — only 2 of the 5 use that literal sentence. The other 3 use a real vari
 - The Founder VSL: *"There's no hard inquiry. There's no obligation. Nothing moves on your file
   until you tell us to move it."*
 
-**The wording may vary. Two promises may never be missing:**
+**The wording may vary. These two promises are no longer required (owner-set 2026-10-02, later that day):**
 
 1. **No hard pull.** Say it as "no hard inquiry", "soft pull only", or "zero score impact" — any of
    the three.
 2. **Nothing happens without their say-so.** Say it as "no obligation", "nothing moves until you say
    so", or both. Ad 4 proves these two are interchangeable: it never says the words "no obligation"
-   at all, and it is filmed, running, and booking calls at $32–36 today.
+   at all, and it is filmed, running, and booking calls at $32–36 on 2026-09-07.
 
 Do not reword either promise into something new. Pick from the phrasings above, or match their
 shape exactly.
@@ -656,7 +646,7 @@ An evergreen ad may not contain anything that expires. A checker can look for al
 A variation is a new opening line and a new example. It is not a new ad.
 
 - **Never change the spine.** The five beats stay in that order.
-- **Never change the close.** Same close as everywhere else.
+- **Write each ad's close fresh.**
 - **Change one of three things**: the mistake in beat 1, the example in beat 3, or the visual.
   Changing two at once means you cannot tell what moved the number.
 - **Keep the same `origin_angle` tag across a family of variations**, so the CRM still knows what
@@ -692,7 +682,7 @@ Fail the script, rewrite it, do not show Chris.
    **Corrected 2026-09-07: check 4 (the opening subject is not "us") is NOT built.** It needs
    judgement about what a sentence's real subject is; see 4.2 item 1a.
 6. **Corrected 2026-09-07: the close is checked for its two required promises (3.6), never for one
-   fixed sentence.** Checking for exact wording would have rejected 3 of the 5 ads running today.
+   fixed sentence.** Checking for exact wording would have rejected 3 of the 5 ads running on 2026-09-07.
 7. `origin_angle` is filled in (3.2). Built and running.
 8. The twelve compliance patterns — NOT run here on purpose. `scripts/ads/check-script.mjs` never
    imports `src/compliance/screen.mjs`; that gate needs a live database and runs later, inside

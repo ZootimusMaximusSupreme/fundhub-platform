@@ -13,7 +13,7 @@ alwaysApply: true
 - Welcome and portal videos
 - Client-win videos (not the testimonial card videos on pages, see below)
 - Walkthroughs, demos, course and training videos
-- Anything that lives on a page, in the portal, or in a deliverable
+- Anything that lives on a page, in the portal, or in a deliverable. Testimonial card videos on pages do not need 4K (owner-set 2026-10-24).
 
 ## 1080p is fine
 

@@ -1,7 +1,7 @@
 # W7 — The $10,000 training curriculum
 
 > **COMPLIANCE REVIEW REQUIRED** — this curriculum covers credit-repair messaging, fee
-> timing, and consent capture. Per CLAUDE.md §7 the label stays on it. It is a marker,
+> timing, and consent capture. It is a marker,
 > not a recommendation.
 
 **Status:** specification only. Nothing built. **Written:** 2026-08-31.

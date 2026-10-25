@@ -1,1 +1,0 @@
-../../.ai/rules/animation-ad-style.md

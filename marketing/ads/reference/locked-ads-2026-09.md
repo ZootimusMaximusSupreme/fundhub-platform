@@ -6,7 +6,7 @@ Source: https://claude.ai/code/artifact/3ccff488-b6c6-42b0-950c-619edcc6297c (la
 
 Eight ads approved verbatim: five straight offer, two Haynes DR, one abandoned cart retargeting. Plus seven shorts, the bullet VSL, and briefs for Paul's six statics and four deliverable walkthroughs. Every ad carries the soft pull line. Each is built around one reason to buy with its own body, so they read as separate creatives rather than one ad with seven hooks.
 
-Ads 4 and 5 were rewritten today around their own reasons after the audit found them duplicating ads 1 and 7.
+Ads 4 and 5 were rewritten on 2026-09-22 around their own reasons after the audit found them duplicating ads 1 and 7.
 
 ## Ad 1 — Straight offer, full read
 
@@ -26,7 +26,7 @@ And we give you a list of the banks that will approve you once your file is full
 
 Call a funding company and they'll promise you a roadmap. You get on the call and you get pitched, because the intention was always to sell you. Buy a course instead and you're paying five to ten thousand dollars to go dig the answers out yourself.
 
-I've been doing this for ten years. I've seen hundreds of files. I have tens of thousands of data points across the funding ecosystem and I reverse engineered all of it, so you get it for a fraction of the price with none of the runaround.
+I've been doing this for ten years. I've seen hundreds of files. I reverse engineered all of it, so you get it for a fraction of the price with none of the runaround.
 
 If you're not happy with what you get, email us and we'll refund you.
 
@@ -50,7 +50,7 @@ And a list of the banks that will approve you once your file is fully optimized.
 
 Most guys go get declined again instead. Same file, different bank, and every one of those applications sits on your report making the next one harder.
 
-I've been doing this for ten years. I've seen hundreds of files. Tens of thousands of data points across the funding ecosystem, reverse engineered so you get the answer in ten seconds instead of six months.
+I've been doing this for ten years. I've seen hundreds of files. Reverse engineered so you get the answer in ten seconds instead of six months.
 
 If you're not happy with what you get, email us and we'll refund you.
 
@@ -76,7 +76,7 @@ The order to do it in, month by month.
 
 And the list of banks that will approve you once your file is there.
 
-I've been doing this for ten years. I've seen hundreds of files. I have tens of thousands of data points across the funding ecosystem and I reverse engineered all of it.
+I've been doing this for ten years. I've seen hundreds of files. I reverse engineered all of it.
 
 If you're not happy with what you get, email us and we'll refund you.
 
@@ -184,7 +184,7 @@ I've been doing this for ten years.
 
 I've seen hundreds of files.
 
-I have tens of thousands of data points across the funding ecosystem, and I reverse engineered all of it.
+I reverse engineered all of it.
 
 ### 3. The opportunity
 
@@ -454,8 +454,7 @@ These were set while writing the seven above. New ads follow them.
 - The product is credit card stacking. Never frame it as a bank offer they take or leave. The file either gets worked or it doesn't.
 - Future pacing stays broad: starts your new business, funds the one you're already running, gets you ahead of the guys you're competing with. Never "second location".
 - "10x your file", "maximum fundability", and "maximum amount of funding" are approved language.
-- Always "potentially seven figures", never a flat seven figures. "On a lot of files" rather than "typically".
-- Proof in full sentences: I've been doing this for ten years, I've seen hundreds of files, tens of thousands of data points across the funding ecosystem, reverse engineered. Never the clipped version.
+- Proof is Part 0 rules 35–38 only: a decade in the industry, hundreds of files, thousands of data points. Do not use Koi Poke or $25M. Never the clipped version.
 - Never name EIN, DUNS, net-30 vendors or gas cards.
 - Never write "no guarantees". It reads as what's most likely and what we're aiming at.
 - Guarantee wording: if you're not happy with what you get, email us and we'll refund you. The 15 day window is in the soft pull authorization, never in an ad.

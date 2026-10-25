@@ -14,7 +14,7 @@ Also applies when working under `marketing/landing-pages/**`, `marketing/landing
 ## Never
 
 - Invent ClickFunnels endpoints, paths, or request shapes from memory
-- Tell Chris to paste HTML into the funnel builder as the **default** deploy path — **Custom HTML Pages API** is GA (2026-09-18); use the API/docs unless he explicitly chose manual builder paste
+- Law: chris-never-clickfunnels (.ai/rules/chris-never-clickfunnels.md) - never tell Chris to paste HTML into the funnel builder as the default; the Custom HTML Pages API (GA 2026-09-18) is the path.
 
 ## Always
 

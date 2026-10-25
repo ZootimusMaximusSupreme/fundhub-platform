@@ -36,6 +36,15 @@
             "command": "node \"${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || echo .)}/.claude/hooks/guard-rule-edits.mjs\""
           }
         ]
+      },
+      {
+        "matcher": "Write|Edit|MultiEdit|apply_patch|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || echo .)}/scripts/hooks/guard-env-masks.mjs\""
+          }
+        ]
       }
     ],
     "PostToolUse": [

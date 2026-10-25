@@ -6,7 +6,7 @@ in the wrong place.
 ## Fast path (write ads without waiting on Claude Code)
 
 Open **`WRITE-ADS-FROM-HERE.md`** — or load `.cursor/skills/fundhub-ad-writer/SKILL.md` **fast path** only.  
-Locked batch index: **`fundhub-297/INDEX.md`**. Ad id = leading digits of `utm_content`; titles optional.
+Locked batch index: **`fundhub-297/INDEX.md`**. Law: ad-naming (.ai/rules/ad-naming.md) - ads are found by the leading digits of utm_content; titles are optional.
 
 The shoot workflow below is for **new concept generation**, not for every hook edit.
 
@@ -16,10 +16,8 @@ The shoot workflow below is for **new concept generation**, not for every hook e
 |---|---|---|
 | **`ASSET-BANK.md`** | Every input — offer, prices, mechanisms, enemies, audiences, gates, proof, objections, words, voice | First. Always. |
 | **`ANGLE-GENERATOR.md`** | The machine that turns those inputs into angles | Before writing any concept or script |
-| **`CONTROLS.md`** | The ads running right now, verbatim and locked | To match the voice, or to check what's already been said |
+| **`CONTROLS.md`** | locked controls, verbatim and locked | To match the voice, or to check what's already been said |
 | **`CONCEPTS.md`** | The concept sheet — hooks to pick from | When Chris is choosing what to shoot |
-| **`20-ads.md`** | The picked concepts, written as full scripts | On the shoot |
-| **`SHOOT-PLAN.md`** | Outfits, locations, shot order, runtime | On the shoot |
 
 ## The workflow
 
@@ -30,10 +28,6 @@ ASSET-BANK + ANGLE-GENERATOR
           ↓
     Chris picks 20        ← manual, and it stays manual
           ↓
-      20-ads.md           ← full scripts, 10/10 only
-          ↓
-    SHOOT-PLAN.md         ← outfits and locations so no two look alike
-          ↓
         Sedona
 ```
 
@@ -43,7 +37,6 @@ ASSET-BANK + ANGLE-GENERATOR
   variations somewhere else.
 - **Never name the tech stack in copy.** No vendor names. It's "our system."
 - **White-label is not led with.** Two concepts maximum, and only as a door that exists at the end.
-  Marked `NEXT MONTH` until it's finished.
 - **The mechanism test governs everything.** Delete the mechanism from a hook — if it still makes
   sense, a competitor can run it and it's dead.
 - **Write like Chris talks.** First person, short sentences, name the cost before the fix. Read it

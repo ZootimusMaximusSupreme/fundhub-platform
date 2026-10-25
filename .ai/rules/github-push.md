@@ -25,6 +25,10 @@ No backup branches. Each pushed branch starts the CI jobs. `node scripts/github-
 
 The old whole-repo script (kept, not the default) adds or updates remote **`origin`**, pushes **`main`** only when it can fast-forward, every local branch not yet merged into GitHub `main`, and all tags. Merged branch refs stay deleted. It removes remote **`gitlab`** if present. It never removes GitHub remotes.
 
+## Commit locally, every session (owner-set 2026-09-08)
+
+A laptop died on 2026-09-07 holding uncommitted work. Four marketing skills and 83 ad scripts were never in git and are gone. So commit to the local repository in the same session the work is done, every time, whether or not a push is possible. An unpushed commit survives. An uncommitted file does not. If you cannot push, commit anyway and say so. Then push that commit to GitHub when auth allows.
+
 ## Credentials (names only — values in gitignored `.env`)
 
 | Variable | Purpose |
@@ -36,7 +40,7 @@ Fallback: **`credentials/github-pat.txt`** (gitignored) — one line `ghp_…` o
 
 Create token: https://github.com/settings/tokens
 
-Never commit `.env` or `credentials/`. Never put token values in tracked files, boards, or chat logs unless Chris explicitly asks in dictator mode.
+Law: secrets-env-law (.ai/rules/secrets-env-law.md) - never commit .env, .env.* or credentials/; never put a token in tracked files, boards or logs; paste one in chat only when Chris asks.
 
 ## Compare baseline
 

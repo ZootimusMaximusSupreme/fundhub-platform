@@ -6,7 +6,7 @@ description: Edit one Fundhub talking-head video BEFORE Submagic. Cut real mess-
 # Fundhub ad editor
 
 Owner-set 2026-10-23. Chris: Submagic cuts badly. We do the cutting and the sound on the Mac, for free.
-Submagic only does captions, clean audio and eye contact. B-roll is only our own animations and screen recordings, never Submagic B-roll (owner-set 2026-10-24).
+Submagic does captions and clean audio only. Eye contact is not done until Chris says an agent may drive the Submagic app (API-only law, owner-set 2026-10-23 and 2026-10-24). Law: ad-video-best-of-clips (.ai/rules/ad-video-best-of-clips.md) - B-roll is only our own animations and screen recordings, never Submagic B-roll (owner-set 2026-10-24).
 Run this skill on a Sonnet agent (owner-set 2026-10-23, `model-by-job`).
 
 Proven on Ad 16 (2026-10-23): 80.4 s raw → 69.5 s, 4 mess-ups cut and 16 pauses tightened,
@@ -62,12 +62,11 @@ Proven on Ad 16 (2026-10-23): 80.4 s raw → 69.5 s, 4 mess-ups cut and 16 pause
 
 ## Sound level for Facebook and online
 
--14 LUFS loudness, true peak at or under -1.5 dB. This is the common level for social video. Rule: `ad-sound-level` (owner-set 2026-10-23).
-After Submagic, measure again; if it moved more than 1 LU, set it back to -14.
+Law: ad-sound-level (.ai/rules/ad-sound-level.md) - every finished video is -14 LUFS with true peak at or under -1.5 dB; measure again after Submagic.
 
 ## Submagic gets only this
 
 `cleanAudio: true`, a caption template, `dictionary`. `magicZooms`, `magicBrolls` (never on: B-roll is only ours), `removeBadTakes`,
 `autoRender` false. Never send `removeSilencePace`, `aiEditTemplate` or `presetId` — those cut and
-add things. Eye contact has no API switch; it is in the Submagic app only. An agent runs it; Chris never opens the app (`chris-never-submagic`).
+add things. Eye contact is not done until Chris says an agent may drive the Submagic app (API-only law). An agent runs it; Chris never opens the app (`chris-never-submagic`).
 Code: `src/messaging/providers/submagic.mjs`.

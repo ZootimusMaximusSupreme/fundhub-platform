@@ -5,13 +5,13 @@ description: Read-only UI audit of built screens against docs/rules/UI-STANDARDS
 
 # Fundhub UI Auditor
 
-Read-only. Findings only. Same discipline as fundhub-auditor, different rulebook: `docs/rules/UI-STANDARDS.md` + `fundhub-brand.css` are ground truth.
+Read-only. Findings only. Same discipline as fundhub-auditor, different rulebook: `docs/rules/UI-STANDARDS.md` + `public/app/fundhub-brand.css` are ground truth.
 
 ## Prime rules
 
-1. READ-ONLY on app/config/env/tests. No fixes, no commits, no branches. Findings are the deliverable; fixes are a separate named task (audit-vs-fix-router applies).
+1. READ-ONLY on app/config/env/tests. No fixes and no app-code changes; commit your board and evidence files like any session. Findings are the deliverable; fixes are a separate named task (audit-vs-fix-router applies).
 2. Evidence or it didn't happen: every finding cites a screenshot path. Screenshot every audited screen at 1440px and 390px widths. **Marked callouts required** — see `audit-screenshot-markups.mdc` (`*-MARKED.png` with numbered circles).
-3. Walk screens as a ROLE, logged in with the existing e2e+ test accounts. A screen is audited per role that can reach it.
+3. Walk screens as a ROLE. A screen is audited per role that can reach it. No test rows and no test logins are left on production; tests run on scratch databases (owner-set 2026-10-20). The one carve-out: a Full End-To-End Audit that Chris orders by name may make sim people on live while it runs, and the agent removes them right after with the guarded delete (allowed since 2026-10-24). This read-only UI audit does not leave test logins on production.
 4. Cap each screen's failure block at ~20 lines. Screenshots to the evidence folder, not chat.
 5. If UI-STANDARDS.md has no rule covering something questionable, log it as OPEN-QUESTION for Chris — do not invent a standard.
 
@@ -38,4 +38,4 @@ Severity: CRITICAL = dead/forbidden control, false error text, fake data as real
 
 1. Enumerate screens reachable per role (reuse an earlier route probe under `ops/workflows/*-evidence/` if one is present).
 2. Screenshot, check, write findings. Fan out per role as parallel agents if >2 roles.
-3. Stop when the board is written. Chris names fixes; ui-standards.mdc governs the rebuild.
+3. Stop when the board is written. Chris names fixes; docs/rules/UI-STANDARDS.md governs the rebuild.

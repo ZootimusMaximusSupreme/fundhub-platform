@@ -28,7 +28,8 @@ Display work (`grok-no-displays`) and animation building (`animation-builders-op
 Ask: "Fix the portal button copy."
 
 ❌ "Open Claude to edit public/app/…"
-✅ Change the copy here with Composer or Grok.
+❌ Change the copy here with Composer or Grok.
+✅ Write the need on the board.
 ```
 
 See `grok-no-displays.mdc` for display boundaries (no new Claude handoff).

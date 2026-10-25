@@ -1,16 +1,12 @@
 # Runbook — what to do when something looks broken
 
+Written before the owner laws of Aug to Oct 2026. Where this page and CLAUDE.md disagree, CLAUDE.md wins.
+
 This page is for the moment something is wrong and you need to know what.
 It does not assume you read code. Read it top to bottom, or jump to the part
 that matches what you are seeing.
 
-One thing to know before you start. Almost nothing in this system watches
-itself. If the database stops answering at 2am, nothing sends an email, a text,
-or a phone alert on its own. Someone finds out when they open the CRM in the
-morning. [Monitoring](#monitoring) and [Alerting](#alerting) explain the one
-check you can turn on in about five minutes. [What nobody is
-watching](#what-nobody-is-watching) is the honest list of everything still
-uncovered.
+One thing to know before you start. The morning pulse and the hourly beats watch the company from inside (`docs/journeys/heartbeat-flow.md`). Law: texting-hours (`.ai/rules/texting-hours.md`) - a break found overnight is saved, and a text to Chris goes out only from 6:00 a.m. to 10:00 p.m. Mountain Standard Time. [Monitoring](#monitoring) and [Alerting](#alerting) say what an outside uptime check looks like. [What nobody is watching](#what-nobody-is-watching) says what is still not covered.
 
 ---
 
@@ -28,8 +24,10 @@ https://transcendent-wisp-888771.netlify.app/api/health
 You get back a short block of text like this:
 
 ```
-{"ok":true,"db":"up","state":"up","migrations":69,"expected":69,"pending":0,"error":null,"checkedAt":"..."}
+{"ok":true,"db":"up","state":"up","migrations":"<count>","expected":"<count>","pending":0,"error":null,"checkedAt":"..."}
 ```
+
+Read `migrations` and `expected` from the live `/api/health` page. Do not use an old count from this page.
 
 Two words in there tell you almost everything: **`state`** and **`error`**.
 
@@ -80,9 +78,9 @@ created, so any screen touching them fails while everything else works fine.
 
 The CRM shows a small chip in the corner: **LIVE**, **NO DB**, or **NO API**.
 It is useful but it is coarse. Today a `behind` database draws **NO DB**, even
-though the database is answering perfectly. The words next to the chip say the
-real thing — "database is behind: 51 of 69 migrations applied, 18 pending".
-**When the chip and this page disagree, believe this page.**
+though the database is answering perfectly. The words next to the chip say how
+many migrations are applied and how many are pending. Read the count from
+`/api/health`. **When the chip and this page disagree, believe this page.**
 
 ---
 
@@ -90,13 +88,9 @@ real thing — "database is behind: 51 of 69 migrations applied, 18 pending".
 
 #### Why this happens
 
-Changes to the database's shape are kept in numbered files. There are 69 of them
-today. Each one has to be applied to the database once, in order.
+Changes to the database's shape are kept in numbered files. Read `migrations` and `expected` from the live `/api/health` page. Each file has to be applied to the database once, in order.
 
-**Nothing applies them automatically.** Not the deploy. There is no automated
-build or test step in this project at all. Applying them is something a person
-does by hand, every time new ones are added. If the code goes out and nobody
-runs the command, the code is ahead of the database and screens break.
+A production deploy applies pending migrations (`[context.production]` migrates, owner-set 2026-08-19). `.github/workflows/ship.yml` runs the checks, then that migrate step. A preview deploy does not migrate. The command below still applies them when an agent runs it from the Mac. If the code goes out and the migrate step did not run, the code is ahead of the database and screens break.
 
 #### How to see exactly which pieces are missing
 
@@ -126,11 +120,7 @@ It will not redo work that is already done.
 
 Then reload `/api/health`. It should say `up`.
 
-**Claude cannot run this for you.** The company network blocks
-`api.netlify.com` and `api.supabase.com` from the agent environment. Any attempt
-fails immediately with a "403" refusal before it even connects. That is a policy
-block, not a bug, and there is no way around it from there. A human on a normal
-machine runs it.
+Law: agents-run-ops-not-chris (`.ai/rules/agents-run-ops-not-chris.md`) - an agent runs this from the Mac. A hosted cloud session cannot reach `api.netlify.com` or `api.supabase.com`. Any attempt fails immediately with a "403" refusal before it even connects. That is a policy block, not a bug, and there is no way around it from there. Do not ask Chris to run it.
 
 #### What this does not do
 
@@ -181,10 +171,9 @@ netlify deploy --build --prod
 Two rules, both important:
 
 - `--secret` goes on anything holding a password. Always.
-- Never paste that value into a chat, a ticket, or a document. Confirm it by name
-  only — "DATABASE_URL is set" — never by showing it.
+- Law: secrets-env-law (`.ai/rules/secrets-env-law.md`) - confirm a key by name only, for example "DATABASE_URL is set"; paste a value only when Chris asks.
 
-Same network note as above: a human runs this, not Claude.
+Same network note as above: an agent on the Mac runs this. A hosted cloud session cannot (403). Do not ask Chris to run it.
 
 ---
 
@@ -234,8 +223,9 @@ combination is fine and expected.
 
 ## Monitoring
 
-Right now nothing checks the site on a schedule. Any uptime service — there are
-free ones — can do it, and setting one up takes about five minutes.
+The hourly pulse checks the company from inside (`netlify/functions/pulse-hourly*.mjs`, `docs/journeys/heartbeat-flow.md`). A five-minute watcher (`netlify/functions/pulse-outside-watch.mjs`) checks that the workflow engine is still ticking. It does not poll this health address.
+
+An outside uptime monitor is not set up on `/api/health?strict=1` yet. Any uptime service can do it, and setting one up takes about five minutes.
 
 Point it at this exact address, **including the `?strict=1` part**:
 
@@ -266,35 +256,31 @@ A check that nobody sees is not monitoring. When the monitor above goes red it
 has to reach a person.
 
 - Send the alert somewhere **a phone will buzz** — text message or a phone push.
-  An email nobody reads at 2am is the same as no monitor at all.
+  Law: texting-hours (`.ai/rules/texting-hours.md`) - texts to Chris go out only from 6:00 a.m. to 10:00 p.m. Mountain Standard Time (Arizona). A break found overnight is saved and goes out in the first text of the next window. Do not text at 2 a.m.
 - Send it to **at least two people**. One person is on a plane eventually.
 - Have the alert message include the health address itself, so whoever gets it
   can open it and read `state` without hunting for the link.
 - Put a link to this page in the alert message too. The point of a page at 2am is
   that it lands somewhere with instructions.
 
-Nothing else in this system alerts on anything. There is no error reporting and
-no metrics. This one check is the whole of it, and it is not switched on yet.
+The pulse texts Chris inside the texting window when a check goes red (`docs/journeys/heartbeat-flow.md`). That alert road is on. An outside uptime monitor on this health address is not set up yet.
 
 ---
 
 ## On-call
 
-There is no rota today and no agreed response time. The honest current answer to
-"who gets called at 2am" is **nobody**.
+Texts about a red check go to Chris inside the texting window. There is no separate named rota and no agreed response time beyond that window.
 
-If you want that to change, three decisions are enough to start:
+If you want a named rota, three decisions are enough to start:
 
 1. **Who is first.** One named person who gets the alert, and one named backup.
 2. **How fast.** A response time you actually mean — "within an hour during the
    day, next morning overnight" is a real answer and is better than an unwritten
    one.
 3. **What they are allowed to do without asking.** Rolling back a deploy and
-   running the migrate command should both be on that list; they are safe and
-   they are reversible or additive. Two things must always wait for you, per
-   the project's own rules: anything that **deletes data**, and anything that
-   **points the site at a different database**. `INNGEST_EVENT_KEY` stays **ON
-   permanently** (owner-set 2026-08-20) — never disable it.
+   running the migrate command should both be on that list.
+   Law: finish-the-answer (`.ai/rules/finish-the-answer.md`) - two things always wait for Chris: deleting data (not proven test rows or test logins) and repointing DATABASE_URL.
+   Law: product-is-live (`.ai/rules/product-is-live.md`) - INNGEST_EVENT_KEY stays on; never disable it (owner-set 2026-08-20).
 
 Write those three answers down here when you have them.
 
@@ -305,31 +291,13 @@ Write those three answers down here when you have them.
 Stated plainly, because a gap you know about is manageable and a gap you assume
 is covered is not.
 
-**There is no monitoring and no alerting running today.** None. If something
-breaks, the way it gets found is that a person opens the CRM and notices.
+The morning pulse and the hourly beats watch the company (`docs/journeys/heartbeat-flow.md`). They text Chris inside the texting window. The pulse reports. It does not fix things by itself.
 
-Specifically, none of this exists:
+An outside uptime monitor is not set up on `/api/health?strict=1` yet. [Monitoring](#monitoring) is how that check would be pointed. [On-call](#on-call) says who gets the text.
 
-- **No alarms.** Nothing sends an email, a text, or a phone alert when anything
-  fails. [Monitoring](#monitoring) and [Alerting](#alerting) are how you would
-  add the first one.
-- **No error collection.** When a screen fails for a user, nothing records it
-  anywhere you can look later. You only learn about it if that person tells
-  someone.
-- **No speed or usage tracking.** Nobody can answer "was it slow this week" or
-  "how many people used it". There is no data to answer from.
-- **No automatic checks before a deploy.** Code goes live without anything
-  verifying it first. There is no automated build or test step at all.
-- **No automatic database updates.** Covered in [The database is
-  behind](#the-database-is-behind). This is the single most likely thing to bite
-  you, because everything looks fine when it happens.
-- **Nobody on call.** See [On-call](#on-call).
+`.github/workflows/ship.yml` runs lint and guard tests before every production deploy, then applies pending database changes. A database that is behind still breaks screens while the site looks up. See [The database is behind](#the-database-is-behind).
 
-**One more, and it is easy to misread.** This system does not send anything out.
-No emails, no texts, no letters — not because something is broken, but by design.
-Messages are written into a list and wait there. So "the emails stopped going
-out" is not an outage you can fix from this page. Nothing was ever going out. Ask
-before treating it as a fault.
+Law: product-is-live (`.ai/rules/product-is-live.md`) - texts, email, and the message dispatcher are live. A queued message is waiting to send. "Nothing goes out" is not true. Plaid affiliate payouts stay in test mode (owner-set 2026-10-21).
 
 ---
 

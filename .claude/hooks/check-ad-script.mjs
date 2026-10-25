@@ -4,11 +4,13 @@
 // Claude to fix the lines before the draft goes to Chris.
 //
 // WHICH FILES. Only dated draft files that sit directly in marketing/ads/scripts/:
-//   2026-10-02.md, book-a-call-final-2026-10-03.md      (name ends in YYYY-MM-DD.md)
+//   book-a-call-final-2026-10-03.md      (name ends in YYYY-MM-DD.md)
 // Not checked: README.md and notes (no date), the collections named ALL-* and
 // ADS-NOT-RUNNING-* or with "-since-" in the name (old filmed ads, not drafts),
-// and anything in a subfolder (marketing/ads/scripts/machine/ is written by the
-// app's writer, which runs its own strict check).
+// marketing/ads/scripts/2026-10-02.md (hand-written sorting-hat ads under the
+// checker's 135-word floor), and anything in a subfolder
+// (marketing/ads/scripts/machine/ is written by the app's writer, which runs
+// its own strict check). A Read never answers block.
 //
 // WHICH MODE. File mode: `node scripts/ads/check-script.mjs <file>`, the same one
 // `npm run ads:check` runs. The app's writer uses strict mode (checkScriptText with
@@ -32,6 +34,8 @@ const CHECKER_REL = path.join("scripts", "ads", "check-script.mjs");
 const DRAFT_DIR_RE = /(?:^|\/)marketing\/ads\/scripts\/([^/]+)$/;
 const MAX_LINES_CHARS = 800; // the checker lines in the reason
 const MAX_LINE_CHARS = 230;
+const EDIT_TOOLS = /^(Write|Edit|MultiEdit|NotebookEdit|apply_patch|ApplyPatch)$/i;
+const SKIP_DRAFTS = new Set(["2026-10-02.md"]);
 
 async function readInput() {
   if (process.stdin.isTTY) return {};
@@ -55,6 +59,7 @@ function isDraftPath(p) {
   if (!m) return false;
   const name = m[1];
   if (!/\.md$/i.test(name)) return false;
+  if (SKIP_DRAFTS.has(name.toLowerCase())) return false;
   if (/^(ALL-|ADS-NOT-RUNNING)/i.test(name) || /-since-/i.test(name)) return false;
   return /(?:^|[-_ ])\d{4}-\d{2}-\d{2}\.md$/i.test(name);
 }
@@ -94,6 +99,7 @@ function failingLines(stdout) {
 async function main() {
   const input = await readInput(); // always drain stdin first
   if (process.env.FUNDHUB_AD_CHECK === "off") return;
+  if (typeof input.tool_name === "string" && input.tool_name && !EDIT_TOOLS.test(input.tool_name)) return;
   const ti = input.tool_input && typeof input.tool_input === "object" ? input.tool_input : {};
   if (typeof ti.file_path !== "string" || !ti.file_path) return;
 

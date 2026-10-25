@@ -7,7 +7,7 @@ alwaysApply: true
 
 **Owner law (2026-09-29):** When Chris asks to change a page, show him a marked draft first. He liked this on the `/roadmap` page: "I really like this way of editing the pages where you highlight and everything you did."
 
-**Owner update (2026-10-19):** Keep the marked draft, but do not ask again when Chris has already authorized publication of this work. A ship/deploy/GO choice for the release carries across turns. See `owner-go-no-repeat-approval.mdc`.
+**Owner update (2026-10-19):** Keep the marked draft. Publication approval carries across turns. Law: owner-go-no-repeat-approval (.ai/rules/owner-go-no-repeat-approval.md) - a GO already given is never asked again.
 
 **Owner update (2026-10-23):** Show the marked draft, but do not block on his answer once he has said push. Push, then prove the live page.
 
@@ -18,7 +18,7 @@ alwaysApply: true
 3. **Blue dashed boxes** show the new section order. Each box has a label that says what moved.
 4. **Round 2: green marks.** When Chris says fix it, write the fixes into the draft. Every new or changed line is marked green. A button at the top hides the marks so he can read it clean.
 5. **Share it as an Artifact link** he can open on his phone. Keep the same link every round.
-6. **Every fact comes from the repo, the product, or Chris.** Look it up. Never invent a number, a name, a quote, or a feature.
+6. Law: finish-the-answer (.ai/rules/finish-the-answer.md) - look the fact up in the repo, the product or Chris's words; never invent a number, name, quote or feature.
 7. **Push live only with Chris's authorization.** An existing ship/deploy/GO choice for this release is enough; do not ask again. Strip every mark first. Keep a copy of the old live page. Prove the live page after the push.
 
 The working example is `marketing/landing-pages/slo/preview/reorg-draft-build.mjs`. It builds the red draft, the green draft, the share copy, and the clean live page from one script.

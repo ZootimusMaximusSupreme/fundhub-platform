@@ -1,5 +1,7 @@
 # ClickFunnels setup — do this first
 
+**Old. Agents do this through the API (chris-never-clickfunnels).**
+
 **Written 2026-09-08.** About 15 minutes. Nothing else in the marketing build works
 until this is done.
 
@@ -85,7 +87,7 @@ survive the jump from the video page to the form.
 Look for a block of code mentioning `fh_attribution`.
 
 The exact code to paste is in this repo at
-`clickfunnels-fragments/06-utm-hidden-fields.html`. Paste the whole thing into a Custom
+`marketing/landing-pages/06-utm-hidden-fields.html`. Paste the whole thing into a Custom
 HTML/JS element. It shows nothing on the page and changes nothing visually.
 
 **Why both pages:** your ad points at the video page. The form is on a different page.

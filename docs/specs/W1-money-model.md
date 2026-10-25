@@ -1,7 +1,7 @@
 # W1 — The Money Model (white-label partner channel)
 
 > **COMPLIANCE REVIEW REQUIRED** — this document sets fee timing and payout
-> schedule. Per CLAUDE.md §7 that label stays on it. It is a marker, not a
+> schedule. It is a marker, not a
 > recommendation, and nothing here asks anyone to revisit an owner decision.
 
 **Status:** specification only. No code, no migrations, nothing applied.

@@ -38,3 +38,16 @@ Ask: "Build Client Finance OS."
 ```
 
 Reinforces CLAUDE.md §3a (back end first, front end last).
+
+## Section 3a detail (owner rule, 2026-09-03)
+
+For anything new, this order, no exceptions:
+
+0. **Spec first (owner-set 2026-09-19).** Write the build spec in words Chris can read, have him perfect it, then go to the back end. If he already gave GO, record the spec on the board and continue; wait only for a decision only he can make. Law: owner-go-no-repeat-approval (.ai/rules/owner-go-no-repeat-approval.md).
+1. **Workflow first.** Unless a rule already settles it or he already gave GO (`owner-go-no-repeat-approval`, 2026-10-23), ask Chris one question at a time until you are 95% confident you understand the workflow — how it works today, what data and entities it creates, what state a record moves through. Then propose the schema. Do not propose a schema before the questions.
+2. **Schema → migration.** Constraints, enums, and guards live in the database, not in the UI.
+3. **Read endpoint → test that proves it.** Green tests must run against a real `DATABASE_URL`; a skipped `.pg.test.mjs` is not green.
+4. **Diagram it.** One page: the states a record moves through and the event that fires each transition. Save to `docs/journeys/<feature>-flow.md`. The front end is a window onto this diagram.
+5. **Front end last.** Treat it as throwaway. If the data is right it can be rebuilt in an hour. Never let a screen drive the data model.
+
+Rule of thumb from Chris: "work backwards" — back end proven, then visualize how it should function, then build the screen.

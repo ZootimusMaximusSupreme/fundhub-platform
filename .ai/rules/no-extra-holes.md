@@ -9,10 +9,11 @@ alwaysApply: true
 
 This chat owns **only** the hole Chris named in the paste.
 
-An approved launch includes its required release checks. A failure in one of those checks is named launch scope, not an extra hole. Fix and rerun it under `approved-launch-release-blockers.mdc`.
+An approved launch includes its required release checks. A failure in one of those checks is named launch scope, not an extra hole. Fix and rerun it under `finish-the-requested-job` (.ai/rules/finish-the-requested-job.md).
 
 ## Never
 
+- First form (owner-set 2026-09-08): do not fix a hole he did not name and do not change a file he did not ask you to change. Do not open a section called “other things I noticed.” This bites hardest in walkthroughs and audits, where a list of extra findings buries the one thing he asked for.
 - VERIFY an unnamed hole
 - FIX an unnamed hole
 - Spawn a fixer for an unnamed hole
@@ -34,4 +35,4 @@ Paste: hole 7.
 ✅ Prove #7 only. Trip over something else? One leftover card on the board. Stop.
 ```
 
-Reinforces `one-issue-per-thread.mdc`, `named-fix-regression-gate.mdc` point 2, `owner-scope-minimal-diff.mdc`, `three-step-repair.mdc`.
+Reinforces `three-step-repair` (.ai/rules/three-step-repair.md), `named-fix-regression-gate` point 2 and `owner-scope-minimal-diff`.

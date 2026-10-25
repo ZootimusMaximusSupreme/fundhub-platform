@@ -1,7 +1,5 @@
 # SLO chat prompt — $297 deliverables offer
 
-**COMPLIANCE REVIEW REQUIRED** — credit-repair messaging, fee timing, consent capture, credit-pull type.
-
 Written 2026-09-18. This is the self-contained prompt Chris pastes into a Claude chat to generate
 the $297 SLO ads and short VSL without the repo attached. Every rule below is copied from
 `marketing/ads/RULES.md`, `marketing/ads/VOICE.md` and `marketing/ads/ANGLE-GENERATOR.md` — nothing here is new.
@@ -67,8 +65,8 @@ Everything below is included at $297.
 1. **Credit Analysis Report** — their real file, all three bureaus
 2. **Dispute Letter Pack** — every letter written for them, ready to send
 3. **Credit Optimization Roadmap** — the exact steps, in the exact order, built off their own data
-4. **Funding Snapshot** — what their file supports today, what it would support once they work the
-   roadmap, and the gap between the two
+4. **What the file supports** — what their file supports today, and what it supports once they work the
+   roadmap. Do not call this a Funding Snapshot. Those words are banned in sales copy (`outcome-first-copy`).
 5. **Bank & Lender Match List** — the specific lenders their file fits right now, and which ones
    need a business entity first
 6. **"How To Use This" mini course**
@@ -96,8 +94,7 @@ buying.
 without the middle. We're shortcutting the learning curve to zero, because they don't need to know
 anything — they just need to follow the instructions.
 
-Chris's own framing, use it or something like it in at least one script: *Frodo doesn't need the
-whole journey. Fly straight to the mountain, drop the ring in the lava, done.*
+Do not use the Frodo / skip-the-journey framing (Part 0 rule 33, 2026-10-05).
 
 **What they actually do with it:**
 - Send the letters
@@ -240,7 +237,7 @@ purchase, not a fee paid before repair begins. Use it where it's the right word.
 **Every ad:**
 7. No "guaranteed", "100%", "assured" or "everyone is approved" anywhere near approve, accept or
    qualify.
-8. No guaranteed dollar figure. "Up to", with the conditions said, is the only allowed shape.
+8. No guaranteed dollar figure.
 9. No fabricated testimonials. The phrase "results are typical" is itself a block.
 10. No income or distress targeting. No "are you broke", "bad credit? no problem", "low-income
     families only", "if you make less than $…". This one catches ordinary-sounding lines — read it
@@ -253,9 +250,12 @@ on TikTok there is no wording that gets around it.
 
 ### Proof — this is the entire list, do not embroider it
 
-- Close to a decade in business funding.
-- Over $25 million secured for our clients.
-- Koi Poke — one restaurant, already turned away once, now a franchise with multiple locations.
+Law: RULES Part 0 rules 35–38 (`marketing/ads/RULES.md`).
+
+- A decade in the industry, hundreds of files, thousands of data points. Don't use Koi Poke or $25M.
+- He funded a little over $1,000,000 for himself and invested it in cash-flowing companies for 10 years, with real losses along the way.
+- He learned stacking 10 years ago from the one person teaching it, and some of his clients were funded 8 years ago.
+- He pulled $100K lines on four companies off one personal file, on stated income with no income docs. It's four companies, not five.
 
 Anything else is a made-up win, which is both a never-say and a compliance block.
 
@@ -291,14 +291,7 @@ The hook is the first TWO sentences.
 **One allowed exception:** disqualification openers. "If you're under a 600, this one isn't for
 you" passes check 4, as long as a real cause lands by the end of sentence two.
 
-**Three hooks that pass, for calibration:**
-
-- *"If your business got denied for funding, you didn't lose because of your credit. You lost
-  because nobody looked at your file the way a bank actually looks at it."*
-- *"The guy who got you funded left a pile of hard inquiries on your credit. Ask him when he's
-  taking them off. He's not, because he has no way to."*
-- *"Round one funded. Round two came back no. That wasn't your credit slipping — that was the
-  inquiries round one just created, still sitting on your file when the next batch went out."*
+**Hooks that break Part 0 were cut on 2026-10-05.** Do not use a denial shape ("you didn't lose because of X"), a "round two" funding line, or a two-sentence pair where the second sentence lands the point. Part 0 decides how the sentences sound.
 
 ### Hook shapes — rotate these so ten ads don't all open the same way
 
@@ -330,10 +323,8 @@ column.
 **Hook.**
 - Model: "Getting denied for business funding is incredibly frustrating, and it might not even be
   about your credit score at all."
-- **Chris: "If your business got denied for funding, you didn't lose because of your credit. You
-  lost because nobody looked at your file the way a bank actually looks at it."**
-- Why: Chris names an actual actor doing the harm and states it as flat fact. The generic line
-  hedges with "might not even be" and blames nobody.
+- **Chris:** Removed 2026-10-24. That filmed line is a denial shape. Part 0 rules 13 and 15 ban it. The words stay in `CONTROLS.md`, Ad 1.
+- Why: The generic line hedges with "might not even be" and blames nobody. Do not answer it with a denial shape.
 
 **Body.**
 - Model: "Unfortunately, many funding consultants take a one-size-fits-all approach when submitting
@@ -368,8 +359,8 @@ column.
 
 **Close.**
 - Model: "Click below to find out what you may qualify for today."
-- **Chris: "Click below. Let's go find out your number."**
-- Why: "let's" puts him on their side of the click, and "your number" is a specific thing to go get.
+- **Close shape:** "Click below. Let's go find out how much you qualify for based on where you're at right now."
+- Why: "let's" puts him on their side of the click. That part is his. Spell the outcome out (Part 0 rule 2). Never say "your number." His filmed words stay in `CONTROLS.md`, Ad 1.
 
 ---
 
@@ -394,7 +385,7 @@ GATE      600+ | 700+ no negatives | premium | open
 HOOK      0–3s     (first two sentences, must pass all four cause-first checks)
 BODY      10–60s   Validate → Reveal the mechanism → Connect to the desire → Proof
 CTA       last 10–30s   (checkout, never a booked call)
-CLOSE     the two promises
+CLOSE     optional. The two old promises are not required.
 
 WORDS     <count>
 ```
@@ -416,7 +407,7 @@ Structure:
    The letters still have to go out and the file still has to get optimized. A script without the
    refusal is not ours.
 7. CTA
-8. Close — the two promises
+8. Close — optional. The two old promises are not required.
 
 If a bullet needs a sentence to explain it, cut the bullet.
 
@@ -436,13 +427,13 @@ Fill in the real turnaround or leave a bracket for Chris. Do not invent a number
 
 Never send them to "book a free strategy call" — wrong funnel. Never ask them to apply first.
 
-### The close carries two promises, always. Both, in every script.
+### The two close promises are no longer required (owner-set 2026-10-02, later that day).
 
 1. **No hard pull.** Say it as "no hard inquiry", "soft pull only", or "zero score impact".
 2. **Nothing happens without their say-so.** Say it as "no obligation", "nothing moves until you
    say so", or both.
 
-Do not reword either one into something new. Use these phrasings or match their shape exactly.
+If a script uses one of these, do not reword it into something new. Use these phrasings or match their shape exactly.
 Real examples from the running ads:
 
 - *"Zero score impact. No obligation. Nothing moves until you say so."*
@@ -457,14 +448,14 @@ Real examples from the running ads:
 1. Every hook passes all four cause-first checks.
 2. Zero banned words, phrases or openers, in any inflected form.
 3. No never-say line anywhere.
-4. Every script carries both close promises.
+4. The two close promises are not required.
 5. Every ad is 150–200 words. Count them and print the count.
 6. Ten distinct arguments, not ten rewrites of one.
 7. No promise of approval, a funding amount, a score result, or a deletion.
 8. Six rounds is framed as what they GET, never as what it achieves.
 9. No script implies FundHub performs the repair. They send their own letters.
 10. The funding number is what their FILE supports, never what a bank will give them.
-11. At least one script uses the Frodo / skip-the-journey framing.
+11. No script uses the Frodo / skip-the-journey framing (Part 0 rule 33).
 12. Read every line out loud in your head. If Chris wouldn't say it, rewrite it.
 
 Give me A first, then B.

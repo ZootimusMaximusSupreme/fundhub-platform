@@ -14,6 +14,9 @@ Skills have one home too: `.agents/skills/<name>/`. They are linked at `.cursor/
 
 ## To add or change a rule
 
+The steps below are the commands.
+Law: rules-no-drift (.ai/rules/rules-no-drift.md) - a rule is written once, linked for Cursor and Claude, and every older line that says otherwise is rewritten.
+
 1. Write or edit `.ai/rules/<name>.md`. Keep the front matter (`description`, `alwaysApply`).
 2. Link it for both tools:
    - `ln -s ../../.ai/rules/<name>.md .cursor/rules/<name>.mdc`

@@ -22,7 +22,7 @@ description: Push Fundhub funnel HTML and tracking to live ClickFunnels via Cust
 5. Meta pixel: **`META_PIXEL_ID`** (or `FACEBOOK_PIXEL_ID`, `FB_PIXEL_ID`, `PIXEL_ID`). If unset, script uses repo ground truth documented in `ops/workflows/archive/ads-revenue-model-2026-08-24.md`.
 6. Clarity: **`CLARITY_PROJECT_ID`** only if set — never invent a project id.
 
-If **`CLICKFUNNELS_API_KEY`** is missing after searching `.env`, Netlify, and DB → **stop** and report that env name. Do not ask Chris to paste. Do not rotate keys unless a known-good API call returns **401**.
+Law: chris-never-clickfunnels (.ai/rules/chris-never-clickfunnels.md) - if CLICKFUNNELS_API_KEY is missing after checking .env, Netlify and the database, report the env name and stop; never ask Chris to paste it. Law: secrets-env-law (.ai/rules/secrets-env-law.md) - do not rotate keys unless a known-good API call returns 401.
 
 ## API (GA 2026-09-18)
 
@@ -37,23 +37,16 @@ If **`CLICKFUNNELS_API_KEY`** is missing after searching `.env`, Netlify, and DB
 
 ## Replace-whole-step warning
 
-A **Custom HTML Page is a full document**. It **replaces the funnel step**. Native **survey, checkout, and booking calendar do not carry over**.
+Law: chris-never-clickfunnels (.ai/rules/chris-never-clickfunnels.md) - a Custom HTML page replaces the whole step, so never full-replace /funding-book-call; inject tracking only.
 
 | Step | Rule |
 |------|------|
-| `/funding-book-call` | **Never** full-page replace. Inject tracking via `footer_code` append only. Calendar must stay native. |
-| `/apply` | Multi-block builder — inject tracking; do not wipe survey with custom HTML unless Chris names that migration. |
+| `/apply` | Custom HTML page 25515671 holding `marketing/landing-pages/apply-survey.html`. Push it with manifest key `apply-survey`; the native survey is already replaced. |
 | `/watch`, `/thank-you` | Prefer custom HTML **only if** page is already custom HTML type; else inject tracking first, then plan step swap with snapshot. |
-| $297 `slo-02-booking` | Fragment expects native calendar slot — **do not** swap apply calendar with 297 booking HTML on the live apply funnel. |
 
 ## Tracking checklist (every push)
 
-- [ ] `https://fundhub.ai/funnel/fh-attribution.js` on all funnel steps (UTM → hidden fields / webhook)
-- [ ] `https://fundhub.ai/funnel/vsl-watch-beacon.js` on **watch / VSL only**
-- [ ] Meta base pixel + `PageView` in custom HTML `<head>` (or confirm CF site pixel on builder pages — view-source `fbq('init'`)
-- [ ] Do **not** paste `06-utm-hidden-fields.html` twice if `fh-attribution.js` is present
-- [ ] Do **not** add field-capture trackers on pull/SSN pages
-- [ ] No invented CAPI unless env provides it
+- [ ] Law: chris-never-clickfunnels (.ai/rules/chris-never-clickfunnels.md) - tracking goes on every pushed page: fh-attribution.js everywhere, vsl-watch-beacon.js on watch only, Meta pixel, no duplicate UTM fragment.
 
 ## Tooling in repo
 
@@ -70,14 +63,10 @@ Snapshots before overwrite: `ops/workflows/cf-push-snapshots/` (gitignore if con
 
 ## Live prove (required)
 
-1. View-source live URLs (`apply.fundhub.ai/watch`, `/apply`, `/funding-book-call`, `/thank-you`).
-2. Confirm `fbq('init'` and `fh-attribution.js` where expected.
-3. Open `/funding-book-call` — real calendar still books (look only; no pay, no SSN).
-4. Do **not** `npm run ship` for `/roadmap` unless you changed those files.
+1. Law: chris-never-clickfunnels (.ai/rules/chris-never-clickfunnels.md) - prove every push by view-source on the live URL; no pay, no SSN, no live CRS.
+2. Do **not** `npm run ship` for `/roadmap` unless you changed those files.
 
 ## Never
 
-- Default answer: “paste into ClickFunnels editor.”
-- Print API keys or webhook secrets.
-- Full-replace `/funding-book-call` with `slo-02-booking.html`.
-- Mint Commas products or restyle `public/app/`.
+- Law: chris-never-clickfunnels (.ai/rules/chris-never-clickfunnels.md) - never default to paste-in-the-editor, never print keys, never full-replace /funding-book-call.
+- Law: commas-catalog-hands-off (.ai/rules/commas-catalog-hands-off.md) - never add, rename or edit a Commas product.

@@ -10,7 +10,7 @@ description: >-
 
 # Fundhub Version Control
 
-You keep git from eating Chris’s work. Commit finished work locally in the same session (CLAUDE.md, owner-set 2026-09-08), then push it to GitHub with `node scripts/github-push-whole-repo.mjs`. Claude Code: CLAUDE.md section 8 and "Commit locally, every session" are the commit and PR steps.
+You keep git from eating Chris’s work. Law: github-push (.ai/rules/github-push.md) - commit finished work locally in the same session, then push main or a PR branch with git push origin <branch>; the repo is public. Claude Code: CLAUDE.md section 8 and "Commit locally, every session" are the commit and PR steps.
 
 Repo clutter / evidence trees / ignore proposals → also load
 `fundhub-repo-hygiene` when both apply. Prefer hygiene for “organize the mess,”
@@ -37,16 +37,13 @@ Prove with `git status` / `git stash list` / branch list — don’t invent:
 
 ## Never commit (hard)
 
-- `.env`, `.env.*` (except `.env.example`)
-- `credentials/`
-- Secrets, tokens, passwords, raw SSN/bank/ID packs
+- Law: secrets-env-law (.ai/rules/secrets-env-law.md) - never git add .env, .env.* (except .env.example) or credentials/; confirm secrets by name only.
+- Law: agentic-audit-guardrails (.ai/rules/agentic-audit-guardrails.md) - raw ID, SSN and bank files stay in gitignored folders.
 - Evidence dumps or files that are not part of the finished work
-
-Confirm secrets by **name only**. Never print values.
 
 ## Commit every session
 
-- Commit finished work locally in the same session. Follow git safety rules: status + diff + log, HEREDOC message, no `--no-verify`, no force-push to main, no amend unless the amend rules all pass.
+- Law: github-push (.ai/rules/github-push.md) - commit finished work locally in the same session. Follow git safety rules: status + diff + log, HEREDOC message, no `--no-verify`, no force-push to main, no amend unless the amend rules all pass.
 - Prefer **small commits** (one unit / one board row set).
 - Protect **`main`**: feature branches for real work; don’t dump multi-day WIP on main without his go.
 
