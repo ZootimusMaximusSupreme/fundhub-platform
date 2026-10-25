@@ -63,3 +63,4 @@
 [x] backup/fin-b11-2026-10-21 — SKIP. LEFT. Tip d937107f1. New proof files plus a conflict on generated.json. Not merged.
 [x] backup/fin-b26-2026-10-21 — SKIP. Tip b7be0b3f3. Every file already exists (13 files, 0 missing) and the merge conflicts in src/http/fin-b26-social-posts.test.mjs. Kept main. Not merged.
 [x] backup/fin-b22-2026-10-21 — SKIP. LEFT. Tip d40af8598. Deletes identity: CLIMATE_IDENTITY from src/pulse/catalog/proofs/fin-b22-not-shipped.mjs. Not merged.
+[x] codex/company-app-funnel-download — SKIP. LEFT. Tip 266300f1e. Adds public/funnel/fundhub-app-download.js and .json, but the thank-you footer change conflicts and would drop the prompter download script. Not merged.
