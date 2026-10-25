@@ -7,3 +7,4 @@
 [x] todo/mca-flow-2026-10-16 — REDONE. Tip c1974c37b, 1 commit ahead, only TODO.md. The three Crafty and MCA checklist lines are already in TODO.md. Not merged.
 [x] lp/r15-csm-picker-no-demo — REDONE. Tip 29e189269, 1 commit ahead. pickCsmStaffId already has s.is_demo = false. Same guard, newer wording. Not merged.
 [x] claude/ad-tonality-system — REDONE. Tip f2d379b6a, 2 commits ahead. marketing/ads/tonality and scripts/ad-tonality match (23 files on both sides, nothing only on the branch). The tip versus this branch rewinds TODO.md (10 insertions, 68 deletions) and the merge conflicts on TODO.md. Not merged.
+[x] codex/crm-reconcile-scan-39158495327 — REDONE. Tip 90fcdfd3c. Same README blob 5a99b64e98242a144d2c389d91bd8fcb738df64e and report blob db3a4620867124504ac15576809bf8f7c4864232 as the merged codex/crm-reconcile-scan. Not merged.
