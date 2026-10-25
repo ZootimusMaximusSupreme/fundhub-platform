@@ -51,3 +51,4 @@
 [x] claude/inngest-stop-2026-10-20 — SKIP. LEFT. Tip e6d924cef. Changes schedules of live jobs (45 files, 0 new files). Not merged.
 [x] codex/call-invite-push — SKIP. LEFT. Tip b023b6978. Adds src/bookings/meeting-link.mjs and conflicts in the portal and dispatch. Not merged.
 [x] claude/portal-phone-welcome — SKIP. LEFT. Tip 2c9eee5b7. Changes the Fundhub iOS app (FundhubApp.swift and the Xcode project) plus scripts/asc-portal-update.mjs. 1.0.1 is already with Apple. Not merged.
+[x] codex/two-ios-apps-launch — SKIP. LEFT. Restored tip acb94cae0. The other session local branch is 80eb3b4e, a different commit. Conflicts in iOS project files. Not merged.
