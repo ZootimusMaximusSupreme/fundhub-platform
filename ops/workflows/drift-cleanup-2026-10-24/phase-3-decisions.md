@@ -114,3 +114,16 @@ Basis codes: **NEW** = newer owner-set date wins. **TEMP** = the older or newer 
 - Old COMPLIANCE REVIEW REQUIRED text in about 56 older docs and 225 code comments (#31).
 - Memory notes are edited by the lead after the PR is open; they are not in git.
 - `ops/workflows/AGENTS-local-backup-2026-10-12.md` is untracked in the main folder; it is on the Phase 6 list.
+
+## Chris's answers after the PR was opened (2026-10-24)
+
+These answer the two questions in Cursor's "Left for Chris" list. They are final. Both are applied (commit `e37da57ed`).
+
+| # | Call | Basis | What changed |
+|---|---|---|---|
+| 51 | Account access is standing. It is not tied to the launch. | NEW (owner-set 2026-10-24) | In `owner-authorized-account-ops` and the CLAUDE.md line about it, "for the Fundhub launch" and "for this launch" are gone. The rule says it is standing for all later work. The 2026-10-17 date stays on the old sentence. |
+| 52 | The `redundancy-before-ui-polish` cleanup was a job-specific task and it is done. | TEMP | The rule is archived. Its section "Protected core flow - closer context + Present" (owner law 2026-08-20) moved word for word into the new rule `protected-present-flow`, because that protection is a standing law. |
+
+Chris also typed "IDK" next to these answers; it may mean he was unsure about call 52. The lead kept the Present-flow protection so no standing law is lost. Chris can drop it later by saying so.
+
+Note: a Cursor "wording check" agent once reset this file to the committed copy and wiped this section. It was added back and committed on its own.
