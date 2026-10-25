@@ -1,0 +1,1 @@
+../../.ai/rules/animation-size-readable.md

@@ -1,0 +1,108 @@
+{
+ "video": "Capital Blueprint Ad 2 — Learn it yourself",
+ "source": "/Users/chrisstanbridge/Desktop/Fundhub Ads/Capital Blueprint Ad 2 — Learn it yourself.mp4",
+ "mode": "overlay (see-through), behind him (person cut-out laid back on top)",
+ "layout_by": "Opus (animation-size-readable, model-by-job 2026-10-25)",
+ "width": 1080,
+ "height": 1920,
+ "fps": 30,
+ "video_seconds": 115.63,
+ "held_out": [
+  {
+   "n": 3,
+   "template": "ChessRightMove",
+   "anchor_phrase": "next move",
+   "anchor_start_s": 76.03,
+   "reason": "Board and chips sit mid-plate, under his face. Beside at 0.65+ covers his face; behind hides the payoff. Needs a behind-him layout."
+  },
+  {
+   "n": 4,
+   "template": "LenderMatchScroll",
+   "anchor_phrase": "data point",
+   "anchor_start_s": 87.11,
+   "reason": "Lender table and the count box sit mid-plate and low, under his face and chin. Needs a behind-him layout."
+  },
+  {
+   "n": 5,
+   "template": "ChessCallCTA",
+   "anchor_phrase": "hop on a call",
+   "anchor_start_s": 110.48,
+   "reason": "The phone square is mid-board, under his face. Needs a behind-him layout."
+  }
+ ],
+ "clips": [
+  {
+   "n": 1,
+   "template": "RatesRising",
+   "clip": "01-RatesRising.mov",
+   "props": "props/01-RatesRising.json",
+   "anchor_phrase": "Higher interest rates",
+   "anchor_start_s": 0.29,
+   "start_s": 0.19,
+   "frames": 190,
+   "mode": "behind",
+   "spot": "behind, headline in the strip above his head, chart behind his head",
+   "scale": 1.0,
+   "dx": 0,
+   "dy": -277,
+   "words_boxes": [
+    [
+     111,
+     300,
+     963,
+     376
+    ],
+    [
+     666,
+     456,
+     870,
+     504
+    ]
+   ],
+   "min_text_px_clip": 30,
+   "why": "Owner beat 1. One full-width line above his head while he says rates, sequences and verification; the chart behind him climbs year by year and the Tighter chip lands at the top right. Holds to 'every single year' (6.49 s).",
+   "start_frame": 6,
+   "end_s": 6.523,
+   "timing": "REAL (whisper word times on the clean master, 0.1 s lead)",
+   "visible_words_fraction": 0.99,
+   "visible_measured_by": "visible-check.py, worst 5% of 190 frames"
+  },
+  {
+   "n": 2,
+   "template": "BlueprintDashboardReal",
+   "clip": "02-BlueprintDashboardReal.mov",
+   "props": "props/02-BlueprintDashboardReal.json",
+   "anchor_phrase": "exists",
+   "anchor_start_s": 33.39,
+   "start_s": 33.29,
+   "frames": 1011,
+   "mode": "behind",
+   "spot": "behind, full-width window; key line in the strip above his head, lens card in the right column",
+   "scale": 1.0,
+   "dx": 0,
+   "dy": 0,
+   "words_boxes": [
+    [
+     40,
+     282,
+     880,
+     338
+    ],
+    [
+     740,
+     396,
+     1052,
+     950
+    ]
+   ],
+   "min_text_px_clip": 28,
+   "content_source": "marketing/broll/public/blueprint/blueprint-6-month-timelapse.mp4",
+   "why": "Owner beat 2. The real 6-month sample-file recording from 'exists' through 'focus on making money' (66.99 s): home, next move, checklist, due dates, dispute letters, bank menu, cards used and balance falling, every step done six months on, money menu. Each shot leads its words by 2 to 6 frames.",
+   "start_frame": 999,
+   "end_s": 66.99,
+   "timing": "REAL (whisper word times on the clean master, 0.1 s lead)",
+   "visible_words_fraction": 0.945,
+   "visible_measured_by": "visible-check.py, worst 5% of 1011 frames"
+  }
+ ]
+}

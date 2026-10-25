@@ -11,6 +11,11 @@
         "command": "node scripts/hooks/guard-new-markdown.mjs",
         "matcher": "\\.md\\b",
         "failClosed": false
+      },
+      {
+        "command": "node scripts/hooks/guard-overlay-schedule.mjs",
+        "matcher": "build-from-schedule",
+        "failClosed": false
       }
     ],
     "preToolUse": [
@@ -23,6 +28,9 @@
     "afterFileEdit": [
       {
         "command": "but cursor after-edit"
+      },
+      {
+        "command": "node scripts/hooks/guard-overlay-schedule.mjs"
       }
     ],
     "stop": [

@@ -1,0 +1,70 @@
+{
+  "video": "Capital Blueprint Ad 2 — Learn it yourself",
+  "source_preferred": "/Users/chrisstanbridge/Desktop/Fundhub Ads/Capital Blueprint Ad 2 — Learn it yourself.mp4",
+  "source_note": "Full master without burned-in Submagic captions. Do not use Downloads Submagic export for placement.",
+  "build_model": "Opus",
+  "place_model": "Composer (lighter placement after templates exist)",
+  "rules": {
+    "hold_until_point_lands": true,
+    "no_fundhub_logo": true,
+    "no_echo_labels": true,
+    "minimal_words_on_cta": true,
+    "post_submagic_workflow": false,
+    "audio_after_overlays": "recheck, smooth, -14 LUFS"
+  },
+  "beats": [
+    {
+      "n": 1,
+      "anchor_phrase": "Higher interest rates",
+      "script_context": "Opening: rates, harder sequences, extra verification — funding harder every year.",
+      "on_screen": "Lenders tightening year over year. Show what tightening means and how it hits people. Invoke emotion.",
+      "hold_until": "Viewer feels banks pulling back and money getting harder to get.",
+      "template": "RatesRising",
+      "props_file": "marketing/ads/animation-plans/capital-blueprint-ad-2-2026-10-25/props/01-RatesRising.json",
+      "template_build": "Opus: years/squeeze mode (ba44b285). REMOTION_UNCLAMP for beat length.",
+      "emotion": "pressure / stakes"
+    },
+    {
+      "n": 2,
+      "anchor_phrase": "exists",
+      "script_context": "Nearest spoken: 'as long as the banking system exists' and Capital Blueprint / making-money through-line. Long intrigue ride.",
+      "on_screen": "Capital Blueprint dashboard walk (adapt Ad 1 BlueprintDashboardOS): waypoints, file improving, qualify rising, focus on making money — not a flash.",
+      "hold_until": "Blueprint = system that keeps working while banks change.",
+      "template": "BlueprintDashboardOSAd2",
+      "props_file": "marketing/ads/animation-plans/capital-blueprint-ad-2-2026-10-25/props/02-BlueprintDashboardOSAd2.json",
+      "template_build": "Opus: BlueprintDashboardOSAd2 (ba44b285). Real dash readability pass: Opus 37188b4f.",
+      "emotion": "intrigue, value"
+    },
+    {
+      "n": 3,
+      "anchor_phrase": "next move",
+      "script_context": "'go straight to making the next move on your own file' / right move while you focus on making money.",
+      "on_screen": "Chess metaphor: good move vs bad move; empowerment — make the right move on your file.",
+      "hold_until": "Viewer sees one clear right move vs traps.",
+      "template": "ChessRightMove",
+      "template_build": "New Opus see-through vertical template.",
+      "emotion": "empowerment"
+    },
+    {
+      "n": 4,
+      "anchor_phrase": "data point",
+      "script_context": "'Every data point I've collected… built into UnderwriteIQ' — many data points.",
+      "on_screen": "Fast lender scroll (thank-you VSL pattern): LenderMatchScroll — thousands of lenders, minimal labels.",
+      "hold_until": "Data depth lands without reading his sentence.",
+      "template": "LenderMatchScroll",
+      "template_build": "Use existing catalog; stretch to speech.",
+      "emotion": "credibility / scale"
+    },
+    {
+      "n": 5,
+      "anchor_phrase": "hop on a call",
+      "script_context": "Closing CTA — do not spell it out; show visually.",
+      "on_screen": "Chess: what is the right move? Lead to call without heavy copy.",
+      "hold_until": "Right move = book the call, shown not told.",
+      "template": "ChessCallCTA",
+      "props_file": "marketing/ads/animation-plans/capital-blueprint-ad-2-2026-10-25/props/05-ChessCallCTA.json",
+      "template_build": "Opus built (ba44b285).",
+      "emotion": "decision / invitation"
+    }
+  ]
+}

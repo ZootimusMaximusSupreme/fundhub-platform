@@ -55,9 +55,27 @@
             "command": "node \"${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || echo .)}/scripts/hooks/guard-new-markdown.mjs\""
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || echo .)}/scripts/hooks/guard-overlay-schedule.mjs\""
+          }
+        ]
       }
     ],
     "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit|apply_patch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || echo .)}/scripts/hooks/guard-overlay-schedule.mjs\""
+          }
+        ]
+      },
       {
         "matcher": "Write|Edit|MultiEdit|apply_patch",
         "hooks": [
