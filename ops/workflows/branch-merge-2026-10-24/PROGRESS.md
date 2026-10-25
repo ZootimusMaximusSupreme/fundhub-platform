@@ -61,3 +61,4 @@
 [x] backup/exciting-ramanujan-2026-10-21 — SKIP. LEFT. Tip 904f48d66. Tip versus main on .agents/skills is 16 files, 188 insertions, 330 deletions. That would delete current skill text. The older 190/369 count does not match this tree. Not merged.
 [x] backup/nervous-swanson-2026-10-21 — SKIP. LEFT. Tip 88c23f90f. Tip versus main on .agents/skills is 16 files, 188 insertions, 330 deletions. That would delete current skill text. The older 190/369 count does not match this tree. Not merged.
 [x] backup/fin-b11-2026-10-21 — SKIP. LEFT. Tip d937107f1. New proof files plus a conflict on generated.json. Not merged.
+[x] backup/fin-b26-2026-10-21 — SKIP. Tip b7be0b3f3. Every file already exists (13 files, 0 missing) and the merge conflicts in src/http/fin-b26-social-posts.test.mjs. Kept main. Not merged.
