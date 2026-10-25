@@ -49,3 +49,4 @@
 [x] codex/heartbeat-messaging-c — SKIP. LEFT. Tip 335ab6c9b. Conflict on the text-send path (dispatch.mjs / sms-dedup). Not merged.
 [x] codex/heartbeat-messaging-c-main — SKIP. LEFT. Tip 978f04a5b. Conflict on the text-send path (dispatch.mjs / sms-dedup). Not merged.
 [x] claude/inngest-stop-2026-10-20 — SKIP. LEFT. Tip e6d924cef. Changes schedules of live jobs (45 files, 0 new files). Not merged.
+[x] codex/call-invite-push — SKIP. LEFT. Tip b023b6978. Adds src/bookings/meeting-link.mjs and conflicts in the portal and dispatch. Not merged.
