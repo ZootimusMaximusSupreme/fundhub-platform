@@ -67,7 +67,7 @@ Legend: **both homes** = one real file in `.ai/rules`, linked for Cursor and for
 - `sim-assume-paid` (both homes): Sims and Full E2E assume paid; skip ClickFunnels apply; never skip unpaid packs.
 - `sample-clients-consistent` (both homes): Sample clients are one realistic person — every number and document from one file, run through UnderwriteIQ.
 - `verify-scratch-only` (both homes): Never run verify/harness against live DB; never pause outbound or mass-retire agents for safety.
-- `redundancy-before-ui-polish` (both homes): Kill redundant controls first, polish last. The Present flow is protected.
+- `protected-present-flow` (both homes): The sales-rep Present and closer-context flow is core company infrastructure. Do not cut or simplify it.
 
 ## 4. Money, data and heartbeat
 

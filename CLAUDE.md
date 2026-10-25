@@ -128,7 +128,7 @@ When Chris approves a launch or says to ship after checks pass, failures in the 
 
 ### Standing account authorization (owner-set 2026-10-17)
 
-Chris authorizes routine use of available accounts and tools for assigned work, including Apple Developer and App Store Connect for this launch. Do not ask again for in-scope account access, upload, submission, or deployment; the earlier App Store Connect denial is superseded. Keep money, deletion, unrelated account changes, and tool-enforced confirmations separate. Same law: `.cursor/rules/owner-authorized-account-ops.mdc` · `.claude/rules/owner-authorized-account-ops.md`.
+Chris authorizes routine use of available accounts and tools for assigned work, including Apple Developer and App Store Connect. The account access is standing for all later work. Owner-set 2026-10-24: standing, not tied to the launch. Do not ask again for in-scope account access, upload, submission, or deployment; the earlier App Store Connect denial is superseded. Keep money, deletion, unrelated account changes, and tool-enforced confirmations separate. Same law: `.cursor/rules/owner-authorized-account-ops.mdc` · `.claude/rules/owner-authorized-account-ops.md`.
 
 ### Commit locally, every session (owner-set 2026-09-08)
 
@@ -375,9 +375,9 @@ No live credit pull, card charge or bureau mail in an audit without an explicit 
 
 Run live Playwright to 100, then the agent clicks the live site like a person. Chris does no QA unless he offers. Same law: `.cursor/rules/live-playwright-100-before-manual.mdc` and `.claude/rules/live-playwright-100-before-manual.md`.
 
-### Redundancy before polish (owner-set 2026-08-20)
+### Protected Present flow (owner-set 2026-08-20)
 
-Kill redundant controls first and polish last. The Present and closer-context flow is protected. Same law: `.cursor/rules/redundancy-before-ui-polish.mdc` and `.claude/rules/redundancy-before-ui-polish.md`.
+The Present and closer-context flow is protected. Same law: `.cursor/rules/protected-present-flow.mdc` and `.claude/rules/protected-present-flow.md`. The redundancy-first polish-order job is done. That old rule is archived.
 
 ### One step at a time (owner-set 2026-08-25)
 

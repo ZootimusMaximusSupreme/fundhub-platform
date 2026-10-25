@@ -1,1 +1,0 @@
-../../.ai/rules/redundancy-before-ui-polish.md
