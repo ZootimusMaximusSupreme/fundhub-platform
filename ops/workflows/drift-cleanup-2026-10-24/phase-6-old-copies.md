@@ -294,3 +294,11 @@ Notes on the list:
 
 `phase-6-old-copies.tsv`: `bucket`, `kind`, `location_type`, `path`, `branch`, `head`, `last_commit_date`, `last_commit_subject`, `path_exists`, `prunable`, `locked`, `dirty_entries`, `commits_not_on_origin_main`, `commits_behind_origin_main`, `fully_merged_into_origin_main`, `same_patch_already_in_main`, `all_touched_files_already_in_main`, `branch_exists_on_origin`, `origin_branches_with_head_other_than_main`, `last_file_change_mst`, `hours_since_file_change`, `newest_file`, `claude_md_lines`, `claude_md_same_as_origin_main`, `agents_md_same_as_origin_main`, `rule_files_differ_from_origin_main_at_head`, `ignored_entries_kept`, `ignored_links_to_main`, `size_mb`, `git_branch_d_will_work`, `why`.
 
+
+## Done (2026-10-24, after Chris said yes)
+
+The commands above were run by a script that re-checked every row first (clean, head inside `origin/main`, no process inside, nothing changed in 24 hours).
+
+- **62 worktrees removed.** 0 failed. 58 merged local branches deleted with `git branch -d` (the other 4 were detached heads). 1 stale record pruned (its folder was already gone). 41.3 GB freed.
+- **1 skipped on purpose:** `hungry-clarke-3e9917`. It was safe when listed, but its head got new commits afterwards. It stays.
+- **Left alone:** the main folder, `drift-cleanup`, all 23 KEEP-WORK, all 9 ASK, and the 4 side copies. The main folder's `.env`, `credentials/` and `node_modules` were checked afterwards and are intact.
