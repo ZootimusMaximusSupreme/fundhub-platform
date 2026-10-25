@@ -59,3 +59,4 @@
 [x] backup/client-portal-ios-redo-local-2026-10-21 — SKIP. LEFT. Tip cfbab1c62, 16 commits ahead. Hundreds of live page files and conflicts. Not merged.
 [x] codex/crm-live-font-reconcile — SKIP. LEFT. Tip c5cce580a. Rewrites live HTML (automations, consent, payment-success, reset-password). Not merged.
 [x] backup/exciting-ramanujan-2026-10-21 — SKIP. LEFT. Tip 904f48d66. Tip versus main on .agents/skills is 16 files, 188 insertions, 330 deletions. That would delete current skill text. The older 190/369 count does not match this tree. Not merged.
+[x] backup/nervous-swanson-2026-10-21 — SKIP. LEFT. Tip 88c23f90f. Tip versus main on .agents/skills is 16 files, 188 insertions, 330 deletions. That would delete current skill text. The older 190/369 count does not match this tree. Not merged.
