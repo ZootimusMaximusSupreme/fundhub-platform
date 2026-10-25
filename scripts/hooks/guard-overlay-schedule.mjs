@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Hook for Claude and Cursor. Law: .ai/rules/animation-size-readable.md (owner-set 2026-10-25).
-// Overlays must never ship too small, or as an empty box behind Chris's head.
+// Overlays must never ship too small, off the screen, as a black empty side, or as an empty box behind Chris's head.
 //
 // Two triggers:
 //   1. A save to marketing/ads/animation-plans/**/schedule.json (Claude PostToolUse
@@ -33,7 +33,7 @@ function allow(event) {
 }
 
 function deny(reason, event) {
-  const text = `Size check failed (animation-size-readable). Opus fixes the layout before lay-on.\n${reason}`;
+  const text = `Size check failed. The graphic is too small, off the screen, or leaving a black empty side. Opus fixes the layout before lay-on.\n${reason}`;
   process.stdout.write(JSON.stringify({
     permission: 'deny',
     user_message: text,

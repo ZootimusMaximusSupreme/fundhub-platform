@@ -49,8 +49,13 @@ Sample clients make sense (owner-set 2026-10-02). Same law: `.ai/rules/sample-cl
 4K unless it is an ad (owner-set 2026-09-22). Testimonial card videos on pages do not need 4K (owner-set 2026-10-24). Same law: `.ai/rules/video-4k-unless-ad.md`
 Grok and Composer do not touch websites (owner-set 2026-09-21). Same law: `.ai/rules/grok-no-displays.md`
 Animation rules — master law (owner-set 2026-10-25). Book: `marketing/ads/ANIMATION-RULES.md`. Same law: `.ai/rules/animation-rules.md`
+Animation overlay frame layout scan (owner-set 2026-10-25): read head, hair, shoulders, chest, and the caption band on every frame. Face stays clear except a slight overlap behind the head. Same law: `.ai/rules/animation-rules.md` section 2
+Overlay space is left, right, or top. A long multi-step visual goes in the top one-third. A short one goes where his head is not. Only a slight overlap behind the head is allowed, and the words stay readable (owner-set 2026-10-25). Same law: `.ai/rules/animation-rules.md` section 2
+Every animation stays fully inside the frame. A bad x, y, or scale that clips it or leaves a black empty side fails the check (owner-set 2026-10-25). Same law: `.ai/rules/animation-rules.md` section 2
 Animations land on the spoken words (owner-set 2026-10-23). Same law: `.ai/rules/animation-overlay-on-spoken-words.md`
-Opus builds animations, Sonnet places them (owner-set 2026-10-24). Same law: `.ai/rules/animation-builders-opus-placers-sonnet.md`
+Opus builds animations, Sonnet places them (owner-set 2026-10-24). Opus also owns layout sizing when a clip is unreadable; lighter models only render, mux and fix sound after Opus writes the schedule (owner-set 2026-10-25). Same law: `.ai/rules/animation-builders-opus-placers-sonnet.md`
+Animations stay readable on a phone. Never tiny. Never park the point in his hair (owner-set 2026-10-25). Same law: `.ai/rules/animation-size-readable.md`
+After overlay finalize, frame-review the final mux and save evidence before calling acceptable (owner-set 2026-10-25). Same law: `.ai/rules/animation-overlay-frame-review.md`
 Animations never repeat his words (owner-set 2026-10-24). Same law: `.ai/rules/animation-no-echo.md`
 Ad video — best of all clips (owner-set 2026-09-24). Same law: `.ai/rules/ad-video-best-of-clips.md`
 Ad file names (owner-set 2026-09-24). Same law: `.ai/rules/ad-naming.md`
@@ -65,11 +70,12 @@ Page edits — marked draft first (owner-set 2026-09-29). Same law: `.ai/rules/p
 Clarity Data Export (owner-set 2026-09-29). Same law: `.ai/rules/clarity-export-rate-limit.md`
 No recycled lines across ads (owner-set 2026-10-15). Same law: `.ai/rules/ad-no-recycled-lines.md`
 100% certainty in scripts (owner-set 2026-10-15). Same law: `.ai/rules/copy-certainty.md`
+Know the offer before a script or an overlay (owner-set 2026-10-25). Read the offer. The pictures show the product steps, not only the last sentence. Same law: `.ai/rules/ad-know-the-offer.md`
 Heartbeat on every build (owner-set 2026-10-07). A job is red if it has not run in 3 times its schedule. Same law: `.ai/rules/heartbeat-on-every-build.md`
 Human-click tests (owner-set 2026-08-16). Same law: `.ai/rules/test-means-human-click.md`
 Second line of the ad (owner-set 2026-09-28). Same law: `.ai/rules/ad-second-line.md`
 GoHighLevel is blacklisted (owner-set 2026-09-19). Same law: `.ai/rules/ghl-blacklisted.md`
-Sound level (owner-set 2026-10-23). Same law: `.ai/rules/ad-sound-level.md`
+Sound level (owner-set 2026-10-23; post-Submagic recheck and smooth 2026-10-25). Same law: `.ai/rules/ad-sound-level.md`
 Animation logo (owner-set 2026-10-23). Same law: `.ai/rules/animation-logo-only-on-fundhub.md`
 Ad animation style (owner-set 2026-10-23). Same law: `.ai/rules/animation-overlay-on-spoken-words.md`
 Ad editing on the Mac (owner-set 2026-10-23). Skill: `.agents/skills/fundhub-ad-editor/`

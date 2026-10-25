@@ -17,11 +17,13 @@ alwaysApply: true
 - **Words stay readable on every frame.** At least **28 px** tall on a 1080-wide frame. His head and hair do not cover the point. A slight overlap behind the head is allowed. `tools/visible-check.py` catches hidden words. It is not a license to hide half the words in his hair.
 - **Finish the point:** the clip stays on until the idea lands; do not flash a badge and leave.
 - **Full frame:** output stays **1080×1920** filled. **No black letterbox** on the left or right from wrong scale or overlay math.
+- **On the screen (owner law 2026-10-25):** The whole graphic stays inside the picture. Ads are 1080×1920. The schedule check fails when x, y, or scale shoves the graphic off the left, right, top, or bottom, or when the clip file is not the full frame and the empty side is a black slab. A see-through clip is the full frame with clear pixels. Clear pixels are not a license to park the graphic off the edge.
 - **Check before lay-on:** `node marketing/broll/scripts/validate-overlay-schedule.mjs <schedule.json>`. A schedule row gives `mode`, `scale`, `words_on_video_box` (or `words_boxes`), `min_text_px_clip`, and for behind clips `visible_words_fraction` plus `content_source` for product and proof beats. The hook `scripts/hooks/guard-overlay-schedule.mjs` runs the same check when a `schedule.json` under `marketing/ads/animation-plans/` is saved and when `build-from-schedule.py` is run, in Claude and in Cursor, and stops the lay-on when it fails.
 
 ## Never
 
 - Schedule beside clips at **scale below 0.65** (Ad 1 used about 0.46–0.52 — defect).
+- Ship a graphic that hangs off the screen, or a half-width file that leaves a black empty side.
 - Ship **spinner-only**, **eyebrow-only**, or a card whose point sits in his hair, when the beat needs a report, dashboard, or proof.
 - Use a **lightweight model** to build or redesign templates in `marketing/broll/src/`, or to change a clip's size to make it fit (Opus only — `animation-builders-opus-placers-sonnet`).
 

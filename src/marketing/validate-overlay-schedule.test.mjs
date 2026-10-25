@@ -65,6 +65,23 @@ test("the Capital Blueprint Ad 1 layout Chris rejected fails (scale 0.48-0.52 ch
   assert.equal(run(ad1).fails.length >= 3, true);
 });
 
+test("a graphic that sits fully inside the frame passes the on-screen check", () => {
+  const { fails } = run([beside()]);
+  assert.equal(fails.some((f) => /hangs off the screen|black empty side/.test(f)), false, fails.join("\n"));
+});
+
+test("a graphic shoved off the left or the right fails the on-screen check", () => {
+  const left = run([beside({ dx: -400 })]);
+  assert.ok(left.fails.some((f) => /hangs off the screen on the left/.test(f)), left.fails.join("\n"));
+  const right = run([beside({ dx: 500 })]);
+  assert.ok(right.fails.some((f) => /hangs off the screen on the right/.test(f)), right.fails.join("\n"));
+});
+
+test("a half-width clip that leaves half the picture empty fails", () => {
+  const { fails } = run([beside({ width: 540, height: 1920, scale: 1, dx: 0, dy: 0 })]);
+  assert.ok(fails.some((f) => /black empty side/.test(f)), fails.join("\n"));
+});
+
 test("a template file is not real content, a hand-typed visible share is not a measurement, words in the top 14% fail", () => {
   assert.ok(run([dash({ content_source: "marketing/broll/src/templates/BlueprintDashboardReal.tsx" })]).fails.some((f) => /not footage/.test(f)));
   assert.ok(run([dash({ visible_measured_by: undefined })]).fails.some((f) => /not measured/.test(f)));

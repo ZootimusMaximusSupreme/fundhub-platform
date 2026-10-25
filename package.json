@@ -17,6 +17,7 @@
     "diagrams": "node scripts/diagrams/generate.mjs",
     "diagrams:check": "node scripts/diagrams/generate.mjs --check",
     "ads:check": "node scripts/ads/check-script.mjs",
+    "animation:frame-review-check": "node scripts/animation-overlay-frame-review-check.mjs",
     "journeys": "node scripts/journeys/generate.mjs",
     "journeys:check": "node scripts/journeys/generate.mjs --check",
     "test": "node scripts/run-suite.mjs",

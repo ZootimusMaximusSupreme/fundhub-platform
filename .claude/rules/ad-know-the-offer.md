@@ -1,0 +1,1 @@
+../../.ai/rules/ad-know-the-offer.md

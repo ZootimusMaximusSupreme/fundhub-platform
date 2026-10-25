@@ -10,6 +10,7 @@ alwaysApply: true
 - **Back end Sonnet, front end Opus (2026-10-06).** Chris: "Use Sonnet to build the back end to save tokens. Build the front end with Opus... make sure it's good." Per feature: a Sonnet back-end agent, then an Opus front-end agent after the back end is proven. Keep the 5-agent cap.
 - **Ad video editing on Sonnet (2026-10-23).** The `fundhub-ad-editor` skill (whisper, cuts, loudness, shake) runs on a Sonnet agent. Chris: "use sonnet..thats a rule." Opus only briefs and relays.
 - **Animations (2026-10-24).** Opus builds or changes animation templates. Sonnet only places finished ones. See `animation-builders-opus-placers-sonnet`.
+- **Animation layout sizing (2026-10-25).** When a clip is too small to read, or the point sits in his hair, Opus fixes the layout: scale, spot, crop and which template. Placement is `animation-rules` section 2. Lighter models (Sonnet, Composer, Grok) only do the mechanical steps after Opus writes the schedule: render, lay-on, mux and sound. They never pick a smaller scale to make a clip fit. See `animation-size-readable`.
 - **Opus plans and checks slices, Sonnet may do the moves (owner-set 2026-10-21).** Chris also said on 2026-10-24 that Opus is not really needed here.
 
 ## Check the model before you start (CLAUDE.md section 1)
@@ -23,7 +24,7 @@ Rough mapping:
 * Haiku — mechanical and fully specified. Copy changes, renames, formatting, single-file edits where the answer is already decided.
 * Sonnet — normal build work. Building a component from a clear spec, writing tests, wiring a route.
 * Opus — anything where being wrong is expensive. Architecture, debugging something that already failed once, refactors across many files, anything touching a hard rule, or work the agent cannot verify with repo tools and live proof.
-* Animation templates and changes (`marketing/broll/src`, the catalog, broll tests) are always Opus. Sonnet only places finished animations (owner-set 2026-10-24).
+* Animation templates and changes (`marketing/broll/src`, the catalog, broll tests) are always Opus. Sonnet only places finished animations (owner-set 2026-10-24). Fixing a clip that is too small, or whose point sits in his hair, is Opus layout work. Placement is `animation-rules` section 2. Lighter models only render, mux and fix sound after Opus writes the schedule (owner-set 2026-10-25).
 * Owner calls on tier (`model-by-job`): back-end build units run on Sonnet, then the front end on Opus (2026-10-06); video ad editing (`fundhub-ad-editor`) runs on Sonnet (2026-10-23).
 
 Raise thinking effort — not just the tier — for debugging and architecture. Lower it for mechanical work.

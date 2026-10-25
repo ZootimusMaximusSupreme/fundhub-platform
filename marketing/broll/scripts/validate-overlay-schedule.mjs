@@ -12,11 +12,15 @@
 //     templates) with no real content source; any behind clip with no measured
 //     visible share, or where his cut-out hides more than half of its words box;
 //   * a clip whose words box runs off the frame, or two clips at the same time;
+//   * a clip whose placed box (dx/dy or x/y, clip size times scale) hangs off
+//     the picture, or a clip file that is not the full frame and leaves a
+//     black empty side (owner-set 2026-10-25, animation-rules section 2);
 //   * a schedule with no frame size, or not a full 1080x1920 / wide frame.
 // Warnings (exit 0): words box between 60% and 70% of the band width.
 //
 // Schedule rows (fields the check reads; older schedules may lack the new ones):
-//   start_frame, frames, scale, dx, dy, spot,
+//   start_frame, frames, scale, dx, dy (or x, y on older rows), spot,
+//   width, height on a clip only when the file is not a full-frame see-through render
 //   mode: "beside" | "behind" | "front"   (read from spot when missing)
 //   words_on_video_box: [x0, y0, x1, y1]  (where the words sit on the video)
 //   min_text_px_clip: smallest words height in the clip at scale 1
@@ -41,10 +45,76 @@ export const LIMITS = {
   bandShareWarn: 0.7,
   minTextPx1080: 28,
   behindMinVisible: 0.5,
+  /** One empty side this big (share of the frame) is a black slab, not a see-through gap. */
+  blackGap: 0.4,
 };
 
 /** Product and proof beats: behind him they must show real footage or real proof. */
 const REAL_CONTENT_RE = /Dashboard|Proof|CreditFile/;
+
+const finite = (v) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+};
+
+/** Top-left of the scaled clip. The lay-on uses dx/dy. Older rows store the same corner as x/y. */
+const originOf = (c) => {
+  const dx = finite(c.dx);
+  const dy = finite(c.dy);
+  return {
+    x: dx != null ? dx : (finite(c.x) ?? 0),
+    y: dy != null ? dy : (finite(c.y) ?? 0),
+  };
+};
+
+/**
+ * Pixel size of the file before scale.
+ * A see-through ProRes clip is the full video frame (clear pixels, not black).
+ * width and height on the clip row mean the file itself is smaller than that.
+ */
+const assetSize = (c, W, H) => {
+  const w = finite(c.width);
+  const h = finite(c.height);
+  if (w > 0 && h > 0) return {w, h};
+  return {w: W, h: H};
+};
+
+const edgeList = (edges) => {
+  const named = edges.map((e) => `the ${e}`);
+  if (named.length === 1) return named[0];
+  return `${named.slice(0, -1).join(', ')} and ${named[named.length - 1]}`;
+};
+
+/** The whole graphic has to stay inside the picture. A half-width file must not leave a black side. */
+function onScreenFails(c, name, W, H) {
+  const sc = Number(c.scale);
+  const {x, y} = originOf(c);
+  const asset = assetSize(c, W, H);
+  const pw = Math.round(asset.w * sc);
+  const ph = Math.round(asset.h * sc);
+  const right = x + pw;
+  const bottom = y + ph;
+  const out = [];
+  const off = [];
+  if (x < 0) off.push('left');
+  if (y < 0) off.push('top');
+  if (right > W) off.push('right');
+  if (bottom > H) off.push('bottom');
+  if (off.length) {
+    out.push(`${name}: the animation hangs off the screen on ${edgeList(off)}. It starts at x ${x}, y ${y} and is ${pw} by ${ph} pixels on a ${W} by ${H} video. The whole graphic has to stay inside the picture.`);
+  }
+  const fullFrame = Math.abs(asset.w - W) <= 1 && Math.abs(asset.h - H) <= 1;
+  if (!fullFrame) {
+    const coverW = Math.max(0, Math.min(right, W) - Math.max(x, 0));
+    const coverH = Math.max(0, Math.min(bottom, H) - Math.max(y, 0));
+    const emptyW = W - coverW;
+    const emptyH = H - coverH;
+    if (emptyW >= W * LIMITS.blackGap || emptyH >= H * LIMITS.blackGap) {
+      out.push(`${name}: this clip is ${asset.w} by ${asset.h} pixels, not the full ${W} by ${H} picture, and it leaves a black empty side (${Math.round(emptyW)} px across, ${Math.round(emptyH)} px tall). Half the video cannot be a black slab. Use a full-frame see-through clip and keep it inside the picture.`);
+    }
+  }
+  return out;
+}
 
 const modeOf = (c) => {
   if (c.mode) return String(c.mode).toLowerCase();
@@ -90,6 +160,7 @@ export function validateSchedule(sched, {repoRoot = process.cwd()} = {}) {
     if (mode !== 'behind' && portrait && sc < LIMITS.besideMinScale) {
       fails.push(`${name}: scale ${sc} is too small to read on a phone. Beside clips need ${LIMITS.besideMinScale} or more. Use Behind with a full-width asset, or a bigger spot.`);
     }
+    fails.push(...onScreenFails(c, name, W, H));
     const boxes = Array.isArray(c.words_boxes) ? c.words_boxes : Array.isArray(c.words_on_video_box) ? [c.words_on_video_box] : [];
     if (boxes.length && boxes.every((b) => Array.isArray(b) && b.length === 4)) {
       for (const b of boxes) {
@@ -143,7 +214,7 @@ if (isMain) {
   } else {
     for (const w of warns) console.log('WARN  ' + w);
     for (const f of fails) console.log('FAIL  ' + f);
-    console.log(fails.length ? `NOT READY: ${fails.length} size problem(s). Opus fixes the layout (animation-size-readable).` : `OK: ${sched.clips.length} clips pass the size check.`);
+    console.log(fails.length ? `NOT READY: ${fails.length} problem(s). Opus fixes the layout before this ships (too small, off the screen, or a black empty side).` : `OK: ${sched.clips.length} clips pass the size and on-screen check.`);
   }
   process.exit(fails.length ? 1 : 0);
 }

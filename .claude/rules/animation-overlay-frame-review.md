@@ -1,0 +1,1 @@
+../../.ai/rules/animation-overlay-frame-review.md

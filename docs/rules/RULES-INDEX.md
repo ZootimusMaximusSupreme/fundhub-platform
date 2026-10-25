@@ -96,6 +96,7 @@ Legend: **both homes** = one real file in `.ai/rules`, linked for Cursor and for
 ## 6. Copy and ads
 
 - `copy-certainty` (both homes): Scripts speak with 100% certainty. No we think, you might, maybe, could, likely.
+- `ad-know-the-offer` (both homes): Before an ad script or an animation overlay, read that offer. Pictures show the product steps, not only the last sentence. Capital Blueprint steps are in the rule.
 - `ad-no-recycled-lines` (both homes): Never copy lines between ads. Each ad is a test. Reuse only proven high-converting phrases.
 - `ad-second-line` (both homes): Sentence two of the hook does one job (win, proof, stakes, new detail, reassure).
 - `ad-watch-curve` (both homes): How to read Meta video watch numbers and what to fix when an ad dies.
@@ -109,17 +110,19 @@ Legend: **both homes** = one real file in `.ai/rules`, linked for Cursor and for
 
 ## 7. Video and animation
 
-- `animation-rules` (both homes): Master animation law — overlays last, see-through only, matte, ~every 10 s, anchors and credibility; book `marketing/ads/ANIMATION-RULES.md`. Code may lag until marketing system is 100% wired.
+- `animation-rules` (both homes): Master animation law — overlays last, see-through only, space is left, right, or top, a long multi-step visual in the top one-third, a short visual where the head is not, only a slight overlap behind the head, read the frame, face and captions clear, never unreadable, must stay inside the frame; book `marketing/ads/ANIMATION-RULES.md`. Code may lag until marketing system is 100% wired.
 - `video-4k-unless-ad` (both homes): Film and export 4K unless the video is a paid ad or a testimonial card video on a page.
 - `ad-video-best-of-clips` (both homes): Finished ad video must be the best of every clip and take for that ad; B-roll is only our animations and screen recordings, never Submagic's.
-- `ad-sound-level` (both homes): Every finished video is -14 LUFS with true peak at or under -1.5 dB.
+- `ad-sound-level` (both homes): After Submagic and after post-Submagic edits, recheck audio, smooth voice level and tone across merged clips, then -14 LUFS with true peak at or under -1.5 dB.
 - `slo-one-filmed-folder` (both homes): All filmed SLO video lives in one Drive folder — SLO Ads root only. SLO only; Direct Book has its own folder.
 - `teleprompter-speed` (both homes): Teleprompter speed is held to 130-320 words a minute.
 - `teleprompter-camera` (both homes): Teleprompter camera and editing are locked (30 fps, front mirrored, never black, copy and paste only, clean screen, Rode on).
 - `animation-overlay-on-spoken-words` (both homes): See-through animations land on the words they show; big, diagrams only, CTA only when it fits; face and captions stay clear.
 - `animation-no-echo` (both homes): Anchors come from the script and land when the word is said on the edited video; animation words never repeat what Chris is saying; show the point in new, short words with no drift in meaning.
 - `animation-logo-only-on-fundhub` (both homes): See-through animations carry no logo; the logo plays only on the word Fundhub.
-- `animation-builders-opus-placers-sonnet` (both homes): Opus builds and changes animation templates; Sonnet only places finished animations on videos.
+- `animation-builders-opus-placers-sonnet` (both homes): Opus builds and changes animation templates and owns layout sizing when a clip is too small; lighter models only do the mechanical render, mux and sound after Opus writes the schedule.
+- `animation-size-readable` (both homes): Overlays stay readable on a phone. Placement follows `animation-rules` section 2 (top one-third for a long visual; left, right, or top for a short one; only a slight overlap behind the head). Never tiny. Never park the point in his hair. `validate-overlay-schedule.mjs` checks every schedule before lay-on.
+- `animation-overlay-frame-review` (both homes): Before handoff, view extracted frames from the final mux (clip start/mid/end, anchors, spot intervals); verdict Acceptable / Not acceptable / Acceptable with named timestamp fixes; save contact sheet and `frame-review-pass.json`; `animation:frame-review-check` warns only.
 
 ## 8. Pages and UI
 

@@ -1,6 +1,6 @@
 # Animation Rules (owner rules — Chris)
 
-Source: `docs/specs/marketing-machine-2026-10-04.md` item 9 + §9.4 (order and pipeline), `ops/workflows/broll-v2-2026-10-02.md` (brand), `ops/workflows/animation-builds-2026-10-22.md` (kit), owner rules 2026-10-25 (anchors, frequency, matte, no full-frame). Machine rule file: `.ai/rules/animation-rules.md`. Where this file and the spec disagree on full-frame mode or animation count, **this file wins**.
+Source: `docs/specs/marketing-machine-2026-10-04.md` item 9 + §9.4 (order and pipeline), `ops/workflows/broll-v2-2026-10-02.md` (brand), `ops/workflows/animation-builds-2026-10-22.md` (kit), owner rules 2026-10-25 (anchors, frequency, matte, no full-frame). Machine rule file: `.ai/rules/animation-rules.md`. Where this file and the spec disagree on full-frame mode, animation count, or placement, **this file wins**.
 
 ## Code and pipeline (owner-set 2026-10-25)
 
@@ -22,26 +22,52 @@ The master Submagic sees never has animations in it.
 
 Captions: Submagic template "Hormozi 2" (Chris to double-check; "Hormozi 1" is the backup). Submagic AI B-roll stays off.
 
-## 2. Never cover Chris (owner rule, 2026-10-25)
+## 2. Where the overlay sits (owner law 2026-10-25)
 
-Animations never cover Chris's face, body or hair, and never cover the captions. There is no full-frame mode. Every animation is a see-through overlay.
+The space goes left, right, or top.
 
-Before placing animations, the AI tracks Chris's position in every frame of the Submagic export (a per-frame matte of his outline).
+A big long visual that is a multi-step explanation must go in the top one-third. That is the rule. If it is long, put it in the top one-third.
 
-Animation size is at the AI's discretion and can be as large as the point needs, but no pixel of an animation may overlap Chris's matte on any frame. Check every frame, not once per clip.
+Shorter visuals go left, right, or top, or wherever his head is not.
 
-Two placements:
+You can go slightly behind his head for authenticity, but only slightly. The words stay readable. Do not park the point in his hair.
 
-- **Beside:** a see-through overlay in the open space around Chris (safe zones in section 8).
-- **Behind:** the animation becomes the background and Chris is composited in front of it, e.g. Chris in front of a large Capital Blueprint dashboard showing how it works. Stack order: background animation → Chris (matte cutout) → captions.
+If there is space, the visual can blast into the bottom two-thirds, or into the top one-third plus the second third where his shoulders are, so it becomes a huge screen.
 
-Use Behind for big explanations (products, dashboards, processes, comparisons); use Beside for quick anchors.
+If his head is not that big, the sizes change. It is not black and white. Read the frame. Head size and position vary. Discern.
+
+Also still true: the face stays clear except that slight overlap. Captions stay clear. The shirt is a bad spot when captions are there. An animation is never unreadable.
+
+**On the screen (owner law 2026-10-25):** Every animation overlay must sit fully inside the video frame. Ads are 1080×1920. The readable part cannot be clipped off the left, right, top, or bottom. A bad x, y, or scale that leaves a black void or shoves the graphic off the screen fails the check. Do not ship it.
+
+There is no full-frame mode that covers him. Every animation is a see-through overlay.
+
+**Frame layout scan (owner law 2026-10-25):** Read every frame of the Submagic export. Head size and head position change from frame to frame. On every frame the overlay system knows:
+
+- **Chris:** head, hair, shoulders, and chest (per-frame matte / person outline)
+- **Caption band:** burned-in letters from Submagic (e.g. Hormozi lines, UnderwriteIQ-style lower-thirds), including where each line sits and how it moves frame to frame
+- **On-screen layout:** anything else that claims pixels (safe bands, side panels, prior overlays, decoration)
+
+Use that read to place the clip:
+
+- **Top:** the top one-third. A long multi-step explanation goes here. The overlay may be full width inside that band.
+- **Left or right:** a shorter visual, in the open side, or wherever his head is not.
+- **Huge screen:** only when that frame has the room. The visual may run through the bottom two-thirds, or through the top one-third plus the second third where his shoulders are.
+- **Slight overlap:** a small part of the graphic may sit behind the head. The words and the point stay out of the hair. If the head moves into the words, move the graphic.
+
+Re-check every frame while the clip runs. He can lean. Captions can shift. A spot that works on one frame can fail on the next.
+
+When a graphic sits slightly behind the head, his cut-out stays on top and the captions stay last. Do not cover the caption band. Do not put the visual on the shirt when the captions are there. Do not shrink a long visual into a tiny chip.
+
+**Face:** clear on every frame, except that slight overlap behind the head.
+
+**Handoff (owner law 2026-10-25):** After overlays and audio finalize, **view frames from the final mux** (clip start/mid/end, anchors, spot intervals) before calling the video acceptable. Law: `.ai/rules/animation-overlay-frame-review.md`. Validators and `schedule.json` are not enough. Judge the frames against this section, including the top one-third for a long visual and readable words.
 
 ## 3. What gets an animation (owner rule, 2026-10-25)
 
 An anchor is a visual of an emotion, a contrast, or a list. Money gets less emphasis, but the payoff is always shown on screen.
 
-**Products:** when the script explains a product (e.g. Capital Blueprint), show it working on screen (e.g. the dashboard). Showing how it works builds credibility beyond what's said.
+**Products:** when the script explains a product (e.g. Capital Blueprint), show it working on screen (e.g. the dashboard). Showing how it works builds credibility beyond what's said. Law: ad-know-the-offer (`.ai/rules/ad-know-the-offer.md`) — read the offer first. The pictures show the product steps, not only the last sentence.
 
 **Credibility:** when the line is about credibility, show real proof, not AI-generated visuals. Examples: Chris's posts from 10 years ago, or the approvals spreadsheet with dates and details visible, bureaus and data points and client names blurred, bank names visible. A dollar total ($1M+ funded) does not show credibility; the approvals do.
 
@@ -81,11 +107,11 @@ Kit details: `marketing/broll/README.md`, `ops/workflows/animation-builds-2026-1
 
 **Captions:** set `caption_position_y` so captions sit in a zone animations never draw in.
 
-**Chris:** no animation overlaps his matte (section 2). The fixed zones below are the fallback when no matte exists yet.
+**Chris:** section 2 wins. A slight overlap behind the head is allowed. The face stays clear except that overlap. The point does not sit in the hair. The shirt is a bad spot when captions are there. The fixed zones below are the fallback for a short visual when you are still reading the frame.
 
-**Vertical fallback:** every word inside y 269–1248. Only faint decoration in the top 14% (y < 269) or bottom 35% (y > 1248).
+**Vertical fallback for a short visual:** words in the open left, right, or top, inside y 269–1248 when that band is actually open. The top one-third (about y 0–640 on 1080×1920) is a real home for a long visual, including a full-width overlay. It is not a faint-decoration strip. The bottom caption area (y > 1248) stays clear unless section 2 says the frame has room for a huge screen, and even then the captions themselves stay clear.
 
-**Wide fallback:** all content in ONE side panel via `side` prop `'left' | 'right'` (default `'left'`). Left x 192–1500, right x 2340–3648, both y 108–1512. Nothing in the middle column (x 1500–2340) or the bottom 30% (y > 1512).
+**Wide fallback:** a long visual still goes in the top one-third and may be full width there. A shorter visual uses one side panel via `side` prop `'left' | 'right'` (default `'left'`). Left x 192–1500, right x 2340–3648, both y 108–1512, when that panel is actually open. Do not park the point in the middle of his head. The bottom 30% (y > 1512) stays clear of captions.
 
 ## 9. Brand
 
@@ -93,7 +119,7 @@ Accent #3D86F0, "fundhub." wordmark, spectrum dash, Inter. White page and faint 
 
 3D means depth: perspective, tilted cards, layered shadows, parallax, rotation. Premium and clean, never busy.
 
-Money visuals (bills, cash stacks, coins, counting dollars) are decoration and may run anywhere outside the face and caption zones.
+Money visuals (bills, cash stacks, coins, counting dollars) are decoration. Section 2 still picks the spot. They stay off the captions. Do not park the point in his hair. The shirt is a bad spot when captions are there.
 
 ## 10. Words and data
 
