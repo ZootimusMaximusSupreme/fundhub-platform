@@ -46,3 +46,4 @@
 [x] codex/heartbeat-display-repair-i — SKIP. LEFT. Tip 81f117a3d. Every file already exists and the branch conflicts on live pages or pulse proofs. Kept main. Not sure the old proof is already in main. Not merged.
 [x] codex/heartbeat-public-links — SKIP. LEFT. Tip d2a7d2f28. Every file already exists and the branch conflicts on live pages or pulse proofs. Kept main. Not sure the old proof is already in main. Not merged.
 [x] codex/heartbeat-shell-sidebar-current-main — SKIP. LEFT. Tip 9c1c5184b. Every file already exists and the branch conflicts on live pages or pulse proofs. Kept main. Not sure the old proof is already in main. Not merged.
+[x] codex/heartbeat-messaging-c — SKIP. LEFT. Tip 335ab6c9b. Conflict on the text-send path (dispatch.mjs / sms-dedup). Not merged.
