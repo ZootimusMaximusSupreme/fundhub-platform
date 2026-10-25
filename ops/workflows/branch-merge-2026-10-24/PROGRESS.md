@@ -53,3 +53,4 @@
 [x] claude/portal-phone-welcome — SKIP. LEFT. Tip 2c9eee5b7. Changes the Fundhub iOS app (FundhubApp.swift and the Xcode project) plus scripts/asc-portal-update.mjs. 1.0.1 is already with Apple. Not merged.
 [x] codex/two-ios-apps-launch — SKIP. LEFT. Restored tip acb94cae0. The other session local branch is 80eb3b4e, a different commit. Conflicts in iOS project files. Not merged.
 [x] codex/live-ios-teleprompter — SKIP. LEFT. Tip 160332b06. Conflicts in the prompter Swift app. Not merged.
+[x] codex/fundhub-prompter-appstore — SKIP. LEFT. Tip ea9e92c83. Changes LoginView.swift, SettingsView.swift, and the Xcode project. Not merged.
