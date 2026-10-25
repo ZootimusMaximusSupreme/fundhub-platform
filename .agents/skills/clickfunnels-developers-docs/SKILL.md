@@ -10,19 +10,4 @@ description: >-
 
 # ClickFunnels — developers docs first
 
-## Law
-
-Before any ClickFunnels API, SDK, Custom HTML, webhook, or workspace answer:
-
-1. **Open https://developers.myclickfunnels.com/** (fetch or browser).
-2. Optional: **https://changelog.myclickfunnels.com/** for recent API changes.
-3. Then read repo code (`src/adapters/clickfunnels.mjs`, fragments, handlers) if needed.
-
-## Never
-
-- Invent endpoints or payloads
-- Default to "paste in the ClickFunnels builder" — **Custom HTML Pages API** is GA (2026-09-18)
-
-## Cursor
-
-Same law lives in `.cursor/rules/clickfunnels-developers-docs.mdc`.
+Law: clickfunnels-developers-docs (.ai/rules/clickfunnels-developers-docs.md) - open https://developers.myclickfunnels.com/ before any ClickFunnels answer, never invent endpoints, never default to builder paste.

@@ -1,5 +1,5 @@
 {
-  "_about": "Phrases a newer owner law killed. A live rule, skill or CLAUDE.md line that still teaches one fails scripts/rules-drift-check.mjs. Lines that start with Never / Do not, lines with a red X, lines under a Never or Banned heading, and lines that say retired / removed / dead / banned / superseded are treated as quoting the phrase and are allowed. Add 'allow' ({file, line}) for any other exception. Default paths: CLAUDE.md, AGENTS.md, .cursor/rules, .claude/rules, .cursor/skills, docs/rules.",
+  "_about": "Phrases a newer owner law killed. A live rule, skill or CLAUDE.md line that still teaches one fails scripts/rules-drift-check.mjs. Lines that start with Never / Do not, lines with a red X, lines under a Never or Banned heading, and lines that say retired / removed / dead / banned / superseded are treated as quoting the phrase and are allowed. Add 'allow' ({file, line}) for any other exception. Default paths: CLAUDE.md, AGENTS.md, .ai/rules (the one real home of every rule), our own skills in .agents/skills (not the third-party ones in skills-lock.json), docs/rules. Each file is scanned once at its real path, so the links in .cursor and .claude never repeat a line. An 'allow' file name is the real path, like .ai/rules/<name>.md.",
   "phrases": [
     {
       "id": "brand-spelling",

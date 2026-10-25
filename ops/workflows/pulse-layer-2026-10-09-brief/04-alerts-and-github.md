@@ -62,7 +62,7 @@ Before this ships, three things must happen. Chris (or an agent with his OK) mus
 
 ### Rules
 
-1. **New break** (beat red now, no open incident): text at once. Title the text with the beat and the fix. Open the issue.
+1. **New break** (beat red now, no open incident): text inside the texting window. Title the text with the beat and the fix. Open the issue.
 2. **Still broken** (beat red now, incident open): text again on this run. The runner fires once an hour, so one text per red run is exactly "every hour." No timer, no cooldown table.
 3. **Fixed** (beat green now, incident open): text once, close the issue, close the incident.
 4. **Many red at once:** send ONE text per run that lists up to 3 beats and a count ("7 broken: payment-webhook, lead-form, bank-apply and 4 more"). Reasons: Twilio and GitHub both rate limit bursts; GitHub's secondary limit on content creation is tight for 20 issues in a minute; and 5+ red at once usually means one common cause (database, site down, a bad deploy). For 5 or more red, open one "storm" issue (`beat:storm`) instead of one per beat. Each red beat still gets its own row in `pulse_beats`.

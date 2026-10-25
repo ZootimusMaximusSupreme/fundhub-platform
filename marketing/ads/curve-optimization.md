@@ -4,16 +4,7 @@ Owner-set 2026-09-27. This is the human-in-the-loop playbook: Meta reports the c
 
 ## Meta definitions we diagnose against
 
-From [About Video Ad Metrics](https://www.facebook.com/business/help/1792720544284355) (Ads Manager → Columns → Video engagement):
-
-- **Video plays (starts):** the video starts to play for an impression; replays are excluded (same idea as Marketing API `video_play_actions`).
-- **2-second continuous video play:** played for at least 2 continuous seconds (Marketing API: `video_continuous_2_sec_watched_actions`). Meta also lists **3-second video plays** in Ads Manager; that UI metric is **not** on our insights pull — do not treat a “3-second rate” as something we store.
-- **[Video plays at 25%](https://www.facebook.com/business/help/279891745529019):** “The number of times your video was played at 25% of its length, **including plays that skipped to this point**.”
-- Same pattern for 50%, 75%, 100% (Marketing API `video_p25_watched_actions`, etc.).
-- **[15-second ThruPlays](https://www.facebook.com/business/help/471190536725647):** played to completion **or** for at least 15 seconds; for shorter videos, after at least **97%** of length. Replays on one impression do not count.
-- **Second-by-second curve:** Marketing API `video_play_curve_actions` — percent of plays still watching at each second bucket (stored in `ad_metrics_daily.video_play_curve`).
-
-**Play** means the video started. **25% / 50% / …** means they reached that fraction of length (including skip-ahead). **ThruPlay** is long watch or finish, not “time on screen while paused.”
+Law: watch-curve (marketing/ads/watch-curve.md) - Meta's definitions of play, 2-second continuous play, 25/50/75/100%, ThruPlay and the second-by-second curve.
 
 ## Where the curve can die (diagnosis → fix type)
 

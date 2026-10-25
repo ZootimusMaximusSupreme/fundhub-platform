@@ -51,7 +51,7 @@ The flywheel turns market research into an offer, then ads, then spend. Only one
 ## 2. Ad scripts
 
 **LIVE and proved**
-- 4 of the $297 ads ran on Meta from September 26: Ads 1, 3, 6 and 7. (`marketing/ads/scripts/ALL-ADS-since-2026-09-03.md:9`) In Meta they are named SLO1–SLO4. (branch `ad-scripts-2026-10-02`, `ops/workflows/ad-scripts-2026-10-02.md:210`)
+- 4 of the $297 ads ran on Meta from September 26: Ads 1, 3, 6 and 7. (`marketing/ads/scripts/ALL-ADS-since-2026-09-03.md:9`) In Meta they are named SLO1–SLO4. (branch `ad-scripts-2026-10-02`, `ops/archive/ai-instructions-2026-10-24/ops/workflows/ad-scripts-2026-10-02.md:210`)
 - What each one spent and how long people watched: `ops/workflows/roadmap-marketing-2026-10-04.md:41-47`.
 - Every script since September 2 is on main, word for word: 32 full ads, 7 shorts, 6 videos. (`marketing/ads/scripts/ALL-ADS-since-2026-09-03.md:18`)
 
@@ -69,7 +69,7 @@ The flywheel turns market research into an offer, then ads, then spend. Only one
 
 **LIVE and proved**
 - Every filmed take lands in one Drive folder, SLO Ads. (`ops/workflows/slo-ads-drive-manifest-2026-09-23.md:4`)
-- SLO Ads 1–7 were filmed. (branch `ad-scripts-2026-10-02`, `ops/workflows/ad-scripts-2026-10-02.md:161`) The 2 VSLs, the bank ad and the penthouse ad were filmed. (`TODO.md:15`, checked off)
+- SLO Ads 1–7 were filmed. (branch `ad-scripts-2026-10-02`, `ops/archive/ai-instructions-2026-10-24/ops/workflows/ad-scripts-2026-10-02.md:161`) The 2 VSLs, the bank ad and the penthouse ad were filmed. (`TODO.md:15`, checked off)
 - On the live site the robot found a take and made a Submagic project. (`ops/workflows/submagic-settings-lock-2026-09-23.md:1076`) It put our own moving clips on it. (line 1238)
 - One take reached "waiting for approval". (same file, line 1239)
 - The phone push (ntfy) arrived. (`ops/workflows/grok-handoff-ad-video-text-2026-09-24.md:22`)
@@ -103,7 +103,7 @@ The flywheel turns market research into an offer, then ads, then spend. Only one
 
 **MISSING**
 - **No visitor has an ad number.** The live ads send the ad tag `oVid: SLO2` (`ops/workflows/roadmap-marketing-2026-10-04.json:2036`). Our ad-number rule only reads leading digits, like `84-slo-ad-1` (`db/migrations/286_client_ad_attribution.sql:34-35, 81-84`). Result: 18 people have ad tags saved, **0** have an ad number. (live check 3) No sale can be tied to an ad this way.
-- None of the 7 ads in our database has a Fundhub ad number. (live check 3) Ad numbers 84–90 already exist for SLO Ads 1–7. (branch `ad-scripts-2026-10-02`, `ops/workflows/ad-scripts-2026-10-02.md:161`)
+- None of the 7 ads in our database has a Fundhub ad number. (live check 3) Ad numbers 84–90 already exist for SLO Ads 1–7. (branch `ad-scripts-2026-10-02`, `ops/archive/ai-instructions-2026-10-24/ops/workflows/ad-scripts-2026-10-02.md:161`)
 - The campaign name `oPur: TOF-SLO: $297` reads as lane "unknown". The lane list has no lane for the $297 roadmap. (`db/migrations/286_client_ad_attribution.sql:67-75`)
 - The check in Meta's Test Events screen for Lead and Schedule was never recorded. (`TODO.md:10`)
 - `TODO.md:10` is out of date. It says server events stay off. They are on. (live checks 3 and 4)
@@ -142,7 +142,7 @@ The flywheel turns market research into an offer, then ads, then spend. Only one
 
 **BUILT but unproved**
 - The 24-hour reminder on the real clock. (`ops/workflows/full-comms-prove-2026-09-20.md:196`)
-- The AI phone call on a booking: the talk is "UNVERIFIED". (`ops/workflows/full-launch-lattice-2026-09-20.md:506`)
+- The AI phone call on a booking: the talk is "UNVERIFIED". (`ops/archive/ai-instructions-2026-10-24/ops/workflows/full-launch-lattice-2026-09-20.md:506`)
 
 **MISSING**
 - **Price mismatch.** The follow-up offers $197 (`src/slo/discount-197.mjs:7`). The page is $147. That is $50 more. (`TODO.md:8`)

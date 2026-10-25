@@ -836,8 +836,7 @@ Per CLAUDE.md §6, all of these, and no exceptions:
 
 ## 14. Compliance summary
 
-**COMPLIANCE REVIEW REQUIRED.** Recorded as a marker, per CLAUDE.md §7 and the
-owner-decisions section. No advice attached.
+**COMPLIANCE REVIEW REQUIRED.** No advice attached.
 
 Affected areas: **consent capture** (a merchant attestation that is deliberately
 not stored as a consumer consent), **credit-pull type** (none — and the design is

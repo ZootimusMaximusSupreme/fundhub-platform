@@ -7,15 +7,33 @@
 // (src/rules/rules-drift-check.test.mjs), so a push that drifts the rules goes
 // red.
 //
+// THE LAYOUT (drift cleanup, phase 2, 2026-10-24): one real file for each rule and
+// each skill. The tool folders hold links, never copies.
+//
+//   rules   real   .ai/rules/<n>.md
+//           links  .cursor/rules/<n>.mdc and .claude/rules/<n>.md   ->  ../../.ai/rules/<n>.md
+//   skills  real   .agents/skills/<n>/        (Codex reads this folder itself)
+//           links  .cursor/skills/<n> and .claude/skills/<n>        ->  ../../.agents/skills/<n>
+//
+// A rule that is Cursor-only on purpose has no Claude link. A skill that is
+// Codex-only on purpose has no links. Both are listed with a reason in
+// scripts/rules-drift-allow.json. Third-party skills (the ones in skills-lock.json)
+// are linked like ours, but the index and the retired-word scan skip them.
+//
 // Plain Node, no dependencies. READ ONLY: it never edits a rule.
 //
 // Checks (each failure names file:line and a one-line plain fix):
-//   mirror   a  every .cursor/rules/<n>.mdc has .claude/rules/<n>.md, and back
-//   twin     b  the two twins say the same words (front matter ignored)
-//   skills   c  every .cursor/skills/<n> has .claude/skills/<n> (a link), no dead links
+//   mirror   a  every .ai/rules/<n>.md has its .cursor link, and its .claude link unless Cursor-only
+//               (.ai/rules holds real .md files only; a README.md there is a note, not a rule)
+//   link     b  every rule link points at its one real file; a real file left in
+//               .cursor/rules or .claude/rules is a copy and fails; no dangling links
+//   skills   c  every skill in .agents/skills has both links; a real folder left in
+//               .cursor/skills or .claude/skills is a copy and fails; no dangling links
 //   pointer  d  every rule/skill path named in the rule homes exists
 //   index    e  every rule and skill is in docs/rules/RULES-INDEX.md
-//   claudemd f  every always-on owner law is named in CLAUDE.md
+//   claudemd f  CLAUDE.md names docs/rules/RULES-INDEX.md, has headings 0-12
+//               (including 3a, 3b, 3c), every path it names exists, and the
+//               size caps hold (CLAUDE.md 220 lines, AGENTS.md 90)
 //   retired  g  no live rule still teaches a phrase a newer owner law killed
 //   dates    h  every "Owner law" / "owner-set" line carries a YYYY-MM-DD date
 //
@@ -29,47 +47,75 @@ import { fileURLToPath } from "node:url";
 const SCRIPT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 export const CHECKS = {
-  mirror: "Mirror: a rule is missing its other home",
-  twin: "Twin words: the two homes say different things",
-  skills: "Skills: missing or broken .claude/skills link",
+  mirror: "Mirror: a rule is missing a link, or .ai/rules holds something that is not a rule file",
+  link: "Links: a rule has a second real copy, or a rule link points at the wrong place or at nothing",
+  skills: "Skills: a skill is missing a link, has a second real copy, or a link points at nothing",
   pointer: "Pointer: a named rule or skill path does not exist",
   index: "Index: not listed in docs/rules/RULES-INDEX.md",
-  claudemd: "CLAUDE.md line: always-on owner law is not named in CLAUDE.md",
+  claudemd: "CLAUDE.md: missing RULES-INDEX, a heading 0-12, a named path, or over the size cap",
   retired: "Retired words: a phrase a newer owner law killed is still live",
   dates: "Dates: an owner-law line has no YYYY-MM-DD date",
 };
 
-const DEFAULT_RETIRED_PATHS = ["CLAUDE.md", "AGENTS.md", ".cursor/rules", ".claude/rules", ".cursor/skills", "docs/rules"];
+// The layout. The tests build the same shape in a temp folder.
+const RULES_HOME = ".ai/rules";
+const SKILLS_HOME = ".agents/skills";
+const CURSOR_RULES = ".cursor/rules";
+const CLAUDE_RULES = ".claude/rules";
+const SKILL_LINK_DIRS = [".cursor/skills", ".claude/skills"];
+const RULE_LINK_DIRS = [CURSOR_RULES, CLAUDE_RULES];
+// Where the retired-word scan looks by default. Our own skills are added below.
+const DEFAULT_RETIRED_PATHS = ["CLAUDE.md", "AGENTS.md", RULES_HOME, "docs/rules"];
 
 // ---------------------------------------------------------------- file helpers
 
-const exists = (p) => fs.existsSync(p);
+const exists = (p) => fs.existsSync(p); // follows links: false for a dangling link
 const isFile = (p) => { try { return fs.statSync(p).isFile(); } catch { return false; } };
 const isDir = (p) => { try { return fs.statSync(p).isDirectory(); } catch { return false; } };
 const lstat = (p) => { try { return fs.lstatSync(p); } catch { return null; } };
 const read = (p) => fs.readFileSync(p, "utf8");
 const rel = (root, p) => path.relative(root, p).split(path.sep).join("/");
 
-function listFiles(dir, ext) {
+/** Every visible entry in a folder. lstat-style: a dangling link is still listed. */
+function listNames(dir) {
   if (!isDir(dir)) return [];
-  return fs.readdirSync(dir).filter((n) => n.endsWith(ext) && isFile(path.join(dir, n))).sort();
+  return fs.readdirSync(dir).filter((n) => !n.startsWith(".")).sort();
 }
-function listDirs(dir) {
-  if (!isDir(dir)) return [];
-  // lstat so a dangling link is still listed (the skills check reports it).
-  return fs.readdirSync(dir).filter((n) => {
-    const st = lstat(path.join(dir, n));
-    return st && (st.isDirectory() || st.isSymbolicLink());
-  }).sort();
-}
-function walkText(p, out = []) {
+
+/** Every .md/.mdc file under a path. Follows links, but never walks the same folder twice (so a link loop ends). */
+function walkText(p, out = [], seen = new Set()) {
   if (isFile(p)) { if (/\.(md|mdc)$/.test(p)) out.push(p); return out; }
   if (!isDir(p)) return out;
+  let real;
+  try { real = fs.realpathSync(p); } catch { return out; }
+  if (seen.has(real)) return out;
+  seen.add(real);
   for (const n of fs.readdirSync(p).sort()) {
     if (n === "node_modules" || n === ".git") continue;
-    walkText(path.join(p, n), out);
+    walkText(path.join(p, n), out, seen);
   }
   return out;
+}
+
+/** Text files under the scope, each one once at its REAL path, so two links to one file never report a line twice. */
+function realTextFiles(root, scope) {
+  const realRoot = fs.realpathSync(root);
+  const byReal = new Map();
+  for (const p of scope) {
+    for (const abs of walkText(path.join(root, p))) {
+      let real;
+      try { real = fs.realpathSync(abs); } catch { continue; }
+      if (!byReal.has(real)) byReal.set(real, rel(realRoot, real));
+    }
+  }
+  return [...byReal].map(([abs, f]) => ({ abs, rel: f })).sort((a, b) => (a.rel < b.rel ? -1 : a.rel > b.rel ? 1 : 0));
+}
+
+/** Names of third-party skills: the ones the skills tool recorded in skills-lock.json. */
+function thirdPartySkills(root) {
+  const p = path.join(root, "skills-lock.json");
+  if (!isFile(p)) return new Set();
+  try { return new Set(Object.keys(JSON.parse(read(p)).skills || {})); } catch { return new Set(); }
 }
 
 /** Split off a leading --- front matter block. Returns { fm, body, bodyStart } (bodyStart = 1-based line). */
@@ -84,9 +130,31 @@ export function splitFrontMatter(text) {
   return { fm: "", body: text, bodyStart: 1, lines };
 }
 
-function alwaysApply(text) {
-  const { fm } = splitFrontMatter(text);
-  return /^alwaysApply:\s*true\s*$/m.test(fm);
+/** Hard caps for the short index files. Do not tighten these numbers. */
+export const CLAUDE_MD_MAX_LINES = 220;
+export const AGENTS_MD_MAX_LINES = 90;
+const CLAUDE_MD_HEADINGS = ["0", "1", "2", "3", "3a", "3b", "3c", "4", "5", "6", "7", "8", "9", "10", "11", "12"];
+
+/** Backtick paths in CLAUDE.md that must exist. Skip globs, placeholders, env, and credentials. */
+export function namedClaudePaths(text) {
+  const out = [];
+  const re = /`([^`]+)`/g;
+  let m;
+  while ((m = re.exec(text))) {
+    const raw = m[1].trim();
+    if (!raw) continue;
+    if (/[*<{]/.test(raw)) continue;
+    if (/\s/.test(raw)) continue;
+    if (/^https?:\/\//i.test(raw)) continue;
+    if (/^(?:\.env|credentials)\b/.test(raw)) continue;
+    if (!/\/|\.(md|mdc|mjs|js|json|yml|yaml|toml|html|css)$/i.test(raw) && !/^(?:AGENTS|CLAUDE|README)\.md$/i.test(raw)) continue;
+    out.push({ path: raw, index: m.index });
+  }
+  return out;
+}
+
+function lineAt(text, index) {
+  return text.slice(0, index).split("\n").length;
 }
 
 // ---------------------------------------------------------------- the checks
@@ -95,111 +163,113 @@ export function checkRules({ root = SCRIPT_ROOT, allow = {}, retired = [] } = {}
   const failures = [];
   const fail = (check, file, line, message, fix) => failures.push({ check, file, line: line || 1, message, fix });
 
-  const cursorRulesDir = path.join(root, ".cursor/rules");
-  const claudeRulesDir = path.join(root, ".claude/rules");
-  const cursorSkillsDir = path.join(root, ".cursor/skills");
-  const claudeSkillsDir = path.join(root, ".claude/skills");
+  const rulesHome = path.join(root, RULES_HOME);
+  const skillsHome = path.join(root, SKILLS_HOME);
   const cursorOnly = allow.cursorOnlyRules || {};
-  const claudeOnly = allow.claudeOnlyRules || {};
-  const realSkillFolders = allow.realSkillFolders || {};
-
-  const cursorRules = listFiles(cursorRulesDir, ".mdc").map((f) => f.slice(0, -4));
-  const claudeRules = listFiles(claudeRulesDir, ".md").map((f) => f.slice(0, -3));
-  const cursorSet = new Set(cursorRules);
-  const claudeSet = new Set(claudeRules);
+  const codexOnly = allow.codexOnlySkills || {};
+  const thirdParty = thirdPartySkills(root);
 
   // a. MIRROR -----------------------------------------------------------------
-  for (const n of cursorRules) {
-    if (!claudeSet.has(n) && !(n in cursorOnly)) {
-      fail("mirror", `.cursor/rules/${n}.mdc`, 1, `Cursor rule "${n}" has no Claude twin.`,
-        `Add .claude/rules/${n}.md with the same words (or add "${n}" to cursorOnlyRules in scripts/rules-drift-allow.json with a reason).`);
+  const rules = [];
+  for (const f of listNames(rulesHome)) {
+    if (f.toLowerCase() === "readme.md") continue; // a note about the folder, not a rule; nothing links it
+    const st = lstat(path.join(rulesHome, f));
+    if (!f.endsWith(".md")) {
+      fail("mirror", `${RULES_HOME}/${f}`, 1, `"${f}" does not end in .md.`,
+        `Rules in ${RULES_HOME} are plain .md files. Rename it to ${f.replace(/\.[^.]*$/, "")}.md (Cursor reads it through a .mdc link).`);
+    } else if (!st.isFile()) {
+      fail("mirror", `${RULES_HOME}/${f}`, 1, `"${f}" is ${st.isSymbolicLink() ? "a link" : "a folder"}, not a real file.`,
+        `${RULES_HOME} holds the one real file for each rule. Put the real file there.`);
+    } else {
+      rules.push(f.slice(0, -3));
     }
   }
-  for (const n of claudeRules) {
-    if (!cursorSet.has(n) && !(n in claudeOnly)) {
-      fail("mirror", `.claude/rules/${n}.md`, 1, `Claude rule "${n}" has no Cursor twin.`,
-        `Add .cursor/rules/${n}.mdc with the same words (or add "${n}" to claudeOnlyRules in scripts/rules-drift-allow.json with a reason).`);
+  for (const n of rules) {
+    if (!lstat(path.join(root, `${CURSOR_RULES}/${n}.mdc`))) {
+      fail("mirror", `${RULES_HOME}/${n}.md`, 1, `Rule "${n}" has no Cursor link at ${CURSOR_RULES}/${n}.mdc.`,
+        `Run: ln -s ../../${RULES_HOME}/${n}.md ${CURSOR_RULES}/${n}.mdc`);
+    }
+    if (!(n in cursorOnly) && !lstat(path.join(root, `${CLAUDE_RULES}/${n}.md`))) {
+      fail("mirror", `${RULES_HOME}/${n}.md`, 1, `Rule "${n}" has no Claude link at ${CLAUDE_RULES}/${n}.md.`,
+        `Run: ln -s ../../${RULES_HOME}/${n}.md ${CLAUDE_RULES}/${n}.md (or add "${n}" to cursorOnlyRules in scripts/rules-drift-allow.json with a reason).`);
     }
   }
 
-  // b. TWIN WORDS -------------------------------------------------------------
-  const normalize = (text) => {
-    const { body, bodyStart } = splitFrontMatter(text);
-    const out = [];
-    body.split("\n").forEach((raw, i) => {
-      let s = raw
-        // path style only: ".cursor/rules/x.mdc", ".claude/rules/x.md" and bare "x.mdc" all mean the same rule
-        .replace(/\.(?:cursor|claude)\/rules\//g, "")
-        .replace(/\.cursor\/skills\b/g, ".claude/skills")
-        .replace(/\b([A-Za-z0-9_-]+)\.mdc\b/g, "$1.md")
-        .replace(/[ \t]+/g, " ")
-        .trim();
-      if (s) out.push({ s, line: bodyStart + i });
-    });
-    return out;
-  };
-  const twinExempt = allow.twinWordsExempt || {};
-  for (const n of cursorRules) {
-    if (!claudeSet.has(n) || n in twinExempt) continue;
-    const a = normalize(read(path.join(cursorRulesDir, `${n}.mdc`)));
-    const b = normalize(read(path.join(claudeRulesDir, `${n}.md`)));
-    const len = Math.max(a.length, b.length);
-    for (let i = 0; i < len; i++) {
-      if (a[i] && b[i] && a[i].s === b[i].s) continue;
-      const aLine = a[i] ? a[i].line : a[a.length - 1]?.line || 1;
-      const bLine = b[i] ? b[i].line : b[b.length - 1]?.line || 1;
-      const snip = (x) => (x ? `"${x.s.slice(0, 70)}"` : "(end of file)");
-      fail("twin", `.cursor/rules/${n}.mdc:${aLine} vs .claude/rules/${n}.md:${bLine}`, aLine,
-        `Twins differ. Cursor says ${snip(a[i])}; Claude says ${snip(b[i])}.`,
-        `Make both files say the same words (copy the newer one into the other).`);
-      break; // one report per pair
+  // b. LINKS ------------------------------------------------------------------
+  for (const dir of RULE_LINK_DIRS) {
+    for (const f of listNames(path.join(root, dir))) {
+      if (!/\.mdc?$/.test(f)) continue;
+      const abs = path.join(root, dir, f);
+      const n = f.replace(/\.mdc?$/, "");
+      const where = `${dir}/${f}`;
+      const want = `../../${RULES_HOME}/${n}.md`;
+      if (!lstat(abs).isSymbolicLink()) {
+        fail("link", where, 1, `"${f}" is a real file, not a link. That is a second copy of the rule.`,
+          `Put any edits into ${RULES_HOME}/${n}.md (the one home), then replace this file with the link: ln -sfn ${want} ${where}`);
+        continue;
+      }
+      const target = fs.readlinkSync(abs).replace(/\/$/, "");
+      if (target !== want) {
+        fail("link", where, 1, `Link points to "${target}", not "${want}".`, `Re-make the link: ln -sfn ${want} ${where}`);
+      } else if (!exists(abs)) {
+        fail("link", where, 1, `Link "${where}" is dangling: ${RULES_HOME}/${n}.md does not exist.`,
+          `Restore ${RULES_HOME}/${n}.md, or delete this dead link.`);
+      }
     }
   }
 
   // c. SKILLS -----------------------------------------------------------------
-  const cursorSkills = listDirs(cursorSkillsDir).filter((n) => isFile(path.join(cursorSkillsDir, n, "SKILL.md")));
-  for (const n of cursorSkills) {
-    const link = path.join(claudeSkillsDir, n);
-    const st = lstat(link);
-    const where = `.claude/skills/${n}`;
-    if (!st) {
-      fail("skills", where, 1, `Skill "${n}" has no .claude/skills entry.`,
-        `Run: ln -s ../../.cursor/skills/${n} .claude/skills/${n}`);
-    } else if (st.isSymbolicLink()) {
-      const target = fs.readlinkSync(link);
-      const want = `../../.cursor/skills/${n}`;
-      if (target.replace(/\/$/, "") !== want) {
-        fail("skills", where, 1, `Link points to "${target}", not "${want}".`, `Re-make the link: ln -sfn ${want} ${where}`);
-      } else if (!exists(link)) {
-        fail("skills", where, 1, `Link "${where}" is dangling.`, `Re-make the link: ln -sfn ${want} ${where}`);
-      }
-    } else if (!(n in realSkillFolders)) {
-      fail("skills", where, 1, `"${n}" is a real folder in .claude/skills, not a link.`,
-        `Replace it with a link to ../../.cursor/skills/${n} (or list it in realSkillFolders in scripts/rules-drift-allow.json with a reason).`);
+  const skills = []; // every folder in .agents/skills that holds a SKILL.md
+  for (const n of listNames(skillsHome)) {
+    const abs = path.join(skillsHome, n);
+    if (!exists(abs)) {
+      fail("skills", `${SKILLS_HOME}/${n}`, 1, `Dangling link "${n}" points at nothing.`, `Delete the dead link or restore its target.`);
+    } else if (isFile(path.join(abs, "SKILL.md"))) {
+      skills.push(n);
     }
   }
-  for (const n of listDirs(claudeSkillsDir)) {
-    const link = path.join(claudeSkillsDir, n);
-    const st = lstat(link);
-    if (st && st.isSymbolicLink() && !exists(link)) {
-      // already reported above if a Cursor twin exists
-      if (!cursorSkills.includes(n)) {
-        fail("skills", `.claude/skills/${n}`, 1, `Dangling link "${n}" points at nothing.`, `Delete the dead link or restore its target.`);
+  for (const n of skills) {
+    if (n in codexOnly) continue;
+    for (const dir of SKILL_LINK_DIRS) {
+      if (!lstat(path.join(root, dir, n))) {
+        fail("skills", `${dir}/${n}`, 1, `Skill "${n}" has no ${dir} entry.`,
+          `Run: ln -s ../../${SKILLS_HOME}/${n} ${dir}/${n} (or list "${n}" in codexOnlySkills in scripts/rules-drift-allow.json with a reason).`);
       }
-    } else if (st && st.isDirectory() && !st.isSymbolicLink() && !cursorSkills.includes(n) && !(n in realSkillFolders)) {
-      fail("skills", `.claude/skills/${n}`, 1, `Real skill folder "${n}" has no Cursor twin.`,
-        `Move it to .cursor/skills/${n}/ and link it (or list it in realSkillFolders with a reason).`);
     }
   }
+  for (const dir of SKILL_LINK_DIRS) {
+    for (const n of listNames(path.join(root, dir))) {
+      const abs = path.join(root, dir, n);
+      const st = lstat(abs);
+      const where = `${dir}/${n}`;
+      const want = `../../${SKILLS_HOME}/${n}`;
+      if (st.isSymbolicLink()) {
+        const target = fs.readlinkSync(abs).replace(/\/$/, "");
+        if (target !== want) {
+          fail("skills", where, 1, `Link points to "${target}", not "${want}".`, `Re-make the link: ln -sfn ${want} ${where}`);
+        } else if (!exists(abs)) {
+          fail("skills", where, 1, `Link "${where}" is dangling: ${SKILLS_HOME}/${n} does not exist.`,
+            `Restore ${SKILLS_HOME}/${n}, or delete this dead link.`);
+        }
+      } else if (st.isDirectory()) {
+        fail("skills", where, 1, `"${n}" is a real folder in ${dir}. That is a second copy of the skill.`,
+          `Put any edits into ${SKILLS_HOME}/${n}/ (the one home), move this folder to ops/archive/, then run: ln -s ${want} ${where}`);
+      }
+    }
+  }
+
+  // The skills that are ours: not third-party. Codex-only ones are ours but have no links, so no scan.
+  const ownSkills = skills.filter((n) => !thirdParty.has(n));
+  const scanSkills = ownSkills.filter((n) => !(n in codexOnly));
 
   // d. POINTERS ---------------------------------------------------------------
   const pointerFiles = [
     "CLAUDE.md", "AGENTS.md", "docs/rules/RULES-INDEX.md",
-    ...cursorRules.map((n) => `.cursor/rules/${n}.mdc`),
-    ...claudeRules.map((n) => `.claude/rules/${n}.md`),
-    ...cursorSkills.map((n) => `.cursor/skills/${n}/SKILL.md`),
+    ...rules.map((n) => `${RULES_HOME}/${n}.md`),
+    ...scanSkills.map((n) => `${SKILLS_HOME}/${n}/SKILL.md`),
   ].filter((f) => isFile(path.join(root, f)));
-  const ptrRe = /(?<![\w.~/-])(\.(?:cursor|claude)\/(?:rules|skills)(?:\/[A-Za-z0-9_.-]*)*)/g;
+  const ptrRe = /(?<![\w.~/-])(\.(?:(?:cursor|claude)\/(?:rules|skills)|ai\/rules|agents\/skills)(?:\/[A-Za-z0-9_.-]*)*)/g;
+  const bareHomes = new Set([".cursor/rules", ".claude/rules", ".cursor/skills", ".claude/skills", ".ai/rules", ".agents/skills"]);
   const pointerExempt = new Set(allow.pointerExempt || []);
   for (const f of pointerFiles) {
     read(path.join(root, f)).split("\n").forEach((line, i) => {
@@ -210,7 +280,7 @@ export function checkRules({ root = SCRIPT_ROOT, allow = {}, retired = [] } = {}
         if (line[m.index - 1] === "/" && line[m.index - 2] === "~") continue;
         if (pointerExempt.has(p)) continue;
         if (/[<*{]/.test(line[m.index + m[1].length] || "")) continue; // placeholder or glob
-        if (p === ".cursor/rules" || p === ".claude/rules" || p === ".cursor/skills" || p === ".claude/skills") continue;
+        if (bareHomes.has(p)) continue;
         if (!exists(path.join(root, p))) {
           fail("pointer", f, i + 1, `Names "${p}" but it does not exist.`,
             `Fix the path to a real file, or remove the line if the rule is gone.`);
@@ -227,52 +297,75 @@ export function checkRules({ root = SCRIPT_ROOT, allow = {}, retired = [] } = {}
   } else {
     const indexText = read(indexPath);
     const named = (n) => new RegExp(`(?<![\\w-])${n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\w-])`).test(indexText);
-    const allRules = [...new Set([...cursorRules, ...claudeRules])];
-    for (const n of allRules) {
+    for (const n of rules) {
       if (!named(n) && !(n in indexExempt)) {
-        const f = cursorSet.has(n) ? `.cursor/rules/${n}.mdc` : `.claude/rules/${n}.md`;
-        fail("index", f, 1, `Rule "${n}" is not in docs/rules/RULES-INDEX.md.`, `Add a one-line entry for "${n}" to docs/rules/RULES-INDEX.md in the right topic.`);
+        fail("index", `${RULES_HOME}/${n}.md`, 1, `Rule "${n}" is not in docs/rules/RULES-INDEX.md.`, `Add a one-line entry for "${n}" to docs/rules/RULES-INDEX.md in the right topic.`);
       }
     }
-    const allSkills = [...new Set([...cursorSkills, ...Object.keys(realSkillFolders)])];
-    for (const n of allSkills) {
+    for (const n of ownSkills) {
       if (!named(n) && !(n in indexExempt)) {
-        fail("index", `.cursor/skills/${n}/SKILL.md`, 1, `Skill "${n}" is not in docs/rules/RULES-INDEX.md.`, `Add "${n}" to the Skills list in docs/rules/RULES-INDEX.md.`);
+        fail("index", `${SKILLS_HOME}/${n}/SKILL.md`, 1, `Skill "${n}" is not in docs/rules/RULES-INDEX.md.`, `Add "${n}" to the Skills list in docs/rules/RULES-INDEX.md.`);
       }
     }
   }
 
-  // f. CLAUDE.md LINE ---------------------------------------------------------
+  // f. CLAUDE.md (short index) -----------------------------------------------
   const claudeMdPath = path.join(root, "CLAUDE.md");
-  const claudeMdExempt = allow.claudeMdLineExempt || {};
-  if (isFile(claudeMdPath)) {
+  if (!isFile(claudeMdPath)) {
+    fail("claudemd", "CLAUDE.md", 1, "CLAUDE.md is missing.", "Restore CLAUDE.md as the short index.");
+  } else {
     const claudeMd = read(claudeMdPath);
-    const inClaudeMd = (n) => new RegExp(`(?<![\\w-])${n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\w-])`).test(claudeMd);
-    const allRules = [...new Set([...cursorRules, ...claudeRules])];
-    for (const n of allRules) {
-      const cPath = path.join(cursorRulesDir, `${n}.mdc`);
-      const lPath = path.join(claudeRulesDir, `${n}.md`);
-      const text = isFile(cPath) ? read(cPath) : read(lPath);
-      const always = isFile(cPath) ? alwaysApply(text) : true;
-      if (!always) continue;
-      if (!/owner[- ]law|owner[- ]set/i.test(text)) continue;
-      if (inClaudeMd(n) || n in claudeMdExempt) continue;
-      fail("claudemd", isFile(cPath) ? `.cursor/rules/${n}.mdc` : `.claude/rules/${n}.md`, 1,
-        `Always-on owner law "${n}" is not named in CLAUDE.md.`,
-        `Add one short owner-set line to CLAUDE.md that ends "Same law: .cursor/rules/${n}.mdc and .claude/rules/${n}.md." (or list it in claudeMdLineExempt with a reason).`);
+    const claudeLines = claudeMd.split("\n");
+    if (!claudeMd.includes("docs/rules/RULES-INDEX.md")) {
+      fail("claudemd", "CLAUDE.md", 1, "CLAUDE.md does not name docs/rules/RULES-INDEX.md.",
+        "Add the path docs/rules/RULES-INDEX.md so the short file points at the full index.");
+    }
+    const foundHeadings = new Set();
+    claudeMd.split("\n").forEach((line) => {
+      const hm = /^(#{1,6})\s+(3a|3b|3c|\d+)\b/.exec(line);
+      if (hm) foundHeadings.add(hm[2]);
+    });
+    for (const h of CLAUDE_MD_HEADINGS) {
+      if (!foundHeadings.has(h)) {
+        fail("claudemd", "CLAUDE.md", 1, `CLAUDE.md is missing heading ${h}.`,
+          `Keep heading ${h} (0 to 12, including 3a, 3b, and 3c). Do not delete a numbered heading.`);
+      }
+    }
+    for (const named of namedClaudePaths(claudeMd)) {
+      const p = named.path.replace(/\/+$/, "");
+      if (!exists(path.join(root, p)) && !exists(path.join(root, named.path))) {
+        fail("claudemd", "CLAUDE.md", lineAt(claudeMd, named.index), `Names "${named.path}" but it does not exist.`,
+          "Fix the path to a real file, or remove the line if the path is gone.");
+      }
+    }
+    if (claudeLines.length > CLAUDE_MD_MAX_LINES) {
+      fail("claudemd", "CLAUDE.md", CLAUDE_MD_MAX_LINES + 1,
+        `CLAUDE.md is ${claudeLines.length} lines; the cap is ${CLAUDE_MD_MAX_LINES}.`,
+        "Keep CLAUDE.md as a short index. Move law text into .ai/rules. Do not delete a numbered heading.");
+    }
+  }
+  const agentsMdPath = path.join(root, "AGENTS.md");
+  if (isFile(agentsMdPath)) {
+    const agentsLines = read(agentsMdPath).split("\n");
+    if (agentsLines.length > AGENTS_MD_MAX_LINES) {
+      fail("claudemd", "AGENTS.md", AGENTS_MD_MAX_LINES + 1,
+        `AGENTS.md is ${agentsLines.length} lines; the cap is ${AGENTS_MD_MAX_LINES}.`,
+        "Keep AGENTS.md as a short shared contract. Do not tighten this cap.");
     }
   }
 
   // g. RETIRED WORDS ----------------------------------------------------------
   const quoteContext = /❌|\bnever\b|^\s*(?:[-*>|]\s*)*(?:\*\*)?(?:do not|don't)\b|\b(?:retired|removed|dead|superseded|no longer|banned|obsolete|replaced)\b/i;
   const neverHeading = /^#{1,6}\s*(?:never|banned|do not)\b/i;
+  const defaultScope = [...DEFAULT_RETIRED_PATHS, ...scanSkills.map((n) => `${SKILLS_HOME}/${n}`)];
+  const scanCache = new Map();
   for (const entry of retired) {
     const re = new RegExp(entry.regex, entry.flags ?? "i");
-    const scope = entry.paths || DEFAULT_RETIRED_PATHS;
+    const scope = entry.paths || defaultScope;
     const allowLines = (entry.allow || []).map((a) => ({ file: a.file, line: a.line ? new RegExp(a.line, "i") : null }));
-    const files = [...new Set(scope.flatMap((p) => walkText(path.join(root, p))))].sort();
-    for (const abs of files) {
-      const f = rel(root, abs);
+    const key = scope.join("|");
+    if (!scanCache.has(key)) scanCache.set(key, realTextFiles(root, scope));
+    for (const { abs, rel: f } of scanCache.get(key)) {
       let heading = "";
       read(abs).split("\n").forEach((line, i) => {
         if (/^#{1,6}\s/.test(line)) heading = line;

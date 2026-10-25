@@ -1,1 +1,1 @@
-Ad scripts (83) and VSLs from 2026-09-02 live in the Claude chat outputs as fundhub-scripts.md and fundhub-vsl.md until Chris drops them here.
+Dated batches are `YYYY-MM-DD.md`. The compiled history is `ALL-SCRIPTS-since-2026-09-02.md` and `ALL-ADS-since-2026-09-03.md` (2026-10-03).

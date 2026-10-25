@@ -2,8 +2,6 @@
 
 **Owner:** Chris  
 **Channel:** SMS via Twilio  
-**Status note (2026-08-14):** Twilio must be **proven Monday** before it is the approved live path. Until then, treat every live send as a careful test only.
-
 ---
 
 ## Trigger
@@ -11,8 +9,7 @@
 Use this when:
 
 - A client needs a text and the app is not sending SMS yet, **or**
-- A client texts in and you must answer by hand, **or**
-- You are proving Twilio on the approved Monday check.
+- A client texts in and you must answer by hand.
 
 Do **not** use this to drain old queued messages in bulk.
 

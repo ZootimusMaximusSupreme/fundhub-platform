@@ -30,3 +30,6 @@ scripts/tmp/
 
 # This cleanup's own data dump
 ops/workflows/repo-restructure-2026-10-01/*.tar.gz
+
+# This cleanup's archived instruction copies
+ops/archive/ai-instructions-2026-10-24/

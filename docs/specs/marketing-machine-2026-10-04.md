@@ -22,7 +22,7 @@ Two files make up the spec:
 - **Target:** Chris films 10 ads in one session. By that evening, all 10 are cut, captioned, animated and waiting for his approval, and the approved ones load into Meta with one tap.
 - **Chris's whole job:** film, and do a bit of editing when it's needed. The machine does the rest, and every decision stays his.
 
-**Top rule.** Chris's word beats any written rule. Rules guide the machine, and nobody reads them so literally that they block what Chris asked for. When Chris says something different, his words win and the rule gets updated in all three homes in the same change: the CLAUDE.md line, `.claude/rules/<name>.md`, and `.cursor/rules/<name>.mdc` (law: `.claude/rules/rules-for-claude-and-cursor.md`).
+**Top rule.** Chris's word beats any written rule. Rules guide the machine, and nobody reads them so literally that they block what Chris asked for. When Chris says something different, his words win and the rule gets updated in its one home in the same change (law: `.ai/rules/rules-no-drift.md`).
 
 ## Contents
 
@@ -1690,7 +1690,7 @@ Chris did all of this from the Teleprompter app and the Command Center. His only
 43. Green screen and Notes ads are bullet cues. No internal labels like "Payoffs."
 44. Long ads keep every point Chris gave. Never cut them down.
 
-*Note for the writer: rules 39 and 42 describe the words style. Since Chris's 10/4 plan, standard ads default to the bullets style in Appendix B.*
+*Note for the writer: rules 39 and 42 describe the words style. Teleprompter scripts are full flowing sentences in paragraphs (Part 0 rule 39, 2026-10-05). Bullets are for Notes and green-screen cue ads only (Part 0 rule 43).*
 
 ---
 
@@ -1702,17 +1702,15 @@ Chris did all of this from the Teleprompter app and the Command Center. His only
 - **Style:** dollar amounts as numerals, Fundhub with a lowercase h, no em dashes.
 - **Meta copy:** the first line of the primary text works before "See more", the headline is 40 characters or fewer, and the same rules apply.
 
-**Standard ad (bullets by default)**
-- **Length:** about 1 minute spoken.
+**Standard ad (full flowing sentences in paragraphs)**
+- **Length:** about 1 minute spoken (about 150 words).
 - **Hook:** an insight they don't know, word for word.
 - **Line 2:** an open loop, word for word.
-- **Middle:** 3–8 short cues of 12 words or fewer.
+- **Middle:** the body in full sentences.
 - **Reveal:** pays off the loop, never announced, word for word.
 - **CTA:** its own for each ad, word for word. Book-a-call ads never say a price.
 - **Intro:** follows rule 31.
 - **Animations:** at least 2.
-
-**Words-style standard ad:** the same parts, written as full sentences, about 150 words.
 
 **Sorting-hat short (words)**
 - 115–125 words, no intro.
@@ -1722,10 +1720,8 @@ Chris did all of this from the Teleprompter app and the Command Center. His only
 **Long ad (words)**
 - Every point Chris gave, in his order and in his words. Never trimmed.
 - Model it on `marketing/ads/reference/ad-scale-without-your-own-cash-2026-10-04.md` and its "how it was built" steps.
-- Animations for each number, step and comparison. That ad needs 3 new templates (check RatesRising first):
+- Animations for each number, step and comparison. RatesRising and MoneyClimb are already in `marketing/broll/catalog.json`. That ad still needs one template:
   - spend → data → better ads
-  - $10K, $20K and $50K a month, climbing to $100K
-  - rates going up while banks lend less
 
 **Notes and green screen (bullets)**
 - Cues he freestyles from, with no internal labels.

@@ -1,0 +1,1 @@
+../../.ai/rules/ground-rules.md

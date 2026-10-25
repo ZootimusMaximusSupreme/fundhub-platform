@@ -2,7 +2,7 @@
 
 Chris: make the animations only. **Nothing is laid over any video yet.** Each animation is a clean, see-through (PNG-style, alpha) clip that can be laid over the edited videos later.
 
-Pipeline (Chris, 2026-10-22): film in BigVU → Submagic edits and adds captions → Chris downloads → we add the animations. So every animation must stay clear of the captions.
+Submagic does captions and clean audio only. Eye contact is not done until Chris says an agent may drive the Submagic app.
 
 Builders: Opus 5.5, high effort, one per unit, each in its own git worktree. This session merges.
 

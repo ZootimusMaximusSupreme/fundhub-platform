@@ -1,11 +1,9 @@
 # Fundhub Prompter iPhone app — build spec (owner-set 2026-10-10)
 
-**Status: paused.** Chris: the web teleprompter works fine for now. When the app goes out he
-pays the $99 Apple developer account and this gets built. Nothing here is started.
+**Status: in progress.** See `ops/workflows/two-ios-apps-launch-2026-10-16.md`.
 
 **Owner call 2026-10-13:** 30 fps on the front camera is fine for now; leave the web page as it is.
-Chris pays the $99 Apple developer account at the end of this week. The app is the path to 60 fps
-on the front camera: Safari only offers it at 30 on his iPhone 17 Pro Max (proof on
+The app is the path to 60 fps on the front camera: Safari only offers it at 30 on his iPhone 17 Pro Max (proof on
 `ops/workflows/teleprompter-video-2026-10-12.md`), and the app asks the camera for its 60 fps format directly.
 
 ## Why the app is needed
@@ -49,9 +47,7 @@ Today that step only changes the speed. It has to walk the ladder instead.
 
 ## Owner steps (only Chris can do these)
 
-1. Pay for the Apple developer account ($99 a year). Without it the app has to be put back on
-   the phone by cable every 7 days.
-2. Plug the phone in once, or accept the TestFlight invite.
+1. Plug the phone in once, or accept the TestFlight invite.
 
 ## Open decisions
 

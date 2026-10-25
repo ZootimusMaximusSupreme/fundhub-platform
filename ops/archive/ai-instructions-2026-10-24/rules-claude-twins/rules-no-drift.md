@@ -1,0 +1,28 @@
+# Rules never drift
+
+**Owner law (2026-10-24):** Rules had drifted. Two rules said opposite things, files named things that were gone, and many rules lived in only one home. Chris ordered them organized and fixed. This keeps them that way.
+
+## Always
+
+When Chris sets a new rule, or changes an old one, do all of this in the same change:
+
+1. Write the rule in both homes: `.cursor/rules/<name>.mdc` (with `alwaysApply: true`) and `.claude/rules/<name>.md`, same words (`rules-for-claude-and-cursor`). A rule that is only for Cursor must say so, and the index must list it as Cursor-only on purpose.
+2. Search every rule, skill, board and CLAUDE.md or AGENTS.md line for words that say something different. Rewrite each one to match the newest owner-set line, or replace it with a one-line pointer to it. The newest owner-set line wins. Never delete or soften an owner law to make two lines agree.
+3. Add the short owner-set line to CLAUDE.md in the unnumbered owner area. Do not renumber sections.
+4. Add the rule to `docs/rules/RULES-INDEX.md` under its topic.
+5. If the call came from a chat and lives only in memory, it is not done until it is in the repo.
+
+## Never
+
+- Add a rule and leave an older line that says the opposite.
+- Add a rule to one home only.
+- Leave a rule out of the index.
+
+## Example
+
+```text
+Ask: "From now on, never say round two."
+
+❌ Add one new rule file and stop. The ad rules still say "round two".
+✅ Add the rule in both homes, rewrite every older line that says it, add the CLAUDE.md line, add the index row.
+```

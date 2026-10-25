@@ -1,13 +1,13 @@
 ---
 name: fundhub-system-map
 description: >-
-  Discovery-only index of how FundHub actually works. Use before claiming a
+  Discovery-only index of how Fundhub actually works. Use before claiming a
   journey PASS, e2e done, call sequence, or “we tested it.” Read
   ops/workflows/system-map-2026-08-26.md. Forbids desk-load, API-write, and
   0.13s Bland as sequence. Does not fix product code.
 ---
 
-# FundHub system map (discovery only)
+# Fundhub system map (discovery only)
 
 You find the real order. You do not fix the app.
 
@@ -20,14 +20,14 @@ You find the real order. You do not fix the app.
 3. Walk **live fire** (`src/workflows/`) for that path. Editor trees in `src/journeys/seed-journeys.mjs` are the story, not proof.
 4. Voice agents: load `.cursor/skills/fundhub-agent-tester/SKILL.md`. Use the **live** Agent Editor prompt. Count letters. A short stub that is “ready” still beats a long unused file on disk.
 
-## Instant FAIL (tonight’s lies)
+## Instant FAIL
 
 - Desk or page **loaded**
 - One API write (play name, expected inquiry, KPI JSON)
 - Bland call **under ~8 seconds** (0.13s is FAIL)
 - Funded tile **0** while `funding_rounds` has funded rows
 - Intended file has **no talk order** and you still score sequence PASS
-- Live AG-04 is 169 letters; vendor Josh is 3,750 and unused — do not roleplay the disk file and call production done
+- Live AG-04 is 169 letters; vendor Josh is 3,750 and unused (measured 2026-08-26; re-measure before quoting) — do not roleplay the disk file and call production done
 
 ## If intended has no talk / event list
 

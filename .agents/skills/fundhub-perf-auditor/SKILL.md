@@ -9,9 +9,9 @@ Read-only. Findings only. Ground truth is `docs/rules/PERF-STANDARDS.md`. Same d
 
 ## Prime rules
 
-1. READ-ONLY on app/config/env/tests. No fixes, no commits, no branches.
+1. READ-ONLY on app/config/env/tests. No fixes and no app-code changes; commit your board and evidence files like any session.
 2. **Every finding cites a number.** Lighthouse score, a metric value, or a specific network waterfall entry with its size and blocking time. "Feels slow" is not a finding.
-3. Measure on **mobile emulation, Slow 4G, 4x CPU throttle**. Desktop-on-wifi numbers are not evidence. Run each page 3 times, report the median — single runs are noise.
+3. Law: PERF-STANDARDS section 1 (docs/rules/PERF-STANDARDS.md) - measure on mobile, Slow 4G, 4x CPU, never desktop on wifi. Run each page 3 times, report the median — single runs are noise.
 4. Test the LIVE site. Localhost has no network latency and will lie.
 5. Save the full Lighthouse JSON + HTML report per page to the evidence folder. The board cites paths.
 
@@ -38,7 +38,7 @@ Funnel pages first — they cost money per visitor. CRM screens second. Rank all
 ## Workflow
 
 1. Funnel: apply.fundhub.ai/watch, apply, book, thank-you.
-2. CRM: the 39 screens in public/app/, logged in per primary role.
+2. CRM: every screen in public/app/ (count them first; do not quote a number), logged in per primary role.
 3. Board: `ops/workflows/perf-audit-<date>.md`. Evidence: `ops/workflows/perf-audit-evidence/<page>/`.
 4. Pattern findings (same cause across many pages — e.g. one blocking font, inline styles everywhere) get ONE row listing affected pages.
 5. Fan out in groups. Stop when the board is written.

@@ -262,7 +262,7 @@ take and not publishing it; there is now only the route that publishes nothing,
 so there is no switch to get wrong.
 
 Set on Netlify 2026-09-22 (production, deploy-preview, branch-deploy):
-`DRIVE_RAW_FOLDER_ID` (the new "Raw" folder inside SLO Ads — takes land there),
+`DRIVE_RAW_FOLDER_ID` (Law: slo-one-filmed-folder (.ai/rules/slo-one-filmed-folder.md) - this is the SLO Ads root `13ZOjA56MNuM-PHSRK5fQK0bovRwR8raZ`; there is no separate Raw inbox),
 `DRIVE_PAUL_FOLDER_ID` (the existing `paul-submagic` folder, reused so finished
 work has one home and not two), `SUBMAGIC_WEBHOOK_URL`
 (`https://fundhub.ai/api/webhooks/submagic`) and `NTFY_TOPIC`, stored

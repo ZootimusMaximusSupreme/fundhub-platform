@@ -1,13 +1,13 @@
 # ClickFunnels setup — Chris checklist (plain English)
 
+**Old. Agents do this through the API (chris-never-clickfunnels).**
+
 **Goal:** Make every survey answer land in FundHub under the `cf_svy_*` keys we already built.  
 **Live survey copy:** `docs/clickfunnels/cf-survey-ground-truth.md` (apply.fundhub.ai).  
 **Keys we use in the database / homepage:** same list as RUN5 board.
 
 **Already done on our side:** migration `163` on prod · typed columns exist · `src/survey/cf-question-map.mjs` + homepage widget use these `cf_svy_*` keys.  
-**Still on you in ClickFunnels:** Contact Attributes (Parts A–B) + webhook. No negatives question.
-
-When finished, reply in chat: **`attributes set`**
+Agents set Contact Attributes (Parts A–B) and the webhook through the API. No negatives question.
 
 ---
 
@@ -88,5 +88,5 @@ Source of truth for question titles/options: docs/clickfunnels/cf-survey-ground-
 Attribute keys (exact): docs/clickfunnels/OWNER-CF-SETUP-CHECKLIST.md Parts A–B (no has_negatives)
 Webhook: https://fundhub.ai/api/webhooks/clickfunnels (POST). Secret already on Netlify as CLICKFUNNELS_WEBHOOK_SECRET — do not rotate.
 
-Walk Chris click-by-click through: create attributes → map each survey question → verify webhook. Do **not** add a negatives question. Stop when he can reply "attributes set".
+Create attributes, map each survey question, and verify the webhook through the API. Do **not** add a negatives question.
 ```

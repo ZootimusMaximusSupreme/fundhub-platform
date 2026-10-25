@@ -156,7 +156,7 @@ Proof the three funnel videos are live: our own watch counter (`vsl_watch_sessio
 
 ## 11. Angles, hooks and loop payoffs already used
 
-The short list the six new ads were checked against. Full version: the board's Brief, section B6 (`ops/workflows/ad-scripts-2026-10-02.md`).
+The short list the six new ads were checked against. Full version: the board's Brief, section B6 (`ops/archive/ai-instructions-2026-10-24/ops/workflows/ad-scripts-2026-10-02.md`).
 
 - **$297 locked:** full offer read · declined and nobody told you why (loop paid off: "I'll tell you exactly why") · what your file is worth (paid off: "I'll tell you what yours is worth") · one card holding the file down (paid off: which card and the balance) · two sides of the file (paid off next sentence: personal and business) · you already know your file decides funding (paid off: the gap is a couple hundred thousand) · the call that was never a roadmap (paid off: "the roadmap was never the product") · abandoned cart (four questions, the $11,000 first round).
 - **$297 shorts:** tired of people who don't know · gatekeeping · worth two or three hundred vs fifty · declined · call was a pitch · one card · ten years in a $297 package.

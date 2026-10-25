@@ -7,9 +7,12 @@ Use this when Chris wants **ad copy**, not a repo audit.
 
 ---
 
+## Section 0
+
+Give the one-line section 0 answer; no board, no extra prompts.
+
 ## Do not load
 
-- `CLAUDE.md` section 0 (no split, no workflow board, no parallel prompts)
 - Journeys, CRM desks, `src/`, pulse registry, or `npm test` for the whole repo
 - Creative Factory unless Chris asked to **save** a script into the CRM (that screen is heavy and runs DB compliance later)
 
@@ -20,7 +23,7 @@ Use this when Chris wants **ad copy**, not a repo audit.
 1. **`marketing/ads/RULES.md`** — Part 0 (Chris's rules) first, and it wins over everything else; then hard no's, word counts, three ad shapes (cold / VSL / evergreen).
 2. **`marketing/ads/VOICE.md`** — how Chris actually talks (before/after pairs).
 3. **`marketing/ads/slo/fundhub-297/INDEX.md`** — which ad numbers are **already written**. Open **one** pack file for the id Chris named. **Do not regenerate** a locked script.
-4. **`marketing/ads/CONTROLS.md`** — five live ads, **locked**. Match voice; never change their words. Where their wording breaks RULES.md Part 0, Part 0 wins for new ads.
+4. **`marketing/ads/CONTROLS.md`** — locked controls (filmed August 2026). Match voice; never change their words. Where their wording breaks RULES.md Part 0, Part 0 wins for new ads.
 
 **Optional — only if Chris named a lane, concept, or new angle:**
 
@@ -37,10 +40,7 @@ Do **not** open `marketing/ads/README.md` old shoot workflow first — that path
 
 ## Ad identity (tracking)
 
-- **`utm_content`** = leading **digits** = ad id. Optional `-slug` after (`43-ringlights` → ad **43**). Slug is for humans; reports use the number.
-- Database: `fundhub_ad_id()` in `db/migrations/286_client_ad_attribution.sql` (same rule).
-- **`src/ads/store.mjs`** stores raw UTMs only; `ad_id` is computed in Postgres — agents do not reimplement this in copy.
-- **Titles are optional.** Never block work because a title is blank. Never invent a title — only Chris names ads.
+Law: ad-naming (.ai/rules/ad-naming.md) - ads are found by the leading digits of utm_content; titles are optional; only Chris names an ad.
 
 ---
 

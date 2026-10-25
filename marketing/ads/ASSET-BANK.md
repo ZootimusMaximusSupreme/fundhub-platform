@@ -31,7 +31,7 @@ are ours. Ad copy follows Part 0.
 | Repair test run (first round) | **$200** | yes |
 | UnderwriteIQ Deliverables Package | **$1,000–$5,000** | yes |
 | Funding Mastery (A–Z course) | **$5,000** | yes |
-| White-label partner program | $10,000 | **NOT LED WITH — next month, 2 concepts max** |
+| White-label partner program | $10,000 | **NOT LED WITH — 2 concepts max** |
 
 The $3,000 is a **deposit on the system**, not a fee for labour, and it **counts toward** the 10% —
 it is not extra on top. **Funding is cash. It does not finance.** That part is not in dispute.
@@ -62,7 +62,7 @@ The offers stack so the sort is easy. Nobody gets turned away, they get routed.
 | **Funded** | Clean file, real income | Funding DFY $3,000 + 10% |
 | **Fixed** | Negatives blocking the file | Repair $1,000, or the $200 trial |
 | **Educated** | Wants to run it themselves, or can't afford DFY | UWIQ pack $1,000–$5,000, Funding Mastery $5,000 |
-| **Their own company** | Wants to run a funding business | White-label $10,000 — *not yet, next month* |
+| **Their own company** | Wants to run a funding business | White-label $10,000 |
 
 **Not every ad is a Sorting Hat ad.** Most lead with one door. The Sorting Hat ads are the wide-net
 ones that say "you might not even need funding" and let the call decide.
@@ -318,7 +318,7 @@ From the controls, which are working at $32–36 a booked call. Don't drift from
 - **Absolution.** *"That's not on you."* The system failed them.
 - **The refusal.** *"I know there are a lot of people in this space who will tell you whatever you
   want to hear to get you on a call. We're not going to do that."*
-- **Same close, every time.** No hard inquiry. No obligation. Nothing moves until you say so.
+- **Write each ad's close fresh.** Do not copy one close into every ad (`ad-no-recycled-lines`, 2026-10-15).
 - **Never sound like an AI wrote it.** Plain, structured, natural. If a sentence needs a second read,
   rewrite it.
 

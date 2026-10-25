@@ -1,0 +1,1 @@
+../../.ai/rules/no-test-data-on-production.md
