@@ -20,3 +20,4 @@
 [x] codex/crm-reconcile-scan-39166186746 — REDONE. Tip f5b78e75c. Same README blob 5a99b64e98242a144d2c389d91bd8fcb738df64e and report blob db3a4620867124504ac15576809bf8f7c4864232 as the merged codex/crm-reconcile-scan. Not merged.
 [x] codex/crm-reconcile-scan-39167073054 — REDONE. Tip 7311f09ff. Same README blob 5a99b64e98242a144d2c389d91bd8fcb738df64e and report blob db3a4620867124504ac15576809bf8f7c4864232 as the merged codex/crm-reconcile-scan. Not merged.
 [x] codex/recover-contracts — REDONE. Tip b2636b966. Older layout. Every file it changes already exists (4 files, 0 missing). Not merged.
+[x] codex/recover-csm-queue — REDONE. Tip 9c6363485. Older layout. Every file it changes already exists (4 files, 0 missing). Not merged.
