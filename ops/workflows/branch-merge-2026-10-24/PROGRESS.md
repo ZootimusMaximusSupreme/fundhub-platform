@@ -66,3 +66,4 @@
 [x] codex/company-app-funnel-download — SKIP. LEFT. Tip 266300f1e. Adds public/funnel/fundhub-app-download.js and .json, but the thank-you footer change conflicts and would drop the prompter download script. Not merged.
 [x] fix/display-lane-time — SKIP. LEFT. Tip 0746a454a. Changes the morning brief and gap-catalog-display. Every file already exists. Not merged.
 [x] codex/heartbeat-customer-journey-d — SKIP. LEFT. Tip a4e0ed2c2. Merges clean but changes src/handlers/comms.mjs, meet-transcript-sweeper, repair-bureau-response, and a public leads page. Not merged.
+[x] codex/outreach-network-diagnosis — SKIP. LEFT. Tip c058dd761. Two GitHub workflow files that only run on push to the branch name codex/outreach-network-diagnosis. That name must not be pushed. Not merged.
