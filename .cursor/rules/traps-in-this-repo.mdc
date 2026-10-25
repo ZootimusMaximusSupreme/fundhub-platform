@@ -1,0 +1,1 @@
+../../.ai/rules/traps-in-this-repo.md

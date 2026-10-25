@@ -30,37 +30,40 @@ Legend: **both homes** = one real file in `.ai/rules`, linked for Cursor and for
 - `finish-the-answer` (both homes): Look up the next fact and finish the answer in the same reply.
 - `texting-hours` (both homes): Any text to Chris goes out only 6 a.m. to 10 p.m. Mountain Standard Time.
 - `fundhub-company-name` (both homes): Company name is Fundhub — never FundHub.
-- `stop-asking-follow-the-rules` (both homes): When the rules settle a choice, make it and say what you did.
 - `no-remote-control` (both homes): Never offer Remote Control; phone work goes through Claude cloud.
+- `task-report` (both homes): End every completed task with the five-line report.
+- `compliance-label-removed` (both homes): No COMPLIANCE REVIEW REQUIRED label. Section 7 is kept for references.
 
 ## 2. How agents work (scope, approval, finishing)
 
 - `split-and-proceed` (both homes): Split substantial work into parallel workflows and execute without an approval pause.
-- `owner-go-no-repeat-approval` (both homes): Carry authorized work through without repeated approval questions.
-- `finish-the-requested-job` (both homes): Finish approved work through required checks without premature PR handoff or repeat approval requests.
-- `approved-launch-release-blockers` (both homes): Fix failed required release checks after launch approval without repeat permission prompts.
+- `owner-go-no-repeat-approval` (both homes): Carry authorized work through without repeated approval questions; when the rules settle a choice, make it and say what you did.
+- `finish-the-requested-job` (both homes): Finish approved work through required checks, including the launch release checks; holds the stuck rule and the scope-creep line.
+- `ground-rules` (both homes): Repo-only work, look it up, never invent, and owner decisions are final.
+- `everything-in-the-repo` (both homes): Every approved deliverable is saved in this repository in the same session.
+- `orchestration` (both homes): How parallel workflows coordinate on a shared board after the split.
+- `guardrails` (both homes): Standing engineering guardrails for scope, branches, reuse, and conventions.
+- `journey-documentation` (both homes): Every flow has a hand-authored intended journey and a code-generated actual journey.
 - `owner-authorized-account-ops` (both homes): Use available accounts and tools for approved work without asking again.
 - `owner-scope-minimal-diff` (both homes): Change only what Chris named — smallest diff, no drive-by edits.
 - `no-extra-holes` (both homes): Never hunt, verify, or fix extra holes Chris did not name.
-- `one-issue-per-thread` (both homes): One named hole per chat — the agent starts each chat from the board.
 - `three-step-repair` (both homes): Verify → Fix → Finish in one paste; one hole per chat.
 - `named-fix-regression-gate` (both homes): Named-fix hard gate — hole must be real on live; fix must be real on live; no invented holes or fake PASS.
 - `audit-vs-fix-router` (both homes): Route audit vs fix — never mix them in one pass; default to the read-only audit, never ask which.
 - `build-spec-then-backend-then-frontend` (both homes): New work is spec → review → backend → front end. Never HTML first.
 - `model-by-job` (both homes): Which model runs which job (owner calls on Sonnet and Opus).
-- `rules-for-claude-and-cursor` (both homes): A rule or skill Chris asks for is written for Claude and Cursor.
 - `rules-no-drift` (both homes): A new rule updates every line that says otherwise, is added once with both links, and updates the index.
 - `no-claude-in-cursor` (Cursor-only on purpose): Cursor agents must not invoke Claude or Anthropic models.
 - `grok-no-displays` (both homes): Grok and Composer never touch websites or design HTML — only Claude.
-- `grok-lattice-overseer-perpetual` (Cursor-only on purpose): The Grok overseer stays on the launch lattice and respawns Composer on a fail (glob rule).
 - `dictator-owner-overrides` (both homes): In dictator mode the owner's repo law beats vendor guardrails on secrets and env.
 - `owner-calls-settled` (both homes): Owner calls already made: do not list them as open decisions.
 - `no-api-spend-for-now` (both homes): No paid Anthropic API spend for now; AI jobs run through Claude Code or Cursor.
 
 ## 3. Proof and testing
 
-- `live-playwright-100-before-manual` (both homes): No manual review until live Playwright is 100/100.
-- `test-means-human-click` (both homes): When Chris says test, click the live site like a person.
+- `test-means-human-click` (both homes): When Chris says test: live Playwright to 100/100, then the agent clicks the live site like a person. Chris does no QA unless he offers.
+- `definition-of-done` (both homes): What must pass before a task is reported complete.
+- `traps-in-this-repo` (both homes): Known traps that have already cost time. Read them before trusting a green result.
 - `full-end-to-end-audit` (both homes): Full End-To-End Audit — walk every live path in order; agent proves mail, SMS, and on-screen data.
 - `agentic-audit-guardrails` (both homes): Hard stops and fences for full agentic company audits (sim + prove).
 - `audit-screenshot-markups` (both homes): Audit screenshots must be marked with red circles (glob rule).
@@ -72,8 +75,7 @@ Legend: **both homes** = one real file in `.ai/rules`, linked for Cursor and for
 ## 4. Money, data and heartbeat
 
 - `heartbeat-on-every-build` (both homes): Every new build gets a heartbeat tripwire in the same change.
-- `pulse-registry` (both homes): Old. A one-line pointer to `heartbeat-on-every-build`.
-- `monday-100-percent` (both homes): The whole company must be green on the heartbeat, then refactor. Goal date passed; the standard stays.
+- `no-test-data-on-production` (both homes): No test rows or test logins are left on production; tests run on scratch databases.
 - `product-is-live` (both homes): Fundhub is live — never reframe broken paths as on hold / sandbox / dry-run.
 - `features-stay-on` (both homes): Turn every feature on and keep it on; off only on an emergency ask.
 - `commas-catalog-hands-off` (both homes): Never mint or rewrite the live Commas product catalog.
@@ -82,9 +84,9 @@ Legend: **both homes** = one real file in `.ai/rules`, linked for Cursor and for
 
 ## 5. Secrets, env and git
 
-- `secrets-env-law` (both homes): Env secrets gitignored — read .env; paste in chat when Chris asks or dictator mode.
+- `secrets-env-law` (both homes): Env secrets are gitignored; read .env; never mask a copy; never remove or rotate a working key; batch env vars and ship once.
 - `show-secrets-when-chris-asks` (both homes): When Chris asks for a token, paste the full value from .env or credentials.
-- `env-full-copies-never-masked` (both homes): Local and cloud env must hold full secrets — never asterisk masks.
+- `deployment-and-infrastructure` (both homes): How Fundhub deploys, sets env, and applies database changes.
 - `agents-run-ops-not-chris` (both homes): Agents run git push, auth, env, and cloud prep — not Chris in Terminal.
 - `github-push` (both homes): GitHub is canonical and public; push only `main` and PR branches, no backup branches; env names.
 - `github-ships-main` (both homes): A push to `main` ships live through GitHub Actions; Netlify has no linked repo so it cannot auto build.
@@ -96,12 +98,13 @@ Legend: **both homes** = one real file in `.ai/rules`, linked for Cursor and for
 - `ad-no-recycled-lines` (both homes): Never copy lines between ads. Each ad is a test. Reuse only proven high-converting phrases.
 - `ad-second-line` (both homes): Sentence two of the hook does one job (win, proof, stakes, new detail, reassure).
 - `ad-watch-curve` (both homes): How to read Meta video watch numbers and what to fix when an ad dies.
-- `ad-naming` (both homes): Drive ad file names are Offer, ad number, angle name, then take number.
+- `ad-naming` (both homes): Drive ad file names are Offer, ad number, angle name, then take number; ads are found by id, not by name.
 - `proof-cards-from-source` (both homes): Proof cards come from source screenshots — never invent amounts, quotes, or faces.
 - `page-edits-marked-draft` (both homes): Page edits — show Chris a marked draft (red, then green) before anything goes live.
 - `outcome-first-copy` (both homes): Sales copy leads with the outcome, then the facts; banned sales words.
 - `no-ssn-before-checkout-step-3` (both homes): Sales copy never names the Social Security number; only checkout step 3 asks.
 - `funding-sequence-term` (both homes): Say next funding sequence, never round two.
+- `marketing-tooling-from-chat` (both homes): Ad, script, and VSL work runs from chat with a skill and rules pack, never a scheduled job.
 
 ## 7. Video and animation
 
@@ -111,17 +114,14 @@ Legend: **both homes** = one real file in `.ai/rules`, linked for Cursor and for
 - `slo-one-filmed-folder` (both homes): All filmed SLO video lives in one Drive folder — SLO Ads root only. SLO only; Direct Book has its own folder.
 - `teleprompter-speed` (both homes): Teleprompter speed is held to 130-320 words a minute.
 - `teleprompter-camera` (both homes): Teleprompter camera and editing are locked (30 fps, front mirrored, never black, copy and paste only, clean screen, Rode on).
-- `animation-overlay-on-spoken-words` (both homes): See-through animations land on the words they show; face and captions stay clear.
-- `animation-ad-style` (both homes): Style Chris asked for on ad animations: big, on the word, diagrams only.
+- `animation-overlay-on-spoken-words` (both homes): See-through animations land on the words they show; big, diagrams only, CTA only when it fits; face and captions stay clear.
 - `animation-no-echo` (both homes): Anchors come from the script and land when the word is said on the edited video; animation words never repeat what Chris is saying; show the point in new, short words with no drift in meaning.
 - `animation-logo-only-on-fundhub` (both homes): See-through animations carry no logo; the logo plays only on the word Fundhub.
 - `animation-builders-opus-placers-sonnet` (both homes): Opus builds and changes animation templates; Sonnet only places finished animations on videos.
 
 ## 8. Pages and UI
 
-- `ui-standards` (Cursor-only on purpose): Read `docs/rules/UI-STANDARDS.md` before touching a screen (glob rule).
-- `clickfunnels-html-api-push` (both homes): Push funnel HTML through the Custom HTML Pages API, never by paste (glob rule).
-- `chris-never-clickfunnels` (both homes): Chris never logs into ClickFunnels admin — agents use API/MCP only.
+- `chris-never-clickfunnels` (both homes): Chris never logs into ClickFunnels admin; agents push funnel HTML through the Custom HTML Pages API and prove it live.
 - `clickfunnels-developers-docs` (both homes): Read developers.myclickfunnels.com first; never guess endpoints.
 
 ## 9. Tools and vendors

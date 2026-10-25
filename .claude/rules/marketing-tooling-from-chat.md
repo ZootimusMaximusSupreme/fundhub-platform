@@ -1,0 +1,1 @@
+../../.ai/rules/marketing-tooling-from-chat.md

@@ -1,0 +1,1 @@
+../../.ai/rules/everything-in-the-repo.md
