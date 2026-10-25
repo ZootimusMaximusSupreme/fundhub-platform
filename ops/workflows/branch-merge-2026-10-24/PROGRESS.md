@@ -1,1 +1,2 @@
 [x] weekend-launch-plan — MERGED. Tip 3c19dc665, 4 commits ahead. 53 docs and screenshots, all missing on main, merge clean. Lint passed: 4305 files parse clean. No node test covers these files.
+[x] backup/dashboard-ux-polish-2026-10-21 — MERGED. Tip 6a95c7820, 1 commit ahead. Three ops notes, merge clean. Lint passed: lint: 4305 file(s) and inline script(s) parse clean. No node test covers these notes.
