@@ -45,7 +45,7 @@ Most recent **completed green tests** on `main`: success @ `d147c7630a8fad0b6203
 
 ## Stashes
 
-39 stashes inventoried; not cleared. See `ops/workflows/git-stash-inventory-2026-10-25.md`.
+**2026-10-25:** All 39 local stashes cleared with `git stash clear` (see `ops/workflows/git-stash-inventory-2026-10-25.md`).
 
 ## Ops commit from this cleanup
 

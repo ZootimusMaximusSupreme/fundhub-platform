@@ -1,6 +1,12 @@
 # Git stash inventory — 2026-10-25
 
-**Count:** 39 stashes
+## Cleared 2026-10-25
+
+Chris wanted clutter gone; **39** stashes removed with `git stash clear`. Main on GitHub unchanged (ops note commit only).
+
+---
+
+**Count (before clear):** 39 stashes
 
 **Oldest (by reflog date):** `stash@{38}` — 2026-10-05 14:23:02 -0700 — `On main: wip-unrelated-fhconsulting-ship`
 
