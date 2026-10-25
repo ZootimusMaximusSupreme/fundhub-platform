@@ -40,3 +40,4 @@
 [x] codex/heartbeat-catalog-four — SKIP. LEFT. Tip 638b20583. Every file already exists and the branch conflicts on live pages or pulse proofs. Kept main. Not sure the old proof is already in main. Not merged.
 [x] codex/heartbeat-display-13-19-work — SKIP. LEFT. Tip c639af64b. Every file already exists and the branch conflicts on live pages or pulse proofs. Kept main. Not sure the old proof is already in main. Not merged.
 [x] codex/heartbeat-display-20-25 — SKIP. LEFT. Tip 8abef1814. Every file already exists and the branch conflicts on live pages or pulse proofs. Kept main. Not sure the old proof is already in main. Not merged.
+[x] codex/heartbeat-display-26-33 — SKIP. LEFT. Tip 86ff159f7. Every file already exists and the branch conflicts on live pages or pulse proofs. Kept main. Not sure the old proof is already in main. Not merged.
