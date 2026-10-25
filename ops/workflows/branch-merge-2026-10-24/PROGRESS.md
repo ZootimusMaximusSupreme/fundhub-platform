@@ -67,3 +67,4 @@
 [x] fix/display-lane-time — SKIP. LEFT. Tip 0746a454a. Changes the morning brief and gap-catalog-display. Every file already exists. Not merged.
 [x] codex/heartbeat-customer-journey-d — SKIP. LEFT. Tip a4e0ed2c2. Merges clean but changes src/handlers/comms.mjs, meet-transcript-sweeper, repair-bureau-response, and a public leads page. Not merged.
 [x] codex/outreach-network-diagnosis — SKIP. LEFT. Tip c058dd761. Two GitHub workflow files that only run on push to the branch name codex/outreach-network-diagnosis. That name must not be pushed. Not merged.
+[x] codex/appstore-release-records — SKIP. LEFT. Tip 321775a5e. Conflict in ops/workflows/two-ios-apps-launch.md. The branch tip deletes 150 lines of the later launch log that main has. tools/fundhub-ios/ExportOptions.plist already exists on main. Not merged.
