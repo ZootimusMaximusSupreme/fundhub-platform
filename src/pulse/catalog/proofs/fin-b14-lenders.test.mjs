@@ -38,6 +38,9 @@ const BLANK_LENDER = {
   last_updated_by: null, last_updated_date: null,
 };
 const CSV = "lender_table,name,priority_tier\nOnlineBizCC,Mesa Community Bank,2\n";
+// The Status box opens on Active (the desk hides the banks that are turned off), so every list read and export
+// carries this unless someone picks All.
+const ACTIVE_ONLY = { active: "true" };
 
 const OBS1 = {
   id: "cccccccc-1111-4111-8111-111111111111", lender_name: "Mesa Community Bank", lender_table: "OnlineBizCC",
@@ -123,15 +126,15 @@ async function applyFilters(page, seen) {
 
 test("list filters: each box sends its own name and only its own, trimmed; empty boxes send nothing", { timeout: 90_000 }, async () => {
   const { page, seen, errors } = await openLenders();
-  assert.equal(seen.lists[0], "", "the first read has no filter at all");
+  assert.equal(seen.lists[0], "?active=true", "the first read asks for the active lenders and nothing else");
 
   await proof.check(/^List filter: Product table select/, async () => {
     const options = await page.locator("#fTable option").evaluateAll((list) => list.map((o) => o.value));
     assert.deepEqual(options, ["", ...TABLES], "All, then the seven product tables, in order");
     await page.locator("#fTable").selectOption("BizLOC_Stated");
-    assert.deepEqual(await applyFilters(page, seen), { lender_table: "BizLOC_Stated" });
+    assert.deepEqual(await applyFilters(page, seen), { ...ACTIVE_ONLY, lender_table: "BizLOC_Stated" });
     await page.locator("#fTable").selectOption("");
-    assert.deepEqual(await applyFilters(page, seen), {});
+    assert.deepEqual(await applyFilters(page, seen), ACTIVE_ONLY);
   });
 
   await proof.check(/^List filter: Bureau pulled input/, async () => {
@@ -139,23 +142,24 @@ test("list filters: each box sends its own name and only its own, trimmed; empty
     const hints = await page.locator("#bureauHints option").evaluateAll((list) => list.map((o) => o.value));
     assert.deepEqual(hints, ["EX", "EQ", "TU"]);
     await page.locator("#fBureau").fill("  TU  ");
-    assert.deepEqual(await applyFilters(page, seen), { bureau: "TU" });
+    assert.deepEqual(await applyFilters(page, seen), { ...ACTIVE_ONLY, bureau: "TU" });
     await page.locator("#fBureau").fill("");
-    assert.deepEqual(await applyFilters(page, seen), {});
+    assert.deepEqual(await applyFilters(page, seen), ACTIVE_ONLY);
   });
 
   await proof.check(/^List filter: Priority tier select/, async () => {
     const options = await page.locator("#fTier option").evaluateAll((list) => list.map((o) => o.value || o.textContent));
     assert.deepEqual(options, ["All", "1", "2", "3"]);
     await page.locator("#fTier").selectOption("2");
-    assert.deepEqual(await applyFilters(page, seen), { priority_tier: "2" });
+    assert.deepEqual(await applyFilters(page, seen), { ...ACTIVE_ONLY, priority_tier: "2" });
     await page.locator("#fTier").selectOption({ label: "All" });
-    assert.deepEqual(await applyFilters(page, seen), {});
+    assert.deepEqual(await applyFilters(page, seen), ACTIVE_ONLY);
   });
 
   await proof.check(/^List filter: Status select/, async () => {
     const options = await page.locator("#fActive option").evaluateAll((list) => list.map((o) => [o.value, o.textContent]));
     assert.deepEqual(options, [["", "All"], ["true", "Active"], ["false", "Inactive"]]);
+    assert.equal(await page.locator("#fActive").inputValue(), "true", "the Status box opens on Active");
     await page.locator("#fActive").selectOption("false");
     assert.deepEqual(await applyFilters(page, seen), { active: "false" });
     await page.locator("#fActive").selectOption("true");
@@ -164,6 +168,7 @@ test("list filters: each box sends its own name and only its own, trimmed; empty
     assert.deepEqual(await applyFilters(page, seen), {});
   });
 
+  // The Status check above left its box on All, so the next two checks see only their own box in the read.
   await proof.check(/^List filter: Eligible state input/, async () => {
     assert.equal(await page.locator("#fState").getAttribute("maxlength"), "40");
     await page.locator("#fState").fill(" NV ");
@@ -294,7 +299,7 @@ test("Export CSV: asks for the csv of the boxes as they are now (no Apply needed
     assert.equal(download.suggestedFilename(), "lenders.csv");
     assert.equal(fs.readFileSync(await download.path(), "utf8"), CSV, "the file is exactly the csv the server sent");
     assert.equal(seen.exports.length, 1);
-    assert.deepEqual(asObject(seen.exports[0]), { priority_tier: "2", q: "Mesa", format: "csv" });
+    assert.deepEqual(asObject(seen.exports[0]), { ...ACTIVE_ONLY, priority_tier: "2", q: "Mesa", format: "csv" });
     assert.equal(seen.lists.length, listReads, "exporting does not redraw the table");
   });
   assert.deepEqual(errors, []);
