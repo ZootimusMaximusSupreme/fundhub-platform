@@ -24,3 +24,4 @@
 [x] codex/recover-finance-os — REDONE. Tip ef5736aa1. Older layout. Every file it changes already exists (6 files, 0 missing). Not merged.
 [x] codex/recover-lenders — REDONE. Tip 23eeb1041. Older layout. Every file it changes already exists (5 files, 0 missing). Not merged.
 [x] codex/recover-my-numbers — REDONE. Tip edea97eb6. Older layout. Every file it changes already exists (5 files, 0 missing). Not merged.
+[x] codex/recover-sales-floor — REDONE. Tip 2fe9a5994. Older layout. Every file it changes already exists (9 files, 0 missing). Not merged.
