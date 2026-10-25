@@ -54,3 +54,4 @@
 [x] codex/two-ios-apps-launch — SKIP. LEFT. Restored tip acb94cae0. The other session local branch is 80eb3b4e, a different commit. Conflicts in iOS project files. Not merged.
 [x] codex/live-ios-teleprompter — SKIP. LEFT. Tip 160332b06. Conflicts in the prompter Swift app. Not merged.
 [x] codex/fundhub-prompter-appstore — SKIP. LEFT. Tip ea9e92c83. Changes LoginView.swift, SettingsView.swift, and the Xcode project. Not merged.
+[x] codex/crm-portal-layout-professional — SKIP. LEFT. Tip 1f1c50eee, 25 commits ahead. Hundreds of live page files and conflicts. Not merged.
