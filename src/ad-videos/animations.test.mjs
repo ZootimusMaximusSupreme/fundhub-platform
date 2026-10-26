@@ -583,9 +583,15 @@ describe("overlayArgs: one video encode, the sound copied", () => {
     { src: "/w/clips/b.webm", start_frame: 300, frames: 90 },
     { src: "/w/clips/a.mov", start_frame: 120, frames: 60 }
   ];
+  const proof = (base) => ({
+    stage: "post-submagic-pre-animation",
+    source_path: base,
+    sha256: "a".repeat(64),
+    verified_no_prior_animation: true,
+  });
 
   test("the exact argv", () => {
-    assert.deepEqual(overlayArgs({ video_kind: AD, base: "/w/export.mp4", items, out: "/w/over.mp4" }), [
+    assert.deepEqual(overlayArgs({ video_kind: AD, base: "/w/export.mp4", source_proof: proof("/w/export.mp4"), items, out: "/w/over.mp4" }), [
       "-hide_banner", "-nostats", "-y", "-i", "/w/export.mp4",
       "-i", "/w/clips/a.mov",
       "-c:v", "libvpx-vp9", "-i", "/w/clips/b.webm",
@@ -603,7 +609,7 @@ describe("overlayArgs: one video encode, the sound copied", () => {
   });
 
   test("the video is encoded once with the master's settings; the sound is never encoded", () => {
-    const a = overlayArgs({ video_kind: AD, base: "b.mp4", items, out: "o.mp4" });
+    const a = overlayArgs({ video_kind: AD, base: "b.mp4", source_proof: proof("b.mp4"), items, out: "o.mp4" });
     assert.equal(a.filter((x) => x === "libx264").length, 1);
     assert.equal(a.filter((x) => x === "-c:a").length, 1);
     assert.equal(a[a.indexOf("-c:a") + 1], "copy");
@@ -612,20 +618,23 @@ describe("overlayArgs: one video encode, the sound copied", () => {
   });
 
   test("items from planAnimations work as they are (start / end without frames read on the grid)", () => {
-    const a = overlayArgs({ video_kind: AD, base: "b.mp4", items: [{ src: "c.mov", start: 4.0, end: 6.0 }], out: "o.mp4" });
+    const a = overlayArgs({ video_kind: AD, base: "b.mp4", source_proof: proof("b.mp4"), items: [{ src: "c.mov", start: 4.0, end: 6.0 }], out: "o.mp4" });
     assert.ok(a.join(" ").includes("trim=end_frame=60,setpts=PTS-STARTPTS+120/(30*TB)"));
   });
 
   test("no clips: a stream copy, nothing encoded", () => {
-    assert.deepEqual(overlayArgs({ video_kind: AD, base: "b.mp4", items: [], out: "o.mp4" }), [
+    assert.deepEqual(overlayArgs({ video_kind: AD, base: "b.mp4", source_proof: proof("b.mp4"), items: [], out: "o.mp4" }), [
       "-hide_banner", "-nostats", "-y", "-i", "b.mp4", "-map", "0:v:0", "-map", "0:a:0", "-c", "copy", "-map_metadata", "-1", "-f", "mp4", "o.mp4"
     ]);
   });
 
   test("refuses a video that is not an ad, and a clip with no file", () => {
-    assert.throws(() => overlayArgs({ video_kind: "vsl", base: "b.mp4", items, out: "o.mp4" }), NotAnAdError);
-    assert.throws(() => overlayArgs({ video_kind: undefined, base: "b.mp4", items, out: "o.mp4" }), NotAnAdError);
-    assert.throws(() => overlayArgs({ video_kind: AD, base: "b.mp4", items: [{ start_frame: 1, frames: 2 }], out: "o.mp4" }), /clip 1 has no src/);
+    assert.throws(() => overlayArgs({ video_kind: "vsl", base: "b.mp4", source_proof: proof("b.mp4"), items, out: "o.mp4" }), NotAnAdError);
+    assert.throws(() => overlayArgs({ video_kind: undefined, base: "b.mp4", source_proof: proof("b.mp4"), items, out: "o.mp4" }), NotAnAdError);
+    assert.throws(() => overlayArgs({ video_kind: AD, base: "b.mp4", source_proof: proof("b.mp4"), items: [{ start_frame: 1, frames: 2 }], out: "o.mp4" }), /clip 1 has no src/);
+    assert.throws(() => overlayArgs({ video_kind: AD, base: "b.mp4", items, out: "o.mp4" }), /source_proof/);
+    assert.throws(() => overlayArgs({ video_kind: AD, base: "b.mp4", source_proof: proof("old.mp4"), items, out: "o.mp4" }), /exactly match/);
+    assert.throws(() => overlayArgs({ video_kind: AD, base: "b.mp4", source_proof: proof("b.mp4"), items, out: "b.mp4" }), /cannot overwrite/);
   });
 });
 

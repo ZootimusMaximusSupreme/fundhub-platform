@@ -15,7 +15,7 @@
       {
         "command": "node scripts/hooks/guard-overlay-schedule.mjs",
         "matcher": "build-from-schedule",
-        "failClosed": false
+        "failClosed": true
       }
     ],
     "preToolUse": [

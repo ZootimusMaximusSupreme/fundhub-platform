@@ -19,6 +19,8 @@ Pipeline: film → cut → Submagic captions → Chris downloads → animation o
 
 The master Submagic sees never has animations in it.
 
+**Replacement source lock (owner-set 2026-10-26):** Start every revision from the exact clean post-Submagic/pre-animation export, never an older animated export. A reviewer must first register the source in `clean-source.json` with `node scripts/animation-clean-source.mjs register --plan <plan-dir> --source <clean.mp4> --verified-clean`. The protected build hash-checks it, records each animated output, and rejects any recorded output as a future source. Build a new overlay once from that clean source, then replace the old animated deliverable; never overwrite the clean source or stack overlays.
+
 Captions: Submagic template "Hormozi 2" ("Hormozi 1" is the backup). Submagic AI B-roll stays off.
 
 ## 2. Where the overlay sits (owner law 2026-10-25)
@@ -114,6 +116,7 @@ Accent #3D86F0, spectrum dash, Inter. Never put a Fundhub logo or wordmark on an
 - Put the visual on the shirt when captions are there
 - Shrink a long visual out of the top one-third into an unreadable chip
 - Put animations on the master before Submagic captions
+- Use an older animated export as a source, bypass `animation-clean-source.mjs`, or overwrite the registered clean source
 - Turn on Submagic AI B-roll
 - AI-generated credibility visuals when the line asks for proof
 - Call an overlaid ad or VSL acceptable without a frame review on the final mux (law: animation-overlay-frame-review (.ai/rules/animation-overlay-frame-review.md))
@@ -122,6 +125,7 @@ Accent #3D86F0, spectrum dash, Inter. Never put a Fundhub logo or wordmark on an
 ## Always
 
 - Cut → Submagic captions → download → overlays → finalize
+- Register the visually checked clean source, then use `animation-clean-source.mjs build` for every lay-on
 - Read the frame. A long multi-step visual goes in the top one-third. A shorter visual goes left, right, or top, wherever his head is not. Head size and position vary.
 - Keep the whole graphic inside the picture. On an ad the picture is 1080×1920. The schedule check fails if x, y, or scale shoves it off the screen or leaves a black empty side.
 - Frame layout scan (head, hair, shoulders, chest, caption band, on-screen layout) on every frame before and during each clip

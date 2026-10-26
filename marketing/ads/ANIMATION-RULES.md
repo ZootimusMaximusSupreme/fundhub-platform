@@ -20,6 +20,8 @@ Pipeline: film → cut → Submagic captions → Chris downloads → animation o
 
 The master Submagic sees never has animations in it.
 
+**Replacement source lock (owner-set 2026-10-26):** Every overlay revision starts from the exact clean, captioned, post-Submagic/pre-animation export — never from an earlier animated export. A visual reviewer registers that source in the plan folder's `clean-source.json`; its SHA-256 locks the exact bytes. The protected build checks that hash before lay-on, makes one new animated output, and records that output globally so it can never be registered as a later source. The new output replaces the old animated deliverable; the clean source is never overwritten.
+
 Captions: Submagic template "Hormozi 2" (Chris to double-check; "Hormozi 1" is the backup). Submagic AI B-roll stays off.
 
 ## 2. Where the overlay sits (owner law 2026-10-25)
@@ -99,7 +101,7 @@ Render with alpha: ProRes 4444 `.mov` or VP9 `.webm`. 30 fps.
 
 Formats: vertical 1080×1920 (ads) and wide 3840×2160 (VSL and thank-you video, filmed sideways in 4K).
 
-Overlay: ffmpeg lays each clip over the Submagic export at its anchor time, copies the audio, re-encodes video once.
+Overlay: use `node scripts/animation-clean-source.mjs build --plan <plan-dir> --source <clean-post-submagic.mp4> --out <new-animated.mp4> -- python3 tools/build-from-schedule.py ...`. It hash-checks the registered clean source, runs the schedule gate, lays each clip over the Submagic export at its anchor time, copies the audio, re-encodes video once, and records the animated output. Direct `build-from-schedule.py` is blocked.
 
 Kit details: `marketing/broll/README.md`, `ops/workflows/animation-builds-2026-10-22.md`.
 

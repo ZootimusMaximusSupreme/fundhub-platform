@@ -41,6 +41,9 @@
 //   overlayArgs()      lays every clip over the Submagic export in ONE video
 //                      encode (the master's settings from ffmpeg-plan.mjs,
 //                      U17) and copies the sound as it is.
+//                      It requires a clean-source proof. The build gate hashes
+//                      that proof before ffmpeg runs, so an older animated
+//                      export can never become the next overlay source.
 //   finalizeArgs()     fixes the loudness only when it is more than 1 LU off
 //                      (Submagic's cleanAudio moves it) and remuxes with
 //                      +faststart. The picture is copied, never encoded again.
@@ -651,9 +654,26 @@ function frameSpan(item) {
  *
  * @param {{video_kind: unknown, base: string, items?: any[], out: string}} o
  */
-export function overlayArgs({ video_kind, base, items = [], out }) {
+export function assertCleanSubmagicSource({base, out, source_proof}) {
+  if (!source_proof || typeof source_proof !== 'object') {
+    throw new Error('overlayArgs: source_proof from clean-source.json is required.');
+  }
+  if (source_proof.stage !== 'post-submagic-pre-animation' || source_proof.verified_no_prior_animation !== true) {
+    throw new Error('overlayArgs: source_proof must certify a clean post-Submagic/pre-animation source.');
+  }
+  if (source_proof.source_path !== base) {
+    throw new Error('overlayArgs: base must exactly match source_proof.source_path.');
+  }
+  if (!/^[a-f0-9]{64}$/i.test(String(source_proof.sha256 || ''))) {
+    throw new Error('overlayArgs: source_proof needs a SHA-256.');
+  }
+  if (base === out) throw new Error('overlayArgs: out cannot overwrite the clean Submagic source.');
+}
+
+export function overlayArgs({ video_kind, base, items = [], out, source_proof }) {
   assertAd(video_kind, "overlayArgs");
   if (!base || !out) throw new Error("overlayArgs: base (the Submagic export) and out are both needed");
+  assertCleanSubmagicSource({base, out, source_proof});
   const list = Array.isArray(items) ? [...items] : [];
   if (!list.length) {
     return [
