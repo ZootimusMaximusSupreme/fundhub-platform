@@ -5,9 +5,7 @@
     "grok-lattice-overseer-perpetual": "Glob rule for the Grok overseer in Cursor, so it gets no .claude/rules link.",
     "ui-standards": "Glob rule that only points Cursor at docs/rules/UI-STANDARDS.md; Claude reads that doc through CLAUDE.md, so it gets no .claude/rules link."
   },
-  "codexOnlySkills": {
-    "source-command-flywheel": "Codex's migrated copy of .claude/commands/flywheel.md (same text). It is left as is and gets no .cursor or .claude link."
-  },
+  "codexOnlySkills": {},
   "claudeMdLineExempt": {},
   "indexExempt": {},
   "pointerExempt": [],

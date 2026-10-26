@@ -12,7 +12,6 @@ Each rule and each skill has ONE real home. The Cursor and Claude folders hold l
 - A rule link points at `../../.ai/rules/<name>.md`. A skill link points at `../../.agents/skills/<name>`.
 - A real file or real folder inside `.cursor/` or `.claude/` is a copy. `npm run rules:check` fails it.
 - A rule marked **Cursor-only on purpose** has the Cursor link and no Claude link.
-- `.agents/skills/source-command-flywheel` is Codex's own copy of `.claude/commands/flywheel.md`. It has no links.
 - The picture, the counts, and how to undo this layout: `ops/workflows/drift-cleanup-2026-10-24/phase-2-layout.md`.
 
 All rules, sorted by topic. Owner-set 2026-10-24 (`rules-no-drift`): when a rule is added or changed, this file changes in the same commit.
@@ -146,7 +145,7 @@ All of these live in `.agents/skills/<name>/SKILL.md` and are linked for Cursor 
 - `fundhub-testimonial-thumbnails` (skill): turns testimonial video into live page cards.
 - `fundhub-clickfunnels-html-push` (skill): pushes funnel HTML by API.
 - `clickfunnels-developers-docs` (skill): read the ClickFunnels developer docs first; never guess endpoints. A rule of the same name sits in section 8.
-- Outside tools: `higgsfield-*` (8), `supabase`, `supabase-postgres-best-practices` (skill) are third-party, listed in `skills-lock.json`. They sit in `.agents/skills/` and are linked for Cursor and Claude like ours. `.agents/skills/source-command-flywheel` belongs to Codex and has no links.
+- Outside tools: `higgsfield-*` (8), `supabase`, `supabase-postgres-best-practices` (skill) are third-party, listed in `skills-lock.json`. They sit in `.agents/skills/` and are linked for Cursor and Claude like ours.
 - Marketing workflow skills live in `.claude/workflows/`: `copy`, `offer`, `avatar-builder`, `ad-research`, `ad-strategy`, `deep-research`.
 
 ## Docs and books
