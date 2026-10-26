@@ -1,0 +1,17 @@
+{
+ "kind": "scoreRange",
+ "top": 36,
+ "height": 340,
+ "at": [
+  15,
+  51,
+  90
+ ],
+ "labels": [
+  "Scores we take",
+  "400",
+  "850"
+ ],
+ "transparent": true,
+ "durationInFrames": 105
+}

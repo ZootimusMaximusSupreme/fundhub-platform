@@ -1,0 +1,19 @@
+{
+ "kind": "heatMap",
+ "top": 36,
+ "height": 340,
+ "at": [
+  3,
+  24,
+  144,
+  192
+ ],
+ "labels": [
+  "Hot",
+  "Cold",
+  "Hottest now",
+  "You go here"
+ ],
+ "transparent": true,
+ "durationInFrames": 206
+}

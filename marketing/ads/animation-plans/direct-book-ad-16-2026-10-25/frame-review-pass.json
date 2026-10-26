@@ -1,0 +1,33 @@
+{
+  "verdict": "Acceptable",
+  "final_mux": "/tmp/ad16-opus/ad16-opus-crf14.mp4 (delivered as ~/Desktop/Direct Book Ad 16 — Advanced funding algorithm Animated.mp4)",
+  "reviewed_at": "2026-10-25T18:05:00-07:00",
+  "reviewed_by": "Opus (layout owner), viewing the frames by eye",
+  "replaces": "Grok's 2026-10-25 crop cut (/tmp/ad16-redo/ad16-animated.mp4, CRF 16 veryfast, 13173 kb/s): old templates cropped into the sky. Not shipped.",
+  "frames_sampled": "86 frames from the final mux: every clip at start, middle and end, every payoff step, and every 5 s (tools/frame-review.py). Contact sheet: contact-sheet-final.jpg. Full-size frames: /tmp/ad16-opus/frame-review/.",
+  "checks": {
+    "face": "Clear on every sampled frame. Every card ends above his hair; the lower middle of a card touches his hair line at most (his cut-out sits on top).",
+    "hair": "No words in his hair. Person cut-out on every frame: hair top y 322-422; middle-column words end by y 336. visible_words_fraction 1.00 on all 10 clips (visible-check.py, worst 5% of frames).",
+    "captions": "Nothing drawn below y 376. Caption band (y ~1480-1740) untouched.",
+    "inside_frame": "Every clip is a full 1080x1920 see-through render at scale 1, dx 0, dy 0. Cards span x 30-1050. No black side, nothing off the edge. validate-overlay-schedule: OK (one note: card 9 words span 67% of the width).",
+    "readable": "Smallest words 34 px tall on the 1080 frame; payoffs 58-130 px (7, 400, 850, OUT OF DATE, Book a call).",
+    "no_echo": "Labels are 1-3 words, said a new way: Checked first, Most can't do this, Off the shelf, One path for all, Our engine, Same as banks, Hottest now, You go here, Scores we take, Side by side, On your own, Pre-vetted, VIP handoff. Set terms kept exact: 850, 400, 500, 7, SBA loans, MCA.",
+    "logo": "FundhubLogo only at 23.5-25.5 s, on 'I've built Fundhub'.",
+    "banned": "No PathCards, no numbered word lists, no text-only plates."
+  },
+  "video": {
+    "codec": "libx264 preset slow CRF 14, yuv420p, 30 fps, 1080x1920",
+    "bitrate_kbps": 17773,
+    "bar_kbps": 16320,
+    "frames": 2028,
+    "bytes": 152481852
+  },
+  "audio": {
+    "source": "/tmp/ad16-redo/ad16-leveled.mp4, copied bit for bit (md5 9ef80922bada8fd9471060930ce46659 on both)",
+    "integrated_lufs": -14.0,
+    "true_peak_dbfs": -2.2,
+    "lra_lu": 2.3,
+    "smooth_pass": "Done on the leveled base before this mux; this mux copies the sound and does not re-encode it, so no new clipping (sample peak -2.18 dBFS)."
+  },
+  "learnings": "On a close selfie whose head fills the band, draw the diagram for the sky band (SkyDiagram, FundhubLogo plateTop) instead of cropping old templates. The person cut-out over the whole take gives the exact hair line per window."
+}

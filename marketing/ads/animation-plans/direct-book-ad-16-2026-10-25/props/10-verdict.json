@@ -1,0 +1,21 @@
+{
+ "kind": "verdict",
+ "top": 36,
+ "height": 340,
+ "at": [
+  3,
+  69,
+  93,
+  159,
+  219,
+  273
+ ],
+ "labels": [
+  "Approved",
+  "Denied",
+  "Pre-vetted",
+  "VIP handoff"
+ ],
+ "transparent": true,
+ "durationInFrames": 297
+}

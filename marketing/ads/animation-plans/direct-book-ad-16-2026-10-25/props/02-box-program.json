@@ -1,0 +1,25 @@
+{
+ "kind": "boxProgram",
+ "top": 36,
+ "height": 340,
+ "at": [
+  18,
+  69,
+  108,
+  165,
+  241,
+  265,
+  289
+ ],
+ "labels": [
+  "Off the shelf",
+  "Bank data",
+  "Out of date",
+  "One path for all",
+  "850",
+  "400",
+  "500"
+ ],
+ "transparent": true,
+ "durationInFrames": 315
+}

@@ -1,0 +1,19 @@
+{
+ "kind": "fundTypes",
+ "top": 36,
+ "height": 340,
+ "at": [
+  15,
+  33,
+  51,
+  69
+ ],
+ "labels": [
+  "Credit cards",
+  "SBA loans",
+  "MCA",
+  "And more"
+ ],
+ "transparent": true,
+ "durationInFrames": 99
+}

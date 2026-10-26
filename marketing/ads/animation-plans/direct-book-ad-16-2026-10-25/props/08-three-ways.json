@@ -1,0 +1,17 @@
+{
+ "kind": "threeWays",
+ "top": 36,
+ "height": 340,
+ "at": [
+  15,
+  48,
+  78
+ ],
+ "labels": [
+  "Done for you",
+  "Side by side",
+  "On your own"
+ ],
+ "transparent": true,
+ "durationInFrames": 108
+}

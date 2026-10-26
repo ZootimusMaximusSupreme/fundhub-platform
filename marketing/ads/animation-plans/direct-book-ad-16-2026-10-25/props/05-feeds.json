@@ -1,0 +1,27 @@
+{
+ "kind": "feeds",
+ "top": 36,
+ "height": 340,
+ "at": [
+  18,
+  51,
+  56,
+  60,
+  64,
+  69,
+  72,
+  87,
+  159,
+  207,
+  219
+ ],
+ "labels": [
+  "data feeds",
+  "Our engine",
+  "Same as banks",
+  "Approve",
+  "Deny"
+ ],
+ "transparent": true,
+ "durationInFrames": 249
+}

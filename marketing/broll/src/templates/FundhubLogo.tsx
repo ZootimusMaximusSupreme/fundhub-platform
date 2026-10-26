@@ -47,6 +47,8 @@ export type FundhubLogoProps = {
   format: FundhubLogoFormat;
   /** Wide only: the side panel the logo sits in. Default "left". */
   side?: FundhubLogoSide;
+  /** Vertical only: the plate's top edge on the frame, for a close selfie whose head fills the band. Default: centered in the band. */
+  plateTop?: number;
   durationInFrames?: number;
   showSafeZones?: boolean;
   /** See-through: no page and no grid, so the clip renders with alpha (README.md). Default false. */
@@ -269,7 +271,7 @@ const LogoSting: React.FC<{f: number; fps: number; width: number; uid: string}> 
 /** Wordmark width on the vertical frame. The plate is about 776 x 255 px. */
 const V_WIDTH = 620;
 
-const Vertical: React.FC<FundhubLogoProps & {f: number; fps: number}> = ({f, fps, showSafeZones}) => (
+const Vertical: React.FC<FundhubLogoProps & {f: number; fps: number}> = ({f, fps, showSafeZones, plateTop}) => (
   <AbsoluteFill>
     <Grid />
     <div
@@ -277,10 +279,10 @@ const Vertical: React.FC<FundhubLogoProps & {f: number; fps: number}> = ({f, fps
         position: 'absolute',
         left: 0,
         right: 0,
-        top: SAFE.top,
-        bottom: FRAME.height - SAFE.bottom,
+        top: plateTop ?? SAFE.top,
+        bottom: plateTop == null ? FRAME.height - SAFE.bottom : undefined,
         display: 'flex',
-        alignItems: 'center',
+        alignItems: plateTop == null ? 'center' : 'flex-start',
         justifyContent: 'center',
       }}
     >

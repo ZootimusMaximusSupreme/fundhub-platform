@@ -1,0 +1,19 @@
+{
+ "kind": "precheck",
+ "top": 36,
+ "height": 340,
+ "at": [
+  3,
+  42,
+  63,
+  78,
+  99
+ ],
+ "labels": [
+  "Checked first",
+  "Bank",
+  "Most can't do this"
+ ],
+ "transparent": true,
+ "durationInFrames": 144
+}
