@@ -9,15 +9,18 @@ Owner status at 7:31 PM Arizona time: **animations still in progress / not finis
 - [ ] Finish auditing every animation and its anchor word (**not finished as of 7:31 PM**).
 - [ ] Tighten the anchor-word rule: target one animation every 3–5 seconds, triggered only by a number, a before/after contrast, or a concrete object viewers can picture; review retention graphs for drop-off.
 
-### Sunday night, 2026-10-25 — TEST ONLY THROUGH SALES (owner correction, 7:34 PM Arizona)
-- [ ] Test one fresh lead on a phone with a new email: funnel → booking.
-- [ ] Verify booking confirmation, verification button, 60-second call alert, reminder text/email triggers and timing. Check configured schedules for messages too far in the future to observe live tonight.
-- [ ] Test setter outreach, qualification, CRM status, setter → closer handoff and assignment.
-- [ ] Practice the closer/sales call using the Brio and run the sales SOP.
-- [ ] Verify offer, agreement, ClarityPay application, payment, receipts and CRM updates through closed sale.
-- [ ] Log every failed step (expected / actual / severity), and update sales/booking customer-journey documentation to match live behavior.
-- [ ] **STOP at completed sales.** Do not spend Sunday night testing downstream fulfillment or AR.
-- [ ] Test app download links on available devices during signup/booking if needed; leave post-sale portal onboarding for Monday.
+### Sunday night, 2026-10-25 — LEAD THROUGH SALE ONLY (corrected from repo runbook and owner, 7:50 PM Arizona)
+
+Owner is very tired and intends to sleep; no completion claimed. This is the **only** scope before fulfillment. Run manually as the real customer and the sole setter/closer. Existing weekend SOPs are unwritten placeholders; record actual clicks and draft them afterward. Do not quietly change/break production; log bugs in `ops/workflows/v2-notes.md`.
+
+- [ ] **Client:** On a phone with own phone number and fresh plus-tag email, go `https://apply.fundhub.ai/watch` → `/apply` (nine survey screens) → `/funding-book-call` → `/thank-you`; verify lead identity and event/campaign attribution where visible.
+- [ ] **Booking and app:** Verify welcome/booking texts and emails, real booking on `https://fundhub.ai/app/calendar.html`, portal login (`https://fundhub.ai/portal-login`), app download link, upcoming call card and **Confirm my call** button in `https://fundhub.ai/app/client-portal.html`, and 60-second call alert if configured. Check that the day-before and two-hour reminders are scheduled correctly if they cannot fire within this run.
+- [ ] **Manual setter, NOT AI:** Follow the lead in `https://fundhub.ai/app/pipeline.html` (New Lead → Survey Complete → Booked → Confirmed), check two-way texts in `https://fundhub.ai/app/messaging.html`, and make sure the file appears for the closer in `https://fundhub.ai/app/closer-dashboard.html`. Do not create a duplicate client if the funnel already created one. Setter Josh (AG-04) was retired in the documented 2026-10-24 live read.
+- [ ] **Sales:** Open `https://fundhub.ai/app/closer-call.html` and `https://fundhub.ai/app/present.html`, practice the call on the Brio, send **soft-pull consent**, then the real **$32** Commas payment link, and confirm the CRS pull and recorded result on own file. The pull automation is gated by valid consent plus `diagnostic.paid`; a missing client portal account blocks the pull. Record if/why it fails.
+- [ ] **Four offer branches (inspect each without paying four times):** $200 repair trial, $1,000 full repair, $5,000–$10,000 Capital Blueprint, and funding deposit. Confirm exact offer price, matching agreement, pay link, call outcome, sales stage, and department/client entitlement/task handoff. The current `src/config/offers.mjs` funding deposit is **fixed $3,000**, while another marketing document says $1,000–$3,000: flag the mismatch, do not assume variable is live.
+- [ ] **Payment methods:** Cash links use Commas; **Whop/ClarityPay financing is documented as Blueprint-only**, with no verified financed sale yet. The code's financing flag on repair offers does not establish a live ClarityPay route. Avoid completing a real financing application or extra charges solely for testing.
+- [ ] **Proof and handoff:** Confirm which team/queue (even when all roles are the owner) receives each successfully completed sale: repair trial and full repair → credit repair; Blueprint → education/Blueprint access; funding → funding advisor/intake. Verify records/tasks/entitlements; log broken routing as V2 notes. Update the live sales, setter, and client SOPs from observed clicks.
+- [ ] **STOP at sale + correct routing.** Do not test repair, funding fulfillment, collections or later post-sale journeys until Monday.
 
 ### Monday morning, 2026-10-26 — POST-SALE JOURNEYS
 - [ ] Onboarding: paid client → welcome/credentials → app download → portal → intake and documents.
