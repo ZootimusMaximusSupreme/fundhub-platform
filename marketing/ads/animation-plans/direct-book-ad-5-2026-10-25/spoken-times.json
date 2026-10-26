@@ -1,0 +1,38 @@
+{
+  "video": "Direct Book Ad 5 — Paying for speed",
+  "source": "Downloads copy of Drive file 1jEHegNV1M4rs2QvtJvgj58gQNnEtufJY (Direct Book Ad 5 — Paying for speed AI Edit.mp4)",
+  "offer_read": "marketing/ads/scripts/book-a-call-final-2026-10-03.md section 5. Offer key funding_dfy (Direct Book). The filmed words are not the written script. Use these times.",
+  "width": 1080,
+  "height": 1920,
+  "fps": 30,
+  "seconds": 60.4,
+  "person_top_y": 440,
+  "face_box_y": [719, 1272],
+  "open_sky_inside_words_band": [269, 440],
+  "pricetag_scale_1_box": [241, 523, 914, 1179],
+  "why_not_placed": "PriceTag at full size covers his eyes. The $300,000 is the point, and it sits on the eyes. Moving the card up until it stays on screen still puts the number in the hair. Shrinking it fails the size check. The cards have to be short and sit in the sky above y 440.",
+  "sound": {
+    "before_lufs": -17.4,
+    "before_true_peak_db": -4.1,
+    "before_lra": 2.1,
+    "after_file": "Desktop/Fundhub Ads/Direct Book Ad 5 — Paying for speed Sound.mp4",
+    "drive_file_id": "1YkJ-w5SZQdTkfFNiSXuJQ3fooiByc3AW",
+    "smooth": "dynaudnorm=f=150:g=15",
+    "loudnorm": "I=-14 TP=-2.2 LRA=11 dynamic (linear would have clipped; dynaudnorm peak was -0.44)",
+    "after_lufs": -14.0,
+    "after_true_peak_db": -2.1,
+    "after_lra": 1.6
+  },
+  "no_fundhub_word": true,
+  "beats": [
+    {"t": 0.54, "word": "10", "show": "10 years on one call. He also says for free at 3.02."},
+    {"t": 6.60, "word": "300,000", "show": "$300,000 in funding. He said this number."},
+    {"t": 13.11, "word": "million", "show": "A little over $1,000,000 for himself. Not a fake proof wall."},
+    {"t": 20.08, "word": "closing", "show": "A card stamped closed. History and the limit drain away. He says those at 22.31 and 24.30."},
+    {"t": 25.39, "word": "20,000", "show": "A $20,000 card. He says significantly smaller at 29.03. He does not say $20,000 to $40,000."},
+    {"t": 39.11, "word": "100,000", "show": "$100,000 or more on one funding round."},
+    {"t": 42.71, "word": "300,000", "show": "$300,000 or more across two or three companies."},
+    {"t": 45.43, "word": "catches", "show": "The system stops the bad move before it happens."},
+    {"t": 57.35, "word": "book", "show": "Book a call. Short. Not a full-screen button."}
+  ]
+}
