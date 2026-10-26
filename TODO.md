@@ -1,5 +1,31 @@
 # TODO — unfinished work
 
+## Sunday, 2026-10-25 — launch-eve checklist
+
+Owner status at 7:31 PM Arizona time: **animations still in progress / not finished**. All items below remain unchecked until verified. Focus on the live customer journey before Monday's ads; log bugs without silently treating them as fixed.
+
+### Videos and animations (in progress)
+- [ ] Edit the four videos.
+- [ ] Finish auditing every animation and its anchor word (**not finished as of 7:31 PM**).
+- [ ] Tighten the anchor-word rule: target one animation every 3–5 seconds, triggered only by a number, a before/after contrast, or a concrete object viewers can picture; review retention graphs for drop-off.
+
+### Manual customer walkthrough (launch-critical)
+- [ ] Run the full customer journey by hand from a phone, using a fresh email.
+- [ ] Verify booking → verification button → 60-second call alert.
+- [ ] Verify reminder texts fire at their intended times.
+- [ ] Complete a ClarityPay application and test payment end to end.
+- [ ] Test the app download link across devices.
+- [ ] Log each broken step as it appears.
+- [ ] Update customer-journey documentation to match what is actually live.
+- [ ] Walk the SOPs and complete a practice call using the Brio.
+
+### Marketing handoff (was due after 4 PM; still open)
+- [ ] Hand the marketing team everything they need before Monday's ads go live.
+- [ ] Optional, if time: film four green-screen ads on the Brio using the teleprompter app (camera test).
+
+### Later this week
+- [ ] Hold the large refactor until Friday, 2026-10-30, after launch-week calls; use a dedicated refactor branch.
+
 ## Added 2026-10-24
 
 - [ ] **Direct Book 5 and 10: edit or refilm.** The AI editor ran on both. Ad 5: the edit saves it. Ad 10: **REFILM** (owner call 2026-10-24: his delivery was off tempo that day; the edit cannot fix tempo). Ad 10 edit is shelved, do not send it to Submagic.
