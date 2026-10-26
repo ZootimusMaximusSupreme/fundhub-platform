@@ -9,15 +9,25 @@ Owner status at 7:31 PM Arizona time: **animations still in progress / not finis
 - [ ] Finish auditing every animation and its anchor word (**not finished as of 7:31 PM**).
 - [ ] Tighten the anchor-word rule: target one animation every 3–5 seconds, triggered only by a number, a before/after contrast, or a concrete object viewers can picture; review retention graphs for drop-off.
 
-### Manual customer walkthrough (launch-critical)
-- [ ] Run the full customer journey by hand from a phone, using a fresh email.
-- [ ] Verify booking → verification button → 60-second call alert.
-- [ ] Verify reminder texts fire at their intended times.
-- [ ] Complete a ClarityPay application and test payment end to end.
-- [ ] Test the app download link across devices.
-- [ ] Log each broken step as it appears.
-- [ ] Update customer-journey documentation to match what is actually live.
-- [ ] Walk the SOPs and complete a practice call using the Brio.
+### Sunday night, 2026-10-25 — TEST ONLY THROUGH SALES (owner correction, 7:34 PM Arizona)
+- [ ] Test one fresh lead on a phone with a new email: funnel → booking.
+- [ ] Verify booking confirmation, verification button, 60-second call alert, reminder text/email triggers and timing. Check configured schedules for messages too far in the future to observe live tonight.
+- [ ] Test setter outreach, qualification, CRM status, setter → closer handoff and assignment.
+- [ ] Practice the closer/sales call using the Brio and run the sales SOP.
+- [ ] Verify offer, agreement, ClarityPay application, payment, receipts and CRM updates through closed sale.
+- [ ] Log every failed step (expected / actual / severity), and update sales/booking customer-journey documentation to match live behavior.
+- [ ] **STOP at completed sales.** Do not spend Sunday night testing downstream fulfillment or AR.
+- [ ] Test app download links on available devices during signup/booking if needed; leave post-sale portal onboarding for Monday.
+
+### Monday morning, 2026-10-26 — POST-SALE JOURNEYS
+- [ ] Onboarding: paid client → welcome/credentials → app download → portal → intake and documents.
+- [ ] Credit evaluation: consent, credit reports/soft pulls, analysis, file preparation and readiness.
+- [ ] Credit repair: case initiation, disputes/letters, inquiry resolution, status updates and holds.
+- [ ] Funding: lender selection, application packaging/submission, round status, decisions, approvals, proceeds/disbursement and next rounds.
+- [ ] Accounts receivable: invoices, payment recording, balances, failed payments, collections, success fees.
+- [ ] Exceptions: client support, missing documents, cancellations, refunds, escalations, alerts and failed notifications.
+- [ ] Operational control: staff/agent handoffs, tasks, CRM–Airtable reconciliation, reporting, heartbeat and end-to-end evidence.
+- [ ] Log all failures as they appear; update post-sale customer-journey diagrams and SOPs to match the live system.
 
 ### Marketing handoff (was due after 4 PM; still open)
 - [ ] Hand the marketing team everything they need before Monday's ads go live.
