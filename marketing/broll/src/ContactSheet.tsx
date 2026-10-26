@@ -1,6 +1,6 @@
 import React from 'react';
 import {AbsoluteFill, Freeze} from 'remotion';
-import {COLORS, FONT_FAMILY, FRAME, SAFE, Wordmark} from './brand';
+import {COLORS, FONT_FAMILY, FRAME, SAFE} from './brand';
 import {TEMPLATES} from './templates/registry';
 
 // The marked review sheet (CLAUDE.md section 8): every template frozen on its
@@ -49,9 +49,7 @@ const Badge: React.FC<{n: number; size: number}> = ({n, size}) => (
 
 export const ContactSheet: React.FC = () => (
   <AbsoluteFill style={{background: COLORS.paper, fontFamily: FONT_FAMILY, color: COLORS.ink}}>
-    <div style={{position: 'absolute', left: PAD, top: 64, right: PAD, display: 'flex', alignItems: 'center', gap: 34}}>
-      <Wordmark width={210} />
-      <div style={{width: 2, height: 52, background: COLORS.line}} />
+    <div style={{position: 'absolute', left: PAD, top: 64, right: PAD, display: 'flex', alignItems: 'center'}}>
       <div>
         <div style={{fontSize: 40, fontWeight: 700, letterSpacing: '-0.03em'}}>B-roll kit · Round 2 previews: 3D + money (marked)</div>
         <div style={{marginTop: 6, fontSize: 24, color: COLORS.gray}}>

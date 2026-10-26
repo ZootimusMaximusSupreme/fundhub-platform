@@ -4,27 +4,25 @@ import {BrandFrame} from './BrandFrame';
 import {FONT_FAMILY} from './fonts';
 import {useSeeThrough} from './Grid';
 import {SafeZoneGuide} from './SafeZoneGuide';
-import {COLORS, CONTENT, FRAME, GRID, MARGIN_X, SAFE, SAFE_HEIGHT, WORDMARK} from './tokens';
-import {Wordmark} from './Wordmark';
+import {COLORS, CONTENT, FRAME, GRID, MARGIN_X, SAFE, SAFE_HEIGHT} from './tokens';
 
-// KitFrame: BrandFrame with a wide 4K format and a see-through card.
+// KitFrame: BrandFrame with a wide 4K format and compact see-through content.
 //
 // A template that used BrandFrame can use KitFrame with the same backdrop and
 // children, plus `format` and `side`:
 //
 // - vertical, page on (the default): it IS BrandFrame. Same elements, same
 //   pixels, frame for frame.
-// - vertical, see-through: the page becomes one floating white card (the
-//   "plate") inside the text-safe band (y 269-1248). The wordmark, the words,
-//   the cards and the money all sit on it, so every word reads over any film.
-//   Nothing is drawn outside the plate; nothing in the top 14% or bottom 35%.
+// - vertical, see-through: the page disappears. Each template supplies only
+//   the compact readable cards it needs inside the text-safe band (y 269-1248).
+//   Nothing is drawn in the top 14% or bottom 35%.
 // - wide (3840x2160, the sideways 4K VSL and thank-you video): the same page,
 //   scaled up, sits in ONE side panel chosen by `side`. Chris's face fills the
 //   middle and Submagic's captions sit low in the middle, so nothing is drawn
 //   in the middle column (x 1500-2340) or the bottom 30% (y > 1512).
 //   Left panel x 192-1500, right panel x 2340-3648, both y 108-1512.
 //   With the page on, the 4K paper and grid fill the frame; see-through, only
-//   the plate and what is on it remain.
+//   the template's compact content remains.
 
 export type KitFormat = 'vertical' | 'wide';
 export type KitSide = 'left' | 'right';
@@ -44,39 +42,10 @@ export const WIDE_PANEL = {
 /** The see-through plate, in vertical frame pixels. Its shadow stays inside the text-safe band. */
 export const PLATE = {left: 36, right: FRAME.width - 36, top: 277, bottom: 1222, radius: 40} as const;
 const PLATE_W = PLATE.right - PLATE.left; // 1008
-/** The card's own top. The logo no longer sits on the card (owner rule 2026-10-23), so the card starts just above the content. */
-const CARD_TOP = CONTENT.top - 44; // 356
-const CARD_H = PLATE.bottom - CARD_TOP; // 866
-
 /** Room left between the plate and the panel edge for the plate's shadow, in 4K pixels. */
 const WIDE_SHADOW_ROOM = 40;
 /** How much bigger the vertical page is drawn in the wide panel. */
 export const WIDE_SCALE = (WIDE_PANEL.width - WIDE_SHADOW_ROOM * 2) / PLATE_W; // about 1.218
-
-// Reaches at most 26 px below the plate (8 + 18), so it ends at y 1248, the
-// bottom of the text-safe band.
-const PLATE_SHADOW = [
-  '0 0 0 1px rgba(10,10,10,.05)',
-  '0 5px 0 -2px #DCDCE1',
-  '0 8px 18px rgba(10,10,10,.16)',
-  '0 2px 6px rgba(10,10,10,.06)',
-].join(', ');
-
-const Plate: React.FC = () => (
-  <div
-    style={{
-      position: 'absolute',
-      left: PLATE.left,
-      top: CARD_TOP - SAFE.top,
-      width: PLATE_W,
-      height: CARD_H,
-      borderRadius: PLATE.radius,
-      background: 'linear-gradient(170deg, #FFFFFF 0%, #FFFFFF 60%, #FAFAFB 100%)',
-      border: '2px solid #ECECEF',
-      boxShadow: PLATE_SHADOW,
-    }}
-  />
-);
 
 /** Soft edges for the money behind the page in the wide paper format, so bills fade out before the panel edge. */
 const softRect = (fade: number): React.CSSProperties => {
@@ -91,32 +60,14 @@ const softRect = (fade: number): React.CSSProperties => {
 };
 
 /**
- * The vertical page without its paper: backdrop, wordmark and the content box,
- * laid out exactly as BrandFrame lays them out (1080x1920 pixels). `plate`
- * puts the see-through card under it all and keeps the money on the card.
+ * The vertical content space without its paper, laid out exactly as BrandFrame
+ * does (1080x1920 pixels). In see-through mode, templates own their compact
+ * cards; this frame never adds a large white backing plate.
  */
 const Page: React.FC<{plate: boolean; soft: boolean; backdrop?: React.ReactNode; children: React.ReactNode}> = ({plate, soft, backdrop, children}) => (
   <>
     {!plate && backdrop ? <AbsoluteFill style={soft ? softRect(140) : undefined}>{backdrop}</AbsoluteFill> : null}
     <div style={{position: 'absolute', left: 0, right: 0, top: SAFE.top, height: SAFE_HEIGHT, overflow: 'hidden'}}>
-      {plate ? <Plate /> : null}
-      {plate && backdrop ? (
-        <div
-          style={{
-            position: 'absolute',
-            left: 0,
-            top: -SAFE.top,
-            width: FRAME.width,
-            height: FRAME.height,
-            clipPath: `inset(${CARD_TOP}px ${FRAME.width - PLATE.right}px ${FRAME.height - PLATE.bottom}px ${PLATE.left}px round ${PLATE.radius}px)`,
-          }}
-        >
-          {backdrop}
-        </div>
-      ) : null}
-      <div style={{position: 'absolute', left: 0, right: 0, top: WORDMARK.top - SAFE.top, display: 'flex', justifyContent: 'center'}}>
-        <Wordmark width={WORDMARK.width} />
-      </div>
       <div
         style={{
           position: 'absolute',

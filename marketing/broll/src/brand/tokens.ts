@@ -89,4 +89,4 @@ export const TRACK = {
 } as const;
 
 /** Where template content sits: below the wordmark, above the bottom safe edge. */
-export const CONTENT = {top: SAFE.top + 131, bottom: SAFE.bottom - 24} as const; // 400 to 1224
+export const CONTENT = {top: SAFE.top + 32, bottom: SAFE.bottom - 24} as const; // 400 to 1224

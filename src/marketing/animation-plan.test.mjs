@@ -9,7 +9,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  validateAnimationPlan, isDataTied, isLogoTemplate, DATA_TIED, MIN_ANIMATIONS, DEFAULT_MIN_ANIMATIONS, SCRIPT_FORMATS
+  validateAnimationPlan, isDataTied, DATA_TIED, MIN_ANIMATIONS, DEFAULT_MIN_ANIMATIONS, SCRIPT_FORMATS
 } from "./animation-plan.mjs";
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -18,8 +18,7 @@ const REAL_CATALOG = JSON.parse(readFileSync(join(REPO, "marketing", "broll", "c
 const CATALOG = [
   { id: "StepPath", width: 1080, height: 1920, fps: 30, min_frames: 60, max_frames: 90, default_props: { eyebrow: "x", steps: [] }, purpose: null, data_tied: false },
   { id: "LenderSlots", width: 1080, height: 1920, fps: 30, min_frames: 75, max_frames: 120, default_props: { eyebrow: "x", count: "30–50" }, purpose: null, data_tied: false },
-  { id: "QualifyToday", width: 1080, height: 1920, fps: 30, min_frames: 60, max_frames: 90, default_props: { eyebrow: "x", today: {} }, purpose: null, data_tied: true },
-  { id: "ProofFlood", width: 1080, height: 1920, fps: 30, min_frames: 120, max_frames: 180, default_props: { eyebrow: "x" }, purpose: null, data_tied: true }
+  { id: "QualifyToday", width: 1080, height: 1920, fps: 30, min_frames: 60, max_frames: 90, default_props: { eyebrow: "x", today: {} }, purpose: null, data_tied: true }
 ];
 
 const BODY = "Lenders read TWO files before they say yes.\n\nIf one is a mess,\nthey never open the other.\n\nWe check both before you apply.";
@@ -44,7 +43,6 @@ test("a good words-style plan passes", () => {
   const r = words([W("they say yes")]);
   assert.deepEqual(r, { ok: true, errors: [] });
 });
-
 test("a good bullets-style plan passes", () => {
   const r = bullets([B(1, "personal"), B(3, "first", { template: "LenderSlots", seconds: 4 })]);
   assert.deepEqual(r, { ok: true, errors: [] });
@@ -69,7 +67,6 @@ test("a missing template is refused", () => {
 test("seconds inside the template's range pass, at both edges", () => {
   assert.equal(words([W("they say yes", { seconds: 2 })]).ok, true); // 60 frames
   assert.equal(words([W("they say yes", { seconds: 3 })]).ok, true); // 90 frames
-  assert.equal(words([W("they say yes", { template: "ProofFlood", seconds: 6 })]).ok, true); // 180 frames
 });
 
 test("seconds outside the template's range are refused", () => {
@@ -78,8 +75,6 @@ test("seconds outside the template's range are refused", () => {
     assert.deepEqual(codes(r), ["seconds_out_of_range"], String(seconds));
     assert.match(r.errors[0].message, /StepPath runs 2 to 3 seconds/);
   }
-  assert.deepEqual(codes(words([W("they say yes", { template: "ProofFlood", seconds: 6.5 })])), ["seconds_out_of_range"]);
-  assert.deepEqual(codes(words([W("they say yes", { template: "ProofFlood", seconds: 3 })])), ["seconds_out_of_range"]);
 });
 
 test("seconds that are not a number are refused", () => {
@@ -87,7 +82,6 @@ test("seconds that are not a number are refused", () => {
     assert.deepEqual(codes(words([W("they say yes", { seconds })])), ["bad_seconds"], String(seconds));
   }
 });
-
 // 3. Props ---------------------------------------------------------------------
 
 test("props keys from the template's default_props pass", () => {
@@ -116,15 +110,13 @@ test("any props on a data-tied template are refused, even keys it declares", () 
   const r = words([W("they say yes", { template: "QualifyToday", props: { eyebrow: "How much" } })]);
   assert.deepEqual(codes(r), ["data_tied_props"]);
   assert.match(r.errors[0].message, /QualifyToday/);
-  const r2 = words([W("they say yes", { template: "ProofFlood", seconds: 5, props: { approvals: ["made-up"] } })]);
-  assert.deepEqual(codes(r2), ["data_tied_props"]);
 });
 
 test("the data-tied list holds the kit's tied templates, and future families match by name", () => {
-  for (const id of ["QualifyToday", "ProofWall", "ProofFlood", "ProofFloodWide"]) {
+  for (const id of ["QualifyToday", "ProofWall"]) {
     assert.ok(DATA_TIED.has(id) && isDataTied(id), id);
   }
-  for (const id of ["ApprovalCarousel", "ApprovalCarouselWide", "LettersWritten", "LettersWrittenSix", "ProofFloodSquare"]) {
+  for (const id of ["ApprovalCarousel", "ApprovalCarouselWide", "LettersWritten", "LettersWrittenSix"]) {
     assert.equal(isDataTied(id), true, id);
   }
   // ProofWall is tied by its exact name only; it has no family yet.
@@ -280,34 +272,11 @@ test("the API contract's two example scripts pass against the real catalog.json"
 test("every template in the real catalog accepts its own default props and its own length range", () => {
   for (const e of REAL_CATALOG) {
     const props = e.data_tied ? {} : e.default_props;
-    // The logo may only sit on a line that says Fundhub (rule 7), so it gets one.
-    const [body, phrase] = isLogoTemplate(e.id) ? [`${BODY}\n\nI run Fundhub.`, "I run Fundhub"] : [BODY, "they say yes"];
+    const [body, phrase] = [BODY, "they say yes"];
     for (const seconds of [e.min_frames / e.fps, e.max_frames / e.fps]) {
       const r = validateAnimationPlan([{ anchor: { phrase }, template: e.id, props, seconds }],
         { catalog: REAL_CATALOG, body, parts: PARTS, style: "words", scriptFormat: "sorting" });
       assert.deepEqual(r, { ok: true, errors: [] }, `${e.id} at ${seconds}s`);
     }
   }
-});
-
-// 7. The logo only where the script says Fundhub (owner rule 2026-10-23) ----------
-
-const LOGO_CATALOG = [...CATALOG, { id: "FundhubLogo", width: 1080, height: 1920, fps: 30, min_frames: 60, max_frames: 90, default_props: {}, purpose: null, data_tied: false }];
-const LOGO_BODY = "I'm Chris, I run Fundhub.\n\nWe check both files before you apply.";
-const logo = (phrase) => ({ anchor: { phrase }, template: "FundhubLogo", props: {}, seconds: 2.5 });
-
-test("the logo anchored on a line that says Fundhub passes", () => {
-  const r = validateAnimationPlan([logo("I run Fundhub")], { catalog: LOGO_CATALOG, body: LOGO_BODY, style: "words", scriptFormat: "vsl" });
-  assert.deepEqual(r, { ok: true, errors: [] });
-});
-
-test("the logo anchored anywhere the script does not say Fundhub is refused", () => {
-  const r = validateAnimationPlan([logo("before you apply")], { catalog: LOGO_CATALOG, body: LOGO_BODY, style: "words", scriptFormat: "vsl" });
-  assert.equal(r.ok, false);
-  assert.deepEqual(codes(r), ["logo_not_on_fundhub"]);
-});
-
-test("the logo rule only applies to the logo animation", () => {
-  const r = validateAnimationPlan([{ ...logo("before you apply"), template: "StepPath" }], { catalog: LOGO_CATALOG, body: LOGO_BODY, style: "words", scriptFormat: "vsl" });
-  assert.deepEqual(r, { ok: true, errors: [] });
 });

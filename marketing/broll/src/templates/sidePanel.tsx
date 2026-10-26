@@ -1,6 +1,6 @@
 import React from 'react';
 import {AbsoluteFill} from 'remotion';
-import {COLORS, FONT_FAMILY, Grid, WORDMARK, Wordmark} from '../brand';
+import {COLORS, FONT_FAMILY, Grid} from '../brand';
 
 // The wide 4K frame with one side panel (animation-builds-2026-10-22, shared
 // rules). The VSL and the thank-you video are filmed sideways in 4K: the face
@@ -23,10 +23,8 @@ export const SIDE_PANEL = {
   y1: 1512,
 } as const;
 
-/** Wordmark spot inside the panel (from the panel's top edge). */
-const PANEL_WORDMARK = {top: 70, width: WORDMARK.width * 1.9} as const;
-/** Where content starts below the panel's top edge (under the wordmark). */
-export const PANEL_CONTENT_TOP = 250;
+/** Tight inset around the actual side-panel content. */
+export const PANEL_CONTENT_TOP = 40;
 
 /** Review overlay: the allowed panel in red, the banned middle column and bottom 30% shaded. */
 const SidePanelGuide: React.FC<{side: WideSide}> = ({side}) => {
@@ -75,9 +73,6 @@ export const SidePanelFrame: React.FC<{side?: WideSide; showSafeZones?: boolean;
           overflow: 'hidden',
         }}
       >
-        <div style={{position: 'absolute', left: 0, right: 0, top: PANEL_WORDMARK.top, display: 'flex', justifyContent: 'center'}}>
-          <Wordmark width={PANEL_WORDMARK.width} />
-        </div>
         <div style={{position: 'absolute', left: 0, right: 0, top: PANEL_CONTENT_TOP, bottom: 40}}>{children}</div>
       </div>
       {showSafeZones ? <SidePanelGuide side={side} /> : null}

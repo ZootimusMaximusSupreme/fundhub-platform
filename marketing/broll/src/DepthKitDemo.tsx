@@ -16,7 +16,6 @@ import {
   Layer,
   MoneyField,
   P3D,
-  Wordmark,
   cameraAt,
   cameraTransform,
   enter,
@@ -56,8 +55,7 @@ export const DepthKitDemo: React.FC = () => {
       <BackdropStage f={f} length={L} zoneOpacity={1}>
         <MoneyField f={f} mode="fall" count={9} seed="demo-rain" area={{x: 0, y: 1380, w: 1080, h: 540}} opacity={0.5} blur={2.5} />
       </BackdropStage>
-      <div style={{position: 'absolute', left: 70, top: 60, display: 'flex', alignItems: 'center', gap: 28}}>
-        <Wordmark width={200} />
+      <div style={{position: 'absolute', left: 70, top: 60, display: 'flex', alignItems: 'center'}}>
         <div style={{fontSize: 40, fontWeight: 700, letterSpacing: '-0.03em'}}>Depth kit · reference sheet</div>
       </div>
       <div style={{position: 'absolute', inset: 0, perspective: DEPTH.perspective}}>

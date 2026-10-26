@@ -3,12 +3,11 @@ import {AbsoluteFill} from 'remotion';
 import {FONT_FAMILY} from './fonts';
 import {Grid} from './Grid';
 import {SafeZoneGuide} from './SafeZoneGuide';
-import {COLORS, CONTENT, MARGIN_X, SAFE, SAFE_HEIGHT, WORDMARK} from './tokens';
-import {Wordmark} from './Wordmark';
+import {COLORS, CONTENT, MARGIN_X, SAFE, SAFE_HEIGHT} from './tokens';
 
 /**
- * The shared canvas for every template: white page, faint grid, the "fundhub."
- * wordmark, and a content box that sits fully inside the text safe zone
+ * The shared canvas for every template: white page, faint grid, and a content
+ * box that sits fully inside the text safe zone
  * (y 269 to 1248). Anything passed as `children` is clipped to that zone, so no
  * word or number can land where Instagram or Facebook draw their buttons.
  * `backdrop` is for full-frame shapes with no text in them.
@@ -31,9 +30,6 @@ export const BrandFrame: React.FC<{
         overflow: 'hidden',
       }}
     >
-      <div style={{position: 'absolute', left: 0, right: 0, top: WORDMARK.top - SAFE.top, display: 'flex', justifyContent: 'center'}}>
-        <Wordmark width={WORDMARK.width} />
-      </div>
       <div
         style={{
           position: 'absolute',

@@ -69,8 +69,8 @@ test("every composition the kit registers is in the catalog, except the two kit 
 
 test("the catalog holds the 8 registry templates and every module Root.tsx registers", () => {
   for (const id of ["QualifyToday", "FileItems", "HiddenDataPoints", "InquiriesOff", "LenderList", "StepPath", "RatesRising", "SoftPull",
-    "CompanyLine", "OfferStack", "BookCall", "LenderSlots", "FundingRounds", "LenderMatchScroll", "ProofWall", "ProofFlood",
-    "ProofFloodWide", "BankPockets", "BankPocketsWide", "FlatTireHammer", "JackFix", "ToolMatch",
+    "CompanyLine", "OfferStack", "BookCall", "LenderSlots", "FundingRounds", "LenderMatchScroll", "ProofWall",
+    "BankPockets", "BankPocketsWide", "FlatTireHammer", "JackFix", "ToolMatch",
     "InquiriesOffWide", "FundingRoundsWide", "LenderMatchScrollWide", "ProofWallWide", "BookCallWide"]) {
     assert.ok(byId.has(id), `${id} is missing`);
   }
@@ -90,13 +90,12 @@ test("every entry has exactly the contract's fields, in order", () => {
   }
 });
 
-test("lengths come from each composition's own clamp: registry 2-3 s, ProofWall up to 4 s, ProofFlood up to 6 s", () => {
+test("lengths come from each composition's own clamp: registry 2-3 s and ProofWall up to 4 s", () => {
   for (const id of ["QualifyToday", "FileItems", "HiddenDataPoints", "InquiriesOff", "LenderList", "StepPath", "RatesRising", "SoftPull"]) {
     const e = byId.get(id);
     assert.deepEqual([e.min_frames, e.max_frames, e.fps], [60, 90, 30], id); // brand/format.ts clampDuration
   }
   assert.deepEqual([byId.get("ProofWall").min_frames, byId.get("ProofWall").max_frames], [90, 120]);
-  assert.deepEqual([byId.get("ProofFlood").min_frames, byId.get("ProofFlood").max_frames], [120, 180]);
   assert.deepEqual([byId.get("OfferStack").min_frames, byId.get("OfferStack").max_frames], [75, 105]); // offer-cta-timeline.ts
   assert.deepEqual([byId.get("LenderSlots").min_frames, byId.get("LenderSlots").max_frames], [75, 120]); // clipTimeline.ts
   assert.deepEqual([byId.get("LenderMatchScroll").min_frames, byId.get("LenderMatchScroll").max_frames], [105, 135]);
@@ -110,9 +109,9 @@ test("sizes: vertical 1080x1920, the two wide versions 3840x2160", () => {
   }
 });
 
-test("data-tied: QualifyToday, ProofWall and the ProofFlood family, and nothing else in the kit today", () => {
+test("data-tied: QualifyToday and ProofWall, and nothing else in the kit today", () => {
   const tied = committed.filter((e) => e.data_tied).map((e) => e.id).sort();
-  assert.deepEqual(tied, ["ProofFlood", "ProofFloodWide", "ProofWall", "ProofWallWide", "QualifyToday", "QualifyTodayWide"]);
+  assert.deepEqual(tied, ["ProofWall", "ProofWallWide", "QualifyToday", "QualifyTodayWide"]);
 });
 
 test("default props are read from the source, spreads included", () => {
@@ -121,7 +120,6 @@ test("default props are read from the source, spreads included", () => {
   // {...bankPocketsDefaults, format: 'wide' as const}: the override keeps its place.
   assert.deepEqual(Object.keys(byId.get("BankPocketsWide").default_props), ["format", "eyebrow", "headline", "subline", "transparent"]);
   assert.equal(byId.get("BankPocketsWide").default_props.format, "wide");
-  assert.equal(byId.get("ProofFloodWide").default_props.format, "wide");
   assert.equal(byId.get("FundingRounds").default_props.amounts, null, "null survives as null");
 });
 

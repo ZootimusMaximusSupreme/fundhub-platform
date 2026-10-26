@@ -18,8 +18,7 @@ import {
   Stage3D,
   TAG,
   TRACK,
-  WORDMARK,
-  Wordmark,
+
   enter,
   fadeUp,
   progressBetween,
@@ -109,10 +108,10 @@ const WIDE = {width: 3840, height: 2160, fps: 30} as const;
 const PANEL = {left: 192, right: 2340, top: 108, width: 1308, height: 1404} as const;
 /** The scene is laid out in this box (design px). Vertical draws it 1:1 at y 400; wide scales it into the panel. */
 const BOX = {w: 900, h: 800} as const;
-const PLATE_PAD = 50;
+const PLATE_PAD = 32;
 const SHADOW_ROOM = 40;
 const WIDE_SCALE = (PANEL.width - SHADOW_ROOM * 2) / (BOX.w + PLATE_PAD * 2); // 1.228
-const VERTICAL_PLATE = {left: 36, top: 277, width: 1008, height: 945} as const; // y 277-1222, inside 269-1248
+const VERTICAL_PLATE = {left: 70, top: 350, width: 940, height: 800} as const; // y 350-1150, tight around the scene inside 269-1248
 const VERTICAL_BOX_TOP = 400;
 
 const PLATE_SHADOW = ['0 0 0 1px rgba(10,10,10,.05)', '0 5px 0 -2px #DCDCE1', '0 8px 18px rgba(10,10,10,.16)', '0 2px 6px rgba(10,10,10,.06)'].join(', ');
@@ -200,9 +199,6 @@ const Frame: React.FC<{format?: ReturnMultipleFormat; side?: ReturnMultipleSide;
             style={{left: VERTICAL_PLATE.left, top: VERTICAL_PLATE.top - SAFE.top, width: VERTICAL_PLATE.width, height: VERTICAL_PLATE.height}}
           />
         ) : null}
-        <div style={{position: 'absolute', left: 0, right: 0, top: WORDMARK.top - SAFE.top, display: 'flex', justifyContent: 'center'}}>
-          <Wordmark width={WORDMARK.width} />
-        </div>
         <div
           style={{
             position: 'absolute',

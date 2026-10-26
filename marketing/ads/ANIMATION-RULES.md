@@ -32,7 +32,7 @@ Shorter visuals go left, right, or top, or wherever his head is not.
 
 You can go slightly behind his head for authenticity, but only slightly. The words stay readable. Do not park the point in his hair.
 
-If there is space, the visual can blast into the bottom two-thirds, or into the top one-third plus the second third where his shoulders are, so it becomes a huge screen.
+Large diagrams stay in the top one-third only. They do not spill into the middle or lower two-thirds.
 
 If his head is not that big, the sizes change. It is not black and white. Read the frame. Head size and position vary. Discern.
 
@@ -52,8 +52,8 @@ Use that read to place the clip:
 
 - **Top:** the top one-third. A long multi-step explanation goes here. The overlay may be full width inside that band.
 - **Left or right:** a shorter visual, in the open side, or wherever his head is not.
-- **Huge screen:** only when that frame has the room. The visual may run through the bottom two-thirds, or through the top one-third plus the second third where his shoulders are.
-- **Slight overlap:** a small part of the graphic may sit behind the head. The words and the point stay out of the hair. If the head moves into the words, move the graphic.
+- **Large diagram:** the top one-third only. It may be full width in that band, but its key content never spills below it.
+- **Slight overlap:** decorative pixels may sit behind the head. Every key thing the viewer must understand—headline, amount, card, chart, proof, or step—must stay at least 85% visible in the worst sampled frames. If the head moves into a key item, move the graphic.
 
 Re-check every frame while the clip runs. He can lean. Captions can shift. A spot that works on one frame can fail on the next.
 
@@ -107,15 +107,15 @@ Kit details: `marketing/broll/README.md`, `ops/workflows/animation-builds-2026-1
 
 **Captions:** set `caption_position_y` so captions sit in a zone animations never draw in.
 
-**Chris:** section 2 wins. A slight overlap behind the head is allowed. The face stays clear except that overlap. The point does not sit in the hair. The shirt is a bad spot when captions are there. The fixed zones below are the fallback for a short visual when you are still reading the frame.
+**Chris:** section 2 wins. A slight overlap behind the head is allowed only for decoration. The face stays clear except that overlap. Every key item stays at least 85% visible in the worst sampled frames. The shirt is a bad spot when captions are there. The fixed zones below are the fallback for a short visual when you are still reading the frame.
 
-**Vertical fallback for a short visual:** words in the open left, right, or top, inside y 269–1248 when that band is actually open. The top one-third (about y 0–640 on 1080×1920) is a real home for a long visual, including a full-width overlay. It is not a faint-decoration strip. The bottom caption area (y > 1248) stays clear unless section 2 says the frame has room for a huge screen, and even then the captions themselves stay clear.
+**Vertical fallback for a short visual:** words in the open left, right, or top, inside y 269–1248 when that band is actually open. The top one-third (about y 0–640 on 1080×1920) is the only home for a long visual, including a full-width overlay. It is not a faint-decoration strip. The bottom caption area (y > 1248) stays clear.
 
 **Wide fallback:** a long visual still goes in the top one-third and may be full width there. A shorter visual uses one side panel via `side` prop `'left' | 'right'` (default `'left'`). Left x 192–1500, right x 2340–3648, both y 108–1512, when that panel is actually open. Do not park the point in the middle of his head. The bottom 30% (y > 1512) stays clear of captions.
 
 ## 9. Brand
 
-Accent #3D86F0, "fundhub." wordmark, spectrum dash, Inter. White page and faint grid apply only to non–see-through previews in the kit; overlays have no paper or grid.
+Accent #3D86F0, spectrum dash, Inter. Never add a Fundhub wordmark or logo to an animation card or preview. White cards hug the text and diagram with only readable padding; overlays have no paper or grid.
 
 3D means depth: perspective, tilted cards, layered shadows, parallax, rotation. Premium and clean, never busy.
 

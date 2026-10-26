@@ -1,21 +1,19 @@
 ---
-description: See-through animations carry no logo; the logo plays only on the word Fundhub
+description: Animation cards carry no Fundhub logo or wordmark
 alwaysApply: true
 ---
 
-# Animation logo — only where the script says Fundhub
+# Animation cards — no Fundhub logo
 
-**Owner law (2026-10-23):** Chris: "remove the logo from the pngs... make 1 fundhub animation for the logo so that way we can get brand loyalty," then "the logo only goes where we say fundhub."
+**Owner law (2026-10-26):** Never add a Fundhub logo or wordmark to an animation card. It is not needed.
 
 ## Always
 
-- See-through (overlay) animations in `marketing/broll` never show the wordmark. `Wordmark` draws nothing inside `<SeeThrough on>`.
-- The brand shows only in `FundhubLogo` / `FundhubLogoWide`, and that plays only on a line where the script says "Fundhub" (2 seconds).
-- Put the logo on every "Fundhub" line. If another animation sits within 4 seconds, the logo wins.
-- Fix the transcript when it mishears the name ("FunHub").
+- Every reusable animation, preview, and white card in `marketing/broll` has no Fundhub wordmark or logo.
+- Keep cards tight around their text and diagram. Do not reserve a brand-header gutter.
 
 ## Never
 
-- Add a logo to a new see-through template.
+- Add a logo or wordmark to any animation card, including an opaque preview.
 
-The checker enforces it: `validateAnimationPlan` refuses a logo anchor without "Fundhub" (`logo_not_on_fundhub`). Rules board: `ops/workflows/animation-builds-2026-10-22.md`. Skill: `fundhub-video-animation-overlay`.
+`FundhubLogo` is not a usable catalog animation. Rules board: `ops/workflows/animation-builds-2026-10-22.md`. Skill: `fundhub-video-animation-overlay`.

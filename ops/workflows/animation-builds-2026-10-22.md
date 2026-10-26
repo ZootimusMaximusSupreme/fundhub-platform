@@ -57,3 +57,42 @@ No dependencies between W1, W2, N1, N2, N3. Merge waits on them. Batch 2 starts 
 - W1: add `QualifyTodayWide` to `DATA_TIED` in `src/marketing/animation-plan.mjs` and to the list at `src/marketing/catalog.test.mjs` line ~114, then rebuild the catalog.
 - W1 changed the see-through look of its five templates: content now sits on one white card inside the safe band (page-on look unchanged, 15/15 pixel-identical).
 - `Root.tsx` and `catalog.json` will clash across branches; resolve by keeping every registration, then rebuild the catalog.
+
+## Capital Blueprint Ad 1 — Industry call-out (2026-10-25)
+
+- **Owner:** Codex `/root`. **Scope:** one review render only; do not change any other ad, master video, or shared template.
+- **Master:** `/Users/chrisstanbridge/Downloads/Fundhub — Post Edit Pre Animation/Capital Blueprint Ad 1 — Industry call-out.mp4` (read-only).
+- **Timing check prompt:** `Capital Blueprint Ad 1 only. Match every scheduled animation start to the captioned master, report any mismatch, and do not edit or render.`
+- **Placement check prompt:** `Capital Blueprint Ad 1 only. Validate every scheduled overlay against the face, captions, safe bands, and offer. Report defects; do not edit or render.`
+- **Output:** a scratch review MP4 plus contact sheet and frame-review evidence. The old Desktop review is not a source of truth.
+- **Readability guardrail (2026-10-25):** Every schedule row now names the key things a viewer must see. For a behind clip, the matte check measures each one and blocks the lay-on unless every key item and words box is at least 85% visible in the worst sampled frames. Large diagrams keep all key content inside the top third (y 0–640 on a 1080×1920 ad); they never use the middle or lower two-thirds.
+
+## Active rebuild split — 2026-10-25
+
+- **Capital Blueprint dashboard treatment — owner `/root`:** rebuilt in `BlueprintDashboardReal` as an animated, full-background action sequence behind Chris's cut-out. It progresses through the real offer actions (roadmap, Chase payoff, negative removal, disputes, business one/two, next sequence); no nonsense labels/dates or Sample File badge. Screenshot proof: `/private/tmp/ad1-blueprint-action-placement.png`. Master footage stays untouched.
+- **Capital Blueprint Ads 2 and 3 — placement discovery:** completed as screenshot-placement maps only. Reuse the rebuilt dashboard treatment for the long Blueprint explanation; use ChessRightMove/LearnByAction only at their named anchors. Do not render onto masters until each placement is shown.
+- **Direct Book Ads 4, 5, and 16 — later lane:** retain only owner-approved visuals, then produce placement proofs before any render. The rejected money-spin/falling-cash assets stay out.
+
+## Finish split — 2026-10-25
+
+- **Ad 1 dashboard readability — owner `/root/ad1_layout`:** `Capital Blueprint Ad 1 only. Rework the modern BlueprintDashboardReal placement so the viewer can read its actions around Chris. Use the top third and open side space; keep Chris in front only where needed. No old DashboardOS, Sample File badge, fake money, or fake approvals. Update the plan and make placement proofs only.`
+- **Ads 2 and 3 — owner `/root/ad2_rereview`:** `Capital Blueprint Ads 2 and 3 only. Make their existing plans render-ready using the modern BlueprintDashboardReal and established real templates. Keep Ad 2's removed 'banks tighten every year' copy and raised diagram. No old dashboard, Sample File badge, fake money, or substitutes. Make placement proofs only.`
+- **Direct Book Ads 4, 5, 9, and 16 — owner `/root/ad1_timing`:** `Read the saved anchor list and existing plans. Keep real established visuals only. Ad 16 is a surgical cleanup: preserve the good visual language and identify only placement, readability, and audio changes. Make schedules and placement proofs only; do not render final videos.`
+- **Final review renders — owner `/root`:** render only after each lane is source-locked, frame-review each final scratch output, then leave the Submagic masters untouched.
+
+## Premade-only nine-ad visual review — 2026-10-26
+
+- **Owner `/root`:** create a review sheet only. Do not edit masters, schedules, or templates. Map the burned-caption anchor words to the existing premade catalog and show one placement screenshot per ad.
+- **Batch A:** Capital Blueprint Ads 1, 2, and 3 — anchors, premade-only choices, screenshot mocks.
+- **Batch B:** Direct Book Ads 4, 5, and 12 — anchors, premade-only choices, screenshot mocks.
+- **Batch C:** Direct Book Ads 13, 14, and 16 — anchors, premade-only choices, screenshot mocks.
+- **Excluded from this review:** `BlueprintDashboardReal`, `BlueprintDashboardOS`, `BlueprintDashboardOSAd2`, `SkyPlate`, `SkyDiagram`, `ProofFlood`, `ProofFloodWide`, plus any fake approval, falling-cash, or sample-file visual. Use the catalog's existing assets only; show the choices before any later placement work.
+
+## Shared premade-library cleanup — 2026-10-26
+
+- **Owner `/root`:** remove the Fundhub wordmark from every reusable animation and tighten white cards to the content. The separate `FundhubLogo` composition is removed from the usable catalog rather than used in ads.
+- **Logo audit:** locate every shared-frame and one-off wordmark path; confirm the smallest shared removal that covers all templates.
+- **Card audit:** identify the shared white-card padding and the templates with their own oversized white plate; render before/after proof stills from representative ads.
+- **Must wait:** no video master or overlay export changes. Build only after the shared library visual proof is clean.
+- **Completed:** removed the standalone logo composition and stale logo preview; rebuilt the usable catalog (71 templates) and active Ad 14/16 plans; removed the rejected 600+ and 700+ plates; tightened shared and ReturnMultiple white cards. Gallery now has fresh stills for all 73 listed cards with no missing images. No video master or overlay export changed.
+- **Owner deletion, 2026-10-26:** removed ProofFlood, ProofFloodWide, SkyPlate, and SkyDiagram from the source, catalog, gallery, previews, and active schedules. The usable catalog now has 67 templates; the gallery has 69 cards including the two non-ad kit tools. No video master or overlay export changed.

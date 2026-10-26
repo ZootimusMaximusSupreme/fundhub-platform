@@ -11,13 +11,17 @@ const REPO = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const base = { width: 1080, height: 1920, fps: 30, video_seconds: 60 };
 const beside = (over = {}) => ({
   n: 1, template: "QualifyToday", start_frame: 30, frames: 90, scale: 0.75, dx: 40, dy: 300, mode: "beside",
-  words_on_video_box: [120, 400, 960, 900], min_text_px_clip: 40, ...over,
+  words_on_video_box: [120, 400, 960, 900], min_text_px_clip: 40,
+  visual_size: "large", key_content_boxes: [{ name: "qualification result", box: [120, 300, 960, 640] }], ...over,
 });
 const dash = (over = {}) => ({
   n: 2, template: "BlueprintDashboardReal", start_frame: 300, frames: 600, scale: 1, dx: 0, dy: 0, mode: "behind",
   words_boxes: [[40, 280, 870, 334], [812, 400, 1052, 880]], min_text_px_clip: 28,
   content_source: "marketing/broll/public/blueprint/blueprint-6-month-timelapse.mp4", visible_words_fraction: 0.9,
-  visible_measured_by: "visible-check.py, worst 5% of 600 frames", ...over,
+  visible_measured_by: "visible-check.py, worst 5% of 600 frames", visual_size: "large",
+  key_content_boxes: [{ name: "dashboard timeline", box: [40, 280, 1052, 640] }],
+  key_content_visible_fractions: { "dashboard timeline": 0.9 },
+  key_content_measured_by: "visible-check.py, worst 5% of 600 frames", ...over,
 });
 const run = (clips) => validateSchedule({ ...base, clips }, { repoRoot: REPO });
 
@@ -86,4 +90,11 @@ test("a template file is not real content, a hand-typed visible share is not a m
   assert.ok(run([dash({ content_source: "marketing/broll/src/templates/BlueprintDashboardReal.tsx" })]).fails.some((f) => /not footage/.test(f)));
   assert.ok(run([dash({ visible_measured_by: undefined })]).fails.some((f) => /not measured/.test(f)));
   assert.ok(run([beside({ words_on_video_box: [64, 0, 1022, 628] })]).fails.some((f) => /words band/.test(f)));
+});
+
+test("words in the sky above his hair pass only when the row says words_band top, and still fail past the caption line", () => {
+  const sky = { words_boxes: [[40, 50, 880, 106], [740, 176, 1052, 720]] };
+  assert.equal(run([dash({ ...sky, words_band: "top" })]).fails.some((f) => /words band/.test(f)), false);
+  assert.ok(run([dash(sky)]).fails.some((f) => /words band/.test(f)));
+  assert.ok(run([dash({ words_band: "top", words_boxes: [[40, 50, 880, 1300]] })]).fails.some((f) => /words band/.test(f)));
 });

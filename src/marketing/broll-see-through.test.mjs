@@ -42,7 +42,7 @@ function templatePropsTypes() {
 }
 
 test("every catalog entry offers transparent, and it defaults to false", () => {
-  assert.equal(catalog.length, 64, "the kit registers 64 ad clips today");
+  assert.equal(catalog.length, 67, "the kit registers 67 ad clips today");
   for (const e of catalog) {
     assert.ok(Object.hasOwn(e.default_props, "transparent"), `${e.id}: default_props has no transparent`);
     assert.equal(e.default_props.transparent, false, `${e.id}: transparent must default to false`);
@@ -51,7 +51,7 @@ test("every catalog entry offers transparent, and it defaults to false", () => {
 
 test("every template's props type declares transparent?: boolean", () => {
   const types = templatePropsTypes();
-  assert.equal(types.length, 37, `37 template files today, found ${types.map((t) => t.file).join(", ")}`);
+  assert.equal(types.length, 41, `41 template files today, found ${types.map((t) => t.file).join(", ")}`);
   for (const t of types) {
     assert.match(t.body, /\n {2}transparent\?: boolean;/, `${t.file}: ${t.name}Props has no transparent?: boolean`);
   }
@@ -75,11 +75,10 @@ test("Grid draws nothing when see-through, and is the page every BrandFrame pain
   assert.doesNotMatch(frame, /backgroundColor|COLORS\.paper/, "BrandFrame paints no page of its own that see-through would miss");
 });
 
-test("a template that paints its own page (the wide 4K formats) skips it when see-through", () => {
+test("a template that paints its own page skips it when see-through", () => {
   const painters = Object.entries(sources).filter(([, text]) => text.includes("backgroundColor: COLORS.paper"));
-  assert.deepEqual(painters.map(([f]) => f).sort(), ["BankPockets.tsx", "ProofFlood.tsx"]);
+  assert.deepEqual(painters.map(([f]) => f).sort(), ["BankPockets.tsx"]);
   assert.match(sources["BankPockets.tsx"], /const WideGrid: React\.FC = \(\) => \{\n {2}const seeThrough = useSeeThrough\(\);\n {2}const line = 3;\n {2}if \(seeThrough\) return null;/);
-  assert.match(sources["ProofFlood.tsx"], /\{props\.transparent \? null : \(\n {8}<AbsoluteFill\n {10}style=\{\{\n {12}backgroundColor: COLORS\.paper,/);
 });
 
 test("the README gives the alpha render commands: ProRes 4444 .mov and VP9 .webm", () => {

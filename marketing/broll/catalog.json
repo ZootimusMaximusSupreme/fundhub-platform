@@ -138,9 +138,12 @@
       "headline": "Rates are going up.",
       "subline": "When rates rise, banks tighten.",
       "chipLabel": "Rates",
+      "years": 0,
+      "squeeze": [],
+      "yearLabel": null,
       "transparent": false
     },
-    "purpose": "Interest rates going up. On a floating panel a thick line climbs to a Rates chip while a cash stack shrinks. No rate values or dates.",
+    "purpose": "Interest rates going up. On a floating panel a thick line climbs to a Rates chip while a cash stack shrinks. No rate values or dates. With years set, the chart splits into yearly bands that tint red and lock one by one, the cash drops a step each band and tightening chips stamp in under it.",
     "data_tied": false
   },
   {
@@ -587,60 +590,6 @@
     "data_tied": true
   },
   {
-    "id": "ProofFlood",
-    "width": 1080,
-    "height": 1920,
-    "fps": 30,
-    "min_frames": 120,
-    "max_frames": 180,
-    "default_props": {
-      "format": "vertical",
-      "approvals": "all",
-      "headline": [
-        "t-74k-chase-ink",
-        [
-          "t-50k-keybank",
-          "keybank-50k-loc"
-        ],
-        "d-400k-loc",
-        "d-500k-loc"
-      ],
-      "showTotal": true,
-      "eyebrow": "Client approvals",
-      "caption": "Real approvals",
-      "transparent": false
-    },
-    "purpose": "ProofFlood: a flood of real approvals. Dozens of approval cards fly in out of the depth and pile up behind; the headline approvals slam to the front one at a time with a flash, a money burst and a big amount chip, then dock as a small trophy chip and drop back into the pile. A running total climbs while the cards land. It adds only the figures on screen: each card's amount joins the total the moment that card lands, so the last frame shows the sum of every approval in the clip.",
-    "data_tied": true
-  },
-  {
-    "id": "ProofFloodWide",
-    "width": 3840,
-    "height": 2160,
-    "fps": 30,
-    "min_frames": 120,
-    "max_frames": 180,
-    "default_props": {
-      "format": "wide",
-      "approvals": "all",
-      "headline": [
-        "t-74k-chase-ink",
-        [
-          "t-50k-keybank",
-          "keybank-50k-loc"
-        ],
-        "d-400k-loc",
-        "d-500k-loc"
-      ],
-      "showTotal": true,
-      "eyebrow": "Client approvals",
-      "caption": "Real approvals",
-      "transparent": false
-    },
-    "purpose": "ProofFlood: a flood of real approvals. Dozens of approval cards fly in out of the depth and pile up behind; the headline approvals slam to the front one at a time with a flash, a money burst and a big amount chip, then dock as a small trophy chip and drop back into the pile. A running total climbs while the cards land. It adds only the figures on screen: each card's amount joins the total the moment that card lands, so the last frame shows the sum of every approval in the clip.",
-    "data_tied": true
-  },
-  {
     "id": "BankPockets",
     "width": 1080,
     "height": 1920,
@@ -706,7 +655,7 @@
       "footer": null,
       "transparent": false
     },
-    "purpose": "MoneyClimb (Unit N1, animation-builds-2026-10-22). Dollar amounts climbing, in four modes picked by props, so one template serves every \"how much money\" line: steps (amounts stepping up, $20,000 to $400,000 to a million), range (a target range, $250,000 to $400,000), ladder (a monthly ladder up to a goal, $10,000 a month up to past $100,000 a month) and single (one income bar climbing to over $400,000).",
+    "purpose": "MoneyClimb (Unit N1, animation-builds-2026-10-22). Dollar amounts climbing, in five modes picked by props, so one template serves every \"how much money\" line: steps (amounts stepping up, $20,000 to $400,000 to a million), range (a target range, $250,000 to $400,000), ladder (a monthly ladder up to a goal, $10,000 a month up to past $100,000 a month), single (one income bar climbing to over $400,000) and swap (one amount at a time on a tight plate, the next one replacing it: $100K to $300K becomes $100K to $400K+).",
     "data_tied": false
   },
   {
@@ -741,37 +690,7 @@
       "footer": null,
       "transparent": false
     },
-    "purpose": "MoneyClimb (Unit N1, animation-builds-2026-10-22). Dollar amounts climbing, in four modes picked by props, so one template serves every \"how much money\" line: steps (amounts stepping up, $20,000 to $400,000 to a million), range (a target range, $250,000 to $400,000), ladder (a monthly ladder up to a goal, $10,000 a month up to past $100,000 a month) and single (one income bar climbing to over $400,000).",
-    "data_tied": false
-  },
-  {
-    "id": "FundhubLogo",
-    "width": 1080,
-    "height": 1920,
-    "fps": 30,
-    "min_frames": 60,
-    "max_frames": 90,
-    "default_props": {
-      "format": "vertical",
-      "side": "left",
-      "transparent": false
-    },
-    "purpose": "FundhubLogo: the Fundhub brand sting. The real \"fundhub.\" wordmark on a white plate: a thin brand-spectrum line draws across, the letters rise up out of it one by one, then the line gathers into the period, which lands in the spectrum colors, sends out one soft ring and settles to ink. The only place the logo shows on the videos.",
-    "data_tied": false
-  },
-  {
-    "id": "FundhubLogoWide",
-    "width": 3840,
-    "height": 2160,
-    "fps": 30,
-    "min_frames": 60,
-    "max_frames": 90,
-    "default_props": {
-      "format": "wide",
-      "side": "left",
-      "transparent": false
-    },
-    "purpose": "FundhubLogo: the Fundhub brand sting. The real \"fundhub.\" wordmark on a white plate: a thin brand-spectrum line draws across, the letters rise up out of it one by one, then the line gathers into the period, which lands in the spectrum colors, sends out one soft ring and settles to ink. The only place the logo shows on the videos.",
+    "purpose": "MoneyClimb (Unit N1, animation-builds-2026-10-22). Dollar amounts climbing, in five modes picked by props, so one template serves every \"how much money\" line: steps (amounts stepping up, $20,000 to $400,000 to a million), range (a target range, $250,000 to $400,000), ladder (a monthly ladder up to a goal, $10,000 a month up to past $100,000 a month), single (one income bar climbing to over $400,000) and swap (one amount at a time on a tight plate, the next one replacing it: $100K to $300K becomes $100K to $400K+).",
     "data_tied": false
   },
   {
@@ -1262,7 +1181,7 @@
       "programLabel": "The exact same program",
       "transparent": false
     },
-    "purpose": "ScoreBadge: credit scores on a 3D card, in one of three modes picked by `mode`. \"range\": a score gauge whose whole arc, from the low score to the high one, sweeps in lit and gets a green check (we work with every score in it). \"threshold\": a marker rides the gauge up to one score; that score lands big in the middle and the arc from it to the top lights up (\"or higher\"). \"program\": three score badges drop into one dark program box and come out the other side as three identical gray badges, the numbers gone.",
+    "purpose": "ScoreBadge: credit scores on a 3D card, in one of four modes picked by `mode`. \"range\": a score gauge whose whole arc, from the low score to the high one, sweeps in lit and gets a green check (we work with every score in it). \"threshold\": a marker rides the gauge up to one score; that score lands big in the middle and the arc from it to the top lights up (\"or higher\"). \"program\": three score badges drop into one dark program box and come out the other side as three identical gray badges, the numbers gone. \"plate\": words only, a tight plate that hugs the eyebrow and the score with a plus (\"You qualify\", 600+); no gauge.",
     "data_tied": false
   },
   {
@@ -1290,7 +1209,7 @@
       "programLabel": "The exact same program",
       "transparent": false
     },
-    "purpose": "ScoreBadge: credit scores on a 3D card, in one of three modes picked by `mode`. \"range\": a score gauge whose whole arc, from the low score to the high one, sweeps in lit and gets a green check (we work with every score in it). \"threshold\": a marker rides the gauge up to one score; that score lands big in the middle and the arc from it to the top lights up (\"or higher\"). \"program\": three score badges drop into one dark program box and come out the other side as three identical gray badges, the numbers gone.",
+    "purpose": "ScoreBadge: credit scores on a 3D card, in one of four modes picked by `mode`. \"range\": a score gauge whose whole arc, from the low score to the high one, sweeps in lit and gets a green check (we work with every score in it). \"threshold\": a marker rides the gauge up to one score; that score lands big in the middle and the arc from it to the top lights up (\"or higher\"). \"program\": three score badges drop into one dark program box and come out the other side as three identical gray badges, the numbers gone. \"plate\": words only, a tight plate that hugs the eyebrow and the score with a plus (\"You qualify\", 600+); no gauge.",
     "data_tied": false
   },
   {
@@ -1594,6 +1513,300 @@
     "data_tied": false
   },
   {
+    "id": "PullAwayLoss",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "min_frames": 75,
+    "max_frames": 120,
+    "default_props": {
+      "eyebrow": "The real cost",
+      "businessLabel": "Your business",
+      "timeLabel": "Your time",
+      "hoursLabel": "Hundreds of hours",
+      "price": {
+        "amount": 5000,
+        "upTo": 10000
+      },
+      "pile": [
+        "Outdated videos",
+        "Zoom calls"
+      ],
+      "pileCount": 3,
+      "subline": "Time taken from the company you run",
+      "transparent": false
+    },
+    "purpose": "PullAwayLoss: time and money drain out of your business. On the left your business card goes gray while its time bar empties; a dashed line carries bills and little clocks off it into a clock on the right whose hands spin faster and faster, a red slice of the face filling as the hours go. Under the clock the hours label lands on a growing pile of course cards (Outdated videos, Zoom calls), and an optional price tag hangs under the business.",
+    "data_tied": false
+  },
+  {
+    "id": "CreditFileExam",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "min_frames": 90,
+    "max_frames": 120,
+    "default_props": {
+      "eyebrow": "Your file",
+      "highlight": "Your",
+      "docTitle": "Credit report",
+      "docSubtitle": "Lender view",
+      "checklistTitle": "Lender checks",
+      "checks": [
+        "Scores",
+        "Card balances",
+        "Payment history",
+        "Inquiries"
+      ],
+      "result": "Your next step",
+      "score": null,
+      "sampleTag": null,
+      "subline": null,
+      "transparent": false
+    },
+    "purpose": "CreditFileExam: a lender-style read of YOUR credit file. A report floats on a stack of pages while a magnifier slides down it section by section; each section it passes lights up on the report and its line on the lender checklist beside it checks off. The eyebrow chip says whose file it is, with the highlight word in brand blue, and a \"next step\" chip lands under the checklist when the read is done. No numbers unless a sample score is passed, and then the sample tag shows.",
+    "data_tied": false
+  },
+  {
+    "id": "BlueprintDashboardOS",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "min_frames": 90,
+    "max_frames": 120,
+    "default_props": {
+      "eyebrow": "Your dashboard",
+      "title": "Capital Blueprint",
+      "sampleTag": "Sample client",
+      "tabs": [
+        "Personal",
+        "Business 1",
+        "Business 2"
+      ],
+      "waypoints": [
+        "Pay Amex down to $2,500",
+        "Pay Chase down to $1,200",
+        "No new accounts before funding"
+      ],
+      "dueLabel": "Due date",
+      "reminderLabel": "Reminder",
+      "proofLabel": "Proof uploaded",
+      "clearedLabel": "Cleared",
+      "qualify": {
+        "label": "You qualify for",
+        "today": 199350,
+        "after": 221500
+      },
+      "score": {
+        "label": "Middle score",
+        "value": 762
+      },
+      "balancesLabel": "Card balances",
+      "balances": [
+        {
+          "label": "Amex",
+          "from": 4800,
+          "to": 2500
+        },
+        {
+          "label": "Chase",
+          "from": 2100,
+          "to": 1200
+        }
+      ],
+      "checkInLabel": "Team check-in",
+      "statusLabel": "In progress",
+      "readyLabel": "Ready to fund",
+      "nextLabel": "Next funding sequence",
+      "osLabel": "OS for funding",
+      "scenes": [
+        {
+          "title": "Your dashboard",
+          "detail": "Sample client"
+        },
+        {
+          "title": "Every step, in order",
+          "detail": "Waypoints"
+        },
+        {
+          "title": "Due dates",
+          "detail": "Reminders on"
+        },
+        {
+          "title": "Proof clears a step",
+          "detail": "Upload"
+        },
+        {
+          "title": "Qualify amount climbs",
+          "detail": "Sample client"
+        },
+        {
+          "title": "Team check-in",
+          "detail": "When you fall behind"
+        },
+        {
+          "title": "Ready to fund",
+          "detail": "Yourself"
+        },
+        {
+          "title": "OS for funding",
+          "detail": "Every sequence"
+        }
+      ],
+      "sceneStarts": null,
+      "transparent": false
+    },
+    "purpose": "BlueprintDashboardOS: the Capital Blueprint dashboard working, as one long walk-through behind Chris. A full-width app window opens with its business tabs and the sample client's qualify amount; the waypoints appear in order; each gets a due date while a reminder slides in; proof uploads clear the first steps one by one while the matching card balances drop; the rest clear and the qualify amount climbs to the once-fixed figure; a team check-in pops up; the status turns to ready and the next funding sequence card arrives; it ends on the \"OS for funding\" chip with the loop turning. Eight beats, each landing at its own speed and then holding, so the clip can run from 3 seconds up to 30 and more.",
+    "data_tied": false
+  },
+  {
+    "id": "LearnByAction",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "min_frames": 90,
+    "max_frames": 180,
+    "default_props": {
+      "eyebrow": "Learn by doing",
+      "fileLabel": "Your file",
+      "highlight": "Your",
+      "gaugeLabel": "Credit",
+      "actions": [
+        "Upload your proof",
+        "Send the letter",
+        "Score ticks up"
+      ],
+      "subline": null,
+      "transparent": false
+    },
+    "purpose": "LearnByAction: every move lands on your own file. A credit file stands on the left; on the right an action list completes one row at a time, and each finished action shows up on the file itself: an uploaded proof page flies into the file's proof tray, a letter flies out of the file, the file's score gauge ticks up a notch, a plain step lights its line green. Icons, not numbers: the list is never a numbered card stack, and the gauge prints no score.",
+    "data_tied": false
+  },
+  {
+    "id": "BlueprintDashboardOSAd2",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "min_frames": 90,
+    "max_frames": 120,
+    "default_props": {
+      "eyebrow": "Your dashboard",
+      "title": "Capital Blueprint",
+      "sampleTag": "Sample client",
+      "tabs": [
+        "Personal",
+        "Business 1",
+        "Business 2"
+      ],
+      "waypoints": [
+        "Pay Amex down to $2,500",
+        "Pay Chase down to $1,200",
+        "No new accounts before funding"
+      ],
+      "dueLabel": "Due date",
+      "reminderLabel": "Reminder",
+      "proofLabel": "Proof uploaded",
+      "clearedLabel": "Cleared",
+      "qualify": {
+        "label": "You qualify for",
+        "today": 199350,
+        "after": 221500
+      },
+      "score": {
+        "label": "Middle score",
+        "value": 762
+      },
+      "balancesLabel": "Card balances",
+      "balances": [
+        {
+          "label": "Amex",
+          "from": 4800,
+          "to": 2500
+        },
+        {
+          "label": "Chase",
+          "from": 2100,
+          "to": 1200
+        }
+      ],
+      "checkInLabel": "Team check-in",
+      "statusLabel": "In progress",
+      "readyLabel": "Ready to fund",
+      "nextLabel": "Next funding sequence",
+      "osLabel": "OS for funding",
+      "scenes": [
+        {
+          "title": "Capital Blueprint",
+          "detail": "Sample client"
+        },
+        {
+          "title": "Your next move",
+          "detail": "Waypoints"
+        },
+        {
+          "title": "Kept on track",
+          "detail": "Nudges"
+        },
+        {
+          "title": "Each step clears",
+          "detail": "Upload"
+        },
+        {
+          "title": "Qualify amount climbs",
+          "detail": "Sample client"
+        },
+        {
+          "title": "Past the quit point",
+          "detail": "Team check-in"
+        },
+        {
+          "title": "Ready to fund",
+          "detail": "While you make money"
+        },
+        {
+          "title": "Repeat it",
+          "detail": "Every sequence"
+        }
+      ],
+      "sceneStarts": null,
+      "transparent": false
+    },
+    "purpose": "BlueprintDashboardOS: the Capital Blueprint dashboard working, as one long walk-through behind Chris. A full-width app window opens with its business tabs and the sample client's qualify amount; the waypoints appear in order; each gets a due date while a reminder slides in; proof uploads clear the first steps one by one while the matching card balances drop; the rest clear and the qualify amount climbs to the once-fixed figure; a team check-in pops up; the status turns to ready and the next funding sequence card arrives; it ends on the \"OS for funding\" chip with the loop turning. Eight beats, each landing at its own speed and then holding, so the clip can run from 3 seconds up to 30 and more.",
+    "data_tied": false
+  },
+  {
+    "id": "ChessRightMove",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "min_frames": 90,
+    "max_frames": 180,
+    "default_props": {
+      "eyebrow": null,
+      "goodLabel": "The right move",
+      "badLabel": "Guesswork",
+      "transparent": false
+    },
+    "purpose": "ChessRightMove: the right move on your file, as a chess move. Your blue knight stands on a tilted board; three wrong moves draw out as gray dashed L-paths, each landing square goes red with an X and the paths fade; then one blue path draws to the right square, the knight hops along it and lands, and the square lights blue with a check. Two chips under the board name the wrong moves and the right one (badLabel, goodLabel), each about 5 words or less and never his sentence. No numbers.",
+    "data_tied": false
+  },
+  {
+    "id": "ChessCallCTA",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "min_frames": 90,
+    "max_frames": 180,
+    "default_props": {
+      "eyebrow": null,
+      "line": "Right move?",
+      "showKing": true,
+      "transparent": false
+    },
+    "purpose": "ChessCallCTA: the closing move is the call, shown and not told. One square on a tilted chess board holds a phone; a short line asks the question on a chip (\"Right move?\", its icon a question mark). Your blue knight's path draws to the phone square, the knight hops on, the square fills blue and the phone rings, the chip's question mark turns to a check, and the other side's king is put in check and tips over. Minimal words: one optional line and an optional eyebrow, never the call to action spelled out.",
+    "data_tied": false
+  },
+  {
     "id": "BlueprintDashboardReal",
     "width": 1080,
     "height": 1920,
@@ -1601,7 +1814,6 @@
     "min_frames": 90,
     "max_frames": 120,
     "default_props": {
-      "sampleTag": "Sample file",
       "shots": [
         {
           "from": 0,
@@ -1627,7 +1839,7 @@
             },
             "src": 0.7,
             "label": "Your dashboard",
-            "top": 400,
+            "top": 176,
             "width": null
           }
         },
@@ -1655,7 +1867,7 @@
             },
             "src": 1.8,
             "label": "Next waypoint",
-            "top": 420,
+            "top": 176,
             "width": null
           }
         },
@@ -1679,7 +1891,7 @@
             },
             "src": 4,
             "label": "Steps clear",
-            "top": 440,
+            "top": 176,
             "width": null
           }
         },
@@ -1725,7 +1937,7 @@
             },
             "src": 4,
             "label": "Due date",
-            "top": 396,
+            "top": 176,
             "width": 312
           }
         },
@@ -1758,7 +1970,7 @@
             },
             "src": 4,
             "label": "Letters",
-            "top": 396,
+            "top": 176,
             "width": 312
           }
         },
@@ -1786,7 +1998,7 @@
             },
             "src": 12.2,
             "label": "Bank order",
-            "top": 400,
+            "top": 176,
             "width": null
           }
         },
@@ -1814,7 +2026,7 @@
             },
             "src": null,
             "label": "Balance down",
-            "top": 460,
+            "top": 176,
             "width": null
           }
         },
@@ -1855,14 +2067,14 @@
             },
             "src": 14.2,
             "label": "Alerts on",
-            "top": 400,
+            "top": 176,
             "width": null
           }
         }
       ],
       "transparent": false
     },
-    "purpose": "BlueprintDashboardReal: the real Capital Blueprint dashboard, from the 6-month sample-file screen recording, playing in a full-width window behind Chris. A camera moves through the recording one waypoint at a time: each shot lands the line that matters in the open strip above his head, and a lens card in the open column right of his head shows one more real piece of the same screen up close (the menu, the next move, a check mark, a balance), with a short chip. Everything on screen is the recorded app, never a mock-up.",
+    "purpose": "BlueprintDashboardReal: two presentations of the Capital Blueprint product. `window` is the recorded dashboard with a moving camera and optional lens. `background` is the long-form walkthrough behind Chris's cut-out: it keeps the product's light dashboard feel while animating only the offer actions he is saying. It never fabricates client names, dates, balances, approvals, or tags.",
     "data_tied": false
   }
 ]

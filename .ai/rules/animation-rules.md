@@ -31,7 +31,7 @@ Shorter visuals go left, right, or top, or wherever his head is not.
 
 You can go slightly behind his head for authenticity, but only slightly. The words stay readable. Do not park the point in his hair.
 
-If there is space, the visual can blast into the bottom two-thirds, or into the top one-third plus the second third where his shoulders are, so it becomes a huge screen.
+Large diagrams stay in the top one-third only. They do not spill into the middle or lower two-thirds.
 
 If his head is not that big, the sizes change. It is not black and white. Read the frame. Head size and position vary. Discern.
 
@@ -51,8 +51,8 @@ Use that read to place the clip:
 
 - **Top:** the top one-third. A long multi-step explanation goes here. The overlay may be full width inside that band.
 - **Left or right:** a shorter visual, in the open side, or wherever his head is not.
-- **Huge screen:** only when that frame has the room. The visual may run through the bottom two-thirds, or through the top one-third plus the second third where his shoulders are.
-- **Slight overlap:** a small part of the graphic may sit behind the head. The words and the point stay out of the hair. If the head moves into the words, move the graphic.
+- **Large diagram:** the top one-third only. It may be full width in that band, but its key content never spills below it.
+- **Slight overlap:** decorative pixels may sit behind the head. Every key thing the viewer must understand—headline, amount, card, chart, proof, or step—must stay at least 85% visible in the worst sampled frames. If the head moves into a key item, move the graphic.
 
 Re-check every frame while the clip runs. He can lean. Captions can shift. A spot that works on one frame can fail on the next.
 
@@ -64,7 +64,7 @@ When a graphic sits slightly behind the head, his cut-out stays on top and the c
 
 An anchor is a visual of an emotion, a contrast, or a list. Money gets less emphasis; the payoff is always shown on screen.
 
-**Products:** show the product working on screen when the script explains it (e.g. Capital Blueprint dashboard). Law: ad-know-the-offer (.ai/rules/ad-know-the-offer.md) - read the offer first. The pictures show the product steps, not only the last sentence.
+**Products:** show the product working on screen when the script explains it (e.g. Capital Blueprint dashboard). Law: ad-know-the-offer (.ai/rules/ad-know-the-offer.md) - read the offer first. The pictures show the product steps, not only the last sentence. A long Capital Blueprint explanation may fill the background behind Chris's head-and-shoulders cut-out. Keep the dashboard's real look, redact irrelevant rows and dates, and show only the actions he is saying in that ad's order. Never add a “Sample File” badge.
 
 **Credibility:** real proof only — not AI-generated visuals. Examples: Chris's posts from 10 years ago; approvals spreadsheet with dates visible, PII blurred, bank names visible. A dollar total ($1M+ funded) does not show credibility; the approvals do.
 
@@ -96,13 +96,13 @@ No paper, no grid, no full-frame tint — solid cards, words and objects with so
 
 Set `caption_position_y` so captions sit where overlays never draw.
 
-Section 2 wins on placement. A long visual belongs in the top one-third, and that band may hold a full-width overlay. These fallback numbers do not ban that, and they do not ban a huge screen when the frame has the room. A slight overlap behind the head is allowed. The point does not sit in the hair.
+Section 2 wins on placement. A long visual belongs in the top one-third, and that band may hold a full-width overlay. A slight overlap behind the head is allowed only for decoration; the key point stays at least 85% visible in the worst sampled frames.
 
 Fallback when the visual is short: vertical words in the open left, right, or top, inside y 269–1248 when that band is actually open. On a wide frame, one side panel (`side` left|right), left x 192–1500, right x 2340–3648, y 108–1512. Do not park the point in the middle of his head. The bottom caption band stays clear.
 
 ## 9. Brand and words
 
-Accent #3D86F0, "fundhub." wordmark, spectrum dash, Inter. 3D depth: premium and clean, never busy. Money decoration follows section 2. **Fundhub** only. Dollar figures only from script, live page, /roadmap sample, or real approval PNG. Never invent numbers, names, or claims. No "we think", "might", "maybe", "could", "likely". Catalog templates only; data-tied templates take no data props.
+Accent #3D86F0, spectrum dash, Inter. Never put a Fundhub logo or wordmark on an animation card or preview; cards hug their text and diagram with only readable padding. 3D depth: premium and clean, never busy. Money decoration follows section 2. **Fundhub** only. Dollar figures only from script, live page, /roadmap sample, or real approval PNG. Never invent numbers, names, or claims. No "we think", "might", "maybe", "could", "likely". Catalog templates only; data-tied templates take no data props.
 
 ## Never
 
@@ -134,5 +134,5 @@ Accent #3D86F0, "fundhub." wordmark, spectrum dash, Inter. 3D depth: premium and
 Ask: "Place animations on Ad 12 after Submagic."
 
 ❌ Park a long dashboard in his hair, or shrink it into a tiny chip beside his head.
-✅ A long multi-step dashboard sits in the top one-third, words readable. A short visual goes left, right, or top, where the head is not. A slight overlap behind the head is fine. If the frame has room, the visual can grow into a huge screen. Read the head on that frame.
+✅ A long multi-step dashboard sits in the top one-third, words readable. A short visual goes left, right, or top, where the head is not. A slight overlap behind the head is fine only when every key part stays at least 85% visible. Read the head on that frame.
 ```
