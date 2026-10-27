@@ -153,7 +153,7 @@ test("one simulated client routes closer referral, offer, and no-show rebook sep
   const rebookStep = {
     run: async (id, fn) => {
       const result = await fn();
-      if (id === "send-touch-1") db.events.push({ client_id: "cl-1", name: "booking.created" });
+      if (id === "send-touch-1") db.events.push({ org_id: "org-1", client_id: "cl-1", name: "booking.created" });
       return result;
     },
     sleep: async () => {}
