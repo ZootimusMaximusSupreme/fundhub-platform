@@ -37,8 +37,10 @@ describe("GET /api/read/inquiries", { skip: !HAVE_DB ? "no DATABASE_URL" : false
     org = await resolveDefaultOrg(db);
     const { createSession } = await import("../auth/session.mjs");
     const s = await db.query(
-      `SELECT id, org_id FROM staff WHERE org_id = $1 AND status = 'active' LIMIT 1`, [org]);
-    if (!s.rows[0]) throw new Error("no active staff — run scripts/seed-staff.mjs");
+      `SELECT id, org_id FROM staff WHERE org_id = $1 AND status = 'active'
+         AND role IN ('owner','admin','inquiry_specialist','funding_advisor')
+       ORDER BY (role = 'owner') DESC, created_at LIMIT 1`, [org]);
+    if (!s.rows[0]) throw new Error("no active specialist-desk staff — run scripts/seed-staff.mjs");
     token = (await createSession(db, { staffId: s.rows[0].id, orgId: s.rows[0].org_id })).token;
 
     const mk = async (fn, ln) => (await db.query(

@@ -92,6 +92,9 @@ describe("ad attribution: webhook → row → registry → reads", { skip: !HAVE
      the exception. Nothing about what the test asserts changes. */
   async function wipe() {
     await db.query(`DELETE FROM bookings WHERE org_id = $1 AND attendee_email LIKE $2`, [org, `${NONCE}%`]);
+    // entry.captured now creates a setter task, which also holds a client FK.
+    await db.query(`DELETE FROM tasks WHERE org_id = $1 AND client_id IN (
+      SELECT id FROM clients WHERE org_id = $1 AND email LIKE $2)`, [org, `${NONCE}%`]);
     await db.query(`DELETE FROM events WHERE payload->>'email' LIKE $1`, [`${NONCE}%`]);
     await db.query(`DELETE FROM clients WHERE org_id = $1 AND email LIKE $2`, [org, `${NONCE}%`]);
   }
