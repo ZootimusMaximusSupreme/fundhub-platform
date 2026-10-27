@@ -118,7 +118,41 @@ export async function listUnrecordedCalls(db, {
     .map(presentUnrecorded);
 }
 
-export async function countUnrecorded(db, opts = {}) {
-  const rows = await listUnrecordedCalls(db, { ...opts, limit: 200 });
-  return rows.length;
+/**
+ * Return the actual total, not a truncated list length (the on-screen list is
+ * intentionally capped at 200). Use the same tenant, transcript and grace
+ * predicates as listUnrecordedCalls so Sales Floor/My Numbers agree.
+ */
+export async function countUnrecorded(db, {
+  orgId,
+  staffId = null,
+  now = new Date(),
+  graceMs = GRACE_MS,
+  lookbackDays = LOOKBACK_DAYS
+} = {}) {
+  if (!orgId || !db) return 0;
+  const since = new Date(now.getTime() - lookbackDays * 24 * 60 * 60 * 1000);
+  const driveSyncedAt = await lastDriveSyncAt(db, orgId);
+  const graceCutoff = new Date(now.getTime() - graceMs).toISOString();
+  const params = [orgId, since.toISOString(), graceCutoff, driveSyncedAt];
+  let staffClause = "";
+  if (staffId) {
+    params.push(staffId);
+    staffClause = `AND o.staff_id = ${params.length}`;
+  }
+  const result = await db.query(
+    `SELECT count(*)::int AS total
+       FROM call_outcomes o
+      WHERE o.org_id = $1
+        AND COALESCE(o.is_demo, false) = false
+        AND o.outcome <> 'no_show'
+        AND o.logged_at >= $2
+        AND (o.recording_url IS NULL OR btrim(o.recording_url) = '')
+        AND (o.transcript IS NULL OR btrim(o.transcript) = '')
+        AND (o.logged_at <= $3::timestamptz
+             OR o.logged_at < $4::timestamptz)
+        ${staffClause}`,
+    params
+  );
+  return Number(result.rows?.[0]?.total || 0);
 }
