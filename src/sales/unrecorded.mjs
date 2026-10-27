@@ -81,7 +81,11 @@ export async function listUnrecordedCalls(db, {
 } = {}) {
   if (!orgId || !db) return [];
   const since = new Date(now.getTime() - lookbackDays * 24 * 60 * 60 * 1000);
-  const params = [orgId, since.toISOString()];
+  // Apply the same grace/Drive-sync eligibility gate in SQL *before* LIMIT.
+  // Otherwise a capped candidate page may hide eligible calls after ineligible rows.
+  const driveSyncedAt = await lastDriveSyncAt(db, orgId);
+  const graceCutoff = new Date(now.getTime() - graceMs).toISOString();
+  const params = [orgId, since.toISOString(), graceCutoff, driveSyncedAt];
   let staffClause = "";
   if (staffId) {
     params.push(staffId);
@@ -101,13 +105,14 @@ export async function listUnrecordedCalls(db, {
         AND o.logged_at >= $2
         AND (o.recording_url IS NULL OR btrim(o.recording_url) = '')
         AND (o.transcript IS NULL OR btrim(o.transcript) = '')
+        AND (o.logged_at <= $3::timestamptz
+             OR o.logged_at < $4::timestamptz)
         ${staffClause}
       ORDER BY o.logged_at ASC
       LIMIT $${params.length}`,
     params
   );
 
-  const driveSyncedAt = await lastDriveSyncAt(db, orgId);
   return (r.rows || [])
     .filter((row) => isUnrecorded(row, { now, graceMs, driveSyncedAt }))
     .map(presentUnrecorded);
