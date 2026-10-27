@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert";
-import { handle } from "./dpc-03-inbound-reply-router.mjs";
+import { handle, SMS_CONFIRM_ACK_TEMPLATE_KEY } from "./dpc-03-inbound-reply-router.mjs";
 import { pgFake, fakeStep, ev } from "./test-support.mjs";
 
 const withStages = () => ({
@@ -77,18 +77,33 @@ test("REGRESSION: YES after the call reaches the purchase branch (no dead contex
 });
 
 test("YES while the call is still booked is a CALL CONFIRMATION, not a sale", async () => {
-  const db = pgFake({ clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", phone: "+1555", custom_fields: { call_outcome: "booked" } }] });
-  const res = await handle({ event: ev("message.inbound", { body: "yes", from: "+1555" }, { clientId: "cl-1" }), db, step: fakeStep() });
+  const db = pgFake({
+    clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", phone: "+1555", custom_fields: { call_outcome: "booked" } }],
+    bookings: [
+      { org_id: "org-1", client_id: "cl-1", status: "booked", starts_at: "2099-10-27T18:00:00Z" },
+      { org_id: "org-1", client_id: "cl-1", status: "booked", starts_at: "2099-10-27T17:00:00Z" }
+    ],
+    templates: [{ org_id: "org-1", template_key: SMS_CONFIRM_ACK_TEMPLATE_KEY, channel: "sms", body: "You're set for {{appointment.start_time}}.", compliance_passed: true }]
+  });
+  const drained = [];
+  const event = ev("message.inbound", { body: "yes", from: "+1555" }, { clientId: "cl-1", id: "evt-confirm" });
+  const run = () => handle({ event, db, step: fakeStep(), drainNowImpl: async (_db, messageId) => { drained.push(messageId); return { sent: 1 }; } });
+  const res = await run();
   assert.equal(res.decision, "call_confirmed");
   assert.equal(db.clients[0].custom_fields.call_confirmed, true);
   assert.equal(db.clients[0].custom_fields.decision_status, undefined, "must not close a sale off a confirmation");
   assert.equal(db.tasks.length, 0);
+  assert.equal(db.messages[0].template_key, SMS_CONFIRM_ACK_TEMPLATE_KEY);
+  assert.match(db.messages[0].rendered_body, /Oct 27, 2099.*10:00 AM/);
+  assert.equal(drained.length, 1);
+  await run();
+  assert.equal(db.messages.length, 1, "replayed inbound event must not queue a second acknowledgment");
 });
 
 test("CONFIRM while the call is still booked is a CALL CONFIRMATION (same as YES)", async () => {
   for (const body of ["CONFIRM", "confirm", "  Confirm  "]) {
     const db = pgFake({ clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", phone: "+1555", custom_fields: { call_outcome: "booked" } }] });
-    const res = await handle({ event: ev("message.inbound", { body, from: "+1555" }, { clientId: "cl-1" }), db, step: fakeStep() });
+    const res = await handle({ event: ev("message.inbound", { body, from: "+1555" }, { clientId: "cl-1" }), db, step: fakeStep(), drainNowImpl: async () => ({ sent: 0 }) });
     assert.equal(res.decision, "call_confirmed", `"${body}" must confirm the call`);
     assert.equal(db.clients[0].custom_fields.call_confirmed, true);
     assert.equal(db.clients[0].custom_fields.decision_status, undefined, "must not close a sale off a confirmation");

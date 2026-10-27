@@ -11,6 +11,7 @@ export function pgFake(seed = {}) {
   const clients = seed.clients || [];
   const events = seed.events || [];
   const templates = seed.templates || [];
+  const bookings = seed.bookings || [];
   const fundingRounds = seed.fundingRounds || [];
   const applications = seed.applications || [];
   const inquiryLog = seed.inquiryLog || [];
@@ -31,8 +32,15 @@ export function pgFake(seed = {}) {
     clients.find((c) => c.org_id === org && String(c.email || "").toLowerCase() === String(email).toLowerCase());
 
   return {
-    clients, events, templates, messages, tasks, fundingRounds, applications, inquiryLog, pipelineStages, cards, behaviorScores, invoices, invoicePayments, paymentLinks, crsResults,
+    clients, events, templates, bookings, messages, tasks, fundingRounds, applications, inquiryLog, pipelineStages, cards, behaviorScores, invoices, invoicePayments, paymentLinks, crsResults,
     async query(sql, params = []) {
+      if (/SELECT starts_at FROM bookings/.test(sql)) {
+        const row = bookings
+          .filter((b) => b.org_id === params[0] && b.client_id === params[1] &&
+            ["booked", "rescheduled"].includes(b.status) && new Date(b.starts_at) > new Date())
+          .sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at))[0];
+        return { rows: row ? [{ starts_at: new Date(row.starts_at) }] : [] };
+      }
       // --- behavior_scores (BC-01/BC-02) ---
       if (/INSERT INTO behavior_scores \(org_id, client_id, responsiveness\)/.test(sql)) {
         behaviorScores.push({ org_id: params[0], client_id: params[1], responsiveness: params[2] });

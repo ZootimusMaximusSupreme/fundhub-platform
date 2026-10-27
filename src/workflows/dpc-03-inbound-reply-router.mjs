@@ -21,10 +21,12 @@ import { mergeCustomFields } from "./custom-fields.mjs";
 import { removeTags, addTags } from "./tags.mjs";
 import { moveCardToStage } from "./cards.mjs";
 import { sendTemplated } from "./messaging.mjs";
+import { drainMessageNow } from "../messaging/outbox.mjs";
 import { clientIdForRepPhone } from "../auth/authorized-rep.mjs";
 import { createTask } from "../lib/create-task.mjs";
 
 export const SMS_RESCHEDULE_TEMPLATE_KEY = "SMS-DPC04-RESCHEDULE-REBOOKING";
+export const SMS_CONFIRM_ACK_TEMPLATE_KEY = "SMS-S04-CONFIRM-ACK";
 const SOURCE_WORKFLOW = "dpc-03-inbound-reply-router";
 
 // Non-creating lookup by phone — an inbound reply must only ever LINK to an
@@ -74,7 +76,7 @@ async function createTaskOnce(db, { orgId, clientId, eventId, title, source }) {
   return { created: true };
 }
 
-export async function handle({ event, db, step }) {
+export async function handle({ event, db, step, drainNowImpl = drainMessageNow }) {
   const decision = parseDecision(event.payload?.body);
   if (!decision) return { done: false, reason: "no_decision_keyword" };
 
@@ -94,7 +96,23 @@ export async function handle({ event, db, step }) {
     await step.run("set-call-confirmed", () => mergeCustomFields(db, clientId, {
       call_confirmed: true, last_progress_timestamp: new Date().toISOString()
     }));
-    return { done: true, decision: "call_confirmed" };
+    const booking = await step.run("read-confirmed-call-time", () => db.query(
+      `SELECT starts_at FROM bookings
+       WHERE org_id = $1 AND client_id = $2 AND status IN ('booked', 'rescheduled')
+         AND starts_at > now()
+       ORDER BY starts_at ASC LIMIT 1`,
+      [event.orgId, clientId]
+    ));
+    const sms = await step.run("send-confirm-ack", () => sendTemplated(db, {
+      orgId: event.orgId, clientId, channel: "sms",
+      templateKey: SMS_CONFIRM_ACK_TEMPLATE_KEY, eventId: event.id,
+      context: { appointment: { start_time: booking.rows[0]?.starts_at
+        ? new Date(booking.rows[0].starts_at).toISOString()
+        : "your Fundhub call" } }
+    }));
+    const delivery = await step.run("drain-confirm-ack", () =>
+      drainNowImpl(db, sms.messageId, { orgId: event.orgId }));
+    return { done: true, decision: "call_confirmed", sms, delivery };
   }
 
   const orgId = event.orgId;

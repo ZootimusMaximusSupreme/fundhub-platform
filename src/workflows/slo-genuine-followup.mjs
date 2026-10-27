@@ -396,10 +396,13 @@ export async function handleReply({ event, db, step }) {
   const clientId = await step.run("resolve-client", () => resolveReplyClient(db, event));
   if (!clientId) return { done: false, reason: "no_client" };
 
+  const fields = await step.run("read-lane", () => clientFields(db, clientId));
+  if (fields.call_outcome === "booked" || fields.call_confirmed === true) {
+    return { done: false, reason: "booked_call_reply" };
+  }
+
   await step.run("mark-replied", () =>
     mergeCustomFields(db, clientId, { [REPLIED_KEY]: new Date().toISOString() }));
-
-  const fields = await step.run("read-lane", () => clientFields(db, clientId));
   if (fields[SLOT_KEY]) {
     return handleFirstFiveReply({
       event, db, step, clientId, body: payload.body

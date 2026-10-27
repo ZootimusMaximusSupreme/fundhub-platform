@@ -303,6 +303,25 @@ test("handleReply: does not send message 2 until message 1 was sent", async () =
   assert.equal(db.messages.length, 0);
 });
 
+test("handleReply: booked call replies never enter an old SLO reply lane", async () => {
+  for (const fields of [
+    { call_outcome: "booked", slo_text_slot: "1" },
+    { call_confirmed: true, slo_text_slot: "1" }
+  ]) {
+    const db = genuineDb({
+      clients: [{ id: "cl-1", org_id: "org-1", phone: "+14155550134", custom_fields: fields }],
+      templates: templates()
+    });
+    const res = await handleReply({
+      event: ev("message.inbound", { from: "+14155550134", body: "CONFIRM", channel: "sms" }, { clientId: "cl-1" }),
+      db, step: fakeStep()
+    });
+    assert.equal(res.reason, "booked_call_reply");
+    assert.equal(db.messages.length, 0);
+    assert.equal(db.clients[0].custom_fields.slo_genuine_replied_at, undefined);
+  }
+});
+
 test("handleReply: after a real answer, the gift becomes the 33% coupon", async () => {
   const db = genuineDb({
     clients: [{
