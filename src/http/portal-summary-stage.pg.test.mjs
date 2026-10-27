@@ -286,4 +286,18 @@ describe("/api/read/portal-summary — stage, advisor, dispute consent",
     await db.query(`DELETE FROM accounts WHERE client_id = $1`, [other]);
     await db.query(`DELETE FROM clients WHERE id = $1`, [other]);
   });
+
+  test("the client summary carries the sample flag beside an estimate", async () => {
+    await db.query(`UPDATE clients SET custom_fields = COALESCE(custom_fields, '{}'::jsonb)
+      || jsonb_build_object('analyzer_prequal_amount', 410000, 'prequal_sample', true)
+      WHERE id = $1`, [client]);
+    let body = await load();
+    assert.equal(body.prequal_display, "$410,000");
+    assert.equal(body.prequal_sample, true);
+
+    await db.query(`UPDATE clients SET custom_fields = custom_fields
+      || jsonb_build_object('prequal_sample', false) WHERE id = $1`, [client]);
+    body = await load();
+    assert.equal(body.prequal_sample, false);
+  });
 });

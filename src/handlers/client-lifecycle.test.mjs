@@ -329,6 +329,15 @@ test("decision.rendered writes analyzer_prequal_amount, not just total_funding_e
   const cf = db.clients[0].custom_fields;
   assert.equal(cf.analyzer_prequal_amount, 50000, "the field every pre-approval template merges must be written");
   assert.equal(cf.total_funding_estimate, 50000, "and the existing writer must not regress");
+  assert.equal(cf.prequal_sample, false, "a real decision clears any earlier sample label");
+});
+
+test("a simulated decision marks its estimate as sample for client screens", async () => {
+  const db = pgFake();
+  await onDecisionRendered(ev("decision.rendered", {
+    email: "sample@example.com", fundingEstimate: 410000, simulated: true
+  }), db);
+  assert.equal(db.clients[0].custom_fields.prequal_sample, true);
 });
 
 // Guard on the `!= null` gate this fix deliberately keeps: a decision carrying no dollar

@@ -2390,7 +2390,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
      NO AMOUNT MEANS THE ROWS STAY HIDDEN. An estimate we do not have must not
      appear as a dash — a dash in a money row reads as zero. */
-  function paintPrequal(amt) {
+  function paintPrequal(amt, sample) {
     var pairs = [
       ["sb-prequal-row", "sb-prequal-amt"],
       ["sb-prequal-row-f", "sb-prequal-amt-f"]
@@ -2399,6 +2399,8 @@ document.addEventListener("DOMContentLoaded", async function () {
       var row = document.getElementById(pairs[i][0]);
       var el = document.getElementById(pairs[i][1]);
       if (row) row.hidden = !amt;
+      var eyebrow = row && row.querySelector(".sb-eyebrow");
+      if (eyebrow) eyebrow.textContent = sample ? "Sample estimate · not a real pre-qualification" : "Pre-qualified for";
       if (el && amt) el.textContent = amt;
     }
   }
@@ -3307,15 +3309,17 @@ document.addEventListener("DOMContentLoaded", async function () {
       paintDocNote(data.doc_agent_message);
       var amt = data.prequal_display;
       paintPortalScores(data.scores || {});
-      paintPrequal(amt);
+      paintPrequal(amt, data.prequal_sample === true);
       if (!amt) return "live pre-qual · none yet";
       var preMain = document.getElementById("sb-pre-main");
       if (preMain) {
-        preMain.textContent = document.body.hasAttribute("data-client-ios")
+        preMain.textContent = data.prequal_sample === true
+          ? "This is a sample estimate. No real soft pull has been run."
+          : document.body.hasAttribute("data-client-ios")
           ? "Your soft-pull assessment is in."
           : "Your soft-pull assessment is in. You're pre-qualified for approximately " + amt + ".";
       }
-      return "live pre-qual · " + amt;
+      return (data.prequal_sample === true ? "sample estimate · " : "live pre-qual · ") + amt;
     });
 
   /* Clients get their own document metadata from portal-summary above. Staff

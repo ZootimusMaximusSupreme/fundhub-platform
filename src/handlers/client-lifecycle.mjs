@@ -546,7 +546,8 @@ export async function onDecisionRendered(event, db, opts = {}) {
     // rewrite, not invented here.
     await mergeCustomFields(db, clientId, {
       total_funding_estimate: p.fundingEstimate,
-      analyzer_prequal_amount: p.fundingEstimate
+      analyzer_prequal_amount: p.fundingEstimate,
+      prequal_sample: p.simulated === true
     });
     const stamped = await db.query(
       `SELECT email, custom_fields->>'slo_ref' AS slo_ref FROM clients WHERE id = $1`,
