@@ -11,7 +11,8 @@
 //   B. the write on the GET. src/sales/recordings.mjs listRecentRecordings is run against a stand-in
 //      database that carries the REAL column names (fin-b02-sql-kit.mjs): a loose Drive file whose
 //      name holds exactly one recent client's first and last name is attached to that client and
-//      its link is stamped on that client's latest call; anything else is left alone.
+//      its link is stamped on that client's call at the filename's exact scheduled time; anything
+//      else is left alone.
 //
 // The hero's target bar is held by its own exact browser and saved-result tests.
 
@@ -221,24 +222,29 @@ function seed(s) {
   s.insert("clients", { id: "lee", org_id: ORG, first_name: "Lee", last_name: "Carter" });
   s.insert("clients", { id: "jordan-1", org_id: ORG, first_name: "Jordan", last_name: "Blake" });
   s.insert("clients", { id: "jordan-2", org_id: ORG, first_name: "Jordan", last_name: "Blake" });
-  s.insert("call_outcomes", { id: "call-dana-old", org_id: ORG, client_id: "dana", logged_at: iso(5), recording_url: null });
-  s.insert("call_outcomes", { id: "call-dana", org_id: ORG, client_id: "dana", logged_at: iso(2), recording_url: null });
-  s.insert("call_outcomes", { id: "call-lee", org_id: ORG, client_id: "lee", logged_at: iso(1), recording_url: L("already") });
-  s.insert("call_outcomes", { id: "call-lee-old", org_id: ORG, client_id: "lee", logged_at: iso(3), recording_url: null });
+  s.insert("tasks", { id: "task-dana-old", org_id: ORG, due_at: iso(5) });
+  s.insert("tasks", { id: "task-dana", org_id: ORG, due_at: iso(2) });
+  s.insert("tasks", { id: "task-lee", org_id: ORG, due_at: iso(1) });
+  s.insert("tasks", { id: "task-lee-old", org_id: ORG, due_at: iso(3) });
+  s.insert("call_outcomes", { id: "call-dana-old", org_id: ORG, client_id: "dana", task_id: "task-dana-old", logged_at: iso(5), recording_url: null });
+  s.insert("call_outcomes", { id: "call-dana", org_id: ORG, client_id: "dana", task_id: "task-dana", logged_at: iso(2), recording_url: null });
+  s.insert("call_outcomes", { id: "call-lee", org_id: ORG, client_id: "lee", task_id: "task-lee", logged_at: iso(1), recording_url: L("already") });
+  s.insert("call_outcomes", { id: "call-lee-old", org_id: ORG, client_id: "lee", task_id: "task-lee-old", logged_at: iso(3), recording_url: null });
   s.insert("call_outcomes", { id: "call-j1", org_id: ORG, client_id: "jordan-1", logged_at: iso(1), recording_url: null });
   s.insert("call_outcomes", { id: "call-j2", org_id: ORG, client_id: "jordan-2", logged_at: iso(1), recording_url: null });
   const file = (id, name, extra = {}) => s.insert("brain_files", {
     id, org_id: ORG, name, web_view_link: L(id), client_id: null, unattached: true,
     mime_type: "video/mp4", needs_transcription: true, created_at: iso(1), indexed_at: iso(1), ...extra,
   });
-  file("f-dana", "Dana Whitfield - Meet Recording.mp4");
+  file("f-dana", "Funding Call - Dana Whitfield (2026-10-09 18:00 GMT+0) - Recording.mp4");
   file("f-jordan", "Jordan Blake - Meet Recording.mp4");
   file("f-nobody", "team standup recording.mp4");
   file("f-lee", "Lee Carter - Meet Recording.mp4", { client_id: "dana", unattached: false });
-  file("f-lee-new", "Lee Carter - Second Meet Recording.mp4");
+  file("f-lee-new", "Funding Call - Lee Carter (2026-10-11 18:00 GMT+0) - Recording.mp4");
   // Company B has a client and a file with the same name as Dana: company A's read never touches them.
   s.insert("clients", { id: "dana-b", org_id: OTHER, first_name: "Dana", last_name: "Whitfield" });
-  s.insert("call_outcomes", { id: "call-dana-b", org_id: OTHER, client_id: "dana-b", logged_at: iso(1), recording_url: null });
+  s.insert("tasks", { id: "task-dana-b", org_id: OTHER, due_at: iso(1) });
+  s.insert("call_outcomes", { id: "call-dana-b", org_id: OTHER, client_id: "dana-b", task_id: "task-dana-b", logged_at: iso(1), recording_url: null });
   // The same file id in company B (ids are unique in the real table; this holds the update to its company).
   s.insert("brain_files", {
     id: "f-dana", org_id: OTHER, name: "Quarterly review recording.mp4", web_view_link: L("f-dana-b"), client_id: null,
@@ -247,19 +253,19 @@ function seed(s) {
   // A call in company A that points at company B's Dana. It must not make A's "Dana Whitfield" ambiguous.
   s.insert("call_outcomes", { id: "call-cross", org_id: ORG, client_id: "dana-b", logged_at: iso(1), recording_url: "https://drive.google.com/file/d/cross/view" });
   s.insert("brain_files", {
-    id: "f-b", org_id: OTHER, name: "Dana Whitfield - Meet Recording.mp4", web_view_link: L("f-b"), client_id: null,
+    id: "f-b", org_id: OTHER, name: "Funding Call - Dana Whitfield (2026-10-13 18:00 GMT+0) - Recording.mp4", web_view_link: L("f-b"), client_id: null,
     unattached: true, mime_type: "video/mp4", needs_transcription: true, created_at: iso(1), indexed_at: iso(1),
   });
 }
 
 function standIn() {
-  const s = makeStandIn(["clients", "call_outcomes", "customer_insights", "events", "brain_files", "brain_drive_sync"]);
+  const s = makeStandIn(["clients", "call_outcomes", "customer_insights", "events", "brain_files", "brain_drive_sync", "tasks", "bookings"]);
   seed(s);
   return s;
 }
 const byId = (rows, id) => rows.find((r) => r.id === id);
 
-test("the read attaches a loose recording to the one client its name matches, and stamps the link on that client's latest call", async () => {
+test("the read attaches a loose recording to the one client its name matches, and stamps only the call at its scheduled time", async () => {
   const s = standIn();
   try {
     const out = await listRecentRecordings(s.asPg(), { orgId: ORG, now: NOW, env: {} });
@@ -272,11 +278,11 @@ test("the read attaches a loose recording to the one client its name matches, an
     assert.equal(Number(mine[0].unattached), 0);
     // company B's file with the same id is not touched by company A's read
     assert.equal(files.find((f) => f.id === "f-dana" && f.org_id === OTHER).client_id, null);
-    // the newest call without a recording gets the link; the older one does not
-    assert.equal(byId(calls, "call-dana").recording_url, L("f-dana"));
-    assert.equal(byId(calls, "call-dana-old").recording_url, null);
+    // The older call matches the timestamp. The newer call is deliberately left alone.
+    assert.equal(byId(calls, "call-dana").recording_url, null);
+    assert.equal(byId(calls, "call-dana-old").recording_url, L("f-dana"));
 
-    // a client's latest call that already has a recording keeps it; the older call without one gets the link
+    // A client's newer call keeps its recording; the timestamped older call gets the new link.
     const lee = s.all("brain_files").find((f) => f.id === "f-lee-new");
     assert.equal(lee.client_id, "lee");
     assert.equal(byId(calls, "call-lee").recording_url, L("already"));
@@ -345,7 +351,7 @@ test("a second read changes nothing more", async () => {
    Each fixture is built so that exactly one broken line in src/sales/recordings.mjs changes what
    it holds. */
 
-const TABLES_B2 = ["clients", "call_outcomes", "customer_insights", "events", "brain_files", "brain_drive_sync"];
+const TABLES_B2 = ["clients", "call_outcomes", "customer_insights", "events", "brain_files", "brain_drive_sync", "tasks", "bookings"];
 function file(s, id, name, extra = {}) {
   s.insert("brain_files", {
     id, org_id: ORG, name, web_view_link: L(id), client_id: null, unattached: true,
@@ -402,9 +408,10 @@ test("the link is stamped on the matched client's latest insight that has none: 
 test("the call stamp stays inside the company: another company's newer call of the same client id is never stamped", async () => {
   await withB2(async (s) => {
     s.insert("clients", { id: "zed", org_id: ORG, first_name: "Zed", last_name: "Moon" });
-    s.insert("call_outcomes", { id: "call-zed", org_id: ORG, client_id: "zed", logged_at: iso(3), recording_url: null });
+    s.insert("tasks", { id: "task-zed", org_id: ORG, due_at: iso(3) });
+    s.insert("call_outcomes", { id: "call-zed", org_id: ORG, client_id: "zed", task_id: "task-zed", logged_at: iso(3), recording_url: null });
     s.insert("call_outcomes", { id: "call-zed-other-org", org_id: OTHER, client_id: "zed", logged_at: iso(0.5), recording_url: null });
-    file(s, "f-zed", "Zed Moon - Meet Recording.mp4");
+    file(s, "f-zed", "Funding Call - Zed Moon (2026-10-11 18:00 GMT+0) - Recording.mp4");
     await listRecentRecordings(s.asPg(), { orgId: ORG, now: NOW, env: {} });
     const calls = s.all("call_outcomes");
     assert.equal(byId(calls, "call-zed").recording_url, L("f-zed"));
@@ -504,7 +511,7 @@ test("words and excerpt: a transcript on the recording's call makes it 'words re
     s.insert("clients", { id: "ulf", org_id: ORG, first_name: "Ulf", last_name: "Berg" });
     s.insert("call_outcomes", { id: "call-ulf", org_id: ORG, client_id: "ulf", logged_at: iso(1), recording_url: L("f-loose"), transcript: short });
     file(s, "f-loose", "team standup recording.mp4", { web_view_link: L("f-loose") });
-    // words found by the client alone: the file is Cy's, the call with words is Cy's but holds another link
+    // A different link on the same client's call must not lend words to this recording.
     s.insert("clients", { id: "cy", org_id: ORG, first_name: "Cy", last_name: "Hale" });
     s.insert("call_outcomes", { id: "call-cy", org_id: ORG, client_id: "cy", logged_at: iso(1), recording_url: L("cy-call"), transcript: short });
     file(s, "f-cy", "Cy Hale - Meet Recording.mp4", { client_id: "cy", unattached: false });
@@ -523,8 +530,8 @@ test("words and excerpt: a transcript on the recording's call makes it 'words re
     assert.equal(item("f-tess").excerpt, null);
     assert.equal(item("f-loose").has_words, true, "words found by the recording's own link");
     assert.equal(item("f-loose").excerpt, short);
-    assert.equal(item("f-cy").has_words, true, "words found by the client when the link is another");
-    assert.equal(item("f-cy").excerpt, short);
+    assert.equal(item("f-cy").has_words, false, "another recording's transcript is not this recording's words");
+    assert.equal(item("f-cy").excerpt, null);
     // a recording that lives only on a call: its own row, with the same words and the same cut
     const solo = item("call-call-solo");
     assert.equal(solo.has_words, true);
