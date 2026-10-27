@@ -1451,13 +1451,13 @@
  },
  {
   "surface": "public/app/pipeline.html",
-  "control": "Rail note on Sales: a payment does not move a card, somebody must move it to Closed Won",
+  "control": "Rail note on Sales: Closed Won follows a paid funding deposit",
   "kind": "display",
   "calls": "none",
   "tables": "",
   "impact": "none",
   "coverage": "none",
-  "evidence": "no test or pulse check mentions the note; src/workflows/dpc-03-inbound-reply-router.mjs is the only automatic move to Closed Won in the moveCardToStage call list (a 'yes' text)"
+  "evidence": "src/pulse/catalog/proofs/fin-b19-pipeline-controls.test.mjs checks the visible note; src/handlers/money-chain.mjs moves the Sales card after deposit.paid, guarded by src/workflows/cards.mjs"
  },
  {
   "surface": "public/app/pipeline.html",
