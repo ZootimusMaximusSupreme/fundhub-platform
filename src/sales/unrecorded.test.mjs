@@ -143,3 +143,53 @@ test("listUnrecordedCalls returns the no-tape row and skips the transcript row",
   assert.equal(rows[0].flag, "unrecorded");
   assert.equal(presentUnrecorded(rows[0]).client_name, "Jane Doe");
 });
+
+test("eligible unrecorded calls are selected before the SQL result limit", async () => {
+  const orgId = "00000000-0000-4000-8000-000000000001";
+  const fresh = { id: "fresh", outcome: "callback", logged_at: FRESH, recording_url: null, transcript: null };
+  const old = { id: "old", outcome: "callback", logged_at: OLD, recording_url: null, transcript: null };
+  const db = {
+    async query(sql, params) {
+      if (/FROM brain_drive_sync/i.test(sql)) return { rows: [] };
+      if (/FROM call_outcomes/i.test(sql)) {
+        assert.match(sql, /o\\.logged_at <= \\$3::timestamptz/);
+        assert.match(sql, /o\\.logged_at < \\$4::timestamptz/);
+        assert.equal(params.length, 5, "org, window, grace cutoff, Drive sync, cap");
+        assert.equal(params[0], orgId);
+        assert.equal(params[3], null, "no Drive sync makes only age eligible");
+        assert.equal(params[4], 1);
+        // Simulate WHERE before LIMIT, including the SQL's exact time boundaries.
+        const eligible = [fresh, old].filter((row) =>
+          row.logged_at <= params[2] || (params[3] && row.logged_at < params[3])
+        );
+        return { rows: eligible.slice(0, params[4]) };
+      }
+      return { rows: [] };
+    }
+  };
+  const rows = await listUnrecordedCalls(db, { orgId, now: NOW, limit: 1 });
+  assert.deepEqual(rows.map((r) => r.id), ["old"]);
+});
+
+test("Drive sync eligibility and setter scope are bound before the result cap", async () => {
+  const orgId = "00000000-0000-4000-8000-000000000001";
+  const staffId = "00000000-0000-4000-8000-000000000002";
+  const driveSyncedAt = new Date("2026-08-26T17:56:00Z");
+  const db = {
+    async query(sql, params) {
+      if (/FROM brain_drive_sync/i.test(sql)) return { rows: [{ last_sync_at: driveSyncedAt }] };
+      assert.match(sql, /o\\.staff_id = \\$5/);
+      assert.match(sql, /LIMIT \\$6/);
+      assert.equal(params[3], driveSyncedAt);
+      assert.equal(params[4], staffId);
+      assert.equal(params[5], 1);
+      assert.equal(FRESH < params[3].toISOString(), true);
+      return { rows: [{
+        id: "fresh-synced", outcome: "deposit", logged_at: FRESH,
+        recording_url: null, transcript: null, staff_id: staffId, client_name: "Client"
+      }] };
+    }
+  };
+  const rows = await listUnrecordedCalls(db, { orgId, staffId, now: NOW, limit: 1 });
+  assert.deepEqual(rows.map((r) => r.id), ["fresh-synced"]);
+});
