@@ -1,6 +1,6 @@
 // Staff text when a call is booked. Not a client confirm.
 // Owner-set 2026-08-23: optional, default off, flipped on Staff & Teams.
-// Recipients: active owner + closer + sales manager with the switch on and a phone.
+// Recipients: active owner + closer + setter + sales manager with the switch on and a phone.
 // One closer for every call. Chris is owner today; when someone else is closer,
 // they get it if their switch is on. Same person in two roles = one text.
 
@@ -11,9 +11,10 @@ import { CF_SURVEY_QUESTIONS, surveyFicoBand } from "../survey/cf-question-map.m
 import { classifySurvey, PASS, DOWNSELL } from "../config/survey-qualification.mjs";
 import { OFFERS, formatCents } from "../config/offers.mjs";
 import { percentOf } from "../commissions/money.mjs";
+import { drainMessageNow } from "../messaging/outbox.mjs";
+import { STAFF_BOOKED_TEMPLATE, STAFF_BOOKED_ROLES } from "./message-recipient.mjs";
 
-export const STAFF_BOOKED_TEMPLATE = "SMS-S04C-STAFF-BOOKED";
-export const STAFF_BOOKED_ROLES = Object.freeze(["owner", "closer", "sales_manager"]);
+export { STAFF_BOOKED_TEMPLATE, STAFF_BOOKED_ROLES };
 
 function clean(v) {
   if (v == null) return "";
@@ -191,8 +192,22 @@ export function buildAlertBody({ client = {}, booking = {}, commissionRules = []
   return lines.join("\n");
 }
 
+export function buildSetterAlertBody({ client = {}, booking = {} } = {}) {
+  const name = clean([client.first_name, client.last_name].filter(Boolean).join(" "))
+    || clean(booking.name) || "Unnamed";
+  const phone = clean(client.phone) || clean(booking.phone);
+  const when = booking.startTime ? formatAppointmentStart(booking.startTime, booking.timezone) : "";
+  const lines = ["New strategy call — setter follow-up", name];
+  if (when) lines.push(when);
+  if (phone) lines.push(phone);
+  lines.push("Dial within 60 seconds during 6 a.m.–10 p.m. Phoenix hours; otherwise dial at 6 a.m.");
+  const qa = surveyLines(client.custom_fields || {});
+  if (qa.length) lines.push("", ...qa);
+  return lines.join("\n");
+}
+
 export async function queueStaffBookedAlerts(db, {
-  orgId, clientId, eventId, payload = {}
+  orgId, clientId, eventId, payload = {}, drainNowImpl = drainMessageNow
 } = {}) {
   if (!orgId || !eventId) return { queued: 0, reason: "missing_ids" };
 
@@ -245,21 +260,24 @@ export async function queueStaffBookedAlerts(db, {
   );
   commissionRules = rulesRes.rows;
 
+  const booking = {
+    name: payload.name,
+    phone: payload.phone,
+    email: payload.email,
+    startTime: payload.startTime || payload.start_time,
+    timezone: payload.timezone || payload.tzid || payload.tz
+  };
   const body = renderTemplate(row.body, {
     alert_body: buildAlertBody({
       client,
       commissionRules,
-      booking: {
-        name: payload.name,
-        phone: payload.phone,
-        email: payload.email,
-        startTime: payload.startTime || payload.start_time,
-        timezone: payload.timezone || payload.tzid || payload.tz
-      }
+      booking
     })
   });
+  const setterBody = renderTemplate(row.body, { alert_body: buildSetterAlertBody({ client, booking }) });
 
   let queued = 0;
+  let sent = 0;
   for (const person of recipients) {
     const providerRef = `workflow:${STAFF_BOOKED_TEMPLATE}:${eventId}:${person.id}`;
     const ins = await db.query(
@@ -267,9 +285,20 @@ export async function queueStaffBookedAlerts(db, {
        VALUES ($1,$2,'outbound','sms',$3,$4,'internal',$5,'queued',true,$6)
        ON CONFLICT (org_id, provider_ref) WHERE provider_ref IS NOT NULL DO NOTHING
        RETURNING id`,
-      [orgId, clientId || null, STAFF_BOOKED_TEMPLATE, body, providerRef, person.phone]
+      [orgId, clientId || null, STAFF_BOOKED_TEMPLATE, person.role === "setter" ? setterBody : body, providerRef, person.phone]
     );
-    if (ins.rows[0]) queued += 1;
+    const messageId = ins.rows[0]?.id;
+    if (!messageId) continue;
+    queued += 1;
+    // Only a fresh event-id/staff row is drained. A replay hits the unique
+    // provider_ref and cannot text the same staff member a second time.
+    // A refused or failed immediate drain leaves the row for the normal sweep.
+    try {
+      const result = await drainNowImpl(db, messageId, { orgId });
+      if (result?.sent > 0) sent += 1;
+    } catch (error) {
+      console.warn(`[staff-booked-alert] immediate dispatch failed for ${messageId}: ${error.message}`);
+    }
   }
-  return { queued };
+  return { queued, sent };
 }

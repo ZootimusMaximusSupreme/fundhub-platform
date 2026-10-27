@@ -46,7 +46,7 @@ flowchart TD
     CAN --> A_top_level[Everything else — 27 routes]
     CAN --> A_trials[trials — 2 routes]
     CAN --> A_webhooks[Incoming webhooks — 1 route]
-    WHO -->|Yes| CANT[Blocked — 162 routes]
+    WHO -->|Yes| CANT[Blocked — 164 routes]
     CANT --> B_affiliates[affiliates — 3 blocked]
     CANT --> B_auth[Signing in and out — 8 blocked]
     CANT --> B_banking[banking — 6 blocked]
@@ -67,17 +67,17 @@ flowchart TD
     CANT --> B_partners[partners — 1 blocked]
     CANT --> B_privacy[privacy — 1 blocked]
     CANT --> B_push[push — 5 blocked]
-    CANT --> B_read[Reading data — 17 blocked]
+    CANT --> B_read[Reading data — 18 blocked]
     CANT --> B_repair[repair — 4 blocked]
     CANT --> B_social[social — 3 blocked]
     CANT --> B_staff[staff — 2 blocked]
-    CANT --> B_top_level[Everything else — 18 blocked]
+    CANT --> B_top_level[Everything else — 19 blocked]
     CANT --> B_trials[trials — 2 blocked]
 ```
 
 ## What they can reach
 
-**172 of 334 routes.**
+**172 of 336 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -263,7 +263,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**162 of 334 routes.**
+**164 of 336 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -413,12 +413,14 @@ flowchart TD
 | `/api/read/ops-pulse` | GET | owner, admin |
 | `/api/read/partners` | GET | employees: owner, admin, sales_manager<br>plus: partner |
 | `/api/read/sales-floor` | GET | owner, admin, sales_manager |
+| `/api/read/setter-dashboard` | GET | owner, admin, setter |
 | `/api/read/slo-connections` | GET | owner, admin |
 | `/api/read/staff` | GET | owner, admin, sales_manager |
 | `/api/repair/enroll` | POST | owner, admin, closer, inquiry_specialist |
 | `/api/repair/exceptions` | GET, POST | owner, admin, inquiry_specialist |
 | `/api/repair/generate` | POST | owner, admin, closer, inquiry_specialist |
 | `/api/repair/inbound-mail` | POST | owner, admin, closer, inquiry_specialist |
+| `/api/setter-dashboard` | POST | owner, admin, setter |
 | `/api/slo-connections` | POST | owner, admin |
 | `/api/social/oauth` | — | owner, admin, partner |
 | `/api/social/posts` | GET, POST | employees: owner, admin<br>plus: partner |

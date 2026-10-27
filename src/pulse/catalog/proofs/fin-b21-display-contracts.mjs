@@ -220,7 +220,7 @@ check({
       bad: [
         ["the switch is on but the person has no phone to text", BLANK("st.phone")],
         ["the switch is on for a job that never gets this text",
-          `lower(COALESCE(st.role, '')) NOT IN ('owner', 'closer', 'sales_manager')`],
+          `lower(COALESCE(st.role, '')) NOT IN ('owner', 'closer', 'sales_manager', 'setter')`],
         ["the switch is on for a person who cannot sign in", `st.status <> 'active'`]
       ]
     },

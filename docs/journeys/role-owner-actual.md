@@ -48,12 +48,12 @@ flowchart TD
     CAN --> A_privacy[privacy — 1 route]
     CAN --> A_proxy[proxy — 2 routes]
     CAN --> A_public[public — 19 routes]
-    CAN --> A_read[Reading data — 69 routes]
+    CAN --> A_read[Reading data — 70 routes]
     CAN --> A_repair[repair — 5 routes]
     CAN --> A_scripts[scripts — 2 routes]
     CAN --> A_social[social — 7 routes]
     CAN --> A_staff[staff — 3 routes]
-    CAN --> A_top_level[Everything else — 44 routes]
+    CAN --> A_top_level[Everything else — 45 routes]
     CAN --> A_trials[trials — 4 routes]
     CAN --> A_webhooks[Incoming webhooks — 1 route]
     WHO -->|Yes| CANT[Blocked — 11 routes]
@@ -67,7 +67,7 @@ flowchart TD
 
 ## What they can reach
 
-**323 of 334 routes.**
+**325 of 336 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -359,6 +359,7 @@ flowchart TD
 | `/api/read/repair-cases` | GET | owner, admin, inquiry_specialist, funding_advisor |
 | `/api/read/sales-floor` | GET | owner, admin, sales_manager |
 | `/api/read/search` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
+| `/api/read/setter-dashboard` | GET | owner, admin, setter |
 | `/api/read/slo-connections` | GET | owner, admin |
 | `/api/read/staff` | GET | owner, admin, sales_manager |
 | `/api/read/tradelines` | — | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
@@ -374,6 +375,7 @@ flowchart TD
 | `/api/repair/send` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/scripts/list` | GET | partner, staff |
 | `/api/scripts/write` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
+| `/api/setter-dashboard` | POST | owner, admin, setter |
 | `/api/shifts` | GET, POST | staff |
 | `/api/slo-connections` | POST | owner, admin |
 | `/api/social/channels` | GET | partner, staff |
@@ -404,7 +406,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**11 of 334 routes.**
+**11 of 336 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|

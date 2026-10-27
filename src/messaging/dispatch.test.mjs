@@ -49,6 +49,7 @@ function fakeDb({
   due = [],
   marketingCounts = { last_day: 0, last_week: 0 },
   upcomingBooking = true,
+  staff = null,
   /* custom_fields as stored on the client. The dispatcher reads it to refuse a
      synthetic (journey-run) record when the resolved provider can transmit. */
   customFields = null
@@ -63,6 +64,12 @@ function fakeDb({
           return { rows: ["sms", "email"].some((channel) => optedOut.has(`${params[0]}:${channel}`)) ? [{ x: 1 }] : [] };
         }
         return { rows: optedOut.has(`${params[0]}:${params[1]}`) ? [{ x: 1 }] : [] };
+      }
+      if (sql.includes("FROM staff")) {
+        const allowed = staff && staff.id === params[1] && staff.phone === params[2]
+          && staff.status === "active" && params[3].includes(staff.role)
+          && (!params[4] || staff.notify_booked_call_sms === true);
+        return { rows: allowed ? [{ id: staff.id }] : [] };
       }
       if (sql.includes("FROM compliance_rules")) return { rows: rules };
       if (sql.includes("FROM message_channel_routing")) {
@@ -139,6 +146,51 @@ const BOTH_PUSH_ENV = {
   VAPID_PRIVATE_KEY: "test-private-key-never-used-by-spy",
   VAPID_SUBJECT: "mailto:ops@fundhub.test"
 };
+
+describe("setter contact window in the real dispatcher", () => {
+  const STAFF_ID = "00000000-0000-4000-8000-000000000099";
+  const staff = { id: STAFF_ID, role: "owner", status: "active",
+    phone: "+16616180865", notify_booked_call_sms: true };
+  const alert = () => claimed({ channel: "sms", rendered_body: "New booked call — dial now.",
+    template_key: "SMS-S04C-STAFF-BOOKED",
+    provider_ref: `workflow:SMS-S04C-STAFF-BOOKED:event-1:${STAFF_ID}`,
+    to_address: staff.phone });
+  const staffDb = (options = {}) => fakeDb({ ...options, staff,
+    routing: { sms: { provider: "twilio", enabled: true } } });
+
+  test("7 a.m. staff alert sends to verified staff despite client's SMS STOP", async () => {
+    const sms = spy();
+    const result = await dispatchOne(staffDb({ optedOut: new Set([`${CLIENT}:sms`]) }), alert(), {
+      fetchImpl: sms, env: APNS_ENV, now: () => new Date("2026-08-01T14:00:00Z")
+    });
+    assert.equal(result.outcome, OUTCOME.SENT);
+    assert.equal(sms.calls.length, 1);
+  });
+
+  test("5 a.m. staff alert defers to 6 a.m. without a provider call", async () => {
+    const sms = spy();
+    const db = staffDb();
+    const result = await dispatchOne(db, alert(), {
+      fetchImpl: sms, env: APNS_ENV, now: () => new Date("2026-08-01T12:00:00Z")
+    });
+    assert.equal(result.outcome, OUTCOME.DEFERRED);
+    assert.equal(sms.calls.length, 0);
+    const deferred = db.updates.find(x => x.sql.includes("scheduled_at = $2"));
+    assert.equal(deferred.params[1], "2026-08-01T13:00:00.000Z");
+  });
+
+  test("9 p.m. setter lead text sends but ordinary client SMS still defers", async () => {
+    const now = () => new Date("2026-08-02T04:00:00Z");
+    const setter = claimed({ channel: "sms", rendered_body: "Your strategy call is set.",
+      provider_ref: `staff:setter-handoff:${CLIENT}:booked:lead`, to_address: "+15551234567" });
+    const sent = await dispatchOne(staffDb(), setter, { fetchImpl: spy(), env: APNS_ENV, now });
+    assert.equal(sent.outcome, OUTCOME.SENT);
+    const ordinary = await dispatchOne(staffDb(), claimed({ channel: "sms" }), {
+      fetchImpl: spy(), env: APNS_ENV, now
+    });
+    assert.equal(ordinary.outcome, OUTCOME.DEFERRED);
+  });
+});
 
 describe("native alert after a gated booking confirmation", () => {
   const bookingText = () => claimed({ channel: "sms", template_key: "SMS-S04-01-CONFIRM" });

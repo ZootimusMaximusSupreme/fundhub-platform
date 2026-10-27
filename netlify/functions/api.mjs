@@ -122,6 +122,7 @@ import readCloserCall from "../../api/read/closer-call.mjs";
 import readCloserNow from "../../api/read/closer-now.mjs";
 import readDealMath from "../../api/read/deal-math.mjs";
 import readCloserDeck from "../../api/read/closer-deck.mjs";
+import readSetterDashboard from "../../api/read/setter-dashboard.mjs";
 import readAdAttribution from "../../api/read/ad-attribution.mjs";
 import readAdBooks from "../../api/read/ad-books.mjs";
 import readAdSpine from "../../api/read/ad-spine.mjs";
@@ -135,6 +136,7 @@ import youtubeSync from "../../api/analytics/youtube-sync.mjs";
 import readVideoStats from "../../api/read/video-stats.mjs";
 import opsWeeklyBrief from "../../api/ops/weekly-brief.mjs";
 import closerDeckWrite from "../../api/closer-deck.mjs";
+import setterDashboardWrite from "../../api/setter-dashboard.mjs";
 import readMyNumbers from "../../api/read/my-numbers.mjs";
 import readSalesFloor from "../../api/read/sales-floor.mjs";
 import readCompanyActivity from "../../api/read/company-activity.mjs";
@@ -699,6 +701,7 @@ export const ROUTES = {
   "read/closer-now": readCloserNow,
   "read/deal-math": readDealMath,
   "read/closer-deck": readCloserDeck,
+  "read/setter-dashboard": readSetterDashboard,
   /* Ad attribution (286). "read/ad-attribution" is the one client's ad and
      the registry tags the closer reads on the call screen; "read/ad-books" is
      booked calls grouped by lane, ad, variant or registry tag. Both
@@ -731,6 +734,7 @@ export const ROUTES = {
   "analytics/youtube-sync": youtubeSync,
   "ops/weekly-brief": opsWeeklyBrief,
   "closer-deck": closerDeckWrite,
+  "setter-dashboard": setterDashboardWrite,
   "read/my-numbers": readMyNumbers,
   "read/sales-floor": readSalesFloor,
   "read/company-activity": readCompanyActivity,

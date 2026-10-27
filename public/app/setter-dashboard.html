@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fundhub — Setter Dashboard</title>
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="preload" href="/assets/fonts/nunito-latin-variable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/app/fundhub-font.css">
+<link rel="stylesheet" href="/app/fundhub-brand.css">
+<link rel="stylesheet" href="/app/crm-sidebar.css">
+<link rel="stylesheet" href="/app/setter-dashboard.css">
+<link rel="stylesheet" href="/app/fundhub-astra.css">
+<link rel="stylesheet" href="/app/fundhub-astra-staff.css">
+<script defer src="/app/fundhub-font.js"></script>
+<script defer src="/app/shell.js"></script>
+</head>
+<body class="setter-page fh-astra fh-astra-staff fh-astra--setter-dashboard">
+<div class="app">
+  <aside class="side" id="side" aria-label="Workspace navigation">
+  <div class="side-top"><a class="logo" href="pipeline.html" aria-label="Fundhub home"></a><button class="burger" id="burger" type="button" aria-label="Collapse sidebar" title="Collapse sidebar">‹</button></div>
+  <nav class="side-scroll" id="fh-side-nav" aria-label="Main">
+    <div class="navgroup" data-fh-section="relationships"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-relationships">Relationships<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-relationships">
+      <a class="navitem" href="bank-outreach.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 8 9-5 9 5M4 10h16M5 11v8m7-8v8m7-8v8M3 21h18"/></svg></span><span class="lbl">Bank outreach</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="work"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-work">Your work<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-work">
+      <a class="navitem" href="pipeline.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16m6-16v16"/></svg></span><span class="lbl">Pipeline</span></a>
+      <a class="navitem" href="setter-dashboard.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h9"/></svg></span><span class="lbl">Setter dashboard</span></a>
+      <a class="navitem" href="closer-dashboard.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20v-5m7 5V9m7 11V4"/></svg></span><span class="lbl">Sales workspace</span></a>
+      <a class="navitem" href="calendar.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4m10-4v4M3 10h18"/></svg></span><span class="lbl">Calendar</span></a>
+      <a class="navitem" href="messaging.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11a8 8 0 0 1-8 8H6l-4 3V11a9 9 0 1 1 19 0Z"/><path d="M7 10h10m-10 4h6"/></svg></span><span class="lbl">Messaging</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="clients"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-clients">Clients<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-clients">
+      <a class="navitem" href="client-control-panel.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg></span><span class="lbl">Client files</span></a>
+      <a class="navitem" href="csm-queue.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 14v-3a8 8 0 0 1 16 0v3m-16-2H2v6h4v-6Zm16 0h2v6h-4v-6Zm0 6c0 3-2 4-6 4"/></svg></span><span class="lbl">Client Success</span></a>
+      <a class="navitem" href="lenders.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 8 9-5 9 5M4 10h16M5 11v8m7-8v8m7-8v8M3 21h18"/></svg></span><span class="lbl">Lenders</span></a>
+      <a class="navitem" href="documents.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6Zm0 0v6h6M8 13h8m-8 4h6"/></svg></span><span class="lbl">Documents</span></a>
+      <a class="navitem" href="inquiry-remover.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg></span><span class="lbl">Inquiry specialist</span></a>
+      <a class="navitem" href="consent-capture.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Consent</span></a>
+      <a class="navitem" href="finance-os.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Finance OS</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="insights"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-insights">Insights<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-insights">
+      <a class="navitem" href="my-numbers.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10m8 10V4m8 16v-7"/></svg></span><span class="lbl">My numbers</span></a>
+      <a class="navitem" href="sales-floor.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span><span class="lbl">Sales floor</span></a>
+      <a class="navitem" href="company-brain.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 6C9 3 4 3 2 5v15c2-2 7-2 10 1m0-15c3-3 8-3 10-1v15c-2-2-7-2-10 1V6Z"/></svg></span><span class="lbl">Knowledge base</span></a>
+      <a class="navitem" href="galaxy.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Galaxy</span></a>
+      <a class="navitem" href="partner-galaxy.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Home</span></a>
+      <a class="navitem" href="ops-admin.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Operations</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="marketing"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-marketing">Marketing<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-marketing">
+      <a class="navitem" href="marketing-command-center.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 11 17-7v16L3 14v-3Zm4 5 2 6h4l-2-5M3 11H1v3h2"/></svg></span><span class="lbl">Marketing overview</span></a>
+      <a class="navitem" href="campaign-manager.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V4h16v16H4Zm4-11h8m-8 4h8m-8 4h4"/></svg></span><span class="lbl">Campaigns</span></a>
+      <a class="navitem" href="social-studio.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M17 7h.01"/></svg></span><span class="lbl">Social Studio</span></a>
+      <a class="navitem" href="creative-factory.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 3 7 7 3-7 3-3 7-3-7-7-3 7-3 3-7Z"/></svg></span><span class="lbl">Creative Factory</span></a>
+      <a class="navitem" href="content-admin.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M7 8h10m-10 4h10m-10 4h6"/></svg></span><span class="lbl">Content</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="automation"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-automation">Automation<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-automation">
+      <a class="navitem" href="agent-editor.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Agent Editor</span></a>
+      <a class="navitem" href="automations.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Workflows</span></a>
+      <a class="navitem" href="journeys.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Journeys</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="settings"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-settings">Manage<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-settings">
+      <a class="navitem" href="staff-teams.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 21v-2a6 6 0 0 1 12 0v2M17 5a3 3 0 0 1 0 6m2 4a6 6 0 0 1 2 4v2"/></svg></span><span class="lbl">Team & access</span></a>
+      <a class="navitem" href="hiring.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Hiring</span></a>
+      <a class="navitem" href="products-commissions.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 7 9-4 9 4v11l-9 4-9-4V7Zm0 0 9 4 9-4m-9 4v11M7 5l10 5"/></svg></span><span class="lbl">Products & commissions</span></a>
+      <a class="navitem" href="contracts.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H5v18h14V9l-5-6Zm0 0v6h5M8 13h7m-7 4h4"/></svg></span><span class="lbl">Contract templates</span></a>
+      <a class="navitem" href="brand-studio.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Brand Studio</span></a>
+      <a class="navitem" href="client-portal.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Client Portal</span></a>
+      <a class="navitem" href="affiliate.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Affiliate</span></a>
+    </div></div>
+  </nav>
+  <div class="side-foot"><span class="who">Private workspace</span></div>
+</aside>
+  <div class="main">
+    <main class="content fh-astra-page" aria-labelledby="setter-title">
+      <header class="setter-head">
+        <div><h1 id="setter-title">Who needs my call now?</h1><p>Newest lead first. Call within 60 seconds during 6 a.m.–10 p.m. Phoenix time.</p></div>
+        <button id="setter-refresh" type="button" class="fh-astra-action">Refresh queue</button>
+      </header>
+      <div class="setter-queue-heading"><strong id="setter-count">Checking calls…</strong><span>Newest first · 25 per page</span></div>
+      <div class="setter-grid">
+        <section class="setter-queue" id="setter-queue" aria-label="Setter call queue" aria-busy="true">
+          <div class="setter-skeleton" aria-hidden="true"></div><div class="setter-skeleton" aria-hidden="true"></div><div class="setter-skeleton" aria-hidden="true"></div>
+        </section>
+        <section class="setter-detail" id="setter-detail" aria-label="Selected lead" aria-live="polite">
+          <div class="setter-state">Loading the call checklist…</div>
+        </section>
+      </div>
+    </main>
+  </div>
+</div>
+<template id="setter-script-help">
+  <details><summary>Voicemail and text wording</summary>
+    <p><b>Voicemail · booked</b><br>Hey [Name], this is Chris with Fundhub. You just booked your strategy call for [day and time]. I was calling to lock that in with you. Be at a computer. We have not pulled your credit. That happens with you on the call, and your score does not move. Text me back if you need to move the time.</p>
+    <p><b>Voicemail · not booked</b><br>Hey [Name], this is Chris with Fundhub. You just reached out about mapping your funding path. I was calling to get you on the calendar. Text me back and I will get you a time.</p>
+    <p><b>Text · booked</b><br>Hey [Name], it’s Chris at Fundhub. Just tried you about your strategy call on [day and time]. You good for that time? Be at a computer. I also sent a short video so you know who I am.</p>
+    <p><b>Text · not booked</b><br>Hey [Name], it’s Chris at Fundhub. You just reached out and I tried to call. You open to a quick chat so I can get you on the calendar? I sent a short video too.</p>
+  </details>
+  <details><summary>Intro video wording</summary>
+    <p><b>Chris is the closer</b><br>Hey, this is Chris from Fundhub. I just saw you reach out, and I wanted to say hey myself. I am excited to talk with you. I will be the one on your strategy call. If you have a question about what we do, or about what you are going through, text me back. I am here so we can help you the right way.</p>
+    <p><b>Someone else is the closer</b><br>Hey, this is Chris from Fundhub. I just saw you reach out, and I wanted to say hey myself. I am excited you are here. [Closer first name] is going to handle your strategy call. I am still here if you have a question about our products, or about what you are going through. Text me back so we can help you the right way.</p>
+  </details>
+</template>
+<script>
+(function () {
+  "use strict";
+  /* FH-SETTER-VIEW-BEGIN */
+function setterEsc(value) {
+  return String(value == null ? "" : value).replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+function setterDate(value) {
+  if (!value || isNaN(Date.parse(value))) return "—";
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Phoenix", month: "short", day: "numeric",
+    hour: "numeric", minute: "2-digit", timeZoneName: "short"
+  }).format(new Date(value));
+}
+
+function setterDialTarget(item) {
+  var stamp = item && (item.booked_at || item.created_at);
+  if (!stamp || isNaN(Date.parse(stamp))) return null;
+  var first = new Date(stamp);
+  var phoenix = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Phoenix", hour: "numeric", hourCycle: "h23"
+  }).format(first);
+  var hour = Number(phoenix);
+  if (hour >= 6 && hour < 22) return new Date(first.getTime() + 60000).toISOString();
+  var parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Phoenix", year: "numeric", month: "2-digit", day: "2-digit"
+  }).formatToParts(first);
+  var values = {};
+  parts.forEach(function (part) { values[part.type] = part.value; });
+  var next = new Date(Date.UTC(Number(values.year), Number(values.month) - 1, Number(values.day), 13));
+  if (hour >= 22) next.setUTCDate(next.getUTCDate() + 1);
+  return next.toISOString();
+}
+
+function setterMissing(item, handoff) {
+  var h = handoff || {};
+  var missing = [];
+  if (!item || !item.booked_at || !item.booking_time) missing.push("booked call time");
+  if (!h.dialed_at) missing.push("dial logged");
+  if (h.disposition !== "reached" && h.disposition !== "booked_on_call") missing.push("reached call result");
+  if (h.disposition === "no_answer" && Number(h.call_attempts || 0) < 2) missing.push("second dial");
+  if (!h.time_confirmed) missing.push("call time confirmed");
+  if (!h.frame_warmed) missing.push("survey frame and warm-up");
+  if (!String(h.problem || "").trim()) missing.push("problem");
+  if (!String(h.goal || "").trim()) missing.push("goal");
+  if (h.computer_ready !== true && h.computer_ready !== false) missing.push("computer answer");
+  if (h.app_on_phone !== true && h.app_on_phone !== false) missing.push("app answer");
+  if (item && (item.lead_type === "opt_in" || h.lead_type === "opt_in")) {
+    if (!String(h.triage_problem || "").trim()) missing.push("triage problem");
+    if (!String(h.triage_goal || "").trim()) missing.push("triage goal");
+    if (h.triage_personal_or_business !== "personal" && h.triage_personal_or_business !== "business") missing.push("personal or business");
+  }
+  return missing;
+}
+
+function setterSorted(items) {
+  return (Array.isArray(items) ? items : []).slice().sort(function (a, b) {
+    if (a.needs_work === false && b.needs_work !== false) return 1;
+    if (b.needs_work === false && a.needs_work !== false) return -1;
+    return Date.parse(b.booked_at || b.created_at || 0) - Date.parse(a.booked_at || a.created_at || 0);
+  });
+}
+
+  /* FH-SETTER-VIEW-END */
+
+  var queue = [];
+  var selected = null;
+  var bookingUrl = "";
+  var appStoreUrl = "";
+  var introVideoAvailable = false;
+  var page = 0;
+  var saveTimer = 0;
+  var busy = false;
+  var queueEl = document.getElementById("setter-queue");
+  var detailEl = document.getElementById("setter-detail");
+  var countEl = document.getElementById("setter-count");
+  var refreshBtn = document.getElementById("setter-refresh");
+
+  function request(path, options) {
+    var init = options || {};
+    init.credentials = "same-origin";
+    init.headers = init.headers || {};
+    init.headers.accept = "application/json";
+    try {
+      var token = localStorage.getItem("fh_token");
+      if (token && token !== "demo" && token !== "demo-token") init.headers.authorization = "Bearer " + token;
+    } catch (_) {}
+    if (init.body) {
+      init.headers["content-type"] = "application/json";
+      init.body = JSON.stringify(init.body);
+    }
+    return fetch(path, init).then(function (response) {
+      return response.json().catch(function () { return {}; }).then(function (body) {
+        return { status: response.status, body: body };
+      });
+    });
+  }
+
+  function messageFor(result) {
+    if (!result) return "Could not reach Fundhub. Check your connection and try again.";
+    if (result.status === 401) return "Your session ended. Sign in and open this page again.";
+    if (result.status === 403) return "This dashboard is for setters, owners, and admins.";
+    if (result.body && result.body.error === "intro_video_not_configured")
+      return "The intro video URL is not set yet. Ask an admin to set SETTER_INTRO_VIDEO_URL.";
+    if (result.body && result.body.error === "setter_send_needs_contact")
+      return "The lead or closer needs a valid phone on their staff/client file.";
+    if (result.body && Array.isArray(result.body.missing) && result.body.missing.length)
+      return "Finish: " + result.body.missing.join(", ") + ".";
+    return "Could not save this step. Try again.";
+  }
+
+  function say(text, tone) {
+    var el = document.getElementById("setter-status");
+    if (!el) return;
+    el.textContent = text;
+    el.className = "setter-status" + (tone ? " " + tone : "");
+  }
+
+  function selectedId() { return selected && selected.client_id; }
+  function currentItem() { return queue.find(function (row) { return row.client_id === selectedId(); }) || selected; }
+  function handoffOf(item) { return item && item.setter_handoff && typeof item.setter_handoff === "object" ? item.setter_handoff : {}; }
+  function field(name) { return detailEl.querySelector('[name="' + name + '"]'); }
+  function checked(name) { var el = field(name); return !!(el && el.checked); }
+  function value(name) { var el = field(name); return el ? el.value.trim() : ""; }
+  function answer(name) { var v = value(name); return v === "yes" ? true : v === "no" ? false : null; }
+  function option(value, label, current) { return '<option value="' + setterEsc(value) + '"' + (current === value ? " selected" : "") + '>' + setterEsc(label) + "</option>"; }
+  function box(name, label, current) { return '<label class="setter-check"><input type="checkbox" name="' + name + '"' + (current ? " checked" : "") + '><span>' + label + "</span></label>"; }
+
+  function readHandoff() {
+    var h = Object.assign({}, handoffOf(currentItem()));
+    h.lead_type = h.lead_type || currentItem().lead_type;
+    h.call_attempts = Number(value("call_attempts") || 0);
+    h.disposition = value("disposition");
+    h.voicemail_left = checked("voicemail_left");
+    h.missed_text_sent = checked("missed_text_sent");
+    h.time_confirmed = checked("time_confirmed");
+    h.frame_warmed = checked("frame_warmed");
+    h.problem = value("problem");
+    h.goal = value("goal");
+    h.computer_ready = answer("computer_ready");
+    h.app_on_phone = answer("app_on_phone");
+    h.triage_problem = value("triage_problem");
+    h.triage_goal = value("triage_goal");
+    h.triage_personal_or_business = value("triage_personal_or_business");
+    return h;
+  }
+
+  function paintQueue() {
+    queueEl.setAttribute("aria-busy", "false");
+    var working = queue.filter(function (row) { return row.needs_work !== false; }).length;
+    var completed = queue.length - working;
+    countEl.textContent = working + (working === 1 ? " lead needs work" : " leads need work") + (completed ? " · " + completed + " recent handoff(s)" : "");
+    if (!queue.length) {
+      queueEl.innerHTML = '<div class="setter-state fh-astra-state"><h2>Queue is clear</h2><p>New bookings and opt-ins appear here.</p><a class="setter-link" href="pipeline.html">Open pipeline</a></div>';
+      detailEl.innerHTML = '<div class="setter-state">No lead selected.</div>';
+      return;
+    }
+    var start = page * 25;
+    var html = queue.slice(start, start + 25).map(function (item) {
+      var h = handoffOf(item);
+      var target = item.target_dial_by || setterDialTarget(item);
+      var label = item.needs_work === false ? "Completed" : item.lead_type === "booked" ? "Booked" : "Opted in · needs booking";
+      return '<button type="button" data-client-id="' + setterEsc(item.client_id) + '" aria-current="' + (selectedId() === item.client_id) + '">' +
+        '<span class="setter-row-top"><strong title="' + setterEsc(item.client_name || "Unnamed lead") + '">' + setterEsc(item.client_name || "Unnamed lead") + '</strong><span>' + setterEsc(label) + '</span></span>' +
+        '<span class="setter-row-meta">' + setterEsc(item.phone || "No phone") + ' · ' + setterEsc(setterDate(item.booked_at || item.created_at)) + '</span>' +
+        '<span class="setter-row-meta' + (!h.dialed_at ? ' setter-row-urgent' : '') + '">' + (h.complete_at ? 'Handoff complete' : h.dialed_at ? 'Working · ' + Number(h.call_attempts || 0) + ' dial(s)' : 'Dial target ' + setterEsc(setterDate(target))) + '</span></button>';
+    }).join("");
+    if (queue.length > 25) html += '<div class="setter-pager"><button type="button" data-page="prev"' + (page === 0 ? ' disabled' : '') + '>Previous</button><span>Page ' + (page + 1) + ' of ' + Math.ceil(queue.length / 25) + '</span><button type="button" data-page="next"' + (start + 25 >= queue.length ? ' disabled' : '') + '>Next</button></div>';
+    queueEl.innerHTML = html;
+  }
+
+  function surveyHtml(survey) {
+    if (!survey) return '<p>No survey answers on this record.</p>';
+    if (typeof survey === "string") return '<p>' + setterEsc(survey) + '</p>';
+    var entries = Array.isArray(survey) ? survey.map(function (row) {
+      return [row.question || "Survey answer", row.answer];
+    }) : Object.entries(survey);
+    entries = entries.filter(function (entry) { return !/ssn|social.security|card.number/i.test(entry[0]); });
+    if (!entries.length) return '<p>No survey answers on this record.</p>';
+    return '<div class="setter-survey">' + entries.slice(0, 20).map(function (entry) {
+      var label = entry[0].replace(/[_-]+/g, " ").replace(/([a-z])([A-Z])/g, "$1 $2");
+      var text = typeof entry[1] === "object" ? JSON.stringify(entry[1]) : String(entry[1] == null ? "" : entry[1]);
+      return '<div><b>' + setterEsc(label) + '</b>' + setterEsc(text) + '</div>';
+    }).join("") + '</div>';
+  }
+
+  function paintDetail() {
+    var item = currentItem();
+    if (!item) { detailEl.innerHTML = '<div class="setter-state">Choose a lead to start.</div>'; return; }
+    var h = handoffOf(item), target = item.target_dial_by || setterDialTarget(item), booked = item.lead_type === "booked";
+    var arrived = item.booked_at || item.created_at;
+    var afterHours = target && arrived && Date.parse(target) - Date.parse(arrived) > 60000;
+    var sameStaff = item.setter_staff_id && item.closer_staff_id && item.setter_staff_id === item.closer_staff_id;
+    var html = '<div class="setter-detail-head"><div><h2>' + setterEsc(item.client_name || "Unnamed lead") + '</h2><p>' + (booked ? 'Already booked · short confirm call' : 'Opted in · triage and book') + '</p></div>' +
+      '<a class="setter-link" href="tel:' + setterEsc(String(item.phone || "").replace(/[^+0-9]/g, "")) + '">Call ' + setterEsc(item.phone || "No phone") + '</a></div>' +
+      '<div class="setter-facts"><span class="setter-fact"><b>Lead came in</b>' + setterEsc(setterDate(item.booked_at || item.created_at)) + '</span><span class="setter-fact"><b>Target dial by</b>' + setterEsc(setterDate(target)) + '</span>' +
+      '<span class="setter-fact"><b>Strategy call</b>' + setterEsc(setterDate(item.booking_time)) + '</span></div>' +
+      (afterHours ? '<p class="setter-alert">Before 6 a.m. or after 10 p.m. Phoenix time: wait until 6 a.m. to call or text.</p>' : '') +
+      '<div class="setter-actions"><button type="button" class="fh-astra-action" data-action="log-dial">Log dial' + (h.call_attempts ? ' #' + (Number(h.call_attempts) + 1) : '') + '</button><span>' + Number(h.call_attempts || 0) + ' attempt(s) logged</span></div>' +
+      '<section class="setter-section"><h3>Call result</h3><div class="setter-fields"><div class="setter-field"><label for="setter-disposition">Disposition</label><select id="setter-disposition" name="disposition">' +
+      option("", "Choose a result", h.disposition || "") + option("reached", "Reached", h.disposition) + option("no_answer", "No answer", h.disposition) + option("reschedule", "Reschedule", h.disposition) + option("booked_on_call", "Booked on this call", h.disposition) + '</select></div>' +
+      '<div class="setter-field"><label for="setter-attempts">Dial attempts</label><input id="setter-attempts" name="call_attempts" type="number" min="0" max="99" value="' + Number(h.call_attempts || 0) + '"></div></div>' +
+      '<div id="setter-no-answer"' + (h.disposition === "no_answer" ? '' : ' hidden') + '><p>Double dial right away. Then leave voicemail, send the missed-call text, and send the intro video.</p>' +
+      '<div class="setter-checks">' + box("voicemail_left", "Voicemail left", h.voicemail_left) + box("missed_text_sent", "Missed-call text sent", h.missed_text_sent) + '</div>' +
+      document.getElementById("setter-script-help").innerHTML +
+      '<button type="button" class="fh-astra-action" data-action="send_intro_video"' + (h.video_sent_at || !introVideoAvailable ? ' disabled' : '') + '>' + (h.video_sent_at ? 'Intro video sent' : introVideoAvailable ? 'Send intro video' : 'Intro video waiting to film') + '</button></div></section>';
+
+    if (!booked) html += '<section class="setter-section"><h3>Triage and book</h3><p>Find the problem and goal, then book the strategy call. Keep the call under 10 minutes.</p>' +
+      '<div class="setter-fields"><div class="setter-field wide"><label for="setter-triage-problem">Problem in their words</label><textarea id="setter-triage-problem" name="triage_problem">' + setterEsc(h.triage_problem || "") + '</textarea></div>' +
+      '<div class="setter-field wide"><label for="setter-triage-goal">Goal in their words</label><textarea id="setter-triage-goal" name="triage_goal">' + setterEsc(h.triage_goal || "") + '</textarea></div>' +
+      '<div class="setter-field"><label for="setter-use">Personal or business?</label><select id="setter-use" name="triage_personal_or_business">' + option("", "Choose one", h.triage_personal_or_business || "") + option("personal", "Personal", h.triage_personal_or_business) + option("business", "Business", h.triage_personal_or_business) + '</select></div></div>' +
+      (bookingUrl ? '<a class="setter-link" href="' + setterEsc(bookingUrl) + '" target="_blank" rel="noopener">Open booking calendar ↗</a>' : '<a class="setter-link" href="calendar.html">Open booking calendar</a>') +
+      '<p>After the booking webhook arrives, refresh this queue and finish the handoff.</p></section>';
+
+    html += '<section class="setter-section"><h3>Survey · read before the call</h3>' + surveyHtml(item.survey) + '</section>' +
+      '<section class="setter-section"><h3>Confirm and warm</h3><p>Use the survey as written. Keep a booked lead’s call short; do not run a second discovery call.</p>' +
+      '<div class="setter-checks">' + box("time_confirmed", "Call time confirmed", h.time_confirmed) + box("frame_warmed", "Framed the call and warmed from survey", h.frame_warmed) + '</div>' +
+      '<div class="setter-fields"><div class="setter-field wide"><label for="setter-problem">Stuck part · one sentence</label><textarea id="setter-problem" name="problem">' + setterEsc(h.problem || "") + '</textarea></div>' +
+      '<div class="setter-field wide"><label for="setter-goal">Goal · one sentence</label><textarea id="setter-goal" name="goal">' + setterEsc(h.goal || "") + '</textarea></div>' +
+      '<div class="setter-field"><label for="setter-computer">Computer ready?</label><select id="setter-computer" name="computer_ready">' + option("", "Choose one", h.computer_ready == null ? "" : h.computer_ready ? "yes" : "no") + option("yes", "Yes", h.computer_ready === true ? "yes" : "") + option("no", "No", h.computer_ready === false ? "no" : "") + '</select></div>' +
+      '<div class="setter-field"><label for="setter-app">Fundhub Portal on phone?</label><select id="setter-app" name="app_on_phone">' + option("", "Choose one", h.app_on_phone == null ? "" : h.app_on_phone === true ? "yes" : "no") + option("yes", "Yes", h.app_on_phone === true ? "yes" : "") + option("no", "No", h.app_on_phone === false ? "no" : "") + '</select></div></div>' +
+      '<p>Ask about the app for their file and next steps. They still need a computer for the strategy call. If asked about price: “We walk the options on the strategy call after we see the file. The only charge before that call is the $32 soft pull, and your score does not move.”</p>' +
+      '<div class="setter-actions"><a class="setter-link" href="' + setterEsc(bookingUrl || "calendar.html") + '"' + (bookingUrl ? ' target="_blank" rel="noopener"' : '') + '>Move call time</a><span id="setter-app-slot">' + (appStoreUrl ? '<a class="setter-link" href="' + setterEsc(appStoreUrl) + '" target="_blank" rel="noopener">Fundhub Portal App Store ↗</a>' : '') + '</span></div></section>' +
+      '<section class="setter-section"><h3>Closer handoff</h3><p>' + (sameStaff ? 'Chris is setter and closer. Text the lead only; save the full note on the client.' : 'Send the handoff to the lead and closer after the time is locked.') + '</p>' +
+      '<div class="setter-script" id="setter-handoff-note">' + setterEsc(h.handoff_text || 'Save the checklist to generate the handoff note.') + '</div>' +
+      '<div class="setter-actions"><button type="button" class="fh-astra-action" data-action="save">Save checklist</button>' +
+      '<button type="button" class="fh-astra-action fh-astra-primary" data-action="complete"' + (h.complete_at ? ' disabled' : '') + '>' + (h.complete_at ? 'Handoff complete' : 'Mark handoff complete') + '</button>' +
+      '<button type="button" class="fh-astra-action" data-action="send_handoff"' + (!h.complete_at || h.handoff_sent_at ? ' disabled' : '') + '>' + (h.handoff_sent_at ? 'Handoff text sent' : sameStaff ? 'Send lead-only SMS' : 'Send three-way SMS') + '</button></div>' +
+      '<div class="setter-status" id="setter-status" role="status" aria-live="polite"></div></section>';
+    detailEl.innerHTML = html;
+  }
+
+  function updateItem(item) {
+    if (!item || !item.client_id) return;
+    var index = queue.findIndex(function (row) { return row.client_id === item.client_id; });
+    if (index >= 0) queue[index] = item;
+    if (selectedId() === item.client_id) selected = item;
+    paintQueue();
+  }
+
+  function sendAction(action, handoff, clientId) {
+    if (!selected) return Promise.resolve(false);
+    clientId = clientId || selected.client_id;
+    if (busy) return new Promise(function (resolve) {
+      setTimeout(function () { resolve(sendAction(action, handoff, clientId)); }, 150);
+    });
+    busy = true;
+    say(action === "save" ? "Saving…" : "Working…");
+    return request("/api/setter-dashboard", { method: "POST", body: { client_id: clientId, action: action, handoff: handoff } })
+      .then(function (result) {
+        if (result.status < 200 || result.status >= 300 || !result.body || !result.body.ok) { say(messageFor(result), "error"); return false; }
+        updateItem(result.body.item);
+        if (action !== "save") paintDetail();
+        var savedHandoff = result.body.item && result.body.item.setter_handoff || {};
+        if (action === "send_intro_video" && !savedHandoff.video_sent_at ||
+            action === "send_handoff" && !savedHandoff.handoff_sent_at) {
+          var outcome = result.body.send && result.body.send.lead && result.body.send.lead.outcome;
+          say(outcome === "deferred" ? "Queued for allowed hours; not sent yet." :
+            action === "send_handoff" ? "Handoff not fully sent. Check Messaging before retrying." :
+              "Intro video not sent. Check Messaging before retrying.", "error");
+          return false;
+        }
+        say(action === "save" ? "Checklist saved." : action === "complete" ? "Handoff complete and saved on the client." : action === "send_intro_video" ? "Intro video sent." : "Handoff text sent.", "success");
+        return true;
+      }).catch(function () { say(messageFor(null), "error"); return false; }).finally(function () { busy = false; });
+  }
+
+  function saveSoon() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(function () { saveTimer = 0; sendAction("save", readHandoff()); }, 700);
+    say("Unsaved changes…");
+  }
+
+  function load() {
+    refreshBtn.disabled = true;
+    queueEl.setAttribute("aria-busy", "true");
+    request("/api/read/setter-dashboard").then(function (result) {
+      if (result.status < 200 || result.status >= 300 || !result.body || !Array.isArray(result.body.items)) {
+        queueEl.innerHTML = '<div class="setter-state fh-astra-state"><h2>Could not load the call queue</h2><p>' + setterEsc(messageFor(result)) + '</p><button type="button" class="fh-astra-action" data-action="retry">Try again</button></div>';
+        detailEl.innerHTML = '<div class="setter-state">The checklist will appear when the queue loads.</div>';
+        countEl.textContent = "Queue unavailable";
+        return;
+      }
+      queue = setterSorted(result.body.items);
+      introVideoAvailable = result.body.intro_video_available === true;
+      bookingUrl = /^https:\/\//.test(result.body.booking_url || "") ? result.body.booking_url : "";
+      selected = queue.find(function (row) { return row.client_id === selectedId(); }) || queue[0] || null;
+      paintQueue(); paintDetail();
+    }).catch(function () {
+      queueEl.innerHTML = '<div class="setter-state fh-astra-state"><h2>Could not load the call queue</h2><p>Check your connection and try again.</p><button type="button" class="fh-astra-action" data-action="retry">Try again</button></div>';
+      detailEl.innerHTML = '<div class="setter-state">The checklist will appear when the queue loads.</div>';
+      countEl.textContent = "Queue unavailable";
+    }).finally(function () { queueEl.setAttribute("aria-busy", "false"); refreshBtn.disabled = false; });
+  }
+
+  queueEl.addEventListener("click", function (event) {
+    var pager = event.target.closest("[data-page]");
+    if (pager) { page += pager.dataset.page === "next" ? 1 : -1; paintQueue(); return; }
+    if (event.target.closest('[data-action="retry"]')) { load(); return; }
+    var row = event.target.closest("[data-client-id]");
+    if (row) {
+      var next = queue.find(function (item) { return item.client_id === row.dataset.clientId; }) || null;
+      if (selected && next && next.client_id !== selected.client_id && saveTimer) {
+        clearTimeout(saveTimer);
+        saveTimer = 0;
+        sendAction("save", readHandoff()).then(function () { selected = next; paintQueue(); paintDetail(); });
+        return;
+      }
+      clearTimeout(saveTimer);
+      saveTimer = 0;
+      selected = next;
+      paintQueue(); paintDetail();
+    }
+  });
+  detailEl.addEventListener("input", saveSoon);
+  detailEl.addEventListener("change", function (event) {
+    if (event.target.name === "disposition") {
+      var noAnswer = document.getElementById("setter-no-answer");
+      if (noAnswer) noAnswer.hidden = event.target.value !== "no_answer";
+    }
+    saveSoon();
+  });
+  detailEl.addEventListener("click", function (event) {
+    var button = event.target.closest("[data-action]");
+    if (!button) return;
+    var action = button.dataset.action;
+    clearTimeout(saveTimer);
+    saveTimer = 0;
+    var h = readHandoff();
+    if (action === "log-dial") {
+      h.call_attempts = Number(h.call_attempts || 0) + 1;
+      if (!h.dialed_at) h.dialed_at = new Date().toISOString();
+      sendAction("save", h).then(function (ok) { if (ok) paintDetail(); });
+      return;
+    }
+    if (action === "complete") {
+      var missing = setterMissing(currentItem(), h);
+      if (missing.length) { say("Finish: " + missing.join(", ") + ".", "error"); return; }
+    }
+    if (action === "save" || action === "complete" || action === "send_intro_video" || action === "send_handoff") sendAction(action, h);
+  });
+  refreshBtn.addEventListener("click", load);
+  request("/funnel/fundhub-prompter-download.json").then(function (result) {
+    var url = result.body && result.body.app_store_url;
+    if (!/^https:\/\/apps\.apple\.com\//.test(url || "")) return;
+    appStoreUrl = url;
+    var slot = document.getElementById("setter-app-slot");
+    if (slot) slot.innerHTML = '<a class="setter-link" href="' + setterEsc(url) + '" target="_blank" rel="noopener">Fundhub Portal App Store ↗</a>';
+  }).catch(function () {});
+  load();
+})();
+</script>
+</body>
+</html>

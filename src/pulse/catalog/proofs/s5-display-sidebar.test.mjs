@@ -27,9 +27,9 @@ const LINKS = [...FRAGMENT.matchAll(/<div class="navgroup" data-fh-section="([^"
   [...group[0].matchAll(/<a class="navitem" href="([^"]+)">[\s\S]*?<span class="lbl">([^<]+)<\/span>/g)]
     .map((link) => ({ section: group[1], href: link[1], label: decode(link[2]) })));
 
-test("the fragment carries the seven current sections and the 33 links this proof clicks", () => {
+test("the fragment carries the seven current sections and the 34 links this proof clicks", () => {
   assert.deepEqual([...FRAGMENT.matchAll(/data-fh-section="([^"]+)"/g)].map((m) => m[1]), GROUPS.map(([key]) => key));
-  assert.equal(LINKS.length, 33);
+  assert.equal(LINKS.length, 34);
   assert.deepEqual(LINKS.filter(link => link.href === "bank-outreach.html"), [{ section: "relationships", href: "bank-outreach.html", label: "Bank outreach" }]);
   for (const link of LINKS) {
     assert.ok(fs.existsSync(path.join(ROOT, "public/app", link.href)), `${link.href} is a real screen`);
@@ -91,7 +91,7 @@ test("the six sections an owner sees each fold their links away and bring them b
   const lab = await openLab();
   t.after(() => lab.close());
   const page = await openAsOwner(lab);
-  assert.equal(SHOWN_LINKS.length, 22);
+  assert.equal(SHOWN_LINKS.length, 23);
   assert.deepEqual(SHOWN_SECTIONS, ["relationships", "work", "clients", "insights", "marketing", "settings"]);
   for (const [key, title] of GROUPS.filter(([key]) => SHOWN_SECTIONS.includes(key))) {
     const group = page.locator(`#side .navgroup[data-fh-section="${key}"]`);
@@ -112,7 +112,7 @@ test("the six sections an owner sees each fold their links away and bring them b
   await page.close();
 });
 
-test("each of the 22 shown nav links is under its section with its label and opens its own screen", { timeout: 420_000 }, async (t) => {
+test("each of the 23 shown nav links is under its section with its label and opens its own screen", { timeout: 420_000 }, async (t) => {
   const lab = await openLab();
   t.after(() => lab.close());
   for (const link of SHOWN_LINKS) {

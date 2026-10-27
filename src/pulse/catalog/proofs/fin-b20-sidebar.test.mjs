@@ -27,7 +27,7 @@ const LINKS = [...ASIDE.matchAll(/<div class="navgroup" data-fh-section="([^"]+)
 
 // What each role is shown on its rail. Pinned from the shell's own role map, so a change to who sees
 // what turns this red and has to be a decision.
-const OWNER = ["bank-outreach.html", "pipeline.html", "closer-dashboard.html", "my-numbers.html", "sales-floor.html", "calendar.html", "lenders.html",
+const OWNER = ["bank-outreach.html", "pipeline.html", "setter-dashboard.html", "closer-dashboard.html", "my-numbers.html", "sales-floor.html", "calendar.html", "lenders.html",
   "client-control-panel.html", "csm-queue.html", "messaging.html", "documents.html", "inquiry-remover.html", "company-brain.html",
   "marketing-command-center.html", "campaign-manager.html", "social-studio.html", "creative-factory.html", "content-admin.html",
   "staff-teams.html", "products-commissions.html", "contracts.html", "client-portal.html"];
@@ -46,7 +46,7 @@ const RAIL = {
   closer: { page: "pipeline.html", links: ["pipeline.html", "closer-dashboard.html", "my-numbers.html", "calendar.html", ...STAFF.slice(3)], heads: ["work", "clients", "insights"] },
   funding_advisor: { page: "pipeline.html", links: ["pipeline.html", "closer-dashboard.html", "calendar.html", "lenders.html", ...STAFF.slice(3)], heads: ["work", "clients"] },
   csm: { page: "pipeline.html", links: STAFF, heads: ["work", "clients"] },
-  setter: { page: "pipeline.html", links: STAFF, heads: ["work", "clients"] },
+  setter: { page: "setter-dashboard.html", links: ["pipeline.html", "setter-dashboard.html", ...STAFF.slice(1)], heads: ["work", "clients"] },
   inquiry_specialist: { page: "pipeline.html", links: STAFF, heads: ["work", "clients"] },
   partner: { page: "partner-galaxy.html", links: ["social-studio.html", "creative-factory.html"], heads: ["marketing"] },
 };
@@ -73,11 +73,11 @@ const shown = (page) => page.evaluate(() => ({
 }));
 
 // ---------------------------------------------------------------------------------------------
-test("the file carries seven current sections and 33 links, shell.js mounts the same markup, and every desk's inline copy matches", () => {
+test("the file carries seven current sections and 34 links, shell.js mounts the same markup, and every desk's inline copy matches", () => {
   assert.deepEqual(GROUPS.map((g) => g.key), ["relationships", "work", "clients", "insights", "marketing", "automation", "settings"]);
   assert.deepEqual(GROUPS.map((g) => g.title), ["Relationships", "Your work", "Clients", "Insights", "Marketing", "Automation", "Manage"]);
-  assert.equal(LINKS.length, 33);
-  assert.equal(new Set(LINKS.map((l) => l.href)).size, 33, "each link is listed once");
+  assert.equal(LINKS.length, 34);
+  assert.equal(new Set(LINKS.map((l) => l.href)).size, 34, "each link is listed once");
   for (const l of LINKS) assert.ok(fs.existsSync(path.join(APP, l.href)), `${l.href} is a real screen`);
 
   const marker = SHELL.match(/\/\* ==SIDEBAR_HTML_START== \*\/\s*var SIDEBAR_HTML = ("[\s\S]*?");\s*\/\* ==SIDEBAR_HTML_END== \*\//);

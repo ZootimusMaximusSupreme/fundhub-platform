@@ -52,6 +52,7 @@ const ALL = shellList("ALL");
 const PRINCIPAL_ONLY = shellList("PRINCIPAL_ONLY");
 const OWNER_ADMIN_ONLY = shellList("OWNER_ADMIN_ONLY");
 const CLOSER_DESK_ONLY = shellList("CLOSER_DESK_ONLY");
+const SETTER_DESK_ONLY = shellList("SETTER_DESK_ONLY");
 const SALES_FLOOR_ONLY = shellList("SALES_FLOOR_ONLY");
 const PORTAL_ONLY = shellList("PORTAL_ONLY");
 const HIRING_ONLY = shellList("HIRING_ONLY");
@@ -65,6 +66,7 @@ const KEEP_ON_MENU = [
   "pipeline.html",
   "client-control-panel.html",
   "closer-dashboard.html",
+  "setter-dashboard.html",
   "my-numbers.html",
   "sales-floor.html",
   "calendar.html",
@@ -87,6 +89,7 @@ const STAFF_TABS = ALL.filter(
     !PRINCIPAL_ONLY.includes(s) &&
     !OWNER_ADMIN_ONLY.includes(s) &&
     !CLOSER_DESK_ONLY.includes(s) &&
+    !SETTER_DESK_ONLY.includes(s) &&
     !SALES_FLOOR_ONLY.includes(s) &&
     !PORTAL_ONLY.includes(s) &&
     !HIRING_ONLY.includes(s) &&
@@ -137,6 +140,15 @@ function screenLinks(text) {
 
 const WITH_SIDEBAR = GATED.filter((f) => navHrefs(HTML.get(f)).length > 0);
 
+/* shell.js replaces each page's initial sidebar with this shared markup. The
+ * static copies still have to agree, but the mounted rail is what users see. */
+function sharedNavHrefs() {
+  const declaration = SHELL_SRC.match(/var SIDEBAR_HTML = ("(?:\\.|[^"\\])*");/);
+  assert.ok(declaration, "shell.js lost the mounted sidebar");
+  assert.match(SHELL_SRC, /existing\.parentNode\.replaceChild\(fresh, existing\)/);
+  return navHrefs(JSON.parse(declaration[1]));
+}
+
 /* client-portal.html is the only screen ROLE_TABS.client may open (shell.js
    ROLE_TABS), so there is nowhere for it to link to. Every other gated screen
    has somewhere to go and must offer it. */
@@ -151,6 +163,7 @@ describe("app shell — the lists this test reads", () => {
       assert.ok(HTML.has(s), `shell.js lists ${s} but public/app/${s} does not exist`);
     }
     assert.deepEqual(CLOSER_DESK_ONLY, ["my-numbers.html"]);
+    assert.deepEqual(SETTER_DESK_ONLY, ["setter-dashboard.html"]);
     assert.deepEqual(SALES_FLOOR_ONLY, ["sales-floor.html"]);
     assert.deepEqual([...PORTAL_ONLY].sort(), ["affiliate.html", "client-portal.html"].sort());
     assert.deepEqual(HIRING_ONLY, ["hiring.html"]);
@@ -245,7 +258,7 @@ describe("app shell — every screen it opens can be reached", () => {
     // partner-galaxy.html is documented in shell.js as the one screen no
     // sidebar links to: employees get the real Galaxy instead.
     const expected = ALL.filter((s) => !PRINCIPAL_ONLY.includes(s));
-    const offered = new Set(navHrefs(HTML.get(WITH_SIDEBAR[0])));
+    const offered = new Set(sharedNavHrefs());
     const missing = expected.filter((s) => !offered.has(s));
     assert.deepEqual(missing, [],
       `no sidebar row links to ${missing.join(", ")} — the only way in is typing ` +
@@ -283,17 +296,17 @@ describe("app shell — every screen it opens has a way out", () => {
 });
 
 describe("app shell — the chip's tab count matches what the sidebar shows", () => {
-  const nav = () => navHrefs(HTML.get(WITH_SIDEBAR[0]));
+  const nav = () => sharedNavHrefs();
 
   function visibleFor(allowed) {
     return nav().filter((h) => menuTabs(allowed).includes(h));
   }
 
   test("a generic staff role sees the shared staff surface only", () => {
-    // setter / inquiry_specialist — no closer desk, no floor, no lender database.
+    // inquiry_specialist — no setter desk, closer desk, floor, or lender database.
     const visible = visibleFor(STAFF_TABS);
     assert.deepEqual([...visible].sort(), [...menuTabs(STAFF_TABS)].sort());
-    for (const h of [...CLOSER_DESK_ONLY, ...SALES_FLOOR_ONLY, ...OWNER_ADMIN_ONLY, ...FINANCE_ONLY, ...ADVISOR_ONLY, ...CONSENT_DESK_ONLY, ...NAV_HIDDEN]) {
+    for (const h of [...CLOSER_DESK_ONLY, ...SETTER_DESK_ONLY, ...SALES_FLOOR_ONLY, ...OWNER_ADMIN_ONLY, ...FINANCE_ONLY, ...ADVISOR_ONLY, ...CONSENT_DESK_ONLY, ...NAV_HIDDEN]) {
       assert.ok(!visible.includes(h), `generic staff must not see ${h}`);
     }
     /* api/consent/capture.mjs CONSENT_ROLES refuses setter, inquiry_specialist
@@ -301,6 +314,14 @@ describe("app shell — the chip's tab count matches what the sidebar shows", ()
        the person looking at it. */
     assert.ok(!visible.includes("consent-capture.html"));
     assert.ok(!visible.includes("automations.html"));
+  });
+
+  test("setter sees the call desk, while other staff roles do not", () => {
+    const setter = visibleFor([...STAFF_TABS, ...SETTER_DESK_ONLY]);
+    assert.ok(setter.includes("setter-dashboard.html"));
+    assert.ok(!visibleFor(CLOSER_TABS).includes("setter-dashboard.html"));
+    assert.ok(!visibleFor(ADVISOR_TABS).includes("setter-dashboard.html"));
+    assert.ok(!visibleFor(SALES_MANAGER_TABS).includes("setter-dashboard.html"));
   });
 
   /* Owner decision 2026-08-17: the lender database is the funding advisor's and

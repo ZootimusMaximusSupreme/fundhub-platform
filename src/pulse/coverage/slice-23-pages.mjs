@@ -17,7 +17,7 @@ const SCHEDULE = "daily";
 /** `var ALL = [...]` in public/app/shell.js: every desk the shell guards. */
 export const SHELL_ALL = Object.freeze([
   "bank-outreach.html",
-  "closer-dashboard.html", "my-numbers.html", "sales-floor.html", "pipeline.html",
+  "closer-dashboard.html", "setter-dashboard.html", "my-numbers.html", "sales-floor.html", "pipeline.html",
   "client-control-panel.html", "messaging.html", "calendar.html", "documents.html",
   "company-brain.html", "ops-admin.html", "galaxy.html", "agent-editor.html",
   "automations.html", "products-commissions.html", "staff-teams.html", "csm-queue.html",
@@ -42,7 +42,7 @@ export const SIDEBAR_SECTION_DESKS = Object.freeze({
     "bank-outreach.html"
   ]),
   work: Object.freeze([
-    "pipeline.html", "closer-dashboard.html", "calendar.html", "messaging.html"
+    "pipeline.html", "setter-dashboard.html", "closer-dashboard.html", "calendar.html", "messaging.html"
   ]),
   clients: Object.freeze([
     "client-control-panel.html", "csm-queue.html", "lenders.html", "documents.html",

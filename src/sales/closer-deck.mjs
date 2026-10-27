@@ -405,6 +405,8 @@ export async function buildCloserDeck(db, { orgId, clientId }) {
 
   return {
     client_id: client.id,
+    setter_handoff: client.custom_fields?.setter_handoff?.complete_at
+      ? client.custom_fields.setter_handoff : null,
     slo_ref: cf(client, "slo_ref"),
     slo_source: cf(client, "slo_source"),
     slo_pack_status: cf(client, "slo_pack_status"),

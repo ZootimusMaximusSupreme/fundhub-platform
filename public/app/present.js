@@ -259,9 +259,14 @@
     return o && o.financing ? '<div class="fin">Financing available</div>' : "";
   }
   function sharedContextPanel() {
+    var handoff = state.setterHandoff || (state.sharedContext && state.sharedContext.setter_handoff);
+    var handoffHtml = handoff && handoff.complete_at
+      ? '<section data-fh-setter-handoff><h3>Setter handoff</h3><p class="caption">'
+        + esc(handoff.handoff_text || [handoff.problem, handoff.goal].filter(Boolean).join(" · "))
+        + '</p></section>' : '';
     var block = state.sharedContextMessage || (state.sharedContext && state.sharedContext.as_prompt_block)
       || "No saved context is on this client file yet.";
-    return '<details data-fh-shared-context><summary>AI coach and Fundhub team — shared client file</summary>'
+    return handoffHtml + '<details data-fh-shared-context><summary>AI coach and Fundhub team — shared client file</summary>'
       + '<div class="fh-context-lines" data-fh-context-lines>'
       + String(block).split("\n").map(function (line) { return '<p class="caption">' + esc(line) + '</p>'; }).join("")
       + '</div></details>';
@@ -1640,6 +1645,7 @@
      without re-reading the deck leaves the old price sitting there. */
   function applyDeck(d) {
     d = d || {};
+    state.setterHandoff = d.setter_handoff || null;
     state.survey = d.survey || {};
     state.businesses = Array.isArray(d.businesses) ? d.businesses : [];
     state.incomeEstimates = d.income_estimates || {};

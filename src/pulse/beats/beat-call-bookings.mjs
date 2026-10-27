@@ -51,7 +51,8 @@ export const title = "Booked calls have a join link and an outcome";
 export const kind = "probe";
 export const covers = [
   "job:s-04-call-booked",
-  "route:bookings"
+  "route:bookings",
+  "route:read/setter-dashboard"
 ];
 export const box = false;
 export const reads = [];

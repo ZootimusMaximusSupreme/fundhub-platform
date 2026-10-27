@@ -66,7 +66,7 @@ function renderCloser(responseContext, message = null) {
   const start = closer.indexOf("  function paintSharedContext(");
   const end = closer.indexOf("  function wireDisposition(", start);
   assert.ok(start > 0 && end > start);
-  const sandbox = { document: { createElement: node }, $: () => root };
+  const sandbox = { document: { createElement: node, getElementById: () => null }, $: () => root };
   vm.runInNewContext(closer.slice(start, end), sandbox);
   sandbox.paintSharedContext(responseContext, message);
   const body = root.querySelector("[data-fh-context-lines]");

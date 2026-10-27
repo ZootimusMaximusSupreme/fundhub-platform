@@ -168,6 +168,9 @@ export const TRIPWIRES = Object.freeze({
   // in src/pulse/coverage/gap-alerts.mjs. Each one names a deep check that reads the saved message or alert,
   // not a ping.
   "route:messages-outbound": { impact: "customer", checks: ["msg:brakes", "msg:per-template-path", "msg:sent-body-blanks", "msg:links-in-body"] },
+  "route:setter-dashboard": { impact: "customer", checks: ["gap:sms-sending-stuck", "msg:brakes", "msg:staff-template-to-client"] },
+  "route:read/setter-dashboard": { impact: "customer", checks: ["handoff:booking-no-confirm", "calls:booked-no-outcome"] },
+  "desk:setter-dashboard.html": { impact: "customer", checks: ["gap:sms-sending-stuck", "msg:brakes", "handoff:booking-no-confirm"] },
   "desk:messaging.html": { impact: "customer", checks: ["gap:msg-inbound-unmatched", "gap:sms-sending-stuck", "msg:brakes", "msg:staff-template-to-client"] },
   "desk:ops-admin.html": { impact: "customer", checks: ["msg:brakes", "msg:per-template-path", "msg:sent-body-blanks"] },
   "route:money/alerts": { impact: "customer", checks: ["alerts:texts-went-out"] },

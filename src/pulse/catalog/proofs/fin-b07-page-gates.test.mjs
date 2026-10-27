@@ -103,7 +103,7 @@ const SENT_HOME = {
   funding_advisor: "/app/client-control-panel.html",
   inquiry_specialist: "/app/inquiry-remover.html",
   csm: "/app/csm-queue.html",
-  setter: "/app/pipeline.html",
+  setter: "/app/setter-dashboard.html",
 };
 
 test("the partner home: the owner and a partner stay, every other staff role is sent to its own home", async (t) => {

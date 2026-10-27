@@ -37,6 +37,7 @@ const BANK_ROLES = [...OWNER_ADMIN, "sales_manager", "outbound_rep"];
 // Screens that only some roles open. Everything in ALL that is not here is the shared staff surface.
 const NARROW = {
   "bank-outreach.html": BANK_ROLES,                                     // assigned banks, never client files
+  "setter-dashboard.html": OWNER_ADMIN.concat("setter"),                // human setter queue and handoff
   "hiring.html": OWNER_ADMIN,                                            // applicant personal data
   "staff-teams.html": [...OWNER_ADMIN, "sales_manager"],                 // staff and pay reads: finance roles
   "products-commissions.html": [...OWNER_ADMIN, "sales_manager"],
@@ -93,7 +94,7 @@ after(async () => { await lab.close(); });
 
 const HOME = {
   owner: "pipeline.html", admin: "pipeline.html", sales_manager: "sales-floor.html", closer: "closer-dashboard.html",
-  funding_advisor: "client-control-panel.html", csm: "csm-queue.html", setter: "pipeline.html", inquiry_specialist: "inquiry-remover.html",
+  funding_advisor: "client-control-panel.html", csm: "csm-queue.html", setter: "setter-dashboard.html", inquiry_specialist: "inquiry-remover.html",
   outbound_rep: "bank-outreach.html",
   partner: "partner-galaxy.html", client: "client-portal.html", affiliate: "affiliate.html",
 };
@@ -153,7 +154,7 @@ test("role gate: a remembered role bounces a forbidden page before the session h
 
   const consent = await makePage(lab, { role: "setter", hint: "setter", session: () => new Promise(() => {}) });
   await consent.goto(`${lab.origin}/app/consent-capture.html`, { waitUntil: "domcontentloaded" });
-  await consent.waitForURL((u) => u.pathname === "/app/pipeline.html", { timeout: 15_000 });
+  await consent.waitForURL((u) => u.pathname === "/app/setter-dashboard.html", { timeout: 15_000 });
   await consent.close();
 
   const stay = await makePage(lab, { role: "owner", hint: "owner", session: () => new Promise(() => {}) });

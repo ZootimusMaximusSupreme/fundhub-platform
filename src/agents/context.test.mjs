@@ -18,7 +18,8 @@ function mockDb(extra = {}) {
             id: CLIENT, first_name: "Jane", last_name: "Doe",
             email: "jane@x.test", phone: null, funded: true,
             funded_amount: 50000, tags: [], outcome_tier: null,
-            dnd_sms: false, dnd_email: false, dnd_voice: false
+            dnd_sms: false, dnd_email: false, dnd_voice: false,
+            custom_fields: extra.customFields || {}
           }]
         };
       }
@@ -57,6 +58,25 @@ function mockDb(extra = {}) {
     }
   };
 }
+
+test("completed setter handoff is available to the closer and Present context", async () => {
+  const handoff = { complete_at: "2026-10-27T02:00:00Z", problem: "Slow approvals",
+    goal: "Open a second location", computer_ready: true,
+    handoff_text: "Jane is opening a second location." };
+  const ctx = await fetchContext(mockDb({ customFields: { setter_handoff: handoff } }),
+    { orgId: ORG, clientId: CLIENT });
+  assert.deepEqual(ctx.setter_handoff, handoff);
+  assert.match(ctx.as_prompt_block, /Setter handoff/);
+  assert.match(ctx.as_prompt_block, /Open a second location/);
+});
+
+test("an unfinished setter checklist stays off the closer context", async () => {
+  const ctx = await fetchContext(mockDb({ customFields: {
+    setter_handoff: { problem: "Draft problem", goal: "Draft goal" }
+  } }), { orgId: ORG, clientId: CLIENT });
+  assert.equal(ctx.setter_handoff, null);
+  assert.doesNotMatch(ctx.as_prompt_block, /Setter handoff|Draft problem|Draft goal/);
+});
 
 test("fetchContext includes interview answers and the recording link", async () => {
   const ctx = await fetchContext(mockDb({

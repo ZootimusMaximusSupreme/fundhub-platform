@@ -1342,6 +1342,16 @@
   },
   {
     "surface": "sidebar.fragment.html",
+    "control": "Nav link: Sales > Setter Dashboard (setter-dashboard.html)",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/pulse/catalog/proofs/s5-display-sidebar.test.mjs clicks the owner-visible link in Chromium; src/http/app-nav-matches-shell.test.mjs checks the role-scoped sidebar and routed screen; target is pinged as reg:setter-dashboard"
+  },
+  {
+    "surface": "sidebar.fragment.html",
     "control": "Nav link: Sales > My numbers (my-numbers.html)",
     "kind": "link",
     "calls": [],

@@ -50,7 +50,7 @@ export async function fetchContext(db, {
     blueprintPaymentRes, blueprintAccessRes, blueprintContractRes, advisorRes, taskRes, proofRes] = await Promise.all([
     db.query(
       `SELECT id, first_name, last_name, email, phone, funded, funded_amount,
-              tags, outcome_tier, dnd_sms, dnd_email, dnd_voice
+              tags, outcome_tier, dnd_sms, dnd_email, dnd_voice, custom_fields
          FROM clients
         WHERE id = $1 AND org_id = $2`,
       [clientId, orgId]
@@ -255,6 +255,8 @@ export async function fetchContext(db, {
       status: m.status || null, provider: m.provider || null, provider_ref: m.provider_ref || null
     })),
     survey,
+    setter_handoff: clientRow?.custom_fields?.setter_handoff?.complete_at
+      ? clientRow.custom_fields.setter_handoff : null,
     client: clientRow
       ? {
           id: clientRow.id,
@@ -354,6 +356,16 @@ export function formatPromptBlock(ctx) {
     if (c.tags?.length) lines.push(`Tags: ${c.tags.join(", ")}`);
   }
   const s = ctx.snapshot || {};
+  if (ctx.setter_handoff?.complete_at) {
+    const h = ctx.setter_handoff;
+    lines.push("Setter handoff (saved by human setter):");
+    if (h.problem || h.triage_problem) lines.push(`Problem: ${h.problem || h.triage_problem}`);
+    if (h.goal || h.triage_goal) lines.push(`Goal: ${h.goal || h.triage_goal}`);
+    if (h.disposition) lines.push(`Call disposition: ${h.disposition}`);
+    if (h.computer_ready != null) lines.push(`Computer ready: ${h.computer_ready}`);
+    if (h.app_on_phone != null) lines.push(`Fundhub app on phone: ${h.app_on_phone}`);
+    if (h.handoff_text) lines.push(`Handoff note: ${h.handoff_text}`);
+  }
   if (ctx.blueprint) {
     const b = ctx.blueprint;
     lines.push(`Capital Blueprint access: ${b.access_active ? "active" : "not active"}`);

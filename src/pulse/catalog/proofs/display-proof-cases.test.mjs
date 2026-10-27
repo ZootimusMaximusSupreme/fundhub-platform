@@ -89,9 +89,9 @@ test("unmapped display rows stay red instead of trusting test names in map evide
   const bankProof = displayProofFor("desks-f.json", bankRows[0]);
   assert.equal(bankProof.depth, "e2e");
   assert.ok(bankProof.evidence.includes("src/pulse/catalog/proofs/s5-display-sidebar.test.mjs"), "the added row must retain its real browser proof");
-  // Current seven maps: 1,497 tracked controls, 1,422 mapped and 75 unmapped red.
-  assert.equal(trackedCount, 1497, "Display map size changed; inspect the exact rows");
-  assert.equal(mappedCount, 1422, "Display proof coverage changed; inspect the exact cases");
+  // Current seven maps: 1,498 tracked controls, 1,423 mapped and 75 unmapped red.
+  assert.equal(trackedCount, 1498, "Display map size changed; inspect the exact rows");
+  assert.equal(mappedCount, 1423, "Display proof coverage changed; inspect the exact cases");
   assert.equal(mappedRedCount, 0, "Mapped display gaps changed; inspect their saved results");
   assert.equal(redCount, 75, "Display red count changed; inspect every new exact proof");
 });

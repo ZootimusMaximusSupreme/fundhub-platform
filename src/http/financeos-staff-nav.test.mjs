@@ -43,7 +43,7 @@ function grab(src, head) {
   throw new Error(`unterminated ${head}`);
 }
 
-const LISTS = ["ALL", "PRINCIPAL_ONLY", "OWNER_ADMIN_ONLY", "FINANCE_ONLY", "CLOSER_DESK_ONLY",
+const LISTS = ["ALL", "PRINCIPAL_ONLY", "OWNER_ADMIN_ONLY", "FINANCE_ONLY", "CLOSER_DESK_ONLY", "SETTER_DESK_ONLY",
   "SALES_FLOOR_ONLY", "PORTAL_ONLY", "HIRING_ONLY", "ADVISOR_ONLY", "CONSENT_DESK_ONLY",
   "STAFF_MONEY", "CLOSER_DECK", "ADMIN_BLOCKED", "ROLE_TABS"];
 const code = LISTS.map((n) => grab(SHELL, `var ${n} =`)).join("\n")
