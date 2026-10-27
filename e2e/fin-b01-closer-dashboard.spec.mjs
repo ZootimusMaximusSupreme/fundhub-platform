@@ -226,7 +226,7 @@ test.describe("closer dashboard: the pay link panel", () => {
     await open.click();
     await expect(page.locator("#fh-pay-panel")).toBeVisible();
     await expect(page.locator("#fh-pay-offer option")).toHaveText([
-      "Funding done for you · $5,000", "Diagnostic soft pull · $32", "Repair trial · $197",
+      "Funding done for you · $5,000", "Diagnostic soft pull · $32", "Repair trial · $197", "Capital Blueprint · $5,000",
     ]);
     await expect(page.locator("#fh-pay-msg")).toContainText("Pick the offer, then send");
     await open.click();
