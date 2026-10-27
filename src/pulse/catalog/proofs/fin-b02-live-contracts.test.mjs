@@ -239,12 +239,12 @@ test("sale motion: a primary offer with no motion, and a blueprint with a downse
   } finally { s.close(); }
 });
 
-test("sale motion: the four primary offers in the SQL are the four the server skips a motion for", () => {
+test("sale motion: primary offers in the SQL and the assessment skip a motion", () => {
   const closerDeck = fs.readFileSync(path.join(REPO_ROOT, "src/sales/closer-deck.mjs"), "utf8");
   const set = /primaryPayOffers = new Set\(\[([^\]]+)\]\)/.exec(closerDeck);
   assert.ok(set, "the primaryPayOffers set moved in src/sales/closer-deck.mjs");
   const keys = [...set[1].matchAll(/"([A-Z_]+)"/g)].map((m) => m[1]);
-  assert.deepEqual(keys, [...PRIMARY_PAY_OFFER_KEYS]);
+  assert.deepEqual(keys, ["SOFT_PULL", ...PRIMARY_PAY_OFFER_KEYS]);
   const presentJs = fs.readFileSync(path.join(REPO_ROOT, "public/app/present.js"), "utf8");
   for (const key of keys) assert.ok(presentJs.includes(`"${key}"`));
 });
