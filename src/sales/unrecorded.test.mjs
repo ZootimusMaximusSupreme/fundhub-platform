@@ -207,12 +207,12 @@ test("countUnrecorded reports all eligible missing tapes beyond the 200-row page
   };
   const total = await countUnrecorded(db, { orgId, now: NOW });
   assert.equal(total, 275);
-  assert.match(countQuery.sql, /SELECT count\\(\\*\\)::int AS total/);
+  assert.match(countQuery.sql, /SELECT count\(\*\)::int AS total/);
   assert.doesNotMatch(countQuery.sql, /LIMIT/i, "totals must not be capped");
-  assert.match(countQuery.sql, /o\\.org_id = \\$1/);
-  assert.match(countQuery.sql, /o\\.transcript IS NULL OR btrim\\(o\\.transcript\\) = ''/);
-  assert.match(countQuery.sql, /o\\.logged_at <= \\$3::timestamptz/);
-  assert.match(countQuery.sql, /o\\.logged_at < \\$4::timestamptz/);
+  assert.match(countQuery.sql, /o\.org_id = \$1/);
+  assert.match(countQuery.sql, /o\.transcript IS NULL OR btrim\(o\.transcript\) = ''/);
+  assert.match(countQuery.sql, /o\.logged_at <= \$3::timestamptz/);
+  assert.match(countQuery.sql, /o\.logged_at < \$4::timestamptz/);
   assert.equal(countQuery.params.length, 4);
   assert.equal(countQuery.params[3], null);
 });
@@ -223,7 +223,7 @@ test("countUnrecorded scopes totals to one staff member", async () => {
   const db = {
     async query(sql, params) {
       if (/FROM brain_drive_sync/i.test(sql)) return { rows: [] };
-      assert.match(sql, /o\\.staff_id = \\$5/);
+      assert.match(sql, /o\.staff_id = \$5/);
       assert.equal(params[0], orgId);
       assert.equal(params[4], staffId);
       assert.equal(params.length, 5);
