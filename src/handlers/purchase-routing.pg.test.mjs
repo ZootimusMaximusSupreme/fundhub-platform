@@ -75,12 +75,21 @@ describe("purchase-routing", { skip: !HAS_DB ? "no DATABASE_URL" : false }, () =
   /* Write a sale straight in, the way a purchase months ago would already be on
      file. Used where the test needs a purchase WITHOUT re-running the whole
      money chain for it. */
-  async function seedSale(clientId, productId, price) {
-    await db.query(
+  async function seedSale(clientId, productId, price, { paid = true } = {}) {
+    const row = (await db.query(
       `INSERT INTO sales (org_id, client_id, product_id, agreed_price, status, sold_at)
-       VALUES ($1,$2,$3,$4,'active', now())`,
+       VALUES ($1,$2,$3,$4,'active', now()) RETURNING id`,
       [org, clientId, productId, price]
-    );
+    )).rows[0];
+    // The pre-existing seed models a purchased sale, not a signed but unpaid offer.
+    if (paid) {
+      await db.query(
+        `INSERT INTO sale_payments (org_id, sale_id, product_id, kind, amount)
+         VALUES ($1,$2,$3,'deposit',$4)`,
+        [org, row.id, productId, price]
+      );
+    }
+    return row.id;
   }
 
   async function cardStage(clientId, pipelineKey) {
@@ -429,6 +438,32 @@ describe("purchase-routing", { skip: !HAS_DB ? "no DATABASE_URL" : false }, () =
   });
 
   // ── nothing to route ──
+
+  test("only net-paid funding and repair sales can enter fulfillment", async () => {
+    const scenarios = ["unpaid_funding", "unpaid_repair", "success_fee_only", "fully_refunded"];
+    for (const scenario of scenarios) {
+      const c = await seedClient(`moneygate-${scenario}`);
+      const productId = scenario === "unpaid_repair" ? repairProductId : fundingProductId;
+      const paid = scenario === "fully_refunded";
+      const saleId = await seedSale(c.id, productId, 3000, { paid });
+      if (scenario === "success_fee_only" || scenario === "fully_refunded") {
+        const kind = scenario === "success_fee_only" ? "success_fee" : "refund";
+        await db.query(
+          `INSERT INTO sale_payments (org_id, sale_id, product_id, kind, amount)
+           VALUES ($1,$2,$3,$4,3000)`, [org, saleId, productId, kind]
+        );
+      }
+      // An unrelated $32 diagnostic cannot turn an unpaid sale into work.
+      const out = await onPurchaseRoute(
+        { id: null, name: "payment.received", orgId: org, clientId: c.id,
+          payload: { product: "diagnostic", amount: 32 } }, db
+      );
+      assert.equal(out.routed, false, `${scenario}: not routed`);
+      assert.equal(out.reason, "no_product_path", `${scenario}: why not routed`);
+      assert.equal(await cardStage(c.id, FUNDING_PIPELINE), null, `${scenario}: funding`);
+      assert.equal(await cardStage(c.id, REPAIR_PIPELINE), null, `${scenario}: repair`);
+    }
+  });
 
   test("no resolvable path: a named no-op that writes nothing", async () => {
     const c = await seedClient("nopath");
