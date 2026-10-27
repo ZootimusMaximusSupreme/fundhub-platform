@@ -102,8 +102,10 @@ test("six failed HTTP reads end in an honest error and manual retry on a phone",
   });
   await page.goto(PAGE);
   await expect.poll(() => reads).toBe(1);
-  await page.clock.runFor(5 * 3100);
-  await expect.poll(() => reads).toBe(6);
+  for (let i = 2; i <= 6; i += 1) {
+    await page.clock.runFor(3100);
+    await expect.poll(() => reads).toBe(i);
+  }
   await expect(page.locator("#state")).toContainText("We could not reach your account");
   await expect(page.locator("#again")).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
