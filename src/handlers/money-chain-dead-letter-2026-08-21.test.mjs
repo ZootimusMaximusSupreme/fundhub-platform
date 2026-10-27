@@ -68,11 +68,33 @@ const STORED_PAYMENT = {
 function strictDb({ product = PRODUCT, existingSale = null } = {}) {
   const salePayments = [];
   const sales = existingSale ? [existingSale] : [];
+  const cards = [];
   const db = {
     salePayments,
     sales,
+    cards,
     query: async (sql, params = []) => {
       const text = String(sql);
+      if (/FROM pipeline_stages ps/i.test(text) && /JOIN pipelines p/i.test(text)) {
+        return { rows: params[0] === "sales" && params[1] === "closed_won"
+          ? [{ stage_id: "closed-won", pipeline_id: "sales-pipeline" }] : [] };
+      }
+      if (/SELECT 1 FROM sale_payments sp/i.test(text) && /JOIN sales s/i.test(text)) {
+        return { rows: salePayments.some((pay) => pay.kind === "deposit" && Number(pay.amount) > 0)
+          ? [{ "?column?": 1 }] : [] };
+      }
+      if (/SELECT id FROM cards WHERE client_id/i.test(text)) {
+        return { rows: cards.filter((card) => card.client_id === params[0]) };
+      }
+      if (/INSERT INTO cards/i.test(text)) {
+        cards.push({ client_id: params[1], stage_id: params[3] });
+        return { rows: [] };
+      }
+      if (/UPDATE cards SET stage_id/i.test(text)) {
+        const card = cards.find((row) => row.id === params[0]);
+        if (card) card.stage_id = params[1];
+        return { rows: [] };
+      }
       if (/FROM clients WHERE org_id = \$1 AND lower\(email\)/i.test(text)) {
         return { rows: [{ id: CLIENT, ghl_contact_id: "ghl-already-linked" }] };
       }
@@ -130,6 +152,7 @@ describe("the 2026-08-21 dead letters cannot happen again", () => {
     assert.equal(db.salePayments[0].product_id, PRODUCT.id);
     assert.equal(db.salePayments[0].sale_id, "sale-new");
     assert.equal(db.salePayments[0].kind, "deposit");
+    assert.equal(db.cards[0]?.stage_id, "closed-won");
   });
 
   test("a stored payment.received payload on an existing sale carries that sale's product", async () => {
@@ -164,6 +187,7 @@ describe("the 2026-08-21 dead letters cannot happen again", () => {
     assert.equal(again.done, true);
     assert.equal(db.salePayments.length, 1, "a replay must not book the deposit twice");
     assert.equal(again.paymentId, db.salePayments[0].id);
+    assert.equal(db.cards.length, 1, "a replay keeps one Closed Won card");
   });
 
   test("when no product can be found, nothing is written and nothing throws", async () => {

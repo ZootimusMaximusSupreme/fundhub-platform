@@ -23,7 +23,7 @@ import { buildLetterPackForClient } from "../underwrite/letter-pack.mjs";
 import { persistFundingLetterFiles } from "../underwrite/funding-letter-pdf.mjs";
 import { persistDiyPackageFiles } from "../metro2/diy/persist.mjs";
 import { storeFromEnv } from "../documents/store.mjs";
-import { logCallOutcome } from "./call-outcomes.mjs";
+import { logCallOutcome, paidTransactionForLink } from "./call-outcomes.mjs";
 import { signSoftPullApproveUrl } from "../consent/approve-token.mjs";
 import { consentStatus } from "../consent/index.mjs";
 import { composeAndSend } from "../messaging/compose.mjs";
@@ -47,6 +47,7 @@ const SOFT_PULL_REUSE_MS = SOFT_PULL_REUSE_DAYS * 24 * 60 * 60 * 1000;
 
 export function freshSoftPullSkip(latest, now = new Date()) {
   if (!latest || latest.created_at == null || latest.created_at === "") return null;
+  if (latest.is_demo === true || isSampleResult(latest.result)) return null;
   const pulledAt = new Date(latest.created_at);
   if (Number.isNaN(pulledAt.getTime())) return null;
   const ageMs = now.getTime() - pulledAt.getTime();
@@ -457,7 +458,7 @@ async function softPullStatus(db, { orgId, clientId }) {
     [orgId, clientId]
   );
   const crs = await db.query(
-    `SELECT id, outcome_tier, created_at
+    `SELECT id, outcome_tier, created_at, result, is_demo
        FROM crs_results
       WHERE org_id = $1 AND client_id = $2
       ORDER BY created_at DESC LIMIT 1`,
@@ -466,6 +467,8 @@ async function softPullStatus(db, { orgId, clientId }) {
   const link = paid.rows[0] || null;
   const pull = req.rows[0] || null;
   const result = crs.rows[0] || null;
+  const sample = result?.is_demo === true || isSampleResult(result?.result);
+  const realResult = sample ? null : result;
 
   /* F16 — the panel read "pull: not started" and "tier: FULL_FUNDING" at the
      same time, on the same four lines, beside a full set of scores. Two
@@ -479,7 +482,8 @@ async function softPullStatus(db, { orgId, clientId }) {
   const requestStatus = pull ? pull.status : null;
   const requestSettled = requestStatus != null
     && /^(complete|completed|done|resolved|fulfilled)$/i.test(String(requestStatus));
-  const pullStatus = result && !requestSettled ? "complete" : requestStatus;
+  const pullStatus = sample && requestSettled ? "sample only"
+    : (realResult && !requestSettled ? "complete" : (requestStatus || (sample ? "sample only" : null)));
 
   return {
     consent_valid: !!consent.valid,
@@ -489,13 +493,14 @@ async function softPullStatus(db, { orgId, clientId }) {
     diagnostic_amount_cents: link ? Number(link.amount_cents) : null,
     diagnostic_checkout_url: link ? link.checkout_url : null,
     pull_status: pullStatus,
-    pull_status_source: result && !requestSettled
+    pull_status_source: realResult && !requestSettled
       ? "crs_result"
-      : (pull ? "soft_pull_request" : null),
+      : (pull && !(sample && requestSettled) ? "soft_pull_request" : (sample ? "sample_result" : null)),
+    sample,
     pull_id: pull ? pull.id : null,
-    crs_result_id: result ? result.id : (pull?.crs_result_id || null),
+    crs_result_id: realResult ? realResult.id : (sample ? null : (pull?.crs_result_id || null)),
     outcome_tier: result ? result.outcome_tier : null,
-    last_pull_at: result ? result.created_at : null
+    last_pull_at: realResult ? realResult.created_at : null
   };
 }
 
@@ -896,7 +901,7 @@ function outcomeForOffer(offerKey) {
 
 export async function logDeckDisposition(db, {
   orgId, clientId, staffId, offerKey, route, temperature, beliefsCount, costOfInaction, taskId,
-  repairReferral = false
+  repairReferral = false, paymentLinkId = null
 }) {
   const offer = getOffer(offerKey);
   if (!offer) {
@@ -912,12 +917,16 @@ export async function logDeckDisposition(db, {
       cost_of_inaction: costOfInaction == null || costOfInaction === "" ? null : String(costOfInaction).slice(0, 80)
     }
   });
+  const transactionId = await paidTransactionForLink(db, {
+    orgId, clientId, staffId, paymentLinkId, productCode: offer.productCode
+  });
   const result = await logCallOutcome(db, {
     orgId,
     clientId,
     staffId,
     taskId: taskId || null,
     outcome: outcomeForOffer(offer.key),
+    transactionId,
     notes,
     offerKey: offer.key,
     repairReferral: repairReferral === true

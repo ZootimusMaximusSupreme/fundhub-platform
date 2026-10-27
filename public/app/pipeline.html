@@ -2399,7 +2399,8 @@ restore();
 
     var path = sec("Path");
     path.appendChild(rowAlways("Tier", tier));
-    path.appendChild(rowAlways("Prequal", cfGet(cf, ["analyzer_prequal_amount", "cf_reanalyzer_prequal_amount", "total_funding_estimate"])));
+    path.appendChild(rowAlways(tm.sample === true ? "Prequal (sample estimate)" : "Prequal",
+      cfGet(cf, ["analyzer_prequal_amount", "cf_reanalyzer_prequal_amount", "total_funding_estimate"])));
     drawerBody.appendChild(path);
 
     var attr = sec("How they got here");
@@ -2711,26 +2712,10 @@ restore();
   var cache = {};
   var loadSeq = 0;
 
-  /* ── THE SALES BOARD DOES NOT MOVE ITSELF WHEN MONEY LANDS ───────────────
-     Traced 2026-09-06, because "Closed Won (deposit)" read 0 with a paid
-     $3,000 client sitting two columns back in Decision Rendered:
-
-       * payment.received / deposit.paid only stamp a flag on the client
-         (src/handlers/client-lifecycle.mjs onDepositPaid) — no card is touched.
-       * the purchase router places a card on the FUNDING board when someone
-         buys (src/handlers/purchase-routing.mjs) and never advances the sales
-         card.
-       * the one thing that does move a card into Closed Won is a client
-         texting back "yes" (src/workflows/dpc-03-inbound-reply-router.mjs).
-         That is their answer, not their payment.
-
-     So the move is manual, and this says so where the zero is, rather than
-     leaving the board looking broken. It is a note, not a fix: putting a
-     payment-driven move into the product is a decision for the owner and a
-     change to a handler, not to this screen. */
+  /* Closed Won follows a paid funding deposit. A call decision stays separate. */
   var railNoteEl = document.getElementById("railNote");
   var RAIL_NOTES = {
-    sales: "Payments do not change sales stages. After a deposit, move the card to Closed Won (deposit)."
+    sales: "Closed Won updates after the funding deposit is paid."
   };
   function setRailNote(key) {
     if (!railNoteEl) return;

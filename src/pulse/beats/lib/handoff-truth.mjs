@@ -494,10 +494,8 @@ const CLOSER_CLIENT = `COALESCE(
 /**
  * call.completed events. $1 org, $2 window start, $3 cutoff.
  * The offer email reads closer calls only: s-offer-bucket stops on any other
- * disposition. The declined task reads every call: s-08 gates on the outcome
- * alone, and a closer call can never end "declined" (the only outcomes a closer
- * can save are deposit, downsell, callback, no_show and not_a_fit). The one
- * call that ends "declined" is the Bland AI call (disposition "declined").
+ * disposition. The declined task reads legacy "declined" calls and closer
+ * "not_a_fit" calls without a repair referral, matching S-08.
  */
 function callCte({ closerOnly }) {
   return `cc AS (
@@ -510,7 +508,9 @@ function callCte({ closerOnly }) {
    WHERE e.org_id = $1::uuid
      AND e.name = 'call.completed'
      AND COALESCE(e.is_demo, false) = false
-     ${closerOnly ? "AND e.payload->>'disposition' = 'closer'" : "AND e.payload->>'outcome' = 'declined'"}
+     ${closerOnly ? "AND e.payload->>'disposition' = 'closer'" : `AND (e.payload->>'outcome' = 'declined'
+       OR (e.payload->>'disposition' = 'closer' AND e.payload->>'outcome' = 'not_a_fit'))
+       AND COALESCE(e.payload->>'repairReferral', 'false') <> 'true'`}
      AND e.created_at >= $2::timestamptz
      AND e.created_at <  $3::timestamptz
 ),
@@ -553,8 +553,8 @@ SELECT count(DISTINCT l.cid)::int AS n,
 
 /**
  * $1 org, $2 window start, $3 cutoff. s-08 makes a closer task for every
- * call.completed whose outcome is "declined", whatever the disposition. Any task
- * made after the call counts.
+ * legacy "declined" and closer "not_a_fit" calls without repair referral.
+ * Any task made after the call counts.
  */
 export const DECLINED_SQL = `
 /* gap:handoff-declined */
@@ -563,7 +563,7 @@ SELECT count(DISTINCT l.cid)::int AS n,
        max(l.created_at) AS newest,
        (array_agg(COALESCE(NULLIF(l.client_code, ''), l.cid::text) ORDER BY l.created_at DESC))[1] AS sample
   FROM l
- WHERE l.outcome = 'declined'
+ WHERE l.outcome IN ('declined', 'not_a_fit')
    AND NOT EXISTS (
          SELECT 1 FROM tasks t
           WHERE t.org_id = l.org_id
@@ -935,12 +935,12 @@ function checkCallOutcome(env) {
         sql: DECLINED_SQL,
         params: [env.orgId, start, cutoff(now, OFFER_GRACE_MIN * MIN)],
         noun: "customer",
-        said: `ended a call as declined (outcome "declined", any kind of call) and no follow-up task was made after ${OFFER_GRACE_MIN} minutes`,
+        said: `ended a funding call without a sale and no follow-up task was made after ${OFFER_GRACE_MIN} minutes`,
         keys: []
       }
     ],
     passDetail:
-      "every no-show got the recovery email, every closer call with an offer got its offer email, and every call that ended declined (any kind of call) got a follow-up task",
+      "every no-show got the recovery email, every closer call with an offer got its offer email, and every funding decline got a follow-up task",
     fixLead:
       "A call ended and the customer got nothing next. Read the booking.noshow or call.completed event, then the s-05a-no-show-recovery, s-offer-bucket or s-08-post-call-funding-declined run in Inngest."
   });

@@ -9,6 +9,7 @@ import {
 import {
   CallOutcomeError,
   logCallOutcome,
+  paidTransactionForLink,
   resolveCashCollected,
   presentOutcome
 } from "../sales/call-outcomes.mjs";
@@ -62,10 +63,35 @@ test("resolveCashCollected: reads amount from paid transaction", async () => {
   const r = await resolveCashCollected(db, {
     orgId: "11111111-1111-4111-8111-111111111111",
     clientId: "22222222-2222-4222-8222-222222222222",
-    outcome: "deposit"
+    outcome: "deposit", transactionId: "tx1"
   });
   assert.equal(r.cashCollectedCents, 300000);
   assert.equal(r.transactionId, "tx1");
+});
+
+test("resolveCashCollected: an accepted offer cannot claim another paid item", async () => {
+  const db = stubDb([[/FROM transactions/, () => { throw new Error("must not search client purchases"); }]]);
+  const r = await resolveCashCollected(db, { orgId: "o", clientId: "c", outcome: "deposit" });
+  assert.deepEqual(r, { cashCollectedCents: 0, transactionId: null });
+  assert.equal(db.calls.length, 0);
+});
+
+test("paidTransactionForLink only accepts the call's paid checkout link", async () => {
+  const db = stubDb([[/FROM payment_links pl/, () => ({ rows: [{ id: "tx-1" }] })]]);
+  const id = await paidTransactionForLink(db, {
+    orgId: "org-1", clientId: "client-1", staffId: "staff-1",
+    paymentLinkId: "link-1", productCode: "card-stacking-dfy"
+  });
+  assert.equal(id, "tx-1");
+  assert.deepEqual(db.calls[0].params, ["link-1", "org-1", "client-1", "staff-1", "card-stacking-dfy"]);
+  assert.match(db.calls[0].sql, /sp.payment_link_id = pl.id/);
+  assert.match(db.calls[0].sql, /t.status IN \('paid','succeeded','complete','completed'\)/);
+  const missing = await paidTransactionForLink(db, {
+    orgId: "org-1", clientId: "client-1", staffId: "staff-1",
+    paymentLinkId: null, productCode: "card-stacking-dfy"
+  });
+  assert.equal(missing, null);
+  assert.equal(db.calls.length, 1);
 });
 
 test("logCallOutcome: refuses typed cash by never reading amount from input", async () => {
@@ -86,7 +112,7 @@ test("logCallOutcome: refuses typed cash by never reading amount from input", as
   ]);
   const { row, created } = await logCallOutcome(db, {
     orgId: org, clientId: client, staffId: staff,
-    outcome: "deposit", beliefFailed: "desire",
+    outcome: "deposit", beliefFailed: "desire", transactionId: "tx1",
     // caller tries to pass cash — ignored; module only takes transactionId
     amount: 999999
   });

@@ -83,7 +83,7 @@ export async function loadBars(db, { orgId, now }) {
       `SELECT count(*)::int AS n
          FROM call_outcomes
         WHERE org_id = $1
-          AND outcome = 'deposit'
+          AND outcome = 'deposit' AND transaction_id IS NOT NULL AND cash_collected_cents > 0
           AND logged_at >= $2 AND logged_at < $3
           AND COALESCE(is_demo, false) = false`,
       [orgId, start.toISOString(), end.toISOString()]

@@ -32,7 +32,8 @@ function mockDb(extra = {}) {
       if (/FROM documents/i.test(sql)) return { rows: extra.proofs || [] };
       if (/FROM cards/i.test(sql)) return { rows: [] };
       if (/FROM funding_rounds/i.test(sql)) return { rows: [] };
-      if (/FROM client_custom_fields/i.test(sql)) return { rows: [{}] };
+      if (/FROM client_custom_fields/i.test(sql)) return { rows: [extra.fields || {}] };
+      if (/FROM crs_results/i.test(sql)) return { rows: extra.crs ? [extra.crs] : [] };
       if (/FROM customer_insights/i.test(sql)) {
         return { rows: extra.insights || [] };
       }
@@ -76,6 +77,17 @@ test("an unfinished setter checklist stays off the closer context", async () => 
   } }), { orgId: ORG, clientId: CLIENT });
   assert.equal(ctx.setter_handoff, null);
   assert.doesNotMatch(ctx.as_prompt_block, /Setter handoff|Draft problem|Draft goal/);
+});
+
+test("sample credit stays labeled in the agent's scores and estimate", async () => {
+  const ctx = await fetchContext(mockDb({
+    fields: { crs_fico_score: 702, total_funding_estimate: 19799 },
+    crs: { result: { environment: "simulated", simulated: true }, is_demo: true }
+  }), { orgId: ORG, clientId: CLIENT });
+  assert.equal(ctx.snapshot.credit_sample, true);
+  assert.match(ctx.as_prompt_block, /FICO: 702 \(sample\)/);
+  assert.match(ctx.as_prompt_block, /Prequal: 19799 \(sample estimate, not approved funds\)/);
+  assert.match(ctx.as_prompt_block, /No real credit pull/);
 });
 
 test("fetchContext includes interview answers and the recording link", async () => {

@@ -51,7 +51,7 @@ export async function computeKpis(db, { orgId, period = "7d" } = {}) {
   if (!orgId) throw new TypeError("computeKpis: orgId required");
   const days = daysForPeriod(period);
 
-  const [cash, funded, booked, showed, closed, clients, spend] = await Promise.all([
+  const [cash, funded, booked, showed, decisions, paidDeposits, clients, spend] = await Promise.all([
     db.query(
       /* transactions.amount_paid is DOLLARS (numeric 14,2). Sum stays numeric
          and keeps the cents; the caller converts. A ::bigint cast here would
@@ -102,6 +102,19 @@ export async function computeKpis(db, { orgId, period = "7d" } = {}) {
       [orgId, days]
     ),
     db.query(
+      `SELECT count(DISTINCT s.client_id)::int AS n
+         FROM sale_payments sp
+         JOIN sales s ON s.id = sp.sale_id AND s.org_id = sp.org_id
+         JOIN products p ON p.id = s.product_id AND p.org_id = s.org_id
+         JOIN clients c ON c.id = s.client_id AND c.org_id = s.org_id
+        WHERE sp.org_id = $1 AND sp.kind = 'deposit' AND sp.amount > 0
+          AND s.status = 'active' AND p.code = 'card-stacking-dfy'
+          AND sp.paid_at >= now() - ($2::int || ' days')::interval
+          ${andNotDemo("c")}
+          ${andNotTestAddress("c")}`,
+      [orgId, days]
+    ),
+    db.query(
       /* Real people only: not demo rows, and not the e2e / @fundhub.ai /
          @example.com rows test runs leave on production (23 shown, 4 real,
          measured 2026-10-05 — see andNotTestAddress). */
@@ -129,7 +142,7 @@ export async function computeKpis(db, { orgId, period = "7d" } = {}) {
   const fundedCents = Math.round(Number(funded.rows[0]?.dollars || 0) * 100);
   const bookedN = Number(booked.rows[0]?.n || 0);
   const showedN = Number(showed.rows[0]?.n || 0);
-  const closedN = Number(closed.rows[0]?.n || 0);
+  const closedN = Number(paidDeposits.rows[0]?.n || 0);
   const clientsN = Number(clients.rows[0]?.n || 0);
   const spendRaw = spend.rows[0]?.cents;
   const spendCents = spendRaw == null ? null : Number(spendRaw);
@@ -184,7 +197,7 @@ export async function computeKpis(db, { orgId, period = "7d" } = {}) {
     pipeline_movement: Number(moved.rows[0]?.n || 0),
     booked_count: bookedN,
     showed_count: showedN,
-    decision_count: closedN
+    decision_count: Number(decisions.rows[0]?.n || 0)
   };
 }
 

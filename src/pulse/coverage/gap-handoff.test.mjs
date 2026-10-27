@@ -271,7 +271,7 @@ test("handoff: nothing after the call is RED for all three branches", async () =
   const cases = [
     ["noshow", /1 no-show got no recovery email \(EMAIL-S05A-NOSHOW-RECOVERY\) 20\+ minutes after missing the call/],
     ["offer", /1 customer finished a closer call with an offer picked and got no offer email \(EMAIL-OFFER-\*\) after 30 minutes/],
-    ["declined", /1 customer ended a call as declined \(outcome "declined", any kind of call\) and no follow-up task was made after 30 minutes/]
+    ["declined", /1 customer ended a funding call without a sale and no follow-up task was made after 30 minutes/]
   ];
   for (const [marker, want] of cases) {
     const rows = await gapChecks(ctxOf(fakeDb({ [marker]: { n: 1, sample: "FH-000800" } })));
@@ -296,20 +296,21 @@ test("handoff: the first note counts from any day, because /roadmap saves a cont
   assert.match(ALL_SQL.CONTACT_197_SQL, /m\.created_at >= l\.created_at/);
 });
 
-test("handoff: the declined task reads every call that ends declined; the offer email reads closer calls only", () => {
-  // s-08 gates on the outcome alone.
+test("handoff: the declined task reads legacy declines and closer funding declines; the offer email reads closer calls only", () => {
   const s08 = WF("s-08-post-call-funding-declined.mjs");
-  assert.match(s08, /payload\?\.outcome !== "declined"/);
-  assert.doesNotMatch(s08.split("export async function handle")[1].split("export const")[0], /disposition/);
+  assert.match(s08, /payload\.outcome === "declined"/);
+  assert.match(s08, /payload\.disposition === "closer" && payload\.outcome === "not_a_fit"/);
+  assert.match(s08, /payload\.repairReferral === true/);
   // A closer call can never end declined. The one call that does is the Bland AI call.
   assert.ok(!CLOSER_OUTCOMES.includes("declined"), "a closer outcome is never declined");
   const [bland] = mapToCanonical({ isCompleted: true, callId: "c1", status: "completed", disposition: "declined" });
   assert.equal(bland.name, "call.completed");
   assert.equal(bland.payload.outcome, "declined");
   assert.equal(bland.payload.disposition, "declined");
-  // So the declined read must not be limited to the closer disposition.
+  // The declined read includes both lanes and excludes repair referrals.
   assert.match(ALL_SQL.DECLINED_SQL, /e\.payload->>'outcome' = 'declined'/);
-  assert.doesNotMatch(ALL_SQL.DECLINED_SQL, /'disposition'/);
+  assert.match(ALL_SQL.DECLINED_SQL, /e\.payload->>'outcome' = 'not_a_fit'/);
+  assert.match(ALL_SQL.DECLINED_SQL, /repairReferral/);
   assert.match(ALL_SQL.OFFER_SQL, /e\.payload->>'disposition' = 'closer'/);
   assert.doesNotMatch(ALL_SQL.OFFER_SQL, /e\.payload->>'outcome' = 'declined'/);
 });
@@ -494,7 +495,8 @@ test("handoff: the offer keys and the declined task are the ones the workflows r
   assert.ok(offer.includes("offer_bucket_email_sent_at"), "the once-per-client lock this check relies on");
   assert.ok(offer.includes("funding-mastery"));
   const s08 = WF("s-08-post-call-funding-declined.mjs");
-  assert.ok(s08.includes('outcome !== "declined"'));
+  assert.ok(s08.includes('payload.outcome === "declined"'));
+  assert.ok(s08.includes('payload.outcome === "not_a_fit"'));
   assert.ok(s08.includes("createTask"));
   assert.ok(WF("s-00-welcome.mjs").includes("claimCustomFieldLock"), "welcome is once per client, so any welcome counts");
   assert.equal(TEMPLATES.offerPrefix, "EMAIL-OFFER-");

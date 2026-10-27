@@ -106,6 +106,7 @@ test("the compliance ticks, outcome buttons, keys and referral tick are sent onl
     await waitFor(() => posted.length === 1);
     assert.deepEqual(posted[0], {
       client_id: CLIENT, outcome: "callback", belief_failed: null, task_id: "task-1",
+      offer_key: null, payment_link_id: null,
       checklist: { call_recorded: false, personal_guarantee: true, month_14_cliff: true, bank_decides: true, incorporation_verified: false },
       repair_referral: true,
     });

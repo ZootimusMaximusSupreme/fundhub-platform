@@ -50,7 +50,8 @@ test("belief panel: this period against last period, a belief only counts at thr
   db.insert("clients", { id: "c2", org_id: ORG });
   db.insert("clients", { id: "c9", org_id: OTHER });
   db.insert("client_custom_fields", { client_id: "c2", org_id: ORG, utm_campaign: "oct-ads", cf_setter_user_id: "setter-7" });
-  const log = (over) => db.insert("call_outcomes", { id: id("o"), org_id: ORG, client_id: "c1", staff_id: "s1", outcome: "callback", logged_at: day(2), ...over });
+  const log = (over) => db.insert("call_outcomes", { id: id("o"), org_id: ORG, client_id: "c1", staff_id: "s1", outcome: "callback", logged_at: day(2),
+    transaction_id: over.outcome === "deposit" ? id("tx") : null, cash_collected_cents: over.outcome === "deposit" ? 10000 : 0, ...over });
   for (let i = 0; i < 3; i += 1) log({ belief_failed: "trust" });                  // this period: 3
   log({ belief_failed: "trust", logged_at: day(40) });                             // last period: 1
   log({ belief_failed: "money", client_id: "c2", outcome: "deposit" });            // this period: 1, on a campaign, with a setter
@@ -88,7 +89,8 @@ test("lead-source panel: desire counts sort a source to the top and another comp
   db.insert("clients", { id: "c2", org_id: ORG });
   db.insert("clients", { id: "c9", org_id: OTHER });
   db.insert("client_custom_fields", { client_id: "c2", org_id: ORG, utm_source: "podcast" });
-  const log = (over) => db.insert("call_outcomes", { id: id("o"), org_id: ORG, client_id: "c1", staff_id: "s1", outcome: "callback", logged_at: day(2), ...over });
+  const log = (over) => db.insert("call_outcomes", { id: id("o"), org_id: ORG, client_id: "c1", staff_id: "s1", outcome: "callback", logged_at: day(2),
+    transaction_id: over.outcome === "deposit" ? id("tx") : null, cash_collected_cents: over.outcome === "deposit" ? 10000 : 0, ...over });
   log({ client_id: "c2", belief_failed: "desire" });
   log({ client_id: "c2", belief_failed: "desire" });
   log({ client_id: "c2", outcome: "deposit" });

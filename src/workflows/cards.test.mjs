@@ -9,6 +9,32 @@ const SALES = [
   { org_id: "org-1", pipeline_key: "sales", stage_key: "booked", pipeline_id: "pipe-sales", stage_id: "st-booked", sort_order: 2 }
 ];
 
+test("Closed Won requires a paid funding deposit", async () => {
+  const calls = [];
+  const db = { query: async (sql, params) => {
+    calls.push({ sql, params });
+    if (/FROM pipeline_stages ps/.test(sql)) return { rows: [{ stage_id: "won", pipeline_id: "sales" }] };
+    if (/FROM sale_payments sp/.test(sql)) return { rows: [] };
+    throw new Error("card must not move");
+  } };
+  const result = await moveCardToStage(db, { orgId: "org-1", clientId: "cl-1", pipelineKey: "sales", stageKey: "closed_won" });
+  assert.equal(result.reason, "deposit_payment_required");
+  assert.match(calls[1].sql, /p.code = 'card-stacking-dfy'/);
+  assert.match(calls[1].sql, /sp.amount > 0/);
+});
+
+test("Closed Won moves after a paid funding deposit", async () => {
+  const db = { query: async (sql) => {
+    if (/FROM pipeline_stages ps/.test(sql)) return { rows: [{ stage_id: "won", pipeline_id: "sales" }] };
+    if (/FROM sale_payments sp/.test(sql)) return { rows: [{ ok: 1 }] };
+    if (/SELECT id FROM cards/.test(sql)) return { rows: [] };
+    if (/INSERT INTO cards/.test(sql)) return { rows: [] };
+    throw new Error(`unexpected SQL: ${sql}`);
+  } };
+  const result = await moveCardToStage(db, { orgId: "org-1", clientId: "cl-1", pipelineKey: "sales", stageKey: "closed_won" });
+  assert.equal(result.moved, true);
+});
+
 test("advanceCardToStage: creates card when none exists", async () => {
   const db = pgFake({ pipelineStages: SALES });
   const res = await advanceCardToStage(db, {

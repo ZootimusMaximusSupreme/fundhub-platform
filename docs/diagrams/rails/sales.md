@@ -32,7 +32,6 @@ stateDiagram-v2
     lost --> [*]
     note right of showed : moved by dpc-02-call-outcome-enforcement
     note right of lost : moved by dpc-02-call-outcome-enforcement
-    note right of closed_won : moved by dpc-03-inbound-reply-router
     note right of downsell : moved by dpc-03-inbound-reply-router
     note right of new_lead : moved by s-01-new-lead-intake
     note right of booked : moved by s-04-call-booked
@@ -54,6 +53,6 @@ card into, via `moveCardToStage`.
 | 4 | `showed` | Showed | `dpc-02-call-outcome-enforcement` |
 | 5 | `diagnostic_paid` | Diagnostic Paid | — |
 | 6 | `decision_rendered` | Decision Rendered | — |
-| 7 | `closed_won` | Closed Won (deposit) | `dpc-03-inbound-reply-router` |
+| 7 | `closed_won` | Closed Won (deposit) | — |
 | 8 | `downsell` | Downsell | `dpc-03-inbound-reply-router` |
 | 9 | `lost` | Lost | `dpc-02-call-outcome-enforcement` |

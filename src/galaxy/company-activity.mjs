@@ -298,7 +298,7 @@ export async function companyActivity(db, { orgId } = {}) {
        (SELECT count(*)::int FROM call_outcomes
          WHERE org_id = $1 AND COALESCE(is_demo, false) = false
            AND logged_at >= date_trunc('day', now())
-           AND outcome = 'deposit') AS deposits_today`,
+           AND outcome = 'deposit' AND transaction_id IS NOT NULL AND cash_collected_cents > 0) AS deposits_today`,
     [orgId]
   );
   const m = money.rows[0] || {};

@@ -226,6 +226,22 @@ test.describe("closer deck: Invoice this client", () => {
 });
 
 test.describe("closer deck: Log disposition and close", () => {
+  test("a reload keeps this call's checkout link for the disposition", async ({ page }) => {
+    const calls = await open(page, {
+      tier: "FULL_FUNDING",
+      deck: (route, n) => json(route, n === 1
+        ? { ok: true, action: "send_pay_link", link: { id: "link-this-call" } }
+        : { ok: true, action: "log_disposition" })
+    });
+    await page.locator('[data-act="pay"]').click();
+    await expect.poll(() => calls.deck.length).toBe(1);
+    await page.reload();
+    await page.locator('[data-act="phase:07"]').click();
+    await page.locator('[data-act="disp"]').click();
+    await expect.poll(() => calls.deck.length).toBe(2);
+    expect(calls.deck[1].payment_link_id).toBe("link-this-call");
+  });
+
   test("it writes the disposition for this client with the offer the deck chose", async ({ page }) => {
     const calls = await open(page, { tier: "FULL_FUNDING" });
     await page.locator('[data-act="disp"]').click();

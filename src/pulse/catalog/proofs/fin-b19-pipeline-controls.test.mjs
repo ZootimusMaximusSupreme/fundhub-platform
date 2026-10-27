@@ -547,7 +547,7 @@ test("a rail whose read fails says so in words and keeps its tab active", { time
   await page.close();
 });
 
-test("the Sales rail says a payment does not move a card, and no other rail says it", { timeout: 120_000 }, async () => {
+test("the Sales rail says Closed Won follows a paid deposit, and no other rail says it", { timeout: 120_000 }, async () => {
   await proof.check(/^Rail note on Sales/, async () => {
     const boards = { sales: SALES };
     for (const [, , key, rail] of RAILS.slice(1)) boards[key] = railBoard(key, rail);
@@ -559,7 +559,7 @@ test("the Sales rail says a payment does not move a card, and no other rail says
     assert.equal(await note.isVisible(), true);
     assert.equal(
       (await note.innerText()).trim(),
-      "Payments do not change sales stages. After a deposit, move the card to Closed Won (deposit).",
+      "Closed Won updates after the funding deposit is paid.",
     );
     for (const [, code, key] of RAILS.slice(1)) {
       await page.locator(`.rail-tab[data-rail="${code}"]`).click();

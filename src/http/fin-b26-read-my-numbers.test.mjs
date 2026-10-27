@@ -36,7 +36,9 @@ const lastHourOfMonth = new Date(nextMonthStart.getTime() - 3600e3).toISOString(
 const longAgo = new Date(monthStart.getTime() - 45 * 86400e3).toISOString();
 
 const call = (staff, outcome, cash, loggedAt, over = {}) => ({
-  org_id: ORG_ID, staff_id: staff, outcome, cash_collected_cents: cash, logged_at: loggedAt, is_demo: false, ...over,
+  org_id: ORG_ID, staff_id: staff, outcome, cash_collected_cents: cash,
+  transaction_id: cash > 0 ? `paid-${staff}-${loggedAt}` : null,
+  logged_at: loggedAt, is_demo: false, ...over,
 });
 
 function world({ withDemo = false } = {}) {
@@ -182,7 +184,7 @@ describe("GET /api/read/my-numbers", () => {
     pinned(q[0].sql, "this closer, this company, inside the month, no demo rows",
       "WHERE org_id = $1 AND staff_id = $2 AND logged_at >= $3 AND logged_at < $4 AND COALESCE(is_demo, false) = false");
     pinned(q[0].sql, "calls held are every call that is not a no-show", "count(*) FILTER (WHERE outcome <> 'no_show')::int AS held");
-    pinned(q[0].sql, "deposits", "count(*) FILTER (WHERE outcome = 'deposit')::int AS deposits");
+    pinned(q[0].sql, "paid deposits", "count(*) FILTER (WHERE outcome = 'deposit' AND transaction_id IS NOT NULL AND cash_collected_cents > 0)::int AS deposits");
     pinned(q[0].sql, "cash", "COALESCE(SUM(cash_collected_cents), 0)::bigint AS cents");
     assert.equal(wrote(fake), false);
   });

@@ -107,6 +107,13 @@ export default async function handler(req, res) {
     });
 
     if (!result.moved) {
+      if (result.reason === "deposit_payment_required") {
+        return res.status(400).json({
+          ok: false,
+          error: "deposit_payment_required",
+          message: result.message
+        });
+      }
       if (result.reason === "funded_amount_required") {
         return res.status(400).json({
           ok: false,

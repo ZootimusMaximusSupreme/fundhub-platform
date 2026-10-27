@@ -170,7 +170,7 @@ export async function buildCockpit(db, { orgId, staffId, clientId, now = new Dat
     ),
     db.query(
       `SELECT COALESCE(SUM(cash_collected_cents), 0)::bigint AS cash_cents,
-              count(*) FILTER (WHERE outcome = 'deposit')::int AS deposits,
+              count(*) FILTER (WHERE outcome = 'deposit' AND transaction_id IS NOT NULL AND cash_collected_cents > 0)::int AS deposits,
               count(*) FILTER (WHERE outcome <> 'no_show')::int AS held,
               count(*) FILTER (WHERE outcome = 'no_show')::int AS no_shows
          FROM call_outcomes
@@ -504,7 +504,7 @@ async function todayCash(db, { orgId, staffId, now }) {
   const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
   const r = await db.query(
     `SELECT COALESCE(SUM(cash_collected_cents), 0)::bigint AS cents,
-            count(*) FILTER (WHERE outcome = 'deposit')::int AS deposits
+            count(*) FILTER (WHERE outcome = 'deposit' AND transaction_id IS NOT NULL AND cash_collected_cents > 0)::int AS deposits
        FROM call_outcomes
       WHERE org_id = $1 AND staff_id = $2 AND logged_at >= $3`,
     [orgId, staffId, start.toISOString()]
@@ -735,7 +735,7 @@ async function quietClients(db, { orgId, staffId }) {
             o.cash_collected_cents
        FROM call_outcomes o
        JOIN clients c ON c.id = o.client_id
-      WHERE o.org_id = $1 AND o.staff_id = $2 AND o.outcome = 'deposit'
+      WHERE o.org_id = $1 AND o.staff_id = $2 AND o.outcome = 'deposit' AND o.transaction_id IS NOT NULL AND o.cash_collected_cents > 0
         AND c.funded IS NOT TRUE
         AND o.logged_at < now() - interval '7 days'
       ORDER BY o.logged_at ASC

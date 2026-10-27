@@ -11,6 +11,7 @@ import { listWaypoints } from "../waypoints/store.mjs";
 import { nextStepOf } from "../progress/read.mjs";
 import { toCents } from "../commissions/money.mjs";
 import { formatCents } from "../config/offers.mjs";
+import { isSampleResult } from "../http/client-detail.mjs";
 
 const RECENT_MESSAGE_LIMIT = 20;
 
@@ -47,7 +48,7 @@ export async function fetchContext(db, {
   if (!clientId) throw new Error("fetchContext: clientId is required");
 
   const [clientRes, convoRes, messagesRes, stageRes, roundRes, cfRes, insightRes, callRes,
-    blueprintPaymentRes, blueprintAccessRes, blueprintContractRes, advisorRes, taskRes, proofRes] = await Promise.all([
+    blueprintPaymentRes, blueprintAccessRes, blueprintContractRes, advisorRes, taskRes, proofRes, crsRes] = await Promise.all([
     db.query(
       `SELECT id, first_name, last_name, email, phone, funded, funded_amount,
               tags, outcome_tier, dnd_sms, dnd_email, dnd_voice, custom_fields
@@ -182,6 +183,13 @@ export async function fetchContext(db, {
           AND ((kind = 'client_upload' AND subtype = 'dispute_mail_receipt') OR kind = 'bureau_response')
         ORDER BY created_at DESC, id DESC LIMIT 10`,
       [orgId, clientId]
+    ),
+    db.query(
+      `SELECT result, is_demo
+         FROM crs_results
+        WHERE client_id = $1 AND org_id = $2
+        ORDER BY created_at DESC, id DESC LIMIT 1`,
+      [clientId, orgId]
     )
   ]);
 
@@ -200,6 +208,7 @@ export async function fetchContext(db, {
     || cf.cf_reanalyzer_prequal_amount
     || cf.total_funding_estimate
     || null;
+  const creditSample = crsRes.rows[0]?.is_demo === true || isSampleResult(crsRes.rows[0]?.result);
 
   const stage = stageRes.rows[0] || null;
   const round = roundRes.rows[0] || null;
@@ -224,6 +233,7 @@ export async function fetchContext(db, {
     fico: fico != null ? Number(fico) : null,
     fico_band: cf.funding_fico_band || null,
     prequal_amount: prequal,
+    credit_sample: creditSample,
     agent_context_field: cf.agent_context || null,
     outcome_tier: clientRow?.outcome_tier || null,
     analyzer_path: cf.analyzer_path_raw || null,
@@ -387,10 +397,11 @@ export function formatPromptBlock(ctx) {
       (s.funding_round.status ? ` (${s.funding_round.status})` : "")
     );
   }
-  if (s.fico != null) lines.push(`FICO: ${s.fico}`);
+  if (s.credit_sample) lines.push("Credit file: SAMPLE only. No real credit pull on file from this result.");
+  if (s.fico != null) lines.push(`FICO: ${s.fico}${s.credit_sample ? " (sample)" : ""}`);
   if (s.fico_band) lines.push(`FICO band: ${s.fico_band}`);
-  if (s.prequal_amount) lines.push(`Prequal: ${s.prequal_amount}`);
-  if (s.outcome_tier) lines.push(`Outcome tier: ${s.outcome_tier}`);
+  if (s.prequal_amount) lines.push(`Prequal: ${s.prequal_amount}${s.credit_sample ? " (sample estimate, not approved funds)" : ""}`);
+  if (s.outcome_tier) lines.push(`Outcome tier: ${s.outcome_tier}${s.credit_sample ? " (sample)" : ""}`);
   if (s.analyzer_path) lines.push(`Analyzer path: ${s.analyzer_path}`);
   if (s.employee_next_action) lines.push(`Employee next action: ${s.employee_next_action}`);
   if (s.agent_context_field) {

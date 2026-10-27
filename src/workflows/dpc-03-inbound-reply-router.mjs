@@ -122,8 +122,7 @@ export async function handle({ event, db, step, drainNowImpl = drainMessageNow }
   if (decision === "yes") {
     const task = await step.run("create-yes-task", () =>
       createTaskOnce(db, { orgId, clientId, eventId, title: "Yes — send contract + collect payment", source: SOURCE_WORKFLOW }));
-    const card = await step.run("move-to-closed", () => moveCardToStage(db, { orgId, clientId, pipelineKey: "sales", stageKey: "closed_won" }));
-    return { done: true, decision, task, card };
+    return { done: true, decision, task };
   }
 
   if (decision === "reschedule") {

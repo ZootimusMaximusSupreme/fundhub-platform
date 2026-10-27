@@ -1,8 +1,8 @@
 // S-08 — Post-Call: Funding Didn't Buy.
 // Source: the CRM system map SALES WORKFLOWS section.
-// Trigger: call.completed, gated on payload.outcome === "declined" (the same
-// underlying signal DS-01/DS-02 react to independently — this file's job is
-// strictly the sales-side tag + follow-up task, not the downsell send itself).
+// Trigger: call.completed for a closer call that did not buy. Closer logs
+// "not_a_fit"; older callers may still send "declined". Repair referrals have
+// their own DS-01 lane.
 
 import { inngest } from "./client.mjs";
 import { db } from "../db.mjs";
@@ -27,7 +27,12 @@ async function createFollowupTaskOnce(db, { orgId, clientId, eventId }) {
 }
 
 export async function handle({ event, db, step }) {
-  if (event.payload?.outcome !== "declined") return { done: false, reason: "not_declined" };
+  const payload = event.payload || {};
+  const legacyDecline = payload.outcome === "declined";
+  const closerDecline = payload.disposition === "closer" && payload.outcome === "not_a_fit";
+  if ((!legacyDecline && !closerDecline) || payload.repairReferral === true) {
+    return { done: false, reason: "not_funding_decline" };
+  }
 
   const clientId = await step.run("resolve-client", () => resolveClient(db, event));
   if (!clientId) return { done: false, reason: "no_client" };

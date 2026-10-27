@@ -51,6 +51,7 @@ import { toCents } from "../commissions/money.mjs";
 import { convertSafe } from "../affiliates/economics.mjs";
 import { listConfirmedApprovals, listExcludedApprovals, NO_CONFIRMED_APPROVALS } from "../funding/success-fee.mjs";
 import { PRODUCT as CARD_STACKING_PRODUCT } from "../funding/card-stacking-rounds.mjs";
+import { moveCardToStage } from "../workflows/cards.mjs";
 
 /** Semantic product bucket → products.code when name/alias resolve fails. */
 export const BUCKET_TO_CODE = Object.freeze({
@@ -809,6 +810,7 @@ async function recordPurchase(event, db, { productBucket, paymentKind }) {
   return {
     done: true,
     saleId: sale.id,
+    clientId,
     paymentId: pay.payment?.id || null,
     commissionInserted: commission.inserted,
     entitlements
@@ -823,10 +825,24 @@ export async function onDiagnosticPaidMoney(event, db) {
 }
 
 export async function onDepositPaidMoney(event, db) {
-  return recordPurchase(event, db, {
+  const purchase = await recordPurchase(event, db, {
     productBucket: "deposit",
     paymentKind: paymentKindFor("deposit", "deposit.paid")
   });
+  if (!purchase.done) return purchase;
+  if (!purchase.paymentId || !purchase.clientId) {
+    throw new Error("Paid deposit has no saved payment or client for the Sales card.");
+  }
+  const salesCard = await moveCardToStage(db, {
+    orgId: event.orgId,
+    clientId: purchase.clientId,
+    pipelineKey: "sales",
+    stageKey: "closed_won"
+  });
+  if (!salesCard.moved) {
+    throw new Error(`Paid deposit did not reach Closed Won: ${salesCard.reason || "unknown"}`);
+  }
+  return { ...purchase, salesCard };
 }
 
 export async function onSaleClosedMoney(event, db) {

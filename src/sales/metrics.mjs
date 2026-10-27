@@ -42,8 +42,8 @@ function priorWindow({ start, end }) {
 async function staffCashCents(db, { orgId, staffId, start, end }) {
   const r = await db.query(
     `SELECT COALESCE(SUM(cash_collected_cents), 0)::bigint AS cents,
-            count(*) FILTER (WHERE outcome = 'deposit')::int AS deposits,
-            count(*) FILTER (WHERE outcome = 'downsell')::int AS downsells,
+            count(*) FILTER (WHERE outcome = 'deposit' AND transaction_id IS NOT NULL AND cash_collected_cents > 0)::int AS deposits,
+            count(*) FILTER (WHERE outcome = 'downsell' AND transaction_id IS NOT NULL AND cash_collected_cents > 0)::int AS downsells,
             count(*) FILTER (WHERE outcome = 'no_show')::int AS no_shows,
             count(*) FILTER (WHERE outcome <> 'no_show')::int AS held,
             count(*)::int AS logged
@@ -280,7 +280,7 @@ async function teamLeaderboard(db, { orgId, start, end }) {
     `SELECT o.staff_id,
             s.name,
             COALESCE(SUM(o.cash_collected_cents), 0)::bigint AS cash_cents,
-            count(*) FILTER (WHERE o.outcome = 'deposit')::int AS deposits,
+            count(*) FILTER (WHERE o.outcome = 'deposit' AND o.transaction_id IS NOT NULL AND o.cash_collected_cents > 0)::int AS deposits,
             count(*) FILTER (WHERE o.outcome <> 'no_show')::int AS held
        FROM call_outcomes o
        JOIN staff s ON s.id = o.staff_id AND s.org_id = o.org_id
@@ -372,7 +372,7 @@ export async function beliefAnalytics(db, { orgId, start, end } = {}) {
     `SELECT COALESCE(cf.utm_campaign, cf.utm_source, c.channel_source, 'unknown') AS lead_source,
             COALESCE(cf.cf_setter_user_id, 'unknown') AS setter_key,
             count(*) FILTER (WHERE o.outcome <> 'no_show')::int AS held,
-            count(*) FILTER (WHERE o.outcome = 'deposit')::int AS deposits
+            count(*) FILTER (WHERE o.outcome = 'deposit' AND o.transaction_id IS NOT NULL AND o.cash_collected_cents > 0)::int AS deposits
        FROM call_outcomes o
        JOIN clients c ON c.id = o.client_id AND c.org_id = o.org_id
        LEFT JOIN client_custom_fields cf ON cf.client_id = c.id AND cf.org_id = c.org_id
@@ -540,7 +540,7 @@ async function floorFunnelDay(db, { orgId, day }) {
     ),
     db.query(
       `SELECT count(*) FILTER (WHERE outcome <> 'no_show')::int AS held,
-              count(*) FILTER (WHERE outcome = 'deposit')::int AS deposits
+              count(*) FILTER (WHERE outcome = 'deposit' AND transaction_id IS NOT NULL AND cash_collected_cents > 0)::int AS deposits
          FROM call_outcomes
         WHERE org_id = $1
           AND logged_at >= ($2::date AT TIME ZONE 'America/Phoenix')
@@ -622,7 +622,7 @@ async function closerRoster(db, { orgId, start, end, now }) {
        LEFT JOIN LATERAL (
          SELECT COALESCE(SUM(cash_collected_cents), 0)::bigint AS cash_cents,
                 count(*) FILTER (WHERE outcome <> 'no_show')::int AS held,
-                count(*) FILTER (WHERE outcome = 'deposit')::int AS deposits
+                count(*) FILTER (WHERE outcome = 'deposit' AND transaction_id IS NOT NULL AND cash_collected_cents > 0)::int AS deposits
            FROM call_outcomes
           WHERE org_id = s.org_id AND staff_id = s.id
             AND logged_at >= $2 AND logged_at < $3
@@ -702,7 +702,7 @@ async function coldDeals(db, { orgId, staffId = null }) {
        ) m ON true
       WHERE o.org_id = $1
         ${staffClause}
-        AND o.outcome = 'deposit'
+        AND o.outcome = 'deposit' AND o.transaction_id IS NOT NULL AND o.cash_collected_cents > 0
         AND c.funded IS NOT TRUE
         AND o.logged_at < now() - interval '7 days'
         AND COALESCE(m.last_at, o.logged_at) < now() - interval '7 days'

@@ -636,6 +636,13 @@ function rollupsSql() {
       AND fr.org_id = c.org_id
       AND COALESCE(fr.is_demo, false) = false`;
   const onFundingTier = `c.outcome_tier = ANY($4::text[])`;
+  const realPrequal = `COALESCE((
+    SELECT NOT (r.is_demo OR r.result->>'simulated' = 'true'
+      OR lower(r.result->>'environment') = 'simulated')
+      FROM crs_results r
+     WHERE r.org_id = c.org_id AND r.client_id = c.id
+     ORDER BY r.created_at DESC, r.id DESC LIMIT 1
+  ), true)`;
 
   return `
   SELECT
@@ -659,12 +666,12 @@ function rollupsSql() {
            AND COALESCE(tk.is_demo, false) = false)
     )::int AS action_needed,
     SUM(
-      CASE WHEN c.custom_fields->>'total_funding_estimate' ~ '^[0-9]+(\\.[0-9]+)?$'
+      CASE WHEN ${realPrequal} AND c.custom_fields->>'total_funding_estimate' ~ '^[0-9]+(\\.[0-9]+)?$'
            THEN (c.custom_fields->>'total_funding_estimate')::numeric
       END
     ) AS total_prequal,
     COUNT(*) FILTER (
-      WHERE c.custom_fields->>'total_funding_estimate' ~ '^[0-9]+(\\.[0-9]+)?$'
+      WHERE ${realPrequal} AND c.custom_fields->>'total_funding_estimate' ~ '^[0-9]+(\\.[0-9]+)?$'
         AND (c.custom_fields->>'total_funding_estimate')::numeric > 0
     )::int AS total_prequal_clients,
     SUM((

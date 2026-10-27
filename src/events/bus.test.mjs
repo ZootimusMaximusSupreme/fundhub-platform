@@ -38,6 +38,18 @@ test("emit: canonical event inserts + dispatches to handler", async () => {
   assert.equal(seen[0].clientId, "c1");
 });
 
+test("emit marks only explicitly simulated events as demo rows", async () => {
+  _resetOrgCache(); clearHandlers();
+  const db = fakeDb();
+  await emit(db, "analysis.completed", { simulated: true }, { orgId: "org-1", isDemo: true });
+  await emit(db, "analysis.completed", {}, { orgId: "org-1" });
+  const inserts = db.calls.filter((call) => /INSERT INTO events/.test(call.sql));
+  assert.match(inserts[0].sql, /is_demo/);
+  assert.equal(inserts[0].params[6], true);
+  assert.doesNotMatch(inserts[1].sql, /is_demo/);
+  assert.equal(inserts[1].params.length, 6);
+});
+
 test("emit: unknown event throws unless allowNonCanonical", async () => {
   _resetOrgCache(); clearHandlers();
   const db = fakeDb();

@@ -54,9 +54,9 @@ export const FLOOR_BOOKED_SQL = `SELECT count(DISTINCT client_id)::int AS n
 
 /** Held, deposits and downsells from the logged call outcomes in the window. */
 export const FLOOR_OUTCOMES_SQL = `SELECT count(*) FILTER (WHERE outcome <> 'no_show')::int AS held,
-              count(*) FILTER (WHERE outcome = 'deposit')::int AS deposits,
-              count(*) FILTER (WHERE outcome = 'downsell')::int AS downsells,
-              COALESCE(SUM(cash_collected_cents) FILTER (WHERE outcome = 'downsell'), 0)::bigint AS downsell_cents
+              count(*) FILTER (WHERE outcome = 'deposit' AND transaction_id IS NOT NULL AND cash_collected_cents > 0)::int AS deposits,
+              count(*) FILTER (WHERE outcome = 'downsell' AND transaction_id IS NOT NULL AND cash_collected_cents > 0)::int AS downsells,
+              COALESCE(SUM(cash_collected_cents) FILTER (WHERE outcome = 'downsell' AND transaction_id IS NOT NULL AND cash_collected_cents > 0), 0)::bigint AS downsell_cents
          FROM call_outcomes
         WHERE org_id = $1 AND logged_at >= $2 AND logged_at < $3`;
 
@@ -75,7 +75,7 @@ export function depositToFundedSql(staffClause = "") {
        FROM call_outcomes o
        JOIN clients c ON c.id = o.client_id AND c.org_id = o.org_id
       WHERE o.org_id = $1
-        AND o.outcome = 'deposit'
+        AND o.outcome = 'deposit' AND o.transaction_id IS NOT NULL AND o.cash_collected_cents > 0
         AND o.logged_at >= $2 AND o.logged_at < $3
         ${staffClause}`;
 }
