@@ -361,7 +361,8 @@ function setterSorted(items) {
             action === "send_handoff" && !savedHandoff.handoff_sent_at) {
           var outcome = result.body.send && result.body.send.lead && result.body.send.lead.outcome;
           say(outcome === "deferred" ? "Queued for allowed hours; not sent yet." :
-            "Text not sent yet. Check Messaging before retrying.", "error");
+            action === "send_handoff" ? "Handoff not fully sent. Check Messaging before retrying." :
+              "Intro video not sent. Check Messaging before retrying.", "error");
           return false;
         }
         say(action === "save" ? "Checklist saved." : action === "complete" ? "Handoff complete and saved on the client." : action === "send_intro_video" ? "Intro video sent." : "Handoff text sent.", "success");
