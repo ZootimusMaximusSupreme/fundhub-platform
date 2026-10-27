@@ -3,6 +3,7 @@
 // Files stay in Drive — we only store the link.
 
 import { driveConfigFromEnv } from "../company-brain/config.mjs";
+import { looksLikeMeetRecordingName, looksLikeRecordingMime } from "../company-brain/meet-title.mjs";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const LOOKBACK_DAYS = 7;
@@ -234,6 +235,9 @@ export async function listRecentRecordings(db, {
           OR bf.mime_type LIKE 'audio/%'
           OR bf.name ILIKE '%recording%'
         )
+        AND (bf.name ILIKE '%meet%' OR bf.name ILIKE '%recording%'
+             OR bf.name ~* 'gmt[0-9]{8}')
+        AND bf.name !~* 'screen[- ]?record'
       ORDER BY COALESCE(bf.indexed_at, bf.created_at) DESC
       LIMIT 40`,
     [orgId, sinceIso]
@@ -253,7 +257,9 @@ export async function listRecentRecordings(db, {
   );
 
   const clients = await recentCallClients(db, { orgId, sinceIso });
-  const files = filesRes.rows || [];
+  const files = (filesRes.rows || []).filter((row) =>
+    looksLikeMeetRecordingName(row.name)
+    && (looksLikeRecordingMime(row.mime_type) || row.needs_transcription === true));
 
   for (const row of files) {
     if (!row.web_view_link) continue;

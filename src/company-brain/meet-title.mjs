@@ -22,5 +22,6 @@ export function looksLikeRecordingMime(mimeType) {
 export function looksLikeMeetRecordingName(name) {
   const n = String(name || "");
   if (/screen[- ]?record/i.test(n)) return false;
-  return /(google\s+)?meet(ing)?\s+recording|\bgoogle\s+meet\b|\bgmt\d{8}\b/i.test(n);
+  return /(google\s+)?meet(ing)?\s+recording|\bgoogle\s+meet\b|\bgmt\d{8}\b/i.test(n)
+    || /\b\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}(?::\d{2})?\s+GMT\s*[+-]\s*\d{1,2}(?::?\d{2})?.*\brecording\b/i.test(n);
 }
