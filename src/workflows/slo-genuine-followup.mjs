@@ -208,6 +208,11 @@ export async function handleM1({ event, db, step }) {
     hasPaidDiagnostic(db, { orgId, email: gate.email, clientId }));
   if (stillPaid) return { done: true, sent: false, reason: "already_paid" };
 
+  const fields = await step.run("read-call-state", () => clientFields(db, clientId));
+  if (fields.call_outcome === "booked" || fields.call_confirmed === true) {
+    return { done: false, sent: false, reason: "booked_call_reply" };
+  }
+
   const claimed = await step.run("claim-m1", () =>
     claimCustomFieldLock(db, clientId, LOCK_M1));
   if (!claimed) return { done: false, reason: "already_sent_m1" };
@@ -259,6 +264,9 @@ export async function handleCheckoutM1Sms({ event, db, step }) {
   if (paid) return { done: true, sent: false, reason: "already_paid" };
 
   const fields = await step.run("read-fields", () => clientFields(db, clientId));
+  if (fields.call_outcome === "booked" || fields.call_confirmed === true) {
+    return { done: false, sent: false, reason: "booked_call_reply" };
+  }
   const eventId = event.id;
 
   // Full M1 never claimed — send dig email + SMS (no 15m wait; they already reached checkout).
