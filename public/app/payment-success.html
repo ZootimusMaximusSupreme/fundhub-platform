@@ -298,7 +298,11 @@ h1{font-size:var(--fs-title);font-weight:800;letter-spacing:-.03em;margin:12px 0
     }
 
     if (fresh.length) { showOpened(fresh); return; }
-    if (tries < MAX_TRIES) { later(che  function check() {
+    if (tries < MAX_TRIES) { later(check); return; }
+    if (rows.length) { showNothingNew(rows); } else { showNothingAtAll(); }
+  }
+
+  function check() {
     tries++;
     showChecking(tries);
     var controller = typeof AbortController === "function" ? new AbortController() : null;
@@ -343,11 +347,6 @@ h1{font-size:var(--fs-title);font-weight:800;letter-spacing:-.03em;margin:12px 0
         return { status: r.status, body: b };
       });
     }).then(finish, function () { finish(null); });
-  }
-op(showUnreachable);
-    }).catch(function () {
-      retryOrStop(showUnreachable);
-    });
   }
 
   function start() {
