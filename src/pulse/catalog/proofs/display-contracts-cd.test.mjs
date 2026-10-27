@@ -198,7 +198,7 @@ test("every exported Display CD key drives the real page and asserts its exact r
     ["funding_advisor", "/app/client-control-panel.html"],
     ["closer", "/app/closer-dashboard.html"],
     ["inquiry_specialist", "/app/inquiry-remover.html"],
-    ["setter", "/app/pipeline.html"],
+    ["setter", "/app/setter-dashboard.html"],
     ["sales_manager", "/app/sales-floor.html"],
     ["csm", "/app/csm-queue.html"],
     ["client", "/app/client-portal.html"],

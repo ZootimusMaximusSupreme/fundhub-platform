@@ -116,8 +116,10 @@ export const title = "Messages to clients are right and on time";
 export const kind = "probe";
 export const covers = [
   "desk:messaging.html",
+  "desk:setter-dashboard.html",
   "desk:ops-admin.html",
   "route:messages-outbound",
+  "route:setter-dashboard",
   "job:s-00-welcome"
 ];
 export const box = false;

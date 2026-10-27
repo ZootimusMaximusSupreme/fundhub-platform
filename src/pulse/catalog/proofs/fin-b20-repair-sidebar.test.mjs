@@ -32,7 +32,7 @@ const RAIL_DESKS = [
   "contracts.html", "creative-factory.html", "csm-queue.html", "documents.html", "finance-os.html", "galaxy.html", "hiring.html",
   "inquiry-remover.html", "journeys.html", "lenders.html", "marketing-command-center.html", "messaging.html", "my-numbers.html",
   "ops-admin.html", "partner-galaxy.html", "partner-training.html", "pipeline.html", "products-commissions.html",
-  "sales-floor.html", "social-studio.html", "staff-teams.html",
+  "sales-floor.html", "setter-dashboard.html", "social-studio.html", "staff-teams.html",
 ];
 // Pages that load shell.js and draw no rail: the client's own portal (its own header) and the router page.
 const NO_RAIL = ["client-portal.html", "index.html"];
