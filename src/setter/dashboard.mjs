@@ -139,8 +139,10 @@ export async function listSetterQueue(db, staff, { limit = 50, offset = 0 } = {}
           ORDER BY created_at DESC LIMIT 1
        ) ct ON true
       WHERE t.org_id = $1 AND t.assignee_role = 'setter'
-        AND t.created_at >= now() - interval '7 days'
-        AND (t.done = false OR c.custom_fields->'setter_handoff'->>'complete_at' IS NOT NULL)
+        AND (t.done = false OR (
+          c.custom_fields->'setter_handoff'->>'complete_at' IS NOT NULL
+          AND t.created_at >= now() - interval '7 days'
+        ))
         AND ($2::boolean = false OR t.assignee_staff_id IS NULL OR t.assignee_staff_id = $3)
       ORDER BY c.id, t.created_at DESC
      )
