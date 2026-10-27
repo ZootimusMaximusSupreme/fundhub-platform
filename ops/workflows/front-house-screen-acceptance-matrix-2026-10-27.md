@@ -77,7 +77,7 @@
 | `/app/ops-admin.html` | Owner / admin (verify) | `e2e/ops-admin-outbound.spec.mjs`, `e2e/ops-admin.spec.mjs` | **NOT FULLY PROVED** |
 | `/app/partner-galaxy.html` | Owner / admin (verify) | No direct test identified | **NOT FULLY PROVED** |
 | `/app/partner-training.html` | Partner / admin | `e2e/partner-training.spec.mjs` | **NOT FULLY PROVED** |
-| `/app/payment-success.html` | Client / account | No direct test identified | **NOT FULLY PROVED** |
+| `/app/payment-success.html` | Client / account | `e2e/payment-success-contract.spec.mjs` (PR #156, pending CI) | **FAIL — stalled entitlement read stays spinning forever on prior code; fix under CI; NOT LIVE PROVED** |
 | `/app/pipeline.html` | Sales / operations | `e2e/pipeline-honest.spec.mjs`, `e2e/pipeline-new-archive.spec.mjs` | **NOT FULLY PROVED** |
 | `/app/present.html` | Closer | `e2e/ccp-present-param-aliases.spec.mjs`, `e2e/fin-b01-present-deck.spec.mjs` | **NOT FULLY PROVED** |
 | `/app/products-commissions.html` | Owner / admin (verify) | `e2e/products-commissions-ledger.spec.mjs`, `e2e/s1-products-commissions.spec.mjs` | **NOT FULLY PROVED** |
@@ -139,6 +139,10 @@ adds the aggregate fixture and cross-panel equality check. Passing provider
 Drive-to-call evidence and staff-screen truth remain **NOT LIVE PROVED**.
 
 All eight cross-role gates above still require final independent evidence.
+
+## Checkout-return browser hang follow-up — October 27, 2026
+
+**Payment-success / account read — FAIL in source audit, proposed fix in [PR #156](https://github.com/ZootimusMaximusSupreme/fundhub-platform/pull/156); not yet independently verified.** The `/app/payment-success.html` checkout return already avoids calling a return URL a successful payment. However, its purported six-attempt entitlement check had no timeout for a promise that never resolves: the client could remain on "Checking your account…" forever, never receive an error or retry button. PR #156 adds bounded per-read cancellation and a one-response guard. Four new browser tests exercise a 401 stop, a new entitlement while excluding another client, a deliberately nonresponding request for all six attempts, and repeated 500 responses on a phone. These tests use fake reads and no provider charges. **Require PR CI success, merged deployment, and a role-scoped read-only checkout-return confirmation before changing this row to PASS; actual provider-paid fulfillment is still NOT LIVE PROVED.**
 
 ## Coverage rule
 
