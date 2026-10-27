@@ -64,3 +64,14 @@ Source: the 2026-10-26 customer walk notes in the main checkout. This branch cov
 - Local Playwright on `portal-login.html` recorded `page_view`, `click`, and `app_download_tap` requests for the Apple button. The email sign-in hash reached the call card and the token did not enter tracker payloads. Playwright sets `navigator.webdriver`, so this run intentionally did not emit a Cortana milestone; the non-automated test harness covers the browser mapping.
 - Local Playwright on the thank-you HTML showed the iPhone app card immediately after the hero, the verified App Store URL and web portal fallback, and no duplicate calendar action. Row 16 advanced only for app taps into the server funnel event feed; the ad-to-booking join and live Cortana/Meta receipts still need a published human walk.
 - `npx tsc --noEmit` remains red on two existing `source_proof` type errors in `src/ad-videos/animations.mjs` (lines 657 and 676). That animation file is unchanged by this branch and outside this funnel repair.
+
+### CI repair lanes, 2026-10-26
+
+Owner request: get current GitHub `main` tests green after the post-book SMS fix. Work on `codex/ci-green-postbook` in the clean checkout at `/private/tmp/fundhub-main-ship-20261026`; keep the dirty primary checkout untouched. The baseline failed run is GitHub Actions `40427135273`; current main is `197ecf0b4`. Do not weaken tests, invent missing assets, or touch setter dashboard files.
+
+- **Animation lane:** Own failures in `src/ad-videos/`, marketing ad animation plans, and the protected overlay builder and hook. Reproduce the exact CI failures for frame duration, full-frame limits, clean-source proof, and words-band placement. Repair source or restore real files only; no test relaxation. Do not edit `marketing/broll/`.
+- **Broll lane:** Own `marketing/broll/` kit failures: transparent prop type, alpha render README, missing template import, generated catalog and composition/purpose assertions. Read the current source and tests, then restore or repair actual source. Do not edit ad animation plans or `src/ad-videos/`.
+- **Docs and vault lane:** Own `docs/diagrams/`, Hormozi vault file failures, and the public script-map assertion. Establish whether required files were omitted from Git and restore authentic repo files where possible. Do not invent sales copy or vault notes.
+- **Integration lane (this session):** Own `src/ad-videos/animations.mjs` TypeScript type failure only after coordinating with animation lane, CI log triage, manifest/rules/lint checks, branch/PR and GitHub main verification. All lanes report changed paths and focused test results before integration.
+
+Focused repair proof: animation 65/65, broll 44/44, docs/vault/public 128/128, SQL template 246/246; lint parsed 4,314 files, TypeScript and diagrams checks passed. The unsharded local suite saw only the SQL template snapshot failure before that snapshot was regenerated; GitHub's sharded suite is the final full-suite gate.

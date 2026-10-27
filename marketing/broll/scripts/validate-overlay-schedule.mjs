@@ -29,6 +29,8 @@
 //     (measured on every frame of the window by tools/visible-check.py, which
 //     also writes visible_measured_by)
 // Words boxes on a portrait ad stay in the text-safe band, y 269-1248.
+// A row marked words_band: "top" may also use the clear sky above y 269,
+// but still stays above the caption line at y 1248.
 // Node built-ins only.
 
 import fs from 'node:fs';
@@ -165,7 +167,7 @@ export function validateSchedule(sched, {repoRoot = process.cwd()} = {}) {
     if (boxes.length && boxes.every((b) => Array.isArray(b) && b.length === 4)) {
       for (const b of boxes) {
         if (b[0] < 0 || b[1] < 0 || b[2] > W || b[3] > H) fails.push(`${name}: words box [${b.join(', ')}] runs off the frame.`);
-        else if (portrait && (b[1] < SAFE_BAND.top || b[3] > SAFE_BAND.bottom)) fails.push(`${name}: words box [${b.join(', ')}] leaves the words band (y ${SAFE_BAND.top}-${SAFE_BAND.bottom}); the app buttons and captions cover words there.`);
+        else if (portrait && ((c.words_band !== 'top' && b[1] < SAFE_BAND.top) || b[3] > SAFE_BAND.bottom)) fails.push(`${name}: words box [${b.join(', ')}] leaves the words band (y ${c.words_band === 'top' ? 0 : SAFE_BAND.top}-${SAFE_BAND.bottom}); the app buttons and captions cover words there.`);
       }
       const x0 = Math.min(...boxes.map((b) => b[0]));
       const x1 = Math.max(...boxes.map((b) => b[2]));

@@ -26,13 +26,6 @@ import {CalendarStripCompositions} from './templates/CalendarStrip';
 import {StampCardCompositions} from './templates/StampCard';
 import {PriceTagCompositions} from './templates/PriceTag';
 import {LinkButtonCompositions} from './templates/LinkButton';
-import {PullAwayLossCompositions} from './templates/PullAwayLoss';
-import {CreditFileExamCompositions} from './templates/CreditFileExam';
-import {BlueprintDashboardOSCompositions} from './templates/BlueprintDashboardOS';
-import {LearnByActionCompositions} from './templates/LearnByAction';
-import {BlueprintDashboardOSAd2Compositions} from './templates/BlueprintDashboardOSAd2';
-import {ChessRightMoveCompositions} from './templates/ChessRightMove';
-import {ChessCallCTACompositions} from './templates/ChessCallCTA';
 import {BlueprintDashboardRealCompositions} from './templates/BlueprintDashboardReal';
 
 // The contact sheet is a Composition, not a Still: Remotion clamps every
@@ -66,13 +59,6 @@ export const RemotionRoot: React.FC = () => (
     <StampCardCompositions />
     <PriceTagCompositions />
     <LinkButtonCompositions />
-    <PullAwayLossCompositions />
-    <CreditFileExamCompositions />
-    <BlueprintDashboardOSCompositions />
-    <LearnByActionCompositions />
-    <BlueprintDashboardOSAd2Compositions />
-    <ChessRightMoveCompositions />
-    <ChessCallCTACompositions />
     <BlueprintDashboardRealCompositions />
     <Composition
       id="ContactSheet"

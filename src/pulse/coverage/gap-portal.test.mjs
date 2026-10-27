@@ -890,7 +890,7 @@ test("scripts: read against the real pages in public/, the lists are what the ma
   const money = names("app/financeos.html", "/app/financeos.html");
   assert.ok(money.filter((n) => n.endsWith(".js")).length >= 18, "financeos.html names its 18 scripts");
   assert.ok(money.includes("/app/financeos.js") && money.includes("/app/money-credit.js"));
-  assert.deepEqual(names("portal-login.html", "/portal-login.html"), [...sharedTypeAssets, "/fh.css", "/app/client-ios.css", "/portal-login-ios.css", ...sharedAstraStyles, "/app/client-ios.js"]);
+  assert.deepEqual(names("portal-login.html", "/portal-login.html"), [...sharedTypeAssets, "/fh.css", "/app/client-ios.css", "/portal-login-ios.css", ...sharedAstraStyles, "/funnel/fh-events.js", "/app/client-ios.js"]);
   assert.deepEqual(names("reset-password.html", "/reset-password.html"), [...sharedTypeAssets, "/fh.css", "/pw-toggle.js", ...sharedAstraStyles]);
   assert.deepEqual(names("progress.html", "/progress.html"), [...sharedTypeAssets, "/app/client-ios.css", "/progress-ios.css", "/app/client-ios.js", ...sharedAstraStyles]);
   assert.deepEqual(names("app/payment-success.html", "/app/payment-success.html"), [...sharedTypeAssets, "/app/fundhub-brand.css", ...sharedAstraStyles]);
