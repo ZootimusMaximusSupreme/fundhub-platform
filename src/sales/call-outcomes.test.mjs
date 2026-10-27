@@ -206,7 +206,8 @@ test("logCallOutcome: emits call.completed with closer disposition after a write
     disposition: "closer",
     repairReferral: true,
     declineReason: null,
-    taskId
+    taskId,
+    transactionId: null
   });
 });
 

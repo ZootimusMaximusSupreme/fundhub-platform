@@ -11,13 +11,13 @@ test("templateForOffer reads offerKey, not outcome", () => {
   assert.equal(templateForOffer({ offerKey: null, outcome: "callback" }), null);
 });
 
-test("offer bucket: closer SOFT_PULL sends that email only", async () => {
+test("offer bucket: closer SOFT_PULL sends the payment-received email only for a verified transaction", async () => {
   const db = pgFake({
     clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", custom_fields: {} }],
     templates: [{ org_id: "org-1", template_key: OFFER_EMAIL.SOFT_PULL, channel: "email", body: "soft", compliance_passed: true }]
   });
   const res = await handle({
-    event: ev("call.completed", { disposition: "closer", offerKey: "SOFT_PULL", outcome: "deposit" }, { clientId: "cl-1" }),
+    event: ev("call.completed", { disposition: "closer", offerKey: "SOFT_PULL", outcome: "downsell", transactionId: "txn-1" }, { clientId: "cl-1" }),
     db, step: fakeStep()
   });
   assert.equal(res.done, true);
@@ -26,13 +26,27 @@ test("offer bucket: closer SOFT_PULL sends that email only", async () => {
   assert.equal(db.messages[0].channel, "email");
 });
 
+test("offer bucket: an unpaid soft-pull link plus callback sends no payment-received email", async () => {
+  const db = pgFake({
+    clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", custom_fields: {} }],
+    templates: [{ org_id: "org-1", template_key: OFFER_EMAIL.SOFT_PULL, channel: "email", body: "Payment received", compliance_passed: true }]
+  });
+  const res = await handle({
+    event: ev("call.completed", { disposition: "closer", offerKey: "SOFT_PULL", outcome: "callback", transactionId: null }, { clientId: "cl-1" }),
+    db, step: fakeStep()
+  });
+  assert.equal(res.done, false);
+  assert.equal(res.reason, "soft_pull_unpaid");
+  assert.equal(db.messages.length, 0);
+});
+
 test("offer bucket: second closer save does not send again", async () => {
   const db = pgFake({
     clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", custom_fields: {} }],
     templates: [{ org_id: "org-1", template_key: OFFER_EMAIL.SOFT_PULL, channel: "email", body: "soft", compliance_passed: true }]
   });
   const first = await handle({
-    event: ev("call.completed", { disposition: "closer", offerKey: "SOFT_PULL", outcome: "deposit" }, { id: "evt-1", clientId: "cl-1" }),
+    event: ev("call.completed", { disposition: "closer", offerKey: "SOFT_PULL", outcome: "downsell", transactionId: "txn-1" }, { id: "evt-1", clientId: "cl-1" }),
     db, step: fakeStep()
   });
   const second = await handle({

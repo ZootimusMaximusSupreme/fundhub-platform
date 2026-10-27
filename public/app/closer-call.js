@@ -824,7 +824,7 @@
       }
       try { sessionStorage.removeItem("fh_pending_disposition"); } catch (e) {}
       try { localStorage.removeItem(paymentStoreKey); } catch (e) {}
-      var next = (state.data && state.data.up_next && state.data.up_next[0]);
+      var next = state.data && state.data.next_call;
       if (next && next.client_id) {
         location.href = "closer-dashboard.html?client_id=" + encodeURIComponent(next.client_id) +
           (next.task_id ? "&task_id=" + encodeURIComponent(next.task_id) : "");
@@ -952,6 +952,9 @@
       window.FHData.explain(r, "this call");
       setEmpty("The bar along the bottom of the screen says why.", "error");
       return;
+    }
+    if (!state.taskId && r.data.current_call && r.data.current_call.task_id) {
+      state.taskId = r.data.current_call.task_id;
     }
     paint(r.data);
     showLiveControls();

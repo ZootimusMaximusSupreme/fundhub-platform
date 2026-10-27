@@ -241,7 +241,8 @@ async function emitCloserCallCompleted(db, row, { offerKey, repairReferral }) {
     disposition: "closer",
     repairReferral: repairReferral === true,
     declineReason: null,
-    taskId: row.task_id || null
+    taskId: row.task_id || null,
+    transactionId: row.transaction_id || null
   }, {
     orgId,
     clientId,
