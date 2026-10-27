@@ -235,6 +235,7 @@ test.describe("closer deck: Log disposition and close", () => {
     });
     await page.locator('[data-act="pay"]').click();
     await expect.poll(() => calls.deck.length).toBe(1);
+    await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem(`fh_call_payment_link:${new URLSearchParams(location.search).get("contact")}`) || "null")?.id)).toBe("link-this-call");
     await page.reload();
     await page.locator('[data-act="phase:07"]').click();
     await page.locator('[data-act="disp"]').click();
