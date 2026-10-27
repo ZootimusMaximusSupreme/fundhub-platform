@@ -140,6 +140,19 @@ Drive-to-call evidence and staff-screen truth remain **NOT LIVE PROVED**.
 
 All eight cross-role gates above still require final independent evidence.
 
+## No-show / reschedule follow-up — 2026-10-27
+
+**FAIL in old recovery path; fix in PR #160, CI/deployment NOT YET PROVED.** S-05a's
+four-touch no-show recovery stopped only when `booking.created` increased.
+Moving the same missed appointment can emit `booking.rescheduled` without a
+second creation, leaving later follow-ups active despite an actual rebooking.
+PR [#160](https://github.com/ZootimusMaximusSupreme/fundhub-platform/pull/160)
+adds the matching reschedule cancellation event and same-org, same-client
+created/rescheduled event-count rechecks before touches 2–4. Focused regression
+tests exercise a moved booking, an existing prior reschedule, and cross-org
+isolation. **PASS requires green checks and independent observed provider
+rebooking/cancellation receipts; those live receipts are NOT LIVE PROVED.**
+
 ## Coverage rule
 
 No screen, control, or cross-role path may be called fully PASS merely because its source file exists, an isolated assertion passed, or a signed-in screenshot renders. Required live-provider receipts not safely obtainable remain **NOT LIVE PROVED**. Continue repairing independent code defects in isolated PRs while retaining this honest boundary.
