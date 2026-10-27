@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert";
-import { handle, EMAIL_TEMPLATE_KEY, SMS_TEMPLATE_KEY, EMAIL_NOSHOW_02, SMS_NOSHOW_02 } from "./s-05a-no-show-recovery.mjs";
+import { handle, s05aNoShowRecovery, EMAIL_TEMPLATE_KEY, SMS_TEMPLATE_KEY, EMAIL_NOSHOW_02, SMS_NOSHOW_02 } from "./s-05a-no-show-recovery.mjs";
 import { pgFake, fakeStep as pgStep, ev } from "./test-support.mjs";
 
 function fakeStep() {
@@ -95,7 +95,7 @@ test("s-05a: stops before touch 2 if they rebook", async () => {
   const step = {
     run: async (id, fn) => {
       const out = await fn();
-      if (id === "send-touch-1") db.events.push({ client_id: "cl-1", name: "booking.created" });
+      if (id === "send-touch-1") db.events.push({ org_id: "org-1", client_id: "cl-1", name: "booking.created" });
       return out;
     },
     sleep: async () => {}
@@ -111,7 +111,10 @@ test("s-05a: stops before touch 2 if they rebook", async () => {
 test("s-05a: original booking.created does not count as a rebook", async () => {
   const db = pgFake({
     clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", custom_fields: {} }],
-    events: [{ client_id: "cl-1", name: "booking.created" }],
+    events: [
+      { org_id: "org-1", client_id: "cl-1", name: "booking.created" },
+      { org_id: "org-1", client_id: "cl-1", name: "booking.rescheduled" }
+    ],
     templates: [
       { org_id: "org-1", template_key: EMAIL_TEMPLATE_KEY, channel: "email", body: "t1e", compliance_passed: true },
       { org_id: "org-1", template_key: SMS_TEMPLATE_KEY, channel: "sms", body: "t1s", compliance_passed: true },
@@ -133,3 +136,66 @@ test("s-05a: original booking.created does not count as a rebook", async () => {
 });
 
 
+
+test("s-05a: rescheduling the missed booking stops later recovery touches", async () => {
+  const db = pgFake({
+    clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", custom_fields: {} }],
+    events: [{ org_id: "org-1", client_id: "cl-1", name: "booking.created" }],
+    templates: [
+      { org_id: "org-1", template_key: EMAIL_TEMPLATE_KEY, channel: "email", body: "t1e", compliance_passed: true },
+      { org_id: "org-1", template_key: SMS_TEMPLATE_KEY, channel: "sms", body: "t1s", compliance_passed: true }
+    ]
+  });
+  const step = {
+    run: async (id, fn) => {
+      const result = await fn();
+      if (id === "send-touch-1") {
+        db.events.push({ org_id: "org-1", client_id: "cl-1", name: "booking.rescheduled" });
+      }
+      return result;
+    },
+    sleep: async () => {}
+  };
+  const result = await handle({
+    event: ev("booking.noshow", { bookingUid: "b1" }, { clientId: "cl-1" }),
+    db, step
+  });
+  assert.equal(result.stoppedAt, "before-touch-2");
+  assert.equal(db.messages.length, 2, "only initial email/SMS, not the later recovery touches");
+
+  const cancellations = s05aNoShowRecovery.opts.cancelOn || [];
+  assert.deepEqual(cancellations.map((rule) => rule.event).sort(), ["booking.created", "booking.rescheduled"]);
+  for (const rule of cancellations) assert.match(rule.if, /payload\.email/);
+});
+
+test("s-05a: a reschedule from another company cannot stop recovery", async () => {
+  const db = pgFake({
+    clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", custom_fields: {} }],
+    templates: [
+      { org_id: "org-1", template_key: EMAIL_TEMPLATE_KEY, channel: "email", body: "t1e", compliance_passed: true },
+      { org_id: "org-1", template_key: SMS_TEMPLATE_KEY, channel: "sms", body: "t1s", compliance_passed: true },
+      { org_id: "org-1", template_key: EMAIL_NOSHOW_02, channel: "email", body: "t2e", compliance_passed: true },
+      { org_id: "org-1", template_key: SMS_NOSHOW_02, channel: "sms", body: "t2s", compliance_passed: true },
+      { org_id: "org-1", template_key: "EMAIL-S05A-NOSHOW-03", channel: "email", body: "t3e", compliance_passed: true },
+      { org_id: "org-1", template_key: "SMS-S05A-NOSHOW-03", channel: "sms", body: "t3s", compliance_passed: true },
+      { org_id: "org-1", template_key: "EMAIL-S05A-NOSHOW-04", channel: "email", body: "t4e", compliance_passed: true },
+      { org_id: "org-1", template_key: "SMS-S05A-NOSHOW-04", channel: "sms", body: "t4s", compliance_passed: true }
+    ]
+  });
+  const step = {
+    run: async (id, fn) => {
+      const result = await fn();
+      if (id === "send-touch-1") {
+        db.events.push({ org_id: "org-other", client_id: "cl-1", name: "booking.rescheduled" });
+      }
+      return result;
+    },
+    sleep: async () => {}
+  };
+  const result = await handle({
+    event: ev("booking.noshow", { bookingUid: "b1" }, { clientId: "cl-1" }),
+    db, step
+  });
+  assert.equal(result.stoppedAt, undefined);
+  assert.equal(db.messages.length, 8);
+});
