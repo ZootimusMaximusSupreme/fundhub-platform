@@ -301,11 +301,13 @@ test("the read leaves alone a name two clients share, a file nobody is named in,
     const out = await listRecentRecordings(s.asPg(), { orgId: ORG, now: NOW, env: {} });
     const files = s.all("brain_files");
     const calls = s.all("call_outcomes");
-    for (const id of ["f-jordan", "f-nobody"]) {
-      assert.equal(byId(files, id).client_id, null, id);
-      assert.equal(Number(byId(files, id).unattached), 1, id);
-      assert.equal(out.items.find((it) => it.id === id).attached, false, id);
-    }
+    assert.equal(byId(files, "f-jordan").client_id, null);
+    assert.equal(Number(byId(files, "f-jordan").unattached), 1);
+    assert.equal(out.items.find((it) => it.id === "f-jordan").attached, false);
+    assert.equal(byId(files, "f-nobody").client_id, null);
+    assert.equal(Number(byId(files, "f-nobody").unattached), 1);
+    assert.equal(out.items.some((it) => it.id === "f-nobody"), false,
+      "a generic non-Meet recording stays out of the call list");
     assert.equal(byId(calls, "call-j1").recording_url, null);
     assert.equal(byId(calls, "call-j2").recording_url, null);
     // already attached to Dana: neither moved to Lee by name nor re-stamped
@@ -510,7 +512,7 @@ test("words and excerpt: a transcript on the recording's call makes it 'words re
     // words found by the file's own link alone: the file is loose, the call that holds that link is Ulf's
     s.insert("clients", { id: "ulf", org_id: ORG, first_name: "Ulf", last_name: "Berg" });
     s.insert("call_outcomes", { id: "call-ulf", org_id: ORG, client_id: "ulf", logged_at: iso(1), recording_url: L("f-loose"), transcript: short });
-    file(s, "f-loose", "team standup recording.mp4", { web_view_link: L("f-loose") });
+    file(s, "f-loose", "Google Meet - team standup recording.mp4", { web_view_link: L("f-loose") });
     // A different link on the same client's call must not lend words to this recording.
     s.insert("clients", { id: "cy", org_id: ORG, first_name: "Cy", last_name: "Hale" });
     s.insert("call_outcomes", { id: "call-cy", org_id: ORG, client_id: "cy", logged_at: iso(1), recording_url: L("cy-call"), transcript: short });

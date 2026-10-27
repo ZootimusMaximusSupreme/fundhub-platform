@@ -236,8 +236,9 @@ export async function listRecentRecordings(db, {
           OR bf.name ILIKE '%recording%'
         )
         AND (bf.name ILIKE '%meet%' OR bf.name ILIKE '%recording%'
-             OR bf.name ~* 'gmt[0-9]{8}')
-        AND bf.name !~* 'screen[- ]?record'
+             OR bf.name ILIKE '%gmt________%')
+        AND bf.name NOT ILIKE '%screen recording%'
+        AND bf.name NOT ILIKE '%screen-recording%'
       ORDER BY COALESCE(bf.indexed_at, bf.created_at) DESC
       LIMIT 40`,
     [orgId, sinceIso]
