@@ -402,7 +402,9 @@ jobs:
         env:
           DATABASE_URL: ${{ env.MIGRATION_DATABASE_URL }}
         run: |
-          node --test \
+          # Fixture cleanup disables table triggers globally; run these suites
+          # serially so another suite cannot test a guard while it is off.
+          node --test --test-concurrency=1 \
             src/compliance/rls-bypass.pg.test.mjs \
             src/compliance/invariants.pg.test.mjs \
             src/http/creative-endpoints.pg.test.mjs \
