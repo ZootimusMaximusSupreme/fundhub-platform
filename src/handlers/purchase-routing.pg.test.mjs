@@ -27,7 +27,7 @@ const MARK = "purchaserouting_pg";
 
 describe("purchase-routing", { skip: !HAS_DB ? "no DATABASE_URL" : false }, () => {
   let org;
-  let fundingProductId, repairProductId, diagProductId;
+  let fundingProductId, repairProductId, trialRepairProductId, diagProductId;
 
   async function wipe() {
     const clients = (await db.query(
@@ -139,9 +139,11 @@ describe("purchase-routing", { skip: !HAS_DB ? "no DATABASE_URL" : false }, () =
     )).rows[0]?.id || null;
     fundingProductId = await byCode("card-stacking-dfy");
     repairProductId = await byCode("repair-bundle");
+    trialRepairProductId = await byCode("repair-trial");
     diagProductId = await byCode("diagnostic");
     assert.ok(fundingProductId, "card-stacking-dfy product missing — migrations not applied");
     assert.ok(repairProductId, "repair-bundle product missing — migrations not applied");
+    assert.ok(trialRepairProductId, "repair-trial product missing — migrations not applied");
   });
 
   after(async () => {
@@ -438,6 +440,36 @@ describe("purchase-routing", { skip: !HAS_DB ? "no DATABASE_URL" : false }, () =
   });
 
   // ── nothing to route ──
+
+  test("paid $200 trial stays two rounds even with a signed/unpaid or refunded full bundle", async () => {
+    for (const { suffix, fullyRefunded } of [
+      { suffix: "unpaid-full-upgrade", fullyRefunded: false },
+      { suffix: "refunded-full-upgrade", fullyRefunded: true }
+    ]) {
+      const c = await seedClient(suffix, { outcomeTier: "REPAIR_ONLY" });
+      await seedSale(c.id, trialRepairProductId, 200, { paid: true });
+      const fullSale = await seedSale(c.id, repairProductId, 1000, { paid: fullyRefunded });
+      if (fullyRefunded) {
+        await db.query(
+          `INSERT INTO sale_payments (org_id, sale_id, product_id, kind, amount)
+           VALUES ($1,$2,$3,'refund',1000)`,
+          [org, fullSale, repairProductId]
+        );
+      }
+      // Exercise actual paid routing and real repair enrolment against scratch PG.
+      const routed = await onPurchaseRoute(
+        { id: null, name: "payment.received", orgId: org, clientId: c.id,
+          payload: { product: "repair-trial", amount: 200 } }, db
+      );
+      assert.equal(routed.bought.repair, true, suffix);
+      const prog = await repairProgramRow(c.id);
+      assert.ok(prog, suffix + " program exists");
+      assert.equal(prog.program, "trial", suffix + " never upgrades without money");
+      assert.equal(prog.rounds_cap, 2, suffix + " stays two rounds");
+      assert.equal(Number(prog.price_total), 200, suffix + " stays at the $200 plan");
+      assert.equal(await cardStage(c.id, FUNDING_PIPELINE), null);
+    }
+  });
 
   test("only net-paid funding and repair sales can enter fulfillment", async () => {
     const scenarios = ["unpaid_funding", "unpaid_repair", "success_fee_only", "fully_refunded"];
