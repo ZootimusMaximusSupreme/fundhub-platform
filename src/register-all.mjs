@@ -5,6 +5,7 @@
 
 import { register as registerLifecycle } from "./handlers/client-lifecycle.mjs";
 import { register as registerComms } from "./handlers/comms.mjs";
+import { register as registerSetterTasks } from "./setter/tasks.mjs";
 import { register as registerPaymentLinks } from "./handlers/payment-links.mjs";
 import { register as registerInvoiceCheckoutRetirement } from "./handlers/invoice-checkout-retirement.mjs";
 import { register as registerPartnerAddOns } from "./handlers/partner-addons.mjs";
@@ -31,6 +32,8 @@ let _done = false;
 export function registerAll() {
   registerLifecycle();
   registerComms();
+  // After lifecycle/comms, so the client and booking already exist.
+  registerSetterTasks();
   registerPaymentLinks();
   // Closing an invoice retires any other live hosted checkout for that bill.
   // Provider failure is dead-lettered by the bus and can be retried safely.

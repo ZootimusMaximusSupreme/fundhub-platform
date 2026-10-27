@@ -142,6 +142,9 @@ const NO_ORG_COLUMN = new Map([
      test was red from that day. Proved against the handler, with a stub that
      records the SQL, in src/http/morning-brief.test.mjs. Read 2026-10-09. */
   ["morning-brief.mjs", "scoped in src/ops/morning-brief.mjs readMorningBrief(), which binds org_id = $1 and throws without an org"],
+  /* The setter queue handler passes the authenticated staff record. The store
+     binds staff.org_id on its tasks query and verifies assignment for setters. */
+  ["setter-dashboard.mjs", "scoped in src/setter/dashboard.mjs listSetterQueue(), which binds staff.org_id on its tasks query"],
 ]);
 
 /* An allow-listed endpoint must still prove it hands the SESSION's org to
@@ -229,6 +232,9 @@ test("an endpoint excused from the org filter still passes the session's org to 
     .filter((f) => f.name === "bank-outreach.mjs"
       ? !/const staff = await requireAuth\(req, res, \{ db: database \}\)/.test(f.code) ||
         !/readOutreach\(database, \{ staff, query: req\.query \|\| \{\} \}\)/.test(f.code)
+      : f.name === "setter-dashboard.mjs"
+        ? !/const staff = await requireAuth\(req, res, \{ db: database \}\)/.test(f.code) ||
+          !/listSetterQueue\(database, staff, req\.query \|\| \{\}\)/.test(f.code)
       : !DELEGATES_SESSION_ORG.test(f.code))
     .map((f) => f.name);
 

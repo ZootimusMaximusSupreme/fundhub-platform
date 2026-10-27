@@ -51,6 +51,7 @@ import { isOptedOut } from "../lib/opt-out.mjs";
 import { loadRules, appliesTo, toRegex } from "../compliance/screen.mjs";
 import { createTask } from "../lib/create-task.mjs";
 import { BANK_EMAIL_KEYS } from "../outreach/mail.mjs";
+import { isStaffText, staffTextRecipient, usesSetterContactHours } from "../staff/message-recipient.mjs";
 
 /* Who owns a held message.
    `admin` rather than a client-facing role: the fix is editing a template, which
@@ -183,6 +184,12 @@ export function inQuietHours(date, timeZone = QUIET_HOURS_TZ) {
   return hour >= QUIET_START_HOUR || hour < QUIET_END_HOUR;
 }
 
+/** The setter SOP's 6 a.m.–10 p.m. Phoenix window, only for named setter paths. */
+export function inSetterContactQuietHours(date, timeZone = QUIET_HOURS_TZ) {
+  const hour = hourInZone(date, timeZone);
+  return hour >= 22 || hour < 6;
+}
+
 /* Prove / sim identity. Quiet hours still bind every real customer. These
    patterns are the plus-tags and agent self-loop used for fire proves — not
    a force flag, and not a path a live client can opt into. */
@@ -254,7 +261,8 @@ export async function gate(db, message = {}, options = {}) {
 }
 
 async function run(db, message, { now = () => new Date(), timeZone = QUIET_HOURS_TZ } = {}) {
-  const { orgId, clientId, channel, body = "", messageId = null, templateKey = null, toAddress = null } = message;
+  const { orgId, clientId, channel, body = "", messageId = null, templateKey = null,
+    toAddress = null, providerRef = null } = message;
 
   // NOTE WHAT IS NOT DESTRUCTURED ABOVE: createdAt, scheduledAt, queuedAt.
   // They are absent on purpose — see the sleeping-workflow note in the header.
@@ -278,6 +286,8 @@ async function run(db, message, { now = () => new Date(), timeZone = QUIET_HOURS
   // it by filling in the apply form.
   const welcomeKey = String(templateKey || "");
   const welcomeTo = String(toAddress || "");
+  const messageKind = { clientId, channel, templateKey, toAddress, providerRef };
+  const staffText = isStaffText(messageKind);
   const partnerWelcome =
     (channel === "email" && PARTNER_WELCOME_KEYS.has(welcomeKey) && welcomeTo.includes("@"))
     || (channel === "sms" && PARTNER_WELCOME_SMS_KEYS.has(welcomeKey) && E164.test(welcomeTo));
@@ -285,7 +295,19 @@ async function run(db, message, { now = () => new Date(), timeZone = QUIET_HOURS
     channel === "email" && CANDIDATE_EEO_EMAIL_KEYS.has(welcomeKey) && welcomeTo.includes("@");
   const bankOutreach =
     !clientId && channel === "email" && BANK_OUTREACH_EMAIL_KEYS.has(welcomeKey) && welcomeTo.includes("@");
-  if (bankOutreach) {
+  if (staffText) {
+    const recipient = staffTextRecipient(messageKind);
+    const matching = recipient && (await db.query(
+      `SELECT id FROM staff
+        WHERE org_id = $1 AND id = $2 AND phone = $3 AND status = 'active'
+          AND lower(role) = ANY($4::text[])
+          AND ($5::boolean = false OR notify_booked_call_sms = true)
+        LIMIT 1`,
+      [orgId, recipient.staffId, toAddress, recipient.roles, recipient.requireBookedAlertSwitch]
+    )).rows[0];
+    if (!matching) reasons.push(r("recipient_unknown", "consent",
+      "This internal text is not addressed to an active enabled staff recipient."));
+  } else if (bankOutreach) {
     const banker = (await db.query(
       `SELECT count(*)::int AS saved, count(*) FILTER (WHERE email_opt_out_at IS NOT NULL)::int AS opted_out
          FROM outreach_contacts WHERE org_id = $1 AND lower(btrim(email)) = lower(btrim($2))`,
@@ -313,11 +335,15 @@ async function run(db, message, { now = () => new Date(), timeZone = QUIET_HOURS
   //
   // Prove/sim plus-tag files are outside this rule so a night fire can be
   // proven. Real customers still wait. Not a force / skipCompliance option.
-  if (QUIET_HOURS_CHANNELS.has(channel) && inQuietHours(now(), timeZone)) {
-    const skip = await recipientSkipsQuietHours(db, clientId);
+  const setterHours = usesSetterContactHours(messageKind);
+  const quiet = setterHours ? inSetterContactQuietHours(now(), timeZone) : inQuietHours(now(), timeZone);
+  if (QUIET_HOURS_CHANNELS.has(channel) && quiet) {
+    const skip = staffText ? false : await recipientSkipsQuietHours(db, clientId);
     if (!skip) {
       reasons.push(r("quiet_hours", "tcpa",
-        `Text messages are not sent between ${QUIET_START_HOUR}:00 and ${QUIET_END_HOUR}:00 Arizona time. This one is being held until the window opens.`,
+        setterHours
+          ? "Setter texts are not sent between 22:00 and 06:00 Phoenix time. This one is held until 06:00."
+          : `Text messages are not sent between ${QUIET_START_HOUR}:00 and ${QUIET_END_HOUR}:00 Arizona time. This one is being held until the window opens.`,
         { citation: "TCPA 47 C.F.R. 64.1200(c)(1)", retryable: true }));
     }
   }

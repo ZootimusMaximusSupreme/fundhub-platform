@@ -78,6 +78,8 @@
 .closer-workspace .ctxg div span{display:block;font-size:12px!important;color:var(--text-dim);margin-bottom:5px;}
 .closer-workspace .ctxg div b{font-size:14px;font-weight:550;overflow-wrap:anywhere;}
 .closer-workspace .ctx [data-fh-said]{margin-top:16px;}
+.closer-workspace .fh-setter-handoff{margin:0 0 18px;padding:15px 17px;border:1px solid var(--line);border-radius:10px;background:var(--surface, #fff);}
+.closer-workspace .fh-setter-handoff p{white-space:pre-line;}
 .closer-workspace .rail{align-self:start;min-width:0;background:#f1f3ed;border:1px solid #e1e6dc;border-radius:14px;padding:22px 20px;}
 .closer-workspace .rail section+section{border-top:1px solid #dbe0d5;margin-top:23px;padding-top:22px;}
 .closer-workspace .rail h4{font-size:17px!important;margin-bottom:12px;}

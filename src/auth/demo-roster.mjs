@@ -57,7 +57,7 @@ export const DEMO_PASSWORD = "demo-portal-2026";
 // The owner's actual workflow is: open a portal, look at it, judge it, switch to
 // the next one, repeat — nine times in one sitting. A button that says "setter"
 // asks him to know what a setter sees before he clicks it; a button that says
-// "Setter — Pipeline" tells him what opens. So every entry carries the role in
+// "Setter — Setter Dashboard" tells him what opens. So every entry carries the role in
 // his words (`label`) and the SCREEN NAME it opens (`portal`, taken verbatim
 // from that file's <title>), and public/login.html renders them as
 // "<label> — <portal>".
@@ -80,7 +80,7 @@ export const DEMO_STAFF = Object.freeze([
   { email: `advisor@${DEMO_EMAIL_DOMAIN}`, role: "funding_advisor",    name: "DEMO Funding Advisor",    lands: "client-control-panel.html", label: "Funding advisor",   portal: "Client Control Panel" },
   { email: `closer@${DEMO_EMAIL_DOMAIN}`,  role: "closer",             name: "DEMO Closer",             lands: "closer-dashboard.html", label: "Closer",            portal: "Closer Dashboard" },
   { email: `inquiry@${DEMO_EMAIL_DOMAIN}`, role: "inquiry_specialist", name: "DEMO Specialist", lands: "inquiry-remover.html",  label: "Specialist", portal: "Inquiries and repair" },
-  { email: `setter@${DEMO_EMAIL_DOMAIN}`,  role: "setter",             name: "DEMO Setter",             lands: "pipeline.html",         label: "Setter",            portal: "Pipeline" },
+  { email: `setter@${DEMO_EMAIL_DOMAIN}`,  role: "setter",             name: "DEMO Setter",             lands: "setter-dashboard.html", label: "Setter",            portal: "Setter Dashboard" },
   { email: `sales@${DEMO_EMAIL_DOMAIN}`,   role: "sales_manager",      name: "DEMO Sales Manager",      lands: "sales-floor.html",      label: "Sales manager",     portal: "Sales floor" },
   /* Lands on the CSM's own call queue, not on the client chooser. This must
      stay equal to public/app/shell.js HOME.csm — see the note above. */

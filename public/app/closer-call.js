@@ -463,6 +463,14 @@
   }
 
   function paintSharedContext(context, message) {
+    var handoffBox = document.getElementById("fh-setter-handoff");
+    var handoffNote = document.getElementById("fh-setter-handoff-note");
+    var handoff = context && context.setter_handoff;
+    if (handoffBox && handoffNote) {
+      handoffBox.hidden = !(handoff && handoff.complete_at);
+      handoffNote.textContent = handoff && handoff.complete_at
+        ? (handoff.handoff_text || [handoff.problem, handoff.goal].filter(Boolean).join(" · ")) : "";
+    }
     var ctx = $(".ctx");
     if (!ctx) return;
     var panel = ctx.querySelector("[data-fh-shared-context]");

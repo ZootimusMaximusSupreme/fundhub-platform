@@ -558,7 +558,7 @@ describe("GET /api/auth/login — the switcher's roster, gated server-side", () 
 
   test("the button text says what opens, not what the role is called in the database", async () => {
     // "setter" asks the owner to know what a setter sees before he clicks.
-    // "Setter — Pipeline" tells him. The role key must not BE the label.
+    // "Setter — Setter Dashboard" tells him. The role key must not BE the label.
     const { logins } = (await getOptions("1")).body.demo;
     for (const d of logins) {
       assert.notEqual(d.label, d.role, `the ${d.role} button is labelled with its database key`);

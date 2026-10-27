@@ -70,7 +70,8 @@ const RULES = seededRules();
    persisted — and, just as importantly, on what was not. */
 function fakeDb({
   rules = RULES, optedOut = new Set(), failOptOut = false,
-  client = { email: "person@example.com", phone: "+15551234567" }
+  client = { email: "person@example.com", phone: "+15551234567" },
+  staff = null
 } = {}) {
   const writes = [];
   return {
@@ -79,6 +80,12 @@ function fakeDb({
       if (sql.includes("FROM opt_outs")) {
         if (failOptOut) throw new Error("connection terminated unexpectedly");
         return { rows: optedOut.has(`${params[0]}:${params[1]}`) ? [{ "?column?": 1 }] : [] };
+      }
+      if (sql.includes("FROM staff")) {
+        const allowed = staff && staff.id === params[1] && staff.phone === params[2]
+          && staff.status === "active" && params[3].includes(staff.role)
+          && (!params[4] || staff.notify_booked_call_sms === true);
+        return { rows: allowed ? [{ id: staff.id }] : [] };
       }
       if (sql.includes("FROM clients")) return { rows: client ? [client] : [] };
       if (sql.includes("FROM compliance_rules")) return { rows: rules };
@@ -121,6 +128,52 @@ describe("a clean message", () => {
   test("is allowed on email too", async () => {
     const res = await run({ channel: "email" });
     assert.strictEqual(res.state, "allowed", `unexpectedly blocked: ${JSON.stringify(codes(res))}`);
+  });
+});
+
+describe("setter and staff contact hours", () => {
+  const STAFF_ID = "00000000-0000-4000-8000-000000000099";
+  const ALERT = { ...base, templateKey: "SMS-S04C-STAFF-BOOKED",
+    providerRef: `workflow:SMS-S04C-STAFF-BOOKED:event-1:${STAFF_ID}`,
+    toAddress: "+16616180865" };
+  const enabledStaff = { id: STAFF_ID, role: "owner", status: "active",
+    phone: "+16616180865", notify_booked_call_sms: true };
+
+  test("client STOP does not block an enabled staff booking alert at 7 a.m.", async () => {
+    const res = await gate(fakeDb({ staff: enabledStaff,
+      optedOut: new Set([`${CLIENT}:sms`]) }), ALERT,
+    { now: () => new Date("2026-08-01T14:00:00Z") });
+    assert.strictEqual(res.state, "allowed", JSON.stringify(codes(res)));
+  });
+
+  test("staff alert needs the exact active opted-in staff phone", async () => {
+    const res = await gate(fakeDb({ staff: { ...enabledStaff, notify_booked_call_sms: false } }), ALERT,
+      { now: MIDDAY });
+    assert.strictEqual(res.state, "blocked");
+    assert.ok(codes(res).includes("recipient_unknown"));
+  });
+
+  test("staff alert at 10 p.m. is held until 6 a.m.", async () => {
+    const res = await gate(fakeDb({ staff: enabledStaff }), ALERT,
+      { now: () => new Date("2026-08-02T05:00:00Z") });
+    assert.strictEqual(res.state, "blocked");
+    assert.ok(codes(res).includes("quiet_hours"));
+  });
+
+  test("different closer leg reads closer staff consent, not client STOP", async () => {
+    const res = await gate(fakeDb({ staff: enabledStaff,
+      optedOut: new Set([`${CLIENT}:sms`]) }), { ...base, templateKey: null,
+      providerRef: `setter:${CLIENT}:booked:closer:${STAFF_ID}`, toAddress: enabledStaff.phone },
+    { now: () => new Date("2026-08-01T14:00:00Z") });
+    assert.strictEqual(res.state, "allowed", JSON.stringify(codes(res)));
+  });
+
+  test("setter lead text uses 6 a.m.–10 p.m. but still honors the lead STOP", async () => {
+    const message = { ...base, providerRef: `staff:setter-video:${CLIENT}:booked`, toAddress: "+15551234567" };
+    const morning = () => new Date("2026-08-01T14:00:00Z");
+    assert.strictEqual((await gate(fakeDb(), message, { now: morning })).state, "allowed");
+    const stopped = await gate(fakeDb({ optedOut: new Set([`${CLIENT}:sms`]) }), message, { now: morning });
+    assert.ok(codes(stopped).includes("opted_out"));
   });
 });
 

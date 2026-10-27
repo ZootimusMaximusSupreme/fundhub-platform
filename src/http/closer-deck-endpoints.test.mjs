@@ -99,6 +99,13 @@ describe("GET /api/read/closer-deck", () => {
     assert.equal(res.body.client_id, CID);
   });
 
+  test("completed setter handoff is in Present payload", async () => {
+    const handoff = { complete_at: "2026-10-27T02:00:00Z", problem: "Need capital" };
+    const res = await get({ db: dbWithClient({ id: CID, first_name: "A", last_name: "B",
+      outcome_tier: null, custom_fields: { setter_handoff: handoff } }) });
+    assert.deepEqual(res.body.setter_handoff, handoff);
+  });
+
   test("missing client is 404, not a demo person", async () => {
     const res = await get({
       db: { async query() { return { rows: [] }; } }

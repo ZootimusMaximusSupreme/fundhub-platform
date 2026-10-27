@@ -30,9 +30,10 @@
 // A plain SELECT-then-UPDATE would satisfy none of them.
 
 import {
-  gateAndRecord, inQuietHours, recipientSkipsQuietHours,
+  gateAndRecord, inQuietHours, inSetterContactQuietHours, recipientSkipsQuietHours,
   QUIET_HOURS_CHANNELS, QUIET_END_HOUR, QUIET_HOURS_TZ
 } from "./gate.mjs";
+import { isStaffText, usesSetterContactHours } from "../staff/message-recipient.mjs";
 import { resolve, addressFieldFor } from "./providers/index.mjs";
 import { isSynthetic } from "./live-fence.mjs";
 import { isDraftTemplateCopy, isDraftTemplateRow } from "./draft-guard.mjs";
@@ -184,7 +185,7 @@ function tzOffsetMs(date, timeZone) {
    year they differ by an hour, and a single pass would land at 10:00 or 12:00.
 
    Exported so the transition dates can be asserted directly. */
-export function nextQuietHoursEnd(from, timeZone = QUIET_HOURS_TZ) {
+export function nextQuietHoursEnd(from, timeZone = QUIET_HOURS_TZ, endHour = QUIET_END_HOUR) {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone, hour12: false,
     year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit"
@@ -194,8 +195,8 @@ export function nextQuietHoursEnd(from, timeZone = QUIET_HOURS_TZ) {
 
   // Before the window opens today → today. Otherwise (we are at or past the
   // 20:00 start) → tomorrow. Date.UTC normalises a day past the month's end.
-  const dayShift = hour < QUIET_END_HOUR ? 0 : 1;
-  const wall = Date.UTC(+p.year, +p.month - 1, +p.day + dayShift, QUIET_END_HOUR, 0, 0);
+  const dayShift = hour < endHour ? 0 : 1;
+  const wall = Date.UTC(+p.year, +p.month - 1, +p.day + dayShift, endHour, 0, 0);
 
   let ts = wall;
   for (let i = 0; i < 2; i += 1) ts = wall - tzOffsetMs(new Date(ts), timeZone);
@@ -401,10 +402,14 @@ export async function dispatchOne(db, message, options = {}) {
     // an overnight text is still sendable in the morning instead of being
     // recorded as a permanent block.
     const clock = typeof now === "function" ? now : () => new Date();
-    if (QUIET_HOURS_CHANNELS.has(message.channel) && inQuietHours(clock(), QUIET_HOURS_TZ)) {
-      const skipQuiet = await recipientSkipsQuietHours(db, message.client_id);
+    const kind = { clientId: message.client_id, channel: message.channel,
+      templateKey: message.template_key, providerRef: message.provider_ref, toAddress: message.to_address };
+    const setterHours = usesSetterContactHours(kind);
+    const quiet = setterHours ? inSetterContactQuietHours(clock(), QUIET_HOURS_TZ) : inQuietHours(clock(), QUIET_HOURS_TZ);
+    if (QUIET_HOURS_CHANNELS.has(message.channel) && quiet) {
+      const skipQuiet = isStaffText(kind) ? false : await recipientSkipsQuietHours(db, message.client_id);
       if (!skipQuiet) {
-        const due = nextQuietHoursEnd(clock(), QUIET_HOURS_TZ);
+        const due = nextQuietHoursEnd(clock(), QUIET_HOURS_TZ, setterHours ? 6 : QUIET_END_HOUR);
         await db.query(
           // The attempt is given back: an unopened window is not a failed
           // delivery, and charging it would burn the retry budget overnight.
@@ -428,7 +433,8 @@ export async function dispatchOne(db, message, options = {}) {
       body: message.rendered_body,
       messageId: message.id,
       templateKey: message.template_key,
-      toAddress: message.to_address
+      toAddress: message.to_address,
+      providerRef: message.provider_ref
     }, now ? { now } : {});
 
     if (verdict.state !== "allowed") {

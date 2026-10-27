@@ -177,6 +177,7 @@ export const ROLE_SETS = {
   // csm added 2026-09-05 (db/migrations/290_csm_role.sql). Without it a CSM
   // 403s on every client read they need to do the job they were created for.
   STAFF: new Set(["owner", "admin", "funding_advisor", "closer", "inquiry_specialist", "setter", "sales_manager", "csm"]),
+  SETTER: new Set(["owner", "admin", "setter"]),
   // Platform health. Failed events name handlers and payload shapes.
   OPS: new Set(["owner", "admin"]),
   // Recruiting. Deliberately NOT the STAFF set: these reads carry job-applicant

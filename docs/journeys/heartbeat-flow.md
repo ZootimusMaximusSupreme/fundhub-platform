@@ -4,6 +4,12 @@ Traced from code on 2026-10-11: `src/workflows/daily-pulse.mjs`, `src/pulse/dail
 
 ## In plain words
 
+The human Setter Dashboard is watched at its page and read/write API doors:
+`/app/setter-dashboard.html`, `/api/read/setter-dashboard`, and
+`/api/setter-dashboard`. The write door is pinged with GET only; its 405 is
+expected and never sends a text. Completion and same-staff send behavior are
+proved by `src/setter/dashboard.test.mjs` and `src/setter/send-actions.test.mjs`.
+
 - A **check** asks one yes-or-no question about the company. "Does the login page answer?" "Did every paid client get the portal?"
 - A **tripwire** is a check that goes red before a customer hits the break.
 - Every morning at **6:00 a.m. Arizona**, one job runs more than 1,000 checks. Every red one goes in the text to Chris.

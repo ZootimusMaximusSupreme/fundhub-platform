@@ -95,9 +95,9 @@ one live upcoming ClickFunnels booking. Anything less certain is left alone.
 
 | Event | Workflows woken | File |
 |---|---|---|
-| `entry.captured` | welcome text, new-lead intake, incomplete-survey nudge, first-touch capture, referral ownership | `s-00-welcome`, `s-01`, `s-02`, `at-01`, `af-02` |
+| `entry.captured` | welcome text, new-lead intake, incomplete-survey nudge, first-touch capture, referral ownership, event-deduped human setter task | `s-00-welcome`, `s-01`, `s-02`, `at-01`, `af-02`, `src/setter/tasks.mjs` |
 | `survey.submitted` | the never-booked chase, and nothing else | `s-nobook-chase` |
-| `booking.created` | confirm + reminders, the AI setter, the 15-minute handoff, staff alert, pre-call launcher, call-outcome enforcement, portal invite, no-show recovery | `s-04b`, `ai-set-01`, `ai-set-04`, `s-04c`, `bs-01`, `dpc-02`, `s-portal-invite`, `s-05a` |
+| `booking.created` | confirm + reminders, event-deduped human setter task, the legacy 15-minute handoff, staff alert including enabled setter role, pre-call launcher, call-outcome enforcement, portal invite, no-show recovery | `s-04b`, `src/setter/tasks.mjs`, `ai-set-04`, `s-04c`, `bs-01`, `dpc-02`, `s-portal-invite`, `s-05a` |
 | `booking.rescheduled` | confirm + reminders, pre-call launcher, the 15-minute handoff, call-outcome enforcement (each restarts for the new time; the run for the old time is cancelled) | `s-04b`, `bs-01`, `ai-set-04`, `dpc-02` |
 
 ## 3. The never-booked chase

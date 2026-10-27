@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  pickRecipients, buildAlertBody, queueStaffBookedAlerts, STAFF_BOOKED_TEMPLATE,
+  pickRecipients, buildAlertBody, buildSetterAlertBody, queueStaffBookedAlerts, STAFF_BOOKED_TEMPLATE,
   fundingPayFromRules
 } from "./booked-call-alert.mjs";
 
@@ -11,8 +11,12 @@ test("pickRecipients: switch off, no phone, or wrong role is skipped; same perso
     { id: "o", role: "closer", phone: "5551111", notify_booked_call_sms: true },
     { id: "c", role: "closer", phone: "5552222", notify_booked_call_sms: false },
     { id: "s", role: "sales_manager", phone: "", notify_booked_call_sms: true },
+    { id: "t", role: "setter", phone: "5554444", notify_booked_call_sms: true },
     { id: "a", role: "admin", phone: "5553333", notify_booked_call_sms: true }
-  ]), [{ id: "o", role: "owner", phone: "5551111" }]);
+  ]), [
+    { id: "o", role: "owner", phone: "5551111" },
+    { id: "t", role: "setter", phone: "5554444" }
+  ]);
 });
 
 test("buildAlertBody is a win ping with play path, pay, survey Q/A, no source line", () => {
@@ -74,6 +78,17 @@ test("buildAlertBody: passing survey lane runs funding first", () => {
   assert.match(body, /RUN FIRST: Funding, done-for-you/);
 });
 
+test("setter booking alert gives call facts without closer price or commission copy", () => {
+  const body = buildSetterAlertBody({
+    client: { first_name: "Pat", phone: "+15551234567", custom_fields: { cf_svy_planned_use_label: "Expansion" } },
+    booking: { startTime: "2026-10-28T21:00:00Z", timezone: "America/Phoenix" }
+  });
+  assert.match(body, /Pat/);
+  assert.match(body, /Dial within 60 seconds/);
+  assert.match(body, /Expansion/);
+  assert.doesNotMatch(body, /deposit|commission|Funding, done-for-you/i);
+});
+
 test("fundingPayFromRules uses live closer deposit percent", () => {
   const pay = fundingPayFromRules([
     { role: "closer", amount_basis: "deposit_collected", percent: 16.6667 }
@@ -81,8 +96,10 @@ test("fundingPayFromRules uses live closer deposit percent", () => {
   assert.equal(pay.closerDepositCents, 50000);
 });
 
-test("queueStaffBookedAlerts: switch off queues nothing; on queues one staff row not a client confirm", async () => {
+test("queueStaffBookedAlerts: enabled owner and setter each get one role-safe alert", async () => {
   const messages = [];
+  const drains = [];
+  const refs = new Set();
   const db = {
     async query(sql, params = []) {
       if (/FROM message_templates/.test(sql)) {
@@ -91,7 +108,8 @@ test("queueStaffBookedAlerts: switch off queues nothing; on queues one staff row
       if (/FROM staff/.test(sql)) {
         return { rows: [
           { id: "st-1", role: "owner", phone: "+15551111", notify_booked_call_sms: true },
-          { id: "st-2", role: "closer", phone: "+15552222", notify_booked_call_sms: false }
+          { id: "st-2", role: "closer", phone: "+15552222", notify_booked_call_sms: false },
+          { id: "st-3", role: "setter", phone: "+15553333", notify_booked_call_sms: true }
         ] };
       }
       if (/FROM clients/.test(sql)) {
@@ -106,6 +124,8 @@ test("queueStaffBookedAlerts: switch off queues nothing; on queues one staff row
         ] };
       }
       if (/INSERT INTO messages/.test(sql)) {
+        if (refs.has(params[4])) return { rows: [] };
+        refs.add(params[4]);
         messages.push({
           orgId: params[0], clientId: params[1], template: params[2],
           body: params[3], ref: params[4], to: params[5]
@@ -117,12 +137,39 @@ test("queueStaffBookedAlerts: switch off queues nothing; on queues one staff row
   };
   const out = await queueStaffBookedAlerts(db, {
     orgId: "org-1", clientId: "cl-1", eventId: "evt-1",
-    payload: { startTime: "2026-08-25T21:00:00.000Z", name: "Pat Lee" }
+    payload: { startTime: "2026-08-25T21:00:00.000Z", name: "Pat Lee" },
+    drainNowImpl: async (_db, id, options) => {
+      drains.push({ id, orgId: options.orgId });
+      return { sent: 1 };
+    }
   });
-  assert.equal(out.queued, 1);
-  assert.equal(messages.length, 1);
+  assert.equal(out.queued, 2);
+  assert.equal(out.sent, 2);
+  assert.deepEqual(drains, [
+    { id: "m-1", orgId: "org-1" },
+    { id: "m-2", orgId: "org-1" }
+  ]);
+  assert.equal(messages.length, 2);
   assert.equal(messages[0].template, STAFF_BOOKED_TEMPLATE);
   assert.equal(messages[0].to, "+15551111");
   assert.match(messages[0].body, /Pat Lee/);
   assert.match(messages[0].ref, /st-1/);
+  assert.equal(messages[1].to, "+15553333");
+  assert.match(messages[1].body, /Dial within 60 seconds/);
+  assert.doesNotMatch(messages[1].body, /deposit|commission/i);
+  assert.match(messages[1].ref, /st-3/);
+
+  const replay = await queueStaffBookedAlerts(db, {
+    orgId: "org-1", clientId: "cl-1", eventId: "evt-1",
+    drainNowImpl: async () => { throw new Error("replay must not drain"); }
+  });
+  assert.deepEqual(replay, { queued: 0, sent: 0 });
+  assert.equal(messages.length, 2);
+
+  const deferred = await queueStaffBookedAlerts(db, {
+    orgId: "org-1", clientId: "cl-1", eventId: "evt-2",
+    drainNowImpl: async () => ({ ran: false, reason: "paused", sent: 0 })
+  });
+  assert.deepEqual(deferred, { queued: 2, sent: 0 });
+  assert.equal(messages.length, 4);
 });
