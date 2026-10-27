@@ -26,6 +26,11 @@ function floorDb({ tasks = [], unrecorded = [] } = {}) {
     async query(sql) {
       const s = String(sql);
       if (/FROM tasks t/.test(s) && /assignee_role = 'closer'/.test(s)) return { rows: tasks };
+      // Count queries return one aggregate row; the detail query returns the
+      // capped list. Keep both sourced from the same fake call outcomes.
+      if (/SELECT\s+count\(\*\)::int\s+AS\s+total/i.test(s) && /FROM call_outcomes o/.test(s)) {
+        return { rows: [{ total: unrecorded.length }] };
+      }
       if (/\(o\.recording_url IS NULL OR btrim\(o\.recording_url\) = ''\)/.test(s)) return { rows: unrecorded };
       return { rows: [] };
     },
@@ -72,6 +77,7 @@ test("floor discipline: what the real read sends is what the page prints, dashes
   // The real read's own shape for the three lines that print a dash: no number, an empty detail list.
   assert.equal(data.discipline.unlogged_calls, 2);
   assert.equal(data.discipline.unrecorded_calls, 1);
+  assert.equal(data.unrecorded.count, data.discipline.unrecorded_calls, "detail and discipline use one uncapped total");
   assert.equal(data.discipline.shifts_started_late, null);
   assert.deepEqual(data.discipline.shifts_detail, []);
   assert.equal(data.discipline.followups_overdue, null);
