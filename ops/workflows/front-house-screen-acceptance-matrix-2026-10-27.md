@@ -117,6 +117,29 @@ These are starting controls only; **complete all dynamic controls and tab/subpag
 | Decline / no show / callback | Explicit disposition, nonpurchase routing, referral vs follow-up split, deduplicated recovery, read-after-refresh on seller and manager desks | **NOT LIVE PROVED** |
 | Recording and metrics | Exact call recording -> Drive -> words -> context; no false alarms; displayed counts per role agree; sim records never present as real funded cash | **NOT LIVE PROVED** |
 
+## Paid sale and recording-count follow-up — October 27, 2026
+
+**Paid fulfillment entry — FAIL in code review, fix proposed, NOT LIVE PROVED.**
+`src/handlers/purchase-routing.mjs` previously interpreted any active `sales` row as a purchased
+funding/repair product, without checking its actual sale payments. An unrelated
+`payment.received` event could therefore route a signed-but-unpaid client to fulfillment.
+PR [#154](https://github.com/ZootimusMaximusSupreme/fundhub-platform/pull/154)
+introduces a same-sale, same-org positive net front-end payment requirement
+(deposits + installments - refunds; success fees excluded) with a real-Postgres
+regression covering unpaid funding, unpaid repair, fee-only and fully refunded sales.
+**Proof pending CI and deployment; do not treat this as a verified purchase handoff.**
+
+**Sales Floor recording totals — failing fixture diagnosed, repair proposed, NOT LIVE PROVED.**
+PR [#151](https://github.com/ZootimusMaximusSupreme/fundhub-platform/pull/151)
+uncaps the true missing-recording total but exposed an older canned-DB proof
+that does not mock its aggregate query. CI run `40540991198` / unit shard 0/6
+reproduced `0 !== 1` in `fin-b20-repair-floor.test.mjs:74`.
+Test-only PR [#153](https://github.com/ZootimusMaximusSupreme/fundhub-platform/pull/153)
+adds the aggregate fixture and cross-panel equality check. Passing provider
+Drive-to-call evidence and staff-screen truth remain **NOT LIVE PROVED**.
+
+All eight cross-role gates above still require final independent evidence.
+
 ## Coverage rule
 
 No screen, control, or cross-role path may be called fully PASS merely because its source file exists, an isolated assertion passed, or a signed-in screenshot renders. Required live-provider receipts not safely obtainable remain **NOT LIVE PROVED**. Continue repairing independent code defects in isolated PRs while retaining this honest boundary.
