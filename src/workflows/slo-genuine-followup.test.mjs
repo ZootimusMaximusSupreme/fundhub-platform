@@ -236,6 +236,31 @@ test("handleM1: email-only opt-in still queues the dig email", async () => {
   assert.deepEqual(db.messages.map((m) => m.template_key), [EMAIL_M1_KEY]);
 });
 
+test("handleM1: a booked client gets no SLO follow-up", async () => {
+  const db = genuineDb({
+    clients: [{ id: "cl-1", org_id: "org-1", email: "pat@gmail.com", phone: "+14155550134", custom_fields: { call_outcome: "booked" } }],
+    templates: templates()
+  });
+  const res = await handleM1({ event: ev("slo.contact_started", personPayload), db, step: fakeStep() });
+  assert.equal(res.reason, "booked_call_reply");
+  assert.equal(db.messages.length, 0);
+  assert.equal(db.clients[0].custom_fields[LOCK_M1], undefined);
+});
+
+test("handleCheckoutM1Sms: a confirmed client gets no SLO catch-up text", async () => {
+  const db = genuineDb({
+    clients: [{ id: "cl-1", org_id: "org-1", email: "pat@gmail.com", phone: "+14155550134", custom_fields: { call_confirmed: true } }],
+    templates: templates()
+  });
+  const res = await handleCheckoutM1Sms({
+    event: ev("slo.checkout_started", { email: "pat@gmail.com", client_id: "cl-1", actor: "person" }, { clientId: "cl-1" }),
+    db, step: fakeStep()
+  });
+  assert.equal(res.reason, "booked_call_reply");
+  assert.equal(db.messages.length, 0);
+  assert.equal(db.clients[0].custom_fields[LOCK_M1], undefined);
+});
+
 test("handleCheckoutM1Sms: full M1 when phone lands at checkout and nothing was sent", async () => {
   const db = genuineDb({
     clients: [{
@@ -301,6 +326,25 @@ test("handleReply: does not send message 2 until message 1 was sent", async () =
   });
   assert.equal(res.reason, "not_awaiting_m2");
   assert.equal(db.messages.length, 0);
+});
+
+test("handleReply: booked call replies never enter an old SLO reply lane", async () => {
+  for (const fields of [
+    { call_outcome: "booked", slo_text_slot: "1" },
+    { call_confirmed: true, slo_text_slot: "1" }
+  ]) {
+    const db = genuineDb({
+      clients: [{ id: "cl-1", org_id: "org-1", phone: "+14155550134", custom_fields: fields }],
+      templates: templates()
+    });
+    const res = await handleReply({
+      event: ev("message.inbound", { from: "+14155550134", body: "CONFIRM", channel: "sms" }, { clientId: "cl-1" }),
+      db, step: fakeStep()
+    });
+    assert.equal(res.reason, "booked_call_reply");
+    assert.equal(db.messages.length, 0);
+    assert.equal(db.clients[0].custom_fields.slo_genuine_replied_at, undefined);
+  }
 });
 
 test("handleReply: after a real answer, the gift becomes the 33% coupon", async () => {

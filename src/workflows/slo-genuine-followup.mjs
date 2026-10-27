@@ -208,6 +208,11 @@ export async function handleM1({ event, db, step }) {
     hasPaidDiagnostic(db, { orgId, email: gate.email, clientId }));
   if (stillPaid) return { done: true, sent: false, reason: "already_paid" };
 
+  const fields = await step.run("read-call-state", () => clientFields(db, clientId));
+  if (fields.call_outcome === "booked" || fields.call_confirmed === true) {
+    return { done: false, sent: false, reason: "booked_call_reply" };
+  }
+
   const claimed = await step.run("claim-m1", () =>
     claimCustomFieldLock(db, clientId, LOCK_M1));
   if (!claimed) return { done: false, reason: "already_sent_m1" };
@@ -259,6 +264,9 @@ export async function handleCheckoutM1Sms({ event, db, step }) {
   if (paid) return { done: true, sent: false, reason: "already_paid" };
 
   const fields = await step.run("read-fields", () => clientFields(db, clientId));
+  if (fields.call_outcome === "booked" || fields.call_confirmed === true) {
+    return { done: false, sent: false, reason: "booked_call_reply" };
+  }
   const eventId = event.id;
 
   // Full M1 never claimed — send dig email + SMS (no 15m wait; they already reached checkout).
@@ -396,10 +404,13 @@ export async function handleReply({ event, db, step }) {
   const clientId = await step.run("resolve-client", () => resolveReplyClient(db, event));
   if (!clientId) return { done: false, reason: "no_client" };
 
+  const fields = await step.run("read-lane", () => clientFields(db, clientId));
+  if (fields.call_outcome === "booked" || fields.call_confirmed === true) {
+    return { done: false, reason: "booked_call_reply" };
+  }
+
   await step.run("mark-replied", () =>
     mergeCustomFields(db, clientId, { [REPLIED_KEY]: new Date().toISOString() }));
-
-  const fields = await step.run("read-lane", () => clientFields(db, clientId));
   if (fields[SLOT_KEY]) {
     return handleFirstFiveReply({
       event, db, step, clientId, body: payload.body
