@@ -342,7 +342,10 @@ test("the four L3 contracts exercise the promised final result", { timeout: 120_
       await page.addInitScript(() => {
         localStorage.setItem("fh_token", "proof-client-token");
         const realSetTimeout = window.setTimeout.bind(window);
-        window.setTimeout = (fn, delay, ...args) => realSetTimeout(fn, Math.min(Number(delay) || 0, 5), ...args);
+        // Accelerate only the 3-second polling gap. Keep the network
+        // watchdog at 8 seconds so a real response can complete first.
+        window.setTimeout = (fn, delay, ...args) =>
+          realSetTimeout(fn, Number(delay) === 3000 ? 5 : delay, ...args);
       });
       await page.route("https://**", (route) => route.abort("blockedbyclient"));
       await page.route("**/api/read/entitlements**", async (route) => {
