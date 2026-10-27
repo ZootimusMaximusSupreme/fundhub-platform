@@ -2,7 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { readFileSync } from "node:fs";
-import { buildScenarioPayload, assertBusinessScenarioSafe, saveScenarioBusinesses } from "./push-credit.mjs";
+import { buildScenarioPayload, assertBusinessScenarioSafe, assertCrmOnlyTarget, saveScenarioBusinesses,
+  runCrmOnlyScenario, SIMULATED_BUYER_IDENTITY } from "./push-credit.mjs";
 import { BUSINESS_SCENARIOS, buildBusinessScenario } from "./crs-scenarios.mjs";
 import { runTierEngineFromCrsResult } from "../../src/finance/crs-tier.mjs";
 import { scoreBuyerTotal } from "../../src/finance/crs-pull.mjs";
@@ -184,6 +185,56 @@ test("the CLI scenario fence refuses production URLs and non-sim people before a
   await assert.rejects(saveScenarioBusinesses(db, { ...safe, databaseUrl: "postgres://test:test@prod.example/fundhub", orgId: "org", clientId: "client", businesses: [] }), /local scratch database/);
   await assert.rejects(saveScenarioBusinesses(db, { ...safe, orgId: "org", clientId: "client", businesses: [] }), /do not match/);
   assert.equal(called, 0, "the guard must run before DELETE or INSERT");
+});
+
+test("CRM-only production fence requires the exact fictional buyer and no SLO route", async () => {
+  const productionUrl = "postgres://test:test@prod.example/fundhub";
+  const email = "buyer+sim-01@example.invalid";
+  const valid = { id: "sim-client", first_name: "Simulated", last_name: "Buyer",
+    email, ghl_contact_id: "already-linked", custom_fields: {} };
+  assert.doesNotThrow(() => assertCrmOnlyTarget(valid, email));
+  assert.throws(() => assertCrmOnlyTarget({ ...valid, first_name: "Real" }, email), /Simulated Buyer/);
+  assert.throws(() => assertCrmOnlyTarget({ ...valid, custom_fields: { slo_ref: "ref" } }, email), /no SLO/);
+  assert.doesNotThrow(() => assertCrmOnlyTarget({ ...valid, ghl_contact_id: null }, email));
+  assert.throws(() => assertCrmOnlyTarget(valid, "buyer@example.invalid"), /\+sim/);
+  assert.equal(SIMULATED_BUYER_IDENTITY.first, "Simulated");
+  assert.equal(SIMULATED_BUYER_IDENTITY.last, "Buyer");
+  assert.doesNotMatch(JSON.stringify(SIMULATED_BUYER_IDENTITY), /Stanbridge|Chris/i);
+
+  const statements = [];
+  const db = { async query(sql) {
+    statements.push(String(sql));
+    if (/SELECT id, first_name/.test(sql)) return { rows: [{ ...valid, first_name: "Real" }] };
+    throw new Error("unexpected query");
+  } };
+  await assert.rejects(runCrmOnlyScenario(db, {
+    orgId: "org", email, profileKey: "fundable", businessScenario: "two_clean",
+    databaseUrl: productionUrl
+  }), /Simulated Buyer/);
+  assert.equal(statements.length, 1, "non-sim client must fail before business or CRS write");
+});
+
+test("CRM-only dry run scores the fictional person and never writes or calls handlers", async () => {
+  const email = "buyer+sim-02@example.invalid";
+  const seen = [];
+  const db = { async query(sql) {
+    const q = String(sql);
+    seen.push(q);
+    if (/SELECT id, first_name/.test(q)) return { rows: [{
+      id: "sim-client", first_name: "Simulated", last_name: "Buyer", email,
+      ghl_contact_id: "already-linked", custom_fields: {}
+    }] };
+    if (/SELECT count\(\*\)::int AS n FROM businesses/.test(q)) return { rows: [{ n: 0 }] };
+    throw new Error(`unexpected dry-run query: ${q.slice(0, 80)}`);
+  } };
+  const result = await runCrmOnlyScenario(db, {
+    orgId: "org", email, profileKey: "fundable", businessScenario: "two_clean",
+    databaseUrl: "postgres://test:test@prod.example/fundhub", dry: true
+  });
+  assert.equal(result.dry, true);
+  assert.equal(result.businessCount, 2);
+  assert.ok(result.fundingEstimate > 0);
+  assert.equal(seen.length, 2);
 });
 
 test("scratch business identities use the existing businesses row shape and only replace earlier fixture rows", async () => {

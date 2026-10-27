@@ -200,6 +200,16 @@ test("resolveClient: explicit clientId wins, no db insert", async () => {
   assert.equal(db.clients.length, 0);
 });
 
+test("guarded sample decision uses its existing client without external CRM sync", async () => {
+  const queries = [];
+  const db = { async query(sql) { queries.push(sql); throw new Error("unexpected CRM query"); } };
+  const id = await resolveClient(db,
+    ev("analysis.completed", { simulated: true }, { clientId: "sim-client" }),
+    { skipCrmLink: true });
+  assert.equal(id, "sim-client");
+  assert.deepEqual(queries, []);
+});
+
 test("entry.captured: creates client once, idempotent on re-run", async () => {
   const db = pgFake();
   await onEntryCaptured(ev("entry.captured", { email: "Jane@X.com", name: "Jane Doe", source: "clickfunnels" }), db);

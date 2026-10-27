@@ -42,6 +42,7 @@ function cockpit(over = {}) {
       { key: "FUNDING_DFY", name: "Funding done for you", priceDisplay: "$5,000" },
       { key: "SOFT_PULL", name: "Diagnostic soft pull", priceDisplay: "$32" },
       { key: "REPAIR_TRIAL", name: "Repair trial", priceDisplay: "$197" },
+      { key: "UWIQ_DELIVERABLES", name: "Capital Blueprint", priceDisplay: "$5,000" },
     ],
     gone_quiet: { unlogged: [], quiet_deposits: [] },
     dispositions: {
@@ -53,6 +54,41 @@ function cockpit(over = {}) {
 }
 
 const URL_WITH_CLIENT = `/app/closer-dashboard.html?client_id=${CLIENT_ID}`;
+
+test("an off-shift closer can clock in from the call before replying", async ({ page }) => {
+  let onShift = false;
+  const actions = [];
+  await openScreen(page, URL_WITH_CLIENT, CLOSER, readHandlers({
+    "/api/read/closer-call": () => cockpit({
+      staff: { id: "staff-2", name: "Casey Reed", shift: { on_shift: onShift, reason: "Off shift" } },
+    }),
+    "/api/shifts": (route, { method }) => {
+      if (method !== "POST") return json(route, { ok: true, shift: null });
+      const action = JSON.parse(route.request().postData() || "{}").action;
+      actions.push(action);
+      onShift = action === "clock_in";
+      return json(route, { ok: true, shift: { id: "shift-1" } });
+    },
+  }));
+  await expect(page.locator("[data-fh-call-head] .chip")).toContainText("Off shift");
+  await page.locator("#fh-shift-toggle").click();
+  await expect(page.locator("[data-fh-call-head] .chip")).toContainText("On shift");
+  await expect(page.locator("#fh-shift-toggle")).toHaveText("Clock out");
+  expect(actions).toEqual(["clock_in"]);
+});
+
+test("sample credit labels funding bands and lender matches as sample", async ({ page }) => {
+  await openScreen(page, URL_WITH_CLIENT, CLOSER, readHandlers({
+    "/api/read/closer-call": cockpit({
+      credit: { available: true, sample: true, scores: { EX: 771 } },
+      underwrite: { matched_lenders: 20, lite_banner_funding: 110000,
+        totals: { total_personal_funding: 212000, total_combined_funding: 410000 } },
+    }),
+  }));
+  await expect(page.locator(".funding-estimate .source-label")).toHaveText("Sample UnderwriteIQ estimate");
+  await expect(page.locator(".bands .band .bn").first()).toContainText("Sample estimate");
+  await expect(page.locator(".lever")).toContainText("Sample file · 20 lenders");
+});
 
 function readHandlers(over = {}) {
   return {
@@ -207,21 +243,21 @@ test.describe("closer dashboard: the pay link panel", () => {
     await expect(page.locator("#fh-pay-panel")).toHaveCount(0);
   });
 
-  test("a primary offer asks for no downsell or upsell, and sends the chosen offer with no motion", async ({ page }) => {
+  test("a first soft pull asks for no downsell or upsell, and sends with no motion", async ({ page }) => {
     const { posted } = await openCall(page);
     await page.locator("#fh-pay-link").click();
     await expect(page.locator("#fh-pay-motion-field")).toBeHidden();
-    await page.locator("#fh-pay-offer").selectOption("REPAIR_TRIAL");
+    await page.locator("#fh-pay-offer").selectOption("SOFT_PULL");
     await expect(page.locator("#fh-pay-motion-field")).toBeHidden();
     await page.locator("#fh-pay-go").click();
     await expect(page.locator("#fh-pay-msg")).toContainText("Sent");
-    expect(posted).toEqual([{ action: "send_pay_link", client_id: CLIENT_ID, offer_key: "REPAIR_TRIAL", sale_motion: null }]);
+    expect(posted).toEqual([{ action: "send_pay_link", client_id: CLIENT_ID, offer_key: "SOFT_PULL", sale_motion: null }]);
   });
 
   test("an alternate offer needs downsell or upsell: with none chosen nothing is sent, with one chosen it goes in the write", async ({ page }) => {
     const { posted } = await openCall(page);
     await page.locator("#fh-pay-link").click();
-    await page.locator("#fh-pay-offer").selectOption("SOFT_PULL");
+    await page.locator("#fh-pay-offer").selectOption("UWIQ_DELIVERABLES");
     await expect(page.locator("#fh-pay-motion-field")).toBeVisible();
     await page.locator("#fh-pay-go").click();
     await expect(page.locator("#fh-pay-msg")).toContainText("Choose downsell or upsell");
@@ -229,13 +265,13 @@ test.describe("closer dashboard: the pay link panel", () => {
     await page.locator("#fh-pay-motion").selectOption("upsell");
     await page.locator("#fh-pay-go").click();
     await expect(page.locator("#fh-pay-msg")).toContainText("Sent");
-    expect(posted).toEqual([{ action: "send_pay_link", client_id: CLIENT_ID, offer_key: "SOFT_PULL", sale_motion: "upsell" }]);
+    expect(posted).toEqual([{ action: "send_pay_link", client_id: CLIENT_ID, offer_key: "UWIQ_DELIVERABLES", sale_motion: "upsell" }]);
   });
 
   test("a motion chosen for an alternate offer is dropped when a primary offer is picked again", async ({ page }) => {
     const { posted } = await openCall(page);
     await page.locator("#fh-pay-link").click();
-    await page.locator("#fh-pay-offer").selectOption("SOFT_PULL");
+    await page.locator("#fh-pay-offer").selectOption("UWIQ_DELIVERABLES");
     await page.locator("#fh-pay-motion").selectOption("downsell");
     await page.locator("#fh-pay-offer").selectOption("FUNDING_DFY");
     await expect(page.locator("#fh-pay-motion-field")).toBeHidden();

@@ -249,6 +249,7 @@
     var credit = data.credit || {};
     var precall = data.precall || {};
     var deal = data.deal || {};
+    text($(".funding-estimate .source-label"), credit.sample === true ? "Sample UnderwriteIQ estimate" : "UnderwriteIQ");
 
     text($("[data-fh-call-head] .eyebrow"), "Live call");
     var shiftChip = $("[data-fh-call-head] .chip");
@@ -260,6 +261,12 @@
         shiftChip.className = "chip";
         shiftChip.innerHTML = '<span class="cd"></span>' + (staff.shift && staff.shift.reason ? staff.shift.reason : "Off shift");
       }
+    }
+    var shiftToggle = document.getElementById("fh-shift-toggle");
+    if (shiftToggle) {
+      shiftToggle.textContent = staff.shift && staff.shift.on_shift ? "Clock out" : "Clock in";
+      shiftToggle.dataset.action = staff.shift && staff.shift.on_shift ? "clock_out" : "clock_in";
+      shiftToggle.hidden = false;
     }
     var nameChip = $("[data-fh-call-staff]");
     if (nameChip) nameChip.innerHTML = '<span class="cd" style="background:var(--info)"></span>' + (staff.name || "Closer");
@@ -299,11 +306,11 @@
          the reason why, and the reason is what shows. */
       var uw = data.underwrite || {};
       var n = uw.matched_lenders;
-      lever.textContent = (n == null)
+      lever.textContent = (credit.sample === true ? "Sample file · " : "") + ((n == null)
         ? (uw.lenders_reason || "Funding bands stay a dash until the report has a number.")
         : (n === 0
           ? "No lenders match this file yet."
-          : n + " lender" + (n === 1 ? "" : "s") + " match this file.");
+          : n + " lender" + (n === 1 ? "" : "s") + " match this file."));
     }
     paintUnderwrite(data.underwrite || {}, credit);
 
@@ -662,7 +669,7 @@
 
      COMPLIANCE REVIEW REQUIRED - this control mints a payment link.
      ------------------------------------------------------------------------- */
-  var PRIMARY_PAY_OFFERS = ["FUNDING_DFY", "REPAIR_DFY", "REPAIR_TRIAL", "FUNDING_MASTERY"];
+  var PRIMARY_PAY_OFFERS = ["SOFT_PULL", "FUNDING_DFY", "REPAIR_DFY", "REPAIR_TRIAL", "FUNDING_MASTERY"];
 
   function wirePayLink() {
     var btn = document.getElementById("fh-pay-link");
@@ -883,7 +890,7 @@
         reason = note;
       }
       if (bv) bv.textContent = value;
-      if (bn) bn.textContent = reason;
+      if (bn) bn.textContent = pullOnFile && credit.sample === true ? "Sample estimate · " + reason : reason;
     }
     setBand(0, cons, "Conservative");
     setBand(1, real, "Realistic · round 1");
@@ -916,6 +923,18 @@
   async function boot() {
     wirePresent();
     if (!window.FHData) { setEmpty("data.js failed to load", "error"); return; }
+    var shiftToggle = document.getElementById("fh-shift-toggle");
+    if (shiftToggle) shiftToggle.addEventListener("click", async function () {
+      var action = shiftToggle.dataset.action;
+      if (!action || shiftToggle.disabled) return;
+      shiftToggle.disabled = true;
+      var result = await window.FHData.write("/api/shifts", { action: action });
+      if (result.ok) location.reload();
+      else {
+        shiftToggle.disabled = false;
+        window.FHData.explain(result, action === "clock_in" ? "clocking in" : "clocking out");
+      }
+    });
     loadSessionStaff();
     hideLiveControls();
     var q = new URLSearchParams(location.search);
