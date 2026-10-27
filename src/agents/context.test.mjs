@@ -70,6 +70,14 @@ test("completed setter handoff is available to the closer and Present context", 
   assert.match(ctx.as_prompt_block, /Open a second location/);
 });
 
+test("an unfinished setter checklist stays off the closer context", async () => {
+  const ctx = await fetchContext(mockDb({ customFields: {
+    setter_handoff: { problem: "Draft problem", goal: "Draft goal" }
+  } }), { orgId: ORG, clientId: CLIENT });
+  assert.equal(ctx.setter_handoff, null);
+  assert.doesNotMatch(ctx.as_prompt_block, /Setter handoff|Draft problem|Draft goal/);
+});
+
 test("fetchContext includes interview answers and the recording link", async () => {
   const ctx = await fetchContext(mockDb({
     insights: [{

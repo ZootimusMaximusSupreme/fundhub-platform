@@ -106,7 +106,7 @@ function mapItem(row, staff) {
     created_at: row.created_at,
     booked_at: row.booked_at || null,
     booking_time: row.booking_time || null,
-    target_dial_by: targetDialBy(row.created_at),
+    target_dial_by: targetDialBy(booked ? row.booked_at : row.created_at),
     needs_work: row.done !== true,
     survey: surveySummary(cf),
     setter_handoff: handoff,

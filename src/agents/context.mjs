@@ -255,7 +255,8 @@ export async function fetchContext(db, {
       status: m.status || null, provider: m.provider || null, provider_ref: m.provider_ref || null
     })),
     survey,
-    setter_handoff: clientRow?.custom_fields?.setter_handoff || null,
+    setter_handoff: clientRow?.custom_fields?.setter_handoff?.complete_at
+      ? clientRow.custom_fields.setter_handoff : null,
     client: clientRow
       ? {
           id: clientRow.id,

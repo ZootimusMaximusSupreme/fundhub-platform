@@ -125,6 +125,14 @@ test("queue returns booked and opt-in leads with survey echo and saved handoff",
   assert.ok(result.items[0].survey.some(x => x.answer === "Open a shop"));
 });
 
+test("booked lead dial target starts from booking time, not its earlier opt-in task", async () => {
+  const db = { async query() { return { rows: [{ client_id: CLIENT_ID, first_name: "Pat",
+    created_at: "2026-10-26T16:00:00Z", booked_at: "2026-10-26T20:00:00Z",
+    booking_time: "2026-10-28T19:00:00Z", custom_fields: {} }] }; } };
+  const result = await listSetterQueue(db, STAFF);
+  assert.equal(result.items[0].target_dial_by, "2026-10-26T20:01:00.000Z");
+});
+
 test("setter can save only an assigned or unclaimed task and claims it", async () => {
   const { db, client } = fakeDb();
   const setter = { id: "staff-2", org_id: STAFF.org_id, role: "setter", name: "Alex" };
