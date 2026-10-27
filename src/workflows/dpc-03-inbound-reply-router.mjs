@@ -56,9 +56,15 @@ function parseDecision(body) {
 // cf_call_outcome is still "booked" a YES is a call confirmation, otherwise it is the
 // purchase decision. The old gate read `dpc03_awaiting_decision`, a field NOTHING in the
 // repo ever writes — so the YES purchase branch was permanently unreachable.
-async function callState(db, clientId) {
-  const r = await db.query(`SELECT custom_fields FROM clients WHERE id = $1`, [clientId]);
-  const cf = r.rows[0]?.custom_fields || {};
+async function callState(db, orgId, clientId) {
+  // An inbound event may carry an untrusted clientId. Verify it belongs to the
+  // event's company BEFORE writing any decision, tag, task or outbound message.
+  const r = await db.query(
+    `SELECT custom_fields FROM clients WHERE id = $1 AND org_id = $2`,
+    [clientId, orgId]
+  );
+  if (!r.rows[0]) return null;
+  const cf = r.rows[0].custom_fields || {};
   return { callOutcome: cf.call_outcome || null, hardStopped: Boolean(cf.hard_stop_reason) };
 }
 
@@ -83,7 +89,10 @@ export async function handle({ event, db, step, drainNowImpl = drainMessageNow }
   const clientId = event.clientId || await step.run("resolve-client", () => findClientByPhone(db, event.orgId, event.payload?.from));
   if (!clientId) return { done: false, reason: "no_client" };
 
-  const state = await step.run("check-call-state", () => callState(db, clientId));
+  // New step ID prevents an in-flight retry from reusing a pre-guard result.
+  const state = await step.run("check-call-state-org-scoped", () =>
+    callState(db, event.orgId, clientId));
+  if (!state) return { done: false, reason: "client_not_in_org" };
 
   // Doc 179 + Part B 154: a hard-stopped contact is out of the pipeline. DPC-04's
   // contract+payment task was merged into this file without that gate, so a fraud or
