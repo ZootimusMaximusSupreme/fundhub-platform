@@ -115,11 +115,11 @@ export const s05aNoShowRecovery = inngest.createFunction(
     cancelOn: [
       {
         event: "booking.created",
-        if: "event.data.payload.email != null && event.data.payload.email == async.data.payload.email"
+        if: "event.data.orgId != null && event.data.orgId == async.data.orgId && event.data.payload.email != null && event.data.payload.email == async.data.payload.email"
       },
       {
         event: "booking.rescheduled",
-        if: "event.data.payload.email != null && event.data.payload.email == async.data.payload.email"
+        if: "event.data.orgId != null && event.data.orgId == async.data.orgId && event.data.payload.email != null && event.data.payload.email == async.data.payload.email"
       }
     ]
   },
