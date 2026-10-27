@@ -44,19 +44,35 @@ async function privateOrg(client, sql = SQL) {
   return { id, sql: sql.replace(ORG_FILTER, ` WHERE o.slug = '${slug}'\n`) };
 }
 
-/* Test 1 compares 497's rows with freshly staged seed rows; sort both by key in
-   code-point order so the comparison never depends on how either side was ordered. */
+/* Test 1 compares 497's rows with the seed copy available when 497 was written.
+   Seed 298 intentionally updates the booking email later; the historical
+   insert-only migration must remain unchanged. */
 const byKey = (rows) => [...rows].sort((a, b) => (a.template_key < b.template_key ? -1 : a.template_key > b.template_key ? 1 : 0));
 
 const snapshot = async (client, orgId) => (await client.query(
   `SELECT ctid::text AS ctid, ${FIELDS} FROM message_templates WHERE org_id = $1 ORDER BY template_key`, [orgId]
 )).rows;
 
-test("497 carries exactly the copy the repo's SQL seeds produce", { skip: SKIP }, async () => {
+test("497 carries exactly the seed copy it originally restored", { skip: SKIP }, async () => {
   await inRollback(async (client) => {
-    const staged = await stageSeedRows(client, { root: ROOT });
+    const staged = await stageSeedRows(client, {
+      root: ROOT,
+      excludeFiles: ["db/seed/298_s04_booking_app_confirm_email.sql"]
+    });
     assert.equal(staged.length, RESTORE_KEYS.length);
     assert.deepEqual(byKey(ROWS), byKey(staged));
+  });
+});
+
+test("seed 298 updates the booking email after the historical restore", { skip: SKIP }, async () => {
+  await inRollback(async (client) => {
+    const staged = await stageSeedRows(client, { root: ROOT });
+    const email = staged.find((row) => row.template_key === "EMAIL-S04-01-CONFIRM");
+    assert.ok(email);
+    assert.match(email.body, /\{\{app_download\.url\}\}/);
+    assert.match(email.body, /\{\{call_confirm\.url\}\}/);
+    assert.match(email.body, /\{\{web_portal\.url\}\}/);
+    assert.notEqual(email.body, ROWS.find((row) => row.template_key === email.template_key).body);
   });
 });
 

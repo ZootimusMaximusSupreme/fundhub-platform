@@ -10,10 +10,8 @@
 -- guarantees — confirmation of a scheduled call only.
 -- Key matches EMAIL_CONFIRM in src/workflows/s-04b-booking-reminders.mjs.
 -- Merge tags: {{contact.first_name}}, {{appointment.start_time}},
---             {{custom_values.booking_link}},
---             {{call_confirm.url}} (365-day single-use booking token),
---             {{app_download.url}} (Fundhub app-first download page),
---             {{web_portal.url}} (Fundhub web sign-in)
+--             {{appointment.meeting_location}}, {{custom_values.booking_link}},
+--             {{magic_link.url}} (365-day single-use booking token)
 
 INSERT INTO message_templates (org_id, template_key, channel, subject, body, compliance_passed)
 SELECT
@@ -27,7 +25,7 @@ SELECT
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
-<title>Your Fundhub call is booked</title>
+<title>Your Fundhub call is confirmed</title>
 </head>
 <body style="margin:0;padding:0;background-color:#F4F4F5;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#F4F4F5;">
@@ -37,18 +35,20 @@ SELECT
         <tr>
           <td style="padding:28px 28px 8px 28px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.55;color:#18181B;">
             <p style="margin:0 0 16px 0;">Hey {{contact.first_name}},</p>
-            <p style="margin:0 0 16px 0;"><strong>Congratulations — your Fundhub call is booked.</strong> Here are the details:</p>
+            <p style="margin:0 0 16px 0;"><strong>You're booked.</strong> Here are the details:</p>
             <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 20px 0;border:1px solid #E4E4E7;">
               <tr>
                 <td style="padding:12px 16px;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#52525B;width:120px;">When</td>
                 <td style="padding:12px 16px;font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#18181B;"><strong>{{appointment.start_time}}</strong></td>
               </tr>
+              <tr>
+                <td style="padding:12px 16px;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#52525B;border-top:1px solid #E4E4E7;">Where</td>
+                <td style="padding:12px 16px;font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#18181B;border-top:1px solid #E4E4E7;">{{appointment.meeting_location}}</td>
+              </tr>
             </table>
-            <p style="margin:0 0 16px 0;"><strong>1. Get the iPhone app.</strong> Download Fundhub Portal to see your call and confirm you can make it.</p>
-            <p style="margin:0 0 16px 0;"><a href="{{app_download.url}}" style="display:inline-block;padding:12px 20px;background:#18181B;color:#FFFFFF;text-decoration:none;font-weight:bold;">Download Fundhub Portal</a></p>
-            <p style="margin:0 0 16px 0;"><strong>2. Confirm your call.</strong> Sign in and press Confirm my call. If you use Android or a computer, you can open your account in the <a href="{{web_portal.url}}" style="color:#1D4ED8;">Fundhub web portal</a>.</p>
-            <p style="margin:0 0 16px 0;"><a href="{{call_confirm.url}}" style="color:#1D4ED8;">Confirm my call</a></p>
-            <p style="margin:0 0 16px 0;">We'll text you to confirm your call and be in touch before it starts. Reply to our text if you have questions.</p>
+            <p style="margin:0 0 16px 0;">Here is your link to sign in to your Fundhub portal:</p>
+            <p style="margin:0 0 16px 0;"><a href="{{magic_link.url}}" style="color:#1D4ED8;">{{magic_link.url}}</a></p>
+            <p style="margin:0 0 16px 0;">A member of the Fundhub team will walk you through your file and the options it supports. Nothing to prepare — just be somewhere you can talk.</p>
             <p style="margin:0 0 16px 0;">Need a different time? <a href="{{custom_values.booking_link}}" style="color:#1D4ED8;">Reschedule here</a>.</p>
             <p style="margin:0 0 8px 0;">See you then,<br>The Fundhub Team</p>
           </td>

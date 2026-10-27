@@ -39,6 +39,10 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..")
 export const MIGRATION = "db/migrations/497_restore_missing_sql_templates.sql";
 export const ORG_SLUG = "fundhub";
 export const STAGE_TABLE = "fh_tpl_restore_stage";
+// Migration 497 is historical. Seed 298 changes this email after 497 has run.
+export const RESTORE_SNAPSHOT_EXCLUDE_FILES = Object.freeze([
+  "db/seed/298_s04_booking_app_confirm_email.sql"
+]);
 const JSON_TAG = "$fh_tpl_restore$";
 
 // The production read of 2026-10-20 (BEGIN READ ONLY): SQL-seeded, active, and absent
@@ -221,11 +225,12 @@ const FIELDS = ["template_key", "channel", "subject", "body", "compliance_passed
  * RESTORE_KEYS. The caller must hold an open transaction; ON COMMIT DROP and the caller's
  * ROLLBACK leave nothing behind. Writes only the temporary table.
  */
-export async function stageSeedRows(client, { root = ROOT, keys = RESTORE_KEYS } = {}) {
+export async function stageSeedRows(client, { root = ROOT, keys = RESTORE_KEYS, excludeFiles = [] } = {}) {
   await client.query(
     `CREATE TEMP TABLE ${STAGE_TABLE} (LIKE message_templates INCLUDING DEFAULTS INCLUDING INDEXES) ON COMMIT DROP`
   );
   for (const { file, sql } of templateWriteStatements(root, STAGE_TABLE)) {
+    if (excludeFiles.includes(file)) continue;
     try {
       await client.query(sql);
     } catch (err) {
@@ -320,7 +325,7 @@ async function main() {
   let rows;
   try {
     await client.query("BEGIN");
-    rows = await stageSeedRows(client);
+    rows = await stageSeedRows(client, { excludeFiles: RESTORE_SNAPSHOT_EXCLUDE_FILES });
   } finally {
     await client.query("ROLLBACK").catch(() => {});
     client.release();
