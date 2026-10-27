@@ -29,8 +29,8 @@
                                                                  current_s, duration_s }
      faq_open      a <details> opened, or a [data-fh-faq] question pressed open   { question }
      carousel      next, prev or play on a testimonial row     { carousel, action, index }
-     app_download_tap  a press on the Apple link (TestFlight or App Store) in the
-                   app-download card on /thank-you, every press   { }
+     app_download_tap  a press on an Apple link (TestFlight or App Store) on
+                   /thank-you or /portal-login.html, every press   { }
                    The first press per session also reaches Cortana as
                    book_call_app_download_tap. It is a tap: a page never sees an install.
 
@@ -88,7 +88,8 @@
     "/roadmap-book": ["roadmap", 2],
     "/roadmap-thank-you": ["roadmap", 3],
     "/order": ["watch", 5],
-    "/home": ["homepage", 1]
+    "/home": ["homepage", 1],
+    "/portal-login.html": ["portal", 1]
   };
   var KEYS = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "landing_path", "referrer_domain"];
   var PRESSABLE = 'a[href],button,[role="button"],input[type="submit"],input[type="button"],[data-pay]';
@@ -101,6 +102,7 @@
   var MAX = 64;
   var RELAY_ORIGIN = "https://apply.fundhub.ai";
   var RELAYED = { calendar_view: 1, time_selected: 1, booking_confirmed: 1 };
+  var applyRedirecting = false;
   /* Meta: the map is docs/tracking/meta-events.md, "Map (database event → Meta)". */
   var VIEW_CONTENT = { "/roadmap": 1, "/watch": 1, "/apply": 1, "/home": 1 };
   var BUY_BOX = { "fh-cf-form": 1, fhw: 1 };
@@ -288,7 +290,7 @@
     book_call_time_selected: { "/apply": 1, "/funding-book-call": 1 },
     book_call_booking_observed: { "/apply": 1, "/funding-book-call": 1 },
     book_call_thank_you_view: { "/thank-you": 1 },
-    book_call_app_download_tap: { "/thank-you": 1 }
+    book_call_app_download_tap: { "/thank-you": 1, "/portal-login.html": 1 }
   };
   var CORTANA_HUB_SRC = "https://app.directroas.com/api/hub/v1/cmsdutl8e00mukv041vwuo39w";
   var cortanaHubChecked = false;
@@ -418,7 +420,7 @@
       if (page === "/thank-you") return ["book_call_thank_you_view"];
       return [];
     }
-    if (event === "app_download_tap") return page === "/thank-you" ? ["book_call_app_download_tap"] : [];
+    if (event === "app_download_tap") return page === "/thank-you" || page === "/portal-login.html" ? ["book_call_app_download_tap"] : [];
     if (page !== "/apply" && page !== "/funding-book-call") return [];
     if (event === "survey_answer" && page === "/apply") {
       return props.last === true
@@ -694,19 +696,16 @@
     tell(hit.label);
   }
 
-  /* ── the app-download button on /thank-you ────────────────────────────── */
+  /* ── app-download links on /thank-you and /portal-login.html ──────────── */
 
-  /* The app card on /thank-you (public/funnel/fundhub-prompter-download.js, or
-     any card that replaces it) ends in one link to Apple: TestFlight today,
-     the App Store once Apple approves the listing. The link is what is
-     recognised here, not the card's class names or the setting key it reads, so
-     a new key, a new look or a new card still counts and the card script does
-     not change. The host is matched whole, so apps.apple.com.example is not
-     Apple. This page sees the TAP on that link and never the install. Every
-     press is saved (as a click is); Cortana hears the first press per session. */
+  /* Recognise the Apple URL on the thank-you card or portal login page, not
+     the card's class names or setting key. The host is matched whole, so
+     apps.apple.com.example is not Apple. Every press is saved; Cortana hears
+     the first press per session. A page cannot see the install. */
   var APP_LINK = /^https:\/\/(testflight|apps|itunes)\.apple\.com\//i;
   function appDownloadPress(node) {
-    if (pagePath() !== "/thank-you") return;
+    var page = pagePath();
+    if (page !== "/thank-you" && page !== "/portal-login.html") return;
     var link = closest(node, "a[href]");
     if (link && APP_LINK.test(String(attr(link, "href") || "").replace(/^\s+/, ""))) send("app_download_tap", {});
   }
@@ -983,7 +982,8 @@
     var cortanaPage = pagePath();
     if (navigator.webdriver !== true &&
         (cortanaPage === "/watch" || cortanaPage === "/apply" ||
-         cortanaPage === "/funding-book-call" || cortanaPage === "/thank-you")) {
+         cortanaPage === "/funding-book-call" || cortanaPage === "/thank-you" ||
+         cortanaPage === "/portal-login.html")) {
       restoreCortanaPending();
       if (cortanaPending.length) {
         ensureCortanaHub();
@@ -1062,6 +1062,14 @@
     if (!d || typeof d !== "object" || d.fh !== "track" || typeof d.event !== "string" || !has.call(RELAYED, d.event)) return;
     var cal = d.props && typeof d.props === "object" ? slug(d.props.calendar, 40) : "";
     fhTrack(d.event, cal ? { calendar: cal } : {});
+    if (pagePath() === "/apply" && d.event === "booking_confirmed" && cal === "funding-book-call" && !applyRedirecting) {
+      var frame = document.getElementById("fh-book-frame");
+      if (!frame || ev.source !== frame.contentWindow) return;
+      applyRedirecting = true;
+      try { sessionStorage.setItem("fh_apply_booking_confirmed_v1", String(now())); } catch (e) {}
+      // The tracker has queued the Meta and Cortana events before the parent moves.
+      setTimeout(function () { window.location.assign(RELAY_ORIGIN + "/thank-you"); }, 250);
+    }
   });
 
   on(document, "scroll", function () {

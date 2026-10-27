@@ -6,15 +6,13 @@
  * body cannot be replaced by API, so this script changes the page itself.
  *
  * What it does:
- *   1. Owner, 2026-10-01: everyone sees "Your Call Is Booked.", a video spot under
- *      the headline, and the confirm-your-call buttons. fhIsBooked now only decides
- *      whether the .ics button shows (it needs a stored booking time).
+ *   1. Everyone sees the booked-call message and video. fhIsBooked decides
+ *      the survey route; the real calendar invite comes from the booking host.
  *   2. Step 03 reads "You get one of three paths".
  *   3. "Real approvals, real screenshots" before the FAQ: three approvals. No
  *      client-text cards (owner, 2026-09-22: "don't put what clients texted us").
  *      Any screenshot opens full size on tap or click.
- * The FAQ, the calendar, the prep list, the $32 wording and the speed wording are
- * not touched. No links off the page.
+ * The FAQ, prep list, $32 wording and speed wording are not touched.
  * Owner reorder 2026-10-23 (marketing/landing-pages/preview/thank-you-reorg-draft-build.mjs):
  * "What the call decides" is cut, because it repeated step 03 and the three paths.
  *
@@ -37,7 +35,8 @@
         Do not rename fhIsBooked and do not move these markers. ══ */
   /* Presence of the key is NOT proof of a booking. It must describe a real,
      recent, still-upcoming appointment, and the visitor must have come here
-     straight from the booking page.
+     straight from the booking page or from /apply after its framed calendar
+     reported an accepted booking.
      Why the hop matters: the live /funding-book-call page saves the record every
      time the slot, name or email changes, before anyone presses Book. Fill the form,
      press Back, and the record looks like a booking. A real booking is different:
@@ -46,9 +45,20 @@
      The live page stamps capturedAt only; the repo writer (04a-book-top.html) adds
      submittedAt. Either stamp counts, and it must be under six hours old. A record
      with no name or email is someone who clicked a time slot and never filled the form. */
-  function fhIsBooked(d, now, ref) {
-    if (!/^https?:\/\/[^/]+\/funding-book-call(?:[/?#]|$)/.test(String(ref || ""))) return false;
+  function fhIsBooked(d, now, ref, applyAcceptedAt) {
+    var fromBooking = /^https?:\/\/[^/]+\/funding-book-call(?:[/?#]|$)/.test(String(ref || ""));
+    var fromApply = /^https:\/\/apply\.fundhub\.ai\/apply(?:[/?#]|$)/.test(String(ref || ""));
+    if (!fromBooking && !fromApply) return false;
     if (!d || typeof d !== "object") return false;
+    if (fromApply) {
+      var accepted = Number(applyAcceptedAt);
+      var captured = Number(d.submittedAt || d.capturedAt);
+      // The relay proves ClickFunnels accepted the booking. Its form record may
+      // still have only capturedAt when the older calendar writer is live.
+      if (!accepted || !isFinite(accepted) || Math.abs(now - accepted) > 120000 ||
+          !captured || !isFinite(captured) || captured > accepted + 30000 ||
+          accepted - captured > 30 * 60 * 1000) return false;
+    }
     if (!d.start || !d.end) return false;
     if (!d.name || !d.email) return false;
     var at = Number(d.submittedAt || d.capturedAt);
@@ -65,6 +75,10 @@
     if (!raw) { try { raw = sessionStorage.getItem(KEY); } catch (e) {} }
     if (!raw) return null;
     try { return JSON.parse(raw); } catch (e) { return null; }
+  }
+
+  function readApplyAcceptedAt() {
+    try { return sessionStorage.getItem("fh_apply_booking_confirmed_v1"); } catch (e) { return null; }
   }
 
   /* Approvals shown here: amount read off each crop (marketing/landing-pages/slo/client-wins/deck.json). */
@@ -484,25 +498,27 @@
     var prep = root.querySelector("section.prep");
     var cal = document.getElementById("fh-cal-cta") || root.querySelector(".cal-cta");
     var faq = root.querySelector("section.faq");
-    var booked = fhIsBooked(readBooking(), Date.now(), document.referrer);
+    var booked = fhIsBooked(readBooking(), Date.now(), document.referrer, readApplyAcceptedAt());
     trackRoute(booked);   /* once per page load: run() only gets here once */
 
-    /* 1. Everyone sees the booked page and the confirm-your-call buttons (owner, 2026-10-01:
-          "shouldn't show pick your call time ... a confirm your call button like we had before").
-          The .ics button needs a real booking time, so it shows only when one is stored. */
+    /* 1. Everyone sees the booked page. The real calendar invite already holds
+          the guest and meeting link, so this page does not create another event. */
     setText(hero.querySelector(".eyebrow"), "Confirmed · Funding Path");
-    setText(hero.querySelector("h1.sec"), "Your Call Is Booked.");
-    setText(hero.querySelector(".lede"), "Your advisor is holding this time for you.");
+    setText(hero.querySelector("h1"), "Congratulations!");
+    setText(hero.querySelector("h1.sec"), "Your call is booked.");
+    setText(hero.querySelector(".lede"), "We'll text you to confirm your call and be in touch before it starts. Reply to our text if you have questions.");
     setText(prose && prose.querySelector("p:not(.lead)"), "Check your email for the confirmation and calendar invite.");
     show(expect, true);
     show(prep, true);
     show(cal, true);
-    show(document.getElementById("fh-cal-ics"), booked);
-    if (cal) setText(cal.querySelector(".kicker"), "Confirm your call");
+    if (cal) {
+      setText(cal.querySelector(".kicker"), "Your call details");
+      setText(cal.querySelector(".cal-lead"), "Confirm your call in the Fundhub Portal app. Your invite with the meeting link is in your email.");
+    }
 
-    /* Video, styled like the /watch VSL, right under the headline. VIDEO_SRC is empty until
-       the video is filmed; the box shows a placeholder until then. */
-    after(hero, buildVideo());
+    /* The app card loads asynchronously. Keep it before the video in either
+       script order; VIDEO_SRC is empty until the video is filmed. */
+    after(document.getElementById("fh-prompter-download") || hero, buildVideo());
 
     /* An older copy of the page body still has .prose: the confirm block goes under it there.
        The current body already has the confirm block right under the headline. */

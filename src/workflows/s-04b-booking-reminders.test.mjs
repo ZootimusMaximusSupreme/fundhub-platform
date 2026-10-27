@@ -34,7 +34,7 @@ const sms = () => [
   { org_id: "org-1", template_key: SMS_CONFIRM, channel: "sms", body: "confirm {{appointment.start_time}}", compliance_passed: true },
   { org_id: "org-1", template_key: SMS_REMIND_24H, channel: "sms", body: "24h {{appointment.start_time}}", compliance_passed: true },
   { org_id: "org-1", template_key: SMS_REMIND_2H, channel: "sms", body: "2h {{appointment.start_time}}", compliance_passed: true },
-  { org_id: "org-1", template_key: EMAIL_CONFIRM, channel: "email", subject: "You're booked", body: "confirmed for {{appointment.start_time}}. Here is your link to sign in to your Fundhub portal: {{magic_link.url}}", compliance_passed: true }
+  { org_id: "org-1", template_key: EMAIL_CONFIRM, channel: "email", subject: "You're booked", body: "confirmed for {{appointment.start_time}}. Download Fundhub Portal: {{app_download.url}}. Confirm my call: {{call_confirm.url}}. Web portal: {{web_portal.url}}", compliance_passed: true }
 ];
 
 test("s-04b: confirm + both reminders when startTime present", async () => {
@@ -112,7 +112,7 @@ test("s-04b: booked stage sends exactly one text and one email, immediately", as
   assert.equal(immediate.filter((m) => m.channel === "email").length, 1);
 });
 
-test("s-04b: confirm email carries a 365-day portal token and does not queue EMAIL-PORTAL-MAGIC-LINK", async () => {
+test("s-04b: confirm email carries an app download link and a 365-day confirm link", async () => {
   const db = pgFake({
     clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", phone: "+15551234567", custom_fields: {} }],
     templates: sms()
@@ -133,11 +133,13 @@ test("s-04b: confirm email carries a 365-day portal token and does not queue EMA
   assert.ok(!db.messages.some((m) => m.template_key === "EMAIL-PORTAL-MAGIC-LINK"));
   const email = db.messages.find((m) => m.template_key === EMAIL_CONFIRM);
   assert.ok(email);
-  assert.match(email.rendered_body, /portal-login\.html\?t=booking-portal-tok/);
-  assert.match(email.rendered_body, /Here is your link to sign in to your Fundhub portal/);
+  assert.match(email.rendered_body, /portal-login\.html#download/);
+  assert.match(email.rendered_body, /portal-login\.html\?t=booking-portal-tok#call-confirm-card/);
+  assert.match(email.rendered_body, /Confirm my call/);
+  assert.match(email.rendered_body, /Web portal: https:\/\/fundhub\.ai\/portal-login\.html/);
 });
 
-test("s-04b: no token still puts a real sign-in link in the confirm email", async () => {
+test("s-04b: no token still puts a real confirm path in the email", async () => {
   // Walk finding F2, 2026-09-03. The magic_link context used to be spread in
   // only when a token existed, and renderTemplate replaces an absent tag with
   // the empty string — so the email said "Here is your link to sign in to your
@@ -158,8 +160,9 @@ test("s-04b: no token still puts a real sign-in link in the confirm email", asyn
   const email = db.messages.find((m) => m.template_key === EMAIL_CONFIRM);
   assert.ok(email);
   assert.doesNotMatch(email.rendered_body, /href=""/);
-  assert.match(email.rendered_body, /portal-login\.html/);
-  assert.doesNotMatch(email.rendered_body, /\{\{magic_link/);
+  assert.match(email.rendered_body, /portal-login\.html#download/);
+  assert.match(email.rendered_body, /portal-login\.html#call-confirm-card/);
+  assert.doesNotMatch(email.rendered_body, /\{\{call_confirm|\{\{app_download|\{\{web_portal/);
 });
 
 test("s-04b: a refused or rate-limited link request still ships the sign-in page", async () => {

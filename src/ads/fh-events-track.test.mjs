@@ -397,6 +397,36 @@ describe("framed calendar relay", () => {
     ]);
   });
 
+  test("accepted booking from the actual /apply frame tracks before the parent redirects", () => {
+    const p = makePage({ pathname: "/apply", storage: { fh_sid: "sess-abcdef12" } }).run();
+    const frame = p.node("iframe", { id: "fh-book-frame" });
+    frame.contentWindow = {};
+    p.add(frame);
+    const accepted = msg("booking_confirmed", { calendar: "funding-book-call" });
+    accepted.source = frame.contentWindow;
+    p.fireWin("message", accepted);
+    assert.equal(p.events("booking_confirmed").length, 1);
+    assert.ok(p.events("booking_confirmed")[0].meta_event_id, "Meta Schedule keeps its dedupe ID");
+    assert.ok(Number(p.store.fh_apply_booking_confirmed_v1) > 0);
+    assert.equal(p.win.location.href, "https://apply.fundhub.ai/apply");
+    p.advance(250);
+    assert.equal(p.win.location.href, "https://apply.fundhub.ai/thank-you");
+    p.fireWin("message", accepted);
+    assert.equal(p.win.location.href, "https://apply.fundhub.ai/thank-you");
+  });
+
+  test("a relay without the actual frame source never redirects /apply", () => {
+    const p = makePage({ pathname: "/apply" }).run();
+    const frame = p.node("iframe", { id: "fh-book-frame" });
+    frame.contentWindow = {};
+    p.add(frame);
+    p.fireWin("message", msg("booking_confirmed", { calendar: "funding-book-call" }));
+    p.fireWin("message", { ...msg("booking_confirmed", { calendar: "other" }), source: frame.contentWindow });
+    p.advance(500);
+    assert.equal(p.win.location.href, "https://apply.fundhub.ai/apply");
+    assert.equal(p.store.fh_apply_booking_confirmed_v1, undefined);
+  });
+
   test("a message from any other origin is ignored", () => {
     const p = makePage({ pathname: "/apply" }).run();
     for (const origin of ["https://evil.example", "https://fundhub.ai", "http://apply.fundhub.ai", "https://apply.fundhub.ai.evil.example", "null"]) {
@@ -439,6 +469,14 @@ describe("app_download_tap", () => {
     p.click(a);
     assert.equal(taps(p).length, 2, "a second real press is saved again, as a click is");
     assert.equal(p.events("click").length, 2);
+  });
+
+  test("portal App Store press sends the same API event from its own page", () => {
+    const p = makePage({ pathname: "/portal-login.html", hostname: "fundhub.ai", storage: { fh_sid: SID } }).run();
+    p.click(link(p, "https://apps.apple.com/us/app/fundhub-portal/id6823985032"));
+    assert.equal(taps(p).length, 1);
+    assert.equal(taps(p)[0].page, "/portal-login.html");
+    assert.equal(taps(p)[0].url, "https://fundhub.ai/portal-login.html");
   });
 
   test("the App Store, TestFlight and iTunes hosts count, however the address is cased", () => {

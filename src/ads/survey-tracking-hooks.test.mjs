@@ -27,6 +27,7 @@ const APPLY_HTML = read("marketing/landing-pages/apply-survey.html");
 const HOME_JS = read("public/js/homepage-survey.js");
 const HOME_HTML = read("public/index.html");
 const THANKS_JS = read("public/funnel/thankyou-sort.js");
+const APP_CARD_JS = read("public/funnel/fundhub-prompter-download.js");
 
 /* The props each event may carry (spec, "Events"). */
 const ALLOWED = {
@@ -704,10 +705,11 @@ const THANKS_BODY =
   '<section class="expect"><div class="step"><span class="t">Your exact funding number</span></div></section>' +
   '<section class="faq"></section></div>';
 
-function openThanks({ referrer = "", booking = null, fhTrack, body = THANKS_BODY, times = 1 } = {}) {
+function openThanks({ referrer = "", booking = null, acceptedAt = null, fhTrack, body = THANKS_BODY, times = 1 } = {}) {
   const doc = makeDocument(body, { referrer });
   const local = booking ? { fh_booking_v1: JSON.stringify(booking) } : {};
   const page = makePage(doc, { hostname: "apply.fundhub.ai", pathname: "/thank-you", local, fhTrack });
+  if (acceptedAt != null) page.win.sessionStorage.setItem("fh_apply_booking_confirmed_v1", acceptedAt);
   for (let i = 0; i < times; i++) page.run(THANKS_JS);
   return page;
 }
@@ -724,6 +726,23 @@ const freshBooking = () => {
 };
 
 describe("/thank-you sorting hat hook (public/funnel/thankyou-sort.js)", () => {
+  test("the app card stays before the video in either script order", async () => {
+    for (const first of ["card", "sort"]) {
+      const doc = makeDocument(THANKS_BODY);
+      const page = makePage(doc, { hostname: "apply.fundhub.ai", pathname: "/thank-you",
+        fetchImpl: async () => ({ ok: true, json: async () => ({ app_store_url: "https://apps.apple.com/us/app/fundhub-portal/id6823985032" }) }) });
+      const settle = async () => { for (let i = 0; i < 8; i++) await Promise.resolve(); };
+      if (first === "card") { page.run(APP_CARD_JS); await settle(); page.run(THANKS_JS); }
+      else { page.run(THANKS_JS); page.run(APP_CARD_JS); await settle(); }
+      const hero = doc.querySelector(".hero");
+      const card = doc.getElementById("fh-prompter-download");
+      const video = doc.getElementById("fh-ty-video");
+      assert.ok(card && video, first);
+      const siblings = hero.parentNode.children;
+      assert.deepEqual([siblings.indexOf(hero), siblings.indexOf(card), siblings.indexOf(video)], [0, 1, 2], first);
+    }
+  });
+
   test("no booking: one survey_route to the call", () => {
     assert.deepEqual(openThanks().events(), [ev("survey_route", { survey: "apply", offer: "call" })]);
   });
@@ -737,6 +756,13 @@ describe("/thank-you sorting hat hook (public/funnel/thankyou-sort.js)", () => {
   test("a stored booking without the hop from /funding-book-call is not call-booked", () => {
     const got = openThanks({ referrer: "https://apply.fundhub.ai/apply", booking: freshBooking() }).events();
     assert.deepEqual(got, [ev("survey_route", { survey: "apply", offer: "call" })]);
+  });
+
+  test("/apply redirect with an accepted booking stamp is call-booked", () => {
+    const booking = freshBooking();
+    const got = openThanks({ referrer: "https://apply.fundhub.ai/apply", booking,
+      acceptedAt: booking.submittedAt }).events();
+    assert.deepEqual(got, [ev("survey_route", { survey: "apply", offer: "call-booked" })]);
   });
 
   test("sent here by the fundhub.ai homepage survey: survey home", () => {
@@ -762,7 +788,7 @@ describe("/thank-you sorting hat hook (public/funnel/thankyou-sort.js)", () => {
 
   test("the page still does its job: booked headline, approvals, and no repeat of the call steps", () => {
     const page = openThanks();
-    assert.equal(page.doc.querySelector("h1.sec").textContent, "Your Call Is Booked.");
+    assert.equal(page.doc.querySelector("h1.sec").textContent, "Your call is booked.");
     // "What the call decides" was cut in the owner reorder of 2026-10-23: it repeated step 03 and the three paths.
     assert.equal(page.doc.getElementById("fh-ty-decides"), null);
     assert.ok(page.doc.getElementById("fh-ty-proof"));

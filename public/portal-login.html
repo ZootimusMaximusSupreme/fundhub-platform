@@ -15,13 +15,15 @@
 <link rel="stylesheet" href="/portal-login-ios.css">
 <link rel="stylesheet" href="/app/fundhub-astra.css">
 <link rel="stylesheet" href="/app/fundhub-astra-client.css">
+<script defer src="/funnel/fh-events.js"></script>
 </head><body class="fh-astra fh-astra-client fh-astra-entry" data-client-page="portal-login" data-client-public data-client-ios>
 <main class="login-box">
   <a class="portal-brand" href="/" aria-label="Fundhub home"><span aria-hidden="true">f.</span> Fundhub</a>
   <div class="card">
     <p class="portal-eyebrow">Client portal</p>
-    <h1>Sign in to your portal.</h1>
-    <p class="sub">Access your file, documents and next steps.</p>
+    <h1>Get the Fundhub Portal app.</h1>
+    <p class="sub">Confirm your call in the app, then see your file, documents and next steps.</p>
+    <a class="portal-app-download" id="download" href="https://apps.apple.com/us/app/fundhub-portal/id6823985032" target="_blank" rel="noopener">Download Fundhub Portal</a>
 
     <div class="err" id="err" role="alert"></div>
     <div id="ok-box" role="status" aria-live="polite"></div>
@@ -31,12 +33,12 @@
       <label for="email">Email address</label>
       <input id="email" type="email" placeholder="you@example.com"
              autocomplete="email" inputmode="email" autocapitalize="none" spellcheck="false" required>
-      <button class="btn primary" id="go" type="submit">Email me a sign-in link</button>
+      <button class="btn" id="go" type="submit">Email me a sign-in link</button>
     </form>
 
     <p class="note" id="lede">
-      No password needed. Type the email address on your Fundhub file and we will
-      send you a link that signs you in. The link works once and lasts 15 minutes.
+      On Android or using a browser? Type the email address on your Fundhub file.
+      We will email you a web portal sign-in link.
     </p>
 
     <div class="portal-signin-choice"><span>Prefer your password?</span><a class="portal-password" href="/login.html?next=%2Fapp%2Fclient-portal.html">Sign in with password <span aria-hidden="true">↗</span></a></div>
@@ -83,6 +85,7 @@ var elForm = document.getElementById("f");
 var elLede = document.getElementById("lede");
 var elGo   = document.getElementById("go");
 var elEmail = document.getElementById("email");
+var confirmAfterSignIn = false;
 
 /* Prefill from ?email= on the funding-delivery CTA (and any portal deep link). */
 (function prefillEmailFromQuery() {
@@ -176,7 +179,8 @@ async function exchange(token) {
       localStorage.removeItem("fh_demo");
       localStorage.removeItem("fh_demo_staff");
     } catch (e) {}
-    window.location.replace(data.next || "/app/client-portal.html");
+    var next = data.next || "/app/client-portal.html";
+    window.location.replace(next + (confirmAfterSignIn ? "#call-confirm-card" : ""));
     return;
   }
 
@@ -248,6 +252,7 @@ elForm.addEventListener("submit", async function (ev) {
 (function boot() {
   var t = tokenFromUrl();
   if (!t) return;              // ordinary visit: just show the form
+  confirmAfterSignIn = window.location.hash === "#call-confirm-card";
   stripTokenFromUrl();         // before the network call, not after
   exchange(t);
 })();

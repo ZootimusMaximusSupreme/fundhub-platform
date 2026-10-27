@@ -108,13 +108,14 @@ function pgFake({ openShift = null, failOn = null, smsRouting = null, pipelineSt
         clients.push({ id, org_id: params[0], email: params[1], first_name: params[2], last_name: params[3], phone: params[4] ?? null, custom_fields: {}, outcome_tier: null, ghl_contact_id: null });
         return { rows: [{ id }] };
       }
-      // patchClientContact — fills phone / name only where the row is still blank.
-      if (/UPDATE clients SET[\s\S]*phone = COALESCE\(NULLIF\(phone/.test(sql)) {
+      // patchClientContact — a fresh apply/booking replaces stale contact data.
+      if (/UPDATE clients SET[\s\S]*phone = COALESCE\(/.test(sql)) {
         const c = clients.find((c) => c.id === params[0]);
+        const overwrite = /phone = COALESCE\(\$2/.test(sql);
         if (c) {
-          if (!c.phone && params[1]) c.phone = params[1];
-          if (!c.first_name && params[2]) c.first_name = params[2];
-          if (!c.last_name && params[3]) c.last_name = params[3];
+          if ((overwrite || !c.phone) && params[1]) c.phone = params[1];
+          if ((overwrite || !c.first_name) && params[2]) c.first_name = params[2];
+          if ((overwrite || !c.last_name) && params[3]) c.last_name = params[3];
         }
         return { rows: [] };
       }
@@ -608,6 +609,42 @@ test("resolveClient: a later webhook fills a blank phone in international form",
     email: "later@example.com", phone: "661-605-4248"
   }));
   assert.equal(db.clients.find((c) => c.id === id).phone, "+16616054248");
+});
+
+test("resolveClient: a fresh funnel booking replaces stale name and SMS phone on a reused email", async () => {
+  const db = pgFake();
+  const id = await resolveClient(db, ev("entry.captured", {
+    email: "repeat@example.com", name: "Sample Contact", phone: "(202) 555-0123"
+  }));
+  await resolveClient(db, ev("booking.created", {
+    email: "repeat@example.com", name: "Jordan Rivera", phone: "(415) 555-0124",
+    source: "clickfunnels"
+  }));
+  const client = db.clients.find((c) => c.id === id);
+  assert.equal(client.first_name, "Jordan");
+  assert.equal(client.last_name, "Rivera");
+  assert.equal(client.phone, "+14155550124");
+
+  await resolveClient(db, ev("entry.captured", {
+    email: "repeat@example.com", name: "Old Contact", phone: "(202) 555-0123",
+    source: "clickfunnels", funnel: "unrelated-funnel"
+  }));
+  assert.equal(client.phone, "+14155550124", "an unrelated contact update must not undo the booking number");
+});
+
+test("resolveClient: a fresh apply form replaces stale contact data before booking", async () => {
+  const db = pgFake();
+  const id = await resolveClient(db, ev("entry.captured", {
+    email: "apply@example.com", name: "Sample Contact", phone: "(202) 555-0123"
+  }));
+  await resolveClient(db, ev("entry.captured", {
+    email: "apply@example.com", name: "Jordan Rivera", phone: "415-555-0124",
+    source: "clickfunnels", funnel: "apply-survey"
+  }));
+  const client = db.clients.find((c) => c.id === id);
+  assert.equal(client.first_name, "Jordan");
+  assert.equal(client.last_name, "Rivera");
+  assert.equal(client.phone, "+14155550124");
 });
 
 /* A number that cannot be converted is kept exactly as typed — never dropped,

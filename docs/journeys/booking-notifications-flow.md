@@ -54,6 +54,12 @@ flowchart TD
 
 **The two things that changed here.**
 
+**Fresh contact values for a real apply or booking (2026-10-26 branch).** When a
+ClickFunnels apply form or booking resolves an existing client by email, its
+usable typed name and phone replace older contact values before the booking
+confirmation is queued. An unrelated later contact event still fills blanks
+only. This keeps the confirmation text aimed at the number on the latest form.
+
 * Every event is now written **with the customer on it**. Before 2026-09-03 the
   adapter passed none, so all 82 survey rows, all 95 lead rows and all 6 booking
   rows in production carried nothing. Any part of the system that looked up a
@@ -197,6 +203,14 @@ by id, through the same sender. The company pause switch, the daily cap, quiet
 hours, opt-out and the compliance screen all still run; the sweep is unchanged
 and remains the backstop for these two rows and for everything else.
 
+**The booking email (2026-10-26 branch).** S-04B supplies three distinct paths:
+the iPhone app download page, a regular web portal sign-in for Android or a
+browser, and a magic sign-in link that opens the portal at its **Confirm my
+call** card. The customer presses that card to save the confirmation. The email
+does not show an empty meeting-location row when the host's Meet link has not
+yet been read. The first-party app page records an Apple-link tap only when the
+customer actually presses the Apple button.
+
 In current source, after the confirmation **text** is marked sent, the sender
 also tries one native iPhone alert with fixed, detail-free wording: “Please
 confirm your upcoming call in FundHub.” It only tries when APNs and encrypted
@@ -271,6 +285,13 @@ resort. A miss is recorded on the run as a reason (`no_calendar_scope`,
 `calls:booked-no-join-link` goes red when a booked call still has no link. Only
 the host calendar the token can read is searched; a second host's calls need
 that host's calendar shared with the token's account.
+
+**The duplicate calendar event in the 2026-10-26 walk.** A read of the host's
+primary calendar found the actual ClickFunnels invite with a guest and Meet,
+and a second self-added event at the same time without either. The second event
+matched the thank-you page's Google Calendar template and ICS controls. The
+2026-10-26 branch removes those duplicate controls and directs the customer to
+the emailed invite; the host event reader remains read-only.
 
 **Known and not fixed here.** The fallback is the customer's portal sign-in
 page. It is a real, working address, but the wording live in the database today

@@ -45,6 +45,7 @@ const read = (p) => fs.readFileSync(path.join(ROOT, p), "utf8");
 
 const WATCH = read("public/funnel/watch-proof.js");
 const THANKS = read("public/funnel/thankyou-sort.js");
+const THANKS_PAGE = read("marketing/landing-pages/05-thank-you.html");
 const TEMPLATE = read("marketing/landing-pages/slo/fundhub-proof-cards.html");
 const TEMPLATE_CSS = TEMPLATE.slice(TEMPLATE.indexOf("<style>") + "<style>".length, TEMPLATE.indexOf("</style>"));
 const DECK = JSON.parse(read("marketing/landing-pages/slo/client-wins/deck.json"));
@@ -347,7 +348,7 @@ describe("fhIsBooked — the thank-you page claims a booking only when one exist
   // ClickFunnels sends a real booker on from the booking page with window.location,
   // so that page is the referrer. Every case below arrives that way unless it says not.
   const FROM_BOOKING = "https://apply.fundhub.ai/funding-book-call";
-  const fhIsBooked = (d, now, ref = FROM_BOOKING) => check(d, now, ref);
+  const fhIsBooked = (d, now, ref = FROM_BOOKING, acceptedAt) => check(d, now, ref, acceptedAt);
 
   const now = Date.parse("2026-09-22T15:00:00Z");
   const H = 3600e3;
@@ -401,8 +402,21 @@ describe("fhIsBooked — the thank-you page claims a booking only when one exist
     }
   });
 
+  test("/apply needs a matching accepted booking relay, not just a filled form", () => {
+    const ref = "https://apply.fundhub.ai/apply";
+    const rec = { ...base, capturedAt: now - 60e3, submittedAt: now - 10e3 };
+    assert.equal(fhIsBooked(rec, now, ref), false);
+    assert.equal(fhIsBooked({ ...rec, submittedAt: undefined }, now, ref, now - 10e3), true,
+      "the accepted relay also proves a recent capturedAt-only form");
+    assert.equal(fhIsBooked({ ...rec, submittedAt: undefined, capturedAt: now - 31 * 60e3 }, now, ref, now - 10e3), false);
+    assert.equal(fhIsBooked(rec, now, ref, now - 60e3), false);
+    assert.equal(fhIsBooked(rec, now, ref, now - 3 * 60e3), false);
+    assert.equal(fhIsBooked(rec, now, ref, "garbage"), false);
+    assert.equal(fhIsBooked(rec, now, ref, now - 10e3), true);
+  });
+
   test("the page passes document.referrer to the check", () => {
-    assert.match(THANKS, /fhIsBooked\(readBooking\(\), Date\.now\(\), document\.referrer\)/);
+    assert.match(THANKS, /fhIsBooked\(readBooking\(\), Date\.now\(\), document\.referrer, readApplyAcceptedAt\(\)\)/);
   });
 });
 
@@ -410,12 +424,20 @@ describe("/thank-you: everyone sees the booked page and confirm-your-call (owner
   test("no pick-a-time button, the confirm block shows, a video spot sits under the headline", () => {
     assert.equal(THANKS.includes("Pick your call time"), false);
     assert.equal(THANKS.includes("One step left"), false);
-    assert.ok(THANKS.includes('setText(hero.querySelector("h1.sec"), "Your Call Is Booked.");'));
+    assert.ok(THANKS.includes('setText(hero.querySelector("h1.sec"), "Your call is booked.");'));
     assert.ok(THANKS.includes("show(cal, true);"));
-    assert.ok(THANKS.includes('setText(cal.querySelector(".kicker"), "Confirm your call");'));
-    assert.ok(THANKS.includes("after(hero, buildVideo());"));
+    assert.ok(THANKS.includes('setText(cal.querySelector(".kicker"), "Your call details");'));
+    assert.ok(THANKS.includes('Confirm your call in the Fundhub Portal app.'));
+    assert.ok(THANKS.includes('after(document.getElementById("fh-prompter-download") || hero, buildVideo());'));
     assert.equal(/we'll be in touch with your next step/.test(THANKS), false);
     assert.equal(THANKS.includes('textContent = "You leave knowing'), false);
+  });
+
+  test("the page points to the real invite and cannot create a duplicate calendar event", () => {
+    assert.match(THANKS_PAGE, /Your invite with the meeting link is in your email/);
+    for (const removed of ["fh-cal-google", "fh-cal-ics", "calendar.google.com/calendar/render", "buildIcs(", "AddToCalendar"]) {
+      assert.equal(THANKS_PAGE.includes(removed), false, removed);
+    }
   });
 });
 

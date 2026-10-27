@@ -76,6 +76,19 @@ test("thank-you is not a purchase; paid funnel and rejected relay do not create 
   assert.deepEqual(names(rejected), ["book_call_apply_view"]);
 });
 
+test("portal App Store tap reaches Cortana without a page-view milestone", () => {
+  const p = page({ pathname: "/portal-login.html", hostname: "fundhub.ai" });
+  assert.deepEqual(names(p), []);
+  const [link] = p.addHtml('<a href="https://apps.apple.com/us/app/fundhub-portal/id6823985032">Get Fundhub Portal</a>');
+  p.click(link);
+  assert.deepEqual(names(p), ["book_call_app_download_tap"]);
+  assert.equal(p.cortanaCalls[0][1].page_path, "/portal-login.html");
+  assert.equal(p.events("app_download_tap").length, 1);
+  p.click(link);
+  assert.deepEqual(names(p), ["book_call_app_download_tap"]);
+  assert.equal(p.events("app_download_tap").length, 2);
+});
+
 test("async Cortana hub receives queued first view; missing or throwing hub never blocks Fundhub", () => {
   const late = makePage({ pathname: "/watch", storage: { fh_sid: SID } }).run();
   assert.equal(late.events("page_view").length, 1);
@@ -267,6 +280,8 @@ for (const file of CARDS) {
     assert.match(p.fetchCalls[0], /^https:\/\/fundhub\.ai\/funnel\/.+\.json$/);
     const button = downloadButton(p);
     assert.ok(button, "the card drew its button");
+    assert.match(button.textContent, /Download for iPhone/);
+    assert.match(p.document.querySelector(".fh-prompter-download__note").textContent, /web portal/);
     assert.deepEqual(names(p), ["book_call_thank_you_view"], "seeing the card is not a tap");
     assert.equal(p.events("app_download_tap").length, 0);
 

@@ -196,7 +196,10 @@ export async function handle({
       eventId: `${eventId}:confirm-email`,
       context: {
         ...context,
-        magic_link: { url: portal.url, expires_minutes: portal.expires_minutes }
+        magic_link: { url: portal.url, expires_minutes: portal.expires_minutes },
+        call_confirm: { url: `${portal.url}#call-confirm-card` },
+        app_download: { url: `${portalLoginUrl()}#download` },
+        web_portal: { url: portalLoginUrl() }
       }
     }));
 
