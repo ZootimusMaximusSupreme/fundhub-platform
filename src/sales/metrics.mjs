@@ -4,7 +4,7 @@
 
 import { BELIEFS, BELIEF_LABELS } from "./beliefs.mjs";
 import { countUnlogged, listUnloggedCalls } from "./call-outcomes.mjs";
-import { listUnrecordedCalls } from "./unrecorded.mjs";
+import { countUnrecorded, listUnrecordedCalls } from "./unrecorded.mjs";
 import { isDemoEmail } from "../auth/demo-logins.mjs";
 import { demoClause, orgDemoModeEnabled } from "../demo/exclude-demo.mjs";
 import { listRecentRecordings } from "./recordings.mjs";
@@ -160,7 +160,7 @@ export async function closerMyNumbers(db, { orgId, staffId, now = new Date() } =
   const window = monthWindow(now);
   const prior = priorWindow(window);
 
-  const [cur, prev, d2f, commissions, target, shift, unlogged, unloggedList, unrecordedList, team, offerStack, quietDeals] = await Promise.all([
+  const [cur, prev, d2f, commissions, target, shift, unlogged, unloggedList, unrecordedList, unrecordedCount, team, offerStack, quietDeals] = await Promise.all([
     staffCashCents(db, { orgId, staffId, ...window }),
     staffCashCents(db, { orgId, staffId, ...prior }),
     depositToFunded(db, { orgId, staffId, ...window }),
@@ -170,6 +170,7 @@ export async function closerMyNumbers(db, { orgId, staffId, now = new Date() } =
     countUnlogged(db, { orgId, staffId }),
     listUnloggedCalls(db, { orgId, staffId, limit: 10 }),
     listUnrecordedCalls(db, { orgId, staffId, now, limit: 10 }),
+    countUnrecorded(db, { orgId, staffId, now }),
     teamLeaderboard(db, { orgId, ...window }),
     closerOfferStack(db, { orgId, staffId, ...window }),
     coldDeals(db, { orgId, staffId })
@@ -223,7 +224,7 @@ export async function closerMyNumbers(db, { orgId, staffId, now = new Date() } =
       calls_held: held,
       no_shows: Number(cur.no_shows || 0),
       unlogged,
-      unrecorded: unrecordedList.length,
+      unrecorded: unrecordedCount,
       prior: {
         deposits: Number(prev.deposits || 0),
         close_rate: rate(Number(prev.deposits || 0), Number(prev.held || 0))
@@ -425,7 +426,7 @@ export async function salesFloor(db, { orgId, now = new Date(), env = process.en
   const window = monthWindow(now);
 
   const todayYmd = localDateString(now);
-  const [totals, todayFunnel, closers, beliefs, unlogged, unrecordedList, cold, shiftsLate, recordings, offer] = await Promise.all([
+  const [totals, todayFunnel, closers, beliefs, unlogged, unrecordedList, unrecordedCount, cold, shiftsLate, recordings, offer] = await Promise.all([
     // Team cash, the funnel and deposit to funded (src/pulse/beats/lib/sales-totals-truth.mjs).
     floorTotals(db, { orgId, ...window }),
     floorFunnelDay(db, { orgId, day: todayYmd }),
@@ -433,6 +434,7 @@ export async function salesFloor(db, { orgId, now = new Date(), env = process.en
     beliefAnalytics(db, { orgId, ...window }),
     countUnlogged(db, { orgId }),
     listUnrecordedCalls(db, { orgId, now, limit: 20 }),
+    countUnrecorded(db, { orgId, now }),
     coldDeals(db, { orgId }),
     lateShifts(db, { orgId, now }),
     listRecentRecordings(db, { orgId, now, env }),
@@ -505,7 +507,7 @@ export async function salesFloor(db, { orgId, now = new Date(), env = process.en
     beliefs,
     recordings,
     unrecorded: {
-      count: unrecordedList.length,
+      count: unrecordedCount,
       items: unrecordedList
     },
     compliance: {
@@ -521,7 +523,7 @@ export async function salesFloor(db, { orgId, now = new Date(), env = process.en
     cold_deals: cold,
     discipline: {
       unlogged_calls: unlogged,
-      unrecorded_calls: unrecordedList.length,
+      unrecorded_calls: unrecordedCount,
       shifts_started_late: shiftsLate.count,
       shifts_detail: shiftsLate.detail,
       followups_overdue: null,
