@@ -11,6 +11,9 @@ import { addTags } from "./tags.mjs";
 import { createTask } from "../lib/create-task.mjs";
 
 const SOURCE_WORKFLOW = "s-08-post-call-funding-declined";
+// A declined call requires a visible human follow-up; null due_at leaves it off
+// calendar-based queues. One day sets a deadline without sending a message.
+const FOLLOWUP_DUE_MS = 24 * 60 * 60 * 1000;
 
 async function createFollowupTaskOnce(db, { orgId, clientId, eventId }) {
   const dup = await db.query(`SELECT 1 FROM tasks WHERE client_id = $1 AND source_workflow = $2 AND body = $3`, [clientId, SOURCE_WORKFLOW, eventId]);
@@ -21,7 +24,8 @@ async function createFollowupTaskOnce(db, { orgId, clientId, eventId }) {
       title: "Funding didn't buy — follow-up",
       sourceWorkflow: SOURCE_WORKFLOW,
       assigneeRole: "closer",
-      eventId: eventId
+      eventId: eventId,
+      dueAt: new Date(Date.now() + FOLLOWUP_DUE_MS).toISOString()
     });
   return { created: true };
 }
