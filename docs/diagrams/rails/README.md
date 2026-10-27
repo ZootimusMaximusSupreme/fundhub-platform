@@ -8,7 +8,7 @@ The pipelines seeded by `002_pipelines.sql`, one state machine each.
 
 | rail | key | stages | code-driven moves |
 |---|---|---|---|
-| [Sales](./sales.md) | `sales` | 10 | 6 |
+| [Sales](./sales.md) | `sales` | 10 | 5 |
 | [Funding: Card Stacking](./funding_card_stacking.md) | `funding_card_stacking` | 6 | 1 |
 | [Funding: Alt-Fin (Lendflow)](./funding_altfin.md) | `funding_altfin` | 7 | — |
 | [Optimization (Repair) Rounds](./optimization.md) | `optimization` | 17 | — |

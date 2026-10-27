@@ -46,7 +46,8 @@ test("emit marks only explicitly simulated events as demo rows", async () => {
   const inserts = db.calls.filter((call) => /INSERT INTO events/.test(call.sql));
   assert.match(inserts[0].sql, /is_demo/);
   assert.equal(inserts[0].params[6], true);
-  assert.equal(inserts[1].params[6], false);
+  assert.doesNotMatch(inserts[1].sql, /is_demo/);
+  assert.equal(inserts[1].params.length, 6);
 });
 
 test("emit: unknown event throws unless allowNonCanonical", async () => {

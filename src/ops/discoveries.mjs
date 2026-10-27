@@ -168,7 +168,7 @@ export async function loadLearningFacts(db, { orgId, days } = {}) {
           count(*) FILTER (
             WHERE duration_seconds IS NOT NULL AND duration_seconds > 0
           )::int AS timed,
-          count(*) FILTER (WHERE outcome = 'deposit')::int AS deposits
+          count(*) FILTER (WHERE outcome = 'deposit' AND transaction_id IS NOT NULL AND cash_collected_cents > 0)::int AS deposits
          FROM call_outcomes
         WHERE org_id = $1
           AND logged_at >= now() - ($2::int || ' days')::interval

@@ -474,6 +474,8 @@ test("handoff SQL: follow-up task after a declined call", { skip: !HAS_DB }, asy
   // Any disposition: s-08 gates on the outcome alone.
   await expectN(t, "RED: outcome declined on a closer-labelled call, no task", D, cp(30), { clients: [x], events: [closerCall(120, { outcome: "declined" })] }, 1);
   await expectN(t, "GREEN: closer call, task made after", D, cp(30), { clients: [x], events: [closerCall(120, { outcome: "declined" })], tasks: [task(119)] }, 0);
+  await expectN(t, "RED: closer not_a_fit without referral needs funding follow-up", D, cp(30), { clients: [x], events: [closerCall(120, { outcome: "not_a_fit" })] }, 1);
+  await expectN(t, "GREEN: repair referral uses DS-01 instead", D, cp(30), { clients: [x], events: [closerCall(120, { outcome: "not_a_fit", repairReferral: true })] }, 0);
   await expectN(t, "GREEN: closer call that was not declined", D, cp(30), { clients: [x], events: [closerCall(120, { outcome: "deposit", offerKey: "FUNDING_DFY" })] }, 0);
   await expectN(t, "GREEN: closer call with no outcome", D, cp(30), { clients: [x], events: [closerCall(120, {})] }, 0);
 });

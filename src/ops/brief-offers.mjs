@@ -240,8 +240,8 @@ export async function readClosersByOffer(tx, { orgId, from, to }) {
      SELECT o.staff_id, s.name, a.offer_key, a.landing_path,
             count(*) FILTER (WHERE o.outcome <> 'no_show')::int AS calls_held,
             count(*) FILTER (WHERE o.outcome = 'no_show')::int AS no_shows,
-            count(*) FILTER (WHERE o.outcome = 'deposit')::int AS deposits,
-            count(*) FILTER (WHERE o.outcome = 'downsell')::int AS downsells
+            count(*) FILTER (WHERE o.outcome = 'deposit' AND o.transaction_id IS NOT NULL AND o.cash_collected_cents > 0)::int AS deposits,
+            count(*) FILTER (WHERE o.outcome = 'downsell' AND o.transaction_id IS NOT NULL AND o.cash_collected_cents > 0)::int AS downsells
        FROM call_outcomes o
        JOIN staff s ON s.id = o.staff_id AND s.org_id = o.org_id
        LEFT JOIN attr a ON a.client_id = o.client_id

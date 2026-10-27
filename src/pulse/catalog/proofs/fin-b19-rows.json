@@ -11,7 +11,7 @@
     "Headline: Longest wait link (scrolls to that card and rings it; stops being a link when a filter hides the card)",
     "Headline: Waiting on us (big number, button that filters the board to cards someone here must move)",
     "Lens switch: Board / Fulfillment",
-    "Rail note on Sales: a payment does not move a card, somebody must move it to Closed Won",
+    "Rail note on Sales: Closed Won follows a paid funding deposit",
     "Rail tab R-01 Sales",
     "Rail tab R-02 Funding: Card Stacking",
     "Rail tab R-04 Optimization (Repair) Rounds",
