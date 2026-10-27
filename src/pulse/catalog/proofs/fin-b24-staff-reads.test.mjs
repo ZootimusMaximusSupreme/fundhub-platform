@@ -246,6 +246,7 @@ const KPI_RULES = [
   [/name = 'booking\.created'/, [{ n: 10 }]],
   [/name = 'call\.completed'/, [{ n: 7 }]],
   [/name = 'decision\.rendered'/, [{ n: 4 }]],
+  [/FROM sale_payments sp/, [{ n: 4 }]],
   [/FROM clients c/, [{ n: 5 }]],
   [/FROM ad_metrics_daily/, [{ cents: "200000" }]],
   [/FROM cards cd/, [{ n: 9 }]],

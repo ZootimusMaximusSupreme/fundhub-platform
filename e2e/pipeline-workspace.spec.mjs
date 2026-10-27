@@ -222,7 +222,7 @@ for (const width of [1440, 390, 320]) {
     await page.keyboard.press('Escape');
     await page.locator('.pipeline-details > summary').focus();
     await page.keyboard.press('Enter');
-    await expect(page.locator('#railNote')).toContainText('Payments do not change sales stages');
+    await expect(page.locator('#railNote')).toContainText('Closed Won updates after the funding deposit is paid.');
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
   });
 }
