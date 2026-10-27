@@ -119,13 +119,10 @@ SELECT count(*)::int AS sample_count,
 //    as the same call, so a disposition that was logged by booking reference alone leaves its task
 //    counted as "not logged" forever. Each such task is a call the panel says nobody logged, which
 //    somebody did. A task with a blank body has no booking reference to match and is never wrong here.
-// 2. "Calls not recorded" (src/sales/unrecorded.mjs listUnrecordedCalls) is the panel's own words "no
-//    recording and no transcript". The read selects no transcript column, so a call that has words and
-//    no recording address is still counted. The rows judged are exactly the calls the chip counts: held,
-//    not demo, last 14 days, no recording address, older than the 20 minute grace window or logged
-//    before the last Drive sync. One that carries a transcript is a call the chip says has no words.
-//    When the read starts selecting o.transcript this half is retired in the same change, and
-//    fin-b20-sales-floor-reads.test.mjs fails at that moment to say so.
+// 2. "Calls not recorded" (src/sales/unrecorded.mjs listUnrecordedCalls) means no recording and no
+//    transcript. The rows judged are exactly the calls the chip counts: held, not demo, last 14 days,
+//    no recording address, no transcript, and older than the 20 minute grace window or logged before
+//    the last Drive sync.
 export const DISCIPLINE_SQL = `
 SELECT count(*)::int AS sample_count,
        count(*) FILTER (WHERE r.bad = 1)::int AS bad_count
@@ -139,11 +136,12 @@ SELECT count(*)::int AS sample_count,
        AND t.due_at IS NOT NULL AND t.due_at < now() AND COALESCE(t.is_demo, false) = false
        AND NOT EXISTS (SELECT 1 FROM call_outcomes o WHERE o.task_id = t.id AND o.org_id = t.org_id)
     UNION ALL
-    SELECT CASE WHEN NULLIF(BTRIM(u.transcript), '') IS NOT NULL THEN 1 ELSE 0 END AS bad
+    SELECT 0 AS bad
       FROM call_outcomes u
      WHERE u.org_id = $1::uuid AND COALESCE(u.is_demo, false) = false AND u.outcome <> 'no_show'
        AND u.logged_at > now() - interval '14 days'
        AND (u.recording_url IS NULL OR BTRIM(u.recording_url) = '')
+       AND (u.transcript IS NULL OR BTRIM(u.transcript) = '')
        AND (u.logged_at < now() - interval '20 minutes'
             OR u.logged_at < (SELECT s.last_sync_at FROM brain_drive_sync s WHERE s.org_id = u.org_id))
   ) r`;

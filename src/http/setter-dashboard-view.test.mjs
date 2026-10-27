@@ -10,6 +10,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const html = fs.readFileSync(path.resolve(here, "../../public/app/setter-dashboard.html"), "utf8");
 const source = fs.readFileSync(path.join(here, "setter-dashboard-view.mjs"), "utf8");
 const shell = fs.readFileSync(path.resolve(here, "../../public/app/shell.js"), "utf8");
+const writeApi = fs.readFileSync(path.resolve(here, "../../api/setter-dashboard.mjs"), "utf8");
 
 test("the page's pure view rules match the tested source", () => {
   const browser = html.split("/* FH-SETTER-VIEW-BEGIN */\n")[1]?.split("\n  /* FH-SETTER-VIEW-END */")[0];
@@ -55,7 +56,10 @@ test("screen uses live queue and write API with all four visible states", () => 
   assert.match(html, /h\.video_sent_at \|\| !introVideoAvailable \? ' disabled'/);
   assert.match(html, /Intro video waiting to film/);
   assert.match(html, /Send lead-only SMS/);
-  assert.match(html, /Send three-way SMS/);
+  assert.match(html, /Send lead \+ closer SMS/);
+  assert.match(html, /setter-number-book-rate/);
+  assert.match(html, /paintNumbers\(result\.body\.numbers\)/);
+  assert.match(writeApi, /"log_dial"/);
   assert.doesNotMatch(html, /style="/);
 });
 

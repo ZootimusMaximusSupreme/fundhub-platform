@@ -243,7 +243,7 @@ test("GET read/blueprint-combined-approval keeps unknown amounts null, shows one
 
 function cockpitWorld({
   withCredit = true, closeout = null, clientOrg = ORG_ID, kpi = { cash_cents: "1500000", deposits: 3, held: 6, no_shows: 1 }, shiftStarted = null,
-  upNext = [], nextAfter = null, joinUrl = null, preapprovals = { totalPersonal: 62000, totalBusiness: 150000, totalCombined: 212000 },
+  upNext = [], nextAfter = null, preapprovals = { totalPersonal: 62000, totalBusiness: 150000, totalCombined: 212000 },
   customFields = { slo_ref: "SLO-12", estimated_fico: 690 },
 } = {}) {
   const client = {
@@ -266,7 +266,6 @@ function cockpitWorld({
     [/^\s*SELECT name FROM staff WHERE id = \$1 AND org_id = \$2/, (sql, params) => { statements.push({ name: "staff", sql, params }); return [{ name: "Olive Owner" }]; }],
     [/FROM tasks t\s+LEFT JOIN clients c ON c\.id = t\.client_id AND c\.org_id = t\.org_id\s+LEFT JOIN call_outcomes o ON o\.task_id = t\.id\s+WHERE t\.org_id = \$1\s+AND t\.assignee_role = 'closer'\s+AND \(t\.assignee_staff_id = \$2 OR t\.assignee_staff_id IS NULL\)\s+AND t\.due_at IS NOT NULL\s+AND o\.id IS NULL\s+AND \(/, (sql, params) => { statements.push({ name: "up_next", sql, params }); return upNext; }],
     [/FROM tasks nt/, (sql, params) => { statements.push({ name: "next_after", sql, params }); return nextAfter ? [nextAfter] : []; }],
-    [/^\s*SELECT meeting_url FROM tasks/, (sql, params) => { statements.push({ name: "join_url", sql, params }); return joinUrl === null ? [] : [{ meeting_url: joinUrl }]; }],
   ];
   return { rules, statements };
 }
@@ -329,7 +328,7 @@ test("GET read/closer-call answers the live-call payload for one client of this 
     "cockpit.client", "cockpit.shift", "cockpit.kpis", "cockpit.unlogged", "cockpit.up_next", "cockpit.stage", "cockpit.crs",
     "cockpit.tradelines", "cockpit.liabilities", "cockpit.businesses", "cockpit.closeout", "cockpit.conversations", "cockpit.messages",
     "cockpit.applications", "cockpit.transactions", "cockpit.templates", "cockpit.quiet_deposits", "cockpit.staff_name", "cockpit.today",
-    "cockpit.join_url", "match.client_fields", "match.businesses", "match.addresses", "match.crs5", "match.inquiries", "match.lenders",
+    "match.client_fields", "match.businesses", "match.addresses", "match.crs5", "match.inquiries", "match.lenders",
     "match.removal_cases", "org.demo_mode");
 });
 
@@ -367,17 +366,16 @@ test("GET read/closer-call names the call this client is booked for and the one 
   const world = cockpitWorld({
     upNext: [mine, theirs],
     nextAfter: { task_id: "t-theirs", client_id: OTHER_CLIENT, due_at: later, title: "Book a call", name: "Somebody Else" },
-    joinUrl: "https://meet.example.test/mine",
   });
   const result = await call(closerCallHandler, { query: { client_id: CLIENT_ID }, rules: world.rules });
   assert.equal(result.status, 200);
-  assert.deepEqual(result.body.current_call, { due_at: due, task_id: "t-mine", title: "Book a call" });
+  assert.deepEqual(result.body.current_call, { due_at: due, task_id: "t-mine", title: "Book a call", meeting_url: "https://meet.example.test/mine" });
   assert.deepEqual(result.body.next_call, { due_at: later, task_id: "t-theirs", client_id: OTHER_CLIENT, name: "Somebody Else" });
   assert.deepEqual(result.body.up_next.map((t) => t.task_id), ["t-mine", "t-theirs"]);
   assert.equal(result.body.join_url, "https://meet.example.test/mine");
   assert.deepEqual(sentStatement(result, "cockpit.up_next").params, [ORG_ID, STAFF_ID, CLIENT_ID], "this client's own call first");
   assert.deepEqual(sentStatement(result, "cockpit.next_after").params, [ORG_ID, STAFF_ID, due], "the call after THIS one, for this closer");
-  assert.deepEqual(sentStatement(result, "cockpit.join_url").params, [ORG_ID, CLIENT_ID]);
+  assert.equal(sentStatement(result, "cockpit.join_url"), null, "Join comes from the current task; there is no second latest-task query");
 
   const notBooked = cockpitWorld({ upNext: [theirs], nextAfter: { task_id: "x", client_id: OTHER_CLIENT, due_at: later, title: "x", name: "x" } });
   const other = await call(closerCallHandler, { query: { client_id: CLIENT_ID }, rules: notBooked.rules });

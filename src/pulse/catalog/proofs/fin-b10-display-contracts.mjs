@@ -103,12 +103,10 @@ SELECT count(*)::int AS sample_count,
    AND f.source = 'upload'
    AND f.approval_status = 'pending'`;
 
-// Join call button. The button is on only when the closer screen's own read (src/sales/cockpit.mjs, the
-// `join_url` of /api/read/closer-call) finds a link. That read takes the LATEST task of the booked client
-// (by due time) that carries a non-blank meeting_url, and the page opens exactly that text in a new tab.
-// It never reads bookings.meeting_url. So this judges the same thing, for every real booked call that is
-// still ahead (or began in the last 2 hours): the client must have a task, in this company, whose latest
-// link is a web address. A booking with no client cannot open the closer screen at all, so it is wrong too.
+// Join call button. The button is on only when the closer screen's current task carries a link. The task
+// must belong to the same client and exact booking time; another call for the same client cannot lend its
+// room. The page opens that task's text in a new tab and never reads bookings.meeting_url. This judges the
+// same thing for every real booked call still ahead (or begun in the last 2 hours).
 // Tester bookings (sim, gauntlet, +tag, example and company addresses) are left out.
 const JOIN_SQL = `
 SELECT count(*)::int AS sample_count,
@@ -119,8 +117,8 @@ SELECT count(*)::int AS sample_count,
            (SELECT t.meeting_url
               FROM tasks t
              WHERE t.org_id = b.org_id AND t.client_id = b.client_id
-               AND BTRIM(t.meeting_url) <> ''
-             ORDER BY t.due_at DESC NULLS LAST
+               AND t.due_at = b.starts_at
+             ORDER BY t.created_at DESC
              LIMIT 1) AS link
       FROM bookings b
      WHERE b.org_id = $1::uuid
@@ -169,7 +167,7 @@ export const FIN_B10_RESULT_CONTRACTS = Object.freeze([
   ),
   contract(
     "Join call button (opens the booked call link)",
-    "Every real booked call still ahead must belong to a client whose latest call task carries a web link, because that task's link is the one the Join call button opens. A link on the booking alone does not turn the button on.",
+    "Every real booked call still ahead must have a web link on the same client's task at that exact call time. Another call for that client and a link on the booking alone do not turn the button on.",
     "booked-call-join-link",
     JOIN_SQL,
   ),

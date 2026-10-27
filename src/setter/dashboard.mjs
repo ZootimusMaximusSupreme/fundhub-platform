@@ -18,6 +18,14 @@ function jsonObject(v) {
   return v;
 }
 
+function phoenixDay(value) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Phoenix", year: "numeric", month: "2-digit", day: "2-digit"
+  }).formatToParts(value);
+  const part = Object.fromEntries(parts.map(x => [x.type, x.value]));
+  return `${part.year}-${part.month}-${part.day}`;
+}
+
 export function targetDialBy(createdAt) {
   const first = new Date(createdAt);
   if (!Number.isFinite(first.getTime())) return null;
@@ -115,6 +123,69 @@ function mapItem(row, staff) {
   });
 }
 
+export async function setterNumbers(db, staff) {
+  const result = await db.query(
+    `WITH bounds AS (
+       SELECT date_trunc('day', now() AT TIME ZONE 'America/Phoenix')
+                AT TIME ZONE 'America/Phoenix' AS day_start
+     ), attributed AS (
+       SELECT c.id, c.custom_fields->'setter_handoff' AS handoff
+         FROM clients c
+        WHERE c.org_id = $1
+          AND c.custom_fields->'setter_handoff'->>'setter_staff_id' = $2::text
+     )
+     SELECT
+       COALESCE((
+         SELECT sum(CASE
+           WHEN jsonb_typeof(a.handoff->'dial_attempt_days') = 'object'
+             THEN COALESCE(NULLIF(a.handoff->'dial_attempt_days'->>
+               to_char(x.day_start AT TIME ZONE 'America/Phoenix', 'YYYY-MM-DD'), '')::int, 0)
+           WHEN NULLIF(a.handoff->>'dialed_at', '')::timestamptz >= x.day_start
+             THEN COALESCE(NULLIF(a.handoff->>'call_attempts', '')::int, 0)
+           ELSE 0
+         END)
+           FROM attributed a, bounds x
+       ), 0)::int AS dials,
+       COALESCE((
+         SELECT count(DISTINCT b.id)
+           FROM attributed a
+           JOIN bookings b ON b.org_id = $1 AND b.client_id = a.id
+           CROSS JOIN bounds x
+          WHERE a.handoff->>'lead_type' = 'opt_in'
+            AND b.status IN ('booked', 'rescheduled')
+            AND b.created_at >= x.day_start
+       ), 0)::int AS booked,
+       COALESCE((
+         SELECT count(*) FILTER (WHERE o.outcome <> 'no_show')
+           FROM attributed a
+           JOIN call_outcomes o ON o.org_id = $1 AND o.client_id = a.id
+           CROSS JOIN bounds x
+          WHERE o.logged_at >= x.day_start
+       ), 0)::int AS showed,
+       COALESCE((
+         SELECT count(*) FILTER (WHERE o.outcome = 'no_show')
+           FROM attributed a
+           JOIN call_outcomes o ON o.org_id = $1 AND o.client_id = a.id
+           CROSS JOIN bounds x
+          WHERE o.logged_at >= x.day_start
+       ), 0)::int AS no_shows`,
+    [staff.org_id, staff.id]
+  );
+  const row = result.rows[0] || {};
+  const dials = Number(row.dials || 0);
+  const booked = Number(row.booked || 0);
+  const showed = Number(row.showed || 0);
+  const noShows = Number(row.no_shows || 0);
+  return {
+    dials,
+    booked,
+    dial_to_book_rate: dials ? booked / dials : null,
+    showed,
+    no_shows: noShows,
+    show_rate: showed + noShows ? showed / (showed + noShows) : null
+  };
+}
+
 export async function listSetterQueue(db, staff, { limit = 50, offset = 0 } = {}) {
   const roleScoped = staff.role === "setter";
   const page = pageParams({ limit, offset });
@@ -152,7 +223,8 @@ export async function listSetterQueue(db, staff, { limit = 50, offset = 0 } = {}
     [staff.org_id, roleScoped, staff.id, Math.min(page.limit, 100), page.offset]
   );
   const items = result.rows.map(row => mapItem(row, staff));
-  return { items, count: items.length, booking_url: "https://apply.fundhub.ai/funding-book-call" };
+  const numbers = await setterNumbers(db, staff);
+  return { items, count: items.length, numbers, booking_url: "https://apply.fundhub.ai/funding-book-call" };
 }
 
 export async function getSetterClient(db, orgId, clientId) {
@@ -231,8 +303,22 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
     lead_type: leadType,
     setter_staff_id: setterStaffId,
     closer_staff_id: closerStaffId,
-    setter_name: staff.name || staff.first_name || ""
+    setter_name: previous.setter_staff_id && previous.setter_staff_id !== staff.id
+      ? previous.setter_name || ""
+      : staff.name || staff.first_name || ""
   };
+  if (action === "log_dial") {
+    const dialedAt = (deps.now || (() => new Date()))();
+    const dialedDate = dialedAt instanceof Date ? dialedAt : new Date(dialedAt);
+    if (!Number.isFinite(dialedDate.getTime())) {
+      return { status: 500, body: { ok: false, error: "dial_time_unavailable" } };
+    }
+    const day = phoenixDay(dialedDate);
+    const days = jsonObject(previous.dial_attempt_days);
+    next.call_attempts = Number(previous.call_attempts || 0) + 1;
+    next.dialed_at = previous.dialed_at || dialedDate.toISOString();
+    next.dial_attempt_days = { ...days, [day]: Number(days[day] || 0) + 1 };
+  }
   if (action === "complete") next.complete_at = previous.complete_at || new Date().toISOString();
   if (next.complete_at) {
     const missing = missingForCompletion(next, client);

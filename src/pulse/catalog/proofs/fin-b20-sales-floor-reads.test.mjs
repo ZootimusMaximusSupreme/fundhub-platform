@@ -83,6 +83,23 @@ test("belief panel: this period against last period, a belief only counts at thr
   assert.ok(Date.parse(out.prior.end) <= Date.parse(out.period.start) + 1, "last period ends where this one starts");
 });
 
+test("lead-source panel prefers the saved human setter handoff over the legacy setter field", async () => {
+  const db = standIn(["call_outcomes", "clients", "client_custom_fields"]);
+  db.insert("clients", {
+    id: "human-set", org_id: ORG, channel_source: "organic",
+    custom_fields: JSON.stringify({ setter_handoff: { setter_staff_id: "staff-7", setter_name: "Alex Setter" } })
+  });
+  db.insert("client_custom_fields", { client_id: "human-set", org_id: ORG, cf_setter_user_id: "legacy-setter" });
+  db.insert("call_outcomes", {
+    id: id("o"), org_id: ORG, client_id: "human-set", staff_id: "closer-1",
+    outcome: "callback", logged_at: day(2), belief_failed: "trust"
+  });
+  const out = await beliefAnalytics(db, {
+    orgId: ORG, start: new Date("2026-10-01T00:00:00.000Z"), end: new Date("2026-11-01T00:00:00.000Z")
+  });
+  assert.equal(out.sources[0].setter_key, "Alex Setter");
+});
+
 test("lead-source panel: desire counts sort a source to the top and another company's calls never count", async () => {
   const db = standIn(["call_outcomes", "clients", "client_custom_fields"]);
   db.insert("clients", { id: "c1", org_id: ORG, channel_source: "organic" });
@@ -225,7 +242,7 @@ test("floor discipline: a recording address or a transcript, under either spelli
 // ---------------------------------------------------------------------------------------------
 // The live check reads the rows the chip is counted from. Run the REAL read and the REAL check text over
 // the same stand-in rows: the check's sample is the chip's number, row for row.
-test("floor discipline: the chip's number and the live check's rows are the same rows; a call with words but no address is listed (product finding 1)", async () => {
+test("floor discipline: the chip and live check both exclude a call that already has words", async () => {
   const now = new Date();
   const ago = (minutes) => new Date(now.getTime() - minutes * 60_000).toISOString();
   const build = (withSync) => {
@@ -259,15 +276,11 @@ test("floor discipline: the chip's number and the live check's rows are the same
     assert.equal(await countUnrecorded(db, { orgId: ORG, now }), chip.length);
     const ids = chip.map((r) => r.id).sort();
     if (withSync) {
-      assert.deepEqual(ids, ["u-blank-url", "u-blank-words", "u-fresh", "u-plain", "u-words"], "a Drive sync after a call counts it inside the grace window");
+      assert.deepEqual(ids, ["u-blank-url", "u-blank-words", "u-fresh", "u-plain"], "a Drive sync after a call counts it inside the grace window");
     } else {
-      assert.deepEqual(ids, ["u-blank-url", "u-blank-words", "u-plain", "u-words"]);
+      assert.deepEqual(ids, ["u-blank-url", "u-blank-words", "u-plain"]);
     }
-    // PRODUCT FINDING 1, pinned in both directions on purpose. listUnrecordedCalls selects no transcript
-    // column, so hasTape() never sees a transcript and the chip counts a call that has words. The live
-    // check reads that as one wrong row. The day the read starts selecting o.transcript this assertion
-    // fails: retire the transcript half of DISCIPLINE_SQL (fin-b20-sql.mjs) and this test in that change.
-    assert.equal(ids.includes("u-words"), true, "finding 1: the chip counts a call that has a transcript and no address");
-    assert.equal(Number(check.bad_count), 1, "the live check counts that one call as wrong (blank words are not words)");
+    assert.equal(ids.includes("u-words"), false, "words on the exact call satisfy the recording alert");
+    assert.equal(Number(check.bad_count), 0);
   }
 });

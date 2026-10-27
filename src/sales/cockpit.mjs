@@ -395,7 +395,12 @@ export async function buildCockpit(db, { orgId, staffId, clientId, now = new Dat
      a time that belonged to somebody else. */
   const headTask = upNext[0] || null;
   const currentCall = headTask && String(headTask.client_id) === String(clientId)
-    ? { due_at: headTask.due_at, task_id: headTask.task_id, title: headTask.title || null }
+    ? {
+        due_at: headTask.due_at,
+        task_id: headTask.task_id,
+        title: headTask.title || null,
+        meeting_url: headTask.meeting_url || null
+      }
     : null;
   /* And the one after it, asked of the table rather than read off up_next — see
      nextCallAfter() for the three shapes that array gets wrong. Always present
@@ -468,14 +473,7 @@ export async function buildCockpit(db, { orgId, staffId, clientId, now = new Dat
     offers: offersForClient(),
     precall,
     templates_sent: templatesSent.rows.map((r) => r.template_key),
-    join_url: (await db.query(
-      `SELECT meeting_url FROM tasks
-        WHERE org_id = $1 AND client_id = $2
-          AND meeting_url IS NOT NULL AND btrim(meeting_url) <> ''
-        ORDER BY due_at DESC NULLS LAST
-        LIMIT 1`,
-      [orgId, clientId]
-    )).rows[0]?.meeting_url || null,
+    join_url: currentCall?.meeting_url || null,
     up_next: upNext,
     gone_quiet: goneQuiet,
     compliance_checklist: {

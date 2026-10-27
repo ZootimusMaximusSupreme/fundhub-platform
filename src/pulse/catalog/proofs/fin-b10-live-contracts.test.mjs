@@ -261,8 +261,8 @@ test("N waiting badge: a waiting Drive file is not counted, because the badge co
 });
 
 /* ── 4. Join call button ─────────────────────────────────────────────────── */
-// The button opens the latest task link of the booked CLIENT (src/sales/cockpit.mjs join_url). A link on the
-// booking alone does not turn it on. A task belongs to a client and a company, and both are held below.
+// The button opens the link on the exact current task (src/sales/cockpit.mjs join_url). A link on the
+// booking or another call for the client does not turn it on.
 const JOIN_CONTROL = FIN_B10_RESULT_CONTRACTS[3].control;
 const GOOD_TASK = "https://meet.example.com/task-room";
 function seedJoin(s, org, c = {}) {
@@ -299,7 +299,7 @@ suite("Join call button", JOIN_CONTROL, ["bookings", "tasks"], seedJoin, [
     { url: "TBD", due: ahead(48) },
   ] }],
 ], { windowed: false });
-test("Join call button: the latest non-blank task link is the one the button opens, and a booking link alone is not enough", () => {
+test("Join call button: only the task at the exact booking time can turn it on", () => {
   const contract = contractFor(JOIN_CONTROL);
   const withStandIn = (fn) => { const s = makeStandIn(["bookings", "tasks"]); try { return fn(s); } finally { s.close(); } };
   // The link is on the closer's task for the client, and the booking has none: green.
@@ -307,12 +307,12 @@ test("Join call button: the latest non-blank task link is the one the button ope
     seedJoin(s, ORG, { url: null, taskUrl: GOOD_TASK });
     assert.deepEqual(s.run(contract.sql, ORG), { sample_count: 1, bad_count: 0 });
   });
-  // The latest task has a BLANK link and an older one has a web link: the read skips blanks, so the button is on.
+  // Another call has a good link, but the exact current task is blank: red.
   withStandIn((s) => {
     seedJoin(s, ORG, { url: null, tasks: [{ url: GOOD_TASK, due: ago(5) }, { url: "", due: ahead(48) }] });
-    assert.deepEqual(s.run(contract.sql, ORG), { sample_count: 1, bad_count: 0 });
+    assert.deepEqual(s.run(contract.sql, ORG), { sample_count: 1, bad_count: 1 });
   });
-  // The latest task has a web link and an older one is junk: the button opens the latest, so green.
+  // The exact current task has a web link and another call is junk: green.
   withStandIn((s) => {
     seedJoin(s, ORG, { url: null, tasks: [{ url: "TBD", due: ago(5) }, { url: GOOD_TASK, due: ahead(48) }] });
     assert.deepEqual(s.run(contract.sql, ORG), { sample_count: 1, bad_count: 0 });

@@ -6,6 +6,7 @@ import { driveConfigFromEnv } from "../company-brain/config.mjs";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const LOOKBACK_DAYS = 7;
+const CALL_TIME_WINDOW_MINUTES = 15;
 
 function tokens(s) {
   return String(s || "")
@@ -40,20 +41,63 @@ function isToday(iso, now) {
   );
 }
 
-export async function stampRecordingUrl(db, { orgId, clientId, url } = {}) {
+/** Read the scheduled Meet time from Google's timestamped file name. */
+export function recordingCallTime(fileName) {
+  const match = String(fileName || "").match(
+    /(?:^|[^0-9])(\d{4})[-/](\d{2})[-/](\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?\s*(?:GMT|UTC)\s*([+-])\s*(\d{1,2})(?::?(\d{2}))?/i
+  );
+  if (!match) return null;
+  const [, year, month, day, hour, minute, seconds = "00", sign, offsetHour, offsetMinute = "00"] = match;
+  if (
+    Number(month) < 1 || Number(month) > 12
+    || Number(day) < 1 || Number(day) > 31
+    || Number(hour) > 23 || Number(minute) > 59 || Number(seconds) > 59
+    || Number(offsetHour) > 23 || Number(offsetMinute) > 59
+  ) return null;
+  const offset = `${sign}${String(offsetHour).padStart(2, "0")}:${offsetMinute}`;
+  const parsed = new Date(`${year}-${month}-${day}T${hour}:${minute}:${seconds}${offset}`);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.toISOString();
+}
+
+export async function stampRecordingUrl(db, {
+  orgId,
+  clientId,
+  url,
+  callTime = null
+} = {}) {
   const link = String(url || "").trim();
   if (!orgId || !clientId || !link) return { stamped: 0 };
-  const call = await db.query(
-    `UPDATE call_outcomes SET recording_url = $3
-      WHERE id = (
-        SELECT id FROM call_outcomes
-         WHERE org_id = $1 AND client_id = $2 AND recording_url IS NULL
-         ORDER BY logged_at DESC NULLS LAST
-         LIMIT 1
-      )
-      RETURNING id`,
-    [orgId, clientId, link]
-  );
+  const exactTime = callTime ? new Date(callTime) : null;
+  const matchIso = exactTime && !Number.isNaN(exactTime.getTime())
+    ? exactTime.toISOString()
+    : null;
+  const call = matchIso
+    ? await db.query(
+      `UPDATE call_outcomes SET recording_url = $3
+        WHERE id = (
+          SELECT o.id
+            FROM call_outcomes o
+            LEFT JOIN tasks t
+              ON t.id = o.task_id AND t.org_id = o.org_id
+            LEFT JOIN bookings b
+              ON b.org_id = o.org_id
+             AND (b.provider_uid = o.booking_ref OR b.id::text = o.booking_ref)
+           WHERE o.org_id = $1 AND o.client_id = $2
+             AND (o.recording_url IS NULL OR btrim(o.recording_url) = '')
+             AND COALESCE(b.starts_at, t.due_at)
+                   BETWEEN $4::timestamptz - interval '${CALL_TIME_WINDOW_MINUTES} minutes'
+                       AND $4::timestamptz + interval '${CALL_TIME_WINDOW_MINUTES} minutes'
+           ORDER BY ABS(EXTRACT(EPOCH FROM (
+                      COALESCE(b.starts_at, t.due_at) - $4::timestamptz
+                    ))) ASC,
+                    o.logged_at DESC NULLS LAST
+           LIMIT 1
+        )
+        RETURNING id`,
+      [orgId, clientId, link, matchIso]
+    )
+    : { rows: [] };
   const insight = await db.query(
     `UPDATE customer_insights SET recording_url = $3
       WHERE id = (
@@ -95,19 +139,7 @@ export async function stampCallTranscript(db, {
     )
     : { rows: [] };
   if (byUrl.rows?.length) return { stamped: 1 };
-  const byClient = await db.query(
-    `UPDATE call_outcomes SET transcript = $3
-      WHERE id = (
-        SELECT id FROM call_outcomes
-         WHERE org_id = $1 AND client_id = $2
-           AND (transcript IS NULL OR btrim(transcript) = '')
-         ORDER BY logged_at DESC NULLS LAST
-         LIMIT 1
-      )
-      RETURNING id`,
-    [orgId, clientId, words]
-  );
-  return { stamped: byClient.rows?.length || 0 };
+  return { stamped: 0 };
 }
 
 async function recentCallClients(db, { orgId, sinceIso }) {
@@ -162,7 +194,12 @@ export async function attachDriveRecording(db, {
   }
   if (!id) return { attached: false, reason: "unattached", clientId: null };
 
-  await stampRecordingUrl(db, { orgId, clientId: id, url: link });
+  await stampRecordingUrl(db, {
+    orgId,
+    clientId: id,
+    url: link,
+    callTime: recordingCallTime(fileName)
+  });
   return { attached: true, reason: null, clientId: id };
 }
 
@@ -227,7 +264,12 @@ export async function listRecentRecordings(db, {
         WHERE id = $1 AND org_id = $3 AND client_id IS NULL`,
       [row.id, hit.id, orgId]
     );
-    await stampRecordingUrl(db, { orgId, clientId: hit.id, url: row.web_view_link });
+    await stampRecordingUrl(db, {
+      orgId,
+      clientId: hit.id,
+      url: row.web_view_link,
+      callTime: recordingCallTime(row.name)
+    });
     row.client_id = hit.id;
     row.first_name = hit.first_name;
     row.last_name = hit.last_name;

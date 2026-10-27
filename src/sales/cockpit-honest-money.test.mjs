@@ -136,6 +136,19 @@ describe("the call screen's money is sourced or it says it is not", () => {
     assert.equal(new Date(out.current_call.due_at).toISOString(), due.toISOString());
   });
 
+  test("join_url belongs to the exact current call, not this client's later call", async () => {
+    const current = new Date("2026-09-01T17:00:00.000Z");
+    const later = new Date("2026-09-01T23:00:00.000Z");
+    const db = stubDb({ tasks: [
+      { task_id: "t-current", client_id: CLIENT, due_at: current, title: "Closing call", meeting_url: "https://meet.google.com/current-call" },
+      { task_id: "t-later", client_id: CLIENT, due_at: later, title: "Follow-up", meeting_url: "https://meet.google.com/later-call" }
+    ] });
+    const out = await buildCockpit(db, { orgId: ORG, staffId: STAFF, clientId: CLIENT });
+    assert.equal(out.current_call.task_id, "t-current");
+    assert.equal(out.join_url, "https://meet.google.com/current-call");
+    assert.equal(db.seen.filter((sql) => /SELECT meeting_url FROM tasks/.test(sql)).length, 0);
+  });
+
   test("next_call is its own question, not the second row of up_next", async () => {
     const due = new Date("2026-09-01T17:00:00.000Z");
     const db = stubDb({

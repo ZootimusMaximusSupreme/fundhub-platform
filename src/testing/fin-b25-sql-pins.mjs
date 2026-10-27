@@ -150,7 +150,6 @@ export const PINS = {
   "cockpit.quiet_deposits": "SELECT c.id AS client_id, COALESCE(NULLIF(trim(c.first_name || ' ' || c.last_name), ''), 'Client') AS name, EXTRACT(DAY FROM (now() - o.logged_at))::int AS quiet_days, o.cash_collected_cents FROM call_outcomes o JOIN clients c ON c.id = o.client_id WHERE o.org_id = $1 AND o.staff_id = $2 AND o.outcome = 'deposit' AND o.transaction_id IS NOT NULL AND o.cash_collected_cents > 0 AND c.funded IS NOT TRUE AND o.logged_at < now() - interval '7 days' ORDER BY o.logged_at ASC LIMIT 5",
   "cockpit.staff_name": "SELECT name FROM staff WHERE id = $1 AND org_id = $2",
   "cockpit.today": "SELECT COALESCE(SUM(cash_collected_cents), 0)::bigint AS cents, count(*) FILTER (WHERE outcome = 'deposit' AND transaction_id IS NOT NULL AND cash_collected_cents > 0)::int AS deposits FROM call_outcomes WHERE org_id = $1 AND staff_id = $2 AND logged_at >= $3",
-  "cockpit.join_url": "SELECT meeting_url FROM tasks WHERE org_id = $1 AND client_id = $2 AND meeting_url IS NOT NULL AND btrim(meeting_url) <> '' ORDER BY due_at DESC NULLS LAST LIMIT 1",
   "match.client_fields": "SELECT id, custom_fields FROM clients WHERE org_id = $1::uuid AND id = $2::uuid",
   "match.businesses": "SELECT entity_data FROM businesses WHERE org_id = $1::uuid AND client_id = $2::uuid ORDER BY created_at ASC",
   "match.addresses": "SELECT addresses FROM pii_identity WHERE org_id = $1::uuid AND client_id = $2::uuid LIMIT 1",
