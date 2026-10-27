@@ -129,6 +129,9 @@ introduces a same-sale, same-org positive net front-end payment requirement
 regression covering unpaid funding, unpaid repair, fee-only and fully refunded sales.
 **Proof pending CI and deployment; do not treat this as a verified purchase handoff.**
 
+**Repair-program tier escalation — FAIL in reviewed source; targeted fix in [PR #162](https://github.com/ZootimusMaximusSupreme/fundhub-platform/pull/162), CI/ship NOT YET PROVED.**
+The top-level paid sale gate in #154 correctly requires positive net payments on the same sale, but the downstream `repairPurchase()` previously chose the first signed non-trial repair sale regardless of money and summed refunds as positive. A buyer who paid $200 for two trial rounds and later signed an **unpaid or fully refunded** full repair offer could therefore receive the six-round program without purchasing it. #162 scopes the selected program to the same company's individual sale's positive net deposits/installments less refunds; success fees never count. Unit scenarios plus a real-Postgres trial+unpaid/refunded bundle regression are added, but no provider paid receipt, role-screen confirmation or final team handoff has been observed. **Keep the repair-purchase gate NOT LIVE PROVED until green PR/main/ship checks and a verified buyer-to-repair-team trace.**
+
 **Sales Floor recording totals — failing fixture diagnosed, repair proposed, NOT LIVE PROVED.**
 PR [#151](https://github.com/ZootimusMaximusSupreme/fundhub-platform/pull/151)
 uncaps the true missing-recording total but exposed an older canned-DB proof
