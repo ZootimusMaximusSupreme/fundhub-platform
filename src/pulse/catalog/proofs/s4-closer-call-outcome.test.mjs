@@ -32,12 +32,12 @@ const COCKPIT = {
   dispositions: { outcomes: ["deposit", "downsell", "callback", "no_show", "not_a_fit"], beliefs: ["pain", "doubt", "cost", "desire", "money", "support", "trust"] },
 };
 
-async function openCall(open) {
+async function openCall(open, { url = `/app/closer-dashboard.html?client_id=${CLIENT}&task_id=task-1`, cockpit = COCKPIT } = {}) {
   const posted = [];
   const alerts = [];
   const handlers = {
     "/api/read/closer-now": { ok: true, current: null, next: null },
-    "/api/read/closer-call": COCKPIT,
+    "/api/read/closer-call": cockpit,
     "/api/read/tradelines": { ok: true, data: [], client_id: CLIENT },
     "/api/read/lender-matches": { ok: true, matches: [] },
     "/api/read/deal-math": { ok: true },
@@ -47,7 +47,7 @@ async function openCall(open) {
       return json(route, { ok: true, created: true, outcome: { outcome: posted.at(-1).outcome } });
     },
   };
-  const opened = await open(`/app/closer-dashboard.html?client_id=${CLIENT}&task_id=task-1`, { session: CLOSER, handlers });
+  const opened = await open(url, { session: CLOSER, handlers });
   opened.page.on("dialog", (dialog) => { alerts.push(dialog.message()); dialog.accept(); });
   await opened.page.waitForSelector("#fh-save-next");
   return { ...opened, posted, alerts };
@@ -126,6 +126,24 @@ test("Save with no outcome picked says so and sends nothing", { timeout: 60_000 
     assert.match(alerts[0], /Pick an outcome/);
     assert.deepEqual(posted, []);
   });
+  await page.close();
+});
+
+test("a client-only deep link dispositions its booked task and does not loop to the same call", { timeout: 60_000 }, async (t) => {
+  const { open } = await startScreens(t);
+  const { page, posted } = await openCall(open, {
+    url: `/app/closer-dashboard.html?client_id=${CLIENT}`,
+    cockpit: {
+      ...COCKPIT,
+      up_next: [{ task_id: "task-1", client_id: CLIENT, due_at: DUE, name: "Dana Whitfield" }],
+      next_call: null,
+    },
+  });
+  await page.locator('[data-outcome="callback"]').click();
+  await page.locator("#fh-save-next").click();
+  await waitFor(() => posted.length === 1);
+  assert.equal(posted[0].task_id, "task-1");
+  await page.waitForURL(/\/app\/my-numbers\.html$/);
   await page.close();
 });
 
