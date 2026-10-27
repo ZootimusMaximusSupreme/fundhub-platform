@@ -3,6 +3,10 @@
 //
 //   DATABASE_URL=… INNGEST_EVENT_KEY=… node scripts/sim/push-credit.mjs \
 //     --email stanbridgejchris+sim-01@gmail.com --profile fundable [--dry]
+//   --business-scenario two_clean adds fictional Experian Business reports and
+//   matched business rows, only for a +sim address on a local scratch database.
+//   The normal non-dry path emits events that may build a document pack; use
+//   --dry for inspection. No bureau request is made by this script.
 //
 // For the manual walkthrough (ops/workflows/manual-walkthrough-SOP.md). Chris
 // opts a simulated client in through ClickFunnels; this puts the credit report
@@ -90,6 +94,7 @@
 
 import { readFileSync } from "node:fs";
 import { pool, close } from "../../src/db.mjs";
+import { withTransaction } from "../../src/db/with-transaction.mjs";
 import { resolveDefaultOrg } from "../../src/auth/org.mjs";
 import { ensureRegistered } from "../../src/register-all.mjs";
 import { emit } from "../../src/events/bus.mjs";
@@ -97,10 +102,13 @@ import { ingestCrsResult } from "../../src/tradelines/store.mjs";
 import { ingestCrsLiabilities } from "../../src/liabilities/store.mjs";
 import { mergeCustomFields } from "../../src/workflows/custom-fields.mjs";
 import { runTierEngineFromCrsResult } from "../../src/finance/crs-tier.mjs";
+import { scoreBuyerTotal } from "../../src/finance/crs-pull.mjs";
 import { newInquiriesFor } from "../../src/finance/crs-map.mjs";
 import { storeIdentity, encryptSsn } from "../../src/pii/index.mjs";
 import { isFundingPath } from "../../src/config/product-path.mjs";
 import { providerFromEnv } from "../../src/documents/store.mjs";
+import { isLocalScratchDatabaseUrl } from "../../src/verification/scratch-guard.mjs";
+import { BUSINESS_SCENARIOS, buildBusinessScenario } from "./crs-scenarios.mjs";
 
 const BUREAU_NAME = { EX: "Experian", EQ: "Equifax", TU: "TransUnion" };
 const ALL_BUREAUS = Object.freeze(["EX", "EQ", "TU"]);
@@ -1023,6 +1031,53 @@ export function buildPayload(profileKey, { email, name, pulledAt = new Date().to
   };
 }
 
+/** Assemble the ordinary simulated personal file with matched business rows/reports. */
+export function buildScenarioPayload(profileKey, options, businessScenario) {
+  const payload = buildPayload(profileKey, options);
+  if (!businessScenario) return { payload, businesses: [] };
+  const { businesses, businessReports } = buildBusinessScenario(businessScenario, { asOf: payload.pulledAt });
+  payload.businessReports = businessReports;
+  return { payload, businesses };
+}
+
+/** Business fixtures may be written only for plus-tag Sims on a local scratch DB. */
+export function assertBusinessScenarioSafe({ databaseUrl, email, businessScenario }) {
+  if (!businessScenario) return;
+  if (!BUSINESS_SCENARIOS[businessScenario]) throw new Error(`unknown business scenario ${businessScenario}`);
+  if (!/^[^@+]+\+sim[\w-]*@[^@]+$/i.test(String(email || ""))) {
+    throw new Error("business scenarios require a +sim email address");
+  }
+  if (!isLocalScratchDatabaseUrl(databaseUrl)) {
+    throw new Error("business scenarios require a local scratch database");
+  }
+}
+
+/** Replace only this script's prior fictional business rows, never form-saved companies. */
+export async function saveScenarioBusinesses(db, { orgId, clientId, businesses, databaseUrl, email, businessScenario }) {
+  assertBusinessScenarioSafe({ databaseUrl, email, businessScenario });
+  if (!businessScenario) throw new Error("business scenario required before saving business rows");
+  const expected = buildBusinessScenario(businessScenario).businesses;
+  if (!Array.isArray(businesses) || businesses.length !== expected.length
+      || businesses.some((row, i) => row.name !== expected[i].name
+        || row.entity_data?.state !== expected[i].entity_data.state
+        || row.entity_data?.source !== "simulated_crs")) {
+    throw new Error("business rows do not match the selected simulated scenario");
+  }
+  return withTransaction(db, async (tx) => {
+    await tx.query(
+      `DELETE FROM businesses WHERE org_id = $1 AND client_id = $2 AND entity_data->>'source' = 'simulated_crs'`,
+      [orgId, clientId]
+    );
+    for (const business of businesses) {
+      await tx.query(
+        `INSERT INTO businesses (org_id, client_id, name, age_months, entity_data)
+         VALUES ($1, $2, $3, $4, $5::jsonb)`,
+        [orgId, clientId, business.name, business.age_months, JSON.stringify(business.entity_data)]
+      );
+    }
+  });
+}
+
 /* ── The identity row, the way the soft-pull form saves it ─────────────────
    api/soft-pull-approve.mjs refuses without street, city, a two-letter state and
    ZIP, and a YYYY-MM-DD date of birth, then calls storeIdentity with
@@ -1128,14 +1183,19 @@ function arg(name, fallback = null) {
 async function main() {
   const email = String(arg("email", "")).trim().toLowerCase();
   const profileArg = String(arg("profile", "")).trim();
+  const businessScenario = arg("business-scenario");
   const dry = process.argv.includes("--dry");
   const profileKey = resolveProfileKey(profileArg);
   if (!email || !profileKey) {
-    console.error("usage: node scripts/sim/push-credit.mjs --email <client email> --profile fundable|repair-full|repair-trial [--dry]");
+    console.error("usage: node scripts/sim/push-credit.mjs --email <client email> --profile fundable|repair-full|repair-trial [--business-scenario seasoned_clean|young_clean|lien_stressed|inactive|two_clean|mixed] [--dry]");
     console.error(`       old names still work: ${Object.entries(PROFILE_ALIASES).map(([a, t]) => `${a}=${t}`).join(" ")}`);
     process.exit(2);
   }
+  if (process.argv.includes("--business-scenario") && !businessScenario) {
+    throw new Error("--business-scenario needs a scenario name");
+  }
   if (!process.env.DATABASE_URL) { console.error("DATABASE_URL is not set"); process.exit(2); }
+  assertBusinessScenarioSafe({ databaseUrl: process.env.DATABASE_URL, email, businessScenario });
   const identity = loadOwnerIdentity();
   const db = pool();
   ensureRegistered();
@@ -1150,7 +1210,7 @@ async function main() {
 
   const prior = (await db.query(`SELECT count(*)::int AS n FROM crs_results WHERE client_id = $1`, [c.id])).rows[0].n;
   const p = PROFILES[profileKey];
-  const payload = buildPayload(profileKey, { email, name, identity });
+  const { payload, businesses: scenarioBusinesses } = buildScenarioPayload(profileKey, { email, name, identity }, businessScenario);
 
   /* SAY IT BEFORE THE ENGINE RUNS. The name on the credit file has to match the
      name on the client row or the identity gate sends the file to manual review
@@ -1165,16 +1225,27 @@ async function main() {
   }
 
   // The real tier engine decides. Nothing here forces an outcome.
-  const tier = runTierEngineFromCrsResult(payload, {
+  const tierOptions = {
     submittedName: name,
     /* The gate ignores the address today (identity-fraud-gate.js takes it and
        never reads it) but passing the real one means it is right the day it
        starts reading it. */
     submittedAddress: [identity.current.line1, identity.current.city, identity.current.state, identity.current.postal_code].filter(Boolean).join(", "),
     formData: { name, email, phone: null }
-  });
+  };
+  const scored = businessScenario
+    ? scoreBuyerTotal(runTierEngineFromCrsResult, payload, tierOptions)
+    : { tierResult: runTierEngineFromCrsResult(payload, tierOptions) };
+  const tier = scored.tierResult;
+  const fundingEstimate = businessScenario
+    ? scored.fundingEstimate
+    : (tier.preapprovals?.totalCombined ?? null);
   payload.outcome = tier.outcome;
-  payload.preapprovals = tier.preapprovals ?? null;
+  payload.preapprovals = businessScenario && tier.preapprovals
+    ? { ...tier.preapprovals,
+        totalBusiness: fundingEstimate - Number(tier.preapprovals.totalPersonal || 0),
+        totalCombined: fundingEstimate }
+    : (tier.preapprovals ?? null);
   payload.reason_codes = tier.reasonCodes ?? tier.reason_codes ?? ["simulated"];
   /* F45 — the engine's OWN signals, not a hand-written stub. The old sim wrote
      `{ scores: { perBureau }, utilization: { pct } }` and the deliverable
@@ -1184,7 +1255,6 @@ async function main() {
      partial stub is worse than none; this is the whole thing the engine computed,
      median, anchors, per-bureau negatives and all. */
   payload.consumerSignals = tier.consumerSignals ?? null;
-  const fundingEstimate = tier.preapprovals?.totalCombined ?? null;
 
   const negatives = countNegatives(payload.tradelines);
   const cs = payload.consumerSignals;
@@ -1196,7 +1266,9 @@ async function main() {
   console.log(`derogs   ${cs?.derogatories?.collections ?? 0} collection rows · ${cs?.derogatories?.chargeoffs ?? 0} charge-off rows · worst severity ${cs?.derogatories?.worstSeverity ?? 0}`);
   console.log(`tier     ${tier.outcome} · funding estimate ${fundingEstimate ?? "none"}`);
   /* Say it out loud so the walkthrough is not surprised by a $0 business figure. */
-  console.log(`business $0 — no business credit report is passed, so business_age_months ${p.businessAgeMonths} is never read`);
+  console.log(businessScenario
+    ? `business ${businessScenario}: ${scenarioBusinesses.length} fictional company report(s), engine total $${payload.preapprovals?.totalBusiness ?? 0}`
+    : `business $0 — no business credit report is passed, so business_age_months ${p.businessAgeMonths} is never read`);
   console.log(`prior    ${prior} crs_results row(s) already on this client${prior ? " — a new one is added, the newest wins" : ""}`);
 
   /* BEFORE ANYTHING IS WRITTEN — the identity row and the pack (hole N10; see
@@ -1234,6 +1306,12 @@ async function main() {
   if (idPlan.write) {
     await storeIdentity(db, { orgId, clientId: c.id, ssn: idPlan.ssn, dob: idPlan.dob, addresses: idPlan.addresses });
   }
+  if (businessScenario) {
+    await saveScenarioBusinesses(db, {
+      orgId, clientId: c.id, businesses: scenarioBusinesses,
+      databaseUrl: process.env.DATABASE_URL, email, businessScenario
+    });
+  }
 
   const crs = (await db.query(
     `INSERT INTO crs_results (org_id, client_id, result, outcome_tier, is_demo) VALUES ($1, $2, $3::jsonb, $4, true) RETURNING *`,
@@ -1249,14 +1327,10 @@ async function main() {
     crs_inquiries_tu: inqCount("TU"),
     crs_negative_items_count: negatives,
     crs_late_payments_count: payload.tradelines.filter((t) => /late/i.test(String(t.paymentStatus))).length,
-    /* DISPLAY ONLY. The funding estimator never reads this. Business money is
-       blocked at $0 unless a real BUSINESS CREDIT REPORT is passed to the engine
-       (estimate-preapprovals.js: `businessAvailable = bs?.available === true`),
-       and the age multiplier is only reached after that check passes. The sim
-       passes no business report, so the business half of every estimate here is
-       $0 and this 30 months is never consulted. Pinned by
-       src/underwrite/preapproval-modifiers.test.mjs. */
-    business_age_months: p.businessAgeMonths,
+    /* Display fallback only. The engine reads the saved business report's
+       incorporated date; without --business-scenario it still gets no report
+       and business funding stays $0. */
+    business_age_months: scenarioBusinesses[0]?.age_months ?? p.businessAgeMonths,
     crs_utilization: payload.utilization,
     /* The client screen's own fallback key. It looks for `utilization`, not
        `crs_utilization`, and finding neither it showed no card use at all. */
