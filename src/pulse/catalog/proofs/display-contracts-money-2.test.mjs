@@ -307,10 +307,10 @@ test("rendered Plan moves months and sends an accepted Mark missed request", asy
   await page.getByRole("button", { name: /Call the bank/ }).first().click();
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("dialog").getByRole("button", { name: "Mark missed" }).click();
+  await page.getByText("Marked missed.", { exact: true }).waitFor();
   assert.deepEqual(posts.at(-1), {
     action: "mark", source: "waypoints", pin_id: "fake-waypoint", status: "missed", client_id: CLIENT_ID,
   });
-  await page.getByText("Marked missed.", { exact: true }).waitFor();
   assert.match(await page.locator(".pl-drawer").innerText(), /Missed/);
   await context.close();
 });
