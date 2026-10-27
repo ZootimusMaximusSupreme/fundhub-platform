@@ -14,7 +14,7 @@ import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { pool, close } from "../../src/db.mjs";
 import { isLocalScratchDatabaseUrl } from "../../src/verification/scratch-guard.mjs";
-import { MIGRATION, ORG_SLUG, RESTORE_KEYS, insertOnlyProblems, parseRestoreRows, stageSeedRows } from "./template-restore.mjs";
+import { MIGRATION, ORG_SLUG, RESTORE_KEYS, RESTORE_SNAPSHOT_EXCLUDE_FILES, insertOnlyProblems, parseRestoreRows, stageSeedRows } from "./template-restore.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const SCRATCH = isLocalScratchDatabaseUrl(process.env.DATABASE_URL);
@@ -57,7 +57,7 @@ test("497 carries exactly the seed copy it originally restored", { skip: SKIP },
   await inRollback(async (client) => {
     const staged = await stageSeedRows(client, {
       root: ROOT,
-      excludeFiles: ["db/seed/298_s04_booking_app_confirm_email.sql"]
+      excludeFiles: RESTORE_SNAPSHOT_EXCLUDE_FILES
     });
     assert.equal(staged.length, RESTORE_KEYS.length);
     assert.deepEqual(byKey(ROWS), byKey(staged));
