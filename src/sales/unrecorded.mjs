@@ -138,7 +138,7 @@ export async function countUnrecorded(db, {
   let staffClause = "";
   if (staffId) {
     params.push(staffId);
-    staffClause = `AND o.staff_id = ${params.length}`;
+    staffClause = `AND o.staff_id = $${params.length}`;
   }
   const result = await db.query(
     `SELECT count(*)::int AS total
