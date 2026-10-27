@@ -208,6 +208,15 @@ describe("one track event → one events row", () => {
     assert.deepEqual(cleanProps("app_download_tap", props), {});
   });
 
+  test("portal App Store tap is accepted through the same API door", async () => {
+    const h = harness();
+    const out = await send(h, { event: "app_download_tap", page: "/portal-login.html", seq: 8, props: {} });
+    assert.equal(out.saved, true);
+    assert.equal(h.rows[0].name, "funnel.app_download_tap");
+    assert.deepEqual([h.rows[0].payload.page, h.rows[0].payload.funnel, h.rows[0].payload.step],
+      ["/portal-login.html", "portal", 1]);
+  });
+
   test("every other event is funnel.<event>", () => {
     for (const e of Object.keys(TRACK_EVENTS)) {
       const want = e === "page_view" ? "funnel.page" : e === "click" ? "funnel.click" : `funnel.${e}`;

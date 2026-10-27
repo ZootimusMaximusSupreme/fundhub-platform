@@ -189,17 +189,18 @@ function contactPhone(raw) {
   return normalizePhone(s) || s;
 }
 
-/** Fill phone / name when a later webhook has them and the row is still blank. */
-async function patchClientContact(db, clientId, p = {}) {
+/** A fresh apply form or booking is the client's latest contact instruction. */
+async function patchClientContact(db, clientId, p = {}, overwrite = false) {
   if (!clientId) return;
   const { firstName, lastName } = splitName(p.name);
-  const phone = contactPhone(p.phone);
+  // Never replace a usable number with text that cannot be dialed.
+  const phone = overwrite ? normalizePhone(p.phone) : contactPhone(p.phone);
   if (!phone && !firstName && !lastName) return;
   await db.query(
     `UPDATE clients SET
-       phone = COALESCE(NULLIF(phone, ''), $2),
-       first_name = COALESCE(NULLIF(first_name, ''), $3),
-       last_name = COALESCE(NULLIF(last_name, ''), $4),
+       phone = ${overwrite ? "COALESCE($2, NULLIF(phone, ''))" : "COALESCE(NULLIF(phone, ''), $2)"},
+       first_name = ${overwrite ? "COALESCE($3, NULLIF(first_name, ''))" : "COALESCE(NULLIF(first_name, ''), $3)"},
+       last_name = ${overwrite ? "COALESCE($4, NULLIF(last_name, ''))" : "COALESCE(NULLIF(last_name, ''), $4)"},
        updated_at = now()
      WHERE id = $1`,
     [clientId, phone, firstName, lastName]
@@ -209,10 +210,12 @@ async function patchClientContact(db, clientId, p = {}) {
 export async function resolveClient(db, event, opts = {}) {
   const orgId = event.orgId;
   const p = event.payload || {};
+  const overwriteContact = p.source === "clickfunnels" &&
+    (p.funnel === "apply-survey" || event.name === "booking.created" || event.name === "booking.rescheduled");
   if (event.clientId) {
     // Explicit id still needs a CRM link when missing — lead capture often
     // creates the row first, then emits with clientId set.
-    await patchClientContact(db, event.clientId, p);
+    await patchClientContact(db, event.clientId, p, overwriteContact);
     return backfillCrmLinkIfMissing(db, event.clientId, orgId, p, opts);
   }
   const email = String(p.email || "").trim().toLowerCase();
@@ -223,7 +226,7 @@ export async function resolveClient(db, event, opts = {}) {
     [orgId, email]
   );
   if (found.rows[0]) {
-    await patchClientContact(db, found.rows[0].id, p);
+    await patchClientContact(db, found.rows[0].id, p, overwriteContact);
     // Existing row with a null the CRM id is the silent-null hazard — backfill.
     return backfillCrmLinkIfMissing(db, found.rows[0].id, orgId, p, opts);
   }
@@ -251,7 +254,7 @@ export async function resolveClient(db, event, opts = {}) {
     [orgId, email]
   );
   if (!re.rows[0]) return null;
-  await patchClientContact(db, re.rows[0].id, p);
+  await patchClientContact(db, re.rows[0].id, p, overwriteContact);
   return backfillCrmLinkIfMissing(db, re.rows[0].id, orgId, p, opts);
 }
 

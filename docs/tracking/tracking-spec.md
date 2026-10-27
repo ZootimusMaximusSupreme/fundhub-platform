@@ -40,6 +40,7 @@ POST /api/public/slo-interest
 | /roadmap-thank-you | roadmap | 3 |
 | /order | watch | 5 |
 | /home | homepage | 1 |
+| /portal-login.html | portal | 1 |
 
 Rows are added from `docs/tracking/page-inventory.md` (Phase 2). Same map in the server and the browser.
 
@@ -60,7 +61,7 @@ Rows are added from `docs/tracking/page-inventory.md` (Phase 2). Same map in the
 | `section_view` | Each section with an `id` (or `data-fh-section`) reaching the screen, once per page load | `section` | shared tracker |
 | `carousel` | Testimonial carousel next, previous, play | `carousel`, `action` (next/prev/play), `index` | shared tracker (by `data-fh-carousel` / known classes) or page hook |
 | `faq_open` | Each FAQ question opened (`<details>` toggle or FAQ button) | `question` (label slug) | shared tracker |
-| `app_download_tap` | The Apple link (TestFlight or App Store) of the app-download card on `/thank-you` pressed; every press | none | shared tracker (by the link's address) |
+| `app_download_tap` | An Apple link (TestFlight or App Store) on `/thank-you` or `/portal-login.html` pressed; every press | none | shared tracker (by the link's address) |
 | `survey_answer` | Each survey question answered | `survey`, `step_num`, `question_id`, `last` (true once, on the survey's final submit) | survey page hook |
 | `survey_route` | Sorting hat routes someone | `survey`, `offer` (offer code) | thank-you / survey hook |
 | `buybox_tab` | Each buy box step shown (buy box v2 has no tabs: the "Step n of 3" line; same event, so before and after compare) | `tab` (1/2/3), `bbv` | /roadmap buy box hook |
@@ -117,7 +118,7 @@ Each event uses the stable `dr.b.<name>.<fh_sid>` event ID, a timestamp, page pa
 
 Read-only public HTML on 2026-10-20 showed the Fundhub Cortana hub on `/watch`, `/funding-book-call`, and `/thank-you`, but not `/apply`; all four loaded the shared Fundhub tracker. The tracker now adds that same hub script once when a free-call milestone needs it and no hub script is present. The public hub script confirms `akTracking.trackEvent(eventName, eventData)`. This is source-level proof, not a Cortana event receipt after deployment.
 
-**App download tap (2026-10-21; local code, not live proof).** `/thank-you` also records `book_call_app_download_tap` the first time in a session that a visitor presses the Apple link of the app-download card: TestFlight (`https://testflight.apple.com/…`) today, the App Store (`https://apps.apple.com/…`) once Apple approves the listing. The tracker recognises the press by that link's address, on `/thank-you` only, and not by the card's class names or by the setting key the card reads (`testflight_url` today, `app_store_url` later). So the card script does not change, a new key or a new look still counts, and a link to any other host does not. A page can see a tap and never an install, so the name says tap: nothing here reports a download or an install. The envelope, the once-per-session rule, the bounded hub queue and the no-automated-browser rule are the same as for the other eight, and the envelope carries no link address. The Fundhub event `app_download_tap` has no props; every press is saved, as a click is, and the press still saves its ordinary `click` row. A Cortana receipt is still required before calling this milestone live, as for the other eight.
+**App download tap (2026-10-26; local code, not live proof).** `/thank-you` and `/portal-login.html` record `book_call_app_download_tap` the first time in a session that a visitor presses an Apple link: TestFlight (`https://testflight.apple.com/…`) or the verified Fundhub Portal App Store listing (`https://apps.apple.com/us/app/fundhub-portal/id6823985032`). The tracker recognises the press by that link's address, not by card class names or setting keys. A link to any other host does not count. A page can see a tap and never an install, so the name says tap: nothing here reports a download or an install. The envelope, the once-per-session rule, the bounded hub queue and the no-automated-browser rule are the same as for the other eight, and the envelope carries no link address. The Fundhub event `app_download_tap` has no props; every press is saved, as a click is, and the press still saves its ordinary `click` row. A Cortana receipt is still required before calling this milestone live, as for the other eight.
 
 ### Framed calendar → parent page
 
@@ -130,6 +131,8 @@ else (window.fhTrack || function (e, p) { (window.fhq = window.fhq || []).push([
 ```
 
 The shared tracker on the parent page listens for `message` events from origin `https://apply.fundhub.ai` with `data.fh === "track"`, accepts only `calendar_view`, `time_selected`, `booking_confirmed`, and calls `fhTrack` with them. Opened directly (not framed), the same page sends its own events.
+
+On `/apply`, an accepted `booking_confirmed` message from its actual booking frame also saves a short session marker and moves the parent page to `https://apply.fundhub.ai/thank-you` after tracking. The thank-you page counts the booking as confirmed only with that recent accepted relay and a recent, upcoming stored appointment; the current footer's `submittedAt` is preferred, while the older `capturedAt` record works if it was refreshed within 30 minutes of acceptance. A rejected Book press does not send the message or redirect.
 
 ### Booking confirmed — the one signal
 
@@ -149,6 +152,7 @@ Every page also gets page_view, time_on_page, exit, click (id, label, position),
 | /apply | survey_answer (9 screens), field_focus/complete, validation_error; calendar_view / time_selected / booking_confirmed relayed from the framed calendar | yes | PageView B, Lead B, Schedule B | server copies, SurveyStep custom |
 | /funding-book-call | calendar_view, time_selected, booking_confirmed (framed → parent; direct → itself) | yes | PageView B | Schedule when opened directly |
 | /thank-you | survey_route; app_download_tap (when the app card shows) | yes | PageView B, AddToCalendar B, OpenInboxConfirm B | SurveyRouted custom, Purchase per offer |
+| /portal-login.html | app_download_tap on the App Store link | no | none | live Cortana receipt after release |
 | /order | — | yes (added 2026-10-02) | PageView B | the native ClickFunnels checkout has no hooks of ours |
 | /roadmap | buybox_tab, field_focus/complete, continue, validation_error, payment_attempt, payment_result, softpull_submit, video, carousel, faq_open | yes | PageView B, InitiateCheckout B, PreviewOpened B | Lead, Purchase, ReachedBuyBox, SoftPullSubmitted, server copies |
 | /roadmap-book | calendar events relayed from the framed calendar, video | yes | PageView B | Schedule |

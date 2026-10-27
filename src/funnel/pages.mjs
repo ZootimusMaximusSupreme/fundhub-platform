@@ -21,6 +21,7 @@ const MAP = {
   // fundhub.ai/ (the homepage survey). The browser sends "/home" there,
   // because apply.fundhub.ai/ is a different page.
   "/home":               { funnel: "homepage", step: 1 },
+  "/portal-login.html":  { funnel: "portal", step: 1 },
 };
 
 for (const row of Object.values(MAP)) Object.freeze(row);

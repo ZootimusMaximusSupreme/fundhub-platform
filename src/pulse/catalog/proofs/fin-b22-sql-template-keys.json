@@ -431,7 +431,8 @@
    "approvedBySeed": true,
    "inactive": false,
    "files": [
-    "db/seed/012_s04_booking_confirm_email.sql"
+    "db/seed/012_s04_booking_confirm_email.sql",
+    "db/seed/298_s04_booking_app_confirm_email.sql"
    ]
   },
   {

@@ -212,7 +212,8 @@ export function makePage({
 
   const calls = [];
   const win = {
-    location: { pathname, hostname, search, origin: `https://${hostname}` },
+    location: { pathname, hostname, search, origin: `https://${hostname}`, href: `https://${hostname}${pathname}${search}`,
+      assign(url) { this.href = String(url); } },
     navigator: { webdriver, sendBeacon: (url, blob) => { sent.push({ url, text: blob.text }); return true; } },
     sessionStorage,
     innerHeight,
