@@ -51,6 +51,9 @@ test("screen uses live queue and write API with all four visible states", () => 
   assert.match(html, /Could not load the call queue/);
   assert.match(html, /paintDetail\(\)/);
   assert.match(html, /Send intro video/);
+  assert.match(html, /introVideoAvailable = result\.body\.intro_video_available === true/);
+  assert.match(html, /h\.video_sent_at \|\| !introVideoAvailable \? ' disabled'/);
+  assert.match(html, /Intro video waiting to film/);
   assert.match(html, /Send lead-only SMS/);
   assert.match(html, /Send three-way SMS/);
   assert.doesNotMatch(html, /style="/);

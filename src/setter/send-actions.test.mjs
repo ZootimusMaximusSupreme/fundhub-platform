@@ -1,6 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildSetterHandoffText, performSetterSendAction } from "./send-actions.mjs";
+import { buildSetterHandoffText, hasSetterIntroVideo, performSetterSendAction } from "./send-actions.mjs";
+
+test("intro video remains unavailable until a public HTTPS URL is configured", () => {
+  assert.equal(hasSetterIntroVideo({}), false);
+  assert.equal(hasSetterIntroVideo({ SETTER_INTRO_VIDEO_URL: "http://example.com/intro.mp4" }), false);
+  assert.equal(hasSetterIntroVideo({ SETTER_INTRO_VIDEO_URL: "https://example.com/intro.mp4" }), true);
+});
 
 const client = { client_id: "client-1", first_name: "Jane", phone: "+15555550123",
   booking_time: "2026-10-28T18:00:00Z", custom_fields: { cf_svy_planned_use_label: "equipment" } };

@@ -8,6 +8,10 @@ import { formatAppointmentStart } from "../workflows/messaging.mjs";
 const URL_RE = /^https:\/\/[^\s/]+(?:\/[^\s]*)?$/i;
 const PHONE_RE = /^\+[1-9]\d{7,14}$/;
 
+export function hasSetterIntroVideo(env = process.env) {
+  return URL_RE.test(String(env.SETTER_INTRO_VIDEO_URL || "").trim());
+}
+
 function clean(value, fallback = "") {
   return String(value ?? fallback).trim().replace(/\s+/g, " ").slice(0, 500);
 }
@@ -110,7 +114,7 @@ export async function performSetterSendAction({
 
   if (action === "send_intro_video") {
     const url = clean(env.SETTER_INTRO_VIDEO_URL);
-    if (!URL_RE.test(url)) throw new Error("SETTER_INTRO_VIDEO_URL must be a public HTTPS URL");
+    if (!hasSetterIntroVideo(env)) throw new Error("SETTER_INTRO_VIDEO_URL must be a public HTTPS URL");
     const name = clean(client.first_name, "there");
     const body = sameStaff
       ? `Hey ${name}, this is Chris from Fundhub. I just saw you reach out. Here is a short intro before our strategy call: ${url}`
