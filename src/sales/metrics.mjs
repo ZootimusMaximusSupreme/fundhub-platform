@@ -324,9 +324,7 @@ export async function beliefAnalytics(db, { orgId, start, end } = {}) {
             COALESCE(cf.utm_campaign, cf.utm_source, c.channel_source, 'unknown') AS lead_source,
             COALESCE(NULLIF(c.custom_fields->'setter_handoff'->>'setter_staff_id', ''),
                      cf.cf_setter_user_id, 'unknown') AS setter_id,
-            COALESCE(NULLIF(c.custom_fields->'setter_handoff'->>'setter_name', ''),
-                     NULLIF(c.custom_fields->'setter_handoff'->>'setter_staff_id', ''),
-                     cf.cf_setter_user_id, 'unknown') AS setter_key,
+            MAX(NULLIF(c.custom_fields->'setter_handoff'->>'setter_name', '')) AS setter_name,
             count(*) FILTER (
               WHERE o.logged_at >= $2 AND o.logged_at < $3
             )::int AS this_count,
@@ -339,7 +337,7 @@ export async function beliefAnalytics(db, { orgId, start, end } = {}) {
       WHERE o.org_id = $1
         AND o.belief_failed IS NOT NULL
         AND o.logged_at >= $4 AND o.logged_at < $3
-      GROUP BY 1, 2, 3, 4`,
+      GROUP BY 1, 2, 3`,
     [orgId, start.toISOString(), end.toISOString(), prior.start.toISOString(), prior.end.toISOString()]
   );
 
@@ -357,7 +355,7 @@ export async function beliefAnalytics(db, { orgId, start, end } = {}) {
       bySource.set(key, {
         lead_source: row.lead_source,
         setter_id: row.setter_id,
-        setter_key: row.setter_key,
+        setter_key: row.setter_name || row.setter_id,
         held: 0,
         deposits: 0,
         desire: 0,
@@ -377,9 +375,7 @@ export async function beliefAnalytics(db, { orgId, start, end } = {}) {
     `SELECT COALESCE(cf.utm_campaign, cf.utm_source, c.channel_source, 'unknown') AS lead_source,
             COALESCE(NULLIF(c.custom_fields->'setter_handoff'->>'setter_staff_id', ''),
                      cf.cf_setter_user_id, 'unknown') AS setter_id,
-            COALESCE(NULLIF(c.custom_fields->'setter_handoff'->>'setter_name', ''),
-                     NULLIF(c.custom_fields->'setter_handoff'->>'setter_staff_id', ''),
-                     cf.cf_setter_user_id, 'unknown') AS setter_key,
+            MAX(NULLIF(c.custom_fields->'setter_handoff'->>'setter_name', '')) AS setter_name,
             count(*) FILTER (WHERE o.outcome <> 'no_show')::int AS held,
             count(*) FILTER (WHERE o.outcome = 'deposit' AND o.transaction_id IS NOT NULL AND o.cash_collected_cents > 0)::int AS deposits
        FROM call_outcomes o
@@ -387,7 +383,7 @@ export async function beliefAnalytics(db, { orgId, start, end } = {}) {
        LEFT JOIN client_custom_fields cf ON cf.client_id = c.id AND cf.org_id = c.org_id
       WHERE o.org_id = $1
         AND o.logged_at >= $2 AND o.logged_at < $3
-      GROUP BY 1, 2, 3`,
+      GROUP BY 1, 2`,
     [orgId, start.toISOString(), end.toISOString()]
   );
   for (const row of src.rows) {
@@ -396,7 +392,7 @@ export async function beliefAnalytics(db, { orgId, start, end } = {}) {
       bySource.set(key, {
         lead_source: row.lead_source,
         setter_id: row.setter_id,
-        setter_key: row.setter_key,
+        setter_key: row.setter_name || row.setter_id,
         held: 0,
         deposits: 0,
         desire: 0,

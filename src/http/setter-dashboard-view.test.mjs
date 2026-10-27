@@ -56,7 +56,7 @@ test("screen uses live queue and write API with all four visible states", () => 
   assert.match(html, /h\.video_sent_at \|\| !introVideoAvailable \? ' disabled'/);
   assert.match(html, /Intro video waiting to film/);
   assert.match(html, /Send lead-only SMS/);
-  assert.match(html, /Send lead \+ closer SMS/);
+  assert.match(html, /Send lead confirmation \+ closer handoff/);
   assert.match(html, /setter-number-book-rate/);
   assert.match(html, /paintNumbers\(result\.body\.numbers\)/);
   assert.match(writeApi, /"log_dial"/);

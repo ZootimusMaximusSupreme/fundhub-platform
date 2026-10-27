@@ -64,7 +64,8 @@ export async function stampRecordingUrl(db, {
   orgId,
   clientId,
   url,
-  callTime = null
+  callTime = null,
+  callOnly = false
 } = {}) {
   const link = String(url || "").trim();
   if (!orgId || !clientId || !link) return { stamped: 0 };
@@ -98,7 +99,7 @@ export async function stampRecordingUrl(db, {
       [orgId, clientId, link, matchIso]
     )
     : { rows: [] };
-  const insight = await db.query(
+  const insight = callOnly ? { rows: [] } : await db.query(
     `UPDATE customer_insights SET recording_url = $3
       WHERE id = (
         SELECT id FROM customer_insights
@@ -255,20 +256,24 @@ export async function listRecentRecordings(db, {
   const files = filesRes.rows || [];
 
   for (const row of files) {
-    if (row.client_id || !row.web_view_link) continue;
-    const hit = uniqueNameMatch(clients, row.name);
+    if (!row.web_view_link) continue;
+    const alreadyLinked = !!row.client_id;
+    const hit = alreadyLinked ? { id: row.client_id } : uniqueNameMatch(clients, row.name);
     if (!hit) continue;
-    await db.query(
-      `UPDATE brain_files
-          SET client_id = $2, unattached = false, updated_at = now()
-        WHERE id = $1 AND org_id = $3 AND client_id IS NULL`,
-      [row.id, hit.id, orgId]
-    );
+    if (!alreadyLinked) {
+      await db.query(
+        `UPDATE brain_files
+            SET client_id = $2, unattached = false, updated_at = now()
+          WHERE id = $1 AND org_id = $3 AND client_id IS NULL`,
+        [row.id, hit.id, orgId]
+      );
+    }
     await stampRecordingUrl(db, {
       orgId,
       clientId: hit.id,
       url: row.web_view_link,
-      callTime: recordingCallTime(row.name)
+      callTime: recordingCallTime(row.name),
+      callOnly: alreadyLinked
     });
     row.client_id = hit.id;
     row.first_name = hit.first_name;
@@ -279,18 +284,14 @@ export async function listRecentRecordings(db, {
   const items = [];
   const seenUrl = new Set();
   const wordsByUrl = new Map();
-  const wordsByClient = new Map();
   for (const row of outcomeRes.rows || []) {
     const t = String(row.transcript || "").trim();
     if (!t) continue;
     if (row.recording_url) wordsByUrl.set(row.recording_url, t);
-    if (row.client_id) wordsByClient.set(row.client_id, t);
   }
 
-  function excerptFor(url, clientId, flaggedWords) {
-    const raw = (url && wordsByUrl.get(url))
-      || (clientId && wordsByClient.get(clientId))
-      || "";
+  function excerptFor(url, flaggedWords) {
+    const raw = (url && wordsByUrl.get(url)) || "";
     const has = flaggedWords || !!raw;
     return {
       has_words: has,
@@ -302,7 +303,7 @@ export async function listRecentRecordings(db, {
     const url = row.web_view_link || null;
     if (url) seenUrl.add(url);
     const when = row.indexed_at || row.created_at;
-    const words = excerptFor(url, row.client_id, row.needs_transcription === false);
+    const words = excerptFor(url, row.needs_transcription === false);
     items.push({
       id: row.id,
       name: row.name || "Recording",

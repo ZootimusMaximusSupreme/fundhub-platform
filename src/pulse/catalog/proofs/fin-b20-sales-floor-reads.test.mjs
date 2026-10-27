@@ -100,6 +100,27 @@ test("lead-source panel prefers the saved human setter handoff over the legacy s
   assert.equal(out.sources[0].setter_key, "Alex Setter");
 });
 
+test("lead-source panel keeps one stable setter total when an old saved name differs", async () => {
+  const db = standIn(["call_outcomes", "clients", "client_custom_fields"]);
+  for (const [clientId, setterName] of [["setter-old", "Alex Old"], ["setter-new", "Alex Setter"]]) {
+    db.insert("clients", {
+      id: clientId, org_id: ORG, channel_source: "organic",
+      custom_fields: JSON.stringify({ setter_handoff: { setter_staff_id: "staff-7", setter_name: setterName } })
+    });
+    db.insert("call_outcomes", {
+      id: id("o"), org_id: ORG, client_id: clientId, staff_id: "closer-1",
+      outcome: "callback", logged_at: day(2), belief_failed: "trust"
+    });
+  }
+  const out = await beliefAnalytics(db, {
+    orgId: ORG, start: new Date("2026-10-01T00:00:00.000Z"), end: new Date("2026-11-01T00:00:00.000Z")
+  });
+  assert.equal(out.sources.length, 1);
+  assert.equal(out.sources[0].setter_id, "staff-7");
+  assert.equal(out.sources[0].held, 2);
+  assert.equal(out.sources[0].beliefs.trust.this_count, 2);
+});
+
 test("lead-source panel: desire counts sort a source to the top and another company's calls never count", async () => {
   const db = standIn(["call_outcomes", "clients", "client_custom_fields"]);
   db.insert("clients", { id: "c1", org_id: ORG, channel_source: "organic" });

@@ -47,8 +47,9 @@ test("setter sees self-scoped dial, book and show numbers plus honest two-messag
   await expect(page.locator("#setter-number-book-rate")).toHaveText("20%");
   await expect(page.locator("#setter-number-shows")).toHaveText("3");
   await expect(page.locator("#setter-number-show-rate")).toHaveText("75%");
-  await expect(page.locator("#setter-detail")).toContainText("separate lead and closer messages");
-  await expect(page.getByRole("button", { name: "Send lead + closer SMS" })).toBeEnabled();
+  await expect(page.locator("#setter-detail")).toContainText("booking confirmation to the lead");
+  await expect(page.locator("#setter-detail")).toContainText("full handoff to the closer");
+  await expect(page.getByRole("button", { name: "Send lead confirmation + closer handoff" })).toBeEnabled();
 });
 
 test("setter score strip stays inside a phone viewport", async ({ page }) => {

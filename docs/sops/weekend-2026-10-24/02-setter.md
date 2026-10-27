@@ -17,7 +17,7 @@ A setter gets a person onto a strategy call with the closer, on time, at a compu
 
 The setter warms the lead from the first minute until the closer is on the line. The setter does not close. The setter does not quote what they qualify for. The setter does not pull credit.
 
-Right now Chris does both jobs. He still runs the setter steps. The handoff note goes on the CRM card. When a closer is a different person, Fundhub sends the same handoff in one text to the lead and a separate text to the closer.
+Right now Chris does both jobs. He still runs the setter steps. The handoff note goes on the CRM card. When a closer is a different person, Fundhub sends the booking confirmation to the lead and the full handoff separately to the closer.
 
 ## Two kinds of leads
 
@@ -177,7 +177,7 @@ Keep this SOP. Change three lines.
 
 - The 60-second call still happens. The setter still does not pitch.
 - The video uses the “someone else is the closer” take.
-- The same handoff goes to the lead and closer as two one-to-one messages, with the note above.
+- The booking confirmation goes to the lead and the full handoff goes to the closer as two one-to-one messages, using the copy above.
 
 ## Fundhub augment (2026-10-26)
 
@@ -203,6 +203,6 @@ These lines sit on top of Cole’s shape. They match owner law in the repo.
 | Handoff text | three-way template filled in |
 | Setter staff | who logged it |
 
-**Chris is setter + closer today.** Handoff SMS goes to the **lead only**; the same handoff text is saved on the client record for Present / Closer Dashboard. When a hire is setter-only, Fundhub sends separate lead and closer messages.
+**Chris is setter + closer today.** The booking-confirmation SMS goes to the **lead only**; the full handoff text is saved on the client record for Present / Closer Dashboard. When a hire is setter-only, Fundhub sends the lead confirmation and closer handoff separately.
 
 **Speed alert.** On `booking.created`, setter gets staff SMS when `notify_booked_call_sms` is on (see Staff & Teams). Target: dial within **60 seconds** of that alert or the book event.

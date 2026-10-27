@@ -169,6 +169,29 @@ test("listRecentRecordings returns today's Drive file and name-matches a client"
   assert.equal(updates.length, 1);
 });
 
+test("listRecentRecordings retries an already-linked timestamped file against a late call row", async () => {
+  const stamped = [];
+  const db = {
+    async query(sql, params) {
+      if (/brain_drive_sync/i.test(sql)) return { rows: [] };
+      if (/FROM brain_files/i.test(sql)) return { rows: [{
+        id: "bf-linked", name: "Funding Call - Jane Doe (2026-08-24 15:00 GMT-7) - Recording.mp4",
+        web_view_link: "https://drive.google.com/file/d/linked", client_id: CLIENT,
+        unattached: false, indexed_at: "2026-08-24T22:30:00Z", created_at: "2026-08-24T22:30:00Z",
+        mime_type: "video/mp4", needs_transcription: true, first_name: "Jane", last_name: "Doe"
+      }] };
+      if (/UPDATE call_outcomes/i.test(sql)) { stamped.push(params); return { rows: [{ id: "late-call" }] }; }
+      if (/SELECT o\.id/i.test(sql)) return { rows: [] };
+      if (/FROM clients c/i.test(sql)) return { rows: [] };
+      if (/UPDATE brain_files|UPDATE customer_insights/i.test(sql)) throw new Error("linked retry must not rewrite the file or another insight");
+      return { rows: [] };
+    }
+  };
+  await listRecentRecordings(db, { orgId: ORG, now: new Date("2026-08-25T00:00:00Z"), env: {} });
+  assert.equal(stamped.length, 1);
+  assert.equal(stamped[0][3], "2026-08-24T22:00:00.000Z");
+});
+
 test("stampCallTranscript writes words only onto the call with that recording URL", async () => {
   const seen = [];
   const db = {
