@@ -351,6 +351,28 @@ test("Save · next call never tells the server which payment to use", async ({ p
   expect(posted[0].client_id).toBe(CLIENT_ID);
 });
 
+test("Save · next call sends the exact checkout link after a paid call", async ({ page }) => {
+  await freezeClock(page, NOW);
+  const posted = [];
+  await openScreen(page, url, CLOSER, handlers({
+    "/api/read/closer-call": funded(),
+    "/api/closer-deck": { ok: true, action: "send_pay_link", link: { id: "link-this-call" } },
+    "/api/call-outcomes": (route) => {
+      posted.push(JSON.parse(route.request().postData() || "{}"));
+      return { ok: true, created: true, outcome: { outcome: "deposit" } };
+    }
+  }));
+  await page.locator("#fh-pay-link").click();
+  await page.locator("#fh-pay-go").click();
+  await expect(page.locator("#fh-pay-msg")).toContainText("Sent");
+  await page.locator('[data-outcome="deposit"]').click();
+  await page.locator("#fh-save-next").click();
+  await expect.poll(() => posted.length).toBe(1);
+  expect(posted[0].payment_link_id).toBe("link-this-call");
+  expect(posted[0].offer_key).toBe("FUNDING_DFY");
+  expect(posted[0].transaction_id).toBeUndefined();
+});
+
 /* ── THE RAIL, THE FOLD, AND THE PHONE ────────────────────────────────────── */
 
 test("the compliance checklist sits above Up next, not below it", async ({ page }) => {

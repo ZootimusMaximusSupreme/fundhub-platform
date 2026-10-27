@@ -1236,7 +1236,7 @@ async function main() {
   }
 
   const crs = (await db.query(
-    `INSERT INTO crs_results (org_id, client_id, result, outcome_tier) VALUES ($1, $2, $3::jsonb, $4) RETURNING *`,
+    `INSERT INTO crs_results (org_id, client_id, result, outcome_tier, is_demo) VALUES ($1, $2, $3::jsonb, $4, true) RETURNING *`,
     [orgId, c.id, JSON.stringify(payload), tier.outcome]
   )).rows[0];
   const ingested = await ingestCrsResult(db, crs);
@@ -1271,11 +1271,11 @@ async function main() {
     // here meant the sim's inquiries were never logged either.
     scores: payload.scores, bureaus: payload.bureaus, newInquiries: newInquiriesFor(payload),
     outcomeTier: tier.outcome, ...stamp
-  }, { orgId, clientId: c.id, idempotencyKey: `crs-result:${crs.id}:analysis.completed:v1` });
+  }, { orgId, clientId: c.id, isDemo: true, idempotencyKey: `crs-result:${crs.id}:analysis.completed:v1` });
   await emit(db, "decision.rendered", {
     crsResultId: crs.id, requestId, source: "crs",
     outcomeTier: tier.outcome, fundingEstimate, ...stamp
-  }, { orgId, clientId: c.id, idempotencyKey: `crs-result:${crs.id}:decision.rendered:v1` });
+  }, { orgId, clientId: c.id, isDemo: true, idempotencyKey: `crs-result:${crs.id}:decision.rendered:v1` });
 
   const after = (await db.query(`SELECT outcome_tier, custom_fields->>'total_funding_estimate' AS est FROM clients WHERE id = $1`, [c.id])).rows[0];
   void ingested; void liabilities;

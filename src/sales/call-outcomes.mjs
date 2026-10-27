@@ -24,6 +24,25 @@ export class CallOutcomeError extends Error {
 
 const PAID = `status IN ('paid','succeeded','complete','completed')`;
 
+export async function paidTransactionForLink(db, {
+  orgId, clientId, staffId, paymentLinkId, productCode
+}) {
+  if (!paymentLinkId || !productCode) return null;
+  const paid = await db.query(
+    `SELECT t.id FROM payment_links pl
+     JOIN products p ON p.id = pl.product_id AND p.org_id = pl.org_id
+     JOIN sale_payments sp ON sp.payment_link_id = pl.id AND sp.org_id = pl.org_id
+     JOIN transactions t ON t.id = sp.transaction_id AND t.org_id = pl.org_id
+     WHERE pl.id = $1 AND pl.org_id = $2 AND pl.client_id = $3
+       AND pl.created_by_staff_id = $4 AND p.code = $5
+       AND sp.kind = 'deposit' AND sp.amount > 0
+       AND t.status IN ('paid','succeeded','complete','completed')
+     ORDER BY sp.paid_at DESC LIMIT 1`,
+    [paymentLinkId, orgId, clientId, staffId, productCode]
+  );
+  return paid.rows[0]?.id || null;
+}
+
 const CHECKLIST_KEYS = [
   "call_recorded",
   "personal_guarantee",
@@ -43,8 +62,8 @@ function normalizeChecklist(raw) {
 
 /**
  * Resolve cash for a deposit/downsell from the transaction record.
- * Prefer an explicit transactionId; else the latest paid tx for the client
- * in the last 48 hours. Never invent a number.
+ * Require an explicit transactionId. A different purchase by the same client
+ * must never become cash for this call.
  */
 export async function resolveCashCollected(db, {
   orgId, clientId, transactionId = null, outcome
@@ -70,20 +89,7 @@ export async function resolveCashCollected(db, {
     return { cashCollectedCents: toCents(row.amount_paid), transactionId: row.id };
   }
 
-  const r = await db.query(
-    `SELECT id, amount_paid FROM transactions
-      WHERE org_id = $1 AND client_id = $2
-        AND ${PAID}
-        AND created_at >= now() - interval '48 hours'
-      ORDER BY created_at DESC
-      LIMIT 1`,
-    [orgId, clientId]
-  );
-  const row = r.rows[0];
-  if (!row) {
-    return { cashCollectedCents: 0, transactionId: null };
-  }
-  return { cashCollectedCents: toCents(row.amount_paid), transactionId: row.id };
+  return { cashCollectedCents: 0, transactionId: null };
 }
 
 /**

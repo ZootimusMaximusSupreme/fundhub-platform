@@ -6,9 +6,9 @@
 // placeholder today, so the send stays gated on the template existing, same as every
 // other pending-copy case in this directory. Never invented here.
 //
-// Trigger: call.completed with a "declined funding" outcome — the same underlying
-// signal S-08 (Post-Call: Funding Didn't Buy) reacts to, since neither the map nor
-// CRM doc gives DS-01 its own distinct trigger definition. Gated additionally on
+// Trigger: call.completed with an explicit repair referral. Closer logs
+// "not_a_fit" with repairReferral=true; older callers send "declined".
+// Gated additionally on
 // NOT being on the funding path (same product-path check DS-02 uses), so this and
 // DS-02 can never both fire for the same outcome.
 
@@ -29,10 +29,8 @@ async function hasIdentity(db, clientId) {
 export const SMS_TEMPLATE_KEY = "SMS-DS01-REPAIR-REFERRAL";
 export const EMAIL_TEMPLATE_KEY = "EMAIL-DS01-REPAIR-REFERRAL";
 
-// 05/30 doc lines 74-78: DS-01 fires on the rep's Stage 5 outcome "Repair Referral Sent",
-// not on a raw call disposition. Until a Sales Outcome signal exists (flagged in
-// workflow-migration-table.md), the closest honest read is a declined call that is
-// specifically a repair referral — NOT every declined call.
+// 05/30 doc lines 74-78: DS-01 fires on the rep's Stage 5 outcome "Repair Referral Sent".
+// A closer's not_a_fit disposition enters only with an explicit repairReferral flag.
 //
 // Two things this must never fire on, both of which it used to:
 //   - a HARD DECLINE (OFAC / fraud / severe public record). Doc lines 84-86 route those
@@ -45,7 +43,7 @@ const HARD_DECLINE_OUTCOMES = ["ofac", "fraud", "hard_decline", "disqualified"];
 export function isRepairReferral(payload) {
   const p = payload || {};
   if (p.salesOutcome) return String(p.salesOutcome) === "Repair Referral Sent";
-  if (p.outcome !== "declined") return false;
+  if (p.outcome !== "declined" && !(p.disposition === "closer" && p.outcome === "not_a_fit")) return false;
   const reason = String(p.declineReason || p.reason || "").toLowerCase();
   if (HARD_DECLINE_OUTCOMES.some((r) => reason.includes(r))) return false;
   return p.repairReferral === true;

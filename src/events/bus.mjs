@@ -25,12 +25,12 @@ export async function emit(db, name, payload = {}, opts = {}) {
 
   // Idempotent insert: ON CONFLICT (org_id, idempotency_key) DO NOTHING.
   const insert = await db.query(
-    `INSERT INTO events (org_id, name, version, idempotency_key, client_id, payload)
-     VALUES ($1,$2,$3,$4,$5,$6)
+    `INSERT INTO events (org_id, name, version, idempotency_key, client_id, payload, is_demo)
+     VALUES ($1,$2,$3,$4,$5,$6,$7)
      ON CONFLICT (org_id, idempotency_key) WHERE idempotency_key IS NOT NULL
      DO NOTHING
      RETURNING id`,
-    [orgId, name, version, idem, opts.clientId || null, payload]
+    [orgId, name, version, idem, opts.clientId || null, payload, opts.isDemo === true]
   );
 
   if (insert.rows.length === 0 && idem) {

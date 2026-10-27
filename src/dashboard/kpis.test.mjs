@@ -89,6 +89,21 @@ test("computeKpis treats transactions.amount_paid as dollars", async () => {
   assert.equal(out.cash_collected_cents, 300055);
 });
 
+test("computeKpis counts a paid funding deposit for close rate, not a credit decision", async () => {
+  const sqls = [];
+  const db = { query: async (sql) => {
+    sqls.push(String(sql));
+    if (/name = 'booking.created'/.test(sql)) return { rows: [{ n: 2 }] };
+    if (/name = 'decision.rendered'/.test(sql)) return { rows: [{ n: 7 }] };
+    if (/FROM sale_payments sp/.test(sql)) return { rows: [{ n: 1 }] };
+    return { rows: [{ n: 0, dollars: 0, cents: 0 }] };
+  } };
+  const out = await computeKpis(db, { orgId: "00000000-0000-4000-8000-000000000001" });
+  assert.equal(out.close_rate, 0.5);
+  assert.equal(out.decision_count, 7);
+  assert.match(sqls.find((sql) => /FROM sale_payments sp/.test(sql)), /p.code = 'card-stacking-dfy'/);
+});
+
 test("computeKpis keeps ad spend in cents — spend_cents is a real cents column", async () => {
   const db = {
     query: async (sql) => {

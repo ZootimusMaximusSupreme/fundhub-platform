@@ -40,6 +40,18 @@ function fakeDb({ consent = null, link = null, request = null, result = null } =
 }
 const panel = async (rows) => (await buildCloserDeck(fakeDb(rows), { orgId: ORG, clientId: CID })).soft_pull;
 
+test("sample result never reports a completed real soft pull", async () => {
+  const out = await panel({
+    request: { id: "req-sample", status: "fulfilled" },
+    result: { id: "sample-1", outcome_tier: "FUNDING_PLUS_REPAIR", created_at: "2026-10-26T00:00:00Z",
+      result: { environment: "simulated", simulated: true }, is_demo: true }
+  });
+  assert.equal(out.pull_status, "sample only");
+  assert.equal(out.pull_status_source, "sample_result");
+  assert.equal(out.sample, true);
+  assert.equal(out.last_pull_at, null);
+});
+
 test("nothing saved: consent waiting, not paid, no pull started, and the reads are scoped to this client", async () => {
   const db = fakeDb();
   const out = (await buildCloserDeck(db, { orgId: ORG, clientId: CID })).soft_pull;

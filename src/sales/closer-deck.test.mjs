@@ -13,6 +13,7 @@ import {
   selectedOfferKey,
   generateDeckLetters,
   sendDeckPayLink,
+  logDeckDisposition,
   sendDeckSoftPull,
   freshSoftPullSkip,
   SOFT_PULL_REUSE_DAYS,
@@ -23,6 +24,28 @@ import { SLO_POST_PURCHASE_ENABLED } from "../slo/purchase.mjs";
 const ORG = "11111111-1111-4111-8111-111111111111";
 const CID = "22222222-2222-4222-8222-222222222222";
 const ENV_ON = { [SLO_POST_PURCHASE_ENABLED]: "true" };
+
+test("Present links cash only from its exact paid checkout link", async () => {
+  const STAFF = "33333333-3333-4333-8333-333333333333";
+  const LINK = "44444444-4444-4444-8444-444444444444";
+  const seen = [];
+  const db = { query: async (sql, params) => {
+    seen.push({ sql: String(sql), params });
+    if (/FROM payment_links pl/.test(sql)) return { rows: [{ id: "tx-paid" }] };
+    if (/SELECT id, custom_fields FROM clients/.test(sql)) return { rows: [{ id: CID, custom_fields: {} }] };
+    if (/FROM transactions/.test(sql)) return { rows: [{ id: "tx-paid", amount_paid: "3000.00" }] };
+    if (/INSERT INTO call_outcomes/.test(sql)) return { rows: [{ id: "call-1", org_id: ORG, client_id: CID, staff_id: STAFF, outcome: "deposit", cash_collected_cents: params[7], transaction_id: params[8] }] };
+    if (/INSERT INTO events/.test(sql)) return { rows: [{ id: "evt-1" }] };
+    return { rows: [] };
+  } };
+  const result = await logDeckDisposition(db, { orgId: ORG, clientId: CID, staffId: STAFF, offerKey: "FUNDING_DFY", paymentLinkId: LINK });
+  assert.equal(result.row.cash_collected_cents, 300000);
+  assert.equal(result.row.transaction_id, "tx-paid");
+  const lookup = seen.find((call) => /FROM payment_links pl/.test(call.sql));
+  assert.deepEqual(lookup.params, [LINK, ORG, CID, STAFF, "card-stacking-dfy"]);
+  assert.match(lookup.sql, /sp.payment_link_id = pl.id/);
+  assert.match(lookup.sql, /sp.amount > 0/);
+});
 
 function fakeDb({
   client = null,
@@ -294,6 +317,18 @@ test("a stored credit result is a finished pull, whatever the request row says",
   assert.equal(out.slo_pack_status, null);
 });
 
+test("a sample result does not complete the soft pull or set a real pull time", async () => {
+  const crs = { id: "sample-1", outcome_tier: "FUNDING_PLUS_REPAIR", created_at: "2026-10-26T00:00:00Z",
+    result: { simulated: true, environment: "simulated" }, is_demo: true };
+  const out = await buildCloserDeck(fakeDb({ client: CLIENT, crs }), { orgId: ORG, clientId: CID });
+  assert.equal(out.engine.sample, true);
+  assert.equal(out.soft_pull.sample, true);
+  assert.equal(out.soft_pull.pull_status, "sample only");
+  assert.equal(out.soft_pull.pull_status_source, "sample_result");
+  assert.equal(out.soft_pull.last_pull_at, null);
+  assert.equal(out.last_pull_at, null);
+});
+
 test("deck JSON includes stored slo_ref and pack status without inventing them", async () => {
   const client = {
     ...CLIENT,
@@ -317,6 +352,8 @@ test("freshSoftPullSkip: younger than 30 days is a skip; 30 days or older is not
   assert.equal(SOFT_PULL_REUSE_DAYS, 30);
   assert.equal(freshSoftPullSkip(null, now), null);
   assert.equal(freshSoftPullSkip({ created_at: null }, now), null);
+  assert.equal(freshSoftPullSkip({ created_at: now.toISOString(), result: { simulated: true } }, now), null);
+  assert.equal(freshSoftPullSkip({ created_at: now.toISOString(), is_demo: true }, now), null);
   const fresh = freshSoftPullSkip({
     id: "crs-fresh",
     created_at: new Date(now.getTime() - 5 * day).toISOString()

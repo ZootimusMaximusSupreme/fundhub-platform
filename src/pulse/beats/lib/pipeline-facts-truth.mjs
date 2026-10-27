@@ -458,8 +458,8 @@ export const FLOOR_VS_BOARD_SQL = `
   /* gap:pipeline-floor-vs-board */
   WITH per AS (
     SELECT o.client_id,
-           count(*) FILTER (WHERE o.outcome = 'deposit')::int AS deposits,
-           count(*) FILTER (WHERE o.outcome = 'downsell')::int AS downsells
+           count(*) FILTER (WHERE o.outcome = 'deposit' AND o.transaction_id IS NOT NULL AND o.cash_collected_cents > 0)::int AS deposits,
+           count(*) FILTER (WHERE o.outcome = 'downsell' AND o.transaction_id IS NOT NULL AND o.cash_collected_cents > 0)::int AS downsells
       FROM call_outcomes o
       JOIN clients c ON c.id = o.client_id AND c.org_id = o.org_id
      WHERE o.org_id = $1::uuid

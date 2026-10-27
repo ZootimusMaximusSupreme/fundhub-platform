@@ -43,6 +43,22 @@ export async function moveCardToStage(db, {
   const row = stage.rows[0];
   if (!row) return { moved: false, reason: "stage_not_found" };
 
+  if (pipelineKey === "sales" && stageKey === "closed_won") {
+    const paid = await db.query(
+      `SELECT 1 FROM sale_payments sp
+       JOIN sales s ON s.id = sp.sale_id AND s.org_id = sp.org_id
+       JOIN products p ON p.id = s.product_id AND p.org_id = s.org_id
+       WHERE s.org_id = $1 AND s.client_id = $2
+         AND s.status = 'active' AND p.code = 'card-stacking-dfy'
+         AND sp.kind = 'deposit' AND sp.amount > 0
+       LIMIT 1`,
+      [orgId, clientId]
+    );
+    if (!paid.rows[0]) {
+      return { moved: false, reason: "deposit_payment_required", message: "A paid funding deposit is required for Closed Won." };
+    }
+  }
+
   let resolvedFunded = null;
   let resolvedApproved = approvedAmount != null ? Number(approvedAmount) : null;
   let resolvedRoundNumber = roundNumber != null ? Number(roundNumber) : null;

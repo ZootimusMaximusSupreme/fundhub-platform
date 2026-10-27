@@ -78,7 +78,7 @@ async function seed() {
   );
 
   // B — paid, and a REAL credit row is in. Not waiting on a pull.
-  ids.realPull = await client("paidReal", { tier: "FULL_FUNDING", cf: { crs_paid: true } });
+  ids.realPull = await client("paidReal", { tier: "FULL_FUNDING", cf: { crs_paid: true, total_funding_estimate: 40000 } });
   await db.query(
     `INSERT INTO crs_results (org_id, client_id, result, is_demo) VALUES ($1,$2,'{}'::jsonb,false)`,
     [orgId, ids.realPull]
@@ -163,8 +163,8 @@ describe("fulfillment read layer: the tiles and the demo filter (real Postgres)"
   test("a demo client is invisible while Demo Mode is off", async () => {
     const t = await listRollups(db, { orgId, demoOn: false });
     assert.equal(t.total_clients, 3, "the demo client was counted as a real one");
-    assert.equal(t.total_prequal, "50000",
-      "the demo client's prequal was added to the company total");
+    assert.equal(t.total_prequal, "40000",
+      "the sample-backed or demo client's prequal was added to the company total");
     assert.equal(t.total_prequal_clients, 1,
       "the screen was not told the whole prequal total came from one client");
   });

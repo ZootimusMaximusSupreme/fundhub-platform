@@ -1,6 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert";
 import { handle, isRepairReferral, EMAIL_TEMPLATE_KEY, SMS_TEMPLATE_KEY } from "./ds-01-repair-referral.mjs";
+import { handle as handleFundingFollowup } from "./s-08-post-call-funding-declined.mjs";
+import { handle as handleOffer, OFFER_EMAIL } from "./s-offer-bucket.mjs";
+import {
+  handle as handleRebook,
+  EMAIL_TEMPLATE_KEY as REBOOK_EMAIL,
+  SMS_TEMPLATE_KEY as REBOOK_SMS
+} from "./s-05a-no-show-recovery.mjs";
 import { pgFake, fakeStep, ev } from "./test-support.mjs";
 
 const withTemplates = () => [
@@ -34,6 +41,21 @@ test("REGRESSION: hard declines (OFAC / fraud / severe record) never get a partn
 
 test("isRepairReferral: a genuine repair referral passes", () => {
   assert.equal(isRepairReferral(referral()), true);
+  assert.equal(isRepairReferral({ disposition: "closer", outcome: "not_a_fit", repairReferral: true }), true);
+  assert.equal(isRepairReferral({ disposition: "closer", outcome: "not_a_fit", repairReferral: false }), false);
+});
+
+test("closer not_a_fit without referral enters funding follow-up only", async () => {
+  const db = pgFake({ clients: client(), templates: withTemplates() });
+  const call = ev("call.completed", {
+    disposition: "closer", outcome: "not_a_fit", repairReferral: false
+  }, { id: "sim-funding", clientId: "cl-1" });
+  const funding = await handleFundingFollowup({ event: call, db, step: fakeStep() });
+  const repair = await handle({ event: call, db, step: fakeStep() });
+  assert.equal(funding.done, true);
+  assert.equal(repair.done, false);
+  assert.equal(db.tasks.length, 1);
+  assert.equal(db.messages.length, 0);
 });
 
 // --- the workflow -----------------------------------------------------------
@@ -101,4 +123,47 @@ test("duplicate delivery: replaying the same event does not double-send", async 
   await handle({ event, db, step: fakeStep() });
   await handle({ event, db, step: fakeStep() });
   assert.equal(db.messages.length, 2);
+});
+
+test("one simulated client routes closer referral, offer, and no-show rebook separately", async () => {
+  const db = pgFake({
+    clients: client(),
+    templates: [
+      ...withTemplates(),
+      { org_id: "org-1", template_key: OFFER_EMAIL.REPAIR_DFY, channel: "email", body: "repair offer", compliance_passed: true },
+      { org_id: "org-1", template_key: REBOOK_EMAIL, channel: "email", body: "rebook email", compliance_passed: true },
+      { org_id: "org-1", template_key: REBOOK_SMS, channel: "sms", body: "rebook sms", compliance_passed: true }
+    ]
+  });
+  const call = ev("call.completed", {
+    disposition: "closer", outcome: "not_a_fit", repairReferral: true, offerKey: "REPAIR_DFY"
+  }, { id: "sim-call", clientId: "cl-1" });
+  const [funding, repair, offer] = await Promise.all([
+    handleFundingFollowup({ event: call, db, step: fakeStep() }),
+    handle({ event: call, db, step: fakeStep() }),
+    handleOffer({ event: call, db, step: fakeStep() })
+  ]);
+  assert.equal(funding.done, false);
+  assert.equal(repair.done, true);
+  assert.equal(offer.done, true);
+  assert.equal(db.tasks.length, 0, "repair referral must not create a funding follow-up");
+  assert.deepEqual(db.messages.map((m) => m.template_key).sort(),
+    [EMAIL_TEMPLATE_KEY, SMS_TEMPLATE_KEY, OFFER_EMAIL.REPAIR_DFY].sort());
+
+  const rebookStep = {
+    run: async (id, fn) => {
+      const result = await fn();
+      if (id === "send-touch-1") db.events.push({ client_id: "cl-1", name: "booking.created" });
+      return result;
+    },
+    sleep: async () => {}
+  };
+  const rebook = await handleRebook({
+    event: ev("booking.noshow", {}, { id: "sim-noshow", clientId: "cl-1" }),
+    db, step: rebookStep
+  });
+  assert.equal(rebook.stoppedAt, "before-touch-2");
+  assert.equal(db.tasks.length, 1);
+  assert.equal(db.tasks[0].source_workflow, "s-05a-no-show-recovery");
+  assert.equal(db.messages.length, 5, "rebooking stops later touches");
 });

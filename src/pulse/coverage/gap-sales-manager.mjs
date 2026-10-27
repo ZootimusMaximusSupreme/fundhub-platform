@@ -70,7 +70,7 @@ export const SELLERS_SQL = `
          s.role,
          s.status,
          COALESCE(s.is_demo, false) AS is_demo,
-         count(*) FILTER (WHERE o.outcome = 'deposit')::int AS deposits,
+         count(*) FILTER (WHERE o.outcome = 'deposit' AND o.transaction_id IS NOT NULL AND o.cash_collected_cents > 0)::int AS deposits,
          COALESCE(SUM(o.cash_collected_cents), 0)::bigint AS cash_cents
     FROM staff s
     JOIN call_outcomes o ON o.staff_id = s.id AND o.org_id = s.org_id
@@ -79,7 +79,7 @@ export const SELLERS_SQL = `
      AND o.logged_at < $3::timestamptz
      AND COALESCE(o.is_demo, false) = false
    GROUP BY s.id, s.name, s.email, s.role, s.status, s.is_demo
-  HAVING count(*) FILTER (WHERE o.outcome = 'deposit') > 0
+  HAVING count(*) FILTER (WHERE o.outcome = 'deposit' AND o.transaction_id IS NOT NULL AND o.cash_collected_cents > 0) > 0
       OR COALESCE(SUM(o.cash_collected_cents), 0) > 0
 `;
 

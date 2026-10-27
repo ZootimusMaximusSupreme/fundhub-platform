@@ -184,11 +184,22 @@
 
   var q = new URLSearchParams(location.search);
   var contactId = q.get("contact") || q.get("client_id") || q.get("id") || q.get("client") || "";
+  var paymentStoreKey = "fh_call_payment_link:" + contactId;
+  function savedPaymentLink(offerKey) {
+    try {
+      var saved = JSON.parse(localStorage.getItem(paymentStoreKey) || "null");
+      return saved && saved.offerKey === offerKey && Date.now() - saved.at < 86400000 ? saved.id : null;
+    } catch (e) { return null; }
+  }
+  function savePaymentLink(id, offerKey) {
+    if (!id) return;
+    try { localStorage.setItem(paymentStoreKey, JSON.stringify({ id: id, offerKey: offerKey, at: Date.now() })); } catch (e) {}
+  }
   var state = {
     idx: 0, tier: null, edu: false, forceRepair: false, rung: 0, temp: 0,
     checks: {}, costNum: "", obj: null, showRef: false, toast: "", clientOnly: false,
     survey: {}, engine: { available: false, reason: "engine data unavailable", fico: {}, reasons: [] },
-    offers: [], softPull: null, saleMotion: "", loaded: false, error: null,
+    offers: [], softPull: null, saleMotion: "", paymentLinkId: null, loaded: false, error: null,
     contractLink: "", contractMsg: "", blueprintAmountDollars: null, blueprintProvider: "commas",
     /* One entry per send control: whether it is in flight, when it last went
        out, and how many times. F24 — see sendBtn below. */
@@ -1275,7 +1286,8 @@
            it read, so the two can never contradict each other again. */
         html += "<div>pull: " + esc(sp.pull_status || "not started")
           + (sp.pull_status_source === "crs_result" ? " (from the stored result)" : "") + "</div>";
-        if (sp.outcome_tier) html += "<div>tier: " + esc(sp.outcome_tier) + "</div>";
+        if (sp.sample === true) html += "<div>Sample file only. No real pull completed from this result.</div>";
+        if (sp.outcome_tier) html += "<div>tier: " + esc(sp.outcome_tier) + (sp.sample === true ? " (sample)" : "") + "</div>";
         html += '</div><div style="margin-top:7px;display:flex;flex-direction:column;gap:5px">';
         html += sendBtn("Send soft pull ($32 + approval form)", "softpull", true);
         html += '</div><div style="font-size:10px;color:var(--gray2);margin-top:5px">Catalog price $32. Live prove may use $1. Stay on the Meet.</div></div>';
@@ -1817,6 +1829,10 @@
       beliefs_count: Object.keys(state.checks).filter(function (k) { return state.checks[k]; }).length,
       cost_of_inaction: state.costNum || null
     }, extra || {});
+    if (action === "log_disposition") {
+      var paidLinkId = state.paymentLinkId || savedPaymentLink(selectedOfferKey());
+      if (paidLinkId) body.payment_link_id = paidLinkId;
+    }
     var r = await window.FHData.write("/api/closer-deck", body);
     if (!r.ok) {
       if (act) markSent(act, false);
@@ -1841,6 +1857,13 @@
       return;
     }
     if (act) markSent(act, true);
+    if (action === "send_pay_link") {
+      state.paymentLinkId = (r.data && r.data.link && r.data.link.id) || null;
+      savePaymentLink(state.paymentLinkId, selectedOfferKey());
+    }
+    if (action === "log_disposition") {
+      try { localStorage.removeItem(paymentStoreKey); } catch (e) {}
+    }
     if (action === "send_soft_pull") toast("Soft pull emailed — pay link + approval form.");
     else if (action === "send_pay_link") toast("Pay link sent.");
     else toast("Disposition written to contact record.");

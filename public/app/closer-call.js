@@ -3,6 +3,13 @@
   "use strict";
 
   var clientId = window.__FH_CLIENT_ID;
+  var paymentStoreKey = "fh_call_payment_link:" + clientId;
+  function savedPaymentLink() {
+    try {
+      var saved = JSON.parse(localStorage.getItem(paymentStoreKey) || "null");
+      return saved && Date.now() - saved.at < 86400000 ? saved : null;
+    } catch (e) { return null; }
+  }
   var state = {
     outcome: null,
     belief: null,
@@ -10,6 +17,7 @@
     saving: false,
     data: null,
     offers: [],
+    paymentLink: savedPaymentLink(),
     payWatch: null
   };
 
@@ -332,12 +340,8 @@
       }
     }
     if (tables[1]) {
-      /* The transaction id is deliberately NOT kept. It used to be stored here
-         and posted with the outcome, and buildCockpit's payment query has no
-         time bound — so a repeat client who paid four months ago had that old
-         payment attached to today's call, and the closer's cash was logged as
-         the old amount. The server resolves the payment itself inside its own
-         48-hour window (src/sales/call-outcomes.mjs resolveCashCollected). */
+      /* This is a display of the latest payment on file. The call log uses
+         only the exact checkout link sent for this call. */
       var pay = deal.latest_payment;
       var paidWhen = pay && pay.created_at ? new Date(pay.created_at) : null;
       var paidLabel = paidWhen && !isNaN(paidWhen.getTime())
@@ -725,6 +729,10 @@
         setMsg((r.error && (r.error.message || r.error)) || "Could not send the pay link.");
         return;
       }
+      state.paymentLink = { id: r.data && r.data.link && r.data.link.id, offerKey: key, at: Date.now() };
+      if (state.paymentLink.id) {
+        try { localStorage.setItem(paymentStoreKey, JSON.stringify(state.paymentLink)); } catch (e) {}
+      }
       setMsg("Sent. Stay on the call until it posts.");
       watchForPayment();
     });
@@ -790,9 +798,9 @@
         outcome: state.outcome,
         belief_failed: state.belief === "none" ? null : state.belief,
         task_id: state.taskId,
-        /* transaction_id is deliberately absent. See the note in paint(): the
-           server picks the payment inside its own 48-hour window, which is what
-           "money from this call" means. Sending an id from here bypassed it. */
+        /* The server checks the exact paid link against this client, staff and offer. */
+        payment_link_id: state.paymentLink && state.paymentLink.id,
+        offer_key: state.paymentLink && state.paymentLink.offerKey,
         checklist: {
           call_recorded: !!(document.getElementById("d1") && document.getElementById("d1").checked),
           personal_guarantee: !!(document.getElementById("d2") && document.getElementById("d2").checked),
@@ -808,6 +816,7 @@
         return;
       }
       try { sessionStorage.removeItem("fh_pending_disposition"); } catch (e) {}
+      try { localStorage.removeItem(paymentStoreKey); } catch (e) {}
       var next = (state.data && state.data.up_next && state.data.up_next[0]);
       if (next && next.client_id) {
         location.href = "closer-dashboard.html?client_id=" + encodeURIComponent(next.client_id) +

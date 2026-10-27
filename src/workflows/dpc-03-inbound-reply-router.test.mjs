@@ -15,12 +15,12 @@ const withStages = () => ({
 // identically on the pre-fix `isDpc03Context` gate too, masking the regression it's
 // meant to prove is gone. Leaving custom_fields empty means this only passes because
 // the call-state disambiguation (doc 3576-3578) lets a plain YES through on its own.
-test("happy path: YES reply creates the contract task and moves to closed", async () => {
+test("happy path: YES reply creates the contract task without claiming payment", async () => {
   const db = pgFake({ clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", phone: "+15551234567", custom_fields: {} }], ...withStages() });
   const res = await handle({ event: ev("message.inbound", { from: "+15551234567", body: "YES let's do it" }), db, step: fakeStep() });
   assert.equal(res.decision, "yes");
   assert.equal(res.task.created, true);
-  assert.equal(db.cards[0].stage_id, "st-closed");
+  assert.equal(db.cards.length, 0);
 });
 
 test("branch: RESCHEDULE reply creates the booking-link task + sends the reschedule SMS, no card move", async () => {

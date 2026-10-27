@@ -4,9 +4,11 @@
 import { db } from "../src/db.mjs";
 import { requireAuth } from "../src/http/middleware/requireAuth.mjs";
 import { ROLE_SETS, requireRole, isUuid } from "../src/http/read-api.mjs";
+import { getOffer } from "../src/config/offers.mjs";
 import {
   CallOutcomeError,
   logCallOutcome,
+  paidTransactionForLink,
   presentOutcome
 } from "../src/sales/call-outcomes.mjs";
 
@@ -50,8 +52,28 @@ export default async function handler(req, res, deps = {}) {
       message: "Cash collected is read from the payment record. Do not send an amount."
     });
   }
+  if (body.transaction_id != null) {
+    return res.status(400).json({ ok: false, error: "payment_link_required", message: "Use the checkout link from this call to record cash." });
+  }
+  if (body.payment_link_id && !isUuid(body.payment_link_id)) {
+    return res.status(400).json({ ok: false, error: "invalid_payment_link", message: "That checkout link is invalid." });
+  }
+  const offer = getOffer(body.offer_key);
+  if (body.payment_link_id && !offer) {
+    return res.status(400).json({ ok: false, error: "offer_required", message: "Choose the offer on this call." });
+  }
 
   try {
+    const paidOutcome = body.outcome === "deposit" || body.outcome === "downsell";
+    const offerMatchesOutcome = offer && (body.outcome === "deposit"
+      ? offer.paymentPurpose === "deposit"
+      : offer.paymentPurpose !== "deposit");
+    const transactionId = paidOutcome && offerMatchesOutcome
+      ? await paidTransactionForLink(database, {
+          orgId, clientId: body.client_id, staffId: staff.id,
+          paymentLinkId: body.payment_link_id, productCode: offer.productCode
+        })
+      : null;
     const result = await logCallOutcome(database, {
       orgId,
       clientId: body.client_id,
@@ -60,7 +82,8 @@ export default async function handler(req, res, deps = {}) {
       bookingRef: body.booking_ref || null,
       outcome: body.outcome,
       beliefFailed: body.belief_failed ?? body.belief ?? null,
-      transactionId: isUuid(body.transaction_id) ? body.transaction_id : null,
+      transactionId,
+      offerKey: offer?.key || null,
       recordingUrl: body.recording_url || null,
       durationSeconds: body.duration_seconds ?? null,
       notes: body.notes || null,

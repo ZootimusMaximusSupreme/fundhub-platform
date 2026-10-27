@@ -674,7 +674,7 @@ export async function coordinateCrsResult(db, {
 export async function getLatestPull(db, { clientId } = {}) {
   if (!clientId) throw new SoftPullError("clientId is required");
   const res = await db.query(
-    `SELECT id, org_id, client_id, result, outcome_tier, created_at, updated_at
+    `SELECT id, org_id, client_id, result, outcome_tier, created_at, updated_at, is_demo
        FROM crs_results
       WHERE client_id = $1
       ORDER BY created_at DESC, id DESC
