@@ -19,7 +19,7 @@
 // HOW THE FOUR SITUATIONS ARE TOLD APART — owner's routing rule, and the two
 // signals it needs. These answer different questions and BOTH are required:
 //
-//   1. WHAT THEY BOUGHT -> products.category on their active sales.
+//   1. WHAT THEY BOUGHT -> products.category on ACTIVE, NET-PAID sales.
 //      'funding' and 'repair' are the two categories that own a board. This is
 //      the same basis money-chain.mjs:818 already routes on ("the most recent
 //      ACTIVE sale whose product category is 'funding'"), and
@@ -120,13 +120,28 @@ export async function findClient(db, event) {
   return r.rows[0]?.id || null;
 }
 
-/** What this client has actually bought, by product category. */
+/** What this client has actually PAID for, by product category.
+ * An active sale can be just a signed offer. It may not start fulfillment
+ * until net front-end money is positive on that same sale.
+ * A $32 diagnostic, success fee, or fully refunded purchase cannot qualify.
+ * Money-chain writes the payment first; this handler runs afterward.
+ */
 export async function purchasedCategories(db, orgId, clientId) {
   const r = await db.query(
     `SELECT DISTINCT pr.category AS category
        FROM sales s
        JOIN products pr ON pr.id = s.product_id
-      WHERE s.org_id = $1 AND s.client_id = $2 AND s.status = 'active'`,
+      WHERE s.org_id = $1 AND s.client_id = $2 AND s.status = 'active'
+              AND EXISTS (
+                SELECT 1 FROM sale_payments sp
+                WHERE sp.org_id = s.org_id AND sp.sale_id = s.id
+                GROUP BY sp.sale_id
+                HAVING COALESCE(SUM(CASE
+                  WHEN sp.kind IN ('deposit', 'installment') THEN sp.amount
+                  WHEN sp.kind = 'refund' THEN -sp.amount
+                  ELSE 0
+                END), 0) > 0
+              )`,
     [orgId, clientId]
   );
   const categories = new Set(r.rows.map((row) => String(row.category || "")));
