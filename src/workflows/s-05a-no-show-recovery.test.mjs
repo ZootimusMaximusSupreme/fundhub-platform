@@ -165,7 +165,10 @@ test("s-05a: rescheduling the missed booking stops later recovery touches", asyn
 
   const cancellations = s05aNoShowRecovery.opts.cancelOn || [];
   assert.deepEqual(cancellations.map((rule) => rule.event).sort(), ["booking.created", "booking.rescheduled"]);
-  for (const rule of cancellations) assert.match(rule.if, /payload\.email/);
+  for (const rule of cancellations) {
+    assert.match(rule.if, /payload\.email/);
+    assert.match(rule.if, /event\.data\.orgId == async\.data\.orgId/, "cancellation must not cross organization");
+  }
 });
 
 test("s-05a: a reschedule from another company cannot stop recovery", async () => {
