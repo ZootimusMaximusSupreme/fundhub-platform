@@ -77,6 +77,13 @@
         <div><h1 id="setter-title">Who needs my call now?</h1><p>Newest lead first. Call within 60 seconds during 6 a.m.–10 p.m. Phoenix time.</p></div>
         <button id="setter-refresh" type="button" class="fh-astra-action">Refresh queue</button>
       </header>
+      <section class="setter-numbers" aria-label="Your setter numbers today">
+        <div><span>Dials</span><strong id="setter-number-dials">—</strong></div>
+        <div><span>Booked from opt-in</span><strong id="setter-number-booked">—</strong></div>
+        <div><span>Dial to book</span><strong id="setter-number-book-rate">—</strong></div>
+        <div><span>Shows</span><strong id="setter-number-shows">—</strong></div>
+        <div><span>Show rate</span><strong id="setter-number-show-rate">—</strong></div>
+      </section>
       <div class="setter-queue-heading"><strong id="setter-count">Checking calls…</strong><span>Newest first · 25 per page</span></div>
       <div class="setter-grid">
         <section class="setter-queue" id="setter-queue" aria-label="Setter call queue" aria-busy="true">
@@ -181,6 +188,17 @@ function setterSorted(items) {
   var detailEl = document.getElementById("setter-detail");
   var countEl = document.getElementById("setter-count");
   var refreshBtn = document.getElementById("setter-refresh");
+
+  function paintNumbers(numbers) {
+    var n = numbers && typeof numbers === "object" ? numbers : {};
+    function set(id, value) { document.getElementById(id).textContent = value; }
+    function pct(value) { return typeof value === "number" && isFinite(value) ? Math.round(value * 100) + "%" : "—"; }
+    set("setter-number-dials", Number(n.dials || 0));
+    set("setter-number-booked", Number(n.booked || 0));
+    set("setter-number-book-rate", pct(n.dial_to_book_rate));
+    set("setter-number-shows", Number(n.showed || 0));
+    set("setter-number-show-rate", pct(n.show_rate));
+  }
 
   function request(path, options) {
     var init = options || {};
@@ -305,7 +323,7 @@ function setterSorted(items) {
       '<div class="setter-actions"><button type="button" class="fh-astra-action" data-action="log-dial">Log dial' + (h.call_attempts ? ' #' + (Number(h.call_attempts) + 1) : '') + '</button><span>' + Number(h.call_attempts || 0) + ' attempt(s) logged</span></div>' +
       '<section class="setter-section"><h3>Call result</h3><div class="setter-fields"><div class="setter-field"><label for="setter-disposition">Disposition</label><select id="setter-disposition" name="disposition">' +
       option("", "Choose a result", h.disposition || "") + option("reached", "Reached", h.disposition) + option("no_answer", "No answer", h.disposition) + option("reschedule", "Reschedule", h.disposition) + option("booked_on_call", "Booked on this call", h.disposition) + '</select></div>' +
-      '<div class="setter-field"><label for="setter-attempts">Dial attempts</label><input id="setter-attempts" name="call_attempts" type="number" min="0" max="99" value="' + Number(h.call_attempts || 0) + '"></div></div>' +
+      '<div class="setter-field"><label for="setter-attempts">Dial attempts</label><input id="setter-attempts" name="call_attempts" type="number" min="0" max="99" value="' + Number(h.call_attempts || 0) + '" readonly></div></div>' +
       '<div id="setter-no-answer"' + (h.disposition === "no_answer" ? '' : ' hidden') + '><p>Double dial right away. Then leave voicemail, send the missed-call text, and send the intro video.</p>' +
       '<div class="setter-checks">' + box("voicemail_left", "Voicemail left", h.voicemail_left) + box("missed_text_sent", "Missed-call text sent", h.missed_text_sent) + '</div>' +
       document.getElementById("setter-script-help").innerHTML +
@@ -327,11 +345,11 @@ function setterSorted(items) {
       '<div class="setter-field"><label for="setter-app">Fundhub Portal on phone?</label><select id="setter-app" name="app_on_phone">' + option("", "Choose one", h.app_on_phone == null ? "" : h.app_on_phone === true ? "yes" : "no") + option("yes", "Yes", h.app_on_phone === true ? "yes" : "") + option("no", "No", h.app_on_phone === false ? "no" : "") + '</select></div></div>' +
       '<p>Ask about the app for their file and next steps. They still need a computer for the strategy call. If asked about price: “We walk the options on the strategy call after we see the file. The only charge before that call is the $32 soft pull, and your score does not move.”</p>' +
       '<div class="setter-actions"><a class="setter-link" href="' + setterEsc(bookingUrl || "calendar.html") + '"' + (bookingUrl ? ' target="_blank" rel="noopener"' : '') + '>Move call time</a><span id="setter-app-slot">' + (appStoreUrl ? '<a class="setter-link" href="' + setterEsc(appStoreUrl) + '" target="_blank" rel="noopener">Fundhub Portal App Store ↗</a>' : '') + '</span></div></section>' +
-      '<section class="setter-section"><h3>Closer handoff</h3><p>' + (sameStaff ? 'Chris is setter and closer. Text the lead only; save the full note on the client.' : 'Send the handoff to the lead and closer after the time is locked.') + '</p>' +
+      '<section class="setter-section"><h3>Closer handoff</h3><p>' + (sameStaff ? 'Chris is setter and closer. Text the lead only; save the full note on the client.' : 'Send the booking confirmation to the lead and the full handoff to the closer as separate messages.') + '</p>' +
       '<div class="setter-script" id="setter-handoff-note">' + setterEsc(h.handoff_text || 'Save the checklist to generate the handoff note.') + '</div>' +
       '<div class="setter-actions"><button type="button" class="fh-astra-action" data-action="save">Save checklist</button>' +
       '<button type="button" class="fh-astra-action fh-astra-primary" data-action="complete"' + (h.complete_at ? ' disabled' : '') + '>' + (h.complete_at ? 'Handoff complete' : 'Mark handoff complete') + '</button>' +
-      '<button type="button" class="fh-astra-action" data-action="send_handoff"' + (!h.complete_at || h.handoff_sent_at ? ' disabled' : '') + '>' + (h.handoff_sent_at ? 'Handoff text sent' : sameStaff ? 'Send lead-only SMS' : 'Send three-way SMS') + '</button></div>' +
+      '<button type="button" class="fh-astra-action" data-action="send_handoff"' + (!h.complete_at || h.handoff_sent_at ? ' disabled' : '') + '>' + (h.handoff_sent_at ? 'Handoff text sent' : sameStaff ? 'Send lead-only SMS' : 'Send lead confirmation + closer handoff') + '</button></div>' +
       '<div class="setter-status" id="setter-status" role="status" aria-live="polite"></div></section>';
     detailEl.innerHTML = html;
   }
@@ -366,7 +384,7 @@ function setterSorted(items) {
               "Intro video not sent. Check Messaging before retrying.", "error");
           return false;
         }
-        say(action === "save" ? "Checklist saved." : action === "complete" ? "Handoff complete and saved on the client." : action === "send_intro_video" ? "Intro video sent." : "Handoff text sent.", "success");
+        say(action === "save" ? "Checklist saved." : action === "log_dial" ? "Dial logged." : action === "complete" ? "Handoff complete and saved on the client." : action === "send_intro_video" ? "Intro video sent." : "Handoff text sent.", "success");
         return true;
       }).catch(function () { say(messageFor(null), "error"); return false; }).finally(function () { busy = false; });
   }
@@ -388,6 +406,7 @@ function setterSorted(items) {
         return;
       }
       queue = setterSorted(result.body.items);
+      paintNumbers(result.body.numbers);
       introVideoAvailable = result.body.intro_video_available === true;
       bookingUrl = /^https:\/\//.test(result.body.booking_url || "") ? result.body.booking_url : "";
       selected = queue.find(function (row) { return row.client_id === selectedId(); }) || queue[0] || null;
@@ -434,9 +453,7 @@ function setterSorted(items) {
     saveTimer = 0;
     var h = readHandoff();
     if (action === "log-dial") {
-      h.call_attempts = Number(h.call_attempts || 0) + 1;
-      if (!h.dialed_at) h.dialed_at = new Date().toISOString();
-      sendAction("save", h).then(function (ok) { if (ok) paintDetail(); });
+      sendAction("log_dial", h).then(function (ok) { if (ok) load(); });
       return;
     }
     if (action === "complete") {

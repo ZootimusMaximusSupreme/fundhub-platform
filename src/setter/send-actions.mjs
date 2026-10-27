@@ -128,8 +128,9 @@ export async function performSetterSendAction({
   if (action !== "send_handoff") throw new Error("unsupported setter send action");
   if (!handoff.complete_at) throw new Error("complete the setter handoff before sending it");
   const body = buildSetterHandoffText({ client, handoff, closer, setter: staff });
+  const leadBody = body.split("\n\n", 1)[0];
   const lead = await sendLeadImpl(db, { orgId, staffId: staff.id, clientId,
-    body, key: `setter-handoff:${key}:lead`, phone: client.phone });
+    body: leadBody, key: `setter-handoff:${key}:lead`, phone: client.phone });
   if (!sendAccepted(lead)) return { lead: response(lead), same_staff: sameStaff,
     handoffPatch: { handoff_text: body } };
   let closerLeg = null;

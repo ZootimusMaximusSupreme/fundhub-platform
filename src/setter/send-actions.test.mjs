@@ -34,6 +34,7 @@ test("Chris as setter and closer sends only the lead leg", async () => {
   });
   assert.equal(calls.length, 1);
   assert.equal(calls[0][0], "lead");
+  assert.doesNotMatch(calls[0][1].body, /Old equipment|Buy equipment/);
   assert.equal(result.same_staff, true);
   assert.ok(result.handoffPatch.handoff_sent_at);
 });
@@ -44,10 +45,13 @@ test("different closer gets a separate SMS after the lead", async () => {
     staff: owner, db: { async query() { return { rows: [{ id: "staff-closer", name: "Alex",
       phone: "+15555550234", status: "active" }] }; } }, orgId: "org-1",
     setterStaffId: owner.id, closerStaffId: "staff-closer",
-    sendLeadImpl: async () => { calls.push("lead"); return { outcome: "sent", message: { id: "lead" } }; },
-    sendCloserImpl: async () => { calls.push("closer"); return { outcome: "sent", message: { id: "closer" } }; }
+    sendLeadImpl: async (_db, args) => { calls.push(["lead", args.body]); return { outcome: "sent", message: { id: "lead" } }; },
+    sendCloserImpl: async (_db, args) => { calls.push(["closer", args.body]); return { outcome: "sent", message: { id: "closer" } }; }
   });
-  assert.deepEqual(calls, ["lead", "closer"]);
+  assert.deepEqual(calls.map((entry) => entry[0]), ["lead", "closer"]);
+  assert.doesNotMatch(calls[0][1], /Old equipment|Buy equipment/);
+  assert.match(calls[1][1], /Old equipment/);
+  assert.match(calls[1][1], /Buy equipment/);
   assert.equal(result.same_staff, false);
   assert.ok(result.handoffPatch.handoff_sent_at);
 });

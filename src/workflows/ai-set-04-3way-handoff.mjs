@@ -20,7 +20,7 @@ import { createTask } from "../lib/create-task.mjs";
 import { appointmentContext, REMINDER_SKEW_MS } from "./s-04b-booking-reminders.mjs";
 import { portalLoginUrl } from "../auth/magic-link.mjs";
 import { bookingStateAt, SLOT_STATE, fillMeetingUrl } from "../bookings/store.mjs";
-import { findMeetLink } from "../bookings/meet-link.mjs";
+import { findMeetLink, meetLinkValue } from "../bookings/meet-link.mjs";
 import { CANCEL_RULES, RESCHEDULE_CANCEL_RULES } from "./booking-cancel-rules.mjs";
 
 export const SMS_TEMPLATE_KEY = "SMS-AISET04-HANDOFF";
@@ -38,27 +38,37 @@ const SOURCE_WORKFLOW = "ai-set-04-3way-handoff";
  * after it is made. Places are asked in order of how specific they are, and the
  * last one always answers:
  *   1. the booking event's own payload,
- *   2. the saved booking row for this appointment,
+ *   2. the saved booking row for this client at this exact call time,
  *   3. the host calendar event for this exact call, read now and kept,
- *   4. this client's most recent saved booking link,
- *   5. the customer's portal sign-in page — a door they can actually open.
- * There is no branch that returns nothing. A link in this text is either real
- * or the text does not go.
+ *   4. the customer's portal sign-in page, clearly named as a fallback and not
+ *      as the meeting link.
+ * An older call for the same client is never a source for this text.
  */
 async function meetingLinkFor(db, { orgId, clientId, payload = {}, findLink = findMeetLink }) {
-  const fromPayload =
-    payload.meetingUrl || payload.meeting_url || payload.meeting_location || null;
-  if (fromPayload) return { url: String(fromPayload), from: "payload" };
+  const fromPayload = meetLinkValue(
+    payload.meetingUrl || payload.meeting_url || payload.meeting_location || null
+  );
+  if (fromPayload) return { url: fromPayload, from: "payload" };
+
+  const startTime = payload.startTime || payload.start_time || null;
+  const bookingUid = payload.bookingUid ? String(payload.bookingUid).trim() : null;
 
   try {
-    if (payload.bookingUid) {
-      const byUid = await db.query(
+    if (startTime && (clientId || bookingUid)) {
+      const exactCall = await db.query(
         `SELECT meeting_url FROM bookings
-          WHERE org_id = $1 AND provider_uid = $2 AND meeting_url IS NOT NULL
+          WHERE org_id = $1
+            AND starts_at = $3::timestamptz
+            AND status IN ('booked', 'rescheduled')
+            AND (($2::uuid IS NOT NULL AND client_id = $2::uuid)
+                 OR ($4::text IS NOT NULL AND provider_uid = $4::text))
+            AND meeting_url IS NOT NULL
+          ORDER BY updated_at DESC
           LIMIT 1`,
-        [orgId, String(payload.bookingUid)]
+        [orgId, clientId || null, new Date(startTime).toISOString(), bookingUid]
       );
-      if (byUid.rows[0]?.meeting_url) return { url: String(byUid.rows[0].meeting_url), from: "booking_uid" };
+      const saved = meetLinkValue(exactCall.rows[0]?.meeting_url);
+      if (saved) return { url: saved, from: "booking_exact_call" };
     }
   } catch (err) {
     console.warn(`[ai-set-04] could not read a meeting link: ${String(err?.message || err)}`);
@@ -67,20 +77,12 @@ async function meetingLinkFor(db, { orgId, clientId, payload = {}, findLink = fi
   const fromCalendar = await meetLinkFromHostCalendar(db, { orgId, clientId, payload, findLink });
   if (fromCalendar.ok) return { url: fromCalendar.url, from: "host_calendar" };
 
-  try {
-    const byClient = await db.query(
-      `SELECT meeting_url FROM bookings
-        WHERE org_id = $1 AND client_id = $2 AND meeting_url IS NOT NULL
-        ORDER BY created_at DESC
-        LIMIT 1`,
-      [orgId, clientId]
-    );
-    if (byClient.rows[0]?.meeting_url) return { url: String(byClient.rows[0].meeting_url), from: "booking_row" };
-  } catch (err) {
-    console.warn(`[ai-set-04] could not read a meeting link: ${String(err?.message || err)}`);
-  }
+  return { url: portalLoginUrl(), from: "portal_sign_in", reason: fromCalendar.reason || "not_found" };
+}
 
-  return { url: portalLoginUrl(), from: "portal_sign_in" };
+function handoffMeetingLocation(link) {
+  if (link.from !== "portal_sign_in") return link.url;
+  return `Meet link unavailable. This is the Fundhub portal sign-in fallback, not the meeting link: ${link.url}`;
 }
 
 /* THE CALL'S OWN MEET LINK, READ FROM THE HOST CALENDAR AND KEPT.
@@ -211,7 +213,7 @@ export async function handle({ event, db, step, now = () => Date.now(), findLink
   const eventId = sendKeyFor(clientId, startTime);
   const link = await step.run("resolve-meeting-link", () =>
     meetingLinkFor(db, { orgId, clientId, payload, findLink }));
-  const context = appointmentContext({ ...payload, meetingUrl: link.url });
+  const context = appointmentContext({ ...payload, meetingUrl: handoffMeetingLocation(link) });
   const sms = await step.run("send-handoff-sms", () =>
     sendTemplated(db, {
       orgId, clientId, channel: "sms", templateKey: SMS_TEMPLATE_KEY, eventId, context

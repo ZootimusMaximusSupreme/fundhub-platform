@@ -91,7 +91,7 @@ export async function listUnrecordedCalls(db, {
 
   const r = await db.query(
     `SELECT o.id, o.client_id, o.staff_id, o.outcome, o.recording_url,
-            o.logged_at,
+            o.transcript, o.logged_at,
             COALESCE(NULLIF(trim(c.first_name || ' ' || c.last_name), ''), c.email, 'Client') AS client_name
        FROM call_outcomes o
        LEFT JOIN clients c ON c.id = o.client_id AND c.org_id = o.org_id
@@ -100,6 +100,7 @@ export async function listUnrecordedCalls(db, {
         AND o.outcome <> 'no_show'
         AND o.logged_at >= $2
         AND (o.recording_url IS NULL OR btrim(o.recording_url) = '')
+        AND (o.transcript IS NULL OR btrim(o.transcript) = '')
         ${staffClause}
       ORDER BY o.logged_at ASC
       LIMIT $${params.length}`,

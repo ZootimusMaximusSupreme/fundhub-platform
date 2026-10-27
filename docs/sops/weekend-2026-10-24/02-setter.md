@@ -17,7 +17,7 @@ A setter gets a person onto a strategy call with the closer, on time, at a compu
 
 The setter warms the lead from the first minute until the closer is on the line. The setter does not close. The setter does not quote what they qualify for. The setter does not pull credit.
 
-Right now Chris does both jobs. He still runs the setter steps. The handoff note goes on the CRM card. When a closer is a different person, that same note goes out as a three-way text.
+Right now Chris does both jobs. He still runs the setter steps. The handoff note goes on the CRM card. When a closer is a different person, Fundhub sends the booking confirmation to the lead and the full handoff separately to the closer.
 
 ## Two kinds of leads
 
@@ -117,9 +117,9 @@ This is Cole’s triage, in Fundhub words. Sell the strategy call. Do not sell a
 7. **Lock it.** They accept the calendar invite before you hang up.
 8. **Help-me qualify.** “The person on that call needs a short note so you two can start fast. You good if I confirm a couple things?” Confirm only what they already said: the goal, personal or business, and that they can be at a computer. Do not ask for a Social Security number. Do not ask them to read a card number.
 
-## Three-way text to the closer
+## Handoff text to the lead and closer
 
-Send this the minute the time is locked. Put the lead and the closer on the same text.
+Send this the minute the time is locked. Fundhub sends two one-to-one messages because its SMS provider does not promise a group thread: the first paragraph goes to the lead, and the full handoff goes separately to the closer.
 
 > Hey [Name] — Chris at Fundhub. You are set for [day and time]. Be at a computer. We pull your credit live on that call. Your score does not move.
 >
@@ -177,7 +177,7 @@ Keep this SOP. Change three lines.
 
 - The 60-second call still happens. The setter still does not pitch.
 - The video uses the “someone else is the closer” take.
-- The three-way text is real: lead, setter, and closer on one thread, with the note above.
+- The booking confirmation goes to the lead and the full handoff goes to the closer as two one-to-one messages, using the copy above.
 
 ## Fundhub augment (2026-10-26)
 
@@ -187,7 +187,7 @@ These lines sit on top of Cole’s shape. They match owner law in the repo.
 
 **AI setter.** Josh (AG-04) stays **retired**. No outbound AI dial after book.
 
-**Setter dashboard (build in progress).** When live, use **Setter Dashboard** (`/app/setter-dashboard.html`) instead of only free-form notes on the pipeline card. The dashboard holds the checklist, the handoff block the closer reads, and buttons for “send intro video” and “send three-way text” where the product supports them. Until that ships, follow **CRM, while this is still by hand** above.
+**Setter dashboard.** Use **Setter Dashboard** (`/app/setter-dashboard.html`) instead of only free-form notes on the pipeline card. The dashboard holds the checklist, the handoff block the closer reads, today’s self-scoped dial, book and show numbers, and buttons for “send intro video” and “send handoff text.”
 
 **Handoff fields the closer must see** (one place, not scattered chat):
 
@@ -203,6 +203,6 @@ These lines sit on top of Cole’s shape. They match owner law in the repo.
 | Handoff text | three-way template filled in |
 | Setter staff | who logged it |
 
-**Chris is setter + closer today.** Three-way SMS goes to the **lead only**; the same handoff text is saved on the client record for Present / Closer Dashboard. When a hire is setter-only, three-way includes closer’s phone.
+**Chris is setter + closer today.** The booking-confirmation SMS goes to the **lead only**; the full handoff text is saved on the client record for Present / Closer Dashboard. When a hire is setter-only, Fundhub sends the lead confirmation and closer handoff separately.
 
 **Speed alert.** On `booking.created`, setter gets staff SMS when `notify_booked_call_sms` is on (see Staff & Teams). Target: dial within **60 seconds** of that alert or the book event.
