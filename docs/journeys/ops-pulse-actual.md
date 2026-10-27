@@ -89,7 +89,7 @@ Never auto-enqueues `fire`, `raise`, or `bonus`. Never `suspendStaff`. Never wri
 
 ## Briefs
 
-`src/ops/briefs.mjs`: CEO text starts “What needs doing today?” Owner text starts “What will be done.” Missing numbers are named missing. No invented fire trigger, raise percent, or bonus dollar.
+`src/ops/briefs.mjs`: CEO text starts “What needs doing today?” Owner text starts “What will be done.” Missing numbers are named missing. No invented fire trigger, raise percent, or bonus dollar. The setter line says setting is handled by a person today and the AI setter is off; it does not label current bookings as AI-set.
 
 ## UNVERIFIED
 

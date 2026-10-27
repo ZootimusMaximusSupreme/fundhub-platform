@@ -3,6 +3,13 @@
 //
 //   DATABASE_URL=… INNGEST_EVENT_KEY=… node scripts/sim/push-credit.mjs \
 //     --email stanbridgejchris+sim-01@gmail.com --profile fundable [--dry]
+//   --business-scenario two_clean adds fictional Experian Business reports and
+//   matched business rows, only for a +sim address on a local scratch database.
+//   --crm-only is the narrow exception for an existing, linked Simulated Buyer
+//   on production: it saves sample credit and calls only the two local CRM handlers.
+//   It never reads the owner's identity file, emits the bus, or builds a pack.
+//   The normal non-dry path emits events that may build a document pack; use
+//   --dry for inspection. No bureau request is made by this script.
 //
 // For the manual walkthrough (ops/workflows/manual-walkthrough-SOP.md). Chris
 // opts a simulated client in through ClickFunnels; this puts the credit report
@@ -90,6 +97,7 @@
 
 import { readFileSync } from "node:fs";
 import { pool, close } from "../../src/db.mjs";
+import { withTransaction } from "../../src/db/with-transaction.mjs";
 import { resolveDefaultOrg } from "../../src/auth/org.mjs";
 import { ensureRegistered } from "../../src/register-all.mjs";
 import { emit } from "../../src/events/bus.mjs";
@@ -97,10 +105,14 @@ import { ingestCrsResult } from "../../src/tradelines/store.mjs";
 import { ingestCrsLiabilities } from "../../src/liabilities/store.mjs";
 import { mergeCustomFields } from "../../src/workflows/custom-fields.mjs";
 import { runTierEngineFromCrsResult } from "../../src/finance/crs-tier.mjs";
+import { scoreBuyerTotal } from "../../src/finance/crs-pull.mjs";
 import { newInquiriesFor } from "../../src/finance/crs-map.mjs";
 import { storeIdentity, encryptSsn } from "../../src/pii/index.mjs";
 import { isFundingPath } from "../../src/config/product-path.mjs";
 import { providerFromEnv } from "../../src/documents/store.mjs";
+import { isLocalScratchDatabaseUrl } from "../../src/verification/scratch-guard.mjs";
+import { onAnalysisCompleted, onDecisionRendered } from "../../src/handlers/client-lifecycle.mjs";
+import { BUSINESS_SCENARIOS, buildBusinessScenario } from "./crs-scenarios.mjs";
 
 const BUREAU_NAME = { EX: "Experian", EQ: "Equifax", TU: "TransUnion" };
 const ALL_BUREAUS = Object.freeze(["EX", "EQ", "TU"]);
@@ -180,6 +192,13 @@ const SIM_SSN_VARIANT = "666145480"; // two digits transposed — the classic ke
    the same reason the creditor names are — the identity file records no employer. */
 const SIM_EMPLOYER = "STANBRIDGE CAPITAL GROUP";
 const SIM_EMPLOYER_MISSPELLED = "STANBRIDGE CAPTIAL GROUP";
+
+// The CRM-only call uses this invented person, never the owner's identity file.
+export const SIMULATED_BUYER_IDENTITY = Object.freeze({
+  first: "Simulated", middle: null, last: "Buyer", dob: "1990-01-01",
+  current: { line1: "100 Simulation Way", city: "Phoenix", state: "AZ", postal_code: "85004" },
+  priors: [], employer: "SIMULATION SUPPLY CO"
+});
 
 /* ── Dates ─────────────────────────────────────────────────────────────────
    Every date on the file is derived from the pull date rather than typed as a
@@ -1023,6 +1042,75 @@ export function buildPayload(profileKey, { email, name, pulledAt = new Date().to
   };
 }
 
+/** Assemble the ordinary simulated personal file with matched business rows/reports. */
+export function buildScenarioPayload(profileKey, options, businessScenario) {
+  const payload = buildPayload(profileKey, options);
+  if (!businessScenario) return { payload, businesses: [] };
+  const { businesses, businessReports } = buildBusinessScenario(businessScenario, { asOf: payload.pulledAt });
+  payload.businessReports = businessReports;
+  return { payload, businesses };
+}
+
+/** The ordinary fixture path stays scratch-only; CRM-only has its own client fence. */
+export function assertBusinessScenarioSafe({ databaseUrl, email, businessScenario, crmOnly = false }) {
+  if (!businessScenario) return;
+  if (!BUSINESS_SCENARIOS[businessScenario]) throw new Error(`unknown business scenario ${businessScenario}`);
+  if (!/^[^@+]+\+sim[\w-]*@[^@]+$/i.test(String(email || ""))) {
+    throw new Error("business scenarios require a +sim email address");
+  }
+  if (!crmOnly && !isLocalScratchDatabaseUrl(databaseUrl)) {
+    throw new Error("business scenarios require a local scratch database");
+  }
+}
+
+/** Production CRM-only writes are limited to the existing fictional buyer. */
+export function assertCrmOnlyTarget(client, email) {
+  if (!/^[^@+]+\+sim[\w-]*@[^@]+$/i.test(String(email || ""))) {
+    throw new Error("CRM-only mode requires a +sim email address");
+  }
+  if (!client || String(client.email || "").trim().toLowerCase() !== String(email).trim().toLowerCase()
+      || String(client.first_name || "").trim().toLowerCase() !== "simulated"
+      || String(client.last_name || "").trim().toLowerCase() !== "buyer") {
+    throw new Error("CRM-only mode requires the existing Simulated Buyer client");
+  }
+  if (client.custom_fields?.slo_ref) {
+    throw new Error("CRM-only mode requires a client with no SLO reference");
+  }
+}
+
+/** Replace only this script's prior fictional business rows, never form-saved companies. */
+export async function saveScenarioBusinesses(db, { orgId, clientId, businesses, databaseUrl, email, businessScenario, crmOnly = false }) {
+  assertBusinessScenarioSafe({ databaseUrl, email, businessScenario, crmOnly });
+  if (!businessScenario) throw new Error("business scenario required before saving business rows");
+  const expected = buildBusinessScenario(businessScenario).businesses;
+  if (!Array.isArray(businesses) || businesses.length !== expected.length
+      || businesses.some((row, i) => row.name !== expected[i].name
+        || row.entity_data?.state !== expected[i].entity_data.state
+        || row.entity_data?.source !== "simulated_crs")) {
+    throw new Error("business rows do not match the selected simulated scenario");
+  }
+  return withTransaction(db, async (tx) => {
+    if (crmOnly) {
+      const selected = (await tx.query(
+        `SELECT id, first_name, last_name, email, ghl_contact_id, custom_fields
+           FROM clients WHERE org_id = $1 AND id = $2 FOR UPDATE`, [orgId, clientId]
+      )).rows[0];
+      assertCrmOnlyTarget(selected, email);
+    }
+    await tx.query(
+      `DELETE FROM businesses WHERE org_id = $1 AND client_id = $2 AND entity_data->>'source' = 'simulated_crs'`,
+      [orgId, clientId]
+    );
+    for (const business of businesses) {
+      await tx.query(
+        `INSERT INTO businesses (org_id, client_id, name, age_months, entity_data)
+         VALUES ($1, $2, $3, $4, $5::jsonb)`,
+        [orgId, clientId, business.name, business.age_months, JSON.stringify(business.entity_data)]
+      );
+    }
+  });
+}
+
 /* ── The identity row, the way the soft-pull form saves it ─────────────────
    api/soft-pull-approve.mjs refuses without street, city, a two-letter state and
    ZIP, and a YYYY-MM-DD date of birth, then calls storeIdentity with
@@ -1120,6 +1208,77 @@ function countNegatives(rows) {
   return rows.filter((t) => t.derogatoryDataIndicator === true).length;
 }
 
+/** Save one sample decision and call only the two CRM state handlers. No event bus or document pack. */
+export async function runCrmOnlyScenario(db, { orgId, email, profileKey, businessScenario, databaseUrl, dry = false }) {
+  if (!orgId || !resolveProfileKey(profileKey) || !businessScenario) {
+    throw new Error("CRM-only mode requires an org, personal profile, and business scenario");
+  }
+  assertBusinessScenarioSafe({ databaseUrl, email, businessScenario, crmOnly: true });
+  return withTransaction(db, async (tx) => {
+    const client = (await tx.query(
+      `SELECT id, first_name, last_name, email, ghl_contact_id, custom_fields
+         FROM clients WHERE org_id = $1 AND lower(email) = $2 FOR UPDATE`,
+      [orgId, String(email).trim().toLowerCase()]
+    )).rows[0];
+    assertCrmOnlyTarget(client, email);
+    // A previously form-saved company must not be silently mixed with a fixture.
+    const realBusinesses = (await tx.query(
+      `SELECT count(*)::int AS n FROM businesses
+        WHERE org_id = $1 AND client_id = $2
+          AND COALESCE(entity_data->>'source', '') <> 'simulated_crs'`,
+      [orgId, client.id]
+    )).rows[0]?.n ?? 0;
+    if (realBusinesses) throw new Error("CRM-only mode refuses a client with form-saved business rows");
+
+    const name = "Simulated Buyer";
+    const { payload, businesses } = buildScenarioPayload(profileKey, {
+      email, name, identity: SIMULATED_BUYER_IDENTITY
+    }, businessScenario);
+    const { tierResult, fundingEstimate } = scoreBuyerTotal(runTierEngineFromCrsResult, payload, {
+      submittedName: name,
+      submittedAddress: "100 Simulation Way, Phoenix, AZ, 85004",
+      formData: { name, email, phone: null }
+    });
+    payload.outcome = tierResult.outcome;
+    payload.preapprovals = tierResult.preapprovals ? {
+      ...tierResult.preapprovals,
+      totalBusiness: fundingEstimate - Number(tierResult.preapprovals.totalPersonal || 0),
+      totalCombined: fundingEstimate
+    } : null;
+    payload.reason_codes = tierResult.reasonCodes ?? tierResult.reason_codes ?? ["simulated"];
+    payload.consumerSignals = tierResult.consumerSignals ?? null;
+    if (dry) return { dry: true, clientId: client.id, outcomeTier: tierResult.outcome, fundingEstimate, businessCount: businesses.length };
+
+    await saveScenarioBusinesses({ query: (...args) => tx.query(...args) }, {
+      orgId, clientId: client.id, businesses, databaseUrl, email, businessScenario, crmOnly: true
+    });
+    const crs = (await tx.query(
+      `INSERT INTO crs_results (org_id, client_id, result, outcome_tier, is_demo)
+       VALUES ($1, $2, $3::jsonb, $4, true) RETURNING *`,
+      [orgId, client.id, JSON.stringify(payload), tierResult.outcome]
+    )).rows[0];
+    await ingestCrsResult(tx, crs);
+    await ingestCrsLiabilities(tx, crs);
+    await mergeCustomFields(tx, client.id, {
+      crs_utilization: payload.utilization,
+      utilization: payload.utilization,
+      business_age_months: businesses[0]?.age_months ?? 0
+    });
+    const eventBase = { orgId, clientId: client.id };
+    const stamp = { crsResultId: crs.id, source: "crs", simulated: true,
+      simulatedNotice: payload.simulatedNotice, outcomeTier: tierResult.outcome };
+    const localOnly = { skipCrmLink: true, skipChecklist: true };
+    await onAnalysisCompleted({ ...eventBase, name: "analysis.completed", payload: {
+      ...stamp, scores: payload.scores, newInquiries: newInquiriesFor(payload)
+    } }, tx, localOnly);
+    await onDecisionRendered({ ...eventBase, name: "decision.rendered", payload: {
+      ...stamp, fundingEstimate
+    } }, tx, localOnly);
+    return { dry: false, clientId: client.id, crsResultId: crs.id,
+      outcomeTier: tierResult.outcome, fundingEstimate, businessCount: businesses.length };
+  });
+}
+
 function arg(name, fallback = null) {
   const i = process.argv.indexOf(`--${name}`);
   return i >= 0 && process.argv[i + 1] && !process.argv[i + 1].startsWith("--") ? process.argv[i + 1] : fallback;
@@ -1128,14 +1287,32 @@ function arg(name, fallback = null) {
 async function main() {
   const email = String(arg("email", "")).trim().toLowerCase();
   const profileArg = String(arg("profile", "")).trim();
+  const businessScenario = arg("business-scenario");
+  const crmOnly = process.argv.includes("--crm-only");
   const dry = process.argv.includes("--dry");
   const profileKey = resolveProfileKey(profileArg);
   if (!email || !profileKey) {
-    console.error("usage: node scripts/sim/push-credit.mjs --email <client email> --profile fundable|repair-full|repair-trial [--dry]");
+    console.error("usage: node scripts/sim/push-credit.mjs --email <client email> --profile fundable|repair-full|repair-trial [--business-scenario seasoned_clean|young_clean|lien_stressed|inactive|two_clean|mixed] [--crm-only] [--dry]");
     console.error(`       old names still work: ${Object.entries(PROFILE_ALIASES).map(([a, t]) => `${a}=${t}`).join(" ")}`);
     process.exit(2);
   }
+  if (process.argv.includes("--business-scenario") && !businessScenario) {
+    throw new Error("--business-scenario needs a scenario name");
+  }
   if (!process.env.DATABASE_URL) { console.error("DATABASE_URL is not set"); process.exit(2); }
+  if (crmOnly) {
+    const db = pool();
+    try {
+      const orgId = await resolveDefaultOrg(db);
+      const result = await runCrmOnlyScenario(db, {
+        orgId, email, profileKey, businessScenario, databaseUrl: process.env.DATABASE_URL, dry
+      });
+      console.log(`CRM-only ${result.dry ? "dry" : "saved"}: ${result.outcomeTier}, estimate ${result.fundingEstimate}, ${result.businessCount} fictional business(es)`);
+      console.log(result.dry ? "No rows written." : "Stopped at CRM decision; no event bus, document pack, payment, or fulfillment was called.");
+    } finally { await close(); }
+    return;
+  }
+  assertBusinessScenarioSafe({ databaseUrl: process.env.DATABASE_URL, email, businessScenario });
   const identity = loadOwnerIdentity();
   const db = pool();
   ensureRegistered();
@@ -1150,7 +1327,7 @@ async function main() {
 
   const prior = (await db.query(`SELECT count(*)::int AS n FROM crs_results WHERE client_id = $1`, [c.id])).rows[0].n;
   const p = PROFILES[profileKey];
-  const payload = buildPayload(profileKey, { email, name, identity });
+  const { payload, businesses: scenarioBusinesses } = buildScenarioPayload(profileKey, { email, name, identity }, businessScenario);
 
   /* SAY IT BEFORE THE ENGINE RUNS. The name on the credit file has to match the
      name on the client row or the identity gate sends the file to manual review
@@ -1165,16 +1342,27 @@ async function main() {
   }
 
   // The real tier engine decides. Nothing here forces an outcome.
-  const tier = runTierEngineFromCrsResult(payload, {
+  const tierOptions = {
     submittedName: name,
     /* The gate ignores the address today (identity-fraud-gate.js takes it and
        never reads it) but passing the real one means it is right the day it
        starts reading it. */
     submittedAddress: [identity.current.line1, identity.current.city, identity.current.state, identity.current.postal_code].filter(Boolean).join(", "),
     formData: { name, email, phone: null }
-  });
+  };
+  const scored = businessScenario
+    ? scoreBuyerTotal(runTierEngineFromCrsResult, payload, tierOptions)
+    : { tierResult: runTierEngineFromCrsResult(payload, tierOptions) };
+  const tier = scored.tierResult;
+  const fundingEstimate = businessScenario
+    ? scored.fundingEstimate
+    : (tier.preapprovals?.totalCombined ?? null);
   payload.outcome = tier.outcome;
-  payload.preapprovals = tier.preapprovals ?? null;
+  payload.preapprovals = businessScenario && tier.preapprovals
+    ? { ...tier.preapprovals,
+        totalBusiness: fundingEstimate - Number(tier.preapprovals.totalPersonal || 0),
+        totalCombined: fundingEstimate }
+    : (tier.preapprovals ?? null);
   payload.reason_codes = tier.reasonCodes ?? tier.reason_codes ?? ["simulated"];
   /* F45 — the engine's OWN signals, not a hand-written stub. The old sim wrote
      `{ scores: { perBureau }, utilization: { pct } }` and the deliverable
@@ -1184,7 +1372,6 @@ async function main() {
      partial stub is worse than none; this is the whole thing the engine computed,
      median, anchors, per-bureau negatives and all. */
   payload.consumerSignals = tier.consumerSignals ?? null;
-  const fundingEstimate = tier.preapprovals?.totalCombined ?? null;
 
   const negatives = countNegatives(payload.tradelines);
   const cs = payload.consumerSignals;
@@ -1196,7 +1383,9 @@ async function main() {
   console.log(`derogs   ${cs?.derogatories?.collections ?? 0} collection rows · ${cs?.derogatories?.chargeoffs ?? 0} charge-off rows · worst severity ${cs?.derogatories?.worstSeverity ?? 0}`);
   console.log(`tier     ${tier.outcome} · funding estimate ${fundingEstimate ?? "none"}`);
   /* Say it out loud so the walkthrough is not surprised by a $0 business figure. */
-  console.log(`business $0 — no business credit report is passed, so business_age_months ${p.businessAgeMonths} is never read`);
+  console.log(businessScenario
+    ? `business ${businessScenario}: ${scenarioBusinesses.length} fictional company report(s), engine total $${payload.preapprovals?.totalBusiness ?? 0}`
+    : `business $0 — no business credit report is passed, so business_age_months ${p.businessAgeMonths} is never read`);
   console.log(`prior    ${prior} crs_results row(s) already on this client${prior ? " — a new one is added, the newest wins" : ""}`);
 
   /* BEFORE ANYTHING IS WRITTEN — the identity row and the pack (hole N10; see
@@ -1234,6 +1423,12 @@ async function main() {
   if (idPlan.write) {
     await storeIdentity(db, { orgId, clientId: c.id, ssn: idPlan.ssn, dob: idPlan.dob, addresses: idPlan.addresses });
   }
+  if (businessScenario) {
+    await saveScenarioBusinesses(db, {
+      orgId, clientId: c.id, businesses: scenarioBusinesses,
+      databaseUrl: process.env.DATABASE_URL, email, businessScenario
+    });
+  }
 
   const crs = (await db.query(
     `INSERT INTO crs_results (org_id, client_id, result, outcome_tier, is_demo) VALUES ($1, $2, $3::jsonb, $4, true) RETURNING *`,
@@ -1249,14 +1444,10 @@ async function main() {
     crs_inquiries_tu: inqCount("TU"),
     crs_negative_items_count: negatives,
     crs_late_payments_count: payload.tradelines.filter((t) => /late/i.test(String(t.paymentStatus))).length,
-    /* DISPLAY ONLY. The funding estimator never reads this. Business money is
-       blocked at $0 unless a real BUSINESS CREDIT REPORT is passed to the engine
-       (estimate-preapprovals.js: `businessAvailable = bs?.available === true`),
-       and the age multiplier is only reached after that check passes. The sim
-       passes no business report, so the business half of every estimate here is
-       $0 and this 30 months is never consulted. Pinned by
-       src/underwrite/preapproval-modifiers.test.mjs. */
-    business_age_months: p.businessAgeMonths,
+    /* Display fallback only. The engine reads the saved business report's
+       incorporated date; without --business-scenario it still gets no report
+       and business funding stays $0. */
+    business_age_months: scenarioBusinesses[0]?.age_months ?? p.businessAgeMonths,
     crs_utilization: payload.utilization,
     /* The client screen's own fallback key. It looks for `utilization`, not
        `crs_utilization`, and finding neither it showed no card use at all. */

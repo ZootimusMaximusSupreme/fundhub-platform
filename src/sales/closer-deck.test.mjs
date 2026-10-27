@@ -466,7 +466,7 @@ test("first-sale offers skip the upsell gate; deliverables still require it", as
     checkoutBaseUrl: "https://pay.example/checkout",
     env: {}
   };
-  for (const offerKey of ["FUNDING_DFY", "REPAIR_DFY", "REPAIR_TRIAL", "FUNDING_MASTERY"]) {
+  for (const offerKey of ["SOFT_PULL", "FUNDING_DFY", "REPAIR_DFY", "REPAIR_TRIAL", "FUNDING_MASTERY"]) {
     await assert.rejects(
       () => sendDeckPayLink(db, { ...args, offerKey }),
       (e) => e instanceof CloserDeckError && e.code !== "sale_motion_required",

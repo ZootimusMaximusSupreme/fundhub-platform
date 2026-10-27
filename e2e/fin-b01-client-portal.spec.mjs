@@ -56,6 +56,25 @@ async function openPortal(page, session, { summary = {}, readyToFund, affiliate,
   return calls;
 }
 
+test("a buyer sees a sample estimate plainly labeled and no real pull claim", async ({ page }) => {
+  await openPortal(page, CLIENT, { summary: {
+    prequal_amount: 410000, prequal_display: "$410,000", prequal_sample: true,
+    soft_pull_complete: false
+  } });
+  await expect(page.locator("#sb-prequal-row .sb-eyebrow")).toHaveText("Sample estimate · not a real pre-qualification");
+  await expect(page.locator("#sb-pre-main")).toHaveText("This is a sample estimate. No real soft pull has been run.");
+  await expect(page.locator("#sb-prequal-amt")).toHaveText("$410,000");
+});
+
+test("a real pre-qualification keeps its ordinary buyer wording", async ({ page }) => {
+  await openPortal(page, CLIENT, { summary: {
+    prequal_amount: 50000, prequal_display: "$50,000", prequal_sample: false,
+    soft_pull_complete: true
+  } });
+  await expect(page.locator("#sb-prequal-row .sb-eyebrow")).toHaveText("Pre-qualified for");
+  await expect(page.locator("#sb-pre-main")).toContainText("Your soft-pull assessment is in");
+});
+
 test.describe("client portal: the FinanceOS card link", () => {
   test("by default the card says Open FinanceOS and goes to FinanceOS", async ({ page }) => {
     await openPortal(page, CLIENT);

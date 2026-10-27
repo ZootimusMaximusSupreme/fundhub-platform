@@ -238,9 +238,9 @@ export function diagnoseGaps({ bars, calendar, company_8, pods } = {}) {
   const booked = company_8?.booked_calls;
   if (!booked || booked.missing || booked.value == null) {
     missing.push({ seat: "setter_ai", metric: "bookings", reason: "bookings_missing" });
-    notes.push("Booked calls are missing. Setter is AI. Do not hire a setter.");
+    notes.push("Booked calls are missing. Setting is handled by a person today. The AI setter is off. Do not hire a setter.");
   } else {
-    notes.push(`Booked calls this window: ${booked.value}. Setter is AI. Do not hire a setter.`);
+    notes.push(`Booked calls this window: ${booked.value}. Setting is handled by a person today. The AI setter is off. Do not hire a setter.`);
   }
 
   if (calendar?.packed) {
@@ -292,7 +292,7 @@ export function hireProfileFromGaps({ gaps, calendar, pods } = {}) {
           : "Why: the belt needs both seats, not one.",
         "Closer: talks to people who already booked. Logs the deposit.",
         "Funding advisor: moves that file through funding rounds. Count files, not dollars.",
-        "Setter is AI. Do not hire a setter.",
+        "Setting is handled by a person today. The AI setter is off. Do not hire a setter.",
         "LinkedIn posts the closer seat on the existing path. Funding advisor is text only.",
         "Hired does not create a login. A person must invite both."
       ]
@@ -319,7 +319,7 @@ export function hireProfileFromGaps({ gaps, calendar, pods } = {}) {
         "Seat: closer — finish the pod.",
         "A funding advisor is already on the floor. They work in tandem.",
         "They talk to people who already booked. They present and log the deposit.",
-        "Setter is AI. Do not hire a setter.",
+        "Setting is handled by a person today. The AI setter is off. Do not hire a setter.",
         "Hired does not create a login. A person must invite."
       ]
     };

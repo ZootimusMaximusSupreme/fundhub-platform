@@ -116,6 +116,7 @@ describe("gap diagnosis", () => {
     assert.equal(gaps.short[0].seat, "closer");
     assert.equal(gaps.short[0].metric, "deposits");
     assert.match(gaps.notes.join(" "), /starting bar of 20/);
+    assert.match(gaps.notes.join(" "), /Setting is handled by a person today\. The AI setter is off/);
     assert.match(gaps.notes.join(" "), /Do not hire a setter/);
     assert.equal(gaps.short.some((s) => s.seat === "setter_ai"), false);
   });
@@ -132,6 +133,7 @@ describe("gap diagnosis", () => {
     assert.equal(gaps.missing.some((m) => m.seat === "closer"), true);
     assert.equal(gaps.short.some((s) => s.seat === "funding_advisor"), true);
     assert.match(gaps.notes.join(" "), /missing/);
+    assert.match(gaps.notes.join(" "), /Setting is handled by a person today\. The AI setter is off/);
     assert.match(gaps.notes.join(" "), /Do not hire a setter/);
   });
 
@@ -179,6 +181,7 @@ describe("hire profile from gaps", () => {
     });
     assert.equal(profile.seat, "closer");
     assert.equal(profile.linkedin, true);
+    assert.match(profile.lines.join(" "), /Setting is handled by a person today\. The AI setter is off/);
     assert.match(profile.lines.join(" "), /Do not hire a setter/);
     assert.match(profile.lines.join(" "), /tandem/);
   });

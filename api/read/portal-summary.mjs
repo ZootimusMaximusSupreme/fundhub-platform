@@ -247,6 +247,7 @@ export default async function handler(req, res) {
       ok: true,
       prequal_amount: prequalAmount,
       prequal_display: formatPrequalUsd(prequalAmount),
+      prequal_sample: cf.prequal_sample === true,
       scores,
       soft_pull_complete: softPullComplete,
       doc_agent_message: cf.doc_agent_message || null,

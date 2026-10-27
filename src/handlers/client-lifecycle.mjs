@@ -216,6 +216,9 @@ export async function resolveClient(db, event, opts = {}) {
     // Explicit id still needs a CRM link when missing — lead capture often
     // creates the row first, then emits with clientId set.
     await patchClientContact(db, event.clientId, p, overwriteContact);
+    // A guarded, local-only sample decision updates the existing Fundhub file
+    // without creating an external CRM contact for a fictional buyer.
+    if (opts.skipCrmLink === true) return event.clientId;
     return backfillCrmLinkIfMissing(db, event.clientId, orgId, p, opts);
   }
   const email = String(p.email || "").trim().toLowerCase();
@@ -445,8 +448,8 @@ export async function onDocsReceivedReviewChecklist(event, db) {
   return reviewClientChecklist(db, { orgId, clientId });
 }
 
-export async function onAnalysisCompleted(event, db) {
-  const clientId = await resolveClient(db, event);
+export async function onAnalysisCompleted(event, db, opts = {}) {
+  const clientId = await resolveClient(db, event, opts);
   if (!clientId) return;
 
   const crsResultId = event.payload?.crsResultId ?? null;
@@ -480,7 +483,7 @@ export async function onAnalysisCompleted(event, db) {
         WHERE id = $1`,
       [crsResultId, JSON.stringify(canonical), event.payload?.outcomeTier ?? null]
     );
-    await reviewChecklistAfterPull(db, { orgId: event.orgId, clientId });
+    if (!opts.skipChecklist) await reviewChecklistAfterPull(db, { orgId: event.orgId, clientId });
     return;
   }
 
@@ -520,8 +523,8 @@ export async function onAnalysisCompleted(event, db) {
 }
 
 // decision.rendered — stamp the 6-tier outcome + funding estimate on the client.
-export async function onDecisionRendered(event, db) {
-  const clientId = await resolveClient(db, event);
+export async function onDecisionRendered(event, db, opts = {}) {
+  const clientId = await resolveClient(db, event, opts);
   if (!clientId) return;
   const p = event.payload || {};
   if (p.outcomeTier) {
@@ -543,7 +546,8 @@ export async function onDecisionRendered(event, db) {
     // rewrite, not invented here.
     await mergeCustomFields(db, clientId, {
       total_funding_estimate: p.fundingEstimate,
-      analyzer_prequal_amount: p.fundingEstimate
+      analyzer_prequal_amount: p.fundingEstimate,
+      prequal_sample: p.simulated === true
     });
     const stamped = await db.query(
       `SELECT email, custom_fields->>'slo_ref' AS slo_ref FROM clients WHERE id = $1`,

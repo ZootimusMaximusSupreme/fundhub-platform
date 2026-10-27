@@ -114,16 +114,18 @@ test("listRecentRecordings is honest when Drive is off and files are empty", asy
 test("listRecentRecordings returns today's Drive file and name-matches a client", async () => {
   const now = new Date("2026-08-15T18:00:00Z");
   const updates = [];
+  let fileSql = "";
   const db = {
     async query(sql, params) {
       if (/brain_drive_sync/i.test(sql)) {
         return { rows: [{ last_sync_at: "2026-08-15T17:00:00Z", last_error: null }] };
       }
       if (/FROM brain_files/i.test(sql)) {
+        fileSql = sql;
         return {
           rows: [{
             id: "bf-1",
-            name: "Strategy session - Jane Doe",
+            name: "Meet Recording - Strategy session - Jane Doe",
             web_view_link: "https://drive.google.com/file/d/rec1",
             client_id: null,
             unattached: true,
@@ -133,6 +135,13 @@ test("listRecentRecordings returns today's Drive file and name-matches a client"
             needs_transcription: true,
             first_name: null,
             last_name: null
+          }, {
+            id: "bf-ad", name: "Direct Book VSL - Watch page Animated.mp4",
+            web_view_link: "https://drive.google.com/file/d/ad",
+            client_id: null, unattached: true,
+            indexed_at: "2026-08-15T17:00:00Z", created_at: "2026-08-15T17:00:00Z",
+            mime_type: "video/mp4", needs_transcription: true,
+            first_name: null, last_name: null
           }]
         };
       }
@@ -167,6 +176,7 @@ test("listRecentRecordings returns today's Drive file and name-matches a client"
   assert.equal(out.items[0].url, "https://drive.google.com/file/d/rec1");
   assert.equal(out.items[0].has_words, false);
   assert.equal(updates.length, 1);
+  assert.match(fileSql, /bf\.name ILIKE '%meet%'/i, "limit the SQL window before 40 ads can crowd out calls");
 });
 
 test("listRecentRecordings retries an already-linked timestamped file against a late call row", async () => {

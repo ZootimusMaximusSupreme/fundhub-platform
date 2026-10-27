@@ -715,7 +715,7 @@ export async function sendDeckPayLink(db, {
   const description = offer.name;
   /* Primary DFY / mastery offers are the main close — not downsell/upsell.
      Only alternate ladders need an explicit sale motion. */
-  const primaryPayOffers = new Set(["FUNDING_DFY", "REPAIR_DFY", "REPAIR_TRIAL", "FUNDING_MASTERY"]);
+  const primaryPayOffers = new Set(["SOFT_PULL", "FUNDING_DFY", "REPAIR_DFY", "REPAIR_TRIAL", "FUNDING_MASTERY"]);
   const isPrimaryPay = primaryPayOffers.has(offer.key);
   if (!isPrimaryPay && saleMotion !== "downsell" && saleMotion !== "upsell") {
     throw new CloserDeckError(
