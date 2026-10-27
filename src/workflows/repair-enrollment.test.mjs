@@ -28,7 +28,14 @@ const CLIENT = "22222222-2222-4222-8222-222222222222";
 function fakeDb({ sales = [], programs = [], tasks = [] } = {}) {
   const state = { sales, programs, tasks, enrolCalls: [] };
   state.query = async (sql, params = []) => {
-    if (/FROM sales s/.test(sql)) return { rows: state.sales };
+    if (/FROM sales s/.test(sql)) {
+      // This fake models SQL's paid-sale filter, while asserting the query
+      // itself contains the critical same-sale, tenant, and refund gates.
+      assert.match(sql, /paid\.net_paid > 0/, "never enroll an unpaid sale");
+      assert.match(sql, /sp\.org_id = s\.org_id AND sp\.sale_id = s\.id/, "only money on this sale and company");
+      assert.match(sql, /WHEN sp\.kind = 'refund' THEN -sp\.amount/, "refunds reduce paid money");
+      return { rows: state.sales.filter((row) => Number(row.paid_so_far) > 0) };
+    }
     if (/FROM repair_programs/.test(sql)) return { rows: state.programs.slice(0, 1) };
     if (/SELECT id FROM tasks/.test(sql)) {
       const [clientId, sourceWorkflow, title] = params;
@@ -86,7 +93,7 @@ describe("which program a repair purchase means", () => {
     // The failure this pins: capping a paying client at two rounds because a
     // new product code was not on a list somewhere.
     const db = fakeDb({
-      sales: [{ sale_id: "s", product_code: "repair-premium", agreed_price: "2500.00", paid_so_far: "0" }]
+      sales: [{ sale_id: "s", product_code: "repair-premium", agreed_price: "2500.00", paid_so_far: "2500.00" }]
     });
     const p = await repairPurchase(db, { orgId: ORG, clientId: CLIENT });
     assert.equal(p.program, "full");
@@ -98,6 +105,45 @@ describe("which program a repair purchase means", () => {
     const p = await repairPurchase(db, { orgId: ORG, clientId: CLIENT });
     assert.equal(p.productCode, "repair-bundle");
     assert.equal(p.roundsCap, 6);
+  });
+
+  test("a signed but unpaid full bundle cannot replace a paid trial", async () => {
+    const db = fakeDb({ sales: [
+      { sale_id: "unsigned-money", product_code: "repair-bundle", agreed_price: "1000.00", paid_so_far: "0" },
+      trialSale
+    ] });
+    const p = await repairPurchase(db, { orgId: ORG, clientId: CLIENT });
+    assert.equal(p.saleId, trialSale.sale_id);
+    assert.equal(p.program, "trial");
+    assert.equal(p.roundsCap, 2);
+    assert.equal(p.amountPaid, 200);
+  });
+
+  test("a fully refunded full bundle cannot replace a paid trial", async () => {
+    const db = fakeDb({ sales: [
+      { sale_id: "fully-refunded", product_code: "repair-bundle", agreed_price: "1000.00", paid_so_far: "0.00" },
+      trialSale
+    ] });
+    const p = await repairPurchase(db, { orgId: ORG, clientId: CLIENT });
+    assert.equal(p.saleId, trialSale.sale_id);
+    assert.equal(p.program, "trial");
+  });
+
+  test("a partially refunded paid full sale uses net cash, not gross deposits", async () => {
+    const db = fakeDb({ sales: [
+      { sale_id: "part-refund", product_code: "repair-bundle", agreed_price: "1000.00", paid_so_far: "450.00" }
+    ] });
+    const p = await repairPurchase(db, { orgId: ORG, clientId: CLIENT });
+    assert.equal(p.program, "full");
+    assert.equal(p.priceTotal, 1000);
+    assert.equal(p.amountPaid, 450);
+  });
+
+  test("a success-fee-only repair sale is not a paid program", async () => {
+    const db = fakeDb({ sales: [
+      { sale_id: "fee-only", product_code: "repair-bundle", agreed_price: "1000.00", paid_so_far: "0" }
+    ] });
+    assert.equal(await repairPurchase(db, { orgId: ORG, clientId: CLIENT }), null);
   });
 
   test("no active repair sale is null, not a guess", async () => {
@@ -113,12 +159,12 @@ describe("which program a repair purchase means", () => {
     assert.equal(p.priceTotal, 500);
   });
 
-  test("a price nobody can read stays unknown — it never becomes zero", async () => {
+  test("an unpriced, unpaid offer has no program to choose", async () => {
     const db = fakeDb({
       sales: [{ sale_id: "s", product_code: "repair-bundle", agreed_price: null, paid_so_far: null }]
     });
     const p = await repairPurchase(db, { orgId: ORG, clientId: CLIENT });
-    assert.equal(p.priceTotal, null);
+    assert.equal(p, null, "no funding from an unpaid signature or unknown amount");
   });
 });
 
@@ -176,13 +222,14 @@ describe("when a program must NOT be opened", () => {
     assert.equal(db.tasks.length, 0);
   });
 
-  test("a price nobody can read stops the enrolment instead of recording a zero", async () => {
+  test("an unpriced, unpaid repair offer cannot start a program or tasks", async () => {
     const db = fakeDb({
       sales: [{ sale_id: "s", product_code: "repair-bundle", agreed_price: null, paid_so_far: null }]
     });
     const r = await ensureRepairEnrollment(db, { orgId: ORG, clientId: CLIENT });
     assert.equal(r.enrolled, false);
-    assert.equal(r.reason, "price_unknown");
+    assert.equal(r.reason, "no_active_repair_sale");
+    assert.equal(db.tasks.length, 0);
   });
 
   test("a live program is never rewritten by a later payment", async () => {
