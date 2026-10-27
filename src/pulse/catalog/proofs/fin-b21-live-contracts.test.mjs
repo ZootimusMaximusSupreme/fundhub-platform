@@ -250,7 +250,7 @@ FIX["staff-role"] = {
     sample: 2,
     violations: {
       "the switch is on but the person has no phone to text": [R("staff", person({ notify_booked_call_sms: true, phone: null }))],
-      "the switch is on for a job that never gets this text": [R("staff", person({ notify_booked_call_sms: true, role: "setter" }))],
+      "the switch is on for a job that never gets this text": [R("staff", person({ notify_booked_call_sms: true, role: "partner" }))],
       "the switch is on for a person who cannot sign in": [R("staff", person({ notify_booked_call_sms: true, status: "invited" }))],
       "the text has no words": [R("messages", text(st, { rendered_body: " " }))],
       "the text has nobody to go to": [R("messages", text(st, { to_address: null }))],
@@ -820,7 +820,7 @@ test("the booked-call text check names the sender's own template and roles", asy
   const sql = sqlFor(SPEC.get("staff-booked-text"));
   assert.ok(sql.includes(`'${STAFF_BOOKED_TEMPLATE}'`));
   for (const role of STAFF_BOOKED_ROLES) assert.ok(sql.includes(`'${role}'`), role);
-  assert.equal(STAFF_BOOKED_ROLES.length, 3);
+  assert.equal(STAFF_BOOKED_ROLES.length, 4);
 });
 
 test("the shoot marks check reads the keys the real mark writer writes, and the film order's own open rule", async () => {

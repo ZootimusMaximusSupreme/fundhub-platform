@@ -401,7 +401,7 @@ export async function dispatchOne(db, message, options = {}) {
     // ahead of the gate, it can only ever hold a message back, and it exists so
     // an overnight text is still sendable in the morning instead of being
     // recorded as a permanent block.
-    const clock = typeof now === "function" ? now : () => new Date();
+    const clock = typeof now === "function" ? now : now ? () => new Date(now) : () => new Date();
     const kind = { clientId: message.client_id, channel: message.channel,
       templateKey: message.template_key, providerRef: message.provider_ref, toAddress: message.to_address };
     const setterHours = usesSetterContactHours(kind);
@@ -435,7 +435,7 @@ export async function dispatchOne(db, message, options = {}) {
       templateKey: message.template_key,
       toAddress: message.to_address,
       providerRef: message.provider_ref
-    }, now ? { now } : {});
+    }, { now: clock });
 
     if (verdict.state !== "allowed") {
       // gateAndRecord already set status='blocked'. Nothing further to write.
