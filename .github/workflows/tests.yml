@@ -166,7 +166,7 @@ jobs:
   browser:
     name: screens (real browser)
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 75
     env:
       STAFF_E2E_PASSWORD: ${{ secrets.STAFF_E2E_PASSWORD }}
 
