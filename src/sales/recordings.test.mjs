@@ -187,9 +187,10 @@ test("listRecentRecordings retries an already-linked timestamped file against a 
       return { rows: [] };
     }
   };
-  await listRecentRecordings(db, { orgId: ORG, now: new Date("2026-08-25T00:00:00Z"), env: {} });
+  const out = await listRecentRecordings(db, { orgId: ORG, now: new Date("2026-08-25T00:00:00Z"), env: {} });
   assert.equal(stamped.length, 1);
   assert.equal(stamped[0][3], "2026-08-24T22:00:00.000Z");
+  assert.equal(out.items[0].client_name, "Jane Doe");
 });
 
 test("stampCallTranscript writes words only onto the call with that recording URL", async () => {

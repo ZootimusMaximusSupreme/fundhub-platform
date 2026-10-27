@@ -276,8 +276,8 @@ export async function listRecentRecordings(db, {
       callOnly: alreadyLinked
     });
     row.client_id = hit.id;
-    row.first_name = hit.first_name;
-    row.last_name = hit.last_name;
+    row.first_name = hit.first_name || row.first_name;
+    row.last_name = hit.last_name || row.last_name;
     row.unattached = false;
   }
 
