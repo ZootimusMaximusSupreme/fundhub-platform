@@ -1153,6 +1153,15 @@
    ]
   },
   {
+   "key": "SMS-S04-CONFIRM-ACK",
+   "channel": "sms",
+   "approvedBySeed": true,
+   "inactive": false,
+   "files": [
+    "db/seed/299_s04_confirm_ack.sql"
+   ]
+  },
+  {
    "key": "SMS-S04C-STAFF-BOOKED",
    "channel": "sms",
    "approvedBySeed": true,

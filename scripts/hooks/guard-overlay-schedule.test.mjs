@@ -23,8 +23,8 @@ const validSchedule = {
   width: 1080, height: 1920, fps: 30, video_seconds: 10,
   clips: [{
     n: 1, template: 'SimpleDiagram', mode: 'beside', scale: 1, dx: 0, dy: 0,
-    start_frame: 0, frames: 90, words_band: 'top',
-    words_on_video_box: [20, 20, 1060, 140], min_text_px_clip: 32,
+    start_frame: 0, frames: 90,
+    words_on_video_box: [20, 300, 1060, 420], min_text_px_clip: 32,
     visual_size: 'large', key_content_boxes: [{name: 'main chart', box: [40, 160, 1040, 620]}],
     visible_words_fraction: 0.9, visible_measured_by: 'visible-check.py',
     key_content_visible_fractions: {'main chart': 0.9}, key_content_measured_by: 'visible-check.py',

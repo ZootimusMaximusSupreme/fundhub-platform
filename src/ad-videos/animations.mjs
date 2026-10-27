@@ -652,7 +652,7 @@ function frameSpan(item) {
  * items  planAnimations() items, each with src: the rendered clip's local path
  * out    the overlaid file (.mp4); finalizeArgs() runs on it next
  *
- * @param {{video_kind: unknown, base: string, items?: any[], out: string}} o
+ * @param {{base: string, out: string, source_proof?: {stage?: string, verified_no_prior_animation?: boolean, source_path?: string, sha256?: string}}} o
  */
 export function assertCleanSubmagicSource({base, out, source_proof}) {
   if (!source_proof || typeof source_proof !== 'object') {

@@ -364,12 +364,13 @@ describe("full-frame limits (spec §9.4)", () => {
     assert.deepEqual(kept(planFull(ok, [row("Your score hides"), row("Banks pull", "FileItems")])), [[0, 90, 90], [1, 300, 90]]);
   });
 
-  test("at most 3 s a clip; ProofWall 4 s; ProofFlood 6 s; a template that cannot be that short is skipped", () => {
+  test("at most 3 s a clip; ProofWall allows 4 s; retired templates are skipped", () => {
     assert.equal(fullframeMaxSeconds("CompanyLine"), 3);
     assert.equal(fullframeMaxSeconds("ProofWall"), 4);
     assert.equal(fullframeMaxSeconds("ProofFlood"), 6);
     assert.equal(fullframeMaxSeconds("ProofFloodWide"), 6);
     assert.deepEqual(FULLFRAME_LONGER, { ProofWall: 4, ProofFlood: 6 });
+    assert.equal(CATALOG.some((entry) => entry.id === "ProofFlood"), false);
     const cut = handCut([
       ["hook", 0, "Lenders read two files."],
       ["line2", 3.0, "Your score hides thirteen data points."],
@@ -384,9 +385,10 @@ describe("full-frame limits (spec §9.4)", () => {
       row("Then the inquiries", "LenderMatchScroll", 4),
       row("Our clients got", "ProofFlood", 6)
     ]);
-    assert.deepEqual(kept(r), [[0, 90, 90], [1, 300, 120], [3, 840, 180]]);
-    assert.deepEqual(codes(r), [[2, "too_long_for_fullframe"]]);
+    assert.deepEqual(kept(r), [[0, 90, 90], [1, 300, 120]]);
+    assert.deepEqual(codes(r), [[2, "too_long_for_fullframe"], [3, "unknown_template"]]);
     assert.match(r.skipped[0].reason, /LenderMatchScroll runs at least 3\.50 s/);
+    assert.match(r.skipped[1].reason, /ProofFlood.*not in the animation catalog/);
     assert.equal(r.items[0].props.durationInFrames, 90, "CompanyLine asked for 3.5 s, renders 3 s");
   });
 
