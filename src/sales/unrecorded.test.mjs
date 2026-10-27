@@ -72,7 +72,7 @@ test("a fresh call waits unless Drive already scanned after it", () => {
   );
 });
 
-test("listUnrecordedCalls binds the session company and never selects transcript", async () => {
+test("listUnrecordedCalls binds the session company and excludes calls with a transcript", async () => {
   let seen = null;
   const orgId = "00000000-0000-4000-8000-000000000001";
   const db = {
@@ -89,7 +89,8 @@ test("listUnrecordedCalls binds the session company and never selects transcript
   assert.ok(seen, "call_outcomes query ran");
   assert.match(seen.sql, /o\.org_id\s*=\s*\$1/);
   assert.equal(seen.params[0], orgId);
-  assert.doesNotMatch(seen.sql, /\btranscript\b/);
+  assert.match(seen.sql, /o\.transcript/i);
+  assert.match(seen.sql, /o\.transcript IS NULL OR btrim\(o\.transcript\) = ''/i);
 });
 
 test("listUnrecordedCalls does not query without a company", async () => {

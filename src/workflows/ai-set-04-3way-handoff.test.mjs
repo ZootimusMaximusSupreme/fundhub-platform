@@ -68,7 +68,7 @@ test("F49: the meeting link from the booking is printed in the text", async () =
   assert.doesNotMatch(db.messages[0].rendered_body, /link: \./);
 });
 
-test("F49: with no meeting link anywhere the customer still gets a real one", async () => {
+test("F49: with no meeting link anywhere the text names portal sign-in as a fallback, not the meeting link", async () => {
   // ClickFunnels sets meetingUrl null on EVERY booking it takes, so this is the
   // ordinary case, not the edge case.
   const db = pgFake({
@@ -84,6 +84,8 @@ test("F49: with no meeting link anywhere the customer still gets a real one", as
   assert.doesNotMatch(body, /link: \./);
   assert.match(res.link.url, /^https?:\/\//, "the fallback must be a real web address");
   assert.ok(body.includes(res.link.url), "the resolved link must appear in the text");
+  assert.match(body, /portal sign-in fallback/i);
+  assert.match(body, /not the meeting link/i);
 });
 
 test("F49: the saved booking row answers when the webhook did not", async () => {
@@ -94,7 +96,10 @@ test("F49: the saved booking row answers when the webhook did not", async () => 
   const db = {
     ...base,
     async query(sql, params) {
-      if (/FROM bookings/.test(sql) && /provider_uid/.test(sql)) {
+      if (/FROM bookings/.test(sql) && /starts_at = \$3/.test(sql)) {
+        assert.deepEqual(params.slice(0, 2), ["org-1", "cl-1"]);
+        assert.equal(params[2], new Date(params[2]).toISOString());
+        assert.equal(params[3], "cf-appt-9");
         return { rows: [{ meeting_url: "https://meet.google.com/from-the-row" }] };
       }
       return base.query(sql, params);
@@ -106,8 +111,41 @@ test("F49: the saved booking row answers when the webhook did not", async () => 
     }, { clientId: "cl-1" }),
     db, step: fakeStep()
   });
-  assert.equal(res.link.from, "booking_uid");
+  assert.equal(res.link.from, "booking_exact_call");
   assert.match(base.messages[0].rendered_body, /from-the-row/);
+});
+
+test("current call: never borrows an older Meet link from the same client", async () => {
+  const oldMeet = "https://meet.google.com/old-call-link";
+  const base = pgFake({
+    clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com" }],
+    templates: handoffTemplates()
+  });
+  let bookingReads = 0;
+  const db = {
+    ...base,
+    async query(sql, params) {
+      if (/SELECT meeting_url FROM bookings/.test(sql)) {
+        bookingReads += 1;
+        assert.match(sql, /starts_at = \$3::timestamptz/);
+        assert.doesNotMatch(sql, /ORDER BY created_at DESC/);
+        assert.equal(params[1], "cl-1");
+        return { rows: [] };
+      }
+      return base.query(sql, params);
+    }
+  };
+  const res = await handle({
+    event: ev("booking.created", {
+      startTime: inHours(3), bookingUid: "current-call", meetingUrl: null
+    }, { clientId: "cl-1" }),
+    db, step: fakeStep(),
+    findLink: async () => ({ ok: false, reason: "no_matching_event" })
+  });
+  assert.equal(bookingReads, 1, "only the exact call is read");
+  assert.equal(res.link.from, "portal_sign_in");
+  assert.ok(!base.messages[0].rendered_body.includes(oldMeet));
+  assert.match(base.messages[0].rendered_body, /portal sign-in fallback/i);
 });
 
 test("F49: a start time nothing can read sends no handoff text at all", async () => {
@@ -400,7 +438,7 @@ test("join link: the 15-minute text uses the host calendar's Meet link, not the 
   assert.doesNotMatch(base.messages[0].rendered_body, /portal|login/i);
 });
 
-test("join link: when the calendar has no event the text still carries a real door, and the miss says why", async () => {
+test("join link: when the calendar has no event the text clearly names the portal fallback, and the miss says why", async () => {
   const { base, db, writes } = linkDb();
   const res = await handle({
     event: ev("booking.created", { startTime: inHours(3), email: "lead@acme.com", bookingUid: "74249" }, { clientId: "cl-1" }),
@@ -409,8 +447,11 @@ test("join link: when the calendar has no event the text still carries a real do
   });
   assert.equal(res.joinLink.reason, "GOOGLE_GMAIL_OAUTH_TOKEN_JSON:no_calendar_scope");
   assert.equal(res.link.from, "portal_sign_in");
+  assert.equal(res.link.reason, "GOOGLE_GMAIL_OAUTH_TOKEN_JSON:no_calendar_scope");
   assert.equal(writes.length, 0, "nothing is written when no link was found");
   assert.ok(base.messages[0].rendered_body.includes(res.link.url));
+  assert.match(base.messages[0].rendered_body, /portal sign-in fallback/i);
+  assert.match(base.messages[0].rendered_body, /not the meeting link/i);
 });
 
 test("join link: a lookup that throws never stops the run", async () => {

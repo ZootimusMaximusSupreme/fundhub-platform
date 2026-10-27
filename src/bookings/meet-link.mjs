@@ -49,6 +49,12 @@ function clip(v, n = 160) {
   return String(v && v.message ? v.message : v).replace(/\s+/g, " ").trim().slice(0, n);
 }
 
+/** A normalized Google Meet room address, or null. */
+export function meetLinkValue(value) {
+  const link = typeof value === "string" ? value.trim() : "";
+  return MEET_LINK_RE.test(link) ? link : null;
+}
+
 /** The Meet link on one calendar event, or null. */
 export function meetLinkOf(event) {
   if (!event || typeof event !== "object") return null;
@@ -57,8 +63,8 @@ export function meetLinkOf(event) {
     if (p && p.entryPointType === "video") candidates.push(p.uri);
   }
   for (const c of candidates) {
-    const s = typeof c === "string" ? c.trim() : "";
-    if (MEET_LINK_RE.test(s)) return s;
+    const link = meetLinkValue(c);
+    if (link) return link;
   }
   return null;
 }

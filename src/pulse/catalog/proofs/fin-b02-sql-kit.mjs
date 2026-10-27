@@ -5,9 +5,9 @@
 //   1. schemaColumns() reads the real table and column names from db/schema and db/migrations,
 //      so a stand-in table can only hold columns the product really has. A typo in a contract
 //      ("no such column") fails the test.
-//   2. portableSql() turns the few Postgres-only spellings (::casts, $1, BTRIM) into the same
-//      statement for SQLite. The contracts are written in the common subset on purpose: no
-//      regexes, no intervals, no arrays.
+//   2. portableSql() turns the few Postgres-only spellings (::casts, $1, BTRIM, interval and
+//      EXTRACT epoch distance) into the same statement for SQLite. The contracts are written in
+//      the common subset on purpose: no regexes or arrays.
 //   3. makeStandIn() builds an in-memory database whose tables hold the real column names.
 //
 // Tests only. Nothing here is imported by the live bundle.
@@ -110,6 +110,14 @@ export function schemaColumns() {
 /** The Postgres text of a contract, spelled for SQLite. $1 becomes ?1; casts and BTRIM are plain. */
 export function portableSql(sql) {
   return sql
+    .replace(
+      /ABS\s*\(\s*EXTRACT\s*\(\s*EPOCH\s+FROM\s*\(\s*(COALESCE\([^()]+\)|[a-z_][a-z0-9_.]*)\s*-\s*(\$\d+(?:::[a-z_][a-z0-9_]*)?)\s*\)\s*\)\s*\)/gi,
+      "ABS(julianday($1) - julianday($2))"
+    )
+    .replace(
+      /(\$\d+(?:::[a-z_][a-z0-9_]*)?)\s*([+-])\s*interval\s*'(\d+)\s*(day|hour|minute)s?'/gi,
+      (_all, value, sign, n, unit) => `strftime('%Y-%m-%dT%H:%M:%fZ', ${value}, '${sign}${n} ${unit}s')`
+    )
     // `table.column + interval '1 day'` (or minus): the same date maths, spelled for SQLite.
     .replace(
       /\b([a-z_][a-z0-9_]*\.[a-z_][a-z0-9_]*)\s*([+-])\s*interval\s*'(\d+)\s*(day|hour|minute)s?'/gi,

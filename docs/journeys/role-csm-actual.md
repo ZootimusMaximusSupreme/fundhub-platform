@@ -22,6 +22,7 @@ hand-authored by Chris and agents do not write them (CLAUDE.md §4).
 Traced from: `src/handlers/customer-insights.mjs`, `src/register-all.mjs`,
 `src/lib/create-task.mjs`, `src/insights/store.mjs`, `src/insights/questions.mjs`,
 `src/workflows/ar-collections.mjs`, `src/workflows/meet-transcript-sweeper.mjs`,
+`src/sales/recordings.mjs`, `src/sales/unrecorded.mjs`,
 `db/migrations/166`, `290`, `291`, `292`, `293`.
 
 ---
@@ -154,6 +155,15 @@ a revocation empties it without rewriting a single interview row.
 **`UNVERIFIED` — nothing in the code stops a call being recorded without a
 `call_recording` consent row.** The data slot exists (291). The gate on the act
 of recording does not. Recording happens in Google Meet, outside this system.
+
+**Recording attachment was re-traced 2026-10-27.** A Google recording file is
+attached to a call only when its filename carries a scheduled timestamp and the
+same client's booking or task is within 15 minutes of it. It no longer falls
+back to the client's latest call or to a call's log time. Transcript text then
+stamps only the call that already carries that recording URL. The missing-tape
+queue selects transcript too, so a transcript-only call is not a false alert.
+Focused fixtures prove these rules; a real Meet recording reaching Drive and
+the call row is still **NOT LIVE PROVED**.
 
 ---
 

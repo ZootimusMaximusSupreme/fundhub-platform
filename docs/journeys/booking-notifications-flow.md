@@ -248,9 +248,7 @@ flowchart TD
     L2 -->|Yes| USE
     L2 -->|No| L2B{On the host calendar event now?}
     L2B -->|Yes, keep it too| USE
-    L2B -->|No| L2C{On this client's latest saved booking?}
-    L2C -->|Yes| USE
-    L2C -->|No| L3[Use the customer's portal sign-in page]
+    L2B -->|No| L3[Say the Meet link is unavailable.<br/>Name portal sign-in as a fallback,<br/>not as the meeting link.]
     L3 --> USE
     USE --> TXT[Send the handoff text<br/>ONE per customer per call time]
     TXT --> TASK[File the advisor follow-up task<br/>ONE per customer per call time]
@@ -293,12 +291,13 @@ matched the thank-you page's Google Calendar template and ICS controls. The
 2026-10-26 branch removes those duplicate controls and directs the customer to
 the emailed invite; the host event reader remains read-only.
 
-**Known and not fixed here.** The fallback is the customer's portal sign-in
-page. It is a real, working address, but the wording live in the database today
-introduces it as though it were the link to join the call. The corrected wording
-sits in `docs/ads/sms-copy-2026-09.md` and in the held copy commit, waiting for
-the owner to read it; nothing in code makes that sentence honest, so it is named
-here rather than papered over.
+**Exact-call fallback repair (2026-10-27; code proof, not provider receipt).**
+The saved-booking fallback now requires the same client or booking id, the same
+call time and an active booked/rescheduled state. It will not borrow a Meet room
+from an older call for that client. When the host Calendar still has no matching
+event, the 15-minute message says the Meet link is unavailable and labels the
+portal address as sign-in fallback, not as the meeting link. No live customer
+message was sent for this proof.
 
 **Three ways this text used to be a lie about the clock, all now refused**: a
 start time nothing can read, a call that has already started, and a booking

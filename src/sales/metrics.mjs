@@ -322,7 +322,9 @@ export async function beliefAnalytics(db, { orgId, start, end } = {}) {
   const r = await db.query(
     `SELECT o.belief_failed AS belief,
             COALESCE(cf.utm_campaign, cf.utm_source, c.channel_source, 'unknown') AS lead_source,
-            COALESCE(cf.cf_setter_user_id, 'unknown') AS setter_key,
+            COALESCE(NULLIF(c.custom_fields->'setter_handoff'->>'setter_staff_id', ''),
+                     cf.cf_setter_user_id, 'unknown') AS setter_id,
+            MAX(NULLIF(c.custom_fields->'setter_handoff'->>'setter_name', '')) AS setter_name,
             count(*) FILTER (
               WHERE o.logged_at >= $2 AND o.logged_at < $3
             )::int AS this_count,
@@ -348,11 +350,12 @@ export async function beliefAnalytics(db, { orgId, start, end } = {}) {
       b.this_count += Number(row.this_count || 0);
       b.last_count += Number(row.last_count || 0);
     }
-    const key = `${row.lead_source}||${row.setter_key}`;
+    const key = `${row.lead_source}||${row.setter_id}`;
     if (!bySource.has(key)) {
       bySource.set(key, {
         lead_source: row.lead_source,
-        setter_key: row.setter_key,
+        setter_id: row.setter_id,
+        setter_key: row.setter_name || row.setter_id,
         held: 0,
         deposits: 0,
         desire: 0,
@@ -370,7 +373,9 @@ export async function beliefAnalytics(db, { orgId, start, end } = {}) {
   // Held/close by source for the current period.
   const src = await db.query(
     `SELECT COALESCE(cf.utm_campaign, cf.utm_source, c.channel_source, 'unknown') AS lead_source,
-            COALESCE(cf.cf_setter_user_id, 'unknown') AS setter_key,
+            COALESCE(NULLIF(c.custom_fields->'setter_handoff'->>'setter_staff_id', ''),
+                     cf.cf_setter_user_id, 'unknown') AS setter_id,
+            MAX(NULLIF(c.custom_fields->'setter_handoff'->>'setter_name', '')) AS setter_name,
             count(*) FILTER (WHERE o.outcome <> 'no_show')::int AS held,
             count(*) FILTER (WHERE o.outcome = 'deposit' AND o.transaction_id IS NOT NULL AND o.cash_collected_cents > 0)::int AS deposits
        FROM call_outcomes o
@@ -382,11 +387,12 @@ export async function beliefAnalytics(db, { orgId, start, end } = {}) {
     [orgId, start.toISOString(), end.toISOString()]
   );
   for (const row of src.rows) {
-    const key = `${row.lead_source}||${row.setter_key}`;
+    const key = `${row.lead_source}||${row.setter_id}`;
     if (!bySource.has(key)) {
       bySource.set(key, {
         lead_source: row.lead_source,
-        setter_key: row.setter_key,
+        setter_id: row.setter_id,
+        setter_key: row.setter_name || row.setter_id,
         held: 0,
         deposits: 0,
         desire: 0,

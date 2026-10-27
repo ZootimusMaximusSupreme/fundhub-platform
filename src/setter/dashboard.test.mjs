@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { sanitizeHandoffPatch, missingForCompletion, updateSetterHandoff, listSetterQueue, targetDialBy } from "./dashboard.mjs";
+import { sanitizeHandoffPatch, missingForCompletion, updateSetterHandoff, listSetterQueue, setterNumbers, targetDialBy } from "./dashboard.mjs";
 
 const STAFF = { id: "staff-1", org_id: "org-1", role: "owner", name: "Chris" };
 const CLIENT_ID = "11111111-1111-1111-1111-111111111111";
@@ -112,8 +112,9 @@ test("send action receives saved handoff and persists timestamp only after send"
 
 test("queue returns booked and opt-in leads with survey echo and saved handoff", async () => {
   const db = { async query(sql, params) {
-    assert.match(sql, /assignee_role = 'setter'/);
     assert.equal(params[0], STAFF.org_id);
+    if (sql.includes("WITH bounds AS")) return { rows: [{ dials: 0, booked: 0, showed: 0, no_shows: 0 }] };
+    assert.match(sql, /assignee_role = 'setter'/);
     return { rows: [{ client_id: CLIENT_ID, first_name: "Pat", last_name: "Lee",
       phone: "+15551234567", created_at: "2026-10-26T20:00:00Z",
       target_dial_by: "2026-10-26T20:01:00Z", booked_at: null, booking_time: null,
@@ -123,6 +124,7 @@ test("queue returns booked and opt-in leads with survey echo and saved handoff",
   assert.equal(result.items[0].lead_type, "opt_in");
   assert.equal(result.items[0].setter_handoff.call_attempts, 2);
   assert.ok(result.items[0].survey.some(x => x.answer === "Open a shop"));
+  assert.equal(result.numbers.dials, 0);
 });
 
 test("booked lead dial target starts from booking time, not its earlier opt-in task", async () => {
@@ -131,6 +133,54 @@ test("booked lead dial target starts from booking time, not its earlier opt-in t
     booking_time: "2026-10-28T19:00:00Z", custom_fields: {} }] }; } };
   const result = await listSetterQueue(db, STAFF);
   assert.equal(result.items[0].target_dial_by, "2026-10-26T20:01:00.000Z");
+});
+
+test("setter numbers are self-scoped and keep dial-to-book separate from show rate", async () => {
+  const seen = [];
+  const db = { async query(sql, params) {
+    seen.push({ sql, params });
+    return { rows: [{ dials: 10, booked: 2, showed: 3, no_shows: 1 }] };
+  } };
+  const numbers = await setterNumbers(db, { ...STAFF, id: "staff-human-setter" });
+  assert.deepEqual(numbers, {
+    dials: 10, booked: 2, dial_to_book_rate: 0.2,
+    showed: 3, no_shows: 1, show_rate: 0.75
+  });
+  assert.deepEqual(seen[0].params, [STAFF.org_id, "staff-human-setter"]);
+  assert.match(seen[0].sql, /setter_staff_id' = \$2::text/);
+  assert.match(seen[0].sql, /dial_attempt_days/);
+  assert.match(seen[0].sql, /handoff->>'lead_type' = 'opt_in'/);
+  assert.match(seen[0].sql, /o\.outcome = 'no_show'/);
+});
+
+test("log dial keeps an exact server-owned count for the Phoenix day", async () => {
+  const { db, client } = fakeDb();
+  const now = () => new Date("2026-10-28T00:30:00.000Z");
+  const first = await updateSetterHandoff(db, STAFF, {
+    client_id: CLIENT_ID, action: "log_dial", handoff: {}
+  }, { now });
+  assert.equal(first.status, 200);
+  assert.equal(client.custom_fields.setter_handoff.call_attempts, 1);
+  assert.equal(client.custom_fields.setter_handoff.dial_attempt_days["2026-10-27"], 1);
+  const second = await updateSetterHandoff(db, STAFF, {
+    client_id: CLIENT_ID, action: "log_dial", handoff: {}
+  }, { now });
+  assert.equal(second.status, 200);
+  assert.equal(client.custom_fields.setter_handoff.call_attempts, 2);
+  assert.equal(client.custom_fields.setter_handoff.dial_attempt_days["2026-10-27"], 2);
+});
+
+test("an owner edit preserves the human setter identity already on the handoff", async () => {
+  const { db, client } = fakeDb();
+  client.custom_fields.setter_handoff = {
+    setter_staff_id: "staff-alex", setter_name: "Alex Setter", call_attempts: 1
+  };
+  const result = await updateSetterHandoff(db, STAFF, {
+    client_id: CLIENT_ID, action: "save", handoff: { goal: "New location" }
+  });
+  assert.equal(result.status, 200);
+  assert.equal(client.custom_fields.setter_handoff.setter_staff_id, "staff-alex");
+  assert.equal(client.custom_fields.setter_handoff.setter_name, "Alex Setter");
 });
 
 test("setter can save only an assigned or unclaimed task and claims it", async () => {

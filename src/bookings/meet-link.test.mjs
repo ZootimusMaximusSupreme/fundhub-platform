@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { findMeetLink, pickHostEvent, meetLinkOf, CALENDAR_EVENTS_URL } from "./meet-link.mjs";
+import { findMeetLink, pickHostEvent, meetLinkOf, meetLinkValue, CALENDAR_EVENTS_URL } from "./meet-link.mjs";
 import { fillMeetingUrl } from "./store.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -50,6 +50,8 @@ test("meetLinkOf: a real Meet room only; junk and other hosts are not a join lin
   assert.equal(meetLinkOf(hostEvent({ hangoutLink: "https://evil.example/meet.google.com/abc", conferenceData: null })), null);
   assert.equal(meetLinkOf(hostEvent({ hangoutLink: "", conferenceData: null })), null);
   assert.equal(meetLinkOf(null), null);
+  assert.equal(meetLinkValue(`  ${MEET}  `), MEET);
+  assert.equal(meetLinkValue("https://fundhub.ai/portal-login.html"), null);
 });
 
 test("pickHostEvent: same moment and the customer is a guest, or nothing", () => {

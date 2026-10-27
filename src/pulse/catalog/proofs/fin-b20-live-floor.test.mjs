@@ -111,38 +111,41 @@ test("floor discipline: a call logged by booking reference alone is still counte
   assert.deepEqual(run(loosen(DISCIPLINE_SQL, "COALESCE(t.is_demo, false) = false"), DISC_TABLES, seed), { sample_count: 5, bad_count: 2 }, "the demo filter is what leaves it out");
 });
 
-test("floor discipline: a held call with no recording address that carries a transcript is counted, because the chip counts it (product finding 1)", () => {
+test("floor discipline: transcript-only calls do not cause false unrecorded alerts; missing both recording and transcript does", () => {
   const seed = (s) => {
-    call(s, { id: "u-plain" });                                                 // no tape: right
-    call(s, { id: "u-words", transcript: "Hello, this is the call. We agreed to a deposit." }); // words, no address: the chip says no words
-    call(s, { id: "u-blank-words", transcript: "   " });                        // blank words are no words
-    call(s, { id: "u-tape-words", recording_url: "https://drive.google.com/file/d/z/view", transcript: "words" }); // has a tape: not counted
-    call(s, { id: "u-blank-tape", recording_url: "  ", transcript: "more words" }); // a blank address is no address
-    call(s, { id: "u-noshow", outcome: "no_show", transcript: "words" });       // never held
-    call(s, { id: "u-demo", is_demo: true, transcript: "words" });
-    call(s, { id: "u-old", logged_at: ago(20), transcript: "words" });          // outside the 14 day look-back
-    call(s, { id: "u-fresh", logged_at: ago(0, 0.083), transcript: "words" });  // five minutes ago: inside the grace window
-    call(s, { id: "u-other", org_id: OTHER, client_id: C2, transcript: "words" });
+    call(s, { id: "u-plain" });                                                 // no tape or words: count it
+    call(s, { id: "u-words", transcript: "Hello, this is the call. We agreed to a deposit." }); // words satisfy the evidence gate
+    call(s, { id: "u-blank-words", transcript: "   " });                        // whitespace is not a transcript: count it
+    call(s, { id: "u-tape-words", recording_url: "https://drive.google.com/file/d/z/view" }); // recording satisfies the gate
+    call(s, { id: "u-blank-tape", recording_url: "  ", transcript: "more words" }); // words satisfy the gate despite blank address
+    call(s, { id: "u-noshow", outcome: "no_show" });                             // not a held call
+    call(s, { id: "u-demo", is_demo: true });                                     // demo cannot count
+    call(s, { id: "u-old", logged_at: ago(20) });                                // outside 14-day window
+    call(s, { id: "u-fresh", logged_at: ago(0, 0.083) });                         // five minutes ago: grace window
+    call(s, { id: "u-other", org_id: OTHER, client_id: C2 });                    // other company cannot count
   };
-  assert.deepEqual(run(DISCIPLINE_SQL, DISC_TABLES, seed), { sample_count: 4, bad_count: 2 });
-  const live = (t) => without(DISCIPLINE_SQL, t);
-  assert.equal(run(live("NULLIF(BTRIM(u.transcript), '') IS NOT NULL"), DISC_TABLES, seed).bad_count, 0, "the words test is the wrong-row arm");
-  assert.equal(run(loosen(DISCIPLINE_SQL, "u.outcome <> 'no_show'"), DISC_TABLES, seed).bad_count, 3);
-  assert.equal(run(loosen(DISCIPLINE_SQL, "COALESCE(u.is_demo, false) = false"), DISC_TABLES, seed).bad_count, 3);
-  assert.equal(run(loosen(DISCIPLINE_SQL, "u.logged_at > now() - interval '14 days'"), DISC_TABLES, seed).bad_count, 3);
-  assert.equal(run(loosen(DISCIPLINE_SQL, "(u.recording_url IS NULL OR BTRIM(u.recording_url) = '')"), DISC_TABLES, seed).bad_count, 3);
-  assert.equal(run(loosen(DISCIPLINE_SQL, "u.logged_at < now() - interval '20 minutes'"), DISC_TABLES, seed).bad_count, 3, "inside the grace window a call is not yet counted");
-  assert.equal(run(loosen(DISCIPLINE_SQL, "u.org_id = $1::uuid"), DISC_TABLES, seed).sample_count, 5, "the company filter is what leaves the other company's call out");
+  assert.deepEqual(run(DISCIPLINE_SQL, DISC_TABLES, seed), { sample_count: 2, bad_count: 0 });
+  assert.deepEqual(
+    run(loosen(DISCIPLINE_SQL, "(u.transcript IS NULL OR BTRIM(u.transcript) = '')"), DISC_TABLES, seed),
+    { sample_count: 4, bad_count: 0 },
+    "the transcript filter excludes both transcript-only held calls"
+  );
+  assert.equal(run(loosen(DISCIPLINE_SQL, "u.outcome <> 'no_show'"), DISC_TABLES, seed).sample_count, 3);
+  assert.equal(run(loosen(DISCIPLINE_SQL, "COALESCE(u.is_demo, false) = false"), DISC_TABLES, seed).sample_count, 3);
+  assert.equal(run(loosen(DISCIPLINE_SQL, "u.logged_at > now() - interval '14 days'"), DISC_TABLES, seed).sample_count, 3);
+  assert.equal(run(loosen(DISCIPLINE_SQL, "(u.recording_url IS NULL OR BTRIM(u.recording_url) = '')"), DISC_TABLES, seed).sample_count, 3);
+  assert.equal(run(loosen(DISCIPLINE_SQL, "u.logged_at < now() - interval '20 minutes'"), DISC_TABLES, seed).sample_count, 3, "the grace window excludes very recent calls");
+  assert.equal(run(loosen(DISCIPLINE_SQL, "u.org_id = $1::uuid"), DISC_TABLES, seed).sample_count, 3, "other companies must stay out");
 });
 
-test("floor discipline: a call logged before the last Drive sync is counted even inside the grace window, and the sync is per company", () => {
+test("floor discipline: a call lacking recording and transcript counts after same-company Drive sync, even during grace", () => {
   const seed = (s) => {
-    call(s, { id: "u-fresh", logged_at: ago(0, 0.083), transcript: "words" });  // five minutes old
+    call(s, { id: "u-fresh", logged_at: ago(0, 0.083) });  // five minutes old
     s.insert("brain_drive_sync", { org_id: ORG, last_sync_at: ago(0, 0.02) });  // synced a minute ago, after the call
     s.insert("brain_drive_sync", { org_id: OTHER, last_sync_at: ago(0, 0.02) });
   };
-  assert.deepEqual(run(DISCIPLINE_SQL, DISC_TABLES, seed), { sample_count: 1, bad_count: 1 });
-  const none = (s) => call(s, { id: "u-fresh", logged_at: ago(0, 0.083), transcript: "words" });
+  assert.deepEqual(run(DISCIPLINE_SQL, DISC_TABLES, seed), { sample_count: 1, bad_count: 0 });
+  const none = (s) => call(s, { id: "u-fresh", logged_at: ago(0, 0.083) });
   assert.deepEqual(run(DISCIPLINE_SQL, DISC_TABLES, none), { sample_count: 0, bad_count: 0 }, "no sync recorded: still inside the grace window");
   const syncOther = (s) => { none(s); s.insert("brain_drive_sync", { org_id: OTHER, last_sync_at: ago(0, 0.02) }); };
   assert.deepEqual(run(DISCIPLINE_SQL, DISC_TABLES, syncOther), { sample_count: 0, bad_count: 0 }, "another company's sync does not count");
