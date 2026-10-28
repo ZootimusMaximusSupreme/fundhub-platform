@@ -2383,6 +2383,10 @@ function augmentScore(s){
 function openDrawer(appId){
   var a=APP_BY_ID[appId]; if(!a) return;
   window.DRAWER_APP_ID=appId;
+  // Candidate names are not unique. The latest drawer open owns its pending
+  // application read, even when two candidates share a name or one is reopened.
+  var drawerReadSeq=(window.DRAWER_READ_SEQ||0)+1;
+  window.DRAWER_READ_SEQ=drawerReadSeq;
   document.getElementById('dwTitle').textContent=a.full_name;
   document.getElementById('dwSub').textContent =
     a.id+' · '+a.role_name+' · '+a.stage_name+' · status '+a.status+' · applied '+fdatey(a.applied_at);
@@ -2400,7 +2404,8 @@ function openDrawer(appId){
   document.getElementById('dwBody').innerHTML =
     '<div class="empty" style="padding:40px 8px">Loading application…</div>';
   apiGet('/api/hiring/application?id='+encodeURIComponent(appId)).then(function(res){
-    if(document.getElementById('dwTitle').textContent!==a.full_name) return; // drawer moved on
+    if(window.DRAWER_READ_SEQ!==drawerReadSeq || window.DRAWER_APP_ID!==appId ||
+       !drawer.classList.contains('on')) return; // drawer changed or closed
     if(!res.ok){
       document.getElementById('dwBody').innerHTML =
         '<div class="empty" style="padding:40px 8px">Could not load this application ('+esc(res.error||res.source)+'). '+
