@@ -67,16 +67,19 @@ export async function latestRoundForClient(db, { orgId, clientId }) {
   return r.rows[0] || null;
 }
 
-/** One client's round by number, falling back to their latest round. */
+/** One client's round. An explicitly requested round must never resolve to
+ * another round: that would attach approvals and fee events to the wrong work. */
 export async function roundFor(db, { orgId, clientId, roundNumber } = {}) {
   if (roundNumber != null) {
+    const rn = Number(roundNumber);
+    if (!Number.isInteger(rn) || rn <= 0) return null;
     const r = await db.query(
       `SELECT * FROM funding_rounds
         WHERE org_id = $1 AND client_id = $2 AND round_number = $3
         LIMIT 1`,
-      [orgId, clientId, Number(roundNumber)]
+      [orgId, clientId, rn]
     );
-    if (r.rows[0]) return r.rows[0];
+    return r.rows[0] || null;
   }
   return latestRoundForClient(db, { orgId, clientId });
 }
@@ -177,6 +180,15 @@ export async function guardFundedAmount(db, {
   roundNumber
 } = {}) {
   const round = await roundFor(db, { orgId, clientId, roundNumber });
+  if (!round) {
+    return {
+      ok: false,
+      reason: "funding_round_not_found",
+      message: "Cannot move to Funded — the specified funding round does not exist for this client.",
+      suggestedFundedAmount: null,
+      round: null
+    };
+  }
 
   // Already funded with a real amount — idempotent re-move may omit the body field.
   // Nothing below runs: re-parking a card on a column it already sits on must
@@ -342,6 +354,9 @@ export async function emitCardStackingRoundTransition(db, {
   }
 
   let rn = roundNumber != null ? Number(roundNumber) : null;
+  if (roundNumber != null && (!Number.isInteger(rn) || rn <= 0)) {
+    return { emitted: false, reason: "invalid_round_number", eventName };
+  }
   if (eventName === "round.started") {
     if (rn == null || !(rn > 0)) {
       // Re-parking on apply_now during an open round must reuse that round
@@ -376,12 +391,14 @@ export async function emitCardStackingRoundTransition(db, {
   let fee = { confirmedApprovedAmount: null, feePercent: null, saleId: null, fundingRoundId: null };
   if (billing) {
     const row = await roundFor(db, { orgId, clientId, roundNumber: rn });
-    if (row) {
-      const resolved = await resolveSuccessFee(db, { orgId, fundingRoundId: row.id });
-      fee = { ...resolved, fundingRoundId: row.id };
+    if (!row) {
+      // Never emit a round.funded event for a missing/stale round number. Its
+      // idempotency key would describe one round while its billing evidence
+      // came from another (the previously implicit latest-round fallback).
+      return { emitted: false, reason: "funding_round_not_found", eventName, roundNumber: rn };
     }
-    // No round row leaves every billing field null. F-07 then refuses with a
-    // named reason, which is the right answer — not a bill built on a guess.
+    const resolved = await resolveSuccessFee(db, { orgId, fundingRoundId: row.id });
+    fee = { ...resolved, fundingRoundId: row.id };
   }
 
   const payload = buildPayload({
