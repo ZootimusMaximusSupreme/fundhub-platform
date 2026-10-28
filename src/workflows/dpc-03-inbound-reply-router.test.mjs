@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert";
 import { handle, SMS_CONFIRM_ACK_TEMPLATE_KEY } from "./dpc-03-inbound-reply-router.mjs";
-import { pgFake, fakeStep, ev } from "./test-support.mjs";
+import { pgFake, fakeStep, ev, withPanelReads } from "./test-support.mjs";
 
 const withStages = () => ({
   pipelineStages: [
@@ -134,4 +134,44 @@ test("duplicate delivery: replaying does not double-create the task", async () =
   await handle({ event, db, step: fakeStep() });
   await handle({ event, db, step: fakeStep() });
   assert.equal(db.tasks.length, 1);
+});
+
+test("TENANT: a foreign-org client ID in an inbound event cannot change the file", async () => {
+  const inner = pgFake({ clients: [
+    { id: "home-1", org_id: "org-1", email: "home@example.invalid", phone: "+15550101", custom_fields: { call_outcome: "showed" } },
+    { id: "foreign-1", org_id: "org-2", email: "foreign@example.invalid", phone: "+15550202", custom_fields: { call_outcome: "showed" } }
+  ] });
+  // This wrapper models PostgreSQL's explicit org_id predicate. Bare pgFake
+  // resolves IDs globally, so it cannot establish tenant-isolation evidence.
+  const db = withPanelReads(inner);
+  for (const body of ["YES", "RESCHEDULE", "CLOSE"]) {
+    const result = await handle({
+      event: ev("message.inbound", { from: "+15550101", body },
+        { id: `evt-foreign-${body}`, clientId: "foreign-1", orgId: "org-1" }),
+      db, step: fakeStep()
+    });
+    assert.equal(result.done, false, `${body} must not act on a foreign file`);
+    assert.equal(result.reason, "client_not_in_org");
+  }
+  assert.deepEqual(inner.clients[1].custom_fields, { call_outcome: "showed" });
+  assert.deepEqual(inner.clients[1].tags || [], []);
+  assert.equal(inner.tasks.length, 0, "no wrong-company task");
+  assert.equal(inner.messages.length, 0, "no wrong-company SMS");
+  assert.equal(inner.cards.length, 0, "no wrong-company stage change");
+});
+
+test("TENANT: a same-org inbound YES still opens the unpaid follow-up task", async () => {
+  const inner = pgFake({ clients: [
+    { id: "home-1", org_id: "org-1", email: "home@example.invalid",
+      phone: "+15550101", custom_fields: { call_outcome: "showed" } }
+  ] });
+  const res = await handle({
+    event: ev("message.inbound", { from: "+15550101", body: "YES" },
+      { clientId: "home-1", orgId: "org-1" }),
+    db: withPanelReads(inner), step: fakeStep()
+  });
+  assert.equal(res.done, true);
+  assert.equal(res.decision, "yes");
+  assert.equal(inner.tasks.length, 1);
+  assert.equal(inner.cards.length, 0, "YES is not verified cash");
 });
