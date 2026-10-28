@@ -14,7 +14,7 @@ const CLIENT_B = "550e8400-e29b-41d4-a716-446655440002";
 const KIT_TITLE = "Ship Capital Blueprint welcome kit";
 
 function fakeDb() {
-  const state = { prequal: 200_000, tasks: [], queries: [] };
+  const state = { prequal: 200_000, tasks: [], queries: [], rejectDetail: false };
   return {
     state,
     async query(sql, params = []) {
@@ -34,8 +34,17 @@ function fakeDb() {
         return { rows: existing ? [{ id: existing.id }] : [] };
       }
       if (/INSERT INTO tasks/i.test(sql)) {
-        assert.match(sql, /\bdetail\b/i, "kit contents must be visible to the advisor as task detail");
-        const [orgId, clientId, title, body, , source, role, , , detail] = params;
+        const hasDetail = /\bdetail\b/i.test(sql);
+        if (state.rejectDetail && hasDetail) {
+          const err = new Error("tasks.detail does not exist on this older database");
+          err.code = "42703";
+          throw err;
+        }
+        if (!state.rejectDetail) {
+          assert.equal(hasDetail, true, "kit contents must be visible to the advisor as task detail");
+        }
+        const [orgId, clientId, title, body, , source, role, , , storedDetail] = params;
+        const detail = hasDetail ? storedDetail : null;
         assert.equal(orgId, ORG);
         assert.equal(source, WELCOME_KIT_SOURCE);
         assert.equal(role, "funding_advisor");
@@ -99,6 +108,24 @@ test("old JSON-body welcome-kit tasks are recognized on replay, without adding n
     orgId: ORG, clientId: CLIENT_A, productCode: BLUEPRINT_PRODUCT_CODE
   });
   assert.deepEqual(second, { created: false, id: "legacy-kit", reason: "duplicate_title" });
+  assert.equal(db.state.tasks.length, 1);
+});
+
+test("a database missing tasks.detail still receives a stable, deduped welcome-kit task", async () => {
+  const db = fakeDb();
+  db.state.rejectDetail = true;
+  const first = await createWelcomeKitTaskForPurchase(db, {
+    orgId: ORG, clientId: CLIENT_A, productCode: BLUEPRINT_PRODUCT_CODE
+  });
+  assert.equal(first.created, true);
+  assert.equal(db.state.tasks.length, 1);
+  assert.equal(db.state.tasks[0].body, `blueprint-welcome-kit:${CLIENT_A}`);
+  assert.equal(db.state.tasks[0].detail, null);
+  db.state.prequal = 500_000;
+  const replay = await createWelcomeKitTaskForPurchase(db, {
+    orgId: ORG, clientId: CLIENT_A, productCode: BLUEPRINT_PRODUCT_CODE
+  });
+  assert.equal(replay.created, false);
   assert.equal(db.state.tasks.length, 1);
 });
 
