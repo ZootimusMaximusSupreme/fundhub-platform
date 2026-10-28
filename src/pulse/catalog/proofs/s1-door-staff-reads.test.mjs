@@ -160,9 +160,9 @@ test("read/sales-floor totals the month's cash, deposits, held calls and booking
   assert.equal(ROUTES["read/sales-floor"], salesFloor);
   const rules = [
     staffSession({ role: "sales_manager" }),
-    [/SUM\(cash_collected_cents\), 0\)::bigint AS cents\s+FROM call_outcomes/, [{ cents: "2500000" }]],
-    [/count\(\*\) FILTER \(WHERE outcome <> 'no_show'\)::int AS held/, [{ held: 8, deposits: 3, downsells: 1, downsell_cents: "40000" }]],
-    [/name = 'booking\.created'/, [{ n: 12 }]],
+    [/SUM\((?:o\.)?cash_collected_cents\), 0\)::bigint AS cents\s+FROM call_outcomes(?: o\s+JOIN clients c ON c.id = o.client_id AND c.org_id = o.org_id)?/, [{ cents: "2500000" }]],
+    [/count\(\*\) FILTER \(WHERE (?:o\.)?outcome <> 'no_show'\)::int AS held/, [{ held: 8, deposits: 3, downsells: 1, downsell_cents: "40000" }]],
+    [/(?:e\.)?name = 'booking\.created'/, [{ n: 12 }]],
     [/FROM staff_targets/, [{ target_value: "50000" }]],
   ];
   const { res, fake } = await run(salesFloor, req("GET"), rules);
@@ -177,6 +177,27 @@ test("read/sales-floor totals the month's cash, deposits, held calls and booking
   assert.equal(res.body.funnel.downsells, 1);
   assert.equal(res.body.funnel.show_rate, 8 / 12);
   assert.equal(res.body.funnel.close_rate, 3 / 8);
+  // Preserve proof of the new live-only boundary, not just the canned totals.
+  const cashRead = fake.find(/AS cents\s+FROM call_outcomes/)[0];
+  const coreReads = [
+    cashRead,
+    fake.find(/AS downsell_cents\s+FROM call_outcomes/)[0],
+    fake.find(/AS funded\s+FROM call_outcomes o/)[0],
+  ];
+  assert.ok(coreReads.every(Boolean), "all three core team reads were executed");
+  // The fix branch (#166) adds this boundary; on earlier main it is absent.
+  // Keep the fixture usable before and after merge without weakening #166's own tests.
+  if (/FROM call_outcomes o\s+JOIN clients c/.test(cashRead.sql)) {
+    assert.ok(coreReads.every((q) =>
+      /JOIN clients c ON c.id = o.client_id AND c.org_id = o.org_id/.test(q.sql)
+      && /COALESCE\(o.is_demo, false\) = false/.test(q.sql)
+      && /COALESCE\(c.is_demo, false\) = false/.test(q.sql)),
+    "core team totals exclude demo calls and clients by same-company join");
+    assert.ok(fake.find(/FROM events e/).some((q) =>
+      /COALESCE\(e.payload->>'simulated', 'false'\) <> 'true'/.test(q.sql)
+      && /COALESCE\(c.is_demo, false\) = false/.test(q.sql)),
+    "bookings exclude synthetic events and clients");
+  }
   assert.ok(fake.find(/FROM call_outcomes/).every((c) => c.params[0] === ORG_ID), "every read is the session's company");
 
   const closer = await run(salesFloor, req("GET"), [staffSession({ role: "closer" })]);

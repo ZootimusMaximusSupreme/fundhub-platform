@@ -113,9 +113,9 @@ function fakeDb({
       if (/demo_mode_enabled/.test(text)) return { rows: [{ demo_mode_enabled: false }] };
       if (/FROM staff s/.test(text) && /LEFT JOIN LATERAL/.test(text)) return { rows: roster };
       if (/AS no_shows/.test(text)) return { rows: [{ cents: "0", deposits: 0, downsells: 0, no_shows: 0, held: 0, logged: 0 }] };
-      if (/AS cents\s+FROM call_outcomes/.test(text)) return { rows: [{ cents: cash }] };
-      if (/count\(DISTINCT client_id\)::int AS n\s+FROM events/.test(text)) return { rows: [{ n: funnel.n }] };
-      if (/AS held,\s+count\(\*\) FILTER \(WHERE outcome = 'deposit' AND transaction_id IS NOT NULL AND cash_collected_cents > 0\)/.test(text)) return { rows: [funnel] };
+      if (/AS cents\s+FROM call_outcomes(?: o\s+JOIN clients c ON c.id = o.client_id AND c.org_id = o.org_id)?/.test(text)) return { rows: [{ cents: cash }] };
+      if (/count\(DISTINCT (?:e\.)?client_id\)::int AS n\s+FROM events(?: e\s+JOIN clients c)?/.test(text)) return { rows: [{ n: funnel.n }] };
+      if (/AS held,\s+count\(\*\) FILTER \(WHERE (?:o\.)?outcome = 'deposit' AND (?:o\.)?transaction_id IS NOT NULL AND (?:o\.)?cash_collected_cents > 0\)/.test(text)) return { rows: [funnel] };
       if (/AS funded/.test(text)) return { rows: [{ deposits: 1, funded: 1 }] };
       return { rows: [], rowCount: 0 };
     }
