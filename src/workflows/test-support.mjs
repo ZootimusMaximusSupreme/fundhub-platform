@@ -106,6 +106,12 @@ export function pgFake(seed = {}) {
         const c = clients.find((c) => c.org_id === params[0] && c.phone === params[1]);
         return { rows: c ? [{ id: c.id }] : [] };
       }
+      // Funding handoff must resolve an EXISTING customer in the triggering
+      // organization; matching an arbitrary id/email from another org is unsafe.
+      if (/SELECT id FROM clients WHERE id = \\$1 AND org_id = \\$2/.test(sql)) {
+        const c = clients.find((c) => c.id === params[0] && c.org_id === params[1]);
+        return { rows: c ? [{ id: c.id }] : [] };
+      }
       if (/SELECT id FROM clients/.test(sql)) {
         const c = findClientByEmail(params[0], params[1]);
         return { rows: c ? [{ id: c.id }] : [] };
