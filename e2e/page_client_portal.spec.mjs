@@ -27,6 +27,11 @@ async function open(page,{state='empty',enrolled=false,postStatus=201,summary,vi
 }
 for(const width of [1440,390,320])test(`client home at ${width}px preserves controls and width`,async({page})=>{
  await page.setViewportSize({width,height:1000});await open(page,{state:'full',enrolled:true});
+ // Pre-call chat intentionally opens after 1.4s. Prove it can be dismissed
+ // before clicking account tabs, especially at 320px where it covers them.
+ await expect(page.locator('#fh-chat-panel.open')).toBeVisible();
+ await page.locator('#fh-chat-close').click();
+ await expect(page.locator('#fh-chat-panel')).toBeHidden();
  await expect(page.locator('#ref-dashboard')).toBeVisible();
  await expect(page.locator('#money-link')).toBeVisible();
  fs.mkdirSync(out,{recursive:true});await page.screenshot({path:`${out}/page_client_portal-home-${width}.png`,fullPage:true});
