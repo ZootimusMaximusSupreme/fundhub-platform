@@ -178,11 +178,17 @@ test("read/sales-floor totals the month's cash, deposits, held calls and booking
   assert.equal(res.body.funnel.show_rate, 8 / 12);
   assert.equal(res.body.funnel.close_rate, 3 / 8);
   // Preserve proof of the new live-only boundary, not just the canned totals.
-  assert.ok(fake.find(/FROM call_outcomes o/).every((q) =>
+  const coreReads = [
+    fake.find(/AS cents\s+FROM call_outcomes o/)[0],
+    fake.find(/AS downsell_cents\s+FROM call_outcomes o/)[0],
+    fake.find(/AS funded\s+FROM call_outcomes o/)[0],
+  ];
+  assert.ok(coreReads.every(Boolean), "all three core team reads were executed");
+  assert.ok(coreReads.every((q) =>
     /JOIN clients c ON c.id = o.client_id AND c.org_id = o.org_id/.test(q.sql)
     && /COALESCE\(o.is_demo, false\) = false/.test(q.sql)
     && /COALESCE\(c.is_demo, false\) = false/.test(q.sql)),
-  "team totals exclude demo calls and clients by same-company join");
+  "core team totals exclude demo calls and clients by same-company join");
   assert.ok(fake.find(/FROM events e/).some((q) =>
     /COALESCE\(e.payload->>'simulated', 'false'\) <> 'true'/.test(q.sql)
     && /COALESCE\(c.is_demo, false\) = false/.test(q.sql)),
