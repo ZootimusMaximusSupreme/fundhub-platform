@@ -16,12 +16,14 @@ import { inngest } from "./client.mjs";
 import { db } from "../db.mjs";
 import { resolveClient } from "../handlers/client-lifecycle.mjs";
 import { clientOutcomeTier, isFundingPath } from "../config/product-path.mjs";
+import { purchasedCategories } from "../handlers/purchase-routing.mjs";
 import { addTags } from "./tags.mjs";
 import { mergeCustomFields } from "./custom-fields.mjs";
 import { createTask } from "../lib/create-task.mjs";
 
 const POD_TASK_SOURCE = "f-01-funding-intake";
 const POD_TASK_TITLE = "Assign pod roles for funding client";
+const POD_TASK_DUE_HOURS = 24; // Calendar hides undated tasks; paid intake has a 24-hour commitment.
 
 async function podAssigned(db, clientId) {
   const r = await db.query(`SELECT custom_fields FROM clients WHERE id = $1`, [clientId]);
@@ -40,6 +42,7 @@ async function createPodTask(db, { orgId, clientId, eventId }) {
       title: POD_TASK_TITLE,
       sourceWorkflow: POD_TASK_SOURCE,
       assigneeRole: "funding_advisor",
+      dueAt: new Date(Date.now() + POD_TASK_DUE_HOURS * 60 * 60 * 1000),
       eventId: eventId
     });
   return { created: true };
@@ -50,7 +53,13 @@ export async function handle({ event, db, step }) {
   if (!clientId) return { done: false, reason: "no_client" };
 
   const outcomeTier = await step.run("check-product-path", () => clientOutcomeTier(db, clientId));
-  if (!isFundingPath(outcomeTier)) return { done: false, reason: `not_funding_path:${outcomeTier}` };
+  if (!isFundingPath(outcomeTier)) {
+    // A stale credit recommendation cannot cancel work already purchased.
+    // But an unpaid, repair-only manual move still must not open funding intake.
+    const bought = await step.run("check-paid-funding", () =>
+      purchasedCategories(db, event.orgId, clientId));
+    if (!bought.funding) return { done: false, reason: `not_funding_path:${outcomeTier}` };
+  }
 
   await step.run("tag-client-funding", () => addTags(db, clientId, ["client:funding"]));
   await step.run("set-lifecycle-status", () => mergeCustomFields(db, clientId, { lifecycle_status: "Funding Client" }));
