@@ -289,7 +289,7 @@ test("logCallOutcome cannot close a same-org task that belongs to another custom
     [/FROM tasks/, (params, sql) => {
       // Model PostgreSQL: without a client_id predicate, this foreign client's
       // task would be returned because the org and task ID still match.
-      const scoped = /client_id = \\$3/.test(sql);
+      const scoped = /client_id = \$3/.test(sql);
       const matches = params[0] === taskId && params[1] === org
         && (!scoped || params[2] === other);
       return { rows: matches ? [{ id: taskId, client_id: other }] : [] };
@@ -306,7 +306,7 @@ test("logCallOutcome cannot close a same-org task that belongs to another custom
     (e) => e instanceof CallOutcomeError && e.status === 404
   );
   const taskRead = db.calls.find((c) => /FROM tasks/.test(c.sql));
-  assert.match(taskRead.sql, /client_id = \\$3/);
+  assert.match(taskRead.sql, /client_id = \$3/);
   assert.deepEqual(taskRead.params, [taskId, org, client]);
   assert.equal(inserted, 0, "never write a cross-customer call outcome");
   assert.equal(db.calls.some((c) => /UPDATE tasks/.test(c.sql)), false,
@@ -322,8 +322,8 @@ test("logCallOutcome does not reuse another customer's matching booking referenc
   const oldOutcome = { id: "foreign-outcome", org_id: org, client_id: other, outcome: "callback" };
   const db = stubDb([
     [/FROM clients/, () => ({ rows: [{ id: client, custom_fields: {} }] })],
-    [/SELECT \\* FROM call_outcomes/, (params, sql) => {
-      const scoped = /client_id = \\$4/.test(sql);
+    [/SELECT \* FROM call_outcomes/, (params, sql) => {
+      const scoped = /client_id = \$4/.test(sql);
       return { rows: (!scoped || params[3] === other) ? [oldOutcome] : [] };
     }],
     [/INSERT INTO call_outcomes/, (params) => ({
@@ -338,7 +338,7 @@ test("logCallOutcome does not reuse another customer's matching booking referenc
   });
   assert.equal(result.created, true, "another customer's record is never replayed");
   assert.equal(result.row.client_id, client);
-  const lookup = db.calls.find((c) => /SELECT \\* FROM call_outcomes/.test(c.sql));
-  assert.match(lookup.sql, /client_id = \\$4/);
+  const lookup = db.calls.find((c) => /SELECT \* FROM call_outcomes/.test(c.sql));
+  assert.match(lookup.sql, /client_id = \$4/);
   assert.deepEqual(lookup.params, [org, null, bookingRef, client]);
 });
