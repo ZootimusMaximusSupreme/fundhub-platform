@@ -1,7 +1,7 @@
 // S-05a — No-Show Recovery.
 // Source: the CRM sticky "S-05a No-Show Recovery". Trigger: booking.noshow
 // (dpc-02 emits this 5 minutes after a missed ClickFunnels call). Spec 4.4: four touches,
-// email + SMS each. Stop on booking.created. Re-check before each send.
+// email + SMS each. Stop on booking.created OR booking.rescheduled. Re-check before each send.
 
 import { inngest } from "./client.mjs";
 import { db } from "../db.mjs";
@@ -20,16 +20,22 @@ export const EMAIL_NOSHOW_04 = "EMAIL-S05A-NOSHOW-04";
 export const SMS_NOSHOW_04 = "SMS-S05A-NOSHOW-04";
 export const SOURCE_WORKFLOW = "s-05a-no-show-recovery";
 
-async function bookingCreatedCount(db, clientId) {
+// A reschedule of the same booking may not create another booking.created.
+// Count both kinds before the first touch and again after each wait, scoped
+// to the same company so unrelated events cannot stop recovery.
+async function bookingActivityCount(db, { orgId, clientId }) {
   const r = await db.query(
-    `SELECT COUNT(*)::int AS n FROM events WHERE client_id = $1 AND name = 'booking.created'`,
-    [clientId]
+    `SELECT COUNT(*)::int AS n
+       FROM events
+      WHERE org_id = $1 AND client_id = $2
+        AND name IN ('booking.created', 'booking.rescheduled')`,
+    [orgId, clientId]
   );
   return Number(r.rows[0]?.n || 0);
 }
 
-async function hasRebooked(db, clientId, priorCount) {
-  return (await bookingCreatedCount(db, clientId)) > priorCount;
+async function hasRebooked(db, { orgId, clientId, priorCount }) {
+  return (await bookingActivityCount(db, { orgId, clientId })) > priorCount;
 }
 
 async function sendPair(db, { orgId, clientId, eventId, emailKey, smsKey }) {
@@ -48,7 +54,7 @@ export async function handle({ event, db, step }) {
 
   const orgId = event.orgId;
   const eventId = event.id;
-  const priorBookings = await step.run("snapshot-bookings", () => bookingCreatedCount(db, clientId));
+  const priorBookings = await step.run("snapshot-bookings", () => bookingActivityCount(db, { orgId, clientId }));
 
   await step.run("tag-no-show", () => addTags(db, clientId, ["call:no_show"]));
 
@@ -70,7 +76,7 @@ export async function handle({ event, db, step }) {
     }));
 
   await step.sleep("wait-24h", "24h");
-  if (await step.run("check-booked-2", () => hasRebooked(db, clientId, priorBookings))) {
+  if (await step.run("check-booked-2", () => hasRebooked(db, { orgId, clientId, priorCount: priorBookings }))) {
     return { done: true, stoppedAt: "before-touch-2", touch1, task };
   }
   const touch2 = await step.run("send-touch-2", () =>
@@ -80,7 +86,7 @@ export async function handle({ event, db, step }) {
     }));
 
   await step.sleep("wait-48h", "48h");
-  if (await step.run("check-booked-3", () => hasRebooked(db, clientId, priorBookings))) {
+  if (await step.run("check-booked-3", () => hasRebooked(db, { orgId, clientId, priorCount: priorBookings }))) {
     return { done: true, stoppedAt: "before-touch-3", touch1, touch2, task };
   }
   const touch3 = await step.run("send-touch-3", () =>
@@ -90,7 +96,7 @@ export async function handle({ event, db, step }) {
     }));
 
   await step.sleep("wait-96h", "96h");
-  if (await step.run("check-booked-4", () => hasRebooked(db, clientId, priorBookings))) {
+  if (await step.run("check-booked-4", () => hasRebooked(db, { orgId, clientId, priorCount: priorBookings }))) {
     return { done: true, stoppedAt: "before-touch-4", touch1, touch2, touch3, task };
   }
   const touch4 = await step.run("send-touch-4", () =>
@@ -109,7 +115,11 @@ export const s05aNoShowRecovery = inngest.createFunction(
     cancelOn: [
       {
         event: "booking.created",
-        if: "event.data.payload.email != null && event.data.payload.email == async.data.payload.email"
+        if: "event.data.orgId != null && event.data.orgId == async.data.orgId && event.data.payload.email != null && event.data.payload.email == async.data.payload.email"
+      },
+      {
+        event: "booking.rescheduled",
+        if: "event.data.orgId != null && event.data.orgId == async.data.orgId && event.data.payload.email != null && event.data.payload.email == async.data.payload.email"
       }
     ]
   },

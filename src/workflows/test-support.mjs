@@ -390,7 +390,14 @@ export function pgFake(seed = {}) {
 
       // --- events (lead-temperature classification + bus emit) ---
       if (/SELECT COUNT\(\*\)/.test(sql) && /FROM events/.test(sql) && /booking\.created/.test(sql)) {
-        const n = events.filter((e) => e.client_id === params[0] && e.name === "booking.created").length;
+        const orgScoped = /org_id\s*=\s*\$1/.test(sql);
+        const clientId = params[orgScoped ? 1 : 0];
+        const includeRescheduled = /booking\.rescheduled/.test(sql);
+        const n = events.filter((e) =>
+          e.client_id === clientId
+          && (!orgScoped || e.org_id === params[0])
+          && (e.name === "booking.created" || (includeRescheduled && e.name === "booking.rescheduled"))
+        ).length;
         return { rows: [{ n }] };
       }
       /* s-nobook-chase hasBooked — client id OR the email/phone carried in a
