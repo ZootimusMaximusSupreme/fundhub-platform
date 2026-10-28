@@ -144,10 +144,12 @@ export async function logCallOutcome(db, input) {
   const offerKey = rawOfferKey || storedOffer || null;
   const isRepairReferral = repairReferral === true;
 
+  // A same-company task can still belong to another customer. Never close it
+  // or attach its outcome to this customer through a mismatched task ID.
   if (taskId) {
     const t = await db.query(
-      `SELECT id FROM tasks WHERE id = $1 AND org_id = $2`,
-      [taskId, orgId]
+      `SELECT id FROM tasks WHERE id = $1 AND org_id = $2 AND client_id = $3`,
+      [taskId, orgId, clientId]
     );
     if (!t.rows[0]) {
       throw new CallOutcomeError("task not found", { status: 404, code: "not_found" });
@@ -158,12 +160,13 @@ export async function logCallOutcome(db, input) {
     const existing = await db.query(
       `SELECT * FROM call_outcomes
         WHERE org_id = $1
+          AND client_id = $4
           AND (
             ($2::uuid IS NOT NULL AND task_id = $2)
             OR ($3::text IS NOT NULL AND booking_ref = $3)
           )
         LIMIT 1`,
-      [orgId, taskId, bookingRef]
+      [orgId, taskId, bookingRef, clientId]
     );
     if (existing.rows[0]) {
       await emitCloserCallCompleted(db, existing.rows[0], {
