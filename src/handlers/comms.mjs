@@ -538,7 +538,14 @@ export async function onBookingRescheduled(event, db) {
     const upd = await db.query(
       `UPDATE tasks
           SET due_at = COALESCE($3, due_at),
-              meeting_url = COALESCE($4, meeting_url),
+              -- Same slot replay keeps a link; moved slot cannot reuse
+              -- the previous appointment's Meet room when CF sends no URL.
+              meeting_url = CASE
+                WHEN $3::timestamptz IS NOT NULL
+                 AND due_at IS DISTINCT FROM $3::timestamptz
+                THEN $4::text
+                ELSE COALESCE($4::text, meeting_url)
+              END,
               title = $6,
               done = false,
               updated_at = now()
