@@ -79,16 +79,35 @@ export async function createWelcomeKitTaskForPurchase(db, {
     .catch(() => null);
 
   const eventId = `blueprint-welcome-kit:${clientId}`;
-  return createTask(db, {
+  // createTask uses body as the durable dedupe key. Putting the funding
+  // snapshot there makes the key change as CRS/prequal numbers change, and a
+  // payment replay can schedule a *second* physical package. Keep the snapshot
+  // in the human-readable detail field instead and use the client-stable key.
+  // The title check also recognizes tasks written by the old JSON-body format.
+  const detail = [
+    "Capital Blueprint welcome kit:",
+    ...WELCOME_KIT_CHECKLIST.map((item) => `- ${item}`),
+    `Funding snapshot: ${numbers ? JSON.stringify(numbers) : "not available — verify before printing the personalized one-pager"}`
+  ].join("\n");
+  const spec = {
     orgId,
     clientId,
     title: "Ship Capital Blueprint welcome kit",
     sourceWorkflow: WELCOME_KIT_SOURCE,
     assigneeRole: "funding_advisor",
     eventId,
-    body: {
-      kitChecklist: [...WELCOME_KIT_CHECKLIST],
-      fundingSnapshot: numbers
+    dedupeOn: "title"
+  };
+  try {
+    return await createTask(db, { ...spec, detail });
+  } catch (err) {
+    // The original kit task did not require the tasks.detail migration.
+    // In a partially migrated preview, keep the stable handoff task rather
+    // than silently dropping the paid client's shipment.
+    if (err?.code === "42703") {
+      return createTask(db, spec)
+        .catch((fallbackErr) => ({ created: false, reason: String(fallbackErr?.message || fallbackErr) }));
     }
-  }).catch((err) => ({ created: false, reason: String(err?.message || err) }));
+    return { created: false, reason: String(err?.message || err) };
+  }
 }
