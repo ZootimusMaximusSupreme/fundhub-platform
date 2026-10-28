@@ -42,7 +42,7 @@ test("staff-level KPI keeps the exact assignment-or-unassigned rule", async () =
   assert.equal(await countUnlogged(db, { orgId: ORG, staffId: STAFF }), 207);
   assert.equal(reads.length, 1);
   assert.match(reads[0].sql, /t\.assignee_staff_id = \$3 OR t\.assignee_staff_id IS NULL/);
-  assert.deepEqual(reads[0].params, [ORG, "Strategy session%", STAFF]);
+  assert.deepEqual(reads[0].params, [ORG, STAFF, "Strategy session%"]);
 });
 
 test("the staff detail list remains safely capped at 200 rows", async () => {
