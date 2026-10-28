@@ -249,7 +249,15 @@ export async function upsertBooking(db, {
        starts_at       = COALESCE(EXCLUDED.starts_at,       bookings.starts_at),
        ends_at         = COALESCE(EXCLUDED.ends_at,         bookings.ends_at),
        status          = COALESCE(EXCLUDED.status,          bookings.status),
-       meeting_url     = COALESCE(EXCLUDED.meeting_url,     bookings.meeting_url),
+       -- A calendar reschedule can mint a DIFFERENT Meet room. If the time
+       -- changed, an absent provider link means unknown for the new slot,
+       -- not permission to reuse the old meeting's room.
+       meeting_url = CASE
+         WHEN EXCLUDED.starts_at IS NOT NULL
+          AND bookings.starts_at IS DISTINCT FROM EXCLUDED.starts_at
+         THEN EXCLUDED.meeting_url
+         ELSE COALESCE(EXCLUDED.meeting_url, bookings.meeting_url)
+       END,
        attendee_email  = COALESCE(EXCLUDED.attendee_email,  bookings.attendee_email),
        attendee_name   = COALESCE(EXCLUDED.attendee_name,   bookings.attendee_name),
        event_type_slug = COALESCE(EXCLUDED.event_type_slug, bookings.event_type_slug),
