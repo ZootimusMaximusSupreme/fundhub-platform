@@ -23,7 +23,7 @@ import assert from "node:assert";
 import { db, close } from "../db.mjs";
 import { createSession } from "../auth/session.mjs";
 import {
-  upsertBooking, listBookings, setStatusByProviderUid, findByProviderUid,
+  upsertBooking, listBookings, setStatusByProviderUid, findByProviderUid, fillMeetingUrl,
   normalizeProviderUid, UNKNOWN_SOURCE, BookingError
 } from "../bookings/store.mjs";
 import {
@@ -428,6 +428,61 @@ describe("/api/bookings + bookings store", { skip: !HAVE_DB ? "no DATABASE_URL" 
     const history = (rows[0].raw && rows[0].raw.__history) || [];
     assert.equal(history.length, 1, "the original booked time was destroyed");
     assert.equal(new Date(history[0].starts_at).toISOString(), "2026-09-07T15:00:00.000Z");
+  });
+
+  test("moving a booked call with no new Meet URL drops the old room until the new calendar link is saved", async () => {
+    await wipeBookings();
+    await wipeTasks();
+    const uid = "uid-new-meet-slot";
+    const firstTime = "2026-09-14T15:00:00Z";
+    const movedTime = "2026-09-16T18:00:00Z";
+    const firstLink = "https://meet.google.com/first-call-room";
+    const newLink = "https://meet.google.com/second-call-room";
+    const payload = {
+      email: "bookings_pg_test_client@example.com",
+      bookingUid: uid, startTime: firstTime,
+      source: "clickfunnels", meetingUrl: firstLink
+    };
+    await onBookingCreated({
+      id: "evt-meet-slot-1", orgId: orgA, clientId: clientA,
+      name: "booking.created", payload
+    }, db);
+    const booking = () => findByProviderUid(db, { orgId: orgA, providerUid: uid });
+    const tasks = async () => (await db.query(
+      `SELECT meeting_url, due_at FROM tasks WHERE org_id=$1 AND client_id=$2 AND body=$3`,
+      [orgA, clientA, uid]
+    )).rows;
+
+    assert.equal((await booking()).meeting_url, firstLink);
+    assert.equal((await tasks())[0].meeting_url, firstLink);
+
+    const movedEvent = {
+      id: "evt-meet-slot-2", orgId: orgA, clientId: clientA,
+      name: "booking.rescheduled",
+      payload: { ...payload, startTime: movedTime, meetingUrl: null }
+    };
+    await onBookingRescheduled(movedEvent, db);
+    assert.equal((await booking()).meeting_url, null,
+      "booking kept an invalid old-room Meet URL after its scheduled time changed");
+    assert.equal((await tasks())[0].meeting_url, null,
+      "closer Join kept the previous slot's Meet URL after rescheduling");
+    assert.equal(new Date((await tasks())[0].due_at).toISOString(), "2026-09-16T18:00:00.000Z");
+
+    const filled = await fillMeetingUrl(db, {
+      orgId: orgA, clientId: clientA, providerUid: uid, startsAt: movedTime, url: newLink
+    });
+    assert.deepEqual(filled, { bookings: 1, tasks: 1 },
+      "fresh Google Calendar Meet should reach the saved booking and closer task");
+    assert.equal((await booking()).meeting_url, newLink);
+    assert.equal((await tasks())[0].meeting_url, newLink);
+
+    await onBookingRescheduled(movedEvent, db);
+    assert.equal((await booking()).meeting_url, newLink,
+      "same-slot replay erased the correct new room");
+    assert.equal((await tasks())[0].meeting_url, newLink,
+      "same-slot replay erased the correct closer Join link");
+    assert.equal((await rowsFor(orgA)).length, 1, "replay added a duplicate booking");
+    assert.equal((await tasks()).length, 1, "replay added a duplicate task");
   });
 
   test("cancel and no-show close the booking by uid, whatever label it carries", async () => {
