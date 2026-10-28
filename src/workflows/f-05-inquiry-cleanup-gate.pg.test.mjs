@@ -13,7 +13,7 @@ let safe = false;
 try {
   const url = new URL(connectionString);
   safe = ["localhost", "127.0.0.1", "::1", "[::1]"].includes(url.hostname)
-    && /(?:test|scratch|_ci)(?:\\b|_)/i.test(url.pathname);
+    && /(?:test|scratch|_ci)(?:$|_)/i.test(url.pathname);
 } catch { /* never connect to an unknown/prod database */ }
 const options = { skip: safe ? false : "local CI/test/scratch PostgreSQL only; production refused" };
 const pool = safe ? new pg.Pool({ connectionString, max: 1, connectionTimeoutMillis: 5000 }) : null;
