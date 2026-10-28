@@ -80,9 +80,9 @@ Additional relevant candidate screens/routes requiring their own delegated-contr
 
 ## Evidence backlog / next run priorities
 
-1. This lane's isolated fix changes `roundFor()`: explicit missing or malformed round cannot silently use latest; `guardFundedAmount` refuses nonexistent and `round.funded` emitter refuses it without external side effects. New mock regression file `src/funding/card-stacking-round-scope.test.mjs`. **PR checks, disposable PostgreSQL regression, merge and deployment not yet verified.**
+1. This lane's isolated fix changes `roundFor()`: explicit missing or malformed round cannot silently use latest; `guardFundedAmount` refuses nonexistent and `round.funded` emitter refuses it without external side effects. New mock regression file `src/funding/card-stacking-round-scope.test.mjs` plus transaction-local real-Postgres test `src/funding/card-stacking-round-scope.pg.test.mjs` (strict local CI/scratch URL gate; rolls back). **PR checks, merge and deployment not yet verified.**
 2. Inspect CI of this PR including unit shard, real Postgres integration, security, Playwright. If failed, repair this branch and retest; never merge red; never count CI as production live.
-3. Build safe transaction-local Postgres tests for two-round funding + stale-round approval and replay, separate org, and repair trial/full/enrollment/upgrade. Ensure suite refuses production DB URL. Pull the tested scope into this board with run IDs.
+3. Run new transaction-local PostgreSQL stale-round/cross-org test in disposable GitHub Actions service, then extend to actual two-round approval/replay and repair trial/full/enrollment/upgrade. Ensure suite refuses production DB URL. Pull tested scope into this board with run IDs.
 4. Extend dynamically-rendered page/action inventory and browser role tests, without editing front-house's assigned client-facing pages in parallel.
 5. Map exact Blueprint entitlement-to-course/API and verify one-step completion with persisted round/waypoint. Live provider receipts remain NLP until independently acquired; no live SMS/letters/credit pulls.
 6. Determine with evidence which of MCA/SBA/LOC are actually enabled in deployed product catalog, then either add individual execution matrices or record justified N/A.
