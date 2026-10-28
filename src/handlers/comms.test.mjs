@@ -171,7 +171,7 @@ function pgFake() {
       }
       // findByProviderUid — same-org/current-provider row. The booking-created
       // replay guard MUST see the real persisted terminal state in this fake.
-      if (/FROM bookings\\s+WHERE org_id = \\$1 AND provider_uid = \\$2/.test(sql)) {
+      if (/FROM bookings\s+WHERE org_id = \$1 AND provider_uid = \$2/.test(sql)) {
         const [orgId, uid] = params;
         const row = bookings.find((b) => b.org_id === orgId && b.provider_uid === uid);
         return { rows: row ? [row] : [] };
