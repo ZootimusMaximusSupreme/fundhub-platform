@@ -23,6 +23,12 @@
 
   function $(sel) { return document.querySelector(sel); }
   function text(el, v) { if (el) el.textContent = v == null || v === "" ? "—" : String(v); }
+  // External names, notes and bureau/payment fields are text, not HTML.
+  function escapeHtml(v) {
+    return String(v == null ? "" : v).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
   function paintStaff(staff) {
     var staffName = (staff && staff.name) || "";
     var initials = staffName.trim().split(/\s+/).filter(Boolean).slice(0, 2)
@@ -259,7 +265,7 @@
         shiftChip.innerHTML = '<span class="cd"></span>On shift · ' + elapsed(staff.shift.elapsed_ms);
       } else {
         shiftChip.className = "chip";
-        shiftChip.innerHTML = '<span class="cd"></span>' + (staff.shift && staff.shift.reason ? staff.shift.reason : "Off shift");
+        shiftChip.innerHTML = '<span class="cd"></span>' + escapeHtml(staff.shift && staff.shift.reason ? staff.shift.reason : "Off shift");
       }
     }
     var shiftToggle = document.getElementById("fh-shift-toggle");
@@ -269,7 +275,7 @@
       shiftToggle.hidden = false;
     }
     var nameChip = $("[data-fh-call-staff]");
-    if (nameChip) nameChip.innerHTML = '<span class="cd" style="background:var(--info)"></span>' + (staff.name || "Closer");
+    if (nameChip) nameChip.innerHTML = '<span class="cd" style="background:var(--info)"></span>' + escapeHtml(staff.name || "Closer");
     paintStaff(staff);
 
     text($(".who h1"), client.name);
@@ -318,7 +324,7 @@
     var tables = document.querySelectorAll(".panel table");
     if (tables[0]) {
       if (!credit.available) {
-        tables[0].innerHTML = "<tr><td colspan='2'>" + (credit.reason || "No credit pull") + "</td></tr>";
+        tables[0].innerHTML = "<tr><td colspan='2'>" + escapeHtml(credit.reason || "No credit pull") + "</td></tr>";
       } else {
         var rows = "";
         if (credit.scores && typeof credit.scores === "object") {
@@ -326,9 +332,9 @@
           var eq = credit.scores.equifax != null ? credit.scores.equifax : credit.scores.EQ;
           var tu = credit.scores.transunion != null ? credit.scores.transunion : credit.scores.TU;
           if (ex != null || eq != null || tu != null) {
-            rows += "<tr><td>Scores</td><td class='hi'>EX " + (ex == null ? "—" : ex) +
-              " · EQ " + (eq == null ? "—" : eq) +
-              " · TU " + (tu == null ? "—" : tu) + "</td></tr>";
+            rows += "<tr><td>Scores</td><td class='hi'>EX " + escapeHtml(ex == null ? "—" : ex) +
+              " · EQ " + escapeHtml(eq == null ? "—" : eq) +
+              " · TU " + escapeHtml(tu == null ? "—" : tu) + "</td></tr>";
             /* A sample report says it is a sample (live hole 23). */
             if (credit.sample === true) {
               rows += "<tr><td>Sample</td><td>Sample scores. Not a real credit pull.</td></tr>";
@@ -339,9 +345,9 @@
         } else {
           rows += "<tr><td>Scores</td><td class='hi'>—</td></tr>";
         }
-        rows += "<tr><td>Utilization</td><td>" + (credit.utilization != null ? credit.utilization + "%" : "—") + "</td></tr>";
-        rows += "<tr><td>Inquiries · 6mo</td><td>" + (credit.inquiries_6mo != null ? credit.inquiries_6mo : "—") + "</td></tr>";
-        rows += "<tr><td>Derogatories</td><td>" + (credit.derogatories != null ? credit.derogatories : "—") + "</td></tr>";
+        rows += "<tr><td>Utilization</td><td>" + escapeHtml(credit.utilization != null ? credit.utilization + "%" : "—") + "</td></tr>";
+        rows += "<tr><td>Inquiries · 6mo</td><td>" + escapeHtml(credit.inquiries_6mo != null ? credit.inquiries_6mo : "—") + "</td></tr>";
+        rows += "<tr><td>Derogatories</td><td>" + escapeHtml(credit.derogatories != null ? credit.derogatories : "—") + "</td></tr>";
         rows += "<tr><td>" + (credit.sample === true ? "Sample report loaded" : "Pulled") + "</td><td>" + (credit.pulled_at ? new Date(credit.pulled_at).toLocaleString("en-US", { timeZone: "America/Phoenix" }) : "—") + "</td></tr>";
         tables[0].innerHTML = rows;
       }
@@ -362,11 +368,11 @@
         : (Math.round(Number(feePct) * 1000) / 10) + "%" +
           (deal.success_fee_source === "default" ? " · default" : "");
       tables[1].innerHTML =
-        "<tr><td>Latest payment on file</td><td class='hi'>" + (pay ? pay.amount_display : "—") + "</td></tr>" +
+        "<tr><td>Latest payment on file</td><td class='hi'>" + escapeHtml(pay ? pay.amount_display : "—") + "</td></tr>" +
         "<tr><td>Paid on</td><td>" + (paidLabel || "—") + "</td></tr>" +
-        "<tr><td>Product</td><td>" + (pay && pay.product_name ? pay.product_name : "—") + "</td></tr>" +
+        "<tr><td>Product</td><td>" + escapeHtml(pay && pay.product_name ? pay.product_name : "—") + "</td></tr>" +
         "<tr><td>Success fee</td><td>" + feeText + "</td></tr>" +
-        "<tr><td colspan='2' style='text-align:left;color:var(--gray)'>" + (deal.success_fee_note || "") + "</td></tr>";
+        "<tr><td colspan='2' style='text-align:left;color:var(--gray)'>" + escapeHtml(deal.success_fee_note || "") + "</td></tr>";
     }
 
     // Precall
@@ -395,8 +401,8 @@
     if (upNextSection) {
       var next = (data.up_next || []).map(function (u) {
         var t = u.due_at ? new Date(u.due_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Phoenix" }) : "—";
-        return '<div class="q"><span class="t">' + t + "</span><div><b>" + (u.name || "Client") +
-          "</b><em>" + (u.title || "") + "</em></div></div>";
+        return '<div class="q"><span class="t">' + t + "</span><div><b>" + escapeHtml(u.name || "Client") +
+          "</b><em>" + escapeHtml(u.title || "") + "</em></div></div>";
       }).join("") || '<div class="q"><span class="t">—</span><div><b>No upcoming booked calls</b><em>Calendar tasks with due times will show here</em></div></div>';
       upNextSection.querySelectorAll(".q").forEach(function (n) { n.remove(); });
       upNextSection.insertAdjacentHTML("beforeend", next);
