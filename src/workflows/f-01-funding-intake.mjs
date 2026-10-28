@@ -14,9 +14,9 @@
 
 import { inngest } from "./client.mjs";
 import { db } from "../db.mjs";
-import { resolveClient } from "../handlers/client-lifecycle.mjs";
+
 import { clientOutcomeTier, isFundingPath } from "../config/product-path.mjs";
-import { purchasedCategories } from "../handlers/purchase-routing.mjs";
+import { findClient, purchasedCategories } from "../handlers/purchase-routing.mjs";
 import { addTags } from "./tags.mjs";
 import { mergeCustomFields } from "./custom-fields.mjs";
 import { createTask } from "../lib/create-task.mjs";
@@ -49,7 +49,10 @@ async function createPodTask(db, { orgId, clientId, eventId }) {
 }
 
 export async function handle({ event, db, step }) {
-  const clientId = await step.run("resolve-client", () => resolveClient(db, event));
+  // A payment/round can only start work for a pre-existing client in THIS org.
+  // resolveClient would accept a foreign clientId and patch that customer before
+  // checking ownership; it also creates phantom clients on unknown emails.
+  const clientId = await step.run("find-owned-client", () => findClient(db, event));
   if (!clientId) return { done: false, reason: "no_client" };
 
   const outcomeTier = await step.run("check-product-path", () => clientOutcomeTier(db, clientId));
