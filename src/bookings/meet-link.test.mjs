@@ -143,10 +143,14 @@ test("fillMeetingUrl: fills a blank on the booking (by id, or by client and star
   const b = db.calls[0];
   assert.match(b.sql, /btrim\(COALESCE\(meeting_url, ''\)\) = ''/, "never overwrites a saved link");
   assert.match(b.sql, /org_id = \$1/);
+  assert.match(b.sql, /\(\$4::timestamptz IS NULL OR starts_at = \$4::timestamptz\)/,
+    "provider UID lookup must not fill an old slot after rescheduling");
   assert.deepEqual(b.params, ["org-1", "form-1", "cl-1", START, MEET]);
   const t = db.calls[1];
   assert.match(t.sql, /org_id = \$4 AND client_id = \$1 AND body = ANY\(\$2::text\[\]\)/);
-  assert.deepEqual(t.params[1], ["form-1", "74249"]);
+  assert.match(t.sql, /\(\$5::timestamptz IS NULL OR due_at = \$5::timestamptz\)/,
+    "closer task must not inherit an old-slot calendar lookup");
+  assert.deepEqual(t.params, ["cl-1", ["form-1", "74249"], MEET, "org-1", START]);
 });
 
 test("fillMeetingUrl: nothing to match on means no write; no org or no link is refused", async () => {
