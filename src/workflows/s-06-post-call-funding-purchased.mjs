@@ -55,6 +55,12 @@ export async function handle({ event, db, step }) {
   // Clearing that tag unconditionally hid the concurrent, still-owed program.
   const bought = await step.run("read-paid-product-paths", () =>
     purchasedCategories(db, orgId, clientId));
+  // deposit.paid is a webhook signal, not by itself evidence of a completed
+  // funding sale. Even a valid repair/Blueprint deposit must never open a
+  // funding advisor task or overwrite the customer's product path.
+  if (!bought.funding) {
+    return { done: false, reason: "no_verified_funding_purchase" };
+  }
   const eventId = event.id;
   await step.run("set-lifecycle-and-path", () => mergeCustomFields(db, clientId, { lifecycle_status: "Funding Client", product_path: "Funding", employee_next_action: "Pull CRS" }));
   await step.run("tag-client-funding", () => addTags(db, clientId, ["client:funding"]));
