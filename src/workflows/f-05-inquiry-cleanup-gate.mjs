@@ -1,30 +1,56 @@
 // F-05 — Inquiry Cleanup Gate (Between Rounds).
-// Source: the CRM workflow 51d0d34f-7750-4f1e-a3e6-8a0bfb0ce282 (the CRM source-of-truth export).
+// Trigger: round.approved. This is a downstream funding event, NOT a signup:
+// it must never create a client or change another tenant's inquiry file.
 //
-// Trigger: round.approved (same trigger stage as F-04 — "Stage = Round Approvals").
-// Gate: "new inquiries exist" — checked directly against inquiry_log rows that
-// aren't already Removed or Pending Removal. Action: flip those to Pending Removal;
-// the actual removal work is the Inquiry Removal pipeline (C-02), out of this
-// batch's scope. Naturally idempotent (a plain state UPDATE, not an insert) — no
-// separate dedup guard needed.
+// The previous UPDATE selected by client_id alone and rewrote *every* status
+// except "Removed" / "Pending Removal". That could reopen a confirmed/cleared
+// inquiry and, on an inconsistent cross-org row, modify another tenant's data.
+// Preserve the inquiry's independent closure evidence (is_open/confirmed_at).
 
 import { inngest } from "./client.mjs";
 import { db } from "../db.mjs";
-import { resolveClient } from "../handlers/client-lifecycle.mjs";
 
-async function markPendingRemoval(db, clientId) {
-  const r = await db.query(
-    `UPDATE inquiry_log SET status = $2 WHERE client_id = $1 AND status IS DISTINCT FROM $2 AND status IS DISTINCT FROM 'Removed'`,
-    [clientId, "Pending Removal"]
+/** The approved round can only act on a client that ALREADY exists in its org.
+ * Never call resolveClient here: its email fallback creates customer records,
+ * and an explicit clientId can patch contact data before checking the org. */
+export async function existingRoundClient(db, event) {
+  if (!db?.query || !event?.orgId) return null;
+  if (event.clientId) {
+    const result = await db.query(
+      `SELECT id FROM clients WHERE id = $1 AND org_id = $2 LIMIT 1`,
+      [event.clientId, event.orgId]
+    );
+    return result.rows[0]?.id || null;
+  }
+  const email = String(event.payload?.email || "").trim().toLowerCase();
+  if (!email) return null;
+  const result = await db.query(
+    `SELECT id FROM clients WHERE org_id = $1 AND lower(email) = $2 LIMIT 1`,
+    [event.orgId, email]
   );
-  return { updated: r.rowCount ?? 0 };
+  return result.rows[0]?.id || null;
+}
+
+export async function markPendingRemoval(db, { orgId, clientId }) {
+  const result = await db.query(
+    `UPDATE inquiry_log
+        SET status = 'Pending Removal'
+      WHERE org_id = $1 AND client_id = $2
+        AND status IS DISTINCT FROM 'Pending Removal'
+        AND is_open = true
+        AND confirmed_at IS NULL
+        AND COALESCE(status, '') !~* '(^|[^[:alpha:]])(removed|confirmed|deleted|cleared)([^[:alpha:]]|$)'`,
+    [orgId, clientId]
+  );
+  return { updated: result.rowCount ?? 0 };
 }
 
 export async function handle({ event, db, step }) {
-  const clientId = await step.run("resolve-client", () => resolveClient(db, event));
+  if (!event?.orgId) return { done: false, reason: "missing_org" };
+  const clientId = await step.run("resolve-existing-client", () => existingRoundClient(db, event));
   if (!clientId) return { done: false, reason: "no_client" };
-
-  const result = await step.run("mark-pending-removal", () => markPendingRemoval(db, clientId));
+  const result = await step.run("mark-pending-removal", () =>
+    markPendingRemoval(db, { orgId: event.orgId, clientId }));
   return { done: true, ...result };
 }
 
