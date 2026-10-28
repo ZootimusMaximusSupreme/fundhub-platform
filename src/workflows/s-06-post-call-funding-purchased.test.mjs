@@ -81,3 +81,19 @@ test("unpaid or non-funding deposit cannot tag, assign or alter the client", asy
     assert.deepEqual(db.clients[0].custom_fields, {});
   }
 });
+
+test("deposit.paid from another organization cannot mutate or assign a foreign client", async () => {
+  const db = pgFake({ clients: [{
+    id: "cl-1", org_id: "org-1", email: "a@b.com",
+    outcome_tier: "FULL_FUNDING", tags: ["client:repair"],
+    custom_fields: { lifecycle_status: "Original" }
+  }] });
+  const result = await handle({
+    event: ev("deposit.paid", {}, { orgId: "org-2", clientId: "cl-1" }),
+    db, step: fakeStep()
+  });
+  assert.deepEqual(result, { done: false, reason: "no_client" });
+  assert.equal(db.tasks.length, 0);
+  assert.deepEqual(db.clients[0].tags, ["client:repair"]);
+  assert.deepEqual(db.clients[0].custom_fields, { lifecycle_status: "Original" });
+});
