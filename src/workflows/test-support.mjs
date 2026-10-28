@@ -108,7 +108,7 @@ export function pgFake(seed = {}) {
       }
       // Funding handoff must resolve an EXISTING customer in the triggering
       // organization; matching an arbitrary id/email from another org is unsafe.
-      if (/SELECT id FROM clients WHERE id = \\$1 AND org_id = \\$2/.test(sql)) {
+      if (/SELECT id FROM clients WHERE id = \$1 AND org_id = \$2/.test(sql)) {
         const c = clients.find((c) => c.id === params[0] && c.org_id === params[1]);
         return { rows: c ? [{ id: c.id }] : [] };
       }
