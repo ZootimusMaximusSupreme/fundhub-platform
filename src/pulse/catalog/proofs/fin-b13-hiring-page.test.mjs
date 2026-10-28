@@ -119,9 +119,11 @@ function makeApi(state) {
       return { ok: true, items: state.funnel(Object.fromEntries(url.searchParams)) };
     }
     if (p === "/api/hiring/application") {
-      state.applicationReads.push(url.searchParams.get("id"));
-      const found = state.apps.find((a) => a.application_id === url.searchParams.get("id"));
-      return { ok: true, ...found, answers: { why: "Wants the work" }, video_url: null, scores: [], interviews: [], decisions: [] };
+      const appId = url.searchParams.get("id");
+      state.applicationReads.push(appId);
+      if (state.applicationWaits?.[appId]) await state.applicationWaits[appId];
+      const found = state.apps.find((a) => a.application_id === appId);
+      return { ok: true, ...found, answers: found.answers || { why: "Wants the work" }, video_url: null, scores: [], interviews: [], decisions: [] };
     }
     if (p === "/api/hiring/decide") {
       state.decides.push(JSON.parse(request.postData() || "{}"));
@@ -499,12 +501,61 @@ test("a card and a waiting-on-a-person row (click or Enter) open that candidate'
     assert.equal(await page.locator("#drawer").getAttribute("aria-hidden"), "false");
     await drawerOff();
   }
-  // Space opens it too, and the application read is for the person opened.
+  // Space opens it too, and the full application is fetched asynchronously.
+  // Wait for that exact request: titleIs only waits for the synchronous drawer header,
+  // so reading the last API call immediately can race with the intercepted response.
+  const readsBeforeSpace = state.applicationReads.filter((id) => id === secondId).length;
   await rowOf(byId.get(secondId)).focus();
+  const spaceRead = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return url.pathname === "/api/hiring/application" && url.searchParams.get("id") === secondId;
+  }, { timeout: 15_000 });
   await page.keyboard.press(" ");
+  await spaceRead;
   await titleIs(byId.get(secondId).full_name);
-  assert.equal(state.applicationReads.at(-1), secondId);
+  assert.ok(
+    state.applicationReads.filter((id) => id === secondId).length > readsBeforeSpace,
+    "Space must fetch the opened candidate's application"
+  );
   await page.close();
+});
+
+test("a late application response cannot replace another candidate with the same displayed name", { timeout: 120_000 }, async () => {
+  const first = candidate("Jordan Rivers", "setter", "social", "applied", {
+    answers: { why: "OLDER-APPLICANT-PRIVATE-ANSWER" }
+  });
+  const second = candidate("Jordan Rivers", "closer", "ads", "screening", {
+    answers: { why: "CURRENT-APPLICANT-CORRECT-ANSWER" }
+  });
+  let releaseOlder;
+  const holdOlder = new Promise((resolve) => { releaseOlder = resolve; });
+  const state = freshState({ apps: [first, second], applicationWaits: { [first.application_id]: holdOlder } });
+  const page = await openHiring(lab, state);
+  const isApplication = (resource, id) => {
+    const url = new URL(resource.url());
+    return url.pathname === "/api/hiring/application" && url.searchParams.get("id") === id;
+  };
+  try {
+    const firstRequest = page.waitForRequest((request) => isApplication(request, first.application_id));
+    await page.locator(`#board .ccard[data-app="${first.application_id}"]`).click();
+    await firstRequest; // full response remains pending
+    await page.locator("#dwClose").click();
+    await page.locator(`#board .ccard[data-app="${second.application_id}"]`).click();
+    await page.locator("#dwBody").getByText("CURRENT-APPLICANT-CORRECT-ANSWER").waitFor();
+    assert.equal(await text(page, "#dwTitle"), "Jordan Rivers");
+
+    // Release the older response only after the correct second applicant is shown.
+    const staleResponse = page.waitForResponse((response) => isApplication(response, first.application_id));
+    releaseOlder();
+    await staleResponse;
+    await page.waitForTimeout(75); // flush the incoming JSON and drawer render microtasks
+    assert.match(await text(page, "#dwBody"), /CURRENT-APPLICANT-CORRECT-ANSWER/);
+    assert.doesNotMatch(await text(page, "#dwBody"), /OLDER-APPLICANT-PRIVATE-ANSWER/);
+    assert.match(await text(page, "#dwSub"), new RegExp(second.application_id));
+  } finally {
+    releaseOlder();
+    await page.close();
+  }
 });
 
 test("drawer closes from the X button, a click on the scrim, and the Escape key", { timeout: 120_000 }, async () => {
