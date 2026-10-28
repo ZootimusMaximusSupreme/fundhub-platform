@@ -146,8 +146,10 @@ function normalizeAttachments(list) {
 async function resolveTarget(db, { orgId, conversationId, clientId, channel }) {
   if (conversationId) {
     const r = await db.query(
-      `SELECT id, client_id, channel FROM conversations
-        WHERE id = $1 AND org_id = $2 LIMIT 1`,
+      `SELECT cv.id, cv.client_id, cv.channel
+         FROM conversations cv
+         JOIN clients c ON c.id = cv.client_id AND c.org_id = cv.org_id
+        WHERE cv.id = $1 AND cv.org_id = $2 LIMIT 1`,
       [conversationId, orgId]
     );
     const convo = r.rows[0];
