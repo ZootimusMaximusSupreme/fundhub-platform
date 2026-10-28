@@ -19,7 +19,9 @@ import { isFundingSuccessFeeInvoice } from "./success-fee-source.mjs";
 import { createTask } from "../lib/create-task.mjs";
 import { withTransaction } from "../db/with-transaction.mjs";
 
-const OPEN = ["draft", "sent", "reminded", "escalated", "partially_paid"];
+// Only issued invoices are collectible. A receipt naming a draft must go to
+// human review instead of silently paying a bill the customer was never sent.
+const OPEN = ["sent", "reminded", "escalated", "partially_paid"];
 const SOURCE = "ar-allocate";
 
 /** Convert a known dollar amount to cents. NULL / blank stays NULL. */
