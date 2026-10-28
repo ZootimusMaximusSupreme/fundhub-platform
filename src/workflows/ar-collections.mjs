@@ -169,7 +169,10 @@ async function chase({ event, db, step, env, createLink, retireLink }) {
   const payload = event.payload || {};
   const invoiceId = payload.invoiceId || payload.invoice_id;
   if (!invoiceId) return { done: false, reason: "no_invoice_id" };
-  const clientId = await step.run("resolve-client", () => resolveClient(db, event));
+  // invoice.sent is emitted by announceInvoice()/recovery with the canonical
+  // clientId. Do not run resolveClient() here: it may CREATE or PATCH a CRM
+  // contact from event metadata before invoice ownership is validated.
+  const clientId = event.clientId || null;
   if (!clientId) return { done: false, reason: "no_client" };
 
   const orgId = event.orgId;
