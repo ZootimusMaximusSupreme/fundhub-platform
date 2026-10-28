@@ -110,6 +110,11 @@ export async function performSetterSendAction({
   const sameStaff = String(setterId) === String(closerId);
   const closer = sameStaff ? staff : await staffRow(db, orgId, closerId);
   if (!closer) throw new Error("closer staff record is missing");
+  // A former staff member may remain linked to an old booking. Never send the
+  // customer's problem, funding goal, or appointment to their phone number.
+  if (!sameStaff && String(closer.status || "").toLowerCase() !== "active") {
+    throw new Error("closer staff assignment is not active");
+  }
   const key = `${clientId}:${clean(client.booking_time || client.booked_at || "current")}`;
 
   if (action === "send_intro_video") {
