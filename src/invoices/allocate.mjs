@@ -15,6 +15,7 @@
 
 import { toCents, fromCents } from "../commissions/money.mjs";
 import { getInvoice, markPaid, announceInvoice } from "./index.mjs";
+import { isFundingSuccessFeeInvoice } from "./success-fee-source.mjs";
 import { createTask } from "../lib/create-task.mjs";
 import { withTransaction } from "../db/with-transaction.mjs";
 
@@ -187,6 +188,13 @@ export async function allocatePayment(db, event) {
   const hintedId = payload.invoiceId || payload.invoice_id || null;
   const roundId = payload.fundingRoundId || payload.funding_round_id || null;
 
+  // Deposit and diagnostic receipts never pay a funding success fee, even if
+  // their webhook accidentally carries a stale invoice identifier.
+  if (["deposit", "diagnostic"].includes(String(payload.purpose || "").toLowerCase()) ||
+      ["deposit", "diagnostic"].includes(String(payload.product || "").toLowerCase())) {
+    return { done: true, skipped: true, reason: "not_invoice_payment" };
+  }
+
   if (orgId && providerPaymentId) {
     const prior = await alreadyRecorded(db, { orgId, providerPaymentId });
     if (prior) return replayRecordedPayment(db, prior);
@@ -244,6 +252,23 @@ export async function allocatePayment(db, event) {
     return { done: true, allocated: false, reason: "unresolved", path: "unresolved" };
   }
 
+  // This allocator owns *only* funding success fees. A payment that names a
+  // repair, DIY, deposit or other invoice must not write a success-fee receipt.
+  if (!isFundingSuccessFeeInvoice(invoice)) {
+    const likelySuccessFee = payload.product === "success_fee" || !!roundId;
+    if (likelySuccessFee) {
+      await staffTask(db, {
+        orgId, clientId, eventId: event.id,
+        title: "Unallocated payment — invoice is not a funding success fee",
+        body: providerPaymentId ? `invoice-type:${providerPaymentId}` : event.id
+      });
+    }
+    return {
+      done: true, allocated: false, skipped: !likelySuccessFee,
+      reason: "not_success_fee_invoice", invoiceId: invoice.id, path: "unresolved"
+    };
+  }
+
   const identityMismatch = !orgId || String(invoice.org_id) !== String(orgId)
     || (clientId && String(invoice.client_id) !== String(clientId))
     || (roundId && String(invoice.funding_round_id || "") !== String(roundId))
@@ -284,6 +309,7 @@ export async function allocatePayment(db, event) {
     if (!locked || !OPEN.includes(String(locked.status || ""))) {
       return { reason: "invoice_unavailable" };
     }
+    if (!isFundingSuccessFeeInvoice(locked)) return { reason: "invoice_kind_mismatch" };
     if (String(locked.org_id) !== String(orgId)
       || (clientId && String(locked.client_id) !== String(clientId))
       || (roundId && String(locked.funding_round_id || "") !== String(roundId))) {
