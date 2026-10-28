@@ -363,6 +363,10 @@ export async function fillMeetingUrl(db, { orgId, clientId = null, providerUid =
     `UPDATE bookings
         SET meeting_url = $5, updated_at = now()
       WHERE org_id = $1
+        -- A delayed lookup for the OLD slot must not fill a rescheduled row,
+        -- even when the provider UID is unchanged. Client/time fallback
+        -- handles the form-id -> appointment-id promotion separately.
+        AND ($4::timestamptz IS NULL OR starts_at = $4::timestamptz)
         AND (($2::text IS NOT NULL AND provider_uid = $2::text)
              OR ($3::uuid IS NOT NULL AND $4::timestamptz IS NOT NULL
                  AND client_id = $3::uuid AND starts_at = $4::timestamptz))
@@ -378,9 +382,12 @@ export async function fillMeetingUrl(db, { orgId, clientId = null, providerUid =
       `UPDATE tasks
           SET meeting_url = $3, updated_at = now()
         WHERE org_id = $4 AND client_id = $1 AND body = ANY($2::text[])
+          -- Even if the booking UID still matches, the closer's task may now
+          -- be due at a different slot after a reschedule.
+          AND ($5::timestamptz IS NULL OR due_at = $5::timestamptz)
           AND btrim(COALESCE(meeting_url, '')) = ''
         RETURNING id`,
-      [clientId, uids, link, orgId]
+      [clientId, uids, link, orgId, start]
     );
     tasks = ((t && t.rows) || []).length;
   }
