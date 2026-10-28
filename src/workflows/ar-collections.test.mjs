@@ -745,3 +745,143 @@ test("AR: replaying the run does not stack a second handoff task", async () => {
   const tasks = (db.tasks || []).filter((t) => t.source_workflow === AR_04_SOURCE_WORKFLOW);
   assert.equal(tasks.length, 1, "a replay must find the existing task, not open a second");
 });
+
+
+test("AR security: an invoice.sent envelope cannot turn a DIY invoice into a success-fee demand", async () => {
+  const db = pgFake({
+    clients: [{ id: "cl-1", org_id: "org-1", email: "one@example.com", custom_fields: {} }],
+    templates: templates(),
+    invoices: [openInvoice({ source: "diy_letters", invoice_type: "deposit" })]
+  });
+  const result = await handle({
+    event: ev("invoice.sent", { invoiceId: "inv-1", source: "funding_success_fee", invoice_type: "success_fee" }, { clientId: "cl-1" }),
+    db, step: fakeStep()
+  });
+  assert.equal(result.reason, "not_success_fee");
+  assert.equal(db.messages.length, 0);
+  assert.equal(db.paymentLinks.length, 0);
+  assert.equal(db.tasks.length, 0);
+});
+
+test("AR security: notices never target the wrong customer within one organization", async () => {
+  const db = pgFake({
+    clients: [
+      { id: "cl-1", org_id: "org-1", email: "one@example.com", custom_fields: {} },
+      { id: "cl-2", org_id: "org-1", email: "two@example.com", custom_fields: {} }
+    ],
+    templates: templates(),
+    invoices: [openInvoice({ client_id: "cl-2" })]
+  });
+  const result = await handle({
+    event: ev("invoice.sent", { invoiceId: "inv-1", source: "funding_success_fee" }, { clientId: "cl-1" }),
+    db, step: fakeStep()
+  });
+  assert.equal(result.reason, "invoice_identity_mismatch");
+  assert.equal(db.messages.length, 0);
+  assert.equal(db.paymentLinks.length, 0);
+});
+
+test("AR security: a different organization's invoice cannot be chased", async () => {
+  const db = pgFake({
+    clients: [{ id: "cl-1", org_id: "org-1", email: "one@example.com", custom_fields: {} }],
+    templates: templates(),
+    invoices: [openInvoice({ org_id: "org-2" })]
+  });
+  const result = await handle({
+    event: ev("invoice.sent", { invoiceId: "inv-1", source: "funding_success_fee" }, { clientId: "cl-1" }),
+    db, step: fakeStep()
+  });
+  assert.equal(result.reason, "invoice_identity_mismatch");
+  assert.equal(db.messages.length, 0);
+  assert.equal(db.paymentLinks.length, 0);
+});
+
+test("AR security: each delayed notice rechecks the invoice's canonical source", async () => {
+  const db = pgFake({
+    clients: [{ id: "cl-1", org_id: "org-1", email: "one@example.com", custom_fields: {} }],
+    templates: templates(),
+    invoices: [openInvoice()]
+  });
+  const step = {
+    run: async (name, fn) => {
+      const result = await fn();
+      if (name === "send-ar-01") db.invoices[0].source = "diy_letters";
+      return result;
+    },
+    sleep: async () => {}
+  };
+  const result = await handle({
+    event: ev("invoice.sent", { invoiceId: "inv-1", source: "funding_success_fee" }, { clientId: "cl-1" }),
+    db, step
+  });
+  assert.equal(result.stoppedAt, "before-ar-02");
+  assert.equal(result.second.reason, "not_success_fee");
+  assert.equal(db.messages.length, 2, "later notices cannot leak after source changed");
+  assert.equal(db.tasks.length, 0, "no collections escalation on a reclassified invoice");
+});
+
+test("AR security: notice number comes from the invoice, not the event envelope", async () => {
+  const db = pgFake({
+    clients: [{ id: "cl-1", org_id: "org-1", email: "one@example.com", custom_fields: {} }],
+    templates: templates(),
+    invoices: [openInvoice()]
+  });
+  await handle({
+    event: ev("invoice.sent", { invoiceId: "inv-1", source: "funding_success_fee", invoice_number: "INV-SPOOFED" }, { clientId: "cl-1" }),
+    db, step: fakeStep()
+  });
+  assert.match(db.messages[0].rendered_body, /INV-INV1/);
+  assert.doesNotMatch(db.messages[0].rendered_body, /SPOOFED/);
+});
+
+test("AR security: a deposit with a stale success-fee invoice ID never settles that bill", async () => {
+  const db = pgFake({
+    clients: [{ id: "cl-1", org_id: "org-1", email: "one@example.com", custom_fields: {} }],
+    invoices: [openInvoice({ amount_due: 900 })]
+  });
+  const result = await handle({
+    event: ev("payment.received", {
+      invoiceId: "inv-1", product: "deposit", purpose: "deposit", amount: 900, paymentId: "deposit-1"
+    }, { clientId: "cl-1" }),
+    db, step: fakeStep()
+  });
+  assert.equal(result.skipped, true);
+  assert.equal(result.reason, "not_invoice_payment");
+  assert.equal(db.invoicePayments.length, 0);
+  assert.equal(db.invoices[0].status, "sent");
+});
+
+test("AR security: a payment carrying a DIY invoice ID never records a success-fee receipt", async () => {
+  const db = pgFake({
+    clients: [{ id: "cl-1", org_id: "org-1", email: "one@example.com", custom_fields: {} }],
+    invoices: [openInvoice({ source: "diy_letters", invoice_type: "deposit" })]
+  });
+  const result = await handle({
+    event: ev("payment.received", {
+      invoiceId: "inv-1", product: "diy_letters", amount: 1250, paymentId: "diy-1"
+    }, { clientId: "cl-1" }),
+    db, step: fakeStep()
+  });
+  assert.equal(result.reason, "not_success_fee_invoice");
+  assert.equal(result.skipped, true);
+  assert.equal(db.invoicePayments.length, 0);
+  assert.equal(db.invoices[0].status, "sent");
+});
+
+test("AR security: a supposed success fee naming a DIY invoice leaves review work, not a false settlement", async () => {
+  const db = pgFake({
+    clients: [{ id: "cl-1", org_id: "org-1", email: "one@example.com", custom_fields: {} }],
+    invoices: [openInvoice({ source: "diy_letters", invoice_type: "deposit" })]
+  });
+  const result = await handle({
+    event: ev("payment.received", {
+      invoiceId: "inv-1", product: "success_fee", amount: 1250, paymentId: "wrong-bill-1"
+    }, { clientId: "cl-1" }),
+    db, step: fakeStep()
+  });
+  assert.equal(result.allocated, false);
+  assert.equal(result.reason, "not_success_fee_invoice");
+  assert.equal(db.invoicePayments.length, 0);
+  assert.equal(db.invoices[0].status, "sent");
+  assert.equal(db.tasks.length, 1, "unmatched money must reach a person");
+});
