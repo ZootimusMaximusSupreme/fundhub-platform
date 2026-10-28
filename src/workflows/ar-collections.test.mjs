@@ -885,3 +885,21 @@ test("AR security: a supposed success fee naming a DIY invoice leaves review wor
   assert.equal(db.invoices[0].status, "sent");
   assert.equal(db.tasks.length, 1, "unmatched money must reach a person");
 });
+
+test("AR security: missing canonical invoice client never creates a CRM contact from envelope email", async () => {
+  const db = pgFake({
+    clients: [],
+    templates: templates(),
+    invoices: [openInvoice()]
+  });
+  const result = await handle({
+    event: ev("invoice.sent", {
+      invoiceId: "inv-1", source: "funding_success_fee", email: "spoof+ar@example.com"
+    }),
+    db, step: fakeStep()
+  });
+  assert.equal(result.reason, "no_client");
+  assert.equal(db.clients.length, 0);
+  assert.equal(db.messages.length, 0);
+  assert.equal(db.paymentLinks.length, 0);
+});
