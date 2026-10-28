@@ -152,6 +152,10 @@ test("the four L3 contracts exercise the promised final result", { timeout: 120_
         }
         if (/FROM tasks t/.test(sql)) {
           assert.match(sql, /t\.assignee_staff_id = \$2/);
+          if (/SELECT count\(\*\)::int AS n/.test(sql)) {
+            assert.match(sql, /NOT EXISTS/);
+            return { rows: [{ n: 1 }] };
+          }
           return { rows: [{
             task_id: TASK_ID,
             client_id: CLIENT_ID,

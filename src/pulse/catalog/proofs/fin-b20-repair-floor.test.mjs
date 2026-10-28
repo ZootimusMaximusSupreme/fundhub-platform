@@ -25,6 +25,12 @@ function floorDb({ tasks = [], unrecorded = [] } = {}) {
   return {
     async query(sql) {
       const s = String(sql);
+      // The KPI now counts every overdue task with a separate aggregate read;
+      // the table still receives its capped task rows. Both derive from the
+      // same synthetic fixture without touching a database.
+      if (/SELECT\s+count\(\*\)::int\s+AS\s+n/i.test(s) && /FROM tasks t/.test(s)) {
+        return { rows: [{ n: tasks.length }] };
+      }
       if (/FROM tasks t/.test(s) && /assignee_role = 'closer'/.test(s)) return { rows: tasks };
       // Count queries return one aggregate row; the detail query returns the
       // capped list. Keep both sourced from the same fake call outcomes.

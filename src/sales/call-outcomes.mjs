@@ -312,9 +312,36 @@ export async function listUnloggedCalls(db, { orgId, staffId = null, limit = 50 
   return r.rows;
 }
 
+/** Count the complete overdue queue, independently of the UI list limit.
+ * listUnloggedCalls intentionally caps its returned rows at 200; using its
+ * length for a KPI silently undercounts busy teams. Keep both filters aligned.
+ */
 export async function countUnlogged(db, { orgId, staffId = null } = {}) {
-  const rows = await listUnloggedCalls(db, { orgId, staffId, limit: 500 });
-  return rows.length;
+  if (!orgId) throw new CallOutcomeError("orgId is required", { status: 403 });
+  const params = [orgId];
+  let staffClause = "";
+  if (staffId) {
+    params.push(staffId);
+    staffClause = `AND (t.assignee_staff_id = $2 OR t.assignee_staff_id IS NULL)`;
+  }
+  params.push(BOOKING_TASK_TITLE_LIKE);
+  const titleParam = `$${params.length}`;
+  const r = await db.query(
+    `SELECT count(*)::int AS n
+       FROM tasks t
+      WHERE t.org_id = $1
+        AND t.assignee_role = 'closer'
+        AND t.title LIKE ${titleParam}
+        AND t.due_at IS NOT NULL
+        AND t.due_at < now()
+        AND NOT EXISTS (
+          SELECT 1 FROM call_outcomes o
+           WHERE o.task_id = t.id AND o.org_id = t.org_id
+        )
+        ${staffClause}`,
+    params
+  );
+  return Number(r.rows[0]?.n || 0);
 }
 
 export function presentOutcome(row) {
