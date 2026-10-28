@@ -229,7 +229,9 @@ test("compose: a same-org thread pointing to a foreign client is not replyable",
   // A conversation has a client FK, but the schema does not enforce a matching
   // client org. This intentionally malformed scratch row must not be sendable.
   const misbound = (await db.query(
-    `INSERT INTO conversations (org_id, client_id, channel) VALUES ($1,$2,'sms') RETURNING id`,
+    // Existing foreign-org SMS thread already uses (client_id, channel);
+    // choose a different channel so the fixture reaches the org-binding guard.
+    `INSERT INTO conversations (org_id, client_id, channel) VALUES ($1,$2,'email') RETURNING id`,
     [orgId, otherClientId])).rows[0].id;
 
   await assert.rejects(
