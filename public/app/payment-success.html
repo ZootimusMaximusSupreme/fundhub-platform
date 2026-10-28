@@ -90,6 +90,7 @@ h1{font-size:var(--fs-title);font-weight:800;letter-spacing:-.03em;margin:12px 0
   var UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   var MAX_TRIES = 6;
   var GAP_MS = 3000;
+  var READ_TIMEOUT_MS = 8000;  // A stalled account read must not leave checkout stuck forever.
 
   var stateEl = document.getElementById("state");
   var refEl = document.getElementById("refline");
@@ -304,18 +305,19 @@ h1{font-size:var(--fs-title);font-weight:800;letter-spacing:-.03em;margin:12px 0
   function check() {
     tries++;
     showChecking(tries);
-    var started;
-    try {
-      started = fetch(readUrl(), { headers: headers(), credentials: "same-origin" });
-    } catch (e) {
-      retryOrStop(showUnreachable);
-      return;
-    }
-    Promise.resolve(started).then(function (r) {
-      return r.json().catch(function () { return null; }).then(function (b) {
-        return { status: r.status, body: b };
-      });
-    }).then(function (res) {
+    var controller = typeof AbortController === "function" ? new AbortController() : null;
+    var watchdog = null;
+    var finished = false;
+
+    /* A network read can hang without replying or throwing. Finish each read
+       exactly once even if the timeout and provider response race. Without this
+       the six-attempt limit did not apply to a request that stayed pending. */
+    function finish(res) {
+      if (finished) return;
+      finished = true;
+      if (watchdog !== null) clearTimeout(watchdog);
+      if (!res) { retryOrStop(showUnreachable); return; }
+
       /* 401 is "sign in", 403 is "this session may not read that". Neither
          changes by asking again, so stop rather than spend the budget. */
       if (res.status === 401 || res.status === 403) { showSignedOut(); return; }
@@ -324,12 +326,27 @@ h1{font-size:var(--fs-title);font-weight:800;letter-spacing:-.03em;margin:12px 0
         handle(res.body.items);
         return;
       }
-      /* Anything else — a 500, or the database saying it is down — is a read
-         that did not come back. Retry inside the budget, then say so. */
       retryOrStop(showUnreachable);
-    }).catch(function () {
-      retryOrStop(showUnreachable);
-    });
+    }
+
+    var started;
+    try {
+      var options = { headers: headers(), credentials: "same-origin" };
+      if (controller) options.signal = controller.signal;
+      started = fetch(readUrl(), options);
+    } catch (e) {
+      finish(null);
+      return;
+    }
+    watchdog = setTimeout(function () {
+      if (controller) controller.abort();
+      finish(null);
+    }, READ_TIMEOUT_MS);
+    Promise.resolve(started).then(function (r) {
+      return r.json().catch(function () { return null; }).then(function (b) {
+        return { status: r.status, body: b };
+      });
+    }).then(finish, function () { finish(null); });
   }
 
   function start() {
