@@ -468,6 +468,17 @@ describe("/api/bookings + bookings store", { skip: !HAVE_DB ? "no DATABASE_URL" 
       "closer Join kept the previous slot's Meet URL after rescheduling");
     assert.equal(new Date((await tasks())[0].due_at).toISOString(), "2026-09-16T18:00:00.000Z");
 
+    // A slow 2-minute lookup launched BEFORE the move may finish afterward.
+    // The old provider UID still matches, but its old slot must not repaint
+    // either the booking or closer task with the previous Meet room.
+    const stale = await fillMeetingUrl(db, {
+      orgId: orgA, clientId: clientA, providerUid: uid, startsAt: firstTime, url: firstLink
+    });
+    assert.deepEqual(stale, { bookings: 0, tasks: 0 },
+      "old-slot calendar lookup wrote a stale room onto the rescheduled call");
+    assert.equal((await booking()).meeting_url, null);
+    assert.equal((await tasks())[0].meeting_url, null);
+
     const filled = await fillMeetingUrl(db, {
       orgId: orgA, clientId: clientA, providerUid: uid, startsAt: movedTime, url: newLink
     });
