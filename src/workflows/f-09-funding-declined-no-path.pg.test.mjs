@@ -11,7 +11,7 @@ let safe = false;
 try {
   const u = new URL(connectionString);
   safe = ["localhost", "127.0.0.1", "::1", "[::1]"].includes(u.hostname)
-    && /(?:test|scratch|_ci)(?:\\b|_)/i.test(u.pathname);
+    && /(?:test|scratch|_ci)(?:\b|_)/i.test(u.pathname);
 } catch { /* never touch production or unknown endpoints */ }
 const pool = safe ? new pg.Pool({ connectionString, max: 1, connectionTimeoutMillis: 5000 }) : null;
 after(async () => { if (pool) await pool.end(); });

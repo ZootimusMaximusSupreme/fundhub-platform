@@ -30,8 +30,7 @@ const TASK_TITLE = "Funding no-path decision";
 export async function denialDecision(db, { orgId, clientId } = {}) {
   if (!orgId || !clientId) return { ok: false, reason: "missing_ids", roundId: null };
   const roundRow = await db.query(
-    `SELECT id FROM funding_rounds
-       WHERE client_id = $1 AND org_id = $2
+    `SELECT id FROM funding_rounds WHERE client_id = $1 AND org_id = $2
        ORDER BY round_number DESC LIMIT 1`,
     [clientId, orgId]
   );
@@ -39,8 +38,7 @@ export async function denialDecision(db, { orgId, clientId } = {}) {
   if (!roundId) return { ok: false, reason: "no_funding_round", roundId: null };
 
   const apps = await db.query(
-    `SELECT status FROM applications
-      WHERE funding_round_id = $1 AND org_id = $2`,
+    `SELECT status FROM applications WHERE funding_round_id = $1 AND org_id = $2`,
     [roundId, orgId]
   );
   if (!apps.rows.length) return { ok: false, reason: "no_tracked_applications", roundId };
