@@ -31,6 +31,16 @@ test("a saver's fixed word is replaced by the step the control panel shows", asy
 test("S-06 on #8's shape: the late deposit no longer saves 'Pull CRS' over 'Remove Inquiries'", async () => {
   const inner = pgFake({ clients: [eight()] });
   const db = withPanelReads(inner, () => ({ realCrs: 1, inquiryCases: [OPEN_CASE] }));
+  // A deposit event by itself is not proof that funding was purchased.
+  // This test is about the saved next step AFTER a verified paid funding sale.
+  const originalQuery = db.query.bind(db);
+  db.query = async (sql, params) => {
+    if (String(sql).includes("SELECT DISTINCT pr.category AS category")) {
+      assert.deepEqual(params, ["org-1", "cl-8"]);
+      return { rows: [{ category: "funding" }] };
+    }
+    return originalQuery(sql, params);
+  };
 
   const res = await s06({ event: ev("deposit.paid", {}, { clientId: "cl-8" }), db, step: fakeStep() });
 
