@@ -109,8 +109,17 @@ function bail(event, reason, extra = "") {
    wrong here — this handler runs after it, so the client already exists, and
    inventing one on a stray payment would put a phantom on a board. */
 export async function findClient(db, event) {
-  if (event?.clientId) return event.clientId;
   const orgId = event?.orgId;
+  if (!orgId) return null;
+  // A webhook's clientId is a locator, not proof this organization owns it.
+  // Reject foreign-company IDs before reading sales or placing any task/card.
+  if (event?.clientId) {
+    const owned = await db.query(
+      `SELECT id FROM clients WHERE id = $1 AND org_id = $2 LIMIT 1`,
+      [event.clientId, orgId]
+    );
+    return owned.rows[0]?.id || null;
+  }
   const email = String(event?.payload?.email || "").trim().toLowerCase();
   if (!orgId || !email) return null;
   const r = await db.query(

@@ -514,6 +514,20 @@ describe("purchase-routing", { skip: !HAS_DB ? "no DATABASE_URL" : false }, () =
     assert.equal(after.rows[0].n, 0);
   });
 
+  test("a payment event cannot route another organization's client ID", async () => {
+    const c = await seedClient("foreign-event");
+    const otherOrg = "00000000-0000-4000-8000-0000000000aa";
+    assert.notEqual(otherOrg, org);
+    const out = await onPurchaseRoute(
+      { id: null, name: "payment.received", orgId: otherOrg, clientId: c.id,
+        payload: { email: c.email } }, db
+    );
+    assert.equal(out.routed, false);
+    assert.equal(out.reason, "no_client", "the foreign client ID must be refused at identity lookup");
+    assert.equal(await cardStage(c.id, FUNDING_PIPELINE), null);
+    assert.equal(await cardStage(c.id, REPAIR_PIPELINE), null);
+  });
+
   test("no client: a named no-op, and no client is invented", async () => {
     const stranger = `${MARK}.never-seen@example.com`;
     const out = await onPurchaseRoute(
