@@ -89,14 +89,25 @@ export async function createWelcomeKitTaskForPurchase(db, {
     ...WELCOME_KIT_CHECKLIST.map((item) => `- ${item}`),
     `Funding snapshot: ${numbers ? JSON.stringify(numbers) : "not available — verify before printing the personalized one-pager"}`
   ].join("\n");
-  return createTask(db, {
+  const spec = {
     orgId,
     clientId,
     title: "Ship Capital Blueprint welcome kit",
     sourceWorkflow: WELCOME_KIT_SOURCE,
     assigneeRole: "funding_advisor",
     eventId,
-    dedupeOn: "title",
-    detail
-  }).catch((err) => ({ created: false, reason: String(err?.message || err) }));
+    dedupeOn: "title"
+  };
+  try {
+    return await createTask(db, { ...spec, detail });
+  } catch (err) {
+    // The original kit task did not require the tasks.detail migration.
+    // In a partially migrated preview, keep the stable handoff task rather
+    // than silently dropping the paid client's shipment.
+    if (err?.code === "42703") {
+      return createTask(db, spec)
+        .catch((fallbackErr) => ({ created: false, reason: String(fallbackErr?.message || fallbackErr) }));
+    }
+    return { created: false, reason: String(err?.message || err) };
+  }
 }
