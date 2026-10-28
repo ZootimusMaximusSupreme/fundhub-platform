@@ -539,6 +539,7 @@ test("a late application response cannot replace another candidate with the same
     const firstRequest = page.waitForRequest((request) => isApplication(request, first.application_id));
     await page.locator(`#board .ccard[data-app="${first.application_id}"]`).click();
     await firstRequest; // full response remains pending
+    await page.locator("#dwClose").click();
     await page.locator(`#board .ccard[data-app="${second.application_id}"]`).click();
     await page.locator("#dwBody").getByText("CURRENT-APPLICANT-CORRECT-ANSWER").waitFor();
     assert.equal(await text(page, "#dwTitle"), "Jordan Rivers");
