@@ -75,3 +75,22 @@ test("an inactive closer also blocks the intro-video action before any send", as
   );
   assert.equal(sends, 0);
 });
+
+for (const phone of [null, "", "5551231234", "+0123456789"]) {
+  test(`a closer with a malformed phone (${String(phone)}) causes zero partial handoff sends`, async () => {
+    let sends = 0;
+    const db = { query: async () => ({
+      rows: [{ id: "active-closer", name: "Active Closer", phone, status: "active" }]
+    }) };
+    await assert.rejects(
+      () => performSetterSendAction({
+        action: "send_handoff", client, handoff, staff, db, orgId,
+        closerStaffId: "active-closer",
+        sendLeadImpl: async () => { sends += 1; },
+        sendCloserImpl: async () => { sends += 1; }
+      }),
+      /closer phone is missing or invalid/
+    );
+    assert.equal(sends, 0, "a bad closer number must not produce a buyer-only handoff");
+  });
+}
