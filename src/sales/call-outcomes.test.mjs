@@ -276,3 +276,69 @@ test("logCallOutcome: closer disposition is never a no-answer value", async () =
   assert.equal(payload.disposition, "closer");
   assert.equal(["no_answer", "no-answer", "voicemail"].includes(payload.disposition), false);
 });
+
+test("logCallOutcome cannot close a same-org task that belongs to another customer", async () => {
+  const org = "11111111-1111-4111-8111-111111111111";
+  const client = "22222222-2222-4222-8222-222222222222";
+  const other = "55555555-5555-4555-8555-555555555555";
+  const staff = "33333333-3333-4333-8333-333333333333";
+  const taskId = "44444444-4444-4444-8444-444444444444";
+  let inserted = 0;
+  const db = stubDb([
+    [/FROM clients/, () => ({ rows: [{ id: client, custom_fields: {} }] })],
+    [/FROM tasks/, (params, sql) => {
+      // Model PostgreSQL: without a client_id predicate, this foreign client's
+      // task would be returned because the org and task ID still match.
+      const scoped = /client_id = \$3/.test(sql);
+      const matches = params[0] === taskId && params[1] === org
+        && (!scoped || params[2] === other);
+      return { rows: matches ? [{ id: taskId, client_id: other }] : [] };
+    }],
+    [/INSERT INTO call_outcomes/, () => {
+      inserted += 1;
+      return { rows: [] };
+    }]
+  ]);
+  await assert.rejects(
+    () => logCallOutcome(db, {
+      orgId: org, clientId: client, staffId: staff, taskId, outcome: "callback"
+    }),
+    (e) => e instanceof CallOutcomeError && e.status === 404
+  );
+  const taskRead = db.calls.find((c) => /FROM tasks/.test(c.sql));
+  assert.match(taskRead.sql, /client_id = \$3/);
+  assert.deepEqual(taskRead.params, [taskId, org, client]);
+  assert.equal(inserted, 0, "never write a cross-customer call outcome");
+  assert.equal(db.calls.some((c) => /UPDATE tasks/.test(c.sql)), false,
+    "never mark the other customer's task complete");
+});
+
+test("logCallOutcome does not reuse another customer's matching booking reference", async () => {
+  const org = "11111111-1111-4111-8111-111111111111";
+  const client = "22222222-2222-4222-8222-222222222222";
+  const other = "55555555-5555-4555-8555-555555555555";
+  const staff = "33333333-3333-4333-8333-333333333333";
+  const bookingRef = "shared-booking-reference";
+  const oldOutcome = { id: "foreign-outcome", org_id: org, client_id: other, outcome: "callback" };
+  const db = stubDb([
+    [/FROM clients/, () => ({ rows: [{ id: client, custom_fields: {} }] })],
+    [/SELECT \* FROM call_outcomes/, (params, sql) => {
+      const scoped = /client_id = \$4/.test(sql);
+      return { rows: (!scoped || params[3] === other) ? [oldOutcome] : [] };
+    }],
+    [/INSERT INTO call_outcomes/, (params) => ({
+      rows: [{
+        id: "correct-outcome", org_id: org, client_id: client, staff_id: staff,
+        booking_ref: params[4], outcome: "callback", cash_collected_cents: 0
+      }]
+    })]
+  ]);
+  const result = await logCallOutcome(db, {
+    orgId: org, clientId: client, staffId: staff, bookingRef, outcome: "callback"
+  });
+  assert.equal(result.created, true, "another customer's record is never replayed");
+  assert.equal(result.row.client_id, client);
+  const lookup = db.calls.find((c) => /SELECT \* FROM call_outcomes/.test(c.sql));
+  assert.match(lookup.sql, /client_id = \$4/);
+  assert.deepEqual(lookup.params, [org, null, bookingRef, client]);
+});

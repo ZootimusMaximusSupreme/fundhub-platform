@@ -264,6 +264,7 @@ function cockpitWorld({
     [/FROM crs_results\s+WHERE client_id = \$1 AND org_id = \$2/, (sql, params) => { statements.push({ name: "crs", sql, params }); return rowsWhere(crs, sql, params); }],
     [/FROM funding_rounds fr\s+LEFT JOIN funding_closeout fc/, (sql, params) => { statements.push({ name: "closeout", sql, params }); return closeout ? [closeout] : []; }],
     [/^\s*SELECT name FROM staff WHERE id = \$1 AND org_id = \$2/, (sql, params) => { statements.push({ name: "staff", sql, params }); return [{ name: "Olive Owner" }]; }],
+    [/SELECT count\(\*\)::int AS n\s+FROM tasks t/, (sql, params) => { statements.push({ name: "unlogged_count", sql, params }); return [{ n: 0 }]; }],
     [/FROM tasks t\s+LEFT JOIN clients c ON c\.id = t\.client_id AND c\.org_id = t\.org_id\s+LEFT JOIN call_outcomes o ON o\.task_id = t\.id\s+WHERE t\.org_id = \$1\s+AND t\.assignee_role = 'closer'\s+AND \(t\.assignee_staff_id = \$2 OR t\.assignee_staff_id IS NULL\)\s+AND t\.due_at IS NOT NULL\s+AND o\.id IS NULL\s+AND \(/, (sql, params) => { statements.push({ name: "up_next", sql, params }); return upNext; }],
     [/FROM tasks nt/, (sql, params) => { statements.push({ name: "next_after", sql, params }); return nextAfter ? [nextAfter] : []; }],
   ];
@@ -325,7 +326,7 @@ test("GET read/closer-call answers the live-call payload for one client of this 
   // its closeout joined to THAT round, the client with its business and ad line joined inside the company,
   // the tasks a call list is made of (still open, no outcome yet, this closer or nobody), the join link.
   assertOnlySent(result,
-    "cockpit.client", "cockpit.shift", "cockpit.kpis", "cockpit.unlogged", "cockpit.up_next", "cockpit.stage", "cockpit.crs",
+    "cockpit.client", "cockpit.shift", "cockpit.kpis", "cockpit.unlogged", "cockpit.unlogged_count", "cockpit.up_next", "cockpit.stage", "cockpit.crs",
     "cockpit.tradelines", "cockpit.liabilities", "cockpit.businesses", "cockpit.closeout", "cockpit.conversations", "cockpit.messages",
     "cockpit.applications", "cockpit.transactions", "cockpit.templates", "cockpit.quiet_deposits", "cockpit.staff_name", "cockpit.today",
     "match.client_fields", "match.businesses", "match.addresses", "match.crs5", "match.inquiries", "match.lenders",

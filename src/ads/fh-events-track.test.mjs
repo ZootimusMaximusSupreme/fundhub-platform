@@ -422,7 +422,12 @@ describe("framed calendar relay", () => {
     p.add(frame);
     p.fireWin("message", msg("booking_confirmed", { calendar: "funding-book-call" }));
     p.fireWin("message", { ...msg("booking_confirmed", { calendar: "other" }), source: frame.contentWindow });
+    p.fireWin("message", msg("calendar_view", { calendar: "funding-book-call" }));
+    p.fireWin("message", msg("time_selected", { calendar: "funding-book-call" }));
     p.advance(500);
+    for (const event of ["booking_confirmed", "calendar_view", "time_selected"]) {
+      assert.equal(p.events(event).length, 0, event + " from another frame must not pollute live funnel stats");
+    }
     assert.equal(p.win.location.href, "https://apply.fundhub.ai/apply");
     assert.equal(p.store.fh_apply_booking_confirmed_v1, undefined);
   });

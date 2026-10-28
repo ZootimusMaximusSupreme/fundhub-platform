@@ -122,8 +122,13 @@ function pgFake() {
         const t = tasks.find((t) =>
           t.client_id === clientId && t.body === uid && likeMatches(t.title, titleLike));
         if (!t) return { rows: [] };
+        // Match the live UPDATE: a new slot invalidates the old Meet URL;
+        // a replay for the SAME slot preserves any newly discovered URL.
+        const moved = dueAt != null && (
+          t.due_at == null || new Date(dueAt).getTime() !== new Date(t.due_at).getTime()
+        );
+        t.meeting_url = moved ? (meetingUrl ?? null) : (meetingUrl ?? t.meeting_url);
         t.due_at = dueAt ?? t.due_at;
-        t.meeting_url = meetingUrl ?? t.meeting_url;
         t.title = newTitle;
         t.done = false;
         return { rows: [{ id: t.id }] };
@@ -183,8 +188,14 @@ function pgFake() {
             ? bookings.find((b) => b.org_id === org_id && b.provider_uid == null && b.__event_id === eventId)
             : null;
         if (existing) {
+          // A moved slot is the exception to COALESCE: a missing Meet URL
+          // cannot carry the previous call's link into the new appointment.
+          const moved = starts_at != null && (
+            existing.starts_at == null || new Date(starts_at).getTime() !== new Date(existing.starts_at).getTime()
+          );
+          if (moved) existing.meeting_url = meeting_url ?? null;
           // Mirrors the DO UPDATE branch: a later event that omits a field does
-          // not erase what an earlier one told us.
+          // not erase what an earlier one told us, except the moved-slot URL.
           for (const [k, v] of Object.entries({
             client_id, starts_at, ends_at, status, meeting_url,
             attendee_email, attendee_name, event_type_slug
@@ -365,6 +376,39 @@ test("booking.rescheduled: updates the existing open task's due_at + meeting_url
   assert.equal(db.tasks[0].title, "Strategy session rescheduled");
   assert.equal(db.clients[0].custom_fields.call_outcome, "rescheduled");
   assert.equal(db.clients[0].custom_fields.call_confirmed, false, "a moved call needs a fresh confirmation");
+});
+
+test("a moved call drops its old Meet link but a same-slot replay preserves the refreshed one", async () => {
+  const db = pgFake();
+  const uid = "bk-moved-meet";
+  const initial = "2026-08-12T15:00:00Z";
+  const moved = "2026-08-13T18:00:00Z";
+  const oldMeet = "https://meet.google.com/old-room";
+  const newMeet = "https://meet.google.com/new-room";
+  await onBookingCreated(ev("booking.created", {
+    email: "moved-meet@example.com", bookingUid: uid,
+    startTime: initial, meetingUrl: oldMeet, source: "clickfunnels"
+  }), db);
+  assert.equal(db.tasks[0].meeting_url, oldMeet);
+  assert.equal(db.bookings[0].meeting_url, oldMeet);
+
+  const rescheduled = ev("booking.rescheduled", {
+    clientId: db.clients[0].id, bookingUid: uid,
+    startTime: moved, meetingUrl: null, source: "clickfunnels"
+  }, { clientId: db.clients[0].id });
+  await onBookingRescheduled(rescheduled, db);
+  assert.equal(db.tasks[0].meeting_url, null, "closer Join must not open the old slot's room");
+  assert.equal(db.bookings[0].meeting_url, null, "saved booking must await new slot's calendar");
+  assert.equal(db.tasks.length, 1);
+  assert.equal(db.bookings.length, 1);
+
+  // Mimic the exact-time calendar lookup saving the new link, then provider
+  // re-delivering the same rescheduled slot without a meetingUrl field.
+  db.tasks[0].meeting_url = newMeet;
+  db.bookings[0].meeting_url = newMeet;
+  await onBookingRescheduled(rescheduled, db);
+  assert.equal(db.tasks[0].meeting_url, newMeet, "same-slot replay overwrote refreshed task URL");
+  assert.equal(db.bookings[0].meeting_url, newMeet, "same-slot replay overwrote refreshed booking URL");
 });
 
 test("booking.rescheduled: no open task found → creates one (rescheduled before created seen)", async () => {

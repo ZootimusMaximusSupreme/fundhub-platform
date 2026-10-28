@@ -107,7 +107,10 @@ async function paymentPage(browser, origin, answer, { fastTimers = false, query 
   if (fastTimers) {
     await page.addInitScript(() => {
       const realSetTimeout = window.setTimeout.bind(window);
-      window.setTimeout = (fn, delay, ...args) => realSetTimeout(fn, Math.min(Number(delay) || 0, 5), ...args);
+      // Accelerate only the 3-second polling gap. Keep the network
+      // watchdog at 8 seconds so a real response can complete first.
+      window.setTimeout = (fn, delay, ...args) =>
+        realSetTimeout(fn, Number(delay) === 3000 ? 5 : delay, ...args);
     });
   }
   const calls = [];
