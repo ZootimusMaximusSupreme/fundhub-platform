@@ -18,6 +18,7 @@ import {
   formatBalanceDue
 } from "../invoices/index.mjs";
 import { allocatePayment, remainingDueCents, remainingDueAmount } from "../invoices/allocate.mjs";
+import { isFundingSuccessFeeInvoice } from "../invoices/success-fee-source.mjs";
 import { checkoutConfig } from "../payments/commas-api.mjs";
 import { createPaymentLink } from "../payment-links/index.mjs";
 import { retireInvoiceCheckoutLink } from "../payment-links/retire-invoice-checkout.mjs";
@@ -34,10 +35,17 @@ export const AR_04_SOURCE_WORKFLOW = "ar-collections-handoff";
 
 const OPEN = ["draft", "sent", "reminded", "escalated", "partially_paid"];
 
-function isFundingSuccessFee(row = {}, payload = {}) {
-  const source = row.source || payload.source;
-  const type = row.invoice_type || payload.invoice_type;
-  return source === "funding_success_fee" || type === "success_fee";
+// Recheck before every delayed notice: rows can be voided, replaced or moved
+// while Inngest sleeps. Never trust an invoice.sent envelope over the DB.
+function chaseInvoiceRejection(row, { orgId, clientId }) {
+  if (!row) return "invoice_missing";
+  if (!isFundingSuccessFeeInvoice(row)) return "not_success_fee";
+  if (!orgId || !clientId ||
+      String(row.org_id) !== String(orgId) ||
+      String(row.client_id) !== String(clientId)) {
+    return "invoice_identity_mismatch";
+  }
+  return null;
 }
 
 function stillOpen(row) {
@@ -49,7 +57,7 @@ async function arContext(db, row, payload = {}) {
   const remaining = await remainingDueCents(db, row);
   const due = remainingDueAmount(remaining);
   return {
-    invoice_number: payload.invoice_number || invoiceDisplayNumber(row),
+    invoice_number: invoiceDisplayNumber(row),
     balance_due: formatBalanceDue(due)
   };
 }
@@ -161,22 +169,23 @@ async function chase({ event, db, step, env, createLink, retireLink }) {
   const payload = event.payload || {};
   const invoiceId = payload.invoiceId || payload.invoice_id;
   if (!invoiceId) return { done: false, reason: "no_invoice_id" };
-  if (!isFundingSuccessFee({}, payload)) {
-    const row = await getInvoice(db, { invoiceId });
-    if (!isFundingSuccessFee(row || {}, payload)) {
-      return { done: false, reason: "not_success_fee" };
-    }
-  }
-
-  const clientId = await step.run("resolve-client", () => resolveClient(db, event));
+  // invoice.sent is emitted by announceInvoice()/recovery with the canonical
+  // clientId. Do not run resolveClient() here: it may CREATE or PATCH a CRM
+  // contact from event metadata before invoice ownership is validated.
+  const clientId = event.clientId || null;
   if (!clientId) return { done: false, reason: "no_client" };
 
   const orgId = event.orgId;
   const eventId = event.id;
+  const invoice = await getInvoice(db, { invoiceId });
+  const rejected = chaseInvoiceRejection(invoice, { orgId, clientId });
+  if (rejected) return { done: false, reason: rejected };
 
   const first = await step.run("send-ar-01", async () => {
     const row = await getInvoice(db, { invoiceId });
-    if (!stillOpen(row)) return { skipped: true, reason: row?.status || "missing" };
+    const rejected = chaseInvoiceRejection(row, { orgId, clientId });
+    if (rejected) return { skipped: true, reason: rejected };
+    if (!stillOpen(row)) return { skipped: true, reason: row.status || "missing" };
     const link = await attachInvoicePayLink(db, row, env, createLink, retireLink);
     if (link.settled) return { skipped: true, reason: "no_balance" };
     return sendPair(db, {
@@ -190,7 +199,9 @@ async function chase({ event, db, step, env, createLink, retireLink }) {
   await step.sleep("wait-7d", "7d");
   const second = await step.run("send-ar-02", async () => {
     const row = await getInvoice(db, { invoiceId });
-    if (!stillOpen(row)) return { skipped: true, reason: row?.status || "missing" };
+    const rejected = chaseInvoiceRejection(row, { orgId, clientId });
+    if (rejected) return { skipped: true, reason: rejected };
+    if (!stillOpen(row)) return { skipped: true, reason: row.status || "missing" };
     const link = await attachInvoicePayLink(db, row, env, createLink, retireLink);
     if (link.settled) return { skipped: true, reason: "no_balance" };
     return sendPair(db, {
@@ -204,7 +215,9 @@ async function chase({ event, db, step, env, createLink, retireLink }) {
   await step.sleep("wait-7d-more", "7d");
   const third = await step.run("send-ar-03", async () => {
     const row = await getInvoice(db, { invoiceId });
-    if (!stillOpen(row)) return { skipped: true, reason: row?.status || "missing" };
+    const rejected = chaseInvoiceRejection(row, { orgId, clientId });
+    if (rejected) return { skipped: true, reason: rejected };
+    if (!stillOpen(row)) return { skipped: true, reason: row.status || "missing" };
     const link = await attachInvoicePayLink(db, row, env, createLink, retireLink);
     if (link.settled) return { skipped: true, reason: "no_balance" };
     return sendPair(db, {
@@ -227,7 +240,9 @@ async function chase({ event, db, step, env, createLink, retireLink }) {
      the system working. */
   const handoff = await step.run("ar-04-handoff", async () => {
     const row = await getInvoice(db, { invoiceId });
-    if (!stillOpen(row)) return { skipped: true, reason: row?.status || "missing" };
+    const rejected = chaseInvoiceRejection(row, { orgId, clientId });
+    if (rejected) return { skipped: true, reason: rejected };
+    if (!stillOpen(row)) return { skipped: true, reason: row.status || "missing" };
     const escalated = await markEscalated(db, { invoiceId });
     await addTags(db, clientId, ["ar:collections-handoff"]);
 
