@@ -21,6 +21,7 @@ import {
 import { FUNDING_PAUSED_HOLD } from "../inquiry-ops/doc-gate.mjs";
 import { PAUSED_TAG } from "../crs/snapshot-negatives.mjs";
 import { handle as s06Handle } from "../workflows/s-06-post-call-funding-purchased.mjs";
+import { handle as f01Handle } from "../workflows/f-01-funding-intake.mjs";
 
 const HAS_DB = !!process.env.DATABASE_URL;
 const MARK = "purchaserouting_pg";
@@ -544,6 +545,47 @@ describe("purchase-routing", { skip: !HAS_DB ? "no DATABASE_URL" : false }, () =
     const out = await onPurchaseRoute({ id: null, name: "payment.received", payload: {} }, db);
     assert.equal(out.routed, false);
     assert.equal(out.reason, "no_org");
+  });
+
+  test("paid funding reaches dated advisor intake and pod tasks despite stale repair-only recommendation", async () => {
+    const c = await seedClient("paid-stale-tier", { outcomeTier: "REPAIR_ONLY" });
+    await emit(db, "deposit.paid", { email: c.email, amount: 3000 }, {
+      orgId: org, clientId: c.id, idempotencyKey: `${MARK}:paid-stale-tier:1`
+    });
+    assert.equal(await cardStage(c.id, FUNDING_PIPELINE), FUNDING_STAGE);
+    const roundEvents = await db.query(
+      `SELECT id, payload FROM events WHERE org_id = $1 AND client_id = $2 AND name = 'round.started'`,
+      [org, c.id]
+    );
+    assert.equal(roundEvents.rows.length, 1, "paid funding must start exactly one funding round");
+    const step = { run: async (_name, fn) => fn() };
+    const paidEvent = { id: `${MARK}-stale-tier-deposit`, orgId: org, clientId: c.id, payload: {} };
+    const startedEvent = {
+      id: roundEvents.rows[0].id, orgId: org, clientId: c.id,
+      payload: roundEvents.rows[0].payload || {}
+    };
+    const saleSide = await s06Handle({ event: paidEvent, db, step });
+    const fulfillmentSide = await f01Handle({ event: startedEvent, db, step });
+    assert.equal(saleSide.done, true, "a paid buyer must not be rejected by their old credit tier");
+    assert.equal(fulfillmentSide.done, true, "paid funding needs an advisor even with a stale tier");
+    const taskRows = await db.query(
+      `SELECT source_workflow, assignee_role, due_at FROM tasks
+       WHERE org_id = $1 AND client_id = $2
+         AND source_workflow IN ('s-06-post-call-funding-purchased', 'f-01-funding-intake')
+       ORDER BY source_workflow`, [org, c.id]
+    );
+    assert.equal(taskRows.rows.length, 2, "paid funding must hand off both sale and round intake");
+    for (const task of taskRows.rows) {
+      assert.equal(task.assignee_role, "funding_advisor", "a closer must not own fulfillment");
+      assert.ok(new Date(task.due_at) > new Date(), "undated tasks are hidden in Calendar");
+    }
+    await s06Handle({ event: paidEvent, db, step });
+    await f01Handle({ event: startedEvent, db, step });
+    const count = await db.query(
+      `SELECT count(*)::int AS n FROM tasks WHERE org_id = $1 AND client_id = $2
+         AND source_workflow IN ('s-06-post-call-funding-purchased', 'f-01-funding-intake')`, [org, c.id]
+    );
+    assert.equal(count.rows[0].n, 2, "replays must not issue duplicate advisor assignments");
   });
 
   // ── the handoff task ──
