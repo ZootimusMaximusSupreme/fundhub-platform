@@ -41,7 +41,8 @@ test("staff-level KPI keeps the exact assignment-or-unassigned rule", async () =
   };
   assert.equal(await countUnlogged(db, { orgId: ORG, staffId: STAFF }), 207);
   assert.equal(reads.length, 1);
-  assert.match(reads[0].sql, /t\.assignee_staff_id = \$3 OR t\.assignee_staff_id IS NULL/);
+  assert.match(reads[0].sql, /t\.assignee_staff_id = \$2 OR t\.assignee_staff_id IS NULL/);
+  assert.match(reads[0].sql, /t\.title LIKE \$3/);
   assert.deepEqual(reads[0].params, [ORG, STAFF, "Strategy session%"]);
 });
 
