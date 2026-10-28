@@ -38,3 +38,22 @@ test("duplicate delivery: replaying does not double-create the task", async () =
   await handle({ event, db, step: fakeStep() });
   assert.equal(db.tasks.length, 1);
 });
+
+test("declined funding creates a next-day closer deadline, stable on replay", async () => {
+  const db = pgFake({ clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com" }] });
+  const event = ev("call.completed",
+    { disposition: "closer", outcome: "not_a_fit", repairReferral: false },
+    { id: "evt-s08-due", clientId: "cl-1" });
+  const before = Date.now();
+  await handle({ event, db, step: fakeStep() });
+  assert.equal(db.tasks.length, 1);
+  assert.equal(db.tasks[0].assignee_role, "closer");
+  const dueAt = new Date(db.tasks[0].due_at).getTime();
+  assert.ok(Number.isFinite(dueAt), "follow-up must have a valid calendar due date");
+  const oneDay = 24 * 60 * 60 * 1000;
+  assert.ok(dueAt >= before + oneDay && dueAt <= Date.now() + oneDay,
+    "the task is due within 24 hours of processing, never undated");
+  await handle({ event, db, step: fakeStep() });
+  assert.equal(db.tasks.length, 1, "replay cannot create another follow-up");
+  assert.equal(new Date(db.tasks[0].due_at).getTime(), dueAt, "replay cannot shift the deadline");
+});
