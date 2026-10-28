@@ -34,7 +34,7 @@ function recordingDb({ channel = "sms" } = {}) {
     async query(sql, params = []) {
       statements.push({ sql: String(sql).replace(/\s+/g, " ").trim(), params });
       const text = String(sql);
-      if (/FROM conversations\s+WHERE id = \$1 AND org_id = \$2/i.test(text)) return { rows: [{ id: CONVO, client_id: CLIENT, channel }] };
+      if (/FROM conversations cv\s+JOIN clients c ON c\.id = cv\.client_id AND c\.org_id = cv\.org_id/i.test(text)) return { rows: [{ id: CONVO, client_id: CLIENT, channel }] };
       if (/SELECT (phone|email) AS address FROM clients/i.test(text)) return { rows: [{ address: channel === "email" ? ON_FILE_EMAIL : ON_FILE_PHONE }] };
       if (/INSERT INTO messages/i.test(text)) return { rows: [{ id: "msg-1", created_at: "2026-10-14T12:00:00.000Z" }] };
       if (/FROM messages WHERE id = \$1/i.test(text)) return { rows: [{ id: "msg-1", conversation_id: CONVO, client_id: CLIENT, channel, direction: "outbound", status: "queued" }] };
