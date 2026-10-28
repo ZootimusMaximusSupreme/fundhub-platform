@@ -325,7 +325,7 @@ export async function countUnlogged(db, { orgId, staffId = null } = {}) {
     staffClause = `AND (t.assignee_staff_id = $2 OR t.assignee_staff_id IS NULL)`;
   }
   params.push(BOOKING_TASK_TITLE_LIKE);
-  const titleParam = `${params.length}`;
+  const titleParam = `$${params.length}`;
   const r = await db.query(
     `SELECT count(*)::int AS n
        FROM tasks t
