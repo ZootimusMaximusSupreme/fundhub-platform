@@ -41,8 +41,11 @@ test("application milestones, calendar and booking message are first-occurrence 
   p.win.fhTrack("survey_answer", { survey: "apply", step_num: 1, answer: "private" });
   p.win.fhTrack("survey_answer", { survey: "apply", step_num: 9, last: true });
   p.win.fhTrack("survey_answer", { survey: "apply", step_num: 9, last: true });
+  const calendarFrame = p.node("iframe", { id: "fh-book-frame" });
+  calendarFrame.contentWindow = {};
+  p.add(calendarFrame);
   for (const event of ["calendar_view", "time_selected", "booking_confirmed", "booking_confirmed"]) {
-    p.fireWin("message", { origin: "https://apply.fundhub.ai",
+    p.fireWin("message", { origin: "https://apply.fundhub.ai", source: calendarFrame.contentWindow,
       data: { fh: "track", event, props: { calendar: "funding-book-call" } } });
   }
   assert.deepEqual(names(p), [
