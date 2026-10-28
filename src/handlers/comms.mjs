@@ -41,7 +41,7 @@ import { clientIdForRepPhone } from "../auth/authorized-rep.mjs";
 // Bookings are stored as bookings now, not only as a to-do. See the booking
 // section below and db/migrations/225_bookings.sql.
 import {
-  upsertBooking, setStatusByProviderUid, normalizeProviderUid,
+  upsertBooking, findByProviderUid, setStatusByProviderUid, normalizeProviderUid,
   BOOKING_STATUS, UNKNOWN_SOURCE
 } from "../bookings/store.mjs";
 import { completeSloNurtureTasks, isSloPostPurchaseEnabled } from "../slo/purchase.mjs";
@@ -478,6 +478,27 @@ export async function onBookingCreated(event, db) {
   // Ending interviews are not sales calls. customer-insights stamps that Meet.
   if (isInterviewBooking(p)) return { skipped: "interview" };
   const uid = bookingUid(p);
+  // A replay of the ORIGINAL create event must not reopen a cancelled, no-show,
+  // or completed appointment. Also refuse a provider UID already owned by a
+  // different client: an email correction cannot silently transfer a call.
+  // Only read within the triggering organization; no external provider writes.
+  if (uid && event.orgId) {
+    try {
+      const existing = await findByProviderUid(db, { orgId: event.orgId, providerUid: uid });
+      if (existing) {
+        if (existing.client_id && String(existing.client_id) !== String(clientId)) {
+          return { skipped: "booking_client_mismatch" };
+        }
+        if ([BOOKING_STATUS.CANCELLED, BOOKING_STATUS.NOSHOW, BOOKING_STATUS.COMPLETED].includes(existing.status)) {
+          return { skipped: "terminal_booking_replay" };
+        }
+      }
+    } catch (err) {
+      // Booking storage is best-effort beside the closer task (recordBooking).
+      // A legacy preview without this table must not swallow the new booking.
+      console.warn(`[comms] booking identity read failed: ${String(err?.message || err).slice(0, 120)}`);
+    }
+  }
   const dup = await db.query(
     `SELECT 1 FROM tasks
       WHERE client_id=$1 AND body=$2 AND title LIKE $3 LIMIT 1`,
