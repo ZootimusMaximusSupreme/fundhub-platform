@@ -1221,6 +1221,11 @@ test("non-lane checks do not spend their timer waiting behind one serial databas
 
 test("a real database timeout stops later serial checks before they can falsely time out in its queue", async () => {
   const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  // A timed 30ms fake read can finish before a delayed 12ms timer callback on a
+  // busy CI runner. Hold the first database read explicitly until after the
+  // assertions, so this proves the unresolved-query safety gate deterministically.
+  let releaseFirstNa;
+  const firstNaGate = new Promise((resolve) => { releaseFirstNa = resolve; });
   let chain = Promise.resolve();
   let naReads = 0;
   let auditReads = 0;
@@ -1228,8 +1233,12 @@ test("a real database timeout stops later serial checks before they can falsely 
     query(sql) {
       if (sql === "SELECT 1") naReads += 1;
       else auditReads += 1;
-      const delay = sql === "SELECT 1" && naReads === 1 ? 30 : 1;
-      const read = chain.then(async () => { await wait(delay); return { rows: [] }; });
+      const isFirstNaRead = sql === "SELECT 1" && naReads === 1;
+      const read = chain.then(async () => {
+        if (isFirstNaRead) await firstNaGate;
+        else await wait(1);
+        return { rows: [] };
+      });
       chain = read.catch(() => {});
       return read;
     }
@@ -1243,19 +1252,23 @@ test("a real database timeout stops later serial checks before they can falsely 
       na: { code: "plain-empty", args: { n: i } }
     });
   }
-  const result = await run({
-    scope,
-    budgetMs: 12,
-    totalBudgetMs: 100,
-    verifyNa: async (_row, ctx) => ctx.scope((db) => db.query("SELECT 1").then(() => ({ ok: true, reason: "nothing is here" })))
-  }, fx);
-  const audit = rowOf(result, "audit:na-verified");
-  assert.equal(audit.status, "skip");
-  assert.match(audit.detail, /1 timed out/);
-  assert.match(audit.detail, /2 could not be read/);
-  assert.equal(naReads, 1, "later N/A reads never enter the serial client's queue");
-  assert.equal(auditReads, 0, "later audit reads do not enter the queue while timed-out work is still open");
-  assert.match(result.checks.find((row) => row.id === "plain:timeout-1").detail, /did not start/);
+  try {
+    const result = await run({
+      scope,
+      budgetMs: 12,
+      totalBudgetMs: 5000,
+      verifyNa: async (_row, ctx) => ctx.scope((db) => db.query("SELECT 1").then(() => ({ ok: true, reason: "nothing is here" })))
+    }, fx);
+    const audit = rowOf(result, "audit:na-verified");
+    assert.equal(audit.status, "skip");
+    assert.match(audit.detail, /1 timed out/);
+    assert.match(audit.detail, /2 could not be read/);
+    assert.equal(naReads, 1, "later N/A reads never enter the serial client's queue");
+    assert.equal(auditReads, 0, "later audit reads do not enter the queue while timed-out work is still open");
+    assert.match(result.checks.find((row) => row.id === "plain:timeout-1").detail, /did not start/);
+  } finally {
+    releaseFirstNa();
+  }
 });
 
 test("warming a lane never turns a measured break into nothing to judge", async () => {
