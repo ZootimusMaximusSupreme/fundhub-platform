@@ -596,6 +596,9 @@ describe("purchase-routing", { skip: !HAS_DB ? "no DATABASE_URL" : false }, () =
 
   test("the funding intake task is owned by a funding advisor and has a due date", async () => {
     const c = await seedClient("task", { outcomeTier: "FULL_FUNDING" });
+    // S-06 now requires a same-sale net-paid funding purchase, not an event name.
+    // A realistic fixture must establish the entitlement before running intake.
+    await seedSale(c.id, fundingProductId, 3000);
     const step = { run: async (_name, fn) => fn() };
     await s06Handle({
       event: { id: `${MARK}-task-evt`, orgId: org, clientId: c.id, payload: {} },
@@ -617,6 +620,9 @@ describe("purchase-routing", { skip: !HAS_DB ? "no DATABASE_URL" : false }, () =
 
   test("the funding intake task still dedupes on a replayed event", async () => {
     const c = await seedClient("taskdup", { outcomeTier: "FULL_FUNDING" });
+    // S-06 now requires a same-sale net-paid funding purchase, not an event name.
+    // A realistic fixture must establish the entitlement before running intake.
+    await seedSale(c.id, fundingProductId, 3000);
     const step = { run: async (_name, fn) => fn() };
     const event = { id: `${MARK}-taskdup-evt`, orgId: org, clientId: c.id, payload: {} };
     await s06Handle({ event, db, step });
