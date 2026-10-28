@@ -499,11 +499,22 @@ test("a card and a waiting-on-a-person row (click or Enter) open that candidate'
     assert.equal(await page.locator("#drawer").getAttribute("aria-hidden"), "false");
     await drawerOff();
   }
-  // Space opens it too, and the application read is for the person opened.
+  // Space opens it too, and the full application is fetched asynchronously.
+  // Wait for that exact request: titleIs only waits for the synchronous drawer header,
+  // so reading the last API call immediately can race with the intercepted response.
+  const readsBeforeSpace = state.applicationReads.filter((id) => id === secondId).length;
   await rowOf(byId.get(secondId)).focus();
+  const spaceRead = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return url.pathname === "/api/hiring/application" && url.searchParams.get("id") === secondId;
+  }, { timeout: 15_000 });
   await page.keyboard.press(" ");
+  await spaceRead;
   await titleIs(byId.get(secondId).full_name);
-  assert.equal(state.applicationReads.at(-1), secondId);
+  assert.ok(
+    state.applicationReads.filter((id) => id === secondId).length > readsBeforeSpace,
+    "Space must fetch the opened candidate's application"
+  );
   await page.close();
 });
 
