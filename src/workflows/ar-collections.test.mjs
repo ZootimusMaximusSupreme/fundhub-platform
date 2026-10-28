@@ -713,6 +713,14 @@ test("AR: the handoff opens a CSM task, not just a tag", async () => {
     templates: templates(),
     invoices: [openInvoice()]
   });
+  // The detail column (migration 472) is the human-readable note; body is
+  // a stable UNIQUE key. Observe the real SQL call without editing shared fakes.
+  let recordedDetail = null;
+  const query = db.query.bind(db);
+  db.query = async (sql, params) => {
+    if (/INSERT INTO tasks/.test(sql) && /\bdetail\)/.test(sql)) recordedDetail = params[9];
+    return query(sql, params);
+  };
   const res = await handle({
     event: ev("invoice.sent", { invoiceId: "inv-1", source: "funding_success_fee" }, { clientId: "cl-1" }),
     db, step: fakeStep()
@@ -725,7 +733,9 @@ test("AR: the handoff opens a CSM task, not just a tag", async () => {
   assert.equal(tasks.length, 1, "exactly one handoff task");
   assert.equal(tasks[0].assignee_role, "csm");
   assert.equal(tasks[0].title, AR_04_TASK_TITLE);
-  assert.match(tasks[0].body, /Balance due/);
+  assert.equal(tasks[0].body, "ar-success-fee:org-1:inv-1:04", "body is a stable per-invoice dedupe key");
+  assert.match(recordedDetail, /Invoice INV-INV1/);
+  assert.match(recordedDetail, /Balance due: \$1,250\.00/);
 });
 
 test("AR: replaying the run does not stack a second handoff task", async () => {
@@ -746,6 +756,63 @@ test("AR: replaying the run does not stack a second handoff task", async () => {
   assert.equal(tasks.length, 1, "a replay must find the existing task, not open a second");
 });
 
+
+test("AR idempotency: different invoice.sent events cannot duplicate notices or CSM escalation", async () => {
+  const db = pgFake({
+    clients: [{ id: "cl-1", org_id: "org-1", email: "ar-replay+first@example.com", custom_fields: {} }],
+    templates: templates(),
+    invoices: [openInvoice()]
+  });
+  const first = ev("invoice.sent", { invoiceId: "inv-1" }, { id: "evt-ar-original", clientId: "cl-1" });
+  const second = ev("invoice.sent", { invoiceId: "inv-1" }, { id: "evt-ar-recovered", clientId: "cl-1" });
+  await handle({ event: first, db, step: fakeStep() });
+  await handle({ event: second, db, step: fakeStep() });
+  assert.equal(db.messages.length, 6, "exactly three email/SMS pairs across distinct bus IDs");
+  assert.equal(db.paymentLinks.length, 1, "same outstanding amount reuses the first checkout");
+  assert.equal(db.tasks.filter((t) => t.source_workflow === AR_04_SOURCE_WORKFLOW).length, 1,
+    "one CSM handoff per invoice even after independent bus delivery");
+});
+
+test("AR idempotency: later partial balance must not create duplicate notices or task", async () => {
+  const db = pgFake({
+    clients: [{ id: "cl-1", org_id: "org-1", email: "ar-replay+partial@example.com", custom_fields: {} }],
+    templates: templates(),
+    invoices: [openInvoice()]
+  });
+  await handle({
+    event: ev("invoice.sent", { invoiceId: "inv-1" }, { id: "evt-ar-1", clientId: "cl-1" }),
+    db, step: fakeStep()
+  });
+  db.invoicePayments.push({ invoice_id: "inv-1", org_id: "org-1", kind: "payment",
+    amount: 400, external_ref: "fixture-partial-400" });
+  db.invoices[0].status = "partially_paid";
+  await handle({
+    event: ev("invoice.sent", { invoiceId: "inv-1" }, { id: "evt-ar-2", clientId: "cl-1" }),
+    db, step: fakeStep()
+  });
+  assert.equal(db.messages.length, 6, "partial settlement is not a new invoice.sent notice series");
+  assert.equal(db.tasks.filter((t) => t.source_workflow === AR_04_SOURCE_WORKFLOW).length, 1,
+    "body must not change with the invoice balance");
+  assert.equal(db.paymentLinks[0].status, "void", "outdated checkout is retired");
+  assert.equal(db.paymentLinks.at(-1).amount_cents, 85000, "replacement checkout is only the remaining balance");
+});
+
+test("AR security: stray invoice.sent must not collect an invoice still in draft", async () => {
+  const db = pgFake({
+    clients: [{ id: "cl-1", org_id: "org-1", email: "ar-replay+draft@example.com", custom_fields: {} }],
+    templates: templates(),
+    invoices: [openInvoice({ status: "draft" })]
+  });
+  const result = await handle({
+    event: ev("invoice.sent", { invoiceId: "inv-1" }, { id: "evt-ar-draft", clientId: "cl-1" }),
+    db, step: fakeStep()
+  });
+  assert.equal(result.stoppedAt, "before-ar-01");
+  assert.equal(result.first.reason, "draft");
+  assert.equal(db.messages.length, 0);
+  assert.equal(db.paymentLinks.length, 0);
+  assert.equal(db.tasks.length, 0);
+});
 
 test("AR security: an invoice.sent envelope cannot turn a DIY invoice into a success-fee demand", async () => {
   const db = pgFake({

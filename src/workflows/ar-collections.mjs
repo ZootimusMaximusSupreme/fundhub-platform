@@ -2,7 +2,7 @@
 // COMPLIANCE REVIEW REQUIRED — payment rails.
 //
 // invoice.sent (funding_success_fee only) → AR-01 now, AR-02 +7d, AR-03 +14d,
-// then AR-04 automated handoff (no staff task). Stops on invoice.paid.
+// then AR-04 task for a human CSM. Stops on invoice.paid.
 // Re-checks payment before every send.
 
 import { inngest } from "./client.mjs";
@@ -33,7 +33,8 @@ export const SMS_AR_03 = "SMS-AR-03-FINAL-NOTICE";
 export const AR_04_TASK_TITLE = "Overdue balance — call the client";
 export const AR_04_SOURCE_WORKFLOW = "ar-collections-handoff";
 
-const OPEN = ["draft", "sent", "reminded", "escalated", "partially_paid"];
+// A stray invoice.sent event must never collect on a draft that was not issued.
+const COLLECTIBLE = ["sent", "reminded", "escalated", "partially_paid"];
 
 // Recheck before every delayed notice: rows can be voided, replaced or moved
 // while Inngest sleeps. Never trust an invoice.sent envelope over the DB.
@@ -50,7 +51,7 @@ function chaseInvoiceRejection(row, { orgId, clientId }) {
 
 function stillOpen(row) {
   if (!row) return false;
-  return OPEN.includes(String(row.status || ""));
+  return COLLECTIBLE.includes(String(row.status || ""));
 }
 
 async function arContext(db, row, payload = {}) {
@@ -177,6 +178,9 @@ async function chase({ event, db, step, env, createLink, retireLink }) {
 
   const orgId = event.orgId;
   const eventId = event.id;
+  // One debtor/invoice gets one notice of each stage and one CSM handoff,
+  // even if invoice.sent is replayed with a DIFFERENT bus event ID.
+  const collectionKey = `ar-success-fee:${orgId}:${invoiceId}`;
   const invoice = await getInvoice(db, { invoiceId });
   const rejected = chaseInvoiceRejection(invoice, { orgId, clientId });
   if (rejected) return { done: false, reason: rejected };
@@ -189,7 +193,7 @@ async function chase({ event, db, step, env, createLink, retireLink }) {
     const link = await attachInvoicePayLink(db, row, env, createLink, retireLink);
     if (link.settled) return { skipped: true, reason: "no_balance" };
     return sendPair(db, {
-      orgId, clientId, eventId: `${eventId}:01`,
+      orgId, clientId, eventId: `${collectionKey}:01`,
       emailKey: EMAIL_AR_01, smsKey: SMS_AR_01,
       context: await arContext(db, row, payload)
     });
@@ -205,7 +209,7 @@ async function chase({ event, db, step, env, createLink, retireLink }) {
     const link = await attachInvoicePayLink(db, row, env, createLink, retireLink);
     if (link.settled) return { skipped: true, reason: "no_balance" };
     return sendPair(db, {
-      orgId, clientId, eventId: `${eventId}:02`,
+      orgId, clientId, eventId: `${collectionKey}:02`,
       emailKey: EMAIL_AR_02, smsKey: SMS_AR_02,
       context: await arContext(db, row, payload)
     });
@@ -221,7 +225,7 @@ async function chase({ event, db, step, env, createLink, retireLink }) {
     const link = await attachInvoicePayLink(db, row, env, createLink, retireLink);
     if (link.settled) return { skipped: true, reason: "no_balance" };
     return sendPair(db, {
-      orgId, clientId, eventId: `${eventId}:03`,
+      orgId, clientId, eventId: `${collectionKey}:03`,
       emailKey: EMAIL_AR_03, smsKey: SMS_AR_03,
       context: await arContext(db, row, payload)
     });
@@ -253,9 +257,12 @@ async function chase({ event, db, step, env, createLink, retireLink }) {
       title: AR_04_TASK_TITLE,
       sourceWorkflow: AR_04_SOURCE_WORKFLOW,
       assigneeRole: "csm",
-      eventId: `${eventId}:04`,
+      eventId: `${collectionKey}:04`,
       dedupeOn: "event",
-      body: [
+      // createTask stores body as the UNIQUE dedupe key. Balance and the bus
+      // envelope ID may change, so readable instructions must be in detail.
+      body: `${collectionKey}:04`,
+      detail: [
         `Invoice ${ctx.invoice_number} is still open. Balance due: ${ctx.balance_due}.`,
         "Three automated notices have gone out and none were paid. This one is a call, not another message.",
         "",
