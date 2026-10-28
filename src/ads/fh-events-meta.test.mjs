@@ -131,7 +131,13 @@ describe("the same eventID on fbq and on the database post", () => {
 
   test("a booking confirmed in the framed calendar becomes Schedule on the parent page", () => {
     const p = page({ pathname: "/apply" }).run();
-    p.fireWin("message", { origin: "https://apply.fundhub.ai", data: { fh: "track", event: "booking_confirmed", props: { calendar: "funding-book-call" } } });
+    const frame = p.node("iframe", { id: "fh-book-frame" });
+    frame.contentWindow = {};
+    p.add(frame);
+    const confirm = { origin: "https://apply.fundhub.ai", data: { fh: "track", event: "booking_confirmed", props: { calendar: "funding-book-call" } } };
+    p.fireWin("message", { ...confirm, source: {} });
+    assert.equal(p.events("booking_confirmed").length, 0, "an unrelated same-origin frame is not a Meta Schedule");
+    p.fireWin("message", { ...confirm, source: frame.contentWindow });
     const body = p.events("booking_confirmed")[0];
     assert.deepEqual(named(p, "Schedule"), [["track", "Schedule", { content_name: "funding-book-call" }, body.meta_event_id]]);
   });

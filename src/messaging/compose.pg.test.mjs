@@ -224,6 +224,28 @@ test("compose: another company's conversation cannot be replied to", { skip: !HA
   assert.equal(recorded().length, 0);
 });
 
+test("compose: a same-org thread pointing to a foreign client is not replyable",
+  { skip: !HAS_DB }, async () => {
+  // A conversation has a client FK, but the schema does not enforce a matching
+  // client org. This intentionally malformed scratch row must not be sendable.
+  const misbound = (await db.query(
+    // Existing foreign-org SMS thread already uses (client_id, channel);
+    // choose a different channel so the fixture reaches the org-binding guard.
+    `INSERT INTO conversations (org_id, client_id, channel) VALUES ($1,$2,'email') RETURNING id`,
+    [orgId, otherClientId])).rows[0].id;
+
+  await assert.rejects(
+    () => send({ conversationId: misbound, body: "private funding update" }),
+    (err) => err.code === "BAD_REQUEST" && /no such conversation/.test(err.message),
+    "a foreign customer's thread must not be treated as a valid own-org thread"
+  );
+  assert.equal(recorded().length, 0, "the foreign customer received a message");
+  const stored = await db.query(
+    `SELECT count(*)::int AS n FROM messages WHERE conversation_id = $1`,
+    [misbound]);
+  assert.equal(stored.rows[0].n, 0, "a rejected reply still wrote a message row");
+});
+
 test("compose: another company's client cannot be messaged", { skip: !HAS_DB }, async () => {
   await assert.rejects(
     () => send({ clientId: otherClientId, channel: "sms" }),

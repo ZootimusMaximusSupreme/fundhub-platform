@@ -84,18 +84,29 @@ function toNumber(v) {
  * purchase-routing already re-derives everything from sales for the same
  * reason.
  *
- * Returns null when there is no active repair sale.
+ * Returns null when no repair sale has POSITIVE NET front-end money.
+ * A signed but unpaid full bundle must never override a paid $200 trial;
+ * refunds and success fees do not count toward a purchased program. This
+ * exactly matches purchase-routing's same-sale paid category gate.
  */
 export async function repairPurchase(db, { orgId, clientId } = {}) {
   if (!db?.query || !orgId || !clientId) return null;
   const { rows } = await db.query(
     `SELECT s.id AS sale_id, pr.code AS product_code, s.agreed_price,
-            COALESCE((SELECT sum(sp.amount) FROM sale_payments sp WHERE sp.sale_id = s.id), 0)
-              AS paid_so_far
+            paid.net_paid AS paid_so_far
        FROM sales s
-       JOIN products pr ON pr.id = s.product_id
+       JOIN products pr ON pr.id = s.product_id AND pr.org_id = s.org_id
+       CROSS JOIN LATERAL (
+         SELECT COALESCE(SUM(CASE
+                  WHEN sp.kind IN ('deposit', 'installment') THEN sp.amount
+                  WHEN sp.kind = 'refund' THEN -sp.amount
+                  ELSE 0
+                END), 0) AS net_paid
+           FROM sale_payments sp
+          WHERE sp.org_id = s.org_id AND sp.sale_id = s.id
+       ) paid
       WHERE s.org_id = $1 AND s.client_id = $2 AND s.status = 'active'
-        AND pr.category = $3
+        AND pr.category = $3 AND paid.net_paid > 0
       ORDER BY s.sold_at DESC`,
     [orgId, clientId, REPAIR_CATEGORY]
   );

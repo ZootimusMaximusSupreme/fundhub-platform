@@ -218,6 +218,12 @@ for (const target of [PAGE, FRAME]) {
       assert.equal(await acceptForm.locator('[data-when="covers"]').isVisible(), false, "a paper with no months asks for none");
       await acceptForm.locator('[data-act="sort-accept-send"]').click();
       await waitFor(() => posts.length === 1);
+      // POST interception precedes the GET/render; wait for the real save receipt
+      // before touching another form on the same unfiled document row.
+      await page.waitForFunction(
+        (name) => document.body.innerText.includes(`Filed under ${name} and accepted.`),
+        ein.label || ein.title
+      );
       assert.deepEqual(last(), { action: "accept", document_id: scan.id, item_key: "ein_letter", entity_id: BIZ, client_id: CLIENT_ID });
 
       // File and accept under a paper that counts months: the months and the date go with it
@@ -230,6 +236,11 @@ for (const target of [PAGE, FRAME]) {
       await acceptForm.locator('[data-field="period_end"]').fill("2026-09-30");
       await acceptForm.locator('[data-act="sort-accept-send"]').click();
       await waitFor(() => posts.length === 2);
+      // The previous form can be repainted after POST was logged; prove repaint.
+      await page.waitForFunction(
+        (name) => document.body.innerText.includes(`Filed under ${name} and accepted.`),
+        statements.label || statements.title
+      );
       assert.deepEqual(last(), {
         action: "accept", document_id: scan.id, item_key: "bank_statements_business", entity_id: BIZ,
         covers: 2, period_end: "2026-09-30", client_id: CLIENT_ID,

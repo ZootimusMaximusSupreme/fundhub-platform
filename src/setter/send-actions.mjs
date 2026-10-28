@@ -110,6 +110,11 @@ export async function performSetterSendAction({
   const sameStaff = String(setterId) === String(closerId);
   const closer = sameStaff ? staff : await staffRow(db, orgId, closerId);
   if (!closer) throw new Error("closer staff record is missing");
+  // A former staff member may remain linked to an old booking. Never send the
+  // customer's problem, funding goal, or appointment to their phone number.
+  if (!sameStaff && String(closer.status || "").toLowerCase() !== "active") {
+    throw new Error("closer staff assignment is not active");
+  }
   const key = `${clientId}:${clean(client.booking_time || client.booked_at || "current")}`;
 
   if (action === "send_intro_video") {
@@ -127,6 +132,12 @@ export async function performSetterSendAction({
 
   if (action !== "send_handoff") throw new Error("unsupported setter send action");
   if (!handoff.complete_at) throw new Error("complete the setter handoff before sending it");
+  // Validate the second recipient before sending the first leg. Otherwise a
+  // malformed closer number leaves the buyer told a handoff happened while no
+  // closer can receive the private handoff.
+  if (!sameStaff && !PHONE_RE.test(String(closer.phone || ""))) {
+    throw new Error("closer phone is missing or invalid");
+  }
   const body = buildSetterHandoffText({ client, handoff, closer, setter: staff });
   const leadBody = body.split("\n\n", 1)[0];
   const lead = await sendLeadImpl(db, { orgId, staffId: staff.id, clientId,

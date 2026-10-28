@@ -66,6 +66,14 @@ export async function handle({ event, db, step }) {
   const clientId = await step.run("resolve-client", () => resolveClient(db, event));
   if (!clientId) return { done: false, reason: "no_client" };
 
+  // This template says "Payment received." The closer can send an unpaid
+  // soft-pull link and still log a callback, so the offer key alone is not proof.
+  // call.completed carries only the transaction ID already verified and saved
+  // by logCallOutcome for this exact payment link.
+  if (templateKey === OFFER_EMAIL.SOFT_PULL && !payload.transactionId) {
+    return { done: false, reason: "soft_pull_unpaid" };
+  }
+
   if (templateKey === OFFER_EMAIL.FUNDING_MASTERY) {
     const paid = await step.run("check-mastery-paid", () =>
       masteryIsPaid(db, { orgId: event.orgId, clientId }));

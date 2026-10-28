@@ -144,10 +144,12 @@ export async function logCallOutcome(db, input) {
   const offerKey = rawOfferKey || storedOffer || null;
   const isRepairReferral = repairReferral === true;
 
+  // A same-company task can still belong to another customer. Never close it
+  // or attach its outcome to this customer through a mismatched task ID.
   if (taskId) {
     const t = await db.query(
-      `SELECT id FROM tasks WHERE id = $1 AND org_id = $2`,
-      [taskId, orgId]
+      `SELECT id FROM tasks WHERE id = $1 AND org_id = $2 AND client_id = $3`,
+      [taskId, orgId, clientId]
     );
     if (!t.rows[0]) {
       throw new CallOutcomeError("task not found", { status: 404, code: "not_found" });
@@ -158,12 +160,13 @@ export async function logCallOutcome(db, input) {
     const existing = await db.query(
       `SELECT * FROM call_outcomes
         WHERE org_id = $1
+          AND client_id = $4
           AND (
             ($2::uuid IS NOT NULL AND task_id = $2)
             OR ($3::text IS NOT NULL AND booking_ref = $3)
           )
         LIMIT 1`,
-      [orgId, taskId, bookingRef]
+      [orgId, taskId, bookingRef, clientId]
     );
     if (existing.rows[0]) {
       await emitCloserCallCompleted(db, existing.rows[0], {
@@ -241,7 +244,8 @@ async function emitCloserCallCompleted(db, row, { offerKey, repairReferral }) {
     disposition: "closer",
     repairReferral: repairReferral === true,
     declineReason: null,
-    taskId: row.task_id || null
+    taskId: row.task_id || null,
+    transactionId: row.transaction_id || null
   }, {
     orgId,
     clientId,
@@ -308,9 +312,36 @@ export async function listUnloggedCalls(db, { orgId, staffId = null, limit = 50 
   return r.rows;
 }
 
+/** Count the complete overdue queue, independently of the UI list limit.
+ * listUnloggedCalls intentionally caps its returned rows at 200; using its
+ * length for a KPI silently undercounts busy teams. Keep both filters aligned.
+ */
 export async function countUnlogged(db, { orgId, staffId = null } = {}) {
-  const rows = await listUnloggedCalls(db, { orgId, staffId, limit: 500 });
-  return rows.length;
+  if (!orgId) throw new CallOutcomeError("orgId is required", { status: 403 });
+  const params = [orgId];
+  let staffClause = "";
+  if (staffId) {
+    params.push(staffId);
+    staffClause = `AND (t.assignee_staff_id = $2 OR t.assignee_staff_id IS NULL)`;
+  }
+  params.push(BOOKING_TASK_TITLE_LIKE);
+  const titleParam = `$${params.length}`;
+  const r = await db.query(
+    `SELECT count(*)::int AS n
+       FROM tasks t
+      WHERE t.org_id = $1
+        AND t.assignee_role = 'closer'
+        AND t.title LIKE ${titleParam}
+        AND t.due_at IS NOT NULL
+        AND t.due_at < now()
+        AND NOT EXISTS (
+          SELECT 1 FROM call_outcomes o
+           WHERE o.task_id = t.id AND o.org_id = t.org_id
+        )
+        ${staffClause}`,
+    params
+  );
+  return Number(r.rows[0]?.n || 0);
 }
 
 export function presentOutcome(row) {

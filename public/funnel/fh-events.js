@@ -1061,10 +1061,16 @@
     var d = ev.data;
     if (!d || typeof d !== "object" || d.fh !== "track" || typeof d.event !== "string" || !has.call(RELAYED, d.event)) return;
     var cal = d.props && typeof d.props === "object" ? slug(d.props.calendar, 40) : "";
-    fhTrack(d.event, cal ? { calendar: cal } : {});
-    if (pagePath() === "/apply" && d.event === "booking_confirmed" && cal === "funding-book-call" && !applyRedirecting) {
+    var isApply = pagePath() === "/apply";
+    if (isApply) {
+      // Origin alone is not proof of a booking: require the actual calendar iframe.
+      // Gate tracking BEFORE Meta Schedule / Cortana are emitted, not just redirect.
       var frame = document.getElementById("fh-book-frame");
       if (!frame || ev.source !== frame.contentWindow) return;
+      if (d.event === "booking_confirmed" && cal !== "funding-book-call") return;
+    }
+    fhTrack(d.event, cal ? { calendar: cal } : {});
+    if (isApply && d.event === "booking_confirmed" && !applyRedirecting) {
       applyRedirecting = true;
       try { sessionStorage.setItem("fh_apply_booking_confirmed_v1", String(now())); } catch (e) {}
       // The tracker has queued the Meta and Cortana events before the parent moves.

@@ -175,3 +175,18 @@ test("metrics.mjs ships no table names in reader-facing reasons", () => {
     assert.ok(!/staff_targets/.test(r), "reader-facing reason names a table: " + r);
   }
 });
+
+
+test("recording counts are uncapped on both closer and manager dashboards", () => {
+  // The detail rows are deliberately capped for the screen, but the number
+  // beside them must be a separate count. The old list.length silently
+  // underreported the team total at 20 and the closer total at 10.
+  const src = fs.readFileSync(new URL("./metrics.mjs", import.meta.url), "utf8");
+  assert.match(src, /import \{ countUnrecorded, listUnrecordedCalls \} from "\.\/unrecorded\.mjs"/);
+  assert.match(src, /listUnrecordedCalls\(db, \{ orgId, staffId, now, limit: 10 \}\),\s*countUnrecorded\(db, \{ orgId, staffId, now \}\)/);
+  assert.match(src, /listUnrecordedCalls\(db, \{ orgId, now, limit: 20 \}\),\s*countUnrecorded\(db, \{ orgId, now \}\)/);
+  assert.match(src, /unrecorded:\s+unrecordedCount/);
+  assert.match(src, /count:\s+unrecordedCount,\s*items:\s+unrecordedList/);
+  assert.match(src, /unrecorded_calls:\s+unrecordedCount/);
+  assert.doesNotMatch(src, /unrecorded(?:_calls)?\s*:\s*unrecordedList\.length/);
+});
