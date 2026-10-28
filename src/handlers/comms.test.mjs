@@ -169,6 +169,13 @@ function pgFake() {
           t.client_id === clientId && t.body === uid && likeMatches(t.title, titleLike));
         return { rows: t ? [{ x: 1 }] : [] };
       }
+      // findByProviderUid — same-org/current-provider row. The booking-created
+      // replay guard MUST see the real persisted terminal state in this fake.
+      if (/FROM bookings\\s+WHERE org_id = \\$1 AND provider_uid = \\$2/.test(sql)) {
+        const [orgId, uid] = params;
+        const row = bookings.find((b) => b.org_id === orgId && b.provider_uid === uid);
+        return { rows: row ? [row] : [] };
+      }
       // --- bookings: the terminal-status update, matched by uid ACROSS sources ---
       if (/UPDATE bookings[\s\S]*SET status/.test(sql)) {
         const [orgId, uid, status] = params;
@@ -577,6 +584,64 @@ test("booking.cancelled: a cancellation that DOES match still sets the status", 
   // 'calcom'. Closing it proves the close-out matches on the booking id and the
   // title rather than on either label.
   assert.equal(db.tasks[0].done, true, "the cancellation did not close its own task");
+});
+
+test("booking.created replay cannot reopen a cancelled booking or its closer task", async () => {
+  const db = pgFake();
+  const payload = { email: "cancelled-replay@example.com", bookingUid: "bk-terminal-cancel",
+    startTime: "2026-08-01T15:00:00Z", source: "clickfunnels" };
+  await onBookingCreated(ev("booking.created", payload, { id: "evt-first" }), db);
+  const id = db.clients[0].id;
+  await onBookingCancelled(ev("booking.cancelled", payload, { id: "evt-cancel", clientId: id }), db);
+  const result = await onBookingCreated(ev("booking.created", payload, { id: "evt-stale-create", clientId: id }), db);
+  assert.deepEqual(result, { skipped: "terminal_booking_replay" });
+  assert.equal(db.bookings.length, 1);
+  assert.equal(db.bookings[0].status, "cancelled");
+  assert.equal(db.tasks.length, 1);
+  assert.equal(db.tasks[0].done, true, "cancelled closer task must stay closed");
+  assert.equal(db.clients[0].custom_fields.call_outcome, "cancelled");
+});
+
+test("booking.created replay cannot reopen a no-show", async () => {
+  const db = pgFake();
+  const payload = { email: "noshow-replay@example.com", bookingUid: "bk-terminal-noshow",
+    startTime: "2026-08-01T15:00:00Z", source: "clickfunnels" };
+  await onBookingCreated(ev("booking.created", payload), db);
+  const id = db.clients[0].id;
+  await onBookingNoshow(ev("booking.noshow", payload, { id: "evt-noshow", clientId: id }), db);
+  const result = await onBookingCreated(ev("booking.created", payload, { id: "evt-replay", clientId: id }), db);
+  assert.equal(result?.skipped, "terminal_booking_replay");
+  assert.equal(db.bookings[0].status, "noshow");
+  assert.equal(db.tasks[0].done, true);
+  assert.equal(db.clients[0].custom_fields.call_outcome, "no_show");
+});
+
+test("booking.created cannot silently reassign a provider appointment to another client", async () => {
+  const db = pgFake();
+  await onBookingCreated(ev("booking.created", { email: "owner-a@example.com",
+    bookingUid: "bk-shared-id", startTime: "2026-08-01T15:00:00Z" }), db);
+  const original = db.bookings[0].client_id;
+  const result = await onBookingCreated(ev("booking.created", { email: "owner-b@example.com",
+    bookingUid: "bk-shared-id", startTime: "2026-08-01T15:00:00Z" }, { id: "evt-second" }), db);
+  assert.equal(result?.skipped, "booking_client_mismatch");
+  assert.equal(db.bookings.length, 1);
+  assert.equal(db.bookings[0].client_id, original);
+  assert.equal(db.tasks.length, 1, "another buyer was not assigned to this call");
+});
+
+test("a fresh provider appointment after cancellation still books a new call", async () => {
+  const db = pgFake();
+  await onBookingCreated(ev("booking.created", { email: "rebook@example.com", bookingUid: "old-call",
+    startTime: "2026-08-01T15:00:00Z" }), db);
+  const id = db.clients[0].id;
+  await onBookingCancelled(ev("booking.cancelled", { bookingUid: "old-call" }, { clientId: id }), db);
+  const result = await onBookingCreated(ev("booking.created", { email: "rebook@example.com", bookingUid: "new-call",
+    startTime: "2026-08-06T15:00:00Z" }, { clientId: id, id: "evt-rebook" }), db);
+  assert.equal(result?.skipped, undefined);
+  assert.equal(db.bookings.length, 2);
+  assert.equal(db.bookings.find((b) => b.provider_uid === "old-call").status, "cancelled");
+  assert.equal(db.bookings.find((b) => b.provider_uid === "new-call").status, "booked");
+  assert.equal(db.tasks.filter((t) => !t.done).length, 1);
 });
 
 test("booking.created: a booking id with stray spaces is ONE booking and ONE task", async () => {
