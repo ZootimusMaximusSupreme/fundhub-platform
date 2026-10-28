@@ -13,11 +13,31 @@ test("happy path: funding-path deposit.paid tags + sets lifecycle, creates intak
   assert.deepEqual(db.clients[0].tags, ["client:funding"]);
 });
 
-test("branch: repair-only path is ignored", async () => {
-  const db = pgFake({ clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", outcome_tier: "REPAIR_ONLY" }] });
+test("a verified funding deposit reaches the advisor even when the earlier assessment says repair only", async () => {
+  const db = pgFake({ clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", outcome_tier: "REPAIR_ONLY", custom_fields: {} }] });
   const res = await handle({ event: ev("deposit.paid", {}, { clientId: "cl-1" }), db, step: fakeStep() });
-  assert.equal(res.done, false);
-  assert.equal(res.reason, "not_funding_path:REPAIR_ONLY");
+  assert.equal(res.done, true);
+  assert.equal(res.task.created, true);
+  assert.equal(db.tasks[0].assignee_role, "funding_advisor");
+  assert.equal(db.clients[0].custom_fields.lifecycle_status, "Funding Client");
+});
+
+test("a funding deposit does not erase a separately purchased repair program", async () => {
+  const db = pgFake({ clients: [{
+    id: "cl-1", org_id: "org-1", email: "a@b.com",
+    outcome_tier: "REPAIR_ONLY", tags: ["client:repair"], custom_fields: {}
+  }] });
+  const query = db.query.bind(db);
+  db.query = async (sql, params) => {
+    if (/SELECT DISTINCT pr.category AS category/.test(sql)) {
+      assert.deepEqual(params, ["org-1", "cl-1"]);
+      return { rows: [{ category: "funding" }, { category: "repair" }] };
+    }
+    return query(sql, params);
+  };
+  const res = await handle({ event: ev("deposit.paid", {}, { clientId: "cl-1" }), db, step: fakeStep() });
+  assert.equal(res.done, true);
+  assert.deepEqual(db.clients[0].tags.sort(), ["client:funding", "client:repair"]);
 });
 
 test("duplicate delivery: replaying does not double-create the task", async () => {
