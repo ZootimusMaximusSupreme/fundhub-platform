@@ -40,25 +40,34 @@ export function formatUsdFromCents(cents) {
   return n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 }
 
-/** Team cash this month: every call outcome's cash, demo rows included (the page has always counted them). */
-export const FLOOR_CASH_SQL = `SELECT COALESCE(SUM(cash_collected_cents), 0)::bigint AS cents
-         FROM call_outcomes
-        WHERE org_id = $1 AND logged_at >= $2 AND logged_at < $3`;
+/** Verified sales-floor reporting excludes demo call rows and demo clients. */
+export const FLOOR_CASH_SQL = `SELECT COALESCE(SUM(o.cash_collected_cents), 0)::bigint AS cents
+         FROM call_outcomes o
+         JOIN clients c ON c.id = o.client_id AND c.org_id = o.org_id
+        WHERE o.org_id = $1 AND o.logged_at >= $2 AND o.logged_at < $3
+          AND COALESCE(o.is_demo, false) = false
+          AND COALESCE(c.is_demo, false) = false`;
 
-/** Booked: distinct clients with a booking.created event in the window. */
-export const FLOOR_BOOKED_SQL = `SELECT count(DISTINCT client_id)::int AS n
-         FROM events
-        WHERE org_id = $1 AND name = 'booking.created'
-          AND created_at >= $2 AND created_at < $3
-          AND client_id IS NOT NULL`;
+/** Booked: only real, linked customers; a synthetic booking is not live demand. */
+export const FLOOR_BOOKED_SQL = `SELECT count(DISTINCT e.client_id)::int AS n
+         FROM events e
+         JOIN clients c ON c.id = e.client_id AND c.org_id = e.org_id
+        WHERE e.org_id = $1 AND e.name = 'booking.created'
+          AND e.created_at >= $2 AND e.created_at < $3
+          AND COALESCE(c.is_demo, false) = false
+          AND COALESCE(e.payload->>'simulated', 'false') <> 'true'
+          AND COALESCE(e.payload->>'environment', '') <> 'simulated'`;
 
-/** Held, deposits and downsells from the logged call outcomes in the window. */
-export const FLOOR_OUTCOMES_SQL = `SELECT count(*) FILTER (WHERE outcome <> 'no_show')::int AS held,
-              count(*) FILTER (WHERE outcome = 'deposit' AND transaction_id IS NOT NULL AND cash_collected_cents > 0)::int AS deposits,
-              count(*) FILTER (WHERE outcome = 'downsell' AND transaction_id IS NOT NULL AND cash_collected_cents > 0)::int AS downsells,
-              COALESCE(SUM(cash_collected_cents) FILTER (WHERE outcome = 'downsell' AND transaction_id IS NOT NULL AND cash_collected_cents > 0), 0)::bigint AS downsell_cents
-         FROM call_outcomes
-        WHERE org_id = $1 AND logged_at >= $2 AND logged_at < $3`;
+/** Held, deposits and downsells use the same live-client boundary as cash. */
+export const FLOOR_OUTCOMES_SQL = `SELECT count(*) FILTER (WHERE o.outcome <> 'no_show')::int AS held,
+              count(*) FILTER (WHERE o.outcome = 'deposit' AND o.transaction_id IS NOT NULL AND o.cash_collected_cents > 0)::int AS deposits,
+              count(*) FILTER (WHERE o.outcome = 'downsell' AND o.transaction_id IS NOT NULL AND o.cash_collected_cents > 0)::int AS downsells,
+              COALESCE(SUM(o.cash_collected_cents) FILTER (WHERE o.outcome = 'downsell' AND o.transaction_id IS NOT NULL AND o.cash_collected_cents > 0), 0)::bigint AS downsell_cents
+         FROM call_outcomes o
+         JOIN clients c ON c.id = o.client_id AND c.org_id = o.org_id
+        WHERE o.org_id = $1 AND o.logged_at >= $2 AND o.logged_at < $3
+          AND COALESCE(o.is_demo, false) = false
+          AND COALESCE(c.is_demo, false) = false`;
 
 /** Deposits in the window and how many of those clients funded. staffClause is "" or "AND o.staff_id = $4". */
 export function depositToFundedSql(staffClause = "") {
@@ -77,6 +86,8 @@ export function depositToFundedSql(staffClause = "") {
       WHERE o.org_id = $1
         AND o.outcome = 'deposit' AND o.transaction_id IS NOT NULL AND o.cash_collected_cents > 0
         AND o.logged_at >= $2 AND o.logged_at < $3
+        AND COALESCE(o.is_demo, false) = false
+        AND COALESCE(c.is_demo, false) = false
         ${staffClause}`;
 }
 

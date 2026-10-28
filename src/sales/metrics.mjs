@@ -538,21 +538,27 @@ export async function salesFloor(db, { orgId, now = new Date(), env = process.en
 async function floorFunnelDay(db, { orgId, day }) {
   const [booked, outcomes] = await Promise.all([
     db.query(
-      `SELECT count(DISTINCT client_id)::int AS n
-         FROM events
-        WHERE org_id = $1 AND name = 'booking.created'
-          AND created_at >= ($2::date AT TIME ZONE 'America/Phoenix')
-          AND created_at < (($2::date + 1) AT TIME ZONE 'America/Phoenix')
-          AND client_id IS NOT NULL`,
+      `SELECT count(DISTINCT e.client_id)::int AS n
+         FROM events e
+         JOIN clients c ON c.id = e.client_id AND c.org_id = e.org_id
+        WHERE e.org_id = $1 AND e.name = 'booking.created'
+          AND e.created_at >= ($2::date AT TIME ZONE 'America/Phoenix')
+          AND e.created_at < (($2::date + 1) AT TIME ZONE 'America/Phoenix')
+          AND COALESCE(c.is_demo, false) = false
+          AND COALESCE(e.payload->>'simulated', 'false') <> 'true'
+          AND COALESCE(e.payload->>'environment', '') <> 'simulated'`,
       [orgId, day]
     ),
     db.query(
-      `SELECT count(*) FILTER (WHERE outcome <> 'no_show')::int AS held,
-              count(*) FILTER (WHERE outcome = 'deposit' AND transaction_id IS NOT NULL AND cash_collected_cents > 0)::int AS deposits
-         FROM call_outcomes
-        WHERE org_id = $1
-          AND logged_at >= ($2::date AT TIME ZONE 'America/Phoenix')
-          AND logged_at < (($2::date + 1) AT TIME ZONE 'America/Phoenix')`,
+      `SELECT count(*) FILTER (WHERE o.outcome <> 'no_show')::int AS held,
+              count(*) FILTER (WHERE o.outcome = 'deposit' AND o.transaction_id IS NOT NULL AND o.cash_collected_cents > 0)::int AS deposits
+         FROM call_outcomes o
+         JOIN clients c ON c.id = o.client_id AND c.org_id = o.org_id
+        WHERE o.org_id = $1
+          AND o.logged_at >= ($2::date AT TIME ZONE 'America/Phoenix')
+          AND o.logged_at < (($2::date + 1) AT TIME ZONE 'America/Phoenix')
+          AND COALESCE(o.is_demo, false) = false
+          AND COALESCE(c.is_demo, false) = false`,
       [orgId, day]
     )
   ]);
