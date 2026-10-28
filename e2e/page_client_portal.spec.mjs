@@ -84,5 +84,13 @@ for(const width of [1440,390,320])test(`professional canonical status and next a
  for(const title of await page.locator('.cp-file-title').all()) await expect(title).toBeHidden();
  await page.locator("main").evaluate(e=>e.scrollTo({top:0,behavior:"instant"}));
  fs.mkdirSync(out,{recursive:true});await page.screenshot({path:`${out}/page_client_portal-canonical-${width}.png`,fullPage:true});
- await page.locator("#cp-next-link").click();await expect(page.locator("#acct")).toHaveAttribute("open","");
+ // The pre-call chat deliberately pops up after 1.4 seconds. A real user
+ // must dismiss this dialog before activating the account CTA; Playwright
+ // correctly rejects clicks through an open overlay. Exercise the visible
+ // Close control rather than force-clicking through it or hiding the widget.
+ await expect(page.locator("#fh-chat-panel.open")).toBeVisible();
+ await page.locator("#fh-chat-close").click();
+ await expect(page.locator("#fh-chat-panel")).toBeHidden();
+ await page.locator("#cp-next-link").click();
+ await expect(page.locator("#acct")).toHaveAttribute("open","");
 });
