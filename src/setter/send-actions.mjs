@@ -132,6 +132,12 @@ export async function performSetterSendAction({
 
   if (action !== "send_handoff") throw new Error("unsupported setter send action");
   if (!handoff.complete_at) throw new Error("complete the setter handoff before sending it");
+  // Validate the second recipient before sending the first leg. Otherwise a
+  // malformed closer number leaves the buyer told a handoff happened while no
+  // closer can receive the private handoff.
+  if (!sameStaff && !PHONE_RE.test(String(closer.phone || ""))) {
+    throw new Error("closer phone is missing or invalid");
+  }
   const body = buildSetterHandoffText({ client, handoff, closer, setter: staff });
   const leadBody = body.split("\n\n", 1)[0];
   const lead = await sendLeadImpl(db, { orgId, staffId: staff.id, clientId,
