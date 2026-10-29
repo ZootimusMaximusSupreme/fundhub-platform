@@ -37,6 +37,10 @@ test("approved round only updates open inquiries for its existing org/client (re
       marker text, org_id uuid, client_id uuid, status text,
       is_open boolean, confirmed_at timestamptz
     ) ON COMMIT DROP`);
+    await conn.query(`CREATE TEMP TABLE funding_rounds (
+      id uuid DEFAULT gen_random_uuid(), org_id uuid, client_id uuid,
+      round_number integer, status text
+    ) ON COMMIT DROP`);
     await conn.query("INSERT INTO clients (id,org_id,email) VALUES ($1,$2,$3),($4,$5,$6)",
       [clientA, orgA, "f05+main@example.test", clientB, orgB, "f05+other@example.test"]);
     const fixtures = [
@@ -88,6 +92,41 @@ test("approved round only updates open inquiries for its existing org/client (re
     });
     assert.deepEqual(unknownEmail, { done: false, reason: "no_client" });
     assert.equal((await conn.query("SELECT COUNT(*)::int AS n FROM clients")).rows[0].n, 2);
+
+    // A delayed card-stacking approval for old round #1 must not change the
+    // client's inquiry statuses after a newer round #2 has been started.
+    await conn.query(`INSERT INTO funding_rounds (org_id,client_id,round_number,status)
+      VALUES ($1,$2,1,'approved'),($1,$2,2,'approved')`, [orgA,clientA]);
+    await conn.query("UPDATE inquiry_log SET status='New' WHERE marker='local-new'");
+    const cardEvent = (roundNumber) => ({
+      ...event, payload: { rail: "card_stacking", source: "card_stacking", roundNumber, stage: "approved" }
+    });
+    assert.deepEqual(await handle({ event: cardEvent(1), db: conn, step }),
+      { done: false, reason: "stale_round_approval" });
+    assert.equal((await conn.query(
+      "SELECT status FROM inquiry_log WHERE marker='local-new'")).rows[0].status, "New");
+    assert.deepEqual(await handle({ event: cardEvent(2), db: conn, step }),
+      { done: true, updated: 1 });
+    assert.deepEqual(await handle({ event: cardEvent(2), db: conn, step }),
+      { done: true, updated: 0 });
+
+    // A late approval after funding cannot silently restart inquiry removal.
+    await conn.query("UPDATE inquiry_log SET status='New' WHERE marker='local-new'");
+    await conn.query("UPDATE funding_rounds SET status='funded' WHERE org_id=$1 AND client_id=$2 AND round_number=2",
+      [orgA,clientA]);
+    assert.deepEqual(await handle({ event: cardEvent(2), db: conn, step }),
+      { done: false, reason: "round_terminal" });
+    assert.equal((await conn.query(
+      "SELECT status FROM inquiry_log WHERE marker='local-new'")).rows[0].status, "New");
+
+    // Another org's round is not evidence for this client's approval.
+    await conn.query("DELETE FROM funding_rounds WHERE org_id=$1", [orgA]);
+    await conn.query("INSERT INTO funding_rounds(org_id,client_id,round_number,status) VALUES ($1,$2,2,'approved')",
+      [orgB,clientA]);
+    assert.deepEqual(await handle({ event: cardEvent(2), db: conn, step }),
+      { done: false, reason: "funding_round_not_found" });
+    assert.equal((await conn.query(
+      "SELECT status FROM inquiry_log WHERE marker='local-new'")).rows[0].status, "New");
   } finally {
     await conn.query("ROLLBACK");
     conn.release();
