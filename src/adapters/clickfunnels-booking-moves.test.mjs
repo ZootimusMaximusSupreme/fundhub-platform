@@ -83,6 +83,15 @@ function bookingDb() {
         return { rows: c ? [{ id: c.id }] : [] };
       }
 
+      // bookingChangeIdentity verifies the saved buyer by tenant-scoped email.
+      // Mirror the real lower(email) lookup; a valid move must not fail closed
+      // merely because the in-memory fake cannot answer that SELECT.
+      if (/SELECT id FROM clients WHERE org_id = \$1 AND lower\(email\) = \$2 LIMIT 1/.test(sql)) {
+        const c = clients.find((c) => c.org_id === params[0]
+          && String(c.email || "").toLowerCase() === params[1]);
+        return { rows: c ? [{ id: c.id }] : [] };
+      }
+
       // --- clients (resolveClient) ---
       if (/SELECT id, ghl_contact_id FROM clients/.test(sql)) {
         const c = clients.find((c) => c.org_id === params[0] && c.email === params[1]);
