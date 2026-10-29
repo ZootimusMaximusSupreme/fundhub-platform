@@ -191,7 +191,7 @@ export function firstRepairTasks({ roundsCap, now = new Date() } = {}) {
  * client a second copy of both every time a payment event replayed.
  */
 export async function createRepairStartTasks(db, {
-  orgId, clientId, eventId = null, roundsCap = null, now = new Date()
+  orgId, clientId, roundsCap = null, now = new Date()
 } = {}) {
   const created = [];
   for (const t of firstRepairTasks({ roundsCap, now })) {
