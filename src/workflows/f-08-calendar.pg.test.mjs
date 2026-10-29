@@ -66,7 +66,8 @@ test("F-08 stores a due 30-day advisor check-in, one per funded round, with real
     assert.equal(saved.rows[0].due_at.toISOString(), "2026-11-28T14:00:00.000Z");
     assert.equal(saved.rows[0].body, e1.id);
 
-    await handle({ event: e1, db: conn, step: fakeStep(), now: new Date("2026-11-10T14:00:00Z") });
+    const replayResult = await handle({ event: e1, db: conn, step: fakeStep(), now: new Date("2026-11-10T14:00:00Z") });
+    assert.equal(replayResult.task.created, false, "deduplicated event must report no new task");
     const replay = await conn.query(
       "SELECT due_at FROM tasks WHERE org_id=$1 AND client_id=$2",
       [org, client]
