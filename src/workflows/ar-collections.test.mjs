@@ -579,9 +579,15 @@ test("AR: conflicting invoice and checkout identities do not allocate money", as
   assert.equal(db.tasks.length, 1);
 });
 
-test("AR: a payment naming another client's bill stays unallocated", async () => {
+test("AR: a payment naming another client's bill stays unallocated and review goes to the bill owner", async () => {
   const db = pgFake({
-    clients: [{ id: "cl-2", org_id: "org-1", email: "b@b.com" }],
+    // Owner must exist for the new same-org review-task guard. Previously the
+    // fake omitted cl-1, so the correct guard returned no task instead of
+    // proving its destination was safe.
+    clients: [
+      { id: "cl-1", org_id: "org-1", email: "invoice-owner@b.com" },
+      { id: "cl-2", org_id: "org-1", email: "event-buyer@b.com" }
+    ],
     invoices: [openInvoice({ client_id: "cl-1", amount_due: 1000 })]
   });
   const pay = await handle({
@@ -595,6 +601,8 @@ test("AR: a payment naming another client's bill stays unallocated", async () =>
   assert.equal(db.invoicePayments.length, 0);
   assert.equal(db.invoices[0].status, "sent");
   assert.equal(db.tasks.length, 1);
+  assert.equal(db.tasks[0].client_id, "cl-1", "review task belongs to invoice owner, not wrong callback buyer");
+  assert.equal(db.tasks[0].org_id, "org-1");
 });
 
 test("AR: a bill voided during payment matching leaves a review task", async () => {

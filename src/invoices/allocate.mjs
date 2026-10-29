@@ -52,52 +52,53 @@ export function remainingDueAmount(remainingCents) {
   return Number(fromCents(remainingCents));
 }
 
-async function findByProviderRef(db, refs) {
+async function findByProviderRef(db, { orgId, refs }) {
   const cleaned = [...new Set(refs.filter((v) => v != null && String(v).trim() !== "").map(String))];
   if (!cleaned.length) return null;
   const r = await db.query(
     `SELECT * FROM invoices
-      WHERE external_ref = ANY($1::text[])
+      WHERE org_id = $2 AND external_ref = ANY($1::text[])
       ORDER BY created_at ASC
       LIMIT 1`,
-    [cleaned]
+    [cleaned, orgId]
   );
   return r.rows[0] || null;
 }
 
-async function findByPaymentLink(db, { paymentLinkId, ref }) {
+async function findByPaymentLink(db, { orgId, paymentLinkId, ref }) {
   if (paymentLinkId) {
     const r = await db.query(
       `SELECT invoice_id FROM payment_links
-        WHERE id = $1 AND invoice_id IS NOT NULL
+        WHERE id = $1 AND org_id = $2 AND invoice_id IS NOT NULL
         LIMIT 1`,
-      [paymentLinkId]
+      [paymentLinkId, orgId]
     );
     if (r.rows[0]?.invoice_id) return getInvoice(db, { invoiceId: r.rows[0].invoice_id });
   }
   if (ref) {
     const r = await db.query(
       `SELECT invoice_id FROM payment_links
-        WHERE link_ref = $1 AND invoice_id IS NOT NULL
+        WHERE link_ref = $1 AND org_id = $2 AND invoice_id IS NOT NULL
         LIMIT 1`,
-      [String(ref)]
+      [String(ref), orgId]
     );
     if (r.rows[0]?.invoice_id) return getInvoice(db, { invoiceId: r.rows[0].invoice_id });
   }
   return null;
 }
 
-async function findByRound(db, { clientId, fundingRoundId }) {
+async function findByRound(db, { orgId, clientId, fundingRoundId }) {
   if (!clientId || !fundingRoundId) return null;
   const r = await db.query(
     `SELECT * FROM invoices
       WHERE client_id = $1
         AND funding_round_id = $2
+        AND org_id = $4
         AND (source = 'funding_success_fee' OR invoice_type = 'success_fee')
         AND status = ANY($3)
       ORDER BY created_at ASC, id ASC
       LIMIT 1`,
-    [clientId, fundingRoundId, OPEN]
+    [clientId, fundingRoundId, OPEN, orgId]
   );
   return r.rows[0] || null;
 }
@@ -141,15 +142,24 @@ async function replayIdentityMatches(db, prior, { orgId, clientId, hintedId, rou
   if (hintedId && String(original.id) !== String(hintedId)) return false;
   if (roundId && String(original.funding_round_id || "") !== String(roundId)) return false;
   if (paymentLinkId || ref) {
-    const linked = await findByPaymentLink(db, { paymentLinkId, ref });
+    const linked = await findByPaymentLink(db, { orgId, paymentLinkId, ref });
+    // An explicit checkout ID must resolve inside this org. Otherwise the
+    // envelope may be borrowing a different tenant's link while naming a
+    // legitimate local invoice, including on a replayed PSP reference.
+    if (paymentLinkId && !linked) return false;
     if (linked && String(linked.id) !== String(original.id)) return false;
   }
   return true;
 }
 
-async function conflictingReplay(db, { orgId, clientId, eventId, providerPaymentId }) {
+async function conflictingReplay(db, { orgId, clientId, eventId, providerPaymentId, originalInvoiceId = null }) {
+  // The original provider receipt, not an untrusted replay customer locator,
+  // owns any review task. Never create a task on another tenant's client.
+  const original = originalInvoiceId ? await getInvoice(db, { invoiceId: originalInvoiceId }) : null;
+  const reviewClientId = original && String(original.org_id) === String(orgId)
+    ? original.client_id : clientId;
   await staffTask(db, {
-    orgId, clientId, eventId,
+    orgId, clientId: reviewClientId, eventId,
     title: "Conflicting payment reference — review original receipt",
     body: providerPaymentId ? `receipt-conflict:${providerPaymentId}` : eventId
   });
@@ -189,6 +199,13 @@ async function markPartiallyPaid(db, { invoiceId }) {
 
 async function staffTask(db, { orgId, clientId, eventId, title, body }) {
   if (!orgId || !clientId) return null;
+  // The tasks table's client foreign key is not an org+client ownership check.
+  // An untrusted receipt must not mint a review task for another company's buyer.
+  const owned = await db.query(
+    `SELECT id FROM clients WHERE id = $1 AND org_id = $2 LIMIT 1`,
+    [clientId, orgId]
+  );
+  if (!owned.rows[0]) return null;
   return createTask(db, {
     orgId,
     clientId,
@@ -229,7 +246,7 @@ export async function allocatePayment(db, event) {
     const prior = await alreadyRecorded(db, { orgId, providerPaymentId });
     if (prior) {
       if (!await replayIdentityMatches(db, prior, replayContext)) {
-        return conflictingReplay(db, { orgId, clientId, eventId: event.id, providerPaymentId });
+        return conflictingReplay(db, { orgId, clientId, eventId: event.id, providerPaymentId, originalInvoiceId: prior.invoice_id });
       }
       return replayRecordedPayment(db, prior);
     }
@@ -245,26 +262,33 @@ export async function allocatePayment(db, event) {
   let linkedInvoice = null;
   if (payload.paymentLinkId || payload.ref) {
     linkedInvoice = await findByPaymentLink(db, {
+      orgId,
       paymentLinkId: payload.paymentLinkId,
       ref: payload.ref
     });
+  }
+  // A payment naming an explicit checkout ID must actually own that link.
+  // A foreign or unknown checkout cannot be ignored merely because the same
+  // envelope also carries a perfectly valid local invoice ID.
+  if (payload.paymentLinkId && !linkedInvoice) {
+    return { done: true, allocated: false, reason: "invoice_mismatch", path: "unresolved" };
   }
   if (!invoice) {
     invoice = linkedInvoice;
     if (invoice) path = "provider_ref";
   }
   if (!invoice) {
-    invoice = await findByProviderRef(db, [
+    invoice = await findByProviderRef(db, { orgId, refs: [
       payload.providerRef,
       payload.itemId,
       payload.ref,
       payload.invoiceRef
-    ]);
+    ] });
     if (invoice) path = "provider_ref";
   }
 
   if (!invoice && roundId) {
-    invoice = await findByRound(db, { clientId, fundingRoundId: roundId });
+    invoice = await findByRound(db, { orgId, clientId, fundingRoundId: roundId });
     if (invoice) {
       path = "round";
       console.warn(`[ar-allocate] path=round invoice=${invoice.id} payment=${providerPaymentId || "none"}`);
@@ -287,13 +311,20 @@ export async function allocatePayment(db, event) {
     return { done: true, allocated: false, reason: "unresolved", path: "unresolved" };
   }
 
+  // A foreign-org invoice ID is an untrusted locator, never permission to
+  // create a review task on that tenant's buyer or reveal invoice metadata.
+  // Check BEFORE invoice source/type/status and before the task fallback.
+  if (!orgId || String(invoice.org_id) !== String(orgId)) {
+    return { done: true, allocated: false, reason: "invoice_mismatch", path: "unresolved" };
+  }
+
   // This allocator owns *only* funding success fees. A payment that names a
   // repair, DIY, deposit or other invoice must not write a success-fee receipt.
   if (!isFundingSuccessFeeInvoice(invoice)) {
     const likelySuccessFee = payload.product === "success_fee" || !!roundId;
     if (likelySuccessFee) {
       await staffTask(db, {
-        orgId, clientId, eventId: event.id,
+        orgId, clientId: invoice.client_id, eventId: event.id,
         title: "Unallocated payment — invoice is not a funding success fee",
         body: providerPaymentId ? `invoice-type:${providerPaymentId}` : event.id
       });
@@ -313,7 +344,7 @@ export async function allocatePayment(db, event) {
     console.warn(`[ar-allocate] path=unresolved reason=${reason} invoice=${invoice.id}`);
     await staffTask(db, {
       orgId,
-      clientId: clientId || invoice.client_id,
+      clientId: invoice.client_id,
       eventId: event.id,
       title: "Unallocated payment — invoice needs review",
       body: providerPaymentId ? `${reason}:${providerPaymentId}` : event.id
@@ -329,7 +360,7 @@ export async function allocatePayment(db, event) {
     console.warn(`[ar-allocate] path=unresolved reason=${reason} invoice=${invoice.id}`);
     await staffTask(db, {
       orgId,
-      clientId,
+      clientId: invoice.client_id,
       eventId: event.id,
       title: "Unallocated payment — invalid receipt amount",
       body: providerPaymentId ? `${reason}:${providerPaymentId}` : event.id
@@ -412,7 +443,7 @@ export async function allocatePayment(db, event) {
     // Repeat the identity check after the invoice row lock: a concurrent
     // envelope may have recorded this PSP reference against another invoice.
     if (result.prior && !await replayIdentityMatches(db, result.prior, replayContext)) {
-      return conflictingReplay(db, { orgId, clientId, eventId: event.id, providerPaymentId });
+      return conflictingReplay(db, { orgId, clientId, eventId: event.id, providerPaymentId, originalInvoiceId: result.prior.invoice_id });
     }
     return replayRecordedPayment(db, result.prior || {
       invoice_id: invoice.id, external_ref: providerPaymentId, source_event_id: event.id
@@ -423,7 +454,7 @@ export async function allocatePayment(db, event) {
     console.warn(`[ar-allocate] path=unresolved reason=${reason} invoice=${invoice.id}`);
     await staffTask(db, {
       orgId,
-      clientId: clientId || invoice.client_id,
+      clientId: invoice.client_id,
       eventId: event.id,
       title: reason === "unknown_due"
         ? "Unallocated payment — invoice amount unknown"
@@ -446,7 +477,7 @@ export async function allocatePayment(db, event) {
     console.warn(`[ar-allocate] path=overpay surplus_cents=${surplusCents} invoice=${invoice.id}`);
     await staffTask(db, {
       orgId,
-      clientId,
+      clientId: invoice.client_id,
       eventId: event.id,
       title: "Overpayment leftover — do not apply to another invoice",
       body: providerPaymentId ? `overpay:${providerPaymentId}` : event.id

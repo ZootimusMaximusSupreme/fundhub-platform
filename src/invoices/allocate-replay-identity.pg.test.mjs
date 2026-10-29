@@ -9,10 +9,19 @@ import { resolveDefaultOrg } from "../auth/org.mjs";
 import { createInvoice, markSent, getInvoice } from "./index.mjs";
 import { allocatePayment } from "./allocate.mjs";
 
-const HAVE_DB = Boolean(process.env.DATABASE_URL);
+// Every test below INSERTs synthetic invoices and tasks. Even though they
+// ROLLBACK, block remote/production databases at the test-entry boundary.
+const SCRATCH = (() => {
+  if (process.env.CI !== "true" || !process.env.DATABASE_URL) return false;
+  try {
+    const u = new URL(process.env.DATABASE_URL);
+    return ["127.0.0.1", "localhost"].includes(u.hostname)
+      && u.pathname === "/fundhub_ci";
+  } catch { return false; }
+})();
 
 describe("A/R replay must retain the original payer and invoice (real Postgres)",
-  { skip: !HAVE_DB ? "no disposable DATABASE_URL" : false }, () => {
+  { skip: !SCRATCH ? "GitHub Actions disposable localhost fundhub_ci only" : false }, () => {
     let conn, transactionalDb, orgId, firstClient, secondClient;
 
     before(async () => {
@@ -91,15 +100,19 @@ describe("A/R replay must retain the original payer and invoice (real Postgres)"
         [original.id]
       );
       assert.equal(originalReceipts.rows[0].n, 1);
-      for (const clientId of [firstClient, secondClient]) {
-        const task = await conn.query(
-          `SELECT COUNT(*)::int n FROM tasks
-           WHERE org_id = $1 AND client_id = $2 AND source_workflow = 'ar-allocate'
-             AND body = $3`,
-          [orgId, clientId, `receipt-conflict:${ref}`]
-        );
-        assert.equal(task.rows[0].n, 1, "conflicting reference needs human review");
-      }
+      // The original settled receipt is authoritative. Two conflicting
+      // envelopes with the SAME provider ID create just one review task on
+      // the original customer's queue, never on the forged callback buyer.
+      const tasks = await conn.query(
+        `SELECT client_id FROM tasks
+         WHERE org_id = $1 AND source_workflow = 'ar-allocate'
+           AND body = $2`,
+        [orgId, `receipt-conflict:${ref}`]
+      );
+      assert.equal(tasks.rows.length, 1, "multiple conflicting envelopes are one PSP-reference review");
+      assert.equal(String(tasks.rows[0].client_id), String(firstClient),
+        "receipt conflict must be reviewed on the original invoice owner");
+      assert.notEqual(String(tasks.rows[0].client_id), String(secondClient));
     });
 
     test("zero and negative payment.received amounts are not silently acknowledged", async () => {
