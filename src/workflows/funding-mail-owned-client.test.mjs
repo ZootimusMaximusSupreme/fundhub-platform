@@ -9,11 +9,17 @@ import { handle as f04 } from "./f-04-round-approvals.mjs";
 import { handle as f07 } from "./f-07-funding-locked.mjs";
 import { handle as f08 } from "./f-08-post-funding-monitoring.mjs";
 import { handle as f10 } from "./f-10-client-funding-inbox-provisioner.mjs";
+import { handle as n04 } from "./n-04-post-funding-nurture.mjs";
+import { handle as n06 } from "./n-06-renewal-second-wave.mjs";
 import { handle as f06 } from "./f-06-funding-conditions-missing-docs.mjs";
 import { handle as f09 } from "./f-09-funding-declined-no-path.mjs";
 import { handle as f11 } from "./f-11-bank-email-event-router.mjs";
 
 const scenarios = [
+  { name: "N-04 staff engagement closeout messaging", handle: n04,
+    event: () => ev("round.closeout", { stage: "closed", engagementComplete: true }) },
+  { name: "N-06 six-month second-wave outreach", handle: n06,
+    event: () => ev("round.funded", { fundedAmount: 1000 }) },
   { name: "F-02 onboarding document reminders", handle: f02,
     event: () => ev("round.started", { roundNumber: 1 }) },
   { name: "F-03 submitted-round customer messages", handle: f03,
