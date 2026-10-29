@@ -152,9 +152,14 @@ async function replayIdentityMatches(db, prior, { orgId, clientId, hintedId, rou
   return true;
 }
 
-async function conflictingReplay(db, { orgId, clientId, eventId, providerPaymentId }) {
+async function conflictingReplay(db, { orgId, clientId, eventId, providerPaymentId, originalInvoiceId = null }) {
+  // The original provider receipt, not an untrusted replay customer locator,
+  // owns any review task. Never create a task on another tenant's client.
+  const original = originalInvoiceId ? await getInvoice(db, { invoiceId: originalInvoiceId }) : null;
+  const reviewClientId = original && String(original.org_id) === String(orgId)
+    ? original.client_id : clientId;
   await staffTask(db, {
-    orgId, clientId, eventId,
+    orgId, clientId: reviewClientId, eventId,
     title: "Conflicting payment reference — review original receipt",
     body: providerPaymentId ? `receipt-conflict:${providerPaymentId}` : eventId
   });
@@ -194,6 +199,13 @@ async function markPartiallyPaid(db, { invoiceId }) {
 
 async function staffTask(db, { orgId, clientId, eventId, title, body }) {
   if (!orgId || !clientId) return null;
+  // The tasks table's client foreign key is not an org+client ownership check.
+  // An untrusted receipt must not mint a review task for another company's buyer.
+  const owned = await db.query(
+    `SELECT id FROM clients WHERE id = $1 AND org_id = $2 LIMIT 1`,
+    [clientId, orgId]
+  );
+  if (!owned.rows[0]) return null;
   return createTask(db, {
     orgId,
     clientId,
@@ -234,7 +246,7 @@ export async function allocatePayment(db, event) {
     const prior = await alreadyRecorded(db, { orgId, providerPaymentId });
     if (prior) {
       if (!await replayIdentityMatches(db, prior, replayContext)) {
-        return conflictingReplay(db, { orgId, clientId, eventId: event.id, providerPaymentId });
+        return conflictingReplay(db, { orgId, clientId, eventId: event.id, providerPaymentId, originalInvoiceId: prior.invoice_id });
       }
       return replayRecordedPayment(db, prior);
     }
@@ -312,7 +324,7 @@ export async function allocatePayment(db, event) {
     const likelySuccessFee = payload.product === "success_fee" || !!roundId;
     if (likelySuccessFee) {
       await staffTask(db, {
-        orgId, clientId, eventId: event.id,
+        orgId, clientId: invoice.client_id, eventId: event.id,
         title: "Unallocated payment — invoice is not a funding success fee",
         body: providerPaymentId ? `invoice-type:${providerPaymentId}` : event.id
       });
@@ -348,7 +360,7 @@ export async function allocatePayment(db, event) {
     console.warn(`[ar-allocate] path=unresolved reason=${reason} invoice=${invoice.id}`);
     await staffTask(db, {
       orgId,
-      clientId,
+      clientId: invoice.client_id,
       eventId: event.id,
       title: "Unallocated payment — invalid receipt amount",
       body: providerPaymentId ? `${reason}:${providerPaymentId}` : event.id
@@ -431,7 +443,7 @@ export async function allocatePayment(db, event) {
     // Repeat the identity check after the invoice row lock: a concurrent
     // envelope may have recorded this PSP reference against another invoice.
     if (result.prior && !await replayIdentityMatches(db, result.prior, replayContext)) {
-      return conflictingReplay(db, { orgId, clientId, eventId: event.id, providerPaymentId });
+      return conflictingReplay(db, { orgId, clientId, eventId: event.id, providerPaymentId, originalInvoiceId: result.prior.invoice_id });
     }
     return replayRecordedPayment(db, result.prior || {
       invoice_id: invoice.id, external_ref: providerPaymentId, source_event_id: event.id
@@ -442,7 +454,7 @@ export async function allocatePayment(db, event) {
     console.warn(`[ar-allocate] path=unresolved reason=${reason} invoice=${invoice.id}`);
     await staffTask(db, {
       orgId,
-      clientId: clientId || invoice.client_id,
+      clientId: invoice.client_id,
       eventId: event.id,
       title: reason === "unknown_due"
         ? "Unallocated payment — invoice amount unknown"
@@ -465,7 +477,7 @@ export async function allocatePayment(db, event) {
     console.warn(`[ar-allocate] path=overpay surplus_cents=${surplusCents} invoice=${invoice.id}`);
     await staffTask(db, {
       orgId,
-      clientId,
+      clientId: invoice.client_id,
       eventId: event.id,
       title: "Overpayment leftover — do not apply to another invoice",
       body: providerPaymentId ? `overpay:${providerPaymentId}` : event.id
