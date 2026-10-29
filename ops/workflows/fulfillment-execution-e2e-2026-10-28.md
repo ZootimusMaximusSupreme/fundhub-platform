@@ -175,3 +175,12 @@ Additional inventory found `N-04` and `N-06` both consume **existing** funded/cl
 | F-15H — N-06 `round.funded` second-wave renewal | The 180-day delayed nurture must never mint or update a foreign/unknown customer, enqueue a renewal task, or send SMS/email; reassess actual eligibility before send. | **FAIL pre-fix source, fix proposed in #210; NOT LIVE PROVED** — same guard tests; six-month durable wake, eligibility, consent and live delivery independently NLP. |
 
 **Revised scope:** PR #210 covers **11 owned fulfillment workflow modules and 12 event paths**, plus two new test files. This is targeted defensive hardening, not certification that the remaining funding/repair/Blueprint acceptance rows passed. As with every change, CI green and actual deployment are distinct required gates.
+
+
+### Independent sequence-close contradiction caught during N-04 aftercare review
+
+**F-13A — single round closeout must not declare the whole engagement completed.** Card Stacking's own `src/funding/card-stacking-rounds.mjs` builds `round.closeout` payloads with `stage:"closed", engagementComplete:false` for **each** round, while N-04's original `isStaffEngagementCloseout` treated `stage:"closed"` as sufficient and queued post-engagement nurture messages to the customer. That directly contradicts the product rule that a round close ≠ entire funding sequence complete (F-13). Pre-fix branch evidence is this exact source-to-source payload mismatch; no actual customer message delivery is asserted.
+
+**Proposed same-branch targeted repair:** in `src/workflows/n-04-post-funding-nurture.mjs`, explicit `engagementComplete:false` now vetoes `stage:"closed"`; explicit true remains eligible; older staff-generated closeout events with no completion field retain their historical `stage:"closed"` fallback to avoid breaking legitimate legacy follow-up. Added two named regression tests checking actual handler absence of queued messages and each boolean payload combination.
+
+**F-13A verdict: FAIL pre-fix source; fix proposed in #210, CI and actual live delivery NOT LIVE PROVED.** No funding sequence completion button or authoritative sequence-close receipt has been demonstrated. F-13 remains NOT LIVE PROVED overall, even if F-13A's isolated regression is green.
