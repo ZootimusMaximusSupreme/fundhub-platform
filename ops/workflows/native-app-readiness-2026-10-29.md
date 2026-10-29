@@ -31,7 +31,8 @@ Legend: **SOURCE PASS** means the identified code path exists and is narrowly co
 
 1. **iPhone:** keep first-party `target=_blank` URLs in the authenticated `WKWebView`; exact web login destinations still sign out, external links still open outside, payment-provider subframes aren't intercepted. Added `FundhubTests.swift` unit assertions for same-origin and lookalike domains. These source tests require macOS/Xcode to execute.
 2. **Mac:** block unsafe external URL schemes in both navigation callbacks. No changes to web portal, shared staff shell, backend, payments, or live session records. Must run manual native UI checks before declaring live.
-3. Explicitly **deferred** native APNs opt-in presentation, Mac Home/account switching logout, and full native status UI: these need separate owner-approved product behavior and/or real device test. They are not silently considered done.
+3. **Native APNs opt-out hardening:** explicit per-app opt-in state persists independently of iOS authorization and server registration. Refresh refuses to re-register when the user disabled notifications; stale server registrations are revoked and late registration callbacks compensate with deletion. Source/XCTest regression checks added. The native notification card is STILL NOT mounted, no device APNs delivery verified, and no native release was shipped.
+4. Explicitly **deferred** native APNs opt-in presentation, Mac Home/account switching logout, and full native status UI: these need separate owner-approved product behavior and/or real device test. They are not silently considered done.
 
 ### Human acceptance gates (actual install, no production writes)
 

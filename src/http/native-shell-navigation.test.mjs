@@ -28,3 +28,15 @@ test("macOS never launches unapproved external URL schemes", () => {
   assert.equal((mac.match(/NSWorkspace\.shared\.open\(url\)/g) || []).length, 1);
   assert.equal((mac.match(/openAllowedExternal\(url\)/g) || []).length, 2);
 });
+
+const push = readFileSync(new URL("../../tools/fundhub-ios/Fundhub/Core/NativePush.swift", import.meta.url), "utf8");
+
+test("native APNs requires explicit app opt-in and cannot silently revive opt-out", () => {
+  assert.match(push, /guard NativePushConsent\.isEnabled\(\) else \{/);
+  assert.match(push, /if server\.registered \{\s*try await api\.unregisterNativePush/);
+  assert.match(push, /guard self\.bearer == bearer else \{ return \}\s*switch settings\.authorizationStatus/);
+  assert.match(push, /guard let bearer, NativePushConsent\.isEnabled\(\) else \{ return \}/);
+  assert.match(push, /guard self\.bearer == bearer && NativePushConsent\.isEnabled\(\) else \{/);
+  assert.match(push, /NativePushConsent\.setEnabled\(true\)/);
+  assert.ok((push.match(/NativePushConsent\.setEnabled\(false\)/g) || []).length >= 3);
+});

@@ -205,6 +205,18 @@ final class FundhubTests: XCTestCase {
             URL(string: "https://fundhub.ai/portal-login.html")!))
     }
 
+    func testNativePushAppOptOutPersistsIndependentlyOfSystemAuthorization() {
+        let suite = "ai.fundhub.tests.push-consent.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        XCTAssertFalse(NativePushConsent.isEnabled(defaults: defaults))
+        NativePushConsent.setEnabled(true, defaults: defaults)
+        XCTAssertTrue(NativePushConsent.isEnabled(defaults: defaults))
+        NativePushConsent.setEnabled(false, defaults: defaults)
+        XCTAssertFalse(NativePushConsent.isEnabled(defaults: defaults))
+    }
+
     func testWebSignOutDestinationIsExact() {
         XCTAssertTrue(WorkspaceNavigation.isSignOutDestination(URL(string: "https://fundhub.ai/portal-login.html")!))
         XCTAssertTrue(WorkspaceNavigation.isSignOutDestination(URL(string: "https://fundhub.ai/login.html")!))
