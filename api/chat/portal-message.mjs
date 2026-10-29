@@ -8,7 +8,6 @@
 import { db } from "../../src/db.mjs";
 import { requirePrincipal } from "../../src/http/middleware/requirePrincipal.mjs";
 import { upsertConversation, linkMessage } from "../../src/conversations/store.mjs";
-import { listThreadMessages } from "../../src/chat/internal.mjs";
 import { safeError } from "../../src/http/health.mjs";
 import {
   answerPortalMessage, portalAssistantContext
@@ -40,11 +39,25 @@ export default async function handler(req, res) {
         return res.status(200).json({ ok: true, conversation_id: null, messages: [] });
       }
       const conversationId = convo.rows[0].id;
-      const messages = await listThreadMessages(db, {
-        orgId,
-        conversationId,
-        limit: Number(req.query?.limit) || 100
-      });
+      /* The generic staff helper returns the OLDEST 100 first. That leaves
+         a long-running buyer unable to see new replies after 100 messages.
+         Only show this authenticated client's rows, latest N chronologically.
+         Stable id tiebreakers keep concurrent equal-timestamp notes ordered. */
+      const limit = Math.min(500, Math.max(1, Number(req.query?.limit) || 100));
+      const recent = await db.query(
+        `SELECT * FROM (
+           SELECT m.id, m.direction, m.channel, m.rendered_body, m.status,
+                  m.sender_staff_id, m.sender_kind, m.created_at,
+                  s.name AS sender_name
+             FROM messages m
+             LEFT JOIN staff s ON s.id = m.sender_staff_id
+            WHERE m.org_id = $1 AND m.client_id = $2 AND m.conversation_id = $3
+            ORDER BY m.created_at DESC, m.id DESC
+            LIMIT $4
+         ) recent ORDER BY recent.created_at ASC, recent.id ASC`,
+        [orgId, clientId, conversationId, limit]
+      );
+      const messages = recent.rows;
       return res.status(200).json({
         ok: true,
         conversation_id: conversationId,
