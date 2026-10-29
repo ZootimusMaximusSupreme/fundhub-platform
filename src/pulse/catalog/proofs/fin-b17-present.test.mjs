@@ -656,7 +656,7 @@ test("Reframing patterns opens the five reframes and Back closes them", async ()
       ["Simple Decision", "Do you want to keep [pain] or do you want [outcome]?"],
       ["Circumstance vs Vision", "Decisions from current circumstances, or from your vision?"],
       ["Cost Reframe", "Too much compared to what? Compared to [Amount] and finally [goal]?"],
-      ["Risk Reframe", "Riskier: $3K into a proven system with three guarantees, or the same spot in 6 months?"],
+      ["Risk Reframe", "Riskier: $3K into a plan built from your own file, or the same spot in 6 months?"],
     ]) {
       assert.ok(deck.cockpitText().includes(`${name} ${words}`), name);
     }

@@ -31,20 +31,21 @@ flowchart TD
     A[Read the file together on S-07] --> T{What does S-07 say?}
     T -->|FULL FUNDING| D1[Door 1. Fund it<br/>$3,000 now, counts toward the 10%]
     T -->|FUNDING PLUS REPAIR| D1R[Door 1 plus credit optimization<br/>$3,000 + $1,000]
-    T -->|REPAIR ONLY| W{Whole plan, or done for them?}
-    W -->|They want the plan and will do the steps| D3[Door 3. Capital Blueprint<br/>$5,000 to $10,000]
-    W -->|They want it cleaned for them| D4[Door 4. Credit optimization<br/>$1,000, or $200 to start]
+    T -->|REPAIR ONLY| D3[Door 3. Capital Blueprint first<br/>$5,000 to $10,000]
+    D3 -->|No to the Blueprint| D4[Door 4. Credit optimization<br/>$1,000, then $200 to start]
     A --> R{Steady revenue in a business bank account?}
-    R -->|Yes| D2[Door 2. Revenue funding<br/>not live yet]
+    R -->|Yes| D2[Door 2. Revenue funding, run by hand<br/>$3,000 + 10%]
 ```
 
 | Door | Who | Offer | Price | How they pay |
 |---|---|---|---|---|
 | 1. Fund it | S-07 says FULL FUNDING | Funding, done for you | $3,000 today. It counts toward 10% of what gets funded. | Cash. No plan. |
 | 1 plus repair | S-07 says FUNDING PLUS REPAIR | Funding plus credit optimization | $3,000 plus $1,000 | Cash. |
-| 2. Revenue funding | Steady business revenue | Not live yet | Not set | — |
-| 3. Capital Blueprint | File not ready. They want the whole plan and will do the steps. | Capital Blueprint, 12 months | $5,000 to $10,000, whole dollars, default $5,000 | Paid in full, or financing through Whop |
-| 4. Credit optimization | File not ready. They want it done for them. | Up to six rounds, done for you | $1,000, or $200 for round one | Cash. The $200 counts toward the $1,000. |
+| 2. Revenue funding | Steady revenue, 6 months or more in business, 3 months of bank statements | Funding, done for you, run by hand | $3,000 today plus 10% of what gets funded | Cash. |
+| 3. Capital Blueprint | File not ready. Always offered first. | Capital Blueprint, 12 months | $5,000 to $10,000, whole dollars, default $5,000 | Paid in full, or financing through Whop |
+| 4. Credit optimization | File not ready, and they said no to the Blueprint. | Up to six rounds, done for you | $1,000, or $200 for round one | Cash. The $200 counts toward the $1,000. |
+
+**Chris's rule (2026-10-29):** always offer the most expensive product that fits their goal first. Step down only on a no.
 
 ## 0. Before the call — 5 minutes
 
@@ -53,7 +54,7 @@ flowchart TD
 3. Read the survey on S-03: how much they want, what it is for, what it changes, the score they think they have, how old the business is (or "personal funding only"), the yearly revenue range, whether they can verify revenue (bank statements, tax returns), their income, and capital on hand.
 4. Write down your first guess at the door. The file decides on the call. The guess only tells you what to listen for.
 5. Open the call cockpit: https://fundhub.ai/app/closer-call.html. Read past texts and notes.
-6. Open Present on this client: https://fundhub.ai/app/present.html. Do not share the screen yet.
+6. Open Present, the screen-share deck, on this client: https://fundhub.ai/app/present.html. Do not share the screen yet.
 7. Reset for two minutes. Breathe. Let go of the result. Your job is to find the truth about their file and say it straight.
 8. Have your note sheet open in call order: stuck part, numbers, why they can't fix it alone, cost of waiting, goal, who else decides, the door.
 
@@ -134,8 +135,8 @@ If the goal is small next to what they need: "Is that what you need, or what you
 
 - Steady revenue through a business bank account: write the monthly amount and how long it has run (Door 2).
 - Full cards, late payments, collections, a lot of recent applications: the file is not ready yet.
-- "I want to learn how this works," "I want to do it right," more than one business: Capital Blueprint.
-- "Just fix it for me," "I don't have time": done for them.
+- "I want to learn how this works," "I want to do it right," more than one business: the Capital Blueprint fits well.
+- "Just fix it for me," "I don't have time": still lead with the Blueprint. Expect to step down to the $1,000.
 - "I need it in a few weeks": speed matters.
 
 **Close the questions:**
@@ -164,7 +165,7 @@ If they already did the pull before the call, skip to section 4.
 
 Share your screen in Present. Go to S-07.
 
-**The screen's headline says "Pre-approved for approximately" and "0 percent introductory rates." Do not read those words out loud.** Lenders decide. Say it this way:
+The headline reads "How much you qualify for today." Lenders decide. Say it this way:
 
 1. **Outcome first.**
    - Funding file: "Here's how much you qualify for based on where you're at right now: [amount on screen]."
@@ -174,11 +175,11 @@ Share your screen in Present. Go to S-07.
 3. **Let them say it.** "What jumps out at you?" "Did you know about that one?" Wait. When they say the problem out loud, it is theirs, not yours.
 4. **Tie it to the goal.** "You said you need [target] for [use]. Today the file shows [amount]. So there are three ways to go: fund what's there now, fix the file first, or both."
 
-Read the amounts off the screen. Never round up. Never say they are approved. Never say a bank will give them an amount. Never name a bank as one that will approve them. If they ask about the word "pre-approved": "That's what your file supports today. The bank still decides."
+Read the amounts off the screen. Never round up. Never say they are approved. Never say a bank will give them an amount. Never name a bank as one that will approve them. If they ask if that means approved: "That's what your file supports today. The bank still decides."
 
 ## 5. Pick the door
 
-The file picks first. Then what they told you about the business. You sell **one** door.
+The file picks first. Then what they told you about the business. You sell **one** door. Always lead with the most expensive door that fits their goal, and step down only on a no.
 
 **Step 1. Read the tier on S-07.** The "Route the call" box beside the slide in Present says what the engine found.
 
@@ -191,20 +192,20 @@ The file picks first. Then what they told you about the business. You sell **one
 
 **Step 2. Add the business side** (from section 2 and S-03).
 
-- Steady revenue through a business bank account: Door 2 fits. **It is not live yet.** Read Door 2 before you say a word about it.
+- Steady revenue through a business bank account, 6 months or more in business, and 3 months of bank statements: Door 2 fits. It runs by hand for now.
 - A business under 12 months old: the engine cuts business card amounts in half. Check the incorporation date on the state record. Do not take their word for it.
 - S-03 shows the survey's revenue as "Monthly revenue," but the survey asked for a yearly range. Use the monthly amount they told you out loud.
 
-**Step 3. File not ready? Whole plan, or done for them?**
+**Step 3. File not ready? Lead with the Blueprint.**
 
-- They want the whole plan (personal file, business setup, the banks, 12 months) and will do the steps: Door 3, Capital Blueprint.
-- They want the file cleaned for them: Door 4, credit optimization.
+- Offer Door 3, the Capital Blueprint, first. It is the most expensive door that fits.
+- If they say no, step down to Door 4: the $1,000 credit optimization, then the $200 round one.
 
 **Name the door before any price.** "Based on what your file shows, here's where you are, and here's the path that fits." They have to agree with the door before they hear a price. If they push back on the door, handle it right there, on S-08. Never handle it at the price.
 
 The system never blocks a sale by tier. So the door is on you. The route buttons on S-07 change it. Change it only when the file gives you a reason, and write the reason in your notes.
 
-The **EDUCATION PATH** button on S-07 is Capital Academy, $5,000. It is not one of the four doors. See **Open calls for Chris**.
+The **EDUCATION PATH** button on S-07 is Capital Academy. It is off until it is filmed (Chris, 2026-10-29). Do not use it.
 
 ## 6. Show the door
 
@@ -221,7 +222,7 @@ Every door has the same shape. First the promise: the steps that get them from w
 3. **Step two: the right banks, in the right order.** "Our system matches your file to the banks that fit it. We apply in rounds. One funding sequence is about six rounds. Your personal file first. Then each business, on its own. Make sense?"
 4. **Step three: done for you.** "The Fundhub team runs every application and every follow-up. You run the business. Make sense?"
 5. **How it runs.** "Once you sign, your funding advisor starts on your file within 24 business hours. Your first applications go out within 72 business hours."
-6. **The menu, on S-16.** Take their order only for what is live today: business cards, personal cards and personal loans. The other lines on that slide are not live yet (see Door 2).
+6. **The menu, on S-16.** Take their order for what is live: business cards, personal cards and personal loans, plus lines of credit, term loans and revenue-based funding off bank statements or tax returns (Door 2, run by hand). SBA and equipment loans are not live yet.
 7. **Say these, then check the boxes in the cockpit:**
    - "Business cards carry a personal guarantee. If the business can't pay, you're on the hook. The bank sets that rule."
    - "Intro rates end. Each card's terms show the month. We plan for that month before you spend."
@@ -232,26 +233,22 @@ Every door has the same shape. First the promise: the steps that get them from w
 
 **The math, only with a real amount.** Read it off S-20. Example only, not a promise: $75,000 funded, 10% is $7,500, $3,000 already paid, $4,500 due after funding. If 10% of what gets funded comes out under the $3,000 they paid, do not promise a refund on the call. Ask Chris.
 
-### Door 2. Revenue funding (not live yet)
+### Door 2. Revenue funding (run by hand for now)
 
-**Not live yet.** There is no lender partner in the system, no button and no price. Do not sell it. Do not say "we can get you revenue funding." Until Chris turns it on, say this, then sell Door 1, 3 or 4:
+**Who:** steady revenue through a business bank account, 6 months or more in business, and 3 months of business bank statements. Credit not ready: fund the business now, and fix the file. Credit ready: fund it all, cards and revenue.
+**Offer:** funding, done for you, on the same funding agreement. **$3,000 today plus 10% of what gets funded.**
+**How it runs for now:** the client uploads bank statements or tax returns in the portal. The team packages the file and emails it to the lender. The lenders are in `FUNDING SHEET (business).xlsx`. The button that sends it automatically is on hold.
 
-"Your business revenue is a real strength. It's in your file, and it matters for your funding path."
-
-When Chris names the lender partner and the rule, this is the door:
-
-- **Who:** steady revenue through a business bank account. Credit not ready: fund the business now and fix the file. Credit ready: fund it all, cards and revenue.
-- **The promise.** "Two moves at once. Funding based on your business revenue now, and your personal file fixed so your next funding sequence is bigger."
-- **Step one.** "Some lenders look at what hits your bank account first, not only your score. We match your business to them."
-- **Step two.** "At the same time, we fix your file." (Door 3 or Door 4.)
-- **Step three.** "Then we fund off the clean file in your next funding sequence."
-- **Must say.** "Revenue funding costs more than a card. Read the rate and the payment schedule before you sign."
-- **What they need:** business bank statements (they upload them in the portal), time in business, the EIN. The survey's "Can you verify revenue?" answer on S-03 tells you if they have the statements.
-- **Price:** the signed funding agreement already covers merchant cash advances and SBA products under the same deposit and 10%. Chris confirms.
+1. **The promise.** "Two moves at once. Funding based on your business revenue now, and your personal file fixed so your next funding sequence is bigger."
+2. **Step one.** "Some lenders look at what hits your bank account first, not only your score. We match your business to them."
+3. **Step two.** "At the same time, we fix your file." Lead with Door 3. Step down to Door 4.
+4. **Step three.** "Then we fund off the clean file in your next funding sequence."
+5. **Must say.** "Revenue funding costs more than a card. Read the rate and the payment schedule before you sign."
+6. **What they need:** bank statements or tax returns (they upload them in the portal), time in business, and the EIN. The survey's "Can you verify revenue?" answer on S-03 tells you what they have.
 
 ### Door 3. Capital Blueprint
 
-**Who:** the file is not ready, or only part of it is. They want the whole plan and will do the steps. A business owner, or about to be one.
+**Who:** every file that is not ready. Offer it first, because it is the most expensive door that fits.
 **Offer:** Capital Blueprint. **$5,000 to $10,000**, a whole-dollar price you pick. The default is $5,000. 12 months included. No renewal charge.
 **Slides:** on S-19, click **DIY deliverables + course** (that button is the Blueprint), then **Show the full Blueprint stack**. Or click 06 on the phase strip. Walk B-01 to B-04. Then S-23.
 
@@ -268,7 +265,7 @@ Never promise an approval, an amount, a score or a removal. Never promise the da
 
 ### Door 4. Credit optimization
 
-**Who:** the file is not ready, and they want it cleaned for them.
+**Who:** the file is not ready, and they said no to the Blueprint.
 **Offer:** Credit optimization, done for you, up to six rounds. **$1,000.** Or **$200** for round one. The $200 counts toward the $1,000.
 **Slides:** the repair path, S-08 to S-16. On S-19 the buttons are **Onboard now: full done-for-you** and **Trial: first round done-for-you**.
 
@@ -457,35 +454,32 @@ Do not celebrate. Do not over-explain. Confirm the payment posted before you end
 - "Round two." Say "next funding sequence." One funding sequence is about six rounds.
 - "Funding gap" (say "left on the table"), "Funding Snapshot" (say "How Much You Qualify For"), or "your number."
 
-## The old lines still in Present
+## What the deck still shows
 
-Present shows built-in closer lines on every slide. They come from the old stacking close, so some of them break the rules above. Until Present is updated, use this page.
+Present's closer lines and the client slides follow this page as of 2026-10-29. The old "pre-approved," "0 percent," "$25 million," "2 to 3 times more," "up to 12 rounds" and "two weeks" lines are gone. A few things on the screen still need a work-around:
 
-| Slide | Old line on the screen | Do this |
+| Slide | What it shows | Do this |
 |---|---|---|
-| S-02 | "what our AI system can pre-approve you for" | Say "how much you qualify for based on where you're at right now." |
-| S-06 | "thousands of lenders," "over $25 million in funding" | Skip both. |
-| S-07 | "pre-approved for approximately," "0 percent introductory rates" (also printed on the client's screen) | Section 4. |
-| S-08, S-15, S-19 | "in the next two weeks," "about two weeks," "first approvals within 72 hours," "I genuinely believe we get you to [Amount]" | Skip. Say the agreement's 24 and 72 business hours only. |
-| S-10 | "We already know which banks will say yes" | Skip. |
-| S-12 | "Up to 12 rounds," "your score stays protected," "most files resolve in one to two rounds" | Say "about six rounds" for funding and "up to six rounds" for credit optimization. |
-| S-13 | "2 to 3 times more than the average funding company" | Skip. |
-| S-14 | "A dedicated funding team, three specialists" | Say "the Fundhub team." |
-| S-16 | The full menu (lines of credit, term, equipment, SBA, revenue-based) | Take orders only for what is live (Door 1). |
-| S-19 | Repair ladder line prices the do-it-yourself rung at $1,000 | That rung is the Capital Blueprint, $5,000 to $10,000 (Door 3). |
-| S-21 | Three guarantees | Read G-01 and G-02 only. |
-| B-04, B-05 | A member fee after 12 months, FinanceOS prices as "$X" | No renewal charge. Skip B-05. |
-| Objections box | "hundreds funded, $25 million deployed," "2 to 3x more," "[Amount] in two weeks" | Use section 9. |
+| S-03 | The survey's yearly revenue range, labeled "Monthly revenue" | Ask the monthly amount out loud. |
+| S-07 | The EDUCATION PATH button | Do not use it. Capital Academy is off until it is filmed. |
+| S-16 | SBA and equipment loans on the menu | Not live yet. Do not take an order for them. |
+| S-19 | The repair ladder lists the Blueprint last | Lead with the Blueprint anyway. Then the $1,000, then the $200. |
+| S-21 | Three guarantee cards | Read G-01 and G-02, the two in the agreement. |
+| B-04, B-05 | A member fee and FinanceOS prices as "$X" | No renewal charge. Skip B-05. |
 
 ## Open calls for Chris
 
-**Settled by Chris, 2026-10-29:** the agreement in the CRM is the truth. Funding is $3,000 today, filled into that agreement. The video's line stays as it is.
+**Settled by Chris, 2026-10-29:**
 
-1. **Revenue funding (Door 2).** It has a menu slide, but no lender, no button and no price. The Lendflow connection is built but switched off. The lender list lives in a spreadsheet from Sarah's folder, `FUNDING SHEET (business).xlsx`. It has about 80 bank-statement and cash-advance lenders and about 175 lenders who lend off documents. Those lenders ask for 6 months to 2 years in business and 3 to 6 months of bank statements. Some want at least $16,000 a month. Who runs these files, what is the floor, and is the price the same $3,000 plus 10%?
-2. **Blueprint or credit optimization first.** For a file that is not ready, does the closer lead with the Blueprint and step down to the $1,000 and the $200? Or lead with the $1,000? The live ladder on S-19 lists the Blueprint last.
-3. **Blueprint price.** When does the closer go above $5,000?
-4. **Capital Academy.** The EDUCATION PATH button on S-07 sells it for $5,000. Is it still sold?
-5. **Update Present.** Present's own lines and the S-07 client screen still carry the old close. Rewrite them to match this page once it is approved?
+- The agreement in the CRM is the truth. Funding is $3,000 today, filled into that agreement. The video's line stays as it is.
+- Revenue funding runs by hand inside the funding agreement, at $3,000 plus 10%. The client uploads bank statements or tax returns in the portal, and the team emails the file to the lender. The automatic button is on hold.
+- Always lead with the most expensive product that fits their goal.
+- Capital Academy is off until it is filmed.
+- Present's closer lines follow this page.
+
+**Still open:**
+
+1. **Blueprint price.** When does the closer go above $5,000?
 
 ## Where this came from
 

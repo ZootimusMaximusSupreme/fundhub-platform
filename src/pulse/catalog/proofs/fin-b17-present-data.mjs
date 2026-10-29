@@ -64,15 +64,15 @@ export const OBJECTION_TABLE = Object.freeze([
     lines: [
       "Isolate: finances aside, anything else keeping you from being 100 percent certain?",
       "Should vs how: you're not in a SHOULD I place, you're in a HOW can I place. Right?",
-      "Context: you just saw the system pre-approve you for [Amount]. The $3,000 is an advance on a fee you'd pay anyway. Is $3,000 a lot compared to [Amount] deployed in two weeks?",
+      "Context: you just saw how much your file qualifies for: [Amount]. The $3,000 counts toward the 10 percent, and the 10 percent is only on money you actually get. Too much compared to what? You told me waiting costs you [cost] a month.",
     ],
   },
   {
     title: "What if it fails", jumpLabel: "Show guarantees", target: "S-21",
     lines: [
-      "We ran the soft-pull together. You saw the pre-approval with your own eyes. We're not guessing.",
-      "Our fee is 10 percent of what we actually secure. No funding, no money for us. Zero incentive to take you on unless we're certain.",
-      "And if we don't hit your target, we keep working your file at no additional cost. So what specifically are you worried won't work?",
+      "We ran the soft pull together. You saw your file with your own eyes. We're not guessing.",
+      "Our fee is 10 percent of the money you actually get. The bank decides, not us. We pick the banks and the order.",
+      "Here's what the agreement guarantees: we start on your file within 24 business hours, and your first applications go out within 72. So what specifically are you worried won't work?",
     ],
   },
   {
@@ -80,23 +80,23 @@ export const OBJECTION_TABLE = Object.freeze([
     lines: [
       "Aside from letting your spouse know, anything else keeping you from 100 percent?",
       "Respect vs permission: doing it regardless and letting them know? Or need their sign-off?",
-      "If respect: 'this company wants $3K, thoughts?' versus 'I found the company getting us [Amount] in two weeks, I've decided, wanted you to know first.' Which one gets them on board? If permission: book the 3-way.",
+      "If respect: 'this company wants $3K, thoughts?' versus 'I found the company that pulled my file and showed me exactly what to do next. I've decided, and I wanted you to know first.' Which one gets them on board? If permission: book the 3-way, inside one day.",
     ],
   },
   {
     title: "Burned before", jumpLabel: "Show the system", target: "S-10",
     lines: [
       "I'm sorry that happened. What exactly went wrong with the last company? Listen.",
-      "That's way too common, and it's exactly why we built Fundhub this way. Most companies are manual, guessing, no score protection, no accountability.",
-      "The question isn't whether to trust a funding company again. It's whether to trust THIS one: different process, hundreds funded, $25 million deployed.",
+      "That's way too common. It's fair to go slow. That's why we started with your file, not a pitch.",
+      "You see the fee in dollars before you pay, and everything is in the agreement, in writing. And the 10 percent is only on money you actually get.",
     ],
   },
   {
     title: "DIY", jumpLabel: "Show the rounds", target: "S-12",
     lines: [
       "You absolutely can. How long have you been trying? And how much capital have you secured in that time?",
-      "Our clients get 2 to 3x more because of the AI matching and the sweeps between rounds. You'd need our lender network, our AI, and the sweep expertise.",
-      "Is saving $3,000 worth another [X months] stuck? Or invest it today and have [Amount] in two weeks?",
+      "Almost every application is a hard pull, and each one costs fundability. Our system matches your file to the banks that fit it, in the right order.",
+      "If you want to do it yourself the right way, that's the Capital Blueprint: the plan from your own file, step by step.",
     ],
   },
 ].map((row) => Object.freeze({ ...row, lines: Object.freeze(row.lines) })));
