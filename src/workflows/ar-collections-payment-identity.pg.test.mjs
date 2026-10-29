@@ -73,6 +73,13 @@ describe("payment receipt A/R cannot mutate or invent clients (disposable Postgr
       const first = await drive(inv.id, { id: wrongClient, payerEmail: email });
       assert.equal(first.allocated, false);
       assert.equal(first.reason, "client_not_owned");
+      assert.equal(first.reviewTaskCreated, true);
+      assert.equal((await conn.query(
+        `SELECT count(*)::int AS n FROM tasks
+         WHERE org_id = $1 AND client_id = $2 AND source_workflow = 'ar-allocate'
+           AND title = 'Unallocated receipt — verify payment customer identity'`,
+        [orgId, clientId]
+      )).rows[0].n, 1, "review is assigned to the legitimate buyer, never the foreign locator");
       assert.equal((await getInvoice(conn, { invoiceId: inv.id })).status, "sent");
       const p = await conn.query("SELECT count(*)::int AS n FROM invoice_payments WHERE invoice_id = $1", [inv.id]);
       assert.equal(p.rows[0].n, 0);
@@ -85,6 +92,7 @@ describe("payment receipt A/R cannot mutate or invent clients (disposable Postgr
       const unknownEmail = `unmatched-ar+${randomUUID()}@example.invalid`;
       const res = await drive(inv.id, { payerEmail: unknownEmail });
       assert.equal(res.reason, "client_not_owned");
+      assert.equal(res.reviewTaskCreated, true, "unmatched merchant receipt must enter a real advisor queue");
       assert.equal((await conn.query(
         "SELECT count(*)::int AS n FROM clients WHERE org_id = $1 AND email = $2",
         [orgId, unknownEmail]
