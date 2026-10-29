@@ -15,6 +15,8 @@ import { handle as f10 } from "./f-10-client-funding-inbox-provisioner.mjs";
 import { handle as f06 } from "./f-06-funding-conditions-missing-docs.mjs";
 import { handle as f09 } from "./f-09-funding-declined-no-path.mjs";
 import { handle as f11 } from "./f-11-bank-email-event-router.mjs";
+import { handle as n04 } from "./n-04-post-funding-nurture.mjs";
+import { handle as n06 } from "./n-06-renewal-second-wave.mjs";
 
 const databaseUrl = process.env.DATABASE_URL;
 let safe = false;
@@ -28,7 +30,7 @@ after(async () => { if (pool) await pool.end(); });
 
 const step = { run: (_name, fn) => fn() };
 
-test("F-02 through F-11 never create/modify foreign or phantom clients on inbound events (real Postgres)",
+test("F-02 through F-11 and N-04/N-06 refuse foreign or phantom downstream clients (real Postgres)",
   { skip: safe ? false : "disposable localhost CI Postgres only" },
   async () => {
     const conn = await pool.connect();
@@ -48,6 +50,8 @@ test("F-02 through F-11 never create/modify foreign or phantom clients on inboun
         [localId, org, foreignId, foreignOrg]
       );
       const payloads = [
+        [n04, "round.closeout", { stage: "closed", engagementComplete: true }],
+        [n06, "round.funded", { fundedAmount: 1000 }],
         [f02, "round.started", { roundNumber: 1 }],
         [f03, "round.submitted", { roundNumber: 1 }],
         [f04, "round.approved", { approvedAmount: 2000 }],
