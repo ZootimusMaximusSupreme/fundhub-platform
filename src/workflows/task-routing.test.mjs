@@ -25,6 +25,33 @@ import path from "node:path";
 import { pgFake, fakeStep, ev } from "./test-support.mjs";
 import { TASK_ROLES } from "../lib/create-task.mjs";
 
+// Booking tasks now require a persisted, tenant-owned appointment FIRST.
+// This narrow fake keeps the routing spec's role assertion meaningful while
+// exercising the same booking/identity acceptance contract as real Postgres.
+function bookingTaskFake(seed) {
+  const fake = pgFake(seed);
+  const query = fake.query.bind(fake);
+  fake.query = async (sql, params = []) => {
+    if (/SELECT id FROM clients WHERE org_id = \$1 AND id = \$2 LIMIT 1/.test(sql)) {
+      const owner = fake.clients.find(c => c.org_id === params[0] && c.id === params[1]);
+      return { rows: owner ? [{ id: owner.id }] : [] };
+    }
+    if (/FROM bookings\s+WHERE org_id = \$1 AND provider_uid = \$2/.test(sql)) {
+      const row = fake.bookings.find(b => b.org_id === params[0] && b.provider_uid === params[1]);
+      return { rows: row ? [row] : [] };
+    }
+    if (/INSERT INTO bookings/.test(sql)) {
+      const [org_id, client_id, source, provider_uid] = params;
+      const status = params[6];
+      const row = { org_id, client_id, source, provider_uid, status };
+      fake.bookings.push(row);
+      return { rows: [row] };
+    }
+    return query(sql, params);
+  };
+  return fake;
+}
+
 // The routing table from the unit spec, keyed by workflow id prefix.
 const SPEC = {
   "f-01": "funding_advisor", "f-07": "funding_advisor", "f-08": "funding_advisor",
@@ -136,7 +163,7 @@ describe("task role routing", () => {
   test("comms.mjs routes the booking task to closer, and labels it honestly", async () => {
     const { onBookingCreated } = await import("../handlers/comms.mjs");
     // Fixture from comms.test.mjs's booking case: resolveClient matches on email.
-    const db = pgFake({ clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com" }] });
+    const db = bookingTaskFake({ clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com" }] });
     await onBookingCreated({
       id: "evt-booking-1", orgId: "org-1", clientId: "cl-1", name: "booking.created",
       // *** NO `source` KEY, ON PURPOSE. DO NOT ADD ONE. ***
@@ -160,7 +187,7 @@ describe("task role routing", () => {
 
   test("comms.mjs booking task still dedupes on the booking uid", async () => {
     const { onBookingCreated } = await import("../handlers/comms.mjs");
-    const db = pgFake({ clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com" }] });
+    const db = bookingTaskFake({ clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com" }] });
     const evt = {
       id: "evt-booking-2", orgId: "org-1", clientId: "cl-1", name: "booking.created",
       payload: { email: "a@b.com", bookingUid: "bk-2", startTime: null }
