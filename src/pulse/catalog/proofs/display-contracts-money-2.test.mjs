@@ -287,13 +287,22 @@ test("rendered Plan moves months and sends an accepted Mark missed request", asy
   });
   await page.goto(url, { waitUntil: "domcontentloaded" });
   await page.getByRole("heading", { name: "October 2026", exact: true }).waitFor();
-  await page.getByRole("button", { name: "Previous month, September 2026" }).click();
+  await Promise.all([
+    page.waitForResponse((res) => res.url().includes(`/api/money/plan?month=2026-09&client_id=${CLIENT_ID}`) && res.ok()),
+    page.getByRole("button", { name: "Previous month, September 2026" }).click(),
+  ]);
   await page.getByRole("heading", { name: "September 2026", exact: true }).waitFor();
   assert.equal(requests.at(-1), `/api/money/plan?month=2026-09&client_id=${CLIENT_ID}`);
-  await page.getByRole("button", { name: "Today", exact: true }).click();
+  await Promise.all([
+    page.waitForResponse((res) => res.url().includes(`/api/money/plan?month=2026-10&client_id=${CLIENT_ID}`) && res.ok()),
+    page.getByRole("button", { name: "Today", exact: true }).click(),
+  ]);
   await page.getByRole("heading", { name: "October 2026", exact: true }).waitFor();
   assert.equal(requests.at(-1), `/api/money/plan?month=2026-10&client_id=${CLIENT_ID}`);
-  await page.getByRole("button", { name: "Next month, November 2026" }).click();
+  await Promise.all([
+    page.waitForResponse((res) => res.url().includes(`/api/money/plan?month=2026-11&client_id=${CLIENT_ID}`) && res.ok()),
+    page.getByRole("button", { name: "Next month, November 2026" }).click(),
+  ]);
   await page.getByRole("heading", { name: "November 2026", exact: true }).waitFor();
   assert.equal(requests.at(-1), `/api/money/plan?month=2026-11&client_id=${CLIENT_ID}`);
 
