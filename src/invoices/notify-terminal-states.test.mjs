@@ -9,7 +9,7 @@ function fakeInvoice(status) {
   const db = {
     async query(sql) {
       queries.push(String(sql));
-      if (/FROM invoices i\\s+JOIN clients c/.test(sql)) {
+      if (/FROM invoices i\s+JOIN clients c/.test(sql)) {
         return { rows: [{
           id: "00000000-0000-4000-8000-00000000a155",
           org_id: "00000000-0000-4000-8000-00000000a001",
