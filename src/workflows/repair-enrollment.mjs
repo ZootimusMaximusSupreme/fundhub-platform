@@ -195,18 +195,19 @@ export async function createRepairStartTasks(db, {
 } = {}) {
   const created = [];
   for (const t of firstRepairTasks({ roundsCap, now })) {
-    // One payment opens TWO different tasks. Passing the same payment event ID
-    // as their body collides with tasks_idempotency_idx (client, workflow, body),
-    // so ON CONFLICT DO NOTHING silently drops the second job. A stable key per
-    // job both preserves historical title-based dedupe and makes the database
-    // enforce replay/concurrency safety. The incoming eventId is deliberately
-    // not the identity of either task.
+    // Title dedupe alone is read-then-insert. Two concurrent paid events can
+    // read "no task" simultaneously while a trial/full plan changes; the
+    // human-readable task body then differs (2 vs 6 rounds), so the database's
+    // UNIQUE (client, workflow, body) index does NOT stop duplicate plan tasks.
+    // Use one stable body key per job for durable race/replay dedupe, while
+    // keeping the readable instructions in the separate detail column.
     const stableTaskKey = `repair-start:${orgId}:${clientId}:${t.title}`;
     const r = await createTask(db, {
       orgId,
       clientId,
       title: t.title,
       body: stableTaskKey,
+      detail: t.body,
       dueAt: t.dueAt,
       sourceWorkflow: SOURCE_WORKFLOW,
       assigneeRole: REPAIR_TASK_ROLE,
