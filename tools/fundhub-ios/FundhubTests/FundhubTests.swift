@@ -180,6 +180,31 @@ final class FundhubTests: XCTestCase {
         }
     }
 
+    func testFundhubPopupLinksStayInAuthenticatedWorkspace() {
+        for raw in [
+            "https://fundhub.ai/app/client-portal.html",
+            "https://fundhub.ai/app/documents.html",
+            "https://fundhub.ai/portal-login.html"
+        ] {
+            XCTAssertTrue(WorkspaceNavigation.shouldOpenInWorkspace(URL(string: raw)!), raw)
+        }
+
+        // The native wrapper must not inject a bearer into lookalike domains,
+        // different schemes, or external checkout / email destinations.
+        for raw in [
+            "https://fundhub.ai.evil.example/app/client-portal.html",
+            "https://www.fundhub.ai/app/client-portal.html",
+            "http://fundhub.ai/app/client-portal.html",
+            "https://example-payments.com/checkout",
+            "mailto:support@fundhub.ai",
+            "tel:+15551234567"
+        ] {
+            XCTAssertFalse(WorkspaceNavigation.shouldOpenInWorkspace(URL(string: raw)!), raw)
+        }
+        XCTAssertTrue(WorkspaceNavigation.isSignOutDestination(
+            URL(string: "https://fundhub.ai/portal-login.html")!))
+    }
+
     func testWebSignOutDestinationIsExact() {
         XCTAssertTrue(WorkspaceNavigation.isSignOutDestination(URL(string: "https://fundhub.ai/portal-login.html")!))
         XCTAssertTrue(WorkspaceNavigation.isSignOutDestination(URL(string: "https://fundhub.ai/login.html")!))
