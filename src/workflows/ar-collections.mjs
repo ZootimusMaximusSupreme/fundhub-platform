@@ -284,7 +284,7 @@ async function chase({ event, db, step, env, createLink, retireLink }) {
         "and take a payment through the link already on the invoice if they can pay now.",
         "",
         `[event:${eventId}]`
-      ].join("\\n")
+      ].join("\n")
     });
 
     return { skipped: false, escalated: true, taskCreated: !!task?.created, taskId: task?.id || null };
