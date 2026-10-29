@@ -163,3 +163,15 @@ Further source inventory established that the same unsafe `resolveClient` call a
 | F-15F — F-10 `round.started` | Unknown/foreign client must not have forwarding address and inbox-setup task provisioned. | same fixtures, `done:false/no_client` |
 
 **Current status for F-14A–E and F-15A–F: source-level FAIL pre-fix; fix proposed in [PR #210](https://github.com/ZootimusMaximusSupreme/fundhub-platform/pull/210), all CI/live gates pending.** The new no-database fixture and guarded real-Postgres fixture both enumerate the affected event types and validate that an explicit foreign UUID cannot be reinterpreted via a local email, that unknown addresses do not create clients, and that same-org existing email-only delivery still resolves. This proposal does not authorize production test dispatch, contact changes, invoices, provider calls, or a 100% completion claim.
+
+
+### Post-funding aftercare follows the same ownership gate (N-04/N-06)
+
+Additional inventory found `N-04` and `N-06` both consume **existing** funded/closeout events but used the same lead-creating `resolveClient` as F-02–F-11. They are in this lane because their customer messaging and renewal tasks are executed after paid funding, not accounts-receivable collections. The branch replaces that resolver with the existing, same-org, nonmutating `findClient` and expands both synthetic and rollback-only localhost PostgreSQL cases.
+
+| Gate | Required refusal / expected result | Verdict |
+|---|---|---|
+| F-15G — N-04 `round.closeout` aftercare | Stage=`closed` or `engagementComplete=true` must not send post-funding nurture SMS/email when client ID belongs to another org (including collision with a local email), or when no registered client exists. | **FAIL pre-fix source, fix proposed in #210; NOT LIVE PROVED** — new named synthetic + disposable real-Postgres regression; post-deploy outbound receipt still unverified. |
+| F-15H — N-06 `round.funded` second-wave renewal | The 180-day delayed nurture must never mint or update a foreign/unknown customer, enqueue a renewal task, or send SMS/email; reassess actual eligibility before send. | **FAIL pre-fix source, fix proposed in #210; NOT LIVE PROVED** — same guard tests; six-month durable wake, eligibility, consent and live delivery independently NLP. |
+
+**Revised scope:** PR #210 covers **11 owned fulfillment workflow modules and 12 event paths**, plus two new test files. This is targeted defensive hardening, not certification that the remaining funding/repair/Blueprint acceptance rows passed. As with every change, CI green and actual deployment are distinct required gates.
