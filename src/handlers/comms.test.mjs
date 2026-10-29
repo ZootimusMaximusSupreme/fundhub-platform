@@ -479,6 +479,84 @@ test("booking.noshow: marks the open task done, tags call:no_show, sets call_out
   assert.equal(db.clients[0].custom_fields.call_outcome, "no_show");
 });
 
+
+test("foreign buyer cannot reschedule an existing provider UID or create a wrong closer task", async () => {
+  const db = pgFake();
+  await onBookingCreated(ev("booking.created", {
+    email: "booking-owner-a@example.invalid", bookingUid: "uid-protected-a",
+    startTime: "2026-11-18T20:00:00Z", source: "clickfunnels"
+  }), db);
+  await onBookingCreated(ev("booking.created", {
+    email: "booking-owner-b@example.invalid", bookingUid: "uid-protected-b",
+    startTime: "2026-11-18T20:30:00Z", source: "clickfunnels"
+  }), db);
+  const a = db.clients.find(c => c.email === "booking-owner-a@example.invalid");
+  const b = db.clients.find(c => c.email === "booking-owner-b@example.invalid");
+  const before = db.tasks.map(t => ({ ...t }));
+  const result = await onBookingRescheduled(ev("booking.rescheduled", {
+    email: b.email, clientId: b.id, bookingUid: "uid-protected-a",
+    startTime: "2026-11-19T20:00:00Z", source: "clickfunnels"
+  }, { clientId: b.id }), db);
+  assert.equal(result?.skipped, "booking_client_mismatch");
+  assert.deepEqual(db.tasks, before, "wrong buyer's closer task or original task cannot change");
+  assert.equal(db.bookings.find(x => x.client_id === a.id).status, "booked");
+  assert.equal(db.bookings.find(x => x.client_id === a.id).starts_at, "2026-11-18T20:00:00Z");
+  assert.equal(b.custom_fields.call_outcome, "booked");
+});
+
+test("foreign buyer cannot cancel or mark no-show on another buyer's appointment UID", async () => {
+  const db = pgFake();
+  await onBookingCreated(ev("booking.created", {
+    email: "terminal-a@example.invalid", bookingUid: "uid-terminal-a",
+    startTime: "2026-11-18T20:00:00Z"
+  }), db);
+  await onBookingCreated(ev("booking.created", {
+    email: "terminal-b@example.invalid", bookingUid: "uid-terminal-b",
+    startTime: "2026-11-18T21:00:00Z"
+  }), db);
+  const a = db.clients.find(c => c.email === "terminal-a@example.invalid");
+  const b = db.clients.find(c => c.email === "terminal-b@example.invalid");
+  const beforeTasks = db.tasks.map(t => ({ ...t }));
+  for (const [name, handler] of [
+    ["booking.cancelled", onBookingCancelled],
+    ["booking.noshow", onBookingNoshow]
+  ]) {
+    const result = await handler(ev(name, {
+      email: b.email, clientId: b.id, bookingUid: "uid-terminal-a"
+    }, { clientId: b.id }), db);
+    assert.equal(result?.skipped, "booking_client_mismatch", name);
+    assert.equal(db.bookings.find(x => x.client_id === a.id).status, "booked", name);
+    assert.equal(db.bookings.find(x => x.client_id === b.id).status, "booked", name);
+    assert.deepEqual(db.tasks, beforeTasks, `${name}: no closer task changed`);
+    assert.deepEqual(b.tags, ["call:booked"], `${name}: no wrong customer tag`);
+    assert.equal(b.custom_fields.call_outcome, "booked");
+  }
+});
+
+test("unknown booking change with a foreign-organization client ID has no side effects", async () => {
+  const db = pgFake();
+  db.clients.push({
+    id: "foreign-client-123", org_id: "another-organization",
+    email: "foreign-123@example.invalid", tags: [], custom_fields: {}
+  });
+  for (const [name, handler] of [
+    ["booking.rescheduled", onBookingRescheduled],
+    ["booking.cancelled", onBookingCancelled],
+    ["booking.noshow", onBookingNoshow]
+  ]) {
+    const r = await handler(ev(name, {
+      email: "foreign-123@example.invalid",
+      bookingUid: "unknown-uid-" + name,
+      startTime: "2026-11-18T20:00:00Z"
+    }, { clientId: "foreign-client-123" }), db);
+    assert.equal(r?.skipped, "booking_client_scope_mismatch", name);
+  }
+  assert.equal(db.bookings.length, 0);
+  assert.equal(db.tasks.length, 0);
+  assert.deepEqual(db.clients[0].custom_fields, {});
+  assert.deepEqual(db.clients[0].tags, []);
+});
+
 // ── the source label: honest, or nothing ────────────────────────────────────
 
 // This is the DB-free half of the proof. The same claim is checked against a
