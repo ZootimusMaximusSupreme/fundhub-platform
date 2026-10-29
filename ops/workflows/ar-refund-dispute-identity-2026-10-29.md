@@ -24,7 +24,7 @@ evidence of a real merchant dispute or real incident.
 | ID | Scenario | Expected source of truth | Proposed outcome | Verdict |
 | --- | --- | --- | --- | --- |
 | A48a | Unknown email on signed refund/dispute provider event | Original same-org succeeded Commas transaction, or unresolved | Adapter records unattributed event; creates no new client, CRM contact, or task on another buyer | FAIL BASELINE / FIX PROPOSED / NOT LIVE PROVED |
-| A48b | Webhook supplied a wrong same-org buyer/email but original PSP payment ID matches | `transactions(org_id,provider_ref,status='succeeded')` joined to owned client | Owner task points to original transaction's client, not event's claimed buyer; original amount/status unchanged | FAIL BASELINE / FIX PROPOSED / NOT LIVE PROVED |
+| A48b | Webhook supplied a wrong same-org buyer/email but original PSP payment ID matches | `transactions(org_id,provider_ref,status='succeeded')` joined to owned client | Canonical event client and owner task both point to original transaction's client, not callback buyer; original amount/status unchanged | FAIL BASELINE / FIX PROPOSED / NOT LIVE PROVED |
 | A48c | Foreign or nonexistent buyer ID; unknown PSP payment | Original same-org succeeded Commas transaction absent | No client mutation or cross-tenant task; event handler fails into durable dead-letter review rather than acknowledging a completed owner task | FAIL BASELINE / FIX PROPOSED / NOT LIVE PROVED |
 | A48d | Duplicate same dispute event / distinct refund on same PSP ID | Processor ID + canonical event ID, `tasks` unique key | One urgent owner task with exact deadline per dispute event, distinct refund task allowed; no automatic ledger clawback | NOT LIVE PROVED |
 | A48e | Live dispute provider deadline/receipt, merchant dashboard, named-owner queue | Read-only provider receipt and production task with same org/client/PSP reference | Explicit owner acknowledgment and deadline visible; any unresolved callbacks appear in monitored dead-letter queue | NOT LIVE PROVED |
@@ -37,13 +37,16 @@ evidence of a real merchant dispute or real incident.
   or `src/invoices/allocate.mjs` (#216) edits.
 - The adapter no longer lead-creates clients for refunds/disputes (it continues
   to do so for eligible, actually successful first-time payment events).
+  Reversal canonical events also take the customer ID only from the original
+  settled Commas transaction, never callback email or foreign checkout metadata.
 - The owner task handler **requires** the original succeeded Commas
   transaction in the same organization. An event's claimed email/ID can never
   substitute for a missing original receipt. Unknown/foreign events enter bus
   dead-letter review, with no new buyer, cross-org task, money reversal or
   commission clawback.
 - Focused in-memory fixture covers signed webhook -> inbox -> canonical event,
-  original payment ownership, duplicate event, unmatched email and foreign ID.
+  original payment ownership, duplicate event, wrong same-org email, unmatched
+  email and foreign-org payment ID.
   Rollback-only, local-`fundhub_ci` PostgreSQL fixtures cover real
   `transactions` and `tasks` writes; they refuse any production DB URL.
 - Required release: all **14 GitHub Actions** checks green, protected merge,
