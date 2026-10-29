@@ -83,8 +83,8 @@ describe("GET /api/read/invoices", () => {
     assert.deepEqual(q.params, [6, 0, CLIENT, null, ORG_ID, true]);
     assert.match(q.sql, /WHERE v\.org_id = \$5::uuid/);
     assert.match(q.sql, /COALESCE\(i\.is_demo, false\) = false/);
-    assert.match(q.sql, /v\\.open_balance > 0/);
-    assert.match(q.sql, /v\\.status IN \\('sent', 'reminded', 'escalated', 'partially_paid'\\)/,
+    assert.match(q.sql, /v\.open_balance > 0/);
+    assert.match(q.sql, /v\.status IN \('sent', 'reminded', 'escalated', 'partially_paid'\)/,
       "the Open A/R queue cannot list drafts as collectible");
     assert.match(q.sql, /LEFT JOIN staff s ON s\.id = c\.assigned_csm_staff_id AND s\.org_id = c\.org_id/);
     assert.match(q.sql, /FROM invoice_payments p[\s\S]*p\.invoice_id = v\.invoice_id AND p\.org_id = v\.org_id/);
