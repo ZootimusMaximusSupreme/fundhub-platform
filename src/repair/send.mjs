@@ -57,13 +57,12 @@ export class RepairSendError extends Error {
 // one statement, so two callers cannot both pass the check: the second one's
 // UPDATE matches nothing and it never makes the call.
 //
-// REFUSE ONLY ON POSITIVE EVIDENCE. A claim that affects no rows is not by
-// itself proof of a double send — the letter id might name no row at all, which
-// is a bad request and is exactly as (un)guarded as it was before this change.
-// So a failed claim is followed by a read, and the send is refused only when
-// that read shows a row that really is already claimed or already sent, or when
-// the unique index rejected the claim because a DIFFERENT row for the same
-// case, bureau, round and destination has already gone out.
+// CLAIM SUCCESS IS THE SEND AUTHORIZATION FOR AN EXPLICIT SAVED LETTER ID.
+// A zero-row claim might mean a duplicate, a foreign-org/client reference, an
+// unknown ID, or an invalid state. A follow-up read explains the refusal but
+// never authorizes transmission without an actual claim. Otherwise an attacker
+// or stale UI could mail under another customer's ID, with no matching audit
+// row to prevent a repeat. The legacy no-ID manual route remains separate.
 
 const UNIQUE_VIOLATION = "23505";
 
