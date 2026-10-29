@@ -44,8 +44,8 @@ test("native APNs requires explicit app opt-in and cannot silently revive opt-ou
 const iosModels = readFileSync(new URL("../../tools/fundhub-ios/Fundhub/Core/Models.swift", import.meta.url), "utf8");
 
 test("native iPhone setter signs into the setter desk, never the generic pipeline", () => {
-  assert.match(iosModels, /case "setter": return "\\/app\\/setter-dashboard\\.html"/);
-  assert.match(iosModels, /guard principal == "staff" else \\{ return "\\/app\\/client-portal\\.html" \\}/);
+  assert.match(iosModels, /case "setter": return "\/app\/setter-dashboard\.html"/);
+  assert.match(iosModels, /guard principal == "staff" else \{ return "\/app\/client-portal\.html" \}/);
   const setterPage = readFileSync(new URL("../../public/app/setter-dashboard.html", import.meta.url), "utf8");
-  assert.match(setterPage, /<title>Fundhub [^<]*Setter Dashboard<\\/title>/);
+  assert.match(setterPage, /<title>Fundhub [^<]*Setter Dashboard<\/title>/);
 });
