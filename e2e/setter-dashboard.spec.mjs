@@ -61,3 +61,11 @@ test("setter score strip stays inside a phone viewport", async ({ page }) => {
   expect(overflow).toBeLessThanOrEqual(1);
   await expect(page.locator(".setter-numbers")).toBeVisible();
 });
+
+test("calendar deep link selects the named lead, never the first queue row", async ({ page }) => {
+  const target = { ...queue.items[0], client_id: "bbbbbbbb-2222-4222-8222-222222222222", client_name: "Target Lead" };
+  await openScreen(page, `/app/setter-dashboard.html?client_id=${target.client_id}`, SETTER, {
+    "/api/read/setter-dashboard": { ...queue, count: 2, items: [queue.items[0], target] }
+  });
+  await expect(page.locator("#setter-detail")).toContainText("Target Lead");
+});
