@@ -195,6 +195,13 @@ function pgFake() {
             ? bookings.find((b) => b.org_id === org_id && b.provider_uid == null && b.__event_id === eventId)
             : null;
         if (existing) {
+          // Mirror the PostgreSQL ON CONFLICT WHERE guard (PR #208): an
+          // accepted provider UID is never transferred or rewound by a stale
+          // booking.created. A stub that omits this would mask task leakage.
+          if ((existing.client_id && client_id && existing.client_id !== client_id) ||
+              (status === "booked" && ["rescheduled", "cancelled", "noshow", "completed"].includes(existing.status))) {
+            return { rows: [] };
+          }
           // A moved slot is the exception to COALESCE: a missing Meet URL
           // cannot carry the previous call's link into the new appointment.
           const moved = starts_at != null && (
@@ -696,6 +703,53 @@ test("booking.created: failed UID identity read creates neither a new lead nor a
   assert.equal(db.clients.length, 0);
   assert.equal(db.tasks.length, 0);
   assert.equal(db.bookings.length, 0);
+});
+
+test("booking.created: losing a concurrent UID insert never creates a closer task or sales-stage update", async () => {
+  const db = pgFake();
+  const originalQuery = db.query.bind(db);
+  let injected = false;
+  db.query = async (sql, params) => {
+    // The pre-read saw nothing. Another webhook committed the same UID just
+    // before our INSERT; the real store returns no row under the PG row lock.
+    if (!injected && /INSERT INTO bookings/.test(sql)) {
+      injected = true;
+      db.bookings.push({
+        id: "bk-existing-winner", org_id: "org-1", client_id: "cl-other",
+        provider_uid: "uid-concurrent-claim", status: "booked",
+        attendee_email: "other@example.invalid", starts_at: "2026-11-10T20:00:00Z"
+      });
+    }
+    return originalQuery(sql, params);
+  };
+  const result = await onBookingCreated(ev("booking.created", {
+    email: "losing-client@example.invalid", bookingUid: "uid-concurrent-claim",
+    startTime: "2026-11-10T20:00:00Z", source: "clickfunnels"
+  }), db);
+  assert.deepEqual(result, { skipped: "booking_not_accepted" });
+  assert.equal(db.tasks.length, 0, "a losing booking must not reach the closer");
+  assert.equal(db.bookings.length, 1);
+  assert.equal(db.bookings[0].client_id, "cl-other", "original buyer keeps their slot");
+  assert.equal(db.clients[0]?.custom_fields?.call_outcome, undefined);
+  assert.equal(db.clients[0]?.tags?.includes("call:booked"), false);
+});
+
+test("booking.created: failed booking INSERT is not silently treated as a successful handoff", async () => {
+  const db = pgFake();
+  const originalQuery = db.query.bind(db);
+  db.query = async (sql, params) => {
+    if (/INSERT INTO bookings/.test(sql)) throw new Error("synthetic booking storage failure");
+    return originalQuery(sql, params);
+  };
+  await assert.rejects(
+    onBookingCreated(ev("booking.created", {
+      email: "storage-error@example.invalid", bookingUid: "uid-booking-write-error",
+      startTime: "2026-11-10T20:00:00Z"
+    }), db), /synthetic booking storage failure/
+  );
+  assert.equal(db.tasks.length, 0, "no phantom closer task on storage failure");
+  assert.equal(db.bookings.length, 0);
+  assert.equal(db.clients[0]?.custom_fields?.call_outcome, undefined);
 });
 
 test("booking.created: interview booking must never create a sales lead", async () => {
