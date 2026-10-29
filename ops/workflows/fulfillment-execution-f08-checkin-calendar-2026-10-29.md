@@ -21,3 +21,7 @@ Fix: add a due date 30 × 24 hours after the first successful handling of each f
 **Regression:** New `src/workflows/f-08-calendar.pg.test.mjs` refuses any database other than `CI=true` + loopback host + exact `/fundhub_ci`, uses temporary tables and rolls back. Unit tests mock event bus/db. Require all 14 GitHub PR-head checks green, GitHub-protected merge without bypass, main CI, exact-SHA deployment and independent authorized read-only role/provider receipts before updating live acceptance.
 
 **Open work:** Integrate this evidence into `ops/workflows/fulfillment-execution-e2e-2026-10-28.md` only after its separate active PR #247 resolves; never race-edit that canonical file. No owner completion SMS. Fulfillment overall stays OPEN.
+
+### Replay race return-value proof — 2026-10-29
+
+During branch review, F-08's old separate `SELECT` plus `await createTask(...); return {created:true}` was found to misreport concurrent duplicate deliveries. `createTask` already implements the same event-ID key and an atomic `INSERT ... ON CONFLICT DO NOTHING RETURNING id`; a race loser rightly returns `{created:false, reason:"duplicate_race"}`. F-08 now returns that actual result rather than claiming the task was created. No historical customer task is altered. Unit and real disposable PostgreSQL replay tests assert `task.created === false` and retention of the initial deadline. This is code/test coverage on the PR branch, **not production or provider proof**; the fresh PR head still requires all 14 successful checks.
