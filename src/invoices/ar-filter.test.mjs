@@ -87,8 +87,10 @@ test("the endpoint reads the aging view, so days overdue is not re-derived in th
 test("the org still comes from the session, and demo rows are still excluded", () => {
   assert.match(ENDPOINT, /v\.org_id = \$5::uuid/);
   assert.match(ENDPOINT, /COALESCE\(i\.is_demo, false\) = false/);
-  // The client name join must be scoped to the same org as the invoice.
-  assert.match(ENDPOINT, /LEFT JOIN clients c ON c\.id = v\.client_id AND c\.org_id = v\.org_id/);
+  // This is an ownership gate, not an optional name lookup: an invoice
+  // referencing another organization's buyer must be excluded altogether.
+  assert.match(ENDPOINT, /JOIN clients c ON c\.id = v\.client_id AND c\.org_id = v\.org_id/);
+  assert.doesNotMatch(ENDPOINT, /LEFT JOIN clients c ON c\.id = v\.client_id/);
 });
 
 test("a client with no name comes back NULL — the endpoint never invents one", () => {
