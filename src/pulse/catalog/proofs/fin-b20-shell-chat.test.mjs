@@ -104,7 +104,9 @@ test("chat widget: Ask system and Knowledge send the question with the mode and 
   await down.locator("#fh-chat-fab").click();
   await down.locator("#fh-chat-input").fill("hello");
   await down.locator("#fh-chat-send").click();
-  await down.locator("#fh-chat-body .msg", { hasText: "Could not answer (model_unavailable)." }).waitFor();
+  await down.locator("#fh-chat-hint").filter({ hasText: "Not confirmed (model_unavailable)" }).waitFor();
+  assert.equal(await down.locator("#fh-chat-input").inputValue(), "hello", "an unconfirmed model request keeps its draft");
+  assert.equal(await down.locator("#fh-chat-body .msg.me").count(), 0, "failed responses never appear as sent");
   await down.close();
 });
 
@@ -119,7 +121,8 @@ test("chat widget: Message a teammate lists teammates, shows an existing thread,
   // nobody picked yet: nothing is sent
   await page.locator("#fh-chat-input").fill("hello?");
   await page.locator("#fh-chat-send").click();
-  await page.locator("#fh-chat-body .msg", { hasText: "Pick a teammate first." }).waitFor();
+  await page.locator("#fh-chat-hint").filter({ hasText: "Pick a teammate first. Your message has not been sent." }).waitFor();
+  assert.equal(await page.locator("#fh-chat-input").inputValue(), "hello?", "validation failure keeps the unsent draft");
   assert.equal(callsTo(page, "/api/chat/messages", "POST").length, 0);
 
   // a teammate with an existing thread: the thread opens, mine on one side
@@ -129,14 +132,20 @@ test("chat widget: Message a teammate lists teammates, shows an existing thread,
   await page.locator("#fh-chat-input").fill("Done, called at 3.");
   await page.locator("#fh-chat-send").click();
   await until(() => callsTo(page, "/api/chat/messages", "POST").length === 1, { message: "the send" });
-  assert.deepEqual(JSON.parse(callsTo(page, "/api/chat/messages", "POST")[0].body), { kind: "internal", body: "Done, called at 3.", conversation_id: "conv-1", peer_staff_id: "peer-1" });
+  const sentOne = JSON.parse(callsTo(page, "/api/chat/messages", "POST")[0].body);
+  assert.match(sentOne.idempotency_key, /^[a-zA-Z0-9_-]{8,80}$/, "the first teammate send is retry-safe");
+  delete sentOne.idempotency_key;
+  assert.deepEqual(sentOne, { kind: "internal", body: "Done, called at 3.", conversation_id: "conv-1", peer_staff_id: "peer-1" });
 
   // a teammate with no thread yet: the send names the person
   await page.locator("#fh-chat-peer").selectOption("peer-2");
   await page.locator("#fh-chat-input").fill("First note to Ray.");
   await page.locator("#fh-chat-send").click();
   await until(() => callsTo(page, "/api/chat/messages", "POST").length === 2, { message: "the second send" });
-  assert.deepEqual(JSON.parse(callsTo(page, "/api/chat/messages", "POST")[1].body), { kind: "internal", body: "First note to Ray.", peer_staff_id: "peer-2" });
+  const sentTwo = JSON.parse(callsTo(page, "/api/chat/messages", "POST")[1].body);
+  assert.match(sentTwo.idempotency_key, /^[a-zA-Z0-9_-]{8,80}$/, "a second teammate gets an independent retry key");
+  delete sentTwo.idempotency_key;
+  assert.deepEqual(sentTwo, { kind: "internal", body: "First note to Ray.", peer_staff_id: "peer-2" });
   assert.equal(callsTo(page, "/api/chat/ask").length, 0, "a teammate message never asks the model");
 
   // Client mode names the compliance gate and asks for an id first
