@@ -89,6 +89,7 @@ enum FundhubRole {
     static func workspacePath(principal: String, role: String?) -> String {
         guard principal == "staff" else { return "/app/client-portal.html" }
         switch role {
+        case "setter": return "/app/setter-dashboard.html"
         case "funding_advisor": return "/app/client-control-panel.html"
         case "closer": return "/app/closer-dashboard.html"
         case "inquiry_specialist": return "/app/inquiry-remover.html"

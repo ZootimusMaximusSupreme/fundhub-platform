@@ -9,6 +9,8 @@ final class FundhubTests: XCTestCase {
 
     func testRoleHomesAreSeparate() {
         XCTAssertEqual(FundhubRole.workspacePath(principal: "client", role: "owner"), "/app/client-portal.html")
+        XCTAssertEqual(FundhubRole.workspacePath(principal: "staff", role: "setter"), "/app/setter-dashboard.html")
+        XCTAssertEqual(FundhubRole.workspacePath(principal: "client", role: "setter"), "/app/client-portal.html")
         XCTAssertEqual(FundhubRole.workspacePath(principal: "staff", role: "closer"), "/app/closer-dashboard.html")
         XCTAssertEqual(FundhubRole.workspacePath(principal: "staff", role: "csm"), "/app/csm-queue.html")
     }
