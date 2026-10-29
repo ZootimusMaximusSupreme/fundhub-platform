@@ -97,7 +97,20 @@ export async function emailInvoice(db, { orgId, invoiceId, purpose = "sent", now
         WHERE i.id = $1::uuid AND i.org_id = $2::uuid LIMIT 1`, [invoiceId, orgId]);
     const inv = rows[0];
     if (!inv) return { ok: false, reason: "not_found" };
-    if (inv.status === "void") return { ok: false, reason: "voided" };
+    // Only ISSUED AND UNPAID invoices may enter the outbound email queue.
+    // A manual resend or a stale backlog job must never demand payment on a
+    // draft, already-paid bill, void or documented write-off. In particular,
+    // an old "sent" event is not authority to reopen a settled invoice.
+    const collectible = ["sent", "reminded", "escalated", "partially_paid"];
+    if (!collectible.includes(String(inv.status || ""))) {
+      const refused = {
+        draft: "not_issued",
+        paid: "already_paid",
+        void: "voided",
+        written_off: "written_off"
+      };
+      return { ok: false, reason: refused[inv.status] || "not_collectible" };
+    }
     const toEmail = await destinationAddress(db, inv.client_id, "email", inv.client_email);
     if (!toEmail) return { ok: false, reason: "no_email" };
 
