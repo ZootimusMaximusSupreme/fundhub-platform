@@ -309,22 +309,24 @@ export const s04bBookingReminders = inngest.createFunction(
   {
     id: "s-04b-booking-reminders",
     name: "S-04B — Booking Confirm + Reminders",
+    // Cross-company emails and provider UIDs may collide. Every cancellation
+    // condition must also identify the SAME organization as the running job.
     cancelOn: [
       {
         event: "booking.rescheduled",
-        if: "event.data.payload.email != null && event.data.payload.email == async.data.payload.email"
+        if: "event.data.orgId != null && event.data.orgId == async.data.orgId && event.data.payload.email != null && event.data.payload.email == async.data.payload.email"
       },
       {
         event: "booking.rescheduled",
-        if: "event.data.payload.bookingUid != null && event.data.payload.bookingUid == async.data.payload.bookingUid"
+        if: "event.data.orgId != null && event.data.orgId == async.data.orgId && event.data.payload.bookingUid != null && event.data.payload.bookingUid == async.data.payload.bookingUid"
       },
       {
         event: "booking.cancelled",
-        if: "event.data.payload.bookingUid != null && event.data.payload.bookingUid == async.data.payload.bookingUid"
+        if: "event.data.orgId != null && event.data.orgId == async.data.orgId && event.data.payload.bookingUid != null && event.data.payload.bookingUid == async.data.payload.bookingUid"
       },
       {
         event: "booking.cancelled",
-        if: "event.data.payload.email != null && event.data.payload.email == async.data.payload.email"
+        if: "event.data.orgId != null && event.data.orgId == async.data.orgId && event.data.payload.email != null && event.data.payload.email == async.data.payload.email"
       }
     ]
   },
