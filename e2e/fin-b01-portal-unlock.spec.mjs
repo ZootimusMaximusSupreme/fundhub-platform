@@ -43,18 +43,20 @@ const ALL_LINKS = Object.fromEntries(KEYS.map((key) => [key, linkFor(key)]));
    checkoutUrl the moment the page defines its PRODUCTS table, the way a later change would. */
 async function openPortal(page, { links = {}, entitlements = [], summary = {} } = {}) {
   const pay = { hits: [], button: null };
-  // The pay button as the client sees it, reported out of the page every time it changes (the page
-  // is gone once it has left for the pay address).
-  await page.exposeFunction("__reportPayButton", (state) => { pay.button = state; });
   await page.addInitScript((s) => {
     localStorage.setItem("fh_token", "e2e-token");
     localStorage.setItem("fh_role", "client");
     localStorage.removeItem("fh_demo");
-    document.addEventListener("DOMContentLoaded", function () {
-      var go = document.getElementById("um-go");
-      if (!go) return;
-      var tell = function () { window.__reportPayButton({ text: go.textContent, disabled: go.disabled }); };
-      new MutationObserver(tell).observe(go, { childList: true, characterData: true, subtree: true, attributes: true });
+    // Persist the button's final state synchronously on the original origin.
+    // A cross-navigation callback can be lost as the checkout page replaces it.
+    document.addEventListener("DOMContentLoaded", () => {
+      const button = document.getElementById("um-go");
+      if (!button) return;
+      new MutationObserver(() => {
+        sessionStorage.setItem("__fh_pay_button_snapshot", JSON.stringify({
+          text: button.textContent, disabled: button.disabled,
+        }));
+      }).observe(button, { childList: true, characterData: true, subtree: true, attributes: true });
     });
     var table;
     Object.defineProperty(window, "PRODUCTS", {
@@ -68,6 +70,8 @@ async function openPortal(page, { links = {}, entitlements = [], summary = {} } 
   }, { links });
   await page.route(`${PAY_HOST}/**`, async (route) => {
     pay.hits.push(route.request().url());
+    // Do not query the page while its navigation is intercepted: Playwright
+    // waits for the navigation, which waits for this handler (deadlock).
     await route.fulfill({ status: 200, contentType: "text/html", body: "<html><body>pay page</body></html>" });
   });
   await page.route("**/api/**", async (route) => {
@@ -153,7 +157,14 @@ test.describe("client portal: Unlock modal, Unlock pay now (practice test with f
       await unlock(page, key).click();
       await page.locator("#um-go").click({ noWaitAfter: true });
       await page.waitForURL(linkFor(key));
-      // One request, to this product's own link. The button said it was opening and was already off.
+      // Session storage is scoped to this tab + the portal origin. Return to
+      // that origin to read the state the page wrote *before* redirecting;
+      // there is no cross-navigation callback or paused-route deadlock.
+      await page.goto(`/app/client-portal.html?id=${CLIENT_ID}`);
+      pay.button = await page.evaluate(() => JSON.parse(
+        sessionStorage.getItem("__fh_pay_button_snapshot") || "null"
+      ));
+      // Exactly one fake checkout request, to the selected product.
       expect(pay.hits).toEqual([linkFor(key)]);
       expect(pay.button).toEqual({ text: "Opening secure checkout…", disabled: true });
     });
