@@ -21,6 +21,11 @@ function fakeDb({ existingTasks = [] } = {}) {
   return {
     tasks,
     async query(sql, params) {
+      // Explicit buyer IDs are trusted only when this fake's known client
+      // belongs to the event's organization, as in real PostgreSQL.
+      if (/SELECT 1 FROM clients WHERE id = \$1 AND org_id = \$2 LIMIT 1/.test(sql)) {
+        return { rows: params[0] === "client-1" && params[1] === "org-1" ? [{ exists: 1 }] : [] };
+      }
       if (/FROM clients WHERE org_id/.test(sql)) {
         return { rows: [{ id: "client-1", ghl_contact_id: "crm-1" }] };
       }
