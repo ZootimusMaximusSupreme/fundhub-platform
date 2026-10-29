@@ -184,8 +184,9 @@ function pgFake() {
       }
       // --- bookings: the terminal-status update, matched by uid ACROSS sources ---
       if (/UPDATE bookings[\s\S]*SET status/.test(sql)) {
-        const [orgId, uid, status] = params;
-        const hits = bookings.filter((b) => b.org_id === orgId && b.provider_uid === uid);
+        const [orgId, uid, status, clientId] = params;
+        const hits = bookings.filter((b) => b.org_id === orgId && b.provider_uid === uid &&
+          (clientId == null || b.client_id === clientId));
         for (const b of hits) b.status = status;
         return { rows: hits };
       }
