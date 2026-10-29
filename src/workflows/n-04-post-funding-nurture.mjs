@@ -7,7 +7,9 @@
 
 import { inngest } from "./client.mjs";
 import { db } from "../db.mjs";
-import { resolveClient } from "../handlers/client-lifecycle.mjs";
+// Post-funding messaging is never a signup, and must not patch an unknown
+// or cross-tenant event client. Only resolve a pre-existing owned client.
+import { findClient } from "../handlers/purchase-routing.mjs";
 import { sendTemplated } from "./messaging.mjs";
 
 export const EMAIL_TEMPLATE_KEY = "EMAIL-N04-POST-FUNDING";
@@ -22,7 +24,7 @@ export async function handle({ event, db, step }) {
     return { sent: false, reason: "not_engagement_closeout" };
   }
 
-  const clientId = await step.run("resolve-client", () => resolveClient(db, event));
+  const clientId = await step.run("resolve-client", () => findClient(db, event));
   if (!clientId) return { sent: false, reason: "no_client" };
 
   const orgId = event.orgId;
