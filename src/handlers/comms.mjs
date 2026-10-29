@@ -472,33 +472,47 @@ async function closeBooking(db, event, p, status) {
 // (create-if-missing). Creates a closer follow-up task, deduped by (client, uid),
 // and stores the booking itself.
 export async function onBookingCreated(event, db) {
-  const clientId = await resolveClient(db, event);
-  if (!clientId) return;
   const p = event.payload || {};
-  // Ending interviews are not sales calls. customer-insights stamps that Meet.
+  // An interview is never a sales lead or closer booking. Check before
+  // resolveClient(), which creates a new lead when the email is unknown.
   if (isInterviewBooking(p)) return { skipped: "interview" };
   const uid = bookingUid(p);
-  // A replay of the ORIGINAL create event must not reopen a cancelled, no-show,
-  // or completed appointment. Also refuse a provider UID already owned by a
-  // different client: an email correction cannot silently transfer a call.
-  // Only read within the triggering organization; no external provider writes.
-  if (uid && event.orgId) {
+
+  // A provider UID is an appointment identity, not permission to create or
+  // transfer a customer. Check the existing appointment BEFORE resolveClient
+  // creates a lead, and fail closed if that check cannot run. The source event
+  // remains in the event ledger for later reconciliation.
+  if (uid) {
+    if (!event.orgId) return { skipped: "booking_identity_unavailable" };
+    let existing;
     try {
-      const existing = await findByProviderUid(db, { orgId: event.orgId, providerUid: uid });
-      if (existing) {
-        if (existing.client_id && String(existing.client_id) !== String(clientId)) {
-          return { skipped: "booking_client_mismatch" };
-        }
-        if ([BOOKING_STATUS.CANCELLED, BOOKING_STATUS.NOSHOW, BOOKING_STATUS.COMPLETED].includes(existing.status)) {
-          return { skipped: "terminal_booking_replay" };
-        }
-      }
+      existing = await findByProviderUid(db, { orgId: event.orgId, providerUid: uid });
     } catch (err) {
-      // Booking storage is best-effort beside the closer task (recordBooking).
-      // A legacy preview without this table must not swallow the new booking.
-      console.warn(`[comms] booking identity read failed: ${String(err?.message || err).slice(0, 120)}`);
+      console.warn(`[comms] booking identity lookup unavailable: ${String(err?.message || err).slice(0, 120)}`);
+      return { skipped: "booking_identity_unavailable" };
+    }
+    if (existing) {
+      const claimedClientId = event.clientId || p.clientId || null;
+      const currentEmail = String(existing.attendee_email || "").trim().toLowerCase();
+      const incomingEmail = String(p.email || "").trim().toLowerCase();
+      if ((existing.client_id && claimedClientId &&
+           String(existing.client_id) !== String(claimedClientId)) ||
+          (currentEmail && incomingEmail && currentEmail !== incomingEmail)) {
+        return { skipped: "booking_client_mismatch" };
+      }
+      // A linked appointment may only be changed by its explicit reschedule
+      // or terminal event. Repeated booking.created must never rewind a
+      // reschedule, undo a cancellation, or reset customer confirmation.
+      if ([BOOKING_STATUS.CANCELLED, BOOKING_STATUS.NOSHOW, BOOKING_STATUS.COMPLETED]
+        .includes(existing.status)) {
+        return { skipped: "terminal_booking_replay" };
+      }
+      if (!existing.client_id) return { skipped: "booking_identity_unverified" };
+      return { skipped: "booking_already_recorded" };
     }
   }
+  const clientId = await resolveClient(db, event);
+  if (!clientId) return;
   const dup = await db.query(
     `SELECT 1 FROM tasks
       WHERE client_id=$1 AND body=$2 AND title LIKE $3 LIMIT 1`,
