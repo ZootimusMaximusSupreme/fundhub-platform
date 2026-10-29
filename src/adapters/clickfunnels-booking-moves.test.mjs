@@ -77,6 +77,12 @@ function bookingDb() {
     async query(sql, params = []) {
       if (/FROM orgs/.test(sql)) return { rows: [{ id: "org-1" }] };
 
+      // Accept a booking client ID only when it belongs to this organization.
+      if (/SELECT id FROM clients WHERE org_id = \$1 AND id = \$2 LIMIT 1/.test(sql)) {
+        const c = clients.find(c => c.org_id === params[0] && c.id === params[1]);
+        return { rows: c ? [{ id: c.id }] : [] };
+      }
+
       // --- clients (resolveClient) ---
       if (/SELECT id, ghl_contact_id FROM clients/.test(sql)) {
         const c = clients.find((c) => c.org_id === params[0] && c.email === params[1]);
@@ -139,9 +145,9 @@ function bookingDb() {
           .map((b) => ({ id: b.id, client_id: b.client_id, provider_uid: b.provider_uid }));
         return { rows };
       }
-      if (/SELECT id FROM bookings WHERE org_id = \$1 AND provider_uid = \$2/.test(sql)) {
+      if (/FROM bookings\s+WHERE org_id = \$1 AND provider_uid = \$2/.test(sql)) {
         const b = bookings.find((b) => b.org_id === params[0] && b.provider_uid === params[1]);
-        return { rows: b ? [{ id: b.id }] : [] };
+        return { rows: b ? [b] : [] };
       }
       if (/UPDATE bookings\s+SET provider_uid/.test(sql)) {
         // promoteBookingUid
