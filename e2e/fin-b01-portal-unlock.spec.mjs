@@ -43,19 +43,10 @@ const ALL_LINKS = Object.fromEntries(KEYS.map((key) => [key, linkFor(key)]));
    checkoutUrl the moment the page defines its PRODUCTS table, the way a later change would. */
 async function openPortal(page, { links = {}, entitlements = [], summary = {} } = {}) {
   const pay = { hits: [], button: null };
-  // The pay button as the client sees it, reported out of the page every time it changes (the page
-  // is gone once it has left for the pay address).
-  await page.exposeFunction("__reportPayButton", (state) => { pay.button = state; });
   await page.addInitScript((s) => {
     localStorage.setItem("fh_token", "e2e-token");
     localStorage.setItem("fh_role", "client");
     localStorage.removeItem("fh_demo");
-    document.addEventListener("DOMContentLoaded", function () {
-      var go = document.getElementById("um-go");
-      if (!go) return;
-      var tell = function () { window.__reportPayButton({ text: go.textContent, disabled: go.disabled }); };
-      new MutationObserver(tell).observe(go, { childList: true, characterData: true, subtree: true, attributes: true });
-    });
     var table;
     Object.defineProperty(window, "PRODUCTS", {
       configurable: true,
@@ -68,6 +59,14 @@ async function openPortal(page, { links = {}, entitlements = [], summary = {} } 
   }, { links });
   await page.route(`${PAY_HOST}/**`, async (route) => {
     pay.hits.push(route.request().url());
+    // Inspect the button while the fake checkout navigation is still paused.
+    // A MutationObserver + exposed async callback is not a reliable final
+    // snapshot: a fast navigation may tear down the old page before it reports.
+    // The checkout must not proceed until this captured state is inspected.
+    pay.button = await page.locator("#um-go").evaluate((go) => ({
+      text: go.textContent,
+      disabled: go.disabled,
+    }));
     await route.fulfill({ status: 200, contentType: "text/html", body: "<html><body>pay page</body></html>" });
   });
   await page.route("**/api/**", async (route) => {
