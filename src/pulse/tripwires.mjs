@@ -67,6 +67,7 @@ export const TRIPWIRES = Object.freeze({
   "job:message-dispatch-sweeper": { impact: "customer", checks: ["gap:sms-sending-stuck", "email:sending-stuck", "gap:msg-sent-no-receipt"] },
   "job:s-00-welcome": { impact: "customer", checks: ["handoff:lead-first-touches-missing", "gap:sms-journey-zero"] },
   "job:s-04-call-booked": { impact: "customer", checks: ["handoff:booking-no-confirm", "calls:booked-no-join-link"] },
+  "job:cortana-booking-feed": { impact: "customer", checks: ["cortana:booked-call-undelivered"] },
   "job:s-04b-booking-reminders": { impact: "customer", checks: ["handoff:reminder-missing"] },
   "route:bookings": { impact: "customer", checks: ["handoff:booking-no-confirm", "calls:booked-no-outcome"] },
   "route:auth/magic-link": { impact: "customer", checks: ["gap:auth-magic-link-dead"] },
