@@ -77,13 +77,18 @@ test("failed read is an error, not fake empty; retry reloads without client writ
   const state = { reads: 0, queryStrings: [], failOnce: true,
     rows: [{ sender_kind: "client", rendered_body: "Saved after retry" }] };
   await wire(page, state);
-  await openTab(page);
-  // Opening the tab may fire an additional read, so induce a fresh refusal.
-  state.failOnce = true;
-  await page.locator('#acct-tabs [data-tab="pay"]').click();
+  await page.goto("/app/client-portal.html?id=" + CID);
+  await expect(page.locator("#tp-msg")).toContainText("We could not load your saved chat messages");
+  await page.locator("#acct summary").click();
   await page.locator('#acct-tabs [data-tab="msg"]').click();
   await expect(page.locator("#tp-msg")).toContainText("Saved after retry");
-  expect(state.reads).toBeGreaterThanOrEqual(2);
+  // A later rate-limit failure is still an error, and the Retry button works.
+  state.failOnce = true;
+  await page.locator('#acct-tabs [data-tab="msg"]').click();
+  await expect(page.locator("#tp-msg")).toContainText("We could not load your saved chat messages");
+  await page.locator("#tp-msg").getByRole("button", { name: "Retry loading messages" }).click();
+  await expect(page.locator("#tp-msg")).toContainText("Saved after retry");
+  expect(state.reads).toBeGreaterThanOrEqual(4);
 });
 test("staff preview and fictional sample view never request real client chat", async ({ page }) => {
   const state = { reads: 0, queryStrings: [], staff: true, rows: [] };
