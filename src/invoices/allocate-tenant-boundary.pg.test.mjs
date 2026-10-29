@@ -172,6 +172,16 @@ describe("A/R tenant-isolated invoice payment identity (rollback-only real Postg
       assert.equal(await receiptCount(foreign.id), 0);
     });
 
+    test("unknown invoice reference with a foreign customer ID cannot create an in-org task on that buyer", async () => {
+      const res = await allocatePayment(tx, received({
+        clientId: otherBuyer,
+        payload: { product: "success_fee", amount: 25, invoiceId: randomUUID(), paymentId: randomUUID() }
+      }));
+      assert.equal(res.allocated, false);
+      assert.equal(res.reason, "unresolved");
+      assert.equal(await badTaskCount(), 0, "review queue must never mix event org and foreign client");
+    });
+
     test("same-org mismatched buyer queues review for invoice owner, not event contact", async () => {
       const local = await issue();
       const res = await allocatePayment(tx, received({
