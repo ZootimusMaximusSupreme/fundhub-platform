@@ -46,6 +46,10 @@ test("foreign org clientId cannot allocate on another tenant or mutate its conta
   });
   assert.equal(result.reason, "client_not_owned");
   assert.equal(result.allocated, false);
+  assert.equal(result.reviewTaskCreated, true);
+  assert.equal(db.tasks.length, 1);
+  assert.equal(db.tasks[0].client_id, "owner-client", "review must stay with the real org-owned invoice buyer");
+  assert.equal(db.tasks[0].assignee_role, "funding_advisor");
   assert.equal(db.invoicePayments.length, 0);
   assert.equal(db.invoices[0].status, "sent");
   assert.equal(JSON.stringify(db.clients), before);
@@ -59,6 +63,9 @@ test("unknown email does not mint a phantom buyer or settle the hinted invoice",
     db, step: fakeStep()
   });
   assert.equal(result.reason, "client_not_owned");
+  assert.equal(result.reviewTaskCreated, true, "unmatched receipt must reach an advisor instead of disappearing");
+  assert.equal(db.tasks.length, 1);
+  assert.equal(db.tasks[0].client_id, "owner-client");
   assert.equal(db.clients.length, 2);
   assert.equal(db.invoicePayments.length, 0);
   assert.equal(db.invoices[0].status, "sent");
