@@ -46,6 +46,14 @@ function fakeDb({ sales = [], programs = [], tasks = [] } = {}) {
     }
     if (/INSERT INTO tasks/.test(sql)) {
       const [org_id, client_id, title, body, due_at, source_workflow, assignee_role] = params;
+      // db/schema/006_tasks_idempotency.sql: the real unique index is on
+      // (client_id, source_workflow, body) NULLS NOT DISTINCT. ON CONFLICT
+      // DO NOTHING returns no row, even when the two task titles differ.
+      if (state.tasks.some((task) =>
+        task.client_id === client_id &&
+        task.source_workflow === source_workflow &&
+        task.body === body
+      )) return { rows: [] };
       const row = {
         id: `task-${state.tasks.length + 1}`,
         org_id, client_id, title, body, due_at, source_workflow, assignee_role
@@ -203,6 +211,37 @@ describe("the first two jobs on a repair file", () => {
       assert.equal(t.assignee_role, REPAIR_TASK_ROLE);
       assert.equal(t.source_workflow, SOURCE_WORKFLOW);
     }
+  });
+
+  test("a single paid event creates BOTH jobs under the actual database unique key", async () => {
+    const db = fakeDb();
+    const first = await createRepairStartTasks(db, {
+      orgId: ORG, clientId: CLIENT, eventId: "same-payment-event", roundsCap: 6
+    });
+    assert.equal(first.count, 2, "the second job was discarded by ON CONFLICT");
+    assert.equal(db.tasks.length, 2);
+    assert.equal(new Set(db.tasks.map((t) => t.body)).size, 2,
+      "two titles shared one idempotency key");
+    const replay = await createRepairStartTasks(db, {
+      orgId: ORG, clientId: CLIENT, eventId: "different-event-same-buyer", roundsCap: 6
+    });
+    assert.equal(replay.count, 0);
+    assert.equal(db.tasks.length, 2);
+  });
+
+  test("a historical one-task repair intake receives only the missing document job", async () => {
+    const task = firstRepairTasks({ roundsCap: 6 })[0];
+    const db = fakeDb({ tasks: [{
+      id: "old-task", client_id: CLIENT, source_workflow: SOURCE_WORKFLOW,
+      title: task.title, body: "legacy-payment-event"
+    }] });
+    const result = await createRepairStartTasks(db, {
+      orgId: ORG, clientId: CLIENT, eventId: "later-installment", roundsCap: 6
+    });
+    assert.equal(result.count, 1);
+    assert.equal(db.tasks.length, 2);
+    assert.equal(db.tasks[0].body, "legacy-payment-event", "never rewrite a live task");
+    assert.match(db.tasks[1].title, /photo identification and proof of address/);
   });
 
   test("a replayed payment does not hand the same person the same job twice", async () => {
