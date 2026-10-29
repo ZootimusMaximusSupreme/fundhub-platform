@@ -277,7 +277,18 @@ export async function upsertBooking(db, {
                               'superseded_at', now()))
                        ELSE '[]'::jsonb
                      END),
-       updated_at = now()`}
+       updated_at = now()
+     -- The appointment UID is a durable identity, not a license for a later
+     -- webhook to move one customer's call onto another customer's file.
+     -- This check runs under PostgreSQL's ON CONFLICT row lock, unlike a
+     -- prior SELECT in the handler, so concurrent event writers are covered.
+     WHERE (bookings.client_id IS NULL
+            OR EXCLUDED.client_id IS NULL
+            OR bookings.client_id = EXCLUDED.client_id)
+       -- A stale booking.created must not unwind a newer reschedule or
+       -- reopen a cancelled/no-show/completed appointment in a UID conflict.
+       AND NOT (EXCLUDED.status = 'booked'
+                AND bookings.status IN ('rescheduled', 'cancelled', 'noshow', 'completed'))`}
      RETURNING ${COLUMNS}`,
     params
   );
