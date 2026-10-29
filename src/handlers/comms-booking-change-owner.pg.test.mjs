@@ -90,6 +90,28 @@ test("cross-buyer UID cannot move or terminate the original client's booking, ta
         assert.deepEqual(await snapshot(), baseline,
           `${name}: no buyer's appointment, task, tag or confirmation changed`);
       }
+      // Older bookings can lack attendee_email. A foreign buyer's email
+      // with no clientId must still fail ownership before any mutation.
+      await db.query(
+        "UPDATE bookings SET attendee_email = NULL WHERE org_id=$1 AND provider_uid=$2",
+        [orgId, uid]
+      );
+      const legacyBaseline = await snapshot();
+      for (const [name, handler] of [
+        ["booking.rescheduled", onBookingRescheduled],
+        ["booking.cancelled", onBookingCancelled],
+        ["booking.noshow", onBookingNoshow]
+      ]) {
+        const wrongEmail = { ...event(name), clientId: null };
+        const answer = await handler(wrongEmail, db);
+        assert.deepEqual(answer, { skipped: "booking_client_mismatch" }, name);
+        assert.deepEqual(await snapshot(), legacyBaseline,
+          `legacy ${name}: no other buyer task, tag or appointment changed`);
+      }
+      await db.query(
+        "UPDATE bookings SET attendee_email=$1 WHERE org_id=$2 AND provider_uid=$3",
+        [a.email, orgId, uid]
+      );
       const legitimate = {
         ...event("booking.rescheduled"),
         clientId: a.id,

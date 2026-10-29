@@ -534,6 +534,33 @@ test("foreign buyer cannot cancel or mark no-show on another buyer's appointment
   }
 });
 
+test("historical booking missing attendee email still blocks foreign buyer changes", async () => {
+  const db = pgFake();
+  for (const [email, uid, startTime] of [
+    ["legacy-booking-a@example.invalid", "uid-legacy-a", "2026-11-18T20:00:00Z"],
+    ["legacy-booking-b@example.invalid", "uid-legacy-b", "2026-11-18T21:00:00Z"]
+  ]) {
+    await onBookingCreated(ev("booking.created", { email, bookingUid: uid, startTime }), db);
+  }
+  const a = db.clients.find(c => c.email === "legacy-booking-a@example.invalid");
+  const b = db.clients.find(c => c.email === "legacy-booking-b@example.invalid");
+  db.bookings.find(x => x.client_id === a.id).attendee_email = null;
+  const baseline = structuredClone(db.tasks);
+  for (const [name, handler] of [
+    ["booking.rescheduled", onBookingRescheduled],
+    ["booking.cancelled", onBookingCancelled],
+    ["booking.noshow", onBookingNoshow]
+  ]) {
+    const result = await handler(ev(name, {
+      email: b.email, bookingUid: "uid-legacy-a", startTime: "2026-11-20T20:00:00Z"
+    }), db);
+    assert.equal(result?.skipped, "booking_client_mismatch", name);
+    assert.equal(db.bookings.find(x => x.client_id === a.id).status, "booked");
+    assert.deepEqual(db.tasks, baseline, name);
+    assert.deepEqual(b.tags, ["call:booked"]);
+  }
+});
+
 test("unknown booking change with a foreign-organization client ID has no side effects", async () => {
   const db = pgFake();
   db.clients.push({

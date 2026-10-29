@@ -650,14 +650,33 @@ async function bookingChangeIdentity(db, event, p) {
     return { skipped: "booking_identity_unavailable" };
   }
   if (!saved) return null;
-  const claimedId = event.clientId || p.clientId || null;
+  if (!saved.client_id) return { skipped: "booking_identity_unverified" };
   const incomingEmail = String(p.email || "").trim().toLowerCase();
   const savedEmail = String(saved.attendee_email || "").trim().toLowerCase();
-  if ((saved.client_id && claimedId && String(saved.client_id) !== String(claimedId)) ||
+  // Legacy bookings may have no attendee_email: the saved tenant-scoped client
+  // is still authoritative. Check the actual client's email before any writes.
+  if (incomingEmail) {
+    let emailOwner;
+    try {
+      const r = await db.query(
+        "SELECT id FROM clients WHERE org_id = $1 AND lower(email) = $2 LIMIT 1",
+        [event.orgId, incomingEmail]
+      );
+      emailOwner = r.rows[0]?.id || null;
+    } catch (err) {
+      console.warn("[comms] booking email owner lookup unavailable:", String(err?.message || err).slice(0, 120));
+      return { skipped: "booking_identity_unavailable" };
+    }
+    if (!emailOwner || String(emailOwner) !== String(saved.client_id)) {
+      return { skipped: "booking_client_mismatch" };
+    }
+  }
+  // Both envelope and payload identifiers are independently untrusted.
+  const assertedIds = [event.clientId, p.clientId].filter(Boolean);
+  if (assertedIds.some(id => String(id) !== String(saved.client_id)) ||
       (savedEmail && incomingEmail && savedEmail !== incomingEmail)) {
     return { skipped: "booking_client_mismatch" };
   }
-  if (!saved.client_id) return { skipped: "booking_identity_unverified" };
   return null;
 }
 
