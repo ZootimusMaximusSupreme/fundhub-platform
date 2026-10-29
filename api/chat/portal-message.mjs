@@ -67,6 +67,17 @@ export default async function handler(req, res) {
       return res.status(400).json({ ok: false, error: "channel_must_be_sms_or_email" });
     }
 
+    /* Same draft retried after a lost ACK must not become a second client note.
+       Optional for older portal versions; a new UI supplies a per-attempt UUID.
+       Prefix the authenticated client ID so another client choosing the same
+       key can never claim, overwrite or dedupe this client's message. */
+    const suppliedKey = body.idempotency_key;
+    if (suppliedKey != null &&
+        (typeof suppliedKey !== "string" || !/^[a-zA-Z0-9][a-zA-Z0-9_-]{7,79}$/.test(suppliedKey))) {
+      return res.status(400).json({ ok: false, error: "invalid_idempotency_key" });
+    }
+    const providerRef = suppliedKey ? `portal:${clientId}:${suppliedKey}` : null;
+
     const convo = await upsertConversation(db, {
       orgId,
       clientId,
@@ -77,12 +88,37 @@ export default async function handler(req, res) {
     const ins = await db.query(
       `INSERT INTO messages (
          org_id, client_id, conversation_id, direction, channel,
-         rendered_body, status, compliance_check_passed, sender_kind
-       ) VALUES ($1, $2, $3, 'inbound', $4, $5, 'received', true, 'client')
+         rendered_body, status, compliance_check_passed, sender_kind, provider_ref
+       ) VALUES ($1, $2, $3, 'inbound', $4, $5, 'received', true, 'client', $6)
+       ON CONFLICT (org_id, provider_ref) WHERE provider_ref IS NOT NULL DO NOTHING
        RETURNING *`,
-      [orgId, clientId, convo.id, channel, text]
+      [orgId, clientId, convo.id, channel, text, providerRef]
     );
     const message = ins.rows[0];
+    if (!message && providerRef) {
+      /* The existing messages unique index arbitrates concurrent duplicates.
+         Read back the original only inside this authenticated org AND client. */
+      const existing = await db.query(
+        `SELECT id, org_id, client_id, conversation_id, direction, channel,
+                rendered_body, sender_kind, status
+           FROM messages
+          WHERE org_id = $1 AND client_id = $2 AND provider_ref = $3
+          LIMIT 1`,
+        [orgId, clientId, providerRef]
+      );
+      const prior = existing.rows[0];
+      if (!prior) {
+        return res.status(409).json({ ok: false, error: "retry_state_unknown" });
+      }
+      if (prior.direction !== "inbound" || prior.sender_kind !== "client" ||
+          prior.channel !== channel || prior.rendered_body !== text) {
+        return res.status(409).json({ ok: false, error: "idempotency_key_reused" });
+      }
+      return res.status(200).json({
+        ok: true, conversation_id: prior.conversation_id,
+        message: prior, reply: null, deduped: true
+      });
+    }
     try {
       await linkMessage(db, { messageId: message.id, conversationId: convo.id });
     } catch { /* non-fatal */ }
