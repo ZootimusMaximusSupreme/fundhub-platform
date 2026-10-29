@@ -122,7 +122,7 @@ describe("A/R receipts require an invoice buyer owned by the invoice tenant (rea
        (org_id, client_id, purpose, amount_cents, link_ref, checkout_url, invoice_id)
        VALUES ($1,$2,'custom',10000,$3,'https://example.invalid/ci',$4)
        RETURNING id`,
-      [orgA, buyerB, `ci-ar-cross-owner-${randomUUID()}`, foreignBuyerInvoice.id]
+      [orgA, buyerA, `ci-ar-cross-owner-${randomUUID()}`, foreignBuyerInvoice.id]
     )).rows[0].id;
     const receipt = event(foreignBuyerInvoice.id);
     receipt.payload.paymentLinkId = linked;
