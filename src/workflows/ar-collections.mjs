@@ -50,6 +50,25 @@ function chaseInvoiceRejection(row, { orgId, clientId }) {
   return null;
 }
 
+// The invoice's org_id and client_id columns can disagree with clients.org_id:
+// the legacy FK only references clients(id). Never trust the invoice envelope
+// alone to authorize a collection email, payment link, CRM tag or CSM task.
+async function clientOwnedByInvoiceOrg(db, { orgId, clientId }) {
+  const result = await db.query(
+    `SELECT id FROM clients WHERE id = $1 AND org_id = $2 LIMIT 1`,
+    [clientId, orgId]
+  );
+  return Boolean(result.rows[0]);
+}
+
+async function chaseOwnedClientRejection(db, row, identity, ownsClient = clientOwnedByInvoiceOrg) {
+  const rejected = chaseInvoiceRejection(row, identity);
+  if (rejected) return rejected;
+  // A failed lookup must stop and retry the workflow, never assume ownership.
+  const owned = await ownsClient(db, identity);
+  return owned === true ? null : "invoice_client_not_owned";
+}
+
 function stillOpen(row) {
   if (!row) return false;
   return COLLECTIBLE.includes(String(row.status || ""));
@@ -167,7 +186,7 @@ async function sendPair(db, { orgId, clientId, eventId, emailKey, smsKey, contex
   return { email, sms };
 }
 
-async function chase({ event, db, step, env, createLink, retireLink }) {
+async function chase({ event, db, step, env, createLink, retireLink, ownsClient }) {
   const payload = event.payload || {};
   const invoiceId = payload.invoiceId || payload.invoice_id;
   if (!invoiceId) return { done: false, reason: "no_invoice_id" };
@@ -183,12 +202,12 @@ async function chase({ event, db, step, env, createLink, retireLink }) {
   // even if invoice.sent is replayed with a DIFFERENT bus event ID.
   const collectionKey = `ar-success-fee:${orgId}:${invoiceId}`;
   const invoice = await getInvoice(db, { invoiceId });
-  const rejected = chaseInvoiceRejection(invoice, { orgId, clientId });
+  const rejected = await chaseOwnedClientRejection(db, invoice, { orgId, clientId }, ownsClient);
   if (rejected) return { done: false, reason: rejected };
 
   const first = await step.run("send-ar-01", async () => {
     const row = await getInvoice(db, { invoiceId });
-    const rejected = chaseInvoiceRejection(row, { orgId, clientId });
+    const rejected = await chaseOwnedClientRejection(db, row, { orgId, clientId }, ownsClient);
     if (rejected) return { skipped: true, reason: rejected };
     if (!stillOpen(row)) return { skipped: true, reason: row.status || "missing" };
     const link = await attachInvoicePayLink(db, row, env, createLink, retireLink);
@@ -204,7 +223,7 @@ async function chase({ event, db, step, env, createLink, retireLink }) {
   await step.sleep("wait-7d", "7d");
   const second = await step.run("send-ar-02", async () => {
     const row = await getInvoice(db, { invoiceId });
-    const rejected = chaseInvoiceRejection(row, { orgId, clientId });
+    const rejected = await chaseOwnedClientRejection(db, row, { orgId, clientId }, ownsClient);
     if (rejected) return { skipped: true, reason: rejected };
     if (!stillOpen(row)) return { skipped: true, reason: row.status || "missing" };
     const link = await attachInvoicePayLink(db, row, env, createLink, retireLink);
@@ -220,7 +239,7 @@ async function chase({ event, db, step, env, createLink, retireLink }) {
   await step.sleep("wait-7d-more", "7d");
   const third = await step.run("send-ar-03", async () => {
     const row = await getInvoice(db, { invoiceId });
-    const rejected = chaseInvoiceRejection(row, { orgId, clientId });
+    const rejected = await chaseOwnedClientRejection(db, row, { orgId, clientId }, ownsClient);
     if (rejected) return { skipped: true, reason: rejected };
     if (!stillOpen(row)) return { skipped: true, reason: row.status || "missing" };
     const link = await attachInvoicePayLink(db, row, env, createLink, retireLink);
@@ -251,7 +270,7 @@ async function chase({ event, db, step, env, createLink, retireLink }) {
       `SELECT * FROM invoices WHERE id = $1 FOR UPDATE`, [invoiceId]
     );
     const row = locked.rows[0] || null;
-    const rejected = chaseInvoiceRejection(row, { orgId, clientId });
+    const rejected = await chaseOwnedClientRejection(tx, row, { orgId, clientId }, ownsClient);
     if (rejected) return { skipped: true, reason: rejected };
     if (!stillOpen(row)) return { skipped: true, reason: row.status || "missing" };
     const due = await remainingDueCents(tx, row);
@@ -293,7 +312,7 @@ async function chase({ event, db, step, env, createLink, retireLink }) {
   return { done: true, first, second, third, handoff };
 }
 
-export async function handle({ event, db, step, env, createLink, retireLink }) {
+export async function handle({ event, db, step, env, createLink, retireLink, ownsClient }) {
   if (event.name === "payment.received") {
     // Receipt reconciliation MUST NOT create customers, change contact details,
     // or backfill CRM links. Lead capture is upstream of A/R. An untrusted
@@ -340,7 +359,7 @@ export async function handle({ event, db, step, env, createLink, retireLink }) {
     return step.run("allocate-payment", () =>
       allocatePayment(db, { ...event, clientId: clientId || null }));
   }
-  return chase({ event, db, step, env, createLink, retireLink });
+  return chase({ event, db, step, env, createLink, retireLink, ownsClient });
 }
 
 export const arCollections = inngest.createFunction(

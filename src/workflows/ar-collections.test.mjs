@@ -26,6 +26,9 @@ async function handle(args) {
       db.paymentLinks.push(link);
       return link;
     },
+    // Existing in-memory behavior is preserved; real PostgreSQL regression
+    // independently proves the tenant lookup in production code.
+    ownsClient: async () => true,
     retireLink: async (db, { linkId, orgId, invoiceId }) => {
       const link = db.paymentLinks.find((p) => p.id === linkId && p.org_id === orgId && p.invoice_id === invoiceId);
       if (!link) throw new Error("retirement target missing");
@@ -1015,4 +1018,65 @@ test("AR issuance: round-only payment cannot match an unsent draft invoice", asy
   assert.equal(db.invoicePayments.length, 0);
   assert.equal(db.invoices[0].status, "draft");
   assert.equal(db.tasks.filter((t) => t.source_workflow === "ar-allocate").length, 1);
+});
+
+
+test("AR tenant isolation: contradictory invoice buyer cannot be sent collections notices or tagged", async () => {
+  const db = pgFake({
+    clients: [{ id: "cl-foreign", org_id: "org-2", email: "ar-isolation+foreign@example.invalid" }],
+    templates: templates(),
+    invoices: [openInvoice({ client_id: "cl-foreign" })]
+  });
+  let stepCalls = 0;
+  const step = { run: async () => { stepCalls++; throw new Error("AR steps must not start"); },
+    sleep: async () => { throw new Error("AR sleep must not start"); } };
+  const result = await handle({
+    event: ev("invoice.sent", { invoiceId: "inv-1" }, { clientId: "cl-foreign" }),
+    db, step, ownsClient: async () => false
+  });
+  assert.equal(result.done, false);
+  assert.equal(result.reason, "invoice_client_not_owned");
+  assert.equal(stepCalls, 0);
+  assert.equal(db.messages.length, 0);
+  assert.equal(db.paymentLinks.length, 0);
+  assert.equal(db.tasks.length, 0);
+  assert.equal(db.clients[0].tags?.length || 0, 0);
+});
+
+test("AR tenant isolation: a client moving org before day seven stops subsequent demands", async () => {
+  const db = pgFake({
+    clients: [{ id: "cl-1", org_id: "org-1", email: "ar-isolation+shift@example.invalid" }],
+    templates: templates(),
+    invoices: [openInvoice()]
+  });
+  let reads = 0;
+  const step = { run: async (_stage, fn) => fn(), sleep: async () => {} };
+  const result = await handle({
+    event: ev("invoice.sent", { invoiceId: "inv-1" }, { clientId: "cl-1" }),
+    db, step, ownsClient: async () => ++reads <= 2
+  });
+  assert.equal(result.stoppedAt, "before-ar-02");
+  assert.equal(result.second.reason, "invoice_client_not_owned");
+  assert.equal(db.messages.length, 2, "only day-zero email/SMS were allowed");
+  assert.equal(db.tasks.length, 0);
+  assert.equal(db.clients[0].tags?.length || 0, 0);
+});
+
+test("AR tenant isolation: CSM escalation repeats ownership verification before tagging", async () => {
+  const db = pgFake({
+    clients: [{ id: "cl-1", org_id: "org-1", email: "ar-isolation+handoff@example.invalid" }],
+    templates: templates(),
+    invoices: [openInvoice()]
+  });
+  let reads = 0;
+  const result = await handle({
+    event: ev("invoice.sent", { invoiceId: "inv-1" }, { clientId: "cl-1" }),
+    db, step: fakeStep(), ownsClient: async () => ++reads <= 4
+  });
+  assert.equal(result.handoff.skipped, true);
+  assert.equal(result.handoff.reason, "invoice_client_not_owned");
+  assert.equal(db.messages.length, 6, "previous three notice pairs remain recorded");
+  assert.equal(db.invoices[0].status, "sent", "invoice not falsely escalated");
+  assert.equal(db.tasks.length, 0, "no task targeting former owner");
+  assert.equal(db.clients[0].tags?.length || 0, 0);
 });
