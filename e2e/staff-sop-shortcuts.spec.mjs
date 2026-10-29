@@ -115,6 +115,37 @@ test("phone shortcut has a 44px target, opens docs, searches and returns without
   await expect(page).toHaveURL(/closer-dashboard\.html$/);
 });
 
+test("320px staff header stays on one row with a full-size SOP icon and usable CRM search", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 780 });
+  await setup(page, OWNER);
+  await page.goto("/app/pipeline.html");
+  const shortcut = page.locator(selectors.shortcut);
+  await expect(shortcut).toBeVisible();
+  const measurements = await page.evaluate(() => {
+    const header = document.querySelector("#fh-workspace-header");
+    const tools = header.querySelector(".fh-workspace-tools");
+    const shortcut = header.querySelector("#fh-sop-shortcut");
+    const box = shortcut.getBoundingClientRect();
+    const toolbar = tools.getBoundingClientRect();
+    return {
+      headerHeight: header.getBoundingClientRect().height,
+      targetWidth: box.width, targetHeight: box.height,
+      right: toolbar.right,
+      overflow: document.documentElement.scrollWidth - innerWidth
+    };
+  });
+  expect(measurements.headerHeight).toBeLessThanOrEqual(74);
+  expect(measurements.targetWidth).toBeGreaterThanOrEqual(44);
+  expect(measurements.targetHeight).toBeGreaterThanOrEqual(44);
+  expect(measurements.right).toBeLessThanOrEqual(320);
+  expect(measurements.overflow).toBeLessThanOrEqual(0);
+  await expect(page.locator(selectors.search)).toBeVisible();
+  await page.locator(selectors.search).click();
+  await expect(page.locator("#fh-shell-search-overlay")).toHaveClass(/open/);
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#fh-shell-search-overlay")).not.toHaveClass(/open/);
+});
+
 test("roles without Company Brain permissions and customer/partner portals never show staff SOP shortcuts", async ({ page }) => {
   // The shell's OWNER_ADMIN_ONLY list includes company-brain.html.
   // A regular setter/closer must not see a shortcut that would bounce to an
