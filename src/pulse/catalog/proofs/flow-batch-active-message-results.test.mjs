@@ -88,6 +88,13 @@ function proofDb() {
           due_at: "2026-10-15T00:00:00Z",
         }] };
       }
+      // Invoice email now checks canonical receipt rows before demanding money.
+      // This fixture has no applied payments; keep the real SQL path in scope
+      // rather than letting the fake throw and falsely mark email delivery red.
+      if (text.includes("FROM invoice_payments") && text.includes("SUM(CASE")) {
+        assert.equal(params[0], INVOICE, "read the intended buyer invoice receipts");
+        return { rows: [{ paid: "0.00" }] };
+      }
       if (text.includes("FROM client_authorized_reps")) return { rows: [] };
       if (text.includes("FROM message_templates")) {
         const key = params[1];
