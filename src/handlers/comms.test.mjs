@@ -501,7 +501,7 @@ test("foreign buyer cannot reschedule an existing provider UID or create a wrong
   assert.equal(result?.skipped, "booking_client_mismatch");
   assert.deepEqual(db.tasks, before, "wrong buyer's closer task or original task cannot change");
   assert.equal(db.bookings.find(x => x.client_id === a.id).status, "booked");
-  assert.equal(db.bookings.find(x => x.client_id === a.id).starts_at, "2026-11-18T20:00:00Z");
+  assert.equal(Date.parse(db.bookings.find(x => x.client_id === a.id).starts_at), Date.parse("2026-11-18T20:00:00Z"), "wrong-buyer reschedule cannot change original appointment time");
   assert.equal(b.custom_fields.call_outcome, "booked");
 });
 
