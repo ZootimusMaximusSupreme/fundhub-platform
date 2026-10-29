@@ -104,7 +104,9 @@ describe("A/R tenant-isolated invoice payment identity (rollback-only real Postg
         payload: { product: "success_fee", amount: 25, paymentLinkId: link, paymentId: randomUUID() }
       }));
       assert.equal(res.allocated, false);
-      assert.equal(res.reason, "unresolved");
+      // A supplied foreign checkout identifier is a conflicting identity,
+      // not an unspecified payment. No invoice/client details are disclosed.
+      assert.equal(res.reason, "invoice_mismatch");
       assert.equal(await badTaskCount(), 0);
       assert.equal(await receiptCount(foreign.id), 0);
     });
@@ -182,24 +184,28 @@ describe("A/R tenant-isolated invoice payment identity (rollback-only real Postg
       assert.equal(await badTaskCount(), 0, "review queue must never mix event org and foreign client");
     });
 
-    test("same-org mismatched buyer queues review for invoice owner, not event contact", async () => {
+    test("same-org mismatched buyer queues exactly one review for invoice owner, not event contact", async () => {
       const local = await issue();
+      const paymentId = randomUUID();
       const res = await allocatePayment(tx, received({
         clientId: secondBuyer,
-        payload: { product: "success_fee", amount: 25, invoiceId: local.id, paymentId: randomUUID() }
+        payload: { product: "success_fee", amount: 25, invoiceId: local.id, paymentId }
       }));
       assert.equal(res.reason, "invoice_mismatch");
       assert.equal(await receiptCount(local.id), 0);
-      const ownerTask = await conn.query(
-        "SELECT count(*)::int AS n FROM tasks WHERE org_id = $1 AND client_id = $2 AND source_workflow = 'ar-allocate'",
-        [org, buyer]
+      // Other tests in this rollback-only transaction already created review
+      // tasks for *other* payment IDs. Filter by this conflict's immutable
+      // PSP reference so this checks its exact owner and idempotency.
+      const target = await conn.query(
+        `SELECT client_id FROM tasks
+         WHERE org_id = $1 AND source_workflow = 'ar-allocate' AND body = $2`,
+        [org, `invoice_mismatch:${paymentId}`]
       );
-      const wrongTask = await conn.query(
-        "SELECT count(*)::int AS n FROM tasks WHERE org_id = $1 AND client_id = $2 AND source_workflow = 'ar-allocate'",
-        [org, secondBuyer]
-      );
-      assert.equal(ownerTask.rows[0].n, 1);
-      assert.equal(wrongTask.rows[0].n, 0);
+      assert.equal(target.rows.length, 1);
+      assert.equal(String(target.rows[0].client_id), String(buyer),
+        "review must attach to actual invoice owner");
+      assert.notEqual(String(target.rows[0].client_id), String(secondBuyer),
+        "forged callback customer must never be task owner");
     });
 
     test("valid same-organization invoice-only receipt still allocates normally", async () => {
