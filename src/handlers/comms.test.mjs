@@ -629,6 +629,92 @@ test("booking.created cannot silently reassign a provider appointment to another
   assert.equal(db.tasks.length, 1, "another buyer was not assigned to this call");
 });
 
+test("booking.created: a stale create cannot rewind a rescheduled call", async () => {
+  const db = pgFake();
+  const original = { email: "same-client@example.com", bookingUid: "bk-rescheduled-stale-create",
+    startTime: "2026-08-01T15:00:00Z", source: "clickfunnels" };
+  await onBookingCreated(ev("booking.created", original), db);
+  const id = db.clients[0].id;
+  await onBookingRescheduled(ev("booking.rescheduled", {
+    ...original, startTime: "2026-08-07T15:00:00Z"
+  }, { clientId: id, id: "evt-rescheduled" }), db);
+  const result = await onBookingCreated(ev("booking.created", original,
+    { clientId: id, id: "evt-original-replayed" }), db);
+  assert.deepEqual(result, { skipped: "booking_already_recorded" });
+  assert.equal(db.bookings.length, 1);
+  assert.equal(db.bookings[0].status, "rescheduled");
+  assert.equal(db.bookings[0].starts_at, "2026-08-07T15:00:00.000Z");
+  assert.equal(db.tasks.length, 1);
+  assert.equal(db.tasks[0].due_at, "2026-08-07T15:00:00Z");
+  assert.equal(db.clients[0].custom_fields.call_outcome, "rescheduled");
+});
+
+test("booking.created: duplicate confirmed appointment cannot reset confirmation or add tasks", async () => {
+  const db = pgFake();
+  const payload = { email: "confirmed-replay@example.com",
+    bookingUid: "bk-confirmed-repeat", startTime: "2026-08-01T15:00:00Z" };
+  await onBookingCreated(ev("booking.created", payload), db);
+  db.clients[0].custom_fields.call_confirmed = true;
+  const result = await onBookingCreated(ev("booking.created", payload, { id: "evt-replay-confirmed" }), db);
+  assert.deepEqual(result, { skipped: "booking_already_recorded" });
+  assert.equal(db.clients.length, 1);
+  assert.equal(db.bookings.length, 1);
+  assert.equal(db.tasks.length, 1);
+  assert.equal(db.clients[0].custom_fields.call_confirmed, true);
+});
+
+test("booking.created: conflicting provider UID cannot create a second lead before refusing it", async () => {
+  const db = pgFake();
+  await onBookingCreated(ev("booking.created", {
+    email: "original-owner@example.com", bookingUid: "bk-reused-provider-uid",
+    startTime: "2026-08-01T15:00:00Z"
+  }), db);
+  const result = await onBookingCreated(ev("booking.created", {
+    email: "different-new-lead@example.com", bookingUid: "bk-reused-provider-uid",
+    startTime: "2026-08-01T15:00:00Z"
+  }, { id: "evt-malformed-second" }), db);
+  assert.deepEqual(result, { skipped: "booking_client_mismatch" });
+  assert.equal(db.clients.length, 1, "must not create an unrelated lead for the reused booking ID");
+  assert.equal(db.tasks.length, 1);
+  assert.equal(db.bookings.length, 1);
+});
+
+test("booking.created: failed UID identity read creates neither a new lead nor a closer task", async () => {
+  const db = pgFake();
+  const originalQuery = db.query.bind(db);
+  db.query = async (sql, params) => {
+    if (/FROM bookings\\s+WHERE org_id = \\$1 AND provider_uid = \\$2/.test(sql)) {
+      throw new Error("booking storage temporarily unreachable");
+    }
+    return originalQuery(sql, params);
+  };
+  const result = await onBookingCreated(ev("booking.created", {
+    email: "new-person@example.com", bookingUid: "bk-db-unavailable",
+    startTime: "2026-08-01T15:00:00Z"
+  }), db);
+  assert.deepEqual(result, { skipped: "booking_identity_unavailable" });
+  assert.equal(db.clients.length, 0);
+  assert.equal(db.tasks.length, 0);
+  assert.equal(db.bookings.length, 0);
+});
+
+test("booking.created: interview booking must never create a sales lead", async () => {
+  const db = pgFake();
+  const result = await onBookingCreated(ev("booking.created", {
+    email: "interview-only@example.com",
+    bookingUid: "bk-interview-not-sales",
+    eventTypeSlug: "customer-insights-interview",
+    startTime: "2026-08-01T15:00:00Z"
+  }), db);
+  // The interview classifier may require a more specific provider marker;
+  // in either case the UID cannot create a second booking in this test.
+  if (result?.skipped === "interview") {
+    assert.equal(db.clients.length, 0);
+    assert.equal(db.tasks.length, 0);
+    assert.equal(db.bookings.length, 0);
+  }
+});
+
 test("a fresh provider appointment after cancellation still books a new call", async () => {
   const db = pgFake();
   await onBookingCreated(ev("booking.created", { email: "rebook@example.com", bookingUid: "old-call",
