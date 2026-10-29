@@ -4,7 +4,7 @@ import { test, after } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import pg from "pg";
-import { denialDecision } from "./f-09-funding-declined-no-path.mjs";
+import { denialDecision, setRoundHoldReason } from "./f-09-funding-declined-no-path.mjs";
 
 const connectionString = process.env.DATABASE_URL;
 let safe = false;
@@ -40,7 +40,7 @@ test("a bank denial does not exhaust an empty, pending, future, or foreign round
       );
       assert.equal((await denialDecision(db, subject)).reason, "no_tracked_applications");
       await db.query(
-        "INSERT INTO applications (id,org_id,funding_round_id,status) VALUES ($1,$2,$3,'DENIED')",
+        "INSERT INTO applications (id,org_id,funding_round_id,status) VALUES ($1,$2,$3,'Denied')",
         [randomUUID(), org, round1]
       );
       assert.deepEqual(await denialDecision(db, subject), { ok: true, reason: null, roundId: round1 });
@@ -48,11 +48,11 @@ test("a bank denial does not exhaust an empty, pending, future, or foreign round
       // A pending application prevents no-path even after a genuine DENIED mail.
       const pending = randomUUID();
       await db.query(
-        "INSERT INTO applications (id,org_id,funding_round_id,status) VALUES ($1,$2,$3,'PENDING')",
+        "INSERT INTO applications (id,org_id,funding_round_id,status) VALUES ($1,$2,$3,'Applied')",
         [pending, org, round1]
       );
       assert.equal((await denialDecision(db, subject)).reason, "pending_applications");
-      await db.query("UPDATE applications SET status='DENIED' WHERE id=$1", [pending]);
+      await db.query("UPDATE applications SET status='Denied' WHERE id=$1", [pending]);
       assert.equal((await denialDecision(db, subject)).ok, true);
 
       // A newly opened round cannot inherit the old round's denials.
@@ -70,17 +70,29 @@ test("a bank denial does not exhaust an empty, pending, future, or foreign round
         [foreignRound, otherOrg, clientId]
       );
       await db.query(
-        "INSERT INTO applications (id,org_id,funding_round_id,status) VALUES ($1,$2,$3,'DENIED')",
+        "INSERT INTO applications (id,org_id,funding_round_id,status) VALUES ($1,$2,$3,'Denied')",
         [randomUUID(), otherOrg, foreignRound]
       );
       assert.equal((await denialDecision(db, subject)).reason, "no_tracked_applications");
       assert.equal((await denialDecision(db, { orgId: otherOrg, clientId })).roundId, foreignRound);
 
       await db.query(
-        "INSERT INTO applications (id,org_id,funding_round_id,status) VALUES ($1,$2,$3,'DENIED')",
+        "INSERT INTO applications (id,org_id,funding_round_id,status) VALUES ($1,$2,$3,'Denied')",
         [randomUUID(), org, round2]
       );
       assert.deepEqual(await denialDecision(db, subject), { ok: true, reason: null, roundId: round2 });
+
+      // Terminal states must block late DENIED email even when all apps are Denied.
+      for (const status of ["funded", "closed", "cancelled", "canceled", "completed"]) {
+        await db.query("UPDATE funding_rounds SET status=$2, hold_reason=NULL WHERE id=$1", [round2, status]);
+        assert.deepEqual(await denialDecision(db, subject),
+          { ok: false, reason: "round_terminal", roundId: round2 });
+        const hold = await setRoundHoldReason(db, { ...subject, roundId: round2, reason: "Internal Review" });
+        assert.equal(hold.updated, false, `late denial must not hold ${status} round`);
+        assert.equal((await db.query("SELECT hold_reason FROM funding_rounds WHERE id=$1", [round2])).rows[0].hold_reason, null);
+      }
+      await db.query("UPDATE funding_rounds SET status='approved' WHERE id=$1", [round2]);
+      assert.equal((await setRoundHoldReason(db, { ...subject, roundId: round2, reason: "Internal Review" })).updated, true);
     } finally {
       await db.query("ROLLBACK");
       db.release();

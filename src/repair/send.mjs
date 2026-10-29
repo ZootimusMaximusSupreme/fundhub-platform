@@ -245,7 +245,7 @@ async function releaseLetterClaim(db, { letterId, orgId, clientId, priorStatus }
   ).catch(() => {});
 }
 
-async function resolveLetterRouting(db, letter, { orgId, identity = null }) {
+export async function resolveLetterRouting(db, letter, { orgId, identity = null }) {
   const letterId = letter.letterId || letter.letter_id || null;
   let target = letter.target || null;
   let furnisherAddressId = letter.furnisher_address_id || letter.furnisherAddressId || null;
@@ -284,14 +284,30 @@ async function resolveLetterRouting(db, letter, { orgId, identity = null }) {
     };
   }
 
-  if (target === "furnisher" && !to && furnisherAddressId && db?.query) {
+  // An explicit address ID must be owned by this org or be a shared catalog row.
+  // Previously this looked up the UUID alone, allowing another tenant's private
+  // furnisher mailing address to be read and used for a real repair envelope.
+  // Verify it even when the request also supplies a manual `to` override:
+  // a foreign ID must never silently fall back to another destination.
+  if (target === "furnisher" && furnisherAddressId) {
+    if (!db?.query || !orgId) {
+      return { target, furnisherAddressId: null, furnisherName: null, to: null,
+        refusal: "furnisher_address_not_found_or_not_owned" };
+    }
     const r = await db.query(
-      `SELECT * FROM furnisher_mail_addresses WHERE id = $1::uuid LIMIT 1`,
-      [furnisherAddressId]
+      `SELECT * FROM furnisher_mail_addresses
+        WHERE id = $1::uuid AND active
+          AND (org_id IS NULL OR org_id = $2::uuid)
+        LIMIT 1`,
+      [furnisherAddressId, orgId]
     );
     const row = r.rows[0];
-    if (row) {
-      furnisherName = furnisherName || row.name;
+    if (!row) {
+      return { target, furnisherAddressId: null, furnisherName: null, to: null,
+        refusal: "furnisher_address_not_found_or_not_owned" };
+    }
+    furnisherName = row.name || furnisherName;
+    if (!to) {
       to = {
         company_name: row.name,
         address_line1: row.address_line1,

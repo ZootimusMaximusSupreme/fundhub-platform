@@ -33,6 +33,7 @@ export async function paidTransactionForLink(db, {
      JOIN products p ON p.id = pl.product_id AND p.org_id = pl.org_id
      JOIN sale_payments sp ON sp.payment_link_id = pl.id AND sp.org_id = pl.org_id
      JOIN transactions t ON t.id = sp.transaction_id AND t.org_id = pl.org_id
+       AND t.client_id = pl.client_id
      WHERE pl.id = $1 AND pl.org_id = $2 AND pl.client_id = $3
        AND pl.created_by_staff_id = $4 AND p.code = $5
        AND sp.kind = 'deposit' AND sp.amount > 0

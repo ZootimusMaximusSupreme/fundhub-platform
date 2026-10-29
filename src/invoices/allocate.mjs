@@ -77,9 +77,25 @@ async function findByPaymentLink(db, { orgId, paymentLinkId, ref }) {
     // authority. A missing/foreign ID must never be rescued by a second
     // `ref` field that happens to point at a payable local invoice.
     // Otherwise contradictory checkout metadata could credit the wrong bill.
-    return r.rows[0]?.invoice_id
-      ? getInvoice(db, { invoiceId: r.rows[0].invoice_id })
-      : null;
+    const invoiceId = r.rows[0]?.invoice_id;
+    if (!invoiceId) return null;
+    if (ref) {
+      // Both locators may be individually valid yet point at DIFFERENT same-org
+      // invoices. Never silently prefer one and book the receipt to the wrong
+      // sale. Unknown refs are allowed: some provider callbacks use non-link
+      // reference strings; only a positively identified conflict is refused.
+      const byRef = await db.query(
+        `SELECT invoice_id FROM payment_links
+          WHERE link_ref = $1 AND org_id = $2 AND invoice_id IS NOT NULL
+          LIMIT 1`,
+        [String(ref), orgId]
+      );
+      if (byRef.rows[0]?.invoice_id &&
+          String(byRef.rows[0].invoice_id) !== String(invoiceId)) {
+        return null;
+      }
+    }
+    return getInvoice(db, { invoiceId });
   }
   if (ref) {
     const r = await db.query(
@@ -121,6 +137,23 @@ async function alreadyRecorded(db, { orgId, providerPaymentId }) {
   return r.rows[0] || null;
 }
 
+// A legacy invoice may identify a buyer in a DIFFERENT organization: the
+// invoices.client_id FK verifies client existence, not invoice/client tenant
+// agreement. A provider receipt often carries no customer locator, so invoice
+// identity alone cannot authorize a credit, replay, paid event or review task.
+// Throw to retain the original signed event in retry/dead-letter rather than
+// silently acknowledging an unallocated merchant payment.
+async function requireInvoiceBuyerOwned(db, invoice) {
+  if (!invoice?.org_id || !invoice?.client_id) {
+    throw new Error("ar_invoice_buyer_not_owned_by_org");
+  }
+  const owned = await db.query(
+    `SELECT id FROM clients WHERE id = $1 AND org_id = $2 LIMIT 1`,
+    [invoice.client_id, invoice.org_id]
+  );
+  if (!owned.rows[0]) throw new Error("ar_invoice_buyer_not_owned_by_org");
+}
+
 function partialEventKey(invoiceId, paymentKey) {
   if (!paymentKey) throw new Error(`Partial invoice ${invoiceId} has no stable receipt identity`);
   return `invoice.partially_paid:${invoiceId}:${paymentKey}`;
@@ -144,6 +177,7 @@ async function replayRecordedPayment(db, prior) {
 async function replayIdentityMatches(db, prior, { orgId, clientId, hintedId, roundId, paymentLinkId, ref }) {
   const original = await getInvoice(db, { invoiceId: prior.invoice_id });
   if (!original || String(original.org_id) !== String(orgId)) return false;
+  await requireInvoiceBuyerOwned(db, original);
   if (clientId && String(original.client_id) !== String(clientId)) return false;
   if (hintedId && String(original.id) !== String(hintedId)) return false;
   if (roundId && String(original.funding_round_id || "") !== String(roundId)) return false;
@@ -323,6 +357,9 @@ export async function allocatePayment(db, event) {
   if (!orgId || String(invoice.org_id) !== String(orgId)) {
     return { done: true, allocated: false, reason: "invoice_mismatch", path: "unresolved" };
   }
+  // Invoice org/client columns are not a tenant-ownership guarantee. Missing
+  // owned buyer leaves the signed receipt for staff review in the event DLQ.
+  await requireInvoiceBuyerOwned(db, invoice);
 
   // This allocator owns *only* funding success fees. A payment that names a
   // repair, DIY, deposit or other invoice must not write a success-fee receipt.
@@ -390,6 +427,9 @@ export async function allocatePayment(db, event) {
       || (roundId && String(locked.funding_round_id || "") !== String(roundId))) {
       return { reason: "invoice_mismatch" };
     }
+    // Re-check under the invoice lock; a buyer could have changed since the
+    // initial read. This lookup makes no writes to client or provider rows.
+    await requireInvoiceBuyerOwned(tx, locked);
 
     // Two webhook envelopes can carry the same Commas payment ID but different
     // event IDs. Both may pass the early replay lookup. Recheck only after the

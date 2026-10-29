@@ -92,10 +92,12 @@ export function invoiceContext({ invoice, client, orgName = "Fundhub", balanceDu
  */
 export async function emailInvoice(db, { orgId, invoiceId, purpose = "sent", now = null, drainOutbox = drain } = {}) {
   try {
+    // Invoice tenant scope alone is insufficient: the client FK does not
+    // enforce client.org_id = invoice.org_id. Do not email another tenant's buyer.
     const { rows } = await db.query(
       `SELECT i.*, c.first_name, c.last_name, c.email AS client_email, o.name AS org_name
          FROM invoices i
-         JOIN clients c ON c.id = i.client_id
+         JOIN clients c ON c.id = i.client_id AND c.org_id = i.org_id
          JOIN orgs o    ON o.id = i.org_id
         WHERE i.id = $1::uuid AND i.org_id = $2::uuid LIMIT 1`, [invoiceId, orgId]);
     const inv = rows[0];
@@ -191,11 +193,12 @@ export async function emailInvoice(db, { orgId, invoiceId, purpose = "sent", now
  * two workflows have ever raised is in here.
  */
 export async function unemailedInvoices(db, { orgId, limit = 100 } = {}) {
+  // Keep cross-org buyer identities out of finance backlog and email dispatch.
   const { rows } = await db.query(
     `SELECT i.id, i.amount_due, i.currency, i.status, i.due_at, i.created_at,
             c.first_name, c.last_name, c.email AS client_email
        FROM invoices i
-       JOIN clients c ON c.id = i.client_id
+       JOIN clients c ON c.id = i.client_id AND c.org_id = i.org_id
       WHERE i.org_id = $1::uuid
         AND i.status = 'sent'
         AND i.emailed_at IS NULL

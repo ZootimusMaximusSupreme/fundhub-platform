@@ -8,7 +8,7 @@ test("happy path: DENIED bank reply on a funding-path client flags ops + holds t
   const db = pgFake({
     clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", outcome_tier: "FULL_FUNDING" }],
     fundingRounds: [{ id: "fr-1", client_id: "cl-1", round_number: 2, hold_reason: null }],
-    applications: [{ id: "app-tracked", funding_round_id: "fr-1", status: "DENIED" }]
+    applications: [{ id: "app-tracked", funding_round_id: "fr-1", status: "Denied" }]
   });
   const res = await handle({ event: ev("mail.response", { classification: "DENIED" }, { clientId: "cl-1" }), db, step: fakeStep() });
   assert.equal(res.done, true);
@@ -16,6 +16,8 @@ test("happy path: DENIED bank reply on a funding-path client flags ops + holds t
   assert.equal(db.fundingRounds[0].hold_reason, "Internal Review");
   assert.deepEqual(db.clients[0].tags, ["ops:action-required"]);
   assert.equal(db.tasks.length, 1);
+  assert.equal(db.tasks[0].assignee_role, "funding_advisor");
+  assert.ok(new Date(db.tasks[0].due_at).getTime() > Date.now(), "review task must be visible on Calendar");
 });
 
 test("branch: non-DENIED classification is ignored", async () => {
@@ -37,8 +39,8 @@ test("branch: first of several bank denials does NOT flag no-path when other app
     clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", outcome_tier: "FULL_FUNDING" }],
     fundingRounds: [{ id: "fr-1", client_id: "cl-1", round_number: 1, hold_reason: null }],
     applications: [
-      { id: "app-1", funding_round_id: "fr-1", status: "DENIED" },
-      { id: "app-2", funding_round_id: "fr-1", status: "PENDING" }
+      { id: "app-1", funding_round_id: "fr-1", status: "Denied" },
+      { id: "app-2", funding_round_id: "fr-1", status: "Applied" }
     ]
   });
   const res = await handle({ event: ev("mail.response", { classification: "DENIED" }, { clientId: "cl-1" }), db, step: fakeStep() });
@@ -53,8 +55,8 @@ test("branch: all banks denied triggers hold and task", async () => {
     clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", outcome_tier: "FULL_FUNDING" }],
     fundingRounds: [{ id: "fr-1", client_id: "cl-1", round_number: 1, hold_reason: null }],
     applications: [
-      { id: "app-1", funding_round_id: "fr-1", status: "DENIED" },
-      { id: "app-2", funding_round_id: "fr-1", status: "DENIED" }
+      { id: "app-1", funding_round_id: "fr-1", status: "Denied" },
+      { id: "app-2", funding_round_id: "fr-1", status: "Denied" }
     ]
   });
   const res = await handle({ event: ev("mail.response", { classification: "DENIED" }, { clientId: "cl-1" }), db, step: fakeStep() });
@@ -73,7 +75,7 @@ test("GUARD: a raw monitor+<clientId>@ recipient resolves a real client, not no_
   const db = pgFake({
     clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", outcome_tier: "FULL_FUNDING" }],
     fundingRounds: [{ id: "fr-1", client_id: "cl-1", round_number: 1, hold_reason: null }],
-    applications: [{ id: "app-tracked", funding_round_id: "fr-1", status: "DENIED" }]
+    applications: [{ id: "app-tracked", funding_round_id: "fr-1", status: "Denied" }]
   });
   const clientId = await resolveClientFromRecipient(db, "monitor+cl-1@fundhub.ai");
   const res = await handle({
@@ -89,7 +91,7 @@ test("duplicate delivery: replaying the same event does not double-create the ta
   const db = pgFake({
     clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", outcome_tier: "FULL_FUNDING" }],
     fundingRounds: [{ id: "fr-1", client_id: "cl-1", round_number: 1, hold_reason: null }],
-    applications: [{ id: "app-tracked", funding_round_id: "fr-1", status: "DENIED" }]
+    applications: [{ id: "app-tracked", funding_round_id: "fr-1", status: "Denied" }]
   });
   const event = ev("mail.response", { classification: "DENIED" }, { id: "evt-dup-f09", clientId: "cl-1" });
   await handle({ event, db, step: fakeStep() });
@@ -133,7 +135,7 @@ test("old round denied does not put a fresh empty round on a no-path hold", asyn
       { id: "fr-old", client_id: "cl-1", round_number: 1, hold_reason: null },
       { id: "fr-new", client_id: "cl-1", round_number: 2, hold_reason: null }
     ],
-    applications: [{ id: "app-old", funding_round_id: "fr-old", status: "DENIED" }]
+    applications: [{ id: "app-old", funding_round_id: "fr-old", status: "Denied" }]
   });
   const result = await handle({
     event: ev("mail.response", { classification: "DENIED" }, { clientId: "cl-1" }),
@@ -148,7 +150,7 @@ test("distinct denial emails on same exhausted round create one review task", as
   const db = pgFake({
     clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", outcome_tier: "FULL_FUNDING" }],
     fundingRounds: [{ id: "fr-1", client_id: "cl-1", round_number: 1, hold_reason: null }],
-    applications: [{ id: "app-1", funding_round_id: "fr-1", status: "DENIED" }]
+    applications: [{ id: "app-1", funding_round_id: "fr-1", status: "Denied" }]
   });
   for (const id of ["evt-denial-one", "evt-denial-two"]) {
     const result = await handle({
@@ -165,13 +167,121 @@ test("separate fully denied round creates its own review task", async () => {
   const db = pgFake({
     clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", outcome_tier: "FULL_FUNDING" }],
     fundingRounds: [{ id: "fr-1", client_id: "cl-1", round_number: 1, hold_reason: null }],
-    applications: [{ id: "app-1", funding_round_id: "fr-1", status: "DENIED" }]
+    applications: [{ id: "app-1", funding_round_id: "fr-1", status: "Denied" }]
   });
   const event = (id) => ev("mail.response", { classification: "DENIED" }, { id, clientId: "cl-1" });
   assert.equal((await handle({ event: event("evt-1"), db, step: fakeStep() })).done, true);
   db.fundingRounds.push({ id: "fr-2", client_id: "cl-1", round_number: 2, hold_reason: null });
-  db.applications.push({ id: "app-2", funding_round_id: "fr-2", status: "DENIED" });
+  db.applications.push({ id: "app-2", funding_round_id: "fr-2", status: "Denied" });
   assert.equal((await handle({ event: event("evt-2"), db, step: fakeStep() })).done, true);
   assert.equal(db.tasks.length, 2);
   assert.deepEqual(db.tasks.map((t) => t.body), ["no-path:fr-1", "no-path:fr-2"]);
+});
+
+
+test("legacy uppercase Denied values and current title-case Denied both count as exhausted", async () => {
+  const db = pgFake({
+    clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", outcome_tier: "FULL_FUNDING" }],
+    fundingRounds: [{ id: "fr-1", client_id: "cl-1", round_number: 1, hold_reason: null }],
+    applications: [
+      { id: "app-1", funding_round_id: "fr-1", status: "Denied" },
+      { id: "app-2", funding_round_id: "fr-1", status: "DENIED" }
+    ]
+  });
+  const result = await handle({
+    event: ev("mail.response", { classification: "DENIED" }, { clientId: "cl-1" }),
+    db, step: fakeStep()
+  });
+  assert.equal(result.done, true);
+  assert.equal(db.tasks.length, 1);
+  assert.equal(db.fundingRounds[0].hold_reason, "Internal Review");
+});
+
+
+// Paid funding and a stale REPAIR_ONLY credit recommendation can coexist.
+// F-01 already routes that purchase into funding intake. Its downstream
+// exhausted-bank review must honor the exact same net-positive sale gate.
+test("F-09: paid funding receives no-path review despite stale repair-only tier", async () => {
+  const db = pgFake({
+    clients: [{ id: "cl-1", org_id: "org-1", email: "buyer@example.invalid", outcome_tier: "REPAIR_ONLY" }],
+    fundingRounds: [{ id: "fr-1", org_id: "org-1", client_id: "cl-1", round_number: 1, hold_reason: null }],
+    applications: [{ id: "a-1", org_id: "org-1", funding_round_id: "fr-1", status: "Denied" }]
+  });
+  const query = db.query.bind(db);
+  let checkedPurchase = false;
+  db.query = async (sql, args) => {
+    if (sql.includes("SELECT DISTINCT pr.category AS category")) {
+      checkedPurchase = true;
+      assert.deepEqual(args, ["org-1", "cl-1"]);
+      return { rows: [{ category: "repair" }, { category: "funding" }] };
+    }
+    return query(sql, args);
+  };
+  const event = ev("mail.response", { classification: "DENIED" }, { clientId: "cl-1" });
+  const first = await handle({ event, db, step: fakeStep() });
+  assert.equal(checkedPurchase, true);
+  assert.equal(first.done, true);
+  assert.equal(db.fundingRounds[0].hold_reason, "Internal Review");
+  assert.equal(db.tasks.length, 1);
+  assert.equal(db.tasks[0].assignee_role, "funding_advisor");
+  await handle({ event, db, step: fakeStep() });
+  assert.equal(db.tasks.length, 1, "replayed denial must not duplicate advisor review");
+});
+
+test("F-09: unpaid or repair-only purchase cannot open no-path review on a manually created round", async () => {
+  const db = pgFake({
+    clients: [{ id: "cl-1", org_id: "org-1", email: "buyer@example.invalid", outcome_tier: "REPAIR_ONLY" }],
+    fundingRounds: [{ id: "fr-1", org_id: "org-1", client_id: "cl-1", round_number: 1, hold_reason: null }],
+    applications: [{ id: "a-1", org_id: "org-1", funding_round_id: "fr-1", status: "Denied" }]
+  });
+  const query = db.query.bind(db);
+  db.query = async (sql, args) =>
+    sql.includes("SELECT DISTINCT pr.category AS category")
+      ? { rows: [{ category: "repair" }] }
+      : query(sql, args);
+  const result = await handle({
+    event: ev("mail.response", { classification: "DENIED" }, { clientId: "cl-1" }),
+    db, step: fakeStep()
+  });
+  assert.deepEqual({ done: result.done, reason: result.reason },
+    { done: false, reason: "not_funding_path:REPAIR_ONLY" });
+  assert.equal(db.fundingRounds[0].hold_reason, null);
+  assert.equal(db.tasks.length, 0);
+  assert.equal(db.clients[0].tags?.length || 0, 0);
+});
+
+
+test("a delayed bank denial cannot reopen a funded, closed, or cancelled round", async () => {
+  for (const status of ["funded", "closed", "cancelled", "canceled", "completed"]) {
+    const db = pgFake({
+      clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", outcome_tier: "FULL_FUNDING" }],
+      fundingRounds: [{ id: "fr-1", org_id: "org-1", client_id: "cl-1", round_number: 1, status, hold_reason: null }],
+      applications: [{ id: "app-1", org_id: "org-1", funding_round_id: "fr-1", status: "Denied" }]
+    });
+    const res = await handle({ event: ev("mail.response", { classification: "DENIED" }, { clientId: "cl-1" }), db, step: fakeStep() });
+    assert.equal(res.reason, "round_terminal", status);
+    assert.equal(res.done, false, status);
+    assert.equal(db.fundingRounds[0].hold_reason, null, status);
+    assert.equal(db.tasks.length, 0, status);
+    assert.equal(db.clients[0].tags?.length || 0, 0, status);
+  }
+});
+
+test("a round becoming funded between denial check and hold write cannot gain a hold/task", async () => {
+  const db = pgFake({
+    clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", outcome_tier: "FULL_FUNDING" }],
+    fundingRounds: [{ id: "fr-1", org_id: "org-1", client_id: "cl-1", round_number: 1, status: "approved", hold_reason: null }],
+    applications: [{ id: "app-1", org_id: "org-1", funding_round_id: "fr-1", status: "Denied" }]
+  });
+  const query = db.query.bind(db);
+  db.query = async (sql, params) => {
+    if (sql.includes("UPDATE funding_rounds SET hold_reason")) db.fundingRounds[0].status = "funded";
+    return query(sql, params);
+  };
+  const res = await handle({ event: ev("mail.response", { classification: "DENIED" }, { clientId: "cl-1" }), db, step: fakeStep() });
+  assert.equal(res.done, false);
+  assert.equal(res.reason, "round_missing_after_review");
+  assert.equal(db.fundingRounds[0].hold_reason, null);
+  assert.equal(db.tasks.length, 0);
+  assert.equal(db.clients[0].tags?.length || 0, 0);
 });

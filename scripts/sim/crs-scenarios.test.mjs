@@ -120,6 +120,10 @@ test("a simulated CRS result reaches the existing CRM event handlers and stops a
   const db = {
     async query(sql, params = []) {
       const q = String(sql);
+      // Simulated buyer must also pass the real tenant-scoped envelope guard.
+      if (/SELECT 1 FROM clients WHERE id = \$1 AND org_id = \$2 LIMIT 1/.test(q)) {
+        return { rows: params[0] === client.id && params[1] === client.org_id ? [{ exists: 1 }] : [] };
+      }
       if (/SELECT id, ghl_contact_id, email, phone, first_name, last_name/.test(q)) return { rows: [client] };
       if (/SELECT id, org_id, client_id FROM crs_results/.test(q)) return { rows: [crs] };
       if (/UPDATE crs_results/.test(q)) {

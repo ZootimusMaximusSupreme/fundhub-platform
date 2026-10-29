@@ -213,6 +213,16 @@ export async function resolveClient(db, event, opts = {}) {
   const overwriteContact = p.source === "clickfunnels" &&
     (p.funnel === "apply-survey" || event.name === "booking.created" || event.name === "booking.rescheduled");
   if (event.clientId) {
+    // The event envelope is not proof of tenant ownership. Before updating any
+    // contact detail, CRM link, sales stage or payment/decision state, require
+    // the referenced buyer to exist in this exact organization. A foreign or
+    // stale client UUID must not be accepted as a local customer.
+    if (!orgId) return null;
+    const owned = await db.query(
+      `SELECT 1 FROM clients WHERE id = $1 AND org_id = $2 LIMIT 1`,
+      [event.clientId, orgId]
+    );
+    if (!owned.rows[0]) return null;
     // Explicit id still needs a CRM link when missing — lead capture often
     // creates the row first, then emits with clientId set.
     await patchClientContact(db, event.clientId, p, overwriteContact);

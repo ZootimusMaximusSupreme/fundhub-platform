@@ -20,13 +20,14 @@ import { db } from "../db.mjs";
 // Resolve ONLY an already-owned client: resolveClient can create a phantom lead,
 // patch an explicit foreign clientId or sync a CRM contact before org validation.
 // Missing/foreign identities must bail without tasks, tags, cards or messages.
-import { findClient } from "../handlers/purchase-routing.mjs";
+import { findClient, purchasedCategories } from "../handlers/purchase-routing.mjs";
 import { clientOutcomeTier, isFundingPath } from "../config/product-path.mjs";
 import { addTags } from "./tags.mjs";
 import { createTask } from "../lib/create-task.mjs";
 
 const SOURCE_WORKFLOW = "f-09-funding-declined-no-path";
 const TASK_TITLE = "Funding no-path decision";
+const TERMINAL_ROUND_STATUSES = new Set(["funded", "closed", "cancelled", "canceled", "completed"]);
 
 // A DENIED email is not evidence that the customer has no funding path. Only
 // documented applications in this organization's CURRENT round can prove that.
@@ -34,19 +35,26 @@ const TASK_TITLE = "Funding no-path decision";
 export async function denialDecision(db, { orgId, clientId } = {}) {
   if (!orgId || !clientId) return { ok: false, reason: "missing_ids", roundId: null };
   const roundRow = await db.query(
-    `SELECT id FROM funding_rounds WHERE client_id = $1 AND org_id = $2
+    `SELECT id, status FROM funding_rounds WHERE client_id = $1 AND org_id = $2
        ORDER BY round_number DESC LIMIT 1`,
     [clientId, orgId]
   );
-  const roundId = roundRow.rows[0]?.id || null;
+  const currentRound = roundRow.rows[0];
+  const roundId = currentRound?.id || null;
   if (!roundId) return { ok: false, reason: "no_funding_round", roundId: null };
+  // A delayed bank rejection must not reopen an already funded/closed round.
+  if (TERMINAL_ROUND_STATUSES.has(String(currentRound.status || "").trim().toLowerCase())) {
+    return { ok: false, reason: "round_terminal", roundId };
+  }
 
   const apps = await db.query(
     `SELECT status FROM applications WHERE funding_round_id = $1 AND org_id = $2`,
     [roundId, orgId]
   );
   if (!apps.rows.length) return { ok: false, reason: "no_tracked_applications", roundId };
-  if (!apps.rows.every((a) => a.status === "DENIED")) {
+  // Staff bank decisions persist title-case 'Denied' (APPLICATION_STATUSES).
+  // Older imported rows may contain 'DENIED'; both represent the same outcome.
+  if (!apps.rows.every((a) => String(a.status ?? "").trim().toLowerCase() === "denied")) {
     return { ok: false, reason: "pending_applications", roundId };
   }
   return { ok: true, reason: null, roundId };
@@ -54,10 +62,11 @@ export async function denialDecision(db, { orgId, clientId } = {}) {
 
 // Pin the reviewed round. A newer round may open while Inngest is processing
 // the bank email; never put its hold on that newer round instead.
-async function setRoundHoldReason(db, { orgId, clientId, roundId, reason }) {
+export async function setRoundHoldReason(db, { orgId, clientId, roundId, reason }) {
   const r = await db.query(
     `UPDATE funding_rounds SET hold_reason = $2
-       WHERE id = $1 AND org_id = $3 AND client_id = $4`,
+       WHERE id = $1 AND org_id = $3 AND client_id = $4
+         AND LOWER(COALESCE(status, '')) NOT IN ('funded', 'closed', 'cancelled', 'canceled', 'completed')`,
     [roundId, reason, orgId, clientId]
   );
   return { updated: r.rowCount == null ? true : r.rowCount > 0, roundId };
@@ -78,7 +87,9 @@ async function createTaskOnce(db, { orgId, clientId, roundId }) {
     title: TASK_TITLE,
     sourceWorkflow: SOURCE_WORKFLOW,
     assigneeRole: "funding_advisor",
-    eventId: dedupeKey
+    eventId: dedupeKey,
+    // The staff Calendar hides undated tasks; no-path review is actionable now.
+    dueAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
   });
   return { created: task.created };
 }
@@ -90,7 +101,14 @@ export async function handle({ event, db, step }) {
   if (!clientId) return { done: false, reason: "no_client" };
 
   const outcomeTier = await step.run("check-product-path", () => clientOutcomeTier(db, clientId));
-  if (!isFundingPath(outcomeTier)) return { done: false, reason: `not_funding_path:${outcomeTier}` };
+  if (!isFundingPath(outcomeTier)) {
+    // An old repair-only credit recommendation cannot suppress advisor review
+    // for a customer who has genuinely PAID for funding (same-sale net > 0).
+    // Mirror F-01's paid-funding exception; an unpaid manual round still refuses.
+    const bought = await step.run("check-paid-funding", () =>
+      purchasedCategories(db, event.orgId, clientId));
+    if (!bought.funding) return { done: false, reason: `not_funding_path:${outcomeTier}` };
+  }
 
   const decision = await step.run("check-all-denied", () =>
     denialDecision(db, { orgId: event.orgId, clientId }));
