@@ -132,6 +132,30 @@ async function replayRecordedPayment(db, prior) {
   return { done: true, replay: true, invoiceId: prior.invoice_id, path: "replay" };
 }
 
+// A provider payment ID is immutable. A replay may reannounce the original
+// invoice event, but it cannot confirm somebody else's invoice or client.
+async function replayIdentityMatches(db, prior, { orgId, clientId, hintedId, roundId, paymentLinkId, ref }) {
+  const original = await getInvoice(db, { invoiceId: prior.invoice_id });
+  if (!original || String(original.org_id) !== String(orgId)) return false;
+  if (clientId && String(original.client_id) !== String(clientId)) return false;
+  if (hintedId && String(original.id) !== String(hintedId)) return false;
+  if (roundId && String(original.funding_round_id || "") !== String(roundId)) return false;
+  if (paymentLinkId || ref) {
+    const linked = await findByPaymentLink(db, { paymentLinkId, ref });
+    if (linked && String(linked.id) !== String(original.id)) return false;
+  }
+  return true;
+}
+
+async function conflictingReplay(db, { orgId, clientId, eventId, providerPaymentId }) {
+  await staffTask(db, {
+    orgId, clientId, eventId,
+    title: "Conflicting payment reference — review original receipt",
+    body: providerPaymentId ? `receipt-conflict:${providerPaymentId}` : eventId
+  });
+  return { done: true, allocated: false, replay: false, reason: "receipt_reference_mismatch", path: "unresolved" };
+}
+
 async function insertPayment(db, { orgId, invoiceId, clientId, amount, externalRef, sourceEventId }) {
   const r = await db.query(
     `WITH payable AS (
@@ -197,9 +221,18 @@ export async function allocatePayment(db, event) {
     return { done: true, skipped: true, reason: "not_invoice_payment" };
   }
 
+  const replayContext = {
+    orgId, clientId, hintedId, roundId,
+    paymentLinkId: payload.paymentLinkId, ref: payload.ref
+  };
   if (orgId && providerPaymentId) {
     const prior = await alreadyRecorded(db, { orgId, providerPaymentId });
-    if (prior) return replayRecordedPayment(db, prior);
+    if (prior) {
+      if (!await replayIdentityMatches(db, prior, replayContext)) {
+        return conflictingReplay(db, { orgId, clientId, eventId: event.id, providerPaymentId });
+      }
+      return replayRecordedPayment(db, prior);
+    }
   }
 
   let invoice = null;
@@ -289,16 +322,19 @@ export async function allocatePayment(db, event) {
   }
 
   const payCents = knownCents(payload.amount);
-  if (payCents === null) {
-    console.warn(`[ar-allocate] path=unresolved reason=unknown_amount invoice=${invoice.id}`);
+  if (payCents === null || payCents <= 0) {
+    // Reversals and failed attempts are not payment.received credits.
+    // Do not silently acknowledge a zero/negative receipt as a payment.
+    const reason = payCents === null ? "unknown_amount" : "non_positive_amount";
+    console.warn(`[ar-allocate] path=unresolved reason=${reason} invoice=${invoice.id}`);
     await staffTask(db, {
       orgId,
       clientId,
       eventId: event.id,
-      title: "Unallocated payment — amount unknown",
-      body: providerPaymentId ? `unknown-amount:${providerPaymentId}` : event.id
+      title: "Unallocated payment — invalid receipt amount",
+      body: providerPaymentId ? `${reason}:${providerPaymentId}` : event.id
     });
-    return { done: true, allocated: false, reason: "unknown_amount", invoiceId: invoice.id, path: "unresolved" };
+    return { done: true, allocated: false, reason, invoiceId: invoice.id, path: "unresolved" };
   }
 
   const result = await withTransaction(db, async (tx) => {
@@ -373,6 +409,11 @@ export async function allocatePayment(db, event) {
   });
 
   if (result.reason === "replay") {
+    // Repeat the identity check after the invoice row lock: a concurrent
+    // envelope may have recorded this PSP reference against another invoice.
+    if (result.prior && !await replayIdentityMatches(db, result.prior, replayContext)) {
+      return conflictingReplay(db, { orgId, clientId, eventId: event.id, providerPaymentId });
+    }
     return replayRecordedPayment(db, result.prior || {
       invoice_id: invoice.id, external_ref: providerPaymentId, source_event_id: event.id
     });
