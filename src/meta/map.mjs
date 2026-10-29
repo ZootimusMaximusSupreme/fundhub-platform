@@ -151,6 +151,30 @@ export const META_MAP = Object.freeze([
     match: () => true,
     customData: (row) => data({ businesses: props(row).businesses }),
   },
+  // The owner's two buckets (2026-10-29): Lead and Schedule above still fire for
+  // everyone; these say which bucket. credit_tier comes from /apply's last answer
+  // (700+ score answer = qualified) and rides on the booking from the same tab.
+  // The tier is in the event name only, never in custom_data.
+  {
+    event: "survey_answer", meta: "QualifiedLead", custom: true,
+    match: (row) => props(row).last === true && props(row).credit_tier === "qualified",
+    customData: (row) => data({ content_name: props(row).survey }),
+  },
+  {
+    event: "survey_answer", meta: "UnqualifiedLead", custom: true,
+    match: (row) => props(row).last === true && props(row).credit_tier === "unqualified",
+    customData: (row) => data({ content_name: props(row).survey }),
+  },
+  {
+    event: "booking_confirmed", meta: "QualifiedSchedule", custom: true,
+    match: (row) => props(row).credit_tier === "qualified",
+    customData: (row) => data({ content_name: props(row).calendar }),
+  },
+  {
+    event: "booking_confirmed", meta: "UnqualifiedSchedule", custom: true,
+    match: (row) => props(row).credit_tier === "unqualified",
+    customData: (row) => data({ content_name: props(row).calendar }),
+  },
 ]);
 
 /** Every Meta event name the server can send. */

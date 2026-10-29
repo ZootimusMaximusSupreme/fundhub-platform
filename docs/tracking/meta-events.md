@@ -7,12 +7,14 @@ Shipped `10a7b8ca` (Netlify) + ClickFunnels pushes (funnel 968281 head pixel, /r
 | Every funnel page + fundhub.ai homepage | PageView (`pv.<sid>.<rand>`) |
 | /roadmap, /watch, /apply, fundhub.ai homepage | ViewContent (`<pv>.vc`) |
 | /roadmap | Lead (step-1 button, checks passed), InitiateCheckout (card step, once per session, $147), Purchase (`purchase.<order ref>`, $147, once in the browser; the server copy is sent by the payment webhook when the money lands), ReachedBuyBox, SoftPullSubmitted, VideoProgress |
-| /apply, homepage survey | SurveyStep per question, Lead on the last question |
-| /apply, /roadmap-book, /funding-book-call | Schedule on a real booking |
+| /apply, homepage survey | SurveyStep per question, Lead on the last question; on /apply also QualifiedLead or UnqualifiedLead |
+| /apply, /roadmap-book, /funding-book-call | Schedule on a real booking; also QualifiedSchedule or UnqualifiedSchedule when the tab did the /apply survey |
 | /thank-you | SurveyRouted |
 | Six sorting-hat offers | Purchase at the offer price, server only, when Commas reports the payment |
 
 Not sent server-side: automated browsers and sessions with a company/test email (`actor = agent`). Still browser-only: AddToCalendar, OpenInboxConfirm, PreviewOpened (not in the map). Never sent to Meta: card numbers, SSN, date of birth, survey answers about income or credit, soft-pull values, raw email or phone (hashed only).
+
+Qualified vs unqualified credit (owner-set 2026-10-29): the /apply survey sorts each person into one of two buckets, qualified at a score answer of 700-749 or 750+, unqualified for every other answer including "Not sure". Only the bucket reaches Meta, and only as the event name (QualifiedLead, UnqualifiedLead, QualifiedSchedule, UnqualifiedSchedule). The score and the word "credit" are never in custom_data. Same calendar and same thank-you page for both buckets.
 
 
 ---
@@ -53,6 +55,10 @@ Each event: `{ event_name, event_time, event_id, event_source_url, action_source
 | video progress 25/50/75/100 | VideoProgress (custom) | each mark | video, pct |
 | section_view of the buy box (`fh-cf-form` / `fhw`) | ReachedBuyBox (custom) | once per page load | — |
 | softpull_submit | SoftPullSubmitted (custom) | step-3 submit | businesses |
+| survey_answer on the last question, credit_tier qualified (/apply) | QualifiedLead (custom) | survey submit, score answer 700+ | content_name = survey |
+| survey_answer on the last question, credit_tier unqualified (/apply) | UnqualifiedLead (custom) | survey submit, any other score answer | content_name = survey |
+| booking_confirmed with credit_tier qualified | QualifiedSchedule (custom) | booking from a qualified /apply tab | content_name = calendar |
+| booking_confirmed with credit_tier unqualified | UnqualifiedSchedule (custom) | booking from an unqualified /apply tab | content_name = calendar |
 
 The old `InitiateCheckout` on the Pay press in `fh-attribution.js` and the hand-written `Lead`/`Schedule` calls in `apply-survey.html` are replaced by this map (no double counting).
 
