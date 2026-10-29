@@ -83,7 +83,9 @@ describe("GET /api/read/invoices", () => {
     assert.deepEqual(q.params, [6, 0, CLIENT, null, ORG_ID, true]);
     assert.match(q.sql, /WHERE v\.org_id = \$5::uuid/);
     assert.match(q.sql, /COALESCE\(i\.is_demo, false\) = false/);
-    assert.match(q.sql, /v\.open_balance > 0/);
+    assert.match(q.sql, /v\\.open_balance > 0/);
+    assert.match(q.sql, /v\\.status IN \\('sent', 'reminded', 'escalated', 'partially_paid'\\)/,
+      "the Open A/R queue cannot list drafts as collectible");
     assert.match(q.sql, /LEFT JOIN staff s ON s\.id = c\.assigned_csm_staff_id AND s\.org_id = c\.org_id/);
     assert.match(q.sql, /FROM invoice_payments p[\s\S]*p\.invoice_id = v\.invoice_id AND p\.org_id = v\.org_id/);
     assert.match(q.sql, /ORDER BY CASE WHEN \$6::boolean IS TRUE THEN v\.due_at END ASC NULLS LAST/);
@@ -97,6 +99,18 @@ describe("GET /api/read/invoices", () => {
     );
     assert.equal(res.statusCode, 200);
     assert.deepEqual(fake.find(/FROM v_invoice_aging v/)[0].params, [51, 0, null, "escalated", ORG_ID, false]);
+  });
+
+  test("?status=draft remains available for finance review, never counted as Open", async () => {
+    const { res, fake } = await call(
+      req("GET", { query: { status: "draft" } }),
+      [staffSession({ role: "owner" }), [/FROM v_invoice_aging v/, []]]
+    );
+    assert.equal(res.statusCode, 200);
+    assert.deepEqual(
+      fake.find(/FROM v_invoice_aging v/)[0].params,
+      [51, 0, null, "draft", ORG_ID, false]
+    );
   });
 
   test("a status that does not exist is a 400 that names the real ones, and no query runs", async () => {
