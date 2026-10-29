@@ -328,7 +328,7 @@ export async function findByProviderUid(db, { orgId, providerUid } = {}) {
  * call saved the old way before its move or cancel is handled; a miss is still
  * possible for a provider that sends no stable id.
  */
-export async function setStatusByProviderUid(db, { orgId, providerUid, status } = {}) {
+export async function setStatusByProviderUid(db, { orgId, providerUid, status, clientId = null } = {}) {
   requireOrg(orgId, "setStatusByProviderUid");
   const uid = normalizeProviderUid(providerUid);
   const st = blankToNull(status);
@@ -338,8 +338,12 @@ export async function setStatusByProviderUid(db, { orgId, providerUid, status } 
     `UPDATE bookings
         SET status = $3, updated_at = now()
       WHERE org_id = $1 AND provider_uid = $2
+        -- A provider UID never authorizes terminating another buyer's call.
+        -- Keep this atomic on the UPDATE even when the caller cannot hold
+        -- its own transaction lock (for example a custom DB adapter).
+        AND ($4::uuid IS NULL OR client_id = $4::uuid)
       RETURNING ${COLUMNS}`,
-    [orgId, uid, st]
+    [orgId, uid, st, clientId]
   );
   return (res && res.rows) || [];
 }
