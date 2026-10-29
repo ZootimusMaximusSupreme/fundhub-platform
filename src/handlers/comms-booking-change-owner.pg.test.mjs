@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { db, close } from "../db.mjs";
 import { resolveDefaultOrg } from "../auth/org.mjs";
+import { setStatusByProviderUid } from "../bookings/store.mjs";
 import {
   onBookingCreated, onBookingRescheduled,
   onBookingCancelled, onBookingNoshow
@@ -64,6 +65,16 @@ test("cross-buyer UID cannot move or terminate the original client's booking, ta
       const baseline = await snapshot();
       assert.equal(baseline.rows.length, 2, "both initial bookings saved");
       assert.equal(baseline.tasks.length, 2, "both legitimate closer tasks saved");
+
+      // The underlying UPDATE must also refuse a wrong buyer atomically,
+      // even if a caller skips the handler's pre-read or cannot lock a UID.
+      const rejectedTerminal = await setStatusByProviderUid(db, {
+        orgId, providerUid: uid, clientId: b.id, status: "cancelled"
+      });
+      assert.deepEqual(rejectedTerminal, []);
+      assert.deepEqual(await snapshot(), baseline,
+        "low-level terminal update cannot mark buyer A cancelled for buyer B");
+
 
       const event = (name) => ({
         id: randomUUID(), name, orgId, clientId: b.id,
