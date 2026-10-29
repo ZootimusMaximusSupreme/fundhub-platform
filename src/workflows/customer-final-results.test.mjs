@@ -79,6 +79,7 @@ test("repair-bureau-response-reader records and advances a clear bureau answer",
   const events = [];
   const itemId = "33333333-3333-4333-8333-333333333333";
   const caseId = "44444444-4444-4444-8444-444444444444";
+  const documentId = "55555555-5555-4555-8555-555555555555";
   const items = [{
     id: itemId,
     case_id: caseId,
@@ -89,6 +90,10 @@ test("repair-bureau-response-reader records and advances a clear bureau answer",
   }];
   const db = {
     async query(sql, params = []) {
+      if (/FROM documents d/i.test(sql)) {
+        assert.deepEqual(params.slice(0, 4), [documentId, ORG, CLIENT, "bureau_response"]);
+        return { rows: [{ id: documentId }] };
+      }
       if (/INSERT INTO dispute_responses/i.test(sql)) {
         const row = {
           id: `response-${responses.length + 1}`,
@@ -121,7 +126,7 @@ test("repair-bureau-response-reader records and advances a clear bureau answer",
       clientId: CLIENT,
       payload: {
         kind: "bureau_response",
-        document_id: "document-1",
+        document_id: documentId,
         mime_type: "image/jpeg"
       }
     },

@@ -5,6 +5,8 @@ import { runParseAdvanceLoop, confirmHeldParse } from "./parse-loop.mjs";
 
 const ORG = "11111111-1111-1111-1111-111111111111";
 const CLIENT = "22222222-2222-2222-2222-222222222222";
+const DOC_OK = "66666666-6666-4666-8666-666666666666";
+const DOC_BLUR = "77777777-7777-4777-8777-777777777777";
 const CASE_ID = "33333333-3333-3333-3333-333333333333";
 const ITEM_ID = "44444444-4444-4444-4444-444444444444";
 const CLEAR = "Experian response for account ending 4521: the item has been deleted from your file. Account 4521 deleted.";
@@ -16,6 +18,7 @@ function fakeDb() {
     responses, itemUpdates,
     async query(sql, params = []) {
       const s = String(sql);
+      if (s.includes("FROM documents d") && s.includes("d.kind = $4")) return { rows: [{ id: params[0] }] };
       if (s.includes("FROM dispute_items")) return { rows: OPEN_ITEMS.map((r) => ({ ...r })) };
       if (s.includes("INSERT INTO dispute_responses")) {
         const row = { id: "resp-" + (responses.length + 1), case_id: params[0], org_id: params[1], client_id: params[2], raw_text: params[3], parse_json: JSON.parse(params[4]), confidence: params[5], confirmed: params[6], confirmed_by: params[7] };
@@ -42,7 +45,7 @@ describe("C1/C2 bureau-response agent shapes", () => {
   it("C1 clear letter auto-advances", async () => {
     const db = fakeDb();
     const result = await processBureauResponse(db, {
-      orgId: ORG, clientId: CLIENT, documentId: "doc-1", bytes: Buffer.from("clear"), mimeType: "image/jpeg", items: OPEN_ITEMS,
+      orgId: ORG, clientId: CLIENT, documentId: DOC_OK, bytes: Buffer.from("clear"), mimeType: "image/jpeg", items: OPEN_ITEMS,
       callModelImpl: async () => ({ mode: "live", text: JSON.stringify({ quality: "pass", text: CLEAR, bureau_guess: "EX", message_to_client: "" }), error: null }),
       sendTemplatedImpl: async () => ({ sent: true }), onEvent: async () => ({})
     });
@@ -75,7 +78,7 @@ describe("C1/C2 bureau-response agent shapes", () => {
   it("C2 blurry retake no parse", async () => {
     const db = fakeDb(); const emails = [];
     const result = await processBureauResponse(db, {
-      orgId: ORG, clientId: CLIENT, documentId: "blur", bytes: Buffer.from("b"), mimeType: "image/jpeg", items: OPEN_ITEMS,
+      orgId: ORG, clientId: CLIENT, documentId: DOC_BLUR, bytes: Buffer.from("b"), mimeType: "image/jpeg", items: OPEN_ITEMS,
       callModelImpl: async () => ({ mode: "live", text: JSON.stringify({ quality: "retake", text: "", bureau_guess: "unknown", message_to_client: "blurry — retake" }), error: null }),
       sendTemplatedImpl: async (_d, a) => { emails.push(a); return { sent: false }; }, onEvent: async () => ({})
     });
