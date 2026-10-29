@@ -16,7 +16,13 @@ export const EMAIL_TEMPLATE_KEY = "EMAIL-N04-POST-FUNDING";
 export const SMS_TEMPLATE_KEY = "SMS-N04-POST-FUNDING";
 
 export function isStaffEngagementCloseout(payload = {}) {
-  return payload.stage === "closed" || payload.engagementComplete === true;
+  // Card Stacking emits stage=closed for EVERY individual round while
+  // engagementComplete=false. That explicit "not finished" is authoritative:
+  // a single round closing must never send the whole-engagement nurture touch.
+  // Historical staff closeouts lack engagementComplete; retain their stage
+  // fallback until a durable sequence-close control/event is implemented.
+  if (payload.engagementComplete === false) return false;
+  return payload.engagementComplete === true || payload.stage === "closed";
 }
 
 export async function handle({ event, db, step }) {
