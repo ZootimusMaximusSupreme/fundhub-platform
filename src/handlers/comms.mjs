@@ -444,14 +444,15 @@ async function recordBooking(db, event, p, clientId, status, { strict = false } 
    position (it only ever UPDATEs), so the live handler and the backfill finally
    agree. Nothing is lost either way — the `events` row is append-only and holds
    the cancellation forever. */
-async function closeBooking(db, event, p, status) {
+async function closeBooking(db, event, p, status, clientId = null, { strict = false } = {}) {
   const uid = bookingUid(p);
   if (!event.orgId || !uid) return null;
   try {
     const updated = await setStatusByProviderUid(db, {
       orgId: event.orgId,
       providerUid: uid,
-      status
+      status,
+      clientId
     });
     if (updated.length) return updated;
     console.warn(
@@ -463,6 +464,7 @@ async function closeBooking(db, event, p, status) {
     console.error(
       `[comms] bookings ${status} write failed (uid=${uid}): ${err && err.message}`
     );
+    if (strict) throw err;
     return null;
   }
 }
@@ -623,86 +625,144 @@ async function onBookingCreatedLocked(event, db, p, uid) {
    because the calendar and the closer queue read it; the history is kept on
    the bookings row instead, where upsertBooking() appends the superseded
    (starts_at, ends_at, status) to raw->'__history' each time the time changes. */
-export async function onBookingRescheduled(event, db) {
-  const clientId = await resolveClient(db, event);
-  if (!clientId) return;
-  const p = event.payload || {};
-  const uid = bookingUid(p);
-  if (uid) {
-    const upd = await db.query(
-      `UPDATE tasks
-          SET due_at = COALESCE($3, due_at),
-              -- Same slot replay keeps a link; moved slot cannot reuse
-              -- the previous appointment's Meet room when CF sends no URL.
-              meeting_url = CASE
-                WHEN $3::timestamptz IS NOT NULL
-                 AND due_at IS DISTINCT FROM $3::timestamptz
-                THEN $4::text
-                ELSE COALESCE($4::text, meeting_url)
-              END,
-              title = $6,
-              done = false,
-              updated_at = now()
-        WHERE client_id = $1 AND body = $2 AND title LIKE $5
-        RETURNING id`,
-      [clientId, uid, p.startTime || null, p.meetingUrl || null, BOOKING_TASK_TITLE_LIKE, TITLE_RESCHEDULED]
+// A provider UID identifies one customer's appointment inside one company.
+// Validate it BEFORE resolveClient(), which can patch or mint a lead, and
+// BEFORE altering the closer task, tags or call-confirmed state. The same
+// identity lock as booking.created serializes cancellation/reschedule races.
+// A UID that has not been saved yet may still be an out-of-order event.
+async function bookingChangeIdentity(db, event, p) {
+  if (!event.orgId) return { skipped: "booking_identity_unavailable" };
+  // Explicit event client IDs are untrusted until their organization matches.
+  if (event.clientId) {
+    const owner = await db.query(
+      "SELECT id FROM clients WHERE org_id = $1 AND id = $2 LIMIT 1",
+      [event.orgId, event.clientId]
     );
-    if (upd.rows[0]) {
-      await recordBooking(db, event, p, clientId, BOOKING_STATUS.RESCHEDULED);
-      await mergeCustomFields(db, clientId, { call_outcome: "rescheduled", call_confirmed: false });
-      return;
+    if (!owner.rows[0]) return { skipped: "booking_client_scope_mismatch" };
+  }
+  const uid = bookingUid(p);
+  if (!uid) return null;
+  let saved;
+  try {
+    saved = await findByProviderUid(db, { orgId: event.orgId, providerUid: uid });
+  } catch (err) {
+    console.warn("[comms] booking change identity lookup unavailable:", String(err?.message || err).slice(0, 120));
+    return { skipped: "booking_identity_unavailable" };
+  }
+  if (!saved) return null;
+  if (!saved.client_id) return { skipped: "booking_identity_unverified" };
+  const incomingEmail = String(p.email || "").trim().toLowerCase();
+  const savedEmail = String(saved.attendee_email || "").trim().toLowerCase();
+  // Legacy bookings may have no attendee_email: the saved tenant-scoped client
+  // is still authoritative. Check the actual client's email before any writes.
+  if (incomingEmail) {
+    let emailOwner;
+    try {
+      const r = await db.query(
+        "SELECT id FROM clients WHERE org_id = $1 AND lower(email) = $2 LIMIT 1",
+        [event.orgId, incomingEmail]
+      );
+      emailOwner = r.rows[0]?.id || null;
+    } catch (err) {
+      console.warn("[comms] booking email owner lookup unavailable:", String(err?.message || err).slice(0, 120));
+      return { skipped: "booking_identity_unavailable" };
+    }
+    if (!emailOwner || String(emailOwner) !== String(saved.client_id)) {
+      return { skipped: "booking_client_mismatch" };
     }
   }
-  await createTask(db, {
-    orgId: event.orgId,
-    clientId,
-    title: TITLE_RESCHEDULED,
-    sourceWorkflow: bookingSource(p),
-    assigneeRole: "closer",
-    dueAt: p.startTime || null,
-    eventId: uid,
-    meetingUrl: p.meetingUrl || null
-  });
-  await recordBooking(db, event, p, clientId, BOOKING_STATUS.RESCHEDULED);
-  await mergeCustomFields(db, clientId, { call_outcome: "rescheduled", call_confirmed: false });
+  // Both envelope and payload identifiers are independently untrusted.
+  const assertedIds = [event.clientId, p.clientId].filter(Boolean);
+  if (assertedIds.some(id => String(id) !== String(saved.client_id)) ||
+      (savedEmail && incomingEmail && savedEmail !== incomingEmail)) {
+    return { skipped: "booking_client_mismatch" };
+  }
+  return null;
 }
 
-// booking.cancelled — close out the open booking task and drop the "booked"
-// heat. Re-nurture is NOT a new task here: tagging call:cancelled is enough for
-// the N-workflows to re-evaluate lead temperature on the next classification
-// pass (see src/config/lead-temperature.mjs) — that is the whole re-nurture path.
-export async function onBookingCancelled(event, db) {
-  const clientId = await resolveClient(db, event);
-  if (!clientId) return;
-  const p = event.payload || {};
+function bookingChangeLock(db, event, p, handler) {
   const uid = bookingUid(p);
-  if (uid) {
-    await db.query(
-      `UPDATE tasks SET done = true, updated_at = now()
-        WHERE client_id = $1 AND body = $2 AND title LIKE $3 AND done = false`,
-      [clientId, uid, BOOKING_TASK_TITLE_LIKE]
-    );
-  }
-  await closeBooking(db, event, p, BOOKING_STATUS.CANCELLED);
-  await mergeCustomFields(db, clientId, { call_outcome: "cancelled" });
-  await addTags(db, clientId, ["call:cancelled"]);
+  const identity = uid ? `uid:${uid}` : event.id ? `event:${event.id}` : null;
+  return withBookingUidLock(db, event.orgId, identity, handler);
+}
+
+export async function onBookingRescheduled(event, db) {
+  const p = event.payload || {};
+  return bookingChangeLock(db, event, p, async (tx) => {
+    const gate = await bookingChangeIdentity(tx, event, p);
+    if (gate) return gate;
+    const clientId = await resolveClient(tx, event);
+    if (!clientId) return;
+    // Persist/validate appointment ownership before touching closer tasks.
+    // A rejected UID conflict or failed booking write cannot invent a handoff.
+    const accepted = await recordBooking(tx, event, p, clientId, BOOKING_STATUS.RESCHEDULED, { strict: true });
+    if (!accepted || String(accepted.client_id) !== String(clientId)) {
+      return { skipped: "booking_not_accepted" };
+    }
+    const uid = bookingUid(p);
+    if (uid) {
+      const upd = await tx.query(
+        `UPDATE tasks
+            SET due_at = COALESCE($3, due_at),
+                -- A moved call cannot keep the previous slot's Meet URL.
+                meeting_url = CASE
+                  WHEN $3::timestamptz IS NOT NULL
+                   AND due_at IS DISTINCT FROM $3::timestamptz
+                  THEN $4::text
+                  ELSE COALESCE($4::text, meeting_url)
+                END,
+                title = $6, done = false, updated_at = now()
+          WHERE client_id = $1 AND body = $2 AND title LIKE $5
+          RETURNING id`,
+        [clientId, uid, p.startTime || null, p.meetingUrl || null, BOOKING_TASK_TITLE_LIKE, TITLE_RESCHEDULED]
+      );
+      if (upd.rows[0]) {
+        await mergeCustomFields(tx, clientId, { call_outcome: "rescheduled", call_confirmed: false });
+        return;
+      }
+    }
+    await createTask(tx, {
+      orgId: event.orgId, clientId, title: TITLE_RESCHEDULED,
+      sourceWorkflow: bookingSource(p), assigneeRole: "closer",
+      dueAt: p.startTime || null, eventId: uid, meetingUrl: p.meetingUrl || null
+    });
+    await mergeCustomFields(tx, clientId, { call_outcome: "rescheduled", call_confirmed: false });
+  });
+}
+
+// Cancellation and no-show must never update another buyer's appointment or
+// tag a phantom customer. Recheck identity under the same lock as creation.
+async function onBookingTerminal(event, db, status) {
+  const p = event.payload || {};
+  return bookingChangeLock(db, event, p, async (tx) => {
+    const gate = await bookingChangeIdentity(tx, event, p);
+    if (gate) return gate;
+    const clientId = await resolveClient(tx, event);
+    if (!clientId) return;
+    const uid = bookingUid(p);
+    if (uid) {
+      await tx.query(
+        `UPDATE tasks SET done = true, updated_at = now()
+          WHERE client_id = $1 AND body = $2 AND title LIKE $3 AND done = false`,
+        [clientId, uid, BOOKING_TASK_TITLE_LIKE]
+      );
+    }
+    await closeBooking(tx, event, p, status, clientId, { strict: true });
+    await mergeCustomFields(tx, clientId, {
+      call_outcome: status === BOOKING_STATUS.CANCELLED ? "cancelled" : "no_show"
+    });
+    await addTags(tx, clientId, [
+      status === BOOKING_STATUS.CANCELLED ? "call:cancelled" : "call:no_show"
+    ]);
+  });
+}
+
+export async function onBookingCancelled(event, db) {
+  return onBookingTerminal(event, db, BOOKING_STATUS.CANCELLED);
 }
 
 export async function onBookingNoshow(event, db) {
-  const clientId = await resolveClient(db, event);
-  if (!clientId) return;
-  const p = event.payload || {};
-  const uid = bookingUid(p);
-  if (uid) {
-    await db.query(
-      `UPDATE tasks SET done = true, updated_at = now()
-        WHERE client_id = $1 AND body = $2 AND title LIKE $3 AND done = false`,
-      [clientId, uid, BOOKING_TASK_TITLE_LIKE]
-    );
-  }
-  await closeBooking(db, event, p, BOOKING_STATUS.NOSHOW);
-  await addTags(db, clientId, ["call:no_show"]);
-  await mergeCustomFields(db, clientId, { call_outcome: "no_show" });
+  return onBookingTerminal(event, db, BOOKING_STATUS.NOSHOW);
 }
 
 export function register() {
