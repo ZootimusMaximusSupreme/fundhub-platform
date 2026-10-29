@@ -26,7 +26,7 @@ export const HOURLY_CHECK_IDS = Object.freeze(["pipeline:nobody-lost", "pipeline
 export const RED_ROWS = Object.freeze({
   // A client paid for funding and has no card on the Funding board.
   "pipeline-nobody-lost": Object.freeze([PAID_NO_CARD_SQL, Object.freeze([Object.freeze({ client_id: "aaaaaaaa-0000-4000-8000-000000000001", category: "funding", paid_at: "2026-10-09T10:00:00.000Z", has_sale: true, total: 1 })])]),
-  // A card landed on Sales Confirmed, which no code moves a card to.
+  // A Sales card says Set without a completed setter handoff.
   "pipeline-dead-stage": Object.freeze([DEAD_CARDS_SQL, Object.freeze([Object.freeze({ pipeline: "sales", stage: "confirmed", n: 1 })])])
 });
 

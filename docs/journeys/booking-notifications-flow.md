@@ -363,6 +363,23 @@ leaving the thank-you page cannot lose the server-side conversion. Company,
 demo, and simulated buyer bookings are marked skipped. This is a vendor event,
 not a customer text or an eligibility decision; the call copy is unchanged.
 
+## 7b. Set is the setter handoff; call confirmation is separate
+
+`booking.created` moves the Sales card to Booked (`src/workflows/s-04-call-booked.mjs`).
+The setter dashboard's **Mark handoff complete** action checks the booking,
+call result, call time, problem, goal, and warm-up facts, then saves
+`setter_handoff.complete_at` and advances the Sales card to the stage displayed
+as **Set** (`src/setter/dashboard.mjs`). A completed handoff already on a later
+Sales stage stays there. Migration 507 renames the existing column and moves
+older completed handoffs that are still before Set.
+
+A customer's **YES/CONFIRM** text or portal **Confirm my call** click sets
+`custom_fields.call_confirmed`; it never moves the Sales card. The Sales card
+shows **✓ Call confirmed** only while that flag is true
+(`api/dashboard/pipeline.mjs`, `public/app/pipeline.html`). A new or moved
+booking clears the flag, so the check disappears until that call is confirmed.
+The board's hourly check reports a card on Set without a completed handoff.
+
 ## 8. Known gaps, not fixed here
 
 * **The workflow engine's fan-out is fire-and-forget and its failure is
