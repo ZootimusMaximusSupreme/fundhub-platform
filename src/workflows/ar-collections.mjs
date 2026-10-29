@@ -7,6 +7,7 @@
 
 import { inngest } from "./client.mjs";
 import { db } from "../db.mjs";
+import { withTransaction } from "../db/with-transaction.mjs";
 import { resolveClient } from "../handlers/client-lifecycle.mjs";
 import { sendTemplated } from "./messaging.mjs";
 import { addTags } from "./tags.mjs";
@@ -242,16 +243,29 @@ async function chase({ event, db, step, env, createLink, retireLink }) {
      reports created:false rather than stacking a second one on the same
      invoice — see createTask's header, a replay hitting an existing task is
      the system working. */
-  const handoff = await step.run("ar-04-handoff", async () => {
-    const row = await getInvoice(db, { invoiceId });
+  const handoff = await step.run("ar-04-handoff", async () => withTransaction(db, async (tx) => {
+    // A customer can pay between the final notice and this handoff. Take the
+    // same invoice row lock as the receipt allocator, then decide from its
+    // CURRENT status and balance. The tag/task must commit with escalation.
+    const locked = await tx.query(
+      `SELECT * FROM invoices WHERE id = $1 FOR UPDATE`, [invoiceId]
+    );
+    const row = locked.rows[0] || null;
     const rejected = chaseInvoiceRejection(row, { orgId, clientId });
     if (rejected) return { skipped: true, reason: rejected };
     if (!stillOpen(row)) return { skipped: true, reason: row.status || "missing" };
-    const escalated = await markEscalated(db, { invoiceId });
-    await addTags(db, clientId, ["ar:collections-handoff"]);
+    const due = await remainingDueCents(tx, row);
+    if (due === null || due <= 0) {
+      return { skipped: true, reason: due === null ? "unknown_balance" : "no_balance" };
+    }
+    // A previous run can have committed the escalation before it delivered
+    // the staff task. In that case, recover the missing task on replay.
+    const escalated = row.status === "escalated" ? row : await markEscalated(tx, { invoiceId });
+    if (!escalated) throw new Error("AR-04: locked invoice could not be escalated");
+    await addTags(tx, clientId, ["ar:collections-handoff"]);
 
-    const ctx = await arContext(db, row, payload);
-    const task = await createTask(db, {
+    const ctx = await arContext(tx, row, payload);
+    const task = await createTask(tx, {
       orgId,
       clientId,
       title: AR_04_TASK_TITLE,
@@ -273,8 +287,8 @@ async function chase({ event, db, step, env, createLink, retireLink }) {
       ].join("\n")
     });
 
-    return { skipped: false, escalated: !!escalated, taskCreated: !!task?.created, taskId: task?.id || null };
-  });
+    return { skipped: false, escalated: true, taskCreated: !!task?.created, taskId: task?.id || null };
+  }));
 
   return { done: true, first, second, third, handoff };
 }
