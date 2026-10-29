@@ -9,10 +9,19 @@ import { resolveDefaultOrg } from "../auth/org.mjs";
 import { createInvoice, markSent, getInvoice } from "./index.mjs";
 import { allocatePayment } from "./allocate.mjs";
 
-const HAVE_DB = Boolean(process.env.DATABASE_URL);
+// Every test below INSERTs synthetic invoices and tasks. Even though they
+// ROLLBACK, block remote/production databases at the test-entry boundary.
+const SCRATCH = (() => {
+  if (process.env.CI !== "true" || !process.env.DATABASE_URL) return false;
+  try {
+    const u = new URL(process.env.DATABASE_URL);
+    return ["127.0.0.1", "localhost"].includes(u.hostname)
+      && u.pathname === "/fundhub_ci";
+  } catch { return false; }
+})();
 
 describe("A/R replay must retain the original payer and invoice (real Postgres)",
-  { skip: !HAVE_DB ? "no disposable DATABASE_URL" : false }, () => {
+  { skip: !SCRATCH ? "GitHub Actions disposable localhost fundhub_ci only" : false }, () => {
     let conn, transactionalDb, orgId, firstClient, secondClient;
 
     before(async () => {
