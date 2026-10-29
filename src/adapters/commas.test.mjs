@@ -37,7 +37,7 @@ import { on, clearHandlers } from "../events/registry.mjs";
  * payment_links and clients are modelled WITH their org column. Attributing a
  * payment to another tenant's client is the failure those two answers exist to
  * prevent, and a fake with no org on the row cannot catch it. */
-function fakeDb({ dedupEvents = false, store = [], inbox = [], links = [], clients = [] } = {}) {
+function fakeDb({ dedupEvents = false, store = [], inbox = [], links = [], clients = [], transactions = [] } = {}) {
   let n = 0;
   let inboxN = 0;
   let clientN = 0;
@@ -49,6 +49,13 @@ function fakeDb({ dedupEvents = false, store = [], inbox = [], links = [], clien
     links,
     clients,
     query(sql, params) {
+      if (/FROM transactions t/.test(sql)) {
+        const [orgId, paymentId] = params;
+        const original = transactions.find((t) => t.org_id === orgId &&
+          t.provider === "commas" && t.provider_ref === paymentId && t.status === "succeeded" &&
+          clients.some((c) => c.id === t.client_id && c.org_id === orgId));
+        return { rows: original ? [{ client_id: original.client_id }] : [] };
+      }
       if (/FROM orgs/.test(sql)) return { rows: [{ id: "org-1" }] };
 
       /* --- payment_links ----------------------------------------------------
@@ -1212,9 +1219,13 @@ test("unknown refund and dispute webhook never creates a phantom client", async 
 
 test("refund with existing same-org customer remains attributable without contact mutations", async () => {
   _resetOrgCache(); clearHandlers();
-  const db = fakeDb({ clients: [
-    { id: CLIENT_A, org_id: "org-1", email: "known-reversal@example.com", ghl_contact_id: "crm-original" }
-  ] });
+  const db = fakeDb({
+    clients: [{ id: CLIENT_A, org_id: "org-1", email: "known-reversal@example.com", ghl_contact_id: "crm-original" }],
+    transactions: [{
+      org_id: "org-1", client_id: CLIENT_A, provider: "commas",
+      provider_ref: "known-refund-payment", status: "succeeded"
+    }]
+  });
   const raw = JSON.stringify({
     type: "refund.succeeded", id: "evt-known-refund",
     data: { payment_id: "known-refund-payment", buyer: { email: "known-reversal@example.com" }, amount: 12 }
@@ -1224,4 +1235,60 @@ test("refund with existing same-org customer remains attributable without contac
   assert.equal(db.clients[0].ghl_contact_id, "crm-original");
   assert.equal(db.store[0].client_id, CLIENT_A);
   assert.equal(db.store[0].name, "payment.refunded");
+});
+
+
+test("dispute event belongs to the original settled receipt, not another same-org callback buyer", async () => {
+  _resetOrgCache(); clearHandlers();
+  const db = fakeDb({
+    clients: [
+      { id: CLIENT_A, org_id: "org-1", email: "original+ar@example.invalid", ghl_contact_id: "crm-original" },
+      { id: CLIENT_B, org_id: "org-1", email: "wrong+ar@example.invalid", ghl_contact_id: "crm-wrong" }
+    ],
+    transactions: [{
+      org_id: "org-1", client_id: CLIENT_A, provider: "commas",
+      provider_ref: "original-disputed-payment", status: "succeeded"
+    }]
+  });
+  const raw = JSON.stringify({
+    id: "ci-conflicted-dispute-1", type: "dispute.created",
+    data: {
+      payment_id: "original-disputed-payment", amount: 55,
+      buyer: { email: "wrong+ar@example.invalid" },
+      due_by: "2026-11-03T00:00:00Z"
+    }
+  });
+  await deliver(db, raw);
+  assert.equal(db.store.length, 1);
+  assert.equal(db.store[0].name, "payment.disputed");
+  assert.equal(db.store[0].client_id, CLIENT_A, "callback email cannot steal original money identity");
+  assert.equal(db.clients.length, 2);
+  assert.equal(db.clients[0].ghl_contact_id, "crm-original");
+  assert.equal(db.clients[1].ghl_contact_id, "crm-wrong");
+});
+
+test("foreign-org receipt with matching provider reference cannot attribute a local refund", async () => {
+  _resetOrgCache(); clearHandlers();
+  const db = fakeDb({
+    clients: [
+      { id: CLIENT_A, org_id: "org-OTHER", email: "foreign+ar@example.invalid" },
+      { id: CLIENT_B, org_id: "org-1", email: "local+ar@example.invalid" }
+    ],
+    transactions: [{
+      org_id: "org-OTHER", client_id: CLIENT_A, provider: "commas",
+      provider_ref: "same-id-other-tenant", status: "succeeded"
+    }]
+  });
+  const raw = JSON.stringify({
+    id: "ci-foreign-refund", type: "refund.succeeded",
+    data: {
+      payment_id: "same-id-other-tenant", amount: 40,
+      buyer: { email: "local+ar@example.invalid" }
+    }
+  });
+  await deliver(db, raw);
+  assert.equal(db.store.length, 1);
+  assert.equal(db.store[0].name, "payment.refunded");
+  assert.equal(db.store[0].client_id, null, "different tenant's payment cannot credit local buyer");
+  assert.equal(db.clients.length, 2);
 });
