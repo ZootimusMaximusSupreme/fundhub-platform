@@ -43,9 +43,17 @@ export function targetDialBy(createdAt) {
 
 export function surveySummary(fields) {
   const cf = jsonObject(fields);
+  function answerText(value, depth = 0) {
+    if (Array.isArray(value)) return value.map(item => answerText(item, depth + 1)).filter(Boolean).join(", ");
+    const text = String(value ?? "").trim();
+    if (depth < 4 && text.startsWith("[") && text.endsWith("]")) {
+      try { return answerText(JSON.parse(text), depth + 1); } catch { /* Keep an ordinary answer unchanged. */ }
+    }
+    return text;
+  }
   return CF_SURVEY_QUESTIONS.filter(q => q.type !== "contact").map(q => {
     const value = cf[`${q.payloadKey}_label`] ?? cf[`${q.payloadKey}_labels`] ?? cf[q.payloadKey];
-    const answer = Array.isArray(value) ? value.join(", ") : String(value ?? "").trim();
+    const answer = answerText(value);
     return answer ? { question: q.title, answer } : null;
   }).filter(Boolean);
 }
