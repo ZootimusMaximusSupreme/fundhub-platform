@@ -677,22 +677,20 @@ async function loadPaymentLink(db, { linkRef, sessionId }) {
   return null;
 }
 
-/* The two canonical events NO registered handler creates a client for.
+/* No client creation for abandoned checkouts OR post-payment reversals.
  *
- * Everything else on the bus — payment.received, payment.failed,
- * payment.refunded, payment.disputed, diagnostic.paid, deposit.paid,
- * sale.closed — reaches a handler that already calls resolveClient() and
- * find-or-creates by email (src/handlers/client-lifecycle.mjs register(),
- * src/handlers/commas-disputes.mjs register()). Resolving those here changes
- * WHEN that row is created, never WHETHER, so no client exists afterwards that
- * would not have existed anyway.
+ * A dispute/refund is not a new sale. A late processor event can contain a
+ * changed or unknown payer email; creating a CRM/customer row would hide the
+ * original receipt and could associate a chargeback with the wrong buyer.
+ * Their handler now resolves an existing same-org customer or the original
+ * same-org succeeded transaction, then assigns owner review. An unmatched
+ * dispute remains unattributed and is dead-lettered, never lead-captured.
  *
- * payment.expired and payment.canceled have no handler at all. They are
- * abandoned checkouts. Conjuring a client row into the CRM for somebody who
- * never paid would be inventing a customer, so those get a read-only lookup:
- * if the payer is already known they are attributed, and if not the event
- * stays unattributed. */
-const NO_HANDLER_CREATES_A_CLIENT = new Set(["payment.expired", "payment.canceled"]);
+ * First-time succeeded money events still use the ordinary lead-resolution
+ * path. No payment/ledger/commission behavior changes here. */
+const NO_HANDLER_CREATES_A_CLIENT = new Set([
+  "payment.expired", "payment.canceled", "payment.refunded", "payment.disputed"
+]);
 
 async function findClientIdByEmail(db, orgId, email) {
   if (!orgId || !email) return null;
@@ -710,6 +708,24 @@ async function clientIdInOrg(db, orgId, clientId) {
     [clientId, orgId]
   );
   return rows[0]?.id ?? null;
+}
+
+/* Reversals always point BACK to an original succeeded payment; they are
+ * never authenticated by the callback's email, checkout metadata or client ID.
+ * Both tenant and provider must match. An out-of-order reversal is retained
+ * unattributed for dead-letter review and can be retried after the original
+ * money-in record appears. Nothing creates or edits a client here. */
+export async function reversalOriginalClientId(db, { orgId, paymentId }) {
+  if (!orgId || !paymentId) return null;
+  const result = await db.query(
+    `SELECT t.client_id FROM transactions t
+       JOIN clients c ON c.id = t.client_id AND c.org_id = t.org_id
+      WHERE t.org_id = $1 AND t.provider = 'commas'
+        AND t.provider_ref = $2 AND t.status = 'succeeded'
+      LIMIT 1`,
+    [orgId, String(paymentId)]
+  );
+  return result.rows[0]?.client_id || null;
 }
 
 /* resolveInboxClientId — whose payment is this? Returns a client uuid or null.
@@ -807,7 +823,13 @@ export async function processCommasInboxRow(row, db) {
   /* One resolution for the whole row, so a payment's several canonical events
      can never disagree about who paid. */
   const mayCreate = canonical.some((c) => !NO_HANDLER_CREATES_A_CLIENT.has(c.name));
-  const clientId = await resolveInboxClientId(db, { orgId: row.org_id, evt, link, mayCreate });
+  const reversal = canonical.some((c) => c.name === "payment.refunded" || c.name === "payment.disputed");
+  // The webhook's claimed customer is not evidence for whose money was
+  // refunded/disputed. Use the same original paid transaction as the owner
+  // task handler, or store an unattributed event for manual reconciliation.
+  const clientId = reversal
+    ? await reversalOriginalClientId(db, { orgId: row.org_id, paymentId: evt.paymentId })
+    : await resolveInboxClientId(db, { orgId: row.org_id, evt, link, mayCreate });
 
   const emitted = [];
   for (const c of canonical) {

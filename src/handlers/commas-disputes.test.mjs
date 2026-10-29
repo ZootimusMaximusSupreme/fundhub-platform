@@ -16,6 +16,11 @@ function fakeDb({ existingTasks = [] } = {}) {
   return {
     tasks,
     async query(sql, params) {
+      if (/FROM transactions t/.test(sql)) {
+        const [org, providerRef] = params;
+        const known = org === "org-1" && ["pay_disputed_1", "pay_ref_1"].includes(providerRef);
+        return { rows: known ? [{ client_id: "client-1" }] : [] };
+      }
       if (/FROM clients WHERE org_id/.test(sql)) {
         return { rows: [{ id: "client-1", ghl_contact_id: "crm-1" }] };
       }
@@ -147,4 +152,113 @@ test("a dispute and a refund on the SAME payment are two separate tasks", async 
     db.tasks.map((t) => t.source_workflow).sort(),
     ["commas-dispute", "commas-refund"]
   );
+});
+
+
+/* Strict fake: unlike lead capture, a refund or chargeback must be READ-ONLY
+ * on clients and must find an existing same-org buyer before creating work. */
+function reversalDb({ clients = [], transactions = [] } = {}) {
+  const tasks = [];
+  let nextId = 0;
+  return {
+    tasks, clients,
+    async query(sql, params = []) {
+      if (/UPDATE clients|INSERT INTO clients|INSERT INTO transactions/.test(sql)) {
+        throw new Error("reversal handler attempted a customer/ledger mutation");
+      }
+      if (/FROM transactions t/.test(sql)) {
+        const [orgId, ref] = params;
+        const txn = transactions.find((r) =>
+          r.org_id === orgId && r.provider_ref === ref && r.provider === "commas"
+          && r.status === "succeeded"
+          && clients.some((c) => c.id === r.client_id && c.org_id === orgId)
+        );
+        return { rows: txn ? [{ client_id: txn.client_id }] : [] };
+      }
+      if (/FROM clients WHERE id = \$1 AND org_id = \$2/.test(sql)) {
+        const [clientId, orgId] = params;
+        const c = clients.find((x) => x.id === clientId && x.org_id === orgId);
+        return { rows: c ? [{ id: c.id }] : [] };
+      }
+      if (/FROM clients WHERE org_id = \$1 AND lower\(email\) = \$2/.test(sql)) {
+        const [orgId, email] = params;
+        const c = clients.find((x) => x.org_id === orgId && x.email === email);
+        return { rows: c ? [{ id: c.id }] : [] };
+      }
+      if (/SELECT id FROM tasks/.test(sql)) {
+        const [clientId, workflow, body] = params;
+        const t = tasks.find((x) => x.client_id === clientId && x.source_workflow === workflow && x.body === body);
+        return { rows: t ? [{ id: t.id }] : [] };
+      }
+      if (/INSERT INTO tasks/.test(sql)) {
+        const [org_id, client_id, title, body, due_at, source_workflow, assignee_role] = params;
+        const row = { id: "reversal-task-" + (++nextId), org_id, client_id, title, body, due_at, source_workflow, assignee_role };
+        tasks.push(row);
+        return { rows: [{ id: row.id }] };
+      }
+      throw new Error("Unexpected reversal SQL: " + sql.slice(0, 90));
+    }
+  };
+}
+
+test("dispute uses original settled payment owner, even when callback names a different buyer", async () => {
+  const db = reversalDb({
+    clients: [
+      { id: "real-buyer", org_id: "org-1", email: "original@example.com" },
+      { id: "wrong-buyer", org_id: "org-1", email: "wrong@example.com" }
+    ],
+    transactions: [
+      { org_id: "org-1", provider_ref: "pay_disputed_1", provider: "commas", client_id: "real-buyer", status: "succeeded" }
+    ]
+  });
+  const evt = { ...disputeEvent({ email: "wrong@example.com" }), clientId: "wrong-buyer" };
+  const first = await onPaymentDisputed(evt, db);
+  const replay = await onPaymentDisputed(evt, db);
+  assert.equal(first.created, true);
+  assert.equal(replay.created, false, "duplicate dispute event created another owner task");
+  assert.equal(db.tasks.length, 1);
+  assert.equal(db.tasks[0].client_id, "real-buyer");
+  assert.equal(db.tasks[0].org_id, "org-1");
+  assert.equal(db.tasks[0].assignee_role, "owner");
+});
+
+test("foreign customer ID without an original settled receipt cannot acquire a dispute task", async () => {
+  const db = reversalDb({ clients: [
+    { id: "foreign-buyer", org_id: "org-OTHER", email: "foreign@example.com" }
+  ] });
+  await assert.rejects(
+    onPaymentDisputed({ ...disputeEvent({ email: "foreign@example.com", paymentId: "not-in-this-org" }), clientId: "foreign-buyer" }, db),
+    /unowned payment.disputed/
+  );
+  assert.equal(db.tasks.length, 0);
+  assert.equal(db.clients.length, 1, "no phantom customer was created");
+});
+
+test("unmatched refund and missing-org dispute fail for reconciliation instead of inventing buyer", async () => {
+  const db = reversalDb();
+  await assert.rejects(
+    onPaymentRefunded({ id: "unmatched-refund", name: "payment.refunded", orgId: "org-1", payload: { email: "unknown@example.invalid", paymentId: "unknown" } }, db),
+    /unowned payment.refunded/
+  );
+  await assert.rejects(
+    onPaymentDisputed({ ...disputeEvent(), orgId: null }, db),
+    /unowned payment.disputed/
+  );
+  assert.equal(db.tasks.length, 0);
+  assert.equal(db.clients.length, 0);
+});
+
+
+test("known same-org email cannot hijack an unrecognized provider payment dispute", async () => {
+  const db = reversalDb({ clients: [
+    { id: "innocent-buyer", org_id: "org-1", email: "innocent@example.com" }
+  ] });
+  await assert.rejects(
+    onPaymentDisputed({
+      ...disputeEvent({ email: "innocent@example.com", paymentId: "not-original-payment" }),
+      clientId: "innocent-buyer"
+    }, db),
+    /unowned payment.disputed/
+  );
+  assert.equal(db.tasks.length, 0, "a bogus payment cannot assign a task to a valid but unrelated buyer");
 });

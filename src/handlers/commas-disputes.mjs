@@ -36,7 +36,7 @@
  */
 
 import { createTask } from "../lib/create-task.mjs";
-import { resolveClient } from "./client-lifecycle.mjs";
+
 import { on } from "../events/registry.mjs";
 
 /* Who owns a chargeback response. The owner, not an advisor: responding needs
@@ -62,14 +62,43 @@ export function parseDueBy(value) {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+/* Reversal callbacks cannot name their own accounting owner.
+ * A customer's email/client ID in a delayed callback may be stale, incorrect
+ * or belong to an entirely different tenant. Only the original SUCCESSFUL
+ * Commas transaction's immutable provider reference and org_id may route an
+ * urgent owner task. Unknown original payment -> durable bus dead-letter
+ * instead of guessing an owner, mutating the client, or creating CRM leads.
+ * Reversals never change the original financial ledger here. */
+export async function knownReversalClient(db, event) {
+  const orgId = event?.orgId;
+  const ref = event?.payload?.paymentId || event?.payload?.providerRef || null;
+  if (!orgId || !ref) return null;
+  const original = await db.query(
+    `SELECT t.client_id
+       FROM transactions t
+       JOIN clients c ON c.id = t.client_id AND c.org_id = t.org_id
+      WHERE t.org_id = $1 AND t.provider_ref = $2
+        AND t.provider = 'commas' AND t.status = 'succeeded'
+      LIMIT 1`,
+    [orgId, String(ref)]
+  );
+  return original.rows[0]?.client_id || null;
+}
+
+function requireReversalClient(event, clientId) {
+  if (clientId) return clientId;
+  // Throwing here preserves the canonical event in the bus failure/DLQ path.
+  // A false success would bury a time-sensitive dispute with no owner task.
+  throw new Error(`[commas-disputes] unowned ${event?.name || "reversal"} event needs manual reconciliation`);
+}
+
 /* onPaymentDisputed — the deadline-bearing one.
- *
- * NEVER THROWS. A dispute we could not turn into a task must not also take
- * down the event dispatch; it is logged loudly and the event stays recorded. */
+ * If no owned original payer can be found, deliberately fail to dead-letter
+ * review rather than invent a client and claim the dispute has an owner. */
 export async function onPaymentDisputed(event, db) {
   const p = event?.payload || {};
   const dueAt = parseDueBy(p.dueBy);
-  const clientId = await resolveClient(db, event);
+  const clientId = requireReversalClient(event, await knownReversalClient(db, event));
 
   const deadline = dueAt
     ? `Respond by ${dueAt.toISOString().slice(0, 10)}.`
@@ -101,7 +130,7 @@ export async function onPaymentDisputed(event, db) {
  * whether it should is undecided — see the header. */
 export async function onPaymentRefunded(event, db) {
   const p = event?.payload || {};
-  const clientId = await resolveClient(db, event);
+  const clientId = requireReversalClient(event, await knownReversalClient(db, event));
 
   return createTask(db, {
     orgId: event.orgId,
