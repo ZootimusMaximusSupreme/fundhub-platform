@@ -52,52 +52,53 @@ export function remainingDueAmount(remainingCents) {
   return Number(fromCents(remainingCents));
 }
 
-async function findByProviderRef(db, refs) {
+async function findByProviderRef(db, { orgId, refs }) {
   const cleaned = [...new Set(refs.filter((v) => v != null && String(v).trim() !== "").map(String))];
   if (!cleaned.length) return null;
   const r = await db.query(
     `SELECT * FROM invoices
-      WHERE external_ref = ANY($1::text[])
+      WHERE org_id = $2 AND external_ref = ANY($1::text[])
       ORDER BY created_at ASC
       LIMIT 1`,
-    [cleaned]
+    [cleaned, orgId]
   );
   return r.rows[0] || null;
 }
 
-async function findByPaymentLink(db, { paymentLinkId, ref }) {
+async function findByPaymentLink(db, { orgId, paymentLinkId, ref }) {
   if (paymentLinkId) {
     const r = await db.query(
       `SELECT invoice_id FROM payment_links
-        WHERE id = $1 AND invoice_id IS NOT NULL
+        WHERE id = $1 AND org_id = $2 AND invoice_id IS NOT NULL
         LIMIT 1`,
-      [paymentLinkId]
+      [paymentLinkId, orgId]
     );
     if (r.rows[0]?.invoice_id) return getInvoice(db, { invoiceId: r.rows[0].invoice_id });
   }
   if (ref) {
     const r = await db.query(
       `SELECT invoice_id FROM payment_links
-        WHERE link_ref = $1 AND invoice_id IS NOT NULL
+        WHERE link_ref = $1 AND org_id = $2 AND invoice_id IS NOT NULL
         LIMIT 1`,
-      [String(ref)]
+      [String(ref), orgId]
     );
     if (r.rows[0]?.invoice_id) return getInvoice(db, { invoiceId: r.rows[0].invoice_id });
   }
   return null;
 }
 
-async function findByRound(db, { clientId, fundingRoundId }) {
+async function findByRound(db, { orgId, clientId, fundingRoundId }) {
   if (!clientId || !fundingRoundId) return null;
   const r = await db.query(
     `SELECT * FROM invoices
       WHERE client_id = $1
         AND funding_round_id = $2
+        AND org_id = $4
         AND (source = 'funding_success_fee' OR invoice_type = 'success_fee')
         AND status = ANY($3)
       ORDER BY created_at ASC, id ASC
       LIMIT 1`,
-    [clientId, fundingRoundId, OPEN]
+    [clientId, fundingRoundId, OPEN, orgId]
   );
   return r.rows[0] || null;
 }
@@ -141,7 +142,7 @@ async function replayIdentityMatches(db, prior, { orgId, clientId, hintedId, rou
   if (hintedId && String(original.id) !== String(hintedId)) return false;
   if (roundId && String(original.funding_round_id || "") !== String(roundId)) return false;
   if (paymentLinkId || ref) {
-    const linked = await findByPaymentLink(db, { paymentLinkId, ref });
+    const linked = await findByPaymentLink(db, { orgId, paymentLinkId, ref });
     if (linked && String(linked.id) !== String(original.id)) return false;
   }
   return true;
@@ -245,6 +246,7 @@ export async function allocatePayment(db, event) {
   let linkedInvoice = null;
   if (payload.paymentLinkId || payload.ref) {
     linkedInvoice = await findByPaymentLink(db, {
+      orgId,
       paymentLinkId: payload.paymentLinkId,
       ref: payload.ref
     });
@@ -254,17 +256,17 @@ export async function allocatePayment(db, event) {
     if (invoice) path = "provider_ref";
   }
   if (!invoice) {
-    invoice = await findByProviderRef(db, [
+    invoice = await findByProviderRef(db, { orgId, refs: [
       payload.providerRef,
       payload.itemId,
       payload.ref,
       payload.invoiceRef
-    ]);
+    ] });
     if (invoice) path = "provider_ref";
   }
 
   if (!invoice && roundId) {
-    invoice = await findByRound(db, { clientId, fundingRoundId: roundId });
+    invoice = await findByRound(db, { orgId, clientId, fundingRoundId: roundId });
     if (invoice) {
       path = "round";
       console.warn(`[ar-allocate] path=round invoice=${invoice.id} payment=${providerPaymentId || "none"}`);
@@ -285,6 +287,13 @@ export async function allocatePayment(db, event) {
       body: providerPaymentId ? `unallocated:${providerPaymentId}` : event.id
     });
     return { done: true, allocated: false, reason: "unresolved", path: "unresolved" };
+  }
+
+  // A foreign-org invoice ID is an untrusted locator, never permission to
+  // create a review task on that tenant's buyer or reveal invoice metadata.
+  // Check BEFORE invoice source/type/status and before the task fallback.
+  if (!orgId || String(invoice.org_id) !== String(orgId)) {
+    return { done: true, allocated: false, reason: "invoice_mismatch", path: "unresolved" };
   }
 
   // This allocator owns *only* funding success fees. A payment that names a
@@ -313,7 +322,7 @@ export async function allocatePayment(db, event) {
     console.warn(`[ar-allocate] path=unresolved reason=${reason} invoice=${invoice.id}`);
     await staffTask(db, {
       orgId,
-      clientId: clientId || invoice.client_id,
+      clientId: invoice.client_id,
       eventId: event.id,
       title: "Unallocated payment — invoice needs review",
       body: providerPaymentId ? `${reason}:${providerPaymentId}` : event.id
