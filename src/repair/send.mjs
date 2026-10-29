@@ -153,7 +153,12 @@ export function nothingWasTransmitted(sent, error) {
  *   claimed false — do not send. `reason` says why.
  */
 async function claimLetterForMailing(db, { letterId, orgId, clientId }) {
-  if (!letterId || !db?.query) return { claimed: true, reason: null, priorStatus: null };
+  // Untracked/ad-hoc letters have a legacy human-send route. For an EXPLICIT
+  // stored letter ID, though, the database claim is the authorization: if the
+  // row is missing, foreign, or the database is down, never transmit mail.
+  // Otherwise a forged/stale ID bypasses both ownership and double-mail guards.
+  if (!letterId) return { claimed: true, reason: null, priorStatus: null };
+  if (!db?.query) return { claimed: false, reason: "claim_db_unavailable", priorStatus: null };
 
   let claim;
   try {
@@ -190,8 +195,9 @@ async function claimLetterForMailing(db, { letterId, orgId, clientId }) {
     return { claimed: true, reason: null, priorStatus: claim.rows[0].prior_status ?? null };
   }
 
-  // Nothing was claimed. Read the row and refuse only if it says, positively,
-  // that this letter has already been taken.
+  // A zero-row UPDATE is NOT permission to mail. It can mean a foreign
+  // org/client ID, an unknown letter, or a terminal/non-claimable row.
+  // A read failure is also not evidence that the row can be safely claimed.
   let existing = null;
   try {
     const r = await db.query(
@@ -201,10 +207,12 @@ async function claimLetterForMailing(db, { letterId, orgId, clientId }) {
     );
     existing = r?.rows?.[0] || null;
   } catch {
-    existing = null;
+    return { claimed: false, reason: "claim_failed", priorStatus: null };
   }
 
-  if (!existing) return { claimed: true, reason: null, priorStatus: null };
+  if (!existing) {
+    return { claimed: false, reason: "letter_not_found_or_not_owned", priorStatus: null };
+  }
   // It went. Nothing releases this and nothing ever will.
   if (existing.mailed_at || ["sent", "delivered"].includes(existing.status)) {
     return { claimed: false, reason: "already_mailed", priorStatus: existing.status ?? null };
@@ -216,7 +224,9 @@ async function claimLetterForMailing(db, { letterId, orgId, clientId }) {
   if (existing.send_claimed_at || existing.status === "sending") {
     return { claimed: false, reason: "send_claim_held", priorStatus: existing.status ?? null };
   }
-  return { claimed: true, reason: null, priorStatus: existing.status ?? null };
+  // A matching row that was not actually claimed may have a forbidden state
+  // or a concurrent transition. Neither authorizes a real provider call.
+  return { claimed: false, reason: "letter_not_claimable", priorStatus: existing.status ?? null };
 }
 
 /** Give the letter back, for a refusal that provably happened before transmission.
