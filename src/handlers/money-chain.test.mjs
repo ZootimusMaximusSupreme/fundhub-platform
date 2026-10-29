@@ -345,6 +345,11 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
       query: async (sql, params = []) => {
         const text = String(sql);
         queries.push({ text, params });
+        // The receipt belongs to this fixture's one existing org/client.
+        // Model resolveClient's tenant check rather than accepting arbitrary IDs.
+        if (/SELECT 1 FROM clients WHERE id = \$1 AND org_id = \$2 LIMIT 1/.test(text)) {
+          return { rows: params[0] === CLIENT && params[1] === ORG ? [{ exists: 1 }] : [] };
+        }
         if (/FROM payment_links/.test(text) && /WHERE id = \$1 AND org_id = \$2 AND client_id = \$3/.test(text)) {
           return { rows: [{ id: LINK, product_id: null, sale_id: null, sale_motion: null,
             closer_staff_id: null, sales_manager_staff_id: null }] };
