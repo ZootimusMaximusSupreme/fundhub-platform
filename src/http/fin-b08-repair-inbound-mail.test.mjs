@@ -75,6 +75,11 @@ function repairFile({ items = [item()], roundsCap = null, stage = "awaiting_resp
   const stageKeyOf = (card) => STAGE_KEYS.find((k) => STAGE_ID(k) === card?.stage_id) || null;
   state.stageOf = (clientId = CLIENT) => stageKeyOf(state.cards.find((c) => c.client_id === clientId));
   const fake = fakeDb([
+    // Existing-owned upload gate: uploaded bytes are never parsed without a
+    // matching same-company, same-client, correct-kind document record.
+    [/^\s*SELECT d\.id\s+FROM documents d\b/i, (_s, p) =>
+      p[0] === DOC && p[1] === ORG_ID && p[2] === CLIENT &&
+      p[3] === "bureau_response" && p[4] == null ? [{ id: DOC }] : []],
     // The open items: this company, this client, and ONLY the statuses the statement asks for.
     [/^\s*SELECT di\.id, di\.case_id, di\.org_id, di\.client_id, di\.creditor,/i, (s, p) => rowsWhere(state.items, s.slice(s.indexOf("WHERE")), p)
       .filter((r) => !/di\.status\s*=\s*ANY\(\$3::text\[\]\)/.test(s) || p[2].includes(r.status))],

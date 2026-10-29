@@ -1235,42 +1235,92 @@ export async function syncClientFunded(db, { clientId, orgId } = {}) {
   return (await db.query(SQL_SYNC_CLIENT_FUNDED, [clientId, orgId])).rows[0] || null;
 }
 
-export async function onRoundFundedMoney(event, db) {
-  const p = event.payload || {};
-  let round = null;
+/**
+ * Read-only funding result identity gate. A funded event belongs to exactly the
+ * existing round named by its org and buyer; a bad explicit ID must NOT fall
+ * back to another round. Never call lead-creating resolveClient on this path.
+ */
+export async function findRoundForFundedEvent(db, event) {
+  const orgId = event?.orgId;
+  const p = event?.payload || {};
+  if (!orgId) return null;
 
-  // round.funded UPDATES an existing round. It must never INSERT a funded row
-  // from nothing — that invented phantom rounds when events arrived out of
-  // order (verified 2026-08-04). Fail loudly; require round.started first.
+  let clientId = event.clientId || null;
+  if (!clientId) {
+    const email = String(p.email || "").trim().toLowerCase();
+    if (!email) return null;
+    const owner = await db.query(
+      `SELECT id FROM clients WHERE org_id = $1 AND lower(email) = $2 LIMIT 1`,
+      [orgId, email]
+    );
+    clientId = owner.rows[0]?.id || null;
+  }
+  if (!clientId) return null;
+
+  const suppliedRoundNumber = p.roundNumber ?? p.round_number ?? null;
+  if (suppliedRoundNumber != null &&
+      (!Number.isInteger(Number(suppliedRoundNumber)) || Number(suppliedRoundNumber) <= 0)) {
+    return null;
+  }
+
+  let row;
   if (p.fundingRoundId) {
-    round = (await db.query(
-      `SELECT * FROM funding_rounds WHERE id = $1 LIMIT 1`,
-      [p.fundingRoundId]
+    row = (await db.query(
+      `SELECT * FROM funding_rounds WHERE id = $1 AND org_id = $2 AND client_id = $3 LIMIT 1`,
+      [p.fundingRoundId, orgId, clientId]
+    )).rows[0] || null;
+  } else {
+    // An unspecified round number must not silently borrow round 1 (or latest).
+    if (suppliedRoundNumber == null) return null;
+    row = (await db.query(
+      `SELECT * FROM funding_rounds
+        WHERE org_id = $1 AND client_id = $2 AND round_number = $3 LIMIT 1`,
+      [orgId, clientId, Number(suppliedRoundNumber)]
     )).rows[0] || null;
   }
-  if (!round) {
-    const clientId = await resolveClient(db, event);
-    const roundNumber = Number(p.roundNumber ?? p.round_number ?? 1);
-    if (clientId) {
-      round = (await db.query(
-        `SELECT * FROM funding_rounds
-          WHERE client_id = $1 AND round_number = $2
-          LIMIT 1`,
-        [clientId, roundNumber]
-      )).rows[0] || null;
-    }
-  }
+  if (!row || String(row.org_id) !== String(orgId) ||
+      String(row.client_id) !== String(clientId)) return null;
+  if (suppliedRoundNumber != null &&
+      Number(row.round_number) !== Number(suppliedRoundNumber)) return null;
+  return row;
+}
+
+export async function onRoundFundedMoney(event, db) {
+  const p = event?.payload || {};
+  // This is an existing paid customer's downstream funding result, not intake.
+  // A foreign ID, unknown buyer or mismatched round must fail before ANY
+  // status, commission, closeout, email or client update.
+  let round = await findRoundForFundedEvent(db, event);
   if (!round) {
     console.error(
-      `[money-chain] round.funded refused: no prior funding_rounds row ` +
-      `(org=${event.orgId} client=${event.clientId || "?"} ` +
-      `fundingRoundId=${p.fundingRoundId || "none"}). Emit round.started first.`
+      `[money-chain] round.funded refused: no owned existing round ` +
+      `(org=${event?.orgId || "?"} event=${event?.id || "?"}).`
     );
     return {
       done: false,
       reason: "no_prior_round",
-      detail: "round.funded requires an existing round from round.started"
+      detail: "round.funded requires an existing round owned by the event organization and buyer"
     };
+  }
+
+  // A supplied sale may not be borrowed from another org/client or product.
+  // Also refuse an incoming sale ID that contradicts this round's frozen link.
+  // Check BEFORE marking the round funded, not after the ledger changes.
+  const frozenLink = await db.query(SQL_SALE_FOR_ROUND, [round.id]);
+  const linkedSaleId = frozenLink.rows[0]?.sale_id || null;
+  if (linkedSaleId && p.saleId && String(linkedSaleId) !== String(p.saleId)) {
+    return { done: false, reason: "sale_context_conflict" };
+  }
+  if (linkedSaleId || p.saleId) {
+    const saleId = linkedSaleId || p.saleId;
+    const owner = await db.query(
+      `SELECT s.id FROM sales s
+         JOIN products pr ON pr.id = s.product_id AND pr.category = 'funding'
+        WHERE s.id = $1 AND s.org_id = $2 AND s.client_id = $3
+          AND s.status = 'active' LIMIT 1`,
+      [saleId, event.orgId, round.client_id]
+    );
+    if (!owner.rows[0]) return { done: false, reason: "sale_context_conflict" };
   }
 
   const fundedAmount = p.fundedAmount != null
@@ -1353,9 +1403,9 @@ export async function onRoundFundedMoney(event, db) {
             funded_amount = COALESCE($2, funded_amount),
             approved_amount = COALESCE($3, approved_amount),
             updated_at = now()
-      WHERE id = $1
+      WHERE id = $1 AND org_id = $4 AND client_id = $5
       RETURNING *`,
-    [round.id, fundedAmount, approvedAmountToWrite]
+    [round.id, fundedAmount, approvedAmountToWrite, event.orgId, round.client_id]
   );
   round = updated.rows[0] || round;
 
@@ -1407,7 +1457,9 @@ export async function onRoundFundedMoney(event, db) {
   // listens here. Idempotent per funding_round_id.
   let closeoutEvent = null;
   if (closeout.closeout?.id) {
-    const clientId = event.clientId || (await resolveClient(db, event));
+    // The already-validated round owner is authoritative; never create or
+    // patch a CRM contact from an incoming funding result.
+    const clientId = round.client_id;
     closeoutEvent = await emit(
       db,
       "round.closeout",

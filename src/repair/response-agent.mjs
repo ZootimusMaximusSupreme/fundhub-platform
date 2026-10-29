@@ -1,5 +1,6 @@
 import { callModel } from "../agents/model.mjs";
 import { resolveStorageTarget } from "../documents/retrieve.mjs";
+import { KINDS } from "../documents/kinds.mjs";
 import { storeFromEnv } from "../documents/store.mjs";
 import { sendTemplated } from "../workflows/messaging.mjs";
 import { onRepairEvent } from "./handlers.mjs";
@@ -47,11 +48,48 @@ export function mediaFromBytes(mimeType, buffer) {
   return [{ type: "document", mediaType: mime || "application/octet-stream", dataBase64: data }];
 }
 
-async function loadDocumentBytes(db, { documentId, versionId = null, store = null }) {
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * The docs.received envelope is not a document-access grant. A foreign ID,
+ * another customer's upload, an arbitrary contract/ID file, an expired document
+ * or a version belonging to somebody else must not reach a model, a repair
+ * state change or a client-facing retake/results email.
+ *
+ * Read only. Database errors deliberately propagate to the existing failed-event
+ * queue, rather than being mistaken for a missing/invalid document.
+ */
+export async function ownsBureauResponseDocument(db, {
+  orgId, clientId, documentId, versionId = null
+} = {}) {
+  if (!db?.query || !UUID.test(String(orgId || "")) ||
+      !UUID.test(String(clientId || "")) || !UUID.test(String(documentId || "")) ||
+      (versionId != null && !UUID.test(String(versionId)))) return false;
+  const result = await db.query(
+    `SELECT d.id
+       FROM documents d
+      WHERE d.id = $1::uuid AND d.org_id = $2::uuid AND d.client_id = $3::uuid
+        AND d.kind = $4::text
+        AND (d.expires_at IS NULL OR d.expires_at > now())
+        AND ($5::uuid IS NULL OR EXISTS (
+          SELECT 1 FROM document_versions v
+           WHERE v.id = $5::uuid AND v.document_id = d.id AND v.org_id = d.org_id
+        ))
+      LIMIT 1`,
+    [documentId, orgId, clientId, KINDS.BUREAU_RESPONSE, versionId]
+  );
+  return Boolean(result.rows[0]);
+}
+
+async function loadDocumentBytes(db, { documentId, versionId = null, orgId, clientId, store = null }) {
+  // This is the only path from document metadata to raw storage credentials.
+  // The ownership read must have succeeded first; verify it again on the target.
   const target = await resolveStorageTarget(db, { documentId, versionId });
-  if (!target?.storage_key) return null;
+  if (!target?.storage_key || String(target.org_id) !== String(orgId) ||
+      String(target.client_id) !== String(clientId) ||
+      (versionId && String(target.version_id) !== String(versionId))) return null;
   const s = store || storeFromEnv();
-  const got = await s.get(target.storage_key);
+  const got = await s.get(target.storage_key, { expectedChecksum: target.checksum || null });
   if (!got?.body) return null;
   return { buffer: got.body, mimeType: got.contentType || target.mime_type || "application/octet-stream" };
 }
@@ -62,9 +100,14 @@ export async function processBureauResponse(db, {
   sendTemplatedImpl = sendTemplated, loadBytesImpl = null, onEvent = onRepairEvent, items = null
 } = {}) {
   if (!orgId || !clientId || !documentId) return { ok: false, reason: "missing_args" };
+  // Even trusted bytes injected by an internal caller cannot bypass ownership.
+  // Refuse before any model call, external byte read, letter parsing or message.
+  if (!await ownsBureauResponseDocument(db, { orgId, clientId, documentId, versionId })) {
+    return { ok: false, reason: "bureau_response_document_unavailable" };
+  }
   let buffer = bytes, mime = mimeType;
   if (!buffer) {
-    const loaded = await (loadBytesImpl || loadDocumentBytes)(db, { documentId, versionId });
+    const loaded = await (loadBytesImpl || loadDocumentBytes)(db, { documentId, versionId, orgId, clientId });
     if (!loaded) return { ok: false, reason: "document_bytes_missing" };
     buffer = loaded.buffer; mime = loaded.mimeType;
   }

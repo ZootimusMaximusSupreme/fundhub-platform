@@ -25,6 +25,7 @@
 // `sentiment` — no code in this repo computes Hot/Warm/Cold.
 
 import { on } from "../events/registry.mjs";
+import { db as platformDb, pool as platformPool } from "../db.mjs";
 import { resolveClient } from "./client-lifecycle.mjs";
 import { recordOptOut, recordOptIn } from "../lib/opt-out.mjs";
 import { createTask } from "../lib/create-task.mjs";
@@ -377,14 +378,11 @@ const bookingUid = (p) => normalizeProviderUid(p && p.bookingUid);
 
 /* Store the booking as a booking (db/migrations/225_bookings.sql).
 
-   WHY THIS SWALLOWS ITS OWN FAILURES, like threadMessage() above. The tasks row
-   is what the calendar, the closer queue and the client detail screen actually
-   read today; the bookings row is the new record beside it. If the bookings
-   write fails, the task has already been written and must stay written — and
-   throwing from here would dead-letter an event whose real work succeeded, so
-   the retry would re-run the whole handler. It logs instead, loudly enough to
-   find. */
-async function recordBooking(db, event, p, clientId, status) {
+   The booking.created path calls this with strict=true BEFORE creating the
+   closer task: a rejected provider identity or failed INSERT is NOT a booked
+   sale call and must not create staff activity. Other historical event paths
+   preserve their best-effort behavior and record failures for reconciliation. */
+async function recordBooking(db, event, p, clientId, status, { strict = false } = {}) {
   if (!event.orgId) return null;
   try {
     return await upsertBooking(db, {
@@ -417,6 +415,7 @@ async function recordBooking(db, event, p, clientId, status) {
       `[comms] bookings write failed for ${event.name} ` +
       `(uid=${bookingUid(p) || "none"}): ${err && err.message}`
     );
+    if (strict) throw err;
     return null;
   }
 }
@@ -468,15 +467,55 @@ async function closeBooking(db, event, p, status) {
   }
 }
 
-// booking.created — a scheduled call. Client is a known lead → resolve
-// (create-if-missing). Creates a closer follow-up task, deduped by (client, uid),
-// and stores the booking itself.
+// Only matching org + appointment identities contend. Use a TRANSACTION
+// scoped advisory lock, never a session lock: production may use a transaction
+// pooler, and session locks can leak between tenants or unrelated requests.
+// The transaction holds the identity check, lead resolution, saved booking and
+// closer-task handoff together, so a losing webhook cannot mint activity.
+async function withBookingUidLock(db, orgId, uid, callback) {
+  const source = db === platformDb ? platformPool()
+    : (typeof db?.connect === "function" && db?.options ? db : null);
+  if (!orgId || !uid || !source) return callback(db);
+  const client = await source.connect();
+  const key = `front-booking:${orgId}:${uid}`;
+  let discard = true;
+  try {
+    await client.query("BEGIN");
+    await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1::text, 0))", [key]);
+    const result = await callback(client);
+    await client.query("COMMIT"); // releases the lock on either PG connection type
+    discard = false;
+    return result;
+  } catch (error) {
+    // A confirmed ROLLBACK ends any transaction-scoped lock. If connection
+    // state remains uncertain, discard it instead of returning it to the pool.
+    try {
+      await client.query("ROLLBACK");
+      discard = false;
+    } catch (rollbackError) {
+      console.error("[comms] booking transaction rollback failed", rollbackError?.message);
+    }
+    throw error;
+  } finally {
+    client.release(discard);
+  }
+}
+
+// booking.created — a scheduled call. The saved booking must win provider
+// identity arbitration BEFORE a closer task, tags, pipeline and confirmation
+// fields are changed. Booking writes are no longer optional on this path.
 export async function onBookingCreated(event, db) {
   const p = event.payload || {};
-  // An interview is never a sales lead or closer booking. Check before
-  // resolveClient(), which creates a new lead when the email is unknown.
   if (isInterviewBooking(p)) return { skipped: "interview" };
   const uid = bookingUid(p);
+  // UID-less provider forms still have a durable event ID. Serialize replay
+  // under that identity, but never merge two unrelated UID-less events.
+  const identity = uid ? `uid:${uid}` : event.id ? `event:${event.id}` : null;
+  return withBookingUidLock(db, event.orgId, identity,
+    (identityDb) => onBookingCreatedLocked(event, identityDb, p, uid));
+}
+
+async function onBookingCreatedLocked(event, db, p, uid) {
 
   // A provider UID is an appointment identity, not permission to create or
   // transfer a customer. Check the existing appointment BEFORE resolveClient
@@ -511,14 +550,35 @@ export async function onBookingCreated(event, db) {
       return { skipped: "booking_already_recorded" };
     }
   }
+  // resolveClient patches the explicit customer before looking them up. For
+  // booking webhooks this ID must be owned by the event's organization first;
+  // a foreign ID may not edit another tenant's contact or receive a call task.
+  if (event.clientId) {
+    if (!event.orgId) return { skipped: "booking_client_scope_mismatch" };
+    const owner = await db.query(
+      "SELECT id FROM clients WHERE org_id = $1 AND id = $2 LIMIT 1",
+      [event.orgId, event.clientId]
+    );
+    if (!owner.rows[0]) return { skipped: "booking_client_scope_mismatch" };
+  }
   const clientId = await resolveClient(db, event);
   if (!clientId) return;
+  const accepted = await recordBooking(db, event, p, clientId, BOOKING_STATUS.BOOKED, { strict: true });
+  if (!accepted || String(accepted.client_id) !== String(clientId) ||
+      accepted.status !== BOOKING_STATUS.BOOKED) {
+    // Includes a losing ON CONFLICT race (the atomic bookings guard returns
+    // no row). A wrong-client or terminal appointment must not create tasks.
+    return { skipped: "booking_not_accepted" };
+  }
+  // For bookings without a provider UID, the immutable bus event ID is the
+  // task dedupe key, just as it already is for the bookings-row unique index.
+  const taskKey = uid || event.id || null;
   const dup = await db.query(
     `SELECT 1 FROM tasks
       WHERE client_id=$1 AND body=$2 AND title LIKE $3 LIMIT 1`,
-    [clientId, uid, BOOKING_TASK_TITLE_LIKE]
+    [clientId, taskKey, BOOKING_TASK_TITLE_LIKE]
   );
-  if (!(uid && dup.rows[0])) {
+  if (!(taskKey && dup.rows[0])) {
     await createTask(db, {
       orgId: event.orgId,
       clientId,
@@ -527,17 +587,16 @@ export async function onBookingCreated(event, db) {
       sourceWorkflow: bookingSource(p),
       assigneeRole: "closer",
       dueAt: p.startTime || null,
-      eventId: uid,
+      eventId: taskKey,
       meetingUrl: p.meetingUrl || null
     });
   }
-  await recordBooking(db, event, p, clientId, BOOKING_STATUS.BOOKED);
   // Mirror s-04 sync so Pipeline shows "booked" without waiting on Inngest.
   // advance only — never demote a later sales stage.
   await addTags(db, clientId, ["call:booked"]);
   await mergeCustomFields(db, clientId, {
     call_outcome: "booked",
-    ...(uid && dup.rows[0] ? {} : { call_confirmed: false })
+    ...(taskKey && dup.rows[0] ? {} : { call_confirmed: false })
   });
   if (event.orgId) {
     await advanceCardToStage(db, {

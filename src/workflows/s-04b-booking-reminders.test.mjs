@@ -567,3 +567,20 @@ test("REPLAY: driving the finished run again after the call sends nothing twice"
   assert.equal(again.skipped24h, res.skipped24h);
   assert.equal(again.skipped2h, res.skipped2h);
 });
+
+
+test("S-04B: reschedule/cancel cannot cross tenant boundaries on reused email or provider UID", async () => {
+  const { s04bBookingReminders } = await import("./s-04b-booking-reminders.mjs");
+  for (const type of ["booking.rescheduled", "booking.cancelled"]) {
+    const clauses = (s04bBookingReminders.opts.cancelOn || [])
+      .filter((c) => c.event === type);
+    assert.equal(clauses.length, 2, `${type} must cover exact buyer email and booking UID`);
+    for (const condition of clauses) {
+      assert.match(condition.if, /event\.data\.orgId != null/,
+        `${type} must reject missing organization`);
+      assert.match(condition.if, /event\.data\.orgId == async\.data\.orgId/,
+        `${type} must never cancel another organization's run`);
+      assert.match(condition.if, /event\.data\.payload\.(email|bookingUid)/);
+    }
+  }
+});
