@@ -21,6 +21,27 @@ test("client invoice email and portal share the exact consulting-fee label", () 
   assert.match(invoiceSeed, /What it is for: \{\{invoice\.kind\}\}/);
 });
 
+test("partially paid invoice email demands the remaining amount, not the original total", () => {
+  const invoice = {
+    id: "ar-partial-test", source: "funding_success_fee",
+    amount_due: 1000, currency: "USD"
+  };
+  const original = invoiceContext({ invoice, client: { first_name: "Buyer" } });
+  assert.equal(original.invoice.amount, "$1,000.00", "unpaid invoice starts at its face amount");
+
+  const partial = invoiceContext({
+    invoice, client: { first_name: "Buyer" }, balanceDue: 600
+  });
+  assert.equal(partial.invoice.amount, "$600.00",
+    "email subject and body must use the net due after $400 was paid");
+  assert.equal(invoice.amount_due, 1000, "immutable invoice face amount is not rewritten");
+
+  const cents = invoiceContext({
+    invoice, client: { first_name: "Buyer" }, balanceDue: 600.01
+  });
+  assert.equal(cents.invoice.amount, "$600.01");
+});
+
 test("all six AR notices use the exact buyer label without naming a round", () => {
   const smsKeys = ["SMS-AR-01-FIRST-NOTICE", "SMS-AR-02-REMINDER", "SMS-AR-03-FINAL-NOTICE"];
   const emailKeys = ["EMAIL-AR-01-FIRST-NOTICE", "EMAIL-AR-02-REMINDER", "EMAIL-AR-03-FINAL-NOTICE"];
