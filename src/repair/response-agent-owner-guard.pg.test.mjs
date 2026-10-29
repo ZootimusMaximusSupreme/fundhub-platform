@@ -52,14 +52,14 @@ test("tenant, kind, expiry and version fencing against actual SQL", {
     const unrelatedKind = await insertDocument(org, client, "client_upload");
     const expired = await insertDocument(org, client, "bureau_response", true);
 
-    const insertVersion = async (orgId, documentId) => (await db.query(
+    const insertVersion = async (orgId, documentId, version = 1) => (await db.query(
       `INSERT INTO document_versions (org_id, document_id, version, storage_key, mime_type)
-       VALUES ($1,$2,1,'memory://synthetic-bureau-response','image/jpeg') RETURNING id`,
-      [orgId, documentId]
+       VALUES ($1,$2,$3,'memory://synthetic-bureau-response','image/jpeg') RETURNING id`,
+      [orgId, documentId, version]
     )).rows[0].id;
     const goodVersion = await insertVersion(org, own);
     const foreignVersion = await insertVersion(org, anotherClient);
-    const wrongTenantVersion = await insertVersion(otherOrg, own);
+    const wrongTenantVersion = await insertVersion(otherOrg, own, 2);
 
     const check = (documentId, versionId = null) => ownsBureauResponseDocument(db, {
       orgId: org, clientId: client, documentId, versionId
