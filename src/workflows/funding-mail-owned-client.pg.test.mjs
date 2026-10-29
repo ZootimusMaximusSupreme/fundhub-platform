@@ -6,6 +6,12 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import pg from "pg";
 import { findClient } from "../handlers/purchase-routing.mjs";
+import { handle as f02 } from "./f-02-portal-id-missing.mjs";
+import { handle as f03 } from "./f-03-round-submitted.mjs";
+import { handle as f04 } from "./f-04-round-approvals.mjs";
+import { handle as f07 } from "./f-07-funding-locked.mjs";
+import { handle as f08 } from "./f-08-post-funding-monitoring.mjs";
+import { handle as f10 } from "./f-10-client-funding-inbox-provisioner.mjs";
 import { handle as f06 } from "./f-06-funding-conditions-missing-docs.mjs";
 import { handle as f09 } from "./f-09-funding-declined-no-path.mjs";
 import { handle as f11 } from "./f-11-bank-email-event-router.mjs";
@@ -22,7 +28,7 @@ after(async () => { if (pool) await pool.end(); });
 
 const step = { run: (_name, fn) => fn() };
 
-test("F-06/F-09/F-11 never create/modify foreign or phantom clients on inbound events (real Postgres)",
+test("F-02 through F-11 never create/modify foreign or phantom clients on inbound events (real Postgres)",
   { skip: safe ? false : "disposable localhost CI Postgres only" },
   async () => {
     const conn = await pool.connect();
@@ -42,6 +48,12 @@ test("F-06/F-09/F-11 never create/modify foreign or phantom clients on inbound e
         [localId, org, foreignId, foreignOrg]
       );
       const payloads = [
+        [f02, "round.started", { roundNumber: 1 }],
+        [f03, "round.submitted", { roundNumber: 1 }],
+        [f04, "round.approved", { approvedAmount: 2000 }],
+        [f07, "round.funded", { approvedAmount: 2000, feePercent: 10 }],
+        [f08, "round.funded", { fundedAmount: 2000 }],
+        [f10, "round.started", { roundNumber: 1 }],
         [f06, "mail.response", { classification: "MISSING_DOCS", conditionDescription: "Provide bank statements" }],
         [f06, "docs.received", {}],
         [f09, "mail.response", { classification: "DENIED" }],
@@ -54,14 +66,16 @@ test("F-06/F-09/F-11 never create/modify foreign or phantom clients on inbound e
           id: randomUUID(), name, orgId: org, clientId: foreignId,
           payload: { ...payload, email: "local@example.invalid" }
         };
-        assert.deepEqual(await handle({ event: foreign, db: conn, step }),
-          { done: false, reason: "no_client" }, name);
+        const foreignResult = await handle({ event: foreign, db: conn, step });
+        assert.equal(foreignResult.reason, "no_client", name);
+        assert.equal(foreignResult.done ?? foreignResult.sent, false, name);
         const unknown = {
           id: randomUUID(), name, orgId: org, clientId: null,
           payload: { ...payload, email: "nobody@example.invalid" }
         };
-        assert.deepEqual(await handle({ event: unknown, db: conn, step }),
-          { done: false, reason: "no_client" }, name);
+        const unknownResult = await handle({ event: unknown, db: conn, step });
+        assert.equal(unknownResult.reason, "no_client", name);
+        assert.equal(unknownResult.done ?? unknownResult.sent, false, name);
       }
       assert.equal(await findClient(conn, {
         orgId: org, clientId: null, payload: { email: " LOCAL@EXAMPLE.INVALID " }
