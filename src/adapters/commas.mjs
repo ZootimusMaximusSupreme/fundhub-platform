@@ -647,7 +647,12 @@ export async function handleCommasWebhook({ db, rawBody, signatureHeader, secret
  * would emit the event with a null client id, and the idempotency key would
  * then make that wrong answer permanent — a retry would dedupe rather than
  * correct it. Failing loudly is the recoverable option. */
-async function loadPaymentLink(db, { linkRef, sessionId }) {
+export async function loadPaymentLink(db, { linkRef, sessionId }) {
+  // Two valid identifiers in one provider callback must refer to ONE checkout.
+  // Returning the first matching row before reading the second could send
+  // settled money, entitlements, and commission to the wrong buyer/sale.
+  let byRefLink = null;
+  let bySessionLink = null;
   if (linkRef) {
     const byRef = await db.query(
       `SELECT pl.id, pl.org_id, pl.client_id, pl.purpose, pl.invoice_id,
@@ -659,7 +664,7 @@ async function loadPaymentLink(db, { linkRef, sessionId }) {
         LIMIT 1`,
       [String(linkRef)]
     );
-    if (byRef.rows[0]) return byRef.rows[0];
+    byRefLink = byRef.rows[0] || null;
   }
   if (sessionId) {
     const bySession = await db.query(
@@ -672,9 +677,18 @@ async function loadPaymentLink(db, { linkRef, sessionId }) {
         LIMIT 1`,
       [String(sessionId)]
     );
-    if (bySession.rows[0]) return bySession.rows[0];
+    bySessionLink = bySession.rows[0] || null;
   }
-  return null;
+  if (byRefLink && bySessionLink &&
+      String(byRefLink.id) !== String(bySessionLink.id)) {
+    // The inbox retains the signed/raw webhook and retries safely. Refuse
+    // before emitting a canonical payment event; an unverified event must not
+    // create a paid sale or assign a receivable to an unrelated customer.
+    throw new Error("[commas] conflicting checkout reference and session identity; manual reconciliation required");
+  }
+  // Missing metadata is normal for product-page checkouts. Retain the legacy
+  // fallback when only one identifier resolves; do NOT invent ownership.
+  return byRefLink || bySessionLink || null;
 }
 
 /* No client creation for abandoned checkouts OR post-payment reversals.

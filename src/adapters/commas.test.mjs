@@ -1027,6 +1027,32 @@ test("a link is still found by its Commas session id when no ref comes back", as
   assert.ok(clientIdsOf(db).every((id) => id === CLIENT_A));
 });
 
+test("two valid but contradictory Commas checkout IDs fail inbox processing without paid events", async () => {
+  _resetOrgCache(); clearHandlers();
+  const db = fakeDb({
+    links: [
+      { id: "pl-a", org_id: "org-1", client_id: CLIENT_A,
+        link_ref: "dual-ref-a", commas_session_id: "dual-session-a", purpose: "deposit" },
+      { id: "pl-b", org_id: "org-1", client_id: CLIENT_B,
+        link_ref: "dual-ref-b", commas_session_id: "dual-session-b", purpose: "repair" }
+    ]
+  });
+  const raw = JSON.stringify({
+    id: "evt-dual-link-conflict", type: "payment.succeeded",
+    data: {
+      payment_id: "pay-dual-link-conflict", amount: 100,
+      item: { id: "dual-session-b", title: "Consulting Services Deposit" },
+      api_metadata: { data: { link_ref: "dual-ref-a" } }
+    }
+  });
+  const { ack } = await deliver(db, raw);
+  assert.equal(ack.ok, true, "keep the signed webhook durably stored");
+  assert.equal(db.inbox.length, 1);
+  assert.equal(db.inbox[0].status, "failed", "do not falsely complete the money-in inbox row");
+  assert.match(db.inbox[0].last_error, /conflicting checkout reference and session identity/);
+  assert.equal(db.store.length, 0, "never emit a paid sale or money event for either buyer");
+});
+
 /* A payment on a Commas dashboard product page has no link of ours. The
    lookup must come back empty and everything must carry on. */
 test("no link behind the payment is normal, not an error", async () => {
