@@ -147,6 +147,7 @@ export const BOARD_CARDS_SQL = `
     c.funded,
     c.funded_amount,
     c.is_demo,
+    (c.custom_fields->>'call_confirmed') = 'true' AS call_confirmed,
     (c.custom_fields->>'total_funding_estimate') AS total_funding_estimate,
     c.custom_fields->>'cf_svy_self_reported_fico' AS survey_fico_raw,
     c.custom_fields->>'cf_svy_self_reported_fico_label' AS survey_fico_label,
