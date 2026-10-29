@@ -51,7 +51,23 @@
     var headers = { accept: "application/json", "content-type": "application/json" };
     if (t && t !== "demo") headers.authorization = "Bearer " + t;
     return fetch(path, Object.assign({ headers: headers }, opts || {}))
-      .then(function (r) { return r.json().catch(function () { return { ok: false }; }); });
+      .then(function (response) {
+        return response.json().catch(function () {
+          return { ok: false, error: "invalid_response" };
+        }).then(function (data) {
+          /* A non-2xx response never means "saved", even if a gateway or
+             upstream accidentally returned a JSON body containing ok:true. */
+          if (!response.ok) return {
+            ok: false,
+            error: (data && data.error) || ("http_" + response.status)
+          };
+          return data;
+        });
+      }).catch(function () {
+        /* Do not leave an uncaught promise and a false outgoing bubble when a
+           phone loses connection between tapping Send and receiving the ACK. */
+        return { ok: false, error: "network_unavailable" };
+      });
   }
 
   var PRECALL_GREETING =
@@ -389,99 +405,162 @@
       }
     }
 
+    /* Never paint a message as sent before the server accepts it. Previously
+       Send cleared the input and added a right-hand bubble BEFORE validation,
+       including when no teammate/client was picked or fetch failed outright.
+       Keep the draft and prevent double-clicks until we have a real ACK. */
+    var sendBusy = false;
+    var sendRetry = null;
     function submit() {
       var input = document.getElementById("fh-chat-input");
       var q = (input && input.value || "").trim();
-      if (!q) return;
-      input.value = "";
-      addMsg(esc(q), "me");
+      if (!q || sendBusy) return;
+      var mode = state.mode;
+      var kind = state.msgKind;
+      var peer = state.peerId;
+      var client = state.clientId;
+      var thread = state.conversationId;
+      var send = document.getElementById("fh-chat-send");
+      var hint = document.getElementById("fh-chat-hint");
+      var originalHint = hint ? hint.textContent : "";
 
-      if (state.mode === "system" || state.mode === "knowledge") {
+      function status(message, isError) {
+        if (!hint || !hint.isConnected) return;
+        hint.textContent = message || originalHint;
+        if (isError) hint.setAttribute("role", "alert");
+        else {
+          hint.removeAttribute("role");
+          hint.setAttribute("aria-live", "polite");
+        }
+      }
+      if (mode === "message" && !isPortal && kind === "internal" && !peer && !thread) {
+        status("Pick a teammate first. Your message has not been sent.", true);
+        return;
+      }
+      if (mode === "message" && !isPortal && kind === "client" && !client) {
+        status("Pick one of your clients first. Your message has not been sent.", true);
+        return;
+      }
+      if (isPortal && isDemo) {
+        input.value = "";
+        addMsg(esc(q), "me");
+        addMsg("Sample chat only — no message was sent to staff.");
+        return;
+      }
+
+      function stillHere() {
+        return input.isConnected && state.mode === mode &&
+          (isPortal || (state.msgKind === kind &&
+            (kind !== "internal" || state.peerId === peer) &&
+            (kind !== "client" || state.clientId === client)));
+      }
+      sendBusy = true;
+      input.disabled = true;
+      if (send) send.disabled = true;
+      status("Saving…", false);
+      function finish(response, onSaved) {
+        sendBusy = false;
+        if (input.isConnected) input.disabled = false;
+        if (send && send.isConnected) send.disabled = false;
+        /* A slower reply for client A must never paint into client B's chat. */
+        if (!stillHere()) return;
+        if (!response || !response.ok) {
+          status("Not confirmed (" + ((response && response.error) || "request_failed") +
+            "). Your draft is kept. Check the thread before retrying.", true);
+          return;
+        }
+        if (input.value.trim() === q) input.value = "";
+        sendRetry = null;
+        status("", false);
+        onSaved(response);
+      }
+
+      if (mode === "system" || mode === "knowledge") {
         api("/api/chat/ask", {
           method: "POST",
-          body: JSON.stringify({ mode: state.mode, question: q })
+          body: JSON.stringify({ mode: mode, question: q })
         }).then(function (res) {
-          if (!res || !res.ok) {
-            addMsg("Could not answer (" + esc((res && res.error) || "error") + ").");
-            return;
-          }
-          var text = (res.answer && res.answer.text) || "No answer.";
-          var src = (res.sources || []).map(function (s) {
-            if (s.href) return '<a href="' + esc(s.href) + '">' + esc(s.title || s.href) + "</a>";
-            return esc(s.title || s.id || "source");
-          }).join(" · ");
-          addMsg(esc(text) + (src ? '<span class="src">Sources: ' + src + "</span>" : ""));
+          finish(res, function (saved) {
+            addMsg(esc(q), "me");
+            var answer = (saved.answer && saved.answer.text) || "No answer.";
+            var sources = (saved.sources || []).map(function (s) {
+              if (s.href) return '<a href="' + esc(s.href) + '">' + esc(s.title || s.href) + "</a>";
+              return esc(s.title || s.id || "source");
+            }).join(" · ");
+            addMsg(esc(answer) + (sources ? '<span class="src">Sources: ' + sources + "</span>" : ""));
+          });
         });
         return;
       }
 
       if (isPortal) {
-        if (isDemo) {
-          addMsg("Sent to your team.", "them");
-          return;
-        }
         api("/api/chat/portal-message", {
           method: "POST",
           body: JSON.stringify({ body: q, channel: "sms" })
         }).then(function (res) {
-          if (!res || !res.ok) {
-            addMsg("Not sent (" + esc((res && res.error) || "error") + ").");
-            return;
-          }
-          state.conversationId = res.conversation_id;
-          loadPortalThread();
-          syncPoll();
+          finish(res, function (saved) {
+            state.conversationId = saved.conversation_id;
+            addMsg(esc(q), "me"); // Persisted in portal thread, NOT an outbound SMS receipt.
+            loadPortalThread();
+            syncPoll();
+          });
         });
         return;
       }
 
-      if (state.msgKind === "internal") {
-        if (!state.peerId && !state.conversationId) {
-          addMsg("Pick a teammate first.");
-          return;
-        }
-        /* The teammate always rides along, so the server can refuse a thread
-           that is not between you and them (api/chat/messages.mjs). */
-        var payload = { kind: "internal", body: q };
-        if (state.conversationId) payload.conversation_id = state.conversationId;
-        if (state.peerId) payload.peer_staff_id = state.peerId;
-        var sentTo = state.peerId;
+      /* Staff internal and client sends already accept an idempotency key.
+         Retain it for a failed/ambiguous response to this exact same draft
+         and destination so a manual retry cannot dispatch a second message. */
+      var destination = mode + "|" + kind + "|" + peer + "|" + client + "|" + thread;
+      if (!sendRetry || sendRetry.text !== q || sendRetry.destination !== destination) {
+        var freshKey = (window.crypto && window.crypto.randomUUID)
+          ? window.crypto.randomUUID()
+          : String(Date.now()) + "-" + String(Math.random()).slice(2);
+        sendRetry = { text: q, destination: destination, key: freshKey };
+      }
+      var retryKey = sendRetry.key;
+
+      if (kind === "internal") {
+        var payload = { kind: "internal", body: q, idempotency_key: retryKey };
+        if (thread) payload.conversation_id = thread;
+        if (peer) payload.peer_staff_id = peer;
         api("/api/chat/messages", { method: "POST", body: JSON.stringify(payload) }).then(function (res) {
-          if (!res || !res.ok) {
-            addMsg("Not sent (" + esc((res && res.error) || "error") + ").", "internal");
-            return;
-          }
-          if (state.peerId !== sentTo) return;
-          state.conversationId = res.conversation_id;
-          loadInternalThread();
-          syncPoll();
+          finish(res, function (saved) {
+            state.conversationId = saved.conversation_id;
+            addMsg(esc(q), "me"); // The internal row exists before this ACK.
+            loadInternalThread();
+            syncPoll();
+          });
         });
         return;
       }
 
-      /* Only the picked client. The server finds that client's own text thread
-         from the client id, so no thread id is sent and an old one can never
-         carry the message to somebody else. */
-      if (!state.clientId) {
-        addMsg("Pick one of your clients first.");
-        return;
-      }
       api("/api/chat/messages", {
         method: "POST",
         body: JSON.stringify({
           kind: "client",
           body: q,
-          client_id: state.clientId,
-          channel: "sms"
+          client_id: client,
+          channel: "sms",
+          idempotency_key: retryKey
         })
       }).then(function (res) {
-        if (!res || !res.ok) {
-          addMsg("Not sent (" + esc((res && res.error) || "error") + ").");
-          return;
-        }
-        state.conversationId = res.conversation_id;
-        addMsg("Queued — outcome: " + esc(res.outcome || "accepted") +
-          (res.detail ? " (" + esc(res.detail) + ")" : "") + ".");
+        finish(res, function (saved) {
+          state.conversationId = saved.conversation_id;
+          addMsg(esc(q), "me"); // Saved row, not a carrier delivery receipt.
+          var outcome = String(saved.outcome || (saved.message && saved.message.status) || "queued");
+          if (saved.deduped) {
+            addMsg("Already saved — duplicate retry prevented. Check delivery status.");
+          } else if (/blocked|refused|failed|suppressed/i.test(outcome)) {
+            addMsg("Not delivered — " + esc(outcome) +
+              (saved.detail ? " (" + esc(saved.detail) + ")" : "") + ".");
+          } else if (outcome === "sent") {
+            addMsg("Sent to provider; final delivery receipt not verified.");
+          } else {
+            addMsg("Saved — " + esc(outcome) + "; not yet confirmed delivered." +
+              (saved.detail ? " (" + esc(saved.detail) + ")" : ""));
+          }
+        });
       });
     }
 
