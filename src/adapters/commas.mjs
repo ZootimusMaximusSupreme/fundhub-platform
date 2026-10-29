@@ -677,22 +677,20 @@ async function loadPaymentLink(db, { linkRef, sessionId }) {
   return null;
 }
 
-/* The two canonical events NO registered handler creates a client for.
+/* No client creation for abandoned checkouts OR post-payment reversals.
  *
- * Everything else on the bus — payment.received, payment.failed,
- * payment.refunded, payment.disputed, diagnostic.paid, deposit.paid,
- * sale.closed — reaches a handler that already calls resolveClient() and
- * find-or-creates by email (src/handlers/client-lifecycle.mjs register(),
- * src/handlers/commas-disputes.mjs register()). Resolving those here changes
- * WHEN that row is created, never WHETHER, so no client exists afterwards that
- * would not have existed anyway.
+ * A dispute/refund is not a new sale. A late processor event can contain a
+ * changed or unknown payer email; creating a CRM/customer row would hide the
+ * original receipt and could associate a chargeback with the wrong buyer.
+ * Their handler now resolves an existing same-org customer or the original
+ * same-org succeeded transaction, then assigns owner review. An unmatched
+ * dispute remains unattributed and is dead-lettered, never lead-captured.
  *
- * payment.expired and payment.canceled have no handler at all. They are
- * abandoned checkouts. Conjuring a client row into the CRM for somebody who
- * never paid would be inventing a customer, so those get a read-only lookup:
- * if the payer is already known they are attributed, and if not the event
- * stays unattributed. */
-const NO_HANDLER_CREATES_A_CLIENT = new Set(["payment.expired", "payment.canceled"]);
+ * First-time succeeded money events still use the ordinary lead-resolution
+ * path. No payment/ledger/commission behavior changes here. */
+const NO_HANDLER_CREATES_A_CLIENT = new Set([
+  "payment.expired", "payment.canceled", "payment.refunded", "payment.disputed"
+]);
 
 async function findClientIdByEmail(db, orgId, email) {
   if (!orgId || !email) return null;
