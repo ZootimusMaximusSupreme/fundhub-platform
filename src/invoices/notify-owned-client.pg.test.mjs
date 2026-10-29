@@ -118,7 +118,7 @@ describe("A/R invoice emails cannot address another company's client (real PG)",
       [orgA, `invoice:${validInvoice.id}:owned-client-valid`]
     )).rows[0];
     assert.equal(String(row.client_id), String(buyerA));
-    assert.match(row.to_address, /@example\\.invalid$/);
+    assert.match(row.to_address, /@example\.invalid$/);
     assert.equal(row.status, "queued");
   });
 });
