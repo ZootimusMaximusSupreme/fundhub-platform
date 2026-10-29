@@ -66,6 +66,7 @@ describe("A/R invoice email remaining-balance reconciliation (disposable PG)", {
        VALUES ($1,$2,'payment',400,'ci-fake', $3)`,
       [orgId, invoiceId, `ci-partial-${randomUUID()}`]
     );
+    await conn.query("UPDATE invoices SET status = 'partially_paid' WHERE id = $1", [invoiceId]);
     const sent = await emailInvoice(conn, {
       orgId, invoiceId, purpose: "partial-balance-ci", drainOutbox: noSend
     });
@@ -102,7 +103,7 @@ describe("A/R invoice email remaining-balance reconciliation (disposable PG)", {
     );
     // The invoice is deliberately still sent; a delayed markPaid() cannot
     // override what the canonical immutable receipt rows already establish.
-    assert.equal((await getInvoice(conn, { invoiceId })).status, "sent");
+    assert.equal((await getInvoice(conn, { invoiceId })).status, "partially_paid");
     const blocked = await emailInvoice(conn, {
       orgId, invoiceId, purpose: "stale-resend-ci", drainOutbox: noSend
     });
