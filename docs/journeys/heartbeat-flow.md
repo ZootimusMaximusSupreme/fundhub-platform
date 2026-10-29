@@ -115,6 +115,9 @@ The two payment queues keep their own Netlify sweepers (`commas-inbox-sweeper`,
 The `cortana-booking-feed` job also runs on this five-minute clock. Its
 `job_heartbeats` receipt goes red if a send fails, and the delivery ledger in
 `cortana_booking_sends` keeps that booking eligible for the next pass.
+The daily `cortana:booked-call-undelivered` gap and hourly `cortana-booking`
+beat read confirmed ClickFunnels calls against that ledger. A real call older
+than 20 minutes without a sent receipt is red; a clock ping alone cannot pass it.
 
 ## The hourly pulse (added 2026-10-09)
 
