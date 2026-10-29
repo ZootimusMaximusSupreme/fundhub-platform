@@ -64,6 +64,12 @@ function pgFake() {
         const r = optOuts.find((r) => r.client_id === params[0] && r.channel === params[1] && !r.opted_in_at);
         return { rows: r ? [{ 1: 1 }] : [] };
       }
+      // Explicit booking client IDs require same-organization ownership before
+      // resolveClient may patch contact data (the guard runs on real PostgreSQL).
+      if (/SELECT id FROM clients WHERE org_id = \$1 AND id = \$2 LIMIT 1/.test(sql)) {
+        const row = clients.find((c) => c.org_id === params[0] && c.id === params[1]);
+        return { rows: row ? [{ id: row.id }] : [] };
+      }
       if (/SELECT id FROM clients/.test(sql) && /lower\(email\)/.test(sql)) {
         const c = clients.find((c) => c.org_id === params[0] && String(c.email || "").toLowerCase() === params[1]);
         return { rows: c ? [{ id: c.id }] : [] };
@@ -703,6 +709,31 @@ test("booking.created: failed UID identity read creates neither a new lead nor a
   assert.equal(db.clients.length, 0);
   assert.equal(db.tasks.length, 0);
   assert.equal(db.bookings.length, 0);
+});
+
+test("booking.created: an explicit foreign-tenant client ID is rejected before contact updates", async () => {
+  const db = pgFake();
+  db.clients.push({
+    id: "cl-foreign", org_id: "org-another", email: "foreign@example.invalid",
+    phone: "+15550001111", tags: [], custom_fields: {}
+  });
+  const originalQuery = db.query.bind(db);
+  let contactWrites = 0;
+  db.query = async (sql, params) => {
+    if (/UPDATE clients/.test(sql)) contactWrites++;
+    return originalQuery(sql, params);
+  };
+  const result = await onBookingCreated(ev("booking.created", {
+    email: "foreign@example.invalid", phone: "+15550009999", name: "Different Name",
+    bookingUid: "uid-foreign-owner", source: "clickfunnels",
+    startTime: "2026-11-10T20:00:00Z"
+  }, { clientId: "cl-foreign" }), db);
+  assert.deepEqual(result, { skipped: "booking_client_scope_mismatch" });
+  assert.equal(contactWrites, 0, "wrong-tenant event must never patch contact data");
+  assert.equal(db.clients.length, 1);
+  assert.equal(db.clients[0].phone, "+15550001111");
+  assert.equal(db.bookings.length, 0);
+  assert.equal(db.tasks.length, 0);
 });
 
 test("booking.created: losing a concurrent UID insert never creates a closer task or sales-stage update", async () => {
