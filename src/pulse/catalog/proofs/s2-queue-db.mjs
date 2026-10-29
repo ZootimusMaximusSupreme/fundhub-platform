@@ -28,6 +28,10 @@ export function queueDb({
   let seq = 0;
   const idOf = () => `ee000000-0000-4000-8000-${String(++seq).padStart(12, "0")}`;
   const byId = (id) => state.messages.find((m) => m.id === id);
+  // Model the real invoice-to-client tenant join, not just the invoice ID.
+  // Missing buyers or cross-company links must fail closed in these fakes too.
+  const ownedBuyer = (inv) => Boolean(inv && clients[inv.client_id]
+    && (clients[inv.client_id].org_id ?? orgId) === (inv.org_id ?? orgId));
 
   const rules = [
     ...extra,
@@ -54,9 +58,10 @@ export function queueDb({
       return [{ address: c ? (/SELECT phone/.test(_s) ? c.phone : c.email) : null }];
     }],
     // An invoice is found by its id AND the asking company ($1, $2).
-    [/FROM invoices i\s+JOIN clients c ON c\.id = i\.client_id\s+JOIN orgs o/, (_s, p) => {
+    [/FROM invoices i\s+JOIN clients c ON c\.id = i\.client_id AND c\.org_id = i\.org_id\s+JOIN orgs o/, (_s, p) => {
       const inv = invoices[p[0]];
-      return inv && (inv.org_id ?? orgId) === p[1] ? [{ org_name: "Fundhub", currency: "USD", status: "sent", ...inv }] : [];
+      return ownedBuyer(inv) && (inv.org_id ?? orgId) === p[1]
+        ? [{ org_name: "Fundhub", currency: "USD", status: "sent", ...inv }] : [];
     }],
     [/UPDATE invoices/, (s, p) => {
       state.invoiceUpdates.push({ sql: s, params: p });
@@ -65,7 +70,8 @@ export function queueDb({
     }],
     // The never-emailed list is one company's ($1) invoices, newest rules of the SQL kept.
     [/i\.status = 'sent'\s+AND i\.emailed_at IS NULL/, (_s, p) => Object.values(invoices)
-      .filter((inv) => (inv.org_id ?? orgId) === p[0] && inv.status === "sent" && !inv.emailed_at)
+      .filter((inv) => ownedBuyer(inv) && (inv.org_id ?? orgId) === p[0]
+        && inv.status === "sent" && !inv.emailed_at)
       .slice(0, p[1])],
     [/FROM client_authorized_reps/, []],
     [/FROM opt_outs/, (_s, p) => (optedOut.includes(p[0]) ? [{ "?column?": 1 }] : [])],
