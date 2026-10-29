@@ -378,13 +378,10 @@ const bookingUid = (p) => normalizeProviderUid(p && p.bookingUid);
 
 /* Store the booking as a booking (db/migrations/225_bookings.sql).
 
-   WHY THIS SWALLOWS ITS OWN FAILURES, like threadMessage() above. The tasks row
-   is what the calendar, the closer queue and the client detail screen actually
-   read today; the bookings row is the new record beside it. If the bookings
-   write fails, the task has already been written and must stay written — and
-   throwing from here would dead-letter an event whose real work succeeded, so
-   the retry would re-run the whole handler. It logs instead, loudly enough to
-   find. */
+   The booking.created path calls this with strict=true BEFORE creating the
+   closer task: a rejected provider identity or failed INSERT is NOT a booked
+   sale call and must not create staff activity. Other historical event paths
+   preserve their best-effort behavior and record failures for reconciliation. */
 async function recordBooking(db, event, p, clientId, status, { strict = false } = {}) {
   if (!event.orgId) return null;
   try {
@@ -482,10 +479,13 @@ async function withBookingUidLock(db, orgId, uid, callback) {
   const client = await source.connect();
   const key = `front-booking:${orgId}:${uid}`;
   let locked = false;
-  let discard = false;
+  // If acquisition errors after the server acquired the session lock, never
+  // reuse this connection: the caller cannot prove that the lock was released.
+  let discard = true;
   try {
     await client.query("SELECT pg_advisory_lock(hashtextextended($1::text, 0))", [key]);
     locked = true;
+    discard = false;
     return await callback(client);
   } finally {
     if (locked) {
