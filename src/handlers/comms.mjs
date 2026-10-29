@@ -549,6 +549,17 @@ async function onBookingCreatedLocked(event, db, p, uid) {
       return { skipped: "booking_already_recorded" };
     }
   }
+  // resolveClient patches the explicit customer before looking them up. For
+  // booking webhooks this ID must be owned by the event's organization first;
+  // a foreign ID may not edit another tenant's contact or receive a call task.
+  if (event.clientId) {
+    if (!event.orgId) return { skipped: "booking_client_scope_mismatch" };
+    const owner = await db.query(
+      "SELECT id FROM clients WHERE org_id = $1 AND id = $2 LIMIT 1",
+      [event.orgId, event.clientId]
+    );
+    if (!owner.rows[0]) return { skipped: "booking_client_scope_mismatch" };
+  }
   const clientId = await resolveClient(db, event);
   if (!clientId) return;
   const accepted = await recordBooking(db, event, p, clientId, BOOKING_STATUS.BOOKED, { strict: true });
