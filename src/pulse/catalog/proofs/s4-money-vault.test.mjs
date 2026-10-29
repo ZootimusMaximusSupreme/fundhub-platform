@@ -201,6 +201,12 @@ for (const target of [PAGE, FRAME]) {
       await flip.locator('[data-act="reject-send"]').click();
       await waitFor(() => posts.length === 4);
       assert.deepEqual(last(), { action: "reject", document_id: articles.id, reason: "Wrong state on the filing", client_id: CLIENT_ID });
+      // The POST is logged before the response finishes and the DOM repaints.
+      // Require the saved result before opening Change on a different file:
+      // otherwise the late repaint can close its newly opened accept form.
+      await page.waitForFunction(() => document.body.innerText.includes(
+        "Rejected. The client sees: Wrong state on the filing"
+      ));
       await row(augStatement).locator('[data-act="change"]').click();
       assert.equal(await row(augStatement).locator('.vt-form[data-form="accept"]').isVisible(), true, "a rejected file flips back to accept");
     }, surface);
