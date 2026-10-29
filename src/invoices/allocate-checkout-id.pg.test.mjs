@@ -124,6 +124,65 @@ describe("A/R explicit checkout ID cannot be rescued by conflicting reference (r
       assert.equal(String(tasks.rows[0].client_id), String(buyerId));
     });
 
+    test("two valid same-tenant checkout locators for different invoices cannot allocate", async () => {
+      const original = await issue(orgId, buyerId);
+      const competing = await issue(orgId, buyerId);
+      const originalLink = await makeLink(orgId, buyerId, original);
+      const otherLink = await makeLink(orgId, buyerId, competing);
+
+      // Both the explicit checkout ID and link ref resolve in this tenant.
+      // Previously the ID won and the conflicting second locator was ignored.
+      const got = await allocatePayment(tx, receipt(
+        original.id, originalLink.id, otherLink.link_ref
+      ));
+      assert.equal(got.allocated, false);
+      assert.equal(got.reason, "invoice_mismatch");
+      assert.equal(await count(original), 0);
+      assert.equal(await count(competing), 0);
+      assert.equal((await getInvoice(conn, { invoiceId: original.id })).status, "sent");
+      assert.equal((await getInvoice(conn, { invoiceId: competing.id })).status, "sent");
+    });
+
+    test("same-tenant conflicting link ref on PSP replay must not be acknowledged", async () => {
+      const original = await issue(orgId, buyerId);
+      const competing = await issue(orgId, buyerId);
+      const originalLink = await makeLink(orgId, buyerId, original);
+      const otherLink = await makeLink(orgId, buyerId, competing);
+      const paymentId = `ar-dual-checkout-${randomUUID()}`;
+      const originalReceipt = receipt(
+        original.id, originalLink.id, originalLink.link_ref, paymentId
+      );
+      assert.equal((await allocatePayment(tx, originalReceipt)).allocated, true);
+      assert.equal(await count(original), 1);
+
+      const forgedReplay = await allocatePayment(tx, receipt(
+        original.id, originalLink.id, otherLink.link_ref, paymentId
+      ));
+      assert.equal(forgedReplay.allocated, false);
+      assert.equal(forgedReplay.replay, false);
+      assert.equal(forgedReplay.reason, "receipt_reference_mismatch");
+      assert.equal(await count(original), 1);
+      assert.equal(await count(competing), 0);
+      const tasks = await conn.query(
+        `SELECT client_id FROM tasks
+         WHERE org_id = $1 AND source_workflow = 'ar-allocate' AND body = $2`,
+        [orgId, `receipt-conflict:${paymentId}`]
+      );
+      assert.equal(tasks.rows.length, 1);
+      assert.equal(String(tasks.rows[0].client_id), String(buyerId));
+    });
+
+    test("an explicit correct checkout ID with an unrecognized provider ref still allocates", async () => {
+      const invoice = await issue(orgId, buyerId);
+      const link = await makeLink(orgId, buyerId, invoice);
+      const got = await allocatePayment(tx, receipt(
+        invoice.id, link.id, `provider-only-${randomUUID()}`
+      ));
+      assert.equal(got.allocated, true);
+      assert.equal(got.appliedCents, 2500);
+      assert.equal(await count(invoice), 1);
+    });
+
     test("real matching checkout ID + local ref still allocates once, replay stays safe", async () => {
       const invoice = await issue(orgId, buyerId);
       const good = await makeLink(orgId, buyerId, invoice);

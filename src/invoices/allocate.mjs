@@ -77,9 +77,25 @@ async function findByPaymentLink(db, { orgId, paymentLinkId, ref }) {
     // authority. A missing/foreign ID must never be rescued by a second
     // `ref` field that happens to point at a payable local invoice.
     // Otherwise contradictory checkout metadata could credit the wrong bill.
-    return r.rows[0]?.invoice_id
-      ? getInvoice(db, { invoiceId: r.rows[0].invoice_id })
-      : null;
+    const invoiceId = r.rows[0]?.invoice_id;
+    if (!invoiceId) return null;
+    if (ref) {
+      // Both locators may be individually valid yet point at DIFFERENT same-org
+      // invoices. Never silently prefer one and book the receipt to the wrong
+      // sale. Unknown refs are allowed: some provider callbacks use non-link
+      // reference strings; only a positively identified conflict is refused.
+      const byRef = await db.query(
+        `SELECT invoice_id FROM payment_links
+          WHERE link_ref = $1 AND org_id = $2 AND invoice_id IS NOT NULL
+          LIMIT 1`,
+        [String(ref), orgId]
+      );
+      if (byRef.rows[0]?.invoice_id &&
+          String(byRef.rows[0].invoice_id) !== String(invoiceId)) {
+        return null;
+      }
+    }
+    return getInvoice(db, { invoiceId });
   }
   if (ref) {
     const r = await db.query(
