@@ -11,7 +11,7 @@ function fakeDb() {
       updates.push({ sql: String(sql).replace(/\s+/g, " ").slice(0, 100), params });
       // The stored EX letter has a successful owner-scoped claim in this fake.
       // Explicit IDs with no matching row must fail closed, not reach the mailer.
-      if (/UPDATE\\s+dispute_letters\\s+d\\b/i.test(String(sql))
+      if (/UPDATE\s+dispute_letters\s+d\b/i.test(String(sql))
           && params[0] === "55555555-5555-4555-8555-555555555555") {
         return { rows: [{ prior_status: "ready" }] };
       }
