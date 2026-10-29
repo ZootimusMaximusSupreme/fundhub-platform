@@ -76,3 +76,41 @@ test("round.started from another organization cannot mutate or assign a foreign 
   assert.deepEqual(db.clients[0].tags, ["client:repair"]);
   assert.deepEqual(db.clients[0].custom_fields, { lifecycle_status: "Original" });
 });
+
+test("a second funding round does not duplicate an unassigned client's pod task", async () => {
+  const db = pgFake({ clients: [{
+    id: "cl-1", org_id: "org-1", email: "pod+repeated@example.test",
+    outcome_tier: "FULL_FUNDING", custom_fields: {}
+  }] });
+  const first = await handle({
+    event: ev("round.started", { roundNumber: 1 }, { id: "first-round", clientId: "cl-1" }),
+    db, step: fakeStep()
+  });
+  const second = await handle({
+    event: ev("round.started", { roundNumber: 2 }, { id: "second-round", clientId: "cl-1" }),
+    db, step: fakeStep()
+  });
+  assert.equal(first.done, true);
+  assert.equal(first.podTask.created, true);
+  assert.equal(second.done, true);
+  assert.equal(second.podTask.created, false, "the task was already created for this client");
+  assert.equal(db.tasks.length, 1);
+  assert.equal(db.tasks[0].body, "pod-assignment:org-1:cl-1");
+  assert.equal(db.tasks[0].assignee_role, "funding_advisor");
+  assert.ok(new Date(db.tasks[0].due_at) > new Date());
+});
+
+test("concurrent different round events cannot claim two identical pod tasks", async () => {
+  const db = pgFake({ clients: [{
+    id: "cl-1", org_id: "org-1", email: "pod+concurrent@example.test",
+    outcome_tier: "FULL_FUNDING", custom_fields: {}
+  }] });
+  const events = ["round-one", "round-two", "round-three"].map((id) =>
+    ev("round.started", {}, { id, clientId: "cl-1" }));
+  const results = await Promise.all(events.map((event) =>
+    handle({ event, db, step: fakeStep() })));
+  assert.ok(results.every((r) => r.done === true));
+  assert.equal(db.tasks.length, 1, "all new round starts converge on one task");
+  assert.equal(results.filter((r) => r.podTask.created).length, 1,
+    "only the real insert may report created:true");
+});
