@@ -24,7 +24,7 @@ function fixture() {
   const query = db.query.bind(db);
   db.query = async (sql, params) => {
     queries.push(String(sql));
-    if (/\\b(?:INSERT|UPDATE|DELETE)\\s+clients\\b/i.test(sql)) {
+    if (/\b(?:INSERT|UPDATE|DELETE)\s+clients\b/i.test(sql)) {
       throw new Error("A/R must never mutate a CRM customer");
     }
     return query(sql, params);
