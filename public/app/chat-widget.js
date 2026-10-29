@@ -411,6 +411,7 @@
        Keep the draft and prevent double-clicks until we have a real ACK. */
     var sendBusy = false;
     var sendRetry = null;
+    var portalRetry = null;
     function submit() {
       var input = document.getElementById("fh-chat-input");
       var q = (input && input.value || "").trim();
@@ -494,13 +495,23 @@
       }
 
       if (isPortal) {
+        /* A timeout can happen AFTER the server saved a note. Retrying the
+           unchanged draft must carry the same key to suppress duplicates.
+           New text starts a new note. This key never represents SMS delivery. */
+        if (!portalRetry || portalRetry.text !== q) {
+          portalRetry = { text: q, key: (window.crypto && window.crypto.randomUUID)
+            ? window.crypto.randomUUID()
+            : String(Date.now()) + "-" + String(Math.random()).slice(2) };
+        }
         api("/api/chat/portal-message", {
           method: "POST",
-          body: JSON.stringify({ body: q, channel: "sms" })
+          body: JSON.stringify({ body: q, channel: "sms", idempotency_key: portalRetry.key })
         }).then(function (res) {
           finish(res, function (saved) {
+            portalRetry = null;
             state.conversationId = saved.conversation_id;
             addMsg(esc(q), "me"); // Persisted in portal thread, NOT an outbound SMS receipt.
+            if (saved.deduped) addMsg("Already saved — your retry did not create a second message.");
             loadPortalThread();
             syncPoll();
           });
