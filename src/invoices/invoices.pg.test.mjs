@@ -83,8 +83,8 @@ describe("invoices against real Postgres", { skip: !HAVE_DB ? "no DATABASE_URL" 
 
   // ── the AR ladder 031 redefined ────────────────────────────────────────────
 
-  test("markPaid settles every OPEN rung, including the two 031 added", async () => {
-    for (const status of ["draft", "sent", "reminded", "escalated", "partially_paid"]) {
+  test("markPaid settles every ISSUED unpaid rung, including the two 031 added", async () => {
+    for (const status of ["sent", "reminded", "escalated", "partially_paid"]) {
       const row = await mk();
       if (status !== "draft") {
         await c.query(`UPDATE invoices SET status = $2 WHERE id = $1`, [row.id, status]);
@@ -96,8 +96,18 @@ describe("invoices against real Postgres", { skip: !HAVE_DB ? "no DATABASE_URL" 
     }
   });
 
+  test("markPaid refuses a draft invoice until it was issued", async () => {
+    const draft = await mk({ source: "funding_success_fee", amount: 1250 });
+    assert.equal(await markPaid(c, { invoiceId: draft.id }), null,
+      "a draft success-fee invoice was paid before customer issuance");
+    assert.equal((await getInvoice(c, { invoiceId: draft.id })).status, "draft");
+    await markSent(c, { invoiceId: draft.id });
+    assert.equal((await markPaid(c, { invoiceId: draft.id })).status, "paid");
+  });
+
   test("markPaid refuses a settled or void invoice", async () => {
     const paid = await mk();
+    await markSent(c, { invoiceId: paid.id });
     await markPaid(c, { invoiceId: paid.id });
     assert.equal(await markPaid(c, { invoiceId: paid.id }), null, "an invoice was paid twice");
 
@@ -108,8 +118,36 @@ describe("invoices against real Postgres", { skip: !HAVE_DB ? "no DATABASE_URL" 
 
   test("voidInvoice refuses to void something already paid", async () => {
     const row = await mk();
+    await markSent(c, { invoiceId: row.id });
     await markPaid(c, { invoiceId: row.id });
     assert.equal(await voidInvoice(c, { invoiceId: row.id }), null);
+  });
+
+  test("voidInvoice replay cannot rewrite its timestamp or audit notes", async () => {
+    const row = await mk();
+    const first = await voidInvoice(c, { invoiceId: row.id, notes: "cancelled by agreement" });
+    assert.equal(first.status, "void");
+    assert.ok(first.voided_at);
+    assert.equal(await voidInvoice(c, { invoiceId: row.id, notes: "replay overwrote reason" }), null);
+    const unchanged = await getInvoice(c, { invoiceId: row.id });
+    assert.equal(unchanged.status, "void");
+    assert.equal(unchanged.notes, "cancelled by agreement");
+    assert.equal(unchanged.voided_at.getTime(), first.voided_at.getTime());
+  });
+
+  test("voidInvoice cannot erase an authorized write-off and its reason", async () => {
+    const row = await mk();
+    await c.query(
+      `UPDATE invoices SET status = 'written_off', write_off_reason = $2, written_off_at = now()
+         WHERE id = $1`,
+      [row.id, "authorized, uncollectible"]
+    );
+    assert.equal(await voidInvoice(c, { invoiceId: row.id, notes: "drop audit" }), null);
+    const after = await getInvoice(c, { invoiceId: row.id });
+    assert.equal(after.status, "written_off");
+    assert.equal(after.write_off_reason, "authorized, uncollectible");
+    assert.equal(after.notes, null);
+    assert.ok(after.written_off_at);
   });
 
   // ── idempotency: all three dimensions, absorbed not raised ─────────────────
