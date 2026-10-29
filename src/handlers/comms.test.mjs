@@ -554,6 +554,8 @@ test("booking.created: a redelivered event does not add a second booking with no
   await onBookingCreated(e, db);
   await onBookingCreated(e, db);
   assert.equal(db.bookings.length, 1, "a replay multiplied a booking that has no provider id");
+  assert.equal(db.tasks.length, 1, "a replay without provider UID must not create extra closer tasks");
+  assert.equal(db.tasks[0].body, "evt-nouid", "stable event ID is the task dedupe key");
 });
 
 test("booking.created: two DIFFERENT bookings with no uid stay two rows", async () => {
@@ -566,6 +568,8 @@ test("booking.created: two DIFFERENT bookings with no uid stay two rows", async 
   }, { id: "evt-two-b" }), db);
   assert.equal(db.bookings.length, 2,
     "two bookings we cannot tell apart were silently merged into one");
+  assert.equal(db.tasks.length, 2, "distinct UID-less event IDs still create distinct tasks");
+  assert.deepEqual(db.tasks.map(t => t.body), ["evt-two-a", "evt-two-b"]);
 });
 
 test("booking.cancelled: a cancellation matching no booking does NOT invent one", async () => {
