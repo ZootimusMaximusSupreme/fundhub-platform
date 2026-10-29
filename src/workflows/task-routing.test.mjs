@@ -41,7 +41,8 @@ function bookingTaskFake(seed) {
       return { rows: row ? [row] : [] };
     }
     if (/INSERT INTO bookings/.test(sql)) {
-      const [org_id, client_id, source, provider_uid,,,, status] = params;
+      const [org_id, client_id, source, provider_uid] = params;
+      const status = params[6];
       const row = { org_id, client_id, source, provider_uid, status };
       fake.bookings.push(row);
       return { rows: [row] };
