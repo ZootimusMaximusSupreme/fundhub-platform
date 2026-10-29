@@ -121,6 +121,57 @@ describe("A/R tenant-isolated invoice payment identity (rollback-only real Postg
       assert.equal(await badTaskCount(), 0);
     });
 
+    test("valid local invoice ID plus a foreign checkout ID is a conflict, not permission to settle", async () => {
+      const local = await issue();
+      const foreign = await issue({ orgId: otherOrg, clientId: otherBuyer });
+      const foreignLink = (await conn.query(
+        `INSERT INTO payment_links (org_id, client_id, purpose, amount_cents,
+            link_ref, checkout_url, invoice_id)
+         VALUES ($1,$2,'custom',10000,$3,'https://example.invalid/ci',$4)
+         RETURNING id`,
+        [otherOrg, otherBuyer, `ar-foreign-conflict-${randomUUID()}`, foreign.id]
+      )).rows[0].id;
+      const res = await allocatePayment(tx, received({
+        payload: {
+          product: "success_fee", amount: 25, invoiceId: local.id,
+          paymentLinkId: foreignLink, paymentId: randomUUID()
+        }
+      }));
+      assert.equal(res.reason, "invoice_mismatch");
+      assert.equal(res.allocated, false);
+      assert.equal(await receiptCount(local.id), 0);
+      assert.equal(await receiptCount(foreign.id), 0);
+      assert.equal(await badTaskCount(), 0);
+    });
+
+    test("replayed local receipt with a foreign checkout ID is refused as conflicting", async () => {
+      const local = await issue();
+      const paymentId = randomUUID();
+      const first = await allocatePayment(tx, received({
+        payload: { product: "success_fee", amount: 25, invoiceId: local.id, paymentId }
+      }));
+      assert.equal(first.allocated, true);
+      const foreign = await issue({ orgId: otherOrg, clientId: otherBuyer });
+      const foreignLink = (await conn.query(
+        `INSERT INTO payment_links (org_id, client_id, purpose, amount_cents,
+            link_ref, checkout_url, invoice_id)
+         VALUES ($1,$2,'custom',10000,$3,'https://example.invalid/ci',$4)
+         RETURNING id`,
+        [otherOrg, otherBuyer, `ar-replay-foreign-link-${randomUUID()}`, foreign.id]
+      )).rows[0].id;
+      const res = await allocatePayment(tx, received({
+        payload: {
+          product: "success_fee", amount: 25, invoiceId: local.id,
+          paymentLinkId: foreignLink, paymentId
+        }
+      }));
+      assert.equal(res.allocated, false);
+      assert.equal(res.replay, false);
+      assert.equal(res.reason, "receipt_reference_mismatch");
+      assert.equal(await receiptCount(local.id), 1);
+      assert.equal(await receiptCount(foreign.id), 0);
+    });
+
     test("same-org mismatched buyer queues review for invoice owner, not event contact", async () => {
       const local = await issue();
       const res = await allocatePayment(tx, received({
