@@ -34,7 +34,8 @@ test("repair-start: one event creates both tasks despite UNIQUE (client, workflo
         source_workflow text NOT NULL,
         assignee_role text,
         assignee_staff_id uuid,
-        meeting_url text
+        meeting_url text,
+        detail text
       ) ON COMMIT DROP`);
       // Reproduce db/schema/006_tasks_idempotency.sql, including NULL semantics.
       await conn.query(`CREATE UNIQUE INDEX tasks_test_idempotency
@@ -45,13 +46,15 @@ test("repair-start: one event creates both tasks despite UNIQUE (client, workflo
 
       const first = await createRepairStartTasks(conn, { ...spec, eventId: "payment-1" });
       assert.equal(first.count, 2, "both required staff jobs must survive one payment's dedupe key");
-      let rows = (await conn.query(`SELECT title, body, due_at, assignee_role
+      let rows = (await conn.query(`SELECT title, body, detail, due_at, assignee_role
         FROM tasks WHERE client_id = $1 ORDER BY title`, [clientId])).rows;
       assert.equal(rows.length, 2);
       assert.equal(new Set(rows.map((r) => r.body)).size, 2,
         "distinct jobs need distinct stable database idempotency keys");
       assert.ok(rows.every((r) => r.assignee_role === "inquiry_specialist" && r.due_at),
         "both jobs must be owned and visible on the staff Calendar");
+      assert.ok(rows.every((r) => r.detail && /rounds are paid for|No dispute letter/.test(r.detail)),
+        "readable instructions must be preserved in tasks.detail");
 
       const replay = await createRepairStartTasks(conn, { ...spec, eventId: "payment-2" });
       assert.equal(replay.count, 0, "later installment must not mint another pair");
