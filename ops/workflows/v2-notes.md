@@ -48,6 +48,14 @@ One row per fix. Fill all five boxes.
 
 Add new rows under row 27 as Chris talks.
 
+### Cortana booking receipt repair, 2026-10-29
+
+- **Owner:** Codex owns the Fundhub server feed and DirectROAS source. Claude owns the funnel event retry in PR #251; those files are separate.
+- **Ground truth:** ClickFunnels bookings 75827 and 75829 reached Fundhub but were absent from DirectROAS's native ClickFunnels receipt list. Both were sent to the new Funding Call webhook source on October 29; the source showed 2 successes and 0 failures. A separate setup event was marked test.
+- **Plan:** Reuse the saved `bookings` row, `client_ad_attribution`, the adapter outbound fence, and the Netlify cron clock. Add one delivery ledger and one five-minute sender. Keep the calendar, pixel, qualification copy, and funnel HTML unchanged.
+- **Proof:** Run focused provider, retry, workflow registry, lint, full suite, migration manifest, and diagram checks. Deploy with the production webhook URL and verify a real or controlled new booking in DirectROAS before saying future sends work live.
+- **Risk:** A vendor timeout after acceptance can be ambiguous; the booking ID stays stable in the payload. Failed sends stay in the ledger and the job heartbeat goes red.
+
 ## 2026-10-26 Monday funnel repair lanes
 
 Source: the 2026-10-26 customer walk notes in the main checkout. This branch covers Monday rows 18–20, 22–24, and 26. Rows 21 and 27 remain V2.

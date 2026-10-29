@@ -54,6 +54,7 @@ import { affiliatePayoutAutopay } from './affiliate-payout-autopay.mjs';
 import { meetTranscriptSweeper } from './meet-transcript-sweeper.mjs';
 import { metaCampaignSyncSweeper } from './meta-campaign-sync-sweeper.mjs';
 import { clickfunnelsAnalyticsSweeper } from './clickfunnels-analytics-sweeper.mjs';
+import { cortanaBookingFeed } from './cortana-booking-feed.mjs';
 import { watchCurveDiagnosisSweeper } from './watch-curve-diagnosis-sweeper.mjs';
 import { subscriptionBillingSweeper } from './subscription-billing-sweeper.mjs';
 import { partnerProductionFloorReview } from './partner-production-floor.mjs';
@@ -64,6 +65,7 @@ import { sloInfiniteDrip } from './slo-infinite-drip.mjs';
 import { metaCampaignSyncHourly } from './meta-campaign-sync-sweeper.mjs';
 
 export const scheduled = [
+  cortanaBookingFeed,
   bankOutreachCheckins,
   /* Bank outreach automation (2026-10-20), every 15 minutes: find bankers by search, queue the
      three cold emails, read banker replies. It sends nothing itself; the dispatcher does. */

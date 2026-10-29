@@ -35,6 +35,7 @@ export const CLOCK_JOBS = Object.freeze([
   ["blueprint-finance-os-alerts", "30 7 * * *"],
   ["blueprint-next-funding-sequence-sweeper", "30 6 * * *"],
   ["clickfunnels-analytics-sweeper", "15 7 * * *"],
+  ["cortana-booking-feed", "*/5 * * * *"],
   ["contract-chaser", "0 10 * * *"],
   ["daily-pulse", "TZ=America/Phoenix 0 6 * * *"],
   ["doc-check-retry-sweeper", "*/20 * * * *"],

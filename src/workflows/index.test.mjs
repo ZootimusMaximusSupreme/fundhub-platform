@@ -134,6 +134,7 @@ const EXPECTED_WORKFLOW_IDS = [
   "meta-campaign-sync-sweeper",
   "meta-campaign-sync-hourly",
   "clickfunnels-analytics-sweeper",
+  "cortana-booking-feed",
   "watch-curve-diagnosis-sweeper",
   "n-01-cold-nurture",
   "n-02-warm-nurture",
