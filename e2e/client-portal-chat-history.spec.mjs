@@ -10,11 +10,15 @@ function reply(route, obj, status = 200) {
   return route.fulfill({ status, contentType: "application/json", body: JSON.stringify(obj) });
 }
 async function wire(page, state) {
-  await page.addInitScript(() => {
+  await page.addInitScript((isStaff) => {
     localStorage.setItem("fh_token", "isolated-e2e");
-    localStorage.setItem("fh_role", "client");
+    localStorage.setItem("fh_role", isStaff ? "owner" : "client");
     localStorage.removeItem("fh_demo");
-  });
+    // Only this account-tab proof suppresses the separate auto-open chat
+    // widget; otherwise its GET poll is counted as a tab request. The shared
+    // widget has its own actual browser tests in PR #254.
+    window.FHChat = { mount() {} };
+  }, !!state.staff);
   await page.route("**/api/**", (route) => {
     const u = new URL(route.request().url()), p = u.pathname;
     if (p === "/api/auth/session") {
