@@ -1996,7 +1996,18 @@
       "background:#fff;color:#18181B;text-decoration:none;cursor:pointer}" +
       "#fh-sop-shortcut:hover{background:#F4F4F5;border-color:#A1A1AA}" +
       "#fh-sop-shortcut:focus-visible{outline:2px solid #4866D7;outline-offset:3px}" +
-      "#fh-sop-shortcut svg{display:block;width:19px;height:19px}";
+      "#fh-sop-shortcut svg{display:block;width:19px;height:19px}" +
+      /* The 44px icon must not add a second row to the 320px shared
+         workspace header: doing so hides the first client card below the
+         viewport. Keep touch targets full-sized and truncate only the title. */
+      "@media(max-width:350px){" +
+      "body.fh-astra #fh-workspace-header{flex-wrap:nowrap}" +
+      "body.fh-astra #fh-workspace-header .fh-workspace-tools{" +
+        "flex-wrap:nowrap;flex:0 0 auto;gap:0}" +
+      "#fh-workspace-header .fh-workspace-identity{flex:1 1 0;min-width:0}" +
+      "#fh-workspace-header .fh-workspace-labels{flex:1 1 0;min-width:0}" +
+      "#fh-workspace-header #fh-sop-shortcut{margin-left:0}" +
+      "}";
     document.head.appendChild(style);
     var a = document.createElement("a");
     a.id = "fh-sop-shortcut";
