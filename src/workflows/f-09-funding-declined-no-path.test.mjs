@@ -208,7 +208,7 @@ test("F-09: paid funding receives no-path review despite stale repair-only tier"
   const query = db.query.bind(db);
   let checkedPurchase = false;
   db.query = async (sql, args) => {
-    if (/SELECT DISTINCT pr\\.category AS category/.test(sql)) {
+    if (sql.includes("SELECT DISTINCT pr.category AS category")) {
       checkedPurchase = true;
       assert.deepEqual(args, ["org-1", "cl-1"]);
       return { rows: [{ category: "repair" }, { category: "funding" }] };
@@ -234,7 +234,7 @@ test("F-09: unpaid or repair-only purchase cannot open no-path review on a manua
   });
   const query = db.query.bind(db);
   db.query = async (sql, args) =>
-    /SELECT DISTINCT pr\\.category AS category/.test(sql)
+    sql.includes("SELECT DISTINCT pr.category AS category")
       ? { rows: [{ category: "repair" }] }
       : query(sql, args);
   const result = await handle({
