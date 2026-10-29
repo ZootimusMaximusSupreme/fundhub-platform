@@ -30,9 +30,9 @@
 // deriving it from invoice_type is lossy: 'deposit' and 'platform_fee' cannot
 // say which product they came from and land on 'other'.
 
-/* The AR ladder states a payment or a send may still act on. 'overdue' is
-   deliberately absent — 031 removed it as a stored value. */
-const OPEN_STATUSES = ["draft", "sent", "reminded", "escalated", "partially_paid"];
+/* Only ISSUED invoices can be paid. Drafts are not collectible and a direct
+   helper call must not bypass the receipt allocator's issuance checks. */
+const PAYABLE_STATUSES = ["sent", "reminded", "escalated", "partially_paid"];
 
 /** @param {object} db — pg pool/client */
 export async function createInvoice(db, {
@@ -101,7 +101,7 @@ export async function markEscalated(db, { invoiceId, escalatedAt = new Date() })
   return result.rows[0] ?? null;
 }
 
-/** Mark an invoice as paid. Any open rung of the AR ladder may settle. */
+/** Mark an issued invoice paid; an unissued draft can never be settled. */
 export async function markPaid(db, { invoiceId, paidAt = new Date() }) {
   const result = await db.query(
     `UPDATE invoices
@@ -109,19 +109,19 @@ export async function markPaid(db, { invoiceId, paidAt = new Date() }) {
       WHERE id = $1
         AND status = ANY($3)
      RETURNING *`,
-    [invoiceId, paidAt, OPEN_STATUSES]
+    [invoiceId, paidAt, PAYABLE_STATUSES]
   );
   return result.rows[0] ?? null;
 }
 
-/** Void an invoice. Idempotent — already-voided rows return unchanged. */
+/** Void a live invoice once; never restamp a void or erase a write-off. */
 export async function voidInvoice(db, { invoiceId, notes = null }) {
   const result = await db.query(
     `UPDATE invoices
         SET status = 'void', voided_at = now(),
             notes = COALESCE($2, notes)
       WHERE id = $1
-        AND status != 'paid'
+        AND status IN ('draft', 'sent', 'reminded', 'escalated', 'partially_paid')
      RETURNING *`,
     [invoiceId, notes]
   );
