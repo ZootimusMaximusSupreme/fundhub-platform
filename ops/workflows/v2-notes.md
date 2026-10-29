@@ -64,6 +64,7 @@ Add new rows under row 27 as Chris talks.
 - **Why no second calendar or page:** The ClickFunnels API cannot create a calendar. The bucket comes from the survey answer, not from the calendar. Meta can optimize an ad set on the new events, so a second thank-you web address is not needed.
 - **Files:** `marketing/landing-pages/apply-survey.html` (no visible change), `public/funnel/fh-events.js`, `src/funnel/track.mjs`, `src/meta/map.mjs`, their tests, `docs/tracking/meta-events.md`, `docs/tracking/tracking-spec.md`.
 - **Proof:** Focused tracker, survey, Meta map and door tests; lint; GitHub CI; ship; ClickFunnels push of `/apply`; a live browser check that catches the sends before they leave the page.
+- **PR #251 live proof (2026-10-29, checked by a different chat than the fixer):** Merged as `855c8545`. Before the ship, a browser on the live `https://apply.fundhub.ai/thank-you` with a kept booking in the tab sent no `booking_confirmed` (FAIL). After `https://fundhub.ai/funnel/fh-events.js` served the new code, the same check sent it once, with the exact kept body, cleared the key, and sent nothing on a second load (PASS). The browser's send was stubbed and the door was blocked, so no row reached the live database and nothing reached Meta.
 
 ## 2026-10-26 Monday funnel repair lanes
 
