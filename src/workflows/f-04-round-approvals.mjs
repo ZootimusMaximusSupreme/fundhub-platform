@@ -9,7 +9,10 @@
 
 import { inngest } from "./client.mjs";
 import { db } from "../db.mjs";
-import { resolveClient } from "../handlers/client-lifecycle.mjs";
+// This is downstream paid-fulfillment activity, never a new lead capture.
+// Only already-existing clients owned by this event's org may be changed;
+// resolveClient could patch an explicit foreign ID or mint an unknown email.
+import { findClient } from "../handlers/purchase-routing.mjs";
 import { sendTemplated } from "./messaging.mjs";
 import { mergeCustomFields } from "./custom-fields.mjs";
 
@@ -17,7 +20,7 @@ export const EMAIL_TEMPLATE_KEY = "EMAIL-F04-ROUND-APPROVALS";
 export const SMS_TEMPLATE_KEY = "SMS-F04-ROUND-APPROVALS";
 
 export async function handle({ event, db, step }) {
-  const clientId = await step.run("resolve-client", () => resolveClient(db, event));
+  const clientId = await step.run("resolve-client", () => findClient(db, event));
   if (!clientId) return { sent: false, reason: "no_client" };
 
   const approvedAmount = Number(event.payload?.approvedAmount ?? 0);
