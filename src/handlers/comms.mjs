@@ -510,7 +510,10 @@ export async function onBookingCreated(event, db) {
   const p = event.payload || {};
   if (isInterviewBooking(p)) return { skipped: "interview" };
   const uid = bookingUid(p);
-  return withBookingUidLock(db, event.orgId, uid,
+  // UID-less provider forms still have a durable event ID. Serialize replay
+  // under that identity, but never merge two unrelated UID-less events.
+  const identity = uid ? `uid:${uid}` : event.id ? `event:${event.id}` : null;
+  return withBookingUidLock(db, event.orgId, identity,
     (identityDb) => onBookingCreatedLocked(event, identityDb, p, uid));
 }
 
@@ -569,12 +572,15 @@ async function onBookingCreatedLocked(event, db, p, uid) {
     // no row). A wrong-client or terminal appointment must not create tasks.
     return { skipped: "booking_not_accepted" };
   }
+  // For bookings without a provider UID, the immutable bus event ID is the
+  // task dedupe key, just as it already is for the bookings-row unique index.
+  const taskKey = uid || event.id || null;
   const dup = await db.query(
     `SELECT 1 FROM tasks
       WHERE client_id=$1 AND body=$2 AND title LIKE $3 LIMIT 1`,
-    [clientId, uid, BOOKING_TASK_TITLE_LIKE]
+    [clientId, taskKey, BOOKING_TASK_TITLE_LIKE]
   );
-  if (!(uid && dup.rows[0])) {
+  if (!(taskKey && dup.rows[0])) {
     await createTask(db, {
       orgId: event.orgId,
       clientId,
@@ -583,7 +589,7 @@ async function onBookingCreatedLocked(event, db, p, uid) {
       sourceWorkflow: bookingSource(p),
       assigneeRole: "closer",
       dueAt: p.startTime || null,
-      eventId: uid,
+      eventId: taskKey,
       meetingUrl: p.meetingUrl || null
     });
   }
@@ -592,7 +598,7 @@ async function onBookingCreatedLocked(event, db, p, uid) {
   await addTags(db, clientId, ["call:booked"]);
   await mergeCustomFields(db, clientId, {
     call_outcome: "booked",
-    ...(uid && dup.rows[0] ? {} : { call_confirmed: false })
+    ...(taskKey && dup.rows[0] ? {} : { call_confirmed: false })
   });
   if (event.orgId) {
     await advanceCardToStage(db, {
