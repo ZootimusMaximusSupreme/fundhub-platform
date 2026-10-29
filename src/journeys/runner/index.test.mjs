@@ -207,7 +207,8 @@ import { isSyntheticRow } from "./synthetic.mjs";
    whop-billing-inbox-drain are retired. They were Inngest twins of the Netlify sweepers that
    drain the same payment queues; those sweepers are now the only clocks. Every other cron is
    still in the registry, run by the Netlify cron clock instead of Inngest. */
-const REGISTERED = 104;
+// The confirmed booking feed is a Netlify clock job with no journey event.
+const REGISTERED = 105;
 
 const N = (id, type, cfg = {}, branches) => ({ id, type, title: id, cfg, touches: [], branches });
 const cond = (id, lanes) => N(id, "condition", { field: "f", op: "is true" }, lanes);

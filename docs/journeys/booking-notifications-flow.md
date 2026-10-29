@@ -352,7 +352,18 @@ workflow → sendTemplated (src/workflows/messaging.mjs)
           → only after a sent booking-confirmation text, optional native APNs alert
 ```
 
-## 7. Known gaps, not fixed here
+## 7. Cortana's confirmed-booking receipt (2026-10-29)
+
+The ClickFunnels appointment still creates a saved Fundhub booking. The
+`cortana-booking-feed` clock reads confirmed ClickFunnels booking rows created
+after its cutover and posts each one to the existing **Funding Call** conversion
+through `src/messaging/providers/cortana-booking-webhook.mjs`. The
+`cortana_booking_sends` row records success or a retryable failure, so a browser
+leaving the thank-you page cannot lose the server-side conversion. Company,
+demo, and simulated buyer bookings are marked skipped. This is a vendor event,
+not a customer text or an eligibility decision; the call copy is unchanged.
+
+## 8. Known gaps, not fixed here
 
 * **The workflow engine's fan-out is fire-and-forget and its failure is
   swallowed** (`src/events/bus.mjs`). If the hand-off fails, nothing anywhere

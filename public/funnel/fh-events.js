@@ -210,6 +210,29 @@
     })["catch"](function () {});
   }
 
+  /* booking_confirmed is sent a moment before the page moves to /thank-you. A
+     beacon can be dropped by that move (2026-10-29: a Facebook-ad booking's seq
+     66 never reached the door). So its exact body is kept for this tab and sent
+     once more on the next page. The door keys a row on session + seq, so a body
+     that already landed is not saved twice and Meta is not sent twice. */
+  var RESEND_KEY = "fh_booking_resend_v1";
+  var RESEND_MS = 30 * 60 * 1000;
+  function keepForResend(payload) {
+    try { sessionStorage.setItem(RESEND_KEY, JSON.stringify({ at: now(), body: payload })); } catch (e) {}
+  }
+  function resendKept() {
+    var raw = null;
+    try { raw = sessionStorage.getItem(RESEND_KEY); } catch (e) { return; }
+    if (!raw) return;
+    try { sessionStorage.setItem(RESEND_KEY, ""); } catch (e) { return; }
+    try {
+      var k = JSON.parse(raw || "null");
+      if (!k || typeof k.body !== "string" || !(now() - Number(k.at) < RESEND_MS)) return;
+      var b = JSON.parse(k.body);
+      if (b && b.event === "booking_confirmed") beacon(k.body);
+    } catch (e) {}
+  }
+
   /* ── Meta ids: fbclid, fbc, fbp, the page url ─────────────────────────── */
 
   function urlParam(name) {
@@ -529,7 +552,9 @@
       }
       try { fire(list); } catch (e) {}
       try { fireCortana(event, kept, page, body); } catch (e) {}
-      beacon(JSON.stringify(body));
+      var payload = JSON.stringify(body);
+      if (event === "booking_confirmed") keepForResend(payload);
+      beacon(payload);
     } catch (e) {}
   }
 
@@ -1097,5 +1122,6 @@
   } catch (e) {}
   on(window, "load", function () { scan(); later(scan, 2500); });
 
+  resendKept();
   try { if (visible()) startClock(); } catch (e) {}
 })();

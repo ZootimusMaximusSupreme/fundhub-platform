@@ -415,6 +415,33 @@ describe("framed calendar relay", () => {
     assert.equal(p.win.location.href, "https://apply.fundhub.ai/thank-you");
   });
 
+  test("the accepted booking's exact body is sent once more on the next page, so a beacon lost to the redirect still lands", () => {
+    const apply = makePage({ pathname: "/apply", storage: { fh_sid: "sess-abcdef12" } }).run();
+    const frame = apply.node("iframe", { id: "fh-book-frame" });
+    frame.contentWindow = {};
+    apply.add(frame);
+    apply.fireWin("message", { ...msg("booking_confirmed", { calendar: "funding-book-call" }), source: frame.contentWindow });
+    apply.fireWin("message", { ...msg("time_selected", { calendar: "funding-book-call" }), source: frame.contentWindow });
+    const first = apply.sent.find((s) => JSON.parse(s.text).event === "booking_confirmed").text;
+
+    const thanks = makePage({ pathname: "/thank-you", storage: apply.store, fbq: true }).run();
+    const again = thanks.sent.filter((s) => JSON.parse(s.text).event === "booking_confirmed");
+    assert.equal(again.length, 1, "resent once");
+    assert.equal(again[0].text, first, "same session, seq and Meta id, so the door saves it once");
+    assert.equal(thanks.events("time_selected").length, 0, "only booking_confirmed is kept");
+    assert.deepEqual(thanks.fbqCalls, [], "no second browser Schedule");
+
+    const later = makePage({ pathname: "/thank-you", storage: thanks.store }).run();
+    assert.equal(later.events("booking_confirmed").length, 0, "never a third time");
+  });
+
+  test("a kept booking older than 30 minutes is dropped, not resent", () => {
+    const body = JSON.stringify({ kind: "track", event: "booking_confirmed", seq: 9, session_id: "sess-abcdef12", page: "/apply", props: {} });
+    const p = makePage({ pathname: "/thank-you", storage: { fh_booking_resend_v1: JSON.stringify({ at: 1_000_000 - 31 * 60 * 1000, body }) } }).run();
+    assert.equal(p.events("booking_confirmed").length, 0);
+    assert.equal(p.store.fh_booking_resend_v1, "");
+  });
+
   test("a relay without the actual frame source never redirects /apply", () => {
     const p = makePage({ pathname: "/apply" }).run();
     const frame = p.node("iframe", { id: "fh-book-frame" });
