@@ -488,7 +488,12 @@ export async function bookingStateAt(db, { orgId, clientId = null, bookingUid = 
               ) AS was_at_this_time
          FROM bookings b
         WHERE b.org_id = $1
-          AND (b.client_id = $2 OR ($4::text IS NOT NULL AND b.provider_uid = $4::text))`,
+          -- When we know the buyer, a stale/colliding provider UID must
+          -- NEVER select another buyer's appointment or its terminal status.
+          -- UID-only fallback is allowed solely when client identity is absent.
+          AND (($2::uuid IS NOT NULL AND b.client_id = $2::uuid)
+            OR ($2::uuid IS NULL AND $4::text IS NOT NULL
+                AND b.provider_uid = $4::text))`,
       [orgId, clientId || null, at, uid]
     );
     rows = (res && res.rows) || [];
