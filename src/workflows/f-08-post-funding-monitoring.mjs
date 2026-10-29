@@ -30,18 +30,17 @@ export function checkinDueAt(now = new Date()) {
 }
 
 async function createCheckinTask(db, { orgId, clientId, eventId, now = new Date() }) {
-  const dup = await db.query(`SELECT 1 FROM tasks WHERE client_id = $1 AND source_workflow = $2 AND body = $3`, [clientId, SOURCE_WORKFLOW, eventId]);
-  if (dup.rows[0]) return { created: false };
-  await createTask(db, {
-      orgId: orgId,
-      clientId: clientId,
-      title: TASK_TITLE,
-      sourceWorkflow: SOURCE_WORKFLOW,
-      assigneeRole: "funding_advisor",
-      eventId: eventId,
-      dueAt: checkinDueAt(now)
-    });
-  return { created: true };
+  // createTask owns the dedupe key and has an atomic INSERT ... ON CONFLICT.
+  // Return its real outcome: a concurrent replay may lose the insert race.
+  return createTask(db, {
+    orgId,
+    clientId,
+    title: TASK_TITLE,
+    sourceWorkflow: SOURCE_WORKFLOW,
+    assigneeRole: "funding_advisor",
+    eventId,
+    dueAt: checkinDueAt(now)
+  });
 }
 
 export async function handle({ event, db, step, now = new Date() }) {
