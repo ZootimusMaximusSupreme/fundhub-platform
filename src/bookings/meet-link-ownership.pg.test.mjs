@@ -122,3 +122,16 @@ test("completed closer task is not reopened or supplied a Join link", { skip: !S
   assert.equal(await linkOf("bookings", b), MEET);
   assert.equal(await linkOf("tasks", t), null);
 });
+
+test("promoted appointment UID still fills its original form-ID task when the booking already has the same link", { skip: !SCRATCH }, async () => {
+  const c = await client("promoted-uid");
+  const b = await booking(c, "ci-meet-new-appointment-id");
+  const t = await task(c, "ci-meet-old-form-id");
+  await db.query("UPDATE bookings SET meeting_url = $1 WHERE id = $2", [MEET, b]);
+  const result = await fillMeetingUrl(db, {
+    orgId, clientId: c, providerUid: "ci-meet-old-form-id", startsAt: START, url: MEET
+  });
+  assert.deepEqual(result, { bookings: 0, tasks: 1 });
+  assert.equal(await linkOf("bookings", b), MEET);
+  assert.equal(await linkOf("tasks", t), MEET);
+});
