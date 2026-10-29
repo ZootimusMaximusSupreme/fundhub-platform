@@ -683,7 +683,7 @@ test("booking.created: failed UID identity read creates neither a new lead nor a
   const db = pgFake();
   const originalQuery = db.query.bind(db);
   db.query = async (sql, params) => {
-    if (/FROM bookings\\s+WHERE org_id = \\$1 AND provider_uid = \\$2/.test(sql)) {
+    if (sql.includes("FROM bookings") && sql.includes("WHERE org_id = $1 AND provider_uid = $2")) {
       throw new Error("booking storage temporarily unreachable");
     }
     return originalQuery(sql, params);
@@ -706,13 +706,10 @@ test("booking.created: interview booking must never create a sales lead", async 
     eventTypeSlug: "customer-insights-interview",
     startTime: "2026-08-01T15:00:00Z"
   }), db);
-  // The interview classifier may require a more specific provider marker;
-  // in either case the UID cannot create a second booking in this test.
-  if (result?.skipped === "interview") {
-    assert.equal(db.clients.length, 0);
-    assert.equal(db.tasks.length, 0);
-    assert.equal(db.bookings.length, 0);
-  }
+  assert.deepEqual(result, { skipped: "interview" });
+  assert.equal(db.clients.length, 0);
+  assert.equal(db.tasks.length, 0);
+  assert.equal(db.bookings.length, 0);
 });
 
 test("a fresh provider appointment after cancellation still books a new call", async () => {
