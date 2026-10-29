@@ -289,7 +289,7 @@ They keep the $32 report. Go to **If they do not buy today**.
 1. **Questions first.** "Before I show you how to start, what questions do you have?" If they ask one: "Good question. What made you ask?" Then answer.
 2. **Check the plan, not the price (S-17, S-18).** "How do you feel about this plan for your file?" A sure answer in a sure voice: move on. Anything else: "On a scale of 1 to 10, how sure are you this is the right plan for your file?" Under 8: "What would make it a 10?" Handle that. Ask again.
 3. **What happens next, before the price.** Say the first step of their door from section 6. They should picture day one before they hear a price.
-4. **The guarantees (S-21).** Funding only: read G-01 and G-02 word for word. Skip G-03. It is not in the signed agreement. Blueprint and credit optimization: no guarantees from S-21.
+4. **The guarantees (S-21).** Funding only: read G-01 and G-02 word for word. They are the two in the agreement in the CRM. Blueprint and credit optimization: no guarantees from S-21.
 5. **The ask (S-19 to S-22).** One line that ties the price to their goal. Then: "Want to get started?"
    - Funding: "To get you in front of the right banks in the right order, it's $3,000 today. That's not extra. It counts toward the 10%, and the 10% is only on money you actually get. Want to get started?"
    - Blueprint: "For the whole 12-month plan, built from your file, it's [price]. Want to get started?"
@@ -394,7 +394,6 @@ Only show wins Chris has given you in writing. If you have none to show, offer t
 
 **"Can you guarantee it?"** or **"What if I don't get funded?"**
 "Nobody honest guarantees what a bank does. Lenders decide. Here's what the agreement guarantees: we start on your file within 24 business hours, and your first applications go out within 72. If we miss either one, you can ask for the deposit back. If you need money guaranteed, don't put a deposit down."
-If they quote the video ("you said if I qualify and you can't fund me, I don't pay"): "Let's read exactly what the agreement says, together." Then read section 3 of the agreement. Do not promise more than it says.
 
 **"Will this hurt my credit?"**
 "The $32 pull did not move your score. When we apply for funding, each application is a hard pull. That's exactly why the order matters, and why we clean the file first."
@@ -480,13 +479,13 @@ Present shows built-in closer lines on every slide. They come from the old stack
 
 ## Open calls for Chris
 
+**Settled by Chris, 2026-10-29:** the agreement in the CRM is the truth. Funding is $3,000 today, filled into that agreement. The video's line stays as it is.
+
 1. **Revenue funding (Door 2).** It has a menu slide, but no lender, no button and no price. The Lendflow connection is built but switched off. The lender list lives in a spreadsheet from Sarah's folder, `FUNDING SHEET (business).xlsx`. It has about 80 bank-statement and cash-advance lenders and about 175 lenders who lend off documents. Those lenders ask for 6 months to 2 years in business and 3 to 6 months of bank statements. Some want at least $16,000 a month. Who runs these files, what is the floor, and is the price the same $3,000 plus 10%?
-2. **The funding guarantee.** The VSL says "If you qualify and we can't fund you, you don't pay," and S-21 shows the same line as G-03. The signed funding agreement only has the 24-hour and 72-hour guarantees. Which one is true?
-3. **The funding deposit.** The live checkout is a fixed $3,000. The Oct 10 offers sheet says $1,000 to $3,000. This has been open since the weekend board.
-4. **Blueprint or credit optimization first.** For a file that is not ready, does the closer lead with the Blueprint and step down to the $1,000 and the $200? Or lead with the $1,000? The live ladder on S-19 lists the Blueprint last.
-5. **Blueprint price.** When does the closer go above $5,000?
-6. **Capital Academy.** The EDUCATION PATH button on S-07 sells it for $5,000. Is it still sold?
-7. **Update Present.** Present's own lines and the S-07 client screen still carry the old close. Rewrite them to match this page once it is approved?
+2. **Blueprint or credit optimization first.** For a file that is not ready, does the closer lead with the Blueprint and step down to the $1,000 and the $200? Or lead with the $1,000? The live ladder on S-19 lists the Blueprint last.
+3. **Blueprint price.** When does the closer go above $5,000?
+4. **Capital Academy.** The EDUCATION PATH button on S-07 sells it for $5,000. Is it still sold?
+5. **Update Present.** Present's own lines and the S-07 client screen still carry the old close. Rewrite them to match this page once it is approved?
 
 ## Where this came from
 
@@ -496,7 +495,7 @@ Present shows built-in closer lines on every slide. They come from the old stack
 - **The Oct 10 offers overview** (`Fundhub_Offers_Overview.pdf`, emailed with the affiliate kit on Oct 13): who the Blueprint is for and what is in it.
 - **The old closer script** (`Fundhub_Closer_Script_FINAL`, newest copy is the 18-page PDF): the stacking close. Kept: the frame, the cost question, the pre-frame before the pull, reading the file like an underwriter, "should versus how," "respect versus permission." Dropped: the $50 pull, the $2,000 repair, the $1,000 do-it-yourself pack, "pre-approved," "0% introductory rates," "$25 million," and the three guarantees.
 - **The live product, read 2026-10-29 from main:** `src/config/offers.mjs` (offers and prices), `public/app/present.js` (slides and built-in lines), `public/app/closer-call.js` and `closer-dashboard.html` (the five boxes), `src/sales/beliefs.mjs` (the seven beliefs), the engine tiers in `vendor/underwriteiq-full/api/lite/crs/route-outcome.js`, and the funding agreement text in `db/migrations/493_funding_and_repair_agreement_text.sql`.
-- **What the lead heard before the call:** `marketing/vsl/direct-book-vsl-2026-10-15.md` (three paths, the $32 with no score impact, the guarantee line in open call 2) and `marketing/vsl/direct-book-thank-you-2026-10-15.md` (bring the entity name, time in business and monthly revenue).
+- **What the lead heard before the call:** `marketing/vsl/direct-book-vsl-2026-10-15.md` (three paths, and the $32 with no score impact) and `marketing/vsl/direct-book-thank-you-2026-10-15.md` (bring the entity name, time in business and monthly revenue).
 - **The Desktop close guide** `~/Desktop/closing stuff/HOW-I-CLOSE.txt` was the first pass at section 8. This page replaces it.
 
 ## Where the documents fight
@@ -506,8 +505,8 @@ Use the right-hand column on a call until Chris says otherwise.
 | Topic | What the documents say | Use on a call |
 |---|---|---|
 | The pull | $50 (old script). $32 (floor sheet, VSL, thank-you, offers overview). | $32. |
-| Funding deposit | Fixed $3,000 (code, old script). "A good start," up or down (floor sheet). $1,000 to $3,000 (offers overview). | $3,000. It counts toward the 10%. Open call 3. |
-| Guarantees | Three, with "you don't pay" (old script, S-21, VSL). None (floor sheet). Two action guarantees (signed agreement). | The two in the agreement. Open call 2. |
+| Funding deposit | Fixed $3,000 (code, old script). "A good start," up or down (floor sheet). $1,000 to $3,000 (offers overview). | $3,000. It counts toward the 10%. Chris, 2026-10-29: the agreement in the CRM. |
+| Guarantees | Three on S-21 (old script). None (floor sheet). G-01 and G-02 (the agreement). | G-01 and G-02, from the agreement in the CRM. Chris, 2026-10-29. |
 | Financing | Two courses only (floor sheet). Blueprint, credit optimization at 600+, the deposit (offers overview). | Blueprint only, through Whop. Whop's partners do not take credit repair. |
 | Rounds | 12 (old script, S-12). 3 to 6 (offers overview, VSL). About six per funding sequence (owner). | About six. Credit optimization is up to six. |
 | Timeline | "Two weeks," approvals in 72 hours (old script). No timeline (floor sheet). | No timeline. Only the 24 and 72 business hours in the agreement. |
