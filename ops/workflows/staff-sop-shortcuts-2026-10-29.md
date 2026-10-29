@@ -11,6 +11,8 @@ Owner request: on every relevant employee desk, a small document icon should ope
 - The accidental `Log Dial` **Undo** belongs to the front-house backlog, not this change.
 
 ## Role boundary / known limitation
+**Important: the existing staff shell reserves `company-brain.html` for owner/admin.** That page appears in `OWNER_ADMIN_ONLY` in `public/app/shell.js`, so `allowedFor("setter")`, `allowedFor("closer")`, `allowedFor("csm")`, etc. cannot enter. The shortcut checks the **actual permitted page list**: it is visible to owner/admin while inspecting any of the 12 desks, **not** to ordinary setter/closer/CSM users. The previous CI screen failures used those forbidden fixtures and have been corrected to exercise an authorized owner context, plus negative tests for setter and closer. This is a remaining owner-facing **product coverage gap**, not a reason to silently widen Company Brain access. Giving employees their own least-privilege, read-only SOP access requires a separate permissions decision and API/UX audit; current work does not claim it is delivered.
+
 `outbound_rep` can see only `bank-outreach.html` in the shell and is **NOT in `ROLE_SETS.STAFF`**. The Company Brain search API rejects it. For that role the SOP icon intentionally does **not** appear; showing a dead link or widening confidential knowledge permissions would be unsafe. Authorized owner/admin staff visiting bank outreach see the shortcut. A distinct scoped outbound knowledge access decision would be needed before enabling this role.
 
 The Company Brain Documents panel lists local uploads and quizzes, not necessarily the whole indexed Drive corpus. The contextual Find button searches documents the staff role can actually read and should return citations or a clear no-source response. SOP content completeness and which source files are approved **cannot be proven by UI tests**; inspect live role-specific Drive indexing separately. Do not claim an SOP exists simply because the quick-access button works.
@@ -18,16 +20,16 @@ The Company Brain Documents panel lists local uploads and quizzes, not necessari
 ## Acceptance matrix (offline static browser + unit tests)
 | Scenario | Expected |
 |---|---|
-| 12 staff dashboards | Exactly one visible icon, matching topic |
+| 12 staff dashboards | Owner/admin session: exactly one visible icon, matching topic |
 | Setter dashboard | Refresh queue and CRM Search preserved |
 | CSM dashboard | Refresh queue preserved |
-| Setter -> Company Brain | Documents panel open, proper SOP heading, no POST until explicit Find |
+| Owner viewing Setter desk -> Company Brain | Documents panel open, proper SOP heading, no POST until explicit Find |
 | Find | Existing Company Brain search receives whitelisted topic prompt, gives sourced answer |
 | Browser Back | Returns to caller's dashboard with icon |
 | 390px phone | At least 44×44 tap target; documents open/close; no horizontal page overflow |
 | No uploaded files | Honest empty state; search can still use approved Drive files |
 | Unknown/malicious `?sop` | No context rendered; no arbitrary prompt or HTML |
-| `outbound_rep`, client, partner | No shortcut / unauthorized access |
+| Setter, closer, `outbound_rep`, client, partner | No shortcut if Company Brain route is not permitted |
 | Live | Requires protected merge, full required CI, deployment proof; **NOT LIVE PROVED** while pending |
 
 ## Tests
