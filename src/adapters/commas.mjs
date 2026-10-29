@@ -710,6 +710,24 @@ async function clientIdInOrg(db, orgId, clientId) {
   return rows[0]?.id ?? null;
 }
 
+/* Reversals always point BACK to an original succeeded payment; they are
+ * never authenticated by the callback's email, checkout metadata or client ID.
+ * Both tenant and provider must match. An out-of-order reversal is retained
+ * unattributed for dead-letter review and can be retried after the original
+ * money-in record appears. Nothing creates or edits a client here. */
+export async function reversalOriginalClientId(db, { orgId, paymentId }) {
+  if (!orgId || !paymentId) return null;
+  const result = await db.query(
+    `SELECT t.client_id FROM transactions t
+       JOIN clients c ON c.id = t.client_id AND c.org_id = t.org_id
+      WHERE t.org_id = $1 AND t.provider = 'commas'
+        AND t.provider_ref = $2 AND t.status = 'succeeded'
+      LIMIT 1`,
+    [orgId, String(paymentId)]
+  );
+  return result.rows[0]?.client_id || null;
+}
+
 /* resolveInboxClientId — whose payment is this? Returns a client uuid or null.
  *
  * Three sources, best first, and every one of them is checked against the org
@@ -805,7 +823,13 @@ export async function processCommasInboxRow(row, db) {
   /* One resolution for the whole row, so a payment's several canonical events
      can never disagree about who paid. */
   const mayCreate = canonical.some((c) => !NO_HANDLER_CREATES_A_CLIENT.has(c.name));
-  const clientId = await resolveInboxClientId(db, { orgId: row.org_id, evt, link, mayCreate });
+  const reversal = canonical.some((c) => c.name === "payment.refunded" || c.name === "payment.disputed");
+  // The webhook's claimed customer is not evidence for whose money was
+  // refunded/disputed. Use the same original paid transaction as the owner
+  // task handler, or store an unattributed event for manual reconciliation.
+  const clientId = reversal
+    ? await reversalOriginalClientId(db, { orgId: row.org_id, paymentId: evt.paymentId })
+    : await resolveInboxClientId(db, { orgId: row.org_id, evt, link, mayCreate });
 
   const emitted = [];
   for (const c of canonical) {
