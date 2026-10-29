@@ -6,7 +6,7 @@ The setter part is `02-setter.md`. This page starts when the setter hands off.
 
 **The idea:** find out where they are. Pull the file together. The file picks one door. Sell that door, and only that door.
 
-This is a draft. The questions only Chris can answer are at the bottom, under **Open calls for Chris**.
+Live on fundhub.ai since 2026-10-29. Chris's calls are at the bottom, under **Open calls for Chris**.
 
 ## The call on one page
 
@@ -249,7 +249,7 @@ Every door has the same shape. First the promise: the steps that get them from w
 ### Door 3. Capital Blueprint
 
 **Who:** every file that is not ready. Offer it first, because it is the most expensive door that fits.
-**Offer:** Capital Blueprint. **$5,000 to $10,000**, a whole-dollar price you pick. The default is $5,000. 12 months included. No renewal charge.
+**Offer:** Capital Blueprint. **$5,000 to $10,000**, a whole-dollar price you pick. You set the price; there is no rule (Chris, 2026-10-29). The default is $5,000. 12 months included. No renewal charge.
 **Slides:** on S-19, click **DIY deliverables + course** (that button is the Blueprint), then **Show the full Blueprint stack**. Or click 06 on the phase strip. Walk B-01 to B-04. Then S-23.
 
 1. **The promise.** "Here's what I'd do with this file. A 12-month plan, built from your own report. It tells you exactly what to do, step by step, until your file and your businesses are ready to fund."
@@ -476,10 +476,9 @@ Present's closer lines and the client slides follow this page as of 2026-10-29. 
 - Always lead with the most expensive product that fits their goal.
 - Capital Academy is off until it is filmed.
 - Present's closer lines follow this page.
+- The closer sets the Blueprint price. There is no rule for it. Present takes any whole-dollar price from $5,000 to $10,000 today.
 
-**Still open:**
-
-1. **Blueprint price.** When does the closer go above $5,000?
+Nothing is open.
 
 ## Where this came from
 
