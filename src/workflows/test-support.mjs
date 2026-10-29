@@ -552,9 +552,11 @@ export function pgFake(seed = {}) {
         return { rows: match ? [{ x: 1 }] : [] };
       }
       // --- funding_rounds (latest round id-only lookup for allApplicationsDenied in F-09) ---
-      if (/SELECT id FROM funding_rounds WHERE client_id/.test(sql)) {
-        const rounds = fundingRounds.filter((r) => r.client_id === params[0]).sort((a, b) => b.round_number - a.round_number);
-        return { rows: rounds[0] ? [{ id: rounds[0].id }] : [] };
+      if (/SELECT id(?:, status)? FROM funding_rounds WHERE client_id/.test(sql)) {
+        const rounds = fundingRounds
+          .filter((r) => r.client_id === params[0] && (r.org_id == null || r.org_id === params[1]))
+          .sort((a, b) => b.round_number - a.round_number);
+        return { rows: rounds[0] ? [{ id: rounds[0].id, status: rounds[0].status ?? null }] : [] };
       }
       // --- applications (per-bank status for F-09 allApplicationsDenied) ---
       if (/SELECT status FROM applications WHERE funding_round_id/.test(sql)) {
@@ -567,9 +569,13 @@ export function pgFake(seed = {}) {
         return { rows: rounds[0] ? [{ id: rounds[0].id, hold_reason: rounds[0].hold_reason ?? null }] : [] };
       }
       if (/UPDATE funding_rounds SET hold_reason/.test(sql)) {
-        const r = fundingRounds.find((r) => r.id === params[0]);
+        const terminal = new Set(["funded", "closed", "cancelled", "canceled", "completed"]);
+        const r = fundingRounds.find((r) => r.id === params[0]
+          && r.client_id === params[3]
+          && (r.org_id == null || r.org_id === params[2])
+          && !terminal.has(String(r.status || "").toLowerCase()));
         if (r) r.hold_reason = params[1];
-        return { rows: [] };
+        return { rows: [], rowCount: r ? 1 : 0 };
       }
 
       // --- inquiry_log create (C-02) ---
