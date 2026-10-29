@@ -229,3 +229,16 @@ This is an **incremental evidence checkpoint**; earlier historical rows describi
 | F-16F | Legacy bank/Lendflow funded event carries no canonical sale/round IDs | **NOT LIVE PROVED, deliberately not changed in #232**. Validator labels the legacy no-ID case `legacyUnverified:true` for compatibility; a future adapter must provide verified source linkage. Do not call this rail fully audited or apply a blanket claim of protection. |
 
 **Owner lane:** fulfillment F-07 source-event safety only. A/R separately owns balance, invoice collection, payment receipt verification and contractual rate reconciliation. Other agents must not edit active front-house/A/R files. The new tests use isolated fakes and CI-only localhost `fundhub_ci` with transaction-local temporary tables and rollback; they create no live clients, send no messages, and charge nobody. **All 14 CI jobs, protected merge, main integration run, exact production deployment and real authorized role/provider read-only acceptance remain required.**
+
+
+### F-11N — genuine saved bank denial did not open exhausted-round review (source finding 2026-10-29)
+
+**Source-level FAIL before [PR #234](https://github.com/ZootimusMaximusSupreme/fundhub-platform/pull/234):** `src/pulse/beats/lib/lender-tables.mjs` defines the real saved bank decision status as `Denied`; `src/applications/status.mjs` validates/persists that title-case value. F-09 `denialDecision` instead required every current-round application to equal `DENIED` byte-for-byte. An all-`Denied` real round therefore returned `pending_applications`, leaving the funding advisor's no-path review task/hold absent. Previous F-09 unit and scratch-PG fixtures inserted uppercase `DENIED` and never tested this real status. This is a deterministic contract contradiction, **not evidence that a live customer's round was affected**.
+
+| Gate | Exact checked case | Verdict and proof |
+|---|---|---|
+| F-11N-A | Current paid funding client's latest own-org round has one or more bank applications saved `Denied`; a DENIED bank message arrives | **FAIL pre-fix source; #234 proposed correction, NOT LIVE PROVED.** F-09 compares normalized statuses, so correctly exhausted round may hold and open one advisor task; 14/14 CI pending. |
+| F-11N-B | Latest round mixes `Denied` and `Applied`, has no applications, or no round | **NOT LIVE PROVED.** Refuse no-path review, do not invent denial/completion. Title-case CI fixtures updated in #234, real provider and role-screen recheck pending. |
+| F-11N-C | Old imported `DENIED` and current `Denied` in the same round; duplicate DENIED email | **NOT LIVE PROVED.** Both statuses normalize; task deduped per existing round. Synthetic fixture in #234; provider replay and deployed screen unproved. |
+
+**Boundary:** only F-09 execution, its unit/CI scratch SQL tests and this fulfillment matrix are changed by #234. No customer, bureau, lender, SMS/email, payment, secrets or production database writes. Keep this gate **OPEN** until full green CI, permitted merge, combined-main tests, actual ship, and read-only provider/staff/client observations. Other F-11 denial/hold cases remain separate and unproved.

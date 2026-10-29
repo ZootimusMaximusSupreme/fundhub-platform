@@ -8,7 +8,7 @@ test("happy path: DENIED bank reply on a funding-path client flags ops + holds t
   const db = pgFake({
     clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", outcome_tier: "FULL_FUNDING" }],
     fundingRounds: [{ id: "fr-1", client_id: "cl-1", round_number: 2, hold_reason: null }],
-    applications: [{ id: "app-tracked", funding_round_id: "fr-1", status: "DENIED" }]
+    applications: [{ id: "app-tracked", funding_round_id: "fr-1", status: "Denied" }]
   });
   const res = await handle({ event: ev("mail.response", { classification: "DENIED" }, { clientId: "cl-1" }), db, step: fakeStep() });
   assert.equal(res.done, true);
@@ -37,8 +37,8 @@ test("branch: first of several bank denials does NOT flag no-path when other app
     clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", outcome_tier: "FULL_FUNDING" }],
     fundingRounds: [{ id: "fr-1", client_id: "cl-1", round_number: 1, hold_reason: null }],
     applications: [
-      { id: "app-1", funding_round_id: "fr-1", status: "DENIED" },
-      { id: "app-2", funding_round_id: "fr-1", status: "PENDING" }
+      { id: "app-1", funding_round_id: "fr-1", status: "Denied" },
+      { id: "app-2", funding_round_id: "fr-1", status: "Applied" }
     ]
   });
   const res = await handle({ event: ev("mail.response", { classification: "DENIED" }, { clientId: "cl-1" }), db, step: fakeStep() });
@@ -53,8 +53,8 @@ test("branch: all banks denied triggers hold and task", async () => {
     clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", outcome_tier: "FULL_FUNDING" }],
     fundingRounds: [{ id: "fr-1", client_id: "cl-1", round_number: 1, hold_reason: null }],
     applications: [
-      { id: "app-1", funding_round_id: "fr-1", status: "DENIED" },
-      { id: "app-2", funding_round_id: "fr-1", status: "DENIED" }
+      { id: "app-1", funding_round_id: "fr-1", status: "Denied" },
+      { id: "app-2", funding_round_id: "fr-1", status: "Denied" }
     ]
   });
   const res = await handle({ event: ev("mail.response", { classification: "DENIED" }, { clientId: "cl-1" }), db, step: fakeStep() });
@@ -73,7 +73,7 @@ test("GUARD: a raw monitor+<clientId>@ recipient resolves a real client, not no_
   const db = pgFake({
     clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", outcome_tier: "FULL_FUNDING" }],
     fundingRounds: [{ id: "fr-1", client_id: "cl-1", round_number: 1, hold_reason: null }],
-    applications: [{ id: "app-tracked", funding_round_id: "fr-1", status: "DENIED" }]
+    applications: [{ id: "app-tracked", funding_round_id: "fr-1", status: "Denied" }]
   });
   const clientId = await resolveClientFromRecipient(db, "monitor+cl-1@fundhub.ai");
   const res = await handle({
@@ -89,7 +89,7 @@ test("duplicate delivery: replaying the same event does not double-create the ta
   const db = pgFake({
     clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", outcome_tier: "FULL_FUNDING" }],
     fundingRounds: [{ id: "fr-1", client_id: "cl-1", round_number: 1, hold_reason: null }],
-    applications: [{ id: "app-tracked", funding_round_id: "fr-1", status: "DENIED" }]
+    applications: [{ id: "app-tracked", funding_round_id: "fr-1", status: "Denied" }]
   });
   const event = ev("mail.response", { classification: "DENIED" }, { id: "evt-dup-f09", clientId: "cl-1" });
   await handle({ event, db, step: fakeStep() });
@@ -133,7 +133,7 @@ test("old round denied does not put a fresh empty round on a no-path hold", asyn
       { id: "fr-old", client_id: "cl-1", round_number: 1, hold_reason: null },
       { id: "fr-new", client_id: "cl-1", round_number: 2, hold_reason: null }
     ],
-    applications: [{ id: "app-old", funding_round_id: "fr-old", status: "DENIED" }]
+    applications: [{ id: "app-old", funding_round_id: "fr-old", status: "Denied" }]
   });
   const result = await handle({
     event: ev("mail.response", { classification: "DENIED" }, { clientId: "cl-1" }),
@@ -148,7 +148,7 @@ test("distinct denial emails on same exhausted round create one review task", as
   const db = pgFake({
     clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", outcome_tier: "FULL_FUNDING" }],
     fundingRounds: [{ id: "fr-1", client_id: "cl-1", round_number: 1, hold_reason: null }],
-    applications: [{ id: "app-1", funding_round_id: "fr-1", status: "DENIED" }]
+    applications: [{ id: "app-1", funding_round_id: "fr-1", status: "Denied" }]
   });
   for (const id of ["evt-denial-one", "evt-denial-two"]) {
     const result = await handle({
@@ -165,13 +165,32 @@ test("separate fully denied round creates its own review task", async () => {
   const db = pgFake({
     clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", outcome_tier: "FULL_FUNDING" }],
     fundingRounds: [{ id: "fr-1", client_id: "cl-1", round_number: 1, hold_reason: null }],
-    applications: [{ id: "app-1", funding_round_id: "fr-1", status: "DENIED" }]
+    applications: [{ id: "app-1", funding_round_id: "fr-1", status: "Denied" }]
   });
   const event = (id) => ev("mail.response", { classification: "DENIED" }, { id, clientId: "cl-1" });
   assert.equal((await handle({ event: event("evt-1"), db, step: fakeStep() })).done, true);
   db.fundingRounds.push({ id: "fr-2", client_id: "cl-1", round_number: 2, hold_reason: null });
-  db.applications.push({ id: "app-2", funding_round_id: "fr-2", status: "DENIED" });
+  db.applications.push({ id: "app-2", funding_round_id: "fr-2", status: "Denied" });
   assert.equal((await handle({ event: event("evt-2"), db, step: fakeStep() })).done, true);
   assert.equal(db.tasks.length, 2);
   assert.deepEqual(db.tasks.map((t) => t.body), ["no-path:fr-1", "no-path:fr-2"]);
+});
+
+
+test("legacy uppercase Denied values and current title-case Denied both count as exhausted", async () => {
+  const db = pgFake({
+    clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", outcome_tier: "FULL_FUNDING" }],
+    fundingRounds: [{ id: "fr-1", client_id: "cl-1", round_number: 1, hold_reason: null }],
+    applications: [
+      { id: "app-1", funding_round_id: "fr-1", status: "Denied" },
+      { id: "app-2", funding_round_id: "fr-1", status: "DENIED" }
+    ]
+  });
+  const result = await handle({
+    event: ev("mail.response", { classification: "DENIED" }, { clientId: "cl-1" }),
+    db, step: fakeStep()
+  });
+  assert.equal(result.done, true);
+  assert.equal(db.tasks.length, 1);
+  assert.equal(db.fundingRounds[0].hold_reason, "Internal Review");
 });

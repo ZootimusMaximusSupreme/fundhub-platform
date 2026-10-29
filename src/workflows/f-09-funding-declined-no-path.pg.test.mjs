@@ -40,7 +40,7 @@ test("a bank denial does not exhaust an empty, pending, future, or foreign round
       );
       assert.equal((await denialDecision(db, subject)).reason, "no_tracked_applications");
       await db.query(
-        "INSERT INTO applications (id,org_id,funding_round_id,status) VALUES ($1,$2,$3,'DENIED')",
+        "INSERT INTO applications (id,org_id,funding_round_id,status) VALUES ($1,$2,$3,'Denied')",
         [randomUUID(), org, round1]
       );
       assert.deepEqual(await denialDecision(db, subject), { ok: true, reason: null, roundId: round1 });
@@ -48,11 +48,11 @@ test("a bank denial does not exhaust an empty, pending, future, or foreign round
       // A pending application prevents no-path even after a genuine DENIED mail.
       const pending = randomUUID();
       await db.query(
-        "INSERT INTO applications (id,org_id,funding_round_id,status) VALUES ($1,$2,$3,'PENDING')",
+        "INSERT INTO applications (id,org_id,funding_round_id,status) VALUES ($1,$2,$3,'Applied')",
         [pending, org, round1]
       );
       assert.equal((await denialDecision(db, subject)).reason, "pending_applications");
-      await db.query("UPDATE applications SET status='DENIED' WHERE id=$1", [pending]);
+      await db.query("UPDATE applications SET status='Denied' WHERE id=$1", [pending]);
       assert.equal((await denialDecision(db, subject)).ok, true);
 
       // A newly opened round cannot inherit the old round's denials.
@@ -70,14 +70,14 @@ test("a bank denial does not exhaust an empty, pending, future, or foreign round
         [foreignRound, otherOrg, clientId]
       );
       await db.query(
-        "INSERT INTO applications (id,org_id,funding_round_id,status) VALUES ($1,$2,$3,'DENIED')",
+        "INSERT INTO applications (id,org_id,funding_round_id,status) VALUES ($1,$2,$3,'Denied')",
         [randomUUID(), otherOrg, foreignRound]
       );
       assert.equal((await denialDecision(db, subject)).reason, "no_tracked_applications");
       assert.equal((await denialDecision(db, { orgId: otherOrg, clientId })).roundId, foreignRound);
 
       await db.query(
-        "INSERT INTO applications (id,org_id,funding_round_id,status) VALUES ($1,$2,$3,'DENIED')",
+        "INSERT INTO applications (id,org_id,funding_round_id,status) VALUES ($1,$2,$3,'Denied')",
         [randomUUID(), org, round2]
       );
       assert.deepEqual(await denialDecision(db, subject), { ok: true, reason: null, roundId: round2 });
