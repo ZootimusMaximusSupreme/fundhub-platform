@@ -32,11 +32,11 @@ function bookingTaskFake(seed) {
   const fake = pgFake(seed);
   const query = fake.query.bind(fake);
   fake.query = async (sql, params = []) => {
-    if (/SELECT id FROM clients WHERE org_id = \\$1 AND id = \\$2 LIMIT 1/.test(sql)) {
+    if (/SELECT id FROM clients WHERE org_id = \$1 AND id = \$2 LIMIT 1/.test(sql)) {
       const owner = fake.clients.find(c => c.org_id === params[0] && c.id === params[1]);
       return { rows: owner ? [{ id: owner.id }] : [] };
     }
-    if (/FROM bookings\\s+WHERE org_id = \\$1 AND provider_uid = \\$2/.test(sql)) {
+    if (/FROM bookings\s+WHERE org_id = \$1 AND provider_uid = \$2/.test(sql)) {
       const row = fake.bookings.find(b => b.org_id === params[0] && b.provider_uid === params[1]);
       return { rows: row ? [row] : [] };
     }
