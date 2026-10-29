@@ -16,7 +16,11 @@
 
 import { inngest } from "./client.mjs";
 import { db } from "../db.mjs";
-import { resolveClient } from "../handlers/client-lifecycle.mjs";
+// Mail responses and document receipts are downstream fulfillment signals.
+// Resolve ONLY an already-owned client: resolveClient can create a phantom lead,
+// patch an explicit foreign clientId or sync a CRM contact before org validation.
+// Missing/foreign identities must bail without tasks, tags, cards or messages.
+import { findClient } from "../handlers/purchase-routing.mjs";
 import { clientOutcomeTier, isFundingPath } from "../config/product-path.mjs";
 import { addTags } from "./tags.mjs";
 import { createTask } from "../lib/create-task.mjs";
@@ -82,7 +86,7 @@ async function createTaskOnce(db, { orgId, clientId, roundId }) {
 export async function handle({ event, db, step }) {
   if (event.payload?.classification !== "DENIED") return { done: false, reason: "not_denied" };
 
-  const clientId = await step.run("resolve-client", () => resolveClient(db, event));
+  const clientId = await step.run("resolve-client", () => findClient(db, event));
   if (!clientId) return { done: false, reason: "no_client" };
 
   const outcomeTier = await step.run("check-product-path", () => clientOutcomeTier(db, clientId));

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert";
-import { handle, EMAIL_TEMPLATE_KEY, SMS_TEMPLATE_KEY } from "./n-04-post-funding-nurture.mjs";
+import { handle, isStaffEngagementCloseout, EMAIL_TEMPLATE_KEY, SMS_TEMPLATE_KEY } from "./n-04-post-funding-nurture.mjs";
 import { pgFake, fakeStep, ev } from "./test-support.mjs";
 
 const withTemplates = () => [
@@ -59,4 +59,27 @@ test("money-chain per-round closeout does not send N-04", async () => {
   assert.equal(res.sent, false);
   assert.equal(res.reason, "not_engagement_closeout");
   assert.equal(db.messages.length, 0);
+});
+
+test("Card Stacking round closeout explicitly unfinished must NEVER send engagement completion messages", async () => {
+  const db = pgFake({
+    clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com" }],
+    templates: withTemplates()
+  });
+  const closedRound = ev("round.closeout", {
+    rail: "card_stacking", source: "card_stacking", stage: "closed",
+    roundNumber: 1, engagementComplete: false
+  }, { id: "round-1-still-active", clientId: "cl-1" });
+  const res = await handle({ event: closedRound, db, step: fakeStep() });
+  assert.equal(res.sent, false);
+  assert.equal(res.reason, "not_engagement_closeout");
+  assert.equal(db.messages.length, 0, "do not tell a client the engagement ended after one round");
+});
+
+test("N-04 sequence-close gate respects explicit false, even if stage claims closed", () => {
+  assert.equal(isStaffEngagementCloseout({ stage: "closed", engagementComplete: false }), false);
+  assert.equal(isStaffEngagementCloseout({ stage: "closed", engagementComplete: true }), true);
+  assert.equal(isStaffEngagementCloseout({ stage: "submitted", engagementComplete: true }), true);
+  assert.equal(isStaffEngagementCloseout({ stage: "closed" }), true,
+    "preserve compatibility for older staff closeout payloads without the explicit field");
 });

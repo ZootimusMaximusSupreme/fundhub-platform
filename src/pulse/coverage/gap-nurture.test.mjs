@@ -346,7 +346,12 @@ test("gap nurture: the template keys and triggers still match the n-04 and n-06 
   const src04 = fs.readFileSync(path.join(ROOT, "src/workflows/n-04-post-funding-nurture.mjs"), "utf8");
   const src06 = fs.readFileSync(path.join(ROOT, "src/workflows/n-06-renewal-second-wave.mjs"), "utf8");
   // The ref the SQL looks for is workflow:<template>:<event id>. sendTemplated builds it from eventId.
-  assert.match(src04, /payload\.stage === "closed" \|\| payload\.engagementComplete === true/);
+  // The actual closeout contract now lets engagementComplete:false veto a
+  // per-round "closed" stage. Verify behavior, not a stale expression shape.
+  assert.equal(n04.isStaffEngagementCloseout({ stage: "closed", engagementComplete: false }), false);
+  assert.equal(n04.isStaffEngagementCloseout({ stage: "closed" }), true);
+  assert.equal(n04.isStaffEngagementCloseout({ engagementComplete: true }), true);
+  assert.equal(n04.isStaffEngagementCloseout({ stage: "funded" }), false);
   assert.match(src04, /const eventId = event\.id;/);
   assert.match(src06, /const eventId = event\.id;/);
   assert.match(src06, /step\.sleep\("wait-6-months", "180d"\)/);
