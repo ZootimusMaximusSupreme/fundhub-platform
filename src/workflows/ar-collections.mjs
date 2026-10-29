@@ -8,7 +8,7 @@
 import { inngest } from "./client.mjs";
 import { db } from "../db.mjs";
 import { withTransaction } from "../db/with-transaction.mjs";
-import { resolveClient } from "../handlers/client-lifecycle.mjs";
+import { findClient } from "../handlers/purchase-routing.mjs";
 import { sendTemplated } from "./messaging.mjs";
 import { addTags } from "./tags.mjs";
 import { createTask } from "../lib/create-task.mjs";
@@ -295,9 +295,25 @@ async function chase({ event, db, step, env, createLink, retireLink }) {
 
 export async function handle({ event, db, step, env, createLink, retireLink }) {
   if (event.name === "payment.received") {
-    const clientId = await step.run("resolve-client", () => resolveClient(db, event));
+    // Receipt reconciliation MUST NOT create customers, change contact details,
+    // or backfill CRM links. Lead capture is upstream of A/R. An untrusted
+    // webhook's clientId is also not evidence of ownership by this tenant.
+    if (!event.orgId) {
+      return { done: true, allocated: false, path: "unresolved", reason: "missing_org" };
+    }
+    const clientId = await step.run("find-owned-client", () => findClient(db, event));
+    // If the provider names a customer (ID or email), it MUST resolve to an
+    // existing member of this org. A foreign/unknown locator cannot be
+    // replaced by the invoice's own clientId or silently ignored.
+    if (!clientId && (event.clientId || String(event.payload?.email || "").trim())) {
+      console.warn("[ar-collections] unmatched payment customer; allocation refused");
+      return { done: true, allocated: false, path: "unresolved", reason: "client_not_owned" };
+    }
+    // Some verified processor receipts identify only a precise invoice/session,
+    // with no customer locator. Preserve the allocator's org + invoice/source
+    // guards for those events rather than inventing a CRM contact.
     return step.run("allocate-payment", () =>
-      allocatePayment(db, { ...event, clientId: clientId || event.clientId || null }));
+      allocatePayment(db, { ...event, clientId: clientId || null }));
   }
   return chase({ event, db, step, env, createLink, retireLink });
 }
