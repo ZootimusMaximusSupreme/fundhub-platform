@@ -102,7 +102,7 @@ test("beats that break from one cause, or guard the same door, share a shift (on
   for (const group of [
     ["text-path", "email-path", "vendor-keys", "message-health"],
     ["apply-links", "bank-links", "bank-outreach"],
-    ["lead-pipe", "lead-handoff", "call-bookings"],
+    ["lead-pipe", "lead-handoff", "call-bookings", "cortana-booking"],
     ["money-checkout", "checkout-doors", "pay-links", "pay-webhook"],
     ["money-funding", "funding-trip", "partner-trip", "partner-pages", "apply-links"],
     ["soft-pull", "roadmap-delivery", "roadmap-pages"],

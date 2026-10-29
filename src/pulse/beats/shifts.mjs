@@ -84,6 +84,7 @@ export const SHIFTS = Object.freeze({
     beats: Object.freeze([
       "auth-links",
       "call-bookings",
+      "cortana-booking",
       "checkout-doors",
       "client-portal",
       "client-progress",
