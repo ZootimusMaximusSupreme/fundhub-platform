@@ -1480,7 +1480,8 @@ syncChips();
     goBtn.disabled=false;
     goBtn.textContent='Save';
     modal.classList.add('open');
-    setTimeout(function(){ nameEl.focus(); }, 0);
+    // Focus now: a delayed timer can steal fast typing from Email or Phone.
+    nameEl.focus();
   }
   function reloadBoard(){
     var t=document.querySelector('.rail-tab.active');

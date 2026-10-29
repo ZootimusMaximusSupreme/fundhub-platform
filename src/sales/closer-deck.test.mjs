@@ -52,7 +52,8 @@ function fakeDb({
   crs = null,
   businesses = [],
   tradelines = [],
-  liabilities = []
+  liabilities = [],
+  crsRows = null
 } = {}) {
   return {
     async query(sql) {
@@ -61,6 +62,7 @@ function fakeDb({
         return { rows: client ? [client] : [] };
       }
       if (/FROM crs_results/i.test(s)) {
+        if (crsRows) return { rows: crsRows };
         return { rows: crs ? [crs] : [] };
       }
       if (/FROM businesses/i.test(s)) {
@@ -838,6 +840,19 @@ test("F41 — an empty pack sends nothing and says why", async () => {
   assert.equal(out.email, null, "no email over an empty pack");
   assert.deepEqual(db.tagWrites, [], "no tag over an empty pack");
   assert.deepEqual(db._documents, [], "no document row over an empty pack");
+});
+
+test("per-bureau pull rows merge into one FICO strip on the deck", async () => {
+  const crsRows = [
+    { outcome_tier: "MANUAL_REVIEW", created_at: "2026-10-29T22:57:00Z", result: { scores: { ex: 511 } } },
+    { outcome_tier: "MANUAL_REVIEW", created_at: "2026-10-29T22:53:00Z", result: { scores: { eq: 458 } } },
+    { outcome_tier: "MANUAL_REVIEW", created_at: "2026-10-29T22:52:00Z", result: { scores: { tu: 497 } } }
+  ];
+  const out = await buildCloserDeck(fakeDb({ client: CLIENT, crsRows }), { orgId: ORG, clientId: CID });
+  assert.equal(out.engine.available, true);
+  assert.equal(out.engine.fico.ex, 511);
+  assert.equal(out.engine.fico.eq, 458);
+  assert.equal(out.engine.fico.tu, 497);
 });
 
 /* ── F48: the pay-link text says who it is from and what it is for ────────────
