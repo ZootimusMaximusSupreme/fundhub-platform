@@ -513,6 +513,10 @@ export const PORTAL_INVOICE_DUE_SQL = `SELECT v.invoice_id      AS id,
               pay.checkout_url
          FROM v_invoice_aging v
          JOIN invoices i ON i.id = v.invoice_id
+                        AND i.org_id = v.org_id AND i.client_id = v.client_id
+         -- Legacy invoice FK does not enforce same-organization buyer ownership.
+         -- Refuse inconsistent invoice rows before exposing a bill or checkout.
+         JOIN clients c ON c.id = i.client_id AND c.org_id = i.org_id
          LEFT JOIN LATERAL (
            SELECT pl.checkout_url
              FROM payment_links pl
