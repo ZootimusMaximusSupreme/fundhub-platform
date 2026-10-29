@@ -143,6 +143,10 @@ async function replayIdentityMatches(db, prior, { orgId, clientId, hintedId, rou
   if (roundId && String(original.funding_round_id || "") !== String(roundId)) return false;
   if (paymentLinkId || ref) {
     const linked = await findByPaymentLink(db, { orgId, paymentLinkId, ref });
+    // An explicit checkout ID must resolve inside this org. Otherwise the
+    // envelope may be borrowing a different tenant's link while naming a
+    // legitimate local invoice, including on a replayed PSP reference.
+    if (paymentLinkId && !linked) return false;
     if (linked && String(linked.id) !== String(original.id)) return false;
   }
   return true;
@@ -250,6 +254,12 @@ export async function allocatePayment(db, event) {
       paymentLinkId: payload.paymentLinkId,
       ref: payload.ref
     });
+  }
+  // A payment naming an explicit checkout ID must actually own that link.
+  // A foreign or unknown checkout cannot be ignored merely because the same
+  // envelope also carries a perfectly valid local invoice ID.
+  if (payload.paymentLinkId && !linkedInvoice) {
+    return { done: true, allocated: false, reason: "invoice_mismatch", path: "unresolved" };
   }
   if (!invoice) {
     invoice = linkedInvoice;
