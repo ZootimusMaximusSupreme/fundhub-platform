@@ -34,7 +34,7 @@ function fakeDb({
       return { rows: row ? [{ id: row.id }] : [] };
     }
     if (/SELECT round_number, status FROM funding_rounds/.test(sql)) {
-      assert.match(sql, /org_id = \\$1 AND client_id = \\$2/, "same-org round only");
+      assert.match(sql, /org_id = \$1 AND client_id = \$2/, "same-org round only");
       const [orgId, clientId] = params;
       const current = rounds.filter(r => r.org_id === orgId && r.client_id === clientId)
         .sort((a, b) => b.round_number - a.round_number)[0];
