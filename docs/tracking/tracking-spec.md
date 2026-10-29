@@ -134,6 +134,8 @@ The shared tracker on the parent page listens for `message` events from origin `
 
 On `/apply`, an accepted `booking_confirmed` message from its actual booking frame also saves a short session marker and moves the parent page to `https://apply.fundhub.ai/thank-you` after tracking. The thank-you page counts the booking as confirmed only with that recent accepted relay and a recent, upcoming stored appointment; the current footer's `submittedAt` is preferred, while the older `capturedAt` record works if it was refreshed within 30 minutes of acceptance. A rejected Book press does not send the message or redirect.
 
+The page move can drop the `booking_confirmed` beacon (measured 2026-10-29: a Facebook-ad booking's seq never reached the door while the thank-you page's own events did). So the tracker keeps that exact body in `sessionStorage` (`fh_booking_resend_v1`) and sends it once more on the next tracked page, within 30 minutes. The door keys every row on session + seq, so a body that already landed is not saved twice and the server Meta copy is not sent twice; the browser does not call Meta again.
+
 ### Booking confirmed — the one signal
 
 `booking_confirmed` (and Meta Schedule later) fire only when ClickFunnels has **accepted** the booking — never on the Book press alone (a Book press with a bad phone is refused by ClickFunnels). The /funding-book-call footer block stamps `fh_booking_v1.submittedAt` at that same moment, so the existing listeners on /apply and /roadmap-book keep working.
