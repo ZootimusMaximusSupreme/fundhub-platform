@@ -44,7 +44,7 @@ const SOURCE_WORKFLOW = "ai-set-04-3way-handoff";
  *      as the meeting link.
  * An older call for the same client is never a source for this text.
  */
-async function meetingLinkFor(db, { orgId, clientId, payload = {}, findLink = findMeetLink }) {
+export async function meetingLinkFor(db, { orgId, clientId, payload = {}, findLink = findMeetLink }) {
   const fromPayload = meetLinkValue(
     payload.meetingUrl || payload.meeting_url || payload.meeting_location || null
   );
@@ -60,8 +60,12 @@ async function meetingLinkFor(db, { orgId, clientId, payload = {}, findLink = fi
           WHERE org_id = $1
             AND starts_at = $3::timestamptz
             AND status IN ('booked', 'rescheduled')
+            -- A provider UID is not permission to borrow another client's
+            -- room link. If the buyer is known, always require that buyer.
+            -- The UID-only fallback is allowed only when clientId is absent.
             AND (($2::uuid IS NOT NULL AND client_id = $2::uuid)
-                 OR ($4::text IS NOT NULL AND provider_uid = $4::text))
+                 OR ($2::uuid IS NULL AND $4::text IS NOT NULL
+                     AND provider_uid = $4::text))
             AND meeting_url IS NOT NULL
           ORDER BY updated_at DESC
           LIMIT 1`,
@@ -98,7 +102,10 @@ export async function meetLinkFromHostCalendar(db, { orgId, clientId, payload = 
   let email = String(payload.email || payload.attendeeEmail || "").trim();
   try {
     if (!email && clientId) {
-      const r = await db.query(`SELECT email FROM clients WHERE id = $1 LIMIT 1`, [clientId]);
+      const r = await db.query(
+        `SELECT email FROM clients WHERE org_id = $1 AND id = $2 LIMIT 1`,
+        [orgId, clientId]
+      );
       email = String(r.rows[0]?.email || "").trim();
     }
   } catch (err) {
