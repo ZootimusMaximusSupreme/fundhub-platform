@@ -59,7 +59,9 @@ test("all twelve working desks have one real SOP link in the staff header; exist
 
 test("staff clicks document icon, gets contextual Company Brain files and explicit source-backed search, then Back returns to dashboard", async ({ page }) => {
   const asks = [];
-  await setup(page, STAFF("setter"), {
+  // Company Brain is owner/admin-only in the existing shell permission table.
+  // Do not widen access by testing with a setter fixture that must be redirected.
+  await setup(page, OWNER, {
     "/api/read/company-brain": async (route) => {
       asks.push(route.request().postDataJSON());
       await json(route, { ok: true, thread_id: "7b000000-0000-4000-8000-000000000001",
@@ -87,7 +89,8 @@ test("staff clicks document icon, gets contextual Company Brain files and explic
 test("phone shortcut has a 44px target, opens docs, searches and returns without horizontal overflow", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const asks = [];
-  await setup(page, CLOSER, {
+  // The narrower closer role cannot open the existing Company Brain screen.
+  await setup(page, OWNER, {
     "/api/read/company-brain": async (route) => {
       asks.push(route.request().postDataJSON());
       await json(route, { ok: true, answer: { text: "See approved closer script." }, sources: [] });
@@ -113,6 +116,15 @@ test("phone shortcut has a 44px target, opens docs, searches and returns without
 });
 
 test("roles without Company Brain permissions and customer/partner portals never show staff SOP shortcuts", async ({ page }) => {
+  // The shell's OWNER_ADMIN_ONLY list includes company-brain.html.
+  // A regular setter/closer must not see a shortcut that would bounce to an
+  // unauthorized page. Do not expand the existing role grants for SOP links.
+  await setup(page, STAFF("setter"));
+  await page.goto("/app/setter-dashboard.html");
+  await expect(page.locator(selectors.shortcut)).toHaveCount(0);
+  await setup(page, CLOSER);
+  await page.goto("/app/closer-dashboard.html");
+  await expect(page.locator(selectors.shortcut)).toHaveCount(0);
   await setup(page, STAFF("outbound_rep"));
   await page.goto("/app/bank-outreach.html");
   await expect(page.locator(selectors.shortcut)).toHaveCount(0);
