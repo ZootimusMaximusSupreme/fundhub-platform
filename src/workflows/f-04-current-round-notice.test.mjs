@@ -18,7 +18,7 @@ function fixture(rounds = []) {
   const query = db.query.bind(db);
   db.query = async (sql, params = []) => {
     if (/SELECT round_number, status FROM funding_rounds/.test(sql)) {
-      assert.match(sql, /org_id = \\$1 AND client_id = \\$2/, "round lookup must enforce both tenant and client");
+      assert.match(sql, /org_id = \$1 AND client_id = \$2/, "round lookup must enforce both tenant and client");
       const rows = rounds.filter(x => x.org_id === params[0] && x.client_id === params[1])
         .sort((a, b) => Number(b.round_number) - Number(a.round_number));
       return { rows: rows.slice(0, 1).map(x => ({ round_number: x.round_number, status: x.status })) };
