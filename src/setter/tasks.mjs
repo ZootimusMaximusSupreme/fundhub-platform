@@ -1,5 +1,5 @@
 // Human setter work is created from the same durable event bus as the sales card.
-// Event IDs, not client IDs, distinguish separate opt-ins and bookings.
+// Funnel screens may emit many distinct event IDs for one person's single opt-in.
 import { on } from "../events/registry.mjs";
 import { createTask } from "../lib/create-task.mjs";
 
@@ -22,6 +22,40 @@ async function existingClientId(event, db) {
   return null;
 }
 
+function bookingSlot(value) {
+  const time = Date.parse(String(value || ""));
+  return Number.isFinite(time) ? new Date(time).toISOString() : null;
+}
+
+function phoenixDay() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Phoenix", year: "numeric", month: "2-digit", day: "2-digit"
+  }).format(new Date());
+}
+
+async function existingTask(event, db, clientId, booked, slot) {
+  if (!booked) {
+    const found = await db.query(
+      `SELECT id, done FROM tasks
+        WHERE org_id = $1 AND client_id = $2 AND source_workflow = 'setter-entry'
+        ORDER BY done ASC, updated_at DESC, id DESC LIMIT 1`,
+      [event.orgId, clientId]
+    );
+    return found.rows[0] || null;
+  }
+  if (!slot) return null;
+  // Older task bodies hold event IDs. Compare their event's appointment slot so
+  // a form post and its later ClickFunnels appointment webhook share one task.
+  const found = await db.query(
+    `SELECT t.id, t.body, e.payload->>'startTime' AS event_start_time FROM tasks t
+       LEFT JOIN events e ON e.id::text = t.body
+      WHERE t.org_id = $1 AND t.client_id = $2
+        AND t.source_workflow = 'setter-booking' AND t.done = false`,
+    [event.orgId, clientId]
+  );
+  return found.rows.find(row => row.body === `setter-booking:${slot}` || bookingSlot(row.event_start_time) === slot) || null;
+}
+
 export async function createSetterTaskForEvent(event, db, env = process.env) {
   if (!setterTasksEnabled(env)) return { created: false, reason: "disabled" };
   if (!event?.id || !event?.orgId || !["entry.captured", "booking.created"].includes(event.name)) {
@@ -30,13 +64,19 @@ export async function createSetterTaskForEvent(event, db, env = process.env) {
   const clientId = await existingClientId(event, db);
   if (!clientId) return { created: false, reason: "client_not_found" };
   const booked = event.name === "booking.created";
+  const slot = booked ? bookingSlot(event.payload?.startTime) : null;
+  const priorTask = await existingTask(event, db, clientId, booked, slot);
+  if (priorTask && !priorTask.done) return { created: false, id: priorTask.id, reason: "duplicate_open_task" };
   return createTask(db, {
     orgId: event.orgId,
     clientId,
     title: booked ? "Setter: confirm booked strategy call" : "Setter: call new opt-in",
     sourceWorkflow: booked ? "setter-booking" : "setter-entry",
     assigneeRole: "setter",
-    eventId: String(event.id),
+    // Stable keys also absorb concurrent webhook deliveries after the open-task
+    // read, while the existing unique task index keeps the insert atomic.
+    body: booked && slot ? `setter-booking:${slot}` :
+      !booked ? `setter-entry:${phoenixDay()}:${priorTask?.id || "initial"}` : String(event.id),
     dueAt: new Date().toISOString(),
     detail: booked ? "Dial within 60 seconds, confirm and prepare handoff." : "Dial within 60 seconds and book a strategy call."
   });

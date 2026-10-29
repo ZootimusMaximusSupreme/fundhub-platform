@@ -188,6 +188,7 @@ function setterSorted(items) {
   var detailEl = document.getElementById("setter-detail");
   var countEl = document.getElementById("setter-count");
   var refreshBtn = document.getElementById("setter-refresh");
+  var requestedClientId = new URLSearchParams(location.search).get("client_id") || "";
 
   function paintNumbers(numbers) {
     var n = numbers && typeof numbers === "object" ? numbers : {};
@@ -409,7 +410,9 @@ function setterSorted(items) {
       paintNumbers(result.body.numbers);
       introVideoAvailable = result.body.intro_video_available === true;
       bookingUrl = /^https:\/\//.test(result.body.booking_url || "") ? result.body.booking_url : "";
-      selected = queue.find(function (row) { return row.client_id === selectedId(); }) || queue[0] || null;
+      selected = queue.find(function (row) { return row.client_id === requestedClientId; }) ||
+        (requestedClientId ? null : queue.find(function (row) { return row.client_id === selectedId(); }) || queue[0] || null);
+      if (requestedClientId && !selected) say("That lead is not in the setter queue. Refresh or open its client file.", "error");
       paintQueue(); paintDetail();
     }).catch(function () {
       queueEl.innerHTML = '<div class="setter-state fh-astra-state"><h2>Could not load the call queue</h2><p>Check your connection and try again.</p><button type="button" class="fh-astra-action" data-action="retry">Try again</button></div>';
