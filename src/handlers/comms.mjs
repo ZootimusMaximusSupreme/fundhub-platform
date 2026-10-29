@@ -444,14 +444,15 @@ async function recordBooking(db, event, p, clientId, status, { strict = false } 
    position (it only ever UPDATEs), so the live handler and the backfill finally
    agree. Nothing is lost either way — the `events` row is append-only and holds
    the cancellation forever. */
-async function closeBooking(db, event, p, status) {
+async function closeBooking(db, event, p, status, clientId = null) {
   const uid = bookingUid(p);
   if (!event.orgId || !uid) return null;
   try {
     const updated = await setStatusByProviderUid(db, {
       orgId: event.orgId,
       providerUid: uid,
-      status
+      status,
+      clientId
     });
     if (updated.length) return updated;
     console.warn(
@@ -726,7 +727,7 @@ async function onBookingTerminal(event, db, status) {
         [clientId, uid, BOOKING_TASK_TITLE_LIKE]
       );
     }
-    await closeBooking(tx, event, p, status);
+    await closeBooking(tx, event, p, status, clientId);
     await mergeCustomFields(tx, clientId, {
       call_outcome: status === BOOKING_STATUS.CANCELLED ? "cancelled" : "no_show"
     });
