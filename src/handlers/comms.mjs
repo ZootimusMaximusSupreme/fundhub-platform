@@ -467,38 +467,36 @@ async function closeBooking(db, event, p, status) {
   }
 }
 
-// Only booking.created events with the same org + provider appointment UID
-// contend. The connection-level advisory lock covers identity lookup *and*
-// resolveClient, so a losing concurrent webhook cannot mint a phantom lead or
-// closer task before the first webhook stores the booking. This is NOT a global
-// lock, and it cannot change a real provider event or send an invitation.
+// Only matching org + appointment identities contend. Use a TRANSACTION
+// scoped advisory lock, never a session lock: production may use a transaction
+// pooler, and session locks can leak between tenants or unrelated requests.
+// The transaction holds the identity check, lead resolution, saved booking and
+// closer-task handoff together, so a losing webhook cannot mint activity.
 async function withBookingUidLock(db, orgId, uid, callback) {
   const source = db === platformDb ? platformPool()
     : (typeof db?.connect === "function" && db?.options ? db : null);
   if (!orgId || !uid || !source) return callback(db);
   const client = await source.connect();
   const key = `front-booking:${orgId}:${uid}`;
-  let locked = false;
-  // If acquisition errors after the server acquired the session lock, never
-  // reuse this connection: the caller cannot prove that the lock was released.
   let discard = true;
   try {
-    await client.query("SELECT pg_advisory_lock(hashtextextended($1::text, 0))", [key]);
-    locked = true;
+    await client.query("BEGIN");
+    await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1::text, 0))", [key]);
+    const result = await callback(client);
+    await client.query("COMMIT"); // releases the lock on either PG connection type
     discard = false;
-    return await callback(client);
-  } finally {
-    if (locked) {
-      try {
-        const unlocked = await client.query(
-          "SELECT pg_advisory_unlock(hashtextextended($1::text, 0)) AS released", [key]
-        );
-        discard = unlocked.rows[0]?.released !== true;
-      } catch (error) {
-        discard = true; // never return a connection still holding a lock
-        console.error("[comms] booking identity lock release failed", error?.message);
-      }
+    return result;
+  } catch (error) {
+    // A confirmed ROLLBACK ends any transaction-scoped lock. If connection
+    // state remains uncertain, discard it instead of returning it to the pool.
+    try {
+      await client.query("ROLLBACK");
+      discard = false;
+    } catch (rollbackError) {
+      console.error("[comms] booking transaction rollback failed", rollbackError?.message);
     }
+    throw error;
+  } finally {
     client.release(discard);
   }
 }
