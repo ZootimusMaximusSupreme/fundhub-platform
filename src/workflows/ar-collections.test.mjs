@@ -970,3 +970,41 @@ test("AR security: missing canonical invoice client never creates a CRM contact 
   assert.equal(db.messages.length, 0);
   assert.equal(db.paymentLinks.length, 0);
 });
+
+test("AR issuance: payment with a draft success-fee invoice ID stays unallocated", async () => {
+  const db = pgFake({
+    clients: [{ id: "cl-1", org_id: "org-1", email: "ar-draft+receipt@example.com" }],
+    invoices: [openInvoice({ status: "draft", funding_round_id: "round-draft" })]
+  });
+  const result = await handle({
+    event: ev("payment.received", {
+      invoiceId: "inv-1", product: "success_fee", amount: 1250, paymentId: "pay-draft-id"
+    }, { clientId: "cl-1", id: "evt-draft-id" }),
+    db, step: fakeStep()
+  });
+  assert.equal(result.allocated, false);
+  assert.equal(result.reason, "invoice_unavailable");
+  assert.equal(db.invoicePayments.length, 0, "no unissued invoice receipt");
+  assert.equal(db.invoices[0].status, "draft", "draft must never be settled implicitly");
+  assert.equal(db.tasks.filter((t) => t.source_workflow === "ar-allocate").length, 1,
+    "a real provider payment with a wrong invoice status needs human matching");
+});
+
+test("AR issuance: round-only payment cannot match an unsent draft invoice", async () => {
+  const db = pgFake({
+    clients: [{ id: "cl-1", org_id: "org-1", email: "ar-draft+round@example.com" }],
+    invoices: [openInvoice({ status: "draft", funding_round_id: "round-draft" })]
+  });
+  const result = await handle({
+    event: ev("payment.received", {
+      fundingRoundId: "round-draft", product: "success_fee",
+      amount: 1250, paymentId: "pay-draft-round"
+    }, { clientId: "cl-1", id: "evt-draft-round" }),
+    db, step: fakeStep()
+  });
+  assert.equal(result.allocated, false);
+  assert.equal(result.reason, "unresolved");
+  assert.equal(db.invoicePayments.length, 0);
+  assert.equal(db.invoices[0].status, "draft");
+  assert.equal(db.tasks.filter((t) => t.source_workflow === "ar-allocate").length, 1);
+});
