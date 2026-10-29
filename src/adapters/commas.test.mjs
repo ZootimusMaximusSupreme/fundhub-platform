@@ -1176,3 +1176,52 @@ test("looksMasked catches Netlify's redaction and passes a real key", () => {
   assert.equal(looksMasked(""), false);
   assert.equal(looksMasked(undefined), false);
 });
+
+
+/* Refunds and disputes are POST-payment events, not lead capture. The provider
+ * can report an email that is no longer known to our customer table. Keep
+ * the signed receipt as an unattributed event for original-payment review
+ * rather than minting a fake buyer or CRM contact. */
+test("unknown refund and dispute webhook never creates a phantom client", async () => {
+  for (const type of ["refund.created", "dispute.created"]) {
+    _resetOrgCache(); clearHandlers();
+    const db = fakeDb();
+    const raw = JSON.stringify({
+      id: "evt-reversal-" + type,
+      type,
+      data: {
+        payment_id: "pay-reversal-" + type,
+        amount: 72.35,
+        buyer: { email: "unknown-reversal+new@example.invalid" },
+        due_by: "2026-11-01T00:00:00Z"
+      }
+    });
+    const outcome = await deliver(db, raw);
+    assert.equal(outcome.ack.ok, true, type);
+    assert.equal(outcome.swept.counts.done, 1, type);
+    assert.equal(db.clients.length, 0, type + " minted a customer");
+    assert.equal(db.store.length, 1, type);
+    assert.equal(db.store[0].client_id, null, type + " guessed the buyer");
+    assert.equal(
+      db.store[0].name,
+      type === "refund.created" ? "payment.refunded" : "payment.disputed",
+      type
+    );
+  }
+});
+
+test("refund with existing same-org customer remains attributable without contact mutations", async () => {
+  _resetOrgCache(); clearHandlers();
+  const db = fakeDb({ clients: [
+    { id: CLIENT_A, org_id: "org-1", email: "known-reversal@example.com", ghl_contact_id: "crm-original" }
+  ] });
+  const raw = JSON.stringify({
+    type: "refund.succeeded", id: "evt-known-refund",
+    data: { payment_id: "known-refund-payment", buyer: { email: "known-reversal@example.com" }, amount: 12 }
+  });
+  await deliver(db, raw);
+  assert.equal(db.clients.length, 1);
+  assert.equal(db.clients[0].ghl_contact_id, "crm-original");
+  assert.equal(db.store[0].client_id, CLIENT_A);
+  assert.equal(db.store[0].name, "payment.refunded");
+});
