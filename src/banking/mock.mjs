@@ -157,17 +157,24 @@ const HOLDINGS = [
  * Generation
  * -------------------------------------------------------------------------- */
 
+/** A calendar-month step, not 30 days: 30-day hops repeat months near month-end.
+ * Repeated month keys produce identical provider transaction IDs, so an import
+ * silently overwrites legitimate mock payroll/recurring rows on refresh. */
+function calendarMonth(iso, monthsBack) {
+  const [year, month] = iso.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1 - monthsBack, 1)).toISOString().slice(0, 7);
+}
+
 function buildTransactions(rnd, { accountId, today, months = 4 }) {
   const rows = [];
-  const start = shiftDays(today, -(months * 30));
+  const start = `${calendarMonth(today, months)}-01`;
 
   // Recurring first, so their dates are stable regardless of how many one-offs
   // the PRNG happens to produce.
   for (const r of RECURRING) {
     for (let m = months; m >= 0; m--) {
-      const [y, mo] = shiftDays(today, -(m * 30)).split("-").map(Number);
       const day = String(Math.min(r.day, 28)).padStart(2, "0");
-      const posted = `${y}-${String(mo).padStart(2, "0")}-${day}`;
+      const posted = `${calendarMonth(today, m)}-${day}`;
       if (posted < start || posted > today) continue;
       rows.push({
         provider_transaction_id: `mock-tx-${accountId}-${r.merchant.replace(/\W+/g, "")}-${posted}`,
@@ -185,8 +192,7 @@ function buildTransactions(rnd, { accountId, today, months = 4 }) {
   // Income — two deposits a month, positive.
   for (let m = months; m >= 0; m--) {
     for (const dayOfMonth of [1, 15]) {
-      const [y, mo] = shiftDays(today, -(m * 30)).split("-").map(Number);
-      const posted = `${y}-${String(mo).padStart(2, "0")}-${String(dayOfMonth).padStart(2, "0")}`;
+      const posted = `${calendarMonth(today, m)}-${String(dayOfMonth).padStart(2, "0")}`;
       if (posted < start || posted > today) continue;
       rows.push({
         provider_transaction_id: `mock-tx-${accountId}-payroll-${posted}`,

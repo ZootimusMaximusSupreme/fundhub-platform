@@ -166,6 +166,28 @@ test("a different item id yields different numbers", async () => {
   );
 });
 
+test("mock monthly transaction IDs stay unique across 28th–31st, year-end and leap-day boundaries", async () => {
+  // In particular, 2026-10-29 used to map two 30-day hops into July.
+  // The duplicate provider ID caused the bank import to count an inserted row
+  // twice, overwrite one payroll amount, and fail the saved-row audit.
+  const dates = [
+    "2026-10-28", "2026-10-29", "2026-10-30", "2026-10-31",
+    "2026-11-01", "2026-03-01", "2026-01-01", "2024-02-29",
+  ];
+  for (const today of dates) {
+    const { accounts } = await mock.getAccounts({ itemId: "monthly-regression", today });
+    for (const account of accounts) {
+      const transactions = account.transactions || [];
+      const keys = transactions.map((t) => t.provider_transaction_id);
+      assert.equal(new Set(keys).size, keys.length, `${today} / ${account.name}: each provider transaction id must identify one transaction`);
+      assert.ok(transactions.every((t) => t.posted_on <= today), `${today}: no future-dated provider transaction`);
+      const payroll = transactions.filter((t) => t.merchant_name === "PAYROLL");
+      assert.equal(new Set(payroll.map((t) => t.posted_on)).size, payroll.length,
+        `${today}: a single payday is not generated twice with different amounts`);
+    }
+  }
+});
+
 test("the mock source contains no call to Math.random", async () => {
   // The determinism tests above would catch drift eventually; this catches the
   // moment somebody introduces it, with a message that says why.
