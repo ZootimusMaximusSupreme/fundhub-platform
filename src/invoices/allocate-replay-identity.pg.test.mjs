@@ -13,11 +13,14 @@ const HAVE_DB = Boolean(process.env.DATABASE_URL);
 
 describe("A/R replay must retain the original payer and invoice (real Postgres)",
   { skip: !HAVE_DB ? "no disposable DATABASE_URL" : false }, () => {
-    let conn, orgId, firstClient, secondClient;
+    let conn, transactionalDb, orgId, firstClient, secondClient;
 
     before(async () => {
       conn = await pool().connect();
       await conn.query("BEGIN");
+      // Allocate inside the same rollback-only PG transaction. Passing pg.Client
+      // directly would call .connect() again in withTransaction and throw.
+      transactionalDb = { query: (...args) => conn.query(...args) };
       orgId = await resolveDefaultOrg(conn);
       const clients = [];
       for (const suffix of ["original", "different"]) {
@@ -58,20 +61,20 @@ describe("A/R replay must retain the original payer and invoice (real Postgres)"
       const anotherInvoice = await makeInvoice(firstClient);
       const ref = `ar-replay-${randomUUID()}`;
 
-      const first = await allocatePayment(conn, receipt(firstClient, original.id, ref));
+      const first = await allocatePayment(transactionalDb, receipt(firstClient, original.id, ref));
       assert.equal(first.allocated, true, "real first receipt must allocate");
       assert.equal(first.appliedCents, 4000);
       assert.equal((await getInvoice(conn, { invoiceId: original.id })).status, "partially_paid");
 
-      const replay = await allocatePayment(conn, receipt(firstClient, original.id, ref));
+      const replay = await allocatePayment(transactionalDb, receipt(firstClient, original.id, ref));
       assert.equal(replay.replay, true, "identical receipt may be safely reannounced");
 
-      const wrongCustomer = await allocatePayment(conn, receipt(secondClient, anotherClient.id, ref));
+      const wrongCustomer = await allocatePayment(transactionalDb, receipt(secondClient, anotherClient.id, ref));
       assert.equal(wrongCustomer.allocated, false);
       assert.equal(wrongCustomer.replay, false);
       assert.equal(wrongCustomer.reason, "receipt_reference_mismatch");
 
-      const wrongInvoice = await allocatePayment(conn, receipt(firstClient, anotherInvoice.id, ref));
+      const wrongInvoice = await allocatePayment(transactionalDb, receipt(firstClient, anotherInvoice.id, ref));
       assert.equal(wrongInvoice.allocated, false);
       assert.equal(wrongInvoice.reason, "receipt_reference_mismatch");
 
@@ -104,7 +107,7 @@ describe("A/R replay must retain the original payer and invoice (real Postgres)"
       for (const amount of [0, -15]) {
         const providerRef = `invalid-amount-${randomUUID()}`;
         const answer = await allocatePayment(
-          conn, receipt(secondClient, invoice.id, providerRef, amount)
+          transactionalDb, receipt(secondClient, invoice.id, providerRef, amount)
         );
         assert.equal(answer.allocated, false);
         assert.equal(answer.reason, "non_positive_amount");
