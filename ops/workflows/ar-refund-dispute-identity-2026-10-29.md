@@ -38,8 +38,7 @@ evidence of a real merchant dispute or real incident.
 - The adapter no longer lead-creates clients for refunds/disputes (it continues
   to do so for eligible, actually successful first-time payment events).
 - The owner task handler first checks an immutable original succeeded
-  transaction in the same organization, then uses existing-customer
-  `findClient` only. Unknown/foreign events fail into bus dead-letter review,
+  transaction in the same organization, and requires that original same-org succeeded Commas transaction. An event's claimed email/ID never substitutes for a missing original receipt. Unknown/foreign events fail into bus dead-letter review,
   with no new buyer, cross-org task, money reversal or commission clawback.
 - Focused in-memory fixture covers signed webhook -> inbox -> canonical event,
   original payment ownership, duplicate event, unmatched email and foreign ID.
