@@ -1464,7 +1464,11 @@ for (const wpm of [200, 205, 210, 215]) {
       const points = [];
       const started = performance.now();
       function tick(at) {
-        points.push({ at, y: new DOMMatrix(el.style.transform).m42 });
+        const y = new DOMMatrix(el.style.transform).m42;
+        const last = points[points.length - 1];
+        // Two identical frame observations have no elapsed time or movement.
+        // Ignore only that duplicate; changed-position or backward frames still fail.
+        if (!last || last.at !== at || last.y !== y) points.push({ at, y });
         if (at - started < 1000) requestAnimationFrame(tick);
         else resolve(points);
       }

@@ -69,6 +69,7 @@ export const GAP_FILES = Object.freeze([
   ["gap-closer.mjs", () => import("./gap-closer.mjs")],
   ["gap-consent.mjs", () => import("./gap-consent.mjs")],
   ["gap-contracts.mjs", () => import("./gap-contracts.mjs")],
+  ["gap-cortana-booking.mjs", () => import("./gap-cortana-booking.mjs")],
   ["gap-crm-links.mjs", () => import("./gap-crm-links.mjs")],
   ["gap-csm.mjs", () => import("./gap-csm.mjs")],
   ["gap-documents.mjs", () => import("./gap-documents.mjs")],

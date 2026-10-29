@@ -79,6 +79,7 @@ blueprint-closer-ready-sweeper — not in a slice yet
 blueprint-finance-os-alerts
 blueprint-next-funding-sequence-sweeper — not in a slice yet
 bookings
+cortana-booking-feed — every-five-minute ClickFunnels booking to Cortana/DirectROAS delivery job; hourly `cortana-booking` Pulse beat checks aged confirmed calls after 20 minutes for a persisted `cortana_booking_sends` delivery receipt (not merely a queued attempt). Check the workflow heartbeat (red after 3 times its schedule), receipt and provider result; retry only after verifying idempotent vendor delivery. Read-only beat: `src/pulse/beats/beat-cortana-booking.mjs`; job: `src/workflows/cortana-booking-feed.mjs`.
 bs-01-precall-launcher
 c-00-crs-soft-pull-request
 c-02-inquiry-created
