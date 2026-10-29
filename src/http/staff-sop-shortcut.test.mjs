@@ -14,7 +14,7 @@ function objectBetween(text, begin, end) {
   const i = text.indexOf(begin);
   const j = text.indexOf(end, i + begin.length);
   assert.ok(i >= 0 && j > i, "SOP map anchor missing");
-  const result = vm.runInNewContext(text.slice(i + begin.length, j).trim(), Object.create(null));
+  const result = vm.runInNewContext("(" + text.slice(i + begin.length, j).trim() + ")", Object.create(null));
   return JSON.parse(JSON.stringify(result));
 }
 const pages = objectBetween(shell, "var SOP_CONTEXT_BY_SCREEN = ", ";\n  var SOP_STAFF_ROLES");
