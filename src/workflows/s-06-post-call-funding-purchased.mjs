@@ -1,15 +1,15 @@
 // S-06 — Post-Call Outcome: Funding Purchased.
 // Source: the CRM system map SALES WORKFLOWS section.
-// Trigger: deposit.paid — the real funding-deposit signal (Chris-confirmed 2026-07-27;
-// sale.closed is the DIY downsell, not funding). Gated on the funding path (outcome_tier
-// already set by decision.rendered, which precedes the deposit in the canonical spine).
+// Trigger: deposit.paid — the verified funding-deposit signal (Chris-confirmed 2026-07-27;
+// sale.closed is the DIY downsell, not funding). Payment, not the earlier CRS
+// outcome_tier recommendation, establishes the customer-to-funding handoff.
 // Marks the sale-side commitment; F-01 (Funding Intake) handles the funding-ops-side
 // kickoff later, when round.started fires — these are sequential, not duplicated.
 
 import { inngest } from "./client.mjs";
 import { db } from "../db.mjs";
-import { resolveClient } from "../handlers/client-lifecycle.mjs";
-import { clientOutcomeTier, isFundingPath } from "../config/product-path.mjs";
+
+import { findClient, purchasedCategories } from "../handlers/purchase-routing.mjs";
 import { mergeCustomFields } from "./custom-fields.mjs";
 import { addTags, removeTags } from "./tags.mjs";
 import { createTask } from "../lib/create-task.mjs";
@@ -45,17 +45,31 @@ async function createIntakeTaskOnce(db, { orgId, clientId, eventId }) {
 }
 
 export async function handle({ event, db, step }) {
-  const clientId = await step.run("resolve-client", () => resolveClient(db, event));
+  // A payment/round can only start work for a pre-existing client in THIS org.
+  // resolveClient would accept a foreign clientId and patch that customer before
+  // checking ownership; it also creates phantom clients on unknown emails.
+  const clientId = await step.run("find-owned-client", () => findClient(db, event));
   if (!clientId) return { done: false, reason: "no_client" };
 
-  const outcomeTier = await step.run("check-product-path", () => clientOutcomeTier(db, clientId));
-  if (!isFundingPath(outcomeTier)) return { done: false, reason: `not_funding_path:${outcomeTier}` };
-
+  // deposit.paid is the verified funding-deposit event, not a CRS recommendation.
+  // A stale REPAIR_ONLY outcome must not strand a customer who already paid.
   const orgId = event.orgId;
+  // Keep the repair lane visible when the same customer has also paid for repair.
+  // Clearing that tag unconditionally hid the concurrent, still-owed program.
+  const bought = await step.run("read-paid-product-paths", () =>
+    purchasedCategories(db, orgId, clientId));
+  // deposit.paid is a webhook signal, not by itself evidence of a completed
+  // funding sale. Even a valid repair/Blueprint deposit must never open a
+  // funding advisor task or overwrite the customer's product path.
+  if (!bought.funding) {
+    return { done: false, reason: "no_verified_funding_purchase" };
+  }
   const eventId = event.id;
   await step.run("set-lifecycle-and-path", () => mergeCustomFields(db, clientId, { lifecycle_status: "Funding Client", product_path: "Funding", employee_next_action: "Pull CRS" }));
   await step.run("tag-client-funding", () => addTags(db, clientId, ["client:funding"]));
-  await step.run("remove-client-repair-tag", () => removeTags(db, clientId, ["client:repair"]));
+  if (!bought.repair) {
+    await step.run("remove-client-repair-tag", () => removeTags(db, clientId, ["client:repair"]));
+  }
   const task = await step.run("create-intake-task", () => createIntakeTaskOnce(db, { orgId, clientId, eventId }));
 
   return { done: true, task };
