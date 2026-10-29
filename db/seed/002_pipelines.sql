@@ -27,7 +27,7 @@ JOIN pipelines p ON p.org_id = org.oid
 JOIN (VALUES
   -- Sales (S + DPC series)
   ('sales','new_lead','New Lead',0),('sales','survey_complete','Survey Complete',1),
-  ('sales','booked','Booked',2),('sales','confirmed','Confirmed',3),('sales','showed','Showed',4),
+  ('sales','booked','Booked',2),('sales','confirmed','Set',3),('sales','showed','Showed',4),
   ('sales','diagnostic_paid','Diagnostic Paid',5),('sales','decision_rendered','Decision Rendered',6),
   ('sales','closed_won','Closed Won (deposit)',7),('sales','downsell','Downsell',8),('sales','lost','Lost',9),
   -- Funding: Card Stacking (F series + FUNDING_ROUNDS)

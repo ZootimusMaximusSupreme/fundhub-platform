@@ -38,6 +38,37 @@ function boardFor(rail, columns) {
   return { ok: true, pipeline: rail, total: stages.length, stages };
 }
 
+test("Sales Set stays separate from the customer's call confirmation", { timeout: 30_000 }, async (t) => {
+  const { open } = await startScreens(t);
+  const board = boardFor("sales", [
+    { stage: "booked", name: "Booked" },
+    { stage: "confirmed", name: "Set" }
+  ]);
+  board.stages = board.stages.slice(0, 2);
+  board.total = 2;
+  for (const stage of board.stages) {
+    stage.count = 1;
+    stage.amount = CARD_AMOUNT;
+  }
+  board.stages[0].cards[0].name = "Example buyer A";
+  board.stages[1].cards[0].name = "Example buyer B";
+  board.stages[0].cards[0].call_confirmed = true;
+  board.stages[1].cards[0].call_confirmed = false;
+  const { page, errors } = await open("/app/pipeline.html", {
+    handlers: backend({ sales: board }, [], [])
+  });
+  await page.waitForSelector('.col[data-stage-key="confirmed"]');
+  assert.equal(await colName(page, "confirmed").locator(".col-name").innerText(), "Set");
+  assert.equal(await colName(page, "booked").locator(".c-call-confirmed").innerText(), "✓ Call confirmed");
+  assert.equal(await colName(page, "confirmed").locator(".c-call-confirmed").count(), 0);
+  assert.deepEqual(errors, []);
+  if (process.env.SALES_SET_SCREENSHOT_PATH) {
+    await colName(page, "confirmed").scrollIntoViewIfNeeded();
+    await page.screenshot({ path: process.env.SALES_SET_SCREENSHOT_PATH });
+  }
+  await page.close();
+});
+
 // A fake backend for the board. `boards` maps pipeline key -> read answer.
 function backend(boards, writes, reads) {
   return {

@@ -46,6 +46,7 @@ const CARDS_SQL = `
     c.funded,
     c.funded_amount,
     c.is_demo,
+    (c.custom_fields->>'call_confirmed') = 'true' AS call_confirmed,
     (c.custom_fields->>'total_funding_estimate') AS total_funding_estimate,
     c.custom_fields->>'cf_svy_self_reported_fico' AS survey_fico_raw,
     c.custom_fields->>'cf_svy_self_reported_fico_label' AS survey_fico_label,
@@ -208,6 +209,7 @@ export default async function handler(req, res) {
         funded: r.funded ?? false,
         amount: est === null ? null : Number(est),
         is_demo: !!r.is_demo,
+        call_confirmed: r.call_confirmed === true,
         survey_fico: surveyFicoBand({
           cf_svy_self_reported_fico: r.survey_fico_raw,
           cf_svy_self_reported_fico_label: r.survey_fico_label

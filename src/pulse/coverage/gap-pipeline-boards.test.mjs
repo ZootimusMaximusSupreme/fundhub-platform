@@ -186,6 +186,8 @@ test("gap pipeline boards: the lists are true to the repo (stage keys, clocks, b
     for (const stage of b.done) assert.match(text, new RegExp(`['"]${stage}['"]`), `${b.key}/${stage}`);
   }
   assert.equal(DEAD_STAGES.length, 30);
+  assert.match(DEAD_CARDS_SQL, /setter_handoff'->>'complete_at'.*IS NULL/s,
+    "a Sales card may say Set only after the setter handoff is complete");
   assert.equal(new Set(DEAD_STAGE_KEYS).size, 30, "no stage is listed twice");
   // Every board has a written clock or one named setting. Nothing is left without either.
   const covered = new Set([...WRITTEN_CLOCK_BOARDS, ...Object.keys(AGE_LIMIT_HOURS)]);
@@ -443,7 +445,7 @@ test("dead-stage na: no card sits on any of the 30 stages, and the row carries a
   assert.deepEqual(call.params, [ORG, [...DEAD_STAGE_KEYS], TEST_CLIENT_EMAIL_RE]);
 });
 
-test("dead-stage FAIL: a card lands on Sales Confirmed, and a Hiring application on Ramp", async () => {
+test("dead-stage FAIL: a Sales card claims Set without a handoff, and a Hiring application lands on Ramp", async () => {
   const rows = await gapChecks({
     db: dbFrom(mapOf({ over: {
       [DEAD_CARDS_SQL]: [{ pipeline: "sales", stage: "confirmed", n: 1 }],
@@ -456,7 +458,7 @@ test("dead-stage FAIL: a card lands on Sales Confirmed, and a Hiring application
   shape(r);
   assert.equal(r.status, "FAIL");
   assert.match(r.detail, /3 cards landed on 2 stages nothing moves a card to/);
-  assert.match(r.detail, /Sales confirmed holds 1 \(no code moves a card to Confirmed\)/);
+  assert.match(r.detail, /Sales confirmed holds 1 \(a completed setter handoff is required\)/);
   assert.match(r.detail, /Hiring ramp holds 2 \(no working transition reaches Ramp\)/);
   assert.equal(r.na, undefined, "a red row carries no nothing-to-judge proof");
 });
