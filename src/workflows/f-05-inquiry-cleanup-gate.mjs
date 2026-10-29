@@ -60,7 +60,7 @@ export async function approvedCardStackingRound(db, { orgId, clientId, payload }
     return { ok: false, reason: "stale_round_approval" };
   }
   // A late approval cannot reclassify inquiries after a round has finished.
-  if (["funded", "closed", "cancelled", "canceled"].includes(
+  if (["funded", "closed", "completed", "cancelled", "canceled"].includes(
     String(current.status || "").toLowerCase()
   )) return { ok: false, reason: "round_terminal" };
   return { ok: true };
