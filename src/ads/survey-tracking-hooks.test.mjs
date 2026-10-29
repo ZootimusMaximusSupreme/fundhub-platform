@@ -33,7 +33,7 @@ const APP_CARD_JS = read("public/funnel/fundhub-prompter-download.js");
 const ALLOWED = {
   /* last: true on the final question only (docs/tracking/meta-events.md, Phase 4 map:
      the shared tracker turns it into Meta Lead). */
-  survey_answer: ["survey", "step_num", "question_id", "last"],
+  survey_answer: ["survey", "step_num", "question_id", "last", "credit_tier"],
   survey_route: ["survey", "offer"],
   field_focus: ["form", "field"],
   field_complete: ["form", "field"],
@@ -380,10 +380,11 @@ const APPLY_CONTACT_EVENTS = [
   ev("survey_answer", { survey: "apply", step_num: 1, question_id: "contact" }),
 ];
 
-/* The final question (cf_svy_available_capital) carries last: true; no other screen does. */
-const answersOf = (path) =>
+/* The final question (cf_svy_available_capital) carries last: true; no other screen does.
+   It also carries the owner's credit bucket (2026-10-29); APPLY_COMMON answers 700-749. */
+const answersOf = (path, tier = "qualified") =>
   path.map(([key], i) => ev("survey_answer", {
-    survey: "apply", step_num: i + 2, question_id: key, ...(i === path.length - 1 ? { last: true } : {}),
+    survey: "apply", step_num: i + 2, question_id: key, ...(i === path.length - 1 ? { last: true, credit_tier: tier } : {}),
   }));
 
 describe("/apply survey hooks (apply-survey.html)", () => {
@@ -403,10 +404,24 @@ describe("/apply survey hooks (apply-survey.html)", () => {
     assertShape(got);
   });
 
+  test("the credit bucket: 700-749 and 750+ are qualified; every other score answer, Not sure too, is unqualified", () => {
+    const tiers = { "500-579": "unqualified", "580-649": "unqualified", "650-699": "unqualified",
+      "700-749": "qualified", "750+": "qualified", "Not sure": "unqualified" };
+    for (const [score, tier] of Object.entries(tiers)) {
+      const a = openApply();
+      fillApplyContact(a);
+      for (const [key, label] of [...APPLY_COMMON, ...APPLY_BIZ]) a.pick(key === "cf_svy_self_reported_fico" ? score : label);
+      const got = a.page.events().filter((e) => e[1].credit_tier !== undefined);
+      assert.deepEqual(got, [ev("survey_answer", { survey: "apply", step_num: 9, question_id: "cf_svy_available_capital", last: true, credit_tier: tier })], score);
+      assert.ok(a.doc.body.textContent.includes("You're qualified. Pick a time below."), `${score}: the page words do not change`);
+      assert.ok(!JSON.stringify(a.page.events()).includes(score), `${score}: the score itself is never queued`);
+    }
+  });
+
   test("only the final question (available capital, step 9) carries last: true, on both paths", () => {
     for (const rest of [APPLY_BIZ, APPLY_PERSONAL]) {
       const lasts = walkApply(rest).page.events().filter((e) => e[1].last !== undefined);
-      assert.deepEqual(lasts, [ev("survey_answer", { survey: "apply", step_num: 9, question_id: "cf_svy_available_capital", last: true })]);
+      assert.deepEqual(lasts, [ev("survey_answer", { survey: "apply", step_num: 9, question_id: "cf_svy_available_capital", last: true, credit_tier: "qualified" })]);
     }
   });
 

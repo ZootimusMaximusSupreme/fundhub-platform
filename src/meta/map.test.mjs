@@ -65,11 +65,15 @@ const SAMPLES = [
   row("video", { page: "/watch", props: { video: "vsl", action: "progress", pct: 50 } }),
   row("section_view", { props: { section: "fhw" } }),
   row("softpull_submit", { props: { businesses: 2, bbv: 2 } }),
+  row("survey_answer", { page: "/apply", props: { survey: "apply", step_num: 9, question_id: "cf_svy_available_capital", last: true, credit_tier: "qualified" } }),
+  row("survey_answer", { page: "/apply", props: { survey: "apply", step_num: 9, question_id: "cf_svy_available_capital", last: true, credit_tier: "unqualified" } }),
+  row("booking_confirmed", { page: "/apply", props: { calendar: "funding-book-call", credit_tier: "qualified" } }),
+  row("booking_confirmed", { page: "/apply", props: { calendar: "funding-book-call", credit_tier: "unqualified" } }),
 ];
 
 describe("META_MAP is the contract table", () => {
   test("same rows, same order: our event, Meta event, custom or not", () => {
-    assert.equal(ROWS.length, 12, "the contract table has twelve rows");
+    assert.equal(ROWS.length, 16, "the contract table has sixteen rows");
     assert.equal(META_MAP.length, ROWS.length);
     ROWS.forEach(([ours, meta], i) => {
       const rule = META_MAP[i];
@@ -172,6 +176,23 @@ describe("everything else maps to nothing", () => {
     for (const flag of [false, "true", 1]) {
       const out = metaEventsFor(row("survey_answer", { page: "/apply", props: { survey: "apply", last: flag } }));
       assert.deepEqual(out.map((e) => e.event_name), ["SurveyStep"], String(flag));
+    }
+  });
+
+  test("the credit buckets: one tier event on top of Lead and Schedule, and none without a tier", () => {
+    const names = (r) => metaEventsFor(r).map((e) => e.event_name);
+    const last = (tier) => row("survey_answer", { page: "/apply", props: { survey: "apply", step_num: 9, question_id: "cf_svy_available_capital", last: true, credit_tier: tier } });
+    const booked = (tier) => row("booking_confirmed", { page: "/apply", props: { calendar: "funding-book-call", credit_tier: tier } });
+    assert.deepEqual(names(last("qualified")), ["Lead", "SurveyStep", "QualifiedLead"]);
+    assert.deepEqual(names(last("unqualified")), ["Lead", "SurveyStep", "UnqualifiedLead"]);
+    assert.deepEqual(names(booked("qualified")), ["Schedule", "QualifiedSchedule"]);
+    assert.deepEqual(names(booked("unqualified")), ["Schedule", "UnqualifiedSchedule"]);
+    assert.deepEqual(names(SAMPLES[3]), ["Lead", "SurveyStep"], "no tier: Lead only, as before");
+    assert.deepEqual(names(SAMPLES[6]), ["Schedule"], "a booking from a tab with no /apply survey: Schedule only");
+    const early = row("survey_answer", { page: "/apply", props: { survey: "apply", step_num: 3, question_id: "cf_svy_planned_use", credit_tier: "qualified" } });
+    assert.deepEqual(names(early), ["SurveyStep"], "a tier on an answer that is not the last is no tier Lead");
+    for (const r of [last("qualified"), booked("unqualified")]) {
+      for (const e of metaEventsFor(r)) assert.equal(e.event_id, ID, `${e.event_name}: the browser's one id`);
     }
   });
 

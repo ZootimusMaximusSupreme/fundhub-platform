@@ -185,6 +185,8 @@ pre{margin:18px 0 0;padding:14px;background:var(--panel);border-radius:10px;font
     { key: 'cf_svy_available_capital', type: 'single', title: 'Available Capital', hint: 'Cash you could put toward getting funded.',
       opts: ['Less than $1k', '$1k - $5k', '$5k - $25k', '$25k - $100k', '$100k+'] }
   ];
+  /* Score answers (labels above, verbatim) that count as qualified credit. */
+  var QUALIFIED_SCORES = { '700-749': 1, '750+': 1 };
   var A = {}, at = 0;
   var body = document.getElementById('body'), form = document.getElementById('sv');
 
@@ -439,7 +441,14 @@ pre{margin:18px 0 0;padding:14px;background:var(--panel);border-radius:10px;font
        one into Meta Lead (docs/tracking/meta-events.md, Phase 4 map); this page sends
        nothing to Meta itself. */
     var p = { survey: 'apply', step_num: at + 1, question_id: list[at].key };
-    if (at === list.length - 1) p.last = true;
+    if (at === list.length - 1) {
+      p.last = true;
+      /* credit_tier: the owner's two buckets (2026-10-29). Qualified credit is 700 and up;
+         every other answer, "Not sure" too, is unqualified. Only the tier is sent, never the
+         score. The shared tracker turns it into QualifiedLead / UnqualifiedLead and keeps it
+         for the booking's Schedule. Nothing on the page changes. */
+      p.credit_tier = QUALIFIED_SCORES[A.cf_svy_self_reported_fico] ? 'qualified' : 'unqualified';
+    }
     fht('survey_answer', p);
     if (at < list.length - 1) { at++; render(); }
     else finish();

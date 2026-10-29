@@ -56,6 +56,15 @@ Add new rows under row 27 as Chris talks.
 - **Proof:** Run focused provider, retry, workflow registry, lint, full suite, migration manifest, and diagram checks. Deploy with the production webhook URL and verify a real or controlled new booking in DirectROAS before saying future sends work live.
 - **Risk:** A vendor timeout after acceptance can be ambiguous; the booking ID stays stable in the payload. Failed sends stay in the ledger and the job heartbeat goes red.
 
+### Qualified vs unqualified credit pixel split, 2026-10-29
+
+- **Owner call (2026-10-29):** The two buckets only split the Meta pixel. Same calendar, same people take the call, same thank-you page. Qualified credit is a score answer of 700-749 or 750+ (the same 700 line UnderwriteIQ uses for "fundable"). Every other answer, including "Not sure", is unqualified.
+- **Owner:** Claude owns the funnel lane (Chris, 2026-10-29). Branch `feat/funnel-credit-pixel-split`. Codex was told on Tether to stay out of these files.
+- **Spec:** The /apply survey sends `credit_tier` (`qualified` or `unqualified`) on its last answer. It never sends the score itself. The shared tracker keeps that tier for the tab and puts it on the booking it relays. Lead and Schedule still fire for everyone. Each person also fires `QualifiedLead` or `UnqualifiedLead` on the last answer, and `QualifiedSchedule` or `UnqualifiedSchedule` on the booking. The browser and the server send each one under the same event id, so Meta counts it once. The word "credit" and the score never go to Meta.
+- **Why no second calendar or page:** The ClickFunnels API cannot create a calendar. The bucket comes from the survey answer, not from the calendar. Meta can optimize an ad set on the new events, so a second thank-you web address is not needed.
+- **Files:** `marketing/landing-pages/apply-survey.html` (no visible change), `public/funnel/fh-events.js`, `src/funnel/track.mjs`, `src/meta/map.mjs`, their tests, `docs/tracking/meta-events.md`, `docs/tracking/tracking-spec.md`.
+- **Proof:** Focused tracker, survey, Meta map and door tests; lint; GitHub CI; ship; ClickFunnels push of `/apply`; a live browser check that catches the sends before they leave the page.
+
 ## 2026-10-26 Monday funnel repair lanes
 
 Source: the 2026-10-26 customer walk notes in the main checkout. This branch covers Monday rows 18–20, 22–24, and 26. Rows 21 and 27 remain V2.

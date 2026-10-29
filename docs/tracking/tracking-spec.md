@@ -62,7 +62,7 @@ Rows are added from `docs/tracking/page-inventory.md` (Phase 2). Same map in the
 | `carousel` | Testimonial carousel next, previous, play | `carousel`, `action` (next/prev/play), `index` | shared tracker (by `data-fh-carousel` / known classes) or page hook |
 | `faq_open` | Each FAQ question opened (`<details>` toggle or FAQ button) | `question` (label slug) | shared tracker |
 | `app_download_tap` | An Apple link (TestFlight or App Store) on `/thank-you` or `/portal-login.html` pressed; every press | none | shared tracker (by the link's address) |
-| `survey_answer` | Each survey question answered | `survey`, `step_num`, `question_id`, `last` (true once, on the survey's final submit) | survey page hook |
+| `survey_answer` | Each survey question answered | `survey`, `step_num`, `question_id`, `last` (true once, on the survey's final submit), `credit_tier` (/apply final submit only: qualified for a 700-749 or 750+ score answer, else unqualified; never the score) | survey page hook |
 | `survey_route` | Sorting hat routes someone | `survey`, `offer` (offer code) | thank-you / survey hook |
 | `buybox_tab` | Each buy box step shown (buy box v2 has no tabs: the "Step n of 3" line; same event, so before and after compare) | `tab` (1/2/3), `bbv` | /roadmap buy box hook |
 | `field_focus` | A buy box / survey / booking field gets focus, once per field per page load | `form`, `field` (name only), `bbv` (buy box only) | page hook |
@@ -74,7 +74,7 @@ Rows are added from `docs/tracking/page-inventory.md` (Phase 2). Same map in the
 | `softpull_submit` | Start My Soft Pull pressed and accepted by the form check | `businesses` (count), `bbv` | buy box hook |
 | `calendar_view` | A booking calendar is on screen | `calendar` | booking hook |
 | `time_selected` | A time slot picked | `calendar` | booking hook |
-| `booking_confirmed` | Book / Confirm pressed and the booking saved | `calendar` | booking hook |
+| `booking_confirmed` | Book / Confirm pressed and the booking saved | `calendar`, `credit_tier` (added by the tracker from this tab's /apply survey, when there was one) | booking hook |
 | `preview_opened` | A "See a sample" preview opened under a /roadmap order summary line | `deliverable`, `bbv` | /roadmap buy box hook |
 | `preview_closed` | That preview closed (close press, or tab hidden / page closed while open) | `deliverable`, `open_ms`, `bbv` | /roadmap buy box hook |
 
@@ -183,10 +183,10 @@ Use an email ending `@fundhub.ai` so the system marks you as us, not a buyer.
 | # | Tap | You should see | Meta Test Events | Our database / CRM |
 |---|---|---|---|---|
 | 1 | Open https://apply.fundhub.ai/watch, tap Get Started | /apply | PageView ×2 | funnel.page /watch then /apply |
-| 2 | Fill contact, answer every screen | "You're qualified. Pick a time below." | Lead | survey_answer steps 1–9 |
+| 2 | Fill contact, answer every screen | "You're qualified. Pick a time below." | Lead, plus QualifiedLead (score 700+) or UnqualifiedLead | survey_answer steps 1–9; step 9 has credit_tier |
 | 3 | Pick a time | Contact form inside the calendar | — | time_selected |
 | 4 | Book with a **bad phone** (e.g. 123) | ClickFunnels refuses | **No** Schedule | no booking_confirmed |
-| 5 | Book with a real phone | Booking confirmed | Schedule | booking_confirmed; a real appointment in ClickFunnels + CRM booking (cancel it after) |
+| 5 | Book with a real phone | Booking confirmed | Schedule, plus QualifiedSchedule or UnqualifiedSchedule (same bucket as step 2) | booking_confirmed with credit_tier; a real appointment in ClickFunnels + CRM booking (cancel it after) |
 
 ### Facebook / Instagram in-app (no charge)
 Send `https://apply.fundhub.ai/roadmap` to yourself in an Instagram DM (or post it to Facebook as Only me), tap it, fill step 1, tap Get My Funding Roadmap. Pass: card boxes show within ~10 seconds and the card number box brings up a number keyboard. Switch to Messages for a minute and come back — note whether the page reloaded to an empty step 1 (the reload fix is coming with the page agent's batch). Do not tap Get My Roadmap.
