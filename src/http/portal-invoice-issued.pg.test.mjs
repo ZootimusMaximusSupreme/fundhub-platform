@@ -21,7 +21,7 @@ const SCRATCH = (() => {
 describe("portal invoice due excludes drafts and terminal invoices (real PostgreSQL)", {
   skip: SCRATCH ? false : "CI loopback fundhub_ci only"
 }, () => {
-  let conn, orgA, orgB, buyerA, buyerB, draft, sent, settled, foreign;
+  let conn, orgA, orgB, buyerA, buyerB, draft, sent, settled, foreign, contradictory;
 
   before(async () => {
     conn = await pool().connect();
@@ -56,6 +56,11 @@ describe("portal invoice due excludes drafts and terminal invoices (real Postgre
     assert.equal(settled?.status, "paid");
     const foreignRow = await invoice(orgB, buyerB, 830);
     foreign = await markSent(conn, { invoiceId: foreignRow.id });
+    // Legacy invoice FK permits org A to reference a buyer owned by org B.
+    // This must NEVER display as A's debt or expose its saved payment link.
+    const badRow = await invoice(orgA, buyerB, 999);
+    contradictory = await markSent(conn, { invoiceId: badRow.id });
+    assert.equal(contradictory?.status, "sent");
   });
 
   after(async () => {
@@ -81,6 +86,23 @@ describe("portal invoice due excludes drafts and terminal invoices (real Postgre
     const rightBuyer = (await conn.query(PORTAL_INVOICE_DUE_SQL, [orgB, buyerB])).rows;
     assert.deepEqual(rightBuyer.map((r) => String(r.id)), [String(foreign.id)]);
     assert.equal(Number(rightBuyer[0].open_balance), 830);
+  });
+
+  test("a contradictory A-invoice/B-buyer row is excluded even when it is issued and positive", async () => {
+    // Prove the test actually exercises an inconsistent legacy row.
+    const raw = (await conn.query(
+      "SELECT invoice_id, org_id, client_id, open_balance FROM v_invoice_aging WHERE invoice_id=$1",
+      [contradictory.id]
+    )).rows[0];
+    assert.equal(String(raw.org_id), String(orgA));
+    assert.equal(String(raw.client_id), String(buyerB));
+    assert.equal(Number(raw.open_balance), 999);
+    assert.match(PORTAL_INVOICE_DUE_SQL, /JOIN clients c ON c\.id = i\.client_id AND c\.org_id = i\.org_id/);
+
+    const wrongCompany = (await conn.query(PORTAL_INVOICE_DUE_SQL, [orgA, buyerB])).rows;
+    assert.deepEqual(wrongCompany, [], "no cross-org bill or checkout link can be exposed");
+    const legitimate = (await conn.query(PORTAL_INVOICE_DUE_SQL, [orgA, buyerA])).rows;
+    assert.deepEqual(legitimate.map(r => String(r.id)), [String(sent.id)]);
   });
 
   test("an unissued draft alone does not generate a false portal balance", async () => {
