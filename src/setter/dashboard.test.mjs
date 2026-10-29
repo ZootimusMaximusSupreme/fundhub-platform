@@ -1,9 +1,19 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { sanitizeHandoffPatch, missingForCompletion, updateSetterHandoff, listSetterQueue, setterNumbers, targetDialBy } from "./dashboard.mjs";
+import { sanitizeHandoffPatch, missingForCompletion, updateSetterHandoff, listSetterQueue, setterNumbers, targetDialBy, surveySummary } from "./dashboard.mjs";
 
 const STAFF = { id: "staff-1", org_id: "org-1", role: "owner", name: "Chris" };
 const CLIENT_ID = "11111111-1111-1111-1111-111111111111";
+
+test("setter survey shows nested ClickFunnels choices as plain answers", () => {
+  const answers = surveySummary({
+    cf_svy_money_change_now_label: JSON.stringify([JSON.stringify(["Fresh start (new business / startup launch)"])]),
+    cf_svy_planned_use_label: "Open a shop"
+  });
+  assert.equal(answers.find(row => row.question === "What Would This Money Change Right Now?")?.answer,
+    "Fresh start (new business / startup launch)");
+  assert.equal(answers.find(row => row.answer === "Open a shop")?.answer, "Open a shop");
+});
 
 function completeHandoff() {
   return { dialed_at: "2026-10-26T20:00:00Z", call_attempts: 1, disposition: "reached",
