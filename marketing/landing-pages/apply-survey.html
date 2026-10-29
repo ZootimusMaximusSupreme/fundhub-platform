@@ -441,14 +441,12 @@ pre{margin:18px 0 0;padding:14px;background:var(--panel);border-radius:10px;font
        one into Meta Lead (docs/tracking/meta-events.md, Phase 4 map); this page sends
        nothing to Meta itself. */
     var p = { survey: 'apply', step_num: at + 1, question_id: list[at].key };
-    if (at === list.length - 1) {
-      p.last = true;
-      /* credit_tier: the owner's two buckets (2026-10-29). Qualified credit is 700 and up;
-         every other answer, "Not sure" too, is unqualified. Only the tier is sent, never the
-         score. The shared tracker turns it into QualifiedLead / UnqualifiedLead and keeps it
-         for the booking's Schedule. Nothing on the page changes. */
-      p.credit_tier = QUALIFIED_SCORES[A.cf_svy_self_reported_fico] ? 'qualified' : 'unqualified';
-    }
+    /* credit_tier: the owner's two buckets (2026-10-29). Qualified credit is 700 and up;
+       every other answer, "Not sure" too, is unqualified. Only the tier is sent, never the
+       score. The shared tracker turns it into QualifiedLead / UnqualifiedLead and keeps it
+       for the booking's Schedule. Nothing on the page changes. */
+    if (at === list.length - 1) p.credit_tier = QUALIFIED_SCORES[A.cf_svy_self_reported_fico] ? 'qualified' : 'unqualified';
+    if (at === list.length - 1) p.last = true;
     fht('survey_answer', p);
     if (at < list.length - 1) { at++; render(); }
     else finish();
