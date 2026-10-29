@@ -18,9 +18,10 @@ const event = (overrides = {}) => ({
 
 function fakeDb({
   clients = [{ id: CLIENT_A, org_id: ORG_A, email: "f05+owner@example.test" }],
-  inquiries = []
+  inquiries = [],
+  rounds = []
 } = {}) {
-  const state = { clients, inquiries, queries: [], updates: 0 };
+  const state = { clients, inquiries, rounds, queries: [], updates: 0 };
   state.query = async (sql, params = []) => {
     state.queries.push({ sql, params });
     if (/SELECT id FROM clients WHERE id = \$1 AND org_id = \$2/.test(sql)) {
@@ -31,6 +32,13 @@ function fakeDb({
       const row = clients.find(c => c.org_id === params[0] &&
         String(c.email || "").toLowerCase() === params[1]);
       return { rows: row ? [{ id: row.id }] : [] };
+    }
+    if (/SELECT round_number, status FROM funding_rounds/.test(sql)) {
+      assert.match(sql, /org_id = \$1 AND client_id = \$2/, "same-org round only");
+      const [orgId, clientId] = params;
+      const current = rounds.filter(r => r.org_id === orgId && r.client_id === clientId)
+        .sort((a, b) => b.round_number - a.round_number)[0];
+      return { rows: current ? [{ round_number: current.round_number, status: current.status }] : [] };
     }
     if (/UPDATE inquiry_log/.test(sql)) {
       assert.match(sql, /org_id = \$1 AND client_id = \$2/, "never update a different tenant");
@@ -133,4 +141,66 @@ test("existing client lookup with no org or malformed client never writes", asyn
   assert.equal(await existingRoundClient(db, { clientId: CLIENT_B, orgId: ORG_A }), null);
   assert.equal(await existingRoundClient(db, { orgId: ORG_B, payload: { email: "f05+owner@example.test" } }), null);
   assert.equal(db.updates, 0);
+});
+
+const stacking = (roundNumber, extras = {}) => event({
+  payload: { rail: "card_stacking", source: "card_stacking", stage: "approved", roundNumber, ...extras }
+});
+
+const recordedRound = (round_number, status = "approved", extras = {}) => ({
+  org_id: ORG_A, client_id: CLIENT_A, round_number, status, ...extras
+});
+
+test("a card-stacking approval only updates inquiries for its recorded current round", async () => {
+  const db = fakeDb({
+    inquiries: [inquiry("New")],
+    rounds: [recordedRound(1, "approved"), recordedRound(2, "approved")]
+  });
+  const stale = await handle({ event: stacking(1), db, step });
+  assert.deepEqual(stale, { done: false, reason: "stale_round_approval" });
+  assert.equal(db.updates, 0);
+  assert.equal(db.inquiries[0].status, "New");
+
+  const current = await handle({ event: stacking(2), db, step });
+  assert.deepEqual(current, { done: true, updated: 1 });
+  assert.equal(db.inquiries[0].status, "Pending Removal");
+  const replay = await handle({ event: stacking(2), db, step });
+  assert.deepEqual(replay, { done: true, updated: 0 });
+});
+
+test("missing, malformed and terminal card-stacking rounds never reopen inquiry cleanup", async () => {
+  const cases = [
+    { number: 1, rounds: [], reason: "funding_round_not_found" },
+    { number: 0, rounds: [recordedRound(1)], reason: "invalid_round_number" },
+    { number: -1, rounds: [recordedRound(1)], reason: "invalid_round_number" },
+    { number: "1.5", rounds: [recordedRound(1)], reason: "invalid_round_number" },
+    { number: "not-a-round", rounds: [recordedRound(1)], reason: "invalid_round_number" },
+    { number: 1, rounds: [recordedRound(1, "funded")], reason: "round_terminal" },
+    { number: 1, rounds: [recordedRound(1, "closed")], reason: "round_terminal" },
+    { number: 1, rounds: [recordedRound(1, "cancelled")], reason: "round_terminal" },
+    { number: 1, rounds: [recordedRound(1, "approved", { org_id: ORG_B })], reason: "funding_round_not_found" },
+    { number: 1, rounds: [recordedRound(1, "approved", { client_id: CLIENT_B })], reason: "funding_round_not_found" }
+  ];
+  for (const { number, rounds, reason } of cases) {
+    const db = fakeDb({ inquiries: [inquiry("New")], rounds });
+    const result = await handle({ event: stacking(number), db, step });
+    assert.deepEqual(result, { done: false, reason }, String(number) + "/" + reason);
+    assert.equal(db.updates, 0);
+    assert.equal(db.inquiries[0].status, "New");
+  }
+});
+
+test("an unrelated event never touches inquiry status", async () => {
+  const db = fakeDb({ inquiries: [inquiry("New")], rounds: [recordedRound(1)] });
+  assert.deepEqual(await handle({ event: { ...stacking(1), name: "round.started" }, db, step }),
+    { done: false, reason: "not_round_approved" });
+  assert.equal(db.queries.length, 0);
+  assert.equal(db.updates, 0);
+});
+
+test("a non-card-stacking provider approval keeps its historical path", async () => {
+  const db = fakeDb({ inquiries: [inquiry("New")] });
+  assert.deepEqual(await handle({
+    event: event({ payload: { rail: "external_provider", stage: "approved" } }), db, step
+  }), { done: true, updated: 1 });
 });
