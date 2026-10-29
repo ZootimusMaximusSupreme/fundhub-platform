@@ -104,3 +104,43 @@ test("malformed key refuses before a message write; older clients without a key 
     assert.equal(w.stored[0].provider_ref, null);
   });
 });
+
+
+test("portal GET returns the latest 100 own-client messages, not the first 100 or another buyer's", async () => {
+  const own = Array.from({ length: 125 }, (_, i) => ({
+    id: "note-" + String(i + 1).padStart(3, "0"),
+    org_id: ORG_ID, client_id: A, conversation_id: "conv-A",
+    direction: "inbound", channel: "sms", sender_kind: "client",
+    rendered_body: "Note " + (i + 1),
+    created_at: new Date(Date.UTC(2026, 9, 29, 12, i + 1)).toISOString()
+  }));
+  const foreign = { ...own[own.length - 1], client_id: B,
+    rendered_body: "Other person's private reply" };
+  const fake = fakeDb([
+    ...accountSession({ kind: "client", clientId: A }),
+    [/SELECT id FROM conversations/, (_sql, params) => {
+      assert.deepEqual(params, [ORG_ID, A]);
+      return [{ id: "conv-A" }];
+    }],
+    [/SELECT \* FROM \(\s*SELECT m\.id/, (sql, params) => {
+      assert.deepEqual(params, [ORG_ID, A, "conv-A", 100]);
+      assert.match(sql, /m\.org_id = \$1 AND m\.client_id = \$2 AND m\.conversation_id = \$3/);
+      assert.match(sql, /ORDER BY m\.created_at DESC, m\.id DESC\s+LIMIT \$4/);
+      assert.match(sql, /ORDER BY recent\.created_at ASC, recent\.id ASC/);
+      return [...own, foreign]
+        .filter((m) => m.org_id === params[0] && m.client_id === params[1] && m.conversation_id === params[2])
+        .sort((a, b) => b.created_at.localeCompare(a.created_at))
+        .slice(0, params[3])
+        .sort((a, b) => a.created_at.localeCompare(b.created_at));
+    }]
+  ]);
+  await runWithSharedDb(fake, async () => {
+    const res = makeRes();
+    await portalMessage(req("GET", { query: { limit: "100" } }), res);
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.messages.length, 100);
+    assert.equal(res.body.messages[0].rendered_body, "Note 26");
+    assert.equal(res.body.messages[99].rendered_body, "Note 125");
+    assert.equal(res.body.messages.some((row) => row.rendered_body.includes("private reply")), false);
+  });
+});
