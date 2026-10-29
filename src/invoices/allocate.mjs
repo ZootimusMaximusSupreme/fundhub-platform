@@ -73,7 +73,13 @@ async function findByPaymentLink(db, { orgId, paymentLinkId, ref }) {
         LIMIT 1`,
       [paymentLinkId, orgId]
     );
-    if (r.rows[0]?.invoice_id) return getInvoice(db, { invoiceId: r.rows[0].invoice_id });
+    // When a provider explicitly supplies a checkout ID, that ID is the
+    // authority. A missing/foreign ID must never be rescued by a second
+    // `ref` field that happens to point at a payable local invoice.
+    // Otherwise contradictory checkout metadata could credit the wrong bill.
+    return r.rows[0]?.invoice_id
+      ? getInvoice(db, { invoiceId: r.rows[0].invoice_id })
+      : null;
   }
   if (ref) {
     const r = await db.query(
