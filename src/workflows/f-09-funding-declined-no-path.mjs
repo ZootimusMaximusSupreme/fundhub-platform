@@ -46,7 +46,9 @@ export async function denialDecision(db, { orgId, clientId } = {}) {
     [roundId, orgId]
   );
   if (!apps.rows.length) return { ok: false, reason: "no_tracked_applications", roundId };
-  if (!apps.rows.every((a) => a.status === "DENIED")) {
+  // Staff bank decisions persist title-case 'Denied' (APPLICATION_STATUSES).
+  // Older imported rows may contain 'DENIED'; both represent the same outcome.
+  if (!apps.rows.every((a) => String(a.status ?? "").trim().toLowerCase() === "denied")) {
     return { ok: false, reason: "pending_applications", roundId };
   }
   return { ok: true, reason: null, roundId };
