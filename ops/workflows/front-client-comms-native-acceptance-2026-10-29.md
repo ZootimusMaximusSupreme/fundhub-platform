@@ -24,6 +24,8 @@
 
 ## Proposed future-only native installation verification — DO NOT implement now
 
+**Fresh App Store listing (2026-10-29):** The U.S. storefront publicly lists [Fundhub Portal](https://apps.apple.com/us/app/fundhub-portal/id6823985032) as **Only for iPhone**, requiring iOS 17.0 or later; the page also says **Not verified for macOS**, despite listing macOS 14 / Apple Silicon compatibility. This is provider/store metadata only, **not** a tested app installation, not proof a Mac app has shipped, and not a version-to-installed-build comparison. The public listing exposed no version or release date in the available HTML. All native first-launch, login, WKWebView, push and installed-version checks remain **NOT LIVE PROVED**.
+
 An App Store CTA click **does not** prove installation. A reliable “App first opened” dashboard check would be generated on the **first authenticated native app launch/login**, recording privacy-conscious installation ID, app version, platform and first-open timestamp server-side; optional last-open time requires a separate event. Idempotently bind the event to the authenticated client/session without relying on an unverified phone link. Treat APNs token registration as consent-based push enrollment, **not** reliable installation evidence (many users decline push). Verify iPhone App Store release vs installed build and Mac release independently, against real signed package/release metadata; **NOT LIVE PROVED** this run. This is a design note only: no new tracking, push request or native changes.
 
 ## Exact safe acceptance still required
