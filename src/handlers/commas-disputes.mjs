@@ -36,7 +36,7 @@
  */
 
 import { createTask } from "../lib/create-task.mjs";
-import { findClient } from "./purchase-routing.mjs";
+
 import { on } from "../events/registry.mjs";
 
 /* Who owns a chargeback response. The owner, not an advisor: responding needs
@@ -62,28 +62,27 @@ export function parseDueBy(value) {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-/* Existing-payer resolution for refunds and chargebacks. Never lead-capture.
- * The succeeded transaction's provider reference is stronger evidence than
- * an email or client ID echoed on a late refund/dispute callback.
- * A same-org, same-payment original receipt wins. If none exists, permit only
- * an already-existing same-org customer; otherwise route the event to the
- * event bus dead-letter queue for manual investigation, not a phantom CRM row. */
+/* Reversal callbacks cannot name their own accounting owner.
+ * A customer's email/client ID in a delayed callback may be stale, incorrect
+ * or belong to an entirely different tenant. Only the original SUCCESSFUL
+ * Commas transaction's immutable provider reference and org_id may route an
+ * urgent owner task. Unknown original payment -> durable bus dead-letter
+ * instead of guessing an owner, mutating the client, or creating CRM leads.
+ * Reversals never change the original financial ledger here. */
 export async function knownReversalClient(db, event) {
-  if (!event?.orgId) return null;
-  const ref = event.payload?.paymentId || event.payload?.providerRef || null;
-  if (ref) {
-    const original = await db.query(
-      `SELECT t.client_id
-         FROM transactions t
-         JOIN clients c ON c.id = t.client_id AND c.org_id = t.org_id
-        WHERE t.org_id = $1 AND t.provider_ref = $2
-          AND t.status = 'succeeded'
-        LIMIT 1`,
-      [event.orgId, String(ref)]
-    );
-    if (original.rows[0]?.client_id) return original.rows[0].client_id;
-  }
-  return findClient(db, event);
+  const orgId = event?.orgId;
+  const ref = event?.payload?.paymentId || event?.payload?.providerRef || null;
+  if (!orgId || !ref) return null;
+  const original = await db.query(
+    `SELECT t.client_id
+       FROM transactions t
+       JOIN clients c ON c.id = t.client_id AND c.org_id = t.org_id
+      WHERE t.org_id = $1 AND t.provider_ref = $2
+        AND t.provider = 'commas' AND t.status = 'succeeded'
+      LIMIT 1`,
+    [orgId, String(ref)]
+  );
+  return original.rows[0]?.client_id || null;
 }
 
 function requireReversalClient(event, clientId) {
