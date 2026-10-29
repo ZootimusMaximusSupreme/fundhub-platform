@@ -21,6 +21,7 @@ import { renderTemplate } from "../lib/render-template.mjs";
 import { drain } from "../messaging/outbox.mjs";
 import { threadMessage } from "../conversations/store.mjs";
 import { destinationAddress } from "../auth/authorized-rep.mjs";
+import { remainingDueCents, remainingDueAmount } from "./allocate.mjs";
 
 export const INVOICE_TEMPLATE_KEY = "INVOICE-SENT-EMAIL";
 
@@ -51,7 +52,7 @@ export function invoiceKindLabel(row = {}) {
 /* What an invoice email may say. Deliberately small, and deliberately NOT the
    whole invoice row — an internal note or a provider reference has no business
    in a client's inbox. */
-export function invoiceContext({ invoice, client, orgName = "Fundhub" }) {
+export function invoiceContext({ invoice, client, orgName = "Fundhub", balanceDue = null }) {
   const first = String(client?.first_name || "").trim() || "there";
   const due = invoice.due_at ? String(invoice.due_at).slice(0, 10) : null;
   return {
@@ -65,7 +66,9 @@ export function invoiceContext({ invoice, client, orgName = "Fundhub" }) {
          it to `amount_due` and retired `invoice_type` to a projection of
          `source`. Reading the migration rather than the table is how you email a
          client "undefined". */
-      amount: formatAmount(invoice.amount_due, invoice.currency),
+      // On a partially settled invoice, the demand is for the UNPAID amount.
+      // The immutable original invoice total stays in amount_due for ledger use.
+      amount: formatAmount(balanceDue ?? invoice.amount_due, invoice.currency),
       // 'deposit' → 'Deposit'. See invoiceKindLabel above — the portal shows the
       // client the same words for the same invoice.
       kind: invoiceKindLabel(invoice),
@@ -87,7 +90,7 @@ export function invoiceContext({ invoice, client, orgName = "Fundhub" }) {
  * invoice cannot be emailed twice for the same reason. A deliberate re-send
  * passes a different purpose, which is how a chase or a resend gets through.
  */
-export async function emailInvoice(db, { orgId, invoiceId, purpose = "sent", now = null } = {}) {
+export async function emailInvoice(db, { orgId, invoiceId, purpose = "sent", now = null, drainOutbox = drain } = {}) {
   try {
     const { rows } = await db.query(
       `SELECT i.*, c.first_name, c.last_name, c.email AS client_email, o.name AS org_name
@@ -111,6 +114,13 @@ export async function emailInvoice(db, { orgId, invoiceId, purpose = "sent", now
       };
       return { ok: false, reason: refused[inv.status] || "not_collectible" };
     }
+    // An invoice may still say "sent"/"partially_paid" while a recent receipt
+    // has already covered its last cents. Do not mail a stale full-balance
+    // demand; compute the actual remaining due from immutable receipt rows.
+    const balanceCents = await remainingDueCents(db, inv);
+    if (balanceCents === null) return { ok: false, reason: "unknown_balance" };
+    if (balanceCents <= 0) return { ok: false, reason: "no_balance" };
+
     const toEmail = await destinationAddress(db, inv.client_id, "email", inv.client_email);
     if (!toEmail) return { ok: false, reason: "no_email" };
 
@@ -125,6 +135,7 @@ export async function emailInvoice(db, { orgId, invoiceId, purpose = "sent", now
 
     const context = invoiceContext({
       invoice: inv,
+      balanceDue: remainingDueAmount(balanceCents),
       client: { first_name: inv.first_name, last_name: inv.last_name, email: inv.client_email },
       orgName: inv.org_name
     });
@@ -165,7 +176,7 @@ export async function emailInvoice(db, { orgId, invoiceId, purpose = "sent", now
               updated_at = now()
         WHERE id = $1::uuid`, [inv.id, now, messageId]);
 
-    const delivery = await drain(db, { orgId, now });
+    const delivery = await drainOutbox(db, { orgId, now });
     return { ok: true, reason: null, messageId, delivery };
   } catch (err) {
     console.warn(`[invoices] could not email invoice ${invoiceId}: ${err.message}`);
