@@ -17,12 +17,14 @@ const reply = (route, body, status = 200) =>
 test("portal send on HTTP failure preserves draft and never paints a false sent bubble", async ({ page }) => {
   let sends = 0;
   let saved = false;
+  const portalPosts = [];
   await page.route("**/api/chat/portal-message", (route) => {
     if (route.request().method() === "GET") {
       return reply(route, { ok: true, conversation_id: saved ? "portal-1" : null,
         messages: saved ? [{ sender_kind: "client", rendered_body: "A unique portal question" }] : [] });
     }
     sends++;
+    portalPosts.push(JSON.parse(route.request().postData() || "{}"));
     if (sends === 1) return reply(route, { ok: true, error: "temporary_gateway" }, 503);
     saved = true;
     return reply(route, { ok: true, conversation_id: "portal-1" });
@@ -38,6 +40,8 @@ test("portal send on HTTP failure preserves draft and never paints a false sent 
   await expect(input).toHaveValue("");
   await expect(page.locator("#fh-chat-body .msg.me")).toContainText(["A unique portal question"]);
   expect(sends).toBe(2);
+  expect(portalPosts[0].idempotency_key).toMatch(/^[a-zA-Z0-9_-]{8,80}$/);
+  expect(portalPosts[1].idempotency_key).toBe(portalPosts[0].idempotency_key);
 });
 
 test("network refusal cannot erase a portal draft or masquerade as delivery", async ({ page }) => {
