@@ -30,22 +30,21 @@ async function podAssigned(db, clientId) {
   return Boolean(r.rows[0]?.custom_fields?.pod_name);
 }
 
-async function createPodTask(db, { orgId, clientId, eventId }) {
-  const dup = await db.query(
-    `SELECT 1 FROM tasks WHERE client_id = $1 AND source_workflow = $2 AND body = $3`,
-    [clientId, POD_TASK_SOURCE, eventId]
-  );
-  if (dup.rows[0]) return { created: false };
-  await createTask(db, {
-      orgId: orgId,
-      clientId: clientId,
-      title: POD_TASK_TITLE,
-      sourceWorkflow: POD_TASK_SOURCE,
-      assigneeRole: "funding_advisor",
-      dueAt: new Date(Date.now() + POD_TASK_DUE_HOURS * 60 * 60 * 1000),
-      eventId: eventId
-    });
-  return { created: true };
+// A pod assignment is client-level work, not one task PER funding round.
+// Each round.started has a different event id, so using the raw event id here
+// generated repeated identical advisor tasks for a still-unassigned client.
+// Use one stable key per org/client. createTask's unique index also wins races
+// between different event deliveries; return its actual insert result.
+export async function createPodTask(db, { orgId, clientId }) {
+  return createTask(db, {
+    orgId,
+    clientId,
+    title: POD_TASK_TITLE,
+    sourceWorkflow: POD_TASK_SOURCE,
+    assigneeRole: "funding_advisor",
+    dueAt: new Date(Date.now() + POD_TASK_DUE_HOURS * 60 * 60 * 1000),
+    eventId: `pod-assignment:${orgId}:${clientId}`
+  });
 }
 
 export async function handle({ event, db, step }) {
@@ -71,7 +70,7 @@ export async function handle({ event, db, step }) {
   let podTask = { created: false };
   if (!hasPod) {
     await step.run("tag-ops-action-required", () => addTags(db, clientId, ["ops:action-required"]));
-    podTask = await step.run("create-pod-task", () => createPodTask(db, { orgId: event.orgId, clientId, eventId: event.id }));
+    podTask = await step.run("create-pod-task", () => createPodTask(db, { orgId: event.orgId, clientId }));
   }
 
   await step.run("set-next-action", () => mergeCustomFields(db, clientId, { employee_next_action: "Collect Documents" }));
