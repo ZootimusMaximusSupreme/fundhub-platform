@@ -306,8 +306,33 @@ export async function handle({ event, db, step, env, createLink, retireLink }) {
     // existing member of this org. A foreign/unknown locator cannot be
     // replaced by the invoice's own clientId or silently ignored.
     if (!clientId && (event.clientId || String(event.payload?.email || "").trim())) {
+      // A valid provider payment may carry an obsolete email or wrong clientId.
+      // Refuse allocation, but put the receipt on the REAL invoice owner's
+      // review queue when an invoice in this org is identifiable. Never create
+      // a task on a foreign event.clientId or disclose another org's invoice.
+      const hintedId = event.payload?.invoiceId || event.payload?.invoice_id || null;
+      let reviewTaskCreated = false;
+      if (hintedId) {
+        let invoice = null;
+        try { invoice = await getInvoice(db, { invoiceId: hintedId }); }
+        catch { /* malformed or unknown hint: no owner to attach a task to */ }
+        if (invoice && String(invoice.org_id) === String(event.orgId)) {
+          const ref = event.payload?.paymentId || event.payload?.providerRef || event.id;
+          const review = await createTask(db, {
+            orgId: event.orgId,
+            clientId: invoice.client_id,
+            title: "Unallocated receipt — verify payment customer identity",
+            sourceWorkflow: "ar-allocate",
+            assigneeRole: "funding_advisor",
+            body: `receipt-owner-mismatch:${event.orgId}:${invoice.id}:${ref}`,
+            dedupeOn: "event",
+            detail: "Merchant receipt customer identity does not match the existing same-org buyer. Verify the original processor receipt and invoice before applying money."
+          });
+          reviewTaskCreated = review?.created === true;
+        }
+      }
       console.warn("[ar-collections] unmatched payment customer; allocation refused");
-      return { done: true, allocated: false, path: "unresolved", reason: "client_not_owned" };
+      return { done: true, allocated: false, path: "unresolved", reason: "client_not_owned", reviewTaskCreated };
     }
     // Some verified processor receipts identify only a precise invoice/session,
     // with no customer locator. Preserve the allocator's org + invoice/source
