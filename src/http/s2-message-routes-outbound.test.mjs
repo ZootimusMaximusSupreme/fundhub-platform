@@ -291,7 +291,7 @@ describe("POST /api/messages-outbound action=email_invoice and email_invoice_bac
     assert.equal(res.body.result.considered, 2);
     assert.equal(res.body.result.emailed, 2);
     assert.match(res.body.message, /Emailed 2 invoices that had never been sent\./);
-    const [read] = fake.find(/FROM invoices i\s+JOIN clients c ON c\.id = i\.client_id\s+WHERE i\.org_id/);
+    const [read] = fake.find(/FROM invoices i\s+JOIN clients c ON c\.id = i\.client_id AND c\.org_id = i\.org_id\s+WHERE i\.org_id/);
     assert.equal(read.params[0], QUEUE_ORG);
     assert.equal(read.params[1], 200);
     assert.equal(fake.state.messages.filter((m) => m.template_key === "INVOICE-SENT-EMAIL").length, 2);
@@ -312,13 +312,39 @@ describe("POST /api/messages-outbound action=email_invoice and email_invoice_bac
     assert.deepEqual(mixed.fake.state.messages.map((m) => m.provider_ref), [`invoice:${INVOICE}:sent`]);
   });
 
+
+  test("cross-tenant invoice/buyer mismatch is excluded from email and backlog", async () => {
+    const foreignId = "c3000000-0000-4000-8000-000000000003";
+    const foreign = { first_name: "Foreign", last_name: "Buyer",
+      email: "foreign@example.invalid", org_id: OTHER_ORG_ID };
+    const db = () => ({
+      clients: { ...CLIENTS, [foreignId]: foreign },
+      invoices: {
+        [INVOICE]: invoiceRow(INVOICE, { client_id: foreignId, client_email: foreign.email }),
+        [INVOICE_2]: invoiceRow(INVOICE_2),
+      }
+    });
+    const direct = await run({ action: "email_invoice", invoice_id: INVOICE }, { db: db() });
+    assert.equal(direct.res.statusCode, 404);
+    assert.equal(direct.res.body.error, "not_found");
+    assert.equal(direct.fake.state.messages.length, 0);
+    assert.equal(direct.fake.state.invoiceUpdates.length, 0);
+    assert.equal(recorded().length, 0);
+    const backlog = await run({ action: "email_invoice_backlog" }, { db: db() });
+    assert.equal(backlog.res.statusCode, 200);
+    assert.equal(backlog.res.body.result.considered, 1);
+    assert.equal(backlog.res.body.result.emailed, 1);
+    assert.deepEqual(backlog.fake.state.messages.map(m => m.provider_ref), [`invoice:${INVOICE_2}:sent`]);
+    assert.equal(recorded().some(m => m.to === foreign.email), false);
+  });
+
   test("an invoice in another company is 404: it is not emailed and not stamped", async () => {
     const { res, fake } = await run({ action: "email_invoice", invoice_id: INVOICE }, {
       org_id: OTHER_ORG_ID, db: { orgId: OTHER_ORG_ID, invoices: { [INVOICE]: invoiceRow(INVOICE) } },
     });
     assert.equal(res.statusCode, 404);
     assert.equal(res.body.error, "not_found");
-    assert.deepEqual(fake.find(/FROM invoices i\s+JOIN clients c ON c\.id = i\.client_id\s+JOIN orgs o/)[0].params, [INVOICE, OTHER_ORG_ID]);
+    assert.deepEqual(fake.find(/FROM invoices i\s+JOIN clients c ON c\.id = i\.client_id AND c\.org_id = i\.org_id\s+JOIN orgs o/)[0].params, [INVOICE, OTHER_ORG_ID]);
     assert.equal(fake.state.messages.length, 0);
     assert.equal(fake.state.invoiceUpdates.length, 0);
     assert.equal(recorded().length, 0);
