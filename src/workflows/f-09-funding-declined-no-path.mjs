@@ -20,7 +20,7 @@ import { db } from "../db.mjs";
 // Resolve ONLY an already-owned client: resolveClient can create a phantom lead,
 // patch an explicit foreign clientId or sync a CRM contact before org validation.
 // Missing/foreign identities must bail without tasks, tags, cards or messages.
-import { findClient } from "../handlers/purchase-routing.mjs";
+import { findClient, purchasedCategories } from "../handlers/purchase-routing.mjs";
 import { clientOutcomeTier, isFundingPath } from "../config/product-path.mjs";
 import { addTags } from "./tags.mjs";
 import { createTask } from "../lib/create-task.mjs";
@@ -92,7 +92,14 @@ export async function handle({ event, db, step }) {
   if (!clientId) return { done: false, reason: "no_client" };
 
   const outcomeTier = await step.run("check-product-path", () => clientOutcomeTier(db, clientId));
-  if (!isFundingPath(outcomeTier)) return { done: false, reason: `not_funding_path:${outcomeTier}` };
+  if (!isFundingPath(outcomeTier)) {
+    // An old repair-only credit recommendation cannot suppress advisor review
+    // for a customer who has genuinely PAID for funding (same-sale net > 0).
+    // Mirror F-01's paid-funding exception; an unpaid manual round still refuses.
+    const bought = await step.run("check-paid-funding", () =>
+      purchasedCategories(db, event.orgId, clientId));
+    if (!bought.funding) return { done: false, reason: `not_funding_path:${outcomeTier}` };
+  }
 
   const decision = await step.run("check-all-denied", () =>
     denialDecision(db, { orgId: event.orgId, clientId }));

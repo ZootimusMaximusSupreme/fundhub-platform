@@ -194,3 +194,56 @@ test("legacy uppercase Denied values and current title-case Denied both count as
   assert.equal(db.tasks.length, 1);
   assert.equal(db.fundingRounds[0].hold_reason, "Internal Review");
 });
+
+
+// Paid funding and a stale REPAIR_ONLY credit recommendation can coexist.
+// F-01 already routes that purchase into funding intake. Its downstream
+// exhausted-bank review must honor the exact same net-positive sale gate.
+test("F-09: paid funding receives no-path review despite stale repair-only tier", async () => {
+  const db = pgFake({
+    clients: [{ id: "cl-1", org_id: "org-1", email: "buyer@example.invalid", outcome_tier: "REPAIR_ONLY" }],
+    fundingRounds: [{ id: "fr-1", org_id: "org-1", client_id: "cl-1", round_number: 1, hold_reason: null }],
+    applications: [{ id: "a-1", org_id: "org-1", funding_round_id: "fr-1", status: "Denied" }]
+  });
+  const query = db.query.bind(db);
+  let checkedPurchase = false;
+  db.query = async (sql, args) => {
+    if (sql.includes("SELECT DISTINCT pr.category AS category")) {
+      checkedPurchase = true;
+      assert.deepEqual(args, ["org-1", "cl-1"]);
+      return { rows: [{ category: "repair" }, { category: "funding" }] };
+    }
+    return query(sql, args);
+  };
+  const event = ev("mail.response", { classification: "DENIED" }, { clientId: "cl-1" });
+  const first = await handle({ event, db, step: fakeStep() });
+  assert.equal(checkedPurchase, true);
+  assert.equal(first.done, true);
+  assert.equal(db.fundingRounds[0].hold_reason, "Internal Review");
+  assert.equal(db.tasks.length, 1);
+  assert.equal(db.tasks[0].assignee_role, "funding_advisor");
+  await handle({ event, db, step: fakeStep() });
+  assert.equal(db.tasks.length, 1, "replayed denial must not duplicate advisor review");
+});
+
+test("F-09: unpaid or repair-only purchase cannot open no-path review on a manually created round", async () => {
+  const db = pgFake({
+    clients: [{ id: "cl-1", org_id: "org-1", email: "buyer@example.invalid", outcome_tier: "REPAIR_ONLY" }],
+    fundingRounds: [{ id: "fr-1", org_id: "org-1", client_id: "cl-1", round_number: 1, hold_reason: null }],
+    applications: [{ id: "a-1", org_id: "org-1", funding_round_id: "fr-1", status: "Denied" }]
+  });
+  const query = db.query.bind(db);
+  db.query = async (sql, args) =>
+    sql.includes("SELECT DISTINCT pr.category AS category")
+      ? { rows: [{ category: "repair" }] }
+      : query(sql, args);
+  const result = await handle({
+    event: ev("mail.response", { classification: "DENIED" }, { clientId: "cl-1" }),
+    db, step: fakeStep()
+  });
+  assert.deepEqual({ done: result.done, reason: result.reason },
+    { done: false, reason: "not_funding_path:REPAIR_ONLY" });
+  assert.equal(db.fundingRounds[0].hold_reason, null);
+  assert.equal(db.tasks.length, 0);
+  assert.equal(db.clients[0].tags?.length || 0, 0);
+});
