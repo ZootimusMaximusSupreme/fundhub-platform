@@ -65,6 +65,13 @@ function pgFake() {
         return { rows: r ? [{ 1: 1 }] : [] };
       }
       // Explicit booking client IDs require same-organization ownership before
+
+      // resolveClient's explicit-ID gate must behave like PostgreSQL:
+      // only this tenant's actual stored client passes the ownership read.
+      if (/SELECT 1 FROM clients WHERE id = \$1 AND org_id = \$2 LIMIT 1/.test(sql)) {
+        const c = clients.find((row) => row.id === params[0] && row.org_id === params[1]);
+        return { rows: c ? [{ exists: 1 }] : [] };
+      }
       // resolveClient may patch contact data (the guard runs on real PostgreSQL).
       if (/SELECT id FROM clients WHERE org_id = \$1 AND id = \$2 LIMIT 1/.test(sql)) {
         const row = clients.find((c) => c.org_id === params[0] && c.id === params[1]);

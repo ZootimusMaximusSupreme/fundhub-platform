@@ -77,6 +77,13 @@ function bookingDb() {
     async query(sql, params = []) {
       if (/FROM orgs/.test(sql)) return { rows: [{ id: "org-1" }] };
 
+      // The lifecycle explicit clientId guard uses a separate SQL shape
+      // from the booking UID guard below. Mirror real tenant ownership here.
+      if (/SELECT 1 FROM clients WHERE id = \$1 AND org_id = \$2 LIMIT 1/.test(sql)) {
+        const c = clients.find((row) => row.id === params[0] && row.org_id === params[1]);
+        return { rows: c ? [{ exists: 1 }] : [] };
+      }
+
       // Accept a booking client ID only when it belongs to this organization.
       if (/SELECT id FROM clients WHERE org_id = \$1 AND id = \$2 LIMIT 1/.test(sql)) {
         const c = clients.find(c => c.org_id === params[0] && c.id === params[1]);
