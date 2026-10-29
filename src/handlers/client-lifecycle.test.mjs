@@ -82,6 +82,11 @@ function pgFake({ openShift = null, failOn = null, smsRouting = null, pipelineSt
         const provider = routingFor(params[0]);
         return { rows: provider ? [{ provider }] : [] };
       }
+      // An explicit client ID only resolves within its actual tenant.
+      if (/SELECT 1 FROM clients WHERE id = \$1 AND org_id = \$2/.test(sql)) {
+        const c = clients.find((x) => x.id === params[0] && x.org_id === params[1]);
+        return { rows: c ? [{ exists: 1 }] : [] };
+      }
       if (/SELECT id, ghl_contact_id, email, phone, first_name, last_name\s+FROM clients WHERE id/.test(sql)
           || /SELECT id, ghl_contact_id, email, phone, first_name, last_name[\s\S]*FROM clients WHERE id/.test(sql)) {
         const c = clients.find((x) => x.id === params[0] && x.org_id === params[1]);
@@ -193,21 +198,55 @@ test("splitName", () => {
   assert.deepEqual(splitName(""), { firstName: null, lastName: null });
 });
 
-test("resolveClient: explicit clientId wins, no db insert", async () => {
+test("resolveClient: explicit clientId resolves only when it belongs to the event org", async () => {
   const db = pgFake();
+  db.clients.push({
+    id: "given-id", org_id: "org-1", email: "a@b.com", ghl_contact_id: "linked",
+    first_name: "Given", last_name: "Buyer", phone: null, custom_fields: {}
+  });
   const id = await resolveClient(db, ev("x", { email: "a@b.com" }, { clientId: "given-id" }));
   assert.equal(id, "given-id");
-  assert.equal(db.clients.length, 0);
+  assert.equal(db.clients.length, 1, "no new client insert");
 });
 
-test("guarded sample decision uses its existing client without external CRM sync", async () => {
+test("explicit cross-tenant or missing-org client ID cannot mutate another lead", async () => {
+  const db = pgFake();
+  db.clients.push({
+    id: "foreign-id", org_id: "org-2", email: "foreign@example.invalid",
+    first_name: "Safe", last_name: "Buyer", phone: "+15550001000", custom_fields: {}
+  });
+  const p = {
+    email: "foreign@example.invalid", name: "Wrong Owner", phone: "4155550101",
+    source: "clickfunnels", funnel: "apply-survey", attribution: { utm_source: "bad" }
+  };
+  assert.equal(await resolveClient(db, ev("booking.created", p, { clientId: "foreign-id" }),
+    { skipCrmLink: true }), null);
+  assert.equal(await resolveClient(db, ev("booking.created", p, { orgId: null, clientId: "foreign-id" }),
+    { skipCrmLink: true }), null);
+  await onEntryCaptured(ev("entry.captured", p, { clientId: "foreign-id" }), db);
+  assert.equal(db.clients[0].first_name, "Safe");
+  assert.equal(db.clients[0].phone, "+15550001000");
+  assert.deepEqual(db.clients[0].custom_fields, {});
+  assert.equal(db.cards.length, 0);
+});
+
+test("guarded sample decision validates its existing tenant without external CRM sync", async () => {
   const queries = [];
-  const db = { async query(sql) { queries.push(sql); throw new Error("unexpected CRM query"); } };
+  const db = {
+    async query(sql, params) {
+      queries.push([sql, params]);
+      if (/SELECT 1 FROM clients WHERE id = \$1 AND org_id = \$2/.test(sql)) {
+        return { rows: [{ exists: 1 }] };
+      }
+      throw new Error("unexpected CRM query");
+    }
+  };
   const id = await resolveClient(db,
     ev("analysis.completed", { simulated: true }, { clientId: "sim-client" }),
     { skipCrmLink: true });
   assert.equal(id, "sim-client");
-  assert.deepEqual(queries, []);
+  assert.equal(queries.length, 1);
+  assert.deepEqual(queries[0][1], ["sim-client", "org-1"]);
 });
 
 test("entry.captured: creates client once, idempotent on re-run", async () => {

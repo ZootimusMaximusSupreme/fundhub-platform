@@ -14,6 +14,11 @@ function fakeDb({ clientId = "cl-1" } = {}) {
   return {
     tags, tasks, messages,
     query(sql, params) {
+      // The no-show test buyer is scoped to org-1; a foreign tenant must
+      // never satisfy the new explicit-ID ownership lookup.
+      if (/SELECT 1 FROM clients WHERE id = \$1 AND org_id = \$2 LIMIT 1/.test(sql)) {
+        return { rows: params[0] === clientId && params[1] === "org-1" && clientId ? [{ exists: 1 }] : [] };
+      }
       if (/FROM clients/i.test(sql) && /email/i.test(sql)) {
         return { rows: clientId ? [{ id: clientId }] : [] };
       }
