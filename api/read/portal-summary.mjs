@@ -498,10 +498,38 @@ function readPayments(orgId, clientId) {
  * FAILS SOFT, like every other read below it: null, so the screen can say it
  * could not check. A read that cannot answer must never come back as $0 owed.
  */
-function readInvoiceDue(orgId, clientId) {
-  return safeRead("invoice_due", null, async () => {
-    const r = await db.query(
-      `SELECT v.invoice_id      AS id,
+/* Export the exact production query for isolated PostgreSQL acceptance.
+   The portal must never show an unissued draft invoice as money due, even if
+   v_invoice_aging reports a positive balance for the draft. */
+export const PORTAL_INVOICE_DUE_SQL = `SELECT v.invoice_id      AS id,
+              v.source,
+              v.status,
+              v.currency,
+              v.amount_due,
+              v.amount_paid,
+              v.open_balance,
+              v.due_at,
+              v.sent_at,
+              pay.checkout_url
+         FROM v_invoice_aging v
+         JOIN invoices i ON i.id = v.invoice_id
+         LEFT JOIN LATERAL (
+           SELECT pl.checkout_url
+             FROM payment_links pl
+            WHERE pl.invoice_id = v.invoice_id
+              AND pl.org_id     = v.org_id
+              AND pl.checkout_url IS NOT NULL
+              AND pl.status IN ('created', 'sent')
+              AND pl.amount_cents = (v.open_balance * 100)::bigint
+              AND (pl.provider = 'commas' OR (
+                v.source IS DISTINCT FROM 'funding_success_fee'
+                AND i.invoice_type IS DISTINCT FROM 'success_fee'
+              ))
+              AND COALESCE(pl.is_demo, false) = false
+            ORDER BY pl.created_at DESC
+            LIMIT 1
+         ) pay ON TRUE
+        WHERE v.org_id = SELECT v.invoice_id      AS id,
               v.source,
               v.status,
               v.currency,
@@ -532,9 +560,16 @@ function readInvoiceDue(orgId, clientId) {
         WHERE v.org_id = $1 AND v.client_id = $2
           AND v.open_balance > 0
           AND COALESCE(i.is_demo, false) = false
-        ORDER BY v.due_at ASC NULLS LAST, v.created_at ASC`,
-      [orgId, clientId]
-    );
+        ORDER BY v.due_at ASC NULLS LAST, v.created_at ASC AND v.client_id = $2
+          AND v.open_balance > 0
+          -- A draft is not an issued debt. Never tell a buyer they owe it.
+          AND v.status IN ('sent', 'reminded', 'escalated', 'partially_paid')
+          AND COALESCE(i.is_demo, false) = false
+        ORDER BY v.due_at ASC NULLS LAST, v.created_at ASC`;
+
+function readInvoiceDue(orgId, clientId) {
+  return safeRead("invoice_due", null, async () => {
+    const r = await db.query(PORTAL_INVOICE_DUE_SQL, [orgId, clientId]);
 
     const items = r.rows.map((row) => ({
       // The same INV-XXXXXXXX she already has on the emailed invoice.
