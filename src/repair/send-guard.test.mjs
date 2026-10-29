@@ -6,11 +6,11 @@
 // pin the DECISION the send loop makes on each answer the database can give,
 // which is the part a fake db can honestly show:
 //
-//   refuse on positive evidence, and never refuse on absence of evidence.
+//   an explicit stored letter ID requires a positive, owner-scoped claim
+//   before any provider transmission. Missing or foreign IDs refuse safely.
 //
-// That second half matters. A letter id that names no row must still be mailed,
-// because it always was — the guard is not allowed to start silently dropping
-// sends it has no evidence against.
+// Untracked legacy ad-hoc letters are a distinct route: do not infer any
+// mailing authorization from an unknown *explicit* ID.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -131,12 +131,13 @@ test("a database failure on the claim refuses the letter rather than mailing it"
   assert.equal(result.results[0].error, "claim_failed");
 });
 
-test("a letter id that names no row is mailed, exactly as it was before the guard", async () => {
+test("an explicit unknown letter ID refuses before any provider transmission", async () => {
   let calls = 0;
   const db = letterDb({ claimRows: [], row: null });
   const result = await send(db, async () => { calls += 1; return { ok: true, providerId: "ltr_1" }; });
-  assert.equal(calls, 1, "absence of evidence is not evidence of a double send");
-  assert.equal(result.ok, true);
+  assert.equal(calls, 0, "a missing owner-scoped claim never authorizes physical mail");
+  assert.equal(result.ok, false);
+  assert.equal(result.results[0].error, "letter_not_found_or_not_owned");
 });
 
 test("only a provably pre-transmission refusal is treated as one", () => {
