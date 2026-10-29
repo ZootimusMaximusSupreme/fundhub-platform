@@ -399,7 +399,14 @@ export async function fillMeetingUrl(db, { orgId, clientId = null, providerUid =
                AND b.status IN ('booked', 'rescheduled')
                AND b.meeting_url = $3
                AND ($5::timestamptz IS NULL OR b.starts_at = $5::timestamptz)
-               AND b.provider_uid = ANY($2::text[])
+               AND (
+                 b.provider_uid = ANY($2::text[])
+                 -- Form UID may have been replaced by the appointment UID
+                 -- AFTER this task was created. The exact client, slot, and
+                 -- already-stored room link are the safe fallback.
+                 OR ($5::timestamptz IS NOT NULL
+                     AND b.starts_at = $5::timestamptz)
+               )
           )
           AND btrim(COALESCE(meeting_url, '')) = ''
         RETURNING id`,
