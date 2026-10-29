@@ -47,7 +47,8 @@ test("F-08 replays retain the first deadline, but a genuinely new funded round g
   const e2 = ev("round.funded", {}, { clientId: "cl-1", id: "funded-second" });
   const first = new Date("2026-10-29T14:00:00Z");
   await handle({ event: e1, db, step: fakeStep(), now: first });
-  await handle({ event: e1, db, step: fakeStep(), now: new Date("2026-11-10T14:00:00Z") });
+  const replay = await handle({ event: e1, db, step: fakeStep(), now: new Date("2026-11-10T14:00:00Z") });
+  assert.equal(replay.task.created, false, "report the actual deduplicated insert outcome");
   assert.equal(db.tasks.length, 1, "replay cannot create an extra task or shift due_at");
   assert.equal(db.tasks[0].due_at.toISOString(), "2026-11-28T14:00:00.000Z");
   await handle({ event: e2, db, step: fakeStep(), now: new Date("2026-10-31T14:00:00Z") });
