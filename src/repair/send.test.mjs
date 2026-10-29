@@ -9,6 +9,12 @@ function fakeDb() {
     updates,
     async query(sql, params = []) {
       updates.push({ sql: String(sql).replace(/\s+/g, " ").slice(0, 100), params });
+      // The stored EX letter has a successful owner-scoped claim in this fake.
+      // Explicit IDs with no matching row must fail closed, not reach the mailer.
+      if (/UPDATE\\s+dispute_letters\\s+d\\b/i.test(String(sql))
+          && params[0] === "55555555-5555-4555-8555-555555555555") {
+        return { rows: [{ prior_status: "ready" }] };
+      }
       if (String(sql).includes("FROM pipeline_stages") || String(sql).includes("FROM cards") || String(sql).includes("INSERT INTO cards")) {
         return { rows: [{ stage_id: "s1", pipeline_id: "p1", id: "c1" }] };
       }
