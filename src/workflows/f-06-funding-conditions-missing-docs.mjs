@@ -17,7 +17,11 @@
 
 import { inngest } from "./client.mjs";
 import { db } from "../db.mjs";
-import { resolveClient } from "../handlers/client-lifecycle.mjs";
+// Mail responses and document receipts are downstream fulfillment signals.
+// Resolve ONLY an already-owned client: resolveClient can create a phantom lead,
+// patch an explicit foreign clientId or sync a CRM contact before org validation.
+// Missing/foreign identities must bail without tasks, tags, cards or messages.
+import { findClient } from "../handlers/purchase-routing.mjs";
 import { sendTemplated } from "./messaging.mjs";
 import { mergeCustomFields } from "./custom-fields.mjs";
 import { addTags, removeTags } from "./tags.mjs";
@@ -38,7 +42,7 @@ async function handleMissingDocs({ event, db, step }) {
   if (event.payload?.classification !== "MISSING_DOCS") return { done: false, reason: "not_missing_docs" };
   if (!event.payload?.conditionDescription) return { done: false, reason: "no_condition_description" };
 
-  const clientId = await step.run("resolve-client", () => resolveClient(db, event));
+  const clientId = await step.run("resolve-client", () => findClient(db, event));
   if (!clientId) return { done: false, reason: "no_client" };
 
   const orgId = event.orgId;
@@ -55,7 +59,7 @@ async function handleMissingDocs({ event, db, step }) {
 }
 
 async function handleDocsReceived({ event, db, step }) {
-  const clientId = await step.run("resolve-client", () => resolveClient(db, event));
+  const clientId = await step.run("resolve-client", () => findClient(db, event));
   if (!clientId) return { done: false, reason: "no_client" };
 
   await step.run("clear-docs-missing", () => removeTags(db, clientId, ["docs:missing"]));
