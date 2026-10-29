@@ -367,6 +367,11 @@ export async function fillMeetingUrl(db, { orgId, clientId = null, providerUid =
         -- even when the provider UID is unchanged. Client/time fallback
         -- handles the form-id -> appointment-id promotion separately.
         AND ($4::timestamptz IS NULL OR starts_at = $4::timestamptz)
+        -- A provider ID cannot grant one customer's calendar link to another
+        -- customer in the same company, even if both calls share a slot.
+        AND ($3::uuid IS NULL OR client_id = $3::uuid)
+        -- Do not revive an old Join link on a cancelled/no-show/finished call.
+        AND status IN ('booked', 'rescheduled')
         AND (($2::text IS NOT NULL AND provider_uid = $2::text)
              OR ($3::uuid IS NOT NULL AND $4::timestamptz IS NOT NULL
                  AND client_id = $3::uuid AND starts_at = $4::timestamptz))
@@ -385,6 +390,24 @@ export async function fillMeetingUrl(db, { orgId, clientId = null, providerUid =
           -- Even if the booking UID still matches, the closer's task may now
           -- be due at a different slot after a reschedule.
           AND ($5::timestamptz IS NULL OR due_at = $5::timestamptz)
+          AND done = false
+          -- A stale/incorrect UID must not put a room link on an unrelated
+          -- client's task. The live booking is the source of truth.
+          AND EXISTS (
+            SELECT 1 FROM bookings b
+             WHERE b.org_id = $4 AND b.client_id = $1
+               AND b.status IN ('booked', 'rescheduled')
+               AND b.meeting_url = $3
+               AND ($5::timestamptz IS NULL OR b.starts_at = $5::timestamptz)
+               AND (
+                 b.provider_uid = ANY($2::text[])
+                 -- Form UID may have been replaced by the appointment UID
+                 -- AFTER this task was created. The exact client, slot, and
+                 -- already-stored room link are the safe fallback.
+                 OR ($5::timestamptz IS NOT NULL
+                     AND b.starts_at = $5::timestamptz)
+               )
+          )
           AND btrim(COALESCE(meeting_url, '')) = ''
         RETURNING id`,
       [clientId, uids, link, orgId, start]
