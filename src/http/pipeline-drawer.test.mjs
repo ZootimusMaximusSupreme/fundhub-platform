@@ -114,6 +114,16 @@ describe("pipeline.html drawer — survey rows follow the survey's branch", () =
     );
   });
 
+  test("double-encoded ClickFunnels lists render as readable choices", () => {
+    const d = loadDrawer();
+    const rows = d.surveyRowsFor({
+      cf_svy_money_change_now_labels: '["[\\"Grow faster (more customers / more reach)\\"]"]',
+      cf_svy_planned_use_label: "Buy equipment"
+    });
+    assert.equal(byLabel(rows, "What money changes"), "Grow faster (more customers / more reach)");
+    assert.equal(byLabel(rows, "Planned use"), "Buy equipment");
+  });
+
   test("with no branch answer it shows the side that carries data, and neither when both are empty", () => {
     const d = loadDrawer();
     assert.equal(d.surveyBranch({ cf_svy_business_revenue_label: "$1M+" }), "business");
