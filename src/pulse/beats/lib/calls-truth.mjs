@@ -54,6 +54,11 @@ export const BOOKED_NO_OUTCOME_SQL = `/* gap-calls:booked-no-outcome */
             SELECT 1 FROM call_outcomes o
              WHERE o.org_id = b.org_id
                AND COALESCE(o.is_demo, false) = false
+               -- An explicitly linked booking reference alone is not proof
+               -- when that outcome belongs to a different client. The closer
+               -- writer records client_id, so require matching buyer identity
+               -- for all reference and clock-fallback paths.
+               AND (b.client_id IS NULL OR o.client_id = b.client_id)
                AND (
                  (b.provider_uid IS NOT NULL AND o.booking_ref = b.provider_uid)
                  OR o.booking_ref = b.id::text
@@ -92,7 +97,8 @@ export const BOOKED_NO_OUTCOME_SQL = `/* gap-calls:booked-no-outcome */
    can only count when it belongs to the same client AND is within a bounded
    two-hour window around this specific call, with NO other eligible booking in
    that window. Ambiguous unlinked results require a booking reference; a later
-   booking's outcome must never clear an earlier unanswered booking. */
+   booking's outcome must never clear an earlier unanswered booking.
+   An explicit provider ref from another client also never clears this client. */
 export async function bookedNoOutcome({ db, orgId, now }) {
   const id = "calls:booked-no-outcome";
   if (!db || !orgId) return check(id, "skip", "no database in this run — booked calls not read");
