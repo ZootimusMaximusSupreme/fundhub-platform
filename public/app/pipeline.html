@@ -2197,27 +2197,37 @@ restore();
     return typeof v === "string" && /^\d{5,}$/.test(v.trim());
   }
 
+  /* ClickFunnels can nest JSON arrays inside other JSON arrays. Display each
+     saved choice as human words, not as bracketed JSON or a raw option ID. */
+  function unpackSurveyText(raw, depth) {
+    if (depth > 4 || raw == null) return [];
+    if (Array.isArray(raw)) {
+      return raw.reduce(function (all, item) {
+        return all.concat(unpackSurveyText(item, depth + 1));
+      }, []);
+    }
+    if (typeof raw === "string") {
+      var trimmed = raw.trim();
+      if (trimmed.charAt(0) === "[" && trimmed.charAt(trimmed.length - 1) === "]") {
+        try {
+          var nested = JSON.parse(trimmed);
+          if (Array.isArray(nested)) return unpackSurveyText(nested, depth + 1);
+        } catch (_) { /* Keep the original plain answer. */ }
+      }
+    }
+    if (isCfOptionId(raw)) return [];
+    return [String(raw).trim()];
+  }
+
   function surveyAnswer(cf, key) {
     if (!cf) return null;
-    var label = cf[key + "_label"];
-    if (label != null && label !== "") return String(label);
-    var labels = cf[key + "_labels"];
-    if (labels != null && labels !== "") {
-      if (Array.isArray(labels)) return labels.filter(Boolean).join(", ");
-      try {
-        var parsed = JSON.parse(labels);
-        if (Array.isArray(parsed)) return parsed.filter(Boolean).join(", ");
-      } catch (e) {}
-      return String(labels);
+    var choices = [cf[key + "_label"], cf[key + "_labels"], cf[key]];
+    for (var i = 0; i < choices.length; i++) {
+      if (choices[i] == null || choices[i] === "") continue;
+      var words = unpackSurveyText(choices[i], 0).filter(Boolean).join(", ");
+      if (words) return words;
     }
-    var v = cf[key];
-    if (v == null || v === "") return null;
-    if (Array.isArray(v)) {
-      if (v.every(isCfOptionId)) return null;
-      return v.filter(function (x) { return x != null && x !== "" && !isCfOptionId(x); }).join(", ") || null;
-    }
-    if (isCfOptionId(v)) return null;
-    return String(v);
+    return null;
   }
 
   /* One row per survey question, in the order the survey asks them
