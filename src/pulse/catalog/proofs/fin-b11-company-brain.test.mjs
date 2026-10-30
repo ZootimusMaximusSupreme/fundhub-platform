@@ -129,7 +129,8 @@ async function openBrain({ session = OWNER, viewport, state = {}, askAnswer, ini
     }
   };
   const opened = await open("/app/company-brain.html", { session, handlers, ...(viewport ? { viewport } : {}), ...(init ? { init } : {}) });
-  await waitFor(() => log.threadReads >= 1 && log.uploadReads >= 1, "the first reads");
+  // The first Ask view reads threads only. Owner/admin inventory stays private until an explicit Manage click.
+  await waitFor(() => log.threadReads >= 1, "the first thread read");
   return { ...opened, st, log };
 }
 
@@ -139,9 +140,9 @@ const hidden = (page, selector) => page.evaluate((s) => document.querySelector(s
 test("the page loads for staff only, and its badge decides whether approval controls draw", { timeout: 90_000 }, async () => {
   await proof.check(/^Page itself: staff-only chat screen loads/, async () => {
     const { page, errors, log } = await openBrain();
-    await waitFor(() => log.reviewReads >= 1, "the owner's first review read");
+    assert.equal(log.reviewReads, 0, "the owner review inventory is lazy");
     assert.deepEqual(errors, [], "no script error on load");
-    // The shell, ramp-quizzes.js and data.js all ran, and the three first reads were asked.
+    // The shell, ramp-quizzes.js and data.js ran without fetching private Manage inventories.
     const ran = await page.evaluate(() => ({
       quiz: typeof window.scoreRampQuiz, data: typeof window.FHData, nav: Boolean(document.querySelector("#fh-side-nav")),
       composer: Boolean(document.querySelector("#composer #q")), rail: Boolean(document.querySelector("#rail")),
@@ -149,14 +150,21 @@ test("the page loads for staff only, and its badge decides whether approval cont
     }));
     assert.deepEqual(ran, { quiz: "function", data: "object", nav: true, composer: true, rail: true, sidebarLink: true });
     assert.equal(log.threadReads, 1);
-    assert.equal(log.uploadReads, 1);
+    assert.equal(log.uploadReads, 0, "the owner upload inventory stays closed on Ask");
     assert.match(await text(page, "#msgs"), /Nothing has been asked in this chat yet\./);
     assert.equal(await text(page, "#chatTitle"), "New chat");
     await page.close();
 
-    // Staff only, and in practice owner and admin: a closer, a client and a partner are each sent to
-    // their own screen, and nothing of the brain is read.
-    for (const [session, landing] of [[CLOSER, "closer-dashboard.html"], [CLIENT, "client-portal.html"], [PARTNER, "partner-galaxy.html"]]) {
+    // Regular employees may ask approved SOP questions but cannot enumerate owner uploads.
+    const closer = await openBrain({ session: CLOSER });
+    assert.match(closer.page.url(), /\/app\/company-brain\.html/);
+    assert.equal(closer.log.uploadReads, 0);
+    assert.equal(closer.log.reviewReads, 0);
+    assert.equal(await hidden(closer.page, "#tabManage"), true);
+    await closer.page.close();
+
+    // External client/partner principals never enter the staff Knowledge Base.
+    for (const [session, landing] of [[CLIENT, "client-portal.html"], [PARTNER, "partner-galaxy.html"]]) {
       const other = await open("/app/company-brain.html", { session, handlers: {} });
       await waitFor(() => other.page.url().includes(landing), `${session.staff.role} moved to ${landing}`);
       assert.doesNotMatch(other.page.url(), /company-brain/);
@@ -166,14 +174,18 @@ test("the page loads for staff only, and its badge decides whether approval cont
 
   await proof.check(/^Role badge/, async () => {
     const owner = await openBrain({ session: OWNER });
-    await waitFor(() => owner.log.reviewReads >= 1, "owner review read");
+    assert.equal(owner.log.reviewReads, 0);
+    await owner.page.locator("#tabManage").click();
+    await waitFor(() => owner.log.reviewReads >= 1 && owner.log.uploadReads >= 1, "owner Manage reads");
     assert.equal(await owner.page.locator("#rolePill").evaluate((el) => el.textContent), "owner");
     assert.equal(await hidden(owner.page, "#reviewPanel"), false, "the owner sees the approval panel");
-    assert.ok(await owner.page.locator("#docList [data-decide='approve']").count() >= 1, "the owner gets Approve on a waiting file row");
+    assert.ok(await owner.page.locator("#reviewList [data-decide='approve']").count() >= 1, "owner can approve from the review queue");
+    assert.equal(await owner.page.locator("#docList [data-decide]").count(), 0, "upload inventory is read-only; approval stays in review queue");
     await owner.page.close();
 
     const admin = await openBrain({ session: ADMIN });
-    await admin.page.waitForTimeout(300);
+    await admin.page.locator("#tabManage").click();
+    await waitFor(() => admin.log.uploadReads >= 1, "admin Manage files read");
     assert.equal(await admin.page.locator("#rolePill").evaluate((el) => el.textContent), "admin");
     assert.equal(await hidden(admin.page, "#reviewPanel"), true, "a non-owner never sees the approval panel");
     assert.equal(admin.log.reviewReads, 0, "a non-owner never asks for the review queue");
@@ -186,7 +198,8 @@ test("the page loads for staff only, and its badge decides whether approval cont
       session: OWNER,
       init: () => { try { localStorage.setItem("fh_role", ""); localStorage.setItem("fh_session", JSON.stringify({ role: "owner" })); } catch (e) {} }
     });
-    await waitFor(() => fromSession.log.reviewReads >= 1, "the review read from the session role");
+    await fromSession.page.locator("#tabManage").click();
+    await waitFor(() => fromSession.log.reviewReads >= 1, "review read after Manage with session role");
     assert.equal(await fromSession.page.locator("#rolePill").evaluate((el) => el.textContent), "owner");
     assert.equal(await hidden(fromSession.page, "#reviewPanel"), false);
     await fromSession.page.close();
@@ -348,7 +361,7 @@ test("Send says a refusal in words and gives Send back", { timeout: 60_000 }, as
   await page.locator("#q").fill("Anything");
   await page.locator("#askBtn").click();
   await waitFor(() => log.asks.length === 1, "the question");
-  await waitFor(async () => /Your role is not allowed to use Company Brain\./.test(await text(page, "#msgs")), "the refusal words");
+  await waitFor(async () => /Your role is not allowed to use the Knowledge Base\./.test(await text(page, "#msgs")), "the refusal words");
   assert.equal(await text(page, "#askBtn"), "Send");
   assert.equal(await page.locator("#askBtn").isEnabled(), true);
   await page.close();
@@ -428,24 +441,25 @@ test("Past chats: the list, click to reopen, and the hamburger on a narrow scree
 test("Documents: open and close, Files you added with Refresh", { timeout: 90_000 }, async () => {
   const { page, log, st } = await openBrain({ session: ADMIN });
   await clearShellOverlays(page);
-  const docsOpen = () => page.locator("#chat").evaluate((el) => el.classList.contains("docs-open"));
+  const docsOpen = () => page.locator("#docs").isVisible();
 
   await proof.check(/^Documents button/, async () => {
-    assert.equal(await docsOpen(), false);
-    assert.equal(await page.locator("#docs").isVisible(), false, "the right-hand panel starts closed");
-    await page.locator("#docsBtn").click();
+    assert.equal(await docsOpen(), false, "Manage starts closed");
+    assert.equal(log.uploadReads, 0, "no private file list read while on Ask");
+    await page.locator("#tabManage").click();
+    await waitFor(() => log.uploadReads >= 1, "explicit Manage view reads uploads");
     assert.equal(await docsOpen(), true);
-    assert.equal(await page.locator("#docs").isVisible(), true);
-    await page.locator("#docsClose").click();
+    assert.equal(await page.locator("#tabManage").getAttribute("aria-selected"), "true");
+    await page.locator("#tabAsk").click();
     assert.equal(await docsOpen(), false);
-    assert.equal(await page.locator("#docs").isVisible(), false);
-    await page.locator("#docsBtn").click();
-    await page.locator("#docsBtn").click();
-    assert.equal(await docsOpen(), false, "the Documents button also closes it");
+    await page.locator("#tabManage").click();
+    assert.equal(await docsOpen(), true);
+    await page.locator("#tabAsk").click();
+    assert.equal(await docsOpen(), false, "Ask closes the Manage view");
   });
 
   await proof.check(/^Files you added: list and Refresh button/, async () => {
-    await page.locator("#docsBtn").click();
+    await page.locator("#tabManage").click();
     await waitFor(async () => (await page.locator("#docList .docrow").count()) === 3, "three files listed");
     const rows = await page.locator("#docList .docrow").allInnerTexts();
     assert.match(rows[0], /Refund policy\.pdf/);
@@ -501,7 +515,7 @@ test("Documents: open and close, Files you added with Refresh", { timeout: 90_00
 test("the owner's review panel: Refresh, Approve and Turn down", { timeout: 90_000 }, async () => {
   const { page, log, st } = await openBrain();
   await clearShellOverlays(page);
-  await page.locator("#docsBtn").click();
+  await page.locator("#tabManage").click();
   await waitFor(async () => (await page.locator("#reviewList .docrow").count()) === 2, "two reviews listed");
   // The buttons are found by the words a person reads on them, never by a hidden attribute: a button
   // that says Approve has to approve, and one that says Turn down has to turn down.
@@ -537,7 +551,7 @@ test("the owner's review panel: Refresh, Approve and Turn down", { timeout: 90_0
     assert.doesNotMatch(await text(page, "#reviewList"), /list_failed|500/);
     st.reviewsError = { status: 403, error: "forbidden_role" };
     await page.locator("#refreshReviews").click();
-    await waitFor(async () => /Your role is not allowed to use Company Brain\./.test(await text(page, "#reviewList")), "the role words");
+    await waitFor(async () => /Your role is not allowed to use the Knowledge Base\./.test(await text(page, "#reviewList")), "the role words");
     assert.doesNotMatch(await text(page, "#reviewList"), /forbidden_role|403/);
     st.reviewsError = null;
     await page.locator("#refreshReviews").click();
@@ -552,13 +566,11 @@ test("the owner's review panel: Refresh, Approve and Turn down", { timeout: 90_0
     assert.deepEqual(log.decides[0], { review_id: R1, decision: "approve" });
     await waitFor(() => log.reviewReads > readsBefore.reviews && log.uploadReads > readsBefore.uploads, "both lists read again");
     // From the file row in Files you added (the same request for the same review).
-    await approveIn("#docList").first().click();
-    await waitFor(() => log.decides.length === 2, "the second approve request");
-    assert.deepEqual(log.decides[1], { review_id: R1, decision: "approve" });
+    assert.equal(await page.locator("#docList [data-decide]").count(), 0, "uploads never independently authorize a review");
     // The second review (a Drive file with no upload row) is approved by its own button, not the first one's.
     await approveIn("#reviewList").nth(1).click();
-    await waitFor(() => log.decides.length === 3, "the third approve request");
-    assert.deepEqual(log.decides[2], { review_id: R2, decision: "approve" });
+    await waitFor(() => log.decides.length === 2, "the second approval");
+    assert.deepEqual(log.decides[1], { review_id: R2, decision: "approve" });
     // Someone else decided first: said in words, and the button comes back.
     st.decide = () => ({ status: 409, body: { ok: false, error: "not_pending" } });
     await approveIn("#reviewList").first().click();
@@ -574,8 +586,8 @@ test("the owner's review panel: Refresh, Approve and Turn down", { timeout: 90_0
     await turnDownIn("#reviewList").nth(1).click();
     await waitFor(() => log.decides.length === before + 1, "the turn down request");
     assert.deepEqual(log.decides[before], { review_id: R2, decision: "reject" });
-    // The same button on the file row of a waiting upload.
-    await turnDownIn("#docList").first().click();
+    // The other review may also be refused, while upload inventory remains read-only.
+    await turnDownIn("#reviewList").first().click();
     await waitFor(() => log.decides.length === before + 2, "the second turn down request");
     assert.deepEqual(log.decides[before + 1], { review_id: R1, decision: "reject" });
   });
@@ -588,7 +600,7 @@ test("Class quiz: answers are scored in the page, strictly, and nothing is saved
     const { page } = await openBrain({ session: ADMIN });
     page.on("request", (req) => { if (req.method() !== "GET") requests.push(`${req.method()} ${req.url()}`); });
     await clearShellOverlays(page);
-    await page.locator("#docsBtn").click();
+    await page.locator("#tabTraining").click();
     const options = await page.locator("#quizPick option").allInnerTexts();
     assert.ok(options.length >= 10, options.join(" | "));
     assert.equal(await page.locator("#quizPick").inputValue(), "closer-d1");
