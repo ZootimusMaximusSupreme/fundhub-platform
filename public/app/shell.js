@@ -2040,6 +2040,16 @@
       "body.documents-page .documents-intro>div:first-child{position:relative}" +
       "body.documents-page .documents-intro .fh-step-sop{" +
         "position:absolute;top:-5px;left:min(280px,calc(100% - 64px));margin-left:0;padding-inline:9px}" +
+      "@media(max-width:480px){" +
+        /* Keep a source label, visible SOP and full 44px target on one row. */
+        "body.closer-workspace .funding-estimate .sech{align-items:center;gap:6px}" +
+        "body.closer-workspace .funding-estimate .sech h2{font-size:17px!important;white-space:nowrap;min-width:0}" +
+        "body.closer-workspace .funding-estimate .sech .source-label{font-size:11px!important}" +
+        "body.closer-workspace .funding-estimate .sech .fh-step-sop{" +
+          "min-width:44px;width:44px;margin-left:0;padding:0;font-size:0;flex:0 0 44px}" +
+        "body.closer-workspace .funding-estimate .sech .fh-step-sop::after{" +
+          "content:'SOP';font-size:11px}" +
+      "}" +
       "@media(max-width:350px){" +
         "body.closer-workspace .funding-estimate .sech{margin-bottom:4px}" +
         "body.closer-workspace .funding-estimate .band+.band{padding-top:12px}" +
@@ -2284,7 +2294,7 @@
         var elements = document.querySelectorAll(spec.selector);
         Array.prototype.forEach.call(elements, function (el) {
           if (spec.match && el.textContent.trim().indexOf(spec.match) !== 0) return;
-          var headingSibling = PAGE === "consent-capture.html" || PAGE === "documents.html" || PAGE === "pipeline.html";
+          var headingSibling = PAGE === "consent-capture.html" || PAGE === "documents.html" || PAGE === "pipeline.html" || PAGE === "closer-dashboard.html";
           if (headingSibling ?
               (el.nextElementSibling && el.nextElementSibling.classList.contains("fh-step-sop")) :
               el.querySelector(".fh-step-sop")) return;

@@ -282,6 +282,35 @@ test("deleting a named chat confirms the consequence and removes it from the lis
   expect(deletes[0]).toContain("thread_id=" + threadId);
 });
 
+test("closer call SOP leaves the funding title intact and fits beside its source on phones", async ({ page }) => {
+  await setup(page, CLOSER);
+  for (const width of [1440, 390, 320]) {
+    await page.setViewportSize({ width, height: width === 1440 ? 1000 : 844 });
+    await page.goto("/app/closer-dashboard.html");
+    await expect(page.locator("#closer-funding-title")).toHaveText("Funding estimate");
+    const link = page.locator('#closer-funding-title + a.fh-step-sop[data-fh-sop-step="closer-call"]');
+    await expect(link).toHaveCount(1);
+    await expect(link).toBeVisible();
+    await expect(link).toHaveAttribute("href", "company-brain.html?sop=closer-call");
+    const geometry = await page.evaluate(() => {
+      const h = document.querySelector(".funding-estimate .sech");
+      const a = h.querySelector("a.fh-step-sop");
+      const source = h.querySelector(".source-label");
+      return { scroll: document.documentElement.scrollWidth,
+        header: h.getBoundingClientRect().height, link: a.getBoundingClientRect().toJSON(),
+        source: source.getBoundingClientRect().toJSON() };
+    });
+    expect(geometry.scroll).toBeLessThanOrEqual(width + 1);
+    expect(geometry.link.width).toBeGreaterThanOrEqual(44);
+    expect(geometry.link.height).toBeGreaterThanOrEqual(44);
+    if (width <= 390) {
+      expect(geometry.header).toBeLessThanOrEqual(46);
+      expect(geometry.link.right).toBeLessThanOrEqual(width + 1);
+      expect(geometry.source.right).toBeLessThanOrEqual(width + 1);
+    }
+  }
+});
+
 test("funding fulfillment and inquiry work have small source-linked SOPs at their task headings", async ({ page }) => {
   await setup(page, OWNER);
   await page.goto("/app/client-control-panel.html");
