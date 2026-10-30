@@ -403,6 +403,8 @@
   .c-age{font-family:var(--mono);font-size:var(--fs-caption);color:var(--text-faint);margin-top:2px;}
   .c-call-confirmed{display:inline-flex;align-items:center;gap:4px;margin-top:4px;padding:2px 8px;border-radius:999px;
     background:var(--ok-bg);color:var(--ink2);border:1px solid var(--ok-line);font-size:var(--fs-caption);font-weight:700;}
+  .c-app-opened{display:table;margin-top:4px;padding:2px 8px;border-radius:999px;
+    background:var(--ok-bg);color:var(--ink2);border:1px solid var(--ok-line);font-size:var(--fs-caption);font-weight:700;}
   .c-age.old{color:var(--ink2);font-weight:700;}
   /* "A bank said yes, nobody has said how much." Literal amber, not a brand
      variable: paintBrand in shell.js overwrites --alert / --warn / --info from
@@ -1964,10 +1966,20 @@ restore();
     card.appendChild(top);
     if (pipelineKey === "sales" && c.booked_starts_at) {
       var bookedWhen = formatBookedWhen(c.booked_starts_at);
-      if (bookedWhen) card.appendChild(div("c-booked-when", "Booked · " + bookedWhen));
+      if (bookedWhen) {
+        var label = c.booked_status === "rescheduled" ? "Rescheduled" : "Booked";
+        card.appendChild(div("c-booked-when", label + " · " + bookedWhen));
+      }
     }
     if (pipelineKey === "sales" && c.call_confirmed === true) {
       card.appendChild(div("c-call-confirmed", "✓ Call confirmed"));
+    }
+    // An authenticated native first-open is proof the app ran, unlike a download-link click.
+    // No event means unknown, never "not installed" or a made-up checkmark.
+    if (pipelineKey === "sales" && c.app_first_authenticated_at) {
+      var appOpened = div("c-app-opened", "✓ App downloaded");
+      appOpened.title = "Client signed in using the iPhone app: " + formatBookedWhen(c.app_first_authenticated_at);
+      card.appendChild(appOpened);
     }
     card.appendChild(div("c-scores", formatScores(c)));
     card.appendChild(msgLine("sms", c.phone, c.client_id, c.sms_needs_reply));
@@ -2257,6 +2269,16 @@ restore();
     return null;
   }
 
+  // Survey leads until a genuine, complete three-bureau credit result is available.
+  // Self-reported scores, samples, and missing bureau data do not finish the file.
+  function creditIsComplete(tm) {
+    if (!tm || tm.sample === true || !tm.asOf) return false;
+    return ["experian", "equifax", "transunion"].every(function (bureau) {
+      var value = tm[bureau];
+      return value != null && value !== "" && Number.isFinite(Number(value)) && Number(value) > 0;
+    });
+  }
+
   /** [label, answer] for every survey question this client was actually asked. */
   function surveyRowsFor(cf) {
     var branch = surveyBranch(cf);
@@ -2313,6 +2335,7 @@ restore();
     surveyAnswer: surveyAnswer,
     surveyBranch: surveyBranch,
     surveyRowsFor: surveyRowsFor,
+    creditIsComplete: creditIsComplete,
     adRoutingRows: adRoutingRows
   };
   /* FH-DRAWER-END */
@@ -2392,13 +2415,20 @@ restore();
     creditMore.appendChild(rowAlways("Income, Equifax's estimate", moneyYr(inc.equifax)));
     creditMore.appendChild(rowAlways("Business score", biz.intelliscore));
     creditMore.appendChild(rowAlways("Business FSR", biz.fsr));
-    drawerBody.appendChild(creditMore);
 
     var survey = sec("Survey");
     surveyRowsFor(cf).forEach(function (pair) {
       survey.appendChild(rowAlways(pair[0], pair[1]));
     });
-    drawerBody.appendChild(survey);
+    // Contact + Call always lead. Survey precedes Credit until all three real
+    // bureau scores have arrived; once complete, the verified Credit goes first.
+    if (creditIsComplete(tm)) {
+      drawerBody.appendChild(creditMore);
+      drawerBody.appendChild(survey);
+    } else {
+      drawerBody.appendChild(survey);
+      drawerBody.appendChild(creditMore);
+    }
 
     var bizList = Array.isArray(biz.businesses) ? biz.businesses : [];
     var bizSec = sec("Businesses");
@@ -2699,7 +2729,20 @@ restore();
     }
     var body = document.createElement("div");
     body.className = "col-body";
-    (stage.cards || []).forEach(function (c, index) {
+    var ordered = (stage.cards || []).slice();
+    if (pipelineKey === "sales") {
+      // The next call is always on top; past calls follow newest first.
+      // Cards without an actual booking timestamp stay below scheduled calls.
+      var now = Date.now();
+      ordered.sort(function (a, b) {
+        var aTime = Date.parse(a.booked_starts_at), bTime = Date.parse(b.booked_starts_at);
+        var aGroup = isNaN(aTime) ? 2 : (aTime >= now ? 0 : 1);
+        var bGroup = isNaN(bTime) ? 2 : (bTime >= now ? 0 : 1);
+        if (aGroup !== bGroup) return aGroup - bGroup;
+        return aGroup === 0 ? aTime - bTime : aGroup === 1 ? bTime - aTime : 0;
+      });
+    }
+    ordered.forEach(function (c, index) {
       var card = cardEl(c, stage.key, pipelineKey);
       card.dataset.manualOrder = String(index);
       body.appendChild(card);
