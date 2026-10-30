@@ -434,7 +434,11 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
           return { rows: replayMatched ? [{ matched: 1 }] : [] };
         }
         if (/FROM invoices/.test(text)) {
-          const ok = invoice && params[0] === invoice.id && params[1] === ORG && params[2] === CLIENT;
+          const feeOnly = /source = 'funding_success_fee'/.test(text);
+          const isFee = !invoice?.source && !invoice?.invoice_type ||
+            invoice?.source === "funding_success_fee" || invoice?.invoice_type === "success_fee";
+          const ok = invoice && params[0] === invoice.id && params[1] === ORG && params[2] === CLIENT &&
+            (!feeOnly || isFee);
           return { rows: ok ? [invoice] : [] };
         }
         if (/SELECT \* FROM sales\s+WHERE id = \$1 AND org_id = \$2 AND client_id = \$3/.test(text)) {
@@ -630,6 +634,58 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
     assert.equal(ins.params[1], BILLED_SALE);
     assert.equal(ins.params[6], "installment");
     assert.ok(!db.queries.some((q) => /pr\.category = 'funding'/.test(q.text)));
+  });
+
+
+  test("an explicit unknown invoice cannot redirect a real buyer payment onto an otherwise valid sale", async () => {
+    const db = feeDb({ invoice: null });
+    const out = await onPaymentReceivedMoney(feeReceipt({
+      invoiceId: INVOICE, paymentLinkId: null, product: "unmatched",
+      productName: null, purpose: null, saleId: BILLED_SALE
+    }), db);
+    assert.equal(out.done, false);
+    assert.equal(out.reason, "invoice_identity_conflict");
+    assert.equal(salePaymentInsert(db), undefined);
+    assert.equal(out.entitlements, undefined);
+  });
+
+  test("a non-fee invoice can credit only its own issued sale", async () => {
+    const invoice = { id: INVOICE, sale_id: BILLED_SALE, status: "sent",
+      source: "other", invoice_type: "platform_fee" };
+    const receipt = { product: "unmatched", productName: null, purpose: null, paymentLinkId: null };
+    const wrong = feeDb({ invoice });
+    const rejected = await onPaymentReceivedMoney(feeReceipt({
+      ...receipt, saleId: NEWEST_SALE
+    }), wrong);
+    assert.equal(rejected.done, false);
+    assert.equal(rejected.reason, "invoice_sale_conflict");
+    assert.equal(salePaymentInsert(wrong), undefined);
+
+    const valid = feeDb({ invoice });
+    const accepted = await onPaymentReceivedMoney(feeReceipt({
+      ...receipt, saleId: BILLED_SALE
+    }), valid);
+    assert.equal(accepted.done, true, JSON.stringify(accepted));
+    assert.equal(salePaymentInsert(valid)?.params[1], BILLED_SALE);
+    assert.equal(salePaymentInsert(valid)?.params[6], "installment");
+  });
+
+  test("void non-fee invoices and new payments to already-paid non-fee invoices cannot unlock", async () => {
+    const receipt = { product: "unmatched", productName: null,
+      purpose: null, paymentLinkId: null, saleId: BILLED_SALE };
+    const voided = feeDb({ invoice: { id: INVOICE, sale_id: BILLED_SALE, status: "void",
+      source: "other", invoice_type: "platform_fee" } });
+    const result = await onPaymentReceivedMoney(feeReceipt(receipt), voided);
+    assert.equal(result.done, false);
+    assert.equal(result.reason, "invoice_not_collectible");
+    assert.equal(salePaymentInsert(voided), undefined);
+
+    const paid = feeDb({ invoice: { id: INVOICE, sale_id: BILLED_SALE, status: "paid",
+      source: "other", invoice_type: "platform_fee" } });
+    const novel = await onPaymentReceivedMoney(feeReceipt(receipt), paid);
+    assert.equal(novel.done, false);
+    assert.equal(novel.reason, "paid_success_fee_new_receipt");
+    assert.equal(salePaymentInsert(paid), undefined);
   });
 
   test("an explicit original sale with conflicting product identity is held", async () => {

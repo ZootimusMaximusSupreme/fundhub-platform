@@ -552,6 +552,43 @@ describe("money-chain writers", { skip: !HAS_DB ? "no DATABASE_URL" : false }, (
     assert.equal(n, 0, "orphan receipt must not inflate installment or success-fee balances");
   });
 
+
+  test("a recorded buyer payment with a foreign or unknown invoice ID cannot credit even an explicit owned sale", async () => {
+    const buyerEmail = `${MARK}.unowned_invoice@example.invalid`;
+    const buyer = (await db.query(
+      `INSERT INTO clients (org_id, email, first_name, last_name)
+       VALUES ($1,$2,$3,'Unowned Invoice') RETURNING id`,
+      [org, buyerEmail, MARK]
+    )).rows[0];
+    const origin = await ensureSale(db, {
+      orgId: org, clientId: buyer.id, name: "checkout.accepted",
+      payload: { productId: fundingProductId, amount: 3000 }
+    }, { productBucket: "deposit" });
+    assert.ok(origin.sale);
+    const providerRef = `${MARK}_unowned_invoice_ref`;
+    await db.query(
+      `INSERT INTO transactions (org_id, client_id, product_name, amount_paid,
+                                 status, provider, provider_ref, raw_payload)
+       VALUES ($1,$2,'Unmatched invoice receipt',2500,'succeeded','commas',$3,'{}'::jsonb)`,
+      [org, buyer.id, providerRef]
+    );
+    const result = await onPaymentReceivedMoney({
+      id: "00000000-0000-4000-8000-000000000e69", name: "payment.received",
+      orgId: org, clientId: buyer.id,
+      payload: {
+        invoiceId: "00000000-0000-4000-8000-000000000f69",
+        saleId: origin.sale.id, product: "unmatched",
+        productName: null, purpose: null, amount: 2500, providerRef
+      }
+    }, db);
+    assert.equal(result.done, false);
+    assert.equal(result.reason, "invoice_identity_conflict");
+    assert.equal((await db.query(
+      `SELECT count(*)::int n FROM sale_payments WHERE sale_id = $1`,
+      [origin.sale.id]
+    )).rows[0].n, 0, "unknown invoice must never inflate a real sale balance");
+  });
+
   test("a payment we cannot pin to a client refuses and names the reason", async () => {
     const out = await onPaymentReceivedMoney(
       { id: null, name: "payment.received", orgId: org, payload: { amount: 100 } },

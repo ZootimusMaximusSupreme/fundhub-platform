@@ -994,6 +994,29 @@ export async function onPaymentReceivedMoney(event, db) {
   const feeInvoice = await successFeeInvoiceFor(db, {
     orgId, clientId, invoiceId: paymentPayload.invoiceId
   });
+  let otherInvoice = null;
+  // An invoiceId is authoritative billing evidence. If it is unknown,
+  // malformed or belongs to another buyer/tenant, never fall back to an
+  // otherwise valid saleId and misclassify invoice cash as installments.
+  // Non-fee invoices also must anchor cash to their actual billed sale.
+  if (paymentPayload.invoiceId && !feeInvoice) {
+    if (!asUuid(paymentPayload.invoiceId)) {
+      return { done: false, reason: "invoice_identity_conflict" };
+    }
+    otherInvoice = (await db.query(
+      `SELECT id, sale_id, status FROM invoices
+        WHERE id = $1 AND org_id = $2 AND client_id = $3 LIMIT 1`,
+      [paymentPayload.invoiceId, orgId, clientId]
+    )).rows[0] || null;
+    if (!otherInvoice) return { done: false, reason: "invoice_identity_conflict" };
+    if (!["sent", "reminded", "escalated", "partially_paid", "paid"].includes(String(otherInvoice.status))) {
+      return { done: false, reason: "invoice_not_collectible" };
+    }
+    if (!otherInvoice.sale_id) return { done: false, reason: "unlinked_invoice_sale" };
+    if (paymentPayload.saleId && String(otherInvoice.sale_id) !== String(paymentPayload.saleId)) {
+      return { done: false, reason: "invoice_sale_conflict" };
+    }
+  }
 
   // A void/draft/written-off fee invoice cannot be newly settled as sale cash.
   // The invoice allocator would refuse the receipt; do not let money-chain
@@ -1033,7 +1056,8 @@ export async function onPaymentReceivedMoney(event, db) {
   // receipt for the same settled debt. The invoice allocator leaves new cash
   // unapplied once paid; money-chain must not separately pay commissions or
   // unlock services for that new overpayment.
-  if (feeInvoice?.status === "paid") {
+  const billedInvoice = feeInvoice || otherInvoice;
+  if (billedInvoice?.status === "paid") {
     const receiptRef = paymentPayload.paymentId || paymentPayload.providerRef || null;
     const eventReceiptId = asUuid(event.id);
     if (!receiptRef && !eventReceiptId) {
@@ -1048,19 +1072,19 @@ export async function onPaymentReceivedMoney(event, db) {
             OR ($4::uuid IS NOT NULL AND source_event_id = $4)
           )
         LIMIT 1`,
-      [orgId, feeInvoice.id, receiptRef, eventReceiptId]
+      [orgId, billedInvoice.id, receiptRef, eventReceiptId]
     );
     if (!existingReceipt.rows[0]) {
       return { done: false, reason: "paid_success_fee_new_receipt" };
     }
   }
   let sale = null;
-  if (feeInvoice?.sale_id) {
+  if (billedInvoice?.sale_id) {
     sale = (await db.query(
       `SELECT * FROM sales WHERE id = $1 AND org_id = $2 AND client_id = $3 LIMIT 1`,
-      [feeInvoice.sale_id, orgId, clientId]
+      [billedInvoice.sale_id, orgId, clientId]
     )).rows[0] || null;
-    if (!sale) return { done: false, reason: "success_fee_sale_missing" };
+    if (!sale) return { done: false, reason: feeInvoice ? "success_fee_sale_missing" : "invoice_sale_missing" };
   }
   if (!sale && paymentPayload.saleId) {
     sale = (await db.query(
