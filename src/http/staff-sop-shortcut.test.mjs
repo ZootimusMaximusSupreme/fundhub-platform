@@ -5,6 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 import vm from "node:vm";
 import { fileURLToPath } from "node:url";
+import { tiersForRole, canQueryBrain } from "../company-brain/access.mjs";
 
 const APP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../public/app");
 const shell = fs.readFileSync(path.join(APP, "shell.js"), "utf8");
@@ -47,6 +48,19 @@ test("shortcut is gated to the exact existing Company Brain STAFF roles, never e
   assert.match(shell, /SOP_STAFF_ROLES\.indexOf\(role\) === -1/);
   assert.match(shell, /SOP_CONTEXT_BY_SCREEN\[PAGE\]/);
   assert.match(shell, /mountSopShortcut\(role, ok\)/);
+});
+
+test("staff Company Brain navigation matches the existing server permission and document tier policy", () => {
+  const ownerOnly = shell.slice(shell.indexOf("var OWNER_ADMIN_ONLY"), shell.indexOf("var FINANCE_ONLY"));
+  assert.doesNotMatch(ownerOnly, /"company-brain\\.html"/, "do not hide a STAFF-authorized route from employees");
+  for (const r of roles) {
+    assert.equal(canQueryBrain(r), true, r + " has existing server search access");
+    assert.deepEqual(tiersForRole(r).slice(0, 3), ["public", "sales", "staff"]);
+    assert.equal(tiersForRole(r).includes("owner"), r === "owner" || r === "admin");
+  }
+  for (const r of ["outbound_rep", "client", "affiliate", "partner"]) {
+    assert.equal(canQueryBrain(r), false, r + " must remain excluded");
+  }
 });
 
 test("shortcut uses a real anchor, safe finite URL, accessible focus, same-tab back navigation", () => {
