@@ -393,6 +393,17 @@ shows **✓ Call confirmed** only while that flag is true
 booking clears the flag, so the check disappears until that call is confirmed.
 The board's hourly check reports a card on Set without a completed handoff.
 
+## 7c. Two funding calendars (2026-10-29)
+
+`/apply` frames `/funding-book-call` for a 700-749 or 750+ score answer and the
+copy calendar page `/funding-book-call--02424` (funnel 994750, page 25820226) for
+every other answer (`showCal`, `marketing/landing-pages/apply-survey.html`). Both
+pages show the same words, load the same tracker and one Meta pixel, relay the
+booking to `/apply` and move to `/thank-you`. `/funding-book-call` runs event type
+14234; the copy runs event type 14959 (set in the ClickFunnels builder 2026-10-30).
+Each booking message names its page (`page.id`), which is how the two calendars are
+told apart.
+
 ## 8. Known gaps, not fixed here
 
 * **The workflow engine's fan-out is fire-and-forget and its failure is
