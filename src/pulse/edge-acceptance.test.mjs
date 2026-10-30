@@ -46,6 +46,16 @@ test("source changes require A->B review, including changed existing high-risk f
   assert.deepEqual(changedCriticalEdges(["marketing/landing-pages/apply-survey.html"]).map((x) => x.id), ["lead-booking-call-outcome"]);
 });
 
+test("unmapped high-risk PR edit cannot silently escape the report", () => {
+  const report = reportCriticalSourceChanges(["api/invoice-settlement.mjs"]);
+  assert.deepEqual(report.edges, []);
+  assert.deepEqual(report.unmappedHighRiskFiles, ["api/invoice-settlement.mjs"]);
+  assert.equal(shouldReportCriticalSourceRisk(report), true);
+  assert.equal(report.liveReceipt, "NEEDS_LIVE_RECEIPT");
+  assert.equal(shouldReportCriticalSourceRisk(reportCriticalSourceChanges(["docs/README.md"])), false);
+  assert.equal(shouldReportCriticalSourceRisk(reportCriticalSourceChanges(["src/sales/closer-deck.mjs"])), true);
+});
+
 test("existing closer/dispatch and setter source edits demand call-outcome proof", () => {
   // PR #292 edits closer-deck, which calls logCallOutcome; PR #278 edits
   // cockpit, setter dashboard and the task-claim API. All sit on the
