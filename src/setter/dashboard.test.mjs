@@ -249,16 +249,22 @@ test("setter numbers are self-scoped and keep dial-to-book separate from show ra
     seen.push({ sql, params });
     return { rows: [{ dials: 10, booked: 2, showed: 3, no_shows: 1 }] };
   } };
-  const numbers = await setterNumbers(db, { ...STAFF, id: "staff-human-setter" });
+  const numbers = await setterNumbers(db, { ...STAFF, id: "staff-human-setter" }, {
+    now: new Date("2026-10-30T16:00:00Z"), includeDemo: false
+  });
   assert.deepEqual(numbers, {
     dials: 10, booked: 2, dial_to_book_rate: 0.2,
     showed: 3, no_shows: 1, show_rate: 0.75
   });
-  assert.deepEqual(seen[0].params, [STAFF.org_id, "staff-human-setter"]);
+  assert.deepEqual(seen[0].params, [STAFF.org_id, "staff-human-setter", false, "2026-10-30T16:00:00.000Z"]);
   assert.match(seen[0].sql, /setter_staff_id' = \$2::text/);
   assert.match(seen[0].sql, /dial_attempt_days/);
   assert.match(seen[0].sql, /handoff->>'lead_type' = 'opt_in'/);
   assert.match(seen[0].sql, /o\.outcome = 'no_show'/);
+  assert.match(seen[0].sql, /b\.created_at < x\.day_end/);
+  assert.match(seen[0].sql, /o\.logged_at < x\.day_end/);
+  assert.match(seen[0].sql, /COALESCE\(c\.is_demo, false\) = false/);
+  assert.match(seen[0].sql, /COALESCE\(o\.is_demo, false\) = false/);
 });
 
 test("log dial keeps an exact server-owned count for the Phoenix day", async () => {

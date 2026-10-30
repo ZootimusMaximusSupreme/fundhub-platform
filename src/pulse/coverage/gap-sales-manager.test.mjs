@@ -311,7 +311,7 @@ test("gap sales manager: a quiet floor is three PASS rows, and nothing but reads
 });
 
 test("gap sales manager: the floor and my numbers get a read-only database, so a write they try is held back", async () => {
-  const good = { hero: { cash_cents: 1 }, funnel: { booked: 0, held: 0, deposits: 0 }, closers: [] };
+  const good = { hero: { cash_cents: 1 }, funnel: { booked: 0, held: 0, deposits: 0 }, closers: [], setters: [] };
   const tried = [];
   const db = fakeDb();
   const rows = await gapChecks({
@@ -385,7 +385,7 @@ test("gap sales manager: an answer the page cannot paint is FAIL", async () => {
   const good = {
     hero: { cash_cents: 100, deposit_to_funded: 0.5 },
     funnel: { booked: 2, held: 2, deposits: 1, show_rate: 1, close_rate: 0.5 },
-    closers: []
+    closers: [], setters: []
   };
   const goodMine = { pace: {}, month: {}, team: [] };
   const stub = (floor, mine = goodMine) => ({
@@ -401,7 +401,10 @@ test("gap sales manager: an answer the page cannot paint is FAIL", async () => {
     [null, /the sales floor read came back empty/],
     [{ ...good, hero: null }, /no team numbers/],
     [{ ...good, funnel: null }, /no funnel numbers/],
-    [{ ...good, closers: null }, /no closer list/]
+    [{ ...good, closers: null }, /no closer list/],
+    [{ ...good, setters: null }, /no setter list/],
+    [{ ...good, setters: [{ staff_id: "s", name: "Taylor", dials: null, booked: 1, showed: 1, no_shows: 0, show_rate: 1 }] }, /invalid setter dials/],
+    [{ ...good, setters: [{ staff_id: "s", name: "Taylor", dials: 1, booked: 1, showed: 1, no_shows: 0, show_rate: 1.5 }] }, /invalid setter show rate/]
   ]) {
     const rows = await run(stub(floor));
     rows.forEach(shape);
@@ -427,7 +430,7 @@ test("gap sales manager: an answer that cannot be printed as JSON is FAIL", asyn
     orgId: ORG,
     now: NOW,
     reads: {
-      salesFloor: async () => ({ hero: { cash_cents: 10n }, funnel: {}, closers: [] }),
+      salesFloor: async () => ({ hero: { cash_cents: 10n }, funnel: {}, closers: [], setters: [] }),
       closerMyNumbers: async () => ({ pace: {}, month: {}, team: [] })
     }
   });
@@ -441,7 +444,7 @@ test("gap sales manager: an answer that cannot be printed as JSON is FAIL", asyn
     orgId: ORG,
     now: NOW,
     reads: {
-      salesFloor: async () => ({ hero: { cash_cents: 1 }, funnel: {}, closers: [] }),
+      salesFloor: async () => ({ hero: { cash_cents: 1 }, funnel: {}, closers: [], setters: [] }),
       closerMyNumbers: async () => ({ pace: {}, month: { cash_cents: 10n }, team: [] })
     }
   });
@@ -469,7 +472,7 @@ test("gap sales manager: a read that never answers is FAIL, not a hang", async (
 });
 
 test("gap sales manager: manager totals that cannot be read are FAIL", async () => {
-  const floor = (hero, funnel) => ({ hero, funnel, closers: [] });
+  const floor = (hero, funnel) => ({ hero, funnel, closers: [], setters: [] });
   const mine = { pace: {}, month: {}, team: [] };
   const run = (f) => gapChecks({ db: fakeDb(), orgId: ORG, now: NOW, reads: { salesFloor: async () => f, closerMyNumbers: async () => mine } });
   const okFunnel = { booked: 2, held: 2, deposits: 1, show_rate: null, close_rate: 0.5 };
@@ -498,7 +501,7 @@ test("gap sales manager: manager totals that cannot be read are FAIL", async () 
   }
   assert.deepEqual(totalsProblems({ hero: { cash_cents: 1 }, funnel: { booked: 1, held: 1, deposits: 0 } }), []);
   assert.deepEqual(totalsProblems(null), ["the team numbers block is missing"]);
-  assert.equal(floorShapeProblem({ hero: {}, funnel: {}, closers: [] }), null);
+  assert.equal(floorShapeProblem({ hero: {}, funnel: {}, closers: [], setters: [] }), null);
   assert.equal(mineShapeProblem({ pace: {}, month: {}, team: [] }), null);
 });
 

@@ -3,13 +3,16 @@ import fs from "node:fs";
 import assert from "node:assert/strict";
 import {
   belongsOnCloserBoard,
+  belongsOnSetterBoard,
   closerDepositTarget,
   closerRoster,
   filterCloserRoster,
+  filterSetterRoster,
   isBlockedCloserIdentity,
   isOwnerSetCloser,
   localDateString,
-  OWNER_SET_CLOSER
+  OWNER_SET_CLOSER,
+  setterRoster
 } from "./metrics.mjs";
 
 test("localDateString is YYYY-MM-DD in America/Phoenix", () => {
@@ -88,6 +91,40 @@ test("DEMO closers show only when Demo Mode is on", () => {
   const demo = { name: "DEMO Closer", email: "closer@demo.fundhub.local", role: "closer", is_demo: true };
   assert.equal(belongsOnCloserBoard(demo), false);
   assert.equal(belongsOnCloserBoard(demo, { demoMode: true }), true);
+});
+
+test("setter roster keeps real setters and Chris, not other owners or demos", () => {
+  const staff = [
+    { staff_id: "chris", name: "Chris Stanbridge", email: "chris@fundhub.ai", role: "owner" },
+    { staff_id: "real", name: "Taylor Setter", email: "taylor@fundhub.ai", role: "setter" },
+    { staff_id: "owner", name: "Other Owner", email: "owner@fundhub.ai", role: "owner" },
+    { staff_id: "demo", name: "Demo Setter", email: "setter@demo.fundhub.local", role: "setter", is_demo: true }
+  ];
+  assert.deepEqual(filterSetterRoster(staff).map(s => s.staff_id), ["chris", "real"]);
+  assert.deepEqual(filterSetterRoster(staff, { demoMode: true }).map(s => s.staff_id), ["chris", "real", "demo"]);
+  assert.equal(belongsOnSetterBoard(staff[2]), false);
+});
+
+test("setter floor reads each active setter's existing daily numbers without changing the role gate", async () => {
+  const seen = [];
+  const db = { async query(sql, params) {
+    seen.push({ sql, params });
+    if (/FROM staff s/.test(sql)) return { rows: [
+      { staff_id: "chris", name: "Chris Stanbridge", email: "chris@fundhub.ai", role: "owner" },
+      { staff_id: "setter-1", name: "Taylor Setter", email: "taylor@fundhub.ai", role: "setter" },
+      { staff_id: "demo", name: "Demo Setter", email: "setter@demo.fundhub.local", role: "setter", is_demo: true }
+    ] };
+    if (/WITH bounds AS/.test(sql)) return { rows: [{ dials: 8, booked: 2, showed: 1, no_shows: 1 }] };
+    return { rows: [] };
+  } };
+  const rows = await setterRoster(db, { orgId: "org-1", now: new Date("2026-10-30T17:00:00Z") });
+  assert.deepEqual(rows.map(r => r.name), ["Chris Stanbridge", "Taylor Setter"]);
+  assert.equal(rows[0].dials, 8);
+  assert.equal(rows[0].booked, 2);
+  assert.equal(rows[0].show_rate, 0.5);
+  assert.equal(seen.filter(q => /WITH bounds AS/.test(q.sql)).length, 2);
+  assert.ok(seen.filter(q => /WITH bounds AS/.test(q.sql)).every(q => q.params[2] === false));
+  assert.match(seen.find(q => /FROM staff s/.test(q.sql)).sql, /s\.status = 'active'/);
 });
 
 test("closerRoster SQL is closers only, never DELETEs, and returns live rates or null", async () => {
