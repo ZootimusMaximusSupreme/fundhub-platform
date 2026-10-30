@@ -89,6 +89,11 @@ test("actual nudge claim constraints preserve draft/later-step recovery and prev
     // client, agent, claim, cap and queued-message storage below is real SQL.
     const isolated = { query: (sql, params) => {
       if (/FROM transactions/.test(sql)) return Promise.resolve({ rows: [{ id: randomUUID(), status: "succeeded", amount_paid: "7500.00" }] });
+      // Match the new term-limited coach query to the same synthetic buyer.
+      // The real purchased-year SQL is exercised separately in collision.pg.
+      if (/FROM entitlements e/.test(sql)) return Promise.resolve({ rows:
+        params?.[0] === scope.orgId && params?.[1] === scope.clientId ? [{ authorized: true }] : []
+      });
       if (/FROM v_client_entitlements/.test(sql)) return Promise.resolve({ rows: [{ active: true }] });
       return db.query(sql, params);
     } };
