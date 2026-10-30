@@ -113,6 +113,8 @@ one live upcoming ClickFunnels booking. Anything less certain is left alone.
 
 The setter dashboard shows the submitted `cf_svy_*` survey answers with stable question keys. During a call, the assigned setter can save corrected answers through `POST /api/setter-dashboard` with `action: "save_survey"`. The corrections live in `clients.custom_fields.setter_survey_edits`; the submitted answers remain unchanged. The dashboard reloads the saved corrections, and the generated closer handoff uses them. Editing a completed handoff refreshes its saved text without resending a message.
 
+The call screen also asks which funding paths were discussed (business, personal, or both), employment, annual personal income, and whether income can be verified. These answers save through the existing checklist action in `clients.custom_fields.setter_handoff`, separately from the submitted survey and its corrections. The funding-path answer is required for an opt-in handoff; the personal employment and income answers are optional. The outgoing handoff text does not include the new personal details.
+
 The event bus keeps each distinct funnel event, including separate survey-screen posts. The local setter handler now reuses an open task for the same client and task type. Once that task is done, a later opt-in or booking can create a new task. The Sales Fulfillment view shows one pill for repeated older setter tasks of the same type; the underlying tasks remain in the task list.
 
 ## 3. The never-booked chase
