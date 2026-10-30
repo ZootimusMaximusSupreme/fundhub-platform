@@ -77,6 +77,23 @@ test("material changes in actually open money/booking/Blueprint PRs are reviewed
   assert.deepEqual(unmappedHighRiskSourceChanges(["public/app/calendar-workspace.css"]), []);
 });
 
+test("active funding and A/R producer edits require both P0 money-result reviews", () => {
+  // Fulfillment PR #299 and A/R PR #300 have distinct source owners. Merely
+  // listing one heartbeat must not hide a change to the other money result.
+  const touched = reportCriticalSourceChanges([
+    "src/funding/card-stacking-rounds.mjs",
+    "src/handlers/money-chain.mjs"
+  ]);
+  assert.equal(touched.verdict, "REVIEW_REQUIRED");
+  assert.deepEqual(touched.edges.map((e) => [e.id, e.severity]), [
+    ["payment-ledger-entitlement", "P0"],
+    ["round-funded-fee-commission", "P0"]
+  ]);
+  assert.deepEqual(touched.unmappedHighRiskFiles, []);
+  assert.equal(touched.evidenceNote, "MISSING");
+  assert.equal(touched.liveReceipt, "NEEDS_LIVE_RECEIPT");
+});
+
 test("wrong source, consumer, identity, trace or business result turns RED after grace", () => {
   const changes = [
     { event: null },
