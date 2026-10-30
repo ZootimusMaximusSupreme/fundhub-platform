@@ -60,7 +60,11 @@ export const BOOKED_NO_OUTCOME_SQL = `/* gap-calls:booked-no-outcome */
                  OR (
                    b.client_id IS NOT NULL
                    AND o.client_id = b.client_id
+                   -- Only a genuinely unlinked outcome may use the clock fallback.
+                   -- An outcome explicitly belonging to booking B must not clear A.
+                   AND (o.booking_ref IS NULL OR btrim(o.booking_ref) = '')
                    AND o.logged_at >= COALESCE(b.starts_at, b.ends_at) - interval '2 hours'
+                   AND o.logged_at <= COALESCE(b.ends_at, b.starts_at) + interval '2 hours'
                  )
                )
           )
@@ -70,8 +74,10 @@ export const BOOKED_NO_OUTCOME_SQL = `/* gap-calls:booked-no-outcome */
    call_outcomes row. The old test also demanded clients.custom_fields.call_outcome
    be empty. The booking handler sets that field to "booked" on every booking, so
    that test never matched a real booking and this check could not fail.
-   An outcome counts when it names the booking, or when the same client has one
-   logged from two hours before the call began. */
+   An outcome counts when it names this booking. An outcome with no booking_ref
+   can only count when it belongs to the same client AND is within a bounded
+   two-hour window around this specific call. An explicit later booking's outcome
+   must never clear an earlier unanswered booking. */
 export async function bookedNoOutcome({ db, orgId, now }) {
   const id = "calls:booked-no-outcome";
   if (!db || !orgId) return check(id, "skip", "no database in this run — booked calls not read");
