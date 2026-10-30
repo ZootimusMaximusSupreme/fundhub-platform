@@ -1964,7 +1964,11 @@ restore();
     card.appendChild(top);
     if (pipelineKey === "sales" && c.booked_starts_at) {
       var bookedWhen = formatBookedWhen(c.booked_starts_at);
-      if (bookedWhen) card.appendChild(div("c-booked-when", "Booked · " + bookedWhen));
+      if (bookedWhen) {
+        var bookingLabel = c.booked_kind === "rescheduled" ? "Rescheduled"
+          : c.booked_kind === "rebooked" ? "Booked again" : "Booked";
+        card.appendChild(div("c-booked-when", bookingLabel + " · " + bookedWhen));
+      }
     }
     if (pipelineKey === "sales" && c.call_confirmed === true) {
       card.appendChild(div("c-call-confirmed", "✓ Call confirmed"));
@@ -2193,27 +2197,37 @@ restore();
     return typeof v === "string" && /^\d{5,}$/.test(v.trim());
   }
 
+  /* ClickFunnels can nest JSON arrays inside other JSON arrays. Display each
+     saved choice as human words, not as bracketed JSON or a raw option ID. */
+  function unpackSurveyText(raw, depth) {
+    if (depth > 4 || raw == null) return [];
+    if (Array.isArray(raw)) {
+      return raw.reduce(function (all, item) {
+        return all.concat(unpackSurveyText(item, depth + 1));
+      }, []);
+    }
+    if (typeof raw === "string") {
+      var trimmed = raw.trim();
+      if (trimmed.charAt(0) === "[" && trimmed.charAt(trimmed.length - 1) === "]") {
+        try {
+          var nested = JSON.parse(trimmed);
+          if (Array.isArray(nested)) return unpackSurveyText(nested, depth + 1);
+        } catch (_) { /* Keep the original plain answer. */ }
+      }
+    }
+    if (isCfOptionId(raw)) return [];
+    return [String(raw).trim()];
+  }
+
   function surveyAnswer(cf, key) {
     if (!cf) return null;
-    var label = cf[key + "_label"];
-    if (label != null && label !== "") return String(label);
-    var labels = cf[key + "_labels"];
-    if (labels != null && labels !== "") {
-      if (Array.isArray(labels)) return labels.filter(Boolean).join(", ");
-      try {
-        var parsed = JSON.parse(labels);
-        if (Array.isArray(parsed)) return parsed.filter(Boolean).join(", ");
-      } catch (e) {}
-      return String(labels);
+    var choices = [cf[key + "_label"], cf[key + "_labels"], cf[key]];
+    for (var i = 0; i < choices.length; i++) {
+      if (choices[i] == null || choices[i] === "") continue;
+      var words = unpackSurveyText(choices[i], 0).filter(Boolean).join(", ");
+      if (words) return words;
     }
-    var v = cf[key];
-    if (v == null || v === "") return null;
-    if (Array.isArray(v)) {
-      if (v.every(isCfOptionId)) return null;
-      return v.filter(function (x) { return x != null && x !== "" && !isCfOptionId(x); }).join(", ") || null;
-    }
-    if (isCfOptionId(v)) return null;
-    return String(v);
+    return null;
   }
 
   /* One row per survey question, in the order the survey asks them
@@ -2309,7 +2323,18 @@ restore();
     ];
   }
 
+  /* A real, non-sample bureau result is the switch from pre-call survey
+     questions to verified credit facts. A missing or sample pull must never
+     displace the customer's survey with unknown scores. */
+  function hasVerifiedCredit(tm) {
+    return !!(tm && tm.sample !== true && tm.source === "crs_results" &&
+      [tm.experian, tm.equifax, tm.transunion].some(function (v) {
+        return v !== null && v !== undefined && v !== "";
+      }));
+  }
+
   window.FHPipelineDrawer = {
+    hasVerifiedCredit: hasVerifiedCredit,
     surveyAnswer: surveyAnswer,
     surveyBranch: surveyBranch,
     surveyRowsFor: surveyRowsFor,
@@ -2346,15 +2371,11 @@ restore();
     var clientId = c.client_id || client.id;
     who.appendChild(contactRow("Email", "email", email, clientId, c.email_needs_reply || client.email_needs_reply));
     who.appendChild(contactRow("Phone", "sms", phone, clientId, c.sms_needs_reply || client.sms_needs_reply));
-    drawerBody.appendChild(who);
-
     var book = (data && data.latest_booking) || {};
     var call = sec("Call");
     call.appendChild(rowAlways("When", fmtWhen(book.when)));
     call.appendChild(rowAlways("Status", callStatus(book.status || cf.call_outcome)));
     if (book.title) call.appendChild(rowAlways("What", book.title));
-    drawerBody.appendChild(call);
-
     var said = surveyAnswer(cf, "cf_svy_self_reported_fico") || c.survey_fico || null;
     var biz = (data && data.business_credit) || {};
     var inc = (data && data.income_estimates) || {};
@@ -2363,7 +2384,7 @@ restore();
       return "$" + Number(row.annual).toLocaleString("en-US") + "/yr";
     }
     var creditMore = sec("Credit");
-    /* THE THREE REAL SCORES, FIRST, BECAUSE THEY ARE THE ANSWER.
+    /* SHOW THE THREE REAL SCORES FIRST WITHIN CREDIT, WHEN CREDIT IS READY.
        `tm` (the tri-merge from the client's last credit pull) has been read on
        this line since the drawer shipped and was never drawn. So a file with
        771 / 778 / 766 on it opened on "They said —" — the client's own guess,
@@ -2392,13 +2413,22 @@ restore();
     creditMore.appendChild(rowAlways("Income, Equifax's estimate", moneyYr(inc.equifax)));
     creditMore.appendChild(rowAlways("Business score", biz.intelliscore));
     creditMore.appendChild(rowAlways("Business FSR", biz.fsr));
-    drawerBody.appendChild(creditMore);
-
     var survey = sec("Survey");
     surveyRowsFor(cf).forEach(function (pair) {
       survey.appendChild(rowAlways(pair[0], pair[1]));
     });
-    drawerBody.appendChild(survey);
+    /* The owner's two-phase sales flow: show the saved survey answers FIRST
+       until a real report exists, then promote Credit above Survey.
+       Contact and Call remain available directly below these two sections. */
+    if (hasVerifiedCredit(tm)) {
+      drawerBody.appendChild(creditMore);
+      drawerBody.appendChild(survey);
+    } else {
+      drawerBody.appendChild(survey);
+      drawerBody.appendChild(creditMore);
+    }
+    drawerBody.appendChild(who);
+    drawerBody.appendChild(call);
 
     var bizList = Array.isArray(biz.businesses) ? biz.businesses : [];
     var bizSec = sec("Businesses");
@@ -2450,12 +2480,26 @@ restore();
     drawerBody.appendChild(box);
   }
 
+  function drawerReadError(c) {
+    if (!drawerClient || drawerClient.client_id !== c.client_id || !drawerBody) return;
+    drawerBody.textContent = "";
+    var err = document.createElement("p");
+    err.className = "fh-drawer-empty";
+    err.textContent = "Survey and credit details could not load. Close and reopen this card to retry.";
+    drawerBody.appendChild(err);
+  }
+
   function openClientDrawer(c) {
     drawerReturnFocus = document.activeElement;
     drawerClient = c;
     if (drawerName) drawerName.textContent = c.name || "Contact";
     if (drawerBody) {
-      paintDrawer(c, { client: { email: c.email, phone: c.phone, custom_fields: {}, outcome_tier: c.outcome_tier } });
+      drawerBody.textContent = "";
+      var loading = document.createElement("p");
+      loading.className = "fh-drawer-empty";
+      loading.setAttribute("role", "status");
+      loading.textContent = "Loading survey and credit details…";
+      drawerBody.appendChild(loading);
     }
     if (drawerEl) {
       drawerEl.classList.add("open");
@@ -2471,28 +2515,17 @@ restore();
         if (!drawerClient || drawerClient.client_id !== c.client_id) return;
         if (res && res.ok && res.data) paintDrawer(c, res.data);
         else if (res && res.ok) paintDrawer(c, res);
-      });
+        else drawerReadError(c);
+      }).catch(function () { drawerReadError(c); });
     } else {
       fetch("/api/dashboard/client?id=" + encodeURIComponent(c.client_id), { headers: dashHeaders() })
         .then(function (r) { return r.json(); })
         .then(function (d) {
           if (!drawerClient || drawerClient.client_id !== c.client_id) return;
           if (d && d.ok) paintDrawer(c, d);
-          else {
-            drawerBody.textContent = "";
-            var err = document.createElement("p");
-            err.className = "fh-drawer-empty";
-            err.textContent = "Could not load this contact.";
-            drawerBody.appendChild(err);
-          }
+          else drawerReadError(c);
         })
-        .catch(function () {
-          drawerBody.textContent = "";
-          var err = document.createElement("p");
-          err.className = "fh-drawer-empty";
-          err.textContent = "Could not load this contact.";
-          drawerBody.appendChild(err);
-        });
+        .catch(function () { drawerReadError(c); });
     }
   }
 

@@ -49,6 +49,28 @@ test.describe("pipeline board", () => {
     await expect(card.locator('.c-booked-when')).toBeVisible();
   });
 
+  test("calls a rescheduled appointment Rescheduled, without claiming the old time is current", async ({ page }) => {
+    const stages = structuredClone(STAGES);
+    stages.stages[0].cards[0].booked_starts_at = "2030-05-02T17:00:00.000Z";
+    stages.stages[0].cards[0].booked_kind = "rescheduled";
+    await openScreen(page, "/app/pipeline.html", OWNER, {
+      "/api/dashboard/pipeline": stages
+    });
+    await expect(page.locator(".card[data-client-id] .c-booked-when"))
+      .toHaveText("Rescheduled · Thu, May 2, 2030, 10:00 AM MST");
+  });
+
+  test("calls a new booking after an earlier booking Booked again", async ({ page }) => {
+    const stages = structuredClone(STAGES);
+    stages.stages[0].cards[0].booked_starts_at = "2030-05-02T17:00:00.000Z";
+    stages.stages[0].cards[0].booked_kind = "rebooked";
+    await openScreen(page, "/app/pipeline.html", OWNER, {
+      "/api/dashboard/pipeline": stages
+    });
+    await expect(page.locator(".card[data-client-id] .c-booked-when"))
+      .toHaveText("Booked again · Thu, May 2, 2030, 10:00 AM MST");
+  });
+
   test("leaves the booking label off cards without an active call", async ({ page }) => {
     await openScreen(page, "/app/pipeline.html", OWNER, {
       "/api/dashboard/pipeline": STAGES
@@ -66,14 +88,61 @@ test.describe("pipeline board", () => {
       .toHaveText("Booked · Fri, May 1, 2020, 10:00 AM MST");
   });
 
-  test("opens the card with Contact, Call, Credit, then Survey before other details", async ({ page }) => {
+  test("opens a pre-credit card with real survey answers FIRST, not below credit", async ({ page }) => {
     await openScreen(page, "/app/pipeline.html", OWNER, {
-      "/api/dashboard/pipeline": STAGES
+      "/api/dashboard/pipeline": STAGES,
+      "/api/dashboard/client?id=": {
+        ok: true,
+        client: {
+          id: CLIENT_ID, first_name: "Dana", last_name: "Whitfield",
+          custom_fields: {
+            cf_svy_funding_target_amount_label: "$100k - $250k",
+            cf_svy_planned_use_label: "Fund inventory",
+            cf_svy_self_reported_fico_label: "700-749"
+          }
+        },
+        tri_merge: { experian: null, equifax: null, transunion: null, source: null, sample: false }
+      }
     });
     await page.locator('.card[data-client-id] .c-name').click();
+    await expect(page.locator('#fhDrawerBody')).toContainText("Fund inventory");
     await expect(page.locator('#fhDrawerBody > .fh-drawer-sec h3')).toHaveText([
-      "Contact", "Call", "Credit", "Survey", "Businesses", "Path", "How they got here"
+      "Survey", "Credit", "Contact", "Call", "Businesses", "Path", "How they got here"
     ]);
+  });
+
+  test("promotes Credit over Survey after a genuine score, never for a simulated report", async ({ page }) => {
+    const detail = {
+      ok: true, client: {
+        id: CLIENT_ID, custom_fields: { cf_svy_planned_use_label: "Fund inventory" }
+      },
+      tri_merge: {
+        experian: 745, equifax: 739, transunion: 742,
+        source: "crs_results", asOf: "2026-10-29T17:00:00.000Z", sample: false
+      }
+    };
+    await openScreen(page, "/app/pipeline.html", OWNER, {
+      "/api/dashboard/pipeline": STAGES,
+      "/api/dashboard/client?id=": detail
+    });
+    await page.locator('.card[data-client-id] .c-name').click();
+    await expect(page.locator('#fhDrawerBody')).toContainText("Fund inventory");
+    await expect(page.locator('#fhDrawerBody > .fh-drawer-sec h3')).toHaveText([
+      "Credit", "Survey", "Contact", "Call", "Businesses", "Path", "How they got here"
+    ]);
+    detail.tri_merge.sample = true;
+    await page.locator('#fhDrawerClose').click();
+    await page.locator('.card[data-client-id] .c-name').click();
+    await expect(page.locator('#fhDrawerBody > .fh-drawer-sec h3').first()).toHaveText("Survey");
+  });
+
+  test("makes a failed client-detail read visible instead of leaving blank survey answers", async ({ page }) => {
+    await openScreen(page, "/app/pipeline.html", OWNER, {
+      "/api/dashboard/pipeline": STAGES,
+      "/api/dashboard/client?id=": { ok: false, error: "db_down" }
+    });
+    await page.locator('.card[data-client-id] .c-name').click();
+    await expect(page.locator("#fhDrawerBody")).toContainText("Survey and credit details could not load");
   });
 
   test("MOVE posts a pipeline-cards move", async ({ page }) => {
