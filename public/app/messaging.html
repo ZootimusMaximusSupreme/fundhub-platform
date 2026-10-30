@@ -539,7 +539,6 @@
         '<div class="msg-sender">' +
           '<span class="ch-pill">' + esc(String(msg.channel || "").toUpperCase()) + "</span>" +
           '<span class="nm">' + esc(who) + "</span>" +
-          (!inbound && !msg.sender_name ? '<span class="agent-tag">Automatic</span>' : "") +
         "</div>" +
         '<div class="bubble ' + (inbound ? "in" : (msg.sender_name ? "out-human" : "out-agent")) + '">' +
           (msg.subject ? '<div class="email-subj">' + esc(msg.subject) + "</div>" : "") +

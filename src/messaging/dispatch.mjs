@@ -602,6 +602,26 @@ export async function dispatchOne(db, message, options = {}) {
         `the client has no ${addressColumnFor(route.provider, message.channel)} to send to`, route.provider);
     }
 
+    // A second bounce to the same address is enough evidence to stop trying it.
+    // The address is compared at send time, so correcting the client record and
+    // queueing a new message can resume mail without clearing delivery history.
+    // One bounce alone may be temporary and does not block a later attempt.
+    if (provider.TRANSMITS === true && message.channel === "email" && message.client_id &&
+        addressColumnFor(route.provider, message.channel) === "email") {
+      const { rows: bounced } = await db.query(
+        `SELECT id FROM messages
+          WHERE org_id = $1 AND client_id = $2 AND channel = 'email'
+            AND direction = 'outbound' AND status = 'bounced'
+            AND lower(btrim(to_address)) = lower(btrim($3))
+          ORDER BY created_at DESC OFFSET 1 LIMIT 1`,
+        [message.org_id, message.client_id, address]
+      );
+      if (bounced.length) {
+        return await finalise(db, message, "blocked", OUTCOME.BLOCKED,
+          "This email address has bounced more than once. Check the address before sending again.", null);
+      }
+    }
+
     /* ---- 2d. AN ADDRESS THE PROVIDER WILL NEVER TAKE ----------------------
        A provider may declare refusedAddress(to): a pure check, no network, for
        destinations it refuses on sight. Resend does, for the reserved test
