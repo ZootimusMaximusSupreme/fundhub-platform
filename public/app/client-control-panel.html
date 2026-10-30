@@ -5,6 +5,7 @@
 <link rel="preload" href="/assets/fonts/nunito-latin-variable.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/app/fundhub-font.css">
 <script defer src="/app/fundhub-font.js"></script>
+<script defer src="/app/phone-format.js"></script>
 
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -2615,7 +2616,7 @@ document.addEventListener("DOMContentLoaded", function () {
     setText("ccp-name", name);
     setText("ccp-key", c.email || c.id);
     setText("ccp-email", c.email);
-    setText("ccp-phone", c.phone);
+    setText("ccp-phone", FHFormatPhone(c.phone));
     /* A Tier or a Prequal set by the decision on a sample report says so —
        live hole N12. See sampleDecision(). */
     var sampleDec = FHCP.sampleDecision(d.crs_results);

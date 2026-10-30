@@ -5,6 +5,7 @@
 <link rel="preload" href="/assets/fonts/nunito-latin-variable.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/app/fundhub-font.css">
 <script defer src="/app/fundhub-font.js"></script>
+<script defer src="/app/phone-format.js"></script>
 
 <meta charset="UTF-8">
 <title>Fundhub — Pipeline</title>
@@ -2114,7 +2115,7 @@ restore();
     var a = document.createElement("a");
     a.className = "c-msg-link";
     a.href = messagingHref(clientId, channel);
-    a.textContent = String(value);
+    a.textContent = channel === "sms" ? FHFormatPhone(value) : String(value);
     a.addEventListener("click", function (ev) { ev.stopPropagation(); });
     wrap.appendChild(a);
     if (needsReply) {
@@ -2137,7 +2138,7 @@ restore();
     if (clientId && value) {
       var link = document.createElement("a");
       link.href = messagingHref(clientId, channel);
-      link.textContent = String(value);
+      link.textContent = channel === "sms" ? FHFormatPhone(value) : String(value);
       right.appendChild(link);
       if (needsReply) {
         var badge = document.createElement("span");

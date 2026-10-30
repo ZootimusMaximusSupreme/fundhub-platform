@@ -1,0 +1,26 @@
+{
+  "task": "Display CRM phone numbers consistently without changing stored numbers or calling and texting targets",
+  "sessionOwner": "CRM phone formatting in codex/crm-phone-formatting",
+  "parallelWorkflows": [
+    {"owner": "kanban_inventory", "prompt": "Read-only: locate pipeline cards and drawer phone display and action paths; report exact files and minimal changes.", "status": "complete"},
+    {"owner": "crm_inventory", "prompt": "Read-only: inventory other CRM staff pages that show contact phone numbers; report exact files and locations.", "status": "complete"},
+    {"owner": "format_research", "prompt": "Read-only: find existing phone display formatting and relevant tests; recommend safe US and international display behavior.", "status": "complete"}
+  ],
+  "plan": {
+    "role": "All CRM staff roles that read contact records",
+    "oneJob": "Read a contact phone number at a glance",
+    "firstQuestion": "What number should I call or text?",
+    "reuse": "Existing phone values, links, search, and CRM pages",
+    "data": "Existing client, setter, banker, and applicant phone fields; no new route or field",
+    "files": "One shared browser formatter, five CRM screens, browser tests, and this board",
+    "risk": "Display text could be clipped or a link could change; mobile browser tests check both"
+  },
+  "verification": {
+    "unit": "102 focused formatting and pipeline checks passed",
+    "browser": "Pipeline card/drawer, setter, banker, and client panel tests passed with fixture data",
+    "typescript": "pass",
+    "screenshot": "ops/workflows/crm-phone-formatting-2026-10-30-MARKED.png",
+    "live": "pending release"
+  },
+  "status": "ready for GitHub delivery"
+}

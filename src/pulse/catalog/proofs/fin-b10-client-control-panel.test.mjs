@@ -55,7 +55,7 @@ const asRole = (role) => ({ ok: true, staff: { id: `staff-${role}`, name: "Casey
 const FILE = {
   ok: true,
   client: {
-    id: CLIENT, first_name: "Dana", last_name: "Whitfield", email: "dana@example.com", phone: "+1 555 0100",
+    id: CLIENT, first_name: "Dana", last_name: "Whitfield", email: "dana@example.com", phone: "+14702920106",
     outcome_tier: "Tier 2", funded: true, funded_amount: 45000,
     custom_fields: { analyzer_path: "Blueprint path", crs_status: "Report pulled", round_hold_reason: "Waiting on the bank letter" },
   },
@@ -271,7 +271,7 @@ test("Details toggle: starts shut and holds the email, phone, tier and path of t
     const { page, errors } = await openPanel();
     const shut = await foldGroup(page, "details-body");
     assert.equal(await page.locator("#ccp-email").textContent(), "dana@example.com");
-    assert.equal(await page.locator("#ccp-phone").textContent(), "+1 555 0100");
+    assert.equal(await page.locator("#ccp-phone").textContent(), "(470) 292-0106");
     assert.equal(await page.locator("#ccp-tier").textContent(), "Tier 2");
     assert.equal(await page.locator("#ccp-path").textContent(), "Blueprint path");
     await shut();
