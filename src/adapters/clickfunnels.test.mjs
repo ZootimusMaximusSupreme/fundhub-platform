@@ -1137,7 +1137,7 @@ function funnelDb({ existingClient = { id: "cl-77", email: "runaway@example.com"
           e.org_id === orgId
           && e.name === name
           && String(e.payload?.email || "").toLowerCase() === email
-          && String(e.payload?.funnel || "") === funnel);
+          && (!String(e.payload?.funnel || "") || !funnel || String(e.payload?.funnel || "") === funnel));
         return { rows: hit ? [{ ok: 1 }] : [] };
       }
       if (/INSERT INTO events/.test(sql)) {
@@ -1246,6 +1246,57 @@ test("F39: a genuinely new lead on a different funnel still starts its own run",
   });
   const res = await handleClickFunnelsWebhook({ db, rawBody: other, signatureHeader: sign(other), secret: SECRET });
   assert.equal(res.emitted.find((e) => e.name === "survey.submitted").startedRun, true);
+});
+
+test("F39: a blank funnel label on the same application does not start another run", async () => {
+  _resetOrgCache(); clearHandlers();
+  const db = funnelDb();
+  const first = surveyBody("cf_named");
+  await handleClickFunnelsWebhook({ db, rawBody: first, signatureHeader: sign(first), secret: SECRET });
+  const blank = JSON.stringify({
+    id: "cf_blank", event: "contact_created",
+    data: { contact: { email: "runaway@example.com", first_name: "Runaway", custom_attributes: { cf_svy_available_capital: "50k" } } }
+  });
+  const second = await handleClickFunnelsWebhook({ db, rawBody: blank, signatureHeader: sign(blank), secret: SECRET });
+  assert.equal(second.emitted.find((e) => e.name === "survey.submitted").startedRun, false);
+  assert.equal(second.emitted.find((e) => e.name === "entry.captured").startedRun, false);
+});
+
+test("F39: concurrent posts for one contact start one run per trigger", async () => {
+  _resetOrgCache(); clearHandlers();
+  const db = funnelDb();
+  const originalQuery = db.query.bind(db);
+  db.query = async (sql, params) => {
+    if (/SELECT 1\s+FROM events/.test(sql)) await new Promise((resolve) => setTimeout(resolve, 5));
+    return originalQuery(sql, params);
+  };
+  const locks = new Map();
+  db.options = {};
+  db.connect = async () => {
+    let unlock;
+    return {
+      async query(sql, params) {
+        if (/pg_advisory_xact_lock/.test(sql)) {
+          const key = params[0];
+          const previous = locks.get(key) || Promise.resolve();
+          const held = new Promise((resolve) => { unlock = resolve; });
+          locks.set(key, previous.then(() => held));
+          await previous;
+        }
+        if (/COMMIT|ROLLBACK/.test(sql)) unlock?.();
+        return { rows: [] };
+      },
+      release() { unlock?.(); }
+    };
+  };
+  const bodies = Array.from({ length: 3 }, (_, i) => surveyBody(`cf_racing_${i}`));
+  const results = await Promise.all(bodies.map((rawBody) => handleClickFunnelsWebhook({
+    db, rawBody, signatureHeader: sign(rawBody), secret: SECRET
+  })));
+  for (const name of ["entry.captured", "survey.submitted"]) {
+    assert.equal(results.flatMap((r) => r.emitted).filter((e) => e.name === name && e.startedRun).length, 1);
+    assert.equal(db.events.filter((e) => e.name === name).length, 3);
+  }
 });
 
 /* The proof that `startedRun: false` is not just a label the adapter writes on
