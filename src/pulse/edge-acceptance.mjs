@@ -1,4 +1,7 @@
 // Audit-only A->B evidence contract (v1). No live reads, writes, sends, billing or new monitors.
+// The client portal HTML is a real result surface for paid entitlement and
+// message inbox, and the webview payload the native app depends upon.
+// Editing it must review those A→B results; Apple installed-build proof stays separate.
 // A source mapping, check ID, or heartbeat is NOT a verified downstream business result.
 // Source-touch checks are REPORT-ONLY until false positives and ownership are reviewed.
 // Reference the one registered soft-pull check instead of declaring its ID twice.
@@ -30,7 +33,7 @@ export const CRITICAL_EDGES = Object.freeze([
     event: "payment.received", consumer: "onPaymentReceived / entitlement handlers",
     receipt: "payment ledger + active entitlement + portal read", graceMinutes: null,
     pulse: "payments:paid-no-entitlement",
-    paths: ["src/register-all.mjs", "src/merchant/", "src/billing/", "src/payments/", "src/entitlements/", "src/ledger/", "src/handlers/money-chain.mjs", "src/handlers/client-lifecycle.mjs", "src/handlers/payment-links.mjs", "src/invoices/", "api/read/invoices.mjs", "src/adapters/whop", "api/payment", "api/checkout"]
+    paths: ["src/register-all.mjs", "src/merchant/", "src/billing/", "src/payments/", "src/entitlements/", "src/ledger/", "src/handlers/money-chain.mjs", "src/handlers/client-lifecycle.mjs", "src/handlers/payment-links.mjs", "src/invoices/", "api/read/invoices.mjs", "public/app/client-portal.html", "src/adapters/whop", "api/payment", "api/checkout"]
   },
   {
     id: "consent-crs-result", severity: "P0", owner: "Fulfillment",
@@ -65,7 +68,7 @@ export const CRITICAL_EDGES = Object.freeze([
     event: "message.queued / message.sent / message.failed", consumer: "message-dispatch-sweeper + provider callbacks",
     receipt: "messages row + provider delivery/callback + client inbox", graceMinutes: 15,
     pulse: "gap:sms-journey-zero",
-    paths: ["src/register-all.mjs", "src/messaging/", "src/chat/", "src/adapters/twilio", "src/adapters/resend", "api/read/inbox.mjs", "api/chat/messages.mjs", "netlify/functions/staff-message-sweeper.mjs"]
+    paths: ["src/register-all.mjs", "src/messaging/", "src/chat/", "src/adapters/twilio", "src/adapters/resend", "api/read/inbox.mjs", "api/chat/messages.mjs", "public/app/client-portal.html", "netlify/functions/staff-message-sweeper.mjs"]
   },
   {
     id: "lender-apply-link", severity: "P1", owner: "Fulfillment / Lender outreach",
@@ -86,7 +89,7 @@ export const CRITICAL_EDGES = Object.freeze([
     event: "SOURCE-STATE: installed first open", consumer: "native webview / portal authentication",
     receipt: "real installed app + authenticated portal result (device proof separately)", graceMinutes: null,
     pulse: "portal:summary",
-    paths: ["ios/", "macos/", "native/", "public/app/client-ios.js", "src/push/native"]
+    paths: ["ios/", "macos/", "native/", "public/app/client-ios.js", "public/app/client-portal.html", "src/push/native"]
   }
 ]);
 
