@@ -147,6 +147,30 @@ test("NULL-client booking event needs exact org-scoped identity resolution, not 
   }
 });
 
+test("every new P0/P1 money, booking and messaging PR source has A->B mapping", () => {
+  const files = [
+    "src/invoices/index.mjs",                   // A/R PR #298
+    "src/finance/finance-os-pull-fulfil.mjs",   // Blueprint #297
+    "src/auth/magic-link.mjs",                  // booked-account claim #278
+    "src/config/survey-qualification.mjs",     // booking bucket #280
+    "src/setter/tasks.mjs",                     // staff calendar #270
+    "src/chat/internal.mjs",                    // message ownership #272
+    "api/read/inbox.mjs",                       // client inbox #278
+    "src/finance/bank-strategy.mjs"             // lender guidance
+  ];
+  const result = reportCriticalSourceChanges(files);
+  assert.equal(result.verdict, "REVIEW_REQUIRED");
+  for (const id of [
+    "lead-booking-call-outcome", "payment-ledger-entitlement",
+    "round-funded-fee-commission", "blueprint-financeos-report",
+    "outbound-message-provider-receipt", "lender-apply-link"
+  ]) {
+    assert.ok(result.edges.some((e) => e.id === id), id);
+  }
+  assert.deepEqual(result.unmappedHighRiskFiles, []);
+  assert.equal(result.liveReceipt, "NEEDS_LIVE_RECEIPT");
+});
+
 function changedFilesFromPrEnvironment() {
   const eventPath = process.env.GITHUB_EVENT_PATH;
   if (!eventPath) return { status: "NOT_CHECKED", why: "no GitHub PR event context" };
