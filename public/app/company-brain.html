@@ -8,7 +8,7 @@
 
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Fundhub — Company Brain</title>
+<title>Fundhub — Knowledge Base</title>
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -39,11 +39,11 @@ button,input,select,textarea{font:inherit;color:inherit}
 .spacer{flex:1}
 .hair{height:2px;background:var(--spectrum);border-radius:1px}
 
-.btn{border:1px solid var(--line);background:#fff;border-radius:7px;padding:8px 14px;font-size:var(--fs-body);font-weight:500;cursor:pointer;transition:background .12s,border-color .12s}
+.btn{min-height:44px;border:1px solid var(--line);background:#fff;border-radius:7px;padding:8px 14px;font-size:var(--fs-body);font-weight:500;cursor:pointer;transition:background .12s,border-color .12s}
 .btn:hover{background:var(--soft);border-color:var(--gray2)}
 .btn.dark{background:var(--ink);color:var(--paper);border-color:var(--ink)}
 .btn.dark:hover{background:var(--ink2)}
-.btn.sm{padding:5px 10px}
+.btn.sm{padding:8px 12px}
 .btn:disabled,.iconbtn:disabled{opacity:.45;cursor:not-allowed}
 .btn:disabled:hover{background:#fff;border-color:var(--line)}
 .btn.dark:disabled:hover{background:var(--ink)}
@@ -57,25 +57,37 @@ button,input,select,textarea{font:inherit;color:inherit}
 .b-butter{background:rgba(242,227,155,.32);border-color:var(--butter);color:#5E5310}
 .b-gray{background:var(--soft);border-color:var(--line);color:var(--gray)}
 
-/* ── three panes: chats · conversation · documents ─────────────────────── */
+/* ── Ask, training, and file management ───────────────────────────────── */
+.kb-tabs{display:flex;align-items:center;gap:8px;padding:0 24px;border-bottom:1px solid var(--line);background:var(--paper);flex:0 0 auto;overflow-x:auto}
+.kb-tab{min-height:48px;white-space:nowrap;border:0;border-bottom:3px solid transparent;background:transparent;padding:10px 16px;cursor:pointer;font-weight:600}
+.kb-tab[aria-selected="true"]{border-bottom-color:var(--ink)}
+.kb-tab[hidden]{display:none}
 .chat{flex:1;min-height:0;display:flex;position:relative;overflow:hidden}
+.chat[data-view="training"]>.rail,.chat[data-view="training"]>.convo,.chat[data-view="training"]>.docs,
+.chat[data-view="manage"]>.rail,.chat[data-view="manage"]>.convo,.chat[data-view="manage"]>.training-view,
+.chat[data-view="ask"]>.training-view,.chat[data-view="ask"]>.docs{display:none}
 
 .rail{width:264px;flex:0 0 264px;border-right:1px solid var(--line);background:var(--soft);display:flex;flex-direction:column;min-height:0}
 .rail-hd{padding:16px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:8px;flex:0 0 auto}
 .rail-list{flex:1;min-height:0;overflow-y:auto;padding:8px}
 .rail-msg{padding:16px 8px;color:var(--gray)}
-.threadbtn{display:block;width:100%;text-align:left;border:1px solid transparent;background:transparent;border-radius:8px;padding:8px 10px;cursor:pointer}
+.threadrow{display:flex;align-items:center;gap:4px;border-radius:8px}
+.threadbtn{display:block;min-height:52px;min-width:0;flex:1;text-align:left;border:1px solid transparent;background:transparent;border-radius:8px;padding:8px 10px;cursor:pointer}
 .threadbtn:hover{background:#fff;border-color:var(--line)}
 .threadbtn.on{background:#fff;border-color:var(--ink)}
+.thread-delete{width:44px;height:44px;flex:0 0 44px;border:0;border-radius:8px;background:transparent;cursor:pointer;color:var(--gray)}
+.thread-delete:hover{background:rgba(242,166,155,.26);color:#6E2A22}
 .threadbtn .tt{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .threadbtn .tm{color:var(--gray);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 .convo{flex:1;min-width:0;display:flex;flex-direction:column;min-height:0;background:var(--paper)}
 .convo-hd{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:8px 24px;border-bottom:1px solid var(--line);background:var(--paper)}
+.convo-hd{order:-3}
 .convo-hd .ct{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1}
 .convo-hd .railtoggle{display:none}
 
 .msgs{flex:1;min-height:0;overflow-y:auto;padding:24px 24px 8px}
+.msgs[hidden]{display:none}
 .measure{max-width:76ch;margin-inline:auto}
 .turn{margin-bottom:24px}
 .turn:last-child{margin-bottom:8px}
@@ -103,18 +115,41 @@ button,input,select,textarea{font:inherit;color:inherit}
 .sk.short{width:52%}
 @keyframes sk{to{background-position:-200% 0}}
 
-.composer{flex:0 0 auto;border-top:1px solid var(--line);background:var(--paper);padding:16px 24px}
+.composer{order:-1;flex:0 0 auto;border-bottom:1px solid var(--line);background:var(--paper);padding:16px 24px}
 .cbox{display:flex;align-items:flex-end;gap:8px;border:1px solid var(--line);border-radius:14px;background:#fff;padding:8px}
 .cbox:focus-within{border-color:var(--ink)}
 .cbox textarea{flex:1;min-width:0;border:0;outline:none;resize:none;background:transparent;padding:8px;max-height:200px;line-height:1.5;font-family:var(--sans)}
-.iconbtn{border:1px solid var(--line);background:#fff;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto}
+.iconbtn{min-width:44px;min-height:44px;border:1px solid var(--line);background:#fff;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto}
 .iconbtn:hover{background:var(--soft)}
 .cmphint{color:var(--gray);margin-top:8px}
 
-.docs{width:340px;flex:0 0 340px;border-left:1px solid var(--line);background:var(--soft);display:none;flex-direction:column;min-height:0}
-.chat.docs-open .docs{display:flex}
-.docs-hd{padding:16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px;flex:0 0 auto}
-.docs-bd{flex:1;min-height:0;overflow-y:auto;padding:16px}
+.docs,.training-view{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;background:var(--paper)}
+.docs[hidden],.training-view[hidden]{display:none}
+.docs-hd{padding:24px 32px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px;flex:0 0 auto}
+.docs-bd,.training-bd{flex:1;min-height:0;overflow-y:auto;padding:24px 32px;max-width:1080px;width:100%;margin:0 auto}
+.docs-bd{display:flex;flex-direction:column;gap:32px}
+.docs-bd>#reviewPanel{order:0}
+.docs-bd>.panel:not(#reviewPanel){order:1}
+.docs-bd>.panel+.panel{border-top:1px solid var(--line);padding-top:24px}
+.view-title{font-size:var(--fs-title);font-weight:700}
+.view-note{color:var(--gray);margin-top:4px}
+.library{margin-top:32px}
+.library-panel{flex:1;min-height:0;overflow-y:auto;padding:24px}
+.library-panel[hidden]{display:none}
+.library-tools{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0}
+.library-search{width:100%;min-height:44px;border:1px solid var(--line);border-radius:8px;background:#fff;padding:8px 12px}
+.library-filter{min-height:44px;border:1px solid var(--line);border-radius:8px;background:#fff;padding:8px 12px;cursor:pointer}
+.library-filter[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.library-group{margin:24px 0}
+.library-group h3{font-size:var(--fs-body);margin-bottom:8px}
+.library-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+.library-row .library-name{font-weight:600;overflow-wrap:anywhere;flex:1;min-width:0}
+.library-row .library-meta{font-size:var(--fs-caption);color:var(--gray)}
+.library-row .btn{flex:0 0 auto}
+.view-stack{max-width:720px}
+#fh-sop-context:not([hidden]){padding:16px 24px;border-bottom:1px solid var(--line);background:var(--soft)}
+#fh-sop-context{order:-2}
+#fh-sop-context p{margin:0 0 12px}
 .panel+.panel{margin-top:24px}
 .panel-hd{display:flex;align-items:center;gap:8px;margin-bottom:8px}
 .panel-hd .pt{font-weight:600;flex:1;min-width:0}
@@ -123,6 +158,10 @@ button,input,select,textarea{font:inherit;color:inherit}
 .docrow .dn{font-weight:600;overflow-wrap:anywhere}
 .docrow .dm{color:var(--gray);margin-top:4px}
 .docrow .dsay{color:var(--gray);margin-top:6px}
+.docrow details{margin-top:8px}
+.docrow summary{display:flex;align-items:center;min-height:44px;cursor:pointer;color:var(--gray);font-weight:600}
+.docrow summary::after{content:"⌄";margin-left:8px}
+.docrow details[open] summary::after{transform:rotate(180deg)}
 .docrow .drow{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
 .muted{color:var(--gray)}
 .qlist{display:flex;flex-direction:column;gap:8px}
@@ -132,9 +171,6 @@ button,input,select,textarea{font:inherit;color:inherit}
 .qok{color:#2C5138}
 .qbad{color:#6E2A22}
 
-@media (max-width:1200px){
-  .docs{position:absolute;right:0;top:0;bottom:0;z-index:30;width:min(340px,92vw);flex-basis:auto;box-shadow:-8px 0 24px rgba(0,0,0,.10)}
-}
 @media (max-width:900px){
   .rail{display:none;position:absolute;left:0;top:0;bottom:0;z-index:30;width:min(280px,86vw);flex-basis:auto;box-shadow:8px 0 24px rgba(0,0,0,.10)}
   .chat.rail-open .rail{display:flex}
@@ -142,6 +178,9 @@ button,input,select,textarea{font:inherit;color:inherit}
   .msgs{padding:16px 16px 8px}
   .composer{padding:12px 16px}
   .convo-hd{padding:8px 16px}
+  .kb-tabs{padding:0 8px}
+  .docs-hd,.docs-bd,.training-bd{padding:16px}
+  .library-row{align-items:flex-start;flex-direction:column}
 }
 </style>
 <script defer src="shell.js"></script>
@@ -208,13 +247,19 @@ button,input,select,textarea{font:inherit;color:inherit}
   <div class="main">
     <div class="topbar">
       <div>
-        <div class="crumb">Work · Company Brain</div>
-        <h1>Company Brain</h1>
+        <div class="crumb">Work · Knowledge Base</div>
+        <h1>Knowledge Base</h1>
       </div>
       <div class="spacer"></div>
     </div>
 
-    <div class="chat" id="chat">
+    <nav class="kb-tabs fh-astra-tabs" aria-label="Knowledge Base views" role="tablist">
+      <button class="kb-tab fh-astra-tab" type="button" role="tab" id="tabAsk" aria-controls="chat" aria-selected="true" data-kb-view="ask">Ask &amp; browse</button>
+      <button class="kb-tab fh-astra-tab" type="button" role="tab" id="tabTraining" aria-controls="trainingView" aria-selected="false" data-kb-view="training">Training</button>
+      <button class="kb-tab fh-astra-tab" type="button" role="tab" id="tabManage" aria-controls="docs" aria-selected="false" data-kb-view="manage" hidden>Manage files <span class="badge b-warn" id="pendPill" hidden>0</span></button>
+    </nav>
+
+    <div class="chat" id="chat" data-view="ask">
 
       <aside class="rail" id="rail" data-brain-thread-list aria-label="Past chats">
         <div class="rail-hd">
@@ -229,10 +274,31 @@ button,input,select,textarea{font:inherit;color:inherit}
           <button class="iconbtn railtoggle" type="button" id="railToggle" title="Show your chats" aria-label="Show your chats">☰</button>
           <div class="ct" id="chatTitle">New chat</div>
           <span class="badge b-info" id="rolePill">staff</span>
-          <button class="btn sm" type="button" id="docsBtn">Documents <span class="badge b-warn" id="pendPill" hidden>0</span></button>
+          <button class="btn sm" type="button" id="browseGuides" hidden>Browse guides</button>
         </div>
 
-        <div class="msgs" id="msgs" aria-live="polite"></div>
+        <div class="panel" id="fh-sop-context" hidden>
+          <div class="panel-hd"><div class="pt" id="fh-sop-title"></div></div>
+          <p class="muted" id="fh-sop-description"></p>
+          <button class="btn dark" type="button" id="fh-sop-find">Find approved instructions</button>
+        </div>
+
+        <div class="library-panel" id="libraryPanel">
+          <div class="measure emptywrap">
+            <div class="eyebrow">Knowledge Base</div>
+            <h2>Find an answer or an approved guide</h2>
+            <p>Ask above for an answer from files your role can read. Every answer lists its sources.</p>
+            <section class="library" id="library" aria-label="Approved instructions">
+              <h2>Approved instructions</h2>
+              <p>Browse guides by job, or search their titles.</p>
+              <label class="mono muted" for="librarySearch">Find a guide</label>
+              <input class="library-search" id="librarySearch" type="search" placeholder="Search approved guides">
+              <div class="library-tools" id="libraryFilters" role="group" aria-label="Filter guides by job"></div>
+              <div id="libraryList"></div>
+            </section>
+          </div>
+        </div>
+        <div class="msgs" id="msgs" aria-live="polite" hidden></div>
 
         <form class="composer" id="composer">
           <div class="measure">
@@ -248,35 +314,30 @@ button,input,select,textarea{font:inherit;color:inherit}
         </form>
       </section>
 
-      <aside class="docs" id="docs" aria-label="Documents">
+      <section class="training-view" id="trainingView" aria-labelledby="tabTraining" hidden>
+        <div class="docs-hd"><div><div class="view-title">Training</div><div class="view-note">Take a class quiz and check each answer.</div></div></div>
+        <div class="training-bd"><div class="view-stack panel" data-brain-quiz>
+          <div class="panel-hd"><div class="pt">Class quizzes</div></div>
+          <div class="mono muted" style="margin-bottom:8px">Day 5 must miss zero.</div>
+          <label class="mono muted" for="quizPick">Which quiz</label>
+          <select id="quizPick" style="width:100%;min-height:44px;margin:6px 0 12px;border:1px solid var(--line);border-radius:8px;padding:8px;background:#fff"></select>
+          <div id="quizBox"></div>
+        </div></div>
+      </section>
+
+      <section class="docs" id="docs" aria-labelledby="tabManage" hidden>
         <div class="docs-hd">
-          <div class="pt" style="font-weight:600;flex:1">Documents</div>
-          <button class="btn sm" type="button" id="docsClose" aria-label="Close documents">Close</button>
+          <div><div class="view-title">Manage files</div><div class="view-note">Add source files and check their approval status.</div></div>
         </div>
         <div class="docs-bd">
-          <!-- Header shortcuts use this same Company Brain: no second SOP store. -->
-          <div class="panel" id="fh-sop-context" hidden>
-            <div class="panel-hd"><div class="pt" id="fh-sop-title"></div></div>
-            <p class="muted" id="fh-sop-description" style="margin:0 0 12px"></p>
-            <button class="btn sm dark" type="button" id="fh-sop-find">Find approved instructions</button>
-            <p class="mono muted" style="margin-top:10px">Company Brain searches documents your role may read. If no approved instructions are available, it should say so. The search includes role-approved Drive files that may not be listed here.</p>
-          </div>
-          <div class="panel" data-brain-quiz>
-            <div class="panel-hd">
-              <div class="pt">Class quizzes</div>
-            </div>
-            <div class="mono muted" style="margin-bottom:8px">Take the day quiz. You see right or wrong on each question. Day 5 must miss zero.</div>
-            <label class="mono muted" for="quizPick">Which quiz</label>
-            <select id="quizPick" style="width:100%;margin:6px 0 12px;border:1px solid var(--line);border-radius:8px;padding:8px;background:#fff"></select>
-            <div id="quizBox"></div>
-          </div>
           <div class="panel">
             <div class="panel-hd">
-              <div class="pt">Files you added</div>
+              <div class="pt">Source files</div>
               <span class="badge b-warn" id="pendPill2" hidden>0</span>
+              <button class="btn sm dark" type="button" id="manageUpload">Add file</button>
               <button class="btn sm" type="button" id="refreshDocs">Refresh</button>
             </div>
-            <div class="mono muted" style="margin-bottom:8px">An owner has to approve a file before Company Brain can use it in answers.</div>
+            <div class="mono muted" style="margin-bottom:8px">An owner has to approve a file before the Knowledge Base can use it in answers.</div>
             <div id="docList"></div>
           </div>
 
@@ -288,7 +349,7 @@ button,input,select,textarea{font:inherit;color:inherit}
             <div id="reviewList"></div>
           </div>
         </div>
-      </aside>
+      </section>
 
     </div>
   </div>
@@ -321,6 +382,8 @@ button,input,select,textarea{font:inherit;color:inherit}
   var railEl      = document.getElementById("rail");
   var threadList  = document.getElementById("threadList");
   var msgsEl      = document.getElementById("msgs");
+  var libraryPanel = document.getElementById("libraryPanel");
+  var browseGuides = document.getElementById("browseGuides");
   var chatTitle   = document.getElementById("chatTitle");
   var rolePill    = document.getElementById("rolePill");
   var docsEl      = document.getElementById("docs");
@@ -333,6 +396,8 @@ button,input,select,textarea{font:inherit;color:inherit}
   var askBtn      = document.getElementById("askBtn");
   var attachBtn   = document.getElementById("attachBtn");
   var fileInput   = document.getElementById("fileInput");
+  var tabManage   = document.getElementById("tabManage");
+  var trainingView = document.getElementById("trainingView");
 
   /* ── session, exactly as this screen already did it ─────────────────── */
   function token() { try { return localStorage.getItem("fh_token") || ""; } catch (e) { return ""; } }
@@ -350,6 +415,7 @@ button,input,select,textarea{font:inherit;color:inherit}
   if (rolePill) rolePill.textContent = myRole || "staff";
   var isOwner = myRole === "owner";
   var canListUploads = isOwner || myRole === "admin";
+  tabManage.hidden = !canListUploads;
   /* Upload inventory is org-wide and includes pending owner-tier file names.
      Employee SOP access needs role-cleared search, not an inventory of private
      uploads. Do not fetch or render that list for regular STAFF sessions. */
@@ -360,27 +426,27 @@ button,input,select,textarea{font:inherit;color:inherit}
 
   /* ── plain-English errors. A person never sees a status code. ───────── */
   var WORDS = {
-    forbidden_role: "Your role is not allowed to use Company Brain.",
+    forbidden_role: "Your role is not allowed to use the Knowledge Base.",
     no_org_scope: "Your account is not tied to a company yet, so there is nothing to search.",
     method_not_allowed: "That action is not allowed here.",
     no_file: "No file was picked.",
     empty_file: "That file has nothing in it.",
     file_too_large: "That file is too big. Files have to be under 25 MB.",
-    unsupported_file_type: "Company Brain cannot read that kind of file. Use a PDF, Word, Excel, PowerPoint, or a plain text file.",
-    embed_failed: "The file went up, but Company Brain could not read it. Try again in a minute.",
+    unsupported_file_type: "The Knowledge Base cannot read that kind of file. Use a PDF, Word, Excel, PowerPoint, or a plain text file.",
+    embed_failed: "The file went up, but the Knowledge Base could not read it. Try again in a minute.",
     invalid_thread_id: "That chat link is broken.",
     thread_not_found: "That chat is gone.",
     not_found: "We could not find that.",
     not_pending: "Someone already decided on this one."
   };
   function friendly(j) {
-    if (j && j.demo) return "Demo mode is on, so Company Brain is not answering. Turn demo mode off to use it.";
+    if (j && j.demo) return "Demo mode is on, so the Knowledge Base is not answering. Turn demo mode off to use it.";
     var e = j && j.error;
     if (e && WORDS[e]) return WORDS[e];
     var s = j && j._status;
     if (s === 401) return "You are signed out. Sign in again and try once more.";
     if (s === 403) return "Your role is not allowed to do that.";
-    if (s === 404) return "This part of Company Brain is not switched on yet.";
+    if (s === 404) return "This part of the Knowledge Base is not switched on yet.";
     if (s === 413) return "That file is too big. Files have to be under 25 MB.";
     if (s === 409) return "Someone already decided on this one.";
     if (s && s >= 500) return "Something went wrong on our side. Try again in a minute.";
@@ -407,6 +473,14 @@ button,input,select,textarea{font:inherit;color:inherit}
       method: "POST",
       headers: { "content-type": "application/json", accept: "application/json", authorization: t ? ("Bearer " + t) : "" },
       body: JSON.stringify(body || {})
+    }).then(readBody).catch(function () { return { ok: false, offline: true }; });
+  }
+  function apiDelete(path) {
+    if (isDemo()) return Promise.resolve({ ok: false, demo: true });
+    var t = token();
+    return fetch(path, {
+      method: "DELETE",
+      headers: { accept: "application/json", authorization: t ? ("Bearer " + t) : "" }
     }).then(readBody).catch(function () { return { ok: false, offline: true }; });
   }
   function apiUpload(path, form) {
@@ -458,14 +532,55 @@ button,input,select,textarea{font:inherit;color:inherit}
     threads: [],
     threadsState: "loading",
     threadsError: "",
+    threadDeleteError: "",
+    deletingThreadId: "",
+    library: [],
+    libraryState: "loading",
+    libraryError: "",
+    libraryCategory: "All",
+    librarySearch: "",
+    libraryVisible: true,
     uploads: [],
     pendingCount: 0,
     uploadsState: "loading",
     uploadsError: "",
+    uploadLimit: 25,
     reviews: [],
     reviewsState: "loading",
-    reviewsError: ""
+    reviewsError: "",
+    reviewLimit: 25
   };
+
+  function setView(view) {
+    if (view === "manage" && !canListUploads) view = "ask";
+    if (view !== "ask" && view !== "training" && view !== "manage") view = "ask";
+    if (view !== "ask") chatEl.classList.remove("rail-open");
+    chatEl.setAttribute("data-view", view);
+    trainingView.hidden = view !== "training";
+    docsEl.hidden = view !== "manage";
+    document.querySelectorAll("[data-kb-view]").forEach(function (tab) {
+      tab.setAttribute("aria-selected", tab.getAttribute("data-kb-view") === view ? "true" : "false");
+    });
+    if (view === "manage") {
+      loadUploads();
+      if (isOwner) loadReviews();
+    }
+    if (view === "ask" && state.libraryState === "loading") loadLibrary();
+  }
+  document.querySelectorAll("[data-kb-view]").forEach(function (tab) {
+    tab.addEventListener("click", function () { setView(tab.getAttribute("data-kb-view")); });
+  });
+  document.getElementById("manageUpload").addEventListener("click", function () { fileInput.click(); });
+
+  function showLibrary(visible) {
+    state.libraryVisible = !!visible;
+    libraryPanel.hidden = !state.libraryVisible;
+    msgsEl.hidden = state.libraryVisible;
+    browseGuides.textContent = state.libraryVisible ? "Back to chat" : "Browse guides";
+    browseGuides.setAttribute("aria-expanded", state.libraryVisible ? "true" : "false");
+    if (state.libraryVisible) renderLibrary();
+  }
+  browseGuides.addEventListener("click", function () { showLibrary(!state.libraryVisible); });
 
   /* ── conversation ───────────────────────────────────────────────────── */
   function setTitle(t) {
@@ -513,7 +628,7 @@ button,input,select,textarea{font:inherit;color:inherit}
     }
     if (m.kind === "pending") {
       return '<div class="turn assistant"><div class="measure">' +
-        '<div class="eyebrow">Company Brain</div>' +
+        '<div class="eyebrow">Knowledge Base</div>' +
         '<div class="thinline"><span class="pulse"></span><span>Reading your files…</span></div>' +
         "</div></div>";
     }
@@ -523,7 +638,7 @@ button,input,select,textarea{font:inherit;color:inherit}
     }
     var tw = thinWords(m);
     return '<div class="turn assistant"><div class="measure">' +
-      '<div class="eyebrow">Company Brain</div>' +
+      '<div class="eyebrow">Knowledge Base</div>' +
       '<div class="answer">' + esc(m.text || "") + "</div>" +
       (tw ? '<div class="thinnote mono">' + esc(tw) + "</div>" : "") +
       sourcesHtml(m.sources) +
@@ -531,16 +646,90 @@ button,input,select,textarea{font:inherit;color:inherit}
   }
 
   function emptyHtml() {
-    return '<div class="measure emptywrap">' +
-      '<div class="eyebrow">Company Brain</div>' +
-      "<h2>Ask about your company files</h2>" +
-      "<p>Type a question below. The answer comes from files your role is allowed to open, and every answer lists the files it used.</p>" +
-      "<p>Add a file with the + button. An owner has to approve it before it can be used in answers.</p>" +
-      "<p>Nothing has been asked in this chat yet.</p>" +
-      "</div>";
+    return '<div class="measure emptywrap"><p>No messages in this chat yet. Ask above or browse approved guides.</p></div>';
   }
 
+  var LIBRARY_CATEGORIES = ["All", "Sales", "Onboarding", "Funding", "Support", "General"];
+  function renderLibrary() {
+    var filters = document.getElementById("libraryFilters");
+    var list = document.getElementById("libraryList");
+    if (!filters || !list) return;
+    filters.innerHTML = LIBRARY_CATEGORIES.map(function (category) {
+      return '<button class="library-filter" type="button" data-library-category="' + esc(category) + '" aria-pressed="' + (state.libraryCategory === category ? "true" : "false") + '">' + esc(category) + '</button>';
+    }).join("");
+    if (state.libraryState === "loading") {
+      list.innerHTML = '<div class="sk"></div><div class="sk"></div><div class="sk short"></div>';
+      return;
+    }
+    if (state.libraryState === "error") {
+      list.innerHTML = '<div class="notebox bad">Could not load approved instructions. ' + esc(state.libraryError) + ' <button class="btn sm" type="button" data-library-retry>Try again</button></div>';
+      return;
+    }
+    var query = state.librarySearch.trim().toLowerCase();
+    var files = state.library.filter(function (file) {
+      var category = LIBRARY_CATEGORIES.indexOf(file.category) > 0 ? file.category : "General";
+      return (state.libraryCategory === "All" || category === state.libraryCategory) &&
+        (!query || String(file.name || "").toLowerCase().indexOf(query) !== -1);
+    });
+    if (!files.length) {
+      list.innerHTML = '<div class="notebox">' + (state.library.length ? 'No guides match this search. Try another job or title.' : 'No approved instructions are available for your role yet. Ask a question above or add a file for owner approval.') + '</div>';
+      return;
+    }
+    var groups = (state.libraryCategory === "All" ? LIBRARY_CATEGORIES.slice(1) : [state.libraryCategory]);
+    list.innerHTML = groups.map(function (category) {
+      var rows = files.filter(function (file) {
+        return (LIBRARY_CATEGORIES.indexOf(file.category) > 0 ? file.category : "General") === category;
+      });
+      if (!rows.length) return "";
+      return '<section class="library-group"><h3>' + esc(category) + '</h3>' + rows.map(function (file) {
+        var safeUrl = /^https?:\/\//i.test(String(file.url || "")) ? file.url : "";
+        var action = safeUrl
+          ? '<a class="btn sm" href="' + esc(safeUrl) + '" target="_blank" rel="noopener noreferrer">Open guide</a>'
+          : '<button class="btn sm" type="button" data-library-ask="' + esc(file.id) + '">Ask about this</button>';
+        return '<div class="library-row"><div class="library-name" title="' + esc(file.name) + '">' + esc(file.name || "Untitled guide") +
+          '<div class="library-meta">' + esc(file.source || "Approved") + (file.updatedAt ? ' · ' + esc(when(file.updatedAt)) : '') + '</div></div>' + action + '</div>';
+      }).join("") + '</section>';
+    }).join("");
+  }
+
+  function loadLibrary() {
+    state.libraryState = "loading";
+    renderLibrary();
+    apiGet("/api/company-brain/library").then(function (j) {
+      if (!j || !j.ok) {
+        state.libraryState = "error";
+        state.libraryError = friendly(j);
+      } else {
+        state.library = Array.isArray(j.files) ? j.files : [];
+        state.libraryState = "ok";
+      }
+      renderLibrary();
+    });
+  }
+  libraryPanel.addEventListener("input", function (ev) {
+    if (ev.target.id !== "librarySearch") return;
+    state.librarySearch = ev.target.value;
+    renderLibrary();
+  });
+  libraryPanel.addEventListener("click", function (ev) {
+    var category = ev.target.closest("[data-library-category]");
+    if (category) {
+      state.libraryCategory = category.getAttribute("data-library-category");
+      renderLibrary();
+      return;
+    }
+    if (ev.target.closest("[data-library-retry]")) { loadLibrary(); return; }
+    var ask = ev.target.closest("[data-library-ask]");
+    if (!ask) return;
+    var file = state.library.find(function (row) { return String(row.id) === ask.getAttribute("data-library-ask"); });
+    if (!file) return;
+    ta.value = 'Find the approved instructions in "' + file.name + '" and explain the steps. Cite the source. If it is unavailable, say so.';
+    grow();
+    send();
+  });
+
   function renderMessages() {
+    browseGuides.hidden = !state.messages.length;
     if (state.loadingThread) {
       msgsEl.innerHTML = '<div class="measure"><div class="sk"></div><div class="sk"></div><div class="sk short"></div></div>';
       return;
@@ -580,6 +769,7 @@ button,input,select,textarea{font:inherit;color:inherit}
     if (state.busy) return;
     var text = String(ta.value || "").trim();
     if (!text) { ta.focus(); return; }
+    showLibrary(false);
     var firstTurn = !state.messages.length;
     state.messages.push({ kind: "user", text: text });
     state.messages.push({ kind: "pending" });
@@ -640,6 +830,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 
   function doUpload(file) {
     if (state.busy) return;
+    showLibrary(false);
     var form = new FormData();
     form.append("file", file);
     if (state.threadId) form.append("thread_id", state.threadId);
@@ -678,19 +869,21 @@ button,input,select,textarea{font:inherit;color:inherit}
       threadList.innerHTML = '<div class="rail-msg">' + esc(state.threadsError) + "</div>";
       return;
     }
+    var deleteError = state.threadDeleteError ? '<div class="rail-msg notebox bad">' + esc(state.threadDeleteError) + '</div>' : '';
     if (!state.threads.length) {
-      threadList.innerHTML = '<div class="rail-msg">No past chats yet. Ask your first question and it will show up here.</div>';
+      threadList.innerHTML = deleteError + '<div class="rail-msg">No past chats yet. Ask your first question and it will show up here.</div>';
       return;
     }
-    threadList.innerHTML = state.threads.map(function (t) {
+    threadList.innerHTML = deleteError + state.threads.map(function (t) {
       var count = Number(t.messageCount);
       var meta = (isFinite(count) && count > 0 ? (count + (count === 1 ? " message" : " messages")) : "no messages");
       var stamp = when(t.updatedAt || t.createdAt);
       if (stamp) meta += " · " + stamp;
-      return '<button class="threadbtn' + (t.id === state.threadId ? " on" : "") + '" type="button" data-thread="' +
+      return '<div class="threadrow"><button class="threadbtn' + (t.id === state.threadId ? " on" : "") + '" type="button" data-thread="' +
         esc(t.id) + '" title="' + esc(fullTime(t.updatedAt || t.createdAt)) + '">' +
         '<div class="tt">' + esc(t.title || "Untitled chat") + "</div>" +
-        '<div class="tm mono">' + esc(meta) + "</div></button>";
+        '<div class="tm mono">' + esc(meta) + "</div></button>" +
+        '<button class="thread-delete" type="button" data-delete-thread="' + esc(t.id) + '" aria-label="Delete chat: ' + esc(t.title || "Untitled chat") + '" title="Delete chat"' + (state.deletingThreadId === t.id ? ' disabled' : '') + '>×</button></div>';
     }).join("");
   }
 
@@ -710,14 +903,47 @@ button,input,select,textarea{font:inherit;color:inherit}
   }
 
   threadList.addEventListener("click", function (ev) {
+    var del = ev.target.closest("[data-delete-thread]");
+    if (del) { deleteThread(del.getAttribute("data-delete-thread")); return; }
     var btn = ev.target.closest("[data-thread]");
     if (!btn) return;
     openThread(btn.getAttribute("data-thread"));
     if (window.innerWidth <= 900) chatEl.classList.remove("rail-open");
   });
 
+  function deleteThread(id) {
+    if (!id || state.deletingThreadId || state.busy) return;
+    var thread = state.threads.find(function (t) { return String(t.id) === id; });
+    if (!thread) return;
+    var title = thread.title || "Untitled chat";
+    if (!window.confirm('Delete chat "' + title + '" and its messages? This cannot be undone.')) return;
+    state.deletingThreadId = id;
+    state.threadDeleteError = "";
+    renderThreads();
+    apiDelete("/api/company-brain/threads?thread_id=" + encodeURIComponent(id)).then(function (j) {
+      state.deletingThreadId = "";
+      if (!j || !j.ok) {
+        state.threadDeleteError = "Could not delete this chat. " + friendly(j);
+        renderThreads();
+        return;
+      }
+      state.threads = state.threads.filter(function (t) { return String(t.id) !== id; });
+      if (state.threadId === id) {
+        state.threadId = null;
+        state.messages = [];
+        state.threadError = "";
+        state.loadingThread = false;
+        setTitle("New chat");
+        renderMessages();
+        showLibrary(true);
+      }
+      renderThreads();
+    });
+  }
+
   function openThread(id) {
     if (!id) return;
+    showLibrary(false);
     state.threadId = id;
     state.messages = [];
     state.threadError = "";
@@ -726,6 +952,7 @@ button,input,select,textarea{font:inherit;color:inherit}
     renderThreads();
     renderMessages();
     apiGet("/api/company-brain/threads?thread_id=" + encodeURIComponent(id)).then(function (j) {
+      if (state.threadId !== id) return;
       state.loadingThread = false;
       if (!j || !j.ok) {
         state.threadError = friendly(j);
@@ -756,6 +983,7 @@ button,input,select,textarea{font:inherit;color:inherit}
     setTitle("New chat");
     renderThreads();
     renderMessages();
+    showLibrary(true);
     if (window.innerWidth <= 900) chatEl.classList.remove("rail-open");
     ta.focus();
   });
@@ -764,15 +992,10 @@ button,input,select,textarea{font:inherit;color:inherit}
     chatEl.classList.toggle("rail-open");
   });
 
-  /* ── right panel: uploaded files + owner approvals ──────────────────── */
+  /* ── file management is a separate view ─────────────────────────────── */
   function openDocs(v) {
-    if (v) chatEl.classList.add("docs-open");
-    else chatEl.classList.remove("docs-open");
+    setView(v && canListUploads ? "manage" : "ask");
   }
-  document.getElementById("docsBtn").addEventListener("click", function () {
-    chatEl.classList.toggle("docs-open");
-  });
-  document.getElementById("docsClose").addEventListener("click", function () { openDocs(false); });
   document.getElementById("refreshDocs").addEventListener("click", loadUploads);
 
   /* Context-aware SOP door from STAFF dashboards. The URL contains a finite
@@ -849,11 +1072,10 @@ button,input,select,textarea{font:inherit;color:inherit}
     sopCard.hidden = false;
     document.getElementById("fh-sop-title").textContent = sopGuide.title;
     document.getElementById("fh-sop-description").textContent = sopGuide.description;
-    openDocs(true);
+    setView("ask");
     document.getElementById("fh-sop-find").addEventListener("click", function () {
       /* No automatic message on navigation. The user explicitly requests
          the search, and the existing answer UI provides source citations. */
-      openDocs(false);
       ta.value = sopGuide.prompt;
       grow();
       send();
@@ -865,26 +1087,17 @@ button,input,select,textarea{font:inherit;color:inherit}
     state.pendingCount = count;
     [pendPill, pendPill2].forEach(function (el) {
       if (!el) return;
-      el.textContent = String(count) + " waiting";
+      el.textContent = el === pendPill ? String(count) : (String(count) + " waiting");
+      if (el === pendPill) el.setAttribute("aria-label", String(count) + " approvals waiting");
       el.hidden = count === 0;
     });
   }
 
   var APPROVAL = {
     pending: { badge: "b-warn", word: "waiting", say: "An owner has to approve this before it can be used in answers." },
-    approved: { badge: "b-ok", word: "approved", say: "Company Brain can use this in answers." },
+    approved: { badge: "b-ok", word: "approved", say: "The Knowledge Base can use this in answers." },
     rejected: { badge: "b-alert", word: "turned down", say: "This will not be used in answers." }
   };
-
-  function reviewIdForUpload(u) {
-    var uid = String((u && u.id) || "");
-    if (!uid) return "";
-    for (var i = 0; i < state.reviews.length; i++) {
-      var r = state.reviews[i];
-      if (String(r.file_id || r.fileId || "") === uid) return r.id;
-    }
-    return u.pendingReviewId || u.reviewId || "";
-  }
 
   function renderUploads() {
     if (state.uploadsState === "loading") {
@@ -899,7 +1112,12 @@ button,input,select,textarea{font:inherit;color:inherit}
       docList.innerHTML = '<div class="muted">No files added yet. Use the + button next to the message box.</div>';
       return;
     }
-    docList.innerHTML = state.uploads.map(function (u) {
+    var ordered = state.uploads.slice().sort(function (a, b) {
+      var ap = String(a.approvalStatus || "").toLowerCase() === "pending" ? 0 : 1;
+      var bp = String(b.approvalStatus || "").toLowerCase() === "pending" ? 0 : 1;
+      return ap - bp || String(b.uploadedAt || "").localeCompare(String(a.uploadedAt || ""));
+    });
+    docList.innerHTML = ordered.slice(0, state.uploadLimit).map(function (u) {
       var key = String(u.approvalStatus || "").toLowerCase();
       var look = APPROVAL[key] || { badge: "b-gray", word: "unknown", say: "" };
       var meta = [];
@@ -909,24 +1127,13 @@ button,input,select,textarea{font:inherit;color:inherit}
       if (u.uploadedByName) meta.push("added by " + u.uploadedByName);
       var stamp = when(u.uploadedAt);
       if (stamp) meta.push(stamp);
-      var actions = "";
-      if (isOwner && key === "pending") {
-        var rid = reviewIdForUpload(u);
-        if (rid) {
-          actions = '<div class="drow">' +
-            '<button class="btn sm dark" type="button" data-decide="approve" data-id="' + esc(rid) + '">Approve</button>' +
-            '<button class="btn sm" type="button" data-decide="reject" data-id="' + esc(rid) + '">Turn down</button>' +
-            "</div>";
-        }
-      }
       return '<div class="docrow" title="' + esc(fullTime(u.uploadedAt)) + '">' +
         '<div class="dn">' + esc(u.name || "Untitled file") + "</div>" +
         '<div class="drow"><span class="badge ' + look.badge + '">' + esc(look.word) + "</span></div>" +
         (meta.length ? '<div class="dm mono">' + esc(meta.join(" · ")) + "</div>" : "") +
         (look.say ? '<div class="dsay mono">' + esc(look.say) + "</div>" : "") +
-        actions +
         "</div>";
-    }).join("");
+    }).join("") + (ordered.length > state.uploadLimit ? '<button class="btn" type="button" data-show-uploads>Show more files</button>' : '');
   }
 
   function loadUploads() {
@@ -962,19 +1169,19 @@ button,input,select,textarea{font:inherit;color:inherit}
       reviewList.innerHTML = '<div class="muted">Nothing is waiting for you.</div>';
       return;
     }
-    reviewList.innerHTML = state.reviews.map(function (row) {
+    reviewList.innerHTML = state.reviews.slice(0, state.reviewLimit).map(function (row) {
       var open = row.web_view_link
         ? ('<a class="lnk" href="' + esc(row.web_view_link) + '" target="_blank" rel="noopener">Open in Drive</a>') : "";
       return '<div class="docrow">' +
         '<div class="dn">' + esc(row.file_name || row.drive_file_id || "Untitled file") + "</div>" +
         '<div class="dm mono">asked for ' + esc(row.proposed_tier) + " · now " + esc(row.access_tier) +
           (open ? " · " : "") + open + "</div>" +
-        (row.rationale ? '<div class="dsay">' + esc(row.rationale) + "</div>" : "") +
+        (row.rationale ? '<details><summary>Why this file?</summary><div class="dsay">' + esc(row.rationale) + '</div></details>' : "") +
         '<div class="drow">' +
           '<button class="btn sm dark" type="button" data-decide="approve" data-id="' + esc(row.id) + '">Approve</button>' +
           '<button class="btn sm" type="button" data-decide="reject" data-id="' + esc(row.id) + '">Turn down</button>' +
         "</div></div>";
-    }).join("");
+    }).join("") + (state.reviews.length > state.reviewLimit ? '<button class="btn" type="button" data-show-reviews>Show more approvals</button>' : '');
   }
 
   function loadReviews() {
@@ -1017,11 +1224,16 @@ button,input,select,textarea{font:inherit;color:inherit}
     if (!btn) return;
     decideFromButton(btn);
   }
-  reviewList.addEventListener("click", onDecideClick);
-  docList.addEventListener("click", onDecideClick);
+  reviewList.addEventListener("click", function (ev) {
+    if (ev.target.closest("[data-show-reviews]")) { state.reviewLimit += 25; renderReviews(); return; }
+    onDecideClick(ev);
+  });
+  docList.addEventListener("click", function (ev) {
+    if (ev.target.closest("[data-show-uploads]")) { state.uploadLimit += 25; renderUploads(); }
+  });
   document.getElementById("refreshReviews").addEventListener("click", loadReviews);
 
-  /* ── class quizzes (Documents panel) ────────────────────────────────── */
+  /* ── class quizzes (Training view) ───────────────────────────────────── */
   var quizPick = document.getElementById("quizPick");
   var quizBox = document.getElementById("quizBox");
   var quizList = (typeof quizzesForRole === "function")
@@ -1084,10 +1296,10 @@ button,input,select,textarea{font:inherit;color:inherit}
   if (isOwner && reviewPanel) reviewPanel.hidden = false;
   setTitle("New chat");
   renderMessages();
+  showLibrary(true);
   grow();
   loadThreads();
-  loadUploads();
-  if (isOwner) loadReviews();
+  loadLibrary();
 })();
 </script>
 </body>

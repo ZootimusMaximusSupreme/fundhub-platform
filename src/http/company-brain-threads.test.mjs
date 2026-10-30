@@ -49,6 +49,16 @@ function fakeDb(rows = { threads: [], messages: [] }) {
           )
         };
       }
+      if (/DELETE FROM brain_threads/.test(sql)) {
+        const [id, orgId, staffId] = params;
+        const index = rows.threads.findIndex(
+          (t) => t.id === id && t.org_id === orgId && t.staff_id === staffId
+        );
+        if (index < 0) return { rows: [] };
+        const [removed] = rows.threads.splice(index, 1);
+        rows.messages = rows.messages.filter((m) => m.thread_id !== id);
+        return { rows: [{ id: removed.id }] };
+      }
       if (/FROM brain_messages/.test(sql)) {
         const [threadId] = params;
         return { rows: rows.messages.filter((m) => m.thread_id === threadId) };
@@ -174,6 +184,50 @@ test("GET ?thread_id of another staff member's thread is 404", async () => {
   assert.equal(db.calls.filter((c) => /FROM brain_messages/.test(c.sql)).length, 0);
 });
 
+test("DELETE removes only the signed-in staff member's chat and its messages", async () => {
+  const otherId = "99999999-9999-4999-8999-999999999999";
+  const rows = {
+    threads: [ownedThread, { ...ownedThread, id: otherId, staff_id: OTHER_STAFF }],
+    messages: [
+      { id: "m1", thread_id: THREAD },
+      { id: "m2", thread_id: otherId }
+    ]
+  };
+  const db = fakeDb(rows);
+  const res = mockRes();
+  await handler({ method: "DELETE", query: { thread_id: THREAD } }, res, {
+    requireAuth: session(), db
+  });
+
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.body, { ok: true });
+  assert.deepEqual(rows.threads.map((t) => t.id), [otherId]);
+  assert.deepEqual(rows.messages.map((m) => m.id), ["m2"]);
+  assert.deepEqual(db.calls[0].params, [THREAD, ORG, STAFF]);
+});
+
+test("DELETE returns 404 for another staff member's chat", async () => {
+  const rows = { threads: [{ ...ownedThread, staff_id: OTHER_STAFF }], messages: [] };
+  const res = mockRes();
+  await handler({ method: "DELETE", query: { thread_id: THREAD } }, res, {
+    requireAuth: session(), db: fakeDb(rows)
+  });
+  assert.equal(res.statusCode, 404);
+  assert.equal(res.body.error, "thread_not_found");
+  assert.equal(rows.threads.length, 1);
+});
+
+test("DELETE rejects a missing or malformed thread id", async () => {
+  const db = fakeDb();
+  for (const query of [{}, { thread_id: "bad-id" }]) {
+    const res = mockRes();
+    await handler({ method: "DELETE", query }, res, { requireAuth: session(), db });
+    assert.equal(res.statusCode, 400);
+    assert.equal(res.body.error, "invalid_thread_id");
+  }
+  assert.equal(db.calls.length, 0);
+});
+
 test("POST creates a thread owned by the session", async () => {
   const res = mockRes();
   const db = fakeDb();
@@ -239,11 +293,11 @@ test("a session with no staff id is refused", async () => {
 
 test("an unsupported method is 405", async () => {
   const res = mockRes();
-  await handler({ method: "DELETE" }, res, {
+  await handler({ method: "PUT" }, res, {
     requireAuth: session(), db: fakeDb()
   });
 
   assert.equal(res.statusCode, 405);
   assert.equal(res.body.error, "method_not_allowed");
-  assert.equal(res.headers.allow, "GET, POST");
+  assert.equal(res.headers.allow, "GET, POST, DELETE");
 });

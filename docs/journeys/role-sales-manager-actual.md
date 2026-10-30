@@ -25,7 +25,7 @@ flowchart TD
     CAN --> A_campaigns[Campaigns — 10 routes]
     CAN --> A_chat[chat — 3 routes]
     CAN --> A_climate[climate — 2 routes]
-    CAN --> A_company_brain[company-brain — 3 routes]
+    CAN --> A_company_brain[company-brain — 4 routes]
     CAN --> A_content[content — 1 route]
     CAN --> A_contracts[contracts — 1 route]
     CAN --> A_creative[Creative Factory — 7 routes]
@@ -78,7 +78,7 @@ flowchart TD
 
 ## What they can reach
 
-**208 of 336 routes.**
+**209 of 337 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -128,8 +128,9 @@ flowchart TD
 | `/api/closer-deck` | POST | closer, sales_manager, owner, admin |
 | `/api/commission-rules` | GET, POST | owner, admin, sales_manager |
 | `/api/commissions` | POST | owner, admin, sales_manager |
+| `/api/company-brain/library` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/company-brain/sync` | GET, POST | owner, admin, sales_manager |
-| `/api/company-brain/threads` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
+| `/api/company-brain/threads` | DELETE, GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/company-brain/upload` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/content/welcome-video` | GET, HEAD | **not a sign-in** — signed link |
 | `/api/contracts` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
@@ -300,7 +301,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**128 of 336 routes.**
+**128 of 337 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|

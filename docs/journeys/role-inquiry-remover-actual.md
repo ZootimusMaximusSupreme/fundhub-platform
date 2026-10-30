@@ -24,7 +24,7 @@ flowchart TD
     CAN --> A_campaigns[Campaigns — 10 routes]
     CAN --> A_chat[chat — 3 routes]
     CAN --> A_climate[climate — 2 routes]
-    CAN --> A_company_brain[company-brain — 2 routes]
+    CAN --> A_company_brain[company-brain — 3 routes]
     CAN --> A_content[content — 1 route]
     CAN --> A_contracts[contracts — 1 route]
     CAN --> A_creative[Creative Factory — 7 routes]
@@ -76,7 +76,7 @@ flowchart TD
 
 ## What they can reach
 
-**167 of 336 routes.**
+**168 of 337 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -115,7 +115,8 @@ flowchart TD
 | `/api/climate` | OPTIONS | anyone |
 | `/api/climate/config` | — | anyone |
 | `/api/climate/geocode` | OPTIONS | anyone |
-| `/api/company-brain/threads` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
+| `/api/company-brain/library` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
+| `/api/company-brain/threads` | DELETE, GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/company-brain/upload` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/content/welcome-video` | GET, HEAD | **not a sign-in** — signed link |
 | `/api/contracts` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
@@ -257,7 +258,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**169 of 336 routes.**
+**169 of 337 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|

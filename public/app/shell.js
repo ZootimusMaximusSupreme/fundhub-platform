@@ -2140,6 +2140,11 @@
       copy.textContent = "Collect verified lender product facts from bankers.";
       remembered = "";
     }
+    if (PAGE === "company-brain.html") {
+      header.setAttribute("data-fh-scope", "company-knowledge");
+      remembered = "";
+      header.querySelector("#fh-workspace-scope").remove();
+    }
     if (remembered) {
       var recentLink = document.createElement("a");
       recentLink.href = "client-control-panel.html?id=" + encodeURIComponent(remembered);
