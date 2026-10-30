@@ -43,6 +43,7 @@ async function hiddenCountFor(database, staff) {
     `SELECT count(*)::int AS n
        FROM staff s
       WHERE s.org_id = $1::uuid
+        AND s.removed_at IS NULL
         AND ($3::uuid IS NULL OR s.id <> $3::uuid)
         AND (
           s.role = 'owner'
@@ -84,6 +85,7 @@ export default async function handler(req, res) {
                AND se.created_at >= date_trunc('day', now())) AS monitor_events_today
       FROM staff s
      WHERE s.org_id = $4::uuid
+       AND s.removed_at IS NULL
        AND ($3::text IS NULL OR s.role = $3)
        /* The caller's OWN row always comes back, whatever the filters below
           say. Without it the owner could never see a clock in/out button on
