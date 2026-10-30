@@ -32,20 +32,30 @@ test.beforeAll(async () => {
 
 async function open(page, { templates = [TEXT_TEMPLATE, PDF_TEMPLATE], writeAnswer } = {}) {
   const writes = [];
+  // Reads reflect successfully archived/restored fixtures. Keeping a stale list
+  // after a successful write would hide a broken library-tab transition.
+  const currentTemplates = templates.map((template) => ({ ...template }));
   await openScreen(page, "/app/contracts.html", OWNER, {
     "/api/read/contracts": (route, { url }) => {
       if (url.includes("file=template")) return json(route, { ok: true, pdf_base64: pdfBase64 });
-      if (url.includes("view=templates")) return json(route, { ok: true, count: templates.length, items: templates });
+      if (url.includes("view=templates")) return json(route, { ok: true, count: currentTemplates.length, items: currentTemplates });
       return json(route, { ok: true, items: [] });
     },
     "/api/contracts": async (route) => {
       const body = route.request().postDataJSON();
       writes.push(body);
       const out = writeAnswer ? writeAnswer(body) : { status: 200, body: { ok: true, message: "Saved.", template: { ...TEXT_TEMPLATE, id: body.id || TPL, active: body.active !== false } } };
+      if (out.status >= 200 && out.status < 300 && out.body.ok && body.action === "archive_template") {
+        const template = currentTemplates.find((item) => item.id === body.id);
+        if (template) template.active = body.active;
+      }
       return route.fulfill({ status: out.status, contentType: "application/json", body: JSON.stringify(out.body) });
     }
   });
-  await expect(page.locator("#tplList tr[data-tid]")).toHaveCount(templates.length);
+  // The initial client tab intentionally excludes inactive wordings.
+  await expect(page.locator("#tplList tr[data-tid]")).toHaveCount(
+    currentTemplates.filter((item) => item.active && !/^EMPLOYEE-/.test(item.template_key)).length
+  );
   return { writes };
 }
 
@@ -90,18 +100,24 @@ test.describe("contracts: the wording editor", () => {
     expect(writes[0]).not.toHaveProperty("template_key");
   });
 
-  test("Archive turns a wording off; on an archived one the button says Turn back on", async ({ page }) => {
+  test("Decommission moves a wording off the client tab; Turn back on restores it", async ({ page }) => {
     const { writes } = await open(page, { templates: [TEXT_TEMPLATE, { ...TEXT_TEMPLATE, id: "7e000000-0000-4000-8000-000000000009", template_key: "OLD", active: false }] });
     await page.locator(`tr[data-tid="${TPL}"]`).click();
-    await expect(page.locator("#btnArchive")).toHaveText("Archive");
+    await expect(page.locator("#btnArchive")).toHaveText("Decommission");
     await page.locator("#btnArchive").click();
     await expect.poll(() => writes.length).toBe(1);
     expect(writes[0]).toEqual({ action: "archive_template", id: TPL, active: false });
+    await expect(page.locator(`tr[data-tid="${TPL}"]`)).toHaveCount(0);
+    await page.locator("#tabDecommissioned").click();
+    await expect(page.locator("#tplList tr[data-tid]")).toHaveCount(2);
     await page.locator('tr[data-tid="7e000000-0000-4000-8000-000000000009"]').click();
     await expect(page.locator("#btnArchive")).toHaveText("Turn back on");
     await page.locator("#btnArchive").click();
     await expect.poll(() => writes.length).toBe(2);
     expect(writes[1]).toEqual({ action: "archive_template", id: "7e000000-0000-4000-8000-000000000009", active: true });
+    await expect(page.locator('tr[data-tid="7e000000-0000-4000-8000-000000000009"]')).toHaveCount(0);
+    await page.locator("#tabClient").click();
+    await expect(page.locator('tr[data-tid="7e000000-0000-4000-8000-000000000009"]')).toHaveCount(1);
   });
 
   test("a refused save is said and nothing is claimed", async ({ page }) => {
