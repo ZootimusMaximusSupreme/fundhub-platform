@@ -46,6 +46,7 @@ One row per fix. Fill all five boxes.
 | 26 | 2026-10-26 | App Store taps need Cortana and server funnel events from thank-you, email path and portal. | Shared tracker, app CTAs | Prove a human tap and preserve Meta Lead. | Before Monday — funnel and email lanes |
 | 27 | 2026-10-26 | Mac runs the iPhone app. | iOS tooling | Native Mac target is separate product work. | V2 |
 | 28 | 2026-10-30 | `src/pulse/catalog/proofs/fin-b16-messaging.test.mjs` fails on main since c0d9fb2 removed the "Automatic" tag from `public/app/messaging.html`. That commit updated `messaging-screen.test.mjs` and the e2e spec, not this proof. Two tests red: the Reference key test (line 398) and "every listed row was exercised" (line 741). | CI real-Postgres unit shard 5/6 (seen on PR #326) | Update the proof to the new label, in its own fix. | Leftover, not fixed |
+| 29 | 2026-10-30 | `src/ads/book-confirm-block.test.mjs:574` ("the apply-book push carries the block in the same whole-footer write") fails on main since e8f2209 added the `04g-book-close-today.html` footer block to `marketing/landing-pages/tracking-manifest.mjs`. The test still expects only the `04e-book-confirm.html` block. | CI no-database unit shard 3/6 (seen on PR #326) | Update the test's expected list to include the new block, in its own fix. | Leftover, not fixed |
 
 Add new rows under row 27 as Chris talks.
 
