@@ -124,7 +124,9 @@ test("authorize first: nothing to pay is on the page until the form is saved, an
   assert.equal(await page.locator(".btn-pay").count(), 0, "no Pay button before the form is saved");
   assert.equal(await page.locator('a[href*="pay."], a[href*="checkout"]').count(), 0, "no payment link before the form is saved");
   assert.equal(await page.locator("#go").innerText(), "I agree — submit soft-pull approval");
-  assert.match(await page.locator(".lede").first().innerText(), /Authorize first, then pay the total shown below\./);
+  const leadText = await page.locator(".lede").first().innerText();
+  assert.match(leadText, /You can authorize now, even before your call\./);
+  assert.match(leadText, /The pull starts only after your authorization and payment are both on file\./);
 
   // the page itself orders it: the authorization words, then what happens next with submit before pay
   const order = await page.evaluate(() => {
