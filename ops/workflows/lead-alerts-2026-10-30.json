@@ -17,14 +17,14 @@
     }
   ],
   "checks": {
-    "focused_node": "257 passed, no skipped tests",
-    "affected_playwright": "11 passed on dedicated local port",
+    "focused_node": "174 latest dispatch, gate and staff alert tests passed; no skips",
+    "affected_playwright": "13 passed on dedicated local port after merging main",
     "typescript": "passed",
     "ios_simulator_build": "passed",
     "ios_simulator_tests": "21 passed",
-    "ios_app_store_ipa": "1.0.2 build 6 exported with production push entitlement and get-task-allow false; Apple upload accepted delivery bb30d5f5-6a2e-40de-94c6-2efa17ede001; processing pending",
+    "ios_app_store_ipa": "1.0.2 build 6 exported with production push entitlement and get-task-allow false; Apple delivery bb30d5f5-6a2e-40de-94c6-2efa17ede001 is VALID",
     "app_store_current": "iOS 1.0 live; 1.0.1 pending developer release",
-    "github_ci": "required PR jobs queued without runners as of 2026-10-30 18:02 UTC",
+    "github_ci": "all 14 required PR jobs queued as of 2026-10-30 18:15 UTC",
     "full_npm_test": "interrupted after 8667 tests with no reported failures because the runner stopped progressing"
   },
   "leftovers": []

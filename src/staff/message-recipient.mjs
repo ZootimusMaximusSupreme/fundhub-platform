@@ -24,9 +24,15 @@ export function staffTextRecipient(message = {}) {
 export function isStaffText(message = {}) {
   return message.channel === "sms" && (
     message.templateKey === STAFF_BOOKED_TEMPLATE ||
-    (!message.templateKey && /^staff-alert:(?:lead|set|upcoming):/.test(String(message.providerRef || ""))) ||
+    isImmediateStaffAlert(message) ||
     (!message.templateKey && /^setter:.+:closer:/.test(String(message.providerRef || "")))
   );
+}
+
+// These are operational alerts to the verified staff phone, not client texts.
+export function isImmediateStaffAlert(message = {}) {
+  return message.channel === "sms" && !message.templateKey &&
+    /^staff-alert:(?:lead|set|upcoming):/.test(String(message.providerRef || ""));
 }
 
 export function isSetterLeadText(message = {}) {

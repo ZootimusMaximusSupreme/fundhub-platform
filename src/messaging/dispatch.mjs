@@ -33,7 +33,7 @@ import {
   gateAndRecord, inQuietHours, inSetterContactQuietHours, recipientSkipsQuietHours,
   QUIET_HOURS_CHANNELS, QUIET_END_HOUR, QUIET_HOURS_TZ
 } from "./gate.mjs";
-import { isStaffText, usesSetterContactHours } from "../staff/message-recipient.mjs";
+import { isImmediateStaffAlert, isStaffText, usesSetterContactHours } from "../staff/message-recipient.mjs";
 import { resolve, addressFieldFor } from "./providers/index.mjs";
 import { isSynthetic } from "./live-fence.mjs";
 import { isDraftTemplateCopy, isDraftTemplateRow } from "./draft-guard.mjs";
@@ -406,7 +406,7 @@ export async function dispatchOne(db, message, options = {}) {
       templateKey: message.template_key, providerRef: message.provider_ref, toAddress: message.to_address };
     const setterHours = usesSetterContactHours(kind);
     const quiet = setterHours ? inSetterContactQuietHours(clock(), QUIET_HOURS_TZ) : inQuietHours(clock(), QUIET_HOURS_TZ);
-    if (QUIET_HOURS_CHANNELS.has(message.channel) && quiet) {
+    if (QUIET_HOURS_CHANNELS.has(message.channel) && quiet && !isImmediateStaffAlert(kind)) {
       const skipQuiet = isStaffText(kind) ? false : await recipientSkipsQuietHours(db, message.client_id);
       if (!skipQuiet) {
         const due = nextQuietHoursEnd(clock(), QUIET_HOURS_TZ, setterHours ? 6 : QUIET_END_HOUR);

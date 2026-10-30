@@ -163,6 +163,18 @@ describe("setter and staff contact hours", () => {
     assert.ok(codes(res).includes("quiet_hours"));
   });
 
+  test("verified internal lead alert sends at 10 p.m. while a wrong staff phone still blocks", async () => {
+    const leadAlert = { ...ALERT, templateKey: null,
+      providerRef: `staff-alert:lead:${CLIENT}:${STAFF_ID}` };
+    const overnight = { now: () => new Date("2026-08-02T05:00:00Z") };
+    const allowed = await gate(fakeDb({ staff: enabledStaff }), leadAlert, overnight);
+    assert.strictEqual(allowed.state, "allowed", JSON.stringify(codes(allowed)));
+    const wrongPhone = await gate(fakeDb({ staff: enabledStaff }),
+      { ...leadAlert, toAddress: "+14805550000" }, overnight);
+    assert.strictEqual(wrongPhone.state, "blocked");
+    assert.ok(codes(wrongPhone).includes("recipient_unknown"));
+  });
+
   test("different closer leg reads closer staff consent, not client STOP", async () => {
     const res = await gate(fakeDb({ staff: enabledStaff,
       optedOut: new Set([`${CLIENT}:sms`]) }), { ...base, templateKey: null,

@@ -188,6 +188,17 @@ describe("setter contact window in the real dispatcher", () => {
     assert.ok(db.updates.some(({ sql, params }) => sql.includes("compliance_check_passed = true") && params[0] === MSG));
   });
 
+  test("new setter lead alert sends overnight to the verified staff phone", async () => {
+    const sms = spy();
+    const db = staffDb();
+    const result = await dispatchOne(db, claimed({ channel: "sms", rendered_body: "New lead: Pat",
+      template_key: null, provider_ref: `staff-alert:lead:${CLIENT}:${STAFF_ID}`,
+      to_address: staff.phone }), { fetchImpl: sms, env: APNS_ENV,
+      now: () => new Date("2026-08-02T05:00:00Z") });
+    assert.equal(result.outcome, OUTCOME.SENT);
+    assert.equal(sms.calls.length, 1);
+  });
+
   test("5 a.m. staff alert defers to 6 a.m. without a provider call", async () => {
     const sms = spy();
     const db = staffDb();
