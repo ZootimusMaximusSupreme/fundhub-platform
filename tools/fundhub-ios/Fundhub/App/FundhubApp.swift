@@ -15,6 +15,20 @@ struct FundhubApp: App {
     }
 }
 
+// App-local random installation ID, not the user's account or Apple's device ID.
+private enum NativeFirstOpen {
+    private static let key = "ai.fundhub.app.installation.v1"
+
+    static var installationId: String {
+        if let value = UserDefaults.standard.string(forKey: key), UUID(uuidString: value) != nil {
+            return value
+        }
+        let value = UUID().uuidString.lowercased()
+        UserDefaults.standard.set(value, forKey: key)
+        return value
+    }
+}
+
 @MainActor
 final class FundhubSessionStore: ObservableObject {
     enum Phase: Equatable { case checking, signedOut, signedIn, error }
@@ -106,6 +120,13 @@ final class FundhubSessionStore: ObservableObject {
             phase = .signedIn
             message = nil
             if result.principal == "client" {
+                // After a verified client session, report first authenticated app open.
+                // Never require notification permission or block login on telemetry.
+                Task {
+                    try? await FundhubAPI().reportClientAppOpened(
+                        token: token, installationId: NativeFirstOpen.installationId
+                    )
+                }
                 await loadSummary()
                 guard self.token == token, phase == .signedIn else { return }
                 await NativePushCenter.shared.attach(bearer: token)
