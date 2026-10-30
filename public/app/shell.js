@@ -170,7 +170,9 @@
     "marketing-command-center.html",
     "galaxy.html",
     "finance-os.html",
-    "company-brain.html",
+    /* Company Brain APIs already grant ROLE_SETS.STAFF tier-filtered access.
+       Keep navigation consistent with those server-side permissions; review
+       approvals and owner-tier documents remain server-protected. */
     "social-studio.html",
     "creative-factory.html",
     "agent-editor.html",
