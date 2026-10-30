@@ -46,7 +46,8 @@ export async function fulfilQueuedSystemPulls(conn, {
   const simulate = systemPullUsesSimulation(env);
   const tally = {
     checked: 0,
-    fulfilled: 0,
+    fulfilled: 0, // real bureau results only; simulation is a rehearsal
+    simulatedFulfilled: 0,
     failed: 0,
     skipped: [],
     errored: [],
@@ -72,6 +73,19 @@ export async function fulfilQueuedSystemPulls(conn, {
           clientId: row.client_id,
           requestId: row.id,
           reason: pull?.code || pull?.reason || "pull_failed"
+        });
+        continue;
+      }
+      // The provider's persisted-result stamp is authoritative. A successful
+      // simulated run proves the pipeline mechanics, not a fresh credit report.
+      // It must never update a buyer's Blueprint roadmap or generate letters,
+      // and it must not inflate the real-fulfillment count.
+      if (pull.simulated === true) {
+        tally.simulatedFulfilled += 1;
+        tally.skipped.push({
+          clientId: row.client_id,
+          requestId: row.id,
+          reason: "simulated_result_not_customer_delivery"
         });
         continue;
       }

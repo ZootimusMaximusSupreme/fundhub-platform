@@ -95,3 +95,67 @@ test("aftercare failure creates a scoped owner exception without ordering a seco
   assert.equal(pulls, 1);
   assert.equal(tasks.length, 1);
 });
+
+test("Blueprint monthly aftercare never delivers a simulated CRS result", async () => {
+  const row = { id: "request-sim", org_id: "org-sim", client_id: "client-sim" };
+  const db = {
+    async query(sql) {
+      if (/FROM soft_pull_requests/.test(sql)) return { rows: [row] };
+      throw new Error("Simulated acceptance test must perform no database writes");
+    }
+  };
+  let aftercareRuns = 0;
+  const run = async (env) => fulfilQueuedSystemPulls(db, {
+    env,
+    runPull: async (_db, opts) => ({
+      ok: true,
+      simulated: true,
+      crsResultId: "simulated-crs-id",
+      requestId: opts.requestId
+    }),
+    aftercare: async () => {
+      aftercareRuns += 1;
+      return { ok: true };
+    }
+  });
+
+  // The saved-result stamp wins even when external live flags are on.
+  for (const env of [{}, { FINANCE_OS_SYSTEM_PULL_LIVE: "1", CRS_ALLOW_LIVE: "1" }]) {
+    const out = await run(env);
+    assert.equal(out.checked, 1);
+    assert.equal(out.fulfilled, 0, "simulated reports cannot count as real CRS fulfillment");
+    assert.equal(out.simulatedFulfilled, 1);
+    assert.equal(out.skipped[0]?.reason, "simulated_result_not_customer_delivery");
+    assert.deepEqual(out.deliveryExceptions, []);
+    assert.equal(out.errored.length, 0);
+  }
+  assert.equal(aftercareRuns, 0, "simulation must not reseed roadmap or generate customer letter packs");
+});
+
+test("actual successful CRS result still runs Blueprint aftercare", async () => {
+  const row = { id: "request-real", org_id: "org-real", client_id: "client-real" };
+  const db = {
+    async query(sql) {
+      if (/FROM soft_pull_requests/.test(sql)) return { rows: [row] };
+      throw new Error("Real-result acceptance fixture performs no database writes");
+    }
+  };
+  const calls = [];
+  const tally = await fulfilQueuedSystemPulls(db, {
+    env: { FINANCE_OS_SYSTEM_PULL_LIVE: "1", CRS_ALLOW_LIVE: "1" },
+    runPull: async (_conn, input) => {
+      assert.equal(input.simulate, false);
+      return { ok: true, simulated: false, crsResultId: "provider-crs-id" };
+    },
+    aftercare: async (_conn, args) => {
+      calls.push(args);
+      return { ok: true };
+    }
+  });
+  assert.equal(tally.fulfilled, 1);
+  assert.equal(tally.simulatedFulfilled, 0);
+  assert.equal(tally.ok, true);
+  assert.deepEqual(calls, [{
+    orgId: "org-real", clientId: "client-real", crsResultId: "provider-crs-id"
+  }]);
+});
