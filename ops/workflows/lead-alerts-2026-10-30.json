@@ -21,6 +21,7 @@
     "affected_playwright": "11 passed on dedicated local port",
     "typescript": "passed",
     "ios_simulator_build": "passed",
+    "ios_simulator_tests": "21 passed",
     "full_npm_test": "interrupted after 8667 tests with no reported failures because the runner stopped progressing"
   },
   "leftovers": []

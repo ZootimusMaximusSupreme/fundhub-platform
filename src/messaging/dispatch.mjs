@@ -441,11 +441,6 @@ export async function dispatchOne(db, message, options = {}) {
       // gateAndRecord already set status='blocked'. Nothing further to write.
       return { id: message.id, outcome: OUTCOME.BLOCKED, detail: verdict.reasons.map((x) => x.code) };
     }
-    // Free-form internal work alerts start unapproved and pass the live gate
-    // here. Record that verdict for the staff text health check.
-    if (/^staff-alert:(?:lead|set|upcoming):/.test(String(message.provider_ref || ""))) {
-      await db.query(`UPDATE messages SET compliance_check_passed = true WHERE id = $1`, [message.id]);
-    }
 
     // ---- 1b. DRAFT TEMPLATE HARD GUARD ------------------------------------
     // Even if compliance_passed was flipped true, placeholder [DRAFT] copy
@@ -505,6 +500,12 @@ export async function dispatchOne(db, message, options = {}) {
       );
       return await finalise(db, message, "blocked", OUTCOME.BLOCKED,
         "retired_ghl_doc", null);
+    }
+
+    // Free-form internal work alerts start unapproved. Record the successful
+    // live gate and copy checks for the staff text health check.
+    if (/^staff-alert:(?:lead|set|upcoming):/.test(String(message.provider_ref || ""))) {
+      await db.query(`UPDATE messages SET compliance_check_passed = true WHERE id = $1`, [message.id]);
     }
 
     // ---- 2. Routing --------------------------------------------------------
