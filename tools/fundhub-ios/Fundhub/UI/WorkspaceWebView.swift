@@ -54,16 +54,16 @@ struct WorkspaceWebView: UIViewRepresentable {
         func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
                      decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
             guard let url = navigationAction.request.url else { decisionHandler(.cancel); return }
+            // Hard native-shell rule: the marketing homepage may not render
+            // even in an iframe. Other third-party payment frames still work.
+            if WorkspaceNavigation.isPublicMarketingHome(url) {
+                decisionHandler(.cancel)
+                return
+            }
             // Subframe content (such as payment-provider frames) is not an app
             // navigation: let WebKit load it without launching another app.
             if navigationAction.targetFrame?.isMainFrame == false {
                 decisionHandler(.allow)
-                return
-            }
-            // Hard native-shell rule: never show or externally open the
-            // public marketing homepage from an authenticated app workspace.
-            if WorkspaceNavigation.isPublicMarketingHome(url) {
-                decisionHandler(.cancel)
                 return
             }
             if WorkspaceNavigation.shouldOpenInWorkspace(url) {
@@ -97,12 +97,11 @@ struct WorkspaceWebView: UIViewRepresentable {
             return nil
         }
 
-        // A server can redirect an otherwise allowed page to the homepage.
-        // Check the final main-frame response URL BEFORE WebKit commits it.
+        // A server can redirect an otherwise allowed page or payment iframe
+        // to the homepage. Refuse that final response before WebKit renders it.
         func webView(_ webView: WKWebView, decidePolicyFor navigationResponse: WKNavigationResponse,
                      decisionHandler: @escaping (WKNavigationResponsePolicy) -> Void) {
-            if navigationResponse.isForMainFrame,
-               let finalURL = navigationResponse.response.url,
+            if let finalURL = navigationResponse.response.url,
                WorkspaceNavigation.isPublicMarketingHome(finalURL) {
                 decisionHandler(.cancel)
                 return
