@@ -102,6 +102,12 @@ export async function getActiveCaseForClient(db, { orgId, clientId }) {
       WHERE org_id = $1::uuid
         AND client_id = $2::uuid
         AND case_status::text = ANY($3::text[])
+        AND EXISTS (
+          SELECT 1 FROM clients cl
+           WHERE cl.id = inquiry_removal_cases.client_id
+             AND cl.org_id = inquiry_removal_cases.org_id
+             AND cl.custom_fields->>'crm_archived_at' IS NULL
+        )
       ORDER BY requested_at DESC
       LIMIT 1`,
     [orgId, clientId, [...ACTIVE]]
