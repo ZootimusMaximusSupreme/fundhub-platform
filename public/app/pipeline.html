@@ -384,6 +384,9 @@
 
   .c-top{display:flex;align-items:center;gap:6px;}
   .c-name{font-size:var(--fs-body);font-weight:700;color:var(--text);line-height:1.25;flex:1;min-width:0;}
+  .c-booked-when{display:inline-block;margin-top:4px;padding:3px 7px;border-radius:5px;
+    background:var(--info-bg);color:var(--ink2);border:1px solid var(--info-line);
+    font-size:var(--fs-caption);font-weight:700;}
   .c-scores{font-family:var(--mono);font-size:var(--fs-body);color:var(--text);margin:4px 0 0;letter-spacing:.02em;font-weight:600;}
   /* controls ride in on hover — a resting card carries fields, not buttons */
   .c-tools{display:flex;align-items:center;gap:3px;flex-shrink:0;margin-left:auto;
@@ -1902,6 +1905,16 @@ restore();
     return Math.round(mins / 1440) + "d in stage";
   }
 
+  function formatBookedWhen(iso) {
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return null;
+    return new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Phoenix",
+      weekday: "short", month: "short", day: "numeric", year: "numeric",
+      hour: "numeric", minute: "2-digit", timeZoneName: "short"
+    }).format(d);
+  }
+
   /* Built with createElement and textContent throughout: card names and owners
      are client data and must never be interpreted as markup. */
   function cardEl(c, stageKey, pipelineKey) {
@@ -1949,6 +1962,10 @@ restore();
     grip.className = "grip"; grip.textContent = "⠿"; grip.setAttribute("aria-hidden", "true"); grip.title = "Drag to another stage";
     tools.appendChild(move); tools.appendChild(delBtn); tools.appendChild(grip);
     card.appendChild(top);
+    if (pipelineKey === "sales" && c.booked_starts_at) {
+      var bookedWhen = formatBookedWhen(c.booked_starts_at);
+      if (bookedWhen) card.appendChild(div("c-booked-when", "Booked · " + bookedWhen));
+    }
     if (pipelineKey === "sales" && c.call_confirmed === true) {
       card.appendChild(div("c-call-confirmed", "✓ Call confirmed"));
     }
@@ -2377,6 +2394,12 @@ restore();
     creditMore.appendChild(rowAlways("Business FSR", biz.fsr));
     drawerBody.appendChild(creditMore);
 
+    var survey = sec("Survey");
+    surveyRowsFor(cf).forEach(function (pair) {
+      survey.appendChild(rowAlways(pair[0], pair[1]));
+    });
+    drawerBody.appendChild(survey);
+
     var bizList = Array.isArray(biz.businesses) ? biz.businesses : [];
     var bizSec = sec("Businesses");
     if (!bizList.length) {
@@ -2417,12 +2440,6 @@ restore();
     attr.appendChild(rowAlways("Magnet", cf.lead_magnet_type || null));
     drawerBody.appendChild(attr);
     paintAdRouting(attr, clientId);
-
-    var survey = sec("Survey");
-    surveyRowsFor(cf).forEach(function (pair) {
-      survey.appendChild(rowAlways(pair[0], pair[1]));
-    });
-    drawerBody.appendChild(survey);
 
     var box = document.createElement("div");
     box.className = "fh-drawer-links";

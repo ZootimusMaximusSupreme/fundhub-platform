@@ -346,6 +346,25 @@ const cardsOf = (res) => res.body.stages.flatMap((s) => s.cards.map((c) => ({ ..
 const byId = (res) => Object.fromEntries(cardsOf(res).map((c) => [c.id, c]));
 
 describe("GET /api/dashboard/pipeline, the board's own statements run by a SQL engine", () => {
+  test("Sales cards use their own next active booking and fall back to the latest past one", async () => {
+    const past = new Date(Date.now() - 86_400_000).toISOString();
+    const next = new Date(Date.now() + 86_400_000).toISOString();
+    const later = new Date(Date.now() + 172_800_000).toISOString();
+    const e = engineBoard();
+    for (const row of [
+      { id: "past", org_id: A, client_id: K.ann, starts_at: past, status: "booked" },
+      { id: "next", org_id: A, client_id: K.ann, starts_at: next, status: "rescheduled" },
+      { id: "cancelled", org_id: A, client_id: K.ann, starts_at: later, status: "cancelled" },
+      { id: "foreign", org_id: B, client_id: K.ann, starts_at: later, status: "booked" },
+    ]) e.insert("bookings", { ...row, created_at: row.starts_at });
+    assert.equal(byId(await callEngine({ key: "sales" }, e))["card-ann"].booked_starts_at, next);
+    assert.equal(byId(await callEngine({ key: "funding_card_stacking" }, e))["f-ann"].booked_starts_at, null);
+
+    const pastOnly = engineBoard();
+    pastOnly.insert("bookings", { id: "past", org_id: A, client_id: K.ann, starts_at: past, status: "booked", created_at: past });
+    assert.equal(byId(await callEngine({ key: "sales" }, pastOnly))["card-ann"].booked_starts_at, past);
+  });
+
   test("the stages come in their set order and each card sits under the stage its own row names, newest first", async () => {
     const res = await callEngine({ key: "sales" }, engineBoard());
     assert.equal(res.statusCode, 200, JSON.stringify(res.body));
