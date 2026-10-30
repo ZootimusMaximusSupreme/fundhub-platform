@@ -90,7 +90,11 @@ test("iOS checks the final main-frame response URL, including HTTP redirects", (
 test("Mac blocks marketing-home URLs in main frame, popups and redirects", () => {
   const action = mac.split("decidePolicyFor navigationAction: WKNavigationAction,")[1]
     .split("createWebViewWith configuration: WKWebViewConfiguration,")[0];
-  assert.match(action, /if isPublicMarketingHome\(url\)\s*\{\s*decisionHandler\(\.cancel\)/);
+  assert.match(action, /if isPublicMarketingHome\(url\)\s*\{/);
+  const blockedAction = action.split("if isPublicMarketingHome(url) {")[1]
+    .split("if navigationAction.targetFrame?.isMainFrame == false")[0];
+  assert.match(blockedAction, /loading = false/);
+  assert.match(blockedAction, /decisionHandler\(\.cancel\)/);
   assert.ok(action.indexOf("if isPublicMarketingHome(url)") <
     action.indexOf("if navigationAction.targetFrame?.isMainFrame == false"),
     "marketing-home blocking also covers embedded frames");
@@ -103,7 +107,10 @@ test("Mac blocks marketing-home URLs in main frame, popups and redirects", () =>
     popup.indexOf("if isFundhub(url)"));
   const response = mac.split("decidePolicyFor navigationResponse: WKNavigationResponse,")[1]
     .split("private func openAllowedExternal")[0];
-  assert.doesNotMatch(response, /navigationResponse\.isForMainFrame/);
+  assert.ok(response.indexOf("isPublicMarketingHome(finalURL)") <
+    response.indexOf("if navigationResponse.isForMainFrame"),
+    "Mac checks the redirect destination before deciding whether to clear the main-frame spinner");
+  assert.match(response, /loading = false/);
   assert.match(response, /navigationResponse\.response\.url/);
   assert.match(response, /isPublicMarketingHome\(finalURL\)/);
   assert.match(response, /decisionHandler\(\.cancel\)/);
