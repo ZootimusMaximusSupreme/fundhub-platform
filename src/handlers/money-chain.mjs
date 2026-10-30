@@ -1094,22 +1094,24 @@ export async function ensureFundingRound(db, event, { status = "started" } = {})
 
   const p = event.payload || {};
   const roundNumber = Number(p.roundNumber ?? p.round_number ?? 1);
+  if (!Number.isInteger(roundNumber) || roundNumber < 1) {
+    return { round: null, created: false, clientId, reason: "invalid_round_number" };
+  }
   const sourceEventId = asUuid(event.id);
 
   if (p.fundingRoundId) {
     const existing = await db.query(
-      `SELECT * FROM funding_rounds WHERE id = $1 LIMIT 1`,
-      [p.fundingRoundId]
+      `SELECT * FROM funding_rounds WHERE id = $1 AND org_id = $2 AND client_id = $3 LIMIT 1`,
+      [p.fundingRoundId, orgId, clientId]
     );
-    if (existing.rows[0]) {
-      return { round: existing.rows[0], created: false, clientId };
-    }
+    // An explicit round reference is exact; never fall back to another buyer's round.
+    return { round: existing.rows[0] || null, created: false, clientId };
   }
 
   if (sourceEventId) {
     const byEvent = await db.query(
-      `SELECT * FROM funding_rounds WHERE org_id = $1 AND source_event_id = $2 LIMIT 1`,
-      [orgId, sourceEventId]
+      `SELECT * FROM funding_rounds WHERE org_id = $1 AND client_id = $2 AND source_event_id = $3 LIMIT 1`,
+      [orgId, clientId, sourceEventId]
     );
     if (byEvent.rows[0]) {
       return { round: byEvent.rows[0], created: false, clientId };
@@ -1117,8 +1119,8 @@ export async function ensureFundingRound(db, event, { status = "started" } = {})
   }
 
   const byNum = await db.query(
-    `SELECT * FROM funding_rounds WHERE client_id = $1 AND round_number = $2 LIMIT 1`,
-    [clientId, roundNumber]
+    `SELECT * FROM funding_rounds WHERE org_id = $1 AND client_id = $2 AND round_number = $3 LIMIT 1`,
+    [orgId, clientId, roundNumber]
   );
   if (byNum.rows[0]) {
     return { round: byNum.rows[0], created: false, clientId };
@@ -1146,10 +1148,39 @@ export async function ensureFundingRound(db, event, { status = "started" } = {})
   if (ins.rows[0]) return { round: ins.rows[0], created: true, clientId };
 
   const again = await db.query(
-    `SELECT * FROM funding_rounds WHERE client_id = $1 AND round_number = $2 LIMIT 1`,
-    [clientId, roundNumber]
+    `SELECT * FROM funding_rounds WHERE org_id = $1 AND client_id = $2 AND round_number = $3 LIMIT 1`,
+    [orgId, clientId, roundNumber]
   );
   return { round: again.rows[0] || null, created: false, clientId };
+}
+
+/** Keep funding-round sale links scoped to the owning organization and client on replays. */
+export async function ensureFundingRoundSaleLink(db, { orgId, clientId, roundId, explicitSaleId = null } = {}) {
+  if (!orgId || !clientId || !roundId) return null;
+  const existing = () => db.query(
+    `SELECT frs.sale_id FROM funding_round_sales frs
+       JOIN sales s ON s.id = frs.sale_id AND s.org_id = frs.org_id
+        AND s.client_id = $2 AND s.status = 'active'
+      WHERE frs.org_id = $1 AND frs.funding_round_id = $3 LIMIT 1`,
+    [orgId, clientId, roundId]
+  );
+  const prior = await existing();
+  if (prior.rows[0]?.sale_id) return prior.rows[0].sale_id;
+  if (!explicitSaleId) return null;
+  const linked = await db.query(
+    `INSERT INTO funding_round_sales (org_id, funding_round_id, sale_id, link_method)
+     SELECT $1, fr.id, s.id, 'explicit'
+       FROM funding_rounds fr
+       JOIN sales s ON s.id = $4 AND s.org_id = fr.org_id
+         AND s.client_id = fr.client_id AND s.status = 'active'
+       JOIN products p ON p.id = s.product_id AND p.org_id = s.org_id
+         AND p.category = 'funding'
+      WHERE fr.id = $3 AND fr.org_id = $1 AND fr.client_id = $2
+     ON CONFLICT (funding_round_id) DO NOTHING
+     RETURNING sale_id`,
+    [orgId, clientId, roundId, explicitSaleId]
+  );
+  return linked.rows[0]?.sale_id || (await existing()).rows[0]?.sale_id || null;
 }
 
 export async function onRoundStartedMoney(event, db) {
@@ -1157,18 +1188,12 @@ export async function onRoundStartedMoney(event, db) {
   if (!round) return { done: false, reason: "no_round" };
 
   const link = await db.query(SQL_LINK_ROUND_TO_SALE, [event.orgId, round.id]);
-
-  let saleId = link.rows[0]?.sale_id || null;
-  if (!saleId && event.payload?.saleId) {
-    const explicit = await db.query(
-      `INSERT INTO funding_round_sales (org_id, funding_round_id, sale_id, link_method)
-       VALUES ($1,$2,$3,'explicit')
-       ON CONFLICT (funding_round_id) DO NOTHING
-       RETURNING sale_id`,
-      [event.orgId, round.id, event.payload.saleId]
-    );
-    saleId = explicit.rows[0]?.sale_id || event.payload.saleId;
-  }
+  const saleId = link.rows[0]?.sale_id || await ensureFundingRoundSaleLink(db, {
+    orgId: event.orgId,
+    clientId,
+    roundId: round.id,
+    explicitSaleId: event.payload?.saleId || null
+  });
 
   if (saleId) {
     await ensureAttributions(db, {
