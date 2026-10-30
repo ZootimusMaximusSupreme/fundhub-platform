@@ -65,6 +65,20 @@ export const BOOKED_NO_OUTCOME_SQL = `/* gap-calls:booked-no-outcome */
                    AND (o.booking_ref IS NULL OR btrim(o.booking_ref) = '')
                    AND o.logged_at >= COALESCE(b.starts_at, b.ends_at) - interval '2 hours'
                    AND o.logged_at <= COALESCE(b.ends_at, b.starts_at) + interval '2 hours'
+                   -- If two appointments are within the fallback window, an
+                   -- unlinked outcome cannot prove which call was completed.
+                   -- Require an explicit booking_ref rather than silently
+                   -- clearing both calls with one ambiguous staff entry.
+                   AND NOT EXISTS (
+                     SELECT 1 FROM bookings other
+                      WHERE other.org_id = b.org_id
+                        AND other.client_id = b.client_id
+                        AND other.id <> b.id
+                        AND lower(COALESCE(other.status, '')) IN ('booked', 'rescheduled')
+                        AND COALESCE(other.ends_at, other.starts_at) IS NOT NULL
+                        AND o.logged_at >= COALESCE(other.starts_at, other.ends_at) - interval '2 hours'
+                        AND o.logged_at <= COALESCE(other.ends_at, other.starts_at) + interval '2 hours'
+                   )
                  )
                )
           )
@@ -76,8 +90,9 @@ export const BOOKED_NO_OUTCOME_SQL = `/* gap-calls:booked-no-outcome */
    that test never matched a real booking and this check could not fail.
    An outcome counts when it names this booking. An outcome with no booking_ref
    can only count when it belongs to the same client AND is within a bounded
-   two-hour window around this specific call. An explicit later booking's outcome
-   must never clear an earlier unanswered booking. */
+   two-hour window around this specific call, with NO other eligible booking in
+   that window. Ambiguous unlinked results require a booking reference; a later
+   booking's outcome must never clear an earlier unanswered booking. */
 export async function bookedNoOutcome({ db, orgId, now }) {
   const id = "calls:booked-no-outcome";
   if (!db || !orgId) return check(id, "skip", "no database in this run — booked calls not read");
