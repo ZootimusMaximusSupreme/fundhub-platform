@@ -521,6 +521,37 @@ describe("money-chain writers", { skip: !HAS_DB ? "no DATABASE_URL" : false }, (
     assert.equal(n, 0, "none of the foreign/failed/incorrect-amount receipts may credit buyer");
   });
 
+  test("a succeeded orphan provider receipt never credits the buyer's newest funding sale", async () => {
+    const buyerEmail = `${MARK}.orphan_fee@example.com`;
+    const buyer = (await db.query(
+      `INSERT INTO clients (org_id, email, first_name, last_name)
+       VALUES ($1,$2,$3,'Orphan') RETURNING id`, [org, buyerEmail, MARK]
+    )).rows[0];
+    const origin = await ensureSale(db, {
+      orgId: org, clientId: buyer.id, name: "checkout.accepted",
+      payload: { productId: fundingProductId, amount: 3000 }
+    }, { productBucket: "deposit" });
+    assert.ok(origin.sale, "this fixture needs an actual existing funding sale");
+    const providerRef = `${MARK}_orphan_fee_ref`;
+    await db.query(
+      `INSERT INTO transactions (org_id, client_id, product_name, amount_paid,
+                                status, provider, provider_ref, raw_payload)
+       VALUES ($1,$2,'Unmatched provider payment',2500,'succeeded','commas',$3,'{}'::jsonb)`,
+      [org, buyer.id, providerRef]
+    );
+    const result = await onPaymentReceivedMoney({
+      id: "00000000-0000-4000-8000-000000000e65", name: "payment.received",
+      orgId: org, clientId: buyer.id,
+      payload: { product: "unmatched", productName: null, amount: 2500, providerRef }
+    }, db);
+    assert.equal(result.done, false, "unassigned payment cannot settle a guessed contract");
+    assert.equal(result.reason, "no_sale_yet");
+    const n = (await db.query(
+      `SELECT count(*)::int n FROM sale_payments WHERE sale_id = $1`, [origin.sale.id]
+    )).rows[0].n;
+    assert.equal(n, 0, "orphan receipt must not inflate installment or success-fee balances");
+  });
+
   test("a payment we cannot pin to a client refuses and names the reason", async () => {
     const out = await onPaymentReceivedMoney(
       { id: null, name: "payment.received", orgId: org, payload: { amount: 100 } },

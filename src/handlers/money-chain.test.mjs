@@ -526,20 +526,49 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
     assert.match(inv.text, /success_fee/, "only a success-fee invoice makes a receipt a success fee");
   });
 
-  test("an invoice id that is not this client's success-fee bill changes nothing", async () => {
+  test("a success-fee receipt with an unverified invoice cannot become a sale installment", async () => {
     const db = feeDb({ invoice: null });
-    await onPaymentReceivedMoney(feeReceipt(), db);
-    const ins = salePaymentInsert(db);
-    assert.ok(ins);
-    assert.equal(ins.params[6], "installment", "an unrecognised invoice id must not re-label money");
+    const out = await onPaymentReceivedMoney(feeReceipt(), db);
+    assert.equal(out.done, false);
+    assert.equal(out.reason, "success_fee_invoice_unresolved");
+    assert.equal(salePaymentInsert(db), undefined);
+    assert.equal(out.entitlements, undefined);
   });
 
-  test("a receipt with no invoice never reads invoices and keeps its own kind", async () => {
+  test("a success-fee receipt without invoice identity is held, not booked as front-end money", async () => {
     const db = feeDb();
-    await onPaymentReceivedMoney(feeReceipt({ invoiceId: null }), db);
-    assert.ok(!db.queries.some((q) => /FROM invoices/.test(q.text)), "a receipt with no invoice went looking for one");
+    const out = await onPaymentReceivedMoney(feeReceipt({ invoiceId: null }), db);
+    assert.ok(!db.queries.some((q) => /FROM invoices/.test(q.text)), "a receipt with no invoice should not guess a bill");
+    assert.equal(out.done, false);
+    assert.equal(out.reason, "success_fee_invoice_unresolved");
+    assert.equal(salePaymentInsert(db), undefined);
+  });
+
+  test("an unmatched receipt with no original sale never chooses this buyer's latest funding sale", async () => {
+    const db = feeDb({ invoice: null });
+    const out = await onPaymentReceivedMoney(feeReceipt({
+      invoiceId: null, paymentLinkId: null, purpose: null,
+      product: "unmatched", productName: null
+    }), db);
+    assert.equal(out.done, false);
+    assert.equal(out.reason, "no_sale_yet");
+    assert.equal(salePaymentInsert(db), undefined);
+    assert.equal(out.entitlements, undefined);
+    assert.ok(!db.queries.some((q) => /pr\.category = 'funding'/.test(q.text)),
+      "an unlinked receipt must never guess the latest funding contract");
+  });
+
+  test("a generic unmatched receipt with an explicit original sale still records that sale only", async () => {
+    const db = feeDb({ invoice: null });
+    const out = await onPaymentReceivedMoney(feeReceipt({
+      invoiceId: null, paymentLinkId: null, purpose: null,
+      product: "unmatched", productName: null, saleId: BILLED_SALE
+    }), db);
+    assert.equal(out.done, true, JSON.stringify(out));
     const ins = salePaymentInsert(db);
-    assert.ok(ins);
-    assert.equal(ins.params[6], "installment", "a receipt that names no bill must keep the kind its product gives it");
+    assert.ok(ins, "the explicitly linked payment was not recorded");
+    assert.equal(ins.params[1], BILLED_SALE);
+    assert.equal(ins.params[6], "installment");
+    assert.ok(!db.queries.some((q) => /pr\.category = 'funding'/.test(q.text)));
   });
 });

@@ -995,6 +995,22 @@ export async function onPaymentReceivedMoney(event, db) {
     orgId, clientId, invoiceId: paymentPayload.invoiceId
   });
 
+  // An unmatched/custom provider receipt may still say "Success fee" without
+  // carrying the invoice UUID. It is received cash in transactions, but cannot
+  // be classified as a sale installment or a paid funding fee until the
+  // original, buyer-owned fee invoice is resolved. Hold it for reconciliation.
+  const feeLabel = String(paymentPayload.productName || "");
+  const feeBucket = String(paymentPayload.product || "").trim().toLowerCase();
+  const feePurpose = String(paymentPayload.purpose || "").trim().toLowerCase();
+  if (!feeInvoice && (
+    feeBucket === "success_fee" ||
+    feePurpose === "success_fee" ||
+    feePurpose === "funding_success_fee" ||
+    /\bsuccess[\s_-]*fee\b/i.test(feeLabel)
+  )) {
+    return { done: false, reason: "success_fee_invoice_unresolved" };
+  }
+
   // A paid success-fee invoice owns its original sale. A second sale hint
   // (including a stored payment-link sale) must not redirect that money.
   if (feeInvoice && !feeInvoice.sale_id) {
@@ -1051,7 +1067,10 @@ export async function onPaymentReceivedMoney(event, db) {
       ]
     )).rows[0] || null;
   }
-  if (!sale) {
+  // "unmatched" and "success_fee" are not product proof. In particular,
+  // a buyer can have several funding sales, so never infer the originating
+  // contract from the most recent product purchase.
+  if (!sale && bucket !== "unmatched" && bucket !== "success_fee") {
     const productId = await resolveProductId(db, orgId, {
       productId: paymentPayload.productId,
       productName: paymentPayload.productName || paymentPayload.product || null,
@@ -1072,16 +1091,8 @@ export async function onPaymentReceivedMoney(event, db) {
     ({ sale } = await ensureSale(db, paymentEvent, { productBucket: bucket }));
   }
 
-  if (!sale && (bucket === "success_fee" || bucket === "unmatched" || !bucket)) {
-    sale = (await db.query(
-      `SELECT s.* FROM sales s
-         JOIN products pr ON pr.id = s.product_id
-        WHERE s.org_id = $1 AND s.client_id = $2 AND s.status = 'active'
-          AND pr.category = 'funding'
-        ORDER BY s.sold_at DESC LIMIT 1`,
-      [orgId, clientId]
-    )).rows[0] || null;
-  }
+  // Never use "newest active funding sale" as a payment identity fallback:
+  // an unrelated installment or funding success fee would be miscredited.
 
   if (!sale) {
     // Unattributed money remains visible for reconciliation, never treated as
