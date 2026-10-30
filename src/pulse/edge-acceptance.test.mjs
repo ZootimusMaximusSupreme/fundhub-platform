@@ -46,6 +46,27 @@ test("source changes require A->B review, including changed existing high-risk f
   assert.deepEqual(changedCriticalEdges(["marketing/landing-pages/apply-survey.html"]).map((x) => x.id), ["lead-booking-call-outcome"]);
 });
 
+test("schema migration changes cannot bypass A->B source-watch review", () => {
+  // Live PRs change booking-claim and staff APNs schema. This is source-risk
+  // reporting, never proof that any recipient or buyer received an outcome.
+  const files = [
+    "db/migrations/300_booking_portal_claim.sql",
+    "db/migrations/522_staff_apns_devices.sql",
+    "db/migrations/523_unrelated_index.sql",
+    "db/seed/300_booking_portal_claim.sql",
+    "docs/journeys/booking-notifications-flow.md"
+  ];
+  const report = reportCriticalSourceChanges(files, "");
+  assert.equal(report.verdict, "REVIEW_REQUIRED");
+  assert.deepEqual(report.unmappedHighRiskFiles, files.slice(0, 2));
+  assert.equal(report.evidenceNote, "MISSING");
+  assert.equal(report.liveReceipt, "NEEDS_LIVE_RECEIPT");
+  assert.equal(shouldReportCriticalSourceRisk(report), true);
+  assert.deepEqual(unmappedHighRiskSourceChanges([
+    "db/migrations/523_unrelated_index.sql", "db/seed/300_booking_portal_claim.sql"
+  ]), []);
+});
+
 test("unmapped high-risk PR edit cannot silently escape the report", () => {
   const report = reportCriticalSourceChanges(["api/invoice-settlement.mjs"]);
   assert.deepEqual(report.edges, []);
