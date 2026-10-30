@@ -56,6 +56,13 @@ Add new rows under row 27 as Chris talks.
 - **Proof:** Run focused provider, retry, workflow registry, lint, full suite, migration manifest, and diagram checks. Deploy with the production webhook URL and verify a real or controlled new booking in DirectROAS before saying future sends work live.
 - **Risk:** A vendor timeout after acceptance can be ambiguous; the booking ID stays stable in the payload. Failed sends stay in the ledger and the job heartbeat goes red.
 
+### Doubled ClickFunnels bookings, 2026-10-29
+
+- **Seen on live (read-only):** 2 of 13 live booked times were saved twice: FH-000855 (2026-11-01 20:00 UTC, rows `428b91ef` form id and `e0d06ede` call id 75918, both sent to Cortana) and FH-000849, a +sim person (2026-10-29 23:00 UTC, call id 75896 and form id `aea658d2`). Each pair has the same person, time and Meet link, saved 0.12 s and 0.18 s apart, and each has two "Strategy session booked" tasks. A third booking at 00:04 UTC saved once.
+- **Cause:** The form post's booking was not saved yet when the scheduled event checked for it, so both saved one. The UID lock in `src/handlers/comms.mjs` never held them apart because the two ids differ.
+- **Fix (branch `fix/clickfunnels-booking-slot-race`, Claude funnel lane):** `withBookingSlotLock` in `src/adapters/clickfunnels.mjs` holds one transaction-scoped lock per (company, email, call time) around the slot check and the save; a booking is only re-keyed to the call id; the payload keeps `calendarPageId` and `eventType`. A test sends both messages at once and fails with the lock off.
+- **Left for Chris:** the 2 existing pairs are not merged. FH-000849 is test data. FH-000855 looks like a real lead, so removing its extra row and task is his call.
+
 ### Qualified vs unqualified credit pixel split, 2026-10-29
 
 - **Owner call (2026-10-29):** The two buckets only split the Meta pixel. Same calendar, same people take the call, same thank-you page. Qualified credit is a score answer of 700-749 or 750+ (the same 700 line UnderwriteIQ uses for "fundable"). Every other answer, including "Not sure", is unqualified.
