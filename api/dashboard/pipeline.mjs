@@ -47,7 +47,18 @@ const CARDS_SQL = `
     c.funded_amount,
     c.is_demo,
     (c.custom_fields->>'call_confirmed') = 'true' AS call_confirmed,
-    next_booking.starts_at AS booked_starts_at,
+    CASE WHEN p.key = 'sales' THEN (
+      SELECT b.starts_at
+        FROM bookings b
+       WHERE b.org_id = p.org_id
+         AND b.client_id = c.id
+         AND b.status IN ('booked', 'rescheduled')
+         AND b.starts_at IS NOT NULL
+       ORDER BY (b.starts_at >= NOW()) DESC,
+                CASE WHEN b.starts_at >= NOW() THEN b.starts_at END ASC NULLS LAST,
+                b.starts_at DESC, b.created_at DESC
+       LIMIT 1
+    ) ELSE NULL END AS booked_starts_at,
     (c.custom_fields->>'total_funding_estimate') AS total_funding_estimate,
     c.custom_fields->>'cf_svy_self_reported_fico' AS survey_fico_raw,
     c.custom_fields->>'cf_svy_self_reported_fico_label' AS survey_fico_label,
@@ -143,18 +154,6 @@ const CARDS_SQL = `
   JOIN pipelines p ON p.id = cd.pipeline_id
   LEFT JOIN clients c ON c.id = cd.client_id AND c.org_id = p.org_id
   LEFT JOIN partners pr ON pr.id = cd.partner_id AND pr.org_id = p.org_id
-  LEFT JOIN LATERAL (
-    SELECT b.starts_at
-      FROM bookings b
-     WHERE b.org_id = p.org_id
-       AND b.client_id = c.id
-       AND b.status IN ('booked', 'rescheduled')
-       AND b.starts_at IS NOT NULL
-     ORDER BY (b.starts_at >= NOW()) DESC,
-              CASE WHEN b.starts_at >= NOW() THEN b.starts_at END ASC NULLS LAST,
-              b.starts_at DESC, b.created_at DESC
-     LIMIT 1
-  ) next_booking ON p.key = 'sales'
   WHERE p.key = $1 AND p.org_id = $2 AND cd.org_id = $2
     AND (c.id IS NOT NULL OR pr.id IS NOT NULL)
     AND ($4::boolean OR COALESCE(c.is_demo, false) = false)
