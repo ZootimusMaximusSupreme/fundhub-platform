@@ -5,11 +5,11 @@
 // harness is served by page.route() from the fixtures folder, and the ctx is
 // put on the window before the page loads.
 //
-// Run: E2E_PORT=4941 npx playwright test e2e/present-blueprint-demo.spec.mjs
+// Run: E2E_PORT=4962 npx playwright test e2e/present-blueprint-demo.spec.mjs
 //
 // It checks the slide at 1440 and 390 wide, taps the whole journey, opens a
 // reminder, and saves screenshots to
-// ops/workflows/build-evidence/slides-refresh-2026-10-29/blueprint-demo/.
+// ops/workflows/build-evidence/slides-refresh-2026-10-29/design-pass/blueprint-demo/.
 
 import { test, expect } from "@playwright/test";
 import fs from "node:fs";
@@ -19,7 +19,7 @@ import { FULL, SAMPLE, REPAIR, HOLD, NONE, BANNED, THRESHOLD_LABEL } from "./fix
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const HARNESS = fs.readFileSync(path.join(HERE, "fixtures", "present-blueprint-demo-harness.html"), "utf8");
-const OUT = path.resolve(HERE, "..", "ops/workflows/build-evidence/slides-refresh-2026-10-29/blueprint-demo");
+const OUT = path.resolve(HERE, "..", "ops/workflows/build-evidence/slides-refresh-2026-10-29/design-pass/blueprint-demo");
 fs.mkdirSync(OUT, { recursive: true });
 
 const FIXTURES = { full: FULL, sample: SAMPLE, repair: REPAIR, hold: HOLD, none: NONE };

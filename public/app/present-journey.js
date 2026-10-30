@@ -95,36 +95,51 @@
     EQ: "Equifax", EFX: "Equifax", EQUIFAX: "Equifax"
   };
 
+  /* SHARED LOOK (design pass, 2026-10-29): the same values as
+     present-visuals.js and present-blueprint-demo.js, so the five visuals read
+     as one system. Eyebrow mono 13px .14em uppercase gray with the brand's
+     16x2 spectrum dash on a section eyebrow; the Sample tag a mono 13px pill
+     (radius 999, 4px 10px, a 6px warn dot); hero amounts var(--sans) 700
+     -.03em tabular clamp(28px,4.4cqi,46px), never mono; item titles 17px 650;
+     cards radius 10 and 16px padding; 44px taps; today = solid ink, a
+     projection = a dashed gray2 outline; 700ms motion; focus 2px ink, 3px
+     offset. No hex colours and no shadows in this file (its test holds it to
+     the tokens). Change one, change all three. */
   var CSS = [
-    ".fhv-journey{font-family:var(--sans);color:var(--ink);container-type:inline-size;display:flex;flex-direction:column;gap:22px;margin-top:10px;max-width:100%}",
-    ".fhv-journey *{box-sizing:border-box}",
-    ".fhv-journey-eyebrow{display:flex;align-items:center;gap:10px;margin:0 0 10px;font-family:var(--mono);font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--gray)}",
-    ".fhv-journey-eyebrow::before{content:'';display:inline-block;width:16px;height:2px;border-radius:1px;background:var(--spectrum)}",
-    ".fhv-journey-tag{margin-left:auto;padding:3px 10px;border:1px solid var(--line);border-radius:20px;font-family:var(--mono);font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--gray)}",
-    /* the ladder */
-    ".fhv-journey-rungs{list-style:none;margin:0;padding:0;position:relative;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0 12px}",
+    ".fhv-journey{font-family:var(--sans);color:var(--ink);container-type:inline-size;display:flex;flex-direction:column;gap:24px;max-width:100%}",
+    ".fhv-journey *{box-sizing:border-box;min-width:0}",
+    ".fhv-journey-eyebrow{display:flex;align-items:center;gap:9px;margin:0 0 12px;min-height:28px;font-family:var(--mono);font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--gray);line-height:1.4}",
+    ".fhv-journey-eyebrow::before{content:'';display:inline-block;width:16px;height:2px;border-radius:1px;background:var(--spectrum);flex:0 0 auto}",
+    ".fhv-journey-tag{display:inline-flex;align-items:center;gap:7px;margin-left:auto;padding:4px 10px;border:1px solid var(--line);border-radius:999px;background:transparent;font-family:var(--mono);font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--gray);white-space:nowrap;line-height:1.2;flex:0 0 auto}",
+    ".fhv-journey-tag::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--warn)}",
+    /* the ladder: three steps that climb left to right. Each rung is a grid of
+       four rows (the marks, the dot, the step, the level name); the rungs
+       stretch to one height, so the steps rest on one line and the dotted
+       connector (anchored LVL px up, H px tall) runs dot centre to dot centre. */
+    ".fhv-journey-rungs{list-style:none;margin:0;padding:0;position:relative;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0 16px;align-items:stretch}",
     ".fhv-journey-link{position:absolute;left:0;bottom:" + LVL + "px;width:100%;height:" + H + "px;color:var(--ink);pointer-events:none;overflow:visible}",
-    ".fhv-journey-rung{position:relative;z-index:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;text-align:center;min-width:0}",
-    ".fhv-journey-rung-g{min-height:" + H + "px;width:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center}",
-    ".fhv-journey-flat .fhv-journey-rung-g{min-height:" + (BAR[BAR.length - 1] + 10) + "px}",
-    ".fhv-journey-marks{display:flex;flex-direction:column;align-items:center;gap:6px;margin-bottom:4px;padding:2px 6px;border-radius:8px;background:var(--paper);max-width:100%}",
-    ".fhv-journey-mark{display:flex;flex-direction:column;align-items:center;gap:2px}",
-    ".fhv-journey-cap{font-family:var(--mono);font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--gray);line-height:1.25}",
-    ".fhv-journey-amt{font-family:var(--mono);font-size:18px;font-size:clamp(18px,2.6cqw,30px);line-height:1.1;color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}",
+    ".fhv-journey-rung{position:relative;z-index:1;display:grid;grid-template-rows:minmax(0,1fr) auto auto minmax(" + LVL + "px,auto);justify-items:center;text-align:center;min-width:0;min-height:" + (H + LVL) + "px}",
+    ".fhv-journey-flat .fhv-journey-rung{min-height:" + (BAR[BAR.length - 1] + 10 + LVL) + "px}",
+    ".fhv-journey-rung-g{display:contents}",
+    ".fhv-journey-marks{grid-row:1;align-self:end;display:flex;flex-direction:row;flex-wrap:wrap;justify-content:center;align-items:flex-end;gap:8px 20px;margin-bottom:6px;padding:4px 8px;border-radius:8px;background:var(--paper);max-width:100%}",
+    ".fhv-journey-mark{display:flex;flex-direction:column;align-items:center;gap:4px}",
+    ".fhv-journey-cap{font-family:var(--mono);font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--gray);line-height:1.4;white-space:nowrap}",
+    ".fhv-journey-amt{font-family:var(--sans);font-size:clamp(28px,4.4cqi,46px);font-weight:700;letter-spacing:-.03em;line-height:1.05;color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}",
     ".fhv-journey-mark.is-after .fhv-journey-amt{color:var(--ink2)}",
-    ".fhv-journey-dot{flex:0 0 auto;width:12px;height:12px;margin-bottom:4px;border-radius:50%;border:2px solid var(--ink);background:var(--paper)}",
-    ".fhv-journey-dot.is-now{background:var(--ink)}",
-    ".fhv-journey-dot.is-after:not(.is-now){border-style:dotted}",
-    ".fhv-journey-bar{width:100%;border:1px solid var(--line);border-bottom:0;border-radius:10px 10px 0 0;background:var(--soft)}",
-    ".fhv-journey-rung.is-now .fhv-journey-bar{border-color:var(--ink);border-top-width:2px}",
-    ".fhv-journey-lvl{width:100%;min-height:" + LVL + "px;padding:10px 4px 0;border-top:1px solid var(--line);font-size:16px;font-weight:650;line-height:1.3;letter-spacing:-.01em;color:var(--gray)}",
+    ".fhv-journey-dot{grid-row:2;position:relative;z-index:1;width:12px;height:12px;margin-bottom:4px;border-radius:50%;border:2px solid var(--gray2);background:var(--paper)}",
+    ".fhv-journey-dot.is-now{background:var(--ink);border-color:var(--ink)}",
+    ".fhv-journey-dot.is-after:not(.is-now){border-style:dotted;border-color:var(--ink)}",
+    ".fhv-journey-bar{grid-row:3;justify-self:stretch;width:100%;border:1px solid var(--line);border-bottom:0;border-radius:8px 8px 0 0;background:var(--soft)}",
+    ".fhv-journey-rung.is-now .fhv-journey-bar{background:var(--ink);border-color:var(--ink)}",
+    ".fhv-journey-rung.is-after:not(.is-now) .fhv-journey-bar{background:transparent;border:2px dashed var(--gray2);border-bottom:0}",
+    ".fhv-journey-lvl{grid-row:4;justify-self:stretch;width:100%;padding:10px 4px 0;border-top:1px solid var(--line);font-size:17px;font-weight:650;line-height:1.3;letter-spacing:-.015em;color:var(--gray)}",
     ".fhv-journey-rung.is-now .fhv-journey-lvl,.fhv-journey-rung.is-after .fhv-journey-lvl{color:var(--ink)}",
     ".fhv-journey-ladder-note{margin:12px 0 0;font-size:16px;line-height:1.45;color:var(--gray)}",
     /* the path: a vertical spine on the phone */
     ".fhv-journey-path{position:relative;display:flex;flex-direction:column}",
     ".fhv-journey-path::before{display:none}",
     ".fhv-journey-rbtn{position:relative;display:flex;align-items:flex-start;gap:14px;width:100%;min-height:56px;margin:0;padding:10px 8px 10px 0;border:0;border-radius:10px;background:transparent;color:var(--ink);font:inherit;text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent}",
-    ".fhv-journey-rbtn:focus-visible{outline:2px solid var(--ink);outline-offset:2px}",
+    ".fhv-journey-rbtn:focus-visible{outline:2px solid var(--ink);outline-offset:3px}",
     ".fhv-journey-rbtn::before,.fhv-journey-rbody::before{content:'';position:absolute;left:15px;top:0;bottom:0;width:2px;background:var(--line)}",
     ".fhv-journey-rbtn[data-fhv-round=R1]::before{top:26px}",
     ".fhv-journey-rbtn[data-fhv-round=R6]::before{bottom:auto;height:26px}",
@@ -134,11 +149,11 @@
     ".fhv-journey-rbtn.is-open .fhv-journey-node{background:var(--ink);border-color:var(--ink);color:var(--paper)}",
     ".fhv-journey-rtxt{display:flex;flex-direction:column;gap:2px;min-width:0;padding-top:4px}",
     ".fhv-journey-rwhen{font-family:var(--mono);font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--gray)}",
-    ".fhv-journey-rtitle{font-size:16px;font-weight:650;line-height:1.3;letter-spacing:-.01em;color:var(--ink2)}",
+    ".fhv-journey-rtitle{font-size:17px;font-weight:650;line-height:1.3;letter-spacing:-.015em;color:var(--ink2)}",
     ".fhv-journey-rbtn.is-open .fhv-journey-rtitle{color:var(--ink)}",
     ".fhv-journey-rbody{position:relative;padding:2px 0 18px 46px}",
     ".fhv-journey-rbody[hidden]{display:none}",
-    ".fhv-journey-card{display:flex;flex-direction:column;gap:14px;padding:14px 16px;border:1px solid var(--line);border-radius:10px;background:var(--soft)}",
+    ".fhv-journey-card{display:flex;flex-direction:column;gap:12px;padding:16px;border:1px solid var(--line);border-radius:10px;background:var(--soft)}",
     ".fhv-journey-note{margin:0;font-size:16px;line-height:1.45;color:var(--ink)}",
     ".fhv-journey-items{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}",
     ".fhv-journey-items li{display:grid;grid-template-columns:1fr;gap:2px 12px;padding:8px 0;border-top:1px solid var(--line);font-size:16px;line-height:1.35}",
@@ -148,16 +163,34 @@
     ".fhv-journey-bur{font-size:13px;color:var(--gray)}",
     ".fhv-journey-said{margin:0;padding-left:12px;border-left:2px solid var(--ink);font-size:16px;line-height:1.45;color:var(--ink)}",
     ".fhv-journey-detail{margin:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 14px;font-size:16px;line-height:1.45}",
-    ".fhv-journey-detail dt{padding-top:3px;font-family:var(--mono);font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--gray)}",
+    ".fhv-journey-detail dt{padding-top:3px;font-family:var(--mono);font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--gray)}",
     ".fhv-journey-detail dd{margin:0;color:var(--ink)}",
-    ".fhv-journey-timing{margin:0;font-family:var(--mono);font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--gray)}",
+    ".fhv-journey-timing{margin:0;font-size:13px;line-height:1.45;color:var(--gray)}",
     ".fhv-journey-plain{margin:8px 0 0;padding-left:22px;font-size:16px;line-height:1.6}",
     "@media (prefers-reduced-motion:reduce){.fhv-journey *{animation:none!important;transition:none!important}}",
+    /* narrow: the ladder turns into three rows, the way the rounds do: a dot
+       on a spine, the level name, the marks on the right, and under the name a
+       short track that grows a third per level, so the climb still reads. */
+    "@container (max-width:719px){",
+    ".fhv-journey-rungs{grid-template-columns:1fr;gap:0}",
+    ".fhv-journey-link{display:none}",
+    ".fhv-journey-rung,.fhv-journey-flat .fhv-journey-rung{min-height:0;grid-template-rows:auto auto;grid-template-columns:28px minmax(0,1fr) auto;column-gap:14px;row-gap:8px;justify-items:start;align-items:center;text-align:left;padding:10px 0}",
+    ".fhv-journey-rung::before{content:'';position:absolute;left:13px;top:0;bottom:0;width:2px;background:var(--line)}",
+    ".fhv-journey-rung:first-child::before{top:50%}",
+    ".fhv-journey-rung:last-child::before{bottom:50%}",
+    ".fhv-journey-dot{grid-row:1 / span 2;grid-column:1;justify-self:center;margin:0}",
+    ".fhv-journey-lvl{grid-row:1;grid-column:2;width:auto;padding:0;border-top:0}",
+    ".fhv-journey-bar{grid-row:2;grid-column:2;justify-self:start;height:8px!important;width:calc(var(--lvl,1) * 33.333%);border-radius:4px;border-bottom:1px solid var(--line)}",
+    ".fhv-journey-rung.is-now .fhv-journey-bar{border-bottom-color:var(--ink)}",
+    ".fhv-journey-rung.is-after:not(.is-now) .fhv-journey-bar{border-bottom:2px dashed var(--gray2)}",
+    ".fhv-journey-marks{grid-row:1 / span 2;grid-column:3;align-self:center;justify-self:end;flex-direction:column;align-items:flex-end;gap:6px;margin:0;padding:0;background:transparent;text-align:right}",
+    ".fhv-journey-mark{align-items:flex-end}",
+    "}",
     /* wide: the six rounds side by side, the open round's card under them */
     "@container (min-width:720px){",
     ".fhv-journey-path{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:0}",
     ".fhv-journey-path::before{content:'';display:block;position:absolute;top:26px;left:calc(100% / 12);right:calc(100% / 12);height:2px;background:var(--line)}",
-    ".fhv-journey-rbtn{grid-row:1;flex-direction:column;align-items:center;gap:10px;min-height:44px;padding:10px 8px 14px;text-align:center}",
+    ".fhv-journey-rbtn{grid-row:1;flex-direction:column;align-items:center;gap:10px;min-height:44px;padding:8px 8px 12px;text-align:center}",
     ".fhv-journey-rbtn::before,.fhv-journey-rbody::before{display:none}",
     ".fhv-journey-rbtn.is-open::after{content:'';position:absolute;left:18%;right:18%;bottom:0;height:2px;border-radius:2px;background:var(--ink)}",
     ".fhv-journey-rbtn[data-fhv-round=R1]{grid-column:1}",
@@ -167,11 +200,10 @@
     ".fhv-journey-rbtn[data-fhv-round=R5]{grid-column:5}",
     ".fhv-journey-rbtn[data-fhv-round=R6]{grid-column:6}",
     ".fhv-journey-rtxt{align-items:center;padding-top:0}",
-    ".fhv-journey-rbody{grid-row:2;grid-column:1 / -1;padding:14px 0 0}",
+    ".fhv-journey-rbody{grid-row:2;grid-column:1 / -1;padding:12px 0 0}",
     ".fhv-journey-items li{grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) minmax(0,1.2fr);align-items:baseline}",
     ".fhv-journey-items{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 28px}",
     ".fhv-journey-items li:nth-child(2){border-top:0;padding-top:0}",
-    ".fhv-journey-marks{flex-direction:row;align-items:flex-end;gap:18px}",
     "}"
   ].join("\n");
 
@@ -289,8 +321,10 @@
       h += '<li class="fhv-journey-rung' + (isNow ? " is-now" : "") + (isAfter ? " is-after" : "") + '" data-level="' + L.id + '">' +
         '<div class="fhv-journey-rung-g">' +
         (marks ? '<div class="fhv-journey-marks">' + marks + "</div>" : "") +
-        (isNow || isAfter ? '<span class="fhv-journey-dot' + (isNow ? " is-now" : "") + (isAfter ? " is-after" : "") + '"></span>' : "") +
-        '<div class="fhv-journey-bar" style="height:' + BAR[i] + 'px"></div></div>' +
+        /* Every rung carries a node (solid at today, dotted at the projection);
+           --lvl sizes the short track on the phone's row layout. */
+        '<span class="fhv-journey-dot' + (isNow ? " is-now" : "") + (isAfter ? " is-after" : "") + '"></span>' +
+        '<div class="fhv-journey-bar" style="height:' + BAR[i] + 'px;--lvl:' + (i + 1) + '"></div></div>' +
         '<div class="fhv-journey-lvl">' + esc(L.name) + "</div></li>";
     }
     h += "</ol>";

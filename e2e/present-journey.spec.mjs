@@ -12,9 +12,9 @@
 // bad-data states; one column with no sideways scroll on the phone; 44px taps,
 // 16px body and 13px captions; the count-up lands on the amount and skips
 // itself under reduced motion. Screenshots land in
-// ops/workflows/build-evidence/slides-refresh-2026-10-29/journey/.
+// ops/workflows/build-evidence/slides-refresh-2026-10-29/design-pass/journey/.
 //
-// Run: E2E_PORT=4951 npx playwright test e2e/present-journey.spec.mjs
+// Run: E2E_PORT=4963 npx playwright test e2e/present-journey.spec.mjs
 
 import { test, expect } from "@playwright/test";
 import fs from "node:fs";
@@ -24,7 +24,7 @@ import { fileURLToPath } from "node:url";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const HOST = fs.readFileSync(path.join(HERE, "fixtures", "present-journey-harness.html"), "utf8");
 const FIXTURES = JSON.parse(fs.readFileSync(path.join(HERE, "fixtures", "present-journey-ctx.json"), "utf8"));
-const EVIDENCE = path.resolve(HERE, "../ops/workflows/build-evidence/slides-refresh-2026-10-29/journey");
+const EVIDENCE = path.resolve(HERE, "../ops/workflows/build-evidence/slides-refresh-2026-10-29/design-pass/journey");
 
 async function open(page, state, { client } = {}) {
   const errors = [];

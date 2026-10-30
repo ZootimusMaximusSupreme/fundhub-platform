@@ -167,7 +167,7 @@
 
   function countUp(el, from, to, fmt) {
     const start = Date.now();
-    const ms = 650;
+    const ms = 700;
     const step = function () {
       const t = Math.min(1, (Date.now() - start) / ms);
       const eased = 1 - Math.pow(1 - t, 3);
@@ -192,11 +192,12 @@
 
   /* ── shared markup ─────────────────────────────────────────────────────── */
   function sampleTag(ctx) {
-    return ctx && ctx.sample === true
-      ? '<span class="fhv-ui-tag"><span class="fhv-ui-tagdot"></span>Sample</span>' : "";
+    return ctx && ctx.sample === true ? '<span class="fhv-ui-tag">Sample</span>' : "";
   }
+  /* The visual's title row: a section eyebrow (with the brand's dash) and the
+     Sample tag on the right. */
   function head(ctx, eyebrow) {
-    return '<div class="fhv-ui-head"><span class="fhv-ui-eyebrow">' + ownEsc(eyebrow) + "</span>" + sampleTag(ctx) + "</div>";
+    return '<div class="fhv-ui-head"><span class="fhv-ui-eyebrow is-section">' + ownEsc(eyebrow) + "</span>" + sampleTag(ctx) + "</div>";
   }
   function note(eyebrow, line) {
     return '<div class="fhv-ui-note"><span class="fhv-ui-eyebrow">' + ownEsc(eyebrow) + '</span><p class="fhv-ui-text">' + ownEsc(line) + "</p></div>";
@@ -281,8 +282,9 @@
     const problem = text(handoff.problem);
     const sideDoor = lit.indexOf("revenue") >= 0;
     const all = sideDoor ? STATIONS.concat([SIDE_DOOR]) : STATIONS;
-    /* The lit door opens first; a tap moves it. Nothing else is assumed. */
-    const open = st.touched && st.open ? st.open : (lit[0] || null);
+    /* The first station opens first, like every visual starts at its first
+       step (owner-set 2026-10-29); a tap moves it. The door stays lit. */
+    const open = st.touched && st.open ? st.open : STATIONS[0].key;
     const current = all.filter(function (s) { return s.key === open; })[0] || null;
 
     const cols = STATIONS.map(function (s, i) {
@@ -398,13 +400,17 @@
         renderMismatches(mismatches, esc);
     }
 
-    /* Which lever is on: all of them until the closer taps one. */
+    /* Which lever is on: none until the closer taps one. The slide starts at
+       today and the closer builds the climb live, one lever at a time
+       (owner-set 2026-10-29). */
     const maxStep = levers.length;
-    const step = st.step == null ? maxStep : Math.max(0, Math.min(maxStep, st.step));
+    const step = st.step == null ? 0 : Math.max(0, Math.min(maxStep, st.step));
     const stepAmount = step === 0 ? today
       : (levers[step - 1] && isNum(levers[step - 1].totalAfter) ? levers[step - 1].totalAfter : optimized);
     const projected = step === maxStep && isNum(optimized) ? optimized : stepAmount;
-    const gap = isNum(projected) && isNum(today) ? projected - today : null;
+    /* Left on the table is the whole gap, today to fully optimized, at every
+       step. A lever's own gain is printed on its row, never here. */
+    const gap = isNum(optimized) && isNum(today) ? optimized - today : null;
 
     /* The scale: the taller bar, or the goal when it sits above both (capped so
        the bars never shrink to slivers). */
@@ -419,22 +425,24 @@
     }
 
     /* heads */
+    const waiting = step === 0 && maxStep > 0;
     const rightCap = !isNum(optimized)
       ? "The optimized amount is not on this file yet."
-      : step === 0 ? "Nothing applied yet. Tap the levers to add each one."
-        : step === maxStep ? (maxStep ? "Fully optimized, with " + (maxStep === 1 ? "the one lever" : "all " + plural(maxStep, "lever", "levers")) + " on." : "Fully optimized.")
-          : "After lever " + step + " of " + maxStep + ".";
+      : maxStep === 0 ? "Fully optimized."
+        : step === 0 ? "Nothing applied yet. Tap each lever to build the climb."
+          : step === maxStep ? "Fully optimized, with " + (maxStep === 1 ? "the one lever" : maxStep === 2 ? "both levers" : "all three levers") + " on."
+            : "After lever " + step + " of " + maxStep + ".";
     const heads = '<div class="fhv-levers-heads">' +
       '<div class="fhv-levers-headcell"><span class="fhv-ui-eyebrow">Today</span>' + bigNum(client, "levers:today", today, amt) +
       '<p class="fhv-ui-cap">' + (isNum(today) ? "How much you qualify for today." : "Not on this file yet.") + "</p></div>" +
-      '<div class="fhv-levers-headcell is-opt"><span class="fhv-ui-eyebrow">Projects to</span>' +
+      '<div class="fhv-levers-headcell is-opt' + (waiting ? " is-waiting" : "") + '"><span class="fhv-ui-eyebrow">Projects to</span>' +
       (isNum(projected) && isNum(optimized) ? bigNum(client, "levers:opt", projected, amt) : "") +
       '<p class="fhv-ui-cap">' + ownEsc(rightCap) + "</p></div></div>";
 
-    const gapLine = isNum(gap) && isNum(optimized)
+    const gapLine = isNum(gap)
       ? (gap > 0
         ? '<div class="fhv-levers-gap"><span class="fhv-levers-gapamt" data-fhv-count="' + gap + '" data-fhv-from="' + fromTo(client, "levers:gap", gap) + '">' + ownEsc(amt(gap)) + "</span> left on the table</div>"
-        : (step === 0 ? "" : '<div class="fhv-levers-gap is-zero">Nothing left on the table today.</div>'))
+        : '<div class="fhv-levers-gap is-zero">Nothing left on the table today.</div>')
       : "";
 
     /* bars (sizes are unitless custom properties, see the file header) */
@@ -454,7 +462,7 @@
       '<div class="fhv-levers-col"><div class="fhv-levers-bar is-today"' + grow(client, "levers:todayPct", "--h", todayPct) + '></div><span class="fhv-levers-barlabel">Today</span></div>' +
       '<div class="fhv-levers-col">' +
       (isNum(optimized)
-        ? '<div class="fhv-levers-outline" style="--h:' + round1(pct(optimized, scaleMax)) + '"></div>' +
+        ? '<div class="fhv-levers-outline" style="--h:' + round1(pct(optimized, scaleMax)) + '"><span class="fhv-levers-outlinelabel">' + ownEsc(amt(optimized)) + "</span></div>" +
           '<div class="fhv-levers-bar is-opt"' + grow(client, "levers:fillPct", "--h", pct(projected, scaleMax)) + "></div>"
         : '<div class="fhv-levers-outline is-unknown"></div>') +
       '<span class="fhv-levers-barlabel">Optimized</span></div>' +
@@ -472,15 +480,15 @@
         (tAfter && tAfter !== tNow ? '<span class="fhv-levers-chip is-after">' + ownEsc(tAfter) + "</span>" : "") + "</div>";
     }
 
-    /* the levers */
-    let steps;
+    /* the levers, and under them the tier: the climb, then where it lands */
+    let stepsInner;
     if (!isNum(optimized)) {
-      steps = '<div class="fhv-levers-steps">' + note("The levers", "They show once the optimized amount is on this file.") + "</div>";
+      stepsInner = note("The levers", "They show once the optimized amount is on this file.");
     } else if (!levers.length) {
-      steps = '<div class="fhv-levers-steps">' + note("The levers", "Nothing to optimize today. This file is already at its optimized amount.") + "</div>";
+      stepsInner = note("The levers", "Nothing to optimize today. This file is already at its optimized amount.");
     } else {
       const count = levers.length === 1 ? "One lever" : levers.length === 2 ? "Two levers" : "Three levers";
-      steps = '<div class="fhv-levers-steps"><span class="fhv-ui-eyebrow">' + count + " · tap each one</span>" +
+      stepsInner = '<span class="fhv-ui-eyebrow">' + count + " · tap each one</span>" +
         '<div class="fhv-levers-list">' + levers.map(function (l, i) {
           const n = i + 1;
           const on = n <= step;
@@ -493,12 +501,13 @@
             '<span class="fhv-levers-stepamt">' + (delta ? '<span class="fhv-levers-delta">' + ownEsc(delta) + "</span>" : "") +
             (toLine ? '<span class="fhv-ui-cap">' + ownEsc(toLine) + "</span>" : "") + "</span></button>";
         }).join("") + "</div>" +
-        '<button type="button" class="fhv-ui-link' + (step === 0 ? " is-on" : "") + '" data-fhv-act="levers:step:0" aria-pressed="' + (step === 0 ? "true" : "false") + '">Start at today</button>' +
-        "</div>";
+        /* The one clear way back to the start. Off until a lever is on. */
+        '<button type="button" class="fhv-ui-ghost" data-fhv-act="levers:step:0"' + (step === 0 ? " disabled" : "") + ">Reset to today</button>";
     }
+    const steps = '<div class="fhv-levers-steps">' + stepsInner + tier + "</div>";
 
     return head(ctx, LEVERS_EYEBROW) +
-      '<div class="fhv-levers-grid"><div class="fhv-levers-chart">' + heads + gapLine + bars + tier + "</div>" + steps + "</div>" +
+      '<div class="fhv-levers-grid"><div class="fhv-levers-chart">' + heads + gapLine + bars + "</div>" + steps + "</div>" +
       renderMismatches(mismatches, esc);
   }
 
@@ -647,7 +656,10 @@
             grow(client, "companies:marker", "--l", todayShare, ";--gaps:" + Math.max(0, segs.length - 1) + ";--k:" + Math.max(0, segs.filter(function (s) { return s.cls !== "is-added"; }).length - 1)) +
             '><span class="fhv-companies-markline"></span><span class="fhv-companies-marklabel">Today ' + ownEsc(amt(today)) + "</span></div></div>"
           : "")
-      : note("Not on this file yet", "The amounts are not on this file yet.");
+      : (isNum(today) && today === 0
+        /* The engine's own answer for a repair-only file: $0 today, so no layer. */
+        ? note("Nothing to stack today", "This file qualifies for $0 today, so there is no layer to stack yet.")
+        : note("Not on this file yet", "The amounts are not on this file yet."));
 
     /* heads */
     const heads = '<div class="fhv-companies-heads">' +
@@ -678,7 +690,7 @@
     const full = added >= MAX_ADDED;
     tabs.push('<button type="button" class="fhv-companies-tab is-add" data-fhv-act="companies:add"' + (full ? ' aria-disabled="true"' : "") + '>' +
       '<span class="fhv-companies-tabname">+ Add a company</span><span class="fhv-ui-cap">' + (full ? "Four is the most on this picture" : "if you add a company") + "</span></button>");
-    if (added) tabs.push('<button type="button" class="fhv-ui-link" data-fhv-act="companies:reset">Take them off</button>');
+    if (added) tabs.push('<button type="button" class="fhv-ui-ghost" data-fhv-act="companies:reset">Reset to today</button>');
 
     /* the years switch, only once a priced company is on the picture */
     let years = "";
@@ -846,10 +858,27 @@
   }
 
   /* ── the one style element ─────────────────────────────────────────────── */
+  /* SHARED LOOK (design pass, 2026-10-29). present-visuals.js,
+     present-blueprint-demo.js and present-journey.js draw one system. Each file
+     keeps its own copy because each is a standalone script; keep these values
+     equal across the three:
+       eyebrow     mono 13px, .14em, uppercase, gray; the brand's 16x2 spectrum
+                   dash only on a section eyebrow (the visual's title row)
+       tag / badge mono 13px, .1em, uppercase, pill (radius 999, 4px 10px);
+                   the Sample tag carries a 6px warn dot
+       hero amount var(--sans) 700, -.03em, tabular, clamp(28px,4.4cqi,46px)
+       item title  17px 650 -.015em; body 16px; caption 13px gray
+       card        radius 10, padding 16, 1px line; notes on --soft
+       control     radius 8, 44px tall (a primary 48px); pills for chips
+       meaning     today = solid ink; a projection = dashed gray2 outline;
+                   the climb = sage; pastel stops for status, never alone
+       rhythm      8 / 16 / 24 / 32 between things
+       motion      count-ups and bars 700ms cubic-bezier(.2,.7,.3,1)
+       focus       2px solid ink, offset 3px */
   const NARROW = [
-    ".fhv-path-rail{grid-template-columns:1fr;gap:18px;padding-top:0}",
+    ".fhv-path-rail{grid-template-columns:1fr;gap:16px;padding-top:0}",
     ".fhv-path-line{left:21px;right:auto;top:8px;bottom:8px;width:2px;height:auto}",
-    ".fhv-path-station{flex-direction:row;align-items:flex-start;text-align:left;flex-wrap:wrap;gap:6px 14px}",
+    ".fhv-path-station{flex-direction:row;align-items:flex-start;text-align:left;flex-wrap:wrap;gap:8px 14px}",
     ".fhv-path-chips{position:static;order:-1;width:100%;justify-content:flex-start;padding-left:58px;min-height:0}",
     ".fhv-path-stop{flex-direction:row;align-items:center;width:100%;padding:0;gap:14px;text-align:left}",
     ".fhv-path-words{align-items:flex-start}",
@@ -868,30 +897,32 @@
     /* shared */
     ".fhv-ui-root{position:relative;display:flex;flex-direction:column;gap:16px;min-width:0;flex:1 1 auto;container-type:inline-size;font-family:var(--sans);color:var(--ink);font-size:16px;line-height:1.45}",
     ".fhv-ui-root *{box-sizing:border-box;min-width:0}",
-    ".fhv-ui-head{display:flex;align-items:center;justify-content:space-between;gap:12px}",
+    ".fhv-ui-head{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:28px}",
     ".fhv-ui-eyebrow{display:block;font-family:var(--mono);font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--gray);line-height:1.4}",
+    ".fhv-ui-eyebrow.is-section{display:inline-flex;align-items:center;gap:9px}",
+    ".fhv-ui-eyebrow.is-section::before{content:\"\";display:inline-block;width:16px;height:2px;border-radius:1px;background:var(--spectrum);flex:0 0 auto}",
     ".fhv-ui-cap{font-size:13px;line-height:1.45;color:var(--gray);margin:0}",
     ".fhv-ui-text{font-size:16px;line-height:1.45;color:var(--ink);margin:0}",
     ".fhv-ui-text.is-strong{font-weight:650}",
-    ".fhv-ui-text+.fhv-ui-text{margin-top:6px}",
-    ".fhv-ui-tag{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--gray);padding:5px 11px;border:1px solid var(--line);border-radius:20px;background:#fff;flex:0 0 auto}",
-    ".fhv-ui-tagdot{width:7px;height:7px;border-radius:50%;background:var(--warn)}",
-    ".fhv-ui-note{border:1px solid var(--line);background:var(--soft);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;max-width:620px}",
-    ".fhv-ui-num{font-weight:700;letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1.05;color:var(--ink);font-size:34px;font-size:clamp(28px,4.4cqi,46px);margin-top:4px}",
+    ".fhv-ui-text+.fhv-ui-text{margin-top:8px}",
+    ".fhv-ui-tag{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--gray);padding:4px 10px;border:1px solid var(--line);border-radius:999px;background:transparent;white-space:nowrap;line-height:1.2;flex:0 0 auto}",
+    ".fhv-ui-tag::before{content:\"\";width:6px;height:6px;border-radius:50%;background:var(--warn)}",
+    ".fhv-ui-note{border:1px solid var(--line);background:var(--soft);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:8px;max-width:620px}",
+    ".fhv-ui-num{font-family:var(--sans);font-weight:700;letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1.05;color:var(--ink);font-size:clamp(28px,4.4cqi,46px)}",
     ".fhv-ui-num.is-plus{color:var(--ink2)}",
-    ".fhv-ui-link{align-self:flex-start;min-height:44px;min-width:44px;padding:10px 12px;background:transparent;border:1px solid transparent;border-radius:10px;color:var(--gray);font:600 13px/1.2 var(--sans);letter-spacing:.02em;text-decoration:underline;text-underline-offset:3px;cursor:pointer}",
-    ".fhv-ui-link:hover{color:var(--ink)}",
-    ".fhv-ui-link.is-on{color:var(--ink);text-decoration:none;border-color:var(--line);background:#fff}",
+    ".fhv-ui-ghost{align-self:flex-start;display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px;padding:0 16px;background:#fff;border:1px solid var(--line);border-radius:8px;color:var(--ink);font-size:16px;font-weight:600;line-height:1.2;cursor:pointer}",
+    ".fhv-ui-ghost:hover{border-color:var(--gray2)}",
+    ".fhv-ui-ghost[disabled]{color:var(--gray2);cursor:default;border-color:var(--line)}",
     ".fhv-ui-root button{font-family:inherit}",
-    ".fhv-ui-root button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}",
+    ".fhv-ui-root button:focus-visible{outline:2px solid var(--ink);outline-offset:3px}",
     /* E. your path */
-    ".fhv-path-rail{position:relative;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;padding-top:30px}",
-    ".fhv-path-line{position:absolute;left:10%;right:10%;top:52px;height:2px;background:var(--spectrum);border-radius:2px;opacity:.9}",
+    ".fhv-path-rail{position:relative;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;padding-top:32px}",
+    ".fhv-path-line{position:absolute;left:10%;right:10%;top:53px;height:2px;background:var(--spectrum);border-radius:2px;opacity:.9}",
     ".fhv-path-station{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;position:relative}",
-    ".fhv-path-chips{position:absolute;top:-30px;left:0;right:0;display:flex;justify-content:center;gap:6px;min-height:22px}",
-    ".fhv-path-chip{font-family:var(--mono);font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--gray);padding:2px 8px;border:1px solid var(--line);border-radius:20px;background:#fff;white-space:nowrap}",
+    ".fhv-path-chips{position:absolute;top:-32px;left:0;right:0;display:flex;justify-content:center;gap:6px;min-height:24px}",
+    ".fhv-path-chip{display:inline-flex;align-items:center;font-family:var(--mono);font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--gray);padding:4px 10px;border:1px solid var(--line);border-radius:999px;background:var(--paper);white-space:nowrap;line-height:1.2}",
     ".fhv-path-chip.is-door{color:var(--paper);background:var(--ink);border-color:var(--ink)}",
-    ".fhv-path-stop{display:flex;flex-direction:column;align-items:center;gap:10px;min-height:44px;min-width:44px;width:100%;padding:0 4px 8px;background:transparent;border:0;border-radius:12px;cursor:pointer;color:var(--ink);text-align:center}",
+    ".fhv-path-stop{display:flex;flex-direction:column;align-items:center;gap:10px;min-height:44px;min-width:44px;width:100%;padding:0 4px 8px;background:transparent;border:0;border-radius:10px;cursor:pointer;color:var(--ink);text-align:center}",
     ".fhv-path-stop:hover .fhv-path-name{text-decoration:underline;text-underline-offset:3px}",
     ".fhv-path-dotmark{position:relative;display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:50%;background:#fff;border:2px solid var(--gray2);color:var(--ink);transition:transform .25s;flex:0 0 auto}",
     ".fhv-path-dotmark.is-lit{background:var(--ink);border-color:var(--ink);color:var(--paper)}",
@@ -901,49 +932,52 @@
     ".fhv-path-name{font-size:17px;font-weight:650;letter-spacing:-.015em;line-height:1.2}",
     ".fhv-path-station.is-lit .fhv-path-name{font-weight:750}",
     ".fhv-path-sub{font-size:13px;color:var(--gray);line-height:1.35}",
-    ".fhv-path-said{border:1px solid var(--line);background:var(--soft);border-radius:10px;padding:10px 12px;text-align:left;width:100%;display:flex;flex-direction:column;gap:4px}",
+    ".fhv-path-said{border:1px solid var(--line);background:var(--soft);border-radius:10px;padding:12px 14px;text-align:left;width:100%;display:flex;flex-direction:column;gap:4px}",
     ".fhv-path-said .fhv-ui-text{font-size:16px;font-style:italic}",
     ".fhv-path-goal{display:flex;flex-direction:column;gap:3px;align-items:center}",
     ".fhv-path-goalamt{font-size:24px;font-weight:700;letter-spacing:-.025em;font-variant-numeric:tabular-nums;line-height:1.1}",
     ".fhv-path-branch{display:flex;flex-direction:column;align-items:center;width:100%}",
     ".fhv-path-branchline{width:2px;height:18px;background:var(--gray2);border-radius:1px}",
-    ".fhv-path-side{display:flex;flex-direction:column;align-items:center;gap:6px;min-height:44px;min-width:44px;width:100%;padding:8px 6px;background:var(--soft);border:1px solid var(--line);border-radius:12px;cursor:pointer;color:var(--ink)}",
+    ".fhv-path-side{display:flex;flex-direction:column;align-items:center;gap:6px;min-height:44px;min-width:44px;width:100%;padding:8px 6px;background:var(--soft);border:1px solid var(--line);border-radius:10px;cursor:pointer;color:var(--ink)}",
     ".fhv-path-side .fhv-path-dotmark{width:28px;height:28px}",
     ".fhv-path-side .fhv-path-idx{font-size:14px}",
     ".fhv-path-side.is-open{box-shadow:0 0 0 2px var(--ink)}",
     ".fhv-path-sidename{font-size:16px;font-weight:650;letter-spacing:-.01em}",
-    ".fhv-path-detail{border:1px solid var(--line);background:#fff;border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:8px;min-height:88px}",
+    ".fhv-path-detail{border:1px solid var(--line);background:#fff;border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:8px;min-height:88px}",
     ".fhv-path-detail.is-empty{background:var(--soft);justify-content:center}",
     ".fhv-path-detail .fhv-ui-text{font-size:17px;max-width:760px}",
     /* A. money levers */
-    ".fhv-levers-grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:24px;align-items:start}",
-    ".fhv-levers-chart{display:flex;flex-direction:column;gap:14px;min-width:0}",
+    ".fhv-levers-grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:24px;align-items:start}",
+    ".fhv-levers-chart{display:flex;flex-direction:column;gap:16px;min-width:0}",
     ".fhv-levers-heads{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}",
-    ".fhv-levers-headcell{display:flex;flex-direction:column;gap:4px}",
-    ".fhv-levers-gap{display:inline-flex;align-items:baseline;gap:6px;align-self:flex-start;font-size:16px;font-weight:600;color:var(--ink);padding:8px 14px;border-radius:20px;background:var(--warn)}",
+    ".fhv-levers-headcell{display:flex;flex-direction:column;gap:6px}",
+    ".fhv-levers-headcell.is-waiting .fhv-ui-num{color:var(--gray2)}",
+    ".fhv-levers-gap{display:inline-flex;align-items:baseline;gap:6px;align-self:flex-start;font-size:16px;font-weight:600;color:var(--ink);padding:8px 14px;border-radius:999px;background:var(--warn)}",
     ".fhv-levers-gap.is-zero{background:var(--soft);border:1px solid var(--line);font-weight:500;color:var(--gray)}",
-    ".fhv-levers-gapamt{font-weight:750;font-variant-numeric:tabular-nums;letter-spacing:-.02em;font-size:18px}",
-    ".fhv-levers-bars{position:relative;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;height:250px;margin:26px 0 30px;padding:0 12px;border-bottom:1px solid var(--line)}",
+    ".fhv-levers-gapamt{font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.02em;font-size:18px}",
+    ".fhv-levers-bars{position:relative;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;height:240px;margin:24px 0 32px;padding:0 12px;border-bottom:1px solid var(--line)}",
     ".fhv-levers-col{position:relative;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:stretch}",
-    ".fhv-levers-bar{width:100%;height:calc(var(--h,0) * 1%);border-radius:8px 8px 0 0;min-height:3px;transition:height .55s cubic-bezier(.2,.7,.3,1)}",
+    ".fhv-levers-bar{width:100%;height:calc(var(--h,0) * 1%);border-radius:8px 8px 0 0;min-height:3px;transition:height .7s cubic-bezier(.2,.7,.3,1)}",
     ".fhv-levers-bar.is-today{background:var(--ink)}",
     ".fhv-levers-bar.is-opt{background:var(--ok)}",
     ".fhv-levers-outline{position:absolute;left:0;right:0;bottom:0;height:calc(var(--h,0) * 1%);border:2px dashed var(--gray2);border-bottom:0;border-radius:8px 8px 0 0;pointer-events:none}",
+    ".fhv-levers-outlinelabel{position:absolute;left:10px;top:8px;font-family:var(--mono);font-size:13px;letter-spacing:.06em;line-height:1.2;color:var(--ink2);font-variant-numeric:tabular-nums;white-space:nowrap}",
     ".fhv-levers-outline.is-unknown{height:40%;border-color:var(--line)}",
-    ".fhv-levers-barlabel{position:absolute;left:0;right:0;bottom:-26px;text-align:center;font-family:var(--mono);font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--gray)}",
-    ".fhv-levers-goal{position:absolute;left:0;right:0;bottom:calc(var(--b,0) * 1%);height:calc(var(--h,0) * 1%);border-top:2px dashed var(--ink2);pointer-events:none}",
-    ".fhv-levers-goal.is-band{background:rgba(13,17,19,.05);border-bottom:2px dashed var(--ink2)}",
+    ".fhv-levers-barlabel{position:absolute;left:0;right:0;bottom:-28px;text-align:center;font-family:var(--mono);font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--gray)}",
+    ".fhv-levers-goal{position:absolute;left:0;right:0;bottom:calc(var(--b,0) * 1%);height:calc(var(--h,0) * 1%);border-top:1px dashed var(--ink2);pointer-events:none}",
+    ".fhv-levers-goal.is-band{background:rgba(13,17,19,.04);border-bottom:1px dashed var(--ink2)}",
     ".fhv-levers-goallabel{position:absolute;right:0;top:-24px;font-family:var(--mono);font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink2);background:var(--paper);padding:0 6px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}",
     ".fhv-levers-goal.is-above{border-top:0}",
     ".fhv-levers-goal.is-above .fhv-levers-goallabel{top:-4px}",
-    ".fhv-levers-tier{display:flex;align-items:center;flex-wrap:wrap;gap:8px 10px}",
+    ".fhv-levers-tier{display:flex;align-items:center;flex-wrap:wrap;gap:8px 10px;padding-top:16px;border-top:1px solid var(--line)}",
     ".fhv-levers-tier .fhv-ui-eyebrow{width:100%}",
-    ".fhv-levers-chip{font-size:16px;font-weight:650;padding:8px 14px;border-radius:20px;border:1px solid var(--line);background:var(--soft);color:var(--ink)}",
+    ".fhv-levers-chip{font-size:16px;font-weight:650;padding:8px 14px;border-radius:999px;border:1px solid var(--line);background:var(--soft);color:var(--ink)}",
     ".fhv-levers-chip.is-after{background:var(--ink);color:var(--paper);border-color:var(--ink)}",
     ".fhv-levers-to{font-size:13px;color:var(--gray)}",
-    ".fhv-levers-steps{display:flex;flex-direction:column;gap:10px;min-width:0}",
-    ".fhv-levers-list{display:flex;flex-direction:column;gap:8px}",
-    ".fhv-levers-step{display:grid;grid-template-columns:40px minmax(0,1fr) auto;gap:12px;align-items:center;min-height:64px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--ink);text-align:left;cursor:pointer;transition:background .2s,border-color .2s}",
+    ".fhv-levers-steps{display:flex;flex-direction:column;gap:16px;min-width:0}",
+    ".fhv-levers-list{display:flex;flex-direction:column;gap:8px;margin-top:-6px}",
+    ".fhv-levers-step{display:grid;grid-template-columns:36px minmax(0,1fr) auto;gap:12px;align-items:center;min-height:64px;padding:12px 16px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);text-align:left;cursor:pointer;transition:background .2s,border-color .2s}",
+    ".fhv-levers-step:hover{border-color:var(--gray2)}",
     ".fhv-levers-step.is-on{background:var(--ink);color:var(--paper);border-color:var(--ink)}",
     ".fhv-levers-step.is-on .fhv-ui-cap{color:var(--line)}",
     ".fhv-levers-stepidx{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;border:2px solid var(--ink);font-family:var(--mono);font-size:15px;font-weight:600}",
@@ -951,31 +985,33 @@
     ".fhv-levers-stepwords{display:flex;flex-direction:column;gap:2px}",
     ".fhv-levers-steplabel{font-size:17px;font-weight:650;letter-spacing:-.015em;line-height:1.2}",
     ".fhv-levers-stepamt{display:flex;flex-direction:column;align-items:flex-end;gap:2px;text-align:right;white-space:nowrap}",
-    ".fhv-levers-delta{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.02em}",
-    ".fhv-levers-match{display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line);padding-top:14px}",
-    ".fhv-levers-reports{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}",
-    ".fhv-levers-report{border:1px solid var(--line);border-radius:10px;background:#fff;padding:12px 14px;display:flex;flex-direction:column;gap:10px}",
-    ".fhv-levers-bureau{font-size:16px;font-weight:700;letter-spacing:-.01em}",
+    ".fhv-levers-delta{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1.1}",
+    ".fhv-levers-match{display:flex;flex-direction:column;gap:12px;border-top:1px solid var(--line);padding-top:16px}",
+    ".fhv-levers-reports{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}",
+    ".fhv-levers-report{border:1px solid var(--line);border-radius:10px;background:#fff;padding:16px;display:flex;flex-direction:column;gap:8px}",
+    ".fhv-levers-bureau{font-size:17px;font-weight:650;letter-spacing:-.015em}",
     ".fhv-levers-cell{display:flex;flex-direction:column;gap:3px;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--soft);overflow-wrap:anywhere}",
     ".fhv-levers-cell.is-diff{border:2px solid var(--alert);background:#fff}",
     ".fhv-levers-cell.is-missing .fhv-ui-text{color:var(--gray)}",
     /* B. companies */
     ".fhv-companies-tabs{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch}",
-    ".fhv-companies-tab{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;min-height:56px;min-width:44px;padding:9px 14px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--ink);text-align:left;cursor:pointer;transition:background .2s}",
+    ".fhv-companies-tab{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;min-height:56px;min-width:44px;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);text-align:left;cursor:pointer;transition:background .2s,border-color .2s}",
+    ".fhv-companies-tab:hover{border-color:var(--gray2)}",
     ".fhv-companies-tab.is-on{background:var(--ink);color:var(--paper);border-color:var(--ink)}",
     ".fhv-companies-tab.is-on .fhv-ui-cap,.fhv-companies-tab.is-on .fhv-companies-tabamt{color:var(--line)}",
     ".fhv-companies-tab.is-add{border-style:dashed;border-color:var(--gray2);background:var(--soft)}",
     ".fhv-companies-tab.is-add[aria-disabled=\"true\"]{opacity:.65;cursor:default}",
+    ".fhv-companies-tabs .fhv-ui-ghost{align-self:center}",
     ".fhv-companies-tabname{font-size:16px;font-weight:650;letter-spacing:-.01em;line-height:1.2}",
     ".fhv-companies-tabamt{font-size:13px;color:var(--gray);font-variant-numeric:tabular-nums}",
-    ".fhv-companies-chart{display:flex;flex-direction:column;gap:14px}",
+    ".fhv-companies-chart{display:flex;flex-direction:column;gap:16px}",
     ".fhv-companies-heads{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}",
-    ".fhv-companies-headcell{display:flex;flex-direction:column;gap:4px}",
-    ".fhv-companies-bar{display:flex;gap:3px;height:64px;width:100%;margin-top:4px}",
+    ".fhv-companies-headcell{display:flex;flex-direction:column;gap:6px}",
+    ".fhv-companies-bar{display:flex;gap:3px;height:64px;width:100%}",
     /* No padding on the layer itself: with flex-basis 0 any padding would add to
        its width and the Today marker would no longer sit where today's layers end.
        The words inside carry the padding instead. */
-    ".fhv-companies-seg{flex:var(--g,0) 1 0px;display:flex;flex-direction:column;justify-content:center;gap:2px;padding:0;border-radius:8px;overflow:hidden;white-space:nowrap;container-type:inline-size;container-name:fhvseg;transition:flex-grow .55s cubic-bezier(.2,.7,.3,1)}",
+    ".fhv-companies-seg{flex:var(--g,0) 1 0px;display:flex;flex-direction:column;justify-content:center;gap:2px;padding:0;border-radius:8px;overflow:hidden;white-space:nowrap;container-type:inline-size;container-name:fhvseg;transition:flex-grow .7s cubic-bezier(.2,.7,.3,1)}",
     ".fhv-companies-segname,.fhv-companies-segamt{padding:0 10px}",
     ".fhv-companies-seg.is-personal{background:var(--ink);color:var(--paper)}",
     ".fhv-companies-seg.is-biz{background:var(--info);color:var(--ink)}",
@@ -983,19 +1019,19 @@
     ".fhv-companies-seg.is-added{background:#fff;border:2px dashed var(--gray2);color:var(--ink2)}",
     ".fhv-companies-segname{font-size:13px;font-weight:650;letter-spacing:.01em;overflow:hidden;text-overflow:ellipsis}",
     ".fhv-companies-segshort{display:none;font-size:13px;font-weight:700;text-align:center;padding:0 2px}",
-    ".fhv-companies-segamt{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.02em;overflow:hidden;text-overflow:ellipsis}",
+    ".fhv-companies-segamt{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.02em;overflow:hidden;text-overflow:ellipsis}",
     /* Thin layers by share (the floor), then by the layer's real width. */
     ".fhv-companies-seg.is-narrow .fhv-companies-segamt{display:none}",
     ".fhv-companies-seg.is-tiny .fhv-companies-segamt,.fhv-companies-seg.is-tiny .fhv-companies-segname{display:none}",
     ".fhv-companies-seg.is-tiny .fhv-companies-segshort{display:block}",
     "@container fhvseg (max-width:118px){.fhv-companies-segamt{display:none}}",
     "@container fhvseg (max-width:92px){.fhv-companies-segname{display:none}.fhv-companies-segshort{display:block}}",
-    ".fhv-companies-markrow{position:relative;height:30px;margin-top:-2px;pointer-events:none}",
-    ".fhv-companies-marker{position:absolute;top:0;width:0;height:30px;left:calc((100% - var(--gaps,0) * 3px) * var(--l,0) / 100 + var(--k,0) * 3px);transition:left .55s cubic-bezier(.2,.7,.3,1)}",
+    ".fhv-companies-markrow{position:relative;height:30px;margin-top:-4px;pointer-events:none}",
+    ".fhv-companies-marker{position:absolute;top:0;width:0;height:30px;left:calc((100% - var(--gaps,0) * 3px) * var(--l,0) / 100 + var(--k,0) * 3px);transition:left .7s cubic-bezier(.2,.7,.3,1)}",
     ".fhv-companies-markline{position:absolute;left:-1px;top:-8px;width:2px;height:16px;background:var(--ink)}",
     ".fhv-companies-marklabel{position:absolute;left:0;top:10px;transform:translateX(-100%);padding-right:6px;font-family:var(--mono);font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink);white-space:nowrap}",
     ".fhv-companies-marker.is-left .fhv-companies-marklabel{transform:none;padding-right:0;padding-left:6px}",
-    ".fhv-companies-legend{display:flex;flex-wrap:wrap;gap:8px 14px}",
+    ".fhv-companies-legend{display:flex;flex-wrap:wrap;gap:8px 16px}",
     ".fhv-companies-key{display:inline-flex;align-items:flex-start;gap:8px;font-size:13px;color:var(--gray);line-height:1.3}",
     ".fhv-companies-key b{color:var(--ink);font-weight:650;white-space:nowrap}",
     ".fhv-companies-key::before{content:\"\";width:12px;height:12px;border-radius:3px;flex:0 0 auto;margin-top:2px;background:var(--soft);border:1px solid var(--line)}",
@@ -1003,24 +1039,24 @@
     ".fhv-companies-key.is-biz::before{background:var(--info);border-color:var(--info)}",
     ".fhv-companies-key.is-added::before{background:#fff;border:2px dashed var(--gray2)}",
     ".fhv-companies-years{display:flex;flex-direction:column;gap:8px}",
-    ".fhv-companies-switch{display:inline-flex;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff;align-self:flex-start;max-width:100%}",
-    ".fhv-companies-year{display:flex;flex-direction:column;align-items:center;gap:2px;min-height:52px;min-width:44px;padding:8px 16px;border:0;border-right:1px solid var(--line);background:#fff;color:var(--ink);font-size:16px;font-weight:650;cursor:pointer}",
+    ".fhv-companies-switch{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff;align-self:flex-start;max-width:100%}",
+    ".fhv-companies-year{display:flex;flex-direction:column;align-items:center;gap:2px;min-height:56px;min-width:44px;padding:8px 16px;border:0;border-right:1px solid var(--line);background:#fff;color:var(--ink);font-size:16px;font-weight:650;cursor:pointer}",
     ".fhv-companies-year:last-child{border-right:0}",
     ".fhv-companies-year.is-on{background:var(--ink);color:var(--paper)}",
     ".fhv-companies-year.is-on .fhv-ui-cap{color:var(--line)}",
-    ".fhv-companies-detail{border:1px solid var(--line);background:#fff;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:6px}",
-    ".fhv-companies-timeline{display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line);padding-top:14px}",
-    ".fhv-companies-seqs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}",
-    ".fhv-companies-seq{border:1px solid var(--line);border-radius:10px;background:var(--soft);padding:12px 14px;display:flex;flex-direction:column;gap:4px}",
+    ".fhv-companies-detail{border:1px solid var(--line);background:#fff;border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:8px}",
+    ".fhv-companies-timeline{display:flex;flex-direction:column;gap:12px;border-top:1px solid var(--line);padding-top:16px}",
+    ".fhv-companies-seqs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}",
+    ".fhv-companies-seq{border:1px solid var(--line);border-radius:10px;background:var(--soft);padding:16px;display:flex;flex-direction:column;gap:4px}",
     ".fhv-companies-seq.is-now{background:#fff;border-color:var(--ink)}",
-    ".fhv-companies-seqname{font-size:16px;font-weight:650;letter-spacing:-.01em}",
-    ".fhv-companies-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}",
-    ".fhv-companies-chip{font-size:13px;font-weight:600;padding:4px 10px;border-radius:20px;border:1px solid var(--line);background:#fff;color:var(--ink)}",
+    ".fhv-companies-seqname{font-size:17px;font-weight:650;letter-spacing:-.015em}",
+    ".fhv-companies-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}",
+    ".fhv-companies-chip{display:inline-flex;align-items:center;font-family:var(--mono);font-size:13px;letter-spacing:.1em;text-transform:uppercase;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--gray);white-space:nowrap;line-height:1.2}",
     ".fhv-companies-chip.is-personal{background:var(--ink);color:var(--paper);border-color:var(--ink)}",
-    ".fhv-companies-chip.is-biz{background:var(--info);border-color:var(--info)}",
+    ".fhv-companies-chip.is-biz{background:var(--info);border-color:var(--info);color:var(--ink)}",
     ".fhv-companies-chip.is-dim{color:var(--gray)}",
     ".fhv-companies-chip.is-added{border:1px dashed var(--gray2);color:var(--ink2)}",
-    ".fhv-companies-proof{border:1px solid var(--line);border-left:4px solid var(--ink);border-radius:10px;background:#fff;padding:14px 16px;display:flex;flex-direction:column;gap:6px;max-width:760px}",
+    ".fhv-companies-proof{border:1px solid var(--line);border-left:3px solid var(--ink);border-radius:10px;background:#fff;padding:16px;display:flex;flex-direction:column;gap:8px;max-width:760px}",
     /* narrow: one column, nothing sideways. Container query first, viewport fallback second. */
     "@container (max-width:680px){" + NARROW + "}",
     "@media (max-width:680px){" + NARROW + "}",
