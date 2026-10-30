@@ -101,3 +101,10 @@ Owner request: get current GitHub `main` tests green after the post-book SMS fix
 - **Integration lane (this session):** Own `src/ad-videos/animations.mjs` TypeScript type failure only after coordinating with animation lane, CI log triage, manifest/rules/lint checks, branch/PR and GitHub main verification. All lanes report changed paths and focused test results before integration.
 
 Focused repair proof: animation 65/65, broll 44/44, docs/vault/public 128/128, SQL template 246/246; lint parsed 4,314 files, TypeScript and diagrams checks passed. The unsharded local suite saw only the SQL template snapshot failure before that snapshot was regenerated; GitHub's sharded suite is the final full-suite gate.
+
+### Active Pipeline repair, 2026-10-30
+
+- **Owner request:** Stop the many repeated "Setter: call new opt-in" pills on Sales > Fulfillment and the duplicate Setter tasks behind them. This is active work, outside the V2 backlog above.
+- **Cause:** ClickFunnels stores a distinct `entry.captured` event for each survey-screen post. The local Setter handler previously made one task per event ID; the Pipeline painted every open task as a pill.
+- **Change:** `src/setter/tasks.mjs` reuses an open task for the same client and type under a client-row lock, then allows a new task after the prior one is complete. `public/app/pipeline.html` shows one pill for repeated older Setter tasks. No task rows are deleted.
+- **Proof:** `src/setter/tasks.test.mjs` covers repeat events and a later event after completion; `src/http/pipeline-screen.test.mjs` covers old repeated pills and preserves other blockers. Focused tests passed locally (104/104). Live repeat check and GitHub release proof remain pending.

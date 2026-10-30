@@ -106,12 +106,14 @@ one live upcoming ClickFunnels booking. Anything less certain is left alone.
 
 | Event | Workflows woken | File |
 |---|---|---|
-| `entry.captured` | welcome text, new-lead intake, incomplete-survey nudge, first-touch capture, referral ownership, event-deduped human setter task | `s-00-welcome`, `s-01`, `s-02`, `at-01`, `af-02`, `src/setter/tasks.mjs` |
+| `entry.captured` | welcome text, new-lead intake, incomplete-survey nudge, first-touch capture, referral ownership, one open human setter task per client | `s-00-welcome`, `s-01`, `s-02`, `at-01`, `af-02`, `src/setter/tasks.mjs` |
 | `survey.submitted` | the never-booked chase, and nothing else | `s-nobook-chase` |
-| `booking.created` | confirm + reminders, event-deduped human setter task, the legacy 15-minute handoff, staff alert including enabled setter role, pre-call launcher, call-outcome enforcement, portal invite, no-show recovery | `s-04b`, `src/setter/tasks.mjs`, `ai-set-04`, `s-04c`, `bs-01`, `dpc-02`, `s-portal-invite`, `s-05a` |
+| `booking.created` | confirm + reminders, one open booking-confirmation setter task per client, the legacy 15-minute handoff, staff alert including enabled setter role, pre-call launcher, call-outcome enforcement, portal invite, no-show recovery | `s-04b`, `src/setter/tasks.mjs`, `ai-set-04`, `s-04c`, `bs-01`, `dpc-02`, `s-portal-invite`, `s-05a` |
 | `booking.rescheduled` | confirm + reminders, pre-call launcher, the 15-minute handoff, call-outcome enforcement (each restarts for the new time; the run for the old time is cancelled) | `s-04b`, `bs-01`, `ai-set-04`, `dpc-02` |
 
 The setter dashboard shows the submitted `cf_svy_*` survey answers with stable question keys. During a call, the assigned setter can save corrected answers through `POST /api/setter-dashboard` with `action: "save_survey"`. The corrections live in `clients.custom_fields.setter_survey_edits`; the submitted answers remain unchanged. The dashboard reloads the saved corrections, and the generated closer handoff uses them. Editing a completed handoff refreshes its saved text without resending a message.
+
+The event bus keeps each distinct funnel event, including separate survey-screen posts. The local setter handler now reuses an open task for the same client and task type. Once that task is done, a later opt-in or booking can create a new task. The Sales Fulfillment view shows one pill for repeated older setter tasks of the same type; the underlying tasks remain in the task list.
 
 ## 3. The never-booked chase
 
