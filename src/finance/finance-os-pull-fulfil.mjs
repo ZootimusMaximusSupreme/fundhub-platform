@@ -22,6 +22,24 @@ export function savedSystemPullIntent(row) {
   return match[3] ? "real" : "simulated";
 }
 
+/** Make an authorization refusal terminal in the saved pull ledger.
+ * A task alone leaves status='queued' and the same old request can become a
+ * real provider order after flags/consent change. The status write is scoped
+ * to the exact tenant and must win before we claim that a hold was recorded. */
+export async function persistHeldMonthlyRequest(conn, row, reason) {
+  const changed = await conn.query(
+    `UPDATE soft_pull_requests
+        SET status = 'cancelled',
+            state_reason = $4,
+            resolved_at = now(), updated_at = now()
+      WHERE id = $1 AND org_id = $2 AND client_id = $3
+        AND requested_by_kind = 'system' AND status = 'queued'
+      RETURNING id`,
+    [row.id, row.org_id, row.client_id, `Authorization hold: ${reason}`]
+  );
+  return changed.rows?.length === 1;
+}
+
 /** True when both CRS_ALLOW_LIVE and FINANCE_OS_SYSTEM_PULL_LIVE are explicitly on. */
 export function systemPullUsesSimulation(env = process.env) {
   const raw = String(env?.[FINANCE_OS_SYSTEM_PULL_LIVE] ?? "").trim().toLowerCase();
@@ -99,6 +117,17 @@ export async function fulfilQueuedSystemPulls(conn, {
       if (reason) {
         // Hold and escalate; never translate a rehearsal into a real pull.
         const hold = { clientId: row.client_id, requestId: row.id, reason };
+        try {
+          if (!(await persistHeldMonthlyRequest(conn, row, reason))) {
+            tally.errored.push({ ...hold, phase: "authorization_hold_persist",
+              error: "request_not_queued_or_wrong_scope" });
+            continue;
+          }
+        } catch (error) {
+          tally.errored.push({ ...hold, phase: "authorization_hold_persist",
+            error: String(error?.message || error) });
+          continue;
+        }
         tally.authorizationHolds.push(hold);
         tally.skipped.push(hold);
         const task = await createTaskImpl(conn, {

@@ -37,16 +37,25 @@ test("monthly real provider checks current consent and paid access on disposable
       aftercare:async()=>({ok:true}),createTaskImpl:async()=>({id:"stub"})});
     await db.query("UPDATE client_consents SET revoked_at=now(),revoked_reason='withdrawn',revoked_by_kind='staff',revoked_by_staff_id=$2 WHERE id=$1",[consent,staff]);
     assert.equal((await run()).authorizationHolds[0].reason,"consent_no_longer_valid");
+    const persisted = await db.query("SELECT status,state_reason,resolved_at FROM soft_pull_requests WHERE id=$1",[request]);
+    assert.equal(persisted.rows[0].status,"cancelled");
+    assert.match(persisted.rows[0].state_reason,/consent_no_longer_valid/);
+    assert.ok(persisted.rows[0].resolved_at);
     await db.query(`INSERT INTO client_consents (org_id,client_id,kind,consent_text,granted_by_kind,granted_by_staff_id,capture_method,granted_at,expires_at)
       VALUES ($1,$2,'soft_pull_consent','Current consent','staff',$3,'checkbox',now()-interval '1 minute',now()+interval '1 hour')`,[org,client,staff]);
+    assert.equal((await run()).checked,0,"renewed consent cannot requeue a previously held request");
+    await db.query("UPDATE soft_pull_requests SET status='queued',state_reason=NULL,resolved_at=NULL WHERE id=$1",[request]);
     await db.query("UPDATE subscriptions SET current_period_end=now()-interval '1 second' WHERE id=$1",[sub]);
     assert.equal((await run()).authorizationHolds[0].reason,"paid_access_no_longer_valid");
+    await db.query("UPDATE soft_pull_requests SET status='queued',state_reason=NULL,resolved_at=NULL WHERE id=$1",[request]);
     await db.query("UPDATE subscriptions SET current_period_end=now()+interval '365 days' WHERE id=$1",[sub]);
     await db.query("UPDATE soft_pull_requests SET idempotency_key=$2 WHERE id=$1",[request,`finance-os-monthly:${sub}:0`]);
     assert.equal((await run()).authorizationHolds[0].reason,"request_not_explicitly_real");
-    await db.query("UPDATE soft_pull_requests SET idempotency_key=$2 WHERE id=$1",[request,`finance-os-monthly:${sub}:0:real`]);
+    await db.query("UPDATE soft_pull_requests SET status='queued',state_reason=NULL,resolved_at=NULL,idempotency_key=$2 WHERE id=$1",[request,`finance-os-monthly:${sub}:0:real`]);
     assert.equal((await run({})).authorizationHolds[0].reason,"live_flags_disabled_for_real_request");
     assert.equal(called,0);
+    assert.equal((await db.query("SELECT status FROM soft_pull_requests WHERE id=$1",[request])).rows[0].status,"cancelled");
+    await db.query("UPDATE soft_pull_requests SET status='queued',state_reason=NULL,resolved_at=NULL WHERE id=$1",[request]);
     assert.equal((await run()).fulfilled,1);
     assert.equal(called,1);
   } finally {

@@ -102,7 +102,8 @@ test("Blueprint monthly aftercare never delivers a simulated CRS result", async 
   const db = {
     async query(sql) {
       if (/FROM soft_pull_requests/.test(sql)) return { rows: [row] };
-      throw new Error("Simulated acceptance test must perform no database writes");
+      if (/UPDATE soft_pull_requests/.test(sql)) return { rows: [{ id: row.id }] };
+      throw new Error("Simulated acceptance fixture only permits the scoped hold write");
     }
   };
   let aftercareRuns = 0;
@@ -203,4 +204,57 @@ test("persisted mode, tenant scope, consent, and paid term all fail closed befor
   assert.equal(accepted.fulfilled, 1);
   assert.equal(accepted.ok, true);
   assert.equal(sends, 1);
+});
+
+test("revoked monthly consent closes queued request so later renewal cannot auto-pull", async () => {
+  const row = { id: "pending", org_id: "org", client_id: "client",
+    subscription_id: "plan", idempotency_key: "finance-os-monthly:plan:0:real" };
+  let queued = true, consentValid = false, providerCalls = 0, tasks = 0;
+  const db = { async query(sql, params = []) {
+    if (/FROM soft_pull_requests/.test(sql)) return { rows: queued ? [row] : [] };
+    if (/UPDATE soft_pull_requests/.test(sql)) {
+      assert.deepEqual(params.slice(0, 3), ["pending", "org", "client"]);
+      assert.match(params[3], /consent_no_longer_valid/);
+      if (!queued) return { rows: [] };
+      queued = false;
+      return { rows: [{ id: row.id }] };
+    }
+    throw new Error(`unexpected SQL ${sql}`);
+  } };
+  const run = () => fulfilQueuedSystemPulls(db, {
+    env: { FINANCE_OS_SYSTEM_PULL_LIVE: "1", CRS_ALLOW_LIVE: "1" },
+    consentCheck: async () => ({ valid: consentValid }),
+    entitlementCheck: async () => ({ entitled: true, subscriptionId: "plan" }),
+    createTaskImpl: async () => { tasks++; return { id: "task" }; },
+    runPull: async () => { providerCalls++; return { ok: true, crsResultId: "credit" }; }
+  });
+  const held = await run();
+  assert.equal(held.authorizationHolds[0].reason, "consent_no_longer_valid");
+  assert.equal(held.ok, false, "Pulse/consumer must report a held customer outcome RED");
+  assert.equal(queued, false, "hold must resolve the saved queued request");
+  consentValid = true;
+  assert.equal((await run()).checked, 0, "later authorization must require a NEW request");
+  assert.equal(providerCalls, 0);
+  assert.equal(tasks, 1);
+});
+
+test("failed hold ledger write reports RED and cannot call bureau or claim task saved", async () => {
+  const row = { id: "foreign", org_id: "org-A", client_id: "client",
+    subscription_id: "plan", idempotency_key: "finance-os-monthly:plan:0:real" };
+  const db = { async query(sql) {
+    if (/FROM soft_pull_requests/.test(sql)) return { rows: [row] };
+    if (/UPDATE soft_pull_requests/.test(sql)) return { rows: [] };
+    throw new Error("unexpected SQL");
+  } };
+  let calls = 0, tasks = 0;
+  const out = await fulfilQueuedSystemPulls(db, {
+    env: { CRS_ALLOW_LIVE: "1", FINANCE_OS_SYSTEM_PULL_LIVE: "1" },
+    consentCheck: async () => ({ valid: false }),
+    createTaskImpl: async () => { tasks++; return { id: "task" }; },
+    runPull: async () => { calls++; return { ok: true }; }
+  });
+  assert.equal(out.ok, false);
+  assert.equal(out.errored[0]?.phase, "authorization_hold_persist");
+  assert.equal(calls, 0);
+  assert.equal(tasks, 0);
 });
