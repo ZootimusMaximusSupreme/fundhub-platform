@@ -4,7 +4,7 @@ import { describe, test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { pool, close } from "../db.mjs";
-import { ensureFundingRound } from "./money-chain.mjs";
+import { ensureFundingRound, ensureFundingRoundSaleLink } from "./money-chain.mjs";
 
 const LOCAL = (() => {
   if (process.env.CI !== "true" || !process.env.DATABASE_URL) return false;
@@ -69,4 +69,34 @@ describe("round.started belongs to exact org and client — disposable PostgreSQ
     assert.equal(b.round?.id, roundA);
     assert.equal(other.round?.id, roundB);
   });
+
+  test("explicit sale link belongs to buyer and org, replay returns original sale — disposable PG", async () => {
+    await db.query("CREATE TEMP TABLE products (id uuid PRIMARY KEY, org_id uuid, category text) ON COMMIT DROP");
+    await db.query("CREATE TEMP TABLE sales (id uuid PRIMARY KEY, org_id uuid, client_id uuid, product_id uuid, status text) ON COMMIT DROP");
+    await db.query("CREATE TEMP TABLE funding_round_sales (org_id uuid, funding_round_id uuid UNIQUE, sale_id uuid, link_method text) ON COMMIT DROP");
+    const [fundingProduct, foreignProduct, repairProduct, ownSale, wrongBuyerSale, foreignSale, repairSale] =
+      Array.from({ length: 7 }, () => randomUUID());
+    await db.query(
+      "INSERT INTO products(id,org_id,category) VALUES ($1,$4,'funding'),($2,$5,'funding'),($3,$4,'repair')",
+      [fundingProduct, foreignProduct, repairProduct, orgA, orgB]
+    );
+    await db.query(
+      "INSERT INTO sales(id,org_id,client_id,product_id,status) VALUES ($1,$5,$6,$8,'active'),($2,$5,$7,$8,'active'),($3,$9,$10,$11,'active'),($4,$5,$6,$12,'active')",
+      [ownSale, wrongBuyerSale, foreignSale, repairSale, orgA, buyerA, buyerB,
+        fundingProduct, orgB, buyerC, foreignProduct, repairProduct]
+    );
+    const args = { orgId: orgA, clientId: buyerA, roundId: roundA };
+    for (const explicitSaleId of [wrongBuyerSale, foreignSale, repairSale]) {
+      assert.equal(await ensureFundingRoundSaleLink(db, { ...args, explicitSaleId }), null);
+    }
+    assert.equal((await db.query("SELECT count(*)::int AS n FROM funding_round_sales")).rows[0].n, 0);
+    assert.equal(await ensureFundingRoundSaleLink(db, { ...args, explicitSaleId: ownSale }), ownSale);
+    assert.equal(await ensureFundingRoundSaleLink(db, { ...args, explicitSaleId: wrongBuyerSale }), ownSale);
+    const rows = (await db.query("SELECT org_id, funding_round_id, sale_id FROM funding_round_sales")).rows;
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].org_id, orgA);
+    assert.equal(rows[0].funding_round_id, roundA);
+    assert.equal(rows[0].sale_id, ownSale);
+  });
+
 });

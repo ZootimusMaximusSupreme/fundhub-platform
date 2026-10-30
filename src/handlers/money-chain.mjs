@@ -1158,19 +1158,42 @@ export async function onRoundStartedMoney(event, db) {
   const { round, clientId } = await ensureFundingRound(db, event, { status: "started" });
   if (!round) return { done: false, reason: "no_round" };
 
-  const link = await db.query(SQL_LINK_ROUND_TO_SALE, [event.orgId, round.id]);
+/** Keep funding-round sale links scoped to the owning organization and client on replays. */
+export async function ensureFundingRoundSaleLink(db, { orgId, clientId, roundId, explicitSaleId = null } = {}) {
+  if (!orgId || !clientId || !roundId) return null;
+  const existing = () => db.query(
+    `SELECT frs.sale_id FROM funding_round_sales frs
+       JOIN sales s ON s.id = frs.sale_id AND s.org_id = frs.org_id
+        AND s.client_id = $2 AND s.status = 'active'
+      WHERE frs.org_id = $1 AND frs.funding_round_id = $3 LIMIT 1`,
+    [orgId, clientId, roundId]
+  );
+  const prior = await existing();
+  if (prior.rows[0]?.sale_id) return prior.rows[0].sale_id;
+  if (!explicitSaleId) return null;
+  const linked = await db.query(
+    `INSERT INTO funding_round_sales (org_id, funding_round_id, sale_id, link_method)
+     SELECT $1, fr.id, s.id, 'explicit'
+       FROM funding_rounds fr
+       JOIN sales s ON s.id = $4 AND s.org_id = fr.org_id
+         AND s.client_id = fr.client_id AND s.status = 'active'
+       JOIN products p ON p.id = s.product_id AND p.org_id = s.org_id
+         AND p.category = 'funding'
+      WHERE fr.id = $3 AND fr.org_id = $1 AND fr.client_id = $2
+     ON CONFLICT (funding_round_id) DO NOTHING
+     RETURNING sale_id`,
+    [orgId, clientId, roundId, explicitSaleId]
+  );
+  return linked.rows[0]?.sale_id || (await existing()).rows[0]?.sale_id || null;
+}
 
-  let saleId = link.rows[0]?.sale_id || null;
-  if (!saleId && event.payload?.saleId) {
-    const explicit = await db.query(
-      `INSERT INTO funding_round_sales (org_id, funding_round_id, sale_id, link_method)
-       VALUES ($1,$2,$3,'explicit')
-       ON CONFLICT (funding_round_id) DO NOTHING
-       RETURNING sale_id`,
-      [event.orgId, round.id, event.payload.saleId]
-    );
-    saleId = explicit.rows[0]?.sale_id || event.payload.saleId;
-  }
+  const link = await db.query(SQL_LINK_ROUND_TO_SALE, [event.orgId, round.id]);
+  const saleId = link.rows[0]?.sale_id || await ensureFundingRoundSaleLink(db, {
+    orgId: event.orgId,
+    clientId,
+    roundId: round.id,
+    explicitSaleId: event.payload?.saleId || null
+  });
 
   if (saleId) {
     await ensureAttributions(db, {

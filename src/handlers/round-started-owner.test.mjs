@@ -1,7 +1,7 @@
 // F-00 / F-07: synthetic round.started tenant and replay boundaries. No external providers.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { ensureFundingRound } from "./money-chain.mjs";
+import { ensureFundingRound, ensureFundingRoundSaleLink } from "./money-chain.mjs";
 
 const A = "00000000-0000-4000-8000-0000000000a1";
 const B = "00000000-0000-4000-8000-0000000000a2";
@@ -95,4 +95,39 @@ test("fractional, zero, negative, or nonsensical round numbers cannot write", as
     assert.equal(result.reason, "invalid_round_number");
     assert.equal(db.writes, 0);
   }
+});
+
+
+test("round sale link refuses foreign buyer/org, non-funding and replays only existing owned link", async () => {
+  const saleIds = { own: "own-sale", other: "buyer-b-sale", foreign: "foreign-sale", repair: "repair-sale" };
+  const sales = [
+    { id: saleIds.own, orgId: A, clientId: CA, category: "funding" },
+    { id: saleIds.other, orgId: A, clientId: CB, category: "funding" },
+    { id: saleIds.foreign, orgId: B, clientId: CC, category: "funding" },
+    { id: saleIds.repair, orgId: A, clientId: CA, category: "repair" }
+  ];
+  let linked = null;
+  const queries = [];
+  const db = { query: async (sql, params) => {
+    queries.push(sql);
+    if (/^SELECT frs.sale_id/.test(sql)) return { rows: linked ? [{ sale_id: linked }] : [] };
+    if (/^INSERT INTO funding_round_sales/.test(sql)) {
+      const found = sales.find(s => s.id === params[3] && s.orgId === params[0]
+        && s.clientId === params[1] && s.category === "funding");
+      if (found && !linked && params[2] === RA) { linked = found.id; return { rows: [{ sale_id: linked }] }; }
+      return { rows: [] };
+    }
+    throw Error("unexpected SQL");
+  }};
+  const args = { orgId: A, clientId: CA, roundId: RA };
+  assert.equal(await ensureFundingRoundSaleLink(db, { ...args, explicitSaleId: saleIds.other }), null);
+  assert.equal(await ensureFundingRoundSaleLink(db, { ...args, explicitSaleId: saleIds.foreign }), null);
+  assert.equal(await ensureFundingRoundSaleLink(db, { ...args, explicitSaleId: saleIds.repair }), null);
+  assert.equal(await ensureFundingRoundSaleLink(db, { ...args, explicitSaleId: saleIds.own }), saleIds.own);
+  assert.equal(await ensureFundingRoundSaleLink(db, { ...args, explicitSaleId: saleIds.other }), saleIds.own);
+  assert.equal(linked, saleIds.own);
+  const insert = queries.find(sql => /^INSERT INTO funding_round_sales/.test(sql));
+  assert.match(insert, /s.org_id = fr.org_id/);
+  assert.match(insert, /s.client_id = fr.client_id/);
+  assert.match(insert, /p.category = 'funding'/);
 });
