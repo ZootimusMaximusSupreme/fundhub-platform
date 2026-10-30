@@ -562,7 +562,6 @@ bookings without a readable score remain NULL until one is saved. The Cortana
 booking event carries this saved value without changing `funding_call_booked`.
 Blueprint versus repair is decided on the call; both use the unqualified bucket.
 
-
 ## 8. Known gaps, not fixed here
 
 * **The workflow engine's fan-out is fire-and-forget and its failure is
