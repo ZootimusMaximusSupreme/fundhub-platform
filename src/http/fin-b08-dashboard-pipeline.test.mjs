@@ -358,7 +358,18 @@ describe("GET /api/dashboard/pipeline, the board's own statements run by a SQL e
       { id: "foreign", org_id: B, client_id: K.ann, starts_at: later, status: "booked" },
     ]) e.insert("bookings", { ...row, created_at: row.starts_at });
     assert.equal(byId(await callEngine({ key: "sales" }, e))["card-ann"].booked_starts_at, next);
+    assert.equal(byId(await callEngine({ key: "sales" }, e))["card-ann"].booked_status, "rescheduled");
     assert.equal(byId(await callEngine({ key: "funding_card_stacking" }, e))["f-ann"].booked_starts_at, null);
+
+    e.insert("native_client_app_opens", {
+      org_id: A, client_id: K.ann, platform: "ios", first_authenticated_at: past
+    });
+    e.insert("native_client_app_opens", {
+      org_id: B, client_id: K.ben, platform: "ios", first_authenticated_at: later
+    });
+    const opens = byId(await callEngine({ key: "sales" }, e));
+    assert.equal(opens["card-ann"].app_first_authenticated_at, past);
+    assert.equal(opens["card-ben"].app_first_authenticated_at, null);
 
     const pastOnly = engineBoard();
     pastOnly.insert("bookings", { id: "past", org_id: A, client_id: K.ann, starts_at: past, status: "booked", created_at: past });

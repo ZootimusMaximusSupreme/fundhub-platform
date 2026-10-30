@@ -29,6 +29,7 @@ const SCHEMA = `
   CREATE TABLE applications (id TEXT PRIMARY KEY, org_id TEXT, client_id TEXT, funding_round_id TEXT, status TEXT,
                              approval_excluded_at TEXT, approved_amount REAL);
   CREATE TABLE bookings (id TEXT PRIMARY KEY, org_id TEXT, client_id TEXT, starts_at TEXT, status TEXT, created_at TEXT);
+  CREATE TABLE native_client_app_opens (org_id TEXT, client_id TEXT, platform TEXT, first_authenticated_at TEXT);
 `;
 
 // Columns Postgres hands back as true/false; SQLite stores 0/1.
