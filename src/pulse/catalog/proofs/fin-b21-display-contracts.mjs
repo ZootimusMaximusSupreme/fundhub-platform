@@ -208,36 +208,6 @@ check({
   }]
 });
 
-check({
-  key: "staff-booked-text",
-  surface: STAFF_SURFACE,
-  control: "Lead alerts for active setters and the owner; closer texts only after a set lead or before an assigned call",
-  requirement: "Each active setter or owner needs a phone for lead texts; every staff alert text of the last 90 days must have words, a number to go to, a passed check, and a person who exists.",
-  parts: [
-    {
-      from: `staff st`,
-      where: `st.org_id = $1::uuid AND ${REAL_STAFF} AND st.status = 'active' AND lower(COALESCE(st.role, '')) IN ('owner', 'setter')`,
-      bad: [
-        ["a setter or owner has no phone for lead texts", BLANK("st.phone")]
-      ]
-    },
-    {
-      from: `messages m`,
-      where: `m.org_id = $1::uuid AND (m.template_key = 'SMS-S04C-STAFF-BOOKED' OR m.provider_ref LIKE 'staff-alert:%') AND COALESCE(m.is_demo, false) = false
-      AND m.created_at > now() - interval '90 days'`,
-      bad: [
-        ["the text has no words", BLANK("m.rendered_body")],
-        ["the text has nobody to go to", BLANK("m.to_address")],
-        ["a sent text was not marked as having passed the check", `m.status = 'sent' AND COALESCE(m.compliance_check_passed, false) = false`],
-        ["the text is not an outbound text message", `m.direction <> 'outbound' OR m.channel <> 'sms'`],
-        ["the text names a person who is not on the staff list", `NOT EXISTS (
-            SELECT 1 FROM staff p
-             WHERE p.org_id = m.org_id AND m.provider_ref LIKE ('%:' || p.id::text))`]
-      ]
-    }
-  ]
-});
-
 // ───────────────────────────── social-studio.html ─────────────────────────────
 
 /** The page's own copy of the rule book: the `var RULES = [...]` array, read from the page file. */

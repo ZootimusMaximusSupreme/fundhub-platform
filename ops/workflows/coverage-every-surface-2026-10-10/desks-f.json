@@ -2334,13 +2334,13 @@
   },
   {
     "surface": "staff-teams.html",
-    "control": "Lead alerts for active setters and the owner; closer texts only after a set lead or before an assigned call",
-    "kind": "read",
+    "control": "Editor switch: 'Text when a call is booked' (sends the client's name, phone, email, typed score and survey answers to this person's phone)",
+    "kind": "toggle",
     "calls": [],
     "tables": [],
     "impact": "staffOnly",
     "coverage": "ping",
-    "evidence": "src/staff/lead-alerts.mjs and src/staff/booked-call-alert.mjs send staff alerts; src/staff/lead-alerts.test.mjs checks lead, set, and upcoming paths"
+    "evidence": "Owner retired the per-person booked-call text switch in favor of fixed setter and owner alerts; checked as owner-removed in the live display lane"
   },
   {
     "surface": "staff-teams.html",

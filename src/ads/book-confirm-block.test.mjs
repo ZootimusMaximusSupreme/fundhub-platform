@@ -579,7 +579,10 @@ describe("the apply-book push carries the block in the same whole-footer write",
 
   test("apply-book names the fragment and its own marker", () => {
     const row = ROW["apply-book"];
-    assert.deepEqual(row.footerBlocks, [{ fragment: CONFIRM, marker: "fh-book-confirm" }]);
+    assert.deepEqual(row.footerBlocks, [
+      { fragment: CONFIRM, marker: "fh-book-confirm" },
+      { fragment: "marketing/landing-pages/04g-book-close-today.html", marker: "fh-book-close-today" },
+    ]);
     assert.equal(row.strategy, "head_footer_append_only", "never a full replace");
     assert.deepEqual(row.extraFooterScripts, [FH_EVENTS_SRC, CLARITY_SRC]);
     for (const k of ["apply-book-framed", "apply-book-fit"]) {
