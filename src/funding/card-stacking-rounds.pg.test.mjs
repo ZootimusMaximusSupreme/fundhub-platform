@@ -156,17 +156,42 @@ describe("card-stacking round emitter (pg)", { skip: !HAS_DB ? "no DATABASE_URL"
     )).rows[0];
     assert.equal(stage.key, "approved", "card must not reach funded without amount");
 
-    // No body amount → prefill from Approved apps (35000)
-    const funded = await move("funded");
+    // A bank said yes to 35000, but the client has not independently funded.
+    // An omitted amount and a mere approvedAmount must NOT publish round.funded,
+    // move the card, or make closeout/fee records.
+    for (const attempt of [{}, { approvedAmount: 35000 }]) {
+      const refused = await move("funded", attempt);
+      assert.equal(refused.moved, false);
+      assert.equal(refused.reason, "funded_amount_required");
+      assert.equal(refused.suggestedFundedAmount, 35000);
+    }
+    const stillApproved = (await db.query(
+      `SELECT s.key FROM cards c JOIN pipeline_stages s ON s.id = c.stage_id WHERE c.client_id = $1`,
+      [clientId]
+    )).rows[0];
+    assert.equal(stillApproved.key, "approved");
+    assert.equal((await db.query(
+      `SELECT count(*)::int AS n FROM events WHERE client_id = $1 AND name = 'round.funded'`, [clientId]
+    )).rows[0].n, 0);
+    assert.equal((await db.query(
+      `SELECT count(*)::int AS n FROM funding_closeout WHERE funding_round_id = $1`, [rounds[0].id]
+    )).rows[0].n, 0);
+
+    // Separate staff-recorded amount, deliberately DIFFERENT from approval total.
+    // Provider cash receipt is still a distinct real-world acceptance gate.
+    const funded = await move("funded", { fundedAmount: 30000 });
     assert.equal(funded.moved, true, funded.message);
-    assert.equal(funded.fundedAmount, 35000);
+    assert.equal(funded.fundedAmount, 30000);
     assert.equal(funded.roundEvent.eventName, "round.funded");
+    const replay = await move("funded");
+    assert.equal(replay.moved, true);
+    assert.equal(replay.roundEvent.deduped, true, "same funded round must not publish a second event");
 
     rounds = (await db.query(
       `SELECT * FROM funding_rounds WHERE client_id = $1`, [clientId]
     )).rows;
     assert.equal(rounds[0].status, "funded");
-    assert.equal(Number(rounds[0].funded_amount), 35000);
+    assert.equal(Number(rounds[0].funded_amount), 30000, "recorded funded amount is separate from approved total");
     assert.equal(rounds[0].product, PRODUCT);
 
     const closeout = (await db.query(
@@ -175,9 +200,9 @@ describe("card-stacking round emitter (pg)", { skip: !HAS_DB ? "no DATABASE_URL"
     )).rows[0];
     assert.ok(closeout, "closeout row");
     assert.equal(Number(closeout.total_fee), 3500, "10% of 35000");
-    // Fee basis = CONFIRMED APPROVALS (owner-set 2026-08-30). The two Approved
-    // applications above carry 20000 + 15000, which is also what the funded
-    // amount prefilled to — so the number is unchanged here and the basis is not.
+    // Fee basis remains CONFIRMED APPROVALS (owner-set 2026-08-30), 35000.
+    // Explicit funded amount is 30000; approval is NOT automatically funding.
+    // This tests the separation, not a provider receipt or settled cash.
     assert.equal(Number(closeout.total_approved_amount), 35000, "fee basis = confirmed approvals");
 
     /* NO back-end ledger row, and that is the correct outcome.
