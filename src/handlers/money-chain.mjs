@@ -533,8 +533,8 @@ export async function ensureSalePayment(db, event, {
   }
   if (sourceEventId) {
     const ex = await db.query(
-      `SELECT * FROM sale_payments WHERE org_id = $1 AND source_event_id = $2 LIMIT 1`,
-      [orgId, sourceEventId]
+      `SELECT * FROM sale_payments WHERE org_id = $1 AND client_id = $2 AND source_event_id = $3 LIMIT 1`,
+      [orgId, clientId, sourceEventId]
     );
     if (ex.rows[0]) return settle(ex.rows[0], false);
   }
@@ -1094,16 +1094,18 @@ export async function ensureFundingRound(db, event, { status = "started" } = {})
 
   const p = event.payload || {};
   const roundNumber = Number(p.roundNumber ?? p.round_number ?? 1);
+  if (!Number.isInteger(roundNumber) || roundNumber < 1) {
+    return { round: null, created: false, clientId, reason: "invalid_round_number" };
+  }
   const sourceEventId = asUuid(event.id);
 
   if (p.fundingRoundId) {
     const existing = await db.query(
-      `SELECT * FROM funding_rounds WHERE id = $1 LIMIT 1`,
-      [p.fundingRoundId]
+      `SELECT * FROM funding_rounds WHERE id = $1 AND org_id = $2 AND client_id = $3 LIMIT 1`,
+      [p.fundingRoundId, orgId, clientId]
     );
-    if (existing.rows[0]) {
-      return { round: existing.rows[0], created: false, clientId };
-    }
+    // An explicit round reference is exact; never fall back to another buyer's round.
+    return { round: existing.rows[0] || null, created: false, clientId };
   }
 
   if (sourceEventId) {
@@ -1117,8 +1119,8 @@ export async function ensureFundingRound(db, event, { status = "started" } = {})
   }
 
   const byNum = await db.query(
-    `SELECT * FROM funding_rounds WHERE client_id = $1 AND round_number = $2 LIMIT 1`,
-    [clientId, roundNumber]
+    `SELECT * FROM funding_rounds WHERE org_id = $1 AND client_id = $2 AND round_number = $3 LIMIT 1`,
+    [orgId, clientId, roundNumber]
   );
   if (byNum.rows[0]) {
     return { round: byNum.rows[0], created: false, clientId };
@@ -1146,8 +1148,8 @@ export async function ensureFundingRound(db, event, { status = "started" } = {})
   if (ins.rows[0]) return { round: ins.rows[0], created: true, clientId };
 
   const again = await db.query(
-    `SELECT * FROM funding_rounds WHERE client_id = $1 AND round_number = $2 LIMIT 1`,
-    [clientId, roundNumber]
+    `SELECT * FROM funding_rounds WHERE org_id = $1 AND client_id = $2 AND round_number = $3 LIMIT 1`,
+    [orgId, clientId, roundNumber]
   );
   return { round: again.rows[0] || null, created: false, clientId };
 }
