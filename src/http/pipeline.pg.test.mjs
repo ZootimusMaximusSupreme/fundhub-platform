@@ -135,6 +135,43 @@ for (const p of PIPELINES) {
     });
 }
 
+test("Sales cards prefer the next active call, then the latest past call", { skip: !HAS_DB }, async () => {
+  const now = Date.now();
+  const earlier = new Date(now - 24 * 60 * 60 * 1000).toISOString();
+  const next = new Date(now + 24 * 60 * 60 * 1000).toISOString();
+  const later = new Date(now + 48 * 60 * 60 * 1000).toISOString();
+  const inserted = (await db.query(
+    `INSERT INTO bookings (org_id, client_id, source, starts_at, status)
+     VALUES ($1, $2, 'sim', $3, 'booked'),
+            ($1, $2, 'sim', $4, 'rescheduled'),
+            ($1, $2, 'sim', $5, 'booked')
+     RETURNING id`, [orgId, clientId, earlier, next, later]
+  )).rows.map((row) => row.id);
+
+  async function cardFor(key) {
+    const res = makeRes();
+    await pipeline(asStaff(token, { key }), res);
+    assert.equal(res.statusCode, 200);
+    return res.body.stages.find((stage) => stage.count === 1).cards[0];
+  }
+
+  try {
+    assert.equal(new Date((await cardFor("sales")).booked_starts_at).toISOString(), next);
+    assert.equal((await cardFor("optimization")).booked_starts_at, null);
+
+    await db.query(`UPDATE bookings SET status = 'cancelled' WHERE id = $1`, [inserted[1]]);
+    assert.equal(new Date((await cardFor("sales")).booked_starts_at).toISOString(), later);
+
+    await db.query(`UPDATE bookings SET status = 'cancelled' WHERE id = $1`, [inserted[2]]);
+    assert.equal(new Date((await cardFor("sales")).booked_starts_at).toISOString(), earlier);
+
+    await db.query(`UPDATE bookings SET status = 'cancelled' WHERE id = $1`, [inserted[0]]);
+    assert.equal((await cardFor("sales")).booked_starts_at, null);
+  } finally {
+    await db.query(`DELETE FROM bookings WHERE id = ANY($1::uuid[])`, [inserted]);
+  }
+});
+
 test("pipeline cards mark sms/email needs_reply when that person wrote last", { skip: !HAS_DB }, async () => {
   const sms = (await db.query(
     `INSERT INTO conversations (org_id, client_id, channel, last_pulse_at)
