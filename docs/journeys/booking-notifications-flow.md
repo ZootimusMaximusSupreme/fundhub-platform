@@ -74,6 +74,17 @@ only. This keeps the confirmation text aimed at the number on the latest form.
 `booking.created` is deliberately **not** repeat-suppressed: it already has
 slot-level dedupe, and a second booking is a real second appointment.
 
+**One booking, two messages, one moment (2026-10-29).** ClickFunnels posts the
+calendar form and the scheduled event for one booking a fraction of a second
+apart. Each looked for a saved booking at that time before the other had saved
+it, so 2 calls were stored twice on 2026-10-29 (two closer tasks, two Cortana
+sends each). The slot check and the save now run one at a time for one person at
+one call time (`withBookingSlotLock`, `src/adapters/clickfunnels.mjs`); the
+second message finds the saved booking and emits nothing. A saved booking is only
+ever re-keyed **to** the call's own id, so a form post that lands second no
+longer swaps it back. The booking payload also carries the calendar page id
+(`calendarPageId`, the message's top-level `page.id`) and the event type name.
+
 **One call, one booking id (2026-10-05).** A real ClickFunnels appointment
 message has no top-level `id`. It carries `event_id` (new on every message) and
 the call itself in `data`, whose `id` is the call's own id (it equals

@@ -811,6 +811,8 @@ test("handleClickFunnelsWebhook: appointment created => booking.created, no entr
     phone: "555-444-5555",
     meetingUrl: null,
     rescheduleUid: null,
+    eventType: "Closer Call",
+    calendarPageId: null,
     source: "clickfunnels"
   });
 });
@@ -1371,4 +1373,131 @@ test("handleClickFunnelsWebhook: a failed click-id write never costs the lead", 
   const res = await handleClickFunnelsWebhook({ db, rawBody: raw, signatureHeader: sign(raw), secret: SECRET });
   assert.equal(res.ok, true);
   assert.deepEqual(res.emitted.map((e) => e.name), ["entry.captured"]);
+});
+
+// --- one booking, two messages at the same moment (2026-10-29) ----------------
+
+function racingDb() {
+  const bookings = [];
+  const events = [];
+  const tasks = [];
+  const held = new Map(); // advisory lock key -> promise that resolves on COMMIT
+  const query = async (sql, params = []) => {
+    if (/FROM orgs/.test(sql)) return { rows: [{ id: "org-1" }] };
+    if (/INSERT INTO events/.test(sql)) {
+      events.push({ name: params[1], payload: typeof params[5] === "string" ? JSON.parse(params[5]) : params[5] });
+      return { rows: [{ id: `evt-${events.length}` }] };
+    }
+    if (/IS NOT DISTINCT FROM/.test(sql) && /FROM bookings/.test(sql)) {
+      const [, email, start] = params;
+      const b = bookings.find((x) => x.attendee_email === email && Date.parse(x.starts_at) === Date.parse(start));
+      return { rows: b ? [{ id: b.id, client_id: b.client_id, provider_uid: b.provider_uid }] : [] };
+    }
+    if (/UPDATE bookings\s+SET provider_uid/.test(sql)) {
+      const [nextUid, meetingUrl, , id, eventType] = params;
+      const b = bookings.find((x) => x.id === id);
+      if (b) {
+        b.provider_uid = nextUid ?? b.provider_uid;
+        b.meeting_url = meetingUrl ?? b.meeting_url;
+        b.event_type_slug = b.event_type_slug ?? eventType ?? null;
+      }
+      return { rows: [] };
+    }
+    if (/UPDATE tasks SET body/.test(sql)) {
+      for (const t of tasks) if (t.client_id === params[1] && t.body === params[2]) t.body = params[0];
+      return { rows: [] };
+    }
+    return { rows: [] };
+  };
+  return {
+    bookings, events, tasks, options: {},
+    query,
+    async connect() {
+      let release = null;
+      return {
+        async query(sql, params = []) {
+          const m = /pg_advisory_xact_lock/.test(sql);
+          if (m) {
+            const key = params[0];
+            while (held.has(key)) await held.get(key);
+            held.set(key, new Promise((r) => { release = () => { held.delete(key); r(); }; }));
+          } else if (/^(COMMIT|ROLLBACK)$/.test(sql) && release) {
+            release(); release = null;
+          }
+          return { rows: [] };
+        },
+        release() {}
+      };
+    }
+  };
+}
+
+// The booking handler, as it behaves live: it saves the row a moment later.
+function savesBookingSlowly(db) {
+  on("booking.created", async (e) => {
+    await new Promise((r) => setTimeout(r, 25));
+    const p = e.payload;
+    db.bookings.push({
+      id: `bk-${db.bookings.length + 1}`, client_id: "client-1", provider_uid: p.bookingUid,
+      attendee_email: p.email, starts_at: p.startTime, event_type_slug: p.eventType || null
+    });
+    db.tasks.push({ client_id: "client-1", body: p.bookingUid });
+  });
+}
+
+const RACE_FORM = JSON.stringify({
+  event_type: "form_submission.created",
+  event_id: "fs-race-1",
+  page: { id: 25062844, name: "Funding Book Call" },
+  data: {
+    id: 78217850,
+    page_id: "25062844",
+    data: {
+      contact: { email: "race@example.com" },
+      appointments_schedule_request: {
+        name: "Race Lead", email: "race@example.com",
+        start_on: "2026-11-01T20:00:00Z", end_on: "2026-11-01T20:30:00Z", tzid: "America/Phoenix"
+      }
+    }
+  }
+});
+const RACE_CALL = JSON.stringify({
+  event_type: "appointments/scheduled_event.created",
+  event_id: "se-race-1",
+  subject_id: 75918,
+  page: { id: 25062844, name: "Funding Book Call" },
+  data: {
+    id: 75918,
+    start_on: "2026-11-01T20:00:00.000Z",
+    end_on: "2026-11-01T20:30:00.000Z",
+    event_type: { name: "Funding Strategy Meeting" },
+    primary_contact: { email_address: "race@example.com", first_name: "Race", last_name: "Lead" }
+  }
+});
+
+test("the calendar form and the scheduled event at the same moment save ONE booking, under the call id", async () => {
+  _resetOrgCache(); clearHandlers();
+  const db = racingDb();
+  savesBookingSlowly(db);
+  await Promise.all([
+    handleClickFunnelsWebhook({ db, rawBody: RACE_FORM, signatureHeader: sign(RACE_FORM), secret: SECRET }),
+    handleClickFunnelsWebhook({ db, rawBody: RACE_CALL, signatureHeader: sign(RACE_CALL), secret: SECRET })
+  ]);
+  assert.equal(db.bookings.length, 1, "one booking row");
+  assert.equal(db.events.filter((e) => e.name === "booking.created").length, 1, "one booking.created, so one set of texts");
+  assert.equal(db.bookings[0].provider_uid, "75918", "kept under the call's own id for later moves and cancels");
+  assert.equal(db.bookings[0].event_type_slug, "Funding Strategy Meeting");
+  assert.deepEqual(db.tasks.map((t) => t.body), ["75918"], "the closer task follows the call id");
+  assert.equal(db.events[0].payload.calendarPageId, "25062844", "the booking keeps which calendar page took it");
+});
+
+test("a form post that lands after the scheduled event never swaps the call id away", async () => {
+  _resetOrgCache(); clearHandlers();
+  const db = racingDb();
+  savesBookingSlowly(db);
+  await handleClickFunnelsWebhook({ db, rawBody: RACE_CALL, signatureHeader: sign(RACE_CALL), secret: SECRET });
+  await handleClickFunnelsWebhook({ db, rawBody: RACE_FORM, signatureHeader: sign(RACE_FORM), secret: SECRET });
+  assert.equal(db.bookings.length, 1);
+  assert.equal(db.bookings[0].provider_uid, "75918");
+  assert.equal(db.events.filter((e) => e.name === "booking.created").length, 1);
 });
