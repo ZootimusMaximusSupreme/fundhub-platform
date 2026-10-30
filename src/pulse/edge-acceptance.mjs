@@ -11,6 +11,9 @@ export const EDGE_CONTRACT_VERSION = 1;
 // finance and customer-message consumers without changing any handler file.
 // Audit each dependent edge on an edit; lender URL/native source-state edges do
 // not use this bus. REPORT ONLY until diff-specific proofs are enforceable.
+// Closer deck writes real call outcomes, cockpit displays missing outcomes,
+// setter dashboard advances the sales card, and /api/tasks claims follow-ups.
+// Changes to these existing endpoints must review the booking-to-call-result edge.
 // client-lifecycle.mjs hosts payment.received, diagnostic.paid, deposit.paid and
 // analysis.completed alongside booking work. Every changed existing copy needs
 // all relevant P0 money/consent/funding proof reviews, not booking alone.
@@ -20,7 +23,7 @@ export const CRITICAL_EDGES = Object.freeze([
     event: "booking.created", consumer: "onBookingCreated / s-04-call-booked",
     receipt: "bookings + confirmation message + call_outcomes", graceMinutes: 30,
     pulse: "calls:booked-no-outcome",
-    paths: ["src/register-all.mjs", "src/adapters/clickfunnels.mjs", "src/bookings/", "src/handlers/client-lifecycle.mjs", "src/workflows/s-04", "src/workflows/cortana-booking-feed.mjs", "src/messaging/providers/cortana-booking-webhook.mjs", "src/config/survey-qualification.mjs", "src/setter/tasks.mjs", "src/auth/magic-link.mjs", "src/auth/booking-account", "src/sales/call-outcomes.mjs", "src/sales/closer-now.mjs", "public/app/calendar.html", "api/auth/magic-link.mjs", "src/auth/booking-account", "src/auth/magic-link", "public/portal-login.html", "marketing/landing-pages/"]
+    paths: ["src/register-all.mjs", "src/adapters/clickfunnels.mjs", "src/bookings/", "src/handlers/client-lifecycle.mjs", "src/workflows/s-04", "src/workflows/cortana-booking-feed.mjs", "src/messaging/providers/cortana-booking-webhook.mjs", "src/config/survey-qualification.mjs", "src/setter/tasks.mjs", "src/auth/magic-link.mjs", "src/auth/booking-account", "src/sales/call-outcomes.mjs", "src/sales/closer-now.mjs", "src/sales/closer-deck.mjs", "src/sales/cockpit.mjs", "src/setter/dashboard.mjs", "api/tasks.mjs", "public/app/closer-dashboard.html", "public/app/calendar.html", "api/auth/magic-link.mjs", "src/auth/booking-account", "src/auth/magic-link", "public/portal-login.html", "marketing/landing-pages/"]
   },
   {
     id: "payment-ledger-entitlement", severity: "P0", owner: "A/R",
