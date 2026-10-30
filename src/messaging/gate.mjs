@@ -51,7 +51,7 @@ import { isOptedOut } from "../lib/opt-out.mjs";
 import { loadRules, appliesTo, toRegex } from "../compliance/screen.mjs";
 import { createTask } from "../lib/create-task.mjs";
 import { BANK_EMAIL_KEYS } from "../outreach/mail.mjs";
-import { isStaffText, staffTextRecipient, usesSetterContactHours } from "../staff/message-recipient.mjs";
+import { isImmediateStaffAlert, isStaffText, staffTextRecipient, usesSetterContactHours } from "../staff/message-recipient.mjs";
 
 /* Who owns a held message.
    `admin` rather than a client-facing role: the fix is editing a template, which
@@ -337,7 +337,7 @@ async function run(db, message, { now = () => new Date(), timeZone = QUIET_HOURS
   // proven. Real customers still wait. Not a force / skipCompliance option.
   const setterHours = usesSetterContactHours(messageKind);
   const quiet = setterHours ? inSetterContactQuietHours(now(), timeZone) : inQuietHours(now(), timeZone);
-  if (QUIET_HOURS_CHANNELS.has(channel) && quiet) {
+  if (QUIET_HOURS_CHANNELS.has(channel) && quiet && !isImmediateStaffAlert(messageKind)) {
     const skip = staffText ? false : await recipientSkipsQuietHours(db, clientId);
     if (!skip) {
       reasons.push(r("quiet_hours", "tcpa",

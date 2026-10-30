@@ -56,12 +56,14 @@ const CLIENT_OWN_FILE = ["banking/link-exchange", "banking/link-token"];
 const CLIENT_LIGHT_AFFILIATE = ["affiliates/payout-account"];
 const EXPECTED_DISAGREEMENTS = {
   client: [...CLIENT_OWN_FILE, ...CLIENT_LIGHT_AFFILIATE, "auth/authorized-rep-file"],
-  "role-sales-manager": VALIDATES_BODY_FIRST,
+  // Native device registration has a client/staff outer gate, then permits
+  // only owner, setter, and closer staff. The static reader sees the outer gate.
+  "role-sales-manager": [...VALIDATES_BODY_FIRST, "push/native-device"],
   // A closer may create a payment link and is refused every other action: the
   // empty probe lands on an action the closer is refused.
   "role-closer": [...VALIDATES_BODY_FIRST, "payment-links"],
-  "role-funding-advisor": [...VALIDATES_BODY_FIRST, "money/setup"],
-  "role-inquiry-remover": [...VALIDATES_BODY_FIRST, "money/setup"],
+  "role-funding-advisor": [...VALIDATES_BODY_FIRST, "money/setup", "push/native-device"],
+  "role-inquiry-remover": [...VALIDATES_BODY_FIRST, "money/setup", "push/native-device"],
   // This route has two doors. The static journey sees its signed playback URL;
   // the session-only probe sends no signature and therefore reaches the
   // metadata door, which correctly refuses affiliate and partner sessions.
@@ -150,6 +152,12 @@ describe("the probe and the written gates", () => {
       if (journey.name === "client") continue;
       assert.equal(state.verdicts[journey.name]["push/preferences"], "blocked", journey.name);
     }
+  });
+
+  test("native device registration denies other staff roles", () => {
+    assert.equal(state.verdicts["role-sales-manager"]["push/native-device"], "blocked");
+    assert.equal(state.verdicts["role-funding-advisor"]["push/native-device"], "blocked");
+    assert.equal(state.verdicts["role-inquiry-remover"]["push/native-device"], "blocked");
   });
 
   test("agree on every route except the ones named here, and no stale name is left", () => {

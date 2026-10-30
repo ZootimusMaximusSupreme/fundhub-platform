@@ -136,7 +136,6 @@ test("Teams/Social controls show their rendered result against controlled APIs",
   assert.equal(await staffPage.locator("#ed_role").inputValue(), "Admin");
   staffResults.add(proof("Roster row click (opens that person in the editor)").recipe);
   await staffPage.locator("#ed_consent").click();
-  await staffPage.locator("#ed_booked_sms").click();
   assert.equal(await staffPage.locator("#ed_consent").evaluate((e) => e.classList.contains("on")), true);
   staffResults.add(proof("Editor switch: 'Monitoring consent on file' (owner only)").recipe);
   await staffPage.locator("#edCancel").click();
