@@ -1,0 +1,45 @@
+{
+  "task": "Clean up agreement library",
+  "owner": "Chris Stanbridge",
+  "primary_checkout": "/Users/chrisstanbridge/.codex/worktrees/agreement-library-cleanup/fundhub-platform",
+  "workflows": [
+    {
+      "name": "template_inventory",
+      "status": "complete",
+      "prompt": "Read-only inventory of every agreement template, actual send usage, required disclosure or consent dependencies, and current status. Report keep, decommission, and any owner-only contract wording decision. Do not edit code or live data."
+    },
+    {
+      "name": "agreement_ui",
+      "status": "complete",
+      "prompt": "Implement separate client and employee template tabs and owner-only edit controls in an isolated worktree. Read the intended journey and UI standards first. Do not edit backend or live data. Report files and API contract to parent."
+    },
+    {
+      "name": "agreement_backend",
+      "status": "ready_for_release",
+      "prompt": "Enforce owner-only template mutations on the server, preserve staff send access, and categorize active versus decommissioned templates. Integrate UI after independent work, then run tests and live proof."
+    }
+  ],
+  "acceptance": [
+    "Client and employee agreements are in separate tabs",
+    "Only the owner can create, upload, edit, or decommission templates",
+    "Decommissioned templates cannot be selected for new sends",
+    "Required legal disclosure and authorization documents remain available in the correct send flow",
+    "Live and saved agreements retain their historical wording"
+  ],
+  "inventory": {
+    "client": ["REPAIR-TRIAL-AGREEMENT", "CREDIT-REPAIR-AGREEMENT", "FUNDING-AGREEMENT", "CAPITAL-BLUEPRINT-AGREEMENT", "REPAIR-AND-FUNDING-AGREEMENT"],
+    "employee": ["EMPLOYEE-CLOSER-AGREEMENT", "EMPLOYEE-FUNDING-ADVISOR-AGREEMENT", "EMPLOYEE-SALES-MANAGER-AGREEMENT"],
+    "required_forms": ["CREDIT-FILE-RIGHTS-DISCLOSURE", "SOFT-PULL-CONSENT"],
+    "decommissioned": ["FUNDING-MASTERY-AGREEMENT", "PARTNER-LICENSE"]
+  },
+  "notes": [
+    "Credit file rights is a separate signed pre-repair disclosure under 15 U.S.C. 1679c; preserve its wording and signature requirement.",
+    "The application does not currently enforce disclosure-before-repair sequence. Keep that gap visible; do not claim the cleanup fixed it.",
+    "Funding Mastery is already off in Present via COURSE_LIVE=false. Archiving its template blocks new drafts but keeps existing contracts.",
+    "Archiving the partner license blocks new licenses; unsigned partners remain subject to the existing payout gate.",
+    "Live database inventory was unavailable from this host because DATABASE_URL DNS lookup returned ENOTFOUND; the signed-in live page showed all 12 templates active on 2026-10-30.",
+    "The owner confirmed the $1,000 repair payment wording and timing are approved as written; preserve it.",
+    "The repository content audit found the $200 repair trial and combined repair/funding wording omit three-business-day cancellation terms; no repair template includes the separate notice of cancellation form or the specified signature-adjacent sentence. The $1,000 wording promises same-day work. Exact future contract revisions await the owner's wording decision; do not silently edit live or sent contracts.",
+    "The combined local agreement checks passed 345/345, TypeScript passed, UI desktop/phone and admin read-only checks passed. The database endpoint suite was skipped because DATABASE_URL is unavailable."
+  ]
+}
