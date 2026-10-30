@@ -62,6 +62,21 @@ test("shared client lifecycle edits cannot hide payment, CRS or funding effects 
   assert.equal(report.liveReceipt, "NEEDS_LIVE_RECEIPT");
 });
 
+test("changing central event-bus registration reviews all dependent customer-result consumers", () => {
+  // PR #278 modifies src/register-all.mjs; edits here can disconnect the
+  // consumer despite unchanged business handler files.
+  const report = reportCriticalSourceChanges(["src/register-all.mjs"]);
+  assert.equal(report.verdict, "REVIEW_REQUIRED");
+  assert.deepEqual(report.edges.map((x) => x.id), [
+    "lead-booking-call-outcome", "payment-ledger-entitlement", "consent-crs-result",
+    "round-funded-fee-commission", "repair-enrollment-bureau-result",
+    "blueprint-financeos-report", "outbound-message-provider-receipt"
+  ]);
+  assert.equal(report.edges.filter((x) => x.severity === "P0").length, 3);
+  assert.deepEqual(report.unmappedHighRiskFiles, []);
+  assert.equal(report.liveReceipt, "NEEDS_LIVE_RECEIPT");
+});
+
 test("material changes in actually open money/booking/Blueprint PRs are reviewed", () => {
   const files = [
     "src/handlers/money-chain.mjs", // fulfillment PR #294
