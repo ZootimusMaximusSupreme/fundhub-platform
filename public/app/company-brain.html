@@ -548,7 +548,8 @@ button,input,select,textarea{font:inherit;color:inherit}
     reviews: [],
     reviewsState: "loading",
     reviewsError: "",
-    reviewLimit: 25
+    reviewPendingCount: 0,
+    loadingMoreReviews: false
   };
 
   function setView(view) {
@@ -1085,12 +1086,13 @@ button,input,select,textarea{font:inherit;color:inherit}
   function setPending(n) {
     var count = Number(n) || 0;
     state.pendingCount = count;
-    [pendPill, pendPill2].forEach(function (el) {
-      if (!el) return;
-      el.textContent = el === pendPill ? String(count) : (String(count) + " waiting");
-      if (el === pendPill) el.setAttribute("aria-label", String(count) + " approvals waiting");
-      el.hidden = count === 0;
-    });
+    var approvalCount = isOwner && state.reviewsState === "ok"
+      ? Math.max(count, state.reviewPendingCount) : count;
+    pendPill.textContent = String(approvalCount);
+    pendPill.setAttribute("aria-label", String(approvalCount) + " approvals waiting");
+    pendPill.hidden = approvalCount === 0;
+    pendPill2.textContent = String(count) + " waiting";
+    pendPill2.hidden = count === 0;
   }
 
   var APPROVAL = {
@@ -1169,7 +1171,7 @@ button,input,select,textarea{font:inherit;color:inherit}
       reviewList.innerHTML = '<div class="muted">Nothing is waiting for you.</div>';
       return;
     }
-    reviewList.innerHTML = state.reviews.slice(0, state.reviewLimit).map(function (row) {
+    reviewList.innerHTML = state.reviews.map(function (row) {
       var open = row.web_view_link
         ? ('<a class="lnk" href="' + esc(row.web_view_link) + '" target="_blank" rel="noopener">Open in Drive</a>') : "";
       return '<div class="docrow">' +
@@ -1181,21 +1183,29 @@ button,input,select,textarea{font:inherit;color:inherit}
           '<button class="btn sm dark" type="button" data-decide="approve" data-id="' + esc(row.id) + '">Approve</button>' +
           '<button class="btn sm" type="button" data-decide="reject" data-id="' + esc(row.id) + '">Turn down</button>' +
         "</div></div>";
-    }).join("") + (state.reviews.length > state.reviewLimit ? '<button class="btn" type="button" data-show-reviews>Show more approvals</button>' : '');
+    }).join("") + (state.reviews.length < state.reviewPendingCount ? '<button class="btn" type="button" data-show-reviews' + (state.loadingMoreReviews ? ' disabled' : '') + '>Show more approvals</button>' : '');
   }
 
-  function loadReviews() {
+  function loadReviews(append) {
     if (!isOwner) return;
-    if (state.reviewsState !== "ok") { state.reviewsState = "loading"; renderReviews(); }
-    apiGet("/api/company-brain/reviews").then(function (j) {
+    if (append && (state.loadingMoreReviews || state.reviews.length >= state.reviewPendingCount)) return;
+    if (!append) { state.reviewsState = "loading"; renderReviews(); }
+    state.loadingMoreReviews = !!append;
+    var offset = append ? state.reviews.length : 0;
+    apiGet("/api/company-brain/reviews?limit=25&offset=" + offset).then(function (j) {
+      state.loadingMoreReviews = false;
       if (!j || !j.ok) {
         state.reviewsState = "error";
         state.reviewsError = friendly(j);
+        setPending(state.pendingCount);
         renderReviews();
         return;
       }
-      state.reviews = j.reviews || [];
+      var page = j.reviews || [];
+      state.reviews = append ? state.reviews.concat(page) : page;
+      state.reviewPendingCount = Number(j.pendingCount) || state.reviews.length;
       state.reviewsState = "ok";
+      setPending(state.pendingCount);
       renderReviews();
       renderUploads();
     });
@@ -1225,13 +1235,13 @@ button,input,select,textarea{font:inherit;color:inherit}
     decideFromButton(btn);
   }
   reviewList.addEventListener("click", function (ev) {
-    if (ev.target.closest("[data-show-reviews]")) { state.reviewLimit += 25; renderReviews(); return; }
+    if (ev.target.closest("[data-show-reviews]")) { loadReviews(true); return; }
     onDecideClick(ev);
   });
   docList.addEventListener("click", function (ev) {
     if (ev.target.closest("[data-show-uploads]")) { state.uploadLimit += 25; renderUploads(); }
   });
-  document.getElementById("refreshReviews").addEventListener("click", loadReviews);
+  document.getElementById("refreshReviews").addEventListener("click", function () { loadReviews(); });
 
   /* ── class quizzes (Training view) ───────────────────────────────────── */
   var quizPick = document.getElementById("quizPick");
