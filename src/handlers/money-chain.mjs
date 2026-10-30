@@ -1110,7 +1110,7 @@ export async function onPaymentReceivedMoney(event, db) {
           AND kind = 'payment' AND method = 'commas'
           AND (
             ($3::text IS NOT NULL AND external_ref = $3)
-            OR ($4::uuid IS NOT NULL AND source_event_id = $4)
+            OR ($4::text IS NOT NULL AND source_event_id = $4)
           )
         LIMIT 1`,
       [orgId, billedInvoice.id, receiptRef, eventReceiptId]
@@ -1135,7 +1135,7 @@ export async function onPaymentReceivedMoney(event, db) {
       `SELECT COALESCE(SUM(CASE WHEN kind = 'payment' THEN amount ELSE -amount END), 0) AS applied,
               COALESCE(SUM(CASE WHEN kind = 'payment' AND method = 'commas'
                 AND (($3::text IS NOT NULL AND external_ref = $3)
-                  OR ($4::uuid IS NOT NULL AND source_event_id = $4))
+                  OR ($4::text IS NOT NULL AND source_event_id = $4))
                 THEN amount ELSE 0 END), 0) AS current_applied
          FROM invoice_payments
         WHERE org_id = $1 AND invoice_id = $2`,
