@@ -20,7 +20,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { ROUTES } from "../../netlify/functions/api.mjs";
-import { OWNER_ADMIN_ACTIONS } from "../../api/contracts.mjs";
+import { OWNER_TEMPLATE_ACTIONS } from "../../api/contracts.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.resolve(HERE, "../../public");
@@ -73,11 +73,11 @@ describe("the Contracts screen (public/app/contracts.html)", () => {
     assert.match(CRM, /FHData\.write\("\/api\/contracts"/);
   });
 
-  test("every wording write on the page stays owner/admin-gated on the server", () => {
+  test("every wording write on the page stays owner-gated on the server", () => {
     for (const action of [
       "create_template", "save_template", "archive_template", "upload_template", "save_fields"
     ]) {
-      assert.ok(OWNER_ADMIN_ACTIONS.has(action), `${action} lost its owner/admin server gate`);
+      assert.ok(OWNER_TEMPLATE_ACTIONS.has(action), `${action} lost its owner-only server gate`);
     }
   });
 
