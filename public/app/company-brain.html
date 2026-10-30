@@ -1003,6 +1003,76 @@ button,input,select,textarea{font:inherit;color:inherit}
      staff/tier gate is unchanged; nothing here grants document permissions.
      "Find" is an explicit user click before the existing Company Brain POST. */
   var SOP_GUIDES = {
+    "setter-calls": {
+      title: "Setter call SOP",
+      description: "Approved dialing, qualification and booked-call confirmation steps.",
+      prompt: "Find the approved Fundhub setter SOP for contacting a fresh lead, double-dialing, asking qualification questions, confirming or rescheduling a booked call, recording outcomes and following up. Quote or cite the approved source. If no approved instructions are available, state that clearly."
+    },
+    "setter-handoff": {
+      title: "Closer handoff SOP",
+      description: "Approved notes, calendar confirmation and handoff to the closer.",
+      prompt: "Find the approved Fundhub SOP for handing a setter lead to the closer, including the exact handoff note, what must be recorded, and customer confirmation of the booking. Cite approved Fundhub source documents. Do not invent a checklist."
+    },
+    "closer-call": {
+      title: "Sales call SOP",
+      description: "Approved closer discovery, presentation, contract and payment steps.",
+      prompt: "Find the approved Fundhub closer sales call script, discovery questions, offer routing, presenting the funding plan, sending the agreement, collecting payment and handing off the client. Cite approved documents. Identify missing instructions rather than guessing."
+    },
+    "funding-round": {
+      title: "Funding round SOP",
+      description: "Approved funding file review, application and verified funded steps.",
+      prompt: "Find the approved Fundhub funding fulfillment SOP for opening a client file, checking CRS/UnderwriteIQ data, preparing a round, applying to lenders, verifying funded cash, and recording the result. Cite approved documents; distinguish approval from actual funding."
+    },
+    "inquiry-case": {
+      title: "Credit and inquiry SOP",
+      description: "Approved inquiry review, repair work and bureau response steps.",
+      prompt: "Find the approved Fundhub credit optimization and inquiry removal SOP for client intake, dispute review, letters, inquiry status, bureau response, holds, and escalation. Cite approved source files. Do not invent legal or compliance procedures."
+    },
+    "csm-followup": {
+      title: "Client follow-up SOP",
+      description: "Approved check-in calls, service updates and Blueprint handoffs.",
+      prompt: "Find the approved Fundhub CSM SOP for upcoming client calls, follow-up notes, no-shows and rescheduling, service progress, Blueprint client communication and escalations. Cite only approved source documents."
+    },
+    "bank-product": {
+      title: "Bank and lender SOP",
+      description: "Approved lender research, outreach and product verification.",
+      prompt: "Find the approved Fundhub bank and lender operations SOP, including banker outreach, verifying revolving line terms, source documents, criteria accuracy, and safely recording lender Apply URLs. Cite approved documents and avoid unverified lending claims."
+    },
+    "ops-reconciliation": {
+      title: "Operations and reconciliation SOP",
+      description: "Approved payment, queue, incident and escalation handling.",
+      prompt: "Find the approved Fundhub operations SOP for payment reconciliation, Accounts Receivable, overdue cases, review queues, heartbeat incidents and escalation. Cite approved documents; do not invent missing procedures."
+    },
+    "appointments": {
+      title: "Appointments and rescheduling SOP",
+      description: "Approved booking, confirmation, no-show and follow-up steps.",
+      prompt: "Find approved Fundhub staff SOPs for booking appointments, rescheduling, checking meeting links and host calendar, collecting actual customer confirmation, and handling no-shows. Cite existing approved files."
+    },
+    "documents": {
+      title: "Documents and signatures SOP",
+      description: "Approved document handling, upload and signature workflows.",
+      prompt: "Find the approved Fundhub SOP for client file document collection, signatures, consent, document verification, and secure handling of missing files. Cite approved sources. Do not invent evidence requirements."
+    },
+    "performance": {
+      title: "Sales performance SOP",
+      description: "Approved reporting, follow-up and quality review routines.",
+      prompt: "Find the approved Fundhub instructions for My Numbers, personal sales metrics, call recordings, follow-ups, commissions and quality improvements. Cite approved source documents; identify undefined policies."
+    },
+    "staff-operations": {
+      title: "Employee access SOP",
+      description: "Approved team onboarding, role access and shift practices.",
+      prompt: "Find approved Fundhub owner or manager SOPs for employee onboarding, role access, shifts, training expectations, and team oversight. Cite source documents and maintain existing access boundaries."
+    },
+    "agreements": {
+      title: "Contract and agreement SOP",
+      description: "Approved agreement templates, signature and revision steps.",
+      prompt: "Find the approved Fundhub procedures for managing contract templates, selecting customer agreements, checking consent and signatures, and escalating revisions. Cite approved source files; do not provide invented legal terms."
+    },
+    "consent": {
+      title: "Consent SOP",
+      description: "Approved client authorization and recordkeeping steps.",
+      prompt: "Find approved Fundhub consent procedures for client authorization, recorded proof, expiration or revocation, and handling sensitive credit or messaging requests. Cite only approved source documents."
+    },
     setter: {
       title: "Setter scripts and onboarding",
       description: "Use the approved setter call script, dial log, qualification and handoff instructions.",
