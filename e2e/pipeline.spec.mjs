@@ -34,6 +34,48 @@ test.describe("pipeline board", () => {
     await expect(page.locator('.card[data-client-id]')).toContainText("Dana Whitfield");
   });
 
+  test("shows the booked day and Phoenix time near the name, separate from confirmation", async ({ page }) => {
+    const stages = structuredClone(STAGES);
+    stages.stages[0].cards[0].booked_starts_at = "2030-05-01T17:00:00.000Z";
+    stages.stages[0].cards[0].call_confirmed = true;
+    await openScreen(page, "/app/pipeline.html", OWNER, {
+      "/api/dashboard/pipeline": stages
+    });
+
+    const card = page.locator('.card[data-client-id]');
+    await expect(card.locator('.c-booked-when')).toHaveText("Booked · Wed, May 1, 2030, 10:00 AM MST");
+    await expect(card.locator('.c-call-confirmed')).toHaveText("✓ Call confirmed");
+    await expect(card.locator('.c-name')).toBeVisible();
+    await expect(card.locator('.c-booked-when')).toBeVisible();
+  });
+
+  test("leaves the booking label off cards without an active call", async ({ page }) => {
+    await openScreen(page, "/app/pipeline.html", OWNER, {
+      "/api/dashboard/pipeline": STAGES
+    });
+    await expect(page.locator('.card[data-client-id] .c-booked-when')).toHaveCount(0);
+  });
+
+  test("keeps a past booked time visible while the card remains on the board", async ({ page }) => {
+    const stages = structuredClone(STAGES);
+    stages.stages[0].cards[0].booked_starts_at = "2020-05-01T17:00:00.000Z";
+    await openScreen(page, "/app/pipeline.html", OWNER, {
+      "/api/dashboard/pipeline": stages
+    });
+    await expect(page.locator('.card[data-client-id] .c-booked-when'))
+      .toHaveText("Booked · Fri, May 1, 2020, 10:00 AM MST");
+  });
+
+  test("opens the card with Contact, Call, Credit, then Survey before other details", async ({ page }) => {
+    await openScreen(page, "/app/pipeline.html", OWNER, {
+      "/api/dashboard/pipeline": STAGES
+    });
+    await page.locator('.card[data-client-id] .c-name').click();
+    await expect(page.locator('#fhDrawerBody > .fh-drawer-sec h3')).toHaveText([
+      "Contact", "Call", "Credit", "Survey", "Businesses", "Path", "How they got here"
+    ]);
+  });
+
   test("MOVE posts a pipeline-cards move", async ({ page }) => {
     const writes = [];
     await openScreen(page, "/app/pipeline.html", OWNER, {

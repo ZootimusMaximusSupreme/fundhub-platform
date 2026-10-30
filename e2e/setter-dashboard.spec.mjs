@@ -61,3 +61,46 @@ test("setter score strip stays inside a phone viewport", async ({ page }) => {
   expect(overflow).toBeLessThanOrEqual(1);
   await expect(page.locator(".setter-numbers")).toBeVisible();
 });
+
+test("setter can correct survey answers during a call and see saved edits after reload", async ({ page }) => {
+  const item = structuredClone(queue.items[0]);
+  item.survey = [
+    { key: "cf_svy_funding_target_amount", question: "Set Your Target Amount", answer: "$50k - $100k" },
+    { key: "cf_svy_planned_use", question: "Planned Use", answer: "Growth" }
+  ];
+  let surveyEdits = {};
+  let saveAttempts = 0;
+  await openScreen(page, "/app/setter-dashboard.html", SETTER, {
+    "/api/read/setter-dashboard": () => ({ ...queue, items: [{ ...item, survey_edits: surveyEdits }] }),
+    "/api/setter-dashboard": async (route) => {
+      const body = route.request().postDataJSON();
+      expect(body.action).toBe("save_survey");
+      expect(body.client_id).toBe(item.client_id);
+      saveAttempts += 1;
+      if (saveAttempts === 1) {
+        await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "unavailable" }) });
+        return;
+      }
+      surveyEdits = body.survey_edits;
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true, survey_edits: surveyEdits }) });
+    }
+  });
+
+  const amount = page.getByRole("textbox", { name: "Set Your Target Amount" });
+  await expect(amount).toHaveValue("$50k - $100k");
+  await amount.fill("$100k - $150k");
+  await page.getByRole("button", { name: "Save survey answers" }).click();
+  await expect(page.locator("#setter-survey-status")).toHaveClass(/error/);
+  await expect(amount).toHaveValue("$100k - $150k");
+  await page.getByRole("button", { name: "Save survey answers" }).click();
+  await expect(page.locator("#setter-survey-status")).toHaveText("Survey answers saved.");
+  expect(surveyEdits).toEqual({ cf_svy_funding_target_amount: "$100k - $150k" });
+
+  await page.reload();
+  await expect(page.getByRole("textbox", { name: "Set Your Target Amount" })).toHaveValue("$100k - $150k");
+  await expect(page.locator(".setter-survey-field").first()).toContainText("Original answer: $50k - $100k");
+  await expect(page.getByRole("textbox", { name: "Planned Use" })).toHaveValue("Growth");
+  await page.setViewportSize({ width: 390, height: 844 });
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(1);
+});

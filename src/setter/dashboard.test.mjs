@@ -20,8 +20,12 @@ function fakeDb(booked = true) {
     queries.push(sql);
     if (sql.includes("FROM clients c")) return { rows: [client] };
     if (sql.includes("UPDATE clients")) {
+      if (sql.includes("'{setter_survey_edits}'")) {
+        client.custom_fields.setter_survey_edits = JSON.parse(params[2]);
+        return { rows: [{ survey_edits: client.custom_fields.setter_survey_edits }] };
+      }
       client.custom_fields.setter_handoff = { ...(client.custom_fields.setter_handoff || {}), ...JSON.parse(params[2]) };
-      return { rows: [{ setter_handoff: client.custom_fields.setter_handoff }] };
+      return { rows: [{ custom_fields: client.custom_fields }] };
     }
     if (sql.includes("UPDATE tasks")) return { rows: [] };
     if (sql.includes("UPDATE cards")) return { rows: [] };
@@ -135,13 +139,61 @@ test("queue returns booked and opt-in leads with survey echo and saved handoff",
     return { rows: [{ client_id: CLIENT_ID, first_name: "Pat", last_name: "Lee",
       phone: "+15551234567", created_at: "2026-10-26T20:00:00Z",
       target_dial_by: "2026-10-26T20:01:00Z", booked_at: null, booking_time: null,
-      custom_fields: { cf_svy_planned_use_label: "Open a shop", setter_handoff: { call_attempts: 2 } } }] };
+      custom_fields: { cf_svy_planned_use_label: "Open a shop", setter_survey_edits: { cf_svy_planned_use: "Buy equipment" }, setter_handoff: { call_attempts: 2 } } }] };
   } };
   const result = await listSetterQueue(db, STAFF);
   assert.equal(result.items[0].lead_type, "opt_in");
   assert.equal(result.items[0].setter_handoff.call_attempts, 2);
   assert.ok(result.items[0].survey.some(x => x.answer === "Open a shop"));
+  assert.ok(result.items[0].survey.some(x => x.key === "cf_svy_planned_use"));
+  assert.deepEqual(result.items[0].survey_edits, { cf_svy_planned_use: "Buy equipment" });
   assert.equal(result.numbers.dials, 0);
+});
+
+test("survey save replaces edits, keeps submitted answers, and does not complete the task", async () => {
+  const { db, client, queries } = fakeDb();
+  client.custom_fields.cf_svy_planned_use_label = "Open a shop";
+  client.custom_fields.cf_svy_funding_target_amount_label = "$50k - $100k";
+  const first = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save_survey",
+    survey_edits: { cf_svy_planned_use: "Buy equipment", cf_svy_funding_target_amount: "$100k" } });
+  assert.equal(first.status, 200);
+  assert.deepEqual(first.body.survey_edits, { cf_svy_planned_use: "Buy equipment", cf_svy_funding_target_amount: "$100k" });
+  const second = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save_survey",
+    survey_edits: { cf_svy_planned_use: "Hire staff" } });
+  assert.deepEqual(second.body.survey_edits, { cf_svy_planned_use: "Hire staff" });
+  const checklist = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save",
+    handoff: { call_attempts: 1 } });
+  assert.deepEqual(checklist.body.item.survey_edits, { cf_svy_planned_use: "Hire staff" });
+  assert.equal(client.custom_fields.cf_svy_planned_use_label, "Open a shop");
+  assert.equal(client.custom_fields.cf_svy_funding_target_amount_label, "$50k - $100k");
+  assert.equal(client.custom_fields.setter_handoff.call_attempts, 1);
+  assert.equal(queries.some(sql => sql.includes("UPDATE tasks") || sql.includes("UPDATE cards")), false);
+  const reset = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save_survey", survey_edits: {} });
+  assert.deepEqual(reset.body.survey_edits, {});
+});
+
+test("survey save rejects unseen keys and invalid values", async () => {
+  const { db, client, queries } = fakeDb();
+  client.custom_fields.cf_svy_planned_use_label = "Open a shop";
+  for (const survey_edits of [null, { unknown: "X" }, { cf_svy_funding_target_amount: "$100k" },
+    { cf_svy_planned_use: 123 }, { cf_svy_planned_use: "X".repeat(1001) }]) {
+    const result = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save_survey", survey_edits });
+    assert.equal(result.status, 400);
+    assert.equal(result.body.error, "invalid_survey_edits");
+  }
+  assert.equal(queries.some(sql => sql.includes("UPDATE clients")), false);
+});
+
+test("completed handoff text follows the edited survey without resending", async () => {
+  const { db, client, queries } = fakeDb();
+  client.custom_fields.cf_svy_planned_use_label = "Open a shop";
+  client.custom_fields.setter_handoff = { complete_at: "2026-10-26T21:00:00Z", ...completeHandoff() };
+  const result = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save_survey",
+    survey_edits: { cf_svy_planned_use: "Buy equipment" } });
+  assert.equal(result.status, 200);
+  assert.match(client.custom_fields.setter_handoff.handoff_text, /Survey said Buy equipment/);
+  assert.doesNotMatch(client.custom_fields.setter_handoff.handoff_text, /Open a shop/);
+  assert.equal(queries.some(sql => sql.includes("UPDATE tasks") || sql.includes("INSERT INTO messages")), false);
 });
 
 test("booked lead dial target starts from booking time, not its earlier opt-in task", async () => {

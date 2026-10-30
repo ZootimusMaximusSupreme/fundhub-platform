@@ -254,6 +254,13 @@ button,input,select,textarea{font:inherit;color:inherit}
           <button class="btn sm" type="button" id="docsClose" aria-label="Close documents">Close</button>
         </div>
         <div class="docs-bd">
+          <!-- Header shortcuts use this same Company Brain: no second SOP store. -->
+          <div class="panel" id="fh-sop-context" hidden>
+            <div class="panel-hd"><div class="pt" id="fh-sop-title"></div></div>
+            <p class="muted" id="fh-sop-description" style="margin:0 0 12px"></p>
+            <button class="btn sm dark" type="button" id="fh-sop-find">Find approved instructions</button>
+            <p class="mono muted" style="margin-top:10px">Company Brain searches documents your role may read. If no approved instructions are available, it should say so. The search includes role-approved Drive files that may not be listed here.</p>
+          </div>
           <div class="panel" data-brain-quiz>
             <div class="panel-hd">
               <div class="pt">Class quizzes</div>
@@ -342,6 +349,14 @@ button,input,select,textarea{font:inherit;color:inherit}
   var myRole = String(role() || "").toLowerCase();
   if (rolePill) rolePill.textContent = myRole || "staff";
   var isOwner = myRole === "owner";
+  var canListUploads = isOwner || myRole === "admin";
+  /* Upload inventory is org-wide and includes pending owner-tier file names.
+     Employee SOP access needs role-cleared search, not an inventory of private
+     uploads. Do not fetch or render that list for regular STAFF sessions. */
+  if (!canListUploads && docList) {
+    var uploadsPanel = docList.closest(".panel");
+    if (uploadsPanel) { uploadsPanel.hidden = true; uploadsPanel.style.display = "none"; }
+  }
 
   /* ── plain-English errors. A person never sees a status code. ───────── */
   var WORDS = {
@@ -760,6 +775,91 @@ button,input,select,textarea{font:inherit;color:inherit}
   document.getElementById("docsClose").addEventListener("click", function () { openDocs(false); });
   document.getElementById("refreshDocs").addEventListener("click", loadUploads);
 
+  /* Context-aware SOP door from STAFF dashboards. The URL contains a finite
+     topic key, NEVER a client id, query, token or arbitrary prompt. The API's
+     staff/tier gate is unchanged; nothing here grants document permissions.
+     "Find" is an explicit user click before the existing Company Brain POST. */
+  var SOP_GUIDES = {
+    setter: {
+      title: "Setter scripts and onboarding",
+      description: "Use the approved setter call script, dial log, qualification and handoff instructions.",
+      prompt: "Find the approved Fundhub setter calling script and SOP for logging dials, qualification, booking, and handing off to the closer. Cite the source documents. If they are not available, say exactly what is missing."
+    },
+    closer: {
+      title: "Closer scripts and handoff",
+      description: "Find the approved discovery, offer, closing and client handoff steps.",
+      prompt: "Find the approved Fundhub closer discovery and sales scripts, offer presentation, payment/contract steps and client handoff SOP. Cite approved source documents; do not invent missing steps."
+    },
+    sales: {
+      title: "Sales management SOPs",
+      description: "Find the approved sales floor coaching, queue and reporting procedures.",
+      prompt: "Find the approved Fundhub sales management SOP for call coaching, setter/closer pipeline reporting, and quality review. Cite source documents or state when a procedure is not documented."
+    },
+    onboarding: {
+      title: "Pipeline and onboarding SOPs",
+      description: "Find the approved lead-to-client onboarding, ownership and next-action steps.",
+      prompt: "Find the approved Fundhub lead pipeline and onboarding SOP including setter-to-closer and closer-to-fulfillment handoffs. Cite source documents; do not invent policies."
+    },
+    "bank-outreach": {
+      title: "Bank outreach scripts and SOPs",
+      description: "Find the approved lender outreach, bank product verification and follow-up steps.",
+      prompt: "Find the approved Fundhub bank/lender outreach script and SOP for relationship outreach, verifying product terms and recording findings. Cite approved documents. Do not invent lender promises."
+    },
+    lenders: {
+      title: "Lender data and outreach SOPs",
+      description: "Find the approved lender-matching, criteria verification and book maintenance steps.",
+      prompt: "Find the approved Fundhub lender criteria maintenance, bank product verification and lender-outreach SOP. Cite sources and identify missing guidance instead of guessing."
+    },
+    "credit-repair": {
+      title: "Credit repair and inquiry SOPs",
+      description: "Find the approved inquiry removal, letter and bureau response workflow.",
+      prompt: "Find the approved Fundhub credit repair fulfillment and inquiry specialist SOP for file intake, disputes, letters, bureau responses and escalation. Cite approved source documents; do not invent compliance steps."
+    },
+    funding: {
+      title: "Funding fulfillment SOPs",
+      description: "Find the approved UnderwriteIQ file checks, funding rounds and client updates.",
+      prompt: "Find the approved Fundhub funding fulfillment SOP from client intake and UnderwriteIQ review through lender application sequences, funding confirmation and client updates. Cite sources; clearly say if anything is undocumented."
+    },
+    "client-success": {
+      title: "Client success and Blueprint SOPs",
+      description: "Find the approved onboarding, service advisor, Blueprint and escalation instructions.",
+      prompt: "Find the approved Fundhub Client Success Manager SOP covering client onboarding, Blueprint service, appointment follow-up, communications and escalations. Cite source documents and identify any gaps."
+    },
+    operations: {
+      title: "Operations SOPs",
+      description: "Find the approved operations queue, reconciliation and incident response steps.",
+      prompt: "Find the approved Fundhub operations SOP for queue monitoring, case escalation, reconciliation and incident follow-up. Cite approved documents; do not invent missing actions."
+    },
+    finance: {
+      title: "FinanceOS advisor SOPs",
+      description: "Find the approved financial review, banking guidance and funding readiness instructions.",
+      prompt: "Find the approved Fundhub FinanceOS staff SOP for reviewing client finances, explaining bank account recommendations and handing off funding readiness. Cite approved documents and identify gaps."
+    },
+    communications: {
+      title: "Client communications SOPs",
+      description: "Find the approved client messaging, consent and staff escalation procedures.",
+      prompt: "Find the approved Fundhub client communications SOP for setter, closer, funding advisor and CSM messaging, consent, escalation and follow-up. Cite approved sources; state if missing."
+    }
+  };
+  var sopTopic = "";
+  try { sopTopic = new URLSearchParams(location.search).get("sop") || ""; } catch (e) {}
+  if (Object.prototype.hasOwnProperty.call(SOP_GUIDES, sopTopic)) {
+    var sopGuide = SOP_GUIDES[sopTopic];
+    var sopCard = document.getElementById("fh-sop-context");
+    sopCard.hidden = false;
+    document.getElementById("fh-sop-title").textContent = sopGuide.title;
+    document.getElementById("fh-sop-description").textContent = sopGuide.description;
+    openDocs(true);
+    document.getElementById("fh-sop-find").addEventListener("click", function () {
+      /* No automatic message on navigation. The user explicitly requests
+         the search, and the existing answer UI provides source citations. */
+      openDocs(false);
+      ta.value = sopGuide.prompt;
+      grow();
+      send();
+    });
+  }
+
   function setPending(n) {
     var count = Number(n) || 0;
     state.pendingCount = count;
@@ -830,6 +930,7 @@ button,input,select,textarea{font:inherit;color:inherit}
   }
 
   function loadUploads() {
+    if (!canListUploads) return; // non-manager must not fetch org-wide owner-tier filenames
     if (state.uploadsState !== "ok") { state.uploadsState = "loading"; renderUploads(); }
     apiGet("/api/company-brain/upload").then(function (j) {
       if (!j || !j.ok) {

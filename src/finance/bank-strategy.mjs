@@ -1064,8 +1064,16 @@ export function buildLocation(summary = {}, businessInfo = new Map(), containers
 
 /* Exported so the next funding sequence planner reads the same rows
    (src/blueprint/next-sequence-plan.mjs). */
+/* Blueprint/FinanceOS credit guidance must never treat a CRS rehearsal or sandbox
+ * payload as a genuine fresh credit file. Real older rows (including legacy
+ * NULL-provider imports) remain usable; only stamped rehearsals are excluded.
+ * The SAME query is shared with the next-funding-sequence planner. */
 export const CRS_SQL = `SELECT id, result, outcome_tier, created_at FROM crs_results
-  WHERE client_id = $1 AND org_id = $2 ORDER BY created_at DESC`;
+  WHERE client_id = $1 AND org_id = $2
+    AND COALESCE(provider, '') <> 'crs_softview_simulated'
+    AND COALESCE(result->>'simulated', '') <> 'true'
+    AND COALESCE(result->>'environment', '') <> 'sandbox'
+  ORDER BY created_at DESC`;
 export const TRADELINE_SQL = `SELECT * FROM tradelines WHERE client_id = $1 AND org_id = $2
   ORDER BY apr ASC NULLS LAST, lender ASC`;
 export const LIABILITY_SQL = `SELECT * FROM card_liabilities WHERE client_id = $1 AND org_id = $2 ORDER BY as_of DESC`;

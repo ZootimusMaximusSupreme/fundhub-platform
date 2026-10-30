@@ -129,7 +129,9 @@ async function openBrain({ session = OWNER, viewport, state = {}, askAnswer, ini
     }
   };
   const opened = await open("/app/company-brain.html", { session, handlers, ...(viewport ? { viewport } : {}), ...(init ? { init } : {}) });
-  await waitFor(() => log.threadReads >= 1 && log.uploadReads >= 1, "the first reads");
+  // Staff roles use the indexed search without fetching the org-wide upload inventory.
+  // The owner/admin upload list remains part of the original first-load contract.
+  await waitFor(() => log.threadReads >= 1 && (init || !["owner", "admin"].includes(session.staff.role) || log.uploadReads >= 1), "the first reads");
   return { ...opened, st, log };
 }
 
@@ -154,9 +156,19 @@ test("the page loads for staff only, and its badge decides whether approval cont
     assert.equal(await text(page, "#chatTitle"), "New chat");
     await page.close();
 
-    // Staff only, and in practice owner and admin: a closer, a client and a partner are each sent to
-    // their own screen, and nothing of the brain is read.
-    for (const [session, landing] of [[CLOSER, "closer-dashboard.html"], [CLIENT, "client-portal.html"], [PARTNER, "partner-galaxy.html"]]) {
+    // A closer is a permitted staff user: read-only SOP discovery is available,
+    // but private upload file names and owner reviews must never be requested.
+    const closer = await openBrain({ session: CLOSER });
+    assert.match(closer.page.url(), /\/app\/company-brain\.html/);
+    assert.equal(await text(closer.page, "#rolePill"), "closer");
+    assert.equal(closer.log.uploadReads, 0, "staff does not fetch owner-tier upload names");
+    assert.equal(closer.log.reviewReads, 0, "staff does not fetch owner review items");
+    assert.equal(await hidden(closer.page, "#reviewPanel"), true);
+    assert.equal(await closer.page.locator("#docList .docrow").count(), 0);
+    await closer.page.close();
+
+    // External client and partner principals stay on their own screens, with no Brain reads.
+    for (const [session, landing] of [[CLIENT, "client-portal.html"], [PARTNER, "partner-galaxy.html"]]) {
       const other = await open("/app/company-brain.html", { session, handlers: {} });
       await waitFor(() => other.page.url().includes(landing), `${session.staff.role} moved to ${landing}`);
       assert.doesNotMatch(other.page.url(), /company-brain/);

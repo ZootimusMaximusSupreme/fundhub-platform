@@ -121,7 +121,9 @@ test("portal-message stores the assistant reply as delivered, never queued", () 
 test("portal-message admits GET for the signed-in client's own thread", () => {
   const src = readFileSync(path.join(ROOT, "api/chat/portal-message.mjs"), "utf8");
   assert.match(src, /req\.method === "GET"/);
-  assert.match(src, /listThreadMessages/);
+  assert.match(src, /FROM messages m/);
+  assert.match(src, /m\.org_id = \$1 AND m\.client_id = \$2 AND m\.conversation_id = \$3/);
+  assert.match(src, /ORDER BY m\.created_at DESC, m\.id DESC/, "the newest saved messages must remain reachable");
   assert.match(src, /allow", "GET, POST"/);
   assert.match(src, /client_id = \$2/);
 });

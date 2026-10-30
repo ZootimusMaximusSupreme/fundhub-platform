@@ -55,6 +55,9 @@
 .setter-page .setter-survey{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 16px}
 .setter-page .setter-survey div{padding:8px 0;border-bottom:1px solid var(--line);overflow-wrap:anywhere}
 .setter-page .setter-survey b{display:block;color:var(--gray);font-size:var(--fs-caption);font-weight:600}
+.setter-page .setter-survey-field label{display:block;margin-bottom:6px;color:var(--gray);font-size:var(--fs-caption);font-weight:600}
+.setter-page .setter-survey-field textarea{display:block;width:100%;min-height:64px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);font:inherit;resize:vertical}
+.setter-page .setter-survey-field small{display:block;margin-top:6px;color:var(--gray);font-size:var(--fs-caption)}
 .setter-page .setter-script{padding:16px;border-left:3px solid var(--line);background:var(--soft);white-space:pre-wrap;overflow-wrap:anywhere}
 .setter-page .setter-skeleton{height:88px;border-bottom:1px solid var(--line);background:linear-gradient(100deg,var(--paper) 20%,var(--soft) 50%,var(--paper) 80%);background-size:200% 100%;animation:setter-pulse 1.7s infinite}
 @keyframes setter-pulse{from{background-position:100% 0}to{background-position:-100% 0}}
