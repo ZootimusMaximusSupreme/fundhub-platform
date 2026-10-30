@@ -18,6 +18,8 @@ describe("fin-b26 SQL reader", () => {
     assert.deepEqual(evalSql("now() + ($3 || ' seconds')::interval", ctx), { plusSeconds: 3600 });
     assert.deepEqual(evalSql("now() - ($3 || ' seconds')::interval", ctx), { plusSeconds: -3600 });
     assert.deepEqual(evalSql("COALESCE(x, '[]'::jsonb) || $1::jsonb", { params: ['[{"a":1}]'], row: { x: [{ b: 2 }] } }), [{ b: 2 }, { a: 1 }]);
+    assert.equal(evalSql("c.custom_fields->>'crm_archived_at' IS NULL", { rows: { c: { custom_fields: {} } } }), true);
+    assert.equal(evalSql("c.custom_fields->>'crm_archived_at' IS NULL", { rows: { c: { custom_fields: { crm_archived_at: "2026-10-29" } } } }), false);
     assert.throws(() => evalSql("mystery(1)", ctx), /does not know the function mystery/);
   });
 

@@ -136,6 +136,7 @@ function tokenize(text) {
       continue;
     }
     const two = text.slice(i, i + 2);
+    if (text.slice(i, i + 3) === "->>") { tokens.push({ t: "op", v: "->>" }); i += 3; continue; }
     if (["::", "||", "<>", "!=", ">=", "<="].includes(two)) { tokens.push({ t: "op", v: two }); i += 2; continue; }
     if ("=<>+-*/(),.[]".includes(ch)) { tokens.push({ t: "op", v: ch }); i += 1; continue; }
     throw new Error(`stand-in SQL reader: cannot read "${ch}" in: ${text}`);
@@ -225,7 +226,15 @@ function parse(text) {
   }
   function postfix() {
     let node = primary();
-    while (is("::")) {
+    while (is("::") || is("->>")) {
+      if (is("->>")) {
+        p += 1;
+        const key = peek();
+        if (!key || key.t !== "str") throw new Error(`stand-in SQL reader: expected JSON key in: ${text}`);
+        p += 1;
+        node = { k: "json_text", a: node, key: key.v };
+        continue;
+      }
       p += 1;
       const name = peek();
       if (!name || (name.t !== "id" && name.t !== "kw")) throw new Error(`stand-in SQL reader: bad cast in: ${text}`);
@@ -392,6 +401,13 @@ function ev(node, ctx) {
       return v === undefined ? null : v;
     }
     case "col": return lookupColumn(node, ctx);
+    case "json_text": {
+      const value = ev(node.a, ctx);
+      if (isNil(value)) return null;
+      const parsed = typeof value === "string" ? JSON.parse(value) : value;
+      const field = parsed?.[node.key];
+      return isNil(field) ? null : String(field);
+    }
     case "cast": return castTo(ev(node.a, ctx), node.type);
     case "not": { const v = ev(node.a, ctx); return isNil(v) ? null : !v; }
     case "and": {
