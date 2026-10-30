@@ -197,7 +197,8 @@ describe("/api/chat/portal-message", () => {
       const [note, reply] = writes;
       // The channel and the words go into the statement through $4 and $5, not as a fixed value.
       assert.match(note.sql, /VALUES \(\$1, \$2, \$3, 'inbound', \$4, \$5, 'received'/);
-      assert.deepEqual(note.params, [ORG_ID, CLIENT, CONVO, channel, "When is my call?"]);
+      assert.deepEqual(note.params, [ORG_ID, CLIENT, CONVO, channel, "When is my call?", null], "legacy clients omit an optional retry key");
+      assert.match(note.sql, /ON CONFLICT \(org_id, provider_ref\) WHERE provider_ref IS NOT NULL DO NOTHING/, "duplicate request is not saved twice");
       assert.match(reply.sql, /VALUES \(\$1, \$2, \$3, 'outbound', \$4, \$5, 'delivered', 'internal'/);
       assert.deepEqual([reply.params[0], reply.params[1], reply.params[2], reply.params[3]], [ORG_ID, CLIENT, CONVO, channel]);
       assert.equal(reply.params[4], res.body.reply.text);
