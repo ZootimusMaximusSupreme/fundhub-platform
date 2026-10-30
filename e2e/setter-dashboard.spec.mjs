@@ -100,4 +100,7 @@ test("setter can correct survey answers during a call and see saved edits after 
   await expect(page.getByRole("textbox", { name: "Set Your Target Amount" })).toHaveValue("$100k - $150k");
   await expect(page.locator(".setter-survey-field").first()).toContainText("Original answer: $50k - $100k");
   await expect(page.getByRole("textbox", { name: "Planned Use" })).toHaveValue("Growth");
+  await page.setViewportSize({ width: 390, height: 844 });
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(1);
 });
