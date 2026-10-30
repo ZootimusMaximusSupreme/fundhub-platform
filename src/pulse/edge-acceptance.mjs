@@ -137,6 +137,12 @@ export function reportCriticalSourceChanges(filenames = [], prBody = "") {
   };
 }
 
+// A mapped-only reporter is unsafe: a *new* money/customer route may have
+// no mapped edge yet. Still surface it as REPORT ONLY, never as a fake PASS.
+export function shouldReportCriticalSourceRisk(report) {
+  return Boolean(report?.edges?.length || report?.unmappedHighRiskFiles?.length);
+}
+
 function milliseconds(value) {
   if (value instanceof Date) return value.getTime();
   if (typeof value === "number") return value;
