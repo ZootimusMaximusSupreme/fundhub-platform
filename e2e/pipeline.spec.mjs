@@ -66,14 +66,77 @@ test.describe("pipeline board", () => {
       .toHaveText("Booked · Fri, May 1, 2020, 10:00 AM MST");
   });
 
-  test("opens the card with Contact, Call, Credit, then Survey before other details", async ({ page }) => {
+  test("opens the card with Contact, Call, Survey, then Credit until the pull completes", async ({ page }) => {
     await openScreen(page, "/app/pipeline.html", OWNER, {
       "/api/dashboard/pipeline": STAGES
     });
     await page.locator('.card[data-client-id] .c-name').click();
     await expect(page.locator('#fhDrawerBody > .fh-drawer-sec h3')).toHaveText([
+      "Contact", "Call", "Survey", "Credit", "Businesses", "Path", "How they got here"
+    ]);
+  });
+
+
+  test("shows rescheduled bookings honestly and verified app-open under call confirmation", async ({ page }) => {
+    const stages = structuredClone(STAGES);
+    stages.stages[0].cards[0].booked_starts_at = "2030-05-01T17:00:00.000Z";
+    stages.stages[0].cards[0].booked_status = "rescheduled";
+    stages.stages[0].cards[0].call_confirmed = true;
+    stages.stages[0].cards[0].app_first_authenticated_at = "2026-10-30T12:00:00.000Z";
+    await openScreen(page, "/app/pipeline.html", OWNER, {
+      "/api/dashboard/pipeline": stages
+    });
+    const card = page.locator('.card[data-client-id]');
+    await expect(card.locator(".c-booked-when")).toHaveText("Rescheduled · Wed, May 1, 2030, 10:00 AM MST");
+    await expect(card.locator(".c-call-confirmed")).toHaveText("✓ Call confirmed");
+    await expect(card.locator(".c-app-opened")).toHaveText("✓ App downloaded");
+    const order = await card.locator(".c-call-confirmed, .c-app-opened").allTextContents();
+    expect(order).toEqual(["✓ Call confirmed", "✓ App downloaded"]);
+  });
+
+  test("does not invent an app download when no authenticated native open exists", async ({ page }) => {
+    const stages = structuredClone(STAGES);
+    stages.stages[0].cards[0].call_confirmed = true;
+    await openScreen(page, "/app/pipeline.html", OWNER, {
+      "/api/dashboard/pipeline": stages
+    });
+    await expect(page.locator(".card .c-app-opened")).toHaveCount(0);
+  });
+
+  test("sorts Sales cards by soonest upcoming call, then most recent past, then unscheduled", async ({ page }) => {
+    const stages = structuredClone(STAGES);
+    const at = (deltaDays) => new Date(Date.now() + deltaDays * 86400000).toISOString();
+    const sample = (id, when) => ({
+      ...stages.stages[0].cards[0], id: "card-" + id, name: id, client_id: id,
+      booked_starts_at: when, entered_at: "2026-10-01T00:00:00Z"
+    });
+    stages.stages[0].cards = [
+      sample("No booking", null), sample("Far future", at(4)),
+      sample("Old past", at(-8)), sample("Soon", at(1)),
+      sample("Recent past", at(-1)), sample("Next", at(2))
+    ];
+    stages.stages[0].count = 6;
+    await openScreen(page, "/app/pipeline.html", OWNER, {
+      "/api/dashboard/pipeline": stages
+    });
+    await expect(page.locator('.col[data-stage-key="new_lead"] .card .c-name')).toHaveText([
+      "Soon", "Next", "Far future", "Recent past", "Old past", "No booking"
+    ]);
+  });
+
+  test("promotes verified Credit above Survey once all three real bureau scores arrive", async ({ page }) => {
+    await openScreen(page, "/app/pipeline.html", OWNER, {
+      "/api/dashboard/pipeline": STAGES,
+      "/api/dashboard/client": {
+        ok: true, client: { email: "dana@example.test", custom_fields: { cf_svy_planned_use_label: "Growth" } },
+        tri_merge: { experian: 771, equifax: 778, transunion: 766, asOf: "2026-10-30T12:00:00Z", sample: false }
+      }
+    });
+    await page.locator('.card[data-client-id] .c-name').click();
+    await expect(page.locator('#fhDrawerBody > .fh-drawer-sec h3')).toHaveText([
       "Contact", "Call", "Credit", "Survey", "Businesses", "Path", "How they got here"
     ]);
+    await expect(page.locator("#fhDrawerBody")).toContainText("Growth");
   });
 
   test("MOVE posts a pipeline-cards move", async ({ page }) => {
