@@ -73,7 +73,7 @@ test("staff clicks document icon, gets contextual Company Brain files and explic
   await expect(page).toHaveURL(/company-brain\.html\?sop=setter$/);
   await expect(page.locator(selectors.docs)).toBeVisible();
   await expect(page.locator("#fh-sop-title")).toHaveText("Setter scripts and onboarding");
-  await expect(page.locator("#docList")).toContainText("No files added yet");
+  await expect(page.locator("#docList")).toBeHidden(); // org-wide owner-tier upload inventory is not a staff SOP list
   expect(asks).toEqual([]); // navigation itself MUST NOT write a chat message.
   await page.getByRole("button", { name: "Find approved instructions" }).click();
   await expect.poll(() => asks.length).toBe(1);
@@ -104,6 +104,7 @@ test("phone shortcut has a 44px target, opens docs, searches and returns without
   await link.click();
   await expect(page).toHaveURL(/company-brain\.html\?sop=closer$/);
   await expect(page.locator(selectors.docs)).toBeVisible();
+  await expect(page.locator("#docList")).toBeHidden();
   await page.locator("#fh-sop-find").click();
   await expect.poll(() => asks.length).toBe(1);
   expect(asks[0].question).toMatch(/closer discovery and sales scripts/);
@@ -169,6 +170,21 @@ test("role-authorized employees get their correct SOP button; external principal
   await setup(page, STAFF("client"));
   await page.goto("/app/client-portal.html");
   await expect(page.locator(selectors.shortcut)).toHaveCount(0);
+});
+
+test("regular staff SOP navigation never reads the org-wide owner-tier upload inventory", async ({ page }) => {
+  let uploadReads = 0;
+  await setup(page, STAFF("setter"), {
+    "/api/company-brain/upload": async (route) => {
+      uploadReads += 1;
+      await json(route, { ok: true, uploads: [{ id: "private", name: "Owner private memo", accessTier: "owner" }], pendingCount: 1 });
+    }
+  });
+  await page.goto("/app/company-brain.html?sop=setter");
+  await expect(page.locator(selectors.docs)).toBeVisible();
+  await expect(page.locator("#docList")).toBeHidden();
+  await page.getByRole("button", { name: "Documents", exact: false }).first().click();
+  expect(uploadReads).toBe(0);
 });
 
 test("all deep-link topics are finite; bogus or injected SOP values render no instruction card", async ({ page }) => {
