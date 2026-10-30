@@ -56,6 +56,21 @@ test("unmapped high-risk PR edit cannot silently escape the report", () => {
   assert.equal(shouldReportCriticalSourceRisk(reportCriticalSourceChanges(["src/sales/closer-deck.mjs"])), true);
 });
 
+test("shared staff shell edit requires real booking and customer-message result review", () => {
+  // Staff SOP PR #312 edits shared shell navigation/role/context for actual
+  // booking and messaging work. A generic unmapped warning is not sufficient.
+  const report = reportCriticalSourceChanges(["public/app/shell.js"]);
+  assert.equal(report.verdict, "REVIEW_REQUIRED");
+  assert.deepEqual(report.edges.map(({ id, severity }) => [id, severity]), [
+    ["lead-booking-call-outcome", "P1"],
+    ["outbound-message-provider-receipt", "P1"]
+  ]);
+  assert.deepEqual(report.unmappedHighRiskFiles, []);
+  assert.equal(report.liveReceipt, "NEEDS_LIVE_RECEIPT");
+  assert.equal(report.evidenceNote, "MISSING");
+  assert.deepEqual(changedCriticalEdges(["src/http/app-client-carry.test.mjs"]), []);
+});
+
 test("existing closer/dispatch and setter source edits demand call-outcome proof", () => {
   // PR #292 edits closer-deck, which calls logCallOutcome; PR #278 edits
   // cockpit, setter dashboard and the task-claim API. All sit on the
