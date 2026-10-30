@@ -515,3 +515,40 @@ test("P0 credit pull and P1 bureau-letter proof require exact, prior unrevoked c
     ...authorized, consumer: null
   }).reason, "consumer-not-completed-for-event");
 });
+
+test("strict A->B witness rejects wrong canonical event version, consumer and persisted result identity", () => {
+  // Contract metadata here is SYNTHETIC and not a production ledger receipt.
+  // A matching trace with the wrong event type/handler/table used to false-PASS.
+  const expectedContract = {
+    eventName: "payment.received", eventVersion: 1,
+    consumerName: "onPaymentReceivedMoney", resultKind: "sale_payments"
+  };
+  const strict = {
+    ...basics, expectedContract,
+    event: { ...event, name: expectedContract.eventName, version: expectedContract.eventVersion },
+    consumer: { ...consumer, consumer_name: expectedContract.consumerName },
+    receipt: { ...receipt, result_kind: expectedContract.resultKind }
+  };
+  assert.equal(judgeSyntheticEdge(strict).verdict, "PASS", "all four correlated contract parts match");
+
+  const negatives = [
+    [{ event: { ...strict.event, name: "booking.created" } }, "producer-canonical-contract-mismatch"],
+    [{ event: { ...strict.event, version: 2 } }, "producer-canonical-contract-mismatch"],
+    [{ event: { ...strict.event, version: undefined } }, "producer-canonical-contract-mismatch"],
+    [{ consumer: { ...strict.consumer, consumer_name: "onBookingCreated" } }, "consumer-canonical-contract-mismatch"],
+    [{ consumer: { ...strict.consumer, consumer_name: undefined } }, "consumer-canonical-contract-mismatch"],
+    [{ receipt: { ...strict.receipt, result_kind: "call_outcomes" } }, "result-canonical-contract-mismatch"],
+    [{ receipt: { ...strict.receipt, result_kind: undefined } }, "result-canonical-contract-mismatch"]
+  ];
+  for (const [change, reason] of negatives) {
+    assert.deepEqual(judgeSyntheticEdge({ ...strict, ...change }), { verdict: "RED", reason });
+  }
+
+  assert.deepEqual(judgeSyntheticEdge({
+    ...strict, expectedContract: { eventName: "payment.received" }
+  }), { verdict: "NOT_CHECKED", reason: "incomplete-canonical-edge-contract" });
+  assert.deepEqual(judgeSyntheticEdge({
+    ...strict, event: { ...strict.event, name: "booking.created" },
+    now: "2026-10-29T00:03:00Z"
+  }), { verdict: "PENDING", reason: "producer-canonical-contract-mismatch" });
+});
