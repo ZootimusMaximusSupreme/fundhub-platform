@@ -110,7 +110,7 @@ describe("GET /api/read/closer-deck (the payload Present draws)", () => {
       "the business joined inside the company": "LEFT JOIN businesses b ON b.client_id = c.id AND b.org_id = c.org_id",
       "the company's name": "b.name AS business_name"
     });
-    assertSqlHas(sqlOf(/FROM crs_results\s+WHERE client_id = \$1 AND org_id = \$2/), { "the newest stored pull, one row": "WHERE client_id = $1 AND org_id = $2 ORDER BY created_at DESC LIMIT 1" });
+    assertSqlHas(sqlOf(/FROM crs_results\s+WHERE client_id = \$1 AND org_id = \$2/), { "the newest stored pulls, scoped to this client": "WHERE client_id = $1 AND org_id = $2 ORDER BY created_at DESC LIMIT 6" });
     assertSqlHas(sqlOf(/FROM businesses\s+WHERE client_id = \$1 AND org_id = \$2/), {
       "this client's companies, oldest first": "WHERE client_id = $1 AND org_id = $2 ORDER BY created_at ASC",
       "the incorporation month, from the entity data": "entity_data->>'incorporated_date' AS incorporated_date"
