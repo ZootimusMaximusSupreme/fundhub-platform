@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Client portal refresh — review draft</title>
+<style>
+  :root{font:16px/1.5 system-ui,sans-serif;color:#17191b;background:#f4f5f6}
+  body{margin:0;padding:24px}main{max-width:1500px;margin:auto}h1{font-size:28px;margin:0 0 8px}
+  h2{font-size:21px;margin:28px 0 8px}p{margin:0 0 18px;color:#51565c}
+  .tools{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:24px}
+  .tools button{font:650 15px system-ui;background:#111827;color:#fff;border:0;border-radius:8px;min-height:44px;padding:8px 16px;cursor:pointer}
+  .tools a{color:#244b9a}.order{border:2px dashed #3268c9;border-radius:10px;background:#eef4ff;padding:14px 18px;margin-bottom:22px;font-weight:650}
+  .grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(270px,1fr);gap:18px}
+  figure{margin:0;background:white;border:1px solid #d5d9de;border-radius:12px;overflow:hidden}
+  .shot{position:relative;line-height:0}.shot img{width:100%;display:block}
+  .shot svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+  .good{fill:rgba(34,197,94,.07);stroke:#16a34a;stroke-width:5}.num{fill:#16a34a}
+  .numtext{fill:white;font:700 26px system-ui;text-anchor:middle;dominant-baseline:central}
+  figcaption{padding:14px 18px;font-weight:600;color:#293135}
+  .hide-marks svg{display:none}
+  @media(max-width:800px){body{padding:12px}.grid{grid-template-columns:1fr}}
+</style>
+<main>
+  <h1>Client portal refresh · marked draft</h1>
+  <p>This is the local browser build. Green marks show the changed view; the button lets you see it clean. Dana, Safe Staff, and the dollar amount are fictional test data.</p>
+  <div class="tools"><button id="toggle" type="button">Hide marks</button><a href="red-draft.html">See the marked old screen</a></div>
+  <div class="order">New order: file status → next action → account and downloads → welcome video → offers.</div>
+  <h2>Staff opens the portal without a client</h2>
+  <div class="grid">
+    <figure><div class="shot"><img src="page_client_portal-staff-choose-1440.png" alt="Desktop staff portal with choose-client action">
+      <svg viewBox="0 0 1440 900" aria-hidden="true"><rect class="good" x="5" y="5" width="1430" height="80" rx="8"/><circle class="num" cx="90" cy="92" r="24"/><text class="numtext" x="90" y="92">1</text><rect class="good" x="30" y="255" width="724" height="266" rx="10"/><circle class="num" cx="60" cy="250" r="24"/><text class="numtext" x="60" y="250">2</text></svg>
+    </div><figcaption>1 · CRM-style white header. 2 · One clear action; no false file or offer cards.</figcaption></figure>
+    <figure><div class="shot"><img src="page_client_portal-staff-choose-390.png" alt="Phone staff portal with choose-client action">
+      <svg viewBox="0 0 390 900" aria-hidden="true"><rect class="good" x="14" y="278" width="361" height="240" rx="10"/><circle class="num" cx="44" cy="270" r="19"/><text class="numtext" x="44" y="270">2</text></svg>
+    </div><figcaption>The same action stays readable on a phone.</figcaption></figure>
+  </div>
+  <h2>Staff opens a selected client’s portal</h2>
+  <div class="grid">
+    <figure><div class="shot"><img src="page_client_portal-staff-preview-1440.png" alt="Desktop selected-client portal with status and next action first">
+      <svg viewBox="0 0 1440 900" aria-hidden="true"><rect class="good" x="30" y="177" width="910" height="360" rx="10"/><circle class="num" cx="60" cy="170" r="24"/><text class="numtext" x="60" y="170">3</text><rect class="good" x="962" y="177" width="447" height="221" rx="10"/><circle class="num" cx="992" cy="170" r="24"/><text class="numtext" x="992" y="170">4</text></svg>
+    </div><figcaption>3 · File facts lead. 4 · The next action is beside them. The video and offers move lower.</figcaption></figure>
+    <figure><div class="shot"><img src="page_client_portal-staff-preview-390.png" alt="Phone selected-client portal with next action and file status">
+      <svg viewBox="0 0 390 900" aria-hidden="true"><rect class="good" x="14" y="293" width="363" height="240" rx="10"/><circle class="num" cx="42" cy="287" r="19"/><text class="numtext" x="42" y="287">4</text><rect class="good" x="14" y="538" width="363" height="358" rx="10"/><circle class="num" cx="42" cy="530" r="19"/><text class="numtext" x="42" y="530">3</text></svg>
+    </div><figcaption>On a phone, the next action comes before the file detail.</figcaption></figure>
+  </div>
+</main>
+<script>document.getElementById('toggle').addEventListener('click',function(){document.body.classList.toggle('hide-marks');this.textContent=document.body.classList.contains('hide-marks')?'Show marks':'Hide marks'});</script>
+</html>

@@ -1,119 +1,135 @@
-/* Professional client workspace. Existing staff presentation and all controls remain. */
+/* Portal-only workspace presentation for clients and staff previews. Client
+   navigation still mounts only after a verified client session in client-ios.js. */
 .cp-home-heading,.cp-file-title,.cp-progress-disclosure>summary,.cp-next-action{display:none}
-body[data-client-ios][data-client-page="client-portal"]{background:#f6f5f1;color:#181916;overflow:hidden;--panel-shadow:none;--cp-caption:#70716b}
-[data-client-ios] .shell{min-width:0}
-[data-client-ios] header.topbar{background:#f6f5f1;color:#191a17;border:0;border-image:none;height:auto;min-height:64px;padding:12px 32px;gap:12px}
-[data-client-ios] header.topbar .logo.inv{filter:none}
-[data-client-ios] header.topbar .sub,[data-client-ios] .who-pill{color:#686a63}
-[data-client-ios] .avatar{background:#e9e8e1;color:#36382f;width:32px;height:32px}
-[data-client-ios] main{min-height:0;background:#f6f5f1;padding:26px 32px 90px;scroll-behavior:smooth;scroll-padding-top:24px}
-[data-client-ios] .page{max-width:none;width:100%;padding:0;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:0 24px;align-self:flex-start;align-content:start;min-width:0}
-[data-client-ios] .page>*{grid-column:1/-1;min-width:0}
-[data-client-ios] #greeting{order:-30;font-weight:720;color:#171815;letter-spacing:-.055em;margin:0 0 6px;--cp-size:32px}
-[data-client-ios] .welcome-sub{order:-29;margin:0 0 26px;color:#71736b}
-[data-client-ios] #rep-files{order:-28}
-[data-client-ios] .card,[data-client-ios] .action-card,[data-client-ios] .acct,[data-client-ios] .promo{background:#fff;border:1px solid #e7e7df;border-radius:22px;padding:24px;margin:0 0 20px;box-shadow:none}
-[data-client-ios] .prog-card{order:-25;grid-column:1/9;min-height:0;padding:28px;position:relative;overflow:hidden;background:#fff;color:#191a17}
-[data-client-ios] .prog-card::before{content:'Your file';display:block;margin-bottom:16px;color:#6c6e65;letter-spacing:.08em;text-transform:uppercase;font-weight:650}
-[data-client-ios] .prog-card::after{content:'';position:absolute;left:0;right:0;top:0;height:3px;background:var(--spectrum);opacity:.75}
-[data-client-ios] .prog-card .status-line{padding:0;background:none;color:inherit}
-[data-client-ios] .prog-card .sb-eyebrow{color:#74766f;font-family:inherit;letter-spacing:0;text-transform:none;margin-bottom:8px}
-[data-client-ios] .prog-card .sb-main{font-weight:620;letter-spacing:-.035em;line-height:1.32;max-width:850px;--cp-size:25px}
-[data-client-ios] .prog-card .sb-amount{font-weight:650;color:#34382e}
-[data-client-ios] .cp-next-action{display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;grid-column:9/-1;order:-25;background:#eeeee7;border:0;border-radius:22px;padding:26px;margin-bottom:20px;gap:12px}
-[data-client-ios] .cp-next-action h2{font-weight:650;letter-spacing:-.04em;line-height:1.25;margin:0;--cp-size:23px}
-[data-client-ios] .cp-next-action p{color:#65685e;line-height:1.45;margin:0}
-[data-client-ios] .cp-next-action .card-title{margin:0}
-[data-client-ios] .cp-next-action a{margin-top:auto;display:inline-flex;align-items:center;min-height:44px;padding:10px 16px;text-decoration:none;border:1px solid #bdbfb3;border-radius:12px;color:#23261e;font-weight:650;background:transparent}
-[data-client-ios] .prog-card #prog-link{margin:18px 0 0;padding:0}
-[data-client-ios] #prog-link a{display:inline-flex;align-items:center;justify-content:center;min-height:46px;border-radius:12px;padding:10px 18px;background:#191b17;border:1px solid #191b17;color:#fff;font-weight:650;text-decoration:none}
-[data-client-ios] .cp-progress-disclosure{margin-top:20px;padding-top:8px;border-top:1px solid #e6e7df}
-[data-client-ios] .cp-progress-disclosure>summary{display:flex;align-items:center;flex-wrap:wrap;gap:8px;min-height:44px;cursor:pointer;color:#666a5e;list-style:none}
-[data-client-ios] .cp-progress-disclosure>summary::after{content:'+';margin-left:auto;color:#34382f}
-[data-client-ios] .cp-progress-disclosure[open]>summary::after{content:'−'}
-[data-client-ios] .cp-current-stage{color:#292d22;font-weight:650}
-[data-client-ios] .cp-progress-disclosure .stepper{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 18px;padding:14px 0 5px}
-[data-client-ios] .cp-progress-disclosure .step{display:flex;flex-direction:row;align-items:center;text-align:left;gap:10px;min-width:0}
-[data-client-ios] .cp-progress-disclosure .step .line{display:none}
-[data-client-ios] .cp-progress-disclosure .step .dot{margin:0;flex:0 0 26px}
-[data-client-ios] .cp-progress-disclosure .step .lbl{max-width:none;overflow-wrap:normal;word-break:normal;color:#72766a}
-[data-client-ios] .cp-progress-disclosure .step.current .lbl{color:#24291c}
-[data-client-ios] #call-confirm-card{order:-24;background:#fff}
-[data-client-ios] #dispute-auth-card{order:-23}
-[data-client-ios] #action-card{order:-22;background:#f4f0e5;border-color:#e8dfc8}
-[data-client-ios] #agreements-card{order:-21}
-[data-client-ios] #acct{order:-20;padding:0;overflow:hidden}
-[data-client-ios] #portal-deliverables{order:-19}
-[data-client-ios] #sb-scores-card{order:-18}
-[data-client-ios] .rail{display:contents}
-[data-client-ios] .rail>.card:first-child{order:-17;grid-column:1/-1;padding:20px 24px;background:transparent;border:0;border-top:1px solid #dedfd5;border-bottom:1px solid #dedfd5;border-radius:0}
-[data-client-ios] .advisor-row{display:flex;gap:12px;margin:10px 0}
-[data-client-ios] .advisor-avatar{background:#e8e9df;border-radius:14px;color:#414735;width:40px;height:40px}
-[data-client-ios] .advisor-name{font-weight:650}
-[data-client-ios] .support-note{color:#707467;line-height:1.5;max-width:850px}
-[data-client-ios] .card-title{font-family:inherit;font-weight:650;letter-spacing:.05em;color:#73766c}
-[data-client-ios] .acct>summary{padding:22px 24px}
-[data-client-ios] .acct .ac-t{color:#20241b}
-[data-client-ios] .acct-bd{padding:0 24px 24px;border-top:1px solid #e7e8df}
-[data-client-ios] .tabs{display:flex;flex-wrap:nowrap;overflow-x:auto;max-width:100%;gap:8px;padding:14px 0}
-[data-client-ios] .tab{flex-shrink:0;min-height:44px;border-radius:11px;background:none}
-[data-client-ios] .tab.on{background:#eeefe7;border-color:#cdd0c1;box-shadow:none;color:#202719}
-[data-client-ios] .own,[data-client-ios] .pay-row,[data-client-ios] .doc-row{padding:16px 0;gap:16px}
-[data-client-ios] .own-actions{flex-wrap:wrap;justify-content:flex-end}
-[data-client-ios] .fb-wins{grid-column:span 6;padding:20px 24px;gap:14px}
-[data-client-ios] .fb-go{white-space:normal}
-[data-client-ios] .video-card{padding:0;overflow:hidden}
-[data-client-ios] .player{height:auto;aspect-ratio:16/9;max-height:400px}
-[data-client-ios] .player:has(.video-empty:not([hidden])){height:64px;aspect-ratio:auto}
-[data-client-ios] .video-meta{padding:22px 24px}
-[data-client-ios] .upload-door,[data-client-ios] .tile{border-radius:16px;background:#fff}
-[data-client-ios] :is(button,.dl-btn,.contact-btn,.door-type,.btn-book,.btn-unlock){min-height:44px;border-radius:11px}
-[data-client-ios] :is(button,a,input,select,summary):focus-visible{outline:3px solid #6c7657;outline-offset:4px}
-[data-client-ios] .modal{border-radius:24px}
-[data-client-ios] .statusbar{display:none}
-[data-client-ios][data-client-page="client-portal"] :is(#greeting,.prog-card .sb-main,.cp-next-action h2){font-size:var(--cp-size)!important}
-@media(min-width:761px){[data-client-ios] header.topbar .brand .logo{display:none}}
-@media(max-width:900px){[data-client-ios] .prog-card,[data-client-ios] .cp-next-action{grid-column:1/-1}[data-client-ios] .fb-wins{grid-column:1/-1}}
+body.fh-astra-portal[data-client-page="client-portal"]{background:#f6f5f1;color:#181916;overflow:hidden;--panel-shadow:none;--cp-caption:#70716b}
+body.fh-astra-portal .shell{min-width:0}
+body.fh-astra-portal header.topbar{background:#f6f5f1;color:#191a17;border:0;border-image:none;height:auto;min-height:64px;padding:12px 32px;gap:12px}
+body.fh-astra-portal header.topbar .logo.inv{filter:none}
+body.fh-astra-portal header.topbar .sub,body.fh-astra-portal .who-pill{color:#686a63}
+body.fh-astra-portal .avatar{background:#e9e8e1;color:#36382f;width:32px;height:32px}
+body.fh-astra-portal main{min-height:0;background:#f6f5f1;padding:26px 32px 90px;scroll-behavior:smooth;scroll-padding-top:24px}
+body.fh-astra-portal .page{max-width:none;width:100%;padding:0;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:0 24px;align-self:flex-start;align-content:start;min-width:0}
+body.fh-astra-portal .page>*{grid-column:1/-1;min-width:0}
+body.fh-astra-portal #greeting{order:-30;font-weight:720;color:#171815;letter-spacing:-.055em;margin:0 0 6px;--cp-size:32px}
+body.fh-astra-portal .welcome-sub{order:-29;margin:0 0 26px;color:#71736b}
+body.fh-astra-portal #rep-files{order:-28}
+body.fh-astra-portal .card,body.fh-astra-portal .action-card,body.fh-astra-portal .acct,body.fh-astra-portal .promo{background:#fff;border:1px solid #e7e7df;border-radius:22px;padding:24px;margin:0 0 20px;box-shadow:none}
+body.fh-astra-portal .prog-card{order:-25;grid-column:1/9;min-height:0;padding:28px;position:relative;overflow:hidden;background:#fff;color:#191a17}
+body.fh-astra-portal .prog-card::before{content:'Your file';display:block;margin-bottom:16px;color:#6c6e65;letter-spacing:.08em;text-transform:uppercase;font-weight:650}
+body.fh-astra-portal .prog-card::after{content:'';position:absolute;left:0;right:0;top:0;height:3px;background:var(--spectrum);opacity:.75}
+body.fh-astra-portal .prog-card .status-line{padding:0;background:none;color:inherit}
+body.fh-astra-portal .prog-card .sb-eyebrow{color:#74766f;font-family:inherit;letter-spacing:0;text-transform:none;margin-bottom:8px}
+body.fh-astra-portal .prog-card .sb-main{font-weight:620;letter-spacing:-.035em;line-height:1.32;max-width:850px;--cp-size:25px}
+body.fh-astra-portal .prog-card .sb-amount{font-weight:650;color:#34382e}
+body.fh-astra-portal .cp-next-action{display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;grid-column:9/-1;order:-25;background:#eeeee7;border:0;border-radius:22px;padding:26px;margin-bottom:20px;gap:12px}
+body.fh-astra-portal .cp-next-action h2{font-weight:650;letter-spacing:-.04em;line-height:1.25;margin:0;--cp-size:23px}
+body.fh-astra-portal .cp-next-action p{color:#65685e;line-height:1.45;margin:0}
+body.fh-astra-portal .cp-next-action .card-title{margin:0}
+body.fh-astra-portal .cp-next-action a{margin-top:auto;display:inline-flex;align-items:center;min-height:44px;padding:10px 16px;text-decoration:none;border:1px solid #bdbfb3;border-radius:12px;color:#23261e;font-weight:650;background:transparent}
+body.fh-astra-portal .prog-card #prog-link{margin:18px 0 0;padding:0}
+body.fh-astra-portal #prog-link a{display:inline-flex;align-items:center;justify-content:center;min-height:46px;border-radius:12px;padding:10px 18px;background:#191b17;border:1px solid #191b17;color:#fff;font-weight:650;text-decoration:none}
+body.fh-astra-portal .cp-progress-disclosure{margin-top:20px;padding-top:8px;border-top:1px solid #e6e7df}
+body.fh-astra-portal .cp-progress-disclosure>summary{display:flex;align-items:center;flex-wrap:wrap;gap:8px;min-height:44px;cursor:pointer;color:#666a5e;list-style:none}
+body.fh-astra-portal .cp-progress-disclosure>summary::after{content:'+';margin-left:auto;color:#34382f}
+body.fh-astra-portal .cp-progress-disclosure[open]>summary::after{content:'−'}
+body.fh-astra-portal .cp-current-stage{color:#292d22;font-weight:650}
+body.fh-astra-portal .cp-progress-disclosure .stepper{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 18px;padding:14px 0 5px}
+body.fh-astra-portal .cp-progress-disclosure .step{display:flex;flex-direction:row;align-items:center;text-align:left;gap:10px;min-width:0}
+body.fh-astra-portal .cp-progress-disclosure .step .line{display:none}
+body.fh-astra-portal .cp-progress-disclosure .step .dot{margin:0;flex:0 0 26px}
+body.fh-astra-portal .cp-progress-disclosure .step .lbl{max-width:none;overflow-wrap:normal;word-break:normal;color:#72766a}
+body.fh-astra-portal .cp-progress-disclosure .step.current .lbl{color:#24291c}
+body.fh-astra-portal #call-confirm-card{order:-24;background:#fff}
+body.fh-astra-portal #dispute-auth-card{order:-23}
+body.fh-astra-portal #action-card{order:-22;background:#f4f0e5;border-color:#e8dfc8}
+body.fh-astra-portal #agreements-card{order:-21}
+body.fh-astra-portal #acct{order:-20;padding:0;overflow:hidden}
+body.fh-astra-portal #portal-deliverables{order:-19}
+body.fh-astra-portal #sb-scores-card{order:-18}
+body.fh-astra-portal .rail{display:contents}
+body.fh-astra-portal .rail>.card:first-child{order:-17;grid-column:1/-1;padding:20px 24px;background:transparent;border:0;border-top:1px solid #dedfd5;border-bottom:1px solid #dedfd5;border-radius:0}
+body.fh-astra-portal .advisor-row{display:flex;gap:12px;margin:10px 0}
+body.fh-astra-portal .advisor-avatar{background:#e8e9df;border-radius:14px;color:#414735;width:40px;height:40px}
+body.fh-astra-portal .advisor-name{font-weight:650}
+body.fh-astra-portal .support-note{color:#707467;line-height:1.5;max-width:850px}
+body.fh-astra-portal .card-title{font-family:inherit;font-weight:650;letter-spacing:.05em;color:#73766c}
+body.fh-astra-portal .acct>summary{padding:22px 24px}
+body.fh-astra-portal .acct .ac-t{color:#20241b}
+body.fh-astra-portal .acct-bd{padding:0 24px 24px;border-top:1px solid #e7e8df}
+body.fh-astra-portal .tabs{display:flex;flex-wrap:nowrap;overflow-x:auto;max-width:100%;gap:8px;padding:14px 0}
+body.fh-astra-portal .tab{flex-shrink:0;min-height:44px;border-radius:11px;background:none}
+body.fh-astra-portal .tab.on{background:#eeefe7;border-color:#cdd0c1;box-shadow:none;color:#202719}
+body.fh-astra-portal .own,body.fh-astra-portal .pay-row,body.fh-astra-portal .doc-row{padding:16px 0;gap:16px}
+body.fh-astra-portal .own-actions{flex-wrap:wrap;justify-content:flex-end}
+body.fh-astra-portal .fb-wins{grid-column:span 6;padding:20px 24px;gap:14px}
+body.fh-astra-portal .fb-go{white-space:normal}
+body.fh-astra-portal .video-card{padding:0;overflow:hidden}
+body.fh-astra-portal .player{height:auto;aspect-ratio:16/9;max-height:400px}
+body.fh-astra-portal .player:has(.video-empty:not([hidden])){height:64px;aspect-ratio:auto}
+body.fh-astra-portal .video-meta{padding:22px 24px}
+body.fh-astra-portal .upload-door,body.fh-astra-portal .tile{border-radius:16px;background:#fff}
+body.fh-astra-portal :is(button,.dl-btn,.contact-btn,.door-type,.btn-book,.btn-unlock){min-height:44px;border-radius:11px}
+body.fh-astra-portal :is(button,a,input,select,summary):focus-visible{outline:3px solid #6c7657;outline-offset:4px}
+body.fh-astra-portal .modal{border-radius:24px}
+body.fh-astra-portal .statusbar{display:none}
+body.fh-astra-portal[data-client-page="client-portal"] :is(#greeting,.prog-card .sb-main,.cp-next-action h2){font-size:var(--cp-size)!important}
+@media(min-width:761px){body.fh-astra-portal header.topbar .brand .logo{display:none}}
+@media(max-width:900px){body.fh-astra-portal .prog-card,body.fh-astra-portal .cp-next-action{grid-column:1/-1}body.fh-astra-portal .fb-wins{grid-column:1/-1}}
 @media(max-width:600px){
- [data-client-ios] header.topbar{padding:10px 18px;min-height:56px;flex-wrap:wrap}
- [data-client-ios] header.topbar .sub{display:none}
- [data-client-ios] main{padding:22px 18px 100px}
- [data-client-ios] .page{display:flex;flex-direction:column;gap:0}
- [data-client-ios] #greeting{--cp-size:28px;line-height:1.16;margin-bottom:9px}
- [data-client-ios] .welcome-sub{margin-bottom:20px}
- [data-client-ios] .card,[data-client-ios] .action-card,[data-client-ios] .promo{padding:21px;margin-bottom:16px;border-radius:19px}
- [data-client-ios] .prog-card .sb-main{--cp-size:21px}
- [data-client-ios] .prog-card::before{margin-bottom:10px}
- [data-client-ios] .cp-next-action{padding:20px;margin-bottom:20px;border-radius:19px;gap:8px}
- [data-client-ios] .cp-next-action h2{--cp-size:21px}
- [data-client-ios] .cp-next-action a{margin-top:4px}
- [data-client-ios] .cp-progress-disclosure{margin-top:13px}
- [data-client-ios] .cp-progress-disclosure .stepper{grid-template-columns:1fr}
- [data-client-ios] .own{flex-wrap:wrap;align-items:flex-start}
- [data-client-ios] .own-actions{justify-content:flex-start}
- [data-client-ios] .sec-note{margin-left:0}
- [data-client-ios] .acct>summary{padding:20px}
- [data-client-ios] .acct-bd{padding:0 18px 20px}
- [data-client-ios] .ac-s{display:none}
- [data-client-ios] .video-card{padding:0}
- [data-client-ios] .video-meta{padding:20px}
- [data-client-ios] .ref-link{flex-wrap:wrap}
- [data-client-ios] .ref-url{min-width:0;overflow-wrap:anywhere}
- [data-client-ios] .modal{max-width:calc(100vw - 24px)}
+ body.fh-astra-portal header.topbar{padding:10px 18px;min-height:56px;flex-wrap:wrap}
+ body.fh-astra-portal header.topbar .sub{display:none}
+ body.fh-astra-portal main{padding:22px 18px 100px}
+ body.fh-astra-portal .page{display:flex;flex-direction:column;gap:0}
+ body.fh-astra-portal #greeting{--cp-size:28px;line-height:1.16;margin-bottom:9px}
+ body.fh-astra-portal .welcome-sub{margin-bottom:20px}
+ body.fh-astra-portal .card,body.fh-astra-portal .action-card,body.fh-astra-portal .promo{padding:21px;margin-bottom:16px;border-radius:19px}
+ body.fh-astra-portal .prog-card .sb-main{--cp-size:21px}
+ body.fh-astra-portal .prog-card::before{margin-bottom:10px}
+ body.fh-astra-portal .cp-next-action{padding:20px;margin-bottom:20px;border-radius:19px;gap:8px}
+ body.fh-astra-portal .cp-next-action h2{--cp-size:21px}
+ body.fh-astra-portal .cp-next-action a{margin-top:4px}
+ body.fh-astra-portal .cp-progress-disclosure{margin-top:13px}
+ body.fh-astra-portal .cp-progress-disclosure .stepper{grid-template-columns:1fr}
+ body.fh-astra-portal .own{flex-wrap:wrap;align-items:flex-start}
+ body.fh-astra-portal .own-actions{justify-content:flex-start}
+ body.fh-astra-portal .sec-note{margin-left:0}
+ body.fh-astra-portal .acct>summary{padding:20px}
+ body.fh-astra-portal .acct-bd{padding:0 18px 20px}
+ body.fh-astra-portal .ac-s{display:none}
+ body.fh-astra-portal .video-card{padding:0}
+ body.fh-astra-portal .video-meta{padding:20px}
+ body.fh-astra-portal .ref-link{flex-wrap:wrap}
+ body.fh-astra-portal .ref-url{min-width:0;overflow-wrap:anywhere}
+ body.fh-astra-portal .modal{max-width:calc(100vw - 24px)}
 }
-@media(prefers-reduced-motion:reduce){[data-client-ios] main{scroll-behavior:auto}}
+@media(prefers-reduced-motion:reduce){body.fh-astra-portal main{scroll-behavior:auto}}
 /* The status card already carries this same welcome/stage sentence. */
-[data-client-ios] .page>.welcome-sub{display:none}
-[data-client-ios] #greeting{margin-bottom:24px}
-[data-client-ios] .prog-card{order:-26}
-[data-client-ios] .page>.welcome-sub{display:none!important}
-[data-client-ios] .cp-next-action{align-self:start}
-[data-client-ios] .cp-next-action p{--cp-size:15px}
-[data-client-ios] .cp-next-action .card-title{--cp-size:12px}
-[data-client-ios][data-client-page="client-portal"] .cp-next-action :is(p,.card-title){font-size:var(--cp-size)!important}
-@media(max-width:600px){[data-client-ios] .cp-next-action{padding:17px;gap:7px}[data-client-ios] .prog-card{padding:19px}[data-client-ios] .prog-card .sb-main{--cp-size:20px}}
+body.fh-astra-portal .page>.welcome-sub{display:none}
+body.fh-astra-portal #greeting{margin-bottom:24px}
+body.fh-astra-portal .prog-card{order:-26}
+body.fh-astra-portal .page>.welcome-sub{display:none!important}
+body.fh-astra-portal .cp-next-action{align-self:start}
+body.fh-astra-portal .cp-next-action p{--cp-size:15px}
+body.fh-astra-portal .cp-next-action .card-title{--cp-size:12px}
+body.fh-astra-portal[data-client-page="client-portal"] .cp-next-action :is(p,.card-title){font-size:var(--cp-size)!important}
+@media(max-width:600px){body.fh-astra-portal .cp-next-action{padding:17px;gap:7px}body.fh-astra-portal .prog-card{padding:19px}body.fh-astra-portal .prog-card .sb-main{--cp-size:20px}}
 
 /* Task first, status second: the existing live task is the primary action. */
-[data-client-ios] .cp-next-action a{background:#191b17;color:#fff;border-color:#191b17}
-[data-client-ios] #prog-link a{background:transparent;color:#24281e;border-color:#bfc3b4}
-@media(max-width:900px){[data-client-ios] .cp-next-action{order:-27}}
+body.fh-astra-portal .cp-next-action a{background:#191b17;color:#fff;border-color:#191b17}
+body.fh-astra-portal #prog-link a{background:transparent;color:#24281e;border-color:#bfc3b4}
+@media(max-width:900px){body.fh-astra-portal .cp-next-action{order:-27}}
+
+/* A missing client is a choice state, never an open file or an offer shelf. */
+body.fh-astra-portal[data-portal-state="loading"] #portal-home .page > :not(#greeting):not(#greeting-sub-pre),
+body.fh-astra-portal[data-portal-state="empty-staff"] #portal-home .page > :not(#greeting):not(#greeting-sub-pre):not(.cp-next-action),
+body.fh-astra-portal[data-portal-state="empty-client"] #portal-home .page > :not(#greeting):not(#greeting-sub-pre):not(#portal-signin-door){display:none!important}
+body.fh-astra-portal[data-portal-state="loading"] #greeting-sub-pre,
+body.fh-astra-portal[data-portal-state="empty-staff"] #greeting-sub-pre,
+body.fh-astra-portal[data-portal-state="empty-client"] #greeting-sub-pre{display:block!important;grid-column:1/-1}
+body.fh-astra.fh-astra-portal[data-portal-state="empty-staff"] #portal-home .cp-next-action{display:flex!important;grid-column:1/8;order:0;max-width:720px}
+@media(max-width:900px){body.fh-astra.fh-astra-portal[data-portal-state="empty-staff"] #portal-home .cp-next-action{grid-column:1/-1;max-width:none}}
+
+/* Give each offer enough room to read instead of making one six-card strip. */
+body.fh-astra-portal #tiles{grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+@media(max-width:1050px){body.fh-astra-portal #tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){body.fh-astra-portal #tiles{grid-template-columns:minmax(0,1fr)}}

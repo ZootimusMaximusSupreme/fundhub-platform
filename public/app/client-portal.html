@@ -504,14 +504,14 @@ footer.statusbar{flex-shrink:0;height:26px;background:var(--ink);display:flex;al
 <link rel="stylesheet" href="/app/fundhub-astra.css">
 <link rel="stylesheet" href="/app/fundhub-astra-client.css">
 </head>
-<body class="no-funding no-docs no-own no-funding-door no-inquiry-door no-bureau-door no-upload-doors no-dispute-consent fh-astra fh-astra-client fh-astra-portal" data-client-page="client-portal">
+<body class="no-funding no-docs no-own no-funding-door no-inquiry-door no-bureau-door no-upload-doors no-dispute-consent fh-astra fh-astra-client fh-astra-portal" data-client-page="client-portal" data-portal-state="loading">
 <script>
-/* Client-only presentation: keep the original progress link and every stage.
-   Staff keeps the original open list, copy, link position and identity. */
+/* Portal presentation uses the same file-first order for clients and staff
+   previews. Client navigation remains gated by client-ios.js. */
 (function () {
   var started = false;
   function enhance() {
-    if (!document.body.hasAttribute("data-client-ios")) return;
+    if (document.body.dataset.portalState === "empty-staff") return;
     var details = document.querySelector(".cp-progress-disclosure");
     if (!started && details) { details.open = false; started = true; }
     var hero = document.getElementById(document.body.classList.contains("no-funding") ? "portal-status-pre" : "portal-status-funded");
@@ -2580,8 +2580,21 @@ document.addEventListener("DOMContentLoaded", async function () {
     setText("who-name", "—");
     var av = document.getElementById("who-av");
     if (av) av.textContent = "—";
-    setText("greeting", "Welcome to your Fundhub portal");
-    setText("greeting-sub-pre", "We could not load your file. Use the link we sent you, or ask for a new one.");
+    var staff = !!STAFF_ROLES[roleHint()];
+    document.body.dataset.portalState = staff ? "empty-staff" : "empty-client";
+    setText("greeting", staff ? "Choose a client" : "Welcome to your Fundhub portal");
+    setText("greeting-sub-pre", staff
+      ? "Open a client record in the CRM to preview their portal."
+      : "We could not load your file. Use the link we sent you, or ask for a new one.");
+    if (staff) {
+      setText("cp-next-title", "Choose a client file");
+      setText("cp-next-copy", "Select a client in the workspace, then open their portal from that record.");
+      var link = document.getElementById("cp-next-link");
+      if (link) {
+        link.href = "/app/client-control-panel.html";
+        link.textContent = "Open client workspace →";
+      }
+    }
     setAdvisor("");
   }
   function advisorFromClient(c) {
@@ -2969,6 +2982,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   function paintDemoPortal() {
+    document.body.dataset.portalState = "ready";
     demoMode = true;
     /* Nothing downstream may wait on a client id that is never coming — the
        dispute card in the next script tag awaits this promise. */
@@ -3133,6 +3147,10 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   if (!savedStaffRole) await paintRepFiles();
 
+  if (repSession && repSession.principal === "staff" && repSession.staff) {
+    sessionRole = String(repSession.staff.role || "").toLowerCase();
+  }
+
   if (!clientId) {
     paintEmptyIdentity();
     setFundingVisible(false);
@@ -3143,7 +3161,9 @@ document.addEventListener("DOMContentLoaded", async function () {
     paintMessages([]);
     paintPays([]);
     showSignInDoor();
-    FHData.banner("sample", "We could not load your file. Use the link we sent you, or ask for a new one.");
+    if (!STAFF_ROLES[roleHint()]) {
+      FHData.banner("sample", "We could not load your file. Use the link we sent you, or ask for a new one.");
+    }
     return;
   }
 
@@ -3217,6 +3237,8 @@ document.addEventListener("DOMContentLoaded", async function () {
         var c = res.data.client;
         var name = [c.first_name, c.last_name].filter(Boolean).join(" ");
         paintIdentity(name, advisorFromClient(c));
+        setText("greeting", name ? "Previewing " + name + "’s portal" : "Client portal preview");
+        document.body.dataset.portalState = "ready";
         paintBooking(res.data.latest_booking);
         paintMessages(res.data.messages);
         paintStaffPays("rows", res.data.transactions);
@@ -3234,13 +3256,16 @@ document.addEventListener("DOMContentLoaded", async function () {
          refusal, so this is the only place a wrong or stale link learns it. */
       if (res.source === "nodata" || res.source === "notfound" || res.source === "badrequest") {
         paintEmptyIdentity();
+        setText("greeting-sub-pre", "This client file could not be found. Choose another client in the CRM.");
       }
     });
   } else if (repSession && repSession.staff && repSession.staff.authorized_rep) {
+    document.body.dataset.portalState = "ready";
     var activeFile = document.querySelector("#rep-files button[aria-current='true']");
     var fileName = activeFile ? activeFile.textContent : "";
     paintIdentity(fileName || (repSession.staff.name || ""), "");
   } else {
+    document.body.dataset.portalState = "ready";
     nameFromSession().then(function (nm) {
       paintIdentity(nm, "");
     });
@@ -3315,7 +3340,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       if (preMain) {
         preMain.textContent = data.prequal_sample === true
           ? "This is a sample estimate. No real soft pull has been run."
-          : document.body.hasAttribute("data-client-ios")
+          : document.body.classList.contains("fh-astra-portal")
           ? "Your soft-pull assessment is in."
           : "Your soft-pull assessment is in. You're pre-qualified for approximately " + amt + ".";
       }

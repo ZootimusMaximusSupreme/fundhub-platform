@@ -1,0 +1,35 @@
+{
+  "request": "Refresh the client portal to match the CRM and repair the unselected staff view shown in Chris's screenshots.",
+  "owner": "/root",
+  "workflows": [
+    {
+      "name": "File loading diagnosis",
+      "prompt": "Read only: trace why a staff visit to /app/client-portal.html says it cannot load a file; report the exact branch and existing checks.",
+      "status": "complete",
+      "finding": "A staff visit with no selected client exits before portal reads and leaves default file cards visible."
+    },
+    {
+      "name": "CRM layout comparison",
+      "prompt": "Read only: compare portal presentation with approved Astra CRM styles and identify the smallest page scoped change.",
+      "status": "complete",
+      "finding": "CRM style is gated by data-client-ios, which staff never receive."
+    },
+    {
+      "name": "Draft, repair, and proof",
+      "prompt": "Build a marked portal draft, refresh portal scoped presentation, show an honest choose-client state, preserve client navigation gates, and verify desktop and phone views.",
+      "status": "draft_ready",
+      "evidence": [
+        "ops/workflows/client-portal-refresh-2026-10-30/red-draft.html",
+        "ops/workflows/client-portal-refresh-2026-10-30/green-draft.html",
+        "ops/workflows/client-portal-refresh-2026-10-30/green-draft.png"
+      ]
+    }
+  ],
+  "checks": {
+    "lint": "4424 files and inline scripts parse clean",
+    "typescript": "npx tsc --noEmit passed",
+    "focused_unit": "49 passed, 0 failed",
+    "portal_browser": "18 passed, 0 failed; final staff action rerun 4 passed"
+  },
+  "publication": "pending marked draft review; production unchanged"
+}
