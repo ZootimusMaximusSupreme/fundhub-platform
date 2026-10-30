@@ -96,7 +96,8 @@ Scratch database only (law: verify-scratch-only, no-test-data-on-production). Wa
 ## Decisions only Chris can make
 
 1. ~~**Lane cut points.**~~ Answered 2026-10-30. See section 1.
-2. **Who records the verified score.** A human setter button on the setter screen, or Josh's call? (Josh does not ask for credit today, so this adds a new question to his call.)
+2. ~~**Who records the verified score.**~~ Settled by the repo: Josh (AG-04) was retired on 2026-10-24 and the setter is a person (`TODO.md`, manual setter). So it is a one-click field on the human setter's screen.
+5. **Cortana.** Chris, 2026-10-30: the lanes must be wired to Cortana. Proposed: send show, Blueprint paid and deposit paid as server events through the existing Cortana feed (`src/workflows/cortana-booking-feed.mjs`, `src/messaging/providers/cortana-booking-webhook.mjs`), so ads learn from people who pay, not only people who book.
 3. **Push.** Email and text first and push later, or hold the launch for push?
 4. **Cap and rhythm.** How many days does the plan run before it stops on its own, and what hours do email, text and push go out?
 
