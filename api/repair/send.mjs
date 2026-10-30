@@ -58,10 +58,17 @@ export default async function handler(req, res, deps = {}) {
       }
     }
 
+    // PostGrid mailing needs a saved letter so the existing DB claim can
+    // fence replay and record mailed_at after the provider accepts the letter.
+    // Legacy no-ID mail lacks both safeguards. Reject the WHOLE batch before
+    // even reading the address; no partial provider sends.
+    const letters = Array.isArray(body.letters) ? body.letters : [];
+    if (wantMail && letters.some((letter) => !isUuid(letter?.letterId || letter?.letter_id))) {
+      return res.status(400).json({ ok: false, error: "saved_repair_letter_required" });
+    }
+
     const from = body.mail_from || body.mailFrom
       || await loadClientReturnAddress(database, { orgId, clientId });
-
-    const letters = Array.isArray(body.letters) ? body.letters : [];
     const mailSender = wantMail
       ? async (letter) => {
           const sent = await mailFn({
