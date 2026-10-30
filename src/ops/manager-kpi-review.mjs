@@ -50,7 +50,17 @@ async function resolveManager(db, { orgId, roleKey, assigneeFor }) {
        AND COALESCE(is_demo, false) = false ORDER BY id LIMIT 2`,
     [orgId, route.assigneeRole]
   );
-  return { ...route, assigneeStaffId: candidates.rows.length === 1 ? candidates.rows[0].id : null };
+  if (candidates.rows.length > 0) {
+    return { ...route, assigneeStaffId: candidates.rows.length === 1 ? candidates.rows[0].id : null };
+  }
+  if (route.assigneeRole === "owner") throw new Error("No active owner for manager review");
+  const owners = await db.query(
+    `SELECT id FROM staff WHERE org_id = $1 AND role = 'owner' AND status = 'active'
+       AND COALESCE(is_demo, false) = false ORDER BY id LIMIT 2`,
+    [orgId]
+  );
+  if (!owners.rows.length) throw new Error("No active manager or owner for review");
+  return { assigneeRole: "owner", assigneeStaffId: owners.rows.length === 1 ? owners.rows[0].id : null };
 }
 
 export async function runManagerKpiReview(db, {
