@@ -410,7 +410,9 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
     invoice = { id: INVOICE, sale_id: BILLED_SALE, status: "sent" },
     paidReceiptRef = null,
     paidReceiptEventId = null,
-    linkedInvoiceId = INVOICE
+    linkedInvoiceId = INVOICE,
+    paidAmount = 0,
+    transactionAmount = 2500
   } = {}) {
     const queries = [];
     const sale = (id) => ({ id, org_id: ORG, client_id: CLIENT, product_id: PRODUCT, sale_motion: null, status: "active" });
@@ -429,6 +431,7 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
             sale_motion: null, closer_staff_id: null, sales_manager_staff_id: null }] };
         }
         if (/FROM invoice_payments/.test(text)) {
+          if (text.includes("COALESCE(SUM")) return { rows: [{ applied: paidAmount }] };
           const replayMatched = params[0] === ORG && params[1] === INVOICE &&
             ((paidReceiptRef !== null && params[2] === paidReceiptRef) ||
              (paidReceiptEventId !== null && params[3] === paidReceiptEventId));
@@ -440,7 +443,7 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
             invoice?.source === "funding_success_fee" || invoice?.invoice_type === "success_fee";
           const ok = invoice && params[0] === invoice.id && params[1] === ORG && params[2] === CLIENT &&
             (!feeOnly || isFee);
-          return { rows: ok ? [invoice] : [] };
+          return { rows: ok ? [{ amount_due: 2500, ...invoice }] : [] };
         }
         if (/SELECT \* FROM sales\s+WHERE id = \$1 AND org_id = \$2 AND client_id = \$3/.test(text)) {
           const ownedSale = params[0] === BILLED_SALE && params[1] === ORG && params[2] === CLIENT;
@@ -450,7 +453,7 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
         }
         // The old guess: the client's newest active funding sale.
         if (/pr\.category = 'funding'/.test(text)) return { rows: [sale(NEWEST_SALE)] };
-        if (/FROM transactions/.test(text)) return { rows: [{ id: "tx-fee", client_id: CLIENT, status: "succeeded", amount_paid: "2500.00" }] };
+        if (/FROM transactions/.test(text)) return { rows: [{ id: "tx-fee", client_id: CLIENT, status: "succeeded", amount_paid: String(transactionAmount) }] };
         if (/INSERT INTO sale_payments/.test(text)) {
           return { rows: [{ id: "sp-fee", sale_id: params[1], transaction_id: params[2],
             product_id: params[3], kind: params[6], amount: params[7] }] };
@@ -554,6 +557,35 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
       assert.equal(out.entitlements, undefined);
     });
   }
+
+  test("overpaid success fee never posts PSP surplus as sale cash", async () => {
+    const db = feeDb();
+    const out = await onPaymentReceivedMoney(feeReceipt({ amount: 3000 }), db);
+    assert.equal(out.done, false);
+    assert.equal(out.reason, "success_fee_overpayment_unallocated");
+    assert.equal(salePaymentInsert(db), undefined);
+    assert.equal(out.entitlements, undefined);
+    assert.ok(db.queries.some(q => q.text.includes("COALESCE(SUM")));
+  });
+
+  test("previous partial fee receipts reduce collectible balance", async () => {
+    const db = feeDb({ paidAmount: 2000,
+      invoice: { id: INVOICE, sale_id: BILLED_SALE, amount_due: 2500, status: "partially_paid" } });
+    const out = await onPaymentReceivedMoney(feeReceipt({ amount: 600 }), db);
+    assert.equal(out.done, false);
+    assert.equal(out.reason, "success_fee_overpayment_unallocated");
+    assert.equal(salePaymentInsert(db), undefined);
+  });
+
+  test("exact remaining partial fee receipt still credits original sale", async () => {
+    const db = feeDb({ paidAmount: 2000, transactionAmount: 500,
+      invoice: { id: INVOICE, sale_id: BILLED_SALE, amount_due: 2500, status: "partially_paid" } });
+    const out = await onPaymentReceivedMoney(feeReceipt({ amount: 500 }), db);
+    assert.equal(out.done, true, JSON.stringify(out));
+    assert.equal(salePaymentInsert(db)?.params[1], BILLED_SALE);
+    assert.equal(salePaymentInsert(db)?.params[6], "success_fee");
+    assert.equal(salePaymentInsert(db)?.params[7], 500);
+  });
 
   test("a paid success-fee invoice holds a second, different processor receipt", async () => {
     const db = feeDb({

@@ -932,13 +932,27 @@ export async function onSaleClosedMoney(event, db) {
 async function successFeeInvoiceFor(db, { orgId, clientId, invoiceId }) {
   if (!orgId || !clientId || !asUuid(invoiceId)) return null;
   const { rows } = await db.query(
-    `SELECT id, sale_id, status, funding_round_id FROM invoices
+    `SELECT id, sale_id, status, funding_round_id, amount_due FROM invoices
       WHERE id = $1 AND org_id = $2 AND client_id = $3
         AND (source = 'funding_success_fee' OR invoice_type = 'success_fee')
       LIMIT 1`,
     [invoiceId, orgId, clientId]
   );
   return rows[0] || null;
+}
+
+export function feePaymentBalanceDecision({ amount, due, applied = 0, status }) {
+  const incoming = Number(amount);
+  if (!Number.isFinite(incoming) || incoming <= 0) return null;
+  const charge = due == null ? NaN : Number(due);
+  const prior = applied == null ? NaN : Number(applied);
+  if (!Number.isFinite(charge) || charge <= 0 || !Number.isFinite(prior) || prior < 0) {
+    return "success_fee_balance_unverified";
+  }
+  const chargeCents = toCents(charge), priorCents = toCents(prior);
+  if (priorCents > chargeCents) return "success_fee_balance_unverified";
+  const allowable = status === "paid" ? chargeCents : chargeCents - priorCents;
+  return toCents(incoming) > allowable ? "success_fee_overpayment_unallocated" : null;
 }
 
 /**
@@ -1070,6 +1084,25 @@ export async function onPaymentReceivedMoney(event, db) {
       String(billedInvoice.funding_round_id || "") !== String(hintedRound)) {
     return { done: false, reason: "invoice_round_conflict" };
   }
+  // The invoice allocator applies only the remaining fee, not the PSP surplus.
+  // Refuse over-credit before recording sale cash or granting any paid access.
+  if (feeInvoice) {
+    let applied = 0;
+    if (feeInvoice.status !== "paid" && Number(paymentPayload.amount) > 0) {
+      const totals = await db.query(
+        `SELECT COALESCE(SUM(CASE WHEN kind = 'payment' THEN amount ELSE -amount END), 0) AS applied
+           FROM invoice_payments WHERE org_id = $1 AND invoice_id = $2`,
+        [orgId, feeInvoice.id]
+      );
+      applied = totals.rows[0]?.applied ?? null;
+    }
+    const reason = feePaymentBalanceDecision({
+      amount: paymentPayload.amount, due: feeInvoice.amount_due,
+      applied, status: feeInvoice.status
+    });
+    if (reason) return { done: false, reason, invoiceId: feeInvoice.id };
+  }
+
   if (billedInvoice?.status === "paid") {
     const receiptRef = paymentPayload.paymentId || paymentPayload.providerRef || null;
     const eventReceiptId = asUuid(event.id);
