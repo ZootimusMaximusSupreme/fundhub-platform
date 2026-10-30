@@ -92,7 +92,8 @@ table.grid tbody tr{cursor:pointer;transition:background .1s}
 table.grid tbody tr:hover{background:var(--soft)}
 table.grid tbody tr.sel{background:rgba(169,198,232,.14)}
 
-.av{width:26px;height:26px;border-radius:50%;flex:0 0 26px;display:inline-flex;align-items:center;justify-content:center;font-size:var(--fs-caption);font-weight:700;letter-spacing:-.02em;background:var(--ink);color:#fff}
+.av{width:26px;height:26px;border-radius:50%;flex:0 0 26px;display:inline-flex;align-items:center;justify-content:center;font-size:var(--fs-caption);font-weight:700;letter-spacing:-.02em;background:var(--ink);color:#fff;position:relative}
+.online-dot{position:absolute;right:-4px;bottom:-4px;width:10px;height:10px;border:2px solid #fff;border-radius:50%;background:#198A4A;box-shadow:0 0 0 1px #198A4A}
 .who-cell{display:flex;align-items:center;gap:10px}
 .who-cell .nm{font-weight:600}
 .who-cell .em{font-family:var(--mono);font-size:var(--fs-caption);color:var(--gray2);letter-spacing:.08em}
@@ -452,7 +453,7 @@ function renderRoster(){
        editable in the person editor — they don't earn a column here */
     var t=p.code+' · started '+p.start;
     return '<tr data-id="'+esc(String(p.id))+'" class="'+(String(p.id)===String(selId)?'sel':'')+'" title="'+esc(t)+'">'+
-      '<td><div class="who-cell"><span class="av">'+initials(p)+'</span><div><div class="nm">'+esc(p.first+' '+p.last)+'</div><div class="em">'+esc(p.email)+'</div></div></div></td>'+
+      '<td><div class="who-cell"><span class="av">'+initials(p)+(p.online===true?'<span class="online-dot" role="img" aria-label="Online now" title="Online now"></span>':'')+'</span><div><div class="nm">'+esc(p.first+' '+p.last)+'</div><div class="em">'+esc(p.email)+'</div></div></div></td>'+
       '<td>'+presetCell(p)+'</td>'+
       /* consent === null means a REAL staff row: monitoring consent and clock
          state have no column anywhere in the schema. Rendering the sample
@@ -1134,6 +1135,7 @@ renderAll();
         start: s.start_date ? String(s.start_date).slice(0, 10) : "—",
         active: s.status === "active",
         status: s.status || "",
+        online: s.online_now === true,
         consent: (Object.prototype.hasOwnProperty.call(s, "monitoring_consent_at") ? !!s.monitoring_consent_at : null),
         consentAt: s.monitoring_consent_at ? String(s.monitoring_consent_at).slice(0, 10) : null,
         clock: self ? false : (Object.prototype.hasOwnProperty.call(s, "open_shift") ? Number(s.open_shift) > 0 : null),
@@ -1154,6 +1156,24 @@ renderAll();
            (selfRow ? (selfRow.clock ? " · you are clocked in" : " · you are clocked out") : " · signed-in user not on roster") +
            " · consent " + consented + "/" + rows.length +
            (unmapped.length ? " · " + unmapped.length + " role(s) outside the permission matrix" : "");
+  });
+  function refreshPresence() {
+    if (document.hidden || !PEOPLE.length) return;
+    FHData.staff({ limit: 200 }).then(function (result) {
+      var current = Object.create(null);
+      if (result.ok && result.data && Array.isArray(result.data.items)) {
+        result.data.items.forEach(function (s) { current[String(s.id)] = s.online_now === true; });
+      }
+      PEOPLE.forEach(function (p) {
+        p.online = Object.prototype.hasOwnProperty.call(current, String(p.staffId))
+          ? current[String(p.staffId)] : null;
+      });
+      renderRoster();
+    });
+  }
+  setInterval(refreshPresence, 30 * 1000);
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden) refreshPresence();
   });
   });
   }, { once: true });
