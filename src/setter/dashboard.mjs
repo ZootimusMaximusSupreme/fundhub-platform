@@ -140,16 +140,19 @@ function mapItem(row, staff) {
   });
 }
 
-export async function setterNumbers(db, staff) {
+export async function setterNumbers(db, staff, { now = new Date(), includeDemo = true } = {}) {
   const result = await db.query(
     `WITH bounds AS (
-       SELECT date_trunc('day', now() AT TIME ZONE 'America/Phoenix')
-                AT TIME ZONE 'America/Phoenix' AS day_start
+       SELECT date_trunc('day', $4::timestamptz AT TIME ZONE 'America/Phoenix')
+                AT TIME ZONE 'America/Phoenix' AS day_start,
+              (date_trunc('day', $4::timestamptz AT TIME ZONE 'America/Phoenix') + interval '1 day')
+                AT TIME ZONE 'America/Phoenix' AS day_end
      ), attributed AS (
        SELECT c.id, c.custom_fields->'setter_handoff' AS handoff
          FROM clients c
         WHERE c.org_id = $1
           AND c.custom_fields->'setter_handoff'->>'setter_staff_id' = $2::text
+          AND ($3::boolean OR COALESCE(c.is_demo, false) = false)
      )
      SELECT
        COALESCE((
@@ -158,6 +161,7 @@ export async function setterNumbers(db, staff) {
              THEN COALESCE(NULLIF(a.handoff->'dial_attempt_days'->>
                to_char(x.day_start AT TIME ZONE 'America/Phoenix', 'YYYY-MM-DD'), '')::int, 0)
            WHEN NULLIF(a.handoff->>'dialed_at', '')::timestamptz >= x.day_start
+            AND NULLIF(a.handoff->>'dialed_at', '')::timestamptz < x.day_end
              THEN COALESCE(NULLIF(a.handoff->>'call_attempts', '')::int, 0)
            ELSE 0
          END)
@@ -170,23 +174,25 @@ export async function setterNumbers(db, staff) {
            CROSS JOIN bounds x
           WHERE a.handoff->>'lead_type' = 'opt_in'
             AND b.status IN ('booked', 'rescheduled')
-            AND b.created_at >= x.day_start
+            AND b.created_at >= x.day_start AND b.created_at < x.day_end
        ), 0)::int AS booked,
        COALESCE((
          SELECT count(*) FILTER (WHERE o.outcome <> 'no_show')
            FROM attributed a
            JOIN call_outcomes o ON o.org_id = $1 AND o.client_id = a.id
            CROSS JOIN bounds x
-          WHERE o.logged_at >= x.day_start
+          WHERE o.logged_at >= x.day_start AND o.logged_at < x.day_end
+            AND ($3::boolean OR COALESCE(o.is_demo, false) = false)
        ), 0)::int AS showed,
        COALESCE((
          SELECT count(*) FILTER (WHERE o.outcome = 'no_show')
            FROM attributed a
            JOIN call_outcomes o ON o.org_id = $1 AND o.client_id = a.id
            CROSS JOIN bounds x
-          WHERE o.logged_at >= x.day_start
+          WHERE o.logged_at >= x.day_start AND o.logged_at < x.day_end
+            AND ($3::boolean OR COALESCE(o.is_demo, false) = false)
        ), 0)::int AS no_shows`,
-    [staff.org_id, staff.id]
+    [staff.org_id, staff.id, includeDemo, now.toISOString()]
   );
   const row = result.rows[0] || {};
   const dials = Number(row.dials || 0);

@@ -200,6 +200,17 @@ export function floorShapeProblem(floor) {
   if (!floor.hero || typeof floor.hero !== "object") return "came back with no team numbers";
   if (!floor.funnel || typeof floor.funnel !== "object") return "came back with no funnel numbers";
   if (!Array.isArray(floor.closers)) return "came back with no closer list";
+  if (!Array.isArray(floor.setters)) return "came back with no setter list";
+  for (const setter of floor.setters) {
+    if (!setter || !setter.staff_id || !setter.name) return "came back with an unnamed setter";
+    for (const key of ["dials", "booked", "showed", "no_shows"]) {
+      if (!Number.isInteger(setter[key]) || setter[key] < 0) return `came back with invalid setter ${key}`;
+    }
+    if (setter.show_rate !== null &&
+        (typeof setter.show_rate !== "number" || setter.show_rate < 0 || setter.show_rate > 1)) {
+      return "came back with invalid setter show rate";
+    }
+  }
   return null;
 }
 
