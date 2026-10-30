@@ -46,6 +46,22 @@ test("source changes require A->B review, including changed existing high-risk f
   assert.deepEqual(changedCriticalEdges(["marketing/landing-pages/apply-survey.html"]).map((x) => x.id), ["lead-booking-call-outcome"]);
 });
 
+test("shared client lifecycle edits cannot hide payment, CRS or funding effects behind booking coverage", () => {
+  // src/handlers/client-lifecycle.mjs registers payment.received,
+  // diagnostic.paid, deposit.paid, analysis.completed and booking events.
+  // A filename-level source watch must include all the affected P0 receipts.
+  const report = reportCriticalSourceChanges(["src/handlers/client-lifecycle.mjs"]);
+  assert.equal(report.verdict, "REVIEW_REQUIRED");
+  assert.deepEqual(report.edges.map((x) => [x.id, x.severity]), [
+    ["lead-booking-call-outcome", "P1"],
+    ["payment-ledger-entitlement", "P0"],
+    ["consent-crs-result", "P0"],
+    ["round-funded-fee-commission", "P0"]
+  ]);
+  assert.deepEqual(report.unmappedHighRiskFiles, []);
+  assert.equal(report.liveReceipt, "NEEDS_LIVE_RECEIPT");
+});
+
 test("material changes in actually open money/booking/Blueprint PRs are reviewed", () => {
   const files = [
     "src/handlers/money-chain.mjs", // fulfillment PR #294
