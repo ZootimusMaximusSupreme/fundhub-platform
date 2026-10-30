@@ -12,14 +12,14 @@ export const CRITICAL_EDGES = Object.freeze([
     event: "booking.created", consumer: "onBookingCreated / s-04-call-booked",
     receipt: "bookings + confirmation message + call_outcomes", graceMinutes: 30,
     pulse: "calls:booked-no-outcome",
-    paths: ["src/adapters/clickfunnels.mjs", "src/bookings/", "src/handlers/client-lifecycle.mjs", "src/workflows/s-04", "src/workflows/cortana-booking-feed.mjs", "src/messaging/providers/cortana-booking-webhook.mjs", "src/sales/call-outcomes.mjs", "src/sales/closer-now.mjs", "public/app/calendar.html", "api/auth/magic-link.mjs", "src/auth/booking-account", "src/auth/magic-link", "public/portal-login.html", "marketing/landing-pages/"]
+    paths: ["src/adapters/clickfunnels.mjs", "src/bookings/", "src/handlers/client-lifecycle.mjs", "src/workflows/s-04", "src/workflows/cortana-booking-feed.mjs", "src/messaging/providers/cortana-booking-webhook.mjs", "src/config/survey-qualification.mjs", "src/setter/tasks.mjs", "src/auth/magic-link.mjs", "src/auth/booking-account", "src/sales/call-outcomes.mjs", "src/sales/closer-now.mjs", "public/app/calendar.html", "api/auth/magic-link.mjs", "src/auth/booking-account", "src/auth/magic-link", "public/portal-login.html", "marketing/landing-pages/"]
   },
   {
     id: "payment-ledger-entitlement", severity: "P0", owner: "A/R",
     event: "payment.received", consumer: "onPaymentReceived / entitlement handlers",
     receipt: "payment ledger + active entitlement + portal read", graceMinutes: null,
     pulse: "payments:paid-no-entitlement",
-    paths: ["src/merchant/", "src/billing/", "src/payments/", "src/entitlements/", "src/ledger/", "src/handlers/money-chain.mjs", "src/handlers/payment-links.mjs", "api/read/invoices.mjs", "src/adapters/whop", "api/payment", "api/checkout"]
+    paths: ["src/merchant/", "src/billing/", "src/payments/", "src/entitlements/", "src/ledger/", "src/handlers/money-chain.mjs", "src/handlers/payment-links.mjs", "src/invoices/", "api/read/invoices.mjs", "src/adapters/whop", "api/payment", "api/checkout"]
   },
   {
     id: "consent-crs-result", severity: "P0", owner: "Fulfillment",
@@ -33,7 +33,7 @@ export const CRITICAL_EDGES = Object.freeze([
     event: "round.funded", consumer: "onRoundFundedMoney / fee and payout handlers",
     receipt: "funding_rounds + applications + fee bill + commission", graceMinutes: 30,
     pulse: "trip:funding",
-    paths: ["src/funding/", "src/finance/funding", "src/handlers/funding", "src/handlers/money-chain.mjs", "src/commissions/", "src/money/", "api/funding"]
+    paths: ["src/funding/", "src/finance/funding", "src/invoices/", "src/inquiry-ops/", "src/handlers/funding", "src/handlers/money-chain.mjs", "src/commissions/", "src/money/", "api/funding"]
   },
   {
     id: "repair-enrollment-bureau-result", severity: "P1", owner: "Fulfillment",
@@ -54,14 +54,14 @@ export const CRITICAL_EDGES = Object.freeze([
     event: "message.queued / message.sent / message.failed", consumer: "message-dispatch-sweeper + provider callbacks",
     receipt: "messages row + provider delivery/callback + client inbox", graceMinutes: 15,
     pulse: "gap:sms-journey-zero",
-    paths: ["src/messaging/", "src/adapters/twilio", "src/adapters/resend", "api/chat/messages.mjs", "netlify/functions/staff-message-sweeper.mjs"]
+    paths: ["src/messaging/", "src/chat/", "src/adapters/twilio", "src/adapters/resend", "api/read/inbox.mjs", "api/chat/messages.mjs", "netlify/functions/staff-message-sweeper.mjs"]
   },
   {
     id: "lender-apply-link", severity: "P1", owner: "Fulfillment / Lender outreach",
     event: "SOURCE-STATE: lender application_url", consumer: "apply-links beat / lender UI",
     receipt: "lenders.application_url + pulse_bank_links read-only result", graceMinutes: null,
     pulse: "url-shape",
-    paths: ["src/lenders/", "src/banks/", "api/lenders", "api/banks"]
+    paths: ["src/lenders/", "src/banks/", "src/finance/bank-strategy.mjs", "api/lenders", "api/banks"]
   },
   {
     id: "ads-spend-attribution", severity: "P2", owner: "Front-house / Ads",
