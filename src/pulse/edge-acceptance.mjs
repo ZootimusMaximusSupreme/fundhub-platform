@@ -26,7 +26,7 @@ export const CRITICAL_EDGES = Object.freeze([
     event: "booking.created", consumer: "onBookingCreated / s-04-call-booked",
     receipt: "bookings + confirmation message + call_outcomes", graceMinutes: 30,
     pulse: "calls:booked-no-outcome",
-    paths: ["src/register-all.mjs", "src/adapters/clickfunnels.mjs", "src/bookings/", "src/handlers/client-lifecycle.mjs", "src/workflows/s-04", "src/workflows/cortana-booking-feed.mjs", "src/messaging/providers/cortana-booking-webhook.mjs", "src/config/survey-qualification.mjs", "src/setter/tasks.mjs", "src/auth/magic-link.mjs", "src/auth/booking-account", "src/sales/call-outcomes.mjs", "src/sales/closer-now.mjs", "src/sales/closer-deck.mjs", "src/sales/cockpit.mjs", "src/setter/dashboard.mjs", "api/tasks.mjs", "public/app/closer-dashboard.html", "public/app/calendar.html", "api/auth/magic-link.mjs", "src/auth/booking-account", "src/auth/magic-link", "public/portal-login.html", "marketing/landing-pages/"]
+    paths: ["src/register-all.mjs", "src/adapters/clickfunnels.mjs", "src/bookings/", "src/handlers/client-lifecycle.mjs", "src/workflows/s-04", "src/workflows/cortana-booking-feed.mjs", "src/messaging/providers/cortana-booking-webhook.mjs", "src/config/survey-qualification.mjs", "src/setter/tasks.mjs", "src/auth/magic-link.mjs", "src/auth/booking-account", "src/sales/call-outcomes.mjs", "src/sales/closer-now.mjs", "src/sales/closer-deck.mjs", "src/sales/cockpit.mjs", "src/setter/dashboard.mjs", "api/tasks.mjs", "public/app/closer-dashboard.html", "public/app/setter-dashboard.html", "public/app/calendar.html", "public/app/pipeline.html", "api/dashboard/pipeline.mjs", "api/auth/magic-link.mjs", "src/auth/booking-account", "src/auth/magic-link", "public/portal-login.html", "marketing/landing-pages/"]
   },
   {
     id: "payment-ledger-entitlement", severity: "P0", owner: "A/R",
@@ -89,7 +89,7 @@ export const CRITICAL_EDGES = Object.freeze([
     event: "SOURCE-STATE: installed first open", consumer: "native webview / portal authentication",
     receipt: "real installed app + authenticated portal result (device proof separately)", graceMinutes: null,
     pulse: "portal:summary",
-    paths: ["ios/", "macos/", "native/", "public/app/client-ios.js", "public/app/client-portal.html", "src/push/native"]
+    paths: ["ios/", "macos/", "native/", "tools/fundhub-ios/", "tools/fundhub-macos/", "api/native/client-activity.mjs", "public/app/client-ios.js", "public/app/client-portal.html", "src/push/native"]
   }
 ]);
 
@@ -97,7 +97,10 @@ const NON_RUNTIME = /(?:^|\/)(?:__tests__|fixtures|docs)\//;
 const TEST_FILE = /(?:\.test\.|\.spec\.|\.snap$)/;
 const NON_EXECUTABLE_ASSET = /\.(?:css|scss|less|svg|png|jpe?g|webp|ico|woff2?|gif|map)$/i;
 function materialSource(file) {
-  return /^(?:src|api|netlify|public|marketing|ios|macos|native)\//.test(file)
+  // Installed native app code lives in tools/fundhub-ios, not top-level ios/.
+  // Watch app code/project configuration but not screenshots or documentation.
+  const nativeAppSource = /^tools\/fundhub-(?:ios|macos)\/.*\.(?:swift|plist|entitlements|pbxproj|xcconfig|m|mm|h)$/i.test(file);
+  return (/^(?:src|api|netlify|public|marketing|ios|macos|native)\//.test(file) || nativeAppSource)
     && !file.startsWith("src/pulse/")
     && !TEST_FILE.test(file) && !NON_EXECUTABLE_ASSET.test(file) && !NON_RUNTIME.test(file);
 }
