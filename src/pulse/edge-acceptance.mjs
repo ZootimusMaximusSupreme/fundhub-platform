@@ -1,6 +1,9 @@
 // Audit-only A->B evidence contract (v1). No live reads, writes, sends, billing or new monitors.
 // A source mapping, check ID, or heartbeat is NOT a verified downstream business result.
 // Source-touch checks are REPORT-ONLY until false positives and ownership are reviewed.
+// Reference the one registered soft-pull check instead of declaring its ID twice.
+import { PULL_CHECK_IDS } from "./beats/lib/soft-pull-truth.mjs";
+
 export const EDGE_CONTRACT_VERSION = 1;
 
 export const CRITICAL_EDGES = Object.freeze([
@@ -9,7 +12,7 @@ export const CRITICAL_EDGES = Object.freeze([
     event: "booking.created", consumer: "onBookingCreated / s-04-call-booked",
     receipt: "bookings + confirmation message + call_outcomes", graceMinutes: 30,
     pulse: "calls:booked-no-outcome",
-    paths: ["src/adapters/clickfunnels.mjs", "src/bookings/", "src/handlers/client-lifecycle.mjs", "src/workflows/s-04", "src/sales/call-outcomes.mjs"]
+    paths: ["src/adapters/clickfunnels.mjs", "src/bookings/", "src/handlers/client-lifecycle.mjs", "src/workflows/s-04", "src/sales/call-outcomes.mjs", "api/auth/magic-link.mjs", "src/auth/booking-account", "src/auth/magic-link", "public/portal-login.html"]
   },
   {
     id: "payment-ledger-entitlement", severity: "P0", owner: "A/R",
@@ -22,8 +25,8 @@ export const CRITICAL_EDGES = Object.freeze([
     id: "consent-crs-result", severity: "P0", owner: "Fulfillment",
     event: "diagnostic.paid", consumer: "onDiagnosticPaidSoftPull / c-00-crs-soft-pull-request",
     receipt: "consent + credit-pull result + stored CRS report", graceMinutes: null,
-    pulse: "softpull:request-failed-or-stuck",
-    paths: ["api/soft-pull-approve.mjs", "src/handlers/diagnostic-soft-pull.mjs", "src/handlers/crs-full-report.mjs", "src/finance/crs", "src/workflows/c-00-crs"]
+    pulse: PULL_CHECK_IDS[0],
+    paths: ["api/soft-pull-approve.mjs", "src/handlers/diagnostic-soft-pull.mjs", "src/handlers/crs-full-report.mjs", "src/finance/crs", "src/workflows/c-00-crs", "public/app/soft-pull-approve.html"]
   },
   {
     id: "round-funded-fee-commission", severity: "P0", owner: "Fulfillment / A/R",
@@ -115,11 +118,19 @@ function matchesEvent(row, event) {
   if (!row || !event) return false;
   if (String(row.org_id || "") !== String(event.org_id || "")) return false;
   if (String(row.client_id || "") !== String(event.client_id || "")) return false;
-  const eventKey = event.correlation_id || event.id;
-  return Boolean(eventKey) && (
-    String(row.event_id || "") === String(event.id || "") ||
-    String(row.correlation_id || "") === String(eventKey)
-  );
+  const eventId = String(event.id || "");
+  const traceId = String(event.correlation_id || eventId);
+  const hasEventId = row.event_id != null && String(row.event_id).length > 0;
+  const hasTraceId = row.correlation_id != null && String(row.correlation_id).length > 0;
+  if (!eventId || (!hasEventId && !hasTraceId)) return false;
+  // A shared journey trace cannot turn a *different event's* result green.
+  // When both keys exist, each must match rather than choosing the favorable one.
+  if (hasEventId && String(row.event_id) !== eventId) return false;
+  if (hasTraceId && String(row.correlation_id) !== traceId) return false;
+  const eventTime = milliseconds(event.created_at);
+  const rowTime = milliseconds(row.created_at || row.completed_at);
+  if (Number.isFinite(eventTime) && Number.isFinite(rowTime) && rowTime < eventTime) return false;
+  return true;
 }
 
 // Pure SYNTHETIC fixture judge, not a claim that production receipts carry these columns.
