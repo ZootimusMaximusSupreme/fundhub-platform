@@ -14,6 +14,9 @@ export const EDGE_CONTRACT_VERSION = 1;
 // finance and customer-message consumers without changing any handler file.
 // Audit each dependent edge on an edit; lender URL/native source-state edges do
 // not use this bus. REPORT ONLY until diff-specific proofs are enforceable.
+// Shared staff shell is the actual navigation and role/context gateway for
+// booking and client messaging work. SOP/navigation changes must get both P1
+// source-to-result reviews; this is report-only, not live proof.
 // Closer deck writes real call outcomes, cockpit displays missing outcomes,
 // setter dashboard advances the sales card, and /api/tasks claims follow-ups.
 // Changes to these existing endpoints must review the booking-to-call-result edge.
@@ -26,7 +29,7 @@ export const CRITICAL_EDGES = Object.freeze([
     event: "booking.created", consumer: "onBookingCreated / s-04-call-booked",
     receipt: "bookings + confirmation message + call_outcomes", graceMinutes: 30,
     pulse: "calls:booked-no-outcome",
-    paths: ["src/register-all.mjs", "src/adapters/clickfunnels.mjs", "src/bookings/", "src/handlers/client-lifecycle.mjs", "src/workflows/s-04", "src/workflows/cortana-booking-feed.mjs", "src/messaging/providers/cortana-booking-webhook.mjs", "src/config/survey-qualification.mjs", "src/setter/tasks.mjs", "src/auth/magic-link.mjs", "src/auth/booking-account", "src/sales/call-outcomes.mjs", "src/sales/closer-now.mjs", "src/sales/closer-deck.mjs", "src/sales/cockpit.mjs", "src/setter/dashboard.mjs", "api/tasks.mjs", "public/app/closer-dashboard.html", "public/app/setter-dashboard.html", "public/app/calendar.html", "public/app/pipeline.html", "api/dashboard/pipeline.mjs", "api/auth/magic-link.mjs", "src/auth/booking-account", "src/auth/magic-link", "public/portal-login.html", "marketing/landing-pages/"]
+    paths: ["src/register-all.mjs", "src/adapters/clickfunnels.mjs", "src/bookings/", "src/handlers/client-lifecycle.mjs", "src/workflows/s-04", "src/workflows/cortana-booking-feed.mjs", "src/messaging/providers/cortana-booking-webhook.mjs", "src/config/survey-qualification.mjs", "src/setter/tasks.mjs", "src/auth/magic-link.mjs", "src/auth/booking-account", "src/sales/call-outcomes.mjs", "src/sales/closer-now.mjs", "src/sales/closer-deck.mjs", "src/sales/cockpit.mjs", "src/setter/dashboard.mjs", "api/tasks.mjs", "public/app/closer-dashboard.html", "public/app/setter-dashboard.html", "public/app/calendar.html", "public/app/pipeline.html", "public/app/shell.js", "api/dashboard/pipeline.mjs", "api/auth/magic-link.mjs", "src/auth/booking-account", "src/auth/magic-link", "public/portal-login.html", "marketing/landing-pages/"]
   },
   {
     id: "payment-ledger-entitlement", severity: "P0", owner: "A/R",
@@ -68,7 +71,7 @@ export const CRITICAL_EDGES = Object.freeze([
     event: "message.queued / message.sent / message.failed", consumer: "message-dispatch-sweeper + provider callbacks",
     receipt: "messages row + provider delivery/callback + client inbox", graceMinutes: 15,
     pulse: "gap:sms-journey-zero",
-    paths: ["src/register-all.mjs", "src/messaging/", "src/chat/", "src/adapters/twilio", "src/adapters/resend", "api/read/inbox.mjs", "api/chat/messages.mjs", "public/app/client-portal.html", "netlify/functions/staff-message-sweeper.mjs"]
+    paths: ["src/register-all.mjs", "src/messaging/", "src/chat/", "src/adapters/twilio", "src/adapters/resend", "api/read/inbox.mjs", "api/chat/messages.mjs", "public/app/client-portal.html", "public/app/shell.js", "netlify/functions/staff-message-sweeper.mjs"]
   },
   {
     id: "lender-apply-link", severity: "P1", owner: "Fulfillment / Lender outreach",
