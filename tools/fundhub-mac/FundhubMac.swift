@@ -101,16 +101,21 @@ private final class FundhubBrowser: NSObject, ObservableObject, WKNavigationDele
         decidePolicyFor navigationAction: WKNavigationAction,
         decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
     ) {
-        guard navigationAction.targetFrame?.isMainFrame != false,
-              let url = navigationAction.request.url else {
+        guard let url = navigationAction.request.url else {
             decisionHandler(.allow)
             return
         }
-        // A link, Back action, script, or logo must never send an in-app
-        // visitor to the public Fundhub landing page (even in the browser).
+        // No frame (including an embedded payment return) may render the
+        // marketing homepage. Other subframes remain in WebKit as normal.
         if isPublicMarketingHome(url) {
             decisionHandler(.cancel)
-        } else if isFundhub(url) {
+            return
+        }
+        if navigationAction.targetFrame?.isMainFrame == false {
+            decisionHandler(.allow)
+            return
+        }
+        if isFundhub(url) {
             decisionHandler(.allow)
         } else {
             openAllowedExternal(url)
@@ -135,15 +140,14 @@ private final class FundhubBrowser: NSObject, ObservableObject, WKNavigationDele
         return nil
     }
 
-    // Redirects can replace an allowed workspace request with a public page.
-    // Check the final main-frame response before WebKit displays it.
+    // Redirects can replace an allowed workspace or iframe URL with public
+    // marketing content. Refuse that final response before WebKit displays it.
     func webView(
         _ webView: WKWebView,
         decidePolicyFor navigationResponse: WKNavigationResponse,
         decisionHandler: @escaping (WKNavigationResponsePolicy) -> Void
     ) {
-        if navigationResponse.isForMainFrame,
-           let finalURL = navigationResponse.response.url,
+        if let finalURL = navigationResponse.response.url,
            isPublicMarketingHome(finalURL) {
             decisionHandler(.cancel)
             return
