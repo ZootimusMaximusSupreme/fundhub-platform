@@ -5,7 +5,7 @@
 Chris: put these at the back of the line, behind the builds already running. Do not start them early.
 
 1. [ ] **Survey score ranges.** Last build of the day it is reached. New options: 500-619, 620-699, 700-759, 760-850, Not sure. In the same change, move everything that reads the old ranges: the two-calendar split (PR #308: 700+ to `/funding-book-call`, the rest to `/funding-book-call--02424`), the Qualified/Unqualified pixel events Cortana sees, `classifySurvey`, and `surveyFicoBand`. Spec: `ops/workflows/backend-selling-lanes-2026-10-30.md` (leftovers).
-2. [ ] **Backend selling lanes.** After the survey. Email and text by lane (Funding, Blueprint, Repair and partners), from survey to call, then wired to Cortana. Spec: `ops/workflows/backend-selling-lanes-2026-10-30.md`.
+2. [ ] **Backend selling lanes.** After the survey. Email, text, and push for app users, by lane (Funding, Blueprint, Repair and partners). Mapping first, no building yet (Chris, 2026-10-30), from survey to call, then wired to Cortana. Spec: `ops/workflows/backend-selling-lanes-2026-10-30.md`.
 
 ## Sunday, 2026-10-25 — launch-eve checklist
 
