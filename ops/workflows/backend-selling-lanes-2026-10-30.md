@@ -100,7 +100,7 @@ Scratch database only (law: verify-scratch-only, no-test-data-on-production). Wa
 
 ## Leftovers found (not fixed here)
 
-- Survey fix (Chris, 2026-10-30: "we should probably fix the survey too"). Split the score bands at 620 so the survey alone can place Blueprint people: for example "580-619" and "620-649" in place of "580-649". The survey lives on ClickFunnels (`src/survey/cf-question-map.mjs`). Not started; Chris to confirm when he is back.
+- Survey fix (Chris, 2026-10-30: "we should probably fix the survey too"). Split the score bands at 620 so the survey alone can place Blueprint people: for example "580-619" and "620-649" in place of "580-649". The survey lives on ClickFunnels (`src/survey/cf-question-map.mjs`). Chris, later the same night: "620 ... 699". Read as one Blueprint band of 620-699. Proposed options: 500-579, 580-619, 620-699, 700-749, 750+, Not sure. Not started; confirm with Chris when he is back.
 
 - The code comment in BS-01 says 11 of 18 cells have copy. The docs show none do.
 - `has_negatives` is not collected by the survey, so the PASS result in `classifySurvey` can never happen and every submit lands in MANUAL_REVIEW.
