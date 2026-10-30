@@ -170,8 +170,22 @@ private final class FundhubBrowser: NSObject, ObservableObject, WKNavigationDele
         guard url.scheme?.lowercased() == "https",
               let hostname = url.host?.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: ".")),
               hostname == "fundhub.ai" || hostname == "www.fundhub.ai" else { return false }
-        let page = url.standardized.path.lowercased()
+        // URL.standardized does not remove decoded percent-encoded dot
+        // segments on every Foundation/WebKit route (e.g. /%2e/index.html).
+        // Resolve dot segments once so equivalent public-home URLs cannot slip
+        // into a signed-in native workspace.
+        let path = url.standardized.path.lowercased()
             .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        var segments: [Substring] = []
+        for segment in path.split(separator: "/") {
+            if segment == "." { continue }
+            if segment == ".." {
+                if !segments.isEmpty { segments.removeLast() }
+                continue
+            }
+            segments.append(segment)
+        }
+        let page = segments.joined(separator: "/")
         return page.isEmpty || page == "index.html"
     }
 

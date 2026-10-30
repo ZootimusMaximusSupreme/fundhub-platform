@@ -134,3 +134,16 @@ test("both native apps classify only first-party public homepage paths as blocke
   assert.match(swiftTests, /func testNativeWebViewBlocksPublicMarketingHomeVariants\(\)/);
   assert.match(swiftTests, /func testNativeWebViewPreservesWorkspaceAuthAndExternalDestinations\(\)/);
 });
+
+test("decoded dot segments cannot bypass either native public-home classifier", () => {
+  for (const source of [ios, mac]) {
+    const body = source.split("func isPublicMarketingHome(_ url: URL) -> Bool {")[1]
+      .split('return page.isEmpty || page == "index.html"')[0];
+    assert.ok(body);
+    assert.match(body, /for segment in path\.split\(separator: "\/"\)/);
+    assert.match(body, /if segment == "\." \{ continue \}/);
+    assert.match(body, /if segment == "\.\."/);
+    assert.match(body, /segments\.removeLast\(\)/);
+    assert.match(body, /let page = segments\.joined\(separator: "\/"\)/);
+  }
+});

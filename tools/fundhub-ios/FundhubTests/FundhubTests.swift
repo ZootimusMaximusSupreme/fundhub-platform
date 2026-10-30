@@ -249,7 +249,11 @@ final class FundhubTests: XCTestCase {
             "https://www.fundhub.ai/index.html?source=header#top",
             "https://fundhub.ai/INDEX.HTML",
             "https://fundhub.ai//",
-            "https://fundhub.ai/index.html/"
+            "https://fundhub.ai/index.html/",
+            "https://fundhub.ai/%2e/index.html",
+            "https://fundhub.ai/%2e%2e/",
+            "https://www.fundhub.ai/%2e%2e/index.html",
+            "https://fundhub.ai/app/%2e%2e/index.html"
         ] {
             let url = URL(string: raw)!
             XCTAssertTrue(WorkspaceNavigation.isPublicMarketingHome(url), raw)
