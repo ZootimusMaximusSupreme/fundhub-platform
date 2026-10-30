@@ -159,7 +159,7 @@ Sources read: Jeremy Haynes "Hammer Them" SOP (4 pillars: questions, second-laye
 3. **Reschedule or more days:** a refill pool of proof and stories, one a day, until the call or the cap. Proof pieces (F4, B8, R7) refill first.
 4. **Lane switch** (the setter's verified score): the new lane picks up at its first unsent piece. Shared pieces already sent are not sent again.
 
-**What Chris films:** V pieces = 17 short talking-head videos. S pieces = 9 screen recordings inside Fundhub. Z clips come from calls he already has. Slideshows, diagrams and copy are made from his videos.
+**What Chris films:** V pieces = 12 short talking-head videos. S pieces = 7 screen recordings inside Fundhub. Z clips come from calls he already has. Slideshows, diagrams and copy are made from his videos.
 
 **Open for Chris on the map:**
 - The credit partner file is a free part of Capital Blueprint today (`src/blueprint/credit-partner.mjs`). Is "credit partners" in the Repair lane the same thing, or a different path?
