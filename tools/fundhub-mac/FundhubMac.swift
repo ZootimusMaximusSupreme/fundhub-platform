@@ -109,7 +109,7 @@ private final class FundhubBrowser: NSObject, ObservableObject, WKNavigationDele
         if isFundhub(url) {
             decisionHandler(.allow)
         } else {
-            NSWorkspace.shared.open(url)
+            openAllowedExternal(url)
             decisionHandler(.cancel)
         }
     }
@@ -124,9 +124,16 @@ private final class FundhubBrowser: NSObject, ObservableObject, WKNavigationDele
         if isFundhub(url) {
             webView.load(URLRequest(url: url))
         } else {
-            NSWorkspace.shared.open(url)
+            openAllowedExternal(url)
         }
         return nil
+    }
+
+    private func openAllowedExternal(_ url: URL) {
+        // A remote page must not be able to launch file:, javascript:,
+        // custom app handlers or other privileged system URL schemes.
+        guard ["https", "mailto", "tel"].contains(url.scheme?.lowercased() ?? "") else { return }
+        NSWorkspace.shared.open(url)
     }
 
     private func isFundhub(_ url: URL) -> Bool {
