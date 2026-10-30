@@ -5,7 +5,7 @@ import { onAnalysisCompletedFullReport, REPORT_SUBTYPE } from "./crs-full-report
 const EVENT = { id: "event-1", orgId: "org-1", clientId: "client-1", payload: { source: "crs", crsResultId: "result-1" } };
 const RESULT = { environment: "production", bureaus: { EX: { scores: [{ scoreValue: 700 }] } } };
 
-function fakeDb({ provider = "crs_softview", result = RESULT, email = "client@fundhub.ai", archivedAt = null } = {}) {
+function fakeDb({ provider = "crs_softview", result = RESULT, email = "client@fundhub.ai", archivedAt = null, firstName = "Test", lastName = "Person" } = {}) {
   const calls = [];
   let queued = false;
   return {
@@ -13,7 +13,7 @@ function fakeDb({ provider = "crs_softview", result = RESULT, email = "client@fu
     async query(sql, params) {
       calls.push({ sql, params });
       if (/FROM crs_results/.test(sql)) return { rows: [{ result, provider }] };
-      if (/FROM clients/.test(sql)) return { rows: [{ first_name: "Test", last_name: "Person", email, crm_archived_at: archivedAt }] };
+      if (/FROM clients/.test(sql)) return { rows: [{ first_name: firstName, last_name: lastName, email, crm_archived_at: archivedAt }] };
       if (/INSERT INTO messages/.test(sql)) {
         if (queued) return { rows: [] };
         queued = true;
@@ -70,4 +70,23 @@ test("an archived client keeps the report but receives no stale-event email", as
   assert.equal(out.emailed, false);
   assert.equal(out.reason, "client_archived");
   assert.equal(db.calls.filter(({ sql }) => /INSERT INTO messages/.test(sql)).length, 0);
+});
+
+
+test("never generate or email a credit report under a placeholder client name", async () => {
+  const db = fakeDb({ firstName: null, lastName: "  " });
+  let pdfBuilds = 0;
+  let saves = 0;
+  let dispatches = 0;
+  const out = await onAnalysisCompletedFullReport(EVENT, db, {
+    store: {},
+    buildPdf: async () => { pdfBuilds += 1; return Buffer.from("%PDF-1.4"); },
+    persist: async () => { saves += 1; return { document: { id: "should-not-exist" } }; },
+    dispatch: async () => { dispatches += 1; return { outcome: "sent" }; }
+  });
+  assert.deepEqual(out, { saved: false, reason: "missing_client_name" });
+  assert.equal(pdfBuilds, 0);
+  assert.equal(saves, 0);
+  assert.equal(dispatches, 0);
+  assert.equal(db.calls.some(({ sql }) => /INSERT INTO messages/.test(sql)), false);
 });

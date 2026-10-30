@@ -134,7 +134,7 @@ test("authorize first: nothing to pay is on the page until the form is saved, an
     return {
       authorize: text.indexOf("Soft pull authorization"),
       next: text.indexOf("What happens next"),
-      submitStep: text.indexOf("You fill this in"),
+      submitStep: text.indexOf("Your information is sent securely and saved for this authorization."),
       payStep: text.indexOf("You pay the total shown"),
     };
   });

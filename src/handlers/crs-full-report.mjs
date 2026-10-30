@@ -36,7 +36,10 @@ export async function onAnalysisCompletedFullReport(event, db, {
     [clientId, orgId]
   )).rows[0];
   if (!client) return { saved: false, reason: "client_not_found" };
-  const clientName = [client.first_name, client.last_name].filter(Boolean).join(" ") || "Client";
+  // Never print a made-up customer name on the completed bureau report.
+  const clientName = [client.first_name, client.last_name]
+    .map((value) => String(value ?? "").trim()).filter(Boolean).join(" ");
+  if (!clientName) return { saved: false, reason: "missing_client_name" };
   const pdf = await buildPdf(result, { clientName });
   const saved = await persist(db, store || storeFromEnv(), {
     orgId, clientId, kind: KINDS.DELIVERABLE, subtype: REPORT_SUBTYPE,
