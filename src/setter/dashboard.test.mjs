@@ -1,9 +1,24 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { sanitizeHandoffPatch, missingForCompletion, updateSetterHandoff, listSetterQueue, setterNumbers, targetDialBy } from "./dashboard.mjs";
+import { sanitizeHandoffPatch, missingForCompletion, updateSetterHandoff, listSetterQueue, setterNumbers, targetDialBy, surveySummary } from "./dashboard.mjs";
 
 const STAFF = { id: "staff-1", org_id: "org-1", role: "owner", name: "Chris" };
 const CLIENT_ID = "11111111-1111-1111-1111-111111111111";
+
+test("survey summary shows nested ClickFunnels choices as readable answers", () => {
+  const answers = surveySummary({
+    cf_svy_money_change_now_labels: '["[\\"Grow faster (more customers / more reach)\\"]"]',
+    cf_svy_planned_use: "Not sure yet"
+  });
+  assert.deepEqual(answers.find(row => row.key === "cf_svy_money_change_now"), {
+    key: "cf_svy_money_change_now",
+    question: "What Would This Money Change Right Now?",
+    answer: "Grow faster (more customers / more reach)"
+  });
+  assert.equal(answers.find(row => row.key === "cf_svy_planned_use").answer, "Not sure yet");
+  assert.equal(surveySummary({ cf_svy_money_change_now_labels: '["Growth","Stability"]' })[0].answer, "Growth, Stability");
+  assert.equal(surveySummary({ cf_svy_money_change_now_labels: "[custom answer" })[0].answer, "[custom answer");
+});
 
 function completeHandoff() {
   return { dialed_at: "2026-10-26T20:00:00Z", call_attempts: 1, disposition: "reached",
@@ -139,13 +154,16 @@ test("queue returns booked and opt-in leads with survey echo and saved handoff",
     return { rows: [{ client_id: CLIENT_ID, first_name: "Pat", last_name: "Lee",
       phone: "+15551234567", created_at: "2026-10-26T20:00:00Z",
       target_dial_by: "2026-10-26T20:01:00Z", booked_at: null, booking_time: null,
-      custom_fields: { cf_svy_planned_use_label: "Open a shop", setter_survey_edits: { cf_svy_planned_use: "Buy equipment" }, setter_handoff: { call_attempts: 2 } } }] };
+      custom_fields: { cf_svy_planned_use_label: "Open a shop",
+        cf_svy_money_change_now_labels: '["[\\"Grow faster\\"]"]',
+        setter_survey_edits: { cf_svy_planned_use: "Buy equipment" }, setter_handoff: { call_attempts: 2 } } }] };
   } };
   const result = await listSetterQueue(db, STAFF);
   assert.equal(result.items[0].lead_type, "opt_in");
   assert.equal(result.items[0].setter_handoff.call_attempts, 2);
   assert.ok(result.items[0].survey.some(x => x.answer === "Open a shop"));
   assert.ok(result.items[0].survey.some(x => x.key === "cf_svy_planned_use"));
+  assert.equal(result.items[0].survey.find(x => x.key === "cf_svy_money_change_now").answer, "Grow faster");
   assert.deepEqual(result.items[0].survey_edits, { cf_svy_planned_use: "Buy equipment" });
   assert.equal(result.numbers.dials, 0);
 });

@@ -48,7 +48,17 @@ export function surveySummary(fields) {
   const cf = jsonObject(fields);
   return CF_SURVEY_QUESTIONS.filter(q => q.type !== "contact").map(q => {
     const value = cf[`${q.payloadKey}_label`] ?? cf[`${q.payloadKey}_labels`] ?? cf[q.payloadKey];
-    const answer = Array.isArray(value) ? value.join(", ") : String(value ?? "").trim();
+    const unpack = (part, depth = 0) => {
+      if (depth < 3 && typeof part === "string" && part.trim().startsWith("[")) {
+        try {
+          const parsed = JSON.parse(part);
+          if (Array.isArray(parsed)) return parsed.flatMap(item => unpack(item, depth + 1));
+        } catch { /* Keep a plain answer as written. */ }
+      }
+      if (Array.isArray(part)) return part.flatMap(item => unpack(item, depth + 1));
+      return [String(part ?? "").trim()];
+    };
+    const answer = unpack(value).filter(Boolean).join(", ");
     return answer ? { key: q.payloadKey, question: q.title, answer } : null;
   }).filter(Boolean);
 }
