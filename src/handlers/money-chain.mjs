@@ -1029,6 +1029,31 @@ export async function onPaymentReceivedMoney(event, db) {
       String(feeInvoice.sale_id) !== String(paymentPayload.saleId)) {
     return { done: false, reason: "success_fee_sale_conflict" };
   }
+  // A paid invoice accepts an *identical replay*, not a second processor
+  // receipt for the same settled debt. The invoice allocator leaves new cash
+  // unapplied once paid; money-chain must not separately pay commissions or
+  // unlock services for that new overpayment.
+  if (feeInvoice?.status === "paid") {
+    const receiptRef = paymentPayload.paymentId || paymentPayload.providerRef || null;
+    const eventReceiptId = asUuid(event.id);
+    if (!receiptRef && !eventReceiptId) {
+      return { done: false, reason: "paid_success_fee_new_receipt" };
+    }
+    const existingReceipt = await db.query(
+      `SELECT 1 FROM invoice_payments
+        WHERE org_id = $1 AND invoice_id = $2
+          AND kind = 'payment' AND method = 'commas'
+          AND (
+            ($3::text IS NOT NULL AND external_ref = $3)
+            OR ($4::uuid IS NOT NULL AND source_event_id = $4)
+          )
+        LIMIT 1`,
+      [orgId, feeInvoice.id, receiptRef, eventReceiptId]
+    );
+    if (!existingReceipt.rows[0]) {
+      return { done: false, reason: "paid_success_fee_new_receipt" };
+    }
+  }
   let sale = null;
   if (feeInvoice?.sale_id) {
     sale = (await db.query(

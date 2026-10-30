@@ -406,7 +406,11 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
   const NEWEST_SALE = "00000000-0000-4000-8000-0000000000b2"; // a later funding sale, same client
   const PRODUCT = "00000000-0000-4000-8000-0000000000f1";
 
-  function feeDb({ invoice = { id: INVOICE, sale_id: BILLED_SALE, status: "sent" } } = {}) {
+  function feeDb({
+    invoice = { id: INVOICE, sale_id: BILLED_SALE, status: "sent" },
+    paidReceiptRef = null,
+    paidReceiptEventId = null
+  } = {}) {
     const queries = [];
     const sale = (id) => ({ id, org_id: ORG, client_id: CLIENT, product_id: PRODUCT, sale_motion: null, status: "active" });
     return {
@@ -422,6 +426,12 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
         if (/FROM payment_links/.test(text) && /WHERE id = \$1 AND org_id = \$2 AND client_id = \$3/.test(text)) {
           return { rows: [{ id: LINK, product_id: null, sale_id: null, sale_motion: null,
             closer_staff_id: null, sales_manager_staff_id: null }] };
+        }
+        if (/FROM invoice_payments/.test(text)) {
+          const replayMatched = params[0] === ORG && params[1] === INVOICE &&
+            ((paidReceiptRef !== null && params[2] === paidReceiptRef) ||
+             (paidReceiptEventId !== null && params[3] === paidReceiptEventId));
+          return { rows: replayMatched ? [{ matched: 1 }] : [] };
         }
         if (/FROM invoices/.test(text)) {
           const ok = invoice && params[0] === invoice.id && params[1] === ORG && params[2] === CLIENT;
@@ -500,6 +510,42 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
       assert.equal(out.entitlements, undefined);
     });
   }
+
+  test("a paid success-fee invoice holds a second, different processor receipt", async () => {
+    const db = feeDb({
+      invoice: { id: INVOICE, sale_id: BILLED_SALE, status: "paid" },
+      paidReceiptRef: "sim-pay-fee"
+    });
+    const out = await onPaymentReceivedMoney(
+      feeReceipt({ paymentId: "sim-pay-second", providerRef: "sim-pay-second",
+        amount: 2500, product: "unmatched" }), db
+    );
+    assert.equal(out.done, false);
+    assert.equal(out.reason, "paid_success_fee_new_receipt");
+    assert.equal(salePaymentInsert(db), undefined, "a new provider payment cannot over-credit a paid invoice's sale");
+    assert.equal(out.entitlements, undefined);
+  });
+
+  test("a paid success-fee invoice permits the original identical provider replay", async () => {
+    const db = feeDb({
+      invoice: { id: INVOICE, sale_id: BILLED_SALE, status: "paid" },
+      paidReceiptRef: "sim-pay-fee"
+    });
+    const out = await onPaymentReceivedMoney(feeReceipt(), db);
+    assert.equal(out.done, true, JSON.stringify(out));
+    assert.equal(out.saleId, BILLED_SALE);
+    assert.equal(salePaymentInsert(db)?.params[6], "success_fee");
+    assert.ok(db.queries.some((q) => /FROM invoice_payments/.test(q.text)),
+      "a paid invoice's original applied merchant receipt must be proved");
+  });
+
+  test("a paid invoice without a recorded matching receipt never counts as paid sale cash", async () => {
+    const db = feeDb({ invoice: { id: INVOICE, sale_id: BILLED_SALE, status: "paid" } });
+    const out = await onPaymentReceivedMoney(feeReceipt(), db);
+    assert.equal(out.done, false);
+    assert.equal(out.reason, "paid_success_fee_new_receipt");
+    assert.equal(salePaymentInsert(db), undefined);
+  });
 
   test("a zero-dollar payment cannot grant paid access", async () => {
     const db = feeDb();
