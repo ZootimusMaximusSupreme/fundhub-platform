@@ -15,7 +15,7 @@ The existing Company Brain search, thread and uploaded-document APIs already use
 
 `outbound_rep` is **NOT in** `ROLE_SETS.STAFF` and has no Company Brain read permission. It remains excluded; customer, affiliate and partner portals are also excluded. No synthetic document or newly created SOP is claimed.
 
-The owner reports SOPs and sales scripts already loaded into Company Brain; the shortcut searches role-cleared indexed sources instead of duplicating them. The Documents panel lists only local uploads, not the whole Drive corpus. Existence, approval status and visibility of specific live SOP files cannot be proven using mocked UI tests; live source indexing and staff view still require verification.
+The owner reports SOPs and sales scripts already loaded into Company Brain; the shortcut searches role-cleared indexed sources instead of duplicating them. The Documents panel lists only local uploads, not the whole Drive corpus. To avoid showing regular employees owner-tier *upload names* from the existing org-wide upload inventory, the panel hides that inventory and never calls its GET endpoint for standard STAFF users; owner/admin inventory remains unchanged. Role-filtered search remains the path for staff SOP documents. Existing server-level inventory scoping is a separate hardening issue. Existence, approval status and visibility of specific live SOP files cannot be proven using mocked UI tests; live source indexing and staff view still require verification.
 
 ## Acceptance matrix (offline static browser + unit tests)
 | Scenario | Expected |
