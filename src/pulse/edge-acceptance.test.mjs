@@ -5,7 +5,7 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import {
-  EDGE_CONTRACT_VERSION, CRITICAL_EDGES, changedCriticalEdges,
+  EDGE_CONTRACT_VERSION, CRITICAL_EDGES, changedCriticalEdges, unmappedHighRiskSourceChanges,
   reportCriticalSourceChanges, judgeSyntheticEdge
 } from "./edge-acceptance.mjs";
 
@@ -46,6 +46,28 @@ test("source changes require A->B review, including changed existing high-risk f
   assert.deepEqual(changedCriticalEdges(["marketing/landing-pages/apply-survey.html"]).map((x) => x.id), ["lead-booking-call-outcome"]);
 });
 
+test("material changes in actually open money/booking/Blueprint PRs are reviewed", () => {
+  const files = [
+    "src/handlers/money-chain.mjs", // fulfillment PR #294
+    "src/messaging/providers/cortana-booking-webhook.mjs", // booking PR #279
+    "src/workflows/cortana-booking-feed.mjs", // booking PR #279
+    "src/workflows/finance-os-pull-sweeper.mjs", // Blueprint PR #295
+    "src/finance/finance-os-entitlement.mjs", // real report access
+    "src/finance/soft-pulls.mjs" // explicit credit-pull consent
+  ];
+  const result = reportCriticalSourceChanges(files);
+  assert.equal(result.verdict, "REVIEW_REQUIRED");
+  assert.deepEqual(result.edges.map((x) => x.id), [
+    "lead-booking-call-outcome", "payment-ledger-entitlement", "consent-crs-result",
+    "round-funded-fee-commission", "blueprint-financeos-report", "outbound-message-provider-receipt"
+  ]);
+  assert.deepEqual(result.unmappedHighRiskFiles, []);
+  const newRisk = "src/handlers/new-payment-webhook.mjs";
+  assert.deepEqual(unmappedHighRiskSourceChanges([newRisk, "src/ui/theme.mjs", "docs/booking.md", "src/handlers/new-payment-webhook.test.mjs"]), [newRisk]);
+  assert.equal(reportCriticalSourceChanges([newRisk]).verdict, "REVIEW_REQUIRED");
+  assert.equal(reportCriticalSourceChanges([newRisk]).liveReceipt, "NEEDS_LIVE_RECEIPT");
+});
+
 test("wrong source, consumer, identity, trace or business result turns RED after grace", () => {
   const changes = [
     { event: null },
@@ -72,7 +94,10 @@ test("provider receipt, grace, no-demand and missing data cannot become fake PAS
   assert.equal(judgeSyntheticEdge({ ...basics, requireProviderReceipt: true,
     providerReceipt: { ...providerReceipt, outcome: "accepted" } }).verdict, "RED");
   assert.equal(judgeSyntheticEdge({ ...basics, receipt: null, now: "2026-10-29T00:03:00Z" }).verdict, "PENDING");
-  assert.equal(judgeSyntheticEdge({ ...basics, demand: false }).verdict, "NA");
+  assert.equal(judgeSyntheticEdge({ ...basics, demand: false, event: null }).verdict, "NA");
+  assert.deepEqual(judgeSyntheticEdge({ ...basics, demand: false }), {
+    verdict: "NOT_CHECKED", reason: "event-present-but-demand-marked-absent"
+  });
   assert.equal(judgeSyntheticEdge({ ...basics, demandAt: null, event: null }).verdict, "NOT_CHECKED");
 });
 
