@@ -65,6 +65,7 @@ async function runShell({ page = "client-portal.html", search = "",
     console: { log() {}, warn() {}, error() {} },
     URLSearchParams,
     setTimeout: () => 0,
+    setInterval: () => 0,
     localStorage: {
       getItem: (k) => (Object.prototype.hasOwnProperty.call(store, k) ? store[k] : null),
       setItem: (k, v) => { store[k] = String(v); },
