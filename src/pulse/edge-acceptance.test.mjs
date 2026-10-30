@@ -130,7 +130,7 @@ test("provider receipt, grace, no-demand and missing data cannot become fake PAS
 test("shared journey trace cannot launder another event or stale result", () => {
   const tracedEvent = { ...event, correlation_id: "trace-one" };
   const tracedConsumer = { ...consumer, correlation_id: "trace-one" };
-  const tracedReceipt = { ...receipt, correlation_id: "trace-one" };
+  const tracedReceipt = { ...receipt, event_id: id, correlation_id: "trace-one" };
   const traced = { ...basics, event: tracedEvent, consumer: tracedConsumer, receipt: tracedReceipt };
   assert.equal(judgeSyntheticEdge(traced).verdict, "PASS");
   const bad = [
@@ -146,6 +146,36 @@ test("shared journey trace cannot launder another event or stale result", () => 
   for (const change of bad) {
     assert.equal(judgeSyntheticEdge({ ...traced, ...change }).verdict, "RED", JSON.stringify(change));
   }
+});
+
+test("shared journey-only correlation is not exact event-to-result proof", () => {
+  // Two legitimate events can share one journey trace. A receipt with only
+  // that trace must not clear an unrelated event, even inside the same client.
+  const journey = "shared-journey";
+  const second = { ...event, id: "event-second", correlation_id: journey };
+  const first = { ...event, id: "event-first", correlation_id: journey };
+  const consumedSecond = { ...consumer, event_id: second.id, correlation_id: journey };
+  const receiptFromJourneyOnly = {
+    org_id: org, client_id: client, correlation_id: journey, outcome: "satisfied"
+  };
+  const check = { ...basics, event: second, consumer: consumedSecond, receipt: receiptFromJourneyOnly };
+  assert.equal(judgeSyntheticEdge(check).verdict, "RED");
+  assert.equal(judgeSyntheticEdge({ ...check, receipt: {
+    ...receiptFromJourneyOnly, event_id: first.id
+  } }).verdict, "RED");
+  assert.equal(judgeSyntheticEdge({ ...check, receipt: {
+    ...receiptFromJourneyOnly, event_id: second.id
+  } }).verdict, "PASS");
+  assert.equal(judgeSyntheticEdge({ ...check, requireProviderReceipt: true,
+    receipt: { ...receiptFromJourneyOnly, event_id: second.id },
+    providerReceipt: { org_id: org, client_id: client,
+      correlation_id: journey, outcome: "delivered" }
+  }).verdict, "RED");
+  assert.equal(judgeSyntheticEdge({ ...check, requireProviderReceipt: true,
+    receipt: { ...receiptFromJourneyOnly, event_id: second.id },
+    providerReceipt: { org_id: org, client_id: client, event_id: second.id,
+      correlation_id: journey, outcome: "delivered" }
+  }).verdict, "PASS");
 });
 
 test("NULL-client booking event needs exact org-scoped identity resolution, not an email guess", () => {
