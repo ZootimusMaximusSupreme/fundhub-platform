@@ -8,17 +8,31 @@
 // two revolving cards, a collection and one late, a company with no company
 // report yet. Targets are 10% of each limit; the levers climb in order; the
 // new-company amounts follow the engine's age rule (0.5x, 1x, 2x of one base).
+// It carries a fundability count so the meter path is covered.
 //
-// SAMPLE is the deck's labeled sample, the /roadmap sample file
-// (ops/workflows/2026-10-02-roadmap-sample-content/w1-samples.json): $199,350
-// today, $221,500 once the cards are paid down, American Express Blue Business
-// Cash $4,800 of $25,000 to $2,500, Chase Sapphire Preferred $2,100 of $12,000
-// to $1,200, no negative items, no business entity yet.
+// SAMPLE is the deck's own sample file (src/finance/sample-credit-file.mjs and
+// bank v3, src/banking/plaid-sandbox-user.mjs): the Personal Visa at First
+// Platypus Bank, $3,142 of $8,000 on 2026-10-29, target $800; the paid-off
+// Toyota loan with its one old 30-day late; Fundhub LLC. The amounts are W1's
+// real engine.visual for that file: today $24,749, paid down $33,000, cleaned
+// $55,000. Like every real file today it has fundability null and, here,
+// newCompany null.
+//
+// REPAIR is a repair-only file: the engine prints $0 today and the climb is the
+// pitch. HOLD is a file where the engine withholds the money (review or hold):
+// every lever applies false with totalAfter null, so no qualify amount shows,
+// while the steps and the cards still work.
 //
 // NONE is a file with no pull yet (visual null). BAD is broken data the visual
 // must survive without throwing.
 
 export const CLIENT_ID = "aaaaaaaa-1111-4111-8111-111111111111";
+
+const LEVERS_OFF = [
+  { key: "paydown", label: "Pay the cards down", applies: false, totalAfter: null },
+  { key: "clean", label: "Clean the file", applies: false, totalAfter: null },
+  { key: "accounts", label: "Add accounts", applies: false, totalAfter: null }
+];
 
 export const FULL = {
   engine: {
@@ -62,35 +76,109 @@ export const FULL = {
 };
 
 export const SAMPLE = {
-  engine: { available: true, tier: "FULL_FUNDING", total: 199350, fico: { experian: 762, equifax: 770, transunion: 758 }, reasons: [], sample: true },
+  engine: {
+    available: true, tier: "FUNDING_PLUS_REPAIR", total: 24749,
+    fico: { experian: 702, equifax: 709, transunion: 706 }, reasons: [], sample: true
+  },
   visual: {
     source: "sample",
-    todayTotal: 199350,
+    todayTotal: 24749,
     levers: [
-      { key: "paydown", label: "Pay the cards down", applies: true, totalAfter: 221500 },
-      { key: "clean", label: "Clean the file", applies: false, totalAfter: null },
+      { key: "paydown", label: "Pay the cards down", applies: true, totalAfter: 33000 },
+      { key: "clean", label: "Clean the file", applies: true, totalAfter: 55000 },
       { key: "accounts", label: "Add accounts", applies: false, totalAfter: null }
     ],
-    optimizedTotal: 221500,
-    tierNow: "FULL_FUNDING",
+    optimizedTotal: 55000,
+    tierNow: "FUNDING_PLUS_REPAIR",
     tierAfter: "FULL_FUNDING",
     cards: [
-      { creditor: "American Express Blue Business Cash", limit: 25000, balance: 4800, target: 2500, usePct: 19 },
-      { creditor: "Chase Sapphire Preferred", limit: 12000, balance: 2100, target: 1200, usePct: 18 }
+      { creditor: "First Platypus Bank Visa", limit: 8000, balance: 3142, target: 800, usePct: 39 }
     ],
-    items: [],
+    items: [
+      { creditor: "Toyota Motor Credit", kind: "late", bureaus: ["EX", "EQ", "TU"] }
+    ],
     mismatches: [],
     companies: [],
     newCompany: null,
-    fundability: { now: { passed: 5, total: 6 }, after: { passed: 6, total: 6 } }
+    fundability: null
+  },
+  survey: {},
+  handoff: {},
+  businesses: [{ id: "biz-sample", name: "Fundhub LLC", age_months: null, incorporated_date: null }],
+  tier: "FUNDING_PLUS_REPAIR",
+  door: "blueprint",
+  sample: true,
+  clientId: "sample-financeos"
+};
+
+export const REPAIR = {
+  engine: {
+    available: true, tier: "REPAIR_ONLY", total: 0,
+    fico: { experian: 588, equifax: 596, transunion: 602 }, reasons: [], sample: false
+  },
+  visual: {
+    source: "engine",
+    todayTotal: 0,
+    levers: [
+      { key: "paydown", label: "Pay the cards down", applies: false, totalAfter: null },
+      { key: "clean", label: "Clean the file", applies: true, totalAfter: 41000 },
+      { key: "accounts", label: "Add accounts", applies: false, totalAfter: null }
+    ],
+    optimizedTotal: 41000,
+    tierNow: "REPAIR_ONLY",
+    tierAfter: "FUNDING_PLUS_REPAIR",
+    cards: [
+      { creditor: "Credit One Bank", limit: 1500, balance: 1380, target: 150, usePct: 92 }
+    ],
+    items: [
+      { creditor: "Portfolio Recovery Associates", kind: "collection", bureaus: ["EX", "EQ", "TU"] },
+      { creditor: "Synchrony Bank", kind: "charge_off", bureaus: ["EX", "TU"] }
+    ],
+    mismatches: [],
+    companies: [],
+    newCompany: null,
+    fundability: null
+  },
+  survey: { capital: "about $1,500" },
+  handoff: {},
+  businesses: [],
+  tier: "REPAIR_ONLY",
+  door: "blueprint",
+  sample: false,
+  clientId: "repair-only"
+};
+
+export const HOLD = {
+  engine: {
+    available: true, tier: "MANUAL_REVIEW", total: null,
+    fico: { experian: 681, equifax: 677, transunion: 690 }, reasons: ["NAME_MISMATCH"], sample: false
+  },
+  visual: {
+    source: "engine",
+    todayTotal: null,
+    levers: LEVERS_OFF,
+    optimizedTotal: null,
+    tierNow: null,
+    tierAfter: null,
+    cards: [
+      { creditor: "Chase Freedom", limit: 12000, balance: 5100, target: 1200, usePct: 43 },
+      { creditor: "Wells Fargo Active Cash", limit: 7000, balance: 900, target: 700, usePct: 13 }
+    ],
+    items: [
+      { creditor: "LVNV Funding", kind: "collection", bureaus: ["EQ"] }
+    ],
+    mismatches: [],
+    companies: [],
+    newCompany: null,
+    fundability: null
   },
   survey: {},
   handoff: {},
   businesses: [],
-  tier: "FULL_FUNDING",
+  tier: null,
   door: "blueprint",
-  sample: true,
-  clientId: "sample-roadmap"
+  sample: false,
+  clientId: "engine-hold"
 };
 
 export const NONE = {
@@ -132,6 +220,10 @@ export function deckMoney(n) {
 export function deckEsc(s) {
   return String(s == null ? "" : s).replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
 }
+
+/** The one dollar sign on the dashboard that is not a client amount: the
+ *  engine's own check threshold (src/finance/fundability.mjs PERSONAL_CHECKS). */
+export const THRESHOLD_LABEL = "$5,000+ limit";
 
 /** Words the owner banned from the slides (10.8 shared build rules). */
 export const BANNED = [

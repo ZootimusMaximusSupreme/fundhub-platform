@@ -185,7 +185,7 @@
 
     /* How much you qualify for: today, then each applied lever's totalAfter. */
     var qualify = v && isNum(v.todayTotal) ? v.todayTotal : null;
-    var projected = false;
+    var projected = false, stage = null;
     if (v) {
       var levers = list(v.levers);
       var lever = function (key) {
@@ -193,9 +193,9 @@
         return null;
       };
       var pay = lever("paydown"), clean = lever("clean"), acct = lever("accounts");
-      if (allCardsDone && pay && pay.applies && isNum(pay.totalAfter)) { qualify = pay.totalAfter; projected = true; }
-      if (answered && clean && clean.applies && isNum(clean.totalAfter)) { qualify = clean.totalAfter; projected = true; }
-      if (doneByKey(st, "biz1") && acct && acct.applies && isNum(acct.totalAfter)) { qualify = acct.totalAfter; projected = true; }
+      if (allCardsDone && pay && pay.applies && isNum(pay.totalAfter)) { qualify = pay.totalAfter; projected = true; stage = "paydown"; }
+      if (answered && clean && clean.applies && isNum(clean.totalAfter)) { qualify = clean.totalAfter; projected = true; stage = "clean"; }
+      if (doneByKey(st, "biz1") && acct && acct.applies && isNum(acct.totalAfter)) { qualify = acct.totalAfter; projected = true; stage = "accounts"; }
     }
 
     var fund = null;
@@ -214,7 +214,7 @@
         bureaus: list(it.bureaus).map(function (b) { return BUREAU_WORDS[b] || b; }), status: status };
     });
 
-    return { cards: cardRows, qualify: qualify, projected: projected, fund: fund, items: items, frac: frac,
+    return { cards: cardRows, qualify: qualify, projected: projected, stage: stage, fund: fund, items: items, frac: frac,
       optimized: v && isNum(v.optimizedTotal) ? v.optimizedTotal : null, allCardsDone: allCardsDone, mailed: mailed, answered: answered };
   }
 
@@ -239,21 +239,35 @@
   function heroCard(st, fv) {
     var ctx = st.ctx;
     if (fv.qualify == null) {
+      /* No pull yet, or the engine is holding the amount (review or hold):
+         no figure at all. The steps and the cards still move. */
       return '<section class="' + c("card") + '">' + eyebrow("How much you qualify for") +
-        '<p class="' + c("body") + '">Fills in from today’s pull.</p></section>';
+        '<p class="' + c("body") + '">' + (ctx.visual ? "UnderwriteIQ has not printed an amount for this pull. The steps still move." : "Fills in from today’s pull.") + "</p></section>";
     }
-    var label = fv.projected ? "Projects to" : "Today";
-    var html = '<section class="' + c("card") + " " + c("hero") + '">' + eyebrow("How much you qualify for" + (ctx.sample ? " · sample" : "")) +
-      '<div class="' + c("heroline") + '">' + countEl(st, "qualify", fv.qualify, "money") +
-      badge(label, fv.projected ? "info" : "ink") + "</div>";
+    return '<section class="' + c("card") + " " + c("hero") + '">' + eyebrow("How much you qualify for" + (ctx.sample ? " · sample" : "")) +
+      heroLines(st, fv) + "</section>";
+  }
+
+  /* What moved the amount, in plain words. */
+  var STAGE_WORDS = {
+    paydown: "After the cards are paid down.",
+    clean: "If the disputed items come off.",
+    accounts: "After accounts are added."
+  };
+
+  /* The amount, what changed it, and the fully optimized line. "Today" shows
+     only on today's amount, and "projects to" is said once, on the line under. */
+  function heroLines(st, fv) {
+    var ctx = st.ctx;
+    var html = '<div class="' + c("heroline") + '">' + countEl(st, "qualify", fv.qualify, "money") +
+      (fv.projected ? "" : badge("Today", "ink")) + "</div>" +
+      '<p class="' + c("stage") + '">' + (fv.projected ? (STAGE_WORDS[fv.stage] || "After the plan is walked.") : "From today’s pull.") + "</p>";
     if (fv.optimized != null && fv.optimized !== fv.qualify) {
-      html += '<p class="' + c("caption") + '">Projects to ' + ctx.esc(ctx.money(fv.optimized)) + " once the file is optimized.</p>";
+      html += '<p class="' + c("caption") + '">Fully optimized: projects to ' + ctx.esc(ctx.money(fv.optimized)) + ".</p>";
     } else if (fv.projected) {
-      html += '<p class="' + c("caption") + '">The optimized file. Step by step, from your own pull.</p>';
-    } else {
-      html += '<p class="' + c("caption") + '">From today’s pull.</p>';
+      html += '<p class="' + c("caption") + '">The fully optimized file.</p>';
     }
-    return html + "</section>";
+    return html;
   }
 
   function pinCard() {
@@ -301,7 +315,7 @@
     var html = '<section class="' + c("card") + '">' + eyebrow("Your next 12 months") +
       '<div class="' + c("h2") + '">Your plan, walked.</div>';
     if (fv.qualify != null) {
-      html += '<div class="' + c("heroline") + '">' + countEl(st, "qualify", fv.qualify, "money") + badge(fv.projected ? "Projects to" : "Today", fv.projected ? "info" : "ink") + "</div>";
+      html += heroLines(st, fv);
     }
     var motivation = answer(ctx.survey && ctx.survey.motivation);
     if (motivation) {
@@ -414,22 +428,55 @@
     return html + "</section>";
   }
 
+  /* Fundability. The count is UnderwriteIQ's own (src/finance/fundability.mjs)
+     and the engine gives none on a real file yet, so the meter shows only when
+     fundability is there. The six checks, each with what this plan does for
+     it, carry the tab either way. */
   function fundabilityTab(st, fv) {
     var ctx = st.ctx;
-    if (!fv.fund) {
-      return '<section class="' + c("card") + '">' + eyebrow("Fundability") +
-        '<p class="' + c("body") + '">UnderwriteIQ counts its own checks on your newest pull. ' + (ctx.visual ? "Nothing to count on this pull yet." : "Fills in from today’s pull.") + "</p></section>";
+    var head;
+    if (fv.fund) {
+      var f = fv.fund, segs = "";
+      for (var i = 0; i < f.total; i++) segs += '<i class="' + (i < f.passed ? c("seg-on") : c("seg")) + '"></i>';
+      head = '<section class="' + c("card") + " " + c("hero") + '">' + eyebrow("Fundability · UnderwriteIQ checks passed") +
+        '<div class="' + c("heroline") + '">' + countEl(st, "fund", f.passed, "int") + '<span class="' + c("of") + '">of ' + f.total + "</span></div>" +
+        '<div class="' + c("segs") + '" role="img" aria-label="' + f.passed + " of " + f.total + ' checks passed">' + segs + "</div>" +
+        '<p class="' + c("caption") + '">Today ' + f.now + " of " + f.total + ". Projects to " + f.after + " of " + f.total + " once the plan is walked. Each check counts the same.</p></section>";
+    } else {
+      head = '<section class="' + c("card") + " " + c("hero") + '">' + eyebrow("Fundability") +
+        '<div class="' + c("h2") + '">Six checks. Every step works on one.</div>' +
+        '<p class="' + c("caption") + '">' + (ctx.visual ? "UnderwriteIQ counts them on your next pull." : "Fills in from today’s pull.") + "</p></section>";
     }
-    var f = fv.fund, segs = "";
-    for (var i = 0; i < f.total; i++) segs += '<i class="' + (i < f.passed ? c("seg-on") : c("seg")) + '"></i>';
-    return '<section class="' + c("card") + " " + c("hero") + '">' + eyebrow("Fundability · UnderwriteIQ checks passed") +
-      '<div class="' + c("heroline") + '">' + countEl(st, "fund", f.passed, "int") + '<span class="' + c("of") + '">of ' + f.total + "</span></div>" +
-      '<div class="' + c("segs") + '" role="img" aria-label="' + f.passed + " of " + f.total + ' checks passed">' + segs + "</div>" +
-      '<p class="' + c("caption") + '">Today ' + f.now + " of " + f.total + ". Projects to " + f.after + " of " + f.total + " once the plan is walked. Each check counts the same.</p></section>" +
-      '<section class="' + c("card") + '">' + eyebrow("The six checks") + '<ul class="' + c("checks") + '">' +
-      ["Credit score 700 or higher", "Cards used 30% or less", "No negative items", "A card 2+ years old, $5,000+ limit", "No hard inquiries", "3 or more accounts in good standing"].map(function (t) {
-        return "<li>" + ctx.esc(t) + "</li>";
-      }).join("") + "</ul></section>";
+    return head + checksCard(st, fv);
+  }
+
+  function checksCard(st, fv) {
+    var ctx = st.ctx;
+    var cards = fv.cards, items = fv.items;
+    var atTarget = cards.filter(function (r) { return r.done; }).length;
+    var cardLine = !cards.length ? (ctx.visual ? "No revolving cards on this pull." : "The paydown steps, from your pull.")
+      : atTarget === cards.length ? "Every card at its 10% target."
+      : atTarget + " of " + cards.length + (cards.length === 1 ? " card" : " cards") + " at target.";
+    var cardBadge = !cards.length ? null : (atTarget === cards.length ? ["Done", "ok"] : ["In progress", "warn"]);
+    var itemLine = !items.length ? (ctx.visual ? "None on this pull." : "From your pull.")
+      : fv.answered ? "Bureau answered. If they come off."
+      : fv.mailed ? "Letters out. Disputed."
+      : items.length + (items.length === 1 ? " item on your file." : " items on your file.");
+    var itemBadge = !items.length ? null : (fv.answered ? ["Answered", "info"] : ["In progress", "warn"]);
+    var rows = [
+      ["Cards used 30% or less", cardLine, cardBadge],
+      ["No negative items", itemLine, itemBadge],
+      ["No hard inquiries", "No new credit while we work.", null],
+      ["A card 2+ years old, $5,000+ limit", "Keep your oldest cards open.", null],
+      ["3 or more accounts in good standing", "Pay on time, every month.", null],
+      ["Credit score 700 or higher", "Read on your next pull.", null]
+    ];
+    return '<section class="' + c("card") + '">' + eyebrow("The six checks · what this plan does for each") +
+      '<ul class="' + c("checks") + '">' + rows.map(function (r) {
+        return "<li><div><div class=\"" + c("creditor") + '">' + ctx.esc(r[0]) + '</div><div class="' + c("caption") + '">' + ctx.esc(r[1]) + "</div></div>" +
+          (r[2] ? badge(r[2][0], r[2][1]) : "") + "</li>";
+      }).join("") + "</ul>" +
+      '<p class="' + c("caption") + '">UnderwriteIQ counts these on your newest pull. Each check counts the same.</p></section>';
   }
 
   function strategyTab(st, fv) {
@@ -577,14 +624,20 @@
       if (from == null || !isFinite(from) || !isFinite(to) || from === to) return;
       var fmt = el.getAttribute("data-fmt");
       var final = el.textContent;
+      var show = function (val) { el.textContent = fmt === "money" ? money(val) : (fmt === "pct" ? val + "%" : String(val)); };
+      /* Start on the old value now, so the final one never flashes first. The
+         busy mark comes off on the last frame; the checks wait for that. */
+      el.setAttribute("data-bd-busy", "1");
+      show(from);
       var t0 = null, dur = 700;
       function frame(ts) {
         if (t0 == null) t0 = ts;
         var p = Math.min(1, (ts - t0) / dur);
         var e = 1 - Math.pow(1 - p, 3);
-        var val = Math.round(from + (to - from) * e);
-        el.textContent = fmt === "money" ? money(val) : (fmt === "pct" ? val + "%" : String(val));
-        if (p < 1) root.requestAnimationFrame(frame); else el.textContent = final;
+        show(Math.round(from + (to - from) * e));
+        if (p < 1) { root.requestAnimationFrame(frame); return; }
+        el.textContent = final;
+        el.removeAttribute("data-bd-busy");
       }
       root.requestAnimationFrame(frame);
     });
@@ -643,9 +696,10 @@
     ".@@meter{height:8px;border-radius:4px;background:var(--soft);margin:12px 0 0;overflow:hidden}",
     ".@@meter i{display:block;height:100%;background:var(--ink);transition:width .6s ease}",
     ".@@heroline{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin:2px 0 4px}",
-    ".@@big{font-family:var(--mono);font-size:clamp(30px,3.4vw,44px);font-weight:600;letter-spacing:-.02em;line-height:1;font-variant-numeric:tabular-nums;color:var(--ink)}",
-    ".@@of{font-family:var(--mono);font-size:16px;color:var(--gray)}",
-    ".@@num{font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--ink)}",
+    ".@@big{font-family:var(--sans);font-size:clamp(30px,3.4vw,44px);font-weight:700;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums;color:var(--ink)}",
+    ".@@of{font-size:16px;color:var(--gray)}",
+    ".@@num{font-variant-numeric:tabular-nums;font-weight:600;color:var(--ink)}",
+    ".@@stage{font-size:16px;color:var(--ink2);margin:4px 0 0}",
     ".@@badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:5px;font-family:var(--mono);font-size:13px;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--line);background:var(--soft);color:var(--gray);white-space:nowrap}",
     ".@@badge-ok{background:var(--ok);border-color:var(--ok);color:var(--ink)}",
     ".@@badge-warn{background:var(--warn);border-color:var(--warn);color:var(--ink)}",
@@ -685,7 +739,7 @@
     ".@@segs{display:flex;gap:6px;margin:10px 0 4px}",
     ".@@segs i{flex:1;height:14px;border-radius:4px;background:var(--soft);border:1px solid var(--line)}",
     ".@@segs i.@@seg-on{background:var(--ink);border-color:var(--ink)}",
-    ".@@checks li{padding:8px 0;border-bottom:1px solid var(--line);font-size:16px;color:var(--ink2)}.@@checks li:last-of-type{border-bottom:0}",
+    ".@@checks li{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}.@@checks li:last-of-type{border-bottom:0}",
     ".@@plan li{display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}.@@plan li:last-of-type{border-bottom:0}",
     ".@@plan li>div{flex:1}",
     ".@@stepn{flex:0 0 28px;height:28px;border-radius:50%;background:var(--soft);border:1px solid var(--line);display:inline-flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:13px}",

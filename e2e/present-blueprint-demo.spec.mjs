@@ -15,14 +15,17 @@ import { test, expect } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { FULL, SAMPLE, NONE, BANNED } from "./fixtures/present-blueprint-demo-ctx.mjs";
+import { FULL, SAMPLE, REPAIR, HOLD, NONE, BANNED, THRESHOLD_LABEL } from "./fixtures/present-blueprint-demo-ctx.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const HARNESS = fs.readFileSync(path.join(HERE, "fixtures", "present-blueprint-demo-harness.html"), "utf8");
 const OUT = path.resolve(HERE, "..", "ops/workflows/build-evidence/slides-refresh-2026-10-29/blueprint-demo");
 fs.mkdirSync(OUT, { recursive: true });
 
-const FIXTURES = { full: FULL, sample: SAMPLE, none: NONE };
+const FIXTURES = { full: FULL, sample: SAMPLE, repair: REPAIR, hold: HOLD, none: NONE };
+/* The visible words with the engine's "$5,000+ limit" check threshold taken out,
+   so a "no dollar figure" check reads only client amounts. */
+const amounts = (t) => t.split(THRESHOLD_LABEL).join("");
 const ROOT = '[data-fhv="blueprint-demo"]';
 
 test.describe.configure({ timeout: 60_000 });
@@ -36,7 +39,10 @@ async function open(page, fx, { width, height }) {
   await page.waitForSelector(ROOT);
 }
 
-const shot = (page, name) => page.screenshot({ path: path.join(OUT, name + ".png"), fullPage: false });
+/* Numbers count up after a tap; a count that is still moving carries data-bd-busy.
+   Every check and every screenshot waits for the last frame. */
+const settled = (page) => page.waitForFunction(() => !document.querySelector("[data-bd-busy]"));
+const shot = async (page, name) => { await settled(page); await page.screenshot({ path: path.join(OUT, name + ".png"), fullPage: false }); };
 const next = (page) => page.locator('[data-bd-act="next"]').click();
 const rootText = (page) => page.locator(ROOT).innerText();
 
@@ -83,8 +89,12 @@ test("1440: the full file walks the journey, screen by screen", async ({ page })
 
   await expect(root).toContainText("Your plan, step by step. A preview built from today’s pull.");
   await expect(root).toContainText("$64,000");
+  await expect(root.locator(".fhv-blueprint-demo-hero")).toContainText("Today");
   await expect(root).toContainText("Step 1 of 9: Print and mail your dispute letters");
   await expect(root).toContainText("Do not open new credit while we work on your file.");
+  // The hero amount is set in the deck's sans, not the mono face.
+  const heroFont = await page.evaluate(() => getComputedStyle(document.querySelector(".fhv-blueprint-demo-big")).fontFamily);
+  expect(heroFont).not.toMatch(/JetBrains Mono|monospace/);
   await expect(root).not.toContainText("Sample");
   await expectTapTargets(page);
   await expectTypeFloors(page);
@@ -125,28 +135,41 @@ test("1440: the full file walks the journey, screen by screen", async ({ page })
   await next(page);
   await next(page);
   await next(page);
-  await expect(root).toContainText("10% used");
-  await expect(root).toContainText("At target");
-  // The bar dropped to the target: the fill is at the 10% mark.
-  const fillWidth = await page.evaluate(() => {
-    const bar = document.querySelector(".fhv-blueprint-demo-bar");
-    const fill = bar.querySelector(".fhv-blueprint-demo-fill");
-    return fill.getBoundingClientRect().width / bar.getBoundingClientRect().width;
-  });
-  expect(fillWidth).toBeLessThan(0.2);
+  await settled(page);
+  // Every card's words, bar and badge agree: both cards sit at their targets.
+  await expect(root).toContainText("$1,600 of $16,000");
+  await expect(root).toContainText("$900 of $9,000");
+  await expect(root).not.toContainText("$9,100");
+  await expect(root).not.toContainText("$3,300");
+  await expect(root).not.toContainText("57% used");
+  await expect(root).not.toContainText("37% used");
+  expect(await root.locator(".fhv-blueprint-demo-badge-ok", { hasText: "At target" }).count()).toBe(2);
+  expect(await root.locator(".fhv-blueprint-demo-badge-warn", { hasText: "Pay down" }).count()).toBe(0);
+  // The bars dropped to the target mark (the fill width transitions, so poll).
+  await expect.poll(async () => page.evaluate(() => Array.from(document.querySelectorAll(".fhv-blueprint-demo-bar")).map((bar) =>
+    bar.querySelector(".fhv-blueprint-demo-fill").getBoundingClientRect().width / bar.getBoundingClientRect().width)), { timeout: 4000 })
+    .toEqual([expect.closeTo(0.1, 1), expect.closeTo(0.1, 1)]);
   await shot(page, "full-1440-05-money-credit-cards-at-target");
 
-  // The amount climbed through the paydown lever, and it says projects to.
+  // The amount climbed to the paydown lever's figure, with plain words for what changed.
   await page.locator('[data-bd-act="panel:home"]').click();
-  await expect(root).toContainText("$88,000");
-  await expect(root).toContainText("Projects to");
+  await settled(page);
+  const hero = root.locator(".fhv-blueprint-demo-hero");
+  await expect(hero).toContainText("$88,000");
+  await expect(hero).toContainText("After the cards are paid down.");
+  await expect(hero).toContainText("Fully optimized: projects to $121,000.");
+  await expect(hero).not.toContainText("Today");
+  expect(((await hero.innerText()).match(/projects to/gi) || []).length).toBe(1);
   await expect(root).toContainText("Step 5 of 9: Set up your business");
   await shot(page, "full-1440-06-home-after-paydown");
 
-  // Business, then the bureaus answer.
+  // Business, then the bureaus answer: the clean lever's figure.
   await next(page);
   await next(page);
-  await expect(root).toContainText("$121,000");
+  await settled(page);
+  await expect(hero).toContainText("$121,000");
+  await expect(hero).toContainText("If the disputed items come off.");
+  await expect(hero).not.toContainText("Today");
   await page.locator('[data-bd-act="panel:money"]').click();
   await page.locator('[data-bd-act="tab:credit"]').click();
   await expect(root).toContainText("Bureau answered");
@@ -231,18 +254,58 @@ test("390: one column, no sideways scroll, real tap targets", async ({ page }) =
   await shot(page, "full-390-05-next-12-months");
 });
 
-test("the sample is tagged and uses the roadmap sample's amounts", async ({ page }) => {
+test("the sample is tagged and uses the engine's amounts for the deck's sample file", async ({ page }) => {
   await open(page, "sample", { width: 1440, height: 900 });
   const root = page.locator(ROOT);
   await expect(root.locator(".fhv-blueprint-demo-tag")).toHaveText("Sample");
-  await expect(root).toContainText("$199,350");
-  await expect(root).toContainText("Projects to $221,500");
+  await expect(root).toContainText("$24,749");
+  await expect(root).toContainText("Fully optimized: projects to $55,000.");
   await shot(page, "sample-1440-01-home");
   await page.locator('[data-bd-act="panel:money"]').click();
-  await expect(root).toContainText("American Express Blue Business Cash");
-  await expect(root).toContainText("$4,800");
-  await expect(root).toContainText("No negative items on this pull.");
+  await expect(root).toContainText("First Platypus Bank Visa");
+  await expect(root).toContainText("$3,142 of $8,000");
+  await expect(root).toContainText("Toyota Motor Credit");
   await shot(page, "sample-1440-02-money-credit");
+  // No fundability count on a real file: the six checks carry the tab.
+  await page.locator('[data-bd-act="tab:fundability"]').click();
+  await expect(root).toContainText("Six checks. Every step works on one.");
+  await expect(root).toContainText("0 of 1 card at target.");
+  await expect(root).not.toContainText("of 6");
+  await shot(page, "sample-1440-03-money-fundability-no-count");
+});
+
+test("a repair-only file shows $0 today and climbs when the bureaus answer", async ({ page }) => {
+  await open(page, "repair", { width: 1440, height: 900 });
+  const root = page.locator(ROOT);
+  const hero = root.locator(".fhv-blueprint-demo-hero");
+  await expect(hero).toContainText("$0");
+  await expect(hero).toContainText("Today");
+  await expect(hero).toContainText("Fully optimized: projects to $41,000.");
+  await shot(page, "repair-1440-01-home");
+  for (let i = 0; i < 5; i++) await next(page); // letters, proof, the card, business, bureaus
+  await settled(page);
+  await expect(hero).toContainText("$41,000");
+  await expect(hero).toContainText("If the disputed items come off.");
+  await expect(hero).not.toContainText("Today");
+  await shot(page, "repair-1440-02-home-after-bureaus");
+});
+
+test("when the engine holds the money, no qualify amount shows and the cards still work", async ({ page }) => {
+  await open(page, "hold", { width: 1440, height: 900 });
+  const root = page.locator(ROOT);
+  await expect(root).toContainText("UnderwriteIQ has not printed an amount for this pull.");
+  expect(await root.locator(".fhv-blueprint-demo-hero").count()).toBe(0);
+  await shot(page, "hold-1440-01-home");
+  await page.locator('[data-bd-act="panel:money"]').click();
+  await expect(root).toContainText("$5,100 of $12,000");
+  await expect(root).toContainText("LVNV Funding");
+  await shot(page, "hold-1440-02-money-credit");
+  for (let i = 0; i < 9; i++) await next(page);
+  await page.locator('[data-bd-act="panel:home"]').click();
+  await expect(root).toContainText("Your next 12 months");
+  expect(await root.locator(".fhv-blueprint-demo-hero").count()).toBe(0);
+  expect(amounts(await rootText(page))).not.toMatch(/projects to \$/);
+  await shot(page, "hold-1440-03-next-12-months");
 });
 
 test("no pull yet: the plan shows with no amount anywhere", async ({ page }) => {
@@ -250,16 +313,17 @@ test("no pull yet: the plan shows with no amount anywhere", async ({ page }) => 
   const root = page.locator(ROOT);
   await expect(root).toContainText("No pull yet.");
   await expect(root).toContainText("Fills in from today’s pull.");
-  expect(await rootText(page)).not.toContain("$");
+  expect(amounts(await rootText(page))).not.toContain("$");
   await shot(page, "none-1440-01-home");
   await page.locator('[data-bd-act="panel:progress"]').click();
   await expect(root).toContainText("Pay each card down to 10% of its limit");
-  expect(await rootText(page)).not.toContain("$");
+  expect(amounts(await rootText(page))).not.toContain("$");
   await shot(page, "none-1440-02-progress");
   await page.locator('[data-bd-act="panel:money"]').click();
   await expect(root).toContainText("Your cards fill in from today’s pull.");
-  expect(await rootText(page)).not.toContain("$");
+  expect(amounts(await rootText(page))).not.toContain("$");
   await page.locator('[data-bd-act="tab:fundability"]').click();
-  expect(await rootText(page)).not.toContain("$");
+  await expect(root).toContainText("Six checks. Every step works on one.");
+  expect(amounts(await rootText(page))).not.toContain("$");
   await shot(page, "none-1440-03-money");
 });

@@ -20,7 +20,7 @@ import path from "node:path";
 import { createContext, runInContext } from "node:vm";
 import { fileURLToPath } from "node:url";
 
-import { FULL, SAMPLE, NONE, BAD, BANNED, CLIENT_ID, deckMoney, deckEsc } from "../../e2e/fixtures/present-blueprint-demo-ctx.mjs";
+import { FULL, SAMPLE, REPAIR, HOLD, NONE, BAD, BANNED, THRESHOLD_LABEL, CLIENT_ID, deckMoney, deckEsc } from "../../e2e/fixtures/present-blueprint-demo-ctx.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SRC = fs.readFileSync(path.resolve(HERE, "../../public/app/present-blueprint-demo.js"), "utf8");
@@ -47,6 +47,11 @@ const withHelpers = (ctx) => ({ ...structuredClone(ctx), money: deckMoney, esc: 
 /* Arrays made inside the vm have the vm's Array prototype; copy them to this realm first. */
 const host = (v) => JSON.parse(JSON.stringify(v));
 const text = (html) => html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+/* The words with the engine's own "$5,000+ limit" threshold taken out, so a
+   "no dollar figure" check reads only client amounts. */
+const amounts = (html) => text(html).split(THRESHOLD_LABEL).join("");
+const heroTo = (html) => { const m = html.match(/data-key="qualify" data-to="(\d+)"/); return m ? Number(m[1]) : null; };
+const heroCard = (html) => { const m = html.match(/<section class="fhv-blueprint-demo-card fhv-blueprint-demo-hero">([\s\S]*?)<\/section>/); return m ? m[1] : ""; };
 
 /* A fake tap: the button carries data-bd-act, its root carries data-client. */
 function tap(env, act, clientId) {
@@ -96,7 +101,7 @@ describe("full file: Dana Whitfield", () => {
     assert.match(t, /How much you qualify for/);
     assert.match(t, /\$64,000/);
     assert.match(t, /Today/);
-    assert.match(t, /Projects to \$121,000 once the file is optimized/);
+    assert.match(t, /From today’s pull\. Fully optimized: projects to \$121,000\./);
     assert.match(t, /Step 1 of 9: Print and mail your dispute letters/);
     assert.match(t, /Do not open new credit while we work on your file\./);
     assert.doesNotMatch(t, /Sample/, "a real pull carries no sample tag");
@@ -146,7 +151,7 @@ describe("full file: Dana Whitfield", () => {
     html = tap(env, "panel:home", CLIENT_ID);
     t = text(html);
     assert.match(t, /\$88,000/);
-    assert.match(t, /Projects to/);
+    assert.match(t, /After the cards are paid down\./);
     assert.match(t, /Step 5 of 9: Set up your business/);
 
     // Business, then the bureaus answer: the clean lever, "if it comes off".
@@ -224,24 +229,95 @@ describe("full file: Dana Whitfield", () => {
 });
 
 describe("the sample and the empty file", () => {
-  test("the sample is tagged and prints the roadmap sample's amounts", () => {
+  test("the sample is tagged and prints the engine's amounts for the deck's sample file", () => {
     const env = load();
     const html = env.FHV.blueprintDemo(withHelpers(SAMPLE));
     const t = text(html);
     assert.match(html, /<span class="fhv-blueprint-demo-tag">Sample<\/span>/);
-    assert.match(t, /\$199,350/);
-    assert.match(t, /Projects to \$221,500/);
+    assert.match(t, /\$24,749/);
+    assert.match(t, /Fully optimized: projects to \$55,000\./);
     const steps = env.FHV._blueprintDemo.buildSteps(withHelpers(SAMPLE));
-    assert.equal(steps[2].title, "Pay American Express Blue Business Cash down to $2,500");
-    assert.equal(steps[3].title, "Pay Chase Sapphire Preferred down to $1,200");
+    assert.deepEqual(host(steps.map((s) => s.key)), ["mail", "proof", "card0", "business", "bureaus", "biz1", "biz2", "sequence"]);
+    assert.equal(steps[2].title, "Pay First Platypus Bank Visa down to $800");
+    assert.equal(steps[5].name, "Fundhub LLC", "the deck's business when the engine lists no company");
+    assert.equal(steps[5].amount, null);
     assert.equal(steps[6].name, "If you add a company");
     assert.equal(steps[6].amount, null, "newCompany null means no amount");
+    // The climb: today, after the card, after the bureaus answer.
+    tap(env, "next", SAMPLE.clientId); tap(env, "next", SAMPLE.clientId); tap(env, "next", SAMPLE.clientId);
+    assert.equal(heroTo(tap(env, "panel:home", SAMPLE.clientId)), 33000);
+    tap(env, "next", SAMPLE.clientId); tap(env, "next", SAMPLE.clientId);
+    assert.equal(heroTo(tap(env, "panel:home", SAMPLE.clientId)), 55000);
+  });
+
+  test("with no fundability count, the Fundability tab shows the six checks and what the plan does for each", () => {
+    const env = load();
+    env.FHV.blueprintDemo(withHelpers(SAMPLE));
+    let t = text(tap(env, "tab:fundability", SAMPLE.clientId));
+    assert.match(t, /Six checks\. Every step works on one\./);
+    assert.match(t, /UnderwriteIQ counts them on your next pull\./);
+    assert.doesNotMatch(t, /of 6/, "no count means no meter");
+    assert.match(t, /Cards used 30% or less 0 of 1 card at target\. In progress/);
+    assert.match(t, /No negative items 1 item on your file\. In progress/);
+    assert.match(t, /No hard inquiries No new credit while we work\./);
+    tap(env, "next", SAMPLE.clientId); // letters
+    t = text(tap(env, "tab:fundability", SAMPLE.clientId));
+    assert.match(t, /Letters out\. Disputed\. In progress/);
+    tap(env, "next", SAMPLE.clientId); tap(env, "next", SAMPLE.clientId); // proof, the card
+    t = text(tap(env, "tab:fundability", SAMPLE.clientId));
+    assert.match(t, /Every card at its 10% target\. Done/);
+    tap(env, "next", SAMPLE.clientId); tap(env, "next", SAMPLE.clientId); // business, bureaus
+    t = text(tap(env, "tab:fundability", SAMPLE.clientId));
+    assert.match(t, /Bureau answered\. If they come off\. Answered/);
+    assert.doesNotMatch(t, /removed/i);
+  });
+
+  test("a repair-only file shows $0 today, and the climb is the pitch", () => {
+    const env = load();
+    const id = REPAIR.clientId;
+    let html = env.FHV.blueprintDemo(withHelpers(REPAIR));
+    assert.equal(heroTo(html), 0);
+    let hero = text(heroCard(html));
+    assert.match(hero, /\$0 Today From today’s pull\. Fully optimized: projects to \$41,000\./);
+    for (let i = 0; i < 3; i++) tap(env, "next", id); // letters, proof, the one card
+    html = tap(env, "panel:home", id);
+    assert.equal(heroTo(html), 0, "the paydown lever does not apply, so the card step moves nothing");
+    assert.match(text(heroCard(html)), /Today/);
+    tap(env, "next", id); tap(env, "next", id); // business, bureaus
+    html = tap(env, "panel:home", id);
+    assert.equal(heroTo(html), 41000);
+    hero = text(heroCard(html));
+    assert.match(hero, /\$41,000 If the disputed items come off\. The fully optimized file\./);
+    assert.doesNotMatch(hero, /Today/);
+  });
+
+  test("when the engine holds the money there is no qualify amount, and the steps and cards still work", () => {
+    const env = load();
+    const id = HOLD.clientId;
+    const steps = env.FHV._blueprintDemo.buildSteps(withHelpers(HOLD));
+    assert.equal(steps[2].title, "Pay Chase Freedom down to $1,200");
+    assert.equal(steps[6].name, "If you add a company");
+    assert.equal(steps[6].amount, null);
+    let html = env.FHV.blueprintDemo(withHelpers(HOLD));
+    assert.equal(heroTo(html), null);
+    assert.match(text(html), /UnderwriteIQ has not printed an amount for this pull\. The steps still move\./);
+    assert.doesNotMatch(text(html).replace(/\$1,200/g, ""), /\$/, "no amount on Home but the card target in the step title");
+    const credit = text(tap(env, "panel:money", id));
+    assert.match(credit, /Chase Freedom Pay down \$5,100 of \$12,000 43% used · target \$1,200/);
+    assert.match(credit, /LVNV Funding Collection · Equifax On your file/);
+    for (let i = 0; i <= steps.length; i++) {
+      html = tap(env, "next", id);
+      assert.equal(heroTo(tap(env, "panel:home", id)), null, "step " + i + " printed a qualify amount");
+    }
+    const end = text(tap(env, "panel:home", id));
+    assert.match(end, /Your next 12 months/);
+    assert.doesNotMatch(end, /projects to \$/, "nothing projects when the engine holds the money");
   });
 
   test("no pull yet: the steps show with no amount anywhere", () => {
     const env = load();
     const home = env.FHV.blueprintDemo(withHelpers(NONE));
-    assert.doesNotMatch(text(home), /\$/, "no dollar figure without a pull");
+    assert.doesNotMatch(amounts(home), /\$/, "no dollar figure without a pull");
     assert.match(text(home), /No pull yet\./);
     assert.match(text(home), /Fills in from today’s pull\./);
     assert.match(text(home), /Step 1 of 8: Print and mail your dispute letters/);
@@ -250,7 +326,7 @@ describe("the sample and the empty file", () => {
     assert.equal(steps[2].title, "Pay each card down to 10% of its limit");
     for (const act of ["panel:progress", "panel:money", "tab:fundability", "tab:strategy", "tab:banks", "next", "next", "next"]) {
       const html = tap(env, act, "no-pull-yet");
-      assert.doesNotMatch(text(html), /\$/, act + " printed a dollar figure with no pull");
+      assert.doesNotMatch(amounts(html), /\$/, act + " printed a dollar figure with no pull");
     }
     assert.match(text(tap(env, "tab:fundability", "no-pull-yet")), /Fills in from today’s pull\./);
   });
@@ -269,7 +345,7 @@ describe("the sample and the empty file", () => {
 
 describe("the owner's words", () => {
   test("no banned word on any screen, in any state", () => {
-    for (const fixture of [FULL, SAMPLE, NONE]) {
+    for (const fixture of [FULL, SAMPLE, REPAIR, HOLD, NONE]) {
       const env = load();
       const ctx = withHelpers(fixture);
       const id = fixture.clientId;
@@ -294,9 +370,82 @@ describe("the owner's words", () => {
     env.FHV.blueprintDemo(withHelpers(FULL));
     for (let i = 0; i < 4; i++) tap(env, "next", CLIENT_ID);
     const t = text(tap(env, "panel:home", CLIENT_ID));
-    assert.match(t, /Projects to/);
+    assert.match(t, /projects to/);
     const badges = [...tap(env, "panel:progress", CLIENT_ID).matchAll(/class="fhv-blueprint-demo-badge [^"]*">([^<]+)</g)].map((m) => m[1]);
     assert.ok(badges.length > 0);
     for (const b of badges) assert.ok(b.trim().split(/\s+/).length <= 6, b);
+  });
+});
+
+describe("the amount and the cards agree with the steps", () => {
+  const dollars = (n) => deckMoney(n).replace(/\$/g, "\\$");
+
+  test("the amount equals paydown.totalAfter after the last card step, then clean.totalAfter after the bureaus answer", () => {
+    const env = load();
+    env.FHV.blueprintDemo(withHelpers(FULL));
+    const levers = FULL.visual.levers;
+    for (let i = 0; i < 3; i++) tap(env, "next", CLIENT_ID); // letters, proof, card 1 of 2
+    let html = tap(env, "panel:home", CLIENT_ID);
+    assert.equal(heroTo(html), FULL.visual.todayTotal, "one card paid is not all the cards");
+    assert.match(text(heroCard(html)), /Today/);
+
+    tap(env, "next", CLIENT_ID); // card 2 of 2
+    html = tap(env, "panel:home", CLIENT_ID);
+    assert.equal(heroTo(html), levers[0].totalAfter);
+    let hero = text(heroCard(html));
+    assert.match(hero, /\$88,000/);
+    assert.match(hero, /After the cards are paid down\./);
+    assert.match(hero, /Fully optimized: projects to \$121,000\./);
+    assert.doesNotMatch(hero, /Today/, "the Today badge shows only on today's amount");
+    assert.equal((hero.match(/projects to/gi) || []).length, 1, "projects to is said once");
+
+    tap(env, "next", CLIENT_ID); // the business
+    tap(env, "next", CLIENT_ID); // the bureaus answer
+    html = tap(env, "panel:home", CLIENT_ID);
+    assert.equal(heroTo(html), levers[1].totalAfter);
+    hero = text(heroCard(html));
+    assert.match(hero, /\$121,000/);
+    assert.match(hero, /If the disputed items come off\./);
+    assert.match(hero, /The fully optimized file\./);
+    assert.doesNotMatch(hero, /Today/);
+  });
+
+  function cardRows(html) {
+    return html.split('<div class="fhv-blueprint-demo-cardrow">').slice(1).map((chunk) => ({
+      fill: (chunk.match(/class="fhv-blueprint-demo-fill" style="width:([^"]+)"/) || [])[1],
+      balance: Number((chunk.match(/data-key="bal\d+" data-to="(\d+)"/) || [])[1]),
+      pct: Number((chunk.match(/data-key="pct\d+" data-to="(\d+)"/) || [])[1]),
+      badge: (chunk.match(/fhv-blueprint-demo-badge-(?:ok|warn)">([^<]+)</) || [])[1],
+      words: text(chunk)
+    }));
+  }
+
+  test("each card's text matches its bar and its badge, before and after its own step", () => {
+    for (const fixture of [FULL, SAMPLE, REPAIR, HOLD]) {
+      const env = load();
+      env.FHV.blueprintDemo(withHelpers(fixture));
+      const id = fixture.clientId;
+      const cards = fixture.visual.cards;
+      const expectRows = (html, doneCount) => {
+        const rows = cardRows(html);
+        assert.equal(rows.length, cards.length, `${id}: one row per card`);
+        rows.forEach((row, i) => {
+          const card = cards[i];
+          const done = i < doneCount;
+          const bal = done ? Math.min(card.balance, card.target) : card.balance;
+          const pct = Math.round((bal / card.limit) * 100);
+          const where = `${id} card ${i} after ${doneCount} card step(s)`;
+          assert.equal(row.balance, bal, `${where}: balance`);
+          assert.equal(row.pct, pct, `${where}: percent`);
+          assert.equal(row.fill, pct + "%", `${where}: bar`);
+          assert.equal(row.badge, done ? "At target" : "Pay down", `${where}: badge`);
+          assert.match(row.words, new RegExp(dollars(bal) + " of " + dollars(card.limit) + " " + pct + "% used"), `${where}: words`);
+        });
+      };
+      tap(env, "next", id); // letters
+      tap(env, "next", id); // proof
+      expectRows(tap(env, "panel:money", id), 0);
+      for (let k = 1; k <= cards.length; k++) expectRows(tap(env, "next", id), k);
+    }
   });
 });
