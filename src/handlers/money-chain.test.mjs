@@ -427,8 +427,11 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
           const ok = invoice && params[0] === invoice.id && params[1] === ORG && params[2] === CLIENT;
           return { rows: ok ? [invoice] : [] };
         }
-        if (/SELECT \* FROM sales WHERE id = \$1 AND org_id = \$2 AND client_id = \$3/.test(text)) {
-          return { rows: params[0] === BILLED_SALE ? [sale(BILLED_SALE)] : [] };
+        if (/SELECT \* FROM sales\s+WHERE id = \$1 AND org_id = \$2 AND client_id = \$3/.test(text)) {
+          const ownedSale = params[0] === BILLED_SALE && params[1] === ORG && params[2] === CLIENT;
+          const productMatches = params.length < 4 || params[3] == null || params[3] === PRODUCT;
+          const motionMatches = params.length < 5 || params[4] == null;
+          return { rows: ownedSale && productMatches && motionMatches ? [sale(BILLED_SALE)] : [] };
         }
         // The old guess: the client's newest active funding sale.
         if (/pr\.category = 'funding'/.test(text)) return { rows: [sale(NEWEST_SALE)] };
@@ -570,5 +573,17 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
     assert.equal(ins.params[1], BILLED_SALE);
     assert.equal(ins.params[6], "installment");
     assert.ok(!db.queries.some((q) => /pr\.category = 'funding'/.test(q.text)));
+  });
+
+  test("an explicit original sale with conflicting product identity is held", async () => {
+    const db = feeDb({ invoice: null });
+    const out = await onPaymentReceivedMoney(feeReceipt({
+      invoiceId: null, paymentLinkId: null, purpose: null,
+      product: "unmatched", productName: null,
+      saleId: BILLED_SALE, productId: NEWEST_SALE
+    }), db);
+    assert.equal(out.done, false);
+    assert.equal(out.reason, "sale_context_conflict");
+    assert.equal(salePaymentInsert(db), undefined);
   });
 });

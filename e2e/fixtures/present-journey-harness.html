@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Journey harness (test only)</title>
+<!-- A test-only stand-in for the client half of the closer slides
+     (public/app/present.html). e2e/present-journey.spec.mjs serves this file
+     through page.route() and injects the fixture ctx
+     (e2e/fixtures/present-journey-ctx.json) as window.__FHV_FIXTURES before
+     load. It is never shipped. The frame copies the slide's own styles
+     (.slide, .slide-hd, .hair, .kicker, .h1) so the screenshot shows visual D
+     the way the deck draws it; the kicker and h1 here are placeholders, the
+     real words belong to present.js. ?state=full|null|sample|bad picks the
+     ctx; ?client= overrides clientId; Re-render redraws the way the deck does. -->
+<link rel="stylesheet" href="/app/fundhub-brand.css">
+<style>
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;overflow:hidden;background:var(--paper);color:var(--ink);font-family:var(--sans)}
+button{font-family:inherit}
+button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.client{position:absolute;inset:0 0 48px 0;background:var(--paper);overflow:hidden}
+.slide{position:absolute;inset:0;padding:clamp(14px,2.4vw,26px) clamp(16px,3vw,34px) clamp(24px,3vw,32px);display:flex;flex-direction:column;overflow:hidden}
+.slide-hd{display:flex;align-items:center;gap:12px;margin-bottom:5px}
+.slide-hd .rule{flex:1;height:1px;background:var(--line)}
+.mono{font-family:var(--mono);font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--gray2)}
+.brand{font-family:var(--sans);font-size:13px;font-weight:800;letter-spacing:-.02em;color:var(--ink)}
+.brand span{color:var(--gray)}
+.hair{height:2px;background:var(--spectrum);border-radius:2px;opacity:.9}
+.slide-body{flex:1;min-height:0;margin-top:clamp(10px,1.6vw,16px);display:flex;flex-direction:column;overflow-y:auto}
+.h1{font-family:var(--sans);line-height:1.06;font-weight:700;letter-spacing:-.03em;color:var(--ink);margin:0 0 14px;font-size:clamp(18px,2.4vw,30px)}
+.kicker{margin-bottom:8px}
+.harness-bar{position:absolute;left:0;right:0;bottom:0;height:48px;display:flex;align-items:center;gap:12px;padding:0 16px;border-top:1px solid var(--line);background:var(--soft)}
+.harness-bar button{min-height:44px;padding:0 14px;border:1px solid var(--line);background:#fff;border-radius:8px;font-size:16px;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="client">
+  <div class="slide" id="slide">
+    <div class="slide-hd"><span class="mono">S-12 / The rounds</span><div class="rule"></div><span class="brand">fundhub<span>.</span></span></div>
+    <div class="hair"></div>
+    <div class="slide-body" id="slide-body">
+      <div class="kicker"><span class="mono">Door 4 · Credit optimization</span></div>
+      <h1 class="h1">Each round builds on the last.</h1>
+      <div id="body"></div>
+    </div>
+  </div>
+</div>
+<div class="harness-bar"><button type="button" id="rerender">Re-render</button><span id="state-label" class="mono"></span></div>
+<script src="/app/present-journey.js"></script>
+<script>
+(function () {
+  var q = new URLSearchParams(location.search);
+  var state = q.get("state") || "full";
+  var fx = window.__FHV_FIXTURES || {};
+  /* The deck's own money() and esc() (public/app/present.js). */
+  function money(n) { if (n == null || !Number.isFinite(Number(n))) return "—"; return "$" + Number(n).toLocaleString("en-US"); }
+  function esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+  var ctx;
+  if (state === "null") ctx = Object.assign({}, fx.full, { visual: null, engine: null, clientId: "harness-nodata" });
+  else if (state === "hold") ctx = Object.assign({}, fx.full, { visual: Object.assign({}, fx.full.visual, { tierNow: null, tierAfter: null, todayTotal: null, optimizedTotal: null, levers: null }), clientId: "harness-hold" });
+  else if (state === "sample") ctx = Object.assign({}, fx.sample);
+  else if (state === "bad") ctx = { visual: { items: 42, tierNow: {}, todayTotal: "abc" }, clientId: "harness-bad", esc: function () { throw new Error("bad esc"); } };
+  else ctx = Object.assign({}, fx.full);
+  if (typeof ctx.money !== "function") ctx.money = money;
+  if (typeof ctx.esc !== "function") ctx.esc = esc;
+  if (q.get("client")) ctx.clientId = q.get("client");
+  function draw() { document.getElementById("body").innerHTML = window.FHDeckVisuals.journey(ctx); }
+  document.getElementById("rerender").addEventListener("click", draw);
+  document.getElementById("state-label").textContent = "state: " + state;
+  draw();
+  window.__harness = { draw: draw, ctx: ctx };
+})();
+</script>
+</body>
+</html>
