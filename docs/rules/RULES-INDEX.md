@@ -79,6 +79,7 @@ Legend: **both homes** = one real file in `.ai/rules`, linked for Cursor and for
 - `product-is-live` (both homes): Fundhub is live — never reframe broken paths as on hold / sandbox / dry-run.
 - `features-stay-on` (both homes): Turn every feature on and keep it on; off only on an emergency ask.
 - `commas-catalog-hands-off` (both homes): Never mint or rewrite the live Commas product catalog.
+- `funding-deal-pay` (both homes): On a funding deal the closer gets one fifth (20%) of the upfront. No closer cut of the amount funded. On a financed deal Clarity takes about 15%.
 - `ghl-blacklisted` (both homes): GoHighLevel / GHL is not used by Fundhub — never add it back.
 - `clarity-export-rate-limit` (both homes): Clarity Data Export — one pull per ask, helper only.
 
