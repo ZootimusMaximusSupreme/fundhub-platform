@@ -66,6 +66,15 @@ test("material changes in actually open money/booking/Blueprint PRs are reviewed
   assert.deepEqual(unmappedHighRiskSourceChanges([newRisk, "src/ui/theme.mjs", "docs/booking.md", "src/handlers/new-payment-webhook.test.mjs"]), [newRisk]);
   assert.equal(reportCriticalSourceChanges([newRisk]).verdict, "REVIEW_REQUIRED");
   assert.equal(reportCriticalSourceChanges([newRisk]).liveReceipt, "NEEDS_LIVE_RECEIPT");
+  const sharedUi = reportCriticalSourceChanges([
+    "api/read/invoices.mjs", "public/app/calendar.html",
+    "public/app/client-portal.html", "public/app/calendar-workspace.css"
+  ]);
+  assert.deepEqual(sharedUi.edges.map((edge) => edge.id), [
+    "lead-booking-call-outcome", "payment-ledger-entitlement"
+  ]);
+  assert.deepEqual(sharedUi.unmappedHighRiskFiles, ["public/app/client-portal.html"]);
+  assert.deepEqual(unmappedHighRiskSourceChanges(["public/app/calendar-workspace.css"]), []);
 });
 
 test("wrong source, consumer, identity, trace or business result turns RED after grace", () => {
