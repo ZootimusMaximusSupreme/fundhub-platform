@@ -13,12 +13,16 @@ const CAN_RUN = process.env.CI === "true" && !!process.env.DATABASE_URL;
 const FIXTURE = `WITH tasks AS (
   SELECT g AS id,
          CASE WHEN g IN (252, 253) THEN 'other-org' ELSE 'own-org' END AS org_id,
+         'own-client'::text AS client_id,
          CASE WHEN g = 254 THEN 'setter' ELSE 'closer' END AS assignee_role,
          CASE WHEN g = 255 THEN 'Other action' ELSE 'Strategy session booked' END AS title,
          CASE WHEN g = 256 THEN now() + interval '1 hour'
               ELSE now() - interval '1 hour' END AS due_at,
          CASE WHEN g % 2 = 0 THEN 'closer-a' ELSE NULL::text END AS assignee_staff_id
     FROM generate_series(1, 256) AS g
+), clients AS (
+  SELECT 'own-client'::text AS id, 'own-org'::text AS org_id,
+         '{}'::jsonb AS custom_fields
 ), call_outcomes AS (
   SELECT 2 AS task_id, 'own-org' AS org_id
   UNION ALL

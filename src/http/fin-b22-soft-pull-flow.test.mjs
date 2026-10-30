@@ -109,7 +109,12 @@ async function post(body, { db = standIn(), token = link(), deps = {} } = {}) {
   await handler(
     { method: "POST", body: { ...token, ...body }, query: {}, headers: { "x-forwarded-for": "203.0.113.5", "user-agent": "test-browser" } },
     res,
-    { db: db.fake, env: ENV, secret: SECRET, now: NOW, checkoutBaseUrl: CHECKOUT_BASE, ...deps },
+    { db: db.fake, env: ENV, secret: SECRET, now: NOW, checkoutBaseUrl: CHECKOUT_BASE,
+      // A signed link is never a client session; prove the happy path with a
+      // separately authenticated client principal. Per-test overrides below
+      // still exercise unauthenticated/wrong-buyer refusals.
+      resolvePrincipal: async () => ({ kind: "client", orgId: ORG_ID, clientId: CLIENT, accountId: ACCOUNT }),
+      ...deps },
   );
   return { res, ...db };
 }
@@ -117,6 +122,35 @@ async function post(body, { db = standIn(), token = link(), deps = {} } = {}) {
 const at = (fake, re) => fake.calls.findIndex((c) => re.test(c.sql));
 const ran = (fake, re) => fake.calls.filter((c) => re.test(c.sql));
 const NO_PAY = /INSERT INTO payment_links/;
+
+describe("signed link is not a client session", () => {
+  test("an unsigned-in visitor cannot save consent or create a checkout, even with a valid link", async () => {
+    const { res, fake, minted } = await post({ ...person(), businesses: [] }, {
+      deps: { resolvePrincipal: async () => null }
+    });
+    assert.equal(res.statusCode, 401);
+    assert.equal(res.body.error, "account_required");
+    assert.equal(minted.length, 0);
+    assert.equal(ran(fake, /INSERT INTO (?:pii_identity|client_consents|businesses|payment_links)/).length, 0);
+  });
+
+  test("a session for a different buyer, company or staff role cannot use this signed link", async () => {
+    const wrongPrincipals = [
+      { kind: "client", orgId: ORG_ID, clientId: OTHER_CLIENT, accountId: ACCOUNT },
+      { kind: "client", orgId: "0b000000-0000-4000-8000-000000000002", clientId: CLIENT, accountId: ACCOUNT },
+      { kind: "staff", orgId: ORG_ID, clientId: CLIENT, accountId: ACCOUNT }
+    ];
+    for (const principal of wrongPrincipals) {
+      const { res, fake, minted } = await post({ ...person(), businesses: [] }, {
+        deps: { resolvePrincipal: async () => principal }
+      });
+      assert.equal(res.statusCode, 401, JSON.stringify(principal));
+      assert.equal(res.body.error, "account_required");
+      assert.equal(minted.length, 0);
+      assert.equal(ran(fake, /INSERT INTO (?:pii_identity|client_consents|businesses|payment_links)/).length, 0);
+    }
+  });
+});
 
 describe("authorize first, then pay", () => {
   test("the consent is written before the payment link is minted, and the answer carries both", async () => {
@@ -160,7 +194,10 @@ describe("authorize first, then pay", () => {
   test("the words the page is shown (GET) are the words that are recorded (POST), under the same version", async () => {
     const res = makeRes();
     const token = link();
-    await handler({ method: "GET", query: token, headers: {} }, res, { db: standIn().fake, env: ENV, secret: SECRET, now: NOW });
+    await handler({ method: "GET", query: token, headers: {} }, res, {
+      db: standIn().fake, env: ENV, secret: SECRET, now: NOW,
+      resolvePrincipal: async () => ({ kind: "client", orgId: ORG_ID, clientId: CLIENT, accountId: ACCOUNT })
+    });
     assert.equal(res.statusCode, 200);
     assert.equal(res.body.disclosure.text, SERVER_WORDS);
     assert.equal(res.body.disclosure.version, CURRENT_SOFT_PULL_VERSION);

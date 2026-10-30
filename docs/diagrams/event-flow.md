@@ -132,7 +132,7 @@ flowchart LR
 | `entry.captured` | journey spine | `onEntryCaptured` | 5 |
 | `survey.submitted` | journey spine | `onSurveySubmitted` | 1 |
 | `diagnostic.paid` | journey spine | `onDiagnosticPaid`, `onDiagnosticPaidSoftPull`, `onMoneyEventForMeta`, `onDiagnosticPaidMoney` | 2 |
-| `analysis.completed` | journey spine | `onAnalysisCompleted`, `onAnalysisCompletedDeliverables`, `onAnalysisCompletedSloPack` | 9 |
+| `analysis.completed` | journey spine | `onAnalysisCompleted`, `onAnalysisCompletedDeliverables`, `onAnalysisCompletedFullReport`, `onAnalysisCompletedSloPack` | 9 |
 | `booking.created` | journey spine | `onBookingCreated`, `onInterviewBooked` | 9 |
 | `booking.rescheduled` | journey spine | `onBookingRescheduled` | 4 |
 | `booking.cancelled` | journey spine | `onBookingCancelled` | 0 |

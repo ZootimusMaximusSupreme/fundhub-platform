@@ -85,7 +85,17 @@ var elForm = document.getElementById("f");
 var elLede = document.getElementById("lede");
 var elGo   = document.getElementById("go");
 var elEmail = document.getElementById("email");
-var confirmAfterSignIn = false;
+var bookingClaim = false;
+
+try {
+  var entryParams = new URLSearchParams(window.location.search);
+  bookingClaim = entryParams.get("mode") === "claim" || entryParams.get("booking_claim") === "1";
+  if (bookingClaim) {
+    document.querySelector(".login-box h1").textContent = "Set up your Fundhub portal.";
+    document.querySelector(".login-box .sub").textContent = "Use the email on your booking. We will confirm your call when you open your account.";
+    elGo.textContent = "Create or open my account";
+  }
+} catch (_e) { /* ordinary sign-in remains available */ }
 
 /* Prefill from ?email= on the funding-delivery CTA (and any portal deep link). */
 (function prefillEmailFromQuery() {
@@ -111,6 +121,24 @@ function tokenFromUrl() {
 function stripTokenFromUrl() {
   try { window.history.replaceState({}, document.title, window.location.pathname); }
   catch (e) { /* an old browser keeps the token in the bar; the link is still spent */ }
+}
+
+async function confirmBookedCall(token) {
+  try {
+    var read = await fetch("/api/read/portal-summary", {
+      credentials: "include", headers: { accept: "application/json", authorization: "Bearer " + token }
+    });
+    var summary = await read.json();
+    var call = summary && summary.upcoming_call;
+    if (!read.ok || !call || !call.id || call.confirmed) return Boolean(call && call.confirmed);
+    var saved = await fetch("/api/bookings", {
+      method: "POST", credentials: "include",
+      headers: { "content-type": "application/json", accept: "application/json", authorization: "Bearer " + token },
+      body: JSON.stringify({ booking_id: call.id })
+    });
+    var result = await saved.json();
+    return saved.ok && result.confirmed === true;
+  } catch (_e) { return false; }
 }
 
 async function exchange(token) {
@@ -179,8 +207,11 @@ async function exchange(token) {
       localStorage.removeItem("fh_demo");
       localStorage.removeItem("fh_demo_staff");
     } catch (e) {}
-    var next = data.next || "/app/client-portal.html";
-    window.location.replace(next + (confirmAfterSignIn ? "#call-confirm-card" : ""));
+    var confirmed = bookingClaim ? await confirmBookedCall(data.token) : false;
+    var next = bookingClaim && confirmed
+      ? "/app/soft-pull-approve.html?portal=1"
+      : (data.next || "/app/client-portal.html") + (bookingClaim ? "#call-confirm-card" : "");
+    window.location.replace(next);
     return;
   }
 
@@ -213,18 +244,18 @@ elForm.addEventListener("submit", async function (ev) {
     var r = await fetch("/api/auth/magic-link", {
       method: "POST",
       headers: { "content-type": "application/json", accept: "application/json" },
-      body: JSON.stringify({ email: email })
+      body: JSON.stringify(bookingClaim ? { email: email, booking_claim: true } : { email: email })
     });
     data = await r.json();
   } catch (e) {
     elGo.disabled = false;
-    elGo.textContent = "Email me a sign-in link";
+    elGo.textContent = bookingClaim ? "Create or open my account" : "Email me a sign-in link";
     showError("We could not reach Fundhub. Check your connection and try again.");
     return;
   }
 
   elGo.disabled = false;
-  elGo.textContent = "Email me a sign-in link";
+  elGo.textContent = bookingClaim ? "Create or open my account" : "Email me a sign-in link";
 
   if (data && data.ok) {
     /* THE SAME PANEL FOR EVERY ADDRESS. The server answers identically whether
@@ -252,7 +283,7 @@ elForm.addEventListener("submit", async function (ev) {
 (function boot() {
   var t = tokenFromUrl();
   if (!t) return;              // ordinary visit: just show the form
-  confirmAfterSignIn = window.location.hash === "#call-confirm-card";
+  bookingClaim = bookingClaim || window.location.hash === "#call-confirm-card";
   stripTokenFromUrl();         // before the network call, not after
   exchange(t);
 })();
