@@ -184,6 +184,9 @@ function setterSorted(items) {
   var page = 0;
   var saveTimer = 0;
   var busy = false;
+  var surveyDirty = false;
+  var surveySavePromise = null;
+  var surveyVersion = 0;
   var queueEl = document.getElementById("setter-queue");
   var detailEl = document.getElementById("setter-detail");
   var countEl = document.getElementById("setter-count");
@@ -293,19 +296,34 @@ function setterSorted(items) {
     queueEl.innerHTML = html;
   }
 
-  function surveyHtml(survey) {
+  function surveyAnswerText(answer) {
+    return typeof answer === "object" ? JSON.stringify(answer) : String(answer == null ? "" : answer);
+  }
+
+  function surveyHtml(survey, edits) {
     if (!survey) return '<p>No survey answers on this record.</p>';
     if (typeof survey === "string") return '<p>' + setterEsc(survey) + '</p>';
     var entries = Array.isArray(survey) ? survey.map(function (row) {
-      return [row.question || "Survey answer", row.answer];
-    }) : Object.entries(survey);
-    entries = entries.filter(function (entry) { return !/ssn|social.security|card.number/i.test(entry[0]); });
+      return { key: row.key, label: row.question || "Survey answer", answer: row.answer };
+    }) : Object.entries(survey).map(function (entry) {
+      return { key: entry[0], label: entry[0], answer: entry[1] };
+    });
+    entries = entries.filter(function (entry) { return !/ssn|social.security|card.number/i.test(entry.label) && !/ssn|social.security|card.number/i.test(entry.key || ""); });
     if (!entries.length) return '<p>No survey answers on this record.</p>';
-    return '<div class="setter-survey">' + entries.slice(0, 20).map(function (entry) {
-      var label = entry[0].replace(/[_-]+/g, " ").replace(/([a-z])([A-Z])/g, "$1 $2");
-      var text = typeof entry[1] === "object" ? JSON.stringify(entry[1]) : String(entry[1] == null ? "" : entry[1]);
-      return '<div><b>' + setterEsc(label) + '</b>' + setterEsc(text) + '</div>';
-    }).join("") + '</div>';
+    var canEdit = false;
+    var fields = entries.slice(0, 20).map(function (entry, index) {
+      var label = entry.label.replace(/[_-]+/g, " ").replace(/([a-z])([A-Z])/g, "$1 $2");
+      var original = surveyAnswerText(entry.answer);
+      var edited = edits && Object.prototype.hasOwnProperty.call(edits, entry.key) ? String(edits[entry.key]) : original;
+      if (!entry.key) return '<div><b>' + setterEsc(label) + '</b>' + setterEsc(original) + '</div>';
+      canEdit = true;
+      return '<div class="setter-survey-field"><label for="setter-survey-' + index + '">' + setterEsc(label) + '</label>' +
+        '<textarea id="setter-survey-' + index + '" data-survey-key="' + setterEsc(entry.key) + '" data-original="' + setterEsc(original) + '" maxlength="1000">' + setterEsc(edited) + '</textarea>' +
+        (edited !== original ? '<small>Original answer: ' + setterEsc(original) + '</small>' : '') + '</div>';
+    }).join("");
+    return '<div class="setter-survey">' + fields + '</div>' + (canEdit ?
+      '<div class="setter-actions"><button type="button" class="fh-astra-action" data-action="save-survey">Save survey answers</button></div>' +
+      '<div class="setter-status" id="setter-survey-status" role="status" aria-live="polite"></div>' : '');
   }
 
   function paintDetail() {
@@ -336,8 +354,8 @@ function setterSorted(items) {
       (bookingUrl ? '<a class="setter-link" href="' + setterEsc(bookingUrl) + '" target="_blank" rel="noopener">Open booking calendar ↗</a>' : '<a class="setter-link" href="calendar.html">Open booking calendar</a>') +
       '<p>After the booking webhook arrives, refresh this queue and finish the handoff.</p></section>';
 
-    html += '<section class="setter-section"><h3>Survey · read before the call</h3>' + surveyHtml(item.survey) + '</section>' +
-      '<section class="setter-section"><h3>Confirm and warm</h3><p>Use the survey as written. Keep a booked lead’s call short; do not run a second discovery call.</p>' +
+    html += '<section class="setter-section"><h3>Survey · edit during the call</h3>' + surveyHtml(item.survey, item.survey_edits) + '</section>' +
+      '<section class="setter-section"><h3>Confirm and warm</h3><p>Use the saved survey answers. Keep a booked lead’s call short; do not run a second discovery call.</p>' +
       '<div class="setter-checks">' + box("time_confirmed", "Call time confirmed", h.time_confirmed) + box("frame_warmed", "Framed the call and warmed from survey", h.frame_warmed) + '</div>' +
       '<div class="setter-fields"><div class="setter-field wide"><label for="setter-problem">Stuck part · one sentence</label><textarea id="setter-problem" name="problem">' + setterEsc(h.problem || "") + '</textarea></div>' +
       '<div class="setter-field wide"><label for="setter-goal">Goal · one sentence</label><textarea id="setter-goal" name="goal">' + setterEsc(h.goal || "") + '</textarea></div>' +
@@ -352,6 +370,52 @@ function setterSorted(items) {
       '<button type="button" class="fh-astra-action" data-action="send_handoff"' + (!h.complete_at || h.handoff_sent_at ? ' disabled' : '') + '>' + (h.handoff_sent_at ? 'Handoff text sent' : sameStaff ? 'Send lead-only SMS' : 'Send lead confirmation + closer handoff') + '</button></div>' +
       '<div class="setter-status" id="setter-status" role="status" aria-live="polite"></div></section>';
     detailEl.innerHTML = html;
+    surveyDirty = false;
+  }
+
+  function readSurveyEdits() {
+    var item = currentItem();
+    var edits = Object.assign({}, item && item.survey_edits || {});
+    detailEl.querySelectorAll('[data-survey-key]').forEach(function (el) {
+      if (el.value === el.dataset.original) delete edits[el.dataset.surveyKey];
+      else edits[el.dataset.surveyKey] = el.value;
+    });
+    return edits;
+  }
+
+  function saveSurvey() {
+    if (!selected || !surveyDirty) return Promise.resolve(true);
+    if (surveySavePromise) return surveySavePromise;
+    var clientId = selectedId();
+    var edits = readSurveyEdits();
+    var status = document.getElementById("setter-survey-status");
+    var button = detailEl.querySelector('[data-action="save-survey"]');
+    var fields = detailEl.querySelectorAll('[data-survey-key]');
+    if (status) { status.textContent = "Saving survey answers…"; status.className = "setter-status"; }
+    if (button) button.disabled = true;
+    fields.forEach(function (el) { el.readOnly = true; });
+    surveySavePromise = request("/api/setter-dashboard", { method: "POST", body: { client_id: clientId, action: "save_survey", survey_edits: edits } })
+      .then(function (result) {
+        if (result.status < 200 || result.status >= 300 || !result.body || !result.body.ok) {
+          if (status) { status.textContent = messageFor(result); status.className = "setter-status error"; }
+          return false;
+        }
+        var item = queue.find(function (row) { return row.client_id === clientId; });
+        if (item) item.survey_edits = result.body.survey_edits || edits;
+        if (selectedId() === clientId && selected) selected.survey_edits = result.body.survey_edits || edits;
+        surveyVersion += 1;
+        surveyDirty = false;
+        if (status) { status.textContent = "Survey answers saved."; status.className = "setter-status success"; }
+        return true;
+      }).catch(function () {
+        if (status) { status.textContent = messageFor(null); status.className = "setter-status error"; }
+        return false;
+      }).finally(function () {
+        if (button) button.disabled = false;
+        fields.forEach(function (el) { el.readOnly = false; });
+        surveySavePromise = null;
+      });
+    return surveySavePromise;
   }
 
   function updateItem(item) {
@@ -369,10 +433,15 @@ function setterSorted(items) {
       setTimeout(function () { resolve(sendAction(action, handoff, clientId)); }, 150);
     });
     busy = true;
+    var startedSurveyVersion = surveyVersion;
     say(action === "save" ? "Saving…" : "Working…");
     return request("/api/setter-dashboard", { method: "POST", body: { client_id: clientId, action: action, handoff: handoff } })
       .then(function (result) {
         if (result.status < 200 || result.status >= 300 || !result.body || !result.body.ok) { say(messageFor(result), "error"); return false; }
+        if (surveyVersion > startedSurveyVersion && result.body.item) {
+          var latest = queue.find(function (row) { return row.client_id === clientId; });
+          if (latest) result.body.item.survey_edits = latest.survey_edits;
+        }
         updateItem(result.body.item);
         if (action !== "save") paintDetail();
         var savedHandoff = result.body.item && result.body.item.setter_handoff || {};
@@ -425,10 +494,13 @@ function setterSorted(items) {
     var row = event.target.closest("[data-client-id]");
     if (row) {
       var next = queue.find(function (item) { return item.client_id === row.dataset.clientId; }) || null;
-      if (selected && next && next.client_id !== selected.client_id && saveTimer) {
+      if (selected && next && next.client_id !== selected.client_id && (saveTimer || surveyDirty)) {
+        var hasHandoffChanges = !!saveTimer;
         clearTimeout(saveTimer);
         saveTimer = 0;
-        sendAction("save", readHandoff()).then(function () { selected = next; paintQueue(); paintDetail(); });
+        (hasHandoffChanges ? sendAction("save", readHandoff()) : Promise.resolve(true))
+          .then(function (ok) { return ok ? saveSurvey() : false; })
+          .then(function (ok) { if (ok) { selected = next; paintQueue(); paintDetail(); } });
         return;
       }
       clearTimeout(saveTimer);
@@ -437,8 +509,17 @@ function setterSorted(items) {
       paintQueue(); paintDetail();
     }
   });
-  detailEl.addEventListener("input", saveSoon);
+  detailEl.addEventListener("input", function (event) {
+    if (event.target.matches('[data-survey-key]')) {
+      surveyDirty = true;
+      var status = document.getElementById("setter-survey-status");
+      if (status) { status.textContent = "Unsaved survey changes…"; status.className = "setter-status"; }
+      return;
+    }
+    saveSoon();
+  });
   detailEl.addEventListener("change", function (event) {
+    if (event.target.matches('[data-survey-key]')) return;
     if (event.target.name === "disposition") {
       var noAnswer = document.getElementById("setter-no-answer");
       if (noAnswer) noAnswer.hidden = event.target.value !== "no_answer";
@@ -449,20 +530,21 @@ function setterSorted(items) {
     var button = event.target.closest("[data-action]");
     if (!button) return;
     var action = button.dataset.action;
+    if (action === "save-survey") { saveSurvey(); return; }
     clearTimeout(saveTimer);
     saveTimer = 0;
     var h = readHandoff();
-    if (action === "log-dial") {
-      sendAction("log_dial", h).then(function (ok) { if (ok) load(); });
-      return;
-    }
     if (action === "complete") {
       var missing = setterMissing(currentItem(), h);
       if (missing.length) { say("Finish: " + missing.join(", ") + ".", "error"); return; }
     }
-    if (action === "save" || action === "complete" || action === "send_intro_video" || action === "send_handoff") sendAction(action, h);
+    saveSurvey().then(function (ok) {
+      if (!ok) return;
+      if (action === "log-dial") { sendAction("log_dial", h).then(function (saved) { if (saved) load(); }); return; }
+      if (action === "save" || action === "complete" || action === "send_intro_video" || action === "send_handoff") sendAction(action, h);
+    });
   });
-  refreshBtn.addEventListener("click", load);
+  refreshBtn.addEventListener("click", function () { saveSurvey().then(function (ok) { if (ok) load(); }); });
   request("/funnel/fundhub-prompter-download.json").then(function (result) {
     var url = result.body && result.body.app_store_url;
     if (!/^https:\/\/apps\.apple\.com\//.test(url || "")) return;

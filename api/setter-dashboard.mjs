@@ -5,7 +5,7 @@ import { requireRole, isUuid, ROLE_SETS } from "../src/http/read-api.mjs";
 import { dbDown } from "../src/http/db-down.mjs";
 import { updateSetterHandoff } from "../src/setter/dashboard.mjs";
 
-const ACTIONS = new Set(["save", "log_dial", "complete", "send_intro_video", "send_handoff"]);
+const ACTIONS = new Set(["save", "save_survey", "log_dial", "complete", "send_intro_video", "send_handoff"]);
 
 export default async function handler(req, res, deps = {}) {
   if (req.method !== "POST") {
