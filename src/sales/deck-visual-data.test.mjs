@@ -49,7 +49,7 @@ const SANDBOX = path.resolve(HERE, "../../vendor/underwriteiq-full/api/lite/crs/
 const loadSandbox = (name) => JSON.parse(readFileSync(path.join(SANDBOX, name), "utf8"));
 
 const CONTRACT_KEYS = [
-  "source", "pulledOn", "todayTotal", "availableCredit", "lenderReach", "levers", "optimizedTotal", "tierNow", "tierAfter",
+  "source", "pulledOn", "todayTotal", "availableCredit", "reportedEmployers", "lenderReach", "levers", "optimizedTotal", "tierNow", "tierAfter",
   "cards", "items", "mismatches", "companies", "newCompany", "fundability"
 ];
 
@@ -130,6 +130,7 @@ describe("the contract (board 10.8)", () => {
     assert.equal(v.pulledOn, null);
     assert.equal(v.todayTotal, null);
     assert.equal(v.availableCredit, null);
+    assert.deepEqual(v.reportedEmployers, []);
     assert.equal(v.lenderReach, null);
     assert.deepEqual(v.levers.map((l) => l.key), ["paydown", "clean", "accounts"]);
     assert.deepEqual(v.levers.map((l) => l.label), ["Pay the cards down", "Clean the file", "Add accounts"]);
@@ -155,6 +156,7 @@ describe("the contract (board 10.8)", () => {
       assert.equal(v.source, "none");
       assert.equal(v.pulledOn, null);
       assert.equal(v.availableCredit, null);
+      assert.deepEqual(v.reportedEmployers, []);
       assert.equal(v.lenderReach, null);
       assert.equal(v.optimizedTotal, null);
       assert.ok(v.levers.every((l) => l.totalAfter === null && l.applies === false));
@@ -255,6 +257,17 @@ describe("a live-shaped pull (what crs-map.mjs saves)", () => {
     assert.deepEqual(Object.keys(visual.lenderReach), ["now", "after"]);
     assert.equal(pull.lenderReach, undefined, "the merged bureau row itself does not carry the engine's counts");
     assert.equal(visual.availableCredit, null, "one open card has no reported limit, so the total is withheld");
+  });
+
+  test("reported employers come from the live-shaped bureau pull and remain distinct from a confirmed current employer", () => {
+    const source = engineRun.normalized.identity.employers.filter((entry) => entry.name && entry.name !== "unknown");
+    assert.ok(source.length > 0, "the pull contains reported employer entries");
+    assert.ok(visual.reportedEmployers.some((entry) => entry.name === source[0].name));
+    for (const entry of visual.reportedEmployers) {
+      assert.ok(source.some((reported) => reported.name === entry.name), "no employer name was invented");
+      assert.ok(entry.bureaus.length > 0);
+      assert.ok(entry.bureaus.every((bureau) => ["EX", "TU", "EQ"].includes(bureau)));
+    }
   });
 
   test("paydown is the engine's own projection; clean is where the tier is re-checked", () => {

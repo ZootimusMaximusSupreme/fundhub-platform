@@ -133,6 +133,7 @@ export function emptyDeckVisual({ source = "none", todayTotal = null, companies 
     pulledOn: null,
     todayTotal,
     availableCredit: null,
+    reportedEmployers: [],
     lenderReach: null,
     levers: DECK_VISUAL_LEVERS.map(({ key, label }) => ({ key, label, applies: false, totalAfter: null })),
     optimizedTotal: null,
@@ -374,6 +375,27 @@ function mismatchesOf(engineResult) {
   return out;
 }
 
+/** Employer names as reported by the bureaus. These can be old; the client must
+ * confirm the current employer before entering one on a financing application. */
+function reportedEmployersOf(engineResult) {
+  const entries = engineResult.normalized?.identity?.employers;
+  if (!Array.isArray(entries)) return [];
+  const byName = new Map();
+  for (const entry of entries) {
+    const name = known(entry?.name);
+    const bureau = BUREAU_CODE[entry?.source];
+    if (!name || !bureau) continue;
+    const key = name.toLowerCase();
+    if (!byName.has(key)) byName.set(key, { name, bureaus: [] });
+    const row = byName.get(key);
+    if (!row.bureaus.includes(bureau)) row.bureaus.push(bureau);
+  }
+  return [...byName.values()].map((row) => ({
+    name: row.name,
+    bureaus: orderedBureaus(new Set(row.bureaus))
+  }));
+}
+
 function companyRows(businesses, amountOf) {
   return (Array.isArray(businesses) ? businesses : []).map((b) => ({
     name: b?.name ?? null,
@@ -452,6 +474,7 @@ export function buildDeckVisualData({ crs = null, engine = null, name = "", busi
     });
     visual.cards = cardsOf(reportClient);
     visual.availableCredit = availableCreditOf(reportClient);
+    visual.reportedEmployers = reportedEmployersOf(personalRun);
     visual.items = itemsOf(personalRun);
     visual.mismatches = mismatchesOf(personalRun);
 

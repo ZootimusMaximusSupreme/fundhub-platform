@@ -271,6 +271,13 @@ body.fh-astra--present .fh-finance-helper label{display:flex;flex-direction:colu
 body.fh-astra--present .fh-finance-helper :is(input,select){min-height:44px;width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);font:600 var(--fs-body) var(--sans)}
 body.fh-astra--present .fh-finance-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 body.fh-astra--present #fh-fin-result{padding:10px;border-radius:8px;background:color-mix(in srgb,var(--info) 10%,white);font-size:var(--fs-body);font-weight:650}
+body.fh-astra--present .fh-finance-review{display:flex;flex-direction:column;gap:8px;padding-top:12px;border-top:1px solid var(--line)}
+body.fh-astra--present .fh-finance-review>strong{font-size:var(--fs-body);font-weight:700}
+body.fh-astra--present .fh-finance-employers{display:flex;flex-direction:column;gap:4px;list-style:none;margin:0;padding:8px;background:var(--soft);border-radius:8px;font-size:var(--fs-caption)}
+body.fh-astra--present .fh-finance-employers li{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+body.fh-astra--present .fh-finance-employers span{color:var(--gray)}
+body.fh-astra--present .fh-finance-helper .fh-finance-check-row{display:flex;flex-direction:row;align-items:flex-start;gap:8px;min-height:44px;padding:8px;border:1px solid var(--line);border-radius:8px;color:var(--ink);font-size:var(--fs-caption);line-height:1.35;cursor:pointer}
+body.fh-astra--present .fh-finance-helper .fh-finance-check{width:18px;min-height:18px;height:18px;flex:0 0 18px;margin:0;accent-color:var(--ink)}
 @media(max-width:700px){
   body.fh-astra--present .slide-body.fh-astra-workspace{padding:16px}
   body.fh-astra--present .slide .fh-astra-summary{grid-template-columns:1fr!important}

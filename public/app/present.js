@@ -264,7 +264,7 @@
        out, and how many times. F24 — see sendBtn below. */
     sends: {}, moreOpen: false, repairReferral: false,
     stagedLetters: [], repairBusy: false, repairMsg: "", amountPaidDollars: "",
-    financePlan: "standard", financeAmount: "", financeMonths: "12", financeApr: "",
+    financePlan: "standard", financeAmount: "", financeMonths: "12", financeApr: "", financeChecks: {},
     businesses: [], incBusy: "", incMsg: "",
     /* 06 Blueprint: the rep's own on/off picks (only where they differ from
        what this file says), and the slide they opened the stack from. */
@@ -1517,6 +1517,16 @@
   function financeHelper() {
     if (selectedOfferKey() !== "UWIQ_DELIVERABLES") return "";
     var p = FINANCE_PLANS[state.financePlan] || FINANCE_PLANS.standard;
+    var visual = deckVisual();
+    var employers = visual && Array.isArray(visual.reportedEmployers) ? visual.reportedEmployers : [];
+    var reported = employers.length ? employers.map(function (entry) {
+      return '<li><strong>' + esc(entry.name) + '</strong><span>' + esc((entry.bureaus || []).join(" · ")) + '</span></li>';
+    }).join("") : '<li>No employer appears on this soft pull.</li>';
+    var reviewSteps = [
+      ["employer", "The client confirmed their current employer and entered it on the lender form."],
+      ["work", "The client checked work details and actual income against their own records wherever asked."],
+      ["submit", "The client reviewed every answer and the quoted terms before submitting."]
+    ];
     return '<section class="fh-finance-helper"><span class="mono">Capital Blueprint payment illustration</span>'
       + '<label for="fh-fin-plan">Plan</label><select id="fh-fin-plan">'
       + Object.keys(FINANCE_PLANS).map(function (key) { return '<option value="' + key + '"' + (key === state.financePlan ? " selected" : "") + '>' + FINANCE_PLANS[key].name + '</option>'; }).join("") + '</select>'
@@ -1525,7 +1535,12 @@
       + '<label for="fh-fin-months">Months (' + p.months[0] + '–' + p.months[1] + ')<input id="fh-fin-months" type="number" min="' + p.months[0] + '" max="' + p.months[1] + '" value="' + esc(state.financeMonths) + '"></label>'
       + (p.apr ? '<label for="fh-fin-apr">Quoted APR (%)<input id="fh-fin-apr" type="number" min="0" step="0.01" value="' + esc(state.financeApr) + '"></label>' : '') + '</div>'
       + '<div id="fh-fin-result" role="status">' + esc(financePayment()) + '</div>'
-      + '<p class="fh-finance-note">Reference limits from the supplied plan sheet. This is not an offer or approval. Financing is for the Capital Blueprint only.</p></section>';
+      + '<p class="fh-finance-note">Reference limits from the supplied plan sheet. This is not an offer or approval. Financing is for the Capital Blueprint only.</p>'
+      + '<div class="fh-finance-review"><strong>Check the application with the client</strong>'
+      + '<p class="fh-finance-note">Employers reported on the soft pull can be old. The client confirms the current employer; the report does not fill the application.</p>'
+      + '<ul class="fh-finance-employers">' + reported + '</ul>'
+      + reviewSteps.map(function (step) { return '<label class="fh-finance-check-row"><input id="fh-fin-check-' + step[0] + '" class="fh-finance-check" type="checkbox" value="' + step[0] + '"' + (state.financeChecks[step[0]] ? " checked" : "") + '><span>' + esc(step[1]) + '</span></label>'; }).join("")
+      + '</div></section>';
   }
 
   function cockpit() {
@@ -1904,6 +1919,10 @@
     }
     var financePlan = document.getElementById("fh-fin-plan");
     if (financePlan) financePlan.addEventListener("change", function (e) { state.financePlan = e.target.value; render(); });
+    ["employer", "work", "submit"].forEach(function (key) {
+      var el = document.getElementById("fh-fin-check-" + key);
+      if (el) el.addEventListener("change", function (e) { state.financeChecks[key] = !!e.target.checked; });
+    });
     [["fh-fin-amount", "financeAmount"], ["fh-fin-months", "financeMonths"], ["fh-fin-apr", "financeApr"]].forEach(function (pair) {
       var el = document.getElementById(pair[0]);
       if (!el) return;

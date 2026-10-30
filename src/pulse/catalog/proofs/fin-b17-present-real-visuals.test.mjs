@@ -298,9 +298,14 @@ test("the closer sees reported card headroom and can illustrate the Blueprint pa
   const helper = repair.page.locator(".fh-finance-helper");
   await helper.waitFor({ state: "visible" });
   assert.match(await repair.page.locator(".fh-credit-readout").innerText(), /\$140/);
+  assert.match(await helper.innerText(), /Check the application with the client/);
+  assert.match(await helper.innerText(), /No employer appears on this soft pull/);
+  assert.equal(await helper.locator(".fh-finance-check").count(), 3);
+  await helper.locator('.fh-finance-check[value="employer"]').check();
   assert.match(await helper.locator("#fh-fin-result").innerText(), /Enter the APR from the lender quote/);
 
   await helper.locator("#fh-fin-plan").selectOption("noInterest");
+  assert.equal(await helper.locator('.fh-finance-check[value="employer"]').isChecked(), true, "a plan switch keeps the closer's application review state");
   assert.match(await helper.locator("#fh-fin-result").innerText(), /\$416\.67 per month for 12 months/);
   await helper.locator("#fh-fin-plan").selectOption("splitit");
   assert.match(await helper.locator("#fh-fin-result").innerText(), /exceeds reported card headroom/);
@@ -310,6 +315,19 @@ test("the closer sees reported card headroom and can illustrate the Blueprint pa
   assert.match(await helper.locator("#fh-fin-result").innerText(), /Enter the APR from the lender quote/);
   assert.deepEqual(repair.errors, []);
   await repair.page.close();
+
+  const withEmployer = await openDeck({
+    tier: "REPAIR_ONLY",
+    visual: { ...REPAIR_VISUAL, reportedEmployers: [{ name: "Sample Employer", bureaus: ["EX"] }] },
+  });
+  await withEmployer.page.locator('[data-act="phase:07"]').click();
+  while ((await slideCode(withEmployer.page)) !== "S-19") await withEmployer.page.locator('[data-act="next"]').click();
+  await withEmployer.page.locator('[data-act="rung:2"]').click();
+  await withEmployer.page.locator('[data-act="phase:08"]').click();
+  assert.match(await withEmployer.page.locator(".fh-finance-employers").innerText(), /Sample Employer\s+EX/);
+  assert.match(await withEmployer.page.locator(".fh-finance-review").innerText(), /can be old/);
+  assert.deepEqual(withEmployer.errors, []);
+  await withEmployer.page.close();
 });
 
 test("on a laptop screen the companies slide fits with nothing below the edge, before and after + Add a company; Business 2 keeps one color; a phone never shrinks", { timeout: 180_000 }, async () => {
