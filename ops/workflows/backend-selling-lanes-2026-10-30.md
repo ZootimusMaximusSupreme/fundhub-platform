@@ -23,15 +23,22 @@ This is Jeremy Haynes' "Harvester + Hammer Them" system (`marketing/ads/backend-
 
 ### 1. The lane
 
-Each person has one lane at a time. The lane is a label saved on the person. Proposed lanes (decision 1):
+Each person has one lane at a time. The lane is a label saved on the person. Lanes set by Chris on 2026-10-30 (decision 1, answered):
 
 | Lane | Who | Content theme |
 |---|---|---|
-| Repair | band 500-579, 580-649, or Not sure | how credit repair works, the waypoints, what is wrong in the industry |
-| Blueprint | band 650-699 | Capital Blueprint, the 13 optimization points, how funding order works |
-| Funding | band 700 and up | how funding works, lender matching, stacking, what approved means |
+| Funding | score 700 and up | how funding works, lender matching, stacking, what approved means |
+| Blueprint | score 620 and up (650 is better), OR $5,000 or more in cash | Capital Blueprint, the 13 optimization points, how funding order works |
+| Repair and partners | under the Blueprint bar AND under $5,000 cash | the other ways to get funded: credit repair, credit partners, finding someone to do it with you. Teach, never "you will not get funded" |
 
-The lane starts from the survey the moment it is submitted. The verified score from the setter replaces the survey band whenever one is saved (section 2). The verified value is stored next to the survey answer, never on top of it.
+Chris's words: Blueprint fits when they have $5K cash or more, or a 620 FICO, ideally 650. Below that and under 699, they look into repair, credit partners and funding with help. The tone is education, not a no.
+
+How the survey answers map:
+
+- Score comes from `cf_svy_self_reported_fico`. Cash comes from `cf_svy_available_capital` ("$5k - $25k", "$25k - $100k" and "$100k+" count as $5,000 or more).
+- The survey band "580-649" cannot tell 610 from 640. On the survey alone it counts as under the bar, so "650-699" is the Blueprint band. A 580-649 person with $5,000 or more cash still goes to Blueprint.
+- "Not sure" counts as under the bar until the setter verifies.
+- The verified score from the setter uses the exact 620 line and replaces the survey band whenever one is saved (section 2). The verified value is stored next to the survey answer, never on top of it.
 
 ### 2. The setter's correction (new)
 
@@ -86,7 +93,7 @@ Scratch database only (law: verify-scratch-only, no-test-data-on-production). Wa
 
 ## Decisions only Chris can make
 
-1. **Lane cut points.** Are the three lanes and the score bands above right?
+1. ~~**Lane cut points.**~~ Answered 2026-10-30. See section 1.
 2. **Who records the verified score.** A human setter button on the setter screen, or Josh's call? (Josh does not ask for credit today, so this adds a new question to his call.)
 3. **Push.** Email and text first and push later, or hold the launch for push?
 4. **Cap and rhythm.** How many days does the plan run before it stops on its own, and what hours do email, text and push go out?
