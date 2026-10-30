@@ -811,6 +811,20 @@ describe("public/app/pipeline.html — fulfillment lens, blockers and the fundin
     assert.equal(out[2].label, "no_label", "a blocker with only a key still shows the key");
   });
 
+  test("repeat setter tasks show one action while other blockers stay separate", () => {
+    const L = loadLens();
+    const out = L.blockersOf({ active_blockers: [
+      { kind: "task", source: "setter-entry", label: "Setter: call new opt-in", id: "t1" },
+      { kind: "task", source: "setter-entry", label: "Setter: call new opt-in", id: "t2" },
+      { kind: "task", source: "setter-booking", label: "Setter: confirm booked strategy call", id: "t3" },
+      { kind: "task", source: "other-workflow", label: "Review file", id: "t4" },
+      { kind: "task", source: "other-workflow", label: "Review file", id: "t5" }
+    ] });
+    assert.deepEqual(out.map((b) => b.label), [
+      "Setter: call new opt-in", "Setter: confirm booked strategy call", "Review file", "Review file"
+    ]);
+  });
+
   test("no blockers, or a shape that is not a list, is an empty list — never a crash", () => {
     const L = loadLens();
     assert.deepEqual(L.blockersOf({}), []);

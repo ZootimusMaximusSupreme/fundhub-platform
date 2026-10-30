@@ -17,5 +17,6 @@ alwaysApply: true
 | Client FH-000507 | 2026-10-09 | No email, sign-in link, call or data step. His two reds are not a to-do. |
 | Only real client | 2026-10-20 | FH-000507 is the only real client. Other clients, leads, bookings and rounds are test or fake. Classify rows yourself. |
 | Consent | 2026-10-20 | The signed client agreement is the consent for call recording, AI use and marketing use of the client's words. No separate consent step. |
+| Funding deal pay | 2026-10-30 | The closer gets one fifth (20%) of the upfront. No closer cut of the amount funded. On a financed deal Clarity takes about 15%. Law: `.ai/rules/funding-deal-pay.md`. |
 
 Before you send any "decisions I need" list, check this file and the boards for calls he already made.

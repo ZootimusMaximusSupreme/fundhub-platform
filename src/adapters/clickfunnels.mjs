@@ -703,24 +703,41 @@ const REPEAT_SUPPRESSED_EVENTS = new Set(["survey.submitted", "entry.captured"])
 
 async function isRepeatFunnelPost(db, { orgId, name, email, funnel }) {
   if (!orgId || !email) return false;
-  try {
-    const { rows } = await db.query(
+  const { rows } = await db.query(
       `SELECT 1
          FROM events
         WHERE org_id = $1
           AND name = $2
           AND lower(payload->>'email') = $3
-          AND COALESCE(payload->>'funnel', '') = $4
+          AND (COALESCE(payload->>'funnel', '') = $4
+            OR COALESCE(payload->>'funnel', '') = '' OR $4 = '')
           AND created_at > now() - make_interval(mins => $5)
         LIMIT 1`,
       [orgId, name, String(email).toLowerCase(), String(funnel || ""), FUNNEL_REPEAT_WINDOW_MINUTES]
-    );
-    return rows.length > 0;
-  } catch (err) {
-    /* Never let the look-back decide the delivery. If it cannot be answered the
-       event behaves exactly as it does today. */
-    console.warn(`[clickfunnels] repeat-post check failed (treating as first): ${String(err?.message || err)}`);
-    return false;
+  );
+  return rows.length > 0;
+}
+
+// The look-back and event insert must be serialized for this contact. Two
+// distinct webhook IDs otherwise both see no prior row and start two cadences.
+async function withFunnelRepeatLock(db, orgId, email, name, fn) {
+  const source = db === platformDb ? platformPool()
+    : (typeof db?.connect === "function" && db?.options ? db : null);
+  if (!source || !orgId || !email) return fn();
+  const key = `cf-repeat:${orgId}:${name}:${String(email).trim().toLowerCase()}`;
+  const client = await source.connect();
+  let clean = false;
+  try {
+    await client.query("BEGIN");
+    await client.query("SET LOCAL lock_timeout = '15s'");
+    await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1::text, 0))", [key]);
+    const out = await fn();
+    await client.query("COMMIT");
+    clean = true;
+    return out;
+  } finally {
+    if (!clean) { try { await client.query("ROLLBACK"); clean = true; } catch {} }
+    client.release(!clean);
   }
 }
 
@@ -1057,31 +1074,36 @@ export async function handleClickFunnelsWebhook({
 
     /* A repeat post of a survey already in flight: still stored, still merged
        onto the client by the local handlers, but no second durable run. */
-    const repeat = REPEAT_SUPPRESSED_EVENTS.has(c.name)
-      ? await isRepeatFunnelPost(db, {
+    const record = async () => {
+      const repeat = REPEAT_SUPPRESSED_EVENTS.has(c.name)
+        ? await isRepeatFunnelPost(db, {
         orgId: ingestOrgId,
         name: c.name,
         email: evt.email,
         funnel: evt.funnel
       })
-      : false;
+        : false;
 
-    const res = await emit(db, c.name, payload, {
-      idempotencyKey: idKey,
-      orgId: ingestOrgId,
-      clientId: ingestClientId,
-      skipInngest: repeat
-    });
-    emitted.push({
-      name: c.name,
-      id: res.id,
-      deduped: res.deduped,
-      clientId: ingestClientId,
-      repeat,
-      // The one fact this lane exists to control: did this delivery start a
-      // durable workflow run (a text-message cadence), or only record data?
-      startedRun: !repeat && !res.deduped
-    });
+      const res = await emit(db, c.name, payload, {
+        idempotencyKey: idKey,
+        orgId: ingestOrgId,
+        clientId: ingestClientId,
+        skipInngest: repeat
+      });
+      emitted.push({
+        name: c.name,
+        id: res.id,
+        deduped: res.deduped,
+        clientId: ingestClientId,
+        repeat,
+        startedRun: !repeat && !res.deduped
+      });
+    };
+    if (REPEAT_SUPPRESSED_EVENTS.has(c.name)) {
+      await withFunnelRepeatLock(db, ingestOrgId, evt.email, c.name, record);
+    } else {
+      await record();
+    }
   }
   let clickfunnelsContact = null;
   if (applySurveyFlat) {

@@ -52,7 +52,8 @@ function fakeDb({
   staff = null,
   /* custom_fields as stored on the client. The dispatcher reads it to refuse a
      synthetic (journey-run) record when the resolved provider can transmit. */
-  customFields = null
+  customFields = null,
+  bouncedEmailAddresses = []
 } = {}) {
   const updates = [];
   return {
@@ -78,6 +79,11 @@ function fakeDb({
       }
       if (sql.includes("FROM message_templates")) return { rows: [{ subject }] };
       if (sql.includes("SELECT id, to_address FROM messages")) return { rows: [] };
+      if (sql.includes("ORDER BY created_at DESC OFFSET 1 LIMIT 1")) {
+        const count = bouncedEmailAddresses.filter((address) =>
+          address.toLowerCase() === String(params[2]).toLowerCase()).length;
+        return { rows: count >= 2 ? [{ id: "prior-bounce" }] : [] };
+      }
       if (sql.includes("FROM bookings")) return { rows: upcomingBooking ? [{ one: 1 }] : [] };
       if (sql.includes("count(*) FILTER") && sql.includes("FROM messages")) return { rows: [marketingCounts] };
       if (sql.includes("SELECT custom_fields FROM clients")) {
@@ -160,9 +166,35 @@ describe("setter contact window in the real dispatcher", () => {
 
   test("7 a.m. staff alert sends to verified staff despite client's SMS STOP", async () => {
     const sms = spy();
+    const native = spy();
     const result = await dispatchOne(staffDb({ optedOut: new Set([`${CLIENT}:sms`]) }), alert(), {
-      fetchImpl: sms, env: APNS_ENV, now: () => new Date("2026-08-01T14:00:00Z")
+      fetchImpl: sms, sendNative: native, env: APNS_ENV, now: () => new Date("2026-08-01T14:00:00Z")
     });
+    assert.equal(result.outcome, OUTCOME.SENT);
+    assert.equal(sms.calls.length, 1);
+    assert.equal(native.calls.length, 0, "an internal SMS must not trigger a client phone alert");
+  });
+
+  test("new setter lead alert uses the staff gate even with the old switch off", async () => {
+    const sms = spy();
+    const db = fakeDb({ staff: { ...staff, notify_booked_call_sms: false },
+      routing: { sms: { provider: "twilio", enabled: true } } });
+    const result = await dispatchOne(db, claimed({ channel: "sms", rendered_body: "New lead: Pat",
+      template_key: null, provider_ref: `staff-alert:lead:${CLIENT}:${STAFF_ID}`,
+      to_address: staff.phone }), { fetchImpl: sms, env: APNS_ENV,
+      now: () => new Date("2026-08-01T14:00:00Z") });
+    assert.equal(result.outcome, OUTCOME.SENT);
+    assert.equal(sms.calls.length, 1);
+    assert.ok(db.updates.some(({ sql, params }) => sql.includes("compliance_check_passed = true") && params[0] === MSG));
+  });
+
+  test("new setter lead alert sends overnight to the verified staff phone", async () => {
+    const sms = spy();
+    const db = staffDb();
+    const result = await dispatchOne(db, claimed({ channel: "sms", rendered_body: "New lead: Pat",
+      template_key: null, provider_ref: `staff-alert:lead:${CLIENT}:${STAFF_ID}`,
+      to_address: staff.phone }), { fetchImpl: sms, env: APNS_ENV,
+      now: () => new Date("2026-08-02T05:00:00Z") });
     assert.equal(result.outcome, OUTCOME.SENT);
     assert.equal(sms.calls.length, 1);
   });
@@ -990,5 +1022,34 @@ describe("an address the email provider refuses on sight", () => {
 
     assert.strictEqual(res.outcome, OUTCOME.SENT);
     assert.strictEqual(f.calls.length, 1);
+  });
+});
+
+describe("an email address that has already bounced twice", () => {
+  const address = "roger@aol.com";
+  const send = (db, to = address) => {
+    const f = spy();
+    return dispatchOne(db, claimed({ to_address: to }),
+      { fetchImpl: f, env: ENV, now: MIDDAY }).then((result) => ({ result, calls: f.calls }));
+  };
+
+  test("blocks the same address before another provider call", async () => {
+    const db = fakeDb({ bouncedEmailAddresses: [address, address] });
+    const { result, calls } = await send(db);
+    assert.equal(result.outcome, OUTCOME.BLOCKED);
+    assert.equal(calls.length, 0);
+    const last = db.updates.at(-1);
+    assert.equal(last.params[1], "blocked");
+    assert.match(last.params[3], /bounced more than once/);
+  });
+
+  test("one bounce or a corrected address can still send", async () => {
+    const once = await send(fakeDb({ bouncedEmailAddresses: [address] }));
+    assert.equal(once.result.outcome, OUTCOME.SENT);
+    assert.equal(once.calls.length, 1);
+
+    const corrected = await send(fakeDb({ bouncedEmailAddresses: [address, address] }), "roger-new@aol.com");
+    assert.equal(corrected.result.outcome, OUTCOME.SENT);
+    assert.equal(corrected.calls.length, 1);
   });
 });

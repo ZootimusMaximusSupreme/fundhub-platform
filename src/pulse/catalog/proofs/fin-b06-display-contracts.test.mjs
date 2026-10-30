@@ -1306,8 +1306,8 @@ test("the ready date check reads the task key and workflow the daily sweep write
 
 test("the wording edit check reads the roles the contracts handler lets write wording", () => {
   const handler = fs.readFileSync(path.join(ROOT, "api/contracts.mjs"), "utf8");
-  assert.match(handler, /OWNER_ADMIN_ACTIONS = new Set\(\[\s*"create_template", "save_template"/);
-  assert.match(handler, /OWNER_ADMIN_ACTIONS\.has\(action\) && !hasRole\(staff, \["admin"\]\)/);
+  assert.match(handler, /OWNER_TEMPLATE_ACTIONS = new Set\(\[\s*"create_template", "save_template"/);
+  assert.match(handler, /OWNER_TEMPLATE_ACTIONS\.has\(action\) && String\(staff\.role \|\| ""\)\.trim\(\)\.toLowerCase\(\) !== "owner"/);
   const sql = checkByKey("contract-wording-edited").contract.sql;
   assert.match(sql, /NOT COALESCE\(lower\(btrim\(s\.role\)\) IN \('owner', 'admin'\), false\)/);
 });

@@ -43,6 +43,34 @@ const ADDRESS_BY_CHANNEL = { email: "email", sms: "phone", voice: "phone" };
 
 const FUNDHUB_TZ = "America/Phoenix";
 
+// Several ClickFunnels posts can start separate runs for one application. Use
+// the first event in the trigger's six-hour survey window as the send key, so
+// even runs that were already sleeping before the ingest fix share one message.
+export async function messageCohortId(db, { eventId, orgId, clientId, name }) {
+  const { rows } = await db.query(
+    `WITH source AS (
+       SELECT id, created_at, payload FROM events
+        WHERE id = $1 AND org_id = $2 AND name = $4
+     )
+     SELECT e.id
+       FROM events e, source s
+      WHERE e.org_id = $2 AND e.name = $4
+        AND e.created_at <= s.created_at
+        AND e.created_at > s.created_at - interval '6 hours'
+        AND (e.client_id = $3 OR (e.client_id IS NULL
+          AND lower(COALESCE(e.payload->>'email', '')) = lower(COALESCE(s.payload->>'email', ''))
+          AND COALESCE(s.payload->>'email', '') <> ''))
+        AND (COALESCE(e.payload->>'funnel', '') = COALESCE(s.payload->>'funnel', '')
+          OR COALESCE(e.payload->>'funnel', '') = ''
+          OR COALESCE(s.payload->>'funnel', '') = '')
+      ORDER BY e.created_at, e.id
+      LIMIT 1`,
+    [eventId, orgId, clientId, name]
+  );
+  if (!rows[0]?.id) throw new Error(`message cohort missing for ${name} event ${eventId}`);
+  return rows[0].id;
+}
+
 function looksLikeIsoInstant(value) {
   return typeof value === "string" && /^\d{4}-\d{2}-\d{2}T/.test(value);
 }

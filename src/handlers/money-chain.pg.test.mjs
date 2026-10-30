@@ -346,9 +346,9 @@ describe("money-chain writers", { skip: !HAS_DB ? "no DATABASE_URL" : false }, (
         WHERE funding_round_id = $1 AND basis = 'back_end'`,
       [rounds[0].id]
     )).rows;
-    assert.equal(back.length, 1, "only the advisor has a configured funded-amount rate");
+    assert.equal(back.length, 1, "only the advisor earns on the funded amount");
     assert.equal(Number(back.find((row) => row.staff_id === advisorId)?.amount), 125);
-    assert.equal(back.some((row) => row.staff_id === closerId), false, "an unconfigured closer rate must not be invented");
+    assert.equal(back.some((row) => row.staff_id === closerId), false);
 
     await replay(db, {});
     assert.equal(

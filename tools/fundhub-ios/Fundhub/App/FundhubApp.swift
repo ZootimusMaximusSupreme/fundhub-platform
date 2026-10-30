@@ -109,6 +109,8 @@ final class FundhubSessionStore: ObservableObject {
                 await loadSummary()
                 guard self.token == token, phase == .signedIn else { return }
                 await NativePushCenter.shared.attach(bearer: token)
+            } else if ["owner", "setter", "closer"].contains(result.staff.role ?? "") {
+                await NativePushCenter.shared.attach(bearer: token)
             }
         } catch {
             guard self.token == token else { return }
@@ -146,7 +148,7 @@ final class FundhubSessionStore: ObservableObject {
     func signOut(revoke: Bool = true) async {
         phase = .checking
         var pushRevokeFailed = false
-        if identity?.principal == "client" && revoke {
+        if (identity?.principal == "client" || identity?.principal == "staff") && revoke {
             do { try await NativePushCenter.shared.revokeBeforeSignOut() }
             catch FundhubAPIError.invalidSession { /* Web sign-out already revoked this bearer. */ }
             catch { pushRevokeFailed = true }
@@ -462,6 +464,7 @@ private struct HomeView: View {
     @EnvironmentObject private var store: FundhubSessionStore
     @ObservedObject private var push = NativePushCenter.shared
     @State private var reloadId = UUID()
+    @State private var staffAlertPath: String?
     @State private var showingNotifications = false
 
     var body: some View {
@@ -472,12 +475,13 @@ private struct HomeView: View {
                     token: token,
                     principal: identity.principal,
                     identity: identity.staff,
-                    path: FundhubRole.workspacePath(principal: identity.principal, role: identity.staff.role),
+                    path: staffAlertPath ?? FundhubRole.workspacePath(principal: identity.principal, role: identity.staff.role),
                     onWebSignOut: { Task { await store.signOut() } }
                 )
                 .id(reloadId)
                 .safeAreaInset(edge: .top, spacing: 0) {
-                    if identity.principal == "client" {
+                    if identity.principal == "client" ||
+                        (identity.principal == "staff" && ["owner", "setter", "closer"].contains(identity.staff.role ?? "")) {
                         HStack {
                             Spacer()
                             Button {
@@ -510,14 +514,23 @@ private struct HomeView: View {
                 ProgressView("Connecting to Fundhub")
             }
         }
-        .task(id: push.portalOpenRequestId) {
-            guard push.takePortalOpenRequest() else { return }
-            guard store.identity?.principal == "client" else { return }
-            // A tapped alert is never a navigation URL or an assertion that
-            // a call still exists. Verify this session again, then let the
-            // portal read the client's current call under that session.
+        .onChange(of: store.token) { _, _ in staffAlertPath = nil }
+        .onChange(of: store.identity?.principal) { _, _ in staffAlertPath = nil }
+        .onChange(of: store.identity?.staff) { _, _ in staffAlertPath = nil }
+        .task(id: push.openRequestId) {
+            if store.identity?.principal == "client", push.takePortalOpenRequest() {
+                await store.refreshSession()
+                guard store.phase == .signedIn, store.identity?.principal == "client" else { return }
+                reloadId = UUID()
+                return
+            }
+            guard store.identity?.principal == "staff",
+                  let alert = push.takeStaffOpenRequest(currentBearer: store.token) else { return }
             await store.refreshSession()
-            guard store.phase == .signedIn, store.identity?.principal == "client" else { return }
+            guard store.phase == .signedIn, store.identity?.principal == "staff",
+                  store.token != nil,
+                  let path = alert.workspacePath(role: store.identity?.staff.role) else { return }
+            staffAlertPath = path
             reloadId = UUID()
         }
     }

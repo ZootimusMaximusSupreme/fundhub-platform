@@ -114,6 +114,20 @@ export async function getThread(db, { orgId, staffId, threadId } = {}) {
   };
 }
 
+export async function deleteThread(db, { orgId, staffId, threadId } = {}) {
+  if (!orgId || !staffId || !threadId) {
+    return { ok: false, reason: "org_staff_and_thread_required" };
+  }
+  const res = await db.query(
+    `DELETE FROM brain_threads
+      WHERE id = $1 AND org_id = $2 AND staff_id = $3
+      RETURNING id`,
+    [threadId, orgId, staffId]
+  );
+  if (!(res.rows || [])[0]) return { ok: false, reason: "not_found" };
+  return { ok: true };
+}
+
 /**
  * Start a conversation. Title may be empty — §3.3 says it fills in from the
  * first question, which the ask endpoint does by passing titleFromQuestion().

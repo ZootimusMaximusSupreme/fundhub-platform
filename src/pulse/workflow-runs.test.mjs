@@ -364,8 +364,8 @@ test("c: the repeat-post rule in the runs read matches the adapter that makes re
   assert.deepEqual([...REPEAT_SUPPRESSED_EVENTS].sort(), inAdapter);
   assert.match(cf, /FUNNEL_REPEAT_WINDOW_MINUTES = 6 \* 60/);
   assert.equal(FUNNEL_REPEAT_WINDOW_MINUTES, 6 * 60);
-  // The adapter asks: same org, same name, same address (any case), same funnel, an earlier row inside the window.
-  assert.match(cf, /org_id = \$1[\s\S]*?name = \$2[\s\S]*?lower\(payload->>'email'\) = \$3[\s\S]*?COALESCE\(payload->>'funnel', ''\) = \$4[\s\S]*?created_at > now\(\) - make_interval/);
+  // The adapter asks: same org, name, address and compatible funnel, inside the window.
+  assert.match(cf, /org_id = \$1[\s\S]*?name = \$2[\s\S]*?lower\(payload->>'email'\) = \$3[\s\S]*?COALESCE\(payload->>'funnel', ''\) = \$4[\s\S]*?OR \$4 = ''[\s\S]*?created_at > now\(\) - make_interval/);
   // Both are trigger names, and they are the only skipInngest events that are (so nothing else can be missing a run on purpose).
   assert.ok(REPEAT_SUPPRESSED_EVENTS.includes("entry.captured") && REPEAT_SUPPRESSED_EVENTS.includes("survey.submitted"));
 });
@@ -380,6 +380,8 @@ test("c: the miss read leaves out a repeat funnel post, and only that", () => {
   assert.match(miss, /p\.created_at > e\.created_at - make_interval\(mins => 360\)/, "inside six hours");
   assert.match(miss, /lower\(p\.payload->>'email'\) = lower\(e\.payload->>'email'\)/);
   assert.match(miss, /COALESCE\(p\.payload->>'funnel', ''\) = COALESCE\(e\.payload->>'funnel', ''\)/);
+  assert.match(miss, /OR COALESCE\(p\.payload->>'funnel', ''\) = ''/);
+  assert.match(miss, /OR COALESCE\(e\.payload->>'funnel', ''\) = ''/);
   // the run branch and the meta branch do not carry it
   assert.doesNotMatch(RUNS_SQL.slice(0, RUNS_SQL.indexOf("SELECT 'miss'")), /make_interval\(mins => 360\)/);
   assert.equal((RUNS_SQL.match(/make_interval\(mins => 360\)/g) || []).length, 1);

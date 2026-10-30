@@ -504,7 +504,10 @@ export const PUSH_MANIFEST = [
     extraFooterScripts: [FH_EVENTS_SRC, CLARITY_SRC],
     // Booking accepted -> fh_booking_v1.submittedAt + calendar_view / time_selected /
     // booking_confirmed. Sent in the same whole-footer write as the scripts above.
-    footerBlocks: [{ fragment: "marketing/landing-pages/04e-book-confirm.html", marker: "fh-book-confirm" }],
+    footerBlocks: [
+      { fragment: "marketing/landing-pages/04e-book-confirm.html", marker: "fh-book-confirm" },
+      { fragment: "marketing/landing-pages/04g-book-close-today.html", marker: "fh-book-close-today" },
+    ],
     strategy: "head_footer_append_only",
     note: "Native calendar — never POST custom_html full page replace. The body writer cannot be changed by API, so the booking-accepted stamp rides in footer_code (fh-book-confirm).",
   },

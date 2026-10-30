@@ -156,7 +156,8 @@ export const EVENTS_SQL = `SELECT name,
  GROUP BY name`;
 
 /* A repeat funnel post: the app stored it and did not hand it to Inngest, so no run can carry its id. Same test
-   as isRepeatFunnelPost: an earlier events row, same org, name, address (any case) and funnel, inside the window.
+   as isRepeatFunnelPost: an earlier events row, same org, name, address (any case),
+   and matching funnel or a blank funnel on either post, inside the window.
    No address is never a repeat. */
 const REPEAT_POST_SQL = `e.name IN (${REPEAT_SUPPRESSED_EVENTS.map((n) => `'${n}'`).join(", ")})
      AND COALESCE(e.payload->>'email', '') <> ''
@@ -167,7 +168,9 @@ const REPEAT_POST_SQL = `e.name IN (${REPEAT_SUPPRESSED_EVENTS.map((n) => `'${n}
           AND p.created_at < e.created_at
           AND p.created_at > e.created_at - make_interval(mins => ${FUNNEL_REPEAT_WINDOW_MINUTES})
           AND lower(p.payload->>'email') = lower(e.payload->>'email')
-          AND COALESCE(p.payload->>'funnel', '') = COALESCE(e.payload->>'funnel', '')
+          AND (COALESCE(p.payload->>'funnel', '') = COALESCE(e.payload->>'funnel', '')
+            OR COALESCE(p.payload->>'funnel', '') = ''
+            OR COALESCE(e.payload->>'funnel', '') = '')
      )`;
 
 /* The runs read. Three kinds of row come back, told apart by `kind`:
