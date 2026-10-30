@@ -49,6 +49,7 @@ jobs:
             const openBases = new Set();
             const closedWithoutMerge = new Set();
             const mergedShasByHead = new Map();
+            const mergedAtByHead = new Map();
             for (const pr of prs) {
               if (pr.state === 'open' && pr.base?.repo?.full_name === sameRepo) {
                 openBases.add(pr.base.ref);
@@ -60,6 +61,8 @@ jobs:
               } else if (pr.merged_at && pr.head.sha) {
                 if (!mergedShasByHead.has(branch)) mergedShasByHead.set(branch, new Set());
                 mergedShasByHead.get(branch).add(pr.head.sha);
+                if (!mergedAtByHead.has(branch)) mergedAtByHead.set(branch, new Map());
+                mergedAtByHead.get(branch).set(pr.head.sha, new Date(pr.merged_at).getTime());
               } else {
                 closedWithoutMerge.add(branch);
               }
@@ -79,6 +82,14 @@ jobs:
               // Unmatched branch, unmerged work, or a branch that gained new
               // commits after its merged PR: preserve it, without exceptions.
               if (!mergedShasByHead.get(name)?.has(branch.commit.sha)) {
+                skipped++;
+                continue;
+              }
+
+              // A recently merged branch may still be in use by an agent.
+              // Allow an hour after merge before pruning, even with exact SHA.
+              const mergedAt = mergedAtByHead.get(name)?.get(branch.commit.sha);
+              if (!Number.isFinite(mergedAt) || Date.now() - mergedAt < 60 * 60 * 1000) {
                 skipped++;
                 continue;
               }
