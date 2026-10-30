@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import pg from "pg";
 import { financeOsEntitlement } from "./finance-os-entitlement.mjs";
+import { isBlueprintCoachClient } from "../blueprint/coach.mjs";
 import { dueClients } from "../workflows/finance-os-pull-sweeper.mjs";
 
 const connectionString = process.env.BLUEPRINT_TEST_DATABASE_URL || process.env.DATABASE_URL;
@@ -54,11 +55,20 @@ test("paid Blueprint year survives the shorter FinanceOS monthly term, but not a
       assert.deepEqual(await due("2026-11-30T00:00:00Z"), [grant]);
       assert.equal((await access("2027-10-28T00:00:00Z")).entitled, true);
       assert.equal((await access("2027-10-29T00:00:00Z")).entitled, false);
+      const coachAt = iso => isBlueprintCoachClient(db, {
+        orgId: org, clientId: client, asOf: new Date(iso)
+      });
+      assert.equal(await coachAt("2026-10-30T00:00:00Z"), true);
+      assert.equal(await coachAt("2027-10-28T00:00:00Z"), true);
+      assert.equal(await coachAt("2027-10-29T00:00:00Z"), false);
+      assert.equal(await isBlueprintCoachClient(db, { orgId: foreignOrg, clientId: client,
+        asOf: new Date("2026-11-30T00:00:00Z") }), false);
       assert.deepEqual(await due("2027-10-29T00:00:00Z"), []);
       assert.equal((await financeOsEntitlement(db, {
         orgId: foreignOrg, clientId: client, asOf: new Date("2026-11-30")
       })).entitled, false, "foreign tenant cannot claim the client's purchase");
       await db.query("UPDATE entitlements SET revoked_at='2026-11-10' WHERE id=$1", [grant]);
+      assert.equal(await coachAt("2026-11-30T00:00:00Z"), false);
       assert.equal((await access("2026-11-30T00:00:00Z")).entitled, false);
       assert.deepEqual(await due("2026-11-30T00:00:00Z"), []);
       const original = (await db.query(
