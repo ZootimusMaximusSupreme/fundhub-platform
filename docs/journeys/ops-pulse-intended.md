@@ -22,6 +22,8 @@ flowchart TD
     GAPS --> PROFILE[Hire profile for the short seat]
     NUMS --> ADS[Ad spend read only]
     NUMS --> FIRE[Fire / raise / bonus: no rule yet. Shape only. No kick. No pay change]
+    NUMS --> REVIEW[Daily closer KPI miss → dated task for the responsible manager]
+    REVIEW --> DECIDE[Manager reviews calls and decides coaching or PIP]
 ```
 
 ## Who this is for
@@ -68,6 +70,8 @@ Read spend from the existing daily ads table. Show it on the pulse. If a real sp
 ## Fire, raise, bonus
 
 The brain does not fire anyone. It does not revoke a login. It does not change pay.
+
+Owner clarification 2026-10-30: when an established individual KPI coaching bar is missed, AI COO assigns a dated evidence review task to the responsible manager. The manager decides whether coaching or a PIP is appropriate. A KPI miss does not itself start a PIP or change staff access.
 
 There is **no locked fire / raise / bonus rule** yet. Do not invent “under 20 deposits → fire,” a raise percent, or a bonus dollar. Briefs say “no … rule yet.” Task shapes exist for C-suite (`owner`) only. They are not created automatically.
 

@@ -2,6 +2,8 @@
 
 Morning pulse coverage notes. A job is red after 3 times its schedule.
 
+ops-manager-review — daily 7:15 a.m. Arizona staff-only KPI review; src/pulse/heartbeats.mjs checks its job_heartbeats receipt, and src/ops/manager-kpi-review.test.mjs proves the threshold, manager assignment, due date and dedupe. It does not automatically start a PIP.
+
 affiliate-payout-autopay — owner-set 2026-10-20 pay-on-clear affiliate payouts through Plaid (495): gap-partners.mjs partners:payout-overdue (unsent past the due day, or earned with no payout record after a day) and partners:payout-returned; the hourly partner-trip beat covers the job and affiliates/payouts, affiliates/payout-account, read/affiliate-payouts.
 
 whop-billing-inbox-drain — durable Fundhub billing receipts and provider GET recovery; hourly whop-billing beat and gap-whop-billing.mjs check overdue receipts and paid buyers missing access.

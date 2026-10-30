@@ -1,0 +1,49 @@
+{
+  "task": "AI COO employee KPI, automatic operations workflow, and safe simulation",
+  "owner_request": "Get the built AI COO working live today: track and log employee KPIs, compare them with thresholds, automatically initiate PIP and hiring workflows when rules are met, and put work on Sarah's, the COO's, and Chris's calendars.",
+  "session_owner": "AI COO integration, safe simulation, release checks, and live proof",
+  "tracks": [
+    {
+      "name": "staff_metrics",
+      "mode": "read_only_discovery",
+      "prompt": "Trace current staff KPI sources, persistence, targets, thresholds, automatic PIP/review triggers, staff task and calendar routing, and role access. Read docs/journeys intended and actual paths first. Report exact files, current behavior, missing links, and a minimal simulation using fictional staff. Do not edit files or touch live staff records. Avoid the setter KPI implementation owned by another live chat."
+    },
+    {
+      "name": "hiring_path",
+      "mode": "read_only_discovery",
+      "prompt": "Trace the existing AI COO staffing-gap logic, C-suite task creation, hiring workflows, calendar routing for Sarah/COO/Chris, LinkedIn path, and scheduled triggers. Read intended and actual journey first. Report exact code entrypoints, what is automatic versus button-triggered, and a safe scratch-data simulation. Do not edit files or create real tasks or job posts."
+    },
+    {
+      "name": "integration",
+      "mode": "owned_by_this_session",
+      "prompt": "Combine findings, make the seven-field builder plan against existing files, wire the smallest automatic operations chain after the other chat's seven KPIs settle, run targeted tests and scratch simulation, then ship and verify the signed-in live path if checks permit. Do not create real PIPs or hiring posts as test data."
+    }
+  ],
+  "status": "manager_review_implemented_local_checks_running",
+  "research": {
+    "drive_folder": "https://drive.google.com/drive/folders/1qm9R6M2nt-gWIKxspi5imQWcHJVwtWgT",
+    "closer": "Cole Gordon Ramp Up & When To Fire: assess after 30-50 live calls; near 20% close rate at 30-40 calls; 50 calls is the decision point, with call quality, coaching, lead quality and coachability reviewed.",
+    "setter": "The same source says 3-4+ weeks of chronic misses; one set per day is poor, two solid, three strong, but the target depends on opportunity provided and lead quality.",
+    "management": "Data-Driven Decisions and Sales Management materials call for diagnosis of lead quality, show rate, inputs, call reviews and one-on-ones before deciding the rep is at fault.",
+    "hiring": "When To Hire Closers ties a hire to an active or likely capacity constraint; Recruiting & Hiring A-Players calls for an always-full candidate bench of 4-5.",
+    "source_urls": [
+      "https://drive.google.com/file/d/14ifd1LPKJuv5AZbniu91k0ko06CWXjKU/view",
+      "https://drive.google.com/file/d/193RQpEzA7kLUGPhwZQRR8LR-PnYpwO35/view",
+      "https://drive.google.com/file/d/1WW-_dsZm1eEps2QeBUXvS5Cj52N1wybr/view",
+      "https://drive.google.com/file/d/1TI95iZDUIgZpiaIP9EQuZ0ukeLF3eK1M/view"
+    ]
+  },
+  "current_code": "Ops pulse reports company totals and can create undated tasks after a button click; it has no individual KPI-to-PIP evaluator. Hiring bench runs daily for candidate supply. Internal Calendar can display dated tasks, but Ops does not supply dates or named staff. No live external calendar event write was found.",
+  "simulation": "Fictional in-memory packed calendar produced a hire-pod recommendation. Fictional 10-held-call/2-deposit closer created one dated task for the configured manager; rerun created none. Sixty-eight focused tests passed. No staff PIP, hiring post, external calendar invite or production database write occurred.",
+  "owner_rule_2026_10_30": "A KPI miss assigns a dated review task to the responsible manager, whoever is configured for that role. The manager handles the PIP decision.",
+  "build_plan": {
+    "role": "Named hiring manager for the employee's role, otherwise the existing sales manager or owner role queue.",
+    "one_job": "Automatically open a dated manager review task when an existing per-person KPI coaching threshold is met.",
+    "first_question": "Which employee needs a KPI review, and what numbers triggered it?",
+    "reuse": "Sales Floor closer KPI definitions, hiring/owner assigneeFor, lib/create-task, internal Calendar due_at display, Netlify cron clock.",
+    "data": "Active non-demo staff, real call_outcomes, existing per-person KPI thresholds, hiring role manager route, tasks.",
+    "files": ["src/ops/manager-kpi-review.mjs", "src/ops/manager-kpi-review.test.mjs", "src/workflows/ops-manager-review.mjs", "src/workflows/scheduled.mjs", "src/pulse/heartbeats.mjs", "docs/journeys/ops-pulse-intended.md", "docs/journeys/ops-pulse-actual.md", "ops/workflows/ai-coo-launch-2026-10-30.json"],
+    "risk": "A small or demo sample could falsely flag a person; require the established sample bar, exclude demo data, record the exact evidence, and dedupe the task. Run focused tests and a fictional simulation."
+  },
+  "remaining": "Seven KPI sources are owned by another active chat and not integrated here. Packed-calendar hiring still needs a safe automatic task path; live database task creation and signed-in manager Calendar proof remain unverified."
+}
