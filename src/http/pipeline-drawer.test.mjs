@@ -127,6 +127,24 @@ describe("pipeline.html drawer — survey rows follow the survey's branch", () =
   });
 });
 
+
+describe("pipeline.html drawer — real credit controls Survey/Credit priority", () => {
+  test("survey stays first with no pull or only client-reported score", () => {
+    const d = loadDrawer();
+    assert.equal(d.creditIsComplete({}), false);
+    assert.equal(d.creditIsComplete({ experian: 771, equifax: 778, transunion: 766 }), false);
+  });
+  test("a sample and an incomplete real report do not promote credit", () => {
+    const d = loadDrawer();
+    assert.equal(d.creditIsComplete({ sample: true, asOf: "2026-10-30", experian: 771, equifax: 778, transunion: 766 }), false);
+    assert.equal(d.creditIsComplete({ asOf: "2026-10-30", experian: 771, equifax: 778 }), false);
+  });
+  test("all three measured scores with a genuine pull date promote Credit", () => {
+    const d = loadDrawer();
+    assert.equal(d.creditIsComplete({ sample: false, asOf: "2026-10-30", experian: 771, equifax: 778, transunion: 766 }), true);
+  });
+});
+
 describe("pipeline.html drawer — the four ad-routing lines", () => {
 
   test("it says the same four things the closer screen says", () => {
