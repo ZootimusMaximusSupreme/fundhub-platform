@@ -1154,10 +1154,6 @@ export async function ensureFundingRound(db, event, { status = "started" } = {})
   return { round: again.rows[0] || null, created: false, clientId };
 }
 
-export async function onRoundStartedMoney(event, db) {
-  const { round, clientId } = await ensureFundingRound(db, event, { status: "started" });
-  if (!round) return { done: false, reason: "no_round" };
-
 /** Keep funding-round sale links scoped to the owning organization and client on replays. */
 export async function ensureFundingRoundSaleLink(db, { orgId, clientId, roundId, explicitSaleId = null } = {}) {
   if (!orgId || !clientId || !roundId) return null;
@@ -1186,6 +1182,10 @@ export async function ensureFundingRoundSaleLink(db, { orgId, clientId, roundId,
   );
   return linked.rows[0]?.sale_id || (await existing()).rows[0]?.sale_id || null;
 }
+
+export async function onRoundStartedMoney(event, db) {
+  const { round, clientId } = await ensureFundingRound(db, event, { status: "started" });
+  if (!round) return { done: false, reason: "no_round" };
 
   const link = await db.query(SQL_LINK_ROUND_TO_SALE, [event.orgId, round.id]);
   const saleId = link.rows[0]?.sale_id || await ensureFundingRoundSaleLink(db, {
