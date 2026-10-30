@@ -206,7 +206,7 @@ function matchesEvent(row, event) {
 export function judgeSyntheticEdge({
   demand = true, demandAt, event, consumer, receipt, providerReceipt, consentReceipt,
   identityReceipt, requireProviderReceipt = false, requireConsentReceipt = false, consentScope,
-  now = Date.now(), graceMs = 15 * 60 * 1000
+  expectedContract, now = Date.now(), graceMs = 15 * 60 * 1000
 } = {}) {
   // A present producer event contradicts a "no demand" claim; never hide it as NA.
   if (demand === false) return event?.id
@@ -261,6 +261,27 @@ export function judgeSyntheticEdge({
   }
   if (requireProviderReceipt && (!matchesEvent(providerReceipt, resolved) || providerReceipt.outcome !== "delivered")) {
     return failed("real-provider-delivery-missing");
+  }
+  // Optional strict canonical witness for newly changed P0/P1 event paths.
+  // A completed but unrelated consumer, wrong schema version or result table
+  // must not turn an otherwise correlated trace green. Older legacy fixtures
+  // remain report-only until an exact contract can be mapped without guessing.
+  if (expectedContract != null) {
+    const valid = typeof expectedContract === "object" &&
+      typeof expectedContract.eventName === "string" && expectedContract.eventName.length > 0 &&
+      Number.isInteger(expectedContract.eventVersion) && expectedContract.eventVersion > 0 &&
+      typeof expectedContract.consumerName === "string" && expectedContract.consumerName.length > 0 &&
+      typeof expectedContract.resultKind === "string" && expectedContract.resultKind.length > 0;
+    if (!valid) return { verdict: "NOT_CHECKED", reason: "incomplete-canonical-edge-contract" };
+    if (event.name !== expectedContract.eventName || event.version !== expectedContract.eventVersion) {
+      return failed("producer-canonical-contract-mismatch");
+    }
+    if (consumer.consumer_name !== expectedContract.consumerName) {
+      return failed("consumer-canonical-contract-mismatch");
+    }
+    if (receipt.result_kind !== expectedContract.resultKind) {
+      return failed("result-canonical-contract-mismatch");
+    }
   }
   return { verdict: "PASS", reason: "event-consumer-and-business-result-correlated" };
 }
