@@ -44,10 +44,10 @@ const RAIL = {
   },
   outbound_rep: { page: "bank-outreach.html", links: ["bank-outreach.html"], heads: ["relationships"] },
   closer: { page: "pipeline.html", links: ["pipeline.html", "closer-dashboard.html", "my-numbers.html", "calendar.html", ...STAFF.slice(3)], heads: ["work", "clients", "insights"] },
-  funding_advisor: { page: "pipeline.html", links: ["pipeline.html", "closer-dashboard.html", "calendar.html", "lenders.html", ...STAFF.slice(3)], heads: ["work", "clients"] },
-  csm: { page: "pipeline.html", links: STAFF, heads: ["work", "clients"] },
-  setter: { page: "setter-dashboard.html", links: ["pipeline.html", "setter-dashboard.html", ...STAFF.slice(1)], heads: ["work", "clients"] },
-  inquiry_specialist: { page: "pipeline.html", links: STAFF, heads: ["work", "clients"] },
+  funding_advisor: { page: "pipeline.html", links: ["pipeline.html", "closer-dashboard.html", "calendar.html", "lenders.html", ...STAFF.slice(3)], heads: ["work", "clients", "insights"] },
+  csm: { page: "pipeline.html", links: STAFF, heads: ["work", "clients", "insights"] },
+  setter: { page: "setter-dashboard.html", links: ["pipeline.html", "setter-dashboard.html", ...STAFF.slice(1)], heads: ["work", "clients", "insights"] },
+  inquiry_specialist: { page: "pipeline.html", links: STAFF, heads: ["work", "clients", "insights"] },
   partner: { page: "partner-galaxy.html", links: ["social-studio.html", "creative-factory.html"], heads: ["marketing"] },
 };
 // Rows the file lists that no role is shown (NAV_HIDDEN in shell.js, owner-set 2026-08-19): the page still
