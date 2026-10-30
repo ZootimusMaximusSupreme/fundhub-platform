@@ -237,38 +237,6 @@ FIX["staff-role"] = {
   notRead: [["a demo person", [R("staff", person({ is_demo: true, role: "wizard" }))]]]
 };
 
-{
-  const st = person({ role: "setter", notify_booked_call_sms: false });
-  const text = (who, o = {}) => ({
-    id: nid("msg"), org_id: ORG, client_id: "client-1", direction: "outbound", channel: "sms",
-    template_key: "SMS-S04C-STAFF-BOOKED", rendered_body: "YOU'RE UP: new book", provider: "internal",
-    provider_ref: `workflow:SMS-S04C-STAFF-BOOKED:evt-1:${who.id}`, status: "queued", compliance_check_passed: true,
-    to_address: PHONE, is_demo: false, created_at: HOURS_AGO(5), ...o
-  });
-  FIX["staff-booked-text"] = {
-    base: [R("staff", st), R("messages", text(st))],
-    sample: 2,
-    violations: {
-      "a setter or owner has no phone for lead texts": [R("staff", person({ role: "setter", notify_booked_call_sms: false, phone: null }))],
-      "the text has no words": [R("messages", text(st, { rendered_body: " " }))],
-      "the text has nobody to go to": [R("messages", text(st, { to_address: null }))],
-      "a sent text was not marked as having passed the check": [R("messages", text(st, { status: "sent", compliance_check_passed: false }))],
-      "the text is not an outbound text message": [R("messages", text(st, { direction: "inbound" }))],
-      "the text names a person who is not on the staff list": [R("messages", text(st, { provider_ref: "workflow:SMS-S04C-STAFF-BOOKED:evt-9:staff-gone" }))]
-    },
-    adds: Object.fromEntries([
-      "a setter or owner has no phone for lead texts", "the text has no words", "the text has nobody to go to",
-      "a sent text was not marked as having passed the check", "the text is not an outbound text message",
-      "the text names a person who is not on the staff list"
-    ].map((name) => [name, 1])),
-    notRead: [
-      ["a text of another template", [R("messages", text(st, { template_key: "SMS-OTHER", rendered_body: " " }))]],
-      ["a text older than 90 days", [R("messages", text(st, { created_at: DAYS_AGO(200), rendered_body: " " }))]],
-      ["an inactive staff member", [R("staff", person({ role: "setter", status: "invited", phone: null }))]]
-    ]
-  };
-}
-
 /* ── social studio ── */
 {
   const rules = pageRules();
@@ -542,14 +510,15 @@ function runRows(spec, rows, { without = [], org = ORG } = {}) {
 
 test("every check is one exact row of the map, with its own unique control", () => {
   const rows = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, "ops/workflows/coverage-every-surface-2026-10-10", FIN_B21_SOURCE_FILE), "utf8"));
-  assert.equal(FIN_B21_CHECKS.length, 15);
-  assert.equal(new Set(FIN_B21_CHECKS.map((c) => c.control)).size, 15);
-  assert.equal(new Set(FIN_B21_CHECKS.map((c) => c.key)).size, 15);
+  assert.equal(FIN_B21_CHECKS.length, 14);
+  assert.equal(new Set(FIN_B21_CHECKS.map((c) => c.control)).size, 14);
+  assert.equal(new Set(FIN_B21_CHECKS.map((c) => c.key)).size, 14);
+  assert.equal(FIN_B21_CHECKS.some((c) => c.key === "staff-booked-text"), false);
   for (const spec of FIN_B21_CHECKS) {
     const found = rows.filter((row) => row.surface === spec.surface && row.control === spec.control);
     assert.equal(found.length, 1, `${spec.key}: ${spec.control}`);
   }
-  assert.equal(FIN_B21_DISPLAY_CONTRACTS.length, 15);
+  assert.equal(FIN_B21_DISPLAY_CONTRACTS.length, 14);
 });
 
 test("every check has a fixture, and the fixture names every condition of its text", () => {
@@ -810,14 +779,6 @@ test("the reset link band and the invite band are the writer's own 1 hour and 7 
   // And the bands are tight: a day too long or too short is outside them.
   assert.ok(RESET_TTL_MS / 1000 - rLow <= 700 && rHigh - RESET_TTL_MS / 1000 <= 700);
   assert.ok(INVITE_TTL_MS / 1000 - iLow <= 700 && iHigh - INVITE_TTL_MS / 1000 <= 700);
-});
-
-test("the booked-call text check names the sender's own template and roles", async () => {
-  const { STAFF_BOOKED_ROLES, STAFF_BOOKED_TEMPLATE } = await import("../../../staff/booked-call-alert.mjs");
-  const sql = sqlFor(SPEC.get("staff-booked-text"));
-  assert.ok(sql.includes(`'${STAFF_BOOKED_TEMPLATE}'`));
-  for (const role of STAFF_BOOKED_ROLES) assert.ok(sql.includes(`'${role}'`), role);
-  assert.equal(STAFF_BOOKED_ROLES.length, 2);
 });
 
 test("the shoot marks check reads the keys the real mark writer writes, and the film order's own open rule", async () => {
