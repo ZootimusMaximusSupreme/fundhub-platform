@@ -1,8 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert";
+import { readFileSync } from "node:fs";
 import {
   classifySurvey, currentQualification, ficoGatePasses, negativesGatePasses,
-  PASS, DOWNSELL, MANUAL_REVIEW, FICO_BANDS, PASSING_FICO_BANDS
+  PASS, DOWNSELL, MANUAL_REVIEW, FICO_BANDS, PASSING_FICO_BANDS,
+  qualificationBucket, stampQualificationBucket,
+  FUNDING_QUALIFIED, FUNDING_UNQUALIFIED, QUALIFICATION_BUCKETS
 } from "./survey-qualification.mjs";
 
 // --- gate 1: FICO (doc 38, 146) ---------------------------------------------
@@ -117,4 +120,79 @@ test("currentQualification: reads the client's answers and classifies", async ()
 test("currentQualification: null clientId short-circuits without querying", async () => {
   const db = { query: () => { throw new Error("should not query"); } };
   assert.equal(await currentQualification(db, null), null);
+});
+
+// --- funding call bucket (owner-set 2026-10-29) -------------------------------
+
+test("qualificationBucket: 700-749 and 750+ are funding_qualified; every other score is funding_unqualified", () => {
+  for (const band of FICO_BANDS) {
+    const want = PASSING_FICO_BANDS.includes(band) ? FUNDING_QUALIFIED : FUNDING_UNQUALIFIED;
+    assert.equal(qualificationBucket({ cf_svy_self_reported_fico: band }), want, band);
+  }
+  assert.equal(qualificationBucket({ cf_svy_self_reported_fico: "Not sure" }), FUNDING_UNQUALIFIED);
+  assert.equal(qualificationBucket({ svy_self_reported_fico: "700–749" }), FUNDING_QUALIFIED, "en-dash band");
+});
+
+test("qualificationBucket: a Yes on negatives moves a passing score down; a missing one does not", () => {
+  assert.equal(qualificationBucket({ cf_svy_self_reported_fico: "750+", cf_svy_has_negatives: "Yes" }), FUNDING_UNQUALIFIED);
+  assert.equal(qualificationBucket({ cf_svy_self_reported_fico: "750+", cf_svy_has_negatives: "No" }), FUNDING_QUALIFIED);
+  assert.equal(qualificationBucket({ cf_svy_self_reported_fico: "750+" }), FUNDING_QUALIFIED);
+});
+
+test("qualificationBucket: no score answer is null, never a guess", () => {
+  assert.equal(qualificationBucket({}), null);
+  assert.equal(qualificationBucket({ cf_svy_has_negatives: "No" }), null);
+  assert.equal(qualificationBucket({ cf_svy_self_reported_fico: "  " }), null);
+});
+
+test("the /apply page's pixel split uses the same passing bands as the bucket", () => {
+  const html = readFileSync(new URL("../../marketing/landing-pages/apply-survey.html", import.meta.url), "utf8");
+  const m = html.match(/var QUALIFIED_SCORES = \{([^}]*)\}/);
+  assert.ok(m, "QUALIFIED_SCORES is on /apply");
+  const bands = [...m[1].matchAll(/'([^']+)'\s*:/g)].map((x) => x[1]);
+  assert.deepEqual(bands.sort(), [...PASSING_FICO_BANDS].sort());
+});
+
+test("migration 508 holds the same two values and the same passing bands", () => {
+  const sql = readFileSync(new URL("../../db/migrations/508_qualification_bucket.sql", import.meta.url), "utf8");
+  for (const table of ["clients", "bookings"]) {
+    const check = sql.match(new RegExp(`${table}_qualification_bucket_check\\s+CHECK \\(qualification_bucket IN \\(([^)]*)\\)\\)`));
+    assert.ok(check, `${table} check constraint`);
+    assert.deepEqual([...check[1].matchAll(/'([^']+)'/g)].map((x) => x[1]), [...QUALIFICATION_BUCKETS]);
+  }
+  const backfill = sql.match(/IN \(('[^)]*')\)\s+AND lower/);
+  assert.ok(backfill, "backfill band list");
+  assert.deepEqual([...backfill[1].matchAll(/'([^']+)'/g)].map((x) => x[1]), [...PASSING_FICO_BANDS]);
+});
+
+function stampFake(clients) {
+  const writes = [];
+  return {
+    writes,
+    async query(sql, params) {
+      if (/SELECT custom_fields FROM clients/.test(sql)) {
+        const c = clients.find((x) => x.id === params[0]);
+        return { rows: c ? [{ custom_fields: c.custom_fields }] : [] };
+      }
+      writes.push({ sql: sql.replace(/\s+/g, " ").trim(), params });
+      return { rows: [] };
+    }
+  };
+}
+
+test("stampQualificationBucket: saves the client's bucket, then fills only bookings with none", async () => {
+  const db = stampFake([{ id: "cl-1", custom_fields: { cf_svy_self_reported_fico: "650-699" } }]);
+  assert.equal(await stampQualificationBucket(db, "cl-1"), FUNDING_UNQUALIFIED);
+  assert.equal(db.writes.length, 2);
+  assert.match(db.writes[0].sql, /^UPDATE clients SET qualification_bucket = \$2 WHERE id = \$1/);
+  assert.match(db.writes[1].sql, /^UPDATE bookings SET qualification_bucket = \$2 WHERE client_id = \$1 AND qualification_bucket IS NULL$/);
+  assert.deepEqual(db.writes.map((w) => w.params), [["cl-1", FUNDING_UNQUALIFIED], ["cl-1", FUNDING_UNQUALIFIED]]);
+});
+
+test("stampQualificationBucket: no score, no client, or no id writes nothing", async () => {
+  const db = stampFake([{ id: "cl-2", custom_fields: { cf_svy_planned_use: "Growth" } }]);
+  assert.equal(await stampQualificationBucket(db, "cl-2"), null);
+  assert.equal(await stampQualificationBucket(db, "cl-missing"), null);
+  assert.equal(await stampQualificationBucket(db, null), null);
+  assert.deepEqual(db.writes, []);
 });
