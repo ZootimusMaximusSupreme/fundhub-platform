@@ -329,6 +329,18 @@ describe("props: allow-list, clipping, clamping", () => {
     assert.deepEqual(cleanProps("not_an_event", { depth: 50 }), {});
   });
 
+  test("credit_tier is qualified or unqualified, or it is dropped (owner-set 2026-10-29)", () => {
+    assert.deepEqual(cleanProps("survey_answer", { survey: "apply", last: true, credit_tier: "Qualified" }),
+      { survey: "apply", last: true, credit_tier: "qualified" });
+    assert.deepEqual(cleanProps("booking_confirmed", { calendar: "funding-book-call", credit_tier: "unqualified" }),
+      { calendar: "funding-book-call", credit_tier: "unqualified" });
+    for (const junk of ["700-749", "maybe", "", 1, true]) {
+      assert.equal("credit_tier" in cleanProps("survey_answer", { survey: "apply", credit_tier: junk }), false, String(junk));
+    }
+    assert.equal("credit_tier" in cleanProps("time_selected", { calendar: "funding-book-call", credit_tier: "qualified" }), false,
+      "only the last answer and the booking carry a tier");
+  });
+
   test("the stored row only carries cleaned props", async () => {
     const h = harness();
     await send(h, { event: "click", props: { label: "Pay $297", value: "4242424242424242", secret: 1 } });

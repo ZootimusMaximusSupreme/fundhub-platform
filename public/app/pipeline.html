@@ -398,6 +398,8 @@
   .c-amt{font-family:var(--mono);font-size:var(--fs-body);font-weight:700;color:var(--text);margin-top:3px;}
   .c-amt .unit{font-size:var(--fs-caption);font-weight:400;color:var(--text-faint);}
   .c-age{font-family:var(--mono);font-size:var(--fs-caption);color:var(--text-faint);margin-top:2px;}
+  .c-call-confirmed{display:inline-flex;align-items:center;gap:4px;margin-top:4px;padding:2px 8px;border-radius:999px;
+    background:var(--ok-bg);color:var(--ink2);border:1px solid var(--ok-line);font-size:var(--fs-caption);font-weight:700;}
   .c-age.old{color:var(--ink2);font-weight:700;}
   /* "A bank said yes, nobody has said how much." Literal amber, not a brand
      variable: paintBrand in shell.js overwrites --alert / --warn / --info from
@@ -1902,7 +1904,7 @@ restore();
 
   /* Built with createElement and textContent throughout: card names and owners
      are client data and must never be interpreted as markup. */
-  function cardEl(c, stageKey) {
+  function cardEl(c, stageKey, pipelineKey) {
     function div(cls, text) {
       var d = document.createElement("div");
       d.className = cls;
@@ -1947,6 +1949,9 @@ restore();
     grip.className = "grip"; grip.textContent = "⠿"; grip.setAttribute("aria-hidden", "true"); grip.title = "Drag to another stage";
     tools.appendChild(move); tools.appendChild(delBtn); tools.appendChild(grip);
     card.appendChild(top);
+    if (pipelineKey === "sales" && c.call_confirmed === true) {
+      card.appendChild(div("c-call-confirmed", "✓ Call confirmed"));
+    }
     card.appendChild(div("c-scores", formatScores(c)));
     card.appendChild(msgLine("sms", c.phone, c.client_id, c.sms_needs_reply));
     card.appendChild(msgLine("email", c.email, c.client_id, c.email_needs_reply));
@@ -2678,7 +2683,7 @@ restore();
     var body = document.createElement("div");
     body.className = "col-body";
     (stage.cards || []).forEach(function (c, index) {
-      var card = cardEl(c, stage.key);
+      var card = cardEl(c, stage.key, pipelineKey);
       card.dataset.manualOrder = String(index);
       body.appendChild(card);
     });

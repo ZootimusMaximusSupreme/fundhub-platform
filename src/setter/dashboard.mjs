@@ -1,6 +1,8 @@
 import { CF_SURVEY_QUESTIONS } from "../survey/cf-question-map.mjs";
 import { redact, pageParams } from "../http/read-api.mjs";
 import { buildSetterHandoffText, performSetterSendAction } from "./send-actions.mjs";
+import { advanceCardToStage } from "../workflows/cards.mjs";
+import { withTransaction } from "../db/with-transaction.mjs";
 
 const HANDOFF_FIELDS = new Set([
   "lead_type", "dialed_at", "call_attempts", "disposition", "voicemail_left",
@@ -339,30 +341,48 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
     );
     if (!claim.rows.length) return { status: 403, body: { ok: false, error: "assigned_to_other_setter" } };
   }
-  let saved = await persistHandoff(db, client_id, staff.org_id, next);
-  let send = null;
-  if (action === "send_intro_video" || action === "send_handoff") {
-    if (action === "send_handoff" && !saved.complete_at) {
-      return { status: 400, body: { ok: false, error: "handoff_incomplete", missing: ["complete_at"] } };
+  const save = async (writer) => {
+    let saved = await persistHandoff(writer, client_id, staff.org_id, next);
+    let send = null;
+    if (action === "send_intro_video" || action === "send_handoff") {
+      if (action === "send_handoff" && !saved.complete_at) {
+        return { status: 400, body: { ok: false, error: "handoff_incomplete", missing: ["complete_at"] } };
+      }
+      if (action === "send_handoff") {
+        const missing = missingForCompletion(saved, client);
+        if (missing.length) return { status: 400, body: { ok: false, error: "handoff_incomplete", missing } };
+      }
+      send = await (deps.sendAction || performSetterSendAction)({
+        action, client: { ...client, booking_time: client.booking_time, booked_at: client.booked_at },
+        handoff: saved, staff, db: writer, orgId: staff.org_id, setterStaffId, closerStaffId
+      });
+      if (send?.handoffPatch && typeof send.handoffPatch === "object") {
+        saved = await persistHandoff(writer, client_id, staff.org_id, send.handoffPatch);
+      }
     }
-    if (action === "send_handoff") {
-      const missing = missingForCompletion(saved, client);
-      if (missing.length) return { status: 400, body: { ok: false, error: "handoff_incomplete", missing } };
+    if (action === "complete") {
+      const stage = await (deps.advanceStage || advanceCardToStage)(writer, {
+        orgId: staff.org_id, clientId: client_id, pipelineKey: "sales", stageKey: "confirmed"
+      });
+      if (!stage.moved && stage.reason !== "already_at_or_past") {
+        throw new Error(`setter_set_stage_failed:${stage.reason || "unknown"}`);
+      }
+      if (stage.moved) {
+        await writer.query(
+          `UPDATE cards cd SET entered_at = $3::timestamptz
+             FROM pipelines p
+            WHERE cd.pipeline_id = p.id AND cd.org_id = p.org_id
+              AND p.org_id = $1 AND p.key = 'sales' AND cd.client_id = $2`,
+          [staff.org_id, client_id, saved.complete_at]
+        );
+      }
+      await writer.query(
+        `UPDATE tasks SET done = true, updated_at = now()
+          WHERE org_id = $1 AND client_id = $2 AND assignee_role = 'setter' AND done = false`,
+        [staff.org_id, client_id]
+      );
     }
-    send = await (deps.sendAction || performSetterSendAction)({
-      action, client: { ...client, booking_time: client.booking_time, booked_at: client.booked_at },
-      handoff: saved, staff, db, orgId: staff.org_id, setterStaffId, closerStaffId
-    });
-    if (send?.handoffPatch && typeof send.handoffPatch === "object") {
-      saved = await persistHandoff(db, client_id, staff.org_id, send.handoffPatch);
-    }
-  }
-  if (action === "complete") {
-    await db.query(
-      `UPDATE tasks SET done = true, updated_at = now()
-        WHERE org_id = $1 AND client_id = $2 AND assignee_role = 'setter' AND done = false`,
-      [staff.org_id, client_id]
-    );
-  }
-  return { status: 200, body: { ok: true, item: { ...mapItem({ ...client, done: !!saved.complete_at, setter_staff_id: setterStaffId, closer_staff_id: closerStaffId, custom_fields: { ...jsonObject(client.custom_fields), setter_handoff: saved } }, staff) }, ...(send ? { send } : {}) } };
+    return { status: 200, body: { ok: true, item: { ...mapItem({ ...client, done: !!saved.complete_at, setter_staff_id: setterStaffId, closer_staff_id: closerStaffId, custom_fields: { ...jsonObject(client.custom_fields), setter_handoff: saved } }, staff) }, ...(send ? { send } : {}) } };
+  };
+  return action === "complete" ? withTransaction(db, save) : save(db);
 }

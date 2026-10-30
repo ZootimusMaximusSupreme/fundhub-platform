@@ -1491,7 +1491,7 @@
  },
  {
   "surface": "public/app/pipeline.html",
-  "control": "Sales column 'Confirmed' (confirmed): shows count and funding est.; accepts a dropped card",
+  "control": "Sales column 'Set' (confirmed): shows count and funding est.; accepts a dropped card",
   "kind": "kanban-column",
   "calls": "GET /api/dashboard/pipeline?key=sales (column paint); drop target: POST /api/pipeline-cards {action:move, client_id, pipeline_key:sales, stage_key:confirmed, from_pipeline_key}",
   "tables": "pipelines, pipeline_stages, cards, clients, partners, conversations, messages, applications, funding_rounds; move writes: cards, funding_rounds, applications",

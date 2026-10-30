@@ -24,6 +24,7 @@ function fakeDb(booked = true) {
       return { rows: [{ setter_handoff: client.custom_fields.setter_handoff }] };
     }
     if (sql.includes("UPDATE tasks")) return { rows: [] };
+    if (sql.includes("UPDATE cards")) return { rows: [] };
     throw new Error(`unexpected query: ${sql}`);
   } };
   return { db, client, queries };
@@ -50,6 +51,7 @@ test("completion requires booked webhook, triage fields for opt-in, and handoff 
 
 test("saved checklist merges, completion is gated, and complete handoff is visible on client", async () => {
   const { db, client, queries } = fakeDb();
+  const moves = [];
   const saved = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save",
     handoff: { dialed_at: "2026-10-26T20:00:00Z", call_attempts: 1 } });
   assert.equal(saved.status, 200);
@@ -59,12 +61,27 @@ test("saved checklist merges, completion is gated, and complete handoff is visib
   assert.equal(incomplete.status, 400);
   assert.equal(incomplete.body.error, "handoff_incomplete");
   assert.equal(queries.some(q => q.includes("UPDATE tasks")), false);
+  assert.deepEqual(moves, []);
   const completed = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "complete",
-    handoff: completeHandoff() }, { buildText: () => "Saved handoff" });
+    handoff: completeHandoff() }, { buildText: () => "Saved handoff",
+    advanceStage: async (_writer, args) => { moves.push(args); return { moved: true }; } });
   assert.equal(completed.status, 200);
   assert.equal(client.custom_fields.setter_handoff.handoff_text, "Saved handoff");
   assert.ok(client.custom_fields.setter_handoff.complete_at);
   assert.equal(completed.body.item.needs_work, false);
+  assert.equal(queries.some(q => q.includes("UPDATE tasks")), true);
+  assert.equal(queries.some(q => q.includes("UPDATE cards")), true);
+  assert.deepEqual(moves, [{ orgId: STAFF.org_id, clientId: CLIENT_ID, pipelineKey: "sales", stageKey: "confirmed" }]);
+});
+
+test("completing a handoff never moves a card back from a later Sales stage", async () => {
+  const { db, queries } = fakeDb();
+  const result = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "complete",
+    handoff: completeHandoff() }, {
+    advanceStage: async () => ({ moved: false, reason: "already_at_or_past", stageKey: "showed" })
+  });
+  assert.equal(result.status, 200);
+  assert.equal(queries.some(q => q.includes("UPDATE cards")), false);
   assert.equal(queries.some(q => q.includes("UPDATE tasks")), true);
 });
 
