@@ -105,7 +105,8 @@ export function parseLenderCsv(text) {
       errors.push(`Row ${i + 1}: priority_tier must be 1, 2, or 3 — cleared.`);
       row.priority_tier = null;
     }
-    if (row.active == null) row.active = true;
+    // Unknown CSV active is not permission to reactivate a disabled lender.
+    // New-row import explicitly supplies active=true when no value was given.
     rows.push(row);
   }
   return { rows, errors };
