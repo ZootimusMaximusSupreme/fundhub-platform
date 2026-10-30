@@ -2002,6 +2002,16 @@
       /* The 44px icon must not add a second row to the 320px shared
          workspace header: doing so hides the first client card below the
          viewport. Keep touch targets full-sized and truncate only the title. */
+      /* A 390px closer has four full-size toolbar targets. They must share
+         one header row or the real client credit facts slip below the fold. */
+      "@media(min-width:351px) and (max-width:480px){" +
+      "body.fh-astra #fh-workspace-header{flex-wrap:nowrap}" +
+      "body.fh-astra #fh-workspace-header .fh-workspace-tools{" +
+        "flex-wrap:nowrap;flex:0 0 auto;gap:2px}" +
+      "#fh-workspace-header .fh-workspace-identity{flex:1 1 0;min-width:0}" +
+      "#fh-workspace-header .fh-workspace-labels{min-width:0}" +
+      "#fh-workspace-header #fh-sop-shortcut{margin-left:0}" +
+      "}" +
       "@media(max-width:350px){" +
       /* The 320px pipeline header reached 86.75px with 10px top/bottom padding. */
       /* Keep all 44px controls and context available; only reclaim vertical air. */
