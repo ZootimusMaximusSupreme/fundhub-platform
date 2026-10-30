@@ -28,6 +28,7 @@
 import { on } from "../events/registry.mjs";
 import { emit } from "../events/bus.mjs";
 import { resolveClient } from "./client-lifecycle.mjs";
+import { findClient as findExistingPaymentClient } from "./purchase-routing.mjs";
 import {
   computeFrontEnd,
   computeBackEnd,
@@ -962,7 +963,21 @@ export function feePaymentBalanceDecision({ amount, due, applied = 0 }) {
  */
 export async function onPaymentReceivedMoney(event, db) {
   const orgId = event.orgId;
-  const clientId = await resolveClient(db, event);
+  const p = event.payload || {};
+  // An invoice/payment-link receipt must already have a debtor. Lead-capture's
+  // resolveClient may insert a client or edit contact fields before the
+  // provider and invoice are verified. Never do that on receivable cash.
+  const feeClaim = ["success_fee", "funding_success_fee"].includes(
+    String(p.product || "").trim().toLowerCase()
+  ) || ["success_fee", "funding_success_fee"].includes(
+    String(p.purpose || "").trim().toLowerCase()
+  ) || /\bsuccess[\s_-]*fee\b/i.test(String(p.productName || ""));
+  const invoiceBound = Boolean(
+    p.invoiceId || p.invoice_id || p.paymentLinkId || p.payment_link_id || feeClaim
+  );
+  const clientId = invoiceBound
+    ? await findExistingPaymentClient(db, event)
+    : await resolveClient(db, event);
   if (!orgId || !clientId) {
     // The single loudest case: a real payment whose client we cannot identify.
     // Every Commas-sourced payment event measured on 2026-08-18 landed here,
@@ -974,7 +989,6 @@ export async function onPaymentReceivedMoney(event, db) {
     return { done: false, reason: "no_client" };
   }
 
-  const p = event.payload || {};
   let linkContext = null;
   if (p.paymentLinkId) {
     linkContext = (await db.query(

@@ -424,8 +424,11 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
         queries.push({ text, params });
         // The receipt belongs to this fixture's one existing org/client.
         // Model resolveClient's tenant check rather than accepting arbitrary IDs.
-        if (/SELECT 1 FROM clients WHERE id = \$1 AND org_id = \$2 LIMIT 1/.test(text)) {
-          return { rows: params[0] === CLIENT && params[1] === ORG ? [{ exists: 1 }] : [] };
+        if (/SELECT (?:1|id) FROM clients WHERE id = \$1 AND org_id = \$2 LIMIT 1/.test(text)) {
+          return { rows: params[0] === CLIENT && params[1] === ORG ? [{ id: CLIENT }] : [] };
+        }
+        if (/SELECT id FROM clients WHERE org_id = \$1 AND lower\(email\) = \$2 LIMIT 1/.test(text)) {
+          return { rows: [] };
         }
         if (/FROM payment_links/.test(text) && /WHERE id = \$1 AND org_id = \$2 AND client_id = \$3/.test(text)) {
           return { rows: [{ id: LINK, product_id: null, sale_id: null, invoice_id: linkedInvoiceId,
@@ -477,6 +480,40 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
   });
 
   const salePaymentInsert = (db) => db.queries.find((q) => /INSERT INTO sale_payments/.test(q.text));
+
+  test("invoice payment never uses lead capture to edit a buyer's contact", async () => {
+    const db = feeDb();
+    const out = await onPaymentReceivedMoney(feeReceipt({
+      name: "Forged Contact", phone: "+15550001111"
+    }), db);
+    assert.equal(out.done, true, JSON.stringify(out));
+    assert.ok(db.queries.some(q => /SELECT id FROM clients WHERE id = \$1 AND org_id = \$2/.test(q.text)),
+      "a fee receipt requires an owned read-only client lookup");
+    assert.ok(!db.queries.some(q => /^\s*(UPDATE|INSERT INTO) clients\b/i.test(q.text)),
+      "reconciliation cannot rewrite contact fields or create a new lead");
+  });
+
+  test("an invoiced receipt from an unknown email cannot mint a phantom buyer", async () => {
+    const db = feeDb();
+    const event = feeReceipt({ email: "unknown+invoice@example.invalid", name: "Injected Lead" });
+    event.clientId = null;
+    const out = await onPaymentReceivedMoney(event, db);
+    assert.equal(out.done, false);
+    assert.equal(out.reason, "no_client");
+    assert.ok(db.queries.some(q => /SELECT id FROM clients WHERE org_id = \$1 AND lower\(email\)/.test(q.text)));
+    assert.ok(!db.queries.some(q => /^\s*(UPDATE|INSERT INTO) clients\b|INSERT INTO sale_payments/i.test(q.text)));
+  });
+
+  test("a fee receipt naming a foreign buyer cannot alter client or credit a sale", async () => {
+    const db = feeDb();
+    const event = feeReceipt({ email: "local+buyer@example.invalid" });
+    event.clientId = "00000000-0000-4000-8000-00000000ffff";
+    const out = await onPaymentReceivedMoney(event, db);
+    assert.equal(out.done, false);
+    assert.equal(out.reason, "no_client");
+    assert.ok(!db.queries.some(q => /^\s*(UPDATE|INSERT INTO) clients\b|INSERT INTO sale_payments/i.test(q.text)));
+  });
+
 
   test("it is kind success_fee on the invoice's own sale, never front-end money on a guessed sale", async () => {
     const db = feeDb();
