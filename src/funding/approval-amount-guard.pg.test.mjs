@@ -155,9 +155,12 @@ describe("funded move blocks on an approval with no amount (pg)", { skip: !HAS_D
 
     assert.deepEqual(await listUnpricedApprovals(db, { orgId, fundingRoundId: roundId }), []);
 
-    const funded = await move("funded");
+    const approvalOnly = await move("funded");
+    assert.equal(approvalOnly.moved, false, "fully priced approvals alone are not funded cash");
+    assert.equal(approvalOnly.reason, "funded_amount_required");
+    const funded = await move("funded", { fundedAmount: 30000 });
     assert.equal(funded.moved, true, funded.message);
-    assert.equal(funded.fundedAmount, 35000);
+    assert.equal(funded.fundedAmount, 30000);
     assert.equal(await stageOf(clientId), "funded");
     assert.equal(await sumConfirmedApprovals(db, { orgId, fundingRoundId: roundId }), 35000);
   });
@@ -236,8 +239,9 @@ describe("funded move blocks on an approval with no amount (pg)", { skip: !HAS_D
 
     assert.deepEqual(await listUnpricedApprovals(db, { orgId, fundingRoundId: roundId }), []);
 
-    const funded = await move("funded");
+    const funded = await move("funded", { fundedAmount: 18000 });
     assert.equal(funded.moved, true, funded.message);
+    assert.equal(funded.fundedAmount, 18000);
     assert.equal(await stageOf(clientId), "funded");
 
     // The fee basis is Bank A alone. The excluded approval adds nothing, and
@@ -344,8 +348,9 @@ describe("funded move blocks on an approval with no amount (pg)", { skip: !HAS_D
       20000,
       "an approval we are not billing for is not billed at any size"
     );
-    const funded = await move("funded");
+    const funded = await move("funded", { fundedAmount: 19000 });
     assert.equal(funded.moved, true, funded.message);
+    assert.equal(funded.fundedAmount, 19000);
     assert.equal(funded.roundEvent.payload.approvedAmount, 20000);
   });
 
@@ -415,7 +420,7 @@ describe("funded move blocks on an approval with no amount (pg)", { skip: !HAS_D
   test("an already-funded round is never re-blocked by a blank approval", async () => {
     const { clientId, roundId, move } = await makeClient();
     await addApproval(roundId, clientId, "Bank A", 20000);
-    assert.equal((await move("funded")).moved, true);
+    assert.equal((await move("funded", { fundedAmount: 17000 })).moved, true);
 
     // A blank approval recorded AFTER funding must not deadlock a re-move —
     // the card is already there and the board re-sends moves routinely.
