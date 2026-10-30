@@ -932,7 +932,7 @@ export async function onSaleClosedMoney(event, db) {
 async function successFeeInvoiceFor(db, { orgId, clientId, invoiceId }) {
   if (!orgId || !clientId || !asUuid(invoiceId)) return null;
   const { rows } = await db.query(
-    `SELECT id, sale_id FROM invoices
+    `SELECT id, sale_id, status FROM invoices
       WHERE id = $1 AND org_id = $2 AND client_id = $3
         AND (source = 'funding_success_fee' OR invoice_type = 'success_fee')
       LIMIT 1`,
@@ -994,6 +994,15 @@ export async function onPaymentReceivedMoney(event, db) {
   const feeInvoice = await successFeeInvoiceFor(db, {
     orgId, clientId, invoiceId: paymentPayload.invoiceId
   });
+
+  // A void/draft/written-off fee invoice cannot be newly settled as sale cash.
+  // The invoice allocator would refuse the receipt; do not let money-chain
+  // independently pay commissions or unlock access before that refusal.
+  // A paid invoice stays readable for exact webhook replay; receipt identity
+  // is independently checked by ensureSalePayment.
+  if (feeInvoice && !["sent", "reminded", "escalated", "partially_paid", "paid"].includes(String(feeInvoice.status))) {
+    return { done: false, reason: "success_fee_invoice_not_collectible" };
+  }
 
   // An unmatched/custom provider receipt may still say "Success fee" without
   // carrying the invoice UUID. It is received cash in transactions, but cannot

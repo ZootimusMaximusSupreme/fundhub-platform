@@ -406,7 +406,7 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
   const NEWEST_SALE = "00000000-0000-4000-8000-0000000000b2"; // a later funding sale, same client
   const PRODUCT = "00000000-0000-4000-8000-0000000000f1";
 
-  function feeDb({ invoice = { id: INVOICE, sale_id: BILLED_SALE } } = {}) {
+  function feeDb({ invoice = { id: INVOICE, sale_id: BILLED_SALE, status: "sent" } } = {}) {
     const queries = [];
     const sale = (id) => ({ id, org_id: ORG, client_id: CLIENT, product_id: PRODUCT, sale_motion: null, status: "active" });
     return {
@@ -483,12 +483,23 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
   });
 
   test("a success-fee invoice with no original sale is held for reconciliation", async () => {
-    const db = feeDb({ invoice: { id: INVOICE, sale_id: null } });
+    const db = feeDb({ invoice: { id: INVOICE, sale_id: null, status: "sent" } });
     const out = await onPaymentReceivedMoney(feeReceipt(), db);
     assert.equal(out.done, false);
     assert.equal(out.reason, "unlinked_success_fee_invoice");
     assert.equal(salePaymentInsert(db), undefined);
   });
+
+  for (const invoiceStatus of ["draft", "void", "written_off"]) {
+    test(`a ${invoiceStatus} success-fee invoice cannot post cash or paid access`, async () => {
+      const db = feeDb({ invoice: { id: INVOICE, sale_id: BILLED_SALE, status: invoiceStatus } });
+      const out = await onPaymentReceivedMoney(feeReceipt(), db);
+      assert.equal(out.done, false);
+      assert.equal(out.reason, "success_fee_invoice_not_collectible");
+      assert.equal(salePaymentInsert(db), undefined);
+      assert.equal(out.entitlements, undefined);
+    });
+  }
 
   test("a zero-dollar payment cannot grant paid access", async () => {
     const db = feeDb();
