@@ -135,6 +135,10 @@ function matchesEvent(row, event) {
   const hasEventId = row.event_id != null && String(row.event_id).length > 0;
   const hasTraceId = row.correlation_id != null && String(row.correlation_id).length > 0;
   if (!eventId || (!hasEventId && !hasTraceId)) return false;
+  // A journey correlation_id can cover many events. A receipt with only that
+  // shared ID cannot prove which producer event caused its business outcome.
+  // Require the exact event_id whenever the journey trace differs from it.
+  if (traceId !== eventId && !hasEventId) return false;
   // A shared journey trace cannot turn a *different event's* result green.
   // When both keys exist, each must match rather than choosing the favorable one.
   if (hasEventId && String(row.event_id) !== eventId) return false;
