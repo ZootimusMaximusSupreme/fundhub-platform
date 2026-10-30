@@ -10,12 +10,12 @@ Owner request: on every relevant employee desk, a small document icon should ope
 - Shortcut HTML files belong to other work lanes and are intentionally **not** edited. This change's only browser files: `shell.js` and `company-brain.html`.
 - The accidental `Log Dial` **Undo** belongs to the front-house backlog, not this change.
 
-## Role boundary / known limitation
-**Important: the existing staff shell reserves `company-brain.html` for owner/admin.** That page appears in `OWNER_ADMIN_ONLY` in `public/app/shell.js`, so `allowedFor("setter")`, `allowedFor("closer")`, `allowedFor("csm")`, etc. cannot enter. The shortcut checks the **actual permitted page list**: it is visible to owner/admin while inspecting any of the 12 desks, **not** to ordinary setter/closer/CSM users. The previous CI screen failures used those forbidden fixtures and have been corrected to exercise an authorized owner context, plus negative tests for setter and closer. This is a remaining owner-facing **product coverage gap**, not a reason to silently widen Company Brain access. Giving employees their own least-privilege, read-only SOP access requires a separate permissions decision and API/UX audit; current work does not claim it is delivered.
+## Role boundary / approved STAFF access
+The existing Company Brain search, thread and uploaded-document APIs already use `ROLE_SETS.STAFF`, whose documented members are owner, admin, funding advisor, closer, inquiry specialist, setter, sales manager and CSM. The shared shell previously listed `company-brain.html` under `OWNER_ADMIN_ONLY`, hiding a server-authorized search surface from actual employees. This PR removes only that redundant **navigation-only** restriction; it does not change any staff permissions or backend routes. All mapped employee desks now use the same server-enforced Company Brain tiers: `public`, `sales`, `staff`. The `owner` document tier remains available only to owner/admin, and owner-only review approvals remain owner-only. Source: `src/company-brain/access.mjs`, `api/read/company-brain.mjs`, `api/company-brain/upload.mjs`, `api/company-brain/reviews.mjs`.
 
-`outbound_rep` can see only `bank-outreach.html` in the shell and is **NOT in `ROLE_SETS.STAFF`**. The Company Brain search API rejects it. For that role the SOP icon intentionally does **not** appear; showing a dead link or widening confidential knowledge permissions would be unsafe. Authorized owner/admin staff visiting bank outreach see the shortcut. A distinct scoped outbound knowledge access decision would be needed before enabling this role.
+`outbound_rep` is **NOT in** `ROLE_SETS.STAFF` and has no Company Brain read permission. It remains excluded; customer, affiliate and partner portals are also excluded. No synthetic document or newly created SOP is claimed.
 
-The Company Brain Documents panel lists local uploads and quizzes, not necessarily the whole indexed Drive corpus. The contextual Find button searches documents the staff role can actually read and should return citations or a clear no-source response. SOP content completeness and which source files are approved **cannot be proven by UI tests**; inspect live role-specific Drive indexing separately. Do not claim an SOP exists simply because the quick-access button works.
+The owner reports SOPs and sales scripts already loaded into Company Brain; the shortcut searches role-cleared indexed sources instead of duplicating them. The Documents panel lists only local uploads, not the whole Drive corpus. Existence, approval status and visibility of specific live SOP files cannot be proven using mocked UI tests; live source indexing and staff view still require verification.
 
 ## Acceptance matrix (offline static browser + unit tests)
 | Scenario | Expected |
@@ -29,7 +29,7 @@ The Company Brain Documents panel lists local uploads and quizzes, not necessari
 | 390px phone | At least 44×44 tap target; documents open/close; no horizontal page overflow |
 | No uploaded files | Honest empty state; search can still use approved Drive files |
 | Unknown/malicious `?sop` | No context rendered; no arbitrary prompt or HTML |
-| Setter, closer, `outbound_rep`, client, partner | No shortcut if Company Brain route is not permitted |
+| Setter, closer, advisor, CSM, specialist, manager | Role-specific shortcut visible; real Company Brain API tiers preserved |\n| `outbound_rep`, client, partner, affiliate | No SOP shortcut; no access to internal Company Brain |
 | Live | Requires protected merge, full required CI, deployment proof; **NOT LIVE PROVED** while pending |
 
 ## Tests
