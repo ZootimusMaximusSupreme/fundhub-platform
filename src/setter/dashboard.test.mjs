@@ -35,6 +35,7 @@ function fakeDb(booked = true) {
   const db = { async query(sql, params) {
     queries.push(sql);
     if (sql.includes("FROM clients c")) return { rows: [client] };
+    if (sql.includes("SELECT id, name FROM staff")) return { rows: [{ id: "staff-2", name: "Closer" }] };
     if (sql.includes("UPDATE clients")) {
       if (sql.includes("'{setter_survey_edits}'")) {
         client.custom_fields.setter_survey_edits = JSON.parse(params[2]);
@@ -128,6 +129,26 @@ test("completing a handoff never moves a card back from a later Sales stage", as
   assert.equal(result.status, 200);
   assert.equal(queries.some(q => q.includes("UPDATE cards")), false);
   assert.equal(queries.some(q => q.includes("UPDATE tasks")), true);
+});
+
+test("completing a setter handoff alerts the different closer with saved facts", async () => {
+  const { db, client } = fakeDb();
+  client.closer_staff_id = "staff-2";
+  const alerts = [];
+  const input = { client_id: CLIENT_ID, action: "complete", handoff: completeHandoff() };
+  const deps = {
+    advanceStage: async () => ({ moved: true }),
+    closerAlert: async (_db, args) => { alerts.push(args); return { queued: 1 }; }
+  };
+  const first = await updateSetterHandoff(db, STAFF, input, deps);
+  const repeat = await updateSetterHandoff(db, STAFF, input, deps);
+  assert.equal(first.status, 200);
+  assert.equal(repeat.status, 200);
+  assert.equal(alerts.length, 2, "retries use the same durable SMS key in the alert helper");
+  assert.equal(alerts[0].closerStaffId, "staff-2");
+  assert.equal(alerts[0].setterStaffId, STAFF.id);
+  assert.equal(alerts[0].handoff.goal, "Open a second location");
+  assert.equal(alerts[0].startTime, client.booking_time);
 });
 
 test("opt-in cannot complete until booking webhook adds a booking", async () => {

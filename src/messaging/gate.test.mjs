@@ -146,11 +146,14 @@ describe("setter and staff contact hours", () => {
     assert.strictEqual(res.state, "allowed", JSON.stringify(codes(res)));
   });
 
-  test("staff alert needs the exact active opted-in staff phone", async () => {
+  test("setter alert ignores the old optional switch but needs the exact active staff phone", async () => {
     const res = await gate(fakeDb({ staff: { ...enabledStaff, notify_booked_call_sms: false } }), ALERT,
       { now: MIDDAY });
-    assert.strictEqual(res.state, "blocked");
-    assert.ok(codes(res).includes("recipient_unknown"));
+    assert.strictEqual(res.state, "allowed");
+    const wrongPhone = await gate(fakeDb({ staff: enabledStaff }), { ...ALERT, toAddress: "+14805550000" },
+      { now: MIDDAY });
+    assert.strictEqual(wrongPhone.state, "blocked");
+    assert.ok(codes(wrongPhone).includes("recipient_unknown"));
   });
 
   test("staff alert at 10 p.m. is held until 6 a.m.", async () => {
@@ -158,6 +161,18 @@ describe("setter and staff contact hours", () => {
       { now: () => new Date("2026-08-02T05:00:00Z") });
     assert.strictEqual(res.state, "blocked");
     assert.ok(codes(res).includes("quiet_hours"));
+  });
+
+  test("verified internal lead alert sends at 10 p.m. while a wrong staff phone still blocks", async () => {
+    const leadAlert = { ...ALERT, templateKey: null,
+      providerRef: `staff-alert:lead:${CLIENT}:${STAFF_ID}` };
+    const overnight = { now: () => new Date("2026-08-02T05:00:00Z") };
+    const allowed = await gate(fakeDb({ staff: enabledStaff }), leadAlert, overnight);
+    assert.strictEqual(allowed.state, "allowed", JSON.stringify(codes(allowed)));
+    const wrongPhone = await gate(fakeDb({ staff: enabledStaff }),
+      { ...leadAlert, toAddress: "+14805550000" }, overnight);
+    assert.strictEqual(wrongPhone.state, "blocked");
+    assert.ok(codes(wrongPhone).includes("recipient_unknown"));
   });
 
   test("different closer leg reads closer staff consent, not client STOP", async () => {
