@@ -258,7 +258,12 @@ describe("ensureSalePayment", () => {
       }, { saleId: SALE, clientId: "client-primary", productId: PRODUCT, kind: "deposit" });
       assert.equal(result.payment, null, JSON.stringify(mismatch));
       assert.equal(result.reason, "receipt_conflict", JSON.stringify(mismatch));
-      assert.equal(calls.length, 3, "conflicted receipt must not accrue or grant anything");
+      // A verified source read precedes the idempotent insert and replay lookup.
+      // These four statements cannot accrue a partner or grant customer access.
+      assert.equal(calls.length, 4, "only receipt verification and replay lookup may execute");
+      assert.equal(calls.filter((sql) => /FROM transactions/.test(sql)).length, 2);
+      assert.equal(calls.filter((sql) => /INSERT INTO sale_payments/.test(sql)).length, 1);
+      assert.equal(calls.filter((sql) => /FROM sale_payments/.test(sql)).length, 1);
     }
   });
 });

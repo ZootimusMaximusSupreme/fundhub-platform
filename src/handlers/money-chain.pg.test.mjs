@@ -568,8 +568,10 @@ describe("money-chain writers", { skip: !HAS_DB ? "no DATABASE_URL" : false }, (
       id: null, name: "payment.received", orgId: org, clientId,
       payload: { productName: "Nothing We Sell", amount: 10, providerRef: `${MARK}_np_1` }
     }, db);
-    assert.equal(noProduct.entitlements.unmapped, true);
-    assert.equal(noProduct.entitlements.reason, "no_product");
+    // A product with no original sale is not paid and cannot grant access.
+    assert.equal(noProduct.done, false);
+    assert.equal(noProduct.reason, "no_sale_yet");
+    assert.equal(noProduct.entitlements, undefined);
 
     assert.equal(
       (await db.query(

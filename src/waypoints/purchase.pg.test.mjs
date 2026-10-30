@@ -76,21 +76,25 @@ async function deleteClients(ids) {
      idx_entitlements_grant_unique. Measured, not guessed: that is the error
      this ordering fixes. */
   const guarded = ["entitlements", "commission_ledger"];
-  const ordered = [
-    ...kids.filter((k) => guarded.includes(k.tbl.replace(/^public\./, ""))),
-    ...kids.filter((k) => !guarded.includes(k.tbl.replace(/^public\./, "")))
-  ];
-  for (const k of ordered) {
+  // Clear protected client ledgers before their referenced sale/transaction rows.
+  for (const k of kids.filter((x) => guarded.includes(x.tbl.replace(/^public\./, "")))) {
     const tbl = k.tbl.replace(/^public\./, "");
-    if (guarded.includes(tbl)) {
-      await db.query(`ALTER TABLE ${tbl} DISABLE TRIGGER USER`);
-      try {
-        await db.query(`DELETE FROM ${k.tbl} WHERE ${k.col} = ANY($1::uuid[])`, [ids]);
-      } finally {
-        await db.query(`ALTER TABLE ${tbl} ENABLE TRIGGER USER`);
-      }
-      continue;
+    await db.query(`ALTER TABLE ${tbl} DISABLE TRIGGER USER`);
+    try {
+      await db.query(`DELETE FROM ${k.tbl} WHERE ${k.col} = ANY($1::uuid[])`, [ids]);
+    } finally {
+      await db.query(`ALTER TABLE ${tbl} ENABLE TRIGGER USER`);
     }
+  }
+  // Synthetic receipts have no direct client FK; preserve transaction/sale FK order.
+  await db.query(`DELETE FROM sale_payments WHERE
+    sale_id IN (SELECT id FROM sales WHERE client_id = ANY($1::uuid[])) OR
+    transaction_id IN (SELECT id FROM transactions WHERE client_id = ANY($1::uuid[]))`, [ids]);
+  await db.query(`DELETE FROM sale_attributions WHERE
+    sale_id IN (SELECT id FROM sales WHERE client_id = ANY($1::uuid[]))`, [ids]);
+  await db.query(`DELETE FROM funding_round_sales WHERE
+    sale_id IN (SELECT id FROM sales WHERE client_id = ANY($1::uuid[]))`, [ids]);
+  for (const k of kids.filter((x) => !guarded.includes(x.tbl.replace(/^public\./, "")))) {
     await db.query(`DELETE FROM ${k.tbl} WHERE ${k.col} = ANY($1::uuid[])`, [ids]);
   }
   await db.query(`DELETE FROM clients WHERE id = ANY($1::uuid[])`, [ids]);
