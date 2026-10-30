@@ -5,6 +5,7 @@
 <link rel="preload" href="/assets/fonts/nunito-latin-variable.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/app/fundhub-font.css">
 <script defer src="/app/fundhub-font.js"></script>
+<script defer src="/app/phone-format.js"></script>
 
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -2296,7 +2297,7 @@ function renderDrawerBody(a){
     '<div class="dw-sec"><div class="eyebrow">CANDIDATE</div>'+
       '<div class="kv">'+
         '<div><div class="k2">email</div><div class="v">'+esc(a.email)+'</div></div>'+
-        '<div><div class="k2">phone</div><div class="v">'+esc(a.phone||'—')+'</div></div>'+
+        '<div><div class="k2">phone</div><div class="v">'+esc(a.phone ? FHFormatPhone(a.phone) : '—')+'</div></div>'+
         '<div><div class="k2">source</div><div class="v">'+esc(a.source)+
           '<span class="sub">'+esc(a.source_detail||'no detail')+'</span></div></div>'+
         '<div><div class="k2">DISC profile</div><div class="v">'+(a.disc_profile?esc(a.disc_profile):'<span class="nul mono">not set</span>')+
