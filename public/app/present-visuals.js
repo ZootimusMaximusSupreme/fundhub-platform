@@ -195,13 +195,15 @@
      and the proof used to sit below the edge (2026-10-30). The layout is
      tighter on a short screen; when it is still taller than the slide, it
      shrinks to fit, never below 80 percent. Outside the deck's slide (a test
-     page) nothing changes. */
+     page) and on a phone nothing changes. */
   const FIT_MIN = 0.8;
   function fitToSlide(host) {
     if (!host || !host.style || typeof host.getBoundingClientRect !== "function") return;
     const box = closest(host, ".slide-body");
     if (!box || typeof box.clientHeight !== "number") return;
     host.style.zoom = "";
+    // A narrow slide (a phone) stacks and scrolls on purpose; it never shrinks.
+    if (host.getBoundingClientRect().width <= 680) return;
     let zoom = 1;
     // Twice: a shrunk slide also gets wider, so its text wraps less.
     for (let pass = 0; pass < 2; pass++) {

@@ -461,3 +461,36 @@ describe("other files", () => {
     assert.equal((p.match(/Your door/g) || []).length, 0, "no door on a file in review");
   });
 });
+
+describe("the live look fixes (2026-10-30)", () => {
+  test("one lever reads as one lever: 'tap it' and 'Tap the lever', never 'each'", () => {
+    const T = load();
+    const one = T.V.moneyLevers(T.ctxFor("repair"));
+    assert.ok(one.includes("One lever · tap it"), "the eyebrow over the lever");
+    assert.ok(one.includes("Nothing applied yet. Tap the lever to build the climb."), "the line under Projects to");
+    assert.ok(!one.includes("tap each one") && !one.includes("Tap each lever"), "no 'each' when there is one lever");
+    const two = T.V.moneyLevers(T.ctxFor("full"));
+    assert.ok(two.includes("Two levers · tap each one"));
+    assert.ok(two.includes("Nothing applied yet. Tap each lever to build the climb."));
+  });
+
+  test("Business 2 is one color everywhere on the slide: its layer, its key and its chips", () => {
+    const T = load();
+    const html = T.V.companies(T.ctxFor("full"));
+    assert.match(html, /fhv-companies-seg is-biz is-alt[^"]*" title="Business 2/, "the layer");
+    assert.match(html, /fhv-companies-key is-biz is-alt"><b>Business 2<\/b>/, "the key");
+    assert.equal((html.match(/fhv-companies-chip is-biz is-alt">Business 2</g) || []).length, 3, "a chip in each of the three funding sequences");
+    assert.match(html, /fhv-companies-key is-biz"><b>Business 1<\/b>/, "Business 1 keeps the first color");
+    const css = T.dom.styles[0].textContent;
+    for (const rule of [".fhv-companies-seg.is-biz.is-alt{background:var(--ok)", ".fhv-companies-key.is-biz.is-alt::before{background:var(--ok)", ".fhv-companies-chip.is-biz.is-alt{background:var(--ok)"]) {
+      assert.ok(css.includes(rule), rule);
+    }
+  });
+
+  test("the tab's card and the proof share one row, above Funding partners for life", () => {
+    const T = load();
+    const html = T.V.companies(T.ctxFor("full"));
+    assert.match(html, /<div class="fhv-companies-pair"><div class="fhv-companies-detail">[\s\S]*?<\/div><div class="fhv-companies-proof">/);
+    assert.ok(html.indexOf("fhv-companies-pair") < html.indexOf("fhv-companies-timeline"));
+  });
+});
