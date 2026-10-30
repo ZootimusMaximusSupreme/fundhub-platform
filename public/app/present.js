@@ -1,33 +1,61 @@
 /* closer present — vanilla port of fundhub-closer-deck-v5. The closer lines follow
-   docs/sops/weekend-2026-10-24/04-sales-call-script.md (owner-set 2026-10-29). */
+   docs/sops/weekend-2026-10-24/04-sales-call-script.md (owner-set 2026-10-29). The
+   slide order follows the same script, part by part
+   (ops/workflows/weekend-2026-10-24.md section 10.0). */
 (function () {
   "use strict";
 
+  /* Capital Academy, the course, is off until it is filmed (Chris, 2026-10-29).
+     This one switch hides the EDUCATION PATH button, the education slides and
+     rungs, the course prices and the mini course line. Set it to true and they
+     all come back as they were. UI-STANDARDS section 5: nothing "coming soon"
+     shows. */
+  var COURSE_LIVE = false;
+
+  /* The phase strip uses the call script's part names, in its order (Chris,
+     2026-10-29: "the progression of the sales script needs to be the
+     progression of the dashboard"). Part 8, Money, has no slide: its button
+     opens the money steps in the cockpit and the client's screen stays put.
+     Objections stay in the cockpit too, so they get no button. */
+  var PHASES = [
+    ["01", "1 Open"], ["02", "2 Your goal"], ["03", "3 The pull"], ["04", "4 Your file"],
+    ["05", "5 Your path"], ["06", "6 The plan"], ["07", "7 The ask"], ["08", "8 Money"],
+    ["09", "9 Paperwork"]
+  ];
   var DECK = [
-    { code: "S-01", phase: "01 Intro" }, { code: "S-02", phase: "01 Intro" },
-    { code: "S-03", phase: "02 Discovery" }, { code: "S-04", phase: "02 Discovery" },
-    { code: "S-05", phase: "03 Soft pull" }, { code: "S-06", phase: "03 Soft pull" },
-    { code: "S-07", phase: "03 Soft pull" },
-    { code: "S-08", phase: "04 Pitch" }, { code: "S-09", phase: "04 Pitch" },
-    { code: "S-10", phase: "04 Pitch" }, { code: "S-11", phase: "04 Pitch" },
-    { code: "S-12", phase: "04 Pitch" }, { code: "S-13", phase: "04 Pitch" },
-    { code: "S-14", phase: "04 Pitch" }, { code: "S-15", phase: "04 Pitch" },
-    { code: "S-16", phase: "04 Pitch" },
-    { code: "S-17", phase: "05 Commit" }, { code: "S-18", phase: "05 Commit" },
-    { code: "S-19", phase: "05 Commit" }, { code: "S-20", phase: "05 Commit" },
-    { code: "S-21", phase: "05 Commit" }, { code: "S-22", phase: "05 Commit" },
+    { code: "S-01", phase: "01" }, { code: "S-02", phase: "01" },
+    { code: "S-03", phase: "02" }, { code: "S-04", phase: "02" },
+    { code: "S-05", phase: "03" }, { code: "S-06", phase: "03" },
+    { code: "S-07", phase: "04" },
+    /* L-01: the money levers (visual A), right after the reveal. It shows only
+       when its visual draws; otherwise Next goes S-07 to S-08 as before. */
+    { code: "L-01", phase: "04" },
+    { code: "S-08", phase: "05" },
     /* 06 BLUEPRINT — the Capital Blueprint + FinanceOS offer stack (owner ask
-       2026-10-06). The rep opens it on purpose: the phase strip's 06, or "Show
-       the full Blueprint stack" on S-19. From anywhere outside it, Next and
-       Back step over these six (go()), so a funding call still runs S-22 →
-       S-23 exactly as before. Everything for it lives between the 06 BLUEPRINT
-       STACK markers below. */
-    { code: "B-01", phase: "06 Blueprint" }, { code: "B-02", phase: "06 Blueprint" },
-    { code: "B-03", phase: "06 Blueprint" }, { code: "B-04", phase: "06 Blueprint" },
-    { code: "B-05", phase: "06 Blueprint" }, { code: "B-06", phase: "06 Blueprint" },
-    { code: "S-23", phase: "07 Close" }, { code: "S-24", phase: "07 Close" }
+       2026-10-06). It is Door 3, the plan for a file that is not ready, so it
+       sits inside part 6 (10.0). A repair file walks B-01 to B-04 with Next and
+       goes on to S-09 when they say no. A funding file steps over all six
+       (go()), so a funding call still runs S-08 to S-09. B-05 and B-06 stay out
+       of the walk: only their own buttons reach them (row 10). Everything for
+       it lives between the 06 BLUEPRINT STACK markers below. */
+    { code: "B-01", phase: "06" }, { code: "B-02", phase: "06" },
+    { code: "B-03", phase: "06" }, { code: "B-04", phase: "06" },
+    { code: "B-05", phase: "06" }, { code: "B-06", phase: "06" },
+    { code: "S-09", phase: "06" }, { code: "S-10", phase: "06" },
+    { code: "S-11", phase: "06" }, { code: "S-12", phase: "06" },
+    { code: "S-13", phase: "06" }, { code: "S-14", phase: "06" },
+    { code: "S-15", phase: "06" }, { code: "S-16", phase: "06" },
+    /* C-01: more companies, more funding (visual B). Door 1 only, and only
+       when its visual draws. */
+    { code: "C-01", phase: "06" },
+    { code: "S-17", phase: "07" }, { code: "S-18", phase: "07" },
+    { code: "S-19", phase: "07" }, { code: "S-20", phase: "07" },
+    { code: "S-21", phase: "07" }, { code: "S-22", phase: "07" },
+    { code: "S-23", phase: "09" }, { code: "S-24", phase: "09" }
   ];
   var EDU_SKIP = ["S-11", "S-12", "S-13", "S-14", "S-15", "S-16"];
+  /* Out of the Next walk until FinanceOS has a price and a checkout. */
+  var OFF_WALK = ["B-05", "B-06"];
   var DISCOVERY = [
     ["Pain", "Biggest challenge right now? What's not working at the level it should be?"],
     ["Desire", "If capital wasn't an issue, what does the business look like in 6 to 12 months? Why that number?"],
@@ -42,13 +70,20 @@
     ["G-02 / 72 HOURS", "72-Hour Application Guarantee", "Once you're signed on, your applications go out within 72 business hours. If we don't act in that window, you're protected and you don't pay."],
     ["G-03 / FUNDING", "Funding Guarantee", "If you qualify and we don't secure funding for you, you don't pay. If you get nothing, we earn nothing."]
   ];
+  /* What opens today (2026-10-29): business cards, personal cards and personal
+     loans, and revenue funding, which runs by hand. SBA and equipment loans are
+     not live, so they are not on the menu. */
   var MENU = [
-    ["F-01", "Business lines of credit", "Revolving access for operating needs."],
-    ["F-02", "Term financing", "Fixed amount, set repayment schedule."],
-    ["F-03", "Equipment financing", "Tied to business equipment purchases."],
-    ["F-04", "SBA-backed options", "Through participating SBA partners."],
-    ["F-05", "Revenue-based financing", "Structured around business revenue."],
-    ["F-06", "Business card funding", "Business cards matched to your file, across issuers."]
+    ["F-01", "Business cards", "Business cards matched to your file, across issuers."],
+    ["F-02", "Personal cards", "Personal cards matched to your file, across issuers."],
+    ["F-03", "Personal loans", "A personal loan matched to your file."],
+    ["F-04", "Revenue funding", "Lines of credit and term loans, off your bank statements or tax returns."]
+  ];
+  /* Revenue funding, run by hand (Chris, 2026-10-29): the client uploads, the
+     team sends the file to the lender. */
+  var REVENUE_STEPS = [
+    "You upload your bank statements or tax returns in your portal.",
+    "The Fundhub team sends your file to the lender."
   ];
   var TERMINAL = [
     "$ underwrite --diagnostic", "> application received", "> profile review initiated",
@@ -58,11 +93,15 @@
   var TALK = {
     "S-01": { title: "Rapport", lines: ["Hey [First Name]! It's [Your Name] over at Fundhub. How's your week been so far?", "Mirror their energy. Let them answer. Do not rush.", "I know we've got a limited amount of time, so are you ready to jump in? Are you in front of a computer with a card handy for the soft-pull assessment?"], watch: "The first 60 seconds decide whether they trust you or have their guard up." },
     "S-02": { title: "The Frame", lines: ["First, I'd like to dive into the specifics of your business, what you're building, where you're at with capital, and what's keeping you from scaling.", "Then we'll run your soft-pull assessment right here on the call. It's a soft pull, so your score does not move. Then I'll show you how much you qualify for based on where you're at right now, and what's holding the rest back.", "And if it's not the right fit, we'll figure out the best next step. Does that sound fair?", "At the end, I'll ask if you want to move forward. A yes is great. A no is fine. Just tell me straight either way. Deal?", "Quick heads up: this call is recorded, so nothing gets missed. Is anyone else part of money decisions for you, like a spouse or a business partner? It helps if they hear this too."], watch: "Get the 'sounds fair' before moving. It stops price-hijacking later." },
-    "S-03": { title: "Discovery 1. Isolate the challenge.", lines: ["What's the biggest reason you're looking for funding right now? What's going on in the business?", "Probe: tell me more. When you say X, what do you mean exactly? How has that impacted the business specifically?", "Aside from that, any other challenge or roadblock in the way right now?"], watch: "Do not accept surface-level answers. Busy professional, not telemarketer. S-03 shows the yearly revenue range they picked as \"Monthly revenue\". Ask the monthly amount out loud." },
+    "S-03": { title: "Discovery 1. Isolate the challenge.", lines: ["What's the biggest reason you're looking for funding right now? What's going on in the business?", "Probe: tell me more. When you say X, what do you mean exactly? How has that impacted the business specifically?", "Aside from that, any other challenge or roadblock in the way right now?"], watch: "Do not accept surface-level answers. Busy professional, not telemarketer. S-03 shows the yearly revenue range they picked. Ask the monthly amount out loud." },
     "S-04": { title: "Discovery 2. The goal and the cost.", lines: ["Begin with the end in mind. If capital wasn't an issue, what does the business look like 6 to 12 months from now? How much capital do you realistically need?", "Cost anchor: what is this costing you every month? Reflect it back: about $X a month, roughly $Y left on the table. Feel accurate?", "Pre-frame: if the pull comes back strong and I can show a clear path, are you ready to move on this now, or still in the research phase?"], watch: "The cost number is what the $3,000 gets anchored against. Do not skip it." },
     "S-05": { title: "Transition to the pull", lines: ["I feel like we've covered a lot of ground. Anything else I need to know?", "This is exactly what we work on. Right now, we're both guessing. Your file knows why. Let's go see what it says.", "If the file shows a clear path, are you ready to move on it today, or are you still looking around?", "It's a soft look, not a bank application. Your score does not move, and no lender sees it. It's $32. You've got a card handy?"], watch: "Do NOT jump from pain straight into pitching. Process the $32, then advance." },
     "S-06": { title: "While it runs", lines: ["Our UnderwriteIQ system is pulling your file from all three bureaus and reading it the way a bank does.", "It checks your file against the banks that fit it, so you only apply where your file makes sense."], watch: "Confident, matter-of-fact. Routine professional step. Never say a lender count, a client count, or a dollar total." },
-    "S-07": { title: "The reveal + the sort", lines: ["FUND: Here's how much you qualify for based on where you're at right now: [Amount]. That's what your file supports today. The bank still decides.", "FUND: Pause. Let it land. Then: what jumps out at you?", "REPAIR: Here's what's holding your file back. Cleaned up, it shows the higher amount on screen. That difference is what's left on the table right now.", "EDU: If their ask is 'teach me to do this myself', route Education below. The sort still gets named first."], watch: "Name the sort before moving: 'based on what the system found, here's where you are, and here's the path that fits.' They must accept the sort before they hear any offer. Route buttons below. Never say approved or pre-approved, and never name a bank. Education is off until Capital Academy is filmed." },
+    "S-07": { title: "The reveal + the sort", lines: ["FUND: Here's how much you qualify for based on where you're at right now: [Amount]. That's what your file supports today. The bank still decides.", "FUND: Pause. Let it land. Then: what jumps out at you?", "REPAIR: Here's what's holding your file back. Cleaned up, it shows the higher amount on screen. That difference is what's left on the table right now.", "EDU: If their ask is 'teach me to do this myself', route Education below. The sort still gets named first."], watch: "Name the sort before moving: 'based on what the system found, here's where you are, and here's the path that fits.' They must accept the sort before they hear any offer. Route buttons below. Never say approved or pre-approved, and never name a bank." + (COURSE_LIVE ? "" : " Education is off until Capital Academy is filmed.") },
+    /* L-01 and C-01 are visual slides (section 10.4, A and B). The words are
+       the script's (sections 4 and 6) and the plan's. */
+    "L-01": { title: "How much more. Tap each lever.", lines: ["The difference between today and the fully optimized file is what's left on the table right now.", "Let me show you what each fix does for your file, one at a time."], watch: "Tap one lever at a time. Every amount is the engine's own, for this file. Read it off the screen. Never round up, never say approved, and never promise a score or a removal." },
+    "C-01": { title: "More companies, more funding.", lines: ["Each business is judged on its own, after your personal file is ready.", "This is what one more company adds as it gets older. It's a picture of what's possible. It never changes what you qualify for today."], watch: "Read the amounts off the screen. 'If you add a company' is never part of today's total. Only show wins Chris has given you in writing." },
     "S-08": { title: "Permission, then the map", lines: ["FUND: Where do you want to go from here? I can walk you through exactly how we get you in front of the banks that match your file, in the right order. But you tell me.", "FUND: Everything is completely done-for-you. Three steps. Cool?", "REPAIR: I'd recommend we clean your credit up first, so when we run the full funding process you're in the strongest position. Want me to walk you through it?", "EDU: Two ways to own this: your complete file deliverables with the ranked bank list, or the Funding Mastery program, A to Z. Which sounds more like you?"], watch: "Sort-acceptance gate. Reverse Selling: ask permission. If they push back on the sort itself, handle it HERE, never at the price." },
     "S-09": { title: "Pitch. The problem.", lines: ["FUND: You know how you tried applying on your own and got denied or didn't know which banks to go to? You applied blind, to banks that never matched your file.", "FUND: Most people, and most funding companies, are guessing. Every application is a hard pull, and every denial costs you.", "REPAIR: Walk the flags one at a time. Read each item. Don't editorialize, the screen is the proof.", "EDU: Course one is everything the system built from your file today. Walk the six items on screen, one by one."], watch: "Slow down. The contrast here is what sells the system." },
     "S-10": { title: "Step 1. AI Lender Matching.", lines: ["FUND: UnderwriteIQ, the same system that just read your file, matches it to the banks that fit it.", "FUND: Every bank is picked from your file, not from one list used for every client. You only apply where your file makes sense. Make sense?", "REPAIR: The law does the heavy lifting. FCRA requires accuracy, forces an investigation of every dispute in 30 to 45 days, puts duties on the creditors themselves, and pays damages when they violate. Your letters are built on FCRA and Metro 2.", "EDU: Course two is the full Funding Mastery. A to Z. The complete credit and funding system, start to finish, on your own file."], watch: "'Make sense?' is a tie-down. Wait for the yes." },
@@ -74,7 +113,7 @@
     "S-16": { title: "The menu. Take their order.", lines: ["FUND: This is everything we can open for you. Business cards, personal cards and personal loans. Lines of credit, term loans and revenue-based funding, off your bank statements or tax returns. Which matter most for what you're building?", "FUND: Fulfill the ask FIRST. Then, only if the file supports it: your file also fits [product]. Want me to include that?", "REPAIR: A little fear here protects them. So-called credit sweeps — fake FTC identity-theft reports, fake police reports — are federal crimes, and even when they 'work', the creditor just re-reports the account next month. Two wrongs don't make a right.", "REPAIR: Then flip it: our deletions stick, because they're documented and FCRA-grounded. And if a bureau reinserts without 5-day written notice and certification, THEY are in violation, not you."], watch: "FUND: it's a menu, not a pitch — nothing gets submitted they didn't order. SBA and equipment loans are not live yet. REPAIR: warn, don't teach. Name the schemes and the consequences, never the mechanics." },
     "S-17": { title: "Temperature check", lines: ["So just curious, in terms of the process specifically, how do you feel?", "What's important to me is alignment. When you come in, our team is ALL IN, in the trenches with you. So it matters that you feel GOOD about the process."], watch: "If they hesitate here, dig in now. Don't carry hesitation into the price." },
     "S-18": { title: "Scale of 1 to 10", lines: ["1 being this sounds terrible, I want off the phone. 10 being this is exactly what I need to finally get the capital to scale. Where do you fall?"], watch: "8 or above, proceed. Below 8: what's keeping you from a 9 or 10? Handle it first." },
-    "S-19": { title: "The investment", lines: ["FUND: To get you in front of the right banks in the right order, it's a $3,000 deposit today.", "FUND: That $3,000 is not an additional fee. It goes directly toward your 10 percent success fee on the back end.", "REPAIR: Most expensive first. Lead with the Capital Blueprint button (DIY deliverables + course): the whole 12-month plan from their file, price off the screen. If that's a no: onboard now, all six rounds done for you, $1,000. Still a no: round one for $200, and the $200 counts toward the $1,000.", "EDU: Lead with the $5,000 full program. Only if that's a no: the $1,000 deliverables package plus the how-to course."], watch: "Rung buttons below on repair. Do NOT lead with the cheaper one." },
+    "S-19": { title: "The investment", lines: ["FUND: To get you in front of the right banks in the right order, it's a $3,000 deposit today.", "FUND: That $3,000 is not an additional fee. It goes directly toward your 10 percent success fee on the back end.", "REPAIR: Most expensive first. Lead with the Capital Blueprint button: the whole 12-month plan from their file, price off the screen. If that's a no: onboard now, all six rounds done for you, $1,000. Still a no: round one for $200, and the $200 counts toward the $1,000.", "EDU: Lead with the $5,000 full program. Only if that's a no: the $1,000 deliverables package plus the how-to course."], watch: "Rung buttons below on repair. Do NOT lead with the cheaper one." },
     "S-20": { title: "The math", lines: ["FUND: Walk it line by line off the screen. Deposit credits against the fee. Back end only charges once capital is in your hands.", "FUND: So we only make our money when you get funded. Our success is literally tied to yours.", "REPAIR: Put their own number in their face. You told me this costs you [$X] a month. That's [$X times 12] a year of staying exactly where you are. The fix starts on this call.", "EDU: Two courses, one skill set. Anchor the $5,000 against what they told you being stuck costs them every month."], watch: "Anchor against their own monthly cost number from discovery." },
     "S-21": { title: "The guarantees", lines: ["FUND: Read G-01 and G-02 off the screen, word for word. Those are the two in the agreement.", "REPAIR: Round one goes out today. You watch every dispute and response in your dashboard. Rounds escalate until the file is clean.", "EDU: Access gets set up on this call, and the deliverables generate from today's pull. They leave with it in hand."], watch: "Read only what the agreement says. Do not improvise promises beyond it." },
     "S-22": { title: "The ask", lines: ["FUND: Are you ready to get this started so we can get you funded?", "REPAIR: Want me to get that set up for you?", "EDU: Want me to get you set up right now?", "Then stop talking. First person to speak loses."], watch: "Calm, direct, assumptive. Guide to the natural next step." },
@@ -146,7 +185,8 @@
       "S-24": {
         title: "Wrap",
         lines: [
-          "Your deliverables generate from the pull we just ran and land in your email today, with the how-to course.",
+          /* The how-to course is part of the course that is off (COURSE_LIVE). */
+          "Your deliverables generate from the pull we just ran and land in your email today" + (COURSE_LIVE ? ", with the how-to course." : "."),
           "You run it at your own pace. Nobody is working the file for you on this one — that's the whole point of it.",
           "Whenever you want us to run the process for you instead, we're here. Any questions before we wrap?"
         ],
@@ -183,6 +223,22 @@
     ["Risk Reframe", "Riskier: $3K into a plan built from your own file, or the same spot in 6 months?"]
   ];
 
+  /* Part 8 of the script, Money (04-sales-call-script.md section 8). It has no
+     slide. The strip's 8 opens these steps in the cockpit and the client's
+     screen stays where it is. The pay link itself goes out from paperwork
+     (S-23), the one send path on this deck. */
+  var MONEY = {
+    title: "Money. Same offer, different pay terms.",
+    lines: [
+      "Money aside, is this the right plan for your file?",
+      "So this is not about whether. It's about how to make it work. Right?",
+      "Is money the only thing? Nothing else in the way?",
+      "Can we talk openly about money? Then I'll find the right way in.",
+      "What do you have that you can use today?"
+    ],
+    watch: "Lock the plan before you talk money. Ask if money is the only thing twice, two different ways. Same offer, different pay terms first. Move down one door only last, at its real price."
+  };
+
   var q = new URLSearchParams(location.search);
   var contactId = q.get("contact") || q.get("client_id") || q.get("id") || q.get("client") || "";
   var paymentStoreKey = "fh_call_payment_link:" + contactId;
@@ -198,7 +254,7 @@
   }
   var state = {
     idx: 0, tier: null, edu: false, forceRepair: false, rung: 0, temp: 0,
-    checks: {}, costNum: "", obj: null, showRef: false, toast: "", clientOnly: false,
+    checks: {}, costNum: "", obj: null, showRef: false, showMoney: false, toast: "", clientOnly: false,
     survey: {}, engine: { available: false, reason: "engine data unavailable", fico: {}, reasons: [] },
     offers: [], softPull: null, saleMotion: "", paymentLinkId: null, loaded: false, error: null,
     contractLink: "", contractMsg: "", blueprintAmountDollars: null, blueprintProvider: "commas",
@@ -266,9 +322,12 @@
     var cents = dollars * 100;
     return Number.isSafeInteger(cents) && cents >= o.priceMinCents && cents <= o.priceMaxCents ? cents : null;
   }
+  /* Financing is for the Capital Blueprint only, through Whop (script section 8,
+     owner-set 2026-10-29). The catalog still flags other offers, so the note is
+     limited here rather than read off the flag alone. */
   function financingNote(key) {
     var o = offer(key);
-    return o && o.financing ? '<div class="fin">Financing available</div>' : "";
+    return o && o.financing && key === "UWIQ_DELIVERABLES" ? '<div class="fin">Financing available</div>' : "";
   }
   function sharedContextPanel() {
     var handoff = state.setterHandoff || (state.sharedContext && state.sharedContext.setter_handoff);
@@ -356,7 +415,29 @@
     return offerDollars() || 0;
   }
   function code() { return DECK[Math.min(state.idx, DECK.length - 1)].code; }
-  function phase() { return DECK[state.idx].phase; }
+  /* The part of the script this slide belongs to: its key ("06") and the name
+     the strip and the cockpit header show ("6 The plan"). */
+  function phaseKey() { return DECK[state.idx].phase; }
+  function phaseName(key) {
+    for (var i = 0; i < PHASES.length; i++) if (PHASES[i][0] === key) return PHASES[i][1];
+    return key;
+  }
+  function phase() { return phaseName(phaseKey()); }
+  /* The first rung for a file that is not ready is the Capital Blueprint, the
+     most expensive door that fits (Chris, 2026-10-29; row 2). The rung numbers
+     themselves do not move: the server reads the same ones (selectedOfferKey in
+     src/sales/closer-deck.mjs). 0 is credit optimization, 1 is the round-one
+     trial, 2 is the Blueprint. A catalog without the Blueprint keeps rung 0. */
+  function leadRung() {
+    return !isFunding() && !state.edu && offer("UWIQ_DELIVERABLES") ? 2 : 0;
+  }
+  /* The door this call is on (script section 5), for the visuals' ctx.door.
+     Revenue funding (Door 2) runs by hand and has no route on this deck, so
+     the deck never names it; the visuals show it from the survey. */
+  function deckDoor() {
+    if (isFunding() && !state.edu) return state.tier === "FUNDING_PLUS_REPAIR" ? "fund_plus_optimize" : "fund";
+    return selectedOfferKey() === "UWIQ_DELIVERABLES" ? "blueprint" : "optimize";
+  }
   function firstName() {
     var n = (state.survey && state.survey.name) || "";
     return n.split(" ")[0] || "there";
@@ -464,18 +545,31 @@
       return '<div style="display:flex;gap:14px;padding:9px 0;border-bottom:1px solid var(--line)"><span class="mono" style="color:var(--gray2);width:96px;padding-top:3px">' + it[0] + '</span><div><div style="font-size:clamp(12px,1.25vw,14px);font-weight:600">' + it[1] + '</div><div style="font-size:clamp(10.5px,1.05vw,12px);color:var(--gray);margin-top:2px;line-height:1.45">' + it[2] + "</div></div></div>";
     }).join("") + "</div>";
   }
+  /* What the Capital Blueprint gives the client, read from the catalog
+     (src/config/offers.mjs), which stays as it is. Row 14: "Funding Snapshot"
+     is banned in sales copy, so it shows as "How Much You Qualify For", and the
+     mini course line is part of the course that is off (COURSE_LIVE). Each
+     item keeps its own line under it. */
+  var DELIVERABLE_SAYS = { "Funding Snapshot": "How Much You Qualify For" };
+  var DELIVERABLE_SUBS = [
+    "Your profile the way lenders actually see it",
+    "Pre-filled, bureaus and creditors, escalating rounds",
+    "Which accounts, what order, by how much",
+    "What you qualify for now, and what's in the way",
+    "Ranked in the order you should apply",
+    "How to send everything, what to do, what not to do"
+  ];
+  function blueprintDeliverables() {
+    var out = [];
+    contents().forEach(function (name, i) {
+      if (!COURSE_LIVE && /course/i.test(String(name))) return;
+      out.push({ name: DELIVERABLE_SAYS[name] || name, sub: DELIVERABLE_SUBS[i] || "" });
+    });
+    return out;
+  }
   function deliverableRows() {
-    return contents().map(function (name, i) {
-      var n = String(i + 1).padStart(2, "0");
-      var subs = [
-        "Your profile the way lenders actually see it",
-        "Pre-filled, bureaus and creditors, escalating rounds",
-        "Which accounts, what order, by how much",
-        "What you qualify for now, and what's in the way",
-        "Ranked in the order you should apply",
-        "How to send everything, what to do, what not to do"
-      ];
-      return row(esc(name), n, subs[i] || "");
+    return blueprintDeliverables().map(function (it, i) {
+      return row(esc(it.name), String(i + 1).padStart(2, "0"), it.sub);
     }).join("");
   }
   /* What the pre-approval figure actually covers (F15). Never a guess: the
@@ -490,9 +584,87 @@
     }
     return "All amounts, rates and terms are set by funding partners based on qualification.";
   }
+  /* Row 7: "number" is banned in sales copy (outcome-first-copy). */
+  var NOT_IN_YET = "Your results are not in yet";
   function unavail() {
-    return '<div class="unavail"><span class="mono">Your numbers are not on this file yet</span><p class="sub" style="margin-top:6px">Nothing here is guessed.</p></div>';
+    return '<div class="unavail"><span class="mono">' + NOT_IN_YET + '</span><p class="sub" style="margin-top:6px">Nothing here is guessed.</p></div>';
   }
+
+  /* ───────── THE VISUAL SLOTS (section 10.8) ─────────
+     Each new visual lives in its own file, loaded by present.html before this
+     one, and adds a function to window.FHDeckVisuals: yourPath, moneyLevers and
+     companies (present-visuals.js), blueprintDemo (present-blueprint-demo.js)
+     and journey (present-journey.js). Each takes ctx and returns the HTML for
+     the slide body, and handles its own taps. This file calls each one where
+     10.0 places it. A visual whose file is missing, whose engine.visual is
+     missing, that throws, or that draws nothing leaves today's slide in place,
+     so a missing file never breaks the deck. */
+  var visualCache = null;
+  /* engine.visual (src/sales/deck-visual-data.mjs), when the engine could read
+     the file. Source "none" means it could not, and the slides show today's
+     content. On a real pull this is the only place the once-fixed amount and
+     the negative items live: engine.afterFix, negItems and reasons stay empty
+     there. A null amount prints no amount. */
+  function deckVisual() {
+    var v = state.engine && state.engine.visual;
+    return v && typeof v === "object" && v.source !== "none" ? v : null;
+  }
+  /* One engine.visual amount, or the old field when engine.visual is missing or
+     does not carry it. An explicit null stays null: the engine withheld it. */
+  function visualAmount(key, fallback) {
+    var v = deckVisual();
+    return v && Object.prototype.hasOwnProperty.call(v, key) ? v[key] : fallback;
+  }
+  function visualCtx() {
+    var e = state.engine || {};
+    return {
+      engine: e,
+      visual: deckVisual(),
+      survey: state.survey || {},
+      handoff: state.setterHandoff || (state.sharedContext && state.sharedContext.setter_handoff) || null,
+      businesses: businesses(),
+      tier: state.tier,
+      door: deckDoor(),
+      sample: e.sample === true,
+      clientId: contactId,
+      money: money,
+      esc: esc
+    };
+  }
+  /* The visual's HTML, or null. One call per visual per paint. */
+  function visualHtml(name) {
+    if (visualCache && Object.prototype.hasOwnProperty.call(visualCache, name)) return visualCache[name];
+    var out = null;
+    var api = window.FHDeckVisuals;
+    var fn = api && typeof api[name] === "function" ? api[name] : null;
+    if (fn && deckVisual()) {
+      try {
+        var html = fn(visualCtx());
+        if (typeof html === "string" && html.trim()) out = html;
+      } catch (err) {
+        out = null;
+      }
+    }
+    if (visualCache) visualCache[name] = out;
+    return out;
+  }
+  /* ───────── THE VISUAL SLOTS — end ───────── */
+  /* The engine's negative items (engine.visual.items), in plain words: what it
+     is, who reports it, and which bureaus carry it. */
+  var ITEM_KIND = {
+    charge_off: "Charge-off", collection: "Collection", late: "Late payment",
+    medical: "Medical collection", public_record: "Public record", other: "Negative mark"
+  };
+  var BUREAU_NAME = { EX: "Experian", TU: "TransUnion", EQ: "Equifax" };
+  function itemsList(items) {
+    return '<div class="items-list">' + items.map(function (it) {
+      var bureaus = (Array.isArray(it.bureaus) ? it.bureaus : []).map(function (b) { return BUREAU_NAME[b] || b; }).join(", ");
+      return '<div class="item-row"><i></i><div><span class="mono">' + esc(ITEM_KIND[it.kind] || ITEM_KIND.other) + '</span>' +
+        '<div class="item-t">' + esc(it.creditor || "Unnamed creditor") + "</div>" +
+        (bureaus ? '<div class="item-b">On ' + esc(bureaus) + "</div>" : "") + "</div></div>";
+    }).join("") + "</div>";
+  }
+  function itemCount(n) { return n === 1 ? "1 item is limiting your approvals." : n + " items are limiting your approvals."; }
   function reasonsList(d, withPlan) {
     return (d.reasons || []).map(function (pair, i) {
       var plan = withPlan && d.plan && d.plan[i] ? '<span class="mono" style="font-size:8.5px;border:1px solid var(--line);background:var(--soft);border-radius:6px;padding:4px 8px;white-space:nowrap">' + esc(d.plan[i]) + "</span>" : "";
@@ -516,7 +688,7 @@
     var needsEngine = c !== "S-01" && c !== "S-02" && c !== "S-03" && c !== "S-04" && c !== "S-05" && c !== "S-06";
 
     if (c === "S-07" && !d.available) {
-      return slide("S-07", "Your results", kicker("Assessment") + h1("Your numbers are not on this file yet.") + sub("Nothing here is guessed. No amounts or scores are shown."));
+      return slide("S-07", "Your results", kicker("Assessment") + h1(NOT_IN_YET + ".") + sub("Nothing here is guessed. No amounts or scores are shown."));
     }
 
     if (c === "S-01") {
@@ -542,7 +714,8 @@
             b.incorporated_date ? "Incorporated" : "We need the month and year to price the file"
           );
         }).join("") +
-        row("Monthly revenue", esc(dash(answer(sv.revenue)))) +
+        /* Row 8: the survey asks for a yearly revenue range. */
+        row("Yearly revenue", esc(dash(answer(sv.revenue)))) +
         row("Annual income (they said)", esc(dash(answer(sv.income)))) +
         row("Income Insight (Experian)", esc(dash(moneyYr(inc.experian)))) +
         row("IncomeView (Equifax)", esc(dash(moneyYr(inc.equifax)))) +
@@ -564,7 +737,9 @@
       return slide("S-06", "UnderwriteIQ", '<div style="flex:1;display:flex;flex-direction:column;justify-content:center"><div style="display:flex;justify-content:space-between;align-items:center;max-width:600px">' + kicker("The engine") + '<span class="mono" style="color:var(--gray)">UnderwriteIQ · Operational</span></div><div style="border:1px solid var(--line);background:var(--soft);padding:12px 16px;max-width:600px;border-radius:10px">' +
         TERMINAL.map(function (l, i) { return '<div style="font-family:var(--mono);font-size:clamp(10px,1.05vw,12px);color:' + (i === 0 ? "var(--ink)" : "var(--gray)") + ';line-height:1.85">' + esc(l) + "</div>"; }).join("") +
         '<div style="font-family:var(--mono);font-size:clamp(10px,1.05vw,12px);color:var(--gray2);line-height:1.85">&gt; monitoring for updates _</div></div>' +
-        stats([["$25M+", "deployed for clients"], ["Thousands", "of lenders in network"]]) + "</div>");
+        /* Row 13: the two facts the offers document gives (page 1), in place of
+           the dollar total and the lender count the script took out. */
+        stats([["About 10 years", "doing this work"], ["Hundreds", "of client files built UnderwriteIQ"]]) + "</div>");
     }
     if (c === "S-07") {
       if (funding) {
@@ -577,7 +752,16 @@
            whether business funding is in it. */
         return slide("S-07", "Your results", kicker("How much you qualify for today") + h1(money(d.total), "clamp(32px,5.2vw,64px)") + sub("Based on where you're at right now, across multiple credit lines. Lenders make the final call.") + fine(basisLine(d)) + scores(d.fico) + sampleLine(d));
       }
-      return slide("S-07", "Your results", kicker(dash(d.negItems) + " negative items found · read the way lenders read it") + h1("Here's what the AI found.") + scoreBars(d.fico) + sampleLine(d) + '<div style="margin-top:8px">' + reasonsList(d, false) + "</div>" + sub("Cleaned up, this file projects to " + money(d.afterFix) + "."));
+      /* engine.visual first (a real pull has no afterFix or negItems), the old
+         fields as the fallback. No amount, no projection line. */
+      var vis = deckVisual();
+      var found = vis && Array.isArray(vis.items) ? vis.items.length : d.negItems;
+      var fixed = visualAmount("optimizedTotal", d.afterFix);
+      return slide("S-07", "Your results", kicker(dash(found) + " negative items found · read the way lenders read it") + h1("Here's what the AI found.") + scoreBars(d.fico) + sampleLine(d) + '<div style="margin-top:8px">' + reasonsList(d, false) + "</div>" + (fixed != null ? sub("Cleaned up, this file projects to " + money(fixed) + ".") : ""));
+    }
+    if (c === "L-01") {
+      /* Visual A, the money levers. Next only lands here when it draws (go()). */
+      return slide("L-01", "How much more", visualHtml("moneyLevers") || unavail());
     }
     if (c === "S-08") {
       if (edu) {
@@ -587,6 +771,9 @@
           ["03 / PROGRAM", "Funding Mastery, A to Z", "The complete Fundhub credit and funding program, start to finish."]
         ]));
       }
+      /* Visual E, your path, replaces the text below when it draws. */
+      var yourPath = visualHtml("yourPath");
+      if (yourPath) return slide("S-08", "Your path", yourPath);
       return slide("S-08", funding ? "The process" : "The plan", kicker(funding ? "Completely done-for-you" : "Recommended path") + h1(funding ? "Three steps. Done for you." : "Cleaned up first. Funded second.") + pathRows(funding ? [
         ["01 / MATCH", "AI Lender Matching", "The banks that match your file, in the right order."],
         ["02 / DEPLOY", "Sequential Round Deployment", "Applications in strategic rounds, Inquiry Sweeps between."],
@@ -600,6 +787,8 @@
     if (c === "S-09") {
       if (edu) return slide("S-09", "Course one", kicker("Everything the system built from your file today") + h1("Your complete deliverables.") + '<div style="margin-top:6px;max-width:580px">' + deliverableRows() + "</div>");
       if (funding) return slide("S-09", "The problem", kicker("Why applying on your own fails") + h1("Everyone else is guessing.") + bars(["Spray and pray. Applications fired at banks that were never going to say yes.", "Every denial is a hard inquiry that tanks your score.", "The lower the score drops, the more the next bank says no."]));
+      var items = deckVisual() && Array.isArray(deckVisual().items) ? deckVisual().items : null;
+      if (items) return slide("S-09", "The findings", kicker("Item by item") + h1(itemCount(items.length)) + itemsList(items) + sub("Every item already has a round assigned. This is the plan, not a promise of what happens later."));
       return slide("S-09", "The findings", kicker("Item by item") + h1(dash(d.negItems) + " items are limiting your approvals.") + '<div style="margin-top:10px">' + reasonsList(d, true) + "</div>" + sub("Every item already has a round assigned. This is the plan, not a promise of what happens later."));
     }
     if (c === "S-10") {
@@ -634,10 +823,15 @@
     }
     if (c === "S-14") {
       if (funding) return slide("S-14", "Step 3 of 3", kicker("Step 3 of 3") + h1("Done for you. Start to finish.") + bars(["The Fundhub team runs every application and every follow-up with the banks.", "Between rounds, we dispute the new inquiries. You don't fill out a single application.", "You focus on running and scaling the business. We handle the capital side."]));
-      return slide("S-14", "After cleanup", '<div style="flex:1;display:flex;flex-direction:column;justify-content:center">' + kicker("Why we clean up first") + h1("The same file, two positions.", "clamp(22px,3.2vw,40px)") + beforeAfter(d.total, d.afterFix) + fine("Projection based on your current file. Not a guarantee of approval, amounts, rates, or terms.") + "</div>");
+      return slide("S-14", "After cleanup", '<div style="flex:1;display:flex;flex-direction:column;justify-content:center">' + kicker("Why we clean up first") + h1("The same file, two positions.", "clamp(22px,3.2vw,40px)") + beforeAfter(visualAmount("todayTotal", d.total), visualAmount("optimizedTotal", d.afterFix)) + fine("Projection based on your current file. Not a guarantee of approval, amounts, rates, or terms.") + "</div>");
     }
     if (c === "S-15") {
       if (funding) return slide("S-15", "The timeline", kicker("After you sign") + h1("What happens next.") + '<div style="margin-top:10px;max-width:620px">' + row("Within 24 business hours", "Advisor", "Your dedicated funding advisor begins working your file") + row("Within 72 business hours", "Round 1", "Your first applications are submitted", true) + "</div>");
+      /* Visual D, the credit optimization journey, shows all six rounds in
+         place of the three-round grid below (row 11), which stays as the
+         fallback. */
+      var journey = visualHtml("journey");
+      if (journey) return slide("S-15", "Your journey", journey);
       return slide("S-15", "The timeline", kicker("Already built from today's pull") + h1("It's sitting in the queue.") + lettersGrid() + '<div style="margin-top:6px">' + row("All that's left", "The button", "Say the word and Round 1 is out today", true) + "</div>");
     }
     if (c === "S-16") {
@@ -650,10 +844,18 @@
           fine("Not to be confused with Fundhub Inquiry Sweeps — documented inquiry disputes filed on the record as part of funding rounds."));
       }
       return slide("S-16", "Financing we help you access", kicker(funding ? "The menu" : "What opens up after cleanup") + h1("Built around what you actually need.") +
-        '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px">' + MENU.map(function (m) {
-          return '<div style="border:1px solid var(--line);background:var(--soft);padding:9px 11px;border-radius:10px"><span class="mono" style="color:var(--gray2)">' + m[0] + '</span><div style="font-size:clamp(11px,1.1vw,12.5px);font-weight:650;margin-top:4px">' + m[1] + '</div><div style="font-size:clamp(9.5px,.95vw,10.5px);color:var(--gray);margin-top:3px;line-height:1.4">' + m[2] + "</div></div>";
+        '<div class="menu-grid">' + MENU.map(function (m) {
+          return '<div class="menu-item"><span class="mono">' + m[0] + '</span><div class="menu-t">' + esc(m[1]) + '</div><div class="menu-d">' + esc(m[2]) + "</div></div>";
         }).join("") + "</div>" +
+        '<div class="menu-steps"><span class="mono">How revenue funding works</span><ol>' + REVENUE_STEPS.map(function (t, i) {
+          return '<li><span class="n">' + String(i + 1).padStart(2, "0") + '</span><span class="t">' + esc(t) + "</span></li>";
+        }).join("") + "</ol></div>" +
         fine("Intro APR offers are set by card issuers, apply for limited promotional periods, and revert to issuer standard rates. All amounts, rates, and terms are determined by funding partners based on qualification."));
+    }
+    if (c === "C-01") {
+      /* Visual B, more companies, more funding. Door 1 only, and Next only
+         lands here when it draws (go()). */
+      return slide("C-01", "More companies", visualHtml("companies") || unavail());
     }
     if (c === "S-17") {
       return slide("S-17", "Alignment", '<div style="flex:1;display:flex;flex-direction:column;justify-content:center">' + kicker("How we work") + h1("Our team is all in.", "clamp(24px,3.6vw,44px)") + sub("We're rolling up our sleeves and getting in the trenches with you on this. So it matters to us that you feel good about the process.") + '<div style="margin-top:16px;max-width:200px" class="hair"></div></div>');
@@ -669,14 +871,14 @@
       if (funding) {
         return slide("S-19", "The investment", '<div style="flex:1;display:flex;flex-direction:column;justify-content:center">' + kicker("To activate the system today") + '<div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">' + h1(price("FUNDING_DFY"), "clamp(32px,5.2vw,60px)") + '<span style="font-family:var(--mono);font-size:clamp(12px,1.3vw,15px);color:var(--gray)">deposit</span></div>' + sub("Not an additional fee. It goes directly toward your 10 percent success fee on the back end.") + '<div style="margin-top:14px;max-width:200px" class="hair"></div></div>');
       }
-      if (rung === 0) return slide("S-19", "The investment", fill(kicker("Done-for-you credit repair") + h1(price("REPAIR_DFY"), "clamp(28px,4.4vw,52px)") + '<div style="margin-top:8px;max-width:560px">' + row("Forensic audit", "Included", "Your full file, the way lenders see it") + row("Disputes", "All rounds", "Both the bureaus and the creditors, escalating") + row("Your dashboard", "Real time", "Watch every move happen. You don't touch a thing.") + "</div>" + financingNote("REPAIR_DFY")));
+      if (rung === 0) return slide("S-19", "The investment", fill(kicker("Credit optimization, done for you") + h1(price("REPAIR_DFY"), "clamp(28px,4.4vw,52px)") + '<div style="margin-top:8px;max-width:560px">' + row("Forensic audit", "Included", "Your full file, the way lenders see it") + row("Disputes", "All rounds", "Both the bureaus and the creditors, escalating") + row("Your dashboard", "Real time", "Watch every move happen. You don't touch a thing.") + "</div>" + financingNote("REPAIR_DFY")));
       if (rung === 1) return slide("S-19", "The investment", fill(kicker("Try it first, done for you") + h1(price("REPAIR_TRIAL"), "clamp(28px,4.4vw,52px)") + '<div style="margin-top:8px;max-width:560px">' + row("Round 1", "We run it", "Our team fires your first full round, bureaus and creditors") + row("You watch", "Dashboard", "Every dispute and response, live") + row("Then decide", "Your call", "Continue full done-for-you, or take it from here") + "</div>" + financingNote("REPAIR_TRIAL")));
       return slide("S-19", "The investment", fill(kicker("Do it yourself, everything from your file") + h1(price("UWIQ_DELIVERABLES"), "clamp(24px,3.8vw,44px)") + '<div style="margin-top:6px;max-width:580px">' + deliverableRows() + "</div>" + financingNote("UWIQ_DELIVERABLES")));
     }
     if (c === "S-20") {
       if (edu) return slide("S-20", "Two courses", fill(kicker("Side by side") + h1("Two courses. One skill set.") + '<div style="margin-top:10px;max-width:620px">' + row("Course 1 — UWIQ deliverables + bank list", price("UWIQ_DELIVERABLES"), "Everything from your file. You execute it with the how-to course.") + row("Course 2 — Funding Mastery, A to Z", price("FUNDING_MASTERY"), "The complete program, start to finish, on your own data", true) + "</div>"));
-      if (funding) return slide("S-20", "The math", fill(kicker("Line by line") + h1("We only make money when you get funded.") + '<div style="margin-top:10px;max-width:560px">' + row("Your funding", money(d.total), "Pre-approval from today's scan") + row("Total success fee, " + feePct + " percent", money(fee)) + row("Your deposit, credited", deposit != null ? ("- " + money(deposit)) : "—") + row("Back end balance", money(backEnd), "Only charged once the capital is actually in your hands", true) + "</div>" + sub("Our success is literally tied to yours.")));
-      if (costN > 0) return slide("S-20", "Then we fund you", '<div style="flex:1;display:flex;flex-direction:column;justify-content:center">' + kicker("What staying stuck costs") + h1(money(costN) + " a month.", "clamp(28px,4.4vw,52px)") + '<div style="margin-top:10px;max-width:560px">' + row("Every month this file sits", money(costN), "Your number, from earlier on this call") + row("Over a year", money(costN * 12), "Gone, without the file moving an inch", true) + row("The fix", "Starts today", "Cleaned up first, funded second, strongest position") + "</div></div>");
+      if (funding) return slide("S-20", "The math", fill(kicker("Line by line") + h1("We only make money when you get funded.") + '<div style="margin-top:10px;max-width:560px">' + row("Your funding", money(d.total), "How much you qualify for today. Lenders make the final call.") + row("Total success fee, " + feePct + " percent", money(fee)) + row("Your deposit, credited", deposit != null ? ("- " + money(deposit)) : "—") + row("Back end balance", money(backEnd), "Only charged once the capital is actually in your hands", true) + "</div>" + sub("Our success is literally tied to yours.")));
+      if (costN > 0) return slide("S-20", "Then we fund you", '<div style="flex:1;display:flex;flex-direction:column;justify-content:center">' + kicker("What staying stuck costs") + h1(money(costN) + " a month.", "clamp(28px,4.4vw,52px)") + '<div style="margin-top:10px;max-width:560px">' + row("Every month this file sits", money(costN), "What you said it costs you, earlier on this call") + row("Over a year", money(costN * 12), "Gone, without the file moving an inch", true) + row("The fix", "Starts today", "Cleaned up first, funded second, strongest position") + "</div></div>");
       return slide("S-20", "Then we fund you", '<div style="flex:1;display:flex;flex-direction:column;justify-content:center">' + kicker("What staying stuck costs") + h1("Cleaned up first. Funded second.", "clamp(24px,3.6vw,44px)") + sub("We get your credit cleaned up first, so when we run the full funding process you're in the strongest possible position and we can maximize your approval amount.") + "</div>");
     }
     if (c === "S-21") {
@@ -687,7 +889,7 @@
       return slide("S-21", "When we start", kicker("What happens when we start") + h1("Round one goes out today.") + '<div style="margin-top:10px;max-width:620px">' + row("Today", "Letters out", "Generated from the pull we just ran, in your email") + row("Your dashboard", "Live", "Track every dispute and every response") + row("Round by round", "Escalate", "Until the file is where it needs to be") + "</div>");
     }
     if (c === "S-22") {
-      return slide("S-22", "Ready when you are", '<div style="flex:1;display:flex;flex-direction:column;justify-content:center">' + h1("Ready when you are.", "clamp(28px,4.6vw,56px)") + '<div class="mono" style="margin-top:12px;letter-spacing:.06em">' + (funding ? "Customer-initiated · Three guarantees · Two weeks" : "Customer-initiated · Starts today · Tracked live") + '</div><div style="margin-top:16px;max-width:200px" class="hair"></div></div>');
+      return slide("S-22", "Ready when you are", '<div style="flex:1;display:flex;flex-direction:column;justify-content:center">' + h1("Ready when you are.", "clamp(28px,4.6vw,56px)") + '<div class="mono" style="margin-top:12px;letter-spacing:.06em">' + (funding ? "Customer-initiated · Three guarantees · Done for you" : "Customer-initiated · Starts today · Tracked live") + '</div><div style="margin-top:16px;max-width:200px" class="hair"></div></div>');
     }
     if (c === "S-23") {
       /* "Advisor contact" is not true on every sale. The rows follow the offer
@@ -707,7 +909,7 @@
       var next = edu
         ? row("Today", "Deliverables", "Everything from your file lands in your email") + row("Your pace", "Program", "Work through it on your own schedule") + row("When you're ready", "Funding", "We run the full process whenever you want")
         : funding
-          ? row("Within 24 business hours", "Advisor", "Your dedicated funding advisor reaches out and starts on your file") + row("Within 72 business hours", "Round 1", "Your first round of applications is submitted") + row("A few days after", "Approvals", "You should start seeing your first approvals")
+          ? row("Within 24 business hours", "Advisor", "Your dedicated funding advisor reaches out and starts on your file") + row("Within 72 business hours", "Round 1", "Your first round of applications is submitted") + row("After each round", "Updates", "Every application and every answer shows in your portal")
           : row("Today", "Round 1", "Your letters generate from this pull and land in your email") + row("Your dashboard", "Live", "Track every dispute and every response") + row("When it's clean", "Funding", "We run the full process at maximum strength");
       return slide("S-24", "Welcome aboard", '<div style="flex:1;display:flex;flex-direction:column;justify-content:center">' + h1("Here's what happens next.", "clamp(22px,3.4vw,42px)") + '<div style="margin-top:10px;max-width:560px">' + next + '</div><div style="margin-top:16px;display:flex;align-items:center;gap:12px"><span class="brand">fundhub<span>.</span></span><div style="flex:1;max-width:140px" class="hair"></div><span class="mono">systems nominal</span></div></div>');
     }
@@ -731,8 +933,8 @@
      src/config/offers.mjs, the same number the pay link charges. A price the
      owner has not set is UNSET_PRICE, "$X": FinanceOS's setup fee and its
      per-container price (no catalog entry; the FinanceOS Setup tab paints the
-     same $X), and the Blueprint's monthly member fee (named, never priced:
-     docs/finance/capital-blueprint-next-2026-09-29.md). No item carries a
+     same $X). B-04 no longer names a monthly member fee after the 12 months:
+     there is no renewal charge (owner call, 2026-10-29). No item carries a
      "value" dollar figure. No such number exists in the repo, so each one says
      what it does for the caller instead.
 
@@ -771,7 +973,7 @@
       line: "A new soft pull every 30 days. Your checklist and your letters update from what changed." },
     /* src/blueprint/closer-ready.mjs, src/finance/ready-to-fund.mjs */
     { key: "ready", door: "both", name: "Ready to get funded", fos: "The “I'm ready to get funded” button",
-      line: "When the engine says your file is ready, your CSM preps you and a closer calls about funding. You can also ask with one button." },
+      line: "When the engine says your file is ready, the Fundhub team preps you and a closer calls about funding. You can also ask with one button." },
     /* src/blueprint/paydown-simulator.mjs, FinanceOS Strategy tab */
     { key: "paydown", door: "both", name: "Paydown and payment strategy", fos: "Payment strategy",
       line: "Enter the cash you have. See which cards to pay down first, by how much, and a payoff plan to your goal date." },
@@ -860,14 +1062,14 @@
         "Want me to get you set up?",
         "Then stop talking."
       ],
-      watch: "Price only from the screen. The member fee line shows $X: there is no renewal charge after the 12 months, so never quote a member fee. Never promise an approval, an amount, a score, or a removal. The guarantees on S-21 belong to the funding offer: read G-01 and G-02 there word for word, never for the Blueprint."
+      watch: "Price only from the screen. There is no renewal charge after the 12 months, so never quote a member fee. Never promise an approval, an amount, a score, or a removal. The guarantees on S-21 belong to the funding offer: read G-01 and G-02 there word for word, never for the Blueprint."
     },
     "B-05": {
       title: "Downsell. Start with FinanceOS.",
       lines: [
         "If the full Blueprint isn't right today, start with FinanceOS.",
         "One setup fee, then a monthly price for each container. A container is each business and each person on your account.",
-        "When you're ready to get funded, one button tells your CSM."
+        "When you're ready to get funded, one button tells the Fundhub team."
       ],
       watch: "FinanceOS prices are not set yet and show $X. This deck has no FinanceOS checkout, so take no payment for it on this call and do not log it as a sale."
     },
@@ -875,16 +1077,26 @@
       title: "Upsell path. One button up.",
       lines: [
         "Here's how it works when you're ready.",
-        "You prep in FinanceOS. Press \"I'm ready to get funded\" and your CSM reaches out.",
+        "You prep in FinanceOS. Press \"I'm ready to get funded\" and the Fundhub team reaches out.",
         "Move up to the Blueprint, and when the engine says your file is ready, a closer calls about funding."
       ],
-      watch: "A FinanceOS-only client stops at the CSM. The closer is called only for a Blueprint client whose file is ready. Never promise when that will be."
+      watch: "A FinanceOS-only client stops at the Fundhub team. The closer is called only for a Blueprint client whose file is ready. Never promise when that will be."
     }
   };
+  /* B-03 when visual C, the Blueprint dashboard, draws in the slides (row 12).
+     It needs no test account, so the sample-client links are not shown. */
+  var DEMO_TALK = {
+    title: "Your dashboard. Click through it.",
+    lines: [
+      "This is your Blueprint dashboard, built from your own file.",
+      "Let me click through it with you, one step at a time."
+    ],
+    watch: "Tapping on it saves nothing, sends nothing and charges nothing. A Sample label means it is not their file yet: say so out loud. Never promise an approval, an amount, a score, or a removal."
+  };
 
+  /* Part 6 also holds S-09 to S-16 and C-01, so the stack is the B slides. */
   function isStackCode(c) {
-    for (var i = 0; i < DECK.length; i++) if (DECK[i].code === c) return DECK[i].phase.indexOf("06") === 0;
-    return false;
+    return /^B-\d\d$/.test(String(c || ""));
   }
   function plural(n, word) {
     return n + " " + word + (n === 1 ? "" : (/s$/.test(word) ? "es" : "s"));
@@ -893,7 +1105,10 @@
      engine's sort and item count, and the companies on the file. */
   function stackCtx() {
     var d = state.engine || {};
-    var n = d.available && d.negItems != null && isFinite(Number(d.negItems)) ? Number(d.negItems) : null;
+    /* A real pull leaves negItems empty; engine.visual carries the items (board 10.2). */
+    var v = d.visual && d.visual.source && d.visual.source !== "none" && Array.isArray(d.visual.items) ? d.visual : null;
+    var n = v ? v.items.length
+      : (d.available && d.negItems != null && isFinite(Number(d.negItems)) ? Number(d.negItems) : null);
     return {
       pulled: !!d.available,
       neg: n,
@@ -959,6 +1174,16 @@
      margins centre it only while it fits. */
   function stackFill(inner) { return '<div class="stk-fill"><div class="stk-fill-in roomy">' + inner + "</div></div>"; }
 
+  /* Row 16: the five things the client gets, at the top of B-02, from the
+     catalog in the words the script reads (blueprintDeliverables). */
+  function stackGets() {
+    var list = blueprintDeliverables();
+    if (!list.length) return "";
+    return '<div class="stk-gets"><span class="mono">What you get</span><ul class="stk-five">' + list.map(function (it) {
+      return '<li><span class="ck" aria-hidden="true">✓</span><span>' + esc(it.name) + "</span></li>";
+    }).join("") + "</ul></div>";
+  }
+
   /* The client half: what the caller sees on the screen share. */
   function stackSlide(c) {
     var x = stackCtx();
@@ -975,14 +1200,16 @@
         "</div>" + fine(NO_PROMISE)));
     }
     if (c === "B-02") {
-      if (!on.length) return slide("B-02", "Your stack", stackFill(kicker("Built around your file") + h1("Your Capital Blueprint.") + picking));
-      return slide("B-02", "Your stack", stackFill(kicker("Built around your file") + h1("Everything in your Capital Blueprint.") +
+      if (!on.length) return slide("B-02", "Your stack", stackFill(kicker("Built around your file") + h1("Your Capital Blueprint.") + stackGets() + picking));
+      return slide("B-02", "Your stack", stackFill(kicker("Built around your file") + h1("Everything in your Capital Blueprint.") + stackGets() +
         '<div class="stk-grid">' + on.map(function (it, i) {
           return '<div class="stk-item" data-stack="' + esc(it.key) + '"><span class="n">' + String(i + 1).padStart(2, "0") +
             '</span><div class="t">' + esc(it.name) + '</div><div class="d">' + esc(stackLine(it, x)) + "</div></div>";
         }).join("") + "</div>" + fine(NO_PROMISE)));
     }
     if (c === "B-03") {
+      var demo = visualHtml("blueprintDemo");
+      if (demo) return slide("B-03", "Your dashboard", demo);
       return slide("B-03", "FinanceOS", stackFill(
         kicker("FinanceOS · 12 months included with the Blueprint") +
         h1("Your money, on one page.", "clamp(24px,3.4vw,42px)") +
@@ -999,7 +1226,6 @@
         }).join("") + "</div>" : picking) +
         '<div class="stk-price"><span class="mono">Capital Blueprint · 12 months</span>' +
           h1(esc(price("UWIQ_DELIVERABLES")), "clamp(30px,4.6vw,56px)") + "</div>" +
-        '<div style="max-width:760px">' + row("After 12 months", "Monthly member fee · " + UNSET_PRICE, "Not set yet") + "</div>" +
         financingNote("UWIQ_DELIVERABLES") + fine(NO_PROMISE)));
     }
     if (c === "B-05") {
@@ -1022,11 +1248,11 @@
         stackPath([
           ["FinanceOS", "Track and prep"],
           ["“I'm ready to get funded”", "One button"],
-          ["Your CSM", "Preps your file"],
+          ["The Fundhub team", "Preps your file"],
           ["Capital Blueprint", "The full system"],
           ["A closer calls", "When the file is ready"]
         ]) +
-        sub("Start with FinanceOS. Press the button and your CSM reaches out. Move up to the Blueprint, and a closer calls when the engine says your file is ready.") +
+        sub("Start with FinanceOS. Press the button and the Fundhub team reaches out. Move up to the Blueprint, and a closer calls when the engine says your file is ready.") +
         fine("Ready means UnderwriteIQ's own checks pass on your newest file. It is not a promise of approval or an amount.")));
     }
     return slide(c, "Capital Blueprint", "");
@@ -1071,7 +1297,7 @@
         '</div><div class="stk-why">Yes sets Capital Blueprint as the offer and opens S-23 for the agreement and pay link.</div></div>';
     }
     if (c === "B-02" || c === "B-04") html += stackToggles(x);
-    if (c === "B-03") html += fosDemo();
+    if (c === "B-03" && !visualHtml("blueprintDemo")) html += fosDemo();
     if (c === "B-05") {
       html += '<div><span class="mono">Next move</span><div class="stk-acts">' +
         ckBtn("Ready later? Show the path up", "stack-go:B-06") +
@@ -1093,7 +1319,7 @@
   }
   function leaveStack() {
     var back = state.stackFrom;
-    jumpTo(back != null && DECK[back] && !isStackCode(DECK[back].code) ? DECK[back].code : "S-22");
+    jumpTo(back != null && DECK[back] && !isStackCode(DECK[back].code) ? DECK[back].code : "S-08");
   }
   function toggleStack(key) {
     var known = STACK.some(function (it) { return it.key === key; });
@@ -1232,10 +1458,15 @@
 
   function cockpit() {
     var t = closeTalk(code()) || TALK[code()] || STACK_TALK[code()] || { title: "", lines: [], watch: "" };
+    if (code() === "B-03" && visualHtml("blueprintDemo")) t = DEMO_TALK;
+    if (state.showMoney) t = MONEY;
     var d = state.engine || {};
     var funding = isFunding() && !state.edu;
-    var ph = phase();
-    var showEngine = ph !== "01 Intro" && ph !== "02 Discovery";
+    /* pk is the script part this slide belongs to (PHASES). While the money
+       steps are open, the header and the strip say part 8. */
+    var pk = phaseKey();
+    var ph = state.showMoney ? phaseName("08") : phase();
+    var showEngine = pk !== "01" && pk !== "02";
     var html = '<div class="ck"><div class="ck-hd"><div style="display:flex;justify-content:space-between"><span class="mono" style="color:var(--gray)">' + esc(ph) + '</span><span class="mono">' + (state.idx + 1) + " / " + DECK.length + '</span></div><div class="t">' + esc(t.title) + "</div></div><div class=\"ck-bd\">";
 
     if (state.obj !== null) {
@@ -1247,6 +1478,14 @@
     } else if (state.showRef) {
       html += '<div style="display:flex;justify-content:space-between"><span class="mono" style="color:var(--gray)">Reframing patterns</span><button type="button" class="btn-ghost" data-act="ref-back">Back</button></div>';
       html += REFRAMES.map(function (r) { return "<div><div style=\"font-size:11.5px;font-weight:700\">" + esc(r[0]) + '</div><div style="font-size:11px;color:var(--gray);margin-top:2px">' + esc(r[1]) + "</div></div>"; }).join("");
+    } else if (state.showMoney) {
+      /* Part 8, Money: lock the plan, then talk money. The client's slide does
+         not move. The pay link goes out from paperwork (S-23). */
+      html += '<div style="display:flex;justify-content:space-between"><span class="mono" style="color:var(--gray)">Money</span><button type="button" class="btn-ghost" data-act="money-back">Back</button></div>';
+      html += '<div><span class="mono">Lock the plan first</span><div style="margin-top:6px;display:flex;flex-direction:column;gap:6px">' +
+        MONEY.lines.map(function (l) { return '<div class="say">' + esc(l) + "</div>"; }).join("") + "</div></div>";
+      html += '<div class="watch"><span class="mono">Watch for</span><div style="font-size:11px;color:var(--gray);margin-top:4px">' + esc(MONEY.watch) + "</div></div>";
+      html += ckBtn("Go to paperwork: agreement and pay link", "money-pay", true);
     } else {
       html += '<div><span class="mono">Say this</span><div style="margin-top:6px;display:flex;flex-direction:column;gap:6px">';
       t.lines.filter(function (l) {
@@ -1262,7 +1501,7 @@
       });
       html += '</div></div><div class="watch"><span class="mono">Watch for</span><div style="font-size:11px;color:var(--gray);margin-top:4px">' + esc(t.watch) + "</div></div>";
 
-      if (ph === "02 Discovery") {
+      if (pk === "02") {
         /* Above the belief list on purpose: on a laptop the cockpit scrolls,
            and an ask below the fold is an ask nobody makes. */
         html += incorporationAsk();
@@ -1274,7 +1513,7 @@
         html += '</div><div style="margin-top:7px"><span class="mono">Their monthly cost of inaction</span><input id="fh-cost" value="' + esc(state.costNum) + '" placeholder="$ per month, in their words" style="margin-top:4px;width:100%;background:transparent;border:1px solid var(--line);color:var(--ink);font-family:var(--mono);font-size:11px;padding:7px 9px;outline:none"></div></div>';
       }
 
-      if (ph === "03 Soft pull" || code() === "S-05") {
+      if (pk === "03" || code() === "S-07") {
         var sp = state.softPull || {};
         html += '<div><span class="mono">Live soft pull</span>';
         html += '<div style="margin-top:6px;font-family:var(--mono);font-size:10px;color:var(--gray);line-height:1.55">';
@@ -1296,11 +1535,11 @@
       }
 
       if (code() === "S-07") {
-        html += '<div><span class="mono">Route the call</span><div style="font-size:10.5px;color:var(--gray2);margin:4px 0 6px">Engine returned ' + esc(d.label || "unavailable") + ". Education is client-driven — route it only if that's their ask.</div><div style=\"display:flex;flex-direction:column;gap:5px\">";
+        html += '<div><span class="mono">Route the call</span><div style="font-size:10.5px;color:var(--gray2);margin:4px 0 6px">Engine returned ' + esc(d.label || "unavailable") + "." + (COURSE_LIVE ? " Education is client-driven — route it only if that's their ask." : "") + "</div><div style=\"display:flex;flex-direction:column;gap:5px\">";
         [["FULL_FUNDING", "FULL FUNDING"], ["FUNDING_PLUS_REPAIR", "FUNDING PLUS REPAIR"], ["REPAIR_ONLY", "REPAIR ONLY"]].forEach(function (pair) {
           html += ckBtn(pair[1], "tier:" + pair[0], pair[0] === state.tier && !state.edu);
         });
-        html += ckBtn("EDUCATION PATH", "edu", state.edu);
+        if (COURSE_LIVE) html += ckBtn("EDUCATION PATH", "edu", state.edu);
         html += "</div></div>";
       }
 
@@ -1320,9 +1559,11 @@
           html += ckBtn("Course 2: Funding Mastery  " + price("FUNDING_MASTERY"), "rung:0", state.rung === 0);
           html += ckBtn("Course 1: UWIQ deliverables + bank list  " + price("UWIQ_DELIVERABLES"), "rung:1", state.rung === 1);
         } else {
+          /* Row 2: most expensive first, so the Capital Blueprint is the first
+             rung. Each button keeps its rung number (leadRung). */
+          html += ckBtn("Capital Blueprint  " + price("UWIQ_DELIVERABLES"), "rung:2", state.rung === 2);
           html += ckBtn("Onboard now: full done-for-you  " + price("REPAIR_DFY"), "rung:0", state.rung === 0);
           html += ckBtn("Trial: first round done-for-you  " + price("REPAIR_TRIAL"), "rung:1", state.rung === 1);
-          html += ckBtn("DIY deliverables + course  " + price("UWIQ_DELIVERABLES"), "rung:2", state.rung === 2);
         }
         /* The education hint READS the two prices instead of asserting a drop
            between them. Capital Blueprint moved to $5,000 on 2026-09-03 (owner-set,
@@ -1338,7 +1579,7 @@
             ? "Both courses are " + topPrice + ". Lead with Funding Mastery; this is a choice of course, not a step down on price."
             : "Lead with the " + topPrice + ". Only offer the " + altPrice + " if it's a no.";
         } else {
-          eduHint = "Lead with the Blueprint (DIY deliverables + course), then $1,000, then $200. Only step down on a no.";
+          eduHint = "Lead with the Capital Blueprint, then " + price("REPAIR_DFY") + ", then " + price("REPAIR_TRIAL") + ". Only step down on a no.";
         }
         html += '</div><div style="font-size:10.5px;color:var(--gray2);margin-top:6px">' + eduHint + "</div>";
         /* The Blueprint rung opens the full 06 stack: every piece, FinanceOS,
@@ -1389,6 +1630,14 @@
           html += "</select>";
         }
         html += sendBtn("Send pay link", "pay", true);
+        /* Row 9: a funding-plus-repair agreement is the deposit plus credit
+           optimization, so the second link goes out from here too. It is the
+           same write the call cockpit's pay panel makes (closer-call.js
+           wirePayLink): no new endpoint. */
+        if (state.tier === "FUNDING_PLUS_REPAIR" && offerKey === "FUNDING_DFY" && offer("REPAIR_DFY")) {
+          html += sendBtn("Send credit optimization pay link · " + price("REPAIR_DFY"), "pay-optimize", false);
+          html += '<div style="font-size:10.5px;color:var(--gray2)">Funding plus credit optimization is ' + esc(price("FUNDING_DFY")) + " plus " + esc(price("REPAIR_DFY")) + ". Send both links.</div>";
+        }
 
         /* The fulfilment step for THIS offer, and only this offer. */
         if (state.edu) {
@@ -1445,20 +1694,24 @@
         html += "</div></div>";
       }
 
-      if (ph === "05 Commit" || ph === "07 Close") {
+      /* The ask (part 7) and paperwork (part 9), as before. Objections stay
+         here, in the cockpit. */
+      if (pk === "07" || pk === "09") {
         html += '<div><span class="mono">Descent ladder — every call monetizes</span><div style="margin-top:6px;display:flex;flex-direction:column;gap:4px">';
         var ladder = [
           ["fund", "Funding · " + price("FUNDING_DFY") + " deposit", "desc:fund", funding && !state.edu],
+          ["diy", "Capital Blueprint · " + price("UWIQ_DELIVERABLES"), "desc:diy", !funding && !state.edu && state.rung === 2],
           ["dfy", "Repair DFY · " + price("REPAIR_DFY"), "desc:dfy", !funding && !state.edu && state.rung === 0],
-          ["trial", "Repair trial round · " + price("REPAIR_TRIAL"), "desc:trial", !funding && !state.edu && state.rung === 1],
-          ["diy", "DIY letters + course · " + price("UWIQ_DELIVERABLES"), "desc:diy", !funding && !state.edu && state.rung === 2],
-          ["eduTop", "Funding Mastery · " + price("FUNDING_MASTERY"), "desc:eduTop", state.edu && state.rung === 0],
-          ["eduLow", "Education deliverables · " + price("UWIQ_DELIVERABLES"), "desc:eduLow", state.edu && state.rung === 1]
+          ["trial", "Repair trial round · " + price("REPAIR_TRIAL"), "desc:trial", !funding && !state.edu && state.rung === 1]
         ];
+        if (COURSE_LIVE) {
+          ladder.push(["eduTop", "Funding Mastery · " + price("FUNDING_MASTERY"), "desc:eduTop", state.edu && state.rung === 0]);
+          ladder.push(["eduLow", "Education deliverables · " + price("UWIQ_DELIVERABLES"), "desc:eduLow", state.edu && state.rung === 1]);
+        }
         ladder.forEach(function (row) {
           html += '<button type="button" data-act="' + row[2] + '" style="font-family:var(--mono);font-size:10px;text-align:left;padding:7px 10px;border-radius:7px;background:' + (row[3] ? "var(--ink)" : "transparent") + ";color:" + (row[3] ? "var(--paper)" : "var(--gray)") + ";border:1px solid var(--line);cursor:pointer\">" + esc(row[1]) + "</button>";
         });
-        html += '</div><div style="font-size:10px;color:var(--gray2);margin-top:5px">One click reshapes the price screen. Descend only on a no. Financing available on everything except the soft pull and the funding deposit.</div></div>';
+        html += '</div><div style="font-size:10px;color:var(--gray2);margin-top:5px">One click reshapes the price screen. Descend only on a no. Financing: the Capital Blueprint only, through Whop.</div></div>';
         html += '<div><div style="display:flex;justify-content:space-between"><span class="mono">Objections</span><button type="button" class="btn-ghost" data-act="reframes">Reframes</button></div><div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:5px">';
         OBJECTIONS.forEach(function (o, i) {
           html += '<button type="button" class="btn-ghost" data-act="obj:' + i + '">' + esc(o.t) + "</button>";
@@ -1469,7 +1722,7 @@
       if (showEngine) {
         var beliefs = Object.keys(state.checks).filter(function (k) { return state.checks[k]; }).length;
         html += '<div style="border-top:1px solid var(--line);padding-top:9px"><span class="mono">Engine data</span><div style="margin-top:5px;font-family:var(--mono);font-size:10px;color:var(--gray);line-height:1.6">';
-        if (!d.available) html += "<div>Your numbers are not on this file yet</div>";
+        if (!d.available) html += "<div>" + NOT_IN_YET + "</div>";
         else {
           /* F15 — the money line names what it covers and where it came from.
              It used to print a figure this screen had just recalculated, 4.7x
@@ -1485,10 +1738,14 @@
     }
 
     html += sharedContextPanel();
+    /* The strip: the script's nine part names (10.0, row 19). Each button
+       jumps to the first slide of its part that this file walks; 8 opens the
+       money steps. */
     html += '</div><div class="ck-ph">';
-    ["01", "02", "03", "04", "05", "06", "07"].forEach(function (p) {
-      var active = ph.indexOf(p) === 0;
-      html += '<button type="button" data-act="phase:' + p + '"' + (p === "06" ? ' title="Capital Blueprint + FinanceOS"' : "") + ' style="flex:1;font-family:var(--mono);font-size:9px;letter-spacing:.08em;padding:5px 0;background:' + (active ? "var(--ink)" : "transparent") + ";color:" + (active ? "var(--paper)" : "var(--gray2)") + ";border:1px solid var(--line);cursor:pointer\">" + p + "</button>";
+    var lit = state.showMoney ? "08" : pk;
+    PHASES.forEach(function (p) {
+      var active = p[0] === lit;
+      html += '<button type="button" data-act="phase:' + p[0] + '" style="font-family:var(--sans);font-size:11px;font-weight:600;line-height:1.2;padding:5px 4px;background:' + (active ? "var(--ink)" : "transparent") + ";color:" + (active ? "var(--paper)" : "var(--gray)") + ";border:1px solid var(--line);cursor:pointer\">" + esc(p[1]) + "</button>";
     });
     html += '</div><div class="ck-ft"><button type="button" class="ck-btn" data-act="back" style="width:auto"' + (state.idx === 0 ? " disabled" : "") + ">Back</button><button type=\"button\" class=\"ck-btn k\" data-act=\"next\" style=\"flex:1\" " + (state.idx === DECK.length - 1 ? "disabled" : "") + ">Next screen</button></div>";
     if (state.toast) html += '<div class="toast">' + esc(state.toast) + "</div>";
@@ -1511,14 +1768,22 @@
       return;
     }
     var dots = DECK.map(function (s, i) { return '<i class="' + (i <= state.idx ? "on" : "") + '"></i>'; }).join("");
-    root.innerHTML =
-      '<div class="topbar"><span class="mono">' + esc((state.survey && state.survey.name) || "Present") + "</span>" +
-      (state.engine && !state.engine.available ? '<span class="mono" style="color:var(--gray)">Your numbers are not on this file yet</span>' : "") +
-      '<div class="sp"></div><button type="button" class="btn-ghost" data-act="client-only">' +
-      (state.clientOnly ? "Show cockpit" : "Client screen only") + "</button></div>" +
-      '<div class="stage"><div class="client' + (state.clientOnly ? " solo" : "") + '">' + clientSlide() +
-      '<div class="dots">' + dots + "</div></div>" +
-      (state.clientOnly ? "" : '<div class="cockpit">' + cockpit() + "</div>") + "</div>";
+    /* One call per visual per paint: the client half and the cockpit share it. */
+    visualCache = {};
+    var markup;
+    try {
+      markup =
+        '<div class="topbar"><span class="mono">' + esc((state.survey && state.survey.name) || "Present") + "</span>" +
+        (state.engine && !state.engine.available ? '<span class="mono" style="color:var(--gray)">' + NOT_IN_YET + "</span>" : "") +
+        '<div class="sp"></div><button type="button" class="btn-ghost" data-act="client-only">' +
+        (state.clientOnly ? "Show cockpit" : "Client screen only") + "</button></div>" +
+        '<div class="stage"><div class="client' + (state.clientOnly ? " solo" : "") + '">' + clientSlide() +
+        '<div class="dots">' + dots + "</div></div>" +
+        (state.clientOnly ? "" : '<div class="cockpit">' + cockpit() + "</div>") + "</div>";
+    } finally {
+      visualCache = null;
+    }
+    root.innerHTML = markup;
     var cost = document.getElementById("fh-cost");
     if (cost) {
       cost.addEventListener("input", function (e) { state.costNum = e.target.value; });
@@ -1553,25 +1818,50 @@
     }
   }
 
+  /* Which slides Next and Back walk for this file (10.0, rows 1 and 10).
+     - B-01 to B-04 are Door 3, the Capital Blueprint. A file that is not ready
+       walks them inside part 6 and goes on to S-09 (Door 4) after a no. A
+       funding file steps over them, unless the closer is already inside.
+     - B-05 and B-06 stay out of the walk: only their own buttons, or each
+       other, reach them.
+     - L-01 and C-01 show only when their visual draws, so a missing file or
+       missing data leaves the walk exactly as it was. C-01 is Door 1 only.
+     - The education route skips S-11 to S-16, as before. */
+  function onWalk(j, from) {
+    var c = DECK[j].code;
+    if (state.edu && EDU_SKIP.indexOf(c) >= 0) return false;
+    if (OFF_WALK.indexOf(c) >= 0) return OFF_WALK.indexOf(from) >= 0;
+    if (isStackCode(c)) return isStackCode(from) || (!isFunding() && !state.edu);
+    if (c === "L-01") return visualHtml("moneyLevers") !== null;
+    if (c === "C-01") return isFunding() && !state.edu && visualHtml("companies") !== null;
+    return true;
+  }
   function go(n) {
-    state.obj = null; state.showRef = false;
-    /* Inside section 06, Next and Back walk its slides and leave at its ends
-       (B-01 back to S-22, B-06 on to S-23). Outside it, they step over it, so
-       nobody lands on the Blueprint stack by pressing Next. */
-    var inStack = isStackCode(code());
+    state.obj = null; state.showRef = false; state.showMoney = false;
+    var from = code();
     var j = Math.max(0, Math.min(DECK.length - 1, state.idx + n));
-    while (j > 0 && j < DECK.length - 1 &&
-      ((state.edu && EDU_SKIP.indexOf(DECK[j].code) >= 0) || (!inStack && isStackCode(DECK[j].code)))) {
+    while (j > 0 && j < DECK.length - 1 && !onWalk(j, from)) {
       j = j + (n > 0 ? 1 : -1);
     }
     state.idx = Math.max(0, Math.min(DECK.length - 1, j));
     if (!isStackCode(DECK[state.idx].code)) state.stackFrom = null;
     render();
   }
+  /* The first slide of a script part that this file walks. */
+  function firstOfPhase(p) {
+    var from = code();
+    var any = -1;
+    for (var i = 0; i < DECK.length; i++) {
+      if (DECK[i].phase !== p) continue;
+      if (any < 0) any = i;
+      if (onWalk(i, from)) return i;
+    }
+    return any;
+  }
   function jumpTo(c) {
     for (var i = 0; i < DECK.length; i++) {
       if (DECK[i].code === c) {
-        state.idx = i; state.obj = null; state.showRef = false;
+        state.idx = i; state.obj = null; state.showRef = false; state.showMoney = false;
         if (!isStackCode(c)) state.stackFrom = null;
         render();
         return;
@@ -1584,7 +1874,7 @@
     setTimeout(function () { state.toast = ""; render(); }, 2600);
   }
   function setTier(k) {
-    state.tier = k; state.rung = 0; state.edu = false; state.forceRepair = false; render();
+    state.tier = k; state.edu = false; state.forceRepair = false; state.rung = leadRung(); render();
   }
 
   /* ONE CLICK, NO TYPING (F27, owner-set 2026-09-03).
@@ -1870,6 +2160,29 @@
     else toast("Disposition written to contact record.");
   }
 
+  /* Row 9: the $1,000 credit optimization link for a funding-plus-repair
+     file, sent beside the $3,000 deposit link. The body is the one the call
+     cockpit's pay panel posts (closer-call.js wirePayLink): same action, same
+     endpoint. It does not replace the deposit link this deck remembers for the
+     disposition. */
+  async function sendOptimizeLink() {
+    if (!window.FHData || !contactId) { toast("No contact on this deck."); return; }
+    markSending("pay-optimize");
+    var r = await window.FHData.write("/api/closer-deck", {
+      action: "send_pay_link",
+      client_id: contactId,
+      offer_key: "REPAIR_DFY",
+      sale_motion: null
+    });
+    if (!r || !r.ok) {
+      markSent("pay-optimize", false);
+      toast((r && r.error && (r.error.message || r.error)) || "Could not send the credit optimization pay link.");
+      return;
+    }
+    markSent("pay-optimize", true);
+    toast("Credit optimization pay link sent.");
+  }
+
   async function invoiceThisClient() {
     if (!window.FHData || !contactId) { toast("No contact on this deck."); return; }
     markSending("invoice");
@@ -1909,6 +2222,8 @@
        here as well as on the element (F24). */
     if (sendLocked(a)) return;
     if (a === "client-only") { state.clientOnly = !state.clientOnly; render(); return; }
+    /* The course is off (COURSE_LIVE): its route and rungs do nothing, even from a stray click. */
+    if (!COURSE_LIVE && (a === "edu" || a === "desc:eduTop" || a === "desc:eduLow")) return;
     if (a === "back") { go(-1); return; }
     if (a === "next") { go(1); return; }
     if (a === "edu") { state.edu = true; state.rung = 0; render(); return; }
@@ -1918,11 +2233,15 @@
     if (a.indexOf("check:") === 0) { var k = a.slice(6); state.checks[k] = !state.checks[k]; render(); return; }
     if (a.indexOf("phase:") === 0) {
       var p = a.slice(6);
-      if (p === "06") { enterStack("B-01"); return; }
-      var target = DECK.filter(function (s) { return s.phase.indexOf(p) === 0; })[0];
-      if (target) jumpTo(target.code);
+      /* 8, Money, has no slide: it opens the money steps and the client's screen stays put. */
+      if (p === "08") { state.obj = null; state.showRef = false; state.showMoney = true; render(); return; }
+      var at = firstOfPhase(p);
+      if (at < 0) return;
+      if (isStackCode(DECK[at].code)) enterStack(DECK[at].code); else jumpTo(DECK[at].code);
       return;
     }
+    if (a === "money-back") { state.showMoney = false; render(); return; }
+    if (a === "money-pay") { jumpTo("S-23"); return; }
     if (a === "stack-open") { enterStack("B-01"); return; }
     if (a === "stack-leave") { leaveStack(); return; }
     if (a === "stack-reset") { state.stackPick = {}; render(); return; }
@@ -1944,6 +2263,7 @@
     if (a === "more") { state.moreOpen = !state.moreOpen; render(); return; }
     if (a === "softpull") { fire("send_soft_pull", null, "softpull"); return; }
     if (a === "pay") { fire("send_pay_link", null, "pay"); return; }
+    if (a === "pay-optimize") { sendOptimizeLink(); return; }
     if (a === "invoice") { invoiceThisClient(); return; }
     if (a === "contract") { sendContractNow(); return; }
     if (a === "contract-copy") {
@@ -2009,6 +2329,9 @@
       return;
     }
     applyDeck(r.data || r);
+    /* Most expensive first (row 2). Only at boot: a later refresh keeps the
+       closer's own pick. */
+    state.rung = leadRung();
     state.loaded = true;
     render();
     loadSharedContext();
