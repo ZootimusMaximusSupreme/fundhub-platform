@@ -101,15 +101,29 @@ private final class FundhubBrowser: NSObject, ObservableObject, WKNavigationDele
         decidePolicyFor navigationAction: WKNavigationAction,
         decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
     ) {
-        guard navigationAction.targetFrame?.isMainFrame != false,
-              let url = navigationAction.request.url else {
+        guard let url = navigationAction.request.url else {
+            decisionHandler(.allow)
+            return
+        }
+        // No frame (including an embedded payment return) may render the
+        // marketing homepage. Other subframes remain in WebKit as normal.
+        if isPublicMarketingHome(url) {
+            if navigationAction.targetFrame?.isMainFrame != false {
+                // A blocked redirect must not leave the Mac loading forever.
+                loading = false
+                if !loadedOnce { loadFailed = true }
+            }
+            decisionHandler(.cancel)
+            return
+        }
+        if navigationAction.targetFrame?.isMainFrame == false {
             decisionHandler(.allow)
             return
         }
         if isFundhub(url) {
             decisionHandler(.allow)
         } else {
-            NSWorkspace.shared.open(url)
+            openAllowedExternal(url)
             decisionHandler(.cancel)
         }
     }
@@ -121,12 +135,65 @@ private final class FundhubBrowser: NSObject, ObservableObject, WKNavigationDele
         windowFeatures: WKWindowFeatures
     ) -> WKWebView? {
         guard let url = navigationAction.request.url else { return nil }
+        // target=_blank/window.open must not bypass the same rule.
+        guard !isPublicMarketingHome(url) else { return nil }
         if isFundhub(url) {
             webView.load(URLRequest(url: url))
         } else {
-            NSWorkspace.shared.open(url)
+            openAllowedExternal(url)
         }
         return nil
+    }
+
+    // Redirects can replace an allowed workspace or iframe URL with public
+    // marketing content. Refuse that final response before WebKit displays it.
+    func webView(
+        _ webView: WKWebView,
+        decidePolicyFor navigationResponse: WKNavigationResponse,
+        decisionHandler: @escaping (WKNavigationResponsePolicy) -> Void
+    ) {
+        if let finalURL = navigationResponse.response.url,
+           isPublicMarketingHome(finalURL) {
+            if navigationResponse.isForMainFrame {
+                // Final redirect was denied; preserve the existing workspace
+                // rather than leaving a perpetual loading bar on the Mac.
+                loading = false
+                if !loadedOnce { loadFailed = true }
+            }
+            decisionHandler(.cancel)
+            return
+        }
+        decisionHandler(.allow)
+    }
+
+    private func isPublicMarketingHome(_ url: URL) -> Bool {
+        guard url.scheme?.lowercased() == "https",
+              let hostname = url.host?.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: ".")),
+              hostname == "fundhub.ai" || hostname == "www.fundhub.ai" else { return false }
+        // URL.standardized does not remove decoded percent-encoded dot
+        // segments on every Foundation/WebKit route (e.g. /%2e/index.html).
+        // Resolve dot segments once so equivalent public-home URLs cannot slip
+        // into a signed-in native workspace.
+        let path = url.standardized.path.lowercased()
+            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        var segments: [Substring] = []
+        for segment in path.split(separator: "/") {
+            if segment == "." { continue }
+            if segment == ".." {
+                if !segments.isEmpty { segments.removeLast() }
+                continue
+            }
+            segments.append(segment)
+        }
+        let page = segments.joined(separator: "/")
+        return page.isEmpty || page == "index.html"
+    }
+
+    private func openAllowedExternal(_ url: URL) {
+        // A remote page must not be able to launch file:, javascript:,
+        // custom app handlers or other privileged system URL schemes.
+        guard ["https", "mailto", "tel"].contains(url.scheme?.lowercased() ?? "") else { return }
+        NSWorkspace.shared.open(url)
     }
 
     private func isFundhub(_ url: URL) -> Bool {

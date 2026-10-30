@@ -9,6 +9,8 @@ final class FundhubTests: XCTestCase {
 
     func testRoleHomesAreSeparate() {
         XCTAssertEqual(FundhubRole.workspacePath(principal: "client", role: "owner"), "/app/client-portal.html")
+        XCTAssertEqual(FundhubRole.workspacePath(principal: "staff", role: "setter"), "/app/setter-dashboard.html")
+        XCTAssertEqual(FundhubRole.workspacePath(principal: "client", role: "setter"), "/app/client-portal.html")
         XCTAssertEqual(FundhubRole.workspacePath(principal: "staff", role: "closer"), "/app/closer-dashboard.html")
         XCTAssertEqual(FundhubRole.workspacePath(principal: "staff", role: "csm"), "/app/csm-queue.html")
     }
@@ -178,6 +180,105 @@ final class FundhubTests: XCTestCase {
         } catch FundhubAPIError.invalidSession {
             XCTAssertEqual(FundhubAPIError.invalidSession.errorDescription, "Wrong email or password. Check them and try again.")
         }
+    }
+
+    func testFundhubPopupLinksStayInAuthenticatedWorkspace() {
+        for raw in [
+            "https://fundhub.ai/app/client-portal.html",
+            "https://fundhub.ai/app/documents.html",
+            "https://fundhub.ai/portal-login.html"
+        ] {
+            XCTAssertTrue(WorkspaceNavigation.shouldOpenInWorkspace(URL(string: raw)!), raw)
+        }
+
+        // The native wrapper must not inject a bearer into lookalike domains,
+        // different schemes, or external checkout / email destinations.
+        for raw in [
+            "https://fundhub.ai.evil.example/app/client-portal.html",
+            "https://www.fundhub.ai/app/client-portal.html",
+            "http://fundhub.ai/app/client-portal.html",
+            "https://example-payments.com/checkout",
+            "mailto:support@fundhub.ai",
+            "tel:+15551234567"
+        ] {
+            XCTAssertFalse(WorkspaceNavigation.shouldOpenInWorkspace(URL(string: raw)!), raw)
+        }
+        XCTAssertTrue(WorkspaceNavigation.isSignOutDestination(
+            URL(string: "https://fundhub.ai/portal-login.html")!))
+    }
+
+    func testNativePushAppOptOutPersistsIndependentlyOfSystemAuthorization() {
+        let suite = "ai.fundhub.tests.push-consent.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        XCTAssertFalse(NativePushConsent.isEnabled(defaults: defaults))
+        NativePushConsent.setEnabled(true, defaults: defaults)
+        XCTAssertTrue(NativePushConsent.isEnabled(defaults: defaults))
+        NativePushConsent.setEnabled(false, defaults: defaults)
+        XCTAssertFalse(NativePushConsent.isEnabled(defaults: defaults))
+    }
+
+    func testNativePushConsentCannotMoveBetweenSessionBearers() {
+        let suite = "ai.fundhub.tests.push-session.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        NativePushConsent.bind(to: "first-bearer", defaults: defaults)
+        NativePushConsent.setEnabled(true, defaults: defaults)
+        NativePushConsent.bind(to: "first-bearer", defaults: defaults)
+        XCTAssertTrue(NativePushConsent.isEnabled(defaults: defaults))
+
+        // Even a new process starting with bearer=nil must reject the old
+        // account's consent when attaching a different authenticated session.
+        NativePushConsent.bind(to: "second-bearer", defaults: defaults)
+        XCTAssertFalse(NativePushConsent.isEnabled(defaults: defaults))
+        NativePushConsent.setEnabled(true, defaults: defaults)
+        NativePushConsent.bind(to: "first-bearer", defaults: defaults)
+        XCTAssertFalse(NativePushConsent.isEnabled(defaults: defaults))
+    }
+
+
+    func testNativeWebViewBlocksPublicMarketingHomeVariants() {
+        // URL host/path case, www canonicalization, slashes, and query/hash
+        // cannot turn a marketing homepage into an approved app destination.
+        for raw in [
+            "https://fundhub.ai/",
+            "https://FUNDHUB.AI/?utm_campaign=app#pricing",
+            "https://www.fundhub.ai/",
+            "https://www.fundhub.ai/index.html?source=header#top",
+            "https://fundhub.ai/INDEX.HTML",
+            "https://fundhub.ai//",
+            "https://fundhub.ai/index.html/",
+            "https://fundhub.ai/%2e/index.html",
+            "https://fundhub.ai/%2e%2e/",
+            "https://www.fundhub.ai/%2e%2e/index.html",
+            "https://fundhub.ai/app/%2e%2e/index.html"
+        ] {
+            let url = URL(string: raw)!
+            XCTAssertTrue(WorkspaceNavigation.isPublicMarketingHome(url), raw)
+        }
+    }
+
+    func testNativeWebViewPreservesWorkspaceAuthAndExternalDestinations() {
+        for raw in [
+            "https://fundhub.ai/app/client-portal.html",
+            "https://fundhub.ai/app/setter-dashboard.html",
+            "https://fundhub.ai/app/finance-os.html",
+            "https://fundhub.ai/login.html",
+            "https://fundhub.ai/portal-login.html?t=synthetic",
+            "https://fundhub.ai/privacy/",
+            "https://fundhub.ai/checkout",
+            "https://payments.example/checkout",
+            "https://fundhub.ai.evil.example/",
+            "mailto:support@fundhub.ai"
+        ] {
+            XCTAssertFalse(WorkspaceNavigation.isPublicMarketingHome(URL(string: raw)!), raw)
+        }
+        // Blocking the marketing homepage must not suppress the native
+        // sign-out handling for authenticated users.
+        XCTAssertTrue(WorkspaceNavigation.isSignOutDestination(
+            URL(string: "https://fundhub.ai/portal-login.html")!))
     }
 
     func testWebSignOutDestinationIsExact() {
