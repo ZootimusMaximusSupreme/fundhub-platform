@@ -106,7 +106,11 @@ private final class FundhubBrowser: NSObject, ObservableObject, WKNavigationDele
             decisionHandler(.allow)
             return
         }
-        if isFundhub(url) {
+        // A link, Back action, script, or logo must never send an in-app
+        // visitor to the public Fundhub landing page (even in the browser).
+        if isPublicMarketingHome(url) {
+            decisionHandler(.cancel)
+        } else if isFundhub(url) {
             decisionHandler(.allow)
         } else {
             openAllowedExternal(url)
@@ -121,12 +125,39 @@ private final class FundhubBrowser: NSObject, ObservableObject, WKNavigationDele
         windowFeatures: WKWindowFeatures
     ) -> WKWebView? {
         guard let url = navigationAction.request.url else { return nil }
+        // target=_blank/window.open must not bypass the same rule.
+        guard !isPublicMarketingHome(url) else { return nil }
         if isFundhub(url) {
             webView.load(URLRequest(url: url))
         } else {
             openAllowedExternal(url)
         }
         return nil
+    }
+
+    // Redirects can replace an allowed workspace request with a public page.
+    // Check the final main-frame response before WebKit displays it.
+    func webView(
+        _ webView: WKWebView,
+        decidePolicyFor navigationResponse: WKNavigationResponse,
+        decisionHandler: @escaping (WKNavigationResponsePolicy) -> Void
+    ) {
+        if navigationResponse.isForMainFrame,
+           let finalURL = navigationResponse.response.url,
+           isPublicMarketingHome(finalURL) {
+            decisionHandler(.cancel)
+            return
+        }
+        decisionHandler(.allow)
+    }
+
+    private func isPublicMarketingHome(_ url: URL) -> Bool {
+        guard url.scheme?.lowercased() == "https",
+              let hostname = url.host?.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: ".")),
+              hostname == "fundhub.ai" || hostname == "www.fundhub.ai" else { return false }
+        let page = url.standardized.path.lowercased()
+            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        return page.isEmpty || page == "index.html"
     }
 
     private func openAllowedExternal(_ url: URL) {
