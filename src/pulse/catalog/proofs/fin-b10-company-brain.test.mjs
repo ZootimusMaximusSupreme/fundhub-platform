@@ -32,7 +32,7 @@ const UPLOADS = (n) => ({
   })),
 });
 
-async function openBrain({ session = OWNER, uploads = UPLOADS(2), extra = {} } = {}) {
+async function openBrain({ session = OWNER, uploads = UPLOADS(2), extra = {}, openManage = false } = {}) {
   const seen = { uploadReads: 0, posts: [], asked: [] };
   const handlers = {
     "/api/company-brain/threads": { ok: true, threads: [] },
@@ -61,13 +61,18 @@ async function openBrain({ session = OWNER, uploads = UPLOADS(2), extra = {} } =
     },
   };
   const { page, errors } = await screens.open("/app/company-brain.html", { session, handlers });
-  await page.waitForFunction(() => document.getElementById("docList") && !document.querySelector("#docList .sk"));
+  await page.waitForSelector("#tabAsk");
+  if (openManage) {
+    await page.locator("#tabManage").click();
+    await waitFor(() => seen.uploadReads >= 1, "owner requested Manage files");
+    await page.waitForFunction(() => !document.querySelector("#docList .sk"));
+  }
   return { page, errors, seen };
 }
 
 test("N waiting badges: both show the pending count, hide at zero, follow a refresh, and clear when the read fails", async () => {
   await proof.check(/^'N waiting' pending badges/, async () => {
-    const { page, seen, errors } = await openBrain({ uploads: (n) => UPLOADS(n === 1 ? 3 : n === 2 ? 0 : 5) });
+    const { page, seen, errors } = await openBrain({ openManage: true, uploads: (n) => UPLOADS(n === 1 ? 3 : n === 2 ? 0 : 5) });
     const top = page.locator("#pendPill");
     const panel = page.locator("#pendPill2");
     assert.equal(await top.getAttribute("hidden"), null, "the badge on the Documents button shows");
@@ -76,7 +81,7 @@ test("N waiting badges: both show the pending count, hide at zero, follow a refr
     assert.equal(await panel.getAttribute("hidden"), null);
 
     // Open the Documents panel and press Refresh: the count goes to zero and both badges are put away.
-    await page.locator("#docsBtn").click();
+    assert.equal(await page.locator("#docs").isVisible(), true);
     assert.equal(await panel.isVisible(), true);
     await page.locator("#refreshDocs").click();
     await waitFor(() => seen.uploadReads === 2, "the second upload read");
@@ -92,17 +97,16 @@ test("N waiting badges: both show the pending count, hide at zero, follow a refr
     await page.close();
 
     // A read that fails after a good one clears the badge: it never keeps a count it cannot back.
-    const later = await openBrain({ uploads: (n) => (n === 1 ? UPLOADS(3) : { ok: false, error: "forbidden_role" }) });
+    const later = await openBrain({ openManage: true, uploads: (n) => (n === 1 ? UPLOADS(3) : { ok: false, error: "forbidden_role" }) });
     assert.equal(await later.page.locator("#pendPill").textContent(), "3 waiting");
-    await later.page.locator("#docsBtn").click();
     await later.page.locator("#refreshDocs").click();
     await waitFor(async () => (await later.page.locator("#pendPill").getAttribute("hidden")) !== null, "the badge cleared by the failed read");
     assert.notEqual(await later.page.locator("#pendPill2").getAttribute("hidden"), null);
-    assert.match(await later.page.locator("#docList").textContent(), /Your role is not allowed to use Company Brain\./);
+    assert.match(await later.page.locator("#docList").textContent(), /Your role is not allowed to use the Knowledge Base\./);
     await later.page.close();
 
     // And a read that fails from the start shows no badge at all.
-    const failed = await openBrain({ uploads: { ok: false, error: "forbidden_role" } });
+    const failed = await openBrain({ openManage: true, uploads: { ok: false, error: "forbidden_role" } });
     assert.notEqual(await failed.page.locator("#pendPill").getAttribute("hidden"), null);
     assert.notEqual(await failed.page.locator("#pendPill2").getAttribute("hidden"), null);
     await failed.page.close();
@@ -129,7 +133,8 @@ test("Add a document + button: opens the file picker for the six kinds, sends th
     await waitFor(async () => /Uploaded plan\.pdf\. An owner has to approve it before it can be used in answers\./.test(await page.locator("#msgs").textContent()), "the pending words");
     // The list is read again and the Documents panel opens on it.
     await waitFor(() => seen.uploadReads === readsBefore + 1, "the files read again");
-    assert.match(await page.locator("#chat").getAttribute("class"), /\bdocs-open\b/);
+    assert.equal(await page.locator("#tabManage").getAttribute("aria-selected"), "true");
+    assert.equal(await page.locator("#docs").isVisible(), true);
     assert.equal(await page.locator("#attachBtn").isDisabled(), false, "the button is back");
 
     // After a question the chat has a thread: the next upload carries it.
@@ -293,7 +298,7 @@ test("Which quiz picker: each role gets its own quizzes, and picking one paints 
     const first = all.find((q) => q.id === "closer-d1");
     // The picker lives in the Documents panel, which is shut until the Documents button is pressed.
     assert.equal(await page.locator("#quizPick").isVisible(), false);
-    await page.locator("#docsBtn").click();
+    await page.locator("#tabTraining").click();
     assert.equal(await page.locator("#quizPick").isVisible(), true);
     assert.equal(await page.locator("#quizPick").inputValue(), "closer-d1", "the first quiz is on at first");
     assert.equal(await page.locator("#quizBox .qitem").count(), first.questions);
