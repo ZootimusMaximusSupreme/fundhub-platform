@@ -486,7 +486,10 @@ private struct ContentView: View {
 @main
 private struct FundhubMacApp: App {
     var body: some Scene {
-        WindowGroup("Fundhub") {
+        // Exactly one workspace window. WindowGroup allows independent browsers
+        // to keep old client/staff pages visible while sharing WebKit cookies.
+        // A singleton keeps account switching behind Home and sign out.
+        Window("Fundhub", id: "main") {
             ContentView()
         }
         .windowStyle(.titleBar)
