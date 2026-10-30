@@ -63,7 +63,7 @@
     "Optimization (Repair) Rounds column 'Upgrade Invite (legacy)' (upgrade_invite): shows count and funding est.; accepts a dropped card",
     "Sales column 'Booked' (booked): shows count and funding est.; accepts a dropped card",
     "Sales column 'Closed Won (deposit)' (closed_won): shows count and funding est.; accepts a dropped card",
-    "Sales column 'Confirmed' (confirmed): shows count and funding est.; accepts a dropped card",
+    "Sales column 'Set' (confirmed): shows count and funding est.; accepts a dropped card",
     "Sales column 'Decision Rendered' (decision_rendered): shows count and funding est.; accepts a dropped card",
     "Sales column 'Diagnostic Paid' (diagnostic_paid): shows count and funding est.; accepts a dropped card",
     "Sales column 'Downsell' (downsell): shows count and funding est.; accepts a dropped card",

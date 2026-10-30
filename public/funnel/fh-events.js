@@ -37,6 +37,8 @@
    Passed on from the framed booking calendar (window "message" from
    https://apply.fundhub.ai with data.fh === "track"):
      calendar_view, time_selected, booking_confirmed           { calendar }
+   booking_confirmed also carries this tab's credit_tier, kept from the /apply
+   survey's last answer (see keepTier below).
 
    Page hooks send the rest through window.fhTrack(event, props). That call is
    safe before this file has loaded; the queue is sent when it loads:
@@ -231,6 +233,21 @@
       var b = JSON.parse(k.body);
       if (b && b.event === "booking_confirmed") beacon(k.body);
     } catch (e) {}
+  }
+
+  /* The owner's two buckets (2026-10-29): the /apply survey sends credit_tier on
+     its last answer (qualified at a 700+ score answer, else unqualified; never
+     the score). It is kept for this tab so the booking it leads to carries the
+     same tier. Each tier is its own Meta event on top of Lead and Schedule. */
+  var TIERS = { qualified: "Qualified", unqualified: "Unqualified" };
+  var TIER_KEY = "fh_credit_tier_v1";
+  function keepTier(tier) {
+    try { sessionStorage.setItem(TIER_KEY, tier); } catch (e) {}
+  }
+  function keptTier() {
+    var t = null;
+    try { t = sessionStorage.getItem(TIER_KEY); } catch (e) {}
+    return has.call(TIERS, t) ? t : null;
   }
 
   /* ── Meta ids: fbclid, fbc, fbp, the page url ─────────────────────────── */
@@ -492,6 +509,7 @@
       var last = p.last === true;
       if (last) add("Lead", data({ content_name: p.survey }));
       add("SurveyStep", data({ survey: p.survey, step: p.step_num }), null, true);
+      if (last && has.call(TIERS, p.credit_tier)) add(TIERS[p.credit_tier] + "Lead", data({ content_name: p.survey }), null, true);
     } else if (event === "buybox_tab") {
       if (p.tab === 2 && first("fh_ic_sent", true)) add("InitiateCheckout", data(PRICE));
     } else if (event === "payment_result") {
@@ -500,6 +518,7 @@
       }
     } else if (event === "booking_confirmed") {
       add("Schedule", data({ content_name: p.calendar }));
+      if (has.call(TIERS, p.credit_tier)) add(TIERS[p.credit_tier] + "Schedule", data({ content_name: p.calendar }), null, true);
     } else if (event === "survey_route") {
       add("SurveyRouted", data({ offer: p.offer }), null, true);
     } else if (event === "video") {
@@ -529,6 +548,12 @@
       var built = builtFunnel(page);
       if (!has.call(PAGES, page) && !built) return;
       var seq = nextSeq(), session = sid(), kept = cleanProps(props);
+      if (has.call(kept, "credit_tier") && !has.call(TIERS, kept.credit_tier)) delete kept.credit_tier;
+      if (event === "survey_answer" && kept.last === true && kept.credit_tier) keepTier(kept.credit_tier);
+      if (event === "booking_confirmed" && !kept.credit_tier) {
+        var tier = keptTier();
+        if (tier) kept.credit_tier = tier;
+      }
       var body = { kind: "track", event: event, seq: seq, session_id: session, page: page, props: kept };
       var saved = attribution();
       for (var i = 0; i < KEYS.length; i++) if (saved[KEYS[i]]) body[KEYS[i]] = saved[KEYS[i]];

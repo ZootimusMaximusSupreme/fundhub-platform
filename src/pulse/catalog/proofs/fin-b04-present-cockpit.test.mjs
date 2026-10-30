@@ -56,15 +56,15 @@ async function toWrap(page) {
   await page.waitForFunction(() => /Wrap/.test(document.querySelector(".cockpit .ck-hd .t")?.textContent || ""));
 }
 
-const FUND = "Alright Dana, the results are in. We can get you pre-approved for approximately [Amount] across multiple credit lines with 0 percent introductory rates.";
-const REPAIR = "The results came back, and here's what the AI found. Some factors are limiting your approval potential. The good news: all fixable.";
+const FUND = "Here's how much you qualify for based on where you're at right now: [Amount]. That's what your file supports today. The bank still decides.";
+const REPAIR = "Here's what's holding your file back. Cleaned up, it shows the higher amount on screen. That difference is what's left on the table right now.";
 const EDU = "If their ask is 'teach me to do this myself', route Education below. The sort still gets named first.";
 
 test("the reveal slide says the funding line to a funding client and nothing from the other two routes", { timeout: 90_000 }, async (t) => {
   const { open } = await startScreens(t);
   const { page } = await openDeck(open, "FULL_FUNDING");
   await toReveal(page);
-  assert.deepEqual(await saysNow(page), [FUND, "Pause. Let the number land. Then: how does that sound?"]);
+  assert.deepEqual(await saysNow(page), [FUND, "Pause. Let it land. Then: what jumps out at you?"]);
   await page.close();
 });
 
@@ -81,7 +81,7 @@ test("the education path button swaps the cockpit to the education line only", {
   const { page } = await openDeck(open, "FULL_FUNDING");
   await toReveal(page);
   await page.locator('[data-act="edu"]').click();
-  await page.waitForFunction(() => !/pre-approved for approximately/.test(document.querySelector(".cockpit")?.textContent || ""));
+  await page.waitForFunction(() => !/That's what your file supports today/.test(document.querySelector(".cockpit")?.textContent || ""));
   assert.deepEqual(await saysNow(page), [EDU]);
   await page.close();
 });
@@ -196,10 +196,10 @@ const WRAPS = {
 // What the investment slide (S-19) says to the closer on each of the three routes.
 const INVESTMENT = {
   FUND: [
-    "Based on your pre-approval, I genuinely believe we get you to [Amount] in two weeks. To activate the system today, it's a $3,000 deposit.",
+    "To get you in front of the right banks in the right order, it's a $3,000 deposit today.",
     "That $3,000 is not an additional fee. It goes directly toward your 10 percent success fee on the back end."
   ],
-  REPAIR: ["Top down. Onboard now, full done-for-you, $1,000, letters fire today. If that's a no: trial round, we run your first round so you see it work, $200. Still a no: $1,000, the full deliverables plus course, you execute it."],
+  REPAIR: ["Most expensive first. Lead with the Capital Blueprint button (DIY deliverables + course): the whole 12-month plan from their file, price off the screen. If that's a no: onboard now, all six rounds done for you, $1,000. Still a no: round one for $200, and the $200 counts toward the $1,000."],
   EDU: ["Lead with the $5,000 full program. Only if that's a no: the $1,000 deliverables package plus the how-to course."]
 };
 const INVESTMENT_WATCH = "Rung buttons below on repair. Do NOT lead with the cheaper one.";

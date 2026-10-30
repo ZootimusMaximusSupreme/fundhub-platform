@@ -191,19 +191,26 @@ export function firstRepairTasks({ roundsCap, now = new Date() } = {}) {
  * client a second copy of both every time a payment event replayed.
  */
 export async function createRepairStartTasks(db, {
-  orgId, clientId, eventId = null, roundsCap = null, now = new Date()
+  orgId, clientId, roundsCap = null, now = new Date()
 } = {}) {
   const created = [];
   for (const t of firstRepairTasks({ roundsCap, now })) {
+    // Title dedupe alone is read-then-insert. Two concurrent paid events can
+    // read "no task" simultaneously while a trial/full plan changes; the
+    // human-readable task body then differs (2 vs 6 rounds), so the database's
+    // UNIQUE (client, workflow, body) index does NOT stop duplicate plan tasks.
+    // Use one stable body key per job for durable race/replay dedupe, while
+    // keeping the readable instructions in the separate detail column.
+    const stableTaskKey = `repair-start:${orgId}:${clientId}:${t.title}`;
     const r = await createTask(db, {
       orgId,
       clientId,
       title: t.title,
-      body: t.body,
+      body: stableTaskKey,
+      detail: t.body,
       dueAt: t.dueAt,
       sourceWorkflow: SOURCE_WORKFLOW,
       assigneeRole: REPAIR_TASK_ROLE,
-      eventId,
       dedupeOn: "title"
     });
     if (r.created) created.push(t.title);
