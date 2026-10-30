@@ -186,12 +186,12 @@ test("Mac Home revokes existing sessions before clearing persistent WebKit data 
 });
 
 test("Mac client/staff workspace is a single-instance scene, not two shared-cookie windows", () => {
-  const hasSingleton = (source) => /Window\\("Fundhub", id: "main"\\)/.test(source) &&
-    !/WindowGroup\\("Fundhub"\\)/.test(source);
+  const hasSingleton = (source) => /Window\("Fundhub", id: "main"\)/.test(source) &&
+    !/WindowGroup\("Fundhub"\)/.test(source);
   const oldMultiWindowFixture = 'WindowGroup("Fundhub") { ContentView() }';
   assert.equal(hasSingleton(oldMultiWindowFixture), false, "old multiwindow scene must fail this guard");
   assert.equal(hasSingleton(mac), true, "Mac app must expose only one role workspace window");
-  assert.match(mac, /configuration\\.websiteDataStore = \\.default\\(\\)/);
-  assert.match(mac, /@StateObject private var browser = FundhubBrowser\\(\\)/);
-  assert.match(mac, /func goHome\\(\\) async/);
+  assert.match(mac, /configuration\.websiteDataStore = \.default\(\)/);
+  assert.match(mac, /@StateObject private var browser = FundhubBrowser\(\)/);
+  assert.match(mac, /func goHome\(\) async/);
 });
