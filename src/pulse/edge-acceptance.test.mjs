@@ -70,6 +70,19 @@ test("existing closer/dispatch and setter source edits demand call-outcome proof
   ]), []);
 });
 
+test("Blueprint FinanceOS entitlement edits require P0 paid-access and P1 delivery reviews", () => {
+  // Blueprint #301 changes a customer's paid access and included annual term.
+  // A monthly delivery check alone cannot prove payment/entitlement integrity.
+  const report = reportCriticalSourceChanges(["src/finance/finance-os-entitlement.mjs"]);
+  assert.equal(report.verdict, "REVIEW_REQUIRED");
+  assert.deepEqual(report.edges.map((edge) => [edge.id, edge.severity]), [
+    ["payment-ledger-entitlement", "P0"],
+    ["blueprint-financeos-report", "P1"]
+  ]);
+  assert.deepEqual(report.unmappedHighRiskFiles, []);
+  assert.equal(report.liveReceipt, "NEEDS_LIVE_RECEIPT");
+});
+
 test("shared client lifecycle edits cannot hide payment, CRS or funding effects behind booking coverage", () => {
   // src/handlers/client-lifecycle.mjs registers payment.received,
   // diagnostic.paid, deposit.paid, analysis.completed and booking events.
