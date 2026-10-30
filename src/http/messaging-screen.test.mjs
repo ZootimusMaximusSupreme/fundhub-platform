@@ -95,6 +95,16 @@ describe("messaging.html — what a conversation row says", () => {
     assert.ok(!html.includes("<img"), "a client's message was rendered as HTML");
     assert.ok(html.includes("&lt;img"));
   });
+
+  test("provider JSON errors are shown as a useful delivery reason", () => {
+    const V = loadViewModel();
+    const html = V.messageRow({
+      id: "m1", direction: "outbound", channel: "sms", status: "failed",
+      rendered_body: "A message", last_error: JSON.stringify({ code: 21211, message: "Invalid To Phone Number: +1665..." })
+    });
+    assert.match(html, /Invalid recipient phone number \(Twilio 21211\)/);
+    assert.doesNotMatch(html, /Invalid To Phone Number|&quot;code&quot;/);
+  });
 });
 
 describe("messaging.html — the unread indication", () => {

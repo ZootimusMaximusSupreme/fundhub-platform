@@ -1,7 +1,15 @@
 import { test } from "node:test";
 import assert from "node:assert";
-import { handle, SMS_NOBOOK_01, SMS_NOBOOK_02, SMS_NOBOOK_03, EMAIL_NOBOOK_01, EMAIL_NOBOOK_02, EMAIL_NOBOOK_03 } from "./s-nobook-chase.mjs";
+import { handle as runChase, SMS_NOBOOK_01, SMS_NOBOOK_02, SMS_NOBOOK_03, EMAIL_NOBOOK_01, EMAIL_NOBOOK_02, EMAIL_NOBOOK_03 } from "./s-nobook-chase.mjs";
 import { pgFake, fakeStep, ev } from "./test-support.mjs";
+
+async function handle({ event, db, step }) {
+  if (!db.events.some((e) => e.id === event.id)) db.events.push({
+    id: event.id, org_id: event.orgId, client_id: event.clientId,
+    name: event.name, payload: event.payload, created_at: event.createdAt || "2026-10-30T12:00:00Z"
+  });
+  return runChase({ event, db, step });
+}
 
 const templates = () => [
   { org_id: "org-1", template_key: SMS_NOBOOK_01, channel: "sms", body: "n1", compliance_passed: true },
@@ -26,6 +34,37 @@ test("nobook: full cadence when never booked", async () => {
   assert.deepEqual(db.messages.map((m) => m.template_key), [
     SMS_NOBOOK_01, EMAIL_NOBOOK_01, SMS_NOBOOK_02, EMAIL_NOBOOK_02, SMS_NOBOOK_03, EMAIL_NOBOOK_03
   ]);
+});
+
+test("nobook: distinct events for one application share all three send keys", async () => {
+  const db = pgFake({
+    clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", custom_fields: {} }],
+    templates: templates(),
+    events: [
+      { id: "evt-first", org_id: "org-1", client_id: "cl-1", name: "survey.submitted", payload: { email: "a@b.com", funnel: "apply-survey" }, created_at: "2026-10-30T12:00:00Z" },
+      { id: "evt-second", org_id: "org-1", client_id: "cl-1", name: "survey.submitted", payload: { email: "a@b.com", funnel: "" }, created_at: "2026-10-30T12:00:01Z" }
+    ]
+  });
+  for (const id of ["evt-first", "evt-second"]) {
+    await handle({ event: ev("survey.submitted", { email: "a@b.com" }, { id, clientId: "cl-1" }), db, step: fakeStep() });
+  }
+  assert.equal(db.messages.length, 6);
+  assert.ok(db.messages.every((m) => m.provider_ref.includes("evt-first")));
+});
+
+test("nobook: a new survey more than six hours later starts a new cadence", async () => {
+  const db = pgFake({
+    clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", custom_fields: {} }],
+    templates: templates(),
+    events: [
+      { id: "evt-first", org_id: "org-1", client_id: "cl-1", name: "survey.submitted", payload: { email: "a@b.com" }, created_at: "2026-10-30T04:00:00Z" },
+      { id: "evt-new", org_id: "org-1", client_id: "cl-1", name: "survey.submitted", payload: { email: "a@b.com" }, created_at: "2026-10-30T12:00:00Z" }
+    ]
+  });
+  for (const id of ["evt-first", "evt-new"]) {
+    await handle({ event: ev("survey.submitted", { email: "a@b.com" }, { id, clientId: "cl-1" }), db, step: fakeStep() });
+  }
+  assert.equal(db.messages.length, 12);
 });
 
 test("nobook: exits immediately if already booked", async () => {
