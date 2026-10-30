@@ -24,7 +24,7 @@ for (const entry of entries) {
     } else {
       await expect(page.getByRole("link", { name: /Client sign-in with an email link/ }))
         .toHaveAttribute("href", "/portal-login.html");
-      await expect(page.getByLabel("Password")).toBeVisible();
+      await expect(page.locator("#pw")).toBeVisible();
     }
   });
 
