@@ -12,28 +12,28 @@ export const CRITICAL_EDGES = Object.freeze([
     event: "booking.created", consumer: "onBookingCreated / s-04-call-booked",
     receipt: "bookings + confirmation message + call_outcomes", graceMinutes: 30,
     pulse: "calls:booked-no-outcome",
-    paths: ["src/adapters/clickfunnels.mjs", "src/bookings/", "src/handlers/client-lifecycle.mjs", "src/workflows/s-04", "src/sales/call-outcomes.mjs", "api/auth/magic-link.mjs", "src/auth/booking-account", "src/auth/magic-link", "public/portal-login.html", "marketing/landing-pages/"]
+    paths: ["src/adapters/clickfunnels.mjs", "src/bookings/", "src/handlers/client-lifecycle.mjs", "src/workflows/s-04", "src/workflows/cortana-booking-feed.mjs", "src/messaging/providers/cortana-booking-webhook.mjs", "src/sales/call-outcomes.mjs", "src/sales/closer-now.mjs", "api/auth/magic-link.mjs", "src/auth/booking-account", "src/auth/magic-link", "public/portal-login.html", "marketing/landing-pages/"]
   },
   {
     id: "payment-ledger-entitlement", severity: "P0", owner: "A/R",
     event: "payment.received", consumer: "onPaymentReceived / entitlement handlers",
     receipt: "payment ledger + active entitlement + portal read", graceMinutes: null,
     pulse: "payments:paid-no-entitlement",
-    paths: ["src/merchant/", "src/billing/", "src/payments/", "src/entitlements/", "src/ledger/", "src/adapters/whop", "api/payment", "api/checkout"]
+    paths: ["src/merchant/", "src/billing/", "src/payments/", "src/entitlements/", "src/ledger/", "src/handlers/money-chain.mjs", "src/handlers/payment-links.mjs", "src/adapters/whop", "api/payment", "api/checkout"]
   },
   {
     id: "consent-crs-result", severity: "P0", owner: "Fulfillment",
     event: "diagnostic.paid", consumer: "onDiagnosticPaidSoftPull / c-00-crs-soft-pull-request",
     receipt: "consent + credit-pull result + stored CRS report", graceMinutes: null,
     pulse: PULL_CHECK_IDS[0],
-    paths: ["api/soft-pull-approve.mjs", "src/handlers/diagnostic-soft-pull.mjs", "src/handlers/crs-full-report.mjs", "src/finance/crs", "src/workflows/c-00-crs", "public/app/soft-pull-approve.html"]
+    paths: ["api/soft-pull-approve.mjs", "src/handlers/diagnostic-soft-pull.mjs", "src/handlers/crs-full-report.mjs", "src/finance/crs", "src/finance/soft-pulls.mjs", "src/workflows/c-00-crs", "public/app/soft-pull-approve.html"]
   },
   {
     id: "round-funded-fee-commission", severity: "P0", owner: "Fulfillment / A/R",
     event: "round.funded", consumer: "onRoundFundedMoney / fee and payout handlers",
     receipt: "funding_rounds + applications + fee bill + commission", graceMinutes: 30,
     pulse: "trip:funding",
-    paths: ["src/funding/", "src/finance/funding", "src/handlers/funding", "src/commissions/", "src/money/", "api/funding"]
+    paths: ["src/funding/", "src/finance/funding", "src/handlers/funding", "src/handlers/money-chain.mjs", "src/commissions/", "src/money/", "api/funding"]
   },
   {
     id: "repair-enrollment-bureau-result", severity: "P1", owner: "Fulfillment",
@@ -47,7 +47,7 @@ export const CRITICAL_EDGES = Object.freeze([
     event: "payment.received", consumer: "FinanceOS monthly pull and delivery",
     receipt: "active subscription + real monthly report + client delivery", graceMinutes: null,
     pulse: "blueprint:monthly-delivery",
-    paths: ["src/finance-os/", "src/blueprint/", "src/workflows/finance-os", "api/finance-os"]
+    paths: ["src/finance-os/", "src/finance/finance-os-", "src/blueprint/", "src/workflows/finance-os", "api/finance-os"]
   },
   {
     id: "outbound-message-provider-receipt", severity: "P1", owner: "Front-house",
@@ -95,15 +95,26 @@ export function changedCriticalEdges(filenames = []) {
   });
 }
 
+// Report-only catch for future high-risk source files outside the ten mapped
+// families. This MUST NOT become a 403-legacy fail-closed rule by accident.
+const HIGH_RISK_UNMAPPED = /(?:^|[/._-])(?:pay(?:ment)?|bill(?:ing)?|ledger|entitlements?|bookings?|calendars?|consent|soft[_-]?pull|crs|credit|funding|funded|round|commissions?|invoices?|repair|blueprint|finance[_-]?os|messages?|messaging|sms|emails?|delivery|lenders?|apply|attribution|callbacks?|webhooks?|cortana)(?:$|[/._-])/i;
+export function unmappedHighRiskSourceChanges(filenames = []) {
+  const mapped = new Set(changedCriticalEdges(filenames).flatMap((edge) => edge.files));
+  return [...new Set(filenames.map(String).filter(materialSource))]
+    .filter((file) => HIGH_RISK_UNMAPPED.test(file) && !mapped.has(file));
+}
+
 // Explicitly never returns PASS. A PR note and source-level tests are not live proof.
 export function reportCriticalSourceChanges(filenames = [], prBody = "") {
   const touched = changedCriticalEdges(filenames);
+  const unmappedHighRiskFiles = unmappedHighRiskSourceChanges(filenames);
   const note = /A\s*(?:->|→|to)\s*B\s+evidence\s*:/i.test(String(prBody));
   return {
     contractVersion: EDGE_CONTRACT_VERSION,
-    verdict: touched.length ? "REVIEW_REQUIRED" : "NO_CRITICAL_SOURCE_TOUCH_DETECTED",
+    verdict: touched.length || unmappedHighRiskFiles.length ? "REVIEW_REQUIRED" : "NO_CRITICAL_SOURCE_TOUCH_DETECTED",
     evidenceNote: note ? "PRESENT_UNVERIFIED" : "MISSING",
     edges: touched,
+    unmappedHighRiskFiles,
     liveReceipt: "NEEDS_LIVE_RECEIPT"
   };
 }
@@ -141,7 +152,10 @@ export function judgeSyntheticEdge({
   identityReceipt, requireProviderReceipt = false,
   now = Date.now(), graceMs = 15 * 60 * 1000
 } = {}) {
-  if (demand === false) return { verdict: "NA", reason: "no-demand" };
+  // A present producer event contradicts a "no demand" claim; never hide it as NA.
+  if (demand === false) return event?.id
+    ? { verdict: "NOT_CHECKED", reason: "event-present-but-demand-marked-absent" }
+    : { verdict: "NA", reason: "no-demand" };
   const start = milliseconds(demandAt || event?.created_at);
   if (!Number.isFinite(start)) return { verdict: "NOT_CHECKED", reason: "missing-demand-time" };
   const current = milliseconds(now);
