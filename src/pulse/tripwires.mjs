@@ -210,6 +210,8 @@ export const TRIPWIRES = Object.freeze({
 });
 
 export const NOT_CUSTOMER_FACING = Object.freeze({
+  "job:ops-manager-review":
+    "Staff-only KPI review creates a dated task for the routed sales manager or owner; it never sends to a customer. Its job receipt is monitored by the heartbeat.",
   "route:company-brain/library":
     "Staff-only approved instruction index: it reads company files allowed for the signed-in employee's role and never serves a customer directly. Its door is watched by reg:company-brain/library.",
   "page:leads/c01cb7592c8bb994130158e897e99bf1/index.html":
