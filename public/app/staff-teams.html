@@ -146,6 +146,7 @@ table.perm tbody tr:hover td.pl{background:var(--soft)}
 .editor-hd{padding:15px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px}
 .editor-bd{padding:18px;overflow-y:auto;flex:1}
 .editor-ft{padding:14px 18px;border-top:1px solid var(--line);display:flex;gap:9px}
+.editor-ft [hidden]{display:none}
 .xbtn{margin-left:auto;border:1px solid var(--line);background:#fff;width:40px;height:40px;border-radius:6px;cursor:pointer;font-family:var(--mono);font-size:var(--fs-body);line-height:1}
 .xbtn:hover{background:var(--soft)}
 .scrim{position:fixed;inset:0;background:rgba(10,10,10,.28);opacity:0;pointer-events:none;transition:opacity .2s;z-index:50}
@@ -363,7 +364,7 @@ table.perm tbody tr:hover td.pl{background:var(--soft)}
     </div>
     <div style="margin-top:18px">
       <div class="eyebrow" style="margin-bottom:6px">Role access</div>
-      <div style="font-size:var(--fs-body);color:var(--gray);margin-bottom:9px">Access follows this person’s role. The server checks each action; the permission list is not shown here.</div>
+      <div id="edRoleNote" style="font-size:var(--fs-body);color:var(--gray);margin-bottom:9px">Access follows this person’s role. The server checks each action; the permission list is not shown here.</div>
     </div>
     <div style="margin-top:18px" id="edAgreementsWrap">
       <div class="eyebrow" style="margin-bottom:6px">Agreements</div>
@@ -377,6 +378,7 @@ table.perm tbody tr:hover td.pl{background:var(--soft)}
     <button class="btn mono" id="edReset" style="display:none">Reset password</button>
     <div class="spacer"></div>
     <button class="btn mono danger" id="edDeact">Revoke login</button>
+    <button class="btn mono danger" id="edRemove" hidden>Remove person</button>
   </div>
 </aside>
 
@@ -425,8 +427,10 @@ function initials(p){return (p.first[0]+p.last[0]).toUpperCase()}
    areas they reach" and "14 of 18 permissions", both counted off the
    hand-written chart that used to sit above. Those numbers described the
    chart, not the system, so they are gone.                                 */
-function presetCell(role){
-  return '<div class="acc"><span class="badge '+(ROLE_CLS[role]||'b-gray')+'">'+esc(role)+'</span></div>';
+function presetCell(p){
+  var name=p.role==='Owner' && String(p.email).toLowerCase()==='chris@fundhub.ai'
+    ? 'Owner · Setter · Closer' : p.role;
+  return '<div class="acc"><span class="badge '+(ROLE_CLS[p.role]||'b-gray')+'">'+esc(name)+'</span></div>';
 }
 
 /* ══ RENDER ══════════════════════════════════════════════════════════════ */
@@ -449,7 +453,7 @@ function renderRoster(){
     var t=p.code+' · started '+p.start;
     return '<tr data-id="'+esc(String(p.id))+'" class="'+(String(p.id)===String(selId)?'sel':'')+'" title="'+esc(t)+'">'+
       '<td><div class="who-cell"><span class="av">'+initials(p)+'</span><div><div class="nm">'+esc(p.first+' '+p.last)+'</div><div class="em">'+esc(p.email)+'</div></div></div></td>'+
-      '<td>'+presetCell(p.role)+'</td>'+
+      '<td>'+presetCell(p)+'</td>'+
       /* consent === null means a REAL staff row: monitoring consent and clock
          state have no column anywhere in the schema. Rendering the sample
          "On file" badge against a real employee would be fabricating a
@@ -556,6 +560,9 @@ function openEditor(id){
   document.getElementById('ed_phone').value=p.phone;
   document.getElementById('ed_code').value=p.code;
   document.getElementById('ed_role').value=p.role;
+  document.getElementById('edRoleNote').textContent=p.role==='Owner' && String(p.email).toLowerCase()==='chris@fundhub.ai'
+    ? 'Chris is the owner and can do setter and closer work from this login.'
+    : 'Access follows this person’s role. The server checks each action; the permission list is not shown here.';
   document.getElementById('ed_start').value=(p.start && p.start!=='—') ? String(p.start).slice(0,10) : '';
   ['ed_code'].forEach(function(i){
     document.getElementById(i).readOnly=true;
@@ -567,6 +574,7 @@ function openEditor(id){
   setSw('ed_booked_sms', p.notifyBookedCallSms);
   document.getElementById('edReset').style.display = p.email ? '' : 'none';
   document.getElementById('edDeact').style.display = '';
+  document.getElementById('edRemove').hidden = !window.__FH_IS_OWNER || p.role==='Owner' || p.self || !p.staffId;
   document.getElementById('editor').classList.add('open');
   document.getElementById('scrim').classList.add('on');
   renderRoster();
@@ -581,6 +589,7 @@ function openNew(){
      the same unknown marker the roster uses instead of inventing one. */
   document.getElementById('ed_code').value='—';
   document.getElementById('ed_role').value='Closer';
+  document.getElementById('edRoleNote').textContent='Access follows this person’s role. The server checks each action; the permission list is not shown here.';
   document.getElementById('ed_start').value='';
   document.getElementById('ed_email').placeholder='inbox for the invite — login is name@fundhub.ai';
   ['ed_first','ed_last','ed_email'].forEach(function(i){document.getElementById(i).readOnly=false;});
@@ -589,6 +598,7 @@ function openNew(){
   setSw('ed_booked_sms',false);
   document.getElementById('edReset').style.display='none';   // no account exists yet
   document.getElementById('edDeact').style.display='none';   // nothing to revoke yet
+  document.getElementById('edRemove').hidden=true;
   document.getElementById('edAgreements').textContent='Save / invite first — agreements attach after hire.';
   document.getElementById('editor').classList.add('open');
   document.getElementById('scrim').classList.add('on');
@@ -805,6 +815,27 @@ document.getElementById('edDeact').addEventListener('click',function(){
     }
     closeEditor();
     location.reload();
+  });
+});
+document.getElementById('edRemove').addEventListener('click',function(){
+  if(!window.__FH_IS_OWNER || !selId) return;
+  var p=PEOPLE.filter(function(x){return String(x.id)===String(selId)})[0];
+  if(!p || !p.staffId || p.self || p.role==='Owner') return;
+  if(!confirm('Remove '+p.first+' '+p.last+' from the team? Their login will stop and they will leave this roster. Work history stays.')) return;
+  var btn=this; btn.disabled=true;
+  FHData.write('/api/auth/suspend',{staff_id:p.staffId,action:'remove'}).then(function(res){
+    btn.disabled=false;
+    if(!res.ok){
+      alert(res.error==='staff_has_open_tasks'
+        ? 'Move this person’s open tasks to someone else before removing them.'
+        : 'Could not remove: '+(res.error||'unknown error'));
+      return;
+    }
+    closeEditor();
+    location.reload();
+  }).catch(function(){
+    btn.disabled=false;
+    alert('Could not remove this person.');
   });
 });
 /* Reset password — owner/admin only, enforced server-side on the whole route
