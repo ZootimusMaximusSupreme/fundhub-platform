@@ -126,10 +126,27 @@ test("material changes in actually open money/booking/Blueprint PRs are reviewed
     "public/app/client-portal.html", "public/app/calendar-workspace.css"
   ]);
   assert.deepEqual(sharedUi.edges.map((edge) => edge.id), [
-    "lead-booking-call-outcome", "payment-ledger-entitlement"
+    "lead-booking-call-outcome", "payment-ledger-entitlement",
+    "outbound-message-provider-receipt", "native-portal-first-open"
   ]);
-  assert.deepEqual(sharedUi.unmappedHighRiskFiles, ["public/app/client-portal.html"]);
+  assert.deepEqual(sharedUi.unmappedHighRiskFiles, []);
   assert.deepEqual(unmappedHighRiskSourceChanges(["public/app/calendar-workspace.css"]), []);
+});
+
+test("existing portal HTML edits cannot escape paid access, client inbox, or native proof review", () => {
+  // Client portal is both the end of the paid-entitlement chain, the rendered
+  // customer message inbox, and a native WKWebView target. PR #255 edits it.
+  // Source-touch proof is NOT an installed device receipt or live delivery.
+  const report = reportCriticalSourceChanges(["public/app/client-portal.html"]);
+  assert.equal(report.verdict, "REVIEW_REQUIRED");
+  assert.deepEqual(report.edges.map((e) => [e.id, e.severity]), [
+    ["payment-ledger-entitlement", "P0"],
+    ["outbound-message-provider-receipt", "P1"],
+    ["native-portal-first-open", "P1"]
+  ]);
+  assert.deepEqual(report.unmappedHighRiskFiles, []);
+  assert.equal(report.liveReceipt, "NEEDS_LIVE_RECEIPT");
+  assert.deepEqual(changedCriticalEdges(["public/app/client-portal.spec.mjs"]), []);
 });
 
 test("active funding and A/R producer edits require both P0 money-result reviews", () => {
