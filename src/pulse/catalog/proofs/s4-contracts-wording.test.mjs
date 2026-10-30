@@ -36,10 +36,13 @@ async function pdfBytes() {
 async function openDesk(open, { templates = [TEXT_TEMPLATE, PDF_TEMPLATE], write } = {}) {
   const pdf = (await pdfBytes()).toString("base64");
   const writes = [];
+  // A successful archived/restored template must move across the actual tabs
+  // on the next API read, rather than remaining in a frozen mock response.
+  const liveTemplates = templates.map((template) => ({ ...template }));
   const handlers = {
     "/api/read/contracts": async (route, { url }) => {
       if (url.includes("file=template")) return json(route, { ok: true, pdf_base64: pdf });
-      if (url.includes("view=templates")) return json(route, { ok: true, count: templates.length, items: templates });
+      if (url.includes("view=templates")) return json(route, { ok: true, count: liveTemplates.length, items: liveTemplates });
       return json(route, { ok: true, items: [] });
     },
     "/api/contracts": async (route) => {
@@ -48,6 +51,10 @@ async function openDesk(open, { templates = [TEXT_TEMPLATE, PDF_TEMPLATE], write
       const out = write ? write(body) : {
         status: 200, body: { ok: true, message: "Saved.", template: { ...TEXT_TEMPLATE, id: body.id || TPL, active: body.active !== false } },
       };
+      if (out.status >= 200 && out.status < 300 && out.body.ok && body.action === "archive_template") {
+        const template = liveTemplates.find((item) => item.id === body.id);
+        if (template) template.active = body.active;
+      }
       return route.fulfill({ status: out.status, contentType: "application/json", body: JSON.stringify(out.body) });
     },
   };
@@ -126,15 +133,21 @@ test("editing saves by id with no short name; Archive and Turn back on post the 
 
   await proof.check(/^Archive \/ Turn back on/, async () => {
     await page.locator(`tr[data-tid="${TPL}"]`).click();
-    assert.equal(await page.locator("#btnArchive").innerText(), "Archive");
+    assert.equal(await page.locator("#btnArchive").innerText(), "Decommission");
     await page.locator("#btnArchive").click();
     await waitFor(() => writes.length === 2);
     assert.deepEqual(writes[1], { action: "archive_template", id: TPL, active: false });
+    await page.locator(`tr[data-tid="${TPL}"]`).waitFor({ state: "detached" });
+    await page.locator("#tabDecommissioned").click();
+    assert.equal(await page.locator("#tplList tr[data-tid]").count(), 2, "both archived wordings are in the separate tab");
     await page.locator(`tr[data-tid="${OLD}"]`).click();
     assert.equal(await page.locator("#btnArchive").innerText(), "Turn back on");
     await page.locator("#btnArchive").click();
     await waitFor(() => writes.length === 3);
     assert.deepEqual(writes[2], { action: "archive_template", id: OLD, active: true });
+    await page.locator(`tr[data-tid="${OLD}"]`).waitFor({ state: "detached" });
+    await page.locator("#tabClient").click();
+    assert.equal(await page.locator(`tr[data-tid="${OLD}"]`).count(), 1, "restored wording is back in the client tab");
   });
   await page.close();
 });
