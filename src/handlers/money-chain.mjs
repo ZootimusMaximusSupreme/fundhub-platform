@@ -932,7 +932,7 @@ export async function onSaleClosedMoney(event, db) {
 async function successFeeInvoiceFor(db, { orgId, clientId, invoiceId }) {
   if (!orgId || !clientId || !asUuid(invoiceId)) return null;
   const { rows } = await db.query(
-    `SELECT id, sale_id, status FROM invoices
+    `SELECT id, sale_id, status, funding_round_id FROM invoices
       WHERE id = $1 AND org_id = $2 AND client_id = $3
         AND (source = 'funding_success_fee' OR invoice_type = 'success_fee')
       LIMIT 1`,
@@ -964,7 +964,7 @@ export async function onPaymentReceivedMoney(event, db) {
   let linkContext = null;
   if (p.paymentLinkId) {
     linkContext = (await db.query(
-      `SELECT id, product_id, sale_id, sale_motion,
+      `SELECT id, product_id, sale_id, invoice_id, sale_motion,
               closer_staff_id, sales_manager_staff_id
          FROM payment_links
         WHERE id = $1 AND org_id = $2 AND client_id = $3
@@ -978,10 +978,16 @@ export async function onPaymentReceivedMoney(event, db) {
         detail: "the payment link is not for this client and org"
       };
     }
+    // Same-buyer payment links may belong to different invoices.
+    if (linkContext.invoice_id && p.invoiceId &&
+        String(linkContext.invoice_id) !== String(p.invoiceId)) {
+      return { done: false, reason: "payment_link_invoice_conflict" };
+    }
   }
   const paymentPayload = {
     ...p,
     paymentLinkId: linkContext?.id || p.paymentLinkId || null,
+    invoiceId: linkContext?.invoice_id || p.invoiceId || null,
     productId: linkContext?.product_id || p.productId || null,
     saleId: linkContext?.sale_id || p.saleId || null,
     saleMotion: linkContext?.sale_motion || p.saleMotion || null,
@@ -1004,7 +1010,7 @@ export async function onPaymentReceivedMoney(event, db) {
       return { done: false, reason: "invoice_identity_conflict" };
     }
     otherInvoice = (await db.query(
-      `SELECT id, sale_id, status FROM invoices
+      `SELECT id, sale_id, status, funding_round_id FROM invoices
         WHERE id = $1 AND org_id = $2 AND client_id = $3 LIMIT 1`,
       [paymentPayload.invoiceId, orgId, clientId]
     )).rows[0] || null;
@@ -1057,6 +1063,13 @@ export async function onPaymentReceivedMoney(event, db) {
   // unapplied once paid; money-chain must not separately pay commissions or
   // unlock services for that new overpayment.
   const billedInvoice = feeInvoice || otherInvoice;
+  // Invoice allocator refuses a conflicting round; money-chain must refuse
+  // BEFORE posting sale cash, commissions or paid access.
+  const hintedRound = paymentPayload.fundingRoundId || paymentPayload.funding_round_id || null;
+  if (billedInvoice && hintedRound &&
+      String(billedInvoice.funding_round_id || "") !== String(hintedRound)) {
+    return { done: false, reason: "invoice_round_conflict" };
+  }
   if (billedInvoice?.status === "paid") {
     const receiptRef = paymentPayload.paymentId || paymentPayload.providerRef || null;
     const eventReceiptId = asUuid(event.id);

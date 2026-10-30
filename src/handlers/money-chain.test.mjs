@@ -409,7 +409,8 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
   function feeDb({
     invoice = { id: INVOICE, sale_id: BILLED_SALE, status: "sent" },
     paidReceiptRef = null,
-    paidReceiptEventId = null
+    paidReceiptEventId = null,
+    linkedInvoiceId = null
   } = {}) {
     const queries = [];
     const sale = (id) => ({ id, org_id: ORG, client_id: CLIENT, product_id: PRODUCT, sale_motion: null, status: "active" });
@@ -424,8 +425,8 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
           return { rows: params[0] === CLIENT && params[1] === ORG ? [{ exists: 1 }] : [] };
         }
         if (/FROM payment_links/.test(text) && /WHERE id = \$1 AND org_id = \$2 AND client_id = \$3/.test(text)) {
-          return { rows: [{ id: LINK, product_id: null, sale_id: null, sale_motion: null,
-            closer_staff_id: null, sales_manager_staff_id: null }] };
+          return { rows: [{ id: LINK, product_id: null, sale_id: null, invoice_id: linkedInvoiceId,
+            sale_motion: null, closer_staff_id: null, sales_manager_staff_id: null }] };
         }
         if (/FROM invoice_payments/.test(text)) {
           const replayMatched = params[0] === ORG && params[1] === INVOICE &&
@@ -487,6 +488,36 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
     assert.equal(out.saleId, BILLED_SALE);
   });
 
+
+
+  test("a fee invoice cannot credit a different funding round", async () => {
+    const db = feeDb({ invoice: { id: INVOICE, sale_id: BILLED_SALE, status: "sent",
+      funding_round_id: "00000000-0000-4000-8000-0000000000f5" } });
+    const out = await onPaymentReceivedMoney(feeReceipt({
+      fundingRoundId: "00000000-0000-4000-8000-0000000000f6"
+    }), db);
+    assert.equal(out.done, false);
+    assert.equal(out.reason, "invoice_round_conflict");
+    assert.equal(salePaymentInsert(db), undefined);
+    assert.equal(out.entitlements, undefined);
+  });
+
+  test("one invoice cannot use a same-buyer link for another invoice", async () => {
+    const db = feeDb({ linkedInvoiceId: "00000000-0000-4000-8000-0000000000e2" });
+    const out = await onPaymentReceivedMoney(feeReceipt(), db);
+    assert.equal(out.done, false);
+    assert.equal(out.reason, "payment_link_invoice_conflict");
+    assert.equal(salePaymentInsert(db), undefined);
+    assert.equal(out.entitlements, undefined);
+  });
+
+  test("a matching invoice link can supply the missing invoice identifier", async () => {
+    const db = feeDb({ linkedInvoiceId: INVOICE });
+    const out = await onPaymentReceivedMoney(feeReceipt({ invoiceId: null }), db);
+    assert.equal(out.done, true, JSON.stringify(out));
+    assert.equal(salePaymentInsert(db)?.params[6], "success_fee");
+    assert.equal(salePaymentInsert(db)?.params[1], BILLED_SALE);
+  });
 
   test("a success-fee invoice cannot be redirected to another same-buyer sale", async () => {
     const db = feeDb();
