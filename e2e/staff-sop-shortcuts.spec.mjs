@@ -59,9 +59,8 @@ test("all twelve working desks have one real SOP link in the staff header; exist
 
 test("staff clicks document icon, gets contextual Company Brain files and explicit source-backed search, then Back returns to dashboard", async ({ page }) => {
   const asks = [];
-  // Company Brain is owner/admin-only in the existing shell permission table.
-  // Do not widen access by testing with a setter fixture that must be redirected.
-  await setup(page, OWNER, {
+  // The existing Company Brain API grants setter tier-filtered STAFF access.
+  await setup(page, STAFF("setter"), {
     "/api/read/company-brain": async (route) => {
       asks.push(route.request().postDataJSON());
       await json(route, { ok: true, thread_id: "7b000000-0000-4000-8000-000000000001",
@@ -89,8 +88,8 @@ test("staff clicks document icon, gets contextual Company Brain files and explic
 test("phone shortcut has a 44px target, opens docs, searches and returns without horizontal overflow", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const asks = [];
-  // The narrower closer role cannot open the existing Company Brain screen.
-  await setup(page, OWNER, {
+  // Exercise actual closer identity, not an owner impersonating the closer.
+  await setup(page, CLOSER, {
     "/api/read/company-brain": async (route) => {
       asks.push(route.request().postDataJSON());
       await json(route, { ok: true, answer: { text: "See approved closer script." }, sources: [] });
@@ -146,16 +145,20 @@ test("320px staff header stays on one row with a full-size SOP icon and usable C
   await expect(page.locator("#fh-shell-search-overlay")).not.toHaveClass(/open/);
 });
 
-test("roles without Company Brain permissions and customer/partner portals never show staff SOP shortcuts", async ({ page }) => {
-  // The shell's OWNER_ADMIN_ONLY list includes company-brain.html.
-  // A regular setter/closer must not see a shortcut that would bounce to an
-  // unauthorized page. Do not expand the existing role grants for SOP links.
-  await setup(page, STAFF("setter"));
-  await page.goto("/app/setter-dashboard.html");
-  await expect(page.locator(selectors.shortcut)).toHaveCount(0);
-  await setup(page, CLOSER);
-  await page.goto("/app/closer-dashboard.html");
-  await expect(page.locator(selectors.shortcut)).toHaveCount(0);
+test("role-authorized employees get their correct SOP button; external principals get none", async ({ page }) => {
+  const allowed = [
+    [STAFF("setter"), "setter-dashboard.html", "setter"],
+    [CLOSER, "closer-dashboard.html", "closer"],
+    [STAFF("csm"), "csm-queue.html", "client-success"],
+    [STAFF("funding_advisor"), "lenders.html", "lenders"],
+    [STAFF("inquiry_specialist"), "inquiry-remover.html", "credit-repair"],
+    [STAFF("sales_manager"), "sales-floor.html", "sales"]
+  ];
+  for (const [session, screen, topic] of allowed) {
+    await setup(page, session);
+    await page.goto("/app/" + screen);
+    await expect(page.locator(selectors.shortcut)).toHaveAttribute("href", "company-brain.html?sop=" + topic);
+  }
   await setup(page, STAFF("outbound_rep"));
   await page.goto("/app/bank-outreach.html");
   await expect(page.locator(selectors.shortcut)).toHaveCount(0);
