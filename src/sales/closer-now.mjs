@@ -12,6 +12,8 @@ export async function closerNow(db, { orgId, staffId, now = new Date() } = {}) {
        LEFT JOIN clients c ON c.id = t.client_id AND c.org_id = t.org_id
        LEFT JOIN call_outcomes o ON o.task_id = t.id
       WHERE t.org_id = $1
+        AND c.id IS NOT NULL
+        AND c.custom_fields->>'crm_archived_at' IS NULL
         AND t.assignee_role = 'closer'
         AND (t.assignee_staff_id = $2 OR t.assignee_staff_id IS NULL)
         AND t.due_at IS NOT NULL

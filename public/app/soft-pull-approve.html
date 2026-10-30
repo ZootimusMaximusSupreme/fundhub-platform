@@ -63,6 +63,7 @@ ol.next li:last-child{margin-bottom:0}
 (function () {
   var q = new URLSearchParams(location.search);
   var token = { org: q.get("org"), client: q.get("client"), exp: q.get("exp"), sig: q.get("sig") };
+  var portalMode = q.get("portal") === "1";
   var root = document.getElementById("app");
   var pricing = { base_cents: 3200, business_addon_cents: 1000, max_businesses: 20, base_display: "$32", business_addon_display: "$10" };
   var bizCount = 0;
@@ -79,10 +80,22 @@ ol.next li:last-child{margin-bottom:0}
   }
 
   function apiUrl() {
+    if (portalMode) return "/api/soft-pull-approve?portal=1";
     return "/api/soft-pull-approve?org=" + encodeURIComponent(token.org || "") +
       "&client=" + encodeURIComponent(token.client || "") +
       "&exp=" + encodeURIComponent(token.exp || "") +
       "&sig=" + encodeURIComponent(token.sig || "");
+  }
+
+  function authHeaders() {
+    var headers = { "content-type": "application/json", accept: "application/json" };
+    if (portalMode) {
+      try {
+        var session = localStorage.getItem("fh_token");
+        if (session) headers.authorization = "Bearer " + session;
+      } catch (_e) { /* HttpOnly session cookie remains available */ }
+    }
+    return headers;
   }
 
   function showErr(msg) {
@@ -90,7 +103,15 @@ ol.next li:last-child{margin-bottom:0}
       '<div class="mono">Fundhub · soft pull</div>' +
       '<h1>Link problem</h1>' +
       '<div class="err">' + esc(msg) + "</div>" +
-      '<p class="lede">Stay on the call and ask your advisor to send a fresh link.</p>';
+      (portalMode
+        ? '<p class="lede"><a href="/portal-login.html?mode=claim">Sign in to your portal</a> and open Soft pull again.</p>'
+        : '<p class="lede">Stay on the call and ask your advisor to send a fresh link.</p>');
+  }
+
+  function needsAccount(body) {
+    if (!body || body.error !== "account_required") return false;
+    location.replace("/portal-login.html?mode=claim");
+    return true;
   }
 
   function updateTotal() {
@@ -224,17 +245,20 @@ ol.next li:last-child{margin-bottom:0}
     root.innerHTML =
       '<div class="mono">Fundhub · soft pull</div>' +
       "<h1>Approve your soft-pull assessment</h1>" +
-      '<p class="lede">Hi ' + esc(name) + ". Fill this out while you stay on the Google Meet. " +
-      "It is a soft inquiry — it does not hurt your score. Authorize first, then pay the total shown below.</p>" +
-      (already ? '<div class="ok">Consent is already on file. You can update your details below if needed, then pay.</div><br>' : "") +
+      '<p class="lede">Hi ' + esc(name) + ". You can authorize now, even before your call. " +
+      "Your information is saved securely. This is a soft inquiry and does not hurt your score. " +
+      "The pull starts only after your authorization and payment are both on file.</p>" +
+      (data.paid ? '<div class="ok">Payment is already on file. No second payment is needed.</div><br>' : "") +
+      (already ? '<div class="ok">Your authorization is saved. You can update your details below if needed.</div><br>' : "") +
       '<div class="approval-layout"><aside class="approval-guidance" aria-label="Authorization details"><div class="card"><h2>Soft pull authorization</h2>' +
       '<div class="disc">' + esc((data.disclosure && data.disclosure.text) || "") + "</div>" +
       '<p class="fine">Version ' + esc((data.disclosure && data.disclosure.version) || "—") + "</p></div>" +
       '<div class="card"><h2>What happens next</h2><ol class="next">' +
-      "<li>You fill this in (optional businesses at the bottom) and submit. Your advisor never sees your Social Security number.</li>" +
+      "<li>Your information is sent securely and saved for this authorization. Your advisor never sees your Social Security number.</li>" +
+      (data.paid ? "<li>Your payment is already on file.</li>" :
       "<li>You pay the total shown — " + esc(pricing.base_display) + " soft pull plus " +
-      esc(pricing.business_addon_display) + " per business.</li>" +
-      "<li>Once that payment clears, we request the report. Nothing else is needed from you.</li>" +
+      esc(pricing.business_addon_display) + " per business.</li>") +
+      "<li>When authorization and payment are both on file, we request the report. Nothing else is needed from you.</li>" +
       "</ol></div></aside>" +
       '<form id="f"><h2>Your details</h2><p class="form-intro">Enter your legal information to authorize the assessment.</p>' +
       '<label for="granted_name">Full legal name</label>' +
@@ -312,10 +336,6 @@ ol.next li:last-child{margin-bottom:0}
       }
 
       var body = {
-        org: token.org,
-        client: token.client,
-        exp: token.exp,
-        sig: token.sig,
         granted_name: document.getElementById("granted_name").value,
         ssn: document.getElementById("ssn").value,
         dob: document.getElementById("dob").value,
@@ -325,12 +345,20 @@ ol.next li:last-child{margin-bottom:0}
         postal_code: addr.postal_code,
         businesses: businesses
       };
+      if (!portalMode) {
+        body.org = token.org;
+        body.client = token.client;
+        body.exp = token.exp;
+        body.sig = token.sig;
+      }
       fetch("/api/soft-pull-approve", {
         method: "POST",
-        headers: { "content-type": "application/json", accept: "application/json" },
+        credentials: "include",
+        headers: authHeaders(),
         body: JSON.stringify(body)
       }).then(function (r) { return r.json().then(function (j) { return { status: r.status, body: j }; }); })
         .then(function (r) {
+          if (needsAccount(r.body)) return;
           if (!r.body || !r.body.ok) {
             btn.disabled = false;
             msg.innerHTML = '<div class="err">' + esc((r.body && (r.body.message || r.body.error)) || "Could not save") + "</div>";
@@ -344,10 +372,13 @@ ol.next li:last-child{margin-bottom:0}
             "<h1>Consent saved</h1>" +
             '<div class="ok">Your soft-pull authorization is on file. ' +
             esc(r.body.next || ("Pay " + total + " next.")) + "</div>" +
-            (pay
+            (r.body.paid
+              ? '<p class="lede">Payment is already on file. Your credit report will appear in your portal when the pull completes.</p>'
+              : pay
               ? '<a class="btn-pay" href="' + esc(pay) + '">Pay ' + esc(total) + " assessment</a>"
               : '<p class="lede" style="margin-top:14px">Ask your advisor for the pay link for ' + esc(total) + ".</p>") +
-            '<p class="lede" style="margin-top:14px">After payment clears, the soft pull runs automatically. Stay on the Meet.</p>';
+            '<p class="lede" style="margin-top:14px">Once payment and authorization are both recorded, the soft pull starts automatically.</p>' +
+            '<p class="lede"><a href="/app/client-portal.html">Back to my portal</a></p>';
         })
         .catch(function () {
           btn.disabled = false;
@@ -356,14 +387,15 @@ ol.next li:last-child{margin-bottom:0}
     });
   }
 
-  if (!token.org || !token.client || !token.exp || !token.sig) {
+  if (!portalMode && (!token.org || !token.client || !token.exp || !token.sig)) {
     showErr("This page needs a full link from your advisor.");
     return;
   }
 
-  fetch(apiUrl(), { headers: { accept: "application/json" } })
+  fetch(apiUrl(), { credentials: "include", headers: authHeaders() })
     .then(function (r) { return r.json().then(function (j) { return { status: r.status, body: j }; }); })
     .then(function (r) {
+      if (needsAccount(r.body)) return;
       if (!r.body || !r.body.ok) {
         showErr((r.body && (r.body.message || r.body.error)) || "Could not open this link.");
         return;

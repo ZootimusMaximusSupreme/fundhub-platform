@@ -91,6 +91,11 @@ export const CONTEXT_PREFIXES = Object.freeze([
     supplied_by: "src/auth/magic-link.mjs"
   }),
   Object.freeze({
+    prefix: "portal_claim.",
+    only: "SMS-S04-01-CONFIRM / EMAIL-S04-01-CONFIRM",
+    supplied_by: "src/workflows/s-04b-booking-reminders.mjs"
+  }),
+  Object.freeze({
     prefix: "repair.",
     only: "EMAIL-REPAIR-*",
     supplied_by: "src/repair/notify.mjs"

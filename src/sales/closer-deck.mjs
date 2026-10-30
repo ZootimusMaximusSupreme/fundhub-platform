@@ -338,7 +338,8 @@ export async function buildCloserDeck(db, { orgId, clientId }) {
             b.name AS business_name
        FROM clients c
        LEFT JOIN businesses b ON b.client_id = c.id AND b.org_id = c.org_id
-      WHERE c.id = $1 AND c.org_id = $2`,
+      WHERE c.id = $1 AND c.org_id = $2
+        AND c.custom_fields->>'crm_archived_at' IS NULL`,
     [clientId, orgId]
   );
   const client = clientRes.rows[0];

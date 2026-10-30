@@ -38,6 +38,8 @@
 .closer-workspace .call-tools{border-top:1px solid #edf0eb;padding-top:18px;}
 .closer-workspace .call-tools .client-label{display:none;}
 .closer-workspace .call-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.closer-workspace .call-actions .report-state{font-size:13px;color:var(--text-dim);line-height:1.4;}
+.closer-workspace #fh-credit-report{min-height:44px;}
 .closer-workspace :is(.call-cockpit,.logbar) button{min-height:42px;padding:10px 14px;border:1px solid #d6d9d3;background:#fff;border-radius:9px;color:var(--text);font-weight:600;font-size:13px;line-height:1.25;cursor:pointer;transition:background .12s,border-color .12s;}
 .closer-workspace :is(.call-cockpit,.logbar) button:hover{background:#f4f5f1;border-color:#a9afa7;}
 .closer-workspace :is(.call-cockpit,.logbar) button.k{background:#101419;border-color:#101419;color:#fff;}

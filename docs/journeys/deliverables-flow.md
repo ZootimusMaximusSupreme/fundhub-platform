@@ -7,6 +7,22 @@ Not a spec. If you cannot trace a box to a line of code, it is marked
 **COMPLIANCE REVIEW REQUIRED** (CLAUDE.md §7) — credit-repair messaging and
 projected-score adjacent. Marker only.
 
+## 2026-10-29 addition: complete source credit report (code, not live-proved)
+
+The five interpreted funding deliverables below remain separate. After a real,
+stored `crs_softview` production result, the additional
+`src/handlers/crs-full-report.mjs` path builds one source-report PDF from the
+saved CRS data, registers it as a client deliverable, and queues one attachment
+email keyed to that CRS result. A replay of the same result reuses the saved
+document/email identity. The closer's report button opens a fresh authorized
+document link; the client portal's Documents area shows the same saved item.
+The report ends with a book-another-call link. Simulated or absent bureau data
+must not be presented as a real report. Local tests do not prove a production
+CRS result, PDF storage, email delivery, or client portal visibility.
+
+The older diagram and five-file table below describe the interpreted package,
+not this additional complete source report.
+
 ## The states a client's deliverables move through
 
 ```mermaid

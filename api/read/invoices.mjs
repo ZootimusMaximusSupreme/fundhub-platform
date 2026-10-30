@@ -63,6 +63,7 @@ export const AR_INVOICE_LIST_SQL = `SELECT v.invoice_id AS id, v.client_id, v.cl
          LIMIT 1
       ) pay ON true
      WHERE v.org_id = $5::uuid
+       AND c.custom_fields->>'crm_archived_at' IS NULL
        AND ($3::uuid IS NULL OR v.client_id = $3)
        AND ($4::text IS NULL OR v.status = $4)
        AND ($6::boolean IS NOT TRUE OR v.open_balance > 0)

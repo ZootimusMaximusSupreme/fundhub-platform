@@ -232,7 +232,7 @@ export async function claimDue(db, { orgId = null, limit = DEFAULT_BATCH, now = 
      see resolveTimestampParam. */
   const at = resolveTimestampParam(now);
 
-  /* senderStaffOnly — "only messages a person wrote".
+  /* senderStaffOnly — staff replies plus the new credit-report email cohort.
 
      ═══════════════════════════════════════════════════════════════════════
      THIS EXISTS BECAUSE THE BACKLOG IS NOT ALL THE SAME AGE OR THE SAME KIND.
@@ -245,12 +245,11 @@ export async function claimDue(db, { orgId = null, limit = DEFAULT_BATCH, now = 
      landing on real people in one afternoon.
 
      That is not a hypothetical and it is not this feature's decision to make.
-     So the sweeper that releases held STAFF replies filters to exactly those:
-     `sender_staff_id IS NOT NULL` is true only for rows written by
-     src/messaging/compose.mjs, i.e. a message a named employee typed and
-     pressed Send on, which was then held for the night. Releasing those is
-     what the owner asked for. Draining the legacy workflow backlog is a
-     separate, deliberate act by a human and is deliberately NOT done here.
+     The scheduled sweeper releases held STAFF replies and retries only new
+     credit-report emails. `sender_staff_id IS NOT NULL` identifies the former;
+     the exact `workflow:crs-full-report:` prefix identifies the latter.
+     Draining the legacy workflow backlog is a separate, deliberate act by a
+     human and is deliberately NOT done here.
 
      Default false, so every existing caller — dispatchDue() from a test, a
      future full drain — behaves exactly as it did. */
@@ -264,7 +263,8 @@ export async function claimDue(db, { orgId = null, limit = DEFAULT_BATCH, now = 
             AND (scheduled_at IS NULL OR scheduled_at <= COALESCE($3::timestamptz, now()))
             AND ($1::uuid IS NULL OR org_id = $1)
             AND attempts < $4
-            AND ($5::boolean IS NOT TRUE OR sender_staff_id IS NOT NULL)
+            AND ($5::boolean IS NOT TRUE OR sender_staff_id IS NOT NULL
+                 OR provider_ref LIKE 'workflow:crs-full-report:%')
           ORDER BY scheduled_at NULLS FIRST, created_at
           LIMIT $2
           FOR UPDATE SKIP LOCKED
@@ -379,6 +379,34 @@ async function subjectFor(db, message) {
     [message.org_id, message.template_key]
   );
   return rows[0]?.subject || null;
+}
+
+/** Resolve a saved document only after the send gate approves the message.
+ * The outbox stores its id, never sensitive PDF bytes or a storage bearer key.
+ * A retry re-reads the immutable document version from the normal store. */
+export async function resolveDocumentAttachments(db, attachments, message, { store = null } = {}) {
+  if (!attachments) return null;
+  const list = typeof attachments === "string" ? JSON.parse(attachments) : attachments;
+  if (!Array.isArray(list) || !list.some((item) => item?.document_id)) return list;
+  const { storeFromEnv } = await import("../documents/store.mjs");
+  const documentStore = store || storeFromEnv();
+  const resolved = [];
+  for (const item of list) {
+    if (!item?.document_id) { resolved.push(item); continue; }
+    const row = (await db.query(
+      `SELECT storage_key, checksum, mime_type FROM documents
+        WHERE id = $1 AND org_id = $2 AND client_id = $3
+          AND kind = 'deliverable' AND subtype = 'crs_full_credit_report'
+          AND mime_type = 'application/pdf' LIMIT 1`,
+      [item.document_id, message.org_id, message.client_id]
+    )).rows[0];
+    if (!row) throw new Error("Credit report attachment is not on this client file");
+    const file = await documentStore.get(row.storage_key, { expectedChecksum: row.checksum });
+    if (!file?.body?.length) throw new Error("Credit report attachment could not be loaded");
+    resolved.push({ filename: item.filename || "Fundhub-Credit-Report.pdf",
+      content: file.body.toString("base64"), content_type: row.mime_type });
+  }
+  return resolved;
 }
 
 /* dispatchOne — gate, route, send, record. One message.
@@ -729,7 +757,7 @@ export async function dispatchOne(db, message, options = {}) {
         // the RFC 8058 List-Unsubscribe headers, which are metadata rather than
         // message content — so setting them does not break the never-mutate rule.
         unsubscribeUrl,
-        attachments: message.attachments || null,
+        attachments: await resolveDocumentAttachments(db, message.attachments, message),
         ...(bank ? { from: bank.from, replyTag: bank.replyTag } : {})
       }, { fetchImpl, timeoutMs, signal, env });
     } catch (error) {

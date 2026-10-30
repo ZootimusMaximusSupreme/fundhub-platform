@@ -77,3 +77,39 @@ test('page_portal_login verified account replaces stale identity and clears offl
   await page.waitForURL('**/portal-login.html?fixture=done');
   expect(await page.evaluate(() => ({ token: localStorage.getItem('fh_token'), account: JSON.parse(localStorage.getItem('fh_account')), role: localStorage.getItem('fh_role'), demo: localStorage.getItem('fh_demo'), staff: localStorage.getItem('fh_demo_staff') }))).toEqual({ token: 'fixture-session', account: { clientId: 'own-fixture', kind: 'client' }, role: 'client', demo: null, staff: null });
 });
+
+test('booking claim confirms the next call and opens soft pull after account sign-in', async ({ page }) => {
+  const calls = [];
+  await page.route('**/api/auth/magic-link-verify', route => reply(route, {
+    ok: true, token: 'fixture-session', account: { clientId: 'own-fixture', kind: 'client' }, next: '/app/client-portal.html'
+  }));
+  await page.route('**/api/read/portal-summary', route => reply(route, {
+    ok: true, upcoming_call: { id: '00000000-0000-4000-8000-000000000001', confirmed: false }
+  }));
+  await page.route('**/api/bookings', route => {
+    calls.push(route.request().postDataJSON());
+    return reply(route, { ok: true, confirmed: true });
+  });
+  await page.route('**/api/soft-pull-approve?portal=1', route => reply(route, {
+    ok: true, contact: { first_name: 'Buyer' }, consent: { valid: false },
+    disclosure: { version: '2.1', text: 'I authorize a soft inquiry.' }
+  }));
+  await page.goto('/portal-login.html?t=safe-fixture-token&booking_claim=1');
+  await page.waitForURL('**/app/soft-pull-approve.html?portal=1');
+  await expect(page.getByRole('heading', { name: 'Approve your soft-pull assessment' })).toBeVisible();
+  expect(calls).toEqual([{ booking_id: '00000000-0000-4000-8000-000000000001' }]);
+});
+
+test('the lasting booking link asks for account setup and keeps claim intent', async ({ page }) => {
+  const requests = [];
+  await page.route('**/api/auth/magic-link', route => {
+    requests.push(route.request().postDataJSON());
+    return reply(route, { ok: true });
+  });
+  await page.goto('/portal-login.html?mode=claim');
+  await expect(page.getByRole('heading', { name: 'Set up your Fundhub portal.' })).toBeVisible();
+  await page.getByLabel('Email address').fill('buyer@example.test');
+  await page.getByRole('button', { name: 'Create or open my account' }).click();
+  await expect(page.locator('#ok-box')).toBeVisible();
+  expect(requests).toEqual([{ email: 'buyer@example.test', booking_claim: true }]);
+});

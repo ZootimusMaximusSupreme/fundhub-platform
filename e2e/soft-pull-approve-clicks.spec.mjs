@@ -69,6 +69,12 @@ test.describe("soft-pull approval page", () => {
     await expect(page.locator("#f")).toHaveCount(0);
   });
 
+  test("a signed link for someone without an account opens the lasting claim page", async ({ page }) => {
+    await open(page, { read: { ok: false, error: "account_required", create_account_url: "/portal-login.html?mode=claim" } });
+    await page.waitForURL("**/portal-login.html?mode=claim");
+    await expect(page.getByRole("heading", { name: "Set up your Fundhub portal." })).toBeVisible();
+  });
+
   test("the running total adds $10 per business and drops it when one is removed", async ({ page }) => {
     await open(page);
     await expect(page.locator("#total_line")).toContainText("Total due: $32");

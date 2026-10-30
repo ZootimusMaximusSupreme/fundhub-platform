@@ -300,6 +300,8 @@ export async function listUnloggedCalls(db, { orgId, staffId = null, limit = 50 
        LEFT JOIN clients c ON c.id = t.client_id AND c.org_id = t.org_id
        LEFT JOIN call_outcomes o ON o.task_id = t.id AND o.org_id = t.org_id
       WHERE t.org_id = $1
+        AND c.id IS NOT NULL
+        AND c.custom_fields->>'crm_archived_at' IS NULL
         AND t.assignee_role = 'closer'
         AND t.title LIKE ${titleParam}
         AND t.due_at IS NOT NULL
@@ -331,6 +333,11 @@ export async function countUnlogged(db, { orgId, staffId = null } = {}) {
     `SELECT count(*)::int AS n
        FROM tasks t
       WHERE t.org_id = $1
+        AND EXISTS (
+          SELECT 1 FROM clients c
+           WHERE c.id = t.client_id AND c.org_id = t.org_id
+             AND c.custom_fields->>'crm_archived_at' IS NULL
+        )
         AND t.assignee_role = 'closer'
         AND t.title LIKE ${titleParam}
         AND t.due_at IS NOT NULL

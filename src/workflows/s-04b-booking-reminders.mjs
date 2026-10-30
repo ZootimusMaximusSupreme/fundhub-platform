@@ -14,9 +14,8 @@ import { resolveClient } from "../handlers/client-lifecycle.mjs";
 import { sendTemplated } from "./messaging.mjs";
 import { callHappened } from "./dpc-02-call-outcome-enforcement.mjs";
 import { drainMessageNow } from "../messaging/outbox.mjs";
-import {
-  requestMagicLink, magicLinkUrl, portalLoginUrl, BOOKING_CONFIRM_LINK_TTL_MINUTES
-} from "../auth/magic-link.mjs";
+import { portalLoginUrl } from "../auth/magic-link.mjs";
+import { ensurePendingClientAccount } from "../auth/account-session.mjs";
 
 export const SMS_CONFIRM = "SMS-S04-01-CONFIRM";
 export const EMAIL_CONFIRM = "EMAIL-S04-01-CONFIRM";
@@ -127,18 +126,16 @@ export function appointmentContext(payload = {}) {
   };
 }
 
-/* No token could be minted. The email still gets a real link — the sign-in page
-   that mails one — plus the reason, which is for the run log and never for the
-   client. `expires_minutes` is empty because a page that asks for your address
-   does not expire; the template prints it nowhere, and a number here would be a
-   promise about a token that was never made. */
-function fallbackPortalLink(reason) {
-  return { issued: false, reason, url: portalLoginUrl(), expires_minutes: "" };
+/* This is a permanent entry page, not a bearer credential. It asks the client
+   to prove the email on their file and can issue a fresh sign-in link whenever
+   they open it; old booking texts therefore never strand them. */
+export function bookingClaimUrl(env = process.env) {
+  return `${portalLoginUrl(env)}?mode=claim`;
 }
 
 export async function handle({
   event, db, step,
-  requestMagicLinkImpl = requestMagicLink,
+  ensurePendingClientAccountImpl = ensurePendingClientAccount,
   drainNowImpl = drainMessageNow,
   now = () => Date.now()
 }) {
@@ -151,53 +148,32 @@ export async function handle({
   const startTime = payload.startTime || payload.start_time || null;
   const context = appointmentContext(payload);
 
+  // The client account exists before the first text is queued. Its invited
+  // state cannot sign in until the client proves control of the email address.
+  const portalAccount = await step.run("ensure-booking-portal-account", () =>
+    ensurePendingClientAccountImpl(db, { orgId, clientId }));
+  const claimUrl = bookingClaimUrl();
+
   const confirm = await step.run("send-confirm", () =>
     sendTemplated(db, {
       orgId, clientId, channel: "sms", templateKey: SMS_CONFIRM,
-      eventId: `${eventId}:confirm`, context
+      eventId: `${eventId}:confirm`,
+      context: { ...context, portal_claim: { url: claimUrl } }
     }));
-
-  // Owner 2026-08-23: the confirm email carries portal access. Token is 365 days
-  // and still single-use. The separate EMAIL-PORTAL-MAGIC-LINK send does not fire.
-  const portal = await step.run("issue-booking-portal-link", async () => {
-    const fromPayload = String(payload.email || payload.attendeeEmail || "").trim();
-    let email = fromPayload;
-    if (!email) {
-      const r = await db.query(`SELECT email FROM clients WHERE id = $1 LIMIT 1`, [clientId]);
-      email = r.rows[0]?.email || null;
-    }
-    if (!email) return fallbackPortalLink("no_email_on_booking");
-    const out = await requestMagicLinkImpl(db, {
-      email, orgId,
-      ttlMinutes: BOOKING_CONFIRM_LINK_TTL_MINUTES,
-      queueEmail: false
-    });
-    if (!out?.ok) return fallbackPortalLink("request_refused");
-    if (out.limited) return fallbackPortalLink("rate_limited");
-    if (!out.token) return fallbackPortalLink(out.outcome || "no_token");
-    return {
-      issued: true,
-      url: magicLinkUrl(out.token),
-      expires_minutes: String(BOOKING_CONFIRM_LINK_TTL_MINUTES)
-    };
-  });
 
   // Owner decision 2026-08-22: booked stage is one text + Josh dial + one email,
   // all immediate. Text first, email second; the AI setter dials on its own leg.
-  // THE CONTEXT IS NEVER CONDITIONAL. It used to be spread in only when a token
-  // was minted, and an absent {{magic_link.url}} renders as the empty string —
-  // so the confirm email said "Here is your link to sign in to your Fundhub
-  // portal:" and then showed an empty link. Walk finding F2, 2026-09-03. When no
-  // token can be minted, portal.url is the tokenless sign-in page instead, which
-  // is a door the client can actually open.
+  // The confirmation email uses the same permanent entry page as the text.
+  // Neither message contains a credential that can expire in the inbox.
   const confirmEmail = await step.run("send-confirm-email", () =>
     sendTemplated(db, {
       orgId, clientId, channel: "email", templateKey: EMAIL_CONFIRM,
       eventId: `${eventId}:confirm-email`,
       context: {
         ...context,
-        magic_link: { url: portal.url, expires_minutes: portal.expires_minutes },
-        call_confirm: { url: `${portal.url}#call-confirm-card` },
+        magic_link: { url: claimUrl, expires_minutes: "" },
+        call_confirm: { url: claimUrl },
+        portal_claim: { url: claimUrl },
         app_download: { url: `${portalLoginUrl()}#download` },
         web_portal: { url: portalLoginUrl() }
       }
@@ -211,7 +187,7 @@ export async function handle({
       messageIds: [confirm?.messageId, confirmEmail?.messageId].filter(Boolean)
     }));
 
-  const base = { done: true, confirm, confirmEmail, confirmDispatch };
+  const base = { done: true, portalAccount, confirm, confirmEmail, confirmDispatch };
 
   if (!startTime) {
     return { ...base, skippedReminders: "no_start_time" };

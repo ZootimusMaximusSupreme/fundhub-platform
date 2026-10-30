@@ -11,6 +11,8 @@ import handler, {
 } from "../../api/soft-pull-approve.mjs";
 import { softPullTotalCents } from "../finance/soft-pull-pricing.mjs";
 import { ConsentError } from "../consent/index.mjs";
+import { resumePaidDiagnosticSoftPull } from "../handlers/diagnostic-soft-pull.mjs";
+import { signature } from "../consent/approve-token.mjs";
 
 function row(over = {}) {
   return {
@@ -243,6 +245,7 @@ test("ensureSoftPullCheckout reuses matching open link", async () => {
   const db = {
     async query(sql, params) {
       calls.push({ sql: String(sql), params });
+      if (/status = 'paid'/i.test(sql)) return { rows: [] };
       if (/amount_cents = \$4/i.test(sql) && /ORDER BY created_at/i.test(sql)) {
         return { rows: [link] };
       }
@@ -258,4 +261,110 @@ test("ensureSoftPullCheckout reuses matching open link", async () => {
   });
   assert.equal(out.checkout_url, link.checkout_url);
   assert.equal(out.amount_cents, 4200);
+});
+
+test("paid diagnostic never gets a second checkout, even if the form total changed", async () => {
+  const paid = { id: "paid-1", status: "paid", amount_cents: 3200 };
+  const calls = [];
+  const database = { async query(sql) {
+    calls.push(String(sql));
+    if (/status = 'paid'/i.test(sql)) return { rows: [paid] };
+    throw new Error("a second checkout query must not run");
+  } };
+  const out = await ensureSoftPullCheckout(database, {
+    orgId: "o", clientId: "c", amountCents: 4200, env: {}
+  });
+  assert.equal(out, paid);
+  assert.equal(calls.length, 1);
+});
+
+test("consent after verified payment resumes the same event once; failure stays paid", async () => {
+  const event = { id: "event-paid-1", org_id: "org-1", client_id: "client-1",
+    payload: { source: "commas", product: "crs", amount: 32 } };
+  const database = { async query(sql, params) {
+    assert.match(sql, /name = 'diagnostic.paid'/);
+    assert.deepEqual(params, ["org-1", "client-1"]);
+    return { rows: [event] };
+  } };
+  const calls = [];
+  const paid = await resumePaidDiagnosticSoftPull(database, {
+    orgId: "org-1", clientId: "client-1", amountCents: 3200,
+    runPaidPull: async (original) => {
+      calls.push(original.id);
+      return { pulled: true, requestId: "pull-1" };
+    }
+  });
+  assert.equal(paid.paid, true);
+  assert.equal(paid.pull.pulled, true);
+  assert.deepEqual(calls, ["event-paid-1"]);
+  const failed = await resumePaidDiagnosticSoftPull(database, {
+    orgId: "org-1", clientId: "client-1", amountCents: 3200,
+    runPaidPull: async () => { throw new Error("CRS unavailable"); }
+  });
+  assert.equal(failed.paid, true);
+  assert.equal(failed.pull, null);
+  assert.match(failed.error, /CRS unavailable/);
+});
+
+test("different paid amount does not pull or create a second checkout", async () => {
+  const database = { async query() { return { rows: [{ id: "event-1", org_id: "o", client_id: "c",
+    payload: { source: "commas", product: "crs", amount: 32 } }] }; } };
+  const out = await resumePaidDiagnosticSoftPull(database, {
+    orgId: "o", clientId: "c", amountCents: 4200,
+    runPaidPull: async () => { throw new Error("must not pull"); }
+  });
+  assert.equal(out.paid, true);
+  assert.equal(out.reason, "paid_amount_mismatch");
+});
+
+test("portal approval GET derives client and org from session, never query fields", async () => {
+  const orgId = "11111111-1111-4111-8111-111111111111";
+  const clientId = "22222222-2222-4222-8222-222222222222";
+  const queries = [];
+  const database = { async query(sql, params) {
+    queries.push({ sql: String(sql), params });
+    if (/FROM clients/.test(sql)) return { rows: [{ id: clientId, first_name: "Sam", last_name: "Buyer" }] };
+    if (/FROM client_consents/.test(sql)) return { rows: [] };
+    if (/FROM events/.test(sql)) return { rows: [] };
+    if (/FROM payment_links/.test(sql)) return { rows: [] };
+    throw new Error(`unexpected query: ${String(sql).slice(0, 80)}`);
+  } };
+  const response = { statusCode: 0, body: null,
+    status(code) { this.statusCode = code; return this; },
+    json(body) { this.body = body; return this; }
+  };
+  await handler({ method: "GET", query: { portal: "1", org: "spoofed", client: "spoofed" } }, response, {
+    db: database,
+    requirePrincipal: async () => ({ kind: "client", orgId, clientId, accountId: "account-1" })
+  });
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.body.ok, true);
+  assert.equal(response.body.contact.first_name, "Sam");
+  assert.deepEqual(queries[0].params, [clientId, orgId]);
+  assert.equal(JSON.stringify(response.body).includes("ssn"), false);
+});
+
+test("signed soft-pull link sends a client without an account to portal claim", async () => {
+  const orgId = "11111111-1111-4111-8111-111111111111";
+  const clientId = "22222222-2222-4222-8222-222222222222";
+  const secret = "test-soft-pull-secret";
+  const exp = String(Math.floor(Date.now() / 1000) + 3600);
+  const query = { org: orgId, client: clientId, exp,
+    sig: signature({ orgId, clientId, expiresAt: Number(exp), secret }) };
+  const database = { async query(sql) {
+    if (/FROM clients/.test(sql)) return { rows: [{ id: clientId, email: "buyer@example.test" }] };
+    throw new Error("consent and identity must not be touched without a client session");
+  } };
+  for (const method of ["GET", "POST"]) {
+    const response = { statusCode: 0, body: null,
+      status(code) { this.statusCode = code; return this; },
+      json(body) { this.body = body; return this; }
+    };
+    await handler({ method, query, body: { granted_name: "Sam Buyer" } }, response, {
+      db: database, secret, resolvePrincipal: async () => null
+    });
+    assert.equal(response.statusCode, 401);
+    assert.equal(response.body.error, "account_required");
+    assert.equal(response.body.create_account_url, "/portal-login.html?mode=claim");
+  }
 });
