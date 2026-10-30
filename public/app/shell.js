@@ -2001,7 +2001,9 @@
          workspace header: doing so hides the first client card below the
          viewport. Keep touch targets full-sized and truncate only the title. */
       "@media(max-width:350px){" +
-      "body.fh-astra #fh-workspace-header{flex-wrap:nowrap}" +
+      /* The 320px pipeline header reached 86.75px with 10px top/bottom padding. */
+      /* Keep all 44px controls and context available; only reclaim vertical air. */
+      "body.fh-astra #fh-workspace-header{flex-wrap:nowrap;padding-block:2px}" +
       "body.fh-astra #fh-workspace-header .fh-workspace-tools{" +
         "flex-wrap:nowrap;flex:0 0 auto;gap:0}" +
       "#fh-workspace-header .fh-workspace-identity{flex:1 1 0;min-width:0}" +
