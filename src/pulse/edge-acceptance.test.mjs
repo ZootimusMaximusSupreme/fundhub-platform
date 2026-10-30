@@ -17,9 +17,9 @@ const receipt = { correlation_id: id, org_id: org, client_id: client, outcome: "
 const providerReceipt = { event_id: id, org_id: org, client_id: client, outcome: "delivered" };
 const basics = { event, consumer, receipt, now: "2026-10-29T01:00:00Z", demandAt: event.created_at, graceMs: 600_000 };
 
-test("A->B contract is versioned and covers ten business families", () => {
+test("A->B contract is versioned and covers eleven business families", () => {
   assert.equal(EDGE_CONTRACT_VERSION, 1);
-  assert.equal(CRITICAL_EDGES.length, 10);
+  assert.equal(CRITICAL_EDGES.length, 11);
   for (const edge of CRITICAL_EDGES) {
     assert.match(edge.id, /^[a-z0-9-]+$/);
     assert.match(edge.pulse, /^[a-z0-9:-]+$/);
@@ -54,6 +54,42 @@ test("unmapped high-risk PR edit cannot silently escape the report", () => {
   assert.equal(report.liveReceipt, "NEEDS_LIVE_RECEIPT");
   assert.equal(shouldReportCriticalSourceRisk(reportCriticalSourceChanges(["docs/README.md"])), false);
   assert.equal(shouldReportCriticalSourceRisk(reportCriticalSourceChanges(["src/sales/closer-deck.mjs"])), true);
+});
+
+test("staff lead SMS and APNs producer edits require real recipient evidence, not send intent", () => {
+  // #320 changes existing and new lead/booking/staff-push paths. Its staff
+  // recipients are NOT clients, and a generic native delivery-failure check
+  // alone is not a matching staff-recipient result.
+  const files = [
+    "src/staff/lead-alerts.mjs", "src/staff/booked-call-alert.mjs",
+    "src/staff/message-recipient.mjs", "src/push/staff-native-store.mjs",
+    "src/push/native-send.mjs", "api/push/native-device.mjs",
+    "src/workflows/s-01-new-lead-intake.mjs", "src/messaging/dispatch.mjs"
+  ];
+  const report = reportCriticalSourceChanges(files);
+  const edge = report.edges.find((item) => item.id === "staff-lead-alert-delivery");
+  assert.ok(edge, "staff send path must not disappear from source-touch warnings");
+  assert.equal(edge.severity, "P1");
+  assert.deepEqual(edge.files, files);
+  assert.deepEqual(report.unmappedHighRiskFiles, []);
+  assert.equal(report.liveReceipt, "NEEDS_LIVE_RECEIPT");
+  assert.equal(CRITICAL_EDGES.find((e) => e.id === edge.id).proofStatus,
+    "PARTIAL_NEEDS_CORRELATED_STAFF_DELIVERY_CHECK");
+
+  const staffEvent = { ...event, id: "staff-lead-event" };
+  const staffConsumer = { ...consumer, event_id: staffEvent.id };
+  const staffReceipt = { ...receipt, correlation_id: staffEvent.id };
+  const fixture = { ...basics, event: staffEvent, consumer: staffConsumer,
+    receipt: staffReceipt, providerReceipt: null, requireProviderReceipt: true };
+  assert.deepEqual(judgeSyntheticEdge(fixture), {
+    verdict: "RED", reason: "real-provider-delivery-missing"
+  });
+  assert.equal(judgeSyntheticEdge({ ...fixture, providerReceipt: {
+    ...providerReceipt, event_id: staffEvent.id
+  } }).verdict, "PASS");
+  assert.equal(judgeSyntheticEdge({ ...fixture, providerReceipt: {
+    ...providerReceipt, event_id: "wrong-staff-lead"
+  } }).verdict, "RED");
 });
 
 test("shared staff shell edit requires real booking and customer-message result review", () => {
