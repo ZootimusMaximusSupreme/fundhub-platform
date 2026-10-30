@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   systemPullUsesSimulation,
+  savedSystemPullIntent,
   fulfilQueuedSystemPulls
 } from "./finance-os-pull-fulfil.mjs";
 
@@ -107,6 +108,7 @@ test("Blueprint monthly aftercare never delivers a simulated CRS result", async 
   let aftercareRuns = 0;
   const run = async (env) => fulfilQueuedSystemPulls(db, {
     env,
+    createTaskImpl: async () => ({ id: "held" }),
     runPull: async (_db, opts) => ({
       ok: true,
       simulated: true,
@@ -124,8 +126,13 @@ test("Blueprint monthly aftercare never delivers a simulated CRS result", async 
     const out = await run(env);
     assert.equal(out.checked, 1);
     assert.equal(out.fulfilled, 0, "simulated reports cannot count as real CRS fulfillment");
-    assert.equal(out.simulatedFulfilled, 1);
-    assert.equal(out.skipped[0]?.reason, "simulated_result_not_customer_delivery");
+    if (systemPullUsesSimulation(env)) {
+      assert.equal(out.simulatedFulfilled, 1);
+      assert.equal(out.skipped[0]?.reason, "simulated_result_not_customer_delivery");
+    } else {
+      assert.equal(out.simulatedFulfilled, 0);
+      assert.equal(out.authorizationHolds[0]?.reason, "request_not_explicitly_real");
+    }
     assert.deepEqual(out.deliveryExceptions, []);
     assert.equal(out.errored.length, 0);
   }
@@ -133,7 +140,8 @@ test("Blueprint monthly aftercare never delivers a simulated CRS result", async 
 });
 
 test("actual successful CRS result still runs Blueprint aftercare", async () => {
-  const row = { id: "request-real", org_id: "org-real", client_id: "client-real" };
+  const row = { id: "request-real", org_id: "org-real", client_id: "client-real",
+    subscription_id: "plan-real", idempotency_key: "finance-os-monthly:plan-real:0:real" };
   const db = {
     async query(sql) {
       if (/FROM soft_pull_requests/.test(sql)) return { rows: [row] };
@@ -143,6 +151,8 @@ test("actual successful CRS result still runs Blueprint aftercare", async () => 
   const calls = [];
   const tally = await fulfilQueuedSystemPulls(db, {
     env: { FINANCE_OS_SYSTEM_PULL_LIVE: "1", CRS_ALLOW_LIVE: "1" },
+    consentCheck: async () => ({ valid: true }),
+    entitlementCheck: async () => ({ entitled: true, subscriptionId: "plan-real" }),
     runPull: async (_conn, input) => {
       assert.equal(input.simulate, false);
       return { ok: true, simulated: false, crsResultId: "provider-crs-id" };
@@ -158,4 +168,39 @@ test("actual successful CRS result still runs Blueprint aftercare", async () => 
   assert.deepEqual(calls, [{
     orgId: "org-real", clientId: "client-real", crsResultId: "provider-crs-id"
   }]);
+});
+
+test("persisted mode, tenant scope, consent, and paid term all fail closed before real provider", async () => {
+  const LIVE = { CRS_ALLOW_LIVE: "1", FINANCE_OS_SYSTEM_PULL_LIVE: "1" };
+  const row = { id: "q1", org_id: "org", client_id: "client", subscription_id: "plan", idempotency_key: "finance-os-monthly:plan:1:real" };
+  const db = { query: async () => ({ rows: [row] }) };
+  let sends = 0, holds = [];
+  const run = (options = {}) => fulfilQueuedSystemPulls(db, {
+    env: LIVE,
+    runPull: async () => { sends++; return { ok: true, simulated: false, crsResultId: "report" }; },
+    aftercare: async () => ({ ok: true }),
+    createTaskImpl: async (_db, task) => { holds.push(task); return { id: "task" }; },
+    consentCheck: async () => ({ valid: true }),
+    entitlementCheck: async () => ({ entitled: true, subscriptionId: "plan" }),
+    ...options
+  });
+  assert.equal(savedSystemPullIntent(row), "real");
+  row.idempotency_key = "finance-os-monthly:plan:1";
+  assert.equal(savedSystemPullIntent(row), "simulated");
+  assert.equal((await run()).authorizationHolds[0].reason, "request_not_explicitly_real");
+  row.idempotency_key = "finance-os-monthly:plan:1:real";
+  assert.equal((await run({ consentCheck: async () => ({ valid: false, reason: "revoked" }) })).authorizationHolds[0].reason, "consent_no_longer_valid");
+  assert.equal((await run({ entitlementCheck: async () => ({ entitled: false }) })).authorizationHolds[0].reason, "paid_access_no_longer_valid");
+  assert.equal((await run({ entitlementCheck: async () => ({ entitled: true, subscriptionId: "foreign-plan" }) })).authorizationHolds[0].reason, "paid_access_no_longer_valid");
+  assert.equal((await run({ env: {} })).authorizationHolds[0].reason, "live_flags_disabled_for_real_request");
+  row.idempotency_key = "finance-os-monthly:another-plan:1:real";
+  assert.equal(savedSystemPullIntent(row), "unknown");
+  assert.equal((await run()).authorizationHolds[0].reason, "request_not_explicitly_real");
+  assert.equal(sends, 0);
+  assert.equal(holds.length, 6);
+  row.idempotency_key = "finance-os-monthly:plan:1:real";
+  const accepted = await run();
+  assert.equal(accepted.fulfilled, 1);
+  assert.equal(accepted.ok, true);
+  assert.equal(sends, 1);
 });
