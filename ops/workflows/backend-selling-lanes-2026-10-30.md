@@ -146,7 +146,7 @@ Sources read: Jeremy Haynes "Hammer Them" SOP (4 pillars: questions, second-laye
 | R1 | Why the bank said no: what is on your file | Question | S |
 | R2 | How credit repair really works: the letters, the waypoints, what comes off | 2nd layer | S + D |
 | R3 | What the industry lies about: "guaranteed deletions," "funding with bad credit" | Objection | V |
-| R4 | The other ways to get funded: a credit partner, or a person who funds with you | Question | D |
+| R4 | Bring in a credit partner: a person with good credit joins your file, so the bank looks at their credit too and the funding is based on both of you (Chris, 2026-10-30: low-credit people need to bring somebody in). Same thing as the free credit partner file in Capital Blueprint (`src/blueprint/credit-partner.mjs` adds both people's amounts together). | Question | V + D |
 | R5 | Start with one round, done for you (the $200 test run) | Objection | V |
 | R6 | How long it takes and how much work is on you (PB-25, PB-29) | Expectation | V |
 | R7 | Real before and after (source only) | Proof | P |
@@ -162,7 +162,7 @@ Sources read: Jeremy Haynes "Hammer Them" SOP (4 pillars: questions, second-laye
 **What Chris films:** V pieces = 12 short talking-head videos. S pieces = 7 screen recordings inside Fundhub. Z clips come from calls he already has. Slideshows, diagrams and copy are made from his videos.
 
 **Open for Chris on the map:**
-- The credit partner file is a free part of Capital Blueprint today (`src/blueprint/credit-partner.mjs`). Is "credit partners" in the Repair lane the same thing, or a different path?
+- ~~Credit partner~~ Answered 2026-10-30: a person with good credit the client brings in. Pitched in the Repair lane (R4).
 - Is the $32 file read still sold before the call? It changes C3 and the shared set.
 
 ### 7. Heartbeat (required in the same change)
