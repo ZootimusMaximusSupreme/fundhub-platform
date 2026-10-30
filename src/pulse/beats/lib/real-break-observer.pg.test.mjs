@@ -90,6 +90,21 @@ test("later call B outcome must not hide earlier unanswered call A (real SELECT 
     outcomeAt: "2026-10-29T18:10:00Z"
   }), [ORG, "2026-10-29T00:00:00Z", "2026-10-30T00:00:00Z"]);
   assert.deepEqual(lateUnlinked.rows.map((r) => r.id), [BOOKING_A]);
+  // Baseline false-green: both calls are in the same two-hour fallback
+  // window, and one unlinked staff outcome previously cleared BOTH.
+  // Neither appointment has a trustworthy attributed result: remain RED.
+  const ambiguous = await db.query(bookedFixture({ outcomeRef: null }), [
+    ORG, "2026-10-29T00:00:00Z", "2026-10-30T00:00:00Z"
+  ]);
+  assert.deepEqual(ambiguous.rows.map((r) => r.id), [BOOKING_A, BOOKING_B]);
+  // A lone eligible appointment can still use a genuinely unlinked outcome.
+  const uniqueA = await db.query(bookedFixture({
+    bStart: "2026-10-29T17:00:00Z",
+    bEnd: "2026-10-29T18:00:00Z",
+    outcomeRef: null,
+    outcomeAt: "2026-10-29T11:05:00Z"
+  }), [ORG, "2026-10-29T00:00:00Z", "2026-10-30T00:00:00Z"]);
+  assert.deepEqual(uniqueA.rows.map((r) => r.id), [BOOKING_B]);
 });
 
 test("simulated SMS journeys are excluded but genuine missing SMS remains RED", {
