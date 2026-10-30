@@ -430,7 +430,7 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
   test("an unidentified sale does not pretend to finish checkout or unlock service", async () => {
     const db = feeDb({ invoice: null });
     const query = db.query.bind(db);
-    db.query = async (sql, params) => /pr\\.category = 'funding'/.test(String(sql))
+    db.query = async (sql, params) => /pr\.category = 'funding'/.test(String(sql))
       ? { rows: [] } : query(sql, params);
     const out = await onPaymentReceivedMoney(
       feeReceipt({ invoiceId: null, paymentLinkId: null, product: "unmatched", productName: null }), db
