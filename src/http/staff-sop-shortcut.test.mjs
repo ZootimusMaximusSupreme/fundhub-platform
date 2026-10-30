@@ -45,6 +45,7 @@ test("shortcut is gated to the exact existing Company Brain STAFF roles, never e
   assert.deepEqual([...roles].sort(), expected.sort());
   for (const x of ["client", "affiliate", "partner", "outbound_rep"]) assert.ok(!roles.includes(x));
   assert.match(shell, /permittedPages\.indexOf\("company-brain\.html"\) === -1/);
+  assert.match(shell, /if \(!m\) return staffTabs\(\)\.filter/, "unknown staff roles may not open the Company Brain shell");
   assert.match(shell, /SOP_STAFF_ROLES\.indexOf\(role\) === -1/);
   assert.match(shell, /SOP_CONTEXT_BY_SCREEN\[PAGE\]/);
   assert.match(shell, /mountSopShortcut\(role, ok\)/);

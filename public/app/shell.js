@@ -542,7 +542,10 @@
     if (m === "funding_advisor") return staffTabs().concat(ADVISOR_ONLY).concat(CONSENT_DESK_ONLY);
     if (m === "sales_manager") return staffTabs().concat(SALES_FLOOR_ONLY).concat(FINANCE_ONLY).concat(STAFF_MONEY).concat(CLOSER_DECK);
     if (m === "csm") return staffTabs().concat(CONSENT_DESK_ONLY);
-    if (m === "staff" || !m) return staffTabs();
+    if (m === "staff") return staffTabs();
+    /* Unknown staff roles keep ordinary work desks but never Company Brain:
+       approved source tiers require a recognized staff role at the API. */
+    if (!m) return staffTabs().filter(function (s) { return s !== "company-brain.html"; });
     return m.slice();
   }
 

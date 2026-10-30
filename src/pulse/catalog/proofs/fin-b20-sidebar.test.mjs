@@ -32,14 +32,14 @@ const OWNER = ["bank-outreach.html", "pipeline.html", "setter-dashboard.html", "
   "marketing-command-center.html", "campaign-manager.html", "social-studio.html", "creative-factory.html", "content-admin.html",
   "staff-teams.html", "products-commissions.html", "contracts.html", "client-portal.html"];
 const STAFF = ["pipeline.html", "closer-dashboard.html", "calendar.html", "client-control-panel.html", "csm-queue.html",
-  "messaging.html", "documents.html", "inquiry-remover.html"];
+  "messaging.html", "documents.html", "inquiry-remover.html", "company-brain.html"];
 const RAIL = {
   owner: { page: "pipeline.html", links: OWNER, heads: ["relationships", "work", "clients", "insights", "marketing", "settings"] },
   admin: { page: "pipeline.html", links: OWNER.filter((h) => h !== "client-portal.html"), heads: ["relationships", "work", "clients", "insights", "marketing", "settings"] },
   sales_manager: {
     page: "pipeline.html",
     links: ["bank-outreach.html", "pipeline.html", "closer-dashboard.html", "sales-floor.html", "calendar.html", "client-control-panel.html", "csm-queue.html",
-      "messaging.html", "documents.html", "inquiry-remover.html", "staff-teams.html", "products-commissions.html"],
+      "messaging.html", "documents.html", "inquiry-remover.html", "company-brain.html", "staff-teams.html", "products-commissions.html"],
     heads: ["relationships", "work", "clients", "insights", "settings"],
   },
   outbound_rep: { page: "bank-outreach.html", links: ["bank-outreach.html"], heads: ["relationships"] },
