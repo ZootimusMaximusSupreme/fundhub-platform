@@ -15,7 +15,13 @@ const SCREENS = {
   "csm-queue.html": "client-success",
   "ops-admin.html": "operations",
   "finance-os.html": "finance",
-  "messaging.html": "communications"
+  "messaging.html": "communications",
+  "calendar.html": "appointments",
+  "documents.html": "documents",
+  "my-numbers.html": "performance",
+  "staff-teams.html": "staff-operations",
+  "contracts.html": "agreements",
+  "consent-capture.html": "consent"
 };
 const STAFF = (role) => ({ ok: true, staff: {
   id: "staff-fixture", name: "Taylor Test", email: "test@fundhub.example",
@@ -37,7 +43,7 @@ async function setup(page, session = OWNER, handlers = {}) {
   });
 }
 
-test("all twelve working desks have one real SOP link in the staff header; existing refresh stays", async ({ page }) => {
+test("all eighteen working desks have a discoverable SOP link; existing refresh stays", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await setup(page);
   for (const [screen, topic] of Object.entries(SCREENS)) {
@@ -48,6 +54,8 @@ test("all twelve working desks have one real SOP link in the staff header; exist
     await expect(link).toHaveAttribute("href", "company-brain.html?sop=" + topic);
     await expect(link).toHaveAttribute("aria-label", /scripts and SOPs/i);
     await expect(link).toHaveAttribute("data-fh-sop-topic", topic);
+    await expect(link.locator(".fh-sop-label")).toHaveText("SOPs");
+    await expect(link.locator(".fh-sop-label")).toBeVisible();
     await expect(page.locator("#fh-workspace-header")).toBeVisible();
   }
   await page.goto("/app/setter-dashboard.html");
@@ -272,4 +280,89 @@ test("deleting a named chat confirms the consequence and removes it from the lis
   await expect(page.getByRole("button", { name: "Delete chat: Contract steps" })).toHaveCount(0);
   expect(deletes).toHaveLength(1);
   expect(deletes[0]).toContain("thread_id=" + threadId);
+});
+
+test("funding fulfillment and inquiry work have small source-linked SOPs at their task headings", async ({ page }) => {
+  await setup(page, OWNER);
+  await page.goto("/app/client-control-panel.html");
+  const funding = page.locator('a.fh-step-sop[data-fh-sop-step="funding-round"]');
+  const credit = page.locator('a.fh-step-sop[data-fh-sop-step="inquiry-case"]');
+  await expect(funding).toHaveCount(1);
+  await expect(credit).toHaveCount(1);
+  await expect(funding).toHaveAttribute("href", "company-brain.html?sop=funding-round");
+  // Funding and Credit start inside hidden tab panels. Open the real tab
+  // before clicking the task SOP; a hidden link is not a usable shortcut.
+  await page.locator("#ccp-tab-funding").click();
+  await expect(funding).toBeVisible();
+  await funding.click();
+  await expect(page).toHaveURL(/company-brain\.html\?sop=funding-round$/);
+  await expect(page.locator("#fh-sop-title")).toHaveText("Funding round SOP");
+  await page.goBack();
+  await expect(page).toHaveURL(/client-control-panel\.html#ccp-view-funding$/);
+  for (const width of [390, 320]) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.locator("#ccp-tab-credit").click();
+    await expect(credit).toBeVisible();
+    const box = await credit.boundingBox();
+    expect(box && box.width).toBeGreaterThanOrEqual(44);
+    expect(box && box.height).toBeGreaterThanOrEqual(44);
+  }
+  await page.goto("/app/inquiry-remover.html");
+  await expect(page.locator('a.fh-step-sop[data-fh-sop-step="inquiry-case"]').first()).toHaveAttribute(
+    "href", "company-brain.html?sop=inquiry-case"
+  );
+});
+
+test("setter call SOPs remain present after the selected-lead details redraw", async ({ page }) => {
+  await setup(page, STAFF("setter"));
+  await page.goto("/app/setter-dashboard.html");
+  await expect(page.locator("#fh-sop-shortcut")).toBeVisible();
+  await page.evaluate(() => {
+    const details = document.querySelector("#setter-detail");
+    details.innerHTML = '<section class="setter-section"><h3>Call result</h3></section>' +
+      '<section class="setter-section"><h3>Closer handoff</h3></section>';
+  });
+  await expect(page.locator('a[data-fh-sop-step="setter-calls"]')).toHaveCount(1);
+  await expect(page.locator('a[data-fh-sop-step="setter-handoff"]')).toHaveCount(1);
+  await page.evaluate(() => {
+    document.querySelector("#setter-detail").innerHTML =
+      '<section class="setter-section"><h3>Call result</h3></section>';
+  });
+  await expect(page.locator('a[data-fh-sop-step="setter-calls"]')).toHaveCount(1);
+});
+
+test("external bank reps never receive a staff SOP or task link", async ({ page }) => {
+  await setup(page, STAFF("outbound_rep"));
+  await page.goto("/app/bank-outreach.html");
+  await expect(page.locator("#fh-sop-shortcut")).toHaveCount(0);
+  await expect(page.locator(".fh-step-sop")).toHaveCount(0);
+});
+
+
+test("task SOPs survive staff queue and heading redraws without duplicate links", async ({ page }) => {
+  await setup(page, OWNER);
+  await page.goto("/app/csm-queue.html");
+  await page.evaluate(() => {
+    document.querySelector("#qList").innerHTML =
+      '<article class="q-row"><h3 class="q-form-heading">Conversation notes</h3></article>';
+  });
+  await expect(page.locator("#qList .fh-step-sop")).toHaveAttribute("href", "company-brain.html?sop=csm-followup");
+  await expect(page.locator("#qList .fh-step-sop")).toHaveCount(1);
+
+  const redraws = [
+    ["pipeline.html", "#fhDrawerName", "Selected lead", "onboarding"],
+    ["documents.html", ".documents-intro h2", "Signed agreements", "documents"],
+    ["contracts.html", "#editorTitle", "Client funding agreement", "agreements"],
+    ["consent-capture.html", "#ccTitle", "Credit report authorization", "consent"]
+  ];
+  for (const [screen, selector, newLabel, topic] of redraws) {
+    await page.goto("/app/" + screen);
+    await page.evaluate(({ selector, newLabel }) => {
+      document.querySelector(selector).textContent = newLabel;
+    }, { selector, newLabel });
+    const link = page.locator(screen === "documents.html" ? ".documents-intro .fh-step-sop" :
+      screen === "consent-capture.html" ? "#ccTitle + .fh-step-sop" : selector + " a.fh-step-sop");
+    await expect(link).toHaveCount(1);
+    await expect(link).toHaveAttribute("href", "company-brain.html?sop=" + topic);
+  }
 });
