@@ -96,6 +96,22 @@ test("shared journey trace cannot launder another event or stale result", () => 
   }
 });
 
+test("NULL-client booking event needs exact org-scoped identity resolution, not an email guess", () => {
+  const unlinkedEvent = { ...event, client_id: null, payload: { email: "synthetic@example.invalid" } };
+  const noClient = { ...basics, event: unlinkedEvent };
+  assert.equal(judgeSyntheticEdge(noClient).verdict, "RED");
+  const identityReceipt = { event_id: id, org_id: org, client_id: client, outcome: "resolved" };
+  assert.equal(judgeSyntheticEdge({ ...noClient, identityReceipt }).verdict, "PASS");
+  for (const bad of [
+    { ...identityReceipt, org_id: "other-org" },
+    { ...identityReceipt, event_id: "other-event" },
+    { ...identityReceipt, outcome: "queued" },
+    { ...identityReceipt, client_id: "other-client" }
+  ]) {
+    assert.equal(judgeSyntheticEdge({ ...noClient, identityReceipt: bad }).verdict, "RED", JSON.stringify(bad));
+  }
+});
+
 function changedFilesFromPrEnvironment() {
   const eventPath = process.env.GITHUB_EVENT_PATH;
   if (!eventPath) return { status: "NOT_CHECKED", why: "no GitHub PR event context" };
