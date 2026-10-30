@@ -56,6 +56,31 @@ test("handoff input refuses unsupported claims and keeps only checklist fields",
   assert.deepEqual(sanitizeHandoffPatch({ goal: "Growth", forged_timestamp: "now" }).patch, { goal: "Growth" });
 });
 
+test("setter can save both funding paths and personal work facts without changing the survey", async () => {
+  const { db, client } = fakeDb();
+  client.custom_fields.cf_svy_has_business_label = "Yes, 1-2 years";
+  client.custom_fields.cf_svy_business_revenue_label = "$100k - $249k";
+  const handoff = {
+    triage_personal_or_business: "both", employment_status: "w2",
+    employment_details: "Warehouse manager", annual_personal_income: "$100k-$199k",
+    income_verification: "Yes, pay stubs"
+  };
+  const saved = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save", handoff });
+  assert.equal(saved.status, 200);
+  for (const [key, value] of Object.entries(handoff)) assert.equal(saved.body.item.setter_handoff[key], value);
+  assert.equal(client.custom_fields.cf_svy_has_business_label, "Yes, 1-2 years");
+  assert.equal(client.custom_fields.cf_svy_business_revenue_label, "$100k - $249k");
+  assert.equal(client.custom_fields.setter_survey_edits, undefined);
+  for (const invalid of [
+    { triage_personal_or_business: "either" }, { employment_status: "guessed" },
+    { annual_personal_income: "$1m" }, { income_verification: "Probably" },
+    { employment_details: "SSN 123-45-6789" }
+  ]) {
+    const result = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save", handoff: invalid });
+    assert.equal(result.status, 400);
+  }
+});
+
 test("dial target waits until 6 a.m. Phoenix for an overnight lead", () => {
   assert.equal(targetDialBy("2026-10-27T06:00:00Z"), "2026-10-27T13:00:00.000Z");
   assert.equal(targetDialBy("2026-10-27T20:00:00Z"), "2026-10-27T20:01:00.000Z");
