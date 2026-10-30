@@ -91,6 +91,11 @@ async function openDeck({ search = `?contact=${CONTACT}`, role = "owner", status
       for (const [file, names] of Object.entries(VISUAL_FILES)) {
         await page.route(`**/app/${file}`, (route) => route.fulfill({ status: 200, contentType: "text/javascript", body: standIn(names) }));
       }
+    } else {
+      // The real visual files ship now; "no visual file on the server" is served as a 404 on purpose.
+      for (const file of Object.keys(VISUAL_FILES)) {
+        await page.route(`**/app/${file}`, (route) => route.fulfill({ status: 404, contentType: "text/plain", body: "" }));
+      }
     }
     if (course) await page.route("**/app/present.js", (route) => route.fulfill({ status: 200, contentType: "text/javascript", body: PRESENT_JS_COURSE }));
   };

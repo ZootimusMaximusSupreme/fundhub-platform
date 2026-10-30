@@ -322,9 +322,12 @@
     var cents = dollars * 100;
     return Number.isSafeInteger(cents) && cents >= o.priceMinCents && cents <= o.priceMaxCents ? cents : null;
   }
+  /* Financing is for the Capital Blueprint only, through Whop (script section 8,
+     owner-set 2026-10-29). The catalog still flags other offers, so the note is
+     limited here rather than read off the flag alone. */
   function financingNote(key) {
     var o = offer(key);
-    return o && o.financing ? '<div class="fin">Financing available</div>' : "";
+    return o && o.financing && key === "UWIQ_DELIVERABLES" ? '<div class="fin">Financing available</div>' : "";
   }
   function sharedContextPanel() {
     var handoff = state.setterHandoff || (state.sharedContext && state.sharedContext.setter_handoff);
@@ -886,7 +889,7 @@
       return slide("S-21", "When we start", kicker("What happens when we start") + h1("Round one goes out today.") + '<div style="margin-top:10px;max-width:620px">' + row("Today", "Letters out", "Generated from the pull we just ran, in your email") + row("Your dashboard", "Live", "Track every dispute and every response") + row("Round by round", "Escalate", "Until the file is where it needs to be") + "</div>");
     }
     if (c === "S-22") {
-      return slide("S-22", "Ready when you are", '<div style="flex:1;display:flex;flex-direction:column;justify-content:center">' + h1("Ready when you are.", "clamp(28px,4.6vw,56px)") + '<div class="mono" style="margin-top:12px;letter-spacing:.06em">' + (funding ? "Customer-initiated · Three guarantees · Two weeks" : "Customer-initiated · Starts today · Tracked live") + '</div><div style="margin-top:16px;max-width:200px" class="hair"></div></div>');
+      return slide("S-22", "Ready when you are", '<div style="flex:1;display:flex;flex-direction:column;justify-content:center">' + h1("Ready when you are.", "clamp(28px,4.6vw,56px)") + '<div class="mono" style="margin-top:12px;letter-spacing:.06em">' + (funding ? "Customer-initiated · Three guarantees · Done for you" : "Customer-initiated · Starts today · Tracked live") + '</div><div style="margin-top:16px;max-width:200px" class="hair"></div></div>');
     }
     if (c === "S-23") {
       /* "Advisor contact" is not true on every sale. The rows follow the offer
@@ -906,7 +909,7 @@
       var next = edu
         ? row("Today", "Deliverables", "Everything from your file lands in your email") + row("Your pace", "Program", "Work through it on your own schedule") + row("When you're ready", "Funding", "We run the full process whenever you want")
         : funding
-          ? row("Within 24 business hours", "Advisor", "Your dedicated funding advisor reaches out and starts on your file") + row("Within 72 business hours", "Round 1", "Your first round of applications is submitted") + row("A few days after", "Approvals", "You should start seeing your first approvals")
+          ? row("Within 24 business hours", "Advisor", "Your dedicated funding advisor reaches out and starts on your file") + row("Within 72 business hours", "Round 1", "Your first round of applications is submitted") + row("After each round", "Updates", "Every application and every answer shows in your portal")
           : row("Today", "Round 1", "Your letters generate from this pull and land in your email") + row("Your dashboard", "Live", "Track every dispute and every response") + row("When it's clean", "Funding", "We run the full process at maximum strength");
       return slide("S-24", "Welcome aboard", '<div style="flex:1;display:flex;flex-direction:column;justify-content:center">' + h1("Here's what happens next.", "clamp(22px,3.4vw,42px)") + '<div style="margin-top:10px;max-width:560px">' + next + '</div><div style="margin-top:16px;display:flex;align-items:center;gap:12px"><span class="brand">fundhub<span>.</span></span><div style="flex:1;max-width:140px" class="hair"></div><span class="mono">systems nominal</span></div></div>');
     }
@@ -1066,7 +1069,7 @@
       lines: [
         "If the full Blueprint isn't right today, start with FinanceOS.",
         "One setup fee, then a monthly price for each container. A container is each business and each person on your account.",
-        "When you're ready to get funded, one button tells your CSM."
+        "When you're ready to get funded, one button tells the Fundhub team."
       ],
       watch: "FinanceOS prices are not set yet and show $X. This deck has no FinanceOS checkout, so take no payment for it on this call and do not log it as a sale."
     },
@@ -1074,10 +1077,10 @@
       title: "Upsell path. One button up.",
       lines: [
         "Here's how it works when you're ready.",
-        "You prep in FinanceOS. Press \"I'm ready to get funded\" and your CSM reaches out.",
+        "You prep in FinanceOS. Press \"I'm ready to get funded\" and the Fundhub team reaches out.",
         "Move up to the Blueprint, and when the engine says your file is ready, a closer calls about funding."
       ],
-      watch: "A FinanceOS-only client stops at the CSM. The closer is called only for a Blueprint client whose file is ready. Never promise when that will be."
+      watch: "A FinanceOS-only client stops at the Fundhub team. The closer is called only for a Blueprint client whose file is ready. Never promise when that will be."
     }
   };
   /* B-03 when visual C, the Blueprint dashboard, draws in the slides (row 12).
@@ -1102,7 +1105,10 @@
      engine's sort and item count, and the companies on the file. */
   function stackCtx() {
     var d = state.engine || {};
-    var n = d.available && d.negItems != null && isFinite(Number(d.negItems)) ? Number(d.negItems) : null;
+    /* A real pull leaves negItems empty; engine.visual carries the items (board 10.2). */
+    var v = d.visual && d.visual.source && d.visual.source !== "none" && Array.isArray(d.visual.items) ? d.visual : null;
+    var n = v ? v.items.length
+      : (d.available && d.negItems != null && isFinite(Number(d.negItems)) ? Number(d.negItems) : null);
     return {
       pulled: !!d.available,
       neg: n,
@@ -1242,11 +1248,11 @@
         stackPath([
           ["FinanceOS", "Track and prep"],
           ["“I'm ready to get funded”", "One button"],
-          ["Your CSM", "Preps your file"],
+          ["The Fundhub team", "Preps your file"],
           ["Capital Blueprint", "The full system"],
           ["A closer calls", "When the file is ready"]
         ]) +
-        sub("Start with FinanceOS. Press the button and your CSM reaches out. Move up to the Blueprint, and a closer calls when the engine says your file is ready.") +
+        sub("Start with FinanceOS. Press the button and the Fundhub team reaches out. Move up to the Blueprint, and a closer calls when the engine says your file is ready.") +
         fine("Ready means UnderwriteIQ's own checks pass on your newest file. It is not a promise of approval or an amount.")));
     }
     return slide(c, "Capital Blueprint", "");
@@ -1705,7 +1711,7 @@
         ladder.forEach(function (row) {
           html += '<button type="button" data-act="' + row[2] + '" style="font-family:var(--mono);font-size:10px;text-align:left;padding:7px 10px;border-radius:7px;background:' + (row[3] ? "var(--ink)" : "transparent") + ";color:" + (row[3] ? "var(--paper)" : "var(--gray)") + ";border:1px solid var(--line);cursor:pointer\">" + esc(row[1]) + "</button>";
         });
-        html += '</div><div style="font-size:10px;color:var(--gray2);margin-top:5px">One click reshapes the price screen. Descend only on a no. Financing available on everything except the soft pull and the funding deposit.</div></div>';
+        html += '</div><div style="font-size:10px;color:var(--gray2);margin-top:5px">One click reshapes the price screen. Descend only on a no. Financing: the Capital Blueprint only, through Whop.</div></div>';
         html += '<div><div style="display:flex;justify-content:space-between"><span class="mono">Objections</span><button type="button" class="btn-ghost" data-act="reframes">Reframes</button></div><div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:5px">';
         OBJECTIONS.forEach(function (o, i) {
           html += '<button type="button" class="btn-ghost" data-act="obj:' + i + '">' + esc(o.t) + "</button>";
