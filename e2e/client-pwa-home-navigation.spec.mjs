@@ -17,7 +17,7 @@ for (const entry of entries) {
     await expect(page.locator(entry.brand)).not.toHaveAttribute("href", /.+/);
     await expect(page.locator(entry.back)).toBeHidden();
     await expect(page.locator('main a[href="/"]:visible, main a[href="/index.html"]:visible')).toHaveCount(0);
-    await expect(page.getByLabel("Email address")).toBeVisible();
+    await expect(page.locator("#email")).toBeVisible();
     if (entry.path.startsWith("/portal-login")) {
       await expect(page.getByRole("link", { name: /Sign in with password/ }))
         .toHaveAttribute("href", "/login.html?next=%2Fapp%2Fclient-portal.html");
