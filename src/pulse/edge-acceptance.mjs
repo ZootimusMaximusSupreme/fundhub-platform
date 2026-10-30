@@ -74,6 +74,26 @@ export const CRITICAL_EDGES = Object.freeze([
     paths: ["src/register-all.mjs", "src/messaging/", "src/chat/", "src/adapters/twilio", "src/adapters/resend", "api/read/inbox.mjs", "api/chat/messages.mjs", "public/app/client-portal.html", "public/app/shell.js", "netlify/functions/staff-message-sweeper.mjs"]
   },
   {
+    // Staff lead/handoff alerts are not customer inbox messages. A queued outbox
+    // row or APNs acceptance alone cannot prove an employee actually received
+    // the alert, and the existing generic delivery-failure beat is only partial
+    // coverage. Require an explicit A->B review for these existing sources.
+    id: "staff-lead-alert-delivery", severity: "P1", owner: "Front-house / Native apps",
+    event: "entry.captured / booking.created / setter.handoff",
+    consumer: "s-01-new-lead-intake / queueStaffAlert / sendNativeToStaff",
+    receipt: "org-scoped staff outbox + staff APNs send + exact staff recipient receipt",
+    graceMinutes: 15,
+    pulse: "native-push:recent-delivery-failure",
+    proofStatus: "PARTIAL_NEEDS_CORRELATED_STAFF_DELIVERY_CHECK",
+    paths: ["src/staff/lead-alerts.mjs", "src/staff/booked-call-alert.mjs",
+      "src/staff/message-recipient.mjs", "src/push/staff-native-store.mjs",
+      "src/push/native-send.mjs", "src/push/apns.mjs", "api/push/native-device.mjs",
+      "src/workflows/s-01-new-lead-intake.mjs",
+      "src/workflows/ai-set-04-3way-handoff.mjs",
+      "src/messaging/gate.mjs", "src/messaging/dispatch.mjs",
+      "public/app/staff-teams.html"]
+  },
+  {
     id: "lender-apply-link", severity: "P1", owner: "Fulfillment / Lender outreach",
     event: "SOURCE-STATE: lender application_url", consumer: "apply-links beat / lender UI",
     receipt: "lenders.application_url + pulse_bank_links read-only result", graceMinutes: null,
