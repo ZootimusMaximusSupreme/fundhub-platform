@@ -258,7 +258,7 @@ Every door has the same shape. First the promise: the steps that get them from w
 4. **Step two: the businesses.** "File the LLC. Get the EIN. Open business checking. Each business is judged on its own, after your personal file is ready. Business one gets ready first, then business two."
 5. **Step three: the money and the banks.** "Your bank and lender match list, from your file, and the order to apply. FinanceOS shows every account and every due date on one page."
 6. **How it runs.** "It runs 12 months. Every step has a due date. An AI coach watches your open step. The Fundhub team does what a person has to do. When the system says your file is ready, we call you about funding."
-7. **What they get, on B-02.** Credit analysis, the dispute letter pack, the roadmap, How Much You Qualify For, the bank and lender match list, a short how-to course, and 12 months of FinanceOS. One spouse or partner file is included.
+7. **What they get, on B-02.** Credit analysis, the dispute letter pack, the roadmap, How Much You Qualify For, the bank and lender match list, and 12 months of FinanceOS. One spouse or partner file is included.
 8. **The price, on B-04.** "That's the whole plan, for 12 months. It's [price]. Want to get started?" Financing is open through Whop.
 
 Never promise an approval, an amount, a score or a removal. Never promise the date of the first monthly pull, or when the file will be ready. FinanceOS accounts are typed in for now, so do not promise a bank connection. Skip B-05. It has no checkout.

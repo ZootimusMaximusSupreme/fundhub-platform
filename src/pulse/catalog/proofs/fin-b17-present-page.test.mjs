@@ -9,8 +9,10 @@
 //   Back, Next and the arrow keys      real clicks on the footer buttons, real key strikes, typing guard
 //   Client screen only                 the client half fills the window, the cockpit is gone, typed words stay
 //   the seven belief boxes             real clicks, the question under each, ticks kept across Back and Next
-//   the six objections                 on every slide of 05 Commit and 07 Close and nowhere else
-//   the seven phase buttons            every slide of every phase is named and lit right, by walking the deck
+//   the six objections                 on every slide of 7 The ask and 9 Paperwork and nowhere else
+//   the nine phase buttons             every slide of every part is named and lit right, by walking the deck
+//   the visual slots                   stand-in visual files loaded by the page's own script tags, drawn where
+//                                      10.0 places them; without them, today's slides
 //   the two walls                      a refused account (401 and 403 through the real data.js) and no client
 //
 // No live data. Nothing leaves the browser: every request that is not the local page is refused, and every
@@ -18,12 +20,15 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { offersForClient } from "../../../config/offers.mjs";
 import { proofRows, waitFor } from "./fin-b17-kit.mjs";
 import { asRole, json, sharedScreens } from "./fin-b17-browser-kit.mjs";
 import {
-  BELIEFS, DECK_LENGTH, MAIN_RUN, OBJECTION_SLIDES, OBJECTION_TABLE, PHASE_BUTTONS, SLIDES, STACK_RUN, positionOf,
+  BELIEFS, CATALOG_PHASE_ROWS, DECK_LENGTH, MAIN_RUN, OBJECTION_SLIDES, OBJECTION_TABLE, PHASE_BUTTONS, REPAIR_RUN, SLIDES, positionOf,
 } from "./fin-b17-present-data.mjs";
 
 const proof = proofRows(import.meta.url);
@@ -33,7 +38,24 @@ const OFFERS = offersForClient();
 const PAGE = "/app/present.html";
 const VIEWPORT = { width: 1280, height: 900 };
 
-function payload({ tier = "FULL_FUNDING", negItems = 3 } = {}) {
+// The course is off until it is filmed (COURSE_LIVE in present.js): the education route is judged with the one
+// switch on, in the script the browser is served.
+const PRESENT_JS = fs.readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../../public/app/present.js"), "utf8");
+const COURSE_OFF = "var COURSE_LIVE = false;";
+assert.ok(PRESENT_JS.includes(COURSE_OFF), "present.js lost its one course switch");
+const PRESENT_JS_COURSE = PRESENT_JS.replace(COURSE_OFF, "var COURSE_LIVE = true;");
+
+// Stand-ins for the three slide visual files (section 10.8), served at the paths present.html names. Each draws a
+// marked block and says which door it was handed.
+const VISUAL_FILES = {
+  "present-visuals.js": ["yourPath", "moneyLevers", "companies"],
+  "present-blueprint-demo.js": ["blueprintDemo"],
+  "present-journey.js": ["journey"],
+};
+const standIn = (names) => `(function () { var v = window.FHDeckVisuals = window.FHDeckVisuals || {}; ${names
+  .map((n) => `v.${n} = function (ctx) { return '<div data-fhv="${n}" data-door="' + ctx.door + '">${n} drawn</div>'; };`).join(" ")} })();`;
+
+function payload({ tier = "FULL_FUNDING", negItems = 3, visual = undefined } = {}) {
   return {
     ok: true,
     client_id: CONTACT,
@@ -44,6 +66,7 @@ function payload({ tier = "FULL_FUNDING", negItems = 3 } = {}) {
       available: true, tier, label: tier, fico: { ex: 650, tu: 640, eq: 655 },
       total: 20000, afterFix: 60000, negItems, reasons: [], plan: [],
       totalBasis: "personal_only", sample: true,
+      ...(visual === undefined ? {} : { visual }),
     },
     soft_pull: null,
     offers: OFFERS,
@@ -51,19 +74,27 @@ function payload({ tier = "FULL_FUNDING", negItems = 3 } = {}) {
 }
 
 /** The deck page, open, with fake answers. `calls` holds every read and write the page made. */
-async function openDeck({ search = `?contact=${CONTACT}`, role = "owner", status = 200, body = null, tier = "FULL_FUNDING", settle = true } = {}) {
+async function openDeck({ search = `?contact=${CONTACT}`, role = "owner", status = 200, body = null, tier = "FULL_FUNDING", settle = true, visuals = false, course = false } = {}) {
   const calls = { reads: [], writes: [] };
   const handlers = {
     "/api/read/closer-deck": async (route) => {
       calls.reads.push(new URL(route.request().url()).search);
-      return json(route, body ?? payload({ tier }), status);
+      return json(route, body ?? payload({ tier, visual: visuals ? { source: "sample" } : undefined }), status);
     },
     "/api/closer-deck": async (route) => {
       calls.writes.push(JSON.parse(route.request().postData() || "{}"));
       return json(route, { ok: true });
     },
   };
-  const { page, errors } = await screens.open(`${PAGE}${search}`, { session: asRole(role), handlers, viewport: VIEWPORT });
+  const before = async (page) => {
+    if (visuals) {
+      for (const [file, names] of Object.entries(VISUAL_FILES)) {
+        await page.route(`**/app/${file}`, (route) => route.fulfill({ status: 200, contentType: "text/javascript", body: standIn(names) }));
+      }
+    }
+    if (course) await page.route("**/app/present.js", (route) => route.fulfill({ status: 200, contentType: "text/javascript", body: PRESENT_JS_COURSE }));
+  };
+  const { page, errors } = await screens.open(`${PAGE}${search}`, { session: asRole(role), handlers, viewport: VIEWPORT, before });
   page.setDefaultTimeout(8000);
   if (settle) await page.locator('[data-act="next"]').waitFor({ state: "visible" });
   return { page, errors, calls };
@@ -74,9 +105,10 @@ async function openDeck({ search = `?contact=${CONTACT}`, role = "owner", status
 const act = (page, name) => page.locator(`[data-act="${name}"]`);
 const slideCode = async (page) => (await page.locator(".slide-hd .mono").first().textContent()).split(" / ")[0];
 const header = (page) => page.locator(".ck-hd .mono").evaluateAll((els) => els.map((el) => el.textContent));
+/** The strip buttons that are painted as lit, by their number (the button shows the part's name). */
 const litPhases = (page) => page.evaluate(() => [...document.querySelectorAll('.ck-ph [data-act^="phase:"]')]
   .filter((b) => { const bg = getComputedStyle(b).backgroundColor; return bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent"; })
-  .map((b) => b.textContent.trim()));
+  .map((b) => b.getAttribute("data-act").slice(6)));
 const cockpitText = (page) => page.locator(".cockpit").innerText();
 const says = (page) => page.locator(".cockpit .say").evaluateAll((els) => els.map((el) => el.textContent));
 const objectionLabels = (page) => page.evaluate(() => [...document.querySelectorAll('.cockpit [data-act^="obj:"]')]
@@ -93,7 +125,9 @@ async function where(page) {
   return { code: await slideCode(page), phase, position, lit: await litPhases(page) };
 }
 
-/** Walk the whole main run with real Next clicks, then the stack with its own, and write down each slide. */
+/** Walk the deck with real Next clicks to its last slide, then the Blueprint slides through the buttons a person
+ *  presses (a funding file: the ask's Capital Blueprint rung and S-19's stack button), then B-05 and B-06 by
+ *  their own buttons, and write down each slide. */
 async function walkDeck(page) {
   const seen = [];
   const note = async () => {
@@ -102,23 +136,32 @@ async function walkDeck(page) {
   };
   assert.equal(await slideCode(page), "S-01");
   await note();
-  for (let i = 1; i < MAIN_RUN.length; i += 1) {
+  while (!(await act(page, "next").isDisabled())) {
     await next(page);
     await note();
   }
-  // the stack, opened by the strip's 06, walked with Next
-  await act(page, "phase:06").click();
+  if (!seen.some((s) => s.code === "B-01")) {
+    await act(page, "phase:07").click();
+    await act(page, "desc:diy").click();
+    await act(page, "stack-open").click();
+    await note();
+    for (let i = 0; i < 3; i += 1) { await next(page); await note(); }
+  } else {
+    await act(page, "phase:06").click();
+    for (let i = 0; i < 3; i += 1) await next(page);
+  }
+  assert.equal(await slideCode(page), "B-04");
+  await act(page, "stack-go:B-05").click();
   await note();
-  for (let i = 1; i < STACK_RUN.length; i += 1) {
-    await next(page);
-    await note();
-  }
+  await act(page, "stack-go:B-06").click();
+  await note();
   return seen;
 }
 
+const PHASE_NUMBER = Object.fromEntries(PHASE_BUTTONS.map(([n, name]) => [name, n]));
 const WANT = (code) => {
   const phase = SLIDES.find(([c]) => c === code)[1];
-  return { code, phase, position: `${positionOf(code)} / ${DECK_LENGTH}`, lit: [phase.slice(0, 2)] };
+  return { code, phase, position: `${positionOf(code)} / ${DECK_LENGTH}`, lit: [PHASE_NUMBER[phase]] };
 };
 
 // ───────────────────────────── Back, Next, the arrow keys ─────────────────────────────
@@ -168,7 +211,8 @@ test("the Back and Next buttons are on the screen and press, the arrow keys do t
     await page.keyboard.press("ArrowRight");
     assert.equal(await slideCode(page), "S-04", "out of the box the key walks the deck");
 
-    // the whole run, one real press at a time. The six Blueprint slides sit between S-22 and S-23 and are stepped over.
+    // the whole run, one real press at a time. A funding file steps over the six Blueprint slides (between S-08 and
+    // S-09), and the two visual slides show only when their visual draws.
     await act(page, "phase:01").click();
     const forward = [await slideCode(page)];
     while (!(await act(page, "next").isDisabled())) { await next(page); forward.push(await slideCode(page)); }
@@ -180,31 +224,39 @@ test("the Back and Next buttons are on the screen and press, the arrow keys do t
     while (!(await act(page, "back").isDisabled())) { await back(page); backward.push(await slideCode(page)); }
     assert.deepEqual(backward, [...MAIN_RUN].reverse());
 
-    // inside section 06 the two buttons walk its six slides and leave at its ends
-    await act(page, "phase:06").click();
-    const inside = [await slideCode(page)];
-    for (let i = 0; i < 5; i += 1) { await next(page); inside.push(await slideCode(page)); }
-    assert.deepEqual(inside, STACK_RUN);
-    await next(page);
-    assert.equal(await slideCode(page), "S-23", "B-06 leads on to S-23");
-    await act(page, "phase:06").click();
-    await back(page);
-    assert.equal(await slideCode(page), "S-22", "B-01 leads back to S-22");
-
     assert.deepEqual(calls.writes, [], "moving through the deck saves nothing");
     assert.deepEqual(errors, []);
     await page.close();
+
+    // a repair file walks Door 3 (B-01 to B-04) inside part 6, then Door 4 from S-09; B-05 and B-06 stay out
+    const repair = await openDeck({ tier: "REPAIR_ONLY" });
+    const walked = [await slideCode(repair.page)];
+    while (!(await act(repair.page, "next").isDisabled())) { await next(repair.page); walked.push(await slideCode(repair.page)); }
+    assert.deepEqual(walked, REPAIR_RUN);
+    await act(repair.page, "phase:06").click();
+    assert.equal(await slideCode(repair.page), "B-01");
+    for (let i = 0; i < 3; i += 1) await next(repair.page);
+    assert.equal(await slideCode(repair.page), "B-04");
+    await next(repair.page);
+    assert.equal(await slideCode(repair.page), "S-09", "B-04 leads on to S-09");
+    await back(repair.page);
+    assert.equal(await slideCode(repair.page), "B-04", "and back into the Blueprint, not B-06");
+    await act(repair.page, "phase:06").click();
+    await back(repair.page);
+    assert.equal(await slideCode(repair.page), "S-08", "B-01 leads back to S-08");
+    assert.deepEqual(repair.errors, []);
+    await repair.page.close();
   });
 
   await proof.check(/^Back and Next screen buttons, ArrowLeft and ArrowRight keys/, async () => {
-    // the education route skips S-11 .. S-16 in both directions, by real presses
-    const { page, errors } = await openDeck({ tier: "REPAIR_ONLY" });
+    // the education route skips S-11 .. S-16 in both directions, by real presses (the course switch on)
+    const { page, errors } = await openDeck({ tier: "REPAIR_ONLY", course: true });
     await act(page, "phase:03").click();
     await next(page);
     await next(page);
     assert.equal(await slideCode(page), "S-07");
     await act(page, "edu").click();
-    await act(page, "phase:04").click();
+    await act(page, "phase:05").click();
     const seen = [await slideCode(page)];
     for (let i = 0; i < 4; i += 1) { await next(page); seen.push(await slideCode(page)); }
     assert.deepEqual(seen, ["S-08", "S-09", "S-10", "S-17", "S-18"]);
@@ -343,7 +395,7 @@ test("the seven belief boxes are drawn with their question, tick and untick on a
     assert.deepEqual(await on(), ["Money", "Trust"]);
 
     // and the count goes out with the disposition
-    await act(page, "phase:07").click();
+    await act(page, "phase:09").click();
     await act(page, "disp").click();
     await waitFor(() => calls.writes.length === 1, "the disposition");
     assert.equal(calls.writes[0].action, "log_disposition");
@@ -355,13 +407,13 @@ test("the seven belief boxes are drawn with their question, tick and untick on a
 
 // ───────────────────────────── objections ─────────────────────────────
 
-test("the six objection buttons are on every slide of 05 Commit and 07 Close and nowhere else, and each opens its three lines and jumps where it says", { timeout: 180_000 }, async () => {
+test("the six objection buttons are on every slide of 7 The ask and 9 Paperwork and nowhere else, and each opens its three lines and jumps where it says", { timeout: 180_000 }, async () => {
   await proof.check(/^Objections: 6 buttons/, async () => {
-    const { page, errors, calls } = await openDeck();
+    const { page, errors, calls } = await openDeck({ visuals: true });
 
     // where the list is: found by walking the deck with real presses
     const seen = await walkDeck(page);
-    assert.equal(seen.length, 30);
+    assert.equal(seen.length, 32);
     for (const slide of seen) {
       const listed = OBJECTION_SLIDES.includes(slide.code);
       assert.equal(slide.objections, listed ? 6 : 0, `${slide.code}: ${listed ? "the six objections are on this slide" : "no objection buttons here"}`);
@@ -369,7 +421,7 @@ test("the six objection buttons are on every slide of 05 Commit and 07 Close and
     }
 
     // from the first slide of each of the two phases that show them, press every button
-    for (const [strip, first] of [["phase:05", "S-17"], ["phase:07", "S-23"]]) {
+    for (const [strip, first] of [["phase:07", "S-17"], ["phase:09", "S-23"]]) {
       await act(page, strip).click();
       assert.equal(await slideCode(page), first);
       assert.deepEqual(await objectionLabels(page), OBJECTION_TABLE.map((o, i) => [`obj:${i}`, o.title]));
@@ -411,15 +463,18 @@ test("the six objection buttons are on every slide of 05 Commit and 07 Close and
 
 // ───────────────────────────── the phase strip ─────────────────────────────
 
-for (const [n, phaseName, slides] of PHASE_BUTTONS) {
-  const matcher = new RegExp(`^Phase strip button ${n}: ${phaseName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} \\(`);
-  test(`phase strip button ${n} opens ${slides[0]}, and every one of its slides is named "${phaseName}" and lights only ${n}`, { timeout: 120_000 }, async () => {
-    await proof.check(matcher, async () => {
-      const { page, errors, calls } = await openDeck();
+// The first slide each button opens on the funding file openDeck() shows: part 6 opens Door 1 (S-09), because a
+// funding file steps over the Blueprint. 08, Money, has no slide and is judged on its own below.
+const FIRST_FUNDING = { "06": "S-09" };
 
-      // the strip is drawn on every slide: seven buttons, 01 to 07, inside the window
+for (const [n, phaseName, slides] of PHASE_BUTTONS.filter(([x]) => x !== "08")) {
+  test(`phase strip button ${n} opens the first slide of "${phaseName}", and every one of its slides is named "${phaseName}" and lights only ${n}`, { timeout: 120_000 }, async () => {
+    const run = async () => {
+      const { page, errors, calls } = await openDeck({ visuals: true });
+
+      // the strip is drawn on every slide: nine buttons, with the script's part names, inside the window
       const strip = await page.evaluate(() => [...document.querySelectorAll('.ck-ph [data-act^="phase:"]')].map((b) => [b.getAttribute("data-act"), b.textContent.trim(), b.getBoundingClientRect().width > 0]));
-      assert.deepEqual(strip, ["01", "02", "03", "04", "05", "06", "07"].map((x) => [`phase:${x}`, x, true]));
+      assert.deepEqual(strip, PHASE_BUTTONS.map(([x, name]) => [`phase:${x}`, name, true]));
 
       // every slide of this phase, reached by pressing Next: its own phase name, its own place in the deck, only this button lit
       const walked = await walkDeck(page);
@@ -436,25 +491,106 @@ for (const [n, phaseName, slides] of PHASE_BUTTONS) {
         assert.ok(!slide.lit.includes(n), `${slide.code} does not light ${n}`);
       }
 
-      // the button itself, pressed from the far end of the deck
-      await act(page, "phase:07").click();
-      await next(page);
-      assert.equal(await slideCode(page), "S-24");
-      await act(page, `phase:${n}`).click();
-      assert.deepEqual(await where(page), { code: slides[0], phase: phaseName, position: WANT(slides[0]).position, lit: [n] });
-      // pressing it again stays on its first slide
-      await act(page, `phase:${n}`).click();
-      assert.equal(await slideCode(page), slides[0]);
-      if (n === "06") {
-        assert.equal(await act(page, "phase:06").getAttribute("title"), "Capital Blueprint + FinanceOS", "the 06 button says what it opens");
-        assert.match((await act(page, "stack-leave").textContent()).trim(), /^Leave the stack: back to S-24$/);
-      }
       assert.deepEqual(calls.writes, []);
       assert.deepEqual(errors, []);
       await page.close();
-    });
+
+      // the button itself, pressed from the far end of a fresh deck (the walk above took the descent ladder into
+      // the Blueprint, which makes the file a repair file)
+      const late = await openDeck({ visuals: true });
+      await act(late.page, "phase:09").click();
+      await next(late.page);
+      assert.equal(await slideCode(late.page), "S-24");
+      const first = FIRST_FUNDING[n] || slides[0];
+      await act(late.page, `phase:${n}`).click();
+      assert.deepEqual(await where(late.page), { code: first, phase: phaseName, position: WANT(first).position, lit: [n] });
+      // pressing it again stays on its first slide
+      await act(late.page, `phase:${n}`).click();
+      assert.equal(await slideCode(late.page), first);
+      assert.deepEqual(late.calls.writes, []);
+      assert.deepEqual(late.errors, []);
+      await late.page.close();
+
+      if (n === "06") {
+        // on a repair file part 6 opens the Blueprint, and remembers the way back
+        const repair = await openDeck({ tier: "REPAIR_ONLY" });
+        await act(repair.page, "phase:09").click();
+        await next(repair.page);
+        await act(repair.page, "phase:06").click();
+        assert.equal(await slideCode(repair.page), "B-01");
+        assert.match((await act(repair.page, "stack-leave").textContent()).trim(), /^Leave the stack: back to S-24$/);
+        await repair.page.close();
+      }
+    };
+    // The catalog lists the seven buttons the strip had before 2026-10-29, by number (CATALOG_PHASE_ROWS).
+    if (CATALOG_PHASE_ROWS.includes(n)) await proof.check(new RegExp(`^Phase strip button ${n}:`), run);
+    else await run();
   });
 }
+
+test("phase strip button 08, Money, opens the money steps in the cockpit and the client's slide stays where it is", { timeout: 120_000 }, async () => {
+  const { page, errors, calls } = await openDeck();
+  await act(page, "phase:07").click();
+  await next(page);
+  assert.equal(await slideCode(page), "S-18");
+  const screen = await page.locator(".client .slide").innerHTML();
+  await act(page, "phase:08").click();
+  assert.equal(await slideCode(page), "S-18");
+  assert.equal(await page.locator(".client .slide").innerHTML(), screen, "the client's screen does not move");
+  assert.equal((await header(page))[0], "8 Money");
+  assert.deepEqual(await litPhases(page), ["08"]);
+  assert.equal((await says(page))[0], "Money aside, is this the right plan for your file?");
+  await act(page, "money-back").click();
+  assert.equal((await header(page))[0], "7 The ask");
+  await act(page, "phase:08").click();
+  await act(page, "money-pay").click();
+  assert.equal(await slideCode(page), "S-23");
+  assert.deepEqual(await litPhases(page), ["09"]);
+  // every strip button is a real target: 44 px or more each way
+  const sizes = await page.evaluate(() => [...document.querySelectorAll('.ck-ph [data-act^="phase:"]')].map((b) => { const r = b.getBoundingClientRect(); return [r.width, r.height]; }));
+  assert.equal(sizes.length, 9);
+  for (const [w, h] of sizes) assert.ok(w >= 44 && h >= 44, `a strip button is ${w} by ${h}`);
+  assert.deepEqual(calls.writes, []);
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
+// ───────────────────────────── the visual slots ─────────────────────────────
+
+test("the page's own script tags load the visual files before the deck, each visual draws where 10.0 places it, and without them the slides are today's", { timeout: 120_000 }, async () => {
+  const drawn = async (page) => page.evaluate(() => { const el = document.querySelector('.client [data-fhv]'); return el ? [el.getAttribute("data-fhv"), el.getAttribute("data-door")] : null; });
+  const funding = await openDeck({ tier: "FUNDING_PLUS_REPAIR", visuals: true });
+  const seen = [];
+  while (!(await act(funding.page, "next").isDisabled())) {
+    await next(funding.page);
+    const v = await drawn(funding.page);
+    if (v) seen.push([await slideCode(funding.page), ...v]);
+  }
+  assert.deepEqual(seen, [["L-01", "moneyLevers", "fund_plus_optimize"], ["S-08", "yourPath", "fund_plus_optimize"], ["C-01", "companies", "fund_plus_optimize"]]);
+  assert.deepEqual(funding.errors, []);
+  await funding.page.close();
+
+  const repair = await openDeck({ tier: "REPAIR_ONLY", visuals: true });
+  const met = [];
+  while (!(await act(repair.page, "next").isDisabled())) {
+    await next(repair.page);
+    const v = await drawn(repair.page);
+    if (v) met.push([await slideCode(repair.page), ...v]);
+  }
+  assert.deepEqual(met, [["L-01", "moneyLevers", "blueprint"], ["S-08", "yourPath", "blueprint"], ["B-03", "blueprintDemo", "blueprint"], ["S-15", "journey", "blueprint"]]);
+  assert.deepEqual(repair.errors, []);
+  await repair.page.close();
+
+  // no visual file on the server: the walk and the slides are today's, and nothing breaks
+  const plain = await openDeck({ tier: "REPAIR_ONLY" });
+  const walked = [await slideCode(plain.page)];
+  while (!(await act(plain.page, "next").isDisabled())) { await next(plain.page); walked.push(await slideCode(plain.page)); }
+  assert.deepEqual(walked, REPAIR_RUN);
+  assert.equal(await plain.page.locator(".client [data-fhv]").count(), 0);
+  assert.equal(await plain.page.evaluate(() => typeof window.FHDeckVisuals), "undefined");
+  assert.deepEqual(plain.errors, [], "a missing visual file is not an error on the page");
+  await plain.page.close();
+});
 
 // ───────────────────────────── the two walls ─────────────────────────────
 
