@@ -6,7 +6,7 @@ import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import {
   EDGE_CONTRACT_VERSION, CRITICAL_EDGES, changedCriticalEdges, unmappedHighRiskSourceChanges,
-  reportCriticalSourceChanges, judgeSyntheticEdge
+  reportCriticalSourceChanges, shouldReportCriticalSourceRisk, judgeSyntheticEdge
 } from "./edge-acceptance.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
@@ -378,7 +378,7 @@ test("REPORT ONLY: PR modified source requires correlated result evidence review
     return;
   }
   const report = reportCriticalSourceChanges(data.files, data.body);
-  if (report.edges.length) {
+  if (shouldReportCriticalSourceRisk(report)) {
     console.warn("PULSE A->B REPORT ONLY (not a live PASS): " + JSON.stringify(report));
   }
 });
