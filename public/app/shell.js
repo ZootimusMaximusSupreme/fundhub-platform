@@ -2283,7 +2283,7 @@
         var elements = document.querySelectorAll(spec.selector);
         Array.prototype.forEach.call(elements, function (el) {
           if (spec.match && el.textContent.trim().indexOf(spec.match) !== 0) return;
-          var headingSibling = PAGE === "consent-capture.html" || PAGE === "documents.html";
+          var headingSibling = PAGE === "consent-capture.html" || PAGE === "documents.html" || PAGE === "pipeline.html";
           if (headingSibling ?
               (el.nextElementSibling && el.nextElementSibling.classList.contains("fh-step-sop")) :
               el.querySelector(".fh-step-sop")) return;
