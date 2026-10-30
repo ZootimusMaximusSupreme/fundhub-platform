@@ -37,14 +37,14 @@ flowchart TD
     CAN --> A_top_level[Everything else — 7 routes]
     CAN --> A_trials[trials — 2 routes]
     CAN --> A_webhooks[Incoming webhooks — 1 route]
-    WHO -->|Yes| CANT[Blocked — 256 routes]
+    WHO -->|Yes| CANT[Blocked — 257 routes]
     CANT --> B_affiliates[affiliates — 3 blocked]
     CANT --> B_analytics[analytics — 4 blocked]
     CANT --> B_auth[Signing in and out — 8 blocked]
     CANT --> B_banking[banking — 7 blocked]
     CANT --> B_blueprint[blueprint — 2 blocked]
     CANT --> B_chat[chat — 4 blocked]
-    CANT --> B_company_brain[company-brain — 4 blocked]
+    CANT --> B_company_brain[company-brain — 5 blocked]
     CANT --> B_consent[consent — 1 blocked]
     CANT --> B_content[content — 2 blocked]
     CANT --> B_dashboard[The dashboard — 7 blocked]
@@ -71,7 +71,7 @@ flowchart TD
 
 ## What they can reach
 
-**80 of 336 routes.**
+**80 of 337 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -163,7 +163,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**256 of 336 routes.**
+**257 of 337 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -207,9 +207,10 @@ flowchart TD
 | `/api/closer-deck` | POST | closer, sales_manager, owner, admin |
 | `/api/commission-rules` | GET, POST | owner, admin, sales_manager |
 | `/api/commissions` | POST | owner, admin, sales_manager |
+| `/api/company-brain/library` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/company-brain/reviews` | GET, POST | owner |
 | `/api/company-brain/sync` | GET, POST | owner, admin, sales_manager |
-| `/api/company-brain/threads` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
+| `/api/company-brain/threads` | DELETE, GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/company-brain/upload` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/consent/capture` | GET, POST | employees: owner, admin, closer, funding_advisor<br>plus: client |
 | `/api/content/tiles` | GET, POST | owner, admin |

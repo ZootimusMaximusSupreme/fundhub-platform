@@ -553,7 +553,7 @@
            it in a toast that has already gone is how somebody assumes it did. */
         (held ? '<div class="msg-error"><b>' + esc(statusWord(msg.status)) + "</b>" +
                 (msg.blocked_reason ? " — " + esc(msg.blocked_reason) : "") +
-                (msg.last_error ? " — " + esc(msg.last_error) : "") + "</div>" : "") +
+                (msg.last_error ? " — " + esc(deliveryErrorText(msg.last_error)) : "") + "</div>" : "") +
       "</div></div>";
   }
 
@@ -632,6 +632,19 @@
     if (status === "complained") return "Delivered, but they marked it as spam";
     if (status === "undelivered") return "Sent, but it did not arrive";
     return "Not sent yet";
+  }
+
+  function deliveryErrorText(error) {
+    var raw = String(error || "");
+    var code = /(?:"code"\s*:\s*|Twilio\s+)(\d{5})/.exec(raw);
+    if (code) {
+      if (code[1] === "21211") return "Invalid recipient phone number (Twilio 21211)";
+      if (code[1] === "30003") return "Phone is unreachable (Twilio 30003)";
+      if (code[1] === "30006") return "Phone cannot receive this text (Twilio 30006)";
+    }
+    if (/invalid api key/i.test(raw)) return "Email provider credentials were refused";
+    if (/^\s*\{/.test(raw)) return "The provider refused this message";
+    return raw.slice(0, 180);
   }
 
   /* What the send actually did, in words. THE POINT OF THIS FUNCTION IS THAT
@@ -843,12 +856,16 @@
       FHData.banner("real", state.rows.length
         ? "live conversations"
         : "connected · no conversations in the database yet", "conversations");
-      paintList();
-      // Keep the open thread selected across a refresh; if it is gone, drop it.
+      // A filtered or paged inbox may omit the thread somebody is reading.
+      // Keep its object so an in-flight thread read can still finish.
       if (state.selected) {
         var still = state.rows.filter(function (r) { return r.id === state.selected.id; })[0];
-        if (still) state.selected = still; else clearThread();
+        if (still) {
+          Object.assign(state.selected, still);
+          paintThreadHeader(state.selected);
+        }
       }
+      paintList();
     });
   }
 
@@ -1230,6 +1247,7 @@
           return;
         }
         state.sendKey = null;
+        if (!row.id && res.data.conversation_id) row.id = res.data.conversation_id;
         var verdict = V.outcomeMessage(res.data.deduped ? "sent" : res.data.outcome, res.data.detail);
         say(verdict.text, verdict.tone);
         // Only clear the box on an outcome where retyping would be wrong. On a

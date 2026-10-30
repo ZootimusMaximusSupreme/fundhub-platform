@@ -48,8 +48,21 @@ export function surveySummary(fields) {
   const cf = jsonObject(fields);
   return CF_SURVEY_QUESTIONS.filter(q => q.type !== "contact").map(q => {
     const value = cf[`${q.payloadKey}_label`] ?? cf[`${q.payloadKey}_labels`] ?? cf[q.payloadKey];
-    const answer = Array.isArray(value) ? value.join(", ") : String(value ?? "").trim();
-    return answer ? { key: q.payloadKey, question: q.title, answer } : null;
+    const unpack = (part, depth = 0) => {
+      if (depth < 3 && typeof part === "string" && part.trim().startsWith("[")) {
+        try {
+          const parsed = JSON.parse(part);
+          if (Array.isArray(parsed)) return parsed.flatMap(item => unpack(item, depth + 1));
+        } catch { /* Keep a plain answer as written. */ }
+      }
+      if (Array.isArray(part)) return part.flatMap(item => unpack(item, depth + 1));
+      return [String(part ?? "").trim()];
+    };
+    const answerValues = unpack(value).filter(Boolean);
+    return answerValues.length ? {
+      key: q.payloadKey, question: q.title, answer: answerValues.join(", "),
+      answer_values: answerValues, type: q.type, options: q.options || []
+    } : null;
   }).filter(Boolean);
 }
 
@@ -306,13 +319,23 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
     if (!survey_edits || typeof survey_edits !== "object" || Array.isArray(survey_edits)) {
       return { status: 400, body: { ok: false, error: "invalid_survey_edits" } };
     }
-    const visible = new Set(surveySummary(client.custom_fields).map(row => row.key));
+    const visible = new Map(surveySummary(client.custom_fields).map(row => [row.key, row]));
+    const previousEdits = jsonObject(jsonObject(client.custom_fields).setter_survey_edits);
     const edits = {};
     for (const [key, value] of Object.entries(survey_edits)) {
-      if (!SURVEY_KEYS.has(key) || !visible.has(key) || typeof value !== "string" || value.length > 1000) {
+      const row = visible.get(key);
+      if (!SURVEY_KEYS.has(key) || !row || typeof value !== "string" || value.length > 1000) {
         return { status: 400, body: { ok: false, error: "invalid_survey_edits" } };
       }
-      edits[key] = value.trim();
+      const clean = value.trim();
+      const choices = row.type === "multi" ? clean.split(", ").filter(Boolean) : [clean];
+      const validChoice = row.type === "multi"
+        ? choices.length === new Set(choices).size && choices.every(choice => row.options.includes(choice))
+        : row.options.includes(clean);
+      if (!validChoice && clean !== previousEdits[key]) {
+        return { status: 400, body: { ok: false, error: "invalid_survey_edits" } };
+      }
+      edits[key] = clean;
     }
     if (staff.role === "setter") {
       const claim = await db.query(

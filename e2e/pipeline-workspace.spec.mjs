@@ -55,6 +55,25 @@ for (const width of [1440, 390, 320]) {
   });
 }
 
+test('Fulfillment shows one Setter pill for repeated open tasks', async ({ page }) => {
+  const blockers = [
+    { kind: 'task', source: 'setter-entry', label: 'Setter: call new opt-in', id: 'setter-1' },
+    { kind: 'task', source: 'setter-entry', label: 'Setter: call new opt-in', id: 'setter-2' },
+    { kind: 'task', source: 'clickfunnels', label: 'Strategy session booked', id: 'booking-1' },
+    { kind: 'task', source: 'clickfunnels', label: 'Strategy session booked', id: 'booking-2' }
+  ];
+  await openScreen(page, '/app/pipeline.html', OWNER, {
+    '/api/dashboard/pipeline': BOARD,
+    '/api/dashboard/clients': { ok: true, clients: [{ id: CLIENT_ID, name: 'Sample Client',
+      active_blockers: blockers, next_action: { key: 'get_consent', label: 'Get Consent' } }] }
+  });
+  await page.locator('#lensFulfillment').click();
+  const row = page.locator('#fhLens .fh-lens-row').first();
+  await expect(row).toBeVisible();
+  await expect(row.locator('.lr-blocker', { hasText: 'Setter: call new opt-in' })).toHaveCount(1);
+  await expect(row.locator('.lr-blocker', { hasText: 'Strategy session booked' })).toHaveCount(2);
+});
+
 test('pipeline switches and same-board stage moves work with a keyboard', async ({ page }) => {
   const writes = [];
   const reads = [];

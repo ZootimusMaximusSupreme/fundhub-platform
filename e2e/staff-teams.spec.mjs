@@ -112,3 +112,36 @@ test("owner can remove a teammate while Chris keeps owner, setter and closer acc
   await expect(page.locator("#rosterBody")).not.toContainText("Admin E2E");
   expect(removedId).toBe("staff-9");
 });
+
+test("green dot follows current online presence without treating login access as online", async ({ page }) => {
+  let jordanOnline = true;
+  let caseyOnline = false;
+  const casey = {
+    id: "staff-2", name: "Casey Reed", email: "casey@fundhub.ai",
+    role: "closer", status: "active"
+  };
+  await wireApi(page, {
+    session: OWNER,
+    handlers: {
+      "/api/read/staff": () => ({
+        ok: true, count: 2, limit: 200, offset: 0, hasMore: false,
+        items: [
+          { ...STAFF_ROW, online_now: jordanOnline },
+          { ...casey, online_now: caseyOnline }
+        ]
+      })
+    }
+  });
+  await gotoScreen(page, "staff-teams.html");
+  const jordanRow = page.locator("#rosterBody tr", { hasText: "Jordan Blake" });
+  const caseyRow = page.locator("#rosterBody tr", { hasText: "Casey Reed" });
+  await expect(jordanRow.locator('.online-dot[aria-label="Online now"]')).toBeVisible();
+  await expect(caseyRow.locator(".online-dot")).toHaveCount(0);
+  await expect(caseyRow).toContainText("Active");
+
+  jordanOnline = false;
+  caseyOnline = true;
+  await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+  await expect(jordanRow.locator(".online-dot")).toHaveCount(0);
+  await expect(caseyRow.locator('.online-dot[aria-label="Online now"]')).toBeVisible();
+});

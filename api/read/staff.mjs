@@ -79,6 +79,12 @@ export default async function handler(req, res) {
              WHERE t.assignee_staff_id = s.id AND t.done = false) AS open_tasks,
            (SELECT count(*)::int FROM shifts sh
              WHERE sh.staff_id = s.id AND sh.ended_at IS NULL) AS open_shift,
+           (s.status = 'active' AND EXISTS (
+             SELECT 1 FROM sessions sess
+              WHERE sess.staff_id = s.id AND sess.org_id = s.org_id
+                AND sess.revoked_at IS NULL AND sess.expires_at > now()
+                AND sess.last_seen_at >= now() - interval '2 minutes'
+           )) AS online_now,
            (SELECT count(*)::int FROM staff_events se
              WHERE se.staff_id = s.id
                AND se.kind IN ('monitor_activity','monitor_screenshot')
