@@ -1,4 +1,4 @@
-# Run the test suite on every push and every pull request.
+# Run the required full test suite for pull requests and merged main.
 #
 # *** WHY THIS FILE DID NOT EXIST UNTIL NOW, AND WHAT IT CHANGES. ***
 #
@@ -67,9 +67,12 @@
 
 name: tests
 
+# Execute every required CI gate once for each PR head, and on main after merge.
+# Branch pushes with an open PR were triggering a duplicate 14-job run.
+# Explicit workflow_dispatch remains available for a branch without a PR.
 on:
   push:
-    branches: ["**"]
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
