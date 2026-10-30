@@ -330,6 +330,20 @@ How each offer can be paid:
 
 Never tell a client financing stays off their credit. The financing pre-check is soft. Taking the loan is a hard pull, and it can show on their credit.
 
+**When they won't say what they have.** "You told me money aside, this is the right plan. To find the right way in, I need to know what you can use today. What's stopping you from telling me?" A closed door on money means a trust worry. Find it with section 9, then come back here.
+
+**Before they put it on a card.** "Card use is one of the things that sets how much you qualify for. A big new balance raises yours." Say it, then let them choose.
+
+**Financing on the call (Blueprint only).** A lot of buyers pay over time. Walk them through it live. Never send the link and hang up.
+
+1. Set the price and send the agreement (section 10, steps 2 and 3).
+2. Make the Whop link and send it while you are both on the call.
+3. "Open it now and pick the option to pay over time. Checking your options is a soft check."
+4. "Read the rate, the monthly payment and the number of months before you accept. The lender sets them, not us." Never say a rate.
+5. Stay on until Whop shows paid (section 10, step 5).
+
+As of 2026-10-29, nobody has closed a financed sale yet (`05-claritypay-financing.md`). On the first one, stay on to the end and tell Chris what each screen said.
+
 The money steps come from a payment-plan video that sits in Cole's folder. The speaker is Alex Hormozi: he says he ran those payments at Gym Launch, his company. Cole's own docs add the rule at the top of this section: lock the plan first, then talk money.
 
 ## 9. Objections
@@ -358,6 +372,24 @@ Best fix: get them on the call at the start (section 1). If they are not on: "Ma
 
 **"Can I finance the credit optimization, or the $200?"**
 "No. Financing is for the Blueprint only."
+
+**"What's the rate?"** (or "What's the monthly payment?")
+"The lender sets the rate and the payment from your file, not us. Checking your options is a soft check, and you see both before you accept anything. Let's look now, while I'm on." Then section 8, financing on the call.
+
+**"Will the financing hurt my credit?"**
+"Checking your options is soft. Taking the loan is a hard pull, and it can show on your credit. A big balance on a card raises your card use, and card use is one of the things that sets how much you qualify for." Then let them pick.
+
+**"The lender said no."**
+"That's the lender's call on today's file." Then section 8: half today and the rest on payday, three pays, or a smaller first step at its real price. Never make up a price.
+
+**"The monthly payment is too high."**
+"What payment works for you?" Look at the other plans the lender shows, together. More months means a smaller payment. If none fits, go to section 8: the payday split, or a smaller first step.
+
+**"I'll do the financing later."** (or "Just send me the link.")
+"Let's do it now while I'm here, so I can answer anything that comes up. Checking is a soft check." Still later: book a time inside one day, like the spouse rule. No fake deadline.
+
+**"I don't want a loan for this."**
+"Then don't take one. Pay half today and the rest on your next payday." Then the rest of section 8.
 
 **"Other companies charge $8,000 to $10,000."**
 "That's their price. Ours is a $3,000 deposit that counts toward 10%, and the 10% is only on money you actually get."
@@ -484,6 +516,7 @@ Nothing is open.
 
 - **Cole Gordon's closer course** (Drive folder "Sales Training For Closing And Setting," copied to `~/Desktop/closing stuff/cole-gordon-sales-training/`): the call order (introduction, information gathering, transition, pitch, commit, objections), the seven beliefs (pain, doubt, cost, desire, money, support, trust), the two question orders (stuck part first, or goal first), the pitch shape (a promise, three to five steps, how it runs), the plan check before money, isolating an objection, the delay, and follow-up. His deposit (a refundable hold when they are all in and only timing blocks them) and his risk backups (a next-day or 7-day refund) are not used here, because Fundhub has no such offer. The five "Week 5" sample docs in Sarah's folder are coaching samples from his course, not Fundhub facts.
 - **The payment-plan video** in Cole's folder (`payment-plan-video/`): Alex Hormozi's ladder. Section 8.
+- **Cole's financial objections doc** (`from-sarah-and-closer/4. Financial Objections Doc.docx`; doc 5 is the same file): tie down twice, ask what they can use today, treat a closed door on money as a trust worry, then terms. Sections 8 and 9. Adapted to Fundhub's real pay rules, not copied.
 - **The Sept 1 floor sheet** (`FundhubObjectionsandFundingSheet.pdf`, emailed "Here, use these to role play w closer"): the fired lines, the pocket card, and the 18 approved objection answers in section 9.
 - **The Oct 10 offers overview** (`Fundhub_Offers_Overview.pdf`, emailed with the affiliate kit on Oct 13): who the Blueprint is for and what is in it.
 - **The old closer script** (`Fundhub_Closer_Script_FINAL`, newest copy is the 18-page PDF): the stacking close. Kept: the frame, the cost question, the pre-frame before the pull, reading the file like an underwriter, "should versus how," "respect versus permission." Dropped: the $50 pull, the $2,000 repair, the $1,000 do-it-yourself pack, "pre-approved," "0% introductory rates," "$25 million," and the three guarantees.
