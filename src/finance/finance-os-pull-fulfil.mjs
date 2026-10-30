@@ -13,6 +13,7 @@ import { financeOsEntitlement } from "./finance-os-entitlement.mjs";
 export const FINANCE_OS_SYSTEM_PULL_LIVE = "FINANCE_OS_SYSTEM_PULL_LIVE";
 export const MONTHLY_DELIVERY_EXCEPTION_SOURCE = "blueprint-monthly-delivery";
 export const MONTHLY_PROVIDER_HOLD_SOURCE = "finance-os-monthly-authorization";
+export const MONTHLY_PROVIDER_EXCEPTION_SOURCE = "finance-os-monthly-provider-exception";
 
 /** An explicit subscription-scoped real key, never an env-inferred intent. */
 export function savedSystemPullIntent(row) {
@@ -86,13 +87,36 @@ export async function fulfilQueuedSystemPulls(conn, {
     errored: [],
     simulated: simulate,
     deliveryExceptions: [],
+    providerExceptions: [],
     authorizationHolds: []
   };
+
+  // Never re-order an uncertain provider request. Escalate the saved request
+  // using a stable task key, then require a human to reconcile the provider.
+  async function reportProviderException(row, failure) {
+    const record = { clientId: row.client_id, requestId: row.id, reason: failure };
+    try {
+      const task = await createTaskImpl(conn, {
+        orgId: row.org_id, clientId: row.client_id, assigneeRole: "owner",
+        sourceWorkflow: MONTHLY_PROVIDER_EXCEPTION_SOURCE,
+        title: "Investigate FinanceOS monthly credit result before any retry",
+        eventId: `finance-os-monthly-provider:${row.id}`,
+        detail: `Request ${row.id}; saved plan ${row.subscription_id || "unknown"}; outcome: ${String(failure).slice(0, 160)}. Check the saved request, original provider receipt, and valid consent. A transport or storage error may follow a real bureau order. Do not automatically redial or re-pull credit; arrange an authorized recovery only after reconciliation.`
+      });
+      if (!task || task.error || (task.created === false && !task.id && task.reason !== "duplicate_race")) {
+        throw new Error(task?.error || "provider_exception_task_not_persisted");
+      }
+      tally.providerExceptions.push({ ...record, task });
+    } catch (error) {
+      tally.errored.push({ ...record, phase: "provider_exception_task", error: String(error?.message || error) });
+    }
+  }
 
   const rows = await queuedSystemPulls(conn, { limit });
   tally.checked = rows.length;
 
   for (const row of rows) {
+    let providerAttempted = false;
     try {
       const intent = savedSystemPullIntent(row);
       let reason = null;
@@ -140,6 +164,7 @@ export async function fulfilQueuedSystemPulls(conn, {
         if (!task || task.error) tally.errored.push({ ...hold, phase: "authorization_hold_task", error: task?.error || "not_saved" });
         continue;
       }
+      providerAttempted = true;
       const pull = await runPull(conn, {
         orgId: row.org_id,
         clientId: row.client_id,
@@ -148,12 +173,14 @@ export async function fulfilQueuedSystemPulls(conn, {
         simulate
       });
       if (!pull?.ok) {
+        const failure = pull?.code || pull?.reason || "pull_failed";
         tally.failed += 1;
         tally.skipped.push({
           clientId: row.client_id,
           requestId: row.id,
-          reason: pull?.code || pull?.reason || "pull_failed"
+          reason: failure
         });
+        if (!simulate) await reportProviderException(row, failure);
         continue;
       }
       // The provider's persisted-result stamp is authoritative. A successful
@@ -201,6 +228,11 @@ export async function fulfilQueuedSystemPulls(conn, {
         requestId: row.id,
         error: String(e?.message || e)
       });
+      // A thrown provider/storage operation may have charged or returned a
+      // bureau report before losing the response. Never automatically retry.
+      if (providerAttempted && !simulate) {
+        await reportProviderException(row, "provider_or_storage_outcome_unknown");
+      }
     }
   }
 

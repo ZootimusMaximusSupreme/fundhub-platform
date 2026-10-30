@@ -258,3 +258,94 @@ test("failed hold ledger write reports RED and cannot call bureau or claim task 
   assert.equal(calls, 0);
   assert.equal(tasks, 0);
 });
+
+test("real monthly provider refusal creates one scoped owner exception and no repeat pull", async () => {
+  const row = { id: "req-real-fail", org_id: "org-A", client_id: "buyer-A",
+    subscription_id: "plan-A", idempotency_key: "finance-os-monthly:plan-A:0:real" };
+  let queued = true, pulls = 0, aftercares = 0;
+  const tasks = [];
+  const db = { query: async (sql) => {
+    if (/FROM soft_pull_requests/.test(sql)) return { rows: queued ? [row] : [] };
+    throw Error("unexpected SQL in provider-failure fixture");
+  } };
+  const input = {
+    env: { FINANCE_OS_SYSTEM_PULL_LIVE: "1", CRS_ALLOW_LIVE: "1" },
+    consentCheck: async () => ({ valid: true }),
+    entitlementCheck: async () => ({ entitled: true, subscriptionId: "plan-A" }),
+    runPull: async () => { pulls++; queued = false; return { ok: false, code: "crs_unavailable" }; },
+    createTaskImpl: async (_db, task) => { tasks.push(task); return { created: true, id: "owner-task" }; },
+    aftercare: async () => { aftercares++; return { ok: true }; }
+  };
+  const first = await fulfilQueuedSystemPulls(db, input);
+  assert.equal(first.ok, false);
+  assert.equal(first.failed, 1);
+  assert.equal(first.providerExceptions.length, 1);
+  assert.equal(first.providerExceptions[0].task.id, "owner-task");
+  assert.deepEqual([tasks[0].orgId, tasks[0].clientId, tasks[0].assigneeRole],
+    ["org-A", "buyer-A", "owner"]);
+  assert.equal(tasks[0].sourceWorkflow, "finance-os-monthly-provider-exception");
+  assert.equal(tasks[0].eventId, "finance-os-monthly-provider:req-real-fail");
+  assert.match(tasks[0].detail, /Do not automatically redial or re-pull/);
+  assert.equal((await fulfilQueuedSystemPulls(db, input)).checked, 0);
+  assert.equal(pulls, 1);
+  assert.equal(tasks.length, 1);
+  assert.equal(aftercares, 0);
+});
+
+test("ambiguous real provider error creates a human hold, not a second bureau order", async () => {
+  const row = { id: "req-transport", org_id: "org-A", client_id: "buyer-A",
+    subscription_id: "plan-A", idempotency_key: "finance-os-monthly:plan-A:0:real" };
+  let queued = true, pulls = 0;
+  const tasks = [];
+  const db = { query: async (sql) => {
+    if (/FROM soft_pull_requests/.test(sql)) return { rows: queued ? [row] : [] };
+    throw Error("unexpected SQL");
+  } };
+  const input = {
+    env: { FINANCE_OS_SYSTEM_PULL_LIVE: "1", CRS_ALLOW_LIVE: "1" },
+    consentCheck: async () => ({ valid: true }),
+    entitlementCheck: async () => ({ entitled: true, subscriptionId: "plan-A" }),
+    runPull: async () => { pulls++; queued = false; throw Error("vendor transport interrupted"); },
+    createTaskImpl: async (_db, task) => { tasks.push(task); return { created: true, id: "human-task" }; }
+  };
+  const first = await fulfilQueuedSystemPulls(db, input);
+  assert.equal(first.ok, false);
+  assert.equal(first.errored.length, 1);
+  assert.match(first.errored[0].error, /vendor transport interrupted/);
+  assert.equal(first.providerExceptions.length, 1);
+  assert.equal(tasks[0].eventId, "finance-os-monthly-provider:req-transport");
+  assert.match(tasks[0].detail, /receipt/);
+  assert.equal((await fulfilQueuedSystemPulls(db, input)).checked, 0);
+  assert.equal(pulls, 1);
+  assert.equal(tasks.length, 1);
+});
+
+test("provider-exception task failure remains RED and simulations create no live owner task", async () => {
+  const row = { id: "req-task-failure", org_id: "org-A", client_id: "buyer-A",
+    subscription_id: "plan-A", idempotency_key: "finance-os-monthly:plan-A:0:real" };
+  const db = { query: async (sql) => {
+    if (/FROM soft_pull_requests/.test(sql)) return { rows: [row] };
+    throw Error("unexpected SQL");
+  } };
+  const opts = {
+    env: { FINANCE_OS_SYSTEM_PULL_LIVE: "1", CRS_ALLOW_LIVE: "1" },
+    consentCheck: async () => ({ valid: true }),
+    entitlementCheck: async () => ({ entitled: true, subscriptionId: "plan-A" }),
+    runPull: async () => ({ ok: false, code: "vendor_error" }),
+    createTaskImpl: async () => { throw Error("tasks table unavailable"); }
+  };
+  const live = await fulfilQueuedSystemPulls(db, opts);
+  assert.equal(live.failed, 1);
+  assert.equal(live.ok, false);
+  assert.equal(live.providerExceptions.length, 0);
+  assert.equal(live.errored[0].phase, "provider_exception_task");
+  let tasks = 0;
+  row.idempotency_key = "finance-os-monthly:plan-A:0";
+  const rehearsal = await fulfilQueuedSystemPulls(db, {
+    ...opts, env: {},
+    createTaskImpl: async () => { tasks++; return { id: "forbidden" }; }
+  });
+  assert.equal(rehearsal.failed, 1);
+  assert.equal(rehearsal.providerExceptions.length, 0);
+  assert.equal(tasks, 0, "rehearsal-only failures must not create customer provider incidents");
+});
