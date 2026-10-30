@@ -46,6 +46,30 @@ test("source changes require A->B review, including changed existing high-risk f
   assert.deepEqual(changedCriticalEdges(["marketing/landing-pages/apply-survey.html"]).map((x) => x.id), ["lead-booking-call-outcome"]);
 });
 
+test("existing closer/dispatch and setter source edits demand call-outcome proof", () => {
+  // PR #292 edits closer-deck, which calls logCallOutcome; PR #278 edits
+  // cockpit, setter dashboard and the task-claim API. All sit on the
+  // lead -> appointment -> held call -> logged sales outcome A-to-B path.
+  const touched = reportCriticalSourceChanges([
+    "src/sales/closer-deck.mjs", "src/sales/cockpit.mjs",
+    "src/setter/dashboard.mjs", "api/tasks.mjs",
+    "public/app/closer-dashboard.html"
+  ]);
+  assert.equal(touched.verdict, "REVIEW_REQUIRED");
+  assert.deepEqual(touched.edges.map((edge) => edge.id), ["lead-booking-call-outcome"]);
+  assert.deepEqual(touched.edges[0].files, [
+    "src/sales/closer-deck.mjs", "src/sales/cockpit.mjs",
+    "src/setter/dashboard.mjs", "api/tasks.mjs",
+    "public/app/closer-dashboard.html"
+  ]);
+  assert.deepEqual(touched.unmappedHighRiskFiles, []);
+  assert.equal(touched.evidenceNote, "MISSING");
+  assert.equal(touched.liveReceipt, "NEEDS_LIVE_RECEIPT");
+  assert.deepEqual(changedCriticalEdges([
+    "src/sales/closer-deck.test.mjs", "src/setter/dashboard.spec.mjs"
+  ]), []);
+});
+
 test("shared client lifecycle edits cannot hide payment, CRS or funding effects behind booking coverage", () => {
   // src/handlers/client-lifecycle.mjs registers payment.received,
   // diagnostic.paid, deposit.paid, analysis.completed and booking events.
