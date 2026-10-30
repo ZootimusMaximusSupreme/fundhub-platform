@@ -464,3 +464,54 @@ test("REPORT ONLY: PR modified source requires correlated result evidence review
     console.warn("PULSE A->B REPORT ONLY (not a live PASS): " + JSON.stringify(report));
   }
 });
+
+test("P0 credit pull and P1 bureau-letter proof require exact, prior unrevoked consent", () => {
+  const creditEdge = CRITICAL_EDGES.find((edge) => edge.id === "consent-crs-result");
+  const repairEdge = CRITICAL_EDGES.find((edge) => edge.id === "repair-enrollment-bureau-result");
+  assert.equal(creditEdge.consentScope, "credit-soft-pull");
+  assert.equal(repairEdge.consentScope, "bureau-letter-send");
+
+  // Payment may precede the signature. The actual provider action must not.
+  const consentEvent = { ...event, consent_id: "signed-consent-1" };
+  const sentAt = "2026-10-29T00:10:00Z";
+  const authorization = {
+    id: "signed-consent-1", org_id: org, client_id: client,
+    scope: creditEdge.consentScope, outcome: "authorized",
+    signed_at: "2026-10-29T00:05:00Z"
+  };
+  const authorized = {
+    ...basics, event: consentEvent,
+    consumer: { ...consumer, provider_action_at: sentAt },
+    consentReceipt: authorization,
+    requireConsentReceipt: true, consentScope: creditEdge.consentScope
+  };
+  assert.equal(judgeSyntheticEdge(authorized).verdict, "PASS");
+  const broken = [
+    { consentReceipt: null },
+    { event: { ...consentEvent, consent_id: "another-consent" } },
+    { consentReceipt: { ...authorization, org_id: "foreign-org" } },
+    { consentReceipt: { ...authorization, client_id: "another-client" } },
+    { consentReceipt: { ...authorization, scope: repairEdge.consentScope } },
+    { consentReceipt: { ...authorization, outcome: "pending" } },
+    { consentReceipt: { ...authorization, signed_at: "2026-10-29T00:12:00Z" } },
+    { consentReceipt: { ...authorization, revoked_at: "2026-10-29T00:09:00Z" } },
+    { consentReceipt: { ...authorization, revoked_at: "invalid" } },
+    { consumer: { ...consumer } },
+    { consentScope: null }
+  ];
+  for (const change of broken) {
+    assert.deepEqual(judgeSyntheticEdge({ ...authorized, ...change }), {
+      verdict: "RED", reason: "authorized-consent-before-provider-action-missing"
+    });
+  }
+  assert.equal(judgeSyntheticEdge({
+    ...authorized, now: "2026-10-29T00:02:00Z", consentReceipt: null
+  }).verdict, "PENDING");
+  assert.equal(judgeSyntheticEdge({
+    ...authorized, consentScope: repairEdge.consentScope,
+    consentReceipt: { ...authorization, scope: repairEdge.consentScope }
+  }).verdict, "PASS");
+  assert.equal(judgeSyntheticEdge({
+    ...authorized, consumer: null
+  }).reason, "consumer-not-completed-for-event");
+});
