@@ -12,7 +12,7 @@ export const CRITICAL_EDGES = Object.freeze([
     event: "booking.created", consumer: "onBookingCreated / s-04-call-booked",
     receipt: "bookings + confirmation message + call_outcomes", graceMinutes: 30,
     pulse: "calls:booked-no-outcome",
-    paths: ["src/adapters/clickfunnels.mjs", "src/bookings/", "src/handlers/client-lifecycle.mjs", "src/workflows/s-04", "src/sales/call-outcomes.mjs", "api/auth/magic-link.mjs", "src/auth/booking-account", "src/auth/magic-link", "public/portal-login.html"]
+    paths: ["src/adapters/clickfunnels.mjs", "src/bookings/", "src/handlers/client-lifecycle.mjs", "src/workflows/s-04", "src/sales/call-outcomes.mjs", "api/auth/magic-link.mjs", "src/auth/booking-account", "src/auth/magic-link", "public/portal-login.html", "marketing/landing-pages/"]
   },
   {
     id: "payment-ledger-entitlement", severity: "P0", owner: "A/R",
@@ -82,7 +82,7 @@ export const CRITICAL_EDGES = Object.freeze([
 const NON_RUNTIME = /(?:^|\/)(?:__tests__|fixtures|docs)\//;
 const TEST_FILE = /(?:\.test\.|\.spec\.|\.snap$)/;
 function materialSource(file) {
-  return /^(?:src|api|netlify|public|ios|macos|native)\//.test(file)
+  return /^(?:src|api|netlify|public|marketing|ios|macos|native)\//.test(file)
     && !file.startsWith("src/pulse/")
     && !TEST_FILE.test(file) && !NON_RUNTIME.test(file);
 }
