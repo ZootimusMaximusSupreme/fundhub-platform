@@ -22,7 +22,7 @@ test("monthly real provider checks current consent and paid access on disposable
   try {
     await db.query("CREATE TEMP TABLE subscriptions (LIKE public.subscriptions INCLUDING ALL) ON COMMIT DROP");
     await db.query("CREATE TEMP TABLE client_consents (LIKE public.client_consents INCLUDING ALL) ON COMMIT DROP");
-    await db.query("CREATE TEMP TABLE soft_pull_requests (id uuid, org_id uuid, client_id uuid, subscription_id uuid, idempotency_key text, status text, requested_by_kind text, requested_at timestamptz) ON COMMIT DROP");
+    await db.query("CREATE TEMP TABLE soft_pull_requests (id uuid, org_id uuid, client_id uuid, subscription_id uuid, idempotency_key text, status text, requested_by_kind text, requested_at timestamptz, state_reason text, resolved_at timestamptz, updated_at timestamptz) ON COMMIT DROP");
     const org=randomUUID(),client=randomUUID(),sub=randomUUID(),consent=randomUUID(),staff=randomUUID(),request=randomUUID();
     await db.query(`INSERT INTO subscriptions (id,org_id,client_id,tier,status,effective_from,current_period_start,current_period_end)
       VALUES ($1,$2,$3,'finance-os','active',now()-interval '1 day',now()-interval '1 day',now()+interval '365 days')`,[sub,org,client]);
