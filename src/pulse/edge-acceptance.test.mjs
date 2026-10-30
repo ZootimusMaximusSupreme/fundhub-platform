@@ -41,6 +41,8 @@ test("source changes require A->B review, including changed existing high-risk f
   assert.equal(reportCriticalSourceChanges(["docs/README.md"]).verdict, "NO_CRITICAL_SOURCE_TOUCH_DETECTED");
   assert.equal(changedCriticalEdges(["src/pulse/tripwires.mjs"]).length, 0);
   assert.equal(reportCriticalSourceChanges(["src/adapters/clickfunnels.mjs"], "A->B evidence: mock only").evidenceNote, "PRESENT_UNVERIFIED");
+  assert.deepEqual(changedCriticalEdges(["api/auth/magic-link.mjs", "public/portal-login.html"]).map((x) => x.id), ["lead-booking-call-outcome"]);
+  assert.deepEqual(changedCriticalEdges(["public/app/soft-pull-approve.html"]).map((x) => x.id), ["consent-crs-result"]);
 });
 
 test("wrong source, consumer, identity, trace or business result turns RED after grace", () => {
@@ -73,6 +75,27 @@ test("provider receipt, grace, no-demand and missing data cannot become fake PAS
   assert.equal(judgeSyntheticEdge({ ...basics, demandAt: null, event: null }).verdict, "NOT_CHECKED");
 });
 
+test("shared journey trace cannot launder another event or stale result", () => {
+  const tracedEvent = { ...event, correlation_id: "trace-one" };
+  const tracedConsumer = { ...consumer, correlation_id: "trace-one" };
+  const tracedReceipt = { ...receipt, correlation_id: "trace-one" };
+  const traced = { ...basics, event: tracedEvent, consumer: tracedConsumer, receipt: tracedReceipt };
+  assert.equal(judgeSyntheticEdge(traced).verdict, "PASS");
+  const bad = [
+    { consumer: { ...tracedConsumer, event_id: "another-event" } },
+    { receipt: { ...tracedReceipt, event_id: "another-event" } },
+    { consumer: { ...tracedConsumer, correlation_id: "another-trace" } },
+    { receipt: { ...tracedReceipt, correlation_id: "another-trace" } },
+    { consumer: { ...tracedConsumer, created_at: "2026-10-28T23:59:00Z" } },
+    { receipt: { ...tracedReceipt, created_at: "2026-10-28T23:59:00Z" } },
+    { consumer: { ...tracedConsumer, event_id: null, correlation_id: "" } },
+    { receipt: { ...tracedReceipt, event_id: null, correlation_id: "" } }
+  ];
+  for (const change of bad) {
+    assert.equal(judgeSyntheticEdge({ ...traced, ...change }).verdict, "RED", JSON.stringify(change));
+  }
+});
+
 function changedFilesFromPrEnvironment() {
   const eventPath = process.env.GITHUB_EVENT_PATH;
   if (!eventPath) return { status: "NOT_CHECKED", why: "no GitHub PR event context" };
@@ -82,13 +105,25 @@ function changedFilesFromPrEnvironment() {
   const sha = payload?.pull_request?.base?.sha;
   if (!sha) return { status: "NOT_CHECKED", why: "not a pull request with a base SHA" };
   try {
-    const raw = execFileSync("git", ["diff", "--name-only", sha + "...HEAD"], {
+    // Actions checkout normally uses depth 1: fetch only the immutable base
+    // snapshot when absent. No repository business files are changed.
+    try {
+      execFileSync("git", ["cat-file", "-e", sha + "^{commit}"], {
+        cwd: ROOT, timeout: 3_000, stdio: "ignore"
+      });
+    } catch {
+      execFileSync("git", ["fetch", "--no-tags", "--depth=1", "origin", sha], {
+        cwd: ROOT, timeout: 15_000, stdio: "ignore"
+      });
+    }
+    // Base tree versus checked-out PR head works on shallow checkout/merge refs.
+    const raw = execFileSync("git", ["diff", "--name-only", sha, "HEAD"], {
       cwd: ROOT, encoding: "utf8", timeout: 10_000, maxBuffer: 10 * 1024 * 1024,
       stdio: ["ignore", "pipe", "ignore"]
     });
     return { status: "READ", files: raw.split(/\r?\n/).filter(Boolean), body: payload.pull_request?.body || "" };
   } catch {
-    return { status: "NOT_CHECKED", why: "base commit absent or diff unavailable in CI checkout" };
+    return { status: "NOT_CHECKED", why: "immutable PR base snapshot or diff unavailable" };
   }
 }
 
