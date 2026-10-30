@@ -65,6 +65,9 @@ test("iOS blocks the public marketing homepage before workspace or external navi
   assert.ok(action, "main-frame callback must exist");
   assert.match(action, /if WorkspaceNavigation\.isPublicMarketingHome\(url\)\s*\{\s*decisionHandler\(\.cancel\)\s*return/);
   assert.ok(action.indexOf("if WorkspaceNavigation.isPublicMarketingHome(url)") <
+    action.indexOf("if navigationAction.targetFrame?.isMainFrame == false"),
+    "public-home guard must also run for otherwise-allowed payment iframes");
+  assert.ok(action.indexOf("if WorkspaceNavigation.isPublicMarketingHome(url)") <
     action.indexOf("if WorkspaceNavigation.shouldOpenInWorkspace(url)"),
     "public-home guard must precede normal in-app or external URL routing");
   const popup = ios.split("createWebViewWith configuration: WKWebViewConfiguration,")[1]
@@ -77,7 +80,7 @@ test("iOS blocks the public marketing homepage before workspace or external navi
 test("iOS checks the final main-frame response URL, including HTTP redirects", () => {
   const response = ios.split("decidePolicyFor navigationResponse: WKNavigationResponse,")[1];
   assert.ok(response, "navigationResponse callback must exist");
-  assert.match(response, /navigationResponse\.isForMainFrame/);
+  assert.doesNotMatch(response, /navigationResponse\.isForMainFrame/);
   assert.match(response, /navigationResponse\.response\.url/);
   assert.match(response, /WorkspaceNavigation\.isPublicMarketingHome\(finalURL\)/);
   assert.match(response, /decisionHandler\(\.cancel\)/);
@@ -89,7 +92,10 @@ test("Mac blocks marketing-home URLs in main frame, popups and redirects", () =>
     .split("createWebViewWith configuration: WKWebViewConfiguration,")[0];
   assert.match(action, /if isPublicMarketingHome\(url\)\s*\{\s*decisionHandler\(\.cancel\)/);
   assert.ok(action.indexOf("if isPublicMarketingHome(url)") <
-    action.indexOf("else if isFundhub(url)"));
+    action.indexOf("if navigationAction.targetFrame?.isMainFrame == false"),
+    "marketing-home blocking also covers embedded frames");
+  assert.ok(action.indexOf("if isPublicMarketingHome(url)") <
+    action.indexOf("if isFundhub(url)"));
   const popup = mac.split("createWebViewWith configuration: WKWebViewConfiguration,")[1]
     .split("decidePolicyFor navigationResponse: WKNavigationResponse,")[0];
   assert.match(popup, /guard !isPublicMarketingHome\(url\) else \{ return nil \}/);
@@ -97,7 +103,7 @@ test("Mac blocks marketing-home URLs in main frame, popups and redirects", () =>
     popup.indexOf("if isFundhub(url)"));
   const response = mac.split("decidePolicyFor navigationResponse: WKNavigationResponse,")[1]
     .split("private func openAllowedExternal")[0];
-  assert.match(response, /navigationResponse\.isForMainFrame/);
+  assert.doesNotMatch(response, /navigationResponse\.isForMainFrame/);
   assert.match(response, /navigationResponse\.response\.url/);
   assert.match(response, /isPublicMarketingHome\(finalURL\)/);
   assert.match(response, /decisionHandler\(\.cancel\)/);
