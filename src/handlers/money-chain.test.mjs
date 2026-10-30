@@ -401,6 +401,45 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
     assert.equal(out.saleId, BILLED_SALE);
   });
 
+
+  test("a success-fee invoice cannot be redirected to another same-buyer sale", async () => {
+    const db = feeDb();
+    const out = await onPaymentReceivedMoney(feeReceipt({ saleId: NEWEST_SALE }), db);
+    assert.equal(out.done, false);
+    assert.equal(out.reason, "success_fee_sale_conflict");
+    assert.equal(salePaymentInsert(db), undefined, "conflicted fee must not enter sale_payments");
+  });
+
+  test("a success-fee invoice with no original sale is held for reconciliation", async () => {
+    const db = feeDb({ invoice: { id: INVOICE, sale_id: null } });
+    const out = await onPaymentReceivedMoney(feeReceipt(), db);
+    assert.equal(out.done, false);
+    assert.equal(out.reason, "unlinked_success_fee_invoice");
+    assert.equal(salePaymentInsert(db), undefined);
+  });
+
+  test("an invalid payment amount cannot grant access or post commissions", async () => {
+    const db = feeDb();
+    const out = await onPaymentReceivedMoney(feeReceipt({ amount: -25 }), db);
+    assert.equal(out.done, false);
+    assert.equal(out.reason, "unrecorded_payment");
+    assert.equal(out.entitlements, undefined);
+    assert.equal(salePaymentInsert(db), undefined);
+  });
+
+  test("an unidentified sale does not pretend to finish checkout or unlock service", async () => {
+    const db = feeDb({ invoice: null });
+    const query = db.query.bind(db);
+    db.query = async (sql, params) => /pr\\.category = 'funding'/.test(String(sql))
+      ? { rows: [] } : query(sql, params);
+    const out = await onPaymentReceivedMoney(
+      feeReceipt({ invoiceId: null, paymentLinkId: null, product: "unmatched", productName: null }), db
+    );
+    assert.equal(out.done, false);
+    assert.equal(out.reason, "no_sale_yet");
+    assert.equal(out.entitlements, undefined);
+    assert.equal(salePaymentInsert(db), undefined);
+  });
   test("the invoice is looked up inside this client and org only", async () => {
     const db = feeDb();
     await onPaymentReceivedMoney(feeReceipt(), db);

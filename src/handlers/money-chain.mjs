@@ -788,6 +788,12 @@ async function recordPurchase(event, db, { productBucket, paymentKind }) {
     kind: paymentKind
   });
 
+  // No durable sale payment means no commission or paid entitlement.
+  if (!pay.payment) {
+    warnNothingUnlocked(event, "unrecorded_payment", { clientId, productCode: product?.code || null });
+    return { done: false, reason: "unrecorded_payment", saleId: sale.id, clientId };
+  }
+
   let commission = { inserted: 0, warnings: [] };
   try {
     commission = await writeFrontEndCommissions(db, {
@@ -953,8 +959,24 @@ export async function onPaymentReceivedMoney(event, db) {
     orgId, clientId, invoiceId: paymentPayload.invoiceId
   });
 
+  // A paid success-fee invoice owns its original sale. A second sale hint
+  // (including a stored payment-link sale) must not redirect that money.
+  if (feeInvoice && !feeInvoice.sale_id) {
+    return { done: false, reason: "unlinked_success_fee_invoice" };
+  }
+  if (feeInvoice?.sale_id && paymentPayload.saleId &&
+      String(feeInvoice.sale_id) !== String(paymentPayload.saleId)) {
+    return { done: false, reason: "success_fee_sale_conflict" };
+  }
   let sale = null;
-  if (paymentPayload.saleId) {
+  if (feeInvoice?.sale_id) {
+    sale = (await db.query(
+      `SELECT * FROM sales WHERE id = $1 AND org_id = $2 AND client_id = $3 LIMIT 1`,
+      [feeInvoice.sale_id, orgId, clientId]
+    )).rows[0] || null;
+    if (!sale) return { done: false, reason: "success_fee_sale_missing" };
+  }
+  if (!sale && paymentPayload.saleId) {
     sale = (await db.query(
       `SELECT * FROM sales
         WHERE id = $1 AND org_id = $2 AND client_id = $3
@@ -993,14 +1015,6 @@ export async function onPaymentReceivedMoney(event, db) {
       ]
     )).rows[0] || null;
   }
-  // A success fee belongs to the sale its invoice bills, not to whichever
-  // funding sale happens to be newest.
-  if (!sale && feeInvoice?.sale_id) {
-    sale = (await db.query(
-      `SELECT * FROM sales WHERE id = $1 AND org_id = $2 AND client_id = $3 LIMIT 1`,
-      [feeInvoice.sale_id, orgId, clientId]
-    )).rows[0] || null;
-  }
   if (!sale) {
     const productId = await resolveProductId(db, orgId, {
       productId: paymentPayload.productId,
@@ -1034,14 +1048,10 @@ export async function onPaymentReceivedMoney(event, db) {
   }
 
   if (!sale) {
-    const productId = await resolveProductId(db, orgId, {
-      productId: paymentPayload.productId,
-      productName: paymentPayload.productName || null,
-      productBucket: bucket
-    });
-    const product = await loadProduct(db, productId);
-    const entitlements = await grantForPurchase(db, event, { clientId, product });
-    return { done: true, saleId: null, entitlements, reason: "no_sale_yet" };
+    // Unattributed money remains visible for reconciliation, never treated as
+    // a completed purchase or a reason to unlock paid services.
+    warnNothingUnlocked(event, "no_sale", { clientId, productCode: null });
+    return { done: false, saleId: null, clientId, reason: "no_sale_yet" };
   }
 
   if (paymentPayload.paymentLinkId) {
@@ -1069,6 +1079,10 @@ export async function onPaymentReceivedMoney(event, db) {
     saleMotion: paymentPayload.saleMotion || sale.sale_motion || null,
     kind
   });
+  if (!pay.payment) {
+    warnNothingUnlocked(event, "unrecorded_payment", { clientId, productCode: null });
+    return { done: false, reason: "unrecorded_payment", saleId: sale.id, clientId };
+  }
   const commission = await writeFrontEndCommissions(db, {
     saleId: sale.id,
     payment: pay.payment,
