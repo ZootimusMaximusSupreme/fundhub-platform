@@ -197,6 +197,38 @@ describe("ensureSalePayment", () => {
     assert.match(ins.sql, /product_id/, "INSERT must include product_id (live NOT NULL)");
     assert.equal(ins.params[3], "prod-from-sale");
   });
+  test("a conflicting replay cannot credit a second sale or produce partner accrual", async () => {
+    const ORG = "org-primary", SALE = "sale-primary", PRODUCT = "product-primary";
+    const payment = {
+      id: "original-payment", org_id: ORG, sale_id: SALE, product_id: PRODUCT,
+      transaction_id: "tx-primary", kind: "deposit", amount: "3000.00"
+    };
+    const conflicting = [
+      { sale_id: "sale-other" }, { org_id: "org-other" },
+      { product_id: "product-other" }, { kind: "success_fee" },
+      { amount: "2900.00" }, { transaction_id: "tx-other" }
+    ];
+    for (const mismatch of conflicting) {
+      const calls = [];
+      const db = {
+        query: async (sql) => {
+          const text = String(sql);
+          calls.push(text);
+          if (/FROM transactions/.test(text)) return { rows: [{ id: "tx-primary" }] };
+          if (/INSERT INTO sale_payments/.test(text)) return { rows: [] };
+          if (/FROM sale_payments/.test(text)) return { rows: [{ ...payment, ...mismatch }] };
+          throw new Error("unexpected downstream query after conflicting receipt: " + text);
+        }
+      };
+      const result = await ensureSalePayment(db, {
+        id: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee", orgId: ORG,
+        name: "deposit.paid", payload: { amount: 3000, providerRef: "synthetic-ref" }
+      }, { saleId: SALE, productId: PRODUCT, kind: "deposit" });
+      assert.equal(result.payment, null, JSON.stringify(mismatch));
+      assert.equal(result.reason, "receipt_conflict", JSON.stringify(mismatch));
+      assert.equal(calls.length, 3, "conflicted receipt must not accrue or grant anything");
+    }
+  });
 });
 
 describe("resolveProductId matches product codes, not just display names", () => {
@@ -415,6 +447,14 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
     const out = await onPaymentReceivedMoney(feeReceipt(), db);
     assert.equal(out.done, false);
     assert.equal(out.reason, "unlinked_success_fee_invoice");
+    assert.equal(salePaymentInsert(db), undefined);
+  });
+
+  test("a zero-dollar payment cannot grant paid access", async () => {
+    const db = feeDb();
+    const out = await onPaymentReceivedMoney(feeReceipt({ amount: 0 }), db);
+    assert.equal(out.done, false);
+    assert.equal(out.reason, "unrecorded_payment");
     assert.equal(salePaymentInsert(db), undefined);
   });
 

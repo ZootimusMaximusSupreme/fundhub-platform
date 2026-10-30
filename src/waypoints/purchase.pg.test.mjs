@@ -20,7 +20,7 @@ import { db, close } from "../db.mjs";
 import { emit, _resetOrgCache } from "../events/bus.mjs";
 import { clearHandlers } from "../events/registry.mjs";
 import { register as registerLifecycle } from "../handlers/client-lifecycle.mjs";
-import { register as registerMoneyChain } from "../handlers/money-chain.mjs";
+import { register as registerMoneyChain, ensureSale } from "../handlers/money-chain.mjs";
 import { resolveDefaultOrg } from "../auth/org.mjs";
 import { buildPayload } from "../../scripts/sim/push-credit.mjs";
 
@@ -158,15 +158,27 @@ describe("paying for the Capital Blueprint creates the checklist", {
     await close();
   });
 
-  const buy = async (email, { ref, amount = 5000, productName = BLUEPRINT_TITLE }) =>
-    emit(db, "payment.received", {
-      email,
-      name: "Blueprint Buyer",
-      productName,
-      amount,
-      providerRef: ref,
-      source: "commas"
-    }, { orgId: org, idempotencyKey: `${MARK}:${ref}` });
+  const buy = async (email, { ref, amount = 5000, productName = BLUEPRINT_TITLE }) => {
+    // The checkout already has a canonical sale before a paid webhook arrives.
+    // Do not simulate success by unlocking an orphan receipt with no sale.
+    let clientId = await clientByEmail(email);
+    if (!clientId) {
+      clientId = (await db.query(
+        `INSERT INTO clients (org_id, first_name, last_name, email)
+         VALUES ($1,'Blueprint','Buyer',$2) RETURNING id`,
+        [org, email]
+      )).rows[0].id;
+    }
+    const { sale } = await ensureSale(db, {
+      name: "checkout.accepted", orgId: org, clientId,
+      payload: { email, productName, amount, providerRef: ref }
+    }, { productBucket: "unmatched" });
+    assert.ok(sale, "checkout must create the exact buyer/product sale before a paid receipt");
+    return emit(db, "payment.received", {
+      email, name: "Blueprint Buyer", productName, amount,
+      saleId: sale.id, providerRef: ref, source: "commas"
+    }, { orgId: org, clientId, idempotencyKey: `${MARK}:${ref}` });
+  };
 
   const clientByEmail = async (email) => (await db.query(
     `SELECT id FROM clients WHERE email = $1`, [email]

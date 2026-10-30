@@ -10,7 +10,7 @@ import { db, close } from "../db.mjs";
 import { emit, replay, _resetOrgCache } from "../events/bus.mjs";
 import { clearHandlers } from "../events/registry.mjs";
 import { register as registerLifecycle } from "./client-lifecycle.mjs";
-import { register as registerMoneyChain, onPaymentReceivedMoney } from "./money-chain.mjs";
+import { register as registerMoneyChain, onPaymentReceivedMoney, ensureSale } from "./money-chain.mjs";
 import { createSession } from "../auth/session.mjs";
 import { resolveDefaultOrg } from "../auth/org.mjs";
 
@@ -498,10 +498,24 @@ describe("money-chain writers", { skip: !HAS_DB ? "no DATABASE_URL" : false }, (
 
     // 'Inquiry Removal' is a real product. 180 deliberately does NOT map it,
     // because no shipped code says what an inquiry removal delivers.
+    // An owned checkout sale and an actual stored transaction are both required
+    // before this test can assert the separate missing entitlement mapping.
+    const origin = await ensureSale(db, {
+      orgId: org, clientId, name: "checkout.accepted",
+      payload: { productName: "Inquiry Removal", amount: 500, providerRef: `${MARK}_inq_1` }
+    }, { productBucket: "unmatched" });
+    assert.ok(origin.sale, "an unmapped but real product still has a canonical sale");
+    await db.query(
+      `INSERT INTO transactions (org_id, client_id, product_name, amount_paid,
+                                status, provider, provider_ref, raw_payload)
+       VALUES ($1,$2,'Inquiry Removal',500,'succeeded','commas',$3,'{}'::jsonb)`,
+      [org, clientId, `${MARK}_inq_1`]
+    );
     const unmapped = await onPaymentReceivedMoney({
       id: null, name: "payment.received", orgId: org, clientId,
-      payload: { productName: "Inquiry Removal", amount: 500, providerRef: `${MARK}_inq_1` }
+      payload: { saleId: origin.sale.id, productName: "Inquiry Removal", amount: 500, providerRef: `${MARK}_inq_1` }
     }, db);
+    assert.equal(unmapped.done, true, "the stored sale and payment were accepted");
     assert.equal(unmapped.entitlements.unmapped, true);
     assert.equal(unmapped.entitlements.reason, "no_mapping");
     assert.equal(unmapped.entitlements.productCode, "inquiry-removal");

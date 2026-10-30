@@ -440,7 +440,8 @@ export async function ensureSalePayment(db, event, {
   const p = event.payload || {};
   const paid = amount != null ? Number(amount)
     : (p.amount != null ? Number(p.amount) : null);
-  if (paid == null || Number.isNaN(paid) || paid < 0) {
+  // A zero-dollar/invalid webhook is not settled cash, even for a 0%-deposit plan.
+  if (!Number.isFinite(paid) || paid <= 0 || paid >= 1_000_000_000) {
     return { payment: null, created: false };
   }
 
@@ -495,6 +496,20 @@ export async function ensureSalePayment(db, event, {
      still a gap, and closing it needs an owner call on what it should pay. */
   const settle = async (paymentRow, created) => {
     if (!paymentRow) return { payment: null, created: false };
+    // A replay that collides on transaction/event identity cannot reassign a
+    // previous receipt to another sale, product, kind, amount, or tenant.
+    // Refuse BEFORE partner/affiliate accrual or paid-entitlement consumers.
+    if (!created && (
+      String(paymentRow.org_id) !== String(orgId) ||
+      String(paymentRow.sale_id) !== String(saleId) ||
+      String(paymentRow.product_id) !== String(productId) ||
+      String(paymentRow.kind) !== String(kind) ||
+      Number(paymentRow.amount) !== paid ||
+      (transactionId && String(paymentRow.transaction_id) !== String(transactionId))
+    )) {
+      console.warn("[money-chain] conflicting replay receipt held for reconciliation");
+      return { payment: null, created: false, reason: "receipt_conflict" };
+    }
     const partnerRevenue = await accrueForPaymentSafe(db, {
       orgId,
       saleId,
@@ -790,8 +805,9 @@ async function recordPurchase(event, db, { productBucket, paymentKind }) {
 
   // No durable sale payment means no commission or paid entitlement.
   if (!pay.payment) {
-    warnNothingUnlocked(event, "unrecorded_payment", { clientId, productCode: product?.code || null });
-    return { done: false, reason: "unrecorded_payment", saleId: sale.id, clientId };
+    const reason = pay.reason || "unrecorded_payment";
+    warnNothingUnlocked(event, reason, { clientId, productCode: product?.code || null });
+    return { done: false, reason, saleId: sale.id, clientId };
   }
 
   let commission = { inserted: 0, warnings: [] };
@@ -1080,8 +1096,9 @@ export async function onPaymentReceivedMoney(event, db) {
     kind
   });
   if (!pay.payment) {
-    warnNothingUnlocked(event, "unrecorded_payment", { clientId, productCode: null });
-    return { done: false, reason: "unrecorded_payment", saleId: sale.id, clientId };
+    const reason = pay.reason || "unrecorded_payment";
+    warnNothingUnlocked(event, reason, { clientId, productCode: null });
+    return { done: false, reason, saleId: sale.id, clientId };
   }
   const commission = await writeFrontEndCommissions(db, {
     saleId: sale.id,
