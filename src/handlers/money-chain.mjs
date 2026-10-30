@@ -432,7 +432,8 @@ async function findTransactionId(db, orgId, providerRef) {
 }
 
 export async function ensureSalePayment(db, event, {
-  saleId, productId, paymentLinkId = null, saleMotion = null, kind, amount = null
+  saleId, clientId = null, productId, paymentLinkId = null,
+  saleMotion = null, kind, amount = null
 } = {}) {
   const orgId = event.orgId;
   if (!orgId || !saleId || !productId) return { payment: null, created: false };
@@ -449,6 +450,24 @@ export async function ensureSalePayment(db, event, {
   const sourceEventId = asUuid(event.id);
   if (!transactionId && !sourceEventId) {
     return { payment: null, created: false };
+  }
+  // A provider reference is only evidence for the exact buyer whose payment
+  // was captured. The org-level provider_ref uniqueness alone is insufficient:
+  // another client's failed or successful transaction must never settle this
+  // sale even when an event supplies a fresh source_event_id.
+  if (transactionId) {
+    if (!clientId) return { payment: null, created: false, reason: "transaction_owner_missing" };
+    const verifiedSource = await db.query(
+      `SELECT id FROM transactions
+        WHERE id = $1 AND org_id = $2 AND client_id = $3
+          AND lower(status) = 'succeeded'
+          AND amount_paid = $4::numeric
+        LIMIT 1`,
+      [transactionId, orgId, clientId, paid]
+    );
+    if (!verifiedSource.rows[0]) {
+      return { payment: null, created: false, reason: "transaction_source_conflict" };
+    }
   }
   const paidAt = p.paidAt || new Date().toISOString();
 
@@ -797,6 +816,7 @@ async function recordPurchase(event, db, { productBucket, paymentKind }) {
 
   const pay = await ensureSalePayment(db, event, {
     saleId: sale.id,
+    clientId,
     productId: sale.product_id,
     paymentLinkId: event.payload?.paymentLinkId || null,
     saleMotion: event.payload?.saleMotion || sale.sale_motion || null,
@@ -1090,6 +1110,7 @@ export async function onPaymentReceivedMoney(event, db) {
   const kind = feeInvoice ? "success_fee" : paymentKindFor(bucket, "payment.received");
   const pay = await ensureSalePayment(db, paymentEvent, {
     saleId: sale.id,
+    clientId,
     productId: sale.product_id,
     paymentLinkId: paymentPayload.paymentLinkId,
     saleMotion: paymentPayload.saleMotion || sale.sale_motion || null,

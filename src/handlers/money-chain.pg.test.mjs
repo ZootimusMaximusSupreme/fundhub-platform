@@ -10,7 +10,7 @@ import { db, close } from "../db.mjs";
 import { emit, replay, _resetOrgCache } from "../events/bus.mjs";
 import { clearHandlers } from "../events/registry.mjs";
 import { register as registerLifecycle } from "./client-lifecycle.mjs";
-import { register as registerMoneyChain, onPaymentReceivedMoney, ensureSale } from "./money-chain.mjs";
+import { register as registerMoneyChain, onPaymentReceivedMoney, ensureSale, ensureSalePayment } from "./money-chain.mjs";
 import { createSession } from "../auth/session.mjs";
 import { resolveDefaultOrg } from "../auth/org.mjs";
 
@@ -476,6 +476,49 @@ describe("money-chain writers", { skip: !HAS_DB ? "no DATABASE_URL" : false }, (
 
     await replay(db, {});
     assert.equal(await held(), 1, "a replayed webhook must not grant a second time");
+  });
+
+  test("a foreign buyer's or failed provider transaction cannot be credited to this sale", async () => {
+    const foreignEmail = `${MARK}.foreign_ref@example.com`;
+    const buyerEmail = `${MARK}.owned_ref@example.com`;
+    const foreign = (await db.query(
+      `INSERT INTO clients (org_id, email, first_name, last_name)
+       VALUES ($1,$2,$3,'Foreign') RETURNING id`, [org, foreignEmail, MARK]
+    )).rows[0];
+    const buyer = (await db.query(
+      `INSERT INTO clients (org_id, email, first_name, last_name)
+       VALUES ($1,$2,$3,'Owned') RETURNING id`, [org, buyerEmail, MARK]
+    )).rows[0];
+    const { sale } = await ensureSale(db, {
+      orgId: org, clientId: buyer.id, name: "checkout.accepted",
+      payload: { productId: fundingProductId, amount: 3000 }
+    }, { productBucket: "deposit" });
+    assert.ok(sale);
+    for (const scenario of [
+      { owner: foreign.id, status: "succeeded", amount: 3000 },
+      { owner: buyer.id, status: "failed", amount: 3000 },
+      { owner: buyer.id, status: "succeeded", amount: 2400 }
+    ]) {
+      const providerRef = `${MARK}_scope_${scenario.status}_${scenario.amount}_${scenario.owner}`;
+      await db.query(
+        `INSERT INTO transactions (org_id, client_id, product_name, amount_paid,
+                                  status, provider, provider_ref, raw_payload)
+         VALUES ($1,$2,'Consulting Services Deposit',$3,$4,'commas',$5,'{}'::jsonb)`,
+        [org, scenario.owner, scenario.amount, scenario.status, providerRef]
+      );
+      const result = await ensureSalePayment(db, {
+        id: "00000000-0000-4000-8000-000000000e64", orgId: org, clientId: buyer.id,
+        name: "payment.received", payload: { amount: 3000, providerRef }
+      }, {
+        clientId: buyer.id, saleId: sale.id, productId: fundingProductId, kind: "deposit"
+      });
+      assert.equal(result.payment, null, "conflicted processor reference is not cash");
+      assert.equal(result.reason, "transaction_source_conflict");
+    }
+    const n = (await db.query(
+      `SELECT count(*)::int n FROM sale_payments WHERE sale_id = $1`, [sale.id]
+    )).rows[0].n;
+    assert.equal(n, 0, "none of the foreign/failed/incorrect-amount receipts may credit buyer");
   });
 
   test("a payment we cannot pin to a client refuses and names the reason", async () => {

@@ -197,6 +197,38 @@ describe("ensureSalePayment", () => {
     assert.match(ins.sql, /product_id/, "INSERT must include product_id (live NOT NULL)");
     assert.equal(ins.params[3], "prod-from-sale");
   });
+  test("same-org foreign buyer, failed transaction, and wrong amount cannot settle a sale", async () => {
+    const variants = [
+      { clientId: "client-foreign", status: "succeeded", amount: 3000 },
+      { clientId: "client-owned", status: "failed", amount: 3000 },
+      { clientId: "client-owned", status: "succeeded", amount: 2000 }
+    ];
+    for (const v of variants) {
+      const queries = [];
+      const db = {
+        query: async (sql, params = []) => {
+          const text = String(sql);
+          queries.push({ text, params });
+          if (/SELECT id FROM transactions/.test(text) && /provider_ref/.test(text)) {
+            return { rows: [{ id: "tx-existing" }] };
+          }
+          if (/SELECT id FROM transactions/.test(text) && /client_id = \$3/.test(text)) {
+            const matches = params[2] === v.clientId && v.status === "succeeded" && params[3] === v.amount;
+            return { rows: matches ? [{ id: "tx-existing" }] : [] };
+          }
+          throw new Error("transaction ownership refusal must precede any financial write: " + text);
+        }
+      };
+      const result = await ensureSalePayment(db, {
+        id: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee", orgId: "org-owned",
+        name: "payment.received", payload: { amount: 3000, providerRef: "shared-provider-ref" }
+      }, { saleId: "sale-owned", clientId: "client-owned", productId: "product-owned", kind: "deposit" });
+      assert.equal(result.payment, null);
+      assert.equal(result.reason, "transaction_source_conflict");
+      assert.equal(queries.length, 2, "neither ledger, accrual nor entitlement may run");
+    }
+  });
+
   test("a conflicting replay cannot credit a second sale or produce partner accrual", async () => {
     const ORG = "org-primary", SALE = "sale-primary", PRODUCT = "product-primary";
     const payment = {
@@ -214,7 +246,7 @@ describe("ensureSalePayment", () => {
         query: async (sql) => {
           const text = String(sql);
           calls.push(text);
-          if (/FROM transactions/.test(text)) return { rows: [{ id: "tx-primary" }] };
+          if (/FROM transactions/.test(text)) return { rows: [{ id: "tx-primary", client_id: "client-primary", status: "succeeded", amount_paid: "3000.00" }] };
           if (/INSERT INTO sale_payments/.test(text)) return { rows: [] };
           if (/FROM sale_payments/.test(text)) return { rows: [{ ...payment, ...mismatch }] };
           throw new Error("unexpected downstream query after conflicting receipt: " + text);
@@ -223,7 +255,7 @@ describe("ensureSalePayment", () => {
       const result = await ensureSalePayment(db, {
         id: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee", orgId: ORG,
         name: "deposit.paid", payload: { amount: 3000, providerRef: "synthetic-ref" }
-      }, { saleId: SALE, productId: PRODUCT, kind: "deposit" });
+      }, { saleId: SALE, clientId: "client-primary", productId: PRODUCT, kind: "deposit" });
       assert.equal(result.payment, null, JSON.stringify(mismatch));
       assert.equal(result.reason, "receipt_conflict", JSON.stringify(mismatch));
       assert.equal(calls.length, 3, "conflicted receipt must not accrue or grant anything");
@@ -395,7 +427,7 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
         }
         // The old guess: the client's newest active funding sale.
         if (/pr\.category = 'funding'/.test(text)) return { rows: [sale(NEWEST_SALE)] };
-        if (/FROM transactions/.test(text)) return { rows: [{ id: "tx-fee" }] };
+        if (/FROM transactions/.test(text)) return { rows: [{ id: "tx-fee", client_id: CLIENT, status: "succeeded", amount_paid: "2500.00" }] };
         if (/INSERT INTO sale_payments/.test(text)) {
           return { rows: [{ id: "sp-fee", sale_id: params[1], transaction_id: params[2],
             product_id: params[3], kind: params[6], amount: params[7] }] };
