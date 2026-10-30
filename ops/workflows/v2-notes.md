@@ -45,6 +45,7 @@ One row per fix. Fill all five boxes.
 | 25 | 2026-10-26 | Real walk paused after Phase 2. | Walk log | Resume only after fixes are live and proved. | Process |
 | 26 | 2026-10-26 | App Store taps need Cortana and server funnel events from thank-you, email path and portal. | Shared tracker, app CTAs | Prove a human tap and preserve Meta Lead. | Before Monday — funnel and email lanes |
 | 27 | 2026-10-26 | Mac runs the iPhone app. | iOS tooling | Native Mac target is separate product work. | V2 |
+| 28 | 2026-10-30 | `src/pulse/catalog/proofs/fin-b16-messaging.test.mjs` fails on main since c0d9fb2 removed the "Automatic" tag from `public/app/messaging.html`. That commit updated `messaging-screen.test.mjs` and the e2e spec, not this proof. Two tests red: the Reference key test (line 398) and "every listed row was exercised" (line 741). | CI real-Postgres unit shard 5/6 (seen on PR #326) | Update the proof to the new label, in its own fix. | Leftover, not fixed |
 
 Add new rows under row 27 as Chris talks.
 
