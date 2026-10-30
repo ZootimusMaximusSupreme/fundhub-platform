@@ -412,6 +412,7 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
     paidReceiptEventId = null,
     linkedInvoiceId = INVOICE,
     paidAmount = 0,
+    currentAppliedAmount = 0,
     transactionAmount = 2500
   } = {}) {
     const queries = [];
@@ -431,7 +432,7 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
             sale_motion: null, closer_staff_id: null, sales_manager_staff_id: null }] };
         }
         if (/FROM invoice_payments/.test(text)) {
-          if (text.includes("COALESCE(SUM")) return { rows: [{ applied: paidAmount }] };
+          if (text.includes("COALESCE(SUM")) return { rows: [{ applied: paidAmount, current_applied: currentAppliedAmount }] };
           const replayMatched = params[0] === ORG && params[1] === INVOICE &&
             ((paidReceiptRef !== null && params[2] === paidReceiptRef) ||
              (paidReceiptEventId !== null && params[3] === paidReceiptEventId));
@@ -585,6 +586,31 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
     assert.equal(salePaymentInsert(db)?.params[1], BILLED_SALE);
     assert.equal(salePaymentInsert(db)?.params[6], "success_fee");
     assert.equal(salePaymentInsert(db)?.params[7], 500);
+  });
+
+  test("the allocator may apply this event first without falsely rejecting a valid partial payment", async () => {
+    // $400 older cash + $500 from THIS event already allocated, $100 still due.
+    // Without excluding the matching current PSP receipt, a $500 event sees
+    // only $100 remaining and erroneously skips its sale/payment credit.
+    const db = feeDb({ paidAmount: 900, currentAppliedAmount: 500, transactionAmount: 500,
+      invoice: { id: INVOICE, sale_id: BILLED_SALE, amount_due: 1000, status: "partially_paid" } });
+    const out = await onPaymentReceivedMoney(feeReceipt({ amount: 500 }), db);
+    assert.equal(out.done, true, JSON.stringify(out));
+    assert.equal(salePaymentInsert(db)?.params[6], "success_fee");
+    assert.equal(salePaymentInsert(db)?.params[7], 500);
+  });
+
+  test("allocator-first partial overpayment is still held before commission", async () => {
+    // An allocator may have already applied $500 of the $600 current PSP event
+    // against a $500 remaining debt. The extra $100 is not earned fee revenue.
+    const db = feeDb({ paidAmount: 2500, currentAppliedAmount: 500,
+      paidReceiptRef: "sim-pay-fee", transactionAmount: 600,
+      invoice: { id: INVOICE, sale_id: BILLED_SALE, amount_due: 2500, status: "paid" } });
+    const out = await onPaymentReceivedMoney(feeReceipt({ amount: 600 }), db);
+    assert.equal(out.done, false);
+    assert.equal(out.reason, "success_fee_overpayment_unallocated");
+    assert.equal(salePaymentInsert(db), undefined);
+    assert.equal(out.entitlements, undefined);
   });
 
   test("a paid success-fee invoice holds a second, different processor receipt", async () => {

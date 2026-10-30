@@ -941,7 +941,7 @@ async function successFeeInvoiceFor(db, { orgId, clientId, invoiceId }) {
   return rows[0] || null;
 }
 
-export function feePaymentBalanceDecision({ amount, due, applied = 0, status }) {
+export function feePaymentBalanceDecision({ amount, due, applied = 0 }) {
   const incoming = Number(amount);
   if (!Number.isFinite(incoming) || incoming <= 0) return null;
   const charge = due == null ? NaN : Number(due);
@@ -951,8 +951,8 @@ export function feePaymentBalanceDecision({ amount, due, applied = 0, status }) 
   }
   const chargeCents = toCents(charge), priorCents = toCents(prior);
   if (priorCents > chargeCents) return "success_fee_balance_unverified";
-  const allowable = status === "paid" ? chargeCents : chargeCents - priorCents;
-  return toCents(incoming) > allowable ? "success_fee_overpayment_unallocated" : null;
+  return toCents(incoming) > chargeCents - priorCents
+    ? "success_fee_overpayment_unallocated" : null;
 }
 
 /**
@@ -1084,25 +1084,6 @@ export async function onPaymentReceivedMoney(event, db) {
       String(billedInvoice.funding_round_id || "") !== String(hintedRound)) {
     return { done: false, reason: "invoice_round_conflict" };
   }
-  // The invoice allocator applies only the remaining fee, not the PSP surplus.
-  // Refuse over-credit before recording sale cash or granting any paid access.
-  if (feeInvoice) {
-    let applied = 0;
-    if (feeInvoice.status !== "paid" && Number(paymentPayload.amount) > 0) {
-      const totals = await db.query(
-        `SELECT COALESCE(SUM(CASE WHEN kind = 'payment' THEN amount ELSE -amount END), 0) AS applied
-           FROM invoice_payments WHERE org_id = $1 AND invoice_id = $2`,
-        [orgId, feeInvoice.id]
-      );
-      applied = totals.rows[0]?.applied ?? null;
-    }
-    const reason = feePaymentBalanceDecision({
-      amount: paymentPayload.amount, due: feeInvoice.amount_due,
-      applied, status: feeInvoice.status
-    });
-    if (reason) return { done: false, reason, invoiceId: feeInvoice.id };
-  }
-
   if (billedInvoice?.status === "paid") {
     const receiptRef = paymentPayload.paymentId || paymentPayload.providerRef || null;
     const eventReceiptId = asUuid(event.id);
@@ -1123,6 +1104,35 @@ export async function onPaymentReceivedMoney(event, db) {
     if (!existingReceipt.rows[0]) {
       return { done: false, reason: "paid_success_fee_new_receipt" };
     }
+  }
+  // Money-chain and the independent invoice allocator may consume this SAME
+  // PSP event in either order. Exclude THIS exact already-applied receipt from
+  // the net paid amount, otherwise a valid partial payment can be rejected
+  // just because invoice allocation completed first. Do not exclude another
+  // receipt, even from the same buyer/fee invoice.
+  //
+  // The paid-invoice block above already proves replay receipt identity.
+  // The comparison below always caps collectible sale cash by original debt,
+  // including a partial event that the allocator has already processed.
+  if (feeInvoice && Number(paymentPayload.amount) > 0) {
+    const receiptRef = paymentPayload.paymentId || paymentPayload.providerRef || null;
+    const sourceEventId = asUuid(event.id);
+    const totals = await db.query(
+      `SELECT COALESCE(SUM(CASE WHEN kind = 'payment' THEN amount ELSE -amount END), 0) AS applied,
+              COALESCE(SUM(CASE WHEN kind = 'payment' AND method = 'commas'
+                AND (($3::text IS NOT NULL AND external_ref = $3)
+                  OR ($4::uuid IS NOT NULL AND source_event_id = $4))
+                THEN amount ELSE 0 END), 0) AS current_applied
+         FROM invoice_payments
+        WHERE org_id = $1 AND invoice_id = $2`,
+      [orgId, feeInvoice.id, receiptRef, sourceEventId]
+    );
+    const agg = totals.rows[0] || null;
+    const priorApplied = agg ? Number(agg.applied) - Number(agg.current_applied) : null;
+    const reason = feePaymentBalanceDecision({
+      amount: paymentPayload.amount, due: feeInvoice.amount_due, applied: priorApplied
+    });
+    if (reason) return { done: false, reason, invoiceId: feeInvoice.id };
   }
   let sale = null;
   if (billedInvoice?.sale_id) {
