@@ -69,6 +69,46 @@ export function classifySurvey(fields = {}) {
   return PASS;
 }
 
+// The funding call bucket (owner-set 2026-10-29). Two values, internal only.
+// Capital Blueprint and credit repair share the unqualified bucket. The same people
+// take both kinds of call. Stored on clients and bookings by migration 508.
+export const FUNDING_QUALIFIED = "funding_qualified";
+export const FUNDING_UNQUALIFIED = "funding_unqualified";
+export const QUALIFICATION_BUCKETS = Object.freeze([FUNDING_QUALIFIED, FUNDING_UNQUALIFIED]);
+
+// qualificationBucket — pure. Gate 1 decides; a definite "Yes" on negatives moves a
+// passing score down. The /apply survey has no negatives question, so a missing
+// negatives answer does not hold anyone back here (the pixel split uses the score only).
+// No score answer yet -> null. Unknown, not guessed.
+export function qualificationBucket(fields = {}) {
+  const fico = ficoGatePasses(fields.svy_self_reported_fico ?? fields.cf_svy_self_reported_fico);
+  if (fico === null) return null;
+  const neg = negativesGatePasses(fields.svy_has_negatives ?? fields.cf_svy_has_negatives);
+  return fico && neg !== false ? FUNDING_QUALIFIED : FUNDING_UNQUALIFIED;
+}
+
+// stampQualificationBucket — save the client's bucket from their saved answers, then
+// give it to any of their bookings that have none yet. A booking that already has a
+// bucket keeps it (the 508 trigger holds that even against this update).
+export async function stampQualificationBucket(db, clientId) {
+  if (!clientId) return null;
+  const r = await db.query(`SELECT custom_fields FROM clients WHERE id = $1`, [clientId]);
+  if (!r.rows[0]) return null;
+  const bucket = qualificationBucket(r.rows[0].custom_fields || {});
+  if (!bucket) return null;
+  await db.query(
+    `UPDATE clients SET qualification_bucket = $2
+      WHERE id = $1 AND qualification_bucket IS DISTINCT FROM $2`,
+    [clientId, bucket]
+  );
+  await db.query(
+    `UPDATE bookings SET qualification_bucket = $2
+      WHERE client_id = $1 AND qualification_bucket IS NULL`,
+    [clientId, bucket]
+  );
+  return bucket;
+}
+
 // currentQualification — read the survey answers off the client and classify.
 // Returns PASS | DOWNSELL | MANUAL_REVIEW, or null when there is no client to read.
 export async function currentQualification(db, clientId) {

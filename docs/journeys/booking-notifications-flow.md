@@ -380,6 +380,32 @@ shows **✓ Call confirmed** only while that flag is true
 booking clears the flag, so the check disappears until that call is confirmed.
 The board's hourly check reports a card on Set without a completed handoff.
 
+## 7c. The funding call bucket (2026-10-29)
+
+`survey.submitted` with a score answer stamps `clients.qualification_bucket`
+(`onSurveySubmitted` → `stampQualificationBucket`, `src/config/survey-qualification.mjs`).
+A saved booking copies its client's bucket once and keeps it
+(`trg_bookings_qualification_bucket`, migration 508). Both kinds of call still
+book on the one ClickFunnels calendar ("Funding Strategy Meeting"); customers see
+no change.
+
+```mermaid
+flowchart TD
+    S[survey.submitted] --> K{Score or negatives answer in this post?}
+    K -->|No| N[Bucket unchanged]
+    K -->|Yes| R{Score 700-749 or 750+,<br/>and negatives not Yes?}
+    R -->|Yes| Q[clients.qualification_bucket = funding_qualified]
+    R -->|No| U[clients.qualification_bucket = funding_unqualified<br/>Capital Blueprint and repair]
+    Q --> FILL[That client's bookings with no bucket get it]
+    U --> FILL
+    B[Booking row saved] --> HAS{Booking already has a bucket?}
+    HAS -->|Yes| KEEP[Keep it. Never rewritten.]
+    HAS -->|No| COPY[Copy the client's bucket, or NULL if no score yet]
+```
+
+GAP: the ask is one ClickFunnels calendar per bucket. ClickFunnels has one, and
+its API cannot make another (ops/workflows/v2-notes.md).
+
 ## 8. Known gaps, not fixed here
 
 * **The workflow engine's fan-out is fire-and-forget and its failure is
