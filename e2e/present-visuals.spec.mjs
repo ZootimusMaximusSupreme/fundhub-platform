@@ -11,9 +11,9 @@
 // 390 everything stacks in one column with no sideways scroll, 16px body text,
 // 13px captions and 44px taps; the no-data, sample, bad-data, mismatch, repair
 // and revenue states draw. Screenshots land in
-// ops/workflows/build-evidence/slides-refresh-2026-10-29/visuals/.
+// ops/workflows/build-evidence/slides-refresh-2026-10-29/design-pass/visuals/.
 //
-// Run: E2E_PORT=4931 npx playwright test e2e/present-visuals.spec.mjs
+// Run: E2E_PORT=4961 npx playwright test e2e/present-visuals.spec.mjs
 
 import { test, expect } from "@playwright/test";
 import fs from "node:fs";
@@ -23,7 +23,7 @@ import { fileURLToPath } from "node:url";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const HARNESS = fs.readFileSync(path.join(HERE, "fixtures", "present-visuals-harness.html"), "utf8");
 const FIXTURES = fs.readFileSync(path.join(HERE, "fixtures", "present-visuals-fixtures.js"), "utf8");
-const OUT = path.resolve(HERE, "../ops/workflows/build-evidence/slides-refresh-2026-10-29/visuals");
+const OUT = path.resolve(HERE, "../ops/workflows/build-evidence/slides-refresh-2026-10-29/design-pass/visuals");
 fs.mkdirSync(OUT, { recursive: true });
 
 // This Mac is often busy with other browser runs: give each test room.
@@ -43,7 +43,7 @@ async function open(page, { state = "full", width = 1440, height = 900, only = "
 }
 
 const shot = (page, name) => page.screenshot({ path: path.join(OUT, name + ".png"), fullPage: true });
-const settle = (page) => page.waitForTimeout(800); // the count-up is 650 ms
+const settle = (page) => page.waitForTimeout(900); // the count-up and the bars take 700 ms
 
 const path_ = (page) => page.locator('[data-fhv="path"]');
 const levers = (page) => page.locator('[data-fhv="levers"]');
@@ -59,9 +59,15 @@ test.describe("present visuals, 1440 wide", () => {
     await expect(path_(page).locator(".fhv-path-goalamt")).toHaveText("$100k - $200k");
 
     await expect(levers(page).locator(".fhv-levers-headcell").first()).toContainText("$96,524");
-    await expect(levers(page).locator(".fhv-levers-headcell.is-opt .fhv-ui-num")).toHaveText("$174,625");
+    /* The climb starts at today with nothing applied (owner-set 2026-10-29), and
+       the whole gap is on the table from the first frame. */
+    await expect(levers(page).locator(".fhv-levers-headcell.is-opt .fhv-ui-num")).toHaveText("$96,524");
+    await expect(levers(page).locator(".fhv-levers-headcell.is-opt")).toContainText("Nothing applied yet");
     await expect(levers(page).locator(".fhv-levers-gap")).toContainText("$78,101 left on the table");
+    await expect(levers(page).locator(".fhv-levers-outlinelabel")).toHaveText("$174,625");
     await expect(levers(page).locator(".fhv-levers-step")).toHaveCount(2);
+    await expect(levers(page).locator('.fhv-levers-step[aria-pressed="true"]')).toHaveCount(0);
+    await expect(levers(page).getByRole("button", { name: "Reset to today" })).toBeDisabled();
     await expect(levers(page).locator(".fhv-levers-tier")).toContainText("Funding plus repair");
     await expect(levers(page).locator(".fhv-levers-tier")).toContainText("Full funding");
     await expect(levers(page).locator(".fhv-levers-goallabel")).toContainText("$100k - $200k");
@@ -72,19 +78,20 @@ test.describe("present visuals, 1440 wide", () => {
     await expect(companies(page).locator(".fhv-companies-marklabel")).toHaveText("Today $96,524");
     await expect(companies(page).locator(".fhv-companies-proof")).toContainText("Chris's own result. Not a promise.");
 
+    await settle(page);
     /* The goal band sits across the bars, inside the chart. */
     const chart = await levers(page).locator(".fhv-levers-bars").boundingBox();
     const goal = await levers(page).locator(".fhv-levers-goal").boundingBox();
     expect(goal.y).toBeGreaterThanOrEqual(chart.y - 1);
     expect(goal.y + goal.height).toBeLessThanOrEqual(chart.y + chart.height + 1);
-    /* The optimized fill reaches the dashed outline when every lever is on. */
+    /* Nothing applied: the optimized fill sits at today's height, well under the
+       dashed outline it will climb to. */
     const fill = await levers(page).locator(".fhv-levers-bar.is-opt").boundingBox();
     const outline = await levers(page).locator(".fhv-levers-outline").boundingBox();
-    expect(Math.abs(fill.y - outline.y)).toBeLessThan(3);
+    expect(fill.y).toBeGreaterThan(outline.y + 10);
     const todayBar = await levers(page).locator(".fhv-levers-bar.is-today").boundingBox();
-    expect(todayBar.height).toBeLessThan(fill.height);
+    expect(Math.abs(todayBar.height - fill.height)).toBeLessThan(3);
 
-    await settle(page);
     await shot(page, "full-1440");
     expect(errors).toEqual([]);
   });
@@ -92,13 +99,20 @@ test.describe("present visuals, 1440 wide", () => {
   test("taps: the levers climb, the companies stack and age, a station opens", async ({ page }) => {
     const errors = await open(page);
     const optNum = levers(page).locator(".fhv-levers-headcell.is-opt .fhv-ui-num");
+    const gap = levers(page).locator(".fhv-levers-gap");
+    const reset = levers(page).getByRole("button", { name: "Reset to today" });
 
-    /* levers */
+    /* levers: the closer builds the climb one tap at a time, and left on the
+       table is the whole gap at every step (owner-set 2026-10-29). */
+    await expect(optNum).toHaveText("$96,524");
+    await expect(reset).toBeDisabled();
     await levers(page).getByRole("button", { name: /Pay the cards down/ }).click();
     await expect(optNum).toHaveText("$104,775");
-    await expect(levers(page).locator(".fhv-levers-gap")).toContainText("$8,251 left on the table");
+    await expect(gap).toContainText("$78,101 left on the table");
+    await expect(levers(page).locator(".fhv-levers-headcell.is-opt")).toContainText("After lever 1 of 2.");
     await expect(levers(page).locator(".fhv-levers-step").nth(0)).toHaveAttribute("aria-pressed", "true");
     await expect(levers(page).locator(".fhv-levers-step").nth(1)).toHaveAttribute("aria-pressed", "false");
+    await expect(reset).toBeEnabled();
     await settle(page);
     const fill1 = await levers(page).locator(".fhv-levers-bar.is-opt").boundingBox();
     const outline = await levers(page).locator(".fhv-levers-outline").boundingBox();
@@ -106,12 +120,20 @@ test.describe("present visuals, 1440 wide", () => {
     await shot(page, "levers-step1-1440");
     await levers(page).getByRole("button", { name: /Clean the file/ }).click();
     await expect(optNum).toHaveText("$174,625");
+    await expect(gap).toContainText("$78,101 left on the table");
     await settle(page);
     const fill2 = await levers(page).locator(".fhv-levers-bar.is-opt").boundingBox();
     expect(fill2.height).toBeGreaterThan(fill1.height);
-    await levers(page).getByRole("button", { name: "Start at today" }).click();
+    /* With every lever on, the fill reaches the dashed outline (measured again
+       here: the tap scrolled the slide, so the earlier box's y is stale). */
+    const outline2 = await levers(page).locator(".fhv-levers-outline").boundingBox();
+    expect(Math.abs(fill2.y - outline2.y)).toBeLessThan(3);
+    await shot(page, "levers-step2-1440");
+    await reset.click();
     await expect(optNum).toHaveText("$96,524");
     await expect(levers(page)).toContainText("Nothing applied yet");
+    await expect(gap).toContainText("$78,101 left on the table");
+    await expect(reset).toBeDisabled();
 
     /* companies */
     await companies(page).getByRole("button", { name: /Add a company/ }).click();
@@ -188,6 +210,9 @@ test.describe("present visuals, 1440 wide", () => {
   test("a repair-only file and the revenue side door", async ({ page }) => {
     let errors = await open(page, { state: "repair" });
     await expect(levers(page)).toContainText("One lever");
+    await expect(levers(page).locator(".fhv-levers-headcell.is-opt .fhv-ui-num")).toHaveText("$0");
+    await expect(levers(page).locator(".fhv-levers-gap")).toContainText("$8,250 left on the table");
+    await levers(page).getByRole("button", { name: /Clean the file/ }).click();
     await expect(levers(page).locator(".fhv-levers-headcell.is-opt .fhv-ui-num")).toHaveText("$8,250");
     await expect(levers(page).locator(".fhv-levers-tier")).toContainText("Repair only");
     await expect(path_(page).locator(".fhv-path-station.is-lit")).toContainText("Your plan");
@@ -198,6 +223,9 @@ test.describe("present visuals, 1440 wide", () => {
 
     errors = await open(page, { state: "revenue", only: "path" });
     await expect(path_(page).locator(".fhv-path-side")).toContainText("Revenue funding");
+    /* The path starts at its first station; the side door opens on a tap. */
+    await expect(path_(page).locator(".fhv-path-detail")).toContainText("Your file today");
+    await path_(page).getByRole("button", { name: /Revenue funding/ }).click();
     await expect(path_(page).locator(".fhv-path-detail")).toContainText("bank statements");
     await shot(page, "revenue-path-1440");
     expect(errors).toEqual([]);
@@ -294,6 +322,7 @@ test.describe("present visuals, 390 wide", () => {
     const boxes = await Promise.all(reports.map((r) => r.boundingBox()));
     expect(boxes[1].y).toBeGreaterThan(boxes[0].y + boxes[0].height - 1);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+    await settle(page);
     await shot(page, "mismatch-390");
     expect(errors).toEqual([]);
   });

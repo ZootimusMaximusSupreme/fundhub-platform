@@ -109,16 +109,21 @@ describe("the three functions, on the full file", () => {
     assert.doesNotMatch(words(html), /\$(200|1,000|3,000|5,000|10,000)\b/, "no offer prices on the path");
     assert.ok(!html.includes("Revenue funding"), "no side door unless the door is revenue");
     assert.equal((html.match(/<button /g) || []).length, 5, "every station is a real button");
-    /* The lit door's words open first. */
-    assert.match(html, /fhv-path-detail[^>]*>[\s\S]*?Clean up · your door/);
-    assert.ok(html.includes("Up to six rounds of dispute letters, mailed for you."));
+    /* The first station opens first, like every visual starts at its first step
+       (owner-set 2026-10-29). The door stays lit and opens on a tap. */
+    assert.match(html, /fhv-path-detail[^>]*>[\s\S]*?Your file today/);
+    assert.ok(html.includes("What is on your report decides which door fits right now."));
+    assert.ok(!/fhv-path-detail[^>]*>[\s\S]*?Clean up · your door/.test(html), "the lit door waits for a tap");
   });
 
   test("your path: the revenue door lights a small side door off Funded", () => {
     const html = T.V.yourPath(T.ctxFor("revenue"));
     assert.ok(html.includes("Revenue funding"));
-    assert.match(html, /fhv-path-side is-open/);
-    assert.ok(html.includes("You upload your bank statements in the portal"));
+    assert.match(html, /fhv-path-side[^>]*data-fhv-act="path:open:revenue"/);
+    assert.ok(!html.includes("fhv-path-side is-open"), "the side door is lit, and opens on a tap");
+    const r = T.tap(T.host("path", html), "path:open:revenue");
+    assert.match(r.html, /fhv-path-side is-open/);
+    assert.ok(r.html.includes("You upload your bank statements in the portal"));
   });
 
   test("money levers: today, fully optimized, left on the table, the applying levers, the tier, the goal", () => {
@@ -256,18 +261,22 @@ describe("taps", () => {
   test("a lever tap turns it and the ones before it on, climbs the bar, and the state survives a re-render", () => {
     const ctx = T.ctxFor("full");
     const first = T.V.moneyLevers(ctx);
-    assert.match(first, /levers:step:1" aria-pressed="true"/);
-    assert.match(first, /levers:step:2" aria-pressed="true"/, "all levers start on");
+    assert.match(first, /levers:step:1" aria-pressed="false"/);
+    assert.match(first, /levers:step:2" aria-pressed="false"/, "every lever starts off: the closer builds the climb live");
+    assert.ok(first.includes("Nothing applied yet"));
+    assert.match(first, /data-fhv-act="levers:step:0" disabled>Reset to today</, "the reset waits for a tap");
     const h = T.host("levers", first);
     const one = T.tap(h, "levers:step:1");
     assert.ok(one.prevented, "the tap is handled");
     assert.match(one.html, /levers:step:1" aria-pressed="true"/);
     assert.match(one.html, /levers:step:2" aria-pressed="false"/);
     assert.ok(one.html.includes("$104,775"), "the optimized side climbs to lever 1's own amount");
-    assert.ok(one.html.includes("$8,251") && one.html.includes("left on the table"));
+    assert.ok(one.html.includes("$78,101") && one.html.includes("left on the table"), "left on the table stays the whole gap");
     assert.ok(one.html.includes("After lever 1 of 2."));
+    assert.match(one.html, /data-fhv-act="levers:step:0">Reset to today</, "the reset is live once a lever is on");
     const again = T.V.moneyLevers(T.ctxFor("full"));
-    assert.match(again, /levers:step:2" aria-pressed="false"/, "a deck re-render keeps the tapped state");
+    assert.match(again, /levers:step:1" aria-pressed="true"/, "a deck re-render keeps the tapped state");
+    assert.match(again, /levers:step:2" aria-pressed="false"/);
     const two = T.tap(h, "levers:step:2");
     assert.match(two.html, /levers:step:1" aria-pressed="true"/);
     assert.match(two.html, /levers:step:2" aria-pressed="true"/);
@@ -275,7 +284,36 @@ describe("taps", () => {
     const zero = T.tap(h, "levers:step:0");
     assert.match(zero.html, /levers:step:1" aria-pressed="false"/);
     assert.ok(zero.html.includes("Nothing applied yet"));
-    assert.ok(!zero.html.includes("left on the table"));
+    assert.ok(zero.html.includes("$78,101") && zero.html.includes("left on the table"), "the whole gap shows at today too");
+  });
+
+  test("left on the table is always the whole gap, today to fully optimized, at every lever step", () => {
+    for (const name of ["full", "thin", "mismatch", "repair"]) {
+      const ctx = T.ctxFor(name);
+      const whole = ctx.visual.optimizedTotal - ctx.visual.todayTotal;
+      const h = T.host("levers", T.V.moneyLevers(ctx));
+      const steps = ctx.visual.levers.filter((l) => l.applies).length;
+      for (let s = 0; s <= steps; s++) {
+        const html = T.tap(h, "levers:step:" + s).html;
+        const m = /fhv-levers-gapamt" data-fhv-count="(\d+)"[^>]*>([^<]*)<\/span> left on the table/.exec(html);
+        assert.ok(m, name + " step " + s + " prints left on the table");
+        assert.equal(Number(m[1]), whole, name + " step " + s + ": the gap is optimized minus today");
+        assert.equal(m[2], money(whole), name + " step " + s + ": printed with the deck's money()");
+      }
+    }
+  });
+
+  test("every visual starts at its first step; the levers' reset is off until a tap", () => {
+    const levers = T.V.moneyLevers(T.ctxFor("full"));
+    assert.equal((levers.match(/aria-pressed="true"/g) || []).length, 0, "no lever on at the start");
+    assert.match(levers, /fhv-levers-headcell is-opt is-waiting"[^>]*>[\s\S]*?\$96,524/, "projects to starts at today");
+    assert.match(levers, /levers:step:0" disabled>/);
+    const pathHtml = T.V.yourPath(T.ctxFor("full"));
+    assert.match(pathHtml, /path:open:today" aria-pressed="true"/, "station 1 is open");
+    assert.match(pathHtml, /fhv-path-station is-lit"/, "the lit door is lit but not open");
+    const companies = T.V.companies(T.ctxFor("full"));
+    assert.match(companies, /companies:tab:personal" aria-pressed="true"/);
+    assert.ok(!companies.includes("fhv-companies-seg is-added") && !companies.includes("companies:reset"), "no added company, so no reset yet");
   });
 
   test("adding companies stacks outlined layers that never change today's total; the years switch grows them", () => {
