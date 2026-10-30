@@ -153,13 +153,6 @@ export async function handle({
   // state cannot sign in until the client proves control of the email address.
   const portalAccount = await step.run("ensure-booking-portal-account", () =>
     ensurePendingClientAccountImpl(db, { orgId, clientId }));
-  const portalAccountTask = portalAccount?.ok ? null : await step.run("flag-booking-portal-account", () =>
-    createTask(db, {
-      orgId, clientId, eventId, sourceWorkflow: "s-04b-booking-reminders",
-      title: "Resolve booked client's portal account",
-      assigneeRole: "setter",
-      detail: `Account not created at booking: ${portalAccount?.reason || "unknown"}. Confirm the client's email and help them claim the portal before the call.`
-    }));
   const claimUrl = bookingClaimUrl();
 
   const confirm = await step.run("send-confirm", () =>
@@ -193,6 +186,16 @@ export async function handle({
     dispatchConfirmationNow(db, drainNowImpl, {
       orgId,
       messageIds: [confirm?.messageId, confirmEmail?.messageId].filter(Boolean)
+    }));
+
+  // A task failure must not delay the booking text or email. The workflow will
+  // retry this step with the send steps already idempotently completed.
+  const portalAccountTask = portalAccount?.ok ? null : await step.run("flag-booking-portal-account", () =>
+    createTask(db, {
+      orgId, clientId, eventId, sourceWorkflow: "s-04b-booking-reminders",
+      title: "Resolve booked client's portal account",
+      assigneeRole: "setter",
+      detail: `Account not created at booking: ${portalAccount?.reason || "unknown"}. Confirm the client's email and help them claim the portal before the call.`
     }));
 
   const base = { done: true, portalAccount, portalAccountTask, confirm, confirmEmail, confirmDispatch };
