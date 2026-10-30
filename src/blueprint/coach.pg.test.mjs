@@ -48,7 +48,11 @@ async function fixture(run) {
       return { client, blueprint: { access_active: true, human_advisor: client?.assigned_csm_staff_id ? { id: client.assigned_csm_staff_id } : null },
         checklist: { open_step: steps.find((row) => row.id === next?.waypointId) || null }, as_prompt_block: "Actual scratch checklist" };
     };
-    await run({ db, scope, advisorId, deps: { isBuyerImpl, fetchContextImpl } });
+    // Writer isolation: the separate collision.pg suite executes real
+    // purchased-year SQL; these scenarios exercise progress/task constraints.
+    await run({ db, scope, advisorId, deps: {
+      isBuyerImpl, serviceYearActiveImpl: isBuyerImpl, fetchContextImpl
+    } });
   } finally { await db.query("ROLLBACK"); db.release(); }
 }
 
