@@ -259,7 +259,7 @@ button,input,select,textarea{font:inherit;color:inherit}
             <div class="panel-hd"><div class="pt" id="fh-sop-title"></div></div>
             <p class="muted" id="fh-sop-description" style="margin:0 0 12px"></p>
             <button class="btn sm dark" type="button" id="fh-sop-find">Find approved instructions</button>
-            <p class="mono muted" style="margin-top:10px">Company Brain searches documents your role may read. If no approved instructions are available, it should say so. The uploads listed below are not the full Drive library.</p>
+            <p class="mono muted" style="margin-top:10px">Company Brain searches documents your role may read. If no approved instructions are available, it should say so. The search includes role-approved Drive files that may not be listed here.</p>
           </div>
           <div class="panel" data-brain-quiz>
             <div class="panel-hd">
@@ -349,6 +349,14 @@ button,input,select,textarea{font:inherit;color:inherit}
   var myRole = String(role() || "").toLowerCase();
   if (rolePill) rolePill.textContent = myRole || "staff";
   var isOwner = myRole === "owner";
+  var canListUploads = isOwner || myRole === "admin";
+  /* Upload inventory is org-wide and includes pending owner-tier file names.
+     Employee SOP access needs role-cleared search, not an inventory of private
+     uploads. Do not fetch or render that list for regular STAFF sessions. */
+  if (!canListUploads && docList) {
+    var uploadsPanel = docList.closest(".panel");
+    if (uploadsPanel) { uploadsPanel.hidden = true; uploadsPanel.style.display = "none"; }
+  }
 
   /* ── plain-English errors. A person never sees a status code. ───────── */
   var WORDS = {
@@ -922,6 +930,7 @@ button,input,select,textarea{font:inherit;color:inherit}
   }
 
   function loadUploads() {
+    if (!canListUploads) return; // non-manager must not fetch org-wide owner-tier filenames
     if (state.uploadsState !== "ok") { state.uploadsState = "loading"; renderUploads(); }
     apiGet("/api/company-brain/upload").then(function (j) {
       if (!j || !j.ok) {
