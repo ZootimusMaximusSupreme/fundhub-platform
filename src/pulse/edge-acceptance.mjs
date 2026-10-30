@@ -123,7 +123,10 @@ function materialSource(file) {
   // Installed native app code lives in tools/fundhub-ios, not top-level ios/.
   // Watch app code/project configuration but not screenshots or documentation.
   const nativeAppSource = /^tools\/fundhub-(?:ios|macos)\/.*\.(?:swift|plist|entitlements|pbxproj|xcconfig|m|mm|h)$/i.test(file);
-  return (/^(?:src|api|netlify|public|marketing|ios|macos|native)\//.test(file) || nativeAppSource)
+  // Schema migrations can change the persisted result without touching a handler.
+  // Report high-risk migrations only; seeds, screenshots and docs stay quiet.
+  const schemaMigration = /^db\/migrations\/[^/]+\.sql$/i.test(file);
+  return (/^(?:src|api|netlify|public|marketing|ios|macos|native)\//.test(file) || nativeAppSource || schemaMigration)
     && !file.startsWith("src/pulse/")
     && !TEST_FILE.test(file) && !NON_EXECUTABLE_ASSET.test(file) && !NON_RUNTIME.test(file);
 }
@@ -138,7 +141,7 @@ export function changedCriticalEdges(filenames = []) {
 
 // Report-only catch for future high-risk source files outside the ten mapped
 // families. This MUST NOT become a 403-legacy fail-closed rule by accident.
-const HIGH_RISK_UNMAPPED = /(?:^|[/._-])(?:pay(?:ment)?|bill(?:ing)?|ledger|entitlements?|bookings?|calendars?|consent|soft[_-]?pull|crs|credit|funding|funded|round|commissions?|invoices?|repair|blueprint|finance[_-]?os|messages?|messaging|sms|emails?|delivery|lenders?|apply|attribution|callbacks?|webhooks?|cortana|portal)(?:$|[/._-])/i;
+const HIGH_RISK_UNMAPPED = /(?:^|[/._-])(?:pay(?:ment)?|bill(?:ing)?|ledger|entitlements?|bookings?|calendars?|consent|soft[_-]?pull|crs|credit|funding|funded|round|commissions?|invoices?|repair|blueprint|finance[_-]?os|messages?|messaging|sms|emails?|delivery|lenders?|apply|attribution|callbacks?|webhooks?|cortana|portal|apns|push|devices?|receipts?)(?:$|[/._-])/i;
 export function unmappedHighRiskSourceChanges(filenames = []) {
   const mapped = new Set(changedCriticalEdges(filenames).flatMap((edge) => edge.files));
   return [...new Set(filenames.map(String).filter(materialSource))]
