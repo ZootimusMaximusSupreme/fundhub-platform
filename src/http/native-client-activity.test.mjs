@@ -7,7 +7,6 @@ import { accountSession, req, staffSession, ORG_ID } from "../testing/handler-ha
 const CLIENT = "c1000000-0000-4000-8000-000000000001";
 const OTHER = "c2000000-0000-4000-8000-000000000002";
 const INSTALLATION = "ec3e5ae7-c131-4a84-bc35-c5ef8b3f7f1d";
-const ACCOUNT = "a1000000-0000-4000-8000-000000000001";
 const signedIn = () => accountSession({ kind: "client", clientId: CLIENT });
 const body = { platform: "ios", event_type: "native_authenticated_open", installation_id: INSTALLATION, client_id: OTHER };
 
