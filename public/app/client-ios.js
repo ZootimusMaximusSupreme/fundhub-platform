@@ -23,12 +23,12 @@
     });
   }
   // The client PWA manifest intentionally covers / so sign-in and password
-  // recovery stay inside the installed app. On those two client entry screens,
-  // however, ordinary-browser links back to the public marketing homepage
-  // must not eject an installed PWA into the marketing site.
+  // recovery stay inside the installed app. On all installed sign-in entry screens, including generic login reached
+  // from a FinanceOS expired-session return, suppress marketing navigation.
+  // Ordinary browser visitors keep their links.
   // Native WKWebView navigation is separately owned and is not changed here.
   function protectStandaloneClientEntry() {
-    if (!body.hasAttribute("data-client-public")) return;
+    if (!body.hasAttribute("data-client-public") && location.pathname !== "/login.html") return;
     var standalone = navigator.standalone === true;
     if (!standalone && typeof window.matchMedia === "function") {
       try { standalone = window.matchMedia("(display-mode: standalone)").matches; }
