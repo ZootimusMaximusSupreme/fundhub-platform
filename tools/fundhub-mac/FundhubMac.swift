@@ -108,6 +108,11 @@ private final class FundhubBrowser: NSObject, ObservableObject, WKNavigationDele
         // No frame (including an embedded payment return) may render the
         // marketing homepage. Other subframes remain in WebKit as normal.
         if isPublicMarketingHome(url) {
+            if navigationAction.targetFrame?.isMainFrame != false {
+                // A blocked redirect must not leave the Mac loading forever.
+                loading = false
+                if !loadedOnce { loadFailed = true }
+            }
             decisionHandler(.cancel)
             return
         }
@@ -149,6 +154,12 @@ private final class FundhubBrowser: NSObject, ObservableObject, WKNavigationDele
     ) {
         if let finalURL = navigationResponse.response.url,
            isPublicMarketingHome(finalURL) {
+            if navigationResponse.isForMainFrame {
+                // Final redirect was denied; preserve the existing workspace
+                // rather than leaving a perpetual loading bar on the Mac.
+                loading = false
+                if !loadedOnce { loadFailed = true }
+            }
             decisionHandler(.cancel)
             return
         }
