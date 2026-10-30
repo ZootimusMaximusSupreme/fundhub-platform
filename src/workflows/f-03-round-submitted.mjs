@@ -5,10 +5,11 @@
 // seeded via src/workflows/templates-seed.mjs (SMS-F03-ROUND-SUBMITTED /
 // EMAIL-F03-ROUND-SUBMITTED), opt-out included.
 //
-// Trigger: round.submitted (exact canonical match — this is the file the task brief
-// used as its own naming example). Gate: "Funding Round Number is not empty" — a
-// submitted round always has round_number set, so this reduces to "a funding round
-// exists for this client", checked via the round-lookup helper.
+// Trigger: canonical round.submitted. Card Stacking requires an owned current
+// nonterminal round AND a current round_submitted card before notifying a buyer.
+// The event's roundNumber alone does not prove that its submission is current;
+// legacy provider events without verifiable round identity remain explicitly
+// unproved and retain their previous flow.
 
 import { inngest } from "./client.mjs";
 import { db } from "../db.mjs";
