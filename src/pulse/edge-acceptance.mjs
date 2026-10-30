@@ -138,7 +138,8 @@ function matchesEvent(row, event) {
 // when required, a provider delivery receipt, may return PASS.
 export function judgeSyntheticEdge({
   demand = true, demandAt, event, consumer, receipt, providerReceipt,
-  requireProviderReceipt = false, now = Date.now(), graceMs = 15 * 60 * 1000
+  identityReceipt, requireProviderReceipt = false,
+  now = Date.now(), graceMs = 15 * 60 * 1000
 } = {}) {
   if (demand === false) return { verdict: "NA", reason: "no-demand" };
   const start = milliseconds(demandAt || event?.created_at);
@@ -149,14 +150,24 @@ export function judgeSyntheticEdge({
   }
   const due = current >= start + graceMs;
   const failed = (reason) => ({ verdict: due ? "RED" : "PENDING", reason });
-  if (!event?.id || !event?.org_id || !event?.client_id) return failed("producer-event-missing");
-  if (!matchesEvent(consumer, event) || consumer.outcome !== "completed") {
+  if (!event?.id || !event?.org_id) return failed("producer-event-missing");
+  // Some real booking/funding events have NULL client_id. They can only be
+  // judged when a trusted, org-scoped identity-resolution receipt links the
+  // exact event id to the persisted client. An email string is not enough.
+  const resolved = event.client_id ? event :
+    identityReceipt?.event_id === event.id &&
+    identityReceipt?.org_id === event.org_id &&
+    identityReceipt?.outcome === "resolved" &&
+    identityReceipt?.client_id
+      ? { ...event, client_id: identityReceipt.client_id } : event;
+  if (!resolved.client_id) return failed("producer-client-identity-unresolved");
+  if (!matchesEvent(consumer, resolved) || consumer.outcome !== "completed") {
     return failed("consumer-not-completed-for-event");
   }
-  if (!matchesEvent(receipt, event) || receipt.outcome !== "satisfied") {
+  if (!matchesEvent(receipt, resolved) || receipt.outcome !== "satisfied") {
     return failed("downstream-business-result-missing");
   }
-  if (requireProviderReceipt && (!matchesEvent(providerReceipt, event) || providerReceipt.outcome !== "delivered")) {
+  if (requireProviderReceipt && (!matchesEvent(providerReceipt, resolved) || providerReceipt.outcome !== "delivered")) {
     return failed("real-provider-delivery-missing");
   }
   return { verdict: "PASS", reason: "event-consumer-and-business-result-correlated" };
