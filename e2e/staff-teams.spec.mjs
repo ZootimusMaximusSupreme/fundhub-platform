@@ -73,3 +73,42 @@ test.describe("Staff & Teams empty stats", () => {
     await expect(page.locator("#teleEmpty")).toBeVisible();
   });
 });
+
+test("owner can remove a teammate while Chris keeps owner, setter and closer access", async ({ page }) => {
+  const chris = {
+    id: "chris-id", name: "Chris Stanbridge", email: "chris@fundhub.ai",
+    role: "owner", status: "active"
+  };
+  const teammate = {
+    id: "staff-9", name: "Admin E2E", email: "e2e+admin@fundhub.ai",
+    role: "admin", status: "active"
+  };
+  let people = [chris, teammate];
+  let removedId = null;
+  await wireApi(page, {
+    session: { ok: true, principal: "staff", staff: { ...chris, org_id: "org-1" } },
+    handlers: {
+      "/api/read/staff": () => ({ ok: true, count: people.length, items: people, limit: 200, offset: 0, hasMore: false }),
+      "/api/auth/suspend": (route) => {
+        const body = JSON.parse(route.request().postData() || "{}");
+        if (body.action === "remove") {
+          removedId = body.staff_id;
+          people = people.filter((person) => person.id !== removedId);
+        }
+        return { ok: true, staff: { id: removedId, status: "suspended" } };
+      }
+    }
+  });
+  await gotoScreen(page, "staff-teams.html");
+  await expect(page.locator("#rosterBody")).toContainText("Admin E2E");
+  await page.locator("#rosterBody tr", { hasText: "Chris Stanbridge" }).click();
+  await expect(page.locator("#rosterBody tr", { hasText: "Chris Stanbridge" })).toContainText("Owner · Setter · Closer");
+  await expect(page.locator("#edRemove")).toBeHidden();
+  await page.locator("#edCancel").click();
+  await page.locator("#rosterBody tr", { hasText: "Admin E2E" }).click();
+  await expect(page.locator("#edRemove")).toBeVisible();
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.locator("#edRemove").click();
+  await expect(page.locator("#rosterBody")).not.toContainText("Admin E2E");
+  expect(removedId).toBe("staff-9");
+});
