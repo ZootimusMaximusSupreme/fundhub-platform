@@ -12,14 +12,14 @@ export const CRITICAL_EDGES = Object.freeze([
     event: "booking.created", consumer: "onBookingCreated / s-04-call-booked",
     receipt: "bookings + confirmation message + call_outcomes", graceMinutes: 30,
     pulse: "calls:booked-no-outcome",
-    paths: ["src/adapters/clickfunnels.mjs", "src/bookings/", "src/handlers/client-lifecycle.mjs", "src/workflows/s-04", "src/workflows/cortana-booking-feed.mjs", "src/messaging/providers/cortana-booking-webhook.mjs", "src/sales/call-outcomes.mjs", "src/sales/closer-now.mjs", "api/auth/magic-link.mjs", "src/auth/booking-account", "src/auth/magic-link", "public/portal-login.html", "marketing/landing-pages/"]
+    paths: ["src/adapters/clickfunnels.mjs", "src/bookings/", "src/handlers/client-lifecycle.mjs", "src/workflows/s-04", "src/workflows/cortana-booking-feed.mjs", "src/messaging/providers/cortana-booking-webhook.mjs", "src/sales/call-outcomes.mjs", "src/sales/closer-now.mjs", "public/app/calendar.html", "api/auth/magic-link.mjs", "src/auth/booking-account", "src/auth/magic-link", "public/portal-login.html", "marketing/landing-pages/"]
   },
   {
     id: "payment-ledger-entitlement", severity: "P0", owner: "A/R",
     event: "payment.received", consumer: "onPaymentReceived / entitlement handlers",
     receipt: "payment ledger + active entitlement + portal read", graceMinutes: null,
     pulse: "payments:paid-no-entitlement",
-    paths: ["src/merchant/", "src/billing/", "src/payments/", "src/entitlements/", "src/ledger/", "src/handlers/money-chain.mjs", "src/handlers/payment-links.mjs", "src/adapters/whop", "api/payment", "api/checkout"]
+    paths: ["src/merchant/", "src/billing/", "src/payments/", "src/entitlements/", "src/ledger/", "src/handlers/money-chain.mjs", "src/handlers/payment-links.mjs", "api/read/invoices.mjs", "src/adapters/whop", "api/payment", "api/checkout"]
   },
   {
     id: "consent-crs-result", severity: "P0", owner: "Fulfillment",
@@ -81,10 +81,11 @@ export const CRITICAL_EDGES = Object.freeze([
 
 const NON_RUNTIME = /(?:^|\/)(?:__tests__|fixtures|docs)\//;
 const TEST_FILE = /(?:\.test\.|\.spec\.|\.snap$)/;
+const NON_EXECUTABLE_ASSET = /\.(?:css|scss|less|svg|png|jpe?g|webp|ico|woff2?|gif|map)$/i;
 function materialSource(file) {
   return /^(?:src|api|netlify|public|marketing|ios|macos|native)\//.test(file)
     && !file.startsWith("src/pulse/")
-    && !TEST_FILE.test(file) && !NON_RUNTIME.test(file);
+    && !TEST_FILE.test(file) && !NON_EXECUTABLE_ASSET.test(file) && !NON_RUNTIME.test(file);
 }
 
 export function changedCriticalEdges(filenames = []) {
@@ -97,7 +98,7 @@ export function changedCriticalEdges(filenames = []) {
 
 // Report-only catch for future high-risk source files outside the ten mapped
 // families. This MUST NOT become a 403-legacy fail-closed rule by accident.
-const HIGH_RISK_UNMAPPED = /(?:^|[/._-])(?:pay(?:ment)?|bill(?:ing)?|ledger|entitlements?|bookings?|calendars?|consent|soft[_-]?pull|crs|credit|funding|funded|round|commissions?|invoices?|repair|blueprint|finance[_-]?os|messages?|messaging|sms|emails?|delivery|lenders?|apply|attribution|callbacks?|webhooks?|cortana)(?:$|[/._-])/i;
+const HIGH_RISK_UNMAPPED = /(?:^|[/._-])(?:pay(?:ment)?|bill(?:ing)?|ledger|entitlements?|bookings?|calendars?|consent|soft[_-]?pull|crs|credit|funding|funded|round|commissions?|invoices?|repair|blueprint|finance[_-]?os|messages?|messaging|sms|emails?|delivery|lenders?|apply|attribution|callbacks?|webhooks?|cortana|portal)(?:$|[/._-])/i;
 export function unmappedHighRiskSourceChanges(filenames = []) {
   const mapped = new Set(changedCriticalEdges(filenames).flatMap((edge) => edge.files));
   return [...new Set(filenames.map(String).filter(materialSource))]
