@@ -408,6 +408,30 @@ booking to `/apply` and move to `/thank-you`. `/funding-book-call` runs event ty
 Each booking message names its page (`page.id`), which is how the two calendars are
 told apart.
 
+**Text and email links (2026-10-30).** Every text and email link to a call is
+`{{custom_values.booking_link}}`, filled by `clientContext` in
+`src/workflows/messaging.mjs`. It reads the lead's saved score answer
+(`cf_svy_self_reported_fico`, or its label): 700-749 or 750+ gets
+`/funding-book-call?fh_tier=q`; every other answer, "Not sure" too, gets
+`/funding-book-call--02424?fh_tier=u`; no readable answer keeps
+`/funding-book-call` with no mark. A link saved on the lead's file still wins.
+Opened straight from a text, either calendar page keeps the mark for that tab, so
+its booking sends Schedule plus QualifiedSchedule or UnqualifiedSchedule, browser
+and server under one id. The second calendar is on the tracker's and the server's
+page lists as step 3 of the watch funnel, and counts the same Cortana booking
+steps as the first.
+
+```mermaid
+flowchart TD
+    A[Text or email to a lead] --> B{Saved score answer}
+    B -->|700-749 or 750+| C[/funding-book-call?fh_tier=q/]
+    B -->|Any other answer, Not sure too| D[/funding-book-call--02424?fh_tier=u/]
+    B -->|None readable| E[/funding-book-call, no mark/]
+    C --> F[Booking: Schedule + QualifiedSchedule]
+    D --> G[Booking: Schedule + UnqualifiedSchedule]
+    E --> H[Booking: Schedule only]
+```
+
 ## 8. Known gaps, not fixed here
 
 * **The workflow engine's fan-out is fire-and-forget and its failure is

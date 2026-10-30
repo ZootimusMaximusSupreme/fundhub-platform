@@ -401,3 +401,11 @@ test("a card with other markup, an App Store link and another setting key counts
   assert.deepEqual(names(p), ["book_call_thank_you_view", TAP]);
   assert.equal(p.events("app_download_tap").length, 1);
 });
+
+test("the second calendar opened from a text counts the same booking steps as the first", () => {
+  const p = page({ pathname: "/funding-book-call--02424", search: "?fh_tier=u" });
+  for (const event of ["calendar_view", "time_selected", "booking_confirmed"]) p.win.fhTrack(event, { calendar: "funding-book-call" });
+  assert.deepEqual(names(p), ["book_call_calendar_view", "book_call_time_selected", "book_call_booking_observed"]);
+  assert.ok(p.cortanaCalls.every(([, data]) => data.page_path === "/funding-book-call--02424"));
+  assert.ok(p.cortanaCalls.every(([, data]) => !JSON.stringify(data).includes("fh_tier")));
+});

@@ -38,7 +38,8 @@
    https://apply.fundhub.ai with data.fh === "track"):
      calendar_view, time_selected, booking_confirmed           { calendar }
    booking_confirmed also carries this tab's credit_tier, kept from the /apply
-   survey's last answer (see keepTier below).
+   survey's last answer, or from fh_tier on a calendar opened from a text or
+   email link (see keepTier below).
 
    Page hooks send the rest through window.fhTrack(event, props). That call is
    safe before this file has loaded; the queue is sent when it loads:
@@ -85,6 +86,7 @@
     "/watch": ["watch", 1],
     "/apply": ["watch", 2],
     "/funding-book-call": ["watch", 3],
+    "/funding-book-call--02424": ["watch", 3],
     "/thank-you": ["watch", 4],
     "/roadmap": ["roadmap", 1],
     "/roadmap-book": ["roadmap", 2],
@@ -249,6 +251,17 @@
     try { t = sessionStorage.getItem(TIER_KEY); } catch (e) {}
     return has.call(TIERS, t) ? t : null;
   }
+  /* A text or email link opens a calendar in a tab that never saw /apply. Its
+     fh_tier (q or u) was picked by the server from the lead's saved score answer
+     (src/workflows/messaging.mjs), so the booking it leads to carries that tier. */
+  var CALENDARS = { "/funding-book-call": 1, "/funding-book-call--02424": 1 };
+  var LINK_TIERS = { q: "qualified", u: "unqualified" };
+  function tierFromLink() {
+    if (!has.call(CALENDARS, pagePath())) return;
+    var t = urlParam("fh_tier");
+    if (has.call(LINK_TIERS, t)) keepTier(LINK_TIERS[t]);
+  }
+  try { tierFromLink(); } catch (e) {}
 
   /* ── Meta ids: fbclid, fbc, fbp, the page url ─────────────────────────── */
 
@@ -326,9 +339,9 @@
     book_call_apply_view: { "/apply": 1 },
     book_call_apply_started: { "/apply": 1 },
     book_call_apply_final_answer: { "/apply": 1 },
-    book_call_calendar_view: { "/apply": 1, "/funding-book-call": 1 },
-    book_call_time_selected: { "/apply": 1, "/funding-book-call": 1 },
-    book_call_booking_observed: { "/apply": 1, "/funding-book-call": 1 },
+    book_call_calendar_view: { "/apply": 1, "/funding-book-call": 1, "/funding-book-call--02424": 1 },
+    book_call_time_selected: { "/apply": 1, "/funding-book-call": 1, "/funding-book-call--02424": 1 },
+    book_call_booking_observed: { "/apply": 1, "/funding-book-call": 1, "/funding-book-call--02424": 1 },
     book_call_thank_you_view: { "/thank-you": 1 },
     book_call_app_download_tap: { "/thank-you": 1, "/portal-login.html": 1 }
   };
@@ -461,7 +474,7 @@
       return [];
     }
     if (event === "app_download_tap") return page === "/thank-you" || page === "/portal-login.html" ? ["book_call_app_download_tap"] : [];
-    if (page !== "/apply" && page !== "/funding-book-call") return [];
+    if (page !== "/apply" && !has.call(CALENDARS, page)) return [];
     if (event === "survey_answer" && page === "/apply") {
       return props.last === true
         ? ["book_call_apply_started", "book_call_apply_final_answer"]
