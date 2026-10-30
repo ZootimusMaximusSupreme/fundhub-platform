@@ -2042,6 +2042,7 @@
         "position:absolute;top:-5px;left:min(280px,calc(100% - 64px));margin-left:0;padding-inline:9px}" +
       "@media(max-width:350px){" +
         "body.closer-workspace .funding-estimate .sech{margin-bottom:4px}" +
+        "body.closer-workspace .funding-estimate .band+.band{padding-top:12px}" +
       "}" +
       /* The 44px icon must not add a second row to the 320px shared
          workspace header: doing so hides the first client card below the
