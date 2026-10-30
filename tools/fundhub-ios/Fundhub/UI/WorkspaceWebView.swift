@@ -60,6 +60,12 @@ struct WorkspaceWebView: UIViewRepresentable {
                 decisionHandler(.allow)
                 return
             }
+            // Hard native-shell rule: never show or externally open the
+            // public marketing homepage from an authenticated app workspace.
+            if WorkspaceNavigation.isPublicMarketingHome(url) {
+                decisionHandler(.cancel)
+                return
+            }
             if WorkspaceNavigation.shouldOpenInWorkspace(url) {
                 if WorkspaceNavigation.isSignOutDestination(url) {
                     onWebSignOut()
@@ -76,6 +82,9 @@ struct WorkspaceWebView: UIViewRepresentable {
         func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration,
                      for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
             guard let url = navigationAction.request.url else { return nil }
+            // New windows must not bypass the marketing-home restriction.
+            // A first-party workspace popup stays in this signed-in WebView.
+            guard !WorkspaceNavigation.isPublicMarketingHome(url) else { return nil }
             // target="_blank" still belongs inside this authenticated WebView
             // when it points to Fundhub. Safari does not share its session.
             if WorkspaceNavigation.isSignOutDestination(url) {
@@ -87,10 +96,35 @@ struct WorkspaceWebView: UIViewRepresentable {
             }
             return nil
         }
+
+        // A server can redirect an otherwise allowed page to the homepage.
+        // Check the final main-frame response URL BEFORE WebKit commits it.
+        func webView(_ webView: WKWebView, decidePolicyFor navigationResponse: WKNavigationResponse,
+                     decisionHandler: @escaping (WKNavigationResponsePolicy) -> Void) {
+            if navigationResponse.isForMainFrame,
+               let finalURL = navigationResponse.response.url,
+               WorkspaceNavigation.isPublicMarketingHome(finalURL) {
+                decisionHandler(.cancel)
+                return
+            }
+            decisionHandler(.allow)
+        }
     }
 }
 
 enum WorkspaceNavigation {
+    /// Public site is available in a normal browser, never inside the native app.
+    /// URL.standardized removes dot segments; path trimming handles extra slashes.
+    /// Query strings and fragments do not change which page is being requested.
+    static func isPublicMarketingHome(_ url: URL) -> Bool {
+        guard url.scheme?.lowercased() == "https",
+              let hostname = url.host?.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: ".")),
+              hostname == "fundhub.ai" || hostname == "www.fundhub.ai" else { return false }
+        let page = url.standardized.path.lowercased()
+            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        return page.isEmpty || page == "index.html"
+    }
+
     static func shouldOpenInWorkspace(_ url: URL) -> Bool {
         url.scheme?.lowercased() == "https" && url.host?.lowercased() == "fundhub.ai"
     }
