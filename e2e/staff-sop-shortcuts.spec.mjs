@@ -361,7 +361,7 @@ test("task SOPs survive staff queue and heading redraws without duplicate links"
       document.querySelector(selector).textContent = newLabel;
     }, { selector, newLabel });
     const link = page.locator(screen === "documents.html" ? ".documents-intro .fh-step-sop" :
-      screen === "consent-capture.html" ? "#ccTitle + .fh-step-sop" : selector + " a.fh-step-sop");
+      (screen === "consent-capture.html" || screen === "pipeline.html") ? selector + " + a.fh-step-sop" : selector + " a.fh-step-sop");
     await expect(link).toHaveCount(1);
     await expect(link).toHaveAttribute("href", "company-brain.html?sop=" + topic);
   }
