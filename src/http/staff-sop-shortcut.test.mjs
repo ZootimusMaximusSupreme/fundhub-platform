@@ -72,6 +72,12 @@ test("shortcut uses a real anchor, safe finite URL, accessible focus, same-tab b
   assert.doesNotMatch(shell.slice(shell.indexOf("function mountSopShortcut"), shell.indexOf("function mountWorkspaceHeader")), /_blank|localStorage\.setItem|fetch\(/);
 });
 
+test("regular staff may search approved SOPs without enumerating org-wide owner-tier upload names", () => {
+  assert.match(brain, /if \(!canListUploads\) return/);
+  assert.match(brain, /uploadsPanel\.hidden = true/);
+  assert.match(brain, /var canListUploads = isOwner \|\| myRole === "admin"/);
+});
+
 test("Company Brain does not POST on navigation, opens its existing documents and sends only after explicit Find", () => {
   assert.match(brain, /new URLSearchParams\(location\.search\)\.get\("sop"\)/);
   assert.match(brain, /Object\.prototype\.hasOwnProperty\.call\(SOP_GUIDES, sopTopic\)/);
