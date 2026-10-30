@@ -211,7 +211,10 @@ that can always be requested again. When the client verifies it, the account is
 claimed, the next booked call is confirmed on the client record, and the client
 lands on the signed-in soft-pull page. The iPhone app download stays optional;
 a tap is not proof of installation. The email does not show an empty meeting
-location while the host's Meet link is unavailable.
+location while the host's Meet link is unavailable. If the pending account
+cannot be created because the email is missing or belongs to another account,
+the setter gets a task to resolve it before the call; the booking message still
+contains a durable sign-in entry, but that exception is not called complete.
 
 In current source, after the confirmation **text** is marked sent, the sender
 also tries one native iPhone alert with fixed, detail-free wording: “Please

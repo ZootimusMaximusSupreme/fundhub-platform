@@ -122,6 +122,8 @@ test("s-04b: booking creates a pending account and sends lasting claim links", a
     step: fakeStep()
   });
   assert.equal(result.portalAccount.created, true);
+  assert.equal(result.portalAccountTask, null);
+  assert.equal(db.tasks.length, 0);
   assert.equal(db.accounts.length, 1);
   assert.equal(db.accounts[0].status, "invited");
   assert.ok(!db.messages.some((m) => m.template_key === "EMAIL-PORTAL-MAGIC-LINK"));
@@ -141,12 +143,15 @@ test("s-04b: account conflict still leaves a lasting sign-in door", async () => 
     clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", phone: "+15551234567", custom_fields: {} }],
     templates: sms()
   });
-  await handle({
+  const result = await handle({
     event: ev("booking.created", { startTime: "2026-08-20T18:00:00Z", email: "a@b.com" }, { clientId: "cl-1" }),
     db,
     step: fakeStep(),
     ensurePendingClientAccountImpl: async () => ({ ok: false, reason: "email_belongs_to_another_account" })
   });
+  assert.equal(result.portalAccountTask.created, true);
+  assert.equal(db.tasks.length, 1);
+  assert.equal(db.tasks[0].assignee_role, "setter");
   const email = db.messages.find((m) => m.template_key === EMAIL_CONFIRM);
   assert.ok(email);
   assert.doesNotMatch(email.rendered_body, /href=""/);

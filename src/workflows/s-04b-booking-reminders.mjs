@@ -16,6 +16,7 @@ import { callHappened } from "./dpc-02-call-outcome-enforcement.mjs";
 import { drainMessageNow } from "../messaging/outbox.mjs";
 import { portalLoginUrl } from "../auth/magic-link.mjs";
 import { ensurePendingClientAccount } from "../auth/account-session.mjs";
+import { createTask } from "../lib/create-task.mjs";
 
 export const SMS_CONFIRM = "SMS-S04-01-CONFIRM";
 export const EMAIL_CONFIRM = "EMAIL-S04-01-CONFIRM";
@@ -152,6 +153,13 @@ export async function handle({
   // state cannot sign in until the client proves control of the email address.
   const portalAccount = await step.run("ensure-booking-portal-account", () =>
     ensurePendingClientAccountImpl(db, { orgId, clientId }));
+  const portalAccountTask = portalAccount?.ok ? null : await step.run("flag-booking-portal-account", () =>
+    createTask(db, {
+      orgId, clientId, eventId, sourceWorkflow: "s-04b-booking-reminders",
+      title: "Resolve booked client's portal account",
+      assigneeRole: "setter",
+      detail: `Account not created at booking: ${portalAccount?.reason || "unknown"}. Confirm the client's email and help them claim the portal before the call.`
+    }));
   const claimUrl = bookingClaimUrl();
 
   const confirm = await step.run("send-confirm", () =>
@@ -187,7 +195,7 @@ export async function handle({
       messageIds: [confirm?.messageId, confirmEmail?.messageId].filter(Boolean)
     }));
 
-  const base = { done: true, portalAccount, confirm, confirmEmail, confirmDispatch };
+  const base = { done: true, portalAccount, portalAccountTask, confirm, confirmEmail, confirmDispatch };
 
   if (!startTime) {
     return { ...base, skippedReminders: "no_start_time" };
