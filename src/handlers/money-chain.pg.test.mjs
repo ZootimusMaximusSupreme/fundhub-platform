@@ -21,7 +21,7 @@ const EMAIL = `${MARK}@example.com`;
 describe("money-chain writers", { skip: !HAS_DB ? "no DATABASE_URL" : false }, () => {
   let org, closerId, advisorId, handler, ownerToken;
   let fundingProductId, diagProductId, diyProductId;
-  let frontRuleId, backRuleId;
+  let frontRuleId, backRuleId, backCloserRuleId;
 
   async function wipe() {
     const clients = (await db.query(
@@ -54,7 +54,7 @@ describe("money-chain writers", { skip: !HAS_DB ? "no DATABASE_URL" : false }, (
       await db.query(`DELETE FROM clients WHERE id = ANY($1)`, [clients]);
     }
     if (frontRuleId) {
-      await db.query(`DELETE FROM commission_rules WHERE id = ANY($1)`, [[frontRuleId, backRuleId].filter(Boolean)]);
+      await db.query(`DELETE FROM commission_rules WHERE id = ANY($1)`, [[frontRuleId, backRuleId, backCloserRuleId].filter(Boolean)]);
     }
     /* The product→entitlement mapping is NOT wiped any more. It used to be a
        test fixture this file inserted and deleted; since
@@ -114,6 +114,20 @@ describe("money-chain writers", { skip: !HAS_DB ? "no DATABASE_URL" : false }, (
          'percent', 0.25, 'amount_funded', '2020-01-01', true
        ) RETURNING id`,
       [org, fundingProductId]
+    )).rows[0].id;
+
+    // Synthetic closer's back-end rate is test setup, never an operational
+    // default. A missing live rule must remain a warning, not a guessed payout.
+    // Staff-scoped to avoid changing other employees' rate selection.
+    backCloserRuleId = (await db.query(
+      `INSERT INTO commission_rules (
+         org_id, name, basis, stacking, role, staff_id, product_id,
+         calc_method, percent, amount_basis, effective_from, active
+       ) VALUES (
+         $1, 'MC closer 0.25% funded (test fixture)', 'back_end', 'base', 'closer', $3, $2,
+         'percent', 0.25, 'amount_funded', '2020-01-01', true
+       ) RETURNING id`,
+      [org, fundingProductId, closerId]
     )).rows[0].id;
 
     /* WAS: this file inserted its own three-pair mapping, so the grant tests
