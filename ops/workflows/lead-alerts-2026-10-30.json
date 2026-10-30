@@ -17,14 +17,14 @@
     }
   ],
   "checks": {
-    "focused_node": "Company Brain 5/5, contracts wording 5/5, booking footer 22/22, catalog/wiring 25/25, role and messaging 111/111 passed locally; 0 skips in these focused checks.",
+    "focused_node": "Company Brain 5/5, contracts wording 5/5, booking footer 22/22, catalog/wiring 25/25, retired-control 12/12, display count 1/1, role/messaging 111/111 passed locally.",
     "affected_playwright": "27 agreement browser proofs passed on isolated PR server; 13 lead-alert browser proofs passed earlier",
     "typescript": "npx tsc --noEmit passed after main merge",
     "ios_simulator_build": "passed after tap-session binding correction",
     "ios_simulator_tests": "22 passed including cross-session notification tap refusal",
     "ios_app_store_ipa": "Earlier iOS 1.0.2 build 6 is VALID but predates the tap-session correction. A new signed build is required after the web pipeline ships; owner has held app release.",
     "app_store_current": "iOS 1.0 live; 1.0.1 pending developer release",
-    "github_ci": "Run 41119095489: 8 required jobs passed including real Postgres blocks and both shard 0 jobs; six unit shards failed only stale Company Brain, booking manifest, agreement, and retired-switch proofs now repaired locally; browser Screens step succeeded and overall job conclusion awaited. New run required after push.",
+    "github_ci": "Run 41122167424 passed full browser suite; unit shards 3 and 4 exposed stale retired-control counts and positional proof assumptions. Both fixed locally; fresh run required after push.",
     "full_npm_test": "interrupted after 8667 tests with no reported failures because the runner stopped progressing",
     "app_release": "Owner held app release until web pipeline is ready, deployed, shipped, and verified; do not release 1.0.1 or 1.0.2 yet.",
     "lint": "4428 files and inline scripts parse clean after CI repair batch"
