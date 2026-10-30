@@ -170,7 +170,9 @@
     "marketing-command-center.html",
     "galaxy.html",
     "finance-os.html",
-    "company-brain.html",
+    /* Company Brain APIs already grant ROLE_SETS.STAFF tier-filtered access.
+       Keep navigation consistent with those server-side permissions; review
+       approvals and owner-tier documents remain server-protected. */
     "social-studio.html",
     "creative-factory.html",
     "agent-editor.html",
@@ -540,7 +542,10 @@
     if (m === "funding_advisor") return staffTabs().concat(ADVISOR_ONLY).concat(CONSENT_DESK_ONLY);
     if (m === "sales_manager") return staffTabs().concat(SALES_FLOOR_ONLY).concat(FINANCE_ONLY).concat(STAFF_MONEY).concat(CLOSER_DECK);
     if (m === "csm") return staffTabs().concat(CONSENT_DESK_ONLY);
-    if (m === "staff" || !m) return staffTabs();
+    if (m === "staff") return staffTabs();
+    /* Unknown staff roles keep ordinary work desks but never Company Brain:
+       approved source tiers require a recognized staff role at the API. */
+    if (!m) return staffTabs().filter(function (s) { return s !== "company-brain.html"; });
     return m.slice();
   }
 
@@ -1958,6 +1963,81 @@
     });
   }
 
+
+  /* SOP shortcuts are employee-only navigation, not a second permission system.
+     Company Brain enforces STAFF and document access tiers on its API. The
+     outbound_rep's one-screen bank outreach session is deliberately excluded:
+     that role is NOT in ROLE_SETS.STAFF and cannot read Company Brain today.
+     Don't show a link that bounces to a forbidden page. */
+  var SOP_CONTEXT_BY_SCREEN = {
+    "setter-dashboard.html": "setter",
+    "closer-dashboard.html": "closer",
+    "sales-floor.html": "sales",
+    "pipeline.html": "onboarding",
+    "bank-outreach.html": "bank-outreach",
+    "lenders.html": "lenders",
+    "inquiry-remover.html": "credit-repair",
+    "client-control-panel.html": "funding",
+    "csm-queue.html": "client-success",
+    "ops-admin.html": "operations",
+    "finance-os.html": "finance",
+    "messaging.html": "communications"
+  };
+  var SOP_STAFF_ROLES = ["owner", "admin", "funding_advisor", "closer",
+    "inquiry_specialist", "setter", "sales_manager", "csm"];
+
+  function mountSopShortcut(role, permittedPages) {
+    var topic = SOP_CONTEXT_BY_SCREEN[PAGE];
+    if (!topic || SOP_STAFF_ROLES.indexOf(role) === -1 ||
+        permittedPages.indexOf("company-brain.html") === -1) return;
+    var tools = document.querySelector("#fh-workspace-header .fh-workspace-tools");
+    if (!tools || document.getElementById("fh-sop-shortcut")) return;
+    var style = document.createElement("style");
+    style.id = "fh-sop-shortcut-css";
+    style.textContent =
+      "#fh-sop-shortcut{display:inline-flex;align-items:center;justify-content:center;" +
+      "min-width:44px;min-height:44px;box-sizing:border-box;padding:10px;" +
+      "margin-left:8px;flex-shrink:0;border:1px solid #E4E4E7;border-radius:10px;" +
+      "background:#fff;color:#18181B;text-decoration:none;cursor:pointer}" +
+      "#fh-sop-shortcut:hover{background:#F4F4F5;border-color:#A1A1AA}" +
+      "#fh-sop-shortcut:focus-visible{outline:2px solid #4866D7;outline-offset:3px}" +
+      "#fh-sop-shortcut svg{display:block;width:19px;height:19px}" +
+      /* The 44px icon must not add a second row to the 320px shared
+         workspace header: doing so hides the first client card below the
+         viewport. Keep touch targets full-sized and truncate only the title. */
+      /* A 390px closer has four full-size toolbar targets. They must share
+         one header row or the real client credit facts slip below the fold. */
+      "@media(min-width:351px) and (max-width:480px){" +
+      "body.fh-astra #fh-workspace-header{flex-wrap:nowrap}" +
+      "body.fh-astra #fh-workspace-header .fh-workspace-tools{" +
+        "flex-wrap:nowrap;flex:0 0 auto;gap:2px}" +
+      "#fh-workspace-header .fh-workspace-identity{flex:1 1 0;min-width:0}" +
+      "#fh-workspace-header .fh-workspace-labels{min-width:0}" +
+      "#fh-workspace-header #fh-sop-shortcut{margin-left:0}" +
+      "}" +
+      "@media(max-width:350px){" +
+      /* The 320px pipeline header reached 86.75px with 10px top/bottom padding. */
+      /* Keep all 44px controls and context available; only reclaim vertical air. */
+      "body.fh-astra #fh-workspace-header{flex-wrap:nowrap;padding-block:2px}" +
+      "body.fh-astra #fh-workspace-header .fh-workspace-tools{" +
+        "flex-wrap:nowrap;flex:0 0 auto;gap:0}" +
+      "#fh-workspace-header .fh-workspace-identity{flex:1 1 0;min-width:0}" +
+      "#fh-workspace-header .fh-workspace-labels{flex:1 1 0;min-width:0}" +
+      "#fh-workspace-header #fh-sop-shortcut{margin-left:0}" +
+      "}";
+    document.head.appendChild(style);
+    var a = document.createElement("a");
+    a.id = "fh-sop-shortcut";
+    a.href = "company-brain.html?sop=" + encodeURIComponent(topic);
+    a.setAttribute("aria-label", "Open scripts and SOPs in Company Brain");
+    a.setAttribute("title", "Scripts & SOPs · Company Brain");
+    a.setAttribute("data-fh-sop-topic", topic);
+    a.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      '<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6Z"/>' +
+      '<path d="M14 3v6h6M8 13h8M8 17h6"/></svg>';
+    tools.appendChild(a);
+  }
+
   /* Shared staff identity and context are normal layout, rather than floating
      session furniture. A remembered client only changes navigation; the scope
      label describes the page's own URL so it never implies a filter that is not
@@ -2991,6 +3071,7 @@
       var workspace = mountWorkspaceHeader(sess.staff, sess.demo);
       if (!workspace) mountClock(role);
       mountSearch(sess.staff, sess.demo);
+      mountSopShortcut(role, ok);
       mountChip(sess.staff, sess.demo);
       mountBetaBanner(role);
       layoutShellChrome();
