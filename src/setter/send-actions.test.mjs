@@ -23,6 +23,17 @@ test("SOP handoff uses saved problem, goal, survey, and booked time", () => {
   assert.doesNotMatch(body, /maybe|we think/i);
 });
 
+test("SOP handoff prefers setter edits while preserving the submitted survey", () => {
+  const withEdit = { ...client, custom_fields: { ...client.custom_fields,
+    cf_svy_money_change_now_label: "grow faster",
+    setter_survey_edits: { cf_svy_planned_use: "hire staff" } } };
+  const body = buildSetterHandoffText({ client: withEdit, handoff, setter: owner, closer: owner });
+  assert.match(body, /Survey said hire staff/);
+  assert.doesNotMatch(body, /Survey said equipment/);
+  assert.doesNotMatch(body, /Survey said grow faster/);
+  assert.equal(withEdit.custom_fields.cf_svy_planned_use_label, "equipment");
+});
+
 test("Chris as setter and closer sends only the lead leg", async () => {
   const calls = [];
   const result = await performSetterSendAction({ action: "send_handoff", client, handoff,
