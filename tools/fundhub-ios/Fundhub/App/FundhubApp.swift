@@ -460,6 +460,22 @@ private struct SignInView: View {
     }
 }
 
+enum StaffAlertNavigation {
+    // A staff tap is scoped to the bearer that was active when it was dequeued.
+    // Identity refresh is asynchronous: do not navigate if that session changed.
+    static func verifiedPath(
+        alert: NativePushTap.StaffAlert,
+        bearerAtTap: String,
+        bearerAfterRefresh: String?,
+        staffSessionVerified: Bool,
+        roleAfterRefresh: String?,
+        taskCancelled: Bool
+    ) -> String? {
+        guard !taskCancelled, bearerAfterRefresh == bearerAtTap, staffSessionVerified else { return nil }
+        return alert.workspacePath(role: roleAfterRefresh)
+    }
+}
+
 private struct HomeView: View {
     @EnvironmentObject private var store: FundhubSessionStore
     @ObservedObject private var push = NativePushCenter.shared
@@ -525,11 +541,17 @@ private struct HomeView: View {
                 return
             }
             guard store.identity?.principal == "staff",
-                  let alert = push.takeStaffOpenRequest(currentBearer: store.token) else { return }
+                  let bearerAtTap = store.token, !bearerAtTap.isEmpty,
+                  let alert = push.takeStaffOpenRequest(currentBearer: bearerAtTap) else { return }
             await store.refreshSession()
-            guard store.phase == .signedIn, store.identity?.principal == "staff",
-                  store.token != nil,
-                  let path = alert.workspacePath(role: store.identity?.staff.role) else { return }
+            guard let path = StaffAlertNavigation.verifiedPath(
+                alert: alert,
+                bearerAtTap: bearerAtTap,
+                bearerAfterRefresh: store.token,
+                staffSessionVerified: store.phase == .signedIn && store.identity?.principal == "staff",
+                roleAfterRefresh: store.identity?.staff.role,
+                taskCancelled: Task.isCancelled
+            ) else { return }
             staffAlertPath = path
             reloadId = UUID()
         }
