@@ -3,6 +3,7 @@ import { redact, pageParams } from "../http/read-api.mjs";
 import { buildSetterHandoffText, performSetterSendAction } from "./send-actions.mjs";
 import { advanceCardToStage } from "../workflows/cards.mjs";
 import { withTransaction } from "../db/with-transaction.mjs";
+import { queueCloserSetAlert } from "../staff/lead-alerts.mjs";
 
 const HANDOFF_FIELDS = new Set([
   "lead_type", "dialed_at", "call_attempts", "disposition", "voicemail_left",
@@ -479,5 +480,17 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
     }
     return { status: 200, body: { ok: true, item: { ...mapItem({ ...client, done: !!saved.complete_at, setter_staff_id: setterStaffId, closer_staff_id: closerStaffId, custom_fields: savedFields }, staff) }, ...(send ? { send } : {}) } };
   };
-  return action === "complete" ? withTransaction(db, save) : save(db);
+  const result = action === "complete" ? await withTransaction(db, save) : await save(db);
+  if (action === "complete" && result.status === 200) {
+    try {
+      const updatedClient = await getSetterClient(db, staff.org_id, client_id);
+      await (deps.closerAlert || queueCloserSetAlert)(db, {
+        orgId: staff.org_id, clientId: client_id, closerStaffId, setterStaffId,
+        client: updatedClient || client, handoff: result.body.item.setter_handoff, startTime: client.booking_time
+      });
+    } catch (error) {
+      console.warn(`[setter] closer set alert failed: ${error.message}`);
+    }
+  }
+  return result;
 }

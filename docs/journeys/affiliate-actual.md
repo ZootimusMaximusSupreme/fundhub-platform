@@ -325,7 +325,7 @@ flowchart TD
 | `/api/proxy/end` | POST | owner, funding_advisor |
 | `/api/proxy/launch` | POST | owner, funding_advisor |
 | `/api/push/key` | GET | client |
-| `/api/push/native-device` | DELETE, GET, POST | client |
+| `/api/push/native-device` | DELETE, GET, POST | client, staff |
 | `/api/push/preferences` | GET, PUT | client |
 | `/api/push/subscribe` | GET, POST | client |
 | `/api/push/unsubscribe` | DELETE, POST | client |

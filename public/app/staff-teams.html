@@ -361,7 +361,7 @@ table.perm tbody tr:hover td.pl{background:var(--soft)}
     <div style="margin-top:18px">
       <div class="eyebrow" style="margin-bottom:6px">Preferences</div>
       <div class="swrow"><div class="swl"><div class="n">Monitoring consent on file</div><div class="d">Owner only. On means a signed form is on file. Off stops monitoring data collection.</div></div><div class="sw" id="ed_consent"></div></div>
-      <div class="swrow"><div class="swl"><div class="n">Text when a call is booked</div><div class="d">Off by default. Sends the caller’s name, phone, email, stated score and survey answers to this person.</div></div><div class="sw" id="ed_booked_sms"></div></div>
+      <div class="swrow"><div class="swl"><div class="n">Lead alerts</div><div class="d">Setters get a text and phone alert for each new lead. Closers get a phone alert for assigned leads, then a text and phone alert when the lead is set and before the call.</div></div></div>
     </div>
     <div style="margin-top:18px">
       <div class="eyebrow" style="margin-bottom:6px">Role access</div>
@@ -572,7 +572,6 @@ function openEditor(id){
     document.getElementById(i).readOnly=false;
   });
   setSw('ed_consent',p.consent);
-  setSw('ed_booked_sms', p.notifyBookedCallSms);
   document.getElementById('edReset').style.display = p.email ? '' : 'none';
   document.getElementById('edDeact').style.display = '';
   document.getElementById('edRemove').hidden = !window.__FH_IS_OWNER || p.role==='Owner' || p.self || !p.staffId;
@@ -596,7 +595,6 @@ function openNew(){
   ['ed_first','ed_last','ed_email'].forEach(function(i){document.getElementById(i).readOnly=false;});
   ['ed_phone','ed_start'].forEach(function(i){document.getElementById(i).readOnly=true;});
   setSw('ed_consent',false);
-  setSw('ed_booked_sms',false);
   document.getElementById('edReset').style.display='none';   // no account exists yet
   document.getElementById('edDeact').style.display='none';   // nothing to revoke yet
   document.getElementById('edRemove').hidden=true;
@@ -683,8 +681,7 @@ document.getElementById('edSave').addEventListener('click',function(){
     phone:document.getElementById('ed_phone').value.trim(),
     role:document.getElementById('ed_role').value,
     start:document.getElementById('ed_start').value,
-    consent:getSw('ed_consent'),
-    notifyBookedCallSms:getSw('ed_booked_sms')};
+    consent:getSw('ed_consent')};
   if(selId){
     var p=PEOPLE.filter(function(x){return String(x.id)===String(selId)})[0];
     if(!p || !p.staffId){
@@ -699,7 +696,6 @@ document.getElementById('edSave').addEventListener('click',function(){
       }
       if(st && st.email) p.email=st.email;
       if(st && Object.prototype.hasOwnProperty.call(st,'phone')) p.phone=st.phone||'—';
-      if(st && Object.prototype.hasOwnProperty.call(st,'notify_booked_call_sms')) p.notifyBookedCallSms=!!st.notify_booked_call_sms;
       if(st && Object.prototype.hasOwnProperty.call(st,'start_date')){
         p.start=st.start_date ? String(st.start_date).slice(0,10) : '—';
       }
@@ -724,8 +720,7 @@ document.getElementById('edSave').addEventListener('click',function(){
     var profileChanged=fullName!==(p.first+' '+p.last).trim()
       ||rec.email!==p.email
       ||rec.phone!==p.phone
-      ||rec.start!==p.start
-      ||!!rec.notifyBookedCallSms!==!!p.notifyBookedCallSms;
+      ||rec.start!==p.start;
     var nextRole=ROLE_KEY[rec.role];
     var roleChanged=nextRole && rec.role !== p.role;
     if(typeof FHData==='undefined'||!FHData.write){alert('Not available — the data layer has not loaded.');return}
@@ -739,8 +734,7 @@ document.getElementById('edSave').addEventListener('click',function(){
           name:fullName,
           email:rec.email,
           phone:rec.phone==='—'?'':rec.phone,
-          start_date:rec.start==='—'?'':rec.start,
-          notify_booked_call_sms:!!rec.notifyBookedCallSms
+          start_date:rec.start==='—'?'':rec.start
         });
       }).then(function(res){
         if(!res.ok){
@@ -1131,7 +1125,6 @@ renderAll();
         role: role,
         email: s.email || "",
         phone: s.phone || "—",
-        notifyBookedCallSms: s.notify_booked_call_sms === true,
         start: s.start_date ? String(s.start_date).slice(0, 10) : "—",
         active: s.status === "active",
         status: s.status || "",
