@@ -238,6 +238,45 @@ final class FundhubTests: XCTestCase {
         XCTAssertFalse(NativePushConsent.isEnabled(defaults: defaults))
     }
 
+
+    func testNativeWebViewBlocksPublicMarketingHomeVariants() {
+        // URL host/path case, www canonicalization, slashes, and query/hash
+        // cannot turn a marketing homepage into an approved app destination.
+        for raw in [
+            "https://fundhub.ai/",
+            "https://FUNDHUB.AI/?utm_campaign=app#pricing",
+            "https://www.fundhub.ai/",
+            "https://www.fundhub.ai/index.html?source=header#top",
+            "https://fundhub.ai/INDEX.HTML",
+            "https://fundhub.ai//",
+            "https://fundhub.ai/index.html/"
+        ] {
+            let url = URL(string: raw)!
+            XCTAssertTrue(WorkspaceNavigation.isPublicMarketingHome(url), raw)
+        }
+    }
+
+    func testNativeWebViewPreservesWorkspaceAuthAndExternalDestinations() {
+        for raw in [
+            "https://fundhub.ai/app/client-portal.html",
+            "https://fundhub.ai/app/setter-dashboard.html",
+            "https://fundhub.ai/app/finance-os.html",
+            "https://fundhub.ai/login.html",
+            "https://fundhub.ai/portal-login.html?t=synthetic",
+            "https://fundhub.ai/privacy/",
+            "https://fundhub.ai/checkout",
+            "https://payments.example/checkout",
+            "https://fundhub.ai.evil.example/",
+            "mailto:support@fundhub.ai"
+        ] {
+            XCTAssertFalse(WorkspaceNavigation.isPublicMarketingHome(URL(string: raw)!), raw)
+        }
+        // Blocking the marketing homepage must not suppress the native
+        // sign-out handling for authenticated users.
+        XCTAssertTrue(WorkspaceNavigation.isSignOutDestination(
+            URL(string: "https://fundhub.ai/portal-login.html")!))
+    }
+
     func testWebSignOutDestinationIsExact() {
         XCTAssertTrue(WorkspaceNavigation.isSignOutDestination(URL(string: "https://fundhub.ai/portal-login.html")!))
         XCTAssertTrue(WorkspaceNavigation.isSignOutDestination(URL(string: "https://fundhub.ai/login.html")!))
