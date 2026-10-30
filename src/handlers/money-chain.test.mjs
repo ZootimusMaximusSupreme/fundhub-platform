@@ -634,7 +634,7 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
     const db = feeDb({ invoice: null });
     const out = await onPaymentReceivedMoney(feeReceipt(), db);
     assert.equal(out.done, false);
-    assert.equal(out.reason, "success_fee_invoice_unresolved");
+    assert.equal(out.reason, "invoice_identity_conflict");
     assert.equal(salePaymentInsert(db), undefined);
     assert.equal(out.entitlements, undefined);
   });
