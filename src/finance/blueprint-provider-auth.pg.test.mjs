@@ -35,7 +35,7 @@ test("monthly real provider checks current consent and paid access on disposable
     const run=(env=LIVE)=>fulfilQueuedSystemPulls(db,{env,
       runPull:async (_db,p)=>{assert.equal(p.simulate,false);called++;return {ok:true,simulated:false,crsResultId:randomUUID()};},
       aftercare:async()=>({ok:true}),createTaskImpl:async()=>({id:"stub"})});
-    await db.query("UPDATE client_consents SET revoked_at=now(),revoked_reason='withdrawn' WHERE id=$1",[consent]);
+    await db.query("UPDATE client_consents SET revoked_at=now(),revoked_reason='withdrawn',revoked_by_kind='staff',revoked_by_staff_id=$2 WHERE id=$1",[consent,staff]);
     assert.equal((await run()).authorizationHolds[0].reason,"consent_no_longer_valid");
     await db.query(`INSERT INTO client_consents (org_id,client_id,kind,consent_text,granted_by_kind,granted_by_staff_id,capture_method,granted_at,expires_at)
       VALUES ($1,$2,'soft_pull_consent','Current consent','staff',$3,'checkbox',now()-interval '1 minute',now()+interval '1 hour')`,[org,client,staff]);
