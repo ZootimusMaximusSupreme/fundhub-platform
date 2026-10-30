@@ -127,6 +127,25 @@ describe("pipeline.html drawer — survey rows follow the survey's branch", () =
   });
 });
 
+describe("pipeline.html drawer — survey stays above credit until a genuine credit result", () => {
+  test("missing scores, a sample result, and a self-reported survey score never promote Credit", () => {
+    const d = loadDrawer();
+    assert.equal(d.hasVerifiedCredit(null), false);
+    assert.equal(d.hasVerifiedCredit({ experian: null, source: null }), false);
+    assert.equal(d.hasVerifiedCredit({ experian: 740, source: "crs_results", sample: true }), false);
+    assert.equal(d.hasVerifiedCredit({ experian: 740, source: "survey", sample: false }), false);
+  });
+
+  test("a genuine bureau score promotes Credit; zero usable scores does not", () => {
+    const d = loadDrawer();
+    assert.equal(d.hasVerifiedCredit({ experian: 746, source: "crs_results", sample: false }), true);
+    assert.equal(d.hasVerifiedCredit({ equifax: 711, source: "crs_results" }), true);
+    assert.equal(d.hasVerifiedCredit({
+      experian: null, equifax: null, transunion: null, source: "crs_results", sample: false
+    }), false);
+  });
+});
+
 describe("pipeline.html drawer — the four ad-routing lines", () => {
 
   test("it says the same four things the closer screen says", () => {
