@@ -70,6 +70,43 @@ test("existing closer/dispatch and setter source edits demand call-outcome proof
   ]), []);
 });
 
+test("open sales-Kanban and installed iPhone changes require live-result reviews", () => {
+  // Open PRs #305/#307 touch the sales pipeline and the actual Swift sources
+  // under tools/fundhub-ios. Neither path was previously caught by the v1 map.
+  const result = reportCriticalSourceChanges([
+    "api/dashboard/pipeline.mjs", "public/app/pipeline.html",
+    "public/app/setter-dashboard.html", "api/native/client-activity.mjs",
+    "tools/fundhub-ios/Fundhub/App/FundhubApp.swift",
+    "tools/fundhub-ios/Fundhub/Core/FundhubAPI.swift",
+    "tools/fundhub-ios/Fundhub/App/FundhubApp.spec.swift",
+    "tools/fundhub-ios/README.md", "tools/unrelated/build.mjs"
+  ]);
+  assert.equal(result.verdict, "REVIEW_REQUIRED");
+  assert.deepEqual(result.edges.map((e) => [e.id, e.severity]), [
+    ["lead-booking-call-outcome", "P1"], ["native-portal-first-open", "P1"]
+  ]);
+  assert.deepEqual(result.edges[0].files, [
+    "api/dashboard/pipeline.mjs", "public/app/pipeline.html",
+    "public/app/setter-dashboard.html"
+  ]);
+  assert.deepEqual(result.edges[1].files, [
+    "api/native/client-activity.mjs",
+    "tools/fundhub-ios/Fundhub/App/FundhubApp.swift",
+    "tools/fundhub-ios/Fundhub/Core/FundhubAPI.swift"
+  ]);
+  assert.deepEqual(result.unmappedHighRiskFiles, []);
+  assert.equal(result.liveReceipt, "NEEDS_LIVE_RECEIPT");
+  assert.equal(result.evidenceNote, "MISSING");
+  // Documentation and Swift unit-test changes do not claim installed device proof.
+  assert.deepEqual(changedCriticalEdges([
+    "tools/fundhub-ios/README.md",
+    "tools/fundhub-ios/Fundhub/App/FundhubApp.spec.swift"
+  ]), []);
+  assert.deepEqual(changedCriticalEdges([
+    "tools/fundhub-ios/Fundhub.xcodeproj/project.pbxproj"
+  ]).map((e) => e.id), ["native-portal-first-open"]);
+});
+
 test("Blueprint FinanceOS entitlement edits require P0 paid-access and P1 delivery reviews", () => {
   // Blueprint #301 changes a customer's paid access and included annual term.
   // A monthly delivery check alone cannot prove payment/entitlement integrity.
