@@ -9,11 +9,13 @@ import { loadClientReturnAddress } from "../../src/inquiry-ops/call-scheduler.mj
 import { sendRepairLetters, RepairSendError } from "../../src/repair/send.mjs";
 import { mailBureauLetter } from "../../src/metro2/delivery/send.mjs";
 import { dbDown } from "../../src/http/db-down.mjs";
+import { hasRepairAgreement, hasDisputeAuthorization } from "../../src/repair/dispute-auth.mjs";
 
 export default async function handler(req, res, deps = {}) {
   const database = deps.db ?? db;
   const mailFn = deps.mailBureauLetter ?? mailBureauLetter;
   const auth = deps.requireAuth ?? requireAuth;
+  const sendFn = deps.sendRepairLetters ?? sendRepairLetters;
 
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
@@ -44,6 +46,16 @@ export default async function handler(req, res, deps = {}) {
     );
     if (!owned.rows.length) {
       return res.status(404).json({ ok: false, error: "not_found" });
+    }
+
+    // Staff access and client ownership are not authorization to mail disputes.
+    // Match the letter writer\x27s current signed-paper gate before any provider work.
+    if (wantMail) {
+      const agreement = await (deps.hasRepairAgreement ?? hasRepairAgreement)(database, { orgId, clientId });
+      const authorized = agreement || await (deps.hasDisputeAuthorization ?? hasDisputeAuthorization)(database, { orgId, clientId });
+      if (!authorized) {
+        return res.status(403).json({ ok: false, error: "repair_dispute_authorization_required" });
+      }
     }
 
     const from = body.mail_from || body.mailFrom
@@ -111,7 +123,7 @@ export default async function handler(req, res, deps = {}) {
         }
       : null;
 
-    const result = await sendRepairLetters(database, {
+    const result = await sendFn(database, {
       orgId,
       clientId,
       staffId: staff.id,
