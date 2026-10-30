@@ -39,7 +39,7 @@
     "Archiving the partner license blocks new licenses; unsigned partners remain subject to the existing payout gate.",
     "Live database inventory was unavailable from this host because DATABASE_URL DNS lookup returned ENOTFOUND; the signed-in live page showed all 12 templates active on 2026-10-30.",
     "The owner confirmed the $1,000 repair payment wording and timing are approved as written; preserve it.",
-    "The repository content audit found the $200 repair trial and combined repair/funding wording omit three-business-day cancellation terms; no repair template includes the separate notice of cancellation form or the specified signature-adjacent sentence. The $1,000 wording promises same-day work. Exact future contract revisions await the owner's wording decision; do not silently edit live or sent contracts.",
+    "The repository content audit found the $200 repair trial and combined repair/funding wording omit three-business-day cancellation terms; no repair template includes the separate notice of cancellation form or the specified signature-adjacent sentence. The $1,000 wording promises same-day work. Chris chose on 2026-10-30 to keep the existing wording as approved; no contract body is changed here.",
     "The combined local agreement checks passed 345/345, TypeScript passed, UI desktop/phone and admin read-only checks passed. The database endpoint suite was skipped because DATABASE_URL is unavailable."
   ]
 }
