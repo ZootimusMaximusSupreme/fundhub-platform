@@ -1,0 +1,125 @@
+# No checkout and no user-supplied code: this workflow only looks at refs and
+# PR merge status through GitHub's API. It never touches main or customer data.
+name: Prune merged PR branches
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "35 6 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Preview safe branch deletions without changing refs"
+        type: boolean
+        default: true
+
+concurrency:
+  group: fundhub-prune-merged-pr-branches
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  prune:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Delete only unchanged heads of merged PRs
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const sameRepo = owner + '/' + repo;
+            const dryRun = context.eventName === 'workflow_dispatch'
+              && String(context.payload.inputs?.dry_run ?? 'true') !== 'false';
+
+            // Paginate both collections. In particular, the first 100 PRs are
+            // NOT the entire history; an old merged branch may be older.
+            const prs = await github.paginate(github.rest.pulls.list, {
+              owner, repo, state: 'all', per_page: 100
+            });
+            const branches = await github.paginate(github.rest.repos.listBranches, {
+              owner, repo, per_page: 100
+            });
+
+            const openHeads = new Set();
+            const openBases = new Set();
+            const closedWithoutMerge = new Set();
+            const mergedShasByHead = new Map();
+            for (const pr of prs) {
+              if (pr.state === 'open' && pr.base?.repo?.full_name === sameRepo) {
+                openBases.add(pr.base.ref);
+              }
+              if (pr.head?.repo?.full_name !== sameRepo || !pr.head.ref) continue;
+              const branch = pr.head.ref;
+              if (pr.state === 'open') {
+                openHeads.add(branch);
+              } else if (pr.merged_at && pr.head.sha) {
+                if (!mergedShasByHead.has(branch)) mergedShasByHead.set(branch, new Set());
+                mergedShasByHead.get(branch).add(pr.head.sha);
+              } else {
+                closedWithoutMerge.add(branch);
+              }
+            }
+
+            let candidates = 0;
+            let deleted = 0;
+            let skipped = 0;
+            let errors = 0;
+            for (const branch of branches) {
+              const name = branch.name;
+              if (name === 'main' || branch.protected || openHeads.has(name)
+                  || openBases.has(name) || closedWithoutMerge.has(name)) {
+                skipped++;
+                continue;
+              }
+              // Unmatched branch, unmerged work, or a branch that gained new
+              // commits after its merged PR: preserve it, without exceptions.
+              if (!mergedShasByHead.get(name)?.has(branch.commit.sha)) {
+                skipped++;
+                continue;
+              }
+
+              // Refetch immediately before deletion: a concurrent agent may
+              // have pushed since the branch list was read.
+              let current;
+              try {
+                current = await github.rest.git.getRef({ owner, repo, ref: 'heads/' + name });
+              } catch (e) {
+                core.warning('Skipped disappeared/unreadable ref ' + name + ': ' + e.status);
+                continue;
+              }
+              if (current.data.object.sha !== branch.commit.sha) {
+                core.info('Preserved changed branch: ' + name);
+                skipped++;
+                continue;
+              }
+
+              candidates++;
+              if (dryRun) {
+                core.info('DRY RUN, would delete merged PR branch: ' + name);
+                continue;
+              }
+              try {
+                await github.rest.git.deleteRef({ owner, repo, ref: 'heads/' + name });
+                deleted++;
+                core.info('Deleted unchanged merged PR branch: ' + name);
+              } catch (e) {
+                errors++;
+                core.warning('Preserved branch after deletion failure: ' + name + ' (' + e.status + ')');
+              }
+            }
+
+            core.summary
+              .addHeading('Merged PR branch cleanup')
+              .addRaw('Mode: ' + (dryRun ? 'dry run' : 'live prune') + '\n\n')
+              .addRaw('Branches checked: ' + branches.length + '\n\n')
+              .addRaw('Exact merged heads eligible: ' + candidates + '\n\n')
+              .addRaw('Deleted: ' + deleted + '\n\n')
+              .addRaw('Preserved/not eligible: ' + skipped + '\n\n')
+              .addRaw('Deletion failures: ' + errors + '\n\n');
+            await core.summary.write();
+            if (errors) core.setFailed(errors + ' eligible branch deletions failed; no forced retries.');
