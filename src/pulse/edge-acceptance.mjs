@@ -33,7 +33,7 @@ export const CRITICAL_EDGES = Object.freeze([
     event: "payment.received", consumer: "onPaymentReceived / entitlement handlers",
     receipt: "payment ledger + active entitlement + portal read", graceMinutes: null,
     pulse: "payments:paid-no-entitlement",
-    paths: ["src/register-all.mjs", "src/merchant/", "src/billing/", "src/payments/", "src/entitlements/", "src/ledger/", "src/handlers/money-chain.mjs", "src/handlers/client-lifecycle.mjs", "src/handlers/payment-links.mjs", "src/invoices/", "api/read/invoices.mjs", "public/app/client-portal.html", "src/adapters/whop", "api/payment", "api/checkout"]
+    paths: ["src/register-all.mjs", "src/merchant/", "src/billing/", "src/payments/", "src/entitlements/", "src/finance/finance-os-entitlement.mjs", "src/ledger/", "src/handlers/money-chain.mjs", "src/handlers/client-lifecycle.mjs", "src/handlers/payment-links.mjs", "src/invoices/", "api/read/invoices.mjs", "public/app/client-portal.html", "src/adapters/whop", "api/payment", "api/checkout"]
   },
   {
     id: "consent-crs-result", severity: "P0", owner: "Fulfillment",
