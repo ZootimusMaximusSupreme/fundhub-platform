@@ -410,7 +410,7 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
     invoice = { id: INVOICE, sale_id: BILLED_SALE, status: "sent" },
     paidReceiptRef = null,
     paidReceiptEventId = null,
-    linkedInvoiceId = null
+    linkedInvoiceId = INVOICE
   } = {}) {
     const queries = [];
     const sale = (id) => ({ id, org_id: ORG, client_id: CLIENT, product_id: PRODUCT, sale_motion: null, status: "active" });
@@ -498,6 +498,15 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
     }), db);
     assert.equal(out.done, false);
     assert.equal(out.reason, "invoice_round_conflict");
+    assert.equal(salePaymentInsert(db), undefined);
+    assert.equal(out.entitlements, undefined);
+  });
+
+  test("a generic sale link with no invoice identity cannot pay a fee invoice", async () => {
+    const db = feeDb({ linkedInvoiceId: null });
+    const out = await onPaymentReceivedMoney(feeReceipt(), db);
+    assert.equal(out.done, false);
+    assert.equal(out.reason, "payment_link_invoice_conflict");
     assert.equal(salePaymentInsert(db), undefined);
     assert.equal(out.entitlements, undefined);
   });
@@ -630,9 +639,9 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
     assert.equal(out.entitlements, undefined);
   });
 
-  test("a success-fee receipt without invoice identity is held, not booked as front-end money", async () => {
+  test("a success-fee receipt without invoice identity or invoice link is held", async () => {
     const db = feeDb();
-    const out = await onPaymentReceivedMoney(feeReceipt({ invoiceId: null }), db);
+    const out = await onPaymentReceivedMoney(feeReceipt({ invoiceId: null, paymentLinkId: null }), db);
     assert.ok(!db.queries.some((q) => /FROM invoices/.test(q.text)), "a receipt with no invoice should not guess a bill");
     assert.equal(out.done, false);
     assert.equal(out.reason, "success_fee_invoice_unresolved");

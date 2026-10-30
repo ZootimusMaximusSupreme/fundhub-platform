@@ -979,8 +979,8 @@ export async function onPaymentReceivedMoney(event, db) {
       };
     }
     // Same-buyer payment links may belong to different invoices.
-    if (linkContext.invoice_id && p.invoiceId &&
-        String(linkContext.invoice_id) !== String(p.invoiceId)) {
+    if (p.invoiceId &&
+        String(linkContext.invoice_id || "") !== String(p.invoiceId)) {
       return { done: false, reason: "payment_link_invoice_conflict" };
     }
   }
