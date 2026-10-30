@@ -162,14 +162,37 @@ final class FundhubTests: XCTestCase {
     @MainActor
     func testStaffNotificationTapRequestIsOneUseAndExpires() {
         let push = NativePushCenter.shared
+        push.resetAfterInvalidSession()
         let tappedAt = Date(timeIntervalSince1970: 1_700_000_000)
         let info = ["path": NativePushTap.staffPath, "kind": "upcoming",
                     "client_id": "56a40391-e541-4a89-873b-37eab9d6d953"]
-        XCTAssertTrue(push.recordNotificationTap(userInfo: info, now: tappedAt))
-        XCTAssertEqual(push.takeStaffOpenRequest(now: tappedAt.addingTimeInterval(60))?.kind, "upcoming")
-        XCTAssertNil(push.takeStaffOpenRequest(now: tappedAt.addingTimeInterval(61)))
-        XCTAssertTrue(push.recordNotificationTap(userInfo: info, now: tappedAt))
-        XCTAssertNil(push.takeStaffOpenRequest(now: tappedAt.addingTimeInterval(NativePushTap.requestLifetime + 1)))
+        XCTAssertFalse(push.recordNotificationTap(userInfo: info, now: tappedAt))
+        XCTAssertTrue(push.recordNotificationTap(userInfo: info, now: tappedAt, sessionBearer: "session-A"))
+        XCTAssertEqual(push.takeStaffOpenRequest(now: tappedAt.addingTimeInterval(60),
+                                                 currentBearer: "session-A")?.kind, "upcoming")
+        XCTAssertNil(push.takeStaffOpenRequest(now: tappedAt.addingTimeInterval(61), currentBearer: "session-A"))
+        XCTAssertTrue(push.recordNotificationTap(userInfo: info, now: tappedAt, sessionBearer: "session-A"))
+        XCTAssertNil(push.takeStaffOpenRequest(now: tappedAt.addingTimeInterval(NativePushTap.requestLifetime + 1),
+                                               currentBearer: "session-A"))
+        push.resetAfterInvalidSession()
+    }
+
+    @MainActor
+    func testStaffNotificationTapCannotCrossSessions() {
+        let push = NativePushCenter.shared
+        push.resetAfterInvalidSession()
+        let now = Date()
+        let info = ["path": NativePushTap.staffPath, "kind": "lead",
+                    "client_id": "56a40391-e541-4a89-873b-37eab9d6d953"]
+        XCTAssertTrue(push.recordNotificationTap(userInfo: info, now: now, sessionBearer: "session-A"))
+        XCTAssertNil(push.takeStaffOpenRequest(now: now, currentBearer: "session-B"))
+        XCTAssertNil(push.takeStaffOpenRequest(now: now, currentBearer: "session-A"))
+        XCTAssertTrue(push.recordNotificationTap(userInfo: info, now: now, sessionBearer: "session-A"))
+        push.resetAfterInvalidSession()
+        XCTAssertNil(push.takeStaffOpenRequest(now: now, currentBearer: "session-A"))
+        XCTAssertTrue(push.recordNotificationTap(userInfo: ["path": NativePushTap.portalPath], now: now))
+        push.resetAfterInvalidSession()
+        XCTAssertFalse(push.takePortalOpenRequest(now: now))
     }
 
     func testServerErrorDoesNotInvalidateSession() async throws {

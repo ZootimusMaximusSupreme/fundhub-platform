@@ -514,6 +514,9 @@ private struct HomeView: View {
                 ProgressView("Connecting to Fundhub")
             }
         }
+        .onChange(of: store.token) { _, _ in staffAlertPath = nil }
+        .onChange(of: store.identity?.principal) { _, _ in staffAlertPath = nil }
+        .onChange(of: store.identity?.staff) { _, _ in staffAlertPath = nil }
         .task(id: push.openRequestId) {
             if store.identity?.principal == "client", push.takePortalOpenRequest() {
                 await store.refreshSession()
@@ -521,9 +524,11 @@ private struct HomeView: View {
                 reloadId = UUID()
                 return
             }
-            guard let alert = push.takeStaffOpenRequest(), store.identity?.principal == "staff" else { return }
+            guard store.identity?.principal == "staff",
+                  let alert = push.takeStaffOpenRequest(currentBearer: store.token) else { return }
             await store.refreshSession()
             guard store.phase == .signedIn, store.identity?.principal == "staff",
+                  store.token != nil,
                   let path = alert.workspacePath(role: store.identity?.staff.role) else { return }
             staffAlertPath = path
             reloadId = UUID()

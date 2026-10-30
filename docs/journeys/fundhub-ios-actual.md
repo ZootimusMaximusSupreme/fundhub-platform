@@ -20,3 +20,10 @@ dialer. `src/push/native-send.mjs` claims each staff alert once in
 `staff_apns_alerts` before the Apple send. Apple App ID capability, APNs key,
 signed entitlement, and a delivered real-iPhone staff test have not been
 verified. This is source behavior, not a live PASS.
+
+Staff notification taps are bound to the saved bearer session when tapped. A
+different sign-in cannot consume that queued contact link, and sign-out clears
+both staff and client queued opens. A cold-start tap reads the saved sign-in
+before queuing the link; without one, the tap fails closed. The queued link is
+single-use and expires after five minutes. The workspace clears its selected
+staff contact path when the token or signed-in identity changes.
