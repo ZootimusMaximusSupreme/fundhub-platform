@@ -455,10 +455,11 @@
 
   function slide(c, label, inner) {
     return '<div class="slide"><div class="slide-hd"><span class="mono">' + esc(c) + " / " + esc(label) +
-      '</span><div class="rule"></div><span class="brand">fundhub<span>.</span></span></div><div class="hair"></div>' +
-      '<div class="slide-body">' + inner + "</div></div>";
+      '</span><div class="rule"></div>' + (state.engine?.sample === true ? '<span class="badge fh-astra-caption">Sample file</span>' : "") +
+      '<span class="brand">fundhub<span>.</span></span></div><div class="hair"></div>' +
+      '<div class="slide-body fh-astra-workspace">' + inner + "</div></div>";
   }
-  function kicker(t) { return '<div class="kicker"><span class="mono" style="color:var(--gray)">' + esc(t) + "</span></div>"; }
+  function kicker(t) { return '<div class="kicker fh-astra-caption"><span class="mono" style="color:var(--gray)">' + esc(t) + "</span></div>"; }
   /* F22 — S-19, S-20 and S-23 put a band of content at the top of the slide and
      left the bottom two thirds blank white. This is the half the CUSTOMER sees
      on a screen share, and Chris was reading it at 50% zoom, where it fell
@@ -479,8 +480,8 @@
     }).join("") + "</div>";
   }
   function stats(items) {
-    return '<div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">' + items.map(function (it) {
-      return '<div class="stat"><div class="v">' + it[0] + '</div><span class="mono" style="color:var(--gray)">' + esc(it[1]) + "</span></div>";
+    return '<div class="fh-astra-summary" style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">' + items.map(function (it) {
+      return '<div class="stat fh-astra-stat"><div class="v sv">' + it[0] + '</div><span class="mono sd" style="color:var(--gray)">' + esc(it[1]) + "</span></div>";
     }).join("") + "</div>";
   }
   function moneyYr(row) {
@@ -489,8 +490,8 @@
   }
   function scores(fico) {
     var rows = [["Experian", fico && fico.ex], ["TransUnion", fico && fico.tu], ["Equifax", fico && fico.eq]];
-    return '<div style="display:flex;gap:9px;margin-top:12px;flex-wrap:wrap">' + rows.map(function (r) {
-      return '<div class="score"><span class="mono">' + r[0] + '</span><div class="v">' + dash(r[1]) + "</div></div>";
+    return '<div class="fh-astra-summary" style="display:flex;gap:9px;margin-top:12px;flex-wrap:wrap">' + rows.map(function (r) {
+      return '<div class="score fh-astra-stat"><span class="mono fh-astra-caption">' + r[0] + '</span><div class="v sv">' + dash(r[1]) + "</div></div>";
     }).join("") + "</div>";
   }
   /* Scores off a sample report say so (live hole 23). engine.sample is set by
@@ -587,7 +588,7 @@
   /* Row 7: "number" is banned in sales copy (outcome-first-copy). */
   var NOT_IN_YET = "Your results are not in yet";
   function unavail() {
-    return '<div class="unavail"><span class="mono">' + NOT_IN_YET + '</span><p class="sub" style="margin-top:6px">Nothing here is guessed.</p></div>';
+    return '<div class="unavail fh-astra-state" role="status"><span class="mono">' + NOT_IN_YET + '</span><p class="sub" style="margin-top:6px">Nothing here is guessed.</p></div>';
   }
 
   /* ───────── THE VISUAL SLOTS (section 10.8) ─────────
@@ -1760,11 +1761,11 @@
       var signIn = state.errorSignIn
         ? ' &nbsp;·&nbsp; <a href="' + esc(state.errorSignIn) + '">Sign in as someone else</a>'
         : "";
-      root.innerHTML = '<div class="gate"><span class="mono">Present</span><h1 class="h1" style="margin-top:10px">' + esc(state.error) + "</h1><p class=\"sub\"><a href=\"closer-dashboard.html" + (contactId ? ("?client_id=" + encodeURIComponent(contactId)) : "") + '">Back to Closer Dashboard</a>' + signIn + '</p></div>';
+      root.innerHTML = '<div class="gate fh-astra-state" role="alert"><span class="mono">Present</span><h1 class="h1 fh-astra-heading" style="margin-top:10px">' + esc(state.error) + "</h1><p class=\"sub\"><a href=\"closer-dashboard.html" + (contactId ? ("?client_id=" + encodeURIComponent(contactId)) : "") + '">Back to Closer Dashboard</a>' + signIn + '</p></div>';
       return;
     }
     if (!state.loaded) {
-      root.innerHTML = '<div class="gate"><span class="mono">Present</span><p class="sub">Loading this contact…</p></div>';
+      root.innerHTML = '<div class="gate fh-astra-state" role="status" aria-live="polite"><span class="mono">Present</span><p class="sub">Loading this contact…</p></div>';
       return;
     }
     var dots = DECK.map(function (s, i) { return '<i class="' + (i <= state.idx ? "on" : "") + '"></i>'; }).join("");
