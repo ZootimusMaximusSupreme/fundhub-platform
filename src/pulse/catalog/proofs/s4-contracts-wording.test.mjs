@@ -137,17 +137,28 @@ test("editing saves by id with no short name; Archive and Turn back on post the 
     await page.locator("#btnArchive").click();
     await waitFor(() => writes.length === 2);
     assert.deepEqual(writes[1], { action: "archive_template", id: TPL, active: false });
+    // Successful archive selects Decommissioned automatically; both archived
+    // rows must be visible there. Only the *original client tab* loses TPL.
+    await page.locator('#tabDecommissioned[aria-selected="true"]').waitFor();
+    await page.locator(`tr[data-tid="${OLD}"]`).waitFor();
+    await page.locator(`tr[data-tid="${TPL}"]`).waitFor();
+    assert.equal(await page.locator("#tplList tr[data-tid]").count(), 2,
+      "both archived wordings are visible on the automatically selected tab");
+    await page.locator("#tabClient").click();
     await page.locator(`tr[data-tid="${TPL}"]`).waitFor({ state: "detached" });
     await page.locator("#tabDecommissioned").click();
-    assert.equal(await page.locator("#tplList tr[data-tid]").count(), 2, "both archived wordings are in the separate tab");
     await page.locator(`tr[data-tid="${OLD}"]`).click();
     assert.equal(await page.locator("#btnArchive").innerText(), "Turn back on");
     await page.locator("#btnArchive").click();
     await waitFor(() => writes.length === 3);
     assert.deepEqual(writes[2], { action: "archive_template", id: OLD, active: true });
+    // Restoring selects the Client tab automatically. Confirm it is restored
+    // there and is absent from Decommissioned; TPL stays archived.
+    await page.locator('#tabClient[aria-selected="true"]').waitFor();
+    await page.locator(`tr[data-tid="${OLD}"]`).waitFor();
+    await page.locator("#tabDecommissioned").click();
     await page.locator(`tr[data-tid="${OLD}"]`).waitFor({ state: "detached" });
-    await page.locator("#tabClient").click();
-    assert.equal(await page.locator(`tr[data-tid="${OLD}"]`).count(), 1, "restored wording is back in the client tab");
+    await page.locator(`tr[data-tid="${TPL}"]`).waitFor();
   });
   await page.close();
 });

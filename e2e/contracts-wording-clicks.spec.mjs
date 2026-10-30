@@ -100,24 +100,32 @@ test.describe("contracts: the wording editor", () => {
     expect(writes[0]).not.toHaveProperty("template_key");
   });
 
-  test("Decommission moves a wording off the client tab; Turn back on restores it", async ({ page }) => {
-    const { writes } = await open(page, { templates: [TEXT_TEMPLATE, { ...TEXT_TEMPLATE, id: "7e000000-0000-4000-8000-000000000009", template_key: "OLD", active: false }] });
+  test("Decommission moves to the archived tab automatically; restore returns to client", async ({ page }) => {
+    const oldId = "7e000000-0000-4000-8000-000000000009";
+    const { writes } = await open(page, { templates: [TEXT_TEMPLATE, { ...TEXT_TEMPLATE, id: oldId, template_key: "OLD", active: false }] });
     await page.locator(`tr[data-tid="${TPL}"]`).click();
     await expect(page.locator("#btnArchive")).toHaveText("Decommission");
     await page.locator("#btnArchive").click();
     await expect.poll(() => writes.length).toBe(1);
     expect(writes[0]).toEqual({ action: "archive_template", id: TPL, active: false });
+    // On success the real page selects the destination tab BEFORE re-reading
+    // templates. The retired row must be present there, not "disappear".
+    await expect(page.locator("#tabDecommissioned")).toHaveAttribute("aria-selected", "true");
+    await expect(page.locator("#tplList tr[data-tid]")).toHaveCount(2);
+    await expect(page.locator(`tr[data-tid="${TPL}"]`)).toHaveCount(1);
+    await page.locator("#tabClient").click();
     await expect(page.locator(`tr[data-tid="${TPL}"]`)).toHaveCount(0);
     await page.locator("#tabDecommissioned").click();
-    await expect(page.locator("#tplList tr[data-tid]")).toHaveCount(2);
-    await page.locator('tr[data-tid="7e000000-0000-4000-8000-000000000009"]').click();
+    await page.locator(`tr[data-tid="${oldId}"]`).click();
     await expect(page.locator("#btnArchive")).toHaveText("Turn back on");
     await page.locator("#btnArchive").click();
     await expect.poll(() => writes.length).toBe(2);
-    expect(writes[1]).toEqual({ action: "archive_template", id: "7e000000-0000-4000-8000-000000000009", active: true });
-    await expect(page.locator('tr[data-tid="7e000000-0000-4000-8000-000000000009"]')).toHaveCount(0);
-    await page.locator("#tabClient").click();
-    await expect(page.locator('tr[data-tid="7e000000-0000-4000-8000-000000000009"]')).toHaveCount(1);
+    expect(writes[1]).toEqual({ action: "archive_template", id: oldId, active: true });
+    await expect(page.locator("#tabClient")).toHaveAttribute("aria-selected", "true");
+    await expect(page.locator(`tr[data-tid="${oldId}"]`)).toHaveCount(1);
+    await page.locator("#tabDecommissioned").click();
+    await expect(page.locator(`tr[data-tid="${oldId}"]`)).toHaveCount(0);
+    await expect(page.locator(`tr[data-tid="${TPL}"]`)).toHaveCount(1);
   });
 
   test("a refused save is said and nothing is claimed", async ({ page }) => {
