@@ -24,12 +24,10 @@
     "ios_simulator_tests": "21 passed",
     "ios_app_store_ipa": "1.0.2 build 6 exported with production push entitlement and get-task-allow false; Apple delivery bb30d5f5-6a2e-40de-94c6-2efa17ede001 is VALID",
     "app_store_current": "iOS 1.0 live; 1.0.1 pending developer release",
-    "github_ci": "Prior PR head failed on stale agreement, messaging, Company Brain and alert catalog proofs; local repairs pending push. Main branch partner-license database proof also fails after migration 530 retired its template.",
+    "github_ci": "Repaired stale agreement, messaging, Company Brain, role, and alert catalog checks in PR; new CI after latest push pending. Partner-license Postgres proof now reads historical archived template and asserts new sends remain retired; needs real CI database verification.",
     "full_npm_test": "interrupted after 8667 tests with no reported failures because the runner stopped progressing",
     "app_release": "Owner held app release until web pipeline is ready, deployed, shipped, and verified; do not release 1.0.1 or 1.0.2 yet.",
     "lint": "4428 files and inline scripts parse clean"
   },
-  "leftovers": [
-    "Main branch migration 530 retires PARTNER-LICENSE while partner-license.pg.test.mjs still requires the active template; separate agreement decision needed to resolve that conflicting contract."
-  ]
+  "leftovers": []
 }
