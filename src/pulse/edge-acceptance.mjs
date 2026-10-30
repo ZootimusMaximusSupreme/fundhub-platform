@@ -6,6 +6,9 @@ import { PULL_CHECK_IDS } from "./beats/lib/soft-pull-truth.mjs";
 
 export const EDGE_CONTRACT_VERSION = 1;
 
+// client-lifecycle.mjs hosts payment.received, diagnostic.paid, deposit.paid and
+// analysis.completed alongside booking work. Every changed existing copy needs
+// all relevant P0 money/consent/funding proof reviews, not booking alone.
 export const CRITICAL_EDGES = Object.freeze([
   {
     id: "lead-booking-call-outcome", severity: "P1", owner: "Front-house",
@@ -19,21 +22,21 @@ export const CRITICAL_EDGES = Object.freeze([
     event: "payment.received", consumer: "onPaymentReceived / entitlement handlers",
     receipt: "payment ledger + active entitlement + portal read", graceMinutes: null,
     pulse: "payments:paid-no-entitlement",
-    paths: ["src/merchant/", "src/billing/", "src/payments/", "src/entitlements/", "src/ledger/", "src/handlers/money-chain.mjs", "src/handlers/payment-links.mjs", "src/invoices/", "api/read/invoices.mjs", "src/adapters/whop", "api/payment", "api/checkout"]
+    paths: ["src/merchant/", "src/billing/", "src/payments/", "src/entitlements/", "src/ledger/", "src/handlers/money-chain.mjs", "src/handlers/client-lifecycle.mjs", "src/handlers/payment-links.mjs", "src/invoices/", "api/read/invoices.mjs", "src/adapters/whop", "api/payment", "api/checkout"]
   },
   {
     id: "consent-crs-result", severity: "P0", owner: "Fulfillment",
     event: "diagnostic.paid", consumer: "onDiagnosticPaidSoftPull / c-00-crs-soft-pull-request",
     receipt: "consent + credit-pull result + stored CRS report", graceMinutes: null,
     pulse: PULL_CHECK_IDS[0],
-    paths: ["api/soft-pull-approve.mjs", "src/handlers/diagnostic-soft-pull.mjs", "src/handlers/crs-full-report.mjs", "src/finance/crs", "src/finance/soft-pulls.mjs", "src/workflows/c-00-crs", "public/app/soft-pull-approve.html"]
+    paths: ["api/soft-pull-approve.mjs", "src/handlers/client-lifecycle.mjs", "src/handlers/diagnostic-soft-pull.mjs", "src/handlers/crs-full-report.mjs", "src/finance/crs", "src/finance/soft-pulls.mjs", "src/workflows/c-00-crs", "public/app/soft-pull-approve.html"]
   },
   {
     id: "round-funded-fee-commission", severity: "P0", owner: "Fulfillment / A/R",
     event: "round.funded", consumer: "onRoundFundedMoney / fee and payout handlers",
     receipt: "funding_rounds + applications + fee bill + commission", graceMinutes: 30,
     pulse: "trip:funding",
-    paths: ["src/funding/", "src/finance/funding", "src/invoices/", "src/inquiry-ops/", "src/handlers/funding", "src/handlers/money-chain.mjs", "src/commissions/", "src/money/", "api/funding"]
+    paths: ["src/funding/", "src/finance/funding", "src/invoices/", "src/inquiry-ops/", "src/handlers/funding", "src/handlers/client-lifecycle.mjs", "src/handlers/money-chain.mjs", "src/commissions/", "src/money/", "api/funding"]
   },
   {
     id: "repair-enrollment-bureau-result", severity: "P1", owner: "Fulfillment",
