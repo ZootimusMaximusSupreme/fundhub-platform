@@ -357,12 +357,29 @@ describe("GET /api/dashboard/pipeline, the board's own statements run by a SQL e
       { id: "cancelled", org_id: A, client_id: K.ann, starts_at: later, status: "cancelled" },
       { id: "foreign", org_id: B, client_id: K.ann, starts_at: later, status: "booked" },
     ]) e.insert("bookings", { ...row, created_at: row.starts_at });
-    assert.equal(byId(await callEngine({ key: "sales" }, e))["card-ann"].booked_starts_at, next);
-    assert.equal(byId(await callEngine({ key: "funding_card_stacking" }, e))["f-ann"].booked_starts_at, null);
+    const nextCard = byId(await callEngine({ key: "sales" }, e))["card-ann"];
+    assert.equal(nextCard.booked_starts_at, next);
+    assert.equal(nextCard.booked_kind, "rescheduled");
+    const funding = byId(await callEngine({ key: "funding_card_stacking" }, e))["f-ann"];
+    assert.equal(funding.booked_starts_at, null);
+    assert.equal(funding.booked_kind, null);
 
     const pastOnly = engineBoard();
     pastOnly.insert("bookings", { id: "past", org_id: A, client_id: K.ann, starts_at: past, status: "booked", created_at: past });
-    assert.equal(byId(await callEngine({ key: "sales" }, pastOnly))["card-ann"].booked_starts_at, past);
+    const previousCard = byId(await callEngine({ key: "sales" }, pastOnly))["card-ann"];
+    assert.equal(previousCard.booked_starts_at, past);
+    assert.equal(previousCard.booked_kind, "booked");
+
+    const repeat = engineBoard();
+    repeat.insert("bookings", {
+      id: "original", org_id: A, client_id: K.ann,
+      starts_at: past, status: "completed", created_at: past
+    });
+    repeat.insert("bookings", {
+      id: "second", org_id: A, client_id: K.ann,
+      starts_at: next, status: "booked", created_at: next
+    });
+    assert.equal(byId(await callEngine({ key: "sales" }, repeat))["card-ann"].booked_kind, "rebooked");
   });
 
   test("the stages come in their set order and each card sits under the stage its own row names, newest first", async () => {
