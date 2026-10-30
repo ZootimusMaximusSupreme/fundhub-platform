@@ -210,6 +210,8 @@ export const TRIPWIRES = Object.freeze({
 });
 
 export const NOT_CUSTOMER_FACING = Object.freeze({
+  "route:company-brain/library":
+    "Staff-only approved instruction index: it reads company files allowed for the signed-in employee's role and never serves a customer directly. Its door is watched by reg:company-brain/library.",
   "page:leads/c01cb7592c8bb994130158e897e99bf1/index.html":
     "Private staff scratchpad: it stores blank lead notes only in this browser's localStorage, sends nothing to Fundhub, and is marked noindex.",
   "desk:morning-brief.html":
