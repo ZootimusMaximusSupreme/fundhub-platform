@@ -57,7 +57,7 @@ test("foreign org cannot attach an explicit round.started ID", async () => {
   const result = await ensureFundingRound(db, evt(B, CC, { fundingRoundId: RA }));
   assert.equal(result.round, null);
   assert.equal(db.writes, 0);
-  assert.match(db.queries.find(x => /WHERE id = \$1\b/.test(x.q)).q, /org_id = \$2 AND client_id = \$3/);
+  assert.match(db.queries.find(x => /FROM funding_rounds WHERE id = \$1\b/.test(x.q)).q, /org_id = \$2 AND client_id = \$3/);
 });
 test("same org different client cannot borrow a round ID", async () => {
   const db = fakeDb();

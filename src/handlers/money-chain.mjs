@@ -533,8 +533,8 @@ export async function ensureSalePayment(db, event, {
   }
   if (sourceEventId) {
     const ex = await db.query(
-      `SELECT * FROM sale_payments WHERE org_id = $1 AND client_id = $2 AND source_event_id = $3 LIMIT 1`,
-      [orgId, clientId, sourceEventId]
+      `SELECT * FROM sale_payments WHERE org_id = $1 AND source_event_id = $2 LIMIT 1`,
+      [orgId, sourceEventId]
     );
     if (ex.rows[0]) return settle(ex.rows[0], false);
   }
@@ -1110,8 +1110,8 @@ export async function ensureFundingRound(db, event, { status = "started" } = {})
 
   if (sourceEventId) {
     const byEvent = await db.query(
-      `SELECT * FROM funding_rounds WHERE org_id = $1 AND source_event_id = $2 LIMIT 1`,
-      [orgId, sourceEventId]
+      `SELECT * FROM funding_rounds WHERE org_id = $1 AND client_id = $2 AND source_event_id = $3 LIMIT 1`,
+      [orgId, clientId, sourceEventId]
     );
     if (byEvent.rows[0]) {
       return { round: byEvent.rows[0], created: false, clientId };
