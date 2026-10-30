@@ -94,3 +94,42 @@ test("an ambiguous manager roster leaves the task in the manager queue", async (
   assert.equal(writes[0].assigneeRole, "sales_manager");
   assert.equal(writes[0].assigneeStaffId, null);
 });
+
+test("when no sales manager is active, the review reaches the sole owner", async () => {
+  const writes = [];
+  const db = { async query(sql) {
+    if (/FROM staff s/.test(sql)) return { rows: [
+      { org_id: ORG, staff_id: STAFF, name: "Closer", email: "rep@fundhub.ai", role: "closer", held: 10, deposits: 1 }
+    ] };
+    if (/role = \$2/.test(sql)) return { rows: [] };
+    if (/role = 'owner'/.test(sql)) return { rows: [{ id: MANAGER }] };
+    if (/FROM tasks/.test(sql)) return { rows: [] };
+    throw new Error(`unexpected SQL: ${sql}`);
+  } };
+  const result = await runManagerKpiReview(db, {
+    now: NOW,
+    assigneeFor: async () => ({ assigneeRole: "sales_manager", assigneeStaffId: null }),
+    createTask: async (_db, spec) => { writes.push(spec); return { created: true, id: "task-4" }; }
+  });
+  assert.equal(result.ok, true);
+  assert.equal(writes[0].assigneeRole, "owner");
+  assert.equal(writes[0].assigneeStaffId, MANAGER);
+});
+
+test("no active manager or owner leaves an error receipt and no task", async () => {
+  const db = { async query(sql) {
+    if (/FROM staff s/.test(sql)) return { rows: [
+      { org_id: ORG, staff_id: STAFF, name: "Closer", email: "rep@fundhub.ai", role: "closer", held: 10, deposits: 1 }
+    ] };
+    if (/SELECT id FROM staff/.test(sql)) return { rows: [] };
+    throw new Error(`unexpected SQL: ${sql}`);
+  } };
+  const result = await runManagerKpiReview(db, {
+    now: NOW,
+    assigneeFor: async () => ({ assigneeRole: "sales_manager", assigneeStaffId: null }),
+    createTask: async () => { throw new Error("no task should be created"); }
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.created, 0);
+  assert.match(result.failures[0].error, /No active manager or owner/);
+});
