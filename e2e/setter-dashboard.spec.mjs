@@ -62,6 +62,16 @@ test("setter score strip stays inside a phone viewport", async ({ page }) => {
   await expect(page.locator(".setter-numbers")).toBeVisible();
 });
 
+test("a lead alert opens the exact contact and its call link", async ({ page }) => {
+  const another = { ...queue.items[0], client_id: "bbbbbbbb-2222-4222-8222-222222222222",
+    client_name: "Pat Rivera", phone: "+15550987654" };
+  await openScreen(page, `/app/setter-dashboard.html?client_id=${another.client_id}`, SETTER, {
+    "/api/read/setter-dashboard": { ...queue, count: 2, items: [queue.items[0], another] }
+  });
+  await expect(page.locator("#setter-detail h2")).toHaveText("Pat Rivera");
+  await expect(page.locator("#setter-detail a[href='tel:+15550987654']")).toBeVisible();
+});
+
 test("setter can correct survey answers during a call and see saved edits after reload", async ({ page }) => {
   const item = structuredClone(queue.items[0]);
   item.survey = [

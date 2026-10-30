@@ -121,6 +121,28 @@ final class FundhubTests: XCTestCase {
         XCTAssertFalse(NativePushTap.opensClientPortal(["path": 123]))
     }
 
+    func testStaffAlertTapOpensOnlyAValidatedClientInTheRightWorkspace() {
+        let id = "56a40391-e541-4a89-873b-37eab9d6d953"
+        let alert = NativePushTap.staffAlert(["path": NativePushTap.staffPath,
+                                              "kind": "lead", "client_id": id])
+        XCTAssertEqual(alert?.workspacePath(role: "setter"), "/app/setter-dashboard.html?client_id=\(id)")
+        XCTAssertEqual(alert?.workspacePath(role: "closer"), "/app/closer-dashboard.html?client_id=\(id)")
+        XCTAssertEqual(alert?.workspacePath(role: "owner"), "/app/setter-dashboard.html?client_id=\(id)")
+        XCTAssertNil(alert?.workspacePath(role: "csm"))
+        let set = NativePushTap.staffAlert(["path": NativePushTap.staffPath,
+                                            "kind": "set", "client_id": id])
+        XCTAssertEqual(set?.workspacePath(role: "owner"), "/app/closer-dashboard.html?client_id=\(id)")
+        XCTAssertNil(set?.workspacePath(role: "setter"))
+        XCTAssertNil(NativePushTap.staffAlert(["path": NativePushTap.staffPath,
+                                              "kind": "lead", "client_id": "not-an-id"]))
+        XCTAssertNil(NativePushTap.staffAlert(["path": "https://evil.example",
+                                              "kind": "lead", "client_id": id]))
+        XCTAssertNil(NativePushTap.staffAlert(["path": NativePushTap.staffPath,
+                                              "kind": "unknown", "client_id": id]))
+        XCTAssertEqual(URL(string: alert!.workspacePath(role: "setter")!, relativeTo: FundhubAPI.base)?
+            .absoluteURL.absoluteString, "https://fundhub.ai/app/setter-dashboard.html?client_id=\(id)")
+    }
+
     @MainActor
     func testNotificationTapRequestIsOneUseAndExpires() {
         let push = NativePushCenter.shared
@@ -135,6 +157,19 @@ final class FundhubTests: XCTestCase {
 
         XCTAssertTrue(push.recordNotificationTap(userInfo: ["path": NativePushTap.portalPath], now: tappedAt))
         XCTAssertFalse(push.takePortalOpenRequest(now: tappedAt.addingTimeInterval(NativePushTap.requestLifetime + 1)))
+    }
+
+    @MainActor
+    func testStaffNotificationTapRequestIsOneUseAndExpires() {
+        let push = NativePushCenter.shared
+        let tappedAt = Date(timeIntervalSince1970: 1_700_000_000)
+        let info = ["path": NativePushTap.staffPath, "kind": "upcoming",
+                    "client_id": "56a40391-e541-4a89-873b-37eab9d6d953"]
+        XCTAssertTrue(push.recordNotificationTap(userInfo: info, now: tappedAt))
+        XCTAssertEqual(push.takeStaffOpenRequest(now: tappedAt.addingTimeInterval(60))?.kind, "upcoming")
+        XCTAssertNil(push.takeStaffOpenRequest(now: tappedAt.addingTimeInterval(61)))
+        XCTAssertTrue(push.recordNotificationTap(userInfo: info, now: tappedAt))
+        XCTAssertNil(push.takeStaffOpenRequest(now: tappedAt.addingTimeInterval(NativePushTap.requestLifetime + 1)))
     }
 
     func testServerErrorDoesNotInvalidateSession() async throws {

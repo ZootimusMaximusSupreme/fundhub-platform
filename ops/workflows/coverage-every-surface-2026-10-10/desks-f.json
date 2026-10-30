@@ -2334,13 +2334,13 @@
   },
   {
     "surface": "staff-teams.html",
-    "control": "Editor switch: 'Text when a call is booked' (sends the client's name, phone, email, typed score and survey answers to this person's phone)",
-    "kind": "toggle",
+    "control": "Lead alerts for active setters and the owner; closer texts only after a set lead or before an assigned call",
+    "kind": "read",
     "calls": [],
     "tables": [],
     "impact": "staffOnly",
     "coverage": "ping",
-    "evidence": "reg:staff-teams pings the HTML only; the sender is src/staff/booked-call-alert.mjs (src/staff/booked-call-alert.test.mjs), not in SEND_PATHS and not on any lane"
+    "evidence": "src/staff/lead-alerts.mjs and src/staff/booked-call-alert.mjs send staff alerts; src/staff/lead-alerts.test.mjs checks lead, set, and upcoming paths"
   },
   {
     "surface": "staff-teams.html",
@@ -2360,10 +2360,10 @@
   },
   {
     "surface": "staff-teams.html",
-    "control": "Editor 'Save' for an EXISTING person: name, email, phone, start date, booked-call text switch",
+    "control": "Editor 'Save' for an EXISTING person: name, email, phone, start date",
     "kind": "button",
     "calls": [
-      "POST /api/auth/staff-update {staff_id, name, email, phone, start_date, notify_booked_call_sms}"
+      "POST /api/auth/staff-update {staff_id, name, email, phone, start_date}"
     ],
     "tables": [
       "staff"

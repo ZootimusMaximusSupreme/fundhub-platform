@@ -10,5 +10,13 @@ then clears the local session even when the network is down. A server session th
 or expired cannot pass the sender's device query.
 
 The server's APNs sender only accepts bodies from the existing lock-screen whitelist. It has
-no automatic workflow caller. Apple App ID capability, APNs key, signed entitlement, and a
-delivered real-iPhone test have not been verified. This is source behavior, not a live PASS.
+automatic client workflow callers after a gated client email or text succeeds.
+
+Staff sessions now register their own encrypted device rows through the same
+native-device route. A staff lead, set, or upcoming push opens the relevant
+setter or closer dashboard with `client_id` selected. The setter dashboard
+selects the matching contact row and its existing Call action opens the phone
+dialer. `src/push/native-send.mjs` claims each staff alert once in
+`staff_apns_alerts` before the Apple send. Apple App ID capability, APNs key,
+signed entitlement, and a delivered real-iPhone staff test have not been
+verified. This is source behavior, not a live PASS.

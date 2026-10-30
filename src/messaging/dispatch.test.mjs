@@ -160,11 +160,26 @@ describe("setter contact window in the real dispatcher", () => {
 
   test("7 a.m. staff alert sends to verified staff despite client's SMS STOP", async () => {
     const sms = spy();
+    const native = spy();
     const result = await dispatchOne(staffDb({ optedOut: new Set([`${CLIENT}:sms`]) }), alert(), {
-      fetchImpl: sms, env: APNS_ENV, now: () => new Date("2026-08-01T14:00:00Z")
+      fetchImpl: sms, sendNative: native, env: APNS_ENV, now: () => new Date("2026-08-01T14:00:00Z")
     });
     assert.equal(result.outcome, OUTCOME.SENT);
     assert.equal(sms.calls.length, 1);
+    assert.equal(native.calls.length, 0, "an internal SMS must not trigger a client phone alert");
+  });
+
+  test("new setter lead alert uses the staff gate even with the old switch off", async () => {
+    const sms = spy();
+    const db = fakeDb({ staff: { ...staff, notify_booked_call_sms: false },
+      routing: { sms: { provider: "twilio", enabled: true } } });
+    const result = await dispatchOne(db, claimed({ channel: "sms", rendered_body: "New lead: Pat",
+      template_key: null, provider_ref: `staff-alert:lead:${CLIENT}:${STAFF_ID}`,
+      to_address: staff.phone }), { fetchImpl: sms, env: APNS_ENV,
+      now: () => new Date("2026-08-01T14:00:00Z") });
+    assert.equal(result.outcome, OUTCOME.SENT);
+    assert.equal(sms.calls.length, 1);
+    assert.ok(db.updates.some(({ sql, params }) => sql.includes("compliance_check_passed = true") && params[0] === MSG));
   });
 
   test("5 a.m. staff alert defers to 6 a.m. without a provider call", async () => {

@@ -441,6 +441,11 @@ export async function dispatchOne(db, message, options = {}) {
       // gateAndRecord already set status='blocked'. Nothing further to write.
       return { id: message.id, outcome: OUTCOME.BLOCKED, detail: verdict.reasons.map((x) => x.code) };
     }
+    // Free-form internal work alerts start unapproved and pass the live gate
+    // here. Record that verdict for the staff text health check.
+    if (/^staff-alert:(?:lead|set|upcoming):/.test(String(message.provider_ref || ""))) {
+      await db.query(`UPDATE messages SET compliance_check_passed = true WHERE id = $1`, [message.id]);
+    }
 
     // ---- 1b. DRAFT TEMPLATE HARD GUARD ------------------------------------
     // Even if compliance_passed was flipped true, placeholder [DRAFT] copy
@@ -751,7 +756,10 @@ export async function dispatchOne(db, message, options = {}) {
       // A companion alert follows only a real, gated client email or text.
       // Each phone pipe is independent; an alert failure never retries the
       // already-sent message or changes its recorded delivery result.
-      if (provider.TRANSMITS === true && message.client_id &&
+      if (provider.TRANSMITS === true && message.client_id && !isStaffText({
+            channel: message.channel, templateKey: message.template_key,
+            providerRef: message.provider_ref, toAddress: message.to_address
+          }) &&
           (message.channel === "email" || message.channel === "sms")) {
         try {
           const notification = await notificationForSentMessage(db, message, { now: clock() });

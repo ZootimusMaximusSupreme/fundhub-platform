@@ -234,6 +234,10 @@ export const NOT_CUSTOMER_FACING = Object.freeze({
     "Owner-only: the morning pulse texts Chris's own number its report. It never reaches a customer. Its heartbeat is job daily-pulse.",
   "send:src/staff/blake-lead-watch.mjs":
     "Owner-only: texts Chris the name and phone of a lead Blake referred. Its own header says it never texts the lead. Its heartbeat is job blake-lead-watch.",
+  "send:src/staff/lead-alerts.mjs":
+    "Staff-only: lead, set, and upcoming-call SMS goes to active setters and assigned closers. It never texts the client. The message gate checks the exact staff phone and setter contact hours.",
+  "send:src/staff/booked-call-alert.mjs":
+    "Staff-only: booking SMS goes to active setters and owner, never to the client or closer. The message gate checks the exact staff phone and setter contact hours.",
   "send:src/auth/staff-mail.mjs":
     "Staff-only: emails an employee their login or password link. It never reaches a customer. Its door is watched by reg:auth/invite and the auth lane.",
   "send:src/staff/comp-alerts.mjs":

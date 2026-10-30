@@ -238,7 +238,7 @@ FIX["staff-role"] = {
 };
 
 {
-  const st = person({ role: "closer", notify_booked_call_sms: true });
+  const st = person({ role: "setter", notify_booked_call_sms: false });
   const text = (who, o = {}) => ({
     id: nid("msg"), org_id: ORG, client_id: "client-1", direction: "outbound", channel: "sms",
     template_key: "SMS-S04C-STAFF-BOOKED", rendered_body: "YOU'RE UP: new book", provider: "internal",
@@ -249,25 +249,22 @@ FIX["staff-role"] = {
     base: [R("staff", st), R("messages", text(st))],
     sample: 2,
     violations: {
-      "the switch is on but the person has no phone to text": [R("staff", person({ notify_booked_call_sms: true, phone: null }))],
-      "the switch is on for a job that never gets this text": [R("staff", person({ notify_booked_call_sms: true, role: "partner" }))],
-      "the switch is on for a person who cannot sign in": [R("staff", person({ notify_booked_call_sms: true, status: "invited" }))],
+      "a setter or owner has no phone for lead texts": [R("staff", person({ role: "setter", notify_booked_call_sms: false, phone: null }))],
       "the text has no words": [R("messages", text(st, { rendered_body: " " }))],
       "the text has nobody to go to": [R("messages", text(st, { to_address: null }))],
-      "the text was not marked as having passed the check": [R("messages", text(st, { compliance_check_passed: false }))],
+      "a sent text was not marked as having passed the check": [R("messages", text(st, { status: "sent", compliance_check_passed: false }))],
       "the text is not an outbound text message": [R("messages", text(st, { direction: "inbound" }))],
       "the text names a person who is not on the staff list": [R("messages", text(st, { provider_ref: "workflow:SMS-S04C-STAFF-BOOKED:evt-9:staff-gone" }))]
     },
     adds: Object.fromEntries([
-      "the switch is on but the person has no phone to text", "the switch is on for a job that never gets this text",
-      "the switch is on for a person who cannot sign in", "the text has no words", "the text has nobody to go to",
-      "the text was not marked as having passed the check", "the text is not an outbound text message",
+      "a setter or owner has no phone for lead texts", "the text has no words", "the text has nobody to go to",
+      "a sent text was not marked as having passed the check", "the text is not an outbound text message",
       "the text names a person who is not on the staff list"
     ].map((name) => [name, 1])),
     notRead: [
       ["a text of another template", [R("messages", text(st, { template_key: "SMS-OTHER", rendered_body: " " }))]],
       ["a text older than 90 days", [R("messages", text(st, { created_at: DAYS_AGO(200), rendered_body: " " }))]],
-      ["a switch that is off", [R("staff", person({ notify_booked_call_sms: false, phone: null }))]]
+      ["an inactive staff member", [R("staff", person({ role: "setter", status: "invited", phone: null }))]]
     ]
   };
 }
@@ -820,7 +817,7 @@ test("the booked-call text check names the sender's own template and roles", asy
   const sql = sqlFor(SPEC.get("staff-booked-text"));
   assert.ok(sql.includes(`'${STAFF_BOOKED_TEMPLATE}'`));
   for (const role of STAFF_BOOKED_ROLES) assert.ok(sql.includes(`'${role}'`), role);
-  assert.equal(STAFF_BOOKED_ROLES.length, 4);
+  assert.equal(STAFF_BOOKED_ROLES.length, 2);
 });
 
 test("the shoot marks check reads the keys the real mark writer writes, and the film order's own open rule", async () => {

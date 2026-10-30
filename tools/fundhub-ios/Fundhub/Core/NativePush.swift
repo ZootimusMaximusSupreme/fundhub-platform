@@ -62,12 +62,38 @@ enum NativePushConsent {
 
 enum NativePushTap {
     static let portalPath = "/app/client-portal.html"
+    static let staffPath = "/app/staff-alert"
     static let requestLifetime: TimeInterval = 5 * 60
+
+    struct StaffAlert: Equatable {
+        let kind: String
+        let clientId: String
+
+        func workspacePath(role: String?) -> String? {
+            let page: String
+            switch role {
+            case "setter" where kind == "lead": page = "/app/setter-dashboard.html"
+            case "closer": page = "/app/closer-dashboard.html"
+            case "owner": page = kind == "lead" ? "/app/setter-dashboard.html" : "/app/closer-dashboard.html"
+            default: return nil
+            }
+            return "\(page)?client_id=\(clientId)"
+        }
+    }
 
     static func opensClientPortal(_ userInfo: [AnyHashable: Any]) -> Bool {
         // APNs supplies this path from our server's approved payload. Never
         // navigate to a URL, query string, or client ID supplied by a push.
         (userInfo["path"] as? String) == portalPath
+    }
+
+    static func staffAlert(_ userInfo: [AnyHashable: Any]) -> StaffAlert? {
+        guard (userInfo["path"] as? String) == staffPath,
+              let kind = userInfo["kind"] as? String,
+              ["lead", "set", "upcoming"].contains(kind),
+              let rawId = userInfo["client_id"] as? String,
+              let id = UUID(uuidString: rawId) else { return nil }
+        return StaffAlert(kind: kind, clientId: id.uuidString.lowercased())
     }
 }
 
@@ -80,9 +106,10 @@ final class NativePushCenter: ObservableObject {
     }
 
     @Published private(set) var state: State = .checking
-    @Published private(set) var portalOpenRequestId = 0
+    @Published private(set) var openRequestId = 0
     private var bearer: String?
     private var pendingPortalOpenAt: Date?
+    private var pendingStaffOpen: (alert: NativePushTap.StaffAlert, at: Date)?
     private let api = FundhubAPI()
     private let registeredKey = "fundhub.nativePush.registered"
 
@@ -90,10 +117,17 @@ final class NativePushCenter: ObservableObject {
 
     @discardableResult
     func recordNotificationTap(userInfo: [AnyHashable: Any], now: Date = Date()) -> Bool {
-        guard NativePushTap.opensClientPortal(userInfo) else { return false }
-        pendingPortalOpenAt = now
-        portalOpenRequestId &+= 1
-        return true
+        if NativePushTap.opensClientPortal(userInfo) {
+            pendingPortalOpenAt = now
+            openRequestId &+= 1
+            return true
+        }
+        if let alert = NativePushTap.staffAlert(userInfo) {
+            pendingStaffOpen = (alert, now)
+            openRequestId &+= 1
+            return true
+        }
+        return false
     }
 
     func takePortalOpenRequest(now: Date = Date()) -> Bool {
@@ -101,6 +135,13 @@ final class NativePushCenter: ObservableObject {
         pendingPortalOpenAt = nil
         let age = now.timeIntervalSince(receivedAt)
         return age >= 0 && age <= NativePushTap.requestLifetime
+    }
+
+    func takeStaffOpenRequest(now: Date = Date()) -> NativePushTap.StaffAlert? {
+        guard let pending = pendingStaffOpen else { return nil }
+        pendingStaffOpen = nil
+        let age = now.timeIntervalSince(pending.at)
+        return age >= 0 && age <= NativePushTap.requestLifetime ? pending.alert : nil
     }
 
     func attach(bearer: String) async {

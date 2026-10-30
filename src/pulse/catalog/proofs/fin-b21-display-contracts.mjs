@@ -176,7 +176,7 @@ check({
 check({
   key: "staff-profile",
   surface: STAFF_SURFACE,
-  control: "Editor 'Save' for an EXISTING person: name, email, phone, start date, booked-call text switch",
+  control: "Editor 'Save' for an EXISTING person: name, email, phone, start date",
   requirement: "Every real person must have a name, a clean lower-case login email with an @, no phone saved as empty words, and a person who can sign in must have an email.",
   parts: [{
     from: `staff st`,
@@ -211,27 +211,24 @@ check({
 check({
   key: "staff-booked-text",
   surface: STAFF_SURFACE,
-  control: "Editor switch: 'Text when a call is booked' (sends the client's name, phone, email, typed score and survey answers to this person's phone)",
-  requirement: "A person with the switch on must have a phone, a job that gets this text, and a working login; every booked-call text of the last 90 days must have words, a number to go to, a passed check, and a person who exists.",
+  control: "Lead alerts for active setters and the owner; closer texts only after a set lead or before an assigned call",
+  requirement: "Each active setter or owner needs a phone for lead texts; every staff alert text of the last 90 days must have words, a number to go to, a passed check, and a person who exists.",
   parts: [
     {
       from: `staff st`,
-      where: `st.org_id = $1::uuid AND ${REAL_STAFF} AND st.notify_booked_call_sms = true`,
+      where: `st.org_id = $1::uuid AND ${REAL_STAFF} AND st.status = 'active' AND lower(COALESCE(st.role, '')) IN ('owner', 'setter')`,
       bad: [
-        ["the switch is on but the person has no phone to text", BLANK("st.phone")],
-        ["the switch is on for a job that never gets this text",
-          `lower(COALESCE(st.role, '')) NOT IN ('owner', 'closer', 'sales_manager', 'setter')`],
-        ["the switch is on for a person who cannot sign in", `st.status <> 'active'`]
+        ["a setter or owner has no phone for lead texts", BLANK("st.phone")]
       ]
     },
     {
       from: `messages m`,
-      where: `m.org_id = $1::uuid AND m.template_key = 'SMS-S04C-STAFF-BOOKED' AND COALESCE(m.is_demo, false) = false
+      where: `m.org_id = $1::uuid AND (m.template_key = 'SMS-S04C-STAFF-BOOKED' OR m.provider_ref LIKE 'staff-alert:%') AND COALESCE(m.is_demo, false) = false
       AND m.created_at > now() - interval '90 days'`,
       bad: [
         ["the text has no words", BLANK("m.rendered_body")],
         ["the text has nobody to go to", BLANK("m.to_address")],
-        ["the text was not marked as having passed the check", `COALESCE(m.compliance_check_passed, false) = false`],
+        ["a sent text was not marked as having passed the check", `m.status = 'sent' AND COALESCE(m.compliance_check_passed, false) = false`],
         ["the text is not an outbound text message", `m.direction <> 'outbound' OR m.channel <> 'sms'`],
         ["the text names a person who is not on the staff list", `NOT EXISTS (
             SELECT 1 FROM staff p
