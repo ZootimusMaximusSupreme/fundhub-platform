@@ -11,6 +11,7 @@
 | Path | Required operation | Evidence / scope note | Verdict |
 | --- | --- | --- | --- |
 | Ad / landing | Meta pixel and CAPI qualified/unqualified attribution, UTMs, landing video and CTA | PR #260 active, no ad spend or production send | **NOT LIVE PROVED** |
+| Owner sales-content teleprompter | Camera overlay, forward scroll speed at 200/205/210/215 WPM, native recording state | PR #255 CI run 40968827186: staff display browser batch failed at 210 WPM due 0.002ms stationary sub-frame observation; 401 other browser proofs passed. PR #283 isolates proof-filter correction; rerun required. Do not call a proof-harness failure a proven production scroll defect. | **NOT LIVE PROVED — CI PROOF FAIL / PR #283 PENDING** |
 | Apply / intake | All nine application screens: progress, required fields, next/back/save, identity updates, validation and error/mobile states | No route-scoped full role walk attached | **NOT LIVE PROVED** |
 | Booking | ClickFunnels booking and reschedule -> right client, seller, closer, unique booking and notices | Historic 2026-10-26 failed parent thank-you redirect | **NOT LIVE PROVED** |
 | Booking | Owner and Justice separate Google Calendar events: guests, timezone, Meet, invite receipt, reschedule/cancel, Join | Owner Oct26 host no Meet/guests; Justice calendar not verified | **NOT LIVE PROVED** |
