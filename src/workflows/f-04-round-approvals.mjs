@@ -13,6 +13,7 @@ import { db } from "../db.mjs";
 // Only already-existing clients owned by this event's org may be changed;
 // resolveClient could patch an explicit foreign ID or mint an unknown email.
 import { findClient } from "../handlers/purchase-routing.mjs";
+import { approvedCardStackingRound } from "./f-05-inquiry-cleanup-gate.mjs";
 import { sendTemplated } from "./messaging.mjs";
 import { mergeCustomFields } from "./custom-fields.mjs";
 
@@ -27,6 +28,15 @@ export async function handle({ event, db, step }) {
   if (!(approvedAmount > 0)) return { sent: false, reason: "not_approved" };
 
   const orgId = event.orgId;
+  // A delayed/replayed approval on an old, fictitious or terminal card-stacking
+  // round must not send a customer an inaccurate approval notification or
+  // overwrite the next staff action. Reuse F-05's same-org current-round gate.
+  // Other provider rails without round identifiers retain their existing path
+  // until their own provider provenance contract can be verified.
+  const gate = await step.run("verify-current-card-stacking-round", () =>
+    approvedCardStackingRound(db, { orgId, clientId, payload: event.payload }));
+  if (!gate.ok) return { sent: false, reason: gate.reason };
+
   const eventId = event.id;
   const email = await step.run("send-email", () =>
     sendTemplated(db, { orgId, clientId, channel: "email", templateKey: EMAIL_TEMPLATE_KEY, eventId }));
