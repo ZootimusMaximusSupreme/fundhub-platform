@@ -147,3 +147,40 @@ test("decoded dot segments cannot bypass either native public-home classifier", 
     assert.match(body, /let page = segments\.joined\(separator: "\/"\)/);
   }
 });
+
+
+const iosApp = readFileSync(new URL("../../tools/fundhub-ios/Fundhub/App/FundhubApp.swift", import.meta.url), "utf8");
+test("native iPhone client can reach explicit APNs consent without leaving the portal", () => {
+  const home = iosApp.split("private struct HomeView: View {")[1].split("private struct BrandMark: View {")[0];
+  assert.match(home, /identity\.principal == "client"/);
+  assert.match(home, /accessibilityIdentifier\("nativeNotificationSettings"\)/);
+  assert.match(home, /showingNotifications = true/);
+  assert.match(home, /\.sheet\(isPresented: \$showingNotifications\)/);
+  assert.match(home, /NativePushCard\(\)/);
+  assert.match(home, /WorkspaceWebView\(/);
+  assert.ok(home.indexOf('identity.principal == "client"') < home.indexOf('accessibilityIdentifier("nativeNotificationSettings")'));
+});
+test("native push UI never promises delivery just from token registration", () => {
+  assert.match(push, /Delivery is not guaranteed/);
+  assert.match(push, /guard server\.configured else/);
+  assert.match(push, /NativePushConsent\.setEnabled\(true\)/);
+});
+test("Mac Home revokes existing sessions before clearing persistent WebKit data and history", () => {
+  const home = mac.split("func goHome() async {")[1].split("func webView(_ webView: WKWebView, didStartProvisionalNavigation")[0];
+  assert.ok(home);
+  assert.match(home, /await revokeCurrentSession\(\)/);
+  assert.match(home, /await WKWebsiteDataStore\.default\(\)\.removeData\(/);
+  assert.ok(home.indexOf("await revokeCurrentSession()") < home.indexOf("await WKWebsiteDataStore.default().removeData("));
+  assert.ok(home.indexOf("await WKWebsiteDataStore.default().removeData(") < home.indexOf("currentView = nil"));
+  assert.ok(home.indexOf("currentView = nil") < home.indexOf("route = nil"));
+  assert.match(home, /httpCookieStore\.getAllCookies/);
+  assert.match(home, /window\.localStorage\.getItem\('fh_token'\)/);
+  assert.match(home, /cookie\.name == "fundhub_session"/);
+  assert.match(home, /cookieDomain == "fundhub\.ai"/);
+  assert.match(home, /URL\(string: "https:\/\/fundhub\.ai\/api\/auth\/logout"\)!/);
+  assert.match(home, /request\.httpMethod = "POST"/);
+  assert.match(home, /forHTTPHeaderField: "Authorization"/);
+  assert.match(mac, /Task \{ await browser\.goHome\(\) \}/);
+  assert.match(mac, /Home and sign out/);
+  assert.match(mac, /macLogoutNotice/);
+});

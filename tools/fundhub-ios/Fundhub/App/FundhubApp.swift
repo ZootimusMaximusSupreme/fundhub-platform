@@ -462,6 +462,7 @@ private struct HomeView: View {
     @EnvironmentObject private var store: FundhubSessionStore
     @ObservedObject private var push = NativePushCenter.shared
     @State private var reloadId = UUID()
+    @State private var showingNotifications = false
 
     var body: some View {
         Group {
@@ -475,6 +476,36 @@ private struct HomeView: View {
                     onWebSignOut: { Task { await store.signOut() } }
                 )
                 .id(reloadId)
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    if identity.principal == "client" {
+                        HStack {
+                            Spacer()
+                            Button {
+                                showingNotifications = true
+                            } label: {
+                                Label("Notifications", systemImage: "bell")
+                                    .font(.subheadline.weight(.semibold))
+                                    .frame(minHeight: 44)
+                            }
+                            .accessibilityIdentifier("nativeNotificationSettings")
+                        }
+                        .padding(.horizontal, 16)
+                        .background(Color(.systemBackground))
+                    }
+                }
+                .sheet(isPresented: $showingNotifications) {
+                    NavigationStack {
+                        NativePushCard()
+                            .padding()
+                            .navigationTitle("Notifications")
+                            .toolbar {
+                                ToolbarItem(placement: .topBarTrailing) {
+                                    Button("Done") { showingNotifications = false }
+                                }
+                            }
+                    }
+                    .presentationDetents([.medium])
+                }
             } else {
                 ProgressView("Connecting to Fundhub")
             }

@@ -263,7 +263,7 @@ struct NativePushCard: View {
             case .registering:
                 ProgressView("Connecting this iPhone")
             case .on:
-                Text("This iPhone is ready for Fundhub notifications.")
+                Text("This iPhone is registered for Fundhub notifications. Delivery is not guaranteed.")
                 Button("Turn notifications off") { Task { await push.disable() } }
                     .buttonStyle(.bordered)
             case .blocked:
