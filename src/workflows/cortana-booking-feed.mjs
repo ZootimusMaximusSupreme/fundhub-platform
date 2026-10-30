@@ -13,6 +13,7 @@ export const STALE_CLAIM_MINUTES = 10;
 
 const CANDIDATES_SQL = `
   SELECT b.id, b.org_id, b.provider_uid, b.created_at, b.attendee_name,
+         b.qualification_bucket,
          b.attendee_email, COALESCE(NULLIF(b.raw->>'phone', ''), c.phone) AS phone,
          c.is_demo, c.custom_fields,
          a.utm_source, a.utm_medium, a.utm_campaign, a.utm_content
