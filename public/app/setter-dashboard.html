@@ -304,7 +304,8 @@ function setterSorted(items) {
     if (!survey) return '<p>No survey answers on this record.</p>';
     if (typeof survey === "string") return '<p>' + setterEsc(survey) + '</p>';
     var entries = Array.isArray(survey) ? survey.map(function (row) {
-      return { key: row.key, label: row.question || "Survey answer", answer: row.answer };
+      return { key: row.key, label: row.question || "Survey answer", answer: row.answer,
+        answerValues: row.answer_values, type: row.type, options: row.options };
     }) : Object.entries(survey).map(function (entry) {
       return { key: entry[0], label: entry[0], answer: entry[1] };
     });
@@ -315,10 +316,26 @@ function setterSorted(items) {
       var label = entry.label.replace(/[_-]+/g, " ").replace(/([a-z])([A-Z])/g, "$1 $2");
       var original = surveyAnswerText(entry.answer);
       var edited = edits && Object.prototype.hasOwnProperty.call(edits, entry.key) ? String(edits[entry.key]) : original;
-      if (!entry.key) return '<div><b>' + setterEsc(label) + '</b>' + setterEsc(original) + '</div>';
+      var options = Array.isArray(entry.options) ? entry.options : [];
+      if (!entry.key || !options.length) return '<div><b>' + setterEsc(label) + '</b>' + setterEsc(original) + '</div>';
       canEdit = true;
+      if (entry.type === "multi") {
+        var current = edits && Object.prototype.hasOwnProperty.call(edits, entry.key)
+          ? edited.split(", ").filter(Boolean) : Array.isArray(entry.answerValues) ? entry.answerValues : [original];
+        var extra = current.filter(function (answer) { return !options.includes(answer); });
+        return '<fieldset class="setter-survey-field setter-survey-multi" data-survey-key="' + setterEsc(entry.key) + '" data-original="' + setterEsc(original) + '"><legend>' + setterEsc(label) + '</legend>' +
+          '<div class="setter-survey-options">' + options.map(function (choice) {
+            return '<label><input type="checkbox" value="' + setterEsc(choice) + '"' + (current.includes(choice) ? ' checked' : '') + '><span>' + setterEsc(choice) + '</span></label>';
+          }).join("") + '</div>' +
+          (extra.length ? '<small>Saved answer: ' + setterEsc(extra.join(", ")) + '</small>' : '') +
+          (edited !== original ? '<small>Original answer: ' + setterEsc(original) + '</small>' : '') + '</fieldset>';
+      }
+      var choices = options.slice();
+      if (!choices.includes(edited)) choices.unshift(edited);
       return '<div class="setter-survey-field"><label for="setter-survey-' + index + '">' + setterEsc(label) + '</label>' +
-        '<textarea id="setter-survey-' + index + '" data-survey-key="' + setterEsc(entry.key) + '" data-original="' + setterEsc(original) + '" maxlength="1000">' + setterEsc(edited) + '</textarea>' +
+        '<select id="setter-survey-' + index + '" data-survey-key="' + setterEsc(entry.key) + '" data-original="' + setterEsc(original) + '">' + choices.map(function (choice) {
+          return option(choice, options.includes(choice) ? choice : 'Saved answer: ' + (choice || '(blank)'), edited);
+        }).join("") + '</select>' +
         (edited !== original ? '<small>Original answer: ' + setterEsc(original) + '</small>' : '') + '</div>';
     }).join("");
     return '<div class="setter-survey">' + fields + '</div>' + (canEdit ?
@@ -376,9 +393,14 @@ function setterSorted(items) {
   function readSurveyEdits() {
     var item = currentItem();
     var edits = Object.assign({}, item && item.survey_edits || {});
-    detailEl.querySelectorAll('[data-survey-key]').forEach(function (el) {
+    detailEl.querySelectorAll('select[data-survey-key]').forEach(function (el) {
       if (el.value === el.dataset.original) delete edits[el.dataset.surveyKey];
       else edits[el.dataset.surveyKey] = el.value;
+    });
+    detailEl.querySelectorAll('fieldset[data-survey-key][data-survey-changed="true"]').forEach(function (el) {
+      var answer = Array.from(el.querySelectorAll('input:checked')).map(function (input) { return input.value; }).join(", ");
+      if (answer === el.dataset.original) delete edits[el.dataset.surveyKey];
+      else edits[el.dataset.surveyKey] = answer;
     });
     return edits;
   }
@@ -393,7 +415,7 @@ function setterSorted(items) {
     var fields = detailEl.querySelectorAll('[data-survey-key]');
     if (status) { status.textContent = "Saving survey answers…"; status.className = "setter-status"; }
     if (button) button.disabled = true;
-    fields.forEach(function (el) { el.readOnly = true; });
+    fields.forEach(function (el) { el.disabled = true; });
     surveySavePromise = request("/api/setter-dashboard", { method: "POST", body: { client_id: clientId, action: "save_survey", survey_edits: edits } })
       .then(function (result) {
         if (result.status < 200 || result.status >= 300 || !result.body || !result.body.ok) {
@@ -412,7 +434,7 @@ function setterSorted(items) {
         return false;
       }).finally(function () {
         if (button) button.disabled = false;
-        fields.forEach(function (el) { el.readOnly = false; });
+        fields.forEach(function (el) { el.disabled = false; });
         surveySavePromise = null;
       });
     return surveySavePromise;
@@ -510,7 +532,9 @@ function setterSorted(items) {
     }
   });
   detailEl.addEventListener("input", function (event) {
-    if (event.target.matches('[data-survey-key]')) {
+    var surveyControl = event.target.closest('[data-survey-key]');
+    if (surveyControl) {
+      if (surveyControl.tagName === "FIELDSET") surveyControl.dataset.surveyChanged = "true";
       surveyDirty = true;
       var status = document.getElementById("setter-survey-status");
       if (status) { status.textContent = "Unsaved survey changes…"; status.className = "setter-status"; }
@@ -519,7 +543,7 @@ function setterSorted(items) {
     saveSoon();
   });
   detailEl.addEventListener("change", function (event) {
-    if (event.target.matches('[data-survey-key]')) return;
+    if (event.target.closest('[data-survey-key]')) return;
     if (event.target.name === "disposition") {
       var noAnswer = document.getElementById("setter-no-answer");
       if (noAnswer) noAnswer.hidden = event.target.value !== "no_answer";

@@ -10,11 +10,12 @@ test("survey summary shows nested ClickFunnels choices as readable answers", () 
     cf_svy_money_change_now_labels: '["[\\"Grow faster (more customers / more reach)\\"]"]',
     cf_svy_planned_use: "Not sure yet"
   });
-  assert.deepEqual(answers.find(row => row.key === "cf_svy_money_change_now"), {
-    key: "cf_svy_money_change_now",
-    question: "What Would This Money Change Right Now?",
-    answer: "Grow faster (more customers / more reach)"
-  });
+  const motivation = answers.find(row => row.key === "cf_svy_money_change_now");
+  assert.equal(motivation.question, "What Would This Money Change Right Now?");
+  assert.equal(motivation.answer, "Grow faster (more customers / more reach)");
+  assert.deepEqual(motivation.answer_values, ["Grow faster (more customers / more reach)"]);
+  assert.equal(motivation.type, "multi");
+  assert.ok(motivation.options.includes("Grow faster (more customers / more reach)"));
   assert.equal(answers.find(row => row.key === "cf_svy_planned_use").answer, "Not sure yet");
   assert.equal(surveySummary({ cf_svy_money_change_now_labels: '["Growth","Stability"]' })[0].answer, "Growth, Stability");
   assert.equal(surveySummary({ cf_svy_money_change_now_labels: "[custom answer" })[0].answer, "[custom answer");
@@ -173,15 +174,15 @@ test("survey save replaces edits, keeps submitted answers, and does not complete
   client.custom_fields.cf_svy_planned_use_label = "Open a shop";
   client.custom_fields.cf_svy_funding_target_amount_label = "$50k - $100k";
   const first = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save_survey",
-    survey_edits: { cf_svy_planned_use: "Buy equipment", cf_svy_funding_target_amount: "$100k" } });
+    survey_edits: { cf_svy_planned_use: "Equipment or buildout", cf_svy_funding_target_amount: "$100k - $200k" } });
   assert.equal(first.status, 200);
-  assert.deepEqual(first.body.survey_edits, { cf_svy_planned_use: "Buy equipment", cf_svy_funding_target_amount: "$100k" });
+  assert.deepEqual(first.body.survey_edits, { cf_svy_planned_use: "Equipment or buildout", cf_svy_funding_target_amount: "$100k - $200k" });
   const second = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save_survey",
-    survey_edits: { cf_svy_planned_use: "Hire staff" } });
-  assert.deepEqual(second.body.survey_edits, { cf_svy_planned_use: "Hire staff" });
+    survey_edits: { cf_svy_planned_use: "Growth (marketing, inventory, hiring)" } });
+  assert.deepEqual(second.body.survey_edits, { cf_svy_planned_use: "Growth (marketing, inventory, hiring)" });
   const checklist = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save",
     handoff: { call_attempts: 1 } });
-  assert.deepEqual(checklist.body.item.survey_edits, { cf_svy_planned_use: "Hire staff" });
+  assert.deepEqual(checklist.body.item.survey_edits, { cf_svy_planned_use: "Growth (marketing, inventory, hiring)" });
   assert.equal(client.custom_fields.cf_svy_planned_use_label, "Open a shop");
   assert.equal(client.custom_fields.cf_svy_funding_target_amount_label, "$50k - $100k");
   assert.equal(client.custom_fields.setter_handoff.call_attempts, 1);
@@ -193,8 +194,11 @@ test("survey save replaces edits, keeps submitted answers, and does not complete
 test("survey save rejects unseen keys and invalid values", async () => {
   const { db, client, queries } = fakeDb();
   client.custom_fields.cf_svy_planned_use_label = "Open a shop";
+  client.custom_fields.cf_svy_money_change_now_labels = '["Grow faster (more customers / more reach)"]';
   for (const survey_edits of [null, { unknown: "X" }, { cf_svy_funding_target_amount: "$100k" },
-    { cf_svy_planned_use: 123 }, { cf_svy_planned_use: "X".repeat(1001) }]) {
+    { cf_svy_planned_use: 123 }, { cf_svy_planned_use: "X".repeat(1001) },
+    { cf_svy_planned_use: "Typed answer" },
+    { cf_svy_money_change_now: "Grow faster (more customers / more reach), Grow faster (more customers / more reach)" }]) {
     const result = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save_survey", survey_edits });
     assert.equal(result.status, 400);
     assert.equal(result.body.error, "invalid_survey_edits");
@@ -202,14 +206,31 @@ test("survey save rejects unseen keys and invalid values", async () => {
   assert.equal(queries.some(sql => sql.includes("UPDATE clients")), false);
 });
 
+test("survey choices save multiple answers and preserve an older typed edit", async () => {
+  const { db, client } = fakeDb();
+  client.custom_fields.cf_svy_money_change_now_labels = '["Grow faster (more customers / more reach)"]';
+  client.custom_fields.cf_svy_planned_use_label = "Not sure yet";
+  client.custom_fields.setter_survey_edits = { cf_svy_planned_use: "Custom use from an earlier call" };
+  const result = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save_survey",
+    survey_edits: {
+      cf_svy_money_change_now: "Grow faster (more customers / more reach), Stability (cover bills / buffer slow weeks)",
+      cf_svy_planned_use: "Custom use from an earlier call"
+    } });
+  assert.equal(result.status, 200);
+  assert.deepEqual(result.body.survey_edits, {
+    cf_svy_money_change_now: "Grow faster (more customers / more reach), Stability (cover bills / buffer slow weeks)",
+    cf_svy_planned_use: "Custom use from an earlier call"
+  });
+});
+
 test("completed handoff text follows the edited survey without resending", async () => {
   const { db, client, queries } = fakeDb();
   client.custom_fields.cf_svy_planned_use_label = "Open a shop";
   client.custom_fields.setter_handoff = { complete_at: "2026-10-26T21:00:00Z", ...completeHandoff() };
   const result = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save_survey",
-    survey_edits: { cf_svy_planned_use: "Buy equipment" } });
+    survey_edits: { cf_svy_planned_use: "Equipment or buildout" } });
   assert.equal(result.status, 200);
-  assert.match(client.custom_fields.setter_handoff.handoff_text, /Survey said Buy equipment/);
+  assert.match(client.custom_fields.setter_handoff.handoff_text, /Survey said Equipment or buildout/);
   assert.doesNotMatch(client.custom_fields.setter_handoff.handoff_text, /Open a shop/);
   assert.equal(queries.some(sql => sql.includes("UPDATE tasks") || sql.includes("INSERT INTO messages")), false);
 });
