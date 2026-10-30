@@ -152,7 +152,7 @@ pre{margin:18px 0 0;padding:14px;background:var(--panel);border-radius:10px;font
     <p class="sub">Your funding advisor meets you on Google Meet. Calls take about 30 minutes.</p>
     <div class="trustrow"><span><svg viewBox="0 0 12 12" aria-hidden="true"><rect x="2" y="5.5" width="8" height="5.5" rx="1.2" fill="currentColor"/><path d="M4 5.5V4a2 2 0 0 1 4 0v1.5" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>Free call</span><span><svg viewBox="0 0 12 12" aria-hidden="true"><rect x="2" y="5.5" width="8" height="5.5" rx="1.2" fill="currentColor"/><path d="M4 5.5V4a2 2 0 0 1 4 0v1.5" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>Soft pull only, zero score impact</span><span><svg viewBox="0 0 12 12" aria-hidden="true"><rect x="2" y="5.5" width="8" height="5.5" rx="1.2" fill="currentColor"/><path d="M4 5.5V4a2 2 0 0 1 4 0v1.5" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>Reschedule anytime</span></div>
     <div class="fh-book-embed">
-      <iframe id="fh-book-frame" title="Book your Fundhub funding call" data-src="https://apply.fundhub.ai/funding-book-call" style="display:block;width:100%;height:920px;min-height:600px;border:0;background:#fff"></iframe>
+      <iframe id="fh-book-frame" title="Book your Fundhub funding call" data-src="https://apply.fundhub.ai/funding-book-call" data-src-unqualified="https://apply.fundhub.ai/funding-book-call--02424" style="display:block;width:100%;height:920px;min-height:600px;border:0;background:#fff"></iframe>
     </div>
   </section>
 
@@ -497,8 +497,10 @@ pre{margin:18px 0 0;padding:14px;background:var(--panel);border-radius:10px;font
     setTimeout(function () { toCal(true); }, 900);
     setTimeout(function () { if (Math.abs(document.getElementById('cal').getBoundingClientRect().top - 16) > 40) toCal(false); }, 2400);
   }
-  /* Same live calendar as /funding-book-call (native AppointmentScheduler in a frame).
-     That page posts fh-book-height. The framed calendar posts an accepted booking up
+  /* Two live calendars (owner-set 2026-10-29), same hosts and hours, native
+     AppointmentScheduler in a frame: qualified credit books /funding-book-call;
+     every other score answer books its copy in funnel 994750 (/funding-book-call--02424).
+     Both pages post fh-book-height. The framed calendar posts an accepted booking up
      to this page; the shared tracker passes it on (and turns it into Meta Schedule). */
   function showCal() {
     var cal = document.getElementById('cal');
@@ -506,7 +508,7 @@ pre{margin:18px 0 0;padding:14px;background:var(--panel);border-radius:10px;font
     var f = document.getElementById('fh-book-frame');
     if (!f) return;
     if (!f.getAttribute('src')) {
-      var src = f.getAttribute('data-src');
+      var src = f.getAttribute(QUALIFIED_SCORES[A.cf_svy_self_reported_fico] ? 'data-src' : 'data-src-unqualified');
       if (src && (location.hostname === 'apply.fundhub.ai' || window.FH_APPLY_SURVEY_BOOK_EMBED)) f.src = src;
     }
     if (f.getAttribute('data-fh-bound')) return;

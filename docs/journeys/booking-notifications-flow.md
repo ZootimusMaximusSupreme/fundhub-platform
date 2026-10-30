@@ -403,8 +403,13 @@ flowchart TD
     HAS -->|No| COPY[Copy the client's bucket, or NULL if no score yet]
 ```
 
-GAP: the ask is one ClickFunnels calendar per bucket. ClickFunnels has one, and
-its API cannot make another (ops/workflows/v2-notes.md).
+`/apply` frames `/funding-book-call` for a 700-749 or 750+ score answer and the
+copy calendar page `/funding-book-call--02424` (funnel 994750, page 25820226) for
+every other answer (`showCal`, `marketing/landing-pages/apply-survey.html`). Each
+booking message names its page (`page.id`), which is how the two calendars are told
+apart. GAP: the copy's scheduler still uses event type 14234; the second native
+event type 14959 sits on a bare `/schedule` page with no tracking
+(ops/workflows/v2-notes.md).
 
 ## 8. Known gaps, not fixed here
 
