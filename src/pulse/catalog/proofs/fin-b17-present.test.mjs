@@ -348,7 +348,7 @@ test("Client screen only hides the cockpit, Show cockpit brings it back, and the
     assert.ok(!deck.html().includes('data-act="next"'), "and so are its buttons");
     assert.ok(deck.html().includes('<div class="client solo">'));
     assert.equal(deck.slide(), "S-02", "the client slide did not change");
-    assert.ok(deck.text().includes("A defined path. No obligation at any step."));
+    assert.ok(deck.text().includes("We read your file before discussing a price, and you make the call."));
 
     // the arrow keys still walk the deck with the cockpit hidden
     deck.key("ArrowRight");
@@ -487,7 +487,7 @@ test("the cost of inaction box is on Discovery, keeps what is typed, says it bac
     assert.equal(deck.slide(), "S-20");
     assert.ok(deck.client().includes("$4,500 a month."));
     assert.ok(deck.text().includes("$54,000"));
-    assert.ok(deck.text().includes("What you said it costs you, earlier on this call"), "row 7: no 'your number'");
+    assert.ok(deck.text().includes("based on what you said earlier on this call"), "the cost is the closer's own input");
     assert.ok(!/your number/i.test(deck.client()));
 
     // and it leaves the page as cost_of_inaction on the disposition
@@ -1205,7 +1205,7 @@ test("with the one switch on, the education button, rungs, slides, prices and mi
 // ───────────────────────────── the visual slots (section 10.8) ─────────────────────────────
 
 test("each visual is called where 10.0 places it, with the ctx 10.8 names, and draws the slide body", async () => {
-  const CTX_KEYS = ["engine", "visual", "survey", "handoff", "businesses", "tier", "door", "sample", "clientId", "money", "esc"];
+  const CTX_KEYS = ["engine", "visual", "survey", "handoff", "businesses", "tier", "door", "sample", "clientId", "money", "esc", "price", "offerAmount", "feePercent", "costOfWaiting", "offerKey", "slideCode"];
   const funding = await openDeck("FUNDING_PLUS_REPAIR", { visuals: true });
   const where = [];
   for (let i = 0; i < 40 && !funding.disabled("next"); i += 1) {
@@ -1295,8 +1295,8 @@ test("S-07 repair reads the once-fixed amount and the item count from engine.vis
   const deck = await openDeck("REPAIR_ONLY", { deck: livePull(LIVE_VISUAL) });
   deck.press("phase:04");
   assert.equal(deck.slide(), "S-07");
-  assert.ok(deck.text().includes("Cleaned up, this file projects to $45,000."), deck.text().slice(0, 400));
-  assert.ok(deck.text().includes("3 negative items found"), "the count is the engine's item list");
+  assert.ok(deck.text().includes("With the file optimized, the engine projects $45,000."), deck.text().slice(0, 400));
+  assert.ok(deck.text().includes("These 3 items hold your file at $0 today."), "the count is the engine's item list");
   assert.ok(!/projects to —|— negative items/.test(deck.text()), "no dash where the amount and the count are known");
 
   // the engine withholds the money (review or hold): no amount, so no projection line at all
@@ -1308,8 +1308,8 @@ test("S-07 repair reads the once-fixed amount and the item count from engine.vis
   for (const visual of [undefined, { source: "none", todayTotal: 20000 }]) {
     const old = await openDeck("REPAIR_ONLY", { deck: payload({ tier: "REPAIR_ONLY", visual }) });
     old.press("phase:04");
-    assert.ok(old.text().includes("Cleaned up, this file projects to $60,000."), `fallback to afterFix (${visual ? "source none" : "no visual"})`);
-    assert.ok(old.text().includes("3 negative items found"));
+    assert.ok(old.text().includes("With the file optimized, the engine projects $60,000."), `fallback to afterFix (${visual ? "source none" : "no visual"})`);
+    assert.ok(old.text().includes("These 3 items hold your file"));
   }
 });
 
@@ -1330,13 +1330,13 @@ test("S-09 repair lists the engine's own items in plain words, and S-14 repair p
 
   deck.force("stack-go:S-14");
   assert.equal(deck.slide(), "S-14");
-  assert.ok(deck.text().includes("Today $0 in approvals"), "todayTotal is 0 for a repair-only file, and prints as $0");
+  assert.ok(deck.text().includes("Today $0 file supports"), "todayTotal is 0 for a repair-only file, and prints as $0");
   assert.ok(deck.text().includes("After cleanup, projected $45,000 +$45,000 unlocked"), deck.text().slice(0, 300));
 
   // fallback: the old fields
   const old = await openDeck("REPAIR_ONLY");
   old.force("stack-go:S-14");
-  assert.ok(old.text().includes("Today $20,000 in approvals"));
+  assert.ok(old.text().includes("Today $20,000 file supports"));
   assert.ok(old.text().includes("After cleanup, projected $60,000 +$40,000 unlocked"));
   old.force("stack-go:S-09");
   assert.ok(old.text().includes("3 items are limiting your approvals."));
@@ -1382,19 +1382,15 @@ test("the client screens carry the 2026-10-29 words", async () => {
   assert.ok(!funding.client().includes("Monthly revenue"));
   funding.press("phase:03").press("next");
   assert.equal(funding.slide(), "S-06");
-  assert.ok(funding.text().includes("About 10 years doing this work"), "row 13");
-  assert.ok(funding.text().includes("Hundreds of client files built UnderwriteIQ"));
+  assert.ok(funding.text().includes("Banks check far more than your score."), "framework v2 iceberg headline");
   assert.ok(!/\$25M|Thousands/.test(funding.client()));
   funding.press("phase:06").walk(7);
   assert.equal(funding.slide(), "S-16");
-  const menu = [...funding.client().matchAll(/<div class="menu-t">([^<]*)<\/div>/g)].map((m) => m[1]);
-  assert.deepEqual(menu, ["Business cards", "Personal cards", "Personal loans", "Revenue funding"], "row 5: what is live today");
-  assert.ok(funding.text().includes("You upload your bank statements or tax returns in your portal."));
-  assert.ok(funding.text().includes("The Fundhub team sends your file to the lender."));
+  assert.ok(funding.client().includes("Real clients have received real approvals."), "the proof wall replaces the product menu");
   assert.ok(!/SBA|Equipment/.test(funding.client()));
   funding.press("phase:07").walk(3);
   assert.equal(funding.slide(), "S-20");
-  assert.ok(funding.text().includes("How much you qualify for today. Lenders make the final call."), "row 6");
+  assert.ok(funding.client().includes("credited against your success fee when funding arrives"), "funding money strip");
   assert.ok(!/Pre-approval/.test(funding.client()));
 
   const repair = await openDeck("REPAIR_ONLY", { deck: payload({ tier: "REPAIR_ONLY", available: false }) });
@@ -1411,10 +1407,9 @@ test("the client screens carry the 2026-10-29 words", async () => {
     ["rung:0", "Onboard now: full done-for-you $1,000", false],
     ["rung:1", "Trial: first round done-for-you $200", false],
   ], "row 2: the Capital Blueprint is the first rung, and the one a file that is not ready starts on");
-  const rows = [...blueprint.client().matchAll(/<div class="l">([^<]*)<div class="subl">/g)].map((m) => m[1]);
-  assert.deepEqual(rows, ["Credit Analysis Report", "Dispute Letter Pack", "Credit Optimization Roadmap", "How Much You Qualify For", "Bank &amp; Lender Match List"], "row 14");
+  assert.ok(blueprint.client().includes("This is the plan built for your file."), "the matrix replaces the price-only client view");
   blueprint.press("rung:0");
-  assert.ok(blueprint.client().includes("Credit optimization, done for you"), "row 18");
+  assert.ok(blueprint.client().includes("This is the plan built for your file."), "the chosen door stays on the matrix");
   assert.ok(!blueprint.client().includes("Done-for-you credit repair"));
 
   const stack = await openDeck("REPAIR_ONLY");

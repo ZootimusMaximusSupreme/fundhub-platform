@@ -6,34 +6,36 @@
 
 /** Every slide of the deck, in deck order, with the phase name the cockpit header and the strip must show.
  *  The order is the call script's (ops/workflows/weekend-2026-10-24.md section 10.0, 2026-10-29): the
- *  Blueprint (B-01..B-06) is Door 3 inside part 6, L-01 is the money levers right after S-07, and C-01 is
- *  more companies in Door 1. Part 8, Money, has no slide. */
+ *  Blueprint (B-01..B-06) is Door 3 inside part 6. F-01, L-01 and F-02 show the file after S-07;
+ *  S-16 holds client proof, P-01 shows the next funding sequence, and C-01 shows companies. */
 export const SLIDES = Object.freeze([
   ["S-01", "1 Open"], ["S-02", "1 Open"],
   ["S-03", "2 Your goal"], ["S-04", "2 Your goal"],
   ["S-05", "3 The pull"], ["S-06", "3 The pull"],
-  ["S-07", "4 Your file"], ["L-01", "4 Your file"],
+  ["S-07", "4 Your file"], ["F-01", "4 Your file"], ["L-01", "4 Your file"], ["F-02", "4 Your file"],
   ["S-08", "5 Your path"],
   ["B-01", "6 The plan"], ["B-02", "6 The plan"], ["B-03", "6 The plan"], ["B-04", "6 The plan"],
   ["B-05", "6 The plan"], ["B-06", "6 The plan"],
   ["S-09", "6 The plan"], ["S-10", "6 The plan"], ["S-11", "6 The plan"], ["S-12", "6 The plan"],
-  ["S-13", "6 The plan"], ["S-14", "6 The plan"], ["S-15", "6 The plan"], ["S-16", "6 The plan"],
+  ["S-13", "6 The plan"], ["S-14", "6 The plan"], ["S-15", "6 The plan"], ["S-16", "6 The plan"], ["P-01", "6 The plan"],
   ["C-01", "6 The plan"],
   ["S-17", "7 The ask"], ["S-18", "7 The ask"], ["S-19", "7 The ask"], ["S-20", "7 The ask"],
   ["S-21", "7 The ask"], ["S-22", "7 The ask"],
   ["S-23", "9 Paperwork"], ["S-24", "9 Paperwork"],
 ].map((pair) => Object.freeze(pair)));
 
-export const DECK_LENGTH = SLIDES.length;
+/** The legacy practice harness loads no new framework visuals and counts those three slots out. */
+const NEW_VISUAL_ONLY = ["F-01", "F-02", "P-01"];
+export const DECK_LENGTH = SLIDES.length - NEW_VISUAL_ONLY.length;
 
-/** Where a slide sits in the deck as the cockpit header counts it: "<position> / 32". */
-export const positionOf = (code) => SLIDES.findIndex(([c]) => c === code) + 1;
+/** Position in the no-visual practice harness. The live visual proof uses all 35 slots. */
+export const positionOf = (code) => SLIDES.filter(([c]) => !NEW_VISUAL_ONLY.includes(c)).findIndex(([c]) => c === code) + 1;
 
-/** The two slides that show only when their visual draws. The practice tests load no visual file, so a
+/** Slides that show only when their visual draws. The practice tests load no visual file, so a
  *  walker steps over them. */
-export const VISUAL_ONLY = Object.freeze(["L-01", "C-01"]);
+export const VISUAL_ONLY = Object.freeze(["F-01", "L-01", "F-02", "P-01", "C-01"]);
 
-/** The slides a funding walker meets: the six Blueprint slides and the two visual-only slides are stepped over. */
+/** The slides a funding walker meets: Blueprint and visual-only slides are stepped over. */
 export const MAIN_RUN = SLIDES.filter(([code]) => !code.startsWith("B-") && !VISUAL_ONLY.includes(code)).map(([code]) => code);
 export const STACK_RUN = SLIDES.filter(([code]) => code.startsWith("B-")).map(([code]) => code);
 /** The slides a repair walker meets: Door 3 (B-01..B-04) inside part 6, then Door 4 from S-09. B-05 and B-06
