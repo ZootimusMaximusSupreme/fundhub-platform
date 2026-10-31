@@ -130,6 +130,9 @@ the sender's number or an email by the person, stops the clock the way it stops 
 workflow. The new route `public/survey-resume` has a daily ping (`reg:`) and the
 daily deep check `survey:resume-link-opens` (`src/pulse/coverage/gap-survey-resume.mjs`):
 it mints the newest real lead's come-back link and reads it the way the door does.
+Every hour the `survey-resume` beat (shift `pulse-hourly-b`, with the other lead beats)
+asks the live door with no code, which must answer its own 400 `token_required`, and
+reads the come-back messages of the last 24 hours, which must each carry a signed link.
 
 ## The hourly pulse (added 2026-10-09)
 
