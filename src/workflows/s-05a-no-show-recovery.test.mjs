@@ -142,7 +142,30 @@ test("s-05a: original booking.created does not count as a rebook", async () => {
   assert.equal(db.messages.length, 8);
 });
 
-
+/* Independent review of PR #346 (2026-10-31): the starting count used to be taken when the run's first
+   step ran, so a booking made in the gap after the no-show was folded into it and all four touches went. */
+test("s-05a: a booking made between the no-show and the run's first step still stops every touch", async () => {
+  const touchTemplates = [EMAIL_TEMPLATE_KEY, SMS_TEMPLATE_KEY, EMAIL_NOSHOW_02, SMS_NOSHOW_02,
+    "EMAIL-S05A-NOSHOW-03", "SMS-S05A-NOSHOW-03", "EMAIL-S05A-NOSHOW-04", "SMS-S05A-NOSHOW-04"]
+    .map((key) => ({ org_id: "org-1", template_key: key, channel: key.startsWith("SMS") ? "sms" : "email", body: key, compliance_passed: true }));
+  const db = pgFake({
+    clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", custom_fields: {} }],
+    events: [
+      { id: "evt-booked", org_id: "org-1", client_id: "cl-1", name: "booking.created", created_at: "2026-11-01T17:00:00.000Z" },
+      { id: "evt-ns", org_id: "org-1", client_id: "cl-1", name: "booking.noshow", created_at: "2026-11-03T17:35:00.000Z" },
+      // Booked again one minute after the no-show, before the workflow's first step ran.
+      { id: "evt-rebook", org_id: "org-1", client_id: "cl-1", name: "booking.created", created_at: "2026-11-03T17:36:00.000Z" }
+    ],
+    templates: touchTemplates
+  });
+  const res = await handle({
+    event: ev("booking.noshow", { bookingUid: "b1" }, { id: "evt-ns", clientId: "cl-1" }),
+    db, step: pgStep()
+  });
+  assert.equal(res.stoppedAt, "before-touch-1");
+  assert.equal(db.messages.length, 0, "no recovery message to someone who already booked again");
+  assert.equal(db.tasks.length, 1, "the closer's rebook task is still made at once");
+});
 
 test("s-05a: rescheduling the missed booking stops later recovery touches", async () => {
   const db = pgFake({

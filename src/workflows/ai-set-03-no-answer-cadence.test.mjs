@@ -230,6 +230,32 @@ test("a booking made BEFORE the run began does not stop the call-booked texts", 
   assert.deepEqual(db.messages.map((m) => m.template_key), MSG_KEYS);
 });
 
+/* Independent review of PR #346 (2026-10-31): the call-booked texts ask the person to keep their
+   call. Once that call is cancelled, or has already happened, the next text must not go. */
+test("a call cancelled after text 1 stops texts 2 and 3", async () => {
+  const db = makeDb({ bookings: [{ org_id: "org-1", client_id: "cl-1", status: "booked", starts_at: inDays(3) }] });
+  const step = recordingStep({ wake: (id) => { if (id === "wait-until-msg2") db.bookings[0].status = "cancelled"; } });
+  const res = await run(db, noAnswer(), step);
+  assert.equal(res.exitedAt, "call-gone-after-msg1");
+  assert.deepEqual(db.messages.map((m) => m.template_key), [MSG_KEYS[0]]);
+  inOrder(step, "check-replied-2", "check-call-still-on-2");
+});
+
+test("a call that has already happened before text 3 stops text 3", async () => {
+  const db = makeDb({ bookings: [{ org_id: "org-1", client_id: "cl-1", status: "booked", starts_at: inDays(3) }] });
+  const step = recordingStep({ wake: (id) => { if (id === "wait-until-msg3") db.bookings[0].starts_at = inDays(-0.05); } });
+  const res = await run(db, noAnswer(), step);
+  assert.equal(res.exitedAt, "call-gone-after-msg2");
+  assert.deepEqual(db.messages.map((m) => m.template_key), MSG_KEYS.slice(0, 2));
+});
+
+test("no call booked: the opt-in texts never ask about a call, so nothing extra is checked", async () => {
+  const db = makeDb();
+  const step = recordingStep();
+  await run(db, noAnswer(), step);
+  assert.ok(!ids(step).some((id) => id.startsWith("check-call-still-on-")), ids(step).join(", "));
+});
+
 test("branch: booking after the first text stops the cadence early", async () => {
   const db = makeDb();
   const res = await run(db, noAnswer(), recordingStep({ wake: (id) => { if (id === "wait-until-msg2") db.events.push(booking("booking.created", minutesAfter(20))); } }), AT_10_00);

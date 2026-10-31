@@ -118,19 +118,21 @@ export async function surveyCompleted(db, clientId, email, orgId = null) {
   return r.rows.some((row) => row.name === "survey.completed");
 }
 
-/* Resume messages already sent to this person from a DIFFERENT opt-in, newer than
-   `since`. Messages of this run's own cohort do not count: their send key ends in
-   `:<cohortId>`. */
-export async function sequenceInFlight(db, { orgId, clientId, cohortId, since }) {
+/* Resume messages already sent to this person, newer than `since`, from any run.
+   It is asked once, before this run sends anything, so a message it finds came from
+   another run: that sequence is already going and this run steps aside. Two runs
+   that both start before either has sent (two visits the same evening) share one
+   send key instead (messageCohortId over SEQUENCE_WINDOW_MS), so the database drops
+   the second copy of each touch. Independent review of PR #346, 2026-10-31. */
+export async function sequenceInFlight(db, { orgId, clientId, since }) {
   const r = await db.query(
     `SELECT 1 FROM messages
       WHERE org_id = $1 AND client_id = $2
         AND direction = 'outbound'
         AND template_key = ANY($3)
         AND created_at > $4
-        AND COALESCE(provider_ref, '') NOT LIKE $5
       LIMIT 1`,
-    [orgId, clientId, RESUME_TEMPLATE_KEYS, since, `%:${cohortId}`]
+    [orgId, clientId, RESUME_TEMPLATE_KEYS, since]
   );
   return r.rows.length > 0;
 }
@@ -169,13 +171,14 @@ export async function handle({ event, db, step, now = () => Date.now() }) {
     return {
       startedAt: new Date(startMs).toISOString(),
       goesOutAt: resumePlan(startMs).map((at) => at.toISOString()),
-      cohortId: await messageCohortId(db, { eventId: event.id, orgId, clientId, name: "entry.captured" })
+      // One send key for every visit inside the sequence window, so two runs never both send a touch.
+      cohortId: await messageCohortId(db, { eventId: event.id, orgId, clientId, name: "entry.captured", windowMs: SEQUENCE_WINDOW_MS })
     };
   });
 
   const crowded = await step.run("check-sequence-in-flight", () =>
     sequenceInFlight(db, {
-      orgId, clientId, cohortId: plan.cohortId,
+      orgId, clientId,
       since: new Date(Date.parse(plan.startedAt) - SEQUENCE_WINDOW_MS).toISOString()
     }));
   if (crowded) return { done: false, reason: "sequence_in_flight" };

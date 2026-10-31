@@ -130,12 +130,21 @@ export async function handle({ event, db, step, now = () => new Date() }) {
 
   const msg1 = await step.run("send-msg1", () => send(1));
 
+  /* Texts 2 and 3 to someone WITH a call ask them to keep it. If that call was cancelled
+     or has already happened by the time a text is due, there is nothing left to keep, so
+     the cadence ends (independent review of PR #346, 2026-10-31). upcomingCall reads the
+     live booking: a cancelled call is no longer 'booked', a held one is in the past. */
+  const callGone = async (n) => Boolean(callAt)
+    && !(await step.run(`check-call-still-on-${n}`, () => upcomingCall(db, orgId, clientId)));
+
   const stop2 = await waitAndCheck(2);
   if (stop2) return { done: true, exitedAt: stop2 === "replied" ? "replied" : "after-msg1", msg1 };
+  if (await callGone(2)) return { done: true, exitedAt: "call-gone-after-msg1", msg1 };
   const msg2 = await step.run("send-msg2", () => send(2));
 
   const stop3 = await waitAndCheck(3);
   if (stop3) return { done: true, exitedAt: stop3 === "replied" ? "replied" : "after-msg2", msg1, msg2 };
+  if (await callGone(3)) return { done: true, exitedAt: "call-gone-after-msg2", msg1, msg2 };
   const msg3 = await step.run("send-msg3", () => send(3));
 
   return { done: true, exitedAt: "completed", msg1, msg2, msg3 };
