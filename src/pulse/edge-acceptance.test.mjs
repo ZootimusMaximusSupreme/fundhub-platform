@@ -526,8 +526,10 @@ test("strict A->B witness rejects wrong canonical event version, consumer and pe
   const strict = {
     ...basics, expectedContract,
     event: { ...event, name: expectedContract.eventName, version: expectedContract.eventVersion },
-    consumer: { ...consumer, consumer_name: expectedContract.consumerName },
-    receipt: { ...receipt, result_kind: expectedContract.resultKind }
+    consumer: { ...consumer, consumer_name: expectedContract.consumerName,
+      completed_at: "2026-10-29T00:04:00Z" },
+    receipt: { ...receipt, result_kind: expectedContract.resultKind,
+      completed_at: "2026-10-29T00:05:00Z" }
   };
   assert.equal(judgeSyntheticEdge(strict).verdict, "PASS", "all four correlated contract parts match");
 
@@ -551,4 +553,53 @@ test("strict A->B witness rejects wrong canonical event version, consumer and pe
     ...strict, event: { ...strict.event, name: "booking.created" },
     now: "2026-10-29T00:03:00Z"
   }), { verdict: "PENDING", reason: "producer-canonical-contract-mismatch" });
+});
+
+test("strict A->B witnesses cannot clear pre-existing or future business results", () => {
+  const expectedContract = {
+    eventName: "payment.received", eventVersion: 1,
+    consumerName: "onPaymentReceivedMoney", resultKind: "sale_payments"
+  };
+  const strict = {
+    ...basics, expectedContract,
+    event: { ...event, name: "payment.received", version: 1 },
+    consumer: { ...consumer, consumer_name: "onPaymentReceivedMoney",
+      completed_at: "2026-10-29T00:04:00Z" },
+    receipt: { ...receipt, result_kind: "sale_payments",
+      completed_at: "2026-10-29T00:05:00Z" }
+  };
+  assert.equal(judgeSyntheticEdge(strict).verdict, "PASS");
+  for (const change of [
+    { consumer: { ...strict.consumer, completed_at: undefined } },
+    { receipt: { ...strict.receipt, completed_at: undefined } },
+    { event: { ...strict.event, created_at: undefined } }
+  ]) {
+    assert.deepEqual(judgeSyntheticEdge({ ...strict, ...change }), {
+      verdict: "NOT_CHECKED", reason: "canonical-proof-timestamps-missing"
+    }, JSON.stringify(change));
+  }
+  for (const change of [
+    { receipt: { ...strict.receipt, completed_at: "2026-10-29T00:03:00Z" } },
+    { consumer: { ...strict.consumer, completed_at: "2026-10-29T02:00:00Z" } },
+    { receipt: { ...strict.receipt, completed_at: "2026-10-29T02:00:00Z" } },
+    { event: { ...strict.event, created_at: "2026-10-29T02:00:00Z" },
+      demandAt: "2026-10-29T00:00:00Z" }
+  ]) {
+    assert.deepEqual(judgeSyntheticEdge({ ...strict, ...change }), {
+      verdict: "RED", reason: "canonical-proof-timestamp-order-invalid"
+    }, JSON.stringify(change));
+  }
+  const delivery = {
+    ...strict, requireProviderReceipt: true,
+    providerReceipt: { ...providerReceipt, delivered_at: "2026-10-29T00:07:00Z" }
+  };
+  assert.equal(judgeSyntheticEdge(delivery).verdict, "PASS");
+  assert.deepEqual(judgeSyntheticEdge({
+    ...delivery, providerReceipt: { ...delivery.providerReceipt, delivered_at: undefined }
+  }), { verdict: "NOT_CHECKED", reason: "provider-proof-timestamp-missing" });
+  for (const delivered_at of ["2026-10-29T00:02:00Z", "2026-10-29T02:00:00Z"]) {
+    assert.deepEqual(judgeSyntheticEdge({
+      ...delivery, providerReceipt: { ...delivery.providerReceipt, delivered_at }
+    }), { verdict: "RED", reason: "provider-proof-timestamp-order-invalid" });
+  }
 });
