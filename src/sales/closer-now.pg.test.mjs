@@ -15,10 +15,12 @@ const FIXTURE = `WITH tasks AS (
          'BK-' || g AS body,
          CASE WHEN g = 5 THEN 'setter' ELSE 'closer' END AS assignee_role,
          CASE WHEN g IN (1, 6) THEN 'closer-a' ELSE NULL::text END AS assignee_staff_id,
-         '2026-08-17 17:00:00+00'::timestamptz + g * interval '10 minutes' AS due_at,
+         (g = 9) AS done,
+         CASE WHEN g = 9 THEN '2026-08-17 16:50:00+00'::timestamptz
+              ELSE '2026-08-17 17:00:00+00'::timestamptz + g * interval '10 minutes' END AS due_at,
          NULL::text AS meeting_url,
          'Strategy session booked'::text AS title
-    FROM generate_series(1, 8) AS g
+    FROM generate_series(1, 9) AS g
 ), clients AS (
   SELECT * FROM (VALUES
     ('buyer-a', 'own-org', 'Dana', 'Buyer', 'dana@example.invalid', '{}'::jsonb),
@@ -34,7 +36,7 @@ const FIXTURE = `WITH tasks AS (
   ) AS v(id, org_id, client_id, task_id, booking_ref)
 ) `;
 
-test("Postgres closerNow hides task and booking-UID dispositions without hiding another buyer", {
+test("Postgres closerNow hides cancelled tasks and buyer-scoped dispositions", {
   skip: CAN_RUN ? false : "CI PostgreSQL unavailable"
 }, async () => {
   const dbPool = new pg.Pool({ connectionString: process.env.DATABASE_URL });

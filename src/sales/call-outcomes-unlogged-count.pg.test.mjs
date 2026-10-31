@@ -11,6 +11,7 @@ const CAN_RUN = process.env.CI === "true" && !!process.env.DATABASE_URL;
 // wrong-title tasks. Task 2 closes by task ID, task 3 by a same-client
 // booking UID. A foreign-org task-4 outcome and wrong-client task-5 booking
 // reference cannot silence this org/client's still-unlogged calls.
+// Task 257 is cancelled (done=true), and must not count as unlogged.
 const FIXTURE = `WITH tasks AS (
   SELECT g AS id,
          CASE WHEN g IN (252, 253) THEN 'other-org' ELSE 'own-org' END AS org_id,
@@ -21,8 +22,9 @@ const FIXTURE = `WITH tasks AS (
          CASE WHEN g = 255 THEN 'Other action' ELSE 'Strategy session booked' END AS title,
          CASE WHEN g = 256 THEN now() + interval '1 hour'
               ELSE now() - interval '1 hour' END AS due_at,
+         (g = 257) AS done,
          CASE WHEN g % 2 = 0 THEN 'closer-a' ELSE NULL::text END AS assignee_staff_id
-    FROM generate_series(1, 256) AS g
+    FROM generate_series(1, 257) AS g
 ), clients AS (
   SELECT 'own-client'::text AS id, 'own-org'::text AS org_id,
          '{}'::jsonb AS custom_fields,
@@ -62,7 +64,7 @@ test("Postgres list and KPI agree: task-less booking outcome closes only its own
   skip: CAN_RUN ? false : "CI PostgreSQL unavailable"
 }, async () => {
   const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
-  const smallFixture = FIXTURE.replace("generate_series(1, 256)", "generate_series(1, 8)");
+  const smallFixture = FIXTURE.replace("generate_series(1, 257)", "generate_series(1, 8)");
   const db = { query: (sql, params) => pool.query(smallFixture + sql, params) };
   try {
     const rows = await listUnloggedCalls(db, { orgId: "own-org", limit: 50 });

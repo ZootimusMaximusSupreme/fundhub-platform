@@ -267,3 +267,21 @@ test("same-buyer booking-ref outcomes hide only the completed appointment on the
     const afterOpen = await nextCallAfter(db, { orgId: ORG, staffId: STAFF, after: stillOpen.due_at });
     assert.ok(same(afterOpen, later), "next is the next unlogged appointment in chronological order");
   });
+
+
+// A cancelled booking marks its closer task done without a call_outcomes row.
+// Both upcoming/next reads must suppress it before a closer joins a dead room.
+test("cancelled booking does not appear on the closer call rail or next-call headline",
+  { skip: !HAS_DB }, async () => {
+    await clearDay();
+    const current = await task(OPEN, 1, "H-open-current");
+    const cancelled = await task(OTHER, 2, "H-cancelled");
+    const later = await task(OTHER, 3, "H-open-later");
+    await db.query("UPDATE tasks SET done = true WHERE id = $1 AND org_id = $2",
+      [cancelled.id, ORG]);
+    const rail = await upcomingCalls(db, { orgId: ORG, staffId: STAFF, includeClientId: OPEN });
+    assert.ok(rail.some((row) => same(row, current)), "the real open call remains");
+    assert.ok(!rail.some((row) => same(row, cancelled)), "no cancelled call on Up Next");
+    const next = await nextCallAfter(db, { orgId: ORG, staffId: STAFF, after: current.due_at });
+    assert.ok(same(next, later), "the next call skips a cancelled booking");
+  });
