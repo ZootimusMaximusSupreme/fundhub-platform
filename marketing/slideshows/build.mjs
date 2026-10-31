@@ -11,6 +11,7 @@
 // <!-- fh:shell:script --> blocks. Edit the shell, never a deck's copy of it.
 //
 //   node marketing/slideshows/build.mjs                  refresh every deck
+//   node marketing/slideshows/build.mjs a.html b.html    refresh just these decks
 //   node marketing/slideshows/build.mjs --check          exit 1 when a deck's shell is stale
 //   node marketing/slideshows/build.mjs --artifact <deck.html> <out.html>
 //                                                        write a copy shaped for an Artifact preview
@@ -104,9 +105,10 @@ function main(args) {
     return;
   }
   const check = args.includes("--check");
+  const named = args.filter((a) => !a.startsWith("--")).map((a) => resolve(a));
   let stale = 0;
   let count = 0;
-  for (const file of deckFiles()) {
+  for (const file of named.length ? named : deckFiles()) {
     const html = readFileSync(file, "utf8");
     const built = applyShell(html);
     if (built === null) continue;
