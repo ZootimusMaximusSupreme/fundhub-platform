@@ -2374,7 +2374,7 @@ restore();
     who.appendChild(contactRow("Email", "email", email, clientId, c.email_needs_reply || client.email_needs_reply));
     who.appendChild(contactRow("Phone", "sms", phone, clientId, c.sms_needs_reply || client.sms_needs_reply));
     // Sales uses the booking selected for the card, including when there is none.
-    var book = pipelineKey === "sales"
+    var book = activePipelineKey === "sales"
       ? (c.booked_starts_at ? { when: c.booked_starts_at, status: c.booked_kind || "booked" } : {})
       : ((data && data.latest_booking) || {});
     var call = sec("Call");
