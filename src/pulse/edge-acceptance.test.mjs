@@ -46,6 +46,30 @@ test("source changes require A->B review, including changed existing high-risk f
   assert.deepEqual(changedCriticalEdges(["marketing/landing-pages/apply-survey.html"]).map((x) => x.id), ["lead-booking-call-outcome"]);
 });
 
+test("two-calendar survey booking PR requires booking, message and attribution outcome review", () => {
+  // PR #330 changed existing server-generated SMS/email booking links,
+  // calendar route recognition and client-side booking attribution. Each
+  // producer is source-mapped; none of the source edits proves delivery.
+  const files = [
+    "src/workflows/messaging.mjs",
+    "src/funnel/pages.mjs",
+    "public/funnel/fh-events.js"
+  ];
+  const report = reportCriticalSourceChanges(files);
+  assert.equal(report.verdict, "REVIEW_REQUIRED");
+  assert.deepEqual(report.edges.map((edge) => [edge.id, edge.severity]), [
+    ["lead-booking-call-outcome", "P1"],
+    ["outbound-message-provider-receipt", "P1"],
+    ["ads-spend-attribution", "P2"]
+  ]);
+  assert.deepEqual(report.edges[0].files, files);
+  assert.deepEqual(report.edges[1].files, ["src/workflows/messaging.mjs"]);
+  assert.deepEqual(report.edges[2].files, ["public/funnel/fh-events.js"]);
+  assert.deepEqual(report.unmappedHighRiskFiles, []);
+  assert.equal(report.liveReceipt, "NEEDS_LIVE_RECEIPT");
+  assert.equal(report.evidenceNote, "MISSING");
+});
+
 test("schema migration changes cannot bypass A->B source-watch review", () => {
   // Live PRs change booking-claim and staff APNs schema. This is source-risk
   // reporting, never proof that any recipient or buyer received an outcome.
