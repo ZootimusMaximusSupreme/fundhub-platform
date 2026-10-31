@@ -521,5 +521,29 @@ export function judgeSyntheticEdge({
       }
     }
   }
+  // Even report-only legacy fixtures must never claim a customer result was
+  // observed *before* its producer, handler, result or provider timestamp.
+  // Missing legacy stamps remain a separately documented partial-proof gap;
+  // a supplied future/invalid stamp is NOT_CHECKED, never fabricated PASS.
+  // Strict canonical evidence above retains its stronger RED ordering checks.
+  const observedStamps = [
+    ["producer", resolved.created_at],
+    ["consumer", consumer.completed_at ?? consumer.created_at],
+    ["business-result", receipt.completed_at ?? receipt.created_at],
+    ...(requireProviderReceipt
+      ? [["provider", providerReceipt.delivered_at ?? providerReceipt.completed_at ??
+        providerReceipt.created_at]]
+      : [])
+  ];
+  for (const [kind, stamp] of observedStamps) {
+    if (stamp == null || stamp === "") continue;
+    const observedAt = milliseconds(stamp);
+    if (!Number.isFinite(observedAt)) {
+      return { verdict: "NOT_CHECKED", reason: kind + "-timestamp-invalid" };
+    }
+    if (observedAt > current) {
+      return { verdict: "NOT_CHECKED", reason: kind + "-timestamp-in-future" };
+    }
+  }
   return { verdict: "PASS", reason: "event-consumer-and-business-result-correlated" };
 }
