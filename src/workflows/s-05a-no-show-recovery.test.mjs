@@ -8,6 +8,40 @@ function fakeStep() {
   return { run: (_id, fn) => fn(), sleep: async () => {}, sleepUntil: async () => {} };
 }
 
+/* The rebook check reads times. The missed call was booked days before; it started at 12:00 p.m. Arizona,
+   ran 30 minutes, and DPC-02 saved booking.noshow 5 minutes after it ended. */
+const BOOKED_AT = "2026-11-01T17:00:00.000Z";
+const MISSED_AT = "2026-11-04T19:00:00.000Z";
+const NOSHOW_AT = "2026-11-04T19:35:00.000Z";
+const afterNoShow = (min) => new Date(Date.parse(NOSHOW_AT) + min * 60_000).toISOString();
+
+/* rebookedSinceMiss, answered from the fake's rows the way its SQL answers it: a booking.created or
+   booking.rescheduled for this person in this company, saved after the earlier of the missed call's start
+   and the no-show's own saved time. The SQL itself is read against Postgres in followup-chases.pg.test.mjs. */
+function withRebookRead(inner) {
+  const wrapped = Object.create(inner);
+  wrapped.query = async (sql, params = []) => {
+    if (!/AS rebooked/.test(String(sql)) || !/LEAST\(/.test(String(sql))) return inner.query(sql, params);
+    const [orgId, clientId, eventId, missedAt] = params;
+    const noShow = inner.events.find((e) => e.id === eventId && e.org_id === orgId);
+    const lines = [missedAt, noShow?.created_at].filter(Boolean).map((t) => Date.parse(t));
+    if (lines.length === 0) return { rows: [] };
+    const line = Math.min(...lines);
+    const hit = inner.events.some((e) => e.org_id === orgId && e.client_id === clientId
+      && ["booking.created", "booking.rescheduled"].includes(e.name) && Date.parse(e.created_at) > line);
+    return { rows: hit ? [{ rebooked: 1 }] : [] };
+  };
+  return wrapped;
+}
+/* pgFake with the no-show saved the way the event bus saves it before any workflow runs (id "evt-x", ev's id). */
+function noShowDb({ events = [], ...rest } = {}) {
+  return withRebookRead(pgFake({
+    ...rest,
+    events: [{ id: "evt-x", org_id: "org-1", client_id: "cl-1", name: "booking.noshow", payload: {}, created_at: NOSHOW_AT }, ...events]
+  }));
+}
+const missedBooking = (over = {}) => ({ org_id: "org-1", client_id: "cl-1", name: "booking.created", created_at: BOOKED_AT, ...over });
+
 function fakeDb({ clientId = "cl-1" } = {}) {
   const tags = [];
   const tasks = [];
@@ -68,7 +102,7 @@ test("s-05a: tags, templates keys, recovery task", async () => {
 });
 
 test("s-05a: four touches when they never rebook", async () => {
-  const db = pgFake({
+  const db = noShowDb({
     clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", custom_fields: {} }],
     templates: [
       { org_id: "org-1", template_key: EMAIL_TEMPLATE_KEY, channel: "email", body: "t1e", compliance_passed: true },
@@ -91,7 +125,7 @@ test("s-05a: four touches when they never rebook", async () => {
 });
 
 test("s-05a: stops before touch 2 if they rebook", async () => {
-  const db = pgFake({
+  const db = noShowDb({
     clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", custom_fields: {} }],
     templates: [
       { org_id: "org-1", template_key: EMAIL_TEMPLATE_KEY, channel: "email", body: "t1e", compliance_passed: true },
@@ -101,7 +135,7 @@ test("s-05a: stops before touch 2 if they rebook", async () => {
   const step = {
     run: async (id, fn) => {
       const out = await fn();
-      if (id === "send-touch-1") db.events.push({ org_id: "org-1", client_id: "cl-1", name: "booking.created" });
+      if (id === "send-touch-1") db.events.push({ org_id: "org-1", client_id: "cl-1", name: "booking.created", created_at: afterNoShow(60 * 20) });
       return out;
     },
     sleep: async () => {},
@@ -116,11 +150,11 @@ test("s-05a: stops before touch 2 if they rebook", async () => {
 });
 
 test("s-05a: original booking.created does not count as a rebook", async () => {
-  const db = pgFake({
+  const db = noShowDb({
     clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", custom_fields: {} }],
     events: [
-      { org_id: "org-1", client_id: "cl-1", name: "booking.created" },
-      { org_id: "org-1", client_id: "cl-1", name: "booking.rescheduled" }
+      missedBooking(),
+      missedBooking({ name: "booking.rescheduled", created_at: "2026-11-02T17:00:00.000Z" })
     ],
     templates: [
       { org_id: "org-1", template_key: EMAIL_TEMPLATE_KEY, channel: "email", body: "t1e", compliance_passed: true },
@@ -142,12 +176,63 @@ test("s-05a: original booking.created does not count as a rebook", async () => {
   assert.equal(db.messages.length, 8);
 });
 
+/* The reviewer's case (2026-10-31). The run used to count bookings when it started and stop only on a higher
+   count later. A rebook saved after the no-show but before the run's first step was inside that starting count,
+   so every touch went to a person who had already booked again. cancelOn cannot help: it sees only events
+   that arrive after the run starts. */
+test("s-05a: a rebook saved after the no-show but before the run starts stops recovery", async () => {
+  const db = noShowDb({
+    clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", custom_fields: {} }],
+    events: [missedBooking(), { org_id: "org-1", client_id: "cl-1", name: "booking.created", created_at: afterNoShow(1) }],
+    templates: allTemplates()
+  });
+  const res = await handle({
+    event: ev("booking.noshow", { bookingUid: "b1", startTime: MISSED_AT }, { clientId: "cl-1" }),
+    db, step: recordingStep(), now: () => Date.parse(afterNoShow(2))
+  });
+  assert.equal(res.stoppedAt, "before-touch-1");
+  assert.equal(db.messages.length, 0, "nothing goes to a person who already booked again");
+  assert.equal(db.tasks.length, 1, "the closer's task is still made at once");
+});
 
+test("s-05a: a rebook made during the missed call, before the no-show was saved, stops recovery", async () => {
+  // DPC-02 saves the no-show 5 minutes after the call ends. A person who books a new call 10 minutes into the
+  // one they missed has booked again after the miss.
+  const db = noShowDb({
+    clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", custom_fields: {} }],
+    events: [missedBooking(), { org_id: "org-1", client_id: "cl-1", name: "booking.created", created_at: "2026-11-04T19:10:00.000Z" }],
+    templates: allTemplates()
+  });
+  const res = await handle({
+    event: ev("booking.noshow", { bookingUid: "b1", startTime: MISSED_AT }, { clientId: "cl-1" }),
+    db, step: recordingStep(), now: () => Date.parse(afterNoShow(2))
+  });
+  assert.equal(res.stoppedAt, "before-touch-1");
+  assert.equal(db.messages.length, 0);
+});
+
+test("s-05a: bookings saved before the missed call started do not stop recovery, from another company never", async () => {
+  const db = noShowDb({
+    clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", custom_fields: {} }],
+    events: [
+      missedBooking(),
+      missedBooking({ name: "booking.rescheduled", created_at: "2026-11-04T18:59:59.000Z" }), // moved to noon, a second before
+      { org_id: "org-other", client_id: "cl-1", name: "booking.created", created_at: afterNoShow(1) }
+    ],
+    templates: allTemplates()
+  });
+  const res = await handle({
+    event: ev("booking.noshow", { bookingUid: "b1", startTime: MISSED_AT }, { clientId: "cl-1" }),
+    db, step: recordingStep(), now: () => Date.parse(afterNoShow(2))
+  });
+  assert.equal(res.stoppedAt, undefined);
+  assert.equal(db.messages.length, 8);
+});
 
 test("s-05a: rescheduling the missed booking stops later recovery touches", async () => {
-  const db = pgFake({
+  const db = noShowDb({
     clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", custom_fields: {} }],
-    events: [{ org_id: "org-1", client_id: "cl-1", name: "booking.created" }],
+    events: [missedBooking()],
     templates: [
       { org_id: "org-1", template_key: EMAIL_TEMPLATE_KEY, channel: "email", body: "t1e", compliance_passed: true },
       { org_id: "org-1", template_key: SMS_TEMPLATE_KEY, channel: "sms", body: "t1s", compliance_passed: true }
@@ -157,7 +242,7 @@ test("s-05a: rescheduling the missed booking stops later recovery touches", asyn
     run: async (id, fn) => {
       const result = await fn();
       if (id === "send-touch-1") {
-        db.events.push({ org_id: "org-1", client_id: "cl-1", name: "booking.rescheduled" });
+        db.events.push({ org_id: "org-1", client_id: "cl-1", name: "booking.rescheduled", created_at: afterNoShow(60 * 20) });
       }
       return result;
     },
@@ -180,7 +265,7 @@ test("s-05a: rescheduling the missed booking stops later recovery touches", asyn
 });
 
 test("s-05a: a reschedule from another company cannot stop recovery", async () => {
-  const db = pgFake({
+  const db = noShowDb({
     clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", custom_fields: {} }],
     templates: [
       { org_id: "org-1", template_key: EMAIL_TEMPLATE_KEY, channel: "email", body: "t1e", compliance_passed: true },
@@ -197,7 +282,7 @@ test("s-05a: a reschedule from another company cannot stop recovery", async () =
     run: async (id, fn) => {
       const result = await fn();
       if (id === "send-touch-1") {
-        db.events.push({ org_id: "org-other", client_id: "cl-1", name: "booking.rescheduled" });
+        db.events.push({ org_id: "org-other", client_id: "cl-1", name: "booking.rescheduled", created_at: afterNoShow(60 * 20) });
       }
       return result;
     },
@@ -266,15 +351,15 @@ test("s-05a: a no-show at 6 p.m. waits for 9 a.m., and the later touches count f
 });
 
 test("s-05a: no-show at 6 p.m. Arizona, booked again at 8 a.m. the next day: touch 1 is never sent, and the closer task was made at once", async () => {
-  const db = pgFake({
+  const db = noShowDb({
     clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", custom_fields: {} }],
-    events: [{ org_id: "org-1", client_id: "cl-1", name: "booking.created" }], // the call that was missed
+    events: [missedBooking()], // the call that was missed
     templates: allTemplates()
   });
   const step = recordingStep({
     onSleepUntil: async (id) => {
       // 8 a.m. Thursday: they book again while the first touch is waiting for 9.
-      if (id === "wait-touch-1") db.events.push({ org_id: "org-1", client_id: "cl-1", name: "booking.created" });
+      if (id === "wait-touch-1") db.events.push({ org_id: "org-1", client_id: "cl-1", name: "booking.created", created_at: "2026-11-05T15:00:00.000Z" });
     }
   });
   const res = await handle({
@@ -293,9 +378,9 @@ test("s-05a: no-show at 6 p.m. Arizona, booked again at 8 a.m. the next day: tou
 });
 
 test("s-05a: no-show at 6 p.m., nobody rebooks: nothing is queued until 9 a.m., then the four touches go on the planned days", async () => {
-  const db = pgFake({
+  const db = noShowDb({
     clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", custom_fields: {} }],
-    events: [{ org_id: "org-1", client_id: "cl-1", name: "booking.created" }],
+    events: [missedBooking()],
     templates: allTemplates()
   });
   const queuedAtWake = {};
@@ -322,9 +407,9 @@ test("s-05a: no-show at 6 p.m., nobody rebooks: nothing is queued until 9 a.m., 
 });
 
 test("s-05a: the first email names the call that was missed (Arizona time), not a blank", async () => {
-  const db = pgFake({
+  const db = noShowDb({
     clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", custom_fields: {} }],
-    events: [{ org_id: "org-1", client_id: "cl-1", name: "booking.created" }],
+    events: [missedBooking()],
     templates: allTemplates({ t1e: "We had you down for {{appointment.start_time}} and didn't connect." })
   });
   await handle({

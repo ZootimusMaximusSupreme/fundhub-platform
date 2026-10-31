@@ -20,11 +20,14 @@
 export const SEND_WINDOW_TZ = "America/Phoenix";
 export const DRIP_START_HOUR = 9;
 export const DRIP_END_HOUR = 17;
-/* Workflows plan a drip no later than 4:55 p.m. The sender sweeps every 5 minutes,
-   so a message planned inside the window is sent inside it. Planned at 4:58 p.m. it
-   would be swept after 5:00, held to 9 a.m., and go out without the workflow's own
-   "did they book or reply?" check, which runs only at the planned moment. */
-export const DRIP_LAST_PLAN_MINUTE = 16 * 60 + 55;
+/* Workflows plan a drip no later than 4:50 p.m. (16:50, so 4:50:59 at the latest).
+   The sender sweeps every 5 minutes and its last pass inside the window is 4:55. A
+   drip written after that pass is swept at 5:00, held to 9 a.m., and goes out
+   without the workflow's own "did they book or reply?" check, which runs only at
+   the planned moment. The workflow writes the row a little after it wakes (its
+   checks run first), so a drip planned at 4:55, or at 4:55:59, missed the 4:55
+   pass. Planned by 4:50 it is written before 4:55 and that pass sends it. */
+export const DRIP_LAST_PLAN_MINUTE = 16 * 60 + 50;
 
 /** Sent the moment the person acts, at any hour. */
 export const INSTANT_TEMPLATE_KEYS = new Set([
@@ -135,7 +138,7 @@ function minuteIn(date, timeZone) {
   return hour * 60 + minute;
 }
 
-/** When a drip due at `date` really goes out: `date` itself from 9:00 to 4:55 p.m.
+/** When a drip due at `date` really goes out: `date` itself from 9:00 to 4:50:59 p.m.
     Arizona, else the next 9:00 a.m. Arizona. Workflows use this to space their
     touches by the day a message really lands, not the day it was due, and sleep
     until it before they check and send. */
