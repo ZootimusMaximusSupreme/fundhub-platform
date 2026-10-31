@@ -18,7 +18,7 @@ function payment({ org = ORG, sale = SALE, kind = "deposit", amount = 200, at = 
     ${Number(amount)}::numeric, '${at}'::timestamptz`;
 }
 
-function probe(payments, { status = "active", demo = false, category = "funding" } = {}) {
+function probe(payments, { status = "active", demo = false, category = "funding", secondFundingSale = false } = {}) {
   const emptyPayment = `SELECT NULL::uuid, NULL::uuid, NULL::text,
     NULL::numeric, NULL::timestamptz WHERE false`;
   return `
@@ -31,6 +31,9 @@ function probe(payments, { status = "active", demo = false, category = "funding"
         VALUES ('${SALE}'::uuid, '${ORG}'::uuid, '${CLIENT}'::uuid,
           '${PRODUCT}'::uuid, '2026-10-29T10:00:00Z'::timestamptz,
           '${status}'::text, ${demo}::boolean)
+        ${secondFundingSale ? `, ('${OTHER_SALE}'::uuid, '${ORG}'::uuid, '${CLIENT}'::uuid,
+          '${PRODUCT}'::uuid, '2026-10-30T10:00:00Z'::timestamptz,
+          'active'::text, false::boolean)` : ""}
       ),
       sale_payments(org_id, sale_id, kind, amount, paid_at) AS (
         ${[emptyPayment, ...payments.map(payment)].join("\nUNION ALL\n")}
@@ -60,6 +63,8 @@ test("trip funding deposit requires an owned, net-positive receipt and starts cl
     ["signed but unpaid sale", [], null],
     ["other tenant's receipt", [{ org: OTHER_ORG }], null],
     ["different sale's receipt", [{ sale: OTHER_SALE }], null],
+    ["older unpaid offer must not displace a later paid funding sale",
+      [{ sale: OTHER_SALE }], PAID_AT, { secondFundingSale: true }],
     ["success fee is not a deposit", [{ kind: "success_fee" }], null],
     ["installment alone is not an initial deposit", [{ kind: "installment" }], null],
     ["zero-dollar deposit", [{ amount: 0 }], null],
@@ -72,8 +77,8 @@ test("trip funding deposit requires an owned, net-positive receipt and starts cl
     ["cross-org deposit cannot offset a same-org refund",
       [{ kind: "refund", amount: 200 }, { org: OTHER_ORG }], null]
   ];
-  for (const [label, receipts, expected] of cases) {
-    const result = await db.query(probe(receipts), [ORG]);
+  for (const [label, receipts, expected, options] of cases) {
+    const result = await db.query(probe(receipts, options), [ORG]);
     assert.equal(result.rows.length, 1, label);
     const actual = result.rows[0].deposit_paid_at;
     assert.equal(actual ? new Date(actual).toISOString() : null, expected ? new Date(expected).toISOString() : null, label);
