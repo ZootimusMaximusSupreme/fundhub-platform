@@ -6,7 +6,7 @@ const ORG="11111111-1111-4111-8111-111111111111";
 const CLIENT="22222222-2222-4222-8222-222222222222";
 const LETTER="44444444-4444-4444-8444-444444444444";
 const HTML="<p>Saved and approved content A</p>";
-function fixture({owned=true,authorized=true,saved=true,status="ready"}={}) {
+function fixture({owned=true,authorized=true,saved=true,status="ready",target="bureau",recordedState="AZ"}={}) {
   const sends=[],statements=[];
   const deps={
     db:{async query(sql,params) {
@@ -15,7 +15,7 @@ function fixture({owned=true,authorized=true,saved=true,status="ready"}={}) {
       if (sql.includes("FROM dispute_letters")) {
         assert.match(sql,/org_id = \$1::uuid AND client_id = \$2::uuid/);
         assert.deepEqual(params.slice(0,2),[ORG,CLIENT]);
-        return {rows:saved?[{id:LETTER,bureau:"EX",target:"bureau",
+        return {rows:saved?[{id:LETTER,bureau:"EX",target,
           body_text:HTML,status,case_id:"55555555-5555-4555-8555-555555555555",
           furnisher_address_id:null}]:[]};
       }
@@ -24,6 +24,12 @@ function fixture({owned=true,authorized=true,saved=true,status="ready"}={}) {
     requireAuth:async()=>({id:"33333333-3333-4333-8333-333333333333",org_id:ORG,role:"owner"}),
     hasRepairAgreement:async()=>authorized,
     hasDisputeAuthorization:async()=>false,
+    loadClientReturnAddress:async (_db, {orgId,clientId})=>{
+      assert.deepEqual([orgId,clientId],[ORG,CLIENT]);
+      return recordedState
+        ? { address_line1:"Recorded consumer address",address_city:"Phoenix",address_state:recordedState,address_zip:"85001" }
+        : null;
+    },
     sendRepairLetters:async (_db,args)=>{sends.push(args);return {ok:true,results:[]}}
   };
   const req={method:"POST",body:{mail:true,client_id:CLIENT,mail_from:{address_line1:"Synthetic"},
@@ -76,4 +82,32 @@ test("authorization or foreign-client denial happens before saved lookup",async(
     assert.equal(h.sends.length,0);
     assert.equal(h.statements.some(x=>/FROM dispute_letters/.test(x.sql)),false);
   }
+});
+
+test("state-AG mail ignores forged HTTP state and return address, using on-file consumer state", async()=>{
+  const h=await run(b=>{
+    b.identity={state:"FL"};
+    b.mail_from={address_line1:"Untrusted address",address_state:"FL"};
+  },{target:"state_ag",recordedState:"AZ"});
+  assert.equal(h.res.code,200);
+  assert.equal(h.sends.length,1);
+  assert.deepEqual(h.sends[0].identity,{state:"AZ"});
+  assert.equal(h.sends[0].from.address_state,"AZ");
+  assert.equal(h.sends[0].from.address_line1,"Recorded consumer address");
+  assert.equal(h.sends[0].letters[0].target,"state_ag");
+});
+
+test("state-AG mail missing on-file state fails closed before claim or provider", async()=>{
+  const h=await run(b=>{ b.identity={state:"FL"}; },{target:"state_ag",recordedState:null});
+  assert.equal(h.res.code,409);
+  assert.equal(h.res.body.error,"client_state_missing_for_ag");
+  assert.equal(h.sends.length,0);
+  assert.equal(h.statements.some(x=>/UPDATE dispute_letters/.test(x.sql)),false);
+});
+
+test("normal bureau letter preserves existing non-AG mail behavior", async()=>{
+  const h=await run(b=>{ b.identity={state:"FL"}; },{target:"bureau",recordedState:null});
+  assert.equal(h.res.code,200);
+  assert.equal(h.sends.length,1);
+  assert.deepEqual(h.sends[0].identity,{state:"FL"});
 });
