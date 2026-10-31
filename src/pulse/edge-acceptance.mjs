@@ -61,6 +61,7 @@ export const CRITICAL_EDGES = Object.freeze([
     event: "payment.received", consumer: "onPaymentReceived / entitlement handlers",
     receipt: "payment ledger + active entitlement + portal read", graceMinutes: null,
     pulse: "payments:paid-no-entitlement",
+    proofStatus: "PARTIAL_NEEDS_FINAL_PSP_TRANSACTION_RECONCILIATION",
     paths: ["src/adapters/commas.mjs", ...EVENT_DISPATCH_PROOF_TOUCH, "src/register-all.mjs", "src/merchant/", "src/billing/", "src/payments/", "src/entitlements/", "src/finance/finance-os-entitlement.mjs", "src/ledger/", "src/handlers/money-chain.mjs", "src/handlers/client-lifecycle.mjs", "src/handlers/payment-links.mjs", "src/payment-links/", "src/workflows/ar-collections.mjs", "src/invoices/", "api/read/invoices.mjs", "src/auth/account-session.mjs", "public/login.html", "api/read/csm-queue.mjs", "public/app/client-portal.html", "src/adapters/whop", "api/payment", "api/checkout"]
   },
   {
@@ -266,6 +267,7 @@ export function judgeSyntheticEdge({
   identityReceipt, requireProviderReceipt = false, requireConsentReceipt = false, consentScope,
   requireUniqueProviderOrder = false, providerOrders,
   requirePaymentLinkReceipt = false, paymentLinkReceipt,
+  requireFinalPaymentReceipt = false, finalPaymentReceipt, transactionReceipt,
   expectedContract, now = Date.now(), graceMs = 15 * 60 * 1000
 } = {}) {
   // A present producer event contradicts a "no demand" claim; never hide it as NA.
@@ -402,6 +404,55 @@ export function judgeSyntheticEdge({
     if (settledAt < sourceAt || settledAt > current) {
       return failed("payment-link-settlement-time-invalid");
     }
+  }
+  // A/R A86: a signed PSP success can arrive AFTER a failure with the same
+  // (org, provider_ref). A duplicate-key DO NOTHING must not let an old
+  // transactions.status='failed' look like a completed paid customer result.
+  // This is OPT-IN NORMALIZED SYNTHETIC proof, not a production PSP query.
+  // Without an authenticated final-status PSP receipt, do not infer demand or
+  // manufacture a customer PASS from a payment.received event alone.
+  if (requireFinalPaymentReceipt) {
+    if (!resolved.provider_ref || !resolved.id) {
+      return { verdict: "NOT_CHECKED", reason: "payment-finality-event-reference-unavailable" };
+    }
+    if (!finalPaymentReceipt || finalPaymentReceipt.verified !== true ||
+        finalPaymentReceipt.status !== "succeeded") {
+      return { verdict: "NOT_CHECKED", reason: "authenticated-final-psp-success-not-observed" };
+    }
+    const providerTime = milliseconds(finalPaymentReceipt.observed_at);
+    if (!Number.isFinite(providerTime)) {
+      return { verdict: "NOT_CHECKED", reason: "final-psp-receipt-timestamp-unavailable" };
+    }
+    if (providerTime > current) return failed("final-psp-receipt-from-future");
+    if (finalPaymentReceipt.org_id !== resolved.org_id ||
+        finalPaymentReceipt.client_id !== resolved.client_id ||
+        finalPaymentReceipt.event_id !== resolved.id ||
+        String(finalPaymentReceipt.provider_ref || "") !== String(resolved.provider_ref) ||
+        (resolved.psp_payment_id && String(finalPaymentReceipt.psp_payment_id || "") !==
+          String(resolved.psp_payment_id))) {
+      return failed("final-psp-receipt-identity-mismatch");
+    }
+    // Undefined means the transaction table was never queried. Null means an
+    // authorized, scoped read was run and there was no matching row.
+    if (transactionReceipt === undefined) {
+      return { verdict: "NOT_CHECKED", reason: "payment-transaction-read-not-performed" };
+    }
+    if (!transactionReceipt) return failed("final-payment-transaction-row-missing");
+    if (transactionReceipt.org_id !== resolved.org_id ||
+        transactionReceipt.client_id !== resolved.client_id ||
+        String(transactionReceipt.provider_ref || "") !== String(resolved.provider_ref) ||
+        (resolved.psp_payment_id && String(transactionReceipt.psp_payment_id || "") !==
+          String(resolved.psp_payment_id))) {
+      return failed("final-payment-transaction-identity-mismatch");
+    }
+    if (transactionReceipt.status !== "succeeded") {
+      return failed("final-payment-transaction-still-not-succeeded");
+    }
+    const updatedAt = milliseconds(transactionReceipt.status_updated_at);
+    if (!Number.isFinite(updatedAt)) {
+      return { verdict: "NOT_CHECKED", reason: "payment-transaction-status-time-unavailable" };
+    }
+    if (updatedAt > current) return failed("payment-transaction-status-from-future");
   }
   if (!matchesEvent(receipt, resolved) || receipt.outcome !== "satisfied") {
     return failed("downstream-business-result-missing");
