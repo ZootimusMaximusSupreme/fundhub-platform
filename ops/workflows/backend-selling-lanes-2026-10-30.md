@@ -243,7 +243,7 @@ Chris's order: fix the follow-up messages from lead to booked call and onward (c
 
 | Unit | Owner | What it owns | Status |
 |---|---|---|---|
-| W1 | this chat (Opus) | `survey.completed` from every survey source; score ranges 500-619 / 620-699 / 700-759 / 760-850 / Not sure in the survey page, `classifySurvey`, `surveyFicoBand`, the calendar split, the qualified and unqualified pixel events; `credit_tier` saved on the person; send hours (instant any hour, drips 9 a.m. to 5 p.m. Arizona); the resume step on the `/apply` page; heartbeat rows; journeys; join, ship, live proof | join done; ship and live proof next |
+| W1 | this chat (Opus) | `survey.completed` from every survey source; score ranges 500-619 / 620-699 / 700-759 / 760-850 / Not sure in the survey page, `classifySurvey`, `surveyFicoBand`, the calendar split, the qualified and unqualified pixel events; `credit_tier` saved on the person; send hours (instant any hour, drips 9 a.m. to 5 p.m. Arizona); the resume step on the `/apply` page; heartbeat rows; journeys; join, ship, live proof | #346 merged 2026-10-31; its ship was stopped after seed 301 reached the live database and before the code deployed, so the two live welcome templates were bridged by hand (no tag, plain /apply link). Hotfix: no text carries the come-back link (independent review, P1). Ship and live proof after the hotfix |
 | W2 | agent (Sonnet) | resume link + public door `GET /api/public/survey-resume`; S-02 quit-survey flow (3 touches, text + email); welcome sends carry the resume link | done |
 | W3 | agent (Sonnet) | `s-nobook-chase` on `survey.completed`, stop on reply; setter task for finished-not-booked; setter "No answer" starts AI-SET-03; `credit_tier` refreshed when the setter fixes the score | done |
 | W4 | agent (Sonnet) | booked lane check on the scratch database: confirm, reminders, reschedule, cancel, no-show, call held; smallest fix for anything broken; BS-01 left alone | done |
@@ -464,6 +464,7 @@ Hey Dana, on your Fundhub call we review your file the way a lender does and sho
 - `dpc-03-inbound-reply-router.mjs` reads YES as "confirm my call" only when `call_outcome` is `booked`, not `rescheduled` (W5).
 - The same-day booking block is on the first calendar only (other chat's note).
 - S-NOBOOK keeps a temporary path for runs that fell asleep under `survey.submitted` before the ship. Remove it about five days after the ship (W3).
+- How the /apply webhook updates contact details on an existing lead (found by the 2026-10-31 review of the come-back link). The link itself is fixed: email only. The rest predates this lane and is not changed here; details in the shared notes, not in this public file.
 
 ### 7. Heartbeat (required in the same change)
 

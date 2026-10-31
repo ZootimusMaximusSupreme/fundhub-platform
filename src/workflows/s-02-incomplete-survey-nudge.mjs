@@ -14,12 +14,16 @@
 //   touch 2  9:00 a.m. Arizona on the day after touch 1 really goes out
 //   touch 3  9:00 a.m. Arizona on the day after touch 2
 //
-// Every message carries three merge tags: {{survey_resume_link}}, a signed link that
-// opens /apply on the question where the person stopped (src/survey/resume-link.mjs),
-// {{survey_stopped_at}} ("the credit score question") and {{survey_taps_left}} ("5
-// more taps"), which say it the way a person would (surveyProgressWords in
-// src/survey/resume-state.mjs). The words are the seed's (SMS-S02-RESUME-1..3,
-// EMAIL-S02-RESUME-1..3); this file only sends the keys.
+// Every message carries two merge tags, {{survey_stopped_at}} ("the credit score
+// question") and {{survey_taps_left}} ("5 more taps"), which say it the way a person
+// would (surveyProgressWords in src/survey/resume-state.mjs). The EMAIL also carries
+// {{survey_resume_link}}, a signed link that opens /apply on the question where the
+// person stopped (src/survey/resume-link.mjs). THE TEXT NEVER DOES. The link opens the
+// person's saved answers, and the public form can put any phone on an existing lead's
+// email, so a text can reach someone else; the email address is the lead's identity,
+// so the email reaches the owner (review 2026-10-31). The text points to the email
+// instead. The words are the seed's (SMS-S02-RESUME-1..3, EMAIL-S02-RESUME-1..3); this
+// file only sends the keys.
 //
 // THE TWO PROGRESS TAGS ARE WORKED OUT AT SEND TIME, from the answers saved by then,
 // because a person can answer more questions between one touch and the next. A touch
@@ -198,17 +202,17 @@ export async function handle({ event, db, step, now = () => Date.now() }) {
       const progress = surveyProgressWords(await savedFields(db, { orgId, clientId }));
       // Every question is answered: there is nothing to come back to, so nothing goes.
       if (progress.left === 0) return { skipped: "all_answered" };
-      const context = {
-        survey_resume_link: surveyResumeUrl({ orgId, clientId, now }),
+      const words = {
         survey_stopped_at: progress.stoppedAt,
         survey_taps_left: progress.tapsLeft
       };
       return {
         sms: await sendTemplated(db, {
-          orgId, clientId, channel: "sms", templateKey: touch.sms, eventId: plan.cohortId, context
+          orgId, clientId, channel: "sms", templateKey: touch.sms, eventId: plan.cohortId, context: words
         }),
         email: await sendTemplated(db, {
-          orgId, clientId, channel: "email", templateKey: touch.email, eventId: plan.cohortId, context
+          orgId, clientId, channel: "email", templateKey: touch.email, eventId: plan.cohortId,
+          context: { ...words, survey_resume_link: surveyResumeUrl({ orgId, clientId, now }) }
         })
       };
     });
