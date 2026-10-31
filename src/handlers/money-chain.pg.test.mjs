@@ -670,7 +670,9 @@ describe("money-chain writers", { skip: !HAS_DB ? "no DATABASE_URL" : false }, (
         productName: "Consulting Services Deposit", amount: 3000,
         providerRef, source: "commas" };
       const event = (name, extra = {}, buyer = clientId) => ({
-        id: randomUUID(), name, orgId: org, clientId: buyer, payload: { ...payload, ...extra }
+        // Direct handler calls have no persisted bus event; the stored provider
+        // transaction supplies their durable replay identity.
+        id: null, name, orgId: org, clientId: buyer, payload: { ...payload, ...extra }
       });
       const readTransaction = async (ref = providerRef) => (await conn.query(
         "SELECT * FROM transactions WHERE org_id=$1 AND provider_ref=$2", [org, ref]
@@ -734,7 +736,7 @@ describe("money-chain writers", { skip: !HAS_DB ? "no DATABASE_URL" : false }, (
       assert.equal((await readTransaction()).status, "succeeded");
       assert.equal((await readTransaction()).id, transactionId, "capture settles the existing attempt");
       assert.equal((await onPaymentReceivedMoney(received, conn)).reason, "payment_link_invoice_conflict");
-      assert.equal((await onDepositPaidMoney({ ...received, id: randomUUID(), name: "deposit.paid" }, conn)).reason,
+      assert.equal((await onDepositPaidMoney({ ...received, name: "deposit.paid" }, conn)).reason,
         "payment_link_invoice_conflict");
       for (const table of ["sale_payments", "commission_ledger", "entitlements", "cards"]) {
         const clause = table === "sale_payments" ? "sale_id=$1" : "client_id=$1";
@@ -746,7 +748,7 @@ describe("money-chain writers", { skip: !HAS_DB ? "no DATABASE_URL" : false }, (
       assert.equal((await onPaymentReceivedMoney(paid, conn)).done, true);
       const deposit = event("deposit.paid", bound);
       assert.equal((await onDepositPaidMoney(deposit, conn)).done, true);
-      assert.equal((await onDepositPaidMoney({ ...deposit, id: randomUUID() }, conn)).done, true);
+      assert.equal((await onDepositPaidMoney({ ...deposit }, conn)).done, true);
       await onPaymentFailed(event("payment.failed", bound), conn);
       assert.equal((await readTransaction()).status, "succeeded", "late decline cannot downgrade captured money");
       assert.equal((await conn.query("SELECT count(*)::int n FROM sale_payments WHERE sale_id=$1", [origin.sale.id])).rows[0].n, 1);
