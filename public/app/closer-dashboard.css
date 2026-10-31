@@ -198,18 +198,22 @@
   .closer-workspace .sec{margin-bottom:21px;}
   .closer-workspace .sech{margin-bottom:14px;}
   .closer-workspace .funding-estimate{order:1;}
+  /* This page's mobile details must override the later-loaded Astra staff CSS.
+     Keep all three funding amounts and provenance visible above the credit facts. */
+  body.closer-workspace.fh-astra--closer-dashboard .funding-estimate .sech{margin-bottom:8px;}
+  body.closer-workspace.fh-astra--closer-dashboard .funding-estimate .lever{margin-top:5px;}
   .closer-workspace .client-facts{order:2;grid-template-columns:1fr;gap:13px;}
   .closer-workspace .precall-context{order:3;}
   .closer-workspace .payment-calculator{order:4;}
   .closer-workspace .cockpit-main .panel{padding:17px 18px;}
   .closer-workspace .panel h3{margin-bottom:10px;}
   .closer-workspace .panel td{padding:7px 0;font-size:13px;}
-  .closer-workspace .bands{grid-template-columns:1fr;gap:5px;}
+  body.closer-workspace.fh-astra--closer-dashboard .funding-estimate .bands{grid-template-columns:1fr;gap:3px;}
   .closer-workspace .band{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:16px;padding:0;}
-  .closer-workspace .band+.band{border-left:0;border-top:1px solid var(--line);padding:4px 0 0;}
+  body.closer-workspace.fh-astra--closer-dashboard .funding-estimate .band+.band{border-left:0;border-top:1px solid var(--line);padding:3px 0 0;}
   .closer-workspace .band .bl{min-height:0;align-self:center;}
   .closer-workspace .band .bv{margin:0;font-size:25px!important;}
-  .closer-workspace .band .bn{grid-column:1/-1;margin-top:5px;}
+  body.closer-workspace.fh-astra--closer-dashboard .funding-estimate .band .bn{grid-column:1/-1;margin-top:3px;}
   .closer-workspace .ctxg{gap:15px 18px;}
   .closer-workspace .rail{display:block;padding:20px;}
   .closer-workspace .rail section+section{padding:19px 0 0;border-left:0;border-top:1px solid #dbe0d5;margin-top:20px;}
