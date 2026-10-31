@@ -62,7 +62,12 @@ function bankFile(over = {}) {
 
 async function call({ query = { client_id: CLIENT }, method = "GET", body, principal, db = bankFile() } = {}) {
   const res = makeRes();
-  await handler({ method, query, body }, res, { db, requirePrincipal: gateAs(principal), now: () => NOW });
+  // This file proves the bank strategy for an entitled sample client. The
+  // purchase gate and its denials have their own route-policy test.
+  await handler({ method, query, body }, res, {
+    db, requirePrincipal: gateAs(principal), now: () => NOW,
+    financeOsEntitlement: async () => ({ entitled: true })
+  });
   return { res, db };
 }
 const staff = (role = "closer", orgId = ORG) => staffPrincipal(role, orgId);
