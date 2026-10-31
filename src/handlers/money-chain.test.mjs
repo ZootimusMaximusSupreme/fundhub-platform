@@ -6,9 +6,14 @@ import {
   BUCKET_TO_CODE, paymentKindFor, nothingUnlockedReason, NOTHING_UNLOCKED,
   ensureAttributions, ensureSalePayment, resolveProductId,
   onRoundFundedMoney, syncClientFunded, SQL_SYNC_CLIENT_FUNDED,
-  onPaymentReceivedMoney
+  onPaymentReceivedMoney, onDepositPaidMoney, onDiagnosticPaidMoney, onSaleClosedMoney
 } from "./money-chain.mjs";
 import { OFFERS } from "../config/offers.mjs";
+import { randomUUID } from "node:crypto";
+import { processCommasInboxRow } from "../adapters/commas.mjs";
+import { onPaymentReceived, onPaymentFailed } from "./client-lifecycle.mjs";
+import { on, clearHandlers } from "../events/registry.mjs";
+import { inngest } from "../workflows/client.mjs";
 
 describe("money-chain helpers", () => {
   test("BUCKET_TO_CODE maps Commas semantic buckets to product codes", () => {
@@ -916,5 +921,165 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
     assert.equal(out.done, false);
     assert.equal(out.reason, "sale_context_conflict");
     assert.equal(salePaymentInsert(db), undefined);
+  });
+});
+
+// Exercise the adapter's actual event pair, not just payment.received alone.
+// These tables model receipt/entitlement uniqueness; providers are never called.
+describe("Commas purchase events share the invoice receipt gate", () => {
+  const ORG = "00000000-0000-4000-8000-0000000000a1";
+  const CLIENT = "00000000-0000-4000-8000-0000000000c1";
+  const LINK = "00000000-0000-4000-8000-0000000000d1";
+  const INVOICE = "00000000-0000-4000-8000-0000000000e1";
+  const OTHER_INVOICE = "00000000-0000-4000-8000-0000000000e2";
+  const SALE = "00000000-0000-4000-8000-0000000000b1";
+  const PRODUCT = "00000000-0000-4000-8000-0000000000f1";
+
+  function purchaseDb({ linked = true } = {}) {
+    const queries = [], events = [], transactions = [], payments = [], grants = [], cards = [];
+    const client = { id: CLIENT, org_id: ORG, email: "pair@example.invalid", ghl_contact_id: "existing-local-link" };
+    const sale = { id: SALE, org_id: ORG, client_id: CLIENT, product_id: PRODUCT, sale_motion: null, status: "active" };
+    const product = { id: PRODUCT, org_id: ORG, code: "card-stacking-dfy", name: "Consulting Services Deposit", category: "funding" };
+    const link = { id: LINK, org_id: ORG, client_id: CLIENT, product_id: PRODUCT, sale_id: SALE,
+      invoice_id: INVOICE, purpose: "deposit", sale_motion: null, link_ref: "pair-link" };
+    return { queries, events, transactions, payments, grants, cards, async query(sql, params = []) {
+      const text = String(sql);
+      queries.push({ text, params });
+      if (/FROM payment_links/.test(text)) {
+        const matches = /client_id = \$3/.test(text)
+          ? params[0] === LINK && params[1] === ORG && params[2] === CLIENT
+          : params[0] === link.link_ref;
+        return { rows: linked && matches ? [link] : [] };
+      }
+      if (/FROM clients/.test(text)) {
+        const matches = /lower\(email\)/.test(text)
+          ? params[0] === ORG && params[1] === client.email
+          : params[0] === CLIENT && params[1] === ORG;
+        return { rows: matches ? [client] : [] };
+      }
+      if (/INSERT INTO events/.test(text)) {
+        if (events.some(e => e.key === params[3])) return { rows: [] };
+        const event = { id: randomUUID(), name: params[1], payload: params[5], key: params[3] };
+        events.push(event);
+        return { rows: [event] };
+      }
+      if (/INSERT INTO transactions/.test(text)) {
+        const [org_id, client_id, product_name, amount_paid, status, provider, provider_ref, raw_payload] = params;
+        const incoming = { org_id, client_id, product_name, amount_paid, status, provider, provider_ref, raw_payload };
+        const old = transactions.find(t => t.org_id === org_id && t.provider_ref === provider_ref);
+        if (!old) transactions.push({ id: randomUUID(), ...incoming });
+        else if (/DO UPDATE SET/.test(text) && old.status === "failed" && status === "succeeded" &&
+          client_id && old.client_id === client_id && old.provider === provider &&
+          old.product_name === product_name && old.amount_paid === amount_paid) {
+          old.status = status; old.raw_payload = raw_payload;
+        }
+        return { rows: [] };
+      }
+      if (/FROM transactions/.test(text)) {
+        const hit = /WHERE id = \$1/.test(text)
+          ? transactions.find(t => t.id === params[0] && t.org_id === params[1] && t.client_id === params[2] && t.status === "succeeded" && Number(t.amount_paid) === params[3])
+          : transactions.find(t => t.org_id === params[0] && t.provider_ref === params[1]);
+        return { rows: hit ? [hit] : [] };
+      }
+      if (/FROM invoices/.test(text)) {
+        const matches = params[0] === INVOICE && params[1] === ORG && params[2] === CLIENT;
+        return { rows: matches && !/source = 'funding_success_fee'/.test(text)
+          ? [{ id: INVOICE, sale_id: SALE, status: "sent", funding_round_id: null }] : [] };
+      }
+      if (/SELECT \* FROM sales/.test(text)) return { rows: [sale] };
+      if (/FROM products WHERE/.test(text)) return { rows: [product] };
+      if (/INSERT INTO sale_payments/.test(text)) {
+        if (payments.some(p => p.org_id === params[0] && p.transaction_id === params[2])) return { rows: [] };
+        const payment = { id: randomUUID(), org_id: params[0], sale_id: params[1], transaction_id: params[2],
+          product_id: params[3], payment_link_id: params[4], sale_motion: params[5], kind: params[6],
+          amount: params[7], source_event_id: params[10] };
+        payments.push(payment);
+        return { rows: [payment] };
+      }
+      if (/FROM sale_payments sp/.test(text)) return { rows: payments.some(p => p.kind === "deposit") ? [{ paid: 1 }] : [] };
+      if (/FROM sale_payments WHERE org_id/.test(text)) return { rows: payments.filter(p => p.org_id === params[0] && p.transaction_id === params[1]) };
+      if (/FROM product_entitlements/.test(text)) return { rows: [{ entitlement_code: "funding-snapshot", duration_days: null }] };
+      if (/INSERT INTO entitlements/.test(text)) {
+        if (grants.some(g => g.source_transaction_id === params[3] && g.entitlement_code === params[2])) return { rows: [] };
+        const grant = { id: randomUUID(), entitlement_code: params[2], source_transaction_id: params[3] };
+        grants.push(grant); return { rows: [grant] };
+      }
+      if (/SELECT id, revoked_at FROM entitlements/.test(text)) return { rows: grants.filter(g => g.source_transaction_id === params[3]) };
+      if (/FROM pipeline_stages/.test(text)) return { rows: [{ stage_id: "closed-won", pipeline_id: "sales" }] };
+      if (/SELECT id FROM cards/.test(text)) return { rows: cards };
+      if (/INSERT INTO cards/.test(text)) { cards.push({ id: "card", client_id: params[1], stage_id: params[3] }); return { rows: [] }; }
+      return { rows: [], rowCount: 0 };
+    } };
+  }
+
+  function inboxRow({ invoiceId = INVOICE, linked = true, type = "payment.succeeded", key = type } = {}) {
+    return { org_id: ORG, dedupe_key: `pair:${key}`, raw_body: JSON.stringify({
+      id: `delivery-${key}`, type, data: { payment_id: "pair-receipt", amount: 3000,
+        product: { title: "Consulting Services Deposit" }, fan: { email: "pair@example.invalid" },
+        metadata: { client_id: CLIENT, ...(linked ? { link_ref: "pair-link" } : {}),
+          ...(invoiceId ? { invoice_id: invoiceId } : {}) } }
+    }) };
+  }
+
+  function registerPair(t) {
+    clearHandlers();
+    t.after(() => clearHandlers());
+    t.mock.method(inngest, "send", async () => ({ ids: [] }));
+    const results = [];
+    on("payment.received", onPaymentReceived);
+    on("payment.failed", onPaymentFailed);
+    for (const [name, handler] of [["payment.received", onPaymentReceivedMoney], ["deposit.paid", onDepositPaidMoney]]) {
+      on(name, async (event, db) => { results.push({ name, out: await handler(event, db) }); });
+    }
+    return results;
+  }
+
+  test("a conflicting invoice is refused by both events before any paid effect", async (t) => {
+    const results = registerPair(t), db = purchaseDb();
+    await processCommasInboxRow(inboxRow({ invoiceId: OTHER_INVOICE }), db);
+    assert.deepEqual(results.map(r => [r.name, r.out.reason]), [
+      ["payment.received", "payment_link_invoice_conflict"], ["deposit.paid", "payment_link_invoice_conflict"]
+    ]);
+    assert.equal(db.transactions.length, 1, "the original provider receipt remains available for reconciliation");
+    assert.equal(db.payments.length, 0); assert.equal(db.grants.length, 0); assert.equal(db.cards.length, 0);
+    assert.ok(!db.queries.some(q => /INSERT INTO sales|INSERT INTO sale_attributions|FROM commission_rules|INSERT INTO commission_ledger/.test(q.text)));
+    for (const handler of [onDiagnosticPaidMoney, onSaleClosedMoney]) {
+      const out = await handler({ id: randomUUID(), orgId: ORG, clientId: CLIENT,
+        payload: { product: "deposit", paymentLinkId: LINK, invoiceId: OTHER_INVOICE, amount: 3000 } }, db);
+      assert.equal(out.reason, "payment_link_invoice_conflict", "every semantic purchase handler must share the guard");
+    }
+  });
+
+  for (const linked of [true, false]) {
+    test(`a valid ${linked ? "invoice-linked" : "invoice-free"} deposit pair records and grants exactly once`, async (t) => {
+      const results = registerPair(t), db = purchaseDb({ linked });
+      const row = inboxRow({ linked, invoiceId: linked ? INVOICE : null });
+      await processCommasInboxRow(row, db);
+      assert.deepEqual(results.map(r => r.name), ["payment.received", "deposit.paid"]);
+      assert.ok(results.every(r => r.out.done), JSON.stringify(results));
+      assert.equal(db.payments.length, 1); assert.equal(db.payments[0].kind, "deposit");
+      assert.equal(db.grants.length, 1); assert.equal(db.cards.length, 1);
+      assert.equal(results[1].out.clientId, CLIENT);
+      await processCommasInboxRow(row, db);
+      assert.equal(results.length, 2, "adapter redelivery must not dispatch duplicate events");
+      assert.equal(db.payments.length, 1); assert.equal(db.grants.length, 1);
+    });
+  }
+
+  test("failed then succeeded settles the same receipt; late failures and replay cannot undo or duplicate it", async (t) => {
+    const results = registerPair(t), db = purchaseDb();
+    await processCommasInboxRow(inboxRow({ type: "payment.failed" }), db);
+    assert.equal(db.transactions[0].status, "failed");
+    assert.equal(db.payments.length, 0); assert.equal(db.grants.length, 0);
+    const transactionId = db.transactions[0].id;
+    await processCommasInboxRow(inboxRow(), db);
+    assert.equal(db.transactions.length, 1); assert.equal(db.transactions[0].id, transactionId);
+    assert.equal(db.transactions[0].status, "succeeded");
+    assert.ok(results.every(r => r.out.done), JSON.stringify(results));
+    assert.equal(db.payments.length, 1); assert.equal(db.grants.length, 1); assert.equal(db.cards.length, 1);
+    await processCommasInboxRow(inboxRow({ type: "payment.failed", key: "late-failed" }), db);
+    await processCommasInboxRow(inboxRow({ key: "capture-replay" }), db);
+    assert.equal(db.transactions[0].status, "succeeded");
+    assert.equal(db.payments.length, 1); assert.equal(db.grants.length, 1);
   });
 });

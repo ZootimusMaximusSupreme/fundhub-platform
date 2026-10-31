@@ -349,14 +349,22 @@ export async function onSurveySubmitted(event, db) {
 }
 
 // Record a transaction row (deduped by provider_ref). Shared by the paid + failed
-// handlers — same shape, different status.
+// handlers — same shape, different status. A later capture can settle the same
+// failed attempt only with the same buyer/provider/product/amount. A late failure
+// or conflicting callback never rewrites an already succeeded receipt.
 async function recordTransaction(event, db, status) {
   const clientId = await resolveClient(db, event);
   const p = event.payload || {};
   await db.query(
     `INSERT INTO transactions (org_id, client_id, product_name, amount_paid, status, provider, provider_ref, raw_payload)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-     ON CONFLICT (org_id, provider_ref) WHERE provider_ref IS NOT NULL DO NOTHING`,
+     ON CONFLICT (org_id, provider_ref) WHERE provider_ref IS NOT NULL
+     DO UPDATE SET status = EXCLUDED.status, raw_payload = EXCLUDED.raw_payload
+       WHERE transactions.status = 'failed' AND EXCLUDED.status = 'succeeded'
+         AND transactions.client_id = EXCLUDED.client_id
+         AND transactions.provider IS NOT DISTINCT FROM EXCLUDED.provider
+         AND transactions.product_name IS NOT DISTINCT FROM EXCLUDED.product_name
+         AND transactions.amount_paid IS NOT DISTINCT FROM EXCLUDED.amount_paid`,
     [event.orgId, clientId, p.productName || p.product || "unknown", p.amount ?? null, status, p.source || "commas", p.providerRef || null, JSON.stringify(p)]
   );
 }

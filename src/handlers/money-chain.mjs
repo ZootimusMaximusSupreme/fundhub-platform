@@ -796,7 +796,23 @@ async function grantForPurchase(db, event, { clientId, product } = {}) {
   return out;
 }
 
+function hasInvoicePaymentContext(payload = {}) {
+  return Boolean(payload.invoiceId || payload.invoice_id || payload.paymentLinkId || payload.payment_link_id ||
+    ["success_fee", "funding_success_fee"].includes(String(payload.product || "").trim().toLowerCase()) ||
+    ["success_fee", "funding_success_fee"].includes(String(payload.purpose || "").trim().toLowerCase()) ||
+    /\bsuccess[\s_-]*fee\b/i.test(String(payload.productName || "")));
+}
+
 async function recordPurchase(event, db, { productBucket, paymentKind }) {
+  // Commas emits payment.received AND a semantic purchase event for one receipt.
+  // Both must pass the same invoice/link ownership, status, balance and replay
+  // checks before any sale, commission or paid access can be written.
+  if (hasInvoicePaymentContext(event.payload)) {
+    return onPaymentReceivedMoney({
+      ...event,
+      payload: { ...event.payload, product: event.payload?.product || productBucket }
+    }, db);
+  }
   const { sale, product, clientId } = await ensureSale(db, event, { productBucket });
   if (!sale) {
     // Money arrived and no sale row could be written, so no entitlement can be
@@ -977,14 +993,7 @@ export async function onPaymentReceivedMoney(event, db) {
   // An invoice/payment-link receipt must already have a debtor. Lead-capture's
   // resolveClient may insert a client or edit contact fields before the
   // provider and invoice are verified. Never do that on receivable cash.
-  const feeClaim = ["success_fee", "funding_success_fee"].includes(
-    String(p.product || "").trim().toLowerCase()
-  ) || ["success_fee", "funding_success_fee"].includes(
-    String(p.purpose || "").trim().toLowerCase()
-  ) || /\bsuccess[\s_-]*fee\b/i.test(String(p.productName || ""));
-  const invoiceBound = Boolean(
-    invoiceIdHint || paymentLinkIdHint || feeClaim
-  );
+  const invoiceBound = hasInvoicePaymentContext(p);
   const clientId = invoiceBound
     ? await findExistingPaymentClient(db, event)
     : await resolveClient(db, event);
@@ -1284,6 +1293,7 @@ export async function onPaymentReceivedMoney(event, db) {
   return {
     done: true,
     saleId: sale.id,
+    clientId,
     paymentId: pay.payment?.id || null,
     paymentCreated: pay.created,
     commissionInserted: commission.inserted,

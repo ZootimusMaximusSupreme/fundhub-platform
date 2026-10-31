@@ -6,11 +6,12 @@
 
 import { test, before, after, describe } from "node:test";
 import assert from "node:assert";
-import { db, close } from "../db.mjs";
+import { db, close, pool } from "../db.mjs";
+import { randomUUID } from "node:crypto";
 import { emit, replay, _resetOrgCache } from "../events/bus.mjs";
 import { clearHandlers } from "../events/registry.mjs";
-import { register as registerLifecycle } from "./client-lifecycle.mjs";
-import { register as registerMoneyChain, onPaymentReceivedMoney, ensureSale, ensureSalePayment } from "./money-chain.mjs";
+import { register as registerLifecycle, onPaymentReceived, onPaymentFailed } from "./client-lifecycle.mjs";
+import { register as registerMoneyChain, onPaymentReceivedMoney, onDepositPaidMoney, ensureSale, ensureSalePayment } from "./money-chain.mjs";
 import { createSession } from "../auth/session.mjs";
 import { resolveDefaultOrg } from "../auth/org.mjs";
 
@@ -648,5 +649,92 @@ describe("money-chain writers", { skip: !HAS_DB ? "no DATABASE_URL" : false }, (
       0,
       "nothing may be granted on a guess"
     );
+  });
+
+  test("invoice pair guards and failed capture recovery hold in real Postgres", async () => {
+    const conn = await pool().connect();
+    try {
+      await conn.query("BEGIN");
+      const clientId = (await conn.query(
+        `INSERT INTO clients (org_id, email, first_name, ghl_contact_id)
+         VALUES ($1,$2,$3,'existing-local-link') RETURNING id`,
+        [org, `${MARK}.pair-${randomUUID()}@example.invalid`, MARK]
+      )).rows[0].id;
+      const otherClient = (await conn.query(
+        `INSERT INTO clients (org_id, email, first_name, ghl_contact_id)
+         VALUES ($1,$2,$3,'existing-local-link') RETURNING id`,
+        [org, `${MARK}.pair-other-${randomUUID()}@example.invalid`, MARK]
+      )).rows[0].id;
+      const providerRef = `pair-${randomUUID()}`;
+      const payload = { product: "deposit", productId: fundingProductId,
+        productName: "Consulting Services Deposit", amount: 3000,
+        providerRef, source: "commas" };
+      const event = (name, extra = {}, buyer = clientId) => ({
+        id: randomUUID(), name, orgId: org, clientId: buyer, payload: { ...payload, ...extra }
+      });
+      const readTransaction = async (ref = providerRef) => (await conn.query(
+        "SELECT * FROM transactions WHERE org_id=$1 AND provider_ref=$2", [org, ref]
+      )).rows[0];
+
+      // The upsert itself must enforce identity, not a mock of its SQL.
+      for (const [label, change, buyer] of [
+        ["amount", { amount: 2999 }, clientId],
+        ["product", { productName: "Another purchase" }, clientId],
+        ["provider", { source: "another-provider" }, clientId],
+        ["buyer", {}, otherClient],
+        ["unknown-buyer", {}, randomUUID()]
+      ]) {
+        const ref = `${providerRef}-${label}`;
+        await onPaymentFailed(event("payment.failed", { providerRef: ref }), conn);
+        await onPaymentReceived(event("payment.received", { providerRef: ref, ...change }, buyer), conn);
+        const held = await readTransaction(ref);
+        assert.equal(held.status, "failed", `${label} cannot replace the original failed attempt`);
+        assert.equal(held.client_id, clientId);
+        assert.equal(Number(held.amount_paid), 3000);
+      }
+
+      const origin = await ensureSale(conn, event("checkout.accepted"), { productBucket: "deposit" });
+      assert.ok(origin.sale);
+      const invoiceId = (await conn.query(
+        `INSERT INTO invoices (org_id, client_id, sale_id, invoice_type, source, status, amount_due)
+         VALUES ($1,$2,$3,'deposit','other','sent',3000) RETURNING id`,
+        [org, clientId, origin.sale.id]
+      )).rows[0].id;
+      const linkId = (await conn.query(
+        `INSERT INTO payment_links (org_id, client_id, product_id, sale_id, invoice_id,
+          purpose, amount_cents, link_ref, checkout_url)
+         VALUES ($1,$2,$3,$4,$5,'deposit',300000,$6,'https://example.invalid/checkout') RETURNING id`,
+        [org, clientId, fundingProductId, origin.sale.id, invoiceId, randomUUID()]
+      )).rows[0].id;
+      const bound = { paymentLinkId: linkId, invoiceId, saleId: origin.sale.id };
+      await onPaymentFailed(event("payment.failed", bound), conn);
+      const transactionId = (await readTransaction()).id;
+      const received = event("payment.received", { ...bound, invoiceId: randomUUID() });
+      await onPaymentReceived(received, conn);
+      assert.equal((await readTransaction()).status, "succeeded");
+      assert.equal((await readTransaction()).id, transactionId, "capture settles the existing attempt");
+      assert.equal((await onPaymentReceivedMoney(received, conn)).reason, "payment_link_invoice_conflict");
+      assert.equal((await onDepositPaidMoney({ ...received, id: randomUUID(), name: "deposit.paid" }, conn)).reason,
+        "payment_link_invoice_conflict");
+      for (const table of ["sale_payments", "commission_ledger", "entitlements", "cards"]) {
+        const clause = table === "sale_payments" ? "sale_id=$1" : "client_id=$1";
+        const key = table === "sale_payments" ? origin.sale.id : clientId;
+        assert.equal((await conn.query(`SELECT count(*)::int n FROM ${table} WHERE ${clause}`, [key])).rows[0].n,
+          0, `conflicting event pair cannot write ${table}`);
+      }
+      const paid = event("payment.received", bound);
+      assert.equal((await onPaymentReceivedMoney(paid, conn)).done, true);
+      const deposit = event("deposit.paid", bound);
+      assert.equal((await onDepositPaidMoney(deposit, conn)).done, true);
+      assert.equal((await onDepositPaidMoney({ ...deposit, id: randomUUID() }, conn)).done, true);
+      await onPaymentFailed(event("payment.failed", bound), conn);
+      assert.equal((await readTransaction()).status, "succeeded", "late decline cannot downgrade captured money");
+      assert.equal((await conn.query("SELECT count(*)::int n FROM sale_payments WHERE sale_id=$1", [origin.sale.id])).rows[0].n, 1);
+      assert.equal((await conn.query("SELECT count(*)::int n FROM entitlements WHERE client_id=$1", [clientId])).rows[0].n, 1);
+      assert.equal((await conn.query("SELECT count(*)::int n FROM cards WHERE client_id=$1", [clientId])).rows[0].n, 1);
+    } finally {
+      await conn.query("ROLLBACK").catch(() => {});
+      conn.release();
+    }
   });
 });
