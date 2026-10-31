@@ -195,6 +195,52 @@ final class FundhubTests: XCTestCase {
         XCTAssertFalse(push.takePortalOpenRequest(now: now))
     }
 
+    @MainActor
+    func testDelayedStaffAlertRejectsAccountSwitchAfterIdentityRefresh() async {
+        // The identity lookup is deliberately held until session A becomes B.
+        // An already-dequeued alert for A must not navigate under B's WebView.
+        let alert = NativePushTap.StaffAlert(kind: "lead",
+                                            clientId: "56a40391-e541-4a89-873b-37eab9d6d953")
+        let gate = DelayedIdentityGate()
+        let simulated = SimulatedStaffState(bearer: "session-A")
+        let delayedCheck = Task { @MainActor in
+            guard let bearerAtTap = simulated.bearer else { return nil as String? }
+            await gate.pause()
+            return StaffAlertNavigation.verifiedPath(
+                alert: alert,
+                bearerAtTap: bearerAtTap,
+                bearerAfterRefresh: simulated.bearer,
+                staffSessionVerified: true,
+                roleAfterRefresh: "setter",
+                taskCancelled: Task.isCancelled
+            )
+        }
+        await gate.waitUntilPaused()
+        simulated.bearer = "session-B"
+        await gate.release()
+        let stalePath = await delayedCheck.value
+        XCTAssertNil(stalePath, "An alert dequeued for A must not open client navigation under B.")
+
+        let currentPath = StaffAlertNavigation.verifiedPath(
+            alert: alert, bearerAtTap: "session-A", bearerAfterRefresh: "session-A",
+            staffSessionVerified: true, roleAfterRefresh: "setter", taskCancelled: false
+        )
+        XCTAssertEqual(currentPath,
+                       "/app/setter-dashboard.html?client_id=56a40391-e541-4a89-873b-37eab9d6d953")
+        XCTAssertNil(StaffAlertNavigation.verifiedPath(
+            alert: alert, bearerAtTap: "session-A", bearerAfterRefresh: nil,
+            staffSessionVerified: true, roleAfterRefresh: "setter", taskCancelled: false
+        ), "Signing out while identity refresh is suspended must discard the tap.")
+        XCTAssertNil(StaffAlertNavigation.verifiedPath(
+            alert: alert, bearerAtTap: "session-A", bearerAfterRefresh: "session-A",
+            staffSessionVerified: false, roleAfterRefresh: "setter", taskCancelled: false
+        ), "An unverified/refused staff session must not navigate.")
+        XCTAssertNil(StaffAlertNavigation.verifiedPath(
+            alert: alert, bearerAtTap: "session-A", bearerAfterRefresh: "session-A",
+            staffSessionVerified: true, roleAfterRefresh: "setter", taskCancelled: true
+        ), "A cancelled SwiftUI task must not commit stale navigation.")
+    }
+
     func testServerErrorDoesNotInvalidateSession() async throws {
         let config = URLSessionConfiguration.ephemeral
         config.protocolClasses = [StubURLProtocol.self]
@@ -345,6 +391,40 @@ final class FundhubTests: XCTestCase {
         XCTAssertFalse(WorkspaceNavigation.isSignOutDestination(URL(string: "https://fundhub.ai/app/client-portal.html")!))
         XCTAssertFalse(WorkspaceNavigation.isSignOutDestination(URL(string: "https://evil.example/login.html")!))
     }
+}
+
+// Controlled synthetic delay: never calls a real identity provider or session.
+private actor DelayedIdentityGate {
+    private var hasPaused = false
+    private var released = false
+    private var pausedSignal: CheckedContinuation<Void, Never>?
+    private var releaseWaiter: CheckedContinuation<Void, Never>?
+
+    func pause() async {
+        hasPaused = true
+        pausedSignal?.resume()
+        pausedSignal = nil
+        if !released {
+            await withCheckedContinuation { releaseWaiter = $0 }
+        }
+    }
+
+    func waitUntilPaused() async {
+        if hasPaused { return }
+        await withCheckedContinuation { pausedSignal = $0 }
+    }
+
+    func release() {
+        released = true
+        releaseWaiter?.resume()
+        releaseWaiter = nil
+    }
+}
+
+@MainActor
+private final class SimulatedStaffState {
+    var bearer: String?
+    init(bearer: String) { self.bearer = bearer }
 }
 
 private final class StubURLProtocol: URLProtocol {
