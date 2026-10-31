@@ -64,9 +64,14 @@ export const CRITICAL_EDGES = Object.freeze([
   {
     id: "blueprint-financeos-report", severity: "P1", owner: "Blueprint",
     event: "payment.received", consumer: "FinanceOS monthly pull and delivery",
-    receipt: "active subscription + real monthly report + client delivery", graceMinutes: null,
+    receipt: "active subscription + real monthly report + client delivery; bank guidance must use real or verified manual credit sources", graceMinutes: null,
     pulse: "blueprint:monthly-delivery",
-    paths: ["src/register-all.mjs", "src/finance-os/", "src/finance/finance-os-", "src/blueprint/", "src/workflows/finance-os", "api/finance-os"]
+    // The monthly-delivery beat does NOT prove bank-guidance provenance. The
+    // sample writer stores simulated CRS plus tradelines; bank-strategy may
+    // exclude the parent result while still reading those stored tradelines.
+    // Never claim that a passing monthly beat proves a real-source recommendation.
+    proofStatus: "PARTIAL_NEEDS_REAL_SOURCE_PROVENANCE_RECEIPT",
+    paths: ["src/register-all.mjs", "src/finance-os/", "src/finance/finance-os-", "src/blueprint/", "src/workflows/finance-os", "api/finance-os", "src/finance/bank-strategy.mjs", "src/tradelines/", "src/liabilities/", "src/finance/sample-credit-file.mjs", "scripts/finance-os-sample-v3.mjs"]
   },
   {
     id: "outbound-message-provider-receipt", severity: "P1", owner: "Front-house",
@@ -128,7 +133,10 @@ function materialSource(file) {
   // Schema migrations can change the persisted result without touching a handler.
   // Report high-risk migrations only; seeds, screenshots and docs stay quiet.
   const schemaMigration = /^db\/migrations\/[^/]+\.sql$/i.test(file);
-  return (/^(?:src|api|netlify|public|marketing|ios|macos|native)\//.test(file) || nativeAppSource || schemaMigration)
+  // This executable rehearsal script writes simulated CRS and tradelines.
+  // A change to it can alter bank guidance, despite living in scripts/.
+  const sampleCreditWriter = file === "scripts/finance-os-sample-v3.mjs";
+  return (/^(?:src|api|netlify|public|marketing|ios|macos|native)\//.test(file) || nativeAppSource || schemaMigration || sampleCreditWriter)
     && !file.startsWith("src/pulse/")
     && !TEST_FILE.test(file) && !NON_EXECUTABLE_ASSET.test(file) && !NON_RUNTIME.test(file);
 }
