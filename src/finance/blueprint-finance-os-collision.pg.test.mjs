@@ -25,6 +25,9 @@ test("paid Blueprint year survives the shorter FinanceOS monthly term, but not a
     const db = await pool.connect();
     await db.query("BEGIN");
     try {
+      // Keep refund writes inside this fixture's rollback transaction. The
+      // production helper acquires a connection only for pool-like handles.
+      const refundDb = { query: db.query.bind(db) };
       for (const table of ["subscriptions", "soft_pull_requests", "crs_results",
         "entitlements", "transactions", "products", "product_aliases", "sales",
         "sale_payments", "partner_revenue"]) {
@@ -80,7 +83,7 @@ test("paid Blueprint year survives the shorter FinanceOS monthly term, but not a
         orgId: foreignOrg, clientId: client, asOf: new Date("2026-11-30")
       })).entitled, false, "foreign tenant cannot claim the client's purchase");
       const refund = await onPaymentRefundedMoney({ name: "payment.refunded", orgId: org,
-        payload: { providerRef: "bp-collision-paid", amount: 7500 } }, db);
+        payload: { providerRef: "bp-collision-paid", amount: 7500 } }, refundDb);
       assert.equal(refund.blueprintIncludedEnded, true);
       assert.equal((await db.query("SELECT revoked_at FROM entitlements WHERE id=$1", [grant])).rows[0].revoked_at != null, true);
       assert.equal(await coachAt("2026-11-30T00:00:00Z"), false);
@@ -107,7 +110,7 @@ test("paid Blueprint year survives the shorter FinanceOS monthly term, but not a
       assert.equal((await financeOsEntitlement(db, { orgId: org, clientId: includedClient,
         asOf: new Date("2026-10-30") })).entitled, true);
       const includedRefund = await onPaymentRefundedMoney({ name: "payment.refunded", orgId: org,
-        payload: { providerRef: "bp-included-only", amount: 5000 } }, db);
+        payload: { providerRef: "bp-included-only", amount: 5000 } }, refundDb);
       assert.equal(includedRefund.blueprintIncludedEnded, true);
       assert.equal((await financeOsEntitlement(db, { orgId: org, clientId: includedClient,
         asOf: new Date("2026-11-30") })).entitled, false);
