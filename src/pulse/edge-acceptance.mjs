@@ -36,7 +36,7 @@ export const CRITICAL_EDGES = Object.freeze([
     event: "payment.received", consumer: "onPaymentReceived / entitlement handlers",
     receipt: "payment ledger + active entitlement + portal read", graceMinutes: null,
     pulse: "payments:paid-no-entitlement",
-    paths: ["src/register-all.mjs", "src/merchant/", "src/billing/", "src/payments/", "src/entitlements/", "src/finance/finance-os-entitlement.mjs", "src/ledger/", "src/handlers/money-chain.mjs", "src/handlers/client-lifecycle.mjs", "src/handlers/payment-links.mjs", "src/invoices/", "api/read/invoices.mjs", "public/app/client-portal.html", "src/adapters/whop", "api/payment", "api/checkout"]
+    paths: ["src/register-all.mjs", "src/merchant/", "src/billing/", "src/payments/", "src/entitlements/", "src/finance/finance-os-entitlement.mjs", "src/ledger/", "src/handlers/money-chain.mjs", "src/handlers/client-lifecycle.mjs", "src/handlers/payment-links.mjs", "src/payment-links/", "src/invoices/", "api/read/invoices.mjs", "public/app/client-portal.html", "src/adapters/whop", "api/payment", "api/checkout"]
   },
   {
     id: "consent-crs-result", severity: "P0", owner: "Fulfillment",
@@ -206,7 +206,9 @@ function matchesEvent(row, event) {
 export function judgeSyntheticEdge({
   demand = true, demandAt, event, consumer, receipt, providerReceipt, consentReceipt,
   identityReceipt, requireProviderReceipt = false, requireConsentReceipt = false, consentScope,
-  requireUniqueProviderOrder = false, providerOrders, expectedContract, now = Date.now(), graceMs = 15 * 60 * 1000
+  requireUniqueProviderOrder = false, providerOrders,
+  requirePaymentLinkReceipt = false, paymentLinkReceipt,
+  expectedContract, now = Date.now(), graceMs = 15 * 60 * 1000
 } = {}) {
   // A present producer event contradicts a "no demand" claim; never hide it as NA.
   if (demand === false) return event?.id
@@ -299,6 +301,37 @@ export function judgeSyntheticEdge({
       if (orderedAt < actionAt || orderedAt > current) {
         return failed("provider-order-timestamp-outside-observed-window");
       }
+    }
+  }
+  // A/R #300 A77: a payment callback from one tenant must not settle
+  // another tenant's link or grant access through a foreign provider reference.
+  // This is an OPT-IN normalized synthetic proof: callers must explicitly
+  // supply the org/client/event-linked readback and the original sale identity.
+  // An unqueried live database is NOT_CHECKED, never a fabricated PASS.
+  if (requirePaymentLinkReceipt) {
+    if (!resolved.payment_link_id || !resolved.provider_ref) {
+      return { verdict: "NOT_CHECKED", reason: "payment-link-event-identity-unavailable" };
+    }
+    if (paymentLinkReceipt === undefined) {
+      return { verdict: "NOT_CHECKED", reason: "payment-link-settlement-proof-not-queried" };
+    }
+    if (!paymentLinkReceipt) return failed("payment-link-paid-row-missing");
+    if (!matchesEvent(paymentLinkReceipt, resolved)) {
+      return failed("payment-link-ownership-or-event-mismatch");
+    }
+    if (String(paymentLinkReceipt.payment_link_id || "") !== String(resolved.payment_link_id) ||
+        String(paymentLinkReceipt.provider_ref || "") !== String(resolved.provider_ref) ||
+        (resolved.sale_id != null && String(paymentLinkReceipt.sale_id || "") !== String(resolved.sale_id)) ||
+        paymentLinkReceipt.outcome !== "settled") {
+      return failed("payment-link-settlement-identity-mismatch");
+    }
+    const settledAt = milliseconds(paymentLinkReceipt.settled_at);
+    const sourceAt = milliseconds(resolved.created_at);
+    if (!Number.isFinite(settledAt) || !Number.isFinite(sourceAt)) {
+      return { verdict: "NOT_CHECKED", reason: "payment-link-settlement-timestamp-missing" };
+    }
+    if (settledAt < sourceAt || settledAt > current) {
+      return failed("payment-link-settlement-time-invalid");
     }
   }
   if (!matchesEvent(receipt, resolved) || receipt.outcome !== "satisfied") {
