@@ -41,7 +41,7 @@ test("DFY/repair send path calls mail helper when mail=true", async () => {
         address_state: "TX",
         address_zip: "75201"
       },
-      letters: [{ bureau: "EX", pdf: "JVBERi0=" }]
+      letters: [{ bureau: "EX", pdf: "JVBERi0=", letter_id: "55555555-5555-4555-8555-555555555555" }]
     }
   };
   const res = resCapture();
