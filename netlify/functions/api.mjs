@@ -82,6 +82,7 @@ import readPartnerProduction from "../../api/read/partner-production.mjs";
 import readPartnerHomeTiles from "../../api/read/partner-home-tiles.mjs";
 import readPartnerTraining from "../../api/read/partner-training.mjs";
 import readMessageTemplates from "../../api/read/message-templates.mjs";
+import readMessageTests from "../../api/read/message-tests.mjs";
 import readStaff from "../../api/read/staff.mjs";
 import staffTelemetry from "../../api/staff/telemetry.mjs";
 import staffMonitoringConsent from "../../api/staff/monitoring-consent.mjs";
@@ -544,6 +545,7 @@ export const ROUTES = {
      partner holds the two compliance certifications. */
   "read/partner-training": readPartnerTraining,
   "read/message-templates": readMessageTemplates,
+  "read/message-tests": readMessageTests,
   "read/staff": readStaff,
   "staff/telemetry": staffTelemetry,
   "staff/monitoring-consent": staffMonitoringConsent,

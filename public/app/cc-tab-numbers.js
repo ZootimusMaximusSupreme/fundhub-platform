@@ -1,4 +1,4 @@
-/* cc-tab-numbers.js — the Command Center's Numbers tab: Ads · Angles · Funnels.
+/* cc-tab-numbers.js — the Command Center's Numbers tab: Ads · Angles · Funnels · Message tests.
 
    WHAT THIS IS. Plan unit U38 (ops/workflows/marketing-machine-2026-10-plan.json),
    spec docs/specs/marketing-machine-2026-10-04.md §11.3, design
@@ -13,6 +13,8 @@
      GET  marketing/angles                             the Angles view (U32)
      GET  marketing/funnels/stats                      the Funnels view (U32)
      GET  marketing/funnels                            funnel names for the filter (U03)
+     GET  read/message-tests                           the Message tests view: the A/B follow-up
+                                                       tests (src/messaging/experiment-report.mjs)
      POST marketing/ideas {request_id, raw_points, angle_key, source:'chris'}
                                                        "Make more of this" (U26, free)
    The unmapped-spend Link button opens Settings at the funnel mapping (U34).
@@ -52,7 +54,8 @@
   const VIEWS = Object.freeze([
     ["ads", "Ads"],
     ["angles", "Angles"],
-    ["funnels", "Funnels"]
+    ["funnels", "Funnels"],
+    ["tests", "Message tests"]
   ]);
 
   /* src/marketing/settings-store.mjs FORMATS, in the same order. */
@@ -471,6 +474,32 @@
     return "Meta numbers pulled " + fmtAz(asOf) + " Arizona time.";
   }
 
+  /* ── Message tests words ── (GET read/message-tests)
+
+     Half the people in a follow-up step get version A and half get B, and each
+     person always lands on the same side (src/messaging/experiments.mjs). The
+     server counts the people, who reached the goal, and writes the verdict. This
+     file adds nothing up: it prints the server's counts and its verdict as sent. */
+
+  const TEST_GOALS = Object.freeze({
+    "survey.completed": "finished the survey",
+    "booking.created": "booked a call"
+  });
+
+  /* "12 of 40 booked a call", "Nobody yet", or "unknown" when a count is missing. */
+  function testArmLine(arm, goal) {
+    const people = known(arm && arm.people);
+    const reached = known(arm && arm.reached);
+    if (people === null || reached === null) return "unknown";
+    if (people === 0) return "Nobody yet";
+    return reached + " of " + people + " " + (TEST_GOALS[goal] || "reached the goal");
+  }
+
+  function testsAsOfLine(asOf, fmtAz) {
+    if (!asOf) return "Message tests: not counted yet.";
+    return "Message tests counted " + fmtAz(asOf) + " Arizona time.";
+  }
+
   /* ── tiny HTML helpers ───────────────────────────────────────────────── */
 
   function esc(v) {
@@ -579,6 +608,8 @@
       load("angles", "marketing/angles", force);
     } else if (state.view === "angles") {
       load("angles", "marketing/angles", force);
+    } else if (state.view === "tests") {
+      load("tests", "read/message-tests", force);
     } else {
       load("funnels", "marketing/funnels/stats", force);
     }
@@ -703,7 +734,9 @@
 
   function topBar() {
     const a = currentAsOf();
-    const line = a ? asOfLine(a.value, fmtAz) : "Loading the latest Meta numbers…";
+    const line = state.view === "tests"
+      ? (a ? testsAsOfLine(a.value, fmtAz) : "Loading the message tests…")
+      : (a ? asOfLine(a.value, fmtAz) : "Loading the latest Meta numbers…");
     return '<div class="ccn-top">' + viewSwitch() +
       '<p class="caption ccn-asof" data-test="as-of">' + esc(line) + "</p></div>";
   }
@@ -1068,6 +1101,36 @@
     return out;
   }
 
+  /* ── Message tests view ── */
+
+  function testCard(t) {
+    const arms = (t && t.arms) || {};
+    const verdict = (t && t.verdict && typeof t.verdict.text === "string" && t.verdict.text) || "unknown";
+    const winner = t && t.verdict && (t.verdict.winner === "A" || t.verdict.winner === "B") ? t.verdict.winner : null;
+    const side = (key, label) => '<li class="ccn-ab-side' + (winner === key ? " win" : "") + '" data-test="arm-' + key + '">' +
+      '<span class="caption">' + esc(label) + "</span><span>" + esc(testArmLine(arms[key], t && t.goal)) + "</span></li>";
+    return '<article class="card ccn-card ccn-spanall" data-test="message-test" data-name="' + esc(t && t.name) + '">' +
+      '<h3 class="eyebrow">' + esc((t && t.label) || "Message test") + "</h3>" +
+      '<p data-test="message-test-verdict">' + esc(verdict) + "</p>" +
+      '<ul class="ccn-ab">' + side("A", "A: today's words") + side("B", "B: plus a real client win") + "</ul>" +
+      '<p class="caption">A winner is named only after each side has at least 30 people and the gap passes a 95% check. Nothing switches by itself.</p>' +
+      "</article>";
+  }
+
+  function testsView() {
+    const p = part("tests");
+    let out = '<p class="caption ccn-rangeline">Follow-up message tests. Each person always gets the same version.</p>';
+    if (p.status === "loading" || p.status === "idle") return out + skeletonCards(2);
+    if (p.status === "error") return out + errorBox("The message tests", p.res, "tests");
+    const rows = Array.isArray(p.data.tests) ? p.data.tests : [];
+    if (!rows.length) {
+      return out + '<div class="card ccn-card ccn-empty" data-test="tests-empty"><p>No message test is running.</p></div>';
+    }
+    out += '<div class="ccn-grid">';
+    rows.forEach((t) => { out += testCard(t); });
+    return out + "</div>";
+  }
+
   /* ── paint ── */
 
   function paint() {
@@ -1078,6 +1141,7 @@
     let body = "";
     if (state.view === "ads") body = adsView();
     else if (state.view === "angles") body = anglesView();
+    else if (state.view === "tests") body = testsView();
     else body = funnelsView();
     root.innerHTML = '<section class="ccn" aria-label="Numbers">' + topBar() +
       '<div class="ccn-body" data-view="' + state.view + '">' + body + "</div>" + drawerHtml() + "</section>";
@@ -1124,6 +1188,7 @@
       if (name === "ads") return load("ads", adsPath(state.filters, now()), true);
       if (name === "angles") return load("angles", "marketing/angles", true);
       if (name === "funnels") return load("funnels", "marketing/funnels/stats", true);
+      if (name === "tests") return load("tests", "read/message-tests", true);
       return undefined;
     }
     if (action === "clear") {
@@ -1310,7 +1375,8 @@
     curveList, curveChoices, defaultChoice, curveModel, twoSecondNote,
     diagnosisWords, alertWords, statusWord,
     funnelSteps, angleName, ideaText, ideaBody, bySpend,
-    errorSentence, saveErrorSentence, asOfLine, parseParam, esc
+    errorSentence, saveErrorSentence, asOfLine, parseParam, esc,
+    TEST_GOALS, testArmLine, testsAsOfLine
   });
 
   /* ── plug into the frame (docs/specs/command-center-tabs.md) ─────────── */

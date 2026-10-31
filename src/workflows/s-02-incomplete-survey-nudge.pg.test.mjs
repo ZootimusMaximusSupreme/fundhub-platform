@@ -287,9 +287,14 @@ test("a lead who never finishes: six queued messages on real rows, each with a l
     for (const r of rows) {
       assert.equal(r.status, "queued", "queued for the dispatcher; this test sends nothing");
       assert.equal(r.provider_ref, `workflow:${r.template_key}:${event.id}`, "one send key per touch, per channel, per opt-in");
-      const link = r.rendered_body.match(/https:\/\/apply\.fundhub\.ai\/apply\?r=([A-Za-z0-9_-]+)/);
-      assert.ok(link, r.rendered_body);
-      assert.deepEqual(readSurveyResumeToken(link[1], { secret: SECRET, now: () => start + 3 * DAY }), { clientId });
+      if (r.channel === "sms") {
+        // A text never carries the link (review 2026-10-31), even though this template names it.
+        assert.doesNotMatch(r.rendered_body, /apply\?r=|https?:\/\//, r.rendered_body);
+      } else {
+        const link = r.rendered_body.match(/https:\/\/apply\.fundhub\.ai\/apply\?r=([A-Za-z0-9_-]+)/);
+        assert.ok(link, r.rendered_body);
+        assert.deepEqual(readSurveyResumeToken(link[1], { secret: SECRET, now: () => start + 3 * DAY }), { clientId });
+      }
       assert.ok(r.rendered_body.includes("Hi Pat"));
       assert.ok(r.rendered_body.includes("you stopped at the credit score question, 5 more taps to go:"), r.rendered_body);
     }

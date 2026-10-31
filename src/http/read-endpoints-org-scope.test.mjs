@@ -145,6 +145,13 @@ const NO_ORG_COLUMN = new Map([
   /* The setter queue handler passes the authenticated staff record. The store
      binds staff.org_id on its tasks query and verifies assignment for setters. */
   ["setter-dashboard.mjs", "scoped in src/setter/dashboard.mjs listSetterQueue(), which binds staff.org_id on its tasks query"],
+  /* Message tests report (A/B follow-ups) — handler writes no SQL. experimentReport() in
+     src/messaging/experiment-report.mjs runs one SELECT that binds m.org_id = $1::uuid on
+     messages and e.org_id = $1::uuid on events (clients are joined on c.org_id = m.org_id),
+     and throws without an org; the handler also 403s a session whose org is not a UUID before
+     it reads. Proved against two real companies in src/http/message-tests.pg.test.mjs and
+     src/messaging/experiment-report.pg.test.mjs. Read 2026-10-31. */
+  ["message-tests.mjs", "scoped in src/messaging/experiment-report.mjs experimentReport(), whose one SELECT binds m.org_id = $1::uuid and e.org_id = $1::uuid and which throws without an org"],
 ]);
 
 /* An allow-listed endpoint must still prove it hands the SESSION's org to

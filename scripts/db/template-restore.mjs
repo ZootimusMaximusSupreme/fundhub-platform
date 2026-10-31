@@ -42,7 +42,9 @@ export const STAGE_TABLE = "fh_tpl_restore_stage";
 // Migration 497 is historical. Seed 298 changes this email after 497 has run.
 export const RESTORE_SNAPSHOT_EXCLUDE_FILES = Object.freeze([
   "db/seed/298_s04_booking_app_confirm_email.sql",
-  "db/seed/301_followup_flows_copy.sql"
+  "db/seed/301_followup_flows_copy.sql",
+  "db/seed/302_followup_sms_no_resume_link.sql",
+  "db/seed/304_followup_proof_variants.sql"
 ]);
 const JSON_TAG = "$fh_tpl_restore$";
 

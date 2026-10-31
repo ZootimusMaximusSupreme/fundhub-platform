@@ -174,7 +174,7 @@ is in", because the person has not finished.
 
 ```mermaid
 flowchart TD
-    E[entry.captured] --> W[Welcome text + email, right away, any hour<br/>link: survey_resume_link]
+    E[entry.captured] --> W[Welcome text + email, right away, any hour<br/>no come-back link: the text points to the email]
     E --> P[Plan three touches, written down once]
     P --> T1[Touch 1: 20 minutes after the sign-up,<br/>or 9 a.m. Arizona if that is outside 9 to 5]
     T1 --> K1{Finished, replied or booked by then?}
@@ -190,7 +190,7 @@ flowchart TD
     K3 -->|No| M3[Come-back text + email 3]
 ```
 
-**The link opens the survey where they stopped.** Every message carries
+**The link opens the survey where they stopped.** Every come-back EMAIL carries
 `{{survey_resume_link}}`: `https://apply.fundhub.ai/apply?r=<token>`. The token is
 signed, names the client and the company and nothing else, and lasts 30 days. The
 page asks `GET /api/public/survey-resume?r=<token>` for the contact details and the
@@ -198,6 +198,16 @@ answers already saved, fills them in, and opens on the first question with no
 answer. An answer that is no longer a choice on the page (an older score range) is
 asked again. No token, a bad one, or no answer in 3 seconds: the survey starts at
 the top, as before.
+
+**No text ever carries the link (review 2026-10-31).** Whoever holds the link opens
+the person's saved answers, and the public form can put any phone on an existing
+lead's email, so a text can reach someone else. The email address is the lead's
+identity (clients are matched on it), so the email reaches the owner. Each come-back
+text points to the email of the same touch, which goes out at the same moment.
+`sendTemplated` drops the tag from every text, a test fails if any text template
+names it (`src/survey/resume-link-sms.pg.test.mjs`), and the hourly `survey-resume`
+beat goes red if any text carries a link (`survey:resume-no-link-in-texts`). The
+welcome email links to the plain /apply page (seed 302).
 
 "Finished" means `survey.completed`. A reply means a `message.inbound` event for
 the client after the flow started.
@@ -444,6 +454,24 @@ The call reminders stay standard on purpose: holding a 2-hour reminder for a 9:3
 a.m. call until 9 a.m. would put it after the call. One clock for everybody; there
 are no per-person time zones. Plus-tag test files (`+sim-`, `e2e+`) skip both
 windows so a night proof can run.
+
+**Message tests (owner GO 2026-10-31).** Four follow-up messages can be split into
+version A (today's words) and version B (the same step with one real client win
+added): the second come-back message (`SMS-S02-RESUME-2`, `EMAIL-S02-RESUME-2`) and
+the second never-booked message (`SMS-NOBOOK-02`, `EMAIL-NOBOOK-02`). Version B is its
+own template row with `-B` on the end of the key. `sendTemplated` gives each person a
+fixed version by a coin flip on their id and the test's name
+(`src/messaging/experiments.mjs`), so the text and the email of one step match and a
+replay picks the same one. B goes only when its row exists, is not draft copy and has
+passed compliance; otherwise the person gets A, never a blank, and the `messages` row
+keeps the key that really went. The send key that stops a double send stays on the
+base key. A `-B` key is held, gated, de-duplicated and counted exactly like its base
+key, so a person's customer steps do not change. The read-only report
+(`GET /api/read/message-tests`, owner and admin; `scripts/message-tests-report.mjs`)
+counts the people in each version and how many finished the survey (come-back test) or
+booked (never-booked test) within 7 days of their first message in the test. The count
+starts when the first B message goes out. It names a winner only when each side has 30
+people and the gap passes a 95% check, and it never switches a version by itself.
 
 ## 7. Cortana's confirmed-booking receipt (2026-10-29)
 

@@ -26,6 +26,7 @@
  */
 
 import { listWorkflowFiles, findTemplateKeyRefs, REPO_ROOT } from "./seed/workflow-audit.mjs";
+import { baseKeyOf } from "./experiments.mjs";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -111,9 +112,11 @@ export function journeyRefsFor(templateKey, journeyRows = []) {
   return hits;
 }
 
-/** workflowRefsFor — the code references for one key. */
+/** workflowRefsFor — the code references for one key. A version B of a tested message
+    (src/messaging/experiments.mjs, key + "-B") is never named in code; the workflow names
+    its base key and the sender picks B. So B is used by whatever uses its base key. */
 export function workflowRefsFor(templateKey, { root = REPO_ROOT } = {}) {
-  return scanWorkflowRefs(root).get(templateKey) || [];
+  return scanWorkflowRefs(root).get(baseKeyOf(templateKey)) || [];
 }
 
 /* referencesFor — the whole picture for one template, and the single answer the
@@ -142,7 +145,7 @@ export function referencesFor(templateKey, { journeyRows = [], root = REPO_ROOT 
 export function annotateTemplates(rows = [], { journeyRows = [], root = REPO_ROOT } = {}) {
   const workflowIndex = scanWorkflowRefs(root);
   return rows.map((row) => {
-    const workflows = workflowIndex.get(row.template_key) || [];
+    const workflows = workflowIndex.get(baseKeyOf(row.template_key)) || [];
     const journeys = journeyRefsFor(row.template_key, journeyRows);
     return {
       ...row,

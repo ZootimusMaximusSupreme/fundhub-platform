@@ -1,13 +1,15 @@
 // Beat: survey-resume. Every hour: does the come-back link a quit-survey lead gets still work?
 //
-// The truth lives in lib/survey-resume-truth.mjs. Two checks, one GET and one read:
-//   survey-resume-door-answers  the door answers its own "token required" to a GET with no code
-//   survey-resume-links-signed  the come-back messages of the last 24 hours carry a signed link
+// The truth lives in lib/survey-resume-truth.mjs. Three checks, one GET and one read:
+//   survey-resume-door-answers      the door answers its own "token required" to a GET with no code
+//   survey-resume-links-signed      the come-back emails of the last 24 hours carry a signed link
+//   survey-resume-no-link-in-texts  no text of the last 24 hours carries one (a link in a text is a
+//                                   leak: it opens saved answers to whoever holds the phone)
 // The 6 a.m. deep check survey:resume-link-opens opens a real lead's link end to end.
 //
 // What it guards, and why it is on `covers`:
-//   route:public/survey-resume   the door every come-back text and email links to. src/pulse/tripwires.mjs
-//                                names these two checks and the 6 a.m. one for it; the test holds it.
+//   route:public/survey-resume   the door every come-back email links to. src/pulse/tripwires.mjs
+//                                names these three checks and the 6 a.m. one for it; the test holds it.
 //
 // READ ONLY. One GET to our own site and one read through ctx.read. No send, no write.
 
@@ -21,9 +23,9 @@ export const LANE = Object.freeze({
   checks: Object.freeze(CHECK_IDS.map((checkId) => Object.freeze({ id: checkId, step: checkId.replaceAll(":", "-") }))),
   run: (io) => runSurveyResumeChecks(io),
   selfTest: Object.freeze({
-    passRows: Object.freeze([Object.freeze([COME_BACK_LINKS_SQL, Object.freeze([Object.freeze({ total: 3, signed: 3 })])])]),
-    // Two of three come-back messages carry the plain /apply link: the signing key is gone.
-    failRows: Object.freeze([Object.freeze([COME_BACK_LINKS_SQL, Object.freeze([Object.freeze({ total: 3, signed: 1 })])])]),
+    passRows: Object.freeze([Object.freeze([COME_BACK_LINKS_SQL, Object.freeze([Object.freeze({ total: 3, signed: 3, texts: 5, texts_with_link: 0 })])])]),
+    // One text of five carries a come-back link: the leak this beat exists to catch.
+    failRows: Object.freeze([Object.freeze([COME_BACK_LINKS_SQL, Object.freeze([Object.freeze({ total: 3, signed: 3, texts: 5, texts_with_link: 1 })])])]),
     passHttp: Object.freeze({ [`GET ${SITE}${DOOR_PATH}`]: DOOR_ANSWER })
   })
 });
