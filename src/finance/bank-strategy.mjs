@@ -1068,15 +1068,37 @@ export function buildLocation(summary = {}, businessInfo = new Map(), containers
  * payload as a genuine fresh credit file. Real older rows (including legacy
  * NULL-provider imports) remain usable; only stamped rehearsals are excluded.
  * The SAME query is shared with the next-funding-sequence planner. */
+/* Rehearsal CRS reports can be ingested into otherwise ordinary tradeline and
+ * liability rows. Filtering only crs_results would still let those sample
+ * credit limits and balances drive paid-client bank/UnderwriteIQ advice.
+ * A sourced row must have a real same-org, same-client CRS parent; unsourced
+ * manual observations remain visible. Missing provenance fails closed.
+ * These shared reads also feed the next-funding-sequence planner.
+ */
+const genuineCrsPredicate = (alias) => `COALESCE(${alias}.provider, '') <> 'crs_softview_simulated'
+    AND LOWER(COALESCE(${alias}.result->>'simulated', '')) NOT IN ('true', '1')
+    AND LOWER(COALESCE(${alias}.result->>'environment', '')) NOT IN ('sandbox', 'simulated')`;
+
+const genuineSourcedRow = (alias) => `(
+    (${alias}.source = 'manual' AND ${alias}.source_ref IS NULL)
+    OR EXISTS (
+      SELECT 1 FROM crs_results source_crs
+       WHERE source_crs.id = ${alias}.source_ref
+         AND source_crs.org_id = ${alias}.org_id
+         AND source_crs.client_id = ${alias}.client_id
+         AND ${genuineCrsPredicate('source_crs')}
+    )
+  )`;
+
 export const CRS_SQL = `SELECT id, result, outcome_tier, created_at FROM crs_results
   WHERE client_id = $1 AND org_id = $2
-    AND COALESCE(provider, '') <> 'crs_softview_simulated'
-    AND COALESCE(result->>'simulated', '') <> 'true'
-    AND COALESCE(result->>'environment', '') <> 'sandbox'
+    AND ${genuineCrsPredicate('crs_results')}
   ORDER BY created_at DESC`;
 export const TRADELINE_SQL = `SELECT * FROM tradelines WHERE client_id = $1 AND org_id = $2
+  AND ${genuineSourcedRow('tradelines')}
   ORDER BY apr ASC NULLS LAST, lender ASC`;
-export const LIABILITY_SQL = `SELECT * FROM card_liabilities WHERE client_id = $1 AND org_id = $2 ORDER BY as_of DESC`;
+export const LIABILITY_SQL = `SELECT * FROM card_liabilities WHERE client_id = $1 AND org_id = $2
+  AND ${genuineSourcedRow('card_liabilities')} ORDER BY as_of DESC`;
 export const BUSINESS_SQL = `SELECT id, name, age_months, entity_data, created_at FROM businesses
   WHERE client_id = $1 AND org_id = $2 ORDER BY created_at ASC`;
 
