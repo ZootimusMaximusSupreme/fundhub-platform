@@ -36,7 +36,7 @@ export const CRITICAL_EDGES = Object.freeze([
     event: "payment.received", consumer: "onPaymentReceived / entitlement handlers",
     receipt: "payment ledger + active entitlement + portal read", graceMinutes: null,
     pulse: "payments:paid-no-entitlement",
-    paths: ["src/register-all.mjs", "src/merchant/", "src/billing/", "src/payments/", "src/entitlements/", "src/finance/finance-os-entitlement.mjs", "src/ledger/", "src/handlers/money-chain.mjs", "src/handlers/client-lifecycle.mjs", "src/handlers/payment-links.mjs", "src/payment-links/", "src/invoices/", "api/read/invoices.mjs", "public/app/client-portal.html", "src/adapters/whop", "api/payment", "api/checkout"]
+    paths: ["src/register-all.mjs", "src/merchant/", "src/billing/", "src/payments/", "src/entitlements/", "src/finance/finance-os-entitlement.mjs", "src/ledger/", "src/handlers/money-chain.mjs", "src/handlers/client-lifecycle.mjs", "src/handlers/payment-links.mjs", "src/payment-links/", "src/workflows/ar-collections.mjs", "src/invoices/", "api/read/invoices.mjs", "public/app/client-portal.html", "src/adapters/whop", "api/payment", "api/checkout"]
   },
   {
     id: "consent-crs-result", severity: "P0", owner: "Fulfillment",
@@ -328,7 +328,7 @@ export function judgeSyntheticEdge({
   // supply the org/client/event-linked readback and the original sale identity.
   // An unqueried live database is NOT_CHECKED, never a fabricated PASS.
   if (requirePaymentLinkReceipt) {
-    if (!resolved.payment_link_id || !resolved.provider_ref) {
+    if (!resolved.payment_link_id || !resolved.provider_ref || !resolved.sale_id) {
       return { verdict: "NOT_CHECKED", reason: "payment-link-event-identity-unavailable" };
     }
     if (paymentLinkReceipt === undefined) {
@@ -340,7 +340,7 @@ export function judgeSyntheticEdge({
     }
     if (String(paymentLinkReceipt.payment_link_id || "") !== String(resolved.payment_link_id) ||
         String(paymentLinkReceipt.provider_ref || "") !== String(resolved.provider_ref) ||
-        (resolved.sale_id != null && String(paymentLinkReceipt.sale_id || "") !== String(resolved.sale_id)) ||
+        String(paymentLinkReceipt.sale_id || "") !== String(resolved.sale_id) ||
         paymentLinkReceipt.outcome !== "settled") {
       return failed("payment-link-settlement-identity-mismatch");
     }
@@ -355,6 +355,17 @@ export function judgeSyntheticEdge({
   }
   if (!matchesEvent(receipt, resolved) || receipt.outcome !== "satisfied") {
     return failed("downstream-business-result-missing");
+  }
+  // A settled link is not evidence that the correct original SALE received
+  // its ledger payment. The same event/org/client can still be written against
+  // a different sale. With opt-in link proof, require an actual joined sale ID.
+  if (requirePaymentLinkReceipt) {
+    if (!receipt.sale_id) {
+      return { verdict: "NOT_CHECKED", reason: "sale-payment-ledger-identity-unavailable" };
+    }
+    if (String(receipt.sale_id) !== String(resolved.sale_id)) {
+      return failed("sale-payment-ledger-original-sale-mismatch");
+    }
   }
   if (requireProviderReceipt && (!matchesEvent(providerReceipt, resolved) || providerReceipt.outcome !== "delivered")) {
     return failed("real-provider-delivery-missing");
