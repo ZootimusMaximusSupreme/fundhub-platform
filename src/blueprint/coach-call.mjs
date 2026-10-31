@@ -67,14 +67,17 @@ SELECT w.id AS waypoint_id, w.org_id, w.client_id, w.key, w.title,
      WHERE prior.org_id = w.org_id AND prior.client_id = w.client_id
        AND prior.owner_kind = 'client' AND prior.state NOT IN ('done', 'skipped')
        AND (prior.position, prior.key) < (w.position, w.key))
-   AND EXISTS (SELECT 1 FROM transactions t
-     JOIN products p ON p.id = resolve_product_id(t.org_id, t.product_name)
-     WHERE t.org_id = w.org_id AND t.client_id = w.client_id
-       AND lower(p.code) = 'consulting-package'
-       AND lower(btrim(COALESCE(t.status, ''))) = 'succeeded')
    AND EXISTS (SELECT 1 FROM v_client_entitlements e
+     JOIN transactions t ON t.id = e.source_transaction_id
+       AND t.org_id = e.org_id AND t.client_id = e.client_id
+     JOIN products p ON p.id = resolve_product_id(t.org_id, t.product_name)
+       AND p.org_id = t.org_id
      WHERE e.org_id = w.org_id AND e.client_id = w.client_id
-       AND e.entitlement_code = 'credit-optimization-roadmap' AND e.active)
+       AND e.entitlement_code = 'credit-optimization-roadmap' AND e.active
+       AND lower(btrim(p.code)) = 'consulting-package'
+       AND lower(btrim(COALESCE(t.status, ''))) = 'succeeded'
+       AND t.created_at <= $2::timestamptz
+       AND (t.created_at + interval '12 months') > $2::timestamptz)
    AND NOT EXISTS (SELECT 1 FROM messages reply
      WHERE reply.org_id = w.org_id AND reply.client_id = w.client_id
        AND reply.direction = 'inbound' AND reply.created_at >= first_message.created_at)
