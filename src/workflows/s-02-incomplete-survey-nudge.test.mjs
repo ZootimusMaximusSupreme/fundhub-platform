@@ -8,7 +8,6 @@ import { pgFake } from "./test-support.mjs";
 import { withReplyRead } from "./stop-on-reply.test-support.mjs";
 import { inngestSim } from "./inngest-sim.mjs";
 import { DRIP_LAST_PLAN_MINUTE, inDripWindow, SEND_WINDOW_TZ } from "../messaging/send-window.mjs";
-import { readSurveyResumeToken } from "../survey/resume-link.mjs";
 
 /* ── The database ───────────────────────────────────────────────────────────────────────────────
    pgFake answers the shared reads (clients, templates, messages, the cohort, bookings), and
@@ -326,32 +325,25 @@ test("finished is checked first, then a reply, then a booking", async () => {
 
 // ── the words the message carries ────────────────────────────────────────────────────────────────
 
-test("every text and email carries the signed resume link for this person", async () => {
+test("every text and email carries the plain /apply link and never a resume code, even with a signing key", async () => {
+  // Containment (2026-10-31): /apply lets a new phone onto an existing lead's email, so a come-back
+  // text can reach a stranger. The signing key is set (before()), so a code COULD be minted, and is not.
   const w = world({ start: AT_10AM });
   await run(w, optIn(w));
   assert.equal(w.db.messages.length, 6);
-  w.db.messages.forEach((m, i) => {
-    const link = m.rendered_body.match(/https:\/\/apply\.fundhub\.ai\/apply\?r=([A-Za-z0-9_-]+)/);
-    assert.ok(link, `${m.template_key} has the link: ${m.rendered_body}`);
-    assert.deepEqual(
-      readSurveyResumeToken(link[1], { now: () => w.db.sentLog[i].at, secret: SECRET }),
-      { clientId: CLIENT },
-      `${m.template_key}: the token opens this person's file`
-    );
+  for (const m of w.db.messages) {
+    assert.ok(m.rendered_body.endsWith("to go: https://apply.fundhub.ai/apply"), `${m.template_key}: ${m.rendered_body}`);
+    assert.ok(!m.rendered_body.includes("?r="), `${m.template_key} carries no resume code`);
     assert.ok(!m.rendered_body.includes("{{"), "no merge tag is left over");
     assert.ok(m.rendered_body.includes("Hi Pat"), "the other merge tags still work");
-    assert.ok(!m.rendered_body.includes(EMAIL) && !m.rendered_body.includes("5551234567"), "the link holds no email or phone");
-  });
+  }
 });
 
-test("with no signing key the touches still go, with the plain apply link, and the gap is logged", async () => {
+test("with no signing key the touches still go, with the same plain apply link", async () => {
   const saved = process.env.UNSUBSCRIBE_TOKEN_SECRET;
   const savedDoc = process.env.DOCUMENT_URL_SECRET;
   delete process.env.UNSUBSCRIBE_TOKEN_SECRET;
   delete process.env.DOCUMENT_URL_SECRET;
-  const realWarn = console.warn;
-  const warnings = [];
-  console.warn = (...a) => warnings.push(a.join(" "));
   try {
     const w = world({ start: AT_10AM });
     await run(w, optIn(w));
@@ -360,9 +352,7 @@ test("with no signing key the touches still go, with the plain apply link, and t
       assert.ok(m.rendered_body.includes("https://apply.fundhub.ai/apply"), m.rendered_body);
       assert.ok(!m.rendered_body.includes("?r="), "and it is the plain link");
     }
-    assert.ok(warnings.some((x) => /survey-resume/.test(x)), String(warnings));
   } finally {
-    console.warn = realWarn;
     process.env.UNSUBSCRIBE_TOKEN_SECRET = saved;
     if (savedDoc !== undefined) process.env.DOCUMENT_URL_SECRET = savedDoc;
   }
@@ -395,7 +385,7 @@ test("every text and email carries all three tags, worked out from what this per
   assert.equal(w.db.messages.length, 6);
   for (const m of w.db.messages) {
     assert.ok(m.rendered_body.includes("you stopped at the credit score question, 5 more taps to go:"), m.rendered_body);
-    assert.match(m.rendered_body, /https:\/\/apply\.fundhub\.ai\/apply\?r=[A-Za-z0-9_-]+$/);
+    assert.match(m.rendered_body, /https:\/\/apply\.fundhub\.ai\/apply$/, "the plain link (containment 2026-10-31)");
     assert.ok(!m.rendered_body.includes("{{"), "no merge tag is left over");
   }
 });

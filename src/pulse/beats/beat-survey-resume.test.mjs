@@ -37,7 +37,7 @@ test("survey-resume is a valid beat, passes the static pin and its own self test
   assert.deepEqual(beat.reads, [{ host: "SITE", methods: ["GET"] }]);
 });
 
-test("survey-resume: green when the door answers its own 400 and every come-back message is signed", async () => {
+test("survey-resume: green when the door answers its own 400 and no follow-up carries a resume code", async () => {
   const result = await runBeat(beat, ctxWith());
   assert.equal(result.ok, true);
   assert.equal(result.detail, "2 come-back link checks passed");
@@ -58,30 +58,31 @@ test("survey-resume: a 400 that is not the door's own answer is red too", async 
   assert.equal(result.step, "survey-resume-door-answers");
 });
 
-test("survey-resume: come-back messages without a signed link are red, counted, never copied", async () => {
+test("survey-resume: a follow-up that carries a resume code is red, counted, never copied", async () => {
   const result = await runBeat(beat, makeFakeCtx(beat, beat.selfTest.fail()));
   assert.equal(result.ok, false);
   assert.equal(result.step, "survey-resume-links-signed");
-  assert.equal(result.detail, "2 of 3 come-back messages in the last 24 hours have no signed link, so they open the survey at the top");
+  assert.equal(result.detail, "1 of 3 welcome and come-back messages in the last 24 hours carry a resume code, which can reach a phone nobody proved is the lead's");
 });
 
 test("survey-resume: no come-back message in a day is nothing to judge, never green", async () => {
-  const result = await runBeat(beat, ctxWith({ rows: [{ total: 0, signed: 0 }] }));
+  const result = await runBeat(beat, ctxWith({ rows: [{ total: 0, coded: 0 }] }));
   assert.equal(result.ok, true);
   assert.match(result.detail, /^1 come-back link checks passed; 1 had nothing safe to judge$/);
   assert.ok(result.steps.find((step) => step.name === "survey-resume-links-signed").skipped);
 });
 
-test("survey-resume: the read is one SELECT on the come-back keys only, real people only", () => {
+test("survey-resume: the read is one SELECT on the welcome and come-back keys only, real people only", () => {
   const sql = truth.COME_BACK_LINKS_SQL;
   assert.match(sql, /^\/\* beat:survey-resume-links \*\//);
   assert.doesNotMatch(sql, /\b(insert|update|delete|drop|alter|truncate|grant|begin|commit|rollback)\b/i);
   assert.match(sql, /'SMS-S02-RESUME-%'/);
   assert.match(sql, /'EMAIL-S02-RESUME-%'/);
-  assert.doesNotMatch(sql, /S00/, "the welcome is left out: welcomes written before the new copy had no link");
+  assert.match(sql, /'SMS-S00-WELCOME'/, "the welcome text is checked too: it went to the same unproved phone");
+  assert.match(sql, /'EMAIL-S00-WELCOME'/);
   assert.match(sql, /COALESCE\(c\.is_demo, false\) = false/);
   assert.match(sql, /example\.com/);
-  assert.ok(sql.includes("apply\\.fundhub\\.ai/apply\\?r=[A-Za-z0-9_-]{20,}"), "a signed link is the /apply page with a code of 20 or more characters");
+  assert.ok(sql.includes("apply\\.fundhub\\.ai/apply\\?r="), "any /apply link with an r= code counts as coded");
 });
 
 test("survey-resume: the door it covers names both hourly checks and the 6 a.m. one", () => {

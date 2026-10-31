@@ -190,14 +190,16 @@ flowchart TD
     K3 -->|No| M3[Come-back text + email 3]
 ```
 
-**The link opens the survey where they stopped.** Every message carries
-`{{survey_resume_link}}`: `https://apply.fundhub.ai/apply?r=<token>`. The token is
-signed, names the client and the company and nothing else, and lasts 30 days. The
-page asks `GET /api/public/survey-resume?r=<token>` for the contact details and the
-answers already saved, fills them in, and opens on the first question with no
-answer. An answer that is no longer a choice on the page (an older score range) is
-asked again. No token, a bad one, or no answer in 3 seconds: the survey starts at
-the top, as before.
+**The link is the plain survey page (containment, 2026-10-31).** Every message carries
+`{{survey_resume_link}}`: `https://apply.fundhub.ai/apply`, with no `?r=` code, and the
+survey starts at the top. `/apply` takes an existing lead's email with a new phone and
+writes that phone onto the lead (`resolveClient`), so a welcome or come-back text can
+reach a phone nobody proved is the lead's. The signed code those texts used to carry
+opened the lead's saved contact and answers at `GET /api/public/survey-resume`. That
+door now answers every code with the same 404 and reads nothing, so the codes already
+sent open nothing; the page treats the 404 as "start at the top". Opening the survey
+where the person stopped waits for a link that proves the person opening it owns the
+record. UNVERIFIED on live until this ships.
 
 "Finished" means `survey.completed`. A reply means a `message.inbound` event for
 the client after the flow started.

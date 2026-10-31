@@ -22,7 +22,6 @@ import {
   handle, resumePlan, sequenceInFlight, stopReason, surveyCompleted, RESUME_TEMPLATE_KEYS
 } from "./s-02-incomplete-survey-nudge.mjs";
 import { inngestSim } from "./inngest-sim.mjs";
-import { readSurveyResumeToken } from "../survey/resume-link.mjs";
 import { isLocalScratchDatabaseUrl } from "../verification/scratch-guard.mjs";
 
 // Writes and deletes its own rows, so it runs only on a loopback scratch or CI database.
@@ -271,7 +270,7 @@ const ALL_EIGHT = {
 };
 const KEYS6 = ["EMAIL-S02-RESUME-1", "EMAIL-S02-RESUME-2", "EMAIL-S02-RESUME-3", "SMS-S02-RESUME-1", "SMS-S02-RESUME-2", "SMS-S02-RESUME-3"];
 
-test("a lead who never finishes: six queued messages on real rows, each with a link that opens their file",
+test("a lead who never finishes: six queued messages on real rows, each with the plain /apply link and no resume code",
   { skip: !HAS_DB }, async () => {
     const email = `quits${++seq}@${DOMAIN}`;
     const clientId = await makeClient(orgId, { email, phone: "(555) 010-2001", answers: ANSWERED_THREE });
@@ -287,9 +286,8 @@ test("a lead who never finishes: six queued messages on real rows, each with a l
     for (const r of rows) {
       assert.equal(r.status, "queued", "queued for the dispatcher; this test sends nothing");
       assert.equal(r.provider_ref, `workflow:${r.template_key}:${event.id}`, "one send key per touch, per channel, per opt-in");
-      const link = r.rendered_body.match(/https:\/\/apply\.fundhub\.ai\/apply\?r=([A-Za-z0-9_-]+)/);
-      assert.ok(link, r.rendered_body);
-      assert.deepEqual(readSurveyResumeToken(link[1], { secret: SECRET, now: () => start + 3 * DAY }), { clientId });
+      assert.ok(r.rendered_body.endsWith("to go: https://apply.fundhub.ai/apply"), r.rendered_body);
+      assert.ok(!r.rendered_body.includes("?r="), "containment 2026-10-31: no resume code in a follow-up");
       assert.ok(r.rendered_body.includes("Hi Pat"));
       assert.ok(r.rendered_body.includes("you stopped at the credit score question, 5 more taps to go:"), r.rendered_body);
     }
