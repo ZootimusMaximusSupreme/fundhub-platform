@@ -144,7 +144,12 @@ function materialSource(file) {
   const nativeAppSource = /^tools\/fundhub-(?:ios|macos)\/.*\.(?:swift|plist|entitlements|pbxproj|xcconfig|m|mm|h)$/i.test(file);
   // Schema migrations can change the persisted result without touching a handler.
   // Report high-risk migrations only; seeds, screenshots and docs stay quiet.
-  const schemaMigration = /^db\/migrations\/[^/]+\.sql$/i.test(file);
+  const schemaMigration = /^db\/(?:migrations|schema)\/[^/]+\.sql$/i.test(file);
+  // Migration execution and manifest generation govern whether new customer,
+  // payment and consent result columns actually exist in production. Unlike
+  // the generated manifest, changes to these executable sources need review.
+  const migrationControlSource = file === "db/migrate.mjs" ||
+    file === "scripts/db/expected-migrations.mjs";
   // This executable rehearsal script writes simulated CRS and tradelines.
   // A change to it can alter bank guidance, despite living in scripts/.
   const sampleCreditWriter = file === "scripts/finance-os-sample-v3.mjs";
@@ -152,7 +157,7 @@ function materialSource(file) {
   // shared with the hourly beat. Watch only these exact paths, not every
   // observer-only Pulse module.
   const sharedRuntimePulseSource = RUNTIME_LENDER_PULSE_PATHS.includes(file);
-  return (/^(?:src|api|netlify|public|marketing|ios|macos|native)\//.test(file) || nativeAppSource || schemaMigration || sampleCreditWriter || sharedRuntimePulseSource)
+  return (/^(?:src|api|netlify|public|marketing|ios|macos|native)\//.test(file) || nativeAppSource || schemaMigration || migrationControlSource || sampleCreditWriter || sharedRuntimePulseSource)
     && (!file.startsWith("src/pulse/") || sharedRuntimePulseSource)
     && !TEST_FILE.test(file) && !NON_EXECUTABLE_ASSET.test(file) && !NON_RUNTIME.test(file);
 }
@@ -172,11 +177,18 @@ const HIGH_RISK_UNMAPPED = /(?:^|[/._-])(?:pay(?:ment)?|bill(?:ing)?|ledger|enti
 // missing route left whole workflow families unreachable despite green code
 // tests; a change to this existing chokepoint must request explicit A→B
 // routing and downstream-result review, even without a risk word in its name.
-const ALWAYS_REVIEW_CHOKEPOINTS = new Set(["netlify/functions/api.mjs"]);
+const ALWAYS_REVIEW_CHOKEPOINTS = new Set([
+  "netlify/functions/api.mjs",
+  // Central DB and migration bootstrapping are customer-result chokepoints.
+  // Report ONLY; generated db/expected-migrations.mjs remains deliberately
+  // excluded to avoid duplicate warnings on every ordinary migration PR.
+  "src/db.mjs", "db/migrate.mjs", "scripts/db/expected-migrations.mjs"
+]);
 export function unmappedHighRiskSourceChanges(filenames = []) {
   const mapped = new Set(changedCriticalEdges(filenames).flatMap((edge) => edge.files));
   return [...new Set(filenames.map(String).filter(materialSource))]
-    .filter((file) => (HIGH_RISK_UNMAPPED.test(file) || ALWAYS_REVIEW_CHOKEPOINTS.has(file)) && !mapped.has(file));
+    .filter((file) => (HIGH_RISK_UNMAPPED.test(file) || ALWAYS_REVIEW_CHOKEPOINTS.has(file) ||
+      /^db\/schema\/[^/]+\.sql$/i.test(file)) && !mapped.has(file));
 }
 
 // Explicitly never returns PASS. A PR note and source-level tests are not live proof.
