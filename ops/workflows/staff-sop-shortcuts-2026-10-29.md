@@ -38,3 +38,23 @@ The owner reports SOPs and sales scripts already loaded into Company Brain; the 
 - Run all required repo checks, including disposable Postgres and Playwright, then protected merge + deployment proof. If any gate fails, leave PR open and record exact failure; do not bypass.
 
 Current status: **IMPLEMENTED ON FEATURE BRANCH; CI AND LIVE PROOF PENDING.**
+
+## October 30 follow-up — action-level SOP links and discovery
+
+**Why owner could not find the requested help:** PR #257 was merged (merge commit `7c2c9a0`) and its dedicated agent reported a successful production release, but it added a document **icon only in the shared header**. It did not visibly say "SOPs" or place small help links beside staff workflow steps. The owner specifically requested both role coverage and instructions at the place the employee works. This is a UI placement/coverage gap, not grounds to invent new SOP documents.
+
+**This repair lane:** branch `fix/staff-sop-workstep-shortcuts-20261030`; owner of only `public/app/shell.js`, `public/app/company-brain.html`, existing SOP test files, and this board. All front-house, payment, Blueprint, fulfillment and Pulse agents retain their separate code ownership. No independent agent spawn capability in this chat, so this branch makes the fix directly.
+
+- Existing 12 staff desktops plus Calendar, Documents, My Numbers, Staff & Access, Contract Templates and Consent are mapped (18 relevant staff workspaces). The header shortcut now says **SOPs** on desktop and retains the existing accessible icon at phone width.
+- **29 small, contextual SOP links** are mapped to actual workflow headings: setter dial/triage/confirmation/handoff, closer funding/sales call, funding and credit tabs, CSM follow-up, inquiry/repair queue, lender and bank outreach, Sales Floor coaching, Pipeline handoff, Operations, Finance OS, Messaging, Calendar, Documents, performance, staff roles, agreement templates and consent. Setter and Finance OS dynamically refreshed sections are watched only inside their own container.
+- Each link opens the same authenticated Company Brain Documents panel with a finite `?sop=` topic and **Find approved instructions**. No automatic AI send, no client IDs in links, no new SOP source store, no invented SOP contents. Searches still use existing role- and document-tier-restricted retrieval and source citations; unindexed or unapproved sources remain unverified and must not be treated as present.
+- Existing employee role restrictions remain. The `outbound_rep` role, clients and partners do **not** gain Company Brain access or shortcuts. The Owner-only document approval boundary is unchanged.
+- Regression tests extended to all 18 pages, topic whitelist, task links, setter redraw, funding / credit workflows and forbidden external staff. Required exact-head GitHub Actions 14 jobs, independent review, protected merge, main deploy and authenticated real-role / real-Company-Brain query are **not yet verified** in this code-only update. No production data, money, messages, consent or backend permissions were changed.
+
+**How to accept after deploy:** open `/app/client-control-panel.html` as a funding advisor or owner, find **SOPs** near global Search, and **Funding SOP** beside the Funding tab section. Click it, then **Find approved instructions**. It must either return a cited approved SOP from Company Brain or explicitly say source unavailable, never a made-up procedure. Test the same at the Setter and Inquiry desks. If no indexed material appears despite prior uploads, check the Company Brain document approval/indexing separately; UI links do not prove index contents.
+
+### October 30 exact-head repair and merge notes
+- Reconciled the branch with the current main Knowledge Base (Ask/Training/Manage files), preserving approved-index UI and the recent timer stub for isolated navigation tests.
+- Consent SOP is a sibling of the real heading, so exact authorization text survives. Documents SOP uses title whitespace, keeping the phone's first library row above the fold.
+- The 320px closer funding header reclaims 15px of margin without reducing 44px button targets. Back preserves the funding-tab hash.
+- Actual production approved source retrieval: NOT LIVE PROVED without a read-only authenticated employee session.
