@@ -33,6 +33,11 @@ const BANNED = [
   [/\b(maybe|could|possibly|probably|likely|hopefully)\b/i, "a hedge (copy-certainty)"],
   [/\bchances are\b/i, "a hedge (copy-certainty)"],
   [/\bsocial security\b|\bSSN\b/i, "the Social Security number before checkout step 3"],
+  // Chris, 2026-10-31: nobody wants to be closed or sold. Say your advisor, strategy call, offer.
+  [/\bclosers?\b|\bcloser's\b/i, `"closer" (say "your advisor"; Chris, 2026-10-31)`],
+  [/\bsales (call|team|rep|person)\b/i, `"sales call" or "sales team" (say "strategy call", "the Fundhub team")`],
+  [/\bpitch(ed|es|ing)?\b/i, `"pitch" (say "offer" or "walk you through")`],
+  [/\b(sell|close) you\b/i, `"sell you" or "close you" (say it plainly)`],
 ];
 
 const ENTITIES = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ", rsquo: "'", lsquo: "'",

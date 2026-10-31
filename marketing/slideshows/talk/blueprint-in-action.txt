@@ -128,9 +128,9 @@ Your story: a client who got stuck on a step, and what got them moving again.
 
 Last screen. Open Money, then Next steps. The one main button on that page says I'm ready to get funded.
 
-When the engine says your file is ready, the Fundhub team preps you, and a closer calls you about funding. You can also ask with that one button.
+When the engine says your file is ready, the Fundhub team preps you, and someone from the team calls you about funding. You can also ask with that one button.
 
-Before that call, the funding papers checklist asks for your bank statements, tax returns and ID ahead of time, one paper at a time, so your file is complete when the closer calls.
+Before that call, the funding papers checklist asks for your bank statements, tax returns and ID ahead of time, one paper at a time, so your file is complete when the team calls.
 
 Then the funding sequence starts. Your personal file goes first, then each business on its own, and one funding sequence is about six rounds.
 
@@ -138,4 +138,4 @@ After funding, the planner reads your file again and suggests when it's ready fo
 
 That's the whole dashboard, start to finish: your file, your steps, your letters, your businesses, until the file is ready to fund.
 
-The Blueprint gets the file ready. Funding is a separate agreement, and the closer walks you through it on that call.
+The Blueprint gets the file ready. Funding is a separate agreement, and someone from the Fundhub team walks you through it on that call.
