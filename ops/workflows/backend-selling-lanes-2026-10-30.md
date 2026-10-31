@@ -512,9 +512,9 @@ Chris asked whether the follow-ups rest on science, then said "Get it all done."
 
 | Unit | Owner | What it owns | Status |
 |---|---|---|---|
-| W6 | agent (Sonnet) | the split and the report, back end only: `src/messaging/experiments.mjs`; `sendTemplated` picks the version; send hours and the gate treat a `-B` key like its base; every lookup of these keys matches both versions; report, read route `GET /api/read/message-tests` and its heartbeat rows; `scripts/message-tests-report.mjs`; tests; the journey note | claimed |
-| W7 | this chat (Opus) | the B words with Copybot in Chris's voice, real proof only: `db/seed/302_followup_proof_variants.sql` | claimed |
-| W8 | this chat (Opus) | the "Message tests" card on the Marketing overview page, after W6 is proven | pending |
+| W6 | agent (Sonnet) | the split and the report, back end only: `src/messaging/experiments.mjs`; `sendTemplated` picks the version; send hours and the gate treat a `-B` key like its base; every lookup of these keys matches both versions; report, read route `GET /api/read/message-tests` and its heartbeat rows; `scripts/message-tests-report.mjs`; tests; the journey note | done |
+| W7 | this chat (Opus) | the B words with Copybot in Chris's voice, real proof only: `db/seed/302_followup_proof_variants.sql` | done |
+| W8 | this chat (Opus) | the "Message tests" card on the Marketing overview page, after W6 is proven | done |
 
 **Shared names (do not rename).** Version B key = base key + `-B` (for example `EMAIL-NOBOOK-02-B`). Test names: `resume-proof`, `nobook-proof`. Arm = `"A"` or `"B"`.
 
@@ -557,6 +557,11 @@ RUN AND REPORT
 ```
 
 **W6 manifest.** (W6 appends here)
+
+- W6 (agent, Sonnet) stopped before writing this manifest; this chat checked and finished it on 2026-10-31. Files: `src/messaging/experiments.mjs` (EXPERIMENTS, armFor, baseKeyOf, variantKeyFor, withVariants, MIN_PER_ARM), `src/workflows/messaging.mjs` (pickTemplateRow), `src/messaging/send-window.mjs`, `src/messaging/sms-dedup.mjs`, `src/messaging/template-usage.mjs` and `src/workflows/s-02-incomplete-survey-nudge.mjs` (a -B key acts like its base), `src/messaging/experiment-report.mjs`, `api/read/message-tests.mjs` (route `read/message-tests`, requireAuth then requireRole MARKETING, heartbeat rows in `src/pulse/registry.mjs` and `src/pulse/tripwires.mjs`), `scripts/message-tests-report.mjs`, tests beside each.
+- W7 (this chat): `db/seed/304_followup_proof_variants.sql`. Version B = version A word for word plus one real client win (Colin Schmidt and Gene, approved in `marketing/testimonials/testimonials.json`). The B text of the come-back chase points to the email, like its A (no text carries the come-back link, PR 351).
+- W8 (this chat): the Message tests view on the Numbers tab (`public/app/cc-tab-numbers.js`, `.css`), `src/ui/cc-tab-numbers.test.mjs`, `e2e/cc-tab-numbers.spec.mjs`. It prints the server's counts and verdict and adds nothing up.
+- Checked 2026-10-31 on scratch Postgres: unit tests 313 of 313; database tests 63 of 63 (experiments, report, route, S-02, chases); with seeds 302 and 304 together, the no-link-in-texts guard and the A/B database tests 46 of 46; lint clean.
 
 ## Leftovers found (not fixed here)
 
