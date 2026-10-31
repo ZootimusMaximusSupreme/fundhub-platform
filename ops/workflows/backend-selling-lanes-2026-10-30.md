@@ -464,7 +464,7 @@ Hey Dana, on your Fundhub call we review your file the way a lender does and sho
 - `dpc-03-inbound-reply-router.mjs` reads YES as "confirm my call" only when `call_outcome` is `booked`, not `rescheduled` (W5).
 - The same-day booking block is on the first calendar only (other chat's note).
 - S-NOBOOK keeps a temporary path for runs that fell asleep under `survey.submitted` before the ship. Remove it about five days after the ship (W3).
-- The public /apply form (and the ClickFunnels webhook behind it) puts the phone it is given on an existing lead found by email, replacing the one on file. So anyone who knows a lead's email can point that lead's texts (booking confirmations, reminders, chases) at another phone. Found by the 2026-10-31 review of the come-back link; the link itself is fixed (email only). The phone replacement predates this lane and is not changed here.
+- How the /apply webhook updates contact details on an existing lead (found by the 2026-10-31 review of the come-back link). The link itself is fixed: email only. The rest predates this lane and is not changed here; details in the shared notes, not in this public file.
 
 ### 7. Heartbeat (required in the same change)
 
