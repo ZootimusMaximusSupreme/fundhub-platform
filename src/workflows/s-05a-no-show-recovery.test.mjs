@@ -15,30 +15,14 @@ const MISSED_AT = "2026-11-04T19:00:00.000Z";
 const NOSHOW_AT = "2026-11-04T19:35:00.000Z";
 const afterNoShow = (min) => new Date(Date.parse(NOSHOW_AT) + min * 60_000).toISOString();
 
-/* rebookedSinceMiss, answered from the fake's rows the way its SQL answers it: a booking.created or
-   booking.rescheduled for this person in this company, saved after the earlier of the missed call's start
-   and the no-show's own saved time. The SQL itself is read against Postgres in followup-race-safety.pg.test.mjs. */
-function withRebookRead(inner) {
-  const wrapped = Object.create(inner);
-  wrapped.query = async (sql, params = []) => {
-    if (!/AS rebooked/.test(String(sql)) || !/LEAST\(/.test(String(sql))) return inner.query(sql, params);
-    const [orgId, clientId, eventId, missedAt] = params;
-    const noShow = inner.events.find((e) => e.id === eventId && e.org_id === orgId);
-    const lines = [missedAt, noShow?.created_at].filter(Boolean).map((t) => Date.parse(t));
-    if (lines.length === 0) return { rows: [] };
-    const line = Math.min(...lines);
-    const hit = inner.events.some((e) => e.org_id === orgId && e.client_id === clientId
-      && ["booking.created", "booking.rescheduled"].includes(e.name) && Date.parse(e.created_at) > line);
-    return { rows: hit ? [{ rebooked: 1 }] : [] };
-  };
-  return wrapped;
-}
-/* pgFake with the no-show saved the way the event bus saves it before any workflow runs (id "evt-x", ev's id). */
+/* pgFake with the no-show saved the way the event bus saves it before any workflow runs (id "evt-x", ev's id).
+   pgFake answers rebookedSinceMiss from these rows the way its SQL does; the SQL itself is read against
+   Postgres in followup-race-safety.pg.test.mjs. */
 function noShowDb({ events = [], ...rest } = {}) {
-  return withRebookRead(pgFake({
+  return pgFake({
     ...rest,
     events: [{ id: "evt-x", org_id: "org-1", client_id: "cl-1", name: "booking.noshow", payload: {}, created_at: NOSHOW_AT }, ...events]
-  }));
+  });
 }
 const missedBooking = (over = {}) => ({ org_id: "org-1", client_id: "cl-1", name: "booking.created", created_at: BOOKED_AT, ...over });
 
