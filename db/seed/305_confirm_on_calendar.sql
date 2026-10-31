@@ -68,13 +68,35 @@ UPDATE message_templates
    AND body LIKE '%We''ll text you to confirm your call%';
 
 -- 3. Older emails nothing sends: the reply CONFIRM asks and the compliance lines.
+--    The live words break lines inside a sentence ("reply\n “CONFIRM”"), so every
+--    pattern allows any spacing. The first five are the live sentences (read from
+--    live, 2026-10-31): a dry run of single-space patterns on a copy of the live
+--    rows left three asks and two compliance lines. The last one catches any other
+--    wording on another database.
+UPDATE message_templates SET updated_at = now(), body = regexp_replace(body,
+         'For compliance and scheduling,\s+reply\s+“CONFIRM”\s+if', 'Accept the calendar invite in your email if', 'g')
+ WHERE template_key IN ('C3', 'FC3') AND body ~ '“CONFIRM”';
+UPDATE message_templates SET updated_at = now(), body = regexp_replace(body,
+         'To lock this in\s+\(?and for compliance\)?,\s+(hit\s+)?reply(\s+with)?\s+“CONFIRM”\s+if',
+         'To lock this in, accept the calendar invite in your email if', 'g')
+ WHERE template_key IN ('FC2', 'RC2') AND body ~ '“CONFIRM”';
+UPDATE message_templates SET updated_at = now(), body = regexp_replace(body,
+         'reply\s+“CONFIRM”\s*\.\s+We track confirmations so we don’t overbook slots\.',
+         'accept the calendar invite in your email.', 'g')
+ WHERE template_key = 'RC1' AND body ~ '“CONFIRM”';
+UPDATE message_templates SET updated_at = now(), body = regexp_replace(body,
+         'hit reply with:\s+“CONFIRM”\s*\.\s+\(We track this for compliance and so we don’t overbook\.\)',
+         'accept the calendar invite in your email.', 'g')
+ WHERE template_key = 'S-04' AND body ~ '“CONFIRM”';
+UPDATE message_templates SET updated_at = now(), body = regexp_replace(body,
+         'Reply\s+“RESCHEDULE”\s+to lock in a new time\s+\(we track confirmations for compliance\)\s+Or grab a slot here:',
+         'Grab a new time here:', 'g')
+ WHERE template_key = 'S-05 No-Show Recovery' AND body ~ '“RESCHEDULE”';
 UPDATE message_templates
-   SET body = regexp_replace(
-                regexp_replace(
-                  regexp_replace(body,
-                    '(For compliance and scheduling, |\(and for compliance\),? ?| ?\(we track confirmations for compliance\))', '', 'g'),
-                  '(hit )?reply( with)?:? “CONFIRM”', 'accept the calendar invite in your email', 'gi'),
-                'Reply “RESCHEDULE” to lock in a new time', 'Pick a new time here', 'g'),
+   SET body = regexp_replace(regexp_replace(regexp_replace(body,
+                '(For compliance and scheduling,\s+|\s*\(?and for compliance\)?|\s*\(we track (this|confirmations) for compliance[^)]*\))', '', 'gi'),
+                '(hit\s+)?reply(\s+with)?:?\s+“CONFIRM”', 'accept the calendar invite in your email', 'gi'),
+                'Reply\s+“RESCHEDULE”\s+to lock in a new time', 'Pick a new time here', 'gi'),
        updated_at = now()
  WHERE template_key IN ('C3', 'FC2', 'FC3', 'RC1', 'RC2', 'S-04', 'S-05 No-Show Recovery')
-   AND (body ~* 'reply( with)?:? “(CONFIRM|RESCHEDULE)”' OR body ~* 'for compliance');
+   AND (body ~* 'reply(\s+with)?:?\s+“(CONFIRM|RESCHEDULE)”' OR body ~* 'for compliance');

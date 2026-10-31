@@ -16,9 +16,10 @@ import { db, close } from "../db.mjs";
 
 const HAS_DB = Boolean(process.env.DATABASE_URL);
 
-// "Reply YES", "Text YES", "reply with: “CONFIRM”", "Reply C". "Reply STOP to opt out" is
-// the opt-out the law asks for, not a confirm, and does not match.
-export const REPLY_TO_CONFIRM = "(reply|text)( back)?( with)?:? ?[\"“]?(yes|confirm|c)\\M";
+// "Reply YES", "Text YES", "reply with: “CONFIRM”", "Reply C", also when the words break
+// across a line ("reply\n “CONFIRM”", the way the older live emails are written).
+// "Reply STOP to opt out" is the opt-out the law asks for, not a confirm, and does not match.
+export const REPLY_TO_CONFIRM = "\\m(reply|text)(\\s+back)?(\\s+with)?:?\\s*[\"“]?(yes|confirm|c)\\M";
 export const COMPLIANCE_LINE = "for compliance";
 
 after(async () => { if (HAS_DB) await close(); });
@@ -49,12 +50,14 @@ test("the booking text and both reminders send people to the calendar invite", {
 });
 
 test("the pattern catches the asks and leaves the opt-out alone", () => {
-  const re = new RegExp(REPLY_TO_CONFIRM.replace("\\M", "\\b"), "i");
+  const re = new RegExp(REPLY_TO_CONFIRM.replace("\\m", "\\b").replace("\\M", "\\b"), "i");
   for (const ask of ["Reply CONFIRM so we know you're set", "Reply YES and you're set", "Text YES so I know",
-    "hit reply with: “CONFIRM”", "reply “CONFIRM” if you’re still good", "Reply C to confirm"]) {
+    "hit reply with: “CONFIRM”", "reply “CONFIRM” if you’re still good", "Reply C to confirm",
+    "For compliance and scheduling, reply\n “CONFIRM” if you’re still good for", "hit reply with:\n “CONFIRM” ."]) {
     assert.match(ask, re, ask);
   }
-  for (const fine of ["Reply STOP to opt out.", "Questions? Just reply here.", "Accept the calendar invite in your email."]) {
+  for (const fine of ["Reply STOP to opt out.", "Questions? Just reply here.", "Accept the calendar invite in your email.",
+    "Here is the context: yes, it is free."]) {
     assert.doesNotMatch(fine, re, fine);
   }
 });

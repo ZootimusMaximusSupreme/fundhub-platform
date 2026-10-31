@@ -2786,8 +2786,7 @@ RC3 – 2-Hour Reminder (Repair Review)
  If you show up, we start fixing this. 
  If you don’t, nothing changes.
 
- For compliance and scheduling, reply
- “CONFIRM” if you’re still good for
+ Accept the calendar invite in your email if you’re still good for
  {{appointment.start_time}} .
 
  If something came up and you can’t make it, use this link so we can free the slot
@@ -3341,8 +3340,7 @@ FC2 – 24-Hour Reminder
 
  Map out a simple “do this, then this” game plan
 
- To lock this in and for compliance,
- hit reply with “CONFIRM” if you’re still good for:
+ To lock this in, accept the calendar invite in your email if you’re still good for:
 
  {{appointment.start_time}}
 
@@ -3383,8 +3381,7 @@ FC3 – 2-Hour Reminder
  If you show up, we make progress. 
  If you don’t, nothing changes.
 
- For compliance and scheduling, reply
- “CONFIRM” if you’re still good for
+ Accept the calendar invite in your email if you’re still good for
  {{appointment.start_time}} .
 
  If something came up and you can’t make it, hit this link so we can free the slot and grab a better time:
@@ -5895,8 +5892,7 @@ RC1 – Repair Call Confirmed
  How we repair your profile so you can move toward
  ${{analyzer_total_funding_potential}} in funding
 
- To confirm your spot, reply “CONFIRM” .
- We track confirmations so we don’t overbook slots.
+ To confirm your spot, accept the calendar invite in your email.
 
  If you need to reschedule, use this link:
 
@@ -5938,8 +5934,7 @@ RC2 – 24-Hour Reminder (Repair Review)
 
  Map out your “fix this → unlock funding” path
 
- To lock this in (and for compliance),
- reply “CONFIRM” if you’re still good for:
+ To lock this in, accept the calendar invite in your email if you’re still good for:
 
  {{appointment.start_time}}
 
@@ -6461,10 +6456,7 @@ S-04 – Appointment Confirmation
 
  Show you exactly what we’d do next if we were in your shoes
 
- To confirm you’ll be there, hit reply with:
- “CONFIRM” .
-
- (We track this for compliance and so we don’t overbook.)
+ To confirm you’ll be there, accept the calendar invite in your email.
 
  If anything changes and you can’t make it, use this link to reschedule:
 
@@ -6500,10 +6492,7 @@ S-05 – No-Show Recovery
 
  Let’s fix that.
 
- 👉 Reply “RESCHEDULE” to lock in a new time 
- (we track confirmations for compliance)
-
- Or grab a slot here:
+ 👉 Grab a new time here:
 
  Reschedule your call
 

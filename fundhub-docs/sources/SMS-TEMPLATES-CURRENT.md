@@ -7,10 +7,10 @@
 Hey {{contact.first_name}}, it's Josh from Fundhub. We spotted a change on your financial profile, so we've paused capital temporarily to protect your approvals. I'm reviewing now and will reach out if your timeline or costs need adjusting. Questions? Just reply here. Reply STOP to opt out.
 ## SMS-BS01-01-CONFIRMATION-HUB
 
-Hey {{contact.first_name}}, it's Josh from Fundhub. Your Confirmation Hub is ready. Watch these quick videos before our call so we can move fast: {{custom_values.confirmation_hub_link}} Reply CONFIRM when done. Questions? Just reply here. Reply STOP to opt out.
+Hey {{contact.first_name}}, it's Chris from Fundhub. Your Confirmation Hub is ready. Watch these quick videos before our call so we can move fast: {{custom_values.confirmation_hub_link}} Questions? Just reply here. Reply STOP to opt out.
 ## SMS-BS01-02-PRECALL-NUDGE
 
-Hey {{contact.first_name}}, Josh from Fundhub here. Quick pre-call step: watch this 2-min Confirmation Hub video so your call is more productive: {{custom_values.confirmation_hub_link}} Reply CONFIRM when you've watched it. Reply STOP to opt out.
+Hey {{contact.first_name}}, Chris from Fundhub here. Quick pre-call step: watch this Confirmation Hub video so your call is more productive: {{custom_values.confirmation_hub_link}} Reply STOP to opt out.
 ## SMS-F02-01-PORTAL-ID
 
 Hey {{contact.first_name}}, it's Josh from Fundhub. We still need your ID and portal step completed to move your file forward. 60-sec walkthrough: {{custom_values.onboarding_walkthrough_link}} Finish here: {{custom_values.portal_link}} Stuck? Just reply here. Reply STOP to opt out.
@@ -48,15 +48,16 @@ Welcome to Capital, {{contact.first_name}}. It's Fundhub. Step 1 takes 2 minutes
 — Josh at Fundhub. Reply STOP to opt out.
 ## SMS-S04-01-CONFIRM
 
-Hey {{contact.first_name}}, it's Josh from Fundhub. You're booked for {{appointment.start_time}}. Reply CONFIRM so we know you're set. Reschedule: {{custom_values.booking_link}} Reply STOP to opt out.
+Hey {{contact.first_name}}, it's Chris with Fundhub. You're booked for {{appointment.start_time}}. Accept the calendar invite in your email to lock in your time. Can't make it? Move it here: {{custom_values.booking_link}}
+Reply STOP to opt out.
 ## SMS-S04-02-REMIND-24H
 
-Fundhub reminder, {{contact.first_name}}: your call is tomorrow at {{appointment.start_time}}. Reply CONFIRM if you're still good. Reschedule: {{custom_values.booking_link}}
-— Josh at Fundhub. Reply STOP to opt out.
+Fundhub reminder, {{contact.first_name}}: your call is tomorrow at {{appointment.start_time}}. If you haven't yet, accept the calendar invite in your email. Need a new time? {{custom_values.booking_link}}
+- Chris at Fundhub. Reply STOP to opt out.
 ## SMS-S04-03-REMIND-2H
 
-Fundhub reminder, {{contact.first_name}}: your call starts at {{appointment.start_time}}. Reply CONFIRM if you're good to go. Reschedule: {{custom_values.booking_link}}
-— Josh at Fundhub. Reply STOP to opt out.
+Fundhub reminder, {{contact.first_name}}: your call starts at {{appointment.start_time}}. The meeting link is in your calendar invite. Need a new time? {{custom_values.booking_link}}
+- Chris at Fundhub. Reply STOP to opt out.
 ## SMS-S05-01-NOSHOW
 
 Hey {{contact.first_name}}, it's Josh from Fundhub. Looks like we missed you today. No stress. Grab a new time here: {{custom_values.booking_link}} Reply STOP to opt out.
