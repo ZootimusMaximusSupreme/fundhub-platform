@@ -305,6 +305,8 @@ Slide plans (question, picture, headline):
 14 the-call: (1) Diagram: the call in six parts. (2) Real: the sample report section you will see. (3) Copy: how much you qualify for based on where you're at right now. (4) Copy: your file and your path come before any price. (5) Diagram: what to have ready. (6) Copy: join from a computer, because your advisor shares the screen.
 15 who-we-are: (1) Copy: Chris's allowed proof (a decade, a little over $1,000,000 funded for himself, four companies). (2) Real: approval screenshots, names blurred, no total. (3) Real: the agreement's guarantees and the line that Fundhub does not promise approval. (4) Copy: the bureaus and LexisNexis we work with (no license claim). (5) Real: "every application uses your true information". (6) The call, copy only.
 
+**Second format: the film board (Chris, 2026-10-31).** Every deck also gets a wide version for filming. Short-form video on a phone is split top to bottom: the top half is Chris on camera, the bottom half is the slide. So each slide becomes one 16:9 board: the headline, the copy lines, the real document or diagram, no Back and Next, big enough to read on a phone at half height. It is built from the same deck file by `build.mjs` (one source, two shapes), so the words never drift. Built after the 14 phone decks are in.
+
 **Manifest so far.** `marketing/slideshows/_shell/slideshow.css`, `_shell/slideshow.js`, `build.mjs`, `check.mjs`, `pre-underwriting.html`. New rule `.ai/rules/show-real-proof.md` (owner-set 2026-10-31) with its links, CLAUDE.md line and index row. No routes, no workflows, no database, nothing sent.
 
 **Leftovers (not fixed here).**
