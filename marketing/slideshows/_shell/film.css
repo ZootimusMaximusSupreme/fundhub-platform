@@ -48,6 +48,7 @@ html.ss-js .slide.enter{animation:none}
 .slide .real th{font-size:1.7cqw;padding:.6cqw 1cqw .6cqw 0}
 .slide .real td{padding:1.1cqw 1cqw 1.1cqw 0}
 .slide .real .clause{font-size:2.3cqw;line-height:1.45}
+.slide .real .code{font-size:1.9cqw;line-height:1.5}
 .slide .real .bureau-head{padding-bottom:1.2cqw;margin-bottom:1.4cqw}
 .slide .real-src{font-size:1.75cqw;margin-top:.4cqw}
 .slide .chip{font-size:1.65cqw;padding:.6cqw 1.3cqw;gap:.8cqw;letter-spacing:.12em}
