@@ -364,6 +364,50 @@ describe("the same page then shows Pay for that total", () => {
     }
   });
 
+  test("previous $32 event never covers a changed $42 assessment", async () => {
+    const db = standIn();
+    const prior = db.fake.query.bind(db.fake);
+    let pulls = 0;
+    db.fake.query = (sql, params) => {
+      if (/FROM events\s+WHERE org_id = \$1 AND client_id = \$2 AND name = 'diagnostic.paid'/.test(String(sql))) {
+        return Promise.resolve({ rows: [{ id: "old-event", org_id: ORG_ID, client_id: CLIENT,
+          payload: { source: "commas", product: "crs", amount: 32 } }] });
+      }
+      return prior(sql, params);
+    };
+    const { res, minted } = await post({ ...person(), businesses: [company(1)] }, {
+      db, deps: { runPaidPull: async () => { pulls++; throw Error("unexpected bureau request"); } }
+    });
+    assert.equal(res.statusCode, 201);
+    assert.equal(res.body.pricing.total_cents, 4200);
+    assert.equal(res.body.paid, true, "the old payment remains recorded");
+    assert.equal(res.body.payment_review_required, true);
+    assert.equal(res.body.pull, null);
+    assert.equal(res.body.checkout, null, "do not charge automatically");
+    assert.match(res.body.next, /earlier payment does not cover/);
+    assert.equal(pulls, 0);
+    assert.equal(minted.length, 0);
+  });
+
+  test("previous paid link for a smaller amount never promises a report", async () => {
+    const db = standIn();
+    const prior = db.fake.query.bind(db.fake);
+    db.fake.query = (sql, params) => {
+      if (/SELECT \* FROM payment_links/.test(String(sql)) && /status = 'paid'/.test(String(sql))) {
+        return Promise.resolve({ rows: [{ id: "settled-link", status: "paid", amount_cents: 3200 }] });
+      }
+      return prior(sql, params);
+    };
+    const { res, minted } = await post({ ...person(), businesses: [company(1)] }, { db });
+    assert.equal(res.statusCode, 201);
+    assert.equal(res.body.pricing.total_cents, 4200);
+    assert.equal(res.body.paid, true);
+    assert.equal(res.body.payment_review_required, true);
+    assert.match(res.body.next, /advisor to review/);
+    assert.equal(res.body.checkout, null);
+    assert.equal(minted.length, 0, "do not duplicate a settled checkout");
+  });
+
   test("an open link at the same total is reused and no second link is minted", async () => {
     const existing = { id: "link-old", status: "sent", amount_cents: 4200, checkout_url: "https://pay.example.test/checkout/old" };
     const db = standIn({ openLinks: [existing] });

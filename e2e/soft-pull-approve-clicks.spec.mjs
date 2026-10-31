@@ -147,6 +147,25 @@ test.describe("soft-pull approval page", () => {
     await expect(page.locator(".btn-pay")).toHaveCount(0);
   });
 
+  test("a prior payment below the new total does not promise a report or charge", async ({ page }) => {
+    await open(page, {
+      read: { ...READ, paid: true },
+      postAnswer: () => ({ status: 201, body: {
+        ok: true, paid: true, payment_review_required: true, checkout: null,
+        pricing: { total_display: "$42" },
+        next: "Your earlier payment does not cover the updated assessment total. Contact your advisor to review the difference."
+      } })
+    });
+    await expect(page.getByText(/previous assessment payment is on file/i)).toBeVisible();
+    await fillPerson(page);
+    await page.locator("#go").click();
+    await expect(page.locator("h1")).toHaveText("Consent saved");
+    await expect(page.locator(".err")).toContainText("earlier payment does not cover");
+    await expect(page.locator(".btn-pay")).toHaveCount(0);
+    await expect(page.getByText(/credit report will appear/i)).toHaveCount(0);
+    await expect(page.locator(".lede").first()).toContainText("Contact your advisor");
+  });
+
   test("a refusal from the server is shown and the button comes back", async ({ page }) => {
     await open(page, { postAnswer: () => ({ status: 400, body: { ok: false, error: "ssn_invalid", message: "Enter all 9 digits of your Social Security number." } }) });
     await fillPerson(page);

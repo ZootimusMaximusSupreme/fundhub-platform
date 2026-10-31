@@ -248,14 +248,14 @@ ol.next li:last-child{margin-bottom:0}
       '<p class="lede">Hi ' + esc(name) + ". You can authorize now, even before your call. " +
       "Your information is saved securely. This is a soft inquiry and does not hurt your score. " +
       "The pull starts only after your authorization and payment are both on file.</p>" +
-      (data.paid ? '<div class="ok">Payment is already on file. No second payment is needed.</div><br>' : "") +
+      (data.paid ? '<div class="ok">A previous assessment payment is on file. If you add businesses or change the total, your advisor may need to review the amount.</div><br>' : "") +
       (already ? '<div class="ok">Your authorization is saved. You can update your details below if needed.</div><br>' : "") +
       '<div class="approval-layout"><aside class="approval-guidance" aria-label="Authorization details"><div class="card"><h2>Soft pull authorization</h2>' +
       '<div class="disc">' + esc((data.disclosure && data.disclosure.text) || "") + "</div>" +
       '<p class="fine">Version ' + esc((data.disclosure && data.disclosure.version) || "—") + "</p></div>" +
       '<div class="card"><h2>What happens next</h2><ol class="next">' +
       "<li>Your information is sent securely and saved for this authorization. Your advisor never sees your Social Security number.</li>" +
-      (data.paid ? "<li>Your payment is already on file.</li>" :
+      (data.paid ? "<li>A previous payment is on file. Any changed total must be reviewed before another pull.</li>" :
       "<li>You pay the total shown — " + esc(pricing.base_display) + " soft pull plus " +
       esc(pricing.business_addon_display) + " per business.</li>") +
       "<li>When authorization and payment are both on file, we request the report. Nothing else is needed from you.</li>" +
@@ -370,14 +370,16 @@ ol.next li:last-child{margin-bottom:0}
           root.innerHTML =
             '<div class="mono">Fundhub · soft pull</div>' +
             "<h1>Consent saved</h1>" +
-            '<div class="ok">Your soft-pull authorization is on file. ' +
+            '<div class="' + (r.body.payment_review_required ? "err" : "ok") + '">Your soft-pull authorization is on file. ' +
             esc(r.body.next || ("Pay " + total + " next.")) + "</div>" +
-            (r.body.paid
+            (r.body.payment_review_required
+              ? '<p class="lede">Your previous payment remains saved. No new charge or credit pull was started. Contact your advisor to review this assessment amount.</p>'
+              : r.body.paid
               ? '<p class="lede">Payment is already on file. Your credit report will appear in your portal when the pull completes.</p>'
               : pay
               ? '<a class="btn-pay" href="' + esc(pay) + '">Pay ' + esc(total) + " assessment</a>"
               : '<p class="lede" style="margin-top:14px">Ask your advisor for the pay link for ' + esc(total) + ".</p>") +
-            '<p class="lede" style="margin-top:14px">Once payment and authorization are both recorded, the soft pull starts automatically.</p>' +
+            (r.body.payment_review_required ? "" : '<p class="lede" style="margin-top:14px">Once payment and authorization are both recorded, the soft pull starts automatically.</p>') +
             '<p class="lede"><a href="/app/client-portal.html">Back to my portal</a></p>';
         })
         .catch(function () {

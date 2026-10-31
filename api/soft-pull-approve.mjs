@@ -592,6 +592,9 @@ export default async function handler(req, res, deps = {}) {
       pullError = String(err?.message || err).slice(0, 160);
     }
 
+    // A previous paid diagnostic must not trigger an automatic extra charge,
+    // but a changed business count must not be shown as already fully paid.
+    let paymentReviewRequired = paidResult.reason === "paid_amount_mismatch";
     let checkout = null;
     let checkoutError = null;
     try {
@@ -605,8 +608,10 @@ export default async function handler(req, res, deps = {}) {
           checkoutBaseUrl: deps.checkoutBaseUrl,
           fetchImpl: deps.fetchImpl
         });
-        if (link.status === "paid") paidResult.paid = true;
-        else checkout = {
+        if (link.status === "paid") {
+          paidResult.paid = true;
+          if (Number(link.amount_cents) !== amountCents) paymentReviewRequired = true;
+        } else checkout = {
           id: link.id, checkout_url: link.checkout_url,
           amount_cents: Number(link.amount_cents),
           amount_display: formatCents(link.amount_cents) || amountDisplay
@@ -622,6 +627,7 @@ export default async function handler(req, res, deps = {}) {
       businesses: { count: n },
       pricing: { ...pricing, total_cents: amountCents, total_display: amountDisplay },
       paid: paidResult.paid,
+      payment_review_required: paymentReviewRequired,
       pull: paidResult.pull,
       pull_reason: paidResult.reason || paidResult.pull?.reason || null,
       pull_error: pullError,
@@ -631,7 +637,9 @@ export default async function handler(req, res, deps = {}) {
       // goes to a browser on a public signed link, and a portal token in it
       // would be a second credential sitting in a response body.
       portal_link: portalLink,
-      next: paidResult.paid
+      next: paymentReviewRequired
+        ? "Your earlier payment does not cover the updated assessment total. No additional charge or new credit pull was started. Contact your advisor to review the difference."
+        : paidResult.paid
         ? (paidResult.pull?.pulled
           ? "Payment and consent are complete. Your credit report is being prepared."
           : "Your payment is saved. The credit pull has not completed; your advisor can check its status.")
