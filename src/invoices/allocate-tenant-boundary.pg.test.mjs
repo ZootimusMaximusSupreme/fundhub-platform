@@ -100,13 +100,14 @@ describe("A/R tenant-isolated invoice payment identity (rollback-only real Postg
          RETURNING id`,
         [otherOrg, otherBuyer, `ar-other-link-${randomUUID()}`, foreign.id]
       )).rows[0].id;
-      const res = await allocatePayment(tx, received({
-        payload: { product: "success_fee", amount: 25, paymentLinkId: link, paymentId: randomUUID() }
-      }));
-      assert.equal(res.allocated, false);
-      // A supplied foreign checkout identifier is a conflicting identity,
-      // not an unspecified payment. No invoice/client details are disclosed.
-      assert.equal(res.reason, "invoice_mismatch");
+      // No local invoice or owned client exists for a safe exception task.
+      // Retain the signed payment in the failed-event retry/DLQ, not done:true.
+      await assert.rejects(
+        () => allocatePayment(tx, received({
+          payload: { product: "success_fee", amount: 25, paymentLinkId: link, paymentId: randomUUID() }
+        })),
+        { message: "ar_explicit_checkout_mismatch_unroutable" }
+      );
       assert.equal(await badTaskCount(), 0);
       assert.equal(await receiptCount(foreign.id), 0);
     });
@@ -133,10 +134,11 @@ describe("A/R tenant-isolated invoice payment identity (rollback-only real Postg
          RETURNING id`,
         [otherOrg, otherBuyer, `ar-foreign-conflict-${randomUUID()}`, foreign.id]
       )).rows[0].id;
+      const paymentId = randomUUID();
       const res = await allocatePayment(tx, received({
         payload: {
           product: "success_fee", amount: 25, invoiceId: local.id,
-          paymentLinkId: foreignLink, paymentId: randomUUID()
+          paymentLinkId: foreignLink, paymentId
         }
       }));
       assert.equal(res.reason, "invoice_mismatch");
@@ -144,6 +146,16 @@ describe("A/R tenant-isolated invoice payment identity (rollback-only real Postg
       assert.equal(await receiptCount(local.id), 0);
       assert.equal(await receiptCount(foreign.id), 0);
       assert.equal(await badTaskCount(), 0);
+      // A real signed receipt may need investigation, even though the checkout
+      // hint is foreign. Route exactly one review to the ORIGINAL local buyer.
+      const reviews = await conn.query(
+        `SELECT client_id FROM tasks
+          WHERE org_id = $1 AND source_workflow = 'ar-allocate' AND body = $2`,
+        [org, `checkout-identity-mismatch:${paymentId}`]
+      );
+      assert.equal(reviews.rows.length, 1, "receipt mismatch cannot silently disappear");
+      assert.equal(String(reviews.rows[0].client_id), String(buyer),
+        "foreign checkout cannot redirect review to another company's buyer");
     });
 
     test("replayed local receipt with a foreign checkout ID is refused as conflicting", async () => {

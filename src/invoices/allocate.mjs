@@ -335,6 +335,17 @@ export async function allocatePayment(db, event) {
   // A foreign or unknown checkout cannot be ignored merely because the same
   // envelope also carries a perfectly valid local invoice ID.
   if (payload.paymentLinkId && !linkedInvoice) {
+    // A signed PSP receipt with an unknown, foreign or contradictory checkout
+    // must not be acknowledged and silently lost. Review belongs to the
+    // original owned invoice buyer, never an untrusted event client.
+    const reviewClientId = invoice && String(invoice.org_id) === String(orgId)
+      ? invoice.client_id : clientId;
+    const task = await staffTask(db, {
+      orgId, clientId: reviewClientId, eventId: event.id,
+      title: "Unallocated payment — checkout identity mismatch",
+      body: providerPaymentId ? `checkout-identity-mismatch:${providerPaymentId}` : event.id
+    });
+    if (!task) throw new Error("ar_explicit_checkout_mismatch_unroutable");
     return { done: true, allocated: false, reason: "invoice_mismatch", path: "unresolved" };
   }
   if (!invoice) {
