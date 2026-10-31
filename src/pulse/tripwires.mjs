@@ -252,4 +252,7 @@ export const NOT_CUSTOMER_FACING = Object.freeze({
     "Staff-only recruiting desk: it shows job applicants from /api/hiring/* and moves them between hiring stages. No client, lead, payment or customer message is read or written there.",
   "send:src/push/send.mjs":
     "Dead today: nothing in the app calls sendToClient (only scripts/push/send-test-push.mjs does), so no customer is sent anything through it. Move this entry to TRIPWIRES the day a caller is added.",
+  // 2026-10-31: the A/B message tests report (src/messaging/experiment-report.mjs). One SELECT.
+  "route:read/message-tests":
+    "Staff-only report; reads, sends nothing. It shows owner and admin how the follow-up message tests (version A against version B) are doing and reaches no customer. Its door is watched by reg:read/message-tests.",
 });

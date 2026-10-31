@@ -490,6 +490,73 @@ Scratch database only (law: verify-scratch-only, no-test-data-on-production). Wa
 3. ~~**Push.**~~ Answered 2026-10-30: email, text and push for anyone with the app.
 4. **Cap and rhythm.** How many days does the plan run before it stops on its own, and what hours do email, text and push go out?
 
+### 6e. Message tests and real proof — build spec (2026-10-31, chat 2)
+
+Chris asked whether the follow-ups rest on science, then said "Get it all done." (owner GO, 2026-10-31). Work copy: branch `claude/followup-abtest` in `/Users/chrisstanbridge/Developer/fh-followup-abtest`, made from `claude/followup-flows` at `cc628fd52`. Scratch database: `fundhub_scratch_abtest` on `127.0.0.1:55432`, every migration applied.
+
+**What it does, in plain words.**
+- Some follow-up messages get two versions, A and B.
+- Each person lands in A or B by a coin flip that always lands the same way for that person, so the text and the email of the same step match.
+- If version B is missing or not ready, the person gets A. Nothing goes out blank.
+- Every sent message keeps which version it was.
+- A report counts, for each test, how many people got A and how many got B, and how many of each did the goal within 7 days of their first message in the test.
+- The report says "not enough people yet" until each side has at least 30 people and the gap passes a standard 95% check. Then it names the winner. It never switches versions by itself.
+- Chris sees it on the Marketing overview page, in a "Message tests" card.
+
+**The first test: real proof, or no proof.** Version A is today's message. Version B is the same step with one real client win added: a real quote or a real approval from files we already have, nothing made up.
+- The come-back chase, second message (`SMS-S02-RESUME-2`, `EMAIL-S02-RESUME-2`). Goal: they finish the survey (`survey.completed`).
+- The never-booked chase, second message (`SMS-NOBOOK-02`, `EMAIL-NOBOOK-02`). Goal: they book a call (`booking.created`).
+
+**Why this test.** Research says real proof moves people (Goldstein, Cialdini and Griskevicius, 2008, hotel towels). Only a test on Fundhub's own leads says whether it moves them here.
+
+| Unit | Owner | What it owns | Status |
+|---|---|---|---|
+| W6 | agent (Sonnet) | the split and the report, back end only: `src/messaging/experiments.mjs`; `sendTemplated` picks the version; send hours and the gate treat a `-B` key like its base; every lookup of these keys matches both versions; report, read route `GET /api/read/message-tests` and its heartbeat rows; `scripts/message-tests-report.mjs`; tests; the journey note | claimed |
+| W7 | this chat (Opus) | the B words with Copybot in Chris's voice, real proof only: `db/seed/302_followup_proof_variants.sql` | claimed |
+| W8 | this chat (Opus) | the "Message tests" card on the Marketing overview page, after W6 is proven | pending |
+
+**Shared names (do not rename).** Version B key = base key + `-B` (for example `EMAIL-NOBOOK-02-B`). Test names: `resume-proof`, `nobook-proof`. Arm = `"A"` or `"B"`.
+
+**What waits on what.** W6 and W7 run at the same time. W8 waits for W6. The ship of 6e waits for the ship of 6d (PR 346).
+
+**W6 prompt (copy-paste, stands alone).**
+
+```text
+You are the W6 helper for Fundhub (owner: Chris Stanbridge). Build the back end of an A/B split for follow-up messages. Back end only, no screens. Model: Sonnet.
+
+WHERE YOU WORK
+- Folder: /Users/chrisstanbridge/Developer/fh-followup-abtest (git branch claude/followup-abtest). Work only in this folder. Do not run git commit, checkout, branch, stash, reset or push; the lead chat commits.
+- Database: scratch only. DATABASE_URL=postgres://postgres@127.0.0.1:55432/fundhub_scratch_abtest  MIGRATION_DATABASE_URL=(same)  APP_DATABASE_URL=postgres://fundhub_app:scratch_not_a_secret@127.0.0.1:55432/fundhub_scratch_abtest  ALLOW_SUPERUSER_DB=1. Every migration is already applied there. psql: /private/tmp/claude-501/-Users-chrisstanbridge-Developer-fundhub-platform/0123b9f0-5b23-407b-9f2c-9392e3b4709a/scratchpad/pgx/pgserver/pginstall/bin/psql -h 127.0.0.1 -p 55432 -U postgres
+- Never touch the database fundhub_scratch_full (another test run uses it). Never read /Users/chrisstanbridge/Developer/fundhub-platform/.env. Never use the live database. Never send a real text or email.
+
+READ FIRST
+- CLAUDE.md and AGENTS.md (short rules). Board: ops/workflows/backend-selling-lanes-2026-10-30.md sections 6d and 6e.
+- .ai/rules/heartbeat-on-every-build.md, .ai/rules/traps-in-this-repo.md (endpoint tests live at src/http/<name>.pg.test.mjs and import the api/ handler; a handler must be in the ROUTES map in netlify/functions/api.mjs; requireAuth ignores a roles key, gate with requireRole after it), .ai/rules/owner-scope-minimal-diff.md.
+- Code: src/workflows/messaging.mjs (sendTemplated, about line 201), src/messaging/send-window.mjs, src/messaging/gate.mjs, src/messaging/dispatch.mjs, src/workflows/s-02-incomplete-survey-nudge.mjs, src/workflows/s-nobook-chase.mjs, src/workflows/stop-on-reply.mjs, src/pulse/beats/lib/handoff-truth.mjs (testAddressSql), src/pulse/registry.mjs, src/pulse/tripwires.mjs, src/http/routes.test.mjs. For the auth gate, copy the pattern of the staff read endpoint that public/app/marketing-command-center.js already calls.
+
+WHAT TO BUILD
+1. src/messaging/experiments.mjs
+   - VARIANT_SUFFIX = "-B"; MIN_PER_ARM = 30.
+   - EXPERIMENTS (frozen): { name: "resume-proof", keys: ["SMS-S02-RESUME-2","EMAIL-S02-RESUME-2"], goal: "survey.completed", windowDays: 7, label: "Come-back chase, message 2: real proof or not" } and { name: "nobook-proof", keys: ["SMS-NOBOOK-02","EMAIL-NOBOOK-02"], goal: "booking.created", windowDays: 7, label: "Never-booked chase, message 2: real proof or not" }.
+   - experimentFor(templateKey) returns the experiment for a base key or its -B key, else null. baseKeyOf(templateKey) strips -B only for a known B key. variantKeyFor(baseKey) = baseKey + "-B". armFor(clientId, experimentName) = "A" or "B" from the low bit of the first byte of sha256(`${experimentName}:${clientId}`). Same person, same test, same arm, every time, so a person's text and email match.
+   - No imports from send-window.mjs (avoid a cycle).
+2. sendTemplated: only when experimentFor(templateKey) is set, templateKey is a base key, and clientId is set. Arm B: read the B row first and use it only if it exists, is not a draft (isDraftTemplateRow) and compliance_passed is true; otherwise use A. The messages row stores the key actually used. With no experiment the code path stays exactly as it is. Adding fields to the return value is fine; do not change existing fields.
+3. A -B key must behave exactly like its base: sendTiming in src/messaging/send-window.mjs uses baseKeyOf; check gate.mjs and dispatch.mjs for any decision keyed on template_key and route it through baseKeyOf.
+4. Every lookup of these four keys by template_key (workflow "already sent" checks, stop rules, pulse checks in handoff-truth.mjs and src/pulse/coverage/*) must match both versions. List each place you changed in your manifest.
+5. src/messaging/experiment-report.mjs: one read-only SELECT (first line a marker comment /* message-tests:report */) and experimentReport(db, { orgId, now }) returning, per experiment: name, label, goal, arms { A: { people, reached }, B: { people, reached } }, verdict { winner: "A"|"B"|null, text }. A person counts in an arm when they have a messages row (not failed or blocked; check the real status values) with that arm's keys. Leave out is_demo clients and test addresses (testAddressSql). "reached" = an events row for that client with name = goal, created after their first message in the test and within windowDays of it. Verdict: two-proportion z-test; a winner only when each arm has at least MIN_PER_ARM people and two-sided p < 0.05. text is plain English, for example "B is ahead: 12 of 40 booked (30%) vs 8 of 41 (20%). Not enough people yet to call it." It never switches versions by itself.
+6. Route GET /api/read/message-tests: api/read/message-tests.mjs (GET only, staff auth like the marketing reads, returns { tests }), added to ROUTES as "read/message-tests". Heartbeat in the same change: a row in src/pulse/registry.mjs and a NOT_CUSTOMER_FACING entry in src/pulse/tripwires.mjs with the reason "staff-only report; reads, sends nothing" (match the neighbors' key format).
+7. scripts/message-tests-report.mjs: prints the report. Read only: BEGIN READ ONLY ... COMMIT. Never a bare SET.
+8. Tests: src/messaging/experiments.test.mjs (same arm every time; 10,000 ids split 48 to 52 percent; base and -B mapping; sendTiming of a -B key equals its base). src/messaging/experiments.pg.test.mjs (sendTemplated sends B to an arm-B person when the B row passed; falls back to A when B is missing, a draft or not passed; the messages row keeps the used key). src/messaging/experiment-report.pg.test.mjs (people in both arms, with and without the goal event; demo and test addresses left out; verdict text). src/http/message-tests.pg.test.mjs (auth required; returns tests). Insert fake B template rows in test fixtures only. Do not write the real B words; W7 writes them in db/seed/302_followup_proof_variants.sql.
+9. Journey: a short paragraph about the split in docs/journeys/booking-notifications-flow.md and one line at the top of docs/journeys/CHANGELOG.md in its format (use "pending" for the commit).
+
+RUN AND REPORT
+- Run your new tests and every existing test that could break: src/messaging/*.test.mjs, src/workflows/s-02*, src/workflows/s-nobook*, src/workflows/stop-on-reply*, src/workflows/followup-chases.pg.test.mjs, src/pulse/registry.test.mjs, src/pulse/tripwires.test.mjs, src/pulse/heartbeats.test.mjs, src/pulse/coverage/modules.test.mjs, src/pulse/coverage/gap-handoff.test.mjs, src/pulse/beats/beats.test.mjs, src/http/routes.test.mjs, src/pulse/catalog/proofs/fin-b22*.test.mjs (if fin-b22 fails because of new keys in SQL, regenerate with node scripts/pulse/fin-b22-sql-template-keys.mjs --write). Use the scratch env above for .pg.test.mjs files. Then run npm run lint.
+- Never weaken, skip or delete a test. No new dependencies. No new .md files. Smallest diff.
+- When done, append your manifest under "W6 manifest" in section 6e of the board: files touched, exports added, every place a key lookup changed, tests run with pass and fail counts, anything you could not finish. Set W6 to done in the 6e table. Your final reply: the same manifest, short.
+```
+
+**W6 manifest.** (W6 appends here)
+
 ## Leftovers found (not fixed here)
 
 - Survey fix (Chris, 2026-10-30: "we should probably fix the survey too"). Split the score bands at 620 so the survey alone can place Blueprint people: for example "580-619" and "620-649" in place of "580-649". The survey lives on ClickFunnels (`src/survey/cf-question-map.mjs`). Owner-set 2026-10-30, final: "500 to 620. 620 to 699. 700 to 760. 760 to 850." Options: 500-619, 620-699, 700-759, 760-850, Not sure. (A score of exactly 620 goes to 620-699, so the first label ends at 619. Not sure stays.) Both lane lines, 620 and 700, sit on a band edge, so the survey alone places every person. Code that reads the old bands must move in the same change: `classifySurvey` (PASS reads 700-749 / 750+) and `surveyFicoBand`. Not started; waiting on Chris's go.

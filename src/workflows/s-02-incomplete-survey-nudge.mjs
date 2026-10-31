@@ -70,6 +70,7 @@ import { hasReplied } from "./stop-on-reply.mjs";
 import { surveyResumeUrl } from "../survey/resume-link.mjs";
 import { surveyProgressWords } from "../survey/resume-state.mjs";
 import { DRIP_START_HOUR, SEND_WINDOW_TZ, dripSendTime, nextHourStrike } from "../messaging/send-window.mjs";
+import { withVariants } from "../messaging/experiments.mjs";
 
 // Touch 1 under the names the old nudge used (the pulse reads EMAIL_TEMPLATE_KEY from this file).
 export const SMS_TEMPLATE_KEY = "SMS-S02-RESUME-1";
@@ -120,7 +121,8 @@ export async function surveyCompleted(db, clientId, email, orgId = null) {
 
 /* Resume messages already sent to this person from a DIFFERENT opt-in, newer than
    `since`. Messages of this run's own cohort do not count: their send key ends in
-   `:<cohortId>`. */
+   `:<cohortId>`. Touch 2 is a message test (src/messaging/experiments.mjs): a sent
+   version B counts the same as a sent version A, so both keys are looked for. */
 export async function sequenceInFlight(db, { orgId, clientId, cohortId, since }) {
   const r = await db.query(
     `SELECT 1 FROM messages
@@ -130,7 +132,7 @@ export async function sequenceInFlight(db, { orgId, clientId, cohortId, since })
         AND created_at > $4
         AND COALESCE(provider_ref, '') NOT LIKE $5
       LIMIT 1`,
-    [orgId, clientId, RESUME_TEMPLATE_KEYS, since, `%:${cohortId}`]
+    [orgId, clientId, withVariants(RESUME_TEMPLATE_KEYS), since, `%:${cohortId}`]
   );
   return r.rows.length > 0;
 }

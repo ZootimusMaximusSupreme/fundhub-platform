@@ -33,6 +33,7 @@ import { UNSUBSCRIBE_TAG_RE, unsubscribeTagValue } from "../messaging/unsubscrib
 import { normalizePhone } from "../messaging/providers/bland-voice.mjs";
 import { applyRepToContext } from "../auth/authorized-rep.mjs";
 import { creditTierFor } from "../config/survey-qualification.mjs";
+import { experimentFor, baseKeyOf, variantKeyFor, armFor } from "../messaging/experiments.mjs";
 
 /* Which column on the client record is the destination for a channel.
    The destination is recorded in the terms of the CHANNEL, not of whichever
@@ -198,6 +199,31 @@ async function clientContext(db, clientId) {
   };
 }
 
+const TEMPLATE_BY_KEY_SQL = `SELECT body, subject, compliance_passed
+       FROM message_templates
+      WHERE org_id = $1 AND template_key = $2
+      LIMIT 1`;
+
+/* pickTemplateRow — the template row to send, and the key it is stored under.
+
+   MESSAGE TESTS (src/messaging/experiments.mjs). Four follow-up keys have a version B stored
+   under the same key plus "-B". A person has a fixed arm for each test. An arm-B person gets
+   B only when the B row exists, is not draft copy and has passed compliance. In every other
+   case, and for every other key, this is the one lookup it always was and the person gets
+   the key that was asked for. `split` is true only for a base key of a test with a person
+   attached; a caller who asks for a B key by name gets that key, as for any template. */
+async function pickTemplateRow(db, { orgId, clientId, templateKey }) {
+  const test = clientId ? experimentFor(templateKey) : null;
+  const split = Boolean(test) && baseKeyOf(templateKey) === templateKey;
+  if (split && armFor(clientId, test.name) === "B") {
+    const bKey = variantKeyFor(templateKey);
+    const b = (await db.query(TEMPLATE_BY_KEY_SQL, [orgId, bKey])).rows[0];
+    if (b && !isDraftTemplateRow(b) && b.compliance_passed) return { row: b, sendKey: bKey, split };
+  }
+  const tpl = await db.query(TEMPLATE_BY_KEY_SQL, [orgId, templateKey]);
+  return { row: tpl.rows[0], sendKey: templateKey, split };
+}
+
 export async function sendTemplated(db, { orgId, clientId, channel, templateKey, eventId, context = {}, staffId, shiftId }) {
   // TCPA / suppression guard: skip opted-out contacts before touching any template.
   if (clientId && channel === "sms") {
@@ -208,14 +234,7 @@ export async function sendTemplated(db, { orgId, clientId, channel, templateKey,
     }
   }
 
-  const tpl = await db.query(
-    `SELECT body, subject, compliance_passed
-       FROM message_templates
-      WHERE org_id = $1 AND template_key = $2
-      LIMIT 1`,
-    [orgId, templateKey]
-  );
-  const row = tpl.rows[0];
+  const { row, sendKey, split } = await pickTemplateRow(db, { orgId, clientId, templateKey });
   // Keep reason "template_pending" for missing OR unapproved — every workflow
   // test and call site already keys on that string. Draft is a separate refuse.
   if (!row) return { sent: false, reason: "template_pending" };
@@ -245,7 +264,7 @@ export async function sendTemplated(db, { orgId, clientId, channel, templateKey,
     try {
       unsubscribe = unsubscribeTagValue({ orgId, clientId, body: row.body });
     } catch (err) {
-      console.warn(`[sendTemplated] {{unsubscribe}} left blank in ${templateKey}: ${String(err?.message || err)}`);
+      console.warn(`[sendTemplated] {{unsubscribe}} left blank in ${sendKey}: ${String(err?.message || err)}`);
     }
   }
 
@@ -306,6 +325,9 @@ export async function sendTemplated(db, { orgId, clientId, channel, templateKey,
     ? (normalizePhone(rawAddress) || rawAddress)
     : rawAddress;
 
+  /* The send key (the dedupe) is built from the key that was ASKED for, never the B key,
+     so a replay can never double-send when B's row becomes ready or stops being ready
+     between two runs of the same step. The row below stores the key actually used. */
   const providerRef = `workflow:${templateKey}:${eventId}`;
   // RETURNING id so a deduped replay can be told from a real queue. It changes
   // nothing about what is written — ON CONFLICT DO NOTHING returns no row — and
@@ -316,7 +338,7 @@ export async function sendTemplated(db, { orgId, clientId, channel, templateKey,
      VALUES ($1,$2,'outbound',$3,$4,$5,'internal',$6,'queued',true,$7,$8)
      ON CONFLICT (org_id, provider_ref) WHERE provider_ref IS NOT NULL DO NOTHING
      RETURNING id, created_at`,
-    [orgId, clientId, channel, templateKey, rendered, providerRef, toAddress, subject]
+    [orgId, clientId, channel, sendKey, rendered, providerRef, toAddress, subject]
   );
 
   /* message.queued — announced only when a row was really written.
@@ -333,7 +355,7 @@ export async function sendTemplated(db, { orgId, clientId, channel, templateKey,
   if (ins?.rows?.[0]) {
     try {
       await emit(db, "message.queued", {
-        message_id: ins.rows[0].id, channel, template_key: templateKey, provider_ref: providerRef
+        message_id: ins.rows[0].id, channel, template_key: sendKey, provider_ref: providerRef
       }, { orgId, clientId: clientId || null, idempotencyKey: `message.queued:${providerRef}` });
     } catch (err) {
       console.warn(`[sendTemplated] message.queued not emitted: ${String(err?.message || err)}`);
@@ -356,7 +378,7 @@ export async function sendTemplated(db, { orgId, clientId, channel, templateKey,
       staffId,
       shiftId: await resolveShiftId(db, { staffId, shiftId }),
       kind: "text_sent",
-      detail: { client_id: clientId ?? null, template_key: templateKey, channel, message_id: ins.rows[0].id }
+      detail: { client_id: clientId ?? null, template_key: sendKey, channel, message_id: ins.rows[0].id }
       // The rendered body is NOT copied in. It is client-facing copy about a
       // consumer's file; `detail` is an index over work, not a second outbox.
     });
@@ -393,5 +415,14 @@ export async function sendTemplated(db, { orgId, clientId, channel, templateKey,
     orgId, clientId, channel, messageId, createdAt, source: "sendTemplated"
   });
 
-  return { sent: true, messageId };
+  if (!split) return { sent: true, messageId };
+
+  /* A message test says which version went. A replay that deduped against an earlier
+     row reports that row's key, not the one this run would have chosen. */
+  let usedKey = sendKey;
+  if (!ins?.rows?.[0] && messageId) {
+    const prior = await db.query(`SELECT template_key FROM messages WHERE id = $1`, [messageId]);
+    if (prior.rows[0]?.template_key) usedKey = prior.rows[0].template_key;
+  }
+  return { sent: true, messageId, templateKey: usedKey, arm: usedKey === templateKey ? "A" : "B" };
 }
