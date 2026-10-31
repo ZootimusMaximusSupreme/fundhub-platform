@@ -491,7 +491,7 @@ Scratch database only (law: verify-scratch-only, no-test-data-on-production). Wa
 3. ~~**Push.**~~ Answered 2026-10-30: email, text and push for anyone with the app.
 4. **Cap and rhythm.** How many days does the plan run before it stops on its own, and what hours do email, text and push go out?
 
-### 6e. Message tests and real proof — build spec (2026-10-31, chat 2)
+### 6f. Message tests and real proof — build spec (2026-10-31, chat 2)
 
 Chris asked whether the follow-ups rest on science, then said "Get it all done." (owner GO, 2026-10-31). Work copy: branch `claude/followup-abtest` in `/Users/chrisstanbridge/Developer/fh-followup-abtest`, made from `claude/followup-flows` at `cc628fd52`. Scratch database: `fundhub_scratch_abtest` on `127.0.0.1:55432`, every migration applied.
 
@@ -553,7 +553,7 @@ WHAT TO BUILD
 RUN AND REPORT
 - Run your new tests and every existing test that could break: src/messaging/*.test.mjs, src/workflows/s-02*, src/workflows/s-nobook*, src/workflows/stop-on-reply*, src/workflows/followup-chases.pg.test.mjs, src/pulse/registry.test.mjs, src/pulse/tripwires.test.mjs, src/pulse/heartbeats.test.mjs, src/pulse/coverage/modules.test.mjs, src/pulse/coverage/gap-handoff.test.mjs, src/pulse/beats/beats.test.mjs, src/http/routes.test.mjs, src/pulse/catalog/proofs/fin-b22*.test.mjs (if fin-b22 fails because of new keys in SQL, regenerate with node scripts/pulse/fin-b22-sql-template-keys.mjs --write). Use the scratch env above for .pg.test.mjs files. Then run npm run lint.
 - Never weaken, skip or delete a test. No new dependencies. No new .md files. Smallest diff.
-- When done, append your manifest under "W6 manifest" in section 6e of the board: files touched, exports added, every place a key lookup changed, tests run with pass and fail counts, anything you could not finish. Set W6 to done in the 6e table. Your final reply: the same manifest, short.
+- When done, append your manifest under "W6 manifest" in section 6f of the board: files touched, exports added, every place a key lookup changed, tests run with pass and fail counts, anything you could not finish. Set W6 to done in the 6e table. Your final reply: the same manifest, short.
 ```
 
 **W6 manifest.** (W6 appends here)
