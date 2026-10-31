@@ -518,7 +518,7 @@ Chris asked whether the follow-ups rest on science, then said "Get it all done."
 
 **Shared names (do not rename).** Version B key = base key + `-B` (for example `EMAIL-NOBOOK-02-B`). Test names: `resume-proof`, `nobook-proof`. Arm = `"A"` or `"B"`.
 
-**What waits on what.** W6 and W7 run at the same time. W8 waits for W6. The ship of 6e waits for the ship of 6d (PR 346).
+**What waits on what.** W6 and W7 run at the same time. W8 waits for W6. The ship of 6f waits for the ship of 6d (PR 346).
 
 **W6 prompt (copy-paste, stands alone).**
 
@@ -531,7 +531,7 @@ WHERE YOU WORK
 - Never touch the database fundhub_scratch_full (another test run uses it). Never read /Users/chrisstanbridge/Developer/fundhub-platform/.env. Never use the live database. Never send a real text or email.
 
 READ FIRST
-- CLAUDE.md and AGENTS.md (short rules). Board: ops/workflows/backend-selling-lanes-2026-10-30.md sections 6d and 6e.
+- CLAUDE.md and AGENTS.md (short rules). Board: ops/workflows/backend-selling-lanes-2026-10-30.md sections 6d and 6f.
 - .ai/rules/heartbeat-on-every-build.md, .ai/rules/traps-in-this-repo.md (endpoint tests live at src/http/<name>.pg.test.mjs and import the api/ handler; a handler must be in the ROUTES map in netlify/functions/api.mjs; requireAuth ignores a roles key, gate with requireRole after it), .ai/rules/owner-scope-minimal-diff.md.
 - Code: src/workflows/messaging.mjs (sendTemplated, about line 201), src/messaging/send-window.mjs, src/messaging/gate.mjs, src/messaging/dispatch.mjs, src/workflows/s-02-incomplete-survey-nudge.mjs, src/workflows/s-nobook-chase.mjs, src/workflows/stop-on-reply.mjs, src/pulse/beats/lib/handoff-truth.mjs (testAddressSql), src/pulse/registry.mjs, src/pulse/tripwires.mjs, src/http/routes.test.mjs. For the auth gate, copy the pattern of the staff read endpoint that public/app/marketing-command-center.js already calls.
 
