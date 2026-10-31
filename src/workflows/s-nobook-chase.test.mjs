@@ -465,6 +465,45 @@ test("nobook: a run that started under survey.submitted keeps its old waits, sen
   assert.equal(db2.messages.length, 2);
 });
 
+/* Independent review of PR #346 (2026-10-31): a run asleep under the old trigger and the new
+   survey.completed run for the same person have different send keys, so both would send. */
+function withRecentSends(inner) {
+  const wrapped = Object.create(inner);
+  wrapped.query = async (sql, params = []) => {
+    if (/FROM messages[\s\S]*template_key = ANY\(\$3\)/.test(String(sql))) {
+      const [, clientId, keys] = params;
+      // The fake keeps no send time, so every row it holds counts as recent.
+      const hit = inner.messages.some((m) => m.client_id === clientId && keys.includes(m.template_key));
+      return { rows: hit ? [{ x: 1 }] : [] };
+    }
+    return inner.query(sql, params);
+  };
+  return wrapped;
+}
+
+test("nobook: a run asleep under survey.submitted steps aside once the person finishes (the new chase owns it)", async () => {
+  const db = makeDb({ clients: [{ ...PERSON }], templates: templates() });
+  const step = recordingStep({ wake: (id) => {
+    if (id === "wait-24h") db.events.push({ org_id: "org-1", client_id: "cl-1", name: "survey.completed", payload: {}, created_at: "2026-11-01T10:00:00Z" });
+  } });
+  const res = await handle({ event: ev("survey.submitted", {}, { id: "evt-old-handover", clientId: "cl-1" }), db, step });
+  assert.equal(res.exitedAt, "handed-to-finished-chase");
+  assert.deepEqual(db.messages.map((m) => m.template_key).sort(), [EMAIL_NOBOOK_01, SMS_NOBOOK_01].sort(),
+    "text 1 went before the finish; nothing after it");
+});
+
+test("nobook: a survey.completed run skips a text the person already got from an earlier run, and sends the rest", async () => {
+  const db = withRecentSends(makeDb({ clients: [{ ...PERSON }], templates: templates() }));
+  // The old-trigger run sent text 1 (and its email) before the person finished.
+  db.messages.push({ org_id: "org-1", client_id: "cl-1", channel: "sms", template_key: SMS_NOBOOK_01, provider_ref: "workflow:SMS-NOBOOK-01:evt-old:1" });
+  db.messages.push({ org_id: "org-1", client_id: "cl-1", channel: "email", template_key: EMAIL_NOBOOK_01, provider_ref: "workflow:EMAIL-NOBOOK-01:evt-old:1e" });
+  const res = await handle({ event: finishedEvent({ id: "evt-new-finish" }), db, step: recordingStep() });
+  assert.equal(res.exitedAt, "completed");
+  assert.deepEqual(res.msg1, { skipped: "sent_by_an_earlier_run" });
+  assert.deepEqual(db.messages.filter((m) => m.provider_ref.includes("evt-new-finish")).map((m) => m.template_key).sort(),
+    [EMAIL_NOBOOK_02, EMAIL_NOBOOK_03, SMS_NOBOOK_02, SMS_NOBOOK_03].sort(), "texts and emails 2 and 3, once each");
+});
+
 /* ── Every link follows the person's score ────────────────────────────────────
  *
  * The chase's texts and emails carry {{custom_values.booking_link}}. A link opens

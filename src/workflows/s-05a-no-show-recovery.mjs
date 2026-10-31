@@ -35,22 +35,32 @@ export const SOURCE_WORKFLOW = "s-05a-no-show-recovery";
 // Count both kinds before the first touch and again after each wait, scoped
 // to the same company so unrelated events cannot stop recovery.
 //
-// The starting count stops at the moment of the no-show itself (`upToEventId`),
-// not at the moment this run's first step happens to execute. A person who books
-// again in that gap used to be folded into the starting count, so no later count
-// was ever bigger and all four touches went (independent review of PR #346,
-// 2026-10-31). If the no-show row cannot be found, the count runs to now, as before.
-async function bookingActivityCount(db, { orgId, clientId, upToEventId = null }) {
+// The starting count stops at the earlier of the missed call's own start
+// (`callStartIso`) and the no-show event (`upToEventId`), not at the moment this
+// run's first step happens to execute. DPC-02 emits booking.noshow about five
+// minutes after the call, so a person who booked again right after missing it used
+// to be folded into the starting count, no later count was ever bigger, and all
+// four touches went (independent review of PR #346, 2026-10-31). With neither, the
+// count has no cutoff, as before.
+async function bookingActivityCount(db, { orgId, clientId, callStartIso = null, upToEventId = null }) {
   const r = await db.query(
     `SELECT COUNT(*)::int AS n
        FROM events
       WHERE org_id = $1 AND client_id = $2
         AND name IN ('booking.created', 'booking.rescheduled')
-        AND ($3::uuid IS NULL OR created_at <= COALESCE(
-              (SELECT s.created_at FROM events s WHERE s.id = $3::uuid AND s.org_id = $1), now()))`,
-    [orgId, clientId, upToEventId]
+        AND created_at <= LEAST(
+              COALESCE($3::timestamptz, 'infinity'::timestamptz),
+              COALESCE((SELECT s.created_at FROM events s WHERE s.id = $4::uuid AND s.org_id = $1), 'infinity'::timestamptz))`,
+    [orgId, clientId, callStartIso, upToEventId]
   );
   return Number(r.rows[0]?.n || 0);
+}
+
+/* The missed call's start from the no-show payload (DPC-02 passes the booking's own
+   payload), as an ISO string, or null when it is missing or unreadable. */
+function missedCallStart(payload = {}) {
+  const ms = Date.parse(payload.startTime ?? payload.start_time ?? "");
+  return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
 }
 
 async function hasRebooked(db, { orgId, clientId, priorCount }) {
@@ -102,7 +112,9 @@ export async function handle({ event, db, step, now = () => Date.now() }) {
   const orgId = event.orgId;
   const eventId = event.id;
   const context = appointmentContext(event.payload || {});
-  const priorBookings = await step.run("snapshot-bookings", () => bookingActivityCount(db, { orgId, clientId, upToEventId: eventId }));
+  const priorBookings = await step.run("snapshot-bookings", () => bookingActivityCount(db, {
+    orgId, clientId, callStartIso: missedCallStart(event.payload || {}), upToEventId: eventId
+  }));
 
   await step.run("tag-no-show", () => addTags(db, clientId, ["call:no_show"]));
 

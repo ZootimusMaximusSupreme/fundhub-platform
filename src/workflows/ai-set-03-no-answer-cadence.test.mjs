@@ -249,6 +249,27 @@ test("a call that has already happened before text 3 stops text 3", async () => 
   assert.deepEqual(db.messages.map((m) => m.template_key), MSG_KEYS.slice(0, 2));
 });
 
+/* Second read-only review of PR #346 (2026-10-31): the setter desk saves "reached" or "booked on call"
+   on the person and emits no event, so a later conversation must still stop "missed you" texts. */
+test("a setter who reaches the person after the No answer stops the next text", async () => {
+  const db = makeDb();
+  const step = recordingStep({ wake: (id) => {
+    if (id === "wait-until-msg2") db.clients[0].custom_fields = { setter_handoff: { disposition: "reached" } };
+  } });
+  const res = await run(db, noAnswer(), step);
+  assert.equal(res.exitedAt, "setter-reached");
+  assert.deepEqual(db.messages.map((m) => m.template_key), [OPTIN1_KEY]);
+  inOrder(step, "check-replied-2", "check-reached-2");
+});
+
+test("booked on the setter's call stops the cadence too; a later No answer does not", async () => {
+  const booked = makeDb({ client: { custom_fields: { setter_handoff: { disposition: "booked_on_call" } } } });
+  assert.equal((await run(booked, noAnswer())).exitedAt, "setter-reached");
+  assert.equal(booked.messages.length, 0);
+  const again = makeDb({ client: { custom_fields: { setter_handoff: { disposition: "no_answer" } } } });
+  assert.equal((await run(again, noAnswer())).exitedAt, "completed");
+});
+
 test("no call booked: the opt-in texts never ask about a call, so nothing extra is checked", async () => {
   const db = makeDb();
   const step = recordingStep();

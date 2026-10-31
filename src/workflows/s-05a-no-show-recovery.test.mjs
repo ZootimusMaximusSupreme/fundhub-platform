@@ -167,6 +167,27 @@ test("s-05a: a booking made between the no-show and the run's first step still s
   assert.equal(db.tasks.length, 1, "the closer's rebook task is still made at once");
 });
 
+/* DPC-02 emits booking.noshow about five minutes after the call (second read-only review, 2026-10-31).
+   A person who books again in those five minutes is already back on the calendar. */
+test("s-05a: a booking made after the missed call started but before the no-show event still stops every touch", async () => {
+  const db = pgFake({
+    clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", custom_fields: {} }],
+    events: [
+      { id: "evt-booked", org_id: "org-1", client_id: "cl-1", name: "booking.created", created_at: "2026-11-01T17:00:00.000Z" },
+      // The call was at 10:00 a.m. Arizona (17:00Z). They booked again at 10:02; DPC-02 said no-show at 10:05.
+      { id: "evt-rebook", org_id: "org-1", client_id: "cl-1", name: "booking.created", created_at: "2026-11-03T17:02:00.000Z" },
+      { id: "evt-ns2", org_id: "org-1", client_id: "cl-1", name: "booking.noshow", created_at: "2026-11-03T17:05:00.000Z" }
+    ],
+    templates: [EMAIL_TEMPLATE_KEY, SMS_TEMPLATE_KEY].map((key) => ({ org_id: "org-1", template_key: key, channel: key.startsWith("SMS") ? "sms" : "email", body: key, compliance_passed: true }))
+  });
+  const res = await handle({
+    event: ev("booking.noshow", { bookingUid: "b1", startTime: "2026-11-03T17:00:00.000Z" }, { id: "evt-ns2", clientId: "cl-1" }),
+    db, step: pgStep()
+  });
+  assert.equal(res.stoppedAt, "before-touch-1");
+  assert.equal(db.messages.length, 0);
+});
+
 test("s-05a: rescheduling the missed booking stops later recovery touches", async () => {
   const db = pgFake({
     clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", custom_fields: {} }],

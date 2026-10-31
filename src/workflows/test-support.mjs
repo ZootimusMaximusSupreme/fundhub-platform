@@ -406,12 +406,17 @@ export function pgFake(seed = {}) {
         const orgScoped = /org_id\s*=\s*\$1/.test(sql);
         const clientId = params[orgScoped ? 1 : 0];
         const includeRescheduled = /booking\.rescheduled/.test(sql);
-        /* s-05a's starting count stops at the no-show's own moment ($3). Rows with no
-           created_at are older fixtures and count as before it. */
-        const upTo = /SELECT s\.created_at FROM events s WHERE s\.id = \$3/.test(sql) && params[2]
-          ? events.find((e) => e.id === params[2] && (!e.org_id || e.org_id === params[0]))
-          : null;
-        const cutoff = upTo?.created_at ? Date.parse(upTo.created_at) : null;
+        /* s-05a's starting count stops at the earlier of the missed call's start ($3) and
+           the no-show event's own moment ($4). Rows with no created_at are older fixtures
+           and count as before both. */
+        let cutoff = null;
+        if (/LEAST\(/.test(sql)) {
+          const cuts = [];
+          if (params[2] && Number.isFinite(Date.parse(params[2]))) cuts.push(Date.parse(params[2]));
+          const upTo = params[3] ? events.find((e) => e.id === params[3] && (!e.org_id || e.org_id === params[0])) : null;
+          if (upTo?.created_at) cuts.push(Date.parse(upTo.created_at));
+          cutoff = cuts.length ? Math.min(...cuts) : null;
+        }
         const n = events.filter((e) =>
           e.client_id === clientId
           && (!orgScoped || e.org_id === params[0])
