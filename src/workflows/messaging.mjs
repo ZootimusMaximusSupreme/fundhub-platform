@@ -57,7 +57,11 @@ export const TIER_BOOKING_LINKS = Object.freeze({
 });
 
 export function tierBookingLink(cf = {}) {
-  const pass = ficoGatePasses(surveyFicoBand(cf || {}));
+  const fields = cf || {};
+  // A setter's correction on the call (setter_survey_edits) wins over the typed answer.
+  const edits = fields.setter_survey_edits && typeof fields.setter_survey_edits === "object" ? fields.setter_survey_edits : {};
+  const band = surveyFicoBand({ cf_svy_self_reported_fico_label: edits.cf_svy_self_reported_fico }) || surveyFicoBand(fields);
+  const pass = ficoGatePasses(band);
   if (pass === null) return null;
   return pass ? TIER_BOOKING_LINKS.qualified : TIER_BOOKING_LINKS.unqualified;
 }

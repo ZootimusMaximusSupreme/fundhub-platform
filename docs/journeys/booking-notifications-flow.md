@@ -430,6 +430,15 @@ lead's **Open booking calendar** and **Move call time** links open it. A lead wi
 no readable answer keeps the plain `/funding-book-call` link. So a link a setter
 copies into a text sends the lead to their own calendar.
 
+**After a direct booking on the second calendar, and setter corrections
+(2026-10-31).** ClickFunnels sends a booker on `/funding-book-call--02424` to the
+next step of its own funnel, `/thank-you--80c5a`, a copy of `/thank-you`. The
+tracker counts that copy as `/thank-you`, and its booking check accepts the second
+calendar as the page the booker came from. When a setter corrects the score answer
+on the call (`setter_survey_edits.cf_svy_self_reported_fico`), the correction picks
+the calendar: in texts and emails, on the setter desk, and right after the survey
+save, which answers with the new `booking_url`.
+
 ```mermaid
 flowchart TD
     A[Text or email to a lead] --> B{Saved score answer}

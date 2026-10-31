@@ -123,6 +123,11 @@
     return String(s == null ? "" : s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, n || 32);
   }
 
+  /* ClickFunnels copied /thank-you into the second calendar's funnel (994750). A
+     booking made straight on /funding-book-call--02424 lands on that copy, which
+     is the same page, so it counts as /thank-you. */
+  var PAGE_ALIASES = { "/thank-you--80c5a": "/thank-you" };
+
   /* The page as the map names it. The fundhub.ai homepage ("/" on fundhub.ai or
      www.fundhub.ai) is "/home"; apply.fundhub.ai/ is a different page and stays
      off the map. */
@@ -130,7 +135,7 @@
     try {
       var p = location.pathname.toLowerCase().replace(/\/+$/, "");
       if (!p && /^(www\.)?fundhub\.ai$/i.test(location.hostname || "")) return "/home";
-      return p;
+      return has.call(PAGE_ALIASES, p) ? PAGE_ALIASES[p] : p;
     } catch (e) { return ""; }
   }
 
@@ -1045,7 +1050,8 @@
     var cortanaPage = pagePath();
     if (navigator.webdriver !== true &&
         (cortanaPage === "/watch" || cortanaPage === "/apply" ||
-         cortanaPage === "/funding-book-call" || cortanaPage === "/thank-you" ||
+         cortanaPage === "/funding-book-call" || cortanaPage === "/funding-book-call--02424" ||
+         cortanaPage === "/thank-you" ||
          cortanaPage === "/portal-login.html")) {
       restoreCortanaPending();
       if (cortanaPending.length) {

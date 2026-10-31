@@ -40,6 +40,8 @@ POST /api/public/slo-interest
 | /roadmap-book | roadmap | 2 |
 | /roadmap-thank-you | roadmap | 3 |
 | /order | watch | 5 |
+
+`/thank-you--80c5a` is ClickFunnels' copy of `/thank-you` in the second calendar's funnel (994750); a booking made straight on `/funding-book-call--02424` lands there. The tracker names it `/thank-you` (`PAGE_ALIASES` in `public/funnel/fh-events.js`), so it sends exactly what `/thank-you` sends, and Cortana steps saved on either calendar page go out from it.
 | /home | homepage | 1 |
 | /portal-login.html | portal | 1 |
 

@@ -246,6 +246,17 @@ test("a saved checklist keeps the lead's own calendar link", async () => {
   assert.equal(saved.body.item.booking_url, "https://apply.fundhub.ai/funding-book-call--02424?fh_tier=u");
 });
 
+test("correcting the score on the call returns the corrected calendar link", async () => {
+  const { db, client } = fakeDb(false);
+  client.custom_fields.cf_svy_self_reported_fico_label = "650-699";
+  const up = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save_survey",
+    survey_edits: { cf_svy_self_reported_fico: "700-749" } });
+  assert.equal(up.status, 200);
+  assert.equal(up.body.booking_url, "https://apply.fundhub.ai/funding-book-call?fh_tier=q");
+  const back = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save_survey", survey_edits: {} });
+  assert.equal(back.body.booking_url, "https://apply.fundhub.ai/funding-book-call--02424?fh_tier=u", "clearing the edit goes back to the typed answer");
+});
+
 test("survey save replaces edits, keeps submitted answers, and does not complete the task", async () => {
   const { db, client, queries } = fakeDb();
   client.custom_fields.cf_svy_planned_use_label = "Open a shop";
