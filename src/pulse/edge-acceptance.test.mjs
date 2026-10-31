@@ -369,7 +369,8 @@ test("A/R A77 callback cannot settle a foreign-org link or invent buyer access",
   const report = reportCriticalSourceChanges([
     "src/handlers/payment-links.mjs",
     "src/payment-links/index.mjs",
-    "src/payment-links/future-checkout.mjs"
+    "src/payment-links/future-checkout.mjs",
+    "src/workflows/ar-collections.mjs"
   ]);
   assert.equal(report.verdict, "REVIEW_REQUIRED");
   assert.deepEqual(report.edges.map((edge) => [edge.id, edge.severity]), [
@@ -398,10 +399,25 @@ test("A/R A77 callback cannot settle a foreign-org link or invent buyer access",
     consumer: { ...consumer, consumer_name: "onPaymentReceivedMoney",
       completed_at: "2026-10-29T00:08:00Z" },
     receipt: { ...receipt, event_id: id, result_kind: "sale_payments",
-      completed_at: "2026-10-29T00:09:00Z" },
+      sale_id: settled.sale_id, completed_at: "2026-10-29T00:09:00Z" },
     paymentLinkReceipt: settled
   };
   assert.equal(judgeSyntheticEdge(witness).verdict, "PASS");
+  // Source-reproduced false green: an event with no original sale anchor,
+  // or a correct paid link paired with someone else\'s sale ledger payment,
+  // previously returned PASS even with the strict canonical contract.
+  assert.deepEqual(judgeSyntheticEdge({
+    ...witness, event: { ...witness.event, sale_id: undefined }
+  }), { verdict: "NOT_CHECKED", reason: "payment-link-event-identity-unavailable" });
+  assert.deepEqual(judgeSyntheticEdge({
+    ...witness, receipt: { ...witness.receipt, sale_id: null }
+  }), { verdict: "NOT_CHECKED", reason: "sale-payment-ledger-identity-unavailable" });
+  assert.deepEqual(judgeSyntheticEdge({
+    ...witness, receipt: { ...witness.receipt, sale_id: "another-sale" }
+  }), { verdict: "RED", reason: "sale-payment-ledger-original-sale-mismatch" });
+  assert.equal(changedCriticalEdges(["src/workflows/ar-collections.mjs"])[0].id,
+    "payment-ledger-entitlement", "A/R unmatched invoice review is a P0 business-result path");
+  assert.deepEqual(unmappedHighRiskSourceChanges(["src/workflows/ar-collections.mjs"]), []);
   for (const changed of [
     { org_id: "other-org" },
     { client_id: "other-client" },
