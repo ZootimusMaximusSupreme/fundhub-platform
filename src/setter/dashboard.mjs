@@ -4,6 +4,7 @@ import { buildSetterHandoffText, performSetterSendAction } from "./send-actions.
 import { advanceCardToStage } from "../workflows/cards.mjs";
 import { withTransaction } from "../db/with-transaction.mjs";
 import { queueCloserSetAlert } from "../staff/lead-alerts.mjs";
+import { tierBookingLink } from "../workflows/messaging.mjs";
 
 const HANDOFF_FIELDS = new Set([
   "lead_type", "dialed_at", "call_attempts", "disposition", "voicemail_left",
@@ -253,7 +254,9 @@ export async function listSetterQueue(db, staff, { limit = 50, offset = 0 } = {}
       LIMIT $4 OFFSET $5`,
     [staff.org_id, roleScoped, staff.id, Math.min(page.limit, 100), page.offset]
   );
-  const items = result.rows.map(row => mapItem(row, staff));
+  // Each lead's own calendar, by the same score rule as its texts. Null = no answer
+  // yet, so the screen falls back to the plain booking_url below.
+  const items = result.rows.map(row => ({ ...mapItem(row, staff), booking_url: tierBookingLink(jsonObject(row.custom_fields)) }));
   const numbers = await setterNumbers(db, staff);
   return { items, count: items.length, numbers, booking_url: "https://apply.fundhub.ai/funding-book-call" };
 }
@@ -478,7 +481,7 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
         [staff.org_id, client_id]
       );
     }
-    return { status: 200, body: { ok: true, item: { ...mapItem({ ...client, done: !!saved.complete_at, setter_staff_id: setterStaffId, closer_staff_id: closerStaffId, custom_fields: savedFields }, staff) }, ...(send ? { send } : {}) } };
+    return { status: 200, body: { ok: true, item: { ...mapItem({ ...client, done: !!saved.complete_at, setter_staff_id: setterStaffId, closer_staff_id: closerStaffId, custom_fields: savedFields }, staff), booking_url: tierBookingLink(savedFields) }, ...(send ? { send } : {}) } };
   };
   const result = action === "complete" ? await withTransaction(db, save) : await save(db);
   if (action === "complete" && result.status === 200) {
