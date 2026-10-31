@@ -104,7 +104,7 @@ No SSN before checkout step 3 (owner-set 2026-09-29). Same law: `.ai/rules/no-ss
 Outcome-first copy (owner-set 2026-09-29). Same law: `.ai/rules/outcome-first-copy.md`
 Funding sequence, not round two (owner-set 2026-10-06). Same law: `.ai/rules/funding-sequence-term.md`
 No API spend for now (owner-set 2026-10-06). Same law: `.ai/rules/no-api-spend-for-now.md`
-Owner calls already settled (owner-set 2026-10-09 to 2026-10-30). Same law: `.ai/rules/owner-calls-settled.md`
+Owner calls already settled (owner-set 2026-10-09 to 2026-10-31). Same law: `.ai/rules/owner-calls-settled.md`
 Model by job (owner-set 2026-10-06 and 2026-10-23). Same law: `.ai/rules/model-by-job.md`
 When the rules settle a choice, make it and say what you did (owner-set 2026-10-23). Same law: `.ai/rules/owner-go-no-repeat-approval.md`
 Rules never drift (owner-set 2026-10-24). Same law: `.ai/rules/rules-no-drift.md`
