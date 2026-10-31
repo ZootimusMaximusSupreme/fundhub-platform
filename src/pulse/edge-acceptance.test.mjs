@@ -1212,3 +1212,35 @@ test("A86 final signed PSP success cannot PASS with stale failed-only transactio
   assert.equal(reportCriticalSourceChanges(["src/adapters/commas.mjs"]).liveReceipt,
     "NEEDS_LIVE_RECEIPT");
 });
+
+test("future-dated producer, consumer, business or provider receipts cannot clear a non-canonical source witness", () => {
+  // Regression: before this observer fix, all of these future-dated receipt
+  // witnesses returned PASS despite the simulated observation clock being earlier.
+  const future = "2026-10-29T02:00:00Z";
+  for (const [which, partial, reason] of [
+    ["producer", { event: { ...event, created_at: future } }, "producer-timestamp-in-future"],
+    ["consumer", { consumer: { ...consumer, completed_at: future } }, "consumer-timestamp-in-future"],
+    ["result", { receipt: { ...receipt, completed_at: future } }, "business-result-timestamp-in-future"],
+    ["provider", {
+      requireProviderReceipt: true,
+      providerReceipt: { ...providerReceipt, delivered_at: future }
+    }, "provider-timestamp-in-future"],
+    ["unreadable", { consumer: { ...consumer, completed_at: "not-a-date" } },
+      "consumer-timestamp-invalid"]
+  ]) {
+    assert.deepEqual(judgeSyntheticEdge({ ...basics, ...partial }),
+      { verdict: "NOT_CHECKED", reason }, which);
+  }
+  const good = {
+    ...basics,
+    consumer: { ...consumer, completed_at: "2026-10-29T00:06:00Z" },
+    receipt: { ...receipt, completed_at: "2026-10-29T00:07:00Z" },
+    requireProviderReceipt: true,
+    providerReceipt: { ...providerReceipt, delivered_at: "2026-10-29T00:08:00Z" }
+  };
+  assert.equal(judgeSyntheticEdge(good).verdict, "PASS");
+  // An irrelevant optional provider receipt is never proof of customer delivery.
+  assert.equal(judgeSyntheticEdge({
+    ...basics, providerReceipt: { ...providerReceipt, delivered_at: future }
+  }).verdict, "PASS");
+});
