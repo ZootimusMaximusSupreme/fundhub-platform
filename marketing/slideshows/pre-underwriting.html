@@ -36,16 +36,39 @@
     (marketing/ads/scripts/2026-10-14.md:61, :63, :101).
   - The guarantee line is locked word for word (owner-voice.md:18).
 
-  Visual Thinking (marketing/copy-skills/visual-thinking/)
-  - PU-01 what: the credit file with one red flag (a document).
-  - PU-02 why: the report and the bank's letter, tied by the same reason.
-  - PU-03 when: who does what when you apply on a file nobody read (a timeline).
-  - PU-04 how: the engine's real checks (src/underwrite/report.mjs).
-  - PU-05 how: every bank, narrowed to the ones that approve files like yours.
-  - PU-06 when: the stretch from signing to applications out.
-  - PU-07 what: what happens on the call (a document).
-  - Status quo against change (SQVID): PU-03 against PU-04 and PU-05.
-  - Every sample document says Sample. No bank names, no invented figures.
+  Visual Thinking (marketing/copy-skills/visual-thinking/), every step
+  - Look (methods.md): the facts came first, each with its source in data-src.
+    Nothing is drawn that a source does not support.
+  - See: the people and things are you, your credit report, the bank, the
+    bank's letter, Fundhub's engine and the banks Fundhub works with. The
+    pattern: the bank's reason is on the report before anyone applies.
+  - Imagine (SQVID): status quo against change. PU-03 is the status quo
+    (apply first); PU-04 and PU-05 are the change (review first). Simple
+    over elaborate: one picture per slide. Qualitative only, so no invented
+    figures; the only figures are the contract's 72 and the engine's 30%.
+  - Show: each slide's question picks its picture (methods.md, the six
+    question families). What each line means is written beside it.
+    PU-01 what: a portrait of the file, a sample report with one red flag.
+    PU-02 why: two documents tied by one line. The line means "same reason".
+    PU-03 when: a timeline of who does what, headed "If the red flag is
+      still on the file". The order is the point; it does not claim every
+      application gets a no.
+    PU-04 how: the engine's real checks as a list (src/underwrite/report.mjs).
+    PU-05 how: every bank, narrowed to the banks that fit your file. Each
+      step means "filtered by". Tried first and dropped: a grid of banks
+      marked send or skip (Chris does not want grids, and marks on banks read
+      as approvals). Considered and dropped: boxes that shrink step by step
+      (widths would claim amounts nobody measured).
+    PU-06 when: one span from signing to applications out. It stops at
+      applications on purpose. A third step for approvals was dropped,
+      because approvals are not guaranteed.
+    PU-07 what: the call as a short agenda, from the call script. Tried first
+      and dropped: a recap flow, because it repeated PU-05's picture.
+  - Truth check (applications.md, "Sell or advocate an idea"): no picture
+    implies an approval, an amount or a speed the contract does not promise.
+    Every sample says Sample. No bank names.
+  - Display check (delivery-and-collaboration.md): every slide viewed at
+    390 pixels wide before it shipped.
 
   Each slide's data-src names the file and line its facts come from.
   The shared design is copied in by build.mjs. Edit _shell/, not this copy.
@@ -601,11 +624,12 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
   </section>
 
-  <section class="slide" data-src="Almost every application you send is a hard pull, and each one costs you: docs/sops/weekend-2026-10-24/04-sales-call-script.md:160. Too many recent hard inquiries bring auto-declines: src/underwrite/report.mjs:62. The letter carries the reason: ops/workflows/backend-selling-lanes-2026-10-30.md:209.">
+  <section class="slide" data-src="Almost every application you send is a hard pull, and each one costs you: docs/sops/weekend-2026-10-24/04-sales-call-script.md:160. The banks see the inquiries stack, and they start denying you: public/app/present.js:108 (closer line); too many recent hard inquiries bring auto-declines: src/underwrite/report.mjs:62. The letter carries the reason: ops/workflows/backend-selling-lanes-2026-10-30.md:209.">
     <p class="eyebrow">PU-03 / The cost</p>
     <h2>A no from a bank still costs you a hard inquiry.</h2>
     <p class="lede">Almost every application you send is a hard pull. When there are too many, banks say no on their own.</p>
     <figure class="pic">
+      <p class="pic-cap">If the red flag is still on the file</p>
       <ol class="tl">
         <li><span class="when">You</span><span class="what">Send an application</span></li>
         <li><span class="when">The bank</span><span class="what">Pulls your credit hard</span></li>
@@ -631,15 +655,15 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
   </section>
 
-  <section class="slide" data-src="Every application goes to a bank that approves you: marketing/ads/scripts/2026-10-14.md:101 (green-lit). Banks that approve files like yours: same file :63. We send you to the banks that are going to approve you; we put so much on the line: Chris 2026-10-31, marketing/copy-skills/copybot/references/chris-voice-profile.md:29-30.">
+  <section class="slide" data-src="Banks that fit your file; you only apply where your file makes sense: public/app/present.js:99 (closer line). Banks that approve files like yours: marketing/ads/scripts/2026-10-14.md:63 (green-lit). No approval promise: db/migrations/493_funding_and_repair_agreement_text.sql:53 (section 3) and docs/sops/weekend-2026-10-24/04-sales-call-script.md:178.">
     <p class="eyebrow">PU-05 / The right banks</p>
-    <h2>Every application goes to a bank that approves files like yours.</h2>
-    <p class="lede">We only send you to apply where you're going to get approved, because we put so much on the line.</p>
+    <h2>Your applications go only to the banks that fit your file.</h2>
+    <p class="lede">We check your file against each bank first, so you only apply where your file makes sense.</p>
     <figure class="pic">
       <ol class="flow plain">
         <li>Every bank we work with</li>
         <li>Checked against the reasons on your report</li>
-        <li class="is-hot">Only the banks that approve files like yours</li>
+        <li class="is-hot">Only the banks that fit your file</li>
       </ol>
     </figure>
   </section>
