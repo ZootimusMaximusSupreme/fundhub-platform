@@ -29,6 +29,35 @@ test("A->B contract is versioned and covers eleven business families", () => {
   assert.equal(new Set(CRITICAL_EDGES.map((e) => e.id)).size, CRITICAL_EDGES.length);
 });
 
+test("sample credit writer and real-bank-guidance provenance cannot escape changed-source review", () => {
+  // The sample script inserts simulated crs_results AND stored tradelines.
+  // Reading only non-simulated parent CRS results does not prove that a bank
+  // recommendation excluded the sampled tradelines. This is source-watch only.
+  const files = [
+    "scripts/finance-os-sample-v3.mjs",
+    "src/finance/bank-strategy.mjs",
+    "src/tradelines/store.mjs",
+    "src/liabilities/store.mjs",
+    "src/finance/sample-credit-file.mjs"
+  ];
+  const report = reportCriticalSourceChanges(files);
+  assert.equal(report.verdict, "REVIEW_REQUIRED");
+  assert.equal(report.liveReceipt, "NEEDS_LIVE_RECEIPT");
+  assert.equal(report.evidenceNote, "MISSING");
+  const blueprint = report.edges.find((edge) => edge.id === "blueprint-financeos-report");
+  assert.deepEqual(blueprint.files, files);
+  assert.equal(blueprint.owner, "Blueprint");
+  assert.equal(blueprint.severity, "P1");
+  assert.deepEqual(report.unmappedHighRiskFiles, []);
+  assert.equal(CRITICAL_EDGES.find((edge) => edge.id === blueprint.id).proofStatus,
+    "PARTIAL_NEEDS_REAL_SOURCE_PROVENANCE_RECEIPT");
+  assert.deepEqual(changedCriticalEdges(["scripts/finance-os-sample-v3.mjs"])
+    .map((edge) => edge.id), ["blueprint-financeos-report"]);
+  assert.deepEqual(changedCriticalEdges(["scripts/readme.md"]), []);
+  assert.deepEqual(changedCriticalEdges(["src/finance/bank-strategy.mjs"])
+    .map((edge) => edge.id), ["blueprint-financeos-report", "lender-apply-link"]);
+});
+
 test("source changes require A->B review, including changed existing high-risk files", () => {
   const result = reportCriticalSourceChanges([
     "src/adapters/clickfunnels.mjs", "src/handlers/diagnostic-soft-pull.mjs",
