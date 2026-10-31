@@ -120,6 +120,29 @@ test("sample credit writer and real-bank-guidance provenance cannot escape chang
     .map((edge) => edge.id), ["blueprint-financeos-report", "lender-apply-link"]);
 });
 
+test("database gateway, migration runner and generator source changes require report-only A->B review", () => {
+  // Shared DB reads and migration bootstrapping are hidden dependencies of
+  // every persisted money/customer receipt. A diff to the existing runner
+  // previously returned NO_CRITICAL_SOURCE_TOUCH_DETECTED.
+  const highRisk = ["src/db.mjs", "db/migrate.mjs",
+    "scripts/db/expected-migrations.mjs", "db/schema/001_init.sql"];
+  const result = reportCriticalSourceChanges(highRisk);
+  assert.equal(result.verdict, "REVIEW_REQUIRED");
+  assert.deepEqual(result.edges, []);
+  assert.deepEqual(result.unmappedHighRiskFiles, highRisk);
+  assert.equal(result.evidenceNote, "MISSING");
+  assert.equal(result.liveReceipt, "NEEDS_LIVE_RECEIPT");
+  assert.equal(shouldReportCriticalSourceRisk(result), true);
+  // Routine GENERATED manifest changes already accompany each mapped SQL
+  // migration; repeating a generic high-risk warning would create noise.
+  assert.deepEqual(unmappedHighRiskSourceChanges([
+    "db/expected-migrations.mjs", "db/migrate.test.mjs",
+    "scripts/db/expected-migrations.test.mjs", "src/db.test.mjs"
+  ]), []);
+  assert.equal(reportCriticalSourceChanges(["db/expected-migrations.mjs"]).verdict,
+    "NO_CRITICAL_SOURCE_TOUCH_DETECTED");
+});
+
 test("source changes require A->B review, including changed existing high-risk files", () => {
   const result = reportCriticalSourceChanges([
     "src/adapters/clickfunnels.mjs", "src/handlers/diagnostic-soft-pull.mjs",
