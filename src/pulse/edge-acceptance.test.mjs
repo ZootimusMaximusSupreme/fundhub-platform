@@ -1244,3 +1244,24 @@ test("future-dated producer, consumer, business or provider receipts cannot clea
     ...basics, providerReceipt: { ...providerReceipt, delivered_at: future }
   }).verdict, "PASS");
 });
+
+test("staff client-list source edits cannot escape booking customer-result review", () => {
+  // Front-house #278 changes an existing staff client-list SQL read to hide
+  // archived clients. If the predicate drifts, scheduled/owed customers can
+  // disappear from the staff workflow without changing the booking producer.
+  // Source review is needed; it does NOT prove a real customer got an outcome.
+  const report = reportCriticalSourceChanges([
+    "api/dashboard/clients.mjs", "api/dashboard/clients.test.mjs"
+  ]);
+  assert.equal(report.verdict, "REVIEW_REQUIRED");
+  assert.deepEqual(report.edges.map(({ id, owner, severity }) => ({ id, owner, severity })), [
+    { id: "lead-booking-call-outcome", owner: "Front-house", severity: "P1" }
+  ]);
+  assert.deepEqual(report.edges[0].files, ["api/dashboard/clients.mjs"]);
+  assert.deepEqual(report.unmappedHighRiskFiles, []);
+  assert.equal(report.liveReceipt, "NEEDS_LIVE_RECEIPT");
+  assert.deepEqual(judgeSyntheticEdge({ ...basics, receipt: null }), {
+    verdict: "RED", reason: "downstream-business-result-missing"
+  });
+  assert.equal(judgeSyntheticEdge(basics).verdict, "PASS");
+});
