@@ -265,7 +265,7 @@ function cockpitWorld({
     [/FROM funding_rounds fr\s+LEFT JOIN funding_closeout fc/, (sql, params) => { statements.push({ name: "closeout", sql, params }); return closeout ? [closeout] : []; }],
     [/^\s*SELECT name FROM staff WHERE id = \$1 AND org_id = \$2/, (sql, params) => { statements.push({ name: "staff", sql, params }); return [{ name: "Olive Owner" }]; }],
     [/SELECT count\(\*\)::int AS n\s+FROM tasks t/, (sql, params) => { statements.push({ name: "unlogged_count", sql, params }); return [{ n: 0 }]; }],
-    [/FROM tasks t\s+LEFT JOIN clients c ON c\.id = t\.client_id AND c\.org_id = t\.org_id\s+LEFT JOIN call_outcomes o ON o\.task_id = t\.id\s+WHERE t\.org_id = \$1\s+AND c\.id IS NOT NULL\s+AND c\.custom_fields->>'crm_archived_at' IS NULL\s+AND t\.assignee_role = 'closer'\s+AND \(t\.assignee_staff_id = \$2 OR t\.assignee_staff_id IS NULL\)\s+AND t\.due_at IS NOT NULL\s+AND o\.id IS NULL\s+AND \(/, (sql, params) => { statements.push({ name: "up_next", sql, params }); return upNext; }],
+    [/FROM tasks t\s+LEFT JOIN clients c ON c\.id = t\.client_id AND c\.org_id = t\.org_id\s+WHERE t\.org_id = \$1/, (sql, params) => { statements.push({ name: "up_next", sql, params }); return upNext; }],
     [/FROM tasks nt/, (sql, params) => { statements.push({ name: "next_after", sql, params }); return nextAfter ? [nextAfter] : []; }],
   ];
   return { rules, statements };
@@ -511,7 +511,9 @@ test("GET read/closer-now answers the call this closer is on and the one after, 
     company: "WHERE t.org_id = $1",
     closerTasks: "AND t.assignee_role = 'closer'",
     mineOrUnassigned: "AND (t.assignee_staff_id = $2 OR t.assignee_staff_id IS NULL)",
-    notLogged: "AND o.id IS NULL",
+    notLogged: "AND NOT EXISTS (",
+    sameBuyer: "WHERE o.org_id = t.org_id AND o.client_id = t.client_id",
+    bookingUid: "(NULLIF(btrim(t.body), '') IS NOT NULL AND o.booking_ref = t.body)",
     soonestFirst: "ORDER BY t.due_at ASC LIMIT 2",
   });
 

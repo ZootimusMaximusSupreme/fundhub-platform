@@ -651,14 +651,18 @@ export async function upcomingCalls(db, { orgId, staffId, includeClientId }) {
             COALESCE(NULLIF(trim(c.first_name || ' ' || c.last_name), ''), c.email, 'Client') AS name
        FROM tasks t
        LEFT JOIN clients c ON c.id = t.client_id AND c.org_id = t.org_id
-       LEFT JOIN call_outcomes o ON o.task_id = t.id
       WHERE t.org_id = $1
         AND c.id IS NOT NULL
         AND c.custom_fields->>'crm_archived_at' IS NULL
         AND t.assignee_role = 'closer'
         AND (t.assignee_staff_id = $2 OR t.assignee_staff_id IS NULL)
         AND t.due_at IS NOT NULL
-        AND o.id IS NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM call_outcomes o
+           WHERE o.org_id = t.org_id AND o.client_id = t.client_id
+             AND (o.task_id = t.id OR
+                  (NULLIF(btrim(t.body), '') IS NOT NULL AND o.booking_ref = t.body))
+        )
         AND (
           (t.client_id = $3 AND t.due_at >= date_trunc('day', now()))
           OR
@@ -708,14 +712,18 @@ export async function nextCallAfter(db, { orgId, staffId, after }) {
             COALESCE(NULLIF(trim(c.first_name || ' ' || c.last_name), ''), c.email, 'Client') AS name
        FROM tasks nt
        LEFT JOIN clients c ON c.id = nt.client_id AND c.org_id = nt.org_id
-       LEFT JOIN call_outcomes o ON o.task_id = nt.id
       WHERE nt.org_id = $1
         AND c.id IS NOT NULL
         AND c.custom_fields->>'crm_archived_at' IS NULL
         AND nt.assignee_role = 'closer'
         AND (nt.assignee_staff_id = $2 OR nt.assignee_staff_id IS NULL)
         AND nt.due_at IS NOT NULL
-        AND o.id IS NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM call_outcomes o
+           WHERE o.org_id = nt.org_id AND o.client_id = nt.client_id
+             AND (o.task_id = nt.id OR
+                  (NULLIF(btrim(nt.body), '') IS NOT NULL AND o.booking_ref = nt.body))
+        )
         AND nt.due_at > $3
         AND nt.due_at >= now()
       ORDER BY nt.due_at ASC
