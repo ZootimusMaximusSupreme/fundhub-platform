@@ -376,13 +376,18 @@ export async function allocatePayment(db, event) {
       return { done: true, skipped: true, reason: "not_invoice_payment" };
     }
     console.warn(`[ar-allocate] path=unresolved payment=${providerPaymentId || "none"} client=${clientId || "none"}`);
-    await staffTask(db, {
+    const task = await staffTask(db, {
       orgId,
       clientId,
       eventId: event.id,
       title: "Unallocated payment — no matching invoice",
       body: providerPaymentId ? `unallocated:${providerPaymentId}` : event.id
     });
+    // A signed success-fee receipt is never resolved simply because a review
+    // was attempted. Without an owned task, retain the event for retry/DLQ.
+    if (!task || (!task.id && task.reason !== "duplicate_race")) {
+      throw new Error("ar_unmatched_success_fee_unroutable");
+    }
     return { done: true, allocated: false, reason: "unresolved", path: "unresolved" };
   }
 
@@ -390,6 +395,16 @@ export async function allocatePayment(db, event) {
   // create a review task on that tenant's buyer or reveal invoice metadata.
   // Check BEFORE invoice source/type/status and before the task fallback.
   if (!orgId || String(invoice.org_id) !== String(orgId)) {
+    // A foreign invoice is not evidence of its buyer's ownership. Only a
+    // separately verified same-org event customer can own the review task.
+    const task = await staffTask(db, {
+      orgId, clientId, eventId: event.id,
+      title: "Unallocated payment — invoice organization mismatch",
+      body: providerPaymentId ? `foreign-invoice:${providerPaymentId}` : event.id
+    });
+    if (!task || (!task.id && task.reason !== "duplicate_race")) {
+      throw new Error("ar_foreign_invoice_unroutable");
+    }
     return { done: true, allocated: false, reason: "invoice_mismatch", path: "unresolved" };
   }
   // Invoice org/client columns are not a tenant-ownership guarantee. Missing
