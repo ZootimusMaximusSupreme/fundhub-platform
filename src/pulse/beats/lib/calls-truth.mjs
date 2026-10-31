@@ -58,7 +58,27 @@ export const BOOKED_NO_OUTCOME_SQL = `/* gap-calls:booked-no-outcome */
                -- when that outcome belongs to a different client. The closer
                -- writer records client_id, so require matching buyer identity
                -- for all reference and clock-fallback paths.
-               AND (b.client_id IS NULL OR o.client_id = b.client_id)
+               -- A NULL-client booking can use a unique provider UID, but
+               -- not one shared by two bookings in the same org: one outcome
+               -- must never clear both. The local booking UUID remains exact.
+               AND (
+                 (b.client_id IS NOT NULL AND o.client_id = b.client_id)
+                 OR (
+                   b.client_id IS NULL AND (
+                     o.booking_ref = b.id::text
+                     OR (
+                       b.provider_uid IS NOT NULL
+                       AND o.booking_ref = b.provider_uid
+                       AND NOT EXISTS (
+                         SELECT 1 FROM bookings same_ref
+                          WHERE same_ref.org_id = b.org_id
+                            AND same_ref.id <> b.id
+                            AND same_ref.provider_uid = b.provider_uid
+                       )
+                     )
+                   )
+                 )
+               )
                AND (
                  (b.provider_uid IS NOT NULL AND o.booking_ref = b.provider_uid)
                  OR o.booking_ref = b.id::text
