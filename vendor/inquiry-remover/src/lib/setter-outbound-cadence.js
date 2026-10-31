@@ -270,9 +270,9 @@ async function fireSmsCadence({
         sms_1_value_first:
           `Hey ${firstName || "{{first_name}}"}, it's Chris from FundHub! I just tried giving you a call about your Strategy Session. Looking at your file — you've been pre-approved for $${prequalAmount || "{{prequal_amount}}"} in funding. Just want to make sure your appointment on ${appointmentTime || "{{appointment_time}}"} still works? 💰`,
         sms_2_follow_up:
-          `Hey ${firstName || "{{first_name}}"}, just checking in — we have your UnderwriteIQ results ready and your Senior Advisor is prepped for your call. Want to confirm your spot?`,
+          `Hey ${firstName || "{{first_name}}"}, just checking in — we have your UnderwriteIQ results ready and your Senior Advisor is prepped for your call. To lock it in, accept the calendar invite in your email.`,
         sms_3_break_up:
-          `Hey ${firstName || "{{first_name}}"}, I noticed we haven't been able to connect. Your pre-approval for $${prequalAmount || "{{prequal_amount}}"} is still active but I can't hold your advisor's slot much longer. If you're still interested, just reply YES and I'll get you rebooked. — Chris`
+          `Hey ${firstName || "{{first_name}}"}, I noticed we haven't been able to connect. Your pre-approval for $${prequalAmount || "{{prequal_amount}}"} is still active but I can't hold your advisor's slot much longer. If you're still interested, accept the calendar invite in your email so your call is locked in. — Chris`
       }
     };
 

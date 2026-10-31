@@ -193,8 +193,8 @@ async function clientContext(db, clientId) {
     custom_fields: cf,
     reschedule_link: bookingLink,
     // Personified sender for template closings ({{sender_name}}).
-    sender_name: "Josh",
-    sender: { name: "Josh" }
+    sender_name: "Chris",
+    sender: { name: "Chris" }
   };
 }
 

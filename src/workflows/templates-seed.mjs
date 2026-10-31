@@ -81,21 +81,22 @@ export const KNOWN_TEMPLATES = [
   },
   // Audit fix applied (workflow-coherence-audit.md): waits were 1 min for all
   // three — bumped to 30 min / 2 hr (the third wait is this workflow's own,
-  // pre-exit check). Compliance-scrubbed copy from Workflow-SMS-Fixes-Ready-to-Paste.md.
+  // pre-exit check). The words match live seeds 301 and 305: no reply-to-confirm asks
+  // (owner rule 2026-10-31, .ai/rules/confirm-on-the-calendar.md).
   {
     template_key: "SMS-AISET03-MSG1",
     channel: "sms",
-    body: "Hey {{contact.first_name}}, it's Chris from Fundhub! I just tried giving you a call about your Strategy Session. Looking at your file — you've been pre-approved for {{contact.analyzer_prequal_amount}} in capital. Just want to make sure your appointment still works? Reply STOP to opt out."
+    body: "Hey {{contact.first_name}}, it's Chris at Fundhub. Tried calling about your strategy call. To lock in your time, accept the calendar invite in your email. Need a new time? {{custom_values.booking_link}}\nReply STOP to opt out."
   },
   {
     template_key: "SMS-AISET03-MSG2",
     channel: "sms",
-    body: "Hey {{contact.first_name}}, just checking in — we have your UnderwriteIQ results ready and your Senior Advisor is prepped for your call. Want to confirm your spot? Reply STOP to opt out."
+    body: "{{contact.first_name}}, one thing for your call: be at a computer, not your phone. We look at your credit together, and it won't move your score. Need a different time? {{custom_values.booking_link}}\nReply STOP to opt out."
   },
   {
     template_key: "SMS-AISET03-MSG3",
     channel: "sms",
-    body: "Hey {{contact.first_name}}, I noticed we haven't been able to connect. Your pre-approval is still active but I can't hold your advisor's slot much longer. If you're still interested, reply YES and I'll get you rebooked. — Chris. Reply STOP to opt out."
+    body: "Hey {{contact.first_name}}, last one from me today. If you haven't yet, accept the calendar invite in your email so your call is locked in. Time doesn't work anymore? No problem, grab another: {{custom_values.booking_link}}\nReply STOP to opt out."
   },
   {
     template_key: "SMS-AISET04-HANDOFF",
