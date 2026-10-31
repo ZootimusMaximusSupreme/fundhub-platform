@@ -1,7 +1,8 @@
 // S-05a — No-Show Recovery.
 // Source: the CRM sticky "S-05a No-Show Recovery". Trigger: booking.noshow
 // (dpc-02 emits this 5 minutes after a missed ClickFunnels call). Spec 4.4: four touches,
-// email + SMS each. Stop on booking.created OR booking.rescheduled. Re-check before each send.
+// email + SMS each. Stop on booking.created OR booking.rescheduled saved after the missed
+// call (rebookedSinceMiss). Re-check before each send.
 //
 // SEND WINDOW (owner-set 2026-10-31). These are drip messages: they go out from
 // 9 a.m. to 5 p.m. Arizona time only. The sender holds a drip that comes due
@@ -31,22 +32,38 @@ export const EMAIL_NOSHOW_04 = "EMAIL-S05A-NOSHOW-04";
 export const SMS_NOSHOW_04 = "SMS-S05A-NOSHOW-04";
 export const SOURCE_WORKFLOW = "s-05a-no-show-recovery";
 
-// A reschedule of the same booking may not create another booking.created.
-// Count both kinds before the first touch and again after each wait, scoped
-// to the same company so unrelated events cannot stop recovery.
-async function bookingActivityCount(db, { orgId, clientId }) {
+/* rebookedSinceMiss — did the person book or move a call after they missed this one?
+   A reschedule of the same booking may not create another booking.created, so both
+   kinds count, scoped to the same company so unrelated events cannot stop recovery.
+
+   "After they missed it" is measured from fixed times, never from when this run
+   started. The old check counted bookings when the run began and stopped only on a
+   higher count later, so a rebook saved after the miss but before the run began was
+   in the starting count, and recovery still went to someone who had booked again.
+   The line is the missed call's start time (`missedAt`, from the no-show payload),
+   or this booking.noshow event's own saved time, whichever is earlier: DPC-02 saves
+   the no-show 5 minutes after the call ends, so a rebook made during the missed
+   call or in those minutes counts too. LEAST skips a missing one. Both are compared
+   inside the database, as DPC-02's callHeldFor does, to keep the microseconds. */
+export async function rebookedSinceMiss(db, { orgId, clientId, eventId, missedAt }) {
   const r = await db.query(
-    `SELECT COUNT(*)::int AS n
-       FROM events
-      WHERE org_id = $1 AND client_id = $2
-        AND name IN ('booking.created', 'booking.rescheduled')`,
-    [orgId, clientId]
+    `SELECT 1 AS rebooked
+       FROM events e
+      WHERE e.org_id = $1 AND e.client_id = $2
+        AND e.name IN ('booking.created', 'booking.rescheduled')
+        AND e.created_at > LEAST(
+              $4::timestamptz,
+              (SELECT n.created_at FROM events n WHERE n.id = $3 AND n.org_id = $1))
+      LIMIT 1`,
+    [orgId, clientId, eventId || null, missedAt || null]
   );
-  return Number(r.rows[0]?.n || 0);
+  return r.rows.length > 0;
 }
 
-async function hasRebooked(db, { orgId, clientId, priorCount }) {
-  return (await bookingActivityCount(db, { orgId, clientId })) > priorCount;
+/* The missed call's start time as an ISO string, or null when the payload has none. */
+function missedCallAt(payload = {}) {
+  const ms = Date.parse(payload.startTime);
+  return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
 }
 
 /* The call that was missed rides along as the appointment, the way the booking
@@ -94,7 +111,7 @@ export async function handle({ event, db, step, now = () => Date.now() }) {
   const orgId = event.orgId;
   const eventId = event.id;
   const context = appointmentContext(event.payload || {});
-  const priorBookings = await step.run("snapshot-bookings", () => bookingActivityCount(db, { orgId, clientId }));
+  const missedAt = missedCallAt(event.payload || {});
 
   await step.run("tag-no-show", () => addTags(db, clientId, ["call:no_show"]));
 
@@ -122,9 +139,9 @@ export async function handle({ event, db, step, now = () => Date.now() }) {
   for (let i = 0; i < TOUCHES.length; i += 1) {
     const n = i + 1;
     await step.sleepUntil(`wait-touch-${n}`, new Date(plan.at[i]));
-    // After the wait and before the write: a person who booked again while the
-    // touch was waiting for the window gets nothing.
-    if (await step.run(`check-booked-${n}`, () => hasRebooked(db, { orgId, clientId, priorCount: priorBookings }))) {
+    // After the wait and before the write: a person who booked again after the
+    // miss, whether before this run began or while the touch waited, gets nothing.
+    if (await step.run(`check-booked-${n}`, () => rebookedSinceMiss(db, { orgId, clientId, eventId, missedAt }))) {
       return { done: true, stoppedAt: `before-touch-${n}`, ...sent, task };
     }
     sent[`touch${n}`] = await step.run(`send-touch-${n}`, () =>

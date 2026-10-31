@@ -36,8 +36,28 @@ function withTriggerTime(inner) {
   return wrapped;
 }
 
+/* sentByOtherTrigger, answered from the fake's own rows the way its SQL answers it: the same text to the
+   same person, newer than `since`, whose send key names an event of the other trigger. pgFake stamps no
+   time on a message it inserts, so a message with no created_at counts as just sent. The SQL itself is read
+   against Postgres in followup-race-safety.pg.test.mjs. */
+function withOtherTriggerRead(inner) {
+  const wrapped = Object.create(inner);
+  wrapped.query = async (sql, params = []) => {
+    if (!/JOIN events c ON/.test(String(sql)) || !/split_part\(m\.provider_ref/.test(String(sql))) return inner.query(sql, params);
+    const [orgId, clientId, templateKey, since, otherTrigger] = params;
+    const hit = inner.messages.some((m) => {
+      if (m.org_id !== orgId || m.client_id !== clientId || m.template_key !== templateKey) return false;
+      if (m.created_at && !(Date.parse(m.created_at) > Date.parse(since))) return false;
+      const keyedOn = String(m.provider_ref || "").split(":")[2];
+      return inner.events.some((e) => e.id === keyedOn && e.org_id === orgId && e.name === otherTrigger);
+    });
+    return { rows: hit ? [{ sent: 1 }] : [] };
+  };
+  return wrapped;
+}
+
 function makeDb(seed = {}) {
-  return withTriggerTime(withReplyRead(pgFake(seed)));
+  return withOtherTriggerRead(withTriggerTime(withReplyRead(pgFake(seed))));
 }
 
 const templates = () => [
@@ -355,8 +375,9 @@ test("nobook: each text is planned from the one before it, always inside the win
     ["2026-10-31T23:00:00Z", "2026-11-01T16:00:00.000Z", "2026-11-02T16:00:00.000Z", "2026-11-05T16:00:00.000Z"], // 4:00 p.m.: 6 p.m. is closed -> 9 a.m.
     ["2026-10-31T17:00:00Z", "2026-10-31T19:00:00.000Z", "2026-11-01T19:00:00.000Z", "2026-11-04T19:00:00.000Z"], // 10:00 a.m.: noon, and noon each time
     ["2026-10-31T22:00:00Z", "2026-11-01T16:00:00.000Z", "2026-11-02T16:00:00.000Z", "2026-11-05T16:00:00.000Z"], // 3:00 p.m.: 5:00 p.m. exactly is closed
-    ["2026-10-31T21:55:00Z", "2026-10-31T23:55:00.000Z", "2026-11-01T23:55:00.000Z", "2026-11-04T23:55:00.000Z"], // 2:55 p.m.: 4:55 p.m. is the last planned minute
-    ["2026-10-31T21:59:00Z", "2026-11-01T16:00:00.000Z", "2026-11-02T16:00:00.000Z", "2026-11-05T16:00:00.000Z"], // 2:59 p.m.: 4:59 p.m. is past 4:55 -> 9 a.m.
+    ["2026-10-31T21:50:00Z", "2026-10-31T23:50:00.000Z", "2026-11-01T23:50:00.000Z", "2026-11-04T23:50:00.000Z"], // 2:50 p.m.: 4:50 p.m. is the last planned minute
+    ["2026-10-31T21:51:00Z", "2026-11-01T16:00:00.000Z", "2026-11-02T16:00:00.000Z", "2026-11-05T16:00:00.000Z"], // 2:51 p.m.: 4:51 p.m. is past 4:50 -> 9 a.m.
+    ["2026-10-31T21:55:00Z", "2026-11-01T16:00:00.000Z", "2026-11-02T16:00:00.000Z", "2026-11-05T16:00:00.000Z"], // 2:55 p.m.: 4:55 p.m. would miss the 4:55 sweep -> 9 a.m.
     ["2026-10-31T13:00:00Z", "2026-10-31T16:00:00.000Z", "2026-11-01T16:00:00.000Z", "2026-11-04T16:00:00.000Z"]  // 6:00 a.m.: 8 a.m. is not open yet -> 9 a.m. today
   ];
   for (const [finished, t1, t2, t3] of cases) {
@@ -462,6 +483,65 @@ test("nobook: a run that started under survey.submitted keeps its old waits, sen
   });
   assert.equal(res2.exitedAt, "replied");
   assert.equal(db2.messages.length, 2);
+});
+
+/* The cross-trigger overlap (2026-10-31). Each run keys its sends on its own trigger's cohort, so a
+   survey.submitted run asleep at the ship and the survey.completed run started when the person finishes
+   wrote different send keys for the same text: every text twice. Now a run skips a text the other
+   trigger's run already sent to the person. */
+const OLD_START = "2026-10-30T10:00:00Z"; // the first answer, before the ship
+const FINISH = "2026-10-30T20:00:00Z";    // the finish, after the ship
+const oldTriggerEvent = () => ev("survey.submitted", {}, { id: "evt-first-answer", clientId: "cl-1", createdAt: OLD_START });
+const finishEvent = () => ev("survey.completed", {}, { id: "evt-finished", clientId: "cl-1", createdAt: FINISH });
+
+test("nobook: a first-answer chase already sent each text, then they finish: no text goes twice, the setter task still does", async () => {
+  const db = makeDb({ clients: [{ ...PERSON }], templates: templates() });
+  const old = await handle({ event: oldTriggerEvent(), db, step: fakeStep() });
+  const fresh = await handle({ event: finishEvent(), db, step: fakeStep() });
+  assert.equal(old.exitedAt, "completed");
+  assert.equal(fresh.exitedAt, "completed");
+  assert.equal(db.messages.length, 6, "six messages, not twelve");
+  assert.ok(db.messages.every((m) => m.provider_ref.includes("evt-first-answer")));
+  for (const n of [1, 2, 3]) {
+    assert.deepEqual(fresh[`msg${n}`], { sms: { skipped: "sent_by_other_trigger" }, email: { skipped: "sent_by_other_trigger" } }, `text ${n}`);
+  }
+  assert.equal(db.tasks.length, 1, "a finished survey still gets a setter on the phone");
+});
+
+test("nobook: the finished-survey chase sent first, then the first-answer run wakes: it sends nothing again", async () => {
+  const db = makeDb({ clients: [{ ...PERSON }], templates: templates() });
+  await handle({ event: finishEvent(), db, step: fakeStep() });
+  const old = await handle({ event: oldTriggerEvent(), db, step: fakeStep() });
+  assert.equal(old.exitedAt, "completed");
+  assert.equal(db.messages.length, 6);
+  assert.ok(db.messages.every((m) => m.provider_ref.includes("evt-finished")));
+});
+
+test("nobook: only the text the other run sent is skipped; the texts it never sent still go", async () => {
+  // The first-answer run sent text 1, then stopped on a reply that came before the finish.
+  const db = makeDb({ clients: [{ ...PERSON }], templates: templates() });
+  await handle({
+    event: oldTriggerEvent(), db,
+    step: recordingStep({ wake: (id) => { if (id === "wait-24h") db.events.push(textReply("2026-10-30T18:00:00Z")); } })
+  });
+  assert.deepEqual(db.messages.map((m) => m.template_key), [SMS_NOBOOK_01, EMAIL_NOBOOK_01]);
+  const fresh = await handle({ event: finishEvent(), db, step: fakeStep() });
+  assert.equal(fresh.exitedAt, "completed");
+  assert.deepEqual(db.messages.map((m) => m.template_key),
+    [SMS_NOBOOK_01, EMAIL_NOBOOK_01, SMS_NOBOOK_02, EMAIL_NOBOOK_02, SMS_NOBOOK_03, EMAIL_NOBOOK_03]);
+});
+
+test("nobook: a text from the other trigger older than five days before this run does not count", async () => {
+  const db = makeDb({
+    clients: [{ ...PERSON }], templates: templates(),
+    events: [{ id: "evt-long-ago", org_id: "org-1", client_id: "cl-1", name: "survey.submitted", payload: {}, created_at: "2026-10-20T10:00:00Z" }]
+  });
+  db.messages.push({
+    org_id: "org-1", client_id: "cl-1", channel: "sms", template_key: SMS_NOBOOK_01,
+    provider_ref: "workflow:SMS-NOBOOK-01:evt-long-ago:1", created_at: "2026-10-20T12:00:00Z"
+  });
+  await handle({ event: finishEvent(), db, step: fakeStep() });
+  assert.equal(db.messages.filter((m) => m.provider_ref.includes("evt-finished")).length, 6);
 });
 
 /* ── Every link follows the person's score ────────────────────────────────────

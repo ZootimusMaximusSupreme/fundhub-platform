@@ -54,8 +54,38 @@ const HOUR = 60 * 60 * 1000;
 export const TEXT_GAP_MS = Object.freeze({ 1: 2 * HOUR, 2: 24 * HOUR, 3: 72 * HOUR });
 // The fixed waits a run that started under the old trigger (survey.submitted) still uses.
 // Temporary: the longest such run ends about five days after this ships. Delete this,
-// the `finished` branches below and the old-trigger test with it then.
+// the `finished` branches below, sentByOtherTrigger and the old-trigger tests with it then.
 const OLD_TRIGGER_WAIT = Object.freeze({ 1: ["wait-2h", "2h"], 2: ["wait-24h", "24h"], 3: ["wait-72h", "72h"] });
+export const OLD_TRIGGER_EVENT = "survey.submitted";
+/* Longer than a whole chase (2 + 24 + 72 hours), so a text from the other trigger's
+   run newer than this, counted back from this run's start, is from a chase that is
+   still going. Same temporary life as OLD_TRIGGER_WAIT. */
+export const CROSS_TRIGGER_WINDOW_MS = 5 * 24 * HOUR;
+
+/* ONE CHASE ACROSS THE TRIGGER CHANGE. A person who answered one question before
+   this shipped has a survey.submitted run asleep. When they finish, survey.completed
+   starts a second run. The two runs have different send keys (each keys on its own
+   trigger's cohort), so without this the person gets every text twice: once from
+   each run. So before each message, a run asks: did a run of the OTHER trigger send
+   this same text to this person since `since`? If it did, this message is skipped
+   and the run goes on (the setter task and the later checks still happen). The
+   other run is read from the send key itself, `workflow:<key>:<cohort event id>:<n>`:
+   its third part is the event that run keyed on, and that event's name is its
+   trigger. Two runs of the SAME trigger are not touched here: a new finished survey
+   more than six hours later still starts a new chase, as before. */
+export async function sentByOtherTrigger(db, { orgId, clientId, templateKey, otherTrigger, since }) {
+  const r = await db.query(
+    `SELECT 1 AS sent
+       FROM messages m
+       JOIN events c ON c.org_id = m.org_id AND c.id::text = split_part(m.provider_ref, ':', 3)
+      WHERE m.org_id = $1 AND m.client_id = $2 AND m.direction = 'outbound'
+        AND m.template_key = $3 AND m.created_at > $4
+        AND c.name = $5
+      LIMIT 1`,
+    [orgId, clientId, templateKey, since, otherTrigger]
+  );
+  return r.rows.length > 0;
+}
 
 /* hasBooked — has this person booked a call yet?
  *
@@ -144,6 +174,18 @@ export async function handle({ event, db, step, now = () => new Date() }) {
   const finished = trigger === TRIGGER_EVENT;
   const replied = () => hasReplied(db, { clientId, eventId });
 
+  /* One message of text n, unless the other trigger's run already sent it (see
+     sentByOtherTrigger). The window counts back from this run's own start. */
+  async function sendOnce(cohortId, channel, templateKey, n) {
+    const start = (await startedAt(db, { eventId, orgId })) ?? now();
+    const since = new Date(start.getTime() - CROSS_TRIGGER_WINDOW_MS).toISOString();
+    const otherTrigger = finished ? OLD_TRIGGER_EVENT : TRIGGER_EVENT;
+    if (await sentByOtherTrigger(db, { orgId, clientId, templateKey, otherTrigger, since })) {
+      return { skipped: "sent_by_other_trigger" };
+    }
+    return sendTemplated(db, { orgId, clientId, channel, templateKey, eventId: `${cohortId}:${n}` });
+  }
+
   /* 15 minutes in: a finished survey with no booking gets a person on the phone.
      Skipped when they booked or wrote back in the meantime. This is a task for a
      person, not a message, so it keeps its 15 minutes whatever the hour. */
@@ -200,14 +242,8 @@ export async function handle({ event, db, step, now = () => new Date() }) {
   const msg1 = await step.run("send-nobook-1", async () => {
     const cohortId = await messageCohortId(db, { eventId, orgId, clientId, name: trigger });
     return {
-    sms: await sendTemplated(db, {
-      orgId, clientId, channel: "sms", templateKey: SMS_NOBOOK_01,
-      eventId: `${cohortId}:1`
-    }),
-    email: await sendTemplated(db, {
-      orgId, clientId, channel: "email", templateKey: EMAIL_NOBOOK_01,
-      eventId: `${cohortId}:1e`
-    })
+      sms: await sendOnce(cohortId, "sms", SMS_NOBOOK_01, "1"),
+      email: await sendOnce(cohortId, "email", EMAIL_NOBOOK_01, "1e")
     };
   });
 
@@ -221,14 +257,8 @@ export async function handle({ event, db, step, now = () => new Date() }) {
   const msg2 = await step.run("send-nobook-2", async () => {
     const cohortId = await messageCohortId(db, { eventId, orgId, clientId, name: trigger });
     return {
-    sms: await sendTemplated(db, {
-      orgId, clientId, channel: "sms", templateKey: SMS_NOBOOK_02,
-      eventId: `${cohortId}:2`
-    }),
-    email: await sendTemplated(db, {
-      orgId, clientId, channel: "email", templateKey: EMAIL_NOBOOK_02,
-      eventId: `${cohortId}:2e`
-    })
+      sms: await sendOnce(cohortId, "sms", SMS_NOBOOK_02, "2"),
+      email: await sendOnce(cohortId, "email", EMAIL_NOBOOK_02, "2e")
     };
   });
 
@@ -242,14 +272,8 @@ export async function handle({ event, db, step, now = () => new Date() }) {
   const msg3 = await step.run("send-nobook-3", async () => {
     const cohortId = await messageCohortId(db, { eventId, orgId, clientId, name: trigger });
     return {
-    sms: await sendTemplated(db, {
-      orgId, clientId, channel: "sms", templateKey: SMS_NOBOOK_03,
-      eventId: `${cohortId}:3`
-    }),
-    email: await sendTemplated(db, {
-      orgId, clientId, channel: "email", templateKey: EMAIL_NOBOOK_03,
-      eventId: `${cohortId}:3e`
-    })
+      sms: await sendOnce(cohortId, "sms", SMS_NOBOOK_03, "3"),
+      email: await sendOnce(cohortId, "email", EMAIL_NOBOOK_03, "3e")
     };
   });
 
