@@ -335,8 +335,13 @@ export async function handle({ event, db, step, env, createLink, retireLink, own
         let invoice = null;
         try { invoice = await getInvoice(db, { invoiceId: hintedId }); }
         catch { /* malformed or unknown hint: no owner to attach a task to */ }
-        if (invoice && String(invoice.org_id) === String(event.orgId) &&
-            await clientOwnedByInvoiceOrg(db, { orgId: event.orgId, clientId: invoice.client_id })) {
+        if (invoice && String(invoice.org_id) === String(event.orgId)) {
+          // A legacy invoice may point to a buyer in another tenant. The signed
+          // receipt must remain in retry/dead-letter review, not be acknowledged
+          // without a safe owner or create a foreign-client staff task.
+          if (!await clientOwnedByInvoiceOrg(db, { orgId: event.orgId, clientId: invoice.client_id })) {
+            throw new Error("ar_unmatched_invoice_buyer_not_owned_by_org");
+          }
           const ref = event.payload?.paymentId || event.payload?.providerRef || event.id;
           const review = await createTask(db, {
             orgId: event.orgId,

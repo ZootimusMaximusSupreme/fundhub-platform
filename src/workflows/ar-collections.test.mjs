@@ -1086,15 +1086,13 @@ test("AR receipt identity: unresolved buyer cannot create a task for a foreign-o
     clients: [{ id: "cl-foreign", org_id: "org-2", email: "foreign+a78@example.invalid" }],
     invoices: [openInvoice({ client_id: "cl-foreign" })]
   });
-  const result = await handle({
+  await assert.rejects(handle({
     event: ev("payment.received", {
       invoiceId: "inv-1", product: "success_fee",
       email: "unmatched+a78@example.invalid", amount: 1250, paymentId: "a78-foreign"
     }),
     db, step: fakeStep()
-  });
-  assert.equal(result.reason, "client_not_owned");
-  assert.equal(result.reviewTaskCreated, false);
+  }), /ar_unmatched_invoice_buyer_not_owned_by_org/);
   assert.equal(db.tasks.length, 0, "no cross-tenant advisor task or client reference");
   assert.equal(db.invoicePayments.length, 0, "the merchant amount remains unallocated");
 });
