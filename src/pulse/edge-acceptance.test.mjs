@@ -68,6 +68,18 @@ test("two-calendar survey booking PR requires booking, message and attribution o
   assert.deepEqual(report.unmappedHighRiskFiles, []);
   assert.equal(report.liveReceipt, "NEEDS_LIVE_RECEIPT");
   assert.equal(report.evidenceNote, "MISSING");
+  // Future funnel/survey producers cannot escape by adding a new filename
+  // with no literal "booking" or "payment" word in its path.
+  const future = reportCriticalSourceChanges([
+    "src/funnel/new-route.mjs", "public/funnel/calendar-v2.html",
+    "src/survey/new-question-map.mjs"
+  ]);
+  assert.deepEqual(future.edges.map((edge) => edge.id), ["lead-booking-call-outcome"]);
+  assert.deepEqual(future.unmappedHighRiskFiles, []);
+  assert.deepEqual(future.edges[0].files, [
+    "src/funnel/new-route.mjs", "public/funnel/calendar-v2.html",
+    "src/survey/new-question-map.mjs"
+  ]);
 });
 
 test("schema migration changes cannot bypass A->B source-watch review", () => {
