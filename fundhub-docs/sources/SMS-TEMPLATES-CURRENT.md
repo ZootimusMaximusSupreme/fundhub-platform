@@ -72,7 +72,7 @@ Hey {{contact.first_name}}, it's Josh from Fundhub. We finished reviewing your p
 Hey {{contact.first_name}}, it's Josh from Fundhub. Based on your review, profile optimization is the step that unlocks your funding — we've mapped exactly what needs to move and in what order. Details are in your email. When you're ready, your advisor can get you started today: {{custom_values.booking_link}} Reply STOP to opt out.
 ## SMS-S05A-NOSHOW-RECOVERY
 
-Hey {{contact.first_name}}, it's Josh from Fundhub. Looks like we missed each other at {{appointment.start_time}}. No problem — things come up. Your analysis is done and still sitting here waiting on you. Grab a new time whenever works: {{custom_values.booking_link}} Reply STOP to opt out.
+{{contact.first_name}}, it's Fundhub — looks like we missed each other on your call. Nothing is lost and nothing is closed. Grab a new time whenever suits: {{custom_values.booking_link}} Reply STOP to opt out.
 ## SMS-N01-COLD-NURTURE
 
 Hey {{contact.first_name}}, Josh from Fundhub here. Most owners we talk to assume their credit profile is the problem. Usually it's the order they applied in. Same file, different sequence, very different result. If you want to see what yours actually supports: {{custom_values.booking_link}} Reply STOP to opt out.

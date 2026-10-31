@@ -25,7 +25,7 @@ const CLIENT = "22222222-2222-4222-8222-222222222222";
 
 /* A fake that answers only the statements this module issues. Anything else
    throws, so a query added later cannot pass by silently returning nothing. */
-function fakeDb({ sales = [], programs = [], tasks = [] } = {}) {
+function fakeDb({ sales = [], programs = [], tasks = [], afterTaskSelectSnapshot = null } = {}) {
   const state = { sales, programs, tasks, enrolCalls: [] };
   state.query = async (sql, params = []) => {
     if (/FROM sales s/.test(sql)) {
@@ -42,13 +42,25 @@ function fakeDb({ sales = [], programs = [], tasks = [] } = {}) {
       const hit = state.tasks.find(
         (t) => t.client_id === clientId && t.source_workflow === sourceWorkflow && t.title === title
       );
+      // An adversarial synchronization point after the SELECT snapshot makes
+      // both concurrent callers see "not present" before either can INSERT.
+      if (afterTaskSelectSnapshot) await afterTaskSelectSnapshot({ title });
       return { rows: hit ? [{ id: hit.id }] : [] };
     }
     if (/INSERT INTO tasks/.test(sql)) {
       const [org_id, client_id, title, body, due_at, source_workflow, assignee_role] = params;
+      // db/schema/006_tasks_idempotency.sql: the real unique index is on
+      // (client_id, source_workflow, body) NULLS NOT DISTINCT. ON CONFLICT
+      // DO NOTHING returns no row, even when the two task titles differ.
+      if (state.tasks.some((task) =>
+        task.client_id === client_id &&
+        task.source_workflow === source_workflow &&
+        task.body === body
+      )) return { rows: [] };
       const row = {
         id: `task-${state.tasks.length + 1}`,
-        org_id, client_id, title, body, due_at, source_workflow, assignee_role
+        org_id, client_id, title, body, due_at, source_workflow, assignee_role,
+        detail: params[9] ?? null
       };
       state.tasks.push(row);
       return { rows: [{ id: row.id }] };
@@ -203,6 +215,64 @@ describe("the first two jobs on a repair file", () => {
       assert.equal(t.assignee_role, REPAIR_TASK_ROLE);
       assert.equal(t.source_workflow, SOURCE_WORKFLOW);
     }
+  });
+
+  test("a single paid event creates BOTH jobs under the actual database unique key", async () => {
+    const db = fakeDb();
+    const first = await createRepairStartTasks(db, {
+      orgId: ORG, clientId: CLIENT, eventId: "same-payment-event", roundsCap: 6
+    });
+    assert.equal(first.count, 2, "the second job was discarded by ON CONFLICT");
+    assert.equal(db.tasks.length, 2);
+    assert.equal(new Set(db.tasks.map((t) => t.body)).size, 2,
+      "two titles shared one idempotency key");
+    const replay = await createRepairStartTasks(db, {
+      orgId: ORG, clientId: CLIENT, eventId: "different-event-same-buyer", roundsCap: 6
+    });
+    assert.equal(replay.count, 0);
+    assert.equal(db.tasks.length, 2);
+  });
+
+  test("concurrent trial/full plan changes cannot create two tasks with the same title", async () => {
+    // Before this change, plan task body changed from "2 rounds" to "6 rounds".
+    // Both title SELECTs saw zero; the unique index saw different bodies and
+    // allowed two competing instructions for the same paid client's file.
+    const planTitle = firstRepairTasks({ roundsCap: 2 })[0].title;
+    let waiting = 0;
+    let release;
+    const gate = new Promise((resolve) => { release = resolve; });
+    const db = fakeDb({
+      afterTaskSelectSnapshot: async ({ title }) => {
+        if (title !== planTitle) return;
+        if (++waiting === 2) release();
+        await gate;
+      }
+    });
+    await Promise.all([
+      createRepairStartTasks(db, { orgId: ORG, clientId: CLIENT, roundsCap: 2 }),
+      createRepairStartTasks(db, { orgId: ORG, clientId: CLIENT, roundsCap: 6 })
+    ]);
+    assert.equal(db.tasks.filter((t) => t.title === planTitle).length, 1,
+      "read-then-insert title dedupe lost a race when plan wording changed");
+    assert.equal(db.tasks.length, 2, "there must be one plan job and one document job");
+    assert.equal(new Set(db.tasks.map((t) => t.body)).size, 2);
+    assert.ok(db.tasks.every((t) => t.detail),
+      "round-count/document instructions must remain readable to staff");
+  });
+
+  test("a historical one-task repair intake receives only the missing document job", async () => {
+    const task = firstRepairTasks({ roundsCap: 6 })[0];
+    const db = fakeDb({ tasks: [{
+      id: "old-task", client_id: CLIENT, source_workflow: SOURCE_WORKFLOW,
+      title: task.title, body: "legacy-payment-event"
+    }] });
+    const result = await createRepairStartTasks(db, {
+      orgId: ORG, clientId: CLIENT, eventId: "later-installment", roundsCap: 6
+    });
+    assert.equal(result.count, 1);
+    assert.equal(db.tasks.length, 2);
+    assert.equal(db.tasks[0].body, "legacy-payment-event", "never rewrite a live task");
+    assert.match(db.tasks[1].title, /photo identification and proof of address/);
   });
 
   test("a replayed payment does not hand the same person the same job twice", async () => {

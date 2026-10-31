@@ -33,7 +33,7 @@ import {
   gateAndRecord, inQuietHours, inSetterContactQuietHours, recipientSkipsQuietHours,
   QUIET_HOURS_CHANNELS, QUIET_END_HOUR, QUIET_HOURS_TZ
 } from "./gate.mjs";
-import { isStaffText, usesSetterContactHours } from "../staff/message-recipient.mjs";
+import { isImmediateStaffAlert, isStaffText, usesSetterContactHours } from "../staff/message-recipient.mjs";
 import { resolve, addressFieldFor } from "./providers/index.mjs";
 import { isSynthetic } from "./live-fence.mjs";
 import { isDraftTemplateCopy, isDraftTemplateRow } from "./draft-guard.mjs";
@@ -406,7 +406,7 @@ export async function dispatchOne(db, message, options = {}) {
       templateKey: message.template_key, providerRef: message.provider_ref, toAddress: message.to_address };
     const setterHours = usesSetterContactHours(kind);
     const quiet = setterHours ? inSetterContactQuietHours(clock(), QUIET_HOURS_TZ) : inQuietHours(clock(), QUIET_HOURS_TZ);
-    if (QUIET_HOURS_CHANNELS.has(message.channel) && quiet) {
+    if (QUIET_HOURS_CHANNELS.has(message.channel) && quiet && !isImmediateStaffAlert(kind)) {
       const skipQuiet = isStaffText(kind) ? false : await recipientSkipsQuietHours(db, message.client_id);
       if (!skipQuiet) {
         const due = nextQuietHoursEnd(clock(), QUIET_HOURS_TZ, setterHours ? 6 : QUIET_END_HOUR);
@@ -500,6 +500,12 @@ export async function dispatchOne(db, message, options = {}) {
       );
       return await finalise(db, message, "blocked", OUTCOME.BLOCKED,
         "retired_ghl_doc", null);
+    }
+
+    // Free-form internal work alerts start unapproved. Record the successful
+    // live gate and copy checks for the staff text health check.
+    if (/^staff-alert:(?:lead|set|upcoming):/.test(String(message.provider_ref || ""))) {
+      await db.query(`UPDATE messages SET compliance_check_passed = true WHERE id = $1`, [message.id]);
     }
 
     // ---- 2. Routing --------------------------------------------------------
@@ -600,6 +606,26 @@ export async function dispatchOne(db, message, options = {}) {
       // record does not have.
       return await finalise(db, message, "failed", OUTCOME.NO_ADDRESS,
         `the client has no ${addressColumnFor(route.provider, message.channel)} to send to`, route.provider);
+    }
+
+    // A second bounce to the same address is enough evidence to stop trying it.
+    // The address is compared at send time, so correcting the client record and
+    // queueing a new message can resume mail without clearing delivery history.
+    // One bounce alone may be temporary and does not block a later attempt.
+    if (provider.TRANSMITS === true && message.channel === "email" && message.client_id &&
+        addressColumnFor(route.provider, message.channel) === "email") {
+      const { rows: bounced } = await db.query(
+        `SELECT id FROM messages
+          WHERE org_id = $1 AND client_id = $2 AND channel = 'email'
+            AND direction = 'outbound' AND status = 'bounced'
+            AND lower(btrim(to_address)) = lower(btrim($3))
+          ORDER BY created_at DESC OFFSET 1 LIMIT 1`,
+        [message.org_id, message.client_id, address]
+      );
+      if (bounced.length) {
+        return await finalise(db, message, "blocked", OUTCOME.BLOCKED,
+          "This email address has bounced more than once. Check the address before sending again.", null);
+      }
     }
 
     /* ---- 2d. AN ADDRESS THE PROVIDER WILL NEVER TAKE ----------------------
@@ -751,7 +777,10 @@ export async function dispatchOne(db, message, options = {}) {
       // A companion alert follows only a real, gated client email or text.
       // Each phone pipe is independent; an alert failure never retries the
       // already-sent message or changes its recorded delivery result.
-      if (provider.TRANSMITS === true && message.client_id &&
+      if (provider.TRANSMITS === true && message.client_id && !isStaffText({
+            channel: message.channel, templateKey: message.template_key,
+            providerRef: message.provider_ref, toAddress: message.to_address
+          }) &&
           (message.channel === "email" || message.channel === "sms")) {
         try {
           const notification = await notificationForSentMessage(db, message, { now: clock() });

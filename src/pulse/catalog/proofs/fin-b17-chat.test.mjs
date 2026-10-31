@@ -23,6 +23,15 @@ const PEER_NAME = "Casey Reed";
 const PEER_2 = "staff-3";
 const PEER_2_NAME = "Sam Rowe";
 
+// A saved staff send carries an unpredictable idempotency key, which prevents
+// duplicate sends after uncertain network outcomes. Still assert every other
+// field, including the exact client/teammate, thread and message text.
+function assertSendPayload(actual, expected, label) {
+  assert.ok(typeof actual.idempotency_key === "string" && actual.idempotency_key.length >= 20, "a replay-safe send key is present");
+  const { idempotency_key, ...fields } = actual;
+  assert.deepEqual(fields, expected, label);
+}
+
 const blankPage = (page) => page.route(`**${BLANK}`, (route) => route.fulfill({
   status: 200, contentType: "text/html", body: "<!doctype html><html><head><title>blank</title></head><body></body></html>",
 }));
@@ -238,7 +247,8 @@ test("Ask and Enter send the question in the mode that is open, show the answer 
     await failing.open();
     await failing.type("anything");
     await failing.page.locator("#fh-chat-send").click();
-    await waitFor(async () => (await failing.bubbles()).some((b) => /Could not answer \(model_unavailable\)\./.test(b[1])), "the error words");
+    await waitFor(async () => /Not confirmed \(model_unavailable\).*draft is kept/i.test(await failing.page.locator("#fh-chat-hint").innerText()), "the error words");
+    assert.equal(await failing.page.locator("#fh-chat-input").inputValue(), "anything", "failed question remains editable");
     // an answer with no text says so, and no sources line is drawn when there are none
     const bare = await openWidget({ ask: () => ({ ok: true, answer: {}, sources: [] }) });
     await bare.open();
@@ -273,7 +283,8 @@ test("Message to staff: pick a teammate, send, and the thread opens; a second se
     // no teammate picked: it says so and sends nothing
     await w.type("Are you on the 3pm?");
     await w.page.locator("#fh-chat-send").click();
-    await waitFor(async () => (await w.bubbles()).some((b) => b[1] === "Pick a teammate first."), "the pick-first line");
+    await waitFor(async () => /Pick a teammate first.*not been sent/i.test(await w.page.locator("#fh-chat-hint").innerText()), "the pick-first line");
+    assert.equal(await w.page.locator("#fh-chat-input").inputValue(), "Are you on the 3pm?", "unsent draft remains");
     assert.deepEqual(w.posts(), []);
 
     // pick the teammate: the widget looks for an existing thread with them
@@ -282,7 +293,7 @@ test("Message to staff: pick a teammate, send, and the thread opens; a second se
     await w.type("Are you on the 3pm?");
     await w.page.locator("#fh-chat-send").click();
     await waitFor(() => w.posts().length === 1, "the first message");
-    assert.deepEqual(w.posts()[0], { kind: "internal", body: "Are you on the 3pm?", peer_staff_id: PEER }, "a first message names the teammate, not a thread");
+    assertSendPayload(w.posts()[0], { kind: "internal", body: "Are you on the 3pm?", peer_staff_id: PEER }, "a first message names the teammate, not a thread");
     await waitFor(() => w.calls.includes("GET /api/chat/messages?conversation_id=conv-1"), "the thread read");
     await waitFor(async () => (await w.bubbles()).some((b) => b[1] === "Are you on the 3pm?" && b[0] === "me"), "my bubble");
 
@@ -290,7 +301,7 @@ test("Message to staff: pick a teammate, send, and the thread opens; a second se
     await w.type("Great, see you there.");
     await w.page.locator("#fh-chat-input").press("Enter");
     await waitFor(() => w.posts().length === 2, "the second message");
-    assert.deepEqual(w.posts()[1], { kind: "internal", body: "Great, see you there.", conversation_id: "conv-1", peer_staff_id: PEER }, "the thread and the teammate it is with ride together, so the server can refuse a mismatch");
+    assertSendPayload(w.posts()[1], { kind: "internal", body: "Great, see you there.", conversation_id: "conv-1", peer_staff_id: PEER }, "the thread and the teammate it is with ride together, so the server can refuse a mismatch");
     await waitFor(async () => (await w.bubbles()).filter((b) => b[0] === "me").length === 2, "both bubbles");
     assert.deepEqual(w.errors, []);
     await w.page.close();
@@ -319,7 +330,7 @@ test("Message to staff: pick a teammate, send, and the thread opens; a second se
     await w.type("Yes.");
     await w.page.locator("#fh-chat-send").click();
     await waitFor(() => w.posts().length === 1, "the send");
-    assert.deepEqual(w.posts()[0], { kind: "internal", body: "Yes.", conversation_id: "conv-9", peer_staff_id: PEER });
+    assertSendPayload(w.posts()[0], { kind: "internal", body: "Yes.", conversation_id: "conv-9", peer_staff_id: PEER });
     await w.page.close();
   });
 
@@ -338,7 +349,7 @@ test("Message to staff: pick a teammate, send, and the thread opens; a second se
     await w.type("Casey: are you on the 3pm?");
     await w.page.locator("#fh-chat-send").click();
     await waitFor(() => w.posts().length === 1, "the first message");
-    assert.deepEqual(w.posts()[0], { kind: "internal", body: "Casey: are you on the 3pm?", peer_staff_id: PEER });
+    assertSendPayload(w.posts()[0], { kind: "internal", body: "Casey: are you on the 3pm?", peer_staff_id: PEER });
     await waitFor(() => w.calls.includes("GET /api/chat/messages?conversation_id=conv-casey"), "Casey's thread was opened");
 
     // a different teammate: the message names that person and carries no thread id from the first
@@ -347,7 +358,7 @@ test("Message to staff: pick a teammate, send, and the thread opens; a second se
     await w.type("Sam: can you cover Friday?");
     await w.page.locator("#fh-chat-send").click();
     await waitFor(() => w.posts().length === 2, "the second message");
-    assert.deepEqual(w.posts()[1], { kind: "internal", body: "Sam: can you cover Friday?", peer_staff_id: PEER_2 }, "the second message goes to the second teammate, not into the first thread");
+    assertSendPayload(w.posts()[1], { kind: "internal", body: "Sam: can you cover Friday?", peer_staff_id: PEER_2 }, "the second message goes to the second teammate, not into the first thread");
 
     // and back to the first: Sam's thread id is not carried either
     await w.page.locator("#fh-chat-peer").selectOption(PEER);
@@ -355,7 +366,7 @@ test("Message to staff: pick a teammate, send, and the thread opens; a second se
     await w.type("Casey: thanks.");
     await w.page.locator("#fh-chat-send").click();
     await waitFor(() => w.posts().length === 3, "the third message");
-    assert.deepEqual(w.posts()[2], { kind: "internal", body: "Casey: thanks.", peer_staff_id: PEER });
+    assertSendPayload(w.posts()[2], { kind: "internal", body: "Casey: thanks.", peer_staff_id: PEER });
     assert.deepEqual(w.errors, []);
     await w.page.close();
   });
@@ -369,7 +380,8 @@ test("Message to staff: pick a teammate, send, and the thread opens; a second se
     await w.page.locator("#fh-chat-peer").selectOption(PEER);
     await w.type("hello");
     await w.page.locator("#fh-chat-send").click();
-    await waitFor(async () => (await w.bubbles()).some((b) => /Not sent \(forbidden\)\./.test(b[1]) && b[0] === "internal"), "the refusal words");
+    await waitFor(async () => /Not confirmed \(forbidden\).*draft is kept/i.test(await w.page.locator("#fh-chat-hint").innerText()), "the refusal words");
+    assert.equal(await w.page.locator("#fh-chat-input").inputValue(), "hello", "server refusal preserves the draft");
     assert.equal(w.calls.filter((c) => typeof c === "string" && c.includes("conversation_id=")).length, 0, "no thread was read after a refused send");
     await w.page.close();
   });
@@ -426,7 +438,7 @@ test("Message > Client lists the clients assigned to you, and each text goes to 
   // nobody picked: nothing is sent
   await w.type("Hi there");
   await w.page.locator("#fh-chat-send").click();
-  await w.page.locator("#fh-chat-body .msg", { hasText: "Pick one of your clients first." }).waitFor();
+  await waitFor(async () => /Pick one of your clients first.*not been sent/i.test(await w.page.locator("#fh-chat-hint").innerText()), "the pick-client line");
   assert.equal(w.posts().length, 0);
 
   // Ana, then Ben: the second text names Ben only and carries no thread from Ana
@@ -434,12 +446,12 @@ test("Message > Client lists the clients assigned to you, and each text goes to 
   await w.type("Ana: your call is at 3.");
   await w.page.locator("#fh-chat-send").click();
   await waitFor(() => w.posts().length === 1, "the first text");
-  assert.deepEqual(w.posts()[0], { kind: "client", body: "Ana: your call is at 3.", client_id: CLIENT_A, channel: "sms" });
+  assertSendPayload(w.posts()[0], { kind: "client", body: "Ana: your call is at 3.", client_id: CLIENT_A, channel: "sms" });
   await w.page.locator("#fh-chat-client").selectOption(CLIENT_B);
   await w.type("Ben: can we move to 4?");
   await w.page.locator("#fh-chat-send").click();
   await waitFor(() => w.posts().length === 2, "the second text");
-  assert.deepEqual(w.posts()[1], { kind: "client", body: "Ben: can we move to 4?", client_id: CLIENT_B, channel: "sms" }, "Ben's text never rides Ana's thread");
+  assertSendPayload(w.posts()[1], { kind: "client", body: "Ben: can we move to 4?", client_id: CLIENT_B, channel: "sms" }, "Ben's text never rides Ana's thread");
   assert.deepEqual(w.errors, []);
   await w.page.close();
 });
@@ -463,7 +475,7 @@ test("Message > Client says so when no client is assigned to you, and offers the
   await w.type("Hello from your file.");
   await w.page.locator("#fh-chat-send").click();
   await waitFor(() => w.posts().length === 1, "the text");
-  assert.deepEqual(w.posts()[0], { kind: "client", body: "Hello from your file.", client_id: PAGE_CLIENT, channel: "sms" });
+  assertSendPayload(w.posts()[0], { kind: "client", body: "Hello from your file.", client_id: PAGE_CLIENT, channel: "sms" });
   await w.page.close();
 });
 
@@ -494,7 +506,7 @@ test("a slow answer to the note for the last teammate never sets the thread for 
   await w.type("Sam: can you cover Friday?");
   await w.page.locator("#fh-chat-send").click();
   await waitFor(() => sent.length === 2, "Sam's note");
-  assert.deepEqual(sent[1], { kind: "internal", body: "Sam: can you cover Friday?", peer_staff_id: PEER_2 }, "no thread id from Casey");
+  assertSendPayload(sent[1], { kind: "internal", body: "Sam: can you cover Friday?", peer_staff_id: PEER_2 }, "no thread id from Casey");
   await w.page.close();
 });
 

@@ -89,7 +89,7 @@ export async function inviteStaff(db, { actor, email, name, role, orgId, ttl = I
     // Resend to an invited/suspended row: refresh the details, keep the row.
     staff = (await db.query(
       `UPDATE staff
-          SET name = COALESCE($2, name), role = COALESCE($3, role), status = 'invited'
+          SET name = COALESCE($2, name), role = COALESCE($3, role), status = 'invited', removed_at = NULL
         WHERE id = $1
       RETURNING id, email, name, role, status`,
       [existing.id, name || null, role || null]
@@ -255,6 +255,37 @@ export async function suspendStaff(db, { actor, staffId } = {}) {
     [staffId, actor.org_id]
   )).rows[0];
   if (!staff) return { ok: false, status: 404, error: "staff_not_found" };
+  const revoked = await revokeAllForStaff(db, staffId);
+  return { ok: true, staff, sessionsRevoked: revoked };
+}
+
+// Remove a person from the team while retaining linked business records.
+// The owner can invite the same email again later, which clears removed_at.
+export async function removeStaff(db, { actor, staffId } = {}) {
+  if (!actor || String(actor.role || "").toLowerCase() !== "owner" || !actor.org_id) {
+    return { ok: false, status: 403, error: "forbidden" };
+  }
+  if (String(actor.id) === String(staffId)) {
+    return { ok: false, status: 400, error: "cannot_remove_self" };
+  }
+  const openTasks = (await db.query(
+    `SELECT count(*)::int AS n FROM tasks
+      WHERE assignee_staff_id = $1 AND org_id = $2 AND done = false`,
+    [staffId, actor.org_id]
+  )).rows[0]?.n || 0;
+  if (openTasks) return { ok: false, status: 409, error: "staff_has_open_tasks" };
+  const staff = (await db.query(
+    `UPDATE staff SET status = 'suspended', removed_at = now(), updated_at = now()
+      WHERE id = $1 AND org_id = $2 AND role <> 'owner' AND removed_at IS NULL
+      RETURNING id, email, status`,
+    [staffId, actor.org_id]
+  )).rows[0];
+  if (!staff) return { ok: false, status: 404, error: "staff_not_found_or_protected" };
+  await db.query(
+    `UPDATE shifts SET ended_at = now(), updated_at = now()
+      WHERE staff_id = $1 AND org_id = $2 AND ended_at IS NULL`,
+    [staffId, actor.org_id]
+  );
   const revoked = await revokeAllForStaff(db, staffId);
   return { ok: true, staff, sessionsRevoked: revoked };
 }

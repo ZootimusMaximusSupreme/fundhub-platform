@@ -58,15 +58,15 @@ function fakeDb(overrides = {}, failOn = null) {
 
 test("all deep display controls own one exact contract", () => {
   const linkGates = DISPLAY_RESULT_CASES.filter((entry) => entry.contract.mode === "link-gate").length;
-  assert.equal(DISPLAY_RESULT_CONTRACTS.length, 281);
-  assert.equal(DISPLAY_RESULT_CASES.length, 282);
-  assert.equal(PASS_CAPABLE_COUNT, 275);
+  assert.equal(DISPLAY_RESULT_CONTRACTS.length, 280);
+  assert.equal(DISPLAY_RESULT_CASES.length, 281);
+  assert.equal(PASS_CAPABLE_COUNT, 274);
   assert.equal(UNMEASURED_CONTRACT_COUNT, 4);
   assert.equal(LIVE_PAGE_CONTRACT_COUNT, 1);
   assert.equal(linkGates, 2);
-  assert.equal(PASS_CAPABLE_COUNT + UNMEASURED_CONTRACT_COUNT + LIVE_PAGE_CONTRACT_COUNT + linkGates, 282);
-  assert.equal(new Set(DISPLAY_RESULT_CONTRACTS.map((entry) => entry.control)).size, 281);
-  assert.equal(new Set(DISPLAY_RESULT_CASES.map((entry) => entry.control)).size, 281);
+  assert.equal(PASS_CAPABLE_COUNT + UNMEASURED_CONTRACT_COUNT + LIVE_PAGE_CONTRACT_COUNT + linkGates, 281);
+  assert.equal(new Set(DISPLAY_RESULT_CONTRACTS.map((entry) => entry.control)).size, 280);
+  assert.equal(new Set(DISPLAY_RESULT_CASES.map((entry) => entry.control)).size, 280);
   assert.equal(CHECK_IDS.length, DISPLAY_TRACKING_CASES.length);
   assert.equal(new Set(CHECK_IDS).size, CHECK_IDS.length);
 
@@ -81,7 +81,7 @@ test("all deep display controls own one exact contract", () => {
 });
 
 test("PASS-capable contracts use exact read-only links, never generic completeness", () => {
-  assert.equal(SQL_BATCHES.length, 264);
+  assert.equal(SQL_BATCHES.length, 263);
   for (const sql of SQL_BATCHES) {
     assert.match(sql, /\/\* display-result:[^*]+ \*\//);
     assert.match(sql, /sample_count/);
@@ -163,7 +163,7 @@ test("the lane keeps missing contracts not proved and measured gaps red", async 
   assert.ok(db.calls.every((call) => call.params[0] === ORG));
   for (const call of db.calls) assert.doesNotThrow(() => assertReadOnlySql(call.sql));
   // Every saved-result check plus the live-page reads.
-  assert.equal(focused.filter((row) => row.status === "PASS").length, 276);
+  assert.equal(focused.filter((row) => row.status === "PASS").length, 275);
   // This stub returns the offer menu for unrelated pages. Two link gates, three sidebar heads,
   // and one climate-page control must stay unchecked, never be guessed green.
   const skippedControls = focused.filter((row) => row.status === "skip");
@@ -245,7 +245,7 @@ test("display lane loads with shipped data and no ops folder or netlify config",
     assert.equal(fs.existsSync(path.join(root, "netlify.toml")), false);
     const mod = await import(pathToFileURL(path.join(root, "pulse/coverage/gap-catalog-display.mjs")));
     assert.deepEqual(mod.CHECK_IDS, CHECK_IDS);
-    assert.equal(mod.DISPLAY_RESULT_CASES.length, 282);
+    assert.equal(mod.DISPLAY_RESULT_CASES.length, 281);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

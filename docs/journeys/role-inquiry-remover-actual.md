@@ -24,7 +24,7 @@ flowchart TD
     CAN --> A_campaigns[Campaigns — 10 routes]
     CAN --> A_chat[chat — 3 routes]
     CAN --> A_climate[climate — 2 routes]
-    CAN --> A_company_brain[company-brain — 2 routes]
+    CAN --> A_company_brain[company-brain — 3 routes]
     CAN --> A_content[content — 1 route]
     CAN --> A_contracts[contracts — 1 route]
     CAN --> A_creative[Creative Factory — 7 routes]
@@ -36,6 +36,7 @@ flowchart TD
     CAN --> A_merchant[merchant — 1 route]
     CAN --> A_ops[ops — 2 routes]
     CAN --> A_public[public — 19 routes]
+    CAN --> A_push[push — 1 route]
     CAN --> A_read[Reading data — 50 routes]
     CAN --> A_repair[repair — 5 routes]
     CAN --> A_scripts[scripts — 2 routes]
@@ -44,7 +45,7 @@ flowchart TD
     CAN --> A_top_level[Everything else — 26 routes]
     CAN --> A_trials[trials — 2 routes]
     CAN --> A_webhooks[Incoming webhooks — 1 route]
-    WHO -->|Yes| CANT[Blocked — 169 routes]
+    WHO -->|Yes| CANT[Blocked — 168 routes]
     CANT --> B_affiliates[affiliates — 3 blocked]
     CANT --> B_auth[Signing in and out — 8 blocked]
     CANT --> B_banking[banking — 6 blocked]
@@ -66,7 +67,7 @@ flowchart TD
     CANT --> B_partners[partners — 1 blocked]
     CANT --> B_privacy[privacy — 1 blocked]
     CANT --> B_proxy[proxy — 2 blocked]
-    CANT --> B_push[push — 5 blocked]
+    CANT --> B_push[push — 4 blocked]
     CANT --> B_read[Reading data — 21 blocked]
     CANT --> B_social[social — 3 blocked]
     CANT --> B_staff[staff — 2 blocked]
@@ -76,7 +77,7 @@ flowchart TD
 
 ## What they can reach
 
-**167 of 336 routes.**
+**169 of 337 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -115,7 +116,8 @@ flowchart TD
 | `/api/climate` | OPTIONS | anyone |
 | `/api/climate/config` | — | anyone |
 | `/api/climate/geocode` | OPTIONS | anyone |
-| `/api/company-brain/threads` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
+| `/api/company-brain/library` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
+| `/api/company-brain/threads` | DELETE, GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/company-brain/upload` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/content/welcome-video` | GET, HEAD | **not a sign-in** — signed link |
 | `/api/contracts` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
@@ -179,6 +181,7 @@ flowchart TD
 | `/api/public/survey-submit` | POST | anyone |
 | `/api/public/unsubscribe` | — | **not a sign-in** — signed link |
 | `/api/public/vsl-watch` | OPTIONS, POST | anyone |
+| `/api/push/native-device` | DELETE, GET, POST | client, staff |
 | `/api/read/ad-attribution` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/ad-books` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/ad-spine` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
@@ -257,7 +260,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**169 of 336 routes.**
+**168 of 337 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -394,7 +397,6 @@ flowchart TD
 | `/api/proxy/end` | POST | owner, funding_advisor |
 | `/api/proxy/launch` | POST | owner, funding_advisor |
 | `/api/push/key` | GET | client |
-| `/api/push/native-device` | DELETE, GET, POST | client |
 | `/api/push/preferences` | GET, PUT | client |
 | `/api/push/subscribe` | GET, POST | client |
 | `/api/push/unsubscribe` | DELETE, POST | client |

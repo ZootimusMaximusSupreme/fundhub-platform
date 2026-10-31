@@ -147,6 +147,7 @@ async function assertPageDestination(page, proof) {
   const actual = new URL(page.url());
   assert.equal(actual.pathname, expected.path, `${proof.surface}: destination path`);
   assert.equal(actual.search, expected.search || "", `${proof.surface}: destination query`);
+  await page.waitForLoadState("domcontentloaded");
   assert.equal(await page.title(), expected.title, `${proof.surface}: destination title`);
   if (expectedHeading) {
     const headings = (await page.locator("h1:visible").allTextContents()).map(compact);

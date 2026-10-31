@@ -74,6 +74,17 @@ only. This keeps the confirmation text aimed at the number on the latest form.
 `booking.created` is deliberately **not** repeat-suppressed: it already has
 slot-level dedupe, and a second booking is a real second appointment.
 
+**One booking, two messages, one moment (2026-10-29).** ClickFunnels posts the
+calendar form and the scheduled event for one booking a fraction of a second
+apart. Each looked for a saved booking at that time before the other had saved
+it, so 2 calls were stored twice on 2026-10-29 (two closer tasks, two Cortana
+sends each). The slot check and the save now run one at a time for one person at
+one call time (`withBookingSlotLock`, `src/adapters/clickfunnels.mjs`); the
+second message finds the saved booking and emits nothing. A saved booking is only
+ever re-keyed **to** the call's own id, so a form post that lands second no
+longer swaps it back. The booking payload also carries the calendar page id
+(`calendarPageId`, the message's top-level `page.id`) and the event type name.
+
 **One call, one booking id (2026-10-05).** A real ClickFunnels appointment
 message has no top-level `id`. It carries `event_id` (new on every message) and
 the call itself in `data`, whose `id` is the call's own id (it equals
@@ -95,10 +106,18 @@ one live upcoming ClickFunnels booking. Anything less certain is left alone.
 
 | Event | Workflows woken | File |
 |---|---|---|
-| `entry.captured` | welcome text, new-lead intake, incomplete-survey nudge, first-touch capture, referral ownership, event-deduped human setter task | `s-00-welcome`, `s-01`, `s-02`, `at-01`, `af-02`, `src/setter/tasks.mjs` |
+| `entry.captured` | welcome text, new-lead intake and immediate owner/setter SMS and native push, assigned closer native push, incomplete-survey nudge, first-touch capture, referral ownership, one open human setter task per client | `s-00-welcome`, `s-01`, `src/staff/lead-alerts.mjs`, `s-02`, `at-01`, `af-02`, `src/setter/tasks.mjs` |
 | `survey.submitted` | the never-booked chase, and nothing else | `s-nobook-chase` |
-| `booking.created` | confirm + reminders, event-deduped human setter task, the legacy 15-minute handoff, staff alert including enabled setter role, pre-call launcher, call-outcome enforcement, portal invite, no-show recovery | `s-04b`, `src/setter/tasks.mjs`, `ai-set-04`, `s-04c`, `bs-01`, `dpc-02`, `s-portal-invite`, `s-05a` |
+| `booking.created` | confirm + reminders, one open booking-confirmation setter task per client, the 15-minute handoff, booked-call owner/setter text and push plus assigned closer push, pre-call launcher, call-outcome enforcement, portal invite, no-show recovery | `s-04b`, `src/setter/tasks.mjs`, `ai-set-04`, `s-04c`, `bs-01`, `dpc-02`, `s-portal-invite`, `s-05a` |
 | `booking.rescheduled` | confirm + reminders, pre-call launcher, the 15-minute handoff, call-outcome enforcement (each restarts for the new time; the run for the old time is cancelled) | `s-04b`, `bs-01`, `ai-set-04`, `dpc-02` |
+
+The setter dashboard shows the submitted `cf_svy_*` survey answers with stable question keys. During a call, the assigned setter can save corrected answers through `POST /api/setter-dashboard` with `action: "save_survey"`. The corrections live in `clients.custom_fields.setter_survey_edits`; the submitted answers remain unchanged. The dashboard reloads the saved corrections, and the generated closer handoff uses them. Editing a completed handoff refreshes its saved text without resending a message.
+
+**Staff alerts added 2026-10-30.** `s-01` sends each active setter and owner one short lead SMS and native app alert as the lead enters. The text shows first name, phone, email, booking status and available survey answers. The assigned closer gets an app alert on lead entry or booking, without an immediate SMS. Completing the setter handoff sends the closer a text and app alert with the saved setter details and corrected survey answers, including when the owner is both setter and closer. At the current call's 15-minute handoff, the assigned closer (or owner fallback) gets the next-call text and app alert. Internal lead, set, and upcoming staff SMS send immediately, including overnight; client texts and other staff texts keep their existing contact hours. The existing SMS outbox and verified-staff gate still apply. Stable message and push keys prevent replay duplicates. Native app delivery still requires a registered staff device and a live phone test.
+
+The call screen also asks which funding paths were discussed (business, personal, or both), employment, annual personal income, and whether income can be verified. These answers save through the existing checklist action in `clients.custom_fields.setter_handoff`, separately from the submitted survey and its corrections. The funding-path answer is required for an opt-in handoff; the personal employment and income answers are optional. The outgoing handoff text does not include the new personal details.
+
+The event bus keeps each distinct funnel event, including separate survey-screen posts. The local setter handler now reuses an open task for the same client and task type. Once that task is done, a later opt-in or booking can create a new task. The Sales Fulfillment view shows one pill for repeated older setter tasks of the same type; the underlying tasks remain in the task list.
 
 ## 3. The never-booked chase
 
@@ -362,6 +381,34 @@ through `src/messaging/providers/cortana-booking-webhook.mjs`. The
 leaving the thank-you page cannot lose the server-side conversion. Company,
 demo, and simulated buyer bookings are marked skipped. This is a vendor event,
 not a customer text or an eligibility decision; the call copy is unchanged.
+
+## 7b. Set is the setter handoff; call confirmation is separate
+
+`booking.created` moves the Sales card to Booked (`src/workflows/s-04-call-booked.mjs`).
+The setter dashboard's **Mark handoff complete** action checks the booking,
+call result, call time, problem, goal, and warm-up facts, then saves
+`setter_handoff.complete_at` and advances the Sales card to the stage displayed
+as **Set** (`src/setter/dashboard.mjs`). A completed handoff already on a later
+Sales stage stays there. Migration 507 renames the existing column and moves
+older completed handoffs that are still before Set.
+
+A customer's **YES/CONFIRM** text or portal **Confirm my call** click sets
+`custom_fields.call_confirmed`; it never moves the Sales card. The Sales card
+shows **✓ Call confirmed** only while that flag is true
+(`api/dashboard/pipeline.mjs`, `public/app/pipeline.html`). A new or moved
+booking clears the flag, so the check disappears until that call is confirmed.
+The board's hourly check reports a card on Set without a completed handoff.
+
+## 7c. Two funding calendars (2026-10-29)
+
+`/apply` frames `/funding-book-call` for a 700-749 or 750+ score answer and the
+copy calendar page `/funding-book-call--02424` (funnel 994750, page 25820226) for
+every other answer (`showCal`, `marketing/landing-pages/apply-survey.html`). Both
+pages show the same words, load the same tracker and one Meta pixel, relay the
+booking to `/apply` and move to `/thank-you`. `/funding-book-call` runs event type
+14234; the copy runs event type 14959 (set in the ClickFunnels builder 2026-10-30).
+Each booking message names its page (`page.id`), which is how the two calendars are
+told apart.
 
 ## 8. Known gaps, not fixed here
 

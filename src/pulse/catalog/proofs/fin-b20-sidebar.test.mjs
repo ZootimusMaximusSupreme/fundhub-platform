@@ -32,22 +32,22 @@ const OWNER = ["bank-outreach.html", "pipeline.html", "setter-dashboard.html", "
   "marketing-command-center.html", "campaign-manager.html", "social-studio.html", "creative-factory.html", "content-admin.html",
   "staff-teams.html", "products-commissions.html", "contracts.html", "client-portal.html"];
 const STAFF = ["pipeline.html", "closer-dashboard.html", "calendar.html", "client-control-panel.html", "csm-queue.html",
-  "messaging.html", "documents.html", "inquiry-remover.html"];
+  "messaging.html", "documents.html", "inquiry-remover.html", "company-brain.html"];
 const RAIL = {
   owner: { page: "pipeline.html", links: OWNER, heads: ["relationships", "work", "clients", "insights", "marketing", "settings"] },
   admin: { page: "pipeline.html", links: OWNER.filter((h) => h !== "client-portal.html"), heads: ["relationships", "work", "clients", "insights", "marketing", "settings"] },
   sales_manager: {
     page: "pipeline.html",
     links: ["bank-outreach.html", "pipeline.html", "closer-dashboard.html", "sales-floor.html", "calendar.html", "client-control-panel.html", "csm-queue.html",
-      "messaging.html", "documents.html", "inquiry-remover.html", "staff-teams.html", "products-commissions.html"],
+      "messaging.html", "documents.html", "inquiry-remover.html", "company-brain.html", "staff-teams.html", "products-commissions.html"],
     heads: ["relationships", "work", "clients", "insights", "settings"],
   },
   outbound_rep: { page: "bank-outreach.html", links: ["bank-outreach.html"], heads: ["relationships"] },
   closer: { page: "pipeline.html", links: ["pipeline.html", "closer-dashboard.html", "my-numbers.html", "calendar.html", ...STAFF.slice(3)], heads: ["work", "clients", "insights"] },
-  funding_advisor: { page: "pipeline.html", links: ["pipeline.html", "closer-dashboard.html", "calendar.html", "lenders.html", ...STAFF.slice(3)], heads: ["work", "clients"] },
-  csm: { page: "pipeline.html", links: STAFF, heads: ["work", "clients"] },
-  setter: { page: "setter-dashboard.html", links: ["pipeline.html", "setter-dashboard.html", ...STAFF.slice(1)], heads: ["work", "clients"] },
-  inquiry_specialist: { page: "pipeline.html", links: STAFF, heads: ["work", "clients"] },
+  funding_advisor: { page: "pipeline.html", links: ["pipeline.html", "closer-dashboard.html", "calendar.html", "lenders.html", ...STAFF.slice(3)], heads: ["work", "clients", "insights"] },
+  csm: { page: "pipeline.html", links: STAFF, heads: ["work", "clients", "insights"] },
+  setter: { page: "setter-dashboard.html", links: ["pipeline.html", "setter-dashboard.html", ...STAFF.slice(1)], heads: ["work", "clients", "insights"] },
+  inquiry_specialist: { page: "pipeline.html", links: STAFF, heads: ["work", "clients", "insights"] },
   partner: { page: "partner-galaxy.html", links: ["social-studio.html", "creative-factory.html"], heads: ["marketing"] },
 };
 // Rows the file lists that no role is shown (NAV_HIDDEN in shell.js, owner-set 2026-08-19): the page still

@@ -22,6 +22,32 @@
       return enrolled;
     });
   }
+  // The client PWA manifest intentionally covers / so sign-in and password
+  // recovery stay inside the installed app. On all installed sign-in entry screens, including generic login reached
+  // from a FinanceOS expired-session return, suppress marketing navigation.
+  // Ordinary browser visitors keep their links.
+  // Native WKWebView navigation is separately owned and is not changed here.
+  function protectStandaloneClientEntry() {
+    if (!body.hasAttribute("data-client-public") && location.pathname !== "/login.html") return;
+    var standalone = navigator.standalone === true;
+    if (!standalone && typeof window.matchMedia === "function") {
+      try { standalone = window.matchMedia("(display-mode: standalone)").matches; }
+      catch (_) { standalone = false; }
+    }
+    if (!standalone) return;
+    var brand = body.querySelector(".portal-brand, .login-brand");
+    if (brand && brand.getAttribute("href") === "/") {
+      brand.removeAttribute("href");
+      brand.style.cursor = "default";
+      brand.setAttribute("aria-label", "Fundhub client portal");
+    }
+    var back = body.querySelector(".portal-back, .login-back");
+    if (back) {
+      back.hidden = true;
+      back.style.display = "none";
+    }
+  }
+  protectStandaloneClientEntry();
   window.FHClientIOS = { refreshAffiliate: refreshAffiliate };
   function activate() { body.setAttribute("data-client-ios", ""); }
   if (body.hasAttribute("data-client-public")) { activate(); body.setAttribute("data-client-ready", ""); return; }

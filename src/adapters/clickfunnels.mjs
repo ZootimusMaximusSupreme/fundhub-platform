@@ -20,6 +20,7 @@ import { resolveClient } from "../handlers/client-lifecycle.mjs";
 import { handleSloPaidWebhook } from "../slo/purchase.mjs";
 import { upsertContact } from "../analytics/clickfunnels.mjs";
 import { pickMetaClickIds, storeClientMetaClickIds } from "../ads/meta-match.mjs";
+import { db as platformDb, pool as platformPool } from "../db.mjs";
 
 // --- 1. Signature verification (fail-closed) --------------------------------
 // ClickFunnels 2.0 (official): HMAC-SHA256(secret, `${timestamp}.${rawBody}`)
@@ -454,6 +455,15 @@ export function normalizeClickFunnelsEvent(body) {
     : null;
   const callId = callIdRaw != null && String(callIdRaw).trim() !== "" ? String(callIdRaw).trim() : null;
   const bookingUid = callId || (id ? String(id) : null);
+  /* Which booking page took the call. Both messages for one funnel booking (the
+     calendar form and the scheduled event) carry it at the top level; a
+     standalone /schedule page sends none. The scheduled event names its event
+     type and nothing else, so the page is the calendar's identity. */
+  const pageObj = (b.page && typeof b.page === "object" && b.page)
+    || (d.page && typeof d.page === "object" && d.page) || null;
+  const calendarPageIdRaw = (pageObj && pageObj.id) ?? d.page_id ?? null;
+  const calendarPageId = calendarPageIdRaw != null && String(calendarPageIdRaw).trim() !== ""
+    ? String(calendarPageIdRaw).trim() : null;
 
   return {
     id: id ? String(id) : null,
@@ -469,6 +479,8 @@ export function normalizeClickFunnelsEvent(body) {
     metaClickIds,
     callId,
     bookingUid,
+    eventType: eventTypeName || null,
+    calendarPageId,
     startTime,
     endTime,
     tzid,
@@ -691,24 +703,41 @@ const REPEAT_SUPPRESSED_EVENTS = new Set(["survey.submitted", "entry.captured"])
 
 async function isRepeatFunnelPost(db, { orgId, name, email, funnel }) {
   if (!orgId || !email) return false;
-  try {
-    const { rows } = await db.query(
+  const { rows } = await db.query(
       `SELECT 1
          FROM events
         WHERE org_id = $1
           AND name = $2
           AND lower(payload->>'email') = $3
-          AND COALESCE(payload->>'funnel', '') = $4
+          AND (COALESCE(payload->>'funnel', '') = $4
+            OR COALESCE(payload->>'funnel', '') = '' OR $4 = '')
           AND created_at > now() - make_interval(mins => $5)
         LIMIT 1`,
       [orgId, name, String(email).toLowerCase(), String(funnel || ""), FUNNEL_REPEAT_WINDOW_MINUTES]
-    );
-    return rows.length > 0;
-  } catch (err) {
-    /* Never let the look-back decide the delivery. If it cannot be answered the
-       event behaves exactly as it does today. */
-    console.warn(`[clickfunnels] repeat-post check failed (treating as first): ${String(err?.message || err)}`);
-    return false;
+  );
+  return rows.length > 0;
+}
+
+// The look-back and event insert must be serialized for this contact. Two
+// distinct webhook IDs otherwise both see no prior row and start two cadences.
+async function withFunnelRepeatLock(db, orgId, email, name, fn) {
+  const source = db === platformDb ? platformPool()
+    : (typeof db?.connect === "function" && db?.options ? db : null);
+  if (!source || !orgId || !email) return fn();
+  const key = `cf-repeat:${orgId}:${name}:${String(email).trim().toLowerCase()}`;
+  const client = await source.connect();
+  let clean = false;
+  try {
+    await client.query("BEGIN");
+    await client.query("SET LOCAL lock_timeout = '15s'");
+    await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1::text, 0))", [key]);
+    const out = await fn();
+    await client.query("COMMIT");
+    clean = true;
+    return out;
+  } finally {
+    if (!clean) { try { await client.query("ROLLBACK"); clean = true; } catch {} }
+    client.release(!clean);
   }
 }
 
@@ -727,16 +756,67 @@ async function findBookingBySlot(db, orgId, email, startTime) {
   return rows[0] || null;
 }
 
-async function promoteBookingUid(db, { orgId, existing, nextUid, meetingUrl }) {
-  if (!existing || !nextUid || existing.provider_uid === nextUid) return;
+/* ONE BOOKING, TWO MESSAGES, ONE MOMENT. ClickFunnels posts the calendar form
+   and the scheduled event for one booking a fraction of a second apart. Each
+   looked for a saved booking at that time before the other had finished saving
+   it, so both saved one: 2 pairs on 2026-10-29, each with two closer tasks and
+   two Cortana sends. The slot check and the save now run one at a time for one
+   person at one call time. emit() returns only after the local handlers have
+   saved the booking, so the second message finds it. Transaction-scoped, like
+   the booking UID lock in src/handlers/comms.mjs, so a pooled connection never
+   keeps it. If the lock cannot be taken, the delivery runs as it did before:
+   a possible duplicate beats a lost booking. */
+async function withBookingSlotLock(db, orgId, email, startTime, fn) {
+  const source = db === platformDb ? platformPool()
+    : (typeof db?.connect === "function" && db?.options ? db : null);
+  const at = startTime ? new Date(startTime) : null;
+  if (!source || !orgId || !email || !at || Number.isNaN(at.getTime())) return fn();
+  const key = `cf-booking-slot:${orgId}:${String(email).trim().toLowerCase()}:${at.toISOString()}`;
+  let client;
+  try {
+    client = await source.connect();
+    await client.query("BEGIN");
+    await client.query("SET LOCAL lock_timeout = '15s'");
+    await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1::text, 0))", [key]);
+  } catch (err) {
+    console.warn(`[clickfunnels] booking slot lock not taken (delivering unlocked): ${String(err?.message || err).slice(0, 160)}`);
+    if (client) {
+      let clean = false;
+      try { await client.query("ROLLBACK"); clean = true; } catch {}
+      client.release(!clean);
+    }
+    return fn();
+  }
+  let clean = false;
+  try {
+    let out, failure = null;
+    try { out = await fn(); } catch (err) { failure = err; }
+    await client.query("COMMIT"); // releases the lock
+    clean = true;
+    if (failure) throw failure;
+    return out;
+  } finally {
+    if (!clean) { try { await client.query("ROLLBACK"); clean = true; } catch {} }
+    client.release(!clean);
+  }
+}
+
+/* Re-key a saved booking to the call's own id, never away from it: a move or a
+   cancel arrives under the call id. A form post that lands second only fills
+   blanks. The event type name comes only on the scheduled event. */
+async function promoteBookingUid(db, { orgId, existing, nextUid, meetingUrl, eventType = null }) {
+  if (!existing) return;
+  const rekey = !!nextUid && existing.provider_uid !== nextUid;
+  if (!rekey && !meetingUrl && !eventType) return;
   await db.query(
     `UPDATE bookings
-        SET provider_uid = $1,
-            meeting_url = COALESCE($2, meeting_url)
+        SET provider_uid = COALESCE($1, provider_uid),
+            meeting_url = COALESCE($2, meeting_url),
+            event_type_slug = COALESCE(event_type_slug, $5)
       WHERE org_id = $3 AND id = $4`,
-    [nextUid, meetingUrl || null, orgId, existing.id]
+    [rekey ? nextUid : null, meetingUrl || null, orgId, existing.id, eventType || null]
   );
-  if (existing.client_id && existing.provider_uid) {
+  if (rekey && existing.client_id && existing.provider_uid) {
     await db.query(
       `UPDATE tasks SET body = $1 WHERE client_id = $2 AND body = $3`,
       [nextUid, existing.client_id, existing.provider_uid]
@@ -938,6 +1018,8 @@ export async function handleClickFunnelsWebhook({
         phone: evt.phone,
         meetingUrl: evt.meetingUrl,
         rescheduleUid: evt.rescheduleUid,
+        eventType: evt.eventType,
+        calendarPageId: evt.calendarPageId,
         source: "clickfunnels"
       };
     } else {
@@ -956,17 +1038,30 @@ export async function handleClickFunnelsWebhook({
     const idKey = evt.id ? `clickfunnels:${evt.id}:${c.name}` : undefined;
 
     if (c.name === "booking.created") {
-      const existing = await findBookingBySlot(db, ingestOrgId, evt.email, evt.startTime);
-      if (existing) {
-        await promoteBookingUid(db, {
+      emitted.push(await withBookingSlotLock(db, ingestOrgId, evt.email, evt.startTime, async () => {
+        const existing = await findBookingBySlot(db, ingestOrgId, evt.email, evt.startTime);
+        if (existing) {
+          await promoteBookingUid(db, {
+            orgId: ingestOrgId,
+            existing,
+            nextUid: evt.callId ? payload.bookingUid : null,
+            meetingUrl: payload.meetingUrl,
+            eventType: payload.eventType
+          });
+          return { name: c.name, id: existing.id, deduped: true, repeat: true, startedRun: false };
+        }
+        const res = await emit(db, c.name, payload, {
+          idempotencyKey: idKey,
           orgId: ingestOrgId,
-          existing,
-          nextUid: payload.bookingUid,
-          meetingUrl: payload.meetingUrl
+          clientId: ingestClientId,
+          skipInngest: false
         });
-        emitted.push({ name: c.name, id: existing.id, deduped: true, repeat: true, startedRun: false });
-        continue;
-      }
+        return {
+          name: c.name, id: res.id, deduped: res.deduped, clientId: ingestClientId,
+          repeat: false, startedRun: !res.deduped
+        };
+      }));
+      continue;
     }
 
     if (c.name === "booking.rescheduled" || c.name === "booking.cancelled") {
@@ -979,31 +1074,36 @@ export async function handleClickFunnelsWebhook({
 
     /* A repeat post of a survey already in flight: still stored, still merged
        onto the client by the local handlers, but no second durable run. */
-    const repeat = REPEAT_SUPPRESSED_EVENTS.has(c.name)
-      ? await isRepeatFunnelPost(db, {
+    const record = async () => {
+      const repeat = REPEAT_SUPPRESSED_EVENTS.has(c.name)
+        ? await isRepeatFunnelPost(db, {
         orgId: ingestOrgId,
         name: c.name,
         email: evt.email,
         funnel: evt.funnel
       })
-      : false;
+        : false;
 
-    const res = await emit(db, c.name, payload, {
-      idempotencyKey: idKey,
-      orgId: ingestOrgId,
-      clientId: ingestClientId,
-      skipInngest: repeat
-    });
-    emitted.push({
-      name: c.name,
-      id: res.id,
-      deduped: res.deduped,
-      clientId: ingestClientId,
-      repeat,
-      // The one fact this lane exists to control: did this delivery start a
-      // durable workflow run (a text-message cadence), or only record data?
-      startedRun: !repeat && !res.deduped
-    });
+      const res = await emit(db, c.name, payload, {
+        idempotencyKey: idKey,
+        orgId: ingestOrgId,
+        clientId: ingestClientId,
+        skipInngest: repeat
+      });
+      emitted.push({
+        name: c.name,
+        id: res.id,
+        deduped: res.deduped,
+        clientId: ingestClientId,
+        repeat,
+        startedRun: !repeat && !res.deduped
+      });
+    };
+    if (REPEAT_SUPPRESSED_EVENTS.has(c.name)) {
+      await withFunnelRepeatLock(db, ingestOrgId, evt.email, c.name, record);
+    } else {
+      await record();
+    }
   }
   let clickfunnelsContact = null;
   if (applySurveyFlat) {

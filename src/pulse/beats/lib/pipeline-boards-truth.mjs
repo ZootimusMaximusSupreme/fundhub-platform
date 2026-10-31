@@ -10,7 +10,7 @@
 // clocks (src/repair/sla.mjs) and the owner hold (src/pulse/owner-hold.mjs).
 //
 //   pipeline:count-true      P1  every column paints as many cards as the database holds
-//   pipeline:dead-stage      P5  stages no code moves a card to: green until a card lands there
+//   pipeline:dead-stage      P5  unsupported stages or missing stage evidence
 //   pipeline:nobody-lost     P6  paying clients with no card, archived clients who paid, cards off the board
 //
 // Held copies (a beat cannot import the files they come from). beat-pipeline-boards.test.mjs fails the
@@ -59,11 +59,11 @@ export const BOARDS = Object.freeze([
 export const BOARD_NAME = new Map(BOARDS.map((b) => [b.key, b.name]));
 export const boardName = (key) => BOARD_NAME.get(key) || key;
 
-/* ───────────── stages nothing moves a card to (P5) ─────────────
-   [board, stage, why]. From the board, section 3. A card landing on one of these was put there by a
-   hand or by something unplanned, and nothing watches what happens next. */
+/* ───────────── unsupported stages or missing stage evidence (P5) ─────────────
+   [board, stage, why]. Most have no automatic mover. Sales Set has one, but a card
+   there without a completed setter handoff is still unsupported. */
 export const DEAD_STAGES = Object.freeze([
-  ["sales", "confirmed", "no code moves a card to Confirmed"],
+  ["sales", "confirmed", "a completed setter handoff is required"],
   ["inquiry_removal", "removed", "mark cleared sets the case and fires inquiry.removed but never moves the card"],
   ["inquiry_removal", "hold", "a fraud alert sets a hold reason but never the Hold stage"],
   ["optimization", "round_complete", "no emitter for repair.round.complete"],
@@ -147,6 +147,19 @@ export const BOARD_CARDS_SQL = `
     c.funded,
     c.funded_amount,
     c.is_demo,
+    (c.custom_fields->>'call_confirmed') = 'true' AS call_confirmed,
+    CASE WHEN p.key = 'sales' THEN (
+      SELECT b.starts_at
+        FROM bookings b
+       WHERE b.org_id = p.org_id
+         AND b.client_id = c.id
+         AND b.status IN ('booked', 'rescheduled')
+         AND b.starts_at IS NOT NULL
+       ORDER BY (b.starts_at >= NOW()) DESC,
+                CASE WHEN b.starts_at >= NOW() THEN b.starts_at END ASC NULLS LAST,
+                b.starts_at DESC, b.created_at DESC
+       LIMIT 1
+    ) ELSE NULL END AS booked_starts_at,
     (c.custom_fields->>'total_funding_estimate') AS total_funding_estimate,
     c.custom_fields->>'cf_svy_self_reported_fico' AS survey_fico_raw,
     c.custom_fields->>'cf_svy_self_reported_fico_label' AS survey_fico_label,
@@ -284,6 +297,8 @@ export const DEAD_CARDS_SQL = `
     LEFT JOIN clients c ON c.id = cd.client_id AND c.org_id = cd.org_id
    WHERE p.org_id = $1::uuid
      AND (p.key || '/' || s.key) = ANY($2::text[])
+     AND (p.key <> 'sales' OR s.key <> 'confirmed'
+          OR NULLIF(c.custom_fields->'setter_handoff'->>'complete_at', '') IS NULL)
      AND COALESCE(cd.is_demo, false) = false
      AND COALESCE(c.is_demo, false) = false
      AND COALESCE(c.custom_fields->>'synthetic', '') <> 'true'
@@ -567,7 +582,7 @@ export async function checkCountTrue(run, orgId) {
 
 export async function checkDeadStage(run, orgId) {
   const id = "pipeline:dead-stage";
-  const fix = `A card landed on a stage that no code moves a card to. Open Pipeline, find the card, and see how it got there. Nothing watches what happens to it next. ${NO_AUTOFIX}`;
+  const fix = `A card landed on an unsupported stage or is missing its required workflow evidence. Open Pipeline, find the card, and check how it got there. ${NO_AUTOFIX}`;
   const [cards, apps] = await Promise.all([
     read(run, DEAD_CARDS_SQL, [orgId, [...DEAD_STAGE_KEYS], TEST_CLIENT_EMAIL_RE]),
     read(run, DEAD_APPLICATIONS_SQL, [orgId, [...DEAD_STAGE_KEYS]])

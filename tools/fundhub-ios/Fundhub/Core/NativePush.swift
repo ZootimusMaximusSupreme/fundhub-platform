@@ -1,4 +1,5 @@
 import Foundation
+import CryptoKit
 import SwiftUI
 import UIKit
 import UserNotifications
@@ -32,14 +33,67 @@ enum NativePushInstallation {
     }
 }
 
+enum NativePushConsent {
+    // App-level consent is separate from Apple's device-wide permission and
+    // from whether a prior server registration still exists.
+    private static let key = "fundhub.nativePush.userOptedIn"
+    private static let sessionKey = "fundhub.nativePush.consentSessionFingerprint"
+
+    // A prior user's consent must not follow a new bearer after app relaunch.
+    // Store only a one-way hash, never the bearer itself, in UserDefaults.
+    static func bind(to bearer: String, defaults: UserDefaults = .standard) {
+        let fingerprint = SHA256.hash(data: Data(bearer.utf8))
+            .map { String(format: "%02x", $0) }.joined()
+        guard defaults.string(forKey: sessionKey) == fingerprint else {
+            defaults.set(false, forKey: key)
+            defaults.set(fingerprint, forKey: sessionKey)
+            return
+        }
+    }
+
+    static func isEnabled(defaults: UserDefaults = .standard) -> Bool {
+        defaults.bool(forKey: key)
+    }
+
+    static func setEnabled(_ enabled: Bool, defaults: UserDefaults = .standard) {
+        defaults.set(enabled, forKey: key)
+    }
+}
+
 enum NativePushTap {
     static let portalPath = "/app/client-portal.html"
+    static let staffPath = "/app/staff-alert"
     static let requestLifetime: TimeInterval = 5 * 60
+
+    struct StaffAlert: Equatable {
+        let kind: String
+        let clientId: String
+
+        func workspacePath(role: String?) -> String? {
+            let page: String
+            switch role {
+            case "setter" where kind == "lead": page = "/app/setter-dashboard.html"
+            case "closer": page = "/app/closer-dashboard.html"
+            case "owner": page = kind == "lead" ? "/app/setter-dashboard.html" : "/app/closer-dashboard.html"
+            default: return nil
+            }
+            return "\(page)?client_id=\(clientId)"
+        }
+    }
 
     static func opensClientPortal(_ userInfo: [AnyHashable: Any]) -> Bool {
         // APNs supplies this path from our server's approved payload. Never
         // navigate to a URL, query string, or client ID supplied by a push.
         (userInfo["path"] as? String) == portalPath
+    }
+
+    static func staffAlert(_ userInfo: [AnyHashable: Any]) -> StaffAlert? {
+        guard (userInfo["path"] as? String) == staffPath,
+              let kind = userInfo["kind"] as? String,
+              ["lead", "set", "upcoming"].contains(kind),
+              let rawId = userInfo["client_id"] as? String,
+              let id = UUID(uuidString: rawId) else { return nil }
+        return StaffAlert(kind: kind, clientId: id.uuidString.lowercased())
     }
 }
 
@@ -52,20 +106,31 @@ final class NativePushCenter: ObservableObject {
     }
 
     @Published private(set) var state: State = .checking
-    @Published private(set) var portalOpenRequestId = 0
+    @Published private(set) var openRequestId = 0
     private var bearer: String?
     private var pendingPortalOpenAt: Date?
+    private var pendingStaffOpen: (alert: NativePushTap.StaffAlert, at: Date, bearer: String)?
     private let api = FundhubAPI()
     private let registeredKey = "fundhub.nativePush.registered"
 
     private init() {}
 
+    var hasAttachedSession: Bool { bearer != nil }
+
     @discardableResult
-    func recordNotificationTap(userInfo: [AnyHashable: Any], now: Date = Date()) -> Bool {
-        guard NativePushTap.opensClientPortal(userInfo) else { return false }
-        pendingPortalOpenAt = now
-        portalOpenRequestId &+= 1
-        return true
+    func recordNotificationTap(userInfo: [AnyHashable: Any], now: Date = Date(), sessionBearer: String? = nil) -> Bool {
+        if NativePushTap.opensClientPortal(userInfo) {
+            pendingPortalOpenAt = now
+            openRequestId &+= 1
+            return true
+        }
+        if let alert = NativePushTap.staffAlert(userInfo) {
+            guard let expectedBearer = sessionBearer ?? bearer, !expectedBearer.isEmpty else { return false }
+            pendingStaffOpen = (alert, now, expectedBearer)
+            openRequestId &+= 1
+            return true
+        }
+        return false
     }
 
     func takePortalOpenRequest(now: Date = Date()) -> Bool {
@@ -75,8 +140,26 @@ final class NativePushCenter: ObservableObject {
         return age >= 0 && age <= NativePushTap.requestLifetime
     }
 
+    func takeStaffOpenRequest(now: Date = Date(), currentBearer: String? = nil) -> NativePushTap.StaffAlert? {
+        guard let pending = pendingStaffOpen else { return nil }
+        guard let currentBearer = currentBearer ?? bearer else { return nil }
+        pendingStaffOpen = nil
+        guard currentBearer == pending.bearer else { return nil }
+        let age = now.timeIntervalSince(pending.at)
+        return age >= 0 && age <= NativePushTap.requestLifetime ? pending.alert : nil
+    }
+
     func attach(bearer: String) async {
+        // A different account cannot inherit another session's local consent.
+        if let prior = self.bearer, prior != bearer {
+            NativePushConsent.setEnabled(false)
+            pendingPortalOpenAt = nil
+            pendingStaffOpen = nil
+        }
+        if let pending = pendingStaffOpen, pending.bearer != bearer { pendingStaffOpen = nil }
+        NativePushConsent.bind(to: bearer)
         self.bearer = bearer
+        if pendingStaffOpen != nil { openRequestId &+= 1 }
         await refresh()
     }
 
@@ -86,14 +169,28 @@ final class NativePushCenter: ObservableObject {
         do {
             let server = try await api.nativePushStatus(token: bearer, installationId: NativePushInstallation.id)
             guard self.bearer == bearer else { return }
+            // Do not re-register merely because iOS permission remains granted
+            // or an old server-side registration is still present after opt-out.
+            guard NativePushConsent.isEnabled() else {
+                UIApplication.shared.unregisterForRemoteNotifications()
+                if server.registered {
+                    try await api.unregisterNativePush(token: bearer, installationId: NativePushInstallation.id)
+                    guard self.bearer == bearer else { return }
+                }
+                UserDefaults.standard.set(false, forKey: registeredKey)
+                state = server.configured ? .off : .notReady
+                return
+            }
             UserDefaults.standard.set(server.registered, forKey: registeredKey)
             guard server.configured else {
                 state = .notReady
                 return
             }
             let settings = await UNUserNotificationCenter.current().notificationSettings()
+            guard self.bearer == bearer else { return }
             switch settings.authorizationStatus {
             case .authorized, .provisional, .ephemeral:
+                guard NativePushConsent.isEnabled() else { state = .off; return }
                 state = server.registered ? .on : .registering
                 UIApplication.shared.registerForRemoteNotifications()
             case .denied:
@@ -120,7 +217,12 @@ final class NativePushCenter: ObservableObject {
             }
             let granted = try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound])
             guard self.bearer == bearer else { return }
-            guard granted else { state = .blocked; return }
+            guard granted else {
+                NativePushConsent.setEnabled(false)
+                state = .blocked
+                return
+            }
+            NativePushConsent.setEnabled(true)
             state = .registering
             UIApplication.shared.registerForRemoteNotifications()
         } catch {
@@ -130,7 +232,7 @@ final class NativePushCenter: ObservableObject {
     }
 
     func receivedDeviceToken(_ data: Data) async {
-        guard let bearer else { return }
+        guard let bearer, NativePushConsent.isEnabled() else { return }
         let environment = NativePushEnvironment.current()
         let token = data.map { String(format: "%02x", $0) }.joined()
         do {
@@ -138,7 +240,11 @@ final class NativePushCenter: ObservableObject {
                 token: bearer, deviceToken: token,
                 environment: environment, installationId: NativePushInstallation.id
             )
-            guard self.bearer == bearer else { return }
+            guard self.bearer == bearer && NativePushConsent.isEnabled() else {
+                // An APNs callback/POST can finish after the user turned it off.
+                try? await api.unregisterNativePush(token: bearer, installationId: NativePushInstallation.id)
+                return
+            }
             UserDefaults.standard.set(true, forKey: registeredKey)
             state = .on
         } catch {
@@ -148,11 +254,14 @@ final class NativePushCenter: ObservableObject {
     }
 
     func failedToRegister() {
-        guard bearer != nil else { return }
+        guard bearer != nil, NativePushConsent.isEnabled() else { return }
         state = .error("This iPhone could not connect to Apple notifications. Try again.")
     }
 
     func disable() async {
+        // Persist opt-out immediately; a late callback may not revive consent.
+        NativePushConsent.setEnabled(false)
+        UIApplication.shared.unregisterForRemoteNotifications()
         guard let bearer else { state = .off; return }
         do {
             try await api.unregisterNativePush(token: bearer, installationId: NativePushInstallation.id)
@@ -167,6 +276,7 @@ final class NativePushCenter: ObservableObject {
     }
 
     func revokeBeforeSignOut() async throws {
+        NativePushConsent.setEnabled(false)
         guard let bearer else { return }
         // Idempotent DELETE also covers a prior POST that reached the server
         // even though its response never reached this iPhone.
@@ -174,13 +284,18 @@ final class NativePushCenter: ObservableObject {
         UIApplication.shared.unregisterForRemoteNotifications()
         UserDefaults.standard.set(false, forKey: registeredKey)
         self.bearer = nil
+        pendingPortalOpenAt = nil
+        pendingStaffOpen = nil
         state = .off
     }
 
     func resetAfterInvalidSession() {
+        NativePushConsent.setEnabled(false)
         UIApplication.shared.unregisterForRemoteNotifications()
         UserDefaults.standard.set(false, forKey: registeredKey)
         bearer = nil
+        pendingPortalOpenAt = nil
+        pendingStaffOpen = nil
         state = .off
     }
 }
@@ -202,7 +317,7 @@ struct NativePushCard: View {
             case .registering:
                 ProgressView("Connecting this iPhone")
             case .on:
-                Text("This iPhone is ready for Fundhub notifications.")
+                Text("This iPhone is registered for Fundhub notifications. Delivery is not guaranteed.")
                 Button("Turn notifications off") { Task { await push.disable() } }
                     .buttonStyle(.bordered)
             case .blocked:
@@ -249,7 +364,15 @@ final class FundhubPushDelegate: NSObject, UIApplicationDelegate, UNUserNotifica
             return
         }
         Task { @MainActor in
-            NativePushCenter.shared.recordNotificationTap(userInfo: response.notification.request.content.userInfo)
+            let push = NativePushCenter.shared
+            let savedBearer: String?
+            if push.hasAttachedSession {
+                savedBearer = nil
+            } else {
+                savedBearer = await Task.detached(priority: .userInitiated) { SessionKeychain.read() }.value
+            }
+            push.recordNotificationTap(userInfo: response.notification.request.content.userInfo,
+                                       sessionBearer: savedBearer)
             completionHandler()
         }
     }

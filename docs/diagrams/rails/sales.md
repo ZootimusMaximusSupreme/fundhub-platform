@@ -11,7 +11,7 @@ stateDiagram-v2
     state "New Lead" as new_lead
     state "Survey Complete" as survey_complete
     state "Booked" as booked
-    state "Confirmed" as confirmed
+    state "Set" as confirmed
     state "Showed" as showed
     state "Diagnostic Paid" as diagnostic_paid
     state "Decision Rendered" as decision_rendered
@@ -49,7 +49,7 @@ card into, via `moveCardToStage`.
 | 0 | `new_lead` | New Lead | `s-01-new-lead-intake` |
 | 1 | `survey_complete` | Survey Complete | — |
 | 2 | `booked` | Booked | `s-04-call-booked` |
-| 3 | `confirmed` | Confirmed | — |
+| 3 | `confirmed` | Set | — |
 | 4 | `showed` | Showed | `dpc-02-call-outcome-enforcement` |
 | 5 | `diagnostic_paid` | Diagnostic Paid | — |
 | 6 | `decision_rendered` | Decision Rendered | — |

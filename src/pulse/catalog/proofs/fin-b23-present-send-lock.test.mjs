@@ -53,7 +53,8 @@ function held() {
   return gate;
 }
 
-async function openDeck(open, { tier, handlers, phase = "07" }) {
+// The send buttons live on S-23, part 9 of the call script, Paperwork (the strip's 09 since 2026-10-29).
+async function openDeck(open, { tier, handlers, phase = "09" }) {
   const opened = await open(`/app/present.html?contact=${CLIENT}`, {
     session: CLOSER,
     clock: true,
@@ -288,6 +289,9 @@ test("Send letters now locks after the staged letters are mailed", { timeout: 90
       "/api/repair/send": gate.handler((body) => { sends.push(body); return { body: { ok: true } }; }),
     },
   });
+  // a file that is not ready starts on the Capital Blueprint (2026-10-29): step down to credit optimization
+  await page.locator('[data-act="desc:dfy"]').click();
+  await page.locator('[data-act="phase:09"]').click();
   const send = page.locator('[data-act="send-letters"]');
   assert.equal(await send.isDisabled(), true, "nothing staged, nothing to send");
   await page.locator("#fh-repair-paid").fill("500");

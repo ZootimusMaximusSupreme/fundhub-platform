@@ -116,6 +116,7 @@ import companyBrainReviews from "../../api/company-brain/reviews.mjs";
 import companyBrainSync from "../../api/company-brain/sync.mjs";
 import companyBrainUpload from "../../api/company-brain/upload.mjs";
 import companyBrainThreads from "../../api/company-brain/threads.mjs";
+import companyBrainLibrary from "../../api/company-brain/library.mjs";
 import readWorkflows from "../../api/read/workflows.mjs";
 import readTransactions from "../../api/read/transactions.mjs";
 import readCloserCall from "../../api/read/closer-call.mjs";
@@ -679,6 +680,7 @@ export const ROUTES = {
 
   // Saved conversations, scoped to one org AND one staff member.
   "company-brain/threads": companyBrainThreads,
+  "company-brain/library": companyBrainLibrary,
 
   // read/workflows introspects the live src/workflows/index.mjs `functions`
   // array — the actual Inngest registry — rather than a hand-authored list, so
