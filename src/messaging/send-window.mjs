@@ -16,6 +16,11 @@
 //
 // The lists name template keys, not workflows, because the dispatcher only ever
 // sees a queued row and its key. A key that is on neither list is standard.
+//
+// A version B of a tested message (src/messaging/experiments.mjs, key + "-B") is
+// sorted by its base key, so B is held and sent exactly like A.
+
+import { baseKeyOf } from "./experiments.mjs";
 
 export const SEND_WINDOW_TZ = "America/Phoenix";
 export const DRIP_START_HOUR = 9;
@@ -58,9 +63,9 @@ export const DRIP_TEMPLATE_KEYS = new Set([
   "SMS-BS01-02-PRECALL"
 ]);
 
-/** "instant" | "drip" | "standard" for a template key. */
+/** "instant" | "drip" | "standard" for a template key. A "-B" version sorts as its base key. */
 export function sendTiming(templateKey) {
-  const key = String(templateKey || "");
+  const key = baseKeyOf(String(templateKey || ""));
   if (INSTANT_TEMPLATE_KEYS.has(key)) return "instant";
   if (DRIP_TEMPLATE_KEYS.has(key)) return "drip";
   return "standard";

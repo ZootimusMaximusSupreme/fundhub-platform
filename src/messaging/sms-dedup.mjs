@@ -4,6 +4,7 @@
 // is called; Twilio has no idempotency key (see providers/twilio.mjs).
 
 import crypto from "node:crypto";
+import { baseKeyOf, withVariants } from "./experiments.mjs";
 
 function resolveTimestampParam(now) {
   const value = typeof now === "function" ? now() : now;
@@ -46,7 +47,8 @@ export function normalizeSmsDestination(value) {
  * the same batch before the first row's UPDATE … status='sent' is visible.
  */
 export function smsDedupBatchKey({ orgId, templateKey, bodyFingerprint, toAddress }) {
-  const tpl = templateKey ? String(templateKey) : "";
+  // A version B of a tested message (src/messaging/experiments.mjs) is the same step as its base key.
+  const tpl = templateKey ? String(baseKeyOf(String(templateKey))) : "";
   const body = tpl ? "" : String(bodyFingerprint || "");
   const to = normalizeSmsDestination(toAddress);
   return `${orgId}|sms|${tpl}|${body}|${to}`;
@@ -70,6 +72,10 @@ export async function findRecentDuplicateSms(
 
   const templateKey = message.template_key ? String(message.template_key) : "";
   const freeformBody = templateKey ? null : String(message.rendered_body ?? "");
+  /* The keys that count as "the same template": the key itself, and for a tested message
+     (src/messaging/experiments.mjs) both of its versions, so two people on one phone who
+     landed in different arms still are not texted the same step twice. */
+  const sameTemplateKeys = templateKey ? withVariants([baseKeyOf(templateKey)]) : null;
 
   const batchKey = smsDedupBatchKey({
     orgId: message.org_id,
@@ -93,7 +99,7 @@ export async function findRecentDuplicateSms(
         message.org_id,
         excludeMessageId ?? message.id,
         to,
-        templateKey || null,
+        sameTemplateKeys,
         freeformBody,
         at,
         windowMin
@@ -102,7 +108,7 @@ export async function findRecentDuplicateSms(
         message.org_id,
         excludeMessageId ?? message.id,
         to,
-        templateKey || null,
+        sameTemplateKeys,
         freeformBody,
         windowMin
       ];
@@ -116,8 +122,8 @@ export async function findRecentDuplicateSms(
         AND id <> $2::uuid
         AND right(regexp_replace(COALESCE(to_address, ''), '[^0-9]', '', 'g'), 10) = $3
         AND (
-          ($4::text IS NOT NULL AND template_key = $4)
-          OR ($4::text IS NULL AND template_key IS NULL AND rendered_body = $5::text)
+          ($4::text[] IS NOT NULL AND template_key = ANY($4::text[]))
+          OR ($4::text[] IS NULL AND template_key IS NULL AND rendered_body = $5::text)
         )
         AND COALESCE(last_attempt_at, created_at) >= ${sinceSql}
       ORDER BY COALESCE(last_attempt_at, created_at) DESC

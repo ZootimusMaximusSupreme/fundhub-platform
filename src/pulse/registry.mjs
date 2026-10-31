@@ -390,6 +390,7 @@ const API_KEYS = [
   "read/lender-observations",
   "read/lenders",
   "read/message-templates",
+  "read/message-tests",
   "read/messages",
   "read/money-map",
   "read/morning-brief",
