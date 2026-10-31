@@ -29,7 +29,7 @@ export const CRITICAL_EDGES = Object.freeze([
     event: "booking.created", consumer: "onBookingCreated / s-04-call-booked",
     receipt: "bookings + confirmation message + call_outcomes", graceMinutes: 30,
     pulse: "calls:booked-no-outcome",
-    paths: ["src/register-all.mjs", "src/adapters/clickfunnels.mjs", "src/bookings/", "src/handlers/client-lifecycle.mjs", "src/workflows/s-04", "src/workflows/cortana-booking-feed.mjs", "src/messaging/providers/cortana-booking-webhook.mjs", "src/config/survey-qualification.mjs", "src/setter/tasks.mjs", "src/auth/magic-link.mjs", "src/auth/booking-account", "src/sales/call-outcomes.mjs", "src/sales/closer-now.mjs", "src/sales/closer-deck.mjs", "src/sales/cockpit.mjs", "src/setter/dashboard.mjs", "api/tasks.mjs", "public/app/closer-dashboard.html", "public/app/setter-dashboard.html", "public/app/calendar.html", "public/app/pipeline.html", "public/app/shell.js", "api/dashboard/pipeline.mjs", "api/auth/magic-link.mjs", "src/auth/booking-account", "src/auth/magic-link", "public/portal-login.html", "marketing/landing-pages/", "src/funnel/", "public/funnel/", "src/survey/", "src/workflows/messaging.mjs"]
+    paths: ["src/register-all.mjs", "src/adapters/clickfunnels.mjs", "src/bookings/", "src/handlers/client-lifecycle.mjs", "src/workflows/s-04", "src/workflows/cortana-booking-feed.mjs", "src/messaging/providers/cortana-booking-webhook.mjs", "src/config/survey-qualification.mjs", "src/setter/tasks.mjs", "db/migrations/508_qualification_bucket.sql", "src/auth/magic-link.mjs", "src/auth/booking-account", "src/sales/call-outcomes.mjs", "src/sales/closer-now.mjs", "src/sales/closer-deck.mjs", "src/sales/cockpit.mjs", "src/setter/dashboard.mjs", "api/tasks.mjs", "public/app/closer-dashboard.html", "public/app/setter-dashboard.html", "public/app/calendar.html", "public/app/pipeline.html", "public/app/shell.js", "api/dashboard/pipeline.mjs", "api/auth/magic-link.mjs", "src/auth/booking-account", "src/auth/magic-link", "public/portal-login.html", "marketing/landing-pages/", "src/funnel/", "public/funnel/", "src/survey/", "src/workflows/messaging.mjs"]
   },
   {
     id: "payment-ledger-entitlement", severity: "P0", owner: "A/R",
@@ -119,7 +119,7 @@ export const CRITICAL_EDGES = Object.freeze([
     event: "SOURCE-STATE: installed first open", consumer: "native webview / portal authentication",
     receipt: "real installed app + authenticated portal result (device proof separately)", graceMinutes: null,
     pulse: "portal:summary",
-    paths: ["ios/", "macos/", "native/", "tools/fundhub-ios/", "tools/fundhub-macos/", "api/native/client-activity.mjs", "public/app/client-ios.js", "public/app/client-portal.html", "src/push/native"]
+    paths: ["ios/", "macos/", "native/", "tools/fundhub-ios/", "tools/fundhub-macos/", "api/native/client-activity.mjs", "public/app/client-ios.js", "public/app/client-portal.html", "src/push/native", "db/migrations/521_native_client_app_opens.sql"]
   }
 ]);
 
@@ -151,11 +151,16 @@ export function changedCriticalEdges(filenames = []) {
 
 // Report-only catch for future high-risk source files outside the ten mapped
 // families. This MUST NOT become a 403-legacy fail-closed rule by accident.
-const HIGH_RISK_UNMAPPED = /(?:^|[/._-])(?:pay(?:ment)?|bill(?:ing)?|ledger|entitlements?|bookings?|calendars?|consent|soft[_-]?pull|crs|credit|funding|funded|round|commissions?|invoices?|repair|blueprint|finance[_-]?os|messages?|messaging|sms|emails?|delivery|lenders?|apply|attribution|callbacks?|webhooks?|cortana|portal|apns|push|devices?|receipts?)(?:$|[/._-])/i;
+const HIGH_RISK_UNMAPPED = /(?:^|[/._-])(?:pay(?:ment)?|bill(?:ing)?|ledger|entitlements?|bookings?|calendars?|consent|soft[_-]?pull|crs|credit|funding|funded|round|commissions?|invoices?|repair|blueprint|finance[_-]?os|messages?|messaging|sms|emails?|delivery|lenders?|apply|attribution|callbacks?|webhooks?|cortana|portal|apns|push|devices?|receipts?|native|qualification)(?:$|[/._-])/i;
+// This Netlify module is the live adapter for EVERY /api/* route. A past
+// missing route left whole workflow families unreachable despite green code
+// tests; a change to this existing chokepoint must request explicit A→B
+// routing and downstream-result review, even without a risk word in its name.
+const ALWAYS_REVIEW_CHOKEPOINTS = new Set(["netlify/functions/api.mjs"]);
 export function unmappedHighRiskSourceChanges(filenames = []) {
   const mapped = new Set(changedCriticalEdges(filenames).flatMap((edge) => edge.files));
   return [...new Set(filenames.map(String).filter(materialSource))]
-    .filter((file) => HIGH_RISK_UNMAPPED.test(file) && !mapped.has(file));
+    .filter((file) => (HIGH_RISK_UNMAPPED.test(file) || ALWAYS_REVIEW_CHOKEPOINTS.has(file)) && !mapped.has(file));
 }
 
 // Explicitly never returns PASS. A PR note and source-level tests are not live proof.
