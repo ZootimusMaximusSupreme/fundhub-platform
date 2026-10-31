@@ -710,12 +710,12 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
       const originalQuery = fixture.query.bind(fixture);
       fixture.query = async (sql, params = []) => {
         const text = String(sql);
-        if (/FROM staff\\b/.test(text)) {
+        if (/FROM staff\b/.test(text)) {
           return { rows: params[0] === closerId && params[1] === ORG
             ? [{ id: closerId, role: "closer" }] : [] };
         }
         if (/SELECT 1 FROM sale_attributions/.test(text)) return { rows: [] };
-        if (/SUM\\(split_percent\\)/.test(text)) return { rows: [{ s: 0 }] };
+        if (/SUM\(split_percent\)/.test(text)) return { rows: [{ s: 0 }] };
         if (/INSERT INTO sale_attributions/.test(text)) {
           fixture.queries.push({ text, params });
           return { rows: [{ id: "synthetic-attribution" }] };
