@@ -12,6 +12,7 @@ async function scenario({paid=false,agreement=true,consent=false,owned=true,afte
  requireAuth:async()=>({id:"33333333-3333-4333-8333-333333333333",org_id:ORG,role:"owner"}),
  hasRepairAgreement:async()=>agreement,hasDisputeAuthorization:async()=>consent,
  hasActivePaidRepairProgram:async()=>paid,
+ loadClientReturnAddress:async()=>({address_line1:"Recorded consumer address",address_state:"AZ"}),
  sendRepairLetters:async(_db,args)=>{calls.send++;assert.equal(args.enforceActivePaidRepair,true);
    return afterPreflight?{ok:false,results:[{ok:false,error:"repair_enrollment_inactive_or_unpaid"}]}:{ok:true,results:[]}},
  mailBureauLetter:async()=>{calls.provider++;throw Error("provider must not be called");}};

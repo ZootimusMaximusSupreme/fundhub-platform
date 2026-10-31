@@ -36,6 +36,10 @@ function harness({ owned = true, agreement = false, consent = false } = {}) {
     },
     requireAuth: async () => ({ id: STAFF, org_id: ORG, role: "inquiry_specialist" }),
     hasActivePaidRepairProgram: async () => true,
+    loadClientReturnAddress: async () => ({
+      address_line1: "Recorded consumer address", address_city: "Phoenix",
+      address_state: "AZ", address_zip: "85001"
+    }),
     hasRepairAgreement: async (_db, args) => {
       state.agreementReads++;
       assert.deepEqual(args, { orgId: ORG, clientId: CLIENT });

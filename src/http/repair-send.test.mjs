@@ -38,13 +38,14 @@ test("DFY/repair send path calls mail helper when mail=true", async () => {
     body: {
       mail: true,
       client_id: "33333333-3333-4333-8333-333333333333",
+      // Deliberately forged request sender: only recorded PII may print.
       mail_from: {
-        first_name: "Pat",
-        last_name: "Client",
-        address_line1: "12 Oak St",
-        address_city: "Dallas",
-        address_state: "TX",
-        address_zip: "75201"
+        first_name: "Mallory",
+        last_name: "Unknown",
+        address_line1: "900 Fake Way",
+        address_city: "Orlando",
+        address_state: "FL",
+        address_zip: "32801"
       },
       letters: [{ bureau: "EX", html: "<p>signed body</p>", letter_id: "55555555-5555-4555-8555-555555555555" }]
     }
@@ -60,6 +61,7 @@ test("DFY/repair send path calls mail helper when mail=true", async () => {
     // This fixture represents a client whose signed repair agreement is on file.
     // The separate authorization regression verifies unsigned clients are refused.
     hasActivePaidRepairProgram: async () => true,
+    loadClientReturnAddress: async () => IDENT,
     hasRepairAgreement: async (_db, { orgId, clientId }) => {
       assert.equal(orgId, "22222222-2222-4222-8222-222222222222");
       assert.equal(clientId, "33333333-3333-4333-8333-333333333333");
@@ -76,6 +78,8 @@ test("DFY/repair send path calls mail helper when mail=true", async () => {
   assert.equal(mailCalls[0].bureau, "EX");
   assert.equal(mailCalls[0].html, "<p>signed body</p>");
   assert.equal(mailCalls[0].from.first_name, "Pat");
+  assert.equal(mailCalls[0].from.address_line1, "12 Oak St");
+  assert.equal(mailCalls[0].from.address_state, "TX");
 });
 
 test("repair send without mail=true fails closed", async () => {
@@ -163,6 +167,7 @@ async function post(deps, statements) {
     // Existing provider/replay tests exercise AUTHORIZED mail. The new route
     // tests separately enforce 403 before any send when authorization is absent.
     hasActivePaidRepairProgram: async () => true,
+    loadClientReturnAddress: async () => IDENT,
     hasRepairAgreement: async (_db, { orgId, clientId }) => {
       assert.equal(orgId, "22222222-2222-4222-8222-222222222222");
       assert.equal(clientId, "33333333-3333-4333-8333-333333333333");
