@@ -81,3 +81,70 @@ test("paid Blueprint year survives the shorter FinanceOS monthly term, but not a
       db.release();
     }
 });
+
+
+test("Blueprint genuine refresh ignores all known completed rehearsal formats; unresolved work never redials",
+  { skip: safe ? false : "requires a local test/scratch PostgreSQL database" }, async () => {
+    const conn = await pool.connect();
+    await conn.query("BEGIN");
+    try {
+      for (const table of ["subscriptions", "soft_pull_requests", "crs_results",
+        "entitlements", "transactions", "products", "product_aliases"]) {
+        await conn.query("CREATE TEMP TABLE " + table + " (LIKE public." + table
+          + " INCLUDING ALL) ON COMMIT DROP");
+      }
+      await conn.query("SET LOCAL search_path TO pg_temp, public");
+      const org = randomUUID(), client = randomUUID(), foreignOrg = randomUUID();
+      const subscriptionId = (await conn.query(
+        "INSERT INTO subscriptions (org_id,client_id,tier,status,effective_from,current_period_start,current_period_end) "
+          + "VALUES ($1,$2,'finance-os','active','2026-10-01','2026-10-01','2026-12-31') RETURNING id",
+        [org, client])).rows[0].id;
+      const at = new Date("2026-10-12T00:00:00Z");
+      const due = async (realPull) => (await dueClients(conn, at, { realPull }))
+        .map((row) => row.subscription_id);
+      const clear = async () => {
+        await conn.query("DELETE FROM soft_pull_requests");
+        await conn.query("DELETE FROM crs_results");
+      };
+      const completed = async ({ provider = "crs_softview", result, resultOrg = org }) => {
+        const credit = (await conn.query(
+          "INSERT INTO crs_results (org_id,client_id,provider,result) VALUES ($1,$2,$3,$4::jsonb) RETURNING id",
+          [resultOrg, client, provider, JSON.stringify(result)])).rows[0].id;
+        await conn.query(
+          "INSERT INTO soft_pull_requests (org_id,client_id,subscription_id,requested_by_kind,reason,status,requested_at,resolved_at,crs_result_id) "
+            + "VALUES ($1,$2,$3,'system','Included refresh synthetic fixture','fulfilled','2026-10-10','2026-10-10',$4)",
+          [org, client, subscriptionId, credit]);
+      };
+      assert.deepEqual(await due(true), [subscriptionId], "paid subscriber initially due");
+      for (const sample of [
+        { provider: "crs_softview_simulated", result: {} },
+        { result: { simulated: true, environment: "production" } },
+        { result: { simulated: "1", environment: "production" } },
+        { result: { simulated: false, environment: "sandbox" } },
+        { result: { simulated: false, environment: "simulated" } }
+      ]) {
+        await clear();
+        await completed(sample);
+        assert.deepEqual(await due(false), [], "rehearsal must not loop in simulated mode");
+        assert.deepEqual(await due(true), [subscriptionId],
+          "completed rehearsal cannot spend a real refresh: " + JSON.stringify(sample));
+      }
+      await clear();
+      await completed({ result: { simulated: false, environment: "production" } });
+      assert.deepEqual(await due(true), [], "real credit result blocks a second automatic pull");
+      await clear();
+      await completed({ result: { simulated: true }, resultOrg: foreignOrg });
+      assert.deepEqual(await due(true), [], "foreign-org report cannot release a local request");
+      for (const state of ["queued", "failed"]) {
+        await clear();
+        await conn.query(
+          "INSERT INTO soft_pull_requests (org_id,client_id,subscription_id,requested_by_kind,reason,status,requested_at,resolved_at) "
+            + "VALUES ($1,$2,$3,'system','Included refresh unresolved fixture',$4,'2026-10-10',$5)",
+          [org, client, subscriptionId, state, state === "failed" ? "2026-10-10" : null]);
+        assert.deepEqual(await due(true), [], state + " requires recovery, never automatic re-pull");
+      }
+    } finally {
+      await conn.query("ROLLBACK");
+      conn.release();
+    }
+  });
