@@ -107,6 +107,7 @@ Legend: **both homes** = one real file in `.ai/rules`, linked for Cursor and for
 - `outcome-first-copy` (both homes): Sales copy leads with the outcome, then the facts; banned sales words.
 - `no-ssn-before-checkout-step-3` (both homes): Sales copy never names the Social Security number; only checkout step 3 asks.
 - `funding-sequence-term` (both homes): Say next funding sequence, never round two.
+- `no-josh-chris-everywhere` (both homes): Josh is gone. Every text, email, call and screen a lead, client or staff member reads or hears says Chris (owner-set 2026-10-31). Machine ids keep their names.
 - `marketing-tooling-from-chat` (both homes): Ad, script, and VSL work runs from chat with a skill and rules pack, never a scheduled job.
 
 ## 7. Video and animation

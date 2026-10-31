@@ -519,9 +519,9 @@ function seed(){return{
   desc:'What a business owner goes through, from filling out the form to getting their result.',
   nodes:[
    N('sms','Text them the survey link',{body:"Hi {{first_name}} — Chris from Fundhub. Got your request. Quick 2-min survey so I can see what you'd qualify for: {{survey_link}}  Reply STOP to opt out.",delay:'instant'},
-     [['Template','S-01'],['Agent','Setter Josh picks up the reply thread'],['Rule','A2P opt-out language required']]),
+     [['Template','S-01'],['Agent','Setter Chris picks up the reply thread'],['Rule','A2P opt-out language required']]),
    N('assign','Give the lead to a setter',{role:'Setter'},
-     [['Journey','Setter journey starts'],['Agent','Setter Josh dials within 5 minutes'],['Screen','Setter queue']]),
+     [['Journey','Setter journey starts'],['Agent','Setter Chris dials within 5 minutes'],['Screen','Setter queue']]),
    N('wait','Wait two days for the survey',{amount:'2',unit:'days'},[]),
    N('condition','Did they finish the survey',{field:'survey_complete',op:'is true'},[],[
      {label:'Yes',nodes:[
@@ -545,8 +545,8 @@ function seed(){return{
  setter:{name:'Setter',start:'A new lead lands in the queue',end:'Call is booked and handed to a closer',
   desc:'The first contact. Owns the gap between a form fill and a slot on someone’s calendar.',
   nodes:[
-   N('agent','Voice agent calls them',{agent:'Setter Josh',note:'Three attempts across the first hour.'},
-     [['Agent','Setter Josh (Bland)'],['Rule','Stops at three attempts']]),
+   N('agent','Voice agent calls them',{agent:'Setter Chris',note:'Three attempts across the first hour.'},
+     [['Agent','Setter Chris (Bland)'],['Rule','Stops at three attempts']]),
    N('condition','Did they pick up',{field:'call_answered',op:'is true'},[],[
      {label:'Yes',nodes:[N('sms','Send the survey link',{body:"Here's the 2-minute survey, {{first_name}}: {{survey_link}}  Reply STOP to opt out.",delay:'instant'},[['Template','N-03']])]},
      {label:'No',nodes:[N('sms','Text after the missed call',{body:"Tried you just now, {{first_name}} — Chris from Fundhub. Easier to text? Tell me what you're trying to fund. Reply STOP to opt out.",delay:'instant'},[['Template','N-02']])]}
@@ -701,7 +701,7 @@ stage    {stage, pipeline}      stage: ${STAGES.join(' | ')}
                                  pipeline: ${PIPES.join(' | ')}
 assign   {role}                 role: ${ROLES.join(' | ')}
 handoff  {role, stage}
-agent    {agent, note}          agent: UnderwriteIQ | Setter Josh | Brand Studio | Inquiry Voice | Alerts Engine
+agent    {agent, note}          agent: UnderwriteIQ | Setter Chris | Brand Studio | Inquiry Voice | Alerts Engine
 payment  {amount, product}
 record   {note}
 
@@ -1042,7 +1042,7 @@ function stepHTML(){
     case 'stage': body=F.sel('Move to','stage',c.stage,STAGES)+F.sel('In which pipeline','pipeline',c.pipeline,PIPES); break;
     case 'assign': body=F.sel('Which role','role',c.role,ROLES,'Goes to whoever on that role is clocked in.'); break;
     case 'handoff': body=F.sel('Who picks up','role',c.role,ROLES)+F.txt('Where they pick up','stage',c.stage); break;
-    case 'agent': body=F.sel('Which agent','agent',c.agent,['UnderwriteIQ','Setter Josh','Brand Studio','Inquiry Voice','Alerts Engine'])+
+    case 'agent': body=F.sel('Which agent','agent',c.agent,['UnderwriteIQ','Setter Chris','Brand Studio','Inquiry Voice','Alerts Engine'])+
       F.area('What it does','note',c.note); break;
     case 'payment': body=F.txt('Amount','amount',c.amount)+F.txt('What for','product',c.product,'Consent is always captured before a charge.'); break;
     case 'record': body=F.area('What gets saved','note',c.note); break;
