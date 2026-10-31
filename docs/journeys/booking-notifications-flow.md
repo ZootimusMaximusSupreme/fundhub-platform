@@ -190,9 +190,11 @@ flowchart TD
     K3 -->|No| M3[Come-back text + email 3]
 ```
 
-**The link is the plain survey page (containment, 2026-10-31).** Every message carries
-`{{survey_resume_link}}`: `https://apply.fundhub.ai/apply`, with no `?r=` code, and the
-survey starts at the top. `/apply` takes an existing lead's email with a new phone and
+**The link is the plain survey page (containment, 2026-10-31).** The welcome and
+come-back templates link to `https://apply.fundhub.ai/apply`, with no `?r=` code,
+and the survey starts at the top. Their copy says this plainly. S-02 uses saved
+answers only to decide whether more questions remain; its texts include no saved
+progress detail. `/apply` takes an existing lead's email with a new phone and
 writes that phone onto the lead (`resolveClient`), so a welcome or come-back text can
 reach a phone nobody proved is the lead's. The signed code those texts used to carry
 opened the lead's saved contact and answers at `GET /api/public/survey-resume`. That

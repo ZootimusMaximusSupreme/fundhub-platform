@@ -66,7 +66,7 @@ async function linksCheck(io) {
   try {
     row = (await io.read(COME_BACK_LINKS_SQL, [io.orgId, new Date(io.now.getTime()).toISOString()])).rows?.[0];
   } catch {
-    return { id, status: "SKIP", detail: "the come-back messages could not be read" };
+    return { id, status: "FAIL", detail: "the welcome and come-back messages could not be read" };
   }
   const total = Number(row?.total) || 0;
   const coded = Number(row?.coded) || 0;

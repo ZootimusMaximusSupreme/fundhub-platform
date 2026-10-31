@@ -137,7 +137,8 @@ reads the welcome and come-back messages of the last 24 hours.
 when the real code opens nothing. The hourly `survey:resume-links-signed` is green only
 when no S-00 or S-02 message carries a `?r=` code, because `/apply` can put a stranger's
 phone on an existing lead. Messages written before the containment ship can read red for
-up to 24 hours; their codes open nothing.
+up to 24 hours; their codes open nothing. A failed message read is red, not an
+empty-day skip.
 
 ## The hourly pulse (added 2026-10-09)
 

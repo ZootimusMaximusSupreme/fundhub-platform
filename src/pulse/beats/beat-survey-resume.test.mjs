@@ -72,6 +72,18 @@ test("survey-resume: no come-back message in a day is nothing to judge, never gr
   assert.ok(result.steps.find((step) => step.name === "survey-resume-links-signed").skipped);
 });
 
+test("survey-resume: a failed message read is red, never mistaken for an empty day", async () => {
+  const checks = await truth.runSurveyResumeChecks({
+    orgId: "00000000-0000-0000-0000-000000000001",
+    now: new Date("2026-10-31T12:00:00Z"),
+    baseUrl: "https://fundhub.ai",
+    readWeb: async () => ({ status: 400, text: '{"error":"token_required"}' }),
+    read: async () => { throw new Error("database unavailable"); }
+  });
+  assert.deepEqual(checks.map((check) => check.status), ["PASS", "FAIL"]);
+  assert.equal(checks[1].detail, "the welcome and come-back messages could not be read");
+});
+
 test("survey-resume: the read is one SELECT on the welcome and come-back keys only, real people only", () => {
   const sql = truth.COME_BACK_LINKS_SQL;
   assert.match(sql, /^\/\* beat:survey-resume-links \*\//);

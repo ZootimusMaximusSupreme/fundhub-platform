@@ -14,11 +14,10 @@
 //   touch 2  9:00 a.m. Arizona on the day after touch 1 really goes out
 //   touch 3  9:00 a.m. Arizona on the day after touch 2
 //
-// Every message carries three merge tags: {{survey_resume_link}}, the plain /apply page
-// (see CONTAINMENT below), {{survey_stopped_at}} ("the credit score question") and {{survey_taps_left}} ("5
-// more taps"), which say it the way a person would (surveyProgressWords in
-// src/survey/resume-state.mjs). The words are the seed's (SMS-S02-RESUME-1..3,
-// EMAIL-S02-RESUME-1..3); this file only sends the keys.
+// The messages link to the plain /apply page. surveyProgressWords still decides
+// whether any questions remain, but progress details are not sent to an unproved
+// phone. The words live in the SMS-S02-RESUME-1..3 and EMAIL-S02-RESUME-1..3
+// templates; this file only sends their keys.
 //
 // THE TWO PROGRESS TAGS ARE WORKED OUT AT SEND TIME, from the answers saved by then,
 // because a person can answer more questions between one touch and the next. A touch
@@ -202,9 +201,7 @@ export async function handle({ event, db, step, now = () => Date.now() }) {
       // Every question is answered: there is nothing to come back to, so nothing goes.
       if (progress.left === 0) return { skipped: "all_answered" };
       const context = {
-        survey_resume_link: RESUME_BASE_URL,
-        survey_stopped_at: progress.stoppedAt,
-        survey_taps_left: progress.tapsLeft
+        survey_resume_link: RESUME_BASE_URL
       };
       return {
         sms: await sendTemplated(db, {

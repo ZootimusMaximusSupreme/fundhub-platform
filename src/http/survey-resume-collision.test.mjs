@@ -46,7 +46,7 @@ const WELCOME_KEYS = ["EMAIL-S00-WELCOME", "SMS-S00-WELCOME"];
 const template = (key) => ({
   org_id: ORG, template_key: key, channel: key.startsWith("SMS") ? "sms" : "email",
   subject: key.startsWith("EMAIL") ? `Subject for ${key}` : null,
-  body: `${key}: Hi {{contact.first_name}}, you stopped at {{survey_stopped_at}}, {{survey_taps_left}} to go: {{survey_resume_link}}`,
+  body: `${key}: Start the questions here: {{survey_resume_link}}`,
   compliance_passed: true
 });
 
@@ -151,7 +151,9 @@ test("collision: S-00 and S-02 send the stranger's phone no resume code and none
     "the welcome and every come-back message still go, text and email");
   for (const m of sent) {
     assert.ok(!m.rendered_body.includes("?r="), `${m.template_key} carries no resume code: ${m.rendered_body}`);
-    assert.ok(m.rendered_body.endsWith("to go: https://apply.fundhub.ai/apply"), `${m.template_key}: ${m.rendered_body}`);
+    assert.ok(m.rendered_body.endsWith("here: https://apply.fundhub.ai/apply"), `${m.template_key}: ${m.rendered_body}`);
+    assert.ok(!/stopped at|taps left|more taps|where you were/i.test(m.rendered_body),
+      `${m.template_key} must not reveal saved progress or promise a saved position`);
     for (const word of PRIVATE_WORDS) {
       assert.ok(!m.rendered_body.includes(word), `${m.template_key} must not carry the lead's "${word}"`);
     }
