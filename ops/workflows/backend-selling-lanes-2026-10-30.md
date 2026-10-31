@@ -233,6 +233,58 @@ Chris, 2026-10-31: three groups need their own flow. (1) Came in as a lead and q
 
 **Open decision.** Texting hours disagree: the setter SOP says 6 a.m. to 10 p.m. Arizona time (`docs/sops/weekend-2026-10-24/02-setter.md:34`), the send gate holds customer texts from 8 p.m. to 8 a.m. (`src/messaging/gate.mjs:111-122`).
 
+### 6d. Slideshows: build board (2026-10-31)
+
+Owned by the slideshows chat (branch `claude/backend-selling-slideshows`). Other chats: leave this section alone. Words and design only. Nothing here sends anything.
+
+**What a slideshow is.** One HTML file per slideshow, saved at `marketing/slideshows/<slug>.html`. It has 5 to 8 slides and teaches one belief. It is built for a phone and clicked through with Back and Next, a swipe, or the arrow keys. It is the slideshow version of a piece in 6a: the email, text or push links to it. It has no call to action and no Fundhub price. It sells the next step, which is the call (Hammer Them SOP).
+
+**The shared design. Do not fork it.**
+- `marketing/slideshows/_shell/slideshow.css` and `slideshow.js` hold the shared design and the click-through engine. `node marketing/slideshows/build.mjs` copies them, plus `public/app/fundhub-brand.css` and the local rounded faces from `fundhub-font.css`, into every deck between its `fh:shell` markers. Change the shell, never a deck's copy of it, then run the build.
+- `node marketing/slideshows/check.mjs` must say PASS before a deck counts as done. It fails a deck for: "CRS"; "number"; any hedge word; "funding gap", "Funding Snapshot", "the biggest yes" or "round two"; Fundhub spelled any other way; any Fundhub price from `src/config/offers.mjs`; "72" without the exact guarantee line; approvals tied to 72 hours; a dollar amount, percent or score with no Sample label and no `data-figures` reason; a slide with no `data-src`; fewer than 5 or more than 8 slides; a stale shell. It was proven to fail a planted bad deck on 2026-10-31 (8 of 8 planted mistakes caught).
+- The pattern deck is `marketing/slideshows/pre-underwriting.html`. Chris's review link: https://claude.ai/artifact/NZqQrr424KegLFMjSXrdAk
+
+**How to write one: Copybot picks the words, Visual Thinking picks the picture.**
+1. Read the deck's facts in the fact bank and open each source line it cites. A fact with no source stays off the slide. A claim bigger than its source gets smaller.
+2. Copybot (`marketing/copy-skills/copybot/`): name the one belief and the question the reader is asking (the Hammer Them pillar). Open where the reader already is. Order the slides so each one answers the question the slide before raised. Keep each claim's support on the same slide. Write in Chris's voice (`references/owner-voice.md`, `chris-voice-profile.md`): short, certain and plain, to one person, naming the real thing (the bank, the reason on the report, the step). Aim for a 5th or 6th grade reading level.
+3. Visual Thinking (`marketing/copy-skills/visual-thinking/`): name each slide's question, then pick the picture that answers it. What: a document (`.doc`). How much: bars to one scale (`.bars`). Where: the bank grid (`.banks`). When: a timeline (`.tl`) or a span (`.span`, `.metric`). How: a flow (`.flow`). Why: a comparison (`.compare`) or a visual equation (`.eq`). The engine's view: `.term`. Draw only what the facts support.
+4. Markup for each slide: `<section class="slide" data-src="file:line, file:line">`, then `<p class="eyebrow">CODE-0N / Topic</p>`, one `<h2>`, one or two `<p class="lede">`, and one `<figure class="pic">`. Add `dark` to the opening slide and the payoff slide only. Every figure is labeled Sample, or the slide carries `data-figures="why this figure is a rule, not a sample"`.
+5. Run the build, run the check, then look at every slide 390 pixels wide.
+
+**Rules that bite here.**
+- No Fundhub prices. The price comes up on the call.
+- Never "CRS" in anything a customer sees.
+- The guarantee line, word for word: "Applications go out within 72 business hours. That's our guarantee, and it's in your contract. That typically means approvals come very shortly after." Never promise an approval or an amount. The agreement says Fundhub does not promise approval (`db/migrations/493_funding_and_repair_agreement_text.sql:53`, section 3).
+- The agreement the CRM sends is the source of truth for terms (`493_funding_and_repair_agreement_text.sql`). Older marketing pages lose when they disagree with it.
+- Sample figures come from one sample file and say Sample. The /roadmap sample is a 762 middle-score file, so it fits the Funding lane.
+- Proof only from a real source picture (`.ai/rules/proof-cards-from-source.md`). No invented approvals, quotes, names or faces.
+- Say "funding sequence", never "round two". Never mention the Social Security number.
+
+**Units.** Status: pending, claimed, done or blocked.
+
+| # | Deck | Lane | Belief | Status |
+|---|---|---|---|---|
+| 1 | `pre-underwriting` | Funding | We read your file the way the bank will, before anyone applies, so it only goes to banks that approve files like yours. | done (draft 2, sent to Chris 2026-10-31) |
+| 2 | `funding-sequence` | Funding | The order you apply in changes your total. | pending: waiting on Chris's OK of the list |
+| 3 | `apply-yourself` | Funding | The next bank sees every application you send. | pending |
+| 4 | `money-on-the-table` | Funding | A strong score can still leave funding on the table (the /roadmap sample). | pending |
+| 5 | `after-you-say-yes` | Funding | What happens after you say yes. | pending |
+| 6 | `bank-said-no` | Blueprint and Repair | Your report already says why the bank said no, and those reasons get fixed first. | pending |
+| 7 | `thirteen-points` | Blueprint and Repair | The 13 optimization points, in the right order. | pending |
+| 8 | `card-paydown` | Blueprint and Repair | Which card you pay down first, and to what target, matters. | pending |
+| 9 | `how-repair-works` | Blueprint and Repair | The letters go out in order and get stronger until it's fixed. | pending |
+| 10 | `credit-partner` | Blueprint and Repair | You don't have to qualify alone. | pending |
+| 11 | `business-one-two` | Blueprint and Repair | Each business is judged on its own. Start the LLC now. | pending |
+| 12 | `blueprint-12-months` | Blueprint and Repair | What 12 months on the Blueprint look like, and how little work is on you. | pending |
+| 13 | `soft-pull` | Every lane | Reading your file does not move your score. Applications do. | pending |
+| 14 | `the-call` | Every lane | Your call is a working call: we read your real file and tell you exactly what to do. | pending |
+| 15 | `who-we-are` | Every lane | Fundhub keeps its word. | pending |
+
+**Manifest so far.** Added `marketing/slideshows/_shell/slideshow.css`, `_shell/slideshow.js`, `build.mjs`, `check.mjs` and `pre-underwriting.html`. No routes, no workflows, no database, nothing sent.
+
+**Leftovers (not fixed here).**
+- `marketing/slideshows/pre-underwriting-draft-1.html` is the rejected draft. It stays until Chris says to remove it.
+
 ### 7. Heartbeat (required in the same change)
 
 - Ping row for the new sweeper in `src/pulse/heartbeats.mjs` and the sorting in `src/pulse/tripwires.mjs`.
