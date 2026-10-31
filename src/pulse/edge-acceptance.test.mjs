@@ -334,6 +334,87 @@ test("active funding and A/R producer edits require both P0 money-result reviews
   assert.equal(touched.liveReceipt, "NEEDS_LIVE_RECEIPT");
 });
 
+test("A/R A77 callback cannot settle a foreign-org link or invent buyer access", () => {
+  // #300 changes both existing payment handlers and the link-store family.
+  // Watch future source filenames, not just the one known implementation.
+  const report = reportCriticalSourceChanges([
+    "src/handlers/payment-links.mjs",
+    "src/payment-links/index.mjs",
+    "src/payment-links/future-checkout.mjs"
+  ]);
+  assert.equal(report.verdict, "REVIEW_REQUIRED");
+  assert.deepEqual(report.edges.map((edge) => [edge.id, edge.severity]), [
+    ["payment-ledger-entitlement", "P0"]
+  ]);
+  assert.deepEqual(report.unmappedHighRiskFiles, []);
+  assert.equal(report.liveReceipt, "NEEDS_LIVE_RECEIPT");
+
+  // This is a normalized, SYNTHETIC payment receipt and joined settlement
+  // witness, not proof that a real PSP or live DB exposes these same fields.
+  const settled = {
+    event_id: id, org_id: org, client_id: client,
+    payment_link_id: "plink-sim", provider_ref: "psp-ref-sim",
+    sale_id: "sale-sim", outcome: "settled",
+    settled_at: "2026-10-29T00:07:00Z"
+  };
+  const witness = {
+    ...basics, requirePaymentLinkReceipt: true,
+    expectedContract: {
+      eventName: "payment.received", eventVersion: 1,
+      consumerName: "onPaymentReceivedMoney", resultKind: "sale_payments"
+    },
+    event: { ...event, name: "payment.received", version: 1,
+      payment_link_id: settled.payment_link_id,
+      provider_ref: settled.provider_ref, sale_id: settled.sale_id },
+    consumer: { ...consumer, consumer_name: "onPaymentReceivedMoney",
+      completed_at: "2026-10-29T00:08:00Z" },
+    receipt: { ...receipt, event_id: id, result_kind: "sale_payments",
+      completed_at: "2026-10-29T00:09:00Z" },
+    paymentLinkReceipt: settled
+  };
+  assert.equal(judgeSyntheticEdge(witness).verdict, "PASS");
+  for (const changed of [
+    { org_id: "other-org" },
+    { client_id: "other-client" },
+    { event_id: "other-payment" }
+  ]) {
+    assert.deepEqual(judgeSyntheticEdge({
+      ...witness, paymentLinkReceipt: { ...settled, ...changed }
+    }), { verdict: "RED", reason: "payment-link-ownership-or-event-mismatch" });
+  }
+  for (const changed of [
+    { payment_link_id: "foreign-link" },
+    { provider_ref: "other-provider-reference" },
+    { sale_id: "foreign-sale" },
+    { outcome: "pending" }
+  ]) {
+    assert.deepEqual(judgeSyntheticEdge({
+      ...witness, paymentLinkReceipt: { ...settled, ...changed }
+    }), { verdict: "RED", reason: "payment-link-settlement-identity-mismatch" });
+  }
+  assert.deepEqual(judgeSyntheticEdge({
+    ...witness, paymentLinkReceipt: null
+  }), { verdict: "RED", reason: "payment-link-paid-row-missing" });
+  assert.deepEqual(judgeSyntheticEdge({
+    ...witness, paymentLinkReceipt: undefined
+  }), { verdict: "NOT_CHECKED", reason: "payment-link-settlement-proof-not-queried" });
+  assert.deepEqual(judgeSyntheticEdge({
+    ...witness, event: { ...witness.event, provider_ref: null }
+  }), { verdict: "NOT_CHECKED", reason: "payment-link-event-identity-unavailable" });
+  assert.deepEqual(judgeSyntheticEdge({
+    ...witness, paymentLinkReceipt: { ...settled, settled_at: null }
+  }), { verdict: "NOT_CHECKED", reason: "payment-link-settlement-timestamp-missing" });
+  for (const settled_at of ["2026-10-28T23:59:00Z", "2026-10-29T02:00:00Z"]) {
+    assert.deepEqual(judgeSyntheticEdge({
+      ...witness, paymentLinkReceipt: { ...settled, settled_at }
+    }), { verdict: "RED", reason: "payment-link-settlement-time-invalid" });
+  }
+  assert.deepEqual(judgeSyntheticEdge({
+    ...witness, paymentLinkReceipt: { ...settled, org_id: "other-org" },
+    now: "2026-10-29T00:03:00Z"
+  }), { verdict: "PENDING", reason: "payment-link-ownership-or-event-mismatch" });
+});
+
 test("wrong source, consumer, identity, trace or business result turns RED after grace", () => {
   const changes = [
     { event: null },
