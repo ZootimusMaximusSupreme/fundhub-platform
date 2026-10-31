@@ -1080,9 +1080,9 @@ const genuineCrsPredicate = (alias) => `COALESCE(${alias}.provider, '') <> 'crs_
     AND LOWER(COALESCE(${alias}.result->>'environment', '')) NOT IN ('sandbox', 'simulated')`;
 
 const genuineSourcedRow = (alias) => `(
-    (${alias}.source = 'manual' AND ${alias}.source_ref IS NULL)
+    (COALESCE(${alias}.source, '') = 'manual' AND ${alias}.source_ref IS NULL)
     OR EXISTS (
-      SELECT 1 FROM crs_results source_crs
+      SELECT 1 FROM "crs_results" source_crs
        WHERE source_crs.id = ${alias}.source_ref
          AND source_crs.org_id = ${alias}.org_id
          AND source_crs.client_id = ${alias}.client_id
