@@ -116,11 +116,20 @@ describe("A/R tenant-isolated invoice payment identity (rollback-only real Postg
     test("foreign provider reference cannot borrow another org's invoice", async () => {
       const ref = `ar-foreign-provider-${randomUUID()}`;
       const foreign = await issue({ orgId: otherOrg, clientId: otherBuyer, ref });
-      const res = await allocatePayment(tx, received({
-        payload: { product: "success_fee", amount: 25, invoiceRef: ref, paymentId: randomUUID() }
-      }));
-      assert.equal(res.reason, "unresolved");
-      assert.equal(res.allocated, false);
+      const paymentId = randomUUID();
+      await assert.rejects(
+        () => allocatePayment(tx, received({
+          payload: { product: "success_fee", amount: 25, invoiceRef: ref, paymentId }
+        })),
+        { message: "ar_unmatched_success_fee_unroutable" }
+      );
+      // No verified local buyer exists: preserve event for retry, and do not
+      // fabricate a local review task or borrow the foreign invoice.
+      const ownerTasks = await conn.query(
+        "SELECT count(*)::int AS n FROM tasks WHERE org_id = $1 AND source_workflow = 'ar-allocate' AND body = $2",
+        [org, `unallocated:${paymentId}`]
+      );
+      assert.equal(ownerTasks.rows[0].n, 0);
       assert.equal(await receiptCount(foreign.id), 0);
       assert.equal(await badTaskCount(), 0);
     });
