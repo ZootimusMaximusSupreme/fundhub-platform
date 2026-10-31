@@ -120,6 +120,45 @@ test("sample credit writer and real-bank-guidance provenance cannot escape chang
     .map((edge) => edge.id), ["blueprint-financeos-report", "lender-apply-link"]);
 });
 
+test("client account and shared login changes cannot bypass paid, consent or booking result review", () => {
+  // #278 changes the real account-session gate and shared /login.html while
+  // creating an automatic booking-to-consent flow. Prior source reporting saw
+  // neither file, even though an auth change can hide an owed customer result.
+  const auth = reportCriticalSourceChanges(["src/auth/account-session.mjs", "public/login.html"]);
+  assert.equal(auth.verdict, "REVIEW_REQUIRED");
+  assert.deepEqual(auth.edges.map((edge) => edge.id), [
+    "lead-booking-call-outcome", "payment-ledger-entitlement", "consent-crs-result"
+  ]);
+  assert.deepEqual(auth.edges.map((edge) => edge.files), [
+    ["src/auth/account-session.mjs", "public/login.html"],
+    ["src/auth/account-session.mjs", "public/login.html"],
+    ["src/auth/account-session.mjs"]
+  ]);
+  assert.deepEqual(auth.unmappedHighRiskFiles, []);
+  assert.equal(auth.liveReceipt, "NEEDS_LIVE_RECEIPT");
+
+  // The CSM queue reads the actual invoice aging and owned entitlements.
+  // A changed queue read must review money/entitlement correctness.
+  assert.deepEqual(changedCriticalEdges(["api/read/csm-queue.mjs"]).map((edge) => edge.id),
+    ["payment-ledger-entitlement"]);
+
+  // Shared auth middleware is deliberately a broad WARNING, not a fake proof
+  // claim or an automatic 403-legacy CI failure. No live user session is used.
+  const gates = ["src/auth/session.mjs",
+    "src/http/middleware/requirePrincipal.mjs",
+    "src/http/middleware/requireAuth.mjs"];
+  const report = reportCriticalSourceChanges(gates);
+  assert.equal(report.verdict, "REVIEW_REQUIRED");
+  assert.deepEqual(report.edges, []);
+  assert.deepEqual(report.unmappedHighRiskFiles, gates);
+  assert.equal(report.evidenceNote, "MISSING");
+  assert.equal(report.liveReceipt, "NEEDS_LIVE_RECEIPT");
+
+  assert.equal(reportCriticalSourceChanges(["src/auth/session.test.mjs",
+    "public/login.css", "src/pulse/edge-acceptance.mjs"]).verdict,
+    "NO_CRITICAL_SOURCE_TOUCH_DETECTED");
+});
+
 test("database gateway, migration runner and generator source changes require report-only A->B review", () => {
   // Shared DB reads and migration bootstrapping are hidden dependencies of
   // every persisted money/customer receipt. A diff to the existing runner
