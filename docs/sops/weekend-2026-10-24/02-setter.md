@@ -70,6 +70,8 @@ Film Chris, to camera, under a minute. Send the same video by text after the voi
 
 ## Text right after the missed call
 
+**Since 2026-10-31 this text goes out by itself.** Save "No answer" on the setter desk and Fundhub sends three short texts from the Chris at Fundhub voice: right away, 30 minutes later, and 2 hours after that, between 9 a.m. and 5 p.m. Arizona time. There is one set for a person with a call booked and one for a person without one. They stop if the person books, moves the call, or texts back. Do not also text the person by hand. The lines below are the old hand-sent versions, kept for a person you are texting from your own phone for another reason.
+
 **They booked:**
 
 > Hey [Name], it’s Chris at Fundhub. Just tried you about your strategy call on [day and time]. You good for that time? Be at a computer. I also sent a short video so you know who I am.

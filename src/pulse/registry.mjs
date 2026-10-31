@@ -309,6 +309,10 @@ const API_KEYS = [
   /* The /roadmap widget's status read after the soft pull. A plain GET with no
      ref or client_id answers 400, which counts as up, and reads nothing. */
   "public/slo-status",
+  /* The come-back link's door (S-00 and S-02 messages, the /apply page). A plain GET
+     with no link code answers 400 token_required and reads nothing, which counts as up.
+     The 6 a.m. deep check survey:resume-link-opens opens a real link (gap-survey-resume.mjs). */
+  "public/survey-resume",
   "public/survey-submit",
   "public/unsubscribe",
   /* Web push for the client portal. Both answer a plain GET — push/key with the
