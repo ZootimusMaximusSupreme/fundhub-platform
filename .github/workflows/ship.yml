@@ -1,12 +1,12 @@
 # Ship main to live from GitHub (owner-set 2026-10-09).
 #
 # Chris: "make sure GitHub is the one pushing everything live" so a Claude cloud session on his phone
-# can ship exactly like the Mac. A push to main (a merged pull request, or a direct push) runs the SAME
+# can ship exactly like the Mac. A successful exact-main 14-check test run (after a merge) runs the SAME
 # command the Mac runs: `npm run ship` (scripts/ship.mjs). That keeps every guard it already has:
 # lint, the guard tests, pending database changes applied first, one production deploy, the
 # /api/health check for pending 0, the Inngest re-register, the ship-log line, and the push back.
 #
-# It skips by itself when nothing that ships has changed since the last ship (ship.mjs step 3), so
+# Ship also skips on test failure, superseded commits, and ship-log-only commits. It skips when nothing has changed (ship.mjs step 3), so
 # the ship-log commit it pushes back does not cause a second deploy. Netlify's own auto build stays
 # OFF (stop_builds), so one push is one deploy, never two.
 #
@@ -20,7 +20,9 @@
 name: Ship to live
 
 on:
-  push:
+  workflow_run:
+    workflows: [tests]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
     inputs:
@@ -36,11 +38,55 @@ concurrency:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
+  release_gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
+      sha: ${{ steps.check.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Verify 14/14 exact-main CI before deploying
+        id: check
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { pathToFileURL } = require('node:url');
+            const { releaseDecision } = await import(pathToFileURL(
+              process.env.GITHUB_WORKSPACE+'/scripts/release-control.mjs').href);
+            const { owner, repo } = context.repo;
+            const branch = await github.rest.repos.getBranch({owner,repo,branch:'main'});
+            const sha = branch.data.commit.sha;
+            const commit = await github.rest.repos.getCommit({owner,repo,ref:sha});
+            let run = context.eventName === 'workflow_run' ? context.payload.workflow_run : null;
+            if (context.eventName === 'workflow_dispatch') {
+              const found = await github.rest.actions.listWorkflowRuns({
+                owner,repo,workflow_id:'tests.yml',branch:'main',head_sha:sha,per_page:50
+              });
+              run = found.data.workflow_runs.find(r=>r.event==='push' &&
+                r.status==='completed' && r.conclusion==='success')||null;
+            }
+            const jobs = run?.head_sha===sha && run.conclusion==='success'
+              ? await github.paginate(github.rest.actions.listJobsForWorkflowRun,
+                  {owner,repo,run_id:run.id,per_page:100,filter:'latest'})
+              : [];
+            const verdict = releaseDecision({eventName:context.eventName,
+              repo:owner+'/'+repo,mainSha:sha,mainMessage:commit.data.commit.message,
+              testRun:run,jobs});
+            core.setOutput('ready',String(verdict.status==='ship'));
+            core.setOutput('sha',sha);
+            core.info('Release gate: '+verdict.status+'; '+verdict.reason+'; '+sha);
+            if (verdict.status==='fail')core.setFailed(verdict.reason);
+            if (verdict.status==='skip')core.notice(verdict.reason);
   ship:
-    # The ship-log commit that a ship pushes back starts with "ship:". It never ships again.
-    if: ${{ github.event_name == 'workflow_dispatch' || !startsWith(github.event.head_commit.message, 'ship:') }}
+    needs: release_gate
+    if: ${{ needs.release_gate.outputs.ready == 'true' }}
     # Back on Ubuntu (2026-10-20): macos-latest jobs sat queued with no runner and were
     # cancelled, so PR #83 could not ship. Ubuntu can time out at TLS in the read-only
     # release proof that runs after the deploy; that step can go red, the deploy stands.
@@ -49,7 +95,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ needs.release_gate.outputs.sha }}
           fetch-depth: 0
           persist-credentials: false
 
@@ -60,7 +106,7 @@ jobs:
 
       - name: Be on main, with a git name
         run: |
-          git checkout -B main origin/main
+          git checkout -B main "${{ needs.release_gate.outputs.sha }}"
           git config user.name "Fundhub ship"
           git config user.email "ship@fundhub.ai"
 
@@ -110,9 +156,22 @@ jobs:
           }finally{await close();}
           JS
 
+      - name: Enforce exact main SHA before Ship
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const {owner,repo}=context.repo;
+            const main=await github.rest.repos.getBranch({owner,repo,branch:'main'});
+            const expected='${{ needs.release_gate.outputs.sha }}';
+            const local=require('node:child_process').execFileSync(
+              'git',['rev-parse','HEAD'],{encoding:'utf8'}).trim();
+            if(expected!==main.data.commit.sha||expected!==local)
+              core.setFailed('Main moved after CI; wait for its own 14/14 success.');
+
       - name: Ship
         env:
           CI: "true"
+          EXPECTED_RELEASE_SHA: ${{ needs.release_gate.outputs.sha }}
           NODE_OPTIONS: "--dns-result-order=ipv4first"
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}

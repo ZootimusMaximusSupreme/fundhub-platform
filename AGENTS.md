@@ -31,6 +31,16 @@ Before reading code or planning a new task, state the parallel workflows, what c
 - Stop only for the verified requested outcome, an explicit user pause, or a genuine owner-only decision, missing input, tool-enforced confirmation or unavailable external prerequisite after safe in-scope alternatives are exhausted. State the exact evidence, what was tried and the one needed decision; never substitute a PR handoff for the job.
 - Keep unrelated improvements as board leftovers. This rule does not grant new product scope, production go-live approval, live customer or money changes, credential changes, deletion or database repointing.
 
+## Multi-thread request intake and protected release
+
+- The owner may keep opening new chats and assigning changes without coordinating agents. Each implementer checks the existing GitHub PR queue before touching files; it attaches to the existing owner PR if the files or feature are already claimed. No duplicate PR merely because another thread asked.
+- Every **new** implementation PR declares a line such as \`Owner lane: front-house\`, \`Owner lane: fulfillment\`, \`Owner lane: ar\`, \`Owner lane: blueprint\`, \`Owner lane: native\`, or \`Owner lane: ci\`. The same GitHub author may represent multiple agents; infer ownership from the PR declaration and file manifest, never the account name.
+- The automatic PR file-overlap check detects shared paths. An older open PR owns them until merged, closed, or an explicit owner-to-owner handoff is recorded. Do not push competing edits. Keep one active implementation PR per lane, with a second only for a separate urgent production safety fix.
+- Each PR records the affected route/event, org/client scope, expected stored effect, focused tests and deployment receipt. Failures return to the same owner for repair; do not restart the whole backlog. Unrelated ready PRs continue through integration.
+- The release controller only starts GitHub Ship after the latest main commit has **all 14 named CI jobs green**. An old PR run, skipped job, superseded commit, or ship-log marker cannot authorize production deployment. Require a genuine independent review for production-risk changes; do not self-approve or bypass protected checks.
+- A successful GitHub Ship plus version/read-only evidence is separate from external provider, live customer, Apple TestFlight, and App Store receipts. Native Swift needs its own signed app and device check. Never claim those receipts from a green source test.
+- The existing integration coordinator owns the release queue, and each implementation owner is responsible for its own blocked/failed fixes. The owner should not need to chase threads. The file-overlap gate takes effect for PRs created after the Monday November 2, 2026 cut; old backlog PRs receive warnings instead of newly imposed blockers.
+
 ## Scope and evidence
 
 - Work on the named task only. Do not fix other holes you happen to find. Record a separate leftover on the shared board, then return to the task.

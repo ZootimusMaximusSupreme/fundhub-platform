@@ -28,8 +28,8 @@
 //      and local merges. So: `git pull --ff-only` first; if that cannot fast-forward,
 //      `git pull --rebase=merges --autostash` (local merges keep their shape); if that
 //      clashes, `git rebase --abort`, one plain line naming the file, and the ship goes
-//      on with this Mac's main exactly as before. A pull NEVER stops the ship
-//      (CLAUDE.md §11: no guard ever blocks npm run ship). No prompts, and a time limit,
+//      on with this Mac's main exactly as before. A pull never stops a Mac ship
+//      (CLAUDE.md §11); GitHub Ship stops if the pull changes its CI-approved SHA. No prompts, and a time limit,
 //      so it never hangs. The one stop: if the pull could not be undone and the folder
 //      is left half way through a pull, deploying it would ship a broken tree.
 //   3. skip when nothing but the ship log and the machine-only folders
@@ -137,6 +137,19 @@ export function morningOnlySlow(output) {
 export function migrationOwnerConnection(env = process.env) {
   const value = String(env.MIGRATION_DATABASE_URL || "").trim();
   return value && !value.includes("*") ? value : null;
+}
+
+/** Pin GitHub Ship to the exact main commit whose 14 checks passed. */
+export function approvedReleaseHead({ expectedSha, actualSha, githubActions = false }) {
+  const expected = String(expectedSha ?? "").trim();
+  if (!expected && !githubActions) return { ok: true };
+  if (!/^[a-f0-9]{40}$/.test(expected)) {
+    return { ok: false, reason: "GitHub Ship has no exact approved commit." };
+  }
+  if (actualSha !== expected) {
+    return { ok: false, reason: "Main moved after CI; wait for its own 14/14 success." };
+  }
+  return { ok: true };
 }
 
 /** The one line worth showing from a failed git or push run. */
@@ -272,6 +285,13 @@ async function main() {
   const head = git("rev-parse", "--short=8", "HEAD");
 
   // ── 3. anything to ship? ────────────────────────────────────────────────────
+  const approval = approvedReleaseHead({
+    expectedSha: process.env.EXPECTED_RELEASE_SHA,
+    actualSha: git("rev-parse", "HEAD"),
+    githubActions: process.env.GITHUB_ACTIONS === "true"
+  });
+  if (!approval.ok) fail(approval.reason);
+
   function lastShipped() {
     if (!fs.existsSync(LOG)) return null;
     const rows = fs.readFileSync(LOG, "utf8").split("\n").filter((l) => /^\| \d{4}-\d{2}-\d{2}/.test(l));

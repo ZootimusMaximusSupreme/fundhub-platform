@@ -34,3 +34,9 @@ Protocol:
 * Blocked? Mark it `blocked`, write why, and stop. Do not work around another workflow's unfinished output.
 
 Keep this file human-readable. I use it to see what is happening without opening a single code file.
+
+## Automatic PR intake and collision handling
+
+The GitHub repo is the intake contract across chats, Codex, Claude and Cursor. New requests do not require the owner to switch threads or assign a release manager. Before any edit, search open PRs and compare exact file paths and the intended product outcome; join/coordinate with the existing owning lane rather than forking competing work. Put \`Owner lane: <lane>\` in the PR description, keep one active implementation PR per lane except a separate urgent safety fix, and write the scope/changed-file manifest on the existing shared board. The read-only \`.github/workflows/pr-file-ownership.yml\` check reports shared file claims for older PRs and blocks new overlapping PRs after the November 2 release cutover. Do not suppress an overlap warning without an owner handoff.
+
+Independent ready changes can ship without waiting for unrelated work. An agent cannot call its work done at PR creation or unit-test success: it owns complete tests, independent review, protected merge, exact-main CI/Ship, and read-only live version check. The GitHub release gate must see all 14 required jobs pass on the latest exact main SHA before any deploy. Failure of a single source path returns to that source owner; the integration queue continues. Third-party payments, SMS, credit pulls, mailings and the native Apple release need separate real-world receipts and cannot be inferred from GitHub green. Keep the owner's request style unchanged.
