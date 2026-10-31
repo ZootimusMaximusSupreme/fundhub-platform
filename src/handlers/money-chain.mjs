@@ -1239,6 +1239,23 @@ export async function onPaymentReceivedMoney(event, db) {
     return { done: false, saleId: null, clientId, reason: "no_sale_yet" };
   }
 
+  const kind = feeInvoice ? "success_fee" : paymentKindFor(bucket, "payment.received");
+  const pay = await ensureSalePayment(db, paymentEvent, {
+    saleId: sale.id,
+    clientId,
+    productId: sale.product_id,
+    paymentLinkId: paymentPayload.paymentLinkId,
+    saleMotion: paymentPayload.saleMotion || sale.sale_motion || null,
+    kind
+  });
+  if (!pay.payment) {
+    const reason = pay.reason || "unrecorded_payment";
+    warnNothingUnlocked(event, reason, { clientId, productCode: null });
+    return { done: false, reason, saleId: sale.id, clientId };
+  }
+  // Receipt ownership and capture must be proved before mutating the
+  // checkout link or freezing staff credit on the sale. A rejected receipt
+  // cannot poison later, genuinely paid commission attribution.
   if (paymentPayload.paymentLinkId) {
     await db.query(
       `UPDATE payment_links
@@ -1256,20 +1273,6 @@ export async function onPaymentReceivedMoney(event, db) {
     basisHint: "front_end"
   });
 
-  const kind = feeInvoice ? "success_fee" : paymentKindFor(bucket, "payment.received");
-  const pay = await ensureSalePayment(db, paymentEvent, {
-    saleId: sale.id,
-    clientId,
-    productId: sale.product_id,
-    paymentLinkId: paymentPayload.paymentLinkId,
-    saleMotion: paymentPayload.saleMotion || sale.sale_motion || null,
-    kind
-  });
-  if (!pay.payment) {
-    const reason = pay.reason || "unrecorded_payment";
-    warnNothingUnlocked(event, reason, { clientId, productCode: null });
-    return { done: false, reason, saleId: sale.id, clientId };
-  }
   const commission = await writeFrontEndCommissions(db, {
     saleId: sale.id,
     payment: pay.payment,

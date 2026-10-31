@@ -703,6 +703,46 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
     assert.equal(salePaymentInsert(db), undefined);
   });
 
+  test("unrecorded invoice cash cannot bind a payment link or staff attribution", async () => {
+    const closerId = "00000000-0000-4000-8000-00000000a1a1";
+    const withCloser = () => {
+      const fixture = feeDb();
+      const originalQuery = fixture.query.bind(fixture);
+      fixture.query = async (sql, params = []) => {
+        const text = String(sql);
+        if (/FROM staff\\b/.test(text)) {
+          return { rows: params[0] === closerId && params[1] === ORG
+            ? [{ id: closerId, role: "closer" }] : [] };
+        }
+        if (/SELECT 1 FROM sale_attributions/.test(text)) return { rows: [] };
+        if (/SUM\\(split_percent\\)/.test(text)) return { rows: [{ s: 0 }] };
+        if (/INSERT INTO sale_attributions/.test(text)) {
+          fixture.queries.push({ text, params });
+          return { rows: [{ id: "synthetic-attribution" }] };
+        }
+        return originalQuery(sql, params);
+      };
+      return fixture;
+    };
+
+    const rejected = withCloser();
+    const unpaid = await onPaymentReceivedMoney(feeReceipt({ amount: 0, closerId }), rejected);
+    assert.equal(unpaid.done, false);
+    assert.equal(unpaid.reason, "unrecorded_payment");
+    assert.ok(!rejected.queries.some(q => /UPDATE payment_links|INSERT INTO sale_attributions/.test(q.text)),
+      "failed capture must not attach a checkout to a sale or create commission credit");
+    assert.equal(salePaymentInsert(rejected), undefined);
+
+    const accepted = withCloser();
+    const paid = await onPaymentReceivedMoney(feeReceipt({ closerId }), accepted);
+    assert.equal(paid.done, true, JSON.stringify(paid));
+    const paymentAt = accepted.queries.findIndex(q => /INSERT INTO sale_payments/.test(q.text));
+    const linkAt = accepted.queries.findIndex(q => /UPDATE payment_links/.test(q.text));
+    const staffAt = accepted.queries.findIndex(q => /INSERT INTO sale_attributions/.test(q.text));
+    assert.ok(paymentAt >= 0 && linkAt > paymentAt && staffAt > paymentAt,
+      "valid payment must persist before checkout binding and staff attribution");
+  });
+
   test("an unidentified sale does not pretend to finish checkout or unlock service", async () => {
     const db = feeDb({ invoice: null });
     const query = db.query.bind(db);
