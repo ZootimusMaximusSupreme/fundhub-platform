@@ -282,6 +282,30 @@ export function judgeSyntheticEdge({
     if (receipt.result_kind !== expectedContract.resultKind) {
       return failed("result-canonical-contract-mismatch");
     }
+    // An exact trace alone cannot prove when a customer result happened.
+    // Canonical (new/changed high-risk) witnesses require a causal,
+    // observed event -> consumer -> business-result timestamp chain.
+    // Unmapped legacy fixtures remain report-only, not live evidence.
+    const eventAt = milliseconds(event.created_at);
+    const consumerAt = milliseconds(consumer.completed_at || consumer.created_at);
+    const resultAt = milliseconds(receipt.completed_at || receipt.created_at);
+    if (![eventAt, consumerAt, resultAt].every(Number.isFinite)) {
+      return { verdict: "NOT_CHECKED", reason: "canonical-proof-timestamps-missing" };
+    }
+    if (eventAt > current || consumerAt < eventAt || consumerAt > current ||
+        resultAt < consumerAt || resultAt > current) {
+      return failed("canonical-proof-timestamp-order-invalid");
+    }
+    if (requireProviderReceipt) {
+      const deliveredAt = milliseconds(providerReceipt.delivered_at ||
+        providerReceipt.completed_at || providerReceipt.created_at);
+      if (!Number.isFinite(deliveredAt)) {
+        return { verdict: "NOT_CHECKED", reason: "provider-proof-timestamp-missing" };
+      }
+      if (deliveredAt < consumerAt || deliveredAt > current) {
+        return failed("provider-proof-timestamp-order-invalid");
+      }
+    }
   }
   return { verdict: "PASS", reason: "event-consumer-and-business-result-correlated" };
 }
