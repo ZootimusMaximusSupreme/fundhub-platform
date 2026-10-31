@@ -273,9 +273,9 @@ Owned by the slideshows chat (branch `claude/backend-selling-slideshows`). Other
 | # | Deck | Lane | Belief | Status |
 |---|---|---|---|---|
 | 1 | `pre-underwriting` | Funding | We review your file the way a lender does, before a single application goes out. | done |
-| 2 | `funding-sequence` | Funding | The order your applications go out decides your total. | claimed: builder A |
-| 3 | `apply-yourself` | Funding | Every application you send on your own shows up for the next bank. | claimed: builder A |
-| 4 | `money-on-the-table` | Funding | A strong score still leaves funding on the table. | claimed: builder A |
+| 2 | `funding-sequence` | Funding | The order your applications go out decides your total. | done (builder A, checked) |
+| 3 | `apply-yourself` | Funding | Every application you send on your own shows up for the next bank. | done (builder A, checked) |
+| 4 | `money-on-the-table` | Funding | A strong score still leaves funding on the table. | done (builder A, checked) |
 | 5 | `after-you-say-yes` | Funding | What happens after you sign. | done (builder D, checked) |
 | 6 | `bank-said-no` | Blueprint and Repair | The reason the bank said no is already on your report, and it gets fixed first. | claimed: builder B |
 | 7 | `thirteen-points` | Blueprint and Repair | 13 optimization points, done in the right order. | claimed: builder B |
