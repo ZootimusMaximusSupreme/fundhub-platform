@@ -22,6 +22,7 @@ function fixture({owned=true,authorized=true,saved=true,status="ready",target="b
       throw new Error("unexpected SQL: "+sql);
     }},
     requireAuth:async()=>({id:"33333333-3333-4333-8333-333333333333",org_id:ORG,role:"owner"}),
+    hasActivePaidRepairProgram:async()=>true,
     hasRepairAgreement:async()=>authorized,
     hasDisputeAuthorization:async()=>false,
     loadClientReturnAddress:async (_db, {orgId,clientId})=>{

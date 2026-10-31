@@ -10,6 +10,7 @@ import { sendRepairLetters, RepairSendError } from "../../src/repair/send.mjs";
 import { mailBureauLetter } from "../../src/metro2/delivery/send.mjs";
 import { dbDown } from "../../src/http/db-down.mjs";
 import { hasRepairAgreement, hasDisputeAuthorization } from "../../src/repair/dispute-auth.mjs";
+import { hasActivePaidRepairProgram } from "../../src/repair/active-paid-program.mjs";
 
 
 /** Bind a human mail request to this organization's persisted, approved letter.
@@ -107,6 +108,11 @@ export default async function handler(req, res, deps = {}) {
       const authorized = agreement || await (deps.hasDisputeAuthorization ?? hasDisputeAuthorization)(database, { orgId, clientId });
       if (!authorized) {
         return res.status(403).json({ ok: false, error: "repair_dispute_authorization_required" });
+      }
+      // Historical consent cannot authorize mailing after cancellation or refund.
+      const activePaid = await (deps.hasActivePaidRepairProgram ?? hasActivePaidRepairProgram)(database, { orgId, clientId });
+      if (!activePaid) {
+        return res.status(409).json({ ok: false, error: "repair_enrollment_inactive_or_unpaid" });
       }
     }
 
@@ -213,10 +219,15 @@ export default async function handler(req, res, deps = {}) {
       from,
       identity: mailIdentity,
       mailSender,
+      enforceActivePaidRepair: wantMail,
       env: deps.env,
       fetchImpl: deps.fetchImpl
     });
 
+    if (wantMail && !result.ok && result.results?.length
+      && result.results.every(r => r.error === "repair_enrollment_inactive_or_unpaid")) {
+      return res.status(409).json({ ok: false, error: "repair_enrollment_inactive_or_unpaid", results: result.results });
+    }
     return res.status(200).json({ ok: true, ...result });
   } catch (err) {
     if (err instanceof RepairSendError) {

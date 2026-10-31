@@ -59,6 +59,7 @@ test("DFY/repair send path calls mail helper when mail=true", async () => {
     }),
     // This fixture represents a client whose signed repair agreement is on file.
     // The separate authorization regression verifies unsigned clients are refused.
+    hasActivePaidRepairProgram: async () => true,
     hasRepairAgreement: async (_db, { orgId, clientId }) => {
       assert.equal(orgId, "22222222-2222-4222-8222-222222222222");
       assert.equal(clientId, "33333333-3333-4333-8333-333333333333");
@@ -161,6 +162,7 @@ async function post(deps, statements) {
     }),
     // Existing provider/replay tests exercise AUTHORIZED mail. The new route
     // tests separately enforce 403 before any send when authorization is absent.
+    hasActivePaidRepairProgram: async () => true,
     hasRepairAgreement: async (_db, { orgId, clientId }) => {
       assert.equal(orgId, "22222222-2222-4222-8222-222222222222");
       assert.equal(clientId, "33333333-3333-4333-8333-333333333333");

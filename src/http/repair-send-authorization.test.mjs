@@ -35,6 +35,7 @@ function harness({ owned = true, agreement = false, consent = false } = {}) {
       }
     },
     requireAuth: async () => ({ id: STAFF, org_id: ORG, role: "inquiry_specialist" }),
+    hasActivePaidRepairProgram: async () => true,
     hasRepairAgreement: async (_db, args) => {
       state.agreementReads++;
       assert.deepEqual(args, { orgId: ORG, clientId: CLIENT });

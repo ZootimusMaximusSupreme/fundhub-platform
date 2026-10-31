@@ -9,6 +9,7 @@ import {
   recordComplaintFiling
 } from "../metro2/rounds/complaint-filing.mjs";
 import { onRepairEvent } from "./handlers.mjs";
+import { activePaidRepairSql, hasActivePaidRepairProgram } from "./active-paid-program.mjs";
 import { logDecision } from "../metro2/rounds/store.mjs";
 
 export class RepairSendError extends Error {
@@ -151,12 +152,12 @@ export function nothingWasTransmitted(sent, error) {
  *   claimed true  — this caller holds the letter and may send it.
  *   claimed false — do not send. `reason` says why.
  */
-async function claimLetterForMailing(db, { letterId, orgId, clientId }) {
+export async function claimLetterForMailing(db, { letterId, orgId, clientId, requireActivePaidRepair = false }) {
   // Untracked/ad-hoc letters have a legacy human-send route. For an EXPLICIT
   // stored letter ID, though, the database claim is the authorization: if the
   // row is missing, foreign, or the database is down, never transmit mail.
   // Otherwise a forged/stale ID bypasses both ownership and double-mail guards.
-  if (!letterId) return { claimed: true, reason: null, priorStatus: null };
+  if (!letterId) return { claimed: !requireActivePaidRepair, reason: requireActivePaidRepair ? "saved_repair_letter_required" : null, priorStatus: null };
   if (!db?.query) return { claimed: false, reason: "claim_db_unavailable", priorStatus: null };
 
   let claim;
@@ -173,6 +174,7 @@ async function claimLetterForMailing(db, { letterId, orgId, clientId }) {
           AND d.send_claimed_at IS NULL
           AND d.mailed_at IS NULL
           AND d.status NOT IN ('sending', 'sent', 'delivered')
+          ${requireActivePaidRepair ? `AND ${activePaidRepairSql(2, 3)}` : ""}
        RETURNING prior.status AS prior_status`,
       [letterId, orgId, clientId]
     );
@@ -192,6 +194,12 @@ async function claimLetterForMailing(db, { letterId, orgId, clientId }) {
 
   if (claim?.rows?.length) {
     return { claimed: true, reason: null, priorStatus: claim.rows[0].prior_status ?? null };
+  }
+
+  // A refund/cancellation may have committed after preflight; the UPDATE
+  // evaluated the program and sale money again in its own fresh SQL snapshot.
+  if (requireActivePaidRepair && !(await hasActivePaidRepairProgram(db, { orgId, clientId }))) {
+    return { claimed: false, reason: "repair_enrollment_inactive_or_unpaid", priorStatus: null };
   }
 
   // A zero-row UPDATE is NOT permission to mail. It can mean a foreign
@@ -347,6 +355,7 @@ export async function sendRepairLetters(db, {
   identity = null,
   from = null,
   mailSender = null,
+  enforceActivePaidRepair = false,
   env,
   fetchImpl
 } = {}) {
@@ -392,7 +401,8 @@ export async function sendRepairLetters(db, {
     const claim = await claimLetterForMailing(db, {
       letterId: claimLetterId,
       orgId,
-      clientId
+      clientId,
+      requireActivePaidRepair: enforceActivePaidRepair
     });
     if (!claim.claimed) {
       results.push({
