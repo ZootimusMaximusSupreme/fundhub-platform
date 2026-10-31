@@ -174,13 +174,17 @@ describe("A/R tenant-isolated invoice payment identity (rollback-only real Postg
       assert.equal(await receiptCount(foreign.id), 0);
     });
 
-    test("unknown invoice reference with a foreign customer ID cannot create an in-org task on that buyer", async () => {
-      const res = await allocatePayment(tx, received({
-        clientId: otherBuyer,
-        payload: { product: "success_fee", amount: 25, invoiceId: randomUUID(), paymentId: randomUUID() }
-      }));
-      assert.equal(res.allocated, false);
-      assert.equal(res.reason, "unresolved");
+    test("unknown invoice and foreign customer refuse acknowledgment when no safe review owner exists", async () => {
+      // No owned invoice or in-org buyer exists to attach a reconciliation task.
+      // Leave the delivery unacknowledged for the failed-event queue instead
+      // of falsely returning done:true or minting a cross-org task.
+      await assert.rejects(
+        () => allocatePayment(tx, received({
+          clientId: otherBuyer,
+          payload: { product: "success_fee", amount: 25, invoiceId: randomUUID(), paymentId: randomUUID() }
+        })),
+        { message: "ar_explicit_invoice_unknown_unroutable" }
+      );
       assert.equal(await badTaskCount(), 0, "review queue must never mix event org and foreign client");
     });
 
