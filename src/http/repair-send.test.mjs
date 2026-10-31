@@ -229,7 +229,7 @@ test("a 200 with no provider id is recorded as a mailing through the live route"
   );
 });
 
-test("a letter is claimed only while nobody is sending it, nobody has mailed it and it is not already sent; a refusal releases only a claim still held", async () => {
+test("a human repair letter is claimable only when generated or ready, unclaimed and unmailed; a refusal releases only the held claim", async () => {
   const statements = [];
   await post({ mailBureauLetter: async () => ({ ok: false, preTransmission: true, error: "refused before it left" }) }, statements);
   const one = (re) => statements.find((s) => re.test(s));
@@ -237,7 +237,7 @@ test("a letter is claimed only while nobody is sending it, nobody has mailed it 
     "this letter, this company, this client": "WHERE id = $1::uuid AND org_id = $2::uuid AND client_id = $3::uuid",
     "not claimed already": "AND d.send_claimed_at IS NULL",
     "not mailed already": "AND d.mailed_at IS NULL",
-    "not in a sent state": "AND d.status NOT IN ('sending', 'sent', 'delivered')"
+    "human paid repair permits only generated/ready": "AND d.status IN ('generated','ready')"
   });
   assertSqlHas(one(/SET status = COALESCE\(\$4, 'ready'\), send_claimed_at = NULL/), {
     "only this letter, still held": "WHERE id = $1::uuid AND org_id = $2::uuid AND client_id = $3::uuid AND status = 'sending' AND mailed_at IS NULL"
