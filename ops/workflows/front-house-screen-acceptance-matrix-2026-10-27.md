@@ -115,7 +115,7 @@ These files exist in `public/`, but their current deployment, audience, entry po
 | `/app/partner-galaxy.html` | Owner / admin (verify) | No direct test identified | **NOT LIVE PROVED** |
 | `/app/partner-training.html` | Partner / admin | `e2e/partner-training.spec.mjs` | **NOT LIVE PROVED** |
 | `/app/payment-success.html` | Client / account | No direct test identified | **NOT LIVE PROVED** |
-| `/app/pipeline.html` | Sales / operations | `e2e/pipeline-honest.spec.mjs`, `e2e/pipeline-new-archive.spec.mjs` | **NOT LIVE PROVED** |
+| `/app/pipeline.html` | Sales / operations | `e2e/pipeline.spec.mjs`, `e2e/pipeline-honest.spec.mjs`, `e2e/pipeline-new-archive.spec.mjs` | **NOT LIVE PROVED** |
 | `/app/present.html` | Closer | `e2e/ccp-present-param-aliases.spec.mjs`, `e2e/fin-b01-present-deck.spec.mjs` | **NOT LIVE PROVED** |
 | `/app/products-commissions.html` | Owner / admin (verify) | `e2e/products-commissions-ledger.spec.mjs`, `e2e/s1-products-commissions.spec.mjs` | **NOT LIVE PROVED** |
 | `/app/sales-floor.html` | Sales manager / owner | `e2e/s1-sales-floor.spec.mjs`, `e2e/sales-floor-layout.spec.mjs` | **NOT LIVE PROVED** |
@@ -353,3 +353,10 @@ This checkpoint is **not** a production-complete finding. The audit maintains di
 | Correct funding, repair and Blueprint verified paid sale → exact buyer's correct fulfillment task, entitlement and documents | Prior source and disposable PG tests address payment gates, but no independently verified same-provider paid receipt and actual team intake across all three paths was obtained. | **NOT LIVE PROVED** (distinct from receivables and downstream fulfillment execution). |
 
 **Unchanged complete-inventory gate:** All **101 repository HTML candidates** and **1,745 identified control candidates**, external hosted funnel/iOS controls and every actual role/action require individual role-screen/mobile/error/save/provider evidence. A green Playwright or Postgres job is never equivalent to live end-to-end approval; do not send the owner completion SMS.
+
+
+## October 31 — Monday Sales board reconciliation
+
+| Exact Sales control | Branch proof | Acceptance |
+| --- | --- | --- |
+| Contact and Call first; saved Survey above Credit until one genuine dated CRS result has all three scores; active booking label and upcoming call order | `codex/monday-sales-board` integrates #305 with the current main branch. Local scoped SQL-engine/drawer tests: 30 passed, 15 database tests skipped without a scratch database. The Sales browser suite passed 15 checks; one old order assertion was corrected to reflect Contact/Call remaining first and its focused rerun passed. TypeScript passed. Full exact-head CI is pending. | **FIX PROPOSED; NOT CI OR LIVE PROVED.** No merge, deploy, customer data change or native app claim. |
