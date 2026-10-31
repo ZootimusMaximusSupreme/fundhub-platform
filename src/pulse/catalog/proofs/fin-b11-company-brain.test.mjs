@@ -129,8 +129,15 @@ async function openBrain({ session = OWNER, viewport, state = {}, askAnswer, ini
     }
   };
   const opened = await open("/app/company-brain.html", { session, handlers, ...(viewport ? { viewport } : {}), ...(init ? { init } : {}) });
-  // The first Ask view reads threads only. Owner/admin inventory stays private until an explicit Manage click.
   await waitFor(() => log.threadReads >= 1, "the first thread read");
+  const role = (await opened.page.locator("#rolePill").innerText()).trim();
+  if (["owner", "admin"].includes(role)) {
+    assert.equal(log.uploadReads, 0, "the upload inventory loads only when Manage is opened");
+    assert.equal(log.reviewReads, 0, "the approval queue loads only when Manage is opened");
+    await opened.page.locator('[data-kb-view="manage"]').click();
+    await waitFor(() => log.uploadReads >= 1 && (role !== "owner" || log.reviewReads >= 1), "the first Manage reads");
+    await opened.page.locator('[data-kb-view="ask"]').click();
+  }
   return { ...opened, st, log };
 }
 
@@ -140,9 +147,9 @@ const hidden = (page, selector) => page.evaluate((s) => document.querySelector(s
 test("the page loads for staff only, and its badge decides whether approval controls draw", { timeout: 90_000 }, async () => {
   await proof.check(/^Page itself: staff-only chat screen loads/, async () => {
     const { page, errors, log } = await openBrain();
-    assert.equal(log.reviewReads, 0, "the owner review inventory is lazy");
+    await waitFor(() => log.reviewReads >= 1, "the owner's first review read");
     assert.deepEqual(errors, [], "no script error on load");
-    // The shell, ramp-quizzes.js and data.js ran without fetching private Manage inventories.
+    // The shell, ramp-quizzes.js and data.js all ran, and the three first reads were asked.
     const ran = await page.evaluate(() => ({
       quiz: typeof window.scoreRampQuiz, data: typeof window.FHData, nav: Boolean(document.querySelector("#fh-side-nav")),
       composer: Boolean(document.querySelector("#composer #q")), rail: Boolean(document.querySelector("#rail")),
@@ -150,20 +157,23 @@ test("the page loads for staff only, and its badge decides whether approval cont
     }));
     assert.deepEqual(ran, { quiz: "function", data: "object", nav: true, composer: true, rail: true, sidebarLink: true });
     assert.equal(log.threadReads, 1);
-    assert.equal(log.uploadReads, 0, "the owner upload inventory stays closed on Ask");
-    assert.match(await text(page, "#msgs"), /Nothing has been asked in this chat yet\./);
+    assert.equal(log.uploadReads, 1);
+    assert.match(await text(page, "#msgs"), /No messages in this chat yet\./);
     assert.equal(await text(page, "#chatTitle"), "New chat");
     await page.close();
 
-    // Regular employees may ask approved SOP questions but cannot enumerate owner uploads.
+    // A closer is a permitted staff user: read-only SOP discovery is available,
+    // but private upload file names and owner reviews must never be requested.
     const closer = await openBrain({ session: CLOSER });
     assert.match(closer.page.url(), /\/app\/company-brain\.html/);
-    assert.equal(closer.log.uploadReads, 0);
-    assert.equal(closer.log.reviewReads, 0);
-    assert.equal(await hidden(closer.page, "#tabManage"), true);
+    assert.equal(await text(closer.page, "#rolePill"), "closer");
+    assert.equal(closer.log.uploadReads, 0, "staff does not fetch owner-tier upload names");
+    assert.equal(closer.log.reviewReads, 0, "staff does not fetch owner review items");
+    assert.equal(await hidden(closer.page, "#reviewPanel"), true);
+    assert.equal(await closer.page.locator("#docList .docrow").count(), 0);
     await closer.page.close();
 
-    // External client/partner principals never enter the staff Knowledge Base.
+    // External client and partner principals stay on their own screens, with no Brain reads.
     for (const [session, landing] of [[CLIENT, "client-portal.html"], [PARTNER, "partner-galaxy.html"]]) {
       const other = await open("/app/company-brain.html", { session, handlers: {} });
       await waitFor(() => other.page.url().includes(landing), `${session.staff.role} moved to ${landing}`);
@@ -174,18 +184,14 @@ test("the page loads for staff only, and its badge decides whether approval cont
 
   await proof.check(/^Role badge/, async () => {
     const owner = await openBrain({ session: OWNER });
-    assert.equal(owner.log.reviewReads, 0);
-    await owner.page.locator("#tabManage").click();
-    await waitFor(() => owner.log.reviewReads >= 1 && owner.log.uploadReads >= 1, "owner Manage reads");
+    await waitFor(() => owner.log.reviewReads >= 1, "owner review read");
     assert.equal(await owner.page.locator("#rolePill").evaluate((el) => el.textContent), "owner");
     assert.equal(await hidden(owner.page, "#reviewPanel"), false, "the owner sees the approval panel");
-    assert.ok(await owner.page.locator("#reviewList [data-decide='approve']").count() >= 1, "owner can approve from the review queue");
-    assert.equal(await owner.page.locator("#docList [data-decide]").count(), 0, "upload inventory is read-only; approval stays in review queue");
+    assert.ok(await owner.page.locator("#reviewList [data-decide='approve']").count() >= 1, "the owner gets Approve in the review list");
     await owner.page.close();
 
     const admin = await openBrain({ session: ADMIN });
-    await admin.page.locator("#tabManage").click();
-    await waitFor(() => admin.log.uploadReads >= 1, "admin Manage files read");
+    await admin.page.waitForTimeout(300);
     assert.equal(await admin.page.locator("#rolePill").evaluate((el) => el.textContent), "admin");
     assert.equal(await hidden(admin.page, "#reviewPanel"), true, "a non-owner never sees the approval panel");
     assert.equal(admin.log.reviewReads, 0, "a non-owner never asks for the review queue");
@@ -198,8 +204,7 @@ test("the page loads for staff only, and its badge decides whether approval cont
       session: OWNER,
       init: () => { try { localStorage.setItem("fh_role", ""); localStorage.setItem("fh_session", JSON.stringify({ role: "owner" })); } catch (e) {} }
     });
-    await fromSession.page.locator("#tabManage").click();
-    await waitFor(() => fromSession.log.reviewReads >= 1, "review read after Manage with session role");
+    await waitFor(() => fromSession.log.reviewReads >= 1, "the review read from the session role");
     assert.equal(await fromSession.page.locator("#rolePill").evaluate((el) => el.textContent), "owner");
     assert.equal(await hidden(fromSession.page, "#reviewPanel"), false);
     await fromSession.page.close();
@@ -318,7 +323,7 @@ test("New chat: clears the chat, the highlight, the thread id and a 'gone' messa
     assert.equal(await page.locator(`#threadList [data-thread="${T1}"]`).getAttribute("class"), "threadbtn on");
     await page.locator("#newChat").click();
     assert.equal(await text(page, "#chatTitle"), "New chat");
-    assert.match(await text(page, "#msgs"), /Nothing has been asked in this chat yet\./);
+    assert.match(await text(page, "#msgs"), /No messages in this chat yet\./);
     assert.equal(await page.locator("#threadList .threadbtn.on").count(), 0, "no past chat stays marked after New chat");
     assert.equal(await page.locator("#msgs .turn").count(), 0);
 
@@ -327,7 +332,7 @@ test("New chat: clears the chat, the highlight, the thread id and a 'gone' messa
     await waitFor(async () => /That chat is gone\./.test(await text(page, "#msgs")), "the gone words");
     await page.locator("#newChat").click();
     assert.doesNotMatch(await text(page, "#msgs"), /That chat is gone\./, "the error does not outlive New chat");
-    assert.match(await text(page, "#msgs"), /Nothing has been asked in this chat yet\./);
+    assert.match(await text(page, "#msgs"), /No messages in this chat yet\./);
     assert.equal(await text(page, "#chatTitle"), "New chat");
     assert.equal(await page.locator("#threadList .threadbtn.on").count(), 0);
 
@@ -338,7 +343,7 @@ test("New chat: clears the chat, the highlight, the thread id and a 'gone' messa
     assert.equal(await page.locator("#msgs .sk").count() > 0, true, "the loading placeholder shows while it loads");
     await page.locator("#newChat").click();
     assert.equal(await page.locator("#msgs .sk").count(), 0, "New chat does not leave the loading placeholder");
-    assert.match(await text(page, "#msgs"), /Nothing has been asked in this chat yet\./);
+    assert.match(await text(page, "#msgs"), /No messages in this chat yet\./);
     st.openGate.release();
     st.openGate = null;
 
@@ -444,18 +449,17 @@ test("Documents: open and close, Files you added with Refresh", { timeout: 90_00
   const docsOpen = () => page.locator("#docs").isVisible();
 
   await proof.check(/^Documents button/, async () => {
-    assert.equal(await docsOpen(), false, "Manage starts closed");
-    assert.equal(log.uploadReads, 0, "no private file list read while on Ask");
+    assert.equal(await docsOpen(), false);
+    assert.equal(await page.locator("#docs").isVisible(), false, "the Manage panel starts closed");
     await page.locator("#tabManage").click();
-    await waitFor(() => log.uploadReads >= 1, "explicit Manage view reads uploads");
     assert.equal(await docsOpen(), true);
-    assert.equal(await page.locator("#tabManage").getAttribute("aria-selected"), "true");
+    assert.equal(await page.locator("#docs").isVisible(), true);
     await page.locator("#tabAsk").click();
     assert.equal(await docsOpen(), false);
+    assert.equal(await page.locator("#docs").isVisible(), false);
     await page.locator("#tabManage").click();
-    assert.equal(await docsOpen(), true);
     await page.locator("#tabAsk").click();
-    assert.equal(await docsOpen(), false, "Ask closes the Manage view");
+    assert.equal(await docsOpen(), false, "the Ask tab closes Manage");
   });
 
   await proof.check(/^Files you added: list and Refresh button/, async () => {
@@ -475,7 +479,7 @@ test("Documents: open and close, Files you added with Refresh", { timeout: 90_00
     assert.match(rows[2], /This will not be used in answers\./);
     assert.doesNotMatch(rows[2], /added by|null|NaN/, "an unknown size and uploader are left out, never printed as null");
     assert.equal(await page.locator("#pendPill2").evaluate((el) => el.textContent), "1 waiting");
-    assert.equal(await page.locator("#pendPill").evaluate((el) => el.textContent), "1 waiting");
+    assert.equal(await page.locator("#pendPill").evaluate((el) => el.textContent), "1");
 
     // A failed read says it in words and never as a code, and the waiting count it was showing goes away
     // with it: a count from before the failure would be a claim the screen can no longer back.
@@ -523,6 +527,7 @@ test("the owner's review panel: Refresh, Approve and Turn down", { timeout: 90_0
   const turnDownIn = (scope) => page.locator(scope).getByRole("button", { name: "Turn down", exact: true });
 
   await proof.check(/^Owner: 'Waiting for your approval' panel and its Refresh button/, async () => {
+    await page.locator("#reviewList .docrow").first().locator("summary").click();
     const rows = await page.locator("#reviewList .docrow").allInnerTexts();
     assert.match(rows[0], /Refund policy\.pdf/);
     assert.match(rows[0], /asked for staff · now owner/);
@@ -565,11 +570,9 @@ test("the owner's review panel: Refresh, Approve and Turn down", { timeout: 90_0
     await waitFor(() => log.decides.length === 1, "the approve request");
     assert.deepEqual(log.decides[0], { review_id: R1, decision: "approve" });
     await waitFor(() => log.reviewReads > readsBefore.reviews && log.uploadReads > readsBefore.uploads, "both lists read again");
-    // From the file row in Files you added (the same request for the same review).
-    assert.equal(await page.locator("#docList [data-decide]").count(), 0, "uploads never independently authorize a review");
-    // The second review (a Drive file with no upload row) is approved by its own button, not the first one's.
+    // The second review (a Drive file) is approved by its own button, not the first one's.
     await approveIn("#reviewList").nth(1).click();
-    await waitFor(() => log.decides.length === 2, "the second approval");
+    await waitFor(() => log.decides.length === 2, "the second approve request");
     assert.deepEqual(log.decides[1], { review_id: R2, decision: "approve" });
     // Someone else decided first: said in words, and the button comes back.
     st.decide = () => ({ status: 409, body: { ok: false, error: "not_pending" } });
@@ -586,7 +589,7 @@ test("the owner's review panel: Refresh, Approve and Turn down", { timeout: 90_0
     await turnDownIn("#reviewList").nth(1).click();
     await waitFor(() => log.decides.length === before + 1, "the turn down request");
     assert.deepEqual(log.decides[before], { review_id: R2, decision: "reject" });
-    // The other review may also be refused, while upload inventory remains read-only.
+    // The waiting upload has its own review row and can be turned down there.
     await turnDownIn("#reviewList").first().click();
     await waitFor(() => log.decides.length === before + 2, "the second turn down request");
     assert.deepEqual(log.decides[before + 1], { review_id: R1, decision: "reject" });
