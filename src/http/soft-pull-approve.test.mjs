@@ -368,3 +368,95 @@ test("signed soft-pull link sends a client without an account to portal claim", 
     assert.equal(response.body.create_account_url, "/portal-login.html?mode=claim");
   }
 });
+
+test("replaceSoftPullBusinesses rolls back a mid-list failure and replays without duplicates", async () => {
+  // A disposable transaction-aware fake: no customer, bureau, payment or
+  // production database is involved.
+  const rows = [
+    { org: "org-A", client: "client-A", name: "Prior LLC", source: "soft_pull_approve" },
+    { org: "org-B", client: "client-B", name: "Other company", source: "soft_pull_approve" }
+  ];
+  let failSecond = true;
+  let inserts = 0;
+  let releases = 0;
+  const queries = [];
+  const pool = {
+    async connect() {
+      let snapshot = null;
+      return {
+        async query(sql, params = []) {
+          const statement = String(sql).trim();
+          queries.push({ statement, params });
+          if (statement === "BEGIN") {
+            snapshot = rows.map((r) => ({ ...r }));
+            return { rows: [] };
+          }
+          if (statement === "ROLLBACK") {
+            rows.splice(0, rows.length, ...snapshot.map((r) => ({ ...r })));
+            return { rows: [] };
+          }
+          if (statement === "COMMIT") return { rows: [] };
+          if (/^SELECT id FROM clients/.test(statement)) {
+            assert.match(statement, /org_id = \$2 FOR UPDATE/);
+            return { rows: params[0] === "client-A" && params[1] === "org-A"
+              ? [{ id: "client-A" }] : [] };
+          }
+          if (/^DELETE FROM businesses/.test(statement)) {
+            for (let i = rows.length - 1; i >= 0; i--) {
+              if (rows[i].org === params[0] && rows[i].client === params[1]
+                  && rows[i].source === params[2]) rows.splice(i, 1);
+            }
+            return { rows: [] };
+          }
+          if (/^INSERT INTO businesses/.test(statement)) {
+            inserts += 1;
+            if (failSecond && inserts === 2) throw new Error("synthetic insert failure");
+            rows.push({ org: params[0], client: params[1], name: params[2],
+              source: JSON.parse(params[4]).source });
+            return { rows: [] };
+          }
+          throw new Error("Unexpected SQL");
+        },
+        release() { releases += 1; }
+      };
+    }
+  };
+  const businesses = [
+    { name: "New A", age_months: 12 },
+    { name: "New B", age_months: 18 }
+  ];
+  await assert.rejects(
+    replaceSoftPullBusinesses(pool, { orgId: "org-A", clientId: "client-A", businesses }),
+    /synthetic insert failure/
+  );
+  assert.deepEqual(rows.map((r) => r.name), ["Prior LLC", "Other company"],
+    "a failed second insert must not erase the previously approved businesses");
+  assert.equal(queries.filter((q) => q.statement === "ROLLBACK").length, 1);
+  assert.equal(releases, 1);
+  failSecond = false;
+  await replaceSoftPullBusinesses(pool, { orgId: "org-A", clientId: "client-A", businesses });
+  await replaceSoftPullBusinesses(pool, { orgId: "org-A", clientId: "client-A", businesses });
+  assert.deepEqual(rows.map((r) => r.name), ["Other company", "New A", "New B"]);
+  assert.equal(releases, 3);
+  assert.equal(queries.filter((q) => q.statement === "COMMIT").length, 2);
+});
+
+test("replaceSoftPullBusinesses rejects a wrong-org client before deletion", async () => {
+  let deleted = false, rolledBack = false, released = false;
+  const pool = { async connect() { return {
+    async query(sql) {
+      if (/^SELECT id FROM clients/.test(String(sql).trim())) return { rows: [] };
+      if (/^DELETE FROM businesses/.test(String(sql).trim())) deleted = true;
+      if (sql === "ROLLBACK") rolledBack = true;
+      return { rows: [] };
+    },
+    release() { released = true; }
+  }; } };
+  await assert.rejects(
+    replaceSoftPullBusinesses(pool, { orgId: "wrong-org", clientId: "client-A", businesses: [] }),
+    (e) => e instanceof ConsentError && e.code === "not_found"
+  );
+  assert.equal(deleted, false);
+  assert.equal(rolledBack, true);
+  assert.equal(released, true);
+});

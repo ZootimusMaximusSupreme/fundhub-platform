@@ -13,7 +13,7 @@
 // added business; extra owner is optional. Age months are stored on the row.
 // Live CRS / Experian Business in this repo does not return that date.
 
-import { db } from "../src/db.mjs";
+import { db, pool } from "../src/db.mjs";
 import { isUuid, ROLE_SETS, requireRole } from "../src/http/read-api.mjs";
 import { requireAuth } from "../src/http/middleware/requireAuth.mjs";
 import { requirePrincipal, resolvePrincipal } from "../src/http/middleware/requirePrincipal.mjs";
@@ -244,33 +244,67 @@ async function stampIncorporatedAsStaff(req, res, { database, requireAuth: auth,
 }
 
 export async function replaceSoftPullBusinesses(database, { orgId, clientId, businesses }) {
-  await database.query(
-    `DELETE FROM businesses
-      WHERE org_id = $1 AND client_id = $2
-        AND COALESCE(entity_data->>'source', '') = $3`,
-    [orgId, clientId, BIZ_SOURCE]
-  );
-  for (const b of businesses) {
-    await database.query(
-      `INSERT INTO businesses (org_id, client_id, name, age_months, entity_data)
-       VALUES ($1, $2, $3, $4, $5::jsonb)`,
-      [
-        orgId,
-        clientId,
-        b.name,
-        b.age_months,
-        JSON.stringify({
-          source: BIZ_SOURCE,
-          address_line1: b.address_line1,
-          city: b.city,
-          state: b.state,
-          postal_code: b.postal_code,
-          ein: b.ein,
-          extra_owner_name: b.extra_owner_name || null,
-          incorporated_date: b.incorporated_date || null
-        })
-      ]
+  // A partial replacement must never erase the customer's existing companies.
+  // The live db export is a pool.query wrapper; BEGIN on that wrapper would run
+  // on unrelated connections, so obtain one pinned connection for every write.
+  // A supplied Pool can be used as well; injected query-only test doubles keep
+  // their existing contract, while production always uses the pinned pool.
+  const transactionalPool = database === db ? pool()
+    : (database && typeof database.connect === "function"
+       && typeof database.release !== "function" ? database : null);
+  const connection = transactionalPool ? await transactionalPool.connect() : null;
+  const writer = connection || database;
+  let transactionStarted = false;
+  try {
+    if (connection) {
+      await writer.query("BEGIN");
+      transactionStarted = true;
+      // Serialize replacements on this exact buyer to avoid interleaved
+      // DELETE+INSERT sequences from simultaneous portal submissions.
+      const owned = await writer.query(
+        `SELECT id FROM clients WHERE id = $1 AND org_id = $2 FOR UPDATE`,
+        [clientId, orgId]
+      );
+      if (!owned.rows[0]) {
+        throw new ConsentError("This contact was not found.", {
+          status: 404, code: "not_found"
+        });
+      }
+    }
+    await writer.query(
+      `DELETE FROM businesses
+        WHERE org_id = $1 AND client_id = $2
+          AND COALESCE(entity_data->>'source', '') = $3`,
+      [orgId, clientId, BIZ_SOURCE]
     );
+    for (const b of businesses) {
+      await writer.query(
+        `INSERT INTO businesses (org_id, client_id, name, age_months, entity_data)
+         VALUES ($1, $2, $3, $4, $5::jsonb)`,
+        [
+          orgId, clientId, b.name, b.age_months,
+          JSON.stringify({
+            source: BIZ_SOURCE,
+            address_line1: b.address_line1,
+            city: b.city,
+            state: b.state,
+            postal_code: b.postal_code,
+            ein: b.ein,
+            extra_owner_name: b.extra_owner_name || null,
+            incorporated_date: b.incorporated_date || null
+          })
+        ]
+      );
+    }
+    if (connection) await writer.query("COMMIT");
+  } catch (error) {
+    if (transactionStarted) {
+      try { await writer.query("ROLLBACK"); }
+      catch { /* the original failure takes priority */ }
+    }
+    throw error;
+  } finally {
+    connection?.release();
   }
 }
 
