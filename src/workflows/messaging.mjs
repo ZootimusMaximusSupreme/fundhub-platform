@@ -34,6 +34,7 @@ import { normalizePhone } from "../messaging/providers/bland-voice.mjs";
 import { applyRepToContext } from "../auth/authorized-rep.mjs";
 import { creditTierFor } from "../config/survey-qualification.mjs";
 import { experimentFor, baseKeyOf, variantKeyFor, armFor } from "../messaging/experiments.mjs";
+import { RESUME_LINK_TAG } from "../survey/resume-link.mjs";
 
 /* Which column on the client record is the destination for a channel.
    The destination is recorded in the terms of the CHANNEL, not of whichever
@@ -225,6 +226,16 @@ async function pickTemplateRow(db, { orgId, clientId, templateKey }) {
 }
 
 export async function sendTemplated(db, { orgId, clientId, channel, templateKey, eventId, context = {}, staffId, shiftId }) {
+  // A TEXT NEVER CARRIES THE COME-BACK LINK (review 2026-10-31). The link opens the
+  // person's saved answers, and the phone on a record can belong to someone else: the
+  // public form puts any phone on an existing lead's email. Whatever a caller passes,
+  // a text renders that tag blank. src/survey/resume-link.mjs RESUME_LINK_TAG.
+  if (channel === "sms" && context && Object.prototype.hasOwnProperty.call(context, RESUME_LINK_TAG)) {
+    console.warn(`[sendTemplated] dropped {{${RESUME_LINK_TAG}}} from text ${templateKey}`);
+    const { [RESUME_LINK_TAG]: _dropped, ...rest } = context;
+    context = rest;
+  }
+
   // TCPA / suppression guard: skip opted-out contacts before touching any template.
   if (clientId && channel === "sms") {
     const suppressed = await isOptedOut(db, clientId, "sms");

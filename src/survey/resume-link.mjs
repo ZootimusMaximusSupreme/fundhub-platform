@@ -48,6 +48,11 @@ import { unsubscribeSecret } from "../messaging/unsubscribe.mjs";
 
 export const RESUME_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 days
 export const RESUME_BASE_URL = "https://apply.fundhub.ai/apply";
+/* The merge tag that carries the link. It goes in EMAIL only, never in a text: the
+   link opens the person's saved answers, and the public form can put any phone on an
+   existing lead's email, so a text can reach someone else. The email address is the
+   lead's identity (review 2026-10-31). sendTemplated drops it from every text. */
+export const RESUME_LINK_TAG = "survey_resume_link";
 
 const SCHEME = "survey-resume-v1";
 const DAY_MS = 24 * 60 * 60 * 1000;
