@@ -1093,3 +1093,36 @@ test("P0 monthly real CRS provider orders cannot double-fire or borrow a foreign
     ...witness, consentReceipt: null
   }), { verdict: "RED", reason: "authorized-consent-before-provider-action-missing" });
 });
+
+test("Commas canonical payment adapter edits cannot escape P0 money/consent/funding and Blueprint source review", () => {
+  // A/R A85's source-level refund/dispute stage-collapse finding is not a
+  // proved merchant incident. The live signed adapter previously matched no
+  // critical edge despite controlling paid, refund, dispute and deposit events.
+  const report = reportCriticalSourceChanges(["src/adapters/commas.mjs"]);
+  const expected = [
+    "payment-ledger-entitlement", "consent-crs-result",
+    "round-funded-fee-commission", "blueprint-financeos-report"
+  ];
+  for (const id of expected) {
+    const edge = report.edges.find((item) => item.id === id);
+    assert.ok(edge, id + " requires adapter source-diff review");
+    assert.ok(edge.files.includes("src/adapters/commas.mjs"));
+  }
+  assert.deepEqual(report.unmappedHighRiskFiles, []);
+  assert.equal(report.verdict, "REVIEW_REQUIRED");
+  assert.equal(report.evidenceNote, "MISSING");
+  assert.equal(report.liveReceipt, "NEEDS_LIVE_RECEIPT");
+  // An accepted canonical event is not a real paid/reversed business outcome.
+  // The same fixture MUST become RED when its persisted result disappears.
+  assert.deepEqual(judgeSyntheticEdge({
+    event, consumer, receipt: null, now: "2026-10-29T01:00:00Z"
+  }), { verdict: "RED", reason: "downstream-business-result-missing" });
+  assert.equal(judgeSyntheticEdge({
+    event, consumer, receipt, now: "2026-10-29T01:00:00Z"
+  }).verdict, "PASS");
+  // Observer/test changes and unrelated adapters must NOT cause broad CI noise.
+  assert.equal(reportCriticalSourceChanges([
+    "src/adapters/commas.test.mjs", "src/pulse/beats/beat-apply-links.mjs",
+    "src/adapters/unrelated.mjs"
+  ]).verdict, "NO_CRITICAL_SOURCE_TOUCH_DETECTED");
+});
