@@ -44,7 +44,7 @@ export const CRITICAL_EDGES = Object.freeze([
     event: "diagnostic.paid", consumer: "onDiagnosticPaidSoftPull / c-00-crs-soft-pull-request",
     receipt: "consent + credit-pull result + stored CRS report", graceMinutes: null,
     pulse: PULL_CHECK_IDS[0],
-    paths: ["src/register-all.mjs", "api/soft-pull-approve.mjs", "src/handlers/client-lifecycle.mjs", "src/handlers/diagnostic-soft-pull.mjs", "src/handlers/crs-full-report.mjs", "src/finance/crs", "src/finance/soft-pulls.mjs", "src/workflows/c-00-crs", "public/app/soft-pull-approve.html"]
+    paths: ["src/register-all.mjs", "api/soft-pull-approve.mjs", "src/handlers/client-lifecycle.mjs", "src/handlers/diagnostic-soft-pull.mjs", "src/handlers/crs-full-report.mjs", "src/finance/crs", "src/finance/soft-pulls.mjs", "src/finance/finance-os-pull-fulfil.mjs", "src/workflows/finance-os-pull-sweeper.mjs", "src/workflows/c-00-crs", "public/app/soft-pull-approve.html"]
   },
   {
     id: "round-funded-fee-commission", severity: "P0", owner: "Fulfillment / A/R",
@@ -206,7 +206,7 @@ function matchesEvent(row, event) {
 export function judgeSyntheticEdge({
   demand = true, demandAt, event, consumer, receipt, providerReceipt, consentReceipt,
   identityReceipt, requireProviderReceipt = false, requireConsentReceipt = false, consentScope,
-  expectedContract, now = Date.now(), graceMs = 15 * 60 * 1000
+  requireUniqueProviderOrder = false, providerOrders, expectedContract, now = Date.now(), graceMs = 15 * 60 * 1000
 } = {}) {
   // A present producer event contradicts a "no demand" claim; never hide it as NA.
   if (demand === false) return event?.id
@@ -264,6 +264,42 @@ export function judgeSyntheticEdge({
       consentTime <= actionTime && !revoked
     );
     if (!authorized) return failed("authorized-consent-before-provider-action-missing");
+  }
+  // A single saved soft-pull request must never become two real bureau orders.
+  // Optional STRICT normalized witness, not a claim that the live provider
+  // exposes these fields. An unqueried provider ledger is NOT_CHECKED; a
+  // genuinely empty scoped ledger is RED after grace. Two distinct external
+  // order IDs for one request are RED even when a CRS result was saved.
+  // Repeated observations of the SAME external ID are not duplicate pulls.
+  if (requireUniqueProviderOrder) {
+    if (!Array.isArray(providerOrders) || !resolved.request_id) {
+      return { verdict: "NOT_CHECKED", reason: "provider-order-proof-not-available" };
+    }
+    const observed = providerOrders.filter((o) => o?.event_id === resolved.id);
+    if (!observed.length) return failed("provider-order-receipt-missing");
+    if (observed.some((o) => o.org_id !== resolved.org_id ||
+        o.client_id !== resolved.client_id || o.request_id !== resolved.request_id)) {
+      return failed("provider-order-identity-mismatch");
+    }
+    if (observed.some((o) => typeof o.provider_order_id !== "string" ||
+        !o.provider_order_id.trim())) {
+      return { verdict: "NOT_CHECKED", reason: "provider-order-identity-unavailable" };
+    }
+    const actions = new Set(observed.map((o) => o.provider_order_id.trim()));
+    if (actions.size > 1) return failed("duplicate-provider-orders-for-request");
+    const actionAt = milliseconds(consumer.provider_action_at);
+    if (!Number.isFinite(actionAt)) {
+      return { verdict: "NOT_CHECKED", reason: "provider-order-action-time-missing" };
+    }
+    for (const order of observed) {
+      const orderedAt = milliseconds(order.ordered_at);
+      if (!Number.isFinite(orderedAt)) {
+        return { verdict: "NOT_CHECKED", reason: "provider-order-timestamp-missing" };
+      }
+      if (orderedAt < actionAt || orderedAt > current) {
+        return failed("provider-order-timestamp-outside-observed-window");
+      }
+    }
   }
   if (!matchesEvent(receipt, resolved) || receipt.outcome !== "satisfied") {
     return failed("downstream-business-result-missing");
