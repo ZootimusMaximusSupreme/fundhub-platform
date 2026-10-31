@@ -197,3 +197,25 @@ test("opt-in setter can complete a booked handoff with both funding paths", asyn
   await expect(page.locator("#setter-status")).toHaveText("Handoff complete and saved on the client.");
   expect(completed).toBe(true);
 });
+
+test("each lead's booking links open that lead's own calendar", async ({ page }) => {
+  const Q = "https://apply.fundhub.ai/funding-book-call?fh_tier=q";
+  const U = "https://apply.fundhub.ai/funding-book-call--02424?fh_tier=u";
+  const optIn = structuredClone(queue.items[0]);
+  optIn.client_id = "bbbbbbbb-2222-4222-8222-222222222222";
+  optIn.lead_type = "opt_in"; optIn.booked_at = null; optIn.booking_time = null;
+  optIn.booking_url = U;
+  delete optIn.setter_handoff.complete_at;
+  const booked = { ...structuredClone(queue.items[0]), client_id: "cccccccc-3333-4333-8333-333333333333", booking_url: Q };
+  const noScore = { ...structuredClone(queue.items[0]), client_id: "dddddddd-4444-4444-8444-444444444444", booking_url: null };
+  await openScreen(page, "/app/setter-dashboard.html", SETTER, {
+    "/api/read/setter-dashboard": { ...queue, count: 3, items: [optIn, booked, noScore] }
+  });
+
+  await page.locator(`#setter-queue [data-client-id="${optIn.client_id}"]`).click();
+  await expect(page.getByRole("link", { name: /Open booking calendar/ })).toHaveAttribute("href", U);
+  await page.locator(`#setter-queue [data-client-id="${booked.client_id}"]`).click();
+  await expect(page.getByRole("link", { name: "Move call time" })).toHaveAttribute("href", Q);
+  await page.locator(`#setter-queue [data-client-id="${noScore.client_id}"]`).click();
+  await expect(page.getByRole("link", { name: "Move call time" })).toHaveAttribute("href", queue.booking_url);
+});

@@ -215,6 +215,37 @@ test("queue returns booked and opt-in leads with survey echo and saved handoff",
   assert.equal(result.numbers.dials, 0);
 });
 
+test("each queued lead carries its own calendar link from its saved score", async () => {
+  const lead = (id, custom_fields) => ({ client_id: id, first_name: "Pat", created_at: "2026-10-26T16:00:00Z", custom_fields });
+  const db = { async query(sql) {
+    if (sql.includes("WITH bounds AS")) return { rows: [{ dials: 0, booked: 0, showed: 0, no_shows: 0 }] };
+    return { rows: [
+      lead("a", { cf_svy_self_reported_fico_label: "700-749" }),
+      lead("b", { cf_svy_self_reported_fico_label: "650-699" }),
+      lead("c", { cf_svy_self_reported_fico_label: "Not sure" }),
+      lead("d", {})
+    ] };
+  } };
+  const result = await listSetterQueue(db, STAFF);
+  assert.deepEqual(result.items.map(x => x.booking_url), [
+    "https://apply.fundhub.ai/funding-book-call?fh_tier=q",
+    "https://apply.fundhub.ai/funding-book-call--02424?fh_tier=u",
+    "https://apply.fundhub.ai/funding-book-call--02424?fh_tier=u",
+    null
+  ]);
+  assert.equal(result.booking_url, "https://apply.fundhub.ai/funding-book-call");
+  assert.ok(result.items.every(x => !/700|650|unqualified/i.test(String(x.booking_url))));
+});
+
+test("a saved checklist keeps the lead's own calendar link", async () => {
+  const { db, client } = fakeDb(false);
+  client.custom_fields.cf_svy_self_reported_fico_label = "580-649";
+  const saved = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save",
+    handoff: { dialed_at: "2026-10-26T20:00:00Z", call_attempts: 1 } });
+  assert.equal(saved.status, 200);
+  assert.equal(saved.body.item.booking_url, "https://apply.fundhub.ai/funding-book-call--02424?fh_tier=u");
+});
+
 test("survey save replaces edits, keeps submitted answers, and does not complete the task", async () => {
   const { db, client, queries } = fakeDb();
   client.custom_fields.cf_svy_planned_use_label = "Open a shop";

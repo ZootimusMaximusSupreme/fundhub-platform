@@ -423,6 +423,13 @@ and server under one id. The second calendar is on the tracker's and the server'
 page lists as step 3 of the watch funnel, and counts the same Cortana booking
 steps as the first.
 
+**Setter desk links (2026-10-31).** The setter desk uses the same rule. Each lead
+in `GET /api/read/setter-dashboard` carries its own `booking_url`
+(`listSetterQueue` in `src/setter/dashboard.mjs`, via `tierBookingLink`), and that
+lead's **Open booking calendar** and **Move call time** links open it. A lead with
+no readable answer keeps the plain `/funding-book-call` link. So a link a setter
+copies into a text sends the lead to their own calendar.
+
 ```mermaid
 flowchart TD
     A[Text or email to a lead] --> B{Saved score answer}
