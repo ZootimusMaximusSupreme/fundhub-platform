@@ -265,8 +265,8 @@ export async function logCallOutcome(db, input) {
   if (taskId) {
     await db.query(
       `UPDATE tasks SET done = true, updated_at = now()
-        WHERE id = $1 AND org_id = $2`,
-      [taskId, orgId]
+        WHERE id = $1 AND org_id = $2 AND client_id = $3`,
+      [taskId, orgId, clientId]
     );
   }
 
