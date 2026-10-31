@@ -170,5 +170,5 @@ test('password login also protects CSS standalone when navigator.standalone is u
   await page.goto('/login.html?next=%2Fapp%2Fclient-portal.html');
   await expect(page.locator('.login-brand')).toHaveAttribute('href', '/app/client-portal.html');
   await expect(page.locator('.login-back')).toBeHidden();
-  await expect(page.getByLabel('Email address')).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'Email address', exact: true })).toBeVisible();
 });
