@@ -7,7 +7,7 @@ const CLIENT="22222222-2222-4222-8222-222222222222";
 const LETTER="44444444-4444-4444-8444-444444444444";
 const HTML="<p>Saved and approved content A</p>";
 function fixture({owned=true,authorized=true,saved=true,status="ready",target="bureau",recordedState="AZ"}={}) {
-  const sends=[],statements=[];
+  const sends=[],statements=[],mailerCalls=[];
   const deps={
     db:{async query(sql,params) {
       statements.push({sql,params});
@@ -22,6 +22,8 @@ function fixture({owned=true,authorized=true,saved=true,status="ready",target="b
       throw new Error("unexpected SQL: "+sql);
     }},
     requireAuth:async()=>({id:"33333333-3333-4333-8333-333333333333",org_id:ORG,role:"owner"}),
+    hasActivePaidRepairProgram:async()=>true,
+    mailBureauLetter:async options=>{mailerCalls.push(options);return {ok:true,providerId:"mock-only"}},
     hasRepairAgreement:async()=>authorized,
     hasDisputeAuthorization:async()=>false,
     loadClientReturnAddress:async (_db, {orgId,clientId})=>{
@@ -35,7 +37,7 @@ function fixture({owned=true,authorized=true,saved=true,status="ready",target="b
   const req={method:"POST",body:{mail:true,client_id:CLIENT,mail_from:{address_line1:"Synthetic"},
     letters:[{letter_id:LETTER,bureau:"EX",html:HTML}]}};
   const res={code:null,body:null,setHeader(){},status(n){this.code=n;return this;},json(v){this.body=v;return this;}};
-  return {deps,req,res,sends,statements};
+  return {deps,req,res,sends,statements,mailerCalls};
 }
 async function run(change,opts) {
   const h=fixture(opts);
@@ -105,9 +107,35 @@ test("state-AG mail missing on-file state fails closed before claim or provider"
   assert.equal(h.statements.some(x=>/UPDATE dispute_letters/.test(x.sql)),false);
 });
 
-test("normal bureau letter preserves existing non-AG mail behavior", async()=>{
-  const h=await run(b=>{ b.identity={state:"FL"}; },{target:"bureau",recordedState:null});
+for(const target of ["bureau","cfpb"]) test(target+" mail ignores forged HTTP sender/state at provider boundary",async()=>{
+  const h=await run(b=>{
+    b.identity={state:"FL",address_line1:"Spoofed identity"};
+    b.mail_from={address_line1:"Untrusted sender",address_state:"FL"};
+  },{target,recordedState:"AZ"});
   assert.equal(h.res.code,200);
   assert.equal(h.sends.length,1);
-  assert.deepEqual(h.sends[0].identity,{state:"FL"});
+  assert.deepEqual(h.sends[0].identity,{state:"AZ"});
+  assert.equal(h.sends[0].from.address_line1,"Recorded consumer address");
+  await h.sends[0].mailSender({target,bureau:"EX",letterId:LETTER,html:HTML});
+  assert.equal(h.mailerCalls.length,1);
+  assert.equal(h.mailerCalls[0].from.address_line1,"Recorded consumer address");
+  assert.deepEqual(h.mailerCalls[0].identity,{state:"AZ"});
+});
+test("bureau letter with forged HTTP return address but no recorded consumer address fails closed",async()=>{
+  const h=await run(b=>{
+    b.mail_from={address_line1:"Fake usable sender",address_state:"AZ"};
+    b.identity={address_line1:"Fake identity",state:"AZ"};
+  },{target:"bureau",recordedState:null});
+  assert.equal(h.res.code,409);
+  assert.equal(h.res.body.error,"client_return_address_missing_for_mail");
+  assert.equal(h.sends.length,0);
+  assert.equal(h.mailerCalls.length,0);
+  assert.equal(h.statements.some(x=>/UPDATE dispute_letters/.test(x.sql)),false);
+});
+test("valid bureau mail without request identity uses recorded sender",async()=>{
+  const h=await run(b=>{delete b.mail_from;delete b.identity;},{target:"bureau",recordedState:"AZ"});
+  assert.equal(h.res.code,200);
+  assert.equal(h.sends.length,1);
+  assert.equal(h.sends[0].from.address_state,"AZ");
+  assert.deepEqual(h.sends[0].identity,{state:"AZ"});
 });

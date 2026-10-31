@@ -38,13 +38,14 @@ test("DFY/repair send path calls mail helper when mail=true", async () => {
     body: {
       mail: true,
       client_id: "33333333-3333-4333-8333-333333333333",
+      // Deliberately forged request sender: only recorded PII may print.
       mail_from: {
-        first_name: "Pat",
-        last_name: "Client",
-        address_line1: "12 Oak St",
-        address_city: "Dallas",
-        address_state: "TX",
-        address_zip: "75201"
+        first_name: "Mallory",
+        last_name: "Unknown",
+        address_line1: "900 Fake Way",
+        address_city: "Orlando",
+        address_state: "FL",
+        address_zip: "32801"
       },
       letters: [{ bureau: "EX", html: "<p>signed body</p>", letter_id: "55555555-5555-4555-8555-555555555555" }]
     }
@@ -59,6 +60,8 @@ test("DFY/repair send path calls mail helper when mail=true", async () => {
     }),
     // This fixture represents a client whose signed repair agreement is on file.
     // The separate authorization regression verifies unsigned clients are refused.
+    hasActivePaidRepairProgram: async () => true,
+    loadClientReturnAddress: async () => IDENT,
     hasRepairAgreement: async (_db, { orgId, clientId }) => {
       assert.equal(orgId, "22222222-2222-4222-8222-222222222222");
       assert.equal(clientId, "33333333-3333-4333-8333-333333333333");
@@ -75,6 +78,8 @@ test("DFY/repair send path calls mail helper when mail=true", async () => {
   assert.equal(mailCalls[0].bureau, "EX");
   assert.equal(mailCalls[0].html, "<p>signed body</p>");
   assert.equal(mailCalls[0].from.first_name, "Pat");
+  assert.equal(mailCalls[0].from.address_line1, "12 Oak St");
+  assert.equal(mailCalls[0].from.address_state, "TX");
 });
 
 test("repair send without mail=true fails closed", async () => {
@@ -161,6 +166,8 @@ async function post(deps, statements) {
     }),
     // Existing provider/replay tests exercise AUTHORIZED mail. The new route
     // tests separately enforce 403 before any send when authorization is absent.
+    hasActivePaidRepairProgram: async () => true,
+    loadClientReturnAddress: async () => IDENT,
     hasRepairAgreement: async (_db, { orgId, clientId }) => {
       assert.equal(orgId, "22222222-2222-4222-8222-222222222222");
       assert.equal(clientId, "33333333-3333-4333-8333-333333333333");
@@ -227,7 +234,7 @@ test("a 200 with no provider id is recorded as a mailing through the live route"
   );
 });
 
-test("a letter is claimed only while nobody is sending it, nobody has mailed it and it is not already sent; a refusal releases only a claim still held", async () => {
+test("a human repair letter is claimable only when generated or ready, unclaimed and unmailed; a refusal releases only the held claim", async () => {
   const statements = [];
   await post({ mailBureauLetter: async () => ({ ok: false, preTransmission: true, error: "refused before it left" }) }, statements);
   const one = (re) => statements.find((s) => re.test(s));
@@ -235,8 +242,13 @@ test("a letter is claimed only while nobody is sending it, nobody has mailed it 
     "this letter, this company, this client": "WHERE id = $1::uuid AND org_id = $2::uuid AND client_id = $3::uuid",
     "not claimed already": "AND d.send_claimed_at IS NULL",
     "not mailed already": "AND d.mailed_at IS NULL",
-    "not in a sent state": "AND d.status NOT IN ('sending', 'sent', 'delivered')"
+    "human paid repair permits only generated/ready": "AND d.status IN ('generated','ready')"
   });
+  const claimSql = one(/UPDATE dispute_letters d SET status = 'sending'/);
+  assert.match(claimSql, /FROM contracts c/);
+  assert.match(claimSql, /FROM client_consents/);
+  assert.match(claimSql, /revoked_at IS NULL/);
+  assert.match(claimSql, /expires_at > now\(\)/);
   assertSqlHas(one(/SET status = COALESCE\(\$4, 'ready'\), send_claimed_at = NULL/), {
     "only this letter, still held": "WHERE id = $1::uuid AND org_id = $2::uuid AND client_id = $3::uuid AND status = 'sending' AND mailed_at IS NULL"
   });

@@ -10,6 +10,7 @@ import { sendRepairLetters, RepairSendError } from "../../src/repair/send.mjs";
 import { mailBureauLetter } from "../../src/metro2/delivery/send.mjs";
 import { dbDown } from "../../src/http/db-down.mjs";
 import { hasRepairAgreement, hasDisputeAuthorization } from "../../src/repair/dispute-auth.mjs";
+import { hasActivePaidRepairProgram } from "../../src/repair/active-paid-program.mjs";
 
 
 /** Bind a human mail request to this organization's persisted, approved letter.
@@ -108,6 +109,11 @@ export default async function handler(req, res, deps = {}) {
       if (!authorized) {
         return res.status(403).json({ ok: false, error: "repair_dispute_authorization_required" });
       }
+      // Historical consent cannot authorize mailing after cancellation or refund.
+      const activePaid = await (deps.hasActivePaidRepairProgram ?? hasActivePaidRepairProgram)(database, { orgId, clientId });
+      if (!activePaid) {
+        return res.status(409).json({ ok: false, error: "repair_enrollment_inactive_or_unpaid" });
+      }
     }
 
     // PostGrid mailing needs a saved letter so the existing DB claim can
@@ -130,18 +136,20 @@ export default async function handler(req, res, deps = {}) {
     // address from the request body: both can be edited after the letter was
     // approved and could route a real complaint to the wrong state.
     const stateAgInBatch = wantMail && bound.letters.some(letter => letter.target === "state_ag");
-    const recordedReturnAddress = stateAgInBatch
+    // Mail must use the consumer's same-org identity, never body.mail_from or
+    // body.identity. A valid saved letter cannot authorize a forged sender.
+    const recordedReturnAddress = wantMail
       ? await (deps.loadClientReturnAddress ?? loadClientReturnAddress)(database, { orgId, clientId })
       : null;
     if (stateAgInBatch && !recordedReturnAddress?.address_state) {
       return res.status(409).json({ ok: false, error: "client_state_missing_for_ag" });
     }
-    const from = stateAgInBatch
-      ? recordedReturnAddress
-      : (body.mail_from || body.mailFrom
-        || await loadClientReturnAddress(database, { orgId, clientId }));
-    const mailIdentity = stateAgInBatch
-      ? { state: recordedReturnAddress.address_state }
+    if (wantMail && !recordedReturnAddress?.address_line1) {
+      return res.status(409).json({ ok: false, error: "client_return_address_missing_for_mail" });
+    }
+    const from = wantMail ? recordedReturnAddress : (body.mail_from || body.mailFrom || null);
+    const mailIdentity = wantMail
+      ? { state: recordedReturnAddress.address_state || null }
       : (body.identity || null);
     const mailSender = wantMail
       ? async (letter) => {
@@ -213,10 +221,21 @@ export default async function handler(req, res, deps = {}) {
       from,
       identity: mailIdentity,
       mailSender,
+      enforceActivePaidRepair: wantMail,
+      enforceCurrentDisputeAuthorization: wantMail,
       env: deps.env,
       fetchImpl: deps.fetchImpl
     });
 
+    if (wantMail && !result.ok && result.results?.length
+      && result.results.every(r => ["repair_enrollment_inactive_or_unpaid", "repair_dispute_authorization_required"].includes(r.error))) {
+      const consentLost = result.results.some(r => r.error === "repair_dispute_authorization_required");
+      return res.status(consentLost ? 403 : 409).json({
+        ok: false,
+        error: consentLost ? "repair_dispute_authorization_required" : "repair_enrollment_inactive_or_unpaid",
+        results: result.results
+      });
+    }
     return res.status(200).json({ ok: true, ...result });
   } catch (err) {
     if (err instanceof RepairSendError) {
