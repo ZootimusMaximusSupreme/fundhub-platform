@@ -213,7 +213,7 @@ Chris: "I've never done inbound sales before." These answers merge with the repo
 - **What the call is.** Not one size fits all. We diagnose and tell you exactly what to do. We want action takers who need a solution, not shoppers.
 - **Copy rule from Chris:** never say "CRS" to a customer.
 
-Day counts are allowed now (owner-set 2026-10-31, PR "Allow day counts in ads"). The written Funding 72-Hour Action Guarantee says "A funding advisor starts within 24 business hours. Applications go out within 72 business hours. If we don't act in that window, you get your deposit back." (`marketing/landing-pages/slo/preview/03-thank-you.html:419`). Chris said "first approval within 72 hours". Open: which wording the content uses. The funding-circle referral fee still needs the real program it points to.
+Day counts are allowed now (owner-set 2026-10-31, PR "Allow day counts in ads"). The written Funding 72-Hour Action Guarantee says "A funding advisor starts within 24 business hours. Applications go out within 72 business hours. If we don't act in that window, you get your deposit back." (`marketing/landing-pages/slo/preview/03-thank-you.html:419`). Chris, 2026-10-31, settled: "Applications go out within 72 hours. That's the guarantee. That's in the contract." Approvals are not guaranteed in 72 hours; say it casually: applications go out within 72 business hours, which typically means approvals come very shortly after. Use "business hours" so the line matches the written guarantee. The funding-circle referral fee still needs the real program it points to.
 
 ### 6c. The three groups today, and the fix plan (looked up 2026-10-31 — mapping only, nothing built)
 
