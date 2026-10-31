@@ -40,11 +40,11 @@ have no automation tree at all. See `src/journeys/seed-journeys.mjs`'s header.
 | Journey | Who that is in the code | Reach |
 |---|---|---|
 | [client](./client-actual.md) ([intended](./client-intended.md)) | `client` | reaches 80 of 337 routes |
-| [role-owner](./role-owner-actual.md) ([intended](./role-owner-intended.md)) | `owner` | reaches 326 of 337 routes |
-| [role-sales-manager](./role-sales-manager-actual.md) ([intended](./role-sales-manager-intended.md)) | `sales_manager` | reaches 209 of 337 routes |
-| [role-closer](./role-closer-actual.md) ([intended](./role-closer-intended.md)) | `closer` | reaches 191 of 337 routes |
-| [role-funding-advisor](./role-funding-advisor-actual.md) ([intended](./role-funding-advisor-intended.md)) | `funding_advisor` | reaches 173 of 337 routes |
-| [role-inquiry-remover](./role-inquiry-remover-actual.md) ([intended](./role-inquiry-remover-intended.md)) | `inquiry_specialist` | reaches 168 of 337 routes |
+| [role-owner](./role-owner-actual.md) ([intended](./role-owner-intended.md)) | `owner` | reaches 327 of 337 routes |
+| [role-sales-manager](./role-sales-manager-actual.md) ([intended](./role-sales-manager-intended.md)) | `sales_manager` | reaches 210 of 337 routes |
+| [role-closer](./role-closer-actual.md) ([intended](./role-closer-intended.md)) | `closer` | reaches 192 of 337 routes |
+| [role-funding-advisor](./role-funding-advisor-actual.md) ([intended](./role-funding-advisor-intended.md)) | `funding_advisor` | reaches 174 of 337 routes |
+| [role-inquiry-remover](./role-inquiry-remover-actual.md) ([intended](./role-inquiry-remover-intended.md)) | `inquiry_specialist` | reaches 169 of 337 routes |
 | [affiliate](./affiliate-actual.md) ([intended](./affiliate-intended.md)) | `affiliate` | reaches 45 of 337 routes |
 | [white-label](./white-label-actual.md) ([intended](./white-label-intended.md)) | `partner` | reaches 80 of 337 routes |
 

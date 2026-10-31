@@ -35,6 +35,7 @@ function fakeDb(booked = true) {
   const db = { async query(sql, params) {
     queries.push(sql);
     if (sql.includes("FROM clients c")) return { rows: [client] };
+    if (sql.includes("SELECT id, name FROM staff")) return { rows: [{ id: "staff-2", name: "Closer" }] };
     if (sql.includes("UPDATE clients")) {
       if (sql.includes("'{setter_survey_edits}'")) {
         client.custom_fields.setter_survey_edits = JSON.parse(params[2]);
@@ -54,6 +55,31 @@ test("handoff input refuses unsupported claims and keeps only checklist fields",
   assert.match(sanitizeHandoffPatch({ goal: "Pre-approved for $100,000" }).error, /unsupported/);
   assert.match(sanitizeHandoffPatch({ problem: "SSN 123-45-6789" }).error, /unsupported/);
   assert.deepEqual(sanitizeHandoffPatch({ goal: "Growth", forged_timestamp: "now" }).patch, { goal: "Growth" });
+});
+
+test("setter can save both funding paths and personal work facts without changing the survey", async () => {
+  const { db, client } = fakeDb();
+  client.custom_fields.cf_svy_has_business_label = "Yes, 1-2 years";
+  client.custom_fields.cf_svy_business_revenue_label = "$100k - $249k";
+  const handoff = {
+    triage_personal_or_business: "both", employment_status: "w2",
+    employment_details: "Warehouse manager", annual_personal_income: "$100k-$199k",
+    income_verification: "Yes, pay stubs"
+  };
+  const saved = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save", handoff });
+  assert.equal(saved.status, 200);
+  for (const [key, value] of Object.entries(handoff)) assert.equal(saved.body.item.setter_handoff[key], value);
+  assert.equal(client.custom_fields.cf_svy_has_business_label, "Yes, 1-2 years");
+  assert.equal(client.custom_fields.cf_svy_business_revenue_label, "$100k - $249k");
+  assert.equal(client.custom_fields.setter_survey_edits, undefined);
+  for (const invalid of [
+    { triage_personal_or_business: "either" }, { employment_status: "guessed" },
+    { annual_personal_income: "$1m" }, { income_verification: "Probably" },
+    { employment_details: "SSN 123-45-6789" }
+  ]) {
+    const result = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save", handoff: invalid });
+    assert.equal(result.status, 400);
+  }
 });
 
 test("dial target waits until 6 a.m. Phoenix for an overnight lead", () => {
@@ -103,6 +129,26 @@ test("completing a handoff never moves a card back from a later Sales stage", as
   assert.equal(result.status, 200);
   assert.equal(queries.some(q => q.includes("UPDATE cards")), false);
   assert.equal(queries.some(q => q.includes("UPDATE tasks")), true);
+});
+
+test("completing a setter handoff alerts the different closer with saved facts", async () => {
+  const { db, client } = fakeDb();
+  client.closer_staff_id = "staff-2";
+  const alerts = [];
+  const input = { client_id: CLIENT_ID, action: "complete", handoff: completeHandoff() };
+  const deps = {
+    advanceStage: async () => ({ moved: true }),
+    closerAlert: async (_db, args) => { alerts.push(args); return { queued: 1 }; }
+  };
+  const first = await updateSetterHandoff(db, STAFF, input, deps);
+  const repeat = await updateSetterHandoff(db, STAFF, input, deps);
+  assert.equal(first.status, 200);
+  assert.equal(repeat.status, 200);
+  assert.equal(alerts.length, 2, "retries use the same durable SMS key in the alert helper");
+  assert.equal(alerts[0].closerStaffId, "staff-2");
+  assert.equal(alerts[0].setterStaffId, STAFF.id);
+  assert.equal(alerts[0].handoff.goal, "Open a second location");
+  assert.equal(alerts[0].startTime, client.booking_time);
 });
 
 test("opt-in cannot complete until booking webhook adds a booking", async () => {

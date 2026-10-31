@@ -76,9 +76,9 @@ export const FIN_B21_DISPLAY_PROOF_CASES = Object.freeze([
 ]);
 
 /**
- * The two rows that are "nothing to judge": the owner took the control off the phone on purpose, and the
+ * The retired controls are "nothing to judge" only while they remain absent; the
  * display lane reads the live files every run (src/pulse/coverage/fin-b21-owner-removed.mjs) and goes red
- * the day it is back. The list lives there; this is the same two rows, named for the wiring test.
+ * day one is back. The list lives there and is reused by the wiring test.
  */
 export const FIN_B21_OWNER_REMOVED_ROWS = Object.freeze(OWNER_REMOVED.map((entry) => Object.freeze({
   sourceFile: entry.sourceFile, surface: entry.surface, control: entry.control, removed: entry.removed

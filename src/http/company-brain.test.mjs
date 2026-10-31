@@ -102,6 +102,22 @@ test("reviews GET is owner-only", async () => {
   );
   assert.equal(ok.statusCode, 200);
   assert.equal(ok.body.reviews.length, 1);
+  assert.equal(ok.body.pendingCount, 1);
+});
+
+test("reviews GET passes paging through and returns the full pending count", async () => {
+  const res = mockRes();
+  let paging;
+  await reviewsHandler({ method: "GET", query: { limit: "25", offset: "25" } }, res, {
+    requireAuth: async () => ({ id: "s1", org_id: "org-1", role: "owner" }),
+    listPendingReviews: async (_db, options) => {
+      paging = options;
+      return { ok: true, reviews: [{ id: "r26" }], pendingCount: 57 };
+    }
+  });
+  assert.deepEqual(paging, { orgId: "org-1", limit: 25, offset: 25 });
+  assert.equal(res.body.pendingCount, 57);
+  assert.equal(res.body.reviews.length, 1);
 });
 
 test("reviews POST approve requires owner", async () => {

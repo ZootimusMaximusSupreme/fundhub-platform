@@ -243,6 +243,33 @@ test("Knowledge Base opens on approved guides, hides client scope, and separates
   expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
 });
 
+test("owner approval badge counts the full queue and Show more reaches later pages", async ({ page }) => {
+  await setup(page, OWNER, {
+    "/api/company-brain/upload": { ok: true, uploads: [], pendingCount: 2 },
+    "/api/company-brain/reviews": async (route, { url }) => {
+      const offset = Number(new URL(url).searchParams.get("offset") || 0);
+      const reviews = Array.from({ length: Math.max(0, Math.min(25, 52 - offset)) }, (_, index) => ({
+        id: "review-" + (offset + index + 1),
+        file_name: "Review file " + (offset + index + 1),
+        proposed_tier: "staff",
+        access_tier: "owner"
+      }));
+      await json(route, { ok: true, reviews, pendingCount: 52 });
+    }
+  });
+  await page.goto("/app/company-brain.html");
+  await page.locator("#tabManage").click();
+  await expect(page.locator("#pendPill")).toHaveText("52");
+  await expect(page.locator("#pendPill2")).toHaveText("2 waiting");
+  await expect(page.locator("#reviewList .docrow")).toHaveCount(25);
+  await page.getByRole("button", { name: "Show more approvals" }).click();
+  await expect(page.locator("#reviewList .docrow")).toHaveCount(50);
+  await page.getByRole("button", { name: "Show more approvals" }).click();
+  await expect(page.locator("#reviewList .docrow")).toHaveCount(52);
+  await expect(page.locator("#reviewList")).toContainText("Review file 52");
+  await expect(page.getByRole("button", { name: "Show more approvals" })).toHaveCount(0);
+});
+
 test("an active chat can browse guides without losing its messages", async ({ page }) => {
   await setup(page, OWNER, {
     "/api/company-brain/library": { ok: true, files: [{ id: "sales-1", name: "Setter call guide", category: "Sales", url: null, source: "Upload" }] },

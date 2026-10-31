@@ -38,6 +38,7 @@ flowchart TD
     CAN --> A_ops[ops — 2 routes]
     CAN --> A_proxy[proxy — 2 routes]
     CAN --> A_public[public — 19 routes]
+    CAN --> A_push[push — 1 route]
     CAN --> A_read[Reading data — 53 routes]
     CAN --> A_repair[repair — 1 route]
     CAN --> A_scripts[scripts — 2 routes]
@@ -46,7 +47,7 @@ flowchart TD
     CAN --> A_top_level[Everything else — 27 routes]
     CAN --> A_trials[trials — 2 routes]
     CAN --> A_webhooks[Incoming webhooks — 1 route]
-    WHO -->|Yes| CANT[Blocked — 164 routes]
+    WHO -->|Yes| CANT[Blocked — 163 routes]
     CANT --> B_affiliates[affiliates — 3 blocked]
     CANT --> B_auth[Signing in and out — 8 blocked]
     CANT --> B_banking[banking — 6 blocked]
@@ -66,7 +67,7 @@ flowchart TD
     CANT --> B_partner_marketing[partner-marketing — 5 blocked]
     CANT --> B_partners[partners — 1 blocked]
     CANT --> B_privacy[privacy — 1 blocked]
-    CANT --> B_push[push — 5 blocked]
+    CANT --> B_push[push — 4 blocked]
     CANT --> B_read[Reading data — 18 blocked]
     CANT --> B_repair[repair — 4 blocked]
     CANT --> B_social[social — 3 blocked]
@@ -77,7 +78,7 @@ flowchart TD
 
 ## What they can reach
 
-**173 of 337 routes.**
+**174 of 337 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -187,6 +188,7 @@ flowchart TD
 | `/api/public/survey-submit` | POST | anyone |
 | `/api/public/unsubscribe` | — | **not a sign-in** — signed link |
 | `/api/public/vsl-watch` | OPTIONS, POST | anyone |
+| `/api/push/native-device` | DELETE, GET, POST | client, staff |
 | `/api/read/ad-attribution` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/ad-books` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/ad-spine` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
@@ -264,7 +266,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**164 of 337 routes.**
+**163 of 337 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -395,7 +397,6 @@ flowchart TD
 | `/api/privacy/erasure` | GET, POST | owner, admin |
 | `/api/products` | POST | owner, admin, sales_manager |
 | `/api/push/key` | GET | client |
-| `/api/push/native-device` | DELETE, GET, POST | client |
 | `/api/push/preferences` | GET, PUT | client |
 | `/api/push/subscribe` | GET, POST | client |
 | `/api/push/unsubscribe` | DELETE, POST | client |

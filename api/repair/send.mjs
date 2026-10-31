@@ -9,11 +9,13 @@ import { loadClientReturnAddress } from "../../src/inquiry-ops/call-scheduler.mj
 import { sendRepairLetters, RepairSendError } from "../../src/repair/send.mjs";
 import { mailBureauLetter } from "../../src/metro2/delivery/send.mjs";
 import { dbDown } from "../../src/http/db-down.mjs";
+import { hasRepairAgreement, hasDisputeAuthorization } from "../../src/repair/dispute-auth.mjs";
 
 export default async function handler(req, res, deps = {}) {
   const database = deps.db ?? db;
   const mailFn = deps.mailBureauLetter ?? mailBureauLetter;
   const auth = deps.requireAuth ?? requireAuth;
+  const sendFn = deps.sendRepairLetters ?? sendRepairLetters;
 
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
@@ -46,10 +48,27 @@ export default async function handler(req, res, deps = {}) {
       return res.status(404).json({ ok: false, error: "not_found" });
     }
 
+    // Staff access and client ownership are not authorization to mail disputes.
+    // Match the letter writer\x27s current signed-paper gate before any provider work.
+    if (wantMail) {
+      const agreement = await (deps.hasRepairAgreement ?? hasRepairAgreement)(database, { orgId, clientId });
+      const authorized = agreement || await (deps.hasDisputeAuthorization ?? hasDisputeAuthorization)(database, { orgId, clientId });
+      if (!authorized) {
+        return res.status(403).json({ ok: false, error: "repair_dispute_authorization_required" });
+      }
+    }
+
+    // PostGrid mailing needs a saved letter so the existing DB claim can
+    // fence replay and record mailed_at after the provider accepts the letter.
+    // Legacy no-ID mail lacks both safeguards. Reject the WHOLE batch before
+    // even reading the address; no partial provider sends.
+    const letters = Array.isArray(body.letters) ? body.letters : [];
+    if (wantMail && letters.some((letter) => !isUuid(letter?.letterId || letter?.letter_id))) {
+      return res.status(400).json({ ok: false, error: "saved_repair_letter_required" });
+    }
+
     const from = body.mail_from || body.mailFrom
       || await loadClientReturnAddress(database, { orgId, clientId });
-
-    const letters = Array.isArray(body.letters) ? body.letters : [];
     const mailSender = wantMail
       ? async (letter) => {
           const sent = await mailFn({
@@ -111,7 +130,7 @@ export default async function handler(req, res, deps = {}) {
         }
       : null;
 
-    const result = await sendRepairLetters(database, {
+    const result = await sendFn(database, {
       orgId,
       clientId,
       staffId: staff.id,

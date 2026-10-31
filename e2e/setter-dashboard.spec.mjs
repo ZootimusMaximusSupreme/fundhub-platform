@@ -62,6 +62,16 @@ test("setter score strip stays inside a phone viewport", async ({ page }) => {
   await expect(page.locator(".setter-numbers")).toBeVisible();
 });
 
+test("a lead alert opens the exact contact and its call link", async ({ page }) => {
+  const another = { ...queue.items[0], client_id: "bbbbbbbb-2222-4222-8222-222222222222",
+    client_name: "Pat Rivera", phone: "+15550987654" };
+  await openScreen(page, `/app/setter-dashboard.html?client_id=${another.client_id}`, SETTER, {
+    "/api/read/setter-dashboard": { ...queue, count: 2, items: [queue.items[0], another] }
+  });
+  await expect(page.locator("#setter-detail h2")).toHaveText("Pat Rivera");
+  await expect(page.locator("#setter-detail a[href='tel:+15550987654']")).toBeVisible();
+});
+
 test("setter can correct survey answers during a call and see saved edits after reload", async ({ page }) => {
   const item = structuredClone(queue.items[0]);
   item.survey = [
@@ -115,4 +125,75 @@ test("setter can correct survey answers during a call and see saved edits after 
   await page.setViewportSize({ width: 390, height: 844 });
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
+});
+
+test("setter saves business and personal call details without editing submitted answers", async ({ page }) => {
+  const item = structuredClone(queue.items[0]);
+  item.survey = [
+    { key: "cf_svy_has_business", question: "Do You Have a Business?", answer: "Yes, 1-2 years",
+      answer_values: ["Yes, 1-2 years"], type: "single", options: ["Yes, 1-2 years", "No, personal funding only"] },
+    { key: "cf_svy_business_revenue", question: "Annual Business Revenue", answer: "$100k - $249k",
+      answer_values: ["$100k - $249k"], type: "single", options: ["$100k - $249k"] }
+  ];
+  let savedHandoff = { ...item.setter_handoff, triage_problem: "Needs cash for inventory", triage_goal: "Open a second shop" };
+  const writes = [];
+  await openScreen(page, "/app/setter-dashboard.html", SETTER, {
+    "/api/read/setter-dashboard": () => ({ ...queue, items: [{ ...item, setter_handoff: savedHandoff }] }),
+    "/api/setter-dashboard": async (route) => {
+      const body = route.request().postDataJSON();
+      writes.push(body);
+      expect(body.action).toBe("save");
+      savedHandoff = { ...savedHandoff, ...body.handoff };
+      await route.fulfill({ status: 200, contentType: "application/json",
+        body: JSON.stringify({ ok: true, item: { ...item, setter_handoff: savedHandoff } }) });
+    }
+  });
+
+  await page.getByRole("combobox", { name: "Funding paths discussed" }).selectOption("both");
+  await page.getByRole("combobox", { name: "Employment" }).selectOption("w2");
+  await page.getByRole("textbox", { name: "Employer or type of work (optional)" }).fill("Warehouse manager");
+  await page.getByRole("combobox", { name: "Annual personal income" }).selectOption("$100k-$199k");
+  await page.getByRole("combobox", { name: "Can they verify income?" }).selectOption("Yes, pay stubs");
+  await page.getByRole("button", { name: "Save setter details" }).click();
+  await expect(page.locator("#setter-details-status")).toHaveText("Setter details saved.");
+  expect(writes.some(body => body.handoff.triage_personal_or_business === "both" &&
+    body.handoff.employment_status === "w2" && body.handoff.annual_personal_income === "$100k-$199k" &&
+    body.handoff.income_verification === "Yes, pay stubs")).toBe(true);
+  expect(writes.every(body => body.handoff.triage_problem === "Needs cash for inventory" &&
+    body.handoff.triage_goal === "Open a second shop")).toBe(true);
+  expect(writes.every(body => body.survey_edits === undefined)).toBe(true);
+
+  await page.reload();
+  await expect(page.getByRole("combobox", { name: "Funding paths discussed" })).toHaveValue("both");
+  await expect(page.getByRole("combobox", { name: "Employment" })).toHaveValue("w2");
+  await expect(page.getByRole("textbox", { name: "Employer or type of work (optional)" })).toHaveValue("Warehouse manager");
+  await expect(page.getByRole("combobox", { name: "Annual personal income" })).toHaveValue("$100k-$199k");
+  await expect(page.getByRole("combobox", { name: "Can they verify income?" })).toHaveValue("Yes, pay stubs");
+  await expect(page.getByRole("combobox", { name: "Do You Have a Business?" })).toHaveValue("Yes, 1-2 years");
+  await expect(page.getByRole("combobox", { name: "Annual Business Revenue" })).toHaveValue("$100k - $249k");
+});
+
+test("opt-in setter can complete a booked handoff with both funding paths", async ({ page }) => {
+  const item = structuredClone(queue.items[0]);
+  item.lead_type = "opt_in";
+  item.setter_handoff.lead_type = "opt_in";
+  item.setter_handoff.triage_problem = "Cash flow";
+  item.setter_handoff.triage_goal = "Expand the shop";
+  delete item.setter_handoff.complete_at;
+  let completed = false;
+  await openScreen(page, "/app/setter-dashboard.html", SETTER, {
+    "/api/read/setter-dashboard": { ...queue, items: [item] },
+    "/api/setter-dashboard": async (route) => {
+      const body = route.request().postDataJSON();
+      expect(body.action).toBe("complete");
+      expect(body.handoff.triage_personal_or_business).toBe("both");
+      completed = true;
+      await route.fulfill({ status: 200, contentType: "application/json",
+        body: JSON.stringify({ ok: true, item: { ...item, setter_handoff: { ...body.handoff, complete_at: "2026-10-30T18:00:00Z" } } }) });
+    }
+  });
+  await page.getByRole("combobox", { name: "Funding paths discussed" }).selectOption("both");
+  await page.getByRole("button", { name: "Mark handoff complete" }).click();
+  await expect(page.locator("#setter-status")).toHaveText("Handoff complete and saved on the client.");
+  expect(completed).toBe(true);
 });

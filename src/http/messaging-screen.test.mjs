@@ -196,7 +196,7 @@ describe("messaging.html — who sent a message", () => {
     const html = V.messageRow(
       { id: "m2", direction: "outbound", channel: "sms", rendered_body: "reminder", status: "sent", sender_name: null },
       { clientName: "Ada Byron" });
-    assert.match(html, /Automatic/);
+    assert.equal((html.match(/Automatic/g) || []).length, 1);
     assert.match(html, /out-agent/);
   });
 

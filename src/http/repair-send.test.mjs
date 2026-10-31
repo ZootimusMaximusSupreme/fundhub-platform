@@ -41,7 +41,7 @@ test("DFY/repair send path calls mail helper when mail=true", async () => {
         address_state: "TX",
         address_zip: "75201"
       },
-      letters: [{ bureau: "EX", pdf: "JVBERi0=" }]
+      letters: [{ bureau: "EX", pdf: "JVBERi0=", letter_id: "55555555-5555-4555-8555-555555555555" }]
     }
   };
   const res = resCapture();
@@ -52,6 +52,13 @@ test("DFY/repair send path calls mail helper when mail=true", async () => {
       org_id: "22222222-2222-4222-8222-222222222222",
       role: "owner"
     }),
+    // This fixture represents a client whose signed repair agreement is on file.
+    // The separate authorization regression verifies unsigned clients are refused.
+    hasRepairAgreement: async (_db, { orgId, clientId }) => {
+      assert.equal(orgId, "22222222-2222-4222-8222-222222222222");
+      assert.equal(clientId, "33333333-3333-4333-8333-333333333333");
+      return true;
+    },
     mailBureauLetter: async (opts) => {
       mailCalls.push(opts);
       return { ok: true, providerId: "letter_dfy_1" };
@@ -142,6 +149,13 @@ async function post(deps, statements) {
       org_id: "22222222-2222-4222-8222-222222222222",
       role: "owner"
     }),
+    // Existing provider/replay tests exercise AUTHORIZED mail. The new route
+    // tests separately enforce 403 before any send when authorization is absent.
+    hasRepairAgreement: async (_db, { orgId, clientId }) => {
+      assert.equal(orgId, "22222222-2222-4222-8222-222222222222");
+      assert.equal(clientId, "33333333-3333-4333-8333-333333333333");
+      return true;
+    },
     ...deps
   });
   return res;
