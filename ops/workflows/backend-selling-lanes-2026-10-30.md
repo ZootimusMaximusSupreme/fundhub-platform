@@ -276,7 +276,7 @@ Owned by the slideshows chat (branch `claude/backend-selling-slideshows`). Other
 | 2 | `funding-sequence` | Funding | The order your applications go out decides your total. | claimed: builder A |
 | 3 | `apply-yourself` | Funding | Every application you send on your own shows up for the next bank. | claimed: builder A |
 | 4 | `money-on-the-table` | Funding | A strong score still leaves funding on the table. | claimed: builder A |
-| 5 | `after-you-say-yes` | Funding | What happens after you sign. | claimed: builder A |
+| 5 | `after-you-say-yes` | Funding | What happens after you sign. | done (builder D, checked) |
 | 6 | `bank-said-no` | Blueprint and Repair | The reason the bank said no is already on your report, and it gets fixed first. | claimed: builder B |
 | 7 | `thirteen-points` | Blueprint and Repair | 13 optimization points, done in the right order. | claimed: builder B |
 | 8 | `card-paydown` | Blueprint and Repair | Which card you pay first, and to what target. | claimed: builder B |
@@ -285,7 +285,7 @@ Owned by the slideshows chat (branch `claude/backend-selling-slideshows`). Other
 | 11 | `business-one-two` | Blueprint and Repair | Each business is judged on its own. Start it now. | claimed: builder C |
 | 12 | `blueprint-12-months` | Blueprint and Repair | What 12 months on the Blueprint look like. | claimed: builder C |
 | 13 | `soft-pull` | Every lane | Reading your file does not move your score. | claimed: builder C |
-| 14 | `the-call` | Every lane | Your call is a working call on your real file. | claimed: builder A |
+| 14 | `the-call` | Every lane | Your call is a working call on your real file. | done (builder D, checked; "Google Meet" changed to "a video call", RULES.md 1.4) |
 | 15 | `who-we-are` | Every lane | Fundhub keeps its word, in writing. | claimed: builder C |
 
 Slide plans (question, picture, headline):
@@ -305,7 +305,7 @@ Slide plans (question, picture, headline):
 14 the-call: (1) Diagram: the call in six parts. (2) Real: the sample report section you will see. (3) Copy: how much you qualify for based on where you're at right now. (4) Copy: your file and your path come before any price. (5) Diagram: what to have ready. (6) Copy: join from a computer, because your advisor shares the screen.
 15 who-we-are: (1) Copy: Chris's allowed proof (a decade, a little over $1,000,000 funded for himself, four companies). (2) Real: approval screenshots, names blurred, no total. (3) Real: the agreement's guarantees and the line that Fundhub does not promise approval. (4) Copy: the bureaus and LexisNexis we work with (no license claim). (5) Real: "every application uses your true information". (6) The call, copy only.
 
-**Second format: the film board (Chris, 2026-10-31).** Every deck also gets a wide version for filming. Short-form video on a phone is split top to bottom: the top half is Chris on camera, the bottom half is the slide. So each slide becomes one 16:9 board: the headline, the copy lines, the real document or diagram, no Back and Next, big enough to read on a phone at half height. It is built from the same deck file by `build.mjs` (one source, two shapes), so the words never drift. Built after the 14 phone decks are in.
+**Second format: the film board (Chris, 2026-10-31).** Every deck also gets a wide version for filming. Short-form video on a phone is split top to bottom: the top half is Chris on camera, the bottom half is the slide. So each slide becomes one 16:9 board: the headline, the copy lines, the real document or diagram, no Back and Next, big enough to read on a phone at half height. It is built from the same deck file by `node marketing/slideshows/build.mjs --film` into `marketing/slideshows/film/<deck>.html` (one source, two shapes, so the words never drift): `_shell/film.css` lays each slide out as a 1080 x 960 board, words left and the picture right, and `_shell/film.js` steps through with the arrow keys, the space bar or a click, no buttons. Open it in a browser window, screen-record it, and put it under the camera clip.
 
 **Manifest so far.** `marketing/slideshows/_shell/slideshow.css`, `_shell/slideshow.js`, `build.mjs`, `check.mjs`, `pre-underwriting.html`. New rule `.ai/rules/show-real-proof.md` (owner-set 2026-10-31) with its links, CLAUDE.md line and index row. No routes, no workflows, no database, nothing sent.
 
