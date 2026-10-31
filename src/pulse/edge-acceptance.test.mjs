@@ -814,6 +814,27 @@ test("P0 monthly real CRS provider orders cannot double-fire or borrow a foreign
   assert.deepEqual(judgeSyntheticEdge({
     ...witness, providerOrders: [firstOrder, { ...firstOrder, provider_order_id: "crs-order-two" }]
   }), { verdict: "RED", reason: "duplicate-provider-orders-for-request" });
+  // A retry may create a new event while reusing the SAME saved pull request.
+  // A second external order must still be RED, not hidden by event_id filtering.
+  assert.deepEqual(judgeSyntheticEdge({
+    ...witness, providerOrders: [firstOrder, { ...firstOrder,
+      event_id: "retry-event", provider_order_id: "crs-order-two" }]
+  }), { verdict: "RED", reason: "duplicate-provider-orders-for-request" });
+  // Repeated receipts for one external order are not double bureau requests.
+  assert.equal(judgeSyntheticEdge({
+    ...witness, providerOrders: [firstOrder, { ...firstOrder, event_id: "retry-event" }]
+  }).verdict, "PASS");
+  // A foreign tenant's order with the same request string cannot contaminate
+  // the protected org/client request trace.
+  assert.equal(judgeSyntheticEdge({
+    ...witness, providerOrders: [firstOrder, { ...firstOrder, event_id: "foreign-event",
+      org_id: "other-org", client_id: "other-client", provider_order_id: "foreign-order" }]
+  }).verdict, "PASS");
+  // A receipt attached exclusively to a DIFFERENT event is not valid producer
+  // proof, even when the request and external order happen to match.
+  assert.deepEqual(judgeSyntheticEdge({
+    ...witness, providerOrders: [{ ...firstOrder, event_id: "retry-event" }]
+  }), { verdict: "RED", reason: "provider-order-event-correlation-missing" });
   assert.deepEqual(judgeSyntheticEdge({
     ...witness, providerOrders: [firstOrder, { ...firstOrder, org_id: "foreign-org" }]
   }), { verdict: "RED", reason: "provider-order-identity-mismatch" });
