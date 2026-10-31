@@ -131,17 +131,20 @@ function checkDeck(file, prices) {
     if (!attr(open, "data-src")) errors.push(`${where}: no data-src (every fact traces to a file or Chris's saved words)`);
     const heads = all(/<h2[^>]*>([\s\S]*?)<\/h2>/g, slide).map(text);
     if (heads.length !== 1) errors.push(`${where}: ${heads.length} headlines; a slide has one`);
-    if (!/class="pic\b/.test(slide)) warns.push(`${where}: no picture`);
     const ledes = all(/<p class="lede"[^>]*>([\s\S]*?)<\/p>/g, slide).map(text);
     heads.forEach((h) => {
       sentences.push(h);
       spoken.push(h);
       if (h.length > 90) warns.push(`${where}: headline is ${h.length} characters`);
     });
+    // The copy lines (.lines) are spoken copy too: they get the same checks.
+    const lines = all(/<ul class="lines"[^>]*>([\s\S]*?)<\/ul>/g, slide)
+      .flatMap((ul) => all(/<li[^>]*>([\s\S]*?)<\/li>/g, ul)).map(text);
+    ledes.push(...lines);
     ledes.forEach((l) => {
       sentences.push(...l.split(/(?<=[.!?])\s+/).filter(Boolean));
       spoken.push(l);
-      if (l.length > 200) warns.push(`${where}: lede is ${l.length} characters`);
+      if (l.length > 200) warns.push(`${where}: a line is ${l.length} characters`);
     });
     for (const s of [...heads, ...ledes].flatMap((t) => t.split(/(?<=[.!?])\s+/))) {
       const m = ASK.exec(s.trim());

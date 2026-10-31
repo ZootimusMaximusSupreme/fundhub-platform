@@ -62,11 +62,17 @@
   deck.appendChild(live);
   root.classList.add("ss-js");
 
-  function go(n) {
+  function go(n, still) {
     index = Math.max(0, Math.min(last, n));
     slides.forEach(function (slide, k) {
       var on = k === index;
       slide.classList.toggle("is-on", on);
+      // Only a slide you move to slides in. The first one is still at rest.
+      slide.classList.remove("enter");
+      if (on && !still) {
+        void slide.offsetWidth;
+        slide.classList.add("enter");
+      }
       slide.setAttribute("aria-hidden", on ? "false" : "true");
       if (on) slide.removeAttribute("inert");
       else slide.setAttribute("inert", "");
@@ -116,8 +122,5 @@
     var n = fromHash();
     if (n !== null && n !== index) go(n);
   });
-  go(fromHash() || 0);
-  requestAnimationFrame(function () {
-    requestAnimationFrame(function () { root.classList.add("ss-anim"); });
-  });
+  go(fromHash() || 0, true);
 })();

@@ -12,6 +12,11 @@
   Belief: Fundhub reviews my file the way a lender does before anyone applies,
           so my applications go only to the banks that fit my file.
 
+  Chris's direction (2026-10-31): his slide style from the call slides (a
+  label, a big headline, full lines of copy with the pastel stripe), more
+  copy, real report flags, and the napkin drawings he liked redrawn in
+  Fundhub's own style.
+
   Rules this deck follows (marketing/ads/RULES.md)
   - Hook = the first two sentences (slide 1 headline and line). Cause first:
     "nobody reads that line" is the cause, named by sentence two (2.2).
@@ -32,39 +37,44 @@
   - The reader's question: "My credit is good. Why do I need Fundhub?"
   - Lead: problem then solution, in Chris's voice (owner-voice.md and the
     sources it lists: chris-voice-profile.md, ads/VOICE.md, ads/RULES.md
-    Part 0). Green-lit lines reused where they fit
-    (marketing/ads/scripts/2026-10-14.md:61, :63).
+    Part 0). Green-lit and closer lines reused where they fit.
   - The guarantee line is locked word for word (owner-voice.md:18).
 
   Visual Thinking (marketing/copy-skills/visual-thinking/), every step.
-  The pictures are napkin drawings: simple shapes, every line means one thing.
+  - Real first (law: show-real-proof): PU-01, PU-03 and PU-06 show real
+    documents with our marks on top. PU-02, PU-04, PU-05 and PU-07 are
+    diagrams, because nothing real shows those points better.
   - Look (methods.md): the facts came first, each with its source in data-src.
+    The sample is one file: the FinanceOS sample credit file
+    (src/finance/sample-credit-file.mjs), scores 702, 709 and 706, a card
+    near 40% used, one old 30-day late, three hard inquiries, and the
+    bureau's own four reason lines. Every figure comes from that one file.
   - See: the people and things are you, your credit report, the bank, the
     bank's letter, Fundhub's review, your advisor and the banks Fundhub works
     with. The pattern: the bank's reason is on the report before anyone applies.
   - Imagine (SQVID): status quo (apply first, PU-03) against change (review
-    first, PU-04 and PU-05). Simple over elaborate. Qualitative, so no
-    invented figures; the only figure is the contract's 72.
+    first, PU-04 and PU-05). Simple over elaborate.
   - Show, by Dan Roam's six ways of seeing (methods.md):
-    PU-01 who/what, a portrait: the report, with the bank's sight line
-      skipping the score and landing on the one red-flag line.
+    PU-01 who/what, real: the TransUnion section of the sample report as the
+      report renderer printed it, with our marks on top ("Good score" on the
+      706, "The bank reads this line" on the top reason).
     PU-02 why, a visual equation: your report = the bank's letter. The "="
       means the same reason is in both places.
-    PU-03 when, a timeline: four applications, four no's, four hard inquiry
-      marks piling up on the report. Each arrow means "leaves a mark on".
+    PU-03 how many, real: the sample report's three inquiries, one per
+      bureau, each marked with what caused it (two card applications and a
+      line increase ask).
     PU-04 how, a flowchart: report, review it like a lender, red flag?
       Yes: fix it first and review again. No: apply to the banks that fit.
     PU-05 where, a map: your file in the middle, banks around it. A line
-      means "your file goes here". Lines run only to the banks that fit.
-      Dropped: a grid of banks (Chris does not want grids) and boxes that
-      shrink step by step (widths would claim amounts nobody measured).
-    PU-06 when: one span from signing to applications out. It stops at
-      applications on purpose, because approvals are not guaranteed.
+      means "your file goes here". No grids (Chris, 2026-10-31).
+    PU-06 real: the agreement's own section 3 words, with the 72-hour
+      sentence marked "Our guarantee". The copy says "it's in your contract",
+      and the picture shows the contract.
     PU-07 who/what, a portrait of the call: you and your advisor looking at
       one shared screen with your real file on it.
   - Truth check (applications.md): no picture implies an approval, an amount
-    or a speed the contract does not promise. Sample documents say Sample.
-    No bank names.
+    or a speed the contract does not promise. Samples say Sample. No bank
+    names.
   - Display check (delivery-and-collaboration.md): every slide viewed at
     390 pixels wide before it shipped.
 
@@ -428,7 +438,7 @@ html.ss-js .slide::-webkit-scrollbar{display:none}
 html.ss-js .slide:not(.is-on){visibility:hidden}
 /* Only the arriving slide moves. The leaving one is gone at once, so two
    slides of text never sit on top of each other. */
-html.ss-anim .slide.is-on{animation:ss-in .32s ease both}
+html.ss-js .slide.enter{animation:ss-in .32s ease both}
 @keyframes ss-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 html:not(.ss-js) .slide + .slide{border-top:1px solid var(--ss-rule)}
 html:not(.ss-js) .slide.dark{background:var(--ss-dark);color:var(--ss-dark-fg);
@@ -473,37 +483,118 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
 .slide.dark .chip{background:transparent;border-color:var(--ss-dark-rule);color:var(--ss-dark-muted)}
 .slide.dark .panel .chip{background:var(--ss-panel);border-color:var(--ss-rule);color:var(--ss-muted)}
 
-/* Napkin drawings (Visual Thinking, Dan Roam's six ways of seeing). Every
-   drawing sits on a white napkin card and uses simple shapes. Every line
-   means one thing: order, a flow, a match or a sight line. Few words. */
-.napkin{background:var(--ss-panel);border:1px solid var(--ss-rule);border-radius:12px;
+/* Chris's slide style, from the slides he shares on calls (public/app/present.html
+   .bar and present.js bars()): full lines of copy, each with the pastel stripe
+   on its left and a hairline under it. Most of a slide's words live here. */
+.lines{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.lines li{display:flex;gap:12px;padding:11px 0;border-bottom:1px solid var(--ss-rule);
+  font-size:1.0625rem;line-height:1.45;color:var(--ss-fg)}
+.lines li::before{content:"";flex:0 0 3px;align-self:stretch;border-radius:2px;background:var(--spectrum);opacity:.85}
+.slide.dark .lines li{border-color:var(--ss-dark-rule);color:var(--ss-dark-sub)}
+
+/* Steps in order, from the call slides (present.js stepsHtml). Used only
+   when the order is the point. */
+.steps{list-style:none;margin:0;padding:0;display:flex;counter-reset:st}
+.steps li{flex:1;min-width:0;position:relative;text-align:center;counter-increment:st;
+  font-size:.875rem;font-weight:650;line-height:1.25;color:var(--ss-fg)}
+.steps li::before{content:counter(st);position:relative;z-index:1;display:flex;align-items:center;justify-content:center;
+  width:30px;height:30px;margin:0 auto 8px;border-radius:50%;border:2px solid var(--ink);background:var(--ss-panel);
+  font-family:var(--mono);font-size:var(--fs-caption);font-weight:500;color:var(--ink)}
+.steps li + li::after{content:"";position:absolute;top:14px;left:-50%;width:100%;height:2px;background:var(--ink)}
+.steps li.is-hot::before{background:var(--ink);color:#fff}
+
+/* The real credit report's "Why this score" block, the way Fundhub's tri-bureau
+   report prints it: the bureau, the score and model, then the bureau's own
+   reason lines in its own capitals. Filled only from a sample file. */
+.crs{background:var(--ss-panel);border:1px solid var(--ss-rule);border-radius:10px;box-shadow:var(--panel-shadow);
+  padding:12px 14px 14px;color:var(--ink)}
+.crs-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;
+  border-bottom:2px solid var(--ink);padding-bottom:8px;margin-bottom:10px}
+.crs-bureau{font-size:1.25rem;font-weight:700;letter-spacing:-.02em;line-height:1.1}
+.crs-bureau small{display:block;margin-top:4px;font-family:var(--mono);font-size:var(--fs-caption);
+  font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--gray)}
+.crs-score{text-align:right}
+.crs-score b{display:block;font-size:2rem;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.crs-score span{font-family:var(--mono);font-size:var(--fs-caption);color:var(--gray)}
+.crs h3{margin:0 0 8px;font-size:1rem;font-weight:700}
+.crs ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.crs li{padding:7px 9px;border-radius:6px;background:var(--soft);font-size:.8125rem;line-height:1.35;letter-spacing:.01em}
+.crs li.flag{background:var(--ss-flag);font-weight:650}
+.crs li .chip{margin-top:6px}
+.crs-note{margin:10px 0 0;font-family:var(--mono);font-size:var(--fs-caption);color:var(--gray)}
+
+/* Branded drawings (Visual Thinking, Dan Roam's six ways of seeing). Chris
+   liked the napkin layouts (2026-10-31) and asked for them in Fundhub's own
+   style: a white sheet, hairline panels, pastel status tints, mono labels,
+   ink for the one thing that matters. Every line in a drawing means one
+   thing: an order, a flow, a match or "reads this". */
+.sheet{background:var(--ss-panel);border:1px solid var(--ss-rule);border-radius:12px;
   box-shadow:var(--panel-shadow);padding:12px;color:var(--ink)}
-.slide.dark .napkin{border-color:var(--ss-panel)}
-.vt{display:block;width:100%;height:auto;overflow:visible}
-.vt .ln{fill:none;stroke:var(--ink);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.vt .ln.thin{stroke-width:1.5}
-.vt .ln.bold{stroke-width:3}
-.vt .ln.dash{stroke-dasharray:5 6}
-.vt .ln.mute{stroke:var(--gray2)}
-.vt .sh{fill:var(--ss-panel);stroke:var(--ink);stroke-width:2;stroke-linejoin:round}
-.vt .sh.mute{stroke:var(--gray2)}
-.vt .ink{fill:var(--ink)}
-.vt .mute-f{fill:var(--gray2)}
-.vt .bar{fill:var(--line)}
-.vt .flag{fill:var(--alert)}
-.vt .fit{fill:var(--ok)}
-.vt .hot{fill:var(--ink);stroke:var(--ink);stroke-width:2}
-.vt text{font-family:var(--sans);font-size:14px;font-weight:650;fill:var(--ink)}
-.vt text.on-ink{fill:#fff}
-.vt text.cap{font-family:var(--mono);font-size:12.5px;font-weight:500;letter-spacing:.08em;fill:var(--gray)}
-.vt text.big{font-size:26px;font-weight:700}
-.vt text.cap.dk{fill:var(--ink)}
-.vt .fit.edge,.vt .flag.edge{stroke:var(--ink);stroke-width:2}
-.vt use{color:var(--ink)}
-.vt use.mute{color:var(--gray2)}
-/* Shared drawing parts (a bank, an arrowhead) live in one hidden sprite per deck. */
+.slide.dark .sheet{border-color:var(--ss-panel)}
+.bv{display:block;width:100%;height:auto;overflow:visible}
+.bv .pn{fill:var(--ss-panel);stroke:var(--line);stroke-width:1}
+.bv .pn-soft{fill:var(--soft)}
+.bv .pn-ink{fill:var(--ink)}
+.bv .tint-flag{fill:var(--ss-flag)}
+.bv .tint-fit{fill:var(--ss-yes)}
+.bv .edge-fit{stroke:var(--ok);stroke-width:1.5}
+.bv .bar{fill:var(--line)}
+.bv .rule-ink{stroke:var(--ink);stroke-width:2;stroke-linecap:round}
+.bv .cn{fill:none;stroke:var(--gray2);stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.bv .cn.ink{stroke:var(--ink)}
+.bv .cn.dash{stroke-dasharray:4 5}
+.bv text{font-family:var(--sans);font-size:13px;font-weight:650;fill:var(--ink)}
+.bv text.h{font-size:16px;font-weight:700;letter-spacing:-.01em}
+.bv text.num{font-size:28px;font-weight:700;letter-spacing:-.02em}
+.bv text.lb{font-family:var(--mono);font-size:11.5px;font-weight:500;letter-spacing:.12em;fill:var(--gray)}
+.bv text.lb.ink{fill:var(--ink)}
+.bv text.caps{font-size:11.5px;font-weight:650;letter-spacing:.01em}
+.bv text.on-ink{fill:#fff}
+.bv use{color:var(--ink)}
+.bv use.mute{color:var(--gray2)}
+/* Shared drawing parts (a bank, an arrowhead, the spectrum) live in one
+   hidden sprite per deck. The stops are fundhub-brand.css --spectrum. */
 .vt-defs{position:absolute;width:0;height:0;overflow:hidden}
 .vt-defs .ink{fill:var(--ink)}
+.vt-defs .s1{stop-color:#F2A69B}.vt-defs .s2{stop-color:#F5CE8F}.vt-defs .s3{stop-color:#F2E39B}
+.vt-defs .s4{stop-color:#A8D8B0}.vt-defs .s5{stop-color:#A9C6E8}.vt-defs .s6{stop-color:#C4B3E5}
+
+/* Real documents (law: show-real-proof). A section of Fundhub's tri-bureau
+   report exactly as scripts/render-crs-standard-report.mjs prints it for the
+   sample file, kept in the report's own plain document face so it reads as
+   the real thing, and a real clause of the agreement. Our branded marks
+   (.chip, the tints) sit on top to point at what matters. */
+.real{background:var(--ss-panel);border:1px solid var(--ss-rule);border-radius:10px;box-shadow:var(--panel-shadow);
+  padding:14px;color:var(--ink);font-family:Helvetica,Arial,sans-serif;line-height:1.4}
+.real .bureau-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;
+  border-bottom:2px solid var(--ink);padding-bottom:8px;margin-bottom:8px}
+.real .rh1{margin:0;font-size:1.25rem;font-weight:700;letter-spacing:-.02em}
+.real .score{text-align:right}
+.real .score .num{font-size:1.75rem;font-weight:700;line-height:1.05}
+.real .score .model{font-size:.75rem;color:var(--gray)}
+.real .rh2{margin:10px 0 4px;font-size:1rem;font-weight:700}
+.real > .rh2:first-child{margin-top:0}
+.real p.model{margin:0 0 6px;font-size:.8125rem;color:var(--gray)}
+.real ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px;font-size:.8125rem}
+.real li{padding:2px 0}
+.real li.flag{margin:0 -6px;padding:7px 6px;border-radius:6px;background:var(--ss-flag);font-weight:700}
+.real li.yes{margin:0 -6px;padding:7px 6px;border-radius:6px;background:var(--ss-yes);font-weight:700}
+.real .chip{display:inline-flex;margin-top:6px;font-family:var(--mono)}
+.real table{width:100%;border-collapse:collapse;font-size:.8125rem}
+.real th{text-align:left;font-size:.75rem;text-transform:uppercase;color:var(--gray);border-bottom:1px solid var(--line);padding:4px 6px 4px 0}
+.real td{border-bottom:1px solid var(--soft);padding:7px 6px 7px 0;vertical-align:top}
+.real td .chip{margin-top:4px}
+.real .clause{margin:0;font-size:.9375rem;line-height:1.5}
+.real .nw{white-space:nowrap}
+.real .clause mark{background:var(--ss-yes);color:inherit;padding:1px 3px;border-radius:4px;font-weight:700}
+.real-src{margin:8px 2px 0;font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.04em;color:var(--ss-muted)}
+.slide.dark .real-src{color:var(--ss-dark-muted)}
+
+/* One reason, two places: the report and the bank's letter. */
+.match{display:flex;flex-direction:column;gap:6px}
+.match .who{font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.1em;text-transform:uppercase;color:var(--ss-muted)}
+.match .reason{padding:9px 11px;border-radius:8px;background:var(--ss-flag);font-size:.8125rem;font-weight:650;line-height:1.35;color:var(--ink)}
+.match .same{align-self:flex-start;margin:4px 0}
 
 /* A document: a credit report, a bank letter, a file. */
 .doc{display:flex;flex-direction:column;overflow:hidden}
@@ -612,7 +703,7 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
 }
 @media (prefers-reduced-motion:reduce){
   body,.ss-progress i{transition:none!important}
-  html.ss-anim .slide.is-on{animation:none}
+  html.ss-js .slide.enter{animation:none}
 }
 </style>
 <!-- /fh:shell:head -->
@@ -622,208 +713,199 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
   <h1 class="ss-title">Pre-underwriting</h1>
   <svg class="vt-defs" aria-hidden="true" focusable="false">
     <defs>
-      <symbol id="pu-bank" viewBox="0 0 28 28"><path fill="currentColor" d="M0 9L14 1L28 9Z"/><rect fill="currentColor" x="3" y="11" width="4" height="12"/><rect fill="currentColor" x="12" y="11" width="4" height="12"/><rect fill="currentColor" x="21" y="11" width="4" height="12"/><rect fill="currentColor" x="0" y="24" width="28" height="4"/></symbol>
-      <marker id="pu-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ink" d="M0 0L10 5L0 10z"/></marker>
+      <symbol id="fh-bank" viewBox="0 0 28 28"><path fill="currentColor" d="M1 9.5L14 2l13 7.5V11H1z"/><rect fill="currentColor" x="4" y="13" width="3.5" height="9" rx="1"/><rect fill="currentColor" x="12.25" y="13" width="3.5" height="9" rx="1"/><rect fill="currentColor" x="20.5" y="13" width="3.5" height="9" rx="1"/><rect fill="currentColor" x="1" y="23.5" width="26" height="3" rx="1.5"/></symbol>
+      <symbol id="fh-person" viewBox="0 0 28 28"><circle fill="currentColor" cx="14" cy="9" r="5.5"/><path fill="currentColor" d="M4 25.5c0-5.5 4.5-9 10-9s10 3.5 10 9z"/></symbol>
+      <marker id="fh-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path class="ink" d="M0 0L10 5L0 10z"/></marker>
+      <linearGradient id="fh-spectrum" x1="0" x2="1" y1="0" y2="0"><stop offset="0" class="s1"/><stop offset=".2" class="s2"/><stop offset=".4" class="s3"/><stop offset=".6" class="s4"/><stop offset=".8" class="s5"/><stop offset="1" class="s6"/></linearGradient>
     </defs>
   </svg>
 
-  <section class="slide dark" data-src="The reason sits on the report, and a missed red flag gets good credit denied: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:208-209. Card balances too high is Chris's example 'too high revolving balances' (same file :209) in plain words. Opener form: .ai/rules/copy-certainty.md:20. Lane line 700: ops/workflows/backend-selling-lanes-2026-10-30.md:32.">
+  <section class="slide dark" data-src="The reason sits on the report, and a missed red flag gets good credit denied: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:208-209. The picture is the TransUnion section of Fundhub's tri-bureau report as scripts/render-crs-standard-report.mjs printed it on 2026-10-31 for the FinanceOS sample file: the score, the model and the bureau's own reason lines are src/finance/sample-credit-file.mjs:75-86 (simulated, no bureau contacted, :53-54). Opener form: .ai/rules/copy-certainty.md:20.">
     <p class="eyebrow">PU-01 / The red flag</p>
     <h2>When a bank denies good credit, the reason was on the credit report first.</h2>
     <p class="lede">If nobody reads that line before you apply, the bank finds the red flag before you do.</p>
     <figure class="pic">
-      <div class="napkin">
-        <svg class="vt" viewBox="0 0 340 250" role="img" aria-label="A sample credit report with a score of 700 plus. The bank's sight line skips the score and lands on one red flag line: card balances too high.">
-          <rect class="sh" x="4" y="4" width="226" height="240" rx="12"/>
-          <text class="cap" x="20" y="30">CREDIT REPORT</text>
-          <text class="cap" x="214" y="30" text-anchor="end">SAMPLE</text>
-          <line class="ln thin mute" x1="4" y1="44" x2="230" y2="44"/>
-          <circle class="fit edge" cx="48" cy="88" r="27"/>
-          <text x="48" y="93" text-anchor="middle">700+</text>
-          <rect class="bar" x="90" y="74" width="120" height="8" rx="4"/>
-          <rect class="bar" x="90" y="94" width="84" height="8" rx="4"/>
-          <rect class="bar" x="20" y="134" width="194" height="8" rx="4"/>
-          <rect class="bar" x="20" y="154" width="150" height="8" rx="4"/>
-          <rect class="flag edge" x="14" y="184" width="206" height="40" rx="8"/>
-          <text x="117" y="209" text-anchor="middle">Card balances too high</text>
-          <use href="#pu-bank" x="264" y="56" width="52" height="52"/>
-          <text class="cap" x="290" y="128" text-anchor="middle">THE BANK</text>
-          <path class="ln dash" d="M290 140 C 290 178, 268 200, 228 204" marker-end="url(#pu-arrow)"/>
-          <text class="cap" x="290" y="236" text-anchor="middle">READS THIS</text>
-        </svg>
+      <div class="real" role="img" aria-label="The TransUnion section of a sample Fundhub credit report. The score is 706, FICO Score 9, marked good score. Under Why this score, the first of four bureau reasons is marked: ratio of balance to limit on bank revolving or other revolving accounts too high. The bank reads this line.">
+        <header class="bureau-head">
+          <div class="rh1">TransUnion</div>
+          <div class="score"><div class="num">706</div><div class="model">FICO® Score 9</div><span class="chip on"><span class="cd"></span>Good score</span></div>
+        </header>
+        <div class="rh2">Why this score</div>
+        <p class="model">FICO® Score 9 · 706</p>
+        <ul>
+          <li class="flag">RATIO OF BALANCE TO LIMIT ON BANK REVOLVING OR OTHER REV ACCTS TOO HIGH<br><span class="chip bad"><span class="cd"></span>The bank reads this line</span></li>
+          <li>TIME SINCE DELINQUENCY IS TOO RECENT OR UNKNOWN</li>
+          <li>LACK OF RECENT INSTALLMENT LOAN INFORMATION</li>
+          <li>TOO FEW ACCOUNTS CURRENTLY PAID AS AGREED</li>
+        </ul>
       </div>
+      <p class="real-src">Sample report. Simulated file, no bureau contacted.</p>
     </figure>
   </section>
 
-  <section class="slide" data-src="The top of a credit report lists the reasons a bank approves or denies; the bank's letter gives the same reasons: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:209.">
+  <section class="slide" data-src="The top of a credit report lists the reasons a bank approves or denies; the bank's letter gives the same reasons: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:209. The bureau prints its reason lines with every score: src/finance/sample-credit-file.mjs:81-86 and the engine reads them per bureau (vendor/underwriteiq-full/api/lite/crs/normalize-soft-pull.js:190-193). Answer before an application goes out: public/index.html:454.">
     <p class="eyebrow">PU-02 / The reasons</p>
     <h2>The top of your credit report lists the reasons a bank says yes or no.</h2>
-    <p class="lede">The letter a bank sends after a no gives those same reasons.</p>
+    <ul class="lines">
+      <li>The bureau prints them under every score, in its own words.</li>
+      <li>When a bank says no, its letter gives those same reasons.</li>
+      <li>So the answer is on your file before any application goes out.</li>
+    </ul>
     <figure class="pic">
-      <div class="napkin">
-        <svg class="vt" viewBox="0 0 340 210" role="img" aria-label="Your credit report equals the bank's letter. Both show the same reason: card balances too high.">
-          <rect class="sh" x="4" y="4" width="136" height="164" rx="10"/>
-          <text class="cap" x="16" y="28">YOUR REPORT</text>
-          <rect class="bar" x="16" y="42" width="108" height="7" rx="3.5"/>
-          <rect class="bar" x="16" y="58" width="80" height="7" rx="3.5"/>
-          <rect class="flag edge" x="12" y="80" width="120" height="46" rx="7"/>
-          <text x="72" y="99" text-anchor="middle">Card balances</text>
-          <text x="72" y="117" text-anchor="middle">too high</text>
-          <rect class="bar" x="16" y="142" width="96" height="7" rx="3.5"/>
-          <line class="ln bold" x1="156" y1="96" x2="184" y2="96"/>
-          <line class="ln bold" x1="156" y1="110" x2="184" y2="110"/>
-          <rect class="sh" x="200" y="4" width="136" height="164" rx="10"/>
-          <text class="cap" x="212" y="28">BANK LETTER</text>
-          <text x="212" y="60">Decision: No</text>
-          <rect class="flag edge" x="208" y="80" width="120" height="46" rx="7"/>
-          <text x="268" y="99" text-anchor="middle">Card balances</text>
-          <text x="268" y="117" text-anchor="middle">too high</text>
-          <rect class="bar" x="212" y="142" width="96" height="7" rx="3.5"/>
-          <text class="cap" x="170" y="200" text-anchor="middle">SAMPLE · SAME REASON, BOTH PLACES</text>
+      <div class="sheet">
+        <svg class="bv" viewBox="0 0 320 246" role="img" aria-label="Your report equals the bank's letter. Both list the same reason: ratio of balance to limit on bank revolving or other revolving accounts too high.">
+          <rect class="pn" x="1" y="1" width="318" height="92" rx="10"/>
+          <text class="lb" x="14" y="24">YOUR REPORT · WHY THIS SCORE</text>
+          <rect class="tint-flag" x="10" y="36" width="300" height="48" rx="6"/>
+          <text class="caps" x="20" y="56">RATIO OF BALANCE TO LIMIT ON BANK</text>
+          <text class="caps" x="20" y="72">REVOLVING OR OTHER REV ACCTS TOO HIGH</text>
+          <line class="rule-ink" x1="132" y1="106" x2="158" y2="106"/>
+          <line class="rule-ink" x1="132" y1="118" x2="158" y2="118"/>
+          <text class="lb ink" x="170" y="117">SAME REASON</text>
+          <rect class="pn" x="1" y="133" width="318" height="110" rx="10"/>
+          <text class="lb" x="14" y="156">BANK LETTER</text>
+          <text x="306" y="156" text-anchor="end">Decision: No</text>
+          <rect class="tint-flag" x="10" y="168" width="300" height="48" rx="6"/>
+          <text class="caps" x="20" y="188">RATIO OF BALANCE TO LIMIT ON BANK</text>
+          <text class="caps" x="20" y="204">REVOLVING OR OTHER REV ACCTS TOO HIGH</text>
+          <text class="lb" x="14" y="236">SAMPLE</text>
         </svg>
       </div>
     </figure>
   </section>
 
-  <section class="slide" data-src="Almost every application you send is a hard pull, and each one costs you: docs/sops/weekend-2026-10-24/04-sales-call-script.md:160. The banks see the inquiries stack, and they start denying you: public/app/present.js:108 (closer line); too many recent hard inquiries bring auto-declines: src/underwrite/report.mjs:62. The letter carries the reason: ops/workflows/backend-selling-lanes-2026-10-30.md:209.">
+  <section class="slide" data-src="Almost every application you send is a hard pull, and each one costs you: docs/sops/weekend-2026-10-24/04-sales-call-script.md:160. The banks see the inquiries stack, and they start denying you: public/app/present.js:108 (closer line). The picture is the Inquiries rows of the same sample report (scripts/render-crs-standard-report.mjs, 2026-10-31), one per bureau, with each pull's reason from the sample file: src/finance/sample-credit-file.mjs:103-107.">
     <p class="eyebrow">PU-03 / The cost</p>
     <h2>A no from a bank still costs you a hard inquiry.</h2>
-    <p class="lede">Almost every application you send is a hard pull. When there are too many, banks say no on their own.</p>
+    <ul class="lines">
+      <li>Almost every application you send is a hard pull, and each one costs you.</li>
+      <li>The banks see the inquiries stack, and they start denying you.</li>
+      <li>This sample file already carries three, one on each bureau.</li>
+    </ul>
     <figure class="pic">
-      <p class="pic-cap">If the red flag is still on the file</p>
-      <div class="napkin">
-        <svg class="vt" viewBox="0 0 340 232" role="img" aria-label="Four applications go out one after another. Each comes back as a no, and each leaves a hard inquiry mark on your report.">
-          <text class="cap" x="4" y="16">APPLICATIONS</text>
-          <g>
-            <rect class="sh" x="22" y="30" width="34" height="42" rx="4"/><rect class="bar" x="28" y="42" width="22" height="4" rx="2"/><rect class="bar" x="28" y="52" width="16" height="4" rx="2"/>
-            <circle class="flag edge" cx="56" cy="32" r="11"/><path class="ln thin" d="M52 28l8 8m0-8l-8 8"/>
-            <path class="ln thin dash mute" d="M39 78V140" marker-end="url(#pu-arrow)"/>
-            <rect class="flag edge" x="27" y="178" width="24" height="14" rx="4"/>
-          </g>
-          <g>
-            <rect class="sh" x="102" y="30" width="34" height="42" rx="4"/><rect class="bar" x="108" y="42" width="22" height="4" rx="2"/><rect class="bar" x="108" y="52" width="16" height="4" rx="2"/>
-            <circle class="flag edge" cx="136" cy="32" r="11"/><path class="ln thin" d="M132 28l8 8m0-8l-8 8"/>
-            <path class="ln thin dash mute" d="M119 78V140" marker-end="url(#pu-arrow)"/>
-            <rect class="flag edge" x="107" y="178" width="24" height="14" rx="4"/>
-          </g>
-          <g>
-            <rect class="sh" x="182" y="30" width="34" height="42" rx="4"/><rect class="bar" x="188" y="42" width="22" height="4" rx="2"/><rect class="bar" x="188" y="52" width="16" height="4" rx="2"/>
-            <circle class="flag edge" cx="216" cy="32" r="11"/><path class="ln thin" d="M212 28l8 8m0-8l-8 8"/>
-            <path class="ln thin dash mute" d="M199 78V140" marker-end="url(#pu-arrow)"/>
-            <rect class="flag edge" x="187" y="178" width="24" height="14" rx="4"/>
-          </g>
-          <g>
-            <rect class="sh" x="262" y="30" width="34" height="42" rx="4"/><rect class="bar" x="268" y="42" width="22" height="4" rx="2"/><rect class="bar" x="268" y="52" width="16" height="4" rx="2"/>
-            <circle class="flag edge" cx="296" cy="32" r="11"/><path class="ln thin" d="M292 28l8 8m0-8l-8 8"/>
-            <path class="ln thin dash mute" d="M279 78V140" marker-end="url(#pu-arrow)"/>
-            <rect class="flag edge" x="267" y="178" width="24" height="14" rx="4"/>
-          </g>
-          <rect class="sh" x="4" y="146" width="332" height="56" rx="10" fill-opacity="0"/>
-          <text class="cap" x="16" y="168">YOUR REPORT · SAMPLE</text>
-          <text class="cap" x="170" y="226" text-anchor="middle">EACH NO LEAVES A HARD INQUIRY</text>
-        </svg>
+      <div class="real" role="img" aria-label="The inquiries on a sample Fundhub credit report: American Express on Experian from a business card application, First Platypus Bank on TransUnion from a credit line increase, and JPMCB Card Services on Equifax from a business card application. Each one is a hard inquiry.">
+        <div class="rh2">Inquiries (3)</div>
+        <table>
+          <thead><tr><th>Who pulled</th><th>Bureau</th></tr></thead>
+          <tbody>
+            <tr><td>AMERICAN EXPRESS<br><span class="chip bad"><span class="cd"></span>Card application</span></td><td>Experian</td></tr>
+            <tr><td>FIRST PLATYPUS BANK<br><span class="chip bad"><span class="cd"></span>Line increase ask</span></td><td>TransUnion</td></tr>
+            <tr><td>JPMCB CARD SERVICES<br><span class="chip bad"><span class="cd"></span>Card application</span></td><td>Equifax</td></tr>
+          </tbody>
+        </table>
       </div>
+      <p class="real-src">Sample report. Simulated file, no bureau contacted.</p>
     </figure>
   </section>
 
-  <section class="slide" data-src="Part 0 rule 8 wording: marketing/ads/RULES.md:44. Before a single application goes out: marketing/ads/scripts/2026-10-14.md:61 (green-lit). Pre-underwriting with the same models the banks use: Chris 2026-10-31, marketing/copy-skills/copybot/references/chris-voice-profile.md:29. Fix it first, then funding: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:210 (we optimize, then send them into funding). Banks that fit your file: public/app/present.js:99 (closer line).">
+  <section class="slide" data-src="Part 0 rule 8 wording: marketing/ads/RULES.md:44. Before a single application goes out: marketing/ads/scripts/2026-10-14.md:61 (green-lit). Pre-underwriting with the same models the banks use: Chris 2026-10-31, marketing/copy-skills/copybot/references/chris-voice-profile.md:29. Our UnderwriteIQ system: public/app/present.js:99 (closer line). What it checks: src/underwrite/report.mjs:52-80. Fix it first, then funding: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:210.">
     <p class="eyebrow">PU-04 / Pre-underwriting</p>
     <h2>We review your file the way a lender does, before a single application goes out.</h2>
-    <p class="lede">That's pre-underwriting, and we do it with the same models the banks use.</p>
+    <ul class="lines">
+      <li>That's pre-underwriting, and we do it with the same models the banks use.</li>
+      <li>Our UnderwriteIQ system checks card balances, hard inquiries, your main card and negative accounts.</li>
+      <li>When it finds a red flag, we fix it first, then send your file into funding.</li>
+    </ul>
     <figure class="pic">
-      <div class="napkin">
-        <svg class="vt" viewBox="0 0 340 286" role="img" aria-label="A flowchart. Your report is reviewed the way a lender does. If it has a red flag, the red flag gets fixed first and the file is reviewed again. If it has none, you apply to the banks that fit your file.">
-          <rect class="sh" x="125" y="4" width="150" height="38" rx="8"/>
-          <text x="200" y="28" text-anchor="middle">Your report</text>
-          <path class="ln" d="M200 42V60" marker-end="url(#pu-arrow)"/>
-          <rect class="hot" x="95" y="64" width="210" height="42" rx="8"/>
-          <text class="on-ink" x="200" y="90" text-anchor="middle">Review it like a lender</text>
-          <path class="ln" d="M200 106V124" marker-end="url(#pu-arrow)"/>
-          <path class="sh" d="M200 128L242 164L200 200L158 164Z"/>
-          <text x="200" y="169" text-anchor="middle">Red flag?</text>
-          <path class="ln" d="M158 164H106" marker-end="url(#pu-arrow)"/>
-          <text class="cap" x="132" y="156" text-anchor="middle">YES</text>
-          <rect class="flag edge" x="4" y="144" width="98" height="40" rx="8"/>
-          <text x="53" y="169" text-anchor="middle">Fix it first</text>
-          <path class="ln dash" d="M53 144V85H89" marker-end="url(#pu-arrow)"/>
-          <path class="ln" d="M200 200V224" marker-end="url(#pu-arrow)"/>
-          <text class="cap" x="214" y="217">NO</text>
-          <rect class="fit edge" x="36" y="228" width="300" height="48" rx="8"/>
-          <text x="186" y="257" text-anchor="middle">Apply to the banks that fit your file</text>
+      <div class="sheet">
+        <svg class="bv" viewBox="0 0 320 272" role="img" aria-label="A flowchart. Your report is reviewed the way a lender does. If it has a red flag, the red flag gets fixed first and the file is reviewed again. If it has none, you apply to the banks that fit your file.">
+          <rect class="pn" x="115" y="2" width="150" height="36" rx="8"/>
+          <text x="190" y="25" text-anchor="middle">Your report</text>
+          <path class="cn ink" d="M190 38V55" marker-end="url(#fh-arrow)"/>
+          <rect class="pn-ink" x="85" y="59" width="210" height="42" rx="8"/>
+          <rect x="97" y="95" width="186" height="3" rx="1.5" fill="url(#fh-spectrum)"/>
+          <text class="on-ink" x="190" y="84" text-anchor="middle">Review it like a lender</text>
+          <path class="cn ink" d="M190 101V118" marker-end="url(#fh-arrow)"/>
+          <path class="pn" d="M190 122L230 156L190 190L150 156Z"/>
+          <text x="190" y="161" text-anchor="middle">Red flag?</text>
+          <path class="cn ink" d="M150 156H105" marker-end="url(#fh-arrow)"/>
+          <text class="lb" x="127" y="148" text-anchor="middle">YES</text>
+          <rect class="tint-flag" x="2" y="136" width="99" height="40" rx="8"/>
+          <text x="51" y="161" text-anchor="middle">Fix it first</text>
+          <path class="cn ink dash" d="M51 136V80H81" marker-end="url(#fh-arrow)"/>
+          <path class="cn ink" d="M190 190V211" marker-end="url(#fh-arrow)"/>
+          <text class="lb" x="202" y="205">NO</text>
+          <rect class="tint-fit edge-fit" x="20" y="216" width="298" height="48" rx="8"/>
+          <text x="169" y="245" text-anchor="middle">Apply to the banks that fit your file</text>
         </svg>
       </div>
     </figure>
   </section>
 
-  <section class="slide" data-src="Banks that fit your file; you only apply where your file makes sense: public/app/present.js:99 (closer line). Banks that approve files like yours: marketing/ads/scripts/2026-10-14.md:63 (green-lit). No approval promise: db/migrations/493_funding_and_repair_agreement_text.sql:53 (section 3) and docs/sops/weekend-2026-10-24/04-sales-call-script.md:178.">
+  <section class="slide" data-src="Banks that fit your file; you only apply where your file makes sense: public/app/present.js:99 (closer line). Banks that approve files like yours: marketing/ads/scripts/2026-10-14.md:63 (green-lit). We pick the banks and the order; they say yes or no: docs/sops/weekend-2026-10-24/04-sales-call-script.md:229. No approval promise: db/migrations/493_funding_and_repair_agreement_text.sql:53 (section 3).">
     <p class="eyebrow">PU-05 / The right banks</p>
     <h2>Your applications go only to the banks that fit your file.</h2>
-    <p class="lede">We check your file against each bank first, so you only apply where your file makes sense.</p>
+    <ul class="lines">
+      <li>We check your file against each bank first, so you only apply where your file makes sense.</li>
+      <li>Our bank matching picks the banks that approve files like yours.</li>
+      <li>We pick the banks and the order, and the banks say yes or no.</li>
+    </ul>
     <figure class="pic">
-      <div class="napkin">
-        <svg class="vt" viewBox="0 0 340 258" role="img" aria-label="A map. Your file sits in the middle with banks all around it. Lines run from your file only to the three banks that fit it. The other banks get no line.">
-          <path class="ln bold" d="M170 122V50"/>
-          <path class="ln bold" d="M170 122H282"/>
-          <path class="ln bold" d="M170 122L92 175"/>
-          <circle class="fit edge" cx="170" cy="28" r="22"/><use href="#pu-bank" x="156" y="14" width="28" height="28"/>
-          <circle class="sh mute" cx="265" cy="56" r="22"/><use class="mute" href="#pu-bank" x="251" y="42" width="28" height="28"/>
-          <circle class="fit edge" cx="304" cy="122" r="22"/><use href="#pu-bank" x="290" y="108" width="28" height="28"/>
-          <circle class="sh mute" cx="265" cy="188" r="22"/><use class="mute" href="#pu-bank" x="251" y="174" width="28" height="28"/>
-          <circle class="sh mute" cx="170" cy="216" r="22"/><use class="mute" href="#pu-bank" x="156" y="202" width="28" height="28"/>
-          <circle class="fit edge" cx="75" cy="188" r="22"/><use href="#pu-bank" x="61" y="174" width="28" height="28"/>
-          <circle class="sh mute" cx="36" cy="122" r="22"/><use class="mute" href="#pu-bank" x="22" y="108" width="28" height="28"/>
-          <circle class="sh mute" cx="75" cy="56" r="22"/><use class="mute" href="#pu-bank" x="61" y="42" width="28" height="28"/>
-          <rect class="hot" x="146" y="94" width="48" height="58" rx="6"/>
-          <rect class="bar" x="154" y="106" width="32" height="5" rx="2.5"/>
-          <rect class="bar" x="154" y="118" width="24" height="5" rx="2.5"/>
-          <rect class="bar" x="154" y="130" width="28" height="5" rx="2.5"/>
-          <text class="cap" x="170" y="172" text-anchor="middle">YOUR FILE</text>
-          <text class="cap" x="170" y="254" text-anchor="middle">A LINE MEANS YOUR FILE GOES THERE</text>
+      <div class="sheet">
+        <svg class="bv" viewBox="0 0 320 250" role="img" aria-label="A map. Your file sits in the middle with banks all around it. Lines run from your file only to the three banks that fit it. The other banks get no line.">
+          <path class="cn ink" d="M160 118V48M160 118H266M160 118L87 170"/>
+          <circle class="tint-fit edge-fit" cx="160" cy="26" r="22"/><use href="#fh-bank" x="147" y="13" width="26" height="26"/>
+          <circle class="pn" cx="250" cy="53" r="22"/><use class="mute" href="#fh-bank" x="237" y="40" width="26" height="26"/>
+          <circle class="tint-fit edge-fit" cx="288" cy="118" r="22"/><use href="#fh-bank" x="275" y="105" width="26" height="26"/>
+          <circle class="pn" cx="250" cy="183" r="22"/><use class="mute" href="#fh-bank" x="237" y="170" width="26" height="26"/>
+          <circle class="pn" cx="160" cy="210" r="22"/><use class="mute" href="#fh-bank" x="147" y="197" width="26" height="26"/>
+          <circle class="tint-fit edge-fit" cx="70" cy="183" r="22"/><use href="#fh-bank" x="57" y="170" width="26" height="26"/>
+          <circle class="pn" cx="32" cy="118" r="22"/><use class="mute" href="#fh-bank" x="19" y="105" width="26" height="26"/>
+          <circle class="pn" cx="70" cy="53" r="22"/><use class="mute" href="#fh-bank" x="57" y="40" width="26" height="26"/>
+          <rect class="pn-ink" x="138" y="91" width="44" height="54" rx="6"/>
+          <rect class="bar" x="146" y="103" width="28" height="4" rx="2"/>
+          <rect class="bar" x="146" y="113" width="20" height="4" rx="2"/>
+          <rect class="bar" x="146" y="123" width="24" height="4" rx="2"/>
+          <text class="lb ink" x="160" y="164" text-anchor="middle">YOUR FILE</text>
+          <text class="lb" x="160" y="246" text-anchor="middle">A LINE MEANS YOUR FILE GOES THERE</text>
         </svg>
       </div>
     </figure>
   </section>
 
-  <section class="slide dark" data-src="Guarantee line, word for word: marketing/copy-skills/copybot/references/owner-voice.md:18. The clock starts when you sign; first authorized applications within 72 business hours: db/migrations/493_funding_and_repair_agreement_text.sql:53 (section 3, G-02)." data-figures="the contract's 72 business hours">
+  <section class="slide dark" data-src="Guarantee line, word for word: marketing/copy-skills/copybot/references/owner-voice.md:18. The picture is the agreement's own words, copied exactly from section 3 of the funding agreement the CRM sends: db/migrations/493_funding_and_repair_agreement_text.sql:53 (G-01 and G-02)." data-figures="the contract's 24 and 72 business hours">
     <p class="eyebrow">PU-06 / The guarantee</p>
     <h2>Applications go out within 72 business hours.</h2>
     <p class="lede">That's our guarantee, and it's in your contract. That typically means approvals come very shortly after.</p>
+    <ul class="lines">
+      <li>Here it is, word for word, in the agreement you sign.</li>
+    </ul>
     <figure class="pic">
-      <div class="metric"><span class="n">72</span><span class="u">business hours</span></div>
-      <div class="span">
-        <div class="span-bar"></div>
-        <div class="span-ends"><span>You sign</span><span>Applications out</span></div>
+      <div class="real" role="img" aria-label="Section 3 of the Fundhub funding agreement. The clocks begin when you sign. A funding advisor begins working your file within 24 business hours. Marked: Fundhub will submit your first authorized applications within 72 business hours.">
+        <div class="rh2">Funding Agreement · Section 3</div>
+        <p class="clause">The guarantee clocks begin when you sign this agreement. A Fundhub funding advisor will begin working your file within 24 business hours <span class="nw">(G-01)</span>. <mark>Fundhub will submit your first authorized applications within 72 business hours <span class="nw">(G-02)</span>.</mark></p>
+        <span class="chip on"><span class="cd"></span>Our guarantee</span>
       </div>
     </figure>
   </section>
 
-  <section class="slide" data-src="Your advisor shares the screen and goes through your file with you: marketing/vsl/direct-book-thank-you-2026-10-15.md:37 (green-lit). The file is pulled together on the call with a soft pull and read on screen: docs/sops/weekend-2026-10-24/04-sales-call-script.md:69, :164-171. How much you qualify for based on where you're at right now: same file :171 and .ai/rules/copy-certainty.md:13. Part 0 rule 8 wording: marketing/ads/RULES.md:44.">
+  <section class="slide" data-src="We pull your file together right on the call; it's a soft pull, so your score does not move; you see how much you qualify for based on where you're at right now and what's holding the rest back: docs/sops/weekend-2026-10-24/04-sales-call-script.md:69. Fund now, fix first, or both: same file :176. Your advisor shares the screen and goes through your file with you: marketing/vsl/direct-book-thank-you-2026-10-15.md:37 (green-lit). Part 0 rule 8 wording: marketing/ads/RULES.md:44.">
     <p class="eyebrow">PU-07 / Your call</p>
     <h2>On your call, we review your file with you, the way a lender does.</h2>
-    <p class="lede">You leave knowing how much you qualify for based on where you're at right now.</p>
+    <ul class="lines">
+      <li>We pull your file together right on the call, with a soft pull, so your score does not move.</li>
+      <li>You see how much you qualify for based on where you're at right now, and what's holding the rest back.</li>
+      <li>Then you get the way to go: fund now, fix first, or both.</li>
+    </ul>
     <figure class="pic">
-      <div class="napkin">
-        <svg class="vt" viewBox="0 0 340 226" role="img" aria-label="You and your advisor both look at one shared screen. The screen shows your real file, with the red flag and how much you qualify for.">
-          <rect class="sh" x="92" y="8" width="156" height="110" rx="8"/>
-          <text class="cap" x="104" y="30">YOUR FILE</text>
-          <rect class="bar" x="104" y="40" width="100" height="6" rx="3"/>
-          <rect class="flag edge" x="104" y="54" width="132" height="20" rx="5"/>
-          <text class="cap dk" x="114" y="68">RED FLAG</text>
-          <rect class="bar" x="104" y="80" width="76" height="6" rx="3"/>
-          <rect class="fit edge" x="104" y="92" width="132" height="20" rx="5"/>
-          <text class="cap dk" x="114" y="106">YOUR AMOUNT</text>
-          <path class="ln" d="M170 118V134M148 134H192"/>
-          <circle class="sh" cx="40" cy="78" r="13"/>
-          <path class="ln" d="M40 91V144M40 108L72 94M40 144L28 176M40 144L52 176"/>
-          <path class="ln thin dash mute" d="M54 74L90 58"/>
-          <text class="cap" x="40" y="198" text-anchor="middle">YOU</text>
-          <circle class="sh" cx="300" cy="78" r="13"/>
-          <path class="ln" d="M300 91V144M300 108L268 94M300 144L288 176M300 144L312 176"/>
-          <path class="ln thin dash mute" d="M286 74L250 58"/>
-          <text class="cap" x="300" y="198" text-anchor="middle">YOUR</text>
-          <text class="cap" x="300" y="214" text-anchor="middle">ADVISOR</text>
-          <text class="cap" x="170" y="160" text-anchor="middle">ONE SHARED</text>
-          <text class="cap" x="170" y="176" text-anchor="middle">SCREEN</text>
+      <div class="sheet">
+        <svg class="bv" viewBox="0 0 320 180" role="img" aria-label="You and your advisor both look at one shared screen. The screen shows your real file, with the red flag and how much you qualify for.">
+          <rect class="pn" x="84" y="4" width="152" height="112" rx="8"/>
+          <text class="lb" x="96" y="26">YOUR FILE</text>
+          <rect class="bar" x="96" y="36" width="96" height="5" rx="2.5"/>
+          <rect class="tint-flag" x="96" y="48" width="128" height="24" rx="5"/>
+          <text class="lb ink" x="106" y="64">RED FLAG</text>
+          <rect class="tint-fit edge-fit" x="96" y="80" width="128" height="24" rx="5"/>
+          <text class="lb ink" x="106" y="96">YOUR AMOUNT</text>
+          <path class="cn ink" d="M160 116V130M140 130H180"/>
+          <circle class="pn" cx="34" cy="62" r="26"/><use href="#fh-person" x="20" y="48" width="28" height="28"/>
+          <path class="cn dash" d="M60 58L82 46"/>
+          <text class="lb ink" x="34" y="108" text-anchor="middle">YOU</text>
+          <circle class="pn" cx="286" cy="62" r="26"/><use href="#fh-person" x="272" y="48" width="28" height="28"/>
+          <path class="cn dash" d="M260 58L238 46"/>
+          <text class="lb ink" x="286" y="108" text-anchor="middle">YOUR</text>
+          <text class="lb ink" x="286" y="124" text-anchor="middle">ADVISOR</text>
+          <text class="lb" x="160" y="168" text-anchor="middle">ONE SHARED SCREEN · YOUR REAL FILE</text>
         </svg>
       </div>
     </figure>
@@ -895,11 +977,17 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
   deck.appendChild(live);
   root.classList.add("ss-js");
 
-  function go(n) {
+  function go(n, still) {
     index = Math.max(0, Math.min(last, n));
     slides.forEach(function (slide, k) {
       var on = k === index;
       slide.classList.toggle("is-on", on);
+      // Only a slide you move to slides in. The first one is still at rest.
+      slide.classList.remove("enter");
+      if (on && !still) {
+        void slide.offsetWidth;
+        slide.classList.add("enter");
+      }
       slide.setAttribute("aria-hidden", on ? "false" : "true");
       if (on) slide.removeAttribute("inert");
       else slide.setAttribute("inert", "");
@@ -949,10 +1037,7 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     var n = fromHash();
     if (n !== null && n !== index) go(n);
   });
-  go(fromHash() || 0);
-  requestAnimationFrame(function () {
-    requestAnimationFrame(function () { root.classList.add("ss-anim"); });
-  });
+  go(fromHash() || 0, true);
 })();
 </script>
 <!-- /fh:shell:script -->
