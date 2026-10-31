@@ -125,8 +125,24 @@ export default async function handler(req, res, deps = {}) {
       : { letters };
     if (bound.error) return res.status(bound.status).json({ ok: false, error: bound.error });
 
-    const from = body.mail_from || body.mailFrom
-      || await loadClientReturnAddress(database, { orgId, clientId });
+    // A saved state-AG letter records its target, but the AG postal address
+    // still depends on consumer state. Never take that state or the return
+    // address from the request body: both can be edited after the letter was
+    // approved and could route a real complaint to the wrong state.
+    const stateAgInBatch = wantMail && bound.letters.some(letter => letter.target === "state_ag");
+    const recordedReturnAddress = stateAgInBatch
+      ? await (deps.loadClientReturnAddress ?? loadClientReturnAddress)(database, { orgId, clientId })
+      : null;
+    if (stateAgInBatch && !recordedReturnAddress?.address_state) {
+      return res.status(409).json({ ok: false, error: "client_state_missing_for_ag" });
+    }
+    const from = stateAgInBatch
+      ? recordedReturnAddress
+      : (body.mail_from || body.mailFrom
+        || await loadClientReturnAddress(database, { orgId, clientId }));
+    const mailIdentity = stateAgInBatch
+      ? { state: recordedReturnAddress.address_state }
+      : (body.identity || null);
     const mailSender = wantMail
       ? async (letter) => {
           const sent = await mailFn({
@@ -135,7 +151,7 @@ export default async function handler(req, res, deps = {}) {
             furnisherName: letter.furnisherName || letter.furnisher || null,
             to: letter.to || null,
             from,
-            identity: body.identity || null,
+            identity: mailIdentity,
             pdf: letter.pdf || letter.pdfBase64,
             html: letter.html,
             description: letter.description
@@ -195,7 +211,7 @@ export default async function handler(req, res, deps = {}) {
       mail: wantMail,
       letters: bound.letters,
       from,
-      identity: body.identity || null,
+      identity: mailIdentity,
       mailSender,
       env: deps.env,
       fetchImpl: deps.fetchImpl
