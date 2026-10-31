@@ -34,6 +34,7 @@ POST /api/public/slo-interest
 | /watch | watch | 1 |
 | /apply | watch | 2 |
 | /funding-book-call | watch | 3 |
+| /funding-book-call--02424 | watch | 3 |
 | /thank-you | watch | 4 |
 | /roadmap | roadmap | 1 |
 | /roadmap-book | roadmap | 2 |
@@ -112,7 +113,7 @@ The tracker drains `window.fhq` when it loads. Inside an iframe the shared track
 
 ### Cortana book-a-call observations (2026-10-20; local code, not live proof)
 
-The shared tracker also passes first-occurrence, non-revenue observations to the existing Cortana browser hub when `akTracking.trackEvent` is available. `/watch` records `book_call_watch_view`; `/apply` records `book_call_apply_view`, `book_call_apply_started` on the first survey answer, and `book_call_apply_final_answer` when the visitor finishes the last question. The survey webhook is fire-and-forget, so that last event does **not** prove the server accepted the application. The `/apply` parent or directly opened `/funding-book-call` records `book_call_calendar_view`, `book_call_time_selected`, and `book_call_booking_observed` only from the existing calendar event hooks. `/thank-you` records `book_call_thank_you_view`, even on a direct visit; it is not a booking confirmation. Neither browser booking observation nor page view is a provider-confirmed appointment or paid conversion.
+The shared tracker also passes first-occurrence, non-revenue observations to the existing Cortana browser hub when `akTracking.trackEvent` is available. `/watch` records `book_call_watch_view`; `/apply` records `book_call_apply_view`, `book_call_apply_started` on the first survey answer, and `book_call_apply_final_answer` when the visitor finishes the last question. The survey webhook is fire-and-forget, so that last event does **not** prove the server accepted the application. The `/apply` parent or a directly opened `/funding-book-call` or `/funding-book-call--02424` records `book_call_calendar_view`, `book_call_time_selected`, and `book_call_booking_observed` only from the existing calendar event hooks. `/thank-you` records `book_call_thank_you_view`, even on a direct visit; it is not a booking confirmation. Neither browser booking observation nor page view is a provider-confirmed appointment or paid conversion.
 
 Each event uses the stable `dr.b.<name>.<fh_sid>` event ID, a timestamp, page path, funnel/stage, session ID, safe UTMs and available attribution cookies. It contains no survey answer, contact value, card data, amount, or currency. A bounded queue waits for the async Cortana hub; the Fundhub database event still sends when the hub is missing. The mapping excludes `/order`, `/roadmap`, and paid offers. Local tests prove the browser mapping and dedupe; a Cortana receipt and a verified booking are still required before calling this path live.
 
