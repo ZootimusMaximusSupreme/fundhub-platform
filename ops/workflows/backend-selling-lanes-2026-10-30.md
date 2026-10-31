@@ -589,29 +589,29 @@ Slide plans (question, picture, headline):
 | Deck | 6a piece | Lane | Hook (slide 1 headline) |
 |---|---|---|---|
 | pre-underwriting | F1 | Funding | When a bank denies good credit, the reason was on the credit report first. |
-| funding-sequence | F2 | Funding | see the deck's PU-01 line |
-| apply-yourself | F3 | Funding | see the deck's slide 1 |
-| money-on-the-table | B1 (as Funding) | Funding | see the deck's slide 1 |
-| after-you-say-yes | F7, F6 | Funding | see the deck's slide 1 |
-| bank-said-no | R1 | Blueprint and Repair | see the deck's slide 1 |
-| thirteen-points | B2 | Blueprint and Repair | see the deck's slide 1 |
-| card-paydown | B3 | Blueprint and Repair | see the deck's slide 1 |
-| credit-optimization | R2 | Blueprint and Repair | see the deck's slide 1 |
-| credit-partner | B5, R4 | Blueprint and Repair | see the deck's slide 1 |
-| business-one-two | B4 | Blueprint and Repair | see the deck's slide 1 |
-| blueprint-12-months | B9 | Blueprint and Repair | see the deck's slide 1 |
-| soft-pull | C3 | Every lane | see the deck's slide 1 |
-| the-call | C1 | Every lane | see the deck's slide 1 |
-| who-we-are | C2, C4 | Every lane | see the deck's slide 1 |
-| cost-of-waiting | new (pain, cost) | Every lane | see the deck's slide 1 |
-| the-maximum | new (desire) | Every lane | see the deck's slide 1 |
-| the-money-talk | new (money; B6, R5 without a price) | Every lane | see the deck's slide 1 |
-| tried-before | new (trust; C6) | Every lane | see the deck's slide 1 |
-| blueprint-value | new (desire, doubt) | Blueprint and Repair | see the deck's slide 1 |
-| blueprint-in-action | new (support, expectation; the long-form video) | Blueprint and Repair | see the deck's slide 1 |
-| your-data-is-safe | new (trust, then the sell) | Every lane | see the deck's slide 1 |
+| funding-sequence | F2 | Funding | The same five applications, sent in the wrong order, get declined. |
+| apply-yourself | F3 | Funding | Every application you send on your own is a hard pull, and the next bank reads it. |
+| money-on-the-table | B1 (as Funding) | Funding | A 762 middle score still leaves $22,150 on the table in this sample file. |
+| after-you-say-yes | F7, F6 | Funding | Two clocks start the minute you sign, and your delay does not pause either one. |
+| bank-said-no | R1 | Blueprint and Repair | When a bank says no, it read the reason off your credit report first. |
+| thirteen-points | B2 | Blueprint and Repair | 13 optimization points decide how much funding your file gets. |
+| card-paydown | B3 | Blueprint and Repair | Your card balance counts on the day your statement closes. |
+| credit-optimization | R2 | Blueprint and Repair | Banks would rather ignore a dispute than take the time to answer it. |
+| credit-partner | B5, R4 | Blueprint and Repair | When your own file holds your funding down, you bring in a partner with good credit. |
+| business-one-two | B4 | Blueprint and Repair | A bank reads a business by its age, and the clock starts the day you file it. |
+| blueprint-12-months | B9 | Blueprint and Repair | A course hands you a plan and then leaves you alone with it. |
+| soft-pull | C3 | Every lane | When you apply at a bank, that bank does a hard pull, and the next bank sees it. |
+| the-call | C1 | Every lane | Your file picks the path, and you see it before any price. |
+| who-we-are | C2, C4 | Every lane | Brokers sell shady products on bad systems, so people slip through the cracks. |
+| cost-of-waiting | new (pain, cost) | Every lane | Nobody reads your file while you wait, so nothing on it changes. |
+| the-maximum | new (desire) | Every lane | Your file is worth more than the first yes, since nobody showed you where to apply first. |
+| the-money-talk | new (money; B6, R5 without a price) | Every lane | People cancel over money because nobody told them the money talk happens on the call. |
+| tried-before | new (trust; C6) | Every lane | You paid a company, nothing got funded, and its inquiries still sit on your report. |
+| blueprint-value | new (desire, doubt) | Blueprint and Repair | A course teaches the funding game in general. It never reads your file. |
+| blueprint-in-action | new (support, expectation; the long-form video) | Blueprint and Repair | Day 0: your file is read, and your checklist appears, built from your own report. |
+| your-data-is-safe | new (trust, then the sell) | Every lane | Most funding companies read a consumer credit site report. A bank reads deeper. |
 
-The headlines are filled in from the deck files when the handoff is sent (`grep -m1 "<h2>" marketing/slideshows/<deck>.html`), so the table never drifts from the decks.
+Headlines filled from the deck files on 2026-10-31 (`grep -m1 "<h2>"`). The handoff was sent to chat 2 the same day.
 
 **Manifest.** Pull request: https://github.com/ZootimusMaximusSupreme/fundhub-platform/pull/347 (branch `claude/backend-selling-slideshows`). Chris's one-link review page, every deck as phone and film: https://claude.ai/artifact/XCV94LxU9ZsMxPnCVL3Vxa (private to Chris). Files: `marketing/slideshows/<22 decks>.html`, `marketing/slideshows/film/<22 decks>.html`, `marketing/slideshows/talk/<22 decks>.txt`, `_shell/slideshow.css`, `_shell/slideshow.js`, `_shell/film.css`, `_shell/film.js`, `build.mjs`, `check.mjs`. New rule `.ai/rules/show-real-proof.md` (owner-set 2026-10-31) with its links, CLAUDE.md line and index row; `copy-skills-foundation.md` and the Visual Thinking skill point to it. No routes, no workflows, no database, nothing sent. All 22 pass `check.mjs`; `rules:check` OK.
 
