@@ -22,6 +22,11 @@ test("DFY/repair send path calls mail helper when mail=true", async () => {
       assertBind(sql, params);
       const s = String(sql);
       if (s.includes("FROM clients")) return { rows: [{ id: "1" }] };
+      if (s.includes("FROM dispute_letters") && s.includes("body_text")) {
+        return { rows: [{ id: "55555555-5555-4555-8555-555555555555",
+          bureau: "EX", target: "bureau", status: "ready",
+          body_text: "<p>signed body</p>", case_id: null, furnisher_address_id: null }] };
+      }
       if (s.includes("pipeline") || s.includes("cards") || s.includes("dispute_letters")) {
         return { rows: [{ stage_id: "s1", pipeline_id: "p1", id: "c1" }] };
       }
@@ -41,7 +46,7 @@ test("DFY/repair send path calls mail helper when mail=true", async () => {
         address_state: "TX",
         address_zip: "75201"
       },
-      letters: [{ bureau: "EX", pdf: "JVBERi0=", letter_id: "55555555-5555-4555-8555-555555555555" }]
+      letters: [{ bureau: "EX", html: "<p>signed body</p>", letter_id: "55555555-5555-4555-8555-555555555555" }]
     }
   };
   const res = resCapture();
@@ -68,7 +73,7 @@ test("DFY/repair send path calls mail helper when mail=true", async () => {
   assert.equal(res.body?.ok, true);
   assert.equal(mailCalls.length, 1);
   assert.equal(mailCalls[0].bureau, "EX");
-  assert.equal(mailCalls[0].pdf, "JVBERi0=");
+  assert.equal(mailCalls[0].html, "<p>signed body</p>");
   assert.equal(mailCalls[0].from.first_name, "Pat");
 });
 
@@ -124,6 +129,11 @@ function claimingDb(statements) {
       const s = String(sql).replace(/\s+/g, " ");
       statements.push(s);
       if (s.includes("FROM clients")) return { rows: [{ id: "1" }] };
+      if (s.includes("FROM dispute_letters") && s.includes("body_text")) {
+        return { rows: [{ id: LETTER_ID, bureau: "EX", target: "bureau",
+          status: "ready", body_text: "<p>x</p>", case_id: null,
+          furnisher_address_id: null }] };
+      }
       if (/UPDATE dispute_letters d SET status = 'sending'/.test(s)) {
         return { rows: [{ prior_status: "ready" }] };
       }

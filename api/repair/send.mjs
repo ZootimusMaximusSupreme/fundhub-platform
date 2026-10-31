@@ -11,6 +11,58 @@ import { mailBureauLetter } from "../../src/metro2/delivery/send.mjs";
 import { dbDown } from "../../src/http/db-down.mjs";
 import { hasRepairAgreement, hasDisputeAuthorization } from "../../src/repair/dispute-auth.mjs";
 
+
+/** Bind a human mail request to this organization's persisted, approved letter.
+ * An ID alone cannot authorize a different body, bureau, case or recipient. */
+async function bindSavedMailLetters(database, { orgId, clientId, letters }) {
+  if (!letters.length) return { letters };
+  const ids = [...new Set(letters.map(l => String(l.letterId || l.letter_id).toLowerCase()))];
+  const r = await database.query(
+    `SELECT id, bureau, target, body_text, status, case_id, furnisher_address_id
+       FROM dispute_letters
+      WHERE org_id = $1::uuid AND client_id = $2::uuid AND id = ANY($3::uuid[])`,
+    [orgId, clientId, ids]
+  );
+  const saved = new Map((r.rows || []).map(row => [String(row.id).toLowerCase(), row]));
+  const approved = [];
+  for (const letter of letters) {
+    const row = saved.get(String(letter.letterId || letter.letter_id).toLowerCase());
+    if (!row) return { status: 404, error: "saved_repair_letter_not_found" };
+    if (!["generated", "ready"].includes(String(row.status || ""))) {
+      return { status: 409, error: "saved_repair_letter_not_ready" };
+    }
+    const bureau = String(row.bureau || "").toUpperCase();
+    const target = String(row.target || "bureau");
+    const html = String(row.body_text || "");
+    if (!bureau || !html.trim()) {
+      return { status: 409, error: "saved_repair_letter_incomplete" };
+    }
+    // No saved PDF checksum exists. The real staff UI sends saved body_text as
+    // HTML, never a PDF or manual to-address. Reject substitutes before claim.
+    if ((letter.bureau != null && String(letter.bureau).toUpperCase() !== bureau)
+      || (letter.target != null && String(letter.target) !== target)
+      || (letter.html != null && String(letter.html) !== html)
+      || (letter.body_text != null && String(letter.body_text) !== html)
+      || (letter.bodyText != null && String(letter.bodyText) !== html)
+      || letter.pdf != null || letter.pdfBase64 != null
+      || letter.to != null || letter.recipient != null
+      || letter.furnisherName != null || letter.furnisher != null
+      || (letter.caseId != null && String(letter.caseId) !== String(row.case_id || ""))
+      || (letter.case_id != null && String(letter.case_id) !== String(row.case_id || ""))
+      || (letter.furnisher_address_id != null && String(letter.furnisher_address_id) !== String(row.furnisher_address_id || ""))
+      || (letter.furnisherAddressId != null && String(letter.furnisherAddressId) !== String(row.furnisher_address_id || ""))) {
+      return { status: 409, error: "saved_repair_letter_content_mismatch" };
+    }
+    // Drop arbitrary request fields; only immutable saved document/routing may
+    // reach the existing atomic claim and provider adapter.
+    approved.push({
+      letterId: row.id, bureau, target, html,
+      caseId: row.case_id || null, furnisher_address_id: row.furnisher_address_id || null
+    });
+  }
+  return { letters: approved };
+}
+
 export default async function handler(req, res, deps = {}) {
   const database = deps.db ?? db;
   const mailFn = deps.mailBureauLetter ?? mailBureauLetter;
@@ -66,6 +118,12 @@ export default async function handler(req, res, deps = {}) {
     if (wantMail && letters.some((letter) => !isUuid(letter?.letterId || letter?.letter_id))) {
       return res.status(400).json({ ok: false, error: "saved_repair_letter_required" });
     }
+
+    // Entire batch must match its saved rows before any address/provider call.
+    const bound = wantMail
+      ? await bindSavedMailLetters(database, { orgId, clientId, letters })
+      : { letters };
+    if (bound.error) return res.status(bound.status).json({ ok: false, error: bound.error });
 
     const from = body.mail_from || body.mailFrom
       || await loadClientReturnAddress(database, { orgId, clientId });
@@ -135,7 +193,7 @@ export default async function handler(req, res, deps = {}) {
       clientId,
       staffId: staff.id,
       mail: wantMail,
-      letters,
+      letters: bound.letters,
       from,
       identity: body.identity || null,
       mailSender,
