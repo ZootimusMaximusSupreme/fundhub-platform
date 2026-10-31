@@ -95,7 +95,9 @@ test("apply-links: the SQL is one read the real read-box allow-list accepts, key
   assert.equal(q.text, beat.SQL_APPLY_URLS);
   assert.match(beat.SQL_APPLY_URLS, /^SELECT /);
   assert.match(beat.SQL_APPLY_URLS, /sha256\(convert_to\(application_url, 'UTF8'\)\)/);
-  assert.match(beat.SQL_APPLY_URLS, /WHERE active/);
+  assert.match(beat.SQL_APPLY_URLS, /WHERE org_id = \(SELECT id FROM orgs WHERE is_default ORDER BY created_at LIMIT 1\)/);
+  assert.match(beat.SQL_APPLY_URLS, /AND active/);
+  assert.match(beat.SQL_STATE_COUNT, /WHERE org_id = \(SELECT id FROM orgs WHERE is_default ORDER BY created_at LIMIT 1\)/);
   assert.match(beat.SQL_APPLY_URLS, /GROUP BY application_url/);
 });
 
@@ -752,5 +754,40 @@ test("the rows the runner saves match what records.mjs accepts (camelCase v1 del
   for (const r of rows) {
     for (const k of Object.keys(r)) assert.ok(keys.has(k), `unexpected field ${k}`);
     assert.ok(["OK", "WALL", "HARD", "SLOW", "BAD_URL"].includes(r.lastClass));
+  }
+});
+
+
+/* Regression: the hourly runner's defaultOrgId() owns its saved URL fingerprints.
+ * Read-only CTEs shadow real tables; no tenant or lender row is modified. */
+test("apply-links: two-org Postgres fixture isolates lender reads and first-pass history", {
+  skip: !process.env.DATABASE_URL && "no disposable Postgres configured"
+}, async () => {
+  const { db, close } = await import("../../db.mjs");
+  const own = "11111111-1111-4111-8111-111111111111";
+  const foreign = "22222222-2222-4222-8222-222222222222";
+  const ownLender = lenderId(1);
+  const sharedOtherLender = lenderId(2);
+  const foreignLender = lenderId(3);
+  const ownUrl = "https://own-bank.example.com/apply";
+  const foreignUrl = "https://foreign-bank.example.com/apply";
+  const orgs = "WITH orgs(id, is_default, created_at) AS (VALUES ('" + own + "'::uuid, true, '2026-10-01'::timestamptz), ('" + foreign + "'::uuid, false, '2026-10-02'::timestamptz))";
+  try {
+    const links = await db.query(orgs +
+      ", lenders(id, org_id, application_url, active) AS (VALUES ($1::uuid, $2::uuid, $3::text, true), ($4::uuid, $5::uuid, $6::text, true), ($7::uuid, $8::uuid, $9::text, true)) " +
+      beat.SQL_APPLY_URLS,
+      [ownLender, own, ownUrl, sharedOtherLender, foreign, ownUrl, foreignLender, foreign, foreignUrl]);
+    assert.equal(links.rows.length, 1, "foreign Apply URL must not enter the default org check");
+    assert.equal(links.rows[0].url, ownUrl);
+    assert.deepEqual(links.rows[0].lender_ids, [ownLender], "foreign lender id must not leak into own URL");
+    assert.equal(links.rows[0].url_hash, hashOf(ownUrl));
+
+    const saved = await db.query(orgs +
+      ", pulse_bank_links(org_id, url_hash) AS (VALUES ($1::uuid, $2::text), ($3::uuid, $4::text)) " +
+      beat.SQL_STATE_COUNT,
+      [foreign, hashOf(foreignUrl), foreign, hashOf(ownUrl)]);
+    assert.equal(Number(saved.rows[0]?.n), 0, "foreign history must not cause false default-org load failure");
+  } finally {
+    await close();
   }
 });

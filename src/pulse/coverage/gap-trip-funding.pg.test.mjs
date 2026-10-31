@@ -23,7 +23,7 @@ const DAY = 24 * HOUR;
 const ago = (ms) => new Date(NOW.getTime() - ms).toISOString();
 
 const TABLES = [
-  "clients", "payment_links", "events", "sales", "products", "cards", "pipelines", "pipeline_stages",
+  "clients", "payment_links", "events", "sales", "sale_payments", "products", "cards", "pipelines", "pipeline_stages",
   "bookings", "call_outcomes", "funding_rounds", "funding_closeout", "invoices", "funding_round_sales",
   "sale_attributions", "commission_ledger", "applications"
 ];
@@ -83,11 +83,18 @@ function card(w, ids, clientId, board, stageKey, enteredAt) {
   });
 }
 
-function fundingSale(w, ids, clientId, at) {
+function fundingSale(w, ids, clientId, at, { paidDeposit = true } = {}) {
   const id = uid("sa");
   w.sales.rows.push({
     id, org_id: ORG, client_id: clientId, product_id: ids.fundingProduct, status: "active",
     sold_at: at, is_demo: false, agreed_success_fee_percent: 10
+  });
+  // A signed sale is not cash. Most scenarios intentionally model the deposit
+  // as collected, so the source-level funding trip may begin. Preserve a
+  // separate unpaid-sale case below that must NOT create a funding-card alert.
+  if (paidDeposit) w.sale_payments.rows.push({
+    id: uid("pay"), org_id: ORG, sale_id: id, kind: "deposit", amount: 300,
+    paid_at: at, created_at: at, is_demo: false, product_id: ids.fundingProduct
   });
   return id;
 }
@@ -136,6 +143,29 @@ test("SQL GREEN: paid the diagnostic 3 hours ago and the Sales card moved to Dia
   const { verdict } = await judge(w);
   assert.equal(verdict.status, "PASS");
   assert.match(verdict.detail, /1 waiting \(1 at "booked a call"\)/);
+});
+
+test("SQL: an active but unpaid funding sale cannot start the Funding-card timer", { skip }, async () => {
+  const { w, ids } = world();
+  const c = addClient(w);
+  fundingSale(w, ids, c, ago(3 * HOUR), { paidDeposit: false });
+  const { rows, verdict } = await judge(w);
+  assert.equal(rows.length, 0, "a signed agreement without receipt starts no journey");
+  assert.equal(verdict.status, "PASS");
+});
+
+test("SQL: a fully refunded deposit cannot start the Funding-card timer", { skip }, async () => {
+  const { w, ids } = world();
+  const c = addClient(w);
+  const saleId = fundingSale(w, ids, c, ago(3 * HOUR));
+  w.sale_payments.rows.push({
+    id: uid("refund"), org_id: ORG, sale_id: saleId, kind: "refund", amount: 300,
+    paid_at: ago(2 * HOUR), created_at: ago(2 * HOUR),
+    is_demo: false, product_id: ids.fundingProduct
+  });
+  const { rows, verdict } = await judge(w);
+  assert.equal(rows.length, 0, "refunded cash does not create an owed handoff");
+  assert.equal(verdict.status, "PASS");
 });
 
 test("SQL RED: the funding deposit was paid 3 hours ago and no Funding card was placed", { skip }, async () => {

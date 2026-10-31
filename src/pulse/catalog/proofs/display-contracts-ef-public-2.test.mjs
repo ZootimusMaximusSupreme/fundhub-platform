@@ -306,12 +306,17 @@ test("Display EF/Public wave 2 proves every exported row in rendered Chromium", 
     assert.equal(checkoutPost.last_name, "Roadmap");
     markRecipe("roadmap-pay");
 
-    let pullPost;
-    await page.route("**/api/public/slo-pull", async (route) => { pullPost = route.request().postDataJSON(); await json(route, { ok: true }); });
+    await page.route("**/api/public/slo-pull", async (route) => { await json(route, { ok: true }); });
     await page.goto(`${origin}/roadmap/pull.html?ref=pay-proof&client_id=client-proof`);
     for (const [id, value] of [["first", "Alex"], ["last", "Roadmap"], ["dob", "1990-01-02"], ["ssn", "123456789"], ["addr", "1 Main St"], ["city", "Phoenix"], ["state", "AZ"], ["zip", "85001"]]) await page.locator(`#${id}`).fill(value);
-    await page.locator("#consent").check(); await page.locator("#pull").evaluate((form) => form.requestSubmit());
+    await page.locator("#consent").check();
+    // The busy banner may render before Playwright's async route callback runs.
+    // Observe the actual POST, not just a transient UI state, before inspecting its payload.
+    const pullRequestSeen = page.waitForRequest((request) =>
+      request.method() === "POST" && new URL(request.url()).pathname === "/api/public/slo-pull");
+    await page.locator("#pull").evaluate((form) => form.requestSubmit());
     await page.waitForFunction(() => !document.querySelector("#building").hidden);
+    const pullPost = (await pullRequestSeen).postDataJSON();
     assert.deepEqual({ ref: pullPost.ref, client: pullPost.client_id, consent: pullPost.consent, ssn: pullPost.ssn }, { ref: "pay-proof", client: "client-proof", consent: true, ssn: "123456789" });
     assert.equal(await page.locator("#ssn").inputValue(), "");
     markRecipe("roadmap-pull");
