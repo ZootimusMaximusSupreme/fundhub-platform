@@ -96,9 +96,15 @@ export async function financeOsEntitlement(conn = db, { orgId, clientId, asOf = 
   return { entitled: true, subscriptionId: grant.rows[0].id, reason: null, source: "blueprint_included" };
 }
 
-function addUtcMonths(date, months) {
+export function addUtcMonths(date, months) {
   const d = new Date(date.getTime());
+  // Match PostgreSQL calendar-month arithmetic on leap day and month-end:
+  // Date#setUTCMonth otherwise overflows Feb 29 into Mar 1 next year.
+  const day = d.getUTCDate();
+  d.setUTCDate(1);
   d.setUTCMonth(d.getUTCMonth() + months);
+  const maxDay = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
+  d.setUTCDate(Math.min(day, maxDay));
   return d;
 }
 

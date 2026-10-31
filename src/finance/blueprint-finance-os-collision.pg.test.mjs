@@ -4,7 +4,7 @@ import { test, after } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import pg from "pg";
-import { financeOsEntitlement } from "./finance-os-entitlement.mjs";
+import { financeOsEntitlement, addUtcMonths } from "./finance-os-entitlement.mjs";
 import { isBlueprintCoachClient } from "../blueprint/coach.mjs";
 import { dueClients } from "../workflows/finance-os-pull-sweeper.mjs";
 
@@ -143,6 +143,26 @@ test("Blueprint genuine refresh ignores all known completed rehearsal formats; u
           [org, client, subscriptionId, state, state === "failed" ? "2026-10-10" : null]);
         assert.deepEqual(await due(true), [], state + " requires recovery, never automatic re-pull");
       }
+    } finally {
+      await conn.query("ROLLBACK");
+      conn.release();
+    }
+  });
+
+
+test("BP-20: included FinanceOS Feb 29 anniversary equals real PostgreSQL 12 calendar months",
+  { skip: safe ? false : "requires a local test/scratch PostgreSQL database" }, async () => {
+    const conn = await pool.connect();
+    await conn.query("BEGIN READ ONLY");
+    try {
+      const paidAt = new Date("2024-02-29T17:45:30.123Z");
+      const { rows } = await conn.query(
+        "SELECT ($1::timestamptz + INTERVAL '12 months') AS ends_at",
+        [paidAt.toISOString()]
+      );
+      assert.equal(addUtcMonths(paidAt, 12).toISOString(),
+        new Date(rows[0].ends_at).toISOString(),
+        "the saved subscription end must not run past the SQL service-year end");
     } finally {
       await conn.query("ROLLBACK");
       conn.release();

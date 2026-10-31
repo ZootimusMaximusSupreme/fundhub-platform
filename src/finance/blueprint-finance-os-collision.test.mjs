@@ -8,7 +8,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   ensureFinanceOsForBlueprintPurchase,
-  financeOsEntitlement
+  financeOsEntitlement,
+  addUtcMonths
 } from "./finance-os-entitlement.mjs";
 import { dueClients } from "../workflows/finance-os-pull-sweeper.mjs";
 import { BLUEPRINT_PRODUCT_CODE } from "../waypoints/purchase.mjs";
@@ -100,4 +101,21 @@ test("BP-14: a Blueprint buyer remains monthly-refresh eligible after separate m
   assert.deepEqual(await dueClients(db, INCLUDED_END), []);
   assert.equal(db.calls.some(({ sql }) => /\bINSERT\b|\bUPDATE\b/i.test(sql)), false,
     "harness performs no writes");
+});
+
+
+test("BP-20: included 12 calendar months clamp leap day and preserve UTC time", () => {
+  const dates = [
+    ["2024-02-29T17:45:30.000Z", 12, "2025-02-28T17:45:30.000Z"],
+    ["2020-02-29T03:45:31.123Z", 12, "2021-02-28T03:45:31.123Z"],
+    ["2026-10-29T10:20:00.000Z", 12, "2027-10-29T10:20:00.000Z"],
+    ["2024-01-31T17:45:30.000Z", 1, "2024-02-29T17:45:30.000Z"],
+    ["2025-01-31T17:45:30.000Z", 1, "2025-02-28T17:45:30.000Z"],
+    ["2024-12-31T22:30:00.000Z", 2, "2025-02-28T22:30:00.000Z"]
+  ];
+  for (const [stamp, months, end] of dates) {
+    const start = new Date(stamp);
+    assert.equal(addUtcMonths(start, months).toISOString(), end);
+    assert.equal(start.toISOString(), stamp, "the original paid-at timestamp remains unchanged");
+  }
 });
