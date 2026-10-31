@@ -581,14 +581,18 @@ test("strict A->B witnesses cannot clear pre-existing or future business results
   for (const change of [
     { receipt: { ...strict.receipt, completed_at: "2026-10-29T00:03:00Z" } },
     { consumer: { ...strict.consumer, completed_at: "2026-10-29T02:00:00Z" } },
-    { receipt: { ...strict.receipt, completed_at: "2026-10-29T02:00:00Z" } },
-    { event: { ...strict.event, created_at: "2026-10-29T02:00:00Z" },
-      demandAt: "2026-10-29T00:00:00Z" }
+    { receipt: { ...strict.receipt, completed_at: "2026-10-29T02:00:00Z" } }
   ]) {
     assert.deepEqual(judgeSyntheticEdge({ ...strict, ...change }), {
       verdict: "RED", reason: "canonical-proof-timestamp-order-invalid"
     }, JSON.stringify(change));
   }
+  // A future event with an earlier consumer is rejected by the correlation
+  // gate even before the stricter canonical timestamp witness runs.
+  assert.deepEqual(judgeSyntheticEdge({
+    ...strict, event: { ...strict.event, created_at: "2026-10-29T02:00:00Z" },
+    demandAt: "2026-10-29T00:00:00Z"
+  }), { verdict: "RED", reason: "consumer-not-completed-for-event" });
   const delivery = {
     ...strict, requireProviderReceipt: true,
     providerReceipt: { ...providerReceipt, delivered_at: "2026-10-29T00:07:00Z" }
