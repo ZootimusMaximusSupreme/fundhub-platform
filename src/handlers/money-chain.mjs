@@ -43,7 +43,8 @@ import {
 import { grantFromTransaction } from "../entitlements/entitlements.mjs";
 import { seedChecklistForPurchase } from "../waypoints/purchase.mjs";
 import { createWelcomeKitTaskForPurchase } from "../blueprint/welcome-kit.mjs";
-import { ensureFinanceOsForBlueprintPurchase } from "../finance/finance-os-entitlement.mjs";
+import { ensureFinanceOsForBlueprintPurchase, FINANCE_OS_BLUEPRINT_NOTE } from "../finance/finance-os-entitlement.mjs";
+import { withTransaction } from "../db/with-transaction.mjs";
 import { createFundingCloseoutSafe } from "../funding/closeout.mjs";
 import { attachGateToRound } from "../inquiry-ops/gate.mjs";
 import { accrueForPaymentSafe, voidForRefund } from "../partners/revenue.mjs";
@@ -449,7 +450,7 @@ export async function ensureSalePayment(db, event, {
   if (!transactionId && !sourceEventId) {
     return { payment: null, created: false };
   }
-  const paidAt = p.paidAt || new Date().toISOString();
+  const paidAt = p.paidAt || event.occurredAt || new Date().toISOString();
 
   /* THE WHITE-LABEL PARTNER'S HALF — the one hook, and the reason it is here.
      A sale_payments row is the single durable moment money is known to have
@@ -669,7 +670,7 @@ export async function writeBackEndCommissions(db, { roundId, event } = {}) {
   return { inserted, warnings, drafts };
 }
 
-async function grantForPurchase(db, event, { clientId, product } = {}) {
+async function grantForPurchase(db, event, { clientId, product, paymentPaidAt = null } = {}) {
   const blocked = nothingUnlockedReason({ clientId, product });
   if (blocked) {
     warnNothingUnlocked(event, blocked, { clientId, productCode: product?.code || null });
@@ -738,7 +739,7 @@ async function grantForPurchase(db, event, { clientId, product } = {}) {
   out.financeOs = await ensureFinanceOsForBlueprintPurchase(db, {
     orgId: event.orgId,
     clientId,
-    paidAt: event.occurredAt ? new Date(event.occurredAt) : new Date(),
+    paidAt: new Date(paymentPaidAt || p.paidAt || event.occurredAt || new Date()),
     productCode: product.code
   }).catch((err) => ({
     created: false,
@@ -805,7 +806,7 @@ async function recordPurchase(event, db, { productBucket, paymentKind }) {
     }
     throw err;
   }
-  const entitlements = await grantForPurchase(db, event, { clientId, product });
+  const entitlements = await grantForPurchase(db, event, { clientId, product, paymentPaidAt: pay.payment?.paid_at });
 
   return {
     done: true,
@@ -1075,7 +1076,7 @@ export async function onPaymentReceivedMoney(event, db) {
     event: paymentEvent
   });
   const product = await loadProduct(db, sale.product_id);
-  const entitlements = await grantForPurchase(db, paymentEvent, { clientId, product });
+  const entitlements = await grantForPurchase(db, paymentEvent, { clientId, product, paymentPaidAt: pay.payment?.paid_at });
 
   return {
     done: true,
@@ -1554,7 +1555,8 @@ export async function onRoundFundedMoney(event, db) {
        src/commissions/commission-model-open-questions.md.
      * THE AFFILIATE'S CUT (src/affiliates/economics.mjs). convert() has no
        inverse yet.
-     * ENTITLEMENTS. A refunded course is still unlocked.
+     * OTHER ENTITLEMENTS. A refunded course is still unlocked. A verified full
+       Blueprint refund closes its included service below.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /** Greppable prefixes. One per case where money moved and the ledger did not. */
@@ -1724,7 +1726,44 @@ async function reversePartnerRevenue(event, db) {
  * re-accrue whatever the refund did not cover.
  */
 export async function onPaymentRefundedMoney(event, db) {
-  return reversePartnerRevenue(event, db);
+  const reversal = await reversePartnerRevenue(event, db);
+  const refunded = reversedCents(event);
+  if (!reversal.transactionId || refunded === null) return reversal;
+
+  const included = await withTransaction(db, async (tx) => {
+    const original = (await tx.query(
+      `SELECT t.id, t.client_id, t.amount_paid
+         FROM transactions t
+         JOIN products p ON p.id = resolve_product_id(t.org_id, t.product_name)
+           AND p.org_id = t.org_id
+        WHERE t.id = $1 AND t.org_id = $2 AND t.provider_ref = $3
+          AND t.status = 'succeeded' AND t.client_id IS NOT NULL
+          AND lower(btrim(p.code)) = 'consulting-package'
+        LIMIT 1`,
+      [reversal.transactionId, event.orgId, reversal.providerRef]
+    )).rows[0];
+    if (!original || !Number.isFinite(Number(original.amount_paid)) || Number(original.amount_paid) <= 0
+        || refunded < toCents(original.amount_paid)) return false;
+
+    const at = new Date();
+    await tx.query(
+      `UPDATE entitlements SET revoked_at = $4, revoke_reason = 'full_refund', updated_at = $4
+        WHERE org_id = $1 AND client_id = $2 AND source_transaction_id = $3
+          AND entitlement_code = 'credit-optimization-roadmap' AND revoked_at IS NULL`,
+      [event.orgId, original.client_id, original.id, at]
+    );
+    // The included subscription has no source-transaction column. Its exact
+    // creation note identifies it; separately purchased FinanceOS is untouched.
+    await tx.query(
+      `UPDATE subscriptions SET status = 'cancelled', cancelled_at = $3,
+          effective_to = GREATEST($3::timestamptz, effective_from + interval '1 microsecond'), updated_at = $3
+        WHERE org_id = $1 AND client_id = $2 AND tier = 'finance-os'
+          AND notes = $4 AND status = 'active' AND effective_to IS NULL`,
+      [event.orgId, original.client_id, at, FINANCE_OS_BLUEPRINT_NOTE]
+    );
+    return true;
+  });
+  return { ...reversal, blueprintIncludedEnded: included };
 }
 
 /**

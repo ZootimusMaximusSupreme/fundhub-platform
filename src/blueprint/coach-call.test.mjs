@@ -48,7 +48,8 @@ test("automatic call eligibility requires two actual accepted Blueprint SMS rece
     "second_message.status IN ('sent', 'delivered')", "provider_message_id", "NOT IN ('internal', 'memory')",
     "SMS-BLUEPRINT-COACH-DUE", "SMS-BLUEPRINT-COACH-NUDGE-2", "w.updated_at <= first_message.created_at",
     "t.id = e.source_transaction_id", "t.org_id = e.org_id", "t.client_id = e.client_id",
-    "t.created_at <= $2::timestamptz", "(t.created_at + interval '12 months') > $2::timestamptz",
+    "COALESCE(sp.paid_at, t.created_at) <= $2::timestamptz",
+    "(COALESCE(sp.paid_at, t.created_at) + interval '12 months') > $2::timestamptz",
     "prior.owner_kind = 'client'", "reply.direction = 'inbound'", "reply.created_at >= first_message.created_at",
     "cv.agent_halted_at IS NOT NULL", "NOT IN ('BP-COACH', 'BP-COACH-VOICE')", "e.active", "called.step = 5"]) {
     assert.ok(BLUEPRINT_CALL_ELIGIBILITY_SQL.includes(fragment), fragment);

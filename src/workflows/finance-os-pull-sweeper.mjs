@@ -51,10 +51,11 @@ export async function dueClients(conn, now, { realPull = false } = {}) {
     `WITH blueprint_access AS (
        SELECT DISTINCT ON (e.org_id, e.client_id)
               e.id AS subscription_id, e.org_id, e.client_id,
-              t.created_at AS current_period_start
+              COALESCE(sp.paid_at, t.created_at) AS current_period_start
          FROM entitlements e
          JOIN transactions t ON t.id = e.source_transaction_id
            AND t.org_id = e.org_id AND t.client_id = e.client_id
+         LEFT JOIN sale_payments sp ON sp.transaction_id = t.id AND sp.org_id = t.org_id
          JOIN products p ON p.id = resolve_product_id(t.org_id, t.product_name)
            AND p.org_id = t.org_id
         WHERE e.entitlement_code = 'credit-optimization-roadmap'
@@ -62,9 +63,9 @@ export async function dueClients(conn, now, { realPull = false } = {}) {
           AND (e.expires_at IS NULL OR e.expires_at > $2)
           AND lower(btrim(COALESCE(t.status, ''))) = 'succeeded'
           AND lower(btrim(p.code)) = $5
-          AND t.created_at <= $2
-          AND (t.created_at + interval '12 months') > $2
-        ORDER BY e.org_id, e.client_id, t.created_at DESC, e.id DESC
+          AND COALESCE(sp.paid_at, t.created_at) <= $2
+          AND (COALESCE(sp.paid_at, t.created_at) + interval '12 months') > $2
+        ORDER BY e.org_id, e.client_id, COALESCE(sp.paid_at, t.created_at) DESC, e.id DESC
       ), entitled AS (
        SELECT s.id AS subscription_id, s.org_id, s.client_id, s.current_period_start
          FROM subscriptions s

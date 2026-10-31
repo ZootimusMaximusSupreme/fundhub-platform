@@ -25,6 +25,7 @@ import { BLUEPRINT_PRODUCT_CODE } from "../waypoints/purchase.mjs";
 
 export const FINANCE_OS_TIER = "finance-os";
 export const FINANCE_OS_BLUEPRINT_MONTHS = 12;
+export const FINANCE_OS_BLUEPRINT_NOTE = "Capital Blueprint purchase — Finance OS included for 12 months";
 
 /**
  * financeOsEntitlement(conn, { orgId, clientId, asOf }) →
@@ -61,7 +62,8 @@ async function activeFinanceOsSubscription(conn, { orgId, clientId, asOf }) {
  * A purchased Blueprint year is an independent service right, not a change
  * to a separately billed monthly FinanceOS subscription. Prefer an active
  * paid subscription, otherwise require a non-revoked same-tenant Blueprint
- * entitlement tied to a succeeded transaction within 12 calendar months.
+ * entitlement tied to a succeeded transaction within 12 calendar months of
+ * the saved sale payment time (or the transaction time for legacy rows).
  * Course/document grants are never deleted when the service year expires.
  */
 export async function financeOsEntitlement(conn = db, { orgId, clientId, asOf = new Date() } = {}) {
@@ -77,6 +79,7 @@ export async function financeOsEntitlement(conn = db, { orgId, clientId, asOf = 
        FROM entitlements e
        JOIN transactions t ON t.id = e.source_transaction_id
          AND t.org_id = e.org_id AND t.client_id = e.client_id
+       LEFT JOIN sale_payments sp ON sp.transaction_id = t.id AND sp.org_id = t.org_id
        JOIN products p ON p.id = resolve_product_id(t.org_id, t.product_name)
          AND p.org_id = t.org_id
       WHERE e.org_id = $1 AND e.client_id = $2
@@ -85,9 +88,9 @@ export async function financeOsEntitlement(conn = db, { orgId, clientId, asOf = 
         AND (e.expires_at IS NULL OR e.expires_at > $3)
         AND lower(btrim(COALESCE(t.status, ''))) = 'succeeded'
         AND lower(btrim(p.code)) = $4
-        AND t.created_at <= $3
-        AND (t.created_at + interval '12 months') > $3
-      ORDER BY t.created_at DESC, e.id DESC LIMIT 1`,
+        AND COALESCE(sp.paid_at, t.created_at) <= $3
+        AND (COALESCE(sp.paid_at, t.created_at) + interval '12 months') > $3
+      ORDER BY COALESCE(sp.paid_at, t.created_at) DESC, e.id DESC LIMIT 1`,
     [orgId, clientId, asOf, BLUEPRINT_PRODUCT_CODE]
   );
   if (!grant.rows[0]) {
@@ -143,7 +146,7 @@ export async function ensureFinanceOsForBlueprintPurchase(conn = db, {
       periodStart,
       periodEnd,
       at: paidAt,
-      notes: "Capital Blueprint purchase — Finance OS included for 12 months"
+      notes: FINANCE_OS_BLUEPRINT_NOTE
     });
     return { created: true, subscriptionId: row.id, periodStart, periodEnd };
   } catch (e) {

@@ -42,6 +42,8 @@ flowchart TD
 
 Evidence: `ops/workflows/build-evidence/blueprint-price-context-2026-10-20/` (marked fixture drafts), focused unit tests, and the PostgreSQL test `src/payments/whop-blueprint.pg.test.mjs` (requires a safe local scratch/CI database; not run against production).
 
+2026-10-31 #301 repair candidate: signed-in client GETs for FinanceOS overview and bank guidance now require an active paid monthly plan or the valid included Blueprint year before reading premium data. Staff role and org checks remain. A verified full Blueprint refund revokes that purchase's roadmap grant and ends Blueprint-included FinanceOS subscription rows; a partial refund does not end service, and a separate paid monthly subscription remains active. The original succeeded transaction remains as historical payment evidence, so a later refund callback still finds its owner. The included-year fallback, coach, call and monthly pull checks use the saved sale-payment time when available, with transaction creation time only for legacy payments without a sale-payment row. These are source and synthetic-test facts; scratch PostgreSQL CI and live customer proof are pending.
+
 ## Live state — 2026-10-20 (read back from production)
 
 - Deployed: PR83 is in Netlify deploy `ship 78b08d2f` (published 13:19 MST). Migrations 482, 483, 485, 488 and 489 are applied; `/api/health` pending 0.

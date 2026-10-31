@@ -43,6 +43,8 @@ function isolatedMonthlyDb() {
         // Source-level SQL contract pins the grant to a successful transaction.
         assert.match(sql, /resolve_product_id/);
         assert.match(sql, /e\.revoked_at IS NULL/);
+        assert.match(sql, /sale_payments sp/);
+        assert.match(sql, /sp\.paid_at/);
         assert.match(sql, /paid\.org_id = b\.org_id AND paid\.client_id = b\.client_id/);
         return { rows: inMonthlyPeriod(args[1]) ? [{
           subscription_id: MONTHLY_SUB, org_id: ORG, client_id: CLIENT,
@@ -59,6 +61,8 @@ function isolatedMonthlyDb() {
       if (/FROM\s+entitlements\s+e/i.test(sql)) {
         assert.match(sql, /t\.org_id = e\.org_id AND t\.client_id = e\.client_id/);
         assert.match(sql, /interval '12 months'/);
+        assert.match(sql, /sale_payments sp/);
+        assert.match(sql, /sp\.paid_at/);
         return { rows: args[0] === ORG && args[1] === CLIENT && inBlueprintYear(args[2])
           ? [{ id: BLUEPRINT_GRANT }] : [] };
       }

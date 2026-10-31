@@ -11,7 +11,7 @@
 // so the current screen keeps working. New readers use `next_sequence`.
 //
 // SAME TWO CALLERS AS api/money/overview.mjs, same gate:
-//   * a signed-in CLIENT reads their own file only. client_id comes off the
+//   * a signed-in CLIENT with paid FinanceOS access reads their own file only. client_id comes off the
 //     session; one in the query or body is never read on this branch. A client
 //     cannot POST — every action here is staff's.
 //   * STAFF: requireRole(ROLE_SETS.FINANCE_OS) (owner / admin / sales_manager) +
@@ -38,6 +38,7 @@ import {
 } from "../../src/finance/bank-strategy.mjs";
 import { readBody } from "../banking/sync-accounts.mjs";
 import { dbDown } from "../../src/http/db-down.mjs";
+import { financeOsEntitlement } from "../../src/finance/finance-os-entitlement.mjs";
 
 /* set_next_round_date is the old name of set_next_sequence_date, kept for one release. */
 const ACTIONS = new Set(["plan_bank", "open_account", "record_deposit", "set_state", "set_next_sequence_date", "set_next_round_date"]);
@@ -86,6 +87,7 @@ export default async function handler(req, res, deps = {}) {
   const database = deps.db || db;
   const gate = deps.requirePrincipal || requirePrincipal;
   const clock = deps.now || (() => new Date());
+  const entitlement = deps.financeOsEntitlement || financeOsEntitlement;
   const store = {
     read: deps.bankStrategy || bankStrategy,
     plan: deps.planBank || planBank,
@@ -115,6 +117,10 @@ export default async function handler(req, res, deps = {}) {
 
   try {
     if (method === "GET") {
+      if (who.kind === "client") {
+        const access = await entitlement(database, { orgId, clientId, asOf: now });
+        if (!access.entitled) return res.status(403).json({ ok: false, error: "finance_os_not_entitled" });
+      }
       const payload = await store.read(database, { orgId, clientId, asOf: now });
       if (!payload) return res.status(404).json({ ok: false, error: "not_found" });
       return res.status(200).json(who.kind === "client" ? withoutStaffFlags(payload) : payload);

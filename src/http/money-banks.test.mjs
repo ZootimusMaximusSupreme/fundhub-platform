@@ -30,7 +30,9 @@ const gateAs = (p) => async (_req, res, kinds) => {
   return p;
 };
 const db = (inOrg = [MINE]) => ({
-  query: async (sql, params) => (/FROM clients/.test(sql) ? { rows: inOrg.includes(params[0]) ? [{ "?column?": 1 }] : [] } : { rows: [] })
+  query: async (sql, params) => (/FROM clients/.test(sql)
+    ? { rows: inOrg.includes(params[0]) ? [{ "?column?": 1 }] : [] }
+    : /FROM subscriptions/.test(sql) ? { rows: [{ id: "synthetic-paid-finance-os" }] } : { rows: [] })
 });
 
 function spies(over = {}) {

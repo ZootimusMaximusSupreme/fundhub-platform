@@ -38,7 +38,7 @@ test("paid Blueprint coach service checks a same-transaction grant and exact cal
   const { sql, params } = database.find(/FROM entitlements e/)[0];
   assert.deepEqual(params.slice(0, 2), [ORG, CLIENT]);
   for (const guard of ["t.id = e.source_transaction_id", "t.org_id = e.org_id",
-    "t.client_id = e.client_id", "e.revoked_at IS NULL", "t.created_at <= $3",
+    "t.client_id = e.client_id", "e.revoked_at IS NULL", "COALESCE(sp.paid_at, t.created_at) <= $3",
     "interval '12 months'"]) {
     assert.ok(sql.includes(guard), guard);
   }

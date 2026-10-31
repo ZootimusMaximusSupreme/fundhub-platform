@@ -7,6 +7,8 @@ import pg from "pg";
 import { financeOsEntitlement, addUtcMonths } from "./finance-os-entitlement.mjs";
 import { isBlueprintCoachClient } from "../blueprint/coach.mjs";
 import { dueClients } from "../workflows/finance-os-pull-sweeper.mjs";
+import { onPaymentRefundedMoney } from "../handlers/money-chain.mjs";
+import { FINANCE_OS_BLUEPRINT_NOTE } from "./finance-os-entitlement.mjs";
 
 const connectionString = process.env.BLUEPRINT_TEST_DATABASE_URL || process.env.DATABASE_URL;
 let safe = false;
@@ -24,23 +26,31 @@ test("paid Blueprint year survives the shorter FinanceOS monthly term, but not a
     await db.query("BEGIN");
     try {
       for (const table of ["subscriptions", "soft_pull_requests", "crs_results",
-        "entitlements", "transactions", "products", "product_aliases"]) {
+        "entitlements", "transactions", "products", "product_aliases", "sales",
+        "sale_payments", "partner_revenue"]) {
         await db.query("CREATE TEMP TABLE " + table + " (LIKE public." + table
           + " INCLUDING ALL) ON COMMIT DROP");
       }
       await db.query("SET LOCAL search_path TO pg_temp, public");
       const org = randomUUID(), client = randomUUID(), foreignOrg = randomUUID();
-      await db.query(
-        "INSERT INTO products (org_id,code,name,category) VALUES ($1,'consulting-package','Consulting Services Package','consulting')",
-        [org]);
+      const product = (await db.query(
+        "INSERT INTO products (org_id,code,name,category) VALUES ($1,'consulting-package','Consulting Services Package','consulting') RETURNING id",
+        [org])).rows[0].id;
       const monthly = (await db.query(
         "INSERT INTO subscriptions (org_id,client_id,tier,status,current_period_start,current_period_end,effective_from) "
         + "VALUES ($1,$2,'finance-os','active','2026-10-01','2026-11-01','2026-10-01') RETURNING id",
         [org,client])).rows[0].id;
       const payment = (await db.query(
-        "INSERT INTO transactions (org_id,client_id,product_name,amount_paid,status,created_at) "
-        + "VALUES ($1,$2,'Consulting Services Package',7500,'succeeded','2026-10-29T00:00:00Z') RETURNING id",
+        "INSERT INTO transactions (org_id,client_id,product_name,amount_paid,status,provider_ref,created_at) "
+        + "VALUES ($1,$2,'Consulting Services Package',7500,'succeeded','bp-collision-paid','2026-10-31T00:00:00Z') RETURNING id",
         [org,client])).rows[0].id;
+      const sale = (await db.query(
+        "INSERT INTO sales (org_id,client_id,product_id,agreed_price) VALUES ($1,$2,$3,7500) RETURNING id",
+        [org, client, product])).rows[0].id;
+      await db.query(
+        "INSERT INTO sale_payments (org_id,sale_id,transaction_id,product_id,kind,amount,paid_at) "
+        + "VALUES ($1,$2,$3,$4,'deposit',7500,'2026-10-29T00:00:00Z')",
+        [org, sale, payment, product]);
       const grant = (await db.query(
         "INSERT INTO entitlements (org_id,client_id,entitlement_code,source_transaction_id,grant_reason,granted_at) "
         + "VALUES ($1,$2,'credit-optimization-roadmap',$3,'purchase:consulting-package','2026-10-29') RETURNING id",
@@ -55,6 +65,8 @@ test("paid Blueprint year survives the shorter FinanceOS monthly term, but not a
       assert.deepEqual(await due("2026-11-30T00:00:00Z"), [grant]);
       assert.equal((await access("2027-10-28T00:00:00Z")).entitled, true);
       assert.equal((await access("2027-10-29T00:00:00Z")).entitled, false);
+      assert.equal((await access("2027-10-30T00:00:00Z")).entitled, false,
+        "recording the transaction two days late cannot extend the paid year");
       const coachAt = iso => isBlueprintCoachClient(db, {
         orgId: org, clientId: client, asOf: new Date(iso)
       });
@@ -67,7 +79,10 @@ test("paid Blueprint year survives the shorter FinanceOS monthly term, but not a
       assert.equal((await financeOsEntitlement(db, {
         orgId: foreignOrg, clientId: client, asOf: new Date("2026-11-30")
       })).entitled, false, "foreign tenant cannot claim the client's purchase");
-      await db.query("UPDATE entitlements SET revoked_at='2026-11-10' WHERE id=$1", [grant]);
+      const refund = await onPaymentRefundedMoney({ name: "payment.refunded", orgId: org,
+        payload: { providerRef: "bp-collision-paid", amount: 7500 } }, db);
+      assert.equal(refund.blueprintIncludedEnded, true);
+      assert.equal((await db.query("SELECT revoked_at FROM entitlements WHERE id=$1", [grant])).rows[0].revoked_at != null, true);
       assert.equal(await coachAt("2026-11-30T00:00:00Z"), false);
       assert.equal((await access("2026-11-30T00:00:00Z")).entitled, false);
       assert.deepEqual(await due("2026-11-30T00:00:00Z"), []);
@@ -76,6 +91,29 @@ test("paid Blueprint year survives the shorter FinanceOS monthly term, but not a
       assert.equal(new Date(original.current_period_end).toISOString(),
         "2026-11-01T00:00:00.000Z");
       assert.equal(original.status, "active", "original billed monthly plan stays unchanged");
+
+      const includedClient = randomUUID();
+      const includedPayment = (await db.query(
+        "INSERT INTO transactions (org_id,client_id,product_name,amount_paid,status,provider_ref,created_at) "
+        + "VALUES ($1,$2,'Consulting Services Package',5000,'succeeded','bp-included-only','2026-10-29') RETURNING id",
+        [org, includedClient])).rows[0].id;
+      await db.query("INSERT INTO entitlements (org_id,client_id,entitlement_code,source_transaction_id,grant_reason) "
+        + "VALUES ($1,$2,'credit-optimization-roadmap',$3,'purchase:consulting-package')",
+      [org, includedClient, includedPayment]);
+      const includedSub = (await db.query("INSERT INTO subscriptions "
+        + "(org_id,client_id,tier,status,effective_from,current_period_start,current_period_end,notes) "
+        + "VALUES ($1,$2,'finance-os','active','2026-10-29','2026-10-29','2027-10-29',$3) RETURNING id",
+      [org, includedClient, FINANCE_OS_BLUEPRINT_NOTE])).rows[0].id;
+      assert.equal((await financeOsEntitlement(db, { orgId: org, clientId: includedClient,
+        asOf: new Date("2026-10-30") })).entitled, true);
+      const includedRefund = await onPaymentRefundedMoney({ name: "payment.refunded", orgId: org,
+        payload: { providerRef: "bp-included-only", amount: 5000 } }, db);
+      assert.equal(includedRefund.blueprintIncludedEnded, true);
+      assert.equal((await financeOsEntitlement(db, { orgId: org, clientId: includedClient,
+        asOf: new Date("2026-11-30") })).entitled, false);
+      const closed = (await db.query("SELECT status, effective_to FROM subscriptions WHERE id=$1", [includedSub])).rows[0];
+      assert.equal(closed.status, "cancelled");
+      assert.ok(closed.effective_to);
     } finally {
       await db.query("ROLLBACK");
       db.release();

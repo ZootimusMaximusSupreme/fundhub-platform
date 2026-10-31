@@ -60,10 +60,13 @@ function accrual(over = {}) {
 function fakeDb({
   rows = [accrual()],
   transactions = { [REF]: TX },
-  payments = [{ id: PAYMENT, sale_id: SALE, amount: "3000.00", source_event_id: PAID_EVENT }]
+  payments = [{ id: PAYMENT, sale_id: SALE, amount: "3000.00", source_event_id: PAID_EVENT }],
+  blueprint = null
 } = {}) {
+  const state = { grantRevoked: false, includedSubscriptionEnded: false };
   return {
     rows,
+    state,
     query: async (sql, params) => {
       const text = String(sql);
 
@@ -76,6 +79,18 @@ function fakeDb({
         // the provider reference just resolved to.
         const hit = params[0] === ORG && params[1] === TX ? payments : [];
         return { rows: hit.length ? [hit[0]] : [] };
+      }
+      if (/FROM transactions t\b/i.test(text) && /JOIN products p/i.test(text)) {
+        return { rows: blueprint ? [{ id: TX, client_id: CLIENT, amount_paid: blueprint.amount,
+          paid_at: new Date("2026-10-29T00:00:00Z") }] : [] };
+      }
+      if (/UPDATE entitlements/i.test(text)) {
+        state.grantRevoked = true;
+        return { rows: [{ id: "grant" }] };
+      }
+      if (/UPDATE subscriptions/i.test(text)) {
+        state.includedSubscriptionEnded = true;
+        return { rows: [{ id: "included" }] };
       }
       if (/UPDATE partner_revenue/i.test(text)) {
         const [org_id, txId, evId, why] = params;
@@ -256,6 +271,21 @@ describe("payment.refunded voids the partner's accrual", () => {
     assert.equal(out.reason, "no_org");
     assert.equal(db.rows[0].status, "accrued");
   });
+});
+
+test("full Blueprint refund ends included service even when no partner accrual exists", async () => {
+  const db = fakeDb({ rows: [], blueprint: { amount: "7500.00" } });
+  const out = await onPaymentRefundedMoney(reversalEvent("payment.refunded", { amount: 7500 }), db);
+  assert.equal(out.reversed, false, "a direct customer has no partner accrual");
+  assert.equal(db.state.grantRevoked, true);
+  assert.equal(db.state.includedSubscriptionEnded, true);
+});
+
+test("partial Blueprint refund leaves included service active", async () => {
+  const db = fakeDb({ rows: [], blueprint: { amount: "7500.00" } });
+  await onPaymentRefundedMoney(reversalEvent("payment.refunded", { amount: 1000 }), db);
+  assert.equal(db.state.grantRevoked, false);
+  assert.equal(db.state.includedSubscriptionEnded, false);
 });
 
 describe("payment.disputed voids too, and says it was a chargeback", () => {

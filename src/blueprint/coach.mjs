@@ -20,6 +20,7 @@ export async function isBlueprintCoachClient(db, { orgId, clientId, asOf = new D
     `SELECT 1 FROM entitlements e
        JOIN transactions t ON t.id = e.source_transaction_id
          AND t.org_id = e.org_id AND t.client_id = e.client_id
+       LEFT JOIN sale_payments sp ON sp.transaction_id = t.id AND sp.org_id = t.org_id
        JOIN products p ON p.id = resolve_product_id(t.org_id, t.product_name)
          AND p.org_id = t.org_id
       WHERE e.org_id = $1::uuid AND e.client_id = $2::uuid
@@ -28,8 +29,8 @@ export async function isBlueprintCoachClient(db, { orgId, clientId, asOf = new D
         AND (e.expires_at IS NULL OR e.expires_at > $3::timestamptz)
         AND lower(btrim(p.code)) = $4
         AND lower(btrim(COALESCE(t.status, ''))) = $5
-        AND t.created_at <= $3::timestamptz
-        AND (t.created_at + interval '12 months') > $3::timestamptz
+        AND COALESCE(sp.paid_at, t.created_at) <= $3::timestamptz
+        AND (COALESCE(sp.paid_at, t.created_at) + interval '12 months') > $3::timestamptz
       LIMIT 1`,
     [orgId, clientId, at.toISOString(), BLUEPRINT_PRODUCT_CODE, PAID_TRANSACTION_STATUS]
   );
