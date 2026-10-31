@@ -34,19 +34,19 @@ const SIGNED_REPAIR_SQL = signedRepairSql(1, 2);
 export function currentRepairMailAuthorizationSql(orgPos = 2, clientPos = 3) {
   if (![orgPos, clientPos].every(n => Number.isInteger(n) && n >= 1 && n <= 9))
     throw new TypeError("invalid bind position");
-  return `(EXISTS ($${signedRepairSql(orgPos, clientPos)})
+  return `(EXISTS (${signedRepairSql(orgPos, clientPos)})
     OR EXISTS (
       SELECT 1 FROM client_consents
        WHERE org_id = $${orgPos}::uuid AND client_id = $${clientPos}::uuid
          AND kind = 'dispute_authorization'
-         AND ($${CONSENT_VALID_SQL})
+         AND (${CONSENT_VALID_SQL})
     ))`;
 }
 
 export async function hasCurrentRepairMailAuthorization(db, { orgId, clientId } = {}) {
   if (!db?.query || !orgId || !clientId) return false;
   try {
-    const r = await db.query(`SELECT $${currentRepairMailAuthorizationSql(1, 2)} AS authorized`, [orgId, clientId]);
+    const r = await db.query(`SELECT ${currentRepairMailAuthorizationSql(1, 2)} AS authorized`, [orgId, clientId]);
     return r.rows?.[0]?.authorized === true;
   } catch { return false; }
 }
