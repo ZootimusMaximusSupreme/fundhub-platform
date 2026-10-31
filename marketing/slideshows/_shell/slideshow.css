@@ -110,6 +110,38 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
 .slide.dark .chip{background:transparent;border-color:var(--ss-dark-rule);color:var(--ss-dark-muted)}
 .slide.dark .panel .chip{background:var(--ss-panel);border-color:var(--ss-rule);color:var(--ss-muted)}
 
+/* Napkin drawings (Visual Thinking, Dan Roam's six ways of seeing). Every
+   drawing sits on a white napkin card and uses simple shapes. Every line
+   means one thing: order, a flow, a match or a sight line. Few words. */
+.napkin{background:var(--ss-panel);border:1px solid var(--ss-rule);border-radius:12px;
+  box-shadow:var(--panel-shadow);padding:12px;color:var(--ink)}
+.slide.dark .napkin{border-color:var(--ss-panel)}
+.vt{display:block;width:100%;height:auto;overflow:visible}
+.vt .ln{fill:none;stroke:var(--ink);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.vt .ln.thin{stroke-width:1.5}
+.vt .ln.bold{stroke-width:3}
+.vt .ln.dash{stroke-dasharray:5 6}
+.vt .ln.mute{stroke:var(--gray2)}
+.vt .sh{fill:var(--ss-panel);stroke:var(--ink);stroke-width:2;stroke-linejoin:round}
+.vt .sh.mute{stroke:var(--gray2)}
+.vt .ink{fill:var(--ink)}
+.vt .mute-f{fill:var(--gray2)}
+.vt .bar{fill:var(--line)}
+.vt .flag{fill:var(--alert)}
+.vt .fit{fill:var(--ok)}
+.vt .hot{fill:var(--ink);stroke:var(--ink);stroke-width:2}
+.vt text{font-family:var(--sans);font-size:14px;font-weight:650;fill:var(--ink)}
+.vt text.on-ink{fill:#fff}
+.vt text.cap{font-family:var(--mono);font-size:12.5px;font-weight:500;letter-spacing:.08em;fill:var(--gray)}
+.vt text.big{font-size:26px;font-weight:700}
+.vt text.cap.dk{fill:var(--ink)}
+.vt .fit.edge,.vt .flag.edge{stroke:var(--ink);stroke-width:2}
+.vt use{color:var(--ink)}
+.vt use.mute{color:var(--gray2)}
+/* Shared drawing parts (a bank, an arrowhead) live in one hidden sprite per deck. */
+.vt-defs{position:absolute;width:0;height:0;overflow:hidden}
+.vt-defs .ink{fill:var(--ink)}
+
 /* A document: a credit report, a bank letter, a file. */
 .doc{display:flex;flex-direction:column;overflow:hidden}
 .doc-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;

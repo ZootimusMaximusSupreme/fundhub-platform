@@ -10,7 +10,7 @@
   Lane: Funding (700 and up)
   Hammer Them pillar: Question, then the 2nd-layer question
   Belief: Fundhub reviews my file the way a lender does before anyone applies,
-          so every application goes to a bank that approves files like mine.
+          so my applications go only to the banks that fit my file.
 
   Rules this deck follows (marketing/ads/RULES.md)
   - Hook = the first two sentences (slide 1 headline and line). Cause first:
@@ -25,48 +25,46 @@
   - Evergreen backend-selling spine (3.13): the mistake (PU-01), why it
     happens (PU-02), the cost (PU-03), what to do instead (PU-04, PU-05),
     the proof (PU-06), the soft door to the call (PU-07). No price, no date,
-    no scarcity (3.14).
+    no scarcity (3.14). No approval promise (the funding agreement, section 3).
 
   Copybot (marketing/copy-skills/copybot/)
   - One central idea: the belief above, so no offer, price or call to action.
   - The reader's question: "My credit is good. Why do I need Fundhub?"
   - Lead: problem then solution, in Chris's voice (owner-voice.md and the
     sources it lists: chris-voice-profile.md, ads/VOICE.md, ads/RULES.md
-    Part 0). Lines Chris green-lit are reused where they fit
-    (marketing/ads/scripts/2026-10-14.md:61, :63, :101).
+    Part 0). Green-lit lines reused where they fit
+    (marketing/ads/scripts/2026-10-14.md:61, :63).
   - The guarantee line is locked word for word (owner-voice.md:18).
 
-  Visual Thinking (marketing/copy-skills/visual-thinking/), every step
+  Visual Thinking (marketing/copy-skills/visual-thinking/), every step.
+  The pictures are napkin drawings: simple shapes, every line means one thing.
   - Look (methods.md): the facts came first, each with its source in data-src.
-    Nothing is drawn that a source does not support.
   - See: the people and things are you, your credit report, the bank, the
-    bank's letter, Fundhub's engine and the banks Fundhub works with. The
-    pattern: the bank's reason is on the report before anyone applies.
-  - Imagine (SQVID): status quo against change. PU-03 is the status quo
-    (apply first); PU-04 and PU-05 are the change (review first). Simple
-    over elaborate: one picture per slide. Qualitative only, so no invented
-    figures; the only figures are the contract's 72 and the engine's 30%.
-  - Show: each slide's question picks its picture (methods.md, the six
-    question families). What each line means is written beside it.
-    PU-01 what: a portrait of the file, a sample report with one red flag.
-    PU-02 why: two documents tied by one line. The line means "same reason".
-    PU-03 when: a timeline of who does what, headed "If the red flag is
-      still on the file". The order is the point; it does not claim every
-      application gets a no.
-    PU-04 how: the engine's real checks as a list (src/underwrite/report.mjs).
-    PU-05 how: every bank, narrowed to the banks that fit your file. Each
-      step means "filtered by". Tried first and dropped: a grid of banks
-      marked send or skip (Chris does not want grids, and marks on banks read
-      as approvals). Considered and dropped: boxes that shrink step by step
-      (widths would claim amounts nobody measured).
+    bank's letter, Fundhub's review, your advisor and the banks Fundhub works
+    with. The pattern: the bank's reason is on the report before anyone applies.
+  - Imagine (SQVID): status quo (apply first, PU-03) against change (review
+    first, PU-04 and PU-05). Simple over elaborate. Qualitative, so no
+    invented figures; the only figure is the contract's 72.
+  - Show, by Dan Roam's six ways of seeing (methods.md):
+    PU-01 who/what, a portrait: the report, with the bank's sight line
+      skipping the score and landing on the one red-flag line.
+    PU-02 why, a visual equation: your report = the bank's letter. The "="
+      means the same reason is in both places.
+    PU-03 when, a timeline: four applications, four no's, four hard inquiry
+      marks piling up on the report. Each arrow means "leaves a mark on".
+    PU-04 how, a flowchart: report, review it like a lender, red flag?
+      Yes: fix it first and review again. No: apply to the banks that fit.
+    PU-05 where, a map: your file in the middle, banks around it. A line
+      means "your file goes here". Lines run only to the banks that fit.
+      Dropped: a grid of banks (Chris does not want grids) and boxes that
+      shrink step by step (widths would claim amounts nobody measured).
     PU-06 when: one span from signing to applications out. It stops at
-      applications on purpose. A third step for approvals was dropped,
-      because approvals are not guaranteed.
-    PU-07 what: the call as a short agenda, from the call script. Tried first
-      and dropped: a recap flow, because it repeated PU-05's picture.
-  - Truth check (applications.md, "Sell or advocate an idea"): no picture
-    implies an approval, an amount or a speed the contract does not promise.
-    Every sample says Sample. No bank names.
+      applications on purpose, because approvals are not guaranteed.
+    PU-07 who/what, a portrait of the call: you and your advisor looking at
+      one shared screen with your real file on it.
+  - Truth check (applications.md): no picture implies an approval, an amount
+    or a speed the contract does not promise. Sample documents say Sample.
+    No bank names.
   - Display check (delivery-and-collaboration.md): every slide viewed at
     390 pixels wide before it shipped.
 
@@ -475,6 +473,38 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
 .slide.dark .chip{background:transparent;border-color:var(--ss-dark-rule);color:var(--ss-dark-muted)}
 .slide.dark .panel .chip{background:var(--ss-panel);border-color:var(--ss-rule);color:var(--ss-muted)}
 
+/* Napkin drawings (Visual Thinking, Dan Roam's six ways of seeing). Every
+   drawing sits on a white napkin card and uses simple shapes. Every line
+   means one thing: order, a flow, a match or a sight line. Few words. */
+.napkin{background:var(--ss-panel);border:1px solid var(--ss-rule);border-radius:12px;
+  box-shadow:var(--panel-shadow);padding:12px;color:var(--ink)}
+.slide.dark .napkin{border-color:var(--ss-panel)}
+.vt{display:block;width:100%;height:auto;overflow:visible}
+.vt .ln{fill:none;stroke:var(--ink);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.vt .ln.thin{stroke-width:1.5}
+.vt .ln.bold{stroke-width:3}
+.vt .ln.dash{stroke-dasharray:5 6}
+.vt .ln.mute{stroke:var(--gray2)}
+.vt .sh{fill:var(--ss-panel);stroke:var(--ink);stroke-width:2;stroke-linejoin:round}
+.vt .sh.mute{stroke:var(--gray2)}
+.vt .ink{fill:var(--ink)}
+.vt .mute-f{fill:var(--gray2)}
+.vt .bar{fill:var(--line)}
+.vt .flag{fill:var(--alert)}
+.vt .fit{fill:var(--ok)}
+.vt .hot{fill:var(--ink);stroke:var(--ink);stroke-width:2}
+.vt text{font-family:var(--sans);font-size:14px;font-weight:650;fill:var(--ink)}
+.vt text.on-ink{fill:#fff}
+.vt text.cap{font-family:var(--mono);font-size:12.5px;font-weight:500;letter-spacing:.08em;fill:var(--gray)}
+.vt text.big{font-size:26px;font-weight:700}
+.vt text.cap.dk{fill:var(--ink)}
+.vt .fit.edge,.vt .flag.edge{stroke:var(--ink);stroke-width:2}
+.vt use{color:var(--ink)}
+.vt use.mute{color:var(--gray2)}
+/* Shared drawing parts (a bank, an arrowhead) live in one hidden sprite per deck. */
+.vt-defs{position:absolute;width:0;height:0;overflow:hidden}
+.vt-defs .ink{fill:var(--ink)}
+
 /* A document: a credit report, a bank letter, a file. */
 .doc{display:flex;flex-direction:column;overflow:hidden}
 .doc-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;
@@ -590,18 +620,37 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
 <body>
 <main class="ss" data-deck="PU" data-lane="Funding" data-pillar="Question">
   <h1 class="ss-title">Pre-underwriting</h1>
+  <svg class="vt-defs" aria-hidden="true" focusable="false">
+    <defs>
+      <symbol id="pu-bank" viewBox="0 0 28 28"><path fill="currentColor" d="M0 9L14 1L28 9Z"/><rect fill="currentColor" x="3" y="11" width="4" height="12"/><rect fill="currentColor" x="12" y="11" width="4" height="12"/><rect fill="currentColor" x="21" y="11" width="4" height="12"/><rect fill="currentColor" x="0" y="24" width="28" height="4"/></symbol>
+      <marker id="pu-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ink" d="M0 0L10 5L0 10z"/></marker>
+    </defs>
+  </svg>
 
-  <section class="slide dark" data-src="The reason sits on the report, and a missed red flag gets good credit denied: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:208-209. Opener form: .ai/rules/copy-certainty.md:20. Lane line 700: ops/workflows/backend-selling-lanes-2026-10-30.md:32.">
+  <section class="slide dark" data-src="The reason sits on the report, and a missed red flag gets good credit denied: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:208-209. Card balances too high is Chris's example 'too high revolving balances' (same file :209) in plain words. Opener form: .ai/rules/copy-certainty.md:20. Lane line 700: ops/workflows/backend-selling-lanes-2026-10-30.md:32.">
     <p class="eyebrow">PU-01 / The red flag</p>
     <h2>When a bank denies good credit, the reason was on the credit report first.</h2>
     <p class="lede">If nobody reads that line before you apply, the bank finds the red flag before you do.</p>
     <figure class="pic">
-      <div class="panel doc">
-        <div class="doc-head"><span>Credit report</span><span class="chip">Sample</span></div>
-        <div class="doc-row"><span>Score</span><span class="v">700+</span></div>
-        <div class="doc-row"><span>Payments</span><span class="chip on"><span class="cd"></span>On time</span></div>
-        <div class="doc-row"><span>Negative items</span><span class="v">None</span></div>
-        <div class="doc-row flag"><span>Too high revolving balances</span><span class="chip bad"><span class="cd"></span>Red flag</span></div>
+      <div class="napkin">
+        <svg class="vt" viewBox="0 0 340 250" role="img" aria-label="A sample credit report with a score of 700 plus. The bank's sight line skips the score and lands on one red flag line: card balances too high.">
+          <rect class="sh" x="4" y="4" width="226" height="240" rx="12"/>
+          <text class="cap" x="20" y="30">CREDIT REPORT</text>
+          <text class="cap" x="214" y="30" text-anchor="end">SAMPLE</text>
+          <line class="ln thin mute" x1="4" y1="44" x2="230" y2="44"/>
+          <circle class="fit edge" cx="48" cy="88" r="27"/>
+          <text x="48" y="93" text-anchor="middle">700+</text>
+          <rect class="bar" x="90" y="74" width="120" height="8" rx="4"/>
+          <rect class="bar" x="90" y="94" width="84" height="8" rx="4"/>
+          <rect class="bar" x="20" y="134" width="194" height="8" rx="4"/>
+          <rect class="bar" x="20" y="154" width="150" height="8" rx="4"/>
+          <rect class="flag edge" x="14" y="184" width="206" height="40" rx="8"/>
+          <text x="117" y="209" text-anchor="middle">Card balances too high</text>
+          <use href="#pu-bank" x="264" y="56" width="52" height="52"/>
+          <text class="cap" x="290" y="128" text-anchor="middle">THE BANK</text>
+          <path class="ln dash" d="M290 140 C 290 178, 268 200, 228 204" marker-end="url(#pu-arrow)"/>
+          <text class="cap" x="290" y="236" text-anchor="middle">READS THIS</text>
+        </svg>
       </div>
     </figure>
   </section>
@@ -611,15 +660,27 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     <h2>The top of your credit report lists the reasons a bank says yes or no.</h2>
     <p class="lede">The letter a bank sends after a no gives those same reasons.</p>
     <figure class="pic">
-      <div class="panel doc">
-        <div class="doc-head"><span>Credit report · top</span><span class="chip">Sample</span></div>
-        <div class="doc-row flag"><span>Too high revolving balances</span></div>
-      </div>
-      <div class="tie">Same reason</div>
-      <div class="panel doc">
-        <div class="doc-head"><span>Bank letter</span><span class="chip">Sample</span></div>
-        <div class="doc-row"><span>Decision</span><span class="v">Denied</span></div>
-        <div class="doc-row flag"><span>Too high revolving balances</span></div>
+      <div class="napkin">
+        <svg class="vt" viewBox="0 0 340 210" role="img" aria-label="Your credit report equals the bank's letter. Both show the same reason: card balances too high.">
+          <rect class="sh" x="4" y="4" width="136" height="164" rx="10"/>
+          <text class="cap" x="16" y="28">YOUR REPORT</text>
+          <rect class="bar" x="16" y="42" width="108" height="7" rx="3.5"/>
+          <rect class="bar" x="16" y="58" width="80" height="7" rx="3.5"/>
+          <rect class="flag edge" x="12" y="80" width="120" height="46" rx="7"/>
+          <text x="72" y="99" text-anchor="middle">Card balances</text>
+          <text x="72" y="117" text-anchor="middle">too high</text>
+          <rect class="bar" x="16" y="142" width="96" height="7" rx="3.5"/>
+          <line class="ln bold" x1="156" y1="96" x2="184" y2="96"/>
+          <line class="ln bold" x1="156" y1="110" x2="184" y2="110"/>
+          <rect class="sh" x="200" y="4" width="136" height="164" rx="10"/>
+          <text class="cap" x="212" y="28">BANK LETTER</text>
+          <text x="212" y="60">Decision: No</text>
+          <rect class="flag edge" x="208" y="80" width="120" height="46" rx="7"/>
+          <text x="268" y="99" text-anchor="middle">Card balances</text>
+          <text x="268" y="117" text-anchor="middle">too high</text>
+          <rect class="bar" x="212" y="142" width="96" height="7" rx="3.5"/>
+          <text class="cap" x="170" y="200" text-anchor="middle">SAMPLE · SAME REASON, BOTH PLACES</text>
+        </svg>
       </div>
     </figure>
   </section>
@@ -630,27 +691,66 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     <p class="lede">Almost every application you send is a hard pull. When there are too many, banks say no on their own.</p>
     <figure class="pic">
       <p class="pic-cap">If the red flag is still on the file</p>
-      <ol class="tl">
-        <li><span class="when">You</span><span class="what">Send an application</span></li>
-        <li><span class="when">The bank</span><span class="what">Pulls your credit hard</span></li>
-        <li class="bad"><span class="when">The bank</span><span class="what">Says no, with the reason</span><span class="chip bad"><span class="cd"></span>Denied</span></li>
-        <li class="bad"><span class="when">Your file</span><span class="what">Keeps the hard inquiry</span><span class="chip bad"><span class="cd"></span>On your report</span></li>
-      </ol>
+      <div class="napkin">
+        <svg class="vt" viewBox="0 0 340 232" role="img" aria-label="Four applications go out one after another. Each comes back as a no, and each leaves a hard inquiry mark on your report.">
+          <text class="cap" x="4" y="16">APPLICATIONS</text>
+          <g>
+            <rect class="sh" x="22" y="30" width="34" height="42" rx="4"/><rect class="bar" x="28" y="42" width="22" height="4" rx="2"/><rect class="bar" x="28" y="52" width="16" height="4" rx="2"/>
+            <circle class="flag edge" cx="56" cy="32" r="11"/><path class="ln thin" d="M52 28l8 8m0-8l-8 8"/>
+            <path class="ln thin dash mute" d="M39 78V140" marker-end="url(#pu-arrow)"/>
+            <rect class="flag edge" x="27" y="178" width="24" height="14" rx="4"/>
+          </g>
+          <g>
+            <rect class="sh" x="102" y="30" width="34" height="42" rx="4"/><rect class="bar" x="108" y="42" width="22" height="4" rx="2"/><rect class="bar" x="108" y="52" width="16" height="4" rx="2"/>
+            <circle class="flag edge" cx="136" cy="32" r="11"/><path class="ln thin" d="M132 28l8 8m0-8l-8 8"/>
+            <path class="ln thin dash mute" d="M119 78V140" marker-end="url(#pu-arrow)"/>
+            <rect class="flag edge" x="107" y="178" width="24" height="14" rx="4"/>
+          </g>
+          <g>
+            <rect class="sh" x="182" y="30" width="34" height="42" rx="4"/><rect class="bar" x="188" y="42" width="22" height="4" rx="2"/><rect class="bar" x="188" y="52" width="16" height="4" rx="2"/>
+            <circle class="flag edge" cx="216" cy="32" r="11"/><path class="ln thin" d="M212 28l8 8m0-8l-8 8"/>
+            <path class="ln thin dash mute" d="M199 78V140" marker-end="url(#pu-arrow)"/>
+            <rect class="flag edge" x="187" y="178" width="24" height="14" rx="4"/>
+          </g>
+          <g>
+            <rect class="sh" x="262" y="30" width="34" height="42" rx="4"/><rect class="bar" x="268" y="42" width="22" height="4" rx="2"/><rect class="bar" x="268" y="52" width="16" height="4" rx="2"/>
+            <circle class="flag edge" cx="296" cy="32" r="11"/><path class="ln thin" d="M292 28l8 8m0-8l-8 8"/>
+            <path class="ln thin dash mute" d="M279 78V140" marker-end="url(#pu-arrow)"/>
+            <rect class="flag edge" x="267" y="178" width="24" height="14" rx="4"/>
+          </g>
+          <rect class="sh" x="4" y="146" width="332" height="56" rx="10" fill-opacity="0"/>
+          <text class="cap" x="16" y="168">YOUR REPORT · SAMPLE</text>
+          <text class="cap" x="170" y="226" text-anchor="middle">EACH NO LEAVES A HARD INQUIRY</text>
+        </svg>
+      </div>
     </figure>
   </section>
 
-  <section class="slide" data-src="Part 0 rule 8 wording: marketing/ads/RULES.md:44. Before a single application goes out: marketing/ads/scripts/2026-10-14.md:61 (green-lit). Pre-underwriting with the same models the banks use: Chris 2026-10-31, marketing/copy-skills/copybot/references/chris-voice-profile.md:29. The checks: src/underwrite/report.mjs:52-80 and :103-111." data-figures="rule, not a sample: 30% is the engine's utilization target, src/underwrite/report.mjs:56 and :105">
+  <section class="slide" data-src="Part 0 rule 8 wording: marketing/ads/RULES.md:44. Before a single application goes out: marketing/ads/scripts/2026-10-14.md:61 (green-lit). Pre-underwriting with the same models the banks use: Chris 2026-10-31, marketing/copy-skills/copybot/references/chris-voice-profile.md:29. Fix it first, then funding: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:210 (we optimize, then send them into funding). Banks that fit your file: public/app/present.js:99 (closer line).">
     <p class="eyebrow">PU-04 / Pre-underwriting</p>
     <h2>We review your file the way a lender does, before a single application goes out.</h2>
     <p class="lede">That's pre-underwriting, and we do it with the same models the banks use.</p>
     <figure class="pic">
-      <div class="term">
-        <div class="term-head"><span class="pulse"></span>UnderwriteIQ · checks first</div>
-        <div class="term-line"><span class="k">›</span>Card balances over 30% of the limit</div>
-        <div class="term-line"><span class="k">›</span>Recent hard inquiries</div>
-        <div class="term-line"><span class="k">›</span>A strong main card in your own name</div>
-        <div class="term-line"><span class="k">›</span>Negative accounts</div>
-        <div class="term-line"><span class="k">›</span>How long your business has been open</div>
+      <div class="napkin">
+        <svg class="vt" viewBox="0 0 340 286" role="img" aria-label="A flowchart. Your report is reviewed the way a lender does. If it has a red flag, the red flag gets fixed first and the file is reviewed again. If it has none, you apply to the banks that fit your file.">
+          <rect class="sh" x="125" y="4" width="150" height="38" rx="8"/>
+          <text x="200" y="28" text-anchor="middle">Your report</text>
+          <path class="ln" d="M200 42V60" marker-end="url(#pu-arrow)"/>
+          <rect class="hot" x="95" y="64" width="210" height="42" rx="8"/>
+          <text class="on-ink" x="200" y="90" text-anchor="middle">Review it like a lender</text>
+          <path class="ln" d="M200 106V124" marker-end="url(#pu-arrow)"/>
+          <path class="sh" d="M200 128L242 164L200 200L158 164Z"/>
+          <text x="200" y="169" text-anchor="middle">Red flag?</text>
+          <path class="ln" d="M158 164H106" marker-end="url(#pu-arrow)"/>
+          <text class="cap" x="132" y="156" text-anchor="middle">YES</text>
+          <rect class="flag edge" x="4" y="144" width="98" height="40" rx="8"/>
+          <text x="53" y="169" text-anchor="middle">Fix it first</text>
+          <path class="ln dash" d="M53 144V85H89" marker-end="url(#pu-arrow)"/>
+          <path class="ln" d="M200 200V224" marker-end="url(#pu-arrow)"/>
+          <text class="cap" x="214" y="217">NO</text>
+          <rect class="fit edge" x="36" y="228" width="300" height="48" rx="8"/>
+          <text x="186" y="257" text-anchor="middle">Apply to the banks that fit your file</text>
+        </svg>
       </div>
     </figure>
   </section>
@@ -660,11 +760,27 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     <h2>Your applications go only to the banks that fit your file.</h2>
     <p class="lede">We check your file against each bank first, so you only apply where your file makes sense.</p>
     <figure class="pic">
-      <ol class="flow plain">
-        <li>Every bank we work with</li>
-        <li>Checked against the reasons on your report</li>
-        <li class="is-hot">Only the banks that fit your file</li>
-      </ol>
+      <div class="napkin">
+        <svg class="vt" viewBox="0 0 340 258" role="img" aria-label="A map. Your file sits in the middle with banks all around it. Lines run from your file only to the three banks that fit it. The other banks get no line.">
+          <path class="ln bold" d="M170 122V50"/>
+          <path class="ln bold" d="M170 122H282"/>
+          <path class="ln bold" d="M170 122L92 175"/>
+          <circle class="fit edge" cx="170" cy="28" r="22"/><use href="#pu-bank" x="156" y="14" width="28" height="28"/>
+          <circle class="sh mute" cx="265" cy="56" r="22"/><use class="mute" href="#pu-bank" x="251" y="42" width="28" height="28"/>
+          <circle class="fit edge" cx="304" cy="122" r="22"/><use href="#pu-bank" x="290" y="108" width="28" height="28"/>
+          <circle class="sh mute" cx="265" cy="188" r="22"/><use class="mute" href="#pu-bank" x="251" y="174" width="28" height="28"/>
+          <circle class="sh mute" cx="170" cy="216" r="22"/><use class="mute" href="#pu-bank" x="156" y="202" width="28" height="28"/>
+          <circle class="fit edge" cx="75" cy="188" r="22"/><use href="#pu-bank" x="61" y="174" width="28" height="28"/>
+          <circle class="sh mute" cx="36" cy="122" r="22"/><use class="mute" href="#pu-bank" x="22" y="108" width="28" height="28"/>
+          <circle class="sh mute" cx="75" cy="56" r="22"/><use class="mute" href="#pu-bank" x="61" y="42" width="28" height="28"/>
+          <rect class="hot" x="146" y="94" width="48" height="58" rx="6"/>
+          <rect class="bar" x="154" y="106" width="32" height="5" rx="2.5"/>
+          <rect class="bar" x="154" y="118" width="24" height="5" rx="2.5"/>
+          <rect class="bar" x="154" y="130" width="28" height="5" rx="2.5"/>
+          <text class="cap" x="170" y="172" text-anchor="middle">YOUR FILE</text>
+          <text class="cap" x="170" y="254" text-anchor="middle">A LINE MEANS YOUR FILE GOES THERE</text>
+        </svg>
+      </div>
     </figure>
   </section>
 
@@ -681,17 +797,34 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
   </section>
 
-  <section class="slide" data-src="On the call the file is pulled together with a soft pull and read on screen: docs/sops/weekend-2026-10-24/04-sales-call-script.md:69, :164-171. How much you qualify for based on where you're at right now: same file :171 and .ai/rules/copy-certainty.md:13. Fund what's there now, fix the file first, or both: same file :176. Part 0 rule 8 wording: marketing/ads/RULES.md:44.">
+  <section class="slide" data-src="Your advisor shares the screen and goes through your file with you: marketing/vsl/direct-book-thank-you-2026-10-15.md:37 (green-lit). The file is pulled together on the call with a soft pull and read on screen: docs/sops/weekend-2026-10-24/04-sales-call-script.md:69, :164-171. How much you qualify for based on where you're at right now: same file :171 and .ai/rules/copy-certainty.md:13. Part 0 rule 8 wording: marketing/ads/RULES.md:44.">
     <p class="eyebrow">PU-07 / Your call</p>
     <h2>On your call, we review your file with you, the way a lender does.</h2>
     <p class="lede">You leave knowing how much you qualify for based on where you're at right now.</p>
     <figure class="pic">
-      <div class="panel doc">
-        <div class="doc-head"><span>Your call</span></div>
-        <div class="doc-row"><span>We pull your file together</span><span class="chip on"><span class="cd"></span>Soft pull</span></div>
-        <div class="doc-row"><span>What a bank sees on it</span></div>
-        <div class="doc-row"><span>How much you qualify for</span></div>
-        <div class="doc-row yes"><span>The way to go: fund now, fix first, or both</span></div>
+      <div class="napkin">
+        <svg class="vt" viewBox="0 0 340 226" role="img" aria-label="You and your advisor both look at one shared screen. The screen shows your real file, with the red flag and how much you qualify for.">
+          <rect class="sh" x="92" y="8" width="156" height="110" rx="8"/>
+          <text class="cap" x="104" y="30">YOUR FILE</text>
+          <rect class="bar" x="104" y="40" width="100" height="6" rx="3"/>
+          <rect class="flag edge" x="104" y="54" width="132" height="20" rx="5"/>
+          <text class="cap dk" x="114" y="68">RED FLAG</text>
+          <rect class="bar" x="104" y="80" width="76" height="6" rx="3"/>
+          <rect class="fit edge" x="104" y="92" width="132" height="20" rx="5"/>
+          <text class="cap dk" x="114" y="106">YOUR AMOUNT</text>
+          <path class="ln" d="M170 118V134M148 134H192"/>
+          <circle class="sh" cx="40" cy="78" r="13"/>
+          <path class="ln" d="M40 91V144M40 108L72 94M40 144L28 176M40 144L52 176"/>
+          <path class="ln thin dash mute" d="M54 74L90 58"/>
+          <text class="cap" x="40" y="198" text-anchor="middle">YOU</text>
+          <circle class="sh" cx="300" cy="78" r="13"/>
+          <path class="ln" d="M300 91V144M300 108L268 94M300 144L288 176M300 144L312 176"/>
+          <path class="ln thin dash mute" d="M286 74L250 58"/>
+          <text class="cap" x="300" y="198" text-anchor="middle">YOUR</text>
+          <text class="cap" x="300" y="214" text-anchor="middle">ADVISOR</text>
+          <text class="cap" x="170" y="160" text-anchor="middle">ONE SHARED</text>
+          <text class="cap" x="170" y="176" text-anchor="middle">SCREEN</text>
+        </svg>
       </div>
     </figure>
   </section>
