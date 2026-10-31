@@ -5,6 +5,7 @@ import handler from "../../api/repair/send.mjs";
 const ORG = "11111111-1111-4111-8111-111111111111";
 const CLIENT = "22222222-2222-4222-8222-222222222222";
 const STAFF = "33333333-3333-4333-8333-333333333333";
+const SAVED_LETTER = "44444444-4444-4444-8444-444444444444";
 
 function response() {
   return {
@@ -50,7 +51,7 @@ function harness({ owned = true, agreement = false, consent = false } = {}) {
       mail: true,
       client_id: CLIENT,
       mail_from: { address_line1: "Synthetic return address" },
-      // Legacy ad-hoc no-ID letters must not bypass the authorization gate.
+      // Deliberately no saved ID: unauthorized mail must still fail with 403 first.
       letters: [{ bureau: "EX", html: "<p>synthetic only</p>" }]
     }
   };
@@ -68,8 +69,9 @@ test("owned client without signed agreement or current dispute consent cannot se
   assert.equal(h.state.consentReads, 1);
 });
 
-test("signed repair agreement authorizes the existing staff mailing pipeline", async () => {
+test("signed repair agreement authorizes a saved letter", async () => {
   const h = harness({ agreement: true });
+  h.request.body.letters[0].letter_id = SAVED_LETTER;
   const res = response();
   await handler(h.request, res, h.deps);
   assert.equal(res.code, 200);
@@ -78,13 +80,47 @@ test("signed repair agreement authorizes the existing staff mailing pipeline", a
   assert.equal(h.state.consentReads, 0);
 });
 
-test("live dispute authorization independently authorizes mailing", async () => {
+test("live dispute authorization independently authorizes a saved letter", async () => {
   const h = harness({ consent: true });
+  h.request.body.letters[0].letter_id = SAVED_LETTER;
   const res = response();
   await handler(h.request, res, h.deps);
   assert.equal(res.code, 200);
   assert.equal(h.state.sent, 1);
   assert.equal(h.state.consentReads, 1);
+});
+
+test("signed agreement does not permit untracked ad-hoc mailing", async () => {
+  const h = harness({ agreement: true });
+  const res = response();
+  await handler(h.request, res, h.deps);
+  assert.equal(res.code, 400);
+  assert.equal(res.body.error, "saved_repair_letter_required");
+  assert.equal(h.state.sent, 0);
+});
+
+test("mixed batch with a saved and unsaved letter refuses all before provider", async () => {
+  const h = harness({ consent: true });
+  h.request.body.letters.unshift({
+    bureau: "TU",
+    html: "<p>synthetic saved letter</p>",
+    letter_id: SAVED_LETTER
+  });
+  const res = response();
+  await handler(h.request, res, h.deps);
+  assert.equal(res.code, 400);
+  assert.equal(res.body.error, "saved_repair_letter_required");
+  assert.equal(h.state.sent, 0);
+});
+
+test("an invalid saved-letter reference cannot reach provider", async () => {
+  const h = harness({ agreement: true });
+  h.request.body.letters[0].letterId = "not-a-uuid";
+  const res = response();
+  await handler(h.request, res, h.deps);
+  assert.equal(res.code, 400);
+  assert.equal(res.body.error, "saved_repair_letter_required");
+  assert.equal(h.state.sent, 0);
 });
 
 test("foreign-org client refusal happens before authorization or mailing", async () => {
