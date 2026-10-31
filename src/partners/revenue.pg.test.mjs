@@ -397,7 +397,7 @@ describe("partner revenue accrual", { skip: !HAVE_DB ? "no DATABASE_URL" : false
 
     const event = {
       id: eventId, orgId: org, name: "deposit.paid",
-      payload: { amount: 3000, providerRef: tag, notes: tag }
+      payload: { amount: 3000, providerRef: tag, source: "test", productName: "card-stacking-dfy", notes: tag }
     };
     const first = await ensureSalePayment(db, event, {
       saleId, clientId: partnerClient, productId: products["card-stacking-dfy"], kind: "deposit"
