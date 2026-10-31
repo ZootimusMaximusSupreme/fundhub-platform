@@ -322,7 +322,10 @@ async function emitCloserCallCompleted(db, row, { offerKey, repairReferral }) {
    to send the webhook, which is not what "a closer owes a call outcome" means. */
 const BOOKING_TASK_TITLE_LIKE = "Strategy session%";
 
-/** Closer tasks past due with no disposition row. */
+/** Closer tasks past due with no disposition row.
+ * A closer can save directly from a booking UID without a taskId. A matching
+ * same-client booking disposition must close the task's unlogged chip too.
+ */
 export async function listUnloggedCalls(db, { orgId, staffId = null, limit = 50 } = {}) {
   if (!orgId) throw new CallOutcomeError("orgId is required", { status: 403 });
   const params = [orgId];
@@ -348,7 +351,9 @@ export async function listUnloggedCalls(db, { orgId, staffId = null, limit = 50 
             COALESCE(NULLIF(trim(c.first_name || ' ' || c.last_name), ''), c.email, 'Client') AS client_name
        FROM tasks t
        LEFT JOIN clients c ON c.id = t.client_id AND c.org_id = t.org_id
-       LEFT JOIN call_outcomes o ON o.task_id = t.id AND o.org_id = t.org_id
+       LEFT JOIN call_outcomes o ON o.org_id = t.org_id AND o.client_id = t.client_id
+         AND (o.task_id = t.id OR
+              (NULLIF(btrim(t.body), '') IS NOT NULL AND o.booking_ref = t.body))
       WHERE t.org_id = $1
         AND c.id IS NOT NULL
         AND c.custom_fields->>'crm_archived_at' IS NULL
@@ -394,7 +399,9 @@ export async function countUnlogged(db, { orgId, staffId = null } = {}) {
         AND t.due_at < now()
         AND NOT EXISTS (
           SELECT 1 FROM call_outcomes o
-           WHERE o.task_id = t.id AND o.org_id = t.org_id
+           WHERE o.org_id = t.org_id AND o.client_id = t.client_id
+             AND (o.task_id = t.id OR
+                  (NULLIF(btrim(t.body), '') IS NOT NULL AND o.booking_ref = t.body))
         )
         ${staffClause}`,
     params
