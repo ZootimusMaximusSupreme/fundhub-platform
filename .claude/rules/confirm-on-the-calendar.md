@@ -1,0 +1,1 @@
+../../.ai/rules/confirm-on-the-calendar.md

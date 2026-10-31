@@ -95,6 +95,7 @@ Legend: **both homes** = one real file in `.ai/rules`, linked for Cursor and for
 
 ## 6. Copy and ads
 
+- `confirm-on-the-calendar` (both homes): No message asks a lead to reply to confirm (no Reply CONFIRM, Reply YES, Text YES, no "for compliance"). The one action is accepting the calendar invite in their email (owner-set 2026-10-31).
 - `copy-certainty` (both homes): Scripts speak with 100% certainty. No we think, you might, maybe, could, likely. Day counts are allowed when they match the written guarantee (owner-set 2026-10-31).
 - `ad-know-the-offer` (both homes): Before an ad script or an animation overlay, read that offer. Pictures show the product steps, not only the last sentence. Capital Blueprint steps are in the rule.
 - `copy-skills-foundation` (both homes): Copybot and Visual Thinking are the foundation of all Fundhub marketing (owner-set 2026-10-31). Copybot builds the words in Chris's voice, Visual Thinking picks the picture, Fundhub rules own the facts. Staged in `marketing/copy-skills/`.
