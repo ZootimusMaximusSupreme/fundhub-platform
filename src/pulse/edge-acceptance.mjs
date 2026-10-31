@@ -39,6 +39,10 @@ export const RUNTIME_LENDER_PULSE_PATHS = Object.freeze([
 // shared producer-to-consumer chokepoints. Changing one can acknowledge a
 // payment/booking/consent event without a durable downstream business receipt.
 // This is source-diff REVIEW ONLY, not a customer-delivery PASS.
+// Commas is the live signed-payment normalizer for payment/refund/dispute,
+// diagnostic-paid and deposit-paid events. Editing its canonical stage mapping
+// must review P0 ledger/reversal, consent and funding outcomes and Blueprint
+// access. A canonical event ping is NOT proof of PSP settlement or finality.
 const EVENT_DISPATCH_PROOF_TOUCH = Object.freeze([
   "src/events/bus.mjs", "src/events/registry.mjs",
   "src/events/dead-letter.mjs", "src/workflows/client.mjs"
@@ -57,7 +61,7 @@ export const CRITICAL_EDGES = Object.freeze([
     event: "payment.received", consumer: "onPaymentReceived / entitlement handlers",
     receipt: "payment ledger + active entitlement + portal read", graceMinutes: null,
     pulse: "payments:paid-no-entitlement",
-    paths: [...EVENT_DISPATCH_PROOF_TOUCH, "src/register-all.mjs", "src/merchant/", "src/billing/", "src/payments/", "src/entitlements/", "src/finance/finance-os-entitlement.mjs", "src/ledger/", "src/handlers/money-chain.mjs", "src/handlers/client-lifecycle.mjs", "src/handlers/payment-links.mjs", "src/payment-links/", "src/workflows/ar-collections.mjs", "src/invoices/", "api/read/invoices.mjs", "src/auth/account-session.mjs", "public/login.html", "api/read/csm-queue.mjs", "public/app/client-portal.html", "src/adapters/whop", "api/payment", "api/checkout"]
+    paths: ["src/adapters/commas.mjs", ...EVENT_DISPATCH_PROOF_TOUCH, "src/register-all.mjs", "src/merchant/", "src/billing/", "src/payments/", "src/entitlements/", "src/finance/finance-os-entitlement.mjs", "src/ledger/", "src/handlers/money-chain.mjs", "src/handlers/client-lifecycle.mjs", "src/handlers/payment-links.mjs", "src/payment-links/", "src/workflows/ar-collections.mjs", "src/invoices/", "api/read/invoices.mjs", "src/auth/account-session.mjs", "public/login.html", "api/read/csm-queue.mjs", "public/app/client-portal.html", "src/adapters/whop", "api/payment", "api/checkout"]
   },
   {
     id: "consent-crs-result", severity: "P0", owner: "Fulfillment",
@@ -65,14 +69,14 @@ export const CRITICAL_EDGES = Object.freeze([
     event: "diagnostic.paid", consumer: "onDiagnosticPaidSoftPull / c-00-crs-soft-pull-request",
     receipt: "consent + credit-pull result + stored CRS report", graceMinutes: null,
     pulse: PULL_CHECK_IDS[0],
-    paths: [...EVENT_DISPATCH_PROOF_TOUCH, "src/register-all.mjs", "api/soft-pull-approve.mjs", "src/handlers/client-lifecycle.mjs", "src/handlers/diagnostic-soft-pull.mjs", "src/handlers/crs-full-report.mjs", "src/finance/crs", "src/finance/soft-pulls.mjs", "src/finance/finance-os-pull-fulfil.mjs", "src/workflows/finance-os-pull-sweeper.mjs", "src/workflows/c-00-crs", "src/auth/account-session.mjs", "public/app/soft-pull-approve.html"]
+    paths: ["src/adapters/commas.mjs", ...EVENT_DISPATCH_PROOF_TOUCH, "src/register-all.mjs", "api/soft-pull-approve.mjs", "src/handlers/client-lifecycle.mjs", "src/handlers/diagnostic-soft-pull.mjs", "src/handlers/crs-full-report.mjs", "src/finance/crs", "src/finance/soft-pulls.mjs", "src/finance/finance-os-pull-fulfil.mjs", "src/workflows/finance-os-pull-sweeper.mjs", "src/workflows/c-00-crs", "src/auth/account-session.mjs", "public/app/soft-pull-approve.html"]
   },
   {
     id: "round-funded-fee-commission", severity: "P0", owner: "Fulfillment / A/R",
     event: "round.funded", consumer: "onRoundFundedMoney / fee and payout handlers",
     receipt: "funding_rounds + applications + fee bill + commission", graceMinutes: 30,
     pulse: "trip:funding",
-    paths: [...EVENT_DISPATCH_PROOF_TOUCH, "src/register-all.mjs", "src/funding/", "src/finance/funding", "src/invoices/", "src/inquiry-ops/", "src/handlers/funding", "src/handlers/client-lifecycle.mjs", "src/handlers/money-chain.mjs", "src/commissions/", "src/money/", "api/funding"]
+    paths: ["src/adapters/commas.mjs", ...EVENT_DISPATCH_PROOF_TOUCH, "src/register-all.mjs", "src/funding/", "src/finance/funding", "src/invoices/", "src/inquiry-ops/", "src/handlers/funding", "src/handlers/client-lifecycle.mjs", "src/handlers/money-chain.mjs", "src/commissions/", "src/money/", "api/funding"]
   },
   {
     id: "repair-enrollment-bureau-result", severity: "P1", owner: "Fulfillment",
@@ -92,7 +96,7 @@ export const CRITICAL_EDGES = Object.freeze([
     // exclude the parent result while still reading those stored tradelines.
     // Never claim that a passing monthly beat proves a real-source recommendation.
     proofStatus: "PARTIAL_NEEDS_REAL_SOURCE_PROVENANCE_RECEIPT",
-    paths: [...EVENT_DISPATCH_PROOF_TOUCH, "src/register-all.mjs", "src/finance-os/", "src/finance/finance-os-", "src/blueprint/", "src/workflows/finance-os", "api/finance-os", "src/finance/bank-strategy.mjs", "src/lenders/store.mjs", "src/lenders/match.mjs", ...RUNTIME_LENDER_PULSE_PATHS, "src/tradelines/", "src/liabilities/", "src/finance/sample-credit-file.mjs", "scripts/finance-os-sample-v3.mjs"]
+    paths: ["src/adapters/commas.mjs", ...EVENT_DISPATCH_PROOF_TOUCH, "src/register-all.mjs", "src/finance-os/", "src/finance/finance-os-", "src/blueprint/", "src/workflows/finance-os", "api/finance-os", "src/finance/bank-strategy.mjs", "src/lenders/store.mjs", "src/lenders/match.mjs", ...RUNTIME_LENDER_PULSE_PATHS, "src/tradelines/", "src/liabilities/", "src/finance/sample-credit-file.mjs", "scripts/finance-os-sample-v3.mjs"]
   },
   {
     id: "outbound-message-provider-receipt", severity: "P1", owner: "Front-house",
