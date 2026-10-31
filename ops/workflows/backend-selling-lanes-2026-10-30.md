@@ -23,15 +23,18 @@ This is Jeremy Haynes' "Harvester + Hammer Them" system (`marketing/ads/backend-
 
 ### 1. The lane
 
-Each person has one lane at a time. The lane is a label saved on the person. Lanes set by Chris on 2026-10-30 (decision 1, answered):
+Each person has one lane at a time. The lane is a label saved on the person.
+
+**Owner update 2026-10-31: two lanes, not three.** Chris: "It's either funding or it's blueprint and repair. Blueprint and repair is everyone." The earlier three-lane table (Funding, Blueprint, Repair and partners) is replaced by this one:
 
 | Lane | Who | Content theme |
 |---|---|---|
-| Funding | score 700 and up | how funding works, lender matching, stacking, what approved means |
-| Blueprint | score 620 and up (650 is better), OR $5,000 or more in cash | Capital Blueprint, the 13 optimization points, how funding order works |
-| Repair and partners | under the Blueprint bar AND under $5,000 cash | the other ways to get funded: credit repair, credit partners, finding someone to do it with you. Teach, never "you will not get funded" |
+| Funding | score 700 and up | how funding works, the funding sequence, lender matching, what approved means |
+| Blueprint and Repair | everyone else | the steps between them and the most funding: Capital Blueprint, the 13 optimization points, credit repair, the waypoints, the credit partner, what the industry lies about. Teach, never "you will not get funded" |
 
-Chris's words: Blueprint fits when they have $5K cash or more, or a 620 FICO, ideally 650. Below that and under 699, they look into repair, credit partners and funding with help. The tone is education, not a no.
+On the call, the closer still picks Blueprint or repair from the real file. The content does not have to.
+
+Older notes kept for history: Blueprint fits when they have $5K cash or more, or a 620 FICO (ideally 650); under that they look at repair, credit partners, and funding with help.
 
 How the survey answers map:
 
