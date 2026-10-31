@@ -792,6 +792,79 @@ Dated snapshot: **561 recorded controls, 39 candidate route/chrome groups**. The
 | Chat widget launcher and its modes (Ask, Knowledge, Message: a teammate, or an SMS to a client by id) | POST /api/chat/ask,GET\|POST /api/chat/messages (kind internal or client, channel sms),GET /api/chat/peers | `e2e` — `desks-b.json` | **NOT LIVE PROVED** |
 | Owner-only beta banner and demo-mode banner mounted by shell.js | GET /api/demo/mode (owner/admin) | `ping` — `desks-b.json` | **NOT LIVE PROVED** |
 
+## October 30 route gap sweep — 61 source HTML files, 43 not yet itemized
+
+**Source-verified on Oct 30 against main `df9c988b66d0`:** `public/app/` contains **61 HTML files**. Before this addendum, the dated catalog has per-control headings for **18** of those page files plus shared `shell.js` chrome. **43 have no per-control table in the existing 561-control inventory**. Some are utility fragments or non-sales operational surfaces; do not count all as proven live routes or declare them out of scope without role/route inspection. No production write or outbound event was generated. This annex is a *gap registry*, **not full action acceptance**, and retains all prior controls/evidence.
+
+| Source path (candidate, not deployed proof) | Intended/likely role (verify) | Control coverage task | Verdict |
+| --- | --- | --- | --- |
+| `public/app/affiliate.html` | Partner / affiliate: classify handoff boundary | Candidate route/component; source present only. Role/access/actual exposure not established | **NOT LIVE PROVED** |
+| `public/app/agent-editor.html` | Owner / automation ops | Candidate route/component; source present only. Role/access/actual exposure not established | **NOT LIVE PROVED** |
+| `public/app/automations.html` | Owner / automation ops | Candidate route/component; source present only. Role/access/actual exposure not established | **NOT LIVE PROVED** |
+| `public/app/bank-outreach.html` | Funding staff / sales-related | Candidate route/component; source present only. Role/access/actual exposure not established | **NOT LIVE PROVED** |
+| `public/app/brand-studio.html` | Marketing/sales content staff | Candidate route/component; source present only. Role/access/actual exposure not established | **NOT LIVE PROVED** |
+| `public/app/campaign-manager.html` | Marketing/sales content staff | Candidate route/component; source present only. Role/access/actual exposure not established | **NOT LIVE PROVED** |
+| `public/app/content-admin.html` | Marketing/sales content staff | Candidate route/component; source present only. Role/access/actual exposure not established | **NOT LIVE PROVED** |
+| `public/app/creative-factory.html` | Marketing/sales content staff | Candidate route/component; source present only. Role/access/actual exposure not established | **NOT LIVE PROVED** |
+| `public/app/finance-os.html` | Finance staff | Priority detailed action sweep below; source present | **NOT LIVE PROVED** |
+| `public/app/galaxy.html` | Staff knowledge / ops | Candidate route/component; source present only. Role/access/actual exposure not established | **NOT LIVE PROVED** |
+| `public/app/hiring.html` | Owner / HR | Candidate route/component; source present only. Role/access/actual exposure not established | **NOT LIVE PROVED** |
+| `public/app/index.html` | Staff entry / index | Candidate route/component; source present only. Role/access/actual exposure not established | **NOT LIVE PROVED** |
+| `public/app/journeys.html` | Owner / automation ops | Candidate route/component; source present only. Role/access/actual exposure not established | **NOT LIVE PROVED** |
+| `public/app/lenders.html` | Funding staff / sales-related | Candidate route/component; source present only. Role/access/actual exposure not established | **NOT LIVE PROVED** |
+| `public/app/marketing-command-center.html` | Marketing/sales content staff | Candidate route/component; source present only. Role/access/actual exposure not established | **NOT LIVE PROVED** |
+| `public/app/money-accounts.html` | Buyer FinanceOS auxiliary | Priority detailed action sweep below; source present | **NOT LIVE PROVED** |
+| `public/app/money-alerts.html` | Buyer FinanceOS auxiliary | Candidate route/component; source present only. Role/access/actual exposure not established | **NOT LIVE PROVED** |
+| `public/app/money-connections.html` | Buyer FinanceOS auxiliary | Candidate route/component; source present only. Role/access/actual exposure not established | **NOT LIVE PROVED** |
+| `public/app/money-credit.html` | Buyer FinanceOS auxiliary | Priority detailed action sweep below; source present | **NOT LIVE PROVED** |
+| `public/app/money-declines.html` | Buyer FinanceOS auxiliary | Candidate route/component; source present only. Role/access/actual exposure not established | **NOT LIVE PROVED** |
+| `public/app/money-fundability.html` | Buyer FinanceOS auxiliary | Candidate route/component; source present only. Role/access/actual exposure not established | **NOT LIVE PROVED** |
+| `public/app/money-helper.html` | Buyer FinanceOS auxiliary | Candidate route/component; source present only. Role/access/actual exposure not established | **NOT LIVE PROVED** |
+| `public/app/money-next.html` | Buyer FinanceOS auxiliary | Candidate route/component; source present only. Role/access/actual exposure not established | **NOT LIVE PROVED** |
+| `public/app/money-payments.html` | Buyer FinanceOS auxiliary | Priority detailed action sweep below; source present | **NOT LIVE PROVED** |
+| `public/app/money-plan.html` | Buyer FinanceOS auxiliary | Candidate route/component; source present only. Role/access/actual exposure not established | **NOT LIVE PROVED** |
+| `public/app/money-setup.html` | Buyer FinanceOS auxiliary | Candidate route/component; source present only. Role/access/actual exposure not established | **NOT LIVE PROVED** |
+| `public/app/money-strategy.html` | Buyer FinanceOS auxiliary | Candidate route/component; source present only. Role/access/actual exposure not established | **NOT LIVE PROVED** |
+| `public/app/money-transfers.html` | Buyer FinanceOS auxiliary | Candidate route/component; source present only. Role/access/actual exposure not established | **NOT LIVE PROVED** |
+| `public/app/money-vault.html` | Buyer FinanceOS auxiliary | Candidate route/component; source present only. Role/access/actual exposure not established | **NOT LIVE PROVED** |
+| `public/app/money.html` | Buyer FinanceOS auxiliary | Priority detailed action sweep below; source present | **NOT LIVE PROVED** |
+| `public/app/morning-brief.html` | Owner / sales manager | Candidate route/component; source present only. Role/access/actual exposure not established | **NOT LIVE PROVED** |
+| `public/app/partner-galaxy.html` | Partner / affiliate: classify handoff boundary | Candidate route/component; source present only. Role/access/actual exposure not established | **NOT LIVE PROVED** |
+| `public/app/partner-training.html` | Partner / affiliate: classify handoff boundary | Candidate route/component; source present only. Role/access/actual exposure not established | **NOT LIVE PROVED** |
+| `public/app/present.html` | Closer / owner selling deck | Priority detailed action sweep below; source present | **NOT LIVE PROVED** |
+| `public/app/products-commissions.html` | Owner / sales manager | Candidate route/component; source present only. Role/access/actual exposure not established | **NOT LIVE PROVED** |
+| `public/app/sales-floor.html` | Sales manager / owner | Priority detailed action sweep below; source present | **NOT LIVE PROVED** |
+| `public/app/setter-dashboard.html` | Setter | Priority detailed action sweep below; source present | **NOT LIVE PROVED** |
+| `public/app/sidebar.fragment.html` | Shared fragment, not a navigable page | Candidate route/component; source present only. Role/access/actual exposure not established | **NOT LIVE PROVED** |
+| `public/app/social-studio.html` | Marketing/sales content staff | Candidate route/component; source present only. Role/access/actual exposure not established | **NOT LIVE PROVED** |
+| `public/app/soft-pull-approve.html` | Lead or buyer (token-scoped) | Priority detailed action sweep below; source present | **NOT LIVE PROVED** |
+| `public/app/staff-teams.html` | Owner / people operations | Priority detailed action sweep below; source present | **NOT LIVE PROVED** |
+| `public/app/teleprompter-remote.html` | Marketing/sales content staff | Candidate route/component; source present only. Role/access/actual exposure not established | **NOT LIVE PROVED** |
+| `public/app/teleprompter.html` | Marketing/sales content staff | Candidate route/component; source present only. Role/access/actual exposure not established | **NOT LIVE PROVED** |
+
+### Initial source-discovered control families for the highest-risk omitted pages
+
+`present.html` is only a 189-line mount point containing an `#app` root: its buttons are dynamically rendered by **`present.js` (2,343 lines)**, `contract-send.js` and supporting slide modules. An HTML-only control enumerator will misleadingly count zero buttons. Likewise `sales-floor.js` and inline Setter Dashboard scripts create essential runtime controls. The table below is an *action-family starting ledger*, not a claim that every dynamic/conditional control is enumerated. Each row still requires browser-permission/mobile/error tests and saved effect/provider evidence.
+
+| Page/action family | Nondecorative controls and required outcome | Source anchors | Verdict |
+| --- | --- | --- | --- |
+| Setter Dashboard | Refresh queue; select a lead; next/previous queue page; empty/loading/retry | `public/app/setter-dashboard.html, inline handlers, src/setter/dashboard.mjs` | **NOT LIVE PROVED** |
+| Setter Dashboard | Log Dial and count; show correct Phoenix-day KPI; accidental double click; Undo is PLANNED (no live control yet) | `public/app/setter-dashboard.html, inline data-action=log-dial; separate Undo backlog` | **NOT LIVE PROVED** |
+| Setter Dashboard | Disposition; attempts; dynamic survey answers/save; qualification fields/save; intro video; no answer/double dial; reschedule link | `public/app/setter-dashboard.html, dynamic inputs/actions` | **NOT LIVE PROVED** |
+| Setter Dashboard | Problem/goal, computer/app readiness, completed handoff to exactly the assigned closer; wrong org/assignee denied | `public/app/setter-dashboard.html, inline controls + src/setter/dashboard.mjs` | **NOT LIVE PROVED** |
+| Sales Floor | Refresh floor; pick closer; previous/next; keyboard-activated roster; shift and manager KPI same call/client | `public/app/sales-floor.html + sales-floor.js` | **NOT LIVE PROVED** |
+| Sales Floor | Today's recordings jump, Sync recordings from Drive, missing-recording counts, manager marketing flag, retry/error | `public/app/sales-floor.js` | **NOT LIVE PROVED** |
+| Closer Present | Phase navigation, back/next, client-only display, objection jumps, reframe, 24-part speaking order | `public/app/present.html loads present.js (all controls dynamic)` | **NOT LIVE PROVED** |
+| Closer Present | $32 soft-pull send; consent; tier/rung/BluePrint price selection and Blueprint stack decisions | `public/app/present.js data-act=softpull, tier:*, rung:*, stack:*` | **NOT LIVE PROVED** |
+| Closer Present | Correct agreement selected and sent, copy signing link, amount/pay-link, invoice, duplicate-send lock/error, offer consistency | `public/app/present.js data-act=contract, contract-copy, pay, pay-optimize, invoice` | **NOT LIVE PROVED** |
+| Closer Present | Stage/send letters, referral and disposition, no-show/decline/downsell callback path; replay and verified-paid vs mere click | `public/app/present.js data-act=letters, stage-letters, send-letters, disp, obj:*` | **NOT LIVE PROVED** |
+| Soft-pull Approval | Signed token load; expired/malformed/other-client token; personal name/SSN/DOB/address validation; mobile states | `public/app/soft-pull-approve.html GET /api/soft-pull-approve` | **NOT LIVE PROVED** |
+| Soft-pull Approval | Add/remove optional business; name/address/EIN/incorporation/owner fields; accurate total; double-submit; mock payment link | `public/app/soft-pull-approve.html POST /api/soft-pull-approve` | **NOT LIVE PROVED** |
+| Buyer FinanceOS | Return to client portal; 16 keyboard/touch navigable tabs: Overview, Accounts, Payments, Money moves, Alerts, Next steps, Credit, Fundability, Strategy, Banks, Applications, Money helper, Plan, Funding papers, Connections, Setup | `public/app/financeos.html and money*.js` | **NOT LIVE PROVED** |
+| Buyer FinanceOS | Paid entitlement access vs generic money overview; one buyer's saved bank action, validation/retry/privacy, return/forward mobile state | `public/app/financeos.html and money-banks.js; staff finance-os.html separate` | **NOT LIVE PROVED** |
+
+**Remaining closure gate:** expand each of these 43 candidates into one row per actual renderable role-visible nondecorative control, classify non-route fragment/irrelevant features with reason, run deterministic browser + disposable-Postgres failure/replay tests and independently observed read-only production role-screen/provider receipts. Original `manual-e2e-2026-10-26.md` failures persist as FAIL or NOT LIVE PROVED until fresh provider evidence, not overwritten by this source sweep. Individual Google Calendar proof for owner vs Justice, verification of an exact paid funding/repair/Blueprint task+document entitlement handoff, delivery receipts, native installed build and each role's UI remain open. Current PR #255 adds buyer saved-chat read on its own verified branch but is not PASS until deployed role/provider evidence. No real SMS, charge, bureau pull or production synthetic identity was used.
+
 ## Completeness gaps and next evidence actions
 
 The original dated surface catalogs **do not inventory every control** in the newer Setter Dashboard, Sales Floor, native shells, or marketing/funnel/apply steps. Those surfaces are listed explicitly above and require a fresh Oct 29 live-route and role-aware control sweep before any “complete” claim.
