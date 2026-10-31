@@ -192,6 +192,24 @@ Shown as mockups at https://claude.ai/artifact/CLb5TijCdmDNy3HyKF3aUJ. Signed "C
 - Text R3: {{first_name}}, anyone who guarantees every item comes off is lying to you. Here's what real repair looks like: {{link}} - Chris, Fundhub
 - Push R5: Start with one round, done for you. Tap to see how.
 
+### 6c. The three groups today, and the fix plan (looked up 2026-10-31 — mapping only, nothing built)
+
+Chris, 2026-10-31: three groups need their own flow. (1) Came in as a lead and quit the survey. (2) Finished the survey and did not book. (3) Booked: the hammer.
+
+**The root problem.** `survey.submitted` fires after the first survey answer, not at the end (`marketing/landing-pages/apply-survey.html:364-366, 422-434`; `src/adapters/clickfunnels.mjs:135-157, 887-891`). Only the last question (`cf_svy_available_capital`) moves the card to Survey Complete (`src/handlers/client-lifecycle.mjs:31, 330-347`). So a person who answers one question and quits is treated as "finished" by every automation.
+
+**Group 1 — quit the survey.** Today: welcome text and email right away (`s-00-welcome`; the text says "your application is in" even though they only typed contact info), one email at 20 minutes (`s-02-incomplete-survey-nudge`) whose link goes to the calendar, not back to the survey, and a "call new opt-in" setter task. Because of the root problem, the 20-minute email only reaches people who quit before question one. No text nudge, no second touch, no resume link. Fix plan: a real "survey finished" event; a quit-survey flow with a resume link (text and email, then next morning, then day 3); welcome wording that fits someone who has not finished.
+
+**Group 2 — finished, did not book.** Today: `s-nobook-chase` sends text and email at 2 hours, 24 hours and 72 hours, then stops after day 4. The copy is real. It starts after the first answer (root problem). It does not stop when they reply. Every message link goes to the 700+ calendar, even for people the page sent to the second calendar (`src/workflows/messaging.mjs:146-150`; the credit tier is not saved on the person). No setter task on a finished survey with no booking. The setter's "no answer" button sends no event, so the no-answer text cadence (`ai-set-03`) never runs now that Josh is retired. Fix plan: start the chase on the real "finished" event; links follow the two calendars; this is where the lane's "before booking" pieces run; stop on reply; a setter task for finished-no-book; make the "no answer" button start the no-answer cadence; keep going past day 4 with the lane refill pool until the cap.
+
+**Group 3 — booked.** Today: confirmation text and email, a 24-hour and 2-hour reminder (`s-04b`), one pre-call text 48 hours out (`bs-01`, the only real BS copy), the 15-minute handoff text (`ai-set-04`), and the Cortana booking feed. The BS-01 email grid is filler and never sends. Fix plan: the hammer in this spec (lane pieces, email, text, push, plus booked-audience ads) replaces the filler grid. The reminders stay.
+
+**Cadence (recommended 2026-10-31, waiting on Chris).** From Jeremy's Hammer Them SOP (Chris's copy: https://drive.google.com/file/d/1GOA7iPTQlX_tIwyGHNXgaB8wmeOv_mnM/view): 15 to 20 or more touches in the 72 hours before the call, mostly booked-audience ads; 6 emails a day. Fundhub plan: ads carry the volume; email 3 a day rising to 6 if opens hold; 1 content text a day on top of the booking reminders; 1 push a day for app users. Watch text STOP replies, spam marks and show rate.
+
+**Price (recommended 2026-10-31).** No Fundhub prices in the hammer or the chase. Jeremy: sell the next step (the call), content has no call to action, price worries are handled by the cost of not fixing the file. The price comes up on the call only.
+
+**Open decision.** Texting hours disagree: the setter SOP says 6 a.m. to 10 p.m. Arizona time (`docs/sops/weekend-2026-10-24/02-setter.md:34`), the send gate holds customer texts from 8 p.m. to 8 a.m. (`src/messaging/gate.mjs:111-122`).
+
 ### 7. Heartbeat (required in the same change)
 
 - Ping row for the new sweeper in `src/pulse/heartbeats.mjs` and the sorting in `src/pulse/tripwires.mjs`.
