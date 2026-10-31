@@ -167,7 +167,8 @@ describe("GET /api/dashboard/pipeline", () => {
       "the client is joined inside the same company": "LEFT JOIN clients c ON c.id = cd.client_id AND c.org_id = p.org_id",
       "demo rows only when Demo Mode is on": "AND ($4::boolean OR COALESCE(c.is_demo, false) = false)",
       "archived clients are off the board": "AND (c.custom_fields->>'crm_archived_at' IS NULL)",
-      "newest cards first, bounded": "ORDER BY cd.entered_at DESC LIMIT $3",
+      "soonest active Sales bookings are selected before the limit": "CASE WHEN $1 = 'sales' AND booked_starts_at >= NOW() THEN 0",
+      "the remaining cards stay newest first, bounded": "entered_at DESC LIMIT $3",
       "a text needs a reply when the last message is inbound": "AND conv.channel IN ('sms', 'text') AND last.direction = 'inbound'",
       "an email needs a reply when the last message is inbound": "AND conv.channel = 'email' AND last.direction = 'inbound'",
       "the last message of a conversation is the newest one": "ORDER BY m.created_at DESC, m.id DESC LIMIT 1",
@@ -451,6 +452,18 @@ describe("GET /api/dashboard/pipeline, the board's own statements run by a SQL e
     const res = await callEngine({ key: "sales", limit: "3" }, engineBoard());
     assert.equal(res.body.total, 3);
     assert.deepEqual(cardsOf(res).map((c) => c.id).sort(), ["card-ann", "card-ben", "card-cal"]);
+  });
+
+  test("an older Sales card with an upcoming call survives the board limit", async () => {
+    const e = engineBoard();
+    const mondayCall = new Date(Date.now() + 86_400_000).toISOString();
+    e.insert("bookings", { id: "dan-next", org_id: A, client_id: K.dan,
+      starts_at: mondayCall, status: "booked", created_at: mondayCall });
+    const res = await callEngine({ key: "sales", limit: "3" }, e);
+    assert.equal(res.statusCode, 200, JSON.stringify(res.body));
+    assert.equal(res.body.total, 3);
+    assert.equal(cardsOf(res).some((c) => c.id === "card-dan"), true);
+    assert.equal(byId(res)["card-dan"].booked_starts_at, mondayCall);
   });
 
   test("a text needs a reply when the newest message in this client's own text thread of this company is inbound; an email the same way", async () => {

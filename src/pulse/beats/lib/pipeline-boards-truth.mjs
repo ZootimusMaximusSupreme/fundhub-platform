@@ -133,6 +133,7 @@ function allBoardsStagesSql(one) {
 export const BOARD_STAGES_ALL_SQL = allBoardsStagesSql(BOARD_STAGES_SQL);
 
 export const BOARD_CARDS_SQL = `
+  SELECT * FROM (
   SELECT
     cd.id,
     cd.stage_id,
@@ -245,7 +246,14 @@ export const BOARD_CARDS_SQL = `
     AND (c.id IS NOT NULL OR pr.id IS NOT NULL)
     AND ($4::boolean OR COALESCE(c.is_demo, false) = false)
     AND (c.custom_fields->>'crm_archived_at' IS NULL)
-  ORDER BY cd.entered_at DESC
+  ) board_rows
+  ORDER BY
+    CASE WHEN $1 = 'sales' AND booked_starts_at >= NOW() THEN 0
+         WHEN $1 = 'sales' AND booked_starts_at IS NOT NULL THEN 1
+         ELSE 2 END ASC,
+    CASE WHEN $1 = 'sales' AND booked_starts_at >= NOW() THEN booked_starts_at END ASC NULLS LAST,
+    CASE WHEN $1 = 'sales' AND booked_starts_at < NOW() THEN booked_starts_at END DESC NULLS LAST,
+    entered_at DESC
   LIMIT $3
 `;
 

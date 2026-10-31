@@ -172,6 +172,46 @@ test.describe("pipeline board", () => {
     ]);
   });
 
+  test("keeps card email and text actions during detail loading and failure", async ({ page }) => {
+    const stages = structuredClone(STAGES);
+    stages.stages[0].cards[0].email = "dana@example.test";
+    stages.stages[0].cards[0].phone = "+16025550100";
+    let finishDetail;
+    const pendingDetail = new Promise((resolve) => { finishDetail = resolve; });
+    await openScreen(page, "/app/pipeline.html", OWNER, {
+      "/api/dashboard/pipeline": stages,
+      "/api/dashboard/client?id=": () => pendingDetail
+    });
+    await page.locator('.card[data-client-id] .c-name').click();
+    const links = page.locator("#fhDrawerBody .fh-drawer-msg a");
+    await expect(page.locator("#fhDrawerBody")).toContainText("Loading survey and credit details");
+    await expect(links).toHaveCount(2);
+    await expect(links.nth(0)).toHaveAttribute("href", `messaging.html?client_id=${CLIENT_ID}&channel=email`);
+    await expect(links.nth(1)).toHaveAttribute("href", `messaging.html?client_id=${CLIENT_ID}&channel=sms`);
+    finishDetail({ ok: false, error: "db_down" });
+    await expect(page.locator("#fhDrawerBody")).toContainText("Survey and credit details could not load");
+    await expect(links).toHaveCount(2);
+  });
+
+  test("shows the card's selected appointment in Call despite a stale detail task", async ({ page }) => {
+    const stages = structuredClone(STAGES);
+    stages.stages[0].cards[0].booked_starts_at = "2030-05-02T17:00:00.000Z";
+    stages.stages[0].cards[0].booked_kind = "rescheduled";
+    await openScreen(page, "/app/pipeline.html", OWNER, {
+      "/api/dashboard/pipeline": stages,
+      "/api/dashboard/client?id=": {
+        ok: true, client: { id: CLIENT_ID, custom_fields: {} },
+        latest_booking: { when: "2030-04-30T17:00:00.000Z", status: "booked", title: "Old call" }
+      }
+    });
+    await page.locator('.card[data-client-id] .c-name').click();
+    const call = page.locator("#fhDrawerBody > .fh-drawer-sec").nth(1);
+    await expect(call.locator("h3")).toHaveText("Call");
+    await expect(call).toContainText("May 2, 2030, 10:00 AM");
+    await expect(call).toContainText("Rescheduled");
+    await expect(call).not.toContainText("Old call");
+  });
+
   test("makes a failed client-detail read visible instead of leaving blank survey answers", async ({ page }) => {
     await openScreen(page, "/app/pipeline.html", OWNER, {
       "/api/dashboard/pipeline": STAGES,

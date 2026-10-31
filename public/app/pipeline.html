@@ -2100,6 +2100,8 @@ restore();
     if (s === "past") return "Past";
     if (s === "upcoming") return "Upcoming";
     if (s === "booked") return "Booked";
+    if (s === "rescheduled") return "Rescheduled";
+    if (s === "rebooked") return "Booked again";
     if (s === "done") return "Done";
     return s;
   }
@@ -2371,7 +2373,10 @@ restore();
     var clientId = c.client_id || client.id;
     who.appendChild(contactRow("Email", "email", email, clientId, c.email_needs_reply || client.email_needs_reply));
     who.appendChild(contactRow("Phone", "sms", phone, clientId, c.sms_needs_reply || client.sms_needs_reply));
-    var book = (data && data.latest_booking) || {};
+    // Sales uses the booking selected for the card, including when there is none.
+    var book = pipelineKey === "sales"
+      ? (c.booked_starts_at ? { when: c.booked_starts_at, status: c.booked_kind || "booked" } : {})
+      : ((data && data.latest_booking) || {});
     var call = sec("Call");
     call.appendChild(rowAlways("When", fmtWhen(book.when)));
     call.appendChild(rowAlways("Status", callStatus(book.status || cf.call_outcome)));
@@ -2479,9 +2484,18 @@ restore();
     drawerBody.appendChild(box);
   }
 
+  function paintCardContact(c) {
+    if (!drawerBody) return;
+    var who = sec("Contact");
+    who.appendChild(contactRow("Email", "email", c.email, c.client_id, c.email_needs_reply));
+    who.appendChild(contactRow("Phone", "sms", c.phone, c.client_id, c.sms_needs_reply));
+    drawerBody.appendChild(who);
+  }
+
   function drawerReadError(c) {
     if (!drawerClient || drawerClient.client_id !== c.client_id || !drawerBody) return;
     drawerBody.textContent = "";
+    paintCardContact(c);
     var err = document.createElement("p");
     err.className = "fh-drawer-empty";
     err.textContent = "Survey and credit details could not load. Close and reopen this card to retry.";
@@ -2494,6 +2508,7 @@ restore();
     if (drawerName) drawerName.textContent = c.name || "Contact";
     if (drawerBody) {
       drawerBody.textContent = "";
+      paintCardContact(c);
       var loading = document.createElement("p");
       loading.className = "fh-drawer-empty";
       loading.setAttribute("role", "status");
