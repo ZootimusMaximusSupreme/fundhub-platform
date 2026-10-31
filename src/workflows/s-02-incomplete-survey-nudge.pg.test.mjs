@@ -19,7 +19,7 @@ import { test, before, after } from "node:test";
 import assert from "node:assert";
 import { db, close } from "../db.mjs";
 import {
-  handle, resumePlan, sequenceInFlight, stopReason, surveyCompleted, RESUME_TEMPLATE_KEYS
+  handle, resumePlan, sequenceInFlight, stopReason, surveyCompleted, RESUME_TEMPLATE_KEYS, TOUCHES
 } from "./s-02-incomplete-survey-nudge.mjs";
 import { inngestSim } from "./inngest-sim.mjs";
 import { isLocalScratchDatabaseUrl } from "../verification/scratch-guard.mjs";
@@ -415,13 +415,50 @@ test("a new opt-in after touch 3 gets a new send key inside the four-day window"
     const sim = inngestSim(iso(start));
     const first = await optIn(clientId, start, email);
     const fresh = await optIn(clientId, start + 3 * DAY, email);
-    const [a, b] = await sim.runAll([spec(sim, first), spec(sim, fresh)]);
+    const [a] = await sim.runAll([spec(sim, first)]);
+    await db.query(`UPDATE messages SET status = 'sent' WHERE org_id = $1 AND client_id = $2 AND template_key = ANY($3)`,
+      [orgId, clientId, RESUME_TEMPLATE_KEYS]);
+    const [b] = await sim.runAll([spec(sim, fresh)]);
     assert.equal(a.stoppedBecause, undefined);
     assert.equal(b.stoppedBecause, undefined);
     const rows = await messagesOf(clientId);
     assert.equal(rows.length, 12, "the completed prior sequence cannot suppress a fresh opt-in");
     assert.equal(rows.filter((r) => r.provider_ref.endsWith(`:${first.id}`)).length, 6);
     assert.equal(rows.filter((r) => r.provider_ref.endsWith(`:${fresh.id}`)).length, 6);
+  });
+
+test("a queued old touch 3 blocks a new opt-in inside the four-day window",
+  { skip: !HAS_DB }, async () => {
+    const email = `queued${++seq}@${DOMAIN}`;
+    const clientId = await makeClient(orgId, { email });
+    const start = Date.now();
+    const sim = inngestSim(iso(start));
+    const first = await optIn(clientId, start, email);
+    const fresh = await optIn(clientId, start + 3 * DAY, email);
+    const [a] = await sim.runAll([spec(sim, first)]);
+    const [b] = await sim.runAll([spec(sim, fresh)]);
+    assert.equal(a.stoppedBecause, undefined);
+    assert.deepEqual(b, { done: false, reason: "sequence_in_flight" });
+    assert.equal((await messagesOf(clientId)).length, 6);
+  });
+
+test("an old touch 3 sent after fresh opt-in blocks a second sequence",
+  { skip: !HAS_DB }, async () => {
+    const email = `lateold${++seq}@${DOMAIN}`;
+    const clientId = await makeClient(orgId, { email });
+    const start = Date.now();
+    const sim = inngestSim(iso(start));
+    const first = await optIn(clientId, start, email);
+    const fresh = await optIn(clientId, start + 3 * DAY, email);
+    const [a] = await sim.runAll([spec(sim, first)]);
+    await db.query(`UPDATE messages SET status = 'sent' WHERE org_id = $1 AND client_id = $2 AND template_key = ANY($3)`,
+      [orgId, clientId, RESUME_TEMPLATE_KEYS]);
+    await db.query(`UPDATE messages SET last_attempt_at = $3 WHERE org_id = $1 AND client_id = $2 AND template_key = $4`,
+      [orgId, clientId, iso(start + 3 * DAY + 60_000), TOUCHES[2].sms]);
+    const [b] = await sim.runAll([spec(sim, fresh)]);
+    assert.equal(a.stoppedBecause, undefined);
+    assert.deepEqual(b, { done: false, reason: "sequence_in_flight" });
+    assert.equal((await messagesOf(clientId)).length, 6);
   });
 
 test("new answers before a later touch still stop a completed survey in Postgres",

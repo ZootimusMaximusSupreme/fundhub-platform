@@ -93,7 +93,7 @@ export const FIRST_TOUCH_WAIT_MS = 20 * 60 * 1000;
    opt-in start even while an old touch is inside this duplicate window. */
 export const SEQUENCE_WINDOW_MS = 4 * 24 * 60 * 60 * 1000;
 
-/** The last finished S-02 sequence before this opt-in, if there was one. */
+/** The last sent S-02 sequence before this opt-in, with no older touch still pending. */
 export async function lastCompletedSequenceAt(db, { eventId, orgId, clientId }) {
   const r = await db.query(
     `SELECT MAX(m.created_at) AS completed_at
@@ -102,8 +102,19 @@ export async function lastCompletedSequenceAt(db, { eventId, orgId, clientId }) 
       WHERE s.id = $1 AND s.org_id = $2 AND s.name = 'entry.captured'
         AND m.direction = 'outbound'
         AND m.template_key = ANY($4)
-        AND m.created_at < s.created_at`,
-    [eventId, orgId, clientId, [TOUCHES[2].sms, TOUCHES[2].email]]
+        AND m.status IN ('sent', 'delivered')
+        AND COALESCE(m.last_attempt_at, m.created_at) < s.created_at
+        AND NOT EXISTS (
+          SELECT 1 FROM messages pending
+           WHERE pending.org_id = s.org_id AND pending.client_id = $3
+             AND pending.direction = 'outbound'
+             AND pending.template_key = ANY($5)
+             AND pending.created_at < s.created_at
+             AND pending.created_at > s.created_at - interval '4 days'
+             AND (pending.status IS NULL OR pending.status IN ('queued', 'sending')
+               OR (pending.status IN ('sent', 'delivered') AND pending.last_attempt_at >= s.created_at))
+        )`,
+    [eventId, orgId, clientId, [TOUCHES[2].sms, TOUCHES[2].email], RESUME_TEMPLATE_KEYS]
   );
   return r.rows[0]?.completed_at || null;
 }

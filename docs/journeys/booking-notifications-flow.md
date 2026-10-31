@@ -191,9 +191,10 @@ flowchart TD
 ```
 
 Repeated visits during one sequence share its send key, so they do not double
-the three touches. Once touch 3 is queued, a later opt-in starts a fresh
-sequence even if it is inside the four-day duplicate window. The boundary is
-the last touch-3 message before that opt-in, within the same company and lead.
+the three touches. Once touch 3 has been sent or delivered and no older S-02
+touch is pending, a later opt-in starts a fresh sequence even inside the
+four-day duplicate window. The boundary is touch 3 sent before the
+opt-in, within the same company and lead.
 
 **The link is the plain survey page (containment, 2026-10-31).** The welcome and
 come-back templates link to `https://apply.fundhub.ai/apply`, with no `?r=` code,

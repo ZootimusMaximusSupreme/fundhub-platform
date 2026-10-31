@@ -21,10 +21,16 @@ function withReads(inner, sim) {
   wrapped.query = async (sql, params = []) => {
     const text = String(sql);
     if (/SELECT MAX\(m.created_at\) AS completed_at/.test(text)) {
-      const [eventId, orgId, clientId, keys] = params;
+      const [eventId, orgId, clientId, keys, allKeys] = params;
       const source = inner.events.find((e) => e.id === eventId && e.org_id === orgId);
+      const sourceAt = Date.parse(source?.created_at);
+      const pending = wrapped.sentLog.some((m) => m.client_id === clientId && allKeys.includes(m.template_key)
+        && m.at < sourceAt && m.at > sourceAt - SEQUENCE_WINDOW_MS
+        && (m.status == null || ["queued", "sending"].includes(m.status)
+          || (["sent", "delivered"].includes(m.status) && m.lastAttemptAt >= sourceAt)));
       const prior = wrapped.sentLog
-        .filter((m) => m.client_id === clientId && keys.includes(m.template_key) && m.at < Date.parse(source?.created_at))
+        .filter((m) => !pending && m.client_id === clientId && keys.includes(m.template_key)
+          && ["sent", "delivered"].includes(m.status) && (m.lastAttemptAt ?? m.at) < sourceAt)
         .sort((a, b) => b.at - a.at)[0];
       return { rows: [{ completed_at: prior ? iso(prior.at) : null }] };
     }
@@ -39,7 +45,7 @@ function withReads(inner, sim) {
       const before = inner.messages.length;
       const out = await inner.query(sql, params);
       if (inner.messages.length > before) {
-        wrapped.sentLog.push({ client_id: params[1], template_key: params[3], provider_ref: params[5], at: sim.now() });
+        wrapped.sentLog.push({ client_id: params[1], template_key: params[3], provider_ref: params[5], status: "queued", at: sim.now() });
       }
       return out;
     }
@@ -523,11 +529,36 @@ test("a fresh opt-in after touch 3 starts a new sequence even inside the four-da
   const w = world({ start: AT_10AM });
   const first = optIn(w, { id: "evt-a", at: AT_10AM });
   const fresh = optIn(w, { id: "evt-fresh", at: "2026-10-31T17:00:00.000Z" });
-  const [a, b] = await runAll(w, first, fresh);
+  const a = await run(w, first);
+  w.db.sentLog.forEach((m) => { m.status = "sent"; });
+  const b = await run(w, fresh);
   assert.equal(a.stoppedBecause, undefined);
   assert.equal(b.stoppedBecause, undefined);
   assert.equal(w.db.messages.length, 12, "the completed old sequence cannot suppress the new opt-in");
   assert.deepEqual([...new Set(w.db.messages.map((m) => m.provider_ref.split(":").pop()))], ["evt-a", "evt-fresh"]);
+});
+
+test("a queued old touch 3 still blocks a fresh sequence until the old outbox clears", async () => {
+  const w = world({ start: AT_10AM });
+  const first = optIn(w, { id: "evt-a", at: AT_10AM });
+  const fresh = optIn(w, { id: "evt-fresh", at: "2026-10-31T17:00:00.000Z" });
+  await run(w, first);
+  const b = await run(w, fresh);
+  assert.deepEqual(b, { done: false, reason: "sequence_in_flight" });
+  assert.equal(w.db.messages.length, 6, "the old queued touches are the only sequence");
+});
+
+test("an old touch 3 dispatched after the fresh opt-in cannot unlock a second sequence", async () => {
+  const w = world({ start: AT_10AM });
+  const first = optIn(w, { id: "evt-a", at: AT_10AM });
+  const fresh = optIn(w, { id: "evt-fresh", at: "2026-10-31T17:00:00.000Z" });
+  await run(w, first);
+  w.db.sentLog.forEach((m) => { m.status = "sent"; });
+  const oldTouch3 = w.db.sentLog.find((m) => m.template_key === TOUCHES[2].sms);
+  oldTouch3.lastAttemptAt = Date.parse("2026-10-31T17:01:00.000Z");
+  const b = await run(w, fresh);
+  assert.deepEqual(b, { done: false, reason: "sequence_in_flight" });
+  assert.equal(w.db.messages.length, 6);
 });
 
 test("no client means no follow-up", async () => {
