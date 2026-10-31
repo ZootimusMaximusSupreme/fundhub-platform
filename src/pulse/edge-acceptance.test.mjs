@@ -683,3 +683,80 @@ test("P0/P1 consent proof cannot PASS a future or pre-event provider action or a
     verdict: "PENDING", reason: "provider-action-time-outside-observed-window"
   });
 });
+
+test("P0 monthly real CRS provider orders cannot double-fire or borrow a foreign receipt", () => {
+  // Blueprint #301's concurrent worker claim path can reach one saved credit
+  // request twice. No real bureau call occurs: these are normalized synthetic
+  // provider-order witnesses, NOT a live vendor receipt or duplicate claim.
+  // Both monthly producer files must request P0 consent/CRS and P1 delivery
+  // review whenever their existing source code changes.
+  const changes = reportCriticalSourceChanges([
+    "src/finance/finance-os-pull-fulfil.mjs",
+    "src/workflows/finance-os-pull-sweeper.mjs",
+    "src/finance/crs-pull.mjs"
+  ]);
+  assert.deepEqual(changes.edges.map((x) => [x.id, x.severity]), [
+    ["consent-crs-result", "P0"], ["blueprint-financeos-report", "P1"]
+  ]);
+  assert.equal(changes.liveReceipt, "NEEDS_LIVE_RECEIPT");
+
+  const requestId = "monthly-soft-pull-request-synthetic";
+  const consentId = "signed-monthly-credit-consent-synthetic";
+  const firstOrder = {
+    event_id: id, org_id: org, client_id: client, request_id: requestId,
+    provider_order_id: "crs-order-one", ordered_at: "2026-10-29T00:10:30Z"
+  };
+  const witness = {
+    ...basics, requireUniqueProviderOrder: true,
+    requireConsentReceipt: true, consentScope: "credit-soft-pull",
+    expectedContract: {
+      eventName: "finance-os.monthly-pull-requested", eventVersion: 1,
+      consumerName: "fulfilQueuedSystemPulls", resultKind: "crs_results"
+    },
+    event: { ...event, request_id: requestId, consent_id: consentId,
+      name: "finance-os.monthly-pull-requested", version: 1 },
+    consumer: { ...consumer, consumer_name: "fulfilQueuedSystemPulls",
+      provider_action_at: "2026-10-29T00:10:00Z", completed_at: "2026-10-29T00:12:00Z" },
+    receipt: { ...receipt, result_kind: "crs_results",
+      completed_at: "2026-10-29T00:15:00Z" },
+    consentReceipt: { id: consentId, org_id: org, client_id: client,
+      scope: "credit-soft-pull", outcome: "authorized",
+      signed_at: "2026-10-29T00:05:00Z" },
+    providerOrders: [firstOrder]
+  };
+  assert.equal(judgeSyntheticEdge(witness).verdict, "PASS");
+  // Retried webhook/callback for the *same* external provider order is not a
+  // second credit pull. Two separate external order IDs are.
+  assert.equal(judgeSyntheticEdge({
+    ...witness, providerOrders: [firstOrder, { ...firstOrder }]
+  }).verdict, "PASS");
+  assert.deepEqual(judgeSyntheticEdge({
+    ...witness, providerOrders: [firstOrder, { ...firstOrder, provider_order_id: "crs-order-two" }]
+  }), { verdict: "RED", reason: "duplicate-provider-orders-for-request" });
+  assert.deepEqual(judgeSyntheticEdge({
+    ...witness, providerOrders: [firstOrder, { ...firstOrder, org_id: "foreign-org" }]
+  }), { verdict: "RED", reason: "provider-order-identity-mismatch" });
+  assert.deepEqual(judgeSyntheticEdge({
+    ...witness, providerOrders: [{ ...firstOrder, request_id: "other-request" }]
+  }), { verdict: "RED", reason: "provider-order-identity-mismatch" });
+  assert.deepEqual(judgeSyntheticEdge({ ...witness, providerOrders: [] }), {
+    verdict: "RED", reason: "provider-order-receipt-missing"
+  });
+  assert.deepEqual(judgeSyntheticEdge({ ...witness, providerOrders: undefined }), {
+    verdict: "NOT_CHECKED", reason: "provider-order-proof-not-available"
+  });
+  assert.deepEqual(judgeSyntheticEdge({ ...witness, providerOrders: [{
+    ...firstOrder, provider_order_id: null
+  }] }), { verdict: "NOT_CHECKED", reason: "provider-order-identity-unavailable" });
+  assert.deepEqual(judgeSyntheticEdge({ ...witness, providerOrders: [{
+    ...firstOrder, ordered_at: null
+  }] }), { verdict: "NOT_CHECKED", reason: "provider-order-timestamp-missing" });
+  for (const ordered_at of ["2026-10-29T00:09:59Z", "2026-10-29T02:00:00Z"]) {
+    assert.deepEqual(judgeSyntheticEdge({ ...witness, providerOrders: [{
+      ...firstOrder, ordered_at
+    }] }), { verdict: "RED", reason: "provider-order-timestamp-outside-observed-window" });
+  }
+  assert.deepEqual(judgeSyntheticEdge({
+    ...witness, consentReceipt: null
+  }), { verdict: "RED", reason: "authorized-consent-before-provider-action-missing" });
+});
