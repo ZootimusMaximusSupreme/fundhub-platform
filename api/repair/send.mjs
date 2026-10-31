@@ -136,18 +136,20 @@ export default async function handler(req, res, deps = {}) {
     // address from the request body: both can be edited after the letter was
     // approved and could route a real complaint to the wrong state.
     const stateAgInBatch = wantMail && bound.letters.some(letter => letter.target === "state_ag");
-    const recordedReturnAddress = stateAgInBatch
+    // Mail must use the consumer's same-org identity, never body.mail_from or
+    // body.identity. A valid saved letter cannot authorize a forged sender.
+    const recordedReturnAddress = wantMail
       ? await (deps.loadClientReturnAddress ?? loadClientReturnAddress)(database, { orgId, clientId })
       : null;
     if (stateAgInBatch && !recordedReturnAddress?.address_state) {
       return res.status(409).json({ ok: false, error: "client_state_missing_for_ag" });
     }
-    const from = stateAgInBatch
-      ? recordedReturnAddress
-      : (body.mail_from || body.mailFrom
-        || await loadClientReturnAddress(database, { orgId, clientId }));
-    const mailIdentity = stateAgInBatch
-      ? { state: recordedReturnAddress.address_state }
+    if (wantMail && !recordedReturnAddress?.address_line1) {
+      return res.status(409).json({ ok: false, error: "client_return_address_missing_for_mail" });
+    }
+    const from = wantMail ? recordedReturnAddress : (body.mail_from || body.mailFrom || null);
+    const mailIdentity = wantMail
+      ? { state: recordedReturnAddress.address_state || null }
       : (body.identity || null);
     const mailSender = wantMail
       ? async (letter) => {
