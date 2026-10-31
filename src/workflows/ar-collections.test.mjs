@@ -1080,3 +1080,41 @@ test("AR tenant isolation: CSM escalation repeats ownership verification before 
   assert.equal(db.tasks.length, 0, "no task targeting former owner");
   assert.equal(db.clients[0].tags?.length || 0, 0);
 });
+
+test("AR receipt identity: unresolved buyer cannot create a task for a foreign-org invoice client", async () => {
+  const db = pgFake({
+    clients: [{ id: "cl-foreign", org_id: "org-2", email: "foreign+a78@example.invalid" }],
+    invoices: [openInvoice({ client_id: "cl-foreign" })]
+  });
+  const result = await handle({
+    event: ev("payment.received", {
+      invoiceId: "inv-1", product: "success_fee",
+      email: "unmatched+a78@example.invalid", amount: 1250, paymentId: "a78-foreign"
+    }),
+    db, step: fakeStep()
+  });
+  assert.equal(result.reason, "client_not_owned");
+  assert.equal(result.reviewTaskCreated, false);
+  assert.equal(db.tasks.length, 0, "no cross-tenant advisor task or client reference");
+  assert.equal(db.invoicePayments.length, 0, "the merchant amount remains unallocated");
+});
+
+test("AR receipt identity: unresolved sender still gets a task on a verified same-org invoice owner", async () => {
+  const db = pgFake({
+    clients: [{ id: "cl-1", org_id: "org-1", email: "owner+a78@example.invalid" }],
+    invoices: [openInvoice()]
+  });
+  const result = await handle({
+    event: ev("payment.received", {
+      invoiceId: "inv-1", product: "success_fee",
+      email: "unmatched+a78@example.invalid", amount: 1250, paymentId: "a78-owned"
+    }),
+    db, step: fakeStep()
+  });
+  assert.equal(result.reason, "client_not_owned");
+  assert.equal(result.reviewTaskCreated, true);
+  assert.equal(db.tasks.length, 1);
+  assert.equal(db.tasks[0].org_id, "org-1");
+  assert.equal(db.tasks[0].client_id, "cl-1");
+  assert.equal(db.invoicePayments.length, 0, "a review task never allocates money");
+});
