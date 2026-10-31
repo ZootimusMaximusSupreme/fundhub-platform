@@ -17,7 +17,7 @@ const afterNoShow = (min) => new Date(Date.parse(NOSHOW_AT) + min * 60_000).toIS
 
 /* rebookedSinceMiss, answered from the fake's rows the way its SQL answers it: a booking.created or
    booking.rescheduled for this person in this company, saved after the earlier of the missed call's start
-   and the no-show's own saved time. The SQL itself is read against Postgres in followup-chases.pg.test.mjs. */
+   and the no-show's own saved time. The SQL itself is read against Postgres in followup-race-safety.pg.test.mjs. */
 function withRebookRead(inner) {
   const wrapped = Object.create(inner);
   wrapped.query = async (sql, params = []) => {

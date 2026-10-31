@@ -39,7 +39,7 @@ function withTriggerTime(inner) {
 /* sentByOtherTrigger, answered from the fake's own rows the way its SQL answers it: the same text to the
    same person, newer than `since`, whose send key names an event of the other trigger. pgFake stamps no
    time on a message it inserts, so a message with no created_at counts as just sent. The SQL itself is read
-   against Postgres in nobook-chase-historical.pg.test.mjs. */
+   against Postgres in followup-race-safety.pg.test.mjs. */
 function withOtherTriggerRead(inner) {
   const wrapped = Object.create(inner);
   wrapped.query = async (sql, params = []) => {
