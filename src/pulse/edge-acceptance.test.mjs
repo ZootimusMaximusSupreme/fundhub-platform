@@ -132,6 +132,39 @@ test("schema migration changes cannot bypass A->B source-watch review", () => {
   ]), []);
 });
 
+test("Netlify /api router and booking/native migration edits cannot silently escape A->B review", () => {
+  // PR #307 modifies the one live /api/* adapter and creates the actual
+  // authenticated iPhone first-open table. PR #280 changes the persistent
+  // call qualification bucket. All were source-watch BLIND SPOTS before this.
+  const report = reportCriticalSourceChanges([
+    "netlify/functions/api.mjs",
+    "db/migrations/521_native_client_app_opens.sql",
+    "db/migrations/508_qualification_bucket.sql"
+  ]);
+  assert.equal(report.verdict, "REVIEW_REQUIRED");
+  assert.deepEqual(report.edges.map((edge) => edge.id), [
+    "lead-booking-call-outcome", "native-portal-first-open"
+  ]);
+  assert.deepEqual(report.edges[0].files, ["db/migrations/508_qualification_bucket.sql"]);
+  assert.deepEqual(report.edges[1].files, ["db/migrations/521_native_client_app_opens.sql"]);
+  assert.deepEqual(report.unmappedHighRiskFiles, ["netlify/functions/api.mjs"]);
+  assert.equal(report.liveReceipt, "NEEDS_LIVE_RECEIPT");
+  assert.equal(report.evidenceNote, "MISSING");
+  // Unseen future schema versions must request review rather than depend
+  // only on today's migration numbers.
+  assert.deepEqual(unmappedHighRiskSourceChanges([
+    "db/migrations/522_another_native_device.sql",
+    "db/migrations/523_new_qualification_flag.sql"
+  ]), [
+    "db/migrations/522_another_native_device.sql",
+    "db/migrations/523_new_qualification_flag.sql"
+  ]);
+  assert.deepEqual(unmappedHighRiskSourceChanges([
+    "db/migrations/524_unrelated_index.sql",
+    "docs/diagrams/api-routing.md"
+  ]), []);
+});
+
 test("unmapped high-risk PR edit cannot silently escape the report", () => {
   const report = reportCriticalSourceChanges(["api/invoice-settlement.mjs"]);
   assert.deepEqual(report.edges, []);
