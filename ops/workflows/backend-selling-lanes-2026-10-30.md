@@ -249,7 +249,8 @@ Owned by the slideshows chat (branch `claude/backend-selling-slideshows`). Other
 2. Copybot (`marketing/copy-skills/copybot/`): name the one belief and the question the reader is asking (the Hammer Them pillar). Open where the reader already is. Order the slides so each one answers the question the slide before raised. Keep each claim's support on the same slide. Write in Chris's voice (`references/owner-voice.md`, `chris-voice-profile.md`): short, certain and plain, to one person, naming the real thing (the bank, the reason on the report, the step). Aim for a 5th or 6th grade reading level.
 3. Visual Thinking (`marketing/copy-skills/visual-thinking/`): name each slide's question, then pick the picture that answers it. What: a document (`.doc`). How much: bars to one scale (`.bars`). Where: the bank grid (`.banks`). When: a timeline (`.tl`) or a span (`.span`, `.metric`). How: a flow (`.flow`). Why: a comparison (`.compare`) or a visual equation (`.eq`). The engine's view: `.term`. Draw only what the facts support.
 4. Markup for each slide: `<section class="slide" data-src="file:line, file:line">`, then `<p class="eyebrow">CODE-0N / Topic</p>`, one `<h2>`, one or two `<p class="lede">`, and one `<figure class="pic">`. Add `dark` to the opening slide and the payoff slide only. Every figure is labeled Sample, or the slide carries `data-figures="why this figure is a rule, not a sample"`.
-5. Run the build, run the check, then look at every slide 390 pixels wide.
+5. Write the Copybot and Visual Thinking choices in the deck's header comment, the way `pre-underwriting.html` does: the belief, the reader's question, the lead, the order, and each slide's picture question. Anyone can then check that the skills were used.
+6. Run the build, run the check, then look at every slide 390 pixels wide.
 
 **Rules that bite here.**
 - No Fundhub prices. The price comes up on the call.
