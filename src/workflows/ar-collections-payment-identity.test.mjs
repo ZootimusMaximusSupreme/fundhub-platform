@@ -121,3 +121,62 @@ test("missing organization refuses before any buyer read or allocation", async (
   assert.equal(db.tasks.length, 0, "an unowned receipt must never create a staff task");
   assert.equal(db.invoicePayments.length, 0);
 });
+
+function ar87ReplayFixture(foreign = true) {
+  const owner = foreign ? "ar87-org2-buyer" : "ar87-org1-owner";
+  const org = foreign ? "org-2" : "org-1";
+  return pgFake({
+    clients: [
+      { id: "ar87-unrelated-buyer", org_id: "org-1", email: "other+ar87@example.invalid" },
+      { id: owner, org_id: org, email: "original+ar87@example.invalid" }
+    ],
+    invoices: [{
+      id: "ar87-original-invoice", org_id: org, client_id: owner,
+      source: "funding_success_fee", invoice_type: "success_fee",
+      status: "partially_paid", amount_due: 100
+    }],
+    // Historical contradictory org/invoice receipt: synthetic only.
+    invoicePayments: [{
+      id: "ar87-original-receipt", org_id: "org-1", invoice_id: "ar87-original-invoice",
+      kind: "payment", method: "commas", amount: 20, external_ref: "ar87-provider-ref"
+    }]
+  });
+}
+
+test("A87: foreign original replay must not task an unrelated same-org event buyer", async () => {
+  const db = ar87ReplayFixture();
+  const event = ev("payment.received", {
+    product: "success_fee", amount: 20, paymentId: "ar87-provider-ref"
+  }, { clientId: "ar87-unrelated-buyer", id: "ar87-foreign-event" });
+  await assert.rejects(handle({ event, db, step: fakeStep() }),
+    /ar_receipt_replay_conflict_unroutable/);
+  assert.equal(db.tasks.length, 0);
+  assert.equal(db.invoicePayments.length, 1);
+  assert.equal(db.invoices[0].status, "partially_paid");
+});
+
+test("A87: foreign original replay with no owned buyer must remain retryable", async () => {
+  const db = ar87ReplayFixture();
+  const event = ev("payment.received", {
+    product: "success_fee", amount: 20, paymentId: "ar87-provider-ref"
+  }, { clientId: null, id: "ar87-unowned-event" });
+  await assert.rejects(handle({ event, db, step: fakeStep() }),
+    /ar_receipt_replay_conflict_unroutable/);
+  assert.equal(db.tasks.length, 0);
+  assert.equal(db.invoicePayments.length, 1);
+});
+
+test("A87: owned original invoice still receives conflict task despite forged event buyer", async () => {
+  const db = ar87ReplayFixture(false);
+  const event = ev("payment.received", {
+    product: "success_fee", amount: 20, paymentId: "ar87-provider-ref",
+    invoiceId: "ar87-original-invoice"
+  }, { clientId: "ar87-unrelated-buyer", id: "ar87-owned-event" });
+  const res = await handle({ event, db, step: fakeStep() });
+  assert.equal(res.reason, "receipt_reference_mismatch");
+  assert.equal(res.allocated, false);
+  assert.equal(db.tasks.length, 1);
+  assert.equal(db.tasks[0].client_id, "ar87-org1-owner");
+  assert.equal(db.tasks[0].assignee_role, "funding_advisor");
+  assert.equal(db.invoicePayments.length, 1);
+});

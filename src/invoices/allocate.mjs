@@ -192,17 +192,22 @@ async function replayIdentityMatches(db, prior, { orgId, clientId, hintedId, rou
   return true;
 }
 
-async function conflictingReplay(db, { orgId, clientId, eventId, providerPaymentId, originalInvoiceId = null }) {
+async function conflictingReplay(db, { orgId, eventId, providerPaymentId, originalInvoiceId = null }) {
   // The original provider receipt, not an untrusted replay customer locator,
   // owns any review task. Never create a task on another tenant's client.
   const original = originalInvoiceId ? await getInvoice(db, { invoiceId: originalInvoiceId }) : null;
   const reviewClientId = original && String(original.org_id) === String(orgId)
-    ? original.client_id : clientId;
-  await staffTask(db, {
+    ? original.client_id : null;
+  const task = await staffTask(db, {
     orgId, clientId: reviewClientId, eventId,
     title: "Conflicting payment reference — review original receipt",
     body: providerPaymentId ? `receipt-conflict:${providerPaymentId}` : eventId
   });
+  // Never route a replay conflict to an untrusted envelope buyer. Without
+  // the original same-org invoice owner, retain the event for retry/DLQ.
+  if (!task || (!task.id && task.reason !== "duplicate_race")) {
+    throw new Error("ar_receipt_replay_conflict_unroutable");
+  }
   return { done: true, allocated: false, replay: false, reason: "receipt_reference_mismatch", path: "unresolved" };
 }
 
