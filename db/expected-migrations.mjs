@@ -370,6 +370,7 @@ export const EXPECTED_MIGRATIONS = Object.freeze([
   "migrations/507_sales_set_stage.sql",
   "migrations/520_ar_client_balance_issued_only.sql",
   "migrations/521_staff_roster_removal.sql",
+  "migrations/522_staff_apns_devices.sql",
   "migrations/530_decommission_unused_agreements.sql",
   "migrations/531_owner_closer_funding_one_fifth_20261030.sql",
   "seed/002_pipelines.sql",

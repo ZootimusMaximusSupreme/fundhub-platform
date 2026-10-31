@@ -171,8 +171,8 @@ after(async () => {
 /* ═════════════════════════════════════════════════════════════════════════ */
 
 describe("the document 042's gate holds out for", { skip: SKIP }, () => {
-  test("db/migrations/283 really seeded a partner licence into this database", async () => {
-    const tpl = await getPartnerLicenseTemplate(db, { orgId });
+  test("migration 283 seeded the partner licence and 530 retired new sends", async () => {
+    const tpl = await getPartnerLicenseTemplate(db, { orgId, activeOnly: false });
     assert.ok(
       tpl,
       "there is no PARTNER-LICENSE template in this database. Every partner payout is " +
@@ -183,11 +183,14 @@ describe("the document 042's gate holds out for", { skip: SKIP }, () => {
     assert.equal(tpl.subtype, PARTNER_LICENSE_SUBTYPE);
     assert.equal(tpl.signature_required, true);
     assert.equal(tpl.source_kind, "text");
+    assert.equal(tpl.active, false, "retired partner licences must stay unavailable for new sends");
+    assert.equal(await getPartnerLicenseTemplate(db, { orgId }), null,
+      "an archived partner licence must not be offered for a new send");
     assert.ok(tpl.body && tpl.body.length > 2000, "the seeded licence has no words in it");
   });
 
   test("the seeded words render with nothing left blank", async () => {
-    const tpl = await getPartnerLicenseTemplate(db, { orgId });
+    const tpl = await getPartnerLicenseTemplate(db, { orgId, activeOnly: false });
     const rendered = renderContract(tpl.body, mergeContext({
       contact: { full_name: "A Person", email: "a@example.test" },
       values: { company_name: "Fundhub", partner_brand: "Their Brand" },
@@ -234,7 +237,7 @@ describe("before anybody signs", { skip: SKIP }, () => {
   });
 
   test("a licence signed by somebody else does nothing for this partner", async () => {
-    const tpl = await getPartnerLicenseTemplate(db, { orgId });
+    const tpl = await getPartnerLicenseTemplate(db, { orgId, activeOnly: false });
     await signLicenceFor(otherPartnerId, { signedAt: new Date("2026-08-01T10:00:00Z"), template: tpl });
 
     assert.equal(await findSignedPartnerLicense(db, { orgId, partnerId }), null,
@@ -253,7 +256,7 @@ describe("a signed licence, and only that, releases the money", { skip: SKIP }, 
   const SIGNED_AT = new Date("2026-08-20T15:04:05.000Z");
 
   test("the licence is found, and it is this partner's", async () => {
-    const tpl = await getPartnerLicenseTemplate(db, { orgId });
+    const tpl = await getPartnerLicenseTemplate(db, { orgId, activeOnly: false });
     const contract = await signLicenceFor(partnerId, { signedAt: SIGNED_AT, template: tpl });
 
     const found = await findSignedPartnerLicense(db, { orgId, partnerId });
