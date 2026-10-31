@@ -113,3 +113,34 @@ test('the lasting booking link asks for account setup and keeps claim intent', a
   await expect(page.locator('#ok-box')).toBeVisible();
   expect(requests).toEqual([{ email: 'buyer@example.test', booking_claim: true }]);
 });
+
+test('installed browser app keeps portal-login links inside client portal; ordinary browser retains marketing exit', async ({ page }) => {
+  await page.goto('/portal-login.html');
+  await expect(page.locator('.portal-brand')).toHaveAttribute('href', '/');
+  await expect(page.locator('.portal-back a')).toHaveAttribute('href', '/');
+  await expect(page.locator('.portal-back')).toBeVisible();
+
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'standalone', { configurable: true, value: true });
+  });
+  await page.reload();
+  await expect(page.locator('.portal-brand')).toHaveAttribute('href', '/app/client-portal.html');
+  await expect(page.locator('.portal-brand')).toHaveAttribute('aria-label', 'Open Fundhub client portal');
+  await expect(page.locator('.portal-back')).toBeHidden();
+  await expect(page.getByRole('link', { name: 'Sign in with password' })).toHaveAttribute(
+    'href', '/login.html?next=%2Fapp%2Fclient-portal.html'
+  );
+  await expect(page.getByLabel('Email address')).toBeVisible();
+});
+
+test('standalone display-mode fallback protects portal-login marketing exits', async ({ page }) => {
+  await page.addInitScript(() => {
+    const normal = window.matchMedia.bind(window);
+    window.matchMedia = (query) => query === '(display-mode: standalone)'
+      ? { matches: true, media: query, addListener() {}, removeListener() {} }
+      : normal(query);
+  });
+  await page.goto('/portal-login.html');
+  await expect(page.locator('.portal-brand')).toHaveAttribute('href', '/app/client-portal.html');
+  await expect(page.locator('.portal-back')).toBeHidden();
+});

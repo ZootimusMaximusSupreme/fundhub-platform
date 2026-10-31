@@ -45,6 +45,23 @@
     <p class="note portal-back"><a href="/">← Back to fundhub.ai</a></p>
   </div>
 </main>
+<script>
+/* Installed browser app: never send portal sign-in back to the public home.
+   The public marketing links remain unchanged in ordinary browser tabs. */
+(function keepInstalledClientAppInsidePortal() {
+  var standalone = navigator.standalone === true;
+  try { standalone = standalone || window.matchMedia("(display-mode: standalone)").matches; }
+  catch (e) { /* older browsers without display-mode support */ }
+  if (!standalone) return;
+  var brand = document.querySelector(".portal-brand");
+  if (brand) {
+    brand.setAttribute("href", "/app/client-portal.html");
+    brand.setAttribute("aria-label", "Open Fundhub client portal");
+  }
+  var back = document.querySelector(".portal-back");
+  if (back) back.hidden = true;
+})();
+</script>
 <script src="/app/client-ios.js"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════════════
