@@ -3,7 +3,7 @@
 // 2026-10-29). Board: ops/workflows/weekend-2026-10-24.md sections 10.3 to 10.8.
 //
 // WHAT THIS IS. A plain browser script. It adds three functions to
-// window.FHDeckVisuals — yourPath(ctx), moneyLevers(ctx) and companies(ctx) —
+// window.FHDeckVisuals — yourPath(ctx), moneyLevers(ctx), lenderWall(ctx) and companies(ctx) —
 // and each one returns the HTML for a slide body. present.js calls them where
 // the script places each visual (10.0) and falls back to today's content when
 // this file or engine.visual is missing.
@@ -37,8 +37,8 @@
   const V = root.FHDeckVisuals = root.FHDeckVisuals || {};
 
   /* ── state: per visual, per client ─────────────────────────────────────── */
-  const state = { path: {}, levers: {}, companies: {} };
-  const lastCtx = { path: {}, levers: {}, companies: {} };
+  const state = { path: {}, levers: {}, findings: {}, wall: {}, companies: {} };
+  const lastCtx = { path: {}, levers: {}, findings: {}, wall: {}, companies: {} };
   /* The amounts last drawn, so a number counts from what the screen showed. */
   const shown = {};
 
@@ -185,10 +185,50 @@
       try {
         const host = doc.querySelector('[data-fhv="' + name + '"][data-fhv-client="' + cssEsc(client) + '"]');
         if (host) animateIn(host, ctx);
+        if (host && name === "companies") fitToSlide(host);
       } catch (e) { /* the slide moved on */ }
     });
   }
   function cssEsc(s) { return String(s).replace(/["\\]/g, "\\$&"); }
+
+  /* C-01 is the tallest slide. On a laptop screen "Funding partners for life"
+     and the proof used to sit below the edge (2026-10-30). The layout is
+     tighter on a short screen; when it is still taller than the slide, it
+     shrinks to fit, never below 80 percent. Outside the deck's slide (a test
+     page) and on a phone nothing changes. */
+  const FIT_MIN = 0.8;
+  function fitToSlide(host) {
+    if (!host || !host.style || typeof host.getBoundingClientRect !== "function") return;
+    const box = closest(host, ".slide-body");
+    if (!box || typeof box.clientHeight !== "number") return;
+    host.style.zoom = "";
+    // A narrow slide (a phone) stacks and scrolls on purpose; it never shrinks.
+    if (host.getBoundingClientRect().width <= 680) return;
+    let zoom = 1;
+    // Twice: a shrunk slide also gets wider, so its text wraps less.
+    for (let pass = 0; pass < 2; pass++) {
+      const over = box.scrollHeight - box.clientHeight;
+      if (over <= 1) break;
+      const tall = host.getBoundingClientRect().height;
+      if (!(tall > 0)) break;
+      zoom = Math.max(FIT_MIN, zoom * (tall - over) / tall);
+      host.style.zoom = String(Math.floor(zoom * 1000) / 1000);
+      if (zoom <= FIT_MIN) break;
+    }
+  }
+  if (root && typeof root.addEventListener === "function" && !V.__visualsFitBound) {
+    let pending = false;
+    root.addEventListener("resize", function () {
+      if (pending || !raf || !doc || typeof doc.querySelectorAll !== "function") return;
+      pending = true;
+      raf(function () {
+        pending = false;
+        const hosts = doc.querySelectorAll('[data-fhv="companies"]');
+        for (let i = 0; i < hosts.length; i++) fitToSlide(hosts[i]);
+      });
+    });
+    V.__visualsFitBound = true;
+  }
 
   /* ── shared markup ─────────────────────────────────────────────────────── */
   function sampleTag(ctx) {
@@ -248,12 +288,12 @@
       ] },
     { key: "fund", name: "Funded", sub: "Funding, done for you",
       lines: [
-        "Fundhub picks the bank for every application and sends them in planned rounds. One funding sequence is 3 to 6 rounds.",
+        "Fundhub picks the bank for every application and sends them in planned rounds. One funding sequence is about six rounds.",
         "Between rounds, a specialist works on the new inquiries. Funding in your name, your business's name, or both."
       ] },
     { key: "goal", name: "Your goal", sub: "Where this ends",
       lines: [
-        "Each company you add brings its own business credit. Fundhub can run a new funding sequence about every 3 months."
+        "Each company you add brings its own business credit. Fundhub can run the next funding sequence when the file supports it."
       ] }
   ];
   const SIDE_DOOR = { key: "revenue", name: "Revenue funding", sub: "Off Funded, run by hand",
@@ -392,12 +432,9 @@
     const levers = shownLevers(visual);
     const survey = obj(ctx.survey) || {};
     const goal = parseGoal(survey.target);
-    const mismatches = arr(visual.mismatches).filter(function (m) { return obj(m) && obj(m.values); });
-
     if (!isNum(today) && !isNum(optimized)) {
       return head(ctx, LEVERS_EYEBROW) +
-        note("Not on this file yet", "The amounts are not on this file yet. The rest of the slide still works.") +
-        renderMismatches(mismatches, esc);
+        note("Not on this file yet", "The amounts are not on this file yet. The rest of the slide still works.");
     }
 
     /* Which lever is on: none until the closer taps one. The slide starts at
@@ -429,7 +466,7 @@
     const rightCap = !isNum(optimized)
       ? "The optimized amount is not on this file yet."
       : maxStep === 0 ? "Fully optimized."
-        : step === 0 ? "Nothing applied yet. Tap each lever to build the climb."
+        : step === 0 ? (maxStep === 1 ? "Nothing applied yet. Tap the lever to build the climb." : "Nothing applied yet. Tap each lever to build the climb.")
           : step === maxStep ? "Fully optimized, with " + (maxStep === 1 ? "the one lever" : maxStep === 2 ? "both levers" : "all three levers") + " on."
             : "After lever " + step + " of " + maxStep + ".";
     const heads = '<div class="fhv-levers-heads">' +
@@ -458,9 +495,21 @@
       }
     }
     const todayPct = pct(today, scaleMax);
-    const bars = '<div class="fhv-levers-bars" role="img" aria-label="Today ' + ownEsc(amt(today)) + (isNum(projected) && isNum(optimized) ? ", projects to " + ownEsc(amt(projected)) : "") + '">' +
+    const stepBars = (isNum(optimized) ? levers : []).map(function (lever, i) {
+      const before = i === 0 ? today : levers[i - 1].totalAfter;
+      const afterAmount = lever.totalAfter;
+      const known = isNum(before) && isNum(afterAmount);
+      const lower = known ? Math.min(before, afterAmount) : 0;
+      const rise = known ? Math.abs(afterAmount - before) : 0;
+      const delta = known ? (afterAmount >= before ? "+" : "−") + amt(rise) : "";
+      const short = lever.key === "paydown" ? "Cards down" : lever.key === "clean" ? "File cleaned" : "Accounts added";
+      return '<div class="fhv-levers-col is-waterstep' + (i < step ? " is-on" : " is-waiting") + '">' +
+        (known ? '<div class="fhv-levers-rise' + (afterAmount < before ? " is-loss" : "") + '" style="--b:' + round1(pct(lower, scaleMax)) + ";--h:" + round1(pct(rise, scaleMax)) + '"><span class="fhv-levers-riselabel">' + ownEsc(delta) + "</span></div>" : "") +
+        '<span class="fhv-levers-barlabel">' + ownEsc(short) + "</span></div>";
+    }).join("");
+    const bars = '<div class="fhv-levers-bars" style="--cols:' + (isNum(optimized) ? levers.length + 2 : 2) + '" role="img" aria-label="Today ' + ownEsc(amt(today)) + (isNum(projected) && isNum(optimized) ? ", projects to " + ownEsc(amt(projected)) : "") + '">' +
       '<div class="fhv-levers-col"><div class="fhv-levers-bar is-today"' + grow(client, "levers:todayPct", "--h", todayPct) + '></div><span class="fhv-levers-barlabel">Today</span></div>' +
-      '<div class="fhv-levers-col">' +
+      stepBars + '<div class="fhv-levers-col">' +
       (isNum(optimized)
         ? '<div class="fhv-levers-outline" style="--h:' + round1(pct(optimized, scaleMax)) + '"><span class="fhv-levers-outlinelabel">' + ownEsc(amt(optimized)) + "</span></div>" +
           '<div class="fhv-levers-bar is-opt"' + grow(client, "levers:fillPct", "--h", pct(projected, scaleMax)) + "></div>"
@@ -488,7 +537,7 @@
       stepsInner = note("The levers", "Nothing to optimize today. This file is already at its optimized amount.");
     } else {
       const count = levers.length === 1 ? "One lever" : levers.length === 2 ? "Two levers" : "Three levers";
-      stepsInner = '<span class="fhv-ui-eyebrow">' + count + " · tap each one</span>" +
+      stepsInner = '<span class="fhv-ui-eyebrow">' + count + (levers.length === 1 ? " · tap it" : " · tap each one") + "</span>" +
         '<div class="fhv-levers-list">' + levers.map(function (l, i) {
           const n = i + 1;
           const on = n <= step;
@@ -508,7 +557,7 @@
 
     return head(ctx, LEVERS_EYEBROW) +
       '<div class="fhv-levers-grid"><div class="fhv-levers-chart">' + heads + gapLine + bars + "</div>" + steps + "</div>" +
-      renderMismatches(mismatches, esc);
+      (text(visual.pulledOn) ? '<p class="fhv-ui-cap">From your soft pull on ' + ownEsc(text(visual.pulledOn)) + ".</p>" : "");
   }
 
   /** Three reports side by side; a cell that differs from the others is marked
@@ -561,6 +610,130 @@
      B. MORE COMPANIES, MORE FUNDING — one layer per file, plus what one more
      company adds as it ages. The added companies never touch today's total.
      ════════════════════════════════════════════════════════════════════════ */
+  /* ════════════════════════════════════════════════════════════════════════
+     F-01. FILE FINDINGS — only causes the engine actually found on this file.
+     ════════════════════════════════════════════════════════════════════════ */
+  const ITEM_WORDS = { late: "Late payment", collection: "Collection", charge_off: "Charge-off" };
+  function findingsState(client) { return state.findings[client] || (state.findings[client] = { open: null }); }
+
+  function findingRows(visual, amt) {
+    const rows = [];
+    arr(visual.cards).forEach(function (card) {
+      if (!obj(card)) return;
+      const limit = num(card.limit), balance = num(card.balance), target = num(card.target);
+      if (!isNum(limit) || limit <= 0 || !isNum(balance) || !isNum(target) || balance <= target) return;
+      const creditor = text(card.creditor) || "Card on this file";
+      const pay = balance - target;
+      rows.push({ kind: "card", label: creditor, sub: "Pay " + amt(pay) + " to the target", detail: "Pay " + amt(pay) + " on this card to reach " + amt(target) + ".", card: { limit, balance, target } });
+    });
+    arr(visual.items).forEach(function (item) {
+      if (!obj(item)) return;
+      const creditor = text(item.creditor);
+      if (!creditor) return;
+      const kind = ITEM_WORDS[text(item.kind)] || text(item.kind) || "Report item";
+      const bureaus = arr(item.bureaus).map(text).filter(Boolean).join(" · ");
+      rows.push({ kind: "item", label: creditor, sub: kind + (bureaus ? " · " + bureaus : ""), detail: "Review this " + kind.toLowerCase() + " and dispute it with the bureaus that report it." });
+    });
+    arr(visual.mismatches).forEach(function (mismatch) {
+      if (!obj(mismatch) || !obj(mismatch.values)) return;
+      const field = text(mismatch.field);
+      if (!field) return;
+      rows.push({ kind: "mismatch", label: (FIELD_WORDS[field] || field) + " differs", sub: "Three-report check", detail: "Confirm which report value is right, then correct the others.", mismatch });
+    });
+    return rows;
+  }
+
+  function renderFindingsInner(ctx, st) {
+    const visual = obj(ctx && ctx.visual);
+    if (!visual) return head(ctx, "Your file") + note("No credit pull on this file yet", "Your file findings show after the pull.");
+    const amt = amtOf(ctx);
+    const esc = escOf(ctx);
+    const rows = findingRows(visual, amt);
+    if (!rows.length) return head(ctx, "Your file") + note("No file findings here", "This pull has no cards above their target, negative items or report mismatches to show.");
+    const open = Number.isInteger(st.open) && st.open >= 0 && st.open < rows.length ? st.open : null;
+    const list = rows.map(function (row, i) {
+      const card = row.card;
+      const bar = card ? '<div class="fhv-findings-bar" role="img" aria-label="Balance ' + ownEsc(amt(card.balance)) + ', limit ' + ownEsc(amt(card.limit)) + ', target ' + ownEsc(amt(card.target)) + '" style="--balance:' + round1(pct(card.balance, card.limit)) + '"><span class="fhv-findings-fill"></span><span class="fhv-findings-target"></span></div>' +
+        '<div class="fhv-findings-barlabels"><span>Balance ' + ownEsc(amt(card.balance)) + '</span><span>10% line · ' + ownEsc(amt(card.target)) + " target</span></div>" : "";
+      return '<button type="button" class="fhv-findings-row' + (open === i ? " is-open" : "") + '" data-fhv-act="findings:open:' + i + '" aria-expanded="' + (open === i ? "true" : "false") + '">' +
+        '<span class="fhv-findings-rowtop"><span class="fhv-findings-kind">' + ownEsc(row.kind === "card" ? "Card" : row.kind === "item" ? "Item" : "Mismatch") + '</span><strong>' + esc(row.label) + '</strong><span class="fhv-findings-sub">' + ownEsc(row.sub) + '</span></span>' + bar +
+        (open === i ? '<span class="fhv-findings-step">Next step · ' + ownEsc(row.detail) + "</span>" : "") + '</button>';
+    }).join("");
+    const selected = open == null ? null : rows[open];
+    const grid = selected && selected.mismatch ? renderMismatches([selected.mismatch], esc) : "";
+    const basis = text(visual.pulledOn);
+    return head(ctx, "Your file") + '<p class="fhv-ui-cap">' + plural(rows.length, "finding", "findings") + ' on this file · Tap one to see its next step.</p>' +
+      '<div class="fhv-findings-list">' + list + '</div>' + grid +
+      (basis ? '<p class="fhv-ui-cap">From your soft pull on ' + ownEsc(basis) + ".</p>" : "");
+  }
+
+  V.fileFindings = function (ctx) {
+    try {
+      ensureStyle();
+      const client = clientOf(ctx);
+      lastCtx.findings[client] = ctx;
+      return wrap("findings", client, renderFindingsInner(ctx, findingsState(client)));
+    } catch (err) {
+      warn("fileFindings", err);
+      return fallback("findings");
+    }
+  };
+
+  /* ════════════════════════════════════════════════════════════════════════
+     F-02. LENDER WALL — the engine's current matches and its additional
+     after-optimization matches. No lender identity is in this data contract.
+     ════════════════════════════════════════════════════════════════════════ */
+  function wallState(client) { return state.wall[client] || (state.wall[client] = { step: 0 }); }
+
+  function renderWallInner(ctx, st) {
+    const visual = obj(ctx && ctx.visual);
+    const reach = visual && obj(visual.lenderReach);
+    const now = reach ? num(reach.now) : null;
+    const after = reach ? num(reach.after) : null;
+    if (!visual) return head(ctx, "Lender reach") + note("No credit pull on this file yet", "Lender matches show after the pull.");
+    if (!Number.isInteger(now) || now < 0 || !Number.isInteger(after) || after < 0) {
+      return head(ctx, "Lender reach") + note("Not on this file yet", "The lender match count is not on this file yet.");
+    }
+
+    const maxStep = Math.min(3, after);
+    const step = Math.max(0, Math.min(maxStep, num(st.step) || 0));
+    const litAfter = maxStep ? Math.floor(after * step / maxStep) : 0;
+    const tiles = [];
+    for (let i = 0; i < now + after; i++) {
+      const current = i < now;
+      const lit = current || i - now < litAfter;
+      const status = current ? "Today" : "After";
+      const fullStatus = current ? "Today" : "More after optimization";
+      tiles.push('<div class="fhv-wall-tile' + (current ? " is-today" : lit ? " is-lit" : " is-waiting") +
+        '" role="listitem" aria-label="Lender ' + (i + 1) + ", " + fullStatus + (lit && !current ? ", shown" : "") + '">' +
+        '<span class="fhv-wall-index">' + (i + 1) + '</span><span class="fhv-wall-label">Lender</span>' +
+        '<span class="fhv-wall-status">' + status + '</span></div>');
+    }
+    const basis = text(visual.pulledOn);
+    const counts = '<div class="fhv-wall-counts"><div class="fhv-wall-count"><span class="fhv-ui-eyebrow">Matches today</span><strong class="fhv-ui-num">' + now +
+      '</strong></div><div class="fhv-wall-count is-after"><span class="fhv-ui-eyebrow">More after optimization</span><strong class="fhv-ui-num">' + after + '</strong></div></div>';
+    const controls = after ? '<div class="fhv-wall-controls"><button type="button" class="fhv-ui-ghost" data-fhv-act="wall:next"' +
+      (step === maxStep ? " disabled" : "") + '>' + (step === maxStep ? "All additional matches shown" : "Show more matches") + '</button>' +
+      '<button type="button" class="fhv-ui-ghost" data-fhv-act="wall:reset"' + (step === 0 ? " disabled" : "") +
+      '>Back to today</button><span class="fhv-ui-cap">' + litAfter + ' of ' + after + ' more shown</span></div>' : "";
+    return head(ctx, "Lender reach") + counts +
+      (tiles.length ? '<div class="fhv-wall-grid" role="list" aria-label="Lender matches">' + tiles.join("") + "</div>"
+        : note("No matches on this file", "The engine found no lender matches today or after optimization.")) +
+      controls + (basis ? '<p class="fhv-ui-cap">From your soft pull on ' + ownEsc(basis) + ".</p>" : "");
+  }
+
+  V.lenderWall = function (ctx) {
+    try {
+      ensureStyle();
+      const client = clientOf(ctx);
+      lastCtx.wall[client] = ctx;
+      return wrap("wall", client, renderWallInner(ctx, wallState(client)));
+    } catch (err) {
+      warn("lenderWall", err);
+      return fallback("wall");
+    }
+  };
+
   const MAX_ADDED = 4;
   const YEARS = [["year1", "Year 1"], ["year2", "Year 2"], ["after2", "After 2 years"]];
   const COMPANIES_EYEBROW = "More companies, more funding";
@@ -610,7 +783,7 @@
       return head(ctx, COMPANIES_EYEBROW) +
         note("No credit pull on this file yet", "The companies picture shows after the pull.") +
         (companies.length ? '<div class="fhv-companies-legend">' + companies.map(function (c, i) {
-          return '<span class="fhv-companies-key is-biz"><b>Business ' + (i + 1) + "</b>" + (c.name ? " · " + esc(c.name) : "") + "</span>";
+          return '<span class="fhv-companies-key ' + bizCls(i) + '"><b>Business ' + (i + 1) + "</b>" + (c.name ? " · " + esc(c.name) : "") + "</span>";
         }).join("") + "</div>" : "") + proofCard();
     }
     const today = num(visual.todayTotal);
@@ -632,7 +805,7 @@
     const segs = [];
     if (isNum(personal) && personal > 0) segs.push({ cls: "is-personal", label: "Personal", short: "P", amount: personal, key: "p" });
     companies.forEach(function (c, i) {
-      if (isNum(c.amount) && c.amount > 0) segs.push({ cls: "is-biz" + (i % 2 ? " is-alt" : ""), label: "Business " + (i + 1), short: "B" + (i + 1), amount: c.amount, key: "b" + i });
+      if (isNum(c.amount) && c.amount > 0) segs.push({ cls: bizCls(i), label: "Business " + (i + 1), short: "B" + (i + 1), amount: c.amount, key: "b" + i });
     });
     if (priced) for (let k = 0; k < added; k++) segs.push({ cls: "is-added", label: "If you add a company", short: "+1", amount: perAdded, key: "a" + k });
     const todayShare = pct(today, scale);
@@ -734,7 +907,7 @@
     const keys = [];
     if (isNum(personal) && personal > 0) keys.push('<span class="fhv-companies-key is-personal"><b>Personal</b> · ' + esc(amt(personal)) + "</span>");
     companies.forEach(function (c, i) {
-      keys.push('<span class="fhv-companies-key is-biz"><b>Business ' + (i + 1) + "</b>" + (c.name ? " · " + esc(c.name) : "") +
+      keys.push('<span class="fhv-companies-key ' + bizCls(i) + '"><b>Business ' + (i + 1) + "</b>" + (c.name ? " · " + esc(c.name) : "") +
         (isNum(c.amount) ? " · " + esc(amt(c.amount)) : " · needs the company report") + "</span>");
     });
     if (added) keys.push('<span class="fhv-companies-key is-added"><b>+' + added + "</b> if you add a company" + (priced ? " · " + esc(amt(perAdded)) + " each" : "") + "</span>");
@@ -744,21 +917,28 @@
     const fileChips = function (withAdded) {
       const chips = ['<span class="fhv-companies-chip is-personal">Personal</span>'];
       companies.forEach(function (c, i) {
-        chips.push('<span class="fhv-companies-chip' + (isNum(c.amount) ? " is-biz" : " is-dim") + '">Business ' + (i + 1) + (isNum(c.amount) ? "" : " · needs the report") + "</span>");
+        chips.push('<span class="fhv-companies-chip ' + (isNum(c.amount) ? bizCls(i) : "is-dim") + '">Business ' + (i + 1) + (isNum(c.amount) ? "" : " · needs the report") + "</span>");
       });
       for (let k = 0; k < withAdded; k++) chips.push('<span class="fhv-companies-chip is-added">+1 company</span>');
       return chips.join("");
     };
     const seq = '<div class="fhv-companies-timeline"><span class="fhv-ui-eyebrow">Funding partners for life</span><div class="fhv-companies-seqs">' +
-      '<div class="fhv-companies-seq is-now"><span class="fhv-companies-seqname">This funding sequence</span><span class="fhv-ui-cap">Now · 3 to 6 rounds</span><div class="fhv-companies-chips">' + fileChips(0) + "</div></div>" +
+      '<div class="fhv-companies-seq is-now"><span class="fhv-companies-seqname">This funding sequence</span><span class="fhv-ui-cap">Now · about six rounds</span><div class="fhv-companies-chips">' + fileChips(0) + "</div></div>" +
       '<div class="fhv-companies-seq"><span class="fhv-companies-seqname">The next one</span><span class="fhv-ui-cap">About 3 months later</span><div class="fhv-companies-chips">' + fileChips(Math.min(added, 2)) + "</div></div>" +
       '<div class="fhv-companies-seq"><span class="fhv-companies-seqname">The one after</span><span class="fhv-ui-cap">About 3 months more</span><div class="fhv-companies-chips">' + fileChips(added) + "</div></div>" +
-      '</div><p class="fhv-ui-cap">Fundhub can run a new funding sequence about every 3 months. Each company applies for its own business credit, so every company you add brings in more.</p></div>';
+      '</div><p class="fhv-ui-cap">The next funding sequence depends on what the file supports then. Each company applies for its own business credit.</p></div>';
 
+    /* The tab's card and the proof sit side by side on a wide slide, so the
+       whole slide fits a laptop screen (2026-10-30). */
     return head(ctx, COMPANIES_EYEBROW) +
       '<div class="fhv-companies-tabs" role="group" aria-label="Your files">' + tabs.join("") + "</div>" +
-      '<div class="fhv-companies-chart">' + heads + bar + legend + "</div>" + years + detail + seq + proofCard();
+      '<div class="fhv-companies-chart">' + heads + bar + legend + "</div>" + years +
+      '<div class="fhv-companies-pair">' + detail + proofCard() + "</div>" + seq;
   }
+
+  /* Every place a business shows its color (layer, key, chip) uses this, so
+     Business 2 is the same color everywhere on the slide. */
+  function bizCls(i) { return "is-biz" + (i % 2 ? " is-alt" : ""); }
 
   function proofCard() {
     return '<div class="fhv-companies-proof"><span class="fhv-ui-eyebrow">Chris\'s own result. Not a promise.</span>' +
@@ -781,8 +961,8 @@
   };
 
   /* ── taps: one listener, scoped by [data-fhv] ──────────────────────────── */
-  const inner = { path: renderPathInner, levers: renderLeversInner, companies: renderCompaniesInner };
-  const stateFor = { path: pathState, levers: leversState, companies: companiesState };
+  const inner = { path: renderPathInner, levers: renderLeversInner, findings: renderFindingsInner, wall: renderWallInner, companies: renderCompaniesInner };
+  const stateFor = { path: pathState, levers: leversState, findings: findingsState, wall: wallState, companies: companiesState };
   /* Each reducer returns true when the tap changed something worth redrawing. */
   const reducers = {
     path(st, parts) {
@@ -797,6 +977,23 @@
       if (!Number.isFinite(n)) return false;
       st.step = n;
       return true;
+    },
+    findings(st, parts, ctx) {
+      if (parts[1] !== "open") return false;
+      const n = Number(parts[2]);
+      const rows = findingRows(obj(ctx.visual) || {}, amtOf(ctx));
+      if (!Number.isInteger(n) || n < 0 || n >= rows.length) return false;
+      st.open = st.open === n ? null : n;
+      return true;
+    },
+    wall(st, parts, ctx) {
+      const reach = obj(obj(ctx.visual)?.lenderReach);
+      const after = num(reach?.after);
+      if (!Number.isInteger(after) || after <= 0) return false;
+      const maxStep = Math.min(3, after);
+      if (parts[1] === "next" && st.step < maxStep) { st.step += 1; return true; }
+      if (parts[1] === "reset" && st.step > 0) { st.step = 0; return true; }
+      return false;
     },
     companies(st, parts) {
       if (parts[1] === "tab") { st.tab = parts[2] || "personal"; return true; }
@@ -844,6 +1041,7 @@
       if (typeof e.preventDefault === "function") e.preventDefault();
       host.innerHTML = inner[name](ctx, st);
       animateIn(host, ctx);
+      if (name === "companies") fitToSlide(host);
     } catch (err) {
       warn("tap", err);
     }
@@ -886,16 +1084,39 @@
     ".fhv-path-branch{margin-left:58px;align-items:flex-start;width:auto}",
     ".fhv-path-branchline{width:18px;height:2px}",
     ".fhv-path-side{flex-direction:row;width:auto}",
-    ".fhv-levers-grid,.fhv-levers-heads,.fhv-levers-reports,.fhv-companies-seqs,.fhv-companies-heads{grid-template-columns:1fr}",
+    ".fhv-levers-grid,.fhv-levers-heads,.fhv-levers-reports,.fhv-findings-list,.fhv-companies-seqs,.fhv-companies-heads,.fhv-companies-pair{grid-template-columns:1fr}",
     ".fhv-levers-bars{height:220px}",
     ".fhv-companies-bar{height:56px}",
     ".fhv-companies-switch{display:flex;flex-wrap:wrap}",
     ".fhv-companies-year{flex:1 1 33%;border-right:0;border-bottom:1px solid var(--line)}"
   ].join("");
+  /* A short screen (a laptop, 2026-10-30): the companies slide packs tighter
+     so it fits without a scroll. Touch targets stay 48px. */
+  const SHORT = [
+    ".fhv-ui-root[data-fhv=\"companies\"]{gap:8px}",
+    ".fhv-companies-tab{min-height:48px;padding:7px 12px}",
+    ".fhv-companies-chart{gap:12px}",
+    ".fhv-companies-bar{height:56px}",
+    ".fhv-companies-year{min-height:48px;padding:6px 14px}",
+    ".fhv-companies-pair{gap:12px}",
+    ".fhv-companies-detail,.fhv-companies-proof{padding:12px 14px;gap:6px}",
+    ".fhv-companies-timeline{gap:8px;padding-top:12px}",
+    ".fhv-companies-seqs{gap:10px}",
+    ".fhv-companies-seq{padding:10px 12px}",
+    ".fhv-companies-seqname{font-size:16px}",
+    ".fhv-companies-chips{margin-top:4px}",
+    ".fhv-companies-chip{font-size:12px;padding:3px 8px}"
+  ].join("");
+  /* On a wide slide the years switch and its line share one row. */
+  const SHORT_WIDE = [
+    ".fhv-companies-years{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:6px 16px}",
+    ".fhv-companies-years>.fhv-ui-eyebrow{grid-column:1/-1}"
+  ].join("");
 
   const CSS = [
     /* shared */
     ".fhv-ui-root{position:relative;display:flex;flex-direction:column;gap:16px;min-width:0;flex:1 1 auto;container-type:inline-size;font-family:var(--sans);color:var(--ink);font-size:16px;line-height:1.45}",
+    "[data-fhv=companies]{gap:12px}",
     ".fhv-ui-root *{box-sizing:border-box;min-width:0}",
     ".fhv-ui-head{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:28px}",
     ".fhv-ui-eyebrow{display:block;font-family:var(--mono);font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--gray);line-height:1.4}",
@@ -955,15 +1176,19 @@
     ".fhv-levers-gap{display:inline-flex;align-items:baseline;gap:6px;align-self:flex-start;font-size:16px;font-weight:600;color:var(--ink);padding:8px 14px;border-radius:999px;background:var(--warn)}",
     ".fhv-levers-gap.is-zero{background:var(--soft);border:1px solid var(--line);font-weight:500;color:var(--gray)}",
     ".fhv-levers-gapamt{font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.02em;font-size:18px}",
-    ".fhv-levers-bars{position:relative;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;height:240px;margin:24px 0 32px;padding:0 12px;border-bottom:1px solid var(--line)}",
+    ".fhv-levers-bars{position:relative;display:grid;grid-template-columns:repeat(var(--cols,2),minmax(0,1fr));gap:12px;height:240px;margin:24px 0 42px;padding:0 12px;border-bottom:1px solid var(--line)}",
     ".fhv-levers-col{position:relative;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:stretch}",
+    ".fhv-levers-rise{position:absolute;left:0;right:0;bottom:calc(var(--b,0) * 1%);height:calc(var(--h,0) * 1%);min-height:3px;background:var(--ok);border:1px solid var(--ok);border-radius:4px 4px 0 0;transition:background .3s,border-color .3s}",
+    ".fhv-levers-col.is-waiting .fhv-levers-rise{background:transparent;border:1px dashed var(--gray2)}",
+    ".fhv-levers-rise.is-loss{background:var(--alert);border-color:var(--alert)}",
+    ".fhv-levers-riselabel{position:absolute;left:0;right:0;top:-24px;text-align:center;font-size:13px;font-weight:750;font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--ink)}",
     ".fhv-levers-bar{width:100%;height:calc(var(--h,0) * 1%);border-radius:8px 8px 0 0;min-height:3px;transition:height .7s cubic-bezier(.2,.7,.3,1)}",
     ".fhv-levers-bar.is-today{background:var(--ink)}",
     ".fhv-levers-bar.is-opt{background:var(--ok)}",
     ".fhv-levers-outline{position:absolute;left:0;right:0;bottom:0;height:calc(var(--h,0) * 1%);border:2px dashed var(--gray2);border-bottom:0;border-radius:8px 8px 0 0;pointer-events:none}",
     ".fhv-levers-outlinelabel{position:absolute;left:10px;top:8px;font-family:var(--mono);font-size:13px;letter-spacing:.06em;line-height:1.2;color:var(--ink2);font-variant-numeric:tabular-nums;white-space:nowrap}",
     ".fhv-levers-outline.is-unknown{height:40%;border-color:var(--line)}",
-    ".fhv-levers-barlabel{position:absolute;left:0;right:0;bottom:-28px;text-align:center;font-family:var(--mono);font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--gray)}",
+    ".fhv-levers-barlabel{position:absolute;left:0;right:0;bottom:-36px;text-align:center;font-family:var(--sans);font-size:13px;font-weight:650;line-height:1.1;color:var(--gray)}",
     ".fhv-levers-goal{position:absolute;left:0;right:0;bottom:calc(var(--b,0) * 1%);height:calc(var(--h,0) * 1%);border-top:1px dashed var(--ink2);pointer-events:none}",
     ".fhv-levers-goal.is-band{background:rgba(13,17,19,.04);border-bottom:1px dashed var(--ink2)}",
     ".fhv-levers-goallabel{position:absolute;right:0;top:-24px;font-family:var(--mono);font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink2);background:var(--paper);padding:0 6px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}",
@@ -993,6 +1218,34 @@
     ".fhv-levers-cell{display:flex;flex-direction:column;gap:3px;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--soft);overflow-wrap:anywhere}",
     ".fhv-levers-cell.is-diff{border:2px solid var(--alert);background:#fff}",
     ".fhv-levers-cell.is-missing .fhv-ui-text{color:var(--gray)}",
+    /* F-01 file findings */
+    ".fhv-findings-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}",
+    ".fhv-findings-row{display:flex;flex-direction:column;gap:6px;min-height:64px;padding:12px 16px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);text-align:left;cursor:pointer}",
+    ".fhv-findings-row.is-open{border-color:var(--ink);background:color-mix(in srgb,var(--info) 10%,white)}",
+    ".fhv-findings-rowtop{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 8px}",
+    ".fhv-findings-rowtop strong{font-size:16px;font-weight:700;overflow-wrap:anywhere}",
+    ".fhv-findings-kind,.fhv-findings-sub,.fhv-findings-barlabels{font-size:13px;color:var(--gray);line-height:1.2}",
+    ".fhv-findings-kind{padding:3px 6px;border:1px solid var(--line);border-radius:4px;background:var(--soft);font-weight:650}",
+    ".fhv-findings-bar{position:relative;height:10px;border:1px solid var(--line);border-radius:4px;background:var(--soft);overflow:visible}",
+    ".fhv-findings-fill{display:block;width:calc(var(--balance,0) * 1%);height:100%;background:var(--ink);border-radius:3px}",
+    ".fhv-findings-target{position:absolute;left:10%;top:-4px;bottom:-4px;width:2px;background:var(--warn)}",
+    ".fhv-findings-barlabels{display:flex;justify-content:space-between;gap:8px;font-variant-numeric:tabular-nums}",
+    ".fhv-findings-step{display:block;border-top:1px solid var(--line);padding-top:8px;font-size:16px;line-height:1.35}",
+    /* F-02 lender wall */
+    ".fhv-wall-counts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}",
+    ".fhv-wall-count{display:flex;flex-direction:column;gap:4px;padding:16px 24px}",
+    ".fhv-wall-count+.fhv-wall-count{border-left:1px solid var(--line)}",
+    ".fhv-wall-count.is-after{background:color-mix(in srgb,var(--ok) 10%,white)}",
+    ".fhv-wall-count .fhv-ui-num{font-size:32px;font-weight:750}",
+    ".fhv-wall-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(74px,1fr));gap:8px;min-width:0}",
+    ".fhv-wall-tile{display:flex;flex-direction:column;gap:2px;align-items:center;justify-content:center;min-height:68px;padding:8px 4px;text-align:center;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--gray)}",
+    ".fhv-wall-tile.is-today{background:var(--ink);border-color:var(--ink);color:var(--paper)}",
+    ".fhv-wall-tile.is-lit{background:color-mix(in srgb,var(--ok) 10%,white);border-color:var(--ok);color:var(--ink)}",
+    ".fhv-wall-tile.is-waiting{border-style:dashed}",
+    ".fhv-wall-index{font-size:18px;font-weight:750;font-variant-numeric:tabular-nums;line-height:1}",
+    ".fhv-wall-label,.fhv-wall-status{font-size:13px;font-weight:650;line-height:1.1}",
+    ".fhv-wall-status{font-weight:400}",
+    ".fhv-wall-controls{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px}",
     /* B. companies */
     ".fhv-companies-tabs{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch}",
     ".fhv-companies-tab{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;min-height:56px;min-width:44px;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);text-align:left;cursor:pointer;transition:background .2s,border-color .2s}",
@@ -1004,7 +1257,7 @@
     ".fhv-companies-tabs .fhv-ui-ghost{align-self:center}",
     ".fhv-companies-tabname{font-size:16px;font-weight:650;letter-spacing:-.01em;line-height:1.2}",
     ".fhv-companies-tabamt{font-size:13px;color:var(--gray);font-variant-numeric:tabular-nums}",
-    ".fhv-companies-chart{display:flex;flex-direction:column;gap:16px}",
+    ".fhv-companies-chart{display:flex;flex-direction:column;gap:12px}",
     ".fhv-companies-heads{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}",
     ".fhv-companies-headcell{display:flex;flex-direction:column;gap:6px}",
     ".fhv-companies-bar{display:flex;gap:3px;height:64px;width:100%}",
@@ -1037,6 +1290,7 @@
     ".fhv-companies-key::before{content:\"\";width:12px;height:12px;border-radius:3px;flex:0 0 auto;margin-top:2px;background:var(--soft);border:1px solid var(--line)}",
     ".fhv-companies-key.is-personal::before{background:var(--ink);border-color:var(--ink)}",
     ".fhv-companies-key.is-biz::before{background:var(--info);border-color:var(--info)}",
+    ".fhv-companies-key.is-biz.is-alt::before{background:var(--ok);border-color:var(--ok)}",
     ".fhv-companies-key.is-added::before{background:#fff;border:2px dashed var(--gray2)}",
     ".fhv-companies-years{display:flex;flex-direction:column;gap:8px}",
     ".fhv-companies-switch{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff;align-self:flex-start;max-width:100%}",
@@ -1045,7 +1299,10 @@
     ".fhv-companies-year.is-on{background:var(--ink);color:var(--paper)}",
     ".fhv-companies-year.is-on .fhv-ui-cap{color:var(--line)}",
     ".fhv-companies-detail{border:1px solid var(--line);background:#fff;border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:8px}",
-    ".fhv-companies-timeline{display:flex;flex-direction:column;gap:12px;border-top:1px solid var(--line);padding-top:16px}",
+    ".fhv-companies-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:stretch}",
+    ".fhv-companies-pair>:only-child{grid-column:1/-1}",
+    ".fhv-companies-pair .fhv-companies-proof{max-width:none}",
+    ".fhv-companies-timeline{display:flex;flex-direction:column;gap:12px;border-top:1px solid var(--line);padding-top:12px}",
     ".fhv-companies-seqs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}",
     ".fhv-companies-seq{border:1px solid var(--line);border-radius:10px;background:var(--soft);padding:16px;display:flex;flex-direction:column;gap:4px}",
     ".fhv-companies-seq.is-now{background:#fff;border-color:var(--ink)}",
@@ -1054,12 +1311,14 @@
     ".fhv-companies-chip{display:inline-flex;align-items:center;font-family:var(--mono);font-size:13px;letter-spacing:.1em;text-transform:uppercase;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--gray);white-space:nowrap;line-height:1.2}",
     ".fhv-companies-chip.is-personal{background:var(--ink);color:var(--paper);border-color:var(--ink)}",
     ".fhv-companies-chip.is-biz{background:var(--info);border-color:var(--info);color:var(--ink)}",
+    ".fhv-companies-chip.is-biz.is-alt{background:var(--ok);border-color:var(--ok)}",
     ".fhv-companies-chip.is-dim{color:var(--gray)}",
     ".fhv-companies-chip.is-added{border:1px dashed var(--gray2);color:var(--ink2)}",
     ".fhv-companies-proof{border:1px solid var(--line);border-left:3px solid var(--ink);border-radius:10px;background:#fff;padding:16px;display:flex;flex-direction:column;gap:8px;max-width:760px}",
     /* narrow: one column, nothing sideways. Container query first, viewport fallback second. */
     "@container (max-width:680px){" + NARROW + "}",
     "@media (max-width:680px){" + NARROW + "}",
+    "@media (max-height:1000px){" + SHORT + "@container (min-width:681px){" + SHORT_WIDE + "}}",
     "@media (prefers-reduced-motion:reduce){.fhv-ui-root *{transition:none!important}}"
   ].join("\n");
 

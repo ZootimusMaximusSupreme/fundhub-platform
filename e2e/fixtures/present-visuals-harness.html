@@ -9,7 +9,7 @@
      a session. e2e/present-visuals.spec.mjs serves this page on the static
      server's origin and routes /e2e-fixtures/* to e2e/fixtures/. Pick a fixture
      with ?state=full|sample|nodata|bad|mismatch|repair|revenue and one visual
-     with ?only=path|levers|companies. -->
+     with ?only=path|levers|findings|companies. -->
 <link rel="stylesheet" href="/app/fundhub-font.css">
 <link rel="stylesheet" href="/app/fundhub-brand.css">
 <style>
@@ -65,6 +65,7 @@ body{padding:16px}
   var slides = [
     { key: "path", code: "S-08", label: "Your path", h1: "Here's where you are, and the path that fits.", fn: "yourPath" },
     { key: "levers", code: "S-07b", label: "Money levers", h1: "How much more once the file is optimized.", fn: "moneyLevers" },
+    { key: "findings", code: "F-01", label: "File findings", h1: "Each finding on your file has a next step.", fn: "fileFindings" },
     { key: "companies", code: "S-16b", label: "Companies", h1: "More companies, more funding.", fn: "companies" }
   ];
   var stage = document.getElementById("stage");

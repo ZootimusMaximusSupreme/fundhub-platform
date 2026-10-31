@@ -42,13 +42,14 @@ import { buildBusinessScenario } from "../../scripts/sim/crs-scenarios.mjs";
 
 const require = createRequire(import.meta.url);
 const vendorEngine = require("../../vendor/underwriteiq-full/api/lite/crs/engine.js");
+const { buildCloserResult } = require("../../vendor/underwriteiq-full/api/lite/crs/build-closer-result.js");
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SANDBOX = path.resolve(HERE, "../../vendor/underwriteiq-full/api/lite/crs/sandbox");
 const loadSandbox = (name) => JSON.parse(readFileSync(path.join(SANDBOX, name), "utf8"));
 
 const CONTRACT_KEYS = [
-  "source", "todayTotal", "levers", "optimizedTotal", "tierNow", "tierAfter",
+  "source", "pulledOn", "todayTotal", "availableCredit", "reportedEmployers", "lenderReach", "levers", "optimizedTotal", "tierNow", "tierAfter",
   "cards", "items", "mismatches", "companies", "newCompany", "fundability"
 ];
 
@@ -126,7 +127,11 @@ describe("the contract (board 10.8)", () => {
     const v = emptyDeckVisual();
     assert.deepEqual(Object.keys(v), CONTRACT_KEYS);
     assert.equal(v.source, "none");
+    assert.equal(v.pulledOn, null);
     assert.equal(v.todayTotal, null);
+    assert.equal(v.availableCredit, null);
+    assert.deepEqual(v.reportedEmployers, []);
+    assert.equal(v.lenderReach, null);
     assert.deepEqual(v.levers.map((l) => l.key), ["paydown", "clean", "accounts"]);
     assert.deepEqual(v.levers.map((l) => l.label), ["Pay the cards down", "Clean the file", "Add accounts"]);
     assert.ok(v.levers.every((l) => l.applies === false && l.totalAfter === null));
@@ -149,6 +154,10 @@ describe("the contract (board 10.8)", () => {
       const v = buildDeckVisualData({ ...input, businesses: biz });
       assert.deepEqual(Object.keys(v), CONTRACT_KEYS);
       assert.equal(v.source, "none");
+      assert.equal(v.pulledOn, null);
+      assert.equal(v.availableCredit, null);
+      assert.deepEqual(v.reportedEmployers, []);
+      assert.equal(v.lenderReach, null);
       assert.equal(v.optimizedTotal, null);
       assert.ok(v.levers.every((l) => l.totalAfter === null && l.applies === false));
       assert.deepEqual(v.companies, [{ name: "Cedar LLC", incorporatedDate: "2022-09", ageMonths: 42, amount: null }]);
@@ -190,6 +199,7 @@ describe("the sample file (source 'sample')", () => {
 
   test("is labelled a sample and priced by the engine", () => {
     assert.equal(visual.source, "sample");
+    assert.equal(visual.pulledOn, "2026-03-02");
     assert.deepEqual(Object.keys(visual), CONTRACT_KEYS);
     assert.equal(visual.todayTotal, engine.total, "todayTotal is the deck's own headline");
     assert.equal(visual.todayTotal, sample.total, "and the number the engine priced on the pull day");
@@ -215,6 +225,7 @@ describe("the sample file (source 'sample')", () => {
       { creditor: "TOYOTA MOTOR CREDIT", kind: "late", bureaus: ["EX", "TU", "EQ"] }
     ]);
     assert.deepEqual(visual.mismatches, []);
+    assert.equal(visual.availableCredit, 6000, "the Visa's reported $10,000 limit minus its $4,000 balance");
     assert.equal(visual.fundability, null);
   });
 });
@@ -232,6 +243,31 @@ describe("a live-shaped pull (what crs-map.mjs saves)", () => {
     assert.equal(visual.todayTotal, priced.total);
     assert.equal(visual.todayTotal, engine.total);
     assert.equal(visual.tierNow, "FUNDING_PLUS_REPAIR");
+    assert.equal(visual.pulledOn, "2026-03-11", "the date is from this stored pull");
+  });
+
+  test("lender counts match the engine's own closer result, with no lender names", () => {
+    const reach = buildCloserResult(engineRun).lenderReach;
+    assert.deepEqual(visual.lenderReach, {
+      now: reach.availableNow,
+      after: reach.afterOptimization
+    });
+    assert.ok(Number.isInteger(visual.lenderReach.now));
+    assert.ok(Number.isInteger(visual.lenderReach.after));
+    assert.deepEqual(Object.keys(visual.lenderReach), ["now", "after"]);
+    assert.equal(pull.lenderReach, undefined, "the merged bureau row itself does not carry the engine's counts");
+    assert.equal(visual.availableCredit, null, "one open card has no reported limit, so the total is withheld");
+  });
+
+  test("reported employers come from the live-shaped bureau pull and remain distinct from a confirmed current employer", () => {
+    const source = engineRun.normalized.identity.employers.filter((entry) => entry.name && entry.name !== "unknown");
+    assert.ok(source.length > 0, "the pull contains reported employer entries");
+    assert.ok(visual.reportedEmployers.some((entry) => entry.name === source[0].name));
+    for (const entry of visual.reportedEmployers) {
+      assert.ok(source.some((reported) => reported.name === entry.name), "no employer name was invented");
+      assert.ok(entry.bureaus.length > 0);
+      assert.ok(entry.bureaus.every((bureau) => ["EX", "TU", "EQ"].includes(bureau)));
+    }
   });
 
   test("paydown is the engine's own projection; clean is where the tier is re-checked", () => {
@@ -294,6 +330,9 @@ describe("a repair-only file", () => {
     assert.equal(visual.tierNow, "REPAIR_ONLY");
     assert.ok(visual.optimizedTotal > 0, "the cleaned file routes up");
     assert.notEqual(visual.tierAfter, "REPAIR_ONLY");
+    assert.equal(visual.pulledOn, "2026-03-02");
+    assert.ok(visual.lenderReach && Number.isInteger(visual.lenderReach.now));
+    assert.equal(visual.availableCredit, 140, "the two reported open cards have $10 and $130 of headroom");
     assert.equal(engineRun.projectedPreapproval.totalCombined, 0,
       "the engine's own once-fixed amount keeps today's tier and stays $0 (10.2 item 2)");
   });
@@ -444,6 +483,7 @@ describe("one number on the screen", () => {
     assert.equal(v.optimizedTotal, null);
     assert.equal(v.tierNow, null);
     assert.equal(v.newCompany, null);
+    assert.equal(v.lenderReach, null, "a conflicting stored headline withholds lender counts");
     assert.ok(v.cards.length > 0, "the cards do not depend on the headline");
   });
 
