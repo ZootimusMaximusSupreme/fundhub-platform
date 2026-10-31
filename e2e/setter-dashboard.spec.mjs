@@ -224,21 +224,21 @@ test("correcting a lead's score on the call moves both booking links to the othe
   const Q = "https://apply.fundhub.ai/funding-book-call?fh_tier=q";
   const U = "https://apply.fundhub.ai/funding-book-call--02424?fh_tier=u";
   const item = { ...structuredClone(queue.items[0]), booking_url: U, survey: [
-    { key: "cf_svy_self_reported_fico", question: "Your Current Score", answer: "650-699", answer_values: ["650-699"],
-      type: "single", options: ["500-579", "580-649", "650-699", "700-749", "750+", "Not sure"] }
+    { key: "cf_svy_self_reported_fico", question: "Your Current Score", answer: "620-699", answer_values: ["620-699"],
+      type: "single", options: ["500-619", "620-699", "700-759", "760-850", "Not sure"] }
   ] };
   await openScreen(page, "/app/setter-dashboard.html", SETTER, {
     "/api/read/setter-dashboard": { ...queue, items: [item] },
     "/api/setter-dashboard": async (route) => {
       const body = route.request().postDataJSON();
-      expect(body.survey_edits).toEqual({ cf_svy_self_reported_fico: "700-749" });
+      expect(body.survey_edits).toEqual({ cf_svy_self_reported_fico: "700-759" });
       await route.fulfill({ status: 200, contentType: "application/json",
         body: JSON.stringify({ ok: true, survey_edits: body.survey_edits, booking_url: Q }) });
     }
   });
   const move = page.getByRole("link", { name: "Move call time" });
   await expect(move).toHaveAttribute("href", U);
-  await page.getByRole("combobox", { name: "Your Current Score" }).selectOption("700-749");
+  await page.getByRole("combobox", { name: "Your Current Score" }).selectOption("700-759");
   await page.getByRole("button", { name: "Save survey answers" }).click();
   await expect(page.locator("#setter-survey-status")).toHaveText("Survey answers saved.");
   await expect(move).toHaveAttribute("href", Q);

@@ -207,7 +207,8 @@ test("gap sms: journey sql finds the person by email when the event has no clien
 // template, moves its trigger, or changes the ref it writes, the check would go quiet or
 // shout for no reason. This reads the workflow files and fails when they drift.
 const STEP_SOURCES = {
-  "entry.captured": ["s-00-welcome.mjs", ["event: \"entry.captured\"", "SMS-S00-WELCOME", "eventId }"]],
+  // The welcome text's send key is still the event id (it also carries the resume link context now).
+  "entry.captured": ["s-00-welcome.mjs", ["event: \"entry.captured\"", "SMS-S00-WELCOME", "templateKey: SMS_TEMPLATE_KEY, eventId,"]],
   "booking.created": ["s-04b-booking-reminders.mjs", ["{ event: \"booking.created\" }", "SMS-S04-01-CONFIRM", "eventId: `${eventId}:confirm`"]],
   "booking.rescheduled": ["s-04b-booking-reminders.mjs", ["{ event: \"booking.rescheduled\" }", "SMS-S04-01-CONFIRM", "eventId: `${eventId}:confirm`"]],
   "round.started": ["round-started-client-notify.mjs", ["event: \"round.started\"", "SMS-ROUND-STARTED-NOTIFY", "eventId: event.id"]],

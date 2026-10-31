@@ -32,8 +32,7 @@ import { UNSUBSCRIBE_TAG_RE, unsubscribeTagValue } from "../messaging/unsubscrib
 // The one E.164 converter in the repo. Reused, not re-written (CLAUDE.md §8).
 import { normalizePhone } from "../messaging/providers/bland-voice.mjs";
 import { applyRepToContext } from "../auth/authorized-rep.mjs";
-import { surveyFicoBand } from "../survey/cf-question-map.mjs";
-import { ficoGatePasses } from "../config/survey-qualification.mjs";
+import { creditTierFor } from "../config/survey-qualification.mjs";
 
 /* Which column on the client record is the destination for a channel.
    The destination is recorded in the terms of the CHANNEL, not of whichever
@@ -46,7 +45,8 @@ const ADDRESS_BY_CHANNEL = { email: "email", sms: "phone", voice: "phone" };
 const FUNDHUB_TZ = "America/Phoenix";
 
 /* The two funding calendars (owner-set 2026-10-29/30). /apply frames the first for a
-   700-749 or 750+ score answer and the second for every other answer, "Not sure" too.
+   700-and-up score answer (700-759 or 760-850; 700-749 or 750+ on answers saved before
+   2026-10-31) and the second for every other answer, "Not sure" too.
    A text or email link opens in a tab that never saw /apply, so the link itself picks
    the calendar from the saved answer, and fh_tier tells the tracker which label the
    booking carries (QualifiedSchedule / UnqualifiedSchedule). One letter: never the
@@ -57,13 +57,9 @@ export const TIER_BOOKING_LINKS = Object.freeze({
 });
 
 export function tierBookingLink(cf = {}) {
-  const fields = cf || {};
-  // A setter's correction on the call (setter_survey_edits) wins over the typed answer.
-  const edits = fields.setter_survey_edits && typeof fields.setter_survey_edits === "object" ? fields.setter_survey_edits : {};
-  const band = surveyFicoBand({ cf_svy_self_reported_fico_label: edits.cf_svy_self_reported_fico }) || surveyFicoBand(fields);
-  const pass = ficoGatePasses(band);
-  if (pass === null) return null;
-  return pass ? TIER_BOOKING_LINKS.qualified : TIER_BOOKING_LINKS.unqualified;
+  // creditTierFor reads a setter's correction on the call (setter_survey_edits) first.
+  const tier = creditTierFor(cf || {});
+  return tier ? TIER_BOOKING_LINKS[tier] : null;
 }
 
 // Several ClickFunnels posts can start separate runs for one application. Use
