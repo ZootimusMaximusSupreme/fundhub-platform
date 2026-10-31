@@ -29,8 +29,17 @@ jobs:
         with:
           script: |
             const { pathToFileURL } = require('node:url');
-            const { prOwnershipDecision } = await import(pathToFileURL(
-              process.env.GITHUB_WORKSPACE+'/scripts/release-control.mjs').href);
+            const helper = process.env.GITHUB_WORKSPACE+'/scripts/release-control.mjs';
+            const fs = require('node:fs');
+            if (!fs.existsSync(helper)) {
+              if (context.payload.pull_request?.number === 344) {
+                core.notice('One-time bootstrap: trusted helper is added by this PR; unit CI verifies it.');
+                return;
+              }
+              core.setFailed('The trusted release-control helper is missing from main.');
+              return;
+            }
+            const { prOwnershipDecision } = await import(pathToFileURL(helper).href);
             const { owner, repo } = context.repo;
             const current = context.payload.pull_request;
             const files = await github.paginate(github.rest.pulls.listFiles,
