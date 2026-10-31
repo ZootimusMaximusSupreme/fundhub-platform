@@ -54,13 +54,56 @@ export const BOOKED_NO_OUTCOME_SQL = `/* gap-calls:booked-no-outcome */
             SELECT 1 FROM call_outcomes o
              WHERE o.org_id = b.org_id
                AND COALESCE(o.is_demo, false) = false
+               -- An explicitly linked booking reference alone is not proof
+               -- when that outcome belongs to a different client. The closer
+               -- writer records client_id, so require matching buyer identity
+               -- for all reference and clock-fallback paths.
+               -- A NULL-client booking can use a unique provider UID, but
+               -- not one shared by two bookings in the same org: one outcome
+               -- must never clear both. The local booking UUID remains exact.
+               AND (
+                 (b.client_id IS NOT NULL AND o.client_id = b.client_id)
+                 OR (
+                   b.client_id IS NULL AND (
+                     o.booking_ref = b.id::text
+                     OR (
+                       b.provider_uid IS NOT NULL
+                       AND o.booking_ref = b.provider_uid
+                       AND NOT EXISTS (
+                         SELECT 1 FROM bookings same_ref
+                          WHERE same_ref.org_id = b.org_id
+                            AND same_ref.id <> b.id
+                            AND same_ref.provider_uid = b.provider_uid
+                       )
+                     )
+                   )
+                 )
+               )
                AND (
                  (b.provider_uid IS NOT NULL AND o.booking_ref = b.provider_uid)
                  OR o.booking_ref = b.id::text
                  OR (
                    b.client_id IS NOT NULL
                    AND o.client_id = b.client_id
+                   -- Only a genuinely unlinked outcome may use the clock fallback.
+                   -- An outcome explicitly belonging to booking B must not clear A.
+                   AND (o.booking_ref IS NULL OR btrim(o.booking_ref) = '')
                    AND o.logged_at >= COALESCE(b.starts_at, b.ends_at) - interval '2 hours'
+                   AND o.logged_at <= COALESCE(b.ends_at, b.starts_at) + interval '2 hours'
+                   -- If two appointments are within the fallback window, an
+                   -- unlinked outcome cannot prove which call was completed.
+                   -- Require an explicit booking_ref rather than silently
+                   -- clearing both calls with one ambiguous staff entry.
+                   AND NOT EXISTS (
+                     SELECT 1 FROM bookings other
+                      WHERE other.org_id = b.org_id
+                        AND other.client_id = b.client_id
+                        AND other.id <> b.id
+                        AND lower(COALESCE(other.status, '')) IN ('booked', 'rescheduled')
+                        AND COALESCE(other.ends_at, other.starts_at) IS NOT NULL
+                        AND o.logged_at >= COALESCE(other.starts_at, other.ends_at) - interval '2 hours'
+                        AND o.logged_at <= COALESCE(other.ends_at, other.starts_at) + interval '2 hours'
+                   )
                  )
                )
           )
@@ -70,8 +113,12 @@ export const BOOKED_NO_OUTCOME_SQL = `/* gap-calls:booked-no-outcome */
    call_outcomes row. The old test also demanded clients.custom_fields.call_outcome
    be empty. The booking handler sets that field to "booked" on every booking, so
    that test never matched a real booking and this check could not fail.
-   An outcome counts when it names the booking, or when the same client has one
-   logged from two hours before the call began. */
+   An outcome counts when it names this booking. An outcome with no booking_ref
+   can only count when it belongs to the same client AND is within a bounded
+   two-hour window around this specific call, with NO other eligible booking in
+   that window. Ambiguous unlinked results require a booking reference; a later
+   booking's outcome must never clear an earlier unanswered booking.
+   An explicit provider ref from another client also never clears this client. */
 export async function bookedNoOutcome({ db, orgId, now }) {
   const id = "calls:booked-no-outcome";
   if (!db || !orgId) return check(id, "skip", "no database in this run — booked calls not read");

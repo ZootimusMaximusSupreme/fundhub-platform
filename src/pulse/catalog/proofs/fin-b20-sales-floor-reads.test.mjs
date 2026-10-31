@@ -169,7 +169,11 @@ test("lead-source panel: a call is cut by campaign first, then source, then chan
 // ---------------------------------------------------------------------------------------------
 test("floor discipline: calls not logged are past-due closer booking tasks with no disposition", async () => {
   const db = standIn(["tasks", "call_outcomes", "clients"]);
-  const t = (over) => db.insert("tasks", { id: id("t"), org_id: ORG, assignee_role: "closer", title: "Strategy session booked", body: id("BK"), due_at: day(1), done: false, ...over });
+  // An owed booking outcome must belong to an actual same-org, nonarchived
+  // client. Front-house #278 correctly filters orphan/archived tasks; the old
+  // stand-in accidentally seeded tasks with null client_id, hiding that rule.
+  db.insert("clients", { id: "c1", org_id: ORG, custom_fields: JSON.stringify({}) });
+  const t = (over) => db.insert("tasks", { id: id("t"), org_id: ORG, client_id: "c1", assignee_role: "closer", title: "Strategy session booked", body: id("BK"), due_at: day(1), done: false, ...over });
   t({ id: "t-a" }); t({ id: "t-b", title: "Strategy session rescheduled" });
   t({ id: "t-logged" });
   db.insert("call_outcomes", { id: id("o"), org_id: ORG, task_id: "t-logged", client_id: "c1", staff_id: "s1", outcome: "deposit" });
@@ -268,6 +272,9 @@ test("floor discipline: the chip and live check both exclude a call that already
   const ago = (minutes) => new Date(now.getTime() - minutes * 60_000).toISOString();
   const build = (withSync) => {
     const db = standIn(["call_outcomes", "clients", "brain_drive_sync", "tasks"], now);
+    // The production list now excludes booking tasks without an existing
+    // same-org, active buyer. Seed that buyer in the synthetic sample too.
+    db.insert("clients", { id: "c1", org_id: ORG, custom_fields: JSON.stringify({}) });
     const c = (over) => db.insert("call_outcomes", { id: id("o"), org_id: ORG, client_id: "c1", staff_id: "s1", outcome: "deposit", logged_at: ago(120), is_demo: false, ...over });
     c({ id: "u-plain" });
     c({ id: "u-words", transcript: "We talked about the deposit and agreed on the plan." });
@@ -279,7 +286,7 @@ test("floor discipline: the chip and live check both exclude a call that already
     c({ id: "u-demo", is_demo: true });
     c({ id: "u-old", logged_at: ago(20 * 24 * 60) });
     c({ id: "u-other", org_id: OTHER });
-    const t = (over) => db.insert("tasks", { id: id("t"), org_id: ORG, assignee_role: "closer", title: "Strategy session booked", body: id("BK"), due_at: ago(60), done: false, ...over });
+    const t = (over) => db.insert("tasks", { id: id("t"), org_id: ORG, client_id: "c1", assignee_role: "closer", title: "Strategy session booked", body: id("BK"), due_at: ago(60), done: false, ...over });
     t({ id: "t-a" }); t({ id: "t-b", title: "Strategy session rescheduled" });
     t({ id: "t-logged" });
     db.insert("call_outcomes", { id: id("o"), org_id: ORG, task_id: "t-logged", client_id: "c1", staff_id: "s1", outcome: "deposit", recording_url: "https://drive.google.com/file/d/q/view", logged_at: ago(30) });
