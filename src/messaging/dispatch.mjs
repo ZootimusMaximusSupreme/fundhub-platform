@@ -34,6 +34,7 @@ import {
   QUIET_HOURS_CHANNELS, QUIET_END_HOUR, QUIET_HOURS_TZ
 } from "./gate.mjs";
 import { isImmediateStaffAlert, isStaffText, usesSetterContactHours } from "../staff/message-recipient.mjs";
+import { sendTiming, inDripWindow, nextDripWindowOpen, nextHourStrike } from "./send-window.mjs";
 import { resolve, addressFieldFor } from "./providers/index.mjs";
 import { isSynthetic } from "./live-fence.mjs";
 import { isDraftTemplateCopy, isDraftTemplateRow } from "./draft-guard.mjs";
@@ -162,45 +163,14 @@ export const OUTCOME = Object.freeze({
 
    Recorded on the board as a correction to W4, not a silent divergence. */
 
-/* tzOffsetMs — how far the named zone is from UTC at this instant.
-   Read out of Intl rather than hardcoded, so daylight saving is the operating
-   system's timezone database's problem and not this file's. */
-function tzOffsetMs(date, timeZone) {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone, hour12: false,
-    year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit", second: "2-digit"
-  }).formatToParts(date);
-  const p = Object.fromEntries(parts.map((x) => [x.type, x.value]));
-  const asUtc = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour % 24, +p.minute, +p.second);
-  return asUtc - date.getTime();
-}
-
 /* nextQuietHoursEnd — the next instant at which QUIET_END_HOUR strikes in the
-   quiet-hours zone.
+   quiet-hours zone: today if that hour has not come yet, else tomorrow.
 
-   Built by reading the wall clock in that zone, choosing today or tomorrow, and
-   converting back. The offset is applied twice because the offset at the target
-   instant is not always the offset now — on the two daylight-saving nights a
-   year they differ by an hour, and a single pass would land at 10:00 or 12:00.
-
-   Exported so the transition dates can be asserted directly. */
+   The clock math lives in src/messaging/send-window.mjs (nextHourStrike), where
+   the drip window's 9 a.m. wake uses the same function. Exported so the
+   transition dates can be asserted directly. */
 export function nextQuietHoursEnd(from, timeZone = QUIET_HOURS_TZ, endHour = QUIET_END_HOUR) {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone, hour12: false,
-    year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit"
-  }).formatToParts(from);
-  const p = Object.fromEntries(parts.map((x) => [x.type, x.value]));
-  const hour = +p.hour % 24;
-
-  // Before the window opens today → today. Otherwise (we are at or past the
-  // 20:00 start) → tomorrow. Date.UTC normalises a day past the month's end.
-  const dayShift = hour < endHour ? 0 : 1;
-  const wall = Date.UTC(+p.year, +p.month - 1, +p.day + dayShift, endHour, 0, 0);
-
-  let ts = wall;
-  for (let i = 0; i < 2; i += 1) ts = wall - tzOffsetMs(new Date(ts), timeZone);
-  return new Date(ts);
+  return nextHourStrike(from, timeZone, endHour);
 }
 
 /* claimDue — take up to `limit` due messages and mark them 'sending' atomically.
@@ -404,12 +374,22 @@ export async function dispatchOne(db, message, options = {}) {
     const clock = typeof now === "function" ? now : now ? () => new Date(now) : () => new Date();
     const kind = { clientId: message.client_id, channel: message.channel,
       templateKey: message.template_key, providerRef: message.provider_ref, toAddress: message.to_address };
+    /* Customer send hours (owner-set 2026-10-31, src/messaging/send-window.mjs):
+       an instant message (welcome, booking confirmation) is never held; a drip
+       waits for 9 a.m. to 5 p.m. Arizona, text and email both; everything else
+       keeps the quiet hours below. */
+    const timing = sendTiming(message.template_key);
     const setterHours = usesSetterContactHours(kind);
     const quiet = setterHours ? inSetterContactQuietHours(clock(), QUIET_HOURS_TZ) : inQuietHours(clock(), QUIET_HOURS_TZ);
-    if (QUIET_HOURS_CHANNELS.has(message.channel) && quiet && !isImmediateStaffAlert(kind)) {
+    const closed = timing === "drip"
+      ? !inDripWindow(clock())
+      : timing !== "instant" && QUIET_HOURS_CHANNELS.has(message.channel) && quiet && !isImmediateStaffAlert(kind);
+    if (closed) {
       const skipQuiet = isStaffText(kind) ? false : await recipientSkipsQuietHours(db, message.client_id);
       if (!skipQuiet) {
-        const due = nextQuietHoursEnd(clock(), QUIET_HOURS_TZ, setterHours ? 6 : QUIET_END_HOUR);
+        const due = timing === "drip"
+          ? nextDripWindowOpen(clock())
+          : nextQuietHoursEnd(clock(), QUIET_HOURS_TZ, setterHours ? 6 : QUIET_END_HOUR);
         await db.query(
           // The attempt is given back: an unopened window is not a failed
           // delivery, and charging it would burn the retry budget overnight.

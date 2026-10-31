@@ -32,6 +32,7 @@ import { UNSUBSCRIBE_TAG_RE, unsubscribeTagValue } from "../messaging/unsubscrib
 // The one E.164 converter in the repo. Reused, not re-written (CLAUDE.md §8).
 import { normalizePhone } from "../messaging/providers/bland-voice.mjs";
 import { applyRepToContext } from "../auth/authorized-rep.mjs";
+import { creditTierFor } from "../config/survey-qualification.mjs";
 
 /* Which column on the client record is the destination for a channel.
    The destination is recorded in the terms of the CHANNEL, not of whichever
@@ -42,6 +43,24 @@ import { applyRepToContext } from "../auth/authorized-rep.mjs";
 const ADDRESS_BY_CHANNEL = { email: "email", sms: "phone", voice: "phone" };
 
 const FUNDHUB_TZ = "America/Phoenix";
+
+/* The two funding calendars (owner-set 2026-10-29/30). /apply frames the first for a
+   700-and-up score answer (700-759 or 760-850; 700-749 or 750+ on answers saved before
+   2026-10-31) and the second for every other answer, "Not sure" too.
+   A text or email link opens in a tab that never saw /apply, so the link itself picks
+   the calendar from the saved answer, and fh_tier tells the tracker which label the
+   booking carries (QualifiedSchedule / UnqualifiedSchedule). One letter: never the
+   score, never the word. No readable answer: no tier, today's link. */
+export const TIER_BOOKING_LINKS = Object.freeze({
+  qualified: "https://apply.fundhub.ai/funding-book-call?fh_tier=q",
+  unqualified: "https://apply.fundhub.ai/funding-book-call--02424?fh_tier=u"
+});
+
+export function tierBookingLink(cf = {}) {
+  // creditTierFor reads a setter's correction on the call (setter_survey_edits) first.
+  const tier = creditTierFor(cf || {});
+  return tier ? TIER_BOOKING_LINKS[tier] : null;
+}
 
 // Several ClickFunnels posts can start separate runs for one application. Use
 // the first event in the trigger's six-hour survey window as the send key, so
@@ -146,6 +165,7 @@ async function clientContext(db, clientId) {
   const bookingLink =
     cf.calendar_booking_link ||
     cf.booking_link ||
+    tierBookingLink(cf) ||
     process.env.SALES_MEET_BOOKING_URL ||
     "https://apply.fundhub.ai/funding-book-call";
   return {

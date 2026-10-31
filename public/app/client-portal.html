@@ -1065,22 +1065,7 @@ footer.statusbar{flex-shrink:0;height:26px;background:var(--ink);display:flex;al
           </div>
 
           <div class="tabpane" id="tp-msg" role="tabpanel" data-pane="msg">
-            <div class="timeline-item"><span class="td">Today</span><span>Use chat if you have questions before your call</span></div>
-            <!-- ONE empty row. There were two identical "No messages yet." rows
-                 here: #msg-empty and #msg-live-empty, the second marked hidden.
-                 The hidden attribute did nothing — .timeline-item above sets
-                 display:flex, and an author rule beats the browser's own
-                 [hidden]{display:none} — so both painted and the tab showed the
-                 same sentence twice. Nothing in this file or any other ever
-                 referenced either id. Walk finding F36, 2026-09-03. -->
-            <!-- NOT "No messages yet." (walkthrough-4 defect 18, 2026-09-06).
-                 A client never gets a messages read on this page — only staff
-                 do, through /api/dashboard/client, and paintMessages() replaces
-                 this whole pane for them. So for a client the old sentence
-                 stood forever, telling someone we had texted and emailed that
-                 we had never contacted them. This line says what is true. -->
-            <div class="timeline-item" id="msg-empty"><span class="td">—</span><span>Texts and emails we send you arrive on your phone and in your inbox. They are not copied onto this page.</span></div>
-            <div class="msgs-note">Nothing here needs a reply right now.</div>
+            <div class="timeline-item"><span class="td">—</span><span>Messages from your portal chat appear here when you sign in. Texts or emails from outside this conversation may be in your phone or inbox.</span></div>
           </div>
         </div>
       </details>
@@ -4451,6 +4436,100 @@ document.addEventListener("DOMContentLoaded", async function () {
   window.addEventListener("hashchange", openAccount);
   document.addEventListener("click", function (event) { var link = event.target.closest && event.target.closest("#cp-next-link"); if (link && link.getAttribute("href") === "#acct") { var account = document.getElementById("acct"); if (account) account.open = true; } });
   if (document.readyState !== "loading") openAccount();
+})();
+</script>
+
+<script>
+/* Only the signed-in client's saved portal conversation, never a claim about
+   every email/SMS or about a carrier delivery receipt. Staff previews retain
+   their staff-scoped painter. Sample mode cannot reveal real conversations. */
+(function () {
+  "use strict";
+  var pane = document.getElementById("tp-msg"), authorized = false, seq = 0;
+  if (!pane) return;
+  try {
+    if (new URLSearchParams(location.search).get("demo") === "1" ||
+        localStorage.getItem("fh_demo") === "1") return;
+  } catch (_) {}
+  function headers() {
+    var h = { accept: "application/json" }, t = "";
+    try { t = localStorage.getItem("fh_token") || ""; } catch (_) {}
+    if (t && t !== "demo") h.authorization = "Bearer " + t;
+    return h;
+  }
+  function msg(text, role) {
+    pane.replaceChildren();
+    var line = document.createElement("div");
+    line.className = "timeline-item";
+    if (role) { line.setAttribute("role", role); line.setAttribute("aria-live", "polite"); }
+    var date = document.createElement("span"), copy = document.createElement("span");
+    date.className = "td"; date.textContent = "—";
+    copy.textContent = text; line.append(date, copy); pane.append(line);
+  }
+  function when(iso) {
+    var d = new Date(iso || "");
+    return Number.isFinite(d.getTime())
+      ? d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })
+      : "Date unavailable";
+  }
+  function paint(rows) {
+    pane.replaceChildren();
+    if (!rows.length) {
+      msg("No saved portal chat messages yet. Use Chat to contact your team. Other texts and emails may not appear here.", "status");
+      return;
+    }
+    var intro = document.createElement("p");
+    intro.className = "msgs-note";
+    intro.textContent = "Saved portal conversation. This is not a carrier delivery receipt; other messages may be in your inbox.";
+    pane.append(intro);
+    rows.forEach(function (row) {
+      var line = document.createElement("div"), date = document.createElement("span");
+      var content = document.createElement("span"), sender = document.createElement("strong");
+      var body = document.createElement("span");
+      line.className = "timeline-item"; date.className = "td";
+      date.textContent = when(row.created_at);
+      sender.textContent = row.sender_kind === "client" ? "You" :
+        row.sender_kind === "agent" ? "Fundhub assistant" : "Fundhub team";
+      body.textContent = " — " + String(row.rendered_body || "");
+      content.append(sender, body); line.append(date, content); pane.append(line);
+    });
+  }
+  function fail() {
+    msg("We could not load your saved chat messages. Try again.", "alert");
+    var retry = document.createElement("button");
+    retry.className = "dl-btn"; retry.type = "button";
+    retry.textContent = "Retry loading messages";
+    retry.addEventListener("click", load); pane.append(retry);
+  }
+  function load() {
+    if (!authorized) return;
+    var version = ++seq;
+    msg("Loading your portal chat messages…", "status");
+    fetch("/api/chat/portal-message", { method: "GET", headers: headers(), credentials: "same-origin" })
+      .then(function (r) {
+        return r.json().catch(function () { return null; }).then(function (d) {
+          if (!r.ok || !d || d.ok !== true || !Array.isArray(d.messages)) throw Error("read_failed");
+          return d.messages;
+        });
+      }).then(function (rows) { if (seq === version) paint(rows); })
+      .catch(function () { if (seq === version) fail(); });
+  }
+  document.addEventListener("click", function (event) {
+    var tab = event.target.closest && event.target.closest('#acct-tabs [data-tab="msg"]');
+    if (tab && authorized) load();
+  });
+  fetch("/api/auth/session", { headers: headers(), credentials: "same-origin" })
+    .then(function (r) { return r.json().catch(function () { return null; }).then(function (d) {
+      return r.ok && d && d.ok === true ? d : null;
+    }); })
+    .then(function (session) {
+      if (!session || session.principal !== "client") return;
+      if (session.portal_sample === true) {
+        msg("Sample view — real messages are hidden. Switch to your real account to read messages.", "status");
+        return;
+      }
+      authorized = true; load();
+    }).catch(function () { /* A failed session check must not expose messages. */ });
 })();
 </script>
 </body>
