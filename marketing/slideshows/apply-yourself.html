@@ -532,6 +532,10 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
   font-family:var(--mono);font-size:var(--fs-caption);font-weight:500;color:var(--ink)}
 .steps li + li::after{content:"";position:absolute;top:14px;left:-50%;width:100%;height:2px;background:var(--ink)}
 .steps li.is-hot::before{background:var(--ink);color:#fff}
+.slide.dark .steps li{color:var(--ss-dark-fg)}
+.slide.dark .steps li::before{background:var(--ss-dark);border-color:#fff;color:#fff}
+.slide.dark .steps li + li::after{background:#fff}
+.slide.dark .steps li.is-hot::before{background:#fff;color:var(--ink)}
 
 /* The real credit report's "Why this score" block, the way Fundhub's tri-bureau
    report prints it: the bureau, the score and model, then the bureau's own
@@ -617,6 +621,9 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
 .real .clause{margin:0;font-size:.9375rem;line-height:1.5}
 .real .nw{white-space:nowrap}
 .real .clause mark{background:var(--ss-yes);color:inherit;padding:1px 3px;border-radius:4px;font-weight:700}
+.real img{display:block;width:100%;height:auto;border-radius:6px}
+.real.shot{padding:0;overflow:hidden}
+.real.shot img{border-radius:0}
 .real-src{margin:8px 2px 0;font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.04em;color:var(--ss-muted)}
 .slide.dark .real-src{color:var(--ss-dark-muted)}
 

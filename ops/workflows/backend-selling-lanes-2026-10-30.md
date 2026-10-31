@@ -281,12 +281,12 @@ Owned by the slideshows chat (branch `claude/backend-selling-slideshows`). Other
 | 7 | `thirteen-points` | Blueprint and Repair | 13 optimization points, done in the right order. | done (builder B, checked) |
 | 8 | `card-paydown` | Blueprint and Repair | Which card you pay first, and to what target. | done (builder B, checked) |
 | 9 | `credit-optimization` | Blueprint and Repair | The letters go out in order, and each one asks for more. | done (builder B, checked) |
-| 10 | `credit-partner` | Blueprint and Repair | You don't have to qualify alone. | claimed: builder C |
-| 11 | `business-one-two` | Blueprint and Repair | Each business is judged on its own. Start it now. | claimed: builder C |
-| 12 | `blueprint-12-months` | Blueprint and Repair | What 12 months on the Blueprint look like. | claimed: builder C |
-| 13 | `soft-pull` | Every lane | Reading your file does not move your score. | claimed: builder C |
+| 10 | `credit-partner` | Blueprint and Repair | You don't have to qualify alone. | done (builder C, checked) |
+| 11 | `business-one-two` | Blueprint and Repair | Each business is judged on its own. Start it now. | done (builder C, checked) |
+| 12 | `blueprint-12-months` | Blueprint and Repair | What 12 months on the Blueprint look like. | done (builder C, checked) |
+| 13 | `soft-pull` | Every lane | Reading your file does not move your score. | done (builder C, checked) |
 | 14 | `the-call` | Every lane | Your call is a working call on your real file. | done (builder D, checked; "Google Meet" changed to "a video call", RULES.md 1.4) |
-| 15 | `who-we-are` | Every lane | Fundhub keeps its word, in writing. | claimed: builder C |
+| 15 | `who-we-are` | Every lane | Fundhub keeps its word, in writing. | done (builder C, checked) |
 
 Slide plans (question, picture, headline):
 
@@ -310,6 +310,8 @@ Slide plans (question, picture, headline):
 **Manifest so far.** `marketing/slideshows/_shell/slideshow.css`, `_shell/slideshow.js`, `build.mjs`, `check.mjs`, `pre-underwriting.html`. New rule `.ai/rules/show-real-proof.md` (owner-set 2026-10-31) with its links, CLAUDE.md line and index row. No routes, no workflows, no database, nothing sent.
 
 **Leftovers (not fixed here).**
+- The Blueprint product screens are crops of the 6-month timelapse simulation (2026-10-21), so their "Done" dates sit in 2027. Re-shoot those screens from a live sample client when one exists, then re-crop blueprint-12-months, card-paydown, business-one-two and thirteen-points.
+- Chris names Experian, Equifax, TransUnion and LexisNexis on who-we-are (his 2026-10-31 answer); RULES.md 1.4 says no vendor names. His newer answer was followed. Say the word to cut them.
 - `marketing/slideshows/pre-underwriting-draft-1.html` is the rejected draft. It stays until Chris says to remove it.
 - `scripts/render-crs-standard-report.mjs` is an uncommitted file in the main checkout, owned by another chat. The slideshows only copied its printed output.
 
