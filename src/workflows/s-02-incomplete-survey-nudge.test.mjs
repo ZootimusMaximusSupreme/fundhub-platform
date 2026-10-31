@@ -326,11 +326,20 @@ test("finished is checked first, then a reply, then a booking", async () => {
 
 // ── the words the message carries ────────────────────────────────────────────────────────────────
 
-test("every text and email carries the signed resume link for this person", async () => {
+/* The templates here name {{survey_resume_link}} in the texts too, on purpose: the texts must still
+   come out without it (review 2026-10-31). The link opens saved answers, and the phone on a record
+   can belong to someone else; the email address is the lead's identity. */
+test("every email carries the signed resume link for this person; no text carries one", async () => {
   const w = world({ start: AT_10AM });
   await run(w, optIn(w));
   assert.equal(w.db.messages.length, 6);
   w.db.messages.forEach((m, i) => {
+    assert.ok(!m.rendered_body.includes("{{"), "no merge tag is left over");
+    assert.ok(m.rendered_body.includes("Hi Pat"), "the other merge tags still work");
+    if (m.channel === "sms") {
+      assert.doesNotMatch(m.rendered_body, /apply\?r=|https?:\/\//, `${m.template_key} carries no link: ${m.rendered_body}`);
+      return;
+    }
     const link = m.rendered_body.match(/https:\/\/apply\.fundhub\.ai\/apply\?r=([A-Za-z0-9_-]+)/);
     assert.ok(link, `${m.template_key} has the link: ${m.rendered_body}`);
     assert.deepEqual(
@@ -338,10 +347,9 @@ test("every text and email carries the signed resume link for this person", asyn
       { clientId: CLIENT },
       `${m.template_key}: the token opens this person's file`
     );
-    assert.ok(!m.rendered_body.includes("{{"), "no merge tag is left over");
-    assert.ok(m.rendered_body.includes("Hi Pat"), "the other merge tags still work");
     assert.ok(!m.rendered_body.includes(EMAIL) && !m.rendered_body.includes("5551234567"), "the link holds no email or phone");
   });
+  assert.equal(w.db.messages.filter((m) => m.channel === "sms").length, 3, "three texts were checked");
 });
 
 test("with no signing key the touches still go, with the plain apply link, and the gap is logged", async () => {
@@ -357,6 +365,10 @@ test("with no signing key the touches still go, with the plain apply link, and t
     await run(w, optIn(w));
     assert.equal(w.db.messages.length, 6, "a missing key does not stop the follow-up");
     for (const m of w.db.messages) {
+      if (m.channel === "sms") {
+        assert.doesNotMatch(m.rendered_body, /apply/, "a text names no link, signed or plain");
+        continue;
+      }
       assert.ok(m.rendered_body.includes("https://apply.fundhub.ai/apply"), m.rendered_body);
       assert.ok(!m.rendered_body.includes("?r="), "and it is the plain link");
     }
@@ -389,13 +401,14 @@ const ALL_EIGHT = {
 };
 const bodyOf = (w, key) => w.db.messages.find((m) => m.template_key === key).rendered_body;
 
-test("every text and email carries all three tags, worked out from what this person has saved", async () => {
+test("every text and email carries the two progress tags, and every email the link, worked out from what this person has saved", async () => {
   const w = world({ start: AT_10AM, clients: [lead({ custom_fields: { ...ANSWERED_THREE } })] });
   await run(w, optIn(w));
   assert.equal(w.db.messages.length, 6);
   for (const m of w.db.messages) {
     assert.ok(m.rendered_body.includes("you stopped at the credit score question, 5 more taps to go:"), m.rendered_body);
-    assert.match(m.rendered_body, /https:\/\/apply\.fundhub\.ai\/apply\?r=[A-Za-z0-9_-]+$/);
+    if (m.channel === "sms") assert.match(m.rendered_body, /to go: $/, "the text renders the link tag blank");
+    else assert.match(m.rendered_body, /https:\/\/apply\.fundhub\.ai\/apply\?r=[A-Za-z0-9_-]+$/);
     assert.ok(!m.rendered_body.includes("{{"), "no merge tag is left over");
   }
 });

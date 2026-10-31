@@ -47,7 +47,7 @@ export const TRIPWIRES = Object.freeze({
   "route:public/slo-interest": { impact: "money", checks: ["lead:pipe-cut-with-traffic", "handoff:contact-no-followup"] },
   "route:public/survey-submit": { impact: "money", checks: ["lead:pipe-cut-with-traffic", "handoff:lead-first-touches-missing"] },
   // 2026-10-31: the come-back link in the welcome and the S-02 messages. A broken door sends the lead to the top.
-  "route:public/survey-resume": { impact: "customer", checks: ["survey:resume-link-opens", "survey:resume-door-answers", "survey:resume-links-signed"] },
+  "route:public/survey-resume": { impact: "customer", checks: ["survey:resume-link-opens", "survey:resume-door-answers", "survey:resume-links-signed", "survey:resume-no-link-in-texts"] },
   "route:payment-links": { impact: "money", checks: ["payments:pay-link-webhook", "payments:checkout-started-no-link", "payments:whop-paid-no-access"] },
   "job:finance-os-pull-sweeper": { impact: "customer", checks: ["blueprint:monthly-delivery"] },
   "job:waypoint-nudge-sweeper": { impact: "customer", checks: ["blueprint:coach-call-delivery", "gap:sms-sending-stuck"] },

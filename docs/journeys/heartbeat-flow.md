@@ -132,7 +132,9 @@ daily deep check `survey:resume-link-opens` (`src/pulse/coverage/gap-survey-resu
 it mints the newest real lead's come-back link and reads it the way the door does.
 Every hour the `survey-resume` beat (shift `pulse-hourly-b`, with the other lead beats)
 asks the live door with no code, which must answer its own 400 `token_required`, and
-reads the come-back messages of the last 24 hours, which must each carry a signed link.
+reads the last 24 hours: every come-back email must carry a signed link, and no text may
+carry one (a link in a text opens saved answers to whoever holds that phone; review
+2026-10-31).
 
 ## The hourly pulse (added 2026-10-09)
 
