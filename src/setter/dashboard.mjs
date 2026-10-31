@@ -378,7 +378,9 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
         });
         await persistHandoff(writer, client_id, staff.org_id, { handoff_text: handoffText });
       }
-      return { status: 200, body: { ok: true, survey_edits: saved } };
+      // A corrected score can move the lead to the other calendar.
+      const bookingUrl = tierBookingLink({ ...jsonObject(client.custom_fields), setter_survey_edits: saved });
+      return { status: 200, body: { ok: true, survey_edits: saved, booking_url: bookingUrl } };
     });
   }
   const validated = sanitizeHandoffPatch(input);
