@@ -171,6 +171,7 @@ jobs:
       - name: Ship
         env:
           CI: "true"
+          EXPECTED_RELEASE_SHA: ${{ needs.release_gate.outputs.sha }}
           NODE_OPTIONS: "--dns-result-order=ipv4first"
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}

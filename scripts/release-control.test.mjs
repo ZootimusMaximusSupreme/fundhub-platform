@@ -59,6 +59,7 @@ test('workflow source keeps PR guard read-only and ship behind CI',()=>{
   assert.match(ship,/needs:\s*release_gate/);
   assert.match(ship,/releaseDecision/);
   assert.match(ship,/Enforce exact main SHA before Ship/);
+  assert.match(ship,/EXPECTED_RELEASE_SHA:\s*\$\{\{\s*needs\.release_gate\.outputs\.sha\s*\}\}/);
   assert.doesNotMatch(ship,/on:\n  push:\n    branches:\s*\[main\]/);
   assert.match(guard,/pull_request:/);
   assert.match(guard,/prOwnershipDecision/);
