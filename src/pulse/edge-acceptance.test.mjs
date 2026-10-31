@@ -29,6 +29,35 @@ test("A->B contract is versioned and covers eleven business families", () => {
   assert.equal(new Set(CRITICAL_EDGES.map((e) => e.id)).size, CRITICAL_EDGES.length);
 });
 
+test("event bus, dead-letter and Inngest sender changes demand correlated A-to-B proof", () => {
+  const chokepoints = [
+    "src/events/bus.mjs", "src/events/registry.mjs",
+    "src/events/dead-letter.mjs", "src/workflows/client.mjs"
+  ];
+  const report = reportCriticalSourceChanges(chokepoints);
+  assert.equal(report.verdict, "REVIEW_REQUIRED");
+  assert.deepEqual(report.edges.map((edge) => edge.id), [
+    "lead-booking-call-outcome", "payment-ledger-entitlement",
+    "consent-crs-result", "round-funded-fee-commission",
+    "repair-enrollment-bureau-result", "blueprint-financeos-report",
+    "outbound-message-provider-receipt"
+  ]);
+  for (const edge of report.edges) assert.deepEqual(edge.files, chokepoints);
+  assert.deepEqual(report.unmappedHighRiskFiles, []);
+  assert.equal(report.evidenceNote, "MISSING");
+  assert.equal(report.liveReceipt, "NEEDS_LIVE_RECEIPT");
+
+  // A committed producer event (even with a successful HTTP/webhook ACK) is
+  // not a customer/business outcome if its Inngest consumer never runs.
+  assert.deepEqual(judgeSyntheticEdge({ ...basics, consumer: null, receipt: null }), {
+    verdict: "RED", reason: "consumer-not-completed-for-event"
+  });
+  // Nor does a successfully consumed event prove the ledger/receipt was saved.
+  assert.equal(judgeSyntheticEdge({ ...basics, receipt: null }).verdict, "RED");
+  assert.equal(judgeSyntheticEdge(basics).verdict, "PASS");
+  assert.deepEqual(changedCriticalEdges(["src/events/bus.test.mjs"]), []);
+});
+
 test("shared Pulse lender matcher is a runtime bank-guidance path, not an exempt observer file", () => {
   // src/lenders/store.mjs re-exports matchForClient from this Pulse beat library.
   // Both the Blueprint bank recommendation and lender-match result depend on
