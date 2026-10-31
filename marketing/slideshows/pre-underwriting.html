@@ -78,6 +78,16 @@
   - Display check (delivery-and-collaboration.md): every slide viewed at
     390 pixels wide before it shipped.
 
+  Talking points (aside.talk, hidden from viewers; open with #notes or N):
+  about 45 to 60 seconds a slide, so the video runs about five minutes and
+  each slide chops into its own short clip (Hammer Them SOP: short form under
+  90 seconds, one insight about every 45 seconds). Sources: the same lines as
+  each slide's data-src, plus Chris 2026-10-31 (chris-voice-profile.md:27, :33,
+  action takers line in owner-voice.md:15), the agreement's "Your delay or
+  error does not pause either clock" (493...sql:53, section 3) and the
+  thank-you script's shared-screen line (direct-book-thank-you-2026-10-15.md:37).
+  A "Your story" cue asks Chris for his own real story; nothing is invented.
+
   Each slide's data-src names the file and line its facts come from.
   The shared design is copied in by build.mjs. Edit _shell/, not this copy.
 -->
@@ -454,6 +464,18 @@ html:not(.ss-js) .slide.dark{background:var(--ss-dark);color:var(--ss-dark-fg);
 .slide.dark .lede{color:var(--ss-dark-sub)}
 .slide.dark .lede strong{color:var(--ss-dark-fg)}
 
+/* ── Talking points: Chris's notes for recording the video ─────────────────
+   Hidden from every viewer. Open them with #notes on the link or the N key.
+   About 45 seconds of talk per slide, so a deck runs about five minutes and
+   each slide chops into its own short clip (Hammer Them SOP). */
+.talk{display:none}
+html.ss-notes .talk{display:block;margin-top:4px;padding:12px 14px;border:1px dashed var(--ss-rule);
+  border-radius:10px;background:var(--soft);color:var(--ink)}
+html.ss-notes .slide.dark .talk{background:var(--card);border-color:var(--cardline);color:var(--cardtext)}
+.talk::before{content:"Talking points";display:block;margin-bottom:6px;font-family:var(--mono);
+  font-size:var(--fs-caption);letter-spacing:.12em;text-transform:uppercase;color:var(--gray)}
+.talk ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:.9375rem;line-height:1.45}
+
 /* ── Bottom bar: Back and Next ─────────────────────────────────────────── */
 .ss-nav{display:flex;gap:10px;padding-block:10px 14px}
 .ss-btn{flex:1;min-height:52px;padding:0 18px;border-radius:8px;border:1px solid var(--ss-rule);
@@ -741,6 +763,16 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
       </div>
       <p class="real-src">Sample report. Simulated file, no bureau contacted.</p>
     </figure>
+    <aside class="talk" aria-hidden="true">
+      <ul>
+        <li>When a bank says no to a good score, the reason was sitting on the credit report before anyone applied.</li>
+        <li>Look at this sample report. TransUnion, FICO Score 9, a 706. That's good credit.</li>
+        <li>Now look right under the score. The bureau prints the reasons that hold the score down, in its own words.</li>
+        <li>The top one says the balance on the cards is too high for the limits. That line is the red flag.</li>
+        <li>The bank reads that line. A good score doesn't change what that line says.</li>
+        <li>If nobody reads that line before you apply, the bank finds it before you do, and you get the no.</li>
+      </ul>
+    </aside>
   </section>
 
   <section class="slide" data-src="The top of a credit report lists the reasons a bank approves or denies; the bank's letter gives the same reasons: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:209. The bureau prints its reason lines with every score: src/finance/sample-credit-file.mjs:81-86 and the engine reads them per bureau (vendor/underwriteiq-full/api/lite/crs/normalize-soft-pull.js:190-193). Answer before an application goes out: public/index.html:454.">
@@ -772,6 +804,16 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
         </svg>
       </div>
     </figure>
+    <aside class="talk" aria-hidden="true">
+      <ul>
+        <li>Every credit report lists reasons under the score, and most people scroll right past them.</li>
+        <li>Those lines are what the bank looks at when it decides.</li>
+        <li>When a bank turns you down, the letter it sends gives those same reasons.</li>
+        <li>So the answer was on your file the whole time. It just has to be read before you apply, not after.</li>
+        <li>That's the first thing we do with every file. We read those lines first.</li>
+        <li>Your story: a time someone showed you their denial letter, and the same reason was sitting on their report.</li>
+      </ul>
+    </aside>
   </section>
 
   <section class="slide" data-src="Almost every application you send is a hard pull, and each one costs you: docs/sops/weekend-2026-10-24/04-sales-call-script.md:160. The banks see the inquiries stack, and they start denying you: public/app/present.js:108 (closer line). The picture is the Inquiries rows of the same sample report (scripts/render-crs-standard-report.mjs, 2026-10-31), one per bureau, with each pull's reason from the sample file: src/finance/sample-credit-file.mjs:103-107.">
@@ -796,6 +838,16 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
       </div>
       <p class="real-src">Sample report. Simulated file, no bureau contacted.</p>
     </figure>
+    <aside class="talk" aria-hidden="true">
+      <ul>
+        <li>Here's what applying with that red flag costs you.</li>
+        <li>Almost every application you send is a hard pull, and each one costs you.</li>
+        <li>This sample file already carries three hard inquiries, one on each bureau: two card applications and a request for a higher limit.</li>
+        <li>A no from the bank doesn't take the inquiry away. It stays on your report, and the next bank sees it.</li>
+        <li>The banks see the inquiries stack, and they start denying you.</li>
+        <li>So an application with the red flag still on the file costs you twice: the no, and the inquiry.</li>
+      </ul>
+    </aside>
   </section>
 
   <section class="slide" data-src="Part 0 rule 8 wording: marketing/ads/RULES.md:44. Before a single application goes out: marketing/ads/scripts/2026-10-14.md:61 (green-lit). Pre-underwriting with the same models the banks use: Chris 2026-10-31, marketing/copy-skills/copybot/references/chris-voice-profile.md:29. Our UnderwriteIQ system: public/app/present.js:99 (closer line). What it checks: src/underwrite/report.mjs:52-80. Fix it first, then funding: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:210.">
@@ -830,6 +882,17 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
         </svg>
       </div>
     </figure>
+    <aside class="talk" aria-hidden="true">
+      <ul>
+        <li>This is what we do instead. We review your file the way a lender does, before a single application goes out.</li>
+        <li>That's pre-underwriting, and we use the same models the banks use.</li>
+        <li>Our UnderwriteIQ system reads your card balances, your hard inquiries, your main card and any negative accounts.</li>
+        <li>Walk the chart with me. Your report goes in, we review it like a lender, and we ask one question: is there a red flag?</li>
+        <li>If there is, we fix it first, then we review the file again.</li>
+        <li>If there isn't, your file goes to the banks that fit it.</li>
+        <li>Most banks approve good credit. The whole game is catching the one red flag that gets you denied.</li>
+      </ul>
+    </aside>
   </section>
 
   <section class="slide" data-src="Banks that fit your file; you only apply where your file makes sense: public/app/present.js:99 (closer line). Banks that approve files like yours: marketing/ads/scripts/2026-10-14.md:63 (green-lit). We pick the banks and the order; they say yes or no: docs/sops/weekend-2026-10-24/04-sales-call-script.md:229. No approval promise: db/migrations/493_funding_and_repair_agreement_text.sql:53 (section 3).">
@@ -861,6 +924,16 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
         </svg>
       </div>
     </figure>
+    <aside class="talk" aria-hidden="true">
+      <ul>
+        <li>Your applications only go to the banks that fit your file.</li>
+        <li>We check your file against each bank first, so you only apply where your file makes sense.</li>
+        <li>Look at the map. Your file sits in the middle, and the lines only run to the banks that fit it.</li>
+        <li>Our bank matching picks the banks that approve files like yours.</li>
+        <li>We pick the banks and the order, and the banks make the call. That's why the review up front matters so much.</li>
+        <li>We put so much on the line, so every application has to count.</li>
+      </ul>
+    </aside>
   </section>
 
   <section class="slide dark" data-src="Guarantee line, word for word: marketing/copy-skills/copybot/references/owner-voice.md:18. The picture is the agreement's own words, copied exactly from section 3 of the funding agreement the CRM sends: db/migrations/493_funding_and_repair_agreement_text.sql:53 (G-01 and G-02)." data-figures="the contract's 24 and 72 business hours">
@@ -877,6 +950,15 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
         <span class="chip on"><span class="cd"></span>Our guarantee</span>
       </div>
     </figure>
+    <aside class="talk" aria-hidden="true">
+      <ul>
+        <li>Here's how fast it moves. Applications go out within 72 business hours. That's our guarantee, and it's in your contract. That typically means approvals come very shortly after.</li>
+        <li>This is the actual clause from the agreement. The clock starts when you sign.</li>
+        <li>Within 24 business hours, a funding advisor is working your file.</li>
+        <li>Your delay doesn't pause our clock either. That's written in there too.</li>
+        <li>We put it in writing because we fulfill. We keep our word.</li>
+      </ul>
+    </aside>
   </section>
 
   <section class="slide" data-src="We pull your file together right on the call; it's a soft pull, so your score does not move; you see how much you qualify for based on where you're at right now and what's holding the rest back: docs/sops/weekend-2026-10-24/04-sales-call-script.md:69. Fund now, fix first, or both: same file :176. Your advisor shares the screen and goes through your file with you: marketing/vsl/direct-book-thank-you-2026-10-15.md:37 (green-lit). Part 0 rule 8 wording: marketing/ads/RULES.md:44.">
@@ -909,6 +991,16 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
         </svg>
       </div>
     </figure>
+    <aside class="talk" aria-hidden="true">
+      <ul>
+        <li>On your call, we review your file with you, the way a lender does.</li>
+        <li>We pull your file together right there on the call. It's a soft pull, so your score does not move.</li>
+        <li>You see what the file says: how much you qualify for based on where you're at right now, and what's holding the rest back.</li>
+        <li>Then you see the way to go: fund now, fix first, or both.</li>
+        <li>Join from a computer somewhere quiet, because your advisor shares the screen and goes through your file with you.</li>
+        <li>We're looking for action takers, not shoppers. Come ready to move.</li>
+      </ul>
+    </aside>
   </section>
 </main>
 <!-- fh:shell:script -->
@@ -999,7 +1091,9 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     slides[index].scrollTop = 0;
     var heading = slides[index].querySelector("h2");
     live.textContent = (index + 1) + " of " + slides.length + (heading ? ". " + heading.textContent : "");
-    try { history.replaceState(null, "", "#s" + (index + 1)); } catch (e) { /* a sandboxed frame may refuse */ }
+    if (!root.classList.contains("ss-notes")) {
+      try { history.replaceState(null, "", "#s" + (index + 1)); } catch (e) { /* a sandboxed frame may refuse */ }
+    }
   }
 
   back.addEventListener("click", function () { go(index - 1); });
@@ -1011,6 +1105,7 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     else if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); go(index - 1); }
     else if (e.key === "Home") { e.preventDefault(); go(0); }
     else if (e.key === "End") { e.preventDefault(); go(last); }
+    else if (e.key === "n" || e.key === "N") { root.classList.toggle("ss-notes"); }
   });
 
   var x0 = null;
@@ -1029,6 +1124,8 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.5) go(index + (dx < 0 ? 1 : -1));
   });
 
+  // #notes opens the talking points for recording; viewers never see them.
+  if (/^#notes$/.test(location.hash || "")) root.classList.add("ss-notes");
   function fromHash() {
     var match = /^#s(\d+)$/.exec(location.hash || "");
     return match ? Number(match[1]) - 1 : null;

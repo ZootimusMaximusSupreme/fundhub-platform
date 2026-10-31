@@ -121,6 +121,7 @@ function checkDeck(file, prices) {
   const sentences = [];
   const spoken = [];
   const labels = [];
+  const talks = [];
   slides.forEach((slide, k) => {
     const open = /^<section[^>]*>/.exec(slide)[0];
     const code = text((/<p class="eyebrow">([\s\S]*?)<\/p>/.exec(slide) || [])[1] || "") || `slide ${k + 1}`;
@@ -152,6 +153,15 @@ function checkDeck(file, prices) {
     }
     const pic = (/<figure class="pic\b[^>]*>([\s\S]*?)<\/figure>/.exec(slide) || [])[1];
     if (pic) labels.push(text(pic));
+    // Talking points are spoken copy: same rules, same grade level.
+    const talk = all(/<aside class="talk"[^>]*>([\s\S]*?)<\/aside>/g, slide)
+      .flatMap((a) => all(/<li[^>]*>([\s\S]*?)<\/li>/g, a)).map(text);
+    if (!talk.length) warns.push(`${where}: no talking points`);
+    for (const s of talk.flatMap((t) => t.split(/(?<=[.!?])\s+/))) {
+      if (ASK.test(s.trim())) errors.push(`${where}: talking point "${s.trim()}" asks for something; content sells the call with no call to action`);
+    }
+    talks.push(...talk);
+    sentences.push(...talk.flatMap((l) => l.split(/(?<=[.!?])\s+/).filter(Boolean)));
 
     const figures = /\$\s?\d|\b\d{1,3}(?:\.\d+)?\s?%|\b[5-8]\d\d\b/.test(body);
     if (figures && !/\bsample\b/i.test(body) && !attr(open, "data-figures")) {
@@ -185,7 +195,7 @@ function checkDeck(file, prices) {
   // in strict mode: banned words and phrases, never-say lines, vendor names,
   // em dashes, "not X but Y", the hook checks on slide 1's headline and line,
   // and the Part 0 patterns ("credit repair", "your number", EIN, "could"...).
-  const ad = checkScriptText([...spoken, ...labels].join("\n"), { strict: true });
+  const ad = checkScriptText([...spoken, ...labels, ...talks].join("\n"), { strict: true });
   for (const f of ad.failures) errors.push(`ad rules: ${f.message}`);
   for (const w of ad.warnings) if (w.rule !== "format") warns.push(`ad rules: ${w.message}`);
 

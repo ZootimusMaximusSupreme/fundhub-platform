@@ -84,7 +84,9 @@
     slides[index].scrollTop = 0;
     var heading = slides[index].querySelector("h2");
     live.textContent = (index + 1) + " of " + slides.length + (heading ? ". " + heading.textContent : "");
-    try { history.replaceState(null, "", "#s" + (index + 1)); } catch (e) { /* a sandboxed frame may refuse */ }
+    if (!root.classList.contains("ss-notes")) {
+      try { history.replaceState(null, "", "#s" + (index + 1)); } catch (e) { /* a sandboxed frame may refuse */ }
+    }
   }
 
   back.addEventListener("click", function () { go(index - 1); });
@@ -96,6 +98,7 @@
     else if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); go(index - 1); }
     else if (e.key === "Home") { e.preventDefault(); go(0); }
     else if (e.key === "End") { e.preventDefault(); go(last); }
+    else if (e.key === "n" || e.key === "N") { root.classList.toggle("ss-notes"); }
   });
 
   var x0 = null;
@@ -114,6 +117,8 @@
     if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.5) go(index + (dx < 0 ? 1 : -1));
   });
 
+  // #notes opens the talking points for recording; viewers never see them.
+  if (/^#notes$/.test(location.hash || "")) root.classList.add("ss-notes");
   function fromHash() {
     var match = /^#s(\d+)$/.exec(location.hash || "");
     return match ? Number(match[1]) - 1 : null;
