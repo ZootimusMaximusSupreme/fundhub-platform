@@ -204,9 +204,9 @@
   .closer-workspace .cockpit-main .panel{padding:17px 18px;}
   .closer-workspace .panel h3{margin-bottom:10px;}
   .closer-workspace .panel td{padding:7px 0;font-size:13px;}
-  .closer-workspace .bands{grid-template-columns:1fr;gap:15px;}
+  .closer-workspace .bands{grid-template-columns:1fr;gap:5px;}
   .closer-workspace .band{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:16px;padding:0;}
-  .closer-workspace .band+.band{border-left:0;border-top:1px solid var(--line);padding:15px 0 0;}
+  .closer-workspace .band+.band{border-left:0;border-top:1px solid var(--line);padding:4px 0 0;}
   .closer-workspace .band .bl{min-height:0;align-self:center;}
   .closer-workspace .band .bv{margin:0;font-size:25px!important;}
   .closer-workspace .band .bn{grid-column:1/-1;margin-top:5px;}
