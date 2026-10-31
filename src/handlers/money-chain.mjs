@@ -455,7 +455,8 @@ export async function ensureSalePayment(db, event, {
   // A provider reference is only evidence for the exact buyer whose payment
   // was captured. The org-level provider_ref uniqueness alone is insufficient:
   // another client's failed or successful transaction must never settle this
-  // sale even when an event supplies a fresh source_event_id.
+  // sale even when an event supplies a fresh source_event_id. The provider and
+  // product must match the original captured receipt as well.
   if (transactionId) {
     if (!clientId) return { payment: null, created: false, reason: "transaction_owner_missing" };
     const verifiedSource = await db.query(
@@ -463,8 +464,9 @@ export async function ensureSalePayment(db, event, {
         WHERE id = $1 AND org_id = $2 AND client_id = $3
           AND lower(status) = 'succeeded'
           AND amount_paid = $4::numeric
+          AND provider = $5 AND product_name = $6
         LIMIT 1`,
-      [transactionId, orgId, clientId, paid]
+      [transactionId, orgId, clientId, paid, p.source || "commas", p.productName || p.product || "unknown"]
     );
     if (!verifiedSource.rows[0]) {
       return { payment: null, created: false, reason: "transaction_source_conflict" };

@@ -154,6 +154,29 @@ async function requireInvoiceBuyerOwned(db, invoice) {
   if (!owned.rows[0]) throw new Error("ar_invoice_buyer_not_owned_by_org");
 }
 
+// Lifecycle may reject a conflicting capture while sibling payment handlers
+// still run. An existing transaction is authoritative; callback metadata must
+// never turn its failed or mismatched receipt into an invoice payment. Legacy
+// invoice-only provider receipts have no transaction and remain supported.
+async function transactionReceiptMatches(db, event, invoice) {
+  const p = event.payload || {};
+  const ref = p.providerRef || p.paymentId;
+  if (!ref) return true;
+  const receipt = (await db.query(
+    `SELECT org_id, client_id, provider, product_name, status, amount_paid
+       FROM transactions WHERE org_id = $1 AND provider_ref = $2 LIMIT 1`,
+    [event.orgId, String(ref)]
+  )).rows[0];
+  if (!receipt) return true;
+  return String(receipt.org_id) === String(event.orgId)
+    && String(receipt.client_id || "") === String(invoice.client_id)
+    && receipt.provider === (p.source || "commas")
+    && receipt.product_name === (p.productName || p.product || "unknown")
+    && receipt.status === "succeeded"
+    && knownCents(receipt.amount_paid) !== null
+    && knownCents(receipt.amount_paid) === knownCents(p.amount);
+}
+
 function partialEventKey(invoiceId, paymentKey) {
   if (!paymentKey) throw new Error(`Partial invoice ${invoiceId} has no stable receipt identity`);
   return `invoice.partially_paid:${invoiceId}:${paymentKey}`;
@@ -174,10 +197,11 @@ async function replayRecordedPayment(db, prior) {
 
 // A provider payment ID is immutable. A replay may reannounce the original
 // invoice event, but it cannot confirm somebody else's invoice or client.
-async function replayIdentityMatches(db, prior, { orgId, clientId, hintedId, roundId, paymentLinkId, ref }) {
+async function replayIdentityMatches(db, prior, { orgId, clientId, hintedId, roundId, paymentLinkId, ref, event }) {
   const original = await getInvoice(db, { invoiceId: prior.invoice_id });
   if (!original || String(original.org_id) !== String(orgId)) return false;
   await requireInvoiceBuyerOwned(db, original);
+  if (!await transactionReceiptMatches(db, event, original)) return false;
   if (clientId && String(original.client_id) !== String(clientId)) return false;
   if (hintedId && String(original.id) !== String(hintedId)) return false;
   if (roundId && String(original.funding_round_id || "") !== String(roundId)) return false;
@@ -299,7 +323,7 @@ export async function allocatePayment(db, event) {
 
   const replayContext = {
     orgId, clientId, hintedId, roundId,
-    paymentLinkId: payload.paymentLinkId, ref: payload.ref
+    paymentLinkId: payload.paymentLinkId, ref: payload.ref, event
   };
   if (orgId && providerPaymentId) {
     const prior = await alreadyRecorded(db, { orgId, providerPaymentId });
@@ -486,6 +510,9 @@ export async function allocatePayment(db, event) {
     // Re-check under the invoice lock; a buyer could have changed since the
     // initial read. This lookup makes no writes to client or provider rows.
     await requireInvoiceBuyerOwned(tx, locked);
+    if (!await transactionReceiptMatches(tx, event, locked)) {
+      return { reason: "transaction_receipt_mismatch" };
+    }
 
     // Two webhook envelopes can carry the same Commas payment ID but different
     // event IDs. Both may pass the early replay lookup. Recheck only after the

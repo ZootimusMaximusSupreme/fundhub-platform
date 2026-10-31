@@ -977,7 +977,9 @@ describe("Commas purchase events share the invoice receipt gate", () => {
       }
       if (/FROM transactions/.test(text)) {
         const hit = /WHERE id = \$1/.test(text)
-          ? transactions.find(t => t.id === params[0] && t.org_id === params[1] && t.client_id === params[2] && t.status === "succeeded" && Number(t.amount_paid) === params[3])
+          ? transactions.find(t => t.id === params[0] && t.org_id === params[1] && t.client_id === params[2] && t.status === "succeeded" && Number(t.amount_paid) === params[3] &&
+            (!/provider = \$5/.test(text) || t.provider === params[4]) &&
+            (!/product_name = \$6/.test(text) || t.product_name === params[5]))
           : transactions.find(t => t.org_id === params[0] && t.provider_ref === params[1]);
         return { rows: hit ? [hit] : [] };
       }
@@ -1012,10 +1014,10 @@ describe("Commas purchase events share the invoice receipt gate", () => {
     } };
   }
 
-  function inboxRow({ invoiceId = INVOICE, linked = true, type = "payment.succeeded", key = type } = {}) {
+  function inboxRow({ invoiceId = INVOICE, linked = true, type = "payment.succeeded", key = type, titleless = false } = {}) {
     return { org_id: ORG, dedupe_key: `pair:${key}`, raw_body: JSON.stringify({
       id: `delivery-${key}`, type, data: { payment_id: "pair-receipt", amount: 3000,
-        product: { title: "Consulting Services Deposit" }, fan: { email: "pair@example.invalid" },
+        ...(titleless ? {} : { product: { title: "Consulting Services Deposit" } }), fan: { email: "pair@example.invalid" },
         metadata: { client_id: CLIENT, ...(linked ? { link_ref: "pair-link" } : {}),
           ...(invoiceId ? { invoice_id: invoiceId } : {}) } }
     }) };
@@ -1066,20 +1068,42 @@ describe("Commas purchase events share the invoice receipt gate", () => {
     });
   }
 
-  test("failed then succeeded settles the same receipt; late failures and replay cannot undo or duplicate it", async (t) => {
+  for (const titleless of [false, true]) {
+  test(`failed then succeeded settles the same ${titleless ? "titleless" : "titled"} receipt; late failures and replay cannot undo or duplicate it`, async (t) => {
     const results = registerPair(t), db = purchaseDb();
-    await processCommasInboxRow(inboxRow({ type: "payment.failed" }), db);
+    await processCommasInboxRow(inboxRow({ type: "payment.failed", titleless }), db);
     assert.equal(db.transactions[0].status, "failed");
     assert.equal(db.payments.length, 0); assert.equal(db.grants.length, 0);
     const transactionId = db.transactions[0].id;
-    await processCommasInboxRow(inboxRow(), db);
+    await processCommasInboxRow(inboxRow({ titleless }), db);
     assert.equal(db.transactions.length, 1); assert.equal(db.transactions[0].id, transactionId);
     assert.equal(db.transactions[0].status, "succeeded");
     assert.ok(results.every(r => r.out.done), JSON.stringify(results));
     assert.equal(db.payments.length, 1); assert.equal(db.grants.length, 1); assert.equal(db.cards.length, 1);
-    await processCommasInboxRow(inboxRow({ type: "payment.failed", key: "late-failed" }), db);
-    await processCommasInboxRow(inboxRow({ key: "capture-replay" }), db);
+    await processCommasInboxRow(inboxRow({ type: "payment.failed", key: "late-failed", titleless }), db);
+    await processCommasInboxRow(inboxRow({ key: "capture-replay", titleless }), db);
     assert.equal(db.transactions[0].status, "succeeded");
     assert.equal(db.payments.length, 1); assert.equal(db.grants.length, 1);
   });
+  }
+
+  test("a titleless linked capture succeeds without a prior failure", async (t) => {
+    const results = registerPair(t), db = purchaseDb();
+    await processCommasInboxRow(inboxRow({ titleless: true }), db);
+    assert.ok(results.every(r => r.out.done), JSON.stringify(results));
+    assert.equal(db.payments.length, 1); assert.equal(db.grants.length, 1); assert.equal(db.cards.length, 1);
+  });
+
+  for (const conflict of [{ provider: "other-provider" }, { product_name: "Another purchase" }]) {
+    test(`a captured receipt with conflicting ${Object.keys(conflict)[0]} cannot fund the adapter pair`, async (t) => {
+      const results = registerPair(t), db = purchaseDb();
+      db.transactions.push({ id: randomUUID(), org_id: ORG, client_id: CLIENT,
+        product_name: "Consulting Services Deposit", amount_paid: 3000, status: "succeeded",
+        provider: "commas", provider_ref: "pair-receipt", ...conflict });
+      await processCommasInboxRow(inboxRow(), db);
+      assert.deepEqual(results.map(r => r.out.reason), ["transaction_source_conflict", "transaction_source_conflict"]);
+      assert.equal(db.payments.length, 0); assert.equal(db.grants.length, 0); assert.equal(db.cards.length, 0);
+    });
+  }
+
 });

@@ -707,6 +707,26 @@ describe("money-chain writers", { skip: !HAS_DB ? "no DATABASE_URL" : false }, (
         [org, clientId, fundingProductId, origin.sale.id, invoiceId, randomUUID()]
       )).rows[0].id;
       const bound = { paymentLinkId: linkId, invoiceId, saleId: origin.sale.id };
+      for (const [label, change] of [
+        ["provider", { source: "another-provider" }],
+        ["product", { productName: "Another purchase" }]
+      ]) {
+        const ref = `${providerRef}-captured-${label}`;
+        await onPaymentReceived(event("payment.received", { ...bound, providerRef: ref }), conn);
+        const conflicting = event("payment.received", { ...bound, providerRef: ref, ...change });
+        await onPaymentReceived(conflicting, conn);
+        for (const handler of [onPaymentReceivedMoney, onDepositPaidMoney]) {
+          const refused = await handler(conflicting, conn);
+          assert.equal(refused.reason, "transaction_source_conflict", `${label} cannot repurpose captured money`);
+        }
+      }
+      // The adapter now preserves its link-derived deposit bucket on both
+      // callbacks even when the provider omits a display title.
+      const titleless = { ...bound, providerRef: `${providerRef}-titleless`, productName: null };
+      await onPaymentFailed(event("payment.failed", titleless), conn);
+      await onPaymentReceived(event("payment.received", titleless), conn);
+      assert.equal((await readTransaction(titleless.providerRef)).status, "succeeded");
+      assert.equal((await readTransaction(titleless.providerRef)).product_name, "deposit");
       await onPaymentFailed(event("payment.failed", bound), conn);
       const transactionId = (await readTransaction()).id;
       const received = event("payment.received", { ...bound, invoiceId: randomUUID() });
