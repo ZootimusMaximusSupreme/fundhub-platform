@@ -13,6 +13,7 @@
 <link rel="stylesheet" href="/app/fundhub-astra.css">
 <link rel="stylesheet" href="/app/fundhub-astra-staff.css">
 <script defer src="/app/fundhub-font.js"></script>
+<script src="/app/phone-format.js"></script>
 <script defer src="/app/shell.js"></script>
 </head>
 <body class="setter-page fh-astra fh-astra-staff fh-astra--setter-dashboard">
@@ -301,7 +302,7 @@ function setterSorted(items) {
       var label = item.needs_work === false ? "Completed" : item.lead_type === "booked" ? "Booked" : "Opted in · needs booking";
       return '<button type="button" data-client-id="' + setterEsc(item.client_id) + '" aria-current="' + (selectedId() === item.client_id) + '">' +
         '<span class="setter-row-top"><strong title="' + setterEsc(item.client_name || "Unnamed lead") + '">' + setterEsc(item.client_name || "Unnamed lead") + '</strong><span>' + setterEsc(label) + '</span></span>' +
-        '<span class="setter-row-meta">' + setterEsc(item.phone || "No phone") + ' · ' + setterEsc(setterDate(item.booked_at || item.created_at)) + '</span>' +
+        '<span class="setter-row-meta">' + setterEsc(item.phone ? FHFormatPhone(item.phone) : "No phone") + ' · ' + setterEsc(setterDate(item.booked_at || item.created_at)) + '</span>' +
         '<span class="setter-row-meta' + (!h.dialed_at ? ' setter-row-urgent' : '') + '">' + (h.complete_at ? 'Handoff complete' : h.dialed_at ? 'Working · ' + Number(h.call_attempts || 0) + ' dial(s)' : 'Dial target ' + setterEsc(setterDate(target))) + '</span></button>';
     }).join("");
     if (queue.length > 25) html += '<div class="setter-pager"><button type="button" data-page="prev"' + (page === 0 ? ' disabled' : '') + '>Previous</button><span>Page ' + (page + 1) + ' of ' + Math.ceil(queue.length / 25) + '</span><button type="button" data-page="next"' + (start + 25 >= queue.length ? ' disabled' : '') + '>Next</button></div>';
@@ -363,7 +364,7 @@ function setterSorted(items) {
     var afterHours = target && arrived && Date.parse(target) - Date.parse(arrived) > 60000;
     var sameStaff = item.setter_staff_id && item.closer_staff_id && item.setter_staff_id === item.closer_staff_id;
     var html = '<div class="setter-detail-head"><div><h2>' + setterEsc(item.client_name || "Unnamed lead") + '</h2><p>' + (booked ? 'Already booked · short confirm call' : 'Opted in · triage and book') + '</p></div>' +
-      '<a class="setter-link" href="tel:' + setterEsc(String(item.phone || "").replace(/[^+0-9]/g, "")) + '">Call ' + setterEsc(item.phone || "No phone") + '</a></div>' +
+      '<a class="setter-link" href="tel:' + setterEsc(String(item.phone || "").replace(/[^+0-9]/g, "")) + '">Call ' + setterEsc(item.phone ? FHFormatPhone(item.phone) : "No phone") + '</a></div>' +
       '<div class="setter-facts"><span class="setter-fact"><b>Lead came in</b>' + setterEsc(setterDate(item.booked_at || item.created_at)) + '</span><span class="setter-fact"><b>Target dial by</b>' + setterEsc(setterDate(target)) + '</span>' +
       '<span class="setter-fact"><b>Strategy call</b>' + setterEsc(setterDate(item.booking_time)) + '</span></div>' +
       (afterHours ? '<p class="setter-alert">Before 6 a.m. or after 10 p.m. Phoenix time: wait until 6 a.m. to call or text.</p>' : '') +
