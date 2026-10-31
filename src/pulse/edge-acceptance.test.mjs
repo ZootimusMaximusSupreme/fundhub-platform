@@ -5,7 +5,7 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import {
-  EDGE_CONTRACT_VERSION, CRITICAL_EDGES, changedCriticalEdges, unmappedHighRiskSourceChanges,
+  EDGE_CONTRACT_VERSION, CRITICAL_EDGES, RUNTIME_LENDER_PULSE_PATHS, changedCriticalEdges, unmappedHighRiskSourceChanges,
   reportCriticalSourceChanges, shouldReportCriticalSourceRisk, judgeSyntheticEdge
 } from "./edge-acceptance.mjs";
 
@@ -34,7 +34,7 @@ test("shared Pulse lender matcher is a runtime bank-guidance path, not an exempt
   // Both the Blueprint bank recommendation and lender-match result depend on
   // it; the generic ignore-src/pulse rule previously concealed material edits.
   const runtime = [
-    "src/pulse/beats/lib/lenders-truth.mjs",
+    ...RUNTIME_LENDER_PULSE_PATHS,
     "src/lenders/store.mjs",
     "src/lenders/match.mjs"
   ];
@@ -62,6 +62,33 @@ test("shared Pulse lender matcher is a runtime bank-guidance path, not an exempt
   assert.deepEqual(unmappedHighRiskSourceChanges(observerOnly), []);
   assert.equal(reportCriticalSourceChanges(observerOnly).verdict,
     "NO_CRITICAL_SOURCE_TOUCH_DETECTED");
+});
+
+test("the live lender matcher import graph cannot grow beyond Pulse's A-to-B source watcher", () => {
+  // src/lenders/store re-exports lenders-truth; lender-truth imports the
+  // scorer, credit-file interpreter, product gates and demo-mode reader.
+  // A new helper import MUST force an updated A->B contract, not a fake PASS.
+  const visited = new Set();
+  function walk(filename) {
+    if (visited.has(filename)) return;
+    visited.add(filename);
+    const source = fs.readFileSync(path.join(ROOT, filename), "utf8");
+    const imports = /(?:\bfrom\s*|\bimport\s*\(\s*|\bimport\s*)["'](\.{1,2}\/[^"']+\.mjs)["']/g;
+    for (const m of source.matchAll(imports)) {
+      const dependency = path.posix.normalize(path.posix.join(path.posix.dirname(filename), m[1]));
+      assert.ok(dependency.startsWith("src/pulse/beats/lib/"),
+        "review new external lender dependency: " + dependency);
+      walk(dependency);
+    }
+  }
+  walk("src/pulse/beats/lib/lenders-truth.mjs");
+  assert.deepEqual([...visited].sort(), [...RUNTIME_LENDER_PULSE_PATHS].sort(),
+    "new/existing runtime dependency must be listed explicitly for source-change review");
+  for (const file of visited) {
+    assert.deepEqual(changedCriticalEdges([file]).map((e) => e.id), [
+      "blueprint-financeos-report", "lender-apply-link"
+    ], "lender and Blueprint outcome mapping for " + file);
+  }
 });
 
 test("sample credit writer and real-bank-guidance provenance cannot escape changed-source review", () => {
