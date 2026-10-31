@@ -318,7 +318,9 @@ export async function handle({ event, db, step, env, createLink, retireLink, own
     // or backfill CRM links. Lead capture is upstream of A/R. An untrusted
     // webhook's clientId is also not evidence of ownership by this tenant.
     if (!event.orgId) {
-      return { done: true, allocated: false, path: "unresolved", reason: "missing_org" };
+      // An unattributed signed receipt has no safe ledger or review owner.
+      // Fail the consumer attempt so the event remains retryable/dead-lettered.
+      throw new Error("ar_payment_missing_org_unroutable");
     }
     const clientId = await step.run("find-owned-client", () => findClient(db, event));
     // If the provider names a customer (ID or email), it MUST resolve to an
@@ -331,6 +333,7 @@ export async function handle({ event, db, step, env, createLink, retireLink, own
       // a task on a foreign event.clientId or disclose another org's invoice.
       const hintedId = event.payload?.invoiceId || event.payload?.invoice_id || null;
       let reviewTaskCreated = false;
+      let reviewTaskRouted = false;
       if (hintedId) {
         let invoice = null;
         try { invoice = await getInvoice(db, { invoiceId: hintedId }); }
@@ -354,7 +357,14 @@ export async function handle({ event, db, step, env, createLink, retireLink, own
             detail: "Merchant receipt customer identity does not match the existing same-org buyer. Verify the original processor receipt and invoice before applying money."
           });
           reviewTaskCreated = review?.created === true;
+          // A duplicate-race means the unique task key already won elsewhere;
+          // all other missing-task outcomes cannot safely acknowledge money.
+          reviewTaskRouted = Boolean(review?.id || review?.reason === "duplicate_race");
         }
+      }
+      if (!reviewTaskRouted) {
+        console.warn("[ar-collections] unmatched payment customer; no safe review owner");
+        throw new Error("ar_payment_customer_unroutable");
       }
       console.warn("[ar-collections] unmatched payment customer; allocation refused");
       return { done: true, allocated: false, path: "unresolved", reason: "client_not_owned", reviewTaskCreated };
