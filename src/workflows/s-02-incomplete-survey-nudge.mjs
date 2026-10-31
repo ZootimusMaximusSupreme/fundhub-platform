@@ -96,7 +96,7 @@ export const SEQUENCE_WINDOW_MS = 4 * 24 * 60 * 60 * 1000;
 /** The last sent S-02 sequence before this opt-in, with no older touch still pending. */
 export async function lastCompletedSequenceAt(db, { eventId, orgId, clientId }) {
   const r = await db.query(
-    `SELECT MAX(m.created_at) AS completed_at
+    `SELECT MAX(m.created_at)::text AS completed_at
        FROM events s
        JOIN messages m ON m.org_id = s.org_id AND m.client_id = $3
       WHERE s.id = $1 AND s.org_id = $2 AND s.name = 'entry.captured'
@@ -210,10 +210,15 @@ export async function handle({ event, db, step, now = () => Date.now() }) {
     };
   });
 
+  // Keep Postgres's microseconds for the completed boundary. Date truncates to
+  // milliseconds and would count the final email as still in flight.
+  const windowStart = new Date(Date.parse(plan.startedAt) - SEQUENCE_WINDOW_MS).toISOString();
+  const since = plan.completedAt && Date.parse(plan.completedAt) >= Date.parse(windowStart)
+    ? plan.completedAt : windowStart;
   const crowded = await step.run("check-sequence-in-flight", () =>
     sequenceInFlight(db, {
       orgId, clientId,
-      since: new Date(Math.max(Date.parse(plan.startedAt) - SEQUENCE_WINDOW_MS, plan.completedAt ? Date.parse(plan.completedAt) : -Infinity)).toISOString()
+      since
     }));
   if (crowded) return { done: false, reason: "sequence_in_flight" };
 

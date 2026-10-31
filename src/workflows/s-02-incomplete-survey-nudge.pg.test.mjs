@@ -19,7 +19,7 @@ import { test, before, after } from "node:test";
 import assert from "node:assert";
 import { db, close } from "../db.mjs";
 import {
-  handle, resumePlan, sequenceInFlight, stopReason, surveyCompleted, RESUME_TEMPLATE_KEYS, TOUCHES
+  handle, lastCompletedSequenceAt, resumePlan, sequenceInFlight, stopReason, surveyCompleted, RESUME_TEMPLATE_KEYS, TOUCHES
 } from "./s-02-incomplete-survey-nudge.mjs";
 import { inngestSim } from "./inngest-sim.mjs";
 import { isLocalScratchDatabaseUrl } from "../verification/scratch-guard.mjs";
@@ -418,6 +418,10 @@ test("a new opt-in after touch 3 gets a new send key inside the four-day window"
     const [a] = await sim.runAll([spec(sim, first)]);
     await db.query(`UPDATE messages SET status = 'sent' WHERE org_id = $1 AND client_id = $2 AND template_key = ANY($3)`,
       [orgId, clientId, RESUME_TEMPLATE_KEYS]);
+    const completedAt = await lastCompletedSequenceAt(db, { eventId: fresh.id, orgId, clientId });
+    assert.ok(completedAt, "the prior touch 3 is fully sent before the fresh opt-in");
+    assert.equal(await sequenceInFlight(db, { orgId, clientId, since: completedAt }), false,
+      "no older sequence message was queued after the completed boundary");
     const [b] = await sim.runAll([spec(sim, fresh)]);
     assert.equal(a.stoppedBecause, undefined);
     assert.equal(b.stoppedBecause, undefined);

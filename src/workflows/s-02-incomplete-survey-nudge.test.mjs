@@ -20,7 +20,7 @@ function withReads(inner, sim) {
   wrapped.sentLog = [];
   wrapped.query = async (sql, params = []) => {
     const text = String(sql);
-    if (/SELECT MAX\(m.created_at\) AS completed_at/.test(text)) {
+    if (/SELECT MAX\(m.created_at\)::text AS completed_at/.test(text)) {
       const [eventId, orgId, clientId, keys, allKeys] = params;
       const source = inner.events.find((e) => e.id === eventId && e.org_id === orgId);
       const sourceAt = Date.parse(source?.created_at);
