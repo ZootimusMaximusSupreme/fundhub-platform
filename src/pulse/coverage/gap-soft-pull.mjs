@@ -127,6 +127,15 @@ export async function checkApproveSignedRead(ctx = {}) {
     const res = mockRes();
     await handler({ method: "GET", headers: {}, query, body: null }, res, { db, env, secret });
     const status = Number(res.statusCode) || 0;
+    // Portal account claim now gates the signed credit-consent page. A Pulse
+    // background GET deliberately has NO buyer session. A legitimate
+    // account_required refusal is NOT a broken link and cannot become PASS
+    // through a fabricated principal: user-visible consent needs a separate
+    // authorized, real account receipt. Other 401 errors remain failures.
+    if (status === 401 && res.body?.error === "account_required") {
+      return check(id, "skip",
+        "signed consent page requires a real client login; background GET cannot verify buyer access — NEEDS LIVE RECEIPT");
+    }
     if (signedReadShape(status, res.body)) {
       return check(id, "PASS", "signed approve read answered 200 with the words, the price and the consent state");
     }
