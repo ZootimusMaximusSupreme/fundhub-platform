@@ -584,6 +584,35 @@ Slide plans (question, picture, headline):
 
 **Second format: the film board (Chris, 2026-10-31).** Every deck also gets a wide version for filming. Short-form video on a phone is split top to bottom: the top half is Chris on camera, the bottom half is the slide. So each slide becomes one 16:9 board: the headline, the copy lines, the real document or diagram, no Back and Next, big enough to read on a phone at half height. It is built from the same deck file by `node marketing/slideshows/build.mjs --film` into `marketing/slideshows/film/<deck>.html` (one source, two shapes, so the words never drift): `_shell/film.css` lays each slide out as a 1080 x 960 board, words left and the picture right, and `_shell/film.js` steps through with the arrow keys, the space bar or a click, no buttons. Open it in a browser window, screen-record it, and put it under the camera clip.
 
+**Handoff to chat 2, the follow-up workflows (Chris, 2026-10-31: "when this is all done, feed it into what we built on the other thread; more deliverables means more texts, pushes and emails").** When the pull request merges, this chat sends chat 2 one message with, per deck: the lane, the belief, the file, the 6a piece it carries, and the hook (slide 1's headline is the text hook and the email subject; the first copy line is the push line). Two steps belong to the send side: (1) a live address for each deck, which means serving `marketing/slideshows/*.html` and `film/` from the site (for example `public/slideshows/`), and (2) a heartbeat row for every new live page in `src/pulse/registry.mjs` in the same change (law: heartbeat-on-every-build). Until then the links in templates stay as merge tags, not hard-coded paths.
+
+| Deck | 6a piece | Lane | Hook (slide 1 headline) |
+|---|---|---|---|
+| pre-underwriting | F1 | Funding | When a bank denies good credit, the reason was on the credit report first. |
+| funding-sequence | F2 | Funding | see the deck's PU-01 line |
+| apply-yourself | F3 | Funding | see the deck's slide 1 |
+| money-on-the-table | B1 (as Funding) | Funding | see the deck's slide 1 |
+| after-you-say-yes | F7, F6 | Funding | see the deck's slide 1 |
+| bank-said-no | R1 | Blueprint and Repair | see the deck's slide 1 |
+| thirteen-points | B2 | Blueprint and Repair | see the deck's slide 1 |
+| card-paydown | B3 | Blueprint and Repair | see the deck's slide 1 |
+| credit-optimization | R2 | Blueprint and Repair | see the deck's slide 1 |
+| credit-partner | B5, R4 | Blueprint and Repair | see the deck's slide 1 |
+| business-one-two | B4 | Blueprint and Repair | see the deck's slide 1 |
+| blueprint-12-months | B9 | Blueprint and Repair | see the deck's slide 1 |
+| soft-pull | C3 | Every lane | see the deck's slide 1 |
+| the-call | C1 | Every lane | see the deck's slide 1 |
+| who-we-are | C2, C4 | Every lane | see the deck's slide 1 |
+| cost-of-waiting | new (pain, cost) | Every lane | see the deck's slide 1 |
+| the-maximum | new (desire) | Every lane | see the deck's slide 1 |
+| the-money-talk | new (money; B6, R5 without a price) | Every lane | see the deck's slide 1 |
+| tried-before | new (trust; C6) | Every lane | see the deck's slide 1 |
+| blueprint-value | new (desire, doubt) | Blueprint and Repair | see the deck's slide 1 |
+| blueprint-in-action | new (support, expectation; the long-form video) | Blueprint and Repair | see the deck's slide 1 |
+| your-data-is-safe | new (trust, then the sell) | Every lane | see the deck's slide 1 |
+
+The headlines are filled in from the deck files when the handoff is sent (`grep -m1 "<h2>" marketing/slideshows/<deck>.html`), so the table never drifts from the decks.
+
 **Manifest.** Pull request: https://github.com/ZootimusMaximusSupreme/fundhub-platform/pull/347 (branch `claude/backend-selling-slideshows`). Chris's one-link review page, every deck as phone and film: https://claude.ai/artifact/XCV94LxU9ZsMxPnCVL3Vxa (private to Chris). Files: `marketing/slideshows/<15 decks>.html`, `marketing/slideshows/film/<15 decks>.html`, `_shell/slideshow.css`, `_shell/slideshow.js`, `_shell/film.css`, `_shell/film.js`, `build.mjs`, `check.mjs`. New rule `.ai/rules/show-real-proof.md` (owner-set 2026-10-31) with its links, CLAUDE.md line and index row; `copy-skills-foundation.md` and the Visual Thinking skill point to it. No routes, no workflows, no database, nothing sent. All 15 pass `check.mjs`; `rules:check` OK.
 
 **Leftovers (not fixed here).**
