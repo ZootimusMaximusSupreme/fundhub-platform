@@ -103,9 +103,9 @@ export async function dueClients(conn, now, { realPull = false } = {}) {
                   WHERE cr.id = r.crs_result_id
                     AND cr.org_id = r.org_id AND cr.client_id = r.client_id
                     AND (
-                      cr.provider = 'crs_softview_simulated'
-                      OR cr.result->>'simulated' = 'true'
-                      OR cr.result->>'environment' = 'sandbox'
+                      COALESCE(cr.provider, '') = 'crs_softview_simulated'
+                      OR LOWER(COALESCE(cr.result->>'simulated', '')) IN ('true', '1')
+                      OR LOWER(COALESCE(cr.result->>'environment', '')) IN ('sandbox', 'simulated')
                     )
                )
              )
