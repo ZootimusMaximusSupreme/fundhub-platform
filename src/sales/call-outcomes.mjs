@@ -167,6 +167,16 @@ export async function logCallOutcome(db, input) {
     }
   }
 
+  // A task and a booking may each belong to the right buyer but describe
+  // DIFFERENT calls. Never finish call A with call B's reference.
+  if (verifiedRef && ownedTask && ownedTask.assignee_role === "closer"
+      && String(ownedTask.title || "").startsWith("Strategy session")
+      && String(ownedTask.body || "").trim() !== verifiedRef) {
+    throw new CallOutcomeError("Booking does not match the selected call.", {
+      status: 409, code: "booking_task_mismatch"
+    });
+  }
+
   let existing = null;
   if (taskId || verifiedRef) {
     const previous = await db.query(
