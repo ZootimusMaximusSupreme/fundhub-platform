@@ -244,6 +244,11 @@ test("a human repair letter is claimable only when generated or ready, unclaimed
     "not mailed already": "AND d.mailed_at IS NULL",
     "human paid repair permits only generated/ready": "AND d.status IN ('generated','ready')"
   });
+  const claimSql = one(/UPDATE dispute_letters d SET status = 'sending'/);
+  assert.match(claimSql, /FROM contracts c/);
+  assert.match(claimSql, /FROM client_consents/);
+  assert.match(claimSql, /revoked_at IS NULL/);
+  assert.match(claimSql, /expires_at > now\(\)/);
   assertSqlHas(one(/SET status = COALESCE\(\$4, 'ready'\), send_claimed_at = NULL/), {
     "only this letter, still held": "WHERE id = $1::uuid AND org_id = $2::uuid AND client_id = $3::uuid AND status = 'sending' AND mailed_at IS NULL"
   });

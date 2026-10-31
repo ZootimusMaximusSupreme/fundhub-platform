@@ -222,13 +222,19 @@ export default async function handler(req, res, deps = {}) {
       identity: mailIdentity,
       mailSender,
       enforceActivePaidRepair: wantMail,
+      enforceCurrentDisputeAuthorization: wantMail,
       env: deps.env,
       fetchImpl: deps.fetchImpl
     });
 
     if (wantMail && !result.ok && result.results?.length
-      && result.results.every(r => r.error === "repair_enrollment_inactive_or_unpaid")) {
-      return res.status(409).json({ ok: false, error: "repair_enrollment_inactive_or_unpaid", results: result.results });
+      && result.results.every(r => ["repair_enrollment_inactive_or_unpaid", "repair_dispute_authorization_required"].includes(r.error))) {
+      const consentLost = result.results.some(r => r.error === "repair_dispute_authorization_required");
+      return res.status(consentLost ? 403 : 409).json({
+        ok: false,
+        error: consentLost ? "repair_dispute_authorization_required" : "repair_enrollment_inactive_or_unpaid",
+        results: result.results
+      });
     }
     return res.status(200).json({ ok: true, ...result });
   } catch (err) {

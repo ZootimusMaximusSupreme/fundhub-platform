@@ -52,6 +52,7 @@ function harness({ owned = true, agreement = false, consent = false } = {}) {
     },
     sendRepairLetters: async (_db, args) => {
       state.sent++;
+      assert.equal(args.enforceCurrentDisputeAuthorization, true);
       assert.deepEqual([args.orgId, args.clientId, args.staffId], [ORG, CLIENT, STAFF]);
       return { ok: true, results: [{ bureau: "EX", ok: true }] };
     }

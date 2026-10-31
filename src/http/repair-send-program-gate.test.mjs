@@ -13,8 +13,10 @@ async function scenario({paid=false,agreement=true,consent=false,owned=true,afte
  hasRepairAgreement:async()=>agreement,hasDisputeAuthorization:async()=>consent,
  hasActivePaidRepairProgram:async()=>paid,
  loadClientReturnAddress:async()=>({address_line1:"Recorded consumer address",address_state:"AZ"}),
- sendRepairLetters:async(_db,args)=>{calls.send++;assert.equal(args.enforceActivePaidRepair,true);
-   return afterPreflight?{ok:false,results:[{ok:false,error:"repair_enrollment_inactive_or_unpaid"}]}:{ok:true,results:[]}},
+ sendRepairLetters:async(_db,args)=>{calls.send++;assert.equal(args.enforceActivePaidRepair,true);assert.equal(args.enforceCurrentDisputeAuthorization,true);
+   return afterPreflight
+     ? {ok:false,results:[{ok:false,error:afterPreflight==="revoked"?"repair_dispute_authorization_required":"repair_enrollment_inactive_or_unpaid"}]}
+     : {ok:true,results:[]}},
  mailBureauLetter:async()=>{calls.provider++;throw Error("provider must not be called");}};
  const req={method:"POST",body:{mail:true,client_id:CLIENT,mail_from:{address_state:"AZ"},letters:[{letter_id:LETTER,bureau:"EX",html:"Synthetic"}]}};
  const res={code:null,body:null,setHeader(){},status(n){this.code=n;return this},json(x){this.body=x;return this}};
@@ -42,4 +44,10 @@ test("refund committed after preflight surfaces a 409 from the final atomic clai
 test("foreign-org client check precedes eligibility",async()=>{
  const {res,calls}=await scenario({paid:true,owned:false});
  assert.equal(res.code,404);assert.equal(calls.send,0);assert.equal(calls.provider,0);
+});
+
+test("revoked dispute consent detected after HTTP preflight returns 403",async()=>{
+ const {res,calls}=await scenario({paid:true,agreement:false,consent:true,afterPreflight:"revoked"});
+ assert.equal(res.code,403);assert.equal(res.body.error,"repair_dispute_authorization_required");
+ assert.equal(calls.send,1);assert.equal(calls.provider,0);
 });
