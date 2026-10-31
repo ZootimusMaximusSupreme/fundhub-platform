@@ -740,7 +740,8 @@ export async function clearStuckSendClaim(db, {
   if (!why) return { ok: false, reason: "reason_required" };
 
   const found = await db.query(
-    `SELECT id, client_id, case_id, status, mailed_at, send_claimed_at, postgrid_letter_id
+    `SELECT id, client_id, case_id, status, mailed_at, send_claimed_at,
+            send_claimed_at::text AS claim_token, postgrid_letter_id
        FROM dispute_letters
       WHERE id = $1::uuid AND org_id = $2::uuid LIMIT 1`,
     [letterId, orgId]
@@ -775,8 +776,13 @@ export async function clearStuckSendClaim(db, {
         AND status = 'sending'
         AND mailed_at IS NULL
         AND postgrid_letter_id IS NULL
+        -- This must still be the SAME claim observed above. Two humans can
+        -- clear and then re-claim while a stale reconciliation tab is open.
+        -- Text->timestamptz retains Postgres microsecond precision; JS Date
+        -- loses precision and could wrongly match a different sending claim.
+        AND send_claimed_at = $5::timestamptz
       RETURNING id, status`,
-    [letterId, orgId, staffId, why]
+    [letterId, orgId, staffId, why, row.claim_token]
   );
   if (!cleared?.rows?.length) {
     // Something changed under us between the read and the write. Refusing is
