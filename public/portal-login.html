@@ -54,12 +54,13 @@
   catch (e) { /* older browsers without display-mode support */ }
   if (!standalone) return;
   var brand = document.querySelector(".portal-brand");
-  if (brand) {
-    brand.setAttribute("href", "/app/client-portal.html");
-    brand.setAttribute("aria-label", "Open Fundhub client portal");
+  if (brand && brand.getAttribute("href") === "/") {
+    brand.removeAttribute("href");
+    brand.style.cursor = "default";
+    brand.setAttribute("aria-label", "Fundhub client portal");
   }
   var back = document.querySelector(".portal-back");
-  if (back) back.hidden = true;
+  if (back) { back.hidden = true; back.style.display = "none"; }
 })();
 </script>
 <script src="/app/client-ios.js"></script>

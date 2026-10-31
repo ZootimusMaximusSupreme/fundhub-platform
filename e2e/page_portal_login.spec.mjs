@@ -124,8 +124,8 @@ test('installed browser app keeps portal-login links inside client portal; ordin
     Object.defineProperty(navigator, 'standalone', { configurable: true, value: true });
   });
   await page.reload();
-  await expect(page.locator('.portal-brand')).toHaveAttribute('href', '/app/client-portal.html');
-  await expect(page.locator('.portal-brand')).toHaveAttribute('aria-label', 'Open Fundhub client portal');
+  await expect(page.locator('.portal-brand')).not.toHaveAttribute('href', /.+/);
+  await expect(page.locator('.portal-brand')).toHaveAttribute('aria-label', 'Fundhub client portal');
   await expect(page.locator('.portal-back')).toBeHidden();
   await expect(page.getByRole('link', { name: 'Sign in with password' })).toHaveAttribute(
     'href', '/login.html?next=%2Fapp%2Fclient-portal.html'
@@ -141,7 +141,7 @@ test('standalone display-mode fallback protects portal-login marketing exits', a
       : normal(query);
   });
   await page.goto('/portal-login.html');
-  await expect(page.locator('.portal-brand')).toHaveAttribute('href', '/app/client-portal.html');
+  await expect(page.locator('.portal-brand')).not.toHaveAttribute('href', /.+/);
   await expect(page.locator('.portal-back')).toBeHidden();
 });
 
@@ -154,8 +154,8 @@ test('password login keeps marketing links only in ordinary browsers, not instal
     Object.defineProperty(navigator, 'standalone', { configurable: true, value: true });
   });
   await page.reload();
-  await expect(page.locator('.login-brand')).toHaveAttribute('href', '/app/client-portal.html');
-  await expect(page.locator('.login-brand')).toHaveAttribute('aria-label', 'Open Fundhub client portal');
+  await expect(page.locator('.login-brand')).not.toHaveAttribute('href', /.+/);
+  await expect(page.locator('.login-brand')).toHaveAttribute('aria-label', 'Fundhub client portal');
   await expect(page.locator('.login-back')).toBeHidden();
   await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible();
   await expect(page.locator('#fh-forgot-link')).toBeVisible();
@@ -168,7 +168,7 @@ test('password login also protects CSS standalone when navigator.standalone is u
       : original(query);
   });
   await page.goto('/login.html?next=%2Fapp%2Fclient-portal.html');
-  await expect(page.locator('.login-brand')).toHaveAttribute('href', '/app/client-portal.html');
+  await expect(page.locator('.login-brand')).not.toHaveAttribute('href', /.+/);
   await expect(page.locator('.login-back')).toBeHidden();
   await expect(page.getByRole('textbox', { name: 'Email address', exact: true })).toBeVisible();
 });

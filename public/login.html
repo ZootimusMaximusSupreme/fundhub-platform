@@ -105,12 +105,13 @@ if (new URLSearchParams(location.search).get("next") === "/app/client-portal.htm
   catch (_err) { /* Older browser without display-mode support */ }
   if (!standalone) return;
   var brand = document.querySelector(".login-brand");
-  if (brand) {
-    brand.setAttribute("href", "/app/client-portal.html");
-    brand.setAttribute("aria-label", "Open Fundhub client portal");
+  if (brand && brand.getAttribute("href") === "/") {
+    brand.removeAttribute("href");
+    brand.style.cursor = "default";
+    brand.setAttribute("aria-label", "Fundhub client portal");
   }
   var back = document.querySelector(".login-back");
-  if (back) back.hidden = true;
+  if (back) { back.hidden = true; back.style.display = "none"; }
 })();
 </script>
 <script src="/fh.js"></script>
