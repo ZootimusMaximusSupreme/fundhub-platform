@@ -4,35 +4,46 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Fundhub Pre-Underwriting</title>
-<meta name="description" content="We read your file the way the bank will, before anyone applies.">
+<meta name="description" content="We review your file the way a lender does, before a single application goes out.">
 <!--
   Deck PU · Pre-underwriting
   Lane: Funding (700 and up)
   Hammer Them pillar: Question, then the 2nd-layer question
-  Belief: Fundhub reads my file the way the bank will before anyone applies,
-          so my file only goes where it gets approved.
+  Belief: Fundhub reviews my file the way a lender does before anyone applies,
+          so every application goes to a bank that approves files like mine.
+
+  Rules this deck follows (marketing/ads/RULES.md)
+  - Hook = the first two sentences (slide 1 headline and line). Cause first:
+    "nobody reads that line" is the cause, named by sentence two (2.2).
+    No ask, no question, and the first subject is the bank, not us.
+  - It tells them something they don't know: the bank's reason sits on the
+    report before they apply (Part 0 rule 26). Line 2 opens a loop, the red
+    flag, and slides 2 to 5 pay it off (rules 27 and 28).
+  - Part 0 rule 8: "review your file the way a lender does."
+  - Full sentences, no chopped fragments, no setup-and-punchline pairs, and
+    what things are, never what they are not (rules 15 to 17).
+  - Evergreen backend-selling spine (3.13): the mistake (PU-01), why it
+    happens (PU-02), the cost (PU-03), what to do instead (PU-04, PU-05),
+    the proof (PU-06), the soft door to the call (PU-07). No price, no date,
+    no scarcity (3.14).
 
   Copybot (marketing/copy-skills/copybot/)
-  - One central idea: the belief above. So no offer, price or call to action.
+  - One central idea: the belief above, so no offer, price or call to action.
   - The reader's question: "My credit is good. Why do I need Fundhub?"
-  - Lead: problem then solution. It opens on what the reader already
-    believes (good credit gets approved), then the one thing that breaks it.
-  - Order: what gets you denied, where the reason lives, the old way, our
-    way, which banks, how fast, your call. Each slide answers the question
-    the slide before raised, and each claim's support sits on its slide.
-  - Voice: Chris's saved lines, kept close (chris-voice-profile.md:29-30).
-    The guarantee line is locked word for word (owner-voice.md:18).
-  - Reading level: check.mjs measures Flesch reading ease 85, about grade 6.
-    "Pre-underwriting", "application" and the locked guarantee line hold it there.
+  - Lead: problem then solution, in Chris's voice (owner-voice.md and the
+    sources it lists: chris-voice-profile.md, ads/VOICE.md, ads/RULES.md
+    Part 0). Lines Chris green-lit are reused where they fit
+    (marketing/ads/scripts/2026-10-14.md:61, :63, :101).
+  - The guarantee line is locked word for word (owner-voice.md:18).
 
   Visual Thinking (marketing/copy-skills/visual-thinking/)
   - PU-01 what: the credit file with one red flag (a document).
   - PU-02 why: the report and the bank's letter, tied by the same reason.
-  - PU-03 when: who does what when you apply first (a timeline).
+  - PU-03 when: who does what when you apply on a file nobody read (a timeline).
   - PU-04 how: the engine's real checks (src/underwrite/report.mjs).
-  - PU-05 where: which banks get the file, send or skip (a map of banks).
+  - PU-05 how: every bank, narrowed to the ones that approve files like yours.
   - PU-06 when: the stretch from signing to applications out.
-  - PU-07 how: the whole path in order (a numbered flow).
+  - PU-07 what: what happens on the call (a document).
   - Status quo against change (SQVID): PU-03 against PU-04 and PU-05.
   - Every sample document says Sample. No bank names, no invented figures.
 
@@ -332,7 +343,8 @@ body{padding-bottom:var(--fh-statusbar)}
 /* Fundhub slideshow shell.
    Layout: one phone screen per slide. A coded eyebrow, one headline, one or two
    lines, one picture, with Back and Next at the thumb. Paper slides do the
-   teaching. Ink slides with the brand grid open the deck and land the payoff.
+   teaching. Plain ink slides open the deck and land the payoff. No grids
+   (Chris, 2026-10-31).
    Colors, faces and parts come from public/app/fundhub-brand.css, which
    build.mjs embeds above this file. This file maps them to slideshow roles and
    never invents a color. Status colors keep their meaning and always ride with
@@ -369,8 +381,6 @@ body{height:100%;margin:0;padding-bottom:0;background:var(--ss-bg);color:var(--s
   font-family:var(--sans);font-size:1rem;line-height:1.45;-webkit-font-smoothing:antialiased;
   transition:background-color .3s ease,color .3s ease}
 html[data-tone="dark"] body{background:var(--ss-dark);color:var(--ss-dark-fg)}
-.ss-backdrop{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:0;transition:opacity .3s ease}
-html[data-tone="dark"] .ss-backdrop{opacity:1}
 
 .ss{position:relative;z-index:1;height:100%;max-width:var(--ss-col);margin-inline:auto;
   display:flex;flex-direction:column;
@@ -428,7 +438,8 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
 /* ── Picture kit ───────────────────────────────────────────────────────────
    Visual Thinking picks the picture from the slide's question:
    what (a document), how (.flow), when (.tl, .span, .metric),
-   how much (.bars), compare (.compare), why (.eq). These parts only draw it. */
+   how much (.bars), compare (.compare), why (.eq). These parts only draw it.
+   No grids of tiles and no grid texture (Chris, 2026-10-31). */
 /* The words stay pinned at the top so the headline never jumps between
    slides. The picture centers in the room that is left. */
 .pic{margin:auto 0;padding-block:8px;display:flex;flex-direction:column;gap:12px;min-width:0}
@@ -461,7 +472,7 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
 .slide.dark .tie{color:var(--ss-dark-muted)}
 .slide.dark .tie::before{background:#fff}
 
-/* The engine card: ink, mono, the brand grid. Add .gridbg in the markup. */
+/* The engine card: ink and mono, the way the brand shows UnderwriteIQ. */
 .term{position:relative;overflow:hidden;background:var(--card);border:1px solid var(--cardline);
   border-radius:10px;color:var(--cardtext);font-family:var(--mono);line-height:1.45}
 .term > *{position:relative}
@@ -480,6 +491,7 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
 .flow > li::before{content:counter(fl,decimal-leading-zero);flex:0 0 auto;font-family:var(--mono);
   font-size:var(--fs-caption);font-weight:500;color:var(--ss-muted)}
 .flow > li + li::after{content:"";position:absolute;left:24px;top:-15px;width:2px;height:14px;background:var(--gray2)}
+.flow.plain > li::before{content:none}          /* a narrowing, not a count */
 .flow > li.is-hot{background:var(--ink);border-color:var(--ink);color:#fff}
 .flow > li.is-hot::before{color:var(--gray2)}
 .flow .sub{display:block;font-weight:500;font-size:.875rem;color:var(--ss-muted)}
@@ -519,16 +531,6 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
   text-transform:uppercase;color:var(--ss-muted)}
 .slide.dark .metric .u{color:var(--ss-dark-muted)}
 
-/* Many banks in, few banks out. */
-.banks{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
-.bank{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:52px;
-  padding:8px 4px;border:1px solid var(--ss-rule);border-radius:10px;background:var(--ss-panel);color:var(--ss-muted)}
-.bank svg{width:22px;height:22px;fill:currentColor}
-.bank.yes{background:var(--ss-yes);border-color:var(--ok);color:var(--ink)}
-.bank .w{font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.08em;text-transform:uppercase}
-.sieve-mid{display:flex;align-items:center;gap:10px}
-.sieve-mid::before,.sieve-mid::after{content:"";flex:1;height:1px;background:var(--ss-rule)}
-
 /* How much: bars drawn to one scale. Set --v to value ÷ the largest value. */
 .bars{display:flex;flex-direction:column;gap:14px}
 .bar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;align-items:baseline}
@@ -552,12 +554,11 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
 .eq > .panel.is-hot{background:var(--ink);border-color:var(--ink);color:#fff}
 
 @media (max-width:359px){
-  .banks{grid-template-columns:repeat(4,minmax(0,1fr))}
   .eq{flex-direction:column}
   .eq .op{align-self:flex-start;padding-left:12px}
 }
 @media (prefers-reduced-motion:reduce){
-  body,.ss-backdrop,.ss-progress i{transition:none!important}
+  body,.ss-progress i{transition:none!important}
   html.ss-anim .slide.is-on{animation:none}
 }
 </style>
@@ -567,25 +568,25 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
 <main class="ss" data-deck="PU" data-lane="Funding" data-pillar="Question">
   <h1 class="ss-title">Pre-underwriting</h1>
 
-  <section class="slide dark" data-src="Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:208 (most banks approve good credit; the point is catching the red flag that gets you denied). Lane line 700: ops/workflows/backend-selling-lanes-2026-10-30.md:32.">
-    <p class="eyebrow">PU-01 / Good credit</p>
-    <h2>Most banks approve good credit.</h2>
-    <p class="lede">One red flag on your file still gets you denied.</p>
+  <section class="slide dark" data-src="The reason sits on the report, and a missed red flag gets good credit denied: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:208-209. Opener form: .ai/rules/copy-certainty.md:20. Lane line 700: ops/workflows/backend-selling-lanes-2026-10-30.md:32.">
+    <p class="eyebrow">PU-01 / The red flag</p>
+    <h2>When a bank denies good credit, the reason was on the credit report first.</h2>
+    <p class="lede">If nobody reads that line before you apply, the bank finds the red flag before you do.</p>
     <figure class="pic">
       <div class="panel doc">
-        <div class="doc-head"><span>Credit file</span><span class="chip">Sample</span></div>
+        <div class="doc-head"><span>Credit report</span><span class="chip">Sample</span></div>
         <div class="doc-row"><span>Score</span><span class="v">700+</span></div>
         <div class="doc-row"><span>Payments</span><span class="chip on"><span class="cd"></span>On time</span></div>
         <div class="doc-row"><span>Negative items</span><span class="v">None</span></div>
-        <div class="doc-row flag"><span>Card balances too high</span><span class="chip bad"><span class="cd"></span>Red flag</span></div>
+        <div class="doc-row flag"><span>Too high revolving balances</span><span class="chip bad"><span class="cd"></span>Red flag</span></div>
       </div>
     </figure>
   </section>
 
-  <section class="slide" data-src="Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:209 (the top of a credit report lists the reasons a bank approves or denies, for example too high revolving balances; the bank's letter gives the same reasons).">
+  <section class="slide" data-src="The top of a credit report lists the reasons a bank approves or denies; the bank's letter gives the same reasons: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:209.">
     <p class="eyebrow">PU-02 / The reasons</p>
-    <h2>The bank's reasons are already on your report.</h2>
-    <p class="lede">They sit at the top of your credit report. The bank's letter gives the same reasons.</p>
+    <h2>The top of your credit report lists the reasons a bank says yes or no.</h2>
+    <p class="lede">The letter a bank sends after a no gives those same reasons.</p>
     <figure class="pic">
       <div class="panel doc">
         <div class="doc-head"><span>Credit report · top</span><span class="chip">Sample</span></div>
@@ -600,26 +601,26 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
   </section>
 
-  <section class="slide" data-src="Almost every application is a hard pull: docs/sops/weekend-2026-10-24/04-sales-call-script.md:160. The letter carries the reason: ops/workflows/backend-selling-lanes-2026-10-30.md:209. Hard inquiry needs its own consent: db/migrations/493_funding_and_repair_agreement_text.sql:53 (section 4).">
-    <p class="eyebrow">PU-03 / Apply first</p>
-    <h2>Apply first, and you find out after.</h2>
-    <p class="lede">You apply. You wait. A letter shows up with the reason. And almost every application leaves a hard inquiry on your file.</p>
+  <section class="slide" data-src="Almost every application you send is a hard pull, and each one costs you: docs/sops/weekend-2026-10-24/04-sales-call-script.md:160. Too many recent hard inquiries bring auto-declines: src/underwrite/report.mjs:62. The letter carries the reason: ops/workflows/backend-selling-lanes-2026-10-30.md:209.">
+    <p class="eyebrow">PU-03 / The cost</p>
+    <h2>A no from a bank still costs you a hard inquiry.</h2>
+    <p class="lede">Almost every application you send is a hard pull. When there are too many, banks say no on their own.</p>
     <figure class="pic">
       <ol class="tl">
-        <li><span class="when">You</span><span class="what">Apply</span></li>
-        <li><span class="when">You</span><span class="what">Wait</span></li>
-        <li class="bad"><span class="when">The bank</span><span class="what">Sends a no, with the reason</span><span class="chip bad"><span class="cd"></span>Denied</span></li>
-        <li class="bad"><span class="when">Your file</span><span class="what">Gets a hard inquiry</span><span class="chip bad"><span class="cd"></span>On your report</span></li>
+        <li><span class="when">You</span><span class="what">Send an application</span></li>
+        <li><span class="when">The bank</span><span class="what">Pulls your credit hard</span></li>
+        <li class="bad"><span class="when">The bank</span><span class="what">Says no, with the reason</span><span class="chip bad"><span class="cd"></span>Denied</span></li>
+        <li class="bad"><span class="when">Your file</span><span class="what">Keeps the hard inquiry</span><span class="chip bad"><span class="cd"></span>On your report</span></li>
       </ol>
     </figure>
   </section>
 
-  <section class="slide" data-src="Chris 2026-10-31, marketing/copy-skills/copybot/references/chris-voice-profile.md:29 (pre-underwriting; the same models the banks use). The checks: src/underwrite/report.mjs:52-80 (card balances against the 30% target, recent hard inquiries, a primary card not as an authorized user, negative accounts, LLC age) and :103-111 (thresholds)." data-figures="rule, not a sample: 30% is the engine's utilization target, src/underwrite/report.mjs:56 and :105">
+  <section class="slide" data-src="Part 0 rule 8 wording: marketing/ads/RULES.md:44. Before a single application goes out: marketing/ads/scripts/2026-10-14.md:61 (green-lit). Pre-underwriting with the same models the banks use: Chris 2026-10-31, marketing/copy-skills/copybot/references/chris-voice-profile.md:29. The checks: src/underwrite/report.mjs:52-80 and :103-111." data-figures="rule, not a sample: 30% is the engine's utilization target, src/underwrite/report.mjs:56 and :105">
     <p class="eyebrow">PU-04 / Pre-underwriting</p>
-    <h2>We read your file the way the bank will, before anyone applies.</h2>
-    <p class="lede">That's pre-underwriting. We use the same models the banks use.</p>
+    <h2>We review your file the way a lender does, before a single application goes out.</h2>
+    <p class="lede">That's pre-underwriting, and we do it with the same models the banks use.</p>
     <figure class="pic">
-      <div class="term gridbg">
+      <div class="term">
         <div class="term-head"><span class="pulse"></span>UnderwriteIQ · checks first</div>
         <div class="term-line"><span class="k">›</span>Card balances over 30% of the limit</div>
         <div class="term-line"><span class="k">›</span>Recent hard inquiries</div>
@@ -630,24 +631,16 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
   </section>
 
-  <section class="slide" data-src="Chris 2026-10-31, marketing/copy-skills/copybot/references/chris-voice-profile.md:29 (we send you to the banks that are going to approve you) and :30 (we're not going to send you to apply if you're not going to get approved; why would we do that; we put so much on the line).">
+  <section class="slide" data-src="Every application goes to a bank that approves you: marketing/ads/scripts/2026-10-14.md:101 (green-lit). Banks that approve files like yours: same file :63. We send you to the banks that are going to approve you; we put so much on the line: Chris 2026-10-31, marketing/copy-skills/copybot/references/chris-voice-profile.md:29-30.">
     <p class="eyebrow">PU-05 / The right banks</p>
-    <h2>Then your file goes only to banks that approve files like yours.</h2>
-    <p class="lede">We're not sending you to apply if you're not going to get approved. Why would we? We put so much on the line.</p>
+    <h2>Every application goes to a bank that approves files like yours.</h2>
+    <p class="lede">We only send you to apply where you're going to get approved, because we put so much on the line.</p>
     <figure class="pic">
-      <div class="sieve-mid"><span class="chip">Checked against your file</span></div>
-      <div class="banks">
-        <span class="bank"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 5H3l9-5zM5 10h2v7H5zm6 0h2v7h-2zm6 0h2v7h-2zM3 18h18v2H3z"/></svg><span class="w">Skip</span></span>
-        <span class="bank yes"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 5H3l9-5zM5 10h2v7H5zm6 0h2v7h-2zm6 0h2v7h-2zM3 18h18v2H3z"/></svg><span class="w">Send</span></span>
-        <span class="bank"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 5H3l9-5zM5 10h2v7H5zm6 0h2v7h-2zm6 0h2v7h-2zM3 18h18v2H3z"/></svg><span class="w">Skip</span></span>
-        <span class="bank"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 5H3l9-5zM5 10h2v7H5zm6 0h2v7h-2zm6 0h2v7h-2zM3 18h18v2H3z"/></svg><span class="w">Skip</span></span>
-        <span class="bank yes"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 5H3l9-5zM5 10h2v7H5zm6 0h2v7h-2zm6 0h2v7h-2zM3 18h18v2H3z"/></svg><span class="w">Send</span></span>
-        <span class="bank"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 5H3l9-5zM5 10h2v7H5zm6 0h2v7h-2zm6 0h2v7h-2zM3 18h18v2H3z"/></svg><span class="w">Skip</span></span>
-        <span class="bank"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 5H3l9-5zM5 10h2v7H5zm6 0h2v7h-2zm6 0h2v7h-2zM3 18h18v2H3z"/></svg><span class="w">Skip</span></span>
-        <span class="bank yes"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 5H3l9-5zM5 10h2v7H5zm6 0h2v7h-2zm6 0h2v7h-2zM3 18h18v2H3z"/></svg><span class="w">Send</span></span>
-        <span class="bank"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 5H3l9-5zM5 10h2v7H5zm6 0h2v7h-2zm6 0h2v7h-2zM3 18h18v2H3z"/></svg><span class="w">Skip</span></span>
-        <span class="bank"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 5H3l9-5zM5 10h2v7H5zm6 0h2v7h-2zm6 0h2v7h-2zM3 18h18v2H3z"/></svg><span class="w">Skip</span></span>
-      </div>
+      <ol class="flow plain">
+        <li>Every bank we work with</li>
+        <li>Checked against the reasons on your report</li>
+        <li class="is-hot">Only the banks that approve files like yours</li>
+      </ol>
     </figure>
   </section>
 
@@ -664,18 +657,18 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
   </section>
 
-  <section class="slide" data-src="On the call the file is pulled and read together, and the client sees how much they qualify for: docs/sops/weekend-2026-10-24/04-sales-call-script.md:69, :156-:171. See what a bank sees: same file :160. Approved phrase: .ai/rules/copy-certainty.md:13. The steps recap slides PU-02 to PU-06.">
+  <section class="slide" data-src="On the call the file is pulled together with a soft pull and read on screen: docs/sops/weekend-2026-10-24/04-sales-call-script.md:69, :164-171. How much you qualify for based on where you're at right now: same file :171 and .ai/rules/copy-certainty.md:13. Fund what's there now, fix the file first, or both: same file :176. Part 0 rule 8 wording: marketing/ads/RULES.md:44.">
     <p class="eyebrow">PU-07 / Your call</p>
-    <h2>On your call, we read your file with you.</h2>
-    <p class="lede">You see what the bank sees, and how much you qualify for based on where you're at right now.</p>
+    <h2>On your call, we review your file with you, the way a lender does.</h2>
+    <p class="lede">You leave knowing how much you qualify for based on where you're at right now.</p>
     <figure class="pic">
-      <ol class="flow">
-        <li>Your credit report</li>
-        <li>The bank's reasons</li>
-        <li class="is-hot">Pre-underwriting</li>
-        <li>Banks that approve files like yours</li>
-        <li>Applications out within 72 business hours</li>
-      </ol>
+      <div class="panel doc">
+        <div class="doc-head"><span>Your call</span></div>
+        <div class="doc-row"><span>We pull your file together</span><span class="chip on"><span class="cd"></span>Soft pull</span></div>
+        <div class="doc-row"><span>What a bank sees on it</span></div>
+        <div class="doc-row"><span>How much you qualify for</span></div>
+        <div class="doc-row yes"><span>The way to go: fund now, fix first, or both</span></div>
+      </div>
     </figure>
   </section>
 </main>
@@ -701,10 +694,6 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     if (text) node.textContent = text;
     return node;
   }
-
-  var backdrop = el("div", "ss-backdrop gridbg");
-  backdrop.setAttribute("aria-hidden", "true");
-  document.body.insertBefore(backdrop, document.body.firstChild);
 
   var top = el("header", "ss-top");
   var logo = el("span", "logo");

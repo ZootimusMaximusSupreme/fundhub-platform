@@ -1,7 +1,8 @@
 /* Fundhub slideshow shell.
    Layout: one phone screen per slide. A coded eyebrow, one headline, one or two
    lines, one picture, with Back and Next at the thumb. Paper slides do the
-   teaching. Ink slides with the brand grid open the deck and land the payoff.
+   teaching. Plain ink slides open the deck and land the payoff. No grids
+   (Chris, 2026-10-31).
    Colors, faces and parts come from public/app/fundhub-brand.css, which
    build.mjs embeds above this file. This file maps them to slideshow roles and
    never invents a color. Status colors keep their meaning and always ride with
@@ -38,8 +39,6 @@ body{height:100%;margin:0;padding-bottom:0;background:var(--ss-bg);color:var(--s
   font-family:var(--sans);font-size:1rem;line-height:1.45;-webkit-font-smoothing:antialiased;
   transition:background-color .3s ease,color .3s ease}
 html[data-tone="dark"] body{background:var(--ss-dark);color:var(--ss-dark-fg)}
-.ss-backdrop{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:0;transition:opacity .3s ease}
-html[data-tone="dark"] .ss-backdrop{opacity:1}
 
 .ss{position:relative;z-index:1;height:100%;max-width:var(--ss-col);margin-inline:auto;
   display:flex;flex-direction:column;
@@ -97,7 +96,8 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
 /* ── Picture kit ───────────────────────────────────────────────────────────
    Visual Thinking picks the picture from the slide's question:
    what (a document), how (.flow), when (.tl, .span, .metric),
-   how much (.bars), compare (.compare), why (.eq). These parts only draw it. */
+   how much (.bars), compare (.compare), why (.eq). These parts only draw it.
+   No grids of tiles and no grid texture (Chris, 2026-10-31). */
 /* The words stay pinned at the top so the headline never jumps between
    slides. The picture centers in the room that is left. */
 .pic{margin:auto 0;padding-block:8px;display:flex;flex-direction:column;gap:12px;min-width:0}
@@ -130,7 +130,7 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
 .slide.dark .tie{color:var(--ss-dark-muted)}
 .slide.dark .tie::before{background:#fff}
 
-/* The engine card: ink, mono, the brand grid. Add .gridbg in the markup. */
+/* The engine card: ink and mono, the way the brand shows UnderwriteIQ. */
 .term{position:relative;overflow:hidden;background:var(--card);border:1px solid var(--cardline);
   border-radius:10px;color:var(--cardtext);font-family:var(--mono);line-height:1.45}
 .term > *{position:relative}
@@ -149,6 +149,7 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
 .flow > li::before{content:counter(fl,decimal-leading-zero);flex:0 0 auto;font-family:var(--mono);
   font-size:var(--fs-caption);font-weight:500;color:var(--ss-muted)}
 .flow > li + li::after{content:"";position:absolute;left:24px;top:-15px;width:2px;height:14px;background:var(--gray2)}
+.flow.plain > li::before{content:none}          /* a narrowing, not a count */
 .flow > li.is-hot{background:var(--ink);border-color:var(--ink);color:#fff}
 .flow > li.is-hot::before{color:var(--gray2)}
 .flow .sub{display:block;font-weight:500;font-size:.875rem;color:var(--ss-muted)}
@@ -188,16 +189,6 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
   text-transform:uppercase;color:var(--ss-muted)}
 .slide.dark .metric .u{color:var(--ss-dark-muted)}
 
-/* Many banks in, few banks out. */
-.banks{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
-.bank{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:52px;
-  padding:8px 4px;border:1px solid var(--ss-rule);border-radius:10px;background:var(--ss-panel);color:var(--ss-muted)}
-.bank svg{width:22px;height:22px;fill:currentColor}
-.bank.yes{background:var(--ss-yes);border-color:var(--ok);color:var(--ink)}
-.bank .w{font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.08em;text-transform:uppercase}
-.sieve-mid{display:flex;align-items:center;gap:10px}
-.sieve-mid::before,.sieve-mid::after{content:"";flex:1;height:1px;background:var(--ss-rule)}
-
 /* How much: bars drawn to one scale. Set --v to value ÷ the largest value. */
 .bars{display:flex;flex-direction:column;gap:14px}
 .bar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;align-items:baseline}
@@ -221,11 +212,10 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
 .eq > .panel.is-hot{background:var(--ink);border-color:var(--ink);color:#fff}
 
 @media (max-width:359px){
-  .banks{grid-template-columns:repeat(4,minmax(0,1fr))}
   .eq{flex-direction:column}
   .eq .op{align-self:flex-start;padding-left:12px}
 }
 @media (prefers-reduced-motion:reduce){
-  body,.ss-backdrop,.ss-progress i{transition:none!important}
+  body,.ss-progress i{transition:none!important}
   html.ss-anim .slide.is-on{animation:none}
 }

@@ -19,10 +19,6 @@
     return node;
   }
 
-  var backdrop = el("div", "ss-backdrop gridbg");
-  backdrop.setAttribute("aria-hidden", "true");
-  document.body.insertBefore(backdrop, document.body.firstChild);
-
   var top = el("header", "ss-top");
   var logo = el("span", "logo");
   logo.setAttribute("role", "img");

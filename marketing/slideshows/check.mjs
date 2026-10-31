@@ -12,6 +12,7 @@
 import { readFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { checkScriptText } from "../../scripts/ads/check-script.mjs";
 import { applyShell, deckFiles } from "./build.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -83,14 +84,21 @@ function syllables(word) {
   return Math.max(1, groups ? groups.length : 1);
 }
 
-// Flesch Reading Ease, the measure Copybot's readability reference names. A
-// rough syllable count, so it flags a deck for a reread, never a rewrite.
-function readingEase(sentences) {
+// Flesch Reading Ease (the measure Copybot's readability reference names) and
+// the Flesch-Kincaid grade, both from one rough syllable count, so they flag
+// a deck for a reread, never a rewrite on their own.
+function readability(sentences) {
   const words = sentences.join(" ").split(/\s+/).filter((w) => /[a-z0-9]/i.test(w));
-  if (!words.length) return 100;
-  const syl = words.reduce((n, w) => n + syllables(w), 0);
-  return 206.835 - 1.015 * (words.length / sentences.length) - 84.6 * (syl / words.length);
+  if (!words.length) return { ease: 100, grade: 0 };
+  const asl = words.length / sentences.length;
+  const asw = words.reduce((n, w) => n + syllables(w), 0) / words.length;
+  return { ease: 206.835 - 1.015 * asl - 84.6 * asw, grade: 0.39 * asl + 11.8 * asw - 15.59 };
 }
+
+// Content sells the next step, the call, and carries no call to action
+// (Hammer Them SOP; plan section 6c). The ad checker only tests a hook's
+// first sentence, so every sentence of a deck is tested here.
+const ASK = /^(?:(?:so|now|and|then|okay|ok)[,\s]+)?(click|tap|book|call|apply|schedule|sign up|fill out|get started|learn more|grab|pick|reply|text us)\b/i;
 
 function checkDeck(file, prices) {
   const html = readFileSync(file, "utf8");
@@ -111,6 +119,8 @@ function checkDeck(file, prices) {
 
   const deckText = [];
   const sentences = [];
+  const spoken = [];
+  const labels = [];
   slides.forEach((slide, k) => {
     const open = /^<section[^>]*>/.exec(slide)[0];
     const code = text((/<p class="eyebrow">([\s\S]*?)<\/p>/.exec(slide) || [])[1] || "") || `slide ${k + 1}`;
@@ -125,12 +135,20 @@ function checkDeck(file, prices) {
     const ledes = all(/<p class="lede"[^>]*>([\s\S]*?)<\/p>/g, slide).map(text);
     heads.forEach((h) => {
       sentences.push(h);
-      if (h.length > 72) warns.push(`${where}: headline is ${h.length} characters`);
+      spoken.push(h);
+      if (h.length > 90) warns.push(`${where}: headline is ${h.length} characters`);
     });
     ledes.forEach((l) => {
       sentences.push(...l.split(/(?<=[.!?])\s+/).filter(Boolean));
+      spoken.push(l);
       if (l.length > 200) warns.push(`${where}: lede is ${l.length} characters`);
     });
+    for (const s of [...heads, ...ledes].flatMap((t) => t.split(/(?<=[.!?])\s+/))) {
+      const m = ASK.exec(s.trim());
+      if (m) errors.push(`${where}: "${s.trim()}" asks for something; a slideshow has no call to action`);
+    }
+    const pic = (/<figure class="pic\b[^>]*>([\s\S]*?)<\/figure>/.exec(slide) || [])[1];
+    if (pic) labels.push(text(pic));
 
     const figures = /\$\s?\d|\b\d{1,3}(?:\.\d+)?\s?%|\b[5-8]\d\d\b/.test(body);
     if (figures && !/\bsample\b/i.test(body) && !attr(open, "data-figures")) {
@@ -160,9 +178,17 @@ function checkDeck(file, prices) {
     if (p.re.test(all_)) errors.push(`a Fundhub price on a slide: ${p.label} (no prices before the call)`);
   }
 
-  const ease = readingEase(sentences);
-  if (ease < 75) warns.push(`reading ease ${ease.toFixed(0)}; aim for 80 or higher (grade 6 or easier)`);
-  return { name: basename(file), slides: slides.length, ease, errors, warns };
+  // The ad rule book's own machine checks (marketing/ads/RULES.md Part 4.1),
+  // in strict mode: banned words and phrases, never-say lines, vendor names,
+  // em dashes, "not X but Y", the hook checks on slide 1's headline and line,
+  // and the Part 0 patterns ("credit repair", "your number", EIN, "could"...).
+  const ad = checkScriptText([...spoken, ...labels].join("\n"), { strict: true });
+  for (const f of ad.failures) errors.push(`ad rules: ${f.message}`);
+  for (const w of ad.warnings) if (w.rule !== "format") warns.push(`ad rules: ${w.message}`);
+
+  const { ease, grade } = readability(sentences);
+  if (grade > 6) warns.push(`grade level ${grade.toFixed(1)}; customer copy is written at grade 5 (RULES.md Part 0 rule 12)`);
+  return { name: basename(file), slides: slides.length, ease, grade, errors, warns };
 }
 
 const args = process.argv.slice(2);
@@ -174,7 +200,7 @@ for (const file of files) {
   if (!r) continue;
   const ok = r.errors.length === 0;
   if (!ok) failed += 1;
-  console.log(`${ok ? "PASS" : "FAIL"}  ${r.name}  ${r.slides} slides · reading ease ${r.ease.toFixed(0)}`);
+  console.log(`${ok ? "PASS" : "FAIL"}  ${r.name}  ${r.slides} slides · grade ${r.grade.toFixed(1)} · reading ease ${r.ease.toFixed(0)}`);
   for (const e of r.errors) console.log(`  error  ${e}`);
   for (const w of r.warns) console.log(`  warn   ${w}`);
 }
