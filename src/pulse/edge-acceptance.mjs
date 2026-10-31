@@ -29,7 +29,7 @@ export const CRITICAL_EDGES = Object.freeze([
     event: "booking.created", consumer: "onBookingCreated / s-04-call-booked",
     receipt: "bookings + confirmation message + call_outcomes", graceMinutes: 30,
     pulse: "calls:booked-no-outcome",
-    paths: ["src/register-all.mjs", "src/adapters/clickfunnels.mjs", "src/bookings/", "src/handlers/client-lifecycle.mjs", "src/workflows/s-04", "src/workflows/cortana-booking-feed.mjs", "src/messaging/providers/cortana-booking-webhook.mjs", "src/config/survey-qualification.mjs", "src/setter/tasks.mjs", "src/auth/magic-link.mjs", "src/auth/booking-account", "src/sales/call-outcomes.mjs", "src/sales/closer-now.mjs", "src/sales/closer-deck.mjs", "src/sales/cockpit.mjs", "src/setter/dashboard.mjs", "api/tasks.mjs", "public/app/closer-dashboard.html", "public/app/setter-dashboard.html", "public/app/calendar.html", "public/app/pipeline.html", "public/app/shell.js", "api/dashboard/pipeline.mjs", "api/auth/magic-link.mjs", "src/auth/booking-account", "src/auth/magic-link", "public/portal-login.html", "marketing/landing-pages/"]
+    paths: ["src/register-all.mjs", "src/adapters/clickfunnels.mjs", "src/bookings/", "src/handlers/client-lifecycle.mjs", "src/workflows/s-04", "src/workflows/cortana-booking-feed.mjs", "src/messaging/providers/cortana-booking-webhook.mjs", "src/config/survey-qualification.mjs", "src/setter/tasks.mjs", "src/auth/magic-link.mjs", "src/auth/booking-account", "src/sales/call-outcomes.mjs", "src/sales/closer-now.mjs", "src/sales/closer-deck.mjs", "src/sales/cockpit.mjs", "src/setter/dashboard.mjs", "api/tasks.mjs", "public/app/closer-dashboard.html", "public/app/setter-dashboard.html", "public/app/calendar.html", "public/app/pipeline.html", "public/app/shell.js", "api/dashboard/pipeline.mjs", "api/auth/magic-link.mjs", "src/auth/booking-account", "src/auth/magic-link", "public/portal-login.html", "marketing/landing-pages/", "src/funnel/pages.mjs", "public/funnel/fh-events.js", "src/workflows/messaging.mjs"]
   },
   {
     id: "payment-ledger-entitlement", severity: "P0", owner: "A/R",
@@ -73,7 +73,7 @@ export const CRITICAL_EDGES = Object.freeze([
     event: "message.queued / message.sent / message.failed", consumer: "message-dispatch-sweeper + provider callbacks",
     receipt: "messages row + provider delivery/callback + client inbox", graceMinutes: 15,
     pulse: "gap:sms-journey-zero",
-    paths: ["src/register-all.mjs", "src/messaging/", "src/chat/", "src/adapters/twilio", "src/adapters/resend", "api/read/inbox.mjs", "api/chat/messages.mjs", "public/app/client-portal.html", "public/app/shell.js", "netlify/functions/staff-message-sweeper.mjs"]
+    paths: ["src/register-all.mjs", "src/messaging/", "src/chat/", "src/adapters/twilio", "src/adapters/resend", "api/read/inbox.mjs", "api/chat/messages.mjs", "public/app/client-portal.html", "public/app/shell.js", "netlify/functions/staff-message-sweeper.mjs", "src/workflows/messaging.mjs"]
   },
   {
     // Staff lead/handoff alerts are not customer inbox messages. A queued outbox
@@ -107,7 +107,7 @@ export const CRITICAL_EDGES = Object.freeze([
     event: "SOURCE-STATE: Meta spend import", consumer: "ad-number mapping / lead attribution",
     receipt: "spend row + fundhub_ad_number + attributed lead", graceMinutes: null,
     pulse: "ads-number-unmapped",
-    paths: ["src/ads/", "src/attribution/", "src/adapters/meta", "api/ads"]
+    paths: ["src/ads/", "src/attribution/", "src/adapters/meta", "api/ads", "public/funnel/fh-events.js"]
   },
   {
     id: "native-portal-first-open", severity: "P1", owner: "Native apps",
