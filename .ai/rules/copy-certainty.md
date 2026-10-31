@@ -18,7 +18,10 @@ alwaysApply: true
 - you might, you may, maybe, could, could be, can possibly
 - probably, likely, most likely, hopefully, chances are
 - "Maybe your bank denied you" style openers. Use "When a bank denies you..." instead.
-- Never state a day count. The page's refund line says "within 7 days". Ads never state a day count. (owner-set 2026-10-02)
+
+## Day counts are allowed (owner-set 2026-10-31)
+
+Chris: "I don't give a fuck what the ad rules say. Remove that. That's one of the best ways." Ads, VSLs and nurture copy may state a day count, such as the 72-hour guarantee. This replaces the 2026-10-02 line "Ads never state a day count." The count must match the written guarantee it comes from.
 
 ## Example
 
