@@ -643,3 +643,43 @@ test("strict A->B witnesses cannot clear pre-existing or future business results
     }), { verdict: "RED", reason: "provider-proof-timestamp-order-invalid" });
   }
 });
+
+
+test("P0/P1 consent proof cannot PASS a future or pre-event provider action or a premature result", () => {
+  // Strict source-level fixture only: no credit bureau order, provider read or
+  // live customer result. The original judge falsely PASSed all three cases.
+  const expectedContract = {
+    eventName: "diagnostic.paid", eventVersion: 1,
+    consumerName: "onDiagnosticPaidSoftPull", resultKind: "crs_results"
+  };
+  const witness = {
+    ...basics, expectedContract, requireConsentReceipt: true,
+    consentScope: "credit-soft-pull",
+    event: { ...event, consent_id: "consent-sim", name: "diagnostic.paid", version: 1 },
+    consumer: { ...consumer, consumer_name: "onDiagnosticPaidSoftPull",
+      completed_at: "2026-10-29T00:12:00Z", provider_action_at: "2026-10-29T00:10:00Z" },
+    receipt: { ...receipt, result_kind: "crs_results",
+      completed_at: "2026-10-29T00:15:00Z" },
+    consentReceipt: { id: "consent-sim", org_id: org, client_id: client,
+      scope: "credit-soft-pull", outcome: "authorized",
+      signed_at: "2026-10-29T00:05:00Z" }
+  };
+  assert.equal(judgeSyntheticEdge(witness).verdict, "PASS");
+  for (const actionTime of ["2026-10-28T23:59:00Z", "2026-10-29T02:00:00Z"]) {
+    assert.deepEqual(judgeSyntheticEdge({ ...witness, consumer: {
+      ...witness.consumer, provider_action_at: actionTime
+    } }), { verdict: "RED", reason: "provider-action-time-outside-observed-window" });
+  }
+  assert.deepEqual(judgeSyntheticEdge({ ...witness, receipt: {
+    ...witness.receipt, completed_at: "2026-10-29T00:08:00Z"
+  }, consumer: { ...witness.consumer, completed_at: "2026-10-29T00:07:00Z" }
+  }), { verdict: "RED", reason: "business-result-precedes-provider-action" });
+  assert.deepEqual(judgeSyntheticEdge({ ...witness,
+    event: { ...witness.event, created_at: null }
+  }), { verdict: "NOT_CHECKED", reason: "provider-action-event-time-missing" });
+  assert.deepEqual(judgeSyntheticEdge({ ...witness, consumer: {
+    ...witness.consumer, provider_action_at: "2026-10-29T02:00:00Z"
+  }, now: "2026-10-29T00:03:00Z" }), {
+    verdict: "PENDING", reason: "provider-action-time-outside-observed-window"
+  });
+});
