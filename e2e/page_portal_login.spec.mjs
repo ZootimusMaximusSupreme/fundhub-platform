@@ -144,3 +144,31 @@ test('standalone display-mode fallback protects portal-login marketing exits', a
   await expect(page.locator('.portal-brand')).toHaveAttribute('href', '/app/client-portal.html');
   await expect(page.locator('.portal-back')).toBeHidden();
 });
+
+test('password login keeps marketing links only in ordinary browsers, not installed client PWA', async ({ page }) => {
+  await page.goto('/login.html?next=%2Fapp%2Fclient-portal.html');
+  await expect(page.locator('.login-brand')).toHaveAttribute('href', '/');
+  await expect(page.locator('.login-back a')).toHaveAttribute('href', '/');
+  await expect(page.locator('.login-back')).toBeVisible();
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'standalone', { configurable: true, value: true });
+  });
+  await page.reload();
+  await expect(page.locator('.login-brand')).toHaveAttribute('href', '/app/client-portal.html');
+  await expect(page.locator('.login-brand')).toHaveAttribute('aria-label', 'Open Fundhub client portal');
+  await expect(page.locator('.login-back')).toBeHidden();
+  await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible();
+  await expect(page.locator('#fh-forgot-link')).toBeVisible();
+});
+test('password login also protects CSS standalone when navigator.standalone is unavailable', async ({ page }) => {
+  await page.addInitScript(() => {
+    const original = window.matchMedia.bind(window);
+    window.matchMedia = query => query === '(display-mode: standalone)'
+      ? { matches: true, media: query, addListener() {}, removeListener() {} }
+      : original(query);
+  });
+  await page.goto('/login.html?next=%2Fapp%2Fclient-portal.html');
+  await expect(page.locator('.login-brand')).toHaveAttribute('href', '/app/client-portal.html');
+  await expect(page.locator('.login-back')).toBeHidden();
+  await expect(page.getByLabel('Email address')).toBeVisible();
+});
