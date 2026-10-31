@@ -40,6 +40,33 @@ function bookedFixture({ bStart = "2026-10-29T11:15:00Z", bEnd = "2026-10-29T12:
   return cte + "\n" + BOOKED_NO_OUTCOME_SQL;
 }
 
+// An incomplete booking identity plus a reused provider UID is ambiguous.
+// This uses the actual Postgres SELECT with immutable fake table rows.
+function nullClientDuplicateUidFixture({ duplicate = true, exactBookingRef = false } = {}) {
+  const aUid = duplicate ? "shared-provider-uid" : "unique-provider-a";
+  const bUid = duplicate ? "shared-provider-uid" : "unique-provider-b";
+  const outcomeRef = exactBookingRef ? BOOKING_A : aUid;
+  // For the ambiguous case the outcome was logged for B; for the unique
+  // case only A's unmatched buyer identity is unknown.
+  const outcomeClient = duplicate && !exactBookingRef ? CLIENT : OTHER_CLIENT;
+  return `WITH
+    bookings(id, org_id, client_id, status, starts_at, ends_at, provider_uid) AS (
+      VALUES
+      ('${BOOKING_A}'::uuid, '${ORG}'::uuid, NULL::uuid, 'booked'::text,
+       '2026-10-29T10:00:00Z'::timestamptz, '2026-10-29T11:00:00Z'::timestamptz, ${literal(aUid)}::text),
+      ('${BOOKING_B}'::uuid, '${ORG}'::uuid, '${CLIENT}'::uuid, 'booked'::text,
+       '2026-10-29T11:15:00Z'::timestamptz, '2026-10-29T12:00:00Z'::timestamptz, ${literal(bUid)}::text)
+    ),
+    clients(id, org_id, is_demo, custom_fields) AS (
+      VALUES ('${CLIENT}'::uuid, '${ORG}'::uuid, false, '{}'::jsonb)
+    ),
+    call_outcomes(org_id, client_id, booking_ref, logged_at, is_demo) AS (
+      VALUES ('${ORG}'::uuid, '${outcomeClient}'::uuid,
+              ${literal(outcomeRef)}::text,
+              '2026-10-29T12:05:00Z'::timestamptz, false)
+    )\n` + BOOKED_NO_OUTCOME_SQL;
+}
+
 function smsFixture({ email = "buyer@normalcorp.com", eventFields = {}, clientFields = {} } = {}) {
   const payload = JSON.stringify({ email, ...eventFields });
   const custom = JSON.stringify(clientFields);
@@ -117,6 +144,23 @@ test("later call B outcome must not hide earlier unanswered call A (real SELECT 
     outcomeAt: "2026-10-29T11:05:00Z"
   }), [ORG, "2026-10-29T00:00:00Z", "2026-10-30T00:00:00Z"]);
   assert.deepEqual(uniqueA.rows.map((r) => r.id), [BOOKING_B]);
+});
+
+test("two bookings sharing a provider UID do not borrow one outcome across NULL client identity (read-only PG)", {
+  skip: !livePg && "no disposable Postgres configured"
+}, async () => {
+  const args = [ORG, "2026-10-29T00:00:00Z", "2026-10-30T00:00:00Z"];
+  const ambiguous = await db.query(nullClientDuplicateUidFixture(), args);
+  assert.deepEqual(ambiguous.rows.map((r) => r.id), [BOOKING_A],
+    "one outcome for B must not also clear A when A has no client identity");
+  const unique = await db.query(nullClientDuplicateUidFixture({ duplicate: false }), args);
+  assert.deepEqual(unique.rows.map((r) => r.id), [BOOKING_B],
+    "a unique provider UID still links a NULL-client appointment without a false RED");
+  const explicitLocal = await db.query(nullClientDuplicateUidFixture({
+    duplicate: true, exactBookingRef: true
+  }), args);
+  assert.deepEqual(explicitLocal.rows.map((r) => r.id), [BOOKING_B],
+    "an exact local booking UUID remains trusted even if provider UIDs collide");
 });
 
 test("simulated SMS journeys are excluded but genuine missing SMS remains RED", {
