@@ -15,6 +15,8 @@ description: >-
 
 **In force (owner-set 2026-10-05):** `marketing/ads/RULES.md` Part 0, the other parts, `VOICE.md` and the `ads:check` checker are in force, as amended by Part 0 and the newer owner rules. Where a book line fights a newer owner rule, the newer rule wins. Newer owner laws (`copy-certainty`, `ad-no-recycled-lines`, `ad-second-line`, `fourth-grade-english`) still apply.
 
+**Writes the Copybot way (owner-set 2026-10-31):** Law: copy-skills-foundation (.ai/rules/copy-skills-foundation.md) - load `marketing/copy-skills/copybot/SKILL.md` and write in Chris's voice from its `references/owner-voice.md`. This skill's checker still runs before Chris sees a draft.
+
 ## Fast path (default — use this unless Chris asked for net-new concepts)
 
 Chris wants **ads**, not a company audit.
