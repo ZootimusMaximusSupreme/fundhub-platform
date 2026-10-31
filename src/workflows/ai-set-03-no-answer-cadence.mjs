@@ -37,6 +37,12 @@
 // from the run's own trigger event. The old check looked at the person's whole
 // history, so anyone who had ever booked stopped after text 1 — which would end
 // the "call booked" words after one text.
+//
+// The "call booked" words ask the person to keep their call, so texts 2 and 3 of
+// that set also stop when the call is no longer ahead of them: cancelled, or its
+// start time has come (held or missed). Asked at the same planned moment, with the
+// same booking rule as upcomingCall (review 2026-10-31). The opt-in words ask the
+// person to book, so having no call ahead never stops them.
 
 import { inngest } from "./client.mjs";
 import { db } from "../db.mjs";
@@ -103,9 +109,10 @@ export async function handle({ event, db, step, now = () => new Date() }) {
   const replied = () => hasReplied(db, { clientId, eventId });
 
   /* Wait for text n, then ask whether it should still go. Returns why the cadence
-     should stop ("rebooked" or "replied"), or null to send. The moment is planned
-     in a step; text 1 is due now, texts 2 and 3 after the text before them. */
+     should stop ("rebooked", "replied" or "call_gone"), or null to send. The moment
+     is planned in a step; text 1 is due now, texts 2 and 3 after the text before them. */
   let plannedMs = 0;
+  let callAt = null;
   async function waitAndCheck(n) {
     const planned = await step.run(`plan-msg${n}`, () => {
       const due = n === 1 ? now().getTime() : plannedMs + TEXT_GAP_MS[n];
@@ -115,13 +122,14 @@ export async function handle({ event, db, step, now = () => new Date() }) {
     await step.sleepUntil(`wait-until-msg${n}`, new Date(planned));
     if (await step.run(`check-rebooked-${n}`, () => rebookedSince(db, clientId, eventId))) return "rebooked";
     if (await step.run(`check-replied-${n}`, replied)) return "replied";
+    if (n > 1 && callAt && !(await step.run(`check-call-ahead-${n}`, () => upcomingCall(db, orgId, clientId)))) return "call_gone";
     return null;
   }
 
   const stop1 = await waitAndCheck(1);
   if (stop1) return { done: true, exitedAt: stop1 === "replied" ? "replied" : "before-msg1" };
 
-  const callAt = await step.run("find-upcoming-call", () => upcomingCall(db, orgId, clientId));
+  callAt = await step.run("find-upcoming-call", () => upcomingCall(db, orgId, clientId));
   const keys = callAt ? CALL_BOOKED_KEYS : NO_CALL_KEYS;
   const context = callAt ? { appointment: { start_time: callAt } } : {};
   const send = (n) => sendTemplated(db, {
