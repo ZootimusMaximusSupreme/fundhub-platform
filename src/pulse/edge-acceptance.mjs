@@ -240,6 +240,15 @@ export function judgeSyntheticEdge({
   // client, consent scope, or version must never green-light that action.
   if (requireConsentReceipt) {
     const actionTime = milliseconds(consumer.provider_action_at);
+    const eventTime = milliseconds(resolved.created_at);
+    // A future-dated or pre-event bureau action is not an observed provider
+    // result. Even a valid signature cannot make that action a live PASS.
+    if (!Number.isFinite(eventTime)) {
+      return { verdict: "NOT_CHECKED", reason: "provider-action-event-time-missing" };
+    }
+    if (Number.isFinite(actionTime) && (actionTime < eventTime || actionTime > current)) {
+      return failed("provider-action-time-outside-observed-window");
+    }
     const consentTime = milliseconds(consentReceipt?.signed_at);
     const revokedTime = milliseconds(consentReceipt?.revoked_at);
     const revoked = consentReceipt?.revoked_at != null &&
@@ -295,6 +304,11 @@ export function judgeSyntheticEdge({
     if (eventAt > current || consumerAt < eventAt || consumerAt > current ||
         resultAt < consumerAt || resultAt > current) {
       return failed("canonical-proof-timestamp-order-invalid");
+    }
+    // For credit/bureau actions the saved business result must be AFTER the
+    // actual provider action, not merely after the handler's completion stamp.
+    if (requireConsentReceipt && resultAt < milliseconds(consumer.provider_action_at)) {
+      return failed("business-result-precedes-provider-action");
     }
     if (requireProviderReceipt) {
       const deliveredAt = milliseconds(providerReceipt.delivered_at ||
