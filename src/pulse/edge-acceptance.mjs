@@ -277,7 +277,13 @@ export function judgeSyntheticEdge({
     if (!Array.isArray(providerOrders) || !resolved.request_id) {
       return { verdict: "NOT_CHECKED", reason: "provider-order-proof-not-available" };
     }
-    const observed = providerOrders.filter((o) => o?.event_id === resolved.id);
+    // One saved request can be retried under a NEW event ID. Looking only at
+    // this event's order would conceal a second bureau order for that request.
+    // Keep org/client/request scope so unrelated tenants cannot create fake REDs;
+    // keep same-event foreign identity rows so a forged receipt never passes.
+    const observed = providerOrders.filter((o) => o?.event_id === resolved.id ||
+      (o?.org_id === resolved.org_id && o?.client_id === resolved.client_id &&
+       o?.request_id === resolved.request_id));
     if (!observed.length) return failed("provider-order-receipt-missing");
     if (observed.some((o) => o.org_id !== resolved.org_id ||
         o.client_id !== resolved.client_id || o.request_id !== resolved.request_id)) {
@@ -289,6 +295,11 @@ export function judgeSyntheticEdge({
     }
     const actions = new Set(observed.map((o) => o.provider_order_id.trim()));
     if (actions.size > 1) return failed("duplicate-provider-orders-for-request");
+    // A same-request order with only another event ID is not proof that THIS
+    // producer event reached the bureau. It must not produce a false PASS.
+    if (!observed.some((o) => o.event_id === resolved.id)) {
+      return failed("provider-order-event-correlation-missing");
+    }
     const actionAt = milliseconds(consumer.provider_action_at);
     if (!Number.isFinite(actionAt)) {
       return { verdict: "NOT_CHECKED", reason: "provider-order-action-time-missing" };
