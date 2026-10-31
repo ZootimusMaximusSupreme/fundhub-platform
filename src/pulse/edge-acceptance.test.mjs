@@ -29,6 +29,41 @@ test("A->B contract is versioned and covers eleven business families", () => {
   assert.equal(new Set(CRITICAL_EDGES.map((e) => e.id)).size, CRITICAL_EDGES.length);
 });
 
+test("shared Pulse lender matcher is a runtime bank-guidance path, not an exempt observer file", () => {
+  // src/lenders/store.mjs re-exports matchForClient from this Pulse beat library.
+  // Both the Blueprint bank recommendation and lender-match result depend on
+  // it; the generic ignore-src/pulse rule previously concealed material edits.
+  const runtime = [
+    "src/pulse/beats/lib/lenders-truth.mjs",
+    "src/lenders/store.mjs",
+    "src/lenders/match.mjs"
+  ];
+  const report = reportCriticalSourceChanges(runtime);
+  assert.equal(report.verdict, "REVIEW_REQUIRED");
+  assert.deepEqual(report.edges.map((edge) => [edge.id, edge.severity]), [
+    ["blueprint-financeos-report", "P1"],
+    ["lender-apply-link", "P1"]
+  ]);
+  assert.deepEqual(report.edges.map((edge) => edge.files), [runtime, runtime]);
+  assert.deepEqual(report.unmappedHighRiskFiles, []);
+  assert.equal(report.evidenceNote, "MISSING");
+  assert.equal(report.liveReceipt, "NEEDS_LIVE_RECEIPT");
+  assert.equal(CRITICAL_EDGES.find((edge) => edge.id === "blueprint-financeos-report").proofStatus,
+    "PARTIAL_NEEDS_REAL_SOURCE_PROVENANCE_RECEIPT");
+
+  // No general self-monitor loop: unrelated beat or observer-only edits are
+  // not interpreted as new runtime customer-result obligations.
+  const observerOnly = [
+    "src/pulse/beats/lib/sms-truth.mjs",
+    "src/pulse/edge-acceptance.mjs",
+    "src/pulse/beats/lib/lenders-truth.test.mjs"
+  ];
+  assert.deepEqual(changedCriticalEdges(observerOnly), []);
+  assert.deepEqual(unmappedHighRiskSourceChanges(observerOnly), []);
+  assert.equal(reportCriticalSourceChanges(observerOnly).verdict,
+    "NO_CRITICAL_SOURCE_TOUCH_DETECTED");
+});
+
 test("sample credit writer and real-bank-guidance provenance cannot escape changed-source review", () => {
   // The sample script inserts simulated crs_results AND stored tradelines.
   // Reading only non-simulated parent CRS results does not prove that a bank
