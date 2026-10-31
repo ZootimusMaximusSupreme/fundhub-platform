@@ -70,6 +70,7 @@ Page edits — marked draft first (owner-set 2026-09-29). Same law: `.ai/rules/p
 Clarity Data Export (owner-set 2026-09-29). Same law: `.ai/rules/clarity-export-rate-limit.md`
 No recycled lines across ads (owner-set 2026-10-15). Same law: `.ai/rules/ad-no-recycled-lines.md`
 100% certainty in scripts (owner-set 2026-10-15). Same law: `.ai/rules/copy-certainty.md`
+Day counts allowed in ads (owner-set 2026-10-31). The 72-hour guarantee can be said. Same law: `.ai/rules/copy-certainty.md`
 Know the offer before a script or an overlay (owner-set 2026-10-25). Read the offer. The pictures show the product steps, not only the last sentence. Same law: `.ai/rules/ad-know-the-offer.md`
 Heartbeat on every build (owner-set 2026-10-07). A job is red if it has not run in 3 times its schedule. Same law: `.ai/rules/heartbeat-on-every-build.md`
 Human-click tests (owner-set 2026-08-16). Same law: `.ai/rules/test-means-human-click.md`

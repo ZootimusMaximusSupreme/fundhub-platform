@@ -95,7 +95,7 @@ Legend: **both homes** = one real file in `.ai/rules`, linked for Cursor and for
 
 ## 6. Copy and ads
 
-- `copy-certainty` (both homes): Scripts speak with 100% certainty. No we think, you might, maybe, could, likely.
+- `copy-certainty` (both homes): Scripts speak with 100% certainty. No we think, you might, maybe, could, likely. Day counts are allowed when they match the written guarantee (owner-set 2026-10-31).
 - `ad-know-the-offer` (both homes): Before an ad script or an animation overlay, read that offer. Pictures show the product steps, not only the last sentence. Capital Blueprint steps are in the rule.
 - `ad-no-recycled-lines` (both homes): Never copy lines between ads. Each ad is a test. Reuse only proven high-converting phrases.
 - `ad-second-line` (both homes): Sentence two of the hook does one job (win, proof, stakes, new detail, reassure).
