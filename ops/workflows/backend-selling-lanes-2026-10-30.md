@@ -192,6 +192,28 @@ Shown as mockups at https://claude.ai/artifact/CLb5TijCdmDNy3HyKF3aUJ. Signed "C
 - Text R3: {{first_name}}, anyone who guarantees every item comes off is lying to you. Here's what real repair looks like: {{link}} - Chris, Fundhub
 - Push R5: Start with one round, done for you. Tap to see how.
 
+### 6a-2. Chris's answers to Jeremy's question list (2026-10-31, owner's words, summarized)
+
+Chris: "I've never done inbound sales before." These answers merge with the repo's sales scripts, setter guide, closer playbook, transcripts, offer docs and the Hormozi library. The piece list is rebuilt from all of it; every piece names its source.
+
+- **Why Fundhub exists.** Brokers sell shady, inefficient products on bad systems, so people slip through the cracks. Fundhub does not let people slip through. We fulfill, we keep our word, and our guarantees move people through as fast as possible.
+- **Who Fundhub is.** Ten years in the funding industry, learned the hard way. Chris spent thousands of hours building what he wished he had to get the maximum amount of funding. He still funds himself.
+- **What people don't get.** How credit really works. Credit education is the big one. They don't know they need really good credit to get funded, or how to optimize it. That is what the Blueprint and repair are for. They need to understand how credit is structured, how the company works, and what the deposit covers.
+- **How it is different.** Outbound systems Chris spent 2,000 hours building do the legwork: applying, finding good banks, every nuance. Built so you have the most banks in the funding ecosystem.
+- **Who it is for.** Anyone whose goal is the maximum amount of funding. No shortcuts. Guardrails so you can't mess it up. You will be taken care of.
+- **The real pain.** Getting from where they are to maximum funding in the shortest time, with no fluff. You follow directions, you get there, then we get you the maximum amount of funding.
+- **Time objection.** It is automated. You take directions on the Blueprint and answer a few questions from the advisor now and then.
+- **Doubt.** People are skeptical because many companies sell these services and never fulfill.
+- **Is this a scam.** Fundhub works with LexisNexis, Experian, Equifax and TransUnion and holds the licenses for that. There is a contract. Fundhub never takes a file that doesn't qualify and always tells you exactly where you need to go.
+- **We know before you apply.** The top of a credit report lists the reasons a bank approves or denies (for example "too high revolving balances"). Those are the same reasons the bank's letter gives. Fundhub reads them, so nobody is sent to apply who is not going to be approved. (Repo: `src/underwrite/report.mjs`, `src/deliverables/credit-analysis.mjs`.)
+- **First week after yes (funding).** If they qualify, we optimize, then send them into funding. First approval within 72 hours. Gates stop anyone who can't be funded now.
+- **What the deposit covers.** The operations of the company.
+- **Credit partner and the funding circle.** Everyone should build an inner circle of funding partners who help fund their deals. Chris does it all the time. Fundhub facilitates the funding for the partners too, so the client gets more than their own amount, and partners can get a referral fee. It raises capital when you don't qualify yet, and it still works when you do.
+- **What the call is.** Not one size fits all. We diagnose and tell you exactly what to do. We want action takers who need a solution, not shoppers.
+- **Copy rule from Chris:** never say "CRS" to a customer.
+
+Check before copy uses them: "first approval within 72 hours" is a day count, and the ad copy law bans day counts in ads (`.ai/rules/copy-certainty.md`); the funding-circle referral fee needs the real program it points to.
+
 ### 6c. The three groups today, and the fix plan (looked up 2026-10-31 — mapping only, nothing built)
 
 Chris, 2026-10-31: three groups need their own flow. (1) Came in as a lead and quit the survey. (2) Finished the survey and did not book. (3) Booked: the hammer.
