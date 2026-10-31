@@ -65,7 +65,7 @@ flowchart LR
   ext_whop_billing --> adp_whop_billing
   adp_bland -- "call.completed" --> BUS
   adp_clarity_export -- "—" --> BUS
-  adp_clickfunnels -- "entry.captured<br/>survey.submitted<br/>booking.created<br/>booking.rescheduled<br/>booking.cancelled" --> BUS
+  adp_clickfunnels -- "entry.captured<br/>survey.submitted<br/>survey.completed<br/>booking.created<br/>booking.rescheduled<br/>booking.cancelled" --> BUS
   adp_commas -- "diagnostic.paid<br/>deposit.paid<br/>sale.closed<br/>payment.received<br/>payment.failed<br/>payment.expired<br/>payment.canceled<br/>payment.refunded<br/>payment.disputed<br/>subscription.started<br/>subscription.renewed<br/>subscription.past_due<br/>subscription.canceled<br/>subscription.completed" --> BUS
   adp_crs -- "analysis.completed<br/>decision.rendered" --> BUS
   adp_hubstaff -- "—" --> BUS
@@ -91,38 +91,42 @@ flowchart LR
   s0["entry.captured"]
   s1["survey.submitted"]
   s0 --> s1
-  s2["diagnostic.paid"]
+  s2["survey.completed"]
   s1 --> s2
-  s3["analysis.completed"]
+  s3["diagnostic.paid"]
   s2 --> s3
-  s4["booking.created"]
+  s4["analysis.completed"]
   s3 --> s4
-  s5["booking.rescheduled"]
+  s5["booking.created"]
   s4 --> s5
-  s6["booking.cancelled"]
+  s6["booking.rescheduled"]
   s5 --> s6
-  s7["booking.noshow"]
+  s7["booking.cancelled"]
   s6 --> s7
-  s8["call.completed"]
+  s8["booking.noshow"]
   s7 --> s8
-  s9["decision.rendered"]
+  s9["call.completed"]
   s8 --> s9
-  s10["deposit.paid"]
+  s10["setter.no_answer"]
   s9 --> s10
-  s11["sale.closed"]
+  s11["decision.rendered"]
   s10 --> s11
-  s12["round.started"]
+  s12["deposit.paid"]
   s11 --> s12
-  s13["round.submitted"]
+  s13["sale.closed"]
   s12 --> s13
-  s14["round.approved"]
+  s14["round.started"]
   s13 --> s14
-  s15["round.funded"]
+  s15["round.submitted"]
   s14 --> s15
-  s16["round.closeout"]
+  s16["round.approved"]
   s15 --> s16
-  s17["file.finalized"]
+  s17["round.funded"]
   s16 --> s17
+  s18["round.closeout"]
+  s17 --> s18
+  s19["file.finalized"]
+  s18 --> s19
 ```
 
 ## Reactions per event
@@ -130,7 +134,8 @@ flowchart LR
 | event | group | bus handlers | Inngest functions |
 |---|---|---|---|
 | `entry.captured` | journey spine | `onEntryCaptured` | 5 |
-| `survey.submitted` | journey spine | `onSurveySubmitted` | 1 |
+| `survey.submitted` | journey spine | `onSurveySubmitted` | 0 |
+| `survey.completed` | journey spine | — | 1 |
 | `diagnostic.paid` | journey spine | `onDiagnosticPaid`, `onDiagnosticPaidSoftPull`, `onMoneyEventForMeta`, `onDiagnosticPaidMoney` | 2 |
 | `analysis.completed` | journey spine | `onAnalysisCompleted`, `onAnalysisCompletedDeliverables`, `onAnalysisCompletedFullReport`, `onAnalysisCompletedSloPack` | 9 |
 | `booking.created` | journey spine | `onBookingCreated`, `onInterviewBooked` | 9 |
@@ -138,6 +143,7 @@ flowchart LR
 | `booking.cancelled` | journey spine | `onBookingCancelled` | 0 |
 | `booking.noshow` | journey spine | `onBookingNoshow` | 1 |
 | `call.completed` | journey spine | `onCallCompleted` | 4 |
+| `setter.no_answer` | journey spine | — | 1 |
 | `decision.rendered` | journey spine | `onDecisionRendered` | 0 |
 | `deposit.paid` | journey spine | `onDepositPaid`, `onPaidMidCheckin`, `onDepositPaidGate`, `onMoneyEventForMeta`, `onDepositPaidMoney`, `onDealCloseWinAlert` | 3 |
 | `sale.closed` | journey spine | `onSaleClosed`, `onPaidMidCheckin`, `onMoneyEventForMeta`, `onSaleClosedMoney`, `onDealCloseWinAlert` | 0 |

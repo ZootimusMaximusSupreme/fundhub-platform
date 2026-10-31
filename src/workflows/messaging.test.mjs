@@ -684,6 +684,17 @@ test("no readable score answer keeps today's link with no mark", async () => {
     "a ClickFunnels option id is not a band, so no calendar is guessed");
 });
 
+test("a setter's corrected score on the call picks the calendar", async () => {
+  assert.equal(await bookingLinkFor({ cf_svy_self_reported_fico: "650-699", setter_survey_edits: { cf_svy_self_reported_fico: "700-749" } }),
+    "https://apply.fundhub.ai/funding-book-call?fh_tier=q");
+  assert.equal(await bookingLinkFor({ cf_svy_self_reported_fico: "750+", setter_survey_edits: { cf_svy_self_reported_fico: "Not sure" } }),
+    "https://apply.fundhub.ai/funding-book-call--02424?fh_tier=u");
+  assert.equal(await bookingLinkFor({ setter_survey_edits: { cf_svy_self_reported_fico: "580-649" } }),
+    "https://apply.fundhub.ai/funding-book-call--02424?fh_tier=u", "a correction counts with no typed answer");
+  assert.equal(await bookingLinkFor({ cf_svy_self_reported_fico: "750+", setter_survey_edits: { cf_svy_self_reported_fico: "junk", cf_svy_planned_use: "Equipment" } }),
+    "https://apply.fundhub.ai/funding-book-call?fh_tier=q", "an unreadable correction leaves the typed answer");
+});
+
 test("a link saved on the lead's file still wins over the score", async () => {
   assert.equal(await bookingLinkFor({ cf_svy_self_reported_fico: "580-649", calendar_booking_link: "https://example.com/own" }),
     "https://example.com/own");

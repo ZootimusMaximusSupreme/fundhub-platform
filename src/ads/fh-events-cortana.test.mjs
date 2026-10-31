@@ -409,3 +409,21 @@ test("the second calendar opened from a text counts the same booking steps as th
   assert.ok(p.cortanaCalls.every(([, data]) => data.page_path === "/funding-book-call--02424"));
   assert.ok(p.cortanaCalls.every(([, data]) => !JSON.stringify(data).includes("fh_tier")));
 });
+
+test("a booking made straight on the second calendar is finished on its copied thank-you page", () => {
+  // ClickFunnels sends the booker on before the hub answers: the booking step stays queued.
+  const cal = makePage({ pathname: "/funding-book-call--02424", search: "?fh_tier=u", storage: { fh_sid: SID } }).run();
+  cal.win.fhTrack("booking_confirmed", { calendar: "funding-book-call" });
+  assert.deepEqual(JSON.parse(cal.store.fh_dr_pending_v1).map((x) => x.name), ["book_call_booking_observed"]);
+
+  // The next step of that calendar's funnel is a copy of /thank-you; it counts as /thank-you.
+  const thanks = page({ pathname: "/thank-you--80c5a", storage: cal.store });
+  const sent = Object.fromEntries(thanks.cortanaCalls.map(([name, data]) => [name, data.page_path]));
+  assert.deepEqual(sent, { book_call_booking_observed: "/funding-book-call--02424", book_call_thank_you_view: "/thank-you" });
+  assert.deepEqual(JSON.parse(thanks.store.fh_dr_pending_v1), []);
+  assert.deepEqual(thanks.events("page_view").map((b) => b.page), ["/thank-you"]);
+
+  // A reload of the second calendar also sends a step it saved before.
+  const reload = page({ pathname: "/funding-book-call--02424", storage: cal.store });
+  assert.deepEqual(names(reload), ["book_call_booking_observed"]);
+});
