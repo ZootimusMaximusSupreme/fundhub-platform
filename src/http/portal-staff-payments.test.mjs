@@ -223,3 +223,12 @@ describe("client portal — Payments tab money and date read cleanly (R20 / CP-0
     );
   });
 });
+
+
+test("the client Payments tab never demands payment on an unissued draft invoice", () => {
+  assert.match(portalRead,
+    /AND v\.status IN \('sent', 'reminded', 'escalated', 'partially_paid'\)/,
+    "draft and terminal invoices have no valid customer payment demand");
+  assert.match(portalRead, /v\.open_balance > 0/,
+    "an issued invoice also needs a positive ledger balance");
+});

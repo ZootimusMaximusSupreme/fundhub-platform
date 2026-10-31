@@ -15,7 +15,7 @@
 import { inngest } from "./client.mjs";
 import { db } from "../db.mjs";
 import { resolveClient } from "../handlers/client-lifecycle.mjs";
-import { sendTemplated } from "./messaging.mjs";
+import { messageCohortId, sendTemplated } from "./messaging.mjs";
 import { addTags } from "./tags.mjs";
 
 export const EMAIL_TEMPLATE_KEY = "EMAIL-S02-FINISH-APPLICATION";
@@ -49,8 +49,10 @@ export async function handle({ event, db, step }) {
     return { done: true, nudged: false };
   }
 
-  const email = await step.run("send-nudge-email", () =>
-    sendTemplated(db, { orgId: event.orgId, clientId, channel: "email", templateKey: EMAIL_TEMPLATE_KEY, eventId: event.id }));
+  const email = await step.run("send-nudge-email", async () => {
+    const cohortId = await messageCohortId(db, { eventId: event.id, orgId: event.orgId, clientId, name: "entry.captured" });
+    return sendTemplated(db, { orgId: event.orgId, clientId, channel: "email", templateKey: EMAIL_TEMPLATE_KEY, eventId: cohortId });
+  });
 
   return { done: true, nudged: true, email };
 }

@@ -43,7 +43,6 @@ async function railOf(role) {
 // What each role sees under each head today. The list under a head is the rail file's list minus the rows
 // shell.js hides by name (NAV_HIDDEN) and the rows the role may not open.
 const OPS_FIVE = ["csm-queue.html", "messaging.html", "documents.html", "inquiry-remover.html", "company-brain.html"];
-const OPS_FOUR = ["csm-queue.html", "messaging.html", "documents.html", "inquiry-remover.html"];
 const MARKETING_FIVE = ["marketing-command-center.html", "campaign-manager.html", "social-studio.html", "creative-factory.html", "content-admin.html"];
 const CURRENT_TITLES = { work: "Your work", clients: "Clients", insights: "Insights", marketing: "Marketing", settings: "Manage" };
 const SECTIONS = {
@@ -66,8 +65,8 @@ const SECTIONS = {
       "documents.html": "clients", "inquiry-remover.html": "clients", "company-brain.html": "insights",
     },
     sees: {
-      owner: OPS_FIVE, admin: OPS_FIVE, sales_manager: OPS_FOUR, closer: OPS_FOUR, funding_advisor: OPS_FOUR,
-      csm: OPS_FOUR, setter: OPS_FOUR, inquiry_specialist: OPS_FOUR,
+      owner: OPS_FIVE, admin: OPS_FIVE, sales_manager: OPS_FIVE, closer: OPS_FIVE, funding_advisor: OPS_FIVE,
+      csm: OPS_FIVE, setter: OPS_FIVE, inquiry_specialist: OPS_FIVE,
     },
   },
   marketing: {

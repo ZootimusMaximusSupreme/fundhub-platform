@@ -28,6 +28,7 @@ const SCHEMA = `
   CREATE TABLE funding_rounds (id TEXT PRIMARY KEY, org_id TEXT, client_id TEXT, round_number INTEGER, created_at TEXT);
   CREATE TABLE applications (id TEXT PRIMARY KEY, org_id TEXT, client_id TEXT, funding_round_id TEXT, status TEXT,
                              approval_excluded_at TEXT, approved_amount REAL);
+  CREATE TABLE bookings (id TEXT PRIMARY KEY, org_id TEXT, client_id TEXT, starts_at TEXT, status TEXT, created_at TEXT);
 `;
 
 // Columns Postgres hands back as true/false; SQLite stores 0/1.
@@ -36,6 +37,7 @@ const BOOLEAN_COLUMNS = new Set(["funded", "is_demo", "demo_mode_enabled", "sms_
 export function postgresToSqlite(sql) {
   let s = String(sql).replace(/\/\*[\s\S]*?\*\//g, " ");
   s = s.replace(/::[a-z_]+(\[\])?/gi, "");
+  s = s.replace(/\bNOW\(\)/gi, "CURRENT_TIMESTAMP");
   const lateral = /JOIN LATERAL\s*\(([\s\S]*?\bLIMIT\s+1)\s*\)\s*(\w+)\s+ON true/gi;
   const found = [...s.matchAll(lateral)];
   if (found.length) {

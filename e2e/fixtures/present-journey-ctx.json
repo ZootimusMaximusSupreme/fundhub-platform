@@ -1,0 +1,86 @@
+{
+  "_note": "Fixture ctx for visual D, the credit optimization journey (public/app/present-journey.js). Shape: ops/workflows/weekend-2026-10-24.md section 10.8. Two made-up people, each one consistent file (sample-clients-consistent). 'full' is a repair case: two cards near their limits, two collections, one charge-off and one late payment; repair only today ($0, the engine's own answer for a repair-only file), paydown alone moves nothing, cleaning the file routes it up to funding plus repair and projects to $8,250 (the scale of W1's real repair-only example, 2026-10-29), and the accounts lever does not apply because the file has more than three accounts (two open cards, the Ally loan, the Synchrony card). 'sample' is the deck's own FinanceOS sample person (src/finance/sample-credit-file.mjs): a Visa at First Platypus Bank used at 40% and one old 30-day late on a paid-off Toyota loan, low-700s scores. Amounts are fixture values in the engine's shape, not engine output. No real people, no real pulls. The harness also derives an engine-hold state from 'full' (tierNow and the amounts null, levers null, items kept), the shape W1 sends when the engine withholds the money.",
+  "full": {
+    "engine": { "total": 0, "sample": false },
+    "visual": {
+      "source": "engine",
+      "todayTotal": 0,
+      "levers": [
+        { "key": "paydown", "label": "Pay the cards down", "applies": true, "totalAfter": 0 },
+        { "key": "clean", "label": "Clean the file", "applies": true, "totalAfter": 8250 },
+        { "key": "accounts", "label": "Add accounts", "applies": false, "totalAfter": null }
+      ],
+      "optimizedTotal": 8250,
+      "tierNow": "REPAIR_ONLY",
+      "tierAfter": "FUNDING_PLUS_REPAIR",
+      "cards": [
+        { "creditor": "CAPITAL ONE", "limit": 3000, "balance": 2640, "target": 300, "usePct": 88 },
+        { "creditor": "DISCOVER BANK", "limit": 5000, "balance": 3900, "target": 500, "usePct": 78 }
+      ],
+      "items": [
+        { "creditor": "MIDLAND CREDIT MGMT", "kind": "collection", "bureaus": ["EX", "EQ"] },
+        { "creditor": "PORTFOLIO RECOVERY", "kind": "collection", "bureaus": ["TU", "EX"] },
+        { "creditor": "SYNCHRONY BANK", "kind": "charge_off", "bureaus": ["EX", "TU", "EQ"] },
+        { "creditor": "ALLY FINANCIAL", "kind": "late", "bureaus": ["EQ", "TU"] }
+      ],
+      "mismatches": [],
+      "companies": [
+        { "name": "Bell Home Goods LLC", "incorporatedDate": "2024-03", "ageMonths": 31, "amount": null }
+      ],
+      "newCompany": { "year1": 6875, "year2": 13750, "after2": 27500 },
+      "fundability": { "now": { "passed": 4, "total": 13 }, "after": { "passed": 10, "total": 13 } }
+    },
+    "survey": {
+      "target": "$50,000",
+      "use": "Inventory for my online store",
+      "revenue": "$100,000 to $250,000",
+      "income": "$60,000 to $90,000",
+      "capital": "$2,000",
+      "motivation": "Stop paying for stock out of the account that pays my rent.",
+      "hasBusiness": "Yes"
+    },
+    "handoff": {
+      "problem": "Two collections and a charge-off got me denied at Chase and Wells Fargo.",
+      "goal": "Get $50,000 for store inventory this year."
+    },
+    "businesses": [{ "name": "Bell Home Goods LLC", "incorporated_date": "2024-03" }],
+    "tier": "REPAIR_ONLY",
+    "door": "optimize",
+    "sample": false,
+    "clientId": "fx-journey-repair"
+  },
+  "sample": {
+    "engine": { "total": 18000, "sample": true },
+    "visual": {
+      "source": "sample",
+      "todayTotal": 18000,
+      "levers": [
+        { "key": "paydown", "label": "Pay the cards down", "applies": true, "totalAfter": 21600 },
+        { "key": "clean", "label": "Clean the file", "applies": true, "totalAfter": 36000 },
+        { "key": "accounts", "label": "Add accounts", "applies": true, "totalAfter": 60000 }
+      ],
+      "optimizedTotal": 60000,
+      "tierNow": "FUNDING_PLUS_REPAIR",
+      "tierAfter": "FULL_FUNDING",
+      "cards": [
+        { "creditor": "FIRST PLATYPUS BANK", "limit": 5000, "balance": 2000, "target": 500, "usePct": 40 }
+      ],
+      "items": [
+        { "creditor": "TOYOTA MOTOR CREDIT", "kind": "late", "bureaus": ["EX", "EQ", "TU"] }
+      ],
+      "mismatches": [],
+      "companies": [
+        { "name": "Fundhub LLC", "incorporatedDate": null, "ageMonths": null, "amount": null }
+      ],
+      "newCompany": { "year1": 18000, "year2": 36000, "after2": 72000 },
+      "fundability": { "now": { "passed": 9, "total": 13 }, "after": { "passed": 12, "total": 13 } }
+    },
+    "survey": {},
+    "handoff": {},
+    "businesses": [{ "name": "Fundhub LLC", "incorporated_date": null }],
+    "tier": "FUNDING_PLUS_REPAIR",
+    "door": "fund_plus_optimize",
+    "sample": true,
+    "clientId": "fx-journey-sample"
+  }
+}

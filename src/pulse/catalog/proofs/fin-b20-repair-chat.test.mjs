@@ -65,20 +65,25 @@ test("chat widget: a note the server refuses is shown as not sent, with the reas
   await page.locator("#fh-chat-input").fill("Done, called at 3.");
   await page.locator("#fh-chat-send").click();
   await until(() => callsTo(page, "/api/chat/messages", "POST").length === 1, { message: "the send" });
-  const refused = page.locator("#fh-chat-body .msg.internal", { hasText: "Not sent (forbidden)." });
+  // Rejected saves are NOT an outgoing bubble. The unsent draft stays editable,
+  // and the reason is announced without claiming the server or carrier sent it.
+  const refused = page.locator("#fh-chat-hint", { hasText: "Not confirmed (forbidden)" });
   await refused.waitFor();
-  assert.equal(await words(page, "#fh-chat-body .msg.me"), "Done, called at 3.", "what was typed stays on the page next to the refusal");
-  assert.equal(await refused.count(), 1);
-  assert.equal(await page.locator("#fh-chat-input").inputValue(), "");
+  assert.equal(await refused.getAttribute("role"), "alert", "failure is accessible to screen readers");
+  assert.equal(await page.locator("#fh-chat-body .msg.me").count(), 0, "no false sent bubble");
+  assert.equal(await page.locator("#fh-chat-input").inputValue(), "Done, called at 3.", "unsaved draft survives");
+  assert.equal(await page.locator("#fh-chat-input").isEnabled(), true, "draft can be corrected or retried");
   await page.close();
 
-  // a refusal that names no reason still says it was not sent
+  // A bare server 500 still gives an explicit failed state, not an ACK.
   const bare = { peers: PEERS, messages: [], refuseBare: true };
   const page2 = await openMessage(bare);
   await page2.locator("#fh-chat-peer").selectOption("peer-2");
   await page2.locator("#fh-chat-input").fill("First note.");
   await page2.locator("#fh-chat-send").click();
-  await page2.locator("#fh-chat-body .msg.internal", { hasText: "Not sent (error)." }).waitFor();
+  await page2.locator("#fh-chat-hint", { hasText: "Not confirmed (http_500)" }).waitFor();
+  assert.equal(await page2.locator("#fh-chat-body .msg.me").count(), 0);
+  assert.equal(await page2.locator("#fh-chat-input").inputValue(), "First note.");
   await page2.close();
 });
 

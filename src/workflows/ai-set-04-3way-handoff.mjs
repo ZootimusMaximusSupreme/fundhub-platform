@@ -22,6 +22,7 @@ import { portalLoginUrl } from "../auth/magic-link.mjs";
 import { bookingStateAt, SLOT_STATE, fillMeetingUrl } from "../bookings/store.mjs";
 import { findMeetLink, meetLinkValue } from "../bookings/meet-link.mjs";
 import { CANCEL_RULES, RESCHEDULE_CANCEL_RULES } from "./booking-cancel-rules.mjs";
+import { queueCloserUpcomingAlert } from "../staff/lead-alerts.mjs";
 
 export const SMS_TEMPLATE_KEY = "SMS-AISET04-HANDOFF";
 const SOURCE_WORKFLOW = "ai-set-04-3way-handoff";
@@ -144,7 +145,8 @@ async function createAdvisorTaskOnce(db, { orgId, clientId, eventId }) {
   return { created: true };
 }
 
-export async function handle({ event, db, step, now = () => Date.now(), findLink = findMeetLink }) {
+export async function handle({ event, db, step, now = () => Date.now(), findLink = findMeetLink,
+  upcomingAlert = queueCloserUpcomingAlert }) {
   const clientId = await step.run("resolve-client", () => resolveClient(db, event));
   if (!clientId) return { done: false, reason: "no_client" };
 
@@ -218,6 +220,8 @@ export async function handle({ event, db, step, now = () => Date.now(), findLink
    * unique (org_id, provider_ref)). Worked out from the payload alone — no
    * clock — so it is the same on every replay. */
   const eventId = sendKeyFor(clientId, startTime);
+  const closerAlert = await step.run("alert-upcoming-closer", () =>
+    upcomingAlert(db, { orgId, clientId, startTime }));
   const link = await step.run("resolve-meeting-link", () =>
     meetingLinkFor(db, { orgId, clientId, payload, findLink }));
   const context = appointmentContext({ ...payload, meetingUrl: handoffMeetingLocation(link) });
@@ -227,7 +231,7 @@ export async function handle({ event, db, step, now = () => Date.now(), findLink
     }));
   const task = await step.run("create-advisor-task", () => createAdvisorTaskOnce(db, { orgId, clientId, eventId }));
 
-  return { done: true, sms, task, link, joinLink };
+  return { done: true, sms, task, closerAlert, link, joinLink };
 }
 
 /** The one-per-call-time key for the text and the advisor task. */

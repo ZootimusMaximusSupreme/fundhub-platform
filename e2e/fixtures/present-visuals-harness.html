@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Present visuals harness</title>
+<!-- A stand-in for the closer deck's slide frame (public/app/present.html), so the
+     three W3 visuals can be looked at and tested without the deck, a backend or
+     a session. e2e/present-visuals.spec.mjs serves this page on the static
+     server's origin and routes /e2e-fixtures/* to e2e/fixtures/. Pick a fixture
+     with ?state=full|sample|nodata|bad|mismatch|repair|revenue and one visual
+     with ?only=path|levers|companies. -->
+<link rel="stylesheet" href="/app/fundhub-font.css">
+<link rel="stylesheet" href="/app/fundhub-brand.css">
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans)}
+body{padding:16px}
+.stage{display:flex;flex-direction:column;gap:20px;max-width:1100px;margin:0 auto}
+/* The deck's slide frame, as present.html draws it. */
+.slide{position:relative;padding:clamp(14px,2.4vw,26px) clamp(16px,3vw,34px) clamp(24px,3vw,32px);display:flex;flex-direction:column;background:var(--paper);border:1px solid var(--line);border-radius:12px}
+.slide-hd{display:flex;align-items:center;gap:12px;margin-bottom:5px}
+.slide-hd .rule{flex:1;height:1px;background:var(--line)}
+.mono{font-family:var(--mono);font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--gray2)}
+.brand{font-family:var(--sans);font-size:13px;font-weight:800;letter-spacing:-.02em;color:var(--ink)}
+.brand span{color:var(--gray)}
+.hair{height:2px;background:var(--spectrum);border-radius:2px;opacity:.9}
+.slide-body{flex:1;min-height:0;margin-top:clamp(10px,1.6vw,16px);display:flex;flex-direction:column}
+.h1{font-family:var(--sans);line-height:1.06;font-weight:700;letter-spacing:-.03em;color:var(--ink);margin:0 0 14px;font-size:clamp(20px,2.4vw,30px)}
+.pick{display:flex;flex-wrap:wrap;gap:8px;max-width:1100px;margin:0 auto 16px}
+.pick a{font-family:var(--mono);font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--gray);text-decoration:none;border:1px solid var(--line);border-radius:20px;padding:10px 12px;min-height:44px;display:inline-flex;align-items:center;background:#fff}
+.pick a.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+@media (max-width:680px){body{padding:10px}}
+</style>
+</head>
+<body>
+<nav class="pick" id="pick" aria-label="Fixture"></nav>
+<div class="stage" id="stage"></div>
+<script src="/e2e-fixtures/present-visuals-fixtures.js"></script>
+<script src="/app/present-visuals.js"></script>
+<script>
+(function () {
+  var q = new URLSearchParams(location.search);
+  var fixtures = window.FHV_FIXTURES || {};
+  var state = fixtures[q.get("state")] ? q.get("state") : "full";
+  var only = q.get("only");
+  function money(n) { return n == null || !Number.isFinite(Number(n)) ? "—" : "$" + Number(n).toLocaleString("en-US"); }
+  function esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+  var base = fixtures[state];
+  /* The bad fixture hands over broken helpers too. */
+  var ctx = state === "bad"
+    ? Object.assign({}, base, { money: "not a function", esc: null })
+    : Object.assign({}, base, { money: money, esc: esc });
+  window.__fhvCtx = ctx;
+
+  var pick = document.getElementById("pick");
+  Object.keys(fixtures).forEach(function (k) {
+    var a = document.createElement("a");
+    a.href = "?state=" + k + (only ? "&only=" + only : "");
+    a.textContent = k;
+    if (k === state) a.className = "on";
+    pick.appendChild(a);
+  });
+
+  var slides = [
+    { key: "path", code: "S-08", label: "Your path", h1: "Here's where you are, and the path that fits.", fn: "yourPath" },
+    { key: "levers", code: "S-07b", label: "Money levers", h1: "How much more once the file is optimized.", fn: "moneyLevers" },
+    { key: "companies", code: "S-16b", label: "Companies", h1: "More companies, more funding.", fn: "companies" }
+  ];
+  var stage = document.getElementById("stage");
+  slides.forEach(function (s) {
+    if (only && only !== s.key) return;
+    var el = document.createElement("section");
+    el.className = "slide";
+    el.setAttribute("data-slide", s.key);
+    var body = window.FHDeckVisuals && typeof window.FHDeckVisuals[s.fn] === "function"
+      ? window.FHDeckVisuals[s.fn](ctx) : "<p>present-visuals.js did not load</p>";
+    el.innerHTML = '<div class="slide-hd"><span class="mono">' + s.code + " / " + s.label + '</span><div class="rule"></div><span class="brand">fundhub<span>.</span></span></div><div class="hair"></div>' +
+      '<div class="slide-body"><h1 class="h1">' + s.h1 + "</h1>" + body + "</div>";
+    stage.appendChild(el);
+  });
+})();
+</script>
+</body>
+</html>

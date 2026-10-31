@@ -66,9 +66,15 @@ describe("A/R invoice emails cannot address another company's client (real PG)",
       return sent;
     }
     validInvoice = await issued(orgA, buyerA);
-    // The legacy invoices FK references clients(id) only. This intentionally
-    // constructs a contradictory pair without bypassing or changing schema.
-    foreignBuyerInvoice = await issued(orgA, buyerB);
+    // Historical cross-org rows are still an essential negative-path fixture.
+    // Use direct scratch SQL: the canonical createInvoice now rejects this pair.
+    const historical = (await conn.query(
+      `INSERT INTO invoices (org_id,client_id,amount_due,source)
+       VALUES ($1,$2,100,'funding_success_fee') RETURNING id`,
+      [orgA, buyerB]
+    )).rows[0];
+    foreignBuyerInvoice = await markSent(conn, { invoiceId: historical.id });
+    assert.ok(foreignBuyerInvoice?.id);
   });
 
   after(async () => {

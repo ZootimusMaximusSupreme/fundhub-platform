@@ -56,8 +56,15 @@ describe("A/R receipts require an invoice buyer owned by the invoice tenant (rea
       return sent;
     }
     validInvoice = await issued(orgA, buyerA);
-    // The legacy invoice client FK allows this contradictory tenant pairing.
-    foreignBuyerInvoice = await issued(orgA, buyerB);
+    // Deliberately model an old contradictory row using direct fixture SQL:
+    // canonical createInvoice now refuses cross-org buyers by design.
+    const historical = (await conn.query(
+      `INSERT INTO invoices (org_id,client_id,amount_due,source)
+       VALUES ($1,$2,100,'funding_success_fee') RETURNING id`,
+      [orgA, buyerB]
+    )).rows[0];
+    foreignBuyerInvoice = await markSent(conn, { invoiceId: historical.id });
+    assert.ok(foreignBuyerInvoice?.id);
   });
 
   after(async () => {

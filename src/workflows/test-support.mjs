@@ -454,6 +454,24 @@ export function pgFake(seed = {}) {
         });
         return { rows: hit ? [{ booked: 1 }] : [] };
       }
+      if (/WITH source AS \([\s\S]*SELECT e\.id[\s\S]*FROM events e, source s/.test(sql)) {
+        const [eventId, orgId, clientId, name] = params;
+        const source = events.find((e) => e.id === eventId && e.org_id === orgId && e.name === name);
+        if (!source) return { rows: [] };
+        const sourceAt = new Date(source.created_at).getTime();
+        const sourceFunnel = String(source.payload?.funnel || "");
+        const sourceEmail = String(source.payload?.email || "").toLowerCase();
+        const hit = events
+          .filter((e) => e.org_id === orgId && e.name === name)
+          .filter((e) => {
+            const at = new Date(e.created_at).getTime();
+            return at <= sourceAt && at > sourceAt - 6 * 60 * 60 * 1000;
+          })
+          .filter((e) => e.client_id === clientId || (!e.client_id && sourceEmail && String(e.payload?.email || "").toLowerCase() === sourceEmail))
+          .filter((e) => !sourceFunnel || !e.payload?.funnel || e.payload.funnel === sourceFunnel)
+          .sort((a, b) => new Date(a.created_at) - new Date(b.created_at) || String(a.id).localeCompare(String(b.id)))[0];
+        return { rows: hit ? [{ id: hit.id }] : [] };
+      }
       if (/SELECT DISTINCT name FROM events/.test(sql)) {
         const [clientId, names] = params;
         return { rows: events.filter((e) => e.client_id === clientId && names.includes(e.name)).map((e) => ({ name: e.name })) };

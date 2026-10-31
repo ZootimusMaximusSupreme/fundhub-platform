@@ -404,6 +404,19 @@ describe("/apply survey hooks (apply-survey.html)", () => {
     assertShape(got);
   });
 
+  test("the two calendars: qualified credit frames /funding-book-call; every other score answer frames the copy", () => {
+    const want = { "700-749": "https://apply.fundhub.ai/funding-book-call", "750+": "https://apply.fundhub.ai/funding-book-call",
+      "650-699": "https://apply.fundhub.ai/funding-book-call--02424", "Not sure": "https://apply.fundhub.ai/funding-book-call--02424" };
+    for (const [score, src] of Object.entries(want)) {
+      const a = openApply();
+      fillApplyContact(a);
+      for (const [key, label] of [...APPLY_COMMON, ...APPLY_BIZ]) a.pick(key === "cf_svy_self_reported_fico" ? score : label);
+      a.page.flush();
+      assert.equal(a.byId("fh-book-frame").src, src, score);
+      assert.ok(a.doc.body.textContent.includes("You're qualified. Pick a time below."), `${score}: the page words do not change`);
+    }
+  });
+
   test("the credit bucket: 700-749 and 750+ are qualified; every other score answer, Not sure too, is unqualified", () => {
     const tiers = { "500-579": "unqualified", "580-649": "unqualified", "650-699": "unqualified",
       "700-749": "qualified", "750+": "qualified", "Not sure": "unqualified" };

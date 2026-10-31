@@ -20,6 +20,9 @@ import {
   CloserDeckError
 } from "./closer-deck.mjs";
 import { SLO_POST_PURCHASE_ENABLED } from "../slo/purchase.mjs";
+import { createRequire } from "node:module";
+import { runTierEngineFromCrsResult } from "../finance/crs-tier.mjs";
+import { scoreBuyerTotal } from "../finance/crs-pull.mjs";
 
 const ORG = "11111111-1111-4111-8111-111111111111";
 const CID = "22222222-2222-4222-8222-222222222222";
@@ -853,6 +856,98 @@ test("per-bureau pull rows merge into one FICO strip on the deck", async () => {
   assert.equal(out.engine.fico.ex, 511);
   assert.equal(out.engine.fico.eq, 458);
   assert.equal(out.engine.fico.tu, 497);
+});
+
+/* ── 10.2 item 1, sales-slides build 2026-10-29 ───────────────────────────────
+ *
+ * A real pull stores the bureau reports, the scores, the tier and one dollar
+ * estimate (src/finance/crs-map.mjs, crs-pull.mjs). It does not store the
+ * engine's once-fixed amount, its reasons or its negative counts, so the three
+ * old fields the slides read are empty on a live call. This row is exactly what
+ * mergeBureauReports saves, and the estimate on the client is what the pull
+ * stored on its own day.
+ *
+ * The first block is the hole as it was proved, and it still holds: the old
+ * fields are left exactly as they were (the slides that read them are not
+ * touched). The second block is the fix: one new field, engine.visual, carrying
+ * the engine's numbers from the same stored pull.
+ */
+test("a live pull row: the old fields stay empty, engine.visual carries the engine's numbers", async () => {
+  const sandbox = (name) => JSON.parse(readFileSync(path.join(SANDBOX, name), "utf8"));
+  const pull = mergeBureauReports({
+    reports: { TU: sandbox("tu.json"), EX: sandbox("exp.json"), EQ: sandbox("efx.json") },
+    requestIds: { TU: "tu-1", EX: "ex-1", EQ: "eq-1" },
+    environment: "production"
+  });
+  const pulledOn = new Date("2026-03-11T16:14:53.173621Z");
+  const engineOnPullDay = createRequire(import.meta.url)("../../vendor/underwriteiq-full/api/lite/crs/engine.js");
+  const priced = scoreBuyerTotal(
+    (m, o) => runTierEngineFromCrsResult(m, o, {
+      runEngine: (args) => engineOnPullDay.runCRSEngine({ ...args, referenceDate: pulledOn })
+    }),
+    pull, { submittedName: "Barbara Doty" }
+  );
+  assert.equal(priced.tierResult.outcome, "FUNDING_PLUS_REPAIR");
+  assert.ok(priced.fundingEstimate > 0);
+
+  const client = {
+    ...CLIENT,
+    first_name: "Barbara",
+    last_name: "Doty",
+    outcome_tier: priced.tierResult.outcome,
+    custom_fields: { ...CLIENT.custom_fields, total_funding_estimate: priced.fundingEstimate }
+  };
+  const crs = { id: "crs-live", outcome_tier: priced.tierResult.outcome, created_at: pulledOn.toISOString(), result: pull };
+  const out = await buildCloserDeck(fakeDb({ client, crs }), { orgId: ORG, clientId: CID });
+
+  // The hole, unchanged: nothing the old slides read has the once-fixed amount.
+  assert.equal(pull.preapprovals, undefined);
+  assert.equal(out.engine.available, true);
+  assert.equal(out.engine.total, priced.fundingEstimate, "the stored headline is untouched");
+  assert.equal(out.engine.afterFix, null);
+  assert.equal(out.engine.negItems, null);
+  assert.deepEqual(out.engine.reasons, []);
+  assert.deepEqual(out.engine.plan, []);
+
+  // The fix: engine.visual, from the engine's run on the same pull.
+  const v = out.engine.visual;
+  assert.ok(v, "engine.visual must exist");
+  assert.equal(v.source, "engine");
+  assert.equal(v.todayTotal, out.engine.total, "todayTotal is the existing engine.total");
+  assert.equal(v.tierNow, "FUNDING_PLUS_REPAIR");
+  assert.equal(v.tierAfter, "FULL_FUNDING");
+  assert.ok(v.optimizedTotal > v.todayTotal, "the once-fixed amount the old fields cannot give");
+  assert.ok(v.items.length > 0, "the negative items the old fields cannot give");
+  assert.ok(v.cards.length > 0);
+});
+
+test("engine.visual is present on every deck, and empty when there is no pull", async () => {
+  const none = await buildCloserDeck(fakeDb({ client: CLIENT }), { orgId: ORG, clientId: CID });
+  assert.equal(none.engine.visual.source, "none");
+  assert.equal(none.engine.visual.todayTotal, null);
+  assert.equal(none.engine.visual.optimizedTotal, null);
+  assert.deepEqual(none.engine.visual.cards, []);
+
+  // A stored engine payload with no bureau reports cannot be run again: the
+  // headline stays, and nothing is projected from it.
+  const stored = await buildCloserDeck(fakeDb({
+    client: { ...CLIENT, outcome_tier: "FUNDING_PLUS_REPAIR" },
+    crs: {
+      outcome_tier: "FUNDING_PLUS_REPAIR",
+      created_at: "2026-08-16T00:00:00Z",
+      result: {
+        environment: "production",
+        outcome: "FUNDING_PLUS_REPAIR",
+        preapprovals: { totalCombined: 127500 },
+        projectedPreapproval: { totalCombined: 214000 },
+        scores: { perBureau: { ex: 712, tu: 648, eq: 641 } }
+      }
+    }
+  }), { orgId: ORG, clientId: CID });
+  assert.equal(stored.engine.afterFix, 214000, "the old field is left as it was");
+  assert.equal(stored.engine.visual.source, "none");
+  assert.equal(stored.engine.visual.todayTotal, 127500);
+  assert.equal(stored.engine.visual.optimizedTotal, null);
 });
 
 /* ── F48: the pay-link text says who it is from and what it is for ────────────

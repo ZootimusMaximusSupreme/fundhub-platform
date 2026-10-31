@@ -3,17 +3,23 @@ import { redact, pageParams } from "../http/read-api.mjs";
 import { buildSetterHandoffText, performSetterSendAction } from "./send-actions.mjs";
 import { advanceCardToStage } from "../workflows/cards.mjs";
 import { withTransaction } from "../db/with-transaction.mjs";
+import { queueCloserSetAlert } from "../staff/lead-alerts.mjs";
 
 const HANDOFF_FIELDS = new Set([
   "lead_type", "dialed_at", "call_attempts", "disposition", "voicemail_left",
   "missed_text_sent", "time_confirmed", "frame_warmed", "problem", "goal",
   "computer_ready", "app_on_phone", "triage_personal_or_business",
-  "triage_problem", "triage_goal"
+  "triage_problem", "triage_goal", "employment_status", "employment_details",
+  "annual_personal_income", "income_verification"
 ]);
 const BOOL_FIELDS = new Set(["voicemail_left", "missed_text_sent", "time_confirmed", "frame_warmed", "computer_ready", "app_on_phone"]);
-const TEXT_FIELDS = new Set(["problem", "goal", "triage_problem", "triage_goal"]);
+const TEXT_FIELDS = new Set(["problem", "goal", "triage_problem", "triage_goal", "employment_details"]);
 const DISPOSITIONS = new Set(["reached", "no_answer", "reschedule", "booked_on_call"]);
+const EMPLOYMENT_STATUSES = new Set(["", "w2", "self_employed", "retired", "not_working", "other", "not_shared"]);
+const PERSONAL_INCOME_OPTIONS = new Set(["", ...CF_SURVEY_QUESTIONS.find(q => q.id === "annual_personal_income").options, "not_shared"]);
+const INCOME_VERIFICATION_OPTIONS = new Set(["", ...CF_SURVEY_QUESTIONS.find(q => q.id === "verify_income").options, "not_shared"]);
 const FORBIDDEN_CLAIM = /\b(?:social security(?: number)?|ssn|pre[ -]?approved|approved for|qualif(?:y|ied) for|credit (?:was|has been|already) pulled)\b|\b\d{3}-\d{2}-\d{4}\b/i;
+const SURVEY_KEYS = new Set(CF_SURVEY_QUESTIONS.filter(q => q.type !== "contact").map(q => q.payloadKey));
 
 function jsonObject(v) {
   if (!v || typeof v !== "object" || Array.isArray(v)) return {};
@@ -47,8 +53,21 @@ export function surveySummary(fields) {
   const cf = jsonObject(fields);
   return CF_SURVEY_QUESTIONS.filter(q => q.type !== "contact").map(q => {
     const value = cf[`${q.payloadKey}_label`] ?? cf[`${q.payloadKey}_labels`] ?? cf[q.payloadKey];
-    const answer = Array.isArray(value) ? value.join(", ") : String(value ?? "").trim();
-    return answer ? { question: q.title, answer } : null;
+    const unpack = (part, depth = 0) => {
+      if (depth < 3 && typeof part === "string" && part.trim().startsWith("[")) {
+        try {
+          const parsed = JSON.parse(part);
+          if (Array.isArray(parsed)) return parsed.flatMap(item => unpack(item, depth + 1));
+        } catch { /* Keep a plain answer as written. */ }
+      }
+      if (Array.isArray(part)) return part.flatMap(item => unpack(item, depth + 1));
+      return [String(part ?? "").trim()];
+    };
+    const answerValues = unpack(value).filter(Boolean);
+    return answerValues.length ? {
+      key: q.payloadKey, question: q.title, answer: answerValues.join(", "),
+      answer_values: answerValues, type: q.type, options: q.options || []
+    } : null;
   }).filter(Boolean);
 }
 
@@ -75,7 +94,16 @@ export function sanitizeHandoffPatch(input) {
       if (value !== "" && !DISPOSITIONS.has(value)) return { error: "invalid disposition" };
       patch[key] = value;
     } else if (key === "triage_personal_or_business") {
-      if (!["", "personal", "business"].includes(value)) return { error: "invalid triage type" };
+      if (!["", "personal", "business", "both"].includes(value)) return { error: "invalid triage type" };
+      patch[key] = value;
+    } else if (key === "employment_status") {
+      if (!EMPLOYMENT_STATUSES.has(value)) return { error: "invalid employment status" };
+      patch[key] = value;
+    } else if (key === "annual_personal_income") {
+      if (!PERSONAL_INCOME_OPTIONS.has(value)) return { error: "invalid personal income" };
+      patch[key] = value;
+    } else if (key === "income_verification") {
+      if (!INCOME_VERIFICATION_OPTIONS.has(value)) return { error: "invalid income verification" };
       patch[key] = value;
     } else if (key === "lead_type") {
       if (!["booked", "opt_in"].includes(value)) return { error: "invalid lead type" };
@@ -119,6 +147,7 @@ function mapItem(row, staff) {
     target_dial_by: targetDialBy(booked ? row.booked_at : row.created_at),
     needs_work: row.done !== true,
     survey: surveySummary(cf),
+    survey_edits: jsonObject(cf.setter_survey_edits),
     setter_handoff: handoff,
     setter_staff_id: handoff.setter_staff_id || row.setter_staff_id || staff.id,
     closer_staff_id: handoff.closer_staff_id || row.closer_staff_id || (staff.role === "owner" ? staff.id : null)
@@ -268,13 +297,25 @@ async function persistHandoff(db, clientId, orgId, patch) {
           COALESCE(custom_fields, '{}'::jsonb), '{setter_handoff}',
           COALESCE(custom_fields->'setter_handoff', '{}'::jsonb) || $3::jsonb, true)
       WHERE id = $1 AND org_id = $2
-      RETURNING custom_fields->'setter_handoff' AS setter_handoff`,
+      RETURNING custom_fields`,
     [clientId, orgId, JSON.stringify(patch)]
   );
-  return jsonObject(result.rows[0]?.setter_handoff);
+  return jsonObject(result.rows[0]?.custom_fields);
 }
 
-export async function updateSetterHandoff(db, staff, { client_id, action, handoff: input = {} }, deps = {}) {
+async function persistSurveyEdits(db, clientId, orgId, edits) {
+  const result = await db.query(
+    `UPDATE clients
+        SET custom_fields = jsonb_set(
+          COALESCE(custom_fields, '{}'::jsonb), '{setter_survey_edits}', $3::jsonb, true)
+      WHERE id = $1 AND org_id = $2
+      RETURNING custom_fields->'setter_survey_edits' AS survey_edits`,
+    [clientId, orgId, JSON.stringify(edits)]
+  );
+  return jsonObject(result.rows[0]?.survey_edits);
+}
+
+export async function updateSetterHandoff(db, staff, { client_id, action, handoff: input = {}, survey_edits }, deps = {}) {
   const client = await getSetterClient(db, staff.org_id, client_id);
   if (!client) return { status: 404, body: { ok: false, error: "client_not_found" } };
   if (staff.role === "setter") {
@@ -287,6 +328,59 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
     if (!assigned.rows[0] || (assigned.rows[0].assignee_staff_id && assigned.rows[0].assignee_staff_id !== staff.id)) {
       return { status: 403, body: { ok: false, error: "assigned_to_other_setter" } };
     }
+  }
+  if (action === "save_survey") {
+    const previous = jsonObject(jsonObject(client.custom_fields).setter_handoff);
+    if (staff.role === "setter" && previous.setter_staff_id && previous.setter_staff_id !== staff.id) {
+      return { status: 403, body: { ok: false, error: "assigned_to_other_setter" } };
+    }
+    if (!survey_edits || typeof survey_edits !== "object" || Array.isArray(survey_edits)) {
+      return { status: 400, body: { ok: false, error: "invalid_survey_edits" } };
+    }
+    const visible = new Map(surveySummary(client.custom_fields).map(row => [row.key, row]));
+    const previousEdits = jsonObject(jsonObject(client.custom_fields).setter_survey_edits);
+    const edits = {};
+    for (const [key, value] of Object.entries(survey_edits)) {
+      const row = visible.get(key);
+      if (!SURVEY_KEYS.has(key) || !row || typeof value !== "string" || value.length > 1000) {
+        return { status: 400, body: { ok: false, error: "invalid_survey_edits" } };
+      }
+      const clean = value.trim();
+      const choices = row.type === "multi" ? clean.split(", ").filter(Boolean) : [clean];
+      const validChoice = row.type === "multi"
+        ? choices.length === new Set(choices).size && choices.every(choice => row.options.includes(choice))
+        : row.options.includes(clean);
+      if (!validChoice && clean !== previousEdits[key]) {
+        return { status: 400, body: { ok: false, error: "invalid_survey_edits" } };
+      }
+      edits[key] = clean;
+    }
+    if (staff.role === "setter") {
+      const claim = await db.query(
+        `UPDATE tasks SET assignee_staff_id = $3, updated_at = now()
+          WHERE org_id = $1 AND client_id = $2 AND assignee_role = 'setter'
+            AND (assignee_staff_id IS NULL OR assignee_staff_id = $3)
+          RETURNING id`,
+        [staff.org_id, client_id, staff.id]
+      );
+      if (!claim.rows.length) return { status: 403, body: { ok: false, error: "assigned_to_other_setter" } };
+    }
+    return withTransaction(db, async writer => {
+      const saved = await persistSurveyEdits(writer, client_id, staff.org_id, edits);
+      if (previous.complete_at) {
+        const closerStaffId = previous.closer_staff_id || client.closer_staff_id || (staff.role === "owner" ? staff.id : null);
+        const closer = closerStaffId === staff.id ? staff : (await writer.query(
+          `SELECT id, name FROM staff WHERE org_id = $1 AND id = $2 LIMIT 1`,
+          [staff.org_id, closerStaffId]
+        )).rows[0];
+        const handoffText = (deps.buildText || buildSetterHandoffText)({
+          client: { ...client, custom_fields: { ...jsonObject(client.custom_fields), setter_survey_edits: saved } },
+          handoff: previous, booking: client, closer, setter: staff
+        });
+        await persistHandoff(writer, client_id, staff.org_id, { handoff_text: handoffText });
+      }
+      return { status: 200, body: { ok: true, survey_edits: saved } };
+    });
   }
   const validated = sanitizeHandoffPatch(input);
   if (validated.error) return { status: 400, body: { ok: false, error: validated.error } };
@@ -346,7 +440,8 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
     if (!claim.rows.length) return { status: 403, body: { ok: false, error: "assigned_to_other_setter" } };
   }
   const save = async (writer) => {
-    let saved = await persistHandoff(writer, client_id, staff.org_id, next);
+    let savedFields = await persistHandoff(writer, client_id, staff.org_id, next);
+    let saved = jsonObject(savedFields.setter_handoff);
     let send = null;
     if (action === "send_intro_video" || action === "send_handoff") {
       if (action === "send_handoff" && !saved.complete_at) {
@@ -361,7 +456,8 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
         handoff: saved, staff, db: writer, orgId: staff.org_id, setterStaffId, closerStaffId
       });
       if (send?.handoffPatch && typeof send.handoffPatch === "object") {
-        saved = await persistHandoff(writer, client_id, staff.org_id, send.handoffPatch);
+        savedFields = await persistHandoff(writer, client_id, staff.org_id, send.handoffPatch);
+        saved = jsonObject(savedFields.setter_handoff);
       }
     }
     if (action === "complete") {
@@ -386,7 +482,19 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
         [staff.org_id, client_id]
       );
     }
-    return { status: 200, body: { ok: true, item: { ...mapItem({ ...client, done: !!saved.complete_at, setter_staff_id: setterStaffId, closer_staff_id: closerStaffId, custom_fields: { ...jsonObject(client.custom_fields), setter_handoff: saved } }, staff) }, ...(send ? { send } : {}) } };
+    return { status: 200, body: { ok: true, item: { ...mapItem({ ...client, done: !!saved.complete_at, setter_staff_id: setterStaffId, closer_staff_id: closerStaffId, custom_fields: savedFields }, staff) }, ...(send ? { send } : {}) } };
   };
-  return action === "complete" ? withTransaction(db, save) : save(db);
+  const result = action === "complete" ? await withTransaction(db, save) : await save(db);
+  if (action === "complete" && result.status === 200) {
+    try {
+      const updatedClient = await getSetterClient(db, staff.org_id, client_id);
+      await (deps.closerAlert || queueCloserSetAlert)(db, {
+        orgId: staff.org_id, clientId: client_id, closerStaffId, setterStaffId,
+        client: updatedClient || client, handoff: result.body.item.setter_handoff, startTime: client.booking_time
+      });
+    } catch (error) {
+      console.warn(`[setter] closer set alert failed: ${error.message}`);
+    }
+  }
+  return result;
 }

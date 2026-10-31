@@ -99,28 +99,19 @@ function isPresent(v) {
 }
 
 /**
- * Resolve funded_amount for a move to funded.
- * Priority: explicit fundedAmount → explicit approvedAmount → prefill from
- * Approved apps → null.
+ * Funded means a separately recorded funded/available amount, NOT a bank's
+ * approved limit. Never infer it from approvedAmount or Approved applications:
+ * that silently marks an approval as funded and emits the event that starts
+ * closeout, a success-fee invoice and client notifications.
  *
- * Explicit zero/negative is NOT a missing value — it refuses (returns null)
- * and must not fall through to prefill. Prefill only runs when the caller
- * omitted the amount entirely.
+ * The explicit figure still needs operational/provider verification; a staff
+ * entry is not proof of disbursement. Approved sums remain a UI suggestion and
+ * the separately agreed success-fee basis, never a substitute for this input.
  */
-export async function resolveFundedAmount(db, {
-  fundingRoundId,
-  fundedAmount,
-  approvedAmount
-} = {}) {
-  if (isPresent(fundedAmount)) {
-    const n = Number(fundedAmount);
-    return Number.isFinite(n) && n > 0 ? n : null;
-  }
-  if (isPresent(approvedAmount)) {
-    const n = Number(approvedAmount);
-    if (Number.isFinite(n) && n > 0) return n;
-  }
-  return sumApprovedApplications(db, fundingRoundId);
+export async function resolveFundedAmount(_db, { fundedAmount } = {}) {
+  if (!isPresent(fundedAmount)) return null;
+  const n = Number(fundedAmount);
+  return Number.isFinite(n) && n > 0 ? n : null;
 }
 
 /* The empty case of the rule below, phrased for a person.
@@ -275,10 +266,10 @@ export async function guardFundedAmount(db, {
       reason: "funded_amount_required",
       message:
         "Cannot move to funded without a funded amount greater than zero. " +
-        "Send funded_amount (what actually funded). " +
+        "Enter funded_amount from separately verified available funding; a bank approval is not proof the client funded. " +
         (suggested != null
-          ? `Suggested from Approved applications: ${suggested}.`
-          : "No Approved application amounts found to suggest — enter the funded amount."),
+          ? `Approved applications total ${suggested} (reference only; not automatically funded).`
+          : "No Approved application amounts found; enter the verified funded amount."),
       suggestedFundedAmount: suggested,
       round
     };
@@ -388,6 +379,11 @@ export async function emitCardStackingRoundTransition(db, {
      confirmed approval, and nothing confirmed means null, never the funded
      amount and never zero. */
   const billing = eventName === "round.funded";
+  // Defense in depth: this exporter may be called without moveCardToStage's guard.
+  // Do not publish a billable event from an approval-only/empty funded amount.
+  if (billing && (!isPresent(fundedAmount) || !Number.isFinite(Number(fundedAmount)) || Number(fundedAmount) <= 0)) {
+    return { emitted: false, reason: "funded_amount_required", eventName, roundNumber: rn };
+  }
   let fee = { confirmedApprovedAmount: null, feePercent: null, saleId: null, fundingRoundId: null };
   if (billing) {
     const row = await roundFor(db, { orgId, clientId, roundNumber: rn });

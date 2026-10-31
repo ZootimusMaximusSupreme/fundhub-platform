@@ -16,9 +16,9 @@ Live on fundhub.ai since 2026-10-29. Chris's calls are at the bottom, under **Op
 | 1. Open and frame | 3 min | Hello. How the call goes. The yes-or-no deal. | S-01, S-02 |
 | 2. Stuck part and goal | 10 to 15 min | Six boxes, in their words. | S-03, S-04 |
 | 3. Pull the file | 5 min | The first yes: the $32 pull. | S-05, S-06 |
-| 4. Read the file | 10 min | How much they qualify for today, after the fixes, and what is left on the table. | S-07 |
-| 5. Pick the door | 1 min | The file picks. They agree before any price. | S-07, S-08 |
-| 6. Show the door | 5 to 10 min | The promise, three steps, how it runs. | S-08 to S-16, or B-01 to B-04 |
+| 4. Read the file | 10 min | How much they qualify for today, after the fixes, and what is left on the table. | S-07, L-01 (the money levers) |
+| 5. Pick the door | 1 min | The file picks. They agree before any price. | S-08 (your path) |
+| 6. Show the door | 5 to 10 min | The promise, three steps, how it runs. | S-09 to S-16 and C-01 (more companies), or B-01 to B-04 (B-03 is the Blueprint dashboard) |
 | 7. The ask | 2 min | Check the plan. Then the price. Then quiet. | S-17 to S-22, or B-04 |
 | 8. Money | if needed | Same offer, different pay terms. | — |
 | 9. Objections | if needed | Lock the plan, isolate, answer, ask again. | — |
@@ -194,7 +194,7 @@ The file picks first. Then what they told you about the business. You sell **one
 
 - Steady revenue through a business bank account, 6 months or more in business, and 3 months of bank statements: Door 2 fits. It runs by hand for now.
 - A business under 12 months old: the engine cuts business card amounts in half. Check the incorporation date on the state record. Do not take their word for it.
-- S-03 shows the survey's revenue as "Monthly revenue," but the survey asked for a yearly range. Use the monthly amount they told you out loud.
+- S-03 shows the survey's yearly revenue range. Ask the monthly amount out loud.
 
 **Step 3. File not ready? Lead with the Blueprint.**
 
@@ -215,7 +215,7 @@ Every door has the same shape. First the promise: the steps that get them from w
 
 **Who:** S-07 says FULL FUNDING, or FUNDING PLUS REPAIR.
 **Offer:** Funding, done for you. **$3,000 today.** It counts toward the 10% fee. The 10% is only on money that actually gets funded.
-**Slides:** S-08 to S-16, then S-17 to S-22.
+**Slides:** L-01 (the money levers) and S-08 (your path), then S-09 to S-16 and C-01 (more companies, more funding), then S-17 to S-22.
 
 1. **The promise.** "Here's the plan. Three steps to get you in front of the banks that match your file, in the right order. Want me to walk you through it?"
 2. **Step one: clean before we apply.** "You told me you got [denied / stuck] last time. Here's why. You applied blind, and every application was a hard pull. So first we set your card balances to the targets your file shows. Between rounds, we dispute the new inquiries. Make sense?"
@@ -229,7 +229,7 @@ Every door has the same shape. First the promise: the steps that get them from w
    - "The bank decides, not us. We pick the banks and the order. They say yes or no."
    - Check the incorporation date on the state record.
 
-**Funding plus credit optimization.** For FUNDING PLUS REPAIR files. "Part of your file is ready now. We fund from the clean side, and we clean up the rest at the same time, so your next round is bigger." $3,000 plus $1,000, cash. Present makes only the $3,000 link. Send the $1,000 credit optimization link from the cockpit pay panel.
+**Funding plus credit optimization.** For FUNDING PLUS REPAIR files. "Part of your file is ready now. We fund from the clean side, and we clean up the rest at the same time, so your next round is bigger." $3,000 plus $1,000, cash. On S-23, send the $3,000 link, then the second button, **Send credit optimization pay link · $1,000**.
 
 **The math, only with a real amount.** Read it off S-20. Example only, not a promise: $75,000 funded, 10% is $7,500, $3,000 already paid, $4,500 due after funding. If 10% of what gets funded comes out under the $3,000 they paid, do not promise a refund on the call. Ask Chris.
 
@@ -250,7 +250,7 @@ Every door has the same shape. First the promise: the steps that get them from w
 
 **Who:** every file that is not ready. Offer it first, because it is the most expensive door that fits.
 **Offer:** Capital Blueprint. **$5,000 to $10,000**, a whole-dollar price you pick. You set the price; there is no rule (Chris, 2026-10-29). The default is $5,000. 12 months included. No renewal charge.
-**Slides:** on S-19, click **DIY deliverables + course** (that button is the Blueprint), then **Show the full Blueprint stack**. Or click 06 on the phase strip. Walk B-01 to B-04. Then S-23.
+**Slides:** press Next from S-08. A file that is not ready walks B-01 to B-04, where B-03 is the Blueprint dashboard the client watches you click through. On S-19, **Capital Blueprint** is the first button. Then S-23.
 
 1. **The promise.** "Here's what I'd do with this file. A 12-month plan, built from your own report. It tells you exactly what to do, step by step, until your file and your businesses are ready to fund."
 2. **Why it's different.** "A course teaches you. The Blueprint makes the calls on your own file, and it keeps you moving."
@@ -258,7 +258,7 @@ Every door has the same shape. First the promise: the steps that get them from w
 4. **Step two: the businesses.** "File the LLC. Get the EIN. Open business checking. Each business is judged on its own, after your personal file is ready. Business one gets ready first, then business two."
 5. **Step three: the money and the banks.** "Your bank and lender match list, from your file, and the order to apply. FinanceOS shows every account and every due date on one page."
 6. **How it runs.** "It runs 12 months. Every step has a due date. An AI coach watches your open step. The Fundhub team does what a person has to do. When the system says your file is ready, we call you about funding."
-7. **What they get, on B-02.** Credit analysis, the dispute letter pack, the roadmap, How Much You Qualify For, the bank and lender match list, a short how-to course, and 12 months of FinanceOS. One spouse or partner file is included.
+7. **What they get, on B-02.** Credit analysis, the dispute letter pack, the roadmap, How Much You Qualify For, the bank and lender match list, and 12 months of FinanceOS. One spouse or partner file is included.
 8. **The price, on B-04.** "That's the whole plan, for 12 months. It's [price]. Want to get started?" Financing is open through Whop.
 
 Never promise an approval, an amount, a score or a removal. Never promise the date of the first monthly pull, or when the file will be ready. FinanceOS accounts are typed in for now, so do not promise a bank connection. Skip B-05. It has no checkout.
@@ -267,7 +267,7 @@ Never promise an approval, an amount, a score or a removal. Never promise the da
 
 **Who:** the file is not ready, and they said no to the Blueprint.
 **Offer:** Credit optimization, done for you, up to six rounds. **$1,000.** Or **$200** for round one. The $200 counts toward the $1,000.
-**Slides:** the repair path, S-08 to S-16. On S-19 the buttons are **Onboard now: full done-for-you** and **Trial: first round done-for-you**.
+**Slides:** the repair path, S-09 to S-16. S-15 is the six-round journey with their own items. On S-19, after **Capital Blueprint**, the buttons are **Onboard now: full done-for-you** and **Trial: first round done-for-you**.
 
 1. **The promise.** "We clean up the items that hold your funding back, in up to six rounds, built from your own file. Then you're ready for the funding side."
 2. **Step one: round one goes out today.** "The letters are built from the pull we just ran. You'll see them in your dashboard."
@@ -330,6 +330,20 @@ How each offer can be paid:
 
 Never tell a client financing stays off their credit. The financing pre-check is soft. Taking the loan is a hard pull, and it can show on their credit.
 
+**When they won't say what they have.** "You told me money aside, this is the right plan. To find the right way in, I need to know what you can use today. What's stopping you from telling me?" A closed door on money means a trust worry. Find it with section 9, then come back here.
+
+**Before they put it on a card.** "Card use is one of the things that sets how much you qualify for. A big new balance raises yours." Say it, then let them choose.
+
+**Financing on the call (Blueprint only).** A lot of buyers pay over time. Walk them through it live. Never send the link and hang up.
+
+1. Set the price and send the agreement (section 10, steps 2 and 3).
+2. Make the Whop link and send it while you are both on the call.
+3. "Open it now and pick the option to pay over time. Checking your options is a soft check."
+4. "Read the rate, the monthly payment and the number of months before you accept. The lender sets them, not us." Never say a rate.
+5. Stay on until Whop shows paid (section 10, step 5).
+
+As of 2026-10-29, nobody has closed a financed sale yet (`05-claritypay-financing.md`). On the first one, stay on to the end and tell Chris what each screen said.
+
 The money steps come from a payment-plan video that sits in Cole's folder. The speaker is Alex Hormozi: he says he ran those payments at Gym Launch, his company. Cole's own docs add the rule at the top of this section: lock the plan first, then talk money.
 
 ## 9. Objections
@@ -358,6 +372,24 @@ Best fix: get them on the call at the start (section 1). If they are not on: "Ma
 
 **"Can I finance the credit optimization, or the $200?"**
 "No. Financing is for the Blueprint only."
+
+**"What's the rate?"** (or "What's the monthly payment?")
+"The lender sets the rate and the payment from your file, not us. Checking your options is a soft check, and you see both before you accept anything. Let's look now, while I'm on." Then section 8, financing on the call.
+
+**"Will the financing hurt my credit?"**
+"Checking your options is soft. Taking the loan is a hard pull, and it can show on your credit. A big balance on a card raises your card use, and card use is one of the things that sets how much you qualify for." Then let them pick.
+
+**"The lender said no."**
+"That's the lender's call on today's file." Then section 8: half today and the rest on payday, three pays, or a smaller first step at its real price. Never make up a price.
+
+**"The monthly payment is too high."**
+"What payment works for you?" Look at the other plans the lender shows, together. More months means a smaller payment. If none fits, go to section 8: the payday split, or a smaller first step.
+
+**"I'll do the financing later."** (or "Just send me the link.")
+"Let's do it now while I'm here, so I can answer anything that comes up. Checking is a soft check." Still later: book a time inside one day, like the spouse rule. No fake deadline.
+
+**"I don't want a loan for this."**
+"Then don't take one. Pay half today and the rest on your next payday." Then the rest of section 8.
 
 **"Other companies charge $8,000 to $10,000."**
 "That's their price. Ours is a $3,000 deposit that counts toward 10%, and the 10% is only on money you actually get."
@@ -412,7 +444,7 @@ Only show wins Chris has given you in writing. If you have none to show, offer t
 1. Check the five **Before you close** boxes in the cockpit: call is recorded, personal guarantee, month-14 cliff (intro rates end), bank decides, incorporation date verified.
 2. Pick the offer and the price in Present, on S-23. For Blueprint you set the whole-dollar price, $5,000 to $10,000. The default is $5,000.
 3. Send the matching agreement. It carries the same price as the pay link. For Blueprint, send the agreement first. The pay link is refused until an agreement at the same price is out.
-4. Make the pay link. Commas for cash. Whop for Blueprint financing. For a Blueprint sale, Present shows a **Sale motion** box: Downsell or Upsell. Pick the true one.
+4. Make the pay link. Commas for cash. Whop for Blueprint financing. For a Blueprint sale, Present shows a **Sale motion** box: Downsell or Upsell. Pick the true one. For a funding plus repair file, S-23 has a second button for the $1,000 credit optimization link.
 5. Stay on until it's paid. "Tell me when you see the paid screen."
 6. Log the result. Present logs a funding deposit, or a downsell for everything else (Blueprint too). A callback, a no-show or not a fit gets logged in the cockpit (keys 1 to 5), with the belief that failed.
 7. Tell them what happens next, the first step for their door.
@@ -456,16 +488,11 @@ Do not celebrate. Do not over-explain. Confirm the payment posted before you end
 
 ## What the deck still shows
 
-Present's closer lines and the client slides follow this page as of 2026-10-29. The old "pre-approved," "0 percent," "$25 million," "2 to 3 times more," "up to 12 rounds" and "two weeks" lines are gone. A few things on the screen still need a work-around:
+Present's closer lines and the client slides follow this page as of 2026-10-29. The slides walk this page's parts in order, the course is hidden until it is filmed, the Blueprint comes first for a file that is not ready, and the menu shows only what Fundhub runs today. One thing on the screen still needs a work-around:
 
 | Slide | What it shows | Do this |
 |---|---|---|
-| S-03 | The survey's yearly revenue range, labeled "Monthly revenue" | Ask the monthly amount out loud. |
-| S-07 | The EDUCATION PATH button | Do not use it. Capital Academy is off until it is filmed. |
-| S-16 | SBA and equipment loans on the menu | Not live yet. Do not take an order for them. |
-| S-19 | The repair ladder lists the Blueprint last | Lead with the Blueprint anyway. Then the $1,000, then the $200. |
 | S-21 | Three guarantee cards | Read G-01 and G-02, the two in the agreement. |
-| B-04, B-05 | A member fee and FinanceOS prices as "$X" | No renewal charge. Skip B-05. |
 
 ## Open calls for Chris
 
@@ -484,6 +511,7 @@ Nothing is open.
 
 - **Cole Gordon's closer course** (Drive folder "Sales Training For Closing And Setting," copied to `~/Desktop/closing stuff/cole-gordon-sales-training/`): the call order (introduction, information gathering, transition, pitch, commit, objections), the seven beliefs (pain, doubt, cost, desire, money, support, trust), the two question orders (stuck part first, or goal first), the pitch shape (a promise, three to five steps, how it runs), the plan check before money, isolating an objection, the delay, and follow-up. His deposit (a refundable hold when they are all in and only timing blocks them) and his risk backups (a next-day or 7-day refund) are not used here, because Fundhub has no such offer. The five "Week 5" sample docs in Sarah's folder are coaching samples from his course, not Fundhub facts.
 - **The payment-plan video** in Cole's folder (`payment-plan-video/`): Alex Hormozi's ladder. Section 8.
+- **Cole's financial objections doc** (`from-sarah-and-closer/4. Financial Objections Doc.docx`; doc 5 is the same file): tie down twice, ask what they can use today, treat a closed door on money as a trust worry, then terms. Sections 8 and 9. Adapted to Fundhub's real pay rules, not copied.
 - **The Sept 1 floor sheet** (`FundhubObjectionsandFundingSheet.pdf`, emailed "Here, use these to role play w closer"): the fired lines, the pocket card, and the 18 approved objection answers in section 9.
 - **The Oct 10 offers overview** (`Fundhub_Offers_Overview.pdf`, emailed with the affiliate kit on Oct 13): who the Blueprint is for and what is in it.
 - **The old closer script** (`Fundhub_Closer_Script_FINAL`, newest copy is the 18-page PDF): the stacking close. Kept: the frame, the cost question, the pre-frame before the pull, reading the file like an underwriter, "should versus how," "respect versus permission." Dropped: the $50 pull, the $2,000 repair, the $1,000 do-it-yourself pack, "pre-approved," "0% introductory rates," "$25 million," and the three guarantees.

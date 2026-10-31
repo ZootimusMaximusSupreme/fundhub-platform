@@ -24,6 +24,12 @@ const APP = path.join(ROOT, "public/app");
 // that drops contract-send.js or renames #app is a deck with no Copy button, and this test sees it.
 const HTML = fs.readFileSync(path.join(APP, "present.html"), "utf8");
 const SCRIPTS = [...HTML.matchAll(/<script\b[^>]*\bsrc="([^"]+)"[^>]*>/g)].map((m) => m[1]);
+// The three slide visual files (ops/workflows/weekend-2026-10-24.md section 10.8) are named by the page before
+// they are built. A browser gets a 404 for a missing one and present.js keeps today's slide, so a missing visual
+// file is skipped here the same way. Every other script the page names must be in the site.
+const VISUAL_FILES = new Set(["/app/present-visuals.js", "/app/present-blueprint-demo.js", "/app/present-journey.js"]);
+// The course is off until it is filmed (COURSE_LIVE). The education route runs with the one switch on.
+const COURSE_OFF = "var COURSE_LIVE = false;";
 const PAGE_IDS = new Set([...HTML.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1]));
 const OFFERS = offersForClient();
 const CONTACT = "33333333-3333-3333-3333-333333333333";
@@ -44,7 +50,7 @@ function payload(tier) {
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 
 /** present.js and contract-send.js against a stand-in page, with every server answer and clipboard write recorded. */
-async function openDeck(tier, { copyWorks = true, wordings = null, sendAnswer = null } = {}) {
+async function openDeck(tier, { copyWorks = true, wordings = null, sendAnswer = null, course = false } = {}) {
   const root = { innerHTML: "" };
   const writes = [];
   const reads = [];
@@ -98,7 +104,13 @@ async function openDeck(tier, { copyWorks = true, wordings = null, sendAnswer = 
   // data.js is the stand-in FHData above; every other script the page names is run, in the page's order.
   for (const src of SCRIPTS.filter((name) => name !== "data.js")) {
     const file = src.startsWith("/") ? path.join(ROOT, "public", src.slice(1)) : path.join(APP, src);
-    vm.runInContext(fs.readFileSync(file, "utf8"), sandbox, { filename: file });
+    if (VISUAL_FILES.has(src) && !fs.existsSync(file)) continue;
+    let code = fs.readFileSync(file, "utf8");
+    if (course && src === "present.js") {
+      assert.ok(code.includes(COURSE_OFF), "present.js lost its one course switch");
+      code = code.replace(COURSE_OFF, "var COURSE_LIVE = true;");
+    }
+    vm.runInContext(code, sandbox, { filename: file });
   }
   await flush();
   await flush();
@@ -224,13 +236,15 @@ test("Show the full Blueprint stack opens section 06 from the Blueprint rung, an
     const repair = await openDeck("REPAIR_ONLY");
     repair.click("stack-go:S-19");
     assert.equal(repair.slide(), "S-19");
-    // The repair route starts on the done-for-you rung: no Blueprint button there.
+    // The repair route starts on the Capital Blueprint rung, the most expensive door that fits (row 2).
     assert.equal(repair.has("rung:2"), true);
+    assert.equal(repair.has("stack-open"), true, "a file that is not ready starts on the Blueprint rung");
+    repair.click("rung:0");
     assert.equal(repair.has("stack-open"), false, "not on the full done-for-you rung");
     repair.click("rung:1");
     assert.equal(repair.has("stack-open"), false, "not on the trial rung");
     repair.click("rung:2");
-    assert.equal(repair.has("stack-open"), true, "on the DIY deliverables + course rung");
+    assert.equal(repair.has("stack-open"), true, "on the Capital Blueprint rung");
     assert.equal(repair.label("stack-open"), "Show the full Blueprint stack");
     assert.ok(repair.text().includes("Opens section 06: every piece, FinanceOS live, the price, and the FinanceOS downsell."));
     repair.click("stack-open");
@@ -238,8 +252,8 @@ test("Show the full Blueprint stack opens section 06 from the Blueprint rung, an
     repair.click("stack-leave");
     assert.equal(repair.slide(), "S-19", "and Leave brings the closer back to where they were");
 
-    // The education route's second course is the same Blueprint stack.
-    const edu = await openDeck("REPAIR_ONLY");
+    // The education route's second course is the same Blueprint stack (the course switch on).
+    const edu = await openDeck("REPAIR_ONLY", { course: true });
     edu.click("desc:eduLow");
     assert.equal(edu.slide(), "S-19");
     assert.equal(edu.has("stack-open"), true);

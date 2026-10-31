@@ -69,10 +69,12 @@ test("an invented status is a 400 that names the real ones, not an empty table",
   for (const status of INVOICE_STATUSES) assert.ok(f.message.includes(status));
 });
 
-test("the endpoint binds the open filter as its own parameter and raises BAD_REQUEST", () => {
+test("the endpoint binds issued-only open debt and raises BAD_REQUEST", () => {
   assert.match(ENDPOINT, /invoiceStatusFilter/);
   assert.match(ENDPOINT, /err\.code = "BAD_REQUEST"/);
-  assert.match(ENDPOINT, /\$6::boolean IS NOT TRUE OR v\.open_balance > 0/);
+  // Both a positive net balance AND an issued invoice state are required.
+  // Unissued drafts remain available only via ?status=draft or history.
+  assert.match(ENDPOINT, /\$6::boolean IS NOT TRUE OR\s*\(\s*v\.open_balance > 0 AND v\.status IN \('sent', 'reminded', 'escalated', 'partially_paid'\)\s*\)/);
 });
 
 test("the endpoint reads the aging view, so days overdue is not re-derived in the browser", () => {

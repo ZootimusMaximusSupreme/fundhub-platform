@@ -7,7 +7,7 @@
 import { inngest } from "./client.mjs";
 import { db } from "../db.mjs";
 import { resolveClient } from "../handlers/client-lifecycle.mjs";
-import { sendTemplated } from "./messaging.mjs";
+import { messageCohortId, sendTemplated } from "./messaging.mjs";
 
 export const SMS_NOBOOK_01 = "SMS-NOBOOK-01";
 export const SMS_NOBOOK_02 = "SMS-NOBOOK-02";
@@ -87,46 +87,55 @@ export async function handle({ event, db, step }) {
   if (await step.run("check-booked-1", () => hasBooked(db, clientId))) {
     return { done: true, exitedAt: "after-wait-2h" };
   }
-  const msg1 = await step.run("send-nobook-1", async () => ({
+  const msg1 = await step.run("send-nobook-1", async () => {
+    const cohortId = await messageCohortId(db, { eventId, orgId, clientId, name: "survey.submitted" });
+    return {
     sms: await sendTemplated(db, {
       orgId, clientId, channel: "sms", templateKey: SMS_NOBOOK_01,
-      eventId: `${eventId}:1`
+      eventId: `${cohortId}:1`
     }),
     email: await sendTemplated(db, {
       orgId, clientId, channel: "email", templateKey: EMAIL_NOBOOK_01,
-      eventId: `${eventId}:1e`
+      eventId: `${cohortId}:1e`
     })
-  }));
+    };
+  });
 
   await step.sleep("wait-24h", "24h");
   if (await step.run("check-booked-2", () => hasBooked(db, clientId))) {
     return { done: true, exitedAt: "after-msg1", msg1 };
   }
-  const msg2 = await step.run("send-nobook-2", async () => ({
+  const msg2 = await step.run("send-nobook-2", async () => {
+    const cohortId = await messageCohortId(db, { eventId, orgId, clientId, name: "survey.submitted" });
+    return {
     sms: await sendTemplated(db, {
       orgId, clientId, channel: "sms", templateKey: SMS_NOBOOK_02,
-      eventId: `${eventId}:2`
+      eventId: `${cohortId}:2`
     }),
     email: await sendTemplated(db, {
       orgId, clientId, channel: "email", templateKey: EMAIL_NOBOOK_02,
-      eventId: `${eventId}:2e`
+      eventId: `${cohortId}:2e`
     })
-  }));
+    };
+  });
 
   await step.sleep("wait-72h", "72h");
   if (await step.run("check-booked-3", () => hasBooked(db, clientId))) {
     return { done: true, exitedAt: "after-msg2", msg1, msg2 };
   }
-  const msg3 = await step.run("send-nobook-3", async () => ({
+  const msg3 = await step.run("send-nobook-3", async () => {
+    const cohortId = await messageCohortId(db, { eventId, orgId, clientId, name: "survey.submitted" });
+    return {
     sms: await sendTemplated(db, {
       orgId, clientId, channel: "sms", templateKey: SMS_NOBOOK_03,
-      eventId: `${eventId}:3`
+      eventId: `${cohortId}:3`
     }),
     email: await sendTemplated(db, {
       orgId, clientId, channel: "email", templateKey: EMAIL_NOBOOK_03,
-      eventId: `${eventId}:3e`
+      eventId: `${cohortId}:3e`
     })
-  }));
+    };
+  });
 
   return { done: true, exitedAt: "completed", msg1, msg2, msg3 };
 }

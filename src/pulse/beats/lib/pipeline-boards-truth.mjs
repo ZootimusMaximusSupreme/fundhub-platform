@@ -148,6 +148,18 @@ export const BOARD_CARDS_SQL = `
     c.funded_amount,
     c.is_demo,
     (c.custom_fields->>'call_confirmed') = 'true' AS call_confirmed,
+    CASE WHEN p.key = 'sales' THEN (
+      SELECT b.starts_at
+        FROM bookings b
+       WHERE b.org_id = p.org_id
+         AND b.client_id = c.id
+         AND b.status IN ('booked', 'rescheduled')
+         AND b.starts_at IS NOT NULL
+       ORDER BY (b.starts_at >= NOW()) DESC,
+                CASE WHEN b.starts_at >= NOW() THEN b.starts_at END ASC NULLS LAST,
+                b.starts_at DESC, b.created_at DESC
+       LIMIT 1
+    ) ELSE NULL END AS booked_starts_at,
     (c.custom_fields->>'total_funding_estimate') AS total_funding_estimate,
     c.custom_fields->>'cf_svy_self_reported_fico' AS survey_fico_raw,
     c.custom_fields->>'cf_svy_self_reported_fico_label' AS survey_fico_label,

@@ -13,6 +13,8 @@ import { OFFERS, formatCents } from "../config/offers.mjs";
 import { percentOf } from "../commissions/money.mjs";
 import { drainMessageNow } from "../messaging/outbox.mjs";
 import { STAFF_BOOKED_TEMPLATE, STAFF_BOOKED_ROLES } from "./message-recipient.mjs";
+import { buildStaffLeadText, pushAssignedCloserLead } from "./lead-alerts.mjs";
+import { sendNativeToStaff } from "../push/native-send.mjs";
 
 export { STAFF_BOOKED_TEMPLATE, STAFF_BOOKED_ROLES };
 
@@ -142,7 +144,6 @@ export function pickRecipients(rows = []) {
     const phone = clean(row && row.phone);
     if (!id || seen.has(id)) continue;
     if (!STAFF_BOOKED_ROLES.includes(role)) continue;
-    if (row.notify_booked_call_sms !== true) continue;
     if (!phone) continue;
     seen.add(id);
     out.push({ id, role, phone });
@@ -193,21 +194,16 @@ export function buildAlertBody({ client = {}, booking = {}, commissionRules = []
 }
 
 export function buildSetterAlertBody({ client = {}, booking = {} } = {}) {
-  const name = clean([client.first_name, client.last_name].filter(Boolean).join(" "))
-    || clean(booking.name) || "Unnamed";
-  const phone = clean(client.phone) || clean(booking.phone);
-  const when = booking.startTime ? formatAppointmentStart(booking.startTime, booking.timezone) : "";
-  const lines = ["New strategy call — setter follow-up", name];
-  if (when) lines.push(when);
-  if (phone) lines.push(phone);
-  lines.push("Dial within 60 seconds during 6 a.m.–10 p.m. Phoenix hours; otherwise dial at 6 a.m.");
-  const qa = surveyLines(client.custom_fields || {});
-  if (qa.length) lines.push("", ...qa);
-  return lines.join("\n");
+  return buildStaffLeadText({
+    client: { ...client, first_name: client.first_name || clean(booking.name).split(/\s+/)[0],
+      phone: client.phone || booking.phone, email: client.email || booking.email },
+    startTime: booking.startTime
+  });
 }
 
 export async function queueStaffBookedAlerts(db, {
-  orgId, clientId, eventId, payload = {}, drainNowImpl = drainMessageNow
+  orgId, clientId, eventId, payload = {}, drainNowImpl = drainMessageNow,
+  pushImpl = sendNativeToStaff
 } = {}) {
   if (!orgId || !eventId) return { queued: 0, reason: "missing_ids" };
 
@@ -228,16 +224,16 @@ export async function queueStaffBookedAlerts(db, {
        FROM staff
       WHERE org_id = $1
         AND status = 'active'
-        AND notify_booked_call_sms = true
-        AND phone IS NOT NULL AND btrim(phone) <> ''
         AND lower(role) = ANY($2::text[])`,
     [orgId, STAFF_BOOKED_ROLES]
   );
   const recipients = pickRecipients(staff.rows);
-  if (recipients.length === 0) return { queued: 0, reason: "no_recipients" };
+  const pushTargets = [...new Map(staff.rows
+    .filter(row => STAFF_BOOKED_ROLES.includes(String(row.role || "").toLowerCase()))
+    .map(row => [row.id, row])).values()];
+  if (pushTargets.length === 0) return { queued: 0, reason: "no_recipients" };
 
   let client = { custom_fields: {} };
-  let commissionRules = [];
   if (clientId) {
     const cr = await db.query(
       `SELECT first_name, last_name, email, phone, channel_source, custom_fields
@@ -247,19 +243,6 @@ export async function queueStaffBookedAlerts(db, {
     if (cr.rows[0]) client = cr.rows[0];
   }
 
-  const rulesRes = await db.query(
-    `SELECT role, amount_basis, percent
-       FROM commission_rules
-      WHERE org_id = $1
-        AND active
-        AND effective_from <= now()
-        AND (effective_to IS NULL OR effective_to > now())
-        AND amount_basis IN ('deposit_collected', 'amount_funded')
-        AND lower(role) = ANY($2::text[])`,
-    [orgId, ["closer", "sales_manager"]]
-  );
-  commissionRules = rulesRes.rows;
-
   const booking = {
     name: payload.name,
     phone: payload.phone,
@@ -267,28 +250,30 @@ export async function queueStaffBookedAlerts(db, {
     startTime: payload.startTime || payload.start_time,
     timezone: payload.timezone || payload.tzid || payload.tz
   };
-  const body = renderTemplate(row.body, {
-    alert_body: buildAlertBody({
-      client,
-      commissionRules,
-      booking
-    })
-  });
   const setterBody = renderTemplate(row.body, { alert_body: buildSetterAlertBody({ client, booking }) });
 
   let queued = 0;
   let sent = 0;
-  for (const person of recipients) {
+  for (const person of pushTargets) {
+    if (!recipients.some(recipient => recipient.id === person.id)) {
+      try { await pushImpl(db, { orgId, staffId: person.id, clientId, kind: "lead", key: `booking:${eventId}` }); }
+      catch (error) { console.warn(`[staff-booked-alert] push failed: ${error.message}`); }
+      continue;
+    }
     const providerRef = `workflow:${STAFF_BOOKED_TEMPLATE}:${eventId}:${person.id}`;
     const ins = await db.query(
       `INSERT INTO messages (org_id, client_id, direction, channel, template_key, rendered_body, provider, provider_ref, status, compliance_check_passed, to_address)
        VALUES ($1,$2,'outbound','sms',$3,$4,'internal',$5,'queued',true,$6)
        ON CONFLICT (org_id, provider_ref) WHERE provider_ref IS NOT NULL DO NOTHING
        RETURNING id`,
-      [orgId, clientId || null, STAFF_BOOKED_TEMPLATE, person.role === "setter" ? setterBody : body, providerRef, person.phone]
+      [orgId, clientId || null, STAFF_BOOKED_TEMPLATE, setterBody, providerRef, person.phone]
     );
     const messageId = ins.rows[0]?.id;
-    if (!messageId) continue;
+    if (!messageId) {
+      try { await pushImpl(db, { orgId, staffId: person.id, clientId, kind: "lead", key: `booking:${eventId}` }); }
+      catch (error) { console.warn(`[staff-booked-alert] push failed: ${error.message}`); }
+      continue;
+    }
     queued += 1;
     // Only a fresh event-id/staff row is drained. A replay hits the unique
     // provider_ref and cannot text the same staff member a second time.
@@ -299,6 +284,9 @@ export async function queueStaffBookedAlerts(db, {
     } catch (error) {
       console.warn(`[staff-booked-alert] immediate dispatch failed for ${messageId}: ${error.message}`);
     }
+    try { await pushImpl(db, { orgId, staffId: person.id, clientId, kind: "lead", key: `booking:${eventId}` }); }
+    catch (error) { console.warn(`[staff-booked-alert] push failed: ${error.message}`); }
   }
+  await pushAssignedCloserLead(db, { orgId, clientId, key: `booking:${eventId}`, pushImpl });
   return { queued, sent };
 }

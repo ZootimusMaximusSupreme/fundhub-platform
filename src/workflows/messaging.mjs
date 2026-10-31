@@ -32,6 +32,8 @@ import { UNSUBSCRIBE_TAG_RE, unsubscribeTagValue } from "../messaging/unsubscrib
 // The one E.164 converter in the repo. Reused, not re-written (CLAUDE.md §8).
 import { normalizePhone } from "../messaging/providers/bland-voice.mjs";
 import { applyRepToContext } from "../auth/authorized-rep.mjs";
+import { surveyFicoBand } from "../survey/cf-question-map.mjs";
+import { ficoGatePasses } from "../config/survey-qualification.mjs";
 
 /* Which column on the client record is the destination for a channel.
    The destination is recorded in the terms of the CHANNEL, not of whichever
@@ -42,6 +44,51 @@ import { applyRepToContext } from "../auth/authorized-rep.mjs";
 const ADDRESS_BY_CHANNEL = { email: "email", sms: "phone", voice: "phone" };
 
 const FUNDHUB_TZ = "America/Phoenix";
+
+/* The two funding calendars (owner-set 2026-10-29/30). /apply frames the first for a
+   700-749 or 750+ score answer and the second for every other answer, "Not sure" too.
+   A text or email link opens in a tab that never saw /apply, so the link itself picks
+   the calendar from the saved answer, and fh_tier tells the tracker which label the
+   booking carries (QualifiedSchedule / UnqualifiedSchedule). One letter: never the
+   score, never the word. No readable answer: no tier, today's link. */
+export const TIER_BOOKING_LINKS = Object.freeze({
+  qualified: "https://apply.fundhub.ai/funding-book-call?fh_tier=q",
+  unqualified: "https://apply.fundhub.ai/funding-book-call--02424?fh_tier=u"
+});
+
+export function tierBookingLink(cf = {}) {
+  const pass = ficoGatePasses(surveyFicoBand(cf || {}));
+  if (pass === null) return null;
+  return pass ? TIER_BOOKING_LINKS.qualified : TIER_BOOKING_LINKS.unqualified;
+}
+
+// Several ClickFunnels posts can start separate runs for one application. Use
+// the first event in the trigger's six-hour survey window as the send key, so
+// even runs that were already sleeping before the ingest fix share one message.
+export async function messageCohortId(db, { eventId, orgId, clientId, name }) {
+  const { rows } = await db.query(
+    `WITH source AS (
+       SELECT id, created_at, payload FROM events
+        WHERE id = $1 AND org_id = $2 AND name = $4
+     )
+     SELECT e.id
+       FROM events e, source s
+      WHERE e.org_id = $2 AND e.name = $4
+        AND e.created_at <= s.created_at
+        AND e.created_at > s.created_at - interval '6 hours'
+        AND (e.client_id = $3 OR (e.client_id IS NULL
+          AND lower(COALESCE(e.payload->>'email', '')) = lower(COALESCE(s.payload->>'email', ''))
+          AND COALESCE(s.payload->>'email', '') <> ''))
+        AND (COALESCE(e.payload->>'funnel', '') = COALESCE(s.payload->>'funnel', '')
+          OR COALESCE(e.payload->>'funnel', '') = ''
+          OR COALESCE(s.payload->>'funnel', '') = '')
+      ORDER BY e.created_at, e.id
+      LIMIT 1`,
+    [eventId, orgId, clientId, name]
+  );
+  if (!rows[0]?.id) throw new Error(`message cohort missing for ${name} event ${eventId}`);
+  return rows[0].id;
+}
 
 function looksLikeIsoInstant(value) {
   return typeof value === "string" && /^\d{4}-\d{2}-\d{2}T/.test(value);
@@ -118,6 +165,7 @@ async function clientContext(db, clientId) {
   const bookingLink =
     cf.calendar_booking_link ||
     cf.booking_link ||
+    tierBookingLink(cf) ||
     process.env.SALES_MEET_BOOKING_URL ||
     "https://apply.fundhub.ai/funding-book-call";
   return {

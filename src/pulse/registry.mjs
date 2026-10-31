@@ -150,6 +150,7 @@ const API_KEYS = [
   "commission-rules",
   "commissions",
   "company-brain/reviews",
+  "company-brain/library",
   "company-brain/sync",
   "company-brain/threads",
   "company-brain/upload",
