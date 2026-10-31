@@ -205,6 +205,7 @@ Chris: "I've never done inbound sales before." These answers merge with the repo
 - **Time objection.** It is automated. You take directions on the Blueprint and answer a few questions from the advisor now and then.
 - **Doubt.** People are skeptical because many companies sell these services and never fulfill.
 - **Is this a scam.** Fundhub works with LexisNexis, Experian, Equifax and TransUnion and holds the licenses for that. There is a contract. Fundhub never takes a file that doesn't qualify and always tells you exactly where you need to go.
+- **Pre-underwriting (Chris's term, 2026-10-31).** Fundhub uses the same models banks use to underwrite, so it pre-underwrites you and sends you only to the banks that will approve your file. Most banks approve good credit; the point is catching the red flag that gets you denied and wastes your time. Matches the written UnderwriteIQ Guarantee: "Before we take you on, our system pre-approves you for a specific amount" (`marketing/landing-pages/slo/preview/03-thank-you.html:420`).
 - **We know before you apply.** The top of a credit report lists the reasons a bank approves or denies (for example "too high revolving balances"). Those are the same reasons the bank's letter gives. Fundhub reads them, so nobody is sent to apply who is not going to be approved. (Repo: `src/underwrite/report.mjs`, `src/deliverables/credit-analysis.mjs`.)
 - **First week after yes (funding).** If they qualify, we optimize, then send them into funding. First approval within 72 hours. Gates stop anyone who can't be funded now.
 - **What the deposit covers.** The operations of the company.
@@ -212,7 +213,7 @@ Chris: "I've never done inbound sales before." These answers merge with the repo
 - **What the call is.** Not one size fits all. We diagnose and tell you exactly what to do. We want action takers who need a solution, not shoppers.
 - **Copy rule from Chris:** never say "CRS" to a customer.
 
-Check before copy uses them: "first approval within 72 hours" is a day count, and the ad copy law bans day counts in ads (`.ai/rules/copy-certainty.md`); the funding-circle referral fee needs the real program it points to.
+Day counts are allowed now (owner-set 2026-10-31, PR "Allow day counts in ads"). The written Funding 72-Hour Action Guarantee says "A funding advisor starts within 24 business hours. Applications go out within 72 business hours. If we don't act in that window, you get your deposit back." (`marketing/landing-pages/slo/preview/03-thank-you.html:419`). Chris said "first approval within 72 hours". Open: which wording the content uses. The funding-circle referral fee still needs the real program it points to.
 
 ### 6c. The three groups today, and the fix plan (looked up 2026-10-31 — mapping only, nothing built)
 
