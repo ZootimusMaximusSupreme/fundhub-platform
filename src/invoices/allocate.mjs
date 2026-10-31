@@ -271,6 +271,19 @@ export async function allocatePayment(db, event) {
   const hintedId = payload.invoiceId || payload.invoice_id || null;
   const roundId = payload.fundingRoundId || payload.funding_round_id || null;
 
+  // Both invoice aliases are authoritative. Conflicting identifiers must not
+  // be resolved to whichever bill happens to appear first in the envelope.
+  if (payload.invoiceId && payload.invoice_id &&
+      String(payload.invoiceId) !== String(payload.invoice_id)) {
+    const task = await staffTask(db, {
+      orgId, clientId, eventId: event.id,
+      title: "Unallocated payment — conflicting explicit invoice identifiers",
+      body: providerPaymentId ? `invoice-identity-conflict:${providerPaymentId}` : event.id
+    });
+    if (!task) throw new Error("ar_invoice_locator_conflict_unroutable");
+    return { done: true, allocated: false, reason: "invoice_identity_conflict", path: "unresolved" };
+  }
+
   // Deposit and diagnostic receipts never pay a funding success fee, even if
   // their webhook accidentally carries a stale invoice identifier.
   if (["deposit", "diagnostic"].includes(String(payload.purpose || "").toLowerCase()) ||
@@ -297,7 +310,18 @@ export async function allocatePayment(db, event) {
 
   if (hintedId) {
     invoice = await getInvoice(db, { invoiceId: hintedId });
-    if (invoice) path = "provider_ref";
+    if (!invoice) {
+      // An explicit invoice ID cannot be rescued by a separate checkout link,
+      // provider reference or round; that would credit a different receivable.
+      const task = await staffTask(db, {
+        orgId, clientId, eventId: event.id,
+        title: "Unallocated payment — explicit invoice not found",
+        body: providerPaymentId ? `explicit-invoice-unknown:${providerPaymentId}` : event.id
+      });
+      if (!task) throw new Error("ar_explicit_invoice_unknown_unroutable");
+      return { done: true, allocated: false, reason: "invoice_mismatch", path: "unresolved" };
+    }
+    path = "provider_ref";
   }
   let linkedInvoice = null;
   if (payload.paymentLinkId || payload.ref) {
@@ -311,6 +335,17 @@ export async function allocatePayment(db, event) {
   // A foreign or unknown checkout cannot be ignored merely because the same
   // envelope also carries a perfectly valid local invoice ID.
   if (payload.paymentLinkId && !linkedInvoice) {
+    // A signed PSP receipt with an unknown, foreign or contradictory checkout
+    // must not be acknowledged and silently lost. Review belongs to the
+    // original owned invoice buyer, never an untrusted event client.
+    const reviewClientId = invoice && String(invoice.org_id) === String(orgId)
+      ? invoice.client_id : clientId;
+    const task = await staffTask(db, {
+      orgId, clientId: reviewClientId, eventId: event.id,
+      title: "Unallocated payment — checkout identity mismatch",
+      body: providerPaymentId ? `checkout-identity-mismatch:${providerPaymentId}` : event.id
+    });
+    if (!task) throw new Error("ar_explicit_checkout_mismatch_unroutable");
     return { done: true, allocated: false, reason: "invoice_mismatch", path: "unresolved" };
   }
   if (!invoice) {
@@ -341,13 +376,18 @@ export async function allocatePayment(db, event) {
       return { done: true, skipped: true, reason: "not_invoice_payment" };
     }
     console.warn(`[ar-allocate] path=unresolved payment=${providerPaymentId || "none"} client=${clientId || "none"}`);
-    await staffTask(db, {
+    const task = await staffTask(db, {
       orgId,
       clientId,
       eventId: event.id,
       title: "Unallocated payment — no matching invoice",
       body: providerPaymentId ? `unallocated:${providerPaymentId}` : event.id
     });
+    // A signed success-fee receipt is never resolved simply because a review
+    // was attempted. Without an owned task, retain the event for retry/DLQ.
+    if (!task || (!task.id && task.reason !== "duplicate_race")) {
+      throw new Error("ar_unmatched_success_fee_unroutable");
+    }
     return { done: true, allocated: false, reason: "unresolved", path: "unresolved" };
   }
 
@@ -355,6 +395,16 @@ export async function allocatePayment(db, event) {
   // create a review task on that tenant's buyer or reveal invoice metadata.
   // Check BEFORE invoice source/type/status and before the task fallback.
   if (!orgId || String(invoice.org_id) !== String(orgId)) {
+    // A foreign invoice is not evidence of its buyer's ownership. Only a
+    // separately verified same-org event customer can own the review task.
+    const task = await staffTask(db, {
+      orgId, clientId, eventId: event.id,
+      title: "Unallocated payment — invoice organization mismatch",
+      body: providerPaymentId ? `foreign-invoice:${providerPaymentId}` : event.id
+    });
+    if (!task || (!task.id && task.reason !== "duplicate_race")) {
+      throw new Error("ar_foreign_invoice_unroutable");
+    }
     return { done: true, allocated: false, reason: "invoice_mismatch", path: "unresolved" };
   }
   // Invoice org/client columns are not a tenant-ownership guarantee. Missing

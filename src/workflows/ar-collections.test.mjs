@@ -1080,3 +1080,71 @@ test("AR tenant isolation: CSM escalation repeats ownership verification before 
   assert.equal(db.tasks.length, 0, "no task targeting former owner");
   assert.equal(db.clients[0].tags?.length || 0, 0);
 });
+
+test("AR receipt identity: unresolved buyer cannot create a task for a foreign-org invoice client", async () => {
+  const db = pgFake({
+    clients: [{ id: "cl-foreign", org_id: "org-2", email: "foreign+a78@example.invalid" }],
+    invoices: [openInvoice({ client_id: "cl-foreign" })]
+  });
+  await assert.rejects(handle({
+    event: ev("payment.received", {
+      invoiceId: "inv-1", product: "success_fee",
+      email: "unmatched+a78@example.invalid", amount: 1250, paymentId: "a78-foreign"
+    }),
+    db, step: fakeStep()
+  }), /ar_unmatched_invoice_buyer_not_owned_by_org/);
+  assert.equal(db.tasks.length, 0, "no cross-tenant advisor task or client reference");
+  assert.equal(db.invoicePayments.length, 0, "the merchant amount remains unallocated");
+});
+
+test("AR receipt identity: unresolved sender still gets a task on a verified same-org invoice owner", async () => {
+  const db = pgFake({
+    clients: [{ id: "cl-1", org_id: "org-1", email: "owner+a78@example.invalid" }],
+    invoices: [openInvoice()]
+  });
+  const result = await handle({
+    event: ev("payment.received", {
+      invoiceId: "inv-1", product: "success_fee",
+      email: "unmatched+a78@example.invalid", amount: 1250, paymentId: "a78-owned"
+    }),
+    db, step: fakeStep()
+  });
+  assert.equal(result.reason, "client_not_owned");
+  assert.equal(result.reviewTaskCreated, true);
+  assert.equal(db.tasks.length, 1);
+  assert.equal(db.tasks[0].org_id, "org-1");
+  assert.equal(db.tasks[0].client_id, "cl-1");
+  assert.equal(db.invoicePayments.length, 0, "a review task never allocates money");
+});
+
+
+test("AR receipt A81: signed payment without an org must retry instead of claiming handled", async () => {
+  const db = pgFake({ clients: [], invoices: [] });
+  const event = ev("payment.received", {
+    email: "missing-org+a81@example.invalid",
+    product: "success_fee", paymentId: "a81-missing-org", amount: 1250
+  });
+  delete event.orgId;
+  await assert.rejects(handle({ event, db, step: fakeStep() }),
+    /ar_payment_missing_org_unroutable/);
+  assert.equal(db.invoicePayments.length, 0);
+  assert.equal(db.tasks.length, 0);
+});
+
+test("AR receipt A81: unknown email without a safe invoice owner must retry, not silently drop a receipt", async () => {
+  const db = pgFake({ clients: [], invoices: [] });
+  for (const invoiceId of [null, "missing-invoice-a81"]) {
+    const payload = {
+      email: "unknown-buyer+a81@example.invalid", product: "success_fee",
+      paymentId: invoiceId ? "a81-unknown-invoice" : "a81-no-invoice",
+      amount: 1250, ...(invoiceId ? { invoiceId } : {})
+    };
+    await assert.rejects(handle({
+      event: ev("payment.received", payload),
+      db, step: fakeStep()
+    }), /ar_payment_customer_unroutable/);
+  }
+  assert.equal(db.clients.length, 0, "reconciliation never creates a lead");
+  assert.equal(db.invoicePayments.length, 0, "no invoice may be miscredited");
+  assert.equal(db.tasks.length, 0, "no fake or foreign buyer task may be emitted");
+});

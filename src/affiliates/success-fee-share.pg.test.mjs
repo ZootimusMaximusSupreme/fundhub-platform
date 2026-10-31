@@ -37,11 +37,12 @@ import { clearHandlers } from "../events/registry.mjs";
 import { register as registerLifecycle } from "../handlers/client-lifecycle.mjs";
 import { register as registerMoneyChain } from "../handlers/money-chain.mjs";
 import { resolveDefaultOrg } from "../auth/org.mjs";
+import { createInvoice, markSent } from "../invoices/index.mjs";
 import { attribute, maybeUnlockTier2, basisFor } from "./economics.mjs";
 
 const HAS_DB = !!process.env.DATABASE_URL;
 const MARK = "affsuccessfee_pg";
-const EMAIL = `${MARK}@example.com`;
+const EMAIL = `${MARK}+receipt@example.invalid`;
 
 /* The deal, in dollars, as numeric(14,2) hands them back. */
 const FUNDED = 120000;   // what the lender funded
@@ -50,7 +51,7 @@ const BALANCE = 9000;    // invoiced after funding: 10% of 120,000, less the dep
 const FEE_TOTAL = 12000; // DEPOSIT + BALANCE
 
 describe("affiliate share of the success fee", { skip: !HAS_DB ? "no DATABASE_URL" : false }, () => {
-  let org, partnerId, clientId, fundingProductId, tier1Id, tier2Id;
+  let org, partnerId, clientId, fundingProductId, tier1Id, tier2Id, successFeeInvoiceId;
 
   const one = async (sql, params) => (await db.query(sql, params)).rows[0];
 
@@ -71,6 +72,13 @@ describe("affiliate share of the success fee", { skip: !HAS_DB ? "no DATABASE_UR
     };
 
     if (clients.length) {
+      // This disposable-PG fixture clears synthetic invoice/receipt rows
+      // before parent sales; production no-delete guards remain unchanged.
+      await withoutTrigger("invoice_payments", "trg_invoice_payments_no_delete", () =>
+        db.query(`DELETE FROM invoice_payments
+                    WHERE invoice_id IN (SELECT id FROM invoices WHERE client_id = ANY($1))`, [clients]));
+      await withoutTrigger("invoices", "trg_invoices_no_delete", () =>
+        db.query(`DELETE FROM invoices WHERE client_id = ANY($1)`, [clients]));
       await withoutTrigger("affiliate_referrals", "trg_affiliate_referrals_no_delete", () =>
         db.query(`DELETE FROM affiliate_referrals WHERE client_id = ANY($1)`, [clients]));
       await withoutTrigger("partner_revenue", "trg_partner_revenue_no_delete", () =>
@@ -195,12 +203,25 @@ describe("affiliate share of the success fee", { skip: !HAS_DB ? "no DATABASE_UR
        VALUES ($1,$2,$3,'explicit') ON CONFLICT (funding_round_id) DO NOTHING`,
       [org, round.id, sale.id]);
 
+    // Issue a same-buyer success-fee invoice linked to the funded round
+    // and original sale. A text-only "success_fee" label is not identity.
+    const invoice = await createInvoice(db, {
+      orgId: org, clientId, invoiceType: "success_fee",
+      source: "funding_success_fee", amount: BALANCE,
+      saleId: sale.id, fundingRoundId: round.id,
+      idempotencyKey: `${MARK}:successfee-invoice`
+    });
+    assert.ok(invoice?.id, "a linked fee invoice must be persisted");
+    const sent = await markSent(db, { invoiceId: invoice.id });
+    assert.equal(sent?.status, "sent");
+    successFeeInvoiceId = invoice.id;
+
     // The 10% balance arrives as cash. THIS is the event that converts, and
     // nothing in this file calls convert() — the bus does.
     await emit(db, "payment.received", {
       email: EMAIL, name: "Success Fee", product: "success_fee",
       productName: "Funding Success Fee", amount: BALANCE,
-      providerRef: `${MARK}_successfee`, source: "commas"
+      providerRef: `${MARK}_successfee`, invoiceId: successFeeInvoiceId, source: "commas"
     }, { orgId: org, idempotencyKey: `${MARK}:successfee` });
 
     const payments = (await db.query(
@@ -254,7 +275,7 @@ describe("affiliate share of the success fee", { skip: !HAS_DB ? "no DATABASE_UR
     await emit(db, "payment.received", {
       email: EMAIL, name: "Success Fee", product: "success_fee",
       productName: "Funding Success Fee", amount: BALANCE,
-      providerRef: `${MARK}_successfee`, source: "commas"
+      providerRef: `${MARK}_successfee`, invoiceId: successFeeInvoiceId, source: "commas"
     }, { orgId: org, idempotencyKey: `${MARK}:successfee` });
     await replay(db, {});
 

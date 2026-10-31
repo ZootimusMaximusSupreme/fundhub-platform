@@ -10,7 +10,7 @@ import { db, close } from "../db.mjs";
 import { emit, replay, _resetOrgCache } from "../events/bus.mjs";
 import { clearHandlers } from "../events/registry.mjs";
 import { register as registerLifecycle } from "./client-lifecycle.mjs";
-import { register as registerMoneyChain, onPaymentReceivedMoney } from "./money-chain.mjs";
+import { register as registerMoneyChain, onPaymentReceivedMoney, ensureSale, ensureSalePayment } from "./money-chain.mjs";
 import { createSession } from "../auth/session.mjs";
 import { resolveDefaultOrg } from "../auth/org.mjs";
 
@@ -478,6 +478,117 @@ describe("money-chain writers", { skip: !HAS_DB ? "no DATABASE_URL" : false }, (
     assert.equal(await held(), 1, "a replayed webhook must not grant a second time");
   });
 
+  test("a foreign buyer's or failed provider transaction cannot be credited to this sale", async () => {
+    const foreignEmail = `${MARK}.foreign_ref@example.com`;
+    const buyerEmail = `${MARK}.owned_ref@example.com`;
+    const foreign = (await db.query(
+      `INSERT INTO clients (org_id, email, first_name, last_name)
+       VALUES ($1,$2,$3,'Foreign') RETURNING id`, [org, foreignEmail, MARK]
+    )).rows[0];
+    const buyer = (await db.query(
+      `INSERT INTO clients (org_id, email, first_name, last_name)
+       VALUES ($1,$2,$3,'Owned') RETURNING id`, [org, buyerEmail, MARK]
+    )).rows[0];
+    const { sale } = await ensureSale(db, {
+      orgId: org, clientId: buyer.id, name: "checkout.accepted",
+      payload: { productId: fundingProductId, amount: 3000 }
+    }, { productBucket: "deposit" });
+    assert.ok(sale);
+    for (const scenario of [
+      { owner: foreign.id, status: "succeeded", amount: 3000 },
+      { owner: buyer.id, status: "failed", amount: 3000 },
+      { owner: buyer.id, status: "succeeded", amount: 2400 }
+    ]) {
+      const providerRef = `${MARK}_scope_${scenario.status}_${scenario.amount}_${scenario.owner}`;
+      await db.query(
+        `INSERT INTO transactions (org_id, client_id, product_name, amount_paid,
+                                  status, provider, provider_ref, raw_payload)
+         VALUES ($1,$2,'Consulting Services Deposit',$3,$4,'commas',$5,'{}'::jsonb)`,
+        [org, scenario.owner, scenario.amount, scenario.status, providerRef]
+      );
+      const result = await ensureSalePayment(db, {
+        id: "00000000-0000-4000-8000-000000000e64", orgId: org, clientId: buyer.id,
+        name: "payment.received", payload: { amount: 3000, providerRef }
+      }, {
+        clientId: buyer.id, saleId: sale.id, productId: fundingProductId, kind: "deposit"
+      });
+      assert.equal(result.payment, null, "conflicted processor reference is not cash");
+      assert.equal(result.reason, "transaction_source_conflict");
+    }
+    const n = (await db.query(
+      `SELECT count(*)::int n FROM sale_payments WHERE sale_id = $1`, [sale.id]
+    )).rows[0].n;
+    assert.equal(n, 0, "none of the foreign/failed/incorrect-amount receipts may credit buyer");
+  });
+
+  test("a succeeded orphan provider receipt never credits the buyer's newest funding sale", async () => {
+    const buyerEmail = `${MARK}.orphan_fee@example.com`;
+    const buyer = (await db.query(
+      `INSERT INTO clients (org_id, email, first_name, last_name)
+       VALUES ($1,$2,$3,'Orphan') RETURNING id`, [org, buyerEmail, MARK]
+    )).rows[0];
+    const origin = await ensureSale(db, {
+      orgId: org, clientId: buyer.id, name: "checkout.accepted",
+      payload: { productId: fundingProductId, amount: 3000 }
+    }, { productBucket: "deposit" });
+    assert.ok(origin.sale, "this fixture needs an actual existing funding sale");
+    const providerRef = `${MARK}_orphan_fee_ref`;
+    await db.query(
+      `INSERT INTO transactions (org_id, client_id, product_name, amount_paid,
+                                status, provider, provider_ref, raw_payload)
+       VALUES ($1,$2,'Unmatched provider payment',2500,'succeeded','commas',$3,'{}'::jsonb)`,
+      [org, buyer.id, providerRef]
+    );
+    const result = await onPaymentReceivedMoney({
+      id: "00000000-0000-4000-8000-000000000e65", name: "payment.received",
+      orgId: org, clientId: buyer.id,
+      payload: { product: "unmatched", productName: null, amount: 2500, providerRef }
+    }, db);
+    assert.equal(result.done, false, "unassigned payment cannot settle a guessed contract");
+    assert.equal(result.reason, "no_sale_yet");
+    const n = (await db.query(
+      `SELECT count(*)::int n FROM sale_payments WHERE sale_id = $1`, [origin.sale.id]
+    )).rows[0].n;
+    assert.equal(n, 0, "orphan receipt must not inflate installment or success-fee balances");
+  });
+
+
+  test("a recorded buyer payment with a foreign or unknown invoice ID cannot credit even an explicit owned sale", async () => {
+    const buyerEmail = `${MARK}.unowned_invoice@example.invalid`;
+    const buyer = (await db.query(
+      `INSERT INTO clients (org_id, email, first_name, last_name)
+       VALUES ($1,$2,$3,'Unowned Invoice') RETURNING id`,
+      [org, buyerEmail, MARK]
+    )).rows[0];
+    const origin = await ensureSale(db, {
+      orgId: org, clientId: buyer.id, name: "checkout.accepted",
+      payload: { productId: fundingProductId, amount: 3000 }
+    }, { productBucket: "deposit" });
+    assert.ok(origin.sale);
+    const providerRef = `${MARK}_unowned_invoice_ref`;
+    await db.query(
+      `INSERT INTO transactions (org_id, client_id, product_name, amount_paid,
+                                 status, provider, provider_ref, raw_payload)
+       VALUES ($1,$2,'Unmatched invoice receipt',2500,'succeeded','commas',$3,'{}'::jsonb)`,
+      [org, buyer.id, providerRef]
+    );
+    const result = await onPaymentReceivedMoney({
+      id: "00000000-0000-4000-8000-000000000e69", name: "payment.received",
+      orgId: org, clientId: buyer.id,
+      payload: {
+        invoiceId: "00000000-0000-4000-8000-000000000f69",
+        saleId: origin.sale.id, product: "unmatched",
+        productName: null, purpose: null, amount: 2500, providerRef
+      }
+    }, db);
+    assert.equal(result.done, false);
+    assert.equal(result.reason, "invoice_identity_conflict");
+    assert.equal((await db.query(
+      `SELECT count(*)::int n FROM sale_payments WHERE sale_id = $1`,
+      [origin.sale.id]
+    )).rows[0].n, 0, "unknown invoice must never inflate a real sale balance");
+  });
+
   test("a payment we cannot pin to a client refuses and names the reason", async () => {
     const out = await onPaymentReceivedMoney(
       { id: null, name: "payment.received", orgId: org, payload: { amount: 100 } },
@@ -498,10 +609,24 @@ describe("money-chain writers", { skip: !HAS_DB ? "no DATABASE_URL" : false }, (
 
     // 'Inquiry Removal' is a real product. 180 deliberately does NOT map it,
     // because no shipped code says what an inquiry removal delivers.
+    // An owned checkout sale and an actual stored transaction are both required
+    // before this test can assert the separate missing entitlement mapping.
+    const origin = await ensureSale(db, {
+      orgId: org, clientId, name: "checkout.accepted",
+      payload: { productName: "Inquiry Removal", amount: 500, providerRef: `${MARK}_inq_1` }
+    }, { productBucket: "unmatched" });
+    assert.ok(origin.sale, "an unmapped but real product still has a canonical sale");
+    await db.query(
+      `INSERT INTO transactions (org_id, client_id, product_name, amount_paid,
+                                status, provider, provider_ref, raw_payload)
+       VALUES ($1,$2,'Inquiry Removal',500,'succeeded','commas',$3,'{}'::jsonb)`,
+      [org, clientId, `${MARK}_inq_1`]
+    );
     const unmapped = await onPaymentReceivedMoney({
       id: null, name: "payment.received", orgId: org, clientId,
-      payload: { productName: "Inquiry Removal", amount: 500, providerRef: `${MARK}_inq_1` }
+      payload: { saleId: origin.sale.id, productName: "Inquiry Removal", amount: 500, providerRef: `${MARK}_inq_1` }
     }, db);
+    assert.equal(unmapped.done, true, "the stored sale and payment were accepted");
     assert.equal(unmapped.entitlements.unmapped, true);
     assert.equal(unmapped.entitlements.reason, "no_mapping");
     assert.equal(unmapped.entitlements.productCode, "inquiry-removal");
@@ -511,8 +636,10 @@ describe("money-chain writers", { skip: !HAS_DB ? "no DATABASE_URL" : false }, (
       id: null, name: "payment.received", orgId: org, clientId,
       payload: { productName: "Nothing We Sell", amount: 10, providerRef: `${MARK}_np_1` }
     }, db);
-    assert.equal(noProduct.entitlements.unmapped, true);
-    assert.equal(noProduct.entitlements.reason, "no_product");
+    // A product with no original sale is not paid and cannot grant access.
+    assert.equal(noProduct.done, false);
+    assert.equal(noProduct.reason, "no_sale_yet");
+    assert.equal(noProduct.entitlements, undefined);
 
     assert.equal(
       (await db.query(

@@ -28,6 +28,7 @@
 import { on } from "../events/registry.mjs";
 import { emit } from "../events/bus.mjs";
 import { resolveClient } from "./client-lifecycle.mjs";
+import { findClient as findExistingPaymentClient } from "./purchase-routing.mjs";
 import {
   computeFrontEnd,
   computeBackEnd,
@@ -432,7 +433,8 @@ async function findTransactionId(db, orgId, providerRef) {
 }
 
 export async function ensureSalePayment(db, event, {
-  saleId, productId, paymentLinkId = null, saleMotion = null, kind, amount = null
+  saleId, clientId = null, productId, paymentLinkId = null,
+  saleMotion = null, kind, amount = null
 } = {}) {
   const orgId = event.orgId;
   if (!orgId || !saleId || !productId) return { payment: null, created: false };
@@ -440,7 +442,8 @@ export async function ensureSalePayment(db, event, {
   const p = event.payload || {};
   const paid = amount != null ? Number(amount)
     : (p.amount != null ? Number(p.amount) : null);
-  if (paid == null || Number.isNaN(paid) || paid < 0) {
+  // A zero-dollar/invalid webhook is not settled cash, even for a 0%-deposit plan.
+  if (!Number.isFinite(paid) || paid <= 0 || paid >= 1_000_000_000) {
     return { payment: null, created: false };
   }
 
@@ -448,6 +451,24 @@ export async function ensureSalePayment(db, event, {
   const sourceEventId = asUuid(event.id);
   if (!transactionId && !sourceEventId) {
     return { payment: null, created: false };
+  }
+  // A provider reference is only evidence for the exact buyer whose payment
+  // was captured. The org-level provider_ref uniqueness alone is insufficient:
+  // another client's failed or successful transaction must never settle this
+  // sale even when an event supplies a fresh source_event_id.
+  if (transactionId) {
+    if (!clientId) return { payment: null, created: false, reason: "transaction_owner_missing" };
+    const verifiedSource = await db.query(
+      `SELECT id FROM transactions
+        WHERE id = $1 AND org_id = $2 AND client_id = $3
+          AND lower(status) = 'succeeded'
+          AND amount_paid = $4::numeric
+        LIMIT 1`,
+      [transactionId, orgId, clientId, paid]
+    );
+    if (!verifiedSource.rows[0]) {
+      return { payment: null, created: false, reason: "transaction_source_conflict" };
+    }
   }
   const paidAt = p.paidAt || new Date().toISOString();
 
@@ -495,6 +516,20 @@ export async function ensureSalePayment(db, event, {
      still a gap, and closing it needs an owner call on what it should pay. */
   const settle = async (paymentRow, created) => {
     if (!paymentRow) return { payment: null, created: false };
+    // A replay that collides on transaction/event identity cannot reassign a
+    // previous receipt to another sale, product, kind, amount, or tenant.
+    // Refuse BEFORE partner/affiliate accrual or paid-entitlement consumers.
+    if (!created && (
+      String(paymentRow.org_id) !== String(orgId) ||
+      String(paymentRow.sale_id) !== String(saleId) ||
+      String(paymentRow.product_id) !== String(productId) ||
+      String(paymentRow.kind) !== String(kind) ||
+      Number(paymentRow.amount) !== paid ||
+      (transactionId && String(paymentRow.transaction_id) !== String(transactionId))
+    )) {
+      console.warn("[money-chain] conflicting replay receipt held for reconciliation");
+      return { payment: null, created: false, reason: "receipt_conflict" };
+    }
     const partnerRevenue = await accrueForPaymentSafe(db, {
       orgId,
       saleId,
@@ -782,11 +817,19 @@ async function recordPurchase(event, db, { productBucket, paymentKind }) {
 
   const pay = await ensureSalePayment(db, event, {
     saleId: sale.id,
+    clientId,
     productId: sale.product_id,
     paymentLinkId: event.payload?.paymentLinkId || null,
     saleMotion: event.payload?.saleMotion || sale.sale_motion || null,
     kind: paymentKind
   });
+
+  // No durable sale payment means no commission or paid entitlement.
+  if (!pay.payment) {
+    const reason = pay.reason || "unrecorded_payment";
+    warnNothingUnlocked(event, reason, { clientId, productCode: product?.code || null });
+    return { done: false, reason, saleId: sale.id, clientId };
+  }
 
   let commission = { inserted: 0, warnings: [] };
   try {
@@ -890,13 +933,27 @@ export async function onSaleClosedMoney(event, db) {
 async function successFeeInvoiceFor(db, { orgId, clientId, invoiceId }) {
   if (!orgId || !clientId || !asUuid(invoiceId)) return null;
   const { rows } = await db.query(
-    `SELECT id, sale_id FROM invoices
+    `SELECT id, sale_id, status, funding_round_id, amount_due FROM invoices
       WHERE id = $1 AND org_id = $2 AND client_id = $3
         AND (source = 'funding_success_fee' OR invoice_type = 'success_fee')
       LIMIT 1`,
     [invoiceId, orgId, clientId]
   );
   return rows[0] || null;
+}
+
+export function feePaymentBalanceDecision({ amount, due, applied = 0 }) {
+  const incoming = Number(amount);
+  if (!Number.isFinite(incoming) || incoming <= 0) return null;
+  const charge = due == null ? NaN : Number(due);
+  const prior = applied == null ? NaN : Number(applied);
+  if (!Number.isFinite(charge) || charge <= 0 || !Number.isFinite(prior) || prior < 0) {
+    return "success_fee_balance_unverified";
+  }
+  const chargeCents = toCents(charge), priorCents = toCents(prior);
+  if (priorCents > chargeCents) return "success_fee_balance_unverified";
+  return toCents(incoming) > chargeCents - priorCents
+    ? "success_fee_overpayment_unallocated" : null;
 }
 
 /**
@@ -906,7 +963,31 @@ async function successFeeInvoiceFor(db, { orgId, clientId, invoiceId }) {
  */
 export async function onPaymentReceivedMoney(event, db) {
   const orgId = event.orgId;
-  const clientId = await resolveClient(db, event);
+  const p = event.payload || {};
+  // Canonical and legacy event names must agree. A snake_case invoice/link
+  // locator cannot bypass the same tenant/invoice checks as camelCase.
+  if (p.invoiceId && p.invoice_id && String(p.invoiceId) !== String(p.invoice_id)) {
+    return { done: false, reason: "invoice_identity_conflict" };
+  }
+  if (p.paymentLinkId && p.payment_link_id && String(p.paymentLinkId) !== String(p.payment_link_id)) {
+    return { done: false, reason: "payment_link_context_conflict" };
+  }
+  const invoiceIdHint = p.invoiceId || p.invoice_id || null;
+  const paymentLinkIdHint = p.paymentLinkId || p.payment_link_id || null;
+  // An invoice/payment-link receipt must already have a debtor. Lead-capture's
+  // resolveClient may insert a client or edit contact fields before the
+  // provider and invoice are verified. Never do that on receivable cash.
+  const feeClaim = ["success_fee", "funding_success_fee"].includes(
+    String(p.product || "").trim().toLowerCase()
+  ) || ["success_fee", "funding_success_fee"].includes(
+    String(p.purpose || "").trim().toLowerCase()
+  ) || /\bsuccess[\s_-]*fee\b/i.test(String(p.productName || ""));
+  const invoiceBound = Boolean(
+    invoiceIdHint || paymentLinkIdHint || feeClaim
+  );
+  const clientId = invoiceBound
+    ? await findExistingPaymentClient(db, event)
+    : await resolveClient(db, event);
   if (!orgId || !clientId) {
     // The single loudest case: a real payment whose client we cannot identify.
     // Every Commas-sourced payment event measured on 2026-08-18 landed here,
@@ -918,16 +999,15 @@ export async function onPaymentReceivedMoney(event, db) {
     return { done: false, reason: "no_client" };
   }
 
-  const p = event.payload || {};
   let linkContext = null;
-  if (p.paymentLinkId) {
+  if (paymentLinkIdHint) {
     linkContext = (await db.query(
-      `SELECT id, product_id, sale_id, sale_motion,
+      `SELECT id, product_id, sale_id, invoice_id, sale_motion,
               closer_staff_id, sales_manager_staff_id
          FROM payment_links
         WHERE id = $1 AND org_id = $2 AND client_id = $3
         LIMIT 1`,
-      [p.paymentLinkId, orgId, clientId]
+      [paymentLinkIdHint, orgId, clientId]
     )).rows[0] || null;
     if (!linkContext) {
       return {
@@ -936,10 +1016,16 @@ export async function onPaymentReceivedMoney(event, db) {
         detail: "the payment link is not for this client and org"
       };
     }
+    // Same-buyer payment links may belong to different invoices.
+    if (invoiceIdHint &&
+        String(linkContext.invoice_id || "") !== String(invoiceIdHint)) {
+      return { done: false, reason: "payment_link_invoice_conflict" };
+    }
   }
   const paymentPayload = {
     ...p,
-    paymentLinkId: linkContext?.id || p.paymentLinkId || null,
+    paymentLinkId: linkContext?.id || paymentLinkIdHint,
+    invoiceId: linkContext?.invoice_id || invoiceIdHint,
     productId: linkContext?.product_id || p.productId || null,
     saleId: linkContext?.sale_id || p.saleId || null,
     saleMotion: linkContext?.sale_motion || p.saleMotion || null,
@@ -952,9 +1038,135 @@ export async function onPaymentReceivedMoney(event, db) {
   const feeInvoice = await successFeeInvoiceFor(db, {
     orgId, clientId, invoiceId: paymentPayload.invoiceId
   });
+  let otherInvoice = null;
+  // An invoiceId is authoritative billing evidence. If it is unknown,
+  // malformed or belongs to another buyer/tenant, never fall back to an
+  // otherwise valid saleId and misclassify invoice cash as installments.
+  // Non-fee invoices also must anchor cash to their actual billed sale.
+  if (paymentPayload.invoiceId && !feeInvoice) {
+    if (!asUuid(paymentPayload.invoiceId)) {
+      return { done: false, reason: "invoice_identity_conflict" };
+    }
+    otherInvoice = (await db.query(
+      `SELECT id, sale_id, status, funding_round_id FROM invoices
+        WHERE id = $1 AND org_id = $2 AND client_id = $3 LIMIT 1`,
+      [paymentPayload.invoiceId, orgId, clientId]
+    )).rows[0] || null;
+    if (!otherInvoice) return { done: false, reason: "invoice_identity_conflict" };
+    if (!["sent", "reminded", "escalated", "partially_paid", "paid"].includes(String(otherInvoice.status))) {
+      return { done: false, reason: "invoice_not_collectible" };
+    }
+    if (!otherInvoice.sale_id) return { done: false, reason: "unlinked_invoice_sale" };
+    if (paymentPayload.saleId && String(otherInvoice.sale_id) !== String(paymentPayload.saleId)) {
+      return { done: false, reason: "invoice_sale_conflict" };
+    }
+  }
 
+  // A void/draft/written-off fee invoice cannot be newly settled as sale cash.
+  // The invoice allocator would refuse the receipt; do not let money-chain
+  // independently pay commissions or unlock access before that refusal.
+  // A paid invoice stays readable for exact webhook replay; receipt identity
+  // is independently checked by ensureSalePayment.
+  if (feeInvoice && !["sent", "reminded", "escalated", "partially_paid", "paid"].includes(String(feeInvoice.status))) {
+    return { done: false, reason: "success_fee_invoice_not_collectible" };
+  }
+
+  // An unmatched/custom provider receipt may still say "Success fee" without
+  // carrying the invoice UUID. It is received cash in transactions, but cannot
+  // be classified as a sale installment or a paid funding fee until the
+  // original, buyer-owned fee invoice is resolved. Hold it for reconciliation.
+  const feeLabel = String(paymentPayload.productName || "");
+  const feeBucket = String(paymentPayload.product || "").trim().toLowerCase();
+  const feePurpose = String(paymentPayload.purpose || "").trim().toLowerCase();
+  if (!feeInvoice && (
+    feeBucket === "success_fee" ||
+    feePurpose === "success_fee" ||
+    feePurpose === "funding_success_fee" ||
+    /\bsuccess[\s_-]*fee\b/i.test(feeLabel)
+  )) {
+    return { done: false, reason: "success_fee_invoice_unresolved" };
+  }
+
+  // A paid success-fee invoice owns its original sale. A second sale hint
+  // (including a stored payment-link sale) must not redirect that money.
+  if (feeInvoice && !feeInvoice.sale_id) {
+    return { done: false, reason: "unlinked_success_fee_invoice" };
+  }
+  if (feeInvoice?.sale_id && paymentPayload.saleId &&
+      String(feeInvoice.sale_id) !== String(paymentPayload.saleId)) {
+    return { done: false, reason: "success_fee_sale_conflict" };
+  }
+  // A paid invoice accepts an *identical replay*, not a second processor
+  // receipt for the same settled debt. The invoice allocator leaves new cash
+  // unapplied once paid; money-chain must not separately pay commissions or
+  // unlock services for that new overpayment.
+  const billedInvoice = feeInvoice || otherInvoice;
+  // Invoice allocator refuses a conflicting round; money-chain must refuse
+  // BEFORE posting sale cash, commissions or paid access.
+  const hintedRound = paymentPayload.fundingRoundId || paymentPayload.funding_round_id || null;
+  if (billedInvoice && hintedRound &&
+      String(billedInvoice.funding_round_id || "") !== String(hintedRound)) {
+    return { done: false, reason: "invoice_round_conflict" };
+  }
+  if (billedInvoice?.status === "paid") {
+    const receiptRef = paymentPayload.paymentId || paymentPayload.providerRef || null;
+    const eventReceiptId = asUuid(event.id);
+    if (!receiptRef && !eventReceiptId) {
+      return { done: false, reason: "paid_success_fee_new_receipt" };
+    }
+    const existingReceipt = await db.query(
+      `SELECT 1 FROM invoice_payments
+        WHERE org_id = $1 AND invoice_id = $2
+          AND kind = 'payment' AND method = 'commas'
+          AND (
+            ($3::text IS NOT NULL AND external_ref = $3)
+            OR ($4::text IS NOT NULL AND source_event_id = $4)
+          )
+        LIMIT 1`,
+      [orgId, billedInvoice.id, receiptRef, eventReceiptId]
+    );
+    if (!existingReceipt.rows[0]) {
+      return { done: false, reason: "paid_success_fee_new_receipt" };
+    }
+  }
+  // Money-chain and the independent invoice allocator may consume this SAME
+  // PSP event in either order. Exclude THIS exact already-applied receipt from
+  // the net paid amount, otherwise a valid partial payment can be rejected
+  // just because invoice allocation completed first. Do not exclude another
+  // receipt, even from the same buyer/fee invoice.
+  //
+  // The paid-invoice block above already proves replay receipt identity.
+  // The comparison below always caps collectible sale cash by original debt,
+  // including a partial event that the allocator has already processed.
+  if (feeInvoice && Number(paymentPayload.amount) > 0) {
+    const receiptRef = paymentPayload.paymentId || paymentPayload.providerRef || null;
+    const sourceEventId = asUuid(event.id);
+    const totals = await db.query(
+      `SELECT COALESCE(SUM(CASE WHEN kind = 'payment' THEN amount ELSE -amount END), 0) AS applied,
+              COALESCE(SUM(CASE WHEN kind = 'payment' AND method = 'commas'
+                AND (($3::text IS NOT NULL AND external_ref = $3)
+                  OR ($4::text IS NOT NULL AND source_event_id = $4))
+                THEN amount ELSE 0 END), 0) AS current_applied
+         FROM invoice_payments
+        WHERE org_id = $1 AND invoice_id = $2`,
+      [orgId, feeInvoice.id, receiptRef, sourceEventId]
+    );
+    const agg = totals.rows[0] || null;
+    const priorApplied = agg ? Number(agg.applied) - Number(agg.current_applied) : null;
+    const reason = feePaymentBalanceDecision({
+      amount: paymentPayload.amount, due: feeInvoice.amount_due, applied: priorApplied
+    });
+    if (reason) return { done: false, reason, invoiceId: feeInvoice.id };
+  }
   let sale = null;
-  if (paymentPayload.saleId) {
+  if (billedInvoice?.sale_id) {
+    sale = (await db.query(
+      `SELECT * FROM sales WHERE id = $1 AND org_id = $2 AND client_id = $3 LIMIT 1`,
+      [billedInvoice.sale_id, orgId, clientId]
+    )).rows[0] || null;
+    if (!sale) return { done: false, reason: feeInvoice ? "success_fee_sale_missing" : "invoice_sale_missing" };
+  }
+  if (!sale && paymentPayload.saleId) {
     sale = (await db.query(
       `SELECT * FROM sales
         WHERE id = $1 AND org_id = $2 AND client_id = $3
@@ -993,15 +1205,10 @@ export async function onPaymentReceivedMoney(event, db) {
       ]
     )).rows[0] || null;
   }
-  // A success fee belongs to the sale its invoice bills, not to whichever
-  // funding sale happens to be newest.
-  if (!sale && feeInvoice?.sale_id) {
-    sale = (await db.query(
-      `SELECT * FROM sales WHERE id = $1 AND org_id = $2 AND client_id = $3 LIMIT 1`,
-      [feeInvoice.sale_id, orgId, clientId]
-    )).rows[0] || null;
-  }
-  if (!sale) {
+  // "unmatched" and "success_fee" are not product proof. In particular,
+  // a buyer can have several funding sales, so never infer the originating
+  // contract from the most recent product purchase.
+  if (!sale && bucket !== "unmatched" && bucket !== "success_fee") {
     const productId = await resolveProductId(db, orgId, {
       productId: paymentPayload.productId,
       productName: paymentPayload.productName || paymentPayload.product || null,
@@ -1022,28 +1229,33 @@ export async function onPaymentReceivedMoney(event, db) {
     ({ sale } = await ensureSale(db, paymentEvent, { productBucket: bucket }));
   }
 
-  if (!sale && (bucket === "success_fee" || bucket === "unmatched" || !bucket)) {
-    sale = (await db.query(
-      `SELECT s.* FROM sales s
-         JOIN products pr ON pr.id = s.product_id
-        WHERE s.org_id = $1 AND s.client_id = $2 AND s.status = 'active'
-          AND pr.category = 'funding'
-        ORDER BY s.sold_at DESC LIMIT 1`,
-      [orgId, clientId]
-    )).rows[0] || null;
-  }
+  // Never use "newest active funding sale" as a payment identity fallback:
+  // an unrelated installment or funding success fee would be miscredited.
 
   if (!sale) {
-    const productId = await resolveProductId(db, orgId, {
-      productId: paymentPayload.productId,
-      productName: paymentPayload.productName || null,
-      productBucket: bucket
-    });
-    const product = await loadProduct(db, productId);
-    const entitlements = await grantForPurchase(db, event, { clientId, product });
-    return { done: true, saleId: null, entitlements, reason: "no_sale_yet" };
+    // Unattributed money remains visible for reconciliation, never treated as
+    // a completed purchase or a reason to unlock paid services.
+    warnNothingUnlocked(event, "no_sale", { clientId, productCode: null });
+    return { done: false, saleId: null, clientId, reason: "no_sale_yet" };
   }
 
+  const kind = feeInvoice ? "success_fee" : paymentKindFor(bucket, "payment.received");
+  const pay = await ensureSalePayment(db, paymentEvent, {
+    saleId: sale.id,
+    clientId,
+    productId: sale.product_id,
+    paymentLinkId: paymentPayload.paymentLinkId,
+    saleMotion: paymentPayload.saleMotion || sale.sale_motion || null,
+    kind
+  });
+  if (!pay.payment) {
+    const reason = pay.reason || "unrecorded_payment";
+    warnNothingUnlocked(event, reason, { clientId, productCode: null });
+    return { done: false, reason, saleId: sale.id, clientId };
+  }
+  // Receipt ownership and capture must be proved before mutating the
+  // checkout link or freezing staff credit on the sale. A rejected receipt
+  // cannot poison later, genuinely paid commission attribution.
   if (paymentPayload.paymentLinkId) {
     await db.query(
       `UPDATE payment_links
@@ -1061,14 +1273,6 @@ export async function onPaymentReceivedMoney(event, db) {
     basisHint: "front_end"
   });
 
-  const kind = feeInvoice ? "success_fee" : paymentKindFor(bucket, "payment.received");
-  const pay = await ensureSalePayment(db, paymentEvent, {
-    saleId: sale.id,
-    productId: sale.product_id,
-    paymentLinkId: paymentPayload.paymentLinkId,
-    saleMotion: paymentPayload.saleMotion || sale.sale_motion || null,
-    kind
-  });
   const commission = await writeFrontEndCommissions(db, {
     saleId: sale.id,
     payment: pay.payment,

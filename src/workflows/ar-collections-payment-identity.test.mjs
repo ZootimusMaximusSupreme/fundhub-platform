@@ -108,11 +108,16 @@ test("exact invoice-only provider receipt retains the upstream allocator path", 
 
 test("missing organization refuses before any buyer read or allocation", async () => {
   const { db, queries } = fixture();
-  const result = await handle({
-    event: { ...pay("owner-client"), orgId: null },
-    db, step: fakeStep()
-  });
-  assert.equal(result.reason, "missing_org");
-  assert.deepEqual(queries, []);
+  // A signed receipt with no tenant cannot safely be acknowledged: it must
+  // fail/retry instead of being silently accepted without a ledger or task.
+  await assert.rejects(
+    handle({
+      event: { ...pay("owner-client"), orgId: null },
+      db, step: fakeStep()
+    }),
+    /ar_payment_missing_org_unroutable/
+  );
+  assert.deepEqual(queries, [], "the tenant gate runs before any DB read");
+  assert.equal(db.tasks.length, 0, "an unowned receipt must never create a staff task");
   assert.equal(db.invoicePayments.length, 0);
 });

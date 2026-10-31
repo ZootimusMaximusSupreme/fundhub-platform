@@ -180,8 +180,8 @@ function fakeDb({
       }
 
       if (/UPDATE payment_links[\s\S]*status = 'paid'/i.test(text)) {
-        const [link_ref, paid_at, commas_session_id, paid_amount_cents, openStatuses] = params;
-        const row = rows.find((r) => r.link_ref === link_ref && openStatuses.includes(r.status));
+        const [link_ref, paid_at, commas_session_id, paid_amount_cents, openStatuses, org_id] = params;
+        const row = rows.find((r) => r.link_ref === link_ref && r.org_id === org_id && openStatuses.includes(r.status));
         if (!row) return { rows: [] };
         row.status = "paid"; row.paid_at = paid_at;
         row.commas_session_id = commas_session_id; row.paid_amount_cents = paid_amount_cents;
@@ -561,13 +561,13 @@ describe("status transitions", () => {
   });
 
   test("a paid link cannot be expired", async () => {
-    await markPaid(db, { linkRef: link.link_ref, commasSessionId: "txn_1", paidAmountCents: 3200 });
+    await markPaid(db, { orgId: ORG, linkRef: link.link_ref, commasSessionId: "txn_1", paidAmountCents: 3200 });
     const result = await markExpired(db, { id: link.id, orgId: ORG });
     assert.equal(result, null, "an already-paid link was reported expired");
   });
 
   test("created -> paid via the link's own ref, recording the processor session id", async () => {
-    const paid = await markPaid(db, { linkRef: link.link_ref, commasSessionId: "txn_abc", paidAmountCents: 3200 });
+    const paid = await markPaid(db, { orgId: ORG, linkRef: link.link_ref, commasSessionId: "txn_abc", paidAmountCents: 3200 });
     assert.equal(paid.status, "paid");
     assert.equal(paid.commas_session_id, "txn_abc");
     assert.equal(paid.paid_amount_cents, 3200);
@@ -576,24 +576,24 @@ describe("status transitions", () => {
 
   test("sent -> paid also works — paid is not conditioned on having been sent", async () => {
     await markSent(db, { id: link.id, orgId: ORG });
-    const paid = await markPaid(db, { linkRef: link.link_ref, commasSessionId: "txn_abc", paidAmountCents: 3200 });
+    const paid = await markPaid(db, { orgId: ORG, linkRef: link.link_ref, commasSessionId: "txn_abc", paidAmountCents: 3200 });
     assert.equal(paid.status, "paid");
   });
 
   test("a replayed webhook settling an already-paid link is a safe no-op", async () => {
-    await markPaid(db, { linkRef: link.link_ref, commasSessionId: "txn_abc", paidAmountCents: 3200 });
-    const again = await markPaid(db, { linkRef: link.link_ref, commasSessionId: "txn_abc", paidAmountCents: 3200 });
+    await markPaid(db, { orgId: ORG, linkRef: link.link_ref, commasSessionId: "txn_abc", paidAmountCents: 3200 });
+    const again = await markPaid(db, { orgId: ORG, linkRef: link.link_ref, commasSessionId: "txn_abc", paidAmountCents: 3200 });
     assert.equal(again, null, "a second settlement on an already-paid link must not report success");
   });
 
   test("a client who paid a DIFFERENT amount than asked records both figures honestly", async () => {
-    const paid = await markPaid(db, { linkRef: link.link_ref, commasSessionId: "txn_x", paidAmountCents: 5000 });
+    const paid = await markPaid(db, { orgId: ORG, linkRef: link.link_ref, commasSessionId: "txn_x", paidAmountCents: 5000 });
     assert.equal(paid.amount_cents, 3200, "the requested amount was overwritten");
     assert.equal(paid.paid_amount_cents, 5000);
   });
 
   test("an unknown ref settles nothing", async () => {
-    const result = await markPaid(db, { linkRef: "pl_does_not_exist", commasSessionId: "txn_1" });
+    const result = await markPaid(db, { orgId: ORG, linkRef: "pl_does_not_exist", commasSessionId: "txn_1" });
     assert.equal(result, null);
   });
 });
@@ -621,4 +621,25 @@ describe("reads", () => {
     assert.equal(list.length, 1);
     assert.equal(list[0].id, mine.id);
   });
+});
+  
+test("A77: only the owning tenant can mark a checkout paid", async () => {
+  const db = fakeDb();
+  const link = await mint(db, {
+    orgId: ORG, clientId: CLIENT, purpose: "diagnostic",
+    amountCents: 3200, checkoutBaseUrl: BASE_URL
+  });
+  const foreign = await markPaid(db, {
+    orgId: OTHER_ORG, linkRef: link.link_ref, paidAmountCents: 3200
+  });
+  assert.equal(foreign, null);
+  assert.equal(link.status, "created");
+  await assert.rejects(
+    markPaid(db, { linkRef: link.link_ref, paidAmountCents: 3200 }),
+    /orgId is required/
+  );
+  const owner = await markPaid(db, {
+    orgId: ORG, linkRef: link.link_ref, paidAmountCents: 3200
+  });
+  assert.equal(owner.status, "paid");
 });
