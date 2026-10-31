@@ -9,6 +9,18 @@ import { PULL_CHECK_IDS } from "./beats/lib/soft-pull-truth.mjs";
 
 export const EDGE_CONTRACT_VERSION = 1;
 
+// One implementation of bank matching runs both in Pulse and in the live
+// lender/Blueprint desks. It has four direct runtime dependencies under Pulse.
+// These are EXECUTABLE BUSINESS PATHS, not observer-only beat implementations.
+// Exact allow-list; a source-tracked regression fails if imports expand.
+export const RUNTIME_LENDER_PULSE_PATHS = Object.freeze([
+  "src/pulse/beats/lib/lenders-truth.mjs",
+  "src/pulse/beats/lib/lender-match.mjs",
+  "src/pulse/beats/lib/lenders-credit.mjs",
+  "src/pulse/beats/lib/lender-tables.mjs",
+  "src/pulse/beats/lib/org-demo-mode.mjs"
+]);
+
 // register-all.mjs is the *real* event-bus handler registration chokepoint:
 // changing ordering/imports can disconnect payment, consent, booking, repair,
 // finance and customer-message consumers without changing any handler file.
@@ -71,7 +83,7 @@ export const CRITICAL_EDGES = Object.freeze([
     // exclude the parent result while still reading those stored tradelines.
     // Never claim that a passing monthly beat proves a real-source recommendation.
     proofStatus: "PARTIAL_NEEDS_REAL_SOURCE_PROVENANCE_RECEIPT",
-    paths: ["src/register-all.mjs", "src/finance-os/", "src/finance/finance-os-", "src/blueprint/", "src/workflows/finance-os", "api/finance-os", "src/finance/bank-strategy.mjs", "src/lenders/store.mjs", "src/lenders/match.mjs", "src/pulse/beats/lib/lenders-truth.mjs", "src/tradelines/", "src/liabilities/", "src/finance/sample-credit-file.mjs", "scripts/finance-os-sample-v3.mjs"]
+    paths: ["src/register-all.mjs", "src/finance-os/", "src/finance/finance-os-", "src/blueprint/", "src/workflows/finance-os", "api/finance-os", "src/finance/bank-strategy.mjs", "src/lenders/store.mjs", "src/lenders/match.mjs", ...RUNTIME_LENDER_PULSE_PATHS, "src/tradelines/", "src/liabilities/", "src/finance/sample-credit-file.mjs", "scripts/finance-os-sample-v3.mjs"]
   },
   {
     id: "outbound-message-provider-receipt", severity: "P1", owner: "Front-house",
@@ -105,7 +117,7 @@ export const CRITICAL_EDGES = Object.freeze([
     event: "SOURCE-STATE: lender application_url", consumer: "apply-links beat / lender UI",
     receipt: "lenders.application_url + pulse_bank_links read-only result", graceMinutes: null,
     pulse: "url-shape",
-    paths: ["src/lenders/", "src/pulse/beats/lib/lenders-truth.mjs", "src/banks/", "src/finance/bank-strategy.mjs", "api/lenders", "api/banks"]
+    paths: ["src/lenders/", ...RUNTIME_LENDER_PULSE_PATHS, "src/banks/", "src/finance/bank-strategy.mjs", "api/lenders", "api/banks"]
   },
   {
     id: "ads-spend-attribution", severity: "P2", owner: "Front-house / Ads",
@@ -136,11 +148,10 @@ function materialSource(file) {
   // This executable rehearsal script writes simulated CRS and tradelines.
   // A change to it can alter bank guidance, despite living in scripts/.
   const sampleCreditWriter = file === "scripts/finance-os-sample-v3.mjs";
-  // This one Pulse-namespaced module is runtime lender-matching business code:
-  // src/lenders/store.mjs re-exports matchForClient from it. Do NOT blanket-exclude
-  // edits here as mere beat/audit changes; future recommendation alterations
-  // must request both lender and Blueprint real-source outcome proof.
-  const sharedRuntimePulseSource = file === "src/pulse/beats/lib/lenders-truth.mjs";
+  // The matcher AND its direct imported helpers are live business code
+  // shared with the hourly beat. Watch only these exact paths, not every
+  // observer-only Pulse module.
+  const sharedRuntimePulseSource = RUNTIME_LENDER_PULSE_PATHS.includes(file);
   return (/^(?:src|api|netlify|public|marketing|ios|macos|native)\//.test(file) || nativeAppSource || schemaMigration || sampleCreditWriter || sharedRuntimePulseSource)
     && (!file.startsWith("src/pulse/") || sharedRuntimePulseSource)
     && !TEST_FILE.test(file) && !NON_EXECUTABLE_ASSET.test(file) && !NON_RUNTIME.test(file);
