@@ -450,7 +450,7 @@ export function pgFake(seed = {}) {
         return { rows: hit ? [{ booked: 1 }] : [] };
       }
       if (/WITH source AS \([\s\S]*SELECT e\.id[\s\S]*FROM events e, source s/.test(sql)) {
-        const [eventId, orgId, clientId, name, windowSeconds] = params;
+        const [eventId, orgId, clientId, name, windowSeconds, after] = params;
         const source = events.find((e) => e.id === eventId && e.org_id === orgId && e.name === name);
         if (!source) return { rows: [] };
         const sourceAt = new Date(source.created_at).getTime();
@@ -462,7 +462,7 @@ export function pgFake(seed = {}) {
           .filter((e) => e.org_id === orgId && e.name === name)
           .filter((e) => {
             const at = new Date(e.created_at).getTime();
-            return at <= sourceAt && at > sourceAt - windowMs;
+            return at <= sourceAt && at > sourceAt - windowMs && (!after || at > new Date(after).getTime());
           })
           .filter((e) => e.client_id === clientId || (!e.client_id && sourceEmail && String(e.payload?.email || "").toLowerCase() === sourceEmail))
           .filter((e) => !sourceFunnel || !e.payload?.funnel || e.payload.funnel === sourceFunnel)

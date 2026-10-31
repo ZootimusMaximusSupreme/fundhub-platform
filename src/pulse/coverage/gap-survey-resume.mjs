@@ -1,23 +1,23 @@
 // The come-back link. The 6 a.m. deep check for GET /api/public/survey-resume. Read only.
 //
-// WHAT A CUSTOMER FEELS WHEN IT BREAKS. A lead who stopped the /apply survey gets
-// a welcome and three come-back messages (S-00, S-02), each with a link that should
-// open the survey at the question they stopped on, with their name and answers
-// already filled in. If the link stops working, the page quietly falls back to the
-// top of the survey, and the person who came back has to start over.
+// CONTAINMENT (2026-10-31): THE DOOR MUST STAY SHUT. /apply accepts an existing
+// lead's email with a new phone and writes that phone onto the record, so a signed
+// resume code texted to "the lead" can reach a stranger. The code only proves it was
+// minted, not who holds it, and the door used to hand back that lead's saved contact
+// and answers. So the door is closed (api/public/survey-resume.mjs) and S-00/S-02
+// send the plain /apply link. What a customer feels if this goes red: anyone holding
+// a resume code can read that lead's saved answers.
 //
 // HOW IT JUDGES. It takes the newest real lead of the last 7 days, mints that
-// person's link the way S-02 does (surveyResumeToken), and reads it the way the
-// door does (readSurveyResume, imported from the handler, no web call). PASS only
-// when the answer names that same person and its next question matches the
-// answers on their file. No signing key on the server is a FAIL: every link then
-// falls back to the plain /apply page (src/survey/resume-link.mjs).
+// person's code with the server's real key (surveyResumeToken), and reads it the way
+// the door does (readSurveyResume, imported from the handler, no web call). PASS only
+// when nothing comes back. Anything that comes back is a FAIL. No signing key is a
+// skip: there is no real code to try the door with.
 //
 // WHAT IT NEVER DOES. No write statement, no transaction control, no web call, no
 // text, no email. The detail names the client code, never a name or an address.
 
 import { surveyResumeToken, surveyResumeSecret } from "../../survey/resume-link.mjs";
-import { nextSurveyKey, savedSurveyAnswers } from "../../survey/resume-state.mjs";
 import { readSurveyResume } from "../../../api/public/survey-resume.mjs";
 import { testAddressSql } from "../beats/lib/handoff-truth.mjs";
 
@@ -46,9 +46,9 @@ SELECT c.id, c.client_code, lower(c.email) AS email, c.custom_fields
  ORDER BY e.created_at DESC
  LIMIT 1`.trim();
 
-const FIX = "Open src/survey/resume-link.mjs and api/public/survey-resume.mjs. The link is signed with " +
-  "UNSUBSCRIBE_TOKEN_SECRET (falling back to DOCUMENT_URL_SECRET); without one, every come-back link opens the " +
-  "plain /apply page. Read only: this check sends nothing and changes nothing.";
+const FIX = "Open api/public/survey-resume.mjs. readSurveyResume must answer null for every code until a " +
+  "resume link can prove the person opening it owns the record: /apply lets a new phone onto an existing " +
+  "lead's email, so a code can reach a stranger. Read only: this check sends nothing and changes nothing.";
 
 function row(status, detail, suggestedFix = null) {
   return { id: CHECK_ID, status, detail, suggestedFix: status === "FAIL" ? suggestedFix || FIX : null };
@@ -72,7 +72,7 @@ export async function gapChecks(ctx = {}, deps = {}) {
     secret = null;
   }
   if (!secret) {
-    return [row("FAIL", "The server has no key to sign come-back links, so every one of them opens the survey at the top.")];
+    return [row("skip", "The server has no signing key, so there is no real resume code to try the door with.")];
   }
 
   let lead;
@@ -92,15 +92,8 @@ export async function gapChecks(ctx = {}, deps = {}) {
   } catch (err) {
     return [row("FAIL", `The come-back link for ${who} could not be read: ${String(err?.message || err).slice(0, 120)}`)];
   }
-  if (!answer || answer.ok !== true) {
-    return [row("FAIL", `The come-back link for ${who} opens nothing: the door turned its own fresh link away.`)];
+  if (answer != null) {
+    return [row("FAIL", `A resume code for ${who} opened their saved record. The door must stay shut until a link proves who is opening it.`)];
   }
-  if (String(answer.contact?.email || "").toLowerCase() !== String(lead.email || "")) {
-    return [row("FAIL", `The come-back link for ${who} opened a different person's survey.`)];
-  }
-  const want = nextSurveyKey(savedSurveyAnswers(lead.custom_fields));
-  if ((answer.next_key ?? null) !== (want ?? null)) {
-    return [row("FAIL", `The come-back link for ${who} opens at ${answer.next_key || "the end"}, but the file says ${want || "the end"}.`)];
-  }
-  return [row("PASS", `The come-back link for ${who} opens their own survey at ${want || "the end (every question answered)"}.`)];
+  return [row("PASS", `A real resume code for ${who} opens nothing: no saved contact or answer leaves the door.`)];
 }

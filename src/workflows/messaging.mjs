@@ -74,7 +74,7 @@ export function tierBookingLink(cf = {}) {
 // database drops it, even when both runs wake at the same second.
 export const MESSAGE_COHORT_WINDOW_MS = 6 * 60 * 60 * 1000;
 
-export async function messageCohortId(db, { eventId, orgId, clientId, name, windowMs = MESSAGE_COHORT_WINDOW_MS }) {
+export async function messageCohortId(db, { eventId, orgId, clientId, name, windowMs = MESSAGE_COHORT_WINDOW_MS, after = null }) {
   const { rows } = await db.query(
     `WITH source AS (
        SELECT id, created_at, payload FROM events
@@ -85,6 +85,7 @@ export async function messageCohortId(db, { eventId, orgId, clientId, name, wind
       WHERE e.org_id = $2 AND e.name = $4
         AND e.created_at <= s.created_at
         AND e.created_at > s.created_at - ($5::double precision * interval '1 second')
+        AND ($6::timestamptz IS NULL OR e.created_at > $6::timestamptz)
         AND (e.client_id = $3 OR (e.client_id IS NULL
           AND lower(COALESCE(e.payload->>'email', '')) = lower(COALESCE(s.payload->>'email', ''))
           AND COALESCE(s.payload->>'email', '') <> ''))
@@ -93,7 +94,7 @@ export async function messageCohortId(db, { eventId, orgId, clientId, name, wind
           OR COALESCE(s.payload->>'funnel', '') = '')
       ORDER BY e.created_at, e.id
       LIMIT 1`,
-    [eventId, orgId, clientId, name, Math.max(0, Number(windowMs) || 0) / 1000]
+    [eventId, orgId, clientId, name, Math.max(0, Number(windowMs) || 0) / 1000, after]
   );
   if (!rows[0]?.id) throw new Error(`message cohort missing for ${name} event ${eventId}`);
   return rows[0].id;

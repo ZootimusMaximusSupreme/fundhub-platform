@@ -129,10 +129,16 @@ so a lead who signs up at night is not red before 9 a.m. Arizona. A reply, a tex
 the sender's number or an email by the person, stops the clock the way it stops the
 workflow. The new route `public/survey-resume` has a daily ping (`reg:`) and the
 daily deep check `survey:resume-link-opens` (`src/pulse/coverage/gap-survey-resume.mjs`):
-it mints the newest real lead's come-back link and reads it the way the door does.
+it mints the newest real lead's come-back code and reads it the way the door does.
 Every hour the `survey-resume` beat (shift `pulse-hourly-b`, with the other lead beats)
 asks the live door with no code, which must answer its own 400 `token_required`, and
-reads the come-back messages of the last 24 hours, which must each carry a signed link.
+reads the welcome and come-back messages of the last 24 hours.
+**Containment (2026-10-31): both checks flipped, ids kept.** The deep check is green only
+when the real code opens nothing. The hourly `survey:resume-links-signed` is green only
+when no S-00 or S-02 message carries a `?r=` code, because `/apply` can put a stranger's
+phone on an existing lead. Messages written before the containment ship can read red for
+up to 24 hours; their codes open nothing. A failed message read is red, not an
+empty-day skip.
 
 ## The hourly pulse (added 2026-10-09)
 
