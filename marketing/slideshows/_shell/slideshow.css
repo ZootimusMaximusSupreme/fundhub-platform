@@ -1,0 +1,231 @@
+/* Fundhub slideshow shell.
+   Layout: one phone screen per slide. A coded eyebrow, one headline, one or two
+   lines, one picture, with Back and Next at the thumb. Paper slides do the
+   teaching. Ink slides with the brand grid open the deck and land the payoff.
+   Colors, faces and parts come from public/app/fundhub-brand.css, which
+   build.mjs embeds above this file. This file maps them to slideshow roles and
+   never invents a color. Status colors keep their meaning and always ride with
+   a word (UI-STANDARDS 12.6). */
+
+:root{
+  /* The brand's rounded face: Apple's native rounded design, then SF Pro
+     Rounded by local name (fundhub-font.css), then the brand's licensed web
+     fallback Nunito, loaded from Google Fonts because each deck ships alone. */
+  --fh-rounded-font:ui-rounded,"Fundhub Rounded Local","Nunito",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --sans:var(--fh-rounded-font);
+
+  --ss-bg:var(--paper);
+  --ss-fg:var(--ink);
+  --ss-sub:var(--ink2);
+  --ss-muted:var(--gray);
+  --ss-rule:var(--line);
+  --ss-panel:#fff;                 /* UI-STANDARDS 12.1 resting container */
+  --ss-dark:var(--card);
+  --ss-dark-rule:var(--cardline);
+  --ss-dark-fg:#fff;
+  --ss-dark-sub:var(--cardtext);
+  --ss-dark-muted:var(--gray2);
+  --ss-flag:color-mix(in srgb,var(--alert) 26%,#fff);   /* a tint of coral, never a new hue */
+  --ss-yes:color-mix(in srgb,var(--ok) 30%,#fff);       /* a tint of sage */
+  --ss-col:30rem;                  /* the phone column */
+  color-scheme:light;
+}
+
+/* ── Page ──────────────────────────────────────────────────────────────── */
+html{height:100%;box-sizing:border-box;-webkit-text-size-adjust:100%}
+*,*::before,*::after{box-sizing:inherit}
+body{height:100%;margin:0;padding-bottom:0;background:var(--ss-bg);color:var(--ss-fg);
+  font-family:var(--sans);font-size:1rem;line-height:1.45;-webkit-font-smoothing:antialiased;
+  transition:background-color .3s ease,color .3s ease}
+html[data-tone="dark"] body{background:var(--ss-dark);color:var(--ss-dark-fg)}
+.ss-backdrop{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:0;transition:opacity .3s ease}
+html[data-tone="dark"] .ss-backdrop{opacity:1}
+
+.ss{position:relative;z-index:1;height:100%;max-width:var(--ss-col);margin-inline:auto;
+  display:flex;flex-direction:column;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px))}
+.ss-title{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ── Top bar: wordmark and the spectrum progress ────────────────────────── */
+.ss-top{display:flex;align-items:center;gap:16px;padding-block:14px 6px}
+.ss-top .logo{width:5.25rem;aspect-ratio:2698/543;flex:0 0 auto}
+html[data-tone="dark"] .ss-top .logo{filter:invert(1)}
+.ss-progress{flex:1;min-width:0;display:flex;gap:4px}
+.ss-progress i{flex:1;height:3px;border-radius:2px;background-color:var(--ss-rule);transition:background-color .3s ease}
+.ss-progress i.on{background-image:var(--spectrum);
+  background-size:calc(var(--n) * 100%) 100%;
+  background-position:calc(var(--k) / (var(--n) - 1) * 100%) 0}
+html[data-tone="dark"] .ss-progress i{background-color:var(--ss-dark-rule)}
+
+/* ── Slides ────────────────────────────────────────────────────────────── */
+.ss-stage{flex:1;min-height:0;position:relative;touch-action:pan-y}
+.slide{display:flex;flex-direction:column;gap:14px;padding-block:18px 20px;min-width:0}
+html.ss-js .slide{position:absolute;inset:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none}
+html.ss-js .slide::-webkit-scrollbar{display:none}
+html.ss-js .slide:not(.is-on){visibility:hidden}
+/* Only the arriving slide moves. The leaving one is gone at once, so two
+   slides of text never sit on top of each other. */
+html.ss-anim .slide.is-on{animation:ss-in .32s ease both}
+@keyframes ss-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+html:not(.ss-js) .slide + .slide{border-top:1px solid var(--ss-rule)}
+html:not(.ss-js) .slide.dark{background:var(--ss-dark);color:var(--ss-dark-fg);
+  margin-inline:-16px;padding-inline:16px}
+
+.slide .eyebrow{margin:0}
+.slide h2{margin:0;font-size:clamp(1.85rem,8.2vw,2.6rem);line-height:1.06;letter-spacing:-.032em;
+  font-weight:700;text-wrap:balance;color:var(--ss-fg)}
+.slide .lede{margin:0;font-size:1.125rem;line-height:1.45;color:var(--ss-sub);max-width:36ch;text-wrap:pretty}
+.slide .lede strong{color:var(--ss-fg);font-weight:700}
+.slide.dark .eyebrow{color:var(--ss-dark-muted)}
+.slide.dark h2{color:var(--ss-dark-fg)}
+.slide.dark .lede{color:var(--ss-dark-sub)}
+.slide.dark .lede strong{color:var(--ss-dark-fg)}
+
+/* ── Bottom bar: Back and Next ─────────────────────────────────────────── */
+.ss-nav{display:flex;gap:10px;padding-block:10px 14px}
+.ss-btn{flex:1;min-height:52px;padding:0 18px;border-radius:8px;border:1px solid var(--ss-rule);
+  background:transparent;color:var(--ss-fg);font:650 1.0625rem/1 var(--sans);cursor:pointer;
+  -webkit-tap-highlight-color:transparent}
+.ss-btn.back{flex:0 0 34%}
+.ss-btn.primary{background:var(--ink);border-color:var(--ink);color:#fff}
+html[data-tone="dark"] .ss-btn{border-color:var(--ss-dark-rule);color:#fff}
+html[data-tone="dark"] .ss-btn.primary{background:#fff;border-color:#fff;color:var(--ink)}
+html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
+.ss-live{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ── Picture kit ───────────────────────────────────────────────────────────
+   Visual Thinking picks the picture from the slide's question:
+   what (a document), how (.flow), when (.tl, .span, .metric),
+   how much (.bars), compare (.compare), why (.eq). These parts only draw it. */
+/* The words stay pinned at the top so the headline never jumps between
+   slides. The picture centers in the room that is left. */
+.pic{margin:auto 0;padding-block:8px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.pic-cap{margin:0;font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.04em;color:var(--ss-muted)}
+.slide.dark .pic-cap{color:var(--ss-dark-muted)}
+
+.panel{background:var(--ss-panel);border:1px solid var(--ss-rule);border-radius:10px;
+  box-shadow:var(--panel-shadow);color:var(--ss-fg)}
+.chip{background:var(--ss-panel);white-space:nowrap}
+.slide.dark .chip{background:transparent;border-color:var(--ss-dark-rule);color:var(--ss-dark-muted)}
+.slide.dark .panel .chip{background:var(--ss-panel);border-color:var(--ss-rule);color:var(--ss-muted)}
+
+/* A document: a credit report, a bank letter, a file. */
+.doc{display:flex;flex-direction:column;overflow:hidden}
+.doc-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;
+  border-bottom:1px solid var(--ss-rule);font-family:var(--mono);font-size:var(--fs-caption);
+  letter-spacing:.1em;text-transform:uppercase;color:var(--ss-muted)}
+.doc-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;
+  font-size:1rem;line-height:1.3;min-width:0}
+.doc-row + .doc-row{border-top:1px solid var(--ss-rule)}
+.doc-row > span:first-child{min-width:0}
+.doc-row .v{font-weight:700;font-variant-numeric:tabular-nums;text-align:right}
+.doc-row.flag{background:var(--ss-flag);font-weight:650}
+.doc-row.yes{background:var(--ss-yes);font-weight:650}
+
+/* Two documents tied by the same line. */
+.tie{display:flex;align-items:center;gap:10px;padding-left:22px;font-family:var(--mono);
+  font-size:var(--fs-caption);letter-spacing:.1em;text-transform:uppercase;color:var(--ss-muted)}
+.tie::before{content:"";width:2px;height:28px;background:var(--ink);border-radius:1px}
+.slide.dark .tie{color:var(--ss-dark-muted)}
+.slide.dark .tie::before{background:#fff}
+
+/* The engine card: ink, mono, the brand grid. Add .gridbg in the markup. */
+.term{position:relative;overflow:hidden;background:var(--card);border:1px solid var(--cardline);
+  border-radius:10px;color:var(--cardtext);font-family:var(--mono);line-height:1.45}
+.term > *{position:relative}
+.term-head{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--cardline);
+  font-size:var(--fs-caption);letter-spacing:.12em;text-transform:uppercase;color:var(--gray2)}
+.term-head .pulse{margin-inline:4px 6px}
+.term-line{display:flex;gap:10px;align-items:baseline;padding:10px 14px;font-size:.875rem}
+.term-line + .term-line{border-top:1px dashed var(--cardline)}
+.term-line .k{flex:0 0 auto;color:var(--ok)}
+
+/* How: a real sequence. Numbering is shown because the order is the point. */
+.flow{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:14px;counter-reset:fl}
+.flow > li{position:relative;counter-increment:fl;display:flex;align-items:center;gap:12px;padding:12px 14px;
+  background:var(--ss-panel);border:1px solid var(--ss-rule);border-radius:10px;box-shadow:var(--panel-shadow);
+  font-weight:650;line-height:1.3;color:var(--ss-fg)}
+.flow > li::before{content:counter(fl,decimal-leading-zero);flex:0 0 auto;font-family:var(--mono);
+  font-size:var(--fs-caption);font-weight:500;color:var(--ss-muted)}
+.flow > li + li::after{content:"";position:absolute;left:24px;top:-15px;width:2px;height:14px;background:var(--gray2)}
+.flow > li.is-hot{background:var(--ink);border-color:var(--ink);color:#fff}
+.flow > li.is-hot::before{color:var(--gray2)}
+.flow .sub{display:block;font-weight:500;font-size:.875rem;color:var(--ss-muted)}
+.flow > li.is-hot .sub{color:var(--gray2)}
+.slide.dark .flow > li.is-hot{background:#fff;border-color:#fff;color:var(--ink)}
+
+/* When: who does what, in order. */
+.tl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.tl > li{position:relative;padding:0 0 18px 30px;min-width:0}
+.tl > li:last-child{padding-bottom:0}
+.tl > li::before{content:"";position:absolute;left:5px;top:5px;width:14px;height:14px;border-radius:50%;
+  background:var(--ss-bg);border:2px solid var(--ink)}
+.tl > li::after{content:"";position:absolute;left:11px;top:23px;bottom:3px;width:2px;background:var(--ss-rule)}
+.tl > li:last-child::after{content:none}
+.tl .when{display:block;font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.1em;
+  text-transform:uppercase;color:var(--ss-muted)}
+.tl .what{display:block;font-size:1.0625rem;font-weight:650;line-height:1.3}
+.tl .chip{margin-top:6px}
+.tl > li.bad::before{background:var(--alert);border-color:var(--alert)}
+.tl > li.good::before{background:var(--ok);border-color:var(--ok)}
+.slide.dark .tl > li::before{background:var(--ss-dark);border-color:#fff}
+.slide.dark .tl > li::after{background:var(--ss-dark-rule)}
+.slide.dark .tl .when{color:var(--ss-dark-muted)}
+
+/* When: one stretch of time between two events. */
+.span{display:flex;flex-direction:column;gap:8px}
+.span-bar{height:10px;border-radius:5px;background:var(--spectrum)}
+.span-ends{display:flex;justify-content:space-between;gap:12px;font-family:var(--mono);
+  font-size:var(--fs-caption);letter-spacing:.1em;text-transform:uppercase;color:var(--ss-muted)}
+.slide.dark .span-ends{color:var(--ss-dark-muted)}
+
+/* A hero figure. */
+.metric{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.metric .n{font-size:clamp(4.75rem,26vw,7.5rem);font-weight:700;letter-spacing:-.05em;line-height:.85;
+  font-variant-numeric:tabular-nums}
+.metric .u{padding-bottom:6px;font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.14em;
+  text-transform:uppercase;color:var(--ss-muted)}
+.slide.dark .metric .u{color:var(--ss-dark-muted)}
+
+/* Many banks in, few banks out. */
+.banks{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.bank{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:52px;
+  padding:8px 4px;border:1px solid var(--ss-rule);border-radius:10px;background:var(--ss-panel);color:var(--ss-muted)}
+.bank svg{width:22px;height:22px;fill:currentColor}
+.bank.yes{background:var(--ss-yes);border-color:var(--ok);color:var(--ink)}
+.bank .w{font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.08em;text-transform:uppercase}
+.sieve-mid{display:flex;align-items:center;gap:10px}
+.sieve-mid::before,.sieve-mid::after{content:"";flex:1;height:1px;background:var(--ss-rule)}
+
+/* How much: bars drawn to one scale. Set --v to value ÷ the largest value. */
+.bars{display:flex;flex-direction:column;gap:14px}
+.bar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;align-items:baseline}
+.bar .l{font-size:.9375rem;font-weight:650}
+.bar .v{font-weight:700;font-variant-numeric:tabular-nums}
+.bar .t{grid-column:1/-1;height:12px;border-radius:6px;background:var(--soft);overflow:hidden}
+.bar .t > span{display:block;height:100%;width:calc(var(--v) * 100%);border-radius:6px;background:var(--ink)}
+.bar.alt .t > span{background:var(--gray2)}
+
+/* Compare: two columns side by side. */
+.compare{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.compare > .panel{padding:12px;min-width:0}
+.compare h3{margin:0 0 8px;font-family:var(--mono);font-size:var(--fs-caption);font-weight:500;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--ss-muted)}
+.compare ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px;font-size:.9375rem;line-height:1.3}
+
+/* Why: a visual equation. */
+.eq{display:flex;align-items:stretch;gap:8px}
+.eq > .panel{flex:1 1 0;min-width:0;padding:12px 10px;text-align:center;font-weight:650;line-height:1.25}
+.eq .op{align-self:center;font-family:var(--mono);font-size:1.5rem;color:var(--ss-muted)}
+.eq > .panel.is-hot{background:var(--ink);border-color:var(--ink);color:#fff}
+
+@media (max-width:359px){
+  .banks{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .eq{flex-direction:column}
+  .eq .op{align-self:flex-start;padding-left:12px}
+}
+@media (prefers-reduced-motion:reduce){
+  body,.ss-backdrop,.ss-progress i{transition:none!important}
+  html.ss-anim .slide.is-on{animation:none}
+}
