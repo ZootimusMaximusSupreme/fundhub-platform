@@ -784,6 +784,49 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
     assert.equal(out.entitlements, undefined);
   });
 
+
+  test("snake_case unknown invoice cannot become an installment on a different sale", async () => {
+    const db = feeDb({ invoice: null });
+    const out = await onPaymentReceivedMoney(feeReceipt({
+      invoiceId: null, invoice_id: INVOICE, paymentLinkId: null,
+      product: "unmatched", productName: null, purpose: null, saleId: BILLED_SALE
+    }), db);
+    assert.equal(out.done, false);
+    assert.equal(out.reason, "invoice_identity_conflict");
+    assert.equal(salePaymentInsert(db), undefined);
+    assert.equal(out.entitlements, undefined);
+  });
+
+  test("snake_case invoice and checkout link retain the original fee and buyer", async () => {
+    const db = feeDb();
+    const out = await onPaymentReceivedMoney(feeReceipt({
+      invoiceId: null, paymentLinkId: null, invoice_id: INVOICE, payment_link_id: LINK
+    }), db);
+    assert.equal(out.done, true, JSON.stringify(out));
+    const ins = salePaymentInsert(db);
+    assert.ok(ins);
+    assert.equal(ins.params[1], BILLED_SALE);
+    assert.equal(ins.params[6], "success_fee");
+    const link = db.queries.find(q => /FROM payment_links/.test(q.text));
+    assert.ok(link);
+    assert.equal(link.params[0], LINK);
+  });
+
+  test("conflicting camelCase and snake_case payment identities stop before accounting", async () => {
+    for (const [extra, reason] of [
+      [{ invoice_id: NEWEST_SALE }, "invoice_identity_conflict"],
+      [{ payment_link_id: NEWEST_SALE }, "payment_link_context_conflict"]
+    ]) {
+      const db = feeDb();
+      const out = await onPaymentReceivedMoney(feeReceipt(extra), db);
+      assert.equal(out.done, false);
+      assert.equal(out.reason, reason);
+      assert.equal(salePaymentInsert(db), undefined);
+      assert.equal(out.entitlements, undefined);
+      assert.ok(!db.queries.some(q => /FROM invoices|FROM payment_links|INSERT INTO sale_payments/.test(q.text)));
+    }
+  });
+
   test("a non-fee invoice can credit only its own issued sale", async () => {
     const invoice = { id: INVOICE, sale_id: BILLED_SALE, status: "sent",
       source: "other", invoice_type: "platform_fee" };

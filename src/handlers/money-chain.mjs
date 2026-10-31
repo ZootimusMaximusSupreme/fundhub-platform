@@ -964,6 +964,16 @@ export function feePaymentBalanceDecision({ amount, due, applied = 0 }) {
 export async function onPaymentReceivedMoney(event, db) {
   const orgId = event.orgId;
   const p = event.payload || {};
+  // Canonical and legacy event names must agree. A snake_case invoice/link
+  // locator cannot bypass the same tenant/invoice checks as camelCase.
+  if (p.invoiceId && p.invoice_id && String(p.invoiceId) !== String(p.invoice_id)) {
+    return { done: false, reason: "invoice_identity_conflict" };
+  }
+  if (p.paymentLinkId && p.payment_link_id && String(p.paymentLinkId) !== String(p.payment_link_id)) {
+    return { done: false, reason: "payment_link_context_conflict" };
+  }
+  const invoiceIdHint = p.invoiceId || p.invoice_id || null;
+  const paymentLinkIdHint = p.paymentLinkId || p.payment_link_id || null;
   // An invoice/payment-link receipt must already have a debtor. Lead-capture's
   // resolveClient may insert a client or edit contact fields before the
   // provider and invoice are verified. Never do that on receivable cash.
@@ -973,7 +983,7 @@ export async function onPaymentReceivedMoney(event, db) {
     String(p.purpose || "").trim().toLowerCase()
   ) || /\bsuccess[\s_-]*fee\b/i.test(String(p.productName || ""));
   const invoiceBound = Boolean(
-    p.invoiceId || p.invoice_id || p.paymentLinkId || p.payment_link_id || feeClaim
+    invoiceIdHint || paymentLinkIdHint || feeClaim
   );
   const clientId = invoiceBound
     ? await findExistingPaymentClient(db, event)
@@ -990,14 +1000,14 @@ export async function onPaymentReceivedMoney(event, db) {
   }
 
   let linkContext = null;
-  if (p.paymentLinkId) {
+  if (paymentLinkIdHint) {
     linkContext = (await db.query(
       `SELECT id, product_id, sale_id, invoice_id, sale_motion,
               closer_staff_id, sales_manager_staff_id
          FROM payment_links
         WHERE id = $1 AND org_id = $2 AND client_id = $3
         LIMIT 1`,
-      [p.paymentLinkId, orgId, clientId]
+      [paymentLinkIdHint, orgId, clientId]
     )).rows[0] || null;
     if (!linkContext) {
       return {
@@ -1007,15 +1017,15 @@ export async function onPaymentReceivedMoney(event, db) {
       };
     }
     // Same-buyer payment links may belong to different invoices.
-    if (p.invoiceId &&
-        String(linkContext.invoice_id || "") !== String(p.invoiceId)) {
+    if (invoiceIdHint &&
+        String(linkContext.invoice_id || "") !== String(invoiceIdHint)) {
       return { done: false, reason: "payment_link_invoice_conflict" };
     }
   }
   const paymentPayload = {
     ...p,
-    paymentLinkId: linkContext?.id || p.paymentLinkId || null,
-    invoiceId: linkContext?.invoice_id || p.invoiceId || null,
+    paymentLinkId: linkContext?.id || paymentLinkIdHint,
+    invoiceId: linkContext?.invoice_id || invoiceIdHint,
     productId: linkContext?.product_id || p.productId || null,
     saleId: linkContext?.sale_id || p.saleId || null,
     saleMotion: linkContext?.sale_motion || p.saleMotion || null,
