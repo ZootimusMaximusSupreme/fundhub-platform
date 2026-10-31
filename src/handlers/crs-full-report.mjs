@@ -32,7 +32,9 @@ export async function onAnalysisCompletedFullReport(event, db, {
   }
   if (!result.bureaus || !Object.keys(result.bureaus).length) return { saved: false, reason: "no_bureau_data" };
   const client = (await db.query(
-    `SELECT first_name, last_name, email, crm_archived_at FROM clients WHERE id = $1 AND org_id = $2 LIMIT 1`,
+    `SELECT first_name, last_name, email,
+            custom_fields->>'crm_archived_at' AS crm_archived_at
+       FROM clients WHERE id = $1 AND org_id = $2 LIMIT 1`,
     [clientId, orgId]
   )).rows[0];
   if (!client) return { saved: false, reason: "client_not_found" };

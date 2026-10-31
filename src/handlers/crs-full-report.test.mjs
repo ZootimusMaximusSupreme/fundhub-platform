@@ -13,7 +13,10 @@ function fakeDb({ provider = "crs_softview", result = RESULT, email = "client@fu
     async query(sql, params) {
       calls.push({ sql, params });
       if (/FROM crs_results/.test(sql)) return { rows: [{ result, provider }] };
-      if (/FROM clients/.test(sql)) return { rows: [{ first_name: firstName, last_name: lastName, email, crm_archived_at: archivedAt }] };
+      if (/FROM clients/.test(sql)) {
+        assert.match(sql, /custom_fields->>'crm_archived_at'\s+AS crm_archived_at/, "archive status must come from the real clients.custom_fields JSONB field");
+        return { rows: [{ first_name: firstName, last_name: lastName, email, crm_archived_at: archivedAt }] };
+      }
       if (/INSERT INTO messages/.test(sql)) {
         if (queued) return { rows: [] };
         queued = true;
