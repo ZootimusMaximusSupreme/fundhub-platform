@@ -46,6 +46,8 @@ export const TRIPWIRES = Object.freeze({
   "page:roadmap/index.html": { impact: "money", checks: ["lead:pipe-cut-with-traffic", "funnel:card-box-script-loads"] },
   "route:public/slo-interest": { impact: "money", checks: ["lead:pipe-cut-with-traffic", "handoff:contact-no-followup"] },
   "route:public/survey-submit": { impact: "money", checks: ["lead:pipe-cut-with-traffic", "handoff:lead-first-touches-missing"] },
+  // 2026-10-31: the come-back link in the welcome and the S-02 messages. A broken door sends the lead to the top.
+  "route:public/survey-resume": { impact: "customer", checks: ["survey:resume-link-opens", "survey:resume-door-answers", "survey:resume-links-signed"] },
   "route:payment-links": { impact: "money", checks: ["payments:pay-link-webhook", "payments:checkout-started-no-link", "payments:whop-paid-no-access"] },
   "job:finance-os-pull-sweeper": { impact: "customer", checks: ["blueprint:monthly-delivery"] },
   "job:waypoint-nudge-sweeper": { impact: "customer", checks: ["blueprint:coach-call-delivery", "gap:sms-sending-stuck"] },
@@ -53,6 +55,8 @@ export const TRIPWIRES = Object.freeze({
   "job:invoice-sent-recovery": { impact: "money", checks: ["payments:invoice-sent-recovery"] },
   "job:s-01-new-lead-intake": { impact: "money", checks: ["handoff:lead-first-touches-missing"] },
   "job:s-02-incomplete-survey-nudge": { impact: "money", checks: ["handoff:lead-first-touches-missing"] },
+  // 2026-10-31: the chase's first message and its setter call task are both judged by this check.
+  "job:s-nobook-chase": { impact: "money", checks: ["handoff:lead-first-touches-missing"] },
   "job:slo-genuine-followup": { impact: "money", checks: ["handoff:contact-no-followup"] },
   "job:slo-no-reply-197": { impact: "money", checks: ["handoff:contact-no-followup"] },
   "job:slo-genuine-checkout-sms": { impact: "money", checks: ["handoff:contact-no-followup"] },

@@ -119,6 +119,21 @@ The daily `cortana:booked-call-undelivered` gap and hourly `cortana-booking`
 beat read confirmed ClickFunnels calls against that ledger. A real call older
 than 20 minutes without a sent receipt is red; a clock ping alone cannot pass it.
 
+**Follow-up flows (2026-10-31).** `handoff:lead-first-touches-missing` (daily gap
+and hourly `lead-handoff` beat) now judges the come-back flow for an unfinished
+survey (`*-S02-RESUME-1`), the never-booked chase on `survey.completed`, and a new
+branch: a finished survey with no booking and no reply after 15 minutes must have a
+`setter-survey-done` setter task. Each message's due time follows the follow-up
+hours (`dripAtSql`, the same rule as `dripSendTime` in `src/messaging/send-window.mjs`),
+so a lead who signs up at night is not red before 9 a.m. Arizona. A reply, a text by
+the sender's number or an email by the person, stops the clock the way it stops the
+workflow. The new route `public/survey-resume` has a daily ping (`reg:`) and the
+daily deep check `survey:resume-link-opens` (`src/pulse/coverage/gap-survey-resume.mjs`):
+it mints the newest real lead's come-back link and reads it the way the door does.
+Every hour the `survey-resume` beat (shift `pulse-hourly-b`, with the other lead beats)
+asks the live door with no code, which must answer its own 400 `token_required`, and
+reads the come-back messages of the last 24 hours, which must each carry a signed link.
+
 ## The hourly pulse (added 2026-10-09)
 
 Every hour four small Netlify scheduled functions (outside Inngest, so they run even if Inngest is down) test the company on purpose. **Shifts (two on 2026-10-20, four on 2026-10-21):** the beats no longer fit one run's 13 s window, so they are split in one literal list, `src/pulse/beats/shifts.mjs`. `netlify/functions/pulse-hourly.mjs` runs shift A at minute 7, `netlify/functions/pulse-hourly-d.mjs` runs shift D at minute 22, `netlify/functions/pulse-hourly-b.mjs` runs shift B at minute 37 and `netlify/functions/pulse-hourly-c.mjs` runs shift C at minute 52. A beat whose file has not landed waits on `PENDING_SHIFT_BEATS` with its shift. Every beat is in exactly one shift (a test and the ship proof fail otherwise), so each beat still runs once an hour, and each shift gets its own 13 s window and 22 s budget. The pulse is the **read-only half**: each beat reads data through one of three boxes where Postgres itself refuses writes, and reads the web with GET and HEAD only. A beat cannot save, send or call a vendor with a write.
