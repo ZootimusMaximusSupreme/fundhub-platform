@@ -1126,3 +1126,89 @@ test("Commas canonical payment adapter edits cannot escape P0 money/consent/fund
     "src/adapters/unrelated.mjs"
   ]).verdict, "NO_CRITICAL_SOURCE_TOUCH_DETECTED");
 });
+
+test("A86 final signed PSP success cannot PASS with stale failed-only transaction", () => {
+  // Real source hazard: failure then success for one (org, provider_ref)
+  // can leave a failed transaction under ON CONFLICT DO NOTHING. A merchant
+  // email or a payment event alone is NOT a verified source-of-truth receipt.
+  const eventWithPsp = {
+    ...event, name: "payment.received", provider_ref: "psp-ref-synthetic",
+    psp_payment_id: "payment-synthetic"
+  };
+  const finalPaymentReceipt = {
+    event_id: id, org_id: org, client_id: client,
+    provider_ref: "psp-ref-synthetic", psp_payment_id: "payment-synthetic",
+    verified: true, status: "succeeded", observed_at: "2026-10-29T00:05:00Z"
+  };
+  const transactionReceipt = {
+    org_id: org, client_id: client,
+    provider_ref: "psp-ref-synthetic", psp_payment_id: "payment-synthetic",
+    status: "succeeded", status_updated_at: "2026-10-29T00:07:00Z"
+  };
+  const witness = {
+    ...basics, event: eventWithPsp, requireFinalPaymentReceipt: true,
+    finalPaymentReceipt, transactionReceipt
+  };
+  assert.equal(CRITICAL_EDGES.find((x) => x.id === "payment-ledger-entitlement").proofStatus,
+    "PARTIAL_NEEDS_FINAL_PSP_TRANSACTION_RECONCILIATION");
+  assert.deepEqual(judgeSyntheticEdge(witness), {
+    verdict: "PASS", reason: "event-consumer-and-business-result-correlated"
+  });
+
+  // Most important negative: webhook accepted, consumer and generic receipt
+  // marked successful, yet the customer payment is STILL persisted as failed.
+  assert.deepEqual(judgeSyntheticEdge({
+    ...witness, transactionReceipt: { ...transactionReceipt, status: "failed" }
+  }), { verdict: "RED", reason: "final-payment-transaction-still-not-succeeded" });
+  assert.deepEqual(judgeSyntheticEdge({
+    ...witness, transactionReceipt: { ...transactionReceipt, status: "pending" }
+  }), { verdict: "RED", reason: "final-payment-transaction-still-not-succeeded" });
+  assert.deepEqual(judgeSyntheticEdge({ ...witness, transactionReceipt: null }), {
+    verdict: "RED", reason: "final-payment-transaction-row-missing"
+  });
+  assert.deepEqual(judgeSyntheticEdge({ ...witness, transactionReceipt: undefined }), {
+    verdict: "NOT_CHECKED", reason: "payment-transaction-read-not-performed"
+  });
+  assert.deepEqual(judgeSyntheticEdge({ ...witness, finalPaymentReceipt: null }), {
+    verdict: "NOT_CHECKED", reason: "authenticated-final-psp-success-not-observed"
+  });
+  assert.deepEqual(judgeSyntheticEdge({
+    ...witness, finalPaymentReceipt: { ...finalPaymentReceipt, verified: false }
+  }), { verdict: "NOT_CHECKED", reason: "authenticated-final-psp-success-not-observed" });
+  assert.deepEqual(judgeSyntheticEdge({
+    ...witness, finalPaymentReceipt: { ...finalPaymentReceipt, status: "pending" }
+  }), { verdict: "NOT_CHECKED", reason: "authenticated-final-psp-success-not-observed" });
+  assert.deepEqual(judgeSyntheticEdge({
+    ...witness, event: { ...eventWithPsp, provider_ref: null }
+  }), { verdict: "NOT_CHECKED", reason: "payment-finality-event-reference-unavailable" });
+  for (const change of [
+    { org_id: "foreign-org" }, { client_id: "foreign-client" },
+    { provider_ref: "different-provider-ref" }, { psp_payment_id: "another-payment" }
+  ]) {
+    assert.deepEqual(judgeSyntheticEdge({
+      ...witness, transactionReceipt: { ...transactionReceipt, ...change }
+    }), { verdict: "RED", reason: "final-payment-transaction-identity-mismatch" });
+    assert.deepEqual(judgeSyntheticEdge({
+      ...witness, finalPaymentReceipt: { ...finalPaymentReceipt, ...change }
+    }), { verdict: "RED", reason: "final-psp-receipt-identity-mismatch" });
+  }
+  assert.deepEqual(judgeSyntheticEdge({
+    ...witness, finalPaymentReceipt: { ...finalPaymentReceipt, event_id: "wrong-event" }
+  }), { verdict: "RED", reason: "final-psp-receipt-identity-mismatch" });
+  assert.deepEqual(judgeSyntheticEdge({
+    ...witness, transactionReceipt: { ...transactionReceipt, status_updated_at: undefined }
+  }), { verdict: "NOT_CHECKED", reason: "payment-transaction-status-time-unavailable" });
+  assert.deepEqual(judgeSyntheticEdge({
+    ...witness, transactionReceipt: { ...transactionReceipt,
+      status_updated_at: "2026-10-29T02:00:00Z" }
+  }), { verdict: "RED", reason: "payment-transaction-status-from-future" });
+  assert.deepEqual(judgeSyntheticEdge({
+    ...witness, transactionReceipt: { ...transactionReceipt, status: "failed" },
+    now: "2026-10-29T00:08:00Z"
+  }), { verdict: "PENDING", reason: "final-payment-transaction-still-not-succeeded" });
+
+  // A source-only witness never substitutes for a real owner-scoped merchant
+  // receipt + transaction read + active entitlement/customer portal proof.
+  assert.equal(reportCriticalSourceChanges(["src/adapters/commas.mjs"]).liveReceipt,
+    "NEEDS_LIVE_RECEIPT");
+});
