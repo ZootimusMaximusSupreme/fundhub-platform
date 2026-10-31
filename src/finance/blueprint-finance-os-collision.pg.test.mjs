@@ -108,8 +108,8 @@ test("Blueprint genuine refresh ignores all known completed rehearsal formats; u
       };
       const completed = async ({ provider = "crs_softview", result, resultOrg = org }) => {
         const credit = (await conn.query(
-          "INSERT INTO crs_results (org_id,client_id,provider,result) VALUES ($1,$2,$3,$4::jsonb) RETURNING id",
-          [resultOrg, client, provider, JSON.stringify(result)])).rows[0].id;
+          "INSERT INTO crs_results (org_id,client_id,provider,provider_result_id,result) VALUES ($1,$2,$3,$4,$5::jsonb) RETURNING id",
+          [resultOrg, client, provider, randomUUID(), JSON.stringify(result)])).rows[0].id;
         await conn.query(
           "INSERT INTO soft_pull_requests (org_id,client_id,subscription_id,requested_by_kind,reason,status,requested_at,resolved_at,crs_result_id) "
             + "VALUES ($1,$2,$3,'system','Included refresh synthetic fixture','fulfilled','2026-10-10','2026-10-10',$4)",
