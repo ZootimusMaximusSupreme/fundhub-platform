@@ -41,14 +41,14 @@ export const CRITICAL_EDGES = Object.freeze([
     event: "booking.created", consumer: "onBookingCreated / s-04-call-booked",
     receipt: "bookings + confirmation message + call_outcomes", graceMinutes: 30,
     pulse: "calls:booked-no-outcome",
-    paths: ["src/register-all.mjs", "src/adapters/clickfunnels.mjs", "src/bookings/", "src/handlers/client-lifecycle.mjs", "src/workflows/s-04", "src/workflows/cortana-booking-feed.mjs", "src/messaging/providers/cortana-booking-webhook.mjs", "src/config/survey-qualification.mjs", "src/setter/tasks.mjs", "db/migrations/508_qualification_bucket.sql", "src/auth/magic-link.mjs", "src/auth/booking-account", "src/sales/call-outcomes.mjs", "src/sales/closer-now.mjs", "src/sales/closer-deck.mjs", "src/sales/cockpit.mjs", "src/setter/dashboard.mjs", "api/tasks.mjs", "public/app/closer-dashboard.html", "public/app/setter-dashboard.html", "public/app/calendar.html", "public/app/pipeline.html", "public/app/shell.js", "api/dashboard/pipeline.mjs", "api/auth/magic-link.mjs", "src/auth/booking-account", "src/auth/magic-link", "public/portal-login.html", "marketing/landing-pages/", "src/funnel/", "public/funnel/", "src/survey/", "src/workflows/messaging.mjs"]
+    paths: ["src/register-all.mjs", "src/adapters/clickfunnels.mjs", "src/bookings/", "src/handlers/client-lifecycle.mjs", "src/workflows/s-04", "src/workflows/cortana-booking-feed.mjs", "src/messaging/providers/cortana-booking-webhook.mjs", "src/config/survey-qualification.mjs", "src/setter/tasks.mjs", "db/migrations/508_qualification_bucket.sql", "src/auth/magic-link.mjs", "src/auth/booking-account", "src/auth/account-session.mjs", "public/login.html", "src/sales/call-outcomes.mjs", "src/sales/closer-now.mjs", "src/sales/closer-deck.mjs", "src/sales/cockpit.mjs", "src/setter/dashboard.mjs", "api/tasks.mjs", "public/app/closer-dashboard.html", "public/app/setter-dashboard.html", "public/app/calendar.html", "public/app/pipeline.html", "public/app/shell.js", "api/dashboard/pipeline.mjs", "api/auth/magic-link.mjs", "src/auth/booking-account", "src/auth/magic-link", "public/portal-login.html", "marketing/landing-pages/", "src/funnel/", "public/funnel/", "src/survey/", "src/workflows/messaging.mjs"]
   },
   {
     id: "payment-ledger-entitlement", severity: "P0", owner: "A/R",
     event: "payment.received", consumer: "onPaymentReceived / entitlement handlers",
     receipt: "payment ledger + active entitlement + portal read", graceMinutes: null,
     pulse: "payments:paid-no-entitlement",
-    paths: ["src/register-all.mjs", "src/merchant/", "src/billing/", "src/payments/", "src/entitlements/", "src/finance/finance-os-entitlement.mjs", "src/ledger/", "src/handlers/money-chain.mjs", "src/handlers/client-lifecycle.mjs", "src/handlers/payment-links.mjs", "src/payment-links/", "src/workflows/ar-collections.mjs", "src/invoices/", "api/read/invoices.mjs", "public/app/client-portal.html", "src/adapters/whop", "api/payment", "api/checkout"]
+    paths: ["src/register-all.mjs", "src/merchant/", "src/billing/", "src/payments/", "src/entitlements/", "src/finance/finance-os-entitlement.mjs", "src/ledger/", "src/handlers/money-chain.mjs", "src/handlers/client-lifecycle.mjs", "src/handlers/payment-links.mjs", "src/payment-links/", "src/workflows/ar-collections.mjs", "src/invoices/", "api/read/invoices.mjs", "src/auth/account-session.mjs", "public/login.html", "api/read/csm-queue.mjs", "public/app/client-portal.html", "src/adapters/whop", "api/payment", "api/checkout"]
   },
   {
     id: "consent-crs-result", severity: "P0", owner: "Fulfillment",
@@ -56,7 +56,7 @@ export const CRITICAL_EDGES = Object.freeze([
     event: "diagnostic.paid", consumer: "onDiagnosticPaidSoftPull / c-00-crs-soft-pull-request",
     receipt: "consent + credit-pull result + stored CRS report", graceMinutes: null,
     pulse: PULL_CHECK_IDS[0],
-    paths: ["src/register-all.mjs", "api/soft-pull-approve.mjs", "src/handlers/client-lifecycle.mjs", "src/handlers/diagnostic-soft-pull.mjs", "src/handlers/crs-full-report.mjs", "src/finance/crs", "src/finance/soft-pulls.mjs", "src/finance/finance-os-pull-fulfil.mjs", "src/workflows/finance-os-pull-sweeper.mjs", "src/workflows/c-00-crs", "public/app/soft-pull-approve.html"]
+    paths: ["src/register-all.mjs", "api/soft-pull-approve.mjs", "src/handlers/client-lifecycle.mjs", "src/handlers/diagnostic-soft-pull.mjs", "src/handlers/crs-full-report.mjs", "src/finance/crs", "src/finance/soft-pulls.mjs", "src/finance/finance-os-pull-fulfil.mjs", "src/workflows/finance-os-pull-sweeper.mjs", "src/workflows/c-00-crs", "src/auth/account-session.mjs", "public/app/soft-pull-approve.html"]
   },
   {
     id: "round-funded-fee-commission", severity: "P0", owner: "Fulfillment / A/R",
@@ -182,7 +182,11 @@ const ALWAYS_REVIEW_CHOKEPOINTS = new Set([
   // Central DB and migration bootstrapping are customer-result chokepoints.
   // Report ONLY; generated db/expected-migrations.mjs remains deliberately
   // excluded to avoid duplicate warnings on every ordinary migration PR.
-  "src/db.mjs", "db/migrate.mjs", "scripts/db/expected-migrations.mjs"
+  "src/db.mjs", "db/migrate.mjs", "scripts/db/expected-migrations.mjs",
+  // Generic auth and principal identity gates are report-only chokepoints.
+  // Their source edits do NOT establish proof that a user could actually log in.
+  "src/auth/session.mjs", "src/http/middleware/requirePrincipal.mjs",
+  "src/http/middleware/requireAuth.mjs"
 ]);
 export function unmappedHighRiskSourceChanges(filenames = []) {
   const mapped = new Set(changedCriticalEdges(filenames).flatMap((edge) => edge.files));
