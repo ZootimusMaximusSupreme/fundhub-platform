@@ -338,6 +338,64 @@ test("AR: overpay settles the matched invoice and leaves leftover unallocated", 
   assert.match(db.tasks[0].title, /Overpayment leftover/);
 });
 
+test("AR: a failed overpayment review rolls back the receipt, allowing a safe retry", async () => {
+  const db = pgFake({
+    clients: [{ id: "cl-1", org_id: "org-1", email: "ar-overpay+rollback@example.invalid" }],
+    invoices: [openInvoice({ amount_due: 100 })]
+  });
+  let failReview = true;
+  let savedDetail = null;
+  // Transaction-capable fake: roll back every changed row on task failure.
+  db.connect = async () => {
+    const snapshot = {
+      invoices: structuredClone(db.invoices),
+      payments: structuredClone(db.invoicePayments),
+      tasks: structuredClone(db.tasks)
+    };
+    return {
+      async query(sql, params) {
+        if (sql === "BEGIN" || sql === "COMMIT") return { rows: [] };
+        if (sql === "ROLLBACK") {
+          db.invoices.splice(0, db.invoices.length, ...snapshot.invoices);
+          db.invoicePayments.splice(0, db.invoicePayments.length, ...snapshot.payments);
+          db.tasks.splice(0, db.tasks.length, ...snapshot.tasks);
+          return { rows: [] };
+        }
+        if (/INSERT INTO tasks/.test(sql)) {
+          if (failReview) {
+            failReview = false;
+            throw new Error("synthetic overpayment task insert failed");
+          }
+          if (/meeting_url, detail/.test(sql)) savedDetail = params.at(-1);
+        }
+        return db.query(sql, params);
+      },
+      release() {}
+    };
+  };
+  const event = ev("payment.received", {
+    invoiceId: "inv-1", product: "success_fee", amount: 150,
+    paymentId: "ar-overpay-atomic-psp-1"
+  }, { clientId: "cl-1" });
+  const args = { event, db, step: fakeStep() };
+  await assert.rejects(handle(args), /synthetic overpayment task insert failed/);
+  assert.equal(db.invoices[0].status, "sent", "invoice cannot settle before exception task commits");
+  assert.equal(db.invoicePayments.length, 0, "no orphan receipt on a failed staff task");
+  assert.equal(db.tasks.length, 0);
+
+  const retried = await handle(args);
+  assert.equal(retried.allocated, true);
+  assert.equal(retried.surplusCents, 5000);
+  assert.equal(db.invoicePayments.length, 1);
+  assert.equal(db.invoices[0].status, "paid");
+  assert.equal(db.tasks.filter((t) => t.title.startsWith("Overpayment leftover")).length, 1);
+  assert.match(savedDetail, /unapplied \$50\.00/);
+  const replay = await handle(args);
+  assert.equal(replay.replay, true);
+  assert.equal(db.invoicePayments.length, 1, "same provider reference cannot double-credit");
+  assert.equal(db.tasks.length, 1, "same overpayment cannot duplicate the review");
+});
+
 test("AR: two open invoices — payment with a round lands on that round only", async () => {
   const db = pgFake({
     clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", custom_fields: {} }],

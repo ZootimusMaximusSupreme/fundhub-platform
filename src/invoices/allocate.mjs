@@ -242,7 +242,7 @@ async function markPartiallyPaid(db, { invoiceId }) {
   return r.rows[0] || null;
 }
 
-async function staffTask(db, { orgId, clientId, eventId, title, body }) {
+async function staffTask(db, { orgId, clientId, eventId, title, body, detail = null }) {
   if (!orgId || !clientId) return null;
   // The tasks table's client foreign key is not an org+client ownership check.
   // An untrusted receipt must not mint a review task for another company's buyer.
@@ -258,7 +258,8 @@ async function staffTask(db, { orgId, clientId, eventId, title, body }) {
     sourceWorkflow: SOURCE,
     assigneeRole: "funding_advisor",
     eventId,
-    body
+    body,
+    detail
   });
 }
 
@@ -534,6 +535,22 @@ export async function allocatePayment(db, event) {
       partialRow = await markPartiallyPaid(tx, { invoiceId: locked.id });
       if (!partialRow) throw new Error(`Could not mark invoice ${locked.id} partially paid after recording its receipt`);
     }
+    if (surplusCents > 0) {
+      // Record the unapplied remainder and review task atomically with the
+      // applied receipt. A post-commit task failure cannot be recovered by a
+      // PSP replay: the existing receipt makes replay exit before task creation.
+      const review = await staffTask(tx, {
+        orgId: locked.org_id,
+        clientId: locked.client_id,
+        eventId: event.id,
+        title: "Overpayment leftover — do not apply to another invoice",
+        body: providerPaymentId ? `overpay:${providerPaymentId}` : event.id,
+        detail: `Invoice ${locked.id}; reported $${Number(fromCents(payCents)).toFixed(2)}; applied $${Number(fromCents(applyCents)).toFixed(2)}; unapplied $${Number(fromCents(surplusCents)).toFixed(2)}. Verify processor settlement and manually resolve the credit/refund; never redirect to another invoice.`
+      });
+      if (!review || (!review.id && review.reason !== "duplicate_race")) {
+        throw new Error("ar_overpayment_review_unroutable");
+      }
+    }
     return {
       applyCents, surplusCents, newRemaining, paidRow, partialRow,
       receiptKey: providerPaymentId || event.id || inserted?.id || null
@@ -576,13 +593,6 @@ export async function allocatePayment(db, event) {
 
   if (surplusCents > 0) {
     console.warn(`[ar-allocate] path=overpay surplus_cents=${surplusCents} invoice=${invoice.id}`);
-    await staffTask(db, {
-      orgId,
-      clientId: invoice.client_id,
-      eventId: event.id,
-      title: "Overpayment leftover — do not apply to another invoice",
-      body: providerPaymentId ? `overpay:${providerPaymentId}` : event.id
-    });
   }
 
   if (applyCents <= 0 && surplusCents > 0) {
