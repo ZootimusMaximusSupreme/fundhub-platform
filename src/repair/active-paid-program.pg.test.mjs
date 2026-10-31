@@ -3,7 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import pg from "pg";
-import { claimLetterForMailing } from "./send.mjs";
+import { claimLetterForMailing, sendRepairLetters } from "./send.mjs";
 import { hasActivePaidRepairProgram } from "./active-paid-program.mjs";
 const u=process.env.DATABASE_URL||"";
 const scratch=(()=>{if(process.env.CI!=="true"||!u)return false;
@@ -41,6 +41,23 @@ test("active repair mail claim rechecks cancelled/refunded status in one SQL sta
  const renewed=randomUUID();
  await db.query("INSERT INTO sales VALUES($1,$2,$3,$4,'active')",[renewed,o,c,p]);
  await db.query("INSERT INTO sale_payments VALUES($1,$2,'deposit',1000)",[o,renewed]);
+ // R-05F: a ready letter is cancelled by another transaction after an HTTP
+ // caller has read it, but before the final database claim.
+ const beforeCancellation=await state();assert.equal(beforeCancellation.status,"ready");
+ await db.query("UPDATE dispute_letters SET status='cancelled' WHERE id=$1",[l]);
+ let providerInvocations=0;
+ const refused=await sendRepairLetters(db,{
+   orgId:o,clientId:c,staffId:randomUUID(),mail:true,
+   from:{address_line1:"12 Test St",address_city:"Phoenix",address_state:"AZ",address_zip:"85001"},
+   letters:[{letterId:l,bureau:"EX",target:"bureau",html:"Synthetic"}],
+   enforceActivePaidRepair:true,
+   mailSender:async()=>{providerInvocations++;return {ok:false,error:"POSTGRID_API_KEY unset — synthetic refusal"};}
+ });
+ assert.equal(refused.ok,false);assert.equal(refused.results[0].error,"letter_not_claimable");
+ assert.equal(providerInvocations,0,"cancelled letter must never reach PostGrid");
+ assert.deepEqual(await state(),{status:"cancelled",send_claimed_at:null,mailed_at:null});
+ await db.query("UPDATE dispute_letters SET status='ready' WHERE id=$1",[l]);
+
  r=await claimLetterForMailing(db,{letterId:l,orgId:randomUUID(),clientId:c,requireActivePaidRepair:true});
  assert.equal(r.claimed,false,"foreign tenant denied");
  r=await claim();assert.equal(r.claimed,true,"new independently-paid full repair reauthorizes");

@@ -173,7 +173,9 @@ export async function claimLetterForMailing(db, { letterId, orgId, clientId, req
         WHERE d.id = prior.id
           AND d.send_claimed_at IS NULL
           AND d.mailed_at IS NULL
-          AND d.status NOT IN ('sending', 'sent', 'delivered')
+          AND ${requireActivePaidRepair
+            ? "d.status IN ('generated','ready')"
+            : "d.status NOT IN ('sending', 'sent', 'delivered')"}
           ${requireActivePaidRepair ? `AND ${activePaidRepairSql(2, 3)}` : ""}
        RETURNING prior.status AS prior_status`,
       [letterId, orgId, clientId]
