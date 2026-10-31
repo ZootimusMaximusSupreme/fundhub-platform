@@ -23,6 +23,12 @@ function harness({ owned = true, agreement = false, consent = false } = {}) {
     db: {
       async query(sql, params) {
         state.queries.push({ sql, params });
+        if (sql.includes("FROM dispute_letters")) {
+          assert.deepEqual(params.slice(0, 2), [ORG, CLIENT]);
+          return { rows: [{ id: SAVED_LETTER, bureau: "EX", target: "bureau",
+            status: "ready", body_text: "<p>synthetic only</p>",
+            case_id: null, furnisher_address_id: null }] };
+        }
         assert.match(sql, /FROM clients WHERE id = \$1 AND org_id = \$2/);
         assert.deepEqual(params, [CLIENT, ORG]);
         return { rows: owned ? [{ one: 1 }] : [] };
