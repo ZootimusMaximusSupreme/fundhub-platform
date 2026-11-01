@@ -13,6 +13,9 @@
     if (r == null || !Number.isFinite(Number(r))) return "—";
     return Math.round(Number(r) * 100) + "%";
   }
+  function count(n) {
+    return n == null || !Number.isFinite(Number(n)) ? "—" : String(Number(n));
+  }
   function elapsed(ms) {
     if (!ms) return "";
     var m = Math.floor(ms / 60000);
@@ -112,6 +115,22 @@
   }
 
   var state = { data: null, closer: 0, loading: false };
+
+  function paintSetterRoster(d) {
+    var body = $("#fh-floor-setters .setter-body");
+    if (!body) return;
+    var setters = d.setters || [];
+    body.innerHTML = setters.map(function (s) {
+      return '<div class="setter-row">' +
+        '<span class="setter-name">' + esc(s.name || "Setter") + '</span>' +
+        '<span class="num" data-label="Logged dials">' + count(s.dials) + '</span>' +
+        '<span class="num" data-label="Opt-in booked">' + count(s.booked) + '</span>' +
+        '<span class="num" data-label="Shows">' + count(s.showed) + '</span>' +
+        '<span class="num" data-label="No-shows">' + count(s.no_shows) + '</span>' +
+        '<span class="num" data-label="Show rate">' + pct(s.show_rate) + '</span>' +
+        '</div>';
+    }).join("") || '<p class="note setter-empty">No active setters yet. Add a setter in Team &amp; access to track their work here.</p>';
+  }
 
   /* One closer at a time. Everything here comes out of closers[i] on the floor
      response that is already loaded — picking a name makes no second request. */
@@ -213,6 +232,7 @@
 
   function paint(d) {
     state.data = d;
+    paintSetterRoster(d);
     var onShift = (d.closers || []).filter(function (c) { return c.on_shift; }).length;
     var chip = $("header .hl .chip");
     if (chip) {
