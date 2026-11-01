@@ -21,11 +21,12 @@
 //   npm run preflight -- --no-fetch   skip `git fetch origin`
 //   npm run preflight -- --expected-base <branch>  verify a planned stack parent
 //
-// Exit code: 0 = no shared files with this branch, 1 = shared files found
-// (read the report before opening the PR), 2 = could not run.
+// Exit code: 0 = no active shared work (unattached local refs still warn),
+// 1 = shared files with an open PR or active worktree, 2 = could not run.
 
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -126,10 +127,66 @@ export function orderedChildRefs(prs, current) {
   return children;
 }
 
+export function inheritedOrderedRefs(sources, childRefs, isAncestor) {
+  const inherited = new Set(childRefs);
+  for (const source of sources) {
+    if (source.kind !== "branch" || childRefs.has(source.refName)) continue;
+    if ([...childRefs].some((parent) => isAncestor(parent, source.refName))) {
+      inherited.add(source.refName);
+    }
+  }
+  return inherited;
+}
+
 export function excludeExpectedBase(sources, expectedBase) {
   if (!expectedBase) return sources;
   const name = expectedBase.replace(/^origin\//, "");
   return sources.filter((source) => source.refName !== name);
+}
+
+// A prior PR may hand one file to this branch. The handoff is exact, and Git
+// must be able to combine both versions of that file without a conflict.
+export function fileHandoffs(body, branch) {
+  return new Set((body || "").split("\n").flatMap((line) => {
+    const match = /^File handoff: ([A-Za-z0-9][A-Za-z0-9/_.-]*) -> ([A-Za-z0-9][A-Za-z0-9/_-]*)\s*$/.exec(line.trim());
+    return match && match[2] === branch && !match[1].split("/").includes("..") ? [match[1]] : [];
+  }));
+}
+
+export function resolveFileHandoffs(sources, prs, branch, canMerge) {
+  const byHead = new Map(prs.map((pr) => [pr.headRefName, pr]));
+  const accepted = [];
+  const filtered = sources.map((source) => {
+    if (source.kind !== "branch" && source.kind !== "pr") return source;
+    const owner = byHead.get(source.refName);
+    if (!owner) return source;
+    const handoffs = fileHandoffs(owner.body, branch);
+    const files = source.files.filter((file) => {
+      if (!handoffs.has(file) || !canMerge(file, source.refName)) return true;
+      accepted.push({ file, owner: owner.number, branch: source.refName });
+      return false;
+    });
+    return { ...source, files };
+  }).filter((source) => source.files.length);
+  return { sources: filtered, accepted };
+}
+
+function canMergeFile(file, ownerBranch) {
+  const owner = `origin/${ownerBranch}`;
+  const base = git(["merge-base", "HEAD", owner]);
+  if (!base) return false;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "fundhub-handoff-"));
+  try {
+    for (const [name, ref] of [["ours", "HEAD"], ["base", base], ["theirs", owner]]) {
+      const content = execFileSync("git", ["show", `${ref}:${file}`], { stdio: ["ignore", "pipe", "ignore"] });
+      fs.writeFileSync(path.join(dir, name), content);
+    }
+    return run("git", ["merge-file", "--quiet", path.join(dir, "ours"), path.join(dir, "base"), path.join(dir, "theirs")]) !== null;
+  } catch {
+    return false;
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 }
 
 // mine: string[]; sources: [{ label, files: string[] }]
@@ -153,6 +210,12 @@ export function findOverlaps(mine, sources) {
     .map(([file, labels]) => ({ file, labels: labels.sort() }))
     .sort((a, b) => b.labels.length - a.labels.length || a.file.localeCompare(b.file));
   return { withMine, hot };
+}
+
+export function blockingOverlaps(withMine, sources) {
+  const active = new Set(sources.filter((source) => source.kind !== "branch" || source.active)
+    .map((source) => source.label));
+  return withMine.filter((overlap) => active.has(overlap.label));
 }
 
 function parseArgs(argv) {
@@ -244,7 +307,8 @@ export function main(argv = process.argv.slice(2)) {
     // This drops work that already landed, e.g. a squash-merged branch never deleted.
     const stillDiffers = new Set(lines(git(["diff", "--name-only", BASE, name])));
     const files = lines(git(["diff", "--name-only", `${BASE}...${name}`])).filter((f) => stillDiffers.has(f));
-    if (files.length) sources.push({ label: `branch ${name}`, refName: name, kind: "branch", files });
+    if (files.length) sources.push({ label: `branch ${name}`, refName: name, kind: "branch",
+      active: worktrees.some((wt) => wt.branch === name && !wt.prunable), files });
   }
 
   // 2. Other worktrees: unsaved changes only (their commits are covered by step 1).
@@ -263,7 +327,7 @@ export function main(argv = process.argv.slice(2)) {
 
   // 3. Open pull requests on GitHub.
   const prJson = run("gh", ["pr", "list", "--state", "open", "--limit", "100",
-    "--json", "number,title,headRefName,baseRefName,files,labels"], { cwd: top });
+    "--json", "number,title,headRefName,baseRefName,files,labels,body"], { cwd: top });
   let openPrs = [];
   if (prJson === null) {
     notes.push("GitHub PR list was unavailable; open pull requests were not checked.");
@@ -296,10 +360,22 @@ export function main(argv = process.argv.slice(2)) {
   if (args.expectedBase) notes.push(`Expected stack parent ${args.expectedBase} is an ancestor; its own files are excluded from collision warnings.`);
   const childRefs = orderedChildRefs(openPrs, current);
   if (childRefs.size) notes.push(`Excluded ${childRefs.size} ordered child branch(es); their inherited files are already in this branch.`);
+  const inheritedRefs = inheritedOrderedRefs(sources, childRefs, (parent, branch) =>
+    git(["merge-base", "--is-ancestor", parent, branch]) !== null
+    || git(["merge-base", "--is-ancestor", `origin/${parent}`, branch]) !== null);
+  if (inheritedRefs.size > childRefs.size) {
+    notes.push(`Excluded ${inheritedRefs.size - childRefs.size} branch(es) built on ordered children; their inherited files are already in this chain.`);
+  }
   const collisionSources = excludeExpectedBase(sources, args.expectedBase)
-    .filter((source) => !childRefs.has(source.refName));
-  const { withMine, hot } = findOverlaps(mine, collisionSources);
-  const report = { current, behind, comparisonBase, localMain: { behindBefore: mainBehind, updated: mainUpdated, reason: mainUpdateReason }, openBranches: openNames.size, chain, myFiles: mine.length, scanned: collisionSources.length, withMine, hot, notes };
+    .filter((source) => !inheritedRefs.has(source.refName));
+  const handoff = resolveFileHandoffs(collisionSources, openPrs, current, canMergeFile);
+  for (const item of handoff.accepted) {
+    const note = `PR #${item.owner} handed ${item.file} to ${current}; both file versions merge cleanly.`;
+    if (!notes.includes(note)) notes.push(note);
+  }
+  const { withMine, hot } = findOverlaps(mine, handoff.sources);
+  const blocking = blockingOverlaps(withMine, handoff.sources);
+  const report = { current, behind, comparisonBase, localMain: { behindBefore: mainBehind, updated: mainUpdated, reason: mainUpdateReason }, openBranches: openNames.size, chain, myFiles: mine.length, scanned: handoff.sources.length, withMine, blocking, hot, notes };
 
   if (args.json) {
     console.log(JSON.stringify(report, null, 2));
@@ -313,8 +389,9 @@ export function main(argv = process.argv.slice(2)) {
     if (chain.length) console.log(`- Built on an unmerged branch; chain order: ${[BASE, ...chain, current].join(" -> ")}`);
     if (openNames.size > 10) console.log(`- Warning: ${openNames.size} branches have commits outside ${BASE}; review the open chain before adding more.`);
     if (mine.length && !withMine.length) console.log("- No shared files with any other branch, worktree or open PR.");
+    const blockedLabels = new Set(blocking.map((overlap) => overlap.label));
     for (const o of withMine) {
-      console.log(`- Shares ${o.files.length} file(s) with ${o.label}:`);
+      console.log(`- ${blockedLabels.has(o.label) ? "Shares" : "Warning: shares"} ${o.files.length} file(s) with ${o.label}:`);
       for (const f of o.files.slice(0, 15)) console.log(`    ${f}`);
       if (o.files.length > 15) console.log(`    ...and ${o.files.length - 15} more`);
     }
@@ -330,7 +407,7 @@ export function main(argv = process.argv.slice(2)) {
     }
     for (const n of notes) console.log(`- Note: ${n}`);
   }
-  return withMine.length ? 1 : 0;
+  return blocking.length ? 1 : 0;
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

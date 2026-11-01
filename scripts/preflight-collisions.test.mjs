@@ -3,7 +3,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { chooseMainUpdate, excludeExpectedBase, findOverlaps, orderChain, orderPrChain, orderedChildRefs, parsePorcelain, parseWorktrees } from "./preflight-collisions.mjs";
+import { blockingOverlaps, chooseMainUpdate, excludeExpectedBase, fileHandoffs, findOverlaps, inheritedOrderedRefs, orderChain, orderPrChain, orderedChildRefs, parsePorcelain, parseWorktrees, resolveFileHandoffs } from "./preflight-collisions.mjs";
 
 test("parsePorcelain keeps the new path on a rename and strips quotes", () => {
   const text = " M src/a.mjs\n?? docs/new.md\nR  old.mjs -> src/b.mjs\n M \"has space.md\"";
@@ -44,6 +44,19 @@ test("findOverlaps lists hot files touched by two or more other sources", () => 
   ]);
 });
 
+test("only active worktrees and open PRs block; unattached local refs still warn", () => {
+  const sources = [
+    { label: "branch old", kind: "branch", active: false, files: ["src/shared.mjs"] },
+    { label: "branch editing", kind: "branch", active: true, files: ["src/shared.mjs"] },
+    { label: "PR #9 ready", kind: "pr", files: ["src/shared.mjs"] },
+    { label: "unsaved in worktree", kind: "worktree", files: ["src/shared.mjs"] }
+  ];
+  const { withMine } = findOverlaps(["src/shared.mjs"], sources);
+  assert.deepEqual(blockingOverlaps(withMine, sources).map((item) => item.label),
+    ["branch editing", "PR #9 ready", "unsaved in worktree"]);
+  assert.deepEqual(blockingOverlaps(withMine, [sources[0]]), []);
+});
+
 test("main refresh attempts a safe Git fast-forward and preserves divergent history", () => {
   assert.deepEqual(chooseMainUpdate({ mainExists: true, behind: 7, canFastForward: true, worktreePath: "/repo", dirty: true }),
     { action: "merge" });
@@ -79,6 +92,25 @@ test("an expected stack parent is excluded while unrelated collisions remain", (
   assert.deepEqual(withMine, [{ label: "PR #3 other", files: ["src/shared.mjs"] }]);
 });
 
+test("exact PR file handoff needs the target branch and a clean merge", () => {
+  const body = "File handoff: src/pulse/registry.mjs -> codex/slideshow-live-pages\n";
+  assert.deepEqual([...fileHandoffs(body, "codex/slideshow-live-pages")], ["src/pulse/registry.mjs"]);
+  assert.deepEqual([...fileHandoffs(body, "codex/other")], []);
+  const sources = [
+    { refName: "older", kind: "branch", label: "branch older", files: ["src/pulse/registry.mjs", "src/other.mjs"] },
+    { refName: "older", kind: "pr", label: "PR #355 older", files: ["src/pulse/registry.mjs"] },
+    { refName: "unrelated", kind: "pr", label: "PR #356 unrelated", files: ["src/other.mjs"] }
+  ];
+  const prs = [{ number: 355, headRefName: "older", body }];
+  const allowed = resolveFileHandoffs(sources, prs, "codex/slideshow-live-pages", (file) => file === "src/pulse/registry.mjs");
+  assert.equal(allowed.accepted.length, 2);
+  assert.deepEqual(findOverlaps(["src/pulse/registry.mjs", "src/other.mjs"], allowed.sources).withMine.map((item) => item.label),
+    ["branch older", "PR #356 unrelated"]);
+  const conflicted = resolveFileHandoffs(sources, prs, "codex/slideshow-live-pages", () => false);
+  assert.deepEqual(findOverlaps(["src/pulse/registry.mjs"], conflicted.sources).withMine.map((item) => item.label),
+    ["branch older", "PR #355 older"]);
+});
+
 test("PR base metadata keeps chain order even when a parent head moved", () => {
   assert.deepEqual(orderPrChain([
     { headRefName: "first", baseRefName: "main" },
@@ -101,4 +133,16 @@ test("an ordered child and its descendants inherit the parent's files without bl
     ({ refName, label: `branch ${refName}`, files: ["src/shared.mjs"] }));
   const { withMine } = findOverlaps(["src/shared.mjs"], sources.filter((source) => !children.has(source.refName)));
   assert.deepEqual(withMine.map((source) => source.label), ["branch unrelated", "branch unlabeled"]);
+});
+
+test("local branches stacked on an ordered child inherit its files too", () => {
+  const children = new Set(["ordered-child"]);
+  const sources = [
+    { kind: "branch", refName: "local-grandchild" },
+    { kind: "branch", refName: "unrelated" },
+    { kind: "worktree", refName: "unsaved" }
+  ];
+  const inherited = inheritedOrderedRefs(sources, children,
+    (parent, branch) => parent === "ordered-child" && branch === "local-grandchild");
+  assert.deepEqual([...inherited], ["ordered-child", "local-grandchild"]);
 });
