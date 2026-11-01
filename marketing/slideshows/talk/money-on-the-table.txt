@@ -4,7 +4,7 @@
 
 
 
-Four cards at 88% used hold this sample file to $46,560. The middle score is a 706, so on paper this is a GOOD file, the kind a bank says yes to.
+Four cards at 88% used hold this sample file to $46,560. The middle score is a 706, a GOOD score, and the cards still decide the amount.
 
 
 
@@ -28,7 +28,7 @@ The score never moved. Four card balances moved, and one cutoff inside our syste
 
 
 
-That gap is the hire, the bigger job and the ad budget, all sitting on the table for as long as those four balances stay where they are.
+Every month those four balances stay where they are, this business applies with $128,040 less room than the same file shows once it's paid down.
 
 
 
@@ -40,13 +40,13 @@ That gap is the hire, the bigger job and the ad budget, all sitting on the table
 
 
 
-Here's what's really going on. Our system ran this file TWICE: once as it is today, and once with the four cards paid down to 10% of each limit.
+Our system ran this file TWICE: once as it is today, and once with the four cards paid down to 10% of each limit.
 
 
 
 
 
-The short bar on the left is today, at $46,560. The tall bar on the right is after the paydown, at $174,600. It's the same person, the same score and the same cards.
+The short bar is today, at $46,560. The tall bar is after the paydown, at $174,600, with the same person, the same score and the same cards.
 
 
 
@@ -58,7 +58,7 @@ The jump in the middle is the paydown, and it's worth $128,040. The bar on the r
 
 
 
-Here's why it happens. At 88% used, our system reads the cards as maxed out, and it holds this file to less than a QUARTER of what it's built for.
+At 88% used, our system reads the cards as maxed out, and it holds this file to less than a QUARTER of what it's built for.
 
 
 
@@ -76,7 +76,7 @@ The file is built off its own best card and an old car loan it paid off. The ful
 
 
 
-Here's what those balances are costing this file. It owes $37,100 on $42,000 of limits, spread over four cards, and every one of them is close to MAXED.
+Those four balances are what this file is paying for right now. It owes $37,100 on $42,000 of limits, and every one of the four cards is close to MAXED.
 
 
 
@@ -94,13 +94,13 @@ Each card gets its own target, 10% of its limit. For the American Express, that'
 
 
 
-Each balance reports on the day the statement closes, so the payment has to land BEFORE that day. Done that way, it's a simple tweak.
+Each balance reports on the day the statement closes, so the payment has to land BEFORE that day. On your call, you pick: fund what's there now, fix first, or both.
 
 
 
 
 
-Until then, the file gets less than a quarter of what it's built for. That's $128,040 the business goes without, while the balances sit there.
+Until that payment lands, every application this file sends goes out on a file our system holds to $46,560, with $128,040 more left on the table.
 
 
 
@@ -112,7 +112,7 @@ Until then, the file gets less than a quarter of what it's built for. That's $12
 
 
 
-Remember that one cutoff? Here it is. Our system has three gates: a score of 700 or more, cards used 30% or less, and zero negative items.
+Our system has three gates: a score of 700 or more, cards used 30% or less, and zero negative items. That's the cutoff the whole $128,040 turns on.
 
 
 
@@ -124,7 +124,7 @@ This sample clears two of them. The score is a 706, and there's nothing negative
 
 
 
-Card use is the gate it FAILS. At 88% used, our system reads the cards as maxed out, and it keeps the file out of full funding.
+Card use is the gate it FAILS, and failing it keeps the file out of full funding, however good that 706 looks on paper.
 
 
 
@@ -148,13 +148,13 @@ That's what we do first. We review your file the way a lender does, find the gat
 
 
 
-This is how a file ends up like this. Five banks turned this sample down, and each no left an inquiry behind on the report.
+This sample paid for a business start-up on four personal cards, then applied around to spread the balance out, and five banks said NO.
 
 
 
 
 
-Three were credit card applications and two were personal loans, all declined. Five of them came in just the last six months.
+Three were credit card applications and two were personal loans, and every one of them came back declined, all inside the last six months.
 
 
 
@@ -166,19 +166,19 @@ None of those five banks has an account on this file. Each of those inquiries ge
 
 
 
-Here's the proof of where the money sits. Our system moves none of the amount for those inquiries, and the paydown moves ALL of it.
+Our system's amount moves on card use, so the disputes clean up what the next bank reads, and the paydown moves the whole $128,040.
 
 
 
 
 
-Every one of those applications went out on a file at 88% used, and every bank saw a file our system holds to $46,560.
+The next round goes out after the paydown. The four personal cards sit at 10%, and the file our system routes to full funding shows $174,600.
 
 
 
 
 
-Paid down first, the next round goes out on a file worth $174,600. That's money for the hire and the bigger job, out of the banks' pockets and not your savings.
+After the paydown, the start-up applies for capital on a file worth 3.75 times more, with its four personal cards back at 10%. Each bank still makes its own call.
 
 
 
@@ -190,7 +190,7 @@ Paid down first, the next round goes out on a file worth $174,600. That's money 
 
 
 
-On your strategy call, you see this same picture drawn from YOUR file: how much it shows today, how much it shows after the fix, and what sits in between.
+This is the money levers screen from a Fundhub call, filled in from the sample. On your strategy call, the same screen fills in from YOUR file.
 
 
 
@@ -202,13 +202,13 @@ We pull your report while you're on the line. It's a soft pull, which only you c
 
 
 
-You see how much you qualify for based on where you're at right now. You also see the exact balances and items standing between you and the rest of it.
+You see how much you qualify for based on where you're at right now, and the lever your advisor taps shows what each fix adds to it.
 
 
 
 
 
-From there, you choose. You can take the funding your file supports today, fix the file first, or run both at once, with your own file in front of you.
+On this sample, one lever carries the whole $128,040: paying the four cards down to their targets. Your file shows its own levers, in its own order.
 
 
 

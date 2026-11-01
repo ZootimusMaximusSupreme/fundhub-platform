@@ -4,7 +4,7 @@
 
 
 
-A bank decides your application off ONE line under your score. A 706 can still fail that line, and the bank only tells you after the no.
+When a bank turns down a good score, the reason is printed right under it on your report, and the bank only tells you after the no.
 
 
 
@@ -22,13 +22,13 @@ This is a sample TransUnion report on FICO Score 9. The score reads 706, which i
 
 
 
-Now read right under the score. The bureau prints the reasons holding it down, in its own words, and the top one says the card balances run too high.
+Right under the score, the bureau prints the reasons holding it down, in its own words, and the top one says the card balances run too high.
 
 
 
 
 
-That's the RED FLAG. The bank weighs that reason line, and that line is what turns a good score into a denial letter.
+That's the RED FLAG. The bank weighs that reason line, and a red flag like this one is what gets good credit denied.
 
 
 
@@ -46,31 +46,31 @@ And that same line shows up in one more place: the letter the bank mails you aft
 
 
 
-Here's what's really going on. When a bank turns you down, its letter lists the reasons, and those reasons come straight off your report.
+When a bank turns you down, its letter lists the reasons, and those reasons come straight off your report.
 
 
 
 
 
-Put the two side by side. The line on your report and the line on the bank's letter match WORD for word.
+Put the two side by side. The line on your report and the line a denial letter lists match WORD for word.
 
 
 
 
 
-So the bank's answer was readable before you ever applied. Somebody just had to read your file the way the bank reads it, before the bank did.
+That makes the bank's answer readable before you ever apply. Somebody just has to read your file the way the bank reads it, before the bank does.
 
 
 
 
 
-And every reason on that list has a fix. A high balance comes down, a new inquiry gets disputed, and each fix changes what the bank sees.
+And the top reason on this sample has a SIMPLE fix, one that changes the balance the bank reads on that exact line.
 
 
 
 
 
-Read it first, and the reason the bank was going to turn you down for is gone before it ever sees your application.
+Reading it first means that reason gets worked on before any bank ever sees your application.
 
 
 
@@ -82,7 +82,7 @@ Read it first, and the reason the bank was going to turn you down for is gone be
 
 
 
-Here's what a no really costs you. That money was going to be the hire you keep putting off, the bigger job you passed on, or the ads you want running.
+A no costs you more than one application. That money was going to pay for your next hire, a bigger job or more ads.
 
 
 
@@ -94,7 +94,7 @@ Each application you send sets off a HARD pull. Even when the bank says no, that
 
 
 
-This sample file already carries three. One on Experian, one on TransUnion, one on Equifax, from two card applications and one ask for a higher limit.
+This sample file already shows three. One on Experian, one on TransUnion, one on Equifax, from two card applications and one ask for a higher limit.
 
 
 
@@ -118,7 +118,7 @@ That's why the order flips. Your file gets read and fixed FIRST, and only then d
 
 
 
-So here's what we do instead. We review your file the way a lender does, BEFORE a single application leaves our hands. That's pre-underwriting.
+We review your file the way a lender does, BEFORE a single application leaves our hands, and that's what pre-underwriting means.
 
 
 
@@ -130,25 +130,25 @@ Our system, UnderwriteIQ, reads your file with the same kind of models the banks
 
 
 
-When it finds a red flag, that gets handled FIRST. On this sample file, it means paying the high card down to 10% of its limit before the statement closes.
+When it finds a red flag, that gets handled FIRST. On this sample, the Visa sits at about 40% used, so it gets paid down to $800 before the statement closes.
 
 
 
 
 
-That's a SIMPLE tweak. It changes the balance the bureau reports, and that changes the reason line the bank reads.
+That's a SIMPLE tweak. It changes the balance the bureau reports, and that's the balance the bank reads on that line.
 
 
 
 
 
-For you, that means your first application goes in WITHOUT the line the bank was going to turn you down for.
+The balance the bank reads on your first application is the paid-down one, and that's the whole point of doing it FIRST.
 
 
 
 
 
-A clean file is half of it, and where that file goes, in what order, decides the rest.
+Next comes which banks see your file, and in what order, and that part gets planned from the same report.
 
 
 
@@ -172,13 +172,13 @@ We match your file against each bank before anything goes out, and it only goes 
 
 
 
-Then comes the ORDER. Each bank reads what the last one did, so the right first approval sets up the next one, and that one sets up the one after.
+That's what this whole process is FOR: capital from banks that fit your file, put to work inside your business.
 
 
 
 
 
-In that order, your approvals build on each other, and that's how one personal file gets to the maximum amount of funding.
+That capital pays for the hire, the bigger job and the ads, and it comes from banks your file was matched to before anything went out.
 
 
 
@@ -196,37 +196,31 @@ We choose the banks and the order, and each bank still makes its own decision. T
 
 
 
-Off ONE personal credit file, I've pulled $100,000 credit lines on four different companies, and the banks approved them on stated income without a single income document.
+Anyone can say they review your file the way a lender does, so this is the actual rule, copied straight out of our CODE.
 
 
 
 
 
-That's ten years of doing this on real files, hundreds of them, and I still fund myself this exact way.
+Inside UnderwriteIQ, a file only counts as fundable when the score is 700 or better, card use sits at 30% or under, and there are ZERO negative items.
 
 
 
 
 
-The capital I've raised for myself, a little over $1,000,000, went into companies that cash flow, and I've taken real losses along the way too.
+Every client file at Fundhub runs through this rule before a single application goes anywhere, and that includes yours.
 
 
 
 
 
-That's what this process is FOR: capital working inside your business, so your growth stops coming out of your own savings.
+This sample misses the card part. Its Visa sits at about 40% used, and the rule allows 30 at most, which is why the paydown comes FIRST on this file.
 
 
 
 
 
-And our side is in writing. Applications go out within 72 business hours. That's our guarantee, and it's in your contract. That typically means approvals come very shortly after.
-
-
-
-
-
-This is that clause, word for word. From the day you sign, your funding advisor has 24 business hours to start, and the clock keeps running even if you're slow to send something.
+When your own file runs through it, you see exactly which part it clears, and which part gets worked on first.
 
 
 
@@ -238,7 +232,7 @@ This is that clause, word for word. From the day you sign, your funding advisor 
 
 
 
-Remember that one line under your score? On your strategy call, you SEE it on your own file, before any bank does.
+That line under your score is on YOUR report too, and on your strategy call you see it before any bank does.
 
 
 
@@ -262,7 +256,7 @@ You see how much you qualify for based on where you're at right now, the red fla
 
 
 
-From there the path is simple: fund now, fix first, or both. You leave the call knowing where your money is and how we go get it.
+From there the path is simple: fund now, fix first, or both, with the fix for that one line already worked out.
 
 
 

@@ -10,7 +10,7 @@ Our system checks every personal file for hard inquiries, and the target is ZERO
 
 
 
-Your own report shows how many are counting against you right now, and what they're holding back. Here's a sample report, so you can see it.
+Your own report shows how many are counting against you right now, and what they're holding back. This one is a sample report, so you can see how it reads.
 
 
 
@@ -22,7 +22,7 @@ There's one on TransUnion, one on Experian and one on Equifax. Two came from bus
 
 
 
-Look at that last one. In this sample, even asking for a higher limit on a card the person already had left a HARD inquiry behind.
+That last one stands out. In this sample, even asking for a higher limit on a card the person already had left a HARD inquiry behind.
 
 
 
@@ -34,7 +34,7 @@ Every one of them stays after the bank answers. Whichever bank you try next sees
 
 
 
-Every extra pull shrinks the money that was supposed to pay for your next employee, your next big job or your next ad campaign.
+Every extra pull shrinks what the next bank approves, so the cost of applying on your own shows up in every approval after it.
 
 
 
@@ -46,19 +46,13 @@ Every extra pull shrinks the money that was supposed to pay for your next employ
 
 
 
-Here's what's really going on underneath. Our system runs SIX checks on every personal file, and each one comes back as a plain pass or fail.
+Our system runs SIX checks on every personal file, and each one comes back as a plain pass or fail, with nothing in between.
 
 
 
 
 
 It looks at your score and how much of your limits you use. It also looks at negative items, your oldest card, and your accounts in good standing.
-
-
-
-
-
-The fifth check is hard inquiries, and its target is ZERO. One inquiry fails it just the same as three, so your first application already costs you that check.
 
 
 
@@ -88,31 +82,37 @@ Between rounds, every new inquiry on your file gets disputed. That way the next 
 
 
 
-Here's what applying on your own costs you. The first bank pulls your file, and then the second bank pulls it again with the first pull sitting right there.
+Every bank pulls its own bureau, and on your own you don't know which one it reads. Three banks that all read Experian put three fresh pulls on ONE report.
 
 
 
 
 
-By the third bank, your report shows a run of fresh pulls close together. The next lender sees that run and approves LESS than it would on a clean report.
+The next bank that reads Experian finds all three, close together, and it approves LESS than it would on that same report without them.
 
 
 
 
 
-Now look at the right side. On a plan, applications only go to banks that fit your file, and the pulls are SPREAD across Experian, Equifax and TransUnion.
+Which bureau each bank reads decides where every pull lands, and on your own, that part happens blind.
 
 
 
 
 
-If one bureau already shows a fresh inquiry, the banks that read that bureau wait their turn. Then the newest inquiries get disputed before the next round leaves.
+On a plan, the pulls get SPREAD across Experian, Equifax and TransUnion, and every bank on the list is one that fits your file.
 
 
 
 
 
-Both sides start with the same file and the same score. On the right, every application went where it did for a REASON, and that protects your total.
+When a bureau already shows a fresh pull, the bank that reads it waits until that bureau is clear, and the newest inquiries get disputed before the next round.
+
+
+
+
+
+Both sides start with the same file and the same score, and on a plan, no bureau collects a stack of fresh pulls at once.
 
 
 
@@ -124,37 +124,31 @@ Both sides start with the same file and the same score. On the right, every appl
 
 
 
-If you're comparing funding companies, ONE question sorts them fast. Will you pull my file and show me why, before you apply anywhere?
+Every no you collect on your own adds a pull that the next bank reads, and the next approval comes back SMALLER because of it.
 
 
 
 
 
-When the answer is no, they're applying BLIND. Each of those banks runs a hard pull on you, and a denial letter is the first explanation you ever see.
+On a plan, each round ends with your file in shape for the next one. The banks that read a fresh pull wait, and the new pulls get disputed.
 
 
 
 
 
-Our answer is yes. We review your file the way a lender does, and every application goes only to a bank your file actually fits.
+That keeps your file ready for the next round, and the one after it, all the way through your funding sequence.
 
 
 
 
 
-We put a lot on the line with every application we send. Sending one to a bank your file doesn't fit makes no sense for you or for us.
+Your business ends up with funding that keeps coming as it grows, from one file that stays strong, instead of one try that leaves the file full of pulls.
 
 
 
 
 
-For you, that means fewer denials on your report. More of the money reaches your business: a new hire, larger jobs, ads running every day.
-
-
-
-
-
-That's growth paid for with funding, so your own savings stop being what pays for every step forward in the business.
+We put a lot on the line with every application we send, so each one only goes where your file fits.
 
 
 
@@ -208,7 +202,7 @@ That's the order the whole plan runs on. Your file gets read with no hard pull, 
 
 
 
-Remember those inquiries counting against you? On your strategy call, you SEE every one of them on your own file, and what each one is holding back.
+The inquiries counting against you show up on the call, every one of them, on your own report, next to what each one is holding back.
 
 
 
@@ -232,10 +226,10 @@ Then you choose how it runs. Work the steps yourself in the order your file call
 
 
 
-Either way, nothing goes to a bank until your file has been read and the order is set. You leave the call knowing exactly what happens first.
+Either way, nothing goes to a bank until your file has been read, every inquiry has a plan, and the order is set.
 
 
 
 
 
-Join on a computer for this, so the report is large enough to read every line together with your advisor.
+Your file gets read first, and every application after that goes out on a plan built from it, whichever way you choose to run it.

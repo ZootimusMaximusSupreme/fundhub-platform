@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Fundhub Pre-Underwriting</title>
-<meta name="description" content="One line under your score decides the bank's answer. Fundhub reads it and fixes it before a single application goes out.">
+<meta name="description" content="The reason a bank turns down a good score is printed right under it on your report. Fundhub reads it and works on it before a single application goes out.">
 <!--
   Deck PU · Pre-underwriting
   Lane: Funding (700 and up)
@@ -766,7 +766,7 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
 
   <section class="slide dark" data-src="The reason sits on the report, and a missed red flag gets good credit denied: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:208-209. The picture is the TransUnion section of Fundhub's tri-bureau report as scripts/render-crs-standard-report.mjs printed it on 2026-10-31 for the FinanceOS sample file: the score, the model and the bureau's own reason lines are src/finance/sample-credit-file.mjs:75-86 (simulated, no bureau contacted, :53-54). Opener form: .ai/rules/copy-certainty.md:20.">
     <p class="eyebrow">PU-01 / The red flag</p>
-    <h2>The bank decides off one line under your score, and a 706 can still fail it.</h2>
+    <h2>The reason a bank turns down a good score is printed right under it on your report.</h2>
     <p class="lede">Your own report already prints which line that is for you.</p>
     <ul class="lines">
       <li>This sample file scores a 706 on TransUnion, and the top reason printed under it is a red flag.</li>
@@ -791,26 +791,26 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>A bank decides your application off ONE line under your score. A 706 can still fail that line, and the bank only tells you after the no.</li>
+        <li>When a bank turns down a good score, the reason is printed right under it on your report, and the bank only tells you after the no.</li>
         <li>Your own report already prints which line that is for you. It's sitting on your file right now, before a single application goes anywhere.</li>
         <li>This is a sample TransUnion report on FICO Score 9. The score reads 706, which is GOOD credit, and on paper this file gets a yes.</li>
-        <li>Now read right under the score. The bureau prints the reasons holding it down, in its own words, and the top one says the card balances run too high.</li>
-        <li>That's the RED FLAG. The bank weighs that reason line, and that line is what turns a good score into a denial letter.</li>
+        <li>Right under the score, the bureau prints the reasons holding it down, in its own words, and the top one says the card balances run too high.</li>
+        <li>That's the RED FLAG. The bank weighs that reason line, and a red flag like this one is what gets good credit denied.</li>
         <li>And that same line shows up in one more place: the letter the bank mails you after it says no.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide" data-src="The top of a credit report lists the reasons a bank approves or denies; the bank's letter gives the same reasons: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:209. The bureau prints its reason lines with every score: src/finance/sample-credit-file.mjs:81-86 and the engine reads them per bureau (vendor/underwriteiq-full/api/lite/crs/normalize-soft-pull.js:190-193). Answer before an application goes out: public/index.html:454. Every reason has a fix: the card paydown target, src/waypoints/definitions.mjs:42-45; new hard inquiries get disputed between rounds, docs/sops/weekend-2026-10-24/04-sales-call-script.md:221-222.">
+  <section class="slide" data-src="The top of a credit report lists the reasons a bank approves or denies; the bank's letter gives the same reasons: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:209. The bureau prints its reason lines with every score: src/finance/sample-credit-file.mjs:81-86, and the engine reads them per bureau (vendor/underwriteiq-full/api/lite/crs/normalize-soft-pull.js:190-193). Answer before an application goes out: public/index.html:454. The top reason on this sample has a simple fix, the card paid down to 10% of its limit: src/waypoints/definitions.mjs:42-45 and src/finance/file-alerts/payment-timing.mjs:3-6. The picture shows what a denial letter lists; it is not a letter any bank issued.">
     <p class="eyebrow">PU-02 / The reasons</p>
     <h2>The reasons under your score are the same reasons on the bank's denial letter.</h2>
     <ul class="lines">
       <li>The bureau prints them on every report, and the bank's letter repeats them.</li>
-      <li>That makes the bank's answer readable before you apply, and every reason on that list has a fix.</li>
+      <li>That makes the bank's answer readable before you apply, and the top reason on this sample has a simple fix.</li>
     </ul>
     <figure class="pic">
       <div class="sheet">
-        <svg class="bv" viewBox="0 0 320 246" role="img" aria-label="Your report equals the bank's letter. Both list the same reason: ratio of balance to limit on bank revolving or other revolving accounts too high.">
+        <svg class="bv" viewBox="0 0 320 246" role="img" aria-label="Your report and what a denial letter lists show the same reason: ratio of balance to limit on bank revolving or other revolving accounts too high. Sample.">
           <rect class="pn" x="1" y="1" width="318" height="92" rx="10"/>
           <text class="lb" x="14" y="24">YOUR REPORT · WHY THIS SCORE</text>
           <rect class="tint-flag" x="10" y="36" width="300" height="48" rx="6"/>
@@ -820,8 +820,7 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
           <line class="rule-ink" x1="132" y1="118" x2="158" y2="118"/>
           <text class="lb ink" x="170" y="117">SAME REASON</text>
           <rect class="pn" x="1" y="133" width="318" height="110" rx="10"/>
-          <text class="lb" x="14" y="156">BANK LETTER</text>
-          <text x="306" y="156" text-anchor="end">Decision: No</text>
+          <text class="lb" x="14" y="156">WHAT A DENIAL LETTER LISTS</text>
           <rect class="tint-flag" x="10" y="168" width="300" height="48" rx="6"/>
           <text class="caps" x="20" y="188">RATIO OF BALANCE TO LIMIT ON BANK</text>
           <text class="caps" x="20" y="204">REVOLVING OR OTHER REV ACCTS TOO HIGH</text>
@@ -831,20 +830,20 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Here's what's really going on. When a bank turns you down, its letter lists the reasons, and those reasons come straight off your report.</li>
-        <li>Put the two side by side. The line on your report and the line on the bank's letter match WORD for word.</li>
-        <li>So the bank's answer was readable before you ever applied. Somebody just had to read your file the way the bank reads it, before the bank did.</li>
-        <li>And every reason on that list has a fix. A high balance comes down, a new inquiry gets disputed, and each fix changes what the bank sees.</li>
-        <li>Read it first, and the reason the bank was going to turn you down for is gone before it ever sees your application.</li>
+        <li>When a bank turns you down, its letter lists the reasons, and those reasons come straight off your report.</li>
+        <li>Put the two side by side. The line on your report and the line a denial letter lists match WORD for word.</li>
+        <li>That makes the bank's answer readable before you ever apply. Somebody just has to read your file the way the bank reads it, before the bank does.</li>
+        <li>And the top reason on this sample has a SIMPLE fix, one that changes the balance the bank reads on that exact line.</li>
+        <li>Reading it first means that reason gets worked on before any bank ever sees your application.</li>
       </ul>
     </aside>
   </section>
 
   <section class="slide" data-src="Almost every application you send is a hard pull, and each one costs you: docs/sops/weekend-2026-10-24/04-sales-call-script.md:160. The banks see the inquiries stack, and they start denying you: public/app/present.js:108 (closer line). The picture is the Inquiries rows of the same sample report (scripts/render-crs-standard-report.mjs, 2026-10-31), one per bureau, with each pull's reason from the sample file: src/finance/sample-credit-file.mjs:103-107. What that money was for: the advisor's question sheet, docs/sops/weekend-2026-10-24/04-sales-call-script.md:112.">
-    <p class="eyebrow">PU-03 / The cost</p>
+    <p class="eyebrow">PU-03 / The inquiries</p>
     <h2>Every no leaves a hard inquiry behind, and the next bank reads it first.</h2>
     <ul class="lines">
-      <li>This sample file already carries three, one on each bureau.</li>
+      <li>This sample file already shows three, one on each bureau.</li>
       <li>Each one counts against you on every application that comes after it.</li>
     </ul>
     <figure class="pic">
@@ -863,61 +862,56 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Here's what a no really costs you. That money was going to be the hire you keep putting off, the bigger job you passed on, or the ads you want running.</li>
+        <li>A no costs you more than one application. That money was going to pay for your next hire, a bigger job or more ads.</li>
         <li>Each application you send sets off a HARD pull. Even when the bank says no, that inquiry stays put, and every bank after it can see it.</li>
-        <li>This sample file already carries three. One on Experian, one on TransUnion, one on Equifax, from two card applications and one ask for a higher limit.</li>
+        <li>This sample file already shows three. One on Experian, one on TransUnion, one on Equifax, from two card applications and one ask for a higher limit.</li>
         <li>The next bank reads every one of them before it decides. Stack enough and the banks start saying no, even to a good score.</li>
         <li>That's why the order flips. Your file gets read and fixed FIRST, and only then does an application go out.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide" data-src="Part 0 rule 8 wording: marketing/ads/RULES.md:44. Before a single application goes out: marketing/ads/scripts/2026-10-14.md:61 (green-lit). Pre-underwriting with the same models the banks use: Chris 2026-10-31, marketing/copy-skills/copybot/references/chris-voice-profile.md:29. Our UnderwriteIQ system: public/app/present.js:99 (closer line). What it checks: src/underwrite/report.mjs:52-80. Fix it first, then funding: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:210. Paydown target, 10% of the limit: src/waypoints/definitions.mjs:42-45. The balance reports when the statement closes: src/finance/file-alerts/payment-timing.mjs:3-6. A simple tweak: marketing/ads/RULES.md Part 0 rule 24.">
+  <section class="slide" data-src="Part 0 rule 8 wording: marketing/ads/RULES.md:44. Before a single application goes out: marketing/ads/scripts/2026-10-14.md:61 (green-lit). Pre-underwriting with the same models the banks use: Chris 2026-10-31, marketing/copy-skills/copybot/references/chris-voice-profile.md:29. Our UnderwriteIQ system: public/app/present.js:99 (closer line). What it checks: src/underwrite/report.mjs:52-80. Fix it first, then funding: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:210. Paydown target, 10% of the limit: src/waypoints/definitions.mjs:42-45. The balance reports when the statement closes: src/finance/file-alerts/payment-timing.mjs:3-6. A simple tweak: marketing/ads/RULES.md Part 0 rule 24. The sample's fix: the Personal Visa's $8,000 limit, src/banking/plaid-sandbox-user.mjs:87; used at roughly 40%, src/finance/sample-credit-file.mjs:9; paid to 10% of the limit, $800, src/waypoints/definitions.mjs:42-45; the balance reports when the statement closes, src/finance/file-alerts/payment-timing.mjs:3-6.">
     <p class="eyebrow">PU-04 / Pre-underwriting</p>
     <h2>Pre-underwriting means we review your file the way a lender does before anything goes out.</h2>
     <ul class="lines">
       <li>UnderwriteIQ, our underwriting system, checks your card balances, inquiries, main card and any negative accounts.</li>
-      <li>Any red flag it finds gets fixed before a single bank sees your file.</li>
+      <li>On this sample, the red flag is a Visa at about 40% used, and it gets paid down before any bank sees the file.</li>
     </ul>
     <figure class="pic">
       <div class="sheet">
-        <svg class="bv" viewBox="0 0 320 272" role="img" aria-label="A flowchart. Your report is reviewed the way a lender does. If it has a red flag, the red flag gets fixed first and the file is reviewed again. If it has none, you apply to the banks that fit your file.">
-          <rect class="pn" x="115" y="2" width="150" height="36" rx="8"/>
-          <text x="190" y="25" text-anchor="middle">Your report</text>
-          <path class="cn ink" d="M190 38V55" marker-end="url(#fh-arrow)"/>
-          <rect class="pn-ink" x="85" y="59" width="210" height="42" rx="8"/>
-          <rect x="97" y="95" width="186" height="3" rx="1.5" fill="url(#fh-spectrum)"/>
-          <text class="on-ink" x="190" y="84" text-anchor="middle">Review it like a lender</text>
-          <path class="cn ink" d="M190 101V118" marker-end="url(#fh-arrow)"/>
-          <path class="pn" d="M190 122L230 156L190 190L150 156Z"/>
-          <text x="190" y="161" text-anchor="middle">Red flag?</text>
-          <path class="cn ink" d="M150 156H105" marker-end="url(#fh-arrow)"/>
-          <text class="lb" x="127" y="148" text-anchor="middle">YES</text>
-          <rect class="tint-flag" x="2" y="136" width="99" height="40" rx="8"/>
-          <text x="51" y="161" text-anchor="middle">Fix it first</text>
-          <path class="cn ink dash" d="M51 136V80H81" marker-end="url(#fh-arrow)"/>
-          <path class="cn ink" d="M190 190V211" marker-end="url(#fh-arrow)"/>
-          <text class="lb" x="202" y="205">NO</text>
-          <rect class="tint-fit edge-fit" x="20" y="216" width="298" height="48" rx="8"/>
-          <text x="169" y="245" text-anchor="middle">Apply to the banks that fit your file</text>
+        <svg class="bv" viewBox="0 0 320 254" role="img" aria-label="The sample's own fix in three steps. The top reason on the report: ratio of balance to limit on bank revolving or other revolving accounts too high. The Personal Visa uses about 40% of its limit, so it gets paid down to $800, which is 10% of the limit, before the statement closes. Then the bureau reports the paid-down balance. Sample.">
+          <rect class="tint-flag" x="1" y="1" width="318" height="72" rx="8"/>
+          <text class="lb ink" x="14" y="22">TOP REASON · SAMPLE REPORT</text>
+          <text class="caps" x="14" y="44">RATIO OF BALANCE TO LIMIT ON BANK</text>
+          <text class="caps" x="14" y="62">REVOLVING OR OTHER REV ACCTS TOO HIGH</text>
+          <path class="cn ink" d="M160 73V93" marker-end="url(#fh-arrow)"/>
+          <rect class="pn-ink" x="1" y="97" width="318" height="86" rx="8"/>
+          <text class="on-ink" x="160" y="121" text-anchor="middle">Personal Visa: about 40% of its limit used</text>
+          <text class="on-ink" x="160" y="143" text-anchor="middle">Paid down to $800, which is 10% of it,</text>
+          <text class="on-ink" x="160" y="165" text-anchor="middle">before the statement closes</text>
+          <rect x="14" y="174" width="292" height="3" rx="1.5" fill="url(#fh-spectrum)"/>
+          <path class="cn ink" d="M160 183V203" marker-end="url(#fh-arrow)"/>
+          <rect class="tint-fit edge-fit" x="1" y="207" width="318" height="44" rx="8"/>
+          <text x="160" y="234" text-anchor="middle">The bureau reports the paid-down balance</text>
         </svg>
       </div>
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>So here's what we do instead. We review your file the way a lender does, BEFORE a single application leaves our hands. That's pre-underwriting.</li>
+        <li>We review your file the way a lender does, BEFORE a single application leaves our hands, and that's what pre-underwriting means.</li>
         <li>Our system, UnderwriteIQ, reads your file with the same kind of models the banks use. It checks your card balances, your inquiries, your main card and any negative accounts.</li>
-        <li>When it finds a red flag, that gets handled FIRST. On this sample file, it means paying the high card down to 10% of its limit before the statement closes.</li>
-        <li>That's a SIMPLE tweak. It changes the balance the bureau reports, and that changes the reason line the bank reads.</li>
-        <li>For you, that means your first application goes in WITHOUT the line the bank was going to turn you down for.</li>
-        <li>A clean file is half of it, and where that file goes, in what order, decides the rest.</li>
+        <li>When it finds a red flag, that gets handled FIRST. On this sample, the Visa sits at about 40% used, so it gets paid down to $800 before the statement closes.</li>
+        <li>That's a SIMPLE tweak. It changes the balance the bureau reports, and that's the balance the bank reads on that line.</li>
+        <li>The balance the bank reads on your first application is the paid-down one, and that's the whole point of doing it FIRST.</li>
+        <li>Next comes which banks see your file, and in what order, and that part gets planned from the same report.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide" data-src="Banks that fit your file; you only apply where your file makes sense: public/app/present.js:99 (closer line). Banks that approve files like yours: marketing/ads/scripts/2026-10-14.md:63 (green-lit). We pick the banks and the order; they say yes or no: docs/sops/weekend-2026-10-24/04-sales-call-script.md:229. No approval promise: db/migrations/493_funding_and_repair_agreement_text.sql:53 (section 3). The banks and the order decide how much you get: marketing/offers/fundhub-offers-2026-10-10.pdf p.7 (fact bank 1.1). Each application leaves an inquiry the next bank reads: public/app/present.js:108. The maximum amount of funding: marketing/ads/RULES.md Part 0 rule 7.">
+  <section class="slide" data-src="Banks that fit your file; you only apply where your file makes sense: public/app/present.js:99 (closer line). Banks that approve files like yours: marketing/ads/scripts/2026-10-14.md:63 (green-lit). We pick the banks and the order; they say yes or no: docs/sops/weekend-2026-10-24/04-sales-call-script.md:229. No approval promise: db/migrations/493_funding_and_repair_agreement_text.sql:53 (section 3). Each application leaves an inquiry the next bank reads: public/app/present.js:108. What the capital pays for, the hire, the bigger job, the ads: docs/sops/weekend-2026-10-24/04-sales-call-script.md:112.">
     <p class="eyebrow">PU-05 / The right banks</p>
-    <h2>Your applications go only where your file fits, in the order that gets you the most.</h2>
+    <h2>Capital from banks that fit your file pays for the hire, the bigger job and the ads.</h2>
     <ul class="lines">
       <li>We match your file against each bank first, so no application gets spent where files like yours get turned down.</li>
       <li>We choose the banks and the order. Each bank makes its own decision, which is why your file gets read first.</li>
@@ -947,42 +941,42 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
       <ul>
         <li>Why does it matter where your file goes? Every bank you apply to leaves its mark on your report, so each application has to go where your file fits.</li>
         <li>We match your file against each bank before anything goes out, and it only goes to banks that APPROVE files like yours.</li>
-        <li>Then comes the ORDER. Each bank reads what the last one did, so the right first approval sets up the next one, and that one sets up the one after.</li>
-        <li>In that order, your approvals build on each other, and that's how one personal file gets to the maximum amount of funding.</li>
+        <li>That's what this whole process is FOR: capital from banks that fit your file, put to work inside your business.</li>
+        <li>That capital pays for the hire, the bigger job and the ads, and it comes from banks your file was matched to before anything went out.</li>
         <li>We choose the banks and the order, and each bank still makes its own decision. That's exactly why your file gets read before any of them see it.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide dark" data-src="Guarantee line, word for word: marketing/copy-skills/copybot/references/owner-voice.md:18. The picture is the agreement's own words, copied exactly from section 3 of the funding agreement the CRM sends: db/migrations/493_funding_and_repair_agreement_text.sql:53 (G-01 and G-02). Chris's track record: marketing/ads/RULES.md Part 0 rules 35, 36 and 38. I still fund myself: marketing/copy-skills/copybot/references/chris-voice-profile.md:28. Your delay does not pause the clock: db/migrations/493_funding_and_repair_agreement_text.sql:53 (section 3)." data-figures="the contract's 24 and 72 business hours; Chris's own track record (marketing/ads/RULES.md Part 0 rules 36 and 38)">
-    <p class="eyebrow">PU-06 / The proof</p>
-    <h2>Applications go out within 72 business hours.</h2>
-    <p class="lede">That's our guarantee, and it's in your contract. That typically means approvals come very shortly after.</p>
+  <section class="slide dark" data-src="The picture is UnderwriteIQ's own fundable rule, copied from src/underwrite/vendor/underwriter.cjs:312-316 (score 700 or higher, card use 30% or less, zero negative items); src/finance/fundability.mjs:44-49 names it the engine's fundable gate. Every client file at Fundhub goes through UnderwriteIQ: marketing/offers/fundhub-offers-2026-10-10.pdf p.1. The sample's Visa sits at roughly 40% used: src/finance/sample-credit-file.mjs:9." data-figures="the engine's own thresholds (700, 30%, 0) copied from its code, and the sample file's card use (src/finance/sample-credit-file.mjs:9)">
+    <p class="eyebrow">PU-06 / The rule in the code</p>
+    <h2>UnderwriteIQ's code calls a file fundable only when it clears this rule.</h2>
     <ul class="lines">
-      <li>I've run this same process on my own file for ten years, and the clause is right here in the agreement you sign.</li>
+      <li>The rule wants a 700 or better, card use at 30% or under, and no negative items, all on the same file.</li>
+      <li>This sample misses the card part of the rule, because its Visa sits at about 40% used.</li>
     </ul>
     <figure class="pic">
-      <div class="real" role="img" aria-label="Section 3 of the Fundhub funding agreement. The clocks begin when you sign. A funding advisor begins working your file within 24 business hours. Marked: Fundhub will submit your first authorized applications within 72 business hours.">
-        <div class="rh2">Funding Agreement · Section 3</div>
-        <p class="clause">The guarantee clocks begin when you sign this agreement. A Fundhub funding advisor will begin working your file within 24 business hours <span class="nw">(G-01)</span>. <mark>Fundhub will submit your first authorized applications within 72 business hours <span class="nw">(G-02)</span>.</mark></p>
-        <span class="chip on"><span class="cd"></span>Our guarantee</span>
+      <div class="real" role="img" aria-label="UnderwriteIQ's own code, lines 312 to 316. A file is fundable only when the score is 700 or higher, card use is 30% or less, and there are zero negative items. Marked: the rule a file has to clear.">
+        <div class="rh2">UnderwriteIQ · underwriter.cjs</div>
+<pre class="code"><span class="l"><span class="ln">312</span>const fundable =</span><span class="l"><span class="ln">313</span>  primary.score != null &amp;&amp;</span><span class="l"><span class="ln">314</span>  primary.score &gt;= 700 &amp;&amp;</span><span class="l"><span class="ln">315</span>  (primary.util == null || primary.util &lt;= 30) &amp;&amp;</span><span class="l"><span class="ln">316</span>  primary.neg === 0;</span></pre>
+        <span class="chip on"><span class="cd"></span>The rule a file has to clear</span>
       </div>
+      <p class="real-src">Copied from UnderwriteIQ's own code.</p>
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Off ONE personal credit file, I've pulled $100,000 credit lines on four different companies, and the banks approved them on stated income without a single income document.</li>
-        <li>That's ten years of doing this on real files, hundreds of them, and I still fund myself this exact way.</li>
-        <li>The capital I've raised for myself, a little over $1,000,000, went into companies that cash flow, and I've taken real losses along the way too.</li>
-        <li>That's what this process is FOR: capital working inside your business, so your growth stops coming out of your own savings.</li>
-        <li>And our side is in writing. Applications go out within 72 business hours. That's our guarantee, and it's in your contract. That typically means approvals come very shortly after.</li>
-        <li>This is that clause, word for word. From the day you sign, your funding advisor has 24 business hours to start, and the clock keeps running even if you're slow to send something.</li>
+        <li>Anyone can say they review your file the way a lender does, so this is the actual rule, copied straight out of our CODE.</li>
+        <li>Inside UnderwriteIQ, a file only counts as fundable when the score is 700 or better, card use sits at 30% or under, and there are ZERO negative items.</li>
+        <li>Every client file at Fundhub runs through this rule before a single application goes anywhere, and that includes yours.</li>
+        <li>This sample misses the card part. Its Visa sits at about 40% used, and the rule allows 30 at most, which is why the paydown comes FIRST on this file.</li>
+        <li>When your own file runs through it, you see exactly which part it clears, and which part gets worked on first.</li>
       </ul>
     </aside>
   </section>
 
   <section class="slide" data-src="We pull your file together right on the call; it's a soft pull, so your score does not move; you see how much you qualify for based on where you're at right now and what's holding the rest back: docs/sops/weekend-2026-10-24/04-sales-call-script.md:69. Fund now, fix first, or both: same file :176. Your advisor shares the screen and goes through your file with you: marketing/vsl/direct-book-thank-you-2026-10-15.md:37 (green-lit). Part 0 rule 8 wording: marketing/ads/RULES.md:44. Only you see a soft pull, and no lender sees it: marketing/offers/fundhub-offers-2026-10-10.pdf p.9 and docs/sops/weekend-2026-10-24/04-sales-call-script.md:156.">
-    <p class="eyebrow">PU-07 / Your call</p>
-    <h2>On your strategy call, you see the exact line the bank will read on your file.</h2>
+    <p class="eyebrow">PU-07 / Your report</p>
+    <h2>You see the line under your own score on your call, before any bank sees it.</h2>
     <ul class="lines">
       <li>Your report gets pulled with a soft pull while you're on the line, and your score stays exactly where it is.</li>
       <li>You see how much you qualify for based on where you're at right now, which item is costing you the rest, and whether you fund now, fix first, or both.</li>
@@ -1011,11 +1005,11 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Remember that one line under your score? On your strategy call, you SEE it on your own file, before any bank does.</li>
+        <li>That line under your score is on YOUR report too, and on your strategy call you see it before any bank does.</li>
         <li>Your report gets pulled with a soft pull while you're on the line, so your score stays exactly where it is and no bank sees it.</li>
         <li>Then we go through it together on one shared screen, line by line, the way the bank is going to read it.</li>
         <li>You see how much you qualify for based on where you're at right now, the red flag holding the rest back, and the exact fix for it.</li>
-        <li>From there the path is simple: fund now, fix first, or both. You leave the call knowing where your money is and how we go get it.</li>
+        <li>From there the path is simple: fund now, fix first, or both, with the fix for that one line already worked out.</li>
         <li>Get on from a computer in a quiet spot, because seeing your own file on a big screen is the whole reason for the call.</li>
       </ul>
     </aside>

@@ -4,13 +4,13 @@
 
 
 
-The first screen of your dashboard tells you whose move it is. On day zero, the move is YOURS.
+Your report writes your first step before you ever log in, so on day zero the screen already says waiting on YOU.
 
 
 
 
 
-Before you ever log in, the engine reads your report and writes your first step from it, with a target taken off your own file.
+The engine read the report and set that step's target straight off the file itself.
 
 
 
@@ -22,13 +22,7 @@ This is a sample file. Up top it says in progress, then waiting on you. Under th
 
 
 
-On this sample they read 702, 709 and 706, and the screen labels them sample scores, so nobody mistakes them for a real pull.
-
-
-
-
-
-I'm going to walk you through this dashboard screen by screen, from day zero to the day your file is ready to fund.
+One tile on this sample's Credit screen starts at 30.6 percent, and by month six it reads something very different.
 
 
 
@@ -58,13 +52,13 @@ A bank reads that same figure. While it stays over thirty percent, the engine wo
 
 
 
-Next to it are hard inquiries, three on this sample, one per bureau. Every bank you apply to reads those first.
+Next to it are hard inquiries, three on this sample, one per bureau, and every bank you apply to sees those.
 
 
 
 
 
-Under the tiles, UnderwriteIQ writes what to work on for this file, in plain sentences. Your checklist starts on that same thing.
+Under the tiles, UnderwriteIQ writes what to work on for this exact file, in plain sentences.
 
 
 
@@ -76,7 +70,7 @@ Under the tiles, UnderwriteIQ writes what to work on for this file, in plain sen
 
 
 
-Back on Progress, look at the card that says your move. It names the step: pay this card down to its target.
+Back on Progress, find the card that says your move. It names the step: pay this card down to its target.
 
 
 
@@ -100,7 +94,7 @@ You can pay toward it in pieces. FinanceOS texts you before each statement date,
 
 
 
-Now jump ahead on the sample. Months later, cards used reads 9.8 percent, excellent, and the screen's own stamp says paydown verified.
+Months later on the same sample, open Money, then Credit. Cards used reads 9.8 percent, excellent, and the screen's own stamp says paydown verified.
 
 
 
@@ -142,7 +136,7 @@ A photo of the receipt or the stamped envelopes clears that step. When a bureau 
 
 
 
-If you'd rather have the Fundhub team run the rounds for you, that's credit optimization, done for you, and we talk it through on the call.
+Every letter comes built off your own report, so your part is a signature, a stamp and a photo of the receipt.
 
 
 
@@ -178,7 +172,7 @@ That confirmation is what closes the step, because the app has no line into the 
 
 
 
-On this sample both steps are done and dated, and both are tagged you. After that, you add the business under Money, then Fundability, where every business gets read by itself.
+On this sample both steps are done and dated, and both are tagged you. After that, you add the business under Money, then Fundability.
 
 
 
@@ -196,31 +190,25 @@ Open Money, then Credit, and step through the months on this sample. On the firs
 
 
 
-The card itself went from $1,720 to $640 across those pulls, and the tile moved from high all the way to excellent.
+The card read $1,720 at the month-2 pull and $640 by month 5, under its $800 target.
 
 
 
 
 
-The scores on this sample stayed where they started, and the screen says so plainly.
+The stamp on the screen reads month 5 pull, then letters regenerated.
 
 
 
 
 
-Look at the stamp on the screen. It reads month 5 pull, then letters regenerated.
+When a newer report lands, the engine rebuilds your letters from it, and your agreement puts that in writing.
 
 
 
 
 
-When a newer report lands, the engine rebuilds your letters from it, and your agreement puts that promise in writing.
-
-
-
-
-
-Your plan never runs on an old report. Every step works off what a bank would see today.
+Your plan always runs on the newest report, so every step works off what a bank would see today.
 
 
 
@@ -250,7 +238,7 @@ When two of its texts go unanswered on the same step, the next check-in is one a
 
 
 
-Your quiet hours and contact limits still apply, so it reaches you only in the hours you set.
+Its check-ins go out between 9 and 5, Arizona time, through the contact preferences you pick.
 
 
 
@@ -262,7 +250,7 @@ A step that stays late goes to a person on the Fundhub team. The team also answe
 
 
 
-The checklist is your part, and the follow-up is ours. That keeps your file moving for twelve months, even in your busiest ones.
+The coach works from your saved messages and call notes, so you never have to explain your file twice.
 
 
 
@@ -280,7 +268,7 @@ Last screen. Open Money, then Next steps. The one main button on that page says 
 
 
 
-Once the engine marks your file ready, our team preps you and reaches out about funding, and that button lets you ask yourself.
+Once the engine marks your file ready, our team preps you and reaches out about funding, and that button lets you ask for it yourself.
 
 
 
@@ -298,10 +286,4 @@ Then the funding sequence starts, about six rounds, with your personal file goin
 
 
 
-And this is what all of it is FOR. The funding goes into your business, the hire, the bigger job, the ads, and your growth runs on capital from your own file.
-
-
-
-
-
-That's the whole dashboard. You fund yourself, and the Blueprint is how your file gets there.
+All of it starts on your strategy call. This same engine reads your own file while you watch, and you see the first step it writes for YOU.
