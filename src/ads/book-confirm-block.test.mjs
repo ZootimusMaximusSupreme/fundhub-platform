@@ -592,7 +592,34 @@ describe("the apply-book push carries the block in the same whole-footer write",
       assert.notEqual(ROW[k].marker, "fh-book-confirm");
       assert.notEqual(ROW[k].marker, "fh-book-close-today");
     }
-    assert.equal(PUSH_MANIFEST.filter((r) => r.footerBlocks).length, 1, "only the calendar page carries a footer block");
+    assert.equal(PUSH_MANIFEST.filter((r) => r.footerBlocks).length, 2, "one acceptance row per funding calendar");
+  });
+
+  test("copy-book keeps accepted-booking tracking without the first calendar's same-day block", () => {
+    const original = ROW["apply-book"];
+    const copy = ROW["copy-book"];
+    assert.equal(original.pageId, "25062844");
+    assert.equal(copy.pageId, "25820226");
+    assert.equal(copy.funnelId, "994750");
+    assert.equal(copy.path, "/funding-book-call--02424");
+    assert.equal(copy.strategy, "head_footer_append_only", "native scheduler is never replaced");
+    assert.deepEqual(copy.extraFooterScripts, original.extraFooterScripts);
+    assert.deepEqual(copy.footerBlocks, [{ fragment: CONFIRM, marker: "fh-book-confirm" }]);
+    assert.equal(PUSH_MANIFEST.filter((r) => r.footerBlocks?.some((b) => b.marker === "fh-book-confirm")).length, 2);
+    assert.equal(PUSH_MANIFEST.filter((r) => r.footerBlocks?.some((b) => b.marker === "fh-book-close-today")).length, 1);
+
+    const blocks = copy.footerBlocks.map(({ fragment, marker }) => ({ block: read(fragment), marker }));
+    const opts = { extraSrcs: copy.extraFooterScripts, blocks };
+    const first = nextFooterCode(LIVE_FOOT, opts);
+    assert.equal(first.changed, true);
+    assert.equal(first.next.split("<!-- fh-book-confirm:start").length - 1, 1);
+    assert.equal(first.next.includes("fh-book-close-today:start"), false);
+    for (const src of [FH_ATTRIBUTION_SRC, FH_EVENTS_SRC, CLARITY_SRC]) {
+      assert.equal(first.next.split(src).length - 1, 1, `${src} appears once`);
+    }
+    const again = nextFooterCode(first.next, { ...opts, existing: first.next });
+    assert.equal(again.changed, false, "a second push cannot duplicate scripts or the block");
+    assert.deepEqual(again.blocks, [{ marker: "fh-book-confirm", action: "none" }]);
   });
 
   test("first push appends the block once after the scripts; the next push sends nothing", () => {

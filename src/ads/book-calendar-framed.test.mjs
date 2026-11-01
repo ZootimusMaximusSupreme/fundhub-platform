@@ -133,6 +133,27 @@ test("manifest pushes the fit layer as its own head_code block on the same nativ
   assert.ok(plan.next.includes(read(FRAMED).trim()), "framed block survives the fit push byte for byte");
 });
 
+test("the copied calendar gets the same framed and fit blocks once, on its own page", () => {
+  for (const [originalKey, copyKey, marker, fragment] of [
+    ["apply-book-framed", "copy-book-framed", "fh-framed", FRAMED],
+    ["apply-book-fit", "copy-book-fit", "fh-book-fit", FIT],
+  ]) {
+    const original = PUSH_MANIFEST.find((r) => r.key === originalKey);
+    const copy = PUSH_MANIFEST.find((r) => r.key === copyKey);
+    assert.equal(copy.pageId, "25820226");
+    assert.equal(copy.funnelId, "994750");
+    assert.notEqual(copy.pageId, original.pageId);
+    assert.equal(copy.strategy, "code_block_upsert");
+    assert.equal(copy.codeSlot, "head_code");
+    assert.equal(copy.marker, marker);
+    assert.equal(copy.fragment, fragment);
+    assert.equal(PUSH_MANIFEST.filter((r) => r.pageId === copy.pageId && r.marker === marker).length, 1);
+    const first = upsertMarkedBlock("", read(fragment), marker);
+    assert.equal(first.changed, true);
+    assert.equal(upsertMarkedBlock(first.next, read(fragment), marker).changed, false);
+  }
+});
+
 test("upsertMarkedBlock appends, swaps only its own block, and skips when unchanged", () => {
   const v1 = "<!-- fh-x:start v1 -->\n<style>a{}</style>\n<!-- fh-x:end -->";
   const v2 = "<!-- fh-x:start v2 -->\n<style>b{}</style>\n<!-- fh-x:end -->";
