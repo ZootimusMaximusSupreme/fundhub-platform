@@ -5,6 +5,7 @@ export const REQUIRED_CI_JOBS = Object.freeze([
   'suite (real Postgres — blocks)', 'screens (real browser)'
 ]);
 export const NEW_PR_CUTOVER = '2026-11-01T07:03:00.000Z';
+export const FILE_OVERLAP_CUTOVER = '2026-11-03T08:00:00.000Z';
 
 export function checkRequiredJobs(jobs) {
   if(!Array.isArray(jobs)) return {ok:false,reason:'Missing CI job list'};
@@ -45,8 +46,11 @@ export function ownerLane(body) {
   return match?.[1]?.toLowerCase()??null;
 }
 
-export function prOwnershipDecision({current,files,peers,peerFiles,cutover=NEW_PR_CUTOVER}) {
-  const isNew=Date.parse(current?.created_at??'')>=Date.parse(cutover);
+export function prOwnershipDecision({current,files,peers,peerFiles,
+  laneCutover=NEW_PR_CUTOVER,overlapCutover=FILE_OVERLAP_CUTOVER}) {
+  const created=Date.parse(current?.created_at??'');
+  const isNew=created>=Date.parse(laneCutover);
+  const overlapGateActive=created>=Date.parse(overlapCutover);
   const lane=ownerLane(current?.body);
   const fileSet=new Set((files||[]).filter(f=>typeof f==='string'&&f.length));
   const openPeers=(peers||[]).filter(pr=>pr?.state==='open'&&pr.number!==current?.number);
@@ -70,11 +74,11 @@ export function prOwnershipDecision({current,files,peers,peerFiles,cutover=NEW_P
       (pr.created_at===current?.created_at&&pr.number<current.number);
     overlaps.push({number:pr.number,title:pr.title||'',files:[...new Set(shared)].sort(),isOlder});
   }
-  const blockers=isNew?overlaps.filter(x=>x.isOlder&&!ancestors.has(x.number)):[];
+  const blockers=overlapGateActive?overlaps.filter(x=>x.isOlder&&!ancestors.has(x.number)):[];
   const problems=[];
   if(isNew&&!lane)problems.push('Add Owner lane: <team-name> to PR description');
   if(blockers.length)problems.push('Files are already claimed by older open PRs');
-  return {ok:problems.length===0,isNew,lane,overlaps,blockers,problems};
+  return {ok:problems.length===0,isNew,overlapGateActive,lane,overlaps,blockers,problems};
 }
 
 export function prOrderDecision({current,peers,cutover=NEW_PR_CUTOVER}) {

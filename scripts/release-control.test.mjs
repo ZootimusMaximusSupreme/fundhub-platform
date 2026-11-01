@@ -47,7 +47,14 @@ test('new overlapping PR is blocked, legacy Monday queue is not',()=>{
   assert.equal(prOwnershipDecision(input).ok,false);
   assert.equal(prOwnershipDecision({...input,current:{...current,created_at:'2026-11-01T07:02:59Z'}}).ok,true);
   assert.equal(prOwnershipDecision({...input,current:{...current,created_at:'2026-11-01T07:03:37Z'},
-    peers:[{...older,created_at:'2026-11-01T07:02:00Z'}]}).ok,false);
+    peers:[{...older,created_at:'2026-11-01T07:02:00Z'}]}).ok,true);
+  const earlierPeer={...older,created_at:'2026-11-03T07:00:00Z'};
+  assert.equal(prOwnershipDecision({...input,current:{...current,created_at:'2026-11-03T07:59:59Z'},
+    peers:[earlierPeer]}).overlapGateActive,false);
+  assert.equal(prOwnershipDecision({...input,current:{...current,created_at:'2026-11-03T08:00:00Z'},
+    peers:[earlierPeer]}).ok,false);
+  assert.equal(prOwnershipDecision({...input,current:{...current,created_at:'2026-11-01T07:03:37Z',
+    body:'No owner'},peers:[]}).ok,false);
   assert.equal(prOwnershipDecision({...input,current:{...current,body:'No owner'}}).ok,false);
   assert.equal(prOwnershipDecision({...input,peers:[{...older,state:'closed'},later]}).ok,true);
   assert.equal(prOwnershipDecision({...input,files:['src/new.mjs']}).ok,true);
