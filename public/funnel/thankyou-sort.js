@@ -506,7 +506,7 @@
     setText(hero.querySelector(".eyebrow"), "Confirmed · Funding Path");
     setText(hero.querySelector("h1"), "Congratulations!");
     setText(hero.querySelector("h1.sec"), "Your call is booked.");
-    setText(hero.querySelector(".lede"), "Accept the calendar invite in your email to lock in your time. We'll be in touch before it starts.");
+    setText(hero.querySelector(".lede"), "We'll text you to confirm your call and be in touch before it starts. Reply to our text if you have questions.");
     setText(prose && prose.querySelector("p:not(.lead)"), "Check your email for the confirmation and calendar invite.");
     show(expect, true);
     show(prep, true);
