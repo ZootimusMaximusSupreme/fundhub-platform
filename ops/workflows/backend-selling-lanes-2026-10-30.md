@@ -633,12 +633,17 @@ Chris on the first build: the decks explain what Fundhub does but never why it m
 
 | Writer | Decks | Status |
 |---|---|---|
-| Lead session | pre-underwriting | done, PASS, with Chris for review |
-| W1 Funding | funding-sequence, apply-yourself, money-on-the-table, after-you-say-yes | waiting on Chris's review |
-| W2 Credit side | bank-said-no, thirteen-points, card-paydown, credit-optimization | waiting on Chris's review |
-| W3 Blueprint | credit-partner, business-one-two, blueprint-12-months, blueprint-value, blueprint-in-action | waiting on Chris's review |
-| W4 Trust and process | soft-pull, the-call, who-we-are, your-data-is-safe | waiting on Chris's review |
-| W5 Pre-close | cost-of-waiting, the-maximum, the-money-talk, tried-before | waiting on Chris's review |
+| Lead session | pre-underwriting | done, check.mjs PASS; copy reviewer running |
+| Sample agent | marketing/slideshows/samples/red-flag-file.* (a drastic today-versus-after sample through UnderwriteIQ) | running |
+| W1 Funding | funding-sequence, apply-yourself, after-you-say-yes | running |
+| W2 Money and pre-close | the-maximum, cost-of-waiting, money-on-the-table (waits on the sample) | running |
+| W3 Credit side | bank-said-no, credit-optimization, card-paydown | running |
+| W4 Credit side | thirteen-points, credit-partner, business-one-two | running |
+| W5 Blueprint | blueprint-12-months, blueprint-value, blueprint-in-action | running |
+| W6 Trust | who-we-are, your-data-is-safe, soft-pull | running |
+| W7 Call and objections | the-call, the-money-talk, tried-before | running |
+
+Chris, 18:40: "I trust you. Spin up a lot of agents." He waived the review of the model deck before rollout and asked that the diagrams be checked so they actually explain things (each writer screenshots every slide with `shoot.mjs` and redraws weak diagrams), and that every compare be drastic (the sample agent's file, built through the real engine).
 
 **Writer prompt (the lead session starts the writers; Chris pastes nothing).** Each writer gets this prompt with its deck list: read Copybot and its references, `marketing/ads/RULES.md` Part 0 and 1, the copy reviewer, the model deck and this section; write each deck as JSON for `set-copy.mjs`; keep every picture, slide count, lane and fact; add a source to `data-src` for any new fact; script 850 to 1,000 words, blocks of 25 to 30 words, CAPS punch words; every line fresh; `check.mjs` must PASS; build film and talk; touch only its own decks; no git.
 

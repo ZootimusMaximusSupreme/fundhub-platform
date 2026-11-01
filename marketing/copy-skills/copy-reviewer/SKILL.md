@@ -73,6 +73,12 @@ Read the piece out loud in your head, as a business owner who already knows what
 - No line copied from Chris's ads, VSLs, call scripts or another piece (the machine check).
 - No line that restates one of his ad angles with a few words swapped. Each piece says its point in its own words. His set phrases above are the only lines that repeat.
 
+**Pictures and diagrams** (read `marketing/copy-skills/visual-thinking/SKILL.md`; look at the slide at phone size with `node marketing/slideshows/shoot.mjs <deck.html> <out-dir>`)
+- Does each picture prove or explain the slide's one point at a glance on a phone, readable without zooming?
+- Real beats drawn (`.ai/rules/show-real-proof.md`): a drawing where a real report, clause, screen or approval exists is a FIX.
+- Does a diagram show the real mechanism (what causes what, in what order), with the one thing that matters marked in ink? A generic box-and-arrow picture that a viewer learns nothing from is a FIX.
+- Is every compare drastic (see Facts), and do the picture's figures match the words and the sample file?
+
 **Slideshow scripts**
 - About 850 to 1,000 words per deck, which is about 5 minutes at Chris's reading pace (about 200 words a minute).
 - Each `<li>` in a slide's talk track is one teleprompter block: about 25 to 30 words, ending on a full sentence.
