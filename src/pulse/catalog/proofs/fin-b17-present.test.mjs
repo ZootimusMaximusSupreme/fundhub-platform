@@ -42,7 +42,7 @@ const SURFACE = "present.html (+ present.js, contract-send.js)";
 
 const MAIN_RUN = [...Array(22)].map((_, i) => `S-${String(i + 1).padStart(2, "0")}`).concat(["S-23", "S-24"]);
 const STACK_RUN = ["B-01", "B-02", "B-03", "B-04", "B-05", "B-06"];
-const VISUAL_NAMES = ["yourPath", "moneyLevers", "companies", "blueprintDemo", "journey"];
+const VISUAL_NAMES = ["yourPath", "fileFindings", "moneyLevers", "proofWall", "companies", "blueprintDemo", "journey"];
 
 function payload({ tier = "FULL_FUNDING", negItems = 3, available = true, businesses = [], softPull = undefined, visual = undefined } = {}) {
   return {
@@ -673,7 +673,7 @@ test("the six objection buttons open their words, Back closes them, and the jump
     // the list is on every slide of 7 The ask AND of 9 Paperwork (where the ask is made), and on no other slide
     for (const tier of ["FULL_FUNDING", "REPAIR_ONLY"]) {
       const seen = await walkAllSlides(tier);
-      assert.equal(seen.length, tier === "FULL_FUNDING" ? 32 : 31, `${tier}: every slide it can reach (C-01 is Door 1 only)`);
+      assert.equal(seen.length, tier === "FULL_FUNDING" ? 34 : 32, `${tier}: every slide it can reach (P-01 and C-01 are funding only)`);
       for (const slide of seen) {
         assert.equal(slide.objections, OBJECTION_SLIDES.includes(slide.code), `${tier} ${slide.code}: objection buttons ${OBJECTION_SLIDES.includes(slide.code) ? "belong" : "do not belong"} here`);
       }
@@ -812,8 +812,8 @@ for (const [p, phaseName, first] of PHASES) {
         const seen = await walkAllSlides(tier);
         for (const code of slides) {
           const slide = seen.find((x) => x.code === code);
-          if (tier === "REPAIR_ONLY" && code === "C-01") {
-            assert.equal(slide, undefined, "C-01, more companies, is Door 1 only: a repair file never reaches it");
+          if (tier === "REPAIR_ONLY" && (code === "P-01" || code === "C-01")) {
+            assert.equal(slide, undefined, `${code} is funding only: a repair file never reaches it`);
             continue;
           }
           assert.ok(slide, `${tier}: ${code} was reached`);
@@ -1215,7 +1215,7 @@ test("each visual is called where 10.0 places it, with the ctx 10.8 names, and d
     const body = /data-fhv="([a-zA-Z]+)"/.exec(funding.client());
     if (body) where.push([funding.slide(), body[1]]);
   }
-  assert.deepEqual(where, [["L-01", "moneyLevers"], ["S-08", "yourPath"], ["C-01", "companies"]], "Door 1: A after S-07, E on S-08, B in Door 1");
+  assert.deepEqual(where, [["F-01", "fileFindings"], ["L-01", "moneyLevers"], ["S-08", "yourPath"], ["P-01", "proofWall"], ["C-01", "companies"]], "Funding: file findings and levers after S-07; proof follows the S-16 menu");
   const call = funding.visualCalls.find((c) => c.name === "companies");
   assert.deepEqual(Object.keys(call.ctx).sort(), [...CTX_KEYS].sort());
   assert.equal(call.ctx.door, "fund_plus_optimize");
@@ -1234,7 +1234,7 @@ test("each visual is called where 10.0 places it, with the ctx 10.8 names, and d
     const body = /data-fhv="([a-zA-Z]+)"/.exec(repair.client());
     if (body) seen.push([repair.slide(), body[1]]);
   }
-  assert.deepEqual(seen, [["L-01", "moneyLevers"], ["S-08", "yourPath"], ["B-03", "blueprintDemo"], ["S-15", "journey"]], "Door 3 gets C on B-03, Door 4 gets D on S-15");
+  assert.deepEqual(seen, [["F-01", "fileFindings"], ["L-01", "moneyLevers"], ["S-08", "yourPath"], ["B-03", "blueprintDemo"], ["S-15", "journey"]], "Repair: findings and levers show before the Blueprint and journey");
   assert.equal(repair.visualCalls.find((c) => c.name === "yourPath").ctx.door, "blueprint", "a repair file leads with the Blueprint");
   repair.press("phase:07").walk(2);
   repair.press("rung:0").press("phase:05");

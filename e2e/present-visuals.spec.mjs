@@ -6,7 +6,7 @@
 // e2e/fixtures/present-visuals-fixtures.js (the engine's own amounts, see its
 // header). No backend, no session, nothing saved, sent or charged.
 //
-// It proves: at 1440 the three visuals draw the file's own amounts; a closer can
+// It proves: at 1440 the visuals draw the file's own amounts; a closer can
 // tap through the levers, the companies and the path and the numbers follow; at
 // 390 everything stacks in one column with no sideways scroll, 16px body text,
 // 13px captions and 44px taps; the no-data, sample, bad-data, mismatch, repair
@@ -47,10 +47,11 @@ const settle = (page) => page.waitForTimeout(900); // the count-up and the bars 
 
 const path_ = (page) => page.locator('[data-fhv="path"]');
 const levers = (page) => page.locator('[data-fhv="levers"]');
+const findings = (page) => page.locator('[data-fhv="findings"]');
 const companies = (page) => page.locator('[data-fhv="companies"]');
 
 test.describe("present visuals, 1440 wide", () => {
-  test("the three visuals draw the file's own amounts and the setter's words", async ({ page }) => {
+  test("the visuals draw the file's own amounts and the setter's words", async ({ page }) => {
     const errors = await open(page);
     await expect(path_(page)).toContainText("Your file today");
     await expect(path_(page)).toContainText("Your goal");
@@ -63,7 +64,7 @@ test.describe("present visuals, 1440 wide", () => {
        the whole gap is on the table from the first frame. */
     await expect(levers(page).locator(".fhv-levers-headcell.is-opt .fhv-ui-num")).toHaveText("$96,524");
     await expect(levers(page).locator(".fhv-levers-headcell.is-opt")).toContainText("Nothing applied yet");
-    await expect(levers(page).locator(".fhv-levers-gap")).toContainText("$78,101 left on the table");
+    await expect(levers(page).locator(".fhv-levers-gap")).toContainText("$78,101 projected increase");
     await expect(levers(page).locator(".fhv-levers-outlinelabel")).toHaveText("$174,625");
     await expect(levers(page).locator(".fhv-levers-step")).toHaveCount(2);
     await expect(levers(page).locator('.fhv-levers-step[aria-pressed="true"]')).toHaveCount(0);
@@ -108,7 +109,7 @@ test.describe("present visuals, 1440 wide", () => {
     await expect(reset).toBeDisabled();
     await levers(page).getByRole("button", { name: /Pay the cards down/ }).click();
     await expect(optNum).toHaveText("$104,775");
-    await expect(gap).toContainText("$78,101 left on the table");
+    await expect(gap).toContainText("$78,101 projected increase");
     await expect(levers(page).locator(".fhv-levers-headcell.is-opt")).toContainText("After lever 1 of 2.");
     await expect(levers(page).locator(".fhv-levers-step").nth(0)).toHaveAttribute("aria-pressed", "true");
     await expect(levers(page).locator(".fhv-levers-step").nth(1)).toHaveAttribute("aria-pressed", "false");
@@ -120,7 +121,7 @@ test.describe("present visuals, 1440 wide", () => {
     await shot(page, "levers-step1-1440");
     await levers(page).getByRole("button", { name: /Clean the file/ }).click();
     await expect(optNum).toHaveText("$174,625");
-    await expect(gap).toContainText("$78,101 left on the table");
+    await expect(gap).toContainText("$78,101 projected increase");
     await settle(page);
     const fill2 = await levers(page).locator(".fhv-levers-bar.is-opt").boundingBox();
     expect(fill2.height).toBeGreaterThan(fill1.height);
@@ -132,7 +133,7 @@ test.describe("present visuals, 1440 wide", () => {
     await reset.click();
     await expect(optNum).toHaveText("$96,524");
     await expect(levers(page)).toContainText("Nothing applied yet");
-    await expect(gap).toContainText("$78,101 left on the table");
+    await expect(gap).toContainText("$78,101 projected increase");
     await expect(reset).toBeDisabled();
 
     /* companies */
@@ -178,27 +179,28 @@ test.describe("present visuals, 1440 wide", () => {
     expect(errors).toEqual([]);
 
     errors = await open(page, { state: "sample" });
-    await expect(page.locator(".fhv-ui-tag")).toHaveCount(3);
+    await expect(page.locator(".fhv-ui-tag")).toHaveCount(4);
     await expect(page.locator(".fhv-ui-tag").first()).toHaveText("Sample");
     await settle(page);
     await shot(page, "sample-1440");
     expect(errors).toEqual([]);
 
     errors = await open(page, { state: "bad" });
-    await expect(page.locator("[data-fhv]")).toHaveCount(3);
+    await expect(page.locator("[data-fhv]")).toHaveCount(4);
     await shot(page, "bad-1440");
     expect(errors).toEqual([]);
   });
 
   test("mismatched info: three reports side by side, marked with a word, no amount", async ({ page }) => {
-    const errors = await open(page, { state: "mismatch", only: "levers" });
-    await expect(levers(page).locator(".fhv-levers-report")).toHaveCount(3);
-    await expect(levers(page).locator(".fhv-levers-cell.is-diff").first()).toContainText("differs");
-    await expect(levers(page)).toContainText("Banks approve you for less when your info doesn't match on every report.");
-    const matchText = await levers(page).locator(".fhv-levers-match").innerText();
+    const errors = await open(page, { state: "mismatch" });
+    await findings(page).locator('[data-fhv-act="findings:open:5"]').click();
+    await expect(findings(page).locator(".fhv-levers-report")).toHaveCount(3);
+    await expect(findings(page).locator(".fhv-levers-cell.is-diff").first()).toContainText("differs");
+    await expect(findings(page)).toContainText("A mismatch can make a lender question the file. Confirm the right value before applying.");
+    const matchText = await findings(page).locator(".fhv-levers-match").innerText();
     expect(matchText).not.toMatch(/\$\d/);
     await expect(levers(page).locator(".fhv-levers-headcell").first()).toContainText("$7,936");
-    const reports = await levers(page).locator(".fhv-levers-report").all();
+    const reports = await findings(page).locator(".fhv-levers-report").all();
     const boxes = await Promise.all(reports.map((r) => r.boundingBox()));
     expect(boxes[0].x).toBeLessThan(boxes[1].x);
     expect(boxes[1].x).toBeLessThan(boxes[2].x);
@@ -211,7 +213,7 @@ test.describe("present visuals, 1440 wide", () => {
     let errors = await open(page, { state: "repair" });
     await expect(levers(page)).toContainText("One lever");
     await expect(levers(page).locator(".fhv-levers-headcell.is-opt .fhv-ui-num")).toHaveText("$0");
-    await expect(levers(page).locator(".fhv-levers-gap")).toContainText("$8,250 left on the table");
+    await expect(levers(page).locator(".fhv-levers-gap")).toContainText("$8,250 projected increase");
     await levers(page).getByRole("button", { name: /Clean the file/ }).click();
     await expect(levers(page).locator(".fhv-levers-headcell.is-opt .fhv-ui-num")).toHaveText("$8,250");
     await expect(levers(page).locator(".fhv-levers-tier")).toContainText("Repair only");
@@ -236,7 +238,7 @@ test.describe("present visuals, 1440 wide", () => {
     await expect(levers(page).locator(".fhv-levers-step")).toHaveCount(2);
     await expect(levers(page).locator(".fhv-levers-step").nth(1)).toContainText("Add accounts");
     await expect(levers(page)).not.toContainText("Clean the file");
-    await expect(levers(page).locator(".fhv-levers-gap")).toContainText("$40,151 left on the table");
+    await expect(levers(page).locator(".fhv-levers-gap")).toContainText("$40,151 projected increase");
     await settle(page);
     await shot(page, "thin-levers-1440");
     expect(errors).toEqual([]);
@@ -246,7 +248,8 @@ test.describe("present visuals, 1440 wide", () => {
     await expect(levers(page).locator(".fhv-levers-headcell.is-opt .fhv-ui-num")).toHaveCount(0);
     await expect(levers(page).locator(".fhv-levers-step")).toHaveCount(0);
     await expect(levers(page).locator(".fhv-levers-chip")).toHaveCount(0);
-    await expect(levers(page).locator(".fhv-levers-match")).toBeVisible();
+    await findings(page).locator('[data-fhv-act="findings:open:0"]').click();
+    await expect(findings(page).locator(".fhv-levers-match")).toBeVisible();
     await companies(page).getByRole("button", { name: /Add a company/ }).click();
     await expect(companies(page)).toContainText("If you add 1 company");
     await expect(companies(page).locator(".fhv-companies-headcell.is-added .fhv-ui-num")).toHaveCount(0);
@@ -317,8 +320,9 @@ test.describe("present visuals, 390 wide", () => {
   });
 
   test("the mismatch reports stack on the phone", async ({ page }) => {
-    const errors = await open(page, { state: "mismatch", only: "levers", width: 390, height: 844 });
-    const reports = await levers(page).locator(".fhv-levers-report").all();
+    const errors = await open(page, { state: "mismatch", only: "findings", width: 390, height: 844 });
+    await findings(page).locator('[data-fhv-act="findings:open:5"]').click();
+    const reports = await findings(page).locator(".fhv-levers-report").all();
     const boxes = await Promise.all(reports.map((r) => r.boundingBox()));
     expect(boxes[1].y).toBeGreaterThan(boxes[0].y + boxes[0].height - 1);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);

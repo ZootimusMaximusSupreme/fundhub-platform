@@ -45,12 +45,13 @@ const COURSE_OFF = "var COURSE_LIVE = false;";
 assert.ok(PRESENT_JS.includes(COURSE_OFF), "present.js lost its one course switch");
 const PRESENT_JS_COURSE = PRESENT_JS.replace(COURSE_OFF, "var COURSE_LIVE = true;");
 
-// Stand-ins for the three slide visual files (section 10.8), served at the paths present.html names. Each draws a
+// Stand-ins for the slide visual files (section 10.8), served at the paths present.html names. Each draws a
 // marked block and says which door it was handed.
 const VISUAL_FILES = {
-  "present-visuals.js": ["yourPath", "moneyLevers", "companies"],
+  "present-visuals.js": ["yourPath", "fileFindings", "moneyLevers", "companies"],
   "present-blueprint-demo.js": ["blueprintDemo"],
   "present-journey.js": ["journey"],
+  "present-proof-wall.js": ["proofWall"],
 };
 const standIn = (names) => `(function () { var v = window.FHDeckVisuals = window.FHDeckVisuals || {}; ${names
   .map((n) => `v.${n} = function (ctx) { return '<div data-fhv="${n}" data-door="' + ctx.door + '">${n} drawn</div>'; };`).join(" ")} })();`;
@@ -418,7 +419,7 @@ test("the six objection buttons are on every slide of 7 The ask and 9 Paperwork 
 
     // where the list is: found by walking the deck with real presses
     const seen = await walkDeck(page);
-    assert.equal(seen.length, 32);
+    assert.equal(seen.length, 34);
     for (const slide of seen) {
       const listed = OBJECTION_SLIDES.includes(slide.code);
       assert.equal(slide.objections, listed ? 6 : 0, `${slide.code}: ${listed ? "the six objections are on this slide" : "no objection buttons here"}`);
@@ -571,7 +572,7 @@ test("the page's own script tags load the visual files before the deck, each vis
     const v = await drawn(funding.page);
     if (v) seen.push([await slideCode(funding.page), ...v]);
   }
-  assert.deepEqual(seen, [["L-01", "moneyLevers", "fund_plus_optimize"], ["S-08", "yourPath", "fund_plus_optimize"], ["C-01", "companies", "fund_plus_optimize"]]);
+  assert.deepEqual(seen, [["F-01", "fileFindings", "fund_plus_optimize"], ["L-01", "moneyLevers", "fund_plus_optimize"], ["S-08", "yourPath", "fund_plus_optimize"], ["P-01", "proofWall", "fund_plus_optimize"], ["C-01", "companies", "fund_plus_optimize"]]);
   assert.deepEqual(funding.errors, []);
   await funding.page.close();
 
@@ -582,7 +583,7 @@ test("the page's own script tags load the visual files before the deck, each vis
     const v = await drawn(repair.page);
     if (v) met.push([await slideCode(repair.page), ...v]);
   }
-  assert.deepEqual(met, [["L-01", "moneyLevers", "blueprint"], ["S-08", "yourPath", "blueprint"], ["B-03", "blueprintDemo", "blueprint"], ["S-15", "journey", "blueprint"]]);
+  assert.deepEqual(met, [["F-01", "fileFindings", "blueprint"], ["L-01", "moneyLevers", "blueprint"], ["S-08", "yourPath", "blueprint"], ["B-03", "blueprintDemo", "blueprint"], ["S-15", "journey", "blueprint"]]);
   assert.deepEqual(repair.errors, []);
   await repair.page.close();
 
