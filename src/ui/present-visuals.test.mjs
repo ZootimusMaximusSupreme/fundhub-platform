@@ -391,7 +391,7 @@ describe("other files", () => {
     for (const b of ["Experian", "TransUnion", "Equifax"]) assert.ok(block.includes(b), b);
     assert.ok(block.includes("Name · differs"));
     assert.ok(block.includes("Not on this report"), "a missing bureau value is named");
-    assert.ok(block.includes("Banks approve you for less when your info doesn't match on every report."));
+    assert.ok(block.includes("A mismatch can make a lender question the file. Confirm the right value before applying."));
     assert.deepEqual(block.match(/\$\d/g), null, "no dollar amount on mismatches");
     const levers = T.V.moneyLevers(T.ctxFor("mismatch"));
     assert.ok(levers.includes("$7,936") && levers.includes("$33,069"), "the levers still show their amounts");

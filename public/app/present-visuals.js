@@ -589,7 +589,7 @@
     }).join("");
     return '<div class="fhv-levers-match"><span class="fhv-ui-eyebrow">Your info on the three reports</span>' +
       '<div class="fhv-levers-reports">' + cols + "</div>" +
-      '<p class="fhv-ui-text is-strong">Banks approve you for less when your info doesn\'t match on every report.</p></div>';
+      '<p class="fhv-ui-text is-strong">A mismatch can make a lender question the file. Confirm the right value before applying.</p></div>';
   }
 
   V.moneyLevers = function (ctx) {

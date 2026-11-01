@@ -196,7 +196,7 @@ test.describe("present visuals, 1440 wide", () => {
     await findings(page).locator('[data-fhv-act="findings:open:5"]').click();
     await expect(findings(page).locator(".fhv-levers-report")).toHaveCount(3);
     await expect(findings(page).locator(".fhv-levers-cell.is-diff").first()).toContainText("differs");
-    await expect(findings(page)).toContainText("Banks approve you for less when your info doesn't match on every report.");
+    await expect(findings(page)).toContainText("A mismatch can make a lender question the file. Confirm the right value before applying.");
     const matchText = await findings(page).locator(".fhv-levers-match").innerText();
     expect(matchText).not.toMatch(/\$\d/);
     await expect(levers(page).locator(".fhv-levers-headcell").first()).toContainText("$7,936");
