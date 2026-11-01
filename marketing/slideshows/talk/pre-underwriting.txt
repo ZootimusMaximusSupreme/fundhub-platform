@@ -1,99 +1,271 @@
-Pre-Underwriting
+[Slide 1]
 
-1. PU-01 / The red flag — When a bank denies good credit, the reason was on the credit report first.
 
-When a bank says no to good credit, the reason was already sitting on the credit report.
 
-Look at this sample report. TransUnion, FICO Score 9, a 706. That's good credit.
 
-Now read the lines right under the score. The bureau prints the reasons that hold the score down, in its own words.
 
-The top line says the balances on the cards are too high for the limits. That's the red flag.
+A bank decides your application off ONE line under your score. A 706 can still fail that line, and the bank only tells you after the no.
 
-The bank reads that line. A 706 doesn't change what the line says.
 
-If nobody reads it before you apply, the bank finds it before you do, and you get the no.
 
-2. PU-02 / The reasons — The top of your credit report lists the reasons a bank says yes or no.
 
-Every credit report lists reasons under the score, and almost everybody scrolls right past them.
 
-Those lines are what the bank weighs when it decides.
+Your own report already prints which line that is for you. It's sitting on your file right now, before a single application goes anywhere.
 
-When a bank turns you down, the letter it mails gives those same reasons.
 
-So the answer was on your file the whole time. It just has to get read before you apply, not after.
 
-That's the first thing we do with every file. We read those lines first.
 
-Your story: a client who showed you a denial letter, and the same reason was already on their report.
 
-3. PU-03 / The cost — A no from a bank still costs you a hard inquiry.
+This is a sample TransUnion report on FICO Score 9. The score reads 706, which is GOOD credit, and on paper this file gets a yes.
 
-Here's what applying with that red flag costs you.
 
-Almost every application you send is a hard pull, and each one costs you.
 
-This sample file already carries three hard inquiries, one on each bureau: two card applications and a request for a higher limit.
 
-A no from the bank doesn't take the inquiry back. It stays on your report, and the next bank sees it.
 
-The banks see the inquiries stack, and they start denying you.
+Now read right under the score. The bureau prints the reasons holding it down, in its own words, and the top one says the card balances run too high.
 
-So an application with the red flag still on the file costs you twice: the no, and the inquiry that stays.
 
-4. PU-04 / Pre-underwriting — We review your file the way a lender does, before a single application goes out.
 
-This is what we do instead. We review your file the way a lender does, before a single application goes out.
 
-That's pre-underwriting, and we use the same models the banks use.
 
-Our UnderwriteIQ system reads your card balances, your hard inquiries, your main card and any negative accounts.
+That's the RED FLAG. The bank weighs that reason line, and that line is what turns a good score into a denial letter.
 
-Walk the chart with me. Your report goes in, we review it like a lender, and we ask one question: is there a red flag?
 
-If there is, we fix it first, then we review the file again.
 
-If there isn't, your file goes to the banks that fit it.
 
-Most banks approve good credit. The whole game is catching the one red flag that gets you denied.
 
-5. PU-05 / The right banks — Your applications go only to the banks that fit your file.
+And that same line shows up in one more place: the letter the bank mails you after it says no.
 
-Your applications only go to the banks that fit your file.
 
-We check your file against each bank first, so you only apply where your file makes sense.
 
-Look at the map. Your file sits in the middle, and the lines only run to the banks that fit it.
 
-Our bank matching picks the banks that approve files like yours.
 
-We pick the banks and the order, and the banks say yes or no. That's why the review up front matters so much.
+[Slide 2]
 
-We put so much on the line, so every application has to count.
 
-6. PU-06 / The guarantee — Applications go out within 72 business hours.
 
-Here's how fast it moves. Applications go out within 72 business hours. That's our guarantee, and it's in your contract. That typically means approvals come very shortly after.
 
-This is the actual clause from the agreement. The clock starts when you sign.
 
-Within 24 business hours, a funding advisor is working your file.
+Here's what's really going on. When a bank turns you down, its letter lists the reasons, and those reasons come straight off your report.
 
-Your delay doesn't pause our clock either. That's written in there too.
 
-We put it in writing because we fulfill. We keep our word.
 
-7. PU-07 / Your call — On your call, we review your file with you, the way a lender does.
 
-On your call, we review your file with you, the way a lender does.
 
-We pull your file together right there on the call. It's a soft pull, so your score does not move.
+Put the two side by side. The line on your report and the line on the bank's letter match WORD for word.
 
-You see what the file says: how much you qualify for based on where you're at right now, and what's holding the rest back.
 
-Then you see the way to go: fund now, fix first, or both.
 
-Join from a computer somewhere quiet, because your advisor shares the screen and goes through your file with you.
 
-We're looking for action takers, not shoppers. That's who this call is built for.
+
+So the bank's answer was readable before you ever applied. Somebody just had to read your file the way the bank reads it, before the bank did.
+
+
+
+
+
+And every reason on that list has a fix. A high balance comes down, a new inquiry gets disputed, and each fix changes what the bank sees.
+
+
+
+
+
+Read it first, and the reason the bank was going to turn you down for is gone before it ever sees your application.
+
+
+
+
+
+[Slide 3]
+
+
+
+
+
+Here's what a no really costs you. That money was going to be the hire you keep putting off, the bigger job you passed on, or the ads you want running.
+
+
+
+
+
+Each application you send sets off a HARD pull. Even when the bank says no, that inquiry stays put, and every bank after it can see it.
+
+
+
+
+
+This sample file already carries three. One on Experian, one on TransUnion, one on Equifax, from two card applications and one ask for a higher limit.
+
+
+
+
+
+The next bank reads every one of them before it decides. Stack enough and the banks start saying no, even to a good score.
+
+
+
+
+
+That's why the order flips. Your file gets read and fixed FIRST, and only then does an application go out.
+
+
+
+
+
+[Slide 4]
+
+
+
+
+
+So here's what we do instead. We review your file the way a lender does, BEFORE a single application leaves our hands. That's pre-underwriting.
+
+
+
+
+
+Our system, UnderwriteIQ, reads your file with the same kind of models the banks use. It checks your card balances, your inquiries, your main card and any negative accounts.
+
+
+
+
+
+When it finds a red flag, that gets handled FIRST. On this sample file, it means paying the high card down to 10% of its limit before the statement closes.
+
+
+
+
+
+That's a SIMPLE tweak. It changes the balance the bureau reports, and that changes the reason line the bank reads.
+
+
+
+
+
+For you, that means your first application goes in WITHOUT the line the bank was going to turn you down for.
+
+
+
+
+
+A clean file is half of it, and where that file goes, in what order, decides the rest.
+
+
+
+
+
+[Slide 5]
+
+
+
+
+
+Why does it matter where your file goes? Every bank you apply to leaves its mark on your report, so each application has to go where your file fits.
+
+
+
+
+
+We match your file against each bank before anything goes out, and it only goes to banks that APPROVE files like yours.
+
+
+
+
+
+Then comes the ORDER. Each bank reads what the last one did, so the right first approval sets up the next one, and that one sets up the one after.
+
+
+
+
+
+In that order, your approvals build on each other, and that's how one personal file gets to the maximum amount of funding.
+
+
+
+
+
+We choose the banks and the order, and each bank still makes its own decision. That's exactly why your file gets read before any of them see it.
+
+
+
+
+
+[Slide 6]
+
+
+
+
+
+Off ONE personal credit file, I've pulled $100,000 credit lines on four different companies, and the banks approved them on stated income without a single income document.
+
+
+
+
+
+That's ten years of doing this on real files, hundreds of them, and I still fund myself this exact way.
+
+
+
+
+
+The capital I've raised for myself, a little over $1,000,000, went into companies that cash flow, and I've taken real losses along the way too.
+
+
+
+
+
+That's what this process is FOR: capital working inside your business, so your growth stops coming out of your own savings.
+
+
+
+
+
+And our side is in writing. Applications go out within 72 business hours. That's our guarantee, and it's in your contract. That typically means approvals come very shortly after.
+
+
+
+
+
+This is that clause, word for word. From the day you sign, your funding advisor has 24 business hours to start, and the clock keeps running even if you're slow to send something.
+
+
+
+
+
+[Slide 7]
+
+
+
+
+
+Remember that one line under your score? On your strategy call, you SEE it on your own file, before any bank does.
+
+
+
+
+
+Your report gets pulled with a soft pull while you're on the line, so your score stays exactly where it is and no bank sees it.
+
+
+
+
+
+Then we go through it together on one shared screen, line by line, the way the bank is going to read it.
+
+
+
+
+
+You see how much you qualify for based on where you're at right now, the red flag holding the rest back, and the exact fix for it.
+
+
+
+
+
+From there the path is simple: fund now, fix first, or both. You leave the call knowing where your money is and how we go get it.
+
+
+
+
+
+Get on from a computer in a quiet spot, because seeing your own file on a big screen is the whole reason for the call.

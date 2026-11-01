@@ -15,6 +15,7 @@ alwaysApply: true
 - Ad scripts still go through the `fundhub-ad-writer` checker before Chris sees them. The ad writer writes the Copybot way.
 - One idea per piece. Every big claim has its support right next to it, or it gets smaller, or it goes.
 - Law: show-real-proof (.ai/rules/show-real-proof.md) - show the real thing whenever we have it, or merge it with a little diagram; the picture and the words prove each other (owner-set 2026-10-31).
+- Double-check every piece before Chris sees it or it ships (owner-set 2026-10-31). A separate agent that did not write the copy runs `marketing/copy-skills/copy-reviewer/SKILL.md`: the parrot check (`node scripts/copy/recycled-lines.mjs`, no line copied from Chris's ads, VSLs, call scripts or another piece), the persuasion read (every slide explains the process, why it matters to the viewer, and how it changes their life), and Chris's never list. Chris: "so it's not sounding like a parrot to my marketing angles."
 
 ## Never
 

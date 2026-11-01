@@ -81,7 +81,7 @@ html:not(.ss-js) .slide.dark{background:var(--ss-dark);color:var(--ss-dark-fg);
 .slide.dark .lede{color:var(--ss-dark-sub)}
 .slide.dark .lede strong{color:var(--ss-dark-fg)}
 
-/* ── Talking points: Chris's notes for recording the video ─────────────────
+/* ── Script: what Chris reads while recording the video ─────────────────
    Hidden from every viewer. Open them with #notes on the link or the N key.
    About 45 seconds of talk per slide, so a deck runs about five minutes and
    each slide chops into its own short clip (Hammer Them SOP). */
@@ -89,7 +89,7 @@ html:not(.ss-js) .slide.dark{background:var(--ss-dark);color:var(--ss-dark-fg);
 html.ss-notes .talk{display:block;margin-top:4px;padding:12px 14px;border:1px dashed var(--ss-rule);
   border-radius:10px;background:var(--soft);color:var(--ink)}
 html.ss-notes .slide.dark .talk{background:var(--card);border-color:var(--cardline);color:var(--cardtext)}
-.talk::before{content:"Talking points";display:block;margin-bottom:6px;font-family:var(--mono);
+.talk::before{content:"Script";display:block;margin-bottom:6px;font-family:var(--mono);
   font-size:var(--fs-caption);letter-spacing:.12em;text-transform:uppercase;color:var(--gray)}
 .talk ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:.9375rem;line-height:1.45}
 

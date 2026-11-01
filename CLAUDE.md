@@ -73,6 +73,7 @@ No recycled lines across ads (owner-set 2026-10-15). Same law: `.ai/rules/ad-no-
 Day counts allowed in ads (owner-set 2026-10-31). The 72-hour guarantee can be said. Same law: `.ai/rules/copy-certainty.md`
 Know the offer before a script or an overlay (owner-set 2026-10-25). Read the offer. The pictures show the product steps, not only the last sentence. Same law: `.ai/rules/ad-know-the-offer.md`
 Copy skills are the foundation (owner-set 2026-10-31). Copybot writes the words, Visual Thinking picks the picture, Fundhub rules own the facts. Same law: `.ai/rules/copy-skills-foundation.md`
+Copy gets double-checked (owner-set 2026-10-31). A separate agent runs the copy reviewer and the parrot check before Chris sees any copy. Same law: `.ai/rules/copy-skills-foundation.md`
 Show real proof (owner-set 2026-10-31). Show the real thing whenever we have it, or merge it with a little diagram; the picture and the words prove each other. Same law: `.ai/rules/show-real-proof.md`
 Heartbeat on every build (owner-set 2026-10-07). A job is red if it has not run in 3 times its schedule. Same law: `.ai/rules/heartbeat-on-every-build.md`
 Human-click tests (owner-set 2026-08-16). Same law: `.ai/rules/test-means-human-click.md`

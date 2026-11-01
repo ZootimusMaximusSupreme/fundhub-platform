@@ -78,5 +78,6 @@ Reference files, by the names used above:
 | legacy 46-point checklist | not included in the shared pack |
 
 - Fundhub ad scripts: the `fundhub-ad-writer` skill still runs its checker before Chris sees a draft. Copybot is how it writes.
+- Before Chris sees any copy, a separate agent runs the copy reviewer (`marketing/copy-skills/copy-reviewer/SKILL.md`, owner-set 2026-10-31): the parrot check (`scripts/copy/recycled-lines.mjs`), the persuasion read (the process, why it matters to the viewer, how it changes their life) and Chris's never list. The writer fixes what it finds.
 - Sequence Maker is not installed. Continue with Copybot's own guidance, as above.
 - Staged in `marketing/copy-skills/` on 2026-10-31; the move into `.agents/skills/` waits on the new-markdown guard allowing that folder.

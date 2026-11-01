@@ -13,6 +13,7 @@ import { readFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { checkScriptText } from "../../scripts/ads/check-script.mjs";
+import { deckSegments, findRecycled, loadCorpus } from "../../scripts/copy/recycled-lines.mjs";
 import { applyShell, deckFiles } from "./build.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -105,10 +106,15 @@ function readability(sentences) {
 // first sentence, so every sentence of a deck is tested here.
 const ASK = /^(?:(?:so|now|and|then|okay|ok)[,\s]+)?(click|tap|book|call|apply|schedule|sign up|fill out|get started|learn more|grab|pick|reply|text us)\b/i;
 
-function checkDeck(file, prices) {
+function checkDeck(file, prices, recycled = []) {
   const html = readFileSync(file, "utf8");
   const errors = [];
   const warns = [];
+  // The parrot check (Chris, 2026-10-31): no line copied from his ads, VSLs and
+  // call scripts, and no line shared with another deck (scripts/copy/recycled-lines.mjs).
+  for (const f of recycled.filter((r) => r.name === basename(file))) {
+    errors.push(`recycled: ${f.where}: "${f.sentence}" (same words as ${f.source}). Write it fresh.`);
+  }
 
   const fresh = applyShell(html);
   if (fresh === null) return null;
@@ -212,9 +218,14 @@ function checkDeck(file, prices) {
 const args = process.argv.slice(2);
 const files = args.length ? args.map((a) => resolve(a)) : deckFiles();
 const prices = priceRules();
+// Every deck in the folder is compared with every other, even when only some are checked.
+const recycled = findRecycled({
+  targets: deckFiles().map((f) => ({ name: basename(f), segments: deckSegments(readFileSync(f, "utf8")) })),
+  corpus: loadCorpus(),
+});
 let failed = 0;
 for (const file of files) {
-  const r = checkDeck(file, prices);
+  const r = checkDeck(file, prices, recycled);
   if (!r) continue;
   const ok = r.errors.length === 0;
   if (!ok) failed += 1;

@@ -621,6 +621,27 @@ Headlines filled from the deck files on 2026-10-31 (`grep -m1 "<h2>"`). The hand
 - `marketing/slideshows/pre-underwriting-draft-1.html` is the rejected draft. It stays until Chris says to remove it.
 - `scripts/render-crs-standard-report.mjs` is an uncommitted file in the main checkout, owned by another chat. The slideshows only copied its printed output.
 
+#### 6e.1 Rewrite on the slide framework (Chris, 2026-10-31, evening)
+
+Chris on the first build: the decks explain what Fundhub does but never why it matters to the viewer or how it changes their life, the talking points read like AI, and lines are recycled from his ads. Measured the same evening: `scripts/copy/recycled-lines.mjs` found 6 to 40 lines per deck copied word for word from his ads, VSLs, call scripts or another deck. The facts and pictures stay. The words are rewritten. Each deck gets a full script of about 850 to 1,000 words (5 minutes at Chris's ~200 words a minute), one teleprompter block per talk line, read on his teleprompter from `talk/<deck>.txt` (blocks 5 blank lines apart).
+
+**The framework (Chris approved, 2026-10-31).** One job per slide, in this order: the hook, what's really going on, what it's costing them, how Fundhub handles it, what their business looks like after, the proof, the strategy call. Every slide ties its point to the viewer (what it costs them or gets them). Proof only where a viewer would doubt the claim. Slides open different ways so nothing reads cookie-cutter. Chris: proof on every slide is not needed.
+
+**The double check (Chris, 2026-10-31).** Nothing reaches Chris until a separate agent passes it with `marketing/copy-skills/copy-reviewer/SKILL.md`. Machine floor: `node marketing/slideshows/check.mjs` (now includes the parrot check). Tools: `set-copy.mjs` writes a deck's words from JSON without touching the pictures.
+
+**Order.** pre-underwriting first as the model deck, reviewed by the copy reviewer and by Chris. Then five writers in parallel, then fresh reviewers on every deck, then fixes, then one pull request.
+
+| Writer | Decks | Status |
+|---|---|---|
+| Lead session | pre-underwriting | done, PASS, with Chris for review |
+| W1 Funding | funding-sequence, apply-yourself, money-on-the-table, after-you-say-yes | waiting on Chris's review |
+| W2 Credit side | bank-said-no, thirteen-points, card-paydown, credit-optimization | waiting on Chris's review |
+| W3 Blueprint | credit-partner, business-one-two, blueprint-12-months, blueprint-value, blueprint-in-action | waiting on Chris's review |
+| W4 Trust and process | soft-pull, the-call, who-we-are, your-data-is-safe | waiting on Chris's review |
+| W5 Pre-close | cost-of-waiting, the-maximum, the-money-talk, tried-before | waiting on Chris's review |
+
+**Writer prompt (the lead session starts the writers; Chris pastes nothing).** Each writer gets this prompt with its deck list: read Copybot and its references, `marketing/ads/RULES.md` Part 0 and 1, the copy reviewer, the model deck and this section; write each deck as JSON for `set-copy.mjs`; keep every picture, slide count, lane and fact; add a source to `data-src` for any new fact; script 850 to 1,000 words, blocks of 25 to 30 words, CAPS punch words; every line fresh; `check.mjs` must PASS; build film and talk; touch only its own decks; no git.
+
 ### 7. Heartbeat (required in the same change)
 
 - Ping row for the new sweeper in `src/pulse/heartbeats.mjs` and the sorting in `src/pulse/tripwires.mjs`.
