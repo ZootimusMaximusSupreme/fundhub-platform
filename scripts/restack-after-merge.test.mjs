@@ -98,6 +98,14 @@ test("ship receipt catches up only the first ordered PR based on main", () => {
   assert.ok(calls[push].includes(`--force-with-lease=refs/heads/codex/child:${childSha}`));
 });
 
+test("ship receipts leave unfinished draft PRs for their owner", () => {
+  const draft = { ...child, base: { ref: "main" }, draft: true };
+  assert.equal(nextQueuedPr([draft], repo), null);
+  assert.deepEqual(catchUpAfterShip({ prs: [draft], repo, run: () => {
+    throw new Error("No GitHub command should run for a draft");
+  } }), []);
+});
+
 test("ship receipt conflict comments and leaves the branch unchanged", () => {
   const first = { ...child, base: { ref: "main" } };
   const calls = [];
@@ -203,6 +211,14 @@ test("automatic base retarget still rebases an unchanged child", () => {
   assert.equal(restackChild({ child: retargeted, merged, repo, run }).state, "restacked");
   assert.ok(calls.some((call) => call[1] === "push"));
   assert.equal(calls.some((call) => call.includes("base=main")), false);
+});
+
+test("draft child restacks but is not put on auto-merge", () => {
+  const draft = { ...child, draft: true };
+  const { run, calls } = runner({ current: draft });
+  assert.equal(restackChild({ child: draft, merged, repo, run }).state, "restacked-draft");
+  assert.ok(calls.some((call) => call[0] === "git" && call[1] === "push" && call.at(-1) === "HEAD:refs/heads/codex/child"));
+  assert.equal(calls.some((call) => call[0] === "gh" && call[1] === "pr" && call[2] === "merge"), false);
 });
 
 test("GitHub-native restack queues an exact child already based on current main", () => {

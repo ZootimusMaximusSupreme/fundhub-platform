@@ -32,7 +32,7 @@ export function directChildren(prs, merged, repo) {
 
 export function nextQueuedPr(prs, repo) {
   return prs.filter((pr) => pr.state === "open" && pr.base?.ref === "main"
-    && pr.head?.repo?.full_name === repo && orderOf(pr) !== null)
+    && !pr.draft && pr.head?.repo?.full_name === repo && orderOf(pr) !== null)
     .sort((a, b) => orderOf(a) - orderOf(b) || a.number - b.number)[0] || null;
 }
 
@@ -111,8 +111,10 @@ export function restackChild({ child, merged, repo, run = command }) {
       if (onMain) {
         run("git", ["switch", "-C", `restack-pr-${child.number}`, fetchedHead]);
         archiveHead(branch, run);
-        run("gh", ["pr", "merge", String(child.number), "--repo", repo, "--auto", "--squash"]);
-        return { number: child.number, state: "already-restacked" };
+        if (!current.draft) {
+          run("gh", ["pr", "merge", String(child.number), "--repo", repo, "--auto", "--squash"]);
+        }
+        return { number: child.number, state: current.draft ? "already-restacked-draft" : "already-restacked" };
       }
     }
     const recorded = recordedParentHead(current);
@@ -151,8 +153,10 @@ export function restackChild({ child, merged, repo, run = command }) {
   if (beforePush.base.ref !== "main") {
     run("gh", ["api", "--method", "PATCH", `repos/${repo}/pulls/${child.number}`, "-f", "base=main"]);
   }
-  run("gh", ["pr", "merge", String(child.number), "--repo", repo, "--auto", "--squash"]);
-  return { number: child.number, state: "restacked" };
+  if (!beforePush.draft) {
+    run("gh", ["pr", "merge", String(child.number), "--repo", repo, "--auto", "--squash"]);
+  }
+  return { number: child.number, state: beforePush.draft ? "restacked-draft" : "restacked" };
 }
 
 export function catchUpAfterShip({ prs, repo, run = command }) {
