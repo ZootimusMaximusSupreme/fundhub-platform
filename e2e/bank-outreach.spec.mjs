@@ -188,6 +188,7 @@ test('saved banker email and phone open manual contact targets without a Fundhub
   env.data.contacts.push({ id: 'contact-4', name: 'Unconfirmed phone', phone: 'Ask for branch number' });
   env.data.contacts.push({ id: 'contact-5', name: 'Query characters', email: 'queries?subject=Injected&bcc=other@bank.example' });
   env.data.contacts.push({ id: 'contact-6', name: 'Control characters', email: 'desk@bank.example\r\nBcc: hidden@bank.example' });
+  env.data.contacts.push({ id: 'contact-7', name: 'London desk', phone: '+44 20 7946 0958' });
   await page.locator('#work-next').click(); await page.locator('[data-section="contacts"]').click();
   await capture(page, `390-${process.env.BANK_OUTREACH_EVIDENCE_PHASE || 'fixed'}-manual-contact-drawer`, '#contact-list');
   const email = page.getByRole('link', { name: 'Email Avery Lane' }), phone = page.getByRole('link', { name: 'Call Avery Lane' });
@@ -197,6 +198,9 @@ test('saved banker email and phone open manual contact targets without a Fundhub
   await expect(page.getByRole('link', { name: 'Call Branch desk' })).toHaveAttribute('href', 'tel:+16025550102;ext=42');
   await expect(page.getByRole('link', { name: 'Call Branch desk' })).toHaveText('(602) 555-0102 ext. 42');
   await expect(page.getByRole('link', { name: 'Call Unconfirmed phone' })).toHaveCount(0);
+  await expect(page.locator('[data-contact="contact-4"] .banker-contact-links')).toHaveText('Ask for branch number');
+  await expect(page.getByRole('link', { name: 'Call London desk' })).toHaveAttribute('href', 'tel:+442079460958');
+  await expect(page.getByRole('link', { name: 'Call London desk' })).toHaveText('+44 20 7946 0958');
   const queryEmail = page.getByRole('link', { name: 'Email Query characters' });
   await expect(queryEmail).toHaveAttribute('href', 'mailto:queries%3Fsubject%3DInjected%26bcc%3Dother@bank.example');
   expect(await queryEmail.evaluate(link => new URL(link.href).search)).toBe('');

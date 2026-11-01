@@ -520,6 +520,28 @@ test("a card and a waiting-on-a-person row (click or Enter) open that candidate'
   await page.close();
 });
 
+test("candidate drawer formats US phone labels and preserves international or incomplete numbers", { timeout: 120_000 }, async () => {
+  const cases = [
+    { application: { ...AVA, phone: "+1 (602) 555-0101" }, label: "(602) 555-0101" },
+    { application: { ...BEN, phone: "+44 20 7946 0958" }, label: "+44 20 7946 0958" },
+    { application: { ...CY, phone: "Ask for number" }, label: "Ask for number" }
+  ];
+  const state = freshState({ apps: cases.map(({ application }) => application) });
+  const page = await openHiring(lab, state);
+  try {
+    for (const { application, label } of cases) {
+      await page.locator(`#board .ccard[data-app="${application.application_id}"]`).click();
+      await page.waitForFunction(expected =>
+        document.querySelector("#dwBody .kv > div:nth-child(2) .v")?.textContent === expected,
+      label);
+      assert.equal(await text(page, "#dwBody .kv > div:nth-child(2) .v"), label);
+      await page.locator("#dwClose").click();
+      await page.waitForFunction(() => !document.getElementById("drawer").classList.contains("on"));
+    }
+    assert.deepEqual(state.decides, [], "reading a phone label does not save a decision");
+  } finally { await page.close(); }
+});
+
 test("a late application response cannot replace another candidate with the same displayed name", { timeout: 120_000 }, async () => {
   const first = candidate("Jordan Rivers", "setter", "social", "applied", {
     answers: { why: "OLDER-APPLICANT-PRIVATE-ANSWER" }

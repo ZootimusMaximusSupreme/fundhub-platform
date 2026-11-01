@@ -102,9 +102,11 @@ function preinstalledChromium() {
 
 const CHROMIUM = preinstalledChromium();
 
-/* A fixed port so baseURL can be built before the server starts. High and
-   unlikely to collide; override with E2E_PORT if it ever does. */
-const PORT = Number(process.env.E2E_PORT || 43117);
+/* Each checkout owns its local port. Worker processes reload this config, so
+   the port must be stable across processes but different across worktrees.
+   A collision fails instead of serving another checkout's files. */
+const checkoutHash = [...process.cwd()].reduce((hash, char) => ((hash * 33) ^ char.charCodeAt(0)) >>> 0, 5381);
+const PORT = Number(process.env.E2E_PORT || (process.env.CI ? 43117 : 30000 + checkoutHash % 30000));
 
 export default defineConfig({
   // Node's unit shards launch several independent Playwright CLIs at once.
@@ -134,15 +136,13 @@ export default defineConfig({
   retries: 0,
   workers: 1,
   reporter: process.env.CI ? "list" : "line",
-  /* The static server, started and stopped by the runner. reuseExistingServer
-     is off in CI so a stale process from a previous job can never serve a
-     previous commit's files — which fails as a mystifying assertion about
-     markup that is not in the tree. */
+  /* The static server must belong to this run. A port collision fails clearly
+     instead of silently loading another worktree's pages. */
   webServer: {
     command: `node e2e/static-server.mjs`,
     env: { E2E_PORT: String(PORT) },
     url: `http://127.0.0.1:${PORT}/app/messaging.html`,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
     timeout: 20_000,
     stdout: "ignore",
     stderr: "pipe"
