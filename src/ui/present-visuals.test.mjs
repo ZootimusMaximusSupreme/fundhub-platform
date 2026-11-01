@@ -81,8 +81,8 @@ const clientAmounts = (html) => (words(html)
   .replace(/\$\d+k\b/g, "")
   .match(/\$\d[\d,]*/g) || []);
 
-const BANNED = /\b(number|pre-approved|funding gap|funding snapshot|credit repair|guaranteed|your score will go up|we think|might|maybe|could|probably)\b/i;
-const RENDERERS = ["yourPath", "moneyLevers", "companies"];
+const BANNED = /\b(number|pre-approved|funding gap|funding snapshot|credit repair|guaranteed|your score will go up|we think|might|maybe|could|probably|3 to 6 rounds|about every 3 months)\b/i;
+const RENDERERS = ["yourPath", "moneyLevers", "fileFindings", "companies"];
 
 describe("the three functions, on the full file", () => {
   let T;
@@ -126,11 +126,11 @@ describe("the three functions, on the full file", () => {
     assert.ok(r.html.includes("You upload your bank statements in the portal"));
   });
 
-  test("money levers: today, fully optimized, left on the table, the applying levers, the tier, the goal", () => {
+  test("money levers: today, fully optimized, projected increase, the applying levers, the tier, the goal", () => {
     const html = T.V.moneyLevers(T.ctxFor("full"));
     assert.ok(html.includes("$96,524"), "today");
     assert.ok(html.includes("$174,625"), "fully optimized");
-    assert.ok(html.includes("$78,101") && html.includes("left on the table"), "the difference");
+    assert.ok(html.includes("$78,101") && html.includes("projected increase"), "the difference");
     assert.ok(html.includes("Pay the cards down") && html.includes("Clean the file"));
     assert.ok(!html.includes("Add accounts"), "a lever that does not apply does not show");
     assert.equal((html.match(/data-fhv-act="levers:step:[12]"/g) || []).length, 2);
@@ -184,7 +184,7 @@ describe("no data yet, sample and bad data", () => {
     ctx.visual.levers.forEach((l) => { l.totalAfter = null; });
     const html = T.V.moneyLevers(ctx);
     assert.ok(html.includes("$96,524"), "today still shows");
-    assert.ok(!html.includes("$174,625") && !html.includes("left on the table"));
+    assert.ok(!html.includes("$174,625") && !html.includes("projected increase"));
     assert.ok(html.includes("not on this file yet"), "the missing amount is named, not guessed");
     const co = T.ctxFor("full");
     co.visual.todayTotal = null;
@@ -222,7 +222,7 @@ describe("no data yet, sample and bad data", () => {
     assert.equal(T.dom.styles.length, 1, "one <style> element");
     const css = T.dom.styles[0].textContent;
     const classes = [...css.matchAll(/\.([a-zA-Z][\w-]*)/g)].map((m) => m[1]).filter((c) => !/^\d/.test(c));
-    const stray = [...new Set(classes)].filter((c) => !/^fhv-(path|levers|companies|ui)-/.test(c) && !/^is-/.test(c));
+    const stray = [...new Set(classes)].filter((c) => !/^fhv-(path|levers|findings|companies|ui)-/.test(c) && !/^is-/.test(c));
     assert.deepEqual(stray, [], "every class starts with fhv-<name>- (is-* are state flags on those)");
     assert.ok(!/box-shadow:[^;}]*--spectrum/.test(css), "the spectrum is never a shadow colour");
   });
@@ -271,7 +271,7 @@ describe("taps", () => {
     assert.match(one.html, /levers:step:1" aria-pressed="true"/);
     assert.match(one.html, /levers:step:2" aria-pressed="false"/);
     assert.ok(one.html.includes("$104,775"), "the optimized side climbs to lever 1's own amount");
-    assert.ok(one.html.includes("$78,101") && one.html.includes("left on the table"), "left on the table stays the whole gap");
+    assert.ok(one.html.includes("$78,101") && one.html.includes("projected increase"), "projected increase stays the whole gap");
     assert.ok(one.html.includes("After lever 1 of 2."));
     assert.match(one.html, /data-fhv-act="levers:step:0">Reset to today</, "the reset is live once a lever is on");
     const again = T.V.moneyLevers(T.ctxFor("full"));
@@ -284,10 +284,10 @@ describe("taps", () => {
     const zero = T.tap(h, "levers:step:0");
     assert.match(zero.html, /levers:step:1" aria-pressed="false"/);
     assert.ok(zero.html.includes("Nothing applied yet"));
-    assert.ok(zero.html.includes("$78,101") && zero.html.includes("left on the table"), "the whole gap shows at today too");
+    assert.ok(zero.html.includes("$78,101") && zero.html.includes("projected increase"), "the whole gap shows at today too");
   });
 
-  test("left on the table is always the whole gap, today to fully optimized, at every lever step", () => {
+  test("projected increase is always the whole gap, today to fully optimized, at every lever step", () => {
     for (const name of ["full", "thin", "mismatch", "repair"]) {
       const ctx = T.ctxFor(name);
       const whole = ctx.visual.optimizedTotal - ctx.visual.todayTotal;
@@ -295,8 +295,8 @@ describe("taps", () => {
       const steps = ctx.visual.levers.filter((l) => l.applies).length;
       for (let s = 0; s <= steps; s++) {
         const html = T.tap(h, "levers:step:" + s).html;
-        const m = /fhv-levers-gapamt" data-fhv-count="(\d+)"[^>]*>([^<]*)<\/span> left on the table/.exec(html);
-        assert.ok(m, name + " step " + s + " prints left on the table");
+        const m = /fhv-levers-gapamt" data-fhv-count="(\d+)"[^>]*>([^<]*)<\/span> projected increase/.exec(html);
+        assert.ok(m, name + " step " + s + " prints projected increase");
         assert.equal(Number(m[1]), whole, name + " step " + s + ": the gap is optimized minus today");
         assert.equal(m[2], money(whole), name + " step " + s + ": printed with the deck's money()");
       }
@@ -384,15 +384,19 @@ describe("taps", () => {
 describe("other files", () => {
   test("mismatched info: the three reports side by side, differences marked with a word, no dollar amount", () => {
     const T = load();
-    const html = T.V.moneyLevers(T.ctxFor("mismatch"));
-    const block = html.slice(html.indexOf('class="fhv-levers-match"'));
+    const html = T.V.fileFindings(T.ctxFor("mismatch"));
+    const h = T.host("findings", html);
+    const shown = T.tap(h, "findings:open:5").html;
+    const block = shown.slice(shown.indexOf('class="fhv-levers-match"'));
     for (const b of ["Experian", "TransUnion", "Equifax"]) assert.ok(block.includes(b), b);
-    assert.ok(block.includes("Name · differs") && block.includes("Address · differs"));
+    assert.ok(block.includes("Name · differs"));
     assert.ok(block.includes("Not on this report"), "a missing bureau value is named");
     assert.ok(block.includes("Banks approve you for less when your info doesn't match on every report."));
     assert.deepEqual(block.match(/\$\d/g), null, "no dollar amount on mismatches");
-    assert.ok(html.includes("$7,936") && html.includes("$33,069"), "the levers still show their amounts above");
-    assert.ok(html.includes("Your goal · Less than $50k"), "a single-amount goal still draws a line");
+    const levers = T.V.moneyLevers(T.ctxFor("mismatch"));
+    assert.ok(levers.includes("$7,936") && levers.includes("$33,069"), "the levers still show their amounts");
+    assert.ok(levers.includes("Your goal · Less than $50k"), "a single-amount goal still draws a line");
+    assert.ok(!levers.includes("fhv-levers-match"), "the report grid stays on F-01 so L-01 fits a laptop");
   });
 
   test("a repair-only file: $0 today, one lever, Repair only to Full funding", () => {
@@ -435,7 +439,7 @@ describe("other files", () => {
     assert.ok(!html.includes("Clean the file"));
     assert.ok(html.includes("$14,849") && html.includes("$19,800") && html.includes("$55,000"));
     assert.ok(html.includes("+$4,951") && html.includes("+$35,200"), "each lever's own climb");
-    assert.ok(html.includes("$40,151") && html.includes("left on the table"));
+    assert.ok(html.includes("$40,151") && html.includes("projected increase"));
     const h = T.host("levers", html);
     const r = T.tap(h, "levers:step:1");
     assert.ok(r.html.includes("$19,800") && r.html.includes("$4,951"), "lever 1 alone is the card paydown");
@@ -445,12 +449,14 @@ describe("other files", () => {
     const T = load();
     const levers = T.V.moneyLevers(T.ctxFor("withheld"));
     assert.ok(levers.includes("$212,000"), "the deck's own headline");
-    assert.ok(!levers.includes("left on the table") && !levers.includes("projects to $"));
+    assert.ok(!levers.includes("projected increase") && !levers.includes("projects to $"));
     assert.ok(!levers.includes("fhv-levers-chip"), "no tier words");
     assert.ok(!levers.includes('data-fhv-act="levers:step:'), "no lever button");
     assert.ok(levers.includes("They show once the optimized amount is on this file."));
     assert.ok(levers.includes("The optimized amount is not on this file yet."));
-    assert.ok(levers.includes("fhv-levers-match") && levers.includes("Name · differs"), "the mismatch still shows");
+    const findings = T.V.fileFindings(T.ctxFor("withheld"));
+    assert.ok(findings.includes("Name differs"), "the mismatch still shows on F-01");
+    assert.ok(!levers.includes("fhv-levers-match"), "L-01 does not repeat the report grid");
     assert.deepEqual(clientAmounts(levers), ["$212,000"], "the headline is the only amount");
     const companies = T.V.companies(T.ctxFor("withheld"));
     assert.ok(companies.includes("$212,000") && companies.includes("needs the report"));
@@ -460,4 +466,118 @@ describe("other files", () => {
     const p = T.V.yourPath(T.ctxFor("withheld"));
     assert.equal((p.match(/Your door/g) || []).length, 0, "no door on a file in review");
   });
+});
+
+describe("the live look fixes (2026-10-30)", () => {
+  test("one lever reads as one lever: 'tap it' and 'Tap the lever', never 'each'", () => {
+    const T = load();
+    const one = T.V.moneyLevers(T.ctxFor("repair"));
+    assert.ok(one.includes("One lever · tap it"), "the eyebrow over the lever");
+    assert.ok(one.includes("Nothing applied yet. Tap the lever to build the climb."), "the line under Projects to");
+    assert.ok(!one.includes("tap each one") && !one.includes("Tap each lever"), "no 'each' when there is one lever");
+    const two = T.V.moneyLevers(T.ctxFor("full"));
+    assert.ok(two.includes("Two levers · tap each one"));
+    assert.ok(two.includes("Nothing applied yet. Tap each lever to build the climb."));
+  });
+
+  test("Business 2 is one color everywhere on the slide: its layer, its key and its chips", () => {
+    const T = load();
+    const html = T.V.companies(T.ctxFor("full"));
+    assert.match(html, /fhv-companies-seg is-biz is-alt[^"]*" title="Business 2/, "the layer");
+    assert.match(html, /fhv-companies-key is-biz is-alt"><b>Business 2<\/b>/, "the key");
+    assert.equal((html.match(/fhv-companies-chip is-biz is-alt">Business 2</g) || []).length, 3, "a chip in each of the three funding sequences");
+    assert.match(html, /fhv-companies-key is-biz"><b>Business 1<\/b>/, "Business 1 keeps the first color");
+    const css = T.dom.styles[0].textContent;
+    for (const rule of [".fhv-companies-seg.is-biz.is-alt{background:var(--ok)", ".fhv-companies-key.is-biz.is-alt::before{background:var(--ok)", ".fhv-companies-chip.is-biz.is-alt{background:var(--ok)"]) {
+      assert.ok(css.includes(rule), rule);
+    }
+  });
+
+  test("the tab's card and the proof share one row, above Funding partners for life", () => {
+    const T = load();
+    const html = T.V.companies(T.ctxFor("full"));
+    assert.match(html, /<div class="fhv-companies-pair"><div class="fhv-companies-detail">[\s\S]*?<\/div><div class="fhv-companies-proof">/);
+    assert.ok(html.indexOf("fhv-companies-pair") < html.indexOf("fhv-companies-timeline"));
+  });
+});
+
+describe("File findings and waterfall", () => {
+  test("F-01 full file shows only real card and item findings, with the card's paydown", () => {
+    const T = load();
+    const ctx = T.ctxFor("full");
+    ctx.visual.pulledOn = "2026-03-11";
+    const first = T.V.fileFindings(ctx);
+    assert.match(first, /data-fhv="findings"/);
+    assert.ok(first.includes("2 findings on this file"));
+    assert.ok(first.includes("FIRST PLATYPUS BANK") && first.includes("TOYOTA MOTOR CREDIT"));
+    assert.ok(first.includes("Pay $3,000 to the target") && first.includes("Balance $4,000"));
+    assert.match(first, /--balance:40/);
+    assert.ok(!first.includes("fhv-levers-match"), "no report grid on a file with no mismatch");
+    assert.ok(first.includes("From your soft pull on 2026-03-11."));
+    const h = T.host("findings", first);
+    const card = T.tap(h, "findings:open:0");
+    assert.ok(card.prevented && card.html.includes("Pay $3,000 on this card to reach $1,000."));
+    assert.match(T.V.fileFindings(ctx), /findings:open:0" aria-expanded="true"/);
+    const item = T.tap(h, "findings:open:1").html;
+    assert.ok(item.includes("Review this late payment for accuracy, then dispute it"));
+    assert.ok(!item.includes("Pay $3,000 on this card"), "one step opens at a time");
+  });
+
+  test("F-01 sample, no pull, repair-only and withheld states", () => {
+    const T = load();
+    const sample = T.V.fileFindings(T.ctxFor("sample"));
+    assert.match(sample, /fhv-ui-tag[^>]*>Sample/);
+    assert.equal((sample.match(/fhv-findings-row"/g) || []).length, 2);
+    const none = T.V.fileFindings(T.ctxFor("nodata"));
+    assert.ok(none.includes("No credit pull on this file yet") && !none.includes("fhv-findings-row"));
+    const repair = T.V.fileFindings(T.ctxFor("repair"));
+    assert.ok(repair.includes("CREDIT ONE BANK") && repair.includes("MIDLAND CREDIT MGMT"));
+    assert.ok(repair.includes("7 findings on this file"), "two cards, four items, one mismatch");
+    const withheld = T.V.fileFindings(T.ctxFor("withheld"));
+    assert.ok(withheld.includes("1 finding on this file"));
+    assert.ok(withheld.includes("Name differs") && !withheld.includes("Pay $"));
+    const h = T.host("findings", withheld);
+    const mismatch = T.tap(h, "findings:open:0").html;
+    assert.ok(mismatch.includes("Experian") && mismatch.includes("TransUnion") && mismatch.includes("Equifax"));
+    assert.ok(mismatch.includes("Confirm which report value is right"));
+  });
+
+  test("L-01 full file draws a to-scale rise for each applied lever and fills it on tap", () => {
+    const T = load();
+    const ctx = T.ctxFor("full");
+    ctx.visual.pulledOn = "2026-03-11";
+    const first = T.V.moneyLevers(ctx);
+    assert.match(first, /fhv-levers-bars" style="--cols:4"/);
+    assert.equal((first.match(/class="fhv-levers-col is-waterstep is-waiting"/g) || []).length, 2);
+    assert.ok(first.includes("Cards down") && first.includes("File cleaned"));
+    assert.ok(first.includes("+$8,251") && first.includes("+$69,850"));
+    assert.match(first, /From your soft pull on 2026-03-11\./);
+    const h = T.host("levers", first);
+    const one = T.tap(h, "levers:step:1").html;
+    assert.equal((one.match(/class="fhv-levers-col is-waterstep is-on"/g) || []).length, 1);
+    assert.equal((one.match(/class="fhv-levers-col is-waterstep is-waiting"/g) || []).length, 1);
+    assert.match(one, /fhv-levers-bar is-opt/);
+    const two = T.tap(h, "levers:step:2").html;
+    assert.equal((two.match(/class="fhv-levers-col is-waterstep is-on"/g) || []).length, 2);
+    assert.ok(two.includes("$174,625"));
+  });
+
+  test("L-01 sample, no pull, repair-only and withheld states stay honest", () => {
+    const T = load();
+    const sample = T.V.moneyLevers(T.ctxFor("sample"));
+    assert.match(sample, /fhv-ui-tag[^>]*>Sample/);
+    assert.equal((sample.match(/is-waterstep/g) || []).length, 2);
+    const none = T.V.moneyLevers(T.ctxFor("nodata"));
+    assert.ok(none.includes("No credit pull on this file yet"));
+    assert.ok(!none.includes("is-waterstep") && !none.includes("$96,524"));
+    const repair = T.V.moneyLevers(T.ctxFor("repair"));
+    assert.equal((repair.match(/is-waterstep/g) || []).length, 1);
+    assert.ok(repair.includes("$0") && repair.includes("+$8,250"));
+    assert.ok(!repair.includes("Cards down"), "the paydown lever does not apply");
+    const withheld = T.V.moneyLevers(T.ctxFor("withheld"));
+    assert.ok(!withheld.includes("is-waterstep") && !withheld.includes("+$"));
+    assert.ok(withheld.includes("The optimized amount is not on this file yet."));
+  });
+
+
 });
