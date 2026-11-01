@@ -472,8 +472,8 @@ function refreshTasks() {
 function takeTasks(tasks, canOpenSetter) {
   var all = Array.isArray(tasks) ? tasks : [];
   setterDeskAllowed = canOpenSetter === true;
-  /* Old funnel posts can leave repeat open setter rows. Keep their database
-     rows intact and show one work item per client and Arizona due date. */
+  /* Old funnel posts can leave exact repeat rows. Distinct calls, notes,
+     assignees, or due times must each remain visible work. */
   var ordered = all.filter(function (t) { return t && typeof t === "object"; }).sort(function (a, b) {
     if (!!a.done !== !!b.done) return Number(!!a.done) - Number(!!b.done);
     return new Date(b.created_at || 0) - new Date(a.created_at || 0);
@@ -484,8 +484,8 @@ function takeTasks(tasks, canOpenSetter) {
     if (t.source_workflow === "setter-entry" && !t.done && t.client_id && t.due_at) {
       var due = new Date(t.due_at);
       if (Number.isFinite(due.getTime())) {
-        var day = due.toLocaleDateString("en-CA", { timeZone: "America/Phoenix" });
-        var key = t.client_id + ":" + day;
+        var key = JSON.stringify([t.client_id, due.toISOString(), t.title || "",
+          t.body || "", t.assignee_staff_id || "", t.assignee_role || ""]);
         if (seen[key] !== undefined) {
           visible[seen[key]].repeat_count++;
           return;
@@ -556,8 +556,9 @@ function actionsHtml(t) {
   if (!t || !t.id) return "";
   if (t.source_workflow === "setter-entry" || t.source_workflow === "setter-booking") {
     if (t.done || !isUuid(t.client_id)) return "";
-    var target = setterDeskAllowed ? "setter-dashboard.html" : "client-control-panel.html";
-    var label = setterDeskAllowed ? "Open setter" : "Open client file";
+    var canOpenThisLead = t.can_open_setter === undefined ? setterDeskAllowed : t.can_open_setter === true;
+    var target = canOpenThisLead ? "setter-dashboard.html" : "client-control-panel.html";
+    var label = canOpenThisLead ? "Open setter" : "Open client file";
     return '<div class="row-acts"><a class="row-btn" href="' + target +
       '?client_id=' + encodeURIComponent(t.client_id) + '">' + label + '</a></div>';
   }
@@ -1100,29 +1101,36 @@ function loadDatedTasks() {
   if (typeof FHData === "undefined" || !FHData.taskQueue) {
     return Promise.resolve({ ok: false, source: "offline", error: "data layer missing" });
   }
-  function readPages(done, offset, rows, previousPage) {
-    return FHData.taskQueue({ done: done, limit: QUEUE_LIMIT, offset: offset }).then(function (res) {
+  function readPages(done, after, rows, revision, canOpenSetter) {
+    return FHData.taskQueue({ done: done, limit: QUEUE_LIMIT, stable: true,
+      after: after, revision: revision }).then(function (res) {
       if (!res) return { ok: false, source: "server", error: "task queue did not answer" };
       if (!res.ok) return res;
       if (!res.data || !Array.isArray(res.data.tasks)) {
         return { ok: false, source: "server", error: "task queue response incomplete" };
       }
       var pageRows = res.data.tasks;
-      var first = pageRows[0], last = pageRows[pageRows.length - 1];
-      var pageKey = first && last ? String(first.id || "") + ":" + String(last.id || "") : "";
-      if (pageRows.length === QUEUE_LIMIT && offset && pageKey === previousPage.key) {
-        return { ok: false, source: "server", error: "task queue did not advance" };
+      var currentRevision = res.data.revision || null;
+      if (revision && currentRevision !== revision) {
+        return { ok: false, source: "server", error: "task queue changed during read" };
       }
       var allRows = rows.concat(pageRows);
-      var canOpenSetter = offset ? previousPage.canOpenSetter : res.data.can_open_setter === true;
-      return pageRows.length === QUEUE_LIMIT
-        ? readPages(done, offset + QUEUE_LIMIT, allRows, { key: pageKey, canOpenSetter: canOpenSetter })
-        : { ok: true, data: { tasks: allRows, can_open_setter: canOpenSetter } };
+      var allowed = after ? canOpenSetter : res.data.can_open_setter === true;
+      if (pageRows.length === QUEUE_LIMIT) {
+        var next = res.data.next_after;
+        if (!currentRevision || !next || next === after) {
+          return { ok: false, source: "server", error: "task queue did not advance" };
+        }
+        return readPages(done, next, allRows, currentRevision, allowed);
+      }
+      return { ok: true, data: {
+        tasks: allRows, can_open_setter: allowed, revision: currentRevision
+      } };
     });
   }
   return Promise.all([
-    readPages(false, 0, [], null),
-    readPages(true, 0, [], null)
+    readPages(false, null, [], null, null),
+    readPages(true, null, [], null, null)
   ]).then(function (parts) {
     var open = parts[0], closed = parts[1];
 
@@ -1140,6 +1148,12 @@ function loadDatedTasks() {
        A HALF-ANSWER IS A FAILURE. Which half decides what the screen says. */
     openFailed = !open || !open.ok;
     doneFailed = !closed || !closed.ok;
+    if (!openFailed && !doneFailed && open.data.revision && closed.data.revision &&
+        open.data.revision !== closed.data.revision) {
+      openFailed = true;
+      doneFailed = true;
+      return { ok: false, source: "server", error: "task queue changed during read" };
+    }
 
     /* The still-open read is the calendar. Without it there is no honest way to
        draw a day, so this is reported as a failed read even when the finished

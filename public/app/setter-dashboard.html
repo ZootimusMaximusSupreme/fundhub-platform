@@ -545,10 +545,27 @@ function setterSorted(items) {
       bookingUrl = /^https:\/\//.test(result.body.booking_url || "") ? result.body.booking_url : "";
       var wanted = selectedId() || requestedClientId;
       var index = wanted ? queue.findIndex(function (row) { return row.client_id === wanted; }) : -1;
-      selected = index >= 0 ? queue[index] : wanted ? null : queue[0] || null;
+      if (wanted && index < 0) {
+        return request("/api/read/setter-dashboard?client_id=" + encodeURIComponent(wanted)).then(function (exact) {
+          var exactLoaded = exact.status >= 200 && exact.status < 300 && exact.body &&
+            Array.isArray(exact.body.items);
+          var found = exactLoaded && exact.body.items.find(function (row) { return row.client_id === wanted; });
+          if (found) {
+            queue.unshift(found);
+            selected = found;
+            page = 0;
+          } else {
+            selected = null;
+          }
+          paintQueue(); paintDetail();
+          if (!found) detailEl.innerHTML = exactLoaded
+            ? '<div class="setter-state">This lead is not in your call queue. Choose another lead or refresh.</div>'
+            : '<div class="setter-state">Could not load this lead. Refresh the queue and try again.</div>';
+        });
+      }
+      selected = index >= 0 ? queue[index] : queue[0] || null;
       if (index >= 0) page = Math.floor(index / 25);
       paintQueue(); paintDetail();
-      if (wanted && index < 0) detailEl.innerHTML = '<div class="setter-state">This lead is not in your call queue. Choose another lead or refresh.</div>';
     }).catch(function () {
       queueEl.innerHTML = '<div class="setter-state fh-astra-state"><h2>Could not load the call queue</h2><p>Check your connection and try again.</p><button type="button" class="fh-astra-action" data-action="retry">Try again</button></div>';
       detailEl.innerHTML = '<div class="setter-state">The checklist will appear when the queue loads.</div>';

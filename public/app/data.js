@@ -225,7 +225,9 @@ window.FHData = (function () {
       if (o.mine) q += "&mine=1";
       if (o.unclaimed) q += "&unclaimed=1";
       if (o.limit) q += "&limit=" + encodeURIComponent(o.limit);
-      if (o.offset) q += "&offset=" + encodeURIComponent(o.offset);
+      if (o.stable) q += "&stable=1";
+      if (o.after) q += "&after=" + encodeURIComponent(o.after);
+      if (o.revision) q += "&revision=" + encodeURIComponent(o.revision);
       return get("/api/tasks" + q);
     },
 

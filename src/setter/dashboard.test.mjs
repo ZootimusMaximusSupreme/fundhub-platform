@@ -240,6 +240,25 @@ test("queue returns booked and opt-in leads with survey echo and saved handoff",
   assert.equal(result.numbers.dials, 0);
 });
 
+test("exact setter lead read applies the same org, assignment, archive and task gates", async () => {
+  let checked = false;
+  const db = { async query(sql, params) {
+    if (sql.includes("WITH bounds AS")) return { rows: [{ dials: 0, booked: 0, showed: 0, no_shows: 0 }] };
+    assert.equal(params[0], STAFF.org_id);
+    assert.equal(params[1], true);
+    assert.equal(params[5], CLIENT_ID);
+    assert.match(sql, /c\.custom_fields->>'crm_archived_at' IS NULL/);
+    assert.match(sql, /t\.assignee_staff_id IS NULL OR t\.assignee_staff_id = \$3/);
+    assert.match(sql, /\$6::uuid IS NULL OR c\.id = \$6/);
+    checked = true;
+    return { rows: [{ client_id: CLIENT_ID, first_name: "Older", last_name: "Lead",
+      created_at: "2026-10-01T16:00:00Z", custom_fields: {} }] };
+  } };
+  const result = await listSetterQueue(db, { ...STAFF, role: "setter" }, { clientId: CLIENT_ID, limit: 1 });
+  assert.equal(checked, true);
+  assert.equal(result.items[0].client_id, CLIENT_ID);
+});
+
 test("each queued lead carries its own calendar link from its saved score", async () => {
   const lead = (id, custom_fields) => ({ client_id: id, first_name: "Pat", created_at: "2026-10-26T16:00:00Z", custom_fields });
   const db = { async query(sql) {

@@ -1,7 +1,8 @@
 // /api/tasks — the work queue the workflows have been writing into.
 //
 //   GET   ?done=false (default) | true | all
-//         ?client_id=<uuid>  ?q=<title search>  ?limit=<n, cap 200>  ?offset=<n>
+//         ?client_id=<uuid>  ?q=<title search>  ?limit=<n, cap 200>
+//         ?stable=1  ?after=<task uuid>  ?revision=<queue revision>
 //         ?role=<employee role> | mine  — whose queue to read
 //         ?mine=1                       — shorthand for role=mine
 //         ?unclaimed=1                  — role queue only, nobody has picked it up
@@ -85,9 +86,15 @@ export default async function handler(req, res) {
   if (req.method === "GET") {
     const q = req.query || {};
     const limit = boundedLimit(q.limit, { fallback: 100, cap: 200 });
-    const offsetRaw = String(q.offset ?? "0");
-    if (!/^\d{1,7}$/.test(offsetRaw)) return res.status(400).json({ ok: false, error: "invalid_offset" });
-    const offset = Number(offsetRaw);
+    if (q.offset !== undefined) return res.status(400).json({ ok: false, error: "offset_not_supported" });
+    const stable = q.stable === "1";
+    const after = q.after || null;
+    const expectedRevision = q.revision || null;
+    if ((after || expectedRevision) && !stable) return res.status(400).json({ ok: false, error: "stable_page_required" });
+    if (after && (!isUuid(after) || !expectedRevision)) return res.status(400).json({ ok: false, error: "invalid_cursor" });
+    if (expectedRevision && !/^[a-f0-9]{32}$/.test(expectedRevision)) {
+      return res.status(400).json({ ok: false, error: "invalid_revision" });
+    }
     const where = [];
     const params = [];
     const add = (sql, val) => { params.push(val); where.push(sql.replace("?", `$${params.length}`)); };
@@ -130,7 +137,14 @@ export default async function handler(req, res) {
       where.push("t.assignee_staff_id IS NULL");
     }
 
-    params.push(limit, offset);
+    const revisionSql = `
+      SELECT md5(COALESCE(string_agg(
+        md5(row_to_json(t)::text || ':' || COALESCE(c.first_name,'') || ':' || COALESCE(c.last_name,'')),
+        '' ORDER BY t.id), '')) AS revision
+        FROM tasks t
+        LEFT JOIN clients c ON c.id = t.client_id AND c.org_id = t.org_id
+          AND c.custom_fields->>'crm_archived_at' IS NULL
+       WHERE t.org_id = $1 AND (t.client_id IS NULL OR c.id IS NOT NULL)`;
     /* tasks.detail (migration 472): a readable note. body is a dedupe key on many
        tasks; detail is the sentence the person should read. Null when none.
        The queue is how staff work, so it must not go down because a database has
@@ -150,8 +164,33 @@ export default async function handler(req, res) {
         LEFT JOIN staff   s ON s.id = t.assignee_staff_id
        ${where.length ? "WHERE " + where.join(" AND ") : ""}
        ORDER BY t.due_at ASC NULLS LAST, t.created_at DESC, t.id DESC
-       LIMIT $${params.length - 1} OFFSET $${params.length}`;
+       LIMIT $${params.length}`;
     try {
+      let revision = null;
+      if (stable) {
+        revision = (await db.query(revisionSql, [orgId])).rows[0].revision;
+        if (expectedRevision && expectedRevision !== revision) {
+          return res.status(409).json({ ok: false, error: "task_queue_changed" });
+        }
+      }
+      if (after) {
+        const cursor = (await db.query(
+          `SELECT t.id, t.due_at, t.created_at FROM tasks t
+             LEFT JOIN clients c ON c.id = t.client_id AND c.org_id = t.org_id
+               AND c.custom_fields->>'crm_archived_at' IS NULL
+            WHERE t.id = $1 AND t.org_id = $2 AND (t.client_id IS NULL OR c.id IS NOT NULL)`,
+          [after, orgId])).rows[0];
+        if (!cursor) return res.status(409).json({ ok: false, error: "task_queue_changed" });
+        const dueIndex = params.push(cursor.due_at);
+        const createdIndex = params.push(cursor.created_at);
+        const idIndex = params.push(cursor.id);
+        const laterTie = `(t.created_at, t.id) < ($${createdIndex}::timestamptz, $${idIndex}::uuid)`;
+        where.push(cursor.due_at === null
+          ? `(t.due_at IS NULL AND ${laterTie})`
+          : `(t.due_at IS NULL OR t.due_at > $${dueIndex}::timestamptz OR
+               (t.due_at = $${dueIndex}::timestamptz AND ${laterTie}))`);
+      }
+      params.push(limit);
       let result;
       try {
         result = await db.query(listSql("t.detail"), params);
@@ -160,8 +199,21 @@ export default async function handler(req, res) {
         result = await db.query(listSql("NULL::text"), params);
       }
       const { rows } = result;
+      if (stable) {
+        const afterRevision = (await db.query(revisionSql, [orgId])).rows[0].revision;
+        if (afterRevision !== revision) {
+          return res.status(409).json({ ok: false, error: "task_queue_changed" });
+        }
+      }
       return res.status(200).json({
-        ok: true, count: rows.length, tasks: rows,
+        ok: true, count: rows.length, tasks: rows.map(row => ({
+          ...row,
+          can_open_setter: row.assignee_role === "setter" &&
+            (["owner", "admin"].includes(String(staff.role || "").toLowerCase()) ||
+              (String(staff.role || "").toLowerCase() === "setter" &&
+                (!row.assignee_staff_id || row.assignee_staff_id === staff.id)))
+        })),
+        ...(stable ? { revision, next_after: rows.length === limit ? rows[rows.length - 1].id : null } : {}),
         can_open_setter: ["owner", "admin", "setter"].includes(String(staff.role || "").toLowerCase())
       });
     } catch (err) {
@@ -243,10 +295,18 @@ export default async function handler(req, res) {
       const { rows } = await db.query(
         `UPDATE tasks SET done = $2, updated_at = now()
           WHERE id = $1 AND org_id = $3
+            AND (source_workflow IS NULL OR source_workflow NOT IN ('setter-entry','setter-booking'))
          RETURNING ${RET}`,
         [id, done, orgId]
       );
-      if (!rows[0]) return res.status(404).json({ ok: false, error: "not_found" });
+      if (!rows[0]) {
+        const found = await db.query(
+          `SELECT source_workflow FROM tasks WHERE id = $1 AND org_id = $2`, [id, orgId]);
+        if (found.rows[0] && ["setter-entry", "setter-booking"].includes(found.rows[0].source_workflow)) {
+          return res.status(409).json({ ok: false, error: "setter_handoff_required" });
+        }
+        return res.status(404).json({ ok: false, error: "not_found" });
+      }
       return res.status(200).json({ ok: true, task: rows[0] });
     } catch (err) {
       if (CLIENT_DATA_ERRORS.has(err && err.code)) {

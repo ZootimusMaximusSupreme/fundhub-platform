@@ -27,6 +27,7 @@ import assert from "node:assert";
 import { db, close } from "../db.mjs";
 import { resolveDefaultOrg } from "../auth/org.mjs";
 import { createSession } from "../auth/session.mjs";
+import { listSetterQueue, updateSetterHandoff } from "../setter/dashboard.mjs";
 
 const HAVE_DB = !!process.env.DATABASE_URL;
 
@@ -199,8 +200,12 @@ describe("PATCH /api/tasks — active-shift gate", { skip: !HAVE_DB ? "no DATABA
                 '2026-11-02T16:00:00Z'::timestamptz, '2026-11-01T01:00:00Z'::timestamptz
            FROM generate_series(1, 201) AS n RETURNING id`, [org, TITLE]);
       try {
-        const first = await call("GET", { token, query: { q: TITLE, done: "false", limit: "200", offset: "0" } });
-        const second = await call("GET", { token, query: { q: TITLE, done: "false", limit: "200", offset: "200" } });
+        const first = await call("GET", { token, query: { q: TITLE, done: "false", limit: "200", stable: "1" } });
+        assert.match(first.body.revision, /^[a-f0-9]{32}$/);
+        assert.ok(first.body.next_after);
+        const nextQuery = { q: TITLE, done: "false", limit: "200", stable: "1",
+          after: first.body.next_after, revision: first.body.revision };
+        const second = await call("GET", { token, query: nextQuery });
         assert.equal(first.code, 200, JSON.stringify(first.body));
         assert.equal(second.code, 200, JSON.stringify(second.body));
         assert.equal(first.body.can_open_setter, true);
@@ -209,12 +214,17 @@ describe("PATCH /api/tasks — active-shift gate", { skip: !HAVE_DB ? "no DATABA
         const ids = first.body.tasks.concat(second.body.tasks).map(row => row.id);
         assert.equal(new Set(ids).size, 202);
         assert.deepEqual(new Set(ids), new Set([taskId, ...seeded.rows.map(row => row.id)]));
-        const repeat = await call("GET", { token, query: { q: TITLE, done: "false", limit: "200", offset: "200" } });
+        const repeat = await call("GET", { token, query: nextQuery });
         assert.deepEqual(repeat.body.tasks.map(row => row.id), second.body.tasks.map(row => row.id));
-        for (const offset of ["-1", "1.5", "10000000", "0 OR 1=1"]) {
+        await db.query(`UPDATE tasks SET due_at = '2026-11-01T16:00:00Z'::timestamptz
+          WHERE id = $1`, [second.body.tasks[0].id]);
+        const changed = await call("GET", { token, query: nextQuery });
+        assert.equal(changed.code, 409);
+        assert.equal(changed.body.error, "task_queue_changed");
+        for (const offset of ["0", "200", "0 OR 1=1"]) {
           const bad = await call("GET", { token, query: { offset } });
           assert.equal(bad.code, 400);
-          assert.equal(bad.body.error, "invalid_offset");
+          assert.equal(bad.body.error, "offset_not_supported");
         }
       } finally {
         await db.query("DELETE FROM tasks WHERE id = ANY($1::uuid[])", [seeded.rows.map(row => row.id)]);
@@ -235,6 +245,46 @@ describe("PATCH /api/tasks — active-shift gate", { skip: !HAVE_DB ? "no DATABA
       assert.equal(closerRead.code, 200);
       assert.equal(setterRead.body.can_open_setter, true);
       assert.equal(closerRead.body.can_open_setter, false);
+      assert.equal(setterRead.body.tasks[0].can_open_setter, true);
+      await db.query(`UPDATE tasks SET assignee_staff_id = $2 WHERE id = $1`, [taskId, mateId]);
+      try {
+        const assignedRead = await call("GET", { token, query: { q: TITLE, limit: "1" } });
+        assert.equal(assignedRead.body.tasks[0].can_open_setter, false);
+      } finally {
+        await resetTask();
+      }
+    });
+
+    test("exact setter queue read keeps assignment and archive gates", async () => {
+      const clients = (await db.query(
+        `INSERT INTO clients (org_id, email, first_name, last_name)
+         VALUES ($1,'taskgate_exact_1@example.com','Older','Lead'),
+                ($1,'taskgate_exact_2@example.com','Other','Setter')
+         RETURNING id`, [org])).rows.map(row => row.id);
+      try {
+        await db.query(
+          `INSERT INTO tasks (org_id, client_id, title, body, assignee_role, assignee_staff_id, source_workflow)
+           VALUES ($1,$2,$4,'exact-open','setter',NULL,'setter-entry'),
+                  ($1,$3,$4,'exact-other','setter',$5,'setter-entry')`,
+          [org, clients[0], clients[1], TITLE, mateId]);
+        const staff = { id: staffId, org_id: org, role: "setter" };
+        const own = await listSetterQueue(db, staff, { clientId: clients[0], limit: 1 });
+        const other = await listSetterQueue(db, staff, { clientId: clients[1], limit: 1 });
+        assert.deepEqual(own.items.map(item => item.client_id), [clients[0]]);
+        assert.equal(other.items.length, 0);
+        await db.query(
+          `UPDATE clients SET custom_fields = jsonb_build_object('crm_archived_at', now()::text)
+            WHERE id = $1`, [clients[0]]);
+        const archived = await listSetterQueue(db, staff, { clientId: clients[0], limit: 1 });
+        assert.equal(archived.items.length, 0);
+        const calendarRead = await call("GET", { token, query: {
+          client_id: clients[0], done: "false", stable: "1" } });
+        assert.equal(calendarRead.code, 200);
+        assert.equal(calendarRead.body.tasks.length, 0);
+      } finally {
+        await db.query("DELETE FROM tasks WHERE client_id = ANY($1::uuid[])", [clients]);
+        await db.query("DELETE FROM clients WHERE id = ANY($1::uuid[])", [clients]);
+      }
     });
 
     // The document vault (Capital Blueprint B3) puts one readable sentence on the
@@ -281,6 +331,54 @@ describe("PATCH /api/tasks — active-shift gate", { skip: !HAVE_DB ? "no DATABA
       const r = await call("PATCH", { token, body: { id: taskId, done: true } });
       assert.equal(r.code, 200, JSON.stringify(r.body));
       assert.equal((await taskRow()).done, true);
+    });
+
+    test("generic completion cannot bypass the setter handoff for either setter task type", async () => {
+      for (const source of ["setter-entry", "setter-booking"]) {
+        await resetTask();
+        await db.query(`UPDATE tasks SET source_workflow = $2 WHERE id = $1`, [taskId, source]);
+        try {
+          const r = await call("PATCH", { token, body: { id: taskId, done: true } });
+          assert.equal(r.code, 409);
+          assert.equal(r.body.error, "setter_handoff_required");
+          assert.equal((await taskRow()).done, false);
+        } finally {
+          await db.query(`UPDATE tasks SET source_workflow = NULL WHERE id = $1`, [taskId]);
+        }
+      }
+    });
+
+    test("the dedicated completed handoff still closes setter work in real Postgres", async () => {
+      const clientId = (await db.query(
+        `INSERT INTO clients (org_id, email, first_name, last_name)
+         VALUES ($1,'taskgate_handoff@example.com','Handoff','Buyer') RETURNING id`, [org])).rows[0].id;
+      try {
+        await db.query(
+          `INSERT INTO bookings (org_id, client_id, source, starts_at, status)
+           VALUES ($1,$2,'sim','2026-11-03T19:00:00Z','booked')`, [org, clientId]);
+        const setterTask = (await db.query(
+          `INSERT INTO tasks (org_id, client_id, title, body, assignee_role, assignee_staff_id, source_workflow)
+           VALUES ($1,$2,$3,'handoff-open','setter',$4,'setter-entry') RETURNING id`,
+          [org, clientId, TITLE, staffId])).rows[0].id;
+        const result = await updateSetterHandoff(db,
+          { id: staffId, org_id: org, role: "owner", name: "Taskgate Owner" },
+          { client_id: clientId, action: "complete", handoff: {
+            dialed_at: "2026-11-01T19:00:00Z", call_attempts: 1, disposition: "reached",
+            time_confirmed: true, frame_warmed: true, problem: "Working capital",
+            goal: "Open a second location", computer_ready: true, app_on_phone: false
+          } },
+          { buildText: () => "Saved handoff", advanceStage: async () =>
+            ({ moved: false, reason: "already_at_or_past" }), closerAlert: async () => ({ queued: 0 }) });
+        assert.equal(result.status, 200, JSON.stringify(result.body));
+        const saved = (await db.query(
+          `SELECT t.done, c.custom_fields->'setter_handoff'->>'complete_at' AS completed
+             FROM tasks t JOIN clients c ON c.id = t.client_id WHERE t.id = $1`, [setterTask])).rows[0];
+        assert.equal(saved.done, true);
+        assert.ok(saved.completed);
+      } finally {
+        await db.query("DELETE FROM tasks WHERE client_id = $1", [clientId]);
+        await db.query("DELETE FROM clients WHERE id = $1", [clientId]);
+      }
     });
 
     test("the claim race still answers 409, so the gate did not eat the domain error", async () => {
