@@ -76,3 +76,27 @@ export function prOwnershipDecision({current,files,peers,peerFiles,cutover=NEW_P
   if(blockers.length)problems.push('Files are already claimed by older open PRs');
   return {ok:problems.length===0,isNew,lane,overlaps,blockers,problems};
 }
+
+export function prOrderDecision({current,peers,cutover=NEW_PR_CUTOVER}) {
+  if (Date.parse(current?.created_at??'')<Date.parse(cutover))
+    return {ok:true,reason:'Legacy PR predates ordered shipping'};
+  const positions=pr=>(pr.labels||[]).map(label=>
+    /^ship-order\/(\d+)$/.exec(label.name||'')?.[1]).filter(Boolean).map(Number);
+  const mine=positions(current);
+  if(mine.length!==1||!Number.isSafeInteger(mine[0])||mine[0]<1)
+    return {ok:false,reason:'Add exactly one valid ship-order/N label'};
+  const position=mine[0];
+  const ordered=(peers||[]).filter(pr=>pr.state==='open')
+    .flatMap(pr=>positions(pr).map(n=>({pr,position:n})));
+  if(ordered.some(x=>x.position===position))
+    return {ok:false,reason:`ship-order/${position} is already used by an open PR`};
+  const base=current?.base?.ref;
+  if(base==='main') {
+    if(ordered.some(x=>x.position<position))
+      return {ok:false,reason:'An earlier ordered PR must merge first'};
+    return {ok:true,reason:'First open ordered PR targets main'};
+  }
+  if(ordered.some(x=>x.position===position-1&&x.pr.head?.ref===base))
+    return {ok:true,reason:'PR is based on its immediate ordered parent'};
+  return {ok:false,reason:'PR base is not its immediate ordered parent'};
+}

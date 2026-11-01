@@ -9,7 +9,7 @@ alwaysApply: true
 
 Never merge out of chain order. Never stack a branch or retarget a pull request by hand. If the parent merge or a rebase conflicts, leave the affected pull request open and tell Chris which file needs a decision. Do not force a merge or call a queued change live. Verify the `ship.yml` run and live result after each main merge.
 
-GitHub's native merge queue is unavailable while this repository is owned by a personal account. If the owner moves it to an organization, require the native queue on `main`; the CI workflow already supports `merge_group`. Until then, the branch chain and auto-merge move one PR at a time.
+GitHub's native merge queue is unavailable while this repository is owned by a personal account. If the owner moves it to an organization, require the native queue on `main`; the CI workflow already supports `merge_group`. Until then, the branch chain and auto-merge move one PR at a time. The required PR ownership check verifies the chain position and the head's archive tag, so a later PR or an updated legacy PR cannot merge with an unarchived tip.
 
 Run `npm run preflight` first and resolve shared files. The ordered shipping command does not replace lint, tests, `rules:check`, or the branch's product proof.
 If the command stops after committing, fix the reported issue and rerun with `--resume --message "Same change name" --owner-lane team-name`; it will reuse the clean commit.
