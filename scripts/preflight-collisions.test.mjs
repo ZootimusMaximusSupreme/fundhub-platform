@@ -3,7 +3,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { chooseMainUpdate, excludeExpectedBase, fileHandoffs, findOverlaps, orderChain, orderPrChain, orderedChildRefs, parsePorcelain, parseWorktrees, resolveFileHandoffs } from "./preflight-collisions.mjs";
+import { blockingOverlaps, chooseMainUpdate, excludeExpectedBase, fileHandoffs, findOverlaps, orderChain, orderPrChain, orderedChildRefs, parsePorcelain, parseWorktrees, resolveFileHandoffs } from "./preflight-collisions.mjs";
 
 test("parsePorcelain keeps the new path on a rename and strips quotes", () => {
   const text = " M src/a.mjs\n?? docs/new.md\nR  old.mjs -> src/b.mjs\n M \"has space.md\"";
@@ -42,6 +42,19 @@ test("findOverlaps lists hot files touched by two or more other sources", () => 
     { file: "src/c.mjs", labels: ["PR #9 y", "branch x", "unsaved in fh-z (z)"] },
     { file: "src/e.mjs", labels: ["PR #9 y", "unsaved in fh-z (z)"] }
   ]);
+});
+
+test("only active worktrees and open PRs block; unattached local refs still warn", () => {
+  const sources = [
+    { label: "branch old", kind: "branch", active: false, files: ["src/shared.mjs"] },
+    { label: "branch editing", kind: "branch", active: true, files: ["src/shared.mjs"] },
+    { label: "PR #9 ready", kind: "pr", files: ["src/shared.mjs"] },
+    { label: "unsaved in worktree", kind: "worktree", files: ["src/shared.mjs"] }
+  ];
+  const { withMine } = findOverlaps(["src/shared.mjs"], sources);
+  assert.deepEqual(blockingOverlaps(withMine, sources).map((item) => item.label),
+    ["branch editing", "PR #9 ready", "unsaved in worktree"]);
+  assert.deepEqual(blockingOverlaps(withMine, [sources[0]]), []);
 });
 
 test("main refresh attempts a safe Git fast-forward and preserves divergent history", () => {
