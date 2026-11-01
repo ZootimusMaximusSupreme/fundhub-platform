@@ -27,6 +27,7 @@ export function writeReport({ collector, meta = {}, journeyNotes = [], credentia
   const fails = items.filter((i) => i.status === STATUS.FAIL);
   const unverified = items.filter((i) => i.status === STATUS.UNVERIFIED);
   const security = items.filter((i) => i.section === "SECURITY" || i.section.startsWith("SECURITY"));
+  const failedJourneyVerdicts = verdicts.filter((v) => v.usableToday === false);
 
   const lines = [];
   lines.push("# End-to-End Verification Report");
@@ -53,7 +54,10 @@ export function writeReport({ collector, meta = {}, journeyNotes = [], credentia
       `${tallies.FAIL || 0} FAIL and ${tallies["SILENTLY-DID-NOTHING"] || 0} silent no-ops remain.`
     );
   } else {
-    lines.push("No FAIL/SILENT/P0 in this local synthetic run. UNVERIFIED rows and live provider paths remain unproven.");
+    lines.push("No FAIL/SILENT/P0 among collected assertions in this local synthetic run. UNVERIFIED rows and live provider paths remain unproven.");
+  }
+  if (failedJourneyVerdicts.length) {
+    lines.push(`${failedJourneyVerdicts.length} local synthetic journey verdict${failedJourneyVerdicts.length === 1 ? "" : "s"} FAIL; see §7.`);
   }
   lines.push("");
   lines.push(
@@ -61,7 +65,9 @@ export function writeReport({ collector, meta = {}, journeyNotes = [], credentia
     "(Playwright UI + data-layer). Data only: `node src/verification/run-all.mjs`."
   );
   lines.push("");
-  lines.push("## Tallies");
+  lines.push("## Collected assertion tallies");
+  lines.push("");
+  lines.push("Journey verdicts are separate from these assertion counts; see §7.");
   lines.push("");
   lines.push(`| Status | Count |`);
   lines.push(`|---|---:|`);
@@ -158,11 +164,11 @@ export function writeReport({ collector, meta = {}, journeyNotes = [], credentia
   lines.push("");
 
   // ─── Breaks with file/line ────────────────────────────────────────
-  lines.push("## 5. Breaks (FAIL + SILENT) with file and line");
+  lines.push("## 5. Collected assertion breaks (FAIL + SILENT) with file and line");
   lines.push("");
   const breaks = [...fails, ...silents];
   if (!breaks.length) {
-    lines.push("_None recorded._");
+    lines.push("_No collected assertion breaks recorded. Journey verdicts are listed in §7._");
     lines.push("");
   } else {
     for (const i of breaks) {
