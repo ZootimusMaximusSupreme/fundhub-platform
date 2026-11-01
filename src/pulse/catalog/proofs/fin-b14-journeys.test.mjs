@@ -405,6 +405,20 @@ const PIPELINE_NAMES = [
 
 test("step fields: every kind of step shows its own boxes with what is saved in them, and what is typed is what gets saved", { timeout: 90_000 }, async () => {
   const { page, seen, errors } = await openJourneys({ trees: ALL_KINDS });
+  // Keep the last real input/click targets for an intermittent selection failure. Do not retry the
+  // action: a missed click or wrong panel must still fail this proof and leave its row unclaimed.
+  await page.evaluate(() => {
+    window.__journeySelectionEvents = [];
+    for (const type of ["pointerdown", "pointerup", "click", "input"]) {
+      document.addEventListener(type, (event) => {
+        window.__journeySelectionEvents.push({
+          type, step: event.target.closest(".nrow")?.dataset.id ?? null,
+          field: event.target.getAttribute("data-k"), tag: event.target.tagName,
+        });
+        if (window.__journeySelectionEvents.length > 12) window.__journeySelectionEvents.shift();
+      }, true);
+    }
+  });
   await proof.check(/^Step panel fields: text body and timing/, async () => {
     const fieldKeys = async () => page.locator("#pbody [data-k]").evaluateAll((list) => list.map((el) => el.getAttribute("data-k")));
     const options = async (key) => page.locator(`#pbody [data-k="${key}"] option`).allTextContents();
@@ -412,10 +426,22 @@ test("step fields: every kind of step shows its own boxes with what is saved in 
     const pick = async (id) => {
       await clickStep(page, id);
       const title = ALL_KINDS.client.nodes.find((node) => node.id === id).title;
-      await waitFor(async () =>
-        await page.locator(`#canvas .nrow[data-id="${id}"]`).getAttribute("aria-selected") === "true" &&
-        await page.locator("#pbody .ptitle").textContent() === title,
-      `the selected ${id} step and its own fields`);
+      try {
+        await waitFor(async () =>
+          await page.locator(`#canvas .nrow[data-id="${id}"]`).getAttribute("aria-selected") === "true" &&
+          await page.locator("#pbody .ptitle").textContent() === title,
+        `the selected ${id} step and its own fields`);
+      } catch (error) {
+        const state = await page.evaluate(() => ({
+          steps: [...document.querySelectorAll("#canvas .nrow")].map((row) => ({
+            id: row.dataset.id, selected: row.getAttribute("aria-selected"),
+          })),
+          panelTitle: document.querySelector("#pbody .ptitle")?.textContent ?? null,
+          fields: [...document.querySelectorAll("#pbody [data-k]")].map((field) => field.dataset.k),
+          events: window.__journeySelectionEvents,
+        }));
+        throw new Error(`${error.message}\nSelection state: ${JSON.stringify({ expectedStep: id, expectedTitle: title, ...state, pageErrors: errors, journeyReads: seen.gets })}`, { cause: error });
+      }
     };
 
     // 1. every box opens holding what is saved for the step (a box, a text area and a pick list alike)
