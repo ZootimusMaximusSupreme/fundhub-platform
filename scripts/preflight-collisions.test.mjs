@@ -3,7 +3,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { blockingOverlaps, chooseMainUpdate, excludeExpectedBase, fileHandoffs, findOverlaps, inheritedOrderedRefs, orderChain, orderPrChain, orderedChildRefs, parsePorcelain, parseWorktrees, resolveFileHandoffs } from "./preflight-collisions.mjs";
+import { blockingOverlaps, chooseMainUpdate, excludeExpectedBase, fileHandoffs, findOverlaps, inheritedOrderedRefs, isOlderOpenPr, orderChain, orderPrChain, orderedChildRefs, parsePorcelain, parseWorktrees, resolveFileHandoffs, stackAncestorNumbers } from "./preflight-collisions.mjs";
+import { FILE_OVERLAP_CUTOVER } from "./release-control.mjs";
 
 test("parsePorcelain keeps the new path on a rename and strips quotes", () => {
   const text = " M src/a.mjs\n?? docs/new.md\nR  old.mjs -> src/b.mjs\n M \"has space.md\"";
@@ -48,13 +49,54 @@ test("only active worktrees and open PRs block; unattached local refs still warn
   const sources = [
     { label: "branch old", kind: "branch", active: false, files: ["src/shared.mjs"] },
     { label: "branch editing", kind: "branch", active: true, files: ["src/shared.mjs"] },
-    { label: "PR #9 ready", kind: "pr", files: ["src/shared.mjs"] },
+    { label: "PR #9 ready", kind: "pr", prNumber: 9, prCreatedAt: "2026-11-03T10:00:00Z", files: ["src/shared.mjs"] },
     { label: "unsaved in worktree", kind: "worktree", files: ["src/shared.mjs"] }
   ];
   const { withMine } = findOverlaps(["src/shared.mjs"], sources);
-  assert.deepEqual(blockingOverlaps(withMine, sources).map((item) => item.label),
+  const currentPr = { number: 450, headRefName: "codex/new", createdAt: "2026-11-03T10:00:00Z" };
+  assert.deepEqual(blockingOverlaps(withMine, sources, { currentPr, openPrs: [currentPr] }).map((item) => item.label),
     ["branch editing", "PR #9 ready", "unsaved in worktree"]);
   assert.deepEqual(blockingOverlaps(withMine, [sources[0]]), []);
+});
+
+test("legacy open PR warns on peer overlap; post-cutover PR blocks only on older peers", () => {
+  const legacyCurrent = { number: 270, headRefName: "codex/calendar-task-dedupe", createdAt: "2026-10-29T22:14:51Z", baseRefName: "main" };
+  const older = { number: 280, headRefName: "feat/qualification-bucket", createdAt: "2026-10-30T12:00:00Z", baseRefName: "main" };
+  const newer = { number: 325, headRefName: "codex/crm-phone-formatting", createdAt: "2026-10-31T12:00:00Z", baseRefName: "main" };
+  const sources = [
+    { label: `PR #${older.number} ${older.headRefName}`, kind: "pr", prNumber: older.number, prCreatedAt: older.createdAt, files: ["docs/journeys/CHANGELOG.md"] },
+    { label: `PR #${newer.number} ${newer.headRefName}`, kind: "pr", prNumber: newer.number, prCreatedAt: newer.createdAt, files: ["docs/journeys/CHANGELOG.md"] },
+    { label: "unsaved in fh-y (fh-y)", kind: "worktree", files: ["docs/journeys/CHANGELOG.md"] }
+  ];
+  const { withMine } = findOverlaps(["docs/journeys/CHANGELOG.md"], sources);
+  assert.equal(Date.parse(legacyCurrent.createdAt) < Date.parse(FILE_OVERLAP_CUTOVER), true);
+  assert.deepEqual(blockingOverlaps(withMine, sources, { currentPr: legacyCurrent, openPrs: [legacyCurrent, older, newer] }).map((x) => x.label),
+    ["unsaved in fh-y (fh-y)"]);
+
+  const newCurrent = { number: 450, headRefName: "codex/new", createdAt: "2026-11-03T10:00:00Z", baseRefName: "main" };
+  assert.deepEqual(blockingOverlaps(withMine, sources, { currentPr: newCurrent, openPrs: [newCurrent, older, newer] }).map((x) => x.label),
+    [`PR #${older.number} ${older.headRefName}`, `PR #${newer.number} ${newer.headRefName}`, "unsaved in fh-y (fh-y)"]);
+  const peerYounger = { number: 451, headRefName: "codex/later", createdAt: "2026-11-03T11:00:00Z", baseRefName: "main" };
+  const withYounger = [...sources, { label: `PR #${peerYounger.number} ${peerYounger.headRefName}`, kind: "pr", prNumber: peerYounger.number, prCreatedAt: peerYounger.createdAt, files: ["docs/journeys/CHANGELOG.md"] }];
+  const overlapYounger = findOverlaps(["docs/journeys/CHANGELOG.md"], withYounger).withMine;
+  assert.deepEqual(blockingOverlaps(overlapYounger, withYounger, { currentPr: newCurrent, openPrs: [newCurrent, older, newer, peerYounger] }).map((x) => x.label),
+    [`PR #${older.number} ${older.headRefName}`, `PR #${newer.number} ${newer.headRefName}`, "unsaved in fh-y (fh-y)"]);
+});
+
+test("branch with no open PR still treats peer PR overlap as blocking", () => {
+  const sources = [{ label: "PR #9 peer", kind: "pr", prNumber: 9, prCreatedAt: "2026-10-29T00:00:00Z", files: ["src/a.mjs"] }];
+  const { withMine } = findOverlaps(["src/a.mjs"], sources);
+  assert.deepEqual(blockingOverlaps(withMine, sources, { currentPr: null, openPrs: [] }).map((x) => x.label), ["PR #9 peer"]);
+});
+
+test("isOlderOpenPr and stack ancestors match release-control overlap ordering", () => {
+  assert.equal(isOlderOpenPr({ number: 280, createdAt: "2026-10-30T00:00:00Z" }, Date.parse("2026-11-03T10:00:00Z"), 450), true);
+  assert.equal(isOlderOpenPr({ number: 451, createdAt: "2026-11-03T11:00:00Z" }, Date.parse("2026-11-03T10:00:00Z"), 450), false);
+  const openPrs = [
+    { number: 1, headRefName: "parent", baseRefName: "main" },
+    { number: 2, headRefName: "child", baseRefName: "parent" }
+  ];
+  assert.deepEqual([...stackAncestorNumbers(openPrs, "child")], [1]);
 });
 
 test("main refresh attempts a safe Git fast-forward and preserves divergent history", () => {
