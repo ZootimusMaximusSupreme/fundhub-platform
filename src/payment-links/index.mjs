@@ -375,7 +375,7 @@ export async function markExpired(db, { id, orgId, at = new Date() }) {
 /** markPaid — created/sent -> paid, keyed by the link's OWN reference. */
 export async function markPaid(db, {
   orgId, linkRef, commasSessionId = null, paidAmountCents = null, paidAt = new Date(),
-  clientId = null, invoiceId = null, paymentLinkId = null
+  clientId = null, invoiceId = null, paymentLinkId = null, requireFullAmount = false
 }) {
   if (!orgId) throw new TypeError("markPaid: orgId is required");
   if (!linkRef) throw new TypeError("markPaid: linkRef is required");
@@ -386,9 +386,10 @@ export async function markPaid(db, {
         AND ($7::text IS NULL OR client_id::text = $7)
         AND ($8::text IS NULL OR invoice_id::text = $8)
         AND ($9::text IS NULL OR id::text = $9)
+        AND (NOT $10::boolean OR amount_cents <= $4::bigint)
      RETURNING *`,
     [linkRef, paidAt, commasSessionId, paidAmountCents, OPEN_STATUSES, orgId,
-      clientId, invoiceId, paymentLinkId]
+      clientId, invoiceId, paymentLinkId, requireFullAmount]
   );
   return result.rows[0] ?? null;
 }
@@ -397,7 +398,7 @@ export async function markPaid(db, {
  *  carries the Commas product / session id we stored at mint time. */
 export async function markPaidBySession(db, {
   orgId, commasSessionId, paidAmountCents = null, paidAt = new Date(),
-  clientId = null, invoiceId = null, paymentLinkId = null
+  clientId = null, invoiceId = null, paymentLinkId = null, requireFullAmount = false
 }) {
   if (!orgId) throw new TypeError("markPaidBySession: orgId is required");
   if (!commasSessionId) throw new TypeError("markPaidBySession: commasSessionId is required");
@@ -408,9 +409,10 @@ export async function markPaidBySession(db, {
         AND ($6::text IS NULL OR client_id::text = $6)
         AND ($7::text IS NULL OR invoice_id::text = $7)
         AND ($8::text IS NULL OR id::text = $8)
+        AND (NOT $9::boolean OR amount_cents <= $3::bigint)
      RETURNING *`,
     [String(commasSessionId), paidAt, paidAmountCents, OPEN_STATUSES, orgId,
-      clientId, invoiceId, paymentLinkId]
+      clientId, invoiceId, paymentLinkId, requireFullAmount]
   );
   return result.rows[0] ?? null;
 }
@@ -425,6 +427,15 @@ export async function getPaymentLink(db, { id, orgId }) {
 
 export async function getByLinkRef(db, { linkRef }) {
   const result = await db.query(`SELECT * FROM payment_links WHERE link_ref = $1`, [linkRef]);
+  return result.rows[0] ?? null;
+}
+
+export async function getByCommasSession(db, { orgId, sessionId }) {
+  const result = await db.query(
+    `SELECT * FROM payment_links
+      WHERE provider = 'commas' AND commas_session_id = $1 AND org_id = $2`,
+    [String(sessionId), orgId]
+  );
   return result.rows[0] ?? null;
 }
 

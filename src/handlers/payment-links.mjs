@@ -2,7 +2,7 @@
 // Prefer link_ref (metadata). Fall back to Commas product/session id so a
 // mismatched mint script cannot leave paid money invisible on the board.
 import { on } from "../events/registry.mjs";
-import { markPaid, markPaidBySession, getByLinkRef } from "../payment-links/index.mjs";
+import { markPaid, markPaidBySession, getByLinkRef, getByCommasSession } from "../payment-links/index.mjs";
 import { toCents } from "../commissions/money.mjs";
 import {
   ensureSloPortalForPaidClient,
@@ -45,6 +45,16 @@ function receiptMatchesLink(link, { orgId, clientId, invoiceId, paymentLinkId, p
     (link.paid_amount_cents == null || Number(link.paid_amount_cents) === paidAmountCents);
 }
 
+function requiresFullAmount(link) {
+  return isSloCheckoutLinkRef(link.link_ref) || isFinanceOsSetupLink(link);
+}
+
+function receiptCoversAccess(link, paidAmountCents) {
+  if (!requiresFullAmount(link)) return true;
+  const dueCents = Number(link.amount_cents);
+  return Number.isSafeInteger(dueCents) && dueCents > 0 && paidAmountCents >= dueCents;
+}
+
 export async function onPaymentReceivedForLink(event, db) {
   const p = event.payload || {};
   // Whop settles its own saved link after checking the signed checkout identity.
@@ -71,30 +81,36 @@ export async function onPaymentReceivedForLink(event, db) {
   const sessionId = p.itemId || p.commasSessionId || null;
 
   if (p.ref) {
-    const byRef = await markPaid(db, {
-      ...identity,
-      linkRef: p.ref,
-      commasSessionId: sessionId || p.providerRef || null
-    });
-    if (byRef) {
-      await openSloPortalIfPaid(db, byRef);
-      await turnOnFinanceOsIfSetup(db, byRef);
-      return;
-    }
-    // A known ref owns this callback. Do not fall through and pay a different
-    // checkout by session ID, including on a replay of an already-paid ref.
     const referencedLink = await getByLinkRef(db, { linkRef: p.ref });
     if (referencedLink) {
-      if (referencedLink.status === "paid" && receiptMatchesLink(referencedLink, identity)) {
+      if (!receiptMatchesLink(referencedLink, identity) ||
+          !receiptCoversAccess(referencedLink, paidAmountCents)) return;
+      if (referencedLink.status === "paid") {
         await turnOnFinanceOsIfSetup(db, referencedLink);
+        return;
       }
+      const byRef = await markPaid(db, {
+        ...identity,
+        linkRef: p.ref,
+        commasSessionId: sessionId || p.providerRef || null,
+        requireFullAmount: requiresFullAmount(referencedLink)
+      });
+      if (byRef) {
+        await openSloPortalIfPaid(db, byRef);
+        await turnOnFinanceOsIfSetup(db, byRef);
+      }
+      // A known ref owns this callback and cannot fall through to another session.
       return;
     }
   }
 
   if (sessionId) {
+    const sessionLink = await getByCommasSession(db, { orgId: event.orgId, sessionId });
+    if (!sessionLink || !receiptMatchesLink(sessionLink, identity) ||
+        !receiptCoversAccess(sessionLink, paidAmountCents)) return;
     const bySession = await markPaidBySession(db, {
-      ...identity, commasSessionId: sessionId
+      ...identity, commasSessionId: sessionId,
+      requireFullAmount: requiresFullAmount(sessionLink)
     });
     await openSloPortalIfPaid(db, bySession);
     if (bySession) {
@@ -102,7 +118,6 @@ export async function onPaymentReceivedForLink(event, db) {
       return;
     }
   }
-
 }
 
 export function register() {

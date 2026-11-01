@@ -18,12 +18,16 @@ function fakeDb(rows) {
       if (/^\s*SELECT \* FROM payment_links WHERE link_ref = \$1/i.test(text)) {
         return { rows: rows.filter((r) => r.link_ref === params[0]) };
       }
+      if (/^\s*SELECT \* FROM payment_links\s+WHERE provider = 'commas' AND commas_session_id = \$1/i.test(text)) {
+        return { rows: rows.filter((r) => r.commas_session_id === params[0] && r.org_id === params[1]) };
+      }
       if (/link_ref = \$1/i.test(text)) {
-        const [link_ref, , commas_session_id, paid_amount_cents, openStatuses, org_id, client_id, invoice_id, id] = params;
+        const [link_ref, , commas_session_id, paid_amount_cents, openStatuses, org_id, client_id, invoice_id, id, requireFullAmount] = params;
         const row = rows.find((r) => r.link_ref === link_ref && r.org_id === org_id && openStatuses.includes(r.status) &&
           (!client_id || String(r.client_id) === client_id) &&
           (!invoice_id || String(r.invoice_id) === invoice_id) &&
-          (!id || String(r.id) === id));
+          (!id || String(r.id) === id) &&
+          (!requireFullAmount || Number(r.amount_cents) <= paid_amount_cents));
         if (!row) return { rows: [] };
         // The live unique index payment_links_commas_session (119), so a
         // fake cannot pass a write the real table refuses.
@@ -37,11 +41,12 @@ function fakeDb(rows) {
         return { rows: [row] };
       }
       if (/commas_session_id = \$1/i.test(text)) {
-        const [session_id, , paid_amount_cents, openStatuses, org_id, client_id, invoice_id, id] = params;
+        const [session_id, , paid_amount_cents, openStatuses, org_id, client_id, invoice_id, id, requireFullAmount] = params;
         const row = rows.find((r) => r.commas_session_id === session_id && r.org_id === org_id && openStatuses.includes(r.status) &&
           (!client_id || String(r.client_id) === client_id) &&
           (!invoice_id || String(r.invoice_id) === invoice_id) &&
-          (!id || String(r.id) === id));
+          (!id || String(r.id) === id) &&
+          (!requireFullAmount || Number(r.amount_cents) <= paid_amount_cents));
         if (!row) return { rows: [] };
         row.status = "paid";
         row.paid_amount_cents = paid_amount_cents;
@@ -72,6 +77,14 @@ describe("onPaymentReceivedForLink", () => {
     const rows = [{ link_ref: "pl_wrong", commas_session_id: "8YZPo", status: "sent" }];
     const db = fakeDb(rows);
     await onPaymentReceivedForLink({ orgId: TEST_ORG, payload: { amount: 1, itemId: "8YZPo" } }, db);
+    assert.equal(rows[0].status, "paid");
+    assert.equal(rows[0].paid_amount_cents, 100);
+  });
+
+  test("an ordinary link records a smaller captured amount for reconciliation", async () => {
+    const rows = [{ link_ref: "pl_partial", status: "sent", amount_cents: 50000 }];
+    const db = fakeDb(rows);
+    await onPaymentReceivedForLink({ orgId: TEST_ORG, payload: { ref: "pl_partial", amount: 1 } }, db);
     assert.equal(rows[0].status, "paid");
     assert.equal(rows[0].paid_amount_cents, 100);
   });
@@ -176,7 +189,8 @@ describe("onPaymentReceivedForLink", () => {
       link_ref: "slo_abcdef0123456789abcdef",
       status: "sent",
       org_id: ORG,
-      client_id: CLIENT
+      client_id: CLIENT,
+      amount_cents: 29700
     }];
     const accounts = [];
     const db = {
@@ -184,6 +198,9 @@ describe("onPaymentReceivedForLink", () => {
       query: async (sql, params) => {
         db.calls.push({ sql: String(sql), params });
         const text = String(sql);
+        if (/^\s*SELECT \* FROM payment_links WHERE link_ref = \$1/i.test(text)) {
+          return { rows: rows.filter((r) => r.link_ref === params[0]) };
+        }
         if (/link_ref = \$1/i.test(text)) {
           const [link_ref, , commas_session_id, paid_amount_cents, openStatuses, org_id] = params;
           const row = rows.find((r) => r.link_ref === link_ref && r.org_id === org_id && openStatuses.includes(r.status));
@@ -215,6 +232,13 @@ describe("onPaymentReceivedForLink", () => {
     assert.equal(accounts.length, 1);
     assert.equal(accounts[0].email, "slo.buyer@example.com");
     assert.equal(accounts[0].client_id, CLIENT);
+  });
+
+  test("a $1 receipt cannot settle a $297 SLO link", async () => {
+    const rows = [{ link_ref: "slo_underpaid", status: "sent", amount_cents: 29700, client_id: "buyer-a" }];
+    const db = fakeDb(rows);
+    await onPaymentReceivedForLink({ orgId: TEST_ORG, clientId: "buyer-a", payload: { ref: "slo_underpaid", amount: 1 } }, db);
+    assert.equal(rows[0].status, "sent");
   });
 
   test("a paid soft-pull pl_ link does not invent an SLO portal write", async () => {
@@ -274,7 +298,7 @@ describe("onPaymentReceivedForLink", () => {
   function setupLink(extra = {}) {
     return {
       id: LINK_ID, link_ref: "pl_setup1", status: "sent", org_id: ORG, client_id: CLIENT,
-      purpose: "custom", description: "Finance OS setup", paid_at: null, ...extra
+      purpose: "custom", description: "Finance OS setup", amount_cents: 50000, paid_at: null, ...extra
     };
   }
 
@@ -288,6 +312,25 @@ describe("onPaymentReceivedForLink", () => {
     assert.equal(db.subs[0].client_id, CLIENT);
     assert.equal(db.subs[0].provider_ref, `payment_link:${LINK_ID}`);
     assert.equal(db.subs[0].price_cents, null, "not priced is null, never 0");
+  });
+
+  test("a $1 receipt cannot settle a $500 Finance OS setup link", async () => {
+    const links = [setupLink()];
+    const db = setupDb(links);
+    await onPaymentReceivedForLink({ orgId: TEST_ORG, clientId: CLIENT, payload: { ref: "pl_setup1", amount: 1 } }, db);
+    assert.equal(links[0].status, "sent");
+    assert.equal(db.subs.length, 0);
+  });
+
+  test("session fallback also requires the full Finance OS setup amount", async () => {
+    const links = [setupLink({ commas_session_id: "session_setup" })];
+    const db = setupDb(links);
+    await onPaymentReceivedForLink({ orgId: TEST_ORG, clientId: CLIENT, payload: { itemId: "session_setup", amount: 1 } }, db);
+    assert.equal(links[0].status, "sent");
+    assert.equal(db.subs.length, 0);
+    await onPaymentReceivedForLink({ orgId: TEST_ORG, clientId: CLIENT, payload: { itemId: "session_setup", amount: 500 } }, db);
+    assert.equal(links[0].status, "paid");
+    assert.equal(db.subs.length, 1);
   });
 
   test("matching buyer, invoice, and link ID still settle Finance OS setup", async () => {
