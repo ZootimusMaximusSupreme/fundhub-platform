@@ -44,7 +44,7 @@ const MAIN_RUN = [...Array(22)].map((_, i) => `S-${String(i + 1).padStart(2, "0"
 const STACK_RUN = ["B-01", "B-02", "B-03", "B-04", "B-05", "B-06"];
 const VISUAL_NAMES = ["yourPath", "moneyLevers", "companies", "blueprintDemo", "journey"];
 
-function payload({ tier = "FULL_FUNDING", negItems = 3, available = true, businesses = [], softPull = null, visual = undefined } = {}) {
+function payload({ tier = "FULL_FUNDING", negItems = 3, available = true, businesses = [], softPull = undefined, visual = undefined } = {}) {
   return {
     client_id: CONTACT,
     survey: { name: "Sam Sample" },
@@ -54,10 +54,10 @@ function payload({ tier = "FULL_FUNDING", negItems = 3, available = true, busine
       available, tier, label: tier, fico: { ex: 650, tu: 640, eq: 655 },
       total: available ? 20000 : null, afterFix: available ? 60000 : null,
       negItems: available ? negItems : null, reasons: [], plan: [],
-      totalBasis: available ? "personal_only" : null, sample: true,
+      totalBasis: available ? "personal_only" : null, sample: false,
       ...(visual === undefined ? {} : { visual }),
     },
-    soft_pull: softPull,
+    soft_pull: softPull === undefined ? { consent_valid: true, diagnostic_paid: true, pull_status: "complete", crs_result_id: "unit-proof-result", sample: false } : softPull,
     offers: OFFERS,
   };
 }
@@ -1114,7 +1114,7 @@ test("the soft pull panel says consent, payment and pull status in words from wh
       return at < 0 ? null : text.slice(at, text.indexOf("Send soft pull")).trim();
     };
     // nothing yet
-    const none = await openDeck("FULL_FUNDING");
+    const none = await openDeck("FULL_FUNDING", { deck: payload({ softPull: null }) });
     none.press("phase:03");
     assert.equal(none.slide(), "S-05");
     assert.equal(panel(none), "Live soft pull consent: waiting paid $32: not yet pull: not started");
@@ -1141,6 +1141,8 @@ test("the soft pull panel says consent, payment and pull status in words from wh
     assert.equal(waiting.slide(), "S-06");
     assert.ok(panel(waiting));
     waiting.press("next");
+    assert.equal(waiting.slide(), "S-06", "Next holds until the real report is ready");
+    waiting.press("phase:04");
     assert.equal(waiting.slide(), "S-07");
     assert.ok(panel(waiting));
     waiting.press("next");
@@ -1220,7 +1222,7 @@ test("each visual is called where 10.0 places it, with the ctx 10.8 names, and d
   assert.equal(call.ctx.tier, "FUNDING_PLUS_REPAIR");
   assert.equal(call.ctx.clientId, CONTACT);
   assert.deepEqual(JSON.parse(JSON.stringify(call.ctx.visual)), { source: "sample" });
-  assert.equal(call.ctx.sample, true);
+  assert.equal(call.ctx.sample, false);
   assert.equal(call.ctx.money(1500), "$1,500");
   assert.equal(call.ctx.esc("<b>"), "&lt;b&gt;");
   assert.equal(call.ctx.survey.name, "Sam Sample");
@@ -1265,7 +1267,7 @@ test("a missing visual, a missing engine.visual, a visual that throws or draws n
     assert.ok(deck.client().includes("Your money, on one page."), `${label}: B-03 keeps today's content`);
     assert.ok(deck.cockpit().includes("financeos.html"), `${label}: and its sample-client links`);
     deck.force("stack-go:S-15");
-    assert.ok(deck.client().includes("It's sitting in the queue."), `${label}: S-15 keeps the round grid`);
+    assert.ok(deck.client().includes("Letters appear in your dashboard when they have actually been generated and staged."), `${label}: S-15 keeps the planned sequence without claiming letters exist`);
   }
   // funding: no C-01 without its visual
   const funding = await openDeck("FULL_FUNDING", { visuals: { yourPath: () => "<p>path</p>" } });
@@ -1382,8 +1384,7 @@ test("the client screens carry the 2026-10-29 words", async () => {
   assert.ok(!funding.client().includes("Monthly revenue"));
   funding.press("phase:03").press("next");
   assert.equal(funding.slide(), "S-06");
-  assert.ok(funding.text().includes("About 10 years doing this work"), "row 13");
-  assert.ok(funding.text().includes("Hundreds of client files built UnderwriteIQ"));
+  assert.ok(funding.client().includes("Your report is ready"), "S-06 names the real completed state");
   assert.ok(!/\$25M|Thousands/.test(funding.client()));
   funding.press("phase:06").walk(7);
   assert.equal(funding.slide(), "S-16");
@@ -1394,7 +1395,7 @@ test("the client screens carry the 2026-10-29 words", async () => {
   assert.ok(!/SBA|Equipment/.test(funding.client()));
   funding.press("phase:07").walk(3);
   assert.equal(funding.slide(), "S-20");
-  assert.ok(funding.text().includes("How much you qualify for today. Lenders make the final call."), "row 6");
+  assert.ok(funding.text().includes("Today's file estimate"), "S-20 labels the illustration as an estimate");
   assert.ok(!/Pre-approval/.test(funding.client()));
 
   const repair = await openDeck("REPAIR_ONLY", { deck: payload({ tier: "REPAIR_ONLY", available: false }) });

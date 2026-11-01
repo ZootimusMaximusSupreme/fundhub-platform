@@ -30,7 +30,9 @@ import * as M from "./gap-handoff.mjs";
 
 const HAS_DB = !!process.env.DATABASE_URL;
 const ORG = crypto.randomUUID();
-const NOW = new Date();
+// Keep the synthetic scenarios inside the Arizona send window. At night the
+// real workflow defers a due nudge to 9 a.m., so wall-clock tests flip color.
+const NOW = new Date("2026-10-31T21:00:00.000Z");
 const ago = (min) => new Date(NOW.getTime() - min * 60000).toISOString();
 const uuid = () => crypto.randomUUID();
 

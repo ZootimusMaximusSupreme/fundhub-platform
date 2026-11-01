@@ -568,7 +568,8 @@ describe("booked lane", () => {
       assert.equal(sms.status, "queued", "the stub sender left it queued; nothing was sent");
       assert.match(sms.body, /You're booked, Wendy\./);
       assertArizonaTime(sms.body, startMs, `${tag} confirm text`);
-      assert.ok(sms.body.includes(`move it here: ${spec.link} `), `${tag}: confirm text link, got ${sms.body}`);
+      assert.ok(sms.body.includes("Set up your Fundhub portal account and confirm your call here: https://fundhub.ai/portal-login.html?mode=claim"), `${tag}: lasting portal claim link`);
+      assert.ok(sms.body.includes(`Need to move it? ${spec.link} `), `${tag}: reschedule link, got ${sms.body}`);
 
       const email = only(msgs, EMAIL_CONFIRM)[0];
       assert.equal(email.channel, "email");
@@ -576,7 +577,7 @@ describe("booked lane", () => {
       assertArizonaTime(email.subject, startMs, `${tag} confirm email subject`);
       assertArizonaTime(email.body, startMs, `${tag} confirm email`);
       assert.ok(email.body.includes(`href="${spec.link}"`), `${tag}: the Reschedule here link`);
-      assert.match(email.body, /portal-login\.html\?t=[A-Za-z0-9_-]+#call-confirm-card/, "Confirm my call opens the portal with a sign-in token");
+      assert.match(email.body, /portal-login\.html\?mode=claim/, "Confirm my call opens the lasting portal claim page");
       assert.match(email.body, /portal-login\.html#download/, "the app download link");
       assert.ok(!/\{\{/.test(email.body) && !/href=""/.test(email.body), "no empty or unrendered tag");
 
