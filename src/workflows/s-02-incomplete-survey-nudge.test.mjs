@@ -483,11 +483,30 @@ test("two runs for one opt-in share one message per touch", async () => {
   assert.equal(a.stoppedBecause, undefined);
   assert.equal(b.stoppedBecause, undefined);
   assert.equal(w.db.messages.length, 6, "six messages, not twelve");
-  assert.deepEqual(
-    [...new Set(w.db.messages.map((m) => m.provider_ref.split(":").pop()))],
-    ["evt-a"],
-    "both runs keyed their sends on the first post of the application"
-  );
+});
+
+// Review 2026-10-31 (P1): two opt-ins more than six hours apart are two runs with two different
+// opt-in events. If both sleep to the same 9 a.m., neither has sent anything when the other one
+// starts, so both pass the one-sequence check at the start. Each touch must still go once.
+test("two opt-ins more than six hours apart that both wait for the same 9 a.m. send each touch once", async () => {
+  const w = world({ start: "2026-10-29T05:00:00.000Z" });
+  const night = optIn(w, { id: "evt-night", at: "2026-10-29T05:00:00.000Z" }); // 10:00 p.m. Arizona
+  const dawn = optIn(w, { id: "evt-dawn", at: "2026-10-29T11:30:00.000Z" }); // 4:30 a.m., 6.5 hours later
+  const [a, b] = await runAll(w, night, dawn);
+  assert.equal(a.stoppedBecause, undefined);
+  assert.equal(b.stoppedBecause, undefined);
+  assert.deepEqual(keys(w), TOUCH_KEYS, "each touch once, a text and an email, not twice");
+  assert.deepEqual(queuedAt(w), [NINE_AM(29), NINE_AM(29), NINE_AM(30), NINE_AM(30), NINE_AM(31), NINE_AM(31)]);
+});
+
+test("each touch is keyed to the person and the Arizona day it goes out, so two runs can never both send it", async () => {
+  const w = world({ start: AT_10AM });
+  await run(w, optIn(w, { id: "evt-a", at: "2026-10-28T17:00:00.000Z" }));
+  assert.deepEqual(w.db.messages.map((m) => m.provider_ref), [
+    `workflow:SMS-S02-RESUME-1:${CLIENT}:2026-10-28`, `workflow:EMAIL-S02-RESUME-1:${CLIENT}:2026-10-28`,
+    `workflow:SMS-S02-RESUME-2:${CLIENT}:2026-10-29`, `workflow:EMAIL-S02-RESUME-2:${CLIENT}:2026-10-29`,
+    `workflow:SMS-S02-RESUME-3:${CLIENT}:2026-10-30`, `workflow:EMAIL-S02-RESUME-3:${CLIENT}:2026-10-30`
+  ]);
 });
 
 test("a lead who comes back through touch 2's link and stops again does not start a second sequence", async () => {

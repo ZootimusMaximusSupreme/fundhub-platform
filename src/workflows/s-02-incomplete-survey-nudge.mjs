@@ -56,9 +56,16 @@
 // resume messages already sent to the person in the last four days, from another
 // opt-in, steps aside.
 //
-// Duplicate runs for ONE opt-in (several ClickFunnels posts, a replayed event)
-// share messageCohortId, so they share one message per touch: the send key is
-// `workflow:<template key>:<cohort event id>` and the insert is a no-op the second time.
+// That check runs once, at the start, so it cannot see a run that has not sent
+// yet. Two opt-ins more than six hours apart that both sleep to the same 9 a.m.
+// (10 p.m. and 4:30 a.m.) both pass it, and both would send (review 2026-10-31).
+// So a touch's send key is the PERSON and the ARIZONA DAY it goes out:
+// `workflow:<template key>:<client id>:<YYYY-MM-DD>` (touchSendKey). The messages
+// insert is ON CONFLICT (org_id, provider_ref) DO NOTHING, so whichever run sends
+// a touch first, the other run's insert of the same touch that day is a no-op. The
+// database settles it; there is no moment where both runs can get through. The
+// same key covers duplicate runs for ONE opt-in (several ClickFunnels posts, a
+// replayed event): one message per touch.
 
 import { inngest } from "./client.mjs";
 import { db } from "../db.mjs";
@@ -98,6 +105,18 @@ export function resumePlan(startMs) {
   const touch2 = nextHourStrike(touch1, SEND_WINDOW_TZ, DRIP_START_HOUR);
   const touch3 = nextHourStrike(touch2, SEND_WINDOW_TZ, DRIP_START_HOUR);
   return [touch1, touch2, touch3];
+}
+
+const ARIZONA_DAY = new Intl.DateTimeFormat("en-CA", {
+  timeZone: SEND_WINDOW_TZ, year: "numeric", month: "2-digit", day: "2-digit"
+});
+
+/* touchSendKey — the send key for one touch: the person and the Arizona day the touch
+   goes out ("<client id>:2026-10-29"). sendTemplated makes it the provider_ref
+   `workflow:<template key>:<this>`, so one person gets each come-back touch at most once
+   a day, however many runs try (see ONE SEQUENCE AT A TIME above). */
+export function touchSendKey(clientId, goesOutAt) {
+  return `${clientId}:${ARIZONA_DAY.format(new Date(goesOutAt))}`;
 }
 
 // Match on client_id OR on the email inside the event payload. Capture sources
@@ -201,12 +220,13 @@ export async function handle({ event, db, step, now = () => Date.now() }) {
         survey_stopped_at: progress.stoppedAt,
         survey_taps_left: progress.tapsLeft
       };
+      const sendKey = touchSendKey(clientId, plan.goesOutAt[touch.n - 1]);
       return {
         sms: await sendTemplated(db, {
-          orgId, clientId, channel: "sms", templateKey: touch.sms, eventId: plan.cohortId, context
+          orgId, clientId, channel: "sms", templateKey: touch.sms, eventId: sendKey, context
         }),
         email: await sendTemplated(db, {
-          orgId, clientId, channel: "email", templateKey: touch.email, eventId: plan.cohortId, context
+          orgId, clientId, channel: "email", templateKey: touch.email, eventId: sendKey, context
         })
       };
     });

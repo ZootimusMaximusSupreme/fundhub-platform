@@ -182,7 +182,7 @@ export async function handle({
     };
   });
 
-  // Owner decision 2026-08-22: booked stage is one text + Josh dial + one email,
+  // Owner decision 2026-08-22: booked stage is one text + AI setter dial + one email,
   // all immediate. Text first, email second; the AI setter dials on its own leg.
   // THE CONTEXT IS NEVER CONDITIONAL. It used to be spread in only when a token
   // was minted, and an absent {{magic_link.url}} renders as the empty string —

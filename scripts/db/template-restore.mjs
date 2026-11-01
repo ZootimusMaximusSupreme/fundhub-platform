@@ -43,6 +43,7 @@ export const STAGE_TABLE = "fh_tpl_restore_stage";
 export const RESTORE_SNAPSHOT_EXCLUDE_FILES = Object.freeze([
   "db/seed/298_s04_booking_app_confirm_email.sql",
   "db/seed/301_followup_flows_copy.sql",
+  "db/seed/303_no_josh_chris.sql",
   "db/seed/305_confirm_on_calendar.sql"
 ]);
 const JSON_TAG = "$fh_tpl_restore$";

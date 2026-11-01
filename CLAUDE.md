@@ -73,6 +73,7 @@ No recycled lines across ads (owner-set 2026-10-15). Same law: `.ai/rules/ad-no-
 Day counts allowed in ads (owner-set 2026-10-31). The 72-hour guarantee can be said. Same law: `.ai/rules/copy-certainty.md`
 Know the offer before a script or an overlay (owner-set 2026-10-25). Read the offer. The pictures show the product steps, not only the last sentence. Same law: `.ai/rules/ad-know-the-offer.md`
 Copy skills are the foundation (owner-set 2026-10-31). Copybot writes the words, Visual Thinking picks the picture, Fundhub rules own the facts. Same law: `.ai/rules/copy-skills-foundation.md`
+Show real proof (owner-set 2026-10-31). Show the real thing whenever we have it, or merge it with a little diagram; the picture and the words prove each other. Same law: `.ai/rules/show-real-proof.md`
 Heartbeat on every build (owner-set 2026-10-07). A job is red if it has not run in 3 times its schedule. Same law: `.ai/rules/heartbeat-on-every-build.md`
 Human-click tests (owner-set 2026-08-16). Same law: `.ai/rules/test-means-human-click.md`
 Second line of the ad (owner-set 2026-09-28). Same law: `.ai/rules/ad-second-line.md`
@@ -109,6 +110,7 @@ Model by job (owner-set 2026-10-06 and 2026-10-23). Same law: `.ai/rules/model-b
 When the rules settle a choice, make it and say what you did (owner-set 2026-10-23). Same law: `.ai/rules/owner-go-no-repeat-approval.md`
 Rules never drift (owner-set 2026-10-24). Same law: `.ai/rules/rules-no-drift.md`
 No new markdown files (owner-set 2026-10-24). Do not create new .md files unless I ask for one. Update an existing file instead. Same law: `.ai/rules/no-new-markdown.md`
+No Josh, it is Chris (owner-set 2026-10-31). Josh is gone. Everything a lead, client or staff member reads or hears says Chris, including the AI setter. Same law: `.ai/rules/no-josh-chris-everywhere.md`
 Confirm on the calendar, never by reply (owner-set 2026-10-31). No message asks a lead to reply CONFIRM or YES; the one action is accepting the calendar invite in their email. Same law: `.ai/rules/confirm-on-the-calendar.md`
 
 ## 3. Before writing any code
