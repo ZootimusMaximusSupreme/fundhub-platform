@@ -55,7 +55,8 @@ export async function notificationForSentMessage(db, message, { now = new Date()
        count(*) FILTER (WHERE updated_at > $4::timestamptz - interval '24 hours')::int AS last_day,
        count(*)::int AS last_week
        FROM messages
-      WHERE org_id = $1 AND client_id = $2 AND template_key = $3
+      WHERE org_id = $1 AND client_id = $2
+        AND (template_key = $3 OR channel = 'push')
         AND status = 'sent' AND id <> $5
         AND updated_at > $4::timestamptz - interval '7 days'`,
     [message.org_id, message.client_id, BS_PRECALL_SMS, now.toISOString(), message.id]
