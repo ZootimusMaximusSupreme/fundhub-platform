@@ -32,7 +32,7 @@ async function fixture(run) {
     for (const table of ["clients", "client_waypoints", "waypoint_nudges", "messages", "outbound_calls", "conversations", "agents", "products", "transactions", "tasks"]) {
       await db.query(`CREATE TEMP TABLE ${table} (LIKE public.${table} INCLUDING ALL) ON COMMIT DROP`);
     }
-    await db.query("CREATE TEMP TABLE v_client_entitlements (org_id uuid,client_id uuid,entitlement_code text,active boolean) ON COMMIT DROP");
+    await db.query("CREATE TEMP TABLE v_client_entitlements (org_id uuid,client_id uuid,entitlement_code text,active boolean,source_transaction_id uuid) ON COMMIT DROP");
     const orgId = randomUUID();
     const clientId = (await db.query(`INSERT INTO clients (org_id,first_name,email,phone,custom_fields)
       VALUES ($1,'Coach Call',$2,'+16025550100','{"timezone":"America/Phoenix"}') RETURNING id`,
@@ -42,9 +42,11 @@ async function fixture(run) {
       VALUES ($1,$2,'mail','Mail letters',1,'client','in_progress','dispute_mail_receipt',$3,$3,$3) RETURNING id`,
     [orgId, clientId, new Date("2026-10-13T18:00:00Z")])).rows[0].id;
     await db.query(`INSERT INTO products (org_id,code,name) VALUES ($1,'consulting-package','Scratch Consulting Package')`, [orgId]);
-    await db.query(`INSERT INTO transactions (org_id,client_id,product_name,amount_paid,status)
-      VALUES ($1,$2,'Scratch Consulting Package',7500,'succeeded')`, [orgId, clientId]);
-    await db.query(`INSERT INTO v_client_entitlements VALUES ($1,$2,'credit-optimization-roadmap',true)`, [orgId, clientId]);
+    const paidId = (await db.query(`INSERT INTO transactions (org_id,client_id,product_name,amount_paid,status,created_at)
+      VALUES ($1,$2,'Scratch Consulting Package',7500,'succeeded','2026-10-01T00:00:00Z') RETURNING id`,
+    [orgId, clientId])).rows[0].id;
+    await db.query(`INSERT INTO v_client_entitlements (org_id,client_id,entitlement_code,active,source_transaction_id)
+      VALUES ($1,$2,'credit-optimization-roadmap',true,$3)`, [orgId, clientId, paidId]);
     await db.query(`INSERT INTO agents (org_id,code,name,agent_class,channel,status,runtime,prompt,guardrails)
       VALUES ($1,'BP-COACH-VOICE','AI coach','client_facing','voice','live','bland','You are the AI coach, not the human advisor.','{"authority":{"msgcap":3}}')`, [orgId]);
     const messages = [];
@@ -70,6 +72,18 @@ async function fixture(run) {
     db.release();
   }
 }
+
+test("expired paid Blueprint year does not plan voice calls from two old sent reminders", options, async () => {
+  await fixture(async ({ db, orgId }) => {
+    assert.equal((await planBlueprintCoachCalls(db, { orgId, now: NOW })).length, 1);
+    assert.equal((await planBlueprintCoachCalls(db, {
+      orgId, now: new Date("2027-09-30T00:00:00Z")
+    })).length, 1);
+    assert.equal((await planBlueprintCoachCalls(db, {
+      orgId, now: new Date("2027-10-01T00:00:00Z")
+    })).length, 0);
+  });
+});
 
 test("real candidate SQL refuses queued/failed/unattributed texts, replies, progress, later steps and inactive access", options, async () => {
   await fixture(async ({ db, orgId, clientId, waypointId, messages }) => {

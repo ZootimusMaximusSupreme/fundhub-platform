@@ -43,37 +43,68 @@ export const FINANCE_OS_BLUEPRINT_MONTHS = 12;
  * The row with the latest effective_from that matches wins,
  * matching how 075 finds "the live row".
  */
-export async function financeOsEntitlement(conn = db, { orgId, clientId, asOf = new Date() } = {}) {
-  if (!orgId || !clientId) {
-    return { entitled: false, subscriptionId: null, reason: "orgId and clientId are both required" };
-  }
-
+async function activeFinanceOsSubscription(conn, { orgId, clientId, asOf }) {
   const res = await conn.query(
-    `SELECT id
-       FROM subscriptions
-      WHERE org_id = $1
-        AND client_id = $2
-        AND tier = $3
-        AND status = 'active'
+    `SELECT id FROM subscriptions
+      WHERE org_id = $1 AND client_id = $2 AND tier = $3 AND status = 'active'
         AND effective_from <= $4
         AND (effective_to IS NULL OR effective_to > $4)
         AND (current_period_start IS NULL OR current_period_start <= $4)
         AND (current_period_end IS NULL OR current_period_end > $4)
-      ORDER BY effective_from DESC
-      LIMIT 1`,
+      ORDER BY effective_from DESC LIMIT 1`,
     [orgId, clientId, FINANCE_OS_TIER, asOf]
   );
-
-  const row = res.rows[0];
-  if (!row) {
-    return { entitled: false, subscriptionId: null, reason: "no active finance-os subscription" };
-  }
-  return { entitled: true, subscriptionId: row.id, reason: null };
+  return res.rows[0] || null;
 }
 
-function addUtcMonths(date, months) {
+/**
+ * A purchased Blueprint year is an independent service right, not a change
+ * to a separately billed monthly FinanceOS subscription. Prefer an active
+ * paid subscription, otherwise require a non-revoked same-tenant Blueprint
+ * entitlement tied to a succeeded transaction within 12 calendar months.
+ * Course/document grants are never deleted when the service year expires.
+ */
+export async function financeOsEntitlement(conn = db, { orgId, clientId, asOf = new Date() } = {}) {
+  if (!orgId || !clientId) {
+    return { entitled: false, subscriptionId: null, reason: "orgId and clientId are both required" };
+  }
+  const subscription = await activeFinanceOsSubscription(conn, { orgId, clientId, asOf });
+  if (subscription) {
+    return { entitled: true, subscriptionId: subscription.id, reason: null };
+  }
+  const grant = await conn.query(
+    `SELECT e.id
+       FROM entitlements e
+       JOIN transactions t ON t.id = e.source_transaction_id
+         AND t.org_id = e.org_id AND t.client_id = e.client_id
+       JOIN products p ON p.id = resolve_product_id(t.org_id, t.product_name)
+         AND p.org_id = t.org_id
+      WHERE e.org_id = $1 AND e.client_id = $2
+        AND e.entitlement_code = 'credit-optimization-roadmap'
+        AND e.revoked_at IS NULL
+        AND (e.expires_at IS NULL OR e.expires_at > $3)
+        AND lower(btrim(COALESCE(t.status, ''))) = 'succeeded'
+        AND lower(btrim(p.code)) = $4
+        AND t.created_at <= $3
+        AND (t.created_at + interval '12 months') > $3
+      ORDER BY t.created_at DESC, e.id DESC LIMIT 1`,
+    [orgId, clientId, asOf, BLUEPRINT_PRODUCT_CODE]
+  );
+  if (!grant.rows[0]) {
+    return { entitled: false, subscriptionId: null, reason: "no active finance-os subscription or paid Blueprint year" };
+  }
+  return { entitled: true, subscriptionId: grant.rows[0].id, reason: null, source: "blueprint_included" };
+}
+
+export function addUtcMonths(date, months) {
   const d = new Date(date.getTime());
+  // Match PostgreSQL calendar-month arithmetic on leap day and month-end:
+  // Date#setUTCMonth otherwise overflows Feb 29 into Mar 1 next year.
+  const day = d.getUTCDate();
+  d.setUTCDate(1);
   d.setUTCMonth(d.getUTCMonth() + months);
+  const maxDay = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
+  d.setUTCDate(Math.min(day, maxDay));
   return d;
 }
 
@@ -95,9 +126,9 @@ export async function ensureFinanceOsForBlueprintPurchase(conn = db, {
     return { created: false, subscriptionId: null, reason: "orgId and clientId are required" };
   }
 
-  const existing = await financeOsEntitlement(conn, { orgId, clientId, asOf: paidAt });
-  if (existing.entitled) {
-    return { created: false, subscriptionId: existing.subscriptionId, reason: "already_entitled" };
+  const existing = await activeFinanceOsSubscription(conn, { orgId, clientId, asOf: paidAt });
+  if (existing) {
+    return { created: false, subscriptionId: existing.id, reason: "already_entitled" };
   }
 
   const periodStart = paidAt;
@@ -117,9 +148,9 @@ export async function ensureFinanceOsForBlueprintPurchase(conn = db, {
     return { created: true, subscriptionId: row.id, periodStart, periodEnd };
   } catch (e) {
     if (e instanceof SubscriptionConflictError) {
-      const again = await financeOsEntitlement(conn, { orgId, clientId, asOf: paidAt });
-      if (again.entitled) {
-        return { created: false, subscriptionId: again.subscriptionId, reason: "already_entitled" };
+      const again = await activeFinanceOsSubscription(conn, { orgId, clientId, asOf: paidAt });
+      if (again) {
+        return { created: false, subscriptionId: again.id, reason: "already_entitled" };
       }
       return { created: false, subscriptionId: null, reason: e.message };
     }

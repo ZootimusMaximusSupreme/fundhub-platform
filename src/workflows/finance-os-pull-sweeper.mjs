@@ -29,7 +29,8 @@ import { inngest } from "./client.mjs";
 import { db } from "../db.mjs";
 import { requestSoftPull, SoftPullError } from "../finance/soft-pulls.mjs";
 import { FINANCE_OS_TIER } from "../finance/finance-os-entitlement.mjs";
-import { fulfilQueuedSystemPulls, systemPullUsesSimulation } from "../finance/finance-os-pull-fulfil.mjs";
+import { BLUEPRINT_PRODUCT_CODE } from "../waypoints/purchase.mjs";
+import { fulfilQueuedSystemPulls, systemPullUsesSimulation, MONTHLY_PROVIDER_EXCEPTION_SOURCE } from "../finance/finance-os-pull-fulfil.mjs";
 
 export const SWEEP_CRON = "0 6 * * *"; // 06:00 UTC daily — matches the other daily sweepers' quiet-hours-safe slot
 export const SOURCE_WORKFLOW = "finance-os-pull-sweeper";
@@ -47,39 +48,83 @@ export const SCHEDULED_PULL_REASON =
  *  two active finance-os subscriptions at once (075's window constraint). */
 export async function dueClients(conn, now, { realPull = false } = {}) {
   const res = await conn.query(
-    `SELECT s.id AS subscription_id, s.org_id, s.client_id, s.current_period_start
-       FROM subscriptions s
-      WHERE s.tier = $1
-        AND s.status = 'active'
-        AND s.effective_from <= $2
-        AND (s.effective_to IS NULL OR s.effective_to > $2)
-        AND s.current_period_start IS NOT NULL
-        AND s.current_period_end IS NOT NULL
-        AND s.current_period_start <= $2
-        AND s.current_period_end > $2
-        AND NOT EXISTS (
+    `WITH blueprint_access AS (
+       SELECT DISTINCT ON (e.org_id, e.client_id)
+              e.id AS subscription_id, e.org_id, e.client_id,
+              t.created_at AS current_period_start
+         FROM entitlements e
+         JOIN transactions t ON t.id = e.source_transaction_id
+           AND t.org_id = e.org_id AND t.client_id = e.client_id
+         JOIN products p ON p.id = resolve_product_id(t.org_id, t.product_name)
+           AND p.org_id = t.org_id
+        WHERE e.entitlement_code = 'credit-optimization-roadmap'
+          AND e.revoked_at IS NULL
+          AND (e.expires_at IS NULL OR e.expires_at > $2)
+          AND lower(btrim(COALESCE(t.status, ''))) = 'succeeded'
+          AND lower(btrim(p.code)) = $5
+          AND t.created_at <= $2
+          AND (t.created_at + interval '12 months') > $2
+        ORDER BY e.org_id, e.client_id, t.created_at DESC, e.id DESC
+      ), entitled AS (
+       SELECT s.id AS subscription_id, s.org_id, s.client_id, s.current_period_start
+         FROM subscriptions s
+        WHERE s.tier = $1
+          AND s.status = 'active'
+          AND s.effective_from <= $2
+          AND (s.effective_to IS NULL OR s.effective_to > $2)
+          AND s.current_period_start IS NOT NULL
+          AND s.current_period_end IS NOT NULL
+          AND s.current_period_start <= $2
+          AND s.current_period_end > $2
+       UNION ALL
+       SELECT b.subscription_id, b.org_id, b.client_id, b.current_period_start
+         FROM blueprint_access b
+        WHERE NOT EXISTS (
+          SELECT 1 FROM subscriptions paid
+           WHERE paid.org_id = b.org_id AND paid.client_id = b.client_id
+             AND paid.tier = $1 AND paid.status = 'active'
+             AND paid.effective_from <= $2
+             AND (paid.effective_to IS NULL OR paid.effective_to > $2)
+             AND (paid.current_period_start IS NULL OR paid.current_period_start <= $2)
+             AND (paid.current_period_end IS NULL OR paid.current_period_end > $2)
+        )
+      )
+      SELECT s.subscription_id, s.org_id, s.client_id, s.current_period_start
+        FROM entitled s
+       WHERE NOT EXISTS (
           SELECT 1 FROM soft_pull_requests r
            WHERE r.client_id = s.client_id
              AND r.org_id = s.org_id
              AND r.requested_by_kind = 'system'
              AND r.requested_at > $2::timestamptz - ($3::int * interval '1 day')
              AND (
-               -- A rehearsal is not a monthly credit result. Only a REAL
-               -- run may ignore an already-FULFILLED simulated request.
-               -- Queued, failed, unknown and genuine results remain blockers.
                NOT $4::boolean OR r.status <> 'fulfilled' OR NOT EXISTS (
                  SELECT 1 FROM crs_results cr
                   WHERE cr.id = r.crs_result_id
                     AND cr.org_id = r.org_id AND cr.client_id = r.client_id
                     AND (
-                      cr.provider = 'crs_softview_simulated'
-                      OR cr.result->>'simulated' = 'true'
-                      OR cr.result->>'environment' = 'sandbox'
+                      COALESCE(cr.provider, '') = 'crs_softview_simulated'
+                      OR LOWER(COALESCE(cr.result->>'simulated', '')) IN ('true', '1')
+                      OR LOWER(COALESCE(cr.result->>'environment', '')) IN ('sandbox', 'simulated')
                     )
                )
              )
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM soft_pull_requests failed
+           WHERE failed.org_id = s.org_id AND failed.client_id = s.client_id
+             AND failed.requested_by_kind = 'system' AND failed.status = 'failed'
+             AND failed.idempotency_key LIKE 'finance-os-monthly:%:real'
+             AND NOT EXISTS (
+               SELECT 1 FROM tasks review
+                WHERE review.org_id = failed.org_id
+                  AND review.client_id = failed.client_id
+                  AND review.source_workflow = $6
+                  AND review.body = 'finance-os-monthly-provider:' || failed.id::text
+                  AND review.done = true
+             )
         )`,
-    [FINANCE_OS_TIER, now, MONTHLY_PULL_DAYS, !!realPull]
+    [FINANCE_OS_TIER, now, MONTHLY_PULL_DAYS, !!realPull, BLUEPRINT_PRODUCT_CODE, MONTHLY_PROVIDER_EXCEPTION_SOURCE]
   );
   return res.rows;
 }
