@@ -37,9 +37,17 @@ test("setter KPI SQL scopes Phoenix day, org, archived leads and demo data",
         ('real', 'org-a', $1::jsonb, false),
         ('archived', 'org-a', $2::jsonb, false),
         ('demo', 'org-a', $3::jsonb, true),
-        ('foreign', 'org-b', $4::jsonb, false)`, [
+        ('foreign', 'org-b', $4::jsonb, false),
+        ('transferred', 'org-a', $5::jsonb, false)`, [
         handoff(2), handoff(99, { crm_archived_at: "2026-10-31T00:00:00Z" }),
-        handoff(3), handoff(99)
+        handoff(3), handoff(99), JSON.stringify({ setter_handoff: {
+          setter_staff_id: "setter-b", lead_type: "opt_in",
+          dial_attempt_days: { "2026-11-01": 5 },
+          dial_attempts_by_setter: {
+            "setter-a": { "2026-11-01": 3 }, "setter-b": { "2026-11-01": 1 },
+            "owner": { "2026-11-01": 1 }
+          }
+        } })
       ]);
       await conn.query(`INSERT INTO bookings (id, org_id, client_id, status, created_at) VALUES
         ('real-in', 'org-a', 'real', 'booked', '2026-11-01T16:00:00Z'),
@@ -59,12 +67,20 @@ test("setter KPI SQL scopes Phoenix day, org, archived leads and demo data",
       const staff = { org_id: "org-a", id: "setter-a" };
       const now = new Date("2026-11-01T18:00:00Z");
       assert.deepEqual(await setterNumbers(conn, staff, { now, includeDemo: false }), {
-        dials: 2, booked: 1, dial_to_book_rate: 0.5,
+        dials: 5, booked: 1, dial_to_book_rate: 0.2,
         showed: 1, no_shows: 1, show_rate: 0.5
       });
       assert.deepEqual(await setterNumbers(conn, staff, { now, includeDemo: true }), {
-        dials: 5, booked: 2, dial_to_book_rate: 0.4,
+        dials: 8, booked: 2, dial_to_book_rate: 0.25,
         showed: 2, no_shows: 1, show_rate: 2 / 3
+      });
+      assert.deepEqual(await setterNumbers(conn, { org_id: "org-a", id: "setter-b" }, { now, includeDemo: false }), {
+        dials: 1, booked: 0, dial_to_book_rate: 0,
+        showed: 0, no_shows: 0, show_rate: null
+      });
+      assert.deepEqual(await setterNumbers(conn, { org_id: "org-a", id: "owner" }, { now, includeDemo: false }), {
+        dials: 1, booked: 0, dial_to_book_rate: 0,
+        showed: 0, no_shows: 0, show_rate: null
       });
     } finally {
       await conn.query("ROLLBACK").catch(() => {});

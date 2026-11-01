@@ -37,7 +37,7 @@ function fakeDb(booked = true) {
     // A copy, as a real read returns: the row the writes below change is `client`, and the
     // copy the code holds is what the row looked like when it was read.
     if (sql.includes("FROM clients c")) return { rows: [structuredClone(client)] };
-    if (sql.includes("FROM clients WHERE id = $1 AND org_id = $2") && sql.includes("FOR UPDATE")) {
+    if (sql.trim().startsWith("SELECT id FROM clients WHERE id = $1 AND org_id = $2") && sql.includes("FOR UPDATE")) {
       assert.match(sql, /crm_archived_at' IS NULL/);
       return { rows: [{ id: CLIENT_ID }] };
     }
@@ -665,6 +665,129 @@ test("log dial keeps an exact server-owned count for the Phoenix day", async () 
   assert.equal(second.status, 200);
   assert.equal(client.custom_fields.setter_handoff.call_attempts, 2);
   assert.equal(client.custom_fields.setter_handoff.dial_attempt_days["2026-10-27"], 2);
+  assert.equal(client.custom_fields.setter_handoff.dial_attempts_by_setter[STAFF.id]["2026-10-27"], 2);
+});
+
+test("setter transfer keeps A's dials with A and logs B's dials with B", async () => {
+  const { db, client } = fakeDb();
+  const a = { ...STAFF, id: "staff-a", role: "setter", name: "A" };
+  const b = { ...STAFF, id: "staff-b", role: "setter", name: "B" };
+  let assignee = a.id;
+  const original = db.query;
+  db.query = async (sql, params) => {
+    if (sql.trim().startsWith("SELECT assignee_staff_id FROM tasks")) {
+      return { rows: [{ assignee_staff_id: assignee }] };
+    }
+    if (sql.includes("UPDATE tasks t SET assignee_staff_id")) {
+      return { rows: assignee === params[2] ? [{ id: "task-1" }] : [] };
+    }
+    return original(sql, params);
+  };
+  const now = () => new Date("2026-11-01T18:00:00Z");
+  for (let i = 0; i < 3; i++) {
+    assert.equal((await updateSetterHandoff(db, a, { client_id: CLIENT_ID, action: "log_dial", handoff: {} }, { now })).status, 200);
+  }
+  assignee = b.id;
+  assert.equal((await updateSetterHandoff(db, b, { client_id: CLIENT_ID, action: "save", handoff: { goal: "Growth" } })).status, 200);
+  assert.equal(client.custom_fields.setter_handoff.setter_staff_id, b.id);
+  assert.equal(client.custom_fields.setter_handoff.dial_attempt_days["2026-11-01"], 3);
+  assert.deepEqual(client.custom_fields.setter_handoff.dial_attempts_by_setter, {
+    [a.id]: { "2026-11-01": 3 }
+  });
+  assert.equal((await updateSetterHandoff(db, b, { client_id: CLIENT_ID, action: "log_dial", handoff: {} }, { now })).status, 200);
+  assert.equal(client.custom_fields.setter_handoff.dial_attempt_days["2026-11-01"], 4);
+  assert.deepEqual(client.custom_fields.setter_handoff.dial_attempts_by_setter, {
+    [a.id]: { "2026-11-01": 3 }, [b.id]: { "2026-11-01": 1 }
+  });
+  assert.equal((await updateSetterHandoff(db, a, { client_id: CLIENT_ID, action: "log_dial", handoff: {} }, { now })).status, 403);
+});
+
+test("first transfer snapshots dated legacy dials without changing their total", async () => {
+  const { db, client } = fakeDb();
+  client.custom_fields.setter_handoff = {
+    setter_staff_id: "staff-a", call_attempts: 3,
+    dial_attempt_days: { "2026-11-01": 3 }
+  };
+  const b = { ...STAFF, id: "staff-b", role: "setter", name: "B" };
+  const original = db.query;
+  db.query = async (sql, params) => {
+    if (sql.trim().startsWith("SELECT assignee_staff_id FROM tasks")) return { rows: [{ assignee_staff_id: b.id }] };
+    if (sql.includes("UPDATE tasks t SET assignee_staff_id")) return { rows: [{ id: "task-1" }] };
+    return original(sql, params);
+  };
+  assert.equal((await updateSetterHandoff(db, b, { client_id: CLIENT_ID, action: "save", handoff: {} })).status, 200);
+  assert.equal(client.custom_fields.setter_handoff.call_attempts, 3);
+  assert.deepEqual(client.custom_fields.setter_handoff.dial_attempt_days, { "2026-11-01": 3 });
+  assert.deepEqual(client.custom_fields.setter_handoff.dial_attempts_by_setter,
+    { "staff-a": { "2026-11-01": 3 } });
+});
+
+test("an autosave that read before another dial keeps the locked live counters", async () => {
+  const { db, client } = fakeDb();
+  const day = "2026-11-01";
+  client.custom_fields.setter_handoff = {
+    setter_staff_id: "staff-a", call_attempts: 1, dialed_at: "2026-11-01T18:00:00Z",
+    dial_attempt_days: { [day]: 1 }, dial_attempts_by_setter: { "staff-a": { [day]: 1 } }
+  };
+  const original = db.query;
+  let injected = false;
+  db.query = async (sql, params) => {
+    if (!injected && sql.trim().startsWith("SELECT custom_fields FROM clients") && sql.includes("FOR UPDATE")) {
+      injected = true;
+      const logged = await updateSetterHandoff(db, { ...STAFF, id: "staff-a" }, {
+        client_id: CLIENT_ID, action: "log_dial", handoff: {}
+      }, { now: () => new Date("2026-11-01T19:00:00Z") });
+      assert.equal(logged.status, 200);
+    }
+    return original(sql, params);
+  };
+  const saved = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save",
+    handoff: { goal: "New location", call_attempts: 1, dialed_at: "2026-11-01T18:00:00Z" } });
+  assert.equal(saved.status, 200);
+  assert.equal(injected, true);
+  assert.equal(client.custom_fields.setter_handoff.call_attempts, 2);
+  assert.deepEqual(client.custom_fields.setter_handoff.dial_attempt_days, { [day]: 2 });
+  assert.deepEqual(client.custom_fields.setter_handoff.dial_attempts_by_setter, { "staff-a": { [day]: 2 } });
+  assert.equal(client.custom_fields.setter_handoff.goal, "New location");
+});
+
+test("an owner save after a setter transfer keeps the live setter identity", async () => {
+  const { db, client } = fakeDb();
+  client.custom_fields.setter_handoff = { setter_staff_id: "staff-a", setter_name: "A", call_attempts: 1 };
+  const original = db.query;
+  let injected = false;
+  db.query = async (sql, params) => {
+    if (!injected && sql.trim().startsWith("SELECT custom_fields FROM clients") && sql.includes("FOR UPDATE")) {
+      injected = true;
+      client.custom_fields.setter_handoff = {
+        ...client.custom_fields.setter_handoff, setter_staff_id: "staff-b", setter_name: "B"
+      };
+    }
+    return original(sql, params);
+  };
+  const saved = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save",
+    handoff: { goal: "Expansion" } });
+  assert.equal(saved.status, 200);
+  assert.equal(injected, true);
+  assert.equal(client.custom_fields.setter_handoff.setter_staff_id, "staff-b");
+  assert.equal(client.custom_fields.setter_handoff.setter_name, "B");
+});
+
+test("an owner dial on A's lead credits the owner without replacing A", async () => {
+  const { db, client } = fakeDb();
+  client.custom_fields.setter_handoff = {
+    setter_staff_id: "staff-a", setter_name: "A", call_attempts: 2,
+    dial_attempt_days: { "2026-11-01": 2 },
+    dial_attempts_by_setter: { "staff-a": { "2026-11-01": 2 } }
+  };
+  const result = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "log_dial", handoff: {} },
+    { now: () => new Date("2026-11-01T18:00:00Z") });
+  assert.equal(result.status, 200);
+  assert.equal(client.custom_fields.setter_handoff.setter_staff_id, "staff-a");
+  assert.equal(client.custom_fields.setter_handoff.call_attempts, 3);
+  assert.deepEqual(client.custom_fields.setter_handoff.dial_attempts_by_setter, {
+    "staff-a": { "2026-11-01": 2 }, [STAFF.id]: { "2026-11-01": 1 }
+  });
 });
 
 test("an owner edit preserves the human setter identity already on the handoff", async () => {
