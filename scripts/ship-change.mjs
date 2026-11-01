@@ -102,6 +102,20 @@ function assertOnlySelected(staged, files) {
   if (extras.length) throw new Error(`Unrelated files are staged: ${extras.join(', ')}. Unstage them before shipping.`);
 }
 
+async function archiveHead(rootGit, branch) {
+  const tag = `archive/${branch}`;
+  const ref = `refs/tags/${tag}`;
+  const head = (await rootGit(['rev-parse', 'HEAD'])).trim();
+  const old = (await rootGit(['ls-remote', '--tags', 'origin', ref])).split(/\s+/)[0];
+  if (old === head) return;
+  await rootGit(['tag', '-f', tag, head]);
+  await rootGit(old
+    ? ['push', `--force-with-lease=${ref}:${old}`, 'origin', ref]
+    : ['push', 'origin', ref]);
+  const verified = (await rootGit(['ls-remote', '--tags', 'origin', ref])).split(/\s+/)[0];
+  if (verified !== head) throw new Error(`Could not verify remote archive tag ${tag}; branch was not pushed.`);
+}
+
 export async function runShipChange(options, command = defaultCommand) {
   const { message, ownerLane, files, resume = false } = options;
   if (!/^[a-z][a-z0-9-]{1,40}$/.test(ownerLane || '')) {
@@ -190,6 +204,8 @@ export async function runShipChange(options, command = defaultCommand) {
       throw new Error(`Stack parent ${parent.headRefName} advanced during shipping. Rerun with --resume after fetching it.`);
     }
   }
+  // Archive the exact new head before it can be pushed and later auto-deleted.
+  await archiveHead(rootGit, branch);
   const remoteBranch = await rootGit(['ls-remote', '--heads', 'origin', branch]);
   await rootGit(remoteBranch.trim()
     ? ['push', '--force-with-lease', 'origin', `HEAD:refs/heads/${branch}`]

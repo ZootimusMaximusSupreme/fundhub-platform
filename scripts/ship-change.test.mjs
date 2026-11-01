@@ -42,6 +42,7 @@ function fakeCommands(prs) {
       if (args[0] === 'symbolic-ref') return 'codex/new-change\n';
       if (args[0] === 'rev-parse' && args[1] === '--show-toplevel') return '/repo\n';
       if (args[0] === 'rev-parse' && args[1]?.startsWith('origin/')) return 'parent-head\n';
+      if (args[0] === 'rev-parse' && args[1] === 'HEAD') return `${'a'.repeat(40)}\n`;
       if (args[0] === 'remote') return 'https://github.com/ZootimusMaximusSupreme/fundhub-platform.git\n';
       if (args[0] === 'status') return ' M scripts/new.mjs\0';
       if (args[0] === 'diff' && args[1] === '--cached' && args[2] === '--name-only') {
@@ -49,6 +50,11 @@ function fakeCommands(prs) {
       }
       if (args[0] === 'merge-base') return 'parent-head\n';
       if (args[0] === 'ls-remote' && args[1] === '--heads') return `parent-head\trefs/heads/${args[3]}\n`;
+      if (args[0] === 'ls-remote' && args[1] === '--tags') {
+        return calls.some(call => call[0] === 'git' && call[1] === 'push' &&
+          call.at(-1) === 'refs/tags/archive/codex/new-change')
+          ? `${'a'.repeat(40)}\trefs/tags/archive/codex/new-change\n` : '';
+      }
       return '';
     }
     if (program === 'gh') {
@@ -71,6 +77,11 @@ test('root change runs preflight, opens a PR, and enables queue auto-merge', asy
   assert(calls.some(call => call[0] === 'gh' && call[1] === 'pr' && call[2] === 'create' && call.at(-1).includes('Owner lane: sales')));
   assert(calls.some(call => call.join(' ').includes('pr merge 42 --repo ZootimusMaximusSupreme/fundhub-platform --auto --squash')));
   assert(calls.some(call => call.join(' ') === 'npm run preflight'));
+  const tagPush = calls.findIndex(call => call[0] === 'git' && call[1] === 'push' &&
+    call.at(-1) === 'refs/tags/archive/codex/new-change');
+  const branchPush = calls.findIndex(call => call[0] === 'git' && call[1] === 'push' &&
+    call.at(-1) === 'HEAD:refs/heads/codex/new-change');
+  assert.ok(tagPush >= 0 && tagPush < branchPush);
 });
 
 test('child change targets the preceding PR and does not merge into it', async () => {
@@ -96,6 +107,19 @@ test('a parent branch that moves during preflight stops before child push or PR 
   await assert.rejects(runShipChange({ message: 'Next change', ownerLane: 'sales', files: ['scripts/new.mjs'] }, moved), /Stack parent .* advanced/);
   assert(!calls.some(call => call[0] === 'git' && call[1] === 'push'));
   assert(!calls.some(call => call[0] === 'gh' && call[1] === 'pr' && call[2] === 'create'));
+});
+
+test('an unverified archive tag stops before branch push', async () => {
+  const { command, calls } = fakeCommands([]);
+  const staleTag = async (program, args, options) => {
+    if (program === 'git' && args[0] === 'ls-remote' && args[1] === '--tags') {
+      return `${'f'.repeat(40)}\trefs/tags/archive/codex/new-change\n`;
+    }
+    return command(program, args, options);
+  };
+  await assert.rejects(runShipChange({ message: 'New change', ownerLane: 'sales', files: ['scripts/new.mjs'] }, staleTag), /Could not verify remote archive tag/);
+  assert(!calls.some(call => call[0] === 'git' && call[1] === 'push' &&
+    call.at(-1) === 'HEAD:refs/heads/codex/new-change'));
 });
 
 test('refuses unselected staged files before committing or pushing', async () => {

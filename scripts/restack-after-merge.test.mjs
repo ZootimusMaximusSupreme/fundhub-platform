@@ -29,6 +29,11 @@ function runner({ rebaseConflict = false, current = child, fetched = childSha,
   const run = (program, args) => {
     calls.push([program, ...args]);
     if (program === "git" && args[0] === "rev-parse") return fetched;
+    if (program === "git" && args[0] === "ls-remote" && args[1] === "--tags") {
+      return calls.some(call => call[0] === "git" && call[1] === "push" &&
+        call.at(-1) === "refs/tags/archive/codex/child")
+        ? `${fetched}\trefs/tags/archive/codex/child` : "";
+    }
     if (program === "git" && args[0] === "merge-base" && args[1] === "--is-ancestor") {
       if ((args[2] === parentSha && !parentAncestor) || (args[2] === "origin/main" && !mainAncestor)) {
         throw new Error("not an ancestor");
@@ -49,11 +54,14 @@ test("successful restack leases the old SHA before retargeting and auto-merge", 
   const { run, calls } = runner();
   assert.deepEqual(restackChild({ child, merged, repo, run }), { number: 41, state: "restacked" });
   const rebase = calls.findIndex((call) => call[0] === "git" && call[1] === "rebase" && call[2] === "--onto");
-  const push = calls.findIndex((call) => call[0] === "git" && call[1] === "push");
+  const tagPush = calls.findIndex((call) => call[0] === "git" && call[1] === "push" &&
+    call.at(-1) === "refs/tags/archive/codex/child");
+  const push = calls.findIndex((call) => call[0] === "git" && call[1] === "push" &&
+    call.at(-1) === "HEAD:refs/heads/codex/child");
   const retarget = calls.findIndex((call) => call[0] === "gh" && call.includes("base=main"));
   const auto = calls.findIndex((call) => call[0] === "gh" && call[1] === "pr" && call[2] === "merge");
   assert.deepEqual(calls[rebase].slice(0, 5), ["git", "rebase", "--onto", "origin/main", parentSha]);
-  assert.ok(rebase < push && push < retarget && retarget < auto);
+  assert.ok(rebase < tagPush && tagPush < push && push < retarget && retarget < auto);
   assert.ok(calls[push].includes(`--force-with-lease=refs/heads/codex/child:${childSha}`));
 });
 
@@ -87,7 +95,10 @@ test("GitHub-native restack queues an exact child already based on current main"
   const { run, calls } = runner({ current: retargeted, parentAncestor: false });
   assert.equal(restackChild({ child: retargeted, merged, repo, run }).state, "already-restacked");
   assert.ok(calls.some((call) => call[0] === "gh" && call[1] === "pr" && call[2] === "merge"));
-  assert.equal(calls.some((call) => call[1] === "push" || call[1] === "rebase"), false);
+  assert.ok(calls.some((call) => call[0] === "git" && call[1] === "push" &&
+    call.at(-1) === "refs/tags/archive/codex/child"));
+  assert.equal(calls.some((call) => call[1] === "rebase" ||
+    (call[1] === "push" && call.at(-1) === "HEAD:refs/heads/codex/child")), false);
 });
 
 test("retargeted child without merged parent or current main is left open", () => {

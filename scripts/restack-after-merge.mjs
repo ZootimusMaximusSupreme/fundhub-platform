@@ -43,6 +43,19 @@ function comment(repo, number, body, run) {
   run("gh", ["api", "--method", "POST", `repos/${repo}/issues/${number}/comments`, "-f", `body=${body}`]);
 }
 
+function archiveHead(branch, run) {
+  const ref = `refs/tags/archive/${branch}`;
+  const head = run("git", ["rev-parse", "HEAD"]);
+  const old = run("git", ["ls-remote", "--tags", "origin", ref]).split(/\s+/)[0];
+  if (old === head) return;
+  run("git", ["tag", "-f", `archive/${branch}`, head]);
+  run("git", old
+    ? ["push", `--force-with-lease=${ref}:${old}`, "origin", ref]
+    : ["push", "origin", ref]);
+  const verified = run("git", ["ls-remote", "--tags", "origin", ref]).split(/\s+/)[0];
+  if (verified !== head) throw new Error(`Could not verify archive tag for ${branch}`);
+}
+
 export function restackChild({ child, merged, repo, run = command }) {
   const branch = child.head.ref;
   const oldHead = child.head.sha;
@@ -72,6 +85,8 @@ export function restackChild({ child, merged, repo, run = command }) {
     } catch {
       return { number: child.number, state: "not-stacked" };
     }
+    run("git", ["switch", "-C", `restack-pr-${child.number}`, fetchedHead]);
+    archiveHead(branch, run);
     run("gh", ["pr", "merge", String(child.number), "--repo", repo, "--auto", "--squash"]);
     return { number: child.number, state: "already-restacked" };
   }
@@ -91,6 +106,7 @@ export function restackChild({ child, merged, repo, run = command }) {
   if (![merged.head.ref, "main"].includes(beforePush.base?.ref) || beforePush.head?.sha !== oldHead) {
     return { number: child.number, state: "already-moved" };
   }
+  archiveHead(branch, run);
   run("git", ["push", `--force-with-lease=refs/heads/${branch}:${oldHead}`, "origin", `HEAD:refs/heads/${branch}`]);
   if (beforePush.base.ref !== "main") {
     run("gh", ["api", "--method", "PATCH", `repos/${repo}/pulls/${child.number}`, "-f", "base=main"]);
