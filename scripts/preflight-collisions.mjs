@@ -110,6 +110,22 @@ export function orderPrChain(prs, current) {
   return chain;
 }
 
+// A later ordered PR inherits its parent's files by design. Keep checking
+// other branches, but do not call that inheritance a collision on the parent.
+export function orderedChildRefs(prs, current) {
+  const children = new Set();
+  const queue = [current];
+  for (let i = 0; i < queue.length; i++) {
+    for (const pr of prs) {
+      if (pr.baseRefName !== queue[i] || children.has(pr.headRefName)) continue;
+      if (!(pr.labels || []).some((label) => /^ship-order\/[1-9][0-9]*$/.test(label.name || ""))) continue;
+      children.add(pr.headRefName);
+      queue.push(pr.headRefName);
+    }
+  }
+  return children;
+}
+
 export function excludeExpectedBase(sources, expectedBase) {
   if (!expectedBase) return sources;
   const name = expectedBase.replace(/^origin\//, "");
@@ -247,7 +263,7 @@ export function main(argv = process.argv.slice(2)) {
 
   // 3. Open pull requests on GitHub.
   const prJson = run("gh", ["pr", "list", "--state", "open", "--limit", "100",
-    "--json", "number,title,headRefName,baseRefName,files"], { cwd: top });
+    "--json", "number,title,headRefName,baseRefName,files,labels"], { cwd: top });
   let openPrs = [];
   if (prJson === null) {
     notes.push("GitHub PR list was unavailable; open pull requests were not checked.");
@@ -278,7 +294,10 @@ export function main(argv = process.argv.slice(2)) {
   const chain = prChain.length ? prChain : orderChain(ancestors, current);
 
   if (args.expectedBase) notes.push(`Expected stack parent ${args.expectedBase} is an ancestor; its own files are excluded from collision warnings.`);
-  const collisionSources = excludeExpectedBase(sources, args.expectedBase);
+  const childRefs = orderedChildRefs(openPrs, current);
+  if (childRefs.size) notes.push(`Excluded ${childRefs.size} ordered child branch(es); their inherited files are already in this branch.`);
+  const collisionSources = excludeExpectedBase(sources, args.expectedBase)
+    .filter((source) => !childRefs.has(source.refName));
   const { withMine, hot } = findOverlaps(mine, collisionSources);
   const report = { current, behind, comparisonBase, localMain: { behindBefore: mainBehind, updated: mainUpdated, reason: mainUpdateReason }, openBranches: openNames.size, chain, myFiles: mine.length, scanned: collisionSources.length, withMine, hot, notes };
 

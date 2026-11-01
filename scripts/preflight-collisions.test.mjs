@@ -3,7 +3,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { chooseMainUpdate, excludeExpectedBase, findOverlaps, orderChain, orderPrChain, parsePorcelain, parseWorktrees } from "./preflight-collisions.mjs";
+import { chooseMainUpdate, excludeExpectedBase, findOverlaps, orderChain, orderPrChain, orderedChildRefs, parsePorcelain, parseWorktrees } from "./preflight-collisions.mjs";
 
 test("parsePorcelain keeps the new path on a rename and strips quotes", () => {
   const text = " M src/a.mjs\n?? docs/new.md\nR  old.mjs -> src/b.mjs\n M \"has space.md\"";
@@ -85,4 +85,20 @@ test("PR base metadata keeps chain order even when a parent head moved", () => {
     { headRefName: "second", baseRefName: "first" },
     { headRefName: "third", baseRefName: "second" }
   ], "third"), ["first", "second"]);
+});
+
+test("an ordered child and its descendants inherit the parent's files without blocking its preflight", () => {
+  const ordered = [{ name: "ship-order/2" }];
+  const prs = [
+    { headRefName: "child", baseRefName: "parent", labels: ordered },
+    { headRefName: "grandchild", baseRefName: "child", labels: [{ name: "ship-order/3" }] },
+    { headRefName: "unrelated", baseRefName: "main", labels: ordered },
+    { headRefName: "unlabeled", baseRefName: "parent", labels: [] },
+  ];
+  const children = orderedChildRefs(prs, "parent");
+  assert.deepEqual([...children], ["child", "grandchild"]);
+  const sources = ["child", "grandchild", "unrelated", "unlabeled"].map((refName) =>
+    ({ refName, label: `branch ${refName}`, files: ["src/shared.mjs"] }));
+  const { withMine } = findOverlaps(["src/shared.mjs"], sources.filter((source) => !children.has(source.refName)));
+  assert.deepEqual(withMine.map((source) => source.label), ["branch unrelated", "branch unlabeled"]);
 });
