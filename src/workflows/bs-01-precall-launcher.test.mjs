@@ -1,11 +1,14 @@
 import { test } from "node:test";
 import assert from "node:assert";
 import {
-  handle, gridCells, resolveCellKey, runDeckDrip, deckTime, DECK_SLOTS, DECK_TITLES,
+  handle as actualHandle, gridCells, resolveCellKey, runDeckDrip as actualRunDeckDrip, deckTime, DECK_SLOTS, DECK_TITLES,
   FUNDING_PREFIX, REPAIR_PREFIX, DAYS, SLOTS, DAILY_SLOTS, KICKOFF_SLOT, KICKOFF_WAIT,
   SMS_BS01_BOOKED, SMS_BS01_PRECALL, SMS_BS01_DAYOF
 } from "./bs-01-precall-launcher.mjs";
 import { pgFake, fakeStep, ev } from "./test-support.mjs";
+
+const handle = (args) => actualHandle({ lessonsEnabled: true, ...args });
+const runDeckDrip = (args) => actualRunDeckDrip({ enabled: true, ...args });
 
 // The docs spell each cell `{prefix}-{day}-{slot}-{name}`; the trailing word is
 // theirs, so tests seed a plausible one and the code must find it by prefix rather
@@ -152,6 +155,27 @@ test("approved deck template replaces the old filler email grid", async () => {
   assert.equal(db.messages.filter((m) => m.template_key.startsWith("BS-FUND-")).length, 0);
   assert.equal(db.messages.filter((m) => m.template_key === "EMAIL-BS-DECK-LESSON").length, 11);
   assert.equal(db.messages.filter((m) => m.template_key === "SMS-BS-DECK").length, 2);
+});
+
+test("deck lessons stay off and the existing BS-01 grid continues until activation", async () => {
+  const db = pgFake({
+    clients: [{ ...fundingClient(), custom_fields: { cf_svy_self_reported_fico: "700-759" } }],
+    templates: [
+      { org_id: "org-1", template_key: "EMAIL-BS-DECK-LESSON", channel: "email",
+        subject: "{{deck_title}}", body: "{{deck_url}}", compliance_passed: true },
+      { org_id: "org-1", template_key: "SMS-BS-DECK", channel: "sms",
+        body: "{{deck_url}}", compliance_passed: true },
+      { org_id: "org-1", template_key: SMS_BS01_PRECALL, channel: "sms",
+        body: "precall", compliance_passed: true },
+      ...templatesFor(FUNDING_PREFIX, allCells(FUNDING_PREFIX))
+    ]
+  });
+  const result = await actualHandle({ event: ev("booking.created", {
+    email: "a@b.com", startTime: farStart() }), db, step: fakeStep(), lessonsEnabled: false });
+  assert.equal(result.decks.skipped, "deck_lessons_disabled");
+  assert.equal(db.messages.filter((m) => m.template_key.startsWith("BS-FUND-")).length, 18);
+  assert.equal(db.messages.filter((m) => m.template_key === "EMAIL-BS-DECK-LESSON" || m.template_key === "SMS-BS-DECK").length, 0);
+  assert.equal(db.messages.filter((m) => m.channel === "push").length, 0);
 });
 
 test("noon and 3 p.m. calls keep all lane lessons clear of reminders", async () => {

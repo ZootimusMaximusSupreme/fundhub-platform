@@ -158,7 +158,8 @@ export function deckTime(startTime, index) {
 }
 
 export async function runDeckDrip({ db: database, step, orgId, clientId, eventId, startTime,
-  sendPush = sendDeckPush }) {
+  sendPush = sendDeckPush, enabled = process.env.BS_DECK_LESSONS_ENABLED === "true" }) {
+  if (!enabled) return { sent: [], skipped: "deck_lessons_disabled" };
   if (!startTime) return { sent: [], skipped: "no_start_time" };
   const startMs = new Date(startTime).getTime();
   if (!Number.isFinite(startMs)) return { sent: [], skipped: "bad_start_time" };
@@ -370,7 +371,8 @@ async function runSmsDrip({ db, step, orgId, clientId, eventId, startTime }) {
   return { sent, stoppedAt: null, stoppedBecause: null, skippedDayOf: "owned_by_s04b", skippedPrecall: null };
 }
 
-export async function handle({ event, db, step }) {
+export async function handle({ event, db, step,
+  lessonsEnabled = process.env.BS_DECK_LESSONS_ENABLED === "true" }) {
   const clientId = await step.run("resolve-client", () => resolveClient(db, event));
   if (!clientId) return { done: false, reason: "no_client" };
 
@@ -391,9 +393,9 @@ export async function handle({ event, db, step }) {
   const deckTemplate = await step.run("deck-template-ready", () =>
     resolveCellKey(db, orgId, "EMAIL-BS-DECK")
   );
-  const decksPromise = deckTemplate
-    ? runDeckDrip({ db, step, orgId, clientId, eventId, startTime })
-    : Promise.resolve({ sent: [], skipped: "deck_template_pending" });
+  const decksPromise = deckTemplate && lessonsEnabled
+    ? runDeckDrip({ db, step, orgId, clientId, eventId, startTime, enabled: true })
+    : Promise.resolve({ sent: [], skipped: deckTemplate ? "deck_lessons_disabled" : "deck_template_pending" });
 
   let prefix;
   let drip;
@@ -404,7 +406,7 @@ export async function handle({ event, db, step }) {
     return { done: true, drip: "none", reason: `no_matching_path:${outcomeTier}`, sms, decks };
   }
 
-  if (!deckTemplate) {
+  if (!deckTemplate || !lessonsEnabled) {
     // Existing organizations without the new lesson template retain their
     // historical flow until the seed is applied; the legacy copy gate still
     // refuses the filler cells.
