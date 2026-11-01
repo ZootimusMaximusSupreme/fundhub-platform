@@ -337,7 +337,7 @@ module.exports = async function handler(req, res) {
   // writeBack: when truthy, the endpoint writes the flattened agent_context_text
   // straight into the GHL contact's `agent_context` field via the GHL API — so a
   // GHL workflow only needs to fire this webhook (no response-mapping step). Flag
-  // is opt-in so Josh (Voice) keeps reading the response inline with zero added
+  // is opt-in so the voice setter keeps reading the response inline with zero added
   // latency. GHL custom data sends strings, so treat "true"/true/1 as enabled.
   const writeBackRaw = body.writeBack ?? (body.customData && body.customData.writeBack);
   const writeBack =

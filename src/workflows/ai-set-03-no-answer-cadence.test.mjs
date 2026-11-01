@@ -291,6 +291,31 @@ test("branch: moving the call after the second text stops the third", async () =
   assert.deepEqual(db.messages.map((m) => m.template_key), [MSG1_KEY, MSG2_KEY]);
 });
 
+// Review 2026-10-31 (P2): the call-booked texts ask the person to keep their call. Once the
+// call is cancelled, or its time has come (held or missed), there is no call to keep.
+test("the call is cancelled after the first text: the call-booked texts 2 and 3 do not go", async () => {
+  const call = { org_id: "org-1", client_id: "cl-1", status: "booked", starts_at: inDays(3) };
+  const db = makeDb({ bookings: [call] });
+  const res = await run(db, noAnswer(), recordingStep({ wake: (id) => { if (id === "wait-until-msg2") call.status = "cancelled"; } }), AT_10_00);
+  assert.equal(res.exitedAt, "call-gone-after-msg1");
+  assert.deepEqual(db.messages.map((m) => m.template_key), [MSG1_KEY]);
+});
+
+test("the call time comes before the third text (held or missed): text 3 does not go", async () => {
+  const call = { org_id: "org-1", client_id: "cl-1", status: "booked", starts_at: inDays(3) };
+  const db = makeDb({ bookings: [call] });
+  const res = await run(db, noAnswer(), recordingStep({ wake: (id) => { if (id === "wait-until-msg3") call.starts_at = inDays(-0.01); } }), AT_10_00);
+  assert.equal(res.exitedAt, "call-gone-after-msg2");
+  assert.deepEqual(db.messages.map((m) => m.template_key), [MSG1_KEY, MSG2_KEY]);
+});
+
+test("no call booked: the opt-in texts keep going (they ask the person to book, so no call ahead is the point)", async () => {
+  const db = makeDb();
+  const res = await run(db, noAnswer(), recordingStep(), AT_10_00);
+  assert.equal(res.exitedAt, "completed");
+  assert.deepEqual(db.messages.map((m) => m.template_key), OPTIN_KEYS);
+});
+
 test("a text back from the person stops the cadence (the reply event has no person on it)", async () => {
   const db = makeDb();
   const res = await run(db, noAnswer(), recordingStep({ wake: (id) => { if (id === "wait-until-msg2") db.events.push(textReply(minutesAfter(10), "(555) 000-1111")); } }), AT_10_00);

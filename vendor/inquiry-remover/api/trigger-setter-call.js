@@ -9,7 +9,7 @@
  *
  * Lead grading (driven by cf_analyzer_recommendation):
  *   Grade 1 — "disqualified" → skip; do not call
- *   Grade 2 — "repair"       → repair-focused variant (Josh, repair path)
+ *   Grade 2 — "repair"       → repair-focused variant (setter, repair path)
  *   Grade 3 — "funding" AND prequal_amount < $50,000  → standard setter
  *   Grade 4 — "funding" AND prequal_amount >= $50,000 → VIP setter (same prompt,
  *                                                        higher priority metadata)
@@ -252,7 +252,7 @@ function buildRequestData({
     calendar_id: process.env.GHL_CALENDAR_ID || "",
     transfer_number: process.env.FUNDHUB_REP_NUMBER || "",
 
-    // SLO funnel fields (referenced in updated Josh prompt per spec addendum)
+    // SLO funnel fields (referenced in updated setter prompt per spec addendum)
     first_name: firstName,
     prequal_amount: isRepair ? "0" : prequalFormatted,
     primary_fico: primaryFico || "not available",

@@ -2,13 +2,13 @@
 // answer "which agents are live", "what is this one allowed to do", and "who owns
 // it".
 //
-// Two agents were recorded as live on Bland AI: Setter Josh and the Inquiry
+// Two agents were recorded as live on Bland AI: Setter Chris and the Inquiry
 // Removal AI. Phone inquiry is on hold. 037_agent_registry.sql seeds
 // those as live with their runtime recorded and everything else as draft — the
 // agent-editor screen shows eleven as live, which is sample data.
 //
 // Prompts and guardrails ship EMPTY on purpose. The screen carries text for
-// fifteen entries but only Setter Josh's is the real live agent's; the rest is
+// fifteen entries but only Setter Chris's is the real live agent's; the rest is
 // sample copy, and loading sample prompts into a registry that gates production
 // behaviour is worse than leaving them blank. needsAttention() is how that gap
 // stays visible rather than being forgotten.
