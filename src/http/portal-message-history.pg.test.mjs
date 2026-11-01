@@ -18,6 +18,7 @@ let orgId;
 let clientId;
 let smsId;
 let emailId;
+let foreignStaffId;
 
 const response = () => ({
   statusCode: null,
@@ -53,6 +54,11 @@ before(async () => {
     clients.push(row.id);
   }
   clientId = clients[0];
+  foreignStaffId = (await db.query(
+    `INSERT INTO staff (org_id, name, email, role, status)
+     VALUES ($1, 'Foreign Staff Secret', $2, 'owner', 'active') RETURNING id`,
+    [orgs[1], `portal-history-foreign-staff-${suffix}@example.test`]
+  )).rows[0].id;
   accountId = (await db.query(
     `INSERT INTO accounts (org_id, kind, email, name, status, client_id, password_hash)
      VALUES ($1, 'client', $2, 'Portal History', 'active', $3, 'scrypt$placeholder')
@@ -111,6 +117,7 @@ after(async () => {
   if (clients.length) await db.query(`DELETE FROM messages WHERE client_id = ANY($1)`, [clients]);
   if (clients.length) await db.query(`DELETE FROM conversations WHERE client_id = ANY($1)`, [clients]);
   if (accountId) await db.query(`DELETE FROM accounts WHERE id = $1`, [accountId]);
+  if (foreignStaffId) await db.query(`DELETE FROM staff WHERE id = $1`, [foreignStaffId]);
   if (clients.length) await db.query(`DELETE FROM clients WHERE id = ANY($1)`, [clients]);
   if (orgs.length) await db.query(`DELETE FROM orgs WHERE id = ANY($1)`, [orgs]);
   await close();
@@ -132,4 +139,25 @@ test("portal history limits the newest messages across channels and never leaks 
   assert.deepEqual(res.body.messages.map((m) => m.rendered_body), [
     "Newer staff email", "Unthreaded client email"
   ]);
+});
+
+test("portal history does not expose a foreign company's staff name from a mispointed sender", { skip: !HAS_DB }, async () => {
+  const id = (await db.query(
+    `INSERT INTO messages
+     (org_id, client_id, conversation_id, direction, channel, rendered_body,
+      status, sender_staff_id, sender_kind)
+     VALUES ($1, $2, $3, 'outbound', 'email', 'Staff attribution check',
+             'sent', $4, 'staff') RETURNING id`,
+    [orgId, clientId, emailId, foreignStaffId]
+  )).rows[0].id;
+  try {
+    const reply = await read();
+    assert.equal(reply.statusCode, 200, JSON.stringify(reply.body));
+    const message = reply.body.messages.find((row) => row.id === id);
+    assert.ok(message, "the home-company message remains visible");
+    assert.equal(message.sender_name, null);
+    assert.doesNotMatch(JSON.stringify(reply.body), /Foreign Staff Secret/);
+  } finally {
+    await db.query(`DELETE FROM messages WHERE id = $1`, [id]);
+  }
 });

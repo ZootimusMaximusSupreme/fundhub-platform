@@ -51,7 +51,7 @@ export default async function handler(req, res) {
                   m.sender_staff_id, m.sender_kind, m.created_at,
                   s.name AS sender_name
              FROM messages m
-             LEFT JOIN staff s ON s.id = m.sender_staff_id
+             LEFT JOIN staff s ON s.id = m.sender_staff_id AND s.org_id = m.org_id
             WHERE m.org_id = $1 AND m.client_id = $2
               AND m.channel IN ('sms', 'email')
               AND COALESCE(m.provider_ref, '') NOT LIKE 'staff-alert:%'
