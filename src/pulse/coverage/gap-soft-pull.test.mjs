@@ -278,6 +278,8 @@ function signedDb({ client = [{ id: CLIENT, first_name: "Pat", last_name: "Doe",
       if (/FROM clients WHERE id = \$1 AND org_id = \$2/.test(text)) return { rows: client };
       if (text.includes("FROM client_consents")) return { rows: [] };
       if (text.includes("FROM events")) return { rows: [] };
+      if (text.includes("FROM soft_pull_requests")) return { rows: [] };
+      if (text.includes("FROM crs_results")) return { rows: [] };
       if (text.includes("FROM payment_links")) return { rows: [] };
       throw new Error(`unexpected sql: ${text.slice(0, 80)}`);
     }
@@ -296,8 +298,10 @@ test("the signed read opens the real handler with a link it signed, and passes",
   assert.deepEqual(db.calls.map((c) => c.sql.includes("gap:soft-pull-client") ? "pick"
     : /FROM clients/.test(c.sql) ? "client"
     : /FROM client_consents/.test(c.sql) ? "consent"
-    : /FROM events/.test(c.sql) ? "paid-event" : "paid-link"),
-  ["pick", "client", "client", "consent", "paid-event", "paid-link"]);
+    : /FROM events/.test(c.sql) ? "paid-event"
+    : /FROM soft_pull_requests/.test(c.sql) ? "pull-request"
+    : /FROM crs_results/.test(c.sql) ? "pull-result" : "paid-link"),
+  ["pick", "client", "client", "consent", "paid-event", "pull-request", "pull-result", "paid-link"]);
   assert.deepEqual(db.calls[0].params, [ORG]);
   for (const call of db.calls) {
     assert.match(call.sql.replace(/\/\*[\s\S]*?\*\//g, "").trim(), /^SELECT\b/);
