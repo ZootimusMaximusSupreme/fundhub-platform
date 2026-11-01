@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Fundhub, If You Tried Before</title>
-<meta name="description" content="If you paid someone and nothing happened, nobody read your file first. What that left on your report, what Fundhub does instead, and what the agreement says we will never do.">
+<meta name="description" content="A company that blasts your file leaves hard pulls that count against you for 12 months. How Fundhub reads your file first, what the agreement bars us from, and what your call shows you.">
 <!--
   Deck TB · If you tried before
   Lane: Every lane (Funding, and Blueprint and Repair)
@@ -781,13 +781,13 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </defs>
   </svg>
 
-  <section class="slide dark" data-src="Chris's own scene, word for word: they logged into Experian, pulled up a list of lenders they use for every single client, and started blasting out applications: marketing/ads/VOICE.md:89 (Pair 2, from the filmed Broker Burn ad). When someone sends your file to every lender on their list, you walk away with a report full of hard inquiries: marketing/vsl/direct-book-vsl-2026-10-15.md:37 (green-lit; its approvals count is left off). Almost every application you send is a hard pull: docs/sops/weekend-2026-10-24/04-sales-call-script.md:160. The banks see the inquiries stack: public/app/present.js:108. Nobody checks your file against what each bank approves before the applications go out: direct-book-vsl-2026-10-15.md:41. The picture is the Inquiries rows of the sample report as scripts/render-crs-standard-report.mjs printed it on 2026-10-31 for the FinanceOS sample file, one per bureau: src/finance/sample-credit-file.mjs:103-107 (simulated, no bureau contacted, :53-54). Hook form: marketing/ads/RULES.md 2.2 and Part 0 rules 26, 27 and 32.">
-    <p class="eyebrow">TB-01 / What they left</p>
-    <h2>You paid a company, nothing got funded, and its inquiries still sit on your report.</h2>
-    <p class="lede">They logged into Experian, pulled up a list of lenders they use for every single client, and started blasting out applications.</p>
+  <section class="slide dark" data-src="Chris's own scene, word for word: they logged into Experian, pulled up a list of lenders they use for every single client, and started blasting out applications: marketing/ads/VOICE.md:89 (Pair 2, from the filmed Broker Burn ad). When someone sends your file to every lender on their list, you walk away with a report full of hard inquiries: marketing/vsl/direct-book-vsl-2026-10-15.md:37 (green-lit; its approvals count is left off). Almost every application you send is a hard pull: docs/sops/weekend-2026-10-24/04-sales-call-script.md:160. The banks see the inquiries stack: public/app/present.js:108. Nobody checks your file against what each bank approves before the applications go out: direct-book-vsl-2026-10-15.md:41. The picture is the Inquiries rows of the sample report as scripts/render-crs-standard-report.mjs printed it on 2026-10-31 for the FinanceOS sample file, one per bureau: src/finance/sample-credit-file.mjs:103-107 (simulated, no bureau contacted, :53-54). Hook form: marketing/ads/RULES.md 2.2 and Part 0 rules 26, 27 and 32. Inquiries count most inside 6 months, stop counting after 12 and drop off at 24: Fundhub's inquiry-age rule, src/blueprint/next-sequence-math.mjs:87-88 (from the Legacy Strong training pages it cites); the bureau's own factor, TOO MANY INQUIRIES LAST 12 MONTHS: src/blueprint/decline-analyze.mjs:155. Too many recent inquiries read as risk: same file :144. The question to ask any company: docs/sops/weekend-2026-10-24/04-sales-call-script.md:437. What that money was for: same file :112.">
+    <p class="eyebrow">TB-01 / What's still there</p>
+    <h2>A company that blasts your file leaves hard pulls that count against you for 12 months.</h2>
+    <p class="lede">One question, asked before you pay anyone, tells you whether the next company will do the same thing.</p>
     <ul class="lines">
-      <li>Every one of those was a hard pull, and the inquiries sit there for the next bank.</li>
-      <li>Nobody read your file first, so nobody knew which of those banks fit it.</li>
+      <li>Each bank that company applied to pulled your report, and the next bank you try reads all of those pulls before it decides.</li>
+      <li>This sample holds three, one on each bureau, and a blast to a whole lender list leaves rows just like these.</li>
     </ul>
     <figure class="pic">
       <div class="real" role="img" aria-label="The inquiries on a sample Fundhub credit report: American Express on Experian, First Platypus Bank on TransUnion, and JPMCB Card Services on Equifax. Each one is a hard inquiry. Marked: what blasting leaves behind.">
@@ -806,23 +806,23 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>If you paid a company and nothing got funded, here's how that game gets played.</li>
-        <li>They logged into Experian, pulled up a list of lenders they use for every single client, and started blasting out applications.</li>
-        <li>Every one of those was a hard pull. The company is gone, and the inquiries are still sitting on your report.</li>
-        <li>Look at this sample report. Three hard inquiries, one on each bureau. That's what blasting leaves behind, and the next bank sees every one of them.</li>
-        <li>Nobody read the file first, so nobody knew which of those banks fit it. That's the whole problem, and it's fixable.</li>
-        <li>Your story: a client who came to you after a company blasted their file, and what their report looked like when they got to you.</li>
+        <li>A company that blasts your file to its lender list leaves a HARD pull from each bank that checks your report. Those pulls count against you for a full 12 months.</li>
+        <li>The company moves on, and the pulls stay behind. They sit on your report for two years, and every bank you apply to next reads them before it decides.</li>
+        <li>Look at this sample report. Three hard inquiries sit on it, one with each bureau, and a blast to a whole lender list leaves rows exactly like these.</li>
+        <li>Here's what that costs you. A bank reads a stack of recent pulls as RISK, so your next application starts out behind, no matter how good the score looks.</li>
+        <li>If you paid for that blast, the fee bought nothing your business can use. The new hire and the ad budget you planned on are both still waiting.</li>
+        <li>There's one question that tells you, before you pay anyone a dollar, whether the next company works the SAME way as the last one did.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide" data-src="Brokers sell shady, inefficient products with bad systems, so people slip through the cracks. We don't let people slip through the cracks. We fulfill. We keep our word: Chris 2026-10-31, marketing/copy-skills/copybot/references/chris-voice-profile.md:26-27 and ops/workflows/backend-selling-lanes-2026-10-30.md:199. The Fundhub team runs every application and every follow-up with the banks. You don't fill out a single application: public/app/present.js:111 (closer line). The picture is two rows of Fundhub's offers guide, word for word: Nobody calls you back after you pay. / After you pay, you have a portal and a team you can reach. Someone cuts corners with your file and puts you at risk. / Fundhub disputes only items that really show on your report, and every application uses your true information: marketing/offers/fundhub-offers-2026-10-10.pdf p.8 (the column heads are shortened; the rows are exact).">
-    <p class="eyebrow">TB-02 / The cracks</p>
-    <h2>A broker's bad system is where people slip through the cracks.</h2>
+  <section class="slide" data-src="Brokers sell shady, inefficient products with bad systems, so people slip through the cracks. We don't let people slip through the cracks. We fulfill. We keep our word: Chris 2026-10-31, marketing/copy-skills/copybot/references/chris-voice-profile.md:26-27 and ops/workflows/backend-selling-lanes-2026-10-30.md:199. The Fundhub team runs every application and every follow-up with the banks. You don't fill out a single application: public/app/present.js:111 (closer line). The picture is two rows of Fundhub's offers guide, word for word: Nobody calls you back after you pay. / After you pay, you have a portal and a team you can reach. Someone cuts corners with your file and puts you at risk. / Fundhub disputes only items that really show on your report, and every application uses your true information: marketing/offers/fundhub-offers-2026-10-10.pdf p.8 (the column heads are shortened; the rows are exact). Fundhub is ten years of learning things the hard way; I built what I wish I had: Chris 2026-10-31, marketing/copy-skills/copybot/references/chris-voice-profile.md:28. Your portal tracks every round, and the team updates you along the way: marketing/offers/fundhub-offers-2026-10-10.pdf p.6.">
+    <p class="eyebrow">TB-02 / What's going on</p>
+    <h2>Who was watching your file after the applications went out?</h2>
     <ul class="lines">
-      <li>Brokers sell shady, inefficient products with bad systems, so people slip through the cracks. We don't let people slip through the cracks.</li>
-      <li>The Fundhub team runs every application, and after you pay you have a team you can reach.</li>
-      <li>Every application uses your true information.</li>
+      <li>A broker's system sends every client to the same lender list, and nobody watches what each bank sends back.</li>
+      <li>At Fundhub, every application and every bank follow-up runs through the Fundhub team, and your portal tracks each round.</li>
+      <li>Your applications use only your true information, and only items that really appear on your report get disputed.</li>
     </ul>
     <figure class="pic">
       <div class="real" role="img" aria-label="Two rows from Fundhub's offers guide. Heard elsewhere: nobody calls you back after you pay. What Fundhub does: after you pay, you have a portal and a team you can reach. Heard elsewhere: someone cuts corners with your file and puts you at risk. What Fundhub does: Fundhub disputes only items that really show on your report, and every application uses your true information. Marked: we fulfill.">
@@ -840,23 +840,23 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Brokers sell shady, inefficient products with bad systems, so people slip through the cracks. We don't let people slip through the cracks.</li>
-        <li>A crack is simple: a file goes in, applications go out, and nobody is watching what comes back, so the person falls through.</li>
-        <li>Look at the two rows. Nobody calls you back after you pay, against: after you pay, you have a portal and a team you can reach.</li>
-        <li>Someone cuts corners with your file and puts you at risk, against: we dispute only items that really show on your report, and every application uses your true information.</li>
-        <li>The Fundhub team runs every application and every follow-up with the banks. You don't fill out a single application, and you can reach us the whole way.</li>
-        <li>We fulfill. We keep our word. That's the whole reason Fundhub exists.</li>
+        <li>Here's what's really going on when a file gets blasted. The broker's system runs every client through ONE lender list, no matter what's on the file.</li>
+        <li>Nobody on that system checks what each bank sends back. A no comes in, the next application goes out anyway, and the client falls through the cracks.</li>
+        <li>We don't let people slip through the cracks. After ten years in this industry, I built Fundhub to be the system I wished I'd had when I started.</li>
+        <li>Look at the two rows on the screen. The left side is what you hear about other companies. The right side is what Fundhub does instead, from our own offers guide.</li>
+        <li>Once you pay, you log in to your portal and see every round. The Fundhub team handles each bank follow-up, so nothing on your file sits UNWATCHED.</li>
+        <li>For you, that means your file goes only where it fits, every application holds only your true information, and somebody reads every answer that comes back.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide" data-src="Nobody checks your file against what each bank approves before the applications go out; a report full of hard inquiries: marketing/vsl/direct-book-vsl-2026-10-15.md:37-41 (green-lit). Review your file the way a lender does: marketing/ads/RULES.md:44 (Part 0 rule 8). Before a single application goes out: marketing/ads/scripts/2026-10-14.md:61 (green-lit). Pre-underwriting, Chris's term: marketing/copy-skills/copybot/references/chris-voice-profile.md:29 and ops/workflows/backend-selling-lanes-2026-10-30.md:208. Fix it first, then funding: backend-selling-lanes-2026-10-30.md:210. Banks that fit your file: public/app/present.js:99 (closer line). Most banks approve good credit; the point is catching the red flag: backend-selling-lanes-2026-10-30.md:208. We pick the banks and the order; they say yes or no: docs/sops/weekend-2026-10-24/04-sales-call-script.md:229.">
+  <section class="slide" data-src="Nobody checks your file against what each bank approves before the applications go out; a report full of hard inquiries: marketing/vsl/direct-book-vsl-2026-10-15.md:37-41 (green-lit). Review your file the way a lender does: marketing/ads/RULES.md:44 (Part 0 rule 8). Before a single application goes out: marketing/ads/scripts/2026-10-14.md:61 (green-lit). Pre-underwriting, Chris's term: marketing/copy-skills/copybot/references/chris-voice-profile.md:29 and ops/workflows/backend-selling-lanes-2026-10-30.md:208. Fix it first, then funding: backend-selling-lanes-2026-10-30.md:210. Banks that fit your file: public/app/present.js:99 (closer line). Most banks approve good credit; the point is catching the red flag: backend-selling-lanes-2026-10-30.md:208. We pick the banks and the order; they say yes or no: docs/sops/weekend-2026-10-24/04-sales-call-script.md:229. Banks that approve files like yours: marketing/ads/scripts/2026-10-14.md:63 (green-lit).">
     <p class="eyebrow">TB-03 / Read first</p>
-    <h2>Nobody checked your file against what each bank approves first.</h2>
+    <h2>Before any application goes out, we review your file the way a lender does.</h2>
     <ul class="lines">
-      <li>That one missing step is why you walked away with a report full of hard inquiries.</li>
-      <li>We review your file the way a lender does, before a single application goes out. That's pre-underwriting.</li>
-      <li>A red flag gets fixed first. Then your applications go only to the banks that fit your file.</li>
+      <li>Without that review, a file goes to one list built for everyone, and hard pulls stack up with nothing funded.</li>
+      <li>With it, any red flag gets fixed first, and each application is aimed at a bank that fits your file.</li>
+      <li>Most banks approve good credit, so the review hunts for the one red flag that gets a good file denied.</li>
     </ul>
     <figure class="pic">
       <div class="sheet">
@@ -896,23 +896,23 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Here's what was different the last time. Nobody checked your file against what each bank approves before the applications went out.</li>
-        <li>That one missing step is why you paid and walked away with a report full of hard inquiries.</li>
-        <li>Look at the two columns. Last time: your file went to the list, the inquiries stacked, and nothing funded.</li>
-        <li>This time: we review your file the way a lender does before a single application goes out. That's pre-underwriting.</li>
-        <li>If the review finds a red flag, we fix it first. Then your applications go only to the banks that fit your file.</li>
-        <li>Most banks approve good credit. The whole game is catching the one red flag that gets you denied, before you apply.</li>
+        <li>Here's how Fundhub handles your file differently. BEFORE any application goes out, we review your file the way a lender does. We call that pre-underwriting.</li>
+        <li>Look at the two columns. On the left, your file goes to one list built for everyone, the hard pulls stack up, and the money's gone with nothing funded.</li>
+        <li>On the right, your file gets reviewed first. If the review turns up a RED flag, that gets fixed before a single bank ever sees your application.</li>
+        <li>Most banks approve good credit. The review hunts for the one red flag that gets a good file DENIED, and catches it while there's still time to fix it.</li>
+        <li>Then each application is aimed at a bank your file fits. Fundhub chooses the banks and the order they hear from you, and the yes or no stays with each bank.</li>
+        <li>For you, that means every pull on your report had a REASON to be there, aimed at a bank that approves files like yours.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide" data-src="The picture is the funding agreement the CRM sends, word for word. Section 4: this limited authority does not let Fundhub sign a loan or credit agreement, accept funds, change your account, or make a false statement for you. Section 6: Fundhub will not submit an inaccurate claim or prevent you from making your own dispute. Section 3: Fundhub does not promise approval, a funding amount, a lender rate, or a particular financial outcome. Financing sources decide application results: db/migrations/493_funding_and_repair_agreement_text.sql:53. The bank decides, not us: docs/sops/weekend-2026-10-24/04-sales-call-script.md:229. Every application uses your true information: marketing/offers/fundhub-offers-2026-10-10.pdf p.8. Everything is in the agreement, in writing: 04-sales-call-script.md:416. Shape: PB-30, what we will never do.">
-    <p class="eyebrow">TB-04 / Never</p>
-    <h2>What we never do is in the agreement.</h2>
+  <section class="slide" data-src="The picture is the funding agreement the CRM sends, word for word. Section 4: this limited authority does not let Fundhub sign a loan or credit agreement, accept funds, change your account, or make a false statement for you. Section 6: Fundhub will not submit an inaccurate claim or prevent you from making your own dispute. Section 3: Fundhub does not promise approval, a funding amount, a lender rate, or a particular financial outcome. Financing sources decide application results: db/migrations/493_funding_and_repair_agreement_text.sql:53. The bank decides, not us: docs/sops/weekend-2026-10-24/04-sales-call-script.md:229. Every application uses your true information: marketing/offers/fundhub-offers-2026-10-10.pdf p.8. Everything is in the agreement, in writing: 04-sales-call-script.md:416. Shape: PB-30, what we will never do. Financing sources decide application results: db/migrations/493_funding_and_repair_agreement_text.sql:53 (section 3). You can get funded again after your first funding sequence: marketing/offers/fundhub-offers-2026-10-10.pdf p.7; the next bank reads the inquiries: public/app/present.js:108.">
+    <p class="eyebrow">TB-04 / In writing</p>
+    <h2>Section 4 of the agreement bars Fundhub from four things with your file, in writing.</h2>
     <ul class="lines">
-      <li>We never sign a loan or credit agreement for you, and we never accept funds for you.</li>
-      <li>We never make a false statement for you, and we never submit an inaccurate claim.</li>
-      <li>We never promise an approval or an amount.</li>
+      <li>Fundhub can't sign a loan or credit agreement for you, accept your funds, change your account, or say anything false for you.</li>
+      <li>Section 6 says Fundhub will never send an inaccurate claim about your file, or stop you from filing your own dispute.</li>
+      <li>Section 3 puts every approval decision with the bank, which is why your file gets matched before anything goes out.</li>
     </ul>
     <figure class="pic">
       <div class="real" role="img" aria-label="Three clauses of the Fundhub funding agreement. Section 4, marked: this limited authority does not let Fundhub sign a loan or credit agreement, accept funds, or make a false statement for you. Section 6, marked: Fundhub will not submit an inaccurate claim. Section 3, marked: Fundhub does not promise approval, a funding amount. Marked: what we will never do.">
@@ -926,23 +926,23 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>If you got burned, you want to know what a company will never do with your file. Ours is written into the agreement.</li>
-        <li>Read it with me. Section 4: our authority does not let us sign a loan or credit agreement for you, accept funds for you, change your account, or make a false statement for you.</li>
-        <li>Section 6: we will not submit an inaccurate claim, and we will not stop you from making your own dispute.</li>
-        <li>Section 3: Fundhub does not promise approval, a funding amount, a lender rate, or a particular financial outcome. The bank decides.</li>
-        <li>A promise of an approval is a promise about what a bank does, and no company controls that.</li>
-        <li>Every application uses your true information, and every dispute names a real item on your report. That's how we work.</li>
+        <li>If a company burned you before, you want to know what the next one will NEVER do with your file. Ours is written into the agreement you sign.</li>
+        <li>Read section 4 with me. It bars Fundhub from signing a loan or credit agreement for you, accepting your funds, changing your account, or saying anything false for you.</li>
+        <li>Section 6 says we will never send an inaccurate claim about your file, and we can never stop you from sending your own dispute.</li>
+        <li>Section 3 puts every approval decision with the bank. That's exactly why your file gets matched to banks that fit it before any application goes out.</li>
+        <li>Every application is filled out with your true information, and every dispute targets an item that really shows on your report. Your file stays HONEST with every bank.</li>
+        <li>Honest applications protect you past this round too. Those same banks read your file again when your next funding sequence goes out, so every past application has to hold up.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide dark" data-src="We fulfill. We keep our word: Chris 2026-10-31, marketing/copy-skills/copybot/references/chris-voice-profile.md:27. The guarantee line, word for word: marketing/copy-skills/copybot/references/owner-voice.md:18. The picture is section 3 of the funding agreement the CRM sends, word for word: db/migrations/493_funding_and_repair_agreement_text.sql:53 (G-01 and G-02; the deposit sentences are left off). These guarantees belong to the funding agreement only: docs/sops/weekend-2026-10-24/04-sales-call-script.md:289 and public/app/present.js:1065. Every agreement says what it promises and what it does not; we read it together on the screen before you pay: 04-sales-call-script.md:416 and :419; 493...sql:65; db/migrations/288_real_contract_text.sql:257." data-figures="the funding agreement's own 24 and 72 business hours">
-    <p class="eyebrow">TB-05 / We fulfill</p>
-    <h2>We fulfill, and the funding agreement says when.</h2>
+  <section class="slide dark" data-src="We fulfill. We keep our word: Chris 2026-10-31, marketing/copy-skills/copybot/references/chris-voice-profile.md:27. The guarantee line, word for word: marketing/copy-skills/copybot/references/owner-voice.md:18. The picture is section 3 of the funding agreement the CRM sends, word for word: db/migrations/493_funding_and_repair_agreement_text.sql:53 (G-01 and G-02; the deposit sentences are left off). These guarantees belong to the funding agreement only: docs/sops/weekend-2026-10-24/04-sales-call-script.md:289 and public/app/present.js:1065. Every agreement says what it promises and what it does not; we read it together on the screen before you pay: 04-sales-call-script.md:416 and :419; 493...sql:65; db/migrations/288_real_contract_text.sql:257. Your delay or error does not pause either clock: db/migrations/493_funding_and_repair_agreement_text.sql:53 (section 3). I still fund myself: marketing/copy-skills/copybot/references/chris-voice-profile.md:28. The after (the hire, the bigger job, the ads, growth that stops coming out of savings): marketing/copy-skills/copy-reviewer/SKILL.md:45 and docs/sops/weekend-2026-10-24/04-sales-call-script.md:112." data-figures="the funding agreement's own 24 and 72 business hours">
+    <p class="eyebrow">TB-05 / The after</p>
+    <h2>Your applications go out on a clock that's written into the funding agreement.</h2>
     <ul class="lines">
       <li>Applications go out within 72 business hours. That's our guarantee, and it's in your contract. That typically means approvals come very shortly after.</li>
-      <li>A funding advisor starts on your file within 24 business hours.</li>
-      <li>Every Fundhub agreement says what it promises and what it does not.</li>
+      <li>The first clock gives your funding advisor 24 business hours from your signature to start on your file.</li>
+      <li>With the funding in place, payroll for a new hire, a larger job and steady ads run on credit, and your savings stay put.</li>
     </ul>
     <figure class="pic">
       <div class="real" role="img" aria-label="Section 3 of the Fundhub funding agreement. The clocks begin when you sign. Marked: a Fundhub funding advisor will begin working your file within 24 business hours. Marked: Fundhub will submit your first authorized applications within 72 business hours. Marked: our guarantee.">
@@ -954,23 +954,23 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>We fulfill. We keep our word. And on funding, the agreement says when.</li>
+        <li>Picture your business once the funding is in. Payroll for a new hire, a larger job and steady ads all run on CREDIT, and your savings stay put.</li>
+        <li>Getting there starts with two clocks in the funding agreement. Both start the moment you sign, and both are written into the clause on the screen.</li>
         <li>Applications go out within 72 business hours. That's our guarantee, and it's in your contract. That typically means approvals come very shortly after.</li>
-        <li>This is the actual clause. The clock starts when you sign, and within 24 business hours a funding advisor is working your file.</li>
-        <li>Your delay or error does not pause either clock. That's written in there too, and it's on us, not you.</li>
-        <li>That's the funding agreement. The credit optimization and Blueprint agreements say what they promise and what they don't, the same way, and we read whichever one is yours together on the screen before you pay.</li>
-        <li>I built what I wish I had, and this clause is a big part of it.</li>
+        <li>The first clock gives your funding advisor 24 business hours to start on your file. Both clocks keep ticking through any delay on your side, and the agreement says so.</li>
+        <li>That's the funding agreement. Credit optimization and the Blueprint come with their own written promises, and you read yours on screen before you pay.</li>
+        <li>We keep our word on both clocks. I still fund myself this way TODAY, and I hold my team to the same clocks I'd want on my own file.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide" data-src="The closer's objection sheet, word for word: How do I know this is legit? or I've been burned before. What happened last time? Listen to the whole story. It's fair to go slow. You saw your file before any pitch. You see the fee in dollars before you pay, and everything is in the agreement, in writing: docs/sops/weekend-2026-10-24/04-sales-call-script.md:415-416 (its funding tail, the fee percent, is left off). We pull your file together, right here on the call; it's a soft pull, so your score does not move: :69. They have to agree with the door before they hear a price: :204. Before you pay, we read the agreement together on the screen: :419. The reports are yours either way: :160. Action takers, not shoppers: marketing/copy-skills/copybot/references/chris-voice-profile.md:33.">
+  <section class="slide" data-src="The closer's objection sheet, word for word: How do I know this is legit? or I've been burned before. What happened last time? Listen to the whole story. It's fair to go slow. You saw your file before any pitch. You see the fee in dollars before you pay, and everything is in the agreement, in writing: docs/sops/weekend-2026-10-24/04-sales-call-script.md:415-416 (its funding tail, the fee percent, is left off). We pull your file together, right here on the call; it's a soft pull, so your score does not move: :69. They have to agree with the door before they hear a price: :204. Before you pay, we read the agreement together on the screen: :419. The reports are yours either way: :160. Action takers, not shoppers: marketing/copy-skills/copybot/references/chris-voice-profile.md:33. The question to ask any company before it applies anywhere: docs/sops/weekend-2026-10-24/04-sales-call-script.md:437.">
     <p class="eyebrow">TB-06 / Your call</p>
-    <h2>On your call, you see your file before any offer, and the fee in dollars before you pay.</h2>
+    <h2>Your strategy call pulls your file and shows you the reasons before anything goes out.</h2>
     <ul class="lines">
-      <li>It's fair to go slow. Your advisor pulls your file with you on the call, a soft pull, so your score does not move.</li>
-      <li>You agree with the path before you hear a price, and we read the agreement together on the screen before you pay anything.</li>
-      <li>The reports are yours either way.</li>
+      <li>If you've been burned, your advisor's first move is to ask what happened last time and hear the whole story.</li>
+      <li>Your report gets pulled while you're on the call, and because the pull is soft, your score holds still.</li>
+      <li>Your file comes before any offer, the fee shows in dollars before you pay, and taking it slow is fine.</li>
     </ul>
     <figure class="pic">
       <div class="real" role="img" aria-label="Your advisor's objection sheet for your strategy call, under: how do I know this is legit, or I've been burned before. First line, marked listen to the whole story: what happened last time? Then the answer, marked: it's fair to go slow. You saw your file before any offer. You see the fee in dollars before you pay, and everything is in the agreement, in writing.">
@@ -984,12 +984,12 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>If you've been burned before, it's fair to go slow, and the call is built for that.</li>
-        <li>Look at the sheet. The first thing your advisor does when you say you've been burned is ask what happened last time, and then listen to the whole story.</li>
-        <li>Then the answer, word for word: you saw your file before any offer, you see the fee in dollars before you pay, and everything is in the agreement, in writing.</li>
-        <li>We pull your file together right on the call. It's a soft pull, so your score does not move.</li>
-        <li>You agree with the path before you ever hear a price, and we read the agreement together on the screen before you pay anything.</li>
-        <li>The reports are yours either way. We're looking for action takers, not shoppers, and we fulfill.</li>
+        <li>Here's the question that tells you whether a company works like the last one. Ask if they'll read your report and explain it to you BEFORE anything goes out.</li>
+        <li>A company that blasts files skips that step, since every file goes to the same list. On your strategy call, reading your file comes FIRST.</li>
+        <li>If you've been burned, your advisor starts by asking what happened last time, and then listens to the WHOLE story before saying anything about your file.</li>
+        <li>Your report is pulled with you on the line. It's a soft pull, which leaves your score right where it is, and you read every line of it together.</li>
+        <li>Your file comes before any offer. The fee shows in dollars before you pay, the agreement goes up on screen, and taking it slow is completely fine.</li>
+        <li>The reports stay yours either way. We work best with action takers, not shoppers, and the whole call is built around facts from your own file.</li>
       </ul>
     </aside>
   </section>

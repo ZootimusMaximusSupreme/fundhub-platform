@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Fundhub Blueprint, In Action</title>
-<meta name="description" content="The Blueprint dashboard, start to finish: your file, your steps, your letters, your businesses, until the file is ready to fund. The storyboard and talk track for the long-form walkthrough.">
+<meta name="description" content="The Blueprint dashboard on a sample file, from the first screen to a file ready to fund: your credit, your steps, your letters, your businesses, and the coach and the Fundhub team behind them.">
 <!--
   Deck BA · The Blueprint, in action
   Lane: Blueprint and Repair (everyone under 700)
@@ -804,13 +804,13 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </defs>
   </svg>
 
-  <section class="slide dark" data-src="The dashboard in action, step by step: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:531. The checklist is built from the client's own report and the paydown target is read off that file: db/migrations/362_waypoint_definitions_seed.sql:1-8, :61-66. The screen's own words (Where you are, In progress, Waiting on you, This one is yours, Nothing moves until it is done): public/app/present-blueprint-demo.js:288, :301. The pictures are two crops of the sample client's day-0 Progress screen, the Blueprint timelapse at 2 seconds (ops/workflows/build-evidence/blueprint-timelapse-2026-10-21, stamped SIMULATION on the full screen). The sample's scores come from src/finance/sample-credit-file.mjs:75-86 (simulated, no bureau contacted).">
+  <section class="slide dark" data-src="The dashboard in action, step by step: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:531. The checklist is built from the client's own report and the paydown target is read off that file: db/migrations/362_waypoint_definitions_seed.sql:1-8, :61-66. The screen's own words (Where you are, In progress, Waiting on you, This one is yours, Nothing moves until it is done): public/app/present-blueprint-demo.js:288, :301. The pictures are two crops of the sample client's day-0 Progress screen, the Blueprint timelapse at 2 seconds (ops/workflows/build-evidence/blueprint-timelapse-2026-10-21, stamped SIMULATION on the full screen). The sample's scores come from src/finance/sample-credit-file.mjs:75-86 (simulated, no bureau contacted). Before you log in: the checklist is seeded from the client's own report when they enrol, db/migrations/362_waypoint_definitions_seed.sql:1-8. Before you log in: the checklist is seeded from the client's own report when they enrol, db/migrations/362_waypoint_definitions_seed.sql:1-8. Before you log in: the checklist is seeded from the client's own report when they enrol, db/migrations/362_waypoint_definitions_seed.sql:1-8. Before you log in: the checklist is seeded from the client's own report when they enrol, db/migrations/362_waypoint_definitions_seed.sql:1-8.">
     <p class="eyebrow">BA-01 / Day 0</p>
-    <h2>Day 0: your file is read, and your checklist appears, built from your own report.</h2>
-    <p class="lede">This is the real dashboard, start to finish, on a sample file. The engine reads your report and writes your first step from it, and the screen says whose move it is.</p>
+    <h2>The first screen tells you whose move it is, and on day 0 the move is yours.</h2>
+    <p class="lede">The engine reads your report and writes your first step from it before you ever log in.</p>
     <ul class="lines">
-      <li>Where you are: in progress, and waiting on you. Your scores sit under it, one card per bureau, loaded from your report.</li>
-      <li>The plan starts exactly where you are, on day 0, with your cards, your items and your business.</li>
+      <li>On this sample it says In progress, then Waiting on you, with one score card per bureau under it.</li>
+      <li>This deck walks the real dashboard from that first screen to a file ready to fund.</li>
     </ul>
     <figure class="pic">
       <div class="real shot" role="img" aria-label="Two crops of a sample Blueprint Progress screen on day 0. Where you are: in progress, we will update this as your file moves, waiting on you. A score card: Experian, 702, sample report loaded, tap to open this report.">
@@ -821,24 +821,22 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Open Progress. This is the first screen you see on day 0, on a sample file, and it shows everything on your file as it stands today.</li>
-        <li>Look at where you are. It says in progress, we will update this as your file moves, and then waiting on you. That last line is the whole system. It's your move.</li>
-        <li>Under that are your scores, one card per bureau, loaded from your own report. On this sample it reads 702, 709 and 706, and the screen says sample scores, not a real credit pull.</li>
-        <li>Scroll down to your checklist. The engine read the report and wrote the first step from it, with the target it read off the file.</li>
-        <li>Nobody typed that step in. The report decided it.</li>
-        <li>This is day 0, and the plan already starts where you are, with your cards, your items and your business.</li>
-        <li>Your story: the first time you saw your own file laid out like this, and what it changed.</li>
+        <li>The first screen of your dashboard tells you whose move it is. On day zero, the move is YOURS.</li>
+        <li>Before you ever log in, the engine reads your report and writes your first step from it, with a target taken off your own file.</li>
+        <li>This is a sample file. Up top it says in progress, then waiting on you. Under that sit your scores, one card per bureau.</li>
+        <li>On this sample they read 702, 709 and 706, and the screen labels them sample scores, so nobody mistakes them for a real pull.</li>
+        <li>I'm going to walk you through this dashboard screen by screen, from day zero to the day your file is ready to fund.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide" data-src="The Credit screen's own tiles and bands: public/app/money-credit.js:208-235 (Cards used, Hard inquiries, Not on file yet) and :50-52 (Excellent, 10% or less; Good, 30% or less; High, over 30%). The sample file: the Visa used at roughly 40%, three hard inquiries, one old 30-day late now paid off: src/finance/sample-credit-file.mjs:7-10. What to work on comes from UnderwriteIQ's own sentences: src/underwrite/report.mjs:52-57. The banks see the inquiries stack and start denying: public/app/present.js:108 (closer line). The pictures are two tiles of the sample client's Credit screen on the first pull, the Blueprint timelapse at 12 seconds (stamped SIMULATION).">
+  <section class="slide" data-src="The Credit screen's own tiles and bands: public/app/money-credit.js:208-235 (Cards used, Hard inquiries, Not on file yet) and :50-52 (Excellent, 10% or less; Good, 30% or less; High, over 30%). The sample file: the Visa used at roughly 40%, three hard inquiries, one old 30-day late now paid off: src/finance/sample-credit-file.mjs:7-10. What to work on comes from UnderwriteIQ's own sentences: src/underwrite/report.mjs:52-57. The banks see the inquiries stack and start denying: public/app/present.js:108 (closer line). The pictures are two tiles of the sample client's Credit screen on the first pull, the Blueprint timelapse at 12 seconds (stamped SIMULATION). Card use over 30% keeps the engine's fundable gate shut: src/finance/fundability.mjs:40-60. Card use over 30% keeps the engine's fundable gate shut: src/finance/fundability.mjs:40-60. Card use over 30% keeps the engine's fundable gate shut: src/finance/fundability.mjs:40-60. Card use over 30% keeps the engine's fundable gate shut: src/finance/fundability.mjs:40-60.">
     <p class="eyebrow">BA-02 / Your credit</p>
-    <h2>Your credit on one screen: cards used, open accounts, hard inquiries, and negative items.</h2>
+    <h2>30.6% of this sample's card limits are in use, and the screen marks that high.</h2>
     <ul class="lines">
-      <li>Under the three scores are the engine's own counts: cards used, open accounts, hard inquiries and negative items.</li>
-      <li>On this sample, cards used reads 30.6%, and the screen says it plainly: high, over 30%. That's the first thing to fix, and the checklist already knows it.</li>
-      <li>Hard inquiries: three, one on each bureau. Negative items: none on this file.</li>
+      <li>Under the three scores sit four counts: cards used, open accounts, hard inquiries and negative items.</li>
+      <li>The engine's sentences under the tiles say what to work on, and your checklist starts on that same thing.</li>
+      <li>This sample shows three hard inquiries, one per bureau, and no negative items.</li>
     </ul>
     <figure class="pic">
       <div class="real shot" role="img" aria-label="Two tiles from a sample Credit screen. Cards used: 30.6 percent, high, over 30 percent. Hard inquiries: 3, one on Experian, one on Equifax, one on TransUnion.">
@@ -849,25 +847,22 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Open Money, then Credit. This is your credit on one screen.</li>
-        <li>The three scores sit on top, one per bureau, and under them are the engine's own counts: cards used, open accounts, hard inquiries and negative items.</li>
-        <li>Look at cards used on this sample. It reads 30.6 percent, and the screen says it plainly: high, over 30 percent. That's the first thing to fix, and the checklist already knows it.</li>
-        <li>Hard inquiries: three, one on each bureau. Negative items: none on this file.</li>
-        <li>Banks see those inquiries stack up, and that's where the denials start, so that count matters.</li>
-        <li>Under the tiles it says what to work on, from UnderwriteIQ, based on your credit file. Those are the engine's own sentences for this file.</li>
-        <li>And the chart at the bottom tracks your scores over time, pull by pull.</li>
-        <li>Every tile on this screen comes from your own report. This is what the engine is reading when it writes your steps.</li>
+        <li>Open Money, then Credit. This screen shows what a bank sees when it opens your report.</li>
+        <li>Thirty point six percent of this sample's card limits are in use, and the screen calls that HIGH, anything over thirty percent.</li>
+        <li>A bank reads that same figure. While it stays over thirty percent, the engine won't call this file fundable, so this tile costs you funding today.</li>
+        <li>Next to it are hard inquiries, three on this sample, one per bureau. Every bank you apply to reads those first.</li>
+        <li>Under the tiles, UnderwriteIQ writes what to work on for this file, in plain sentences. Your checklist starts on that same thing.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide" data-src="Your move; this one is yours, nothing moves until it is done: public/app/present-blueprint-demo.js:288. Pay the card down to a target read off the client's own file; you do not have to do it in one payment, anything you put against the card moves the balance toward the target; the step closes itself when a re-pull reports the balance at the target: db/migrations/362_waypoint_definitions_seed.sql:61-66, :83-86. A text before each statement date: public/app/present.js:985 (FinanceOS file-protection alerts). The pictures are the sample client's day-0 What happens next card (timelapse at 2 seconds) and the Cards used tile months later (timelapse at 14 seconds), whose stamp reads Month 4 pull, Visa $780, under target, paydown verified (stamped SIMULATION).">
+  <section class="slide" data-src="Your move; this one is yours, nothing moves until it is done: public/app/present-blueprint-demo.js:288. Pay the card down to a target read off the client's own file; you do not have to do it in one payment, anything you put against the card moves the balance toward the target; the step closes itself when a re-pull reports the balance at the target: db/migrations/362_waypoint_definitions_seed.sql:61-66, :83-86. A text before each statement date: public/app/present.js:985 (FinanceOS file-protection alerts). The pictures are the sample client's day-0 What happens next card (timelapse at 2 seconds) and the Cards used tile months later (timelapse at 14 seconds), whose stamp reads Month 4 pull, Visa $780, under target, paydown verified (stamped SIMULATION). The balance reports when the statement closes: src/finance/file-alerts/payment-timing.mjs:3-6. The balance reports when the statement closes: src/finance/file-alerts/payment-timing.mjs:3-6. The balance reports when the statement closes: src/finance/file-alerts/payment-timing.mjs:3-6. The balance reports when the statement closes: src/finance/file-alerts/payment-timing.mjs:3-6.">
     <p class="eyebrow">BA-03 / Step one</p>
-    <h2>Step one: pay the card down to its target, and the next report closes the step.</h2>
+    <h2>Your first step is one card, and the target comes off its limit on your report.</h2>
     <ul class="lines">
-      <li>The screen says whose move it is. Pay the card down to the target the engine read off your file. This one is yours, and nothing moves until it is done.</li>
-      <li>You don't have to do it in one payment. Anything you put against the card moves the balance toward the target, and FinanceOS texts you before each statement date.</li>
-      <li>The step closes itself when your next credit report shows the new balance.</li>
+      <li>On this sample the target is $800, and the screen calls it your move until it's done.</li>
+      <li>You can pay toward it in pieces, and FinanceOS texts you before each statement date.</li>
+      <li>Months later the same tile reads 9.8%, and the screen's own stamp says paydown verified.</li>
     </ul>
     <figure class="pic">
       <div class="real shot" role="img" aria-label="Two crops. Day 0: your move, pay the card down to its target. Months later: the Cards used tile reads 9.8 percent, excellent, 10 percent or less.">
@@ -878,25 +873,23 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Back on Progress, look at what happens next. It says your move, and it names the step: pay this card down to its target.</li>
-        <li>The target comes from the engine. It read the limit on your own file and set the line.</li>
-        <li>On this sample the target was $800, a tenth of the card's limit on the file. The plan sets it, you pay it.</li>
-        <li>Read the small print with me: this one is yours, and nothing moves until it is done. That's the deal on every step.</li>
-        <li>You don't have to do it in one payment. Anything you put against the card moves the balance toward the target.</li>
-        <li>FinanceOS sends you a text before each statement date, so you're paying at the right time.</li>
-        <li>Now jump ahead on the sample. Open Money, then Credit, months later. Cards used reads 9.8 percent, excellent, and the screen's own stamp says paydown verified.</li>
-        <li>Nobody ticked that box. The next credit report showed the new balance, and the step closed itself.</li>
+        <li>Back on Progress, look at the card that says your move. It names the step: pay this card down to its target.</li>
+        <li>On this sample that target is $800, a tenth of the card's limit on the file. The engine read that limit and set the line.</li>
+        <li>Read the small print: this one is yours, and nothing moves until it's done.</li>
+        <li>You can pay toward it in pieces. FinanceOS texts you before each statement date, because the balance on that day is the one a bank SEES.</li>
+        <li>Now jump ahead on the sample. Months later, cards used reads 9.8 percent, excellent, and the screen's own stamp says paydown verified.</li>
+        <li>Nobody checked that box by hand. A newer report showed the lower balance, and the step closed itself.</li>
       </ul>
     </aside>
   </section>
 
   <section class="slide" data-src="The three letter steps, word for word: print the letters from your pack, sign where marked, mail a copy to each bureau, keep your post office receipt; upload a photo of the receipt or the stamped envelopes; upload the bureau's letter when it arrives: db/migrations/400_blueprint_dispute_waypoint_definitions.sql:20-36. A step clears only with the proof: public/app/present.js:964. The bureaus have 30 to 45 days to answer each round: docs/sops/weekend-2026-10-24/04-sales-call-script.md:109 and db/migrations/493_funding_and_repair_agreement_text.sql:69. If you'd rather have us handle everything, we're happy to optimize your credit: marketing/ads/scripts/2026-10-13.md:35 (green-lit); credit optimization, done for you, no price here. The picture is the sample client's checklist in month 1, the Blueprint timelapse at 4.5 seconds, the first letter step done and the proof step open (stamped SIMULATION).">
     <p class="eyebrow">BA-04 / The letters</p>
-    <h2>The letters: print and mail them, upload your proof, then what the bureaus send back.</h2>
+    <h2>Three letter steps sit on your checklist, and each one clears only with proof.</h2>
     <ul class="lines">
-      <li>Your dispute letters are in your pack. You print them, sign where marked, mail a copy to each bureau, and keep your post office receipt.</li>
-      <li>Then you upload a photo of the receipt or the stamped envelopes, and later the bureau's answer when it arrives. A step clears only with the proof.</li>
-      <li>If you'd rather have the Fundhub team run the rounds for you, that's credit optimization, done for you.</li>
+      <li>You print the letters from your pack, sign where it's marked, and mail a copy to each bureau.</li>
+      <li>A photo of your post office receipt clears the next step, and the bureau's answer clears the one after it.</li>
+      <li>If you'd rather have the Fundhub team run the rounds for you, that's credit optimization, done for you, and every letter and answer stays in your dashboard.</li>
     </ul>
     <figure class="pic">
       <div class="real shot" role="img" aria-label="Three letter rows on a sample Blueprint checklist in month 1. Print and mail your dispute letters: done, tagged you. Upload your mailing proof: open, with its upload button and the note, photo or PDF of your post office receipt or the stamped envelopes. Upload bureau responses when they arrive: open.">
@@ -906,25 +899,22 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Stay on Progress and scroll to the letter steps. There are three of them, in order.</li>
-        <li>First, print and mail your dispute letters. They're in your pack. You sign where marked, mail a copy to each bureau, and keep your post office receipt.</li>
-        <li>On this sample that step is done and dated. The next one is open: upload your mailing proof. There's the button, right on the step.</li>
-        <li>You take a photo of the receipt or the stamped envelopes and upload it.</li>
-        <li>Then the bureaus have 30 to 45 days to answer each round, and when the letter comes, you upload that too.</li>
-        <li>A step clears only with the proof. A promise doesn't close it.</li>
-        <li>And if you'd rather have the Fundhub team run the rounds for you, that's credit optimization, done for you. We go over that on the call.</li>
-        <li>Either way, every letter and every answer lives in your dashboard.</li>
+        <li>Scroll down Progress to the letters. There are three steps, and each one clears only with proof.</li>
+        <li>Your dispute letters are already in your pack. You print them, sign where it's marked, mail a copy to each bureau, and keep the post office receipt.</li>
+        <li>On this sample that first step is done and dated. Right under it, upload your mailing proof is open, and the button is right on the step.</li>
+        <li>A photo of the receipt or the stamped envelopes clears that step. When a bureau writes back, you upload its letter, and that clears the third step.</li>
+        <li>If you'd rather have the Fundhub team run the rounds for you, that's credit optimization, done for you, and we talk it through on the call.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide" data-src="File your LLC: file online with the Secretary of State and send us the filing confirmation; open a business checking account in the LLC name: db/migrations/362_waypoint_definitions_seed.sql:108-112, :124-127. Your businesses; each business is read on its own, they are never added together; Add a business: public/app/money-fundability.js:427-431. Five checks per business, never added up: src/finance/fundability.mjs:71-75. The LLC step is not machine-checked, no Secretary of State feed: 362_waypoint_definitions_seed.sql:112. Business age: under 12 months half, 24 months the top band: src/underwrite/business-funding.mjs:5-9, fundability.mjs:71-73, :141-142; closer line docs/sops/weekend-2026-10-24/04-sales-call-script.md:196. Business one gets ready first, then business two: docs/sops/weekend-2026-10-24/04-sales-call-script.md:258; you do not need a business to work with us: :401. The pictures are two rows of the sample client's checklist at month 6: ops/workflows/build-evidence/blueprint-timelapse-2026-10-21/still-03-month-6.png (stamped SIMULATION).">
+  <section class="slide" data-src="File your LLC: file online with the Secretary of State and send us the filing confirmation; open a business checking account in the LLC name: db/migrations/362_waypoint_definitions_seed.sql:108-112, :124-127. Your businesses; each business is read on its own, they are never added together; Add a business: public/app/money-fundability.js:427-431. Five checks per business, never added up: src/finance/fundability.mjs:71-75. The LLC step is not machine-checked, no Secretary of State feed: 362_waypoint_definitions_seed.sql:112. Business age: under 12 months half, 24 months the top band: src/underwrite/business-funding.mjs:5-9, fundability.mjs:71-73, :141-142; closer line docs/sops/weekend-2026-10-24/04-sales-call-script.md:196. Business one gets ready first, then business two: docs/sops/weekend-2026-10-24/04-sales-call-script.md:258; you do not need a business to work with us: :401. The pictures are two rows of the sample client's checklist at month 6: ops/workflows/build-evidence/blueprint-timelapse-2026-10-21/still-03-month-6.png (stamped SIMULATION). The LLC step closes on the filing confirmation, with no Secretary of State feed: db/migrations/362_waypoint_definitions_seed.sql:108-112. Business age multipliers: src/underwrite/business-funding.mjs:5-9. The LLC step closes on the filing confirmation, with no Secretary of State feed: db/migrations/362_waypoint_definitions_seed.sql:108-112. Business age multipliers: src/underwrite/business-funding.mjs:5-9. The LLC step closes on the filing confirmation, with no Secretary of State feed: db/migrations/362_waypoint_definitions_seed.sql:108-112. Business age multipliers: src/underwrite/business-funding.mjs:5-9. The LLC step closes on the filing confirmation, with no Secretary of State feed: db/migrations/362_waypoint_definitions_seed.sql:108-112. Business age multipliers: src/underwrite/business-funding.mjs:5-9.">
     <p class="eyebrow">BA-05 / The businesses</p>
-    <h2>The businesses: file your LLC, open business checking, and add the business in the app.</h2>
+    <h2>Why does the LLC step sit early on your checklist when the business comes later?</h2>
     <ul class="lines">
-      <li>Two steps on your checklist: file your LLC online with the Secretary of State and send us the filing confirmation, then open a business checking account in the LLC name.</li>
-      <li>Then you add the business under Money, and the screen says it plainly: each business is read on its own. They are never added together.</li>
-      <li>Business one gets ready first, then business two.</li>
+      <li>File your LLC online with the Secretary of State and send us the confirmation, then open business checking in its name.</li>
+      <li>Age counts: the engine doubles the business funding it reads once a company passes 24 months, and halves it under 12.</li>
+      <li>In the app, each business you add gets its own read, and the screen never adds them together.</li>
     </ul>
     <figure class="pic">
       <div class="real shot" role="img" aria-label="Two business rows on a sample Blueprint checklist at month 6, both done and tagged you: file your LLC, and open a business checking account.">
@@ -935,26 +925,22 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Scroll down the checklist to the business steps.</li>
-        <li>File your LLC. You file online with the Secretary of State and send us the filing confirmation.</li>
-        <li>That confirmation is how the step closes, because nothing in the app can see the state's records. You send it, we close it.</li>
-        <li>Open a business checking account, in the LLC name.</li>
-        <li>Age counts, so file early. The engine reads a business under 12 months old at half on business cards, and it reads a business two years old at the top band.</li>
-        <li>On this sample both are done and dated, and both are tagged you, because you did them.</li>
-        <li>Then open Money, then Fundability, and add the business. The screen says it plainly: each business is read on its own, and they are never added together.</li>
-        <li>Business one gets ready first. Then business two. Each one gets its own five checks from the engine.</li>
-        <li>And you don't need a business to start. The personal file comes first, and the businesses come after.</li>
+        <li>The LLC step sits early on your checklist because the engine weighs a company's age, and that age counts from the date the state records your filing.</li>
+        <li>Under 12 months, the engine halves the business funding it reads. Past 24 months, it doubles it.</li>
+        <li>Scroll to the business steps. File your LLC online with the Secretary of State, then send us the confirmation you get back.</li>
+        <li>That confirmation is what closes the step, because the app has no line into the state's records. Then you open business checking in the LLC's name.</li>
+        <li>On this sample both steps are done and dated, and both are tagged you. After that, you add the business under Money, then Fundability, where every business gets read by itself.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide" data-src="Your checklist and letters are updated when new credit information is received: db/migrations/485_blueprint_program_scope.sql:11 (agreement section 6.1). The Cards used bands: public/app/money-credit.js:50-52. The sample's first pull read 30.6% (timelapse at 12 seconds) and month 6 reads 8% (timelapse at 14.5 seconds); the month-6 stamp reads Month 5 pull, Visa $640, letters regenerated; the month-2 stamp reads Month 2 pull, Visa $1,720 (timelapse at 12.5 seconds). The sample's scores stay at 702, 709 and 706 on every screen; the month-6 Progress screen says the middle score is unchanged (timelapse at 15 seconds). No representation about scores: db/migrations/288_real_contract_text.sql:257. Never a pull date: public/app/present.js:1046; docs/journeys/capital-blueprint-intended.md:27. The pictures are the month-6 Cards used tile and the screen's own stamp (stamped SIMULATION).">
+  <section class="slide" data-src="Your checklist and letters are updated when new credit information is received: db/migrations/485_blueprint_program_scope.sql:11 (agreement section 6.1). The Cards used bands: public/app/money-credit.js:50-52. The sample's first pull read 30.6% (timelapse at 12 seconds) and month 6 reads 8% (timelapse at 14.5 seconds); the month-6 stamp reads Month 5 pull, Visa $640, letters regenerated; the month-2 stamp reads Month 2 pull, Visa $1,720 (timelapse at 12.5 seconds). The sample's scores stay at 702, 709 and 706 on every screen; the month-6 Progress screen says the middle score is unchanged (timelapse at 15 seconds). No representation about scores: db/migrations/288_real_contract_text.sql:257. Never a pull date: public/app/present.js:1046; docs/journeys/capital-blueprint-intended.md:27. The pictures are the month-6 Cards used tile and the screen's own stamp (stamped SIMULATION). The card balances on the sample's stamps, $1,720 at month 2 and $640 at month 5: the Blueprint timelapse at 12.5 and 14.5 seconds (ops/workflows/build-evidence/blueprint-timelapse-2026-10-21). The card balances on the sample's stamps, $1,720 at month 2 and $640 at month 5: the Blueprint timelapse at 12.5 and 14.5 seconds (ops/workflows/build-evidence/blueprint-timelapse-2026-10-21). The card balances on the sample's stamps, $1,720 at month 2 and $640 at month 5: the Blueprint timelapse at 12.5 and 14.5 seconds (ops/workflows/build-evidence/blueprint-timelapse-2026-10-21). The card balances on the sample's stamps, $1,720 at month 2 and $640 at month 5: the Blueprint timelapse at 12.5 and 14.5 seconds (ops/workflows/build-evidence/blueprint-timelapse-2026-10-21).">
     <p class="eyebrow">BA-06 / Over time</p>
-    <h2>Over time, your checklist and your letters update when new credit information comes in.</h2>
+    <h2>Cards used went from 30.6% on the first pull to 8% by month 6 on this sample.</h2>
     <ul class="lines">
-      <li>Each new pull shows what changed. On this sample, cards used went from 30.6% on the first pull to 8% by month 6, because the card got paid down.</li>
-      <li>The screen's own stamp on that pull reads: letters regenerated. Your letters are rebuilt from the new report.</li>
-      <li>The agreement says it in writing: your checklist and letters are updated when new credit information is received.</li>
+      <li>The card's balance went from $1,720 to $640, and the tile moved from high to excellent along with it.</li>
+      <li>The screen's stamp on that pull reads letters regenerated, meaning your letters get rebuilt from the newer report.</li>
+      <li>Your agreement puts it in writing: your checklist and letters are updated when new credit information is received.</li>
     </ul>
     <figure class="pic">
       <div class="real shot" role="img" aria-label="Two crops of a sample Credit screen at month 6. The Cards used tile reads 8 percent, excellent, 10 percent or less. The screen's own stamp: simulation, sample file, not a real client; month 6; client view; month 5 pull; Visa 640 dollars; letters regenerated.">
@@ -965,25 +951,23 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Now open Money, then Credit, and step through the months on this sample.</li>
-        <li>On the first pull, cards used read 30.6 percent. By month 6 it reads 8 percent, excellent, because the card got paid down.</li>
-        <li>The card itself went from $1,720 to $640 across the pulls on this sample, and the tile moved from high to excellent with it.</li>
-        <li>The scores on this sample stayed where they were the whole time, and the screen says so. Nobody can promise a score, and this screen never pretends to.</li>
-        <li>Look at the stamp on the screen. It says month 5 pull, and then letters regenerated.</li>
-        <li>That's the rule for the whole year: when new credit information comes in, your checklist and your letters are rebuilt from the new report.</li>
-        <li>It's in the agreement too, word for word: your checklist and letters are updated when new credit information is received.</li>
-        <li>Nothing on your plan goes stale, because the plan reads the newest report, every time.</li>
+        <li>Open Money, then Credit, and step through the months on this sample. On the first pull, cards used read 30.6 percent. By month six it reads EIGHT percent.</li>
+        <li>The card itself went from $1,720 to $640 across those pulls, and the tile moved from high all the way to excellent.</li>
+        <li>The scores on this sample stayed where they started, and the screen says so plainly.</li>
+        <li>Look at the stamp on the screen. It reads month 5 pull, then letters regenerated.</li>
+        <li>When a newer report lands, the engine rebuilds your letters from it, and your agreement puts that promise in writing.</li>
+        <li>Your plan never runs on an old report. Every step works off what a bank would see today.</li>
       </ul>
     </aside>
   </section>
 
   <section class="slide" data-src="The AI accountability coach follows your current checklist step through text messages and automated voice calls, subject to your contact preferences; the Fundhub team handles program questions, exceptions and funding preparation: db/migrations/485_blueprint_program_scope.sql:11 with 491_blueprint_agreement_fundhub_team.sql:10. The coach says it is an AI, not a person: db/migrations/490_blueprint_ai_csm_copy.sql:26. The reminders for a late step, in order, and the last rung is a person, not a louder message: src/nudge/ladder.mjs:29-60, :52. Client line: a text when it is due, then an email, then a text; still stuck, a person on our team steps in: public/app/present.js:967. The Fundhub team, never your advisor: docs/journeys/capital-blueprint-intended.md:10. Two sent unanswered coach texts on the same step can lead to one contextual automated call; a reply or a step change cancels it; quiet hours and contact caps apply: capital-blueprint-intended.md:8-9.">
     <p class="eyebrow">BA-07 / Who is with you</p>
-    <h2>An AI coach on your open step, reminders in order, and then a person on the Fundhub team.</h2>
+    <h2>An AI coach keeps after your open step, and the Fundhub team picks up anything it can't.</h2>
     <ul class="lines">
-      <li>The AI coach follows your current checklist step by text and by automated call, within your contact preferences, and it tells you it's an AI.</li>
-      <li>A late step gets reminders in order, and the last one is a person on the Fundhub team, never a louder message.</li>
-      <li>The Fundhub team answers program questions and handles exceptions and funding preparation.</li>
+      <li>The coach checks in by text or automated call, within your contact preferences, and opens by saying it's an AI.</li>
+      <li>Two texts with no answer on the same step lead to one automated call, and a reply cancels it.</li>
+      <li>A step that stays late goes to a person on the Fundhub team.</li>
     </ul>
     <figure class="pic">
       <div class="sheet">
@@ -1012,24 +996,23 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>There's no screen for this one, so let me tell you who's with you while you work the checklist.</li>
-        <li>An AI coach follows your current step. It reaches you by text and by automated call, within your contact preferences, and it tells you it's an AI. It never pretends to be a person.</li>
-        <li>When a step runs late, the reminders go in order, and the last one is a person on the Fundhub team, never a louder message.</li>
-        <li>Two coach texts on the same open step with no answer, and the next eligible run can start one automated call. A reply or a finished step cancels it, and your quiet hours and contact caps still apply.</li>
-        <li>The Fundhub team answers program questions and handles exceptions and funding preparation.</li>
-        <li>So the checklist is yours, and the follow-up is ours. That's how a file keeps moving for 12 months.</li>
-        <li>Your story: a client who got stuck on a step, and what got them moving again.</li>
+        <li>This one has no screen, so let me tell you who's working beside you while you do the checklist.</li>
+        <li>An AI coach keeps track of whichever step is open. It checks in by text or by automated call, within your contact preferences, and opens by telling you it's an AI.</li>
+        <li>When two of its texts go unanswered on the same step, the next check-in is one automated call. A reply from you, or a finished step, cancels it.</li>
+        <li>Your quiet hours and contact limits still apply, so it reaches you only in the hours you set.</li>
+        <li>A step that stays late goes to a person on the Fundhub team. The team also answers your program questions and gets you ready for funding.</li>
+        <li>The checklist is your part, and the follow-up is ours. That keeps your file moving for twelve months, even in your busiest ones.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide dark" data-src="When the engine says your file is ready, the Fundhub team preps you and a closer calls about funding; you can also ask with one button: public/app/present.js:975-976; the button is I'm ready to get funded on Money, Next steps: public/app/money-next.js:22, :193. We ask for your bank statements, tax returns, and ID ahead of time, one paper at a time, so your file is complete when the closer calls: public/app/present.js:999. One funding sequence is about six rounds, your personal file first, then each business on its own: public/app/present.js:109. After funding, the planner suggests when the file is ready for the next funding sequence: public/app/present.js:1004. The Blueprint does not apply for funding for you; funding is its own agreement: db/migrations/288_real_contract_text.sql:244 and 493_funding_and_repair_agreement_text.sql:53.">
+  <section class="slide dark" data-src="When the engine says your file is ready, the Fundhub team preps you and a closer calls about funding; you can also ask with one button: public/app/present.js:975-976; the button is I'm ready to get funded on Money, Next steps: public/app/money-next.js:22, :193. We ask for your bank statements, tax returns, and ID ahead of time, one paper at a time, so your file is complete when the closer calls: public/app/present.js:999. One funding sequence is about six rounds, your personal file first, then each business on its own: public/app/present.js:109. After funding, the planner suggests when the file is ready for the next funding sequence: public/app/present.js:1004. The Blueprint does not apply for funding for you; funding is its own agreement: db/migrations/288_real_contract_text.sql:244 and 493_funding_and_repair_agreement_text.sql:53. What the capital is for: docs/sops/weekend-2026-10-24/04-sales-call-script.md:112. The client funds themselves once the file is ready (owner call, 2026-10-13): marketing/ads/scripts/2026-10-13.md:6. What the capital is for: docs/sops/weekend-2026-10-24/04-sales-call-script.md:112. The client funds themselves once the file is ready (owner call, 2026-10-13): marketing/ads/scripts/2026-10-13.md:6. What the capital is for: docs/sops/weekend-2026-10-24/04-sales-call-script.md:112. The client funds themselves once the file is ready (owner call, 2026-10-13): marketing/ads/scripts/2026-10-13.md:6. What the capital is for: docs/sops/weekend-2026-10-24/04-sales-call-script.md:112. The client funds themselves once the file is ready (owner call, 2026-10-13): marketing/ads/scripts/2026-10-13.md:6.">
     <p class="eyebrow">BA-08 / Ready to fund</p>
-    <h2>Ready to fund: the engine says your file is ready, and the funding sequence starts.</h2>
+    <h2>The last button on the dashboard says I'm ready to get funded.</h2>
     <ul class="lines">
-      <li>When the engine says your file is ready, the Fundhub team preps you and someone from the team calls about funding. You can also ask with one button.</li>
-      <li>The funding papers checklist asks for your bank statements, tax returns and ID ahead of time, one paper at a time, so your file is complete when the team calls.</li>
-      <li>Then the funding sequence starts: your personal file first, then each business on its own, about six rounds.</li>
+      <li>Once the engine marks your file ready, our team preps you, and that button lets you ask for funding yourself.</li>
+      <li>Your bank statements, tax returns and ID go into the funding papers checklist early, one at a time.</li>
+      <li>Then the funding sequence starts, about six rounds, with your personal file going first.</li>
     </ul>
     <figure class="pic">
       <ol class="flow" aria-label="The order after your file is ready: the engine says your file is ready, or you ask with one button; the Fundhub team preps you, bank statements, tax returns and ID, one paper at a time; someone from the team calls about funding; the funding sequence starts, your personal file first, then each business on its own.">
@@ -1042,12 +1025,11 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     <aside class="talk" aria-hidden="true">
       <ul>
         <li>Last screen. Open Money, then Next steps. The one main button on that page says I'm ready to get funded.</li>
-        <li>When the engine says your file is ready, the Fundhub team preps you, and someone from the team calls you about funding. You can also ask with that one button.</li>
-        <li>Before that call, the funding papers checklist asks for your bank statements, tax returns and ID ahead of time, one paper at a time, so your file is complete when the team calls.</li>
-        <li>Then the funding sequence starts. Your personal file goes first, then each business on its own, and one funding sequence is about six rounds.</li>
-        <li>After funding, the planner reads your file again and suggests when it's ready for the next funding sequence.</li>
-        <li>That's the whole dashboard, start to finish: your file, your steps, your letters, your businesses, until the file is ready to fund.</li>
-        <li>The Blueprint gets the file ready. Funding is a separate agreement, and someone from the Fundhub team walks you through it on that call.</li>
+        <li>Once the engine marks your file ready, our team preps you and reaches out about funding, and that button lets you ask yourself.</li>
+        <li>The funding papers checklist collects your bank statements, tax returns and ID early, one at a time, so your file is complete before any bank sees it.</li>
+        <li>Then the funding sequence starts, about six rounds, with your personal file going first and the businesses after it.</li>
+        <li>And this is what all of it is FOR. The funding goes into your business, the hire, the bigger job, the ads, and your growth runs on capital from your own file.</li>
+        <li>That's the whole dashboard. You fund yourself, and the Blueprint is how your file gets there.</li>
       </ul>
     </aside>
   </section>
