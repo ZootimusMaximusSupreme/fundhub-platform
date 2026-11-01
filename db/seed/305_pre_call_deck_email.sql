@@ -1,4 +1,4 @@
--- BS-01's approved pre-call slideshow lesson. One template, with the title and
+-- BS-01's draft pre-call slideshow lesson. One template, with the title and
 -- route selected from the saved survey or setter correction at each send.
 INSERT INTO message_templates (org_id, template_key, channel, subject, body, compliance_passed)
 SELECT id, 'EMAIL-BS-DECK-LESSON', 'email', '{{deck_title}}',
@@ -12,7 +12,7 @@ We will use your own file on the call.
 
 Chris at Fundhub
 
-Unsubscribe: {{unsubscribe}}$c$, true
+Unsubscribe: {{unsubscribe}}$c$, false
 FROM orgs
 ON CONFLICT (org_id, template_key) DO UPDATE SET
   channel = EXCLUDED.channel,
@@ -23,7 +23,7 @@ ON CONFLICT (org_id, template_key) DO UPDATE SET
 
 INSERT INTO message_templates (org_id, template_key, channel, subject, body, compliance_passed)
 SELECT id, 'SMS-BS-DECK', 'sms', NULL,
-  $c$A short Fundhub lesson before your call: {{deck_title}} {{deck_url}}$c$, true
+  $c$A short Fundhub lesson before your call: {{deck_title}} {{deck_url}}$c$, false
 FROM orgs
 ON CONFLICT (org_id, template_key) DO UPDATE SET
   channel = EXCLUDED.channel,

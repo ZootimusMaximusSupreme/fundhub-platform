@@ -49,7 +49,7 @@
   {
    "key": "EMAIL-BS-DECK-LESSON",
    "channel": "email",
-   "approvedBySeed": true,
+   "approvedBySeed": false,
    "inactive": false,
    "files": [
     "db/seed/305_pre_call_deck_email.sql"
@@ -916,7 +916,7 @@
   {
    "key": "SMS-BS-DECK",
    "channel": "sms",
-   "approvedBySeed": true,
+   "approvedBySeed": false,
    "inactive": false,
    "files": [
     "db/seed/305_pre_call_deck_email.sql"
