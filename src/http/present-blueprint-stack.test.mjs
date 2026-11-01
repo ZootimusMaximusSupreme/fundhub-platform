@@ -326,12 +326,12 @@ describe("the stack starts from this caller's file", () => {
     assert.ok(!names.includes("Ready to get funded"));
   });
 
-  test("no credit file yet: dispute rounds wait for the report", async () => {
+  test("no credit file yet: the offer stack waits for the report", async () => {
     const deck = await openDeck(payload({ available: false, tier: null }));
     deck.click("phase:06").key("ArrowRight");
-    assert.deepEqual(toggle(deck, "disputes"), {
-      on: false, why: "No credit file on this deck yet. Turn on only if the report shows negative items."
-    });
+    assert.equal(current(deck), "S-06");
+    assert.match(text(parts(deck.html()).client), /Waiting for your authorization/);
+    assert.ok(!parts(deck.html()).cockpit.includes('data-act="stack:disputes"'), "no offer toggle before the report");
   });
 
   test("a business on the file: its papers and its container are named", async () => {
@@ -395,8 +395,7 @@ describe("the rep's toggles change what the caller sees", () => {
 describe("prices, words, and the watch notes", () => {
   const STATES = [
     payload({ tier: "REPAIR_ONLY", negItems: 3 }),
-    payload({ tier: "FULL_FUNDING", negItems: 0, businesses: [{ id: "b1", name: "Co", age_months: 12, incorporated_date: "2025-01" }] }),
-    payload({ available: false, tier: null })
+    payload({ tier: "FULL_FUNDING", negItems: 0, businesses: [{ id: "b1", name: "Co", age_months: 12, incorporated_date: "2025-01" }] })
   ];
 
   test("every dollar figure in the section is the catalog's or $X", async () => {
