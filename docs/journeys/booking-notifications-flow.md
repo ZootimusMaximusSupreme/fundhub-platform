@@ -483,6 +483,9 @@ Bookings without a known start time wait in the feed. After a claim, a current
 or upcoming booking with a known client score and no saved bucket is stamped
 and re-read within its org before sending. A stamp error or still-missing
 bucket records a retryable failure instead of a conversion with a null bucket.
+An ended call with a readable client score and no saved booking bucket also
+stays retryable; its current client score is never copied into past booking
+history. An explicit booking reconciliation can release that send.
 
 ## 7b. Set is the setter handoff; call confirmation is separate
 

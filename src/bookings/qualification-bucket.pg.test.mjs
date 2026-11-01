@@ -159,6 +159,36 @@ test("bookings keep the bucket their client had when booked (real Postgres)", {
     assert.equal((await sweepCortanaBookingFeed(conn, { env: feedEnv, send })).sent, 1);
     assert.equal(sent[1].qualification_bucket, "funding_unqualified");
 
+    // If the first stamp fails and the call then ends, the feed cannot use
+    // today's client score as historical at-booking evidence. An explicit
+    // booking reconciliation makes exactly one later send possible.
+    const lateClient = await customer("late-feed", "760-850");
+    const lateFeed = await upsertBooking(conn, { orgId, clientId: lateClient,
+      source: "clickfunnels", providerUid: `ci-feed-late-${randomUUID()}`,
+      status: "booked", startsAt: new Date(Date.now() + 86400000).toISOString(),
+      attendeeEmail: `buyer-${randomUUID()}@fundingmail.net`, attendeeName: "Buyer Person" });
+    let lateFailOnce = true;
+    const lateFlaky = { query: async (sql, params) => {
+      if (lateFailOnce && sql.includes("UPDATE bookings b SET qualification_bucket")) {
+        lateFailOnce = false;
+        throw Error("synthetic late bucket write failure");
+      }
+      return conn.query(sql, params);
+    } };
+    assert.equal((await sweepCortanaBookingFeed(lateFlaky, { env: feedEnv, send })).failed, 1);
+    await conn.query(`UPDATE bookings SET starts_at = $2, ends_at = $3 WHERE id = $1`,
+      [lateFeed.id, new Date(Date.now() - 86400000).toISOString(),
+        new Date(Date.now() - 82800000).toISOString()]);
+    assert.equal(await bucketOf("bookings", lateFeed.id), null);
+    assert.equal((await sweepCortanaBookingFeed(conn, { env: feedEnv, send })).failed, 1);
+    assert.equal(sent.length, 2, "the ended call cannot send a guessed NULL bucket");
+    assert.equal(await bucketOf("bookings", lateFeed.id), null, "the past call is not stamped from today's score");
+    await conn.query(`UPDATE bookings SET qualification_bucket = 'funding_qualified' WHERE id = $1`, [lateFeed.id]);
+    assert.equal((await sweepCortanaBookingFeed(conn, { env: feedEnv, send })).sent, 1);
+    assert.equal(sent[2].qualification_bucket, "funding_qualified");
+    assert.equal((await sweepCortanaBookingFeed(conn, { env: feedEnv, send })).scanned, 0);
+    assert.equal(sent.length, 3);
+
     const wrongFeed = await upsertBooking(conn, { orgId, clientId: otherClient,
       source: "clickfunnels", providerUid: `ci-feed-wrong-org-${randomUUID()}`,
       status: "booked", startsAt: new Date(Date.now() + 86400000).toISOString(),
@@ -166,7 +196,7 @@ test("bookings keep the bucket their client had when booked (real Postgres)", {
     assert.equal((await sweepCortanaBookingFeed(conn, { env: feedEnv, send })).failed, 1);
     assert.equal((await conn.query(`SELECT status FROM cortana_booking_sends WHERE booking_id = $1`,
       [wrongFeed.id])).rows[0].status, "failed");
-    assert.equal(sent.length, 2, "an org mismatch is never sent");
+    assert.equal(sent.length, 3, "an org mismatch is never sent");
 
     // Replay the migration's data backfill against existing bookings and saved answers.
     const cases = [

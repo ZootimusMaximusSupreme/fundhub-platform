@@ -83,9 +83,13 @@ export async function sweepCortanaBookingFeed(conn = db, {
     }
     const currentOrUpcoming = new Date(row.starts_at).getTime() >= Date.now() ||
       (row.ends_at && new Date(row.ends_at).getTime() > Date.now());
-    if (currentOrUpcoming && row.qualification_bucket == null && row.client_id) {
+    if (row.qualification_bucket == null && row.client_id) {
       try {
-        const stamped = await stampQualificationBucket(conn, row.client_id, row.org_id);
+        // A past call needs its own at-booking evidence; today's score cannot
+        // be copied backward. Still hold a known-score NULL for reconciliation.
+        const stamped = currentOrUpcoming
+          ? await stampQualificationBucket(conn, row.client_id, row.org_id)
+          : null;
         const fresh = await conn.query(
           `SELECT b.qualification_bucket, c.qualification_bucket AS client_qualification_bucket,
                   c.custom_fields

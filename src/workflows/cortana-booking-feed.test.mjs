@@ -189,6 +189,39 @@ test("known score still missing after a stamp stays failed and retryable", async
   assert.match(conn.receipt.error, /known client score/);
 });
 
+test("a failed stamp stays retryable after the call; only a reconciled snapshot sends once", async () => {
+  const row = { ...BOOKING, client_id: "client-1", matched_client_id: "client-1",
+    qualification_bucket: null, custom_fields: { cf_svy_self_reported_fico: "760-850" } };
+  const conn = fakeDb(row, { failStampOnce: true });
+  const sent = [];
+  const send = async (booking) => { sent.push(booking); return { ok: true }; };
+  assert.equal((await sweepCortanaBookingFeed(conn, { env: ENV, send })).failed, 1);
+  row.starts_at = new Date(Date.now() - 86400000).toISOString();
+  row.ends_at = new Date(Date.now() - 82800000).toISOString();
+  const stamps = conn.queries.filter(({ sql }) => sql.includes("UPDATE clients SET qualification_bucket")).length;
+  assert.equal((await sweepCortanaBookingFeed(conn, { env: ENV, send })).failed, 1);
+  assert.equal(conn.receipt.status, "failed");
+  assert.equal(sent.length, 0, "a later score cannot label a past call");
+  assert.equal(conn.queries.filter(({ sql }) => sql.includes("UPDATE clients SET qualification_bucket")).length,
+    stamps, "post-call retry cannot stamp from today's score");
+  row.qualification_bucket = "funding_qualified"; // explicit at-booking reconciliation
+  assert.equal((await sweepCortanaBookingFeed(conn, { env: ENV, send })).sent, 1);
+  assert.equal(sent[0].qualification_bucket, "funding_qualified");
+  assert.equal((await sweepCortanaBookingFeed(conn, { env: ENV, send })).scanned, 0);
+  assert.equal(sent.length, 1);
+});
+
+test("a past call with no readable score or saved bucket can send unknown", async () => {
+  const row = { ...BOOKING, client_id: "client-1", matched_client_id: "client-1",
+    qualification_bucket: null, starts_at: new Date(Date.now() - 86400000).toISOString(),
+    custom_fields: {} };
+  const conn = fakeDb(row);
+  const sent = [];
+  assert.equal((await sweepCortanaBookingFeed(conn, { env: ENV,
+    send: async (booking) => { sent.push(booking); return { ok: true }; } })).sent, 1);
+  assert.equal(sent[0].qualification_bucket, null);
+});
+
 test("a no-time booking waits, then a time makes it a feed candidate", async () => {
   const row = { ...BOOKING, starts_at: null, qualification_bucket: null };
   const conn = fakeDb(row);
