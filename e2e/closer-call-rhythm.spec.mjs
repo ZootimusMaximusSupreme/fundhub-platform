@@ -110,6 +110,31 @@ function handlers(over = {}) {
 
 const url = `/app/closer-dashboard.html?client_id=${CLIENT_ID}`;
 
+test("a closer can clock in without a current call", async ({ page }) => {
+  await freezeClock(page, NOW);
+  let onShift = false;
+  const actions = [];
+  await openScreen(page, "/app/closer-dashboard.html", CLOSER, handlers({
+    "/api/shifts": (route, { method }) => {
+      if (method === "POST") {
+        actions.push(route.request().postDataJSON().action);
+        onShift = true;
+      }
+      return { ok: true, shift: onShift ? { id: "shift-1", started_at: NOW } : null };
+    }
+  }));
+
+  await expect(page.locator("#ccp-who-name")).toHaveText("No call right now");
+  await expect(page.locator("[data-fh-call-head] .chip")).toContainText("Off shift");
+  const toggle = page.locator("#fh-shift-toggle");
+  await expect(toggle).toBeVisible();
+  await expect(toggle).toHaveText("Clock in");
+  await toggle.click();
+  await expect.poll(() => actions).toEqual(["clock_in"]);
+  await expect(toggle).toHaveText("Clock out");
+  await expect(page.locator("[data-fh-call-head] .chip")).toContainText("On shift");
+});
+
 /* ── FULL ─────────────────────────────────────────────────────────────────── */
 
 test("the person on the call is the first thing on the page, with the time beside them", async ({ page }) => {
