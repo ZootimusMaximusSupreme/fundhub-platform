@@ -1,13 +1,48 @@
 import { test } from "node:test";
 import assert from "node:assert";
 import {
-  classifySurvey, currentQualification, ficoGatePasses, negativesGatePasses,
-  PASS, DOWNSELL, MANUAL_REVIEW, FICO_BANDS, PASSING_FICO_BANDS
+  classifySurvey, currentQualification, ficoGatePasses, negativesGatePasses, creditTierFor,
+  PASS, DOWNSELL, MANUAL_REVIEW, FICO_BANDS, PASSING_FICO_BANDS, LEGACY_FICO_BANDS, LEGACY_PASSING_FICO_BANDS
 } from "./survey-qualification.mjs";
+import { CF_SURVEY_QUESTIONS } from "../survey/cf-question-map.mjs";
+
+// --- the score answers (owner-set 2026-10-31) ---------------------------------
+
+test("the score answers are the owner's five, in order, and the survey offers exactly these", () => {
+  assert.deepEqual(FICO_BANDS, ["500-619", "620-699", "700-759", "760-850", "Not sure"]);
+  assert.deepEqual(PASSING_FICO_BANDS, ["700-759", "760-850"]);
+  assert.deepEqual(CF_SURVEY_QUESTIONS.find((q) => q.id === "current_score").options, FICO_BANDS);
+});
+
+test("answers saved before 2026-10-31 read the same as they always did", () => {
+  for (const band of LEGACY_FICO_BANDS) {
+    assert.equal(ficoGatePasses(band), LEGACY_PASSING_FICO_BANDS.includes(band), band);
+  }
+  assert.equal(ficoGatePasses("700-749"), true);
+  assert.equal(ficoGatePasses("650-699"), false);
+});
+
+test("creditTierFor: 700 and up is qualified, everything else unqualified, no answer is null", () => {
+  assert.equal(creditTierFor({ cf_svy_self_reported_fico: "700-759" }), "qualified");
+  assert.equal(creditTierFor({ cf_svy_self_reported_fico: "760-850" }), "qualified");
+  assert.equal(creditTierFor({ cf_svy_self_reported_fico: "750+" }), "qualified");
+  assert.equal(creditTierFor({ cf_svy_self_reported_fico: "620-699" }), "unqualified");
+  assert.equal(creditTierFor({ cf_svy_self_reported_fico: "500-619" }), "unqualified");
+  assert.equal(creditTierFor({ cf_svy_self_reported_fico: "Not sure" }), "unqualified");
+  assert.equal(creditTierFor({}), null);
+  assert.equal(creditTierFor(null), null);
+  assert.equal(creditTierFor({ cf_svy_self_reported_fico: "123456" }), null, "a ClickFunnels option id is not an answer");
+});
+
+test("creditTierFor: the label wins over the raw value, and a setter's fix wins over both", () => {
+  assert.equal(creditTierFor({ cf_svy_self_reported_fico: "88001", cf_svy_self_reported_fico_label: "760-850" }), "qualified");
+  assert.equal(creditTierFor({ cf_svy_self_reported_fico: "760-850", setter_survey_edits: { cf_svy_self_reported_fico: "620-699" } }), "unqualified");
+  assert.equal(creditTierFor({ cf_svy_self_reported_fico: "500-619", setter_survey_edits: { cf_svy_self_reported_fico: "700-759" } }), "qualified");
+});
 
 // --- gate 1: FICO (doc 38, 146) ---------------------------------------------
 
-test("ficoGatePasses: only 700-749 and 750+ clear the gate", () => {
+test("ficoGatePasses: only 700-759 and 760-850 clear the gate", () => {
   for (const band of FICO_BANDS) {
     const expected = PASSING_FICO_BANDS.includes(band);
     assert.equal(ficoGatePasses(band), expected, `band ${band}`);

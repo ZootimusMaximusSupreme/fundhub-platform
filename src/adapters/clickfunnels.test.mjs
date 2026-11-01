@@ -1176,10 +1176,35 @@ test("F39: entry.captured and survey.submitted are stored WITH the client id", a
     db, rawBody: raw, signatureHeader: sign(raw), secret: SECRET
   });
   assert.equal(res.ok, true);
-  assert.deepEqual(res.emitted.map((e) => e.name), ["entry.captured", "survey.submitted"]);
-  // The defect: these two rows used to carry client_id = null.
-  assert.equal(db.events.length, 2);
+  // This body carries the last answer (cf_svy_available_capital), so the survey
+  // is finished and survey.completed rides along (2026-10-31).
+  assert.deepEqual(res.emitted.map((e) => e.name), ["entry.captured", "survey.submitted", "survey.completed"]);
+  // The defect: these rows used to carry client_id = null.
+  assert.equal(db.events.length, 3);
   for (const row of db.events) assert.equal(row.client_id, "cl-77");
+});
+
+test("survey.completed: only a post with the last answer finishes the survey", () => {
+  const first = mapToCanonical({ email: "a@b.co", answers: { cf_svy_funding_target_amount: "$50k - $100k" } });
+  assert.deepEqual(first.map((e) => e.name), ["entry.captured", "survey.submitted"]);
+  const last = mapToCanonical({ email: "a@b.co", answers: { cf_svy_funding_target_amount: "$50k - $100k", cf_svy_available_capital: "$5k - $25k" } });
+  assert.deepEqual(last.map((e) => e.name), ["entry.captured", "survey.submitted", "survey.completed"]);
+  const blank = mapToCanonical({ email: "a@b.co", answers: { cf_svy_available_capital: "  " } });
+  assert.deepEqual(blank.map((e) => e.name), ["entry.captured", "survey.submitted"]);
+  const contactOnly = mapToCanonical({ email: "a@b.co", answers: null });
+  assert.deepEqual(contactOnly.map((e) => e.name), ["entry.captured"]);
+});
+
+test("survey.completed: a second finished post inside six hours starts no second run", async () => {
+  _resetOrgCache(); clearHandlers();
+  const db = funnelDb();
+  const out = [];
+  for (const id of ["cf_survey_done_1", "cf_survey_done_2"]) {
+    const raw = surveyBody(id);
+    out.push(await handleClickFunnelsWebhook({ db, rawBody: raw, signatureHeader: sign(raw), secret: SECRET }));
+  }
+  const runs = out.flatMap((r) => r.emitted).filter((e) => e.name === "survey.completed" && e.startedRun);
+  assert.equal(runs.length, 1, "one finished survey, one chase");
 });
 
 test("F39: a booking.created is stored WITH the client id", async () => {
