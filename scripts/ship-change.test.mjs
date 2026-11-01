@@ -115,6 +115,38 @@ test('resume refreshes the recorded parent tip without changing the release mani
   assert.equal((edit.at(-1).match(/Stack parent head:/g) || []).length, 1);
 });
 
+test('adopts an existing main-based backlog PR into the next ordered position', async () => {
+  const legacy = { number: 42, headRefName: 'codex/new-change', baseRefName: 'main',
+    isDraft: false, labels: [], body: 'Owner lane: sales\n\nRelease manifest stays.' };
+  const { command, calls } = fakeCommands([member(41, 'codex/previous-change', 'main', 1), legacy]);
+  const resumed = async (program, args, options) => {
+    if (program === 'git' && args[0] === 'status') return '';
+    if (program === 'git' && args[0] === 'rev-list') return '1\n';
+    if (program === 'git' && args[0] === 'merge-base') return 'main-base\n';
+    return command(program, args, options);
+  };
+  const result = await runShipChange({ message: 'Backlog change', ownerLane: 'sales', files: [], resume: true }, resumed);
+  assert.equal(result.number, 42);
+  assert.equal(result.base, 'codex/previous-change');
+  assert.ok(calls.some(call => call[0] === 'git' && call[1] === 'rebase' &&
+    call[2] === '--onto' && call[3] === 'parent-head' && call[4] === 'main-base'));
+  assert.ok(calls.some(call => call[0] === 'gh' && call[1] === 'pr' && call[2] === 'edit' &&
+    call.includes('--base') && call.at(-1) === 'codex/previous-change'));
+  assert.ok(calls.some(call => call[0] === 'gh' && call[1] === 'pr' && call[2] === 'edit' &&
+    call.includes('--body') && call.at(-1).includes('Release manifest stays.')));
+  assert.ok(calls.some(call => call[0] === 'gh' && call[1] === 'pr' && call[2] === 'edit' &&
+    call.includes('--add-label') && call.at(-1) === 'ship-order/2'));
+});
+
+test('does not take a legacy PR out of its existing older stack', async () => {
+  const legacy = { number: 42, headRefName: 'codex/new-change', baseRefName: 'older-branch',
+    isDraft: false, labels: [], body: 'Owner lane: sales' };
+  const { command, calls } = fakeCommands([legacy]);
+  await assert.rejects(runShipChange({ message: 'Backlog change', ownerLane: 'sales',
+    files: ['scripts/new.mjs'] }, command), /preserve that older chain/);
+  assert.equal(calls.some(call => call[0] === 'git' && call[1] === 'commit'), false);
+});
+
 test('a parent branch that moves during preflight stops before child push or PR creation', async () => {
   const { command, calls } = fakeCommands([member(41, 'codex/previous-change', 'main', 1)]);
   const moved = async (program, args, options) => {

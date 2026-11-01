@@ -163,7 +163,10 @@ export async function runShipChange(options, command = defaultCommand) {
   }
   const chain = orderedChain(prs);
   const currentMember = chain.find(pr => pr.number === existing?.number);
-  if (existing && !currentMember) throw new Error(`Existing PR #${existing.number} has no ship-order label.`);
+  const adoptingLegacy = Boolean(existing && !currentMember);
+  if (adoptingLegacy && existing.baseRefName !== 'main') {
+    throw new Error(`Existing PR #${existing.number} is already stacked on ${existing.baseRefName}; preserve that older chain before adopting it.`);
+  }
   const choice = currentMember
     ? { parent: chain.find(pr => pr.position < currentMember.position && pr.headRefName === currentMember.baseRefName) || null,
         base: currentMember.baseRefName, position: currentMember.position }
@@ -187,11 +190,13 @@ export async function runShipChange(options, command = defaultCommand) {
     if (ancestor.trim() !== parentHead) {
       // A parent can be rebased while this branch waits. The ordinary merge
       // base then falls back to main and would replay the parent's old commits.
-      const forkPoint = await rootGit(['merge-base', '--fork-point',
+      const forkPoint = adoptingLegacy ? '' : await rootGit(['merge-base', '--fork-point',
         `origin/${parent.headRefName}`, 'HEAD']).catch(() => '');
-      const basePoint = forkPoint.trim() || ancestor.trim();
+      const basePoint = adoptingLegacy
+        ? (await rootGit(['merge-base', 'HEAD', 'origin/main'])).trim()
+        : forkPoint.trim() || ancestor.trim();
       if (!basePoint) throw new Error('Could not identify the branch base for ordered rebase.');
-      if (!forkPoint.trim() && (resume || existing)) {
+      if (!adoptingLegacy && !forkPoint.trim() && (resume || existing)) {
         throw new Error(`Could not identify the previous tip of ${parent.headRefName}; leave this branch open for a safe restack.`);
       }
       await rootGit(['rebase', '--onto', parentHead, basePoint, branch]);
@@ -245,6 +250,9 @@ export async function runShipChange(options, command = defaultCommand) {
     }
     if (body !== (existing.body || '').trim()) {
       await rootGh(['pr', 'edit', String(pr.number), '--repo', REPO, '--body', body]);
+    }
+    if (existing.baseRefName !== base) {
+      await rootGh(['pr', 'edit', String(pr.number), '--repo', REPO, '--base', base]);
     }
   }
   const label = `ship-order/${position}`;
