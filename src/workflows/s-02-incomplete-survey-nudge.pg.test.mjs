@@ -415,7 +415,11 @@ test("two visits seven hours apart overnight (6 p.m. and 1 a.m. Arizona) queue s
     assert.equal(b.done, true);
     const rows = await messagesOf(clientId);
     assert.deepEqual(rows.map((r) => r.template_key).sort(), KEYS6, "one sequence, three touches, no doubles");
-    assert.ok(rows.every((r) => r.provider_ref.endsWith(`:${first.id}`)), "both runs keyed on the first visit");
+    const plan = resumePlan(evening);
+    assert.ok(rows.every((r) => {
+      const touchIndex = Number(r.template_key.at(-1)) - 1;
+      return r.provider_ref === `workflow:${r.template_key}:${touchSendKey(clientId, plan[touchIndex])}`;
+    }), "both runs keyed by person and Arizona send day for each touch");
   });
 
 test("a lead who comes back through touch 2's link and stops again is not started a second sequence",

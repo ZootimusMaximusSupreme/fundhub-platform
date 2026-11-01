@@ -351,7 +351,7 @@ test("AI-SET-03: a call cancelled while text 2 waited stops texts 2 and 3; a cal
       }
     });
     let res = await runCadence({ event, db, step, now: () => new Date(AT_4_50_PM) });
-    assert.equal(res.exitedAt, "after-msg1");
+    assert.equal(res.exitedAt, "call-gone-after-msg1");
     assert.deepEqual((await queued(cancels)).map((m) => m.template_key), [MSG1_KEY]);
 
     const held = await makeClient();
@@ -363,7 +363,7 @@ test("AI-SET-03: a call cancelled while text 2 waited stops texts 2 and 3; a cal
       }
     });
     res = await runCadence({ event, db, step, now: () => new Date(AT_4_50_PM) });
-    assert.equal(res.exitedAt, "after-msg2");
+    assert.equal(res.exitedAt, "call-gone-after-msg2");
     assert.deepEqual((await queued(held)).map((m) => m.template_key), [MSG1_KEY, MSG2_KEY]);
   });
 
