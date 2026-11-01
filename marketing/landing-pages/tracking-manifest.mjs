@@ -453,6 +453,7 @@ export function headBlocksHtml(row, readFragment) {
 export const DO_NOT_FULL_REPLACE_PATHS = new Set([
   "/funding-book-call",
   "/funding-book-call-page",
+  "/funding-book-call--02424",
   "/schedule/phonecall",
 ]);
 
@@ -536,6 +537,48 @@ export const PUSH_MANIFEST = [
     vslBeacon: false,
     strategy: "code_block_upsert",
     note: "Standalone-only layer: the scheduler's logo stays in its panel at every width, and on phones the card runs full width minus 16px gutters. One marked block in the same head_code; every rule is html:not(.fh-framed), so the framed view is untouched.",
+  },
+  {
+    key: "copy-book",
+    funnelId: "994750",
+    liveUrl: "https://apply.fundhub.ai/funding-book-call--02424",
+    path: "/funding-book-call--02424",
+    pageId: "25820226",
+    vslBeacon: false,
+    extraFooterScripts: [FH_EVENTS_SRC, CLARITY_SRC],
+    // The copied calendar needs the accepted-booking relay, but the same-day
+    // block is an owner-set rule for the first calendar only.
+    footerBlocks: [
+      { fragment: "marketing/landing-pages/04e-book-confirm.html", marker: "fh-book-confirm" },
+    ],
+    strategy: "head_footer_append_only",
+    note: "Second native calendar. Keep tracking and booking acceptance on the copy without replacing its scheduler or adding the first calendar's same-day block.",
+  },
+  {
+    key: "copy-book-framed",
+    funnelId: "994750",
+    liveUrl: "https://apply.fundhub.ai/funding-book-call--02424",
+    path: "/funding-book-call--02424",
+    pageId: "25820226",
+    fragment: "marketing/landing-pages/04c-book-framed.html",
+    codeSlot: "head_code",
+    marker: "fh-framed",
+    vslBeacon: false,
+    strategy: "code_block_upsert",
+    note: "The same framed calendar sizing used by /apply, as one marked head_code block on the copy.",
+  },
+  {
+    key: "copy-book-fit",
+    funnelId: "994750",
+    liveUrl: "https://apply.fundhub.ai/funding-book-call--02424",
+    path: "/funding-book-call--02424",
+    pageId: "25820226",
+    fragment: "marketing/landing-pages/04d-book-fit.html",
+    codeSlot: "head_code",
+    marker: "fh-book-fit",
+    vslBeacon: false,
+    strategy: "code_block_upsert",
+    note: "The same standalone calendar sizing, as one marked head_code block on the copy.",
   },
   {
     key: "apply-watch-lede",
