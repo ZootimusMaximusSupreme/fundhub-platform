@@ -385,7 +385,7 @@ function setterSorted(items) {
       '<section class="setter-section"><h3>Call result</h3><div class="setter-fields"><div class="setter-field"><label for="setter-disposition">Disposition</label><select id="setter-disposition" name="disposition">' +
       option("", "Choose a result", h.disposition || "") + option("reached", "Reached", h.disposition) + option("no_answer", "No answer", h.disposition) + option("reschedule", "Reschedule", h.disposition) + option("booked_on_call", "Booked on this call", h.disposition) + '</select></div>' +
       '<div class="setter-field"><label for="setter-attempts">Dial attempts</label><input id="setter-attempts" name="call_attempts" type="number" min="0" max="99" value="' + Number(h.call_attempts || 0) + '" readonly></div></div>' +
-      '<div id="setter-no-answer"' + (h.disposition === "no_answer" ? '' : ' hidden') + '><p>Double dial right away. Then leave voicemail, send the missed-call text, and send the intro video.</p>' +
+      '<div id="setter-no-answer"' + (h.disposition === "no_answer" ? '' : ' hidden') + '><p>Double dial right away. Then leave voicemail and send the intro video. Saving No answer sends the missed-call texts for you, so do not text them by hand.</p>' +
       '<div class="setter-checks">' + box("voicemail_left", "Voicemail left", h.voicemail_left) + box("missed_text_sent", "Missed-call text sent", h.missed_text_sent) + '</div>' +
       document.getElementById("setter-script-help").innerHTML +
       '<button type="button" class="fh-astra-action" data-action="send_intro_video"' + (h.video_sent_at || !introVideoAvailable ? ' disabled' : '') + '>' + (h.video_sent_at ? 'Intro video sent' : introVideoAvailable ? 'Send intro video' : 'Intro video waiting to film') + '</button></div></section>';

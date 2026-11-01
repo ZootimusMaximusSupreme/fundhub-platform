@@ -1,13 +1,42 @@
-// S-NOBOOK — Fall-off chase when survey is done but they never booked.
+// S-NOBOOK — Chase for people who finished the survey and did not book a call.
 // Owner 2026-08-15: three SMS, rebook link, no video / meme assets required.
 // Text can mention "results" in plain language; MMS media is optional later.
 //
-// Trigger: survey.submitted. Exits when booking.created appears for the client.
+// Trigger: survey.completed (owner-set 2026-10-31). It fires once, when the last
+// question is answered. survey.submitted fires after the FIRST answer, so this
+// chase used to treat a person who answered one question as finished.
+//
+// Timeline, counted from the finish:
+//   15 minutes   a setter task: call them now and book them on their calendar
+//   2 hours      text + email 1
+//   +24 hours    text + email 2
+//   +72 hours    text + email 3
+// Each text goes out only inside the drip window, 9 a.m. to 5 p.m. Arizona
+// (src/messaging/send-window.mjs). A text that comes due outside it is planned
+// for the next 9 a.m., and the run sleeps until THAT moment before it checks
+// anything: the dispatcher holds an out-of-window drip until 9 a.m. but does not
+// look at bookings or replies again, so a check made at the first due time would
+// be hours stale when the text really leaves. The planned moments are decided
+// inside steps (one answer, recorded, the same on every replay):
+//   text 1 at dripSendTime(finish + 2h)
+//   text 2 at dripSendTime(text 1's moment + 24h)
+//   text 3 at dripSendTime(text 2's moment + 72h)
+// At each planned moment, in this order: sleep until it, stop if the person has
+// booked (hasBooked), stop if they replied (message.inbound, stop-on-reply.mjs),
+// then send. Every booking link follows the person's saved score
+// (tierBookingLink in messaging.mjs): 700 and up opens the first calendar,
+// everyone else the second.
 
 import { inngest } from "./client.mjs";
 import { db } from "../db.mjs";
 import { resolveClient } from "../handlers/client-lifecycle.mjs";
+import { createTask } from "../lib/create-task.mjs";
 import { messageCohortId, sendTemplated } from "./messaging.mjs";
+import { hasReplied } from "./stop-on-reply.mjs";
+import { dripSendTime } from "../messaging/send-window.mjs";
+import { surveyCompleted } from "./s-02-incomplete-survey-nudge.mjs";
+
+export const TRIGGER_EVENT = "survey.completed";
 
 export const SMS_NOBOOK_01 = "SMS-NOBOOK-01";
 export const SMS_NOBOOK_02 = "SMS-NOBOOK-02";
@@ -15,6 +44,19 @@ export const SMS_NOBOOK_03 = "SMS-NOBOOK-03";
 export const EMAIL_NOBOOK_01 = "EMAIL-NOBOOK-01";
 export const EMAIL_NOBOOK_02 = "EMAIL-NOBOOK-02";
 export const EMAIL_NOBOOK_03 = "EMAIL-NOBOOK-03";
+
+// The task a setter sees 15 minutes after a finished survey with no booking.
+export const SETTER_TASK_SOURCE = "setter-survey-done";
+export const SETTER_TASK_TITLE = "Setter: call — finished the survey, no call booked";
+export const SETTER_TASK_DETAIL = "They finished the survey but did not pick a time. Call now and book them on their calendar.";
+
+const HOUR = 60 * 60 * 1000;
+// How long after the finish (text 1) or after the text before it (texts 2 and 3) each text is due.
+export const TEXT_GAP_MS = Object.freeze({ 1: 2 * HOUR, 2: 24 * HOUR, 3: 72 * HOUR });
+// The fixed waits a run that started under the old trigger (survey.submitted) still uses.
+// Temporary: the longest such run ends about five days after this ships. Delete this,
+// the `finished` branches below and the old-trigger test with it then.
+const OLD_TRIGGER_WAIT = Object.freeze({ 1: ["wait-2h", "2h"], 2: ["wait-24h", "24h"], 3: ["wait-72h", "72h"] });
 
 /* hasBooked — has this person booked a call yet?
  *
@@ -71,7 +113,34 @@ export async function hasBooked(db, clientId) {
   return r.rows.length > 0;
 }
 
-export async function handle({ event, db, step }) {
+/* When the survey was finished: the created_at of the event that started the run
+   (a row in `events`, so it does not move between replays). Null when the row
+   cannot be read. */
+async function startedAt(db, { eventId, orgId }) {
+  const r = await db.query(
+    `SELECT created_at FROM events WHERE id = $1 AND org_id = $2`,
+    [eventId, orgId]
+  );
+  const at = r.rows[0]?.created_at ? new Date(r.rows[0].created_at) : null;
+  return at && Number.isFinite(at.getTime()) ? at : null;
+}
+
+/* How far back a text counts as already sent to this person (see stepsAside below). */
+export const RECENT_SEND_MS = 7 * 24 * 60 * 60 * 1000;
+
+/* Did this person get any of `keys` from us since `sinceMs`, from any run? */
+export async function sentRecently(db, { orgId, clientId, keys, sinceMs }) {
+  const r = await db.query(
+    `SELECT 1 FROM messages
+      WHERE org_id = $1 AND client_id = $2 AND direction = 'outbound'
+        AND template_key = ANY($3) AND created_at > $4
+      LIMIT 1`,
+    [orgId, clientId, keys, new Date(sinceMs).toISOString()]
+  );
+  return r.rows.length > 0;
+}
+
+export async function handle({ event, db, step, now = () => new Date() }) {
   const clientId = await step.run("resolve-client", () => resolveClient(db, event));
   if (!clientId) return { done: false, reason: "no_client" };
 
@@ -82,13 +151,86 @@ export async function handle({ event, db, step }) {
 
   const orgId = event.orgId;
   const eventId = event.id;
+  /* The name of the event that started THIS run. The Inngest wrapper below passes
+     it. A run that was already asleep when the trigger moved from survey.submitted
+     to survey.completed keeps going under the name it started with: same send keys
+     (no text goes out twice), no setter task (a first answer is not a finished
+     survey). Without a name the run is a survey.completed run. */
+  const trigger = event.name || TRIGGER_EVENT;
+  const finished = trigger === TRIGGER_EVENT;
+  const replied = () => hasReplied(db, { clientId, eventId });
 
-  await step.sleep("wait-2h", "2h");
-  if (await step.run("check-booked-1", () => hasBooked(db, clientId))) {
-    return { done: true, exitedAt: "after-wait-2h" };
+  /* THE SWITCH FROM survey.submitted TO survey.completed (independent review of PR #346,
+     2026-10-31). A run that started on the old trigger can still be asleep when the
+     person finishes, and the finish starts a survey.completed run with its own send
+     keys, so both would send. An old-trigger run steps aside once the person has a
+     survey.completed (the new run owns the chase from there). A survey.completed run
+     skips a text whose keys this person already got in the last 7 days. */
+  const leadEmail = (event.payload || {}).email || null;
+  const stepsAside = async (n) => !finished
+    && step.run(`check-handed-over-${n}`, () => surveyCompleted(db, clientId, leadEmail, orgId));
+  const alreadyGot = async (n, keys) => finished
+    && step.run(`check-already-sent-${n}`, () =>
+      sentRecently(db, { orgId, clientId, keys, sinceMs: now().getTime() - RECENT_SEND_MS }));
+  const HANDED_OVER = "handed-to-finished-chase";
+  const SKIPPED = Object.freeze({ skipped: "sent_by_an_earlier_run" });
+
+  /* 15 minutes in: a finished survey with no booking gets a person on the phone.
+     Skipped when they booked or wrote back in the meantime. This is a task for a
+     person, not a message, so it keeps its 15 minutes whatever the hour. */
+  let task = null;
+  if (finished) {
+    await step.sleep("wait-15m", "15m");
+    if (await step.run("check-booked-15m", () => hasBooked(db, clientId))) {
+      return { done: true, exitedAt: "after-wait-15m" };
+    }
+    if (await step.run("check-replied-15m", replied)) {
+      return { done: true, exitedAt: "replied" };
+    }
+    task = await step.run("setter-task", () => createTask(db, {
+      orgId, clientId,
+      title: SETTER_TASK_TITLE,
+      sourceWorkflow: SETTER_TASK_SOURCE,
+      assigneeRole: "setter",
+      eventId,
+      dueAt: now().toISOString(),
+      detail: SETTER_TASK_DETAIL
+    }));
   }
-  const msg1 = await step.run("send-nobook-1", async () => {
-    const cohortId = await messageCohortId(db, { eventId, orgId, clientId, name: "survey.submitted" });
+
+  /* Wait for text n. A survey.completed run plans the moment in a step (inside the
+     drip window, see the header) and sleeps until it, so the checks that follow run
+     at the moment the text really leaves. A run that was already asleep under the
+     old trigger keeps its fixed waits; the dispatcher still holds its out-of-window
+     drips, as it did before. */
+  let plannedMs = 0;
+  async function waitForText(n) {
+    if (!finished) {
+      await step.sleep(...OLD_TRIGGER_WAIT[n]);
+      return;
+    }
+    const planned = await step.run(`plan-msg${n}`, async () => {
+      /* Text 1 is due 2 hours after the finish, but never in the past: a run that
+         starts late plans from the moment it really reaches this step. */
+      const due = n === 1
+        ? Math.max(((await startedAt(db, { eventId, orgId })) ?? now()).getTime() + TEXT_GAP_MS[1], now().getTime())
+        : plannedMs + TEXT_GAP_MS[n];
+      return dripSendTime(new Date(due)).toISOString();
+    });
+    plannedMs = Date.parse(planned);
+    await step.sleepUntil(`wait-until-msg${n}`, new Date(planned));
+  }
+
+  await waitForText(1);
+  if (await step.run("check-booked-1", () => hasBooked(db, clientId))) {
+    return { done: true, exitedAt: "after-wait-2h", task };
+  }
+  if (await step.run("check-replied-1", replied)) {
+    return { done: true, exitedAt: "replied", task };
+  }
+  if (await stepsAside(1)) return { done: true, exitedAt: HANDED_OVER, task };
+  const msg1 = await alreadyGot(1, [SMS_NOBOOK_01, EMAIL_NOBOOK_01]) ? SKIPPED : await step.run("send-nobook-1", async () => {
+    const cohortId = await messageCohortId(db, { eventId, orgId, clientId, name: trigger });
     return {
     sms: await sendTemplated(db, {
       orgId, clientId, channel: "sms", templateKey: SMS_NOBOOK_01,
@@ -101,12 +243,16 @@ export async function handle({ event, db, step }) {
     };
   });
 
-  await step.sleep("wait-24h", "24h");
+  await waitForText(2);
   if (await step.run("check-booked-2", () => hasBooked(db, clientId))) {
-    return { done: true, exitedAt: "after-msg1", msg1 };
+    return { done: true, exitedAt: "after-msg1", task, msg1 };
   }
-  const msg2 = await step.run("send-nobook-2", async () => {
-    const cohortId = await messageCohortId(db, { eventId, orgId, clientId, name: "survey.submitted" });
+  if (await step.run("check-replied-2", replied)) {
+    return { done: true, exitedAt: "replied", task, msg1 };
+  }
+  if (await stepsAside(2)) return { done: true, exitedAt: HANDED_OVER, task, msg1 };
+  const msg2 = await alreadyGot(2, [SMS_NOBOOK_02, EMAIL_NOBOOK_02]) ? SKIPPED : await step.run("send-nobook-2", async () => {
+    const cohortId = await messageCohortId(db, { eventId, orgId, clientId, name: trigger });
     return {
     sms: await sendTemplated(db, {
       orgId, clientId, channel: "sms", templateKey: SMS_NOBOOK_02,
@@ -119,12 +265,16 @@ export async function handle({ event, db, step }) {
     };
   });
 
-  await step.sleep("wait-72h", "72h");
+  await waitForText(3);
   if (await step.run("check-booked-3", () => hasBooked(db, clientId))) {
-    return { done: true, exitedAt: "after-msg2", msg1, msg2 };
+    return { done: true, exitedAt: "after-msg2", task, msg1, msg2 };
   }
-  const msg3 = await step.run("send-nobook-3", async () => {
-    const cohortId = await messageCohortId(db, { eventId, orgId, clientId, name: "survey.submitted" });
+  if (await step.run("check-replied-3", replied)) {
+    return { done: true, exitedAt: "replied", task, msg1, msg2 };
+  }
+  if (await stepsAside(3)) return { done: true, exitedAt: HANDED_OVER, task, msg1, msg2 };
+  const msg3 = await alreadyGot(3, [SMS_NOBOOK_03, EMAIL_NOBOOK_03]) ? SKIPPED : await step.run("send-nobook-3", async () => {
+    const cohortId = await messageCohortId(db, { eventId, orgId, clientId, name: trigger });
     return {
     sms: await sendTemplated(db, {
       orgId, clientId, channel: "sms", templateKey: SMS_NOBOOK_03,
@@ -137,11 +287,11 @@ export async function handle({ event, db, step }) {
     };
   });
 
-  return { done: true, exitedAt: "completed", msg1, msg2, msg3 };
+  return { done: true, exitedAt: "completed", task, msg1, msg2, msg3 };
 }
 
 export const sNobookChase = inngest.createFunction(
   { id: "s-nobook-chase", name: "S-NOBOOK — Never Booked Chase" },
-  { event: "survey.submitted" },
-  ({ event, step }) => handle({ event: event.data, db, step })
+  { event: TRIGGER_EVENT },
+  ({ event, step }) => handle({ event: { ...event.data, name: event.name }, db, step })
 );

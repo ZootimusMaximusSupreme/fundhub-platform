@@ -208,10 +208,13 @@ test("handoff SQL: finish-application nudge", { skip: !HAS_DB }, async (t) => {
   const e = ev("entry.captured", 120, x);
   const N = M.NUDGE_SQL;
   await expectN(t, "RED: no survey, no nudge", N, first(25), { clients: [x], events: [e] }, 1);
-  await expectN(t, "GREEN: survey 10 min after sign-up", N, first(25), { clients: [x], events: [e, ev("survey.submitted", 110, x)] }, 0);
-  await expectN(t, "RED: survey 40 min after sign-up (past the 25 min slack) and no nudge", N, first(25), { clients: [x], events: [e, ev("survey.submitted", 80, x)] }, 1);
-  await expectN(t, "GREEN: survey matched by email only (no client id on the survey)", N, first(25), {
-    clients: [x], events: [e, ev("survey.submitted", 110, x, {}, { client_id: null })]
+  await expectN(t, "GREEN: survey finished 10 min after sign-up", N, first(25), { clients: [x], events: [e, ev("survey.completed", 110, x)] }, 0);
+  await expectN(t, "RED: survey finished 40 min after sign-up (past the 25 min slack) and no nudge", N, first(25), { clients: [x], events: [e, ev("survey.completed", 80, x)] }, 1);
+  await expectN(t, "RED: answered some questions 10 min after sign-up, never finished, and no nudge", N, first(25), {
+    clients: [x], events: [e, ev("survey.submitted", 110, x)]
+  }, 1);
+  await expectN(t, "GREEN: survey finished, matched by email only (no client id on the survey)", N, first(25), {
+    clients: [x], events: [e, ev("survey.completed", 110, x, {}, { client_id: null })]
   }, 0);
   await expectN(t, "GREEN: nudge row exists", N, first(25), { clients: [x], events: [e], messages: [msg(M.TEMPLATES.nudge, 100, x)] }, 0);
   await expectN(t, "GREEN: lead only 10 min old", N, first(25), { clients: [x], events: [ev("entry.captured", 10, x)] }, 0);
