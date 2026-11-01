@@ -124,6 +124,8 @@ The call screen also asks which funding paths were discussed (business, personal
 
 The event bus keeps each distinct funnel event, including separate survey-screen posts. The local setter handler now reuses an open task for the same client and task type. Once that task is done, a later opt-in or booking can create a new task. The Sales Fulfillment view shows one pill for repeated older setter tasks of the same type; the underlying tasks remain in the task list.
 
+The staff Calendar reads every page of open and completed tasks, and marks the schedule unavailable if a later page fails instead of showing a partial count. It groups older open setter-entry rows for the same client and Arizona due date into one visible work item without changing their saved rows. Completed rows remain counted. Open setter work links to that exact lead in the setter dashboard for an owner, admin, or setter, and to the client file for other staff; Calendar does not offer its generic Claim or Mark done buttons for these rows. This is local code and browser proof, not a live customer-path check.
+
 ## 3. The never-booked chase
 
 `src/workflows/s-nobook-chase.mjs`

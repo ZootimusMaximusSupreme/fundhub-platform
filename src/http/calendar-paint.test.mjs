@@ -485,7 +485,7 @@ test("calendar.html never claims an empty day it has not checked", () => {
   // Both must route through the one helper that knows all three.
   assert.match(html, /function emptyNoteAll\(\)/,
     "the helper that separates empty / unread / half-read is gone");
-  assert.match(html, /if \(!loaded\) return pendingNote\(\);[\s\S]{0,200}?if \(doneFailed\)[\s\S]{0,200}?return "Nothing booked\.";/,
+  assert.match(html, /if \(!loaded\) return pendingNote\(\);[\s\S]{0,200}?if \(doneFailed\)[\s\S]{0,200}?return "No tasks due\.";/,
     "emptyNoteAll no longer covers all three of unread, half-read and genuinely empty");
   assert.match(html, /<div class="ws-empty">' \+ esc\(emptyNoteAll\(\)\)/,
     "the week strip stopped asking whether the schedule really came back");
@@ -543,12 +543,12 @@ test("calendar.html treats HALF a schedule as a failure, not as a quiet empty we
   // A number that counts a half nobody read must be a dash, never a number that
   // is quietly too small. "Left today" counts only open work, so it survives.
   assert.match(html, /bookedEl\.textContent = doneFailed \? "\\u2014"/,
-    "the Booked tile is back to showing a count that is missing the finished calls");
+    "the Tasks due tile is back to showing a count that is missing the finished tasks");
   assert.match(html, /doneEl\.textContent = doneFailed \? "\\u2014"/,
     "the Done tile is back to showing a count that is missing the finished calls");
 
   // And the half-failure has to reach the eye, in a colour that is not success.
-  assert.match(html, /FHData\.banner\("error",[\s\S]{0,200}?completed calls could not be loaded/,
+  assert.match(html, /FHData\.banner\("error",[\s\S]{0,200}?completed tasks could not be loaded/,
     "the partial-failure warning banner is gone — a half-read week would look fine again");
   assert.match(html, /if \(doneFailed\) \{[\s\S]{0,200}?schedule incomplete/,
     "the banner note is back to saying 'live schedule' over a half-read week");
@@ -562,7 +562,7 @@ test("calendar.html no longer ships the demonstration drawer", () => {
     assert.equal(html.includes(dead), false, `calendar.html still ships fake demo markup: ${dead}`);
   }
   // The honest empty states must survive that deletion.
-  assert.match(html, /Nothing booked\./, "the real empty-day wording was removed by mistake");
+  assert.match(html, /No tasks due\./, "the real empty-day wording was removed by mistake");
   assert.match(html, /statBooked/, "the stat tiles were removed by mistake");
 });
 

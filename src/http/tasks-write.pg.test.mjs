@@ -35,6 +35,7 @@ const HAVE_DB = !!process.env.DATABASE_URL;
 // idx_staff_email_org.
 const STAFF_EMAIL = "taskgate_pg_test@example.com";
 const MATE_EMAIL = "taskgate_pg_test_mate@example.com";
+const CLOSER_EMAIL = "taskgate_pg_test_closer@example.com";
 const STAFF_EMAIL_LIKE = "taskgate_pg_test%@example.com";
 const TITLE = "taskgate pgtest work item";
 
@@ -48,7 +49,7 @@ const res = () => {
 };
 
 describe("PATCH /api/tasks — active-shift gate", { skip: !HAVE_DB ? "no DATABASE_URL" : false }, () => {
-  let handler, org, staffId, mateId, token, taskId;
+  let handler, org, staffId, mateId, token, closerToken, taskId;
 
   /* The handler runs the real requirePrincipal against the real sessions table,
      so every call carries a token minted for a real staff row. There is no
@@ -116,8 +117,13 @@ describe("PATCH /api/tasks — active-shift gate", { skip: !HAVE_DB ? "no DATABA
 
     staffId = await mkStaff("Taskgate Pgtest Caller", STAFF_EMAIL);
     mateId = await mkStaff("Taskgate Pgtest Mate", MATE_EMAIL);
+    const closerId = (await db.query(
+      `INSERT INTO staff (org_id, name, role, email, status)
+       VALUES ($1,$2,'closer',$3,'active') RETURNING id`,
+      [org, "Taskgate Pgtest Closer", CLOSER_EMAIL])).rows[0].id;
 
     token = (await createSession(db, { staffId, orgId: org })).token;
+    closerToken = (await createSession(db, { staffId: closerId, orgId: org })).token;
 
     // Unclaimed, in a role queue — exactly what a person picks from.
     taskId = (await db.query(
@@ -185,11 +191,50 @@ describe("PATCH /api/tasks — active-shift gate", { skip: !HAVE_DB ? "no DATABA
         "the seeded task was not in the queue — the read did not really run");
     });
 
+    test("GET pages 201 same-time tasks without losing or repeating a row", async () => {
+      await resetTask();
+      const seeded = await db.query(
+        `INSERT INTO tasks (org_id, title, body, assignee_role, done, due_at, created_at)
+         SELECT $1, $2, 'pg-page-' || n::text, 'setter', false,
+                '2026-11-02T16:00:00Z'::timestamptz, '2026-11-01T01:00:00Z'::timestamptz
+           FROM generate_series(1, 201) AS n RETURNING id`, [org, TITLE]);
+      try {
+        const first = await call("GET", { token, query: { q: TITLE, done: "false", limit: "200", offset: "0" } });
+        const second = await call("GET", { token, query: { q: TITLE, done: "false", limit: "200", offset: "200" } });
+        assert.equal(first.code, 200, JSON.stringify(first.body));
+        assert.equal(second.code, 200, JSON.stringify(second.body));
+        assert.equal(first.body.can_open_setter, true);
+        assert.equal(first.body.tasks.length, 200);
+        assert.equal(second.body.tasks.length, 2);
+        const ids = first.body.tasks.concat(second.body.tasks).map(row => row.id);
+        assert.equal(new Set(ids).size, 202);
+        assert.deepEqual(new Set(ids), new Set([taskId, ...seeded.rows.map(row => row.id)]));
+        const repeat = await call("GET", { token, query: { q: TITLE, done: "false", limit: "200", offset: "200" } });
+        assert.deepEqual(repeat.body.tasks.map(row => row.id), second.body.tasks.map(row => row.id));
+        for (const offset of ["-1", "1.5", "10000000", "0 OR 1=1"]) {
+          const bad = await call("GET", { token, query: { offset } });
+          assert.equal(bad.code, 400);
+          assert.equal(bad.body.error, "invalid_offset");
+        }
+      } finally {
+        await db.query("DELETE FROM tasks WHERE id = ANY($1::uuid[])", [seeded.rows.map(row => row.id)]);
+      }
+    });
+
     test("GET ?unclaimed=1 — the pick-from list — also still works off the clock", async () => {
       await resetTask();
       const r = await call("GET", { token, query: { role: "setter", unclaimed: "1", limit: "200" } });
       assert.equal(r.code, 200, JSON.stringify(r.body));
       assert.ok(r.body.tasks.some((t) => t.id === taskId));
+    });
+
+    test("GET exposes setter link permission only to a setter role", async () => {
+      const setterRead = await call("GET", { token, query: { q: TITLE, limit: "1" } });
+      const closerRead = await call("GET", { token: closerToken, query: { q: TITLE, limit: "1" } });
+      assert.equal(setterRead.code, 200);
+      assert.equal(closerRead.code, 200);
+      assert.equal(setterRead.body.can_open_setter, true);
+      assert.equal(closerRead.body.can_open_setter, false);
     });
 
     // The document vault (Capital Blueprint B3) puts one readable sentence on the
