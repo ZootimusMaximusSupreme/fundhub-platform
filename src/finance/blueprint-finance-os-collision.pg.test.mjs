@@ -222,6 +222,23 @@ test("paid Blueprint year survives the shorter FinanceOS monthly term, but not a
       "the refunded purchase's own included row closes even when a newer grant keeps access");
       assert.equal((await financeOsEntitlement(db, { orgId: org, clientId: overlapClient,
         asOf: new Date("2026-11-30") })).entitled, true);
+
+      const noPeriodClient = randomUUID();
+      const noPeriodPayment = (await db.query("INSERT INTO transactions "
+        + "(org_id,client_id,product_name,amount_paid,status,provider_ref,created_at) "
+        + "VALUES ($1,$2,'Consulting Services Package',5000,'succeeded','bp-null-period','2026-10-29') RETURNING id",
+      [org, noPeriodClient])).rows[0].id;
+      const noPeriodGrant = (await db.query("INSERT INTO entitlements "
+        + "(org_id,client_id,entitlement_code,source_transaction_id,grant_reason) "
+        + "VALUES ($1,$2,'credit-optimization-roadmap',$3,'purchase:consulting-package') RETURNING id",
+      [org, noPeriodClient, noPeriodPayment])).rows[0].id;
+      await db.query("INSERT INTO subscriptions "
+        + "(org_id,client_id,tier,status,effective_from,current_period_start,current_period_end) "
+        + "VALUES ($1,$2,'finance-os','active','2026-10-01',NULL,NULL)",
+      [org, noPeriodClient]);
+      const noPeriodDue = await dueClients(db, new Date("2026-11-30T00:00:00Z"));
+      assert.equal(noPeriodDue.find(row => row.client_id === noPeriodClient)?.subscription_id,
+        noPeriodGrant, "a null-period row cannot hide a paid Blueprint monthly refresh");
     } finally {
       await db.query("ROLLBACK");
       db.release();

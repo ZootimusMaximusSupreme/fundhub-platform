@@ -86,8 +86,10 @@ export async function dueClients(conn, now, { realPull = false } = {}) {
              AND paid.tier = $1 AND paid.status = 'active'
              AND paid.effective_from <= $2
              AND (paid.effective_to IS NULL OR paid.effective_to > $2)
-             AND (paid.current_period_start IS NULL OR paid.current_period_start <= $2)
-             AND (paid.current_period_end IS NULL OR paid.current_period_end > $2)
+             AND paid.current_period_start IS NOT NULL
+             AND paid.current_period_end IS NOT NULL
+             AND paid.current_period_start <= $2
+             AND paid.current_period_end > $2
         )
       )
       SELECT s.subscription_id, s.org_id, s.client_id, s.current_period_start
