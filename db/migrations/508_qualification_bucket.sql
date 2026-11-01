@@ -30,14 +30,24 @@ END $$;
 
 -- A current/upcoming booking takes its client's bucket once, then keeps it.
 CREATE OR REPLACE FUNCTION bookings_keep_qualification_bucket() RETURNS trigger AS $$
+DECLARE copy_on_schedule boolean := false;
 BEGIN
   IF TG_OP = 'UPDATE' AND OLD.qualification_bucket IS NOT NULL THEN
     NEW.qualification_bucket := OLD.qualification_bucket;
-  ELSIF TG_OP = 'INSERT' AND NEW.qualification_bucket IS NULL AND NEW.client_id IS NOT NULL
-        AND NEW.status IN ('booked', 'rescheduled') AND NEW.starts_at IS NOT NULL
-        AND (NEW.starts_at >= now() OR NEW.ends_at > now()) THEN
-    SELECT c.qualification_bucket INTO NEW.qualification_bucket
-      FROM clients c WHERE c.id = NEW.client_id AND c.org_id = NEW.org_id;
+  ELSE
+    IF TG_OP = 'INSERT' THEN
+      copy_on_schedule := true;
+    ELSIF TG_OP = 'UPDATE' THEN
+      copy_on_schedule := OLD.starts_at IS DISTINCT FROM NEW.starts_at
+        OR OLD.status IS DISTINCT FROM NEW.status
+        OR OLD.client_id IS DISTINCT FROM NEW.client_id;
+    END IF;
+    IF copy_on_schedule AND NEW.qualification_bucket IS NULL AND NEW.client_id IS NOT NULL
+       AND NEW.status IN ('booked', 'rescheduled') AND NEW.starts_at IS NOT NULL
+       AND (NEW.starts_at >= now() OR NEW.ends_at > now()) THEN
+      SELECT c.qualification_bucket INTO NEW.qualification_bucket
+        FROM clients c WHERE c.id = NEW.client_id AND c.org_id = NEW.org_id;
+    END IF;
   END IF;
   RETURN NEW;
 END $$ LANGUAGE plpgsql;

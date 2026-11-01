@@ -8,6 +8,7 @@ import { pool, close } from "../db.mjs";
 import { resolveDefaultOrg } from "../auth/org.mjs";
 import { upsertBooking } from "./store.mjs";
 import { stampQualificationBucket } from "../config/survey-qualification.mjs";
+import { sweepCortanaBookingFeed } from "../workflows/cortana-booking-feed.mjs";
 
 const SCRATCH = (() => {
   if (process.env.CI !== "true" || !process.env.DATABASE_URL) return false;
@@ -49,6 +50,18 @@ test("bookings keep the bucket their client had when booked (real Postgres)", {
     const highBooking = await book(high, "high");
     assert.equal(await bucketOf("bookings", highBooking), "funding_qualified");
 
+    // Provider first omits the time, then supplies it. The first valid time
+    // copies the org-matched client bucket; a replay cannot replace it.
+    const delayedUid = `ci-bucket-delayed-${randomUUID()}`;
+    const noTime = await upsertBooking(conn, {
+      orgId, clientId: high, source: "ci-synthetic", providerUid: delayedUid, status: "booked"
+    });
+    assert.equal(await bucketOf("bookings", noTime.id), null);
+    const delayedStart = new Date(Date.now() + 86400000).toISOString();
+    await upsertBooking(conn, { orgId, clientId: high, source: "ci-synthetic",
+      providerUid: delayedUid, startsAt: delayedStart, status: "booked" });
+    assert.equal(await bucketOf("bookings", noTime.id), "funding_qualified");
+
     // A later answer moves the client, never the call already booked.
     await conn.query(
       `UPDATE clients SET custom_fields = custom_fields || '{"cf_svy_self_reported_fico":"Not sure"}'::jsonb WHERE id = $1`,
@@ -57,6 +70,9 @@ test("bookings keep the bucket their client had when booked (real Postgres)", {
     assert.equal(await stampQualificationBucket(conn, high, orgId), "funding_unqualified");
     assert.equal(await bucketOf("clients", high), "funding_unqualified");
     assert.equal(await bucketOf("bookings", highBooking), "funding_qualified");
+    await upsertBooking(conn, { orgId, clientId: high, source: "ci-synthetic",
+      providerUid: delayedUid, startsAt: delayedStart, status: "booked" });
+    assert.equal(await bucketOf("bookings", noTime.id), "funding_qualified", "replayed booking keeps its first bucket");
     await conn.query(`UPDATE bookings SET qualification_bucket = 'funding_unqualified' WHERE id = $1`, [highBooking]);
     assert.equal(await bucketOf("bookings", highBooking), "funding_qualified", "the trigger keeps the first bucket");
 
@@ -96,6 +112,61 @@ test("bookings keep the bucket their client had when booked (real Postgres)", {
     assert.equal(await bucketOf("bookings", wrongOrgBooking), null);
     assert.equal(await stampQualificationBucket(conn, otherClient, orgId), null);
     assert.equal(await bucketOf("bookings", wrongOrgBooking), null);
+
+    // The real feed claims, fails safely on a bucket write error, retries, and
+    // sends exactly once with the saved bucket.
+    const feedEnv = { CORTANA_FEED_ENABLED: "1",
+      CORTANA_WEBHOOK_BOOKING_URL: "https://app.directroas.com/api/webhook/ci-synthetic",
+      ADAPTERS_DRY_RUN: "1" };
+    const feedClient = await customer("feed", "760-850");
+    const feedBooking = await upsertBooking(conn, {
+      orgId, clientId: feedClient, source: "clickfunnels",
+      providerUid: `ci-feed-${randomUUID()}`, status: "booked",
+      startsAt: new Date(Date.now() + 86400000).toISOString(),
+      attendeeEmail: `buyer-${randomUUID()}@fundingmail.net`, attendeeName: "Buyer Person"
+    });
+    assert.equal(await bucketOf("bookings", feedBooking.id), null);
+    let failOnce = true;
+    const flaky = { query: async (sql, params) => {
+      if (failOnce && sql.includes("UPDATE bookings b SET qualification_bucket")) {
+        failOnce = false;
+        throw Error("synthetic bucket write failure");
+      }
+      return conn.query(sql, params);
+    } };
+    const sent = [];
+    const send = async (booking) => { sent.push(booking); return { ok: true }; };
+    assert.equal((await sweepCortanaBookingFeed(flaky, { env: feedEnv, send })).failed, 1);
+    assert.equal(sent.length, 0);
+    assert.equal((await conn.query(`SELECT status FROM cortana_booking_sends WHERE booking_id = $1`,
+      [feedBooking.id])).rows[0].status, "failed");
+    assert.equal((await sweepCortanaBookingFeed(conn, { env: feedEnv, send })).sent, 1);
+    assert.equal(sent[0].qualification_bucket, "funding_qualified");
+    assert.equal((await sweepCortanaBookingFeed(conn, { env: feedEnv, send })).scanned, 0);
+    assert.equal(sent.length, 1, "replay must not send a second conversion");
+
+    // A no-time appointment cannot reach the feed; supplying the time copies
+    // the first known bucket and makes it sendable.
+    const noTimeUid = `ci-feed-no-time-${randomUUID()}`;
+    const noTimeFeed = await upsertBooking(conn, { orgId, clientId: high,
+      source: "clickfunnels", providerUid: noTimeUid, status: "booked",
+      attendeeEmail: `buyer-${randomUUID()}@fundingmail.net`, attendeeName: "Buyer Person" });
+    assert.equal(await bucketOf("bookings", noTimeFeed.id), null);
+    assert.equal((await sweepCortanaBookingFeed(conn, { env: feedEnv, send })).scanned, 0);
+    await upsertBooking(conn, { orgId, clientId: high, source: "clickfunnels",
+      providerUid: noTimeUid, status: "booked", startsAt: new Date(Date.now() + 86400000).toISOString() });
+    assert.equal(await bucketOf("bookings", noTimeFeed.id), "funding_unqualified");
+    assert.equal((await sweepCortanaBookingFeed(conn, { env: feedEnv, send })).sent, 1);
+    assert.equal(sent[1].qualification_bucket, "funding_unqualified");
+
+    const wrongFeed = await upsertBooking(conn, { orgId, clientId: otherClient,
+      source: "clickfunnels", providerUid: `ci-feed-wrong-org-${randomUUID()}`,
+      status: "booked", startsAt: new Date(Date.now() + 86400000).toISOString(),
+      attendeeEmail: `buyer-${randomUUID()}@fundingmail.net`, attendeeName: "Buyer Person" });
+    assert.equal((await sweepCortanaBookingFeed(conn, { env: feedEnv, send })).failed, 1);
+    assert.equal((await conn.query(`SELECT status FROM cortana_booking_sends WHERE booking_id = $1`,
+      [wrongFeed.id])).rows[0].status, "failed");
+    assert.equal(sent.length, 2, "an org mismatch is never sent");
 
     // Replay the migration's data backfill against existing bookings and saved answers.
     const cases = [

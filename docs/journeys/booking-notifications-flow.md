@@ -479,6 +479,10 @@ the existing `funding_call_booked` event name and Funding Call conversion.
 leaving the thank-you page cannot lose the server-side conversion. Company,
 demo, and simulated buyer bookings are marked skipped. This is a vendor event,
 not a customer text or an eligibility decision; the call copy is unchanged.
+Bookings without a known start time wait in the feed. After a claim, a current
+or upcoming booking with a known client score and no saved bucket is stamped
+and re-read within its org before sending. A stamp error or still-missing
+bucket records a retryable failure instead of a conversion with a null bucket.
 
 ## 7b. Set is the setter handoff; call confirmation is separate
 
@@ -568,7 +572,8 @@ rule as calendar links and `credit_tier`. A setter score correction updates the
 client's bucket. `bookings.qualification_bucket` copies the client's bucket
 when the booking is saved and keeps the first known bucket (migration 508).
 An active or upcoming booking with no bucket can receive a later survey or
-setter score; past bookings with no at-booking evidence stay NULL. The Cortana
+setter score. A no-time booking copies the first known org-matched bucket when
+its valid time arrives; past bookings with no at-booking evidence stay NULL. The Cortana
 booking event carries this saved value without changing `funding_call_booked`.
 Blueprint versus repair is decided on the call; both use the unqualified bucket.
 

@@ -8,8 +8,11 @@ const ENV = { CORTANA_FEED_ENABLED: "1", CORTANA_WEBHOOK_BOOKING_URL: URL, ADAPT
 const BOOKING = {
   id: "123e4567-e89b-12d3-a456-426614174000",
   org_id: "123e4567-e89b-12d3-a456-426614174001",
+  client_id: null,
   provider_uid: "75827",
   qualification_bucket: "funding_unqualified",
+  starts_at: new Date(Date.now() + 86400000).toISOString(),
+  ends_at: null,
   created_at: "2026-10-29T20:00:00Z",
   attendee_name: "Buyer Person",
   attendee_email: "buyer@otherdomain.com",
@@ -71,16 +74,37 @@ test("provider refuses a different destination and an unopened adapter fence", a
   assert.equal(calls, 0);
 });
 
-function fakeDb(row) {
+function fakeDb(row, { failStampOnce = false, leaveBookingNull = false, staleCandidateFields = null } = {}) {
   let receipt = null;
+  let shouldFailStamp = failStampOnce;
   const queries = [];
   return {
     queries,
     get receipt() { return receipt; },
     async query(sql, params) {
       queries.push({ sql, params });
+      if (sql.includes("FROM bookings b") && sql.includes("WHERE b.id = $1 AND b.org_id = $2")) {
+        return { rows: params[0] === row.id && params[1] === row.org_id
+          ? [{ qualification_bucket: row.qualification_bucket,
+            client_qualification_bucket: row.client_qualification_bucket || null,
+            custom_fields: row.custom_fields }] : [] };
+      }
       if (sql.includes("FROM bookings b")) {
-        return { rows: receipt?.status === "sent" || receipt?.status === "skipped" ? [] : [row] };
+        assert.match(sql, /b\.starts_at IS NOT NULL/);
+        return { rows: !row.starts_at || receipt?.status === "sent" || receipt?.status === "skipped"
+          ? [] : [{ ...row, custom_fields: staleCandidateFields ?? row.custom_fields }] };
+      }
+      if (sql.includes("SELECT custom_fields FROM clients")) {
+        return { rows: row.client_id && row.matched_client_id === row.client_id
+          ? [{ custom_fields: row.custom_fields }] : [] };
+      }
+      if (sql.includes("UPDATE clients SET qualification_bucket")) {
+        if (shouldFailStamp) { shouldFailStamp = false; throw Error("bucket write failed"); }
+        return { rows: [] };
+      }
+      if (sql.includes("UPDATE bookings b SET qualification_bucket")) {
+        if (!leaveBookingNull) row.qualification_bucket = params[2];
+        return { rows: [] };
       }
       if (sql.includes("INSERT INTO cortana_booking_sends")) {
         if (receipt?.status === "sending") return { rows: [] };
@@ -119,4 +143,68 @@ test("simulated buyer is not sent as a conversion", async () => {
   });
   assert.equal(result.skipped, 1);
   assert.equal(conn.receipt.status, "skipped");
+});
+
+test("known score with a missing booking bucket retries a failed stamp, then sends once", async () => {
+  const row = { ...BOOKING, client_id: "client-1", matched_client_id: "client-1",
+    qualification_bucket: null, custom_fields: { cf_svy_self_reported_fico: "760-850" } };
+  const conn = fakeDb(row, { failStampOnce: true });
+  let sends = 0;
+  const send = async (booking) => {
+    sends += 1;
+    assert.equal(booking.qualification_bucket, "funding_qualified");
+    return { ok: true };
+  };
+  assert.equal((await sweepCortanaBookingFeed(conn, { env: ENV, send })).failed, 1);
+  assert.equal(conn.receipt.status, "failed");
+  assert.equal(sends, 0);
+  assert.equal((await sweepCortanaBookingFeed(conn, { env: ENV, send })).sent, 1);
+  assert.equal(conn.receipt.status, "sent");
+  assert.equal((await sweepCortanaBookingFeed(conn, { env: ENV, send })).scanned, 0);
+  assert.equal(sends, 1);
+  assert.ok(conn.queries.some(({ sql, params }) =>
+    sql.includes("WHERE b.id = $1 AND b.org_id = $2") &&
+    params[0] === row.id && params[1] === row.org_id));
+});
+
+test("a score saved after candidate lookup is still stamped before send", async () => {
+  const row = { ...BOOKING, client_id: "client-1", matched_client_id: "client-1",
+    qualification_bucket: null, custom_fields: { cf_svy_self_reported_fico: "700-759" } };
+  const conn = fakeDb(row, { staleCandidateFields: {} });
+  const sent = [];
+  const out = await sweepCortanaBookingFeed(conn, { env: ENV,
+    send: async (booking) => { sent.push(booking); return { ok: true }; } });
+  assert.equal(out.sent, 1);
+  assert.equal(sent[0].qualification_bucket, "funding_qualified");
+});
+
+test("known score still missing after a stamp stays failed and retryable", async () => {
+  const row = { ...BOOKING, client_id: "client-1", matched_client_id: "client-1",
+    qualification_bucket: null, custom_fields: { cf_svy_self_reported_fico: "620-699" } };
+  const conn = fakeDb(row, { leaveBookingNull: true });
+  const out = await sweepCortanaBookingFeed(conn, { env: ENV,
+    send: async () => { throw Error("must not send a known score as null"); } });
+  assert.equal(out.failed, 1);
+  assert.equal(conn.receipt.status, "failed");
+  assert.match(conn.receipt.error, /known client score/);
+});
+
+test("a no-time booking waits, then a time makes it a feed candidate", async () => {
+  const row = { ...BOOKING, starts_at: null, qualification_bucket: null };
+  const conn = fakeDb(row);
+  let sends = 0;
+  const send = async () => { sends += 1; return { ok: true }; };
+  assert.equal((await sweepCortanaBookingFeed(conn, { env: ENV, send })).scanned, 0);
+  row.starts_at = new Date(Date.now() + 86400000).toISOString();
+  assert.equal((await sweepCortanaBookingFeed(conn, { env: ENV, send })).sent, 1);
+  assert.equal(sends, 1);
+});
+
+test("a booking linked to another org's client fails rather than sending", async () => {
+  const row = { ...BOOKING, client_id: "other-client", matched_client_id: null, qualification_bucket: null };
+  const conn = fakeDb(row);
+  const out = await sweepCortanaBookingFeed(conn, { env: ENV,
+    send: async () => { throw Error("must not send an org mismatch"); } });
+  assert.equal(out.failed, 1);
+  assert.equal(conn.receipt.status, "failed");
 });
