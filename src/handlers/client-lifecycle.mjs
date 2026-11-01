@@ -18,6 +18,7 @@ import { upsertClientAdAttribution } from "../ads/store.mjs";
 import { ensureCrmContactId, config as crmConfig } from "../messaging/crm-contacts.mjs";
 import { adaptersBlocked } from "../lib/dry-run.mjs";
 import { upsertSurveyCarbonCopy } from "./client-custom-fields.mjs";
+import { stampQualificationBucket } from "../config/survey-qualification.mjs";
 import { addTags } from "../workflows/tags.mjs";
 import { demoFlagForEmail } from "../demo/test-identity.mjs";
 import { advanceCardToStage } from "../workflows/cards.mjs";
@@ -32,6 +33,11 @@ import { creditTierFor } from "../config/survey-qualification.mjs";
 // marketing/landing-pages/clickfunnels/cf-survey-ground-truth.md — Survey Complete only when this lands.
 // The same rule decides when the ClickFunnels adapter emits survey.completed.
 const answersIncludeSurveyComplete = surveyIsComplete;
+
+const BUCKET_KEYS = ["cf_svy_self_reported_fico", "cf_svy_self_reported_fico_label", "svy_self_reported_fico"];
+function answersTouchBucket(answers) {
+  return BUCKET_KEYS.some((key) => Object.prototype.hasOwnProperty.call(answers, key));
+}
 
 // --- helpers ----------------------------------------------------------------
 
@@ -323,7 +329,8 @@ export async function onEntryCaptured(event, db) {
 }
 
 // survey.submitted — fold answers into clients.custom_fields (jsonb) and the
-// typed client_custom_fields carbon-copy (sales/agent joins). When the CF last
+// typed client_custom_fields carbon-copy (sales/agent joins). A score answer also
+// stamps the funding call bucket (qualification_bucket). When the CF last
 // question (cf_svy_available_capital) is present, advance to survey_complete.
 export async function onSurveySubmitted(event, db) {
   const clientId = await resolveClient(db, event);
@@ -334,6 +341,14 @@ export async function onSurveySubmitted(event, db) {
       await upsertSurveyCarbonCopy(db, { clientId, orgId: event.orgId, answers });
     }
     await saveCreditTier(db, clientId, answers);
+    // Bucket persistence cannot block survey answers or the stage move.
+    if (answersTouchBucket(answers)) {
+      try {
+        await stampQualificationBucket(db, clientId);
+      } catch (err) {
+        console.warn(`[client-lifecycle] qualification bucket not stamped for ${clientId}: ${String(err?.message || err)}`);
+      }
+    }
   }
   if (clientId && event.orgId && answersIncludeSurveyComplete(answers)) {
     await mergeCustomFields(db, clientId, { lifecycle_status: "Survey Complete" });
@@ -353,7 +368,8 @@ export async function onSurveySubmitted(event, db) {
    the live answer (tierBookingLink), so the two cannot disagree for long. */
 async function saveCreditTier(db, clientId, answers) {
   if (!Object.prototype.hasOwnProperty.call(answers, "cf_svy_self_reported_fico")
-    && !Object.prototype.hasOwnProperty.call(answers, "cf_svy_self_reported_fico_label")) return;
+    && !Object.prototype.hasOwnProperty.call(answers, "cf_svy_self_reported_fico_label")
+    && !Object.prototype.hasOwnProperty.call(answers, "svy_self_reported_fico")) return;
   const r = await db.query(`SELECT custom_fields FROM clients WHERE id = $1`, [clientId]);
   const fields = r.rows[0]?.custom_fields || {};
   const tier = creditTierFor(fields);

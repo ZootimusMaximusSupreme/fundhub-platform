@@ -268,7 +268,7 @@ export async function listSetterQueue(db, staff, { limit = 50, offset = 0 } = {}
 export async function getSetterClient(db, orgId, clientId) {
   const result = await db.query(
     `SELECT c.id AS client_id, c.first_name, c.last_name, c.email, c.phone, c.custom_fields,
-            b.created_at AS booked_at, b.starts_at AS booking_time,
+            c.qualification_bucket, b.created_at AS booked_at, b.starts_at AS booking_time,
             ct.assignee_staff_id AS closer_staff_id,
             st.created_at, st.done, st.assignee_staff_id AS setter_staff_id
        FROM clients c
@@ -326,7 +326,11 @@ async function persistSurveyEdits(db, clientId, orgId, edits) {
 async function persistCreditTier(db, clientId, orgId, tier) {
   await db.query(
     `UPDATE clients
-        SET custom_fields = COALESCE(custom_fields, '{}'::jsonb) || jsonb_build_object('credit_tier', $3::text)
+        SET custom_fields = COALESCE(custom_fields, '{}'::jsonb) || jsonb_build_object('credit_tier', $3::text),
+            qualification_bucket = CASE $3::text
+              WHEN 'qualified' THEN 'funding_qualified'
+              WHEN 'unqualified' THEN 'funding_unqualified'
+            END
       WHERE id = $1 AND org_id = $2`,
     [clientId, orgId, tier]
   );
@@ -413,7 +417,8 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
       // first; no readable score anywhere (null) leaves what is saved.
       const savedFields = jsonObject(client.custom_fields);
       const creditTier = creditTierFor({ ...savedFields, setter_survey_edits: saved });
-      if (creditTier && savedFields.credit_tier !== creditTier) {
+      if (creditTier && (savedFields.credit_tier !== creditTier
+        || client.qualification_bucket !== `funding_${creditTier}`)) {
         await persistCreditTier(writer, client_id, staff.org_id, creditTier);
       }
       if (previous.complete_at) {

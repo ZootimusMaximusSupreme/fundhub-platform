@@ -426,12 +426,16 @@ test("setter desk: fixing the score on the call writes credit_tier on the person
     assert.equal(up.status, 200);
     let cf = await customFieldsOf(clientId);
     assert.equal(cf.credit_tier, "qualified");
+    assert.equal((await db.query(`SELECT qualification_bucket FROM clients WHERE id = $1`, [clientId])).rows[0].qualification_bucket,
+      "funding_qualified");
     assert.deepEqual(cf.setter_survey_edits, { cf_svy_self_reported_fico: "700-759" });
     assert.equal(cf.cf_svy_self_reported_fico_label, "620-699", "what the person typed is left alone");
     assert.equal(cf.cf_svy_planned_use_label, "Open a shop", "the rest of the file is kept");
     await updateSetterHandoff(db, desk(), { client_id: clientId, action: "save_survey", survey_edits: {} });
     cf = await customFieldsOf(clientId);
     assert.equal(cf.credit_tier, "unqualified");
+    assert.equal((await db.query(`SELECT qualification_bucket FROM clients WHERE id = $1`, [clientId])).rows[0].qualification_bucket,
+      "funding_unqualified");
   });
 
 test("setter desk: with no readable score anywhere credit_tier is left exactly as it was",

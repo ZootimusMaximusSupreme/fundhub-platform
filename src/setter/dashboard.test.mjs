@@ -41,6 +41,7 @@ function fakeDb(booked = true) {
     if (sql.includes("UPDATE clients")) {
       if (sql.includes("'credit_tier'")) {
         client.custom_fields.credit_tier = params[2];
+        client.qualification_bucket = `funding_${params[2]}`;
         return { rows: [] };
       }
       if (sql.includes("'{setter_survey_edits}'")) {
@@ -293,10 +294,12 @@ test("fixing the score on the call moves credit_tier, and clearing the fix moves
     survey_edits: { cf_svy_self_reported_fico: "760-850" } });
   assert.equal(up.status, 200);
   assert.equal(client.custom_fields.credit_tier, "qualified");
+  assert.equal(client.qualification_bucket, "funding_qualified");
   const down = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save_survey",
     survey_edits: { cf_svy_self_reported_fico: "500-619" } });
   assert.equal(down.status, 200);
   assert.equal(client.custom_fields.credit_tier, "unqualified");
+  assert.equal(client.qualification_bucket, "funding_unqualified");
   const cleared = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save_survey", survey_edits: {} });
   assert.equal(cleared.status, 200);
   assert.equal(client.custom_fields.credit_tier, "unqualified", "back to the typed 620-699");

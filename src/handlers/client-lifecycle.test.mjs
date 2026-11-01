@@ -17,15 +17,28 @@ import { getHandlers } from "../events/registry.mjs";
 
 // In-memory Postgres fake: interprets the exact queries the handlers issue.
 function pgFake({ openShift = null, failOn = null, smsRouting = null, pipelineStages = [], cards = [] } = {}) {
-  const clients = [], transactions = [], crs = [], events = [], requests = [];
+  const clients = [], transactions = [], crs = [], events = [], requests = [], bookingBuckets = [];
   let n = 0;
   const findClient = (org, email) =>
     clients.find((c) => c.org_id === org && String(c.email || "").toLowerCase() === String(email).toLowerCase());
   const routingFor = (orgId) => (typeof smsRouting === "string" ? smsRouting : smsRouting?.[orgId]) ?? null;
   return {
-    clients, transactions, crs, events, requests, pipelineStages, cards,
+    clients, transactions, crs, events, requests, pipelineStages, cards, bookingBuckets,
     async query(sql, params = []) {
       if (failOn && failOn.test(sql)) throw Object.assign(new Error("simulated outage"), { code: "08006" });
+      if (/^SELECT custom_fields FROM clients WHERE id = \$1$/.test(sql.trim())) {
+        const c = clients.find((c) => c.id === params[0]);
+        return { rows: c ? [{ custom_fields: c.custom_fields }] : [] };
+      }
+      if (/UPDATE clients SET qualification_bucket/.test(sql)) {
+        const c = clients.find((c) => c.id === params[0]);
+        if (c) c.qualification_bucket = params[1];
+        return { rows: [] };
+      }
+      if (/UPDATE bookings SET qualification_bucket/.test(sql)) {
+        bookingBuckets.push({ client_id: params[0], qualification_bucket: params[1] });
+        return { rows: [] };
+      }
       // advanceCardToStage / moveCardToStage
       if (/SELECT ps\.id AS stage_id, ps\.pipeline_id/.test(sql) && /FROM pipeline_stages/.test(sql)) {
         const [pipelineKey, stageKey, orgId] = params;
@@ -353,6 +366,7 @@ test("a setter's earlier score fix still wins when the survey posts again", asyn
     email: "fix@b.com", answers: { cf_svy_self_reported_fico: "500-619" }
   }), db);
   assert.equal(db.clients[0].custom_fields.credit_tier, "qualified");
+  assert.equal(db.clients[0].qualification_bucket, "funding_qualified", "the setter correction also decides the saved bucket");
 });
 
 test("survey.submitted mid-survey (no available capital) stays off survey_complete", async () => {
@@ -378,6 +392,43 @@ test("survey.submitted with cf_svy_available_capital advances to survey_complete
   }), db);
   assert.equal(db.cards[0].stage_id, "st-survey");
   assert.equal(db.clients[0].custom_fields.lifecycle_status, "Survey Complete");
+});
+
+test("survey.submitted with a score stamps the funding call bucket on the client and its bookings", async () => {
+  const db = pgFake({ pipelineStages: SALES_STAGES });
+  await onEntryCaptured(ev("entry.captured", { email: "score@b.com", name: "Score" }), db);
+  await onSurveySubmitted(ev("survey.submitted", {
+    email: "score@b.com", answers: { cf_svy_self_reported_fico: "750+" }
+  }), db);
+  const c = db.clients[0];
+  assert.equal(c.qualification_bucket, "funding_qualified");
+  assert.deepEqual(db.bookingBuckets, [{ client_id: c.id, qualification_bucket: "funding_qualified" }]);
+
+  await onSurveySubmitted(ev("survey.submitted", {
+    email: "score@b.com", answers: { cf_svy_self_reported_fico: "Not sure" }
+  }), db);
+  assert.equal(c.qualification_bucket, "funding_unqualified", "the client follows the newest score answer");
+});
+
+test("a failed bucket stamp never stops the survey save or the stage move", async () => {
+  const db = pgFake({ pipelineStages: SALES_STAGES, failOn: /qualification_bucket/ });
+  await onEntryCaptured(ev("entry.captured", { email: "safe@b.com", name: "Safe" }), db);
+  await onSurveySubmitted(ev("survey.submitted", {
+    email: "safe@b.com",
+    answers: { cf_svy_self_reported_fico: "750+", cf_svy_available_capital: "Less than $1k" }
+  }), db);
+  assert.equal(db.clients[0].custom_fields.cf_svy_self_reported_fico, "750+");
+  assert.equal(db.cards[0].stage_id, "st-survey");
+});
+
+test("survey.submitted with no score answer leaves the bucket alone", async () => {
+  const db = pgFake({ pipelineStages: SALES_STAGES });
+  await onEntryCaptured(ev("entry.captured", { email: "noscore@b.com", name: "No Score" }), db);
+  await onSurveySubmitted(ev("survey.submitted", {
+    email: "noscore@b.com", answers: { cf_svy_funding_target_amount: "Less than $50k" }
+  }), db);
+  assert.equal(db.clients[0].qualification_bucket, undefined);
+  assert.deepEqual(db.bookingBuckets, []);
 });
 
 test("entry.captured after survey_complete does not demote the card", async () => {
