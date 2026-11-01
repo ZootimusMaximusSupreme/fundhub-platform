@@ -24,11 +24,13 @@ import {
   pushToGitHub,
   hasShippableChange,
   shipDiffPathspecs,
+  mayRegenerateCatalog,
   isDirectRun,
   redact,
   reasonLine,
   morningOnlySlow,
   migrationOwnerConnection,
+  approvedReleaseHead,
   GIT_NO_PROMPT,
   PULSE_SHIP_GUARDS,
   PULL_TIMEOUT_MS,
@@ -40,6 +42,16 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SHIP = path.join(HERE, "ship.mjs");
 const SRC = fs.readFileSync(SHIP, "utf8");
 
+test("GitHub Ship never regenerates tracked catalog after exact-head approval", () => {
+  assert.equal(mayRegenerateCatalog({ GITHUB_ACTIONS: "true" }), false);
+  assert.equal(mayRegenerateCatalog({ EXPECTED_RELEASE_SHA: "abc123" }), false);
+  assert.equal(mayRegenerateCatalog({}), true);
+  const stale = SRC.indexOf('if (!run("node", ["scripts/pulse/compile-catalog.mjs", "--check"]).ok)');
+  const stop = SRC.indexOf('if (!mayRegenerateCatalog())', stale);
+  const rebuild = SRC.indexOf('const rebuilt = run("node", ["scripts/pulse/compile-catalog.mjs"]', stale);
+  assert.ok(stale > 0 && stop > stale && rebuild > stop);
+});
+
 test("ship never uses the restricted app connection for migrations", () => {
   const appOnly = { DATABASE_URL: "postgres://fundhub_app:secret@db.example/postgres" };
   assert.equal(migrationOwnerConnection(appOnly), null);
@@ -47,6 +59,21 @@ test("ship never uses the restricted app connection for migrations", () => {
     "postgres://owner:secret@db.example/postgres");
   assert.equal(migrationOwnerConnection({ ...appOnly, MIGRATION_DATABASE_URL: "postgres://owner:****@db.example/postgres" }), null);
   assert.match(SRC, /const migrationConnection = migrationOwnerConnection\(\)/);
+});
+
+test("GitHub Ship rejects a missing or changed approved SHA after pulling main", () => {
+  const approved = "a".repeat(40);
+  const moved = "b".repeat(40);
+  assert.deepEqual(approvedReleaseHead({ expectedSha: approved, actualSha: approved, githubActions: true }), { ok: true });
+  assert.equal(approvedReleaseHead({ expectedSha: approved, actualSha: moved, githubActions: true }).ok, false);
+  assert.equal(approvedReleaseHead({ expectedSha: "", actualSha: approved, githubActions: true }).ok, false);
+  assert.equal(approvedReleaseHead({ expectedSha: "bad", actualSha: approved, githubActions: true }).ok, false);
+  assert.deepEqual(approvedReleaseHead({ actualSha: approved }), { ok: true });
+  const main = SRC.slice(SRC.indexOf("async function main()"));
+  const pull = main.indexOf("pullMain({ git: gitRun })");
+  const pin = main.indexOf("approvedReleaseHead({");
+  const skip = main.indexOf("hasShippableChange(prev,");
+  assert.ok(pull > 0 && pin > pull && skip > pin, "the approved SHA is checked after pull and before any release step");
 });
 
 // ── a real throwaway git repo, isolated from the Mac's own git settings ─────────

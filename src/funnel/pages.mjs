@@ -13,6 +13,9 @@ const MAP = {
   "/watch":              { funnel: "watch", step: 1 },
   "/apply":              { funnel: "watch", step: 2 },
   "/funding-book-call":  { funnel: "watch", step: 3 },
+  // The second funding calendar (owner-set 2026-10-29): /apply frames it for a
+  // score answer under 700, and text links open it directly. Same step.
+  "/funding-book-call--02424": { funnel: "watch", step: 3 },
   "/thank-you":          { funnel: "watch", step: 4 },
   "/order":              { funnel: "watch", step: 5 },
   "/roadmap":            { funnel: "roadmap", step: 1 },

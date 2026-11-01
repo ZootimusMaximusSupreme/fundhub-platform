@@ -3,7 +3,7 @@ Not real copy. Exercises the header split, duplicate keys (identical and
 different), a single-space header, and an empty body.
 
 EM-EMPTY deliberately has NO body and NO signature block. The 2026-08-21 footer
-sweep pasted the Josh signature onto it too, which made the empty case non-empty
+sweep pasted the Chris signature onto it too, which made the empty case non-empty
 and silently deleted the only test of a subject with nothing under it. Leave that
 block without a footer.
 
@@ -17,7 +17,7 @@ Subject line one
 
  Body line with {{sender_name}}.
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -29,7 +29,7 @@ Subject with no name in the header
 
  Body only.
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -41,7 +41,7 @@ Shared key, different copy A
 
  Body A.
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -53,7 +53,7 @@ Shared key, different copy B
 
  Body B.
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -65,7 +65,7 @@ Shared key, identical copy
 
  Same body.
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -77,7 +77,7 @@ Shared key, identical copy
 
  Same body.
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -89,7 +89,7 @@ Subject line
 
  Body line.
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs

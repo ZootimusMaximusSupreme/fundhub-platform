@@ -40,7 +40,7 @@ Legend: **both homes** = one real file in `.ai/rules`, linked for Cursor and for
 - `finish-the-requested-job` (both homes): Finish approved work through required checks, including the launch release checks; holds the stuck rule and the scope-creep line.
 - `ground-rules` (both homes): Repo-only work, look it up, never invent, and owner decisions are final.
 - `everything-in-the-repo` (both homes): Every approved deliverable is saved in this repository in the same session.
-- `orchestration` (both homes): How parallel workflows coordinate on a shared board after the split.
+- `orchestration` (both homes): Shared-board coordination, one PR owner per file, intake across chats, protected CI/Ship gate.
 - `guardrails` (both homes): Standing engineering guardrails for scope, branches, reuse, and conventions.
 - `journey-documentation` (both homes): Every flow has a hand-authored intended journey and a code-generated actual journey.
 - `owner-authorized-account-ops` (both homes): Use available accounts and tools for approved work without asking again.
@@ -95,8 +95,10 @@ Legend: **both homes** = one real file in `.ai/rules`, linked for Cursor and for
 
 ## 6. Copy and ads
 
-- `copy-certainty` (both homes): Scripts speak with 100% certainty. No we think, you might, maybe, could, likely.
+- `copy-certainty` (both homes): Scripts speak with 100% certainty. No we think, you might, maybe, could, likely. Day counts are allowed when they match the written guarantee (owner-set 2026-10-31).
 - `ad-know-the-offer` (both homes): Before an ad script or an animation overlay, read that offer. Pictures show the product steps, not only the last sentence. Capital Blueprint steps are in the rule.
+- `copy-skills-foundation` (both homes): Copybot and Visual Thinking are the foundation of all Fundhub marketing (owner-set 2026-10-31). Copybot builds the words in Chris's voice, Visual Thinking picks the picture, Fundhub rules own the facts. Staged in `marketing/copy-skills/`.
+- `show-real-proof` (both homes): Show the real thing whenever we have it, or merge it with a little diagram on top; a diagram alone only when nothing real shows the point. The picture and the words prove each other (owner-set 2026-10-31).
 - `ad-no-recycled-lines` (both homes): Never copy lines between ads. Each ad is a test. Reuse only proven high-converting phrases.
 - `ad-second-line` (both homes): Sentence two of the hook does one job (win, proof, stakes, new detail, reassure).
 - `ad-watch-curve` (both homes): How to read Meta video watch numbers and what to fix when an ad dies.
@@ -106,6 +108,7 @@ Legend: **both homes** = one real file in `.ai/rules`, linked for Cursor and for
 - `outcome-first-copy` (both homes): Sales copy leads with the outcome, then the facts; banned sales words.
 - `no-ssn-before-checkout-step-3` (both homes): Sales copy never names the Social Security number; only checkout step 3 asks.
 - `funding-sequence-term` (both homes): Say next funding sequence, never round two.
+- `no-josh-chris-everywhere` (both homes): Josh is gone. Every text, email, call and screen a lead, client or staff member reads or hears says Chris (owner-set 2026-10-31). Machine ids keep their names.
 - `marketing-tooling-from-chat` (both homes): Ad, script, and VSL work runs from chat with a skill and rules pack, never a scheduled job.
 
 ## 7. Video and animation

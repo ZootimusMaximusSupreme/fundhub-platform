@@ -20,6 +20,7 @@ import { resolveClient } from "../handlers/client-lifecycle.mjs";
 import { handleSloPaidWebhook } from "../slo/purchase.mjs";
 import { upsertContact } from "../analytics/clickfunnels.mjs";
 import { pickMetaClickIds, storeClientMetaClickIds } from "../ads/meta-match.mjs";
+import { surveyIsComplete } from "../survey/cf-question-map.mjs";
 import { db as platformDb, pool as platformPool } from "../db.mjs";
 
 // --- 1. Signature verification (fail-closed) --------------------------------
@@ -699,7 +700,7 @@ export const FUNNEL_REPEAT_WINDOW_MINUTES = 6 * 60;
 /* booking.created is left out on purpose: it already has slot-level dedupe
    below (findBookingBySlot), and a second booking is a real second appointment
    that its workflows must see. */
-const REPEAT_SUPPRESSED_EVENTS = new Set(["survey.submitted", "entry.captured"]);
+const REPEAT_SUPPRESSED_EVENTS = new Set(["survey.submitted", "survey.completed", "entry.captured"]);
 
 async function isRepeatFunnelPost(db, { orgId, name, email, funnel }) {
   if (!orgId || !email) return false;
@@ -873,8 +874,14 @@ async function adoptEarlierBooking(db, { orgId, evt, cancel }) {
 // Appointments → booking.* only (never entry.captured).
 // Calendar form posts (form_submission with a start time) → booking.created.
 //   The thank-you page can paint before appointments/scheduled_event.created.
-// Other opt-in / form submissions → entry.captured (+ survey.submitted when answers).
+// Other opt-in / form submissions → entry.captured (+ survey.submitted when answers,
+//   + survey.completed when the answers include the last question).
 // Returns [] when there is no email (nothing to emit).
+
+/* The /apply page posts after every screen, so survey.submitted fires from the
+   first answer on. Only a post that carries the last answer (surveyIsComplete,
+   src/survey/cf-question-map.mjs) means the survey is done; the same answer moves
+   the sales card to Survey Complete (src/handlers/client-lifecycle.mjs). */
 export function mapToCanonical(evt) {
   if (!evt || !evt.email) return [];
 
@@ -888,6 +895,7 @@ export function mapToCanonical(evt) {
   out.push({ name: "entry.captured" });
   if (evt.answers !== null && evt.answers !== undefined) {
     out.push({ name: "survey.submitted" });
+    if (surveyIsComplete(evt.answers)) out.push({ name: "survey.completed" });
   }
   return out;
 }
@@ -991,7 +999,7 @@ export async function handleClickFunnelsWebhook({
   const emitted = [];
   for (const c of canonical) {
     let payload;
-    if (c.name === "survey.submitted") {
+    if (c.name === "survey.submitted" || c.name === "survey.completed") {
       payload = {
         email: evt.email,
         name: evt.name,

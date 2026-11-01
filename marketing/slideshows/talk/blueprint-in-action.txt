@@ -1,0 +1,141 @@
+Blueprint, In Action
+
+1. BA-01 / Day 0 — Day 0: your file is read, and your checklist appears, built from your own report.
+
+Open Progress. This is the first screen you see on day 0, on a sample file, and it shows everything on your file as it stands today.
+
+Look at where you are. It says in progress, we will update this as your file moves, and then waiting on you. That last line is the whole system. It's your move.
+
+Under that are your scores, one card per bureau, loaded from your own report. On this sample it reads 702, 709 and 706, and the screen says sample scores, not a real credit pull.
+
+Scroll down to your checklist. The engine read the report and wrote the first step from it, with the target it read off the file.
+
+Nobody typed that step in. The report decided it.
+
+This is day 0, and the plan already starts where you are, with your cards, your items and your business.
+
+Your story: the first time you saw your own file laid out like this, and what it changed.
+
+2. BA-02 / Your credit — Your credit on one screen: cards used, open accounts, hard inquiries, and negative items.
+
+Open Money, then Credit. This is your credit on one screen.
+
+The three scores sit on top, one per bureau, and under them are the engine's own counts: cards used, open accounts, hard inquiries and negative items.
+
+Look at cards used on this sample. It reads 30.6 percent, and the screen says it plainly: high, over 30 percent. That's the first thing to fix, and the checklist already knows it.
+
+Hard inquiries: three, one on each bureau. Negative items: none on this file.
+
+Banks see those inquiries stack up, and that's where the denials start, so that count matters.
+
+Under the tiles it says what to work on, from UnderwriteIQ, based on your credit file. Those are the engine's own sentences for this file.
+
+And the chart at the bottom tracks your scores over time, pull by pull.
+
+Every tile on this screen comes from your own report. This is what the engine is reading when it writes your steps.
+
+3. BA-03 / Step one — Step one: pay the card down to its target, and the next report closes the step.
+
+Back on Progress, look at what happens next. It says your move, and it names the step: pay this card down to its target.
+
+The target comes from the engine. It read the limit on your own file and set the line.
+
+On this sample the target was $800, a tenth of the card's limit on the file. The plan sets it, you pay it.
+
+Read the small print with me: this one is yours, and nothing moves until it is done. That's the deal on every step.
+
+You don't have to do it in one payment. Anything you put against the card moves the balance toward the target.
+
+FinanceOS sends you a text before each statement date, so you're paying at the right time.
+
+Now jump ahead on the sample. Open Money, then Credit, months later. Cards used reads 9.8 percent, excellent, and the screen's own stamp says paydown verified.
+
+Nobody ticked that box. The next credit report showed the new balance, and the step closed itself.
+
+4. BA-04 / The letters — The letters: print and mail them, upload your proof, then what the bureaus send back.
+
+Stay on Progress and scroll to the letter steps. There are three of them, in order.
+
+First, print and mail your dispute letters. They're in your pack. You sign where marked, mail a copy to each bureau, and keep your post office receipt.
+
+On this sample that step is done and dated. The next one is open: upload your mailing proof. There's the button, right on the step.
+
+You take a photo of the receipt or the stamped envelopes and upload it.
+
+Then the bureaus have 30 to 45 days to answer each round, and when the letter comes, you upload that too.
+
+A step clears only with the proof. A promise doesn't close it.
+
+And if you'd rather have the Fundhub team run the rounds for you, that's credit optimization, done for you. We go over that on the call.
+
+Either way, every letter and every answer lives in your dashboard.
+
+5. BA-05 / The businesses — The businesses: file your LLC, open business checking, and add the business in the app.
+
+Scroll down the checklist to the business steps.
+
+File your LLC. You file online with the Secretary of State and send us the filing confirmation.
+
+That confirmation is how the step closes, because nothing in the app can see the state's records. You send it, we close it.
+
+Open a business checking account, in the LLC name.
+
+Age counts, so file early. The engine reads a business under 12 months old at half on business cards, and it reads a business two years old at the top band.
+
+On this sample both are done and dated, and both are tagged you, because you did them.
+
+Then open Money, then Fundability, and add the business. The screen says it plainly: each business is read on its own, and they are never added together.
+
+Business one gets ready first. Then business two. Each one gets its own five checks from the engine.
+
+And you don't need a business to start. The personal file comes first, and the businesses come after.
+
+6. BA-06 / Over time — Over time, your checklist and your letters update when new credit information comes in.
+
+Now open Money, then Credit, and step through the months on this sample.
+
+On the first pull, cards used read 30.6 percent. By month 6 it reads 8 percent, excellent, because the card got paid down.
+
+The card itself went from $1,720 to $640 across the pulls on this sample, and the tile moved from high to excellent with it.
+
+The scores on this sample stayed where they were the whole time, and the screen says so. Nobody can promise a score, and this screen never pretends to.
+
+Look at the stamp on the screen. It says month 5 pull, and then letters regenerated.
+
+That's the rule for the whole year: when new credit information comes in, your checklist and your letters are rebuilt from the new report.
+
+It's in the agreement too, word for word: your checklist and letters are updated when new credit information is received.
+
+Nothing on your plan goes stale, because the plan reads the newest report, every time.
+
+7. BA-07 / Who is with you — An AI coach on your open step, reminders in order, and then a person on the Fundhub team.
+
+There's no screen for this one, so let me tell you who's with you while you work the checklist.
+
+An AI coach follows your current step. It reaches you by text and by automated call, within your contact preferences, and it tells you it's an AI. It never pretends to be a person.
+
+When a step runs late, the reminders go in order, and the last one is a person on the Fundhub team, never a louder message.
+
+Two coach texts on the same open step with no answer, and the next eligible run can start one automated call. A reply or a finished step cancels it, and your quiet hours and contact caps still apply.
+
+The Fundhub team answers program questions and handles exceptions and funding preparation.
+
+So the checklist is yours, and the follow-up is ours. That's how a file keeps moving for 12 months.
+
+Your story: a client who got stuck on a step, and what got them moving again.
+
+8. BA-08 / Ready to fund — Ready to fund: the engine says your file is ready, and the funding sequence starts.
+
+Last screen. Open Money, then Next steps. The one main button on that page says I'm ready to get funded.
+
+When the engine says your file is ready, the Fundhub team preps you, and someone from the team calls you about funding. You can also ask with that one button.
+
+Before that call, the funding papers checklist asks for your bank statements, tax returns and ID ahead of time, one paper at a time, so your file is complete when the team calls.
+
+Then the funding sequence starts. Your personal file goes first, then each business on its own, and one funding sequence is about six rounds.
+
+After funding, the planner reads your file again and suggests when it's ready for the next funding sequence.
+
+That's the whole dashboard, start to finish: your file, your steps, your letters, your businesses, until the file is ready to fund.
+
+The Blueprint gets the file ready. Funding is a separate agreement, and someone from the Fundhub team walks you through it on that call.

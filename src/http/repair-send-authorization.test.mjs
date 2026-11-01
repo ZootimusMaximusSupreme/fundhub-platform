@@ -23,12 +23,23 @@ function harness({ owned = true, agreement = false, consent = false } = {}) {
     db: {
       async query(sql, params) {
         state.queries.push({ sql, params });
+        if (sql.includes("FROM dispute_letters")) {
+          assert.deepEqual(params.slice(0, 2), [ORG, CLIENT]);
+          return { rows: [{ id: SAVED_LETTER, bureau: "EX", target: "bureau",
+            status: "ready", body_text: "<p>synthetic only</p>",
+            case_id: null, furnisher_address_id: null }] };
+        }
         assert.match(sql, /FROM clients WHERE id = \$1 AND org_id = \$2/);
         assert.deepEqual(params, [CLIENT, ORG]);
         return { rows: owned ? [{ one: 1 }] : [] };
       }
     },
     requireAuth: async () => ({ id: STAFF, org_id: ORG, role: "inquiry_specialist" }),
+    hasActivePaidRepairProgram: async () => true,
+    loadClientReturnAddress: async () => ({
+      address_line1: "Recorded consumer address", address_city: "Phoenix",
+      address_state: "AZ", address_zip: "85001"
+    }),
     hasRepairAgreement: async (_db, args) => {
       state.agreementReads++;
       assert.deepEqual(args, { orgId: ORG, clientId: CLIENT });
@@ -41,6 +52,7 @@ function harness({ owned = true, agreement = false, consent = false } = {}) {
     },
     sendRepairLetters: async (_db, args) => {
       state.sent++;
+      assert.equal(args.enforceCurrentDisputeAuthorization, true);
       assert.deepEqual([args.orgId, args.clientId, args.staffId], [ORG, CLIENT, STAFF]);
       return { ok: true, results: [{ bureau: "EX", ok: true }] };
     }

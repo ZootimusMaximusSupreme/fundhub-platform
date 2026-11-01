@@ -10,6 +10,59 @@ import { sendRepairLetters, RepairSendError } from "../../src/repair/send.mjs";
 import { mailBureauLetter } from "../../src/metro2/delivery/send.mjs";
 import { dbDown } from "../../src/http/db-down.mjs";
 import { hasRepairAgreement, hasDisputeAuthorization } from "../../src/repair/dispute-auth.mjs";
+import { hasActivePaidRepairProgram } from "../../src/repair/active-paid-program.mjs";
+
+
+/** Bind a human mail request to this organization's persisted, approved letter.
+ * An ID alone cannot authorize a different body, bureau, case or recipient. */
+async function bindSavedMailLetters(database, { orgId, clientId, letters }) {
+  if (!letters.length) return { letters };
+  const ids = [...new Set(letters.map(l => String(l.letterId || l.letter_id).toLowerCase()))];
+  const r = await database.query(
+    `SELECT id, bureau, target, body_text, status, case_id, furnisher_address_id
+       FROM dispute_letters
+      WHERE org_id = $1::uuid AND client_id = $2::uuid AND id = ANY($3::uuid[])`,
+    [orgId, clientId, ids]
+  );
+  const saved = new Map((r.rows || []).map(row => [String(row.id).toLowerCase(), row]));
+  const approved = [];
+  for (const letter of letters) {
+    const row = saved.get(String(letter.letterId || letter.letter_id).toLowerCase());
+    if (!row) return { status: 404, error: "saved_repair_letter_not_found" };
+    if (!["generated", "ready"].includes(String(row.status || ""))) {
+      return { status: 409, error: "saved_repair_letter_not_ready" };
+    }
+    const bureau = String(row.bureau || "").toUpperCase();
+    const target = String(row.target || "bureau");
+    const html = String(row.body_text || "");
+    if (!bureau || !html.trim()) {
+      return { status: 409, error: "saved_repair_letter_incomplete" };
+    }
+    // No saved PDF checksum exists. The real staff UI sends saved body_text as
+    // HTML, never a PDF or manual to-address. Reject substitutes before claim.
+    if ((letter.bureau != null && String(letter.bureau).toUpperCase() !== bureau)
+      || (letter.target != null && String(letter.target) !== target)
+      || (letter.html != null && String(letter.html) !== html)
+      || (letter.body_text != null && String(letter.body_text) !== html)
+      || (letter.bodyText != null && String(letter.bodyText) !== html)
+      || letter.pdf != null || letter.pdfBase64 != null
+      || letter.to != null || letter.recipient != null
+      || letter.furnisherName != null || letter.furnisher != null
+      || (letter.caseId != null && String(letter.caseId) !== String(row.case_id || ""))
+      || (letter.case_id != null && String(letter.case_id) !== String(row.case_id || ""))
+      || (letter.furnisher_address_id != null && String(letter.furnisher_address_id) !== String(row.furnisher_address_id || ""))
+      || (letter.furnisherAddressId != null && String(letter.furnisherAddressId) !== String(row.furnisher_address_id || ""))) {
+      return { status: 409, error: "saved_repair_letter_content_mismatch" };
+    }
+    // Drop arbitrary request fields; only immutable saved document/routing may
+    // reach the existing atomic claim and provider adapter.
+    approved.push({
+      letterId: row.id, bureau, target, html,
+      caseId: row.case_id || null, furnisher_address_id: row.furnisher_address_id || null
+    });
+  }
+  return { letters: approved };
+}
 
 export default async function handler(req, res, deps = {}) {
   const database = deps.db ?? db;
@@ -56,6 +109,11 @@ export default async function handler(req, res, deps = {}) {
       if (!authorized) {
         return res.status(403).json({ ok: false, error: "repair_dispute_authorization_required" });
       }
+      // Historical consent cannot authorize mailing after cancellation or refund.
+      const activePaid = await (deps.hasActivePaidRepairProgram ?? hasActivePaidRepairProgram)(database, { orgId, clientId });
+      if (!activePaid) {
+        return res.status(409).json({ ok: false, error: "repair_enrollment_inactive_or_unpaid" });
+      }
     }
 
     // PostGrid mailing needs a saved letter so the existing DB claim can
@@ -67,8 +125,32 @@ export default async function handler(req, res, deps = {}) {
       return res.status(400).json({ ok: false, error: "saved_repair_letter_required" });
     }
 
-    const from = body.mail_from || body.mailFrom
-      || await loadClientReturnAddress(database, { orgId, clientId });
+    // Entire batch must match its saved rows before any address/provider call.
+    const bound = wantMail
+      ? await bindSavedMailLetters(database, { orgId, clientId, letters })
+      : { letters };
+    if (bound.error) return res.status(bound.status).json({ ok: false, error: bound.error });
+
+    // A saved state-AG letter records its target, but the AG postal address
+    // still depends on consumer state. Never take that state or the return
+    // address from the request body: both can be edited after the letter was
+    // approved and could route a real complaint to the wrong state.
+    const stateAgInBatch = wantMail && bound.letters.some(letter => letter.target === "state_ag");
+    // Mail must use the consumer's same-org identity, never body.mail_from or
+    // body.identity. A valid saved letter cannot authorize a forged sender.
+    const recordedReturnAddress = wantMail
+      ? await (deps.loadClientReturnAddress ?? loadClientReturnAddress)(database, { orgId, clientId })
+      : null;
+    if (stateAgInBatch && !recordedReturnAddress?.address_state) {
+      return res.status(409).json({ ok: false, error: "client_state_missing_for_ag" });
+    }
+    if (wantMail && !recordedReturnAddress?.address_line1) {
+      return res.status(409).json({ ok: false, error: "client_return_address_missing_for_mail" });
+    }
+    const from = wantMail ? recordedReturnAddress : (body.mail_from || body.mailFrom || null);
+    const mailIdentity = wantMail
+      ? { state: recordedReturnAddress.address_state || null }
+      : (body.identity || null);
     const mailSender = wantMail
       ? async (letter) => {
           const sent = await mailFn({
@@ -77,7 +159,7 @@ export default async function handler(req, res, deps = {}) {
             furnisherName: letter.furnisherName || letter.furnisher || null,
             to: letter.to || null,
             from,
-            identity: body.identity || null,
+            identity: mailIdentity,
             pdf: letter.pdf || letter.pdfBase64,
             html: letter.html,
             description: letter.description
@@ -135,14 +217,25 @@ export default async function handler(req, res, deps = {}) {
       clientId,
       staffId: staff.id,
       mail: wantMail,
-      letters,
+      letters: bound.letters,
       from,
-      identity: body.identity || null,
+      identity: mailIdentity,
       mailSender,
+      enforceActivePaidRepair: wantMail,
+      enforceCurrentDisputeAuthorization: wantMail,
       env: deps.env,
       fetchImpl: deps.fetchImpl
     });
 
+    if (wantMail && !result.ok && result.results?.length
+      && result.results.every(r => ["repair_enrollment_inactive_or_unpaid", "repair_dispute_authorization_required"].includes(r.error))) {
+      const consentLost = result.results.some(r => r.error === "repair_dispute_authorization_required");
+      return res.status(consentLost ? 403 : 409).json({
+        ok: false,
+        error: consentLost ? "repair_dispute_authorization_required" : "repair_enrollment_inactive_or_unpaid",
+        results: result.results
+      });
+    }
     return res.status(200).json({ ok: true, ...result });
   } catch (err) {
     if (err instanceof RepairSendError) {
