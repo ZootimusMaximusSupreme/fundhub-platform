@@ -48,6 +48,11 @@ const APPS = [
   app("Ali Noor", "setter", "offer", { average: 3.6 }),
   app("Rae Closed", "closer", "applied", { status: "rejected", average: 1.5, recommendation: "review_likely_no" }),
 ];
+const DRAWER_PHONE = {
+  "Sam Ortega": "(602) 555-0103",
+  "Priya Raghunathan": "(602) 555-0101",
+  "Marcus Boone": "(602) 555-0102",
+};
 
 const open = (r, s) => APPS.filter((a) => a.role_key === r && a.status === "open" && (!s || a.stage_key === s));
 const benchOf = (role, target, manager) => {
@@ -233,7 +238,9 @@ test("Hiring: a card shows its person's own score, flags, source and video and r
       const sub = (await page.locator("#dwSub").textContent()).replace(/\s+/g, " ");
       assert.ok(sub.includes(a.application_id) && sub.includes(a.role_name) && sub.includes(a.stage_name) && sub.includes(`status ${a.status}`), `${a.full_name}: sub line ${sub}`);
       const body = (await page.locator("#dwBody").innerText()).replace(/\s+/g, " ");
-      assert.ok(body.includes(a.email) && body.includes(a.phone), `${a.full_name}: contact`);
+      assert.ok(body.includes(a.email), `${a.full_name}: email`);
+      assert.ok(body.includes(DRAWER_PHONE[a.full_name]), `${a.full_name}: readable phone`);
+      assert.ok(!body.includes(a.phone), `${a.full_name}: raw phone is not displayed`);
       assert.ok(body.includes(a.source) && body.includes(a.source_detail), `${a.full_name}: source`);
       assert.ok(body.includes(a.has_video ? `https://video.example.com/${a.application_id}` : "none submitted"), `${a.full_name}: video`);
       assert.ok(body.includes(a.has_resume ? "resume ✓" : "resume ✗"), `${a.full_name}: resume`);
