@@ -57,6 +57,36 @@ test("one real KPI miss reaches the named manager's dated calendar once", async 
   assert.match(created[0].detail, /decide whether coaching or a PIP is needed/);
 });
 
+test("owner-set Chris gets the same closer review while other owners stay out", async () => {
+  const created = [];
+  const db = { async query(sql, params) {
+    if (/FROM staff s/.test(sql)) {
+      assert.match(sql, /lower\(btrim\(s\.email\)\) = \$4/);
+      assert.match(sql, /lower\(btrim\(s\.name\)\) = \$5/);
+      assert.deepEqual(params.slice(3), ["chris@fundhub.ai", "chris stanbridge"]);
+      return { rows: [
+        { org_id: ORG, staff_id: STAFF, name: "Chris Stanbridge", email: "chris@fundhub.ai",
+          role: "owner", is_demo: false, held: 10, deposits: 2 },
+        { org_id: ORG, staff_id: "other-owner", name: "Other Owner", email: "other@fundhub.ai",
+          role: "owner", is_demo: false, held: 10, deposits: 0 }
+      ] };
+    }
+    if (/SELECT id FROM staff WHERE id/.test(sql)) return { rows: [{ id: MANAGER }] };
+    if (/FROM tasks/.test(sql)) return { rows: [] };
+    throw new Error(`unexpected SQL: ${sql}`);
+  } };
+  const result = await runManagerKpiReview(db, {
+    now: NOW,
+    assigneeFor: async () => ({ assigneeRole: "sales_manager", assigneeStaffId: MANAGER }),
+    createTask: async (_db, spec) => { created.push(spec); return { created: true, id: "chris-review" }; }
+  });
+  assert.equal(result.checked, 1);
+  assert.equal(result.flagged, 1);
+  assert.equal(result.created, 1);
+  assert.deepEqual(created.map(task => task.title), ["Review closer KPI: Chris Stanbridge"]);
+  assert.equal(created[0].assigneeStaffId, MANAGER);
+});
+
 test("a missing named hiring role resolves the sole active sales manager", async () => {
   const writes = [];
   const db = { async query(sql) {

@@ -53,14 +53,17 @@ test("manager KPI review creates one owned dated task per closer and month on re
 
     const orgA = randomUUID(), orgB = randomUUID();
     const closerA = randomUUID(), managerA = randomUUID();
+    const chrisA = randomUUID(), otherOwnerA = randomUUID();
     const closerB = randomUUID(), managerB = randomUUID();
     const clientA = randomUUID(), clientB = randomUUID();
     await db.query(`INSERT INTO staff (id, org_id, name, email, role, status) VALUES
       ($1,$2,'Avery Closer','avery@example.invalid','closer','active'),
       ($3,$2,'Morgan Manager','morgan@example.invalid','sales_manager','active'),
       ($4,$5,'Blair Closer','blair@example.invalid','closer','active'),
-      ($6,$5,'Taylor Manager','taylor@example.invalid','sales_manager','active')`,
-    [closerA, orgA, managerA, closerB, orgB, managerB]);
+      ($6,$5,'Taylor Manager','taylor@example.invalid','sales_manager','active'),
+      ($7,$2,'Chris Stanbridge','chris@fundhub.ai','owner','active'),
+      ($8,$2,'Other Owner','other@example.invalid','owner','active')`,
+    [closerA, orgA, managerA, closerB, orgB, managerB, chrisA, otherOwnerA]);
     await db.query(`INSERT INTO hiring_roles
       (org_id, key, hiring_manager_staff_id, owner_role) VALUES
       ($1,'closer',$2,'sales_manager'), ($3,'closer',NULL,'sales_manager')`,
@@ -68,7 +71,8 @@ test("manager KPI review creates one owned dated task per closer and month on re
     await db.query("INSERT INTO clients (id, org_id) VALUES ($1,$2),($3,$4)",
       [clientA, orgA, clientB, orgB]);
     for (const [orgId, clientId, staffId] of [
-      [orgA, clientA, closerA], [orgB, clientB, closerB]
+      [orgA, clientA, closerA], [orgA, clientA, chrisA],
+      [orgA, clientA, otherOwnerA], [orgB, clientB, closerB]
     ]) {
       await db.query(`INSERT INTO call_outcomes
         (id, org_id, client_id, staff_id, outcome, transaction_id,
@@ -91,20 +95,26 @@ test("manager KPI review creates one owned dated task per closer and month on re
     const now = new Date("2026-10-30T14:30:00Z");
     const first = await runManagerKpiReview(db, { orgId: orgA, now });
     assert.deepEqual({ checked: first.checked, flagged: first.flagged, created: first.created, ok: first.ok },
-      { checked: 1, flagged: 1, created: 1, ok: true });
+      { checked: 2, flagged: 2, created: 2, ok: true });
     const savedA = (await db.query("SELECT * FROM tasks WHERE org_id = $1", [orgA])).rows;
-    assert.equal(savedA.length, 1);
-    assert.equal(savedA[0].client_id, null, "staff work is not attached to a customer");
-    assert.equal(savedA[0].source_workflow, SOURCE_WORKFLOW);
-    assert.equal(savedA[0].assignee_role, "sales_manager");
-    assert.equal(savedA[0].assignee_staff_id, managerA, "the configured manager receives A's task");
-    assert.equal(savedA[0].due_at.toISOString(), "2026-11-02T17:00:00.000Z");
-    assert.match(savedA[0].detail, /2 deposits from 10 held calls/);
-    assert.match(savedA[0].detail, /decide whether coaching or a PIP is needed/);
+    assert.equal(savedA.length, 2, "the ordinary and owner-set closers each get one review");
+    for (const [staffId, name] of [[closerA, "Avery Closer"], [chrisA, "Chris Stanbridge"]]) {
+      const task = savedA.find(row => row.body.includes(staffId));
+      assert.ok(task, `${name} has a task`);
+      assert.equal(task.client_id, null, "staff work is not attached to a customer");
+      assert.equal(task.source_workflow, SOURCE_WORKFLOW);
+      assert.equal(task.assignee_role, "sales_manager");
+      assert.equal(task.assignee_staff_id, managerA, "the configured manager receives A's task");
+      assert.equal(task.due_at.toISOString(), "2026-11-02T17:00:00.000Z");
+      assert.match(task.detail, /2 deposits from 10 held calls/);
+      assert.match(task.detail, /decide whether coaching or a PIP is needed/);
+    }
+    assert.ok(savedA.every(row => !row.body.includes(otherOwnerA)),
+      "another owner is not treated as a closer");
 
     const replay = await runManagerKpiReview(db, { orgId: orgA, now });
     assert.equal(replay.created, 0);
-    assert.equal((await db.query("SELECT count(*)::int AS n FROM tasks")).rows[0].n, 1,
+    assert.equal((await db.query("SELECT count(*)::int AS n FROM tasks")).rows[0].n, 2,
       "a staff-only NULL-client task remains unique on replay");
 
     const otherOrg = await runManagerKpiReview(db, { orgId: orgB, now });
@@ -113,7 +123,7 @@ test("manager KPI review creates one owned dated task per closer and month on re
     assert.equal(savedB.length, 1);
     assert.equal(savedB[0].assignee_staff_id, managerB,
       "B's sole active manager receives B's task, never A's manager");
-    assert.equal((await db.query("SELECT count(*)::int AS n FROM tasks")).rows[0].n, 2);
+    assert.equal((await db.query("SELECT count(*)::int AS n FROM tasks")).rows[0].n, 3);
   } finally {
     await db.query("ROLLBACK").catch(() => {});
     db.release();
