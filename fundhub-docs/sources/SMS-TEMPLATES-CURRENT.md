@@ -54,7 +54,7 @@ You're booked, {{contact.first_name}}. {{appointment.start_time}} with a Fundhub
 {{contact.first_name}} — your Fundhub call is tomorrow, at {{appointment.start_time}}. Bring your business details; your advisor goes through your numbers with you live. If you haven't yet, accept the calendar invite in your email, or move it: {{custom_values.booking_link}} Reply STOP to opt out.
 ## SMS-S04-03-REMIND-2H
 
-{{contact.first_name}} — your Fundhub call is in about two hours, at {{appointment.start_time}}. The meeting link is in your calendar invite. Need to move it? {{custom_values.booking_link}} Reply STOP to opt out.
+{{contact.first_name}} — your Fundhub call is in about two hours, at {{appointment.start_time}}. Join with the link in your calendar invite, or move it: {{custom_values.booking_link}} Reply STOP to opt out.
 ## SMS-S05-01-NOSHOW
 
 Hey {{contact.first_name}}, it's Chris from Fundhub. Looks like we missed you today. No stress. Grab a new time here: {{custom_values.booking_link}} Reply STOP to opt out.

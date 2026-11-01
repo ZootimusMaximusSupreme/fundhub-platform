@@ -43,7 +43,7 @@ $c$You're booked, {{contact.first_name}}. {{appointment.start_time}} with a Fund
   ('SMS-S04-02-REMIND-24H',
 $c${{contact.first_name}} — your Fundhub call is tomorrow, at {{appointment.start_time}}. Bring your business details; your advisor goes through your numbers with you live. If you haven't yet, accept the calendar invite in your email, or move it: {{custom_values.booking_link}} Reply STOP to opt out.$c$),
   ('SMS-S04-03-REMIND-2H',
-$c${{contact.first_name}} — your Fundhub call is in about two hours, at {{appointment.start_time}}. The meeting link is in your calendar invite. Need to move it? {{custom_values.booking_link}} Reply STOP to opt out.$c$),
+$c${{contact.first_name}} — your Fundhub call is in about two hours, at {{appointment.start_time}}. Join with the link in your calendar invite, or move it: {{custom_values.booking_link}} Reply STOP to opt out.$c$),
   ('SMS-AISET03-MSG1',
 $c$Hey {{contact.first_name}}, it's Chris at Fundhub. Tried calling about your strategy call. To lock in your time, accept the calendar invite in your email. Need a new time? {{custom_values.booking_link}}
 Reply STOP to opt out.$c$),

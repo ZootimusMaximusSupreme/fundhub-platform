@@ -131,7 +131,7 @@ export const KNOWN_TEMPLATES = [
   {
     template_key: "SMS-S04-03-REMIND-2H",
     channel: "sms",
-    body: "{{contact.first_name}} — your Fundhub call is in about two hours, at {{appointment.start_time}}. The meeting link is in your calendar invite. Need to move it? {{custom_values.booking_link}} Reply STOP to opt out."
+    body: "{{contact.first_name}} — your Fundhub call is in about two hours, at {{appointment.start_time}}. Join with the link in your calendar invite, or move it: {{custom_values.booking_link}} Reply STOP to opt out."
   },
   {
     template_key: "SMS-NOBOOK-01",
