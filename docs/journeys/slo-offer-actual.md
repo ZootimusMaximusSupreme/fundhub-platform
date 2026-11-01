@@ -56,6 +56,7 @@ flowchart TD
   matched to that row, and `public/roadmap/pay.html` is the one door that still navigates to it.
 - `api/public/slo-pull.mjs` — POST only. Matching `ref` + `client_id` required. Server stores `soft-pull-v3` consent text (`ROADMAP_SOFT_PULL_VERSION`, "Fundhub LLC", since 2026-10-02; other consent screens still store v2). Then `diagnostic.paid`.
 - `src/slo/buyer.mjs` — client, portal account, `slo_ref` stamp.
+- `src/handlers/payment-links.mjs` — a signed checkout receipt must match the saved link's buyer, invoice, and link ID when those IDs are present. A `slo_` link opens paid access only when the captured amount covers its saved `amount_cents`; a smaller receipt leaves the link open.
 - `src/slo/deliver.mjs` — same UnderwriteIQ funding pack and email the closer deck uses. The four analysis docs are the gold HTML pages (`src/deliverables/`), not the short PDFs. Since 2026-10-02 the pack also carries the free bonus, the Business Duplication Map (`src/deliverables/business-duplication-map.mjs`), saved as its own `business_duplication_map` document — see `docs/journeys/business-duplication-map-flow.md`.
 - `src/workflows/slo-pack-delivery.mjs` — on `analysis.completed`, only if `slo_ref` is on the client.
 - C-00 / C-06 / U-03 / U-04 are unchanged. ClickFunnels adapter is unchanged.

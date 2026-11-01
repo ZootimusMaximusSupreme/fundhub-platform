@@ -118,7 +118,8 @@ waypoints, and all three clients anywhere with a checklist were repair clients.
 ```mermaid
 flowchart TD
     P["a payment event<br/>payment.received / deposit.paid / diagnostic.paid / sale.closed"] --> R["money-chain resolves the product<br/>name, then alias, never the dollar amount"]
-    R --> G["grantForPurchase()<br/>src/handlers/money-chain.mjs<br/>the one funnel every purchase path goes through"]
+    R --> V["invoice/payment-link context, when present:<br/>the same receipt gate for every purchase event"]
+    V --> G["grantForPurchase()<br/>src/handlers/money-chain.mjs<br/>only after a durable sale payment"]
     G --> E["grantFromTransaction()<br/>entitlements granted FIRST"]
     E --> Q{"product code = consulting-package?<br/>(the Capital Blueprint, read from src/config/offers.mjs)"}
     Q -->|"no — DIY letter pack, diagnostic, repair, anything else"| N["no checklist.<br/>returns skipped: not_a_checklist_product"]
@@ -126,6 +127,19 @@ flowchart TD
     S -->|"it fails"| F["caught and reported as checklist.ok = false,<br/>one warn line in the log.<br/>The payment, sale, commission and entitlement all stand."]
     S -->|"it works"| W["client_waypoints<br/>(the Seeding diagram above, unchanged)"]
 ```
+
+As of 2026-10-31, `diagnostic.paid`, `deposit.paid`, and `sale.closed` reuse
+`onPaymentReceivedMoney` when an invoice, payment link, or fee is named. A second
+semantic event cannot bypass an invoice conflict rejected by `payment.received`.
+Declines and captures retain the same link-derived product bucket even without a provider title.
+A captured receipt must match provider and product as well as buyer, status, and amount before paid effects.
+The provider transaction may move from failed to succeeded only for the same
+buyer, provider, product, and amount; late failures cannot downgrade captured
+money. A/R allocation also refuses an existing failed or conflicting transaction before
+writing an invoice receipt or announcing `invoice.paid`; supported invoice-only
+receipts without a transaction retain their invoice identity checks. Receipt and
+entitlement replay still use the same transaction identity.
+These are source and regression-test facts; no new live processor receipt is claimed.
 
 * **Thin credit file.** The seeder reads the client's latest real credit pull itself. A Blueprint
   buyer nobody has pulled yet gets the five steps that need no file and no card steps at all

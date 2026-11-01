@@ -194,4 +194,56 @@ describe("A/R explicit checkout ID cannot be rescued by conflicting reference (r
       assert.equal(replay.replay, true);
       assert.equal(await count(invoice), 1);
     });
+    test("unknown explicit invoice cannot be rescued by a valid same-org checkout", async () => {
+      const valid = await issue(orgId, buyerId);
+      const link = await makeLink(orgId, buyerId, valid);
+      const paymentId = `ar-unknown-explicit-${randomUUID()}`;
+      const got = await allocatePayment(tx, receipt(randomUUID(), link.id, link.link_ref, paymentId));
+      assert.equal(got.allocated, false);
+      assert.equal(got.reason, "invoice_mismatch");
+      assert.equal("invoiceId" in got, false, "unknown invoice must not disclose alternate bill");
+      assert.equal(await count(valid), 0);
+      assert.equal((await getInvoice(conn, { invoiceId: valid.id })).status, "sent");
+      const tasks = await conn.query(
+        "SELECT client_id FROM tasks WHERE org_id = $1 AND source_workflow = 'ar-allocate' AND body = $2",
+        [orgId, `explicit-invoice-unknown:${paymentId}`]
+      );
+      assert.equal(tasks.rows.length, 1, "hold the signed receipt for manual review");
+      assert.equal(String(tasks.rows[0].client_id), String(buyerId));
+    });
+
+    test("conflicting camel and snake invoice locators cannot credit either bill", async () => {
+      const first = await issue(orgId, buyerId);
+      const other = await issue(orgId, buyerId);
+      const link = await makeLink(orgId, buyerId, first);
+      const paymentId = `ar-invoice-alias-conflict-${randomUUID()}`;
+      const event = receipt(first.id, link.id, link.link_ref, paymentId);
+      event.payload.invoice_id = other.id;
+      const got = await allocatePayment(tx, event);
+      assert.equal(got.allocated, false);
+      assert.equal(got.reason, "invoice_identity_conflict");
+      assert.equal("invoiceId" in got, false);
+      assert.equal(await count(first), 0);
+      assert.equal(await count(other), 0);
+      const tasks = await conn.query(
+        "SELECT client_id FROM tasks WHERE org_id = $1 AND source_workflow = 'ar-allocate' AND body = $2",
+        [orgId, `invoice-identity-conflict:${paymentId}`]
+      );
+      assert.equal(tasks.rows.length, 1);
+      assert.equal(String(tasks.rows[0].client_id), String(buyerId));
+    });
+
+    test("matching invoice aliases still allow one correctly scoped receipt", async () => {
+      const valid = await issue(orgId, buyerId);
+      const link = await makeLink(orgId, buyerId, valid);
+      const paymentId = `ar-matching-alias-${randomUUID()}`;
+      const event = receipt(valid.id, link.id, link.link_ref, paymentId);
+      event.payload.invoice_id = valid.id;
+      const got = await allocatePayment(tx, event);
+      assert.equal(got.allocated, true);
+      assert.equal(got.appliedCents, 2500);
+      assert.equal(await count(valid), 1);
+      assert.equal((await getInvoice(conn, { invoiceId: valid.id })).status, "partially_paid");
+    });
+
   });

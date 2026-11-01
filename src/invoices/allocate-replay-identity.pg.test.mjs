@@ -115,6 +115,55 @@ describe("A/R replay must retain the original payer and invoice (real Postgres)"
       assert.notEqual(String(tasks.rows[0].client_id), String(secondClient));
     });
 
+    test("stored receipt identity gates allocation even when a capture callback claims success", async () => {
+      for (const mismatch of [
+        { status: "failed", amount: 90 },
+        { status: "failed" },
+        { amount: 90 },
+        { clientId: secondClient },
+        { provider: "whop" },
+        { product: "Deposit" }
+      ]) {
+        const invoice = await makeInvoice(firstClient);
+        const providerRef = `ar-stored-receipt-${randomUUID()}`;
+        await conn.query(
+          `INSERT INTO transactions (org_id, client_id, provider, provider_ref, product_name, status, amount_paid)
+           VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+          [orgId, mismatch.clientId || firstClient, mismatch.provider || "commas", providerRef,
+            mismatch.product || "Success fee", mismatch.status || "succeeded", mismatch.amount ?? 100]
+        );
+        const event = receipt(firstClient, invoice.id, providerRef, 100);
+        Object.assign(event.payload, { providerRef, source: "commas", productName: "Success fee" });
+        const result = await allocatePayment(transactionalDb, event);
+        assert.equal(result.allocated, false, JSON.stringify(mismatch));
+        assert.equal(result.reason, "transaction_receipt_mismatch");
+        assert.equal((await getInvoice(conn, { invoiceId: invoice.id })).status, "sent");
+        const counts = (await conn.query(
+          `SELECT
+             (SELECT count(*)::int FROM invoice_payments WHERE invoice_id = $1) AS payments,
+             (SELECT count(*)::int FROM events WHERE name = 'invoice.paid' AND payload->>'invoiceId' = $1::text) AS paid_events`,
+          [invoice.id]
+        )).rows[0];
+        assert.equal(counts.payments, 0);
+        assert.equal(counts.paid_events, 0);
+      }
+
+      const validInvoice = await makeInvoice(firstClient);
+      const providerRef = `ar-valid-receipt-${randomUUID()}`;
+      await conn.query(
+        `INSERT INTO transactions (org_id, client_id, provider, provider_ref, product_name, status, amount_paid)
+         VALUES ($1,$2,'commas',$3,'Success fee','succeeded',100)`,
+        [orgId, firstClient, providerRef]
+      );
+      const valid = receipt(firstClient, validInvoice.id, providerRef, 100);
+      Object.assign(valid.payload, { providerRef, source: "commas", productName: "Success fee" });
+      assert.equal((await allocatePayment(transactionalDb, valid)).allocated, true);
+      assert.equal((await getInvoice(conn, { invoiceId: validInvoice.id })).status, "paid");
+      assert.equal((await allocatePayment(transactionalDb, valid)).replay, true);
+      const paid = await conn.query("SELECT count(*)::int n FROM invoice_payments WHERE invoice_id = $1", [validInvoice.id]);
+      assert.equal(paid.rows[0].n, 1, "matching capture replay must retain a single receipt");
+    });
+
     test("zero and negative payment.received amounts are not silently acknowledged", async () => {
       const invoice = await makeInvoice(secondClient);
       for (const amount of [0, -15]) {
