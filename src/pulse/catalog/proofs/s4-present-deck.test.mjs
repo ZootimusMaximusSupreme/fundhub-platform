@@ -24,7 +24,7 @@ const DECK = {
     { key: "REPAIR_DFY", name: "Repair done for you", priceCents: 150000, priceDisplay: "$1,500", letters: false },
     { key: "FUNDING_DFY", name: "Funding done for you", priceCents: 500000, priceDisplay: "$5,000", letters: false },
   ],
-  soft_pull: null,
+  soft_pull: { consent_valid: true, diagnostic_paid: true, pull_status: "complete", crs_result_id: "s4-proof-result", sample: false },
 };
 
 async function openDeck(open, { query = `?contact=${CLIENT}` } = {}) {

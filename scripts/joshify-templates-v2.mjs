@@ -9,25 +9,25 @@
 import fs from "fs";
 
 const TAGLINE = "FundHub.ai • Funding Intelligence for Entrepreneurs";
-const SIGN_OFF = "– Josh\nFundHub.ai\n\n" + TAGLINE;
+const SIGN_OFF = "– Chris\nFundHub.ai\n\n" + TAGLINE;
 
 function joshify(s) {
   return String(s)
-    .replace(/\bit'?s Fund[Hh]ub\b/g, "it's Josh from Fundhub")
-    .replace(/(?<!Josh from )\bFund[Hh]ub here\b/g, "Josh from Fundhub here")
-    .replace(/\bFund[Hh]ub again\b/g, "Josh again")
-    .replace(/\bFund[Hh]ub update\b/gi, "Update from Josh")
-    .replace(/\bfrom Fund[Hh]ub\b/g, "from Josh at Fundhub")
-    .replace(/\blast nudge from Fund[Hh]ub\b/gi, "last nudge from Josh at Fundhub")
+    .replace(/\bit'?s Fund[Hh]ub\b/g, "it's Chris from Fundhub")
+    .replace(/(?<!Chris from )\bFund[Hh]ub here\b/g, "Chris from Fundhub here")
+    .replace(/\bFund[Hh]ub again\b/g, "Chris again")
+    .replace(/\bFund[Hh]ub update\b/gi, "Update from Chris")
+    .replace(/\bfrom Fund[Hh]ub\b/g, "from Chris at Fundhub")
+    .replace(/\blast nudge from Fund[Hh]ub\b/gi, "last nudge from Chris at Fundhub")
     .replace(/\bOur team is\b/g, "I'm")
     .replace(/\bour team is\b/g, "I'm")
-    .replace(/—\s*Fund[Hh]ub\b/g, "— Josh")
-    .replace(/–\s*Fund[Hh]ub\b/g, "– Josh")
-    .replace(/FundHub Document Team/g, "Josh at Fundhub")
-    .replace(/Josh from Josh at Fundhub/g, "Josh from Fundhub")
-    .replace(/from Josh at Josh at Fundhub/g, "from Josh at Fundhub")
-    .replace(/Quick note from Josh at Fundhub from Josh at Fundhub/g, "Quick note from Josh at Fundhub")
-    .replace(/it's Josh from Josh from Fundhub/g, "it's Josh from Fundhub");
+    .replace(/—\s*Fund[Hh]ub\b/g, "— Chris")
+    .replace(/–\s*Fund[Hh]ub\b/g, "– Chris")
+    .replace(/FundHub Document Team/g, "Chris at Fundhub")
+    .replace(/Chris from Chris at Fundhub/g, "Chris from Fundhub")
+    .replace(/from Chris at Chris at Fundhub/g, "from Chris at Fundhub")
+    .replace(/Quick note from Chris at Fundhub from Chris at Fundhub/g, "Quick note from Chris at Fundhub")
+    .replace(/it's Chris from Chris from Fundhub/g, "it's Chris from Fundhub");
 }
 
 function normalizeEmailBody(body) {
@@ -43,7 +43,7 @@ function normalizeEmailBody(body) {
   s = s.replace(/\n+FundHub\.ai\s*•\s*[^\n]+\n*/g, "\n");
   s = s.replace(/\n+–\s*\{\{sender_name\}\}\s*\n+FundHub\.ai\s*\n*/gi, "\n");
   s = s.replace(/\n+\{\{sender_name\}\}\s*\n+FundHub\.ai\s*\n*/gi, "\n");
-  s = s.replace(/\n+–\s*Josh\s*\n+FundHub\.ai\s*\n*/gi, "\n");
+  s = s.replace(/\n+–\s*Chris\s*\n+FundHub\.ai\s*\n*/gi, "\n");
   s = s.replace(/\n+FundHub\.ai\s*\n*$/i, "\n");
   s = s.trimEnd() + "\n\n" + SIGN_OFF + "\n";
   s = s.replace(/\n{4,}/g, "\n\n\n");
@@ -75,9 +75,9 @@ function transformSmsSource(filePath) {
       if (!m) return part;
       let body = m[2].trimEnd();
       let next = joshify(body);
-      if (!/Josh/i.test(next)) {
+      if (!/Chris/i.test(next)) {
         next = next.replace(/\s*Reply STOP to opt out\.?\s*$/i, "");
-        next = next.trimEnd() + "\n— Josh at Fundhub. Reply STOP to opt out.";
+        next = next.trimEnd() + "\n— Chris at Fundhub. Reply STOP to opt out.";
       } else if (!/Reply STOP/i.test(next) && /opt out/i.test(body)) {
         // keep stop line
       }
@@ -121,9 +121,9 @@ if (fs.existsSync(dumpPath)) {
       t.body = normalizeEmailBody(t.body);
     } else {
       let s = joshify(t.body);
-      if (!/Josh/i.test(s) && t.key !== "payment_link_notice") {
+      if (!/Chris/i.test(s) && t.key !== "payment_link_notice") {
         s = s.replace(/\s*Reply STOP to opt out\.?\s*$/i, "");
-        s = s.trimEnd() + "\n— Josh at Fundhub. Reply STOP to opt out.";
+        s = s.trimEnd() + "\n— Chris at Fundhub. Reply STOP to opt out.";
       }
       if (/Reply STOP/i.test(before) && !/Reply STOP/i.test(s)) {
         s = s.trimEnd() + " Reply STOP to opt out.";

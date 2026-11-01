@@ -36,6 +36,8 @@ GitHub is canonical. GitLab is retired (owner-set 2026-10-05). Same law: `.ai/ru
 Teleprompter speed (owner-set 2026-10-10). Same law: `.ai/rules/teleprompter-speed.md`
 Teleprompter camera locked (owner-set 2026-10-13). Same law: `.ai/rules/teleprompter-camera.md`
 GitHub ships main (owner-set 2026-10-09). Same law: `.ai/rules/github-ships-main.md`
+Preflight before every pull request (owner-set 2026-10-31). Same law: `.ai/rules/preflight-before-pr.md`
+Ship finished changes in order (owner-set 2026-10-31). Same law: `.ai/rules/ship-in-order.md`
 Never ask permission to run a tool (owner-set 2026-09-08). Same law: `.ai/rules/ground-rules.md`
 Agents run the work (owner-set 2026-09-16). Chris checks the shipped teleprompter on a real iPhone (owner-set 2026-10-13). Same law: `.ai/rules/agents-run-ops-not-chris.md`
 Direct URL only (owner-set 2026-09-21). Same law: `.ai/rules/ux-guidance-urls-first.md`
@@ -70,7 +72,10 @@ Page edits — marked draft first (owner-set 2026-09-29). Same law: `.ai/rules/p
 Clarity Data Export (owner-set 2026-09-29). Same law: `.ai/rules/clarity-export-rate-limit.md`
 No recycled lines across ads (owner-set 2026-10-15). Same law: `.ai/rules/ad-no-recycled-lines.md`
 100% certainty in scripts (owner-set 2026-10-15). Same law: `.ai/rules/copy-certainty.md`
+Day counts allowed in ads (owner-set 2026-10-31). The 72-hour guarantee can be said. Same law: `.ai/rules/copy-certainty.md`
 Know the offer before a script or an overlay (owner-set 2026-10-25). Read the offer. The pictures show the product steps, not only the last sentence. Same law: `.ai/rules/ad-know-the-offer.md`
+Copy skills are the foundation (owner-set 2026-10-31). Copybot writes the words, Visual Thinking picks the picture, Fundhub rules own the facts. Same law: `.ai/rules/copy-skills-foundation.md`
+Show real proof (owner-set 2026-10-31). Show the real thing whenever we have it, or merge it with a little diagram; the picture and the words prove each other. Same law: `.ai/rules/show-real-proof.md`
 Heartbeat on every build (owner-set 2026-10-07). A job is red if it has not run in 3 times its schedule. Same law: `.ai/rules/heartbeat-on-every-build.md`
 Human-click tests (owner-set 2026-08-16). Same law: `.ai/rules/test-means-human-click.md`
 Second line of the ad (owner-set 2026-09-28). Same law: `.ai/rules/ad-second-line.md`
@@ -102,11 +107,12 @@ No SSN before checkout step 3 (owner-set 2026-09-29). Same law: `.ai/rules/no-ss
 Outcome-first copy (owner-set 2026-09-29). Same law: `.ai/rules/outcome-first-copy.md`
 Funding sequence, not round two (owner-set 2026-10-06). Same law: `.ai/rules/funding-sequence-term.md`
 No API spend for now (owner-set 2026-10-06). Same law: `.ai/rules/no-api-spend-for-now.md`
-Owner calls already settled (owner-set 2026-10-09 to 2026-10-30). Same law: `.ai/rules/owner-calls-settled.md`
+Owner calls already settled (owner-set 2026-10-09 to 2026-10-31). Same law: `.ai/rules/owner-calls-settled.md`
 Model by job (owner-set 2026-10-06 and 2026-10-23). Same law: `.ai/rules/model-by-job.md`
 When the rules settle a choice, make it and say what you did (owner-set 2026-10-23). Same law: `.ai/rules/owner-go-no-repeat-approval.md`
 Rules never drift (owner-set 2026-10-24). Same law: `.ai/rules/rules-no-drift.md`
 No new markdown files (owner-set 2026-10-24). Do not create new .md files unless I ask for one. Update an existing file instead. Same law: `.ai/rules/no-new-markdown.md`
+No Josh, it is Chris (owner-set 2026-10-31). Josh is gone. Everything a lead, client or staff member reads or hears says Chris, including the AI setter. Same law: `.ai/rules/no-josh-chris-everywhere.md`
 
 ## 3. Before writing any code
 

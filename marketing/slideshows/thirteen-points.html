@@ -1,0 +1,1102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fundhub 13 Optimization Points</title>
+<meta name="description" content="13 optimization points decide how much funding your file gets, and they only work in the right order.">
+<!--
+  Deck TP · 13 optimization points
+  Lane: Blueprint and credit optimization (everyone under 700)
+  Hammer Them pillar: 2nd-layer question
+  Belief: My file has 13 optimization points, they only work in the right
+          order, and the order starts on my personal file.
+
+  Chris's direction (2026-10-31): his call-slide style (a coded label, a big
+  headline, full lines of copy with the pastel stripe), more copy, real first
+  with a little branded mark on top, and a diagram alone only when nothing
+  real shows the point.
+
+  Rules this deck follows (marketing/ads/RULES.md)
+  - Hook = the first two sentences (TP-01 headline and lede). The first
+    subject is the file's 13 points, not us (2.2). No ask, no question.
+  - It tells them something they don't know: the points only work in order,
+    and the order starts on the personal file (Part 0 rule 26). Line 2 opens
+    the loop ("the order starts on your personal file") and TP-02 to TP-05
+    pay it off (rules 27, 28).
+  - "13 optimization points" is Chris's set term (animation-no-echo:18). No
+    source names the 13 one by one, so this deck shows the six named groups
+    and never a list of 13, and it never labels the engine's checks "the 13"
+    (lane rule).
+  - "Maximum amount of funding" stays exactly as written (Part 0 rule 7).
+  - Full sentences, say what things are (rules 15 to 17). No EIN, DUNS or
+    net-30 (rule 5): the business group is said the way Chris said it.
+  - Evergreen spine (3.13): the thing they don't know (TP-01), the groups
+    (TP-02), why the order (TP-03), the proof (TP-04, TP-05), the soft door
+    (TP-06). No price, no date, no scarcity (3.14). No amount or approval
+    promise (the Blueprint agreement, 3.1).
+
+  Copybot (marketing/copy-skills/copybot/)
+  - One central idea: the belief above, so no offer, price or call to action.
+  - The reader's question: "What are these 13 points, and why the order?"
+  - Lead: a proclamation in Chris's voice (owner-voice.md and the sources it
+    lists: chris-voice-profile.md, ads/VOICE.md, ads/RULES.md Part 0), with
+    the green-lit Capital Blueprint ad and VSL lines reused where they fit.
+
+  Visual Thinking (marketing/copy-skills/visual-thinking/), every step.
+  - Real first (law: show-real-proof): TP-04 shows the engine's own check
+    list and TP-05 shows the real Blueprint screen, each with a mark on top.
+    TP-01, TP-02, TP-03 and TP-06 are diagrams, because a count, an order and
+    the call are things nothing real shows better.
+  - Look: the facts came first, each with its source in data-src. One sample
+    for the whole deck: the FinanceOS sample client on the real Blueprint
+    screen (src/finance/sample-credit-file.mjs; the stills in
+    ops/workflows/build-evidence/blueprint-timelapse-2026-10-21/, stamped
+    SIMULATION). TP-01 to TP-04 carry no sample figures.
+  - See: the things are the 13 points, the six groups, your personal file,
+    each business on its own, the engine's checks and the screen that shows
+    them. The pattern: the work goes in order, and the engine keeps score.
+  - Imagine (SQVID): simple (the count) before elaborate (the groups, then
+    the checks). Vision (the maximum amount of funding) tied to execution
+    (the order).
+  - Show, by Dan Roam's six ways of seeing (methods.md):
+    TP-01 how many, the count: a big 13 and a spectrum bar from your file
+      today to the maximum amount of funding.
+    TP-02 what, the six groups in order as a numbered path.
+    TP-03 when, a timeline of stairs: personal file, banks and money,
+      business one, business two.
+    TP-04 how, real: the engine's own checks, six personal and five per
+      business, marked "One point each". The anchor card's dollar figure is
+      left off (it is also a Fundhub price pattern); see the report.
+    TP-05 how many, real: the real Blueprint screen's check tiles at month
+      three, marked "The engine's checks".
+    TP-06 who/what, a portrait of the call: the points your file needs, in
+      order, on one shared screen.
+  - Truth check (applications.md): no picture implies an amount, an approval
+    or a speed. Samples say Sample. The engine's checks are labeled as the
+    engine's checks, never as the 13.
+  - Display check (delivery-and-collaboration.md): every slide viewed at
+    390 pixels wide before it shipped.
+
+  Talking points (aside.talk, hidden from viewers; open with #notes or N):
+  about 45 to 60 seconds a slide, so the video runs about five minutes and
+  each slide chops into its own short clip. Sources: the same lines as each
+  slide's data-src, plus Chris 2026-10-31 (chris-voice-profile.md:33;
+  backend-selling-lanes-2026-10-30.md:213). A "Your story" cue asks Chris for
+  his own real story; nothing is invented.
+
+  Each slide's data-src names the file and line its facts come from.
+  The shared design is copied in by build.mjs. Edit _shell/, not this copy.
+-->
+<!-- fh:shell:head -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Nunito:wght@500..800&display=swap">
+<style data-fh="doc">:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}[hidden]{display:none!important}</style>
+<style data-fh="brand">
+/* public/app/fundhub-brand.css */
+/* Fundhub workspace tokens — native welcome reference, October 2026.
+   Tenant branding still paints through shell.js; semantic status tokens stay fixed. */
+
+:root{
+  /* THE spectrum. Pastel. Coral -> peach -> butter -> sage -> powder -> lavender. */
+  --spectrum:linear-gradient(90deg,#F2A69B 0%,#F5CE8F 20%,#F2E39B 40%,#A8D8B0 60%,#A9C6E8 80%,#C4B3E5 100%);
+
+  --paper:#F8F8F6; --ink:#0D1113; --ink2:#252A2D;
+  --gray:#626968; --gray2:#858C89;
+  --line:#E3E5E0; --soft:#F0F1ED;
+  --card:#111113; --cardline:#26262B; --cardtext:#E4E4E7;
+
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,monospace;
+  --sans:ui-rounded,'SF Pro Rounded',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+
+  /* Status colors are spectrum stops. Do not invent others. */
+  --ok:#A8D8B0;      /* sage    - active, on pace, success, healthy */
+  --warn:#F5CE8F;    /* peach   - in progress, behind, warning */
+  --alert:#F2A69B;   /* coral   - blocked, failed, alert */
+  --info:#A9C6E8;    /* blue    - informational */
+  --accent:#C4B3E5;  /* lavender- accent */
+
+  --logo:url(data:image/svg+xml;base64,PHN2ZyB2ZXJzaW9uPSIxLjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgd2lkdGg9IjI2OTguMTQ4NDcxcHQiIGhlaWdodD0iNTQyLjk3ODc1OXB0IiB2aWV3Qm94PSIwIDAgMjY5OC4xNDg0NzEgNTQyLjk3ODc1OSIgcHJlc2VydmVBc3BlY3RSYXRpbz0ieE1pZFlNaWQgbWVldCI+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTE0Mi4wMDAwMDAsNjkxLjkwMjU0NSkgc2NhbGUoMC4xMDAwMDAsLTAuMTAwMDAwKSIgZmlsbD0iIzBBMEEwQSIgc3Ryb2tlPSJub25lIj48cGF0aCBkPSJNMjc4MCA2OTA1IGMtMTAxIC0yMyAtMTg3IC01MyAtMjc1IC05NiAtMjY3IC0xMzMgLTQ1MyAtMzQyIC01NTYgLTYyNCAtNTQgLTE1MCAtNjEgLTIxMiAtNjYgLTU2NSAtMyAtMjMzIC03IC0zMTYgLTE2IC0zMjIgLTcgLTQgLTEwMiAtOCAtMjEzIC04IC0xODIgMCAtMjAyIC0yIC0yMTcgLTE4IC0xNSAtMTcgLTE3IC02NiAtMTcgLTQ5MyAwIC0zNTYgMyAtNDc4IDEyIC00ODcgOSAtOSA3MSAtMTIgMjE4IC0xMiAxNDcgMCAyMDkgLTMgMjE4IC0xMiA5IC05IDEyIC0zMTYgMTIgLTEzMTcgMSAtMTA3MCAzIC0xMzA5IDE0IC0xMzIzIDEyIC0xNyA1MCAtMTggNTMzIC0xOCAzOTAgMCA1MjIgMyA1MzEgMTIgOSA5IDEyIDMxNSAxMiAxMzE2IDAgODc5IDMgMTMxMCAxMCAxMzIzIDEwIDE4IDIzIDE5IDIyNSAxOSAyMTAgMCAyMTQgMCAyMjkgMjIgMTQgMjAgMTYgODIgMTYgNDg0IGwwIDQ2MyAtMjYgMjAgYy0yNSAyMCAtMzkgMjEgLTIzMCAyMSAtMTkxIDAgLTIwNCAxIC0yMTQgMTkgLTYgMTIgLTEwIDEwMCAtMTAgMjE2IDAgMzAxIC01IDI5NSAyNjEgMjk1IDE2NyAwIDE4OCAyIDIwMiAxOCAxNSAxNyAxNyA2OCAxNyA1MzMgLTEgNDEyIC0zIDUxNyAtMTQgNTMyIC0xMiAxNiAtMzggMTcgLTMwNyAxNiAtMTkxIC0xIC0zMTMgLTYgLTM0OSAtMTR6Ii8+PHBhdGggZD0iTTE0MDUxIDY0MDcgYy04IC0xMCAtMTIgLTE5NiAtMTMgLTYzMiAtMyAtNTY4IC00IC02MTkgLTIwIC02MjggLTEzIC05IC0yMSAtNyAtMzUgNSAtMTggMTYgLTE4NSAxMDIgLTI1MyAxMzEgLTIyOSA5NyAtNTQ2IDEzNiAtODI1IDEwMyAtMTk4IC0yNCAtMjY0IC0zOSAtNDE0IC05OCAtMjUwIC05OCAtNDI5IC0yMTUgLTYyNSAtNDExIC03OCAtNzggLTE2MyAtMTY5IC0xODggLTIwMiAtNjMgLTg0IC0xMTggLTE2NCAtMTE4IC0xNzEgMCAtMyAtOCAtMTggLTE5IC0zMiAtNjUgLTk0IC0xNzIgLTM0MyAtMjEwIC00ODkgLTMwIC0xMTcgLTMxIC0xMjIgLTYwIC0zMzMgLTE3IC0xMjAgLTQgLTQzNyAyNCAtNjAwIDUzIC0zMDkgMjI3IC02NzIgNDM2IC05MTEgMjQwIC0yNzUgNDM4IC00MjEgNzM0IC01NDIgMTMwIC01MyAyMTggLTc1IDM4MCAtOTYgOTAgLTEyIDQ0OCAtNyA1MDAgNyAyMiA2IDY1IDE2IDk1IDIzIDEzNiAzMCAzNTkgMTIyIDQ5MiAyMDIgMjAgMTIgNTcgMzUgODIgNTAgNzIgNDQgODAgMzcgODQgLTYzIDIgLTQ2IDggLTkwIDE0IC05NyAxNSAtMTggOTc4IC0xOSA5OTYgLTEgMTcgMTcgMTcgNDc2OSAwIDQ3ODYgLTE5IDE5IC0xMDQxIDE3IC0xMDU3IC0xeiBtLTYzMCAtMjAzNSBjMTMgLTYgNDQgLTE2IDY5IC0yMyA1MyAtMTYgMTYxIC03MSAyMTAgLTEwNyAxNzAgLTEyNyAzMTkgLTMzOSAzNjggLTUyNyAyMiAtODMgMjYgLTEyNCAyNiAtMjcwIDAgLTE1NCAtMTAgLTI2MSAtMjUgLTI3MSAtNSAtMyAtOSAtMTYgLTkgLTMwIDAgLTEzIC00IC0zMiAtOCAtNDIgLTU3IC0xMTkgLTEwNCAtMjA1IC0xMzYgLTI0NiAtNjggLTg4IC0xNTkgLTE3NiAtMjMxIC0yMjUgLTc2IC01MCAtOTIgLTU5IC0xOTcgLTEwMCAtMTI0IC00OCAtMzg2IC00NiAtNTMzIDQgLTEyNSA0MyAtMjM3IDExNyAtMzM0IDIyMyAtOTAgOTggLTExOSAxNDAgLTE2NiAyMzIgLTUwIDk5IC00NyA5MCAtODQgMjM1IC0yOCAxMTEgLTMyIDI0NiAtMTEgMzgwIDE4IDExOSAyMiAxMzUgMzEgMTQxIDUgMyA5IDEzIDkgMjMgMCAzMSA3MCAxNjMgMTI1IDIzNiA2NyA4OSAxNTUgMTgwIDIyNSAyMzIgNjYgNDkgMTY1IDEwMyAxOTAgMTAzIDExIDAgMjEgNCAyNCA5IDYgOSAyOSAxNSAxMjEgMzEgNjEgMTEgMzAzIDUgMzM2IC04eiIvPjxwYXRoIGQ9Ik0xNTU0NyA2NDAyIGMtMTYgLTE3IC0xNyAtMTk3IC0xNyAtMjM4NiAwIC0xNjEzIDMgLTIzNzMgMTAgLTIzODcgMTAgLTE4IDI3IC0xOSA1MzUgLTE5IDMyMSAwIDUyNiA0IDUzMCAxMCAzIDUgNSA0MjcgNSA5MzcgMCA4OTMgNSAxMDg1IDMyIDEyNTggNDMgMjc4IDE0NiA0NTQgMzEzIDUzNiBsNzAgMzQgMTUyIDAgYzEwOCAwIDE1NiAtNCAxNjUgLTEyIDYgLTcgMjAgLTEzIDI5IC0xMyAyNiAwIDkyIC0zOCAxMzcgLTc5IDU5IC01MiAxMDUgLTEyNyAxNDUgLTIzMyAzNCAtOTAgNDIgLTExOSA2OCAtMjU4IDkgLTQ4IDE0IC0zMzggMTYgLTExMTAgMyAtNzE1IDggLTEwNDggMTUgLTEwNTcgOCAtMTAgMTIwIC0xMyA1MjggLTEzIDQzOSAwIDUxOSAyIDUzMCAxNCAxNiAyMSA5IDIzNjAgLTggMjQ1NiAtNyAzNiAtMTcgOTIgLTIzIDEyNSAtMjggMTY1IC03MiAzMDQgLTEzNCA0MzAgLTEyMiAyNDYgLTM3NiA0ODEgLTY3MCA2MTkgLTE1MiA3MiAtMTY5IDc4IC0zMjUgMTE2IC03OSAyMCAtMjUxIDMyIC0zNDYgMjYgLTIzMiAtMTYgLTM3MCAtNTEgLTU0OCAtMTQxIC0xNjEgLTgxIC0xNDcgLTEzNyAtMTQ2IDU2MSAxIDQyNiAtMiA1NzkgLTExIDU5MCAtMTAgMTIgLTk1IDE0IC01MjQgMTQgLTQ4MyAwIC01MTMgLTEgLTUyOCAtMTh6Ii8+PHBhdGggZD0iTTIyOTYyIDY0MDggYy05IC05IC0xMiAtNTU0IC0xMiAtMjM4OSAwIC0xMzA4IDMgLTIzODQgNiAtMjM5MyA1IC0xNCA1OSAtMTYgNTA0IC0xNiAzOTYgMCA1MDAgMyA1MDggMTMgNiA3IDEyIDUxIDE0IDk3IDMgODEgNCA4NSAyNSA4MyAxMiAtMiA1NSAtMjUgOTUgLTUyIDE4NCAtMTIzIDM2MCAtMTk1IDU5OCAtMjQzIDg4IC0xOCA1MTMgLTE4IDU5NSAwIDMzIDcgODMgMTggMTEwIDIzIDIyOSA0OCA1MDMgMTg2IDcwNyAzNTYgMTQ3IDEyMiAzMzcgMzQyIDQxNCA0NzggNTIgOTMgMTE4IDIyNiAxNDAgMjgyIDE0IDM3IDI5IDc3IDM0IDg4IDQgMTEgMTMgNDAgMjAgNjUgNyAyNSAxNiA1NiAyMSA3MCAxMSAzMyAzNCAxMzggNTEgMjI1IDE3IDkyIDE4IDU4OCAxIDY2NSAtNiAzMCAtMTcgODIgLTIzIDExNSAtMTYgODIgLTY2IDI1NiAtOTAgMzEwIC01IDExIC0yNiA1OCAtNDcgMTA1IC01NSAxMjMgLTEyNyAyNDcgLTIwMSAzNDYgLTExOSAxNTkgLTMyMSAzNTkgLTQ0NiA0NDMgLTIwNSAxMzggLTQxMCAyMzAgLTU5NiAyNzEgLTMwIDYgLTY4IDE1IC04NSAyMCAtOTEgMjUgLTQzMSAzMiAtNTg1IDEyIC0xMjIgLTE3IC0yMjcgLTM5IC0zMDQgLTY3IC05NiAtMzMgLTI0OCAtMTA3IC0zMTIgLTE1MCAtNDAgLTI3IC01MCAtMzAgLTU5IC0xNSAtMyA1IC02IDI4MyAtNSA2MTcgMCA1MzggLTEgNjExIC0xNSA2MzEgbC0xNiAyMiAtNTE4IDAgYy0zODkgMCAtNTIwIC0zIC01MjkgLTEyeiBtMjEyMCAtMjA0MSBjMjYgLTcgNTAgLTE2IDU0IC0yMCA0IC00IDE2IC03IDI2IC03IDEwIDAgMjcgLTQgMzggLTEwIDExIC01IDI5IC0xNCA0MCAtMjAgMTc1IC04NyAzNDYgLTI4MCA0MjAgLTQ3MSA0NyAtMTIzIDUzIC0xNTggNTcgLTM2OSA2IC0yMzYgLTEwIC0zMzAgLTgyIC00ODUgLTEwMyAtMjIxIC0yOTUgLTM5OCAtNDk1IC00NTMgLTE5IC02IC01MiAtMTYgLTc0IC0yMiAtODUgLTI3IC0zOTMgLTEyIC00NTggMjEgLTEwIDUgLTI1IDkgLTMzIDkgLTggMCAtMjMgNCAtMzMgOSAtOSA1IC00NiAyMyAtODIgNDEgLTg0IDQyIC0xMzAgNzggLTIwOCAxNTkgLTE0OSAxNTYgLTIxNCAyODEgLTI2MiA1MTEgLTE0IDY2IC04IDM3NSA4IDQzNSA2IDIyIDE0IDU0IDE4IDcwIDExIDUyIDgwIDE5MCAxMjQgMjUxIDU0IDczIDE3MCAxODkgMjMwIDIzMCAxMDIgNjggMjM3IDEyMSAzNTUgMTM4IDU2IDggMzEwIC00IDM1NyAtMTd6Ii8+PHBhdGggZD0iTTkyMTAgNTM4OCBjLTQxIC01IC05MyAtMTQgLTExNSAtMTkgLTIyIC02IC01OCAtMTUgLTgwIC0yMSAtNzggLTIwIC0yMjEgLTgzIC0zMTAgLTEzNSAtNDkgLTMwIC05NiAtNTIgLTEwNSAtNTEgLTEwIDIgLTE2IDE3IC0xOCA0MyAtNyA3OSAyNCA3NSAtNTEyIDc1IC00NDkgMCAtNDc4IC0xIC00OTMgLTE4IC0xNiAtMTcgLTE3IC0xNTggLTE3IC0xODI0IDAgLTE0OTEgMiAtMTgwNyAxMyAtMTgxNyAxOSAtMTUgMTAzNCAtMTYgMTA1MyAwIDExIDkgMTQgMTg4IDE4IDEwMzcgNCA5ODAgOCAxMTMxIDM2IDEyNjYgNDAgMTk5IDE0OCAzMzcgMzMwIDQyMiAxOSA5IDQ2IDIxIDU5IDI4IDE0IDYgNzcgMTEgMTU1IDExIDEyNyAwIDEzMyAtMSAxOTcgLTMyIDExNCAtNTYgMTk4IC0xNTAgMjQ0IC0yNzMgOSAtMjUgMjAgLTU0IDI1IC02NSAxNiAtNDMgMjkgLTkzIDQwIC0xNjAgNiAtMzggMTYgLTk0IDIxIC0xMjQgNSAtMzEgOSAtNDkzIDkgLTEwNzAgMSAtODI5IDMgLTEwMTkgMTQgLTEwMzMgMTIgLTE3IDUwIC0xOCA1MzMgLTE4IDQ0MiAwIDUyMiAyIDUzMyAxNCAxNyAyMSA4IDIzMTcgLTkgMjQyNiAtNjEgMzgyIC0xMDEgNDk4IC0yNDQgNzE1IC03NCAxMTIgLTI2MiAzMDAgLTM3MiAzNzQgLTc5IDUyIC0yOTkgMTY0IC0zNTkgMTgzIC0yMTIgNjYgLTQ0NSA5MCAtNjQ2IDY2eiIvPjxwYXRoIGQ9Ik0zODU1IDUyNjQgYy0xNSAtMTUgLTE2IC0xMTYgLTEyIC0xMTk4IDIgLTg4OCA2IC0xMTk3IDE2IC0xMjQ2IDcgLTM2IDE3IC05MCAyMiAtMTIwIDI3IC0xNDggNzcgLTI5NiAxNTAgLTQ0NSAxNTEgLTMwNyA0NjggLTU3MSA4MzQgLTY5MyAxMzcgLTQ1IDI0MSAtNjIgNDM1IC03MCAzMjggLTE0IDUyMyAzMiA3MjYgMTcwIDM5IDI2IDc3IDQ4IDg1IDQ4IDkgMCAyNCAtMjIgMzYgLTUwIGwyMSAtNTAgNDgxIDAgYzQ2NSAwIDQ4MSAxIDQ5MSAxOSA3IDEzIDEwIDU5OCAxMCAxODE5IDAgMTczMCAtMSAxODAwIC0xOCAxODE1IC0xNyAxNSAtNjggMTcgLTUyMyAxNyAtNDIwIDAgLTUwOCAtMiAtNTI1IC0xNCAtMTkgLTE0IC0xOSAtNDAgLTI1IC0xMDkzIC01IC0xMDQ5IC02IC0xMDgwIC0yNiAtMTE2MyAtNDkgLTE5OSAtOTMgLTI5MSAtMTgzIC0zODAgLTEwNCAtMTA0IC0xODIgLTEzMyAtMzY2IC0xMzIgLTEzNSAwIC0yMTIgMTkgLTI5MSA3MyAtOTcgNjcgLTE4NiAyMTkgLTIyNSAzODQgLTI4IDEyMCAtMzEgMjAyIC0zNyAxMjI2IC01IDg4MiAtOCAxMDY5IC0yMCAxMDgyIC0xMiAxNSAtNjIgMTcgLTUyNyAxNyAtNDYwIDAgLTUxNCAtMiAtNTI5IC0xNnoiLz48cGF0aCBkPSJNMTkyNDcgNTI2MiBjLTE2IC0xNyAtMTcgLTEwOSAtMTcgLTExMTggMCAtMTA1MiA1IC0xMjQ5IDMxIC0xMzg0IDM1IC0xODIgNjEgLTI3NiAxMDIgLTM3NSA0NCAtMTA3IDc4IC0xNzYgMTA5IC0yMjIgMTUgLTIzIDI4IC00NSAyOCAtNDggMCAtMTQgMTIyIC0xNTQgMTkxIC0yMjAgMjAwIC0xODkgNDk1IC0zMzUgNzc0IC0zODQgMjA1IC0zNiA1NTcgLTI2IDY3MyAyMCAxMyA1IDMwIDkgMzkgOSAzNyAwIDI4OSAxMzggMzA4IDE2OSAxMSAxOCA0NSAtNyA0NSAtMzMgMCAtMTIgMTAgLTMyIDIzIC00NCAyMyAtMjIgMjQgLTIyIDQ5NSAtMjIgNDU2IDAgNDcyIDEgNDgyIDE5IDcgMTMgMTAgNTk4IDEwIDE4MTkgMCAxNzMwIC0xIDE4MDAgLTE4IDE4MTUgLTE3IDE1IC02OCAxNyAtNTIzIDE3IC00MjAgMCAtNTA4IC0yIC01MjUgLTE0IC0xOSAtMTQgLTE5IC00MCAtMjUgLTEwODggLTcgLTExMTkgLTYgLTExMDAgLTQ4IC0xMjQ4IC01IC0xOSAtMTMgLTQ2IC0xNiAtNjAgLTI5IC0xMTIgLTExMyAtMjM3IC0xOTYgLTI5MiAtOTUgLTYyIC0xNjYgLTgxIC0zMDkgLTgxIC0xNDcgMCAtMjIzIDIxIC0zMDYgODQgLTEyNiA5NiAtMTkzIDIzNSAtMjM5IDQ5NCAtMTIgNjYgLTE1IDI2NiAtMTUgMTEyMCAwIDkyNSAtMiAxMDQzIC0xNiAxMDYzIGwtMTUgMjIgLTUxMyAwIGMtNDg0IDAgLTUxNCAtMSAtNTI5IC0xOHoiLz48cGF0aCBkPSJNMjc1NDAgMzAxNSBjLTk4IC0yMyAtMTg3IC02MCAtMjYwIC0xMDkgLTk5IC02NiAtMjA4IC0xODkgLTI0OSAtMjgxIC03IC0xNiAtMTcgLTM4IC0yMiAtNDcgLTUgLTEwIC05IC0yNSAtOSAtMzMgMCAtOCAtNCAtMjMgLTkgLTMzIC0yOCAtNTUgLTQxIC0yNTggLTIwIC0zMzYgNiAtMjIgMTUgLTU5IDIxIC04MSAxNyAtNjYgODQgLTE5NyAxMzEgLTI1MyA1MiAtNjMgMTcwIC0xNTQgMjQyIC0xODggMTE3IC01NCAxODIgLTY4IDMyMCAtNjggMTA3IDAgMTQyIDQgMjAwIDIyIDE2NiA1MyAzMDAgMTUwIDM5MiAyODQgOTkgMTQzIDEyNCAyMjcgMTI0IDQxMyAxIDE4NCAtMjQgMjY5IC0xMjQgNDEzIC01MyA3NyAtMTQ0IDE2NyAtMTkzIDE5MiAtMTYgOCAtNDAgMjIgLTU0IDMxIC0xMTEgNzMgLTM0MiAxMDggLTQ5MCA3NHoiLz48L2c+PC9zdmc+);
+}
+
+/* logo: background-image, no external file */
+.logo{display:inline-block;background:var(--logo) no-repeat center/contain}
+.inv{filter:invert(1)}  /* logo on dark chrome */
+
+/* ghost mark - footer, full width, barely there */
+.ghost-mark .logo{display:block;width:96vw;aspect-ratio:2698/543;margin:0 auto;
+  filter:invert(1);opacity:.05}
+
+/* coded mono eyebrow - the brand signature. E-01 / INTAKE, A-02 / STATUS, F-03 */
+.eyebrow{font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.16em;
+  text-transform:uppercase;color:var(--gray)}
+.eyebrow::before{content:"";display:inline-block;width:16px;height:2px;
+  background:var(--spectrum);border-radius:1px;margin-right:9px;vertical-align:middle}
+
+/* status chip */
+.chip{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);
+  font-size:var(--fs-caption);letter-spacing:.12em;text-transform:uppercase;padding:4px 9px;
+  border:1px solid var(--line);border-radius:20px;color:var(--gray)}
+.chip .cd{width:6px;height:6px;border-radius:50%}
+.chip.on .cd{background:var(--ok)}
+.chip.wip .cd{background:var(--warn)}
+.chip.bad .cd{background:var(--alert)}
+
+/* pulsing dot - "systems nominal" footer */
+.pulse{width:8px;height:8px;border-radius:50%;background:var(--ok);
+  position:relative;flex:0 0 auto}
+.pulse::after{content:"";position:absolute;inset:-4px;border-radius:50%;
+  border:1px solid var(--ok);animation:pulse 2s ease-out infinite}
+@keyframes pulse{to{transform:scale(1.9);opacity:0}}
+
+/* grid overlay on dark surfaces */
+.gridbg::before{content:"";position:absolute;inset:0;pointer-events:none;
+  background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);
+  background-size:56px 56px}
+
+/* Readable semantic defaults in rem. Screens can add a local type hierarchy;
+   these tokens no longer impose four sizes on every descendant. */
+html{font-size:100%}
+:root{
+  --fs-metric:2rem;       /* 32px */
+  --fs-title:1.375rem;    /* 22px */
+  --fs-body:.9375rem;     /* 15px */
+  --fs-caption:.8125rem;  /* 13px */
+}
+
+/* UI-STANDARDS.md §1 CONTENT WIDTH — FULL WIDTH, no cap.
+   Owner-set 2026-08-27, and UI-STANDARDS §1 updated in the same commit.
+   History: 1280px, raised to 1800px on 2026-08-17, removed now. Both earlier
+   values failed the same test. The owner zooms out on a 2560px monitor to get
+   more room and gets none, because the content stops growing and every extra
+   pixel becomes empty side margin: with the fixed 228px rail, a 1800px cap
+   leaves 532px dead at 2560 and 1412px dead at 3440. Reading measure belongs
+   on the text blocks that need it, not on every table, card grid and two-pane
+   layout in the app. Do not reinstate a cap here.
+
+   --fh-maxw IS STILL DEFINED ON PURPOSE. It is no longer an app-wide cap, but
+   client-portal.html:67 reads it as `min(780px, var(--fh-maxw))` to hold that
+   page's 780px reading column. Deleting the token makes the min() invalid at
+   computed-value time, which drops max-width to none and blows the client's
+   portal full width. Leave the token; it is a bound, not a layout. */
+/* --fh-statusbar reserves room for the fixed status strip at the bottom of the
+   page. It used to start at 0px and be overwritten at runtime by data.js:497
+   with the strip's measured height, which grew the page ~29px AFTER first paint
+   on every single load. Reserving the space up front removes that reflow; the
+   strip is position:fixed so this only ever reserves, never pushes twice. */
+/* This branch set the token to `none`. main got to the same fluid CRM a
+   different and better way — see the block above — and `none` breaks the one
+   place that still reads it: client-portal.html:67 asks for
+   `min(780px, var(--fh-maxw))`, and min() with a keyword is invalid, which
+   would silently drop the portal's reading measure. Keeping main's value; the
+   CRM is uncapped by the shell rule, not by emptying this token.
+   src/ui/shell-is-fluid.test.mjs fails if it is deleted. */
+:root{ --fh-maxw:1800px; --fh-statusbar:32px; }
+
+/* ── SURFACE — panels sit ON the page, on purpose (owner-set 2026-08-17) ─────
+   Measured before this change: panels were #FFFFFF on a #FCFCFC page. That is
+   a 9-point step out of 255, contrast 1.03:1, on 41 elements across six
+   screens — too small to read as deliberate layering, too large to be
+   invisible, so every panel edge looked like a smudge rather than an edge.
+   There was also no resting shadow anywhere in the app: every box-shadow in
+   the screen files fires only on hover, focus or the mobile drawer.
+   Fix is two parts and needs no screen file touched: put the page on the
+   existing --soft token (#F4F4F5, an 11-point step under white) and give the
+   panels one soft resting shadow. --paper is deliberately NOT changed: the
+   sidebar uses it for text (crm-sidebar.css --dark-text), so moving it would
+   tint the rail. */
+:root{
+  --field:var(--paper,#F8F8F6);        /* the page BEHIND the panels */
+  --panel-shadow:0 1px 2px rgba(13,17,19,.025);
+}
+/* Conservative on purpose, and MEASURED rather than guessed: each class below
+   was found by rendering the screens and collecting every sizeable block that
+   paints its own light background and carries a border or a radius. Buttons,
+   inputs, avatars, chat bubbles and table rows are white too and are
+   deliberately excluded — a resting shadow on those reads as broken, not
+   expensive. Naming screen-level classes here follows what this file already
+   does elsewhere (.kpi .vl, .band .bv, .fos-value, .un-mins). */
+:is(.app, .app-shell) :is(
+  .card, .stat, .panel, .tabs, .editor, .fos-panel,   /* staff-teams, finance-os */
+  .kpi-tile,                                          /* command-center */
+  .big-tile, .calc-panel,                             /* closer-dashboard */
+  .compose, .ctx-card                                 /* messaging */
+){
+  box-shadow:var(--panel-shadow);
+}
+/* Put .fh-maxw on the content column only, never on a table or its scroll wrapper — tables stay wider inside their own overflow-x container (§1). */
+
+/* WIDTH:100% IS LOAD-BEARING. Do not drop it.
+   This class is almost always put on a flex item of a column-direction flex
+   container (.main{display:flex;flex-direction:column}, or .stage). Per
+   flexbox, an item with an AUTO margin on the cross axis is not stretched — so
+   margin-inline:auto quietly cancelled the stretch and left the wrapper sized
+   by its own content instead of by the column it sits in. Measured 2026-08-18:
+   that produced BOTH halves of the width complaint at once.
+     Too NARROW on a wide monitor: at 2560 the cap says 1800, but agent-editor
+     shrink-wrapped to 755px, template-editor 1186, brand-studio 1420,
+     campaign-manager 1598 — every one of them carrying this class.
+     Too WIDE on a phone: at 390 the widest thing inside is a table, so the
+     wrapper grew to the table instead — Documents painted 1484px and Campaigns
+     1449px and the whole page slid sideways, against UI-STANDARDS §11 ("No
+     sideways page scroll"). The table's own .fh-scroll-x box was working the
+     whole time; the wrapper AROUND it was the thing overflowing.
+   hiring.html, products-commissions.html and staff-teams.html had each already
+   added exactly this declaration by hand to their own .content. This moves that
+   one-line workaround to the one place the class is defined. */
+/* 2026-08-27: max-width and the auto inline margin are gone (owner-set,
+   §1 above). width:100% stays — read the note above, it is still the thing
+   that keeps this wrapper sized by its column instead of by its widest child.
+   margin-inline is pinned to 0 rather than dropped: several screens set their
+   own `margin:0 auto`, and an auto cross-axis margin on a flex item cancels
+   the stretch, which would shrink-wrap them right back down. */
+.fh-maxw{max-width:none;margin-inline:0;width:100%}
+
+/* Semantic typography. Screens own their local hierarchy; descendants are
+   never forced to inherit a size. The shared shell provides readable defaults
+   without preventing a heading, a field label, or a dense table from differing. */
+:is(.app, .app-shell, .shell, .main, .fh-maxw){
+  font-size:var(--fs-body);
+  font-family:var(--sans);
+}
+:where(.app, .app-shell, .shell, .main, .fh-maxw) :where(h1){
+  font-size:1.75rem;line-height:1.15;letter-spacing:-.035em;font-weight:650;
+}
+:where(.app, .app-shell, .shell, .main, .fh-maxw) :where(h2){
+  font-size:var(--fs-title);line-height:1.25;letter-spacing:-.025em;font-weight:650;
+}
+:where(.app, .app-shell, .shell, .main, .fh-maxw) :where(h3,h4){
+  font-size:1.0625rem;line-height:1.35;letter-spacing:-.015em;font-weight:650;
+}
+:where(.app, .app-shell) :where(.sv,.vl,.big,.big-tile .val,.kpi .vl,
+  .band .bv,.un-mins,.fh-num,.fos-value,.rf-value){
+  font-size:var(--fs-metric);font-variant-numeric:tabular-nums;
+}
+:where(.app, .app-shell) :where(.chip,.eyebrow,.badge,.tag,.stat-label,
+  .kpi .lb,.kpi .sb,.band .bl,.sd,.cmp,.note,.hint,.statusline,.statusbar,
+  label,th,.caption,.sub,.rail-code){font-size:var(--fs-caption)}
+:where(button,input,select,textarea){font-family:inherit}
+:where(button,a,input,select,textarea,summary):focus-visible{
+  outline:2px solid var(--ink);outline-offset:3px;
+}
+
+/* ── UI-STANDARDS.md §5 TAP TARGETS — 40px floor ───────────────────────────
+   min-height is a different property than later padding rules, so it sticks
+   without !important on most screens. !important wins where a screen sets height. */
+button, [type="button"], [type="submit"], .btn,
+.seg span, .link-btn, .tab, .ctab, .filter-btn, .fchip,
+.rail-tab, .group-title.tog, .rail-open, .un-join, a.btn,
+.navbtn, .today-btn{
+  min-height:40px;
+  min-width:40px;
+  box-sizing:border-box;
+}
+input[type="checkbox"]{
+  width:20px;
+  height:20px;
+}
+label:has(> input[type="checkbox"]){
+  min-height:40px;
+  display:inline-flex;
+  align-items:center;
+}
+
+/* ── UI-STANDARDS.md §2 — never five tiles in one row. Fifth wraps. ──────── */
+.stats, .kpi-grid, #stateLegend, .funnel, .stat-tiles{
+  grid-template-columns:repeat(4, 1fr) !important;
+}
+.stat-tiles{
+  display:grid !important;
+}
+
+/* ── UI-STANDARDS.md §5 — coming-soon / inert placeholders do not render ─── */
+.soon,
+.card:has(.tag-soon),
+#demozone,
+.demozone,
+button.link-btn:disabled,
+#unJoin:disabled{
+  display:none !important;
+}
+
+/* Empty welcome-video block: one line, not a 410px hole */
+.player:has(.video-empty:not([hidden])){
+  aspect-ratio:auto;
+  max-height:none;
+  min-height:0;
+  height:auto;
+  padding:16px;
+  background:var(--soft, #F4F4F5);
+}
+.player:has(.video-empty:not([hidden])) .ghost{display:none}
+
+/* Money columns — right-align tabular figures (§7) */
+td.money, th.money, td .age, th[data-s="age"]{
+  text-align:right;
+  font-variant-numeric:tabular-nums;
+}
+
+/* Empty Next Action is not an alert — coral only when a blocker list has rows */
+.blockers-panel:has(#ccp-blocker-list:empty){
+  background:var(--soft,#F4F4F5);
+  border-color:var(--line);
+}
+
+/* data.js status strip is fixed; pad the page so it cannot cover controls */
+body{padding-bottom:var(--fh-statusbar)}
+
+/* Shared client file: keep long call history reachable above the call footer. */
+.fh-context-lines{max-height:320px;overflow:auto;overflow-wrap:anywhere}
+.fh-blueprint-price{width:100%;min-height:40px;padding:8px;background:var(--paper);color:var(--ink);border:1px solid var(--line);font:inherit}
+@media(max-width:600px){.fh-context-lines{max-height:180px}}
+
+/* Phone law (UI-STANDARDS §11) — 390px. Present, KPI rows, and two-pane
+   screens stack. Tables keep their own scroll box via .fh-scroll-x. */
+@media (max-width: 390px) {
+  html, body { max-width: 100%; }
+  .kpi-grid, .stats, .stat-tiles, .stat-head, .row-bottom, .grid2, .layout,
+  .record-fields, .holds-panel, .stage {
+    grid-template-columns: 1fr !important;
+    flex-direction: column !important;
+  }
+  .stage { display: flex !important; }
+  .cockpit, .client {
+    flex: 1 1 auto !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+}
+</style>
+<style data-fh="font">
+/* public/app/fundhub-font.css: local rounded faces */
+@font-face{font-family:"Fundhub Rounded Local";src:local("SF Pro Rounded Regular"),local("SFProRounded-Regular"),local(".SFNSRounded-Regular");font-style:normal;font-weight:400;font-display:swap}
+@font-face{font-family:"Fundhub Rounded Local";src:local("SF Pro Rounded Medium"),local("SFProRounded-Medium"),local(".SFNSRounded-Medium");font-style:normal;font-weight:500;font-display:swap}
+@font-face{font-family:"Fundhub Rounded Local";src:local("SF Pro Rounded Semibold"),local("SFProRounded-Semibold"),local(".SFNSRounded-Semibold");font-style:normal;font-weight:600;font-display:swap}
+@font-face{font-family:"Fundhub Rounded Local";src:local("SF Pro Rounded Bold"),local("SFProRounded-Bold"),local(".SFNSRounded-Bold");font-style:normal;font-weight:700;font-display:swap}
+</style>
+<style data-fh="slideshow">
+/* Fundhub slideshow shell.
+   Layout: one phone screen per slide. A coded eyebrow, one headline, one or two
+   lines, one picture, with Back and Next at the thumb. Paper slides do the
+   teaching. Plain ink slides open the deck and land the payoff. No grids
+   (Chris, 2026-10-31).
+   Colors, faces and parts come from public/app/fundhub-brand.css, which
+   build.mjs embeds above this file. This file maps them to slideshow roles and
+   never invents a color. Status colors keep their meaning and always ride with
+   a word (UI-STANDARDS 12.6). */
+
+:root{
+  /* The brand's rounded face: Apple's native rounded design, then SF Pro
+     Rounded by local name (fundhub-font.css), then the brand's licensed web
+     fallback Nunito, loaded from Google Fonts because each deck ships alone. */
+  --fh-rounded-font:ui-rounded,"Fundhub Rounded Local","Nunito",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --sans:var(--fh-rounded-font);
+
+  --ss-bg:var(--paper);
+  --ss-fg:var(--ink);
+  --ss-sub:var(--ink2);
+  --ss-muted:var(--gray);
+  --ss-rule:var(--line);
+  --ss-panel:#fff;                 /* UI-STANDARDS 12.1 resting container */
+  --ss-dark:var(--card);
+  --ss-dark-rule:var(--cardline);
+  --ss-dark-fg:#fff;
+  --ss-dark-sub:var(--cardtext);
+  --ss-dark-muted:var(--gray2);
+  --ss-flag:color-mix(in srgb,var(--alert) 26%,#fff);   /* a tint of coral, never a new hue */
+  --ss-yes:color-mix(in srgb,var(--ok) 30%,#fff);       /* a tint of sage */
+  --ss-col:30rem;                  /* the phone column */
+  color-scheme:light;
+}
+
+/* ── Page ──────────────────────────────────────────────────────────────── */
+html{height:100%;box-sizing:border-box;-webkit-text-size-adjust:100%}
+*,*::before,*::after{box-sizing:inherit}
+body{height:100%;margin:0;padding-bottom:0;background:var(--ss-bg);color:var(--ss-fg);
+  font-family:var(--sans);font-size:1rem;line-height:1.45;-webkit-font-smoothing:antialiased;
+  transition:background-color .3s ease,color .3s ease}
+html[data-tone="dark"] body{background:var(--ss-dark);color:var(--ss-dark-fg)}
+
+.ss{position:relative;z-index:1;height:100%;max-width:var(--ss-col);margin-inline:auto;
+  display:flex;flex-direction:column;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px))}
+.ss-title{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ── Top bar: wordmark and the spectrum progress ────────────────────────── */
+.ss-top{display:flex;align-items:center;gap:16px;padding-block:14px 6px}
+.ss-top .logo{width:5.25rem;aspect-ratio:2698/543;flex:0 0 auto}
+html[data-tone="dark"] .ss-top .logo{filter:invert(1)}
+.ss-progress{flex:1;min-width:0;display:flex;gap:4px}
+.ss-progress i{flex:1;height:3px;border-radius:2px;background-color:var(--ss-rule);transition:background-color .3s ease}
+.ss-progress i.on{background-image:var(--spectrum);
+  background-size:calc(var(--n) * 100%) 100%;
+  background-position:calc(var(--k) / (var(--n) - 1) * 100%) 0}
+html[data-tone="dark"] .ss-progress i{background-color:var(--ss-dark-rule)}
+
+/* ── Slides ────────────────────────────────────────────────────────────── */
+.ss-stage{flex:1;min-height:0;position:relative;touch-action:pan-y}
+.slide{display:flex;flex-direction:column;gap:14px;padding-block:18px 20px;min-width:0}
+html.ss-js .slide{position:absolute;inset:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none}
+html.ss-js .slide::-webkit-scrollbar{display:none}
+html.ss-js .slide:not(.is-on){visibility:hidden}
+/* Only the arriving slide moves. The leaving one is gone at once, so two
+   slides of text never sit on top of each other. */
+html.ss-js .slide.enter{animation:ss-in .32s ease both}
+@keyframes ss-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+html:not(.ss-js) .slide + .slide{border-top:1px solid var(--ss-rule)}
+html:not(.ss-js) .slide.dark{background:var(--ss-dark);color:var(--ss-dark-fg);
+  margin-inline:-16px;padding-inline:16px}
+
+.slide .eyebrow{margin:0}
+.slide h2{margin:0;font-size:clamp(1.85rem,8.2vw,2.6rem);line-height:1.06;letter-spacing:-.032em;
+  font-weight:700;text-wrap:balance;color:var(--ss-fg)}
+.slide .lede{margin:0;font-size:1.125rem;line-height:1.45;color:var(--ss-sub);max-width:36ch;text-wrap:pretty}
+.slide .lede strong{color:var(--ss-fg);font-weight:700}
+.slide.dark .eyebrow{color:var(--ss-dark-muted)}
+.slide.dark h2{color:var(--ss-dark-fg)}
+.slide.dark .lede{color:var(--ss-dark-sub)}
+.slide.dark .lede strong{color:var(--ss-dark-fg)}
+
+/* ── Talking points: Chris's notes for recording the video ─────────────────
+   Hidden from every viewer. Open them with #notes on the link or the N key.
+   About 45 seconds of talk per slide, so a deck runs about five minutes and
+   each slide chops into its own short clip (Hammer Them SOP). */
+.talk{display:none}
+html.ss-notes .talk{display:block;margin-top:4px;padding:12px 14px;border:1px dashed var(--ss-rule);
+  border-radius:10px;background:var(--soft);color:var(--ink)}
+html.ss-notes .slide.dark .talk{background:var(--card);border-color:var(--cardline);color:var(--cardtext)}
+.talk::before{content:"Talking points";display:block;margin-bottom:6px;font-family:var(--mono);
+  font-size:var(--fs-caption);letter-spacing:.12em;text-transform:uppercase;color:var(--gray)}
+.talk ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:.9375rem;line-height:1.45}
+
+/* ── Bottom bar: Back and Next ─────────────────────────────────────────── */
+.ss-nav{display:flex;gap:10px;padding-block:10px 14px}
+.ss-btn{flex:1;min-height:52px;padding:0 18px;border-radius:8px;border:1px solid var(--ss-rule);
+  background:transparent;color:var(--ss-fg);font:650 1.0625rem/1 var(--sans);cursor:pointer;
+  -webkit-tap-highlight-color:transparent}
+.ss-btn.back{flex:0 0 34%}
+.ss-btn.primary{background:var(--ink);border-color:var(--ink);color:#fff}
+html[data-tone="dark"] .ss-btn{border-color:var(--ss-dark-rule);color:#fff}
+html[data-tone="dark"] .ss-btn.primary{background:#fff;border-color:#fff;color:var(--ink)}
+html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
+.ss-live{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ── Picture kit ───────────────────────────────────────────────────────────
+   Visual Thinking picks the picture from the slide's question:
+   what (a document), how (.flow), when (.tl, .span, .metric),
+   how much (.bars), compare (.compare), why (.eq). These parts only draw it.
+   No grids of tiles and no grid texture (Chris, 2026-10-31). */
+/* The words stay pinned at the top so the headline never jumps between
+   slides. The picture centers in the room that is left. */
+.pic{margin:auto 0;padding-block:8px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.pic-cap{margin:0;font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.04em;color:var(--ss-muted)}
+.slide.dark .pic-cap{color:var(--ss-dark-muted)}
+
+.panel{background:var(--ss-panel);border:1px solid var(--ss-rule);border-radius:10px;
+  box-shadow:var(--panel-shadow);color:var(--ss-fg)}
+.chip{background:var(--ss-panel);white-space:nowrap}
+.slide.dark .chip{background:transparent;border-color:var(--ss-dark-rule);color:var(--ss-dark-muted)}
+.slide.dark .panel .chip{background:var(--ss-panel);border-color:var(--ss-rule);color:var(--ss-muted)}
+
+/* Chris's slide style, from the slides he shares on calls (public/app/present.html
+   .bar and present.js bars()): full lines of copy, each with the pastel stripe
+   on its left and a hairline under it. Most of a slide's words live here. */
+.lines{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.lines li{display:flex;gap:12px;padding:11px 0;border-bottom:1px solid var(--ss-rule);
+  font-size:1.0625rem;line-height:1.45;color:var(--ss-fg)}
+.lines li::before{content:"";flex:0 0 3px;align-self:stretch;border-radius:2px;background:var(--spectrum);opacity:.85}
+.slide.dark .lines li{border-color:var(--ss-dark-rule);color:var(--ss-dark-sub)}
+
+/* Steps in order, from the call slides (present.js stepsHtml). Used only
+   when the order is the point. */
+.steps{list-style:none;margin:0;padding:0;display:flex;counter-reset:st}
+.steps li{flex:1;min-width:0;position:relative;text-align:center;counter-increment:st;
+  font-size:.875rem;font-weight:650;line-height:1.25;color:var(--ss-fg)}
+.steps li::before{content:counter(st);position:relative;z-index:1;display:flex;align-items:center;justify-content:center;
+  width:30px;height:30px;margin:0 auto 8px;border-radius:50%;border:2px solid var(--ink);background:var(--ss-panel);
+  font-family:var(--mono);font-size:var(--fs-caption);font-weight:500;color:var(--ink)}
+.steps li + li::after{content:"";position:absolute;top:14px;left:-50%;width:100%;height:2px;background:var(--ink)}
+.steps li.is-hot::before{background:var(--ink);color:#fff}
+.slide.dark .steps li{color:var(--ss-dark-fg)}
+.slide.dark .steps li::before{background:var(--ss-dark);border-color:#fff;color:#fff}
+.slide.dark .steps li + li::after{background:#fff}
+.slide.dark .steps li.is-hot::before{background:#fff;color:var(--ink)}
+
+/* The real credit report's "Why this score" block, the way Fundhub's tri-bureau
+   report prints it: the bureau, the score and model, then the bureau's own
+   reason lines in its own capitals. Filled only from a sample file. */
+.crs{background:var(--ss-panel);border:1px solid var(--ss-rule);border-radius:10px;box-shadow:var(--panel-shadow);
+  padding:12px 14px 14px;color:var(--ink)}
+.crs-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;
+  border-bottom:2px solid var(--ink);padding-bottom:8px;margin-bottom:10px}
+.crs-bureau{font-size:1.25rem;font-weight:700;letter-spacing:-.02em;line-height:1.1}
+.crs-bureau small{display:block;margin-top:4px;font-family:var(--mono);font-size:var(--fs-caption);
+  font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--gray)}
+.crs-score{text-align:right}
+.crs-score b{display:block;font-size:2rem;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.crs-score span{font-family:var(--mono);font-size:var(--fs-caption);color:var(--gray)}
+.crs h3{margin:0 0 8px;font-size:1rem;font-weight:700}
+.crs ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.crs li{padding:7px 9px;border-radius:6px;background:var(--soft);font-size:.8125rem;line-height:1.35;letter-spacing:.01em}
+.crs li.flag{background:var(--ss-flag);font-weight:650}
+.crs li .chip{margin-top:6px}
+.crs-note{margin:10px 0 0;font-family:var(--mono);font-size:var(--fs-caption);color:var(--gray)}
+
+/* Branded drawings (Visual Thinking, Dan Roam's six ways of seeing). Chris
+   liked the napkin layouts (2026-10-31) and asked for them in Fundhub's own
+   style: a white sheet, hairline panels, pastel status tints, mono labels,
+   ink for the one thing that matters. Every line in a drawing means one
+   thing: an order, a flow, a match or "reads this". */
+.sheet{background:var(--ss-panel);border:1px solid var(--ss-rule);border-radius:12px;
+  box-shadow:var(--panel-shadow);padding:12px;color:var(--ink)}
+.slide.dark .sheet{border-color:var(--ss-panel)}
+.bv{display:block;width:100%;height:auto;overflow:visible}
+.bv .pn{fill:var(--ss-panel);stroke:var(--line);stroke-width:1}
+.bv .pn-soft{fill:var(--soft)}
+.bv .pn-ink{fill:var(--ink)}
+.bv .tint-flag{fill:var(--ss-flag)}
+.bv .tint-fit{fill:var(--ss-yes)}
+.bv .edge-fit{stroke:var(--ok);stroke-width:1.5}
+.bv .bar{fill:var(--line)}
+.bv .rule-ink{stroke:var(--ink);stroke-width:2;stroke-linecap:round}
+.bv .cn{fill:none;stroke:var(--gray2);stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.bv .cn.ink{stroke:var(--ink)}
+.bv .cn.dash{stroke-dasharray:4 5}
+.bv text{font-family:var(--sans);font-size:13px;font-weight:650;fill:var(--ink)}
+.bv text.h{font-size:16px;font-weight:700;letter-spacing:-.01em}
+.bv text.num{font-size:28px;font-weight:700;letter-spacing:-.02em}
+.bv text.lb{font-family:var(--mono);font-size:12.5px;font-weight:500;letter-spacing:.12em;fill:var(--gray)}
+.bv text.lb.ink{fill:var(--ink)}
+.bv text.caps{font-size:12.5px;font-weight:650;letter-spacing:.01em}
+.bv text.on-ink{fill:#fff}
+.bv use{color:var(--ink)}
+.bv use.mute{color:var(--gray2)}
+/* Shared drawing parts (a bank, an arrowhead, the spectrum) live in one
+   hidden sprite per deck. The stops are fundhub-brand.css --spectrum. */
+.vt-defs{position:absolute;width:0;height:0;overflow:hidden}
+.vt-defs .ink{fill:var(--ink)}
+.vt-defs .s1{stop-color:#F2A69B}.vt-defs .s2{stop-color:#F5CE8F}.vt-defs .s3{stop-color:#F2E39B}
+.vt-defs .s4{stop-color:#A8D8B0}.vt-defs .s5{stop-color:#A9C6E8}.vt-defs .s6{stop-color:#C4B3E5}
+
+/* Real documents (law: show-real-proof). A section of Fundhub's tri-bureau
+   report exactly as scripts/render-crs-standard-report.mjs prints it for the
+   sample file, kept in the report's own plain document face so it reads as
+   the real thing, and a real clause of the agreement. Our branded marks
+   (.chip, the tints) sit on top to point at what matters. */
+.real{background:var(--ss-panel);border:1px solid var(--ss-rule);border-radius:10px;box-shadow:var(--panel-shadow);
+  padding:14px;color:var(--ink);font-family:Helvetica,Arial,sans-serif;line-height:1.4}
+.real .bureau-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;
+  border-bottom:2px solid var(--ink);padding-bottom:8px;margin-bottom:8px}
+.real .rh1{margin:0;font-size:1.25rem;font-weight:700;letter-spacing:-.02em}
+.real .score{text-align:right}
+.real .score .num{font-size:1.75rem;font-weight:700;line-height:1.05}
+.real .score .model{font-size:.8125rem;color:var(--gray)}
+.real .rh2{margin:10px 0 4px;font-size:1rem;font-weight:700}
+.real > .rh2:first-child{margin-top:0}
+.real p.model{margin:0 0 6px;font-size:.8125rem;color:var(--gray)}
+.real ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px;font-size:.8125rem}
+.real li{padding:2px 0}
+.real li.flag{margin:0 -6px;padding:7px 6px;border-radius:6px;background:var(--ss-flag);font-weight:700}
+.real li.yes{margin:0 -6px;padding:7px 6px;border-radius:6px;background:var(--ss-yes);font-weight:700}
+.real .chip{display:inline-flex;margin-top:6px;font-family:var(--mono)}
+.real table{width:100%;border-collapse:collapse;font-size:.8125rem}
+.real th{text-align:left;font-size:.8125rem;text-transform:uppercase;color:var(--gray);border-bottom:1px solid var(--line);padding:4px 6px 4px 0}
+.real td{border-bottom:1px solid var(--soft);padding:7px 6px 7px 0;vertical-align:top}
+.real td .chip{margin-top:4px}
+.real .clause{margin:0;font-size:.9375rem;line-height:1.5}
+.real .nw{white-space:nowrap}
+.real .clause mark{background:var(--ss-yes);color:inherit;padding:1px 3px;border-radius:4px;font-weight:700}
+.real img{display:block;width:100%;height:auto;border-radius:6px}
+/* A real crop of code (law: show-real-proof), in the brand's mono face. */
+.real .code{margin:0;padding:0;font-family:var(--mono);font-size:.8125rem;font-weight:500;line-height:1.55;
+  white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ink)}
+.real .code .l{display:block;padding-left:3em;text-indent:-3em}
+.real .code .ln{display:inline-block;width:3em;text-indent:0;color:var(--gray)}
+.real.shot{padding:0;overflow:hidden}
+.real.shot img{border-radius:0}
+.real-src{margin:8px 2px 0;font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.04em;color:var(--ss-muted)}
+.slide.dark .real-src{color:var(--ss-dark-muted)}
+
+/* One reason, two places: the report and the bank's letter. */
+.match{display:flex;flex-direction:column;gap:6px}
+.match .who{font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.1em;text-transform:uppercase;color:var(--ss-muted)}
+.match .reason{padding:9px 11px;border-radius:8px;background:var(--ss-flag);font-size:.8125rem;font-weight:650;line-height:1.35;color:var(--ink)}
+.match .same{align-self:flex-start;margin:4px 0}
+
+/* A document: a credit report, a bank letter, a file. */
+.doc{display:flex;flex-direction:column;overflow:hidden}
+.doc-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;
+  border-bottom:1px solid var(--ss-rule);font-family:var(--mono);font-size:var(--fs-caption);
+  letter-spacing:.1em;text-transform:uppercase;color:var(--ss-muted)}
+.doc-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;
+  font-size:1rem;line-height:1.3;min-width:0}
+.doc-row + .doc-row{border-top:1px solid var(--ss-rule)}
+.doc-row > span:first-child{min-width:0}
+.doc-row .v{font-weight:700;font-variant-numeric:tabular-nums;text-align:right}
+.doc-row.flag{background:var(--ss-flag);font-weight:650}
+.doc-row.yes{background:var(--ss-yes);font-weight:650}
+
+/* Two documents tied by the same line. */
+.tie{display:flex;align-items:center;gap:10px;padding-left:22px;font-family:var(--mono);
+  font-size:var(--fs-caption);letter-spacing:.1em;text-transform:uppercase;color:var(--ss-muted)}
+.tie::before{content:"";width:2px;height:28px;background:var(--ink);border-radius:1px}
+.slide.dark .tie{color:var(--ss-dark-muted)}
+.slide.dark .tie::before{background:#fff}
+
+/* The engine card: ink and mono, the way the brand shows UnderwriteIQ. */
+.term{position:relative;overflow:hidden;background:var(--card);border:1px solid var(--cardline);
+  border-radius:10px;color:var(--cardtext);font-family:var(--mono);line-height:1.45}
+.term > *{position:relative}
+.term-head{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--cardline);
+  font-size:var(--fs-caption);letter-spacing:.12em;text-transform:uppercase;color:var(--gray2)}
+.term-head .pulse{margin-inline:4px 6px}
+.term-line{display:flex;gap:10px;align-items:baseline;padding:10px 14px;font-size:.875rem}
+.term-line + .term-line{border-top:1px dashed var(--cardline)}
+.term-line .k{flex:0 0 auto;color:var(--ok)}
+
+/* How: a real sequence. Numbering is shown because the order is the point. */
+.flow{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:14px;counter-reset:fl}
+.flow > li{position:relative;counter-increment:fl;display:flex;align-items:center;gap:12px;padding:12px 14px;
+  background:var(--ss-panel);border:1px solid var(--ss-rule);border-radius:10px;box-shadow:var(--panel-shadow);
+  font-weight:650;line-height:1.3;color:var(--ss-fg)}
+.flow > li::before{content:counter(fl,decimal-leading-zero);flex:0 0 auto;font-family:var(--mono);
+  font-size:var(--fs-caption);font-weight:500;color:var(--ss-muted)}
+.flow > li + li::after{content:"";position:absolute;left:24px;top:-15px;width:2px;height:14px;background:var(--gray2)}
+.flow.plain > li::before{content:none}          /* a narrowing, not a count */
+.flow > li.is-hot{background:var(--ink);border-color:var(--ink);color:#fff}
+.flow > li.is-hot::before{color:var(--gray2)}
+.flow .sub{display:block;font-weight:500;font-size:.875rem;color:var(--ss-muted)}
+.flow > li.is-hot .sub{color:var(--gray2)}
+.slide.dark .flow > li.is-hot{background:#fff;border-color:#fff;color:var(--ink)}
+
+/* When: who does what, in order. */
+.tl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.tl > li{position:relative;padding:0 0 18px 30px;min-width:0}
+.tl > li:last-child{padding-bottom:0}
+.tl > li::before{content:"";position:absolute;left:5px;top:5px;width:14px;height:14px;border-radius:50%;
+  background:var(--ss-bg);border:2px solid var(--ink)}
+.tl > li::after{content:"";position:absolute;left:11px;top:23px;bottom:3px;width:2px;background:var(--ss-rule)}
+.tl > li:last-child::after{content:none}
+.tl .when{display:block;font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.1em;
+  text-transform:uppercase;color:var(--ss-muted)}
+.tl .what{display:block;font-size:1.0625rem;font-weight:650;line-height:1.3}
+.tl .chip{margin-top:6px}
+.tl > li.bad::before{background:var(--alert);border-color:var(--alert)}
+.tl > li.good::before{background:var(--ok);border-color:var(--ok)}
+.slide.dark .tl > li::before{background:var(--ss-dark);border-color:#fff}
+.slide.dark .tl > li::after{background:var(--ss-dark-rule)}
+.slide.dark .tl .when{color:var(--ss-dark-muted)}
+
+/* When: one stretch of time between two events. */
+.span{display:flex;flex-direction:column;gap:8px}
+.span-bar{height:10px;border-radius:5px;background:var(--spectrum)}
+.span-ends{display:flex;justify-content:space-between;gap:12px;font-family:var(--mono);
+  font-size:var(--fs-caption);letter-spacing:.1em;text-transform:uppercase;color:var(--ss-muted)}
+.slide.dark .span-ends{color:var(--ss-dark-muted)}
+
+/* A hero figure. */
+.metric{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.metric .n{font-size:clamp(4.75rem,26vw,7.5rem);font-weight:700;letter-spacing:-.05em;line-height:.85;
+  font-variant-numeric:tabular-nums}
+.metric .u{padding-bottom:6px;font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.14em;
+  text-transform:uppercase;color:var(--ss-muted)}
+.slide.dark .metric .u{color:var(--ss-dark-muted)}
+
+/* How much: bars drawn to one scale. Set --v to value ÷ the largest value. */
+.bars{display:flex;flex-direction:column;gap:14px}
+.bar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;align-items:baseline}
+.bar .l{font-size:.9375rem;font-weight:650}
+.bar .v{font-weight:700;font-variant-numeric:tabular-nums}
+.bar .t{grid-column:1/-1;height:12px;border-radius:6px;background:var(--soft);overflow:hidden}
+.bar .t > span{display:block;height:100%;width:calc(var(--v) * 100%);border-radius:6px;background:var(--ink)}
+.bar.alt .t > span{background:var(--gray2)}
+
+/* Compare: two columns side by side. */
+.compare{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.compare > .panel{padding:12px;min-width:0}
+.compare h3{margin:0 0 8px;font-family:var(--mono);font-size:var(--fs-caption);font-weight:500;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--ss-muted)}
+.compare ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px;font-size:.9375rem;line-height:1.3}
+
+/* Why: a visual equation. */
+.eq{display:flex;align-items:stretch;gap:8px}
+.eq > .panel{flex:1 1 0;min-width:0;padding:12px 10px;text-align:center;font-weight:650;line-height:1.25}
+.eq .op{align-self:center;font-family:var(--mono);font-size:1.5rem;color:var(--ss-muted)}
+.eq > .panel.is-hot{background:var(--ink);border-color:var(--ink);color:#fff}
+
+@media (max-width:359px){
+  .eq{flex-direction:column}
+  .eq .op{align-self:flex-start;padding-left:12px}
+}
+@media (prefers-reduced-motion:reduce){
+  body,.ss-progress i{transition:none!important}
+  html.ss-js .slide.enter{animation:none}
+}
+</style>
+<!-- /fh:shell:head -->
+</head>
+<body>
+<main class="ss" data-deck="TP" data-lane="Blueprint and credit optimization" data-pillar="2nd layer">
+  <h1 class="ss-title">13 optimization points</h1>
+  <svg class="vt-defs" aria-hidden="true" focusable="false">
+    <defs>
+      <symbol id="fh-bank" viewBox="0 0 28 28"><path fill="currentColor" d="M1 9.5L14 2l13 7.5V11H1z"/><rect fill="currentColor" x="4" y="13" width="3.5" height="9" rx="1"/><rect fill="currentColor" x="12.25" y="13" width="3.5" height="9" rx="1"/><rect fill="currentColor" x="20.5" y="13" width="3.5" height="9" rx="1"/><rect fill="currentColor" x="1" y="23.5" width="26" height="3" rx="1.5"/></symbol>
+      <symbol id="fh-person" viewBox="0 0 28 28"><circle fill="currentColor" cx="14" cy="9" r="5.5"/><path fill="currentColor" d="M4 25.5c0-5.5 4.5-9 10-9s10 3.5 10 9z"/></symbol>
+      <marker id="fh-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path class="ink" d="M0 0L10 5L0 10z"/></marker>
+      <linearGradient id="fh-spectrum" x1="0" x2="1" y1="0" y2="0"><stop offset="0" class="s1"/><stop offset=".2" class="s2"/><stop offset=".4" class="s3"/><stop offset=".6" class="s4"/><stop offset=".8" class="s5"/><stop offset="1" class="s6"/></linearGradient>
+    </defs>
+  </svg>
+
+  <section class="slide dark" data-src="Your file has 13 points that decide how much funding you get, and optimizing them is a process that only works in the right order: marketing/ads/scripts/2026-10-14.md:124 (green-lit Capital Blueprint Ad 3). The shortest path to the maximum amount of funding, from wherever you are right now: 2026-10-14.md:122. 13 optimization points done in the right order: marketing/flywheel/capital-blueprint/00-OWNER-NOTES.md:20 and .ai/rules/ad-know-the-offer.md:43. Nothing else is worth doing until the personal file is prime: src/underwrite/funding-sequence.mjs:24.">
+    <p class="eyebrow">TP-01 / The count</p>
+    <h2>13 optimization points decide how much funding your file gets.</h2>
+    <p class="lede">Optimizing them is a process that only works in the right order, and the order starts on your personal file.</p>
+    <ul class="lines">
+      <li>Done in order, they are the shortest path to the maximum amount of funding, from wherever you are right now.</li>
+    </ul>
+    <figure class="pic">
+      <div class="metric" role="img" aria-label="The count: 13 optimization points, in order."><span class="n">13</span><span class="u">Optimization points · in order</span></div>
+      <div class="span" role="img" aria-label="A bar from your file today to the maximum amount of funding. The 13 points are the path between the two.">
+        <div class="span-bar"></div>
+        <div class="span-ends"><span>Your file today</span><span>The maximum amount of funding</span></div>
+      </div>
+    </figure>
+    <aside class="talk" aria-hidden="true">
+      <ul>
+        <li>Your file has 13 optimization points, and they decide how much funding your file gets.</li>
+        <li>Optimizing them is a process. It only works in the right order.</li>
+        <li>Look at the bar. On one end, your file today. On the other end, the maximum amount of funding.</li>
+        <li>The 13 points are the path between the two, and the path starts on your personal file.</li>
+        <li>Nothing else is worth doing until that file is prime. That's the rule the whole system runs on.</li>
+        <li>Done in order, it's the shortest path to the maximum amount of funding, from wherever you are right now.</li>
+      </ul>
+    </aside>
+  </section>
+
+  <section class="slide" data-src="The six groups in Chris's order, which cards to pay down, which items to remove, which items to add, which banks to open, where to put the money, and how to set the business up so a bank sees it as established: .ai/rules/ad-know-the-offer.md:43; the same groups in the green-lit ad, marketing/ads/scripts/2026-10-14.md:126-128, and in the VSL, marketing/vsl/direct-book-vsl-2026-10-15.md:67-69. You go through the process on your own file, and that's how you learn it: 2026-10-14.md:132. No source lists the 13 by name, so this slide shows the six groups only.">
+    <p class="eyebrow">TP-02 / The six groups</p>
+    <h2>The 13 points fall into six groups, and they go in this order.</h2>
+    <ul class="lines">
+      <li>Which cards to pay down, which items to remove from your file, and which items to add.</li>
+      <li>Which banks to open accounts with, and where to deposit your money.</li>
+      <li>How to set up your business so it looks established to a bank.</li>
+    </ul>
+    <figure class="pic">
+      <div class="sheet">
+        <ol class="flow" role="img" aria-label="The six groups as a numbered path: which cards to pay down; which items to remove from your file; which items to add, to make the file stronger; which banks to open accounts with; where to deposit your money; how to set up your business so a bank sees it as established.">
+          <li>Which cards to pay down<span class="sub">By how much, on your own file</span></li>
+          <li>Which items to remove<span class="sub">The items on your report</span></li>
+          <li>Which items to add<span class="sub">What makes your file stronger</span></li>
+          <li>Which banks to open<span class="sub">Where to build relationships</span></li>
+          <li>Where to put the money<span class="sub">Where to keep your deposits</span></li>
+          <li>How to set up the business<span class="sub">So a bank sees it as established</span></li>
+        </ol>
+      </div>
+    </figure>
+    <aside class="talk" aria-hidden="true">
+      <ul>
+        <li>The 13 points fall into six groups, and they go in this order.</li>
+        <li>Walk the list with me. First, which cards to pay down. Second, which items to remove from your file. Third, which items to add, to make the file stronger.</li>
+        <li>Then the money side. Which banks to open accounts with, and where to deposit your money.</li>
+        <li>Last, the business. How to set it up so it looks established to a bank.</li>
+        <li>Each group is a set of points on your own file. You do them in order, and that's how you learn the funding game.</li>
+      </ul>
+    </aside>
+  </section>
+
+  <section class="slide" data-src="The personal file comes first; nothing else is worth doing until the personal file is prime: src/underwrite/funding-sequence.mjs:20-24. Each business is judged on its own, after the personal file is ready; business one gets ready first, then business two: docs/sops/weekend-2026-10-24/04-sales-call-script.md:258, .ai/rules/ad-know-the-offer.md:42, src/finance/fundability.mjs:73-75. Optimizing the points only works in the right order: marketing/ads/scripts/2026-10-14.md:124. You watch your fundability go up as you finish each step: 2026-10-14.md:130 (green-lit).">
+    <p class="eyebrow">TP-03 / Why the order</p>
+    <h2>Each group sets up the next one, starting with your personal file.</h2>
+    <ul class="lines">
+      <li>Your personal file comes first, because nothing else is worth doing until that file is prime.</li>
+      <li>Each business is judged on its own, after your personal file is ready. Business one gets ready first, then business two.</li>
+      <li>You watch your fundability go up as you finish each step.</li>
+    </ul>
+    <figure class="pic">
+      <div class="sheet">
+        <svg class="bv" viewBox="0 0 320 244" role="img" aria-label="Stairs rising from left to right. Step one, your personal file, first. Step two, the banks and the money. Step three, business one. Step four, business two. Business one and business two are each judged on their own. At the top, the maximum amount of funding.">
+          <rect x="1" y="2" width="318" height="3" rx="1.5" fill="url(#fh-spectrum)"/>
+          <text class="lb" x="160" y="24" text-anchor="middle">THE MAXIMUM AMOUNT OF FUNDING</text>
+          <rect class="pn-ink" x="1" y="166" width="76" height="56" rx="8"/>
+          <text class="lb on-ink" x="39" y="187" text-anchor="middle">1</text>
+          <text class="caps on-ink" x="39" y="203" text-anchor="middle">PERSONAL</text>
+          <text class="caps on-ink" x="39" y="216" text-anchor="middle">FILE</text>
+          <rect class="pn" x="82" y="124" width="76" height="98" rx="8"/>
+          <text class="lb" x="120" y="145" text-anchor="middle">2</text>
+          <text class="caps" x="120" y="161" text-anchor="middle">BANKS AND</text>
+          <text class="caps" x="120" y="174" text-anchor="middle">THE MONEY</text>
+          <rect class="pn" x="163" y="82" width="76" height="140" rx="8"/>
+          <text class="lb" x="201" y="103" text-anchor="middle">3</text>
+          <text class="caps" x="201" y="119" text-anchor="middle">BUSINESS</text>
+          <text class="caps" x="201" y="132" text-anchor="middle">ONE</text>
+          <rect class="tint-fit edge-fit" x="244" y="40" width="75" height="182" rx="8"/>
+          <text class="lb ink" x="281" y="61" text-anchor="middle">4</text>
+          <text class="caps" x="281" y="77" text-anchor="middle">BUSINESS</text>
+          <text class="caps" x="281" y="90" text-anchor="middle">TWO</text>
+          <path class="cn ink dash" d="M39 160V140H76" marker-end="url(#fh-arrow)"/>
+          <path class="cn ink dash" d="M120 118V98H157" marker-end="url(#fh-arrow)"/>
+          <path class="cn ink dash" d="M201 76V56H238" marker-end="url(#fh-arrow)"/>
+          <text class="lb" x="160" y="240" text-anchor="middle">1 FIRST · 3 AND 4 EACH ON ITS OWN</text>
+        </svg>
+      </div>
+    </figure>
+    <aside class="talk" aria-hidden="true">
+      <ul>
+        <li>Here's why the order matters. Each group sets up the next one.</li>
+        <li>Look at the steps. Your personal file comes first. Nothing else is worth doing until that file is prime.</li>
+        <li>Then the banks and the money. Then business one. Then business two.</li>
+        <li>Each business gets judged on its own, after your personal file is ready. One at a time.</li>
+        <li>You watch your fundability go up as you finish each step. That's how you know the order is working.</li>
+      </ul>
+    </aside>
+  </section>
+
+  <section class="slide" data-src="The engine's own checks, six for the personal file and five for each business, each one counted the same: src/finance/fundability.mjs:146-160 and :40-42. Each business is read on its own and listed on its own, never added into one figure: :73-75. The anchor card's dollar figure is left off this slide (see the deck report). These are the engine's checks; no source names the 13 points one by one, so they are never labeled the 13." data-figures="the engine's own check lines, src/finance/fundability.mjs:146-160: 700, 30%, 2 years and 24 months are rules, not a sample">
+    <p class="eyebrow">TP-04 / How the engine keeps score</p>
+    <h2>The engine keeps score with its own checks, one point each.</h2>
+    <ul class="lines">
+      <li>Six checks on your personal file, and five on each business, each one counted the same.</li>
+      <li>The 13 points are the work you do, and these checks are how the engine reads the result.</li>
+      <li>Each business is read on its own and gets its own count.</li>
+    </ul>
+    <figure class="pic">
+      <div class="real" role="img" aria-label="The engine's fundability checks. Your personal file: credit score 700 or higher; cards used 30% or less; no negative items; a card 2 or more years old with a limit of 5,000 or more; no hard inquiries; 3 or more accounts in good standing. Each business, on its own: personal file is fundable; a personal card 2 or more years old with a limit of 5,000 or more; business 24 or more months old; business name on file; industry code on file. One point each.">
+        <div class="rh2">Fundability · Your personal file</div>
+        <ul>
+          <li>Credit score 700 or higher</li>
+          <li>Cards used 30% or less</li>
+          <li>No negative items</li>
+          <li>A card 2+ years old with a limit of 5,000 or more</li>
+          <li>No hard inquiries</li>
+          <li>3 or more accounts in good standing</li>
+        </ul>
+        <div class="rh2">Fundability · Each business, on its own</div>
+        <ul>
+          <li>Personal file is fundable</li>
+          <li>A personal card 2+ years old with a limit of 5,000 or more</li>
+          <li>Business 24+ months old</li>
+          <li>Business name on file</li>
+          <li>Industry code (NAICS) on file</li>
+        </ul>
+        <span class="chip on"><span class="cd"></span>One point each</span>
+      </div>
+      <p class="real-src">The engine's own check list, as it prints it. Not a sample file.</p>
+    </figure>
+    <aside class="talk" aria-hidden="true">
+      <ul>
+        <li>The engine keeps score with its own checks. One point each.</li>
+        <li>Look at the list. Six checks on your personal file. The score, the cards, the negatives, a seasoned card, the inquiries, and the depth of the file.</li>
+        <li>Then five on each business. And each business is read on its own, with its own count.</li>
+        <li>The 13 points are the work you do. These checks are how the engine reads the result.</li>
+        <li>Every check weighs the same. That's how the engine keeps it honest.</li>
+      </ul>
+    </aside>
+  </section>
+
+  <section class="slide" data-src="The picture is a crop of the real Blueprint screen (the FinanceOS Credit page) for the simulated sample client at month 3 of the 6-month recording: ops/workflows/build-evidence/blueprint-timelapse-2026-10-21/still-02-month-3.png, stamped SIMULATION on the full screen; the same sample person as src/finance/sample-credit-file.mjs:1-10. The tiles are the engine's checks, cards used against the 30% line, hard inquiries, negative items: src/finance/fundability.mjs:146-151. The paydown step checks itself off when a new pull shows the balance at target: db/migrations/362_waypoint_definitions_seed.sql:86. You watch your fundability go up as you finish each step: marketing/ads/scripts/2026-10-14.md:130 (green-lit).">
+    <p class="eyebrow">TP-05 / The real screen</p>
+    <h2>You watch the checks on your own screen after every new pull.</h2>
+    <ul class="lines">
+      <li>This is the real screen for a sample file at month three. Each tile is one of the engine's checks.</li>
+      <li>Cards used 13.1%, good, 30% or less. Hard inquiries, three. Negative items, none on file.</li>
+      <li>You finish a step, a new pull reads the file, and the tiles update.</li>
+    </ul>
+    <figure class="pic">
+      <div class="real" role="img" aria-label="Three tiles cropped from the real Fundhub Blueprint screen for a sample file at month three. Cards used 13.1%, good, 30% or less. Hard inquiries 3, one each on Experian, Equifax and TransUnion. Negative items, not on file yet.">
+        <img src="data:image/jpeg;base64,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" alt="" style="display:block;width:100%;height:auto;border-radius:6px">
+        <img src="data:image/jpeg;base64,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" alt="" style="display:block;width:100%;height:auto;border-radius:6px;margin-top:8px">
+        <img src="data:image/jpeg;base64,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" alt="" style="display:block;width:100%;height:auto;border-radius:6px;margin-top:8px">
+        <span class="chip on"><span class="cd"></span>The engine's checks</span>
+      </div>
+      <p class="real-src">Sample screen. Simulated client, not a real client.</p>
+    </figure>
+    <aside class="talk" aria-hidden="true">
+      <ul>
+        <li>This is the real screen. A sample file, month three.</li>
+        <li>Look at the tiles. Cards used, 13.1 percent. Good, 30 percent or less. That check passes.</li>
+        <li>Hard inquiries, three. One on each bureau. Negative items, none on file.</li>
+        <li>You finish a step, a new pull reads the file, and the tiles update. That's how you watch your fundability go up.</li>
+        <li>Your story: the first time you watched a file turn green, one check at a time.</li>
+      </ul>
+    </aside>
+  </section>
+
+  <section class="slide" data-src="We pull your file together right on the call; it's a soft pull, so your score does not move; you see how much you qualify for based on where you're at right now and what's holding the rest back: docs/sops/weekend-2026-10-24/04-sales-call-script.md:69. We diagnose and tell you exactly what to do; action takers, not shoppers: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:213. The cards and the items get read off your own roadmap, never invented: 04-sales-call-script.md:257.">
+    <p class="eyebrow">TP-06 / Your call</p>
+    <h2>On your call, you see which points your file needs, in the order to do them.</h2>
+    <ul class="lines">
+      <li>We pull your file together right on the call, with a soft pull, so your score does not move.</li>
+      <li>You see how much you qualify for based on where you're at right now, and which points are holding the rest back.</li>
+      <li>We diagnose and tell you exactly what to do, read off your own report.</li>
+    </ul>
+    <figure class="pic">
+      <div class="sheet">
+        <svg class="bv" viewBox="0 0 320 176" role="img" aria-label="One shared screen with your real file on it. A list of six groups; the first two, cards and items, are marked as the points this file needs first. The rest wait their turn.">
+          <rect class="pn" x="1" y="1" width="318" height="140" rx="10"/>
+          <text class="lb" x="14" y="22">THE POINTS YOUR FILE NEEDS, IN ORDER</text>
+          <rect class="tint-flag" x="12" y="32" width="296" height="22" rx="5"/>
+          <text class="caps" x="22" y="47">1 · CARDS TO PAY DOWN</text>
+          <text class="lb ink" x="298" y="47" text-anchor="end">FIRST</text>
+          <rect class="tint-flag" x="12" y="58" width="296" height="22" rx="5"/>
+          <text class="caps" x="22" y="73">2 · ITEMS TO REMOVE</text>
+          <text class="lb ink" x="298" y="73" text-anchor="end">NEXT</text>
+          <rect class="pn-soft" x="12" y="84" width="296" height="12" rx="4"/>
+          <rect class="pn-soft" x="12" y="100" width="296" height="12" rx="4"/>
+          <rect class="pn-soft" x="12" y="116" width="296" height="12" rx="4"/>
+          <text class="lb" x="160" y="168" text-anchor="middle">ONE SHARED SCREEN · YOUR REAL FILE</text>
+        </svg>
+      </div>
+    </figure>
+    <aside class="talk" aria-hidden="true">
+      <ul>
+        <li>On your call, you see which points your file needs, in the order to do them.</li>
+        <li>We pull your file together right on the call. It's a soft pull, so your score does not move.</li>
+        <li>You see how much you qualify for based on where you're at right now, and which points are holding the rest back.</li>
+        <li>Look at the screen. The points your file needs sit at the top, in order. The rest wait their turn.</li>
+        <li>We diagnose, and we tell you exactly what to do. The cards and the items get read off your own report.</li>
+        <li>We want action takers who need a solution, not shoppers.</li>
+      </ul>
+    </aside>
+  </section>
+</main>
+<!-- fh:shell:script -->
+<script data-fh="slideshow">
+/* Fundhub slideshow engine. One slide at a time, with Back and Next at the
+   thumb, swipe, and the arrow keys. A link ending in #s3 opens slide 3. It
+   reads and sends nothing: no network, no storage, no tracking. Without
+   script, every slide stays readable as one long page. */
+(function () {
+  "use strict";
+  var deck = document.querySelector(".ss");
+  if (!deck) return;
+  var slides = Array.prototype.slice.call(deck.querySelectorAll(".slide"));
+  if (!slides.length) return;
+  var root = document.documentElement;
+  var last = slides.length - 1;
+  var index = 0;
+
+  function el(tag, cls, text) {
+    var node = document.createElement(tag);
+    if (cls) node.className = cls;
+    if (text) node.textContent = text;
+    return node;
+  }
+
+  var top = el("header", "ss-top");
+  var logo = el("span", "logo");
+  logo.setAttribute("role", "img");
+  logo.setAttribute("aria-label", "Fundhub");
+  var progress = el("div", "ss-progress");
+  progress.setAttribute("aria-hidden", "true");
+  var segments = slides.map(function (_, k) {
+    var seg = el("i");
+    seg.style.setProperty("--k", String(k));
+    seg.style.setProperty("--n", String(slides.length));
+    progress.appendChild(seg);
+    return seg;
+  });
+  top.appendChild(logo);
+  top.appendChild(progress);
+
+  var stage = el("div", "ss-stage");
+  slides.forEach(function (slide, k) {
+    slide.setAttribute("role", "group");
+    slide.setAttribute("aria-roledescription", "slide");
+    slide.setAttribute("aria-label", (k + 1) + " of " + slides.length);
+    stage.appendChild(slide);
+  });
+
+  var nav = el("nav", "ss-nav");
+  nav.setAttribute("aria-label", "Slides");
+  var back = el("button", "ss-btn back", "Back");
+  var next = el("button", "ss-btn primary", "Next");
+  back.type = "button";
+  next.type = "button";
+  nav.appendChild(back);
+  nav.appendChild(next);
+
+  var live = el("p", "ss-live");
+  live.setAttribute("aria-live", "polite");
+
+  var title = deck.querySelector(".ss-title");
+  deck.insertBefore(top, title ? title.nextSibling : deck.firstChild);
+  deck.appendChild(stage);
+  deck.appendChild(nav);
+  deck.appendChild(live);
+  root.classList.add("ss-js");
+
+  function go(n, still) {
+    index = Math.max(0, Math.min(last, n));
+    slides.forEach(function (slide, k) {
+      var on = k === index;
+      slide.classList.toggle("is-on", on);
+      // Only a slide you move to slides in. The first one is still at rest.
+      slide.classList.remove("enter");
+      if (on && !still) {
+        void slide.offsetWidth;
+        slide.classList.add("enter");
+      }
+      slide.setAttribute("aria-hidden", on ? "false" : "true");
+      if (on) slide.removeAttribute("inert");
+      else slide.setAttribute("inert", "");
+    });
+    segments.forEach(function (seg, k) { seg.classList.toggle("on", k <= index); });
+    root.setAttribute("data-tone", slides[index].classList.contains("dark") ? "dark" : "light");
+    back.hidden = index === 0;
+    next.textContent = index === last ? "Start over" : "Next";
+    slides[index].scrollTop = 0;
+    var heading = slides[index].querySelector("h2");
+    live.textContent = (index + 1) + " of " + slides.length + (heading ? ". " + heading.textContent : "");
+    if (!root.classList.contains("ss-notes")) {
+      try { history.replaceState(null, "", "#s" + (index + 1)); } catch (e) { /* a sandboxed frame may refuse */ }
+    }
+  }
+
+  back.addEventListener("click", function () { go(index - 1); });
+  next.addEventListener("click", function () { go(index === last ? 0 : index + 1); });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.altKey || e.ctrlKey || e.metaKey) return;
+    if (e.key === "ArrowRight" || e.key === "PageDown") { e.preventDefault(); go(index + 1); }
+    else if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); go(index - 1); }
+    else if (e.key === "Home") { e.preventDefault(); go(0); }
+    else if (e.key === "End") { e.preventDefault(); go(last); }
+    else if (e.key === "n" || e.key === "N") { root.classList.toggle("ss-notes"); }
+  });
+
+  var x0 = null;
+  var y0 = null;
+  stage.addEventListener("pointerdown", function (e) {
+    if (e.pointerType === "mouse") return;
+    x0 = e.clientX;
+    y0 = e.clientY;
+  });
+  stage.addEventListener("pointercancel", function () { x0 = null; });
+  stage.addEventListener("pointerup", function (e) {
+    if (x0 === null) return;
+    var dx = e.clientX - x0;
+    var dy = e.clientY - y0;
+    x0 = null;
+    if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.5) go(index + (dx < 0 ? 1 : -1));
+  });
+
+  // #notes opens the talking points for recording; viewers never see them.
+  if (/^#notes$/.test(location.hash || "")) root.classList.add("ss-notes");
+  function fromHash() {
+    var match = /^#s(\d+)$/.exec(location.hash || "");
+    return match ? Number(match[1]) - 1 : null;
+  }
+  window.addEventListener("hashchange", function () {
+    var n = fromHash();
+    if (n !== null && n !== index) go(n);
+  });
+  go(fromHash() || 0, true);
+})();
+</script>
+<!-- /fh:shell:script -->
+</body>
+</html>

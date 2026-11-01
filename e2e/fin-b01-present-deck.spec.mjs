@@ -24,7 +24,7 @@ const DECK = (tier = "REPAIR_ONLY") => ({
   income_estimates: {},
   engine: { available: true, tier, fico: { experian: 640, equifax: 632, transunion: 651 }, reasons: [], total: 0 },
   offers: offersForClient(),
-  soft_pull: null,
+  soft_pull: { consent_valid: true, diagnostic_paid: true, pull_status: "complete", crs_result_id: "crs-fixture", sample: false },
 });
 
 async function open(page, { tier, deck, invoices, outbound } = {}) {
@@ -63,6 +63,35 @@ async function open(page, { tier, deck, invoices, outbound } = {}) {
 
 const toast = (page) => page.locator(".toast");
 
+test("client Present shows live assessment progress at phone width and waits for a real result", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  let pull = { consent_valid: false, diagnostic_paid: false, pull_status: null, crs_result_id: null, sample: false };
+  await openScreen(page, `/app/present.html?contact=${CLIENT_ID}`, CLOSER, {
+    "/api/read/closer-deck": (route) => json(route, { ...DECK("FULL_FUNDING"), soft_pull: pull }),
+    "/api/read/agent-context": { ok: true, context: {} }
+  });
+  await page.locator('[data-act="phase:03"]').click();
+  await page.locator('[data-act="next"]').click();
+  await expect(page.locator(".client .h1")).toHaveText("Waiting for your authorization");
+  await expect(page.locator(".client")).not.toContainText("scanning experian");
+  await page.locator('[data-act="next"]').click();
+  await expect(page.locator(".client .slide-hd")).toContainText("S-06");
+  await page.locator('[data-act="phase:05"]').click();
+  await expect(page.locator(".client .slide-hd")).toContainText("S-06");
+  await expect(page.locator(".client")).not.toContainText("Recommended path");
+  await page.locator('[data-act="phase:04"]').click();
+  await expect(page.locator(".client .slide-hd")).toContainText("S-07");
+  await page.locator('[data-act="next"]').click();
+  await expect(page.locator(".client .slide-hd")).toContainText("S-06");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  pull = { consent_valid: true, diagnostic_paid: true, pull_status: "processing", crs_result_id: null, sample: false };
+  await expect(page.locator(".client .h1")).toHaveText("Your report is being prepared", { timeout: 7000 });
+  pull = { ...pull, pull_status: "complete", crs_result_id: "crs-test" };
+  await expect(page.locator(".client .h1")).toHaveText("Your report is ready", { timeout: 7000 });
+  await page.locator('[data-act="next"]').click();
+  await expect(page.locator(".client .slide-hd")).toContainText("S-07");
+});
+
 test.describe("closer deck: Send pay link", () => {
   test("it sends this client with the offer the deck chose and no sale motion, once", async ({ page }) => {
     const calls = await open(page);
@@ -71,7 +100,7 @@ test.describe("closer deck: Send pay link", () => {
     const body = calls.deck[0];
     expect(body.action).toBe("send_pay_link");
     expect(body.client_id).toBe(CLIENT_ID);
-    // a file that is not ready leads with the most expensive door that fits: the Capital Blueprint (2026-10-29)
+    // The completed repair file leads with the Capital Blueprint (2026-10-29).
     expect(body.offer_key).toBe("UWIQ_DELIVERABLES");
     expect(body.sale_motion).toBe(null);
     await expect(toast(page)).toHaveText("Pay link sent.");

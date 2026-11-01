@@ -41,12 +41,12 @@ test("REGRESSION: dotted tags resolve instead of rendering literally", () => {
 });
 
 test("REGRESSION: the real AI-SET-03 copy renders end to end", () => {
-  const body = "Hey {{contact.first_name}}, it's Josh from FundHub! You've been pre-approved for {{contact.analyzer_prequal_amount}} in capital. {{user.name}} will take it from here!";
+  const body = "Hey {{contact.first_name}}, it's Chris from FundHub! You've been pre-approved for {{contact.analyzer_prequal_amount}} in capital. {{user.name}} will take it from here!";
   const out = renderTemplate(body, {
     contact: { first_name: "Dana", analyzer_prequal_amount: "$50,000" },
-    user: { name: "Josh" }
+    user: { name: "Chris" }
   });
-  assert.equal(out, "Hey Dana, it's Josh from FundHub! You've been pre-approved for $50,000 in capital. Josh will take it from here!");
+  assert.equal(out, "Hey Dana, it's Chris from FundHub! You've been pre-approved for $50,000 in capital. Chris will take it from here!");
 });
 
 test("dotted tags tolerate whitespace inside the braces", () => {

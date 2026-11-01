@@ -46,7 +46,7 @@
      submittedAt. Either stamp counts, and it must be under six hours old. A record
      with no name or email is someone who clicked a time slot and never filled the form. */
   function fhIsBooked(d, now, ref, applyAcceptedAt) {
-    var fromBooking = /^https?:\/\/[^/]+\/funding-book-call(?:[/?#]|$)/.test(String(ref || ""));
+    var fromBooking = /^https?:\/\/[^/]+\/funding-book-call(?:--02424)?(?:[/?#]|$)/.test(String(ref || ""));
     var fromApply = /^https:\/\/apply\.fundhub\.ai\/apply(?:[/?#]|$)/.test(String(ref || ""));
     if (!fromBooking && !fromApply) return false;
     if (!d || typeof d !== "object") return false;

@@ -79,9 +79,9 @@ function payload(tier, visual, businesses) {
     engine: {
       available: true, tier, label: tier, fico: { ex: 650, tu: 640, eq: 655 },
       total: visual.todayTotal, afterFix: null, negItems: null, reasons: [], plan: [],
-      totalBasis: businesses.length ? "personal_plus_business" : "personal_only", sample: true, visual,
+      totalBasis: businesses.length ? "personal_plus_business" : "personal_only", sample: false, visual,
     },
-    soft_pull: null,
+    soft_pull: { consent_valid: true, diagnostic_paid: true, pull_status: "complete", crs_result_id: "visual-proof-result", sample: false },
     offers: offersForClient(),
   };
 }
@@ -131,7 +131,7 @@ test("the shipped visual files draw on their slides inside the real deck, with r
     ],
   });
   const fundSeen = await walk(funding.page, "funding");
-  assert.deepEqual(fundSeen.map(([code]) => code), ["L-01", "S-08", "C-01"]);
+  assert.deepEqual(fundSeen.map(([code]) => code), ["F-01", "L-01", "S-08", "P-01", "C-01"]);
   assert.deepEqual(funding.errors, []);
 
   // The setter's own sentence and the survey goal reach the path on S-08.
@@ -147,14 +147,14 @@ test("the shipped visual files draw on their slides inside the real deck, with r
   await funding.page.locator(".client button", { hasText: "Pay the cards down" }).first().click();
   await funding.page.waitForTimeout(900);
   assert.match(await funding.page.locator(".client").innerText(), /\$104,775/);
-  assert.match(await funding.page.locator(".client").innerText(), /\$78,101/, "left on the table is always the whole gap");
+  assert.match(await funding.page.locator(".client").innerText(), /\$78,101/, "projected increase is always the whole gap");
   await funding.page.locator(".client").screenshot({ path: path.join(SHOTS, "funding-L-01-after-tap.png") });
   assert.deepEqual(funding.errors, []);
   await funding.page.close();
 
   const repair = await openDeck({ tier: "REPAIR_ONLY", visual: REPAIR_VISUAL });
   const repairSeen = await walk(repair.page, "repair");
-  assert.deepEqual(repairSeen.map(([code]) => code), ["L-01", "S-08", "B-03", "S-15"]);
+  assert.deepEqual(repairSeen.map(([code]) => code), ["F-01", "L-01", "S-08", "B-03", "S-15"]);
   assert.deepEqual(repair.errors, []);
   await repair.page.close();
 

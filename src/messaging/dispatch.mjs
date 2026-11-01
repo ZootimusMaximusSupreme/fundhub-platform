@@ -34,6 +34,7 @@ import {
   QUIET_HOURS_CHANNELS, QUIET_END_HOUR, QUIET_HOURS_TZ
 } from "./gate.mjs";
 import { isImmediateStaffAlert, isStaffText, usesSetterContactHours } from "../staff/message-recipient.mjs";
+import { sendTiming, inDripWindow, nextDripWindowOpen, nextHourStrike } from "./send-window.mjs";
 import { resolve, addressFieldFor } from "./providers/index.mjs";
 import { isSynthetic } from "./live-fence.mjs";
 import { isDraftTemplateCopy, isDraftTemplateRow } from "./draft-guard.mjs";
@@ -162,45 +163,14 @@ export const OUTCOME = Object.freeze({
 
    Recorded on the board as a correction to W4, not a silent divergence. */
 
-/* tzOffsetMs — how far the named zone is from UTC at this instant.
-   Read out of Intl rather than hardcoded, so daylight saving is the operating
-   system's timezone database's problem and not this file's. */
-function tzOffsetMs(date, timeZone) {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone, hour12: false,
-    year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit", second: "2-digit"
-  }).formatToParts(date);
-  const p = Object.fromEntries(parts.map((x) => [x.type, x.value]));
-  const asUtc = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour % 24, +p.minute, +p.second);
-  return asUtc - date.getTime();
-}
-
 /* nextQuietHoursEnd — the next instant at which QUIET_END_HOUR strikes in the
-   quiet-hours zone.
+   quiet-hours zone: today if that hour has not come yet, else tomorrow.
 
-   Built by reading the wall clock in that zone, choosing today or tomorrow, and
-   converting back. The offset is applied twice because the offset at the target
-   instant is not always the offset now — on the two daylight-saving nights a
-   year they differ by an hour, and a single pass would land at 10:00 or 12:00.
-
-   Exported so the transition dates can be asserted directly. */
+   The clock math lives in src/messaging/send-window.mjs (nextHourStrike), where
+   the drip window's 9 a.m. wake uses the same function. Exported so the
+   transition dates can be asserted directly. */
 export function nextQuietHoursEnd(from, timeZone = QUIET_HOURS_TZ, endHour = QUIET_END_HOUR) {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone, hour12: false,
-    year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit"
-  }).formatToParts(from);
-  const p = Object.fromEntries(parts.map((x) => [x.type, x.value]));
-  const hour = +p.hour % 24;
-
-  // Before the window opens today → today. Otherwise (we are at or past the
-  // 20:00 start) → tomorrow. Date.UTC normalises a day past the month's end.
-  const dayShift = hour < endHour ? 0 : 1;
-  const wall = Date.UTC(+p.year, +p.month - 1, +p.day + dayShift, endHour, 0, 0);
-
-  let ts = wall;
-  for (let i = 0; i < 2; i += 1) ts = wall - tzOffsetMs(new Date(ts), timeZone);
-  return new Date(ts);
+  return nextHourStrike(from, timeZone, endHour);
 }
 
 /* claimDue — take up to `limit` due messages and mark them 'sending' atomically.
@@ -232,7 +202,7 @@ export async function claimDue(db, { orgId = null, limit = DEFAULT_BATCH, now = 
      see resolveTimestampParam. */
   const at = resolveTimestampParam(now);
 
-  /* senderStaffOnly — "only messages a person wrote".
+  /* senderStaffOnly — staff replies plus the new credit-report email cohort.
 
      ═══════════════════════════════════════════════════════════════════════
      THIS EXISTS BECAUSE THE BACKLOG IS NOT ALL THE SAME AGE OR THE SAME KIND.
@@ -245,12 +215,11 @@ export async function claimDue(db, { orgId = null, limit = DEFAULT_BATCH, now = 
      landing on real people in one afternoon.
 
      That is not a hypothetical and it is not this feature's decision to make.
-     So the sweeper that releases held STAFF replies filters to exactly those:
-     `sender_staff_id IS NOT NULL` is true only for rows written by
-     src/messaging/compose.mjs, i.e. a message a named employee typed and
-     pressed Send on, which was then held for the night. Releasing those is
-     what the owner asked for. Draining the legacy workflow backlog is a
-     separate, deliberate act by a human and is deliberately NOT done here.
+     The scheduled sweeper releases held STAFF replies and retries only new
+     credit-report emails. `sender_staff_id IS NOT NULL` identifies the former;
+     the exact `workflow:crs-full-report:` prefix identifies the latter.
+     Draining the legacy workflow backlog is a separate, deliberate act by a
+     human and is deliberately NOT done here.
 
      Default false, so every existing caller — dispatchDue() from a test, a
      future full drain — behaves exactly as it did. */
@@ -264,7 +233,8 @@ export async function claimDue(db, { orgId = null, limit = DEFAULT_BATCH, now = 
             AND (scheduled_at IS NULL OR scheduled_at <= COALESCE($3::timestamptz, now()))
             AND ($1::uuid IS NULL OR org_id = $1)
             AND attempts < $4
-            AND ($5::boolean IS NOT TRUE OR sender_staff_id IS NOT NULL)
+            AND ($5::boolean IS NOT TRUE OR sender_staff_id IS NOT NULL
+                 OR provider_ref LIKE 'workflow:crs-full-report:%')
           ORDER BY scheduled_at NULLS FIRST, created_at
           LIMIT $2
           FOR UPDATE SKIP LOCKED
@@ -381,6 +351,34 @@ async function subjectFor(db, message) {
   return rows[0]?.subject || null;
 }
 
+/** Resolve a saved document only after the send gate approves the message.
+ * The outbox stores its id, never sensitive PDF bytes or a storage bearer key.
+ * A retry re-reads the immutable document version from the normal store. */
+export async function resolveDocumentAttachments(db, attachments, message, { store = null } = {}) {
+  if (!attachments) return null;
+  const list = typeof attachments === "string" ? JSON.parse(attachments) : attachments;
+  if (!Array.isArray(list) || !list.some((item) => item?.document_id)) return list;
+  const { storeFromEnv } = await import("../documents/store.mjs");
+  const documentStore = store || storeFromEnv();
+  const resolved = [];
+  for (const item of list) {
+    if (!item?.document_id) { resolved.push(item); continue; }
+    const row = (await db.query(
+      `SELECT storage_key, checksum, mime_type FROM documents
+        WHERE id = $1 AND org_id = $2 AND client_id = $3
+          AND kind = 'deliverable' AND subtype = 'crs_full_credit_report'
+          AND mime_type = 'application/pdf' LIMIT 1`,
+      [item.document_id, message.org_id, message.client_id]
+    )).rows[0];
+    if (!row) throw new Error("Credit report attachment is not on this client file");
+    const file = await documentStore.get(row.storage_key, { expectedChecksum: row.checksum });
+    if (!file?.body?.length) throw new Error("Credit report attachment could not be loaded");
+    resolved.push({ filename: item.filename || "Fundhub-Credit-Report.pdf",
+      content: file.body.toString("base64"), content_type: row.mime_type });
+  }
+  return resolved;
+}
+
 /* dispatchOne — gate, route, send, record. One message.
 
    Returns { id, outcome, detail } and never throws: one poisoned message must
@@ -404,12 +402,22 @@ export async function dispatchOne(db, message, options = {}) {
     const clock = typeof now === "function" ? now : now ? () => new Date(now) : () => new Date();
     const kind = { clientId: message.client_id, channel: message.channel,
       templateKey: message.template_key, providerRef: message.provider_ref, toAddress: message.to_address };
+    /* Customer send hours (owner-set 2026-10-31, src/messaging/send-window.mjs):
+       an instant message (welcome, booking confirmation) is never held; a drip
+       waits for 9 a.m. to 5 p.m. Arizona, text and email both; everything else
+       keeps the quiet hours below. */
+    const timing = sendTiming(message.template_key);
     const setterHours = usesSetterContactHours(kind);
     const quiet = setterHours ? inSetterContactQuietHours(clock(), QUIET_HOURS_TZ) : inQuietHours(clock(), QUIET_HOURS_TZ);
-    if (QUIET_HOURS_CHANNELS.has(message.channel) && quiet && !isImmediateStaffAlert(kind)) {
+    const closed = timing === "drip"
+      ? !inDripWindow(clock())
+      : timing !== "instant" && QUIET_HOURS_CHANNELS.has(message.channel) && quiet && !isImmediateStaffAlert(kind);
+    if (closed) {
       const skipQuiet = isStaffText(kind) ? false : await recipientSkipsQuietHours(db, message.client_id);
       if (!skipQuiet) {
-        const due = nextQuietHoursEnd(clock(), QUIET_HOURS_TZ, setterHours ? 6 : QUIET_END_HOUR);
+        const due = timing === "drip"
+          ? nextDripWindowOpen(clock())
+          : nextQuietHoursEnd(clock(), QUIET_HOURS_TZ, setterHours ? 6 : QUIET_END_HOUR);
         await db.query(
           // The attempt is given back: an unopened window is not a failed
           // delivery, and charging it would burn the retry budget overnight.
@@ -755,7 +763,7 @@ export async function dispatchOne(db, message, options = {}) {
         // the RFC 8058 List-Unsubscribe headers, which are metadata rather than
         // message content — so setting them does not break the never-mutate rule.
         unsubscribeUrl,
-        attachments: message.attachments || null,
+        attachments: await resolveDocumentAttachments(db, message.attachments, message),
         ...(bank ? { from: bank.from, replyTag: bank.replyTag } : {})
       }, { fetchImpl, timeoutMs, signal, env });
     } catch (error) {

@@ -242,3 +242,46 @@ test("the current call cannot be its own next call", { skip: !HAS_DB }, async ()
   const next = await nextCallAfter(db, { orgId: ORG, staffId: STAFF, after: cur.due_at });
   assert.equal(next, null, "strictly after, so the open call never names itself");
 });
+
+
+// A booking may be dispositioned by provider UID without a task ID. Both
+// closer readouts must exclude that outcome for its own buyer, not another.
+test("same-buyer booking-ref outcomes hide only the completed appointment on the closer rail",
+  { skip: !HAS_DB }, async () => {
+    await clearDay();
+    const done = await task(OPEN, 1, "G-open-booking-completed");
+    const stillOpen = await task(OPEN, 2, "G-open-other-buyer-ref");
+    const later = await task(OTHER, 3, "G-other-future");
+    await db.query(
+      `INSERT INTO call_outcomes (org_id, client_id, staff_id, booking_ref, outcome)
+       VALUES ($1, $2, $3, $4, 'callback'), ($1, $5, $3, $6, 'callback')`,
+      [ORG, OPEN, STAFF, `${TAG}-G-open-booking-completed`, OTHER,
+        `${TAG}-G-open-other-buyer-ref`]
+    );
+
+    const rail = await upcomingCalls(db, { orgId: ORG, staffId: STAFF, includeClientId: OPEN });
+    assert.deepEqual(rail.map(row => row.task_id), [stillOpen.id, later.id],
+      "booking outcome closes its own buyer only; another buyer's matching UID cannot hide a task");
+    const afterDone = await nextCallAfter(db, { orgId: ORG, staffId: STAFF, after: done.due_at });
+    assert.ok(same(afterDone, stillOpen), "an unrelated buyer's outcome must not hide this live appointment");
+    const afterOpen = await nextCallAfter(db, { orgId: ORG, staffId: STAFF, after: stillOpen.due_at });
+    assert.ok(same(afterOpen, later), "next is the next unlogged appointment in chronological order");
+  });
+
+
+// A cancelled booking marks its closer task done without a call_outcomes row.
+// Both upcoming/next reads must suppress it before a closer joins a dead room.
+test("cancelled booking does not appear on the closer call rail or next-call headline",
+  { skip: !HAS_DB }, async () => {
+    await clearDay();
+    const current = await task(OPEN, 1, "H-open-current");
+    const cancelled = await task(OTHER, 2, "H-cancelled");
+    const later = await task(OTHER, 3, "H-open-later");
+    await db.query("UPDATE tasks SET done = true WHERE id = $1 AND org_id = $2",
+      [cancelled.id, ORG]);
+    const rail = await upcomingCalls(db, { orgId: ORG, staffId: STAFF, includeClientId: OPEN });
+    assert.ok(rail.some((row) => same(row, current)), "the real open call remains");
+    assert.ok(!rail.some((row) => same(row, cancelled)), "no cancelled call on Up Next");
+    const next = await nextCallAfter(db, { orgId: ORG, staffId: STAFF, after: current.due_at });
+    assert.ok(same(next, later), "the next call skips a cancelled booking");
+  });
