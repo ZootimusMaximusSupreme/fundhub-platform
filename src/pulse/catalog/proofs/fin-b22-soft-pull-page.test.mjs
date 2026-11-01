@@ -31,7 +31,7 @@ const TYPED = Object.freeze({
  * The server's own refusals, written the way api/soft-pull-approve.mjs makes them (same codes, same order).
  * A page that stops sending the typed name, the social, the date of birth, the address or the signed link, or
  * that renames a field, gets the same refusal the real server gives: it stays on the form with the reason and
- * no Pay button, so the tests below that wait for "Consent saved" fail.
+ * no Pay button, so the tests below that wait for "Authorization saved" fail.
  */
 function refuse(body) {
   const bad = (status, error, message) => ({ status, body: { ok: false, error, message } });
@@ -164,7 +164,7 @@ test("what is sent is what was typed, under the names the server reads, with the
   await fillBusiness(page, 1);
   await page.locator("#go").click();
   await waitFor(() => posts.length === 1);
-  await page.waitForFunction(() => document.querySelector("h1")?.textContent === "Consent saved");
+  await page.waitForFunction(() => document.querySelector("h1")?.textContent === "Authorization saved");
 
   const sent = posts[0];
   // the signed link, as it was on the page's own address
@@ -225,7 +225,7 @@ test("after submit the same page shows Pay for the server's total, with the serv
   await page.locator("#go").click();
   await waitFor(() => posts.length === 1);
 
-  await page.waitForFunction(() => document.querySelector("h1")?.textContent === "Consent saved");
+  await page.waitForFunction(() => document.querySelector("h1")?.textContent === "Authorization saved");
   const pay = page.locator(".btn-pay");
   assert.equal(await pay.count(), 1);
   assert.equal(await pay.innerText(), "Pay $52 assessment");
@@ -244,7 +244,7 @@ test("the total on the Pay button is the server's, not a number the page worked 
   await fillPerson(page);
   await page.locator("#go").click();
   await waitFor(() => posts.length === 1);
-  await page.waitForFunction(() => document.querySelector("h1")?.textContent === "Consent saved");
+  await page.waitForFunction(() => document.querySelector("h1")?.textContent === "Authorization saved");
   // no company was added, so the page's own total is $32; the server said $42 and the page shows what the server said
   assert.equal(await page.locator(".btn-pay").innerText(), "Pay $42 assessment");
   await page.close();
@@ -264,7 +264,7 @@ test("a save the server refuses stays on the form with the reason, and offers no
   await page.close();
 });
 
-test("a save with no checkout shows the saved consent and the total to ask for, never a dead Pay button", { timeout: 60_000 }, async (t) => {
+test("a save with no checkout shows saved authorization and asks for a payment link, never a dead Pay button", { timeout: 60_000 }, async (t) => {
   const { open } = await startScreens(t);
   const { page, posts } = await openApproval(open, SAVED(4200, "$42", null));
   await fillPerson(page);
@@ -272,8 +272,8 @@ test("a save with no checkout shows the saved consent and the total to ask for, 
   await fillBusiness(page, 0);
   await page.locator("#go").click();
   await waitFor(() => posts.length === 1);
-  await page.waitForFunction(() => document.querySelector("h1")?.textContent === "Consent saved");
+  await page.waitForFunction(() => document.querySelector("h1")?.textContent === "Authorization saved");
   assert.equal(await page.locator(".btn-pay").count(), 0);
-  assert.match(await page.locator(".lede").first().innerText(), /Ask your advisor for the pay link for \$42\./);
+  assert.match(await page.locator(".pull-progress p").first().innerText(), /Ask your advisor for the payment link\./);
   await page.close();
 });
