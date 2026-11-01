@@ -41,6 +41,29 @@ export async function persistHeldMonthlyRequest(conn, row, reason) {
   return changed.rows?.length === 1;
 }
 
+/** A real bureau attempt with an unknown outcome must leave the active ledger.
+ * Never overwrite a result another worker already resolved. */
+export async function persistUncertainMonthlyRequest(conn, row, reason) {
+  const scope = [row.id, row.org_id, row.client_id];
+  const changed = await conn.query(
+    `UPDATE soft_pull_requests
+        SET status = 'failed', state_reason = $4,
+            resolved_at = now(), updated_at = now()
+      WHERE id = $1 AND org_id = $2 AND client_id = $3
+        AND requested_by_kind = 'system' AND status IN ('queued', 'processing')
+        AND crs_result_id IS NULL
+      RETURNING id`,
+    [...scope, `Provider outcome requires owner reconciliation: ${String(reason).slice(0, 160)}`]
+  );
+  if (changed.rows?.length === 1) return true;
+  const current = await conn.query(
+    `SELECT status FROM soft_pull_requests
+      WHERE id = $1 AND org_id = $2 AND client_id = $3
+        AND requested_by_kind = 'system'`, scope
+  );
+  return ['failed', 'cancelled', 'fulfilled'].includes(current.rows?.[0]?.status);
+}
+
 /** True when both CRS_ALLOW_LIVE and FINANCE_OS_SYSTEM_PULL_LIVE are explicitly on. */
 export function systemPullUsesSimulation(env = process.env) {
   const raw = String(env?.[FINANCE_OS_SYSTEM_PULL_LIVE] ?? "").trim().toLowerCase();
@@ -95,6 +118,14 @@ export async function fulfilQueuedSystemPulls(conn, {
   // using a stable task key, then require a human to reconcile the provider.
   async function reportProviderException(row, failure) {
     const record = { clientId: row.client_id, requestId: row.id, reason: failure };
+    try {
+      if (!(await persistUncertainMonthlyRequest(conn, row, failure))) {
+        throw new Error("request_not_terminal_or_wrong_scope");
+      }
+    } catch (error) {
+      tally.errored.push({ ...record, phase: "provider_exception_hold",
+        error: String(error?.message || error) });
+    }
     try {
       const task = await createTaskImpl(conn, {
         orgId: row.org_id, clientId: row.client_id, assigneeRole: "owner",
