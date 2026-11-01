@@ -102,13 +102,23 @@ export async function rebookedSince(db, clientId, eventId) {
    reads it before each text. "Tried calling, missed you" must not follow a real
    conversation (second read-only review of PR #346, 2026-10-31). */
 export const REACHED_DISPOSITIONS = Object.freeze(["reached", "booked_on_call"]);
-export async function setterReached(db, orgId, clientId) {
+export async function setterReached(db, orgId, clientId, eventId, eventName) {
   const r = await db.query(
-    `SELECT custom_fields FROM clients WHERE id = $1 AND org_id = $2 LIMIT 1`,
-    [clientId, orgId]
+    `SELECT c.custom_fields, e.created_at AS trigger_created_at
+       FROM clients c JOIN events e ON e.id = $3 AND e.org_id = c.org_id
+      WHERE c.id = $1 AND c.org_id = $2 LIMIT 1`,
+    [clientId, orgId, eventId]
   );
-  const handoff = r.rows[0]?.custom_fields?.setter_handoff;
-  return REACHED_DISPOSITIONS.includes(handoff && typeof handoff === "object" ? handoff.disposition : null);
+  const row = r.rows[0];
+  const handoff = row?.custom_fields?.setter_handoff;
+  if (!handoff || typeof handoff !== "object" || !REACHED_DISPOSITIONS.includes(handoff.disposition)) return false;
+  // Human no-answer saves its result before emitting. A later legacy reached save
+  // may lack disposition_at; it still belongs to this run because the initial
+  // no-answer save replaced any older result. Voice-call events lack that ordering.
+  if (!handoff.disposition_at && eventName === "setter.no_answer") return true;
+  const dispositionAt = Date.parse(handoff.disposition_at);
+  const triggerAt = new Date(row.trigger_created_at).getTime();
+  return Number.isFinite(dispositionAt) && Number.isFinite(triggerAt) && dispositionAt >= triggerAt;
 }
 
 export async function handle({ event, db, step, now = () => new Date() }) {
@@ -137,7 +147,7 @@ export async function handle({ event, db, step, now = () => new Date() }) {
     await step.sleepUntil(`wait-until-msg${n}`, new Date(planned));
     if (await step.run(`check-rebooked-${n}`, () => rebookedSince(db, clientId, eventId))) return "rebooked";
     if (await step.run(`check-replied-${n}`, replied)) return "replied";
-    if (await step.run(`check-reached-${n}`, () => setterReached(db, orgId, clientId))) return "reached";
+    if (await step.run(`check-reached-${n}`, () => setterReached(db, orgId, clientId, eventId, event.name))) return "reached";
     return null;
   }
   // A rebook is named by where the cadence stood; a reply or a reached person by why.

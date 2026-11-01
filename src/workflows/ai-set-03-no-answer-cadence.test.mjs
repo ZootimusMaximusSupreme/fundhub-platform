@@ -39,12 +39,24 @@ function withRebookedRead(inner) {
   return wrapped;
 }
 
+function withReachedRead(inner) {
+  const wrapped = Object.create(inner);
+  wrapped.query = async (sql, params = []) => {
+    if (!/AS trigger_created_at/.test(String(sql))) return inner.query(sql, params);
+    const [clientId, orgId, eventId] = params;
+    const client = inner.clients.find((row) => row.id === clientId && row.org_id === orgId);
+    const event = inner.events.find((row) => row.id === eventId && row.org_id === orgId);
+    return { rows: client && event ? [{ custom_fields: client.custom_fields, trigger_created_at: event.created_at }] : [] };
+  };
+  return wrapped;
+}
+
 const PERSON = { id: "cl-1", org_id: "org-1", email: "a@b.com", phone: "+15550001111", first_name: "Pat", custom_fields: {} };
 
 function makeDb({ bookings = [], events = [], client = {} } = {}) {
-  return withRebookedRead(withReplyRead(pgFake({
+  return withReachedRead(withRebookedRead(withReplyRead(pgFake({
     clients: [{ ...PERSON, ...client }], templates: templates(), bookings, events
-  })));
+  }))));
 }
 
 const NO_ANSWER = { disposition: "no_answer", setter_staff_id: "staff-1", call_attempts: 1 };
@@ -254,7 +266,9 @@ test("a call that has already happened before text 3 stops text 3", async () => 
 test("a setter who reaches the person after the No answer stops the next text", async () => {
   const db = makeDb();
   const step = recordingStep({ wake: (id) => {
-    if (id === "wait-until-msg2") db.clients[0].custom_fields = { setter_handoff: { disposition: "reached" } };
+    if (id === "wait-until-msg2") db.clients[0].custom_fields = {
+      setter_handoff: { disposition: "reached", disposition_at: minutesAfter(5) }
+    };
   } });
   const res = await run(db, noAnswer(), step);
   assert.equal(res.exitedAt, "setter-reached");
@@ -262,8 +276,35 @@ test("a setter who reaches the person after the No answer stops the next text", 
   inOrder(step, "check-replied-2", "check-reached-2");
 });
 
-test("booked on the setter's call stops the cadence too; a later No answer does not", async () => {
-  const booked = makeDb({ client: { custom_fields: { setter_handoff: { disposition: "booked_on_call" } } } });
+test("an old reached result does not suppress a newer unanswered call", async () => {
+  for (const handoff of [
+    { disposition: "reached", disposition_at: minutesAfter(-5) },
+    { disposition: "booked_on_call", disposition_at: minutesAfter(-5) },
+    { disposition: "reached" }
+  ]) {
+    const db = makeDb({ client: { custom_fields: { setter_handoff: handoff } } });
+    const res = await run(db, ev("call.completed", { disposition: "no_answer" }, { clientId: "cl-1" }));
+    assert.equal(res.exitedAt, "completed", JSON.stringify(handoff));
+    assert.deepEqual(db.messages.map((m) => m.template_key), OPTIN_KEYS);
+  }
+});
+
+test("an in-flight human no-answer run still stops for a legacy reached save", async () => {
+  const db = makeDb();
+  const step = recordingStep({ wake: (id) => {
+    if (id === "wait-until-msg2") db.clients[0].custom_fields = {
+      setter_handoff: { disposition: "reached" }
+    };
+  } });
+  const res = await run(db, noAnswer(), step);
+  assert.equal(res.exitedAt, "setter-reached");
+  assert.deepEqual(db.messages.map((m) => m.template_key), [OPTIN1_KEY]);
+});
+
+test("booked on the setter's call after the trigger stops the cadence too; a later No answer does not", async () => {
+  const booked = makeDb({ client: { custom_fields: { setter_handoff: {
+    disposition: "booked_on_call", disposition_at: minutesAfter(5)
+  } } } });
   assert.equal((await run(booked, noAnswer())).exitedAt, "setter-reached");
   assert.equal(booked.messages.length, 0);
   const again = makeDb({ client: { custom_fields: { setter_handoff: { disposition: "no_answer" } } } });
