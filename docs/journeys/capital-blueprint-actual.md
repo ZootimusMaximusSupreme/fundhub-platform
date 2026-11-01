@@ -2,6 +2,14 @@
 
 This records repository behavior and safe fixture proof. It is not a live purchase or release claim. Intended source: `capital-blueprint-intended.md`.
 
+## Commas refund identity — local candidate 2026-10-31
+
+The adapter now accepts `refund.created` as a financial reversal only with a settled `success`/`succeeded` status. Legacy terminal `refund.succeeded`/`payment.refunded` names remain accepted when no contradictory status is supplied. Pending, failed and unconfirmed created callbacks grant/revoke nothing and cannot consume the later settlement key. Each settled `refund_id` has one inbox key, so distinct partial refunds survive and changed delivery UUIDs do not repeat a refund. Replays also recognize stored payment/body keys whose raw bytes carry that same refund ID; no existing row/key is rewritten.
+
+The [official Commas schemas](https://apidocs.fan/) identify `refund_transaction_id` as a hashid and payment webhook `payment_id` as an ORD identifier. The documented transaction GET returns a numeric ID without a verified crosswalk. Both refund IDs are preserved separately; neither the hashid, delivery UUID nor buyer email substitutes for the original payment. A refund without an explicit original `payment_id` remains unattributed in the canonical event and existing refund-handler dead-letter queue for reconciliation. Automatic access reversal for that documented hashid-only payload remains unresolved. Adapter and rollback-only local PostgreSQL fixtures cover these paths; no live refund or provider write was performed.
+
+## Purchase and service flow
+
 - CB-01: existing Present price/provider controls carry validated whole-dollar $5,000–$10,000 Blueprint amounts through `api/closer-deck.mjs` and `sendDeckPayLink`. Other offers retain catalog prices.
 - CB-02: shared contract sender forwards a price snapshot. Contract drafts validate/store `_blueprint_amount_cents` and `package_fee`; save/preview/send preserve it. Custom-price sends refuse old fixed-price templates. Migration483 parameterizes two fee clauses; draft migration485 brings three scope clauses into line with the 12-month program. Neither changes previously sent/signed rows.
 - CB-03: both provider checkout paths require the latest sent/viewed/signed Blueprint agreement at the exact price with matching frozen hash. Whop reserves the local order before its provider call and verifies returned checkout and variant identity before returning a URL.

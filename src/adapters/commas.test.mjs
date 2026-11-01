@@ -97,6 +97,10 @@ function fakeDb({ dedupEvents = false, store = [], inbox = [], links = [], clien
       }
 
       // --- commas_inbox -----------------------------------------------------
+      if (/SELECT id, raw_body, dedupe_key FROM commas_inbox/.test(sql)) {
+        return { rows: inbox.filter((r) => r.org_id === params[0] && r.event_type.includes("refund") &&
+          !r.dedupe_key.startsWith("refund:")) };
+      }
       if (/INSERT INTO commas_inbox/.test(sql)) {
         const [orgId, dedupeKey, paymentId, eventType, rawBody, headers, source] = params;
         if (inbox.some((r) => r.org_id === orgId && r.dedupe_key === dedupeKey)) {
@@ -377,7 +381,7 @@ test("expired / canceled are ops-only: never payment.failed, never money", () =>
 });
 
 test("refund.created and dispute.created map to their own events, crediting nothing", () => {
-  const refund = mapToCanonical({ type: "refund.created", name: "Consulting Services Deposit" });
+  const refund = mapToCanonical({ type: "refund.created", refundStatus: "success", name: "Consulting Services Deposit" });
   const dispute = mapToCanonical({ type: "dispute.created", name: "Consulting Services Deposit" });
   assert.deepEqual(refund.map((c) => c.name), ["payment.refunded"]);
   assert.deepEqual(dispute.map((c) => c.name), ["payment.disputed"]);
@@ -538,7 +542,7 @@ test("one payment's DIFFERENT events do not collapse into each other", async () 
   });
   const refunded = JSON.stringify({
     id: "evt_2", type: "refund.created",
-    data: { payment_id: "pay_x", amount: 500, product: { title: "Mystery Box" } }
+    data: { payment_id: "pay_x", amount: 500, status: "success", product: { title: "Mystery Box" } }
   });
   await deliver(db, succeeded);
   await deliver(db, refunded);
@@ -547,6 +551,97 @@ test("one payment's DIFFERENT events do not collapse into each other", async () 
   const names = db.store.map((e) => e.name);
   assert.ok(names.includes("payment.received"));
   assert.ok(names.includes("payment.refunded"));
+});
+
+test("distinct partial refunds reach the bus once each despite changed delivery ids", async () => {
+  _resetOrgCache(); clearHandlers();
+  const db = fakeDb({
+    clients: [{ id: CLIENT_A, org_id: "org-1", email: "refund@example.invalid" }],
+    transactions: [{ org_id: "org-1", client_id: CLIENT_A, provider: "commas",
+      provider_ref: "ORD-original", status: "succeeded" }]
+  });
+  const receipt = (refundId, envelopeId, amount) => JSON.stringify({
+    id: envelopeId, type: "refund.created",
+    data: { refund_id: refundId, refund_transaction_id: "originalHashid",
+      payment_id: "ORD-original", amount, status: "success" }
+  });
+  await deliver(db, receipt("refundA", "deliveryA", 40));
+  await deliver(db, receipt("refundB", "deliveryB", 60));
+  const replay = await deliver(db, receipt("refundA", "anotherDelivery", 40));
+  assert.equal(replay.ack.deduped, true);
+  assert.equal(db.inbox.length, 2);
+  assert.equal(db.store.length, 2);
+  assert.deepEqual(db.store.map((e) => e.payload.amount), [40, 60]);
+  assert.deepEqual(db.store.map((e) => e.payload.refundId), ["refundA", "refundB"]);
+  assert.ok(db.store.every((e) => e.name === "payment.refunded" && e.client_id === CLIENT_A &&
+    e.payload.providerRef === "ORD-original" && e.payload.refundTransactionId === "originalHashid"));
+});
+
+test("documented refund hashids survive without being guessed as the original payment", async () => {
+  _resetOrgCache(); clearHandlers();
+  const db = fakeDb({
+    clients: [{ id: CLIENT_A, org_id: "org-1", email: "refund@example.invalid" }],
+    transactions: ["pX9vQ", "deliveryA"].map((provider_ref) => ({
+      org_id: "org-1", client_id: CLIENT_A, provider: "commas", provider_ref, status: "succeeded"
+    }))
+  });
+  const receipt = (refundId, envelopeId) => JSON.stringify({
+    id: envelopeId, type: "refund.created",
+    data: { refund_id: refundId, refund_transaction_id: "pX9vQ", amount: 25, status: "success",
+      buyer: { email: "refund@example.invalid" }, item: { id: "kQ7wR", title: "Consulting Services Package" } }
+  });
+  await deliver(db, receipt("d8Kw2", "deliveryA"));
+  await deliver(db, receipt("secondRefund", "deliveryB"));
+  await deliver(db, receipt("d8Kw2", "changedDelivery"));
+  assert.equal(db.inbox.length, 2, "refund id must dedupe even with no payment_id");
+  assert.equal(db.store.length, 2);
+  assert.ok(db.store.every((e) => e.client_id === null && e.payload.paymentId === null &&
+    e.payload.providerRef === null && e.payload.refundTransactionId === "pX9vQ"));
+  assert.deepEqual(db.store.map((e) => e.payload.refundId), ["d8Kw2", "secondRefund"]);
+  assert.equal(db.clients.length, 1);
+});
+
+test("refund replay recognizes old payment and body keys without swallowing a new partial", async () => {
+  _resetOrgCache(); clearHandlers();
+  for (const [paymentId, type] of [["ORD-original", "refund.created"], [null, "refund.created"],
+    ["ORD-original", "refund.succeeded"]]) {
+    const oldBody = JSON.stringify({ id: "oldDelivery", type, data: {
+      payment_id: paymentId, refund_id: "oldRefund", refund_transaction_id: "pX9vQ", amount: 40, status: "success"
+    } });
+    const db = fakeDb({ inbox: [{ id: "legacy", org_id: "org-1", status: "done",
+      dedupe_key: dedupeKeyFor({ paymentId, eventType: type, refundStatus: "success", rawBody: oldBody }),
+      raw_body: oldBody, event_type: type, payment_id: paymentId }] });
+    const replay = JSON.parse(oldBody);
+    replay.id = "newDelivery";
+    replay.type = "refund.created";
+    assert.equal((await deliver(db, JSON.stringify(replay))).ack.deduped, true);
+    assert.equal(db.store.length, 0, "a previously handled refund was emitted again");
+    replay.data.refund_id = "newRefund";
+    replay.data.amount = 60;
+    assert.equal((await deliver(db, JSON.stringify(replay))).ack.queued, true);
+    assert.equal(db.store.length, 1);
+  }
+});
+
+test("failed and pending refunds cannot revoke access or swallow the later settled callback", async () => {
+  _resetOrgCache(); clearHandlers();
+  const db = fakeDb();
+  let refunds = 0;
+  on("payment.refunded", () => { refunds += 1; });
+  const receipt = (type, status, delivery) => JSON.stringify({ id: delivery, type, data: {
+    refund_id: "statusRefund", refund_transaction_id: "pX9vQ", payment_id: "ORD-original",
+    amount: 100, status
+  } });
+  for (const [type, status] of [["refund.failed", "failed"], ["refund.created", "pending"],
+    ["refund.created", "failed"], ["refund.created", undefined], ["refund.succeeded", "pending"]]) {
+    await deliver(db, receipt(type, status, `${type}-${status}`));
+    assert.equal(refunds, 0, `${type}/${status} must not emit a financial reversal`);
+  }
+  await deliver(db, receipt("refund.created", "success", "settled"));
+  await deliver(db, receipt("refund.created", "success", "settled-replay"));
+  await deliver(db, receipt("refund.succeeded", "succeeded", "settled-legacy-alias"));
+  assert.equal(refunds, 1, "a prior non-settled callback must not swallow settlement");
+  assert.equal(db.store.length, 1);
 });
 
 test("a webhook with NO payment id still dedupes on replay", async () => {
@@ -1226,6 +1321,7 @@ test("unknown refund and dispute webhook never creates a phantom client", async 
         payment_id: "pay-reversal-" + type,
         amount: 72.35,
         buyer: { email: "unknown-reversal+new@example.invalid" },
+        status: "success",
         due_by: "2026-11-01T00:00:00Z"
       }
     });

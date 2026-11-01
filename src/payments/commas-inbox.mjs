@@ -53,6 +53,10 @@ export const STALE_CLAIM_MINUTES = 15;
  * keys, both look new, and the money is counted twice — which is the exact
  * failure the old adapter had.
  *
+ * Refunds have their own stable data.refund_id (https://apidocs.fan/,
+ * refund.created schema). One payment can have several partial refunds, so
+ * payment_id alone must not collapse them. Keep payment keys unchanged.
+ *
  * The event type is part of the key because one payment legitimately produces
  * several events over its life: succeeded, then later refund.created, then
  * later dispute.created. Those must not collapse into each other.
@@ -62,8 +66,26 @@ export const STALE_CLAIM_MINUTES = 15;
  * payments would have to be byte-identical to collide, which would mean no id,
  * no timestamp and no reference anywhere in the body — a payload nothing could
  * deduplicate by any means. */
-export function dedupeKeyFor({ paymentId, eventType, rawBody }) {
+export function isSettledRefund(eventType, status) {
+  const type = String(eventType || "").toLowerCase();
+  const state = String(status || "").trim().toLowerCase();
+  if (!["refund.created", "refund.succeeded", "payment.refunded"].includes(type)) return false;
+  // refund.created requires the documented settled status. Preserve terminal
+  // legacy event names only when no contradictory status was supplied.
+  return ["success", "succeeded"].includes(state) ||
+    (!state && ["refund.succeeded", "payment.refunded"].includes(type));
+}
+
+export function dedupeKeyFor({ paymentId, refundId, refundStatus, eventType, rawBody }) {
   const type = String(eventType || "unknown");
+  if (type.includes("refund")) {
+    const settled = isSettledRefund(type, refundStatus);
+    if (refundId && settled) return `refund:${refundId}:settled`;
+    // A pending/failed delivery must not consume the eventual settlement key.
+    const state = String(refundStatus || "unknown").trim().toLowerCase();
+    if (refundId) return `refund:${refundId}:${type}:unsettled:${state}`;
+    if (paymentId && !settled) return `${paymentId}:${type}:unsettled:${state}`;
+  }
   if (paymentId) return `${paymentId}:${type}`;
   const hash = crypto.createHash("sha256").update(rawBody || "").digest("hex");
   return `body:${hash}:${type}`;
@@ -84,13 +106,37 @@ export async function enqueue(db, {
   rawBody,
   headers = {},
   paymentId = null,
+  refundId = null,
+  refundStatus = null,
   eventType = null,
   source = "webhook"
 } = {}) {
   if (!orgId) throw new Error("commas inbox enqueue: orgId is required");
   if (rawBody == null) throw new Error("commas inbox enqueue: rawBody is required");
 
-  const dedupeKey = dedupeKeyFor({ paymentId, eventType, rawBody });
+  const dedupeKey = dedupeKeyFor({ paymentId, refundId, refundStatus, eventType, rawBody });
+
+  // Before refund_id keys existed, these same callbacks were saved under a
+  // payment/body key. Recognize those immutable rows on replay rather than
+  // emitting a second refund under the new key. Parse in JS: malformed inbox
+  // bytes are deliberately retained and must not break a JSON cast in SQL.
+  if (refundId && String(eventType || "").includes("refund")) {
+    const legacy = await db.query(
+      `SELECT id, raw_body, dedupe_key FROM commas_inbox
+        WHERE org_id = $1 AND event_type LIKE '%refund%'
+          AND dedupe_key NOT LIKE 'refund:%'`,
+      [orgId]
+    );
+    for (const row of legacy.rows) {
+      try {
+        const body = JSON.parse(row.raw_body);
+        const data = (body?.data && (body.data.object || body.data)) || body;
+        if (typeof data?.refund_id === "string" && data.refund_id.trim() === refundId) {
+          return { id: row.id, deduped: true, dedupeKey: row.dedupe_key };
+        }
+      } catch { /* Retain malformed legacy bytes; they cannot prove identity. */ }
+    }
+  }
 
   const ins = await db.query(
     `INSERT INTO commas_inbox

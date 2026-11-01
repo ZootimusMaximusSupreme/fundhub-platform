@@ -13,11 +13,13 @@
 import { test, before, after, describe } from "node:test";
 import assert from "node:assert";
 import crypto from "node:crypto";
-import { db, close } from "../db.mjs";
+import { db, pool, close } from "../db.mjs";
 import { _resetOrgCache, defaultOrgId } from "../events/bus.mjs";
 import { clearHandlers, on } from "../events/registry.mjs";
 import { handleCommasWebhook, processCommasInboxRow } from "../adapters/commas.mjs";
 import { drain, claim, enqueue, MAX_ATTEMPTS } from "./commas-inbox.mjs";
+import { onPaymentRefunded } from "../handlers/commas-disputes.mjs";
+import { onPaymentRefundedMoney } from "../handlers/money-chain.mjs";
 
 const HAS_DB = !!process.env.DATABASE_URL;
 const SECRET = "whsec_pg_commas";
@@ -183,6 +185,113 @@ describe("commas inbox (real Postgres)", { skip: !HAS_DB ? "no DATABASE_URL" : f
     )).rows.map((r) => r.event_type);
     assert.deepEqual(rows, ["dispute.created", "payment.succeeded", "refund.created"],
       "a refund or dispute was swallowed by its own payment's dedupe key");
+  });
+
+  test("refund identities survive replay, separate partials and unmatched-original dead-letter review", async () => {
+    await wipe();
+    clearHandlers();
+    const conn = await pool().connect();
+    try {
+      await conn.query("BEGIN");
+      on("payment.refunded", onPaymentRefunded);
+      on("payment.refunded", onPaymentRefundedMoney);
+      const tag = `${MARK}_${crypto.randomUUID()}`;
+      const paymentId = `${tag}_ORD`;
+      const transactionHashid = `${tag}_hashid`;
+      const envelopeId = `${tag}_delivery`;
+      const clientId = (await conn.query(
+        `INSERT INTO clients (org_id,email,first_name,last_name)
+         VALUES ($1,$2,'Refund','Fixture') RETURNING id`, [orgId, `${tag}@example.invalid`]
+      )).rows[0].id;
+      // Deliberate decoys: a refund hashid/delivery ID matching a receipt must
+      // never be used as an undocumented crosswalk to that receipt.
+      for (const ref of [paymentId, transactionHashid, envelopeId]) {
+        await conn.query(
+          `INSERT INTO transactions (org_id,client_id,product_name,amount_paid,status,provider,provider_ref,raw_payload)
+           VALUES ($1,$2,'Consulting Services Package',100,'succeeded','commas',$3,'{}')`,
+          [orgId, clientId, ref]
+        );
+      }
+      const raw = (refundId, deliveryId, amount, original = paymentId) => JSON.stringify({
+        id: deliveryId, type: "refund.created", data: {
+          refund_id: refundId, refund_transaction_id: transactionHashid,
+          ...(original ? { payment_id: original } : {}), amount, status: "success",
+          buyer: { email: `${tag}@example.invalid` }, item: { title: "Consulting Services Package" }
+        }
+      });
+      const receive = async (body) => {
+        const ack = await handleCommasWebhook({ db: conn, rawBody: body, signatureHeader: sign(body), secret: SECRET });
+        assert.equal(ack.ok, true);
+        return ack;
+      };
+      // Concurrent replay hits the actual org/refund unique key.
+      const first = raw(`${tag}_refundA`, `${tag}_deliveryA`, 40);
+      for (const status of ["failed", "pending"]) {
+        const unsettled = JSON.parse(first);
+        unsettled.id = `${tag}_${status}`;
+        unsettled.data.status = status;
+        await receive(JSON.stringify(unsettled));
+      }
+      await drain(conn, { process: processCommasInboxRow, maxBatches: 1 });
+      assert.equal((await conn.query(
+        `SELECT count(*)::int AS n FROM events WHERE payload->>'paymentId'=$1`, [paymentId]
+      )).rows[0].n, 0, "unsettled refund cannot reach the money/access handlers");
+      const acks = await Promise.all([receive(first), receive(raw(`${tag}_refundA`, `${tag}_redelivery`, 40))]);
+      assert.equal(acks.filter((a) => a.deduped).length, 1);
+      await receive(raw(`${tag}_refundB`, `${tag}_deliveryB`, 60));
+      await drain(conn, { process: processCommasInboxRow, maxBatches: 1 });
+      const events = (await conn.query(
+        `SELECT client_id,payload FROM events WHERE payload->>'paymentId'=$1 ORDER BY (payload->>'amount')::numeric`, [paymentId]
+      )).rows;
+      assert.deepEqual(events.map((e) => e.payload.amount), [40, 60]);
+      assert.ok(events.every((e) => e.client_id === clientId && e.payload.providerRef === paymentId &&
+        e.payload.refundTransactionId === transactionHashid));
+      assert.equal((await conn.query(
+        `SELECT count(*)::int AS n FROM tasks WHERE org_id=$1 AND client_id=$2 AND source_workflow='commas-refund'`,
+        [orgId, clientId]
+      )).rows[0].n, 2);
+
+      await receive(raw(`${tag}_unmatched`, envelopeId, 25, null));
+      await receive(raw(`${tag}_unmatched`, `${tag}_changedEnvelope`, 25, null));
+      await drain(conn, { process: processCommasInboxRow, maxBatches: 1 });
+      const unresolved = (await conn.query(
+        `SELECT client_id,payload FROM events WHERE payload->>'refundId'=$1`, [`${tag}_unmatched`]
+      )).rows;
+      assert.equal(unresolved.length, 1);
+      assert.equal(unresolved[0].client_id, null);
+      assert.equal(unresolved[0].payload.providerRef, null);
+      assert.equal(unresolved[0].payload.paymentId, null);
+      assert.equal(unresolved[0].payload.refundTransactionId, transactionHashid);
+      const failed = (await conn.query(
+        `SELECT payload,error_message FROM failed_events WHERE payload->>'refundId'=$1`, [`${tag}_unmatched`]
+      )).rows;
+      assert.equal(failed.length, 1);
+      assert.match(failed[0].error_message, /manual reconciliation/);
+      assert.equal(failed[0].payload.refundTransactionId, transactionHashid);
+      assert.equal((await conn.query(
+        `SELECT count(*)::int AS n FROM tasks WHERE org_id=$1 AND client_id=$2 AND source_workflow='commas-refund'`,
+        [orgId, clientId]
+      )).rows[0].n, 2, "unmatched callback cannot assign work to the email/ID decoy");
+
+      // Preserve an already handled refund under either pre-upgrade key shape.
+      for (const original of [paymentId, null]) {
+        const refundId = `${tag}_legacy_${original ? 'payment' : 'body'}`;
+        const body = raw(refundId, `${tag}_oldDelivery`, 10, original);
+        const legacy = await enqueue(conn, { orgId, paymentId: original, refundStatus: "success", eventType: "refund.created", rawBody: body });
+        await conn.query("UPDATE commas_inbox SET status='done' WHERE id=$1", [legacy.id]);
+        const replay = await receive(raw(refundId, `${tag}_newDelivery`, 10, original));
+        assert.equal(replay.deduped, true);
+        assert.equal(replay.inboxId, legacy.id);
+      }
+      assert.equal((await conn.query(
+        `SELECT count(*)::int AS n FROM transactions WHERE org_id=$1 AND client_id=$2 AND status='succeeded' AND amount_paid=100`,
+        [orgId, clientId]
+      )).rows[0].n, 3, "refund identity handling must not rewrite receipt money");
+    } finally {
+      await conn.query("ROLLBACK");
+      conn.release();
+      clearHandlers();
+    }
   });
 
   /* expired / canceled are abandoned checkouts. They must reach the bus for
