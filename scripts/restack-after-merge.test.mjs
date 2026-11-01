@@ -4,7 +4,7 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { catchUpAfterShip, directChildren, main, nextQueuedPr, orderOf, recordedParentHead, restackChild } from "./restack-after-merge.mjs";
+import { archiveHead, catchUpAfterShip, directChildren, main, nextQueuedPr, orderOf, recordedParentHead, restackChild } from "./restack-after-merge.mjs";
 
 const repo = "ZootimusMaximusSupreme/fundhub-platform";
 const parentSha = "a".repeat(40);
@@ -37,6 +37,30 @@ test("recorded parent tip must be one exact SHA", () => {
   assert.equal(recordedParentHead({ body: `Release manifest\nStack parent head: ${marker}\n` }), marker);
   assert.equal(recordedParentHead({ body: `Stack parent head: ${marker}\nStack parent head: ${marker}` }), null);
   assert.equal(recordedParentHead({ body: "Stack parent head: not-a-sha" }), null);
+});
+
+test("moving the exact archive tag preserves its prior tip first", () => {
+  const old = "d".repeat(40);
+  const head = "e".repeat(40);
+  const canonical = "refs/tags/archive/codex/child";
+  const history = `refs/tags/archive/codex/child-${old.slice(0, 8)}`;
+  const calls = [];
+  const pushed = new Set();
+  const run = (program, args) => {
+    calls.push([program, ...args]);
+    if (program === "git" && args[0] === "rev-parse") return head;
+    if (program === "git" && args[0] === "ls-remote") {
+      const ref = args.at(-1);
+      return ref === canonical ? `${pushed.has(canonical) ? head : old}\t${ref}`
+        : pushed.has(history) ? `${old}\t${ref}` : "";
+    }
+    if (program === "git" && args[0] === "push") pushed.add(args.at(-1));
+    return "";
+  };
+  archiveHead("codex/child", run);
+  const historyPush = calls.findIndex((call) => call[0] === "git" && call[1] === "push" && call.at(-1) === history);
+  const canonicalPush = calls.findIndex((call) => call[0] === "git" && call[1] === "push" && call.at(-1) === canonical);
+  assert.ok(historyPush >= 0 && historyPush < canonicalPush);
 });
 
 test("ship receipt catches up only the first ordered PR based on main", () => {

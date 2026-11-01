@@ -54,11 +54,22 @@ function comment(repo, number, body, run) {
   run("gh", ["api", "--method", "POST", `repos/${repo}/issues/${number}/comments`, "-f", `body=${body}`]);
 }
 
-function archiveHead(branch, run) {
+export function archiveHead(branch, run) {
   const ref = `refs/tags/archive/${branch}`;
   const head = run("git", ["rev-parse", "HEAD"]);
   const old = run("git", ["ls-remote", "--tags", "origin", ref]).split(/\s+/)[0];
   if (old === head) return;
+  if (old) {
+    const historyRef = `refs/tags/archive/${branch}-${old.slice(0, 8)}`;
+    const history = run("git", ["ls-remote", "--tags", "origin", historyRef]).split(/\s+/)[0];
+    if (history && history !== old) throw new Error(`Archive history tag differs for ${branch}`);
+    if (!history) {
+      run("git", ["tag", "-f", `archive/${branch}-${old.slice(0, 8)}`, old]);
+      run("git", ["push", "origin", historyRef]);
+      const preserved = run("git", ["ls-remote", "--tags", "origin", historyRef]).split(/\s+/)[0];
+      if (preserved !== old) throw new Error(`Could not preserve previous archive tip for ${branch}`);
+    }
+  }
   run("git", ["tag", "-f", `archive/${branch}`, head]);
   run("git", old
     ? ["push", `--force-with-lease=${ref}:${old}`, "origin", ref]
