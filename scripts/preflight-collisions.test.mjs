@@ -3,7 +3,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { blockingOverlaps, chooseMainUpdate, excludeExpectedBase, fileHandoffs, findOverlaps, orderChain, orderPrChain, orderedChildRefs, parsePorcelain, parseWorktrees, resolveFileHandoffs } from "./preflight-collisions.mjs";
+import { blockingOverlaps, chooseMainUpdate, excludeExpectedBase, fileHandoffs, findOverlaps, inheritedOrderedRefs, orderChain, orderPrChain, orderedChildRefs, parsePorcelain, parseWorktrees, resolveFileHandoffs } from "./preflight-collisions.mjs";
 
 test("parsePorcelain keeps the new path on a rename and strips quotes", () => {
   const text = " M src/a.mjs\n?? docs/new.md\nR  old.mjs -> src/b.mjs\n M \"has space.md\"";
@@ -133,4 +133,16 @@ test("an ordered child and its descendants inherit the parent's files without bl
     ({ refName, label: `branch ${refName}`, files: ["src/shared.mjs"] }));
   const { withMine } = findOverlaps(["src/shared.mjs"], sources.filter((source) => !children.has(source.refName)));
   assert.deepEqual(withMine.map((source) => source.label), ["branch unrelated", "branch unlabeled"]);
+});
+
+test("local branches stacked on an ordered child inherit its files too", () => {
+  const children = new Set(["ordered-child"]);
+  const sources = [
+    { kind: "branch", refName: "local-grandchild" },
+    { kind: "branch", refName: "unrelated" },
+    { kind: "worktree", refName: "unsaved" }
+  ];
+  const inherited = inheritedOrderedRefs(sources, children,
+    (parent, branch) => parent === "ordered-child" && branch === "local-grandchild");
+  assert.deepEqual([...inherited], ["ordered-child", "local-grandchild"]);
 });

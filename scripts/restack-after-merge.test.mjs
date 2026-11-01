@@ -4,7 +4,7 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { directChildren, main, orderOf, recordedParentHead, restackChild } from "./restack-after-merge.mjs";
+import { catchUpAfterShip, directChildren, main, nextQueuedPr, orderOf, recordedParentHead, restackChild } from "./restack-after-merge.mjs";
 
 const repo = "ZootimusMaximusSupreme/fundhub-platform";
 const parentSha = "a".repeat(40);
@@ -37,6 +37,81 @@ test("recorded parent tip must be one exact SHA", () => {
   assert.equal(recordedParentHead({ body: `Release manifest\nStack parent head: ${marker}\n` }), marker);
   assert.equal(recordedParentHead({ body: `Stack parent head: ${marker}\nStack parent head: ${marker}` }), null);
   assert.equal(recordedParentHead({ body: "Stack parent head: not-a-sha" }), null);
+});
+
+test("ship receipt catches up only the first ordered PR based on main", () => {
+  const first = { ...child, base: { ref: "main" }, labels: [{ name: "ship-order/2" }] };
+  const later = { ...first, number: 42, labels: [{ name: "ship-order/3" }] };
+  const legacy = { ...first, number: 43, labels: [] };
+  assert.equal(nextQueuedPr([later, legacy, first], repo).number, 41);
+  const calls = [];
+  const rebased = "c".repeat(40);
+  let tagPushed = false;
+  const run = (program, args) => {
+    calls.push([program, ...args]);
+    if (program === "gh" && args[0] === "api" && args[1] === `repos/${repo}/pulls/41`) {
+      return JSON.stringify(first);
+    }
+    if (program === "git" && args[0] === "rev-parse") {
+      return args[1] === "HEAD" ? rebased : childSha;
+    }
+    if (program === "git" && args[0] === "merge-base") throw new Error("behind");
+    if (program === "git" && args[0] === "ls-remote") {
+      return tagPushed ? `${rebased}\trefs/tags/archive/codex/child` : "";
+    }
+    if (program === "git" && args[0] === "push" && args.at(-1) === "refs/tags/archive/codex/child") {
+      tagPushed = true;
+    }
+    return "";
+  };
+  assert.deepEqual(catchUpAfterShip({ prs: [later, legacy, first], repo, run }),
+    [{ number: 41, state: "caught-up" }]);
+  const rebase = calls.findIndex((call) => call[0] === "git" && call[1] === "rebase" && call[2] === "origin/main");
+  const tag = calls.findIndex((call) => call[0] === "git" && call[1] === "push" && call.at(-1) === "refs/tags/archive/codex/child");
+  const push = calls.findIndex((call) => call[0] === "git" && call[1] === "push" && call.at(-1) === "HEAD:refs/heads/codex/child");
+  const auto = calls.findIndex((call) => call[0] === "gh" && call[1] === "pr" && call[2] === "merge");
+  assert.ok(rebase < tag && tag < push && push < auto);
+  assert.ok(calls[push].includes(`--force-with-lease=refs/heads/codex/child:${childSha}`));
+});
+
+test("ship receipt conflict comments and leaves the branch unchanged", () => {
+  const first = { ...child, base: { ref: "main" } };
+  const calls = [];
+  const run = (program, args) => {
+    calls.push([program, ...args]);
+    if (program === "gh" && args[0] === "api" && args[1] === `repos/${repo}/pulls/41`) return JSON.stringify(first);
+    if (program === "git" && args[0] === "rev-parse") return childSha;
+    if (program === "git" && args[0] === "merge-base") throw new Error("behind");
+    if (program === "git" && args[0] === "rebase" && args[1] === "origin/main") throw new Error("conflict");
+    return "";
+  };
+  assert.deepEqual(catchUpAfterShip({ prs: [first], repo, run }), [{ number: 41, state: "conflict" }]);
+  assert.ok(calls.some((call) => call[0] === "gh" && call.includes(`repos/${repo}/issues/41/comments`)
+    && call.some((value) => value.includes("@ZootimusMaximusSupreme"))));
+  assert.equal(calls.some((call) => call[1] === "push"), false);
+});
+
+test("only a main ship receipt dispatches the catch-up path", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "ship-receipt-event-"));
+  const eventPath = path.join(root, "event.json");
+  const calls = [];
+  const run = (program, args) => {
+    calls.push([program, ...args]);
+    return "[]";
+  };
+  try {
+    fs.writeFileSync(eventPath, JSON.stringify({ ref: "refs/heads/main",
+      head_commit: { message: "ship: abcdef12 is live" } }));
+    assert.deepEqual(main({ eventPath, repo, run }), []);
+    assert.ok(calls.some((call) => call[0] === "gh" && call[1] === "api"));
+    calls.length = 0;
+    fs.writeFileSync(eventPath, JSON.stringify({ ref: "refs/heads/main",
+      head_commit: { message: "Unrelated change" } }));
+    assert.deepEqual(main({ eventPath, repo, run }), []);
+    assert.equal(calls.length, 0);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });
 
 function runner({ rebaseConflict = false, current = child, fetched = childSha,

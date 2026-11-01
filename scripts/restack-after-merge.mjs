@@ -30,6 +30,12 @@ export function directChildren(prs, merged, repo) {
     .sort((a, b) => a.number - b.number);
 }
 
+export function nextQueuedPr(prs, repo) {
+  return prs.filter((pr) => pr.state === "open" && pr.base?.ref === "main"
+    && pr.head?.repo?.full_name === repo && orderOf(pr) !== null)
+    .sort((a, b) => orderOf(a) - orderOf(b) || a.number - b.number)[0] || null;
+}
+
 export function command(program, args, options = {}) {
   return execFileSync(program, args, {
     encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], ...options
@@ -138,10 +144,54 @@ export function restackChild({ child, merged, repo, run = command }) {
   return { number: child.number, state: "restacked" };
 }
 
+export function catchUpAfterShip({ prs, repo, run = command }) {
+  const next = nextQueuedPr(prs, repo);
+  if (!next) return [];
+  const branch = next.head.ref;
+  const oldHead = next.head.sha;
+  assertBranch(branch, run);
+  if (!/^[a-f0-9]{40}$/i.test(oldHead)) throw new Error(`PR #${next.number} has an invalid head SHA`);
+  run("git", ["fetch", "origin", "refs/heads/main:refs/remotes/origin/main",
+    `refs/heads/${branch}:refs/remotes/origin/${branch}`]);
+  if (run("git", ["rev-parse", `refs/remotes/origin/${branch}`]) !== oldHead) {
+    return [{ number: next.number, state: "changed" }];
+  }
+  const current = latestPr(repo, next.number, run);
+  if (current.state !== "open" || current.base?.ref !== "main" || current.head?.sha !== oldHead) {
+    return [{ number: next.number, state: "already-moved" }];
+  }
+  try {
+    run("git", ["merge-base", "--is-ancestor", "origin/main", oldHead]);
+    return [{ number: next.number, state: "current" }];
+  } catch { /* the ship receipt advanced main */ }
+  run("git", ["switch", "-C", `restack-pr-${next.number}`, oldHead]);
+  try {
+    run("git", ["rebase", "origin/main"]);
+  } catch {
+    try { run("git", ["rebase", "--abort"]); } catch { /* no active rebase */ }
+    comment(repo, next.number,
+      `@ZootimusMaximusSupreme PR #${next.number} could not catch up after the latest ship receipt. The rebase conflicts with main. I left the branch and PR unchanged for a manual fix.`, run);
+    return [{ number: next.number, state: "conflict" }];
+  }
+  const beforePush = latestPr(repo, next.number, run);
+  if (beforePush.state !== "open" || beforePush.base?.ref !== "main" || beforePush.head?.sha !== oldHead) {
+    return [{ number: next.number, state: "already-moved" }];
+  }
+  archiveHead(branch, run);
+  run("git", ["push", `--force-with-lease=refs/heads/${branch}:${oldHead}`, "origin", `HEAD:refs/heads/${branch}`]);
+  run("gh", ["pr", "merge", String(next.number), "--repo", repo, "--auto", "--squash"]);
+  return [{ number: next.number, state: "caught-up" }];
+}
+
 export function main({ eventPath = process.env.GITHUB_EVENT_PATH,
   repo = process.env.GITHUB_REPOSITORY, run = command } = {}) {
   if (!eventPath || !repo) throw new Error("Missing GitHub event path or repository");
   const event = JSON.parse(fs.readFileSync(eventPath, "utf8"));
+  if (event.ref === "refs/heads/main" && /^ship: [a-f0-9]{8} is live\b/.test(event.head_commit?.message || "")) {
+    const pages = JSON.parse(run("gh", ["api", "--paginate", "--slurp",
+      `repos/${repo}/pulls?state=open&per_page=100`]));
+    return catchUpAfterShip({ prs: pages.flat(), repo, run });
+  }
   const merged = event.pull_request;
   if (event.action !== "closed" || !merged?.merged || merged.base?.ref !== "main"
     || merged.head?.repo?.full_name !== repo) {

@@ -127,6 +127,17 @@ export function orderedChildRefs(prs, current) {
   return children;
 }
 
+export function inheritedOrderedRefs(sources, childRefs, isAncestor) {
+  const inherited = new Set(childRefs);
+  for (const source of sources) {
+    if (source.kind !== "branch" || childRefs.has(source.refName)) continue;
+    if ([...childRefs].some((parent) => isAncestor(parent, source.refName))) {
+      inherited.add(source.refName);
+    }
+  }
+  return inherited;
+}
+
 export function excludeExpectedBase(sources, expectedBase) {
   if (!expectedBase) return sources;
   const name = expectedBase.replace(/^origin\//, "");
@@ -349,8 +360,14 @@ export function main(argv = process.argv.slice(2)) {
   if (args.expectedBase) notes.push(`Expected stack parent ${args.expectedBase} is an ancestor; its own files are excluded from collision warnings.`);
   const childRefs = orderedChildRefs(openPrs, current);
   if (childRefs.size) notes.push(`Excluded ${childRefs.size} ordered child branch(es); their inherited files are already in this branch.`);
+  const inheritedRefs = inheritedOrderedRefs(sources, childRefs, (parent, branch) =>
+    git(["merge-base", "--is-ancestor", parent, branch]) !== null
+    || git(["merge-base", "--is-ancestor", `origin/${parent}`, branch]) !== null);
+  if (inheritedRefs.size > childRefs.size) {
+    notes.push(`Excluded ${inheritedRefs.size - childRefs.size} branch(es) built on ordered children; their inherited files are already in this chain.`);
+  }
   const collisionSources = excludeExpectedBase(sources, args.expectedBase)
-    .filter((source) => !childRefs.has(source.refName));
+    .filter((source) => !inheritedRefs.has(source.refName));
   const handoff = resolveFileHandoffs(collisionSources, openPrs, current, canMergeFile);
   for (const item of handoff.accepted) {
     const note = `PR #${item.owner} handed ${item.file} to ${current}; both file versions merge cleanly.`;
