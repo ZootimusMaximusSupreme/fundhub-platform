@@ -190,7 +190,7 @@ export async function runShipChange(options, command = defaultCommand) {
       await rootGit(['rebase', '--onto', parentHead, basePoint, branch]);
     }
   } else {
-    // Keep the bottom PR current before it enters the merge queue.
+    // Keep the bottom PR current before required checks and squash auto-merge.
     await rootGit(['rebase', 'origin/main']);
   }
 
@@ -235,6 +235,6 @@ export async function defaultCommand(program, args, options = {}) {
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   runShipChange(parseArgs(process.argv.slice(2)))
-    .then(result => console.log(`PR #${result.number} is ${result.queued ? 'queued for main' : `stacked at position ${result.position} on ${result.base}`}.`))
+    .then(result => console.log(`PR #${result.number} is ${result.queued ? 'waiting for required checks and squash auto-merge' : `stacked at position ${result.position} on ${result.base}`}.`))
     .catch(error => { console.error(error.message); process.exitCode = 1; });
 }
