@@ -78,7 +78,7 @@ export async function createSetterTaskForEvent(event, db, env = process.env) {
     if (priorTask && !priorTask.done) {
       return { created: false, id: priorTask.id, reason: "duplicate_open_task" };
     }
-    if (booked && !slot) {
+    if (booked) {
       const open = await writer.query(
         `SELECT id FROM tasks
           WHERE org_id = $1 AND client_id = $2 AND source_workflow = $3 AND done = false
