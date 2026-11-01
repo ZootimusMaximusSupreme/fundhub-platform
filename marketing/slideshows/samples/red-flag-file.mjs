@@ -74,9 +74,11 @@ export const PERSON = Object.freeze({
   hasLLC: false
 });
 
-/* The bureau scores ON the file. Mid 600s: a long clean history pulled down by
-   88% card use and recent inquiries. Median 668. */
-export const SCORES = Object.freeze({ TU: 664, EX: 671, EQ: 668 });
+/* The bureau scores ON the file. Low 700s: fourteen years of on-time payments
+   hold every bureau at 700 and up, even with the cards at 88% and six recent
+   inquiries pulling them down. Median 706. This is a Funding-lane file (credit
+   700 and up). */
+export const SCORES = Object.freeze({ TU: 702, EX: 711, EQ: 706 });
 
 const SCORE_MODEL = Object.freeze({
   TU: { modelName: "FICO® Score 9", modelNameType: "00W18" },

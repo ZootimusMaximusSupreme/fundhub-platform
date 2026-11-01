@@ -28,10 +28,10 @@
     "employer": "SAMPLE EMPLOYER CO",
     "has_llc": false,
     "scores": {
-      "experian": 671,
-      "equifax": 668,
-      "transunion": 664,
-      "median": 668
+      "experian": 711,
+      "equifax": 706,
+      "transunion": 702,
+      "median": 706
     },
     "scores_note": "Scores are inputs on the file. The engine does not compute a new score, so the fixed-file run keeps the same scores.",
     "cards": [
@@ -257,11 +257,11 @@
     },
     "per_bureau_funding": "The CRS engine prints one funding figure for the whole file, not one per bureau.",
     "signals": {
-      "median_score": 668,
+      "median_score": 706,
       "scores": {
-        "tu": 664,
-        "ex": 671,
-        "eq": 668
+        "tu": 702,
+        "ex": 711,
+        "eq": 706
       },
       "card_use": {
         "total_balance": 111300,
@@ -309,7 +309,7 @@
     "reason_codes": [
       "VERY_HIGH_UTILIZATION"
     ],
-    "consumer_summary": "Credit score: 668 (fair). Utilization at 88% (critical). No active derogatories.",
+    "consumer_summary": "Credit score: 706 (good). Utilization at 88% (critical). No active derogatories.",
     "engine_suggestions_note": "As printed. The engine repeats each card sentence once per bureau copy, and its overall card-use line counts the dollars three times (the percent is right). Quote the per-card sentences once, and take overall dollars from person.cards_total. NO_INSTALLMENT counts only OPEN loans; the paid-off Toyota loan is on the file, so do not put that sentence on a slide.",
     "engine_suggestions": [
       {
@@ -480,11 +480,11 @@
     },
     "per_bureau_funding": "The CRS engine prints one funding figure for the whole file, not one per bureau.",
     "signals": {
-      "median_score": 668,
+      "median_score": 706,
       "scores": {
-        "tu": 664,
-        "ex": 671,
-        "eq": 668
+        "tu": 702,
+        "ex": 711,
+        "eq": 706
       },
       "card_use": {
         "total_balance": 12600,
@@ -530,7 +530,7 @@
       "thin_file": false
     },
     "reason_codes": [],
-    "consumer_summary": "Credit score: 668 (fair). Utilization at 10% (good). No active derogatories.",
+    "consumer_summary": "Credit score: 706 (good). Utilization at 10% (good). No active derogatories.",
     "engine_suggestions_note": "As printed. The engine repeats each card sentence once per bureau copy, and its overall card-use line counts the dollars three times (the percent is right). Quote the per-card sentences once, and take overall dollars from person.cards_total. NO_INSTALLMENT counts only OPEN loans; the paid-off Toyota loan is on the file, so do not put that sentence on a slide.",
     "engine_suggestions": [
       {
