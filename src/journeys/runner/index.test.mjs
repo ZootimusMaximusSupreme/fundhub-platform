@@ -208,7 +208,8 @@ import { isSyntheticRow } from "./synthetic.mjs";
    drain the same payment queues; those sweepers are now the only clocks. Every other cron is
    still in the registry, run by the Netlify cron clock instead of Inngest. */
 // The confirmed booking feed is a Netlify clock job with no journey event.
-const REGISTERED = 105;
+// AI COO manager review is also cron-only; its direct task proof is in src/ops/manager-kpi-review.test.mjs.
+const REGISTERED = 106;
 
 const N = (id, type, cfg = {}, branches) => ({ id, type, title: id, cfg, touches: [], branches });
 const cond = (id, lanes) => N(id, "condition", { field: "f", op: "is true" }, lanes);

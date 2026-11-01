@@ -30,6 +30,9 @@ flowchart TD
     LI -->|no connection| NC[linkedin: not_configured]
     FIRE["createCsuiteTask kind=fire|raise|bonus"] --> OWNER[assignee owner]
     FIRE -.->|not called from actOnBrain| IDLE[no auto-enqueue]
+    CLOCK["Netlify cron clock, 7:15 Arizona daily"] --> MGR["runManagerKpiReview"]
+    MGR -->|closer under 25% after 10 held calls| ROUTE["assigneeFor closer role, then active manager"]
+    ROUTE --> DATED["One dated manager review task per closer and month"]
 ```
 
 ## Entry
@@ -87,6 +90,12 @@ Never auto-enqueues `fire`, `raise`, or `bonus`. Never `suspendStaff`. Never wri
 - Monthly: `hire`, `diagnose`, `ads_review`
 - Keyed (`dedupeKey` required): `fire`, `raise`, `bonus` — assignee `owner`
 
+## Automatic manager KPI review
+
+`ops-manager-review` runs on the Netlify cron clock every day at 7:15 a.m. Arizona. It reads active, non-demo closers, including owner-designated Chris when his staff role is `owner`, and their real-client, non-demo `call_outcomes` for the current UTC month. A close rate below 25% after at least 10 held calls opens a review task due the next Arizona weekday at 10 a.m. The task states the held calls, paid deposits, threshold, and the need to review call quality, lead quality, and coaching history. It asks the manager to decide coaching or PIP; it does not start a PIP.
+
+Routing uses the closer role's active named hiring manager when configured. Otherwise it follows the role's existing owner route (normally `sales_manager`) and assigns the sole active person in that role by staff ID. Multiple active managers share the role queue. If that role has nobody active, the task goes to the active owner; if neither exists, the job reports a failure rather than claiming that work was assigned. `source_workflow` plus staff, metric, and month dedupe the task. A task with `due_at` appears on the internal Calendar; no external calendar invite is created.
+
 ## Briefs
 
 `src/ops/briefs.mjs`: CEO text starts “What needs doing today?” Owner text starts “What will be done.” Missing numbers are named missing. No invented fire trigger, raise percent, or bonus dollar. The setter line says setting is handled by a person today and the AI setter is off; it does not label current bookings as AI-set.
@@ -95,3 +104,4 @@ Never auto-enqueues `fire`, `raise`, or `bonus`. Never `suspendStaff`. Never wri
 
 - Live LinkedIn Talent Solutions payload against a real company account (same note already on `src/hiring/linkedin.mjs`)
 - Live Playwright cannot score the new route until this branch is deployed
+- Live production task creation and manager Calendar visibility for `ops-manager-review`

@@ -32,6 +32,7 @@ import { messageDispatchSweeper } from './message-dispatch-sweeper.mjs';
 import { invoiceCheckoutRetirementSweeper } from './invoice-checkout-retirement-sweeper.mjs';
 import { invoiceSentRecovery } from './invoice-sent-recovery.mjs';
 import { hiringBenchSweeper } from './hiring-bench-sweeper.mjs';
+import { opsManagerReview } from './ops-manager-review.mjs';
 import { hiringOutreachCadence } from './hiring-outreach-cadence.mjs';
 import { bankOutreachCheckins } from './bank-outreach-checkins.mjs';
 import { bankOutreachAutomation } from './bank-outreach-automation.mjs';
@@ -125,6 +126,9 @@ export const scheduled = [
      POST /api/ops/hire-closer where a human presses it. The sweeper's header
      carries the full reasoning. */
   hiringBenchSweeper,
+  /* AI COO reviews established per-person KPI misses and assigns dated work to the
+     named manager for that role, or its manager queue. The manager decides PIP. */
+  opsManagerReview,
 
   /* Candidate follow-up, every 30 minutes. Registered 2026-09-05, the same day
      the public apply door opened — an applicant who hears nothing is the whole
