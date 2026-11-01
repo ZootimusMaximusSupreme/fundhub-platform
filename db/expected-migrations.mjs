@@ -414,7 +414,9 @@ export const EXPECTED_MIGRATIONS = Object.freeze([
   "seed/298_s04_booking_app_confirm_email.sql",
   "seed/299_s04_confirm_ack.sql",
   "seed/300_sms_noshow_copy_restore.sql",
-  "seed/301_followup_flows_copy.sql"
+  "seed/301_followup_flows_copy.sql",
+  "seed/302_containment_plain_survey_copy.sql",
+  "seed/303_no_josh_chris.sql"
 ]);
 
 export default EXPECTED_MIGRATIONS;

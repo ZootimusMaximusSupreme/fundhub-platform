@@ -190,17 +190,27 @@ flowchart TD
     K3 -->|No| M3[Come-back text + email 3]
 ```
 
-**The link opens the survey where they stopped.** Every message carries
-`{{survey_resume_link}}`: `https://apply.fundhub.ai/apply?r=<token>`. The token is
-signed, names the client and the company and nothing else, and lasts 30 days. The
-page asks `GET /api/public/survey-resume?r=<token>` for the contact details and the
-answers already saved, fills them in, and opens on the first question with no
-answer. An answer that is no longer a choice on the page (an older score range) is
-asked again. No token, a bad one, or no answer in 3 seconds: the survey starts at
-the top, as before.
+**The link is the plain survey page (containment, 2026-10-31).** The welcome and
+come-back templates link to `https://apply.fundhub.ai/apply`, with no `?r=` code,
+and the survey starts at the top. Their copy says this plainly. S-02 uses saved
+answers only to decide whether more questions remain; its texts include no saved
+progress detail. `/apply` takes an existing lead's email with a new phone and
+writes that phone onto the lead (`resolveClient`), so a welcome or come-back text can
+reach a phone nobody proved is the lead's. The signed code those texts used to carry
+opened the lead's saved contact and answers at `GET /api/public/survey-resume`. That
+door now answers every code with the same 404 and reads nothing, so the codes already
+sent open nothing; the page treats the 404 as "start at the top". Opening the survey
+where the person stopped waits for a link that proves the person opening it owns the
+record. UNVERIFIED on live until this ships.
 
 "Finished" means `survey.completed`. A reply means a `message.inbound` event for
 the client after the flow started.
+
+**One of each touch a day, whatever runs.** Each touch's send key is the person and
+the Arizona day it goes out (`touchSendKey`), and the messages table lets one row per
+key through. Two opt-ins more than six hours apart that both wait for the same 9 a.m.
+are two runs; each touch still goes once (review 2026-10-31; before, every touch went
+twice).
 
 **"Booked?" is the question that could only ever answer no.** It asked for
 booking events belonging to the customer, and no booking event belonged to

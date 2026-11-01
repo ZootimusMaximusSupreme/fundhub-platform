@@ -72,11 +72,11 @@ describe("agent registry", { skip: !HAVE_DB ? "no DATABASE_URL" : false }, () =>
     ]);
   });
 
-  test("only Setter Josh and the Inquiry Removal AI are live", async () => {
+  test("only Setter Chris and the Inquiry Removal AI are live", async () => {
     const running = await live(db, { orgId: org });
     assert.deepEqual(running.map((r) => r.code).sort(), SEEDED_LIVE);
     assert.deepEqual(running.map((r) => r.name).sort(),
-      ["Inquiry Removal AI", "Setter Josh"]);
+      ["Inquiry Removal AI", "Setter Chris"]);
     // The screen marks eleven as live; that must not have been believed.
     assert.equal((await list(db, { orgId: org, status: "draft" })).length, 24);
   });
@@ -178,7 +178,7 @@ describe("agent registry", { skip: !HAVE_DB ? "no DATABASE_URL" : false }, () =>
   test("loading a real definition clears the flag", async () => {
     const r = await setDefinition(db, {
       orgId: org, code: "AG-04",
-      prompt: "You are Josh, a setter for fundhub…",
+      prompt: "You are Chris, a setter for fundhub…",
       guardrails: { never: ["quote a rate", "promise approval"], maxTurns: 12 }
     });
     assert.equal(r.prompt_missing, false);
@@ -230,7 +230,7 @@ describe("agent registry", { skip: !HAVE_DB ? "no DATABASE_URL" : false }, () =>
     // the NOT EXISTS guard is what is under test.
     await db.query(
       `INSERT INTO agents (org_id, code, name, agent_class, channel, status)
-       SELECT $1, 'AG-04', 'Setter Josh', 'client_facing', 'voice', 'draft'
+       SELECT $1, 'AG-04', 'Setter Chris', 'client_facing', 'voice', 'draft'
         WHERE NOT EXISTS (SELECT 1 FROM agents WHERE org_id = $1 AND code = 'AG-04')`,
       [org]);
     assert.equal((await list(db, { orgId: org })).length, before);
