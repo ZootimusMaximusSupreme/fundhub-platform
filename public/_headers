@@ -88,3 +88,11 @@
 # header the browser blocks the read and the card never draws.
 /funnel/fundhub-prompter-download.json
   Access-Control-Allow-Origin: https://apply.fundhub.ai
+
+# The phone slideshows at /slideshows/<name>/ (public/slideshows/<name>/index.html). Booked leads get a text or an
+# email that links to one, and the page is rewritten whenever a deck changes (node marketing/slideshows/build.mjs
+# --publish). Same reason as the screens above: a cache must ask before it serves one, or a lead opens last week's
+# words. Each page is one self-contained file (its own styles, script and pictures are inside it), so this one rule
+# covers the whole page.
+/slideshows/*
+  Cache-Control: public, max-age=0, must-revalidate
