@@ -202,6 +202,12 @@ the top, as before.
 "Finished" means `survey.completed`. A reply means a `message.inbound` event for
 the client after the flow started.
 
+**One of each touch a day, whatever runs.** Each touch's send key is the person and
+the Arizona day it goes out (`touchSendKey`), and the messages table lets one row per
+key through. Two opt-ins more than six hours apart that both wait for the same 9 a.m.
+are two runs; each touch still goes once (review 2026-10-31; before, every touch went
+twice).
+
 **"Booked?" is the question that could only ever answer no.** It asked for
 booking events belonging to the customer, and no booking event belonged to
 anybody. It now answers yes when **any** of these is true, within the

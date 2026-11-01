@@ -19,9 +19,10 @@ import { test, before, after } from "node:test";
 import assert from "node:assert";
 import { db, close } from "../db.mjs";
 import {
-  handle, resumePlan, sequenceInFlight, stopReason, surveyCompleted, RESUME_TEMPLATE_KEYS
+  handle, resumePlan, sequenceInFlight, stopReason, surveyCompleted, touchSendKey, RESUME_TEMPLATE_KEYS
 } from "./s-02-incomplete-survey-nudge.mjs";
 import { inngestSim } from "./inngest-sim.mjs";
+import { nextHourStrike, SEND_WINDOW_TZ } from "../messaging/send-window.mjs";
 import { readSurveyResumeToken } from "../survey/resume-link.mjs";
 import { isLocalScratchDatabaseUrl } from "../verification/scratch-guard.mjs";
 
@@ -286,7 +287,9 @@ test("a lead who never finishes: six queued messages on real rows, each with a l
     assert.deepEqual(rows.map((r) => r.template_key).sort(), KEYS6);
     for (const r of rows) {
       assert.equal(r.status, "queued", "queued for the dispatcher; this test sends nothing");
-      assert.equal(r.provider_ref, `workflow:${r.template_key}:${event.id}`, "one send key per touch, per channel, per opt-in");
+      const touch = Number(r.template_key.slice(-1));
+      assert.equal(r.provider_ref, `workflow:${r.template_key}:${touchSendKey(clientId, resumePlan(start)[touch - 1])}`,
+        "one send key per touch, per channel, per person and Arizona day");
       const link = r.rendered_body.match(/https:\/\/apply\.fundhub\.ai\/apply\?r=([A-Za-z0-9_-]+)/);
       assert.ok(link, r.rendered_body);
       assert.deepEqual(readSurveyResumeToken(link[1], { secret: SECRET, now: () => start + 3 * DAY }), { clientId });
@@ -354,7 +357,7 @@ test("a reply and a booking each stop the run", { skip: !HAS_DB }, async () => {
   assert.equal((await messagesOf(booker)).length, 2, "touch 1 went, nothing after");
 });
 
-test("two posts of one application share the first post's send key and queue six messages, not twelve",
+test("two posts of one application share one send key per touch and queue six messages, not twelve",
   { skip: !HAS_DB }, async () => {
     const email = `twice${++seq}@${DOMAIN}`;
     const clientId = await makeClient(orgId, { email });
@@ -367,7 +370,27 @@ test("two posts of one application share the first post's send key and queue six
     assert.equal(b.stoppedBecause, undefined);
     const rows = await messagesOf(clientId);
     assert.equal(rows.length, 6);
-    assert.ok(rows.every((r) => r.provider_ref.endsWith(`:${first.id}`)), "both runs keyed on the first post");
+    assert.ok(rows.every((r) => r.provider_ref.includes(`:${clientId}:`)), "both runs keyed on the person and the day");
+  });
+
+// Review 2026-10-31 (P1), on real rows: two opt-ins more than six hours apart are two runs with two
+// different opt-in events. Both sleep to the same 9 a.m., so neither has sent anything when the other
+// starts. The messages table's unique send key is what lets only one of each touch through.
+test("two opt-ins 6.5 hours apart that both wait for the same 9 a.m. queue six messages, not twelve",
+  { skip: !HAS_DB }, async () => {
+    const email = `night${++seq}@${DOMAIN}`;
+    const clientId = await makeClient(orgId, { email, answers: ANSWERED_THREE });
+    const night = nextHourStrike(new Date(), SEND_WINDOW_TZ, 22).getTime(); // the next 10 p.m. Arizona
+    const dawn = night + 6.5 * HOUR; // 4:30 a.m., past the adapter's six-hour repeat guard
+    const sim = inngestSim(iso(night));
+    const first = await optIn(clientId, night, email);
+    const second = await optIn(clientId, dawn, email);
+    const [a, b] = await sim.runAll([spec(sim, first), spec(sim, second)]);
+    assert.equal(a.stoppedBecause, undefined);
+    assert.equal(b.stoppedBecause, undefined);
+    assert.equal(resumePlan(night)[0].getTime(), resumePlan(dawn)[0].getTime(), "both runs plan touch 1 for the same 9 a.m.");
+    const rows = await messagesOf(clientId);
+    assert.deepEqual(rows.map((r) => r.template_key).sort(), KEYS6, "each touch once, a text and an email");
   });
 
 test("a lead who comes back through touch 2's link and stops again is not started a second sequence",
