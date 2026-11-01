@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Fundhub Funding Sequence</title>
-<meta name="description" content="The order your applications go out decides how much funding you get, and Fundhub plans that order from your file.">
+<meta name="description" content="Each bank reads the applications sent before it, so the order decides how much funding you get. Fundhub plans that order from your file before anything goes out.">
 <!--
   Deck FS · Funding sequence
   Lane: Funding (700 and up)
@@ -90,6 +90,8 @@
     rounds drawing shows about six, not a fixed count.
   - Display check (delivery-and-collaboration.md): every slide viewed at
     390 pixels wide before it shipped.
+
+  Rewritten 2026-10-31 on Chris's slide framework (see pre-underwriting.html).
 
   Talking points (aside.talk, hidden from viewers; open with #notes or N):
   about 45 to 60 seconds a slide, so the video runs about five minutes and
@@ -766,10 +768,14 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </defs>
   </svg>
 
-  <section class="slide dark" data-src="The same five applications in the wrong order get declined; the wrong order costs you money and time: src/deliverables/lender-list.mjs:52, :324 (client deliverable). The banks you use and the order you use them in decide how much money you get: marketing/offers/fundhub-offers-2026-10-10.pdf p.7 (fact bank 1.1). Most companies submit everything at once: public/app/present.js:108 (closer line S-11). The picture is section 03 of the lender list Fundhub prints for a client, as src/deliverables/lender-list.mjs:273-309 prints it with no card or lender named (the intro line, the five rules with their one-line instruction, the closing line). Fundhub prints the same five rules on every copy: src/underwrite/black-report-node.mjs:685-687.">
+  <section class="slide dark" data-src="The same five applications in the wrong order get declined; the wrong order costs you money and time: src/deliverables/lender-list.mjs:52, :324 (client deliverable). The banks you use and the order you use them in decide how much money you get: marketing/offers/fundhub-offers-2026-10-10.pdf p.7 (fact bank 1.1). Most companies submit everything at once: public/app/present.js:108 (closer line S-11). The picture is section 03 of the lender list Fundhub prints for a client, as src/deliverables/lender-list.mjs:273-309 prints it with no card or lender named (the intro line, the five rules with their one-line instruction, the closing line). Fundhub prints the same five rules on every copy: src/underwrite/black-report-node.mjs:685-687. Rewrite 2026-10-31. The order applications go out decides the total: marketing/offers/fundhub-offers-2026-10-10.pdf p.7. Each application leaves a hard inquiry the next bank reads: marketing/vsl/direct-book-vsl-2026-10-15.md:49 (green-lit). The five rules, the card fix and the lowest score floor first: src/underwrite/black-report-node.mjs:697-707. What that capital was for: docs/sops/weekend-2026-10-24/04-sales-call-script.md:112. Rewrite 2026-10-31. The order applications go out decides the total: marketing/offers/fundhub-offers-2026-10-10.pdf p.7. Each application leaves a hard inquiry the next bank reads: marketing/vsl/direct-book-vsl-2026-10-15.md:49 (green-lit). The five rules, the card fix and the lowest score floor first: src/underwrite/black-report-node.mjs:697-707. What that capital was for: docs/sops/weekend-2026-10-24/04-sales-call-script.md:112. Rewrite 2026-10-31. The order applications go out decides the total: marketing/offers/fundhub-offers-2026-10-10.pdf p.7. Each application leaves a hard inquiry the next bank reads: marketing/vsl/direct-book-vsl-2026-10-15.md:49 (green-lit). The five rules, the card fix and the lowest score floor first: src/underwrite/black-report-node.mjs:697-707. What that capital was for: docs/sops/weekend-2026-10-24/04-sales-call-script.md:112. Rewrite 2026-10-31. The order applications go out decides the total: marketing/offers/fundhub-offers-2026-10-10.pdf p.7. Each application leaves a hard inquiry the next bank reads: marketing/vsl/direct-book-vsl-2026-10-15.md:49 (green-lit). The five rules, the card fix and the lowest score floor first: src/underwrite/black-report-node.mjs:697-707. What that capital was for: docs/sops/weekend-2026-10-24/04-sales-call-script.md:112. Rewrite 2026-10-31. The order applications go out decides the total: marketing/offers/fundhub-offers-2026-10-10.pdf p.7. Each application leaves a hard inquiry the next bank reads: marketing/vsl/direct-book-vsl-2026-10-15.md:49 (green-lit). The five rules, the card fix and the lowest score floor first: src/underwrite/black-report-node.mjs:697-707. What that capital was for: docs/sops/weekend-2026-10-24/04-sales-call-script.md:112. Rewrite 2026-10-31. The order applications go out decides the total: marketing/offers/fundhub-offers-2026-10-10.pdf p.7. Each application leaves a hard inquiry the next bank reads: marketing/vsl/direct-book-vsl-2026-10-15.md:49 (green-lit). The five rules, the card fix and the lowest score floor first: src/underwrite/black-report-node.mjs:697-707. What that capital was for: docs/sops/weekend-2026-10-24/04-sales-call-script.md:112.">
     <p class="eyebrow">FS-01 / The order</p>
-    <h2>The same five applications, sent in the wrong order, get declined.</h2>
-    <p class="lede">The banks you use and the order you use them in decide how much money you get. Most companies submit everything at once.</p>
+    <h2>Each bank reads the applications sent before it, so the order sets how much you get.</h2>
+    <p class="lede">Your own file already decides what has to happen before the first one goes out.</p>
+    <ul class="lines">
+      <li>Fundhub prints these five order rules on every lender list it builds for a client.</li>
+      <li>Flip the order, and the very same five come back declined, each one leaving an inquiry for the next bank to read.</li>
+    </ul>
     <figure class="pic">
       <div class="real" role="img" aria-label="Section 03 of a Fundhub lender list: Application Order Warning. Five rules: fix utilization first, lowest score floor first, one at a time, work up the list, personal before business. Marked: the same five applications in the wrong order get declined.">
         <p class="model">03 / APPLICATION ORDER</p>
@@ -788,52 +794,62 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Look at this. It's section three of the lender list we print for every client, and the first line of that section says it: applying to the wrong lender first burns hard inquiries and triggers automatic declines that follow you to the next application.</li>
-        <li>Same five applications. Same file. In the wrong order, they get declined.</li>
-        <li>The banks you use and the order you use them in decide how much money you get.</li>
-        <li>Most companies submit everything at once, to one list of lenders they use for every single client.</li>
-        <li>That's how a good file walks away with a report full of hard inquiries.</li>
-        <li>We plan the order first. These five rules print on every copy of your documents, and the rest of this deck walks them.</li>
+        <li>Every bank you apply to reads the applications that went out before it. So the ORDER you send them in decides how much funding you walk away with.</li>
+        <li>Your own file already decides what has to happen before the first one goes out. This is section three of the lender list Fundhub builds for each client.</li>
+        <li>It lays out five rules. The card balance gets fixed first, the lowest score floor goes first, and only ONE application goes out at a time.</li>
+        <li>Then you work up the list, and personal goes before business. Flip that order around, and the very same five come back DECLINED.</li>
+        <li>Each of those denials still drops a hard inquiry on your report, and whichever bank comes next has all of them in front of it when it makes its call.</li>
+        <li>The wrong order turns the money for your next hire, your bigger job or your ads into a pile of denial letters.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide" data-src="Your personal file first, then each business on its own: public/app/present.js:109 (closer line S-12) and docs/sops/weekend-2026-10-24/04-sales-call-script.md:222. Each business is judged on its own, after your personal file is ready: public/app/present.js:104 (C-01). Chris's locked walk, owner law 2026-09-26: src/underwrite/funding-sequence.mjs:3-13; 'Nothing else is worth doing until the personal file is prime.' :24; personal comes before business :29-33; a person with no company skips the company step :38-41; keep applying round after round, the step never completes :51-57. Lock personal funding in first, then form or grow the business side: src/underwrite/black-report-node.mjs:707.">
+  <section class="slide" data-src="Your personal file first, then each business on its own: public/app/present.js:109 (closer line S-12) and docs/sops/weekend-2026-10-24/04-sales-call-script.md:222. Each business is judged on its own, after your personal file is ready: public/app/present.js:104 (C-01). Chris's locked walk, owner law 2026-09-26: src/underwrite/funding-sequence.mjs:3-13; 'Nothing else is worth doing until the personal file is prime.' :24; personal comes before business :29-33; a person with no company skips the company step :38-41; keep applying round after round, the step never completes :51-57. Lock personal funding in first, then form or grow the business side: src/underwrite/black-report-node.mjs:707. Every business amount is the personal file's card funding times the business age (0.5 under 12 months, 1 under 24, 2 from 24): src/underwrite/vendor/underwriter.cjs:277-286 and src/underwrite/business-funding.mjs:5-9. The first business check is a fundable personal file: src/finance/fundability.mjs:155-160. No company, straight from personal funding to the lender list: src/underwrite/funding-sequence.mjs:38-41. Every company you add brings in more funding: marketing/offers/fundhub-offers-2026-10-10.pdf p.7. Every business amount is the personal file's card funding times the business age (0.5 under 12 months, 1 under 24, 2 from 24): src/underwrite/vendor/underwriter.cjs:277-286 and src/underwrite/business-funding.mjs:5-9. The first business check is a fundable personal file: src/finance/fundability.mjs:155-160. No company, straight from personal funding to the lender list: src/underwrite/funding-sequence.mjs:38-41. Every company you add brings in more funding: marketing/offers/fundhub-offers-2026-10-10.pdf p.7. Every business amount is the personal file's card funding times the business age (0.5 under 12 months, 1 under 24, 2 from 24): src/underwrite/vendor/underwriter.cjs:277-286 and src/underwrite/business-funding.mjs:5-9. The first business check is a fundable personal file: src/finance/fundability.mjs:155-160. No company, straight from personal funding to the lender list: src/underwrite/funding-sequence.mjs:38-41. Every company you add brings in more funding: marketing/offers/fundhub-offers-2026-10-10.pdf p.7. Every business amount is the personal file's card funding times the business age (0.5 under 12 months, 1 under 24, 2 from 24): src/underwrite/vendor/underwriter.cjs:277-286 and src/underwrite/business-funding.mjs:5-9. The first business check is a fundable personal file: src/finance/fundability.mjs:155-160. No company, straight from personal funding to the lender list: src/underwrite/funding-sequence.mjs:38-41. Every company you add brings in more funding: marketing/offers/fundhub-offers-2026-10-10.pdf p.7. Every business amount is the personal file's card funding times the business age (0.5 under 12 months, 1 under 24, 2 from 24): src/underwrite/vendor/underwriter.cjs:277-286 and src/underwrite/business-funding.mjs:5-9. The first business check is a fundable personal file: src/finance/fundability.mjs:155-160. No company, straight from personal funding to the lender list: src/underwrite/funding-sequence.mjs:38-41. Every company you add brings in more funding: marketing/offers/fundhub-offers-2026-10-10.pdf p.7. Every business amount is the personal file's card funding times the business age (0.5 under 12 months, 1 under 24, 2 from 24): src/underwrite/vendor/underwriter.cjs:277-286 and src/underwrite/business-funding.mjs:5-9. The first business check is a fundable personal file: src/finance/fundability.mjs:155-160. No company, straight from personal funding to the lender list: src/underwrite/funding-sequence.mjs:38-41. Every company you add brings in more funding: marketing/offers/fundhub-offers-2026-10-10.pdf p.7.">
     <p class="eyebrow">FS-02 / Personal first</p>
-    <h2>Your personal file goes first, then each business on its own.</h2>
+    <h2>Every business amount starts from your personal file, so your personal file goes first.</h2>
     <ul class="lines">
-      <li>Nothing else is worth doing until your personal file is ready.</li>
-      <li>Each business is judged on its own. Then it's round after round.</li>
+      <li>Our system figures every business amount from the card funding your personal file supports.</li>
+      <li>A company two years or older counts at double that amount, and one under a year counts at half.</li>
     </ul>
     <figure class="pic">
-      <ul class="flow" role="img" aria-label="The order, in five steps. One: your personal file. Two: personal funding. Three: business one, judged on its own. Four: business two, judged on its own. Five: keep applying, round after round.">
-        <li><div>Your personal file<span class="sub">Nothing else is worth doing until it's ready.</span></div></li>
-        <li><div>Personal funding<span class="sub">Personal comes before business.</span></div></li>
-        <li><div>Business one<span class="sub">If you have one. Judged on its own.</span></div></li>
-        <li><div>Business two<span class="sub">Judged on its own, after business one.</span></div></li>
-        <li class="is-hot"><div>Keep applying<span class="sub">Round after round. This step never ends.</span></div></li>
-      </ul>
+      <div class="sheet">
+        <svg class="bv" viewBox="0 0 300 262" role="img" aria-label="How a business amount is figured. Your personal file sets the card funding. Each business counts that card funding by its age: under 1 year old at half, 1 to 2 years at the same amount, 2 years or older at double.">
+          <rect class="pn-ink" x="30" y="2" width="240" height="58" rx="10"/>
+          <text class="h on-ink" x="150" y="27" text-anchor="middle">Your personal file</text>
+          <text class="caps on-ink" x="150" y="47" text-anchor="middle">sets the card funding</text>
+          <rect x="44" y="54" width="212" height="3" rx="1.5" fill="url(#fh-spectrum)"/>
+          <path class="cn ink" d="M150 60V80" marker-end="url(#fh-arrow)"/>
+          <text class="lb" x="150" y="100" text-anchor="middle">EACH BUSINESS, BY ITS AGE</text>
+          <rect class="pn" x="1" y="110" width="298" height="42" rx="8"/>
+          <text x="14" y="136">Under 1 year old</text>
+          <text class="h" x="286" y="137" text-anchor="end">0.5×</text>
+          <rect class="pn" x="1" y="158" width="298" height="42" rx="8"/>
+          <text x="14" y="184">1 to 2 years old</text>
+          <text class="h" x="286" y="185" text-anchor="end">1×</text>
+          <rect class="tint-fit edge-fit" x="1" y="206" width="298" height="42" rx="8"/>
+          <text x="14" y="232">2 years or older</text>
+          <text class="h" x="286" y="233" text-anchor="end">2×</text>
+          <text class="lb" x="150" y="261" text-anchor="middle">OF YOUR PERSONAL CARD FUNDING</text>
+        </svg>
+      </div>
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Walk the order with me.</li>
-        <li>Your personal file goes first. Nothing else is worth doing until it's ready.</li>
-        <li>Then personal funding. Personal comes before business, every time.</li>
-        <li>Then business one, on its own. Then business two, on its own. A bank judges each business by itself, after your personal file is ready.</li>
-        <li>If you don't have a business yet, you skip that step and go straight to the lender list.</li>
-        <li>And then the applications keep going, round after round. That's a funding sequence.</li>
-        <li>Your story: the first time you ran this order on your own file.</li>
+        <li>Underneath that order sits one rule inside our system. Every business amount starts from the card funding your PERSONAL file supports.</li>
+        <li>A stronger personal file raises the amount for every business you add, so nothing else gets worked until your personal file is READY.</li>
+        <li>Then each business gets counted by its age. A company two years or older counts at DOUBLE your personal card funding, and one under a year counts at half.</li>
+        <li>After that, every company is judged by itself. If you don't have a company yet, your path runs from personal funding straight to the banks.</li>
+        <li>Every company you add later gets figured from that same personal file. So the work you put into it now shows up again in each one of them.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide" data-src="One at a time: 'Wait for the decision before you send the next one. Never shotgun applications.' is the third application-order rule Fundhub prints on a client's documents: src/underwrite/black-report-node.mjs:705; the same words are the spacing rule in src/finance/bank-strategy.mjs:222. Every application leaves a hard inquiry: marketing/vsl/direct-book-vsl-2026-10-15.md:49 (green-lit). The banks see the inquiries stack, and they start denying you; it's called inquiry stacking: public/app/present.js:108 (closer line S-11). No wait time between two banks is set; the decision sets it: src/finance/bank-strategy.mjs:609.">
+  <section class="slide" data-src="One at a time: 'Wait for the decision before you send the next one. Never shotgun applications.' is the third application-order rule Fundhub prints on a client's documents: src/underwrite/black-report-node.mjs:705; the same words are the spacing rule in src/finance/bank-strategy.mjs:222. Every application leaves a hard inquiry: marketing/vsl/direct-book-vsl-2026-10-15.md:49 (green-lit). The banks see the inquiries stack, and they start denying you; it's called inquiry stacking: public/app/present.js:108 (closer line S-11). No wait time between two banks is set; the decision sets it: src/finance/bank-strategy.mjs:609. Each inquiry on the report shows who pulled and when: src/finance/sample-credit-file.mjs:103-107 (the report's inquiry rows). Inquiry stacking gets you denied: public/app/present.js:108. The decision sets the pace, and no day count between banks is set: src/finance/bank-strategy.mjs:609. Each inquiry on the report shows who pulled and when: src/finance/sample-credit-file.mjs:103-107 (the report's inquiry rows). Inquiry stacking gets you denied: public/app/present.js:108. The decision sets the pace, and no day count between banks is set: src/finance/bank-strategy.mjs:609. Each inquiry on the report shows who pulled and when: src/finance/sample-credit-file.mjs:103-107 (the report's inquiry rows). Inquiry stacking gets you denied: public/app/present.js:108. The decision sets the pace, and no day count between banks is set: src/finance/bank-strategy.mjs:609. Each inquiry on the report shows who pulled and when: src/finance/sample-credit-file.mjs:103-107 (the report's inquiry rows). Inquiry stacking gets you denied: public/app/present.js:108. The decision sets the pace, and no day count between banks is set: src/finance/bank-strategy.mjs:609. Each inquiry on the report shows who pulled and when: src/finance/sample-credit-file.mjs:103-107 (the report's inquiry rows). Inquiry stacking gets you denied: public/app/present.js:108. The decision sets the pace, and no day count between banks is set: src/finance/bank-strategy.mjs:609. Each inquiry on the report shows who pulled and when: src/finance/sample-credit-file.mjs:103-107 (the report's inquiry rows). Inquiry stacking gets you denied: public/app/present.js:108. The decision sets the pace, and no day count between banks is set: src/finance/bank-strategy.mjs:609.">
     <p class="eyebrow">FS-03 / One at a time</p>
-    <h2>One application at a time, so the inquiries never stack up.</h2>
+    <h2>Once inquiries pile up on one report, banks start saying no, so we send one at a time.</h2>
     <ul class="lines">
-      <li>Every application leaves a hard inquiry, and the next bank reads it on your report.</li>
-      <li>The banks see the inquiries stack, and they start denying you. It's called inquiry stacking.</li>
-      <li>So we wait for the decision before the next application goes out. Never shotgun applications.</li>
+      <li>Each application waits for the last bank's answer before it goes out, so your pulls land one at a time.</li>
+      <li>That's rule three on your lender list, and it protects every application that comes after it.</li>
     </ul>
     <figure class="pic">
       <div class="real" role="img" aria-label="Rule 3 of the application order on a Fundhub client report: One at a time. Wait for the decision before you send the next one. Never shotgun applications. Marked: printed on your report.">
@@ -846,22 +862,21 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Here's rule three, straight off the report: wait for the decision before you send the next one. Never shotgun applications.</li>
-        <li>Every application leaves a hard inquiry. The next bank sees it on your report.</li>
-        <li>When they stack up, the banks start denying you. That's inquiry stacking.</li>
-        <li>So one goes out, we wait for the bank's answer, then the next one goes out.</li>
-        <li>There's no fixed wait between two banks. The decision sets the pace.</li>
-        <li>A blast sends them all at once. A plan sends one, waits, then sends the next.</li>
+        <li>What happens when five applications go out the same afternoon? Each one drops a HARD inquiry on your report, and every bank can see all of them.</li>
+        <li>Each inquiry shows who pulled your file and on what date. So the next bank knows how many went out, and how recently they went.</li>
+        <li>When a bank sees that many fresh pulls at once, it starts declining. Rule three on your lender list is there to stop that from happening to you.</li>
+        <li>So one application goes out, and we WAIT for that bank's answer before the next one goes anywhere. The bank's decision sets the pace.</li>
+        <li>For you, every bank in the round reads your file with as few new pulls on it as possible, and that protects every application behind it.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide" data-src="The reading order Chris asked for: national banks, then the local banks in the state you live in, then the local banks in the state your business is in; every match appears once: src/pulse/beats/lib/lender-match.mjs:718-722. Every bank is picked from your file; you only apply where your file makes sense: public/app/present.js:107 (closer line S-10) and :99 (S-06). Home state and business state each open local banks: marketing/landing-pages/slo/preview/reorg-draft-build.mjs:338. The bank decides, not us; we pick the banks and the order: docs/sops/weekend-2026-10-24/04-sales-call-script.md:229. Never name a bank as one that will approve you: 04-sales-call-script.md:178, so the drawing names none.">
+  <section class="slide" data-src="The reading order Chris asked for: national banks, then the local banks in the state you live in, then the local banks in the state your business is in; every match appears once: src/pulse/beats/lib/lender-match.mjs:718-722. Every bank is picked from your file; you only apply where your file makes sense: public/app/present.js:107 (closer line S-10) and :99 (S-06). Home state and business state each open local banks: marketing/landing-pages/slo/preview/reorg-draft-build.mjs:338. The bank decides, not us; we pick the banks and the order: docs/sops/weekend-2026-10-24/04-sales-call-script.md:229. Never name a bank as one that will approve you: 04-sales-call-script.md:178, so the drawing names none. A lender covering both states is listed once, in the home lane: src/pulse/beats/lib/lender-match.mjs:430-449 and :718-722. Held back to protect a bureau with an open or recent inquiry: src/pulse/beats/lib/lender-match.mjs:483-486, :572 and :742-745. A lender covering both states is listed once, in the home lane: src/pulse/beats/lib/lender-match.mjs:430-449 and :718-722. Held back to protect a bureau with an open or recent inquiry: src/pulse/beats/lib/lender-match.mjs:483-486, :572 and :742-745. A lender covering both states is listed once, in the home lane: src/pulse/beats/lib/lender-match.mjs:430-449 and :718-722. Held back to protect a bureau with an open or recent inquiry: src/pulse/beats/lib/lender-match.mjs:483-486, :572 and :742-745. A lender covering both states is listed once, in the home lane: src/pulse/beats/lib/lender-match.mjs:430-449 and :718-722. Held back to protect a bureau with an open or recent inquiry: src/pulse/beats/lib/lender-match.mjs:483-486, :572 and :742-745. A lender covering both states is listed once, in the home lane: src/pulse/beats/lib/lender-match.mjs:430-449 and :718-722. Held back to protect a bureau with an open or recent inquiry: src/pulse/beats/lib/lender-match.mjs:483-486, :572 and :742-745. A lender covering both states is listed once, in the home lane: src/pulse/beats/lib/lender-match.mjs:430-449 and :718-722. Held back to protect a bureau with an open or recent inquiry: src/pulse/beats/lib/lender-match.mjs:483-486, :572 and :742-745.">
     <p class="eyebrow">FS-04 / Which banks</p>
-    <h2>National banks first, then banks in your state, then banks in your business's state.</h2>
+    <h2>National banks go first, then the local banks where you live and where your business is.</h2>
     <ul class="lines">
-      <li>Every bank on your list is picked from your file, so you only apply where your file makes sense.</li>
-      <li>Where you live and where your business is each open their own local banks, and the list reads in that order.</li>
+      <li>Living in one state and running the business in another gets you both sets of local banks, with each bank listed once.</li>
+      <li>Any bank that pulls a bureau with a fresh inquiry on it gets held back, so your pulls stay spread across all three.</li>
     </ul>
     <figure class="pic">
       <div class="sheet">
@@ -889,68 +904,60 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Which banks go first? Look at the three bands.</li>
-        <li>National banks first. Then the local banks in the state you live in. Then the local banks in the state your business is in.</li>
-        <li>Each bank on that list is picked from your file, so you only apply where your file makes sense.</li>
-        <li>Where you live opens one set of local banks. Where your business is opens another. That's why we ask for both.</li>
-        <li>The bank decides, not us. We pick the banks and the order. They say yes or no.</li>
-        <li>Your story: a time the order of the banks changed what a file got.</li>
+        <li>So which banks make your list? Our system builds it from your file in three bands, and it reads top to bottom in that exact ORDER.</li>
+        <li>National banks come first. Next come the local banks in your home state, and then the local banks in the state where your business is set up.</li>
+        <li>Live in one state and run the business from another? You get BOTH sets of local banks, and a bank that covers both states only shows up once.</li>
+        <li>When a bureau already shows a fresh inquiry, any bank that pulls that bureau gets held back. That keeps your pulls SPREAD across all three bureaus.</li>
+        <li>The banks and the order are our job, and the yes or no belongs to the bank. That's why every bank on your list is one your file makes sense for.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide" data-src="We apply in rounds; one funding sequence is about six rounds; between rounds we dispute the new hard inquiries, so the next round starts from a cleaner file: public/app/present.js:109 (closer line S-12) and docs/sops/weekend-2026-10-24/04-sales-call-script.md:221-222. Pulls are spread across the three bureaus: src/finance/bank-strategy.mjs:602; a bank that pulls a bureau with a fresh inquiry on it is held back: src/pulse/beats/lib/lender-match.mjs:10-11, :742-745. Your file goes into each round clean, and that's how a funding sequence builds real capital: marketing/vsl/direct-book-vsl-2026-10-15.md:51 (green-lit; 'about six' wins over its '3 to 6', fact bank conflict 7). Never 'round two': .ai/rules/funding-sequence-term.md.">
-    <p class="eyebrow">FS-05 / Rounds and sweeps</p>
-    <h2>Between rounds, we dispute the new hard inquiries.</h2>
+  <section class="slide" data-src="We apply in rounds; one funding sequence is about six rounds; between rounds we dispute the new hard inquiries, so the next round starts from a cleaner file: public/app/present.js:109 (closer line S-12) and docs/sops/weekend-2026-10-24/04-sales-call-script.md:221-222. Pulls are spread across the three bureaus: src/finance/bank-strategy.mjs:602; a bank that pulls a bureau with a fresh inquiry on it is held back: src/pulse/beats/lib/lender-match.mjs:10-11, :742-745. Your file goes into each round clean, and that's how a funding sequence builds real capital: marketing/vsl/direct-book-vsl-2026-10-15.md:51 (green-lit; 'about six' wins over its '3 to 6', fact bank conflict 7). Never 'round two': .ai/rules/funding-sequence-term.md. After funding, the system picks the date the file is ready for the next funding sequence: marketing/offers/fundhub-offers-2026-10-10.pdf p.5. Every company you add brings in more funding, and Chris used this approach for $100,000 lines on four companies off one personal file: same PDF p.7 and marketing/ads/RULES.md Part 0 rule 38. What the capital pays for: docs/sops/weekend-2026-10-24/04-sales-call-script.md:112. After funding, the system picks the date the file is ready for the next funding sequence, and the team is told on that date: marketing/offers/fundhub-offers-2026-10-10.pdf p.5. Every company you add brings in more funding, and Chris used this approach for $100,000 lines on four companies off one personal file: same PDF p.7 and marketing/ads/RULES.md Part 0 rule 38. What the capital pays for: docs/sops/weekend-2026-10-24/04-sales-call-script.md:112. After funding, the system picks the date the file is ready for the next funding sequence, and the team is told on that date: marketing/offers/fundhub-offers-2026-10-10.pdf p.5. Every company you add brings in more funding, and Chris used this approach for $100,000 lines on four companies off one personal file: same PDF p.7 and marketing/ads/RULES.md Part 0 rule 38. What the capital pays for: docs/sops/weekend-2026-10-24/04-sales-call-script.md:112. After funding, the system picks the date the file is ready for the next funding sequence, and the team is told on that date: marketing/offers/fundhub-offers-2026-10-10.pdf p.5. Every company you add brings in more funding, and Chris used this approach for $100,000 lines on four companies off one personal file: same PDF p.7 and marketing/ads/RULES.md Part 0 rule 38. What the capital pays for: docs/sops/weekend-2026-10-24/04-sales-call-script.md:112. After funding, the system picks the date the file is ready for the next funding sequence, and the team is told on that date: marketing/offers/fundhub-offers-2026-10-10.pdf p.5. Every company you add brings in more funding, and Chris used this approach for $100,000 lines on four companies off one personal file: same PDF p.7 and marketing/ads/RULES.md Part 0 rule 38. What the capital pays for: docs/sops/weekend-2026-10-24/04-sales-call-script.md:112. After funding, the system picks the date the file is ready for the next funding sequence, and the team is told on that date: marketing/offers/fundhub-offers-2026-10-10.pdf p.5. Every company you add brings in more funding, and Chris used this approach for $100,000 lines on four companies off one personal file: same PDF p.7 and marketing/ads/RULES.md Part 0 rule 38. What the capital pays for: docs/sops/weekend-2026-10-24/04-sales-call-script.md:112." data-figures="Chris's own track record: $100,000 lines on four companies off one personal file (marketing/ads/RULES.md Part 0 rule 38)">
+    <p class="eyebrow">FS-05 / What it builds</p>
+    <h2>Each funding sequence sets up the next one, so your growth keeps running on funding.</h2>
     <ul class="lines">
-      <li>We apply in rounds. One funding sequence is about six rounds.</li>
-      <li>Inside a round, the pulls are spread across the three bureaus, and a bank that pulls a bureau with a fresh inquiry on it is held back.</li>
-      <li>Between rounds, we dispute the new hard inquiries, so the next round starts from a cleaner file. That's how a funding sequence builds real capital.</li>
+      <li>Fresh inquiries get disputed before each new round leaves, and a full funding sequence takes about six rounds.</li>
+      <li>Each new sequence pays for the next stage of growth, a new employee, a larger contract, more ads, with your savings left alone.</li>
     </ul>
     <figure class="pic">
       <div class="sheet">
-        <svg class="bv" viewBox="0 0 300 200" role="img" aria-label="A timeline. One funding sequence: round one, sweep, round two, sweep, round three, and on to about six rounds. Inside each round the pulls land on Experian, Equifax and TransUnion. Each sweep disputes the new hard inquiries.">
+        <svg class="bv" viewBox="0 0 300 196" role="img" aria-label="One funding sequence runs about six rounds, with a sweep of the new hard inquiries between every round. When it wraps up, the start date for the next funding sequence gets set. The funding pays for the hire, the bigger job and the ads.">
           <text class="lb" x="150" y="14" text-anchor="middle">ONE FUNDING SEQUENCE</text>
-          <rect x="1" y="22" width="298" height="3" rx="1.5" fill="url(#fh-spectrum)"/>
-          <rect class="pn" x="1" y="40" width="66" height="56" rx="8"/>
-          <text class="lb ink" x="34" y="62" text-anchor="middle">ROUND 1</text>
-          <text class="caps" x="34" y="84" text-anchor="middle">EX EQ TU</text>
-          <rect class="tint-fit edge-fit" x="71" y="50" width="42" height="36" rx="6"/>
-          <text class="caps" x="92" y="72" text-anchor="middle">SWEEP</text>
-          <rect class="pn" x="117" y="40" width="66" height="56" rx="8"/>
-          <text class="lb ink" x="150" y="62" text-anchor="middle">ROUND 2</text>
-          <text class="caps" x="150" y="84" text-anchor="middle">EX EQ TU</text>
-          <rect class="tint-fit edge-fit" x="187" y="50" width="42" height="36" rx="6"/>
-          <text class="caps" x="208" y="72" text-anchor="middle">SWEEP</text>
-          <rect class="pn" x="233" y="40" width="66" height="56" rx="8"/>
-          <text class="lb ink" x="266" y="62" text-anchor="middle">ROUND 3</text>
-          <text class="caps" x="266" y="84" text-anchor="middle">EX EQ TU</text>
-          <path class="cn ink dash" d="M266 96V116"/>
-          <text class="lb" x="150" y="128" text-anchor="middle">ON TO ABOUT SIX ROUNDS</text>
-          <rect class="tint-fit edge-fit" x="1" y="146" width="298" height="50" rx="8"/>
-          <text class="caps" x="150" y="167" text-anchor="middle">A SWEEP DISPUTES THE NEW HARD INQUIRIES,</text>
-          <text class="caps" x="150" y="184" text-anchor="middle">SO THE NEXT ROUND STARTS CLEANER</text>
+          <rect x="16" y="37" width="268" height="3" rx="1.5" fill="url(#fh-spectrum)"/>
+          <circle class="pn-ink" cx="26" cy="38" r="12"/><text class="on-ink" x="26" y="43" text-anchor="middle">1</text>
+          <circle class="pn" style="stroke:var(--ink);stroke-width:2" cx="76" cy="38" r="12"/><text x="76" y="43" text-anchor="middle">2</text>
+          <circle class="pn" style="stroke:var(--ink);stroke-width:2" cx="126" cy="38" r="12"/><text x="126" y="43" text-anchor="middle">3</text>
+          <circle class="pn" style="stroke:var(--ink);stroke-width:2" cx="176" cy="38" r="12"/><text x="176" y="43" text-anchor="middle">4</text>
+          <circle class="pn" style="stroke:var(--ink);stroke-width:2" cx="226" cy="38" r="12"/><text x="226" y="43" text-anchor="middle">5</text>
+          <circle class="pn" style="stroke:var(--ink);stroke-width:2" cx="276" cy="38" r="12"/><text x="276" y="43" text-anchor="middle">6</text>
+          <text class="lb" x="150" y="70" text-anchor="middle">A SWEEP BETWEEN EVERY ROUND</text>
+          <path class="cn ink" d="M150 78V92" marker-end="url(#fh-arrow)"/>
+          <rect class="pn-ink" x="20" y="96" width="260" height="38" rx="8"/>
+          <text class="on-ink" x="150" y="120" text-anchor="middle">Next funding sequence date gets set</text>
+          <path class="cn ink" d="M150 134V148" marker-end="url(#fh-arrow)"/>
+          <rect class="tint-fit edge-fit" x="1" y="152" width="298" height="40" rx="8"/>
+          <text class="caps" x="150" y="177" text-anchor="middle">The hire · the bigger job · the ads</text>
         </svg>
       </div>
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Walk the line with me. Round one goes out.</li>
-        <li>Inside that round, the pulls are spread across the three bureaus, so no single bureau gets stacked.</li>
-        <li>Then, before the next round goes out, we dispute every new hard inquiry, so the next round starts from a cleaner file.</li>
-        <li>One funding sequence is about six rounds. Round, sweep, round, sweep.</li>
-        <li>Your file goes into each round clean. That's how a funding sequence builds real capital.</li>
-        <li>And the applying keeps going, sequence after sequence.</li>
+        <li>Round one goes out with the pulls spread across all three bureaus. Before the next round leaves, every NEW inquiry from round one gets disputed.</li>
+        <li>That's the sweep. The second round starts from a report where the first round's inquiries are already disputed, and a sequence keeps that up for about six rounds.</li>
+        <li>Once a sequence wraps up, our system marks the day your file can start the next one. The Fundhub team gets that day too, so nobody has to remember it.</li>
+        <li>So the employee you've been waiting to hire, the larger contract and the ads you want running get paid with funding, and your savings stay out of it.</li>
+        <li>I run my own funding the same way. Off one personal file, I've had $100,000 lines approved for FOUR separate companies, and each company brought in its own funding.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide dark" data-src="Guarantee line, word for word: marketing/copy-skills/copybot/references/owner-voice.md:18. The picture is the agreement's own words from section 3 of the funding agreement the CRM sends: db/migrations/493_funding_and_repair_agreement_text.sql:53 (G-01 and G-02); 'Your delay or error does not pause either clock' is on the same line." data-figures="the contract's 24 and 72 business hours">
+  <section class="slide dark" data-src="Guarantee line, word for word: marketing/copy-skills/copybot/references/owner-voice.md:18. The picture is the agreement's own words from section 3 of the funding agreement the CRM sends: db/migrations/493_funding_and_repair_agreement_text.sql:53 (G-01 and G-02); 'Your delay or error does not pause either clock' is on the same line. Ten years, hundreds of files: marketing/ads/RULES.md Part 0 rule 35. We fulfill, we keep our word: marketing/copy-skills/copybot/references/chris-voice-profile.md:27. The agreement is read together before you pay: docs/sops/weekend-2026-10-24/04-sales-call-script.md:419. Ten years, hundreds of files: marketing/ads/RULES.md Part 0 rule 35. We fulfill, we keep our word: marketing/copy-skills/copybot/references/chris-voice-profile.md:27. The agreement is read together before you pay: docs/sops/weekend-2026-10-24/04-sales-call-script.md:419. Ten years, hundreds of files: marketing/ads/RULES.md Part 0 rule 35. We fulfill, we keep our word: marketing/copy-skills/copybot/references/chris-voice-profile.md:27. The agreement is read together before you pay: docs/sops/weekend-2026-10-24/04-sales-call-script.md:419. Ten years, hundreds of files: marketing/ads/RULES.md Part 0 rule 35. We fulfill, we keep our word: marketing/copy-skills/copybot/references/chris-voice-profile.md:27. The agreement is read together before you pay: docs/sops/weekend-2026-10-24/04-sales-call-script.md:419. Ten years, hundreds of files: marketing/ads/RULES.md Part 0 rule 35. We fulfill, we keep our word: marketing/copy-skills/copybot/references/chris-voice-profile.md:27. The agreement is read together before you pay: docs/sops/weekend-2026-10-24/04-sales-call-script.md:419. Ten years, hundreds of files: marketing/ads/RULES.md Part 0 rule 35. We fulfill, we keep our word: marketing/copy-skills/copybot/references/chris-voice-profile.md:27. The agreement is read together before you pay: docs/sops/weekend-2026-10-24/04-sales-call-script.md:419." data-figures="the contract's 24 and 72 business hours">
     <p class="eyebrow">FS-06 / The guarantee</p>
     <h2>Applications go out within 72 business hours.</h2>
     <ul class="lines">
       <li>That's our guarantee, and it's in your contract. That typically means approvals come very shortly after.</li>
-      <li>Here it is, word for word, in the agreement you sign. The clock starts when you sign.</li>
+      <li>Both clocks start the day you sign, and the clause says your delay never pauses either one.</li>
     </ul>
     <figure class="pic">
       <div class="real" role="img" aria-label="Section 3 of the Fundhub funding agreement. The clocks begin when you sign. A funding advisor begins working your file within 24 business hours. Marked: Fundhub will submit your first authorized applications within 72 business hours. Your delay or error does not pause either clock.">
@@ -961,56 +968,53 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Once you sign, the order you just saw starts running on a clock. Applications go out within 72 business hours. That's our guarantee, and it's in your contract. That typically means approvals come very shortly after.</li>
-        <li>Look at the clause. It's the agreement, word for word.</li>
-        <li>G-01: a funding advisor starts on your file within 24 business hours. G-02: your first authorized applications go out within 72 business hours.</li>
-        <li>Your delay or error doesn't pause either clock. That's in there too.</li>
-        <li>We don't let people slip through the cracks. We put the clock in writing so you can hold us to it.</li>
+        <li>Everything you just saw starts on a CLOCK the day you sign. That clock is printed in the agreement you read before you pay.</li>
+        <li>Applications go out within 72 business hours. That's our guarantee, and it's in your contract. That typically means approvals come very shortly after.</li>
+        <li>Read the clause with me. Inside 24 business hours of your signature, an advisor has your file open, and your first authorized applications go out inside 72.</li>
+        <li>The last sentence is there for YOU. If you're slow sending us something, both clocks keep running, and the pressure to deliver stays on our side.</li>
+        <li>Ten years and hundreds of files taught me how to run this, and the rule I hold my team to is simple: we fulfill, and we keep our word.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide" data-src="We pull your file together right on the call; a soft pull, so your score does not move; how much you qualify for based on where you're at right now: docs/sops/weekend-2026-10-24/04-sales-call-script.md:69. The banks that match your file, in the right order: public/app/present.js:105 (closer line S-08) and :110 (S-13: your file, the right banks, and the right order). We pick the banks and the order; the banks say yes or no: 04-sales-call-script.md:229. Your advisor shares the screen: marketing/vsl/direct-book-thank-you-2026-10-15.md:37 (green-lit). Action takers, not shoppers: owner-voice.md:15.">
+  <section class="slide" data-src="We pull your file together right on the call; a soft pull, so your score does not move; how much you qualify for based on where you're at right now: docs/sops/weekend-2026-10-24/04-sales-call-script.md:69. The banks that match your file, in the right order: public/app/present.js:105 (closer line S-08) and :110 (S-13: your file, the right banks, and the right order). We pick the banks and the order; the banks say yes or no: 04-sales-call-script.md:229. Your advisor shares the screen: marketing/vsl/direct-book-thank-you-2026-10-15.md:37 (green-lit). Action takers, not shoppers: owner-voice.md:15. Fund now, fix first, or both: docs/sops/weekend-2026-10-24/04-sales-call-script.md:176. What's holding the rest back: :69. Only you see a soft pull: marketing/offers/fundhub-offers-2026-10-10.pdf p.9. Your advisor shares the screen: marketing/vsl/direct-book-thank-you-2026-10-15.md:37. Fund now, fix first, or both: docs/sops/weekend-2026-10-24/04-sales-call-script.md:176. What's holding the rest back: :69. Only you see a soft pull: marketing/offers/fundhub-offers-2026-10-10.pdf p.9. Your advisor shares the screen: marketing/vsl/direct-book-thank-you-2026-10-15.md:37. Fund now, fix first, or both: docs/sops/weekend-2026-10-24/04-sales-call-script.md:176. What's holding the rest back: :69. Only you see a soft pull: marketing/offers/fundhub-offers-2026-10-10.pdf p.9. Your advisor shares the screen: marketing/vsl/direct-book-thank-you-2026-10-15.md:37. Fund now, fix first, or both: docs/sops/weekend-2026-10-24/04-sales-call-script.md:176. What's holding the rest back: :69. Only you see a soft pull: marketing/offers/fundhub-offers-2026-10-10.pdf p.9. Your advisor shares the screen: marketing/vsl/direct-book-thank-you-2026-10-15.md:37. Fund now, fix first, or both: docs/sops/weekend-2026-10-24/04-sales-call-script.md:176. What's holding the rest back: :69. Only you see a soft pull: marketing/offers/fundhub-offers-2026-10-10.pdf p.9. Your advisor shares the screen: marketing/vsl/direct-book-thank-you-2026-10-15.md:37. Fund now, fix first, or both: docs/sops/weekend-2026-10-24/04-sales-call-script.md:176. What's holding the rest back: :69. Only you see a soft pull: marketing/offers/fundhub-offers-2026-10-10.pdf p.9. Your advisor shares the screen: marketing/vsl/direct-book-thank-you-2026-10-15.md:37.">
     <p class="eyebrow">FS-07 / Your call</p>
-    <h2>On your call, you see the banks that fit your file and the order they go in.</h2>
+    <h2>On your strategy call, you see what your file needs before the first application.</h2>
     <ul class="lines">
-      <li>We pull your file together right on the call, with a soft pull, so your score does not move.</li>
-      <li>You see how much you qualify for based on where you're at right now, and the order for your file: your personal file, then each business.</li>
-      <li>We pick the banks and the order. The banks say yes or no.</li>
+      <li>The soft pull happens live on the call, and your score stays right where it is.</li>
+      <li>You see how much you qualify for based on where you're at right now, the fix that comes first, and the order after it.</li>
     </ul>
     <figure class="pic">
       <div class="sheet">
-        <svg class="bv" viewBox="0 0 300 192" role="img" aria-label="You and your advisor both look at one shared screen. The screen shows the order for your file: one, your personal file; two, business one; three, business two; then round after round.">
-          <rect class="pn" x="56" y="2" width="188" height="132" rx="8"/>
-          <text class="lb" x="66" y="24">YOUR ORDER</text>
-          <rect class="tint-fit edge-fit" x="66" y="34" width="168" height="22" rx="5"/>
-          <text class="lb ink" x="76" y="49">1 · PERSONAL FILE</text>
-          <rect class="pn-soft" x="66" y="62" width="168" height="22" rx="5"/>
-          <text class="lb ink" x="76" y="77">2 · BUSINESS ONE</text>
-          <rect class="pn-soft" x="66" y="90" width="168" height="22" rx="5"/>
-          <text class="lb ink" x="76" y="105">3 · BUSINESS TWO</text>
-          <text class="caps" x="66" y="127">Then round after round.</text>
-          <path class="cn ink" d="M150 134V148M130 148H170"/>
-          <circle class="pn" cx="28" cy="68" r="26"/><use href="#fh-person" x="14" y="54" width="28" height="28"/>
-          <path class="cn dash" d="M54 64L70 52"/>
-          <text class="lb ink" x="28" y="114" text-anchor="middle">YOU</text>
-          <circle class="pn" cx="272" cy="68" r="26"/><use href="#fh-person" x="258" y="54" width="28" height="28"/>
-          <path class="cn dash" d="M246 64L230 52"/>
-          <text class="lb ink" x="272" y="114" text-anchor="middle">YOUR</text>
-          <text class="lb ink" x="272" y="130" text-anchor="middle">ADVISOR</text>
-          <text class="lb" x="150" y="180" text-anchor="middle">THE BANKS THAT FIT · IN ORDER</text>
+        <svg class="bv" viewBox="0 0 320 180" role="img" aria-label="You and your advisor both look at one shared screen with your file on it: what gets fixed first, then your personal file, then each business. Then the banks that fit, in order.">
+          <rect class="pn" x="70" y="4" width="180" height="116" rx="8"/>
+          <text class="lb" x="80" y="26">YOUR FILE</text>
+          <rect class="tint-flag" x="80" y="34" width="160" height="24" rx="5"/>
+          <text class="caps" x="88" y="50">What gets fixed first</text>
+          <rect class="tint-fit edge-fit" x="80" y="62" width="160" height="24" rx="5"/>
+          <text class="caps" x="88" y="78">1 · Personal file</text>
+          <rect class="pn-soft" x="80" y="90" width="160" height="24" rx="5"/>
+          <text class="caps" x="88" y="106">2 · Each business</text>
+          <path class="cn ink" d="M160 120V134M140 134H180"/>
+          <circle class="pn" cx="34" cy="62" r="26"/><use href="#fh-person" x="20" y="48" width="28" height="28"/>
+          <path class="cn dash" d="M60 58L78 46"/>
+          <text class="lb ink" x="34" y="108" text-anchor="middle">YOU</text>
+          <circle class="pn" cx="286" cy="62" r="26"/><use href="#fh-person" x="272" y="48" width="28" height="28"/>
+          <path class="cn dash" d="M260 58L242 46"/>
+          <text class="lb ink" x="286" y="108" text-anchor="middle">YOUR</text>
+          <text class="lb ink" x="286" y="124" text-anchor="middle">ADVISOR</text>
+          <text class="lb" x="160" y="168" text-anchor="middle">THEN THE BANKS THAT FIT, IN ORDER</text>
         </svg>
       </div>
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>On your call, we review your file with you, the way a lender does, and you see the order for your file.</li>
-        <li>We pull it together right there. It's a soft pull, so your score does not move.</li>
-        <li>You see how much you qualify for based on where you're at right now.</li>
-        <li>Then you see the banks that fit your file, and the order they go in. Your personal file first, then each business on its own.</li>
-        <li>We pick the banks and the order. The banks say yes or no.</li>
-        <li>Join from a computer somewhere quiet, because your advisor shares the screen and walks the order with you.</li>
-        <li>We're looking for action takers, not shoppers.</li>
+        <li>Remember, your file already decides what has to happen before the first application. On your strategy call, you SEE exactly what that is for your file.</li>
+        <li>We run the soft pull right there on the call. It doesn't touch your score, and no bank sees it, because nothing has been applied for yet.</li>
+        <li>Then your advisor shares the screen and walks your file with you. You see how much you qualify for based on where you're at right now, and what's holding back the rest.</li>
+        <li>You see which fix comes first, and the order your personal file and any business go in. Approval is always the bank's decision, and the plan is built around that.</li>
+        <li>From there you pick the path that fits: fund now, fix first, or both. You leave with the ORDER for your file already mapped out.</li>
+        <li>A computer works best for this, since you'll be reading your own report on a shared screen, line by line, with your advisor right there.</li>
       </ul>
     </aside>
   </section>

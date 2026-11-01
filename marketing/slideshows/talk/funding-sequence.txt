@@ -1,101 +1,259 @@
-Funding Sequence
+[Slide 1]
 
-1. FS-01 / The order — The same five applications, sent in the wrong order, get declined.
 
-Look at this. It's section three of the lender list we print for every client, and the first line of that section says it: applying to the wrong lender first burns hard inquiries and triggers automatic declines that follow you to the next application.
 
-Same five applications. Same file. In the wrong order, they get declined.
 
-The banks you use and the order you use them in decide how much money you get.
 
-Most companies submit everything at once, to one list of lenders they use for every single client.
+Every bank you apply to reads the applications that went out before it. So the ORDER you send them in decides how much funding you walk away with.
 
-That's how a good file walks away with a report full of hard inquiries.
 
-We plan the order first. These five rules print on every copy of your documents, and the rest of this deck walks them.
 
-2. FS-02 / Personal first — Your personal file goes first, then each business on its own.
 
-Walk the order with me.
 
-Your personal file goes first. Nothing else is worth doing until it's ready.
+Your own file already decides what has to happen before the first one goes out. This is section three of the lender list Fundhub builds for each client.
 
-Then personal funding. Personal comes before business, every time.
 
-Then business one, on its own. Then business two, on its own. A bank judges each business by itself, after your personal file is ready.
 
-If you don't have a business yet, you skip that step and go straight to the lender list.
 
-And then the applications keep going, round after round. That's a funding sequence.
 
-Your story: the first time you ran this order on your own file.
+It lays out five rules. The card balance gets fixed first, the lowest score floor goes first, and only ONE application goes out at a time.
 
-3. FS-03 / One at a time — One application at a time, so the inquiries never stack up.
 
-Here's rule three, straight off the report: wait for the decision before you send the next one. Never shotgun applications.
 
-Every application leaves a hard inquiry. The next bank sees it on your report.
 
-When they stack up, the banks start denying you. That's inquiry stacking.
 
-So one goes out, we wait for the bank's answer, then the next one goes out.
+Then you work up the list, and personal goes before business. Flip that order around, and the very same five come back DECLINED.
 
-There's no fixed wait between two banks. The decision sets the pace.
 
-A blast sends them all at once. A plan sends one, waits, then sends the next.
 
-4. FS-04 / Which banks — National banks first, then banks in your state, then banks in your business's state.
 
-Which banks go first? Look at the three bands.
 
-National banks first. Then the local banks in the state you live in. Then the local banks in the state your business is in.
+Each of those denials still drops a hard inquiry on your report, and whichever bank comes next has all of them in front of it when it makes its call.
 
-Each bank on that list is picked from your file, so you only apply where your file makes sense.
 
-Where you live opens one set of local banks. Where your business is opens another. That's why we ask for both.
 
-The bank decides, not us. We pick the banks and the order. They say yes or no.
 
-Your story: a time the order of the banks changed what a file got.
 
-5. FS-05 / Rounds and sweeps — Between rounds, we dispute the new hard inquiries.
+The wrong order turns the money for your next hire, your bigger job or your ads into a pile of denial letters.
 
-Walk the line with me. Round one goes out.
 
-Inside that round, the pulls are spread across the three bureaus, so no single bureau gets stacked.
 
-Then, before the next round goes out, we dispute every new hard inquiry, so the next round starts from a cleaner file.
 
-One funding sequence is about six rounds. Round, sweep, round, sweep.
 
-Your file goes into each round clean. That's how a funding sequence builds real capital.
+[Slide 2]
 
-And the applying keeps going, sequence after sequence.
 
-6. FS-06 / The guarantee — Applications go out within 72 business hours.
 
-Once you sign, the order you just saw starts running on a clock. Applications go out within 72 business hours. That's our guarantee, and it's in your contract. That typically means approvals come very shortly after.
 
-Look at the clause. It's the agreement, word for word.
 
-G-01: a funding advisor starts on your file within 24 business hours. G-02: your first authorized applications go out within 72 business hours.
+Underneath that order sits one rule inside our system. Every business amount starts from the card funding your PERSONAL file supports.
 
-Your delay or error doesn't pause either clock. That's in there too.
 
-We don't let people slip through the cracks. We put the clock in writing so you can hold us to it.
 
-7. FS-07 / Your call — On your call, you see the banks that fit your file and the order they go in.
 
-On your call, we review your file with you, the way a lender does, and you see the order for your file.
 
-We pull it together right there. It's a soft pull, so your score does not move.
+A stronger personal file raises the amount for every business you add, so nothing else gets worked until your personal file is READY.
 
-You see how much you qualify for based on where you're at right now.
 
-Then you see the banks that fit your file, and the order they go in. Your personal file first, then each business on its own.
 
-We pick the banks and the order. The banks say yes or no.
 
-Join from a computer somewhere quiet, because your advisor shares the screen and walks the order with you.
 
-We're looking for action takers, not shoppers.
+Then each business gets counted by its age. A company two years or older counts at DOUBLE your personal card funding, and one under a year counts at half.
+
+
+
+
+
+After that, every company is judged by itself. If you don't have a company yet, your path runs from personal funding straight to the banks.
+
+
+
+
+
+Every company you add later gets figured from that same personal file. So the work you put into it now shows up again in each one of them.
+
+
+
+
+
+[Slide 3]
+
+
+
+
+
+What happens when five applications go out the same afternoon? Each one drops a HARD inquiry on your report, and every bank can see all of them.
+
+
+
+
+
+Each inquiry shows who pulled your file and on what date. So the next bank knows how many went out, and how recently they went.
+
+
+
+
+
+When a bank sees that many fresh pulls at once, it starts declining. Rule three on your lender list is there to stop that from happening to you.
+
+
+
+
+
+So one application goes out, and we WAIT for that bank's answer before the next one goes anywhere. The bank's decision sets the pace.
+
+
+
+
+
+For you, every bank in the round reads your file with as few new pulls on it as possible, and that protects every application behind it.
+
+
+
+
+
+[Slide 4]
+
+
+
+
+
+So which banks make your list? Our system builds it from your file in three bands, and it reads top to bottom in that exact ORDER.
+
+
+
+
+
+National banks come first. Next come the local banks in your home state, and then the local banks in the state where your business is set up.
+
+
+
+
+
+Live in one state and run the business from another? You get BOTH sets of local banks, and a bank that covers both states only shows up once.
+
+
+
+
+
+When a bureau already shows a fresh inquiry, any bank that pulls that bureau gets held back. That keeps your pulls SPREAD across all three bureaus.
+
+
+
+
+
+The banks and the order are our job, and the yes or no belongs to the bank. That's why every bank on your list is one your file makes sense for.
+
+
+
+
+
+[Slide 5]
+
+
+
+
+
+Round one goes out with the pulls spread across all three bureaus. Before the next round leaves, every NEW inquiry from round one gets disputed.
+
+
+
+
+
+That's the sweep. The second round starts from a report where the first round's inquiries are already disputed, and a sequence keeps that up for about six rounds.
+
+
+
+
+
+Once a sequence wraps up, our system marks the day your file can start the next one. The Fundhub team gets that day too, so nobody has to remember it.
+
+
+
+
+
+So the employee you've been waiting to hire, the larger contract and the ads you want running get paid with funding, and your savings stay out of it.
+
+
+
+
+
+I run my own funding the same way. Off one personal file, I've had $100,000 lines approved for FOUR separate companies, and each company brought in its own funding.
+
+
+
+
+
+[Slide 6]
+
+
+
+
+
+Everything you just saw starts on a CLOCK the day you sign. That clock is printed in the agreement you read before you pay.
+
+
+
+
+
+Applications go out within 72 business hours. That's our guarantee, and it's in your contract. That typically means approvals come very shortly after.
+
+
+
+
+
+Read the clause with me. Inside 24 business hours of your signature, an advisor has your file open, and your first authorized applications go out inside 72.
+
+
+
+
+
+The last sentence is there for YOU. If you're slow sending us something, both clocks keep running, and the pressure to deliver stays on our side.
+
+
+
+
+
+Ten years and hundreds of files taught me how to run this, and the rule I hold my team to is simple: we fulfill, and we keep our word.
+
+
+
+
+
+[Slide 7]
+
+
+
+
+
+Remember, your file already decides what has to happen before the first application. On your strategy call, you SEE exactly what that is for your file.
+
+
+
+
+
+We run the soft pull right there on the call. It doesn't touch your score, and no bank sees it, because nothing has been applied for yet.
+
+
+
+
+
+Then your advisor shares the screen and walks your file with you. You see how much you qualify for based on where you're at right now, and what's holding back the rest.
+
+
+
+
+
+You see which fix comes first, and the order your personal file and any business go in. Approval is always the bank's decision, and the plan is built around that.
+
+
+
+
+
+From there you pick the path that fits: fund now, fix first, or both. You leave with the ORDER for your file already mapped out.
+
+
+
+
+
+A computer works best for this, since you'll be reading your own report on a shared screen, line by line, with your advisor right there.
