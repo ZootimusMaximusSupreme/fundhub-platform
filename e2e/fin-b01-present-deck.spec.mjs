@@ -24,7 +24,7 @@ const DECK = (tier = "REPAIR_ONLY") => ({
   income_estimates: {},
   engine: { available: true, tier, fico: { experian: 640, equifax: 632, transunion: 651 }, reasons: [], total: 0 },
   offers: offersForClient(),
-  soft_pull: null,
+  soft_pull: { consent_valid: true, diagnostic_paid: true, pull_status: "complete", crs_result_id: "crs-fixture", sample: false },
 });
 
 async function open(page, { tier, deck, invoices, outbound } = {}) {
@@ -100,7 +100,7 @@ test.describe("closer deck: Send pay link", () => {
     const body = calls.deck[0];
     expect(body.action).toBe("send_pay_link");
     expect(body.client_id).toBe(CLIENT_ID);
-    // a file that is not ready leads with the most expensive door that fits: the Capital Blueprint (2026-10-29)
+    // The completed repair file leads with the Capital Blueprint (2026-10-29).
     expect(body.offer_key).toBe("UWIQ_DELIVERABLES");
     expect(body.sale_motion).toBe(null);
     await expect(toast(page)).toHaveText("Pay link sent.");
