@@ -24,13 +24,14 @@ test("paid Blueprint year survives the shorter FinanceOS monthly term, but not a
   { skip: safe ? false : "requires a local test/scratch PostgreSQL database" }, async () => {
     const db = await pool.connect();
     await db.query("BEGIN");
+    await db.query("SET LOCAL TIME ZONE 'UTC'");
     try {
       // Keep refund writes inside this fixture's rollback transaction. The
       // production helper acquires a connection only for pool-like handles.
       const refundDb = { query: db.query.bind(db) };
       for (const table of ["subscriptions", "soft_pull_requests", "crs_results",
         "entitlements", "transactions", "products", "product_aliases", "sales",
-        "sale_payments", "partner_revenue"]) {
+        "sale_payments", "partner_revenue", "events"]) {
         await db.query("CREATE TEMP TABLE " + table + " (LIKE public." + table
           + " INCLUDING ALL) ON COMMIT DROP");
       }
@@ -117,6 +118,110 @@ test("paid Blueprint year survives the shorter FinanceOS monthly term, but not a
       const closed = (await db.query("SELECT status, effective_to FROM subscriptions WHERE id=$1", [includedSub])).rows[0];
       assert.equal(closed.status, "cancelled");
       assert.ok(closed.effective_to);
+
+      const splitClient = randomUUID();
+      const splitPayment = (await db.query(
+        "INSERT INTO transactions (org_id,client_id,product_name,amount_paid,status,provider_ref,created_at) "
+        + "VALUES ($1,$2,'Consulting Services Package',5000,'succeeded','bp-split-payment','2026-10-29') RETURNING id",
+        [org, splitClient])).rows[0].id;
+      const splitSale = (await db.query(
+        "INSERT INTO sales (org_id,client_id,product_id,agreed_price) VALUES ($1,$2,$3,5000) RETURNING id",
+        [org, splitClient, product])).rows[0].id;
+      await db.query("INSERT INTO sale_payments (org_id,sale_id,transaction_id,product_id,kind,amount,paid_at) "
+        + "VALUES ($1,$2,$3,$4,'deposit',5000,'2026-10-29')",
+      [org, splitSale, splitPayment, product]);
+      const splitGrant = (await db.query("INSERT INTO entitlements "
+        + "(org_id,client_id,entitlement_code,source_transaction_id,grant_reason) "
+        + "VALUES ($1,$2,'credit-optimization-roadmap',$3,'purchase:consulting-package') RETURNING id",
+      [org, splitClient, splitPayment])).rows[0].id;
+      const splitSub = (await db.query("INSERT INTO subscriptions "
+        + "(org_id,client_id,tier,status,effective_from,current_period_start,current_period_end,notes) "
+        + "VALUES ($1,$2,'finance-os','active','2026-10-29','2026-10-29','2027-10-29',$3) RETURNING id",
+      [org, splitClient, FINANCE_OS_BLUEPRINT_NOTE])).rows[0].id;
+      const splitRefund = async (refundRef, amount) => {
+        const payload = { originalProviderRef: "bp-split-payment", providerRef: refundRef, amount };
+        const eventId = (await db.query("INSERT INTO events "
+          + "(org_id,name,version,client_id,idempotency_key,payload) "
+          + "VALUES ($1,'payment.refunded',1,$2,$3,$4) RETURNING id",
+        [org, splitClient, refundRef, payload])).rows[0].id;
+        return onPaymentRefundedMoney({ id: eventId, name: "payment.refunded", orgId: org,
+          payload }, refundDb);
+      };
+      assert.equal((await splitRefund("rf_split_a", 2000)).blueprintIncludedEnded, false);
+      assert.equal((await db.query("SELECT revoked_at FROM entitlements WHERE id=$1",
+        [splitGrant])).rows[0].revoked_at, null);
+      assert.equal((await splitRefund("rf_split_b", 3000)).blueprintIncludedEnded, true,
+        "two distinct settled partial refunds totaling the purchase end included access");
+      assert.equal((await db.query("SELECT revoked_at FROM entitlements WHERE id=$1",
+        [splitGrant])).rows[0].revoked_at != null, true);
+      assert.equal((await db.query("SELECT status FROM subscriptions WHERE id=$1",
+        [splitSub])).rows[0].status, "cancelled");
+
+      const renewedClient = randomUUID();
+      const oldPayment = (await db.query("INSERT INTO transactions "
+        + "(org_id,client_id,product_name,amount_paid,status,provider_ref,created_at) "
+        + "VALUES ($1,$2,'Consulting Services Package',5000,'succeeded','bp-old-payment','2025-01-01') RETURNING id",
+      [org, renewedClient])).rows[0].id;
+      const newPayment = (await db.query("INSERT INTO transactions "
+        + "(org_id,client_id,product_name,amount_paid,status,provider_ref,created_at) "
+        + "VALUES ($1,$2,'Consulting Services Package',5000,'succeeded','bp-new-payment','2026-01-01') RETURNING id",
+      [org, renewedClient])).rows[0].id;
+      const oldSale = (await db.query("INSERT INTO sales "
+        + "(org_id,client_id,product_id,agreed_price) VALUES ($1,$2,$3,5000) RETURNING id",
+      [org, renewedClient, product])).rows[0].id;
+      await db.query("INSERT INTO sale_payments "
+        + "(org_id,sale_id,transaction_id,product_id,kind,amount,paid_at) "
+        + "VALUES ($1,$2,$3,$4,'deposit',5000,'2025-01-01')",
+      [org, oldSale, oldPayment, product]);
+      for (const transactionId of [oldPayment, newPayment]) {
+        await db.query("INSERT INTO entitlements "
+          + "(org_id,client_id,entitlement_code,source_transaction_id,grant_reason) "
+          + "VALUES ($1,$2,'credit-optimization-roadmap',$3,'purchase:consulting-package')",
+        [org, renewedClient, transactionId]);
+      }
+      const newSub = (await db.query("INSERT INTO subscriptions "
+        + "(org_id,client_id,tier,status,effective_from,current_period_start,current_period_end,notes) "
+        + "VALUES ($1,$2,'finance-os','active','2026-01-01','2026-01-01','2027-01-01',$3) RETURNING id",
+      [org, renewedClient, FINANCE_OS_BLUEPRINT_NOTE])).rows[0].id;
+      await onPaymentRefundedMoney({ name: "payment.refunded", orgId: org,
+        payload: { providerRef: "bp-old-payment", amount: 5000 } }, refundDb);
+      assert.equal((await db.query("SELECT status FROM subscriptions WHERE id=$1",
+        [newSub])).rows[0].status, "active",
+      "refunding an old purchase cannot close the newer paid year");
+
+      const overlapClient = randomUUID();
+      const overlapOld = (await db.query("INSERT INTO transactions "
+        + "(org_id,client_id,product_name,amount_paid,status,provider_ref,created_at) "
+        + "VALUES ($1,$2,'Consulting Services Package',5000,'succeeded','bp-overlap-old','2026-01-01') RETURNING id",
+      [org, overlapClient])).rows[0].id;
+      const overlapNew = (await db.query("INSERT INTO transactions "
+        + "(org_id,client_id,product_name,amount_paid,status,provider_ref,created_at) "
+        + "VALUES ($1,$2,'Consulting Services Package',5000,'succeeded','bp-overlap-new','2026-07-01') RETURNING id",
+      [org, overlapClient])).rows[0].id;
+      const overlapSale = (await db.query("INSERT INTO sales "
+        + "(org_id,client_id,product_id,agreed_price) VALUES ($1,$2,$3,5000) RETURNING id",
+      [org, overlapClient, product])).rows[0].id;
+      await db.query("INSERT INTO sale_payments "
+        + "(org_id,sale_id,transaction_id,product_id,kind,amount,paid_at) "
+        + "VALUES ($1,$2,$3,$4,'deposit',5000,'2026-01-01')",
+      [org, overlapSale, overlapOld, product]);
+      for (const transactionId of [overlapOld, overlapNew]) {
+        await db.query("INSERT INTO entitlements "
+          + "(org_id,client_id,entitlement_code,source_transaction_id,grant_reason) "
+          + "VALUES ($1,$2,'credit-optimization-roadmap',$3,'purchase:consulting-package')",
+        [org, overlapClient, transactionId]);
+      }
+      const overlapSub = (await db.query("INSERT INTO subscriptions "
+        + "(org_id,client_id,tier,status,effective_from,current_period_start,current_period_end,notes) "
+        + "VALUES ($1,$2,'finance-os','active','2026-01-01','2026-01-01','2027-01-01',$3) RETURNING id",
+      [org, overlapClient, FINANCE_OS_BLUEPRINT_NOTE])).rows[0].id;
+      await onPaymentRefundedMoney({ name: "payment.refunded", orgId: org,
+        payload: { providerRef: "bp-overlap-old", amount: 5000 } }, refundDb);
+      assert.equal((await db.query("SELECT status FROM subscriptions WHERE id=$1",
+        [overlapSub])).rows[0].status, "cancelled",
+      "the refunded purchase's own included row closes even when a newer grant keeps access");
+      assert.equal((await financeOsEntitlement(db, { orgId: org, clientId: overlapClient,
+        asOf: new Date("2026-11-30") })).entitled, true);
     } finally {
       await db.query("ROLLBACK");
       db.release();

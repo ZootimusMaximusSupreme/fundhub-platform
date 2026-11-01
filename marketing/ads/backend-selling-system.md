@@ -12,7 +12,7 @@ launcher. It does not promise a result that the source file does not prove.
 flowchart LR
     COLD[Cold audience] --> WARM[Harvester: useful content]
     WARM --> OFFER[Direct-response offer]
-    OFFER --> SETTER[AI setter: Josh]
+    OFFER --> SETTER[AI setter: Chris]
     SETTER --> BOOK[Call booked]
     BOOK --> TRUST[Hammer Them: trust assets]
     TRUST --> CALL[Call shows up prepared]

@@ -10,7 +10,8 @@
 //   - the screen half of 'Send soft pull ($32 + approval form)' (the saved half is a live check)
 //   - Route the call (S-07): FULL FUNDING / FUNDING PLUS REPAIR / REPAIR ONLY buttons
 //   - 'UnderwriteIQ package -> repair + funding' bridge button (S-19, repair route)
-//   - Descent ladder, 6 buttons
+//   - Descent ladder, 6 buttons (4 while the course is off: COURSE_LIVE in present.js; the two education rungs
+//     are judged on the same file with the one switch on)
 // and the screen half of "S-23 'Sale motion' select" (the saved half is a live check).
 
 import { test } from "node:test";
@@ -24,6 +25,9 @@ import { REPO_ROOT } from "./fin-b02-sql-kit.mjs";
 
 const PRESENT = path.join(REPO_ROOT, "public/app/present.js");
 const JS = fs.readFileSync(PRESENT, "utf8");
+const COURSE_OFF = "var COURSE_LIVE = false;";
+assert.ok(JS.includes(COURSE_OFF), "present.js lost its one course switch");
+const JS_COURSE = JS.replace(COURSE_OFF, "var COURSE_LIVE = true;");
 const OFFERS = offersForClient();
 const CONTACT = "33333333-3333-3333-3333-333333333333";
 
@@ -46,7 +50,7 @@ function payload(tier) {
 const flush = () => new Promise((r) => setImmediate(r));
 
 /** The real present.js against a stand-in page that records every write the page makes. */
-async function openDeck(tier, { answer = null } = {}) {
+async function openDeck(tier, { answer = null, course = false } = {}) {
   const root = { innerHTML: "" };
   const writes = [];
   const listeners = new Map();
@@ -88,7 +92,7 @@ async function openDeck(tier, { answer = null } = {}) {
   sandbox.window = sandbox;
   sandbox.addEventListener = () => {};
   vm.createContext(sandbox);
-  vm.runInContext(JS, sandbox, { filename: PRESENT });
+  vm.runInContext(course ? JS_COURSE : JS, sandbox, { filename: PRESENT });
   await flush();
   await flush();
   assert.ok(onClick, "present.js registered no click listener");
@@ -153,10 +157,11 @@ test("Route the call: the three route buttons are on S-07, the deck's own tier i
 });
 
 test("Route the call: each button decides the offer, tier and route the pay link goes out with", async () => {
+  // A file that is not ready leads with the most expensive door that fits: the Capital Blueprint (row 2).
   const cases = [
     ["FULL_FUNDING", "FUNDING_DFY"],
     ["FUNDING_PLUS_REPAIR", "FUNDING_DFY"],
-    ["REPAIR_ONLY", "REPAIR_DFY"]
+    ["REPAIR_ONLY", "UWIQ_DELIVERABLES"]
   ];
   for (const [tier, offer] of cases) {
     // Start every case on a different tier so a button that does nothing cannot pass by luck.
@@ -174,7 +179,7 @@ test("Route the call: each button decides the offer, tier and route the pay link
 });
 
 test("Route the call: choosing a route clears an earlier descent or education pick", async () => {
-  const deck = await openDeck("REPAIR_ONLY");
+  const deck = await openDeck("REPAIR_ONLY", { course: true });
   deck.click("desc:eduTop"); // education route
   deck.click("stack-go:S-07").click("tier:FULL_FUNDING");
   const body = await deck.sendPayLink();
@@ -209,7 +214,7 @@ test("Bridge button: it also takes the deck off a descent rung and off the educa
   assert.equal(body.force_repair, false);
   assert.equal(body.route, "FUNDING_PLUS_REPAIR");
 
-  const edu = await openDeck("REPAIR_ONLY");
+  const edu = await openDeck("REPAIR_ONLY", { course: true });
   edu.click("edu"); // education path
   edu.click("stack-go:S-19");
   assert.ok(!edu.buttons().some((b) => b.act === "bridge"), "no bridge on the education route");
@@ -225,20 +230,22 @@ test("Bridge button: not offered when the deck is already on a funding route", a
   assert.ok(!deck.buttons().some((b) => b.act === "bridge"));
 });
 
-/* ── Descent ladder, 6 buttons (05 Commit and 07 Close) ──────────────────── */
+/* ── Descent ladder, 6 buttons (7 The ask and 9 Paperwork) ──────────────── */
 
+// Most expensive first (row 2): the Capital Blueprint sits above credit optimization. The two education rungs
+// show only while the course is live (COURSE_LIVE); `course` says which build a row is judged on.
 const LADDER = [
-  // act, label start, offer the pay link goes out with, force_repair, edu, route
-  ["desc:fund", "Funding", "FUNDING_DFY", false, false],
-  ["desc:dfy", "Repair DFY", "REPAIR_DFY", true, false],
-  ["desc:trial", "Repair trial round", "REPAIR_TRIAL", true, false],
-  ["desc:diy", "DIY letters + course", "UWIQ_DELIVERABLES", true, false],
-  ["desc:eduTop", "Funding Mastery", "FUNDING_MASTERY", false, true],
-  ["desc:eduLow", "Education deliverables", "UWIQ_DELIVERABLES", false, true]
+  // act, label start, offer the pay link goes out with, force_repair, edu, course
+  ["desc:fund", "Funding", "FUNDING_DFY", false, false, false],
+  ["desc:diy", "Capital Blueprint", "UWIQ_DELIVERABLES", true, false, false],
+  ["desc:dfy", "Repair DFY", "REPAIR_DFY", true, false, false],
+  ["desc:trial", "Repair trial round", "REPAIR_TRIAL", true, false, false],
+  ["desc:eduTop", "Funding Mastery", "FUNDING_MASTERY", false, true, true],
+  ["desc:eduLow", "Education deliverables", "UWIQ_DELIVERABLES", false, true, true]
 ];
 
 test("Descent ladder: all six buttons are on S-19 and S-23, in order, with the catalog price on each", async () => {
-  const deck = await openDeck("FULL_FUNDING");
+  const deck = await openDeck("FULL_FUNDING", { course: true });
   for (const slide of ["S-19", "S-23"]) {
     deck.click(`stack-go:${slide}`);
     assert.equal(deck.slide(), slide);
@@ -250,18 +257,34 @@ test("Descent ladder: all six buttons are on S-19 and S-23, in order, with the c
   assert.ok(html.includes(`Funding · ${priceOf("FUNDING_DFY")} deposit`));
   assert.ok(html.includes(`Repair DFY · ${priceOf("REPAIR_DFY")}`));
   assert.ok(html.includes(`Repair trial round · ${priceOf("REPAIR_TRIAL")}`));
-  assert.ok(html.includes(`DIY letters + course · ${priceOf("UWIQ_DELIVERABLES")}`));
+  assert.ok(html.includes(`Capital Blueprint · ${priceOf("UWIQ_DELIVERABLES")}`));
   assert.ok(html.includes(`Funding Mastery · ${priceOf("FUNDING_MASTERY")}`));
   assert.ok(html.includes(`Education deliverables · ${priceOf("UWIQ_DELIVERABLES")}`));
+  assert.ok(!html.includes("DIY letters + course"), "row 2: the Blueprint is named Capital Blueprint");
+});
+
+test("Descent ladder: with the course off, the four rungs that are for sale, and no course rung or price", async () => {
+  const deck = await openDeck("FULL_FUNDING");
+  for (const slide of ["S-19", "S-23"]) {
+    deck.click(`stack-go:${slide}`);
+    const acts = [...deck.html().matchAll(/<button type="button" data-act="(desc:[^"]+)"/g)].map((m) => m[1]);
+    assert.deepEqual(acts, LADDER.filter((r) => !r[5]).map((r) => r[0]));
+    assert.ok(!deck.html().includes("Funding Mastery"));
+  }
+  // a stray click on a course rung changes nothing
+  deck.click("desc:eduTop").click("desc:eduLow");
+  const body = await deck.sendPayLink();
+  assert.equal(body.offer_key, "FUNDING_DFY");
+  assert.equal(body.edu, false);
 });
 
 // Known and left alone (product finding, not pinned here): on a deck whose engine tier is REPAIR_ONLY the
 // "Funding" rung changes nothing, because isFunding() also needs a funding tier. The Funding rung is
 // proved below on a funding-tier deck, which is where it is the top of the ladder.
 test("Descent ladder: each rung sells its own offer, sets its own route, and only that rung is lit", async () => {
-  for (const [act, label, offer, forceRepair, edu] of LADDER) {
+  for (const [act, label, offer, forceRepair, edu, course] of LADDER) {
     // A funding deck, so the Funding rung is a real change from where each rung is being asked.
-    const deck = await openDeck("FULL_FUNDING");
+    const deck = await openDeck("FULL_FUNDING", { course });
     deck.click("stack-go:S-23");
     // Press a different rung first, so pressing this one is a real move.
     deck.click(act === "desc:dfy" ? "desc:trial" : "desc:dfy");
@@ -287,7 +310,7 @@ test("Descent ladder: each rung sells its own offer, sets its own route, and onl
 test("Descent ladder: pressing any rung after any other lands on that rung's own offer (all 36 pairs)", async () => {
   for (const [from] of LADDER) {
     for (const [to, label, offer, forceRepair, edu] of LADDER) {
-      const deck = await openDeck("FULL_FUNDING");
+      const deck = await openDeck("FULL_FUNDING", { course: true });
       deck.click(from).click(to).click("stack-go:S-23");
       const body = await deck.sendPayLink();
       assert.equal(body.offer_key, offer, `${from} then ${label} sells ${offer}`);
@@ -298,10 +321,10 @@ test("Descent ladder: pressing any rung after any other lands on that rung's own
 });
 
 test("Route the call: a route button after any rung wipes that rung and sells the route's own offer", async () => {
-  const routes = [["FULL_FUNDING", "FUNDING_DFY"], ["FUNDING_PLUS_REPAIR", "FUNDING_DFY"], ["REPAIR_ONLY", "REPAIR_DFY"]];
+  const routes = [["FULL_FUNDING", "FUNDING_DFY"], ["FUNDING_PLUS_REPAIR", "FUNDING_DFY"], ["REPAIR_ONLY", "UWIQ_DELIVERABLES"]];
   for (const [rung] of LADDER) {
     for (const [tier, offer] of routes) {
-      const deck = await openDeck("FULL_FUNDING");
+      const deck = await openDeck("FULL_FUNDING", { course: true });
       deck.click(rung).click("stack-go:S-07").click(`tier:${tier}`);
       const body = await deck.sendPayLink();
       assert.equal(body.offer_key, offer, `${rung} then ${tier} sells ${offer}`);
@@ -321,7 +344,7 @@ test("Descent ladder: the three repair rungs and the two education rungs keep th
     assert.deepEqual(lit, [`rung:${n}`], act);
   }
   for (const [act, n] of [["desc:eduTop", 0], ["desc:eduLow", 1]]) {
-    const deck = await openDeck("REPAIR_ONLY");
+    const deck = await openDeck("REPAIR_ONLY", { course: true });
     deck.click(act).click("stack-go:S-19");
     const lit = deck.buttons().filter((b) => b.lit && b.act.startsWith("rung:")).map((b) => b.act);
     assert.deepEqual(lit, [`rung:${n}`], act);
@@ -357,7 +380,7 @@ test("Sale motion select: shown only for the offers that are not primary, and it
 test("Sale motion select: not drawn for the four primary offers, and a pick made earlier is never sent for them", async () => {
   const primary = [["desc:fund", "FUNDING_DFY"], ["desc:dfy", "REPAIR_DFY"], ["desc:trial", "REPAIR_TRIAL"], ["desc:eduTop", "FUNDING_MASTERY"]];
   for (const [act, offer] of primary) {
-    const deck = await openDeck("FULL_FUNDING");
+    const deck = await openDeck("FULL_FUNDING", { course: act === "desc:eduTop" });
     // Make a pick on the Blueprint rung first, then move to a primary rung.
     deck.click("desc:diy").click("stack-go:S-23");
     deck.pick("downsell");
@@ -414,7 +437,8 @@ const PRICE = (key) => OFFERS.find((o) => o.key === key).priceCents / 100;
 
 test("Amount paid today: the box starts at the offer's catalogue price, and Stage letters sends that price and that amount", async () => {
   const deck = await openDeck("REPAIR_ONLY");
-  deck.click("stack-go:S-23");
+  // a file that is not ready starts on the Capital Blueprint (row 2): step down to credit optimization first
+  deck.click("rung:0").click("stack-go:S-23");
   assert.equal(deck.boxShows(), String(PRICE("REPAIR_DFY")), "the box is drawn with the price in it");
   const body = await deck.stageRepair();
   assert.deepEqual(body, { client_id: CONTACT, program: "full", price_total: PRICE("REPAIR_DFY"), amount_paid: PRICE("REPAIR_DFY") });
@@ -424,7 +448,7 @@ test("Amount paid today: what is typed is what is sent, as a number, and the pri
   const cases = [["250", 250], ["0", 0], ["$1,200.50", 1200.5], ["  75  ", 75]];
   for (const [typed, sent] of cases) {
     const deck = await openDeck("REPAIR_ONLY");
-    deck.click("stack-go:S-23");
+    deck.click("rung:0").click("stack-go:S-23");
     deck.type(typed);
     const body = await deck.stageRepair();
     assert.equal(body.amount_paid, sent, `typed ${JSON.stringify(typed)}`);
@@ -446,7 +470,7 @@ test("Amount paid today: the repair trial rung sends the trial program at the tr
 test("Amount paid today: a negative or unreadable box is not sent as money paid below zero", async () => {
   for (const typed of ["-40", "abc"]) {
     const deck = await openDeck("REPAIR_ONLY");
-    deck.click("stack-go:S-23");
+    deck.click("rung:0").click("stack-go:S-23");
     deck.type(typed);
     const body = await deck.stageRepair();
     assert.ok(body.amount_paid >= 0, `typed ${JSON.stringify(typed)} sent ${body.amount_paid}`);

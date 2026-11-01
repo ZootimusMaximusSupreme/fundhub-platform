@@ -84,6 +84,7 @@ function fakeDb({
         return { rows: blueprint ? [{ id: TX, client_id: CLIENT, amount_paid: blueprint.amount,
           paid_at: new Date("2026-10-29T00:00:00Z") }] : [] };
       }
+      if (/FROM events\b/i.test(text)) return { rows: [{ cents: "0" }] };
       if (/UPDATE entitlements/i.test(text)) {
         state.grantRevoked = true;
         return { rows: [{ id: "grant" }] };

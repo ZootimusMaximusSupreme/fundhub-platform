@@ -1291,6 +1291,25 @@
      hint still run below; overlapping them with the network is free speed. */
   var sessionPromise = getSession();
 
+  /* A visible staff workspace keeps its existing session's last_seen_at fresh.
+     The team roster uses that same timestamp for the green online dot. */
+  sessionPromise.then(function (session) {
+    if (!session || session.demo || !session.staff || session.staff.principal_kind) return;
+    function keepStaffOnline() {
+      if (document.hidden) return;
+      var token;
+      try { token = localStorage.getItem("fh_token"); } catch (e) { return; }
+      if (!token) return;
+      fetch("/api/auth/session", {
+        headers: { accept: "application/json", authorization: "Bearer " + token }
+      }).catch(function () {});
+    }
+    setInterval(keepStaffOnline, 45 * 1000);
+    document.addEventListener("visibilitychange", function () {
+      if (!document.hidden) keepStaffOnline();
+    });
+  });
+
   /* backendState — what is actually answering, as opposed to what the screen
      is drawing. Three distinct failures used to look identical from the
      browser: no function deployed, function up but no DATABASE_URL, and a
@@ -2120,6 +2139,11 @@
       label.textContent = role === "outbound_rep" ? "Your assigned banks" : "Bank relationships";
       copy.textContent = "Collect verified lender product facts from bankers.";
       remembered = "";
+    }
+    if (PAGE === "company-brain.html") {
+      header.setAttribute("data-fh-scope", "company-knowledge");
+      remembered = "";
+      header.querySelector("#fh-workspace-scope").remove();
     }
     if (remembered) {
       var recentLink = document.createElement("a");

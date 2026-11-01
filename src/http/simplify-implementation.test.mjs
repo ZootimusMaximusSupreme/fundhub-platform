@@ -158,6 +158,16 @@ test("owner-set commission rows use percent units and do not invent manager upse
   assert.match(migration, /durable sale_motion plus product identity source/);
 });
 
+test("owner-set funding deal pay is one fifth of the upfront and no closer cut of funded amount", () => {
+  const migration = text("db/migrations/531_owner_closer_funding_one_fifth_20261030.sql");
+  assert.match(migration, /'percent', 20\.00, 'deposit_collected'/);
+  assert.match(migration, /role = 'closer'/);
+  assert.match(migration, /basis = 'back_end'/);
+  assert.match(migration, /One fifth/);
+  assert.doesNotMatch(migration, /sales_manager/);
+  assert.equal((migration.match(/INSERT INTO commission_rules/g) || []).length, 1);
+});
+
 
 const ORG = "11111111-1111-4111-8111-111111111111";
 const CLIENT = "22222222-2222-4222-8222-222222222222";

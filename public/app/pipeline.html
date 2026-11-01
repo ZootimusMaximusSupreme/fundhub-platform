@@ -3066,10 +3066,19 @@ restore();
     var arr = client && client.active_blockers;
     if (!Array.isArray(arr)) return [];
     var out = [];
+    var seenSetter = Object.create(null);
     arr.forEach(function (b) {
       if (!isObj(b)) return;
       var label = str(b.label) || str(b.key);
       if (!label) return;
+      // Older funnel screen posts left several open tasks for one setter job.
+      // Keep those records in the task list, but show the action once here.
+      var source = str(b.source);
+      if (b.kind === "task" && (source === "setter-entry" || source === "setter-booking")) {
+        var setterKey = source + ":" + label;
+        if (seenSetter[setterKey]) return;
+        seenSetter[setterKey] = true;
+      }
       out.push({ label: label, severity: b.severity === "high" ? "high" : "normal" });
     });
     return out;

@@ -1,0 +1,1 @@
+../../.ai/rules/show-real-proof.md

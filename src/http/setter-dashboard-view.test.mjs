@@ -33,7 +33,9 @@ test("completion calls out missing fields for booked and opt-in leads", () => {
     computer_ready: true, app_on_phone: false
   };
   assert.deepEqual(setterMissing({ lead_type: "booked", booked_at: "2026-10-27T20:00:00Z", booking_time: "2026-10-28T20:00:00Z" }, base), []);
-  assert.deepEqual(setterMissing({ lead_type: "opt_in" }, base), ["booked call time", "triage problem", "triage goal", "personal or business"]);
+  assert.deepEqual(setterMissing({ lead_type: "opt_in" }, base), ["booked call time", "triage problem", "triage goal", "funding path"]);
+  assert.deepEqual(setterMissing({ lead_type: "opt_in", booked_at: "2026-10-27T20:00:00Z", booking_time: "2026-10-28T20:00:00Z" },
+    { ...base, triage_problem: "Cash flow", triage_goal: "Expand", triage_personal_or_business: "both" }), []);
   assert.ok(setterMissing({ lead_type: "booked", booked_at: "2026-10-27T20:00:00Z" }, { ...base, disposition: "no_answer" }).includes("second dial"));
   assert.ok(setterMissing({ lead_type: "booked", booked_at: "2026-10-27T20:00:00Z" }, { ...base, disposition: "reschedule" }).includes("reached call result"));
 });

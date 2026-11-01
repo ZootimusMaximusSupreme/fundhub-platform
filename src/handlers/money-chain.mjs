@@ -1732,8 +1732,9 @@ export async function onPaymentRefundedMoney(event, db) {
 
   const included = await withTransaction(db, async (tx) => {
     const original = (await tx.query(
-      `SELECT t.id, t.client_id, t.amount_paid
+      `SELECT t.id, t.client_id, t.amount_paid, COALESCE(sp.paid_at, t.created_at) AS paid_at
          FROM transactions t
+         LEFT JOIN sale_payments sp ON sp.transaction_id = t.id AND sp.org_id = t.org_id
          JOIN products p ON p.id = resolve_product_id(t.org_id, t.product_name)
            AND p.org_id = t.org_id
         WHERE t.id = $1 AND t.org_id = $2 AND t.provider_ref = $3
@@ -1742,8 +1743,26 @@ export async function onPaymentRefundedMoney(event, db) {
         LIMIT 1`,
       [reversal.transactionId, event.orgId, reversal.providerRef]
     )).rows[0];
-    if (!original || !Number.isFinite(Number(original.amount_paid)) || Number(original.amount_paid) <= 0
-        || refunded < toCents(original.amount_paid)) return false;
+    if (!original || !Number.isFinite(Number(original.amount_paid)) || Number(original.amount_paid) <= 0) return false;
+    let refundedTotal = refunded;
+    const currentEventId = asUuid(event.id);
+    if (refundedTotal < toCents(original.amount_paid) && currentEventId) {
+      // Provider refund IDs make these prior events unique. The current event
+      // is already in the bus table, so count it only through `refunded` above.
+      const prior = await tx.query(
+        `SELECT COALESCE(SUM(ROUND(ABS((payload->>'amount')::numeric) * 100)), 0) AS cents
+           FROM events
+          WHERE org_id = $1 AND name = 'payment.refunded' AND id <> $2
+            AND idempotency_key IS NOT NULL
+            AND COALESCE(NULLIF(payload->>'originalProviderRef', ''),
+              NULLIF(payload->>'originalPaymentId', ''), NULLIF(payload->>'providerRef', ''),
+              NULLIF(payload->>'paymentId', '')) = $3
+            AND payload->>'amount' ~ '^-?[0-9]+([.][0-9]+)?$'`,
+        [event.orgId, currentEventId, reversal.providerRef]
+      );
+      refundedTotal += Number(prior.rows[0]?.cents || 0);
+    }
+    if (refundedTotal < toCents(original.amount_paid)) return false;
 
     const at = new Date();
     await tx.query(
@@ -1752,14 +1771,30 @@ export async function onPaymentRefundedMoney(event, db) {
           AND entitlement_code = 'credit-optimization-roadmap' AND revoked_at IS NULL`,
       [event.orgId, original.client_id, original.id, at]
     );
-    // The included subscription has no source-transaction column. Its exact
-    // creation note identifies it; separately purchased FinanceOS is untouched.
+    // The included subscription has no source-transaction column. Close the
+    // row that began with this purchase, or all included rows if no other paid
+    // Blueprint year covers the client. Preserve a newer purchase's row.
     await tx.query(
       `UPDATE subscriptions SET status = 'cancelled', cancelled_at = $3,
           effective_to = GREATEST($3::timestamptz, effective_from + interval '1 microsecond'), updated_at = $3
         WHERE org_id = $1 AND client_id = $2 AND tier = 'finance-os'
-          AND notes = $4 AND status = 'active' AND effective_to IS NULL`,
-      [event.orgId, original.client_id, at, FINANCE_OS_BLUEPRINT_NOTE]
+          AND notes = $4 AND status = 'active' AND effective_to IS NULL
+          AND (current_period_start = $6::timestamptz OR NOT EXISTS (
+            SELECT 1 FROM entitlements e
+            JOIN transactions t ON t.id = e.source_transaction_id
+              AND t.org_id = e.org_id AND t.client_id = e.client_id
+            LEFT JOIN sale_payments sp ON sp.transaction_id = t.id AND sp.org_id = t.org_id
+            JOIN products p ON p.id = resolve_product_id(t.org_id, t.product_name)
+              AND p.org_id = t.org_id
+            WHERE e.org_id = $1 AND e.client_id = $2
+              AND e.entitlement_code = 'credit-optimization-roadmap'
+              AND e.source_transaction_id <> $5
+              AND e.revoked_at IS NULL AND (e.expires_at IS NULL OR e.expires_at > $3)
+              AND t.status = 'succeeded' AND lower(btrim(p.code)) = 'consulting-package'
+              AND COALESCE(sp.paid_at, t.created_at) <= $3
+              AND COALESCE(sp.paid_at, t.created_at) + interval '12 months' > $3
+          ))`,
+      [event.orgId, original.client_id, at, FINANCE_OS_BLUEPRINT_NOTE, original.id, original.paid_at]
     );
     return true;
   });

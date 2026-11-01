@@ -20,6 +20,7 @@ import { resolveClient } from "../handlers/client-lifecycle.mjs";
 import { handleSloPaidWebhook } from "../slo/purchase.mjs";
 import { upsertContact } from "../analytics/clickfunnels.mjs";
 import { pickMetaClickIds, storeClientMetaClickIds } from "../ads/meta-match.mjs";
+import { surveyIsComplete } from "../survey/cf-question-map.mjs";
 import { db as platformDb, pool as platformPool } from "../db.mjs";
 
 // --- 1. Signature verification (fail-closed) --------------------------------
@@ -699,28 +700,45 @@ export const FUNNEL_REPEAT_WINDOW_MINUTES = 6 * 60;
 /* booking.created is left out on purpose: it already has slot-level dedupe
    below (findBookingBySlot), and a second booking is a real second appointment
    that its workflows must see. */
-const REPEAT_SUPPRESSED_EVENTS = new Set(["survey.submitted", "entry.captured"]);
+const REPEAT_SUPPRESSED_EVENTS = new Set(["survey.submitted", "survey.completed", "entry.captured"]);
 
 async function isRepeatFunnelPost(db, { orgId, name, email, funnel }) {
   if (!orgId || !email) return false;
-  try {
-    const { rows } = await db.query(
+  const { rows } = await db.query(
       `SELECT 1
          FROM events
         WHERE org_id = $1
           AND name = $2
           AND lower(payload->>'email') = $3
-          AND COALESCE(payload->>'funnel', '') = $4
+          AND (COALESCE(payload->>'funnel', '') = $4
+            OR COALESCE(payload->>'funnel', '') = '' OR $4 = '')
           AND created_at > now() - make_interval(mins => $5)
         LIMIT 1`,
       [orgId, name, String(email).toLowerCase(), String(funnel || ""), FUNNEL_REPEAT_WINDOW_MINUTES]
-    );
-    return rows.length > 0;
-  } catch (err) {
-    /* Never let the look-back decide the delivery. If it cannot be answered the
-       event behaves exactly as it does today. */
-    console.warn(`[clickfunnels] repeat-post check failed (treating as first): ${String(err?.message || err)}`);
-    return false;
+  );
+  return rows.length > 0;
+}
+
+// The look-back and event insert must be serialized for this contact. Two
+// distinct webhook IDs otherwise both see no prior row and start two cadences.
+async function withFunnelRepeatLock(db, orgId, email, name, fn) {
+  const source = db === platformDb ? platformPool()
+    : (typeof db?.connect === "function" && db?.options ? db : null);
+  if (!source || !orgId || !email) return fn();
+  const key = `cf-repeat:${orgId}:${name}:${String(email).trim().toLowerCase()}`;
+  const client = await source.connect();
+  let clean = false;
+  try {
+    await client.query("BEGIN");
+    await client.query("SET LOCAL lock_timeout = '15s'");
+    await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1::text, 0))", [key]);
+    const out = await fn();
+    await client.query("COMMIT");
+    clean = true;
+    return out;
+  } finally {
+    if (!clean) { try { await client.query("ROLLBACK"); clean = true; } catch {} }
+    client.release(!clean);
   }
 }
 
@@ -856,8 +874,14 @@ async function adoptEarlierBooking(db, { orgId, evt, cancel }) {
 // Appointments → booking.* only (never entry.captured).
 // Calendar form posts (form_submission with a start time) → booking.created.
 //   The thank-you page can paint before appointments/scheduled_event.created.
-// Other opt-in / form submissions → entry.captured (+ survey.submitted when answers).
+// Other opt-in / form submissions → entry.captured (+ survey.submitted when answers,
+//   + survey.completed when the answers include the last question).
 // Returns [] when there is no email (nothing to emit).
+
+/* The /apply page posts after every screen, so survey.submitted fires from the
+   first answer on. Only a post that carries the last answer (surveyIsComplete,
+   src/survey/cf-question-map.mjs) means the survey is done; the same answer moves
+   the sales card to Survey Complete (src/handlers/client-lifecycle.mjs). */
 export function mapToCanonical(evt) {
   if (!evt || !evt.email) return [];
 
@@ -871,6 +895,7 @@ export function mapToCanonical(evt) {
   out.push({ name: "entry.captured" });
   if (evt.answers !== null && evt.answers !== undefined) {
     out.push({ name: "survey.submitted" });
+    if (surveyIsComplete(evt.answers)) out.push({ name: "survey.completed" });
   }
   return out;
 }
@@ -974,7 +999,7 @@ export async function handleClickFunnelsWebhook({
   const emitted = [];
   for (const c of canonical) {
     let payload;
-    if (c.name === "survey.submitted") {
+    if (c.name === "survey.submitted" || c.name === "survey.completed") {
       payload = {
         email: evt.email,
         name: evt.name,
@@ -1057,31 +1082,36 @@ export async function handleClickFunnelsWebhook({
 
     /* A repeat post of a survey already in flight: still stored, still merged
        onto the client by the local handlers, but no second durable run. */
-    const repeat = REPEAT_SUPPRESSED_EVENTS.has(c.name)
-      ? await isRepeatFunnelPost(db, {
+    const record = async () => {
+      const repeat = REPEAT_SUPPRESSED_EVENTS.has(c.name)
+        ? await isRepeatFunnelPost(db, {
         orgId: ingestOrgId,
         name: c.name,
         email: evt.email,
         funnel: evt.funnel
       })
-      : false;
+        : false;
 
-    const res = await emit(db, c.name, payload, {
-      idempotencyKey: idKey,
-      orgId: ingestOrgId,
-      clientId: ingestClientId,
-      skipInngest: repeat
-    });
-    emitted.push({
-      name: c.name,
-      id: res.id,
-      deduped: res.deduped,
-      clientId: ingestClientId,
-      repeat,
-      // The one fact this lane exists to control: did this delivery start a
-      // durable workflow run (a text-message cadence), or only record data?
-      startedRun: !repeat && !res.deduped
-    });
+      const res = await emit(db, c.name, payload, {
+        idempotencyKey: idKey,
+        orgId: ingestOrgId,
+        clientId: ingestClientId,
+        skipInngest: repeat
+      });
+      emitted.push({
+        name: c.name,
+        id: res.id,
+        deduped: res.deduped,
+        clientId: ingestClientId,
+        repeat,
+        startedRun: !repeat && !res.deduped
+      });
+    };
+    if (REPEAT_SUPPRESSED_EVENTS.has(c.name)) {
+      await withFunnelRepeatLock(db, ingestOrgId, evt.email, c.name, record);
+    } else {
+      await record();
+    }
   }
   let clickfunnelsContact = null;
   if (applySurveyFlat) {

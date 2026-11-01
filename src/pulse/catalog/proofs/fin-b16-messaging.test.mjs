@@ -417,8 +417,8 @@ test("the Reference key opens and closes by itself, and its three colours are th
     }])));
     assert.deepEqual(messages["m-s2"], { out: true, avatar: "human", initials: "JB", bubble: "out-human", name: "Jordan Blake", tag: null },
       "someone on your team: dark avatar, dark bubble, their name on it, no Automatic tag");
-    assert.deepEqual(messages["m-auto"], { out: true, avatar: "agent", initials: "SYS", bubble: "out-agent", name: "Automatic", tag: "Automatic" },
-      "sent by the system: outlined avatar and the Automatic tag");
+    assert.deepEqual(messages["m-auto"], { out: true, avatar: "agent", initials: "SYS", bubble: "out-agent", name: "Automatic", tag: null },
+      "sent by the system: outlined avatar and one Automatic label");
     assert.deepEqual(messages["m-s1"], { out: false, avatar: "client", initials: "DW", bubble: "in", name: "Dana Whitfield", tag: null },
       "the client: plain avatar, plain bubble, no tag");
 

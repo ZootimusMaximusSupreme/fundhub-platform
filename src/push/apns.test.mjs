@@ -53,4 +53,24 @@ describe("native APNs transport", () => {
     assert.equal(retry.gone, false);
     assert.equal(retry.status, "failed");
   });
+
+  test("staff alerts carry only fixed copy and a validated in-app contact target", async () => {
+    const calls = [];
+    const clientId = crypto.randomUUID();
+    const notification = { audience: "staff", kind: "lead", clientId, key: `entry:${clientId}` };
+    const sent = await sendAPNS({ token, environment: "production", notification }, {
+      env, post: async (_url, headers, body) => {
+        calls.push({ headers, body: JSON.parse(body) });
+        return { status: 200, body: "" };
+      }
+    });
+    assert.equal(sent.status, "sent");
+    assert.equal(calls[0].body.aps.alert.body, "A new lead is ready. Open Fundhub to call.");
+    assert.equal(calls[0].body.path, "/app/staff-alert");
+    assert.equal(calls[0].body.client_id, clientId);
+    assert.equal(calls[0].body.kind, "lead");
+    await assert.rejects(sendAPNS({ token, environment: "production",
+      notification: { ...notification, body: "Jane needs a call" } }, { env }), /fixed/);
+    assert.equal(calls.length, 1);
+  });
 });
