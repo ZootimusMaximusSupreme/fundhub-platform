@@ -277,6 +277,8 @@ function signedDb({ client = [{ id: CLIENT, first_name: "Pat", last_name: "Doe",
       if (text.includes("gap:soft-pull-client")) return { rows: pick };
       if (/FROM clients WHERE id = \$1 AND org_id = \$2/.test(text)) return { rows: client };
       if (text.includes("FROM client_consents")) return { rows: [] };
+      if (text.includes("FROM events")) return { rows: [] };
+      if (text.includes("FROM payment_links")) return { rows: [] };
       throw new Error(`unexpected sql: ${text.slice(0, 80)}`);
     }
   };
@@ -287,9 +289,15 @@ test("the signed read opens the real handler with a link it signed, and passes",
   const row = await checkApproveSignedRead({ db, orgId: ORG, env: ENV });
   assert.equal(row.status, "PASS");
   assert.match(row.detail, /the words, the price and the consent state/);
+  assert.match(row.detail, /signed-out link refused; in-process client read/);
   assert.equal(row.suggestedFix, null);
-  // It read the client and the consent, and nothing else. No write, no transaction.
-  assert.deepEqual(db.calls.map((c) => c.sql.includes("gap:soft-pull-client") ? "pick" : /clients/.test(c.sql) ? "client" : "consent"), ["pick", "client", "consent"]);
+  // Both reads use the real handler; the account gate prevents consent/payment
+  // reads until the matching identity is supplied. No write or transaction.
+  assert.deepEqual(db.calls.map((c) => c.sql.includes("gap:soft-pull-client") ? "pick"
+    : /FROM clients/.test(c.sql) ? "client"
+    : /FROM client_consents/.test(c.sql) ? "consent"
+    : /FROM events/.test(c.sql) ? "paid-event" : "paid-link"),
+  ["pick", "client", "client", "consent", "paid-event", "paid-link"]);
   assert.deepEqual(db.calls[0].params, [ORG]);
   for (const call of db.calls) {
     assert.match(call.sql.replace(/\/\*[\s\S]*?\*\//g, "").trim(), /^SELECT\b/);
@@ -299,13 +307,17 @@ test("the signed read opens the real handler with a link it signed, and passes",
 });
 
 test("the link it signs is a real one the handler's own check accepts", async () => {
-  let seen = null;
+  const seen = [];
   const row = await checkApproveSignedRead({
     db: signedDb(),
     orgId: ORG,
     env: ENV,
     approveHandler: async (req, res, deps) => {
-      seen = { req, deps };
+      seen.push({ req, deps });
+      if (seen.length === 1) {
+        res.status(401).json({ ok: false, error: "account_required" });
+        return;
+      }
       res.status(200).json({
         ok: true, kind: READ_KIND, disclosure: { text: "x" }, pricing: { base_cents: 3200 },
         consent: { valid: false }, contact: {}
@@ -313,27 +325,32 @@ test("the link it signs is a real one the handler's own check accepts", async ()
     }
   });
   assert.equal(row.status, "PASS");
-  assert.equal(seen.req.method, "GET");
-  assert.equal(seen.req.body, null);
+  assert.equal(seen.length, 2);
+  assert.equal(seen[1].req.method, "GET");
+  assert.equal(seen[1].req.body, null);
   const ok = verifySoftPullApproveToken({
-    orgId: seen.req.query.org,
-    clientId: seen.req.query.client,
-    exp: seen.req.query.exp,
-    sig: seen.req.query.sig,
+    orgId: seen[1].req.query.org,
+    clientId: seen[1].req.query.client,
+    exp: seen[1].req.query.exp,
+    sig: seen[1].req.query.sig,
     secret: ENV.DOCUMENT_URL_SECRET
   });
   assert.ok(ok, "the handler would accept the link");
   assert.equal(ok.orgId, ORG);
   assert.equal(ok.clientId, CLIENT);
   // The secret goes to the handler as a dependency. It is never in the detail.
-  assert.equal(seen.deps.secret, ENV.DOCUMENT_URL_SECRET);
+  assert.equal(seen[1].deps.secret, ENV.DOCUMENT_URL_SECRET);
+  assert.equal(await seen[0].deps.resolvePrincipal(), null);
+  assert.deepEqual(await seen[1].deps.resolvePrincipal(), {
+    kind: "client", orgId: ORG, clientId: CLIENT, accountId: "pulse-read-only"
+  });
   assert.doesNotMatch(row.detail, new RegExp(ENV.DOCUMENT_URL_SECRET.slice(0, 12)));
 });
 
 test("a database that fails inside the handler is a FAIL, not a quiet pass", async () => {
   const row = await checkApproveSignedRead({ db: signedDb({ fail: /FROM client_consents/ }), orgId: ORG, env: ENV });
   assert.equal(row.status, "FAIL");
-  assert.match(row.detail, /signed approve read answered (5\d\d|\d+)/);
+  assert.match(row.detail, /signed approve read answered 5\d\d/);
   assert.match(row.detail, /not the approval read shape/);
   assert.match(row.suggestedFix, /Recon \(AG-07\)/);
   assert.match(row.suggestedFix, /Do not pull credit/);

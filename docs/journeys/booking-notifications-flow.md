@@ -230,7 +230,7 @@ flowchart TD
     B[booking.created] --> C{Customer resolved?}
     C -->|No| STOP0[Stop]
     C -->|Yes| CONF[Confirmation text]
-    CONF --> LINK[Mint a 365-day portal sign-in link<br/>falls back to the sign-in page]
+    CONF --> LINK[Give a durable portal entry link<br/>short-lived sign-in credential can be reissued]
     LINK --> MAIL[Confirmation email]
     MAIL --> NOW[Ask the sender to work BOTH rows now, by id<br/>drainMessageNow, src/messaging/outbox.mjs]
     NOW --> ST{Start time?}
@@ -287,13 +287,18 @@ by id, through the same sender. The company pause switch, the daily cap, quiet
 hours, opt-out and the compliance screen all still run; the sweep is unchanged
 and remains the backstop for these two rows and for everything else.
 
-**The booking email (2026-10-26 branch).** S-04B supplies three distinct paths:
-the iPhone app download page, a regular web portal sign-in for Android or a
-browser, and a magic sign-in link that opens the portal at its **Confirm my
-call** card. The customer presses that card to save the confirmation. The email
-does not show an empty meeting-location row when the host's Meet link has not
-yet been read. The first-party app page records an Apple-link tap only when the
-customer actually presses the Apple button.
+**Booking account and confirmation (2026-10-29 code, not live-proved).** The
+booking makes a pending client account and immediately sends text and email to
+the durable `/portal-login.html?mode=claim` entry. The entry itself carries no
+bearer credential and does not expire. It issues a short-lived email credential
+that can always be requested again. When the client verifies it, the account is
+claimed, the next booked call is confirmed on the client record, and the client
+lands on the signed-in soft-pull page. The iPhone app download stays optional;
+a tap is not proof of installation. The email does not show an empty meeting
+location while the host's Meet link is unavailable. If the pending account
+cannot be created because the email is missing or belongs to another account,
+the setter gets a task to resolve it before the call; the booking message still
+contains a durable sign-in entry, but that exception is not called complete.
 
 In current source, after the confirmation **text** is marked sent, the sender
 also tries one native iPhone alert with fixed, detail-free wording: “Please

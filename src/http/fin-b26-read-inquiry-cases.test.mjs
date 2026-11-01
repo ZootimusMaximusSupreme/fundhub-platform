@@ -17,7 +17,7 @@ import {
   ORG_ID, OTHER_ORG_ID, PARTNER, CLIENT, OTHER_CLIENT, FOREIGN_CLIENT, ALL_STAFF_ROLES,
 } from "../testing/fin-b26-kit.mjs";
 import {
-  cleanSql, selectList, projectRow, orderRows, orderOf, whereOf, keep,
+  cleanSql, selectList, projectRow, orderRows, orderOf, whereOf, keep, evalSql,
 } from "../testing/fin-b26-sql.mjs";
 
 const NO_ID_CLIENT = "c3000000-0000-4000-8000-000000000003";   // address paper and a signature, no photo ID
@@ -50,6 +50,7 @@ function world(over = {}) {
       // A client with two open cases: the newest request is the answer.
       kase(K(8), DECOY_CLIENT, "Blocked", "2026-10-06T00:00:00.000Z"),
       kase("ee00000a-0000-4000-8000-00000000000a", DECOY_CLIENT, "Queued", "2026-10-02T00:00:00.000Z"),
+      kase("e9000000-0000-4000-8000-000000000009", "c9000000-0000-4000-8000-000000000009", "Queued", "2026-09-15T00:00:00.000Z"), // archived case
     ],
     clients: [
       { id: CLIENT, org_id: ORG_ID, first_name: "Dana", last_name: "Whitfield", email: "dana@example.test" },
@@ -57,6 +58,7 @@ function world(over = {}) {
       { id: NO_ID_CLIENT, org_id: ORG_ID, first_name: "Noa", last_name: "Idless", email: "noa@example.test" },
       { id: DECOY_CLIENT, org_id: ORG_ID, first_name: "Dex", last_name: "Decoy", email: "dex@example.test" },
       { id: FOREIGN_CLIENT, org_id: OTHER_ORG_ID, first_name: "Far", last_name: "Away", email: "far@example.test" },
+      { id: "c9000000-0000-4000-8000-000000000009", org_id: ORG_ID, first_name: "Old", last_name: "File", custom_fields: { crm_archived_at: "2026-10-20T00:00:00Z" } },
     ],
     documents: [
       doc(CLIENT, "id_document"), doc(CLIENT, "proof_of_address"),
@@ -90,16 +92,36 @@ function rulesFor(t, { documentsFail = false } = {}) {
   return [
     [/FROM inquiry_removal_cases c\s+LEFT JOIN clients cl/i, (sql, p) => {
       const items = selectList(sql, 0);
-      const kept = keep(t.inquiry_removal_cases, whereOf(sql), p, { alias: "c", now: NOW });
-      const ordered = orderRows(kept, orderOf(sql), (c) => ({ params: p, rows: { c } }));
+      // Execute the real LEFT JOIN and its required-client predicate separately.
+      // This preserves org and archived-file rules without hardcoding results.
+      const join = /LEFT JOIN clients cl ON ([\s\S]*?) WHERE /i.exec(cleanSql(sql));
+      assert.ok(join, "the same-org, non-archived case/client join exists");
+      const where = whereOf(sql);
+      assert.match(where, /AND cl\.id IS NOT NULL\s*$/i, "active client required");
+      const kept = keep(t.inquiry_removal_cases,
+        where.replace(/\s+AND cl\.id IS NOT NULL\s*$/i, ""), p, { alias: "c", now: NOW });
+      const visible = kept.map((c) => ({
+        c,
+        cl: t.clients.find((cl) => evalSql(join[1], { params: p, rows: { c, cl } }) === true) || null
+      })).filter(({ cl }) => cl !== null);
+      const ordered = orderRows(visible, orderOf(sql), ({ c, cl }) => ({ params: p, rows: { c, cl } }));
       const lim = /LIMIT \$(\d+) OFFSET \$(\d+)/i.exec(cleanSql(sql));
       const limit = p[Number(lim[1]) - 1]; const offset = p[Number(lim[2]) - 1];
-      const win = ordered.map((c) => ({ params: p, rows: { c, cl: t.clients.find((x) => x.id === c.client_id) || null } }));
+      const win = ordered.map(({ c, cl }) => ({ params: p, rows: { c, cl } }));
       return win.slice(offset, offset + limit).map((ctx) => projectRow(items, { ...ctx, window: win, group: win }));
     }],
     [/^\s*SELECT \*\s+FROM inquiry_removal_cases\s+WHERE org_id = \$1::uuid\s+AND client_id = \$2::uuid/i, (sql, p) => {
-      const kept = keep(t.inquiry_removal_cases, whereOf(sql), p, { alias: "inquiry_removal_cases", now: NOW });
-      const ordered = orderRows(kept, orderOf(sql), (r) => ({ params: p, row: r }));
+      // Evaluate the exact EXISTS subquery, not an invented "active" flag. A
+      // changed org/client join or archived predicate must fail this fixture.
+      const nested = /AND EXISTS\s*\(\s*SELECT 1 FROM clients cl\s+WHERE\s+([\s\S]*?)\)/i.exec(cleanSql(sql));
+      assert.ok(nested, "single-client read must prove active client ownership");
+      assert.match(nested[1], /cl\.id = inquiry_removal_cases\.client_id\s+AND cl\.org_id = inquiry_removal_cases\.org_id\s+AND cl\.custom_fields->>'crm_archived_at' IS NULL/i);
+      const scopedWhere = whereOf(sql).replace(/\s+AND EXISTS\s*\([\s\S]*?\)\s*$/i, "");
+      const kept = keep(t.inquiry_removal_cases, scopedWhere, p, { alias: "inquiry_removal_cases", now: NOW });
+      const visible = kept.filter((c) => t.clients.some((cl) =>
+        evalSql(nested[1], { params: p, rows: { inquiry_removal_cases: c, cl }, now: NOW }) === true
+      ));
+      const ordered = orderRows(visible, orderOf(sql), (r) => ({ params: p, row: r }));
       return ordered.slice(0, 1).map((r) => ({ ...r }));
     }],
     [/SELECT client_id, kind, subtype\s+FROM documents/i, (sql, p) => {
@@ -249,8 +271,12 @@ describe("GET /api/read/inquiry-cases", () => {
     const decoy = await get(desk(), { client_id: DECOY_CLIENT });
     assert.equal(decoy.res.body.case.id, K(8), "the newest request among the open ones");
     // Another company's client has no case in this company; a client with no open case reads null.
+    // The same ID has a foreign-company case and an archived case in this org.
+    // Neither may surface from the single-client drawer.
     const foreign = await get(desk(), { client_id: FOREIGN_CLIENT });
-    assert.equal(foreign.res.body.case, null, "another company's client has no case in this company");
+    assert.equal(foreign.res.body.case, null, "foreign and archived client cases stay hidden");
+    const sql = sqlOf(foreign.fake, /FROM inquiry_removal_cases\s+WHERE org_id/)[0].sql;
+    assert.match(cleanSql(sql), /AND EXISTS \( SELECT 1 FROM clients cl WHERE cl.id = inquiry_removal_cases.client_id AND cl.org_id = inquiry_removal_cases.org_id AND cl.custom_fields->>'crm_archived_at' IS NULL \)/);
     const closedOnly = await get(desk(), { client_id: "c5000000-0000-4000-8000-000000000005" });
     assert.equal(closedOnly.res.body.case, null);
     const bad = await get(desk(), { client_id: "nope" });
