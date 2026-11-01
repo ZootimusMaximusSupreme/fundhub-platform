@@ -264,15 +264,20 @@ test("real monthly provider refusal creates one scoped owner exception and no re
     subscription_id: "plan-A", idempotency_key: "finance-os-monthly:plan-A:0:real" };
   let queued = true, pulls = 0, aftercares = 0;
   const tasks = [];
-  const db = { query: async (sql) => {
+  const db = { query: async (sql, params) => {
     if (/FROM soft_pull_requests/.test(sql)) return { rows: queued ? [row] : [] };
+    if (/UPDATE soft_pull_requests/.test(sql)) {
+      assert.deepEqual(params.slice(0, 3), [row.id, row.org_id, row.client_id]);
+      queued = false;
+      return { rows: [{ id: row.id }] };
+    }
     throw Error("unexpected SQL in provider-failure fixture");
   } };
   const input = {
     env: { FINANCE_OS_SYSTEM_PULL_LIVE: "1", CRS_ALLOW_LIVE: "1" },
     consentCheck: async () => ({ valid: true }),
     entitlementCheck: async () => ({ entitled: true, subscriptionId: "plan-A" }),
-    runPull: async () => { pulls++; queued = false; return { ok: false, code: "crs_unavailable" }; },
+    runPull: async () => { pulls++; return { ok: false, code: "not_stored" }; },
     createTaskImpl: async (_db, task) => { tasks.push(task); return { created: true, id: "owner-task" }; },
     aftercare: async () => { aftercares++; return { ok: true }; }
   };
@@ -297,15 +302,20 @@ test("ambiguous real provider error creates a human hold, not a second bureau or
     subscription_id: "plan-A", idempotency_key: "finance-os-monthly:plan-A:0:real" };
   let queued = true, pulls = 0;
   const tasks = [];
-  const db = { query: async (sql) => {
+  const db = { query: async (sql, params) => {
     if (/FROM soft_pull_requests/.test(sql)) return { rows: queued ? [row] : [] };
+    if (/UPDATE soft_pull_requests/.test(sql)) {
+      assert.deepEqual(params.slice(0, 3), [row.id, row.org_id, row.client_id]);
+      queued = false;
+      return { rows: [{ id: row.id }] };
+    }
     throw Error("unexpected SQL");
   } };
   const input = {
     env: { FINANCE_OS_SYSTEM_PULL_LIVE: "1", CRS_ALLOW_LIVE: "1" },
     consentCheck: async () => ({ valid: true }),
     entitlementCheck: async () => ({ entitled: true, subscriptionId: "plan-A" }),
-    runPull: async () => { pulls++; queued = false; throw Error("vendor transport interrupted"); },
+    runPull: async () => { pulls++; throw Error("vendor transport interrupted"); },
     createTaskImpl: async (_db, task) => { tasks.push(task); return { created: true, id: "human-task" }; }
   };
   const first = await fulfilQueuedSystemPulls(db, input);
@@ -320,11 +330,35 @@ test("ambiguous real provider error creates a human hold, not a second bureau or
   assert.equal(tasks.length, 1);
 });
 
+test("an unpersisted provider hold stays red while still creating owner recovery work", async () => {
+  const row = { id: "req-hold-fail", org_id: "org-A", client_id: "buyer-A",
+    subscription_id: "plan-A", idempotency_key: "finance-os-monthly:plan-A:0:real" };
+  let tasks = 0;
+  const db = { query: async (sql) => {
+    if (/UPDATE soft_pull_requests/.test(sql)) return { rows: [] };
+    if (/SELECT status FROM soft_pull_requests/.test(sql)) return { rows: [{ status: "queued" }] };
+    if (/FROM soft_pull_requests/.test(sql)) return { rows: [row] };
+    throw Error("unexpected SQL");
+  } };
+  const out = await fulfilQueuedSystemPulls(db, {
+    env: { FINANCE_OS_SYSTEM_PULL_LIVE: "1", CRS_ALLOW_LIVE: "1" },
+    consentCheck: async () => ({ valid: true }),
+    entitlementCheck: async () => ({ entitled: true, subscriptionId: "plan-A" }),
+    runPull: async () => ({ ok: false, code: "not_stored" }),
+    createTaskImpl: async () => { tasks++; return { id: "owner-task" }; }
+  });
+  assert.equal(out.ok, false);
+  assert.equal(out.errored[0].phase, "provider_exception_hold");
+  assert.equal(out.providerExceptions.length, 1);
+  assert.equal(tasks, 1);
+});
+
 test("provider-exception task failure remains RED and simulations create no live owner task", async () => {
   const row = { id: "req-task-failure", org_id: "org-A", client_id: "buyer-A",
     subscription_id: "plan-A", idempotency_key: "finance-os-monthly:plan-A:0:real" };
   const db = { query: async (sql) => {
     if (/FROM soft_pull_requests/.test(sql)) return { rows: [row] };
+    if (/UPDATE soft_pull_requests/.test(sql)) return { rows: [{ id: row.id }] };
     throw Error("unexpected SQL");
   } };
   const opts = {

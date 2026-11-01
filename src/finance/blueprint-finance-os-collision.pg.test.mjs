@@ -7,6 +7,7 @@ import pg from "pg";
 import { financeOsEntitlement, addUtcMonths } from "./finance-os-entitlement.mjs";
 import { isBlueprintCoachClient } from "../blueprint/coach.mjs";
 import { dueClients } from "../workflows/finance-os-pull-sweeper.mjs";
+import { fulfilQueuedSystemPulls } from "./finance-os-pull-fulfil.mjs";
 
 const connectionString = process.env.BLUEPRINT_TEST_DATABASE_URL || process.env.DATABASE_URL;
 let safe = false;
@@ -164,6 +165,40 @@ test("Blueprint genuine refresh ignores all known completed rehearsal formats; u
           + "VALUES ($1,$2,$3,$4,'system','Old rehearsal failure','failed','2026-10-10','2026-10-10')",
         [org, client, subscriptionId, `finance-os-monthly:${subscriptionId}:0`]);
       assert.deepEqual(await dueAfterFailure(), [subscriptionId], "a failed rehearsal cannot hold a later real refresh");
+    } finally {
+      await conn.query("ROLLBACK");
+      conn.release();
+    }
+  });
+
+test("unknown real provider outcome leaves the queued ledger before another sweep",
+  { skip: safe ? false : "requires a local test/scratch PostgreSQL database" }, async () => {
+    const conn = await pool.connect();
+    await conn.query("BEGIN");
+    try {
+      await conn.query("CREATE TEMP TABLE soft_pull_requests (LIKE public.soft_pull_requests INCLUDING ALL) ON COMMIT DROP");
+      await conn.query("SET LOCAL search_path TO pg_temp, public");
+      const org = randomUUID(), client = randomUUID(), subscription = randomUUID();
+      const request = (await conn.query(
+        `INSERT INTO soft_pull_requests
+          (org_id,client_id,subscription_id,idempotency_key,requested_by_kind,reason,status)
+         VALUES ($1,$2,$3,$4,'system','Monthly refresh','queued') RETURNING id`,
+        [org, client, subscription, `finance-os-monthly:${subscription}:0:real`]
+      )).rows[0].id;
+      let providerCalls = 0;
+      const options = {
+        env: { CRS_ALLOW_LIVE: "1", FINANCE_OS_SYSTEM_PULL_LIVE: "1" },
+        consentCheck: async () => ({ valid: true }),
+        entitlementCheck: async () => ({ entitled: true, subscriptionId: subscription }),
+        runPull: async () => { providerCalls++; return { ok: false, code: "not_stored" }; },
+        createTaskImpl: async () => ({ id: "owner-task" })
+      };
+      const first = await fulfilQueuedSystemPulls(conn, options);
+      assert.equal(first.failed, 1);
+      assert.equal(first.errored.length, 0);
+      assert.equal((await conn.query("SELECT status FROM soft_pull_requests WHERE id=$1", [request])).rows[0].status, "failed");
+      assert.equal((await fulfilQueuedSystemPulls(conn, options)).checked, 0);
+      assert.equal(providerCalls, 1);
     } finally {
       await conn.query("ROLLBACK");
       conn.release();
