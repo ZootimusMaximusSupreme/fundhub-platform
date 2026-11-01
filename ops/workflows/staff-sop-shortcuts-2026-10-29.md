@@ -37,7 +37,7 @@ The owner reports SOPs and sales scripts already loaded into Company Brain; the 
 - `e2e/staff-sop-shortcuts.spec.mjs`: offline browser tests with mocked API and fictional user profiles; no production writes.
 - Run all required repo checks, including disposable Postgres and Playwright, then protected merge + deployment proof. If any gate fails, leave PR open and record exact failure; do not bypass.
 
-Current status: **IMPLEMENTED ON FEATURE BRANCH; CI AND LIVE PROOF PENDING.**
+Current status: **IMPLEMENTED ON FEATURE BRANCH; EXACT-HEAD CI PASSED; REVIEW, MERGE AND LIVE PROOF PENDING.**
 
 ## October 30 follow-up — action-level SOP links and discovery
 
@@ -58,3 +58,8 @@ Current status: **IMPLEMENTED ON FEATURE BRANCH; CI AND LIVE PROOF PENDING.**
 - Consent SOP is a sibling of the real heading, so exact authorization text survives. Documents SOP uses title whitespace, keeping the phone's first library row above the fold.
 - The 320px closer funding header reclaims 15px of margin without reducing 44px button targets. Back preserves the funding-tab hash.
 - Actual production approved source retrieval: NOT LIVE PROVED without a read-only authenticated employee session.
+
+### November 1 independent exact-head audit
+- PR #312 remains open at `c1ab9a112f2d5198527a900859d915b46c0db2ec`, mergeable, with zero submitted reviews. The exact-head [Actions run](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/41154545508) passed all 14 jobs. Its browser job passed all 16 staff SOP cases within 1,885 Playwright cases; the browser tests use mocked APIs.
+- At 00:24 UTC, `main` was `7a15bf43fe806b96f50f1af59f12f3ca33d268a6`; #312 had not merged. Therefore this PR has no main deployment or live staff-path proof. A direct live asset read was unavailable because `fundhub.ai` did not resolve from this environment.
+- No concrete source defect was found in the five changed files. Remaining release path: independent exact-head review, protected merge and successful Ship run, then authenticated employee checks of SOP placement and one approved-source search at Funding, Setter and Inquiry. The Find action writes Company Brain chat history, so that live query is excluded from the current no-live-writes audit.
