@@ -30,7 +30,7 @@ import { db } from "../db.mjs";
 import { requestSoftPull, SoftPullError } from "../finance/soft-pulls.mjs";
 import { FINANCE_OS_TIER } from "../finance/finance-os-entitlement.mjs";
 import { BLUEPRINT_PRODUCT_CODE } from "../waypoints/purchase.mjs";
-import { fulfilQueuedSystemPulls, systemPullUsesSimulation } from "../finance/finance-os-pull-fulfil.mjs";
+import { fulfilQueuedSystemPulls, systemPullUsesSimulation, MONTHLY_PROVIDER_EXCEPTION_SOURCE } from "../finance/finance-os-pull-fulfil.mjs";
 
 export const SWEEP_CRON = "0 6 * * *"; // 06:00 UTC daily — matches the other daily sweepers' quiet-hours-safe slot
 export const SOURCE_WORKFLOW = "finance-os-pull-sweeper";
@@ -109,8 +109,22 @@ export async function dueClients(conn, now, { realPull = false } = {}) {
                     )
                )
              )
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM soft_pull_requests failed
+           WHERE failed.org_id = s.org_id AND failed.client_id = s.client_id
+             AND failed.requested_by_kind = 'system' AND failed.status = 'failed'
+             AND failed.idempotency_key LIKE 'finance-os-monthly:%:real'
+             AND NOT EXISTS (
+               SELECT 1 FROM tasks review
+                WHERE review.org_id = failed.org_id
+                  AND review.client_id = failed.client_id
+                  AND review.source_workflow = $6
+                  AND review.body = 'finance-os-monthly-provider:' || failed.id::text
+                  AND review.done = true
+             )
         )`,
-    [FINANCE_OS_TIER, now, MONTHLY_PULL_DAYS, !!realPull, BLUEPRINT_PRODUCT_CODE]
+    [FINANCE_OS_TIER, now, MONTHLY_PULL_DAYS, !!realPull, BLUEPRINT_PRODUCT_CODE, MONTHLY_PROVIDER_EXCEPTION_SOURCE]
   );
   return res.rows;
 }
