@@ -109,6 +109,46 @@
     return h ? (h + "h " + m + "m") : (m + "m");
   }
 
+  function paintShift(shift) {
+    var onShift = !!(shift && shift.on_shift);
+    var shiftChip = $("[data-fh-call-head] .chip");
+    if (shiftChip) {
+      shiftChip.className = onShift ? "chip on" : "chip";
+      shiftChip.innerHTML = '<span class="cd"></span>' + (onShift
+        ? "On shift" + (elapsed(shift.elapsed_ms) ? " · " + elapsed(shift.elapsed_ms) : "")
+        : escapeHtml(shift && shift.reason ? shift.reason : "Off shift"));
+    }
+    var shiftToggle = document.getElementById("fh-shift-toggle");
+    if (shiftToggle) {
+      shiftToggle.textContent = onShift ? "Clock out" : "Clock in";
+      shiftToggle.dataset.action = onShift ? "clock_out" : "clock_in";
+      shiftToggle.hidden = false;
+    }
+  }
+
+  async function loadShift() {
+    try {
+      var token = "";
+      try { token = localStorage.getItem("fh_token") || ""; } catch (e) {}
+      var response = await fetch("/api/shifts", {
+        credentials: "same-origin",
+        headers: token ? { accept: "application/json", authorization: "Bearer " + token }
+          : { accept: "application/json" }
+      });
+      var body = await response.json();
+      if (!response.ok || !body || body.ok !== true) throw new Error("shift_read_failed");
+      var open = body.shift;
+      var started = open ? Date.parse(open.started_at) : NaN;
+      paintShift(open ? {
+        on_shift: true,
+        elapsed_ms: Number.isFinite(started) ? Math.max(0, Date.now() - started) : 0
+      } : { on_shift: false, reason: "Off shift" });
+    } catch (e) {
+      var shiftChip = $("[data-fh-call-head] .chip");
+      if (shiftChip) shiftChip.innerHTML = '<span class="cd"></span>Shift status unavailable';
+    }
+  }
+
   /* PRESENT IS NOT A LIVE CONTROL ANY MORE (owner-set 2026-08-27).
      It used to be hidden until a call had loaded, so a closer could not open
      the deck to rehearse it, or to walk someone through it with no file on the
@@ -258,22 +298,7 @@
     text($(".funding-estimate .source-label"), credit.sample === true ? "Sample UnderwriteIQ estimate" : "UnderwriteIQ");
 
     text($("[data-fh-call-head] .eyebrow"), "Live call");
-    var shiftChip = $("[data-fh-call-head] .chip");
-    if (shiftChip) {
-      if (staff.shift && staff.shift.on_shift) {
-        shiftChip.className = "chip on";
-        shiftChip.innerHTML = '<span class="cd"></span>On shift · ' + elapsed(staff.shift.elapsed_ms);
-      } else {
-        shiftChip.className = "chip";
-        shiftChip.innerHTML = '<span class="cd"></span>' + escapeHtml(staff.shift && staff.shift.reason ? staff.shift.reason : "Off shift");
-      }
-    }
-    var shiftToggle = document.getElementById("fh-shift-toggle");
-    if (shiftToggle) {
-      shiftToggle.textContent = staff.shift && staff.shift.on_shift ? "Clock out" : "Clock in";
-      shiftToggle.dataset.action = staff.shift && staff.shift.on_shift ? "clock_out" : "clock_in";
-      shiftToggle.hidden = false;
-    }
+    paintShift(staff.shift);
     var nameChip = $("[data-fh-call-staff]");
     if (nameChip) nameChip.innerHTML = '<span class="cd" style="background:var(--info)"></span>' + escapeHtml(staff.name || "Closer");
     paintStaff(staff);
@@ -945,8 +970,10 @@
     hideLiveControls();
     var q = new URLSearchParams(location.search);
     state.taskId = q.get("task_id") || null;
+    var shiftReady = loadShift();
     var who = await resolveClient();
     if (!who) return;
+    await shiftReady;
     try { sessionStorage.setItem("fh_pending_disposition", clientId); } catch (e) {}
 
     var r = await window.FHData.read("closer-call", { client_id: clientId });
