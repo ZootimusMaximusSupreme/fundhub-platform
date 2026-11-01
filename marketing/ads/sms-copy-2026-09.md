@@ -36,8 +36,10 @@ horrible and confusing." Three things were wrong.
   into trouble.
 * **The opt-out line does not change.** Every message ends
   `Reply STOP to opt out.` — the wording on the application form, word for word.
-* **One name.** Josh is the person who talks to people before the call. After
-  the booking the sender is Fundhub, because a real advisor takes over.
+* **One name.** Chris is the person who talks to people before the call. After
+  the booking the sender is Fundhub, because a real advisor takes over. Law:
+  no-josh-chris-everywhere (.ai/rules/no-josh-chris-everywhere.md) - Chris is the
+  one name on every text, email and call.
 
 ## The messages
 
@@ -54,7 +56,7 @@ Today
 
 New
 
-> Hi {{contact.first_name}} — Josh at Fundhub. Your application is in. Nothing
+> Hi {{contact.first_name}} — Chris at Fundhub. Your application is in. Nothing
 > is reviewed yet; that happens live with an advisor on your call. Pick a time
 > here: {{custom_values.booking_link}} Reply STOP to opt out.
 
@@ -120,13 +122,13 @@ two-hour reminder.
 
 Today — this is what actually arrived, full stop and all
 
-> Hey {{contact.first_name}}, it's Josh from Fundhub. Your call starts in 15
+> Hey {{contact.first_name}}, it's Chris from Fundhub. Your call starts in 15
 > minutes. I've intro'd your advisor so you're not walking in cold — link: .
 > See you soon. Reply STOP to opt out.
 
 New
 
-> {{contact.first_name}}, it's Josh at Fundhub. Your call starts in 15 minutes,
+> {{contact.first_name}}, it's Chris at Fundhub. Your call starts in 15 minutes,
 > and I've briefed your advisor so you're not starting from scratch. Everything
 > you need is here: {{appointment.meeting_location}} Reply STOP to opt out.
 
@@ -161,7 +163,7 @@ Today — **this is the message that went out 46 times, and it is false**
 
 New
 
-> {{contact.first_name}}, it's Josh at Fundhub. Your application is in, but
+> {{contact.first_name}}, it's Chris at Fundhub. Your application is in, but
 > there's no call on the calendar yet — and the call is where an advisor goes
 > through your options with you. Pick a time: {{custom_values.booking_link}}
 > Reply STOP to opt out.
@@ -170,13 +172,13 @@ New
 
 Today
 
-> Hey {{contact.first_name}}, Josh from Fundhub here. Still worth a look — same
+> Hey {{contact.first_name}}, Chris from Fundhub here. Still worth a look — same
 > file, wrong order of apps is usually the ceiling. Book here:
 > {{custom_values.booking_link}} Reply STOP to opt out.
 
 New
 
-> {{contact.first_name}} — Josh at Fundhub again. Still nothing on the calendar.
+> {{contact.first_name}} — Chris at Fundhub again. Still nothing on the calendar.
 > It's about 20 minutes with an advisor and you'll leave knowing where you
 > stand. {{custom_values.booking_link}} Reply STOP to opt out.
 
@@ -187,12 +189,12 @@ outside the building knows what it means.
 
 Today
 
-> Last nudge from Josh at Fundhub, {{contact.first_name}}. Want help mapping
+> Last nudge from Chris at Fundhub, {{contact.first_name}}. Want help mapping
 > your cleanest path? {{custom_values.booking_link}} Reply STOP to opt out.
 
 New
 
-> Last one from me, {{contact.first_name}} — Josh at Fundhub. If now isn't the
+> Last one from me, {{contact.first_name}} — Chris at Fundhub. If now isn't the
 > time, no problem, your application stays saved. If it is, the calendar is
 > here: {{custom_values.booking_link}} Reply STOP to opt out.
 

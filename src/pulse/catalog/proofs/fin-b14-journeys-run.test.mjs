@@ -33,7 +33,7 @@ const CLIENT_NODES = [
     ],
   },
 ];
-const SETTER_NODES = [{ id: "n5", type: "agent", title: "Voice agent calls", cfg: { agent: "Setter Josh", note: "three tries" } }];
+const SETTER_NODES = [{ id: "n5", type: "agent", title: "Voice agent calls", cfg: { agent: "Setter Chris", note: "three tries" } }];
 
 const JOURNEY_ROWS = [
   { key: "client", name: "Client", start_when: "A form is filled", end_when: "A result", description: "", nodes: CLIENT_NODES, is_demo: false },
