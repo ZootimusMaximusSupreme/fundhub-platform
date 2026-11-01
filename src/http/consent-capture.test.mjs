@@ -27,7 +27,7 @@ import assert from "node:assert";
 import { db } from "../db.mjs";
 import handler from "../../api/consent/capture.mjs";
 import { CURRENT_SOFT_PULL_VERSION, SOFT_PULL_DISCLOSURES } from "../consent/disclosures.mjs";
-import { verifySoftPullApproveToken } from "../consent/approve-token.mjs";
+import { verifySoftPullApproveToken, signature as softPullApproveSignature } from "../consent/approve-token.mjs";
 import { encryptSsn } from "../pii/index.mjs";
 
 const ORG = "11111111-1111-1111-1111-111111111111";
@@ -746,6 +746,24 @@ function everyKey(value, out = []) {
   return out;
 }
 
+/* The deny-list scans JSON.stringify(body). Staff soft-pull GETs include
+   approval_link.url with a 64-hex HMAC sig; that digest is unrelated to identity
+   but can contain any four hex digits by chance (e.g. FAKE.last4). Mask ONLY
+   that field's sig= value when it is exactly 64 hex — every other string in the
+   payload stays byte-for-byte so a leak in history, disclosure, etc. cannot hide
+   behind a broad ?sig= scrub. */
+const APPROVAL_LINK_HMAC_SIG_64 = /([?&]sig=)[0-9a-f]{64}(?=&|$|#)/gi;
+
+function serializedConsentBodyForIdentityDenyList(body) {
+  const link = body?.approval_link;
+  let forScan = body;
+  if (link && typeof link.url === "string") {
+    const url = link.url.replace(APPROVAL_LINK_HMAC_SIG_64, "$1__redacted_hmac_sig__");
+    if (url !== link.url) forScan = { ...body, approval_link: { ...link, url } };
+  }
+  return JSON.stringify(forScan);
+}
+
 describe("the client approval link", () => {
   test("a staff GET carries a link that really opens the client's approval form", async () => {
     const body = await withEnv(
@@ -968,7 +986,7 @@ describe("no identity data leaves this endpoint", () => {
     assert.equal(body.identity && body.identity.on_file, true,
       "the identity record was never read, so this test proves nothing");
 
-    const serialized = JSON.stringify(body);
+    const serialized = serializedConsentBodyForIdentityDenyList(body);
 
     for (const [what, value] of Object.entries(FAKE)) {
       if (what === "state") continue; // two letters — see the note on FAKE
@@ -984,6 +1002,71 @@ describe("no identity data leaves this endpoint", () => {
       assert.ok(!FORBIDDEN_KEY.test(key),
         `the response grew a field named ${JSON.stringify(key)} — identity data must not leave this endpoint`);
     }
+  });
+
+  test("HMAC sig hex in approval_link.url cannot false-trigger the identity value scan", () => {
+    let hit = null;
+    for (let t = 0; t < 500_000 && !hit; t++) {
+      const exp = 1_700_000_000 + t;
+      const sig = softPullApproveSignature({
+        orgId: ORG, clientId: CLIENT, expiresAt: exp, secret: APPROVE_SECRET
+      });
+      if (!sig.includes(FAKE.last4)) continue;
+      hit = {
+        url: `https://fundhub.ai/app/soft-pull-approve.html?org=${ORG}&client=${CLIENT}&exp=${exp}&sig=${sig}`,
+        exp
+      };
+    }
+    assert.ok(hit, "expected an HMAC sig containing the fake last4 within the search window");
+
+    const body = {
+      identity: { on_file: true },
+      approval_link: { url: hit.url, expires_at: null, unavailable_reason: null }
+    };
+    const raw = JSON.stringify(body);
+    assert.ok(raw.includes(FAKE.last4), "sanity: the unredacted body would have false-triggered");
+
+    const serialized = serializedConsentBodyForIdentityDenyList(body);
+    assert.ok(!serialized.includes(FAKE.last4),
+      "sig redaction must drop accidental last4 matches from the HMAC digest");
+    assert.ok(serialized.includes(String(hit.exp)), "exp must stay in the scan payload");
+    assert.ok(serialized.includes(ORG), "org must stay in the scan payload");
+    assert.ok(serialized.includes(CLIENT), "client must stay in the scan payload");
+  });
+
+  test("identity value scan still catches a real last4 after sig redaction", () => {
+    const body = {
+      identity: { on_file: true, ssn_last4: FAKE.last4 },
+      approval_link: {
+        url: `https://fundhub.ai/app/soft-pull-approve.html?org=${ORG}&client=${CLIENT}&exp=1&sig=aa${FAKE.last4}bb`,
+        unavailable_reason: null
+      }
+    };
+    const serialized = serializedConsentBodyForIdentityDenyList(body);
+    assert.ok(serialized.includes(FAKE.last4),
+      "a real identity leak must not be hidden by sig redaction");
+  });
+
+  test("last4 in another string with ?sig= is not masked and still triggers the value scan", () => {
+    const leak = `audit note: ref=/docs?sig=${FAKE.last4}beef`;
+    const hmac64 = "f".repeat(64);
+    const body = {
+      identity: { on_file: true },
+      history: [{ id: CONSENT_ID, note: leak }],
+      approval_link: {
+        url: `https://fundhub.ai/app/soft-pull-approve.html?org=${ORG}&client=${CLIENT}&exp=1&sig=${hmac64}`,
+        expires_at: null,
+        unavailable_reason: null
+      }
+    };
+    const serialized = serializedConsentBodyForIdentityDenyList(body);
+    assert.ok(serialized.includes(leak),
+      "history must stay byte-for-byte; broad ?sig= masking would hide this leak");
+    assert.ok(serialized.includes(FAKE.last4),
+      "the deny-list value scan must still see last4 outside approval_link.url");
+    assert.ok(!serialized.includes(hmac64),
+      "only approval_link.url 64-hex sig is redacted");
+    assert.ok(serialized.includes("__redacted_hmac_sig__"));
   });
 });
 
