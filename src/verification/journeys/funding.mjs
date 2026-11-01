@@ -3,6 +3,7 @@
 // Asserts persistence with actual values at every step.
 
 import { emit, replay } from "../../events/bus.mjs";
+import { randomUUID } from "node:crypto";
 import { normalizeClickFunnelsEvent, handleClickFunnelsWebhook } from "../../adapters/clickfunnels.mjs";
 import { loadSimulatedClient, buildSimulatedCrsPayload, teardownSimulated } from "../../demo/simulate-client.mjs";
 import { ingestCrsResult } from "../../tradelines/store.mjs";
@@ -398,9 +399,9 @@ export async function runFundingJourney(db, ctx, collector) {
     [fundingSale.id]
   )).rows : [];
   collector.assertEq({
-    section, journey, role, id: "fund-closer-500",
-    claim: "Closer front-end commission is $500 (hand-calc, not library)",
-    expected: MONEY.closerFlatDeposit,
+    section, journey, role, id: "fund-closer-600",
+    claim: "Closer front-end commission is $600 (20% of collected deposit)",
+    expected: MONEY.expectedCloserFront,
     actual: frontLedger[0] ? Number(frontLedger[0].amount) : null,
     file: "src/handlers/money-chain.mjs"
   });
@@ -417,8 +418,8 @@ export async function runFundingJourney(db, ctx, collector) {
     opReturnedOk: true
   });
   steps.push({
-    step: "Sale + $500 closer commission + entitlement",
-    status: fundingSale && frontLedger[0] && ents.includes("funding-snapshot") ? "PASS" : "FAIL",
+    step: "Sale + $600 closer commission + entitlement",
+    status: fundingSale && Number(frontLedger[0]?.amount) === MONEY.expectedCloserFront && ents.includes("funding-snapshot") ? "PASS" : "FAIL",
     persisted: `sales=${sales.length} front=${frontLedger[0]?.amount} ents=${ents.join(",")}`
   });
 
@@ -637,7 +638,8 @@ export async function runFundingJourney(db, ctx, collector) {
   await emit(db, "round.funded", {
     email: sim.email, roundNumber: 1, fundingRoundId: rounds[0]?.id,
     fundedAmount: MONEY.fundedAmount, approvedAmount: MONEY.fundedAmount,
-    advisorId: advisor.id
+    advisorId: advisor.id, saleId: fundingSale?.id, feePercent: 10,
+    rail: "card_stacking"
   }, { orgId: ctx.orgId, clientId: sim.client.id, idempotencyKey: `${ctx.mark}:rnd-fund:${ctx.stamp}` });
 
   const funded = rounds[0] ? (await db.query(
@@ -656,7 +658,6 @@ export async function runFundingJourney(db, ctx, collector) {
     [rounds[0].id]
   )).rows : [];
   const advisorRow = backLedger.find((r) => r.staff_id === advisor.id);
-  const closerBack = backLedger.find((r) => r.staff_id === closer.id);
   collector.assertEq({
     section, journey, role, id: "fund-advisor-125",
     claim: "Advisor back-end commission is $125 (50000 × 0.25% hand-calc)",
@@ -664,22 +665,13 @@ export async function runFundingJourney(db, ctx, collector) {
     actual: advisorRow ? Number(advisorRow.amount) : null,
     file: "src/handlers/money-chain.mjs"
   });
-  // Closer 0.25% may or may not fire depending on attribution rules.
-  if (closerBack) {
-    collector.assertEq({
-      section, journey, role, id: "fund-closer-back-125",
-      claim: "Closer back-end commission is $125 when attributed",
-      expected: MONEY.expectedCloserBack,
-      actual: Number(closerBack.amount),
-      file: "src/handlers/money-chain.mjs"
-    });
-  } else {
-    collector.unverified({
-      section, journey, role, id: "fund-closer-back-125",
-      claim: "Closer also earns 0.25% of funded",
-      detail: "No closer back-end ledger row. Attribution may require closerId on round.funded payload — operator risk if assumed."
-    });
-  }
+  collector.assertEq({
+    section, journey, role, id: "fund-closer-back-none",
+    claim: "Closer earns no back-end commission on funded amount",
+    expected: 0,
+    actual: backLedger.filter((r) => r.staff_id === closer.id).length,
+    file: "src/handlers/money-chain.mjs"
+  });
 
   // Closeout — the Approved application seeded above IS the basis now
   const closeout = rounds[0] ? (await db.query(
@@ -729,19 +721,33 @@ export async function runFundingJourney(db, ctx, collector) {
   });
 
   // Invoice (F-07)
+  let f07Result = null;
+  let f07Error = null;
   if (rounds[0]) {
-    await f07({
-      event: {
-        orgId: ctx.orgId, clientId: sim.client.id, id: `evt-f07-${ctx.stamp}`,
-        payload: {
-          email: sim.email,
-          fundingRoundId: rounds[0].id,
-          approvedAmount: MONEY.fundedAmount,
-          feePercent: 10
-        }
-      },
-      db, step: stepFake()
-    }).catch(() => {});
+    try {
+      f07Result = await f07({
+        event: {
+          orgId: ctx.orgId, clientId: sim.client.id, id: randomUUID(),
+          payload: {
+            email: sim.email,
+            fundingRoundId: rounds[0].id,
+            saleId: fundingSale?.id,
+            rail: "card_stacking",
+            approvedAmount: MONEY.fundedAmount,
+            feePercent: 10
+          }
+        },
+        db, step: stepFake()
+      });
+    } catch (err) {
+      f07Error = String(err?.message || err);
+      collector.fail({
+        section, journey, role, id: "fund-f07-error",
+        claim: "Funding-locked workflow runs without error",
+        detail: f07Error,
+        file: "src/workflows/f-07-funding-locked.mjs"
+      });
+    }
   }
   const invoices = (await db.query(
     `SELECT * FROM invoices WHERE client_id = $1`, [sim.client.id]
@@ -751,7 +757,7 @@ export async function runFundingJourney(db, ctx, collector) {
     claim: "Success-fee invoice row exists",
     count: invoices.length >= 1 ? 1 : 0, expected: 1,
     file: "src/workflows/f-07-funding-locked.mjs",
-    opReturnedOk: true
+    opReturnedOk: !f07Error && f07Result?.done === true
   });
 
   // Messages queued with real template keys
@@ -864,7 +870,7 @@ export async function runFundingJourney(db, ctx, collector) {
     `Primary client (lead): ${client.id} / ${email}`,
     `Simulated funding client: ${sim.client.id} / ${sim.email}`,
     `Sale amount: ${fundingSale ? fundingSale.agreed_price : "NONE"} (want ${MONEY.depositDollars})`,
-    `Closer front commission: ${frontLedger[0]?.amount ?? "NONE"} (want ${MONEY.closerFlatDeposit})`,
+    `Closer front commission: ${frontLedger[0]?.amount ?? "NONE"} (want ${MONEY.expectedCloserFront})`,
     `Advisor back commission: ${advisorRow?.amount ?? "NONE"} (want ${MONEY.expectedAdvisorBack})`,
     `Closeout fee: ${closeout?.total_fee ?? "NONE"} (want ${MONEY.expectedSuccessFee})`,
     `The CRM link: ${crmLink || "MISSING"}`,

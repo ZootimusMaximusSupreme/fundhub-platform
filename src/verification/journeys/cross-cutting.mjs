@@ -237,16 +237,15 @@ export async function runCrossCutting(db, ctx, collector) {
 
   // ── Money hand-calcs (independent) ──
   const hand = {
-    closerFront: 500,
-    closerBack: Math.round(50000 * 0.0025 * 100) / 100, // 125
+    closerFront: Math.round(3000 * 0.20 * 100) / 100, // 600
     advisorBack: Math.round(50000 * 0.0025 * 100) / 100, // 125
     successFee: Math.round(50000 * 0.10 * 100) / 100, // 5000
     advisorHourly: 6.25
   };
   collector.assertEq({
     section, journey, role, id: "x-money-closer-front",
-    claim: "Hand-calc closer flat deposit = $500",
-    expected: MONEY.closerFlatDeposit, actual: hand.closerFront
+    claim: "Hand-calc closer 20% of $3,000 deposit = $600",
+    expected: MONEY.expectedCloserFront, actual: hand.closerFront
   });
   collector.assertEq({
     section, journey, role, id: "x-money-back",

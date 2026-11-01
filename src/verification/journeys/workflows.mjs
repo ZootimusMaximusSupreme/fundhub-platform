@@ -1,4 +1,5 @@
 import { insertClient } from "../insert-client.mjs";
+import { randomUUID } from "node:crypto";
 // G. WORKFLOW ENGINE — drive every canonical event; record which of the
 // registered workflows react. Report never-fire and errors.
 
@@ -43,6 +44,7 @@ function stepFake(log) {
       return fn();
     },
     async sleep(ms) { log.sleeps.push(ms); },
+    async sleepUntil(name, at) { log.sleeps.push({ name, at: new Date(at).toISOString() }); },
     async sendEvent(name, data) { log.sent.push({ name, data }); }
   };
 }
@@ -126,7 +128,7 @@ export async function runWorkflowJourney(db, ctx, collector) {
     for (const c of listeners) {
       const log = { steps: [], sleeps: [], sent: [] };
       const event = {
-        id: `wf-${c.id}-${ctx.stamp}`,
+        id: randomUUID(),
         orgId: ctx.orgId,
         clientId: client.id,
         name: eventName,
@@ -147,6 +149,14 @@ export async function runWorkflowJourney(db, ctx, collector) {
       // Prefer exported handle via dynamic import of same file — Inngest fn wraps it.
       // Call the inngest function's internal handler if present.
       try {
+        // Real Inngest work starts from a saved bus event. Follow-up handlers
+        // read that row for cohort and schedule timing, so the synthetic event
+        // must exist in the scratch database before its handle runs.
+        await db.query(
+          `INSERT INTO events (id, org_id, client_id, name, version, payload)
+           VALUES ($1, $2, $3, $4, 1, $5::jsonb)`,
+          [event.id, ctx.orgId, client.id, eventName, JSON.stringify(event.payload)]
+        );
         let result;
         if (typeof c.fn === "function" && c.fn.length >= 1) {
           // Some builds expose the raw handler; most are InngestFunction instances.

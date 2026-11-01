@@ -39,14 +39,12 @@ export const BUREAU_FIELDS = Object.freeze([
 /** Independent money expectations (hand-calculated — do not import commission code). */
 export const MONEY = Object.freeze({
   depositDollars: 3000,
-  closerFlatDeposit: 500,          // $500 per deposit
-  closerBackPct: 0.0025,           // 0.25% of funded
+  expectedCloserFront: 600,       // $3000 deposit × owner-set 20%
   advisorHourly: 6.25,             // $6.25/hr (shift pay — not ledger)
   advisorBackPct: 0.0025,          // 0.25% of funded
   successFeePct: 0.10,             // 10%
   fundedAmount: 50000,
   // hand calc: 50000 * 0.0025 = 125
-  expectedCloserBack: 125,
   expectedAdvisorBack: 125,
   // hand calc: 50000 * 0.10 = 5000
   expectedSuccessFee: 5000
@@ -176,12 +174,8 @@ export async function setupContext(db) {
   }
 
   const front = await ensureRule({
-    basis: "front_end", role: "closer", calc_method: "flat",
-    flat_amount: 500, amount_basis: "deposit_collected", name: `${MARK} closer flat`
-  });
-  const closerBack = await ensureRule({
-    basis: "back_end", role: "closer", calc_method: "percent",
-    percent: 0.25, amount_basis: "amount_funded", name: `${MARK} closer 0.25%`
+    basis: "front_end", role: "closer", calc_method: "percent",
+    percent: 20, amount_basis: "deposit_collected", name: `${MARK} closer one fifth`
   });
   const advisorBack = await ensureRule({
     basis: "back_end", role: "funding_advisor", calc_method: "percent",
@@ -248,7 +242,7 @@ export async function setupContext(db) {
       diy: diyProduct,
       diagnostic: diagProduct
     },
-    rules: { front: front.id, closerBack: closerBack.id, advisorBack: advisorBack.id },
+    rules: { front: front.id, advisorBack: advisorBack.id },
     mark: MARK,
     stamp
   };
