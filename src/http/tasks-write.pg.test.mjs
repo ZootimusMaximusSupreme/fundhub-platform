@@ -24,7 +24,7 @@
 
 import { test, before, after, describe } from "node:test";
 import assert from "node:assert";
-import { db, close } from "../db.mjs";
+import { db, pool, close } from "../db.mjs";
 import { resolveDefaultOrg } from "../auth/org.mjs";
 import { createSession } from "../auth/session.mjs";
 import { listSetterQueue, updateSetterHandoff } from "../setter/dashboard.mjs";
@@ -339,6 +339,65 @@ describe("PATCH /api/tasks — active-shift gate", { skip: !HAVE_DB ? "no DATABA
       } finally {
         await db.query("DELETE FROM tasks WHERE client_id = $1", [clientId]);
         await db.query("DELETE FROM clients WHERE id = $1", [clientId]);
+      }
+    });
+
+    test("a transfer after A's first read cannot use A's older row to save", async () => {
+      for (const action of ["save", "save_survey"]) {
+        const clientId = (await db.query(
+          `INSERT INTO clients (org_id, email, first_name, last_name, custom_fields)
+           VALUES ($1,$2,'Raced','Lead',$3::jsonb) RETURNING id`,
+          [org, `taskgate_race_${action}@example.com`, JSON.stringify({
+            cf_svy_funding_target_amount_label: "$50k - $100k"
+          })])).rows[0].id;
+        try {
+          const tasks = (await db.query(
+            `INSERT INTO tasks
+               (org_id, client_id, title, body, assignee_role, assignee_staff_id,
+                source_workflow, created_at)
+             VALUES
+               ($1,$2,$3,'race-old','setter',$4,'setter-entry','2026-11-01T01:00:00Z'),
+               ($1,$2,$3,'race-latest','setter',$4,'setter-booking','2026-11-01T02:00:00Z')
+             RETURNING id, body`, [org, clientId, TITLE, staffId])).rows;
+          const oldId = tasks.find(row => row.body === "race-old").id;
+          const latestId = tasks.find(row => row.body === "race-latest").id;
+          let sawInitialAssignment = false;
+          let transferred = false;
+          const racingDb = {
+            query: async (sql, params) => {
+              const result = await db.query(sql, params);
+              if (sql.trim().startsWith("SELECT assignee_staff_id FROM tasks")) {
+                sawInitialAssignment = result.rows[0]?.assignee_staff_id === staffId;
+              }
+              return result;
+            },
+            connect: async () => {
+              assert.equal(sawInitialAssignment, true);
+              await db.query("UPDATE tasks SET assignee_staff_id = $2 WHERE id = $1", [latestId, mateId]);
+              transferred = true;
+              return pool().connect();
+            }
+          };
+          const attempt = await updateSetterHandoff(racingDb,
+            { id: staffId, org_id: org, role: "setter", name: "A Setter" },
+            action === "save"
+              ? { client_id: clientId, action, handoff: { call_attempts: 1 } }
+              : { client_id: clientId, action, survey_edits: { cf_svy_funding_target_amount: "$100k - $200k" } });
+          assert.equal(transferred, true);
+          assert.equal(attempt.status, 403, JSON.stringify(attempt.body));
+          const state = (await db.query(
+            `SELECT c.custom_fields,
+                    (SELECT assignee_staff_id FROM tasks WHERE id = $2) AS old_assignee,
+                    (SELECT assignee_staff_id FROM tasks WHERE id = $3) AS latest_assignee
+               FROM clients c WHERE c.id = $1`, [clientId, oldId, latestId])).rows[0];
+          assert.equal(state.old_assignee, staffId);
+          assert.equal(state.latest_assignee, mateId);
+          assert.equal(state.custom_fields.setter_handoff, undefined);
+          assert.equal(state.custom_fields.setter_survey_edits, undefined);
+        } finally {
+          await db.query("DELETE FROM tasks WHERE client_id = $1", [clientId]);
+          await db.query("DELETE FROM clients WHERE id = $1", [clientId]);
+        }
       }
     });
 

@@ -37,6 +37,10 @@ function fakeDb(booked = true) {
     // A copy, as a real read returns: the row the writes below change is `client`, and the
     // copy the code holds is what the row looked like when it was read.
     if (sql.includes("FROM clients c")) return { rows: [structuredClone(client)] };
+    if (sql.includes("FROM clients WHERE id = $1 AND org_id = $2") && sql.includes("FOR UPDATE")) {
+      assert.match(sql, /crm_archived_at' IS NULL/);
+      return { rows: [{ id: CLIENT_ID }] };
+    }
     if (sql.includes("SELECT id, name FROM staff")) return { rows: [{ id: "staff-2", name: "Closer" }] };
     if (sql.includes("UPDATE clients")) {
       if (sql.includes("'credit_tier'")) {
@@ -666,7 +670,8 @@ test("setter can save only an assigned or unclaimed task and claims it", async (
   const original = db.query;
   db.query = async (sql, params) => {
     if (sql.trim().startsWith("SELECT assignee_staff_id FROM tasks")) return { rows: [{ assignee_staff_id: assignee }] };
-    if (sql.includes("UPDATE tasks SET assignee_staff_id")) {
+    if (sql.includes("UPDATE tasks t SET assignee_staff_id")) {
+      assert.match(sql, /WHERE t\.id = \([\s\S]*ORDER BY created_at DESC, id DESC LIMIT 1/);
       if (assignee && assignee !== params[2]) return { rows: [] };
       assignee = params[2];
       return { rows: [{ id: "task-1" }] };

@@ -299,6 +299,31 @@ export async function getSetterClient(db, orgId, clientId) {
   return result.rows[0] || null;
 }
 
+async function claimLatestSetterTask(writer, staff, clientId) {
+  // Locking the client holds new task inserts at their client FK check until
+  // this transaction finishes. The task update also locks the current task,
+  // so a reassignment cannot slip between authorization and the client write.
+  const clientLock = await writer.query(
+    `SELECT id FROM clients WHERE id = $1 AND org_id = $2
+      AND custom_fields->>'crm_archived_at' IS NULL FOR UPDATE`,
+    [clientId, staff.org_id]
+  );
+  if (!clientLock.rows.length) return false;
+  const claim = await writer.query(
+    `UPDATE tasks t SET assignee_staff_id = $3, updated_at = now()
+      WHERE t.id = (
+        SELECT id FROM tasks
+         WHERE org_id = $1 AND client_id = $2 AND assignee_role = 'setter'
+         ORDER BY created_at DESC, id DESC LIMIT 1
+      )
+        AND t.org_id = $1 AND t.client_id = $2 AND t.assignee_role = 'setter'
+        AND (t.assignee_staff_id IS NULL OR t.assignee_staff_id = $3)
+      RETURNING t.id`,
+    [staff.org_id, clientId, staff.id]
+  );
+  return claim.rows.length > 0;
+}
+
 async function persistHandoff(db, clientId, orgId, patch) {
   const result = await db.query(
     `UPDATE clients
@@ -398,17 +423,10 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
       }
       edits[key] = clean;
     }
-    if (staff.role === "setter") {
-      const claim = await db.query(
-        `UPDATE tasks SET assignee_staff_id = $3, updated_at = now()
-          WHERE org_id = $1 AND client_id = $2 AND assignee_role = 'setter'
-            AND (assignee_staff_id IS NULL OR assignee_staff_id = $3)
-          RETURNING id`,
-        [staff.org_id, client_id, staff.id]
-      );
-      if (!claim.rows.length) return { status: 403, body: { ok: false, error: "assigned_to_other_setter" } };
-    }
     return withTransaction(db, async writer => {
+      if (staff.role === "setter" && !(await claimLatestSetterTask(writer, staff, client_id))) {
+        return { status: 403, body: { ok: false, error: "assigned_to_other_setter" } };
+      }
       const saved = await persistSurveyEdits(writer, client_id, staff.org_id, edits);
       // A corrected score moves the person's credit_tier. creditTierFor reads the fix
       // first; no readable score anywhere (null) leaves what is saved.
@@ -487,17 +505,10 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
     )).rows[0];
     next.handoff_text = (deps.buildText || buildSetterHandoffText)({ client, handoff: next, booking: client, closer, setter: staff });
   }
-  if (staff.role === "setter") {
-    const claim = await db.query(
-      `UPDATE tasks SET assignee_staff_id = $3, updated_at = now()
-        WHERE org_id = $1 AND client_id = $2 AND assignee_role = 'setter'
-          AND (assignee_staff_id IS NULL OR assignee_staff_id = $3)
-        RETURNING id`,
-      [staff.org_id, client_id, staff.id]
-    );
-    if (!claim.rows.length) return { status: 403, body: { ok: false, error: "assigned_to_other_setter" } };
-  }
   const save = async (writer) => {
+    if (staff.role === "setter" && !(await claimLatestSetterTask(writer, staff, client_id))) {
+      return { status: 403, body: { ok: false, error: "assigned_to_other_setter" } };
+    }
     let savedFields = await persistHandoff(writer, client_id, staff.org_id, next);
     let saved = jsonObject(savedFields.setter_handoff);
     let send = null;
@@ -542,7 +553,8 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
     }
     return { status: 200, body: { ok: true, item: { ...mapItem({ ...client, done: !!saved.complete_at, setter_staff_id: setterStaffId, closer_staff_id: closerStaffId, custom_fields: savedFields }, staff), booking_url: tierBookingLink(savedFields) }, ...(send ? { send } : {}) } };
   };
-  const result = action === "complete" ? await withTransaction(db, save) : await save(db);
+  const result = action === "complete" || staff.role === "setter"
+    ? await withTransaction(db, save) : await save(db);
   if (result.status === 200) {
     await startNoAnswerCadence(db, {
       orgId: staff.org_id, clientId: client_id, previous, next, patch: validated.patch, setterStaffId
