@@ -12,6 +12,8 @@
   Belief: The reason the bank said no is already on my credit report, and
           Fundhub fixes that reason first, then sends the file into funding.
 
+  Rewritten 2026-10-31 on Chris's slide framework (see pre-underwriting.html).
+
   Chris's direction (2026-10-31): his call-slide style (a coded label, a big
   headline, full lines of copy with the pastel stripe), more copy, real first
   with a little branded mark on top, and a diagram alone only when nothing
@@ -69,10 +71,12 @@
       filled from the sample, the paydown rows and the dispute rows marked.
     BN-04 how, real: section 1 of the agreement, the "identify, prepare, carry
       out" sentence marked "Done for you".
-    BN-05 how, a flowchart: your file today, fix first, the same three checks
-      again, then funding at the banks that fit.
-    BN-06 who/what, a portrait of the call: one shared screen, what's holding
-      you back on the left and the file cleaned up on the right.
+    BN-05 how, a flowchart: fix first, the same three checks again, you fund
+      yourself at the banks that fit, and the capital splits into a new hire,
+      ads that run and bigger jobs (the after). Redrawn 2026-10-31.
+    BN-06 who/what, the call screen: today's amount with fix #1 marked on the
+      left, the cleaned-up file on the right, the gap between them named.
+      Redrawn 2026-10-31.
   - Truth check (applications.md): no picture implies an approval, an amount,
     a deletion or a speed the agreements do not promise. Samples say Sample.
     No bank is named as one that will approve.
@@ -752,7 +756,7 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </defs>
   </svg>
 
-  <section class="slide dark" data-src="The top of a credit report lists the reasons a bank approves or denies, and the bank's letter gives the same reasons: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:209. The picture is the Experian section of the REPAIR-FULL simulated sample file: the score and the bureau's own reason lines are scripts/sim/push-credit.mjs:743-747 and :796; the accounts, their status and the bureau's comment text are :642-658 (Experian carries the Capital One 30-day late, the Midland collection and the Synchrony charge-off). A no is a fact about your file on that day: docs/sops/weekend-2026-10-24/04-sales-call-script.md:413. The cleaned-up file shows a higher amount on the call screen: public/app/present.js:100 (closer line) and docs/sops/weekend-2026-10-24/04-sales-call-script.md:171-173. The cleaned-up file shows a higher amount on the call screen: public/app/present.js:100 (closer line) and docs/sops/weekend-2026-10-24/04-sales-call-script.md:171-173. The cleaned-up file shows a higher amount on the call screen: public/app/present.js:100 (closer line) and docs/sops/weekend-2026-10-24/04-sales-call-script.md:171-173. The cleaned-up file shows a higher amount on the call screen: public/app/present.js:100 (closer line) and docs/sops/weekend-2026-10-24/04-sales-call-script.md:171-173. The cleaned-up file shows a higher amount on the call screen: public/app/present.js:100 (closer line) and docs/sops/weekend-2026-10-24/04-sales-call-script.md:171-173. Our UnderwriteIQ system reads the file: public/app/present.js:99. The cleaned-up file shows a higher amount on the call screen: public/app/present.js:100 (closer line) and docs/sops/weekend-2026-10-24/04-sales-call-script.md:171-173. Our UnderwriteIQ system reads the file: public/app/present.js:99. The cleaned-up file shows a higher amount on the call screen: public/app/present.js:100 (closer line) and docs/sops/weekend-2026-10-24/04-sales-call-script.md:171-173. Our UnderwriteIQ system reads the file: public/app/present.js:99.">
+  <section class="slide dark" data-src="The top of a credit report lists the reasons a bank approves or denies, and the bank's letter gives the same reasons: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:209. The picture is the Experian section of the REPAIR-FULL simulated sample file: the score and the bureau's own reason lines are scripts/sim/push-credit.mjs:743-747 and :796; the accounts, their status and the bureau's comment text are :642-658 (Experian carries the Capital One 30-day late, the Midland collection and the Synchrony charge-off). A no is a fact about your file on that day: docs/sops/weekend-2026-10-24/04-sales-call-script.md:413. The cleaned-up file shows a higher amount on the call screen: public/app/present.js:100 (closer line) and docs/sops/weekend-2026-10-24/04-sales-call-script.md:171-173. Our UnderwriteIQ system reads the file: public/app/present.js:99.">
     <p class="eyebrow">BN-01 / The reason on your report</p>
     <h2>Your credit report printed the bank's reason for saying no before you ever applied.</h2>
     <p class="lede">Run through our system, that same report also shows what your file is worth once it's cleaned up.</p>
@@ -798,7 +802,7 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </aside>
   </section>
 
-  <section class="slide" data-src="The three checks in the engine's fundable gate, score 700 or higher, cards used 30% or less, zero negative items: src/underwrite/vendor/underwriter.cjs:208-212, with the labels in src/finance/fundability.mjs:146-149. A file with a charge-off or a collection and no clean bureau goes to the credit optimization door first: docs/sops/weekend-2026-10-24/04-sales-call-script.md:190. If they qualify, we optimize, then send them into funding: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:210. Nothing else is worth doing until the personal file is prime: src/underwrite/funding-sequence.mjs:24. The sample's readings: scripts/sim/push-credit.mjs:642-658 and :796. Every application is a hard pull, and each one costs you: docs/sops/weekend-2026-10-24/04-sales-call-script.md:160. Every application is a hard pull, and each one costs you: docs/sops/weekend-2026-10-24/04-sales-call-script.md:160. Every application is a hard pull, and each one costs you: docs/sops/weekend-2026-10-24/04-sales-call-script.md:160. Every application is a hard pull, and each one costs you: docs/sops/weekend-2026-10-24/04-sales-call-script.md:160. Every application is a hard pull, and each one costs you: docs/sops/weekend-2026-10-24/04-sales-call-script.md:160. Every application is a hard pull, and each one costs you: docs/sops/weekend-2026-10-24/04-sales-call-script.md:160. Every application is a hard pull, and each one costs you: docs/sops/weekend-2026-10-24/04-sales-call-script.md:160.">
+  <section class="slide" data-src="The three checks in the engine's fundable gate, score 700 or higher, cards used 30% or less, zero negative items: src/underwrite/vendor/underwriter.cjs:208-212, with the labels in src/finance/fundability.mjs:146-149. A file with a charge-off or a collection and no clean bureau goes to the credit optimization door first: docs/sops/weekend-2026-10-24/04-sales-call-script.md:190. If they qualify, we optimize, then send them into funding: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:210. Nothing else is worth doing until the personal file is prime: src/underwrite/funding-sequence.mjs:24. The sample's readings: scripts/sim/push-credit.mjs:642-658 and :796. Every application is a hard pull, and each one costs you: docs/sops/weekend-2026-10-24/04-sales-call-script.md:160.">
     <p class="eyebrow">BN-02 / Three checks</p>
     <h2>This sample's 541 score, full card and collections fail all three funding checks.</h2>
     <ul class="lines">
@@ -808,9 +812,9 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </ul>
     <figure class="pic">
       <div class="sheet">
-        <svg class="bv" viewBox="0 0 320 262" role="img" aria-label="Three panels, one per check. Credit score 700 or higher: the sample reads 541, 566 and 552, under 700. Cards used 30% or less: Credit One Bank is $1,490 of a $1,500 limit, nearly full. No negative items: the sample has a collection, a charge-off and a 30-day late. All three miss, so credit optimization comes first.">
+        <svg class="bv" viewBox="0 0 320 262" role="img" aria-label="Three panels, one per check. Credit score 700 or higher: the sample reads 541, 566 and 552, under 700. Cards used 30% or less: Credit One Bank is $1,490 of a $1,500 limit, nearly full. No negative items: the sample has two collections, a charge-off and a 30-day late. All three miss, so credit optimization comes first.">
           <rect class="pn" x="1" y="1" width="318" height="70" rx="10"/>
-          <text class="lb" x="14" y="22">CHECK 1 · CREDIT SCORE 700 OR HIGHER</text>
+          <text class="lb" x="14" y="22">CHECK 1 · SCORE 700 OR HIGHER</text>
           <rect class="tint-flag" x="10" y="32" width="300" height="30" rx="6"/>
           <text class="caps" x="20" y="51">541 · 566 · 552</text>
           <text class="caps" x="300" y="51" text-anchor="end">UNDER 700</text>
@@ -822,7 +826,7 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
           <rect class="pn" x="1" y="161" width="318" height="70" rx="10"/>
           <text class="lb" x="14" y="182">CHECK 3 · NO NEGATIVE ITEMS</text>
           <rect class="tint-flag" x="10" y="192" width="300" height="30" rx="6"/>
-          <text class="caps" x="20" y="211">A COLLECTION · A CHARGE-OFF · A 30-DAY LATE</text>
+          <text class="caps" x="20" y="211">2 COLLECTIONS · A CHARGE-OFF · A LATE</text>
           <rect x="1" y="241" width="318" height="3" rx="1.5" fill="url(#fh-spectrum)"/>
           <text class="lb" x="14" y="258">SAMPLE · ALL THREE MISS · FIX FIRST</text>
         </svg>
@@ -840,7 +844,7 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </aside>
   </section>
 
-  <section class="slide" data-src="The client document names each fix: a card carrying a high balance is fixable with a paydown plan, a negative item is fixable with dispute letters, it is not permanent and it is on the repair list starting Month 1: src/deliverables/derive.mjs:252-264. The paydown target is 10% of the card's limit: src/waypoints/definitions.mjs:42-45 and :330-332; the checklist title 'Pay {creditor} down to {target}': db/migrations/362_waypoint_definitions_seed.sql:83. Cards rank highest use first: src/deliverables/derive.mjs:14-27. Chris's Blueprint order, pay a card down, then the negative items: .ai/rules/ad-know-the-offer.md:28-29. Nothing else is worth doing until the personal file is prime: src/underwrite/funding-sequence.mjs:24. The sample rows: scripts/sim/push-credit.mjs:642-658. What the money was going to do, the hire, the ads, the jobs: docs/sops/weekend-2026-10-24/04-sales-call-script.md:112. Letters written for the items on your report: marketing/offers/fundhub-offers-2026-10-10.pdf p.4. What the money was going to do, the hire, the ads, the jobs: docs/sops/weekend-2026-10-24/04-sales-call-script.md:112. Letters written for the items on your report: marketing/offers/fundhub-offers-2026-10-10.pdf p.4. What the money was going to do, the hire, the ads, the jobs: docs/sops/weekend-2026-10-24/04-sales-call-script.md:112. Letters written for the items on your report: marketing/offers/fundhub-offers-2026-10-10.pdf p.4. What the money was going to do, the hire, the ads, the jobs: docs/sops/weekend-2026-10-24/04-sales-call-script.md:112. Letters written for the items on your report: marketing/offers/fundhub-offers-2026-10-10.pdf p.4. What the money was going to do, the hire, the ads, the jobs: docs/sops/weekend-2026-10-24/04-sales-call-script.md:112. Letters written for the items on your report: marketing/offers/fundhub-offers-2026-10-10.pdf p.4. What the money was going to do, the hire, the ads, the jobs: docs/sops/weekend-2026-10-24/04-sales-call-script.md:112. Letters written for the items on your report: marketing/offers/fundhub-offers-2026-10-10.pdf p.4. What the money was going to do, the hire, the ads, the jobs: docs/sops/weekend-2026-10-24/04-sales-call-script.md:112. Letters written for the items on your report: marketing/offers/fundhub-offers-2026-10-10.pdf p.4.">
+  <section class="slide" data-src="The client document names each fix: a card carrying a high balance is fixable with a paydown plan, a negative item is fixable with dispute letters, it is not permanent and it is on the repair list starting Month 1: src/deliverables/derive.mjs:252-264. The paydown target is 10% of the card's limit: src/waypoints/definitions.mjs:42-45 and :330-332; the checklist title 'Pay {creditor} down to {target}': db/migrations/362_waypoint_definitions_seed.sql:83. Cards rank highest use first: src/deliverables/derive.mjs:14-27. Chris's Blueprint order, pay a card down, then the negative items: .ai/rules/ad-know-the-offer.md:28-29. Nothing else is worth doing until the personal file is prime: src/underwrite/funding-sequence.mjs:24. The sample rows: scripts/sim/push-credit.mjs:642-658. What the money was going to do, the hire, the ads, the jobs: docs/sops/weekend-2026-10-24/04-sales-call-script.md:112. Letters written for the items on your report: marketing/offers/fundhub-offers-2026-10-10.pdf p.4.">
     <p class="eyebrow">BN-03 / What it's costing you</p>
     <h2>This list is what holds this file's funding back, with the fix right next to each item.</h2>
     <ul class="lines">
@@ -880,9 +884,9 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </aside>
   </section>
 
-  <section class="slide" data-src="The agreement's own words, copied exactly from section 1 of the credit optimization agreement the CRM sends: db/migrations/493_funding_and_repair_agreement_text.sql:65. Fundhub disputes only items that really show on your report, and every application uses your true information: marketing/offers/fundhub-offers-2026-10-10.pdf p.8. Done for you, Fundhub mails the letters: same PDF p.3. On the Capital Blueprint you print and mail the same letters and upload the proof: db/migrations/400_blueprint_dispute_waypoint_definitions.sql:20-36. Your letters are built on FCRA and Metro 2: public/app/present.js:107 (closer line). Copies of the work and the responses in your dashboard: db/migrations/493_funding_and_repair_agreement_text.sql:65 (section 1). Metro 2 is the format the bureaus use to report accounts: marketing/offers/fundhub-offers-2026-10-10.pdf p.2. Nobody cuts corners with your file: same PDF p.8. Copies of the work and the responses in your dashboard: db/migrations/493_funding_and_repair_agreement_text.sql:65 (section 1). Metro 2 is the format the bureaus use to report accounts: marketing/offers/fundhub-offers-2026-10-10.pdf p.2. Nobody cuts corners with your file: same PDF p.8. Copies of the work and the responses in your dashboard: db/migrations/493_funding_and_repair_agreement_text.sql:65 (section 1). Metro 2 is the format the bureaus use to report accounts: marketing/offers/fundhub-offers-2026-10-10.pdf p.2. Nobody cuts corners with your file: same PDF p.8. An AI coach watches the open step: .ai/rules/ad-know-the-offer.md:41. Copies of the work and the responses in your dashboard: db/migrations/493_funding_and_repair_agreement_text.sql:65 (section 1). Metro 2 is the format the bureaus use to report accounts: marketing/offers/fundhub-offers-2026-10-10.pdf p.2. Nobody cuts corners with your file: same PDF p.8. An AI coach watches the open step: .ai/rules/ad-know-the-offer.md:41. Copies of the work and the responses in your dashboard: db/migrations/493_funding_and_repair_agreement_text.sql:65 (section 1). Metro 2 is the format the bureaus use to report accounts: marketing/offers/fundhub-offers-2026-10-10.pdf p.2. Nobody cuts corners with your file: same PDF p.8. An AI coach watches the open step: .ai/rules/ad-know-the-offer.md:41. Copies of the work and the responses in your dashboard: db/migrations/493_funding_and_repair_agreement_text.sql:65 (section 1). Metro 2 is the format the bureaus use to report accounts: marketing/offers/fundhub-offers-2026-10-10.pdf p.2. Nobody cuts corners with your file: same PDF p.8. An AI coach watches the open step: .ai/rules/ad-know-the-offer.md:41. Copies of the work and the responses in your dashboard: db/migrations/493_funding_and_repair_agreement_text.sql:65 (section 1). Metro 2 is the format the bureaus use to report accounts: marketing/offers/fundhub-offers-2026-10-10.pdf p.2. Nobody cuts corners with your file: same PDF p.8. An AI coach watches the open step: .ai/rules/ad-know-the-offer.md:41.">
+  <section class="slide" data-src="The agreement's own words, copied exactly from section 1 of the credit optimization agreement the CRM sends: db/migrations/493_funding_and_repair_agreement_text.sql:65. Fundhub disputes only items that really show on your report, and every application uses your true information: marketing/offers/fundhub-offers-2026-10-10.pdf p.8. Done for you, Fundhub mails the letters: same PDF p.3. On the Capital Blueprint you print and mail the same letters and upload the proof: db/migrations/400_blueprint_dispute_waypoint_definitions.sql:20-36. Your letters are built on FCRA and Metro 2: public/app/present.js:107 (closer line). Copies of the work and the responses in your dashboard: db/migrations/493_funding_and_repair_agreement_text.sql:65 (section 1). Metro 2 is the format the bureaus use to report accounts: marketing/offers/fundhub-offers-2026-10-10.pdf p.2. Nobody cuts corners with your file: same PDF p.8. An AI coach watches the open step: .ai/rules/ad-know-the-offer.md:41.">
     <p class="eyebrow">BN-04 / Who does the work</p>
-    <h2>Done for you means you never draft a dispute letter or chase a bureau yourself.</h2>
+    <h2>Done for you, the Fundhub team writes your disputes while you run the business.</h2>
     <ul class="lines">
       <li>The highlighted clause is the work Fundhub signs on for: review your files, build the disputes and run the rounds.</li>
       <li>Your hours go back into the business, and only items that truly appear on your report get disputed.</li>
@@ -897,17 +901,17 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Doing this yourself means reading three reports, writing a letter for every item and tracking every answer. Done for you, the Fundhub team does ALL of it.</li>
+        <li>Done for you, the Fundhub team does ALL of it: reading your three reports, writing a letter for every item and tracking every answer that comes back.</li>
         <li>Read the highlighted clause. Fundhub reviews your credit files, finds the negative items that look inaccurate, incomplete or unverifiable, builds the disputes and runs the rounds.</li>
         <li>That gives you your hours back for the business, while each letter still cites the federal law that makes a bureau look into your dispute.</li>
-        <li>The disputes only go after items that actually appear on your report, and your real information goes on everything, so nobody cuts corners with your file.</li>
+        <li>The disputes only go after items that actually appear on your report, and your real information goes on everything, which keeps your file safe the whole way.</li>
         <li>On the Capital Blueprint, you mail that same pack yourself and upload the receipt, and an AI coach keeps that step moving until it's done.</li>
         <li>And whichever way you go, each letter and each reply lands in your dashboard, so you watch your file get WORKED instead of wondering what happened.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide dark" data-src="A denial is based on how your file looked that day and which bank you chose; Fundhub looks at your file as it is now and picks banks that match it: marketing/offers/fundhub-offers-2026-10-10.pdf p.8. Once your file is ready, the same team moves you into funding: same PDF p.3. If they qualify, we optimize, then send them into funding: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:210. The three checks: src/finance/fundability.mjs:146-149. Chris's Blueprint order, pay a card down, the negative items, then business one and two: .ai/rules/ad-know-the-offer.md:28-35. No approval promise: db/migrations/493_funding_and_repair_agreement_text.sql:53 (section 3). Your own bank and lender match list from your file, and the order to apply: src/config/offers.mjs (Capital Blueprint deliverables) and .ai/rules/ad-know-the-offer.md:38; the client funds themselves once the file is ready: marketing/ads/scripts/2026-10-13.md:10. The hire, the ads, the jobs: docs/sops/weekend-2026-10-24/04-sales-call-script.md:112. Growth paid out of your own account: marketing/ads/scripts/2026-10-14.md (Direct Book Ad 13, green-lit). Chris's track record: marketing/ads/RULES.md Part 0 rule 38. Your own bank and lender match list from your file, and the order to apply: src/config/offers.mjs (Capital Blueprint deliverables) and .ai/rules/ad-know-the-offer.md:38; the client funds themselves once the file is ready: marketing/ads/scripts/2026-10-13.md:10. The hire, the ads, the jobs: docs/sops/weekend-2026-10-24/04-sales-call-script.md:112. Growth paid out of your own account: marketing/ads/scripts/2026-10-14.md (Direct Book Ad 13, green-lit). Chris's track record: marketing/ads/RULES.md Part 0 rule 38. Your own bank and lender match list from your file, and the order to apply: src/config/offers.mjs (Capital Blueprint deliverables) and .ai/rules/ad-know-the-offer.md:38; the client funds themselves once the file is ready: marketing/ads/scripts/2026-10-13.md:10. The hire, the ads, the jobs: docs/sops/weekend-2026-10-24/04-sales-call-script.md:112. Growth paid out of your own account: marketing/ads/scripts/2026-10-14.md (Direct Book Ad 13, green-lit). Chris's track record: marketing/ads/RULES.md Part 0 rule 38. Your own bank and lender match list from your file, and the order to apply: src/config/offers.mjs (Capital Blueprint deliverables) and .ai/rules/ad-know-the-offer.md:38; the client funds themselves once the file is ready: marketing/ads/scripts/2026-10-13.md:10. The hire, the ads, the jobs: docs/sops/weekend-2026-10-24/04-sales-call-script.md:112. Growth paid out of your own account: marketing/ads/scripts/2026-10-14.md (Direct Book Ad 13, green-lit). Chris's track record: marketing/ads/RULES.md Part 0 rule 38. Your own bank and lender match list from your file, and the order to apply: src/config/offers.mjs (Capital Blueprint deliverables) and .ai/rules/ad-know-the-offer.md:38; the client funds themselves once the file is ready: marketing/ads/scripts/2026-10-13.md:10. The hire, the ads, the jobs: docs/sops/weekend-2026-10-24/04-sales-call-script.md:112. Growth paid out of your own account: marketing/ads/scripts/2026-10-14.md (Direct Book Ad 13, green-lit). Chris's track record: marketing/ads/RULES.md Part 0 rule 38. Your own bank and lender match list from your file, and the order to apply: src/config/offers.mjs (Capital Blueprint deliverables) and .ai/rules/ad-know-the-offer.md:38; the client funds themselves once the file is ready: marketing/ads/scripts/2026-10-13.md:10. The hire, the ads, the jobs: docs/sops/weekend-2026-10-24/04-sales-call-script.md:112. Growth paid out of your own account: marketing/ads/scripts/2026-10-14.md (Direct Book Ad 13, green-lit). Chris's track record: marketing/ads/RULES.md Part 0 rule 38. Your own bank and lender match list from your file, and the order to apply: src/config/offers.mjs (Capital Blueprint deliverables) and .ai/rules/ad-know-the-offer.md:38; the client funds themselves once the file is ready: marketing/ads/scripts/2026-10-13.md:10. The hire, the ads, the jobs: docs/sops/weekend-2026-10-24/04-sales-call-script.md:112. Growth paid out of your own account: marketing/ads/scripts/2026-10-14.md (Direct Book Ad 13, green-lit). Chris's track record: marketing/ads/RULES.md Part 0 rule 38." data-figures="Chris's own track record (marketing/ads/RULES.md Part 0 rule 38)">
+  <section class="slide dark" data-src="A denial is based on how your file looked that day and which bank you chose; Fundhub looks at your file as it is now and picks banks that match it: marketing/offers/fundhub-offers-2026-10-10.pdf p.8. Once your file is ready, the same team moves you into funding: same PDF p.3. If they qualify, we optimize, then send them into funding: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:210. The three checks: src/finance/fundability.mjs:146-149. Chris's Blueprint order, pay a card down, the negative items, then business one and two: .ai/rules/ad-know-the-offer.md:28-35. No approval promise: db/migrations/493_funding_and_repair_agreement_text.sql:53 (section 3). Your own bank and lender match list from your file, and the order to apply: src/config/offers.mjs (Capital Blueprint deliverables) and .ai/rules/ad-know-the-offer.md:38; the client funds themselves once the file is ready: marketing/ads/scripts/2026-10-13.md:10. The hire, the ads, the jobs: docs/sops/weekend-2026-10-24/04-sales-call-script.md:112. Growth paid out of your own account: marketing/ads/scripts/2026-10-14.md (Direct Book Ad 13, green-lit). Chris's track record: marketing/ads/RULES.md Part 0 rule 38." data-figures="Chris's own track record (marketing/ads/RULES.md Part 0 rule 38)">
     <p class="eyebrow">BN-05 / After the fixes</p>
     <h2>Where does the money go once this file clears all three checks?</h2>
     <ul class="lines">
@@ -917,23 +921,25 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </ul>
     <figure class="pic">
       <div class="sheet">
-        <svg class="bv" viewBox="0 0 320 300" role="img" aria-label="A flowchart. Your file today, with a collection, a charge-off, a late and full cards. Fix first: the paydown plan and the dispute rounds. Then the same three checks run again: score, cards, negatives. Then funding, at the banks that fit your file as it is now.">
-          <rect class="tint-flag" x="1" y="1" width="318" height="56" rx="10"/>
-          <text class="lb ink" x="14" y="22">YOUR FILE TODAY</text>
-          <text class="caps" x="14" y="44">A COLLECTION · A CHARGE-OFF · A LATE · FULL CARDS</text>
-          <path class="cn ink" d="M160 57V74" marker-end="url(#fh-arrow)"/>
-          <rect class="pn" x="1" y="78" width="318" height="56" rx="10"/>
-          <text class="lb" x="14" y="99">FIX FIRST</text>
-          <text class="caps" x="14" y="121">THE PAYDOWN PLAN · THE DISPUTE ROUNDS</text>
-          <path class="cn ink" d="M160 134V151" marker-end="url(#fh-arrow)"/>
-          <rect class="pn-ink" x="1" y="155" width="318" height="56" rx="10"/>
-          <rect x="14" y="200" width="292" height="3" rx="1.5" fill="url(#fh-spectrum)"/>
-          <text class="lb on-ink" x="14" y="176" fill="#fff">THE SAME THREE CHECKS, AGAIN</text>
-          <text class="caps on-ink" x="14" y="195">SCORE · CARDS · NEGATIVE ITEMS</text>
-          <path class="cn ink" d="M160 211V228" marker-end="url(#fh-arrow)"/>
-          <rect class="tint-fit edge-fit" x="1" y="232" width="318" height="56" rx="10"/>
-          <text class="lb ink" x="14" y="253">FUNDING</text>
-          <text class="caps" x="14" y="275">THE BANKS THAT FIT YOUR FILE AS IT IS NOW</text>
+        <svg class="bv" viewBox="0 0 320 292" role="img" aria-label="A flowchart. Fix first: the cards get paid down to their targets and the dispute rounds run. Then the same three checks run again: score, cards and negative items. When the file clears, you fund yourself at the banks that fit it, and the capital goes to three places: a new hire, ads that run, and the bigger jobs.">
+          <rect class="pn" x="1" y="1" width="318" height="56" rx="10"/>
+          <text class="lb" x="14" y="22">1 · FIX FIRST</text>
+          <text class="caps" x="14" y="44">CARDS TO TARGET · DISPUTE ROUNDS RUN</text>
+          <path class="cn ink" d="M160 57V72" marker-end="url(#fh-arrow)"/>
+          <rect class="pn-ink" x="1" y="76" width="318" height="56" rx="10"/>
+          <text class="lb on-ink" x="14" y="97">2 · THE SAME THREE CHECKS</text>
+          <text class="caps on-ink" x="14" y="119">SCORE · CARDS · NEGATIVE ITEMS</text>
+          <path class="cn ink" d="M160 132V147" marker-end="url(#fh-arrow)"/>
+          <rect class="tint-fit edge-fit" x="1" y="151" width="318" height="56" rx="10"/>
+          <text class="lb ink" x="14" y="172">3 · YOU FUND YOURSELF</text>
+          <text class="caps" x="14" y="194">AT THE BANKS THAT FIT THE FILE</text>
+          <path class="cn ink" d="M160 207V218M54 218H266M54 218V232M160 218V232M266 218V232"/>
+          <rect class="pn" x="4" y="236" width="100" height="52" rx="8"/>
+          <text class="caps" x="54" y="267" text-anchor="middle">A NEW HIRE</text>
+          <rect class="pn" x="110" y="236" width="100" height="52" rx="8"/>
+          <text class="caps" x="160" y="267" text-anchor="middle">ADS THAT RUN</text>
+          <rect class="pn" x="216" y="236" width="100" height="52" rx="8"/>
+          <text class="caps" x="266" y="267" text-anchor="middle">BIGGER JOBS</text>
         </svg>
       </div>
     </figure>
@@ -949,9 +955,9 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </aside>
   </section>
 
-  <section class="slide" data-src="We pull your file together right on the call; it's a soft pull, so your score does not move; you see how much you qualify for based on where you're at right now and what's holding the rest back: docs/sops/weekend-2026-10-24/04-sales-call-script.md:69. Here's what's holding your file back; cleaned up, it shows the higher amount on screen; that difference is what's left on the table: public/app/present.js:100 (closer line). Fund now, fix first, or both: 04-sales-call-script.md:176. We diagnose and tell you exactly what to do; action takers, not shoppers: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:213. Only you see a soft pull, and no lender sees it: marketing/offers/fundhub-offers-2026-10-10.pdf p.9 and docs/sops/weekend-2026-10-24/04-sales-call-script.md:156. Only you see a soft pull, and no lender sees it: marketing/offers/fundhub-offers-2026-10-10.pdf p.9 and docs/sops/weekend-2026-10-24/04-sales-call-script.md:156. Only you see a soft pull, and no lender sees it: marketing/offers/fundhub-offers-2026-10-10.pdf p.9 and docs/sops/weekend-2026-10-24/04-sales-call-script.md:156. Only you see a soft pull, and no lender sees it: marketing/offers/fundhub-offers-2026-10-10.pdf p.9 and docs/sops/weekend-2026-10-24/04-sales-call-script.md:156. Only you see a soft pull, and no lender sees it: marketing/offers/fundhub-offers-2026-10-10.pdf p.9 and docs/sops/weekend-2026-10-24/04-sales-call-script.md:156. Only you see a soft pull, and no lender sees it: marketing/offers/fundhub-offers-2026-10-10.pdf p.9 and docs/sops/weekend-2026-10-24/04-sales-call-script.md:156. Only you see a soft pull, and no lender sees it: marketing/offers/fundhub-offers-2026-10-10.pdf p.9 and docs/sops/weekend-2026-10-24/04-sales-call-script.md:156.">
+  <section class="slide" data-src="We pull your file together right on the call; it's a soft pull, so your score does not move; you see how much you qualify for based on where you're at right now and what's holding the rest back: docs/sops/weekend-2026-10-24/04-sales-call-script.md:69. Here's what's holding your file back; cleaned up, it shows the higher amount on screen; that difference is what's left on the table: public/app/present.js:100 (closer line). Fund now, fix first, or both: 04-sales-call-script.md:176. We diagnose and tell you exactly what to do; action takers, not shoppers: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:213. Only you see a soft pull, and no lender sees it: marketing/offers/fundhub-offers-2026-10-10.pdf p.9 and docs/sops/weekend-2026-10-24/04-sales-call-script.md:156.">
     <p class="eyebrow">BN-06 / Your strategy call</p>
-    <h2>Your strategy call puts your file's amount today beside what it shows cleaned up.</h2>
+    <h2>Your strategy call shows what your file gets today next to what it gets cleaned up.</h2>
     <ul class="lines">
       <li>The pull on the call is a soft one, so your score doesn't budge and no bank sees it.</li>
       <li>You see how much you qualify for based on where you're at right now, right beside what the cleaned-up file shows.</li>
@@ -959,23 +965,24 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </ul>
     <figure class="pic">
       <div class="sheet">
-        <svg class="bv" viewBox="0 0 320 176" role="img" aria-label="One shared screen with your real file on it. On the left, what's holding you back: a collection, a charge-off, a late and full cards. On the right, the file cleaned up, showing the higher amount. The difference is what's left on the table.">
-          <rect class="pn" x="1" y="1" width="318" height="140" rx="10"/>
-          <text class="lb" x="14" y="22">YOUR FILE</text>
-          <rect class="tint-flag" x="12" y="34" width="144" height="94" rx="8"/>
-          <text class="lb ink" x="22" y="54">HOLDING YOU BACK</text>
-          <rect class="bar" x="22" y="64" width="110" height="5" rx="2.5"/>
-          <rect class="bar" x="22" y="76" width="92" height="5" rx="2.5"/>
-          <rect class="bar" x="22" y="88" width="120" height="5" rx="2.5"/>
-          <rect class="bar" x="22" y="100" width="80" height="5" rx="2.5"/>
-          <text class="caps" x="22" y="121">TODAY</text>
-          <path class="cn ink" d="M158 81H170" marker-end="url(#fh-arrow)"/>
-          <rect class="tint-fit edge-fit" x="164" y="34" width="144" height="94" rx="8"/>
-          <text class="lb ink" x="174" y="54">CLEANED UP</text>
-          <rect class="bar" x="174" y="64" width="110" height="5" rx="2.5"/>
-          <rect class="bar" x="174" y="76" width="60" height="5" rx="2.5"/>
-          <text class="caps" x="174" y="121">THE HIGHER AMOUNT</text>
-          <text class="lb" x="160" y="168" text-anchor="middle">ONE SHARED SCREEN · YOUR REAL FILE</text>
+        <svg class="bv" viewBox="0 0 320 236" role="img" aria-label="Your strategy call screen. On the left, your file today: how much you qualify for now, plus the items holding it back, with the first fix marked. On the right, the same file cleaned up and the amount it shows. The space between the two amounts is what the fixes are worth to you.">
+          <rect class="pn" x="1" y="1" width="318" height="196" rx="10"/>
+          <text class="lb" x="14" y="22">YOUR STRATEGY CALL · YOUR FILE</text>
+          <rect class="tint-flag" x="12" y="34" width="140" height="150" rx="8"/>
+          <text class="lb ink" x="22" y="54">TODAY</text>
+          <text class="caps" x="22" y="74">WHAT YOU QUALIFY</text>
+          <text class="caps" x="22" y="90">FOR RIGHT NOW</text>
+          <rect class="pn-ink" x="22" y="102" width="120" height="30" rx="6"/>
+          <text class="lb on-ink" x="82" y="122" text-anchor="middle">FIX #1</text>
+          <text class="caps" x="22" y="152">THEN EACH ITEM</text>
+          <text class="caps" x="22" y="168">HOLDING IT BACK</text>
+          <path class="cn ink" d="M154 109H164" marker-end="url(#fh-arrow)"/>
+          <rect class="tint-fit edge-fit" x="168" y="34" width="140" height="150" rx="8"/>
+          <text class="lb ink" x="178" y="54">CLEANED UP</text>
+          <text class="caps" x="178" y="74">WHAT THE SAME</text>
+          <text class="caps" x="178" y="90">FILE SHOWS ONCE</text>
+          <text class="caps" x="178" y="106">IT'S FIXED</text>
+          <text class="lb" x="160" y="228" text-anchor="middle">THE GAP IS WHAT THE FIXES ARE WORTH</text>
         </svg>
       </div>
     </figure>

@@ -10,7 +10,7 @@ Your card sends its balance to the bureaus on the day the statement CLOSES. Pay 
 
 
 
-Your own file already shows which card to pay first and the exact balance to bring it to, and most people have never been shown either one.
+Your own file already shows which card to pay first and the exact balance to bring it to, and nobody hands you either one when you open a card.
 
 
 
@@ -76,7 +76,7 @@ If you've got cash set aside, you enter it, and the paydown tool splits it acros
 
 
 
-For you, that means no guessing which bill to pay down first. Your first dollars land on the fastest win your report has.
+No more guessing which bill to pay down first. Your first dollars land on the fastest win your report has.
 
 
 
@@ -112,13 +112,13 @@ That's why the plan doesn't stop at 30%. It goes all the way to 10% of the limit
 
 
 
-Read the bars. Near 40% at the start, 13.1% by month three, and down to the $800 target by month six, under both lines.
+Read the two bars. At the start, the card sits near 40% used, past the dashed 30% line. At the target, it sits at $800, 10% of its limit.
 
 
 
 
 
-Same rule on every card you have: 10% of its own limit. The ink line on each bar is the balance you're paying toward.
+Every card on your file gets that same rule, 10% of its own limit, so each one comes with its own target balance to pay toward.
 
 
 
@@ -160,7 +160,7 @@ A big new charge before the close raises your card use too, and the bank reads t
 
 
 
-For you, that means every payment you make shows up on the report it was meant for, instead of a month late.
+Every payment you make then shows up on the report it was meant for, instead of a month late.
 
 
 
@@ -184,7 +184,7 @@ You split it into as many payments as you want. Every dollar moves the balance d
 
 
 
-Nobody has to take your word for it either. When a fresh pull shows the balance at $800, the checklist closes that step on its own.
+You don't even have to report it. When a fresh pull shows the balance at $800, the checklist closes that step on its own.
 
 
 
@@ -202,7 +202,7 @@ Now picture every card at its target and the rest of the file ready. You fund yo
 
 
 
-That money pays for the next person you hire, the ads you've been holding back and the bigger jobs, so your savings stay your savings.
+That money pays for the next person you hire, the ads you've been holding back and the bigger jobs, without touching your own savings.
 
 
 
@@ -244,4 +244,4 @@ You walk away with the first card picked out and its target balance in hand, so 
 
 
 
-This call is for action takers, not shoppers, and the payment you make after it is the first step of your plan.
+This call is for action takers, not shoppers, and your first paydown after it is step one of your plan.

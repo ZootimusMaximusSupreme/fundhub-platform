@@ -13,6 +13,8 @@
   Belief: Which card I pay down first, and to what target, matters, and the
           system picks both off my own file.
 
+  Rewritten 2026-10-31 on Chris's slide framework (see pre-underwriting.html).
+
   Chris's direction (2026-10-31): his call-slide style (a coded label, a big
   headline, full lines of copy with the pastel stripe), more copy, real first
   with a little branded mark on top, and a diagram alone only when nothing
@@ -67,14 +69,15 @@
       the bank reads".
     CP-02 what, real: the credit analysis's own sentence for the sample,
       marked "Fullest card first".
-    CP-03 how much, a chart: one bar for the $8,000 limit with the 10% target,
-      the engine's 30% line, the start near 40% and month three at 13.1%.
+    CP-03 how much, a compare: the same sample card at the start (about 40%
+      used, past the dashed 30% line, fails) and at the $800 target (10%,
+      passes). Redrawn 2026-10-31.
     CP-04 when, a timeline: pay here, the statement closes, the balance
       reports, the due date is a different day.
     CP-05 how, real: the checklist step on the real screen, checked off by a
       new pull, marked "Checked itself off".
-    CP-06 who/what, a portrait of the call: your cards and their targets on
-      one shared screen.
+    CP-06 who/what, the call screen: your cards in pay order, card 1 marked
+      pay this first, each with its own 10% target. Redrawn 2026-10-31.
   - Truth check (applications.md): no picture implies a score change, an
     approval or an amount. Samples say Sample. The 10% line is labeled as
     the plan's target and the 30% line as the engine's.
@@ -840,7 +843,7 @@ html[data-tone="dark"] .film-n{color:var(--ss-dark-muted)}
     </defs>
   </svg>
 
-  <section class="slide dark" data-src="A card's balance reports to the bureaus when the statement closes; balances report on the statement date: src/finance/file-alerts/payment-timing.mjs:3-6 (owner-set 2026-09-29). Card use is one of the things that sets how much you qualify for: docs/sops/weekend-2026-10-24/04-sales-call-script.md:335. The picture is a crop of the real Blueprint screen (the FinanceOS Credit page) for the simulated sample client at month 3: ops/workflows/build-evidence/blueprint-timelapse-2026-10-21/still-02-month-3.png, stamped SIMULATION on the full screen (FIRST PLATYPUS BANK, $1,050 of $8,000, 13.1%); the same person as src/finance/sample-credit-file.mjs:1-10. The due date is a different day and a different job; the balance reports on the statement date: src/finance/file-alerts/payment-timing.mjs:3-8. The due date is a different day and a different job; the balance reports on the statement date: src/finance/file-alerts/payment-timing.mjs:3-8.">
+  <section class="slide dark" data-src="A card's balance reports to the bureaus when the statement closes; balances report on the statement date: src/finance/file-alerts/payment-timing.mjs:3-6 (owner-set 2026-09-29). Card use is one of the things that sets how much you qualify for: docs/sops/weekend-2026-10-24/04-sales-call-script.md:335. The picture is a crop of the real Blueprint screen (the FinanceOS Credit page) for the simulated sample client at month 3: ops/workflows/build-evidence/blueprint-timelapse-2026-10-21/still-02-month-3.png, stamped SIMULATION on the full screen (FIRST PLATYPUS BANK, $1,050 of $8,000, 13.1%); the same person as src/finance/sample-credit-file.mjs:1-10. The due date is a different day and a different job; the balance reports on the statement date: src/finance/file-alerts/payment-timing.mjs:3-8.">
     <p class="eyebrow">CP-01 / The day that counts</p>
     <h2>The balance a bank sees is the one on your card the day the statement closes.</h2>
     <p class="lede">Your own file already shows which card to pay first and the exact balance to bring it to.</p>
@@ -859,7 +862,7 @@ html[data-tone="dark"] .film-n{color:var(--ss-dark-muted)}
     <aside class="talk" aria-hidden="true">
       <ul>
         <li>Your card sends its balance to the bureaus on the day the statement CLOSES. Pay it in full on the due date, and the high balance already went out.</li>
-        <li>Your own file already shows which card to pay first and the exact balance to bring it to, and most people have never been shown either one.</li>
+        <li>Your own file already shows which card to pay first and the exact balance to bring it to, and nobody hands you either one when you open a card.</li>
         <li>This is a sample Blueprint screen. The card reports a $1,050 balance next to its limit, and the tile under it reads 13.1% used.</li>
         <li>That reported balance is what a bank READS when you apply. Whatever you paid after the statement closed waits until the next month's report.</li>
         <li>Two things decide what this part of your file says: which card your money goes to first, and the balance you pay it down to.</li>
@@ -868,7 +871,7 @@ html[data-tone="dark"] .film-n{color:var(--ss-dark-muted)}
     </aside>
   </section>
 
-  <section class="slide" data-src="Cards are ranked highest utilization first: src/deliverables/derive.mjs:14-27; the paydown tool puts cash on cards in that order: src/blueprint/paydown-simulator.mjs:81. The client document's own sentence, '[card] is the highest-utilization card at [x]. Get that card to [target]. This is the fastest win on your entire report.': src/deliverables/credit-analysis.mjs:523-524. Enter the cash you have; see which cards to pay down first, by how much: public/app/present.js:978-979 (closer line). The sample values: FIRST PLATYPUS BANK at 13.1% on an $8,000 limit (still-02-month-3.png) and the $800 target (still-03-month-6.png). Ranked highest utilization first: src/deliverables/derive.mjs:14-27; the paydown tool allocates cash to cards in that order: src/blueprint/paydown-simulator.mjs:81. Ranked highest utilization first: src/deliverables/derive.mjs:14-27; the paydown tool allocates cash to cards in that order: src/blueprint/paydown-simulator.mjs:81.">
+  <section class="slide" data-src="Cards are ranked highest utilization first: src/deliverables/derive.mjs:14-27; the paydown tool puts cash on cards in that order: src/blueprint/paydown-simulator.mjs:81. The client document's own sentence, '[card] is the highest-utilization card at [x]. Get that card to [target]. This is the fastest win on your entire report.': src/deliverables/credit-analysis.mjs:523-524. Enter the cash you have; see which cards to pay down first, by how much: public/app/present.js:978-979 (closer line). The sample values: FIRST PLATYPUS BANK at 13.1% on an $8,000 limit (still-02-month-3.png) and the $800 target (still-03-month-6.png). Ranked highest utilization first: src/deliverables/derive.mjs:14-27; the paydown tool allocates cash to cards in that order: src/blueprint/paydown-simulator.mjs:81.">
     <p class="eyebrow">CP-02 / Which card first</p>
     <h2>Your first dollar goes on the card using the biggest share of its limit.</h2>
     <ul class="lines">
@@ -891,12 +894,12 @@ html[data-tone="dark"] .film-n{color:var(--ss-dark-muted)}
         <li>Read the sentence from this sample's credit analysis. It names the card, First Platypus Bank, how full it is, and the balance to bring it down to.</li>
         <li>The analysis calls that card the fastest win on your whole report, which is exactly why your money starts there.</li>
         <li>If you've got cash set aside, you enter it, and the paydown tool splits it across your cards in that same ORDER, fullest first.</li>
-        <li>For you, that means no guessing which bill to pay down first. Your first dollars land on the fastest win your report has.</li>
+        <li>No more guessing which bill to pay down first. Your first dollars land on the fastest win your report has.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide" data-src="The paydown target is 10% of the card's limit: src/waypoints/definitions.mjs:42-45 and :330-332; src/deliverables/derive.mjs:60-69. Get every card under 10% of its limit before any application: src/underwrite/black-report-node.mjs:699-701. The engine's fundable line is cards used 30% or less: src/finance/fundability.mjs:147 and src/underwrite/vendor/underwriter.cjs:211. The sample card: an $8,000 limit (src/banking/plaid-sandbox-user.mjs:87), used at roughly 40% at the start (src/finance/sample-credit-file.mjs:9), $1,050 and 13.1% at month 3 (still-02-month-3.png), the $800 step done by month 6 (still-03-month-6.png). Every application is a hard pull, and each one costs you: docs/sops/weekend-2026-10-24/04-sales-call-script.md:160. Every application is a hard pull, and each one costs you: docs/sops/weekend-2026-10-24/04-sales-call-script.md:160.">
+  <section class="slide" data-src="The paydown target is 10% of the card's limit: src/waypoints/definitions.mjs:42-45 and :330-332; src/deliverables/derive.mjs:60-69. Get every card under 10% of its limit before any application: src/underwrite/black-report-node.mjs:699-701. The engine's fundable line is cards used 30% or less: src/finance/fundability.mjs:147 and src/underwrite/vendor/underwriter.cjs:211. The sample card: an $8,000 limit (src/banking/plaid-sandbox-user.mjs:87), used at roughly 40% at the start (src/finance/sample-credit-file.mjs:9), $1,050 and 13.1% at month 3 (still-02-month-3.png), the $800 step done by month 6 (still-03-month-6.png). Every application is a hard pull, and each one costs you: docs/sops/weekend-2026-10-24/04-sales-call-script.md:160.">
     <p class="eyebrow">CP-03 / What the full card costs</p>
     <h2>Near 40% used, this sample card failed the engine's card check before a bank ever saw it.</h2>
     <ul class="lines">
@@ -906,21 +909,19 @@ html[data-tone="dark"] .film-n{color:var(--ss-dark-muted)}
     </ul>
     <figure class="pic">
       <div class="sheet">
-        <svg class="bv" viewBox="0 0 320 186" role="img" aria-label="One bar for the sample card's whole limit. The target sits at 10%, $800, with the zone under it in the fit tint. The engine's line sits at 30%. Month three sits at 13.1%, $1,050. The start sits at about 40%, in the flag tint.">
-          <text class="lb" x="2" y="14">SAMPLE · ONE CARD · THE WHOLE LIMIT</text>
-          <text class="lb" x="300" y="34" text-anchor="end">START · ABOUT 40%</text>
-          <path class="cn ink" d="M132 38V62"/>
-          <text class="lb ink" x="20" y="52">10% TARGET · $800</text>
-          <rect class="pn" x="20" y="62" width="280" height="30" rx="8"/>
-          <rect class="tint-flag" x="20" y="62" width="112" height="30" rx="8"/>
-          <rect class="tint-fit" x="20" y="62" width="28" height="30" rx="8"/>
-          <rect x="47" y="56" width="3" height="42" rx="1.5" fill="#0D1113"/>
-          <line class="cn ink dash" x1="104" y1="56" x2="104" y2="102"/>
-          <text class="lb" x="84" y="116">30% · THE ENGINE'S LINE</text>
-          <line class="cn ink" x1="57" y1="92" x2="57" y2="126"/>
-          <text class="lb ink" x="20" y="140">MONTH 3 · 13.1% · $1,050</text>
-          <rect class="tint-fit edge-fit" x="20" y="152" width="280" height="30" rx="8"/>
-          <text class="caps" x="160" y="171" text-anchor="middle">UNDER THE TARGET BEFORE YOU APPLY</text>
+        <svg class="bv" viewBox="0 0 320 214" role="img" aria-label="Two bars for the same sample card, each showing the whole limit, with a dashed line at 30%, the engine's line. At the start, the card is about 40% used, past the line, so it fails the card check. At the target, it is down to $800, 10% of its limit, and it passes.">
+          <text class="lb" x="2" y="14">SAMPLE CARD · DASHED LINE = 30%</text>
+          <text class="lb" x="2" y="44">START · ABOUT 40% USED</text>
+          <rect class="pn" x="2" y="54" width="316" height="30" rx="8"/>
+          <rect class="tint-flag" x="2" y="54" width="126" height="30" rx="8"/>
+          <text class="lb ink" x="314" y="74" text-anchor="end">FAILS</text>
+          <text class="lb" x="2" y="124">TARGET · $800 · 10% USED</text>
+          <rect class="pn" x="2" y="134" width="316" height="30" rx="8"/>
+          <rect class="tint-fit edge-fit" x="2" y="134" width="32" height="30" rx="8"/>
+          <text class="lb ink" x="314" y="154" text-anchor="end">PASSES</text>
+          <line class="cn ink dash" x1="97" y1="50" x2="97" y2="88"/>
+          <line class="cn ink dash" x1="97" y1="130" x2="97" y2="168"/>
+          <text class="caps" x="160" y="204" text-anchor="middle">EVERY CARD GETS THE SAME 10% TARGET</text>
         </svg>
       </div>
     </figure>
@@ -930,13 +931,13 @@ html[data-tone="dark"] .film-n{color:var(--ss-dark-muted)}
         <li>This sample card started near 40% used. That put the whole file past the line, so it failed that check before a single application went out.</li>
         <li>Every application sent while the card reports that high gets read at that HIGH balance, and the inquiry it leaves stays on the report after.</li>
         <li>That's why the plan doesn't stop at 30%. It goes all the way to 10% of the limit, which is $800 on this sample card.</li>
-        <li>Read the bars. Near 40% at the start, 13.1% by month three, and down to the $800 target by month six, under both lines.</li>
-        <li>Same rule on every card you have: 10% of its own limit. The ink line on each bar is the balance you're paying toward.</li>
+        <li>Read the two bars. At the start, the card sits near 40% used, past the dashed 30% line. At the target, it sits at $800, 10% of its limit.</li>
+        <li>Every card on your file gets that same rule, 10% of its own limit, so each one comes with its own target balance to pay toward.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide" data-src="Balances report on the statement date, so the system tells the client which day to pay each card before a round; the due date is a different day and a different job: src/finance/file-alerts/payment-timing.mjs:3-12 (owner-set 2026-09-29). A text before each statement date: public/app/present.js:985 (Blueprint alerts, closer line). Card use is one of the things that sets how much you qualify for; a big new balance raises yours: docs/sops/weekend-2026-10-24/04-sales-call-script.md:335. A text before each statement date: public/app/present.js:985 (Blueprint alerts) and marketing/offers/fundhub-offers-2026-10-10.pdf p.5. A separate card-due reminder texts about the due date: src/finance/file-alerts/payment-timing.mjs:6-8. A text before each statement date: public/app/present.js:985 (Blueprint alerts) and marketing/offers/fundhub-offers-2026-10-10.pdf p.5. A separate card-due reminder texts about the due date: src/finance/file-alerts/payment-timing.mjs:6-8.">
+  <section class="slide" data-src="Balances report on the statement date, so the system tells the client which day to pay each card before a round; the due date is a different day and a different job: src/finance/file-alerts/payment-timing.mjs:3-12 (owner-set 2026-09-29). A text before each statement date: public/app/present.js:985 (Blueprint alerts, closer line). Card use is one of the things that sets how much you qualify for; a big new balance raises yours: docs/sops/weekend-2026-10-24/04-sales-call-script.md:335. A text before each statement date: public/app/present.js:985 (Blueprint alerts) and marketing/offers/fundhub-offers-2026-10-10.pdf p.5. A separate card-due reminder texts about the due date: src/finance/file-alerts/payment-timing.mjs:6-8.">
     <p class="eyebrow">CP-04 / When to pay</p>
     <h2>You get a text before each statement date, while your payment still changes what reports.</h2>
     <ul class="lines">
@@ -959,12 +960,12 @@ html[data-tone="dark"] .film-n{color:var(--ss-dark-muted)}
         <li>Pay after the close, and that month's high balance has already gone out. The lower balance waits a whole cycle to show up.</li>
         <li>Your due date is a DIFFERENT day with a different job. It keeps the account current, and a separate reminder covers that one.</li>
         <li>A big new charge before the close raises your card use too, and the bank reads that just the same as an old balance.</li>
-        <li>For you, that means every payment you make shows up on the report it was meant for, instead of a month late.</li>
+        <li>Every payment you make then shows up on the report it was meant for, instead of a month late.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide" data-src="The checklist step 'Pay {creditor} down to {target}' and its detail, 'You do not have to do it in one payment. Anything you put against this card moves the balance toward the target.': db/migrations/362_waypoint_definitions_seed.sql:83-84; the row closes itself when a re-pull reports the balance at the target: :86; 'The task checks itself off when a new credit pull shows the lower balance.': marketing/offers/fundhub-offers-2026-10-10.pdf p.4. The picture is a crop of the real Blueprint checklist for the simulated sample client at month 6: ops/workflows/build-evidence/blueprint-timelapse-2026-10-21/still-03-month-6.png, stamped SIMULATION on the full screen. An AI coach watches the open step, and the Fundhub team does what a person must do: .ai/rules/ad-know-the-offer.md:41 and docs/journeys/capital-blueprint-intended.md:10. The client funds themselves once the file is ready: marketing/ads/scripts/2026-10-13.md:10. The hire, the ads, the jobs: docs/sops/weekend-2026-10-24/04-sales-call-script.md:112. An AI coach watches the open step, and the Fundhub team does what a person must do: .ai/rules/ad-know-the-offer.md:41 and docs/journeys/capital-blueprint-intended.md:10. The client funds themselves once the file is ready: marketing/ads/scripts/2026-10-13.md:10. The hire, the ads, the jobs: docs/sops/weekend-2026-10-24/04-sales-call-script.md:112.">
+  <section class="slide" data-src="The checklist step 'Pay {creditor} down to {target}' and its detail, 'You do not have to do it in one payment. Anything you put against this card moves the balance toward the target.': db/migrations/362_waypoint_definitions_seed.sql:83-84; the row closes itself when a re-pull reports the balance at the target: :86; 'The task checks itself off when a new credit pull shows the lower balance.': marketing/offers/fundhub-offers-2026-10-10.pdf p.4. The picture is a crop of the real Blueprint checklist for the simulated sample client at month 6: ops/workflows/build-evidence/blueprint-timelapse-2026-10-21/still-03-month-6.png, stamped SIMULATION on the full screen. An AI coach watches the open step, and the Fundhub team does what a person must do: .ai/rules/ad-know-the-offer.md:41 and docs/journeys/capital-blueprint-intended.md:10. The client funds themselves once the file is ready: marketing/ads/scripts/2026-10-13.md:10. The hire, the ads, the jobs: docs/sops/weekend-2026-10-24/04-sales-call-script.md:112.">
     <p class="eyebrow">CP-05 / Done, and what it opens up</p>
     <h2>This sample's step, pay First Platypus Bank down to $800, closed itself on a fresh pull.</h2>
     <ul class="lines">
@@ -984,15 +985,15 @@ html[data-tone="dark"] .film-n{color:var(--ss-dark-muted)}
       <ul>
         <li>This is the real checklist on the sample file. The step reads pay First Platypus Bank down to $800, and it's marked DONE.</li>
         <li>You split it into as many payments as you want. Every dollar moves the balance down toward the target, and nothing waits on one big check.</li>
-        <li>Nobody has to take your word for it either. When a fresh pull shows the balance at $800, the checklist closes that step on its own.</li>
+        <li>You don't even have to report it. When a fresh pull shows the balance at $800, the checklist closes that step on its own.</li>
         <li>While the step is open, an AI coach watches it and reminds you, and the Fundhub team steps in whenever it takes a person.</li>
         <li>Now picture every card at its target and the rest of the file ready. You fund yourself, off a file that reports LOW balances on every card.</li>
-        <li>That money pays for the next person you hire, the ads you've been holding back and the bigger jobs, so your savings stay your savings.</li>
+        <li>That money pays for the next person you hire, the ads you've been holding back and the bigger jobs, without touching your own savings.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide" data-src="We pull your file together right on the call; it's a soft pull, so your score does not move; you see how much you qualify for based on where you're at right now and what's holding the rest back: docs/sops/weekend-2026-10-24/04-sales-call-script.md:69. Pay each card down to the target your file shows; the cards get read off your own roadmap, never invented: 04-sales-call-script.md:257. We diagnose and tell you exactly what to do; action takers, not shoppers: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:213. Only you see a soft pull, and no lender sees it: marketing/offers/fundhub-offers-2026-10-10.pdf p.9 and docs/sops/weekend-2026-10-24/04-sales-call-script.md:156. Only you see a soft pull, and no lender sees it: marketing/offers/fundhub-offers-2026-10-10.pdf p.9 and docs/sops/weekend-2026-10-24/04-sales-call-script.md:156." data-figures="the plan's 10% paydown target is a rule for every card, not a sample figure (src/waypoints/definitions.mjs:42-45)">
+  <section class="slide" data-src="We pull your file together right on the call; it's a soft pull, so your score does not move; you see how much you qualify for based on where you're at right now and what's holding the rest back: docs/sops/weekend-2026-10-24/04-sales-call-script.md:69. Pay each card down to the target your file shows; the cards get read off your own roadmap, never invented: 04-sales-call-script.md:257. We diagnose and tell you exactly what to do; action takers, not shoppers: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:213. Only you see a soft pull, and no lender sees it: marketing/offers/fundhub-offers-2026-10-10.pdf p.9 and docs/sops/weekend-2026-10-24/04-sales-call-script.md:156." data-figures="the plan's 10% paydown target is a rule for every card, not a sample figure (src/waypoints/definitions.mjs:42-45)">
     <p class="eyebrow">CP-06 / Your strategy call</p>
     <h2>Which of your cards gets paid first, and down to what balance?</h2>
     <ul class="lines">
@@ -1002,23 +1003,19 @@ html[data-tone="dark"] .film-n{color:var(--ss-dark-muted)}
     </ul>
     <figure class="pic">
       <div class="sheet">
-        <svg class="bv" viewBox="0 0 320 176" role="img" aria-label="One shared screen with your real file on it: your cards, each with its target mark. The fullest card is marked first.">
-          <rect class="pn" x="1" y="1" width="318" height="140" rx="10"/>
-          <text class="lb" x="14" y="22">YOUR CARDS · YOUR TARGETS</text>
-          <text class="lb ink" x="14" y="46">FIRST</text>
-          <rect class="bar" x="60" y="38" width="248" height="10" rx="5"/>
-          <rect class="tint-flag" x="60" y="38" width="190" height="10" rx="5"/>
-          <rect x="83" y="32" width="3" height="22" rx="1.5" fill="#0D1113"/>
-          <text class="lb" x="14" y="76">NEXT</text>
-          <rect class="bar" x="60" y="68" width="248" height="10" rx="5"/>
-          <rect class="tint-flag" x="60" y="68" width="120" height="10" rx="5"/>
-          <rect x="83" y="62" width="3" height="22" rx="1.5" fill="#0D1113"/>
-          <text class="lb" x="14" y="106">THEN</text>
-          <rect class="bar" x="60" y="98" width="248" height="10" rx="5"/>
-          <rect class="tint-fit" x="60" y="98" width="60" height="10" rx="5"/>
-          <rect x="83" y="92" width="3" height="22" rx="1.5" fill="#0D1113"/>
-          <text class="lb" x="60" y="130">THE INK LINE IS THE TARGET</text>
-          <text class="lb" x="160" y="168" text-anchor="middle">ONE SHARED SCREEN · YOUR REAL FILE</text>
+        <svg class="bv" viewBox="0 0 320 236" role="img" aria-label="Your strategy call screen: your cards in pay order, fullest first. Card 1, the fullest, is marked pay this first and gets its target balance at 10% of its limit. Cards 2 and 3 follow, each with its own 10% target. Your next payment goes to card 1.">
+          <rect class="pn" x="1" y="1" width="318" height="196" rx="10"/>
+          <text class="lb" x="14" y="22">YOUR CARDS · FULLEST FIRST</text>
+          <rect class="pn-ink" x="12" y="34" width="296" height="52" rx="8"/>
+          <text class="lb on-ink" x="24" y="56">CARD 1 · THE FULLEST</text>
+          <text class="caps on-ink" x="24" y="75">PAY THIS FIRST · TARGET 10% OF LIMIT</text>
+          <rect class="tint-flag" x="12" y="94" width="296" height="44" rx="8"/>
+          <text class="lb ink" x="24" y="113">CARD 2</text>
+          <text class="caps" x="24" y="129">NEXT · ITS OWN 10% TARGET</text>
+          <rect class="pn" x="12" y="146" width="296" height="44" rx="8"/>
+          <text class="lb" x="24" y="165">CARD 3</text>
+          <text class="caps" x="24" y="181">THEN · ITS OWN 10% TARGET</text>
+          <text class="lb" x="160" y="228" text-anchor="middle">YOUR NEXT PAYMENT GOES TO CARD 1</text>
         </svg>
       </div>
     </figure>
@@ -1029,7 +1026,7 @@ html[data-tone="dark"] .film-n{color:var(--ss-dark-muted)}
         <li>Then your cards go up in order, fullest first, each one with its own target mark at 10% of its limit.</li>
         <li>You also see how much you qualify for based on where you're at right now, and which card is holding the most of it back.</li>
         <li>You walk away with the first card picked out and its target balance in hand, so the very next payment you make goes where it counts.</li>
-        <li>This call is for action takers, not shoppers, and the payment you make after it is the first step of your plan.</li>
+        <li>This call is for action takers, not shoppers, and your first paydown after it is step one of your plan.</li>
       </ul>
     </aside>
   </section>

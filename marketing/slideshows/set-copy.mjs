@@ -49,8 +49,9 @@ export function applyCopy(html, copy) {
     let open = /^<section[^>]*>/.exec(sec)[0];
     let body = sec.slice(open.length);
     if (c.src) {
-      const cur = (/\sdata-src="([^"]*)"/.exec(open) || ["", ""])[1].replace(/&quot;/g, '"').replace(/&amp;/g, "&");
-      open = setAttr(open, "data-src", `${cur} ${c.src}`.trim());
+      const cur = (/\sdata-src="([^"]*)"/.exec(open) || ["", ""])[1].replace(/&quot;/g, '"').replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
+      // Running the same copy twice must not add the same source twice.
+      if (!cur.includes(c.src.trim())) open = setAttr(open, "data-src", `${cur} ${c.src}`.trim());
     }
     if (c.figures) open = setAttr(open, "data-figures", c.figures);
     if (c.label !== undefined) body = body.replace(/<p class="eyebrow">[\s\S]*?<\/p>/, () => `<p class="eyebrow">${esc(code)} / ${esc(c.label)}</p>`);
