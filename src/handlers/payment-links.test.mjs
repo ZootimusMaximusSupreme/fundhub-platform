@@ -19,8 +19,11 @@ function fakeDb(rows) {
         return { rows: rows.filter((r) => r.link_ref === params[0]) };
       }
       if (/link_ref = \$1/i.test(text)) {
-        const [link_ref, , commas_session_id, paid_amount_cents, openStatuses, org_id] = params;
-        const row = rows.find((r) => r.link_ref === link_ref && r.org_id === org_id && openStatuses.includes(r.status));
+        const [link_ref, , commas_session_id, paid_amount_cents, openStatuses, org_id, client_id, invoice_id, id] = params;
+        const row = rows.find((r) => r.link_ref === link_ref && r.org_id === org_id && openStatuses.includes(r.status) &&
+          (!client_id || String(r.client_id) === client_id) &&
+          (!invoice_id || String(r.invoice_id) === invoice_id) &&
+          (!id || String(r.id) === id));
         if (!row) return { rows: [] };
         // The live unique index payment_links_commas_session (119), so a
         // fake cannot pass a write the real table refuses.
@@ -34,8 +37,11 @@ function fakeDb(rows) {
         return { rows: [row] };
       }
       if (/commas_session_id = \$1/i.test(text)) {
-        const [session_id, , paid_amount_cents, openStatuses, org_id] = params;
-        const row = rows.find((r) => r.commas_session_id === session_id && r.org_id === org_id && openStatuses.includes(r.status));
+        const [session_id, , paid_amount_cents, openStatuses, org_id, client_id, invoice_id, id] = params;
+        const row = rows.find((r) => r.commas_session_id === session_id && r.org_id === org_id && openStatuses.includes(r.status) &&
+          (!client_id || String(r.client_id) === client_id) &&
+          (!invoice_id || String(r.invoice_id) === invoice_id) &&
+          (!id || String(r.id) === id));
         if (!row) return { rows: [] };
         row.status = "paid";
         row.paid_amount_cents = paid_amount_cents;
@@ -70,11 +76,62 @@ describe("onPaymentReceivedForLink", () => {
     assert.equal(rows[0].paid_amount_cents, 100);
   });
 
-  test("no amount on the event records an unknown paid amount, not zero", async () => {
+  test("missing or zero settled amount cannot mark a link paid", async () => {
     const rows = [{ link_ref: "pl_1", status: "sent" }];
     const db = fakeDb(rows);
     await onPaymentReceivedForLink({ orgId: TEST_ORG, payload: { ref: "pl_1", providerRef: "txn_abc" } }, db);
-    assert.equal(rows[0].paid_amount_cents, null);
+    await onPaymentReceivedForLink({ orgId: TEST_ORG, payload: { ref: "pl_1", amount: 0, providerRef: "txn_abc" } }, db);
+    assert.equal(rows[0].status, "sent");
+    assert.equal(rows[0].paid_amount_cents, undefined);
+  });
+
+  test("same-org link for another buyer cannot be marked paid", async () => {
+    const rows = [{ link_ref: "pl_buyer_b", client_id: "buyer-b", status: "sent" }];
+    const db = fakeDb(rows);
+    await onPaymentReceivedForLink({ orgId: TEST_ORG, clientId: "buyer-a", payload: { ref: "pl_buyer_b", amount: 500 } }, db);
+    assert.equal(rows[0].status, "sent");
+  });
+
+  test("same-buyer link for another invoice cannot be marked paid", async () => {
+    const rows = [{ link_ref: "pl_invoice_a", client_id: "buyer-a", invoice_id: "invoice-a", status: "sent" }];
+    const db = fakeDb(rows);
+    await onPaymentReceivedForLink({ orgId: TEST_ORG, clientId: "buyer-a", payload: { ref: "pl_invoice_a", invoiceId: "invoice-b", amount: 500 } }, db);
+    assert.equal(rows[0].status, "sent");
+  });
+
+  test("explicit payment link ID must identify the resolved link", async () => {
+    const rows = [{ id: "link-a", link_ref: "pl_link_a", status: "sent" }];
+    const db = fakeDb(rows);
+    await onPaymentReceivedForLink({ orgId: TEST_ORG, payload: { ref: "pl_link_a", paymentLinkId: "link-b", amount: 500 } }, db);
+    assert.equal(rows[0].status, "sent");
+  });
+
+  test("session fallback also refuses another buyer's link", async () => {
+    const rows = [{ link_ref: "pl_session_b", commas_session_id: "session_b", client_id: "buyer-b", status: "sent" }];
+    const db = fakeDb(rows);
+    await onPaymentReceivedForLink({ orgId: TEST_ORG, clientId: "buyer-a", payload: { itemId: "session_b", amount: 500 } }, db);
+    assert.equal(rows[0].status, "sent");
+  });
+
+  test("a conflicting ref cannot fall through to a different buyer's session", async () => {
+    const rows = [
+      { link_ref: "pl_b", client_id: "buyer-b", status: "sent" },
+      { link_ref: "pl_a", client_id: "buyer-a", commas_session_id: "session_a", status: "sent" }
+    ];
+    const db = fakeDb(rows);
+    await onPaymentReceivedForLink({ orgId: TEST_ORG, clientId: "buyer-a", payload: { ref: "pl_b", itemId: "session_a", amount: 500 } }, db);
+    assert.equal(rows[0].status, "sent");
+    assert.equal(rows[1].status, "sent");
+  });
+
+  test("an already-paid ref cannot settle another link by session", async () => {
+    const rows = [
+      { link_ref: "pl_paid", status: "paid", paid_amount_cents: 50000 },
+      { link_ref: "pl_other", commas_session_id: "session_other", status: "sent" }
+    ];
+    const db = fakeDb(rows);
+    await onPaymentReceivedForLink({ orgId: TEST_ORG, payload: { ref: "pl_paid", itemId: "session_other", amount: 500 } }, db);
+    assert.equal(rows[1].status, "sent");
   });
 
   /* N2 (live 2026-09-18): the inbox copies OUR products.id onto the event as
@@ -233,6 +290,17 @@ describe("onPaymentReceivedForLink", () => {
     assert.equal(db.subs[0].price_cents, null, "not priced is null, never 0");
   });
 
+  test("matching buyer, invoice, and link ID still settle Finance OS setup", async () => {
+    const links = [setupLink({ invoice_id: "invoice-a" })];
+    const db = setupDb(links);
+    await onPaymentReceivedForLink({
+      orgId: TEST_ORG, clientId: CLIENT,
+      payload: { ref: "pl_setup1", invoiceId: "invoice-a", paymentLinkId: LINK_ID, amount: 500 }
+    }, db);
+    assert.equal(links[0].status, "paid");
+    assert.equal(db.subs.length, 1);
+  });
+
   test("a replayed setup payment does not open a second subscription", async () => {
     const links = [setupLink()];
     const db = setupDb(links);
@@ -248,6 +316,14 @@ describe("onPaymentReceivedForLink", () => {
     const db = setupDb(links);
     await onPaymentReceivedForLink({ orgId: TEST_ORG, payload: { ref: "pl_setup1", amount: 500 } }, db);
     assert.equal(db.subs.length, 1);
+  });
+
+  test("a mismatched paid-link replay cannot heal Finance OS access", async () => {
+    const links = [setupLink({ status: "paid", paid_amount_cents: 50000 })];
+    const db = setupDb(links);
+    await onPaymentReceivedForLink({ orgId: TEST_ORG, clientId: "another-buyer", payload: { ref: "pl_setup1", amount: 500 } }, db);
+    await onPaymentReceivedForLink({ orgId: TEST_ORG, clientId: CLIENT, payload: { ref: "pl_setup1", amount: 1 } }, db);
+    assert.equal(db.subs.length, 0);
   });
 
   test("a paid link that is not the setup link never touches subscriptions", async () => {

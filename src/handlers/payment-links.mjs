@@ -32,6 +32,19 @@ async function turnOnFinanceOsIfSetup(db, link) {
   return out;
 }
 
+function receiptHint(...values) {
+  const present = values.filter((value) => value != null && String(value) !== "").map(String);
+  return { value: present[0] || null, conflict: new Set(present).size > 1 };
+}
+
+function receiptMatchesLink(link, { orgId, clientId, invoiceId, paymentLinkId, paidAmountCents }) {
+  return link && String(link.org_id) === String(orgId) &&
+    (!clientId || String(link.client_id) === clientId) &&
+    (!invoiceId || String(link.invoice_id) === invoiceId) &&
+    (!paymentLinkId || String(link.id) === paymentLinkId) &&
+    (link.paid_amount_cents == null || Number(link.paid_amount_cents) === paidAmountCents);
+}
+
 export async function onPaymentReceivedForLink(event, db) {
   const p = event.payload || {};
   // Whop settles its own saved link after checking the signed checkout identity.
@@ -40,6 +53,16 @@ export async function onPaymentReceivedForLink(event, db) {
   // A paid checkout transition requires its canonical tenant.
   if (!event.orgId) return;
   const paidAmountCents = p.amount != null ? toCents(p.amount) : null;
+  // Do not settle a checkout or heal paid access from a missing/zero receipt.
+  if (!Number.isSafeInteger(paidAmountCents) || paidAmountCents <= 0) return;
+  const client = receiptHint(event.clientId, p.clientId, p.client_id);
+  const invoice = receiptHint(p.invoiceId, p.invoice_id);
+  const paymentLink = receiptHint(p.paymentLinkId, p.payment_link_id);
+  if (client.conflict || invoice.conflict || paymentLink.conflict) return;
+  const identity = {
+    orgId: event.orgId, clientId: client.value, invoiceId: invoice.value,
+    paymentLinkId: paymentLink.value, paidAmountCents
+  };
   /* Commas ids only. p.productId is OUR products.id, copied off the link by
      processCommasInboxRow — every deposit link shares one. Writing it into
      commas_session_id let the first payment per product claim it, and every
@@ -49,23 +72,29 @@ export async function onPaymentReceivedForLink(event, db) {
 
   if (p.ref) {
     const byRef = await markPaid(db, {
-      orgId: event.orgId,
+      ...identity,
       linkRef: p.ref,
-      commasSessionId: sessionId || p.providerRef || null,
-      paidAmountCents
+      commasSessionId: sessionId || p.providerRef || null
     });
     if (byRef) {
       await openSloPortalIfPaid(db, byRef);
       await turnOnFinanceOsIfSetup(db, byRef);
       return;
     }
+    // A known ref owns this callback. Do not fall through and pay a different
+    // checkout by session ID, including on a replay of an already-paid ref.
+    const referencedLink = await getByLinkRef(db, { linkRef: p.ref });
+    if (referencedLink) {
+      if (referencedLink.status === "paid" && receiptMatchesLink(referencedLink, identity)) {
+        await turnOnFinanceOsIfSetup(db, referencedLink);
+      }
+      return;
+    }
   }
 
   if (sessionId) {
     const bySession = await markPaidBySession(db, {
-      orgId: event.orgId,
-      commasSessionId: sessionId,
-      paidAmountCents
+      ...identity, commasSessionId: sessionId
     });
     await openSloPortalIfPaid(db, bySession);
     if (bySession) {
@@ -74,15 +103,6 @@ export async function onPaymentReceivedForLink(event, db) {
     }
   }
 
-  /* HEAL ON REPLAY. markPaid only returns a row on the open → paid move, so a
-     replay of a setup payment whose grant failed the first time finds nothing
-     above. Read the link and finish the grant; it is a no-op if already done. */
-  if (p.ref) {
-    const link = await getByLinkRef(db, { linkRef: p.ref });
-    if (link && String(link.org_id) === String(event.orgId) && link.status === "paid") {
-      await turnOnFinanceOsIfSetup(db, link);
-    }
-  }
 }
 
 export function register() {
