@@ -586,7 +586,7 @@ const DESK_FILES = [
 
 /** Static HTML under public/ (not public/app desks) that the morning ping GETs.
     A file on disk that is not in this list must be in ALLOWED_UNMONITORED. */
-const PUBLIC_STATIC_FILES = [
+export const PUBLIC_STATIC_FILES = [
   "affiliates/index.html",
   "careers.html",
   "climate/index.html",

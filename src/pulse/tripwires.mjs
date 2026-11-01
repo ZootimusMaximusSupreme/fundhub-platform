@@ -26,6 +26,8 @@
 // own checks (src/pulse/daily-pulse.mjs). The pulse may prefix a gap id with its lane on the
 // scorecard; the id named here is the one written in the lane file.
 
+import { PUBLIC_STATIC_FILES } from "./registry.mjs";
+
 export const TRIPWIRE_IMPACTS = Object.freeze(["money", "customer"]);
 
 /** Ids that only prove a door answers or a clock ran. Never enough on their own. */
@@ -34,6 +36,8 @@ export function isPingId(id) {
 }
 
 export const TRIPWIRES = Object.freeze({
+  ...Object.fromEntries(PUBLIC_STATIC_FILES.filter((file) => /^slideshows\/[^/]+\.html$/.test(file))
+    .map((file) => [`page:${file}`, { impact: "customer", checks: ["funnel:slideshows-content"] }])),
   "route:bank-outreach": { impact: "money", checks: ["bank-outreach:verified-product", "bank-outreach:next-action"] },
   "route:read/bank-outreach": { impact: "money", checks: ["bank-outreach:verified-product"] },
   "desk:bank-outreach.html": { impact: "money", checks: ["bank-outreach:verified-product", "bank-outreach:next-action"] },
@@ -214,6 +218,8 @@ export const TRIPWIRES = Object.freeze({
 });
 
 export const NOT_CUSTOMER_FACING = Object.freeze({
+  ...Object.fromEntries(PUBLIC_STATIC_FILES.filter((file) => /^slideshows\/film\/[^/]+\.html$/.test(file))
+    .map((file) => [`page:${file}`, "Internal film board for Chris to screen-record under his camera video. Customers receive the phone deck instead."])),
   "route:company-brain/library":
     "Staff-only approved instruction index: it reads company files allowed for the signed-in employee's role and never serves a customer directly. Its door is watched by reg:company-brain/library.",
   "page:leads/c01cb7592c8bb994130158e897e99bf1/index.html":
