@@ -37,7 +37,7 @@ export function isPingId(id) {
 
 export const TRIPWIRES = Object.freeze({
   ...Object.fromEntries(PUBLIC_STATIC_FILES.filter((file) => /^slideshows\/[^/]+\.html$/.test(file))
-    .map((file) => [`page:${file}`, { impact: "customer", checks: ["funnel:slideshows-content"] }])),
+    .map((file) => [`page:${file}`, { impact: "customer", checks: ["slideshows:content"] }])),
   "route:bank-outreach": { impact: "money", checks: ["bank-outreach:verified-product", "bank-outreach:next-action"] },
   "route:read/bank-outreach": { impact: "money", checks: ["bank-outreach:verified-product"] },
   "desk:bank-outreach.html": { impact: "money", checks: ["bank-outreach:verified-product", "bank-outreach:next-action"] },
@@ -218,8 +218,6 @@ export const TRIPWIRES = Object.freeze({
 });
 
 export const NOT_CUSTOMER_FACING = Object.freeze({
-  ...Object.fromEntries(PUBLIC_STATIC_FILES.filter((file) => /^slideshows\/film\/[^/]+\.html$/.test(file))
-    .map((file) => [`page:${file}`, "Internal film board for Chris to screen-record under his camera video. Customers receive the phone deck instead."])),
   "route:company-brain/library":
     "Staff-only approved instruction index: it reads company files allowed for the signed-in employee's role and never serves a customer directly. Its door is watched by reg:company-brain/library.",
   "page:leads/c01cb7592c8bb994130158e897e99bf1/index.html":
@@ -242,6 +240,8 @@ export const NOT_CUSTOMER_FACING = Object.freeze({
     "Owner-only: the 5-minute watch texts Chris's own number when a critical door is down. It never reaches a customer. Its heartbeat is job pulse-instant-watch.",
   "send:src/pulse/notify.mjs":
     "Owner-only: the morning pulse texts Chris's own number its report. It never reaches a customer. Its heartbeat is job daily-pulse.",
+  ...Object.fromEntries(PUBLIC_STATIC_FILES.filter((file) => /^slideshows\/film\/[^/]+\.html$/.test(file))
+    .map((file) => [`page:${file}`, "Internal film board for Chris to screen-record under his camera video. Customers receive the phone deck instead."])),
   "send:src/staff/blake-lead-watch.mjs":
     "Owner-only: texts Chris the name and phone of a lead Blake referred. Its own header says it never texts the lead. Its heartbeat is job blake-lead-watch.",
   "send:src/auth/staff-mail.mjs":
