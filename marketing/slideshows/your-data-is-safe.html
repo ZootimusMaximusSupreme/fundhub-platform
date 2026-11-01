@@ -15,6 +15,10 @@
           deeper data, and handles that data the way that access requires.
 
   Rewritten 2026-10-31 on Chris's slide framework (see pre-underwriting.html).
+  Fix round 2026-10-31 (copy reviewer): PD-07 (the parties) cut, so the old PD-08 is now PD-07.
+  PD-02 keeps the four names, without the section 4 clause (who-we-are shows it). PD-03 circles the
+  one late. PD-04 is the Experian Business check's own rows and fixes. PD-05 shows the sample's
+  items under the three letters, labeled Sample. No code size on this deck.
 
   Chris's direction (2026-10-31, second pass, saved on the board, section 6e):
   "It's about trust, but you're also selling them." Direct relationships with
@@ -829,7 +833,7 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </aside>
   </section>
 
-  <section class="slide" data-src="We have direct relationships with the bureaus, LexisNexis, Experian, TransUnion, Equifax; show them: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:532. The pull is one prequal FICO 9 product per bureau, TransUnion, Experian and Equifax: src/finance/crs-client.mjs:112-136. The engine reads all three: src/underwrite/vendor/underwriter.cjs:241-245. Different banks pull different bureaus, so your information has to match on every report: marketing/vsl/direct-book-thank-you-2026-10-15.md:27 (green-lit). The picture is section 4 of the funding agreement, word for word: db/migrations/493_funding_and_repair_agreement_text.sql:53. No logo files in the repo, so the four names are set in the brand's own style.">
+  <section class="slide" data-src="We have direct relationships with the bureaus, LexisNexis, Experian, TransUnion, Equifax; show them: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:532. The pull is one prequal FICO 9 product per bureau, TransUnion, Experian and Equifax: src/finance/crs-client.mjs:112-136. The engine reads all three: src/underwrite/vendor/underwriter.cjs:241-245. Different banks pull different bureaus, so your information has to match on every report: marketing/vsl/direct-book-thank-you-2026-10-15.md:27 (green-lit). The picture is section 4 of the funding agreement, word for word: db/migrations/493_funding_and_repair_agreement_text.sql:53. No logo files in the repo, so the four names are set in the brand's own style. The business side gets run on the same call: marketing/vsl/direct-book-thank-you-2026-10-15.md:39 (green-lit).">
     <p class="eyebrow">PD-02 / Who we pull from</p>
     <h2>We have direct relationships with Experian, Equifax, TransUnion and LexisNexis.</h2>
     <ul class="lines">
@@ -857,14 +861,14 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
         <li>We pull your file from all three bureaus, and your business file from LexisNexis. We have direct relationships with all FOUR of them.</li>
         <li>Each bureau's report on you is a FICO 9 report. That's the bureau's full file, from the same feeds a bank pulls when it decides.</li>
         <li>The file we read on your call is the file a bank reads, from the same SOURCES, before any bank sees it.</li>
-        <li>Your business gets its own look too, so the company you run gets read the day you do.</li>
+        <li>If you run a business, it gets read on the same call as your personal file.</li>
       </ul>
     </aside>
   </section>
 
   <section class="slide" data-src="Full tradeline fields (account identifiers, subscriber codes, lates, patterns) for Metro 2 / dispute work: the tri-bureau report renderer's header, scripts/render-crs-standard-report.mjs:4-5 (main checkout, printed 2026-10-31). Every bureau's lines are carried through, each inquiry carries its bureau, public records are kept: src/finance/crs-map.mjs:14-16, 152-200. We can show exactly what we can see past a consumer credit site report: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:532. The picture is Account 2 of the TransUnion section of the rendered sample report (the FinanceOS sample file, src/finance/sample-credit-file.mjs; simulated, no bureau contacted), the fields without their date columns; the printed label 'Account number' is shown as 'Account identifier', the renderer's own word (outcome-first-copy). Dispute rules read the Payment Rating (Field 17B) and the Date of First Delinquency: src/metro2/rules/payment-ratings.mjs and src/metro2/rules/citations.mjs.">
     <p class="eyebrow">PD-03 / The full record</p>
-    <h2>A dispute letter names a late's month and code, and only the full record shows both.</h2>
+    <h2>A dispute letter names the month and code of a late, and only the full record shows both.</h2>
     <ul class="lines">
       <li>On this sample, one month of a closed auto loan carries a 1, the code for a 30-day late.</li>
       <li>With only a summary, you're guessing at the line a bank holds against you.</li>

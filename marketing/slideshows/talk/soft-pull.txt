@@ -4,13 +4,13 @@
 
 
 
-A bank that says no still leaves its HARD pull on your report. The no goes in a letter, and the pull sits right where the next bank finds it.
+Each bank picks which of your three bureaus it PULLS. A soft pull reads all three first, so you know what every bank is going to find.
 
 
 
 
 
-Your file can be read top to bottom, all three bureaus, without a single bank seeing it happen. It's the first thing that happens on your call.
+On this sample file, the three bureaus give three different scores, and which one a bank pulls changes what it sees.
 
 
 
@@ -22,13 +22,7 @@ This is the form you sign for it, word for word. Line one says it plainly: this 
 
 
 
-The same line says lenders do not see it as an application for credit. No bank reads it as you shopping for money.
-
-
-
-
-
-Line four says the form itself promises you no funding. The lender makes that call later, once an application actually goes in.
+The same line says lenders do not see it as an application for credit, so it never shows up as you asking a bank for money.
 
 
 
@@ -40,13 +34,25 @@ You sign for one pull, for one purpose, and the form says exactly what that purp
 
 
 
+You can take that permission back any time, in writing, and the form tells you exactly where to send it.
+
+
+
+
+
+A copy of what you sign, and the time you signed it, stays on file, and it's yours to ask for.
+
+
+
+
+
 [Slide 2]
 
 
 
 
 
-Who else can see a soft pull on your report? The answer is nobody but YOU, and nobody tells you that while you're shopping for funding.
+Who else can see a soft pull on your report? The answer is nobody but YOU.
 
 
 
@@ -58,7 +64,13 @@ On the left of this picture is your own copy of your report. The soft pull shows
 
 
 
-On the right is what a lender sees. A lender does not read a soft pull as an application, so it never counts against you when you apply.
+On the right is the same report the way a lender pulls it, with no soft pull on it, so it never counts against you.
+
+
+
+
+
+The soft pull leaves no mark for a bank to read, so reading your file first costs your next application nothing.
 
 
 
@@ -70,7 +82,7 @@ A hard pull is a different step, and it needs a separate yes from you. The soft 
 
 
 
-Here's what that means for you. Your file gets read all the way through, every bureau and every line, and no bank sees you ASKING.
+Your file gets read all the way through, every bureau and every line, and no bank sees any of it.
 
 
 
@@ -88,7 +100,7 @@ Your next application goes out on a file that looks exactly the way it did befor
 
 
 
-Here's what shopping for funding really costs. When you apply at three banks to see who says yes, that's three hard pulls sitting on your report.
+Three applications at three banks leave three hard pulls on your report, whether any of them says yes or not.
 
 
 
@@ -100,13 +112,13 @@ Every one of them COSTS you. The next bank reads each one before it decides, and
 
 
 
-Three nos cost you more than three letters. The job you wanted that money for has to WAIT, and every bank after that reads all three pulls first.
+When three banks say no, you're left with three new pulls on your report and nothing to show for them.
 
 
 
 
 
-Look at the two columns. A soft pull happens on your call, you sign for it, only you see it, and your score stays where it is.
+The two columns show the difference. A soft pull happens on your call, you sign for it, only you see it, and your score stays where it is.
 
 
 
@@ -118,7 +130,7 @@ A hard pull happens when a funding application goes out. It needs your separate 
 
 
 
-Most people run it in the wrong order. The applications go out FIRST, and the file gets read after the damage is done.
+When the applications go out FIRST, the file gets read after the damage is done.
 
 
 
@@ -148,6 +160,12 @@ Each bank picks the bureau it pulls. One goes to Experian, another goes to Equif
 
 
 
+On this sample, each bureau even carries a different inquiry: American Express on Experian, First Platypus Bank on TransUnion, and JPMCB on Equifax.
+
+
+
+
+
 That's why one soft pull gets all THREE. A problem that only shows up on one bureau still costs you, the day a bank pulls that bureau.
 
 
@@ -160,19 +178,19 @@ Our UnderwriteIQ system reads each of the three reports the way a bank does, and
 
 
 
-For you, that means no bureau surprises you after you apply. Whatever is sitting on Experian, Equifax or TransUnion, you see it first.
+No bureau surprises you after you apply. Whatever is sitting on Experian, Equifax or TransUnion, you see it FIRST.
 
 
 
 
 
-Your applications then go out on a file nobody has dinged yet. That's how the people you want to hire, the larger contracts and your ads get paid for with credit.
+On this sample, a bank that pulls Experian sees 702, the lowest of the three scores.
 
 
 
 
 
-Your savings stay where they are, and the bank's money does the growing, on a file that went in clean on every bureau.
+Knowing which bureau your next bank pulls tells you which of those three scores it judges you on.
 
 
 
@@ -184,7 +202,7 @@ Your savings stay where they are, and the bank's money does the growing, on a fi
 
 
 
-Remember the file that gets read top to bottom without a single bank seeing it? That happens on your strategy call, with you on the LINE.
+The soft pull you just saw happens on your strategy call, with you on the LINE.
 
 
 
@@ -197,6 +215,12 @@ You sign the soft pull form right there on the call, and the form spells out wha
 
 
 Then the pull runs, all three bureaus, while you're with us, and your score stays where it is.
+
+
+
+
+
+All three scores land side by side on your screen, the way this sample's did, so you see which bureau runs lowest.
 
 
 
@@ -220,4 +244,10 @@ Be at a computer, somewhere quiet. We go through your file together on one scree
 
 
 
-The reports are yours to keep, whatever you decide. You walk away knowing your file the way a bank knows it, before any bank pulls it.
+The reports from that pull are yours to keep, whatever you decide.
+
+
+
+
+
+Your file stays just the way a bank would find it, and now you know what every one of them is going to see.

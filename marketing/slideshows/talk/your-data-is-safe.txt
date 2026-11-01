@@ -16,7 +16,7 @@ There's a way to read your own file at the bank's DEPTH first. That's the file y
 
 
 
-Here's the first layer, on a sample TransUnion report. The score reads 706, and under it sit four reasons in the bureau's own capital letters.
+The first layer sits on this sample TransUnion report. The score reads 706, and under it sit four reasons in the bureau's own capital letters.
 
 
 
@@ -40,25 +40,25 @@ When a company works off the summary, the bank still judges the full file. You f
 
 
 
-Here's what's really going on underneath. Fundhub holds direct relationships with Experian, Equifax and TransUnion, and with LexisNexis for the business side.
+We pull your file from all three bureaus, and your business file from LexisNexis. We have direct relationships with all FOUR of them.
 
 
 
 
 
-Each bureau sends us its own FICO 9 report on you. That's the bureau's full file, from the same feeds a bank pulls.
+Each bureau's report on you is a FICO 9 report. That's the bureau's full file, from the same feeds a bank pulls when it decides.
 
 
 
 
 
-Relationships like that come with RULES. Section 4 of your agreement names the fraud checks and compliance checks that go along with this access.
+The file we read on your call is the file a bank reads, from the same SOURCES, before any bank sees it.
 
 
 
 
 
-For you, it means the file we read on your call is the file a bank reads, from the same SOURCES, before any bank sees it.
+If you run a business, it gets read on the same call as your personal file.
 
 
 
@@ -70,31 +70,37 @@ For you, it means the file we read on your call is the file a bank reads, from t
 
 
 
-Here's what that summary costs you. This is one account from the sample report, a Toyota auto loan, closed and paid as agreed.
+A dispute letter has to name the exact month and the code of a late, and only the full record shows you BOTH.
 
 
 
 
 
-Look at the payment pattern. Month after month of C, which means paid on time, and ONE month with a 1. That's a single 30-day late.
+This is one account from the sample report, a Toyota auto loan, closed and paid as agreed.
 
 
 
 
 
-The record also shows the subscriber code and the rating code. A dispute has to name fields like these, and a summary never shows them.
+Every month in its payment pattern is a C, which means paid on time, except ONE month with a 1. That's a single 30-day late.
 
 
 
 
 
-Each inquiry comes tagged with its bureau and the company that pulled it. Public records come through on the same file.
+The record also shows the subscriber code, the bureau's ID for the company that reported the late.
 
 
 
 
 
-With only a summary, you're GUESSING at your file. With the full record, you work on the exact line a bank holds against you.
+Each inquiry shows its bureau and the company that pulled it. Public records come through on the same file.
+
+
+
+
+
+The full record shows you the exact line a bank holds against you, so you fix that line and nothing else.
 
 
 
@@ -112,25 +118,31 @@ What does a bank see when it looks up your BUSINESS? Your business has a file of
 
 
 
-First comes the match. We look up your company in LexisNexis Top Business, and you pick it from the list, so your file never lands on the wrong business.
+First comes the match. We look up your company in LexisNexis Top Business. You pick it from the list, so your file lands on the right business.
 
 
 
 
 
-Then Experian Business. That's your business score, any blemishes, your business card balances, and the code and name flags a lender checks.
+The Experian Business check reads five things. It reads your business score, any blemishes, your business balances, your industry code and your business name.
 
 
 
 
 
-Each one comes with its exact FIX, so the business gets cleaned up before it applies. A bank sees a company it can lend to.
+Each one comes with its exact FIX. Balances get paid down under 10% before you apply, and the name matches everywhere the company is listed.
 
 
 
 
 
-Your personal file goes first, and then each business gets weighed separately, on its own record.
+The industry code a lender reads has to come off the low-risk list, and the check flags any other code.
+
+
+
+
+
+A business that clears those five rows shows a bank a company it can lend to.
 
 
 
@@ -148,25 +160,31 @@ When every letter names the exact field, your file gets ready for funding QUICKE
 
 
 
-This is our own code. It sorts every finding on your file into one of three letters: a tradeline dispute, a personal information cleanup, or an inquiry removal.
+Each thing we find on your file goes into one of three letters. One is for accounts, one for your name and old addresses, and one for inquiries.
 
 
 
 
 
-Names and old addresses go in one letter, inquiries in another, and accounts in the third. Each points at the field the bureau reported.
+On this sample, the Toyota late is the kind of item the account letter covers. The Chase inquiry on Equifax is the kind the inquiry letter covers.
 
 
 
 
 
-I built it on deeper data because it gets inquiries, accounts, addresses and names off FASTER. UnderwriteIQ alone runs 37,097 lines of code.
+Each letter goes where it can change the line: to the bureau that printed it, or straight to the company that reported it.
 
 
 
 
 
-Each month your file gets ready sooner is a month your hiring, your jobs and your ads run on the bank's money instead of YOURS.
+I built it on deeper data because it gets inquiries, accounts, addresses and names off FASTER.
+
+
+
+
+
+When your file is ready sooner, your first application goes out sooner, with fewer lines on it for a bank to hold against you.
 
 
 
@@ -178,7 +196,7 @@ Each month your file gets ready sooner is a month your hiring, your jobs and you
 
 
 
-Handing a funding company the details a bureau needs to find your file takes TRUST. Here's what happens to those details after you do.
+Handing a funding company the details a bureau needs to find your file takes TRUST. This is what happens to those details after you do.
 
 
 
@@ -196,13 +214,19 @@ The full identifier is locked away encrypted, in a separate place. Each time any
 
 
 
+It gets unlocked for your pull, and the log keeps who unlocked it and the reason they gave.
+
+
+
+
+
 Our published privacy policy puts it in writing. Your data is encrypted with AES-256 while it moves and while it's stored, on SOC 2 audited providers.
 
 
 
 
 
-We don't sell your personal information. That's in the privacy policy and the Capital Blueprint agreement, so you get back to running your business.
+We don't sell your personal information. The privacy policy says so, and so does the Capital Blueprint agreement.
 
 
 
@@ -214,43 +238,7 @@ We don't sell your personal information. That's in the privacy policy and the Ca
 
 
 
-Fundhub LLC signs your agreement from a street address, under Arizona LAW. That's the first thing to check about anyone reading your file.
-
-
-
-
-
-The first line of the agreement names us, a Florida company that operates in Arizona, with our street address right next to it.
-
-
-
-
-
-Section 7 puts the agreement under Arizona law. Section 8 says your calls get recorded and kept, and that AI tools and AI agents work on your file.
-
-
-
-
-
-That same address sits at the bottom of our privacy policy, with how long your information is kept and the rights your state gives you.
-
-
-
-
-
-You know who you're dealing with, where to find us, and which law covers the deal, all BEFORE you pay a dollar.
-
-
-
-
-
-[Slide 8]
-
-
-
-
-
-Remember those layers under the summary? On your strategy call, your OWN file comes up on the screen at that depth, before a single bank reads it.
+The layers under that consumer summary come up on your strategy call, on your OWN file, before a single bank reads it.
 
 
 
@@ -274,4 +262,4 @@ Then your file gets matched to the banks that lend to files like yours. Banks wa
 
 
 
-Whatever you decide, you keep the reports, and you walk away knowing exactly what a bank sees when it pulls your name.
+The details you give us for that pull get handled exactly the way the privacy policy says, from the moment you share them.
