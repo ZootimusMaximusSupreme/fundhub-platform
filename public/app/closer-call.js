@@ -120,8 +120,9 @@
     }
     var shiftToggle = document.getElementById("fh-shift-toggle");
     if (shiftToggle) {
-      shiftToggle.textContent = onShift ? "Clock out" : "Clock in";
-      shiftToggle.dataset.action = onShift ? "clock_out" : "clock_in";
+      var hasOpenShift = onShift || !!(shift && shift.never_closed);
+      shiftToggle.textContent = hasOpenShift ? "Clock out" : "Clock in";
+      shiftToggle.dataset.action = hasOpenShift ? "clock_out" : "clock_in";
       shiftToggle.hidden = false;
     }
   }
@@ -139,9 +140,16 @@
       if (!response.ok || !body || body.ok !== true) throw new Error("shift_read_failed");
       var open = body.shift;
       var started = open ? Date.parse(open.started_at) : NaN;
+      var elapsedMs = Number.isFinite(started) ? Math.max(0, Date.now() - started) : null;
+      var fresh = elapsedMs !== null && elapsedMs <= 24 * 60 * 60 * 1000;
+      var day = Number.isFinite(started)
+        ? new Date(started).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })
+        : null;
       paintShift(open ? {
-        on_shift: true,
-        elapsed_ms: Number.isFinite(started) ? Math.max(0, Date.now() - started) : 0
+        on_shift: fresh,
+        never_closed: !fresh,
+        elapsed_ms: elapsedMs,
+        reason: fresh ? null : (day ? "Shift open since " + day + " — never clocked out" : "Shift open — never clocked out")
       } : { on_shift: false, reason: "Off shift" });
     } catch (e) {
       var shiftChip = $("[data-fh-call-head] .chip");

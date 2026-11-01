@@ -135,6 +135,32 @@ test("a closer can clock in without a current call", async ({ page }) => {
   await expect(page.locator("[data-fh-call-head] .chip")).toContainText("On shift");
 });
 
+test("an old unclosed shift stays visible without claiming days of active hours", async ({ page }) => {
+  await freezeClock(page, NOW);
+  let open = true;
+  const actions = [];
+  await openScreen(page, "/app/closer-dashboard.html", CLOSER, handlers({
+    "/api/shifts": (route, { method }) => {
+      if (method === "POST") {
+        actions.push(route.request().postDataJSON().action);
+        open = false;
+      }
+      return { ok: true, shift: open ? { id: "old-shift", started_at: "2026-08-16T16:40:00.000Z" } : null };
+    }
+  }));
+
+  await expect(page.locator("#ccp-who-name")).toHaveText("No call right now");
+  const chip = page.locator("[data-fh-call-head] .chip");
+  await expect(chip).toContainText("Shift open since Aug 16 — never clocked out");
+  await expect(chip).not.toContainText("On shift");
+  const toggle = page.locator("#fh-shift-toggle");
+  await expect(toggle).toHaveText("Clock out");
+  await toggle.click();
+  await expect.poll(() => actions).toEqual(["clock_out"]);
+  await expect(toggle).toHaveText("Clock in");
+  await expect(chip).toContainText("Off shift");
+});
+
 /* ── FULL ─────────────────────────────────────────────────────────────────── */
 
 test("the person on the call is the first thing on the page, with the time beside them", async ({ page }) => {
