@@ -14,13 +14,21 @@ const child = { number: 41, state: "open", base: { ref: "codex/parent" },
   head: { ref: "codex/child", sha: childSha, repo: { full_name: repo } },
   labels: [{ name: "ship-order/2" }] };
 
-test("ordered child selection ignores unrelated and foreign PRs", () => {
+test("child selection includes legacy direct children but ignores unrelated and foreign PRs", () => {
   const foreign = { ...child, number: 42, head: { ...child.head, repo: { full_name: "else/repo" } } };
   const wrongBase = { ...child, number: 43, base: { ref: "codex/unrelated" } };
   const legacy = { ...child, number: 44, labels: [] };
   assert.equal(orderOf(child), 2);
   assert.equal(orderOf({ ...child, labels: ["ship-order/2", "ship-order/3"] }), null);
-  assert.deepEqual(directChildren([foreign, wrongBase, legacy, child], merged, repo).map((pr) => pr.number), [41]);
+  assert.deepEqual(directChildren([foreign, wrongBase, legacy, child], merged, repo).map((pr) => pr.number), [41, 44]);
+});
+
+test("unlabeled legacy parent selects only PRs based on its branch", () => {
+  const legacyParent = { ...merged, labels: [] };
+  const legacyChild = { ...child, labels: [] };
+  const unrelatedMain = { ...child, number: 45, base: { ref: "main" }, labels: [] };
+  assert.deepEqual(directChildren([unrelatedMain, legacyChild], legacyParent, repo)
+    .map((pr) => pr.number), [41]);
 });
 
 function runner({ rebaseConflict = false, current = child, fetched = childSha,

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Move the next ordered PR onto main after its parent PR is merged.
+// Move PRs based on a merged branch onto main, including older unlabeled stacks.
 // GitHub may already restack a native stack. In that case this is a no-op.
 
 import { execFileSync } from "node:child_process";
@@ -16,13 +16,13 @@ export function orderOf(pr) {
 }
 
 export function directChildren(prs, merged, repo) {
-  const nextOrder = orderOf(merged) + 1;
-  if (!Number.isSafeInteger(nextOrder) || nextOrder < 2) return [];
+  const parentOrder = orderOf(merged);
+  const nextOrder = parentOrder === null ? null : parentOrder + 1;
   return prs.filter((pr) => pr.state === "open"
-    && (pr.base?.ref === merged.head.ref || pr.base?.ref === "main")
     && pr.head?.repo?.full_name === repo
-    && orderOf(pr) === nextOrder)
-    .sort((a, b) => orderOf(a) - orderOf(b));
+    && (pr.base?.ref === merged.head.ref
+      || (nextOrder !== null && pr.base?.ref === "main" && orderOf(pr) === nextOrder)))
+    .sort((a, b) => a.number - b.number);
 }
 
 export function command(program, args, options = {}) {
@@ -128,9 +128,9 @@ export function main({ eventPath = process.env.GITHUB_EVENT_PATH,
     `repos/${repo}/pulls?state=open&per_page=100`]));
   const children = directChildren(pages.flat(), merged, repo);
   if (children.length > 1) {
-    const message = `@ZootimusMaximusSupreme More than one ordered PR is based on #${merged.number}. I left their branches unchanged because the chain has forked; please choose the next PR before restacking.`;
+    const message = `@ZootimusMaximusSupreme More than one PR is based on #${merged.number}. I left their branches unchanged because the chain has forked; please choose the next PR before restacking.`;
     for (const child of children) comment(repo, child.number, message, run);
-    throw new Error(`Ordered chain forks after PR #${merged.number}`);
+    throw new Error(`PR chain forks after PR #${merged.number}`);
   }
   return children.map((child) => restackChild({ child, merged, repo, run }));
 }
