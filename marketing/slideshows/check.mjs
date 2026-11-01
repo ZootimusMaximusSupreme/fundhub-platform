@@ -8,13 +8,19 @@
 //
 //   node marketing/slideshows/check.mjs              every deck in this folder
 //   node marketing/slideshows/check.mjs a.html ...   just these
+//
+// A deck also fails here when the page a lead opens (public/slideshows/<slug>/index.html) is missing or out of
+// date, and the whole run fails when the published list the pulse reads (src/slideshows/deck-pages.mjs and its copy
+// for the hourly beat) is missing or out of date, or a page is live that no deck makes. Each message says what to run.
 
-import { readFileSync } from "node:fs";
-import { basename, dirname, join, resolve } from "node:path";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { checkScriptText } from "../../scripts/ads/check-script.mjs";
 import { deckSegments, findRecycled, loadCorpus } from "../../scripts/copy/recycled-lines.mjs";
-import { applyShell, deckFiles } from "./build.mjs";
+import {
+  applyShell, deckFiles, isDraft, listCopyText, listModuleText, LIST_COPY_FILE, LIST_FILE, PUBLIC_DIR, publishedDecks, slugOf, toPublic
+} from "./build.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(here, "../..");
@@ -119,6 +125,16 @@ function checkDeck(file, prices, recycled = []) {
   const fresh = applyShell(html);
   if (fresh === null) return null;
   if (fresh !== html) errors.push("stale shell: run node marketing/slideshows/build.mjs");
+
+  // The page a lead opens must be the deck as it stands now (build.mjs --publish writes it).
+  const slug = slugOf(file);
+  const pageFile = join(PUBLIC_DIR, slug, "index.html");
+  const pageRel = relative(repo, pageFile);
+  if (!existsSync(pageFile)) {
+    errors.push(`public copy missing (${pageRel}): run node marketing/slideshows/build.mjs --publish`);
+  } else if (readFileSync(pageFile, "utf8") !== toPublic(html)) {
+    errors.push(`public copy stale (${pageRel}): run node marketing/slideshows/build.mjs --publish`);
+  }
 
   const title = (/<title>([^<]*)<\/title>/i.exec(html) || [])[1];
   if (!title) errors.push("no <title>");
@@ -233,7 +249,41 @@ for (const file of files) {
   for (const e of r.errors) console.log(`  error  ${e}`);
   for (const w of r.warns) console.log(`  warn   ${w}`);
 }
-if (failed) {
-  console.error(`${failed} deck(s) failed.`);
+
+// The published list, whichever decks were named: it covers all of them, and the pulse reads it.
+function listProblems() {
+  const fix = "run node marketing/slideshows/build.mjs --publish";
+  const problems = [];
+  let decks = [];
+  try {
+    decks = publishedDecks();
+  } catch (err) {
+    return [`the published list cannot be built: ${err.message}`];
+  }
+  for (const [file, text] of [[LIST_FILE, listModuleText(decks)], [LIST_COPY_FILE, listCopyText(decks)]]) {
+    const rel = relative(repo, file);
+    if (!existsSync(file)) problems.push(`${rel} is missing: ${fix}`);
+    else if (readFileSync(file, "utf8") !== text) problems.push(`${rel} is stale: ${fix}`);
+  }
+  // A page that is live but has no deck behind it is a page the pulse does not watch.
+  const slugs = new Set(decks.map((d) => d.slug));
+  if (existsSync(PUBLIC_DIR)) {
+    for (const entry of readdirSync(PUBLIC_DIR, { withFileTypes: true })) {
+      if (entry.isDirectory() && !slugs.has(entry.name) && existsSync(join(PUBLIC_DIR, entry.name, "index.html"))) {
+        problems.push(isDraft(entry.name)
+          ? `public/slideshows/${entry.name}/index.html is a draft, and a draft is never published. Remove the page`
+          : `public/slideshows/${entry.name}/index.html has no deck behind it (marketing/slideshows/${entry.name}.html). Remove the page, or restore the deck`);
+      }
+    }
+  }
+  return problems;
+}
+const listFailures = listProblems();
+console.log(`${listFailures.length ? "FAIL" : "PASS"}  published list  src/slideshows/deck-pages.mjs, src/pulse/beats/lib/slideshow-pages-list.mjs, public/slideshows/*`);
+for (const e of listFailures) console.log(`  error  ${e}`);
+
+if (failed || listFailures.length) {
+  if (failed) console.error(`${failed} deck(s) failed.`);
+  if (listFailures.length) console.error("The published list or pages need fixing. Each error above says what to run (usually: node marketing/slideshows/build.mjs --publish).");
   process.exit(1);
 }

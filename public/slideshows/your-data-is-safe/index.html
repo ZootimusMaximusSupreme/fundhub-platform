@@ -1,0 +1,1142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Fundhub, Prime Data</title>
+<meta name="description" content="A bank reads layers of your file that a consumer credit site report never prints. Fundhub pulls those layers from the bureaus and LexisNexis directly, and handles them the way that access requires.">
+<!--
+  Deck PD · Prime data (the file keeps its name, your-data-is-safe)
+  Lane: Every lane (Funding, and Blueprint and Repair)
+  Hammer Them pillar: Objection ("is this legit"), then the sell (Doubt and
+  Desire)
+  Belief: Fundhub pulls my file from the bureaus and LexisNexis directly, sees
+          past a consumer credit site report, builds my optimization from that
+          deeper data, and handles that data the way that access requires.
+
+  Rewritten 2026-10-31 on Chris's slide framework (see pre-underwriting.html).
+
+  Chris's direction (2026-10-31, second pass, saved on the board, section 6e):
+  "It's about trust, but you're also selling them." Direct relationships with
+  the bureaus and LexisNexis; most funding companies check a consumer credit
+  site report; we have multiple layers of credit information and can show
+  exactly what we see past that; access to Experian Business; deeper data
+  builds the algorithms that optimize the file quicker and better and gets
+  inquiries, accounts, addresses and names off faster; access to prime data
+  means better results; banks want to do business with people like that,
+  because we pre-vet with the same data feeds they use. "Don't make it soft."
+  His call-slide style, more copy, real first, a diagram only where nothing
+  real shows the point.
+
+  What this deck says and does not say
+  - Who we pull from is shown the way the agreement names it (section 4:
+    available LexisNexis information, soft credit inquiries) and the way the
+    pull code names it (one prequal FICO 9 product per bureau). The four
+    names are set in the brand's own style: there are no bureau or
+    LexisNexis logo files in the repo, so no logos.
+  - Never the pull vendor's name. Never a competitor's product or site by
+    name: "a consumer credit site report" is Chris's own phrase.
+  - Never a license, a certification or a SOC 2 report of Fundhub's own. The
+    privacy policy says the platform is "built on SOC 2 audited providers",
+    and that exact wording is the most this deck says. The policy's own next
+    sentence, that no method is completely secure, is shown unmarked.
+  - Never "we have relationships" with banks. The deck says the data is the
+    same data the banks read (Chris: the same data feeds they use).
+  - Never "we can see if a bank is in pre-review": no source.
+  - Never the most sensitive identifier by its legal name (owner-set
+    2026-09-29, no-ssn-before-checkout-step-3): "the information a bureau
+    needs to find your file" and "your most sensitive identifier". The report's "Account number" label is shown as "Account
+    identifier", the renderer's own word, because "number" is banned in
+    sales copy (outcome-first-copy).
+  - No Fundhub price. No invented statistic. No dates on a slide: the sample
+    account card shows the fields without its date columns.
+  - No deletion is promised. Chris's line "gets inquiries, accounts,
+    addresses and names off faster" is his claim about speed, kept in his
+    words. The credit optimization agreement's "no score change, deletion,
+    or particular result is promised" (493...sql:65) stays true and is not
+    contradicted.
+
+  Rules this deck follows (marketing/ads/RULES.md)
+  - Hook = slide 1's headline (two sentences). Cause first: most funding
+    companies read a consumer credit site report, and a bank reads deeper
+    (2.2 check 1: the funding company is the actor). No ask, no question,
+    and the first subject is other funding companies, not us.
+  - It tells them something they don't know (Part 0 rule 26): the file gets
+    judged on data the company never saw. Line 2 opens the loop (what we see
+    past that) and slides 2 to 5 pay it off (rules 27 and 28).
+  - Part 0 rule 8 on slide 8: the way a bank reads it. Rule 7: "the maximum
+    amount of funding" is not used here, so nothing drifts.
+  - Full sentences, certain words, no price, no call to action, no vendor
+    names, no em dashes (1.4, Part 0 rules 10, 15 to 19).
+  - Evergreen spine (3.13): the mistake (PD-01), what we do instead (PD-02 to
+    PD-05), how we handle it (PD-06, PD-07), the soft door to the call (PD-08).
+
+  Copybot (marketing/copy-skills/copybot/)
+  - One central idea: the belief above. Trust and the sell in one deck, so the
+    proof slides (PD-02 to PD-05) sell and the handling slides (PD-06, PD-07)
+    make it safe to say yes.
+  - The reader's question: "Why would I give you that, and why does it get me
+    more than the last company did?"
+  - Chris's voice from owner-voice.md and chris-voice-profile.md: his second
+    pass lines used as he said them ("multiple layers of credit information",
+    "exactly what we can see past that", "access to prime data means better
+    results", "pre-vet with the same data feeds they use"), plus "action
+    takers, not shoppers". Short sentences, so the grade stays near 5.
+
+  Visual Thinking (marketing/copy-skills/visual-thinking/), every step.
+  - Real first (law: show-real-proof): PD-01 and PD-03 show the tri-bureau
+    report as the report renderer printed it for the FinanceOS sample file.
+    PD-02, PD-06, PD-07 and PD-08 show the agreement, the privacy policy and
+    the soft pull form, word for word, with our marks. PD-05 shows the letter
+    catalog's own code, word for word. PD-04 is a branded diagram, because
+    nothing real shows two files going through one read. PD-02 adds a small
+    branded row of the four names above the clause.
+  - Look (methods.md): the facts came first, each with its source in data-src.
+    The sample is one file: the FinanceOS sample credit file
+    (src/finance/sample-credit-file.mjs), rendered once through the real
+    report renderer on 2026-10-31. Every figure on PD-01 and PD-03 comes from
+    that one file.
+  - See: the people and things are you, a consumer credit site report, the
+    bureau's own file, LexisNexis, Experian Business, the engine, the letters,
+    the bank, the agreement and the privacy policy. The pattern: a bank reads
+    the file, and so do we.
+  - Imagine (SQVID): comparison (a summary against the file) on PD-01 and
+    PD-03; execution (what the data does) on PD-04 and PD-05; status quo made
+    safe on PD-06 and PD-07.
+  - Show, by Dan Roam's six ways of seeing (methods.md):
+    PD-01 who/what, real: the TransUnion "Why this score" block, the bureau's
+      own reasons, marked as the bureau's own file.
+    PD-02 who, a branded row of the four names (the three bureaus, then
+      LexisNexis with its Top Business match), then real: section 4 marked.
+    PD-03 what, real: one account from the sample report with the fields a
+      summary never carries, the one late marked in the payment pattern.
+    PD-04 how, a flowchart: personal file and business file, one read the
+      way a bank reads it, then only the banks that fit.
+    PD-05 why, real code: every finding sorted into one of three letters.
+    PD-06 what, real: the policy's security sentence and the Blueprint
+      agreement's 11.2, marked.
+    PD-07 what, real: the agreement's parties, section 7 and section 8.
+    PD-08 what, real: the soft pull form, the two sentences that matter.
+  - Truth check (applications.md): no picture implies an approval, an amount,
+    a deletion or a bank relationship. Samples say Sample. No bank names.
+  - Display check (delivery-and-collaboration.md): every slide viewed at
+    390 pixels wide, and every film board at 1080 x 960, before it shipped.
+    The copy was cut to fit the film board's left column without scrolling.
+
+  Talking points (aside.talk, hidden from viewers; open with #notes or N):
+  5 to 7 sentences a slide, about 45 to 60 seconds, in Chris's spoken voice,
+  selling with the proof. Sources: the same lines as each slide's data-src,
+  plus Chris's second pass (board 6e, 2026-10-31). Nothing is invented.
+
+  Each slide's data-src names the file and line its facts come from.
+  The shared design is copied in by build.mjs. Edit _shell/, not this copy.
+-->
+<!-- fh:shell:head -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Nunito:wght@500..800&display=swap">
+<style data-fh="doc">:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}[hidden]{display:none!important}</style>
+<style data-fh="brand">
+/* public/app/fundhub-brand.css */
+/* Fundhub workspace tokens — native welcome reference, October 2026.
+   Tenant branding still paints through shell.js; semantic status tokens stay fixed. */
+
+:root{
+  /* THE spectrum. Pastel. Coral -> peach -> butter -> sage -> powder -> lavender. */
+  --spectrum:linear-gradient(90deg,#F2A69B 0%,#F5CE8F 20%,#F2E39B 40%,#A8D8B0 60%,#A9C6E8 80%,#C4B3E5 100%);
+
+  --paper:#F8F8F6; --ink:#0D1113; --ink2:#252A2D;
+  --gray:#626968; --gray2:#858C89;
+  --line:#E3E5E0; --soft:#F0F1ED;
+  --card:#111113; --cardline:#26262B; --cardtext:#E4E4E7;
+
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,monospace;
+  --sans:ui-rounded,'SF Pro Rounded',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+
+  /* Status colors are spectrum stops. Do not invent others. */
+  --ok:#A8D8B0;      /* sage    - active, on pace, success, healthy */
+  --warn:#F5CE8F;    /* peach   - in progress, behind, warning */
+  --alert:#F2A69B;   /* coral   - blocked, failed, alert */
+  --info:#A9C6E8;    /* blue    - informational */
+  --accent:#C4B3E5;  /* lavender- accent */
+
+  --logo:url(data:image/svg+xml;base64,PHN2ZyB2ZXJzaW9uPSIxLjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgd2lkdGg9IjI2OTguMTQ4NDcxcHQiIGhlaWdodD0iNTQyLjk3ODc1OXB0IiB2aWV3Qm94PSIwIDAgMjY5OC4xNDg0NzEgNTQyLjk3ODc1OSIgcHJlc2VydmVBc3BlY3RSYXRpbz0ieE1pZFlNaWQgbWVldCI+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTE0Mi4wMDAwMDAsNjkxLjkwMjU0NSkgc2NhbGUoMC4xMDAwMDAsLTAuMTAwMDAwKSIgZmlsbD0iIzBBMEEwQSIgc3Ryb2tlPSJub25lIj48cGF0aCBkPSJNMjc4MCA2OTA1IGMtMTAxIC0yMyAtMTg3IC01MyAtMjc1IC05NiAtMjY3IC0xMzMgLTQ1MyAtMzQyIC01NTYgLTYyNCAtNTQgLTE1MCAtNjEgLTIxMiAtNjYgLTU2NSAtMyAtMjMzIC03IC0zMTYgLTE2IC0zMjIgLTcgLTQgLTEwMiAtOCAtMjEzIC04IC0xODIgMCAtMjAyIC0yIC0yMTcgLTE4IC0xNSAtMTcgLTE3IC02NiAtMTcgLTQ5MyAwIC0zNTYgMyAtNDc4IDEyIC00ODcgOSAtOSA3MSAtMTIgMjE4IC0xMiAxNDcgMCAyMDkgLTMgMjE4IC0xMiA5IC05IDEyIC0zMTYgMTIgLTEzMTcgMSAtMTA3MCAzIC0xMzA5IDE0IC0xMzIzIDEyIC0xNyA1MCAtMTggNTMzIC0xOCAzOTAgMCA1MjIgMyA1MzEgMTIgOSA5IDEyIDMxNSAxMiAxMzE2IDAgODc5IDMgMTMxMCAxMCAxMzIzIDEwIDE4IDIzIDE5IDIyNSAxOSAyMTAgMCAyMTQgMCAyMjkgMjIgMTQgMjAgMTYgODIgMTYgNDg0IGwwIDQ2MyAtMjYgMjAgYy0yNSAyMCAtMzkgMjEgLTIzMCAyMSAtMTkxIDAgLTIwNCAxIC0yMTQgMTkgLTYgMTIgLTEwIDEwMCAtMTAgMjE2IDAgMzAxIC01IDI5NSAyNjEgMjk1IDE2NyAwIDE4OCAyIDIwMiAxOCAxNSAxNyAxNyA2OCAxNyA1MzMgLTEgNDEyIC0zIDUxNyAtMTQgNTMyIC0xMiAxNiAtMzggMTcgLTMwNyAxNiAtMTkxIC0xIC0zMTMgLTYgLTM0OSAtMTR6Ii8+PHBhdGggZD0iTTE0MDUxIDY0MDcgYy04IC0xMCAtMTIgLTE5NiAtMTMgLTYzMiAtMyAtNTY4IC00IC02MTkgLTIwIC02MjggLTEzIC05IC0yMSAtNyAtMzUgNSAtMTggMTYgLTE4NSAxMDIgLTI1MyAxMzEgLTIyOSA5NyAtNTQ2IDEzNiAtODI1IDEwMyAtMTk4IC0yNCAtMjY0IC0zOSAtNDE0IC05OCAtMjUwIC05OCAtNDI5IC0yMTUgLTYyNSAtNDExIC03OCAtNzggLTE2MyAtMTY5IC0xODggLTIwMiAtNjMgLTg0IC0xMTggLTE2NCAtMTE4IC0xNzEgMCAtMyAtOCAtMTggLTE5IC0zMiAtNjUgLTk0IC0xNzIgLTM0MyAtMjEwIC00ODkgLTMwIC0xMTcgLTMxIC0xMjIgLTYwIC0zMzMgLTE3IC0xMjAgLTQgLTQzNyAyNCAtNjAwIDUzIC0zMDkgMjI3IC02NzIgNDM2IC05MTEgMjQwIC0yNzUgNDM4IC00MjEgNzM0IC01NDIgMTMwIC01MyAyMTggLTc1IDM4MCAtOTYgOTAgLTEyIDQ0OCAtNyA1MDAgNyAyMiA2IDY1IDE2IDk1IDIzIDEzNiAzMCAzNTkgMTIyIDQ5MiAyMDIgMjAgMTIgNTcgMzUgODIgNTAgNzIgNDQgODAgMzcgODQgLTYzIDIgLTQ2IDggLTkwIDE0IC05NyAxNSAtMTggOTc4IC0xOSA5OTYgLTEgMTcgMTcgMTcgNDc2OSAwIDQ3ODYgLTE5IDE5IC0xMDQxIDE3IC0xMDU3IC0xeiBtLTYzMCAtMjAzNSBjMTMgLTYgNDQgLTE2IDY5IC0yMyA1MyAtMTYgMTYxIC03MSAyMTAgLTEwNyAxNzAgLTEyNyAzMTkgLTMzOSAzNjggLTUyNyAyMiAtODMgMjYgLTEyNCAyNiAtMjcwIDAgLTE1NCAtMTAgLTI2MSAtMjUgLTI3MSAtNSAtMyAtOSAtMTYgLTkgLTMwIDAgLTEzIC00IC0zMiAtOCAtNDIgLTU3IC0xMTkgLTEwNCAtMjA1IC0xMzYgLTI0NiAtNjggLTg4IC0xNTkgLTE3NiAtMjMxIC0yMjUgLTc2IC01MCAtOTIgLTU5IC0xOTcgLTEwMCAtMTI0IC00OCAtMzg2IC00NiAtNTMzIDQgLTEyNSA0MyAtMjM3IDExNyAtMzM0IDIyMyAtOTAgOTggLTExOSAxNDAgLTE2NiAyMzIgLTUwIDk5IC00NyA5MCAtODQgMjM1IC0yOCAxMTEgLTMyIDI0NiAtMTEgMzgwIDE4IDExOSAyMiAxMzUgMzEgMTQxIDUgMyA5IDEzIDkgMjMgMCAzMSA3MCAxNjMgMTI1IDIzNiA2NyA4OSAxNTUgMTgwIDIyNSAyMzIgNjYgNDkgMTY1IDEwMyAxOTAgMTAzIDExIDAgMjEgNCAyNCA5IDYgOSAyOSAxNSAxMjEgMzEgNjEgMTEgMzAzIDUgMzM2IC04eiIvPjxwYXRoIGQ9Ik0xNTU0NyA2NDAyIGMtMTYgLTE3IC0xNyAtMTk3IC0xNyAtMjM4NiAwIC0xNjEzIDMgLTIzNzMgMTAgLTIzODcgMTAgLTE4IDI3IC0xOSA1MzUgLTE5IDMyMSAwIDUyNiA0IDUzMCAxMCAzIDUgNSA0MjcgNSA5MzcgMCA4OTMgNSAxMDg1IDMyIDEyNTggNDMgMjc4IDE0NiA0NTQgMzEzIDUzNiBsNzAgMzQgMTUyIDAgYzEwOCAwIDE1NiAtNCAxNjUgLTEyIDYgLTcgMjAgLTEzIDI5IC0xMyAyNiAwIDkyIC0zOCAxMzcgLTc5IDU5IC01MiAxMDUgLTEyNyAxNDUgLTIzMyAzNCAtOTAgNDIgLTExOSA2OCAtMjU4IDkgLTQ4IDE0IC0zMzggMTYgLTExMTAgMyAtNzE1IDggLTEwNDggMTUgLTEwNTcgOCAtMTAgMTIwIC0xMyA1MjggLTEzIDQzOSAwIDUxOSAyIDUzMCAxNCAxNiAyMSA5IDIzNjAgLTggMjQ1NiAtNyAzNiAtMTcgOTIgLTIzIDEyNSAtMjggMTY1IC03MiAzMDQgLTEzNCA0MzAgLTEyMiAyNDYgLTM3NiA0ODEgLTY3MCA2MTkgLTE1MiA3MiAtMTY5IDc4IC0zMjUgMTE2IC03OSAyMCAtMjUxIDMyIC0zNDYgMjYgLTIzMiAtMTYgLTM3MCAtNTEgLTU0OCAtMTQxIC0xNjEgLTgxIC0xNDcgLTEzNyAtMTQ2IDU2MSAxIDQyNiAtMiA1NzkgLTExIDU5MCAtMTAgMTIgLTk1IDE0IC01MjQgMTQgLTQ4MyAwIC01MTMgLTEgLTUyOCAtMTh6Ii8+PHBhdGggZD0iTTIyOTYyIDY0MDggYy05IC05IC0xMiAtNTU0IC0xMiAtMjM4OSAwIC0xMzA4IDMgLTIzODQgNiAtMjM5MyA1IC0xNCA1OSAtMTYgNTA0IC0xNiAzOTYgMCA1MDAgMyA1MDggMTMgNiA3IDEyIDUxIDE0IDk3IDMgODEgNCA4NSAyNSA4MyAxMiAtMiA1NSAtMjUgOTUgLTUyIDE4NCAtMTIzIDM2MCAtMTk1IDU5OCAtMjQzIDg4IC0xOCA1MTMgLTE4IDU5NSAwIDMzIDcgODMgMTggMTEwIDIzIDIyOSA0OCA1MDMgMTg2IDcwNyAzNTYgMTQ3IDEyMiAzMzcgMzQyIDQxNCA0NzggNTIgOTMgMTE4IDIyNiAxNDAgMjgyIDE0IDM3IDI5IDc3IDM0IDg4IDQgMTEgMTMgNDAgMjAgNjUgNyAyNSAxNiA1NiAyMSA3MCAxMSAzMyAzNCAxMzggNTEgMjI1IDE3IDkyIDE4IDU4OCAxIDY2NSAtNiAzMCAtMTcgODIgLTIzIDExNSAtMTYgODIgLTY2IDI1NiAtOTAgMzEwIC01IDExIC0yNiA1OCAtNDcgMTA1IC01NSAxMjMgLTEyNyAyNDcgLTIwMSAzNDYgLTExOSAxNTkgLTMyMSAzNTkgLTQ0NiA0NDMgLTIwNSAxMzggLTQxMCAyMzAgLTU5NiAyNzEgLTMwIDYgLTY4IDE1IC04NSAyMCAtOTEgMjUgLTQzMSAzMiAtNTg1IDEyIC0xMjIgLTE3IC0yMjcgLTM5IC0zMDQgLTY3IC05NiAtMzMgLTI0OCAtMTA3IC0zMTIgLTE1MCAtNDAgLTI3IC01MCAtMzAgLTU5IC0xNSAtMyA1IC02IDI4MyAtNSA2MTcgMCA1MzggLTEgNjExIC0xNSA2MzEgbC0xNiAyMiAtNTE4IDAgYy0zODkgMCAtNTIwIC0zIC01MjkgLTEyeiBtMjEyMCAtMjA0MSBjMjYgLTcgNTAgLTE2IDU0IC0yMCA0IC00IDE2IC03IDI2IC03IDEwIDAgMjcgLTQgMzggLTEwIDExIC01IDI5IC0xNCA0MCAtMjAgMTc1IC04NyAzNDYgLTI4MCA0MjAgLTQ3MSA0NyAtMTIzIDUzIC0xNTggNTcgLTM2OSA2IC0yMzYgLTEwIC0zMzAgLTgyIC00ODUgLTEwMyAtMjIxIC0yOTUgLTM5OCAtNDk1IC00NTMgLTE5IC02IC01MiAtMTYgLTc0IC0yMiAtODUgLTI3IC0zOTMgLTEyIC00NTggMjEgLTEwIDUgLTI1IDkgLTMzIDkgLTggMCAtMjMgNCAtMzMgOSAtOSA1IC00NiAyMyAtODIgNDEgLTg0IDQyIC0xMzAgNzggLTIwOCAxNTkgLTE0OSAxNTYgLTIxNCAyODEgLTI2MiA1MTEgLTE0IDY2IC04IDM3NSA4IDQzNSA2IDIyIDE0IDU0IDE4IDcwIDExIDUyIDgwIDE5MCAxMjQgMjUxIDU0IDczIDE3MCAxODkgMjMwIDIzMCAxMDIgNjggMjM3IDEyMSAzNTUgMTM4IDU2IDggMzEwIC00IDM1NyAtMTd6Ii8+PHBhdGggZD0iTTkyMTAgNTM4OCBjLTQxIC01IC05MyAtMTQgLTExNSAtMTkgLTIyIC02IC01OCAtMTUgLTgwIC0yMSAtNzggLTIwIC0yMjEgLTgzIC0zMTAgLTEzNSAtNDkgLTMwIC05NiAtNTIgLTEwNSAtNTEgLTEwIDIgLTE2IDE3IC0xOCA0MyAtNyA3OSAyNCA3NSAtNTEyIDc1IC00NDkgMCAtNDc4IC0xIC00OTMgLTE4IC0xNiAtMTcgLTE3IC0xNTggLTE3IC0xODI0IDAgLTE0OTEgMiAtMTgwNyAxMyAtMTgxNyAxOSAtMTUgMTAzNCAtMTYgMTA1MyAwIDExIDkgMTQgMTg4IDE4IDEwMzcgNCA5ODAgOCAxMTMxIDM2IDEyNjYgNDAgMTk5IDE0OCAzMzcgMzMwIDQyMiAxOSA5IDQ2IDIxIDU5IDI4IDE0IDYgNzcgMTEgMTU1IDExIDEyNyAwIDEzMyAtMSAxOTcgLTMyIDExNCAtNTYgMTk4IC0xNTAgMjQ0IC0yNzMgOSAtMjUgMjAgLTU0IDI1IC02NSAxNiAtNDMgMjkgLTkzIDQwIC0xNjAgNiAtMzggMTYgLTk0IDIxIC0xMjQgNSAtMzEgOSAtNDkzIDkgLTEwNzAgMSAtODI5IDMgLTEwMTkgMTQgLTEwMzMgMTIgLTE3IDUwIC0xOCA1MzMgLTE4IDQ0MiAwIDUyMiAyIDUzMyAxNCAxNyAyMSA4IDIzMTcgLTkgMjQyNiAtNjEgMzgyIC0xMDEgNDk4IC0yNDQgNzE1IC03NCAxMTIgLTI2MiAzMDAgLTM3MiAzNzQgLTc5IDUyIC0yOTkgMTY0IC0zNTkgMTgzIC0yMTIgNjYgLTQ0NSA5MCAtNjQ2IDY2eiIvPjxwYXRoIGQ9Ik0zODU1IDUyNjQgYy0xNSAtMTUgLTE2IC0xMTYgLTEyIC0xMTk4IDIgLTg4OCA2IC0xMTk3IDE2IC0xMjQ2IDcgLTM2IDE3IC05MCAyMiAtMTIwIDI3IC0xNDggNzcgLTI5NiAxNTAgLTQ0NSAxNTEgLTMwNyA0NjggLTU3MSA4MzQgLTY5MyAxMzcgLTQ1IDI0MSAtNjIgNDM1IC03MCAzMjggLTE0IDUyMyAzMiA3MjYgMTcwIDM5IDI2IDc3IDQ4IDg1IDQ4IDkgMCAyNCAtMjIgMzYgLTUwIGwyMSAtNTAgNDgxIDAgYzQ2NSAwIDQ4MSAxIDQ5MSAxOSA3IDEzIDEwIDU5OCAxMCAxODE5IDAgMTczMCAtMSAxODAwIC0xOCAxODE1IC0xNyAxNSAtNjggMTcgLTUyMyAxNyAtNDIwIDAgLTUwOCAtMiAtNTI1IC0xNCAtMTkgLTE0IC0xOSAtNDAgLTI1IC0xMDkzIC01IC0xMDQ5IC02IC0xMDgwIC0yNiAtMTE2MyAtNDkgLTE5OSAtOTMgLTI5MSAtMTgzIC0zODAgLTEwNCAtMTA0IC0xODIgLTEzMyAtMzY2IC0xMzIgLTEzNSAwIC0yMTIgMTkgLTI5MSA3MyAtOTcgNjcgLTE4NiAyMTkgLTIyNSAzODQgLTI4IDEyMCAtMzEgMjAyIC0zNyAxMjI2IC01IDg4MiAtOCAxMDY5IC0yMCAxMDgyIC0xMiAxNSAtNjIgMTcgLTUyNyAxNyAtNDYwIDAgLTUxNCAtMiAtNTI5IC0xNnoiLz48cGF0aCBkPSJNMTkyNDcgNTI2MiBjLTE2IC0xNyAtMTcgLTEwOSAtMTcgLTExMTggMCAtMTA1MiA1IC0xMjQ5IDMxIC0xMzg0IDM1IC0xODIgNjEgLTI3NiAxMDIgLTM3NSA0NCAtMTA3IDc4IC0xNzYgMTA5IC0yMjIgMTUgLTIzIDI4IC00NSAyOCAtNDggMCAtMTQgMTIyIC0xNTQgMTkxIC0yMjAgMjAwIC0xODkgNDk1IC0zMzUgNzc0IC0zODQgMjA1IC0zNiA1NTcgLTI2IDY3MyAyMCAxMyA1IDMwIDkgMzkgOSAzNyAwIDI4OSAxMzggMzA4IDE2OSAxMSAxOCA0NSAtNyA0NSAtMzMgMCAtMTIgMTAgLTMyIDIzIC00NCAyMyAtMjIgMjQgLTIyIDQ5NSAtMjIgNDU2IDAgNDcyIDEgNDgyIDE5IDcgMTMgMTAgNTk4IDEwIDE4MTkgMCAxNzMwIC0xIDE4MDAgLTE4IDE4MTUgLTE3IDE1IC02OCAxNyAtNTIzIDE3IC00MjAgMCAtNTA4IC0yIC01MjUgLTE0IC0xOSAtMTQgLTE5IC00MCAtMjUgLTEwODggLTcgLTExMTkgLTYgLTExMDAgLTQ4IC0xMjQ4IC01IC0xOSAtMTMgLTQ2IC0xNiAtNjAgLTI5IC0xMTIgLTExMyAtMjM3IC0xOTYgLTI5MiAtOTUgLTYyIC0xNjYgLTgxIC0zMDkgLTgxIC0xNDcgMCAtMjIzIDIxIC0zMDYgODQgLTEyNiA5NiAtMTkzIDIzNSAtMjM5IDQ5NCAtMTIgNjYgLTE1IDI2NiAtMTUgMTEyMCAwIDkyNSAtMiAxMDQzIC0xNiAxMDYzIGwtMTUgMjIgLTUxMyAwIGMtNDg0IDAgLTUxNCAtMSAtNTI5IC0xOHoiLz48cGF0aCBkPSJNMjc1NDAgMzAxNSBjLTk4IC0yMyAtMTg3IC02MCAtMjYwIC0xMDkgLTk5IC02NiAtMjA4IC0xODkgLTI0OSAtMjgxIC03IC0xNiAtMTcgLTM4IC0yMiAtNDcgLTUgLTEwIC05IC0yNSAtOSAtMzMgMCAtOCAtNCAtMjMgLTkgLTMzIC0yOCAtNTUgLTQxIC0yNTggLTIwIC0zMzYgNiAtMjIgMTUgLTU5IDIxIC04MSAxNyAtNjYgODQgLTE5NyAxMzEgLTI1MyA1MiAtNjMgMTcwIC0xNTQgMjQyIC0xODggMTE3IC01NCAxODIgLTY4IDMyMCAtNjggMTA3IDAgMTQyIDQgMjAwIDIyIDE2NiA1MyAzMDAgMTUwIDM5MiAyODQgOTkgMTQzIDEyNCAyMjcgMTI0IDQxMyAxIDE4NCAtMjQgMjY5IC0xMjQgNDEzIC01MyA3NyAtMTQ0IDE2NyAtMTkzIDE5MiAtMTYgOCAtNDAgMjIgLTU0IDMxIC0xMTEgNzMgLTM0MiAxMDggLTQ5MCA3NHoiLz48L2c+PC9zdmc+);
+}
+
+/* logo: background-image, no external file */
+.logo{display:inline-block;background:var(--logo) no-repeat center/contain}
+.inv{filter:invert(1)}  /* logo on dark chrome */
+
+/* ghost mark - footer, full width, barely there */
+.ghost-mark .logo{display:block;width:96vw;aspect-ratio:2698/543;margin:0 auto;
+  filter:invert(1);opacity:.05}
+
+/* coded mono eyebrow - the brand signature. E-01 / INTAKE, A-02 / STATUS, F-03 */
+.eyebrow{font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.16em;
+  text-transform:uppercase;color:var(--gray)}
+.eyebrow::before{content:"";display:inline-block;width:16px;height:2px;
+  background:var(--spectrum);border-radius:1px;margin-right:9px;vertical-align:middle}
+
+/* status chip */
+.chip{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);
+  font-size:var(--fs-caption);letter-spacing:.12em;text-transform:uppercase;padding:4px 9px;
+  border:1px solid var(--line);border-radius:20px;color:var(--gray)}
+.chip .cd{width:6px;height:6px;border-radius:50%}
+.chip.on .cd{background:var(--ok)}
+.chip.wip .cd{background:var(--warn)}
+.chip.bad .cd{background:var(--alert)}
+
+/* pulsing dot - "systems nominal" footer */
+.pulse{width:8px;height:8px;border-radius:50%;background:var(--ok);
+  position:relative;flex:0 0 auto}
+.pulse::after{content:"";position:absolute;inset:-4px;border-radius:50%;
+  border:1px solid var(--ok);animation:pulse 2s ease-out infinite}
+@keyframes pulse{to{transform:scale(1.9);opacity:0}}
+
+/* grid overlay on dark surfaces */
+.gridbg::before{content:"";position:absolute;inset:0;pointer-events:none;
+  background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);
+  background-size:56px 56px}
+
+/* Readable semantic defaults in rem. Screens can add a local type hierarchy;
+   these tokens no longer impose four sizes on every descendant. */
+html{font-size:100%}
+:root{
+  --fs-metric:2rem;       /* 32px */
+  --fs-title:1.375rem;    /* 22px */
+  --fs-body:.9375rem;     /* 15px */
+  --fs-caption:.8125rem;  /* 13px */
+}
+
+/* UI-STANDARDS.md §1 CONTENT WIDTH — FULL WIDTH, no cap.
+   Owner-set 2026-08-27, and UI-STANDARDS §1 updated in the same commit.
+   History: 1280px, raised to 1800px on 2026-08-17, removed now. Both earlier
+   values failed the same test. The owner zooms out on a 2560px monitor to get
+   more room and gets none, because the content stops growing and every extra
+   pixel becomes empty side margin: with the fixed 228px rail, a 1800px cap
+   leaves 532px dead at 2560 and 1412px dead at 3440. Reading measure belongs
+   on the text blocks that need it, not on every table, card grid and two-pane
+   layout in the app. Do not reinstate a cap here.
+
+   --fh-maxw IS STILL DEFINED ON PURPOSE. It is no longer an app-wide cap, but
+   client-portal.html:67 reads it as `min(780px, var(--fh-maxw))` to hold that
+   page's 780px reading column. Deleting the token makes the min() invalid at
+   computed-value time, which drops max-width to none and blows the client's
+   portal full width. Leave the token; it is a bound, not a layout. */
+/* --fh-statusbar reserves room for the fixed status strip at the bottom of the
+   page. It used to start at 0px and be overwritten at runtime by data.js:497
+   with the strip's measured height, which grew the page ~29px AFTER first paint
+   on every single load. Reserving the space up front removes that reflow; the
+   strip is position:fixed so this only ever reserves, never pushes twice. */
+/* This branch set the token to `none`. main got to the same fluid CRM a
+   different and better way — see the block above — and `none` breaks the one
+   place that still reads it: client-portal.html:67 asks for
+   `min(780px, var(--fh-maxw))`, and min() with a keyword is invalid, which
+   would silently drop the portal's reading measure. Keeping main's value; the
+   CRM is uncapped by the shell rule, not by emptying this token.
+   src/ui/shell-is-fluid.test.mjs fails if it is deleted. */
+:root{ --fh-maxw:1800px; --fh-statusbar:32px; }
+
+/* ── SURFACE — panels sit ON the page, on purpose (owner-set 2026-08-17) ─────
+   Measured before this change: panels were #FFFFFF on a #FCFCFC page. That is
+   a 9-point step out of 255, contrast 1.03:1, on 41 elements across six
+   screens — too small to read as deliberate layering, too large to be
+   invisible, so every panel edge looked like a smudge rather than an edge.
+   There was also no resting shadow anywhere in the app: every box-shadow in
+   the screen files fires only on hover, focus or the mobile drawer.
+   Fix is two parts and needs no screen file touched: put the page on the
+   existing --soft token (#F4F4F5, an 11-point step under white) and give the
+   panels one soft resting shadow. --paper is deliberately NOT changed: the
+   sidebar uses it for text (crm-sidebar.css --dark-text), so moving it would
+   tint the rail. */
+:root{
+  --field:var(--paper,#F8F8F6);        /* the page BEHIND the panels */
+  --panel-shadow:0 1px 2px rgba(13,17,19,.025);
+}
+/* Conservative on purpose, and MEASURED rather than guessed: each class below
+   was found by rendering the screens and collecting every sizeable block that
+   paints its own light background and carries a border or a radius. Buttons,
+   inputs, avatars, chat bubbles and table rows are white too and are
+   deliberately excluded — a resting shadow on those reads as broken, not
+   expensive. Naming screen-level classes here follows what this file already
+   does elsewhere (.kpi .vl, .band .bv, .fos-value, .un-mins). */
+:is(.app, .app-shell) :is(
+  .card, .stat, .panel, .tabs, .editor, .fos-panel,   /* staff-teams, finance-os */
+  .kpi-tile,                                          /* command-center */
+  .big-tile, .calc-panel,                             /* closer-dashboard */
+  .compose, .ctx-card                                 /* messaging */
+){
+  box-shadow:var(--panel-shadow);
+}
+/* Put .fh-maxw on the content column only, never on a table or its scroll wrapper — tables stay wider inside their own overflow-x container (§1). */
+
+/* WIDTH:100% IS LOAD-BEARING. Do not drop it.
+   This class is almost always put on a flex item of a column-direction flex
+   container (.main{display:flex;flex-direction:column}, or .stage). Per
+   flexbox, an item with an AUTO margin on the cross axis is not stretched — so
+   margin-inline:auto quietly cancelled the stretch and left the wrapper sized
+   by its own content instead of by the column it sits in. Measured 2026-08-18:
+   that produced BOTH halves of the width complaint at once.
+     Too NARROW on a wide monitor: at 2560 the cap says 1800, but agent-editor
+     shrink-wrapped to 755px, template-editor 1186, brand-studio 1420,
+     campaign-manager 1598 — every one of them carrying this class.
+     Too WIDE on a phone: at 390 the widest thing inside is a table, so the
+     wrapper grew to the table instead — Documents painted 1484px and Campaigns
+     1449px and the whole page slid sideways, against UI-STANDARDS §11 ("No
+     sideways page scroll"). The table's own .fh-scroll-x box was working the
+     whole time; the wrapper AROUND it was the thing overflowing.
+   hiring.html, products-commissions.html and staff-teams.html had each already
+   added exactly this declaration by hand to their own .content. This moves that
+   one-line workaround to the one place the class is defined. */
+/* 2026-08-27: max-width and the auto inline margin are gone (owner-set,
+   §1 above). width:100% stays — read the note above, it is still the thing
+   that keeps this wrapper sized by its column instead of by its widest child.
+   margin-inline is pinned to 0 rather than dropped: several screens set their
+   own `margin:0 auto`, and an auto cross-axis margin on a flex item cancels
+   the stretch, which would shrink-wrap them right back down. */
+.fh-maxw{max-width:none;margin-inline:0;width:100%}
+
+/* Semantic typography. Screens own their local hierarchy; descendants are
+   never forced to inherit a size. The shared shell provides readable defaults
+   without preventing a heading, a field label, or a dense table from differing. */
+:is(.app, .app-shell, .shell, .main, .fh-maxw){
+  font-size:var(--fs-body);
+  font-family:var(--sans);
+}
+:where(.app, .app-shell, .shell, .main, .fh-maxw) :where(h1){
+  font-size:1.75rem;line-height:1.15;letter-spacing:-.035em;font-weight:650;
+}
+:where(.app, .app-shell, .shell, .main, .fh-maxw) :where(h2){
+  font-size:var(--fs-title);line-height:1.25;letter-spacing:-.025em;font-weight:650;
+}
+:where(.app, .app-shell, .shell, .main, .fh-maxw) :where(h3,h4){
+  font-size:1.0625rem;line-height:1.35;letter-spacing:-.015em;font-weight:650;
+}
+:where(.app, .app-shell) :where(.sv,.vl,.big,.big-tile .val,.kpi .vl,
+  .band .bv,.un-mins,.fh-num,.fos-value,.rf-value){
+  font-size:var(--fs-metric);font-variant-numeric:tabular-nums;
+}
+:where(.app, .app-shell) :where(.chip,.eyebrow,.badge,.tag,.stat-label,
+  .kpi .lb,.kpi .sb,.band .bl,.sd,.cmp,.note,.hint,.statusline,.statusbar,
+  label,th,.caption,.sub,.rail-code){font-size:var(--fs-caption)}
+:where(button,input,select,textarea){font-family:inherit}
+:where(button,a,input,select,textarea,summary):focus-visible{
+  outline:2px solid var(--ink);outline-offset:3px;
+}
+
+/* ── UI-STANDARDS.md §5 TAP TARGETS — 40px floor ───────────────────────────
+   min-height is a different property than later padding rules, so it sticks
+   without !important on most screens. !important wins where a screen sets height. */
+button, [type="button"], [type="submit"], .btn,
+.seg span, .link-btn, .tab, .ctab, .filter-btn, .fchip,
+.rail-tab, .group-title.tog, .rail-open, .un-join, a.btn,
+.navbtn, .today-btn{
+  min-height:40px;
+  min-width:40px;
+  box-sizing:border-box;
+}
+input[type="checkbox"]{
+  width:20px;
+  height:20px;
+}
+label:has(> input[type="checkbox"]){
+  min-height:40px;
+  display:inline-flex;
+  align-items:center;
+}
+
+/* ── UI-STANDARDS.md §2 — never five tiles in one row. Fifth wraps. ──────── */
+.stats, .kpi-grid, #stateLegend, .funnel, .stat-tiles{
+  grid-template-columns:repeat(4, 1fr) !important;
+}
+.stat-tiles{
+  display:grid !important;
+}
+
+/* ── UI-STANDARDS.md §5 — coming-soon / inert placeholders do not render ─── */
+.soon,
+.card:has(.tag-soon),
+#demozone,
+.demozone,
+button.link-btn:disabled,
+#unJoin:disabled{
+  display:none !important;
+}
+
+/* Empty welcome-video block: one line, not a 410px hole */
+.player:has(.video-empty:not([hidden])){
+  aspect-ratio:auto;
+  max-height:none;
+  min-height:0;
+  height:auto;
+  padding:16px;
+  background:var(--soft, #F4F4F5);
+}
+.player:has(.video-empty:not([hidden])) .ghost{display:none}
+
+/* Money columns — right-align tabular figures (§7) */
+td.money, th.money, td .age, th[data-s="age"]{
+  text-align:right;
+  font-variant-numeric:tabular-nums;
+}
+
+/* Empty Next Action is not an alert — coral only when a blocker list has rows */
+.blockers-panel:has(#ccp-blocker-list:empty){
+  background:var(--soft,#F4F4F5);
+  border-color:var(--line);
+}
+
+/* data.js status strip is fixed; pad the page so it cannot cover controls */
+body{padding-bottom:var(--fh-statusbar)}
+
+/* Shared client file: keep long call history reachable above the call footer. */
+.fh-context-lines{max-height:320px;overflow:auto;overflow-wrap:anywhere}
+.fh-blueprint-price{width:100%;min-height:40px;padding:8px;background:var(--paper);color:var(--ink);border:1px solid var(--line);font:inherit}
+@media(max-width:600px){.fh-context-lines{max-height:180px}}
+
+/* Phone law (UI-STANDARDS §11) — 390px. Present, KPI rows, and two-pane
+   screens stack. Tables keep their own scroll box via .fh-scroll-x. */
+@media (max-width: 390px) {
+  html, body { max-width: 100%; }
+  .kpi-grid, .stats, .stat-tiles, .stat-head, .row-bottom, .grid2, .layout,
+  .record-fields, .holds-panel, .stage {
+    grid-template-columns: 1fr !important;
+    flex-direction: column !important;
+  }
+  .stage { display: flex !important; }
+  .cockpit, .client {
+    flex: 1 1 auto !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+}
+</style>
+<style data-fh="font">
+/* public/app/fundhub-font.css: local rounded faces */
+@font-face{font-family:"Fundhub Rounded Local";src:local("SF Pro Rounded Regular"),local("SFProRounded-Regular"),local(".SFNSRounded-Regular");font-style:normal;font-weight:400;font-display:swap}
+@font-face{font-family:"Fundhub Rounded Local";src:local("SF Pro Rounded Medium"),local("SFProRounded-Medium"),local(".SFNSRounded-Medium");font-style:normal;font-weight:500;font-display:swap}
+@font-face{font-family:"Fundhub Rounded Local";src:local("SF Pro Rounded Semibold"),local("SFProRounded-Semibold"),local(".SFNSRounded-Semibold");font-style:normal;font-weight:600;font-display:swap}
+@font-face{font-family:"Fundhub Rounded Local";src:local("SF Pro Rounded Bold"),local("SFProRounded-Bold"),local(".SFNSRounded-Bold");font-style:normal;font-weight:700;font-display:swap}
+</style>
+<style data-fh="slideshow">
+/* Fundhub slideshow shell.
+   Layout: one phone screen per slide. A coded eyebrow, one headline, one or two
+   lines, one picture, with Back and Next at the thumb. Paper slides do the
+   teaching. Plain ink slides open the deck and land the payoff. No grids
+   (Chris, 2026-10-31).
+   Colors, faces and parts come from public/app/fundhub-brand.css, which
+   build.mjs embeds above this file. This file maps them to slideshow roles and
+   never invents a color. Status colors keep their meaning and always ride with
+   a word (UI-STANDARDS 12.6). */
+
+:root{
+  /* The brand's rounded face: Apple's native rounded design, then SF Pro
+     Rounded by local name (fundhub-font.css), then the brand's licensed web
+     fallback Nunito, loaded from Google Fonts because each deck ships alone. */
+  --fh-rounded-font:ui-rounded,"Fundhub Rounded Local","Nunito",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --sans:var(--fh-rounded-font);
+
+  --ss-bg:var(--paper);
+  --ss-fg:var(--ink);
+  --ss-sub:var(--ink2);
+  --ss-muted:var(--gray);
+  --ss-rule:var(--line);
+  --ss-panel:#fff;                 /* UI-STANDARDS 12.1 resting container */
+  --ss-dark:var(--card);
+  --ss-dark-rule:var(--cardline);
+  --ss-dark-fg:#fff;
+  --ss-dark-sub:var(--cardtext);
+  --ss-dark-muted:var(--gray2);
+  --ss-flag:color-mix(in srgb,var(--alert) 26%,#fff);   /* a tint of coral, never a new hue */
+  --ss-yes:color-mix(in srgb,var(--ok) 30%,#fff);       /* a tint of sage */
+  --ss-col:30rem;                  /* the phone column */
+  color-scheme:light;
+}
+
+/* ── Page ──────────────────────────────────────────────────────────────── */
+html{height:100%;box-sizing:border-box;-webkit-text-size-adjust:100%}
+*,*::before,*::after{box-sizing:inherit}
+body{height:100%;margin:0;padding-bottom:0;background:var(--ss-bg);color:var(--ss-fg);
+  font-family:var(--sans);font-size:1rem;line-height:1.45;-webkit-font-smoothing:antialiased;
+  transition:background-color .3s ease,color .3s ease}
+html[data-tone="dark"] body{background:var(--ss-dark);color:var(--ss-dark-fg)}
+
+.ss{position:relative;z-index:1;height:100%;max-width:var(--ss-col);margin-inline:auto;
+  display:flex;flex-direction:column;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px))}
+.ss-title{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ── Top bar: wordmark and the spectrum progress ────────────────────────── */
+.ss-top{display:flex;align-items:center;gap:16px;padding-block:14px 6px}
+.ss-top .logo{width:5.25rem;aspect-ratio:2698/543;flex:0 0 auto}
+html[data-tone="dark"] .ss-top .logo{filter:invert(1)}
+.ss-progress{flex:1;min-width:0;display:flex;gap:4px}
+.ss-progress i{flex:1;height:3px;border-radius:2px;background-color:var(--ss-rule);transition:background-color .3s ease}
+.ss-progress i.on{background-image:var(--spectrum);
+  background-size:calc(var(--n) * 100%) 100%;
+  background-position:calc(var(--k) / (var(--n) - 1) * 100%) 0}
+html[data-tone="dark"] .ss-progress i{background-color:var(--ss-dark-rule)}
+
+/* ── Slides ────────────────────────────────────────────────────────────── */
+.ss-stage{flex:1;min-height:0;position:relative;touch-action:pan-y}
+.slide{display:flex;flex-direction:column;gap:14px;padding-block:18px 20px;min-width:0}
+html.ss-js .slide{position:absolute;inset:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none}
+html.ss-js .slide::-webkit-scrollbar{display:none}
+html.ss-js .slide:not(.is-on){visibility:hidden}
+/* Only the arriving slide moves. The leaving one is gone at once, so two
+   slides of text never sit on top of each other. */
+html.ss-js .slide.enter{animation:ss-in .32s ease both}
+@keyframes ss-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+html:not(.ss-js) .slide + .slide{border-top:1px solid var(--ss-rule)}
+html:not(.ss-js) .slide.dark{background:var(--ss-dark);color:var(--ss-dark-fg);
+  margin-inline:-16px;padding-inline:16px}
+
+.slide .eyebrow{margin:0}
+.slide h2{margin:0;font-size:clamp(1.85rem,8.2vw,2.6rem);line-height:1.06;letter-spacing:-.032em;
+  font-weight:700;text-wrap:balance;color:var(--ss-fg)}
+.slide .lede{margin:0;font-size:1.125rem;line-height:1.45;color:var(--ss-sub);max-width:36ch;text-wrap:pretty}
+.slide .lede strong{color:var(--ss-fg);font-weight:700}
+.slide.dark .eyebrow{color:var(--ss-dark-muted)}
+.slide.dark h2{color:var(--ss-dark-fg)}
+.slide.dark .lede{color:var(--ss-dark-sub)}
+.slide.dark .lede strong{color:var(--ss-dark-fg)}
+
+/* ── Script: what Chris reads while recording the video ─────────────────
+   Hidden from every viewer. Open them with #notes on the link or the N key.
+   About 45 seconds of talk per slide, so a deck runs about five minutes and
+   each slide chops into its own short clip (Hammer Them SOP). */
+.talk{display:none}
+html.ss-notes .talk{display:block;margin-top:4px;padding:12px 14px;border:1px dashed var(--ss-rule);
+  border-radius:10px;background:var(--soft);color:var(--ink)}
+html.ss-notes .slide.dark .talk{background:var(--card);border-color:var(--cardline);color:var(--cardtext)}
+.talk::before{content:"Script";display:block;margin-bottom:6px;font-family:var(--mono);
+  font-size:var(--fs-caption);letter-spacing:.12em;text-transform:uppercase;color:var(--gray)}
+.talk ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:.9375rem;line-height:1.45}
+
+/* ── Bottom bar: Back and Next ─────────────────────────────────────────── */
+.ss-nav{display:flex;gap:10px;padding-block:10px 14px}
+.ss-btn{flex:1;min-height:52px;padding:0 18px;border-radius:8px;border:1px solid var(--ss-rule);
+  background:transparent;color:var(--ss-fg);font:650 1.0625rem/1 var(--sans);cursor:pointer;
+  -webkit-tap-highlight-color:transparent}
+.ss-btn.back{flex:0 0 34%}
+.ss-btn.primary{background:var(--ink);border-color:var(--ink);color:#fff}
+html[data-tone="dark"] .ss-btn{border-color:var(--ss-dark-rule);color:#fff}
+html[data-tone="dark"] .ss-btn.primary{background:#fff;border-color:#fff;color:var(--ink)}
+html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
+.ss-live{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ── Picture kit ───────────────────────────────────────────────────────────
+   Visual Thinking picks the picture from the slide's question:
+   what (a document), how (.flow), when (.tl, .span, .metric),
+   how much (.bars), compare (.compare), why (.eq). These parts only draw it.
+   No grids of tiles and no grid texture (Chris, 2026-10-31). */
+/* The words stay pinned at the top so the headline never jumps between
+   slides. The picture centers in the room that is left. */
+.pic{margin:auto 0;padding-block:8px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.pic-cap{margin:0;font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.04em;color:var(--ss-muted)}
+.slide.dark .pic-cap{color:var(--ss-dark-muted)}
+
+.panel{background:var(--ss-panel);border:1px solid var(--ss-rule);border-radius:10px;
+  box-shadow:var(--panel-shadow);color:var(--ss-fg)}
+.chip{background:var(--ss-panel);white-space:nowrap}
+.slide.dark .chip{background:transparent;border-color:var(--ss-dark-rule);color:var(--ss-dark-muted)}
+.slide.dark .panel .chip{background:var(--ss-panel);border-color:var(--ss-rule);color:var(--ss-muted)}
+
+/* Chris's slide style, from the slides he shares on calls (public/app/present.html
+   .bar and present.js bars()): full lines of copy, each with the pastel stripe
+   on its left and a hairline under it. Most of a slide's words live here. */
+.lines{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.lines li{display:flex;gap:12px;padding:11px 0;border-bottom:1px solid var(--ss-rule);
+  font-size:1.0625rem;line-height:1.45;color:var(--ss-fg)}
+.lines li::before{content:"";flex:0 0 3px;align-self:stretch;border-radius:2px;background:var(--spectrum);opacity:.85}
+.slide.dark .lines li{border-color:var(--ss-dark-rule);color:var(--ss-dark-sub)}
+
+/* Steps in order, from the call slides (present.js stepsHtml). Used only
+   when the order is the point. */
+.steps{list-style:none;margin:0;padding:0;display:flex;counter-reset:st}
+.steps li{flex:1;min-width:0;position:relative;text-align:center;counter-increment:st;
+  font-size:.875rem;font-weight:650;line-height:1.25;color:var(--ss-fg)}
+.steps li::before{content:counter(st);position:relative;z-index:1;display:flex;align-items:center;justify-content:center;
+  width:30px;height:30px;margin:0 auto 8px;border-radius:50%;border:2px solid var(--ink);background:var(--ss-panel);
+  font-family:var(--mono);font-size:var(--fs-caption);font-weight:500;color:var(--ink)}
+.steps li + li::after{content:"";position:absolute;top:14px;left:-50%;width:100%;height:2px;background:var(--ink)}
+.steps li.is-hot::before{background:var(--ink);color:#fff}
+.slide.dark .steps li{color:var(--ss-dark-fg)}
+.slide.dark .steps li::before{background:var(--ss-dark);border-color:#fff;color:#fff}
+.slide.dark .steps li + li::after{background:#fff}
+.slide.dark .steps li.is-hot::before{background:#fff;color:var(--ink)}
+
+/* The real credit report's "Why this score" block, the way Fundhub's tri-bureau
+   report prints it: the bureau, the score and model, then the bureau's own
+   reason lines in its own capitals. Filled only from a sample file. */
+.crs{background:var(--ss-panel);border:1px solid var(--ss-rule);border-radius:10px;box-shadow:var(--panel-shadow);
+  padding:12px 14px 14px;color:var(--ink)}
+.crs-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;
+  border-bottom:2px solid var(--ink);padding-bottom:8px;margin-bottom:10px}
+.crs-bureau{font-size:1.25rem;font-weight:700;letter-spacing:-.02em;line-height:1.1}
+.crs-bureau small{display:block;margin-top:4px;font-family:var(--mono);font-size:var(--fs-caption);
+  font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--gray)}
+.crs-score{text-align:right}
+.crs-score b{display:block;font-size:2rem;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.crs-score span{font-family:var(--mono);font-size:var(--fs-caption);color:var(--gray)}
+.crs h3{margin:0 0 8px;font-size:1rem;font-weight:700}
+.crs ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.crs li{padding:7px 9px;border-radius:6px;background:var(--soft);font-size:.8125rem;line-height:1.35;letter-spacing:.01em}
+.crs li.flag{background:var(--ss-flag);font-weight:650}
+.crs li .chip{margin-top:6px}
+.crs-note{margin:10px 0 0;font-family:var(--mono);font-size:var(--fs-caption);color:var(--gray)}
+
+/* Branded drawings (Visual Thinking, Dan Roam's six ways of seeing). Chris
+   liked the napkin layouts (2026-10-31) and asked for them in Fundhub's own
+   style: a white sheet, hairline panels, pastel status tints, mono labels,
+   ink for the one thing that matters. Every line in a drawing means one
+   thing: an order, a flow, a match or "reads this". */
+.sheet{background:var(--ss-panel);border:1px solid var(--ss-rule);border-radius:12px;
+  box-shadow:var(--panel-shadow);padding:12px;color:var(--ink)}
+.slide.dark .sheet{border-color:var(--ss-panel)}
+.bv{display:block;width:100%;height:auto;overflow:visible}
+.bv .pn{fill:var(--ss-panel);stroke:var(--line);stroke-width:1}
+.bv .pn-soft{fill:var(--soft)}
+.bv .pn-ink{fill:var(--ink)}
+.bv .tint-flag{fill:var(--ss-flag)}
+.bv .tint-fit{fill:var(--ss-yes)}
+.bv .edge-fit{stroke:var(--ok);stroke-width:1.5}
+.bv .bar{fill:var(--line)}
+.bv .rule-ink{stroke:var(--ink);stroke-width:2;stroke-linecap:round}
+.bv .cn{fill:none;stroke:var(--gray2);stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.bv .cn.ink{stroke:var(--ink)}
+.bv .cn.dash{stroke-dasharray:4 5}
+.bv text{font-family:var(--sans);font-size:13px;font-weight:650;fill:var(--ink)}
+.bv text.h{font-size:16px;font-weight:700;letter-spacing:-.01em}
+.bv text.num{font-size:28px;font-weight:700;letter-spacing:-.02em}
+.bv text.lb{font-family:var(--mono);font-size:12.5px;font-weight:500;letter-spacing:.12em;fill:var(--gray)}
+.bv text.lb.ink{fill:var(--ink)}
+.bv text.caps{font-size:12.5px;font-weight:650;letter-spacing:.01em}
+.bv text.on-ink{fill:#fff}
+.bv use{color:var(--ink)}
+.bv use.mute{color:var(--gray2)}
+/* Shared drawing parts (a bank, an arrowhead, the spectrum) live in one
+   hidden sprite per deck. The stops are fundhub-brand.css --spectrum. */
+.vt-defs{position:absolute;width:0;height:0;overflow:hidden}
+.vt-defs .ink{fill:var(--ink)}
+.vt-defs .s1{stop-color:#F2A69B}.vt-defs .s2{stop-color:#F5CE8F}.vt-defs .s3{stop-color:#F2E39B}
+.vt-defs .s4{stop-color:#A8D8B0}.vt-defs .s5{stop-color:#A9C6E8}.vt-defs .s6{stop-color:#C4B3E5}
+
+/* Real documents (law: show-real-proof). A section of Fundhub's tri-bureau
+   report exactly as scripts/render-crs-standard-report.mjs prints it for the
+   sample file, kept in the report's own plain document face so it reads as
+   the real thing, and a real clause of the agreement. Our branded marks
+   (.chip, the tints) sit on top to point at what matters. */
+.real{background:var(--ss-panel);border:1px solid var(--ss-rule);border-radius:10px;box-shadow:var(--panel-shadow);
+  padding:14px;color:var(--ink);font-family:Helvetica,Arial,sans-serif;line-height:1.4}
+.real .bureau-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;
+  border-bottom:2px solid var(--ink);padding-bottom:8px;margin-bottom:8px}
+.real .rh1{margin:0;font-size:1.25rem;font-weight:700;letter-spacing:-.02em}
+.real .score{text-align:right}
+.real .score .num{font-size:1.75rem;font-weight:700;line-height:1.05}
+.real .score .model{font-size:.8125rem;color:var(--gray)}
+.real .rh2{margin:10px 0 4px;font-size:1rem;font-weight:700}
+.real > .rh2:first-child{margin-top:0}
+.real p.model{margin:0 0 6px;font-size:.8125rem;color:var(--gray)}
+.real ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px;font-size:.8125rem}
+.real li{padding:2px 0}
+.real li.flag{margin:0 -6px;padding:7px 6px;border-radius:6px;background:var(--ss-flag);font-weight:700}
+.real li.yes{margin:0 -6px;padding:7px 6px;border-radius:6px;background:var(--ss-yes);font-weight:700}
+.real .chip{display:inline-flex;margin-top:6px;font-family:var(--mono)}
+.real table{width:100%;border-collapse:collapse;font-size:.8125rem}
+.real th{text-align:left;font-size:.8125rem;text-transform:uppercase;color:var(--gray);border-bottom:1px solid var(--line);padding:4px 6px 4px 0}
+.real td{border-bottom:1px solid var(--soft);padding:7px 6px 7px 0;vertical-align:top}
+.real td .chip{margin-top:4px}
+.real .clause{margin:0;font-size:.9375rem;line-height:1.5}
+.real .nw{white-space:nowrap}
+.real .clause mark{background:var(--ss-yes);color:inherit;padding:1px 3px;border-radius:4px;font-weight:700}
+.real img{display:block;width:100%;height:auto;border-radius:6px}
+/* A real crop of code (law: show-real-proof), in the brand's mono face. */
+.real .code{margin:0;padding:0;font-family:var(--mono);font-size:.8125rem;font-weight:500;line-height:1.55;
+  white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ink)}
+.real .code .l{display:block;padding-left:3em;text-indent:-3em}
+.real .code .ln{display:inline-block;width:3em;text-indent:0;color:var(--gray)}
+.real.shot{padding:0;overflow:hidden}
+.real.shot img{border-radius:0}
+.real-src{margin:8px 2px 0;font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.04em;color:var(--ss-muted)}
+.slide.dark .real-src{color:var(--ss-dark-muted)}
+
+/* One reason, two places: the report and the bank's letter. */
+.match{display:flex;flex-direction:column;gap:6px}
+.match .who{font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.1em;text-transform:uppercase;color:var(--ss-muted)}
+.match .reason{padding:9px 11px;border-radius:8px;background:var(--ss-flag);font-size:.8125rem;font-weight:650;line-height:1.35;color:var(--ink)}
+.match .same{align-self:flex-start;margin:4px 0}
+
+/* A document: a credit report, a bank letter, a file. */
+.doc{display:flex;flex-direction:column;overflow:hidden}
+.doc-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;
+  border-bottom:1px solid var(--ss-rule);font-family:var(--mono);font-size:var(--fs-caption);
+  letter-spacing:.1em;text-transform:uppercase;color:var(--ss-muted)}
+.doc-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;
+  font-size:1rem;line-height:1.3;min-width:0}
+.doc-row + .doc-row{border-top:1px solid var(--ss-rule)}
+.doc-row > span:first-child{min-width:0}
+.doc-row .v{font-weight:700;font-variant-numeric:tabular-nums;text-align:right}
+.doc-row.flag{background:var(--ss-flag);font-weight:650}
+.doc-row.yes{background:var(--ss-yes);font-weight:650}
+
+/* Two documents tied by the same line. */
+.tie{display:flex;align-items:center;gap:10px;padding-left:22px;font-family:var(--mono);
+  font-size:var(--fs-caption);letter-spacing:.1em;text-transform:uppercase;color:var(--ss-muted)}
+.tie::before{content:"";width:2px;height:28px;background:var(--ink);border-radius:1px}
+.slide.dark .tie{color:var(--ss-dark-muted)}
+.slide.dark .tie::before{background:#fff}
+
+/* The engine card: ink and mono, the way the brand shows UnderwriteIQ. */
+.term{position:relative;overflow:hidden;background:var(--card);border:1px solid var(--cardline);
+  border-radius:10px;color:var(--cardtext);font-family:var(--mono);line-height:1.45}
+.term > *{position:relative}
+.term-head{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--cardline);
+  font-size:var(--fs-caption);letter-spacing:.12em;text-transform:uppercase;color:var(--gray2)}
+.term-head .pulse{margin-inline:4px 6px}
+.term-line{display:flex;gap:10px;align-items:baseline;padding:10px 14px;font-size:.875rem}
+.term-line + .term-line{border-top:1px dashed var(--cardline)}
+.term-line .k{flex:0 0 auto;color:var(--ok)}
+
+/* How: a real sequence. Numbering is shown because the order is the point. */
+.flow{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:14px;counter-reset:fl}
+.flow > li{position:relative;counter-increment:fl;display:flex;align-items:center;gap:12px;padding:12px 14px;
+  background:var(--ss-panel);border:1px solid var(--ss-rule);border-radius:10px;box-shadow:var(--panel-shadow);
+  font-weight:650;line-height:1.3;color:var(--ss-fg)}
+.flow > li::before{content:counter(fl,decimal-leading-zero);flex:0 0 auto;font-family:var(--mono);
+  font-size:var(--fs-caption);font-weight:500;color:var(--ss-muted)}
+.flow > li + li::after{content:"";position:absolute;left:24px;top:-15px;width:2px;height:14px;background:var(--gray2)}
+.flow.plain > li::before{content:none}          /* a narrowing, not a count */
+.flow > li.is-hot{background:var(--ink);border-color:var(--ink);color:#fff}
+.flow > li.is-hot::before{color:var(--gray2)}
+.flow .sub{display:block;font-weight:500;font-size:.875rem;color:var(--ss-muted)}
+.flow > li.is-hot .sub{color:var(--gray2)}
+.slide.dark .flow > li.is-hot{background:#fff;border-color:#fff;color:var(--ink)}
+
+/* When: who does what, in order. */
+.tl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.tl > li{position:relative;padding:0 0 18px 30px;min-width:0}
+.tl > li:last-child{padding-bottom:0}
+.tl > li::before{content:"";position:absolute;left:5px;top:5px;width:14px;height:14px;border-radius:50%;
+  background:var(--ss-bg);border:2px solid var(--ink)}
+.tl > li::after{content:"";position:absolute;left:11px;top:23px;bottom:3px;width:2px;background:var(--ss-rule)}
+.tl > li:last-child::after{content:none}
+.tl .when{display:block;font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.1em;
+  text-transform:uppercase;color:var(--ss-muted)}
+.tl .what{display:block;font-size:1.0625rem;font-weight:650;line-height:1.3}
+.tl .chip{margin-top:6px}
+.tl > li.bad::before{background:var(--alert);border-color:var(--alert)}
+.tl > li.good::before{background:var(--ok);border-color:var(--ok)}
+.slide.dark .tl > li::before{background:var(--ss-dark);border-color:#fff}
+.slide.dark .tl > li::after{background:var(--ss-dark-rule)}
+.slide.dark .tl .when{color:var(--ss-dark-muted)}
+
+/* When: one stretch of time between two events. */
+.span{display:flex;flex-direction:column;gap:8px}
+.span-bar{height:10px;border-radius:5px;background:var(--spectrum)}
+.span-ends{display:flex;justify-content:space-between;gap:12px;font-family:var(--mono);
+  font-size:var(--fs-caption);letter-spacing:.1em;text-transform:uppercase;color:var(--ss-muted)}
+.slide.dark .span-ends{color:var(--ss-dark-muted)}
+
+/* A hero figure. */
+.metric{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.metric .n{font-size:clamp(4.75rem,26vw,7.5rem);font-weight:700;letter-spacing:-.05em;line-height:.85;
+  font-variant-numeric:tabular-nums}
+.metric .u{padding-bottom:6px;font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.14em;
+  text-transform:uppercase;color:var(--ss-muted)}
+.slide.dark .metric .u{color:var(--ss-dark-muted)}
+
+/* How much: bars drawn to one scale. Set --v to value ÷ the largest value. */
+.bars{display:flex;flex-direction:column;gap:14px}
+.bar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;align-items:baseline}
+.bar .l{font-size:.9375rem;font-weight:650}
+.bar .v{font-weight:700;font-variant-numeric:tabular-nums}
+.bar .t{grid-column:1/-1;height:12px;border-radius:6px;background:var(--soft);overflow:hidden}
+.bar .t > span{display:block;height:100%;width:calc(var(--v) * 100%);border-radius:6px;background:var(--ink)}
+.bar.alt .t > span{background:var(--gray2)}
+
+/* Compare: two columns side by side. */
+.compare{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.compare > .panel{padding:12px;min-width:0}
+.compare h3{margin:0 0 8px;font-family:var(--mono);font-size:var(--fs-caption);font-weight:500;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--ss-muted)}
+.compare ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px;font-size:.9375rem;line-height:1.3}
+
+/* Why: a visual equation. */
+.eq{display:flex;align-items:stretch;gap:8px}
+.eq > .panel{flex:1 1 0;min-width:0;padding:12px 10px;text-align:center;font-weight:650;line-height:1.25}
+.eq .op{align-self:center;font-family:var(--mono);font-size:1.5rem;color:var(--ss-muted)}
+.eq > .panel.is-hot{background:var(--ink);border-color:var(--ink);color:#fff}
+
+@media (max-width:359px){
+  .eq{flex-direction:column}
+  .eq .op{align-self:flex-start;padding-left:12px}
+}
+@media (prefers-reduced-motion:reduce){
+  body,.ss-progress i{transition:none!important}
+  html.ss-js .slide.enter{animation:none}
+}
+</style>
+<!-- /fh:shell:head -->
+</head>
+<body>
+<main class="ss" data-deck="PD" data-lane="Every lane" data-pillar="Objection">
+  <h1 class="ss-title">Prime data</h1>
+  <svg class="vt-defs" aria-hidden="true" focusable="false">
+    <defs>
+      <marker id="fh-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path class="ink" d="M0 0L10 5L0 10z"/></marker>
+      <linearGradient id="fh-spectrum" x1="0" x2="1" y1="0" y2="0"><stop offset="0" class="s1"/><stop offset=".2" class="s2"/><stop offset=".4" class="s3"/><stop offset=".6" class="s4"/><stop offset=".8" class="s5"/><stop offset="1" class="s6"/></linearGradient>
+    </defs>
+  </svg>
+
+  <section class="slide dark">
+    <p class="eyebrow">PD-01 / Prime data</p>
+    <h2>A bank reads your file several layers deeper than a consumer credit site report goes.</h2>
+    <p class="lede">Most funding companies stop at that site report, and there's a way to read your own file at the bank's depth first.</p>
+    <ul class="lines">
+      <li>Here's the first layer on a sample TransUnion report: a 706, with the bureau's own reasons printed under it.</li>
+      <li>A bank weighs those reason lines when it decides on you, and its denial letter repeats them.</li>
+    </ul>
+    <figure class="pic">
+      <div class="real" role="img" aria-label="The TransUnion section of a sample Fundhub credit report. The score is 706, FICO Score 9. Under Why this score, the first of four bureau reasons is marked: ratio of balance to limit on bank revolving or other revolving accounts too high. A bank reads this first. The block is marked the bureau's own file.">
+        <header class="bureau-head">
+          <div class="rh1">TransUnion</div>
+          <div class="score"><div class="num">706</div><div class="model">FICO® Score 9</div></div>
+        </header>
+        <div class="rh2">Why this score</div>
+        <p class="model">FICO® Score 9 · 706</p>
+        <ul>
+          <li class="flag">RATIO OF BALANCE TO LIMIT ON BANK REVOLVING OR OTHER REV ACCTS TOO HIGH<br><span class="chip bad"><span class="cd"></span>A bank reads this first</span></li>
+          <li>TIME SINCE DELINQUENCY IS TOO RECENT OR UNKNOWN</li>
+          <li>LACK OF RECENT INSTALLMENT LOAN INFORMATION</li>
+          <li>TOO FEW ACCOUNTS CURRENTLY PAID AS AGREED</li>
+        </ul>
+        <span class="chip on"><span class="cd"></span>The bureau's own file</span>
+      </div>
+      <p class="real-src">Sample report. Simulated file, no bureau contacted.</p>
+    </figure>
+  </section>
+
+  <section class="slide">
+    <p class="eyebrow">PD-02 / Where it comes from</p>
+    <h2>Your file comes straight from all three bureaus, with LexisNexis on the business side.</h2>
+    <ul class="lines">
+      <li>Each bureau sends its own FICO 9 report on you, through relationships we hold directly.</li>
+      <li>That access comes with fraud checks and compliance checks, and section 4 of your agreement names both.</li>
+      <li>You see the same file a bank pulls, from the same sources, before any bank pulls it.</li>
+    </ul>
+    <figure class="pic">
+      <div class="sheet">
+        <svg class="bv" viewBox="0 0 320 94" role="img" aria-label="Who we pull from. The bureaus: Experian, Equifax and TransUnion, a FICO 9 pull from each. And LexisNexis: the Top Business match.">
+          <text class="lb" x="0" y="12">THREE BUREAUS · FICO 9 EACH</text>
+          <rect class="pn-ink" x="0" y="20" width="98" height="32" rx="8"/>
+          <text class="on-ink" x="49" y="41" text-anchor="middle">Experian</text>
+          <rect class="pn-ink" x="106" y="20" width="98" height="32" rx="8"/>
+          <text class="on-ink" x="155" y="41" text-anchor="middle">Equifax</text>
+          <rect class="pn-ink" x="212" y="20" width="108" height="32" rx="8"/>
+          <text class="on-ink" x="266" y="41" text-anchor="middle">TransUnion</text>
+          <rect class="pn-ink" x="0" y="62" width="130" height="32" rx="8"/>
+          <text class="on-ink" x="65" y="83" text-anchor="middle">LexisNexis</text>
+          <text class="lb" x="142" y="82">TOP BUSINESS MATCH</text>
+        </svg>
+      </div>
+      <div class="real" role="img" aria-label="Section 4 of the Fundhub funding agreement. Marked: request available LexisNexis information, perform soft credit inquiries, and use analytics, fraud checks, and compliance checks needed for this engagement. Marked: Fundhub will use and protect your information for the service and related security checks.">
+        <div class="rh2">Funding Agreement · Section 4</div>
+        <p class="clause">You authorize Fundhub to review your business profile and records in its system, <mark>request available LexisNexis information, perform soft credit inquiries, and use analytics, fraud checks, and compliance checks needed for this engagement</mark>. A hard inquiry or another action that needs separate consent still requires that consent. <mark>Fundhub will use and protect your information for the service and related security checks.</mark></p>
+        <span class="chip on"><span class="cd"></span>Written in your agreement</span>
+      </div>
+      <p class="real-src">The funding agreement, word for word.</p>
+    </figure>
+  </section>
+
+  <section class="slide">
+    <p class="eyebrow">PD-03 / The cost</p>
+    <h2>One 30-day late sits inside this sample's payment pattern, month by month.</h2>
+    <ul class="lines">
+      <li>The full record shows the month of the late, the subscriber code and the rating code, and a dispute has to name fields like these.</li>
+      <li>Each inquiry arrives tagged with its bureau and the company that pulled it, and public records come through too.</li>
+      <li>With only a summary, you're guessing at the line a bank holds against you.</li>
+    </ul>
+    <figure class="pic">
+      <div class="real" role="img" aria-label="Account 2 of the TransUnion section of a sample Fundhub credit report. Toyota Motor Credit, closed, as agreed, account identifier SAMPLE-TOYO-7714. Subscriber code 621AU00318, rating code C, one 30-day late, 60 months reviewed, a 60-month term. The payment pattern, month by month, shows every month paid as agreed except one, marked: the one late, month by month.">
+        <div class="rh2">TransUnion · Account 2</div>
+        <p class="model">TOYOTA MOTOR CREDIT · Closed · As Agreed · Account identifier SAMPLE-TOYO-7714</p>
+        <table>
+          <tbody>
+            <tr><td>Subscriber code</td><td>621AU00318</td></tr>
+            <tr><td>Rating code</td><td>C</td></tr>
+            <tr><td>30-day lates</td><td>1</td></tr>
+            <tr><td>Months reviewed</td><td>60</td></tr>
+            <tr><td>Term (months)</td><td>60</td></tr>
+          </tbody>
+        </table>
+        <ul>
+          <li class="flag">Payment pattern: CCCCCCCCCCCC<wbr>CCCCCCCCCCCCC<strong>1</strong><wbr>CCCCCCCCCCC<wbr>CCCCCCCCCCC<br><span class="chip bad"><span class="cd"></span>The one late, month by month</span></li>
+        </ul>
+        <span class="chip on"><span class="cd"></span>Past the summary</span>
+      </div>
+      <p class="real-src">Sample report. Simulated file, no bureau contacted.</p>
+    </figure>
+  </section>
+
+  <section class="slide">
+    <p class="eyebrow">PD-04 / Your business</p>
+    <h2>What does a bank see when it looks up your business?</h2>
+    <ul class="lines">
+      <li>We look up your company in LexisNexis Top Business, and you pick it from the match list, so no one guesses which company is yours.</li>
+      <li>Experian Business shows your business score, blemishes, card balances, and the code and name flags a lender checks, each with its exact fix.</li>
+      <li>Your personal file goes first, and then each business gets weighed separately, on its own record.</li>
+    </ul>
+    <figure class="pic">
+      <div class="sheet">
+        <svg class="bv" viewBox="0 0 320 244" role="img" aria-label="A flowchart. Your personal file from Experian, Equifax and TransUnion, and your business file from LexisNexis Top Business and Experian Business, both go into one read the way a bank reads it. Then only the banks that fit your file. Before any application goes out.">
+          <rect class="pn" x="1" y="1" width="152" height="86" rx="10"/>
+          <text class="lb" x="13" y="21">PERSONAL FILE</text>
+          <text class="caps" x="13" y="43">EXPERIAN</text>
+          <text class="caps" x="13" y="60">EQUIFAX</text>
+          <text class="caps" x="13" y="77">TRANSUNION</text>
+          <rect class="pn" x="167" y="1" width="152" height="86" rx="10"/>
+          <text class="lb" x="179" y="21">BUSINESS FILE</text>
+          <text class="caps" x="179" y="43">LEXISNEXIS</text>
+          <text class="caps" x="179" y="60">TOP BUSINESS</text>
+          <text class="caps" x="179" y="77">EXPERIAN BUSINESS</text>
+          <path class="cn ink" d="M77 88V108" marker-end="url(#fh-arrow)"/>
+          <path class="cn ink" d="M243 88V108" marker-end="url(#fh-arrow)"/>
+          <rect class="pn-ink" x="20" y="112" width="280" height="44" rx="8"/>
+          <text class="on-ink" x="160" y="138" text-anchor="middle">Read the way a bank reads it</text>
+          <rect x="32" y="150" width="256" height="3" rx="1.5" fill="url(#fh-spectrum)"/>
+          <path class="cn ink" d="M160 157V177" marker-end="url(#fh-arrow)"/>
+          <rect class="tint-fit edge-fit" x="20" y="181" width="280" height="42" rx="8"/>
+          <text x="160" y="207" text-anchor="middle">Only the banks that fit your file</text>
+          <text class="lb" x="160" y="241" text-anchor="middle">BEFORE ANY APPLICATION GOES OUT</text>
+        </svg>
+      </div>
+    </figure>
+  </section>
+
+  <section class="slide">
+    <p class="eyebrow">PD-05 / The after</p>
+    <h2>When every letter names the exact field, your file gets ready for funding quicker.</h2>
+    <ul class="lines">
+      <li>Our own code sorts every finding into a tradeline dispute, a personal information cleanup or an inquiry removal, straight from the bureau's fields.</li>
+      <li>I built it on deeper data because it gets inquiries, accounts, addresses and names off faster.</li>
+      <li>A file that's ready earlier gets your hiring, your jobs and your ads paid for with credit sooner, and your savings stay put.</li>
+    </ul>
+    <figure class="pic">
+      <div class="real" role="img" aria-label="Lines from Fundhub's letter catalog code, word for word. The letter types personal info and inquiry removal. Then the sort: a finding with a personal information rule goes to the personal letter, a finding with an inquiry rule goes to the inquiry letter, and everything else goes to the tradeline letter. It returns tradeline, personal and inquiry.">
+        <div class="rh2">letter-catalog.mjs · Fundhub's own code</div>
+        <p class="clause"><code style="font-family:var(--mono)">PERSONAL_INFO: "personal_info",</code></p>
+        <p class="clause"><code style="font-family:var(--mono)">INQUIRY_REMOVAL: "inquiry_removal"</code></p>
+        <p class="clause"><code style="font-family:var(--mono)"><mark>if (PERSONAL_RULES.has(v.ruleId)) personal.push(v);</mark></code></p>
+        <p class="clause"><code style="font-family:var(--mono)"><mark>else if (INQUIRY_RULES.has(v.ruleId)) inquiry.push(v);</mark></code></p>
+        <p class="clause"><code style="font-family:var(--mono)"><mark>else tradeline.push(v);</mark></code></p>
+        <p class="clause"><code style="font-family:var(--mono)">return { tradeline, personal, inquiry };</code></p>
+        <span class="chip on"><span class="cd"></span>Three letters, from the fields</span>
+      </div>
+      <p class="real-src">Fundhub's letter catalog code, word for word.</p>
+    </figure>
+  </section>
+
+  <section class="slide">
+    <p class="eyebrow">PD-06 / Handled right</p>
+    <h2>Your most sensitive identifier gets stripped out before your report is ever saved.</h2>
+    <ul class="lines">
+      <li>Only the last four stay, masked, and the full identifier is locked away encrypted, with every read of it logged.</li>
+      <li>Our privacy policy says your data is encrypted with AES-256 while it moves and while it's stored, on SOC 2 audited providers.</li>
+      <li>We don't sell your personal information, and that's written in two places.</li>
+    </ul>
+    <figure class="pic">
+      <div class="real" role="img" aria-label="Section 6 of the Fundhub privacy policy. Marked: data is encrypted in transit and at rest using AES-256 across the platform and its infrastructure, which is built on SOC 2 audited providers. Then: no method of transmission or storage is completely secure, and we cannot guarantee absolute security. And section 11.2 of the Capital Blueprint agreement, marked: we do not sell your personal information.">
+        <div class="rh2">Privacy Policy · 6. Security</div>
+        <p class="clause"><mark>Data is encrypted in transit and at rest using AES-256 across the platform and its infrastructure, which is built on SOC 2 audited providers.</mark> No method of transmission or storage is completely secure, and we cannot guarantee absolute security.</p>
+        <div class="rh2">Capital Blueprint Agreement · 11.2</div>
+        <p class="clause">We collect what we need to deliver the program and support you. <mark>We do not sell your personal information.</mark></p>
+        <span class="chip on"><span class="cd"></span>Published at fundhub.ai/privacy</span>
+      </div>
+      <p class="real-src">The privacy policy at fundhub.ai/privacy and the Capital Blueprint agreement, word for word.</p>
+    </figure>
+  </section>
+
+  <section class="slide">
+    <p class="eyebrow">PD-07 / Who signs</p>
+    <h2>Fundhub LLC signs your agreement from a street address, under Arizona law.</h2>
+    <ul class="lines">
+      <li>The first line of the agreement names us, a Florida company operating in Arizona, with our street address next to it.</li>
+      <li>Section 8 says your calls with us get recorded and kept, and that AI tools and AI agents work on your file.</li>
+      <li>You know who you're dealing with, where to find us and which law covers the deal, before you pay.</li>
+    </ul>
+    <figure class="pic">
+      <div class="real" role="img" aria-label="The Fundhub funding agreement. The parties, marked: Fundhub LLC, a Florida limited liability company operating in Arizona, 218 Bostick Rd 64, Bowling Green, FL 33834. Section 7, marked: Arizona law governs this agreement to the extent permitted by law. Section 8, marked: calls between you and Fundhub may be recorded and kept; Fundhub uses artificial intelligence in its service. AI tools analyze your credit file, your funding file and the documents you give us. AI agents work on your file.">
+        <div class="rh2">Funding Agreement · The parties</div>
+        <p class="clause">Between: <mark>Fundhub LLC, a Florida limited liability company operating in Arizona, 218 Bostick Rd 64, Bowling Green, FL 33834</mark></p>
+        <div class="rh2">Sections 7 and 8</div>
+        <p class="clause"><mark>Arizona law governs this agreement to the extent permitted by law.</mark></p>
+        <p class="clause">Recorded calls. <mark>Calls between you and Fundhub may be recorded and kept.</mark></p>
+        <p class="clause">Artificial intelligence. <mark>Fundhub uses artificial intelligence (AI) in its service.</mark> AI tools analyze your credit file, your funding file and the documents you give us. AI agents work on your file.</p>
+        <span class="chip on"><span class="cd"></span>Read together before you pay</span>
+      </div>
+      <p class="real-src">The funding agreement, word for word.</p>
+    </figure>
+  </section>
+
+  <section class="slide dark">
+    <p class="eyebrow">PD-08 / Your call</p>
+    <h2>Your strategy call puts your own file on the screen, at the depth a bank reads.</h2>
+    <ul class="lines">
+      <li>We pull your report only once you join the call, with one soft pull that leaves your score alone.</li>
+      <li>That one pull gets matched against the banks that lend to files like yours, on the same data feeds they use.</li>
+      <li>Whatever you decide, you keep the reports.</li>
+    </ul>
+    <figure class="pic">
+      <div class="real" role="img" aria-label="The soft pull authorization form. Marked: this is a soft pull. It does not lower my credit score and lenders do not see it as an application for credit. Marked: I am giving permission for one pull, for the purpose written above. Then: a copy of what I signed, and the time I signed it, is kept on file and I can ask for it at any time.">
+        <div class="rh2">Soft Pull Authorization</div>
+        <p class="clause"><mark>1. This is a soft pull. It does not lower my credit score and lenders do not see it as an application for credit.</mark></p>
+        <p class="clause"><mark>2. I am giving permission for one pull, for the purpose written above.</mark></p>
+        <p class="clause">5. A copy of what I signed, and the time I signed it, is kept on file and I can ask for it at any time.</p>
+        <span class="chip on"><span class="cd"></span>Signed on your call</span>
+      </div>
+      <p class="real-src">The soft pull form you sign on the call, word for word.</p>
+    </figure>
+  </section>
+</main>
+<!-- fh:shell:script -->
+<script data-fh="slideshow">
+/* Fundhub slideshow engine. One slide at a time, with Back and Next at the
+   thumb, swipe, and the arrow keys. A link ending in #s3 opens slide 3. It
+   reads and sends nothing: no network, no storage, no tracking. Without
+   script, every slide stays readable as one long page. */
+(function () {
+  "use strict";
+  var deck = document.querySelector(".ss");
+  if (!deck) return;
+  var slides = Array.prototype.slice.call(deck.querySelectorAll(".slide"));
+  if (!slides.length) return;
+  var root = document.documentElement;
+  var last = slides.length - 1;
+  var index = 0;
+
+  function el(tag, cls, text) {
+    var node = document.createElement(tag);
+    if (cls) node.className = cls;
+    if (text) node.textContent = text;
+    return node;
+  }
+
+  var top = el("header", "ss-top");
+  var logo = el("span", "logo");
+  logo.setAttribute("role", "img");
+  logo.setAttribute("aria-label", "Fundhub");
+  var progress = el("div", "ss-progress");
+  progress.setAttribute("aria-hidden", "true");
+  var segments = slides.map(function (_, k) {
+    var seg = el("i");
+    seg.style.setProperty("--k", String(k));
+    seg.style.setProperty("--n", String(slides.length));
+    progress.appendChild(seg);
+    return seg;
+  });
+  top.appendChild(logo);
+  top.appendChild(progress);
+
+  var stage = el("div", "ss-stage");
+  slides.forEach(function (slide, k) {
+    slide.setAttribute("role", "group");
+    slide.setAttribute("aria-roledescription", "slide");
+    slide.setAttribute("aria-label", (k + 1) + " of " + slides.length);
+    stage.appendChild(slide);
+  });
+
+  var nav = el("nav", "ss-nav");
+  nav.setAttribute("aria-label", "Slides");
+  var back = el("button", "ss-btn back", "Back");
+  var next = el("button", "ss-btn primary", "Next");
+  back.type = "button";
+  next.type = "button";
+  nav.appendChild(back);
+  nav.appendChild(next);
+
+  var live = el("p", "ss-live");
+  live.setAttribute("aria-live", "polite");
+
+  var title = deck.querySelector(".ss-title");
+  deck.insertBefore(top, title ? title.nextSibling : deck.firstChild);
+  deck.appendChild(stage);
+  deck.appendChild(nav);
+  deck.appendChild(live);
+  root.classList.add("ss-js");
+
+  function go(n, still) {
+    index = Math.max(0, Math.min(last, n));
+    slides.forEach(function (slide, k) {
+      var on = k === index;
+      slide.classList.toggle("is-on", on);
+      // Only a slide you move to slides in. The first one is still at rest.
+      slide.classList.remove("enter");
+      if (on && !still) {
+        void slide.offsetWidth;
+        slide.classList.add("enter");
+      }
+      slide.setAttribute("aria-hidden", on ? "false" : "true");
+      if (on) slide.removeAttribute("inert");
+      else slide.setAttribute("inert", "");
+    });
+    segments.forEach(function (seg, k) { seg.classList.toggle("on", k <= index); });
+    root.setAttribute("data-tone", slides[index].classList.contains("dark") ? "dark" : "light");
+    back.hidden = index === 0;
+    next.textContent = index === last ? "Start over" : "Next";
+    slides[index].scrollTop = 0;
+    var heading = slides[index].querySelector("h2");
+    live.textContent = (index + 1) + " of " + slides.length + (heading ? ". " + heading.textContent : "");
+    if (!root.classList.contains("ss-notes")) {
+      try { history.replaceState(null, "", "#s" + (index + 1)); } catch (e) { /* a sandboxed frame may refuse */ }
+    }
+  }
+
+  back.addEventListener("click", function () { go(index - 1); });
+  next.addEventListener("click", function () { go(index === last ? 0 : index + 1); });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.altKey || e.ctrlKey || e.metaKey) return;
+    if (e.key === "ArrowRight" || e.key === "PageDown") { e.preventDefault(); go(index + 1); }
+    else if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); go(index - 1); }
+    else if (e.key === "Home") { e.preventDefault(); go(0); }
+    else if (e.key === "End") { e.preventDefault(); go(last); }
+    else if (e.key === "n" || e.key === "N") { root.classList.toggle("ss-notes"); }
+  });
+
+  var x0 = null;
+  var y0 = null;
+  stage.addEventListener("pointerdown", function (e) {
+    if (e.pointerType === "mouse") return;
+    x0 = e.clientX;
+    y0 = e.clientY;
+  });
+  stage.addEventListener("pointercancel", function () { x0 = null; });
+  stage.addEventListener("pointerup", function (e) {
+    if (x0 === null) return;
+    var dx = e.clientX - x0;
+    var dy = e.clientY - y0;
+    x0 = null;
+    if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.5) go(index + (dx < 0 ? 1 : -1));
+  });
+
+  // #notes opens the talking points for recording; viewers never see them.
+  if (/^#notes$/.test(location.hash || "")) root.classList.add("ss-notes");
+  function fromHash() {
+    var match = /^#s(\d+)$/.exec(location.hash || "");
+    return match ? Number(match[1]) - 1 : null;
+  }
+  window.addEventListener("hashchange", function () {
+    var n = fromHash();
+    if (n !== null && n !== index) go(n);
+  });
+  go(fromHash() || 0, true);
+})();
+</script>
+<!-- /fh:shell:script -->
+</body>
+</html>
