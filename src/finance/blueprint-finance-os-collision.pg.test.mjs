@@ -88,7 +88,7 @@ test("Blueprint genuine refresh ignores all known completed rehearsal formats; u
     const conn = await pool.connect();
     await conn.query("BEGIN");
     try {
-      for (const table of ["subscriptions", "soft_pull_requests", "crs_results",
+      for (const table of ["subscriptions", "soft_pull_requests", "crs_results", "tasks",
         "entitlements", "transactions", "products", "product_aliases"]) {
         await conn.query("CREATE TEMP TABLE " + table + " (LIKE public." + table
           + " INCLUDING ALL) ON COMMIT DROP");
@@ -143,6 +143,27 @@ test("Blueprint genuine refresh ignores all known completed rehearsal formats; u
           [org, client, subscriptionId, state, state === "failed" ? "2026-10-10" : null]);
         assert.deepEqual(await due(true), [], state + " requires recovery, never automatic re-pull");
       }
+      await clear();
+      const failedId = (await conn.query(
+        "INSERT INTO soft_pull_requests (org_id,client_id,subscription_id,idempotency_key,requested_by_kind,reason,status,requested_at,resolved_at) "
+          + "VALUES ($1,$2,$3,$4,'system','Provider outcome needs review','failed','2026-10-10','2026-10-10') RETURNING id",
+        [org, client, subscriptionId, `finance-os-monthly:${subscriptionId}:0:real`])).rows[0].id;
+      const day33 = new Date("2026-11-12T00:00:00Z");
+      const dueAfterFailure = async () => (await dueClients(conn, day33, { realPull: true }))
+        .map((row) => row.subscription_id);
+      assert.deepEqual(await dueAfterFailure(), [], "day 33 cannot auto re-pull an unreconciled provider failure");
+      const taskId = (await conn.query(
+        `INSERT INTO tasks (org_id,client_id,title,body,source_workflow,assignee_role,done)
+         VALUES ($1,$2,'Investigate monthly credit result',$3,'finance-os-monthly-provider-exception','owner',false)
+         RETURNING id`, [org, client, `finance-os-monthly-provider:${failedId}`])).rows[0].id;
+      assert.deepEqual(await dueAfterFailure(), [], "open owner exception keeps the hold");
+      await conn.query("UPDATE tasks SET done=true WHERE id=$1", [taskId]);
+      assert.deepEqual(await dueAfterFailure(), [subscriptionId], "explicitly completed owner review releases the next monthly window");
+      await conn.query(
+        "INSERT INTO soft_pull_requests (org_id,client_id,subscription_id,idempotency_key,requested_by_kind,reason,status,requested_at,resolved_at) "
+          + "VALUES ($1,$2,$3,$4,'system','Old rehearsal failure','failed','2026-10-10','2026-10-10')",
+        [org, client, subscriptionId, `finance-os-monthly:${subscriptionId}:0`]);
+      assert.deepEqual(await dueAfterFailure(), [subscriptionId], "a failed rehearsal cannot hold a later real refresh");
     } finally {
       await conn.query("ROLLBACK");
       conn.release();
