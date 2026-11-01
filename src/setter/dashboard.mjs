@@ -152,7 +152,7 @@ function mapItem(row, staff) {
     survey: surveySummary(cf),
     survey_edits: jsonObject(cf.setter_survey_edits),
     setter_handoff: handoff,
-    setter_staff_id: handoff.setter_staff_id || row.setter_staff_id || staff.id,
+    setter_staff_id: row.setter_staff_id || handoff.setter_staff_id || staff.id,
     closer_staff_id: handoff.closer_staff_id || row.closer_staff_id || (staff.role === "owner" ? staff.id : null)
   });
 }
@@ -227,18 +227,22 @@ export async function setterNumbers(db, staff, { now = new Date(), includeDemo =
   };
 }
 
-export async function listSetterQueue(db, staff, { limit = 50, offset = 0 } = {}) {
+export async function listSetterQueue(db, staff, { limit = 50, offset = 0, clientId = null } = {}) {
   const roleScoped = staff.role === "setter";
   const page = pageParams({ limit, offset });
   const result = await db.query(
-    `WITH queue AS (
-       SELECT DISTINCT ON (c.id)
+    `WITH latest_setter AS (
+       SELECT DISTINCT ON (client_id) * FROM tasks
+        WHERE org_id = $1 AND assignee_role = 'setter' AND client_id IS NOT NULL
+        ORDER BY client_id, created_at DESC, id DESC
+     ), queue AS (
+       SELECT
             c.id AS client_id, c.first_name, c.last_name, c.email, c.phone, c.custom_fields,
             t.created_at, t.done,
             t.assignee_staff_id AS setter_staff_id,
             b.created_at AS booked_at, b.starts_at AS booking_time,
             ct.assignee_staff_id AS closer_staff_id
-       FROM tasks t
+       FROM latest_setter t
        JOIN clients c ON c.id = t.client_id AND c.org_id = t.org_id
        LEFT JOIN LATERAL (
          SELECT created_at, starts_at FROM bookings
@@ -256,13 +260,13 @@ export async function listSetterQueue(db, staff, { limit = 50, offset = 0 } = {}
           c.custom_fields->'setter_handoff'->>'complete_at' IS NOT NULL
           AND t.created_at >= now() - interval '7 days'
         ))
-        AND ($2::boolean = false OR t.assignee_staff_id IS NULL OR t.assignee_staff_id = $3)
-      ORDER BY c.id, t.created_at DESC
+        AND ($6::uuid IS NULL OR c.id = $6)
      )
      SELECT * FROM queue
-      ORDER BY COALESCE(booked_at, created_at) DESC
+      WHERE ($2::boolean = false OR setter_staff_id IS NULL OR setter_staff_id = $3)
+      ORDER BY COALESCE(booked_at, created_at) DESC, client_id DESC
       LIMIT $4 OFFSET $5`,
-    [staff.org_id, roleScoped, staff.id, Math.min(page.limit, 100), page.offset]
+    [staff.org_id, roleScoped, staff.id, Math.min(page.limit, 100), page.offset, clientId]
   );
   // Each lead's own calendar, by the same score rule as its texts. Null = no answer
   // yet, so the screen falls back to the plain booking_url below.
@@ -281,7 +285,7 @@ export async function getSetterClient(db, orgId, clientId) {
        LEFT JOIN LATERAL (
          SELECT created_at, starts_at FROM bookings
           WHERE org_id = c.org_id AND client_id = c.id AND status IN ('booked','rescheduled')
-          ORDER BY created_at DESC LIMIT 1
+          ORDER BY created_at DESC, id DESC LIMIT 1
        ) b ON true
        LEFT JOIN LATERAL (
          SELECT assignee_staff_id FROM tasks
@@ -291,7 +295,7 @@ export async function getSetterClient(db, orgId, clientId) {
        LEFT JOIN LATERAL (
          SELECT created_at, done, assignee_staff_id FROM tasks
           WHERE org_id = c.org_id AND client_id = c.id AND assignee_role = 'setter'
-          ORDER BY created_at DESC LIMIT 1
+          ORDER BY created_at DESC, id DESC LIMIT 1
        ) st ON true
       WHERE c.id = $1 AND c.org_id = $2
         AND c.custom_fields->>'crm_archived_at' IS NULL
@@ -299,6 +303,31 @@ export async function getSetterClient(db, orgId, clientId) {
     [clientId, orgId]
   );
   return result.rows[0] || null;
+}
+
+async function claimLatestSetterTask(writer, staff, clientId) {
+  // Locking the client holds new task inserts at their client FK check until
+  // this transaction finishes. The task update also locks the current task,
+  // so a reassignment cannot slip between authorization and the client write.
+  const clientLock = await writer.query(
+    `SELECT id FROM clients WHERE id = $1 AND org_id = $2
+      AND custom_fields->>'crm_archived_at' IS NULL FOR UPDATE`,
+    [clientId, staff.org_id]
+  );
+  if (!clientLock.rows.length) return false;
+  const claim = await writer.query(
+    `UPDATE tasks t SET assignee_staff_id = $3, updated_at = now()
+      WHERE t.id = (
+        SELECT id FROM tasks
+         WHERE org_id = $1 AND client_id = $2 AND assignee_role = 'setter'
+         ORDER BY created_at DESC, id DESC LIMIT 1
+      )
+        AND t.org_id = $1 AND t.client_id = $2 AND t.assignee_role = 'setter'
+        AND (t.assignee_staff_id IS NULL OR t.assignee_staff_id = $3)
+      RETURNING t.id`,
+    [staff.org_id, clientId, staff.id]
+  );
+  return claim.rows.length > 0;
 }
 
 async function persistHandoff(db, clientId, orgId, patch) {
@@ -370,7 +399,7 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
     const assigned = await db.query(
       `SELECT assignee_staff_id FROM tasks
         WHERE org_id = $1 AND client_id = $2 AND assignee_role = 'setter'
-        ORDER BY created_at DESC LIMIT 1`,
+        ORDER BY created_at DESC, id DESC LIMIT 1`,
       [staff.org_id, client_id]
     );
     if (!assigned.rows[0] || (assigned.rows[0].assignee_staff_id && assigned.rows[0].assignee_staff_id !== staff.id)) {
@@ -379,9 +408,6 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
   }
   if (action === "save_survey") {
     const previous = jsonObject(jsonObject(client.custom_fields).setter_handoff);
-    if (staff.role === "setter" && previous.setter_staff_id && previous.setter_staff_id !== staff.id) {
-      return { status: 403, body: { ok: false, error: "assigned_to_other_setter" } };
-    }
     if (!survey_edits || typeof survey_edits !== "object" || Array.isArray(survey_edits)) {
       return { status: 400, body: { ok: false, error: "invalid_survey_edits" } };
     }
@@ -403,17 +429,10 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
       }
       edits[key] = clean;
     }
-    if (staff.role === "setter") {
-      const claim = await db.query(
-        `UPDATE tasks SET assignee_staff_id = $3, updated_at = now()
-          WHERE org_id = $1 AND client_id = $2 AND assignee_role = 'setter'
-            AND (assignee_staff_id IS NULL OR assignee_staff_id = $3)
-          RETURNING id`,
-        [staff.org_id, client_id, staff.id]
-      );
-      if (!claim.rows.length) return { status: 403, body: { ok: false, error: "assigned_to_other_setter" } };
-    }
     return withTransaction(db, async writer => {
+      if (staff.role === "setter" && !(await claimLatestSetterTask(writer, staff, client_id))) {
+        return { status: 403, body: { ok: false, error: "assigned_to_other_setter" } };
+      }
       const saved = await persistSurveyEdits(writer, client_id, staff.org_id, edits);
       // A corrected score moves the person's credit_tier. creditTierFor reads the fix
       // first; no readable score anywhere (null) leaves what is saved.
@@ -443,11 +462,8 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
   const validated = sanitizeHandoffPatch(input);
   if (validated.error) return { status: 400, body: { ok: false, error: validated.error } };
   const previous = jsonObject(jsonObject(client.custom_fields).setter_handoff);
-  if (staff.role === "setter" && previous.setter_staff_id && previous.setter_staff_id !== staff.id) {
-    return { status: 403, body: { ok: false, error: "assigned_to_other_setter" } };
-  }
   const leadType = previous.lead_type || (client.booked_at ? "booked" : "opt_in");
-  const setterStaffId = previous.setter_staff_id || staff.id;
+  const setterStaffId = staff.role === "setter" ? staff.id : previous.setter_staff_id || staff.id;
   let closerStaffId = previous.closer_staff_id || client.closer_staff_id || (staff.role === "owner" ? staff.id : null);
   if (!closerStaffId) {
     const owner = await db.query(
@@ -461,7 +477,7 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
     lead_type: leadType,
     setter_staff_id: setterStaffId,
     closer_staff_id: closerStaffId,
-    setter_name: previous.setter_staff_id && previous.setter_staff_id !== staff.id
+    setter_name: staff.role !== "setter" && previous.setter_staff_id && previous.setter_staff_id !== staff.id
       ? previous.setter_name || ""
       : staff.name || staff.first_name || ""
   };
@@ -496,20 +512,12 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
     )).rows[0];
     next.handoff_text = (deps.buildText || buildSetterHandoffText)({ client, handoff: next, booking: client, closer, setter: staff });
   }
-  if (staff.role === "setter") {
-    const claim = await db.query(
-      `UPDATE tasks SET assignee_staff_id = $3, updated_at = now()
-        WHERE org_id = $1 AND client_id = $2 AND assignee_role = 'setter'
-          AND (assignee_staff_id IS NULL OR assignee_staff_id = $3)
-        RETURNING id`,
-      [staff.org_id, client_id, staff.id]
-    );
-    if (!claim.rows.length) return { status: 403, body: { ok: false, error: "assigned_to_other_setter" } };
-  }
   const save = async (writer) => {
-    let savedFields = await persistHandoff(writer, client_id, staff.org_id, next);
-    let saved = jsonObject(savedFields.setter_handoff);
-    let send = null;
+    if (staff.role === "setter" && !(await claimLatestSetterTask(writer, staff, client_id))) {
+      return { status: 403, body: { ok: false, error: "assigned_to_other_setter" } };
+    }
+    const savedFields = await persistHandoff(writer, client_id, staff.org_id, next);
+    const saved = jsonObject(savedFields.setter_handoff);
     if (action === "send_intro_video" || action === "send_handoff") {
       if (action === "send_handoff" && !saved.complete_at) {
         return { status: 400, body: { ok: false, error: "handoff_incomplete", missing: ["complete_at"] } };
@@ -517,14 +525,6 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
       if (action === "send_handoff") {
         const missing = missingForCompletion(saved, client);
         if (missing.length) return { status: 400, body: { ok: false, error: "handoff_incomplete", missing } };
-      }
-      send = await (deps.sendAction || performSetterSendAction)({
-        action, client: { ...client, booking_time: client.booking_time, booked_at: client.booked_at },
-        handoff: saved, staff, db: writer, orgId: staff.org_id, setterStaffId, closerStaffId
-      });
-      if (send?.handoffPatch && typeof send.handoffPatch === "object") {
-        savedFields = await persistHandoff(writer, client_id, staff.org_id, send.handoffPatch);
-        saved = jsonObject(savedFields.setter_handoff);
       }
     }
     if (action === "complete") {
@@ -549,9 +549,24 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
         [staff.org_id, client_id]
       );
     }
-    return { status: 200, body: { ok: true, item: { ...mapItem({ ...client, done: !!saved.complete_at, setter_staff_id: setterStaffId, closer_staff_id: closerStaffId, custom_fields: savedFields }, staff), booking_url: tierBookingLink(savedFields) }, ...(send ? { send } : {}) } };
+    return { status: 200, body: { ok: true, item: { ...mapItem({ ...client, done: !!saved.complete_at, setter_staff_id: setterStaffId, closer_staff_id: closerStaffId, custom_fields: savedFields }, staff), booking_url: tierBookingLink(savedFields) } } };
   };
-  const result = action === "complete" ? await withTransaction(db, save) : await save(db);
+  const result = action === "complete" || staff.role === "setter"
+    ? await withTransaction(db, save) : await save(db);
+  if (result.status === 200 && (action === "send_intro_video" || action === "send_handoff")) {
+    // Provider delivery must happen after the claim and saved handoff commit.
+    // A failed COMMIT then cannot send an SMS whose idempotency row rolls back.
+    const send = await (deps.sendAction || performSetterSendAction)({
+      action, client: { ...client, booking_time: client.booking_time, booked_at: client.booked_at },
+      handoff: result.body.item.setter_handoff, staff, db, orgId: staff.org_id, setterStaffId, closerStaffId
+    });
+    result.body.send = send;
+    if (send?.handoffPatch && typeof send.handoffPatch === "object") {
+      const savedFields = await persistHandoff(db, client_id, staff.org_id, send.handoffPatch);
+      result.body.item.setter_handoff = jsonObject(savedFields.setter_handoff);
+      result.body.item.booking_url = tierBookingLink(savedFields);
+    }
+  }
   if (result.status === 200) {
     await startNoAnswerCadence(db, {
       orgId: staff.org_id, clientId: client_id, previous, next, patch: validated.patch, setterStaffId

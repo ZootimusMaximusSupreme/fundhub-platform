@@ -37,6 +37,10 @@ function fakeDb(booked = true) {
     // A copy, as a real read returns: the row the writes below change is `client`, and the
     // copy the code holds is what the row looked like when it was read.
     if (sql.includes("FROM clients c")) return { rows: [structuredClone(client)] };
+    if (sql.includes("FROM clients WHERE id = $1 AND org_id = $2") && sql.includes("FOR UPDATE")) {
+      assert.match(sql, /crm_archived_at' IS NULL/);
+      return { rows: [{ id: CLIENT_ID }] };
+    }
     if (sql.includes("SELECT id, name FROM staff")) return { rows: [{ id: "staff-2", name: "Closer" }] };
     if (sql.includes("SELECT custom_fields FROM clients WHERE id = $1 AND org_id = $2")) {
       return { rows: params[0] === CLIENT_ID && params[1] === STAFF.org_id
@@ -247,6 +251,26 @@ test("queue returns booked and opt-in leads with survey echo and saved handoff",
   assert.equal(result.items[0].survey.find(x => x.key === "cf_svy_money_change_now").answer, "Grow faster");
   assert.deepEqual(result.items[0].survey_edits, { cf_svy_planned_use: "Buy equipment" });
   assert.equal(result.numbers.dials, 0);
+});
+
+test("exact setter lead read applies the same org, assignment, archive and task gates", async () => {
+  let checked = false;
+  const db = { async query(sql, params) {
+    if (sql.includes("WITH bounds AS")) return { rows: [{ dials: 0, booked: 0, showed: 0, no_shows: 0 }] };
+    assert.equal(params[0], STAFF.org_id);
+    assert.equal(params[1], true);
+    assert.equal(params[5], CLIENT_ID);
+    assert.match(sql, /c\.custom_fields->>'crm_archived_at' IS NULL/);
+    assert.match(sql, /WITH latest_setter AS \([\s\S]*ORDER BY client_id, created_at DESC, id DESC/);
+    assert.match(sql, /SELECT \* FROM queue\s+WHERE \(\$2::boolean = false OR setter_staff_id IS NULL OR setter_staff_id = \$3\)/);
+    assert.match(sql, /\$6::uuid IS NULL OR c\.id = \$6/);
+    checked = true;
+    return { rows: [{ client_id: CLIENT_ID, first_name: "Older", last_name: "Lead",
+      created_at: "2026-10-01T16:00:00Z", custom_fields: {} }] };
+  } };
+  const result = await listSetterQueue(db, { ...STAFF, role: "setter" }, { clientId: CLIENT_ID, limit: 1 });
+  assert.equal(checked, true);
+  assert.equal(result.items[0].client_id, CLIENT_ID);
 });
 
 test("each queued lead carries its own calendar link from its saved score", async () => {
@@ -663,7 +687,8 @@ test("setter can save only an assigned or unclaimed task and claims it", async (
   const original = db.query;
   db.query = async (sql, params) => {
     if (sql.trim().startsWith("SELECT assignee_staff_id FROM tasks")) return { rows: [{ assignee_staff_id: assignee }] };
-    if (sql.includes("UPDATE tasks SET assignee_staff_id")) {
+    if (sql.includes("UPDATE tasks t SET assignee_staff_id")) {
+      assert.match(sql, /WHERE t\.id = \([\s\S]*ORDER BY created_at DESC, id DESC LIMIT 1/);
       if (assignee && assignee !== params[2]) return { rows: [] };
       assignee = params[2];
       return { rows: [{ id: "task-1" }] };

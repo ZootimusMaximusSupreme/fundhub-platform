@@ -2,7 +2,9 @@
 // enable only when task data supplies a meeting URL / client id.
 
 import { test, expect } from "@playwright/test";
-import { CLIENT_ID, CLOSER, TASK_NO_LINK, TASK_WITH_CALL, wireApi, gotoScreen } from "./harness.mjs";
+import { CLIENT_ID, CLOSER, OWNER, TASK_NO_LINK, TASK_WITH_CALL, wireApi, gotoScreen } from "./harness.mjs";
+
+const SETTER = { ...OWNER, staff: { ...OWNER.staff, id: "staff-setter", role: "setter" } };
 
 function todayAt(h, min) {
   const d = new Date();
@@ -130,7 +132,7 @@ test.describe("Calendar is today's week, not July sample", () => {
     await expect(page.locator(".weekstrip")).not.toContainText("Priya Nair");
     await expect(page.locator(".weekstrip")).not.toContainText("Derek Owusu");
     await expect(page.locator(".weekstrip")).not.toContainText("Dana Whitlock");
-    await expect(page.locator(".day-wrap")).toContainText("Nothing booked.");
+    await expect(page.locator(".day-wrap")).toContainText("No tasks due.");
     await expect(page.locator("#statBooked")).toHaveText("0");
     await expect(page.locator("#statDone")).toHaveText("0");
     await expect(page.locator("#statNoshow")).toHaveText("—");
@@ -159,6 +161,146 @@ test.describe("Calendar is today's week, not July sample", () => {
     await page.locator('#seg button[data-v="week"]').click();
     await expect(page.locator(".weekstrip")).toContainText("Live Client");
     await expect(page.locator(".weekstrip")).not.toContainText("Priya Nair");
+  });
+
+  test("a full first page still shows the later call and groups only exact setter repeats", async ({ page }) => {
+    await page.clock.setFixedTime(todayAt9am());
+    const repeats = Array.from({ length: 200 }, (_, i) => ({
+      id: `repeat-${i}`, client_id: CLIENT_ID, client_name: "Simulated Buyer",
+      source_workflow: "setter-entry", title: "Setter: call new opt-in",
+      due_at: todayAt(11, 0), created_at: todayAt(11, i % 60), done: false
+    }));
+    const later = { id: "later-call", client_id: "bbbbbbbb-2222-4222-8222-222222222222",
+      client_name: "Later Call", title: "Strategy call", due_at: todayAt(16, 0), done: false };
+    const cursors = [];
+    const revision = "a".repeat(32);
+    await wireApi(page, { session: OWNER, handlers: {
+      "/api/tasks": (route, { url }) => {
+        const params = new URL(url).searchParams;
+        if (params.get("done") === "true") return { ok: true, tasks: [], revision, can_open_setter: true };
+        const after = params.get("after");
+        cursors.push(after);
+        return { ok: true, tasks: after ? [later] : repeats,
+          revision, next_after: after ? null : "repeat-199", can_open_setter: true };
+      }
+    } });
+    await gotoScreen(page, "calendar.html", "", OWNER);
+    await expect(page.locator(".day-wrap")).toContainText("Later Call", { timeout: 10_000 });
+    expect(cursors).toContain("repeat-199");
+    await expect(page.locator("#statBooked")).toHaveText("2");
+    await expect(page.locator(".day-wrap .evt[data-task-id]")).toHaveCount(2);
+    await expect(page.locator(".day-wrap")).toContainText("199 repeat entries grouped");
+    const setterLink = page.locator(".day-wrap").getByRole("link", { name: "Open setter" });
+    await expect(setterLink).toHaveAttribute("href", `setter-dashboard.html?client_id=${CLIENT_ID}`);
+    await expect(page.locator(".day-wrap").getByRole("button", { name: "Mark done" })).toHaveCount(1);
+    await setterLink.click();
+    await expect(page).toHaveURL(new RegExp(`setter-dashboard\\.html\\?client_id=${CLIENT_ID}`));
+  });
+
+  test("distinct 9am and 5pm setter work stays visible while closer gets safe links", async ({ page }) => {
+    await page.clock.setFixedTime(todayAt9am());
+    const due = todayAt(9, 0);
+    const tasks = [
+      { id: "open-1", client_id: CLIENT_ID, client_name: "Simulated Buyer", source_workflow: "setter-entry", title: "Setter: call new opt-in", body: "Dial", due_at: due, done: false },
+      { id: "open-2", client_id: CLIENT_ID, client_name: "Simulated Buyer", source_workflow: "setter-entry", title: "Setter: call new opt-in", body: "Dial", due_at: due, done: false },
+      { id: "late", client_id: CLIENT_ID, client_name: "Simulated Buyer", source_workflow: "setter-entry", title: "Setter: call new opt-in", body: "Dial", due_at: todayAt(17, 0), done: false },
+      { id: "other-title", client_id: CLIENT_ID, client_name: "Simulated Buyer", source_workflow: "setter-entry", title: "Setter: follow up", body: "Dial", due_at: due, done: false },
+      { id: "other-body", client_id: CLIENT_ID, client_name: "Simulated Buyer", source_workflow: "setter-entry", title: "Setter: call new opt-in", body: "Confirm facts", due_at: due, done: false },
+      { id: "other-assignee", client_id: CLIENT_ID, client_name: "Simulated Buyer", source_workflow: "setter-entry", title: "Setter: call new opt-in", body: "Dial", assignee_staff_id: "other-setter", due_at: due, done: false },
+      { id: "booking-1", client_id: CLIENT_ID, client_name: "Simulated Buyer", source_workflow: "setter-booking", title: "Setter: confirm booking", due_at: due, done: false },
+      { id: "done-1", client_id: CLIENT_ID, client_name: "Simulated Buyer", source_workflow: "setter-entry", title: "Setter: call new opt-in", due_at: due, done: true }
+    ];
+    await wireApi(page, { session: CLOSER, handlers: {
+      "/api/tasks": (route, { url }) => ({ ok: true,
+        tasks: tasks.filter(t => new URL(url).searchParams.get("done") === "true" ? t.done : !t.done),
+        can_open_setter: false })
+    } });
+    await gotoScreen(page, "calendar.html", "", CLOSER);
+    await expect(page.locator("#statBooked")).toHaveText("7", { timeout: 10_000 });
+    await expect(page.locator("#statDone")).toHaveText("1");
+    await expect(page.locator("#statLeft")).toHaveText("6");
+    await expect(page.locator(".day-wrap").getByRole("link", { name: "Open setter" })).toHaveCount(0);
+    await expect(page.locator(".day-wrap").getByRole("link", { name: "Open client file" }))
+      .toHaveCount(6);
+    await expect(page.locator(".day-wrap")).toContainText("1 repeat entry grouped");
+    await expect(page.locator(".day-wrap").getByRole("link", { name: "Open client file" }).first())
+      .toHaveAttribute("href", `client-control-panel.html?client_id=${CLIENT_ID}`);
+    await expect(page.locator(".day-wrap").getByRole("button", { name: "Mark done" })).toHaveCount(0);
+    await page.setViewportSize({ width: 390, height: 844 });
+    const link = page.locator(".day-wrap").getByRole("link", { name: "Open client file" }).first();
+    const box = await link.boundingBox();
+    expect(box.height).toBeGreaterThanOrEqual(44);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+  });
+
+  test("an older task for A cannot open the setter desk after B receives a newer task", async ({ page }) => {
+    await wireApi(page, { session: SETTER, handlers: {
+      "/api/tasks": (route, { url }) => ({ ok: true, can_open_setter: true,
+        tasks: new URL(url).searchParams.get("done") === "true" ? [] : [{
+          id: "old-A-task", client_id: CLIENT_ID, client_name: "Transferred Lead",
+          source_workflow: "setter-entry", assignee_role: "setter",
+          assignee_staff_id: SETTER.staff.id, can_open_setter: false,
+          title: "Setter: call new opt-in", due_at: todayAt(11, 0), done: false
+        }, {
+          id: "new-B-task", client_id: CLIENT_ID, client_name: "Transferred Lead",
+          source_workflow: "setter-entry", assignee_role: "setter",
+          assignee_staff_id: "another-setter", can_open_setter: false,
+          title: "Setter: confirm booking", due_at: todayAt(17, 0), done: false
+        }] })
+    } });
+    await gotoScreen(page, "calendar.html", "", SETTER);
+    await expect(page.locator(".day-wrap").getByRole("link", { name: "Open setter" })).toHaveCount(0);
+    await expect(page.locator(".day-wrap").getByRole("link", { name: "Open client file" })).toHaveCount(2);
+  });
+
+  test("the current assignee B can open the exact setter lead from Calendar", async ({ page }) => {
+    const setterB = { ...SETTER, staff: { ...SETTER.staff, id: "another-setter" } };
+    await wireApi(page, { session: setterB, handlers: {
+      "/api/tasks": (route, { url }) => ({ ok: true, can_open_setter: true,
+        tasks: new URL(url).searchParams.get("done") === "true" ? [] : [{
+          id: "old-A-task", client_id: CLIENT_ID, client_name: "Transferred Lead",
+          source_workflow: "setter-entry", assignee_role: "setter",
+          assignee_staff_id: SETTER.staff.id, can_open_setter: false,
+          title: "Setter: call new opt-in", due_at: todayAt(11, 0), done: false
+        }, {
+          id: "new-B-task", client_id: CLIENT_ID, client_name: "Transferred Lead",
+          source_workflow: "setter-booking", assignee_role: "setter",
+          assignee_staff_id: setterB.staff.id, can_open_setter: true,
+          title: "Setter: confirm booking", due_at: todayAt(17, 0), done: false
+        }] })
+    } });
+    await gotoScreen(page, "calendar.html", "", setterB);
+    await expect(page.locator(".day-wrap").getByRole("link", { name: "Open setter" }))
+      .toHaveAttribute("href", "setter-dashboard.html?client_id=" + CLIENT_ID);
+  });
+
+  test("failure on the second task page never paints a safe empty schedule", async ({ page }) => {
+    const first = Array.from({ length: 200 }, (_, i) => ({ id: `first-${i}`, due_at: todayAt(11, 0), done: false }));
+    const revision = "b".repeat(32);
+    await wireApi(page, { session: CLOSER, handlers: {
+      "/api/tasks": (route, { url }) => {
+        const params = new URL(url).searchParams;
+        if (params.get("done") === "true") return { ok: true, tasks: [], revision };
+        if (params.get("after") === "first-199") return { ok: false, error: "task_queue_changed" };
+        return { ok: true, tasks: first, revision, next_after: "first-199" };
+      }
+    } });
+    await gotoScreen(page, "calendar.html", "", CLOSER);
+    await expect(page.locator(".day-wrap")).toContainText("Schedule did not load.", { timeout: 10_000 });
+    await expect(page.locator(".day-wrap")).not.toContainText("No tasks due.");
+    await expect(page.locator("#statBooked")).toHaveText("—");
+    await expect(page.locator(".live-pill")).toContainText("Schedule unavailable");
+  });
+
+  test("a revision change between open and completed reads fails closed", async ({ page }) => {
+    await wireApi(page, { session: CLOSER, handlers: {
+      "/api/tasks": (route, { url }) => ({ ok: true, tasks: [],
+        revision: new URL(url).searchParams.get("done") === "true" ? "c".repeat(32) : "d".repeat(32) })
+    } });
+    await gotoScreen(page, "calendar.html", "", CLOSER);
+    await expect(page.locator(".day-wrap")).toContainText("Schedule did not load.", { timeout: 10_000 });
+    await expect(page.locator("#statBooked")).toHaveText("—");
+    await expect(page.locator(".live-pill")).toContainText("Schedule unavailable");
   });
 
   test("Today button returns to the real current day", async ({ page }) => {
@@ -224,6 +366,24 @@ test.describe("Calendar Up Next / Then / briefing", () => {
     await expect(page.locator("#unBody")).toHaveText("Strategy session", { timeout: 10_000 });
     await expect(page.locator("#unBody")).not.toContainText(uid);
     await expect(page.locator("#upNext")).not.toContainText(uid);
+  });
+
+  test("task detail is readable in Calendar and escaped as text on a phone", async ({ page }) => {
+    await page.clock.setFixedTime(todayAt9am());
+    await page.setViewportSize({ width: 390, height: 844 });
+    await wireApi(page, { session: CLOSER, handlers: {
+      "/api/tasks": () => ({ ok: true, tasks: [{
+        id: "manager-coaching-task", client_id: CLIENT_ID, client_name: "Coaching Review",
+        title: "Review KPI counts", detail: "3 of 5 calls held; ask for 2 more <script>window.calendarInjected = true</script>",
+        due_at: todayAt(10, 0), done: false
+      }] })
+    } });
+    await gotoScreen(page, "calendar.html");
+    await expect(page.locator("#unBody")).toContainText("3 of 5 calls held; ask for 2 more");
+    await expect(page.locator(".evt-meta")).toContainText("3 of 5 calls held; ask for 2 more");
+    expect(await page.evaluate(() => window.calendarInjected)).toBeUndefined();
+    await expect(page.locator("#upNext script, .evt script")).toHaveCount(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
   });
 });
 
@@ -297,7 +457,7 @@ test.describe("Calendar never paints a half-read schedule as a whole one", () =>
     await expect(page.locator("#fh-data-banner")).toBeVisible({ timeout: 10_000 });
 
     // The exact sentence the old build showed. It must not be here.
-    await expect(page.locator(".day-wrap")).not.toContainText("Nothing booked.");
+    await expect(page.locator(".day-wrap")).not.toContainText("No tasks due.");
     await expect(page.locator(".day-wrap")).toContainText("Schedule did not load.");
     await expect(page.locator("#unClient")).toHaveText("Schedule did not load.");
     await expect(page.locator("#thenList")).toContainText("Schedule did not load.");
@@ -327,18 +487,18 @@ test.describe("Calendar never paints a half-read schedule as a whole one", () =>
     await expect(page.locator(".day-wrap")).toContainText("Tom Alvarez");
     await expect(page.locator("#statLeft")).toHaveText("4");
 
-    // Booked and Done both count finished calls, and the finished calls are missing.
+    // Tasks due and Done both count finished work, and the finished tasks are missing.
     await expect(page.locator("#statBooked")).toHaveText("—");
     await expect(page.locator("#statDone")).toHaveText("—");
     await expect(page.locator("#statShow")).toHaveText("—");
 
-    await expect(page.locator(".day-wrap")).toContainText("Completed calls did not load.");
+    await expect(page.locator(".day-wrap")).toContainText("Completed tasks did not load.");
     await expect(page.locator(".weekstrip")).toContainText("done not loaded");
     await expect(page.locator("#fh-data-banner"))
-      .toContainText("completed calls could not be loaded");
+      .toContainText("completed tasks could not be loaded");
     expect(await bannerColour(page),
       "a partial read must not be reported with the success colour").not.toBe(MINT_SUCCESS);
-    await expect(page.locator(".live-pill").first()).toContainText("Completed calls unavailable");
+    await expect(page.locator(".live-pill").first()).toContainText("Completed tasks unavailable");
   });
 
   test("both reads fail — nothing is claimed at all", async ({ page }) => {
@@ -348,7 +508,7 @@ test.describe("Calendar never paints a half-read schedule as a whole one", () =>
     });
     await gotoScreen(page, "calendar.html");
     await expect(page.locator(".day-wrap")).toContainText("Schedule did not load.", { timeout: 10_000 });
-    await expect(page.locator(".day-wrap")).not.toContainText("Nothing booked.");
+    await expect(page.locator(".day-wrap")).not.toContainText("No tasks due.");
     await expect(page.locator("#statBooked")).toHaveText("—");
     await expect(page.locator("#statLeft")).toHaveText("—");
     expect(await bannerColour(page)).not.toBe(MINT_SUCCESS);
@@ -360,7 +520,7 @@ test.describe("Calendar never paints a half-read schedule as a whole one", () =>
       handlers: { "/api/tasks": splitTasks({ open: rows([]), done: rows([]) }) }
     });
     await gotoScreen(page, "calendar.html");
-    await expect(page.locator(".day-wrap")).toContainText("Nothing booked.", { timeout: 10_000 });
+    await expect(page.locator(".day-wrap")).toContainText("No tasks due.", { timeout: 10_000 });
     await expect(page.locator(".day-wrap")).not.toContainText("did not load");
     await expect(page.locator("#statBooked")).toHaveText("0");
     await expect(page.locator("#statDone")).toHaveText("0");
@@ -386,7 +546,7 @@ test.describe("Calendar never paints a half-read schedule as a whole one", () =>
     await expect(page.locator("#statLeft")).toHaveText("4");
     await expect(page.locator(".day-wrap")).toContainText("Erin Cole");
     await expect(page.locator(".day-wrap")).not.toContainText("did not load");
-    await expect(page.locator(".weekstrip")).toContainText("5 booked");
+    await expect(page.locator(".weekstrip")).toContainText("5 tasks");
     // A good read draws no strip at all (owner, 2026-08-28; see above).
     await expect(page.locator("#fh-data-banner")).toBeHidden();
     await expect(page.locator(".live-pill").first()).toContainText("Schedule ready");
@@ -399,7 +559,7 @@ test.describe("Calendar never paints a half-read schedule as a whole one", () =>
     });
     await gotoScreen(page, "calendar.html");
     await expect(page.locator(".day-wrap")).toContainText("Schedule did not load.", { timeout: 10_000 });
-    await expect(page.locator(".day-wrap")).not.toContainText("Nothing booked.");
+    await expect(page.locator(".day-wrap")).not.toContainText("No tasks due.");
     await expect(page.locator("#statBooked")).toHaveText("—");
     expect(await bannerColour(page)).not.toBe(MINT_SUCCESS);
   });

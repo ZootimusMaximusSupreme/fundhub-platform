@@ -126,7 +126,7 @@
          never invents a number it cannot read; when a real source for a call
          outcome lands here, unhide them in paintStats() and fill them. -->
     <div class="calendar-summary">
-      <div class="stat"><div class="l">Booked</div><div class="v" id="statBooked">—</div></div>
+      <div class="stat"><div class="l">Tasks due</div><div class="v" id="statBooked">—</div></div>
       <div class="stat"><div class="l">Done</div><div class="v" id="statDone">—</div></div>
       <div class="stat" id="statNoshowTile" hidden><div class="l">No-show</div><div class="v" id="statNoshow">—</div></div>
       <div class="stat" id="statShowTile" hidden><div class="l">Show rate</div><div class="v" id="statShow">—</div></div>
@@ -226,10 +226,9 @@ var datedTasks = [];
    read and used to be thrown away here, which made them invisible on this
    screen forever. They are kept, counted and listed in the rail instead. */
 var undatedTasks = [];
-/* The queue read stops at 200 rows per half. When it comes back full, there may
-   be more undated work than is being shown, and the screen says "at least".  */
-var queueCapped = false;
+/* Read open and completed work in bounded pages, without hiding a later call. */
 var QUEUE_LIMIT = 200;
+var setterDeskAllowed = false;
 /* The last thing a person pressed, and what came back — keyed by task id so the
    answer paints on the row they pressed. {text, bad} */
 var rowMsgs = Object.create(null);
@@ -259,7 +258,7 @@ var loadFailed = false;
                   exactly like a total failure.
      doneFailed — the finished calls never came back. What is still open is
                   right and worth showing, but anything counting finished work
-                  ("Booked", "Done", "Show rate") is quietly too small, so those
+                  ("Tasks due", "Done", "Show rate") is quietly too small, so those
                   numbers become dashes instead of wrong numbers. */
 var openFailed = false;
 var doneFailed = false;
@@ -286,8 +285,8 @@ function pendingNote() {
      both halves answered, nothing there -> the honest empty day */
 function emptyNoteAll() {
   if (!loaded) return pendingNote();
-  if (doneFailed) return "Nothing still open. Completed calls did not load.";
-  return "Nothing booked.";
+  if (doneFailed) return "Nothing still open. Completed tasks did not load.";
+  return "No tasks due.";
 }
 
 function esc(v) {
@@ -355,12 +354,17 @@ function displayName(t) {
   if (n && !isUuid(n)) return n;
   var title = String(t.title || "").trim();
   if (title && !isUuid(title)) return title;
-  return "Booked work";
+  return "Task";
 }
 function briefingText(t) {
   var title = String(t && t.title || "").trim();
-  if (title && !isUuid(title)) return title;
-  return "No briefing on file.";
+  var detail = String(t && t.detail || "").trim();
+  var parts = [];
+  if (title && !isUuid(title)) parts.push(title);
+  if (detail && !isUuid(detail) && detail !== title) parts.push(detail);
+  var repeats = ((t && t.repeat_count) || 1) - 1;
+  return (parts.join(" · ") || "No briefing on file.") + (repeats > 0 ? " · " + repeats +
+    (repeats === 1 ? " repeat entry grouped" : " repeat entries grouped") : "");
 }
 function meetingUrl(t) {
   return (t && (t.meeting_url || t.join_url)) || "";
@@ -459,18 +463,42 @@ function runTaskAction(id, patch, workingText, doneText) {
 function refreshTasks() {
   return loadDatedTasks().then(function (res) {
     if (!res || !res.ok || !res.data) return false;
-    takeTasks(res.data.tasks || []);
+    takeTasks(res.data.tasks || [], res.data.can_open_setter);
     return true;
   }, function () { return false; });
 }
 
 /* One place that splits a queue answer into what the calendar can draw and what
    it cannot, so the two never drift apart. */
-function takeTasks(tasks) {
+function takeTasks(tasks, canOpenSetter) {
   var all = Array.isArray(tasks) ? tasks : [];
-  datedTasks = all.filter(function (t) { return t && t.due_at; });
+  setterDeskAllowed = canOpenSetter === true;
+  /* Old funnel posts can leave exact repeat rows. Distinct calls, notes,
+     assignees, or due times must each remain visible work. */
+  var ordered = all.filter(function (t) { return t && typeof t === "object"; }).sort(function (a, b) {
+    if (!!a.done !== !!b.done) return Number(!!a.done) - Number(!!b.done);
+    return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+  });
+  var seen = Object.create(null);
+  var visible = [];
+  ordered.forEach(function (t) {
+    if (t.source_workflow === "setter-entry" && !t.done && t.client_id && t.due_at) {
+      var due = new Date(t.due_at);
+      if (Number.isFinite(due.getTime())) {
+        var key = JSON.stringify([t.client_id, due.toISOString(), t.title || "",
+          t.body || "", t.assignee_staff_id || "", t.assignee_role || ""]);
+        if (seen[key] !== undefined) {
+          visible[seen[key]].repeat_count++;
+          return;
+        }
+        seen[key] = visible.length;
+      }
+    }
+    visible.push(Object.assign({}, t, { repeat_count: 1 }));
+  });
+  datedTasks = visible.filter(function (t) { return t.due_at; });
   datedTasks.sort(function (a, b) { return new Date(a.due_at) - new Date(b.due_at); });
-  undatedTasks = all.filter(function (t) { return t && !t.due_at && !t.done; });
+  undatedTasks = visible.filter(function (t) { return !t.due_at && !t.done; });
 }
 
 function tasksOn(day) {
@@ -527,6 +555,14 @@ function paintDateLabel() {
    not finished. A button that could not do anything is not drawn (§5). */
 function actionsHtml(t) {
   if (!t || !t.id) return "";
+  if (t.source_workflow === "setter-entry" || t.source_workflow === "setter-booking") {
+    if (t.done || !isUuid(t.client_id)) return "";
+    var canOpenThisLead = t.can_open_setter === undefined ? setterDeskAllowed : t.can_open_setter === true;
+    var target = canOpenThisLead ? "setter-dashboard.html" : "client-control-panel.html";
+    var label = canOpenThisLead ? "Open setter" : "Open client file";
+    return '<div class="row-acts"><a class="row-btn" href="' + target +
+      '?client_id=' + encodeURIComponent(t.client_id) + '">' + label + '</a></div>';
+  }
   var busy = busyTaskId && String(busyTaskId) === String(t.id);
   var dis = busy ? " disabled" : "";
   var html = '<div class="row-acts">';
@@ -549,8 +585,7 @@ function rowMsgHtml(t) {
 }
 
 /* HOW MUCH WORK HAS NO DATE ON IT. Hidden when there is none, and hidden before
-   the queue has answered — an unread queue is not a claim that everything has a
-   date. A "+" means the read hit its 200-row limit and there may be more. */
+   the queue has answered — an unread queue is not a claim that everything has a date. */
 function paintNoDateTile() {
   var tile = document.getElementById("statNoDateTile");
   var v = document.getElementById("statNoDate");
@@ -561,10 +596,8 @@ function paintNoDateTile() {
     return;
   }
   tile.hidden = false;
-  v.textContent = String(undatedTasks.length) + (queueCapped ? "+" : "");
-  tile.title = queueCapped
-    ? "Open tasks with no due date. The queue read stops at 200 rows, so there may be more."
-    : "Open tasks with no due date. They are listed in the rail on the right.";
+  v.textContent = String(undatedTasks.length);
+  tile.title = "Open tasks with no due date. They are listed in the rail on the right.";
 }
 
 function paintNoDateList() {
@@ -583,7 +616,6 @@ function paintNoDateList() {
   var note = n === 1
     ? "1 open task has no date on it, so it cannot sit on a day."
     : n + " open tasks have no date on them, so they cannot sit on a day.";
-  if (queueCapped) note += " The queue is read 200 rows at a time, so there may be more than this.";
   var html = '<div class="nodate-note">' + esc(note) + "</div>";
   undatedTasks.slice(0, 12).forEach(function (t) {
     html += '<div class="nodate-row">' +
@@ -633,7 +665,7 @@ function paintStats() {
   var dayTasks = tasksOn(selectedDate);
   var doneN = dayTasks.filter(function (t) { return t.done; }).length;
   var leftN = dayTasks.filter(function (t) { return !t.done; }).length;
-  /* "Booked" and "Done" both count finished calls. If the finished-calls read
+  /* "Tasks due" and "Done" both count task rows. If the finished-work read
      did not come back, both are too small — and a number that is quietly wrong
      is worse than no number at all, because nobody knows to doubt it. Dash.
      "Left today" only counts still-open work, which did come back, so it
@@ -672,11 +704,11 @@ function paintWeekStrip() {
     if (loaded) {
       if (!items.length) count = "—";
       else if (doneFailed) {
-        /* Only the still-open half came back, so "3 booked" would be a number
+        /* Only the still-open half came back, so "3 tasks" would be a number
            the page cannot stand behind. Say what the 3 really is. */
         count = items.length + " open · done not loaded";
       } else {
-        count = items.length + " booked";
+        count = items.length + " tasks";
         var left = items.filter(function (t) { return !t.done; }).length;
         if (isToday && left) count += " · " + left + " left";
       }
@@ -709,7 +741,7 @@ function paintDay() {
   var label = (isToday ? "Today — " : "") + dateLabelText(selectedDate);
   var html = '<div class="day-title eyebrow">' + esc(label) + "</div>";
   if (!loaded) {
-    /* The read has not answered. Saying "Nothing booked." here is the exact lie
+    /* The read has not answered. Saying "No tasks due." here is the exact lie
        this screen used to tell all day long. */
     html += '<div class="hour"><div class="hour-label">—</div><div class="hour-body">' +
       '<div class="open-slot">' + esc(pendingNote()) +
@@ -726,8 +758,8 @@ function paintDay() {
     html += '<div class="hour"><div class="hour-label">—</div><div class="hour-body">' +
       '<div class="open-slot" style="border-color:var(--alert-line);' +
       'background:var(--alert-bg);color:var(--ink2);font-weight:600">' +
-      'Completed calls did not load. What is still open is below and is right \u2014 ' +
-      'anything already finished may be missing, so the Booked and Done counts ' +
+      'Completed tasks did not load. What is still open is below and is right \u2014 ' +
+      'anything already finished may be missing, so the Tasks due and Done counts ' +
       'show a dash. Reload the page.</div></div></div>';
   }
   var items = tasksOn(selectedDate);
@@ -918,7 +950,7 @@ function paintFooter() {
     foot.textContent = when + " · " + left + " open · done not loaded";
     return;
   }
-  foot.textContent = when + " · " + items.length + " booked · " + left + " left";
+  foot.textContent = when + " · " + items.length + " tasks · " + left + " left";
 }
 
 /* The chip in the top right said LIVE, in green, with a pulsing dot, no matter
@@ -930,7 +962,7 @@ function paintLiveChip() {
   if (!pill) return;
   var label = "Schedule ready", colour = "";
   if (loadFailed) { label = "Schedule unavailable"; colour = "#A23A30"; }
-  else if (doneFailed) { label = "Completed calls unavailable"; colour = "#906316"; }
+  else if (doneFailed) { label = "Completed tasks unavailable"; colour = "#906316"; }
   else if (!loaded) { label = "Loading schedule"; colour = "#906316"; }
   pill.setAttribute("data-state", loadFailed ? "error" : doneFailed ? "partial" : !loaded ? "loading" : "ready");
   pill.innerHTML = '<span class="live-dot"></span>' + esc(label);
@@ -970,6 +1002,7 @@ function wireTaskButtons(root) {
   if (!root) return;
   root.addEventListener("click", function (e) {
     var btn = e.target.closest && e.target.closest(".row-btn");
+    if (btn && btn.tagName === "A") { e.stopPropagation(); return; }
     if (!btn || !btn.dataset.taskId) return;
     // Stop the row's own click — pressing a button must not also re-select the
     // row underneath it and scroll the rail somewhere else.
@@ -1069,9 +1102,36 @@ function loadDatedTasks() {
   if (typeof FHData === "undefined" || !FHData.taskQueue) {
     return Promise.resolve({ ok: false, source: "offline", error: "data layer missing" });
   }
+  function readPages(done, after, rows, revision, canOpenSetter) {
+    return FHData.taskQueue({ done: done, limit: QUEUE_LIMIT, stable: true,
+      after: after, revision: revision }).then(function (res) {
+      if (!res) return { ok: false, source: "server", error: "task queue did not answer" };
+      if (!res.ok) return res;
+      if (!res.data || !Array.isArray(res.data.tasks)) {
+        return { ok: false, source: "server", error: "task queue response incomplete" };
+      }
+      var pageRows = res.data.tasks;
+      var currentRevision = res.data.revision || null;
+      if (revision && currentRevision !== revision) {
+        return { ok: false, source: "server", error: "task queue changed during read" };
+      }
+      var allRows = rows.concat(pageRows);
+      var allowed = after ? canOpenSetter : res.data.can_open_setter === true;
+      if (pageRows.length === QUEUE_LIMIT) {
+        var next = res.data.next_after;
+        if (!currentRevision || !next || next === after) {
+          return { ok: false, source: "server", error: "task queue did not advance" };
+        }
+        return readPages(done, next, allRows, currentRevision, allowed);
+      }
+      return { ok: true, data: {
+        tasks: allRows, can_open_setter: allowed, revision: currentRevision
+      } };
+    });
+  }
   return Promise.all([
-    FHData.taskQueue({ done: false, limit: 200 }),
-    FHData.taskQueue({ done: true, limit: 200 })
+    readPages(false, null, [], null, null),
+    readPages(true, null, [], null, null)
   ]).then(function (parts) {
     var open = parts[0], closed = parts[1];
 
@@ -1089,6 +1149,12 @@ function loadDatedTasks() {
        A HALF-ANSWER IS A FAILURE. Which half decides what the screen says. */
     openFailed = !open || !open.ok;
     doneFailed = !closed || !closed.ok;
+    if (!openFailed && !doneFailed && open.data.revision && closed.data.revision &&
+        open.data.revision !== closed.data.revision) {
+      openFailed = true;
+      doneFailed = true;
+      return { ok: false, source: "server", error: "task queue changed during read" };
+    }
 
     /* The still-open read is the calendar. Without it there is no honest way to
        draw a day, so this is reported as a failed read even when the finished
@@ -1107,9 +1173,6 @@ function loadDatedTasks() {
     function take(res) {
       if (!res || !res.ok || !res.data) return;
       var rows = res.data.tasks || [];
-      // The read stops at 200 rows. A full answer may have been cut short, and
-      // the count on screen has to say so rather than claim a total.
-      if (rows.length >= QUEUE_LIMIT) queueCapped = true;
       rows.forEach(function (t) {
         if (!t) return;
         var key = t.id || (String(t.due_at || "no-date") + ":" + String(t.title || ""));
@@ -1118,10 +1181,11 @@ function loadDatedTasks() {
         tasks.push(t);
       });
     }
-    queueCapped = false;
     take(open);
     take(closed);
-    return { ok: true, source: "api", data: { tasks: tasks }, error: null };
+    return { ok: true, source: "api", data: {
+      tasks: tasks, can_open_setter: open.data.can_open_setter === true
+    }, error: null };
   });
 }
 
@@ -1162,7 +1226,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }, SLOW_AFTER_MS);
 
     var wired = FHData.wire(read, "appointments", function (data) {
-      takeTasks(data.tasks || []);
+      takeTasks(data.tasks || [], data.can_open_setter);
       loaded = true;
       selectedId = null;
       paintAll();
@@ -1177,7 +1241,7 @@ document.addEventListener("DOMContentLoaded", function () {
          corrected to a warning just below, and if that ever failed to run, the
          words alone still stop a person trusting the screen. */
       if (doneFailed) {
-        return "schedule incomplete \u2014 completed calls did not load" +
+        return "schedule incomplete \u2014 completed tasks did not load" +
           (todayN ? " \u00b7 " + todayN + " still open today" : "");
       }
       return "live schedule" + (todayN ? " · " + todayN + " today" : "") +
@@ -1193,9 +1257,9 @@ document.addEventListener("DOMContentLoaded", function () {
     wired.then(function () {
       if (!doneFailed || loadFailed) return;
       if (FHData.banner) {
-        FHData.banner("error", "Some of your completed calls could not be loaded, so this " +
+        FHData.banner("error", "Some of your completed tasks could not be loaded, so this " +
           "week is incomplete. What is still open is right. Anything already finished may be " +
-          "missing, which is why Booked, Done and Show rate show a dash instead of a number. " +
+          "missing, which is why Tasks due, Done and Show rate show a dash instead of a number. " +
           "Reload the page, and tell your advisor if it keeps happening.", "appointments");
       }
     });

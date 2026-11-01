@@ -234,7 +234,7 @@ test("an endpoint excused from the org filter still passes the session's org to 
         !/readOutreach\(database, \{ staff, query: req\.query \|\| \{\} \}\)/.test(f.code)
       : f.name === "setter-dashboard.mjs"
         ? !/const staff = await requireAuth\(req, res, \{ db: database \}\)/.test(f.code) ||
-          !/listSetterQueue\(database, staff, req\.query \|\| \{\}\)/.test(f.code)
+          !/listSetterQueue\(database, staff, \{/.test(f.code)
       : !DELEGATES_SESSION_ORG.test(f.code))
     .map((f) => f.name);
 
