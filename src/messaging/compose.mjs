@@ -337,12 +337,32 @@ export async function composeAndSend(db, input = {}, options = {}) {
      Re-dispatching it would be the double-send the key exists to prevent. */
   if (!ins.rows[0]) {
     const existing = await db.query(
-      `SELECT id, conversation_id, channel, rendered_body, status, created_at
+      `SELECT id, conversation_id, client_id, channel, rendered_body, status,
+              created_at, sender_staff_id, sender_kind, direction, to_address,
+              subject, attachments
          FROM messages WHERE org_id = $1 AND provider_ref = $2 LIMIT 1`,
       [orgId, providerRef]
     );
+    const prior = existing.rows[0];
+    /* A key identifies ONE authored message to ONE client. A reused key must
+       never return another client's note, claim that an unsent note was
+       saved, or reveal a message from another staff member's thread. Keep
+       the original provider_ref format so retries from older live widgets
+       still dedupe safely after this deploy. */
+    if (!prior || String(prior.client_id) !== String(target.clientId) ||
+        String(prior.conversation_id) !== String(target.conversationId) ||
+        String(prior.sender_staff_id) !== String(staffId) ||
+        prior.direction !== "outbound" || prior.sender_kind !== "staff" ||
+        prior.channel !== target.channel || prior.rendered_body !== text ||
+        String(prior.to_address || "") !== String(toAddress || "") ||
+        String(prior.subject || "") !== String(subjectLine || "") ||
+        JSON.stringify(prior.attachments || []) !== JSON.stringify(att || [])) {
+      throw Object.assign(new Error("idempotency_key_reused"), {
+        code: "IDEMPOTENCY_CONFLICT"
+      });
+    }
     return {
-      message: existing.rows[0] || null,
+      message: prior,
       conversationId: target.conversationId,
       outcome: null,
       detail: null,

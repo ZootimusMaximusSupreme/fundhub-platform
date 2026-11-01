@@ -285,6 +285,24 @@ test("compose: the same idempotency key sends once and returns the first message
   assert.equal(recorded().length, 1, "the same key sent twice");
 });
 
+test("compose: a replay key cannot claim a changed recipient or attachment was sent",
+  { skip: !HAS_DB }, async () => {
+  const key = `compose-recipient-${convoId}`;
+  const input = { conversationId: convoId, body: "one note", idempotencyKey: key };
+  const first = await send(input);
+  await assert.rejects(
+    send({ ...input, toAddress: "+15550000999" }),
+    { code: "IDEMPOTENCY_CONFLICT" }
+  );
+  await assert.rejects(
+    send({ ...input, attachments: [{ asset: "changed-file" }] }),
+    { code: "IDEMPOTENCY_CONFLICT" }
+  );
+  assert.equal(recorded().length, 1);
+  const saved = await db.query(`SELECT count(*)::int AS n FROM messages WHERE id = $1`, [first.message.id]);
+  assert.equal(saved.rows[0].n, 1);
+});
+
 test("compose: without a key, two identical replies are two real messages",
   { skip: !HAS_DB }, async () => {
   const a = await send({ conversationId: convoId, body: "ok" });

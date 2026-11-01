@@ -26,12 +26,13 @@ import { safeError } from "../../src/http/health.mjs";
 async function listClientThreads(database, { orgId, limit }) {
   const res = await database.query(
     `SELECT c.id, c.kind, c.channel, c.client_id, c.last_pulse_at, c.created_at,
-            cl.name AS client_name, cl.email AS client_email,
+            NULLIF(btrim(concat_ws(' ', cl.first_name, cl.last_name)), '') AS client_name,
+            cl.email AS client_email,
             (SELECT m.rendered_body FROM messages m
-              WHERE m.conversation_id = c.id
+              WHERE m.conversation_id = c.id AND m.org_id = c.org_id
               ORDER BY m.created_at DESC LIMIT 1) AS last_body
        FROM conversations c
-       JOIN clients cl ON cl.id = c.client_id
+       JOIN clients cl ON cl.id = c.client_id AND cl.org_id = c.org_id
       WHERE c.org_id = $1 AND c.kind = 'client'
       ORDER BY COALESCE(c.last_pulse_at, c.created_at) DESC
       LIMIT $2`,
@@ -199,6 +200,9 @@ export default async function handler(req, res) {
     }
     if (code === "NOT_FOUND") return res.status(404).json({ ok: false, error: err.message });
     if (code === "FORBIDDEN") return res.status(403).json({ ok: false, error: err.message });
+    if (code === "IDEMPOTENCY_CONFLICT") {
+      return res.status(409).json({ ok: false, error: "idempotency_key_reused" });
+    }
     return res.status(500).json({ ok: false, error: safeError(err) });
   }
 }

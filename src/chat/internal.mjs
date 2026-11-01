@@ -155,14 +155,26 @@ export async function sendInternalMessage(db, {
   }
 
   const providerRef = idempotencyKey ? `internal:${idempotencyKey}` : null;
+  function checkedReplay(prior) {
+    /* Cross-thread or cross-author keys must never expose another private
+       staff message. Preserve the old key format for already-saved retries.
+       A key reused with changed words is a conflict, not a false ACK. */
+    if (!prior || String(prior.conversation_id) !== String(conversationId) ||
+        String(prior.sender_staff_id) !== String(staffId) ||
+        prior.direction !== "outbound" || prior.channel !== "internal" ||
+        prior.sender_kind !== "staff" || prior.rendered_body !== text) {
+      throw Object.assign(new Error("idempotency_key_reused"), {
+        code: "IDEMPOTENCY_CONFLICT"
+      });
+    }
+    return { message: prior, deduped: true };
+  }
   if (providerRef) {
     const prior = await db.query(
       `SELECT * FROM messages WHERE org_id = $1 AND provider_ref = $2`,
       [orgId, providerRef]
     );
-    if (prior.rows[0]) {
-      return { message: prior.rows[0], deduped: true };
-    }
+    if (prior.rows[0]) return checkedReplay(prior.rows[0]);
   }
 
   const ins = await db.query(
@@ -174,9 +186,22 @@ export async function sendInternalMessage(db, {
        $1, NULL, $2, 'outbound', 'internal',
        $3, 'delivered', true,
        $4, 'staff', $5
-     ) RETURNING *`,
+     )
+     ON CONFLICT (org_id, provider_ref) WHERE provider_ref IS NOT NULL DO NOTHING
+     RETURNING *`,
     [orgId, conversationId, text, staffId, providerRef]
   );
+
+  /* A second concurrent POST can race past the preliminary read. The database
+     unique index is the arbiter; a losing insert must read and validate the
+     original instead of turning into a 500 or creating a duplicate. */
+  if (!ins.rows[0]) {
+    const existing = await db.query(
+      `SELECT * FROM messages WHERE org_id = $1 AND provider_ref = $2`,
+      [orgId, providerRef]
+    );
+    return checkedReplay(existing.rows[0]);
+  }
 
   await db.query(
     `UPDATE conversations SET last_pulse_at = now(), updated_at = now() WHERE id = $1`,
@@ -196,10 +221,10 @@ export async function listInternalThreads(db, { orgId, staffId, limit = 30 } = {
                'id', s.id, 'name', s.name, 'email', s.email, 'role', s.role
              ) ORDER BY s.name)
                FROM conversation_participants cp
-               JOIN staff s ON s.id = cp.staff_id
+               JOIN staff s ON s.id = cp.staff_id AND s.org_id = c.org_id
               WHERE cp.conversation_id = c.id) AS participants,
             (SELECT m.rendered_body FROM messages m
-              WHERE m.conversation_id = c.id
+              WHERE m.conversation_id = c.id AND m.org_id = c.org_id
               ORDER BY m.created_at DESC LIMIT 1) AS last_body
        FROM conversations c
        JOIN conversation_participants me
@@ -221,7 +246,7 @@ export async function listThreadMessages(db, { orgId, conversationId, limit = 10
             m.sender_staff_id, m.sender_kind, m.created_at,
             s.name AS sender_name
        FROM messages m
-       LEFT JOIN staff s ON s.id = m.sender_staff_id
+       LEFT JOIN staff s ON s.id = m.sender_staff_id AND s.org_id = m.org_id
       WHERE m.org_id = $1 AND m.conversation_id = $2
       ORDER BY m.created_at ASC
       LIMIT $3`,

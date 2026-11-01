@@ -93,7 +93,7 @@ function chatWorld() {
       .filter((c) => c.id === p[0] && c.org_id === p[1]).map((c) => ({ id: c.id, org_id: c.org_id, kind: c.kind }))],
     [/SELECT \* FROM messages WHERE org_id = \$1 AND provider_ref = \$2/, (_sql, p) => world.messages.filter((m) => m.org_id === p[0] && m.provider_ref === p[1])],
     [/INSERT INTO messages/, (_sql, p) => {
-      const row = { id: `m-new-${world.inserts.length + 1}`, org_id: p[0], conversation_id: p[1], rendered_body: p[2], sender_staff_id: p[3], sender_kind: "staff", provider_ref: p[4], channel: "internal", status: "delivered" };
+      const row = { id: `m-new-${world.inserts.length + 1}`, org_id: p[0], conversation_id: p[1], direction: "outbound", rendered_body: p[2], sender_staff_id: p[3], sender_kind: "staff", provider_ref: p[4], channel: "internal", status: "delivered" };
       world.inserts.push(row);
       world.messages.push(row);
       return [row];
