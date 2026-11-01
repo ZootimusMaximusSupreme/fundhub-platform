@@ -193,7 +193,9 @@ test('saved banker email and phone open manual contact targets without a Fundhub
   const email = page.getByRole('link', { name: 'Email Avery Lane' }), phone = page.getByRole('link', { name: 'Call Avery Lane' });
   await expect(email).toHaveAttribute('href', 'mailto:avery%2Bbusiness@bank.example');
   await expect(phone).toHaveAttribute('href', 'tel:+16025550101');
+  await expect(phone).toHaveText('(602) 555-0101');
   await expect(page.getByRole('link', { name: 'Call Branch desk' })).toHaveAttribute('href', 'tel:+16025550102;ext=42');
+  await expect(page.getByRole('link', { name: 'Call Branch desk' })).toHaveText('(602) 555-0102 ext. 42');
   await expect(page.getByRole('link', { name: 'Call Unconfirmed phone' })).toHaveCount(0);
   const queryEmail = page.getByRole('link', { name: 'Email Query characters' });
   await expect(queryEmail).toHaveAttribute('href', 'mailto:queries%3Fsubject%3DInjected%26bcc%3Dother@bank.example');
