@@ -14,9 +14,9 @@ function esc(s) {
 }
 
 function verdictLine(role, journey, usable) {
-  if (usable === true) return `YES — ${role} / ${journey}`;
-  if (usable === false) return `NO — ${role} / ${journey}`;
-  return `UNKNOWN — ${role} / ${journey}`;
+  if (usable === true) return `PASS — ${role} / ${journey}`;
+  if (usable === false) return `FAIL — ${role} / ${journey}`;
+  return `UNVERIFIED — ${role} / ${journey}`;
 }
 
 export function writeReport({ collector, meta = {}, journeyNotes = [], credentials = [], verdicts = [] }) {
@@ -53,7 +53,7 @@ export function writeReport({ collector, meta = {}, journeyNotes = [], credentia
       `${tallies.FAIL || 0} FAIL and ${tallies["SILENTLY-DID-NOTHING"] || 0} silent no-ops remain.`
     );
   } else {
-    lines.push("No FAIL/SILENT/P0 in this run — still treat UNVERIFIED rows as unproven.");
+    lines.push("No FAIL/SILENT/P0 in this local synthetic run. UNVERIFIED rows and live provider paths remain unproven.");
   }
   lines.push("");
   lines.push(
@@ -129,9 +129,9 @@ export function writeReport({ collector, meta = {}, journeyNotes = [], credentia
   for (const note of journeyNotes) {
     lines.push(`### ${note.title}`);
     lines.push("");
-    if (note.usableToday === true) lines.push(`**Usable for a real person today: YES**`);
-    else if (note.usableToday === false) lines.push(`**Usable for a real person today: NO**`);
-    else lines.push(`**Usable for a real person today: UNKNOWN / PARTIAL**`);
+    if (note.usableToday === true) lines.push(`**Local synthetic journey: PASS**`);
+    else if (note.usableToday === false) lines.push(`**Local synthetic journey: FAIL**`);
+    else lines.push(`**Local synthetic journey: PARTIAL / UNVERIFIED**`);
     lines.push("");
     lines.push(note.body || "");
     lines.push("");
@@ -197,7 +197,7 @@ export function writeReport({ collector, meta = {}, journeyNotes = [], credentia
   lines.push("");
 
   // ─── Verdicts ─────────────────────────────────────────────────────
-  lines.push("## 7. Blunt verdicts — would this work for a real person today?");
+  lines.push("## 7. Local synthetic journey verdicts");
   lines.push("");
   for (const v of verdicts) {
     lines.push(`- ${verdictLine(v.role, v.journey, v.usableToday)}${v.why ? ` — ${esc(v.why)}` : ""}`);
