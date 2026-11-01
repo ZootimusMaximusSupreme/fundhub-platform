@@ -90,6 +90,8 @@ Legend: **both homes** = one real file in `.ai/rules`, linked for Cursor and for
 - `deployment-and-infrastructure` (both homes): How Fundhub deploys, sets env, and applies database changes.
 - `agents-run-ops-not-chris` (both homes): Agents run git push, auth, env, and cloud prep — not Chris in Terminal.
 - `github-push` (both homes): GitHub is canonical and public; push only `main` and PR branches, no backup branches; env names.
+- `preflight-before-pr` (both homes): Run `npm run preflight` before opening a pull request or shipping; resolve shared files first.
+- `ship-in-order` (both homes): Finished changes use `npm run ship-change` and follow the PR chain in order.
 - `github-ships-main` (both homes): A push to `main` ships live through GitHub Actions; Netlify has no linked repo so it cannot auto build.
 - `repo-hygiene-vc-router` (both homes): Repo clean-up and "things keep getting lost" are their own doors; load the hygiene or version-control skill first.
 

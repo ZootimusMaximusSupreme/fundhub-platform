@@ -1,0 +1,1 @@
+../../.ai/rules/preflight-before-pr.md
