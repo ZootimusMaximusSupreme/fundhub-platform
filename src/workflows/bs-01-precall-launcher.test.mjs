@@ -27,7 +27,7 @@ const repairClient = () => ({ id: "cl-1", org_id: "org-1", email: "a@b.com", out
 // Far enough that T-48h and the +71h grid are both still in the future.
 const farStart = () => {
   const date = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
-  date.setUTCHours(9, 0, 0, 0); // 2 a.m. Arizona keeps reminder slots away from lessons.
+  date.setUTCHours(9, 0, 0, 0);
   return date.toISOString();
 };
 const soonStart = () => new Date(Date.now() + 36 * 60 * 60 * 1000).toISOString();
@@ -64,6 +64,24 @@ test("deck emails use the saved survey lane and live URL", async () => {
   assert.equal(pushes.length, 3);
   assert.ok(db.messages.some((message) => /\/slideshows\/pre-underwriting\.html/.test(message.rendered_body)));
   assert.ok(db.messages.some((message) => /\/slideshows\/funding-sequence\.html/.test(message.rendered_body)));
+});
+
+test("push lessons fall back to email when app push is unavailable", async () => {
+  const db = pgFake({ clients: [{ ...fundingClient(), custom_fields: { cf_svy_self_reported_fico: "700-759" } }],
+    templates: [
+      { org_id: "org-1", template_key: "EMAIL-BS-DECK-LESSON", channel: "email",
+        body: "{{deck_url}}", compliance_passed: true },
+      { org_id: "org-1", template_key: "SMS-BS-DECK", channel: "sms",
+        body: "{{deck_url}}", compliance_passed: true }
+    ] });
+  const result = await runDeckDrip({ db, step: fakeStep(), orgId: "org-1", clientId: "cl-1",
+    eventId: "evt-fallback", startTime: farStart(),
+    sendPush: async () => ({ sent: false, reason: "push_not_enabled" }) });
+  assert.equal(result.sent.length, 13);
+  assert.equal(db.messages.length, 13);
+  assert.equal(db.messages.filter((m) => m.channel === "email").length, 11);
+  assert.equal(new Set(db.messages.map((m) => m.rendered_body)).size, 13);
+  assert.equal(result.sent.filter((m) => m.channel === "email").length, 11);
 });
 
 test("a setter correction changes the remaining lane at the next deck wake", async () => {
@@ -103,7 +121,7 @@ test("short notice bookings skip past deck slots and a held call stops remaining
   assert.ok(short.sent.length > 0 && short.sent.length <
     DECK_SLOTS.filter((slot) => slot.funding).length);
   for (const lesson of short.sent) {
-    assert.ok(deckTime(shortStart, lesson.slot).getTime() - Date.now() >= 4 * 60 * 60 * 1000);
+    assert.ok(deckTime(shortStart, lesson.slot).getTime() - Date.now() >= 60 * 60 * 1000);
   }
 
   const heldDb = pgFake({ clients: [client], templates,
@@ -132,29 +150,31 @@ test("approved deck template replaces the old filler email grid", async () => {
   assert.equal(result.decks.sent.length, 13);
   assert.equal(result.gaps.length, 0);
   assert.equal(db.messages.filter((m) => m.template_key.startsWith("BS-FUND-")).length, 0);
-  assert.equal(db.messages.filter((m) => m.template_key === "EMAIL-BS-DECK-LESSON").length, 8);
+  assert.equal(db.messages.filter((m) => m.template_key === "EMAIL-BS-DECK-LESSON").length, 11);
   assert.equal(db.messages.filter((m) => m.template_key === "SMS-BS-DECK").length, 2);
 });
 
-test("lessons do not land beside booking reminders", async () => {
-  const start = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
-  start.setUTCHours(19, 0, 0, 0); // Noon Arizona.
-  const db = pgFake({ clients: [{ ...fundingClient(),
-    custom_fields: { cf_svy_self_reported_fico: "700-759" } }],
-    templates: [
-      { org_id: "org-1", template_key: "EMAIL-BS-DECK-LESSON", channel: "email",
-        body: "{{deck_url}}", compliance_passed: true },
-      { org_id: "org-1", template_key: "SMS-BS-DECK", channel: "sms",
-        body: "{{deck_url}}", compliance_passed: true }
-    ] });
-  const result = await runDeckDrip({ db, step: fakeStep(), orgId: "org-1",
-    clientId: "cl-1", eventId: "evt-spaced", startTime: start.toISOString(),
-    sendPush: async () => ({ sent: true }) });
-  assert.ok(result.sent.length < 13, "some lessons make room for reminders");
-  for (const lesson of result.sent) {
-    const at = deckTime(start, lesson.slot).getTime();
-    for (const lead of [48, 24, 2]) {
-      assert.ok(Math.abs(at - (start.getTime() - lead * 60 * 60 * 1000)) >= 4 * 60 * 60 * 1000);
+test("noon and 3 p.m. calls keep all lane lessons clear of reminders", async () => {
+  for (const [hour, lane, expected] of [[19, "funding", 13], [22, "blueprint", 17]]) {
+    const start = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
+    start.setUTCHours(hour, 0, 0, 0);
+    const db = pgFake({ clients: [{ ...(lane === "funding" ? fundingClient() : repairClient()),
+      custom_fields: { cf_svy_self_reported_fico: lane === "funding" ? "700-759" : "500-619" } }],
+      templates: [
+        { org_id: "org-1", template_key: "EMAIL-BS-DECK-LESSON", channel: "email",
+          body: "{{deck_url}}", compliance_passed: true },
+        { org_id: "org-1", template_key: "SMS-BS-DECK", channel: "sms",
+          body: "{{deck_url}}", compliance_passed: true }
+      ] });
+    const result = await runDeckDrip({ db, step: fakeStep(), orgId: "org-1",
+      clientId: "cl-1", eventId: `evt-spaced-${lane}`, startTime: start.toISOString(),
+      sendPush: async () => ({ sent: true }) });
+    assert.equal(result.sent.length, expected);
+    for (const lesson of result.sent) {
+      const at = deckTime(start, lesson.slot).getTime();
+      for (const lead of [48, 24, 2]) {
+        assert.ok(Math.abs(at - (start.getTime() - lead * 60 * 60 * 1000)) >= 60 * 60 * 1000);
+      }
     }
   }
 });
