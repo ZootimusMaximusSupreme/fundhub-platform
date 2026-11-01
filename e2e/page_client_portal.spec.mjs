@@ -51,7 +51,7 @@ for(const width of [1440,390,320])test(`client home at ${width}px preserves cont
 for(const state of ['loading','empty','error'])test(`client home ${state} remains usable`,async({page})=>{await open(page,{state});await expect(page.locator('#money-link')).toBeVisible();await expect(page.locator('#prog-link a')).toBeVisible();fs.mkdirSync(out,{recursive:true});await page.screenshot({path:`${out}/page_client_portal-${state}.png`,fullPage:true});});
 test('HTTP refusal with success-shaped body does not expose affiliate dashboard',async({page})=>{await open(page,{postStatus:500});await page.locator('#ref-go').click();await expect(page.locator('#ref-err')).toBeVisible();await expect(page.locator('#ref-dashboard')).toBeHidden();});
 
-test('staff does not inherit client Home heading or client styling',async({page})=>{
+test('staff portal preview does not inherit client navigation',async({page})=>{
  await page.addInitScript(()=>{localStorage.setItem('fh_token','safe-mock-token');localStorage.setItem('fh_role','owner');});
  await page.route('**/api/**',route=>route.request().url().includes('/api/auth/session')?json(route,{ok:true,principal:'staff',staff:{id:'safe-staff',role:'owner',name:'Safe Staff',status:'active'}}):json(route,{ok:true,items:[]}));
  await page.goto(`/app/client-portal.html?id=${CLIENT_ID}`);
@@ -59,6 +59,71 @@ test('staff does not inherit client Home heading or client styling',async({page}
  await expect(page.locator('#acct-tabs [data-tab="soft-pull"]')).toBeHidden();
  await expect(page.locator('#tp-soft-pull')).toBeHidden();
  await expect(page.locator('body')).not.toHaveAttribute('data-client-ios',/.*/);
+ await expect(page.locator('.client-ios-nav')).toHaveCount(0);
+});
+
+for (const width of [1440,390]) test(`staff without a selected client sees a clean choice at ${width}px`,async({page})=>{
+ await page.setViewportSize({width,height:900});
+ await page.addInitScript(()=>{localStorage.setItem('fh_token','safe-mock-token');localStorage.setItem('fh_role','owner');});
+ await page.route('**/api/**',route=>route.request().url().includes('/api/auth/session')
+   ? json(route,{ok:true,principal:'staff',staff:{id:'safe-staff',role:'owner',name:'Safe Staff',status:'active'}})
+   : route.request().url().includes('/api/health')
+     ? json(route,{ok:true,db:'up',migrations:1})
+     : json(route,{ok:true,items:[]}));
+ await page.goto('/app/client-portal.html');
+ await expect(page.locator('body')).toHaveAttribute('data-portal-state','empty-staff');
+ await expect(page.locator('#greeting')).toHaveText('Choose a client');
+ await expect(page.locator('#cp-next-link')).toBeVisible();
+ await expect(page.locator('#cp-next-link')).toHaveAttribute('href','/app/client-control-panel.html');
+ const choice=await page.locator('.cp-next-action').boundingBox();
+ expect(choice.x).toBeLessThan(width===1440?100:30);
+ await expect(page.locator('#portal-status-pre')).toBeHidden();
+ await expect(page.locator('#portal-status-funded')).toBeHidden();
+ await expect(page.locator('.video-card')).toBeHidden();
+ await expect(page.locator('#tiles')).toBeHidden();
+ await expect(page.locator('.client-ios-nav')).toHaveCount(0);
+ // The shared shell's offline badge is outside this portal surface.
+ const portalOverflow=await page.locator('#portal-home').evaluate(e=>e.scrollWidth-e.clientWidth);
+ expect(portalOverflow).toBeLessThanOrEqual(1);
+ fs.mkdirSync(out,{recursive:true});await page.screenshot({path:`${out}/page_client_portal-staff-choose-${width}.png`,fullPage:true});
+ await page.locator('#cp-next-link').click();
+ await expect(page).toHaveURL(/\/app\/client-control-panel\.html$/);
+});
+
+for (const width of [1440,390]) test(`selected staff preview uses the portal workspace hierarchy at ${width}px`,async({page})=>{
+ await page.setViewportSize({width,height:900});
+ await page.addInitScript(()=>{localStorage.setItem('fh_token','safe-mock-token');localStorage.setItem('fh_role','owner');});
+ await page.route('**/api/**',route=>{
+   const url=route.request().url();
+   if(url.includes('/api/auth/session'))return json(route,{ok:true,principal:'staff',staff:{id:'safe-staff',role:'owner',name:'Safe Staff',status:'active'}});
+   if(url.includes('/api/health'))return json(route,{ok:true,db:'up',migrations:1});
+   if(url.includes('/api/dashboard/client?'))return json(route,{ok:true,client:{first_name:'Dana',last_name:'Whitfield',custom_fields:{}},latest_booking:null,messages:[],transactions:[]});
+   if(url.includes('/api/read/portal-summary'))return json(route,sampleBundle.reads['/api/read/portal-summary']);
+   return json(route,{ok:true,items:[]});
+ });
+ await page.goto(`/app/client-portal.html?client_id=${CLIENT_ID}`);
+ await expect(page.locator('body')).toHaveAttribute('data-portal-state','ready');
+ await expect(page.locator('#greeting')).toHaveText('Previewing Dana Whitfield’s portal');
+ await expect(page.locator('.prog-card.precall-only')).toBeVisible();
+ await expect(page.locator('#sb-pre-main')).toHaveText('Your soft-pull assessment is in.');
+ await expect(page.locator('.cp-next-action')).toBeVisible();
+ await expect(page.locator('.video-card')).toBeVisible();
+ const status=await page.locator('.prog-card.precall-only').boundingBox();
+ const video=await page.locator('.video-card').boundingBox();
+ expect(status.y).toBeLessThan(video.y);
+ const portalOverflow=await page.locator('#portal-home').evaluate(e=>e.scrollWidth-e.clientWidth);
+ expect(portalOverflow).toBeLessThanOrEqual(1);
+ await expect(page.locator('.client-ios-nav')).toHaveCount(0);
+ await expect(page.locator('body')).not.toHaveAttribute('data-client-ios',/.*/);
+ fs.mkdirSync(out,{recursive:true});await page.screenshot({path:`${out}/page_client_portal-staff-preview-${width}.png`,fullPage:true});
+ if(width===1440){
+   const columns=await page.locator('#tiles').evaluate(e=>getComputedStyle(e).gridTemplateColumns.split(' ').length);
+   expect(columns).toBe(3);
+   await page.locator('#tiles').scrollIntoViewIfNeeded();
+   await page.screenshot({path:`${out}/page_client_portal-staff-offers-1440.png`});
+ }
+ await page.locator('#cp-next-link').click();
+ await expect(page.locator('#acct')).toHaveAttribute('open','');
 });
 
 test('canonical credit-pull summary controls hero current stage rather than legacy booking tick',async({page})=>{
