@@ -59,8 +59,8 @@ test("only setters and owner get the first SMS and push, once per client", async
     drainNowImpl: async (_db, id) => { drains.push(id); return { sent: 1 }; },
     pushImpl: async (_db, args) => { pushes.push(args); return { sent: 1 }; }
   };
-  const first = await queueNewLeadAlerts(db, opts);
-  const replay = await queueNewLeadAlerts(db, opts);
+  const first = await queueNewLeadAlerts(db, { ...opts, eventId: "first-cf-form" });
+  const replay = await queueNewLeadAlerts(db, { ...opts, eventId: "second-cf-form" });
   assert.equal(first.queued, 2);
   assert.equal(replay.queued, 0);
   assert.deepEqual(messages.map(row => row.to), [STAFF[0].phone, STAFF[1].phone]);

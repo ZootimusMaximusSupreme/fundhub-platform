@@ -665,7 +665,7 @@ describe("booked lane", () => {
     assert.equal(row[0].channel, "sms");
     assert.equal(row[0].to_address, "+16025550142");
     assert.equal(row[0].provider_ref, `workflow:${STAFF_BOOKED_TEMPLATE}:${d.row.id}:${staff.rows[0].id}`);
-    assert.match(row[0].rendered_body, /New lead: Wendy/);
+    assert.match(row[0].rendered_body, /Booked call: Wendy/);
     assertArizonaTime(row[0].rendered_body, startMs, "staff alert");
     assert.ok(pushes.includes(staff.rows[0].id), "the setter also gets the app alert");
 

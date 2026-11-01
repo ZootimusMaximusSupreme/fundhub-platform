@@ -168,6 +168,7 @@ export async function advanceCardToStage(db, {
   clientId,
   pipelineKey,
   stageKey,
+  allowRebookFromLost = false,
   ...rest
 } = {}) {
   if (!orgId) return { moved: false, reason: "org_required" };
@@ -194,7 +195,8 @@ export async function advanceCardToStage(db, {
     [clientId, pipelineKey, orgId]
   );
   const cur = current.rows[0];
-  if (cur && Number(cur.sort_order) >= Number(targetRow.sort_order)) {
+  if (cur && Number(cur.sort_order) >= Number(targetRow.sort_order) &&
+      !(allowRebookFromLost && pipelineKey === "sales" && stageKey === "booked" && cur.stage_key === "lost")) {
     return {
       moved: false,
       reason: "already_at_or_past",
