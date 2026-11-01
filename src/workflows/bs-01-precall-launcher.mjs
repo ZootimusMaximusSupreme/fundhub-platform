@@ -143,11 +143,18 @@ export function deckTime(startTime, index) {
   if (!Number.isFinite(startMs) || index < 0 || index >= DECK_SLOTS.length) return null;
   const local = new Date(startMs - 7 * HOUR);
   const day = index < 6 ? 3 : index < 12 ? 2 : 1;
-  const hours = index < 6 ? [9, 10, 11, 13, 15, 16]
-    : index < 12 ? [9, 10, 11, 13, 15, 16] : [9, 10, 12, 14, 16];
+  const count = day === 1 ? 5 : 6;
+  const callHour = local.getUTCHours() + local.getUTCMinutes() / 60;
+  const hours = day === 3 ? [9, 10, 11, 13, 15, 16]
+    : [9, 10, 11, 12, 13, 14, 15, 16]
+      .filter((hour) => Math.abs(hour - callHour) >= 1);
+  const picks = count === 6
+    ? (hours.length === 8 ? [0, 1, 2, 4, 5, 7]
+      : hours.length === 7 ? [0, 1, 2, 3, 5, 6] : [0, 1, 2, 3, 4, 5])
+    : [0, 1, Math.floor(hours.length / 2), hours.length - 2, hours.length - 1];
   const slot = index < 6 ? index : index < 12 ? index - 6 : index - 12;
   return new Date(Date.UTC(local.getUTCFullYear(), local.getUTCMonth(),
-    local.getUTCDate() - day, hours[slot] + 7));
+    local.getUTCDate() - day, hours[picks[slot]] + 7));
 }
 
 export async function runDeckDrip({ db: database, step, orgId, clientId, eventId, startTime,
@@ -158,11 +165,11 @@ export async function runDeckDrip({ db: database, step, orgId, clientId, eventId
   const sent = [];
   for (let i = 0; i < DECK_SLOTS.length; i++) {
     const at = deckTime(startTime, i);
-    if (!at || at.getTime() - Date.now() < 4 * HOUR) continue;
-    // Booking and reminder messages own their own moments. A content lesson
-    // within four hours of one would stack channels and add no value.
+    if (!at || at.getTime() - Date.now() < HOUR) continue;
+    // The appointment-hour slots are moved within the Arizona daytime window,
+    // leaving at least an hour around each transactional reminder.
     if ([48, 24, 2].some((lead) =>
-      Math.abs(at.getTime() - (startMs - lead * HOUR)) < 4 * HOUR)) continue;
+      Math.abs(at.getTime() - (startMs - lead * HOUR)) < HOUR)) continue;
     await step.sleepUntil(`wait-deck-${i}`, at);
     const held = await step.run(`check-deck-held-${i}`, () => callHappened(database, clientId));
     if (held || Date.now() >= startMs) return { sent, stoppedBecause: held ? "call_held" : "call_started" };
@@ -171,15 +178,20 @@ export async function runDeckDrip({ db: database, step, orgId, clientId, eventId
     const slot = DECK_SLOTS[i];
     const slug = slot[lane === "qualified" ? "funding" : "blueprint"];
     if (!slug) continue;
-    const result = await step.run(`send-deck-${i}`, () => slot.channel === "push"
-      ? sendPush(database, { orgId, clientId, eventId, slug })
-      : sendTemplated(database, {
-        orgId, clientId, channel: slot.channel,
-        templateKey: slot.channel === "sms" ? "SMS-BS-DECK" : "EMAIL-BS-DECK-LESSON",
+    const result = await step.run(`send-deck-${i}`, async () => {
+      if (slot.channel === "push") {
+        const pushed = await sendPush(database, { orgId, clientId, eventId, slug });
+        if (pushed.sent) return { ...pushed, channel: "push" };
+      }
+      const channel = slot.channel === "push" ? "email" : slot.channel;
+      return { ...await sendTemplated(database, {
+        orgId, clientId, channel,
+        templateKey: channel === "sms" ? "SMS-BS-DECK" : "EMAIL-BS-DECK-LESSON",
         eventId: `bs-deck:${clientId}:${slug}`,
         context: { deck_title: DECK_TITLES[slug], deck_url: `https://fundhub.ai/slideshows/${slug}.html` }
-      }));
-    sent.push({ slot: i, slug, channel: slot.channel, ...result });
+      }), channel };
+    });
+    sent.push({ slot: i, slug, ...result });
   }
   return { sent };
 }
