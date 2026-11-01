@@ -15,6 +15,11 @@ export function orderOf(pr) {
     ? orders[0] : null;
 }
 
+export function recordedParentHead(pr) {
+  const matches = [...(pr.body || "").matchAll(/^Stack parent head: ([a-f0-9]{40})[ \t]*$/gim)];
+  return matches.length === 1 ? matches[0][1].toLowerCase() : null;
+}
+
 export function directChildren(prs, merged, repo) {
   const parentOrder = orderOf(merged);
   const nextOrder = parentOrder === null ? null : parentOrder + 1;
@@ -74,26 +79,44 @@ export function restackChild({ child, merged, repo, run = command }) {
   if (![merged.head.ref, "main"].includes(current.base?.ref) || current.head?.sha !== oldHead) {
     return { number: child.number, state: "already-moved" };
   }
+  let rebaseBase = parentHead;
   try {
     run("git", ["merge-base", "--is-ancestor", parentHead, fetchedHead]);
   } catch {
     // GitHub can rebase a native stack before this workflow starts. The exact
     // child head must already contain current main before it enters the queue.
-    if (current.base?.ref !== "main") return { number: child.number, state: "not-stacked" };
-    try {
-      run("git", ["merge-base", "--is-ancestor", "origin/main", fetchedHead]);
-    } catch {
+    if (current.base?.ref === "main") {
+      let onMain = false;
+      try {
+        run("git", ["merge-base", "--is-ancestor", "origin/main", fetchedHead]);
+        onMain = true;
+      } catch { /* try the recorded parent tip below */ }
+      if (onMain) {
+        run("git", ["switch", "-C", `restack-pr-${child.number}`, fetchedHead]);
+        archiveHead(branch, run);
+        run("gh", ["pr", "merge", String(child.number), "--repo", repo, "--auto", "--squash"]);
+        return { number: child.number, state: "already-restacked" };
+      }
+    }
+    const recorded = recordedParentHead(current);
+    if (!recorded || recorded === fetchedHead) {
+      comment(repo, child.number,
+        `@ZootimusMaximusSupreme PR #${child.number} needs a manual restack after #${merged.number} merged. Its previous parent tip was not recorded. I left the branch unchanged.`, run);
       return { number: child.number, state: "not-stacked" };
     }
-    run("git", ["switch", "-C", `restack-pr-${child.number}`, fetchedHead]);
-    archiveHead(branch, run);
-    run("gh", ["pr", "merge", String(child.number), "--repo", repo, "--auto", "--squash"]);
-    return { number: child.number, state: "already-restacked" };
+    try {
+      run("git", ["merge-base", "--is-ancestor", recorded, fetchedHead]);
+    } catch {
+      comment(repo, child.number,
+        `@ZootimusMaximusSupreme PR #${child.number} needs a manual restack after #${merged.number} merged. Its recorded parent tip is not in the branch history. I left the branch unchanged.`, run);
+      return { number: child.number, state: "not-stacked" };
+    }
+    rebaseBase = recorded;
   }
 
   run("git", ["switch", "-C", `restack-pr-${child.number}`, fetchedHead]);
   try {
-    run("git", ["rebase", "--onto", "origin/main", parentHead]);
+    run("git", ["rebase", "--onto", "origin/main", rebaseBase]);
   } catch {
     try { run("git", ["rebase", "--abort"]); } catch { /* no active rebase */ }
     comment(repo, child.number,

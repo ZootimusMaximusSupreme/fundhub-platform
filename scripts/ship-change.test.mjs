@@ -91,9 +91,28 @@ test('child change targets the preceding PR and does not merge into it', async (
   assert.equal(result.base, 'codex/previous-change');
   assert.equal(result.position, 2);
   assert(calls.some(call => call.join(' ').includes('pr create --repo ZootimusMaximusSupreme/fundhub-platform --base codex/previous-change')));
+  assert(calls.some(call => call[0] === 'gh' && call[1] === 'pr' && call[2] === 'create' &&
+    call.at(-1).includes('Stack parent head: parent-head')));
   assert(calls.some(call => call.join(' ').includes('pr edit 42 --repo ZootimusMaximusSupreme/fundhub-platform --add-label ship-order/2')));
   assert(calls.some(call => call.join(' ') === 'npm run preflight -- --expected-base origin/codex/previous-change'));
   assert(!calls.some(call => call[0] === 'gh' && call[1] === 'pr' && call[2] === 'merge'));
+});
+
+test('resume refreshes the recorded parent tip without changing the release manifest', async () => {
+  const existing = { ...member(42, 'codex/new-change', 'codex/previous-change', 2),
+    body: `Owner lane: sales\n\nRelease manifest stays.\n\nStack parent head: ${'c'.repeat(40)}` };
+  const { command, calls } = fakeCommands([member(41, 'codex/previous-change', 'main', 1), existing]);
+  const resumed = async (program, args, options) => {
+    if (program === 'git' && args[0] === 'status') return '';
+    if (program === 'git' && args[0] === 'rev-list') return '1\n';
+    return command(program, args, options);
+  };
+  await runShipChange({ message: 'Next change', ownerLane: 'sales', files: [], resume: true }, resumed);
+  const edit = calls.find(call => call[0] === 'gh' && call[1] === 'pr' && call[2] === 'edit' && call.includes('--body'));
+  assert.ok(edit);
+  assert.ok(edit.at(-1).includes('Release manifest stays.'));
+  assert.ok(edit.at(-1).includes('Stack parent head: parent-head'));
+  assert.equal((edit.at(-1).match(/Stack parent head:/g) || []).length, 1);
 });
 
 test('a parent branch that moves during preflight stops before child push or PR creation', async () => {

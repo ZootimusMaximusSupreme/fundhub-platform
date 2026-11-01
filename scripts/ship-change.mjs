@@ -230,11 +230,22 @@ export async function runShipChange(options, command = defaultCommand) {
 
   let pr = existing;
   if (!pr) {
-    const body = `Ordered change ${position}.\nBase: ${base}.\nOwner lane: ${ownerLane}`;
+    const body = `Ordered change ${position}.\nBase: ${base}.\nOwner lane: ${ownerLane}`
+      + (parentHead ? `\nStack parent head: ${parentHead}` : '');
     const url = (await rootGh(['pr', 'create', '--repo', REPO, '--base', base, '--head', branch, '--title', message, '--body', body])).trim();
     pr = JSON.parse(await rootGh(['pr', 'view', url, '--repo', REPO, '--json', 'number,headRefName,baseRefName,labels']));
-  } else if (!existingLane) {
-    await rootGh(['pr', 'edit', String(pr.number), '--repo', REPO, '--body', `${(existing.body || '').trim()}\n\nOwner lane: ${ownerLane}`.trim()]);
+  } else {
+    let body = (existing.body || '').trim();
+    if (!existingLane) body = `${body}\n\nOwner lane: ${ownerLane}`.trim();
+    if (parentHead) {
+      const marker = `Stack parent head: ${parentHead}`;
+      body = /^Stack parent head: .*$/m.test(body)
+        ? body.replace(/^Stack parent head: .*$/m, marker)
+        : `${body}\n\n${marker}`.trim();
+    }
+    if (body !== (existing.body || '').trim()) {
+      await rootGh(['pr', 'edit', String(pr.number), '--repo', REPO, '--body', body]);
+    }
   }
   const label = `ship-order/${position}`;
   await rootGh(['label', 'create', label, '--repo', REPO, '--color', '5319E7', '--description', 'Position in the ordered shipping chain', '--force']);

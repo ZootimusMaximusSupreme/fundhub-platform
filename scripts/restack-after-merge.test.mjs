@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { directChildren, main, orderOf, restackChild } from "./restack-after-merge.mjs";
+import { directChildren, main, orderOf, recordedParentHead, restackChild } from "./restack-after-merge.mjs";
 
 const repo = "ZootimusMaximusSupreme/fundhub-platform";
 const parentSha = "a".repeat(40);
@@ -29,6 +29,13 @@ test("unlabeled legacy parent selects only PRs based on its branch", () => {
   const unrelatedMain = { ...child, number: 45, base: { ref: "main" }, labels: [] };
   assert.deepEqual(directChildren([unrelatedMain, legacyChild], legacyParent, repo)
     .map((pr) => pr.number), [41]);
+});
+
+test("recorded parent tip must be one exact SHA", () => {
+  const marker = "c".repeat(40);
+  assert.equal(recordedParentHead({ body: `Release manifest\nStack parent head: ${marker}\n` }), marker);
+  assert.equal(recordedParentHead({ body: `Stack parent head: ${marker}\nStack parent head: ${marker}` }), null);
+  assert.equal(recordedParentHead({ body: "Stack parent head: not-a-sha" }), null);
 });
 
 function runner({ rebaseConflict = false, current = child, fetched = childSha,
@@ -107,6 +114,24 @@ test("GitHub-native restack queues an exact child already based on current main"
     call.at(-1) === "refs/tags/archive/codex/child"));
   assert.equal(calls.some((call) => call[1] === "rebase" ||
     (call[1] === "push" && call.at(-1) === "HEAD:refs/heads/codex/child")), false);
+});
+
+test("rewritten parent uses the child's recorded old parent tip", () => {
+  const recorded = "c".repeat(40);
+  const current = { ...child, body: `Owner lane: ci\nStack parent head: ${recorded}` };
+  const { run, calls } = runner({ current, parentAncestor: false });
+  assert.equal(restackChild({ child, merged, repo, run }).state, "restacked");
+  assert.ok(calls.some((call) => call[0] === "git" && call[1] === "rebase" &&
+    call[2] === "--onto" && call[3] === "origin/main" && call[4] === recorded));
+  assert.ok(calls.some((call) => call[1] === "push" && call.at(-1) === "HEAD:refs/heads/codex/child"));
+});
+
+test("rewritten parent without a recorded old tip is commented and left open", () => {
+  const { run, calls } = runner({ parentAncestor: false });
+  assert.equal(restackChild({ child, merged, repo, run }).state, "not-stacked");
+  assert.ok(calls.some((call) => call[0] === "gh" && call.includes(`repos/${repo}/issues/41/comments`)
+    && call.some((value) => value.includes("@ZootimusMaximusSupreme"))));
+  assert.equal(calls.some((call) => call[1] === "rebase" || call[1] === "push"), false);
 });
 
 test("retargeted child without merged parent or current main is left open", () => {
