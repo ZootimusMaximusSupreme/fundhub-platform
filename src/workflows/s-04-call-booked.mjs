@@ -19,7 +19,7 @@ export async function handle({ event, db, step }) {
   await step.run("tag-call-booked", () => addTags(db, clientId, ["call:booked"]));
   await step.run("set-call-outcome", () => mergeCustomFields(db, clientId, { call_outcome: "booked" }));
   const card = await step.run("move-to-booked-stage", () =>
-    advanceCardToStage(db, { orgId, clientId, pipelineKey: "sales", stageKey: "booked", allowRebookFromLost: true }));
+    advanceCardToStage(db, { orgId, clientId, pipelineKey: "sales", stageKey: "booked" }));
 
   return { done: true, card };
 }

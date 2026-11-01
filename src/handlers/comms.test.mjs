@@ -398,7 +398,8 @@ test("booking.rescheduled: updates the existing open task's due_at + meeting_url
     meetingUrl: "https://meet.example.com/new", source: "clickfunnels"
   }, { clientId: db.clients[0].id });
   const alerts = [];
-  await onBookingRescheduled(rescheduled, db, async (_db, args) => { alerts.push(args); });
+  await onBookingRescheduled(rescheduled, db, async (_db, args) => { alerts.push(args); },
+    () => new Date("2026-08-01T00:00:00Z").getTime());
   assert.equal(db.tasks.length, 1, "no second task created — the open one was updated");
   assert.equal(db.tasks[0].due_at, "2026-08-02T15:00:00Z");
   assert.equal(db.tasks[0].meeting_url, "https://meet.example.com/new");
@@ -412,6 +413,12 @@ test("booking.rescheduled: updates the existing open task's due_at + meeting_url
 
 test("a moved call drops its old Meet link but a same-slot replay preserves the refreshed one", async () => {
   const db = pgFake();
+  const originalQuery = db.query.bind(db);
+  let stageLookups = 0;
+  db.query = async (sql, params) => {
+    if (/FROM pipeline_stages ps/.test(sql)) stageLookups += 1;
+    return originalQuery(sql, params);
+  };
   const uid = "bk-moved-meet";
   const initial = "2026-08-12T15:00:00Z";
   const moved = "2026-08-13T18:00:00Z";
@@ -430,7 +437,7 @@ test("a moved call drops its old Meet link but a same-slot replay preserves the 
   }, { clientId: db.clients[0].id });
   const alerts = [];
   const alertImpl = async (_db, args) => { alerts.push(args); };
-  await onBookingRescheduled(rescheduled, db, alertImpl);
+  await onBookingRescheduled(rescheduled, db, alertImpl, () => new Date(initial).getTime());
   assert.equal(db.tasks[0].meeting_url, null, "closer Join must not open the old slot's room");
   assert.equal(db.bookings[0].meeting_url, null, "saved booking must await new slot's calendar");
   assert.equal(db.tasks.length, 1);
@@ -440,10 +447,79 @@ test("a moved call drops its old Meet link but a same-slot replay preserves the 
   // re-delivering the same rescheduled slot without a meetingUrl field.
   db.tasks[0].meeting_url = newMeet;
   db.bookings[0].meeting_url = newMeet;
-  await onBookingRescheduled(rescheduled, db, alertImpl);
+  const stageLookupsBeforeReplay = stageLookups;
+  await onBookingRescheduled(rescheduled, db, alertImpl, () => new Date(initial).getTime());
   assert.equal(db.tasks[0].meeting_url, newMeet, "same-slot replay overwrote refreshed task URL");
   assert.equal(db.bookings[0].meeting_url, newMeet, "same-slot replay overwrote refreshed booking URL");
   assert.equal(alerts.length, 1, "a same-time replay must not text staff again");
+  assert.equal(stageLookups, stageLookupsBeforeReplay, "a same-time replay must not reopen a Lost card");
+});
+
+test("an older reschedule cannot rewind a later slot or send a false staff alert", async () => {
+  const db = pgFake();
+  const originalQuery = db.query.bind(db);
+  const uid = "bk-three-slots";
+  const slots = ["2026-11-10T15:00:00Z", "2026-11-11T15:00:00Z", "2026-11-12T15:00:00Z"];
+  const changeEvents = [];
+  db.query = async (sql, params) => {
+    if (/SELECT id FROM events WHERE org_id/.test(sql)) {
+      assert.deepEqual(params, ["org-1", uid]);
+      assert.match(sql, /ORDER BY COALESCE\(NULLIF\(payload->>'providerOccurredAt'/);
+      const latest = [...changeEvents].sort((a, b) =>
+        Date.parse(b.providerOccurredAt) - Date.parse(a.providerOccurredAt))[0];
+      return { rows: latest ? [{ id: latest.id }] : [] };
+    }
+    return originalQuery(sql, params);
+  };
+  await onBookingCreated(ev("booking.created", {
+    email: "three-slots@example.invalid", bookingUid: uid, startTime: slots[0]
+  }, { id: "booking-a" }), db);
+  const clientId = db.clients[0].id;
+  const alerts = [];
+  const alertImpl = async (_db, args) => { alerts.push(args); };
+  const reschedule = (id, startTime, providerOccurredAt) => ev("booking.rescheduled", {
+    clientId, bookingUid: uid, startTime, providerOccurredAt
+  }, { id, clientId });
+  const now = () => new Date("2026-11-09T00:00:00Z").getTime();
+  const timeB = "2026-11-09T12:00:00Z";
+  const timeC = "2026-11-09T13:00:00Z";
+  const b = reschedule("reschedule-b", slots[1], timeB);
+  changeEvents.push({ id: b.id, providerOccurredAt: timeB });
+  await onBookingRescheduled(b, db, alertImpl, now);
+  const c = reschedule("reschedule-c", slots[2], timeC);
+  changeEvents.push({ id: c.id, providerOccurredAt: timeC });
+  await onBookingRescheduled(c, db, alertImpl, now);
+  const before = { booking: structuredClone(db.bookings[0]), task: structuredClone(db.tasks[0]),
+    client: structuredClone(db.clients[0]), alertCount: alerts.length };
+  // ClickFunnels can send the old change in a *new* envelope after C.
+  const bLate = reschedule("reschedule-b-late", slots[1], timeB);
+  changeEvents.push({ id: bLate.id, providerOccurredAt: timeB });
+  const result = await onBookingRescheduled(bLate, db, alertImpl, now);
+  assert.equal(result?.skipped, "superseded_booking_change");
+  assert.deepEqual(db.bookings[0], before.booking);
+  assert.deepEqual(db.tasks[0], before.task);
+  assert.deepEqual(db.clients[0], before.client);
+  assert.equal(alerts.length, before.alertCount);
+});
+
+test("a cancellation received before creation cannot reopen Lost", async () => {
+  const db = pgFake();
+  const originalQuery = db.query.bind(db);
+  db.query = async (sql, params) => {
+    if (/SELECT 1 FROM events WHERE org_id/.test(sql) && /booking.cancelled/.test(sql)) {
+      assert.equal(params[1], "bk-cancel-first");
+      return { rows: [{ 1: 1 }] };
+    }
+    return originalQuery(sql, params);
+  };
+  const result = await onBookingCreated(ev("booking.created", {
+    email: "cancel-first@example.invalid", bookingUid: "bk-cancel-first",
+    startTime: "2026-11-20T15:00:00Z", providerOccurredAt: "2026-11-01T12:00:00Z"
+  }, { id: "create-after-cancel" }), db);
+  assert.equal(result?.skipped, "terminal_booking_event");
+  assert.equal(db.clients.length, 0);
+  assert.equal(db.bookings.length, 0);
+  assert.equal(db.tasks.length, 0);
 });
 
 test("booking.rescheduled: no open task found → creates one (rescheduled before created seen)", async () => {
