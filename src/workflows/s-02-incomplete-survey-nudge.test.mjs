@@ -8,7 +8,6 @@ import { pgFake } from "./test-support.mjs";
 import { withReplyRead } from "./stop-on-reply.test-support.mjs";
 import { inngestSim } from "./inngest-sim.mjs";
 import { DRIP_LAST_PLAN_MINUTE, inDripWindow, SEND_WINDOW_TZ } from "../messaging/send-window.mjs";
-import { readSurveyResumeToken } from "../survey/resume-link.mjs";
 
 /* ── The database ───────────────────────────────────────────────────────────────────────────────
    pgFake answers the shared reads (clients, templates, messages, the cohort, bookings), and
@@ -66,7 +65,7 @@ after(() => { if (savedSecret === undefined) delete process.env.UNSUBSCRIBE_TOKE
 const template = (key) => ({
   org_id: ORG, template_key: key, channel: key.startsWith("SMS") ? "sms" : "email",
   subject: key.startsWith("EMAIL") ? `Subject for ${key}` : null,
-  body: `${key}: Hi {{contact.first_name}}, you stopped at {{survey_stopped_at}}, {{survey_taps_left}} to go: {{survey_resume_link}}`,
+  body: `${key}: Start your questions here: {{survey_resume_link}}`,
   compliance_passed: true
 });
 const lead = (over = {}) => ({
@@ -327,55 +326,35 @@ test("finished is checked first, then a reply, then a booking", async () => {
 
 // ── the words the message carries ────────────────────────────────────────────────────────────────
 
-/* The templates here name {{survey_resume_link}} in the texts too, on purpose: the texts must still
-   come out without it (review 2026-10-31). The link opens saved answers, and the phone on a record
-   can belong to someone else; the email address is the lead's identity. */
-test("every email carries the signed resume link for this person; no text carries one", async () => {
+test("every text and email carries the plain /apply link and never a resume code, even with a signing key", async () => {
+  // Containment (2026-10-31): /apply lets a new phone onto an existing lead's email, so a come-back
+  // text can reach a stranger. The signing key is set (before()), so a code COULD be minted, and is not.
   const w = world({ start: AT_10AM });
   await run(w, optIn(w));
   assert.equal(w.db.messages.length, 6);
-  w.db.messages.forEach((m, i) => {
+  for (const m of w.db.messages) {
+    assert.ok(m.rendered_body.endsWith("here: https://apply.fundhub.ai/apply"), `${m.template_key}: ${m.rendered_body}`);
+    assert.ok(!m.rendered_body.includes("?r="), `${m.template_key} carries no resume code`);
     assert.ok(!m.rendered_body.includes("{{"), "no merge tag is left over");
-    assert.ok(m.rendered_body.includes("Hi Pat"), "the other merge tags still work");
-    if (m.channel === "sms") {
-      assert.doesNotMatch(m.rendered_body, /apply\?r=|https?:\/\//, `${m.template_key} carries no link: ${m.rendered_body}`);
-      return;
-    }
-    const link = m.rendered_body.match(/https:\/\/apply\.fundhub\.ai\/apply\?r=([A-Za-z0-9_-]+)/);
-    assert.ok(link, `${m.template_key} has the link: ${m.rendered_body}`);
-    assert.deepEqual(
-      readSurveyResumeToken(link[1], { now: () => w.db.sentLog[i].at, secret: SECRET }),
-      { clientId: CLIENT },
-      `${m.template_key}: the token opens this person's file`
-    );
-    assert.ok(!m.rendered_body.includes(EMAIL) && !m.rendered_body.includes("5551234567"), "the link holds no email or phone");
-  });
-  assert.equal(w.db.messages.filter((m) => m.channel === "sms").length, 3, "three texts were checked");
+    assert.ok(!m.rendered_body.includes("Pat"), "the neutral copy carries no saved name");
+  }
 });
 
-test("with no signing key the touches still go, with the plain apply link, and the gap is logged", async () => {
+test("with no signing key the touches still go, with the same plain apply link", async () => {
   const saved = process.env.UNSUBSCRIBE_TOKEN_SECRET;
   const savedDoc = process.env.DOCUMENT_URL_SECRET;
   delete process.env.UNSUBSCRIBE_TOKEN_SECRET;
   delete process.env.DOCUMENT_URL_SECRET;
-  const realWarn = console.warn;
-  const warnings = [];
-  console.warn = (...a) => warnings.push(a.join(" "));
   try {
     const w = world({ start: AT_10AM });
     await run(w, optIn(w));
     assert.equal(w.db.messages.length, 6, "a missing key does not stop the follow-up");
     for (const m of w.db.messages) {
-      if (m.channel === "sms") {
-        assert.doesNotMatch(m.rendered_body, /apply/, "a text names no link, signed or plain");
-        continue;
-      }
+      // Containment (2026-10-31): a text carries the plain /apply page, never a code.
       assert.ok(m.rendered_body.includes("https://apply.fundhub.ai/apply"), m.rendered_body);
       assert.ok(!m.rendered_body.includes("?r="), "and it is the plain link");
     }
-    assert.ok(warnings.some((x) => /survey-resume/.test(x)), String(warnings));
   } finally {
-    console.warn = realWarn;
     process.env.UNSUBSCRIBE_TOKEN_SECRET = saved;
     if (savedDoc !== undefined) process.env.DOCUMENT_URL_SECRET = savedDoc;
   }
@@ -388,7 +367,7 @@ test("a key with no approved template row is a no-op for that message, and the r
   assert.deepEqual(keys(w), TOUCH_KEYS.filter((k) => k !== "EMAIL-S02-RESUME-2"));
 });
 
-// ── where they stopped, in words ─────────────────────────────────────────────────────────────────
+// ── saved progress controls stopping, never outbound detail ──────────────────────────────────────
 
 const ANSWERED_THREE = {
   cf_svy_funding_target_amount: "$50k - $100k",
@@ -402,46 +381,49 @@ const ALL_EIGHT = {
 };
 const bodyOf = (w, key) => w.db.messages.find((m) => m.template_key === key).rendered_body;
 
-test("every text and email carries the two progress tags, and every email the link, worked out from what this person has saved", async () => {
-  const w = world({ start: AT_10AM, clients: [lead({ custom_fields: { ...ANSWERED_THREE } })] });
+test("even a stale template cannot render saved survey progress into a message", async () => {
+  const staleTemplate = (key) => ({ ...template(key),
+    body: `${key}: {{survey_stopped_at}} {{survey_taps_left}} {{survey_resume_link}}` });
+  const w = world({ start: AT_10AM, clients: [lead({ custom_fields: { ...ANSWERED_THREE } })],
+    templates: RESUME_TEMPLATE_KEYS.map(staleTemplate) });
   await run(w, optIn(w));
   assert.equal(w.db.messages.length, 6);
   for (const m of w.db.messages) {
-    assert.ok(m.rendered_body.includes("you stopped at the credit score question, 5 more taps to go:"), m.rendered_body);
-    if (m.channel === "sms") assert.match(m.rendered_body, /to go: $/, "the text renders the link tag blank");
-    else assert.match(m.rendered_body, /https:\/\/apply\.fundhub\.ai\/apply\?r=[A-Za-z0-9_-]+$/);
+    assert.ok(!m.rendered_body.includes("credit score question"), m.rendered_body);
+    assert.ok(!m.rendered_body.includes("5 more taps"), m.rendered_body);
+    assert.match(m.rendered_body, /https:\/\/apply\.fundhub\.ai\/apply$/, "the plain link (containment 2026-10-31)");
     assert.ok(!m.rendered_body.includes("{{"), "no merge tag is left over");
   }
 });
 
-test("someone who answered nothing is told the first question and all eight taps", async () => {
+test("someone who answered nothing gets the neutral link without saved progress", async () => {
   const w = world({ start: AT_10AM });
   await run(w, optIn(w));
-  assert.ok(bodyOf(w, "SMS-S02-RESUME-1").includes("you stopped at the first question, 8 more taps to go:"), bodyOf(w, "SMS-S02-RESUME-1"));
+  assert.equal(w.db.messages.length, 6);
+  assert.ok(bodyOf(w, "SMS-S02-RESUME-1").includes("Start your questions here: https://apply.fundhub.ai/apply"));
+  assert.ok(!bodyOf(w, "SMS-S02-RESUME-1").includes("first question"));
 });
 
-test("one question left is '1 more tap', and it is the last question", async () => {
+test("one question left still gets a neutral message", async () => {
   const sevenAnswered = { ...ALL_EIGHT };
   delete sevenAnswered.cf_svy_available_capital;
   const w = world({ start: AT_10AM, clients: [lead({ custom_fields: sevenAnswered })] });
   await run(w, optIn(w));
-  assert.ok(bodyOf(w, "EMAIL-S02-RESUME-1").includes("you stopped at the last question, 1 more tap to go:"), bodyOf(w, "EMAIL-S02-RESUME-1"));
-  assert.ok(!bodyOf(w, "EMAIL-S02-RESUME-1").includes("1 more taps"));
+  assert.equal(w.db.messages.length, 6);
+  assert.ok(bodyOf(w, "EMAIL-S02-RESUME-1").includes("Start your questions here: https://apply.fundhub.ai/apply"));
+  assert.ok(!bodyOf(w, "EMAIL-S02-RESUME-1").includes("last question"));
 });
 
-test("the words are worked out when each touch goes out: answers saved in between show in the next one", async () => {
+test("new answers before a later touch still stop a completed survey", async () => {
   const w = world({ start: AT_10AM });
-  // 1:00 a.m. on day 2: three more answered. 1:00 a.m. on day 3: the score, the business question and income.
+  // 1:00 a.m. on day 2: three more answered. 1:00 a.m. on day 3: all remaining answers.
   w.sim.at("2026-10-29T08:00:00Z", () => Object.assign(w.db.clients[0].custom_fields, ANSWERED_THREE));
-  w.sim.at("2026-10-30T08:00:00Z", () => Object.assign(w.db.clients[0].custom_fields, {
-    cf_svy_self_reported_fico: "Not sure", cf_svy_has_business: "No, personal funding only", cf_svy_annual_income_range: "$50k-$99k"
-  }));
-  await run(w, optIn(w));
-  assert.ok(bodyOf(w, "SMS-S02-RESUME-1").includes("you stopped at the first question, 8 more taps to go:"));
-  assert.ok(bodyOf(w, "SMS-S02-RESUME-2").includes("you stopped at the credit score question, 5 more taps to go:"));
-  assert.ok(bodyOf(w, "SMS-S02-RESUME-3").includes("you stopped at the question about showing your income, 2 more taps to go:"));
-  // The text and the email of one touch say the same thing.
-  assert.ok(bodyOf(w, "EMAIL-S02-RESUME-2").includes("you stopped at the credit score question, 5 more taps to go:"));
+  w.sim.at("2026-10-30T08:00:00Z", () => Object.assign(w.db.clients[0].custom_fields, ALL_EIGHT));
+  const res = await run(w, optIn(w));
+  assert.equal(res.stoppedAt, "before-touch-3");
+  assert.equal(res.stoppedBecause, "all_answered");
+  assert.equal(w.db.messages.length, 4);
+  assert.ok(w.db.messages.every((m) => !m.rendered_body.includes("credit score question")));
 });
 
 test("every question answered and no finish on record: nothing is sent, the sequence stops, the person is tagged", async () => {

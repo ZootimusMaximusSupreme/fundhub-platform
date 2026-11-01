@@ -33,7 +33,7 @@ import { UNSUBSCRIBE_TAG_RE, unsubscribeTagValue } from "../messaging/unsubscrib
 import { normalizePhone } from "../messaging/providers/bland-voice.mjs";
 import { applyRepToContext } from "../auth/authorized-rep.mjs";
 import { creditTierFor } from "../config/survey-qualification.mjs";
-import { RESUME_LINK_TAG } from "../survey/resume-link.mjs";
+import { RESUME_BASE_URL, RESUME_LINK_TAG } from "../survey/resume-link.mjs";
 
 /* Which column on the client record is the destination for a channel.
    The destination is recorded in the terms of the CHANNEL, not of whichever
@@ -213,7 +213,10 @@ export async function sendTemplated(db, { orgId, clientId, channel, templateKey,
   // person's saved answers, and the phone on a record can belong to someone else: the
   // public form puts any phone on an existing lead's email. Whatever a caller passes,
   // a text renders that tag blank. src/survey/resume-link.mjs RESUME_LINK_TAG.
-  if (channel === "sms" && context && Object.prototype.hasOwnProperty.call(context, RESUME_LINK_TAG)) {
+  // Containment (2026-10-31) sends the plain /apply page, which opens nothing saved, so
+  // only a link that carries a code (?r=) is dropped.
+  if (channel === "sms" && context && Object.prototype.hasOwnProperty.call(context, RESUME_LINK_TAG)
+      && String(context[RESUME_LINK_TAG] ?? "") !== RESUME_BASE_URL) {
     console.warn(`[sendTemplated] dropped {{${RESUME_LINK_TAG}}} from text ${templateKey}`);
     const { [RESUME_LINK_TAG]: _dropped, ...rest } = context;
     context = rest;

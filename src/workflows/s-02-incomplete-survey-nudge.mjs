@@ -14,20 +14,20 @@
 //   touch 2  9:00 a.m. Arizona on the day after touch 1 really goes out
 //   touch 3  9:00 a.m. Arizona on the day after touch 2
 //
-// Every message carries two merge tags, {{survey_stopped_at}} ("the credit score
-// question") and {{survey_taps_left}} ("5 more taps"), which say it the way a person
-// would (surveyProgressWords in src/survey/resume-state.mjs). The EMAIL also carries
-// {{survey_resume_link}}, a signed link that opens /apply on the question where the
-// person stopped (src/survey/resume-link.mjs). THE TEXT NEVER DOES. The link opens the
-// person's saved answers, and the public form can put any phone on an existing lead's
-// email, so a text can reach someone else; the email address is the lead's identity,
-// so the email reaches the owner (review 2026-10-31). The text points to the email
-// instead. The words are the seed's (SMS-S02-RESUME-1..3, EMAIL-S02-RESUME-1..3); this
-// file only sends the keys.
+// The messages link to the plain /apply page. surveyProgressWords still decides
+// whether any questions remain, but progress details are not sent to an unproved
+// phone. The words live in the SMS-S02-RESUME-1..3 and EMAIL-S02-RESUME-1..3
+// templates; this file only sends their keys.
 //
 // THE TWO PROGRESS TAGS ARE WORKED OUT AT SEND TIME, from the answers saved by then,
 // because a person can answer more questions between one touch and the next. A touch
 // that finds nothing left to answer does not send: the survey is done.
+//
+// CONTAINMENT (2026-10-31): no signed ?r= code goes in these messages. /apply accepts
+// an existing lead's email with a new phone and writes that phone onto the record
+// (resolveClient), so a come-back text can reach a number nobody has proved belongs to
+// the lead, and a code in it would open that lead's saved answers. The link stays the
+// plain /apply page until a link can prove the person opening it owns the record.
 //
 // EMAIL-S02-FINISH-APPLICATION, the old one-email nudge whose link went to the
 // calendar, is not sent any more. Its template row is left alone.
@@ -78,7 +78,7 @@ import { messageCohortId, sendTemplated } from "./messaging.mjs";
 import { addTags } from "./tags.mjs";
 import { hasBooked } from "./s-nobook-chase.mjs";
 import { hasReplied } from "./stop-on-reply.mjs";
-import { surveyResumeUrl } from "../survey/resume-link.mjs";
+import { RESUME_BASE_URL } from "../survey/resume-link.mjs";
 import { surveyProgressWords } from "../survey/resume-state.mjs";
 import { DRIP_START_HOUR, SEND_WINDOW_TZ, dripSendTime, nextHourStrike } from "../messaging/send-window.mjs";
 
@@ -222,18 +222,16 @@ export async function handle({ event, db, step, now = () => Date.now() }) {
       const progress = surveyProgressWords(await savedFields(db, { orgId, clientId }));
       // Every question is answered: there is nothing to come back to, so nothing goes.
       if (progress.left === 0) return { skipped: "all_answered" };
-      const words = {
-        survey_stopped_at: progress.stoppedAt,
-        survey_taps_left: progress.tapsLeft
+      const context = {
+        survey_resume_link: RESUME_BASE_URL
       };
       const sendKey = touchSendKey(clientId, plan.goesOutAt[touch.n - 1]);
       return {
         sms: await sendTemplated(db, {
-          orgId, clientId, channel: "sms", templateKey: touch.sms, eventId: sendKey, context: words
+          orgId, clientId, channel: "sms", templateKey: touch.sms, eventId: sendKey, context
         }),
         email: await sendTemplated(db, {
-          orgId, clientId, channel: "email", templateKey: touch.email, eventId: sendKey,
-          context: { ...words, survey_resume_link: surveyResumeUrl({ orgId, clientId, now }) }
+          orgId, clientId, channel: "email", templateKey: touch.email, eventId: sendKey, context
         })
       };
     });
