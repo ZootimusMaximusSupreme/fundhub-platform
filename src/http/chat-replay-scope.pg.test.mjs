@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import { db, close } from "../db.mjs";
 import { createSession } from "../auth/session.mjs";
 import handler from "../../api/chat/messages.mjs";
+import messagesHandler from "../../api/messages.mjs";
 import { sendInternalMessage, pairKey } from "../chat/internal.mjs";
 
 const HAS_DB = !!process.env.DATABASE_URL;
@@ -26,6 +27,12 @@ const res = () => ({
 async function call(method, query = {}, body = {}) {
   const response = res();
   await handler({ method, query, body, headers: { authorization: `Bearer ${token}` } }, response);
+  return response;
+}
+
+async function callMessageWrite(body) {
+  const response = res();
+  await messagesHandler({ method: "POST", body, headers: { authorization: `Bearer ${token}` } }, response);
   return response;
 }
 
@@ -91,6 +98,39 @@ test("staff thread list hides a mispointed foreign client and foreign message pr
   assert.equal(reply.body.threads[0].client_name, "mine");
   assert.equal(reply.body.threads[0].last_body, null);
   assert.doesNotMatch(JSON.stringify(reply.body), /foreign|private note/i);
+});
+
+test("staff message endpoint returns a safe 409 for a reused key with changed text", { skip: !HAS_DB }, async () => {
+  const thread = (await db.query(
+    `INSERT INTO conversations (org_id, client_id, channel)
+     VALUES ($1, $2, 'email') RETURNING id`,
+    [orgs[0], clients[0]]
+  )).rows[0].id;
+  conversations.push(thread);
+  const key = randomUUID();
+  const originalId = (await db.query(
+    `INSERT INTO messages
+     (org_id, client_id, conversation_id, direction, channel, rendered_body,
+      provider_ref, status, to_address, sender_staff_id, sender_kind, attachments)
+     VALUES ($1, $2, $3, 'outbound', 'email', 'Original note',
+             $4, 'sent', $5, $6, 'staff', '[]'::jsonb) RETURNING id`,
+    [orgs[0], clients[0], thread, `staff:${key}`,
+      `chat-scope-mine-${suffix}@example.test`, staff[0]]
+  )).rows[0].id;
+  const reply = await callMessageWrite({
+    conversation_id: thread,
+    body: "Changed note",
+    idempotency_key: key
+  });
+  assert.equal(reply.statusCode, 409, JSON.stringify(reply.body));
+  assert.deepEqual(reply.body, { ok: false, error: "idempotency_key_reused" });
+  const saved = (await db.query(
+    `SELECT id, rendered_body FROM messages WHERE org_id = $1 AND provider_ref = $2`,
+    [orgs[0], `staff:${key}`]
+  )).rows;
+  assert.deepEqual(saved.map(({ id, rendered_body }) => ({ id, rendered_body })), [
+    { id: originalId, rendered_body: "Original note" }
+  ]);
 });
 
 test("concurrent internal retries save one row; changed author, thread or body gets a safe conflict", { skip: !HAS_DB }, async () => {
