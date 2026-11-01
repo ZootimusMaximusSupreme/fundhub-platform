@@ -722,6 +722,74 @@ test("first transfer snapshots dated legacy dials without changing their total",
     { "staff-a": { "2026-11-01": 3 } });
 });
 
+test("an autosave that read before another dial keeps the locked live counters", async () => {
+  const { db, client } = fakeDb();
+  const day = "2026-11-01";
+  client.custom_fields.setter_handoff = {
+    setter_staff_id: "staff-a", call_attempts: 1, dialed_at: "2026-11-01T18:00:00Z",
+    dial_attempt_days: { [day]: 1 }, dial_attempts_by_setter: { "staff-a": { [day]: 1 } }
+  };
+  const original = db.query;
+  let injected = false;
+  db.query = async (sql, params) => {
+    if (!injected && sql.trim().startsWith("SELECT custom_fields FROM clients") && sql.includes("FOR UPDATE")) {
+      injected = true;
+      const logged = await updateSetterHandoff(db, { ...STAFF, id: "staff-a" }, {
+        client_id: CLIENT_ID, action: "log_dial", handoff: {}
+      }, { now: () => new Date("2026-11-01T19:00:00Z") });
+      assert.equal(logged.status, 200);
+    }
+    return original(sql, params);
+  };
+  const saved = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save",
+    handoff: { goal: "New location", call_attempts: 1, dialed_at: "2026-11-01T18:00:00Z" } });
+  assert.equal(saved.status, 200);
+  assert.equal(injected, true);
+  assert.equal(client.custom_fields.setter_handoff.call_attempts, 2);
+  assert.deepEqual(client.custom_fields.setter_handoff.dial_attempt_days, { [day]: 2 });
+  assert.deepEqual(client.custom_fields.setter_handoff.dial_attempts_by_setter, { "staff-a": { [day]: 2 } });
+  assert.equal(client.custom_fields.setter_handoff.goal, "New location");
+});
+
+test("an owner save after a setter transfer keeps the live setter identity", async () => {
+  const { db, client } = fakeDb();
+  client.custom_fields.setter_handoff = { setter_staff_id: "staff-a", setter_name: "A", call_attempts: 1 };
+  const original = db.query;
+  let injected = false;
+  db.query = async (sql, params) => {
+    if (!injected && sql.trim().startsWith("SELECT custom_fields FROM clients") && sql.includes("FOR UPDATE")) {
+      injected = true;
+      client.custom_fields.setter_handoff = {
+        ...client.custom_fields.setter_handoff, setter_staff_id: "staff-b", setter_name: "B"
+      };
+    }
+    return original(sql, params);
+  };
+  const saved = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save",
+    handoff: { goal: "Expansion" } });
+  assert.equal(saved.status, 200);
+  assert.equal(injected, true);
+  assert.equal(client.custom_fields.setter_handoff.setter_staff_id, "staff-b");
+  assert.equal(client.custom_fields.setter_handoff.setter_name, "B");
+});
+
+test("an owner dial on A's lead credits the owner without replacing A", async () => {
+  const { db, client } = fakeDb();
+  client.custom_fields.setter_handoff = {
+    setter_staff_id: "staff-a", setter_name: "A", call_attempts: 2,
+    dial_attempt_days: { "2026-11-01": 2 },
+    dial_attempts_by_setter: { "staff-a": { "2026-11-01": 2 } }
+  };
+  const result = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "log_dial", handoff: {} },
+    { now: () => new Date("2026-11-01T18:00:00Z") });
+  assert.equal(result.status, 200);
+  assert.equal(client.custom_fields.setter_handoff.setter_staff_id, "staff-a");
+  assert.equal(client.custom_fields.setter_handoff.call_attempts, 3);
+  assert.deepEqual(client.custom_fields.setter_handoff.dial_attempts_by_setter, {
+    "staff-a": { "2026-11-01": 2 }, [STAFF.id]: { "2026-11-01": 1 }
+  });
+});
+
 test("an owner edit preserves the human setter identity already on the handoff", async () => {
   const { db, client } = fakeDb();
   client.custom_fields.setter_handoff = {

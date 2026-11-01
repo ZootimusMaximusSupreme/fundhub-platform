@@ -482,61 +482,12 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
   }
   const validated = sanitizeHandoffPatch(input);
   if (validated.error) return { status: 400, body: { ok: false, error: validated.error } };
-  const previous = jsonObject(jsonObject(client.custom_fields).setter_handoff);
-  const leadType = previous.lead_type || (client.booked_at ? "booked" : "opt_in");
-  const setterStaffId = staff.role === "setter" ? staff.id : previous.setter_staff_id || staff.id;
-  let closerStaffId = previous.closer_staff_id || client.closer_staff_id || (staff.role === "owner" ? staff.id : null);
-  if (!closerStaffId) {
-    const owner = await db.query(
-      `SELECT id FROM staff WHERE org_id = $1 AND role = 'owner' AND status = 'active' ORDER BY created_at LIMIT 1`,
-      [staff.org_id]
-    );
-    closerStaffId = owner.rows[0]?.id || null;
-  }
-  const next = {
-    ...previous, ...validated.patch,
-    lead_type: leadType,
-    setter_staff_id: setterStaffId,
-    closer_staff_id: closerStaffId,
-    setter_name: staff.role !== "setter" && previous.setter_staff_id && previous.setter_staff_id !== staff.id
-      ? previous.setter_name || ""
-      : staff.name || staff.first_name || ""
-  };
-  // The UI includes the currently selected result on unrelated autosaves. Only
-  // a changed result records a new conversation; restamping an old "reached"
-  // would suppress texts after a newer unanswered voice call.
-  const dispositionSaved = Object.hasOwn(validated.patch, "disposition")
-    && validated.patch.disposition !== previous.disposition;
+  let previous;
+  let next;
+  let setterStaffId;
+  let closerStaffId;
   let actionDate = null;
-  if (dispositionSaved || action === "log_dial") {
-    const at = (deps.now || (() => new Date()))();
-    actionDate = at instanceof Date ? at : new Date(at);
-    if (!Number.isFinite(actionDate.getTime())) {
-      return { status: 500, body: { ok: false, error: "dial_time_unavailable" } };
-    }
-  }
-  if (dispositionSaved) next.disposition_at = actionDate.toISOString();
-  if (action === "log_dial") {
-    const day = phoenixDay(actionDate);
-    const days = jsonObject(previous.dial_attempt_days);
-    next.call_attempts = Number(previous.call_attempts || 0) + 1;
-    next.dialed_at = previous.dialed_at || actionDate.toISOString();
-    next.dial_attempt_days = { ...days, [day]: Number(days[day] || 0) + 1 };
-  }
-  if (action === "complete") next.complete_at = previous.complete_at || new Date().toISOString();
-  if (next.complete_at) {
-    const missing = missingForCompletion(next, client);
-    if (missing.length) return { status: 400, body: { ok: false, error: "handoff_incomplete", missing } };
-    const closer = closerStaffId === staff.id ? staff : (await db.query(
-      `SELECT id, name FROM staff WHERE org_id = $1 AND id = $2 LIMIT 1`,
-      [staff.org_id, closerStaffId]
-    )).rows[0];
-    next.handoff_text = (deps.buildText || buildSetterHandoffText)({ client, handoff: next, booking: client, closer, setter: staff });
-  }
   const save = async (writer) => {
-    if (staff.role === "setter" && !(await claimLatestSetterTask(writer, staff, client_id))) {
-      return { status: 403, body: { ok: false, error: "assigned_to_other_setter" } };
-    }
     // Read after the client lock. A stale autosave or another dial must not move
     // a former setter's counts to whoever owns the lead now.
     const current = await writer.query(
@@ -546,19 +497,71 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
     );
     if (!current.rows.length) return { status: 404, body: { ok: false, error: "client_not_found" } };
     const liveHandoff = jsonObject(jsonObject(current.rows[0].custom_fields).setter_handoff);
+    previous = liveHandoff;
+    setterStaffId = staff.role === "setter" ? staff.id : liveHandoff.setter_staff_id || staff.id;
+    closerStaffId = liveHandoff.closer_staff_id || client.closer_staff_id || (staff.role === "owner" ? staff.id : null);
+    if (!closerStaffId) {
+      const owner = await writer.query(
+        `SELECT id FROM staff WHERE org_id = $1 AND role = 'owner' AND status = 'active' ORDER BY created_at LIMIT 1`,
+        [staff.org_id]
+      );
+      closerStaffId = owner.rows[0]?.id || null;
+    }
+    // The screen echoes old dial fields on autosave. Only a logged dial can
+    // advance counters already owned by the server; the older form may fill
+    // blanks but cannot lower a newer count or clear its first-dial time.
+    const { call_attempts, dialed_at, lead_type, ...editable } = validated.patch;
+    next = {
+      ...liveHandoff, ...editable,
+      lead_type: liveHandoff.lead_type || (client.booked_at ? "booked" : "opt_in"),
+      setter_staff_id: setterStaffId,
+      closer_staff_id: closerStaffId,
+      setter_name: staff.role !== "setter" && liveHandoff.setter_staff_id && liveHandoff.setter_staff_id !== staff.id
+        ? liveHandoff.setter_name || ""
+        : staff.name || staff.first_name || ""
+    };
+    if (call_attempts !== undefined && !liveHandoff.dial_attempt_days && !liveHandoff.dial_attempts_by_setter) {
+      next.call_attempts = Math.max(Number(liveHandoff.call_attempts || 0), call_attempts);
+    }
+    if (!liveHandoff.dialed_at && dialed_at) next.dialed_at = dialed_at;
+    // An echoed result is not a new conversation unless it changed after lock.
+    const dispositionSaved = Object.hasOwn(editable, "disposition") && editable.disposition !== liveHandoff.disposition;
+    if (dispositionSaved || action === "log_dial") {
+      const at = (deps.now || (() => new Date()))();
+      actionDate = at instanceof Date ? at : new Date(at);
+      if (!Number.isFinite(actionDate.getTime())) {
+        return { status: 500, body: { ok: false, error: "dial_time_unavailable" } };
+      }
+    }
+    if (dispositionSaved) {
+      next.disposition_at = actionDate.toISOString();
+    }
     const history = dialHistory(liveHandoff);
     if (action === "log_dial") {
       const day = phoenixDay(actionDate);
       const days = jsonObject(liveHandoff.dial_attempt_days);
-      const setterDays = jsonObject(history[setterStaffId]);
+      const setterDays = jsonObject(history[staff.id]);
       next.call_attempts = Number(liveHandoff.call_attempts || 0) + 1;
       next.dialed_at = liveHandoff.dialed_at || actionDate.toISOString();
       next.dial_attempt_days = { ...days, [day]: Number(days[day] || 0) + 1 };
       next.dial_attempts_by_setter = {
-        ...history, [setterStaffId]: { ...setterDays, [day]: Number(setterDays[day] || 0) + 1 }
+        ...history, [staff.id]: { ...setterDays, [day]: Number(setterDays[day] || 0) + 1 }
       };
     } else if (Object.keys(history).length || liveHandoff.dial_attempts_by_setter) {
       next.dial_attempts_by_setter = history;
+    }
+    if (action === "complete") next.complete_at = liveHandoff.complete_at || new Date().toISOString();
+    if (next.complete_at) {
+      const missing = missingForCompletion(next, client);
+      if (missing.length) return { status: 400, body: { ok: false, error: "handoff_incomplete", missing } };
+      const closer = closerStaffId === staff.id ? staff : (await writer.query(
+        `SELECT id, name FROM staff WHERE org_id = $1 AND id = $2 LIMIT 1`,
+        [staff.org_id, closerStaffId]
+      )).rows[0];
+      next.handoff_text = (deps.buildText || buildSetterHandoffText)({ client, handoff: next, booking: client, closer, setter: staff });
+    }
+    if (staff.role === "setter" && !(await claimLatestSetterTask(writer, staff, client_id))) {
+      return { status: 403, body: { ok: false, error: "assigned_to_other_setter" } };
     }
     const savedFields = await persistHandoff(writer, client_id, staff.org_id, next);
     const saved = jsonObject(savedFields.setter_handoff);

@@ -42,9 +42,10 @@ test("setter KPI SQL scopes Phoenix day, org, archived leads and demo data",
         handoff(2), handoff(99, { crm_archived_at: "2026-10-31T00:00:00Z" }),
         handoff(3), handoff(99), JSON.stringify({ setter_handoff: {
           setter_staff_id: "setter-b", lead_type: "opt_in",
-          dial_attempt_days: { "2026-11-01": 4 },
+          dial_attempt_days: { "2026-11-01": 5 },
           dial_attempts_by_setter: {
-            "setter-a": { "2026-11-01": 3 }, "setter-b": { "2026-11-01": 1 }
+            "setter-a": { "2026-11-01": 3 }, "setter-b": { "2026-11-01": 1 },
+            "owner": { "2026-11-01": 1 }
           }
         } })
       ]);
@@ -74,6 +75,10 @@ test("setter KPI SQL scopes Phoenix day, org, archived leads and demo data",
         showed: 2, no_shows: 1, show_rate: 2 / 3
       });
       assert.deepEqual(await setterNumbers(conn, { org_id: "org-a", id: "setter-b" }, { now, includeDemo: false }), {
+        dials: 1, booked: 0, dial_to_book_rate: 0,
+        showed: 0, no_shows: 0, show_rate: null
+      });
+      assert.deepEqual(await setterNumbers(conn, { org_id: "org-a", id: "owner" }, { now, includeDemo: false }), {
         dials: 1, booked: 0, dial_to_book_rate: 0,
         showed: 0, no_shows: 0, show_rate: null
       });
