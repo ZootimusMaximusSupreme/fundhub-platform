@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -132,6 +133,78 @@ test("rewritten parent without a recorded old tip is commented and left open", (
   assert.ok(calls.some((call) => call[0] === "gh" && call.includes(`repos/${repo}/issues/41/comments`)
     && call.some((value) => value.includes("@ZootimusMaximusSupreme"))));
   assert.equal(calls.some((call) => call[1] === "rebase" || call[1] === "push"), false);
+});
+
+test("real Git restack keeps only the child commit after a parent rewrite", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "restack-graph-"));
+  const origin = path.join(root, "origin.git");
+  const work = path.join(root, "work");
+  const git = (...args) => execFileSync("git", args, {
+    cwd: work, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"]
+  }).trim();
+  try {
+    fs.mkdirSync(work);
+    execFileSync("git", ["init", "--bare", origin]);
+    git("init", "-b", "main");
+    git("config", "user.name", "Restack test");
+    git("config", "user.email", "restack@test.invalid");
+    git("remote", "add", "origin", origin);
+    fs.writeFileSync(path.join(work, "base.txt"), "base\n");
+    git("add", "base.txt");
+    git("commit", "-m", "base");
+    const base = git("rev-parse", "HEAD");
+    git("push", "origin", "main");
+
+    git("switch", "-c", "parent");
+    fs.writeFileSync(path.join(work, "parent.txt"), "old\n");
+    git("add", "parent.txt");
+    git("commit", "-m", "old parent");
+    const oldParent = git("rev-parse", "HEAD");
+    git("push", "origin", "parent");
+
+    git("switch", "-c", "child");
+    fs.writeFileSync(path.join(work, "child.txt"), "own\n");
+    git("add", "child.txt");
+    git("commit", "-m", "child work");
+    const childHead = git("rev-parse", "HEAD");
+    git("push", "origin", "child");
+
+    git("switch", "parent");
+    git("reset", "--hard", base);
+    fs.writeFileSync(path.join(work, "parent.txt"), "new\n");
+    git("add", "parent.txt");
+    git("commit", "-m", "rewritten parent");
+    const newParent = git("rev-parse", "HEAD");
+    git("push", "--force", "origin", "parent");
+
+    git("switch", "main");
+    fs.writeFileSync(path.join(work, "parent.txt"), "new\n");
+    git("add", "parent.txt");
+    git("commit", "-m", "squashed parent");
+    git("push", "origin", "main");
+
+    const current = { ...child, head: { ...child.head, ref: "child", sha: childHead },
+      base: { ref: "parent" }, body: `Stack parent head: ${oldParent}` };
+    const mergedParent = { ...merged, head: { ...merged.head, ref: "parent", sha: newParent } };
+    const run = (program, args) => {
+      if (program === "gh" && args[0] === "api" && args[1] === `repos/${repo}/pulls/41`) {
+        return JSON.stringify(current);
+      }
+      if (program === "gh" && args[0] === "api" && args[1] === "--method" &&
+        args[2] === "PATCH" && args[3] === `repos/${repo}/pulls/41`) return "";
+      if (program === "gh" && args[0] === "pr" && args[1] === "merge") return "";
+      if (program !== "git") throw new Error(`Unexpected ${program} ${args.join(" ")}`);
+      return git(...args);
+    };
+    assert.equal(restackChild({ child: current, merged: mergedParent, repo, run }).state, "restacked");
+    git("fetch", "origin", "main", "child");
+    assert.equal(git("rev-list", "--count", "origin/main..origin/child"), "1");
+    assert.equal(git("log", "-1", "--format=%s", "origin/child"), "child work");
+    assert.equal(git("show", "origin/child:parent.txt"), "new");
+    assert.equal(git("show", "origin/child:child.txt"), "own");
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test("retargeted child without merged parent or current main is left open", () => {
