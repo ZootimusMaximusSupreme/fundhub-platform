@@ -292,7 +292,7 @@ test("the real source docs parse to the counts the docs themselves claim", async
 
      This used to assert the opening sentence as a hardcoded string
      ("Fundhub update, ..."). The copy was rewritten on 2026-08-21 to
-     "Update from Josh, ..." and this line was not, so it sat red ever after -
+     "Update from Chris, ..." and this line was not, so it sat red ever after -
      the parser was fine and the sentence describing it was stale. A test that
      pins marketing copy breaks every time marketing copy changes, which trains
      everyone to ignore it.

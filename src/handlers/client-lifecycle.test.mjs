@@ -148,6 +148,10 @@ function pgFake({ openShift = null, failOn = null, smsRouting = null, pipelineSt
         }
         return { rows: [] };
       }
+      if (/^SELECT custom_fields FROM clients WHERE id = \$1$/.test(sql.trim())) {
+        const c = clients.find((x) => x.id === params[0]);
+        return { rows: c ? [{ custom_fields: { ...c.custom_fields } }] : [] };
+      }
       if (/UPDATE clients SET custom_fields/.test(sql)) {
         const c = clients.find((c) => c.id === params[0]);
         if (c) Object.assign(c.custom_fields, JSON.parse(params[1]));
@@ -317,6 +321,38 @@ test("survey.submitted merges answers; diagnostic.paid + decision.rendered stamp
   assert.equal(c.custom_fields.total_funding_estimate, 50000);
   assert.equal(c.outcome_tier, "FULL_FUNDING");
   assert.equal(db.cards[0].stage_id, "st-decision", "decision.rendered must park the card on Decision Rendered");
+});
+
+test("survey.submitted saves the credit tier on the person: 700 and up is qualified", async () => {
+  for (const [score, tier] of [["700-759", "qualified"], ["760-850", "qualified"], ["750+", "qualified"],
+    ["620-699", "unqualified"], ["500-619", "unqualified"], ["Not sure", "unqualified"]]) {
+    const db = pgFake({ pipelineStages: SALES_STAGES });
+    await onEntryCaptured(ev("entry.captured", { email: "tier@b.com", name: "Tier" }), db);
+    await onSurveySubmitted(ev("survey.submitted", {
+      email: "tier@b.com",
+      answers: { cf_svy_funding_target_amount: "Less than $50k", cf_svy_self_reported_fico: score }
+    }), db);
+    assert.equal(db.clients[0].custom_fields.credit_tier, tier, score);
+  }
+});
+
+test("survey.submitted before the score question saves no credit tier", async () => {
+  const db = pgFake({ pipelineStages: SALES_STAGES });
+  await onEntryCaptured(ev("entry.captured", { email: "early@b.com", name: "Early" }), db);
+  await onSurveySubmitted(ev("survey.submitted", {
+    email: "early@b.com", answers: { cf_svy_funding_target_amount: "Less than $50k" }
+  }), db);
+  assert.equal(db.clients[0].custom_fields.credit_tier, undefined);
+});
+
+test("a setter's earlier score fix still wins when the survey posts again", async () => {
+  const db = pgFake({ pipelineStages: SALES_STAGES });
+  await onEntryCaptured(ev("entry.captured", { email: "fix@b.com", name: "Fix" }), db);
+  db.clients[0].custom_fields.setter_survey_edits = { cf_svy_self_reported_fico: "760-850" };
+  await onSurveySubmitted(ev("survey.submitted", {
+    email: "fix@b.com", answers: { cf_svy_self_reported_fico: "500-619" }
+  }), db);
+  assert.equal(db.clients[0].custom_fields.credit_tier, "qualified");
 });
 
 test("survey.submitted mid-survey (no available capital) stays off survey_complete", async () => {

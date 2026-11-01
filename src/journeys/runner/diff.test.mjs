@@ -44,7 +44,7 @@ function facts(over = {}) {
       { pipeline: "Funding: Card Stacking", stage: "Funded" }
     ],
     agents: [
-      { code: "AG-04", name: "Setter Josh", status: "live", prompt: null },
+      { code: "AG-04", name: "Setter Chris", status: "live", prompt: null },
       { code: "AG-09", name: "Inquiry Removal AI", status: "live", prompt: null }
     ],
     templates: [{ template_key: "SMS-F03-ROUND-SUBMITTED", channel: "sms", compliance_passed: true }],
@@ -180,7 +180,7 @@ test("an agent the editor offers but the registry does not hold is caught", () =
 });
 
 test("a live agent passes, and a live agent with no prompt says so", () => {
-  const { findings } = diff(oneJourney([node("agent", { agent: "Setter Josh" })]), facts());
+  const { findings } = diff(oneJourney([node("agent", { agent: "Setter Chris" })]), facts());
   const hit = findings.find((f) => f.category === "agent");
   assert.equal(hit.verdict, "ok");
   assert.equal(hit.promptMissing, true);
@@ -241,7 +241,7 @@ test("an unreadable table is unverified, never ok and never a mismatch", () => {
   const { findings } = diff(
     oneJourney([
       node("stage", { stage: "Booked", pipeline: "Sales" }),
-      node("agent", { agent: "Setter Josh" }),
+      node("agent", { agent: "Setter Chris" }),
       node("condition", { field: "survey_complete", op: "is true" }),
       node("sms", {}, [["Template", "S-01"]])
     ]),

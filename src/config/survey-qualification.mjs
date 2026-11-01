@@ -1,7 +1,8 @@
 // Survey qualification — the Stage 2 gate (05/30 source of truth, lines 36-44).
 //
 // Two gates, both must pass to book a funding call:
-//   1. cf_svy_self_reported_fico is "700-749" or "750+"
+//   1. cf_svy_self_reported_fico is "700-759" or "760-850" (owner-set 2026-10-31;
+//      answers saved before then said "700-749" or "750+", and still pass)
 //   2. cf_svy_has_negatives = "No"
 // Fail either -> the application-stage credit repair downsell, which under 05/30 is
 // OUTSOURCED and automated (dispute-letter referral), NOT an in-house repair track
@@ -17,15 +18,25 @@
 // Kept in one config module (not inlined in a workflow) so the bands can move without
 // touching workflow code, same as lead-temperature.mjs and product-path.mjs.
 
+import { surveyFicoBand } from "../survey/cf-question-map.mjs";
+
 export const PASS = "PASS";
 export const DOWNSELL = "DOWNSELL";
 export const MANUAL_REVIEW = "MANUAL_REVIEW";
 
-// The full option set from the doc (lines 146, 5146). Order is the doc's, low to high.
-export const FICO_BANDS = ["500-579", "580-649", "650-699", "700-749", "750+", "Not sure"];
+// The score answers on the survey, low to high (owner-set 2026-10-30, final:
+// "500 to 620. 620 to 699. 700 to 760. 760 to 850."). A score of exactly 620 is
+// 620-699, so the first answer ends at 619. Both lane lines, 620 and 700, sit on
+// an edge, so the survey alone places every person.
+export const FICO_BANDS = ["500-619", "620-699", "700-759", "760-850", "Not sure"];
 
-// Only these two bands clear gate 1 (doc line 38).
-export const PASSING_FICO_BANDS = ["700-749", "750+"];
+// Only these two answers clear gate 1: 700 and up is qualified credit.
+export const PASSING_FICO_BANDS = ["700-759", "760-850"];
+
+// The answers the survey offered before 2026-10-31. People who answered then
+// still have these saved, and they read the same as they always did.
+export const LEGACY_FICO_BANDS = ["500-579", "580-649", "650-699", "700-749", "750+"];
+export const LEGACY_PASSING_FICO_BANDS = ["700-749", "750+"];
 
 // Normalize the en-dash the doc's own field modal uses (line 5146 prints "500–579")
 // against the hyphen the gate spec uses (line 38). Same band, two glyphs.
@@ -40,7 +51,22 @@ function normalizeBand(v) {
 export function ficoGatePasses(fico) {
   const band = normalizeBand(fico);
   if (band === null) return null; // absent -> caller decides (manual review)
-  return PASSING_FICO_BANDS.includes(band);
+  return PASSING_FICO_BANDS.includes(band) || LEGACY_PASSING_FICO_BANDS.includes(band);
+}
+
+/* creditTierFor — the owner's two buckets (2026-10-29) for one person:
+   "qualified" (a 700-and-up answer), "unqualified" (any other answer, Not sure
+   too), or null (no readable answer yet). A setter's fix on the call
+   (setter_survey_edits) wins over what the person typed. This is the one rule
+   behind the two calendars, the booking links in texts and emails, and the
+   credit_tier saved on the person. */
+export function creditTierFor(fields = {}) {
+  const cf = fields && typeof fields === "object" ? fields : {};
+  const edits = cf.setter_survey_edits && typeof cf.setter_survey_edits === "object" ? cf.setter_survey_edits : {};
+  const band = surveyFicoBand({ cf_svy_self_reported_fico_label: edits.cf_svy_self_reported_fico }) || surveyFicoBand(cf);
+  const pass = ficoGatePasses(band);
+  if (pass === null) return null;
+  return pass ? "qualified" : "unqualified";
 }
 
 // Gate 2. Yes/No per doc line 147. Anything else present-but-unrecognized is treated as

@@ -312,22 +312,23 @@ test("a line of credit counts toward utilization; only installment is dropped", 
 test("the bands come from the survey's own option set, not from here", () => {
   assert.deepEqual(
     SCORE_BANDS.map((b) => b.label),
-    ["500-579", "580-649", "650-699", "700-749", "750+"],
+    ["500-619", "620-699", "700-759", "760-850"],
     "band labels are parsed from FICO_BANDS in src/config/survey-qualification.mjs"
   );
-  assert.deepEqual(SCORE_BANDS[0], { label: "500-579", min: 500, max: 579 });
-  assert.deepEqual(SCORE_BANDS[4], { label: "750+", min: 750, max: null }, "the top band is open-ended");
+  assert.deepEqual(SCORE_BANDS[0], { label: "500-619", min: 500, max: 619 });
+  assert.deepEqual(SCORE_BANDS[3], { label: "760-850", min: 760, max: 850 }, "the top band ends at the top of the scale");
 });
 
 test("a score lands in its band", () => {
-  assert.equal(evaluateScore(500).band, "500-579");
-  assert.equal(evaluateScore(579).band, "500-579");
-  assert.equal(evaluateScore(580).band, "580-649");
-  assert.equal(evaluateScore(699).band, "650-699");
-  assert.equal(evaluateScore(700).band, "700-749");
-  assert.equal(evaluateScore(749).band, "700-749");
-  assert.equal(evaluateScore(750).band, "750+");
-  assert.equal(evaluateScore(850).band, "750+");
+  // The owner's edges (2026-10-31): exactly 620 and exactly 700 start a band.
+  assert.equal(evaluateScore(500).band, "500-619");
+  assert.equal(evaluateScore(619).band, "500-619");
+  assert.equal(evaluateScore(620).band, "620-699");
+  assert.equal(evaluateScore(699).band, "620-699");
+  assert.equal(evaluateScore(700).band, "700-759");
+  assert.equal(evaluateScore(759).band, "700-759");
+  assert.equal(evaluateScore(760).band, "760-850");
+  assert.equal(evaluateScore(850).band, "760-850");
 });
 
 test("the funding-call gate is the survey's rule, not a second copy of it", () => {
@@ -389,7 +390,7 @@ test("a non-integer score is refused rather than rounded", () => {
 });
 
 test("a numeric string from pg reads as a score", () => {
-  assert.equal(evaluateScore("712").band, "700-749");
+  assert.equal(evaluateScore("712").band, "700-759");
 });
 
 test("no adjective is returned for a score — that is a compliance decision", () => {
@@ -669,8 +670,8 @@ test("the report counts what it was given, and nothing else", () => {
   assert.equal(r.totals.scores.known, 2);
   assert.equal(r.totals.scores.unknown, 1);
   assert.equal(r.totals.scores.meetsFundingCallGate, 1);
-  assert.equal(r.totals.scores.byBand["580-649"], 1);
-  assert.equal(r.totals.scores.byBand["750+"], 1);
+  assert.equal(r.totals.scores.byBand["620-699"], 1);
+  assert.equal(r.totals.scores.byBand["760-850"], 1);
   assert.equal(r.totals.scores.byBand["(unknown)"], 1);
 });
 

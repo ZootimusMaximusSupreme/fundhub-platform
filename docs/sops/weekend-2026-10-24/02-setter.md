@@ -1,6 +1,6 @@
 # SOP — Setter
 
-Written 2026-10-26 from Cole Gordon’s two courses in Google Drive, then rewritten for Fundhub. Chris is the setter right now. He is also the closer. The AI setter (Josh) stays off.
+Written 2026-10-26 from Cole Gordon’s two courses in Google Drive, then rewritten for Fundhub. Chris is the setter right now. He is also the closer. The AI setter stays off.
 
 ## Where this came from
 
@@ -69,6 +69,8 @@ Film Chris, to camera, under a minute. Send the same video by text after the voi
 > Hey [Name], this is Chris with Fundhub. You just reached out about mapping your funding path. I was calling to get you on the calendar. Text me back and I will get you a time.
 
 ## Text right after the missed call
+
+**Since 2026-10-31 this text goes out by itself.** Save "No answer" on the setter desk and Fundhub sends three short texts from the Chris at Fundhub voice: right away, 30 minutes later, and 2 hours after that, between 9 a.m. and 5 p.m. Arizona time. There is one set for a person with a call booked and one for a person without one. They stop if the person books, moves the call, or texts back. Do not also text the person by hand. The lines below are the old hand-sent versions, kept for a person you are texting from your own phone for another reason.
 
 **They booked:**
 
@@ -188,7 +190,7 @@ These lines sit on top of Cole’s shape. They match owner law in the repo.
 
 **App download.** After a good booked call, tell them to get **Fundhub Portal** on their phone (App Store: `https://apps.apple.com/us/app/fundhub-portal/id6823985032`). If they will join from a laptop, they still need a computer for the strategy call; the app is for their file and next steps, not a substitute for the computer on the call.
 
-**AI setter.** Josh (AG-04) stays **retired**. No outbound AI dial after book.
+**AI setter.** AG-04 stays **retired**. No outbound AI dial after book.
 
 **Setter dashboard.** Use **Setter Dashboard** (`/app/setter-dashboard.html`) instead of only free-form notes on the pipeline card. The dashboard holds the checklist, the handoff block the closer reads, today’s self-scoped dial, book and show numbers, and buttons for “send intro video” and “send handoff text.”
 

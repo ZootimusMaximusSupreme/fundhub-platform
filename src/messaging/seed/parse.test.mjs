@@ -51,7 +51,7 @@ test("parseSmsCurrent: one row per ## KEY header", () => {
    The parser preserves body lines verbatim and has not changed since 2026-08-06;
    these expectations had simply never been updated to the fixture, which is why
    they sat red. Named once so the next footer change is one edit, not seven. */
-const FOOTER = "\n\u2014 Josh at Fundhub. Reply STOP to opt out.";
+const FOOTER = "\n\u2014 Chris at Fundhub. Reply STOP to opt out.";
 
 test("parseSmsCurrent: plain-text body under the header, multi-line preserved", () => {
   const rows = parseSmsCurrent(read("SMS-TEMPLATES-CURRENT.md"), "fixture");
@@ -135,7 +135,7 @@ test("parseHeader: single-space header absorbs the name into the key (reported, 
 /* Same 2026-08-21 sweep as FOOTER above, in the email shape. EM-01 used to end
    in " Unsubscribe"; the sweep replaced that with the signature block. The
    parser is untouched since 2026-08-06 — only the fixture moved. */
-const EMAIL_FOOTER = "\n\n\u2013 Josh\nFundHub.ai\n\nFundHub.ai \u2022 Funding Intelligence for Entrepreneurs";
+const EMAIL_FOOTER = "\n\n\u2013 Chris\nFundHub.ai\n\nFundHub.ai \u2022 Funding Intelligence for Entrepreneurs";
 
 test("parseEmailTemplates: first line is the subject, the rest is the body", () => {
   const rows = parseEmailTemplates(read("EMAIL-TEMPLATES-SOURCE-OF-TRUTH.md"), "fixture");
