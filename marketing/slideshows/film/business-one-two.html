@@ -15,6 +15,10 @@
           start it now and let it season while my credit is optimized.
 
   Rewritten 2026-10-31 on Chris's slide framework (see pre-underwriting.html).
+  Review fixes the same day: BZ-01's engine line is shortened, BZ-02's chip
+  reads from the filing date, BZ-04 row 4 is each business's own amount, and
+  BZ-05 says what the sample really shows (the LLC already existed, ticked on
+  day two; its age is not on record).
 
   Chris's direction (2026-10-31): his call-slide style, more copy, real first
   (the engine's own sentence, the engine's own checks, a real product screen),
@@ -842,26 +846,26 @@ html[data-tone="dark"] .film-n{color:var(--ss-dark-muted)}
   </svg>
 
   <section class="slide dark" data-src="The engine reads business age in bands, half under 12 months, full under 24, double at 24 and up: src/underwrite/business-funding.mjs:5-9; Business 24+ months old is one of its five checks: src/finance/fundability.mjs:158. The picture is the engine's own sentence for a file that is still being optimized: src/underwrite/vendor/suggestions.cjs:81. A business under 12 months old: the engine cuts business card amounts in half: docs/sops/weekend-2026-10-24/04-sales-call-script.md:196 (closer line). Four age bands, the lowest under 12 months: src/underwrite/business-funding.mjs:5-9.">
-    <p class="eyebrow">BZ-01 / The clock</p>
-    <h2>Every business gets read by its age, and its age starts counting the day you file it.</h2>
+    <p class="eyebrow">BZ-01 / Filing day</p>
+    <h2>Once your business is filed, every month on your personal file counts toward its age too.</h2>
     <p class="lede">How old yours is on the day your personal file is ready decides what the business side adds.</p>
     <ul class="lines">
       <li>Our engine prints this line for a file that still has credit work ahead of it.</li>
     </ul>
     <figure class="pic">
-      <div class="term" role="img" aria-label="The UnderwriteIQ engine's own suggestion line: You don't have an LLC yet. Form an LLC now so it can season while your credit is being repaired.">
+      <div class="term" role="img" aria-label="The UnderwriteIQ engine's own suggestion line, shortened: You don't have an LLC yet. Form an LLC now so it can season.">
         <div class="term-head"><span class="pulse"></span>UnderwriteIQ · Suggestions</div>
-        <div class="term-line"><span class="k">01</span><span>You don’t have an LLC yet. Form an LLC now so it can season while your credit is being repaired.</span></div>
+        <div class="term-line"><span class="k">01</span><span>You don’t have an LLC yet. Form an LLC now so it can season…</span></div>
       </div>
-      <p class="real-src">The engine's own words, as it prints them for a file still being optimized.</p>
+      <p class="real-src">The engine's own line, shortened.</p>
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Every business gets read by its AGE, and that age only starts counting on the day you file it. Until that day, the clock on your business sits at zero.</li>
-        <li>How old your business is on the day your personal file is ready decides what the business side adds. That day is coming, so the clock matters now.</li>
+        <li>Once your business is filed, every month you spend on your personal file counts toward its AGE too. Until the day you file it, your business has no age at all.</li>
+        <li>How old your business is on the day your personal file is ready decides what the business side adds. The months between now and then are the ones that count.</li>
         <li>Look at what our engine prints for a file that still has credit work ahead of it. It tells you to form the LLC NOW, so it ages while that work runs.</li>
         <li>That line comes straight from the engine's own rules. It reads every business in age bands, and a brand new business sits in the lowest band it has.</li>
-        <li>That means the months you spend on your personal file can count TWICE. Your credit work runs, and your business gets older over those same months.</li>
+        <li>File early, and your credit work and your business's age move forward in the same months, so your business climbs toward the engine's higher bands.</li>
       </ul>
     </aside>
   </section>
@@ -875,12 +879,12 @@ html[data-tone="dark"] .film-n{color:var(--ss-dark-muted)}
       <li>Age keeps counting up from the filing date, and the engine's top band starts at 24 months.</li>
     </ul>
     <figure class="pic">
-      <div class="real" role="img" aria-label="The engine's five business checks: personal file is fundable; a personal card two or more years old with a high limit; business 24 or more months old, marked start the clock now; business name on file; industry code on file.">
+      <div class="real" role="img" aria-label="The engine's five business checks: personal file is fundable; a personal card two or more years old with a high limit; business 24 or more months old, marked counts from your filing date; business name on file; industry code on file.">
         <div class="rh2">Fundability · Business one</div>
         <ul>
           <li>Personal file is fundable</li>
           <li>A personal card 2+ years old with a high limit</li>
-          <li class="yes">Business 24+ months old<br><span class="chip on"><span class="cd"></span>Start the clock now</span></li>
+          <li class="yes">Business 24+ months old<br><span class="chip on"><span class="cd"></span>Counts from your filing date</span></li>
           <li>Business name on file</li>
           <li>Industry code (NAICS) on file</li>
         </ul>
@@ -889,8 +893,8 @@ html[data-tone="dark"] .film-n{color:var(--ss-dark-muted)}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Here's what's really going on with your business. Our engine gives every business FIVE checks of its own, and every one of them counts the same.</li>
-        <li>Two of them read your personal file. One asks if that file is fundable. The other looks on your own report for a card with a big limit, open since at least two years back.</li>
+        <li>Every business you own gets FIVE checks from our engine, separate from your personal file, and every one of those checks counts exactly the same.</li>
+        <li>Two of them read your personal file. One asks if that file is fundable. The other wants a big-limit card on your own report, at least two years old.</li>
         <li>Then come the name and the industry code, which are paperwork. Both go on file once, when the business gets set up, and then they're done.</li>
         <li>That leaves AGE. It counts up from your filing date by itself. It keeps counting while you work on everything else on your plan.</li>
         <li>The engine's top band starts at 24 MONTHS. A business filed late gets there late, no matter how fast you finish the rest of your file.</li>
@@ -916,47 +920,48 @@ html[data-tone="dark"] .film-n{color:var(--ss-dark-muted)}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Here's what filing late COSTS you. Our engine sizes the business side by age, and its top band is four times its bottom one.</li>
+        <li>Our engine sizes the business side by age, and its top band counts four times its bottom one, so filing late COSTS you on every business you own.</li>
         <li>Look at the bars. Under 12 months old, the business side counts at HALF. From 12 to 24 months, it counts in full.</li>
         <li>At 24 months and up, it counts DOUBLE. Same business, same owner, same personal file, and the only thing that changed is how long it's been on the books.</li>
         <li>And if there's no filing date on record, the engine counts the business side at zero. So the date has to be real, and it has to be on file.</li>
         <li>Every month you wait to file costs you. On the day your personal file is ready, a late filing sits in a lower band.</li>
-        <li>That difference is money your business goes without. It's the next hire, a bigger job, and ads that keep running every month.</li>
+        <li>That lower band is money the business side leaves out of your total, on the very day your personal file is finally ready to fund.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide dark" data-src="Each company is read on its own and listed on its own; they are never added up into one score or one dollar figure: src/finance/fundability.mjs:73-75. Each business is judged on its own, after your personal file is ready; business one gets ready first, then business two: docs/sops/weekend-2026-10-24/04-sales-call-script.md:258. Chris's Blueprint list, steps 6 to 8: .ai/rules/ad-know-the-offer.md:33-35. Personal before business: src/underwrite/funding-sequence.mjs:3-9; Lock personal funding in first, then form or grow the business side: src/underwrite/black-report-node.mjs:707. An AI coach on the open step and the Fundhub team for what a person must do: docs/journeys/capital-blueprint-intended.md:9 and .ai/rules/ad-know-the-offer.md:41.">
+  <section class="slide dark" data-src="Each company is read on its own and listed on its own; they are never added up into one score or one dollar figure: src/finance/fundability.mjs:73-75. Each business is judged on its own, after your personal file is ready; business one gets ready first, then business two: docs/sops/weekend-2026-10-24/04-sales-call-script.md:258. Chris's Blueprint list, steps 6 to 8: .ai/rules/ad-know-the-offer.md:33-35. Personal before business: src/underwrite/funding-sequence.mjs:3-9; Lock personal funding in first, then form or grow the business side: src/underwrite/black-report-node.mjs:707. An AI coach on the open step and the Fundhub team for what a person must do: docs/journeys/capital-blueprint-intended.md:9 and .ai/rules/ad-know-the-offer.md:41. Chris's track record, four companies off one personal file on stated income: marketing/ads/RULES.md Part 0 rule 38." data-figures="Chris's own track record, not a sample: $100,000 lines on four companies off one personal file (marketing/ads/RULES.md Part 0 rule 38)">
     <p class="eyebrow">BZ-04 / The order</p>
     <h2>Business one gets primed first, then business two, once your personal file is ready.</h2>
     <ul class="lines">
       <li>Each business keeps its own count and its own place on your plan, never blended into one figure.</li>
       <li>Business one gets primed and ready first, then business two, and each one adds fundability.</li>
-      <li>File early, and each business already has age behind it when its turn comes.</li>
+      <li>Four of my companies each got a $100,000 credit line off my one personal file, on stated income.</li>
     </ul>
     <figure class="pic">
-      <ol class="flow" aria-label="Four steps in order: personal file ready, business one, business two, more fundability.">
+      <ol class="flow" aria-label="Four steps in order: personal file ready, business one, business two, and each business with its own amount, listed on its own.">
         <li class="is-hot">Personal file ready<span class="sub">nothing else counts until it is</span></li>
         <li>Business one<span class="sub">its own five checks</span></li>
         <li>Business two<span class="sub">its own five checks</span></li>
-        <li>More fundability<span class="sub">each one listed on its own</span></li>
+        <li>Its own business amount<span class="sub">listed on its own</span></li>
       </ol>
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Here's how the Blueprint handles it. Your personal file gets primed FIRST, because two of every business's checks are read straight off it.</li>
+        <li>Two of every business's checks read straight off your personal file, so that file gets primed FIRST. On the Blueprint, the businesses take their turns after it.</li>
         <li>Then business one gets primed and READY. It has its own five checks and its own count, kept apart from your personal file.</li>
         <li>Then business two, on its own count again. The engine never blends your businesses into one score or one total.</li>
         <li>Each business stands on its own count. Every one you add brings more FUNDABILITY, and the count on the ones before it stays the same.</li>
+        <li>I run this same order myself. Four of my companies each got a $100,000 credit line, all off my ONE personal file, and not one bank asked me to prove my income.</li>
         <li>You filed early, so each business already has months of age on it when its turn comes. And that age keeps counting toward the top band.</li>
         <li>An AI coach follows your open step. When something needs a person, someone on the Fundhub team picks it up. Nothing on your plan sits still.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide" data-src="File your LLC: file online with the Secretary of State; send us the filing confirmation: db/migrations/362_waypoint_definitions_seed.sql:109-110. Open a business checking account in the LLC name: :125-126. Fundhub does not file LLCs or open bank accounts for the client: :33-35. Our team, never your advisor: db/migrations/498_waypoint_steps_fundhub_team.sql:1-7. The picture is the sample client's Blueprint checklist at month 6, the two business rows (File your LLC, done 19 October 2026; Open a business checking account, done 19 October 2026), cropped from ops/workflows/build-evidence/blueprint-timelapse-2026-10-21/still-03-month-6.png (stamped SIMULATION on the full screen); the sample started on 17 October 2026 (still-01-start.png). Both business steps are the client's, in the client's name: db/migrations/362_waypoint_definitions_seed.sql:33-35. Sent to the Fundhub team: db/migrations/498_waypoint_steps_fundhub_team.sql:1-7. The client funds themselves once the file is ready (Blueprint lane rule): ops/workflows/backend-selling-lanes-2026-10-30.md section 6e. What the money is for: docs/sops/weekend-2026-10-24/04-sales-call-script.md:112.">
+  <section class="slide" data-src="File your LLC: file online with the Secretary of State; send us the filing confirmation: db/migrations/362_waypoint_definitions_seed.sql:109-110. Open a business checking account in the LLC name: :125-126. Fundhub does not file LLCs or open bank accounts for the client: :33-35. Our team, never your advisor: db/migrations/498_waypoint_steps_fundhub_team.sql:1-7. The picture is the sample client's Blueprint checklist at month 6, the two business rows (File your LLC, done 19 October 2026; Open a business checking account, done 19 October 2026), cropped from ops/workflows/build-evidence/blueprint-timelapse-2026-10-21/still-03-month-6.png (stamped SIMULATION on the full screen); the sample started on 17 October 2026 (still-01-start.png). Both business steps are the client's, in the client's name: db/migrations/362_waypoint_definitions_seed.sql:33-35. Sent to the Fundhub team: db/migrations/498_waypoint_steps_fundhub_team.sql:1-7. The client funds themselves once the file is ready (Blueprint lane rule): ops/workflows/backend-selling-lanes-2026-10-30.md section 6e. What the money is for: docs/sops/weekend-2026-10-24/04-sales-call-script.md:112. The sample client already ran an LLC with business checking, so the LLC, EIN and business checking steps were ticked on 2026-10-19 as already done: scripts/demo/fixtures/blueprint-timelapse-story.json:2 and :24. The sample's business age is not on record: scripts/demo/blueprint-timelapse.mjs:206 (age_months null). The LLC step is due 30 days after the plan starts: db/migrations/362_waypoint_definitions_seed.sql:108-112. Unknown age counts the business side at zero: src/underwrite/business-funding.mjs:9 and src/underwrite/vendor/underwriter.cjs:277-283.">
     <p class="eyebrow">BZ-05 / The step</p>
-    <h2>Two days in, this sample file had its LLC filed and its business checking open.</h2>
+    <h2>The LLC step is due in your first 30 days, so your business ages as your file gets ready.</h2>
     <ul class="lines">
       <li>The step asks you to file with your Secretary of State, then send the confirmation to the Fundhub team.</li>
       <li>The second business step is a checking account opened in the LLC's name.</li>
@@ -971,12 +976,12 @@ html[data-tone="dark"] .film-n{color:var(--ss-dark-muted)}
     <aside class="talk" aria-hidden="true">
       <ul>
         <li>This is the real Blueprint checklist, on a SAMPLE file at month six. Look at the two business steps, and look at when they got done.</li>
-        <li>The LLC step was done two days into the plan. The business checking account was opened that same day, ahead of almost everything else.</li>
+        <li>This sample client already had an LLC and business checking, so both steps got checked off on day two. On your plan, the LLC step is due within 30 days.</li>
         <li>Filing the LLC means filing with your Secretary of State, then sending the confirmation to the Fundhub team. The checking account goes in the LLC's NAME.</li>
-        <li>Both steps are yours, done in your own name. The checklist marks each one as you finish it, so you always see where you stand.</li>
-        <li>That sample business got older the whole time its personal file was being worked on. By month six, it had close to six months of age on it.</li>
-        <li>When the personal file is READY, that business already has months behind it. Then you fund yourself, with your file and your business both working for you.</li>
-        <li>That capital goes into the business itself. It pays for the hire you've held off on and the bigger jobs, while your own savings stay put.</li>
+        <li>Both steps are yours, done in your own name. The checklist marks each one as you finish it, so you always see what's done and what's next.</li>
+        <li>With the filing date on record, the engine has an age to read. Without one, it counts the business side at ZERO, no matter how strong your file is.</li>
+        <li>File inside your first 30 days, and every month of credit work after that adds a month of age to your business, with nothing extra for you to do.</li>
+        <li>When your personal file is READY, the business side already counts. You fund yourself on both, and the capital goes into the hires and jobs your business has been waiting on.</li>
       </ul>
     </aside>
   </section>
@@ -999,7 +1004,7 @@ html[data-tone="dark"] .film-n{color:var(--ss-dark-muted)}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Remember the clock on your business? On your strategy CALL, you find out exactly where yours sits, right next to your personal file.</li>
+        <li>Remember how your business only ages from its filing date? On your strategy CALL, you find out which age band yours sits in, right next to your personal file.</li>
         <li>Bring three things: the legal name of your company, how long it's been open, and its average revenue each month. They take a minute to look up.</li>
         <li>With those three, the business side gets read on the call too. You see how much you qualify for based on where you're at right now.</li>
         <li>If you don't have a business yet, you still work with us. Your personal file goes first either way, and funding works off a personal file by itself.</li>

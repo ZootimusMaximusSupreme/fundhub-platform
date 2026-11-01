@@ -14,6 +14,10 @@
           start it now and let it season while my credit is optimized.
 
   Rewritten 2026-10-31 on Chris's slide framework (see pre-underwriting.html).
+  Review fixes the same day: BZ-01's engine line is shortened, BZ-02's chip
+  reads from the filing date, BZ-04 row 4 is each business's own amount, and
+  BZ-05 says what the sample really shows (the LLC already existed, ticked on
+  day two; its age is not on record).
 
   Chris's direction (2026-10-31): his call-slide style, more copy, real first
   (the engine's own sentence, the engine's own checks, a real product screen),
@@ -802,7 +806,7 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     <aside class="talk" aria-hidden="true">
       <ul>
         <li>Every business you own gets FIVE checks from our engine, separate from your personal file, and every one of those checks counts exactly the same.</li>
-        <li>Two of them read your personal file. One asks if that file is fundable. The other looks on your own report for a card with a big limit, open since at least two years back.</li>
+        <li>Two of them read your personal file. One asks if that file is fundable. The other wants a big-limit card on your own report, at least two years old.</li>
         <li>Then come the name and the industry code, which are paperwork. Both go on file once, when the business gets set up, and then they're done.</li>
         <li>That leaves AGE. It counts up from your filing date by itself. It keeps counting while you work on everything else on your plan.</li>
         <li>The engine's top band starts at 24 MONTHS. A business filed late gets there late, no matter how fast you finish the rest of your file.</li>
@@ -867,7 +871,7 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </aside>
   </section>
 
-  <section class="slide" data-src="File your LLC: file online with the Secretary of State; send us the filing confirmation: db/migrations/362_waypoint_definitions_seed.sql:109-110. Open a business checking account in the LLC name: :125-126. Fundhub does not file LLCs or open bank accounts for the client: :33-35. Our team, never your advisor: db/migrations/498_waypoint_steps_fundhub_team.sql:1-7. The picture is the sample client's Blueprint checklist at month 6, the two business rows (File your LLC, done 19 October 2026; Open a business checking account, done 19 October 2026), cropped from ops/workflows/build-evidence/blueprint-timelapse-2026-10-21/still-03-month-6.png (stamped SIMULATION on the full screen); the sample started on 17 October 2026 (still-01-start.png). Both business steps are the client's, in the client's name: db/migrations/362_waypoint_definitions_seed.sql:33-35. Sent to the Fundhub team: db/migrations/498_waypoint_steps_fundhub_team.sql:1-7. The client funds themselves once the file is ready (Blueprint lane rule): ops/workflows/backend-selling-lanes-2026-10-30.md section 6e. What the money is for: docs/sops/weekend-2026-10-24/04-sales-call-script.md:112. The sample client already ran an LLC with business checking, so the LLC, EIN and business checking steps were ticked on 2026-10-19 as already done: scripts/demo/fixtures/blueprint-timelapse-story.json:2 and :24. The sample's business age is not on record: scripts/demo/blueprint-timelapse.mjs:206 (age_months null). The LLC step is due 30 days after the plan starts: db/migrations/362_waypoint_definitions_seed.sql:106-111. Unknown age counts the business side at zero: src/underwrite/business-funding.mjs:9 and src/underwrite/vendor/underwriter.cjs:277-283.">
+  <section class="slide" data-src="File your LLC: file online with the Secretary of State; send us the filing confirmation: db/migrations/362_waypoint_definitions_seed.sql:109-110. Open a business checking account in the LLC name: :125-126. Fundhub does not file LLCs or open bank accounts for the client: :33-35. Our team, never your advisor: db/migrations/498_waypoint_steps_fundhub_team.sql:1-7. The picture is the sample client's Blueprint checklist at month 6, the two business rows (File your LLC, done 19 October 2026; Open a business checking account, done 19 October 2026), cropped from ops/workflows/build-evidence/blueprint-timelapse-2026-10-21/still-03-month-6.png (stamped SIMULATION on the full screen); the sample started on 17 October 2026 (still-01-start.png). Both business steps are the client's, in the client's name: db/migrations/362_waypoint_definitions_seed.sql:33-35. Sent to the Fundhub team: db/migrations/498_waypoint_steps_fundhub_team.sql:1-7. The client funds themselves once the file is ready (Blueprint lane rule): ops/workflows/backend-selling-lanes-2026-10-30.md section 6e. What the money is for: docs/sops/weekend-2026-10-24/04-sales-call-script.md:112. The sample client already ran an LLC with business checking, so the LLC, EIN and business checking steps were ticked on 2026-10-19 as already done: scripts/demo/fixtures/blueprint-timelapse-story.json:2 and :24. The sample's business age is not on record: scripts/demo/blueprint-timelapse.mjs:206 (age_months null). The LLC step is due 30 days after the plan starts: db/migrations/362_waypoint_definitions_seed.sql:108-112. Unknown age counts the business side at zero: src/underwrite/business-funding.mjs:9 and src/underwrite/vendor/underwriter.cjs:277-283.">
     <p class="eyebrow">BZ-05 / The step</p>
     <h2>The LLC step is due in your first 30 days, so your business ages as your file gets ready.</h2>
     <ul class="lines">

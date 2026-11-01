@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Fundhub Why The Bank Said No</title>
-<meta name="description" content="Your credit report printed the bank's reason for saying no before you applied. Each reason has a fix, and the fixes come before funding.">
+<meta name="description" content="Your credit report printed the bank's reason for saying no before you applied. Each reason points to one fix, and the fixes come before funding.">
 <!--
   Deck BN · Why the bank said no
   Lane: Blueprint and credit optimization (everyone under 700)
@@ -25,7 +25,7 @@
     the first subject is the bank, not us.
   - It tells them something they don't know: the bureau prints the reason
     under the score before anyone applies (Part 0 rule 26). Line 2 opens the
-    loop ("the file changes") and BN-03 to BN-05 pay it off (rules 27, 28).
+    loop ("each reason points to one fix") and BN-06 pays it off (rules 27, 28).
   - Teach, never "you will not get funded" (lane rule). Rule 21: the sample
     file is the one under the line, never the viewer.
   - Full sentences, no chopped fragments, say what things are (rules 15 to 17).
@@ -44,10 +44,10 @@
   - The sample's numbers are the sim file's own numbers, labeled Sample.
 
   Visual Thinking (marketing/copy-skills/visual-thinking/), every step.
-  - Real first (law: show-real-proof): BN-01, BN-03 and BN-04 show real
-    documents with our marks on top. BN-02, BN-05 and BN-06 are diagrams,
-    because the three checks, the loop back through the review and the call
-    are processes nothing real shows better.
+  - Real first (law: show-real-proof): BN-01, BN-03, BN-04 and BN-06 show real
+    documents or screens with our marks on top. BN-02 and BN-05 are diagrams,
+    because the three checks and the loop back through them are processes
+    nothing real shows better.
   - Look: the facts came first, each with its source in data-src. One sample
     file for the whole deck: the REPAIR-FULL simulated file in
     scripts/sim/push-credit.mjs (scores 541, 566 and 552; a collection, a
@@ -71,12 +71,12 @@
       filled from the sample, the paydown rows and the dispute rows marked.
     BN-04 how, real: section 1 of the agreement, the "identify, prepare, carry
       out" sentence marked "Done for you".
-    BN-05 how, a flowchart: fix first, the same three checks again, you fund
-      yourself at the banks that fit, and the capital splits into a new hire,
-      ads that run and bigger jobs (the after). Redrawn 2026-10-31.
-    BN-06 who/what, the call screen: today's amount with fix #1 marked on the
-      left, the cleaned-up file on the right, the gap between them named.
-      Redrawn 2026-10-31.
+    BN-05 how, a flowchart: fix first, the same three checks again, a dashed
+      loop back for more fixing, and once the file passes, the capital split
+      into a new hire, ads that run and bigger jobs. Redrawn 2026-10-31.
+    BN-06 who/what, real: the call's money levers screen (L-01) with its own
+      labels, filled with the engine's figures for the same sample: $0 today,
+      $8,250 projected once cleaned up. Rebuilt 2026-10-31.
   - Truth check (applications.md): no picture implies an approval, an amount,
     a deletion or a speed the agreements do not promise. Samples say Sample.
     No bank is named as one that will approve.
@@ -756,12 +756,12 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </defs>
   </svg>
 
-  <section class="slide dark" data-src="The top of a credit report lists the reasons a bank approves or denies, and the bank's letter gives the same reasons: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:209. The picture is the Experian section of the REPAIR-FULL simulated sample file: the score and the bureau's own reason lines are scripts/sim/push-credit.mjs:743-747 and :796; the accounts, their status and the bureau's comment text are :642-658 (Experian carries the Capital One 30-day late, the Midland collection and the Synchrony charge-off). A no is a fact about your file on that day: docs/sops/weekend-2026-10-24/04-sales-call-script.md:413. The cleaned-up file shows a higher amount on the call screen: public/app/present.js:100 (closer line) and docs/sops/weekend-2026-10-24/04-sales-call-script.md:171-173. Our UnderwriteIQ system reads the file: public/app/present.js:99.">
+  <section class="slide dark" data-src="The top of a credit report lists the reasons a bank approves or denies, and the bank's letter gives the same reasons: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:209. The picture is the Experian section of the REPAIR-FULL simulated sample file: the score and the bureau's own reason lines are scripts/sim/push-credit.mjs:743-747 and :796; the accounts, their status and the bureau's comment text are :642-658 (Experian carries the Capital One 30-day late, the Midland collection and the Synchrony charge-off). Each reason has its fix, and the fixes come before funding: src/deliverables/derive.mjs:252-264 and src/underwrite/funding-sequence.mjs:24 ('Nothing else is worth doing until the personal file is prime'); if they qualify, we optimize, then send them into funding: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:210.">
     <p class="eyebrow">BN-01 / The reason on your report</p>
     <h2>Your credit report printed the bank's reason for saying no before you ever applied.</h2>
-    <p class="lede">Run through our system, that same report also shows what your file is worth once it's cleaned up.</p>
+    <p class="lede">Each reason on it points to one fix, and every fix happens before a bank sees the file again.</p>
     <ul class="lines">
-      <li>On this sample file, Experian's top reason is a serious delinquency and a collection, and the accounts below show where it came from.</li>
+      <li>On this sample, Experian's top reason is a serious delinquency and a collection. The accounts below show where it came from.</li>
       <li>When a bank turns this file down, its letter quotes those same reasons back.</li>
     </ul>
     <figure class="pic">
@@ -792,23 +792,23 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Your credit report printed the reason the bank said NO before you ever applied. The letter the bank mailed you afterward just repeats it back to you.</li>
-        <li>Run through our system, that same report also shows what your file is worth once it's CLEANED up, and nobody has put that amount in front of you yet.</li>
-        <li>This is a sample Experian report. The score reads 541, and right below it, the bureau lists four reasons for that score in its own words.</li>
-        <li>The top reason reads serious delinquency and a collection filed. When a bank turns this file down, that's the line its letter hands back.</li>
-        <li>Now look at the accounts underneath. Midland placed a debt for collection, Synchrony charged off an account, and Capital One shows a payment 30 days late.</li>
-        <li>Those three accounts are the delinquency and the collection that top line is talking about. Each one is a specific item with a specific FIX, and the fixes are yours to control.</li>
+        <li>Your credit report printed the reason the bank said NO. It was sitting there before you ever applied. The letter the bank mailed you later just repeats it.</li>
+        <li>Each reason on that report points to one FIX. Every fix happens before a bank sees your file again, so the next bank reads a cleaner file.</li>
+        <li>This is a sample Experian report. The score reads 541. Right below it, the bureau lists four reasons for that score, in its own words.</li>
+        <li>The top reason reads serious delinquency and a collection filed. When a bank turns this file down, its letter hands that same line right back.</li>
+        <li>Now read the accounts underneath. Midland placed a debt for collection. Synchrony charged off an account. And Capital One shows a payment 30 days late.</li>
+        <li>Those three accounts put that top line on the report. Each one is a specific item with a specific FIX, and each fix is a step you can take.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide" data-src="The three checks in the engine's fundable gate, score 700 or higher, cards used 30% or less, zero negative items: src/underwrite/vendor/underwriter.cjs:208-212, with the labels in src/finance/fundability.mjs:146-149. A file with a charge-off or a collection and no clean bureau goes to the credit optimization door first: docs/sops/weekend-2026-10-24/04-sales-call-script.md:190. If they qualify, we optimize, then send them into funding: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:210. Nothing else is worth doing until the personal file is prime: src/underwrite/funding-sequence.mjs:24. The sample's readings: scripts/sim/push-credit.mjs:642-658 and :796. Every application is a hard pull, and each one costs you: docs/sops/weekend-2026-10-24/04-sales-call-script.md:160.">
+  <section class="slide" data-src="The three checks in the engine's fundable gate, score 700 or higher, cards used 30% or less, zero negative items: src/underwrite/vendor/underwriter.cjs:208-212, with the labels in src/finance/fundability.mjs:146-149. A file with a charge-off or a collection and no clean bureau goes to the credit optimization door first: docs/sops/weekend-2026-10-24/04-sales-call-script.md:190. Nothing else is worth doing until the personal file is prime: src/underwrite/funding-sequence.mjs:24. Every application is a hard pull, and each one costs you: 04-sales-call-script.md:160. The sample's readings: scripts/sim/push-credit.mjs:642-658 and :796.">
     <p class="eyebrow">BN-02 / Three checks</p>
     <h2>This sample's 541 score, full card and collections fail all three funding checks.</h2>
     <ul class="lines">
+      <li>The checks your file misses tell you exactly what to fix before you apply.</li>
       <li>To be fundable, the score sits at 700 or higher, the cards stay at 30% used or under, and the report shows no negative items.</li>
-      <li>Every application sent before then is a hard pull on a file that isn't fundable yet.</li>
-      <li>So this file goes to credit optimization first, and each miss has its own fix.</li>
+      <li>This sample misses all three, so it goes to credit optimization before a single application goes out.</li>
     </ul>
     <figure class="pic">
       <div class="sheet">
@@ -834,26 +834,26 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Underneath that no, the engine runs THREE checks before it calls a file fundable, and every one of them has to pass.</li>
-        <li>The score has to sit at 700 or higher. The cards have to be 30% used or less. And there can't be a single negative item on the report.</li>
-        <li>This sample misses all three. The scores are in the 500s, Credit One is at $1,490 of $1,500, and there are two collections, a charge-off and a late.</li>
-        <li>Every application sent on this file today is a HARD pull on a file that isn't fundable yet, and that inquiry stays on the report.</li>
-        <li>That's why this file goes to credit optimization first, before a single application. The personal file has to be ready before anything gets built on top of it.</li>
-        <li>What matters for you is that each miss has a fix you can name, which turns the bank's no into a short list of things to do.</li>
+        <li>Our system runs THREE checks before it calls a file fundable. The ones your file misses tell you exactly what to fix before you apply.</li>
+        <li>The score has to sit at 700 or higher. The cards have to be 30% used or less. And the report can't show a single negative item.</li>
+        <li>This sample misses all three. The scores are in the 500s. Credit One is at $1,490 of $1,500. And there are two collections, a charge-off and a late.</li>
+        <li>Every application sent on this file today is a HARD pull. The file isn't fundable yet, and that inquiry stays on the report after the no.</li>
+        <li>That's why this file goes to credit optimization first, before a single application. The personal file gets ready before anything else gets built on it.</li>
+        <li>Each of those misses has its own fix. The sample's credit analysis puts every one of them on one page, with a target or a letter beside each.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide" data-src="The client document names each fix: a card carrying a high balance is fixable with a paydown plan, a negative item is fixable with dispute letters, it is not permanent and it is on the repair list starting Month 1: src/deliverables/derive.mjs:252-264. The paydown target is 10% of the card's limit: src/waypoints/definitions.mjs:42-45 and :330-332; the checklist title 'Pay {creditor} down to {target}': db/migrations/362_waypoint_definitions_seed.sql:83. Cards rank highest use first: src/deliverables/derive.mjs:14-27. Chris's Blueprint order, pay a card down, then the negative items: .ai/rules/ad-know-the-offer.md:28-29. Nothing else is worth doing until the personal file is prime: src/underwrite/funding-sequence.mjs:24. The sample rows: scripts/sim/push-credit.mjs:642-658. What the money was going to do, the hire, the ads, the jobs: docs/sops/weekend-2026-10-24/04-sales-call-script.md:112. Letters written for the items on your report: marketing/offers/fundhub-offers-2026-10-10.pdf p.4.">
-    <p class="eyebrow">BN-03 / What it's costing you</p>
-    <h2>This list is what holds this file's funding back, with the fix right next to each item.</h2>
+  <section class="slide" data-src="The client document names each fix: a card with a high balance is fixable with a paydown plan, a negative item is fixable with dispute letters, both starting Month 1: src/deliverables/derive.mjs:252-264. The paydown target is 10% of the card's limit: src/waypoints/definitions.mjs:42-45; the engine prints $150 or less for Credit One and $300 or less for Capital One on this sample (src/deliverables/derive.mjs targetBal on the revolving rows of src/underwrite/black-report-client.mjs, run on scripts/sim/push-credit.mjs profile repair-full, 2026-10-31). Letters written for the items on your report: marketing/offers/fundhub-offers-2026-10-10.pdf p.4. The hire, the ads, the jobs: docs/sops/weekend-2026-10-24/04-sales-call-script.md:112. The sample rows: scripts/sim/push-credit.mjs:642-658.">
+    <p class="eyebrow">BN-03 / The fix list</p>
+    <h2>Every item holding this file back sits on one page, with its fix right beside it.</h2>
     <ul class="lines">
+      <li>While these sit on the file, the money for the hire or the bigger job stays out of reach.</li>
       <li>Two cards get a paydown plan, each with a target of 10% of its limit.</li>
       <li>Two collections, a charge-off and a 30-day late each get a dispute letter built for that account.</li>
-      <li>While these sit on the file, the money for the hire or the bigger job stays out of reach.</li>
     </ul>
     <figure class="pic">
-      <div class="real" role="img" aria-label="A sample credit analysis, the section called what's holding you back. Fixable with a paydown plan: pay Credit One Bank down to $150, from $1,490 of $1,500 today; pay Capital One down to $300, from $2,870 today. Fixable with dispute letters: Midland Credit Management, placed for collection; Portfolio Recovery, placed for collection; Synchrony Care Credit, charged off account; Capital One, 30 days late. It is not permanent. It is on the repair list starting Month 1.">
+      <div class="real" role="img" aria-label="A sample credit analysis, the section called what's holding you back. Fixable with a paydown plan: pay Credit One Bank down to $150, from $1,490 of $1,500 today; pay Capital One down to $300, from $2,870 today. Fixable with dispute letters: Midland Credit Management, placed for collection; Portfolio Recovery, placed for collection; Synchrony Care Credit, charged off account; Capital One, 30 days late. Both lists start in month one.">
         <div class="rh2">Credit Analysis · What's holding you back</div>
         <p class="model">Fixable with a paydown plan</p>
         <ul>
@@ -867,29 +867,28 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
           <li class="flag">SYNCB/CARE CREDIT · CHARGED OFF ACCOUNT</li>
           <li class="flag">CAPITAL ONE · 30 days late</li>
         </ul>
-        <p class="clause">It is not permanent. It is on the repair list starting Month 1.</p>
-        <span class="chip on"><span class="cd"></span>First on the list</span>
+        <span class="chip on"><span class="cd"></span>Starts in month one</span>
       </div>
       <p class="real-src">Sample file. The same simulated file as the report, no bureau contacted.</p>
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>While these items sit on your file, the money for the hire, the ads or the bigger job stays OUT of reach.</li>
-        <li>This is the sample's own credit analysis, the section that lists what's holding the file back. Everything on it lands in one of two groups.</li>
-        <li>First, the cards. Credit One comes down to $150 and Capital One comes down to $300, and each of those targets is 10% of that card's limit.</li>
-        <li>Second, the negative items. Two collections, a charge-off and a 30-day late each get a DISPUTE letter, built for that account on that report.</li>
-        <li>And read the line at the bottom. The analysis puts this on the list starting in month one, so the work begins right away.</li>
-        <li>This one page is your plan for month one, with every target and every letter already worked out for the file.</li>
+        <li>While these items sit on your file, the money for the hire, the ads or the bigger job stays OUT of reach. This one page shows what's in the way.</li>
+        <li>This is the sample's own credit analysis. It's the part that lists what's holding the file back. Everything on it falls into one of two groups.</li>
+        <li>First, the cards. Credit One comes down to $150, and Capital One comes down to $300. Each target is 10% of that card's own limit.</li>
+        <li>Second, the negative items. Two collections, a charge-off and a 30-day late each get a DISPUTE letter. Each letter is built for that account on that report.</li>
+        <li>Both lists start in month one. The paydowns and the letters begin right away, side by side, so nothing on this page sits and waits.</li>
+        <li>This one page is your plan for the first month. Every target and every letter is already worked out for the file, down to the dollar.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide" data-src="The agreement's own words, copied exactly from section 1 of the credit optimization agreement the CRM sends: db/migrations/493_funding_and_repair_agreement_text.sql:65. Fundhub disputes only items that really show on your report, and every application uses your true information: marketing/offers/fundhub-offers-2026-10-10.pdf p.8. Done for you, Fundhub mails the letters: same PDF p.3. On the Capital Blueprint you print and mail the same letters and upload the proof: db/migrations/400_blueprint_dispute_waypoint_definitions.sql:20-36. Your letters are built on FCRA and Metro 2: public/app/present.js:107 (closer line). Copies of the work and the responses in your dashboard: db/migrations/493_funding_and_repair_agreement_text.sql:65 (section 1). Metro 2 is the format the bureaus use to report accounts: marketing/offers/fundhub-offers-2026-10-10.pdf p.2. Nobody cuts corners with your file: same PDF p.8. An AI coach watches the open step: .ai/rules/ad-know-the-offer.md:41.">
+  <section class="slide" data-src="The agreement's own words, copied exactly from section 1 of the credit optimization agreement the CRM sends: db/migrations/493_funding_and_repair_agreement_text.sql:65 (the same section gives you copies of the work and the responses in your dashboard). Fundhub disputes only items that really show on your report, and every application uses your true information: marketing/offers/fundhub-offers-2026-10-10.pdf p.8. Done for you, Fundhub mails the letters: same PDF p.3. On the Capital Blueprint you print and mail the same letters and upload the proof: db/migrations/400_blueprint_dispute_waypoint_definitions.sql:20-36. An AI coach watches the open step: .ai/rules/ad-know-the-offer.md:41. Letters built on FCRA and Metro 2: public/app/present.js:107 (closer line).">
     <p class="eyebrow">BN-04 / Who does the work</p>
     <h2>Done for you, the Fundhub team writes your disputes while you run the business.</h2>
     <ul class="lines">
+      <li>Your hours go back into the business while the team does the dispute work.</li>
       <li>The highlighted clause is the work Fundhub signs on for: review your files, build the disputes and run the rounds.</li>
-      <li>Your hours go back into the business, and only items that truly appear on your report get disputed.</li>
       <li>On the Capital Blueprint, you mail that same pack yourself and upload the receipt.</li>
     </ul>
     <figure class="pic">
@@ -901,99 +900,94 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Done for you, the Fundhub team does ALL of it: reading your three reports, writing a letter for every item and tracking every answer that comes back.</li>
-        <li>Read the highlighted clause. Fundhub reviews your credit files, finds the negative items that look inaccurate, incomplete or unverifiable, builds the disputes and runs the rounds.</li>
-        <li>That gives you your hours back for the business, while each letter still cites the federal law that makes a bureau look into your dispute.</li>
-        <li>The disputes only go after items that actually appear on your report, and your real information goes on everything, which keeps your file safe the whole way.</li>
-        <li>On the Capital Blueprint, you mail that same pack yourself and upload the receipt, and an AI coach keeps that step moving until it's done.</li>
-        <li>And whichever way you go, each letter and each reply lands in your dashboard, so you watch your file get WORKED instead of wondering what happened.</li>
+        <li>Done for you, the Fundhub team does ALL of the dispute work. The team writes every letter, mails it and follows up with the bureau until it answers.</li>
+        <li>Fundhub reads your credit files and finds every negative item that looks wrong, incomplete or unproven. Then the team builds the disputes and runs the rounds.</li>
+        <li>That gives you your hours back for the business. Each letter still cites the federal law that makes a bureau look into your dispute.</li>
+        <li>We only dispute items that really show on your report, and every letter uses your real details. That keeps your file safe the whole way.</li>
+        <li>On the Capital Blueprint, you mail that same pack yourself and upload the receipt. An AI coach keeps that step moving until it's done.</li>
+        <li>Whichever way you go, each letter and each reply lands in your dashboard. You watch your file get WORKED, one round at a time.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide dark" data-src="A denial is based on how your file looked that day and which bank you chose; Fundhub looks at your file as it is now and picks banks that match it: marketing/offers/fundhub-offers-2026-10-10.pdf p.8. Once your file is ready, the same team moves you into funding: same PDF p.3. If they qualify, we optimize, then send them into funding: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:210. The three checks: src/finance/fundability.mjs:146-149. Chris's Blueprint order, pay a card down, the negative items, then business one and two: .ai/rules/ad-know-the-offer.md:28-35. No approval promise: db/migrations/493_funding_and_repair_agreement_text.sql:53 (section 3). Your own bank and lender match list from your file, and the order to apply: src/config/offers.mjs (Capital Blueprint deliverables) and .ai/rules/ad-know-the-offer.md:38; the client funds themselves once the file is ready: marketing/ads/scripts/2026-10-13.md:10. The hire, the ads, the jobs: docs/sops/weekend-2026-10-24/04-sales-call-script.md:112. Growth paid out of your own account: marketing/ads/scripts/2026-10-14.md (Direct Book Ad 13, green-lit). Chris's track record: marketing/ads/RULES.md Part 0 rule 38." data-figures="Chris's own track record (marketing/ads/RULES.md Part 0 rule 38)">
-    <p class="eyebrow">BN-05 / After the fixes</p>
-    <h2>Where does the money go once this file clears all three checks?</h2>
+  <section class="slide dark" data-src="The same three checks: src/finance/fundability.mjs:146-149. Whenever Fundhub runs a new soft pull, your tasks are checked again and your letters are rebuilt from the new report, and the rounds run up to six: marketing/offers/fundhub-offers-2026-10-10.pdf p.5 and db/migrations/493_funding_and_repair_agreement_text.sql:69. A denial is based on how your file looked that day: marketing/offers/fundhub-offers-2026-10-10.pdf p.8. Your own bank and lender match list and the order to apply: src/config/offers.mjs (Capital Blueprint deliverables) and .ai/rules/ad-know-the-offer.md:38; the client funds themselves once the file is ready: marketing/ads/scripts/2026-10-13.md:10. The hire, the ads, the jobs: docs/sops/weekend-2026-10-24/04-sales-call-script.md:112. Chris's track record: marketing/ads/RULES.md Part 0 rule 38. No approval promise: db/migrations/493_funding_and_repair_agreement_text.sql:53 (section 3)." data-figures="Chris's own track record (marketing/ads/RULES.md Part 0 rule 38)">
+    <p class="eyebrow">BN-05 / Where the money goes</p>
+    <h2>Where does the money go when a file passes all three checks?</h2>
     <ul class="lines">
-      <li>The fixed file runs back through the same three checks, then you apply to the banks that fit it.</li>
-      <li>You fund yourself off that file, and the capital pays for the hire, the ads and the bigger job.</li>
+      <li>A file that passes goes to the banks that fit it, and you fund yourself off that file.</li>
+      <li>The capital pays for the hire, the ads and the bigger job.</li>
       <li>Off one personal file, I've pulled $100,000 lines on four different companies, so I know what a prime file opens up.</li>
     </ul>
     <figure class="pic">
       <div class="sheet">
-        <svg class="bv" viewBox="0 0 320 292" role="img" aria-label="A flowchart. Fix first: the cards get paid down to their targets and the dispute rounds run. Then the same three checks run again: score, cards and negative items. When the file clears, you fund yourself at the banks that fit it, and the capital goes to three places: a new hire, ads that run, and the bigger jobs.">
+        <svg class="bv" viewBox="0 0 320 326" role="img" aria-label="A flowchart. Step 1, fix first: cards to target and dispute rounds run. Step 2, the same three checks: score, cards and negative items. If there is more to fix, a dashed arrow goes back to step 1 for the next round. If the file passes, step 3: you fund yourself at the banks that fit the file, and the capital goes to a new hire, ads that run and bigger jobs.">
           <rect class="pn" x="1" y="1" width="318" height="56" rx="10"/>
           <text class="lb" x="14" y="22">1 · FIX FIRST</text>
           <text class="caps" x="14" y="44">CARDS TO TARGET · DISPUTE ROUNDS RUN</text>
-          <path class="cn ink" d="M160 57V72" marker-end="url(#fh-arrow)"/>
-          <rect class="pn-ink" x="1" y="76" width="318" height="56" rx="10"/>
-          <text class="lb on-ink" x="14" y="97">2 · THE SAME THREE CHECKS</text>
-          <text class="caps on-ink" x="14" y="119">SCORE · CARDS · NEGATIVE ITEMS</text>
-          <path class="cn ink" d="M160 132V147" marker-end="url(#fh-arrow)"/>
-          <rect class="tint-fit edge-fit" x="1" y="151" width="318" height="56" rx="10"/>
-          <text class="lb ink" x="14" y="172">3 · YOU FUND YOURSELF</text>
-          <text class="caps" x="14" y="194">AT THE BANKS THAT FIT THE FILE</text>
-          <path class="cn ink" d="M160 207V218M54 218H266M54 218V232M160 218V232M266 218V232"/>
-          <rect class="pn" x="4" y="236" width="100" height="52" rx="8"/>
-          <text class="caps" x="54" y="267" text-anchor="middle">A NEW HIRE</text>
-          <rect class="pn" x="110" y="236" width="100" height="52" rx="8"/>
-          <text class="caps" x="160" y="267" text-anchor="middle">ADS THAT RUN</text>
-          <rect class="pn" x="216" y="236" width="100" height="52" rx="8"/>
-          <text class="caps" x="266" y="267" text-anchor="middle">BIGGER JOBS</text>
+          <path class="cn ink" d="M60 57V91" marker-end="url(#fh-arrow)"/>
+          <path class="cn ink dash" d="M300 95V61" marker-end="url(#fh-arrow)"/>
+          <text class="lb ink" x="290" y="80" text-anchor="end">MORE TO FIX · NEXT ROUND</text>
+          <rect class="pn-ink" x="1" y="95" width="318" height="56" rx="10"/>
+          <text class="lb on-ink" x="14" y="116">2 · THE SAME THREE CHECKS</text>
+          <text class="caps on-ink" x="14" y="138">SCORE · CARDS · NEGATIVE ITEMS</text>
+          <path class="cn ink" d="M160 151V181" marker-end="url(#fh-arrow)"/>
+          <text class="lb" x="170" y="171">PASSES</text>
+          <rect class="tint-fit edge-fit" x="1" y="185" width="318" height="56" rx="10"/>
+          <text class="lb ink" x="14" y="206">3 · YOU FUND YOURSELF</text>
+          <text class="caps" x="14" y="228">AT THE BANKS THAT FIT THE FILE</text>
+          <path class="cn ink" d="M160 241V252M54 252H266M54 252V266M160 252V266M266 252V266"/>
+          <rect class="pn" x="4" y="270" width="100" height="52" rx="8"/>
+          <text class="caps" x="54" y="301" text-anchor="middle">A NEW HIRE</text>
+          <rect class="pn" x="110" y="270" width="100" height="52" rx="8"/>
+          <text class="caps" x="160" y="301" text-anchor="middle">ADS THAT RUN</text>
+          <rect class="pn" x="216" y="270" width="100" height="52" rx="8"/>
+          <text class="caps" x="266" y="301" text-anchor="middle">BIGGER JOBS</text>
         </svg>
       </div>
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Now fast forward. The cards sit at their targets, the rounds have run, and the whole file goes back through those same THREE checks.</li>
-        <li>A bank's no only describes the file on the day it read it. The file you bring next is a different file, and the banks get picked for that one.</li>
-        <li>When it clears, you apply to the banks that fit it, in order, off your own bank and lender list. That's you funding yourself, off your own file.</li>
-        <li>The capital goes where the business needs it: the hire you've been putting off, an ad budget that actually runs, and the jobs you can't take today.</li>
-        <li>And the business stops leaning on your personal savings to grow, which is the whole REASON to fix the file before anything else.</li>
+        <li>The cards sit at their targets and the rounds have run. Then the whole file goes back through those same THREE checks.</li>
+        <li>Anything that still misses goes back on the fix list for the next round. A bank's no only describes the file on the day it read it.</li>
+        <li>A file that passes goes to the banks that fit it, in order, off your own bank and lender list. That's you funding yourself, off your own file.</li>
+        <li>The capital goes where the business needs it. That's the hire you've been putting off, an ad budget that actually runs, and the jobs you can't take today.</li>
+        <li>And the business stops leaning on your personal savings to grow. That's the whole REASON to fix the file before anything else.</li>
         <li>I know what a prime file opens up because I've lived it. Off one personal file, I've pulled $100,000 lines on four different companies, on stated income.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide" data-src="We pull your file together right on the call; it's a soft pull, so your score does not move; you see how much you qualify for based on where you're at right now and what's holding the rest back: docs/sops/weekend-2026-10-24/04-sales-call-script.md:69. Here's what's holding your file back; cleaned up, it shows the higher amount on screen; that difference is what's left on the table: public/app/present.js:100 (closer line). Fund now, fix first, or both: 04-sales-call-script.md:176. We diagnose and tell you exactly what to do; action takers, not shoppers: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:213. Only you see a soft pull, and no lender sees it: marketing/offers/fundhub-offers-2026-10-10.pdf p.9 and docs/sops/weekend-2026-10-24/04-sales-call-script.md:156.">
+  <section class="slide" data-src="We pull your file together right on the call; it's a soft pull, so your score does not move; you see how much you qualify for based on where you're at right now and what's holding the rest back: docs/sops/weekend-2026-10-24/04-sales-call-script.md:69. Only you see a soft pull, and no lender sees it: marketing/offers/fundhub-offers-2026-10-10.pdf p.9 and 04-sales-call-script.md:156. On a repair file the screen shows what's holding the file back and what the cleaned-up file shows: 04-sales-call-script.md:171-173 and public/app/present.js:100. Fund now, fix first, or both: 04-sales-call-script.md:176. Action takers, not shoppers: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:213. The picture is the call's money levers screen (L-01) with its own labels (public/app/present-visuals.js:355, :433-438 and :444), filled with the engine's figures for the same REPAIR-FULL sample: scripts/sim/push-credit.mjs buildPayload('repair-full') run through src/finance/crs-pull.mjs scoreBuyerTotal and src/sales/deck-visual-data.mjs buildDeckVisualData, clock pinned to 2026-10-31: today $0 (REPAIR_ONLY), optimized $8,250 (FULL_FUNDING), and the one lever that applies is Clean the file.">
     <p class="eyebrow">BN-06 / Your strategy call</p>
     <h2>Your strategy call shows what your file gets today next to what it gets cleaned up.</h2>
     <ul class="lines">
+      <li>You see which fix comes first on your own report, before any bank sees your file again.</li>
       <li>The pull on the call is a soft one, so your score doesn't budge and no bank sees it.</li>
-      <li>You see how much you qualify for based on where you're at right now, right beside what the cleaned-up file shows.</li>
-      <li>You leave knowing which fix comes first, and whether to start funding with what's there, fix the file first, or do both.</li>
+      <li>You see how much you qualify for based on where you're at right now, next to what the same file projects to once it's cleaned up.</li>
     </ul>
     <figure class="pic">
-      <div class="sheet">
-        <svg class="bv" viewBox="0 0 320 236" role="img" aria-label="Your strategy call screen. On the left, your file today: how much you qualify for now, plus the items holding it back, with the first fix marked. On the right, the same file cleaned up and the amount it shows. The space between the two amounts is what the fixes are worth to you.">
-          <rect class="pn" x="1" y="1" width="318" height="196" rx="10"/>
-          <text class="lb" x="14" y="22">YOUR STRATEGY CALL · YOUR FILE</text>
-          <rect class="tint-flag" x="12" y="34" width="140" height="150" rx="8"/>
-          <text class="lb ink" x="22" y="54">TODAY</text>
-          <text class="caps" x="22" y="74">WHAT YOU QUALIFY</text>
-          <text class="caps" x="22" y="90">FOR RIGHT NOW</text>
-          <rect class="pn-ink" x="22" y="102" width="120" height="30" rx="6"/>
-          <text class="lb on-ink" x="82" y="122" text-anchor="middle">FIX #1</text>
-          <text class="caps" x="22" y="152">THEN EACH ITEM</text>
-          <text class="caps" x="22" y="168">HOLDING IT BACK</text>
-          <path class="cn ink" d="M154 109H164" marker-end="url(#fh-arrow)"/>
-          <rect class="tint-fit edge-fit" x="168" y="34" width="140" height="150" rx="8"/>
-          <text class="lb ink" x="178" y="54">CLEANED UP</text>
-          <text class="caps" x="178" y="74">WHAT THE SAME</text>
-          <text class="caps" x="178" y="90">FILE SHOWS ONCE</text>
-          <text class="caps" x="178" y="106">IT'S FIXED</text>
-          <text class="lb" x="160" y="228" text-anchor="middle">THE GAP IS WHAT THE FIXES ARE WORTH</text>
-        </svg>
+      <div class="real" role="img" aria-label="A sample of the strategy call screen called once your file is optimized, for the same simulated file. Today: $0, how much you qualify for today. Projects to: $8,250, fully optimized, with the one lever on. The one lever that applies: clean the file, $8,250. Marked: $8,250 left on the table. The difference is what the fixes are worth.">
+        <div class="rh2">Your call screen · Once your file is optimized</div>
+        <header class="bureau-head">
+          <div class="score" style="text-align:left"><div class="model">Today</div><div class="num">$0</div><div class="model">How much you qualify for today.</div></div>
+          <div class="score"><div class="model">Projects to</div><div class="num">$8,250</div><div class="model">Fully optimized, with the one lever on.</div></div>
+        </header>
+        <ul>
+          <li class="yes">Clean the file<br><span class="chip on"><span class="cd"></span>$8,250</span></li>
+        </ul>
+        <p class="clause"><mark>$8,250 left on the table</mark></p>
+        <p class="model">THE DIFFERENCE IS WHAT THE FIXES ARE WORTH</p>
       </div>
+      <p class="real-src">Sample screen. The same simulated file as the report, run through our system. No bureau contacted.</p>
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>That second amount, what your file is worth once it's cleaned up, is exactly what your strategy call shows you, for your OWN file.</li>
-        <li>The pull we run on the call is a soft one, so your score doesn't budge and no bank ever sees it.</li>
-        <li>We open your report on one screen together and go item by item, so you see what's holding the funding back on your real file.</li>
-        <li>You see how much you qualify for based on where you're at right now, and right beside it, what the same file shows once it's cleaned up.</li>
-        <li>The space between those two amounts is what this work is worth to you, and you leave knowing which fix comes first.</li>
-        <li>Then you get the path for your file: fund what's there, fix it first, or both. We take on action takers, not shoppers, so you leave with your next move set.</li>
+        <li>Every reason on your report points to one fix. On your strategy call, you see which fix comes FIRST on your own file, before any bank sees it again.</li>
+        <li>The pull on the call is a soft one, so your score doesn't budge and no bank sees it. Then we open your report together on one screen.</li>
+        <li>This is that screen for the sample file. Today it shows $0. Cleaned up, the same file projects to $8,250, and the difference is what the fixes are worth.</li>
+        <li>On your own file, you see how much you qualify for based on where you're at right now, and right beside it, what the cleaned-up file projects to.</li>
+        <li>Then you get the path for your file: fund what's there, fix it first, or both. Whichever it is, you leave with the next step set.</li>
+        <li>We take on action takers, not shoppers. This call is built for the person who's ready to start on that first fix.</li>
       </ul>
     </aside>
   </section>
