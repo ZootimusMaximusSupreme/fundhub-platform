@@ -604,6 +604,20 @@ test("the page's own script tags load the visual files before the deck, each vis
 
 // ───────────────────────────── the two walls ─────────────────────────────
 
+test("paperwork slides do not tell an unpaid client they are enrolled", { timeout: 120_000 }, async () => {
+  const { page, calls, errors } = await openDeck({ visuals: true });
+  await act(page, "phase:09").click();
+  assert.equal(await slideCode(page), "S-23");
+  assert.match(await page.locator(".client").innerText(), /Review the agreement and payment step/);
+  await act(page, "next").click();
+  assert.equal(await slideCode(page), "S-24");
+  assert.match(await page.locator(".client").innerText(), /after checkout/);
+  assert.doesNotMatch(await page.locator(".client").innerText(), /You are in|Welcome aboard/);
+  assert.deepEqual(calls.writes, []);
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
 const LOGIN_NEXT = `/login.html?next=${encodeURIComponent(`${PAGE}?contact=${CONTACT}`)}`;
 const wall = async (page) => ({
   words: (await page.locator(".gate h1").textContent()).trim(),
