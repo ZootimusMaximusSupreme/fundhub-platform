@@ -61,7 +61,8 @@ function fakeDb({
   rows = [accrual()],
   transactions = { [REF]: TX },
   payments = [{ id: PAYMENT, sale_id: SALE, amount: "3000.00", source_event_id: PAID_EVENT }],
-  blueprint = null
+  blueprint = null,
+  provider = "commas"
 } = {}) {
   const state = { grantRevoked: false, includedSubscriptionEnded: false };
   return {
@@ -71,7 +72,7 @@ function fakeDb({
       const text = String(sql);
 
       if (/FROM transactions\s+WHERE org_id/i.test(text)) {
-        const id = transactions[String(params[1])];
+        const id = params[2] === provider ? transactions[String(params[1])] : null;
         return { rows: id ? [{ id }] : [] };
       }
       if (/FROM sale_payments\s+WHERE org_id/i.test(text)) {
@@ -167,6 +168,16 @@ describe("the reversal reads the reference it needs off the event", () => {
 });
 
 describe("finding the original payment behind a reversal", () => {
+  test("a refund cannot use another provider's receipt or revoke its Blueprint grant", async () => {
+    const db = fakeDb({ provider: "whop", blueprint: { amount: 3000 } });
+    const refused = await onPaymentRefundedMoney(reversalEvent("payment.refunded"), db);
+    assert.equal(refused.reason, "no_original_payment");
+    assert.equal(db.rows[0].status, "accrued");
+    assert.equal(db.state.grantRevoked, false);
+    const matched = await onPaymentRefundedMoney(reversalEvent("payment.refunded", { source: "whop" }), db);
+    assert.equal(matched.blueprintIncludedEnded, true);
+    assert.equal(db.state.grantRevoked, true);
+  });
   test("the provider reference reaches the transaction and the paid event id", async () => {
     const keys = await findOriginalPaymentKeys(fakeDb(), ORG, REF);
     assert.equal(keys.transactionId, TX);

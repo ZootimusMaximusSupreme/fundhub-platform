@@ -422,13 +422,13 @@ export async function ensureAttributions(db, { orgId, saleId, event, basisHint =
   return { written };
 }
 
-async function findTransactionId(db, orgId, providerRef) {
+async function findTransactionId(db, orgId, providerRef, provider = "commas") {
   if (!providerRef) return null;
   const { rows } = await db.query(
     `SELECT id FROM transactions
-      WHERE org_id = $1 AND provider_ref = $2
+      WHERE org_id = $1 AND provider_ref = $2 AND provider = $3
       LIMIT 1`,
-    [orgId, String(providerRef)]
+    [orgId, String(providerRef), provider]
   );
   return rows[0]?.id || null;
 }
@@ -448,7 +448,18 @@ export async function ensureSalePayment(db, event, {
     return { payment: null, created: false };
   }
 
-  const transactionId = await findTransactionId(db, orgId, p.providerRef);
+  const transactionId = await findTransactionId(db, orgId, p.providerRef, p.source || "commas");
+  if (!transactionId && p.providerRef) {
+    // Preserve the purchase conflict refusal: provider-scoped lookup must not
+    // turn a foreign-provider receipt into the legacy event-only fallback.
+    const conflict = await db.query(
+      `SELECT id FROM transactions
+        WHERE org_id = $1 AND provider_ref = $2 AND provider IS DISTINCT FROM $3
+        LIMIT 1`,
+      [orgId, String(p.providerRef), p.source || "commas"]
+    );
+    if (conflict.rows[0]) return { payment: null, created: false, reason: "transaction_source_conflict" };
+  }
   const sourceEventId = asUuid(event.id);
   if (!transactionId && !sourceEventId) {
     return { payment: null, created: false };
@@ -717,7 +728,7 @@ async function grantForPurchase(db, event, { clientId, product, paymentPaidAt = 
     };
   }
   const p = event.payload || {};
-  const transactionId = await findTransactionId(db, event.orgId, p.providerRef);
+  const transactionId = await findTransactionId(db, event.orgId, p.providerRef, p.source || "commas");
   const out = await grantFromTransaction(db, {
     orgId: event.orgId,
     clientId,
@@ -1832,11 +1843,11 @@ export function reversedCents(event) {
  * accrual written when the transaction row did not yet exist is keyed on the
  * event id alone.
  */
-export async function findOriginalPaymentKeys(db, orgId, providerRef) {
+export async function findOriginalPaymentKeys(db, orgId, providerRef, provider = "commas") {
   const empty = { transactionId: null, sourceEventId: null, payment: null };
   if (!orgId || !providerRef) return empty;
 
-  const transactionId = await findTransactionId(db, orgId, providerRef);
+  const transactionId = await findTransactionId(db, orgId, providerRef, provider);
   if (!transactionId) return empty;
 
   const { rows } = await db.query(
@@ -1865,7 +1876,7 @@ async function reversePartnerRevenue(event, db) {
   if (!orgId) return { reversed: false, reason: "no_org" };
 
   const providerRef = reversalProviderRef(event);
-  const keys = await findOriginalPaymentKeys(db, orgId, providerRef);
+  const keys = await findOriginalPaymentKeys(db, orgId, providerRef, event?.payload?.source || "commas");
 
   if (!keys.transactionId && !keys.sourceEventId) {
     /* No original payment on file, so there is nothing to point a void at. This
@@ -1973,8 +1984,9 @@ export async function onPaymentRefundedMoney(event, db) {
             AND COALESCE(NULLIF(payload->>'originalProviderRef', ''),
               NULLIF(payload->>'originalPaymentId', ''), NULLIF(payload->>'providerRef', ''),
               NULLIF(payload->>'paymentId', '')) = $3
+            AND COALESCE(NULLIF(payload->>'source', ''), 'commas') = $4
             AND payload->>'amount' ~ '^-?[0-9]+([.][0-9]+)?$'`,
-        [event.orgId, currentEventId, reversal.providerRef]
+        [event.orgId, currentEventId, reversal.providerRef, event?.payload?.source || "commas"]
       );
       refundedTotal += Number(prior.rows[0]?.cents || 0);
     }

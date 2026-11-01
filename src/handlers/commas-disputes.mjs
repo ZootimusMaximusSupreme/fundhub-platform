@@ -65,22 +65,23 @@ export function parseDueBy(value) {
 /* Reversal callbacks cannot name their own accounting owner.
  * A customer's email/client ID in a delayed callback may be stale, incorrect
  * or belong to an entirely different tenant. Only the original SUCCESSFUL
- * Commas transaction's immutable provider reference and org_id may route an
+ * transaction's provider, immutable reference and org_id may route an
  * urgent owner task. Unknown original payment -> durable bus dead-letter
  * instead of guessing an owner, mutating the client, or creating CRM leads.
  * Reversals never change the original financial ledger here. */
 export async function knownReversalClient(db, event) {
   const orgId = event?.orgId;
-  const ref = event?.payload?.paymentId || event?.payload?.providerRef || null;
+  const p = event?.payload || {};
+  const ref = p.originalProviderRef || p.originalPaymentId || p.paymentId || p.providerRef || null;
   if (!orgId || !ref) return null;
   const original = await db.query(
     `SELECT t.client_id
        FROM transactions t
        JOIN clients c ON c.id = t.client_id AND c.org_id = t.org_id
       WHERE t.org_id = $1 AND t.provider_ref = $2
-        AND t.provider = 'commas' AND t.status = 'succeeded'
+        AND t.provider = $3 AND t.status = 'succeeded'
       LIMIT 1`,
-    [orgId, String(ref)]
+    [orgId, String(ref), p.source || "commas"]
   );
   return original.rows[0]?.client_id || null;
 }
