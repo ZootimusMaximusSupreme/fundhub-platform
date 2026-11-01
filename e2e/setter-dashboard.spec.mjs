@@ -72,6 +72,15 @@ test("a lead alert opens the exact contact and its call link", async ({ page }) 
   await expect(page.locator("#setter-detail a[href='tel:+15550987654']")).toBeVisible();
 });
 
+test("calendar deep link selects the named lead, never the first queue row", async ({ page }) => {
+  const target = { ...queue.items[0], client_id: "eeeeeeee-5555-4555-8555-555555555555", client_name: "Target Lead" };
+  await openScreen(page, `/app/setter-dashboard.html?client_id=${target.client_id}`, SETTER, {
+    "/api/read/setter-dashboard": { ...queue, count: 2, items: [queue.items[0], target] }
+  });
+  await expect(page.locator("#setter-detail")).toContainText("Target Lead");
+  await expect(page.locator('#setter-queue button[aria-current="true"]')).toContainText("Target Lead");
+});
+
 test("setter can correct survey answers during a call and see saved edits after reload", async ({ page }) => {
   const item = structuredClone(queue.items[0]);
   item.survey = [

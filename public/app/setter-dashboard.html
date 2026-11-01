@@ -192,6 +192,7 @@ function setterSorted(items) {
   var detailEl = document.getElementById("setter-detail");
   var countEl = document.getElementById("setter-count");
   var refreshBtn = document.getElementById("setter-refresh");
+  var requestedClientId = new URLSearchParams(location.search).get("client_id") || "";
 
   function paintNumbers(numbers) {
     var n = numbers && typeof numbers === "object" ? numbers : {};
@@ -547,8 +548,9 @@ function setterSorted(items) {
       var index = wanted ? queue.findIndex(function (row) { return row.client_id === wanted; }) : -1;
       selected = index >= 0 ? queue[index] : wanted ? null : queue[0] || null;
       if (index >= 0) page = Math.floor(index / 25);
+      if (requestedClientId && index < 0) say("That lead is not in the setter queue. Refresh or open its client file.", "error");
       paintQueue(); paintDetail();
-      if (wanted && index < 0) detailEl.innerHTML = '<div class="setter-state">This lead is not in your call queue. Choose another lead or refresh.</div>';
+      if (wanted && index < 0 && !requestedClientId) detailEl.innerHTML = '<div class="setter-state">This lead is not in your call queue. Choose another lead or refresh.</div>';
     }).catch(function () {
       queueEl.innerHTML = '<div class="setter-state fh-astra-state"><h2>Could not load the call queue</h2><p>Check your connection and try again.</p><button type="button" class="fh-astra-action" data-action="retry">Try again</button></div>';
       detailEl.innerHTML = '<div class="setter-state">The checklist will appear when the queue loads.</div>';
