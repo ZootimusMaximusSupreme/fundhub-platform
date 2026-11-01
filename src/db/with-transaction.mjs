@@ -31,24 +31,25 @@
 // ops/workflows/fundhub-beta-buildout.md rather than done as a drive-by.
 //
 // THE ORDER OF THE BRANCHES IS THE WHOLE POINT:
-//   1. the handle IS the singleton   -> reach past it to the pool it wraps.
-//   2. connect() and NOT release()   -> a real Pool, or a test double that wants
-//                                       to observe BEGIN/COMMIT/ROLLBACK.
+//   1. connect() and NOT release()   -> a real Pool, or a test double (even on
+//                                       sharedDb) that wants BEGIN/COMMIT/ROLLBACK.
+//   2. the handle IS the singleton   -> reach past it to the pool it wraps.
 //   3. anything else                 -> a checked-out PoolClient (connect+release),
 //                                       or a plain fake; run inline on the handle.
 // A checked-out pg client still exposes connect(). Calling it again throws
 // "Client has already been connected" — release() is what separates pool from client.
-// Getting 1 wrong is the autocommit bug. Getting 2 vs 3 wrong breaks PG tests and
-// nested units of work. Removing 3 breaks every stubbed-db test in the repo.
+// Getting 2 wrong is the autocommit bug. Getting 1 vs 3 wrong breaks stubbed
+// endpoint tests. Getting 3 wrong breaks PG nested units of work.
 
 import { db as sharedDb, pool } from "../db.mjs";
 
 export async function withTransaction(db, fn) {
-  const acquire = db === sharedDb
-    ? () => pool().connect()
-    : typeof db?.connect === "function" && typeof db?.release !== "function"
+  const acquire =
+    typeof db?.connect === "function" && typeof db?.release !== "function"
       ? () => db.connect()
-      : null;
+      : db === sharedDb
+        ? () => pool().connect()
+        : null;
 
   // Checked-out PoolClient or plain fake: caller already owns the transaction,
   // or the stub cannot honour BEGIN/COMMIT. Run inline on the handle given.
