@@ -39,10 +39,11 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..")
 export const MIGRATION = "db/migrations/497_restore_missing_sql_templates.sql";
 export const ORG_SLUG = "fundhub";
 export const STAGE_TABLE = "fh_tpl_restore_stage";
-// Migration 497 is historical. Seed 298 changes this email after 497 has run.
+// Migration 497 is historical. Later seeds change these templates after 497 has run.
 export const RESTORE_SNAPSHOT_EXCLUDE_FILES = Object.freeze([
   "db/seed/298_s04_booking_app_confirm_email.sql",
   "db/seed/301_followup_flows_copy.sql",
+  "db/seed/302_containment_plain_survey_copy.sql",
   "db/seed/303_no_josh_chris.sql",
   "db/seed/305_confirm_on_calendar.sql"
 ]);
