@@ -192,11 +192,13 @@ export async function runShipChange(options, command = defaultCommand) {
       // base then falls back to main and would replay the parent's old commits.
       const forkPoint = adoptingLegacy ? '' : await rootGit(['merge-base', '--fork-point',
         `origin/${parent.headRefName}`, 'HEAD']).catch(() => '');
-      const basePoint = adoptingLegacy
+      const startsOnCurrentMain = !existing && await rootGit(['merge-base', '--is-ancestor',
+        'origin/main', 'HEAD']).then(() => true).catch(() => false);
+      const basePoint = adoptingLegacy || startsOnCurrentMain
         ? (await rootGit(['merge-base', 'HEAD', 'origin/main'])).trim()
         : forkPoint.trim() || ancestor.trim();
       if (!basePoint) throw new Error('Could not identify the branch base for ordered rebase.');
-      if (!adoptingLegacy && !forkPoint.trim() && (resume || existing)) {
+      if (!adoptingLegacy && !startsOnCurrentMain && !forkPoint.trim() && (resume || existing)) {
         throw new Error(`Could not identify the previous tip of ${parent.headRefName}; leave this branch open for a safe restack.`);
       }
       await rootGit(['rebase', '--onto', parentHead, basePoint, branch]);

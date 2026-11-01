@@ -182,6 +182,7 @@ test('resume rebases only child commits when a stacked parent was rewritten', as
     if (program === 'git' && args[0] === 'status') return '';
     if (program === 'git' && args[0] === 'rev-list') return '1\n';
     if (program === 'git' && args[0] === 'merge-base') {
+      if (args[1] === '--is-ancestor') throw new Error('stacked on older parent');
       return args[1] === '--fork-point' ? 'old-parent-head\n' : 'main-base\n';
     }
     if (program === 'git' && args[0] === 'rev-parse' && args[1]?.startsWith('origin/')) {
@@ -205,6 +206,7 @@ test('resume stops safely when a rewritten parent has no known fork point', asyn
     if (program === 'git' && args[0] === 'rev-list') return '1\n';
     if (program === 'git' && args[0] === 'merge-base') {
       if (args[1] === '--fork-point') throw new Error('no reflog');
+      if (args[1] === '--is-ancestor') throw new Error('not on current main');
       return 'main-base\n';
     }
     if (program === 'git' && args[0] === 'rev-parse' && args[1]?.startsWith('origin/')) {
@@ -216,6 +218,29 @@ test('resume stops safely when a rewritten parent has no known fork point', asyn
     /Could not identify the previous tip/);
   assert(!calls.some(call => call[0] === 'git' && call[1] === 'rebase'));
   assert(!calls.some(call => call[0] === 'git' && call[1] === 'push'));
+});
+
+test('a new committed branch on current main stacks without a parent fork point', async () => {
+  const { command, calls } = fakeCommands([member(41, 'codex/previous-change', 'main', 1)]);
+  const moved = async (program, args, options) => {
+    if (program === 'git' && args[0] === 'status') return '';
+    if (program === 'git' && args[0] === 'rev-list') return '1\n';
+    if (program === 'git' && args[0] === 'merge-base') {
+      if (args[1] === '--fork-point') throw new Error('no reflog');
+      if (args[1] === '--is-ancestor') return '';
+      return args[1] === 'HEAD' && args[2] === 'origin/main' ? 'main-base\n' : 'older-base\n';
+    }
+    if (program === 'git' && args[0] === 'rev-parse' && args[1]?.startsWith('origin/')) {
+      return 'new-parent-head\n';
+    }
+    if (program === 'git' && args[0] === 'ls-remote' && args[1] === '--heads') {
+      return `new-parent-head\trefs/heads/${args[3]}\n`;
+    }
+    return command(program, args, options);
+  };
+  await runShipChange({ message: 'Next change', ownerLane: 'ci', files: [], resume: true }, moved);
+  assert(calls.some(call => call[0] === 'git' && call[1] === 'rebase' &&
+    call[2] === '--onto' && call[3] === 'new-parent-head' && call[4] === 'main-base'));
 });
 
 test('an unverified archive tag stops before branch push', async () => {
