@@ -66,9 +66,8 @@
     ["Trust", "Worked with any other funding companies before? How did that go?"]
   ];
   var GUARANTEES = [
-    ["G-01 / 24 HOURS", "24-Hour Action Guarantee", "Once you're signed on, a funding advisor begins working your file within 24 business hours. If we don't act in that window, you're protected and you don't pay."],
-    ["G-02 / 72 HOURS", "72-Hour Application Guarantee", "Once you're signed on, your applications go out within 72 business hours. If we don't act in that window, you're protected and you don't pay."],
-    ["G-03 / FUNDING", "Funding Guarantee", "If you qualify and we don't secure funding for you, you don't pay. If you get nothing, we earn nothing."]
+    ["G-01 / 24 BUSINESS HOURS", "Work begins", "A funding advisor begins working your file within 24 business hours after you sign."],
+    ["G-02 / 72 BUSINESS HOURS", "First applications", "Fundhub submits your first authorized applications within 72 business hours after you sign."]
   ];
   /* What opens today (2026-10-29): business cards, personal cards and personal
      loans, and revenue funding, which runs by hand. SBA and equipment loans are
@@ -85,37 +84,32 @@
     "You upload your bank statements or tax returns in your portal.",
     "The Fundhub team sends your file to the lender."
   ];
-  var TERMINAL = [
-    "$ underwrite --diagnostic", "> application received", "> profile review initiated",
-    "> soft inquiry · no score impact", "> scanning experian · transunion · equifax",
-    "> matching against partner lender network", "> structuring options for review"
-  ];
   var TALK = {
     "S-01": { title: "Rapport", lines: ["Hey [First Name]! It's [Your Name] over at Fundhub. How's your week been so far?", "Mirror their energy. Let them answer. Do not rush.", "I know we've got a limited amount of time, so are you ready to jump in? Are you in front of a computer with a card handy for the soft-pull assessment?"], watch: "The first 60 seconds decide whether they trust you or have their guard up." },
-    "S-02": { title: "The Frame", lines: ["First, I'd like to dive into the specifics of your business, what you're building, where you're at with capital, and what's keeping you from scaling.", "Then we'll run your soft-pull assessment right here on the call. It's a soft pull, so your score does not move. Then I'll show you how much you qualify for based on where you're at right now, and what's holding the rest back.", "And if it's not the right fit, we'll figure out the best next step. Does that sound fair?", "At the end, I'll ask if you want to move forward. A yes is great. A no is fine. Just tell me straight either way. Deal?", "Quick heads up: this call is recorded, so nothing gets missed. Is anyone else part of money decisions for you, like a spouse or a business partner? It helps if they hear this too."], watch: "Get the 'sounds fair' before moving. It stops price-hijacking later." },
+    "S-02": { title: "The Frame", lines: ["First, I'd like to dive into the specifics of your business, what you're building, where you're at with capital, and what's keeping you from scaling.", "Then we'll run your soft-pull assessment right here on the call. It's a soft pull, so your score does not move. Then I'll show you the funding estimate based on your file today, and what's holding the rest back.", "And if it's not the right fit, we'll figure out the best next step. Does that sound fair?", "At the end, I'll ask if you want to move forward. A yes is great. A no is fine. Just tell me straight either way. Deal?", "Quick heads up: this call is recorded, so nothing gets missed. Is anyone else part of money decisions for you, like a spouse or a business partner? It helps if they hear this too."], watch: "Get the 'sounds fair' before moving. It stops price-hijacking later." },
     "S-03": { title: "Discovery 1. Isolate the challenge.", lines: ["What's the biggest reason you're looking for funding right now? What's going on in the business?", "Probe: tell me more. When you say X, what do you mean exactly? How has that impacted the business specifically?", "Aside from that, any other challenge or roadblock in the way right now?"], watch: "Do not accept surface-level answers. Busy professional, not telemarketer. S-03 shows the yearly revenue range they picked. Ask the monthly amount out loud." },
     "S-04": { title: "Discovery 2. The goal and the cost.", lines: ["Begin with the end in mind. If capital wasn't an issue, what does the business look like 6 to 12 months from now? How much capital do you realistically need?", "Cost anchor: what is this costing you every month? Reflect it back: about $X a month, roughly $Y left on the table. Feel accurate?", "Pre-frame: if the pull comes back strong and I can show a clear path, are you ready to move on this now, or still in the research phase?"], watch: "The cost number is what the $3,000 gets anchored against. Do not skip it." },
     "S-05": { title: "Transition to the pull", lines: ["I feel like we've covered a lot of ground. Anything else I need to know?", "This is exactly what we work on. Right now, we're both guessing. Your file knows why. Let's go see what it says.", "If the file shows a clear path, are you ready to move on it today, or are you still looking around?", "It's a soft look, not a bank application. Your score does not move, and no lender sees it. It's $32. You've got a card handy?"], watch: "Do NOT jump from pain straight into pitching. Process the $32, then advance." },
-    "S-06": { title: "While it runs", lines: ["Our UnderwriteIQ system is pulling your file from all three bureaus and reading it the way a bank does.", "It checks your file against the banks that fit it, so you only apply where your file makes sense."], watch: "Confident, matter-of-fact. Routine professional step. Never say a lender count, a client count, or a dollar total." },
-    "S-07": { title: "The reveal + the sort", lines: ["FUND: Here's how much you qualify for based on where you're at right now: [Amount]. That's what your file supports today. The bank still decides.", "FUND: Pause. Let it land. Then: what jumps out at you?", "REPAIR: Here's what's holding your file back. Cleaned up, it shows the higher amount on screen. That difference is what's left on the table right now.", "EDU: If their ask is 'teach me to do this myself', route Education below. The sort still gets named first."], watch: "Name the sort before moving: 'based on what the system found, here's where you are, and here's the path that fits.' They must accept the sort before they hear any offer. Route buttons below. Never say approved or pre-approved, and never name a bank." + (COURSE_LIVE ? "" : " Education is off until Capital Academy is filmed.") },
+    "S-06": { title: "While it runs", lines: ["You can see each real step on this screen while the assessment runs.", "We will review the findings together as soon as the report is ready."], watch: "Wait for a real result before describing scores, lenders, or funding amounts." },
+    "S-07": { title: "The reveal + the sort", lines: ["FUND: Here is today's estimate from your file: [Amount]. A lender still decides each application.", "FUND: Pause. Let it land. Then: what jumps out at you?", "REPAIR: Here are the specific items the report found. If a higher amount is shown, that is a projection after changes, not a promised approval.", "EDU: If their ask is 'teach me to do this myself', route Education below. The sort still gets named first."], watch: "Name the sort from the actual report. Never say approved or pre-approved, and never name a bank that the report did not match." + (COURSE_LIVE ? "" : " Education is off until Capital Academy is filmed.") },
     /* L-01 and C-01 are visual slides (section 10.4, A and B). The words are
        the script's (sections 4 and 6) and the plan's. */
     "L-01": { title: "How much more. Tap each lever.", lines: ["The difference between today and the fully optimized file is what's left on the table right now.", "Let me show you what each fix does for your file, one at a time."], watch: "Tap one lever at a time. Every amount is the engine's own, for this file. Read it off the screen. Never round up, never say approved, and never promise a score or a removal." },
     "C-01": { title: "More companies, more funding.", lines: ["Each business is judged on its own, after your personal file is ready.", "This is what one more company adds as it gets older. It's a picture of what's possible. It never changes what you qualify for today."], watch: "Read the amounts off the screen. 'If you add a company' is never part of today's total. Only show wins Chris has given you in writing." },
     "S-08": { title: "Permission, then the map", lines: ["FUND: Where do you want to go from here? I can walk you through exactly how we get you in front of the banks that match your file, in the right order. But you tell me.", "FUND: Everything is completely done-for-you. Three steps. Cool?", "REPAIR: I'd recommend we clean your credit up first, so when we run the full funding process you're in the strongest position. Want me to walk you through it?", "EDU: Two ways to own this: your complete file deliverables with the ranked bank list, or the Funding Mastery program, A to Z. Which sounds more like you?"], watch: "Sort-acceptance gate. Reverse Selling: ask permission. If they push back on the sort itself, handle it HERE, never at the price." },
     "S-09": { title: "Pitch. The problem.", lines: ["FUND: You know how you tried applying on your own and got denied or didn't know which banks to go to? You applied blind, to banks that never matched your file.", "FUND: Most people, and most funding companies, are guessing. Every application is a hard pull, and every denial costs you.", "REPAIR: Walk the flags one at a time. Read each item. Don't editorialize, the screen is the proof.", "EDU: Course one is everything the system built from your file today. Walk the six items on screen, one by one."], watch: "Slow down. The contrast here is what sells the system." },
-    "S-10": { title: "Step 1. AI Lender Matching.", lines: ["FUND: UnderwriteIQ, the same system that just read your file, matches it to the banks that fit it.", "FUND: Every bank is picked from your file, not from one list used for every client. You only apply where your file makes sense. Make sense?", "REPAIR: The law does the heavy lifting. FCRA requires accuracy, forces an investigation of every dispute in 30 to 45 days, puts duties on the creditors themselves, and pays damages when they violate. Your letters are built on FCRA and Metro 2.", "EDU: Course two is the full Funding Mastery. A to Z. The complete credit and funding system, start to finish, on your own file."], watch: "'Make sense?' is a tie-down. Wait for the yes." },
+    "S-10": { title: "Step 1. Review the file.", lines: ["FUND: These are the scores and findings the assessment pulled from your file.", "FUND: We use this evidence to review lender fit and decide the order of applications. You only apply where your file makes sense. Make sense?", "REPAIR: The law does the heavy lifting. FCRA requires accuracy, forces an investigation of every dispute in 30 to 45 days, puts duties on the creditors themselves, and pays damages when they violate. Your letters are built on FCRA and Metro 2.", "EDU: Course two is the full Funding Mastery. A to Z. The complete credit and funding system, start to finish, on your own file."], watch: "'Make sense?' is a tie-down. Wait for the yes." },
     "S-11": { title: "Pitch. The second problem.", lines: ["FUND: Most companies submit everything at once. The banks see the inquiries stack, and they start denying you.", "FUND: It's called inquiry stacking, and it kills your approval odds.", "REPAIR: We dispute Metro 2, straight at the creditor. Their response becomes the proof, and it goes back to all three bureaus. Not fixed? We escalate through the administrative process, CFPB, state AG. Done for you, or you run the same pack yourself."], watch: "REPAIR compliance: describe the process only. Never promise removal, scores, or results." },
     "S-12": { title: "Step 2. Rounds + Inquiry Sweeps.", lines: ["FUND: We apply in rounds. One funding sequence is about six rounds. Your personal file first, then each business on its own.", "FUND: Between rounds, we dispute the new hard inquiries, so the next round starts from a cleaner file.", "REPAIR: Round one goes out today. The bureaus have 30 to 45 days to answer each round. Up to six rounds: the dispute, then method of verification, then a final notice, then the CFPB, then your state attorney general, then the final notice again."], watch: "FPR: the dirty bureaus get the full dispute process in parallel. Never delays a round. Never promise a removal, a score, or an approval." },
     "S-13": { title: "The proof point", lines: ["FUND: That's the difference: your file, the right banks, and the right order.", "FUND: Does that make sense? What questions do you have?", "REPAIR: And you watch every move happen in real time in your dashboard."], watch: "Inviting questions surfaces resistance early. Only use wins Chris has given you in writing." },
     "S-14": { title: "Step 3. Done-for-you team.", lines: ["FUND: The Fundhub team runs every application and every follow-up with the banks. You don't fill out a single application.", "FUND: You run the business. We handle the capital side. Make sense?", "REPAIR: Once the file is clean, this is the position we project you're funding from. This is why we clean up first."], watch: "REPAIR: say 'projected position', never 'guaranteed'." },
-    "S-15": { title: "The timeline", lines: ["FUND: Once you sign, your funding advisor starts on your file within 24 business hours. Your first applications go out within 72 business hours.", "REPAIR: Everything on this screen already exists. The letters are staged, the plan is mapped, the dashboard is waiting. All that's left is the button."], watch: "Slow down and let it land. FUND: never promise when the money lands; the bank decides. On repair: the dinner is on the table — everything shown is already built from their pull. Sell the button-press, not the service." },
-    "S-16": { title: "The menu. Take their order.", lines: ["FUND: This is everything we can open for you. Business cards, personal cards and personal loans. Lines of credit, term loans and revenue-based funding, off your bank statements or tax returns. Which matter most for what you're building?", "FUND: Fulfill the ask FIRST. Then, only if the file supports it: your file also fits [product]. Want me to include that?", "REPAIR: A little fear here protects them. So-called credit sweeps — fake FTC identity-theft reports, fake police reports — are federal crimes, and even when they 'work', the creditor just re-reports the account next month. Two wrongs don't make a right.", "REPAIR: Then flip it: our deletions stick, because they're documented and FCRA-grounded. And if a bureau reinserts without 5-day written notice and certification, THEY are in violation, not you."], watch: "FUND: it's a menu, not a pitch — nothing gets submitted they didn't order. SBA and equipment loans are not live yet. REPAIR: warn, don't teach. Name the schemes and the consequences, never the mechanics." },
+    "S-15": { title: "The timeline", lines: ["FUND: Once you sign, your funding advisor starts on your file within 24 business hours. Your first applications go out within 72 business hours.", "REPAIR: Here is the planned sequence for this file. We will show actual letters only after they are generated and staged."], watch: "Show staged work only when this client's records confirm it exists. Never promise a result." },
+    "S-16": { title: "The menu. Take their order.", lines: ["FUND: This is everything we can open for you. Business cards, personal cards and personal loans. Lines of credit, term loans and revenue-based funding, off your bank statements or tax returns. Which matter most for what you're building?", "FUND: Fulfill the ask FIRST. Then, only if the file supports it: your file also fits [product]. Want me to include that?", "REPAIR: We use documented disputes for inaccurate items. We will show you each filing and response in your dashboard.", "REPAIR: A bureau may reinvestigate or reinsert an item. We track the response and any notice so the next step follows the record."], watch: "FUND: nothing gets submitted they didn't order. REPAIR: never promise a deletion or a permanent score change." },
     "S-17": { title: "Temperature check", lines: ["So just curious, in terms of the process specifically, how do you feel?", "What's important to me is alignment. When you come in, our team is ALL IN, in the trenches with you. So it matters that you feel GOOD about the process."], watch: "If they hesitate here, dig in now. Don't carry hesitation into the price." },
     "S-18": { title: "Scale of 1 to 10", lines: ["1 being this sounds terrible, I want off the phone. 10 being this is exactly what I need to finally get the capital to scale. Where do you fall?"], watch: "8 or above, proceed. Below 8: what's keeping you from a 9 or 10? Handle it first." },
     "S-19": { title: "The investment", lines: ["FUND: To get you in front of the right banks in the right order, it's a $3,000 deposit today.", "FUND: That $3,000 is not an additional fee. It goes directly toward your 10 percent success fee on the back end.", "REPAIR: Most expensive first. Lead with the Capital Blueprint button: the whole 12-month plan from their file, price off the screen. If that's a no: onboard now, all six rounds done for you, $1,000. Still a no: round one for $200, and the $200 counts toward the $1,000.", "EDU: Lead with the $5,000 full program. Only if that's a no: the $1,000 deliverables package plus the how-to course."], watch: "Rung buttons below on repair. Do NOT lead with the cheaper one." },
-    "S-20": { title: "The math", lines: ["FUND: Walk it line by line off the screen. Deposit credits against the fee. Back end only charges once capital is in your hands.", "FUND: So we only make our money when you get funded. Our success is literally tied to yours.", "REPAIR: Put their own number in their face. You told me this costs you [$X] a month. That's [$X times 12] a year of staying exactly where you are. The fix starts on this call.", "EDU: Two courses, one skill set. Anchor the $5,000 against what they told you being stuck costs them every month."], watch: "Anchor against their own monthly cost number from discovery." },
-    "S-21": { title: "The guarantees", lines: ["FUND: Read G-01 and G-02 off the screen, word for word. Those are the two in the agreement.", "REPAIR: Round one goes out today. You watch every dispute and response in your dashboard. Rounds escalate until the file is clean.", "EDU: Access gets set up on this call, and the deliverables generate from today's pull. They leave with it in hand."], watch: "Read only what the agreement says. Do not improvise promises beyond it." },
+    "S-20": { title: "The math", lines: ["FUND: This is an illustration using today's estimate, not a bill. The deposit is credited against the success fee if funding is secured.", "FUND: The agreement bases the fee on confirmed approved limits or amounts. No back-end success fee is due if no funding is secured.", "REPAIR: Put their own number in their face. You told me this costs you [$X] a month. That's [$X times 12] a year of staying exactly where you are. The fix starts on this call.", "EDU: Two courses, one skill set. Anchor the $5,000 against what they told you being stuck costs them every month."], watch: "Do not present an estimate as an approved amount or a final invoice." },
+    "S-21": { title: "The guarantees", lines: ["FUND: These are the two action deadlines in the agreement. If Fundhub misses either, the client may request the deposit back.", "REPAIR: Round one is scheduled under the signed agreement. The dashboard tracks work and responses as they happen.", "EDU: Access gets set up on this call, and deliverables are generated from the completed pull."], watch: "Read the actual agreement before quoting terms. No approval or outcome is guaranteed." },
     "S-22": { title: "The ask", lines: ["FUND: Are you ready to get this started so we can get you funded?", "REPAIR: Want me to get that set up for you?", "EDU: Want me to get you set up right now?", "Then stop talking. First person to speak loses."], watch: "Calm, direct, assumptive. Guide to the natural next step." },
     "S-23": { title: "The close. Logistics.", lines: ["Awesome. Let's get this going. I'm sending the agreement right now. Best email for that?", "Review it while I get your billing info. What's your billing address?", "Collect the card. Fire the pay link. Keep them on the line until it posts."], watch: "Do not celebrate. Do not over-explain. No time to second-guess." },
     "S-24": { title: "Wrap", lines: ["Within 24 business hours your advisor reaches out and starts on your file. Within 72 business hours your first applications are submitted.", "Any questions before we wrap? ... Congratulations, [First Name]. You made a great decision. We're going to get to work on this. Talk soon."], watch: "Confirm the payment posted before ending the call. Then log the disposition." }
@@ -586,6 +580,31 @@
   }
   /* Row 7: "number" is banned in sales copy (outcome-first-copy). */
   var NOT_IN_YET = "Your results are not in yet";
+  function realResultReady() {
+    var pull = state.softPull || {};
+    return !!(pull.crs_result_id && !pull.sample && state.engine && state.engine.available);
+  }
+  function pullStage() {
+    var pull = state.softPull || {};
+    if (realResultReady()) return { title: "Your report is ready", detail: "The result is on file. We can now review what it actually says.", step: 4, done: true };
+    if (!pull.consent_valid) return { title: "Waiting for your authorization", detail: "Complete the secure form on your phone. Your details stay off the shared screen.", step: 0 };
+    if (!pull.diagnostic_paid) return { title: "Authorization saved", detail: "The report request starts after payment clears. You can see the status here while you wait.", step: 1 };
+    var status = String(pull.pull_status || "").toLowerCase();
+    if (["failed", "cancelled", "canceled"].indexOf(status) >= 0) return { title: "The report needs attention", detail: "The request did not finish. Your advisor can check it before we continue.", step: 2, failed: true };
+    if (["processing", "in_progress", "running", "complete", "completed", "fulfilled", "resolved"].indexOf(status) >= 0) return { title: "Your report is being prepared", detail: "The request is processing. We will show the findings when the result is on file.", step: 3 };
+    if (status === "queued" || status === "created" || status === "sent") return { title: "Your report is requested", detail: "The request is saved and waiting for the provider to begin.", step: 2 };
+    return { title: "Your assessment is starting", detail: "Authorization and payment are saved. We are waiting for the report request to start.", step: 2 };
+  }
+  function pullProgressHtml() {
+    var s = pullStage();
+    var steps = ["Authorization", "Payment", "Report request", "Result ready"];
+    return '<div class="pull-live" role="status" aria-live="polite"><div class="pull-live-orbit' + (s.done || s.failed ? " still" : "") + '" aria-hidden="true"></div>' +
+      kicker("UnderwriteIQ · live status") + h1(s.title) + sub(s.detail) +
+      '<ol class="pull-live-steps">' + steps.map(function (label, i) {
+        var done = i < s.step || (s.done && i === 3);
+        return '<li class="' + (done ? "done" : i === s.step && !s.failed ? "active" : "") + '"><span>' + (done ? "✓" : i + 1) + "</span>" + label + "</li>";
+      }).join("") + '</ol><p class="pull-live-note">This screen updates from the saved assessment status.</p></div>';
+  }
   function unavail() {
     return '<div class="unavail"><span class="mono">' + NOT_IN_YET + '</span><p class="sub" style="margin-top:6px">Nothing here is guessed.</p></div>';
   }
@@ -731,15 +750,10 @@
       return slide("S-04", "The goal", '<div style="flex:1;display:flex;flex-direction:column;justify-content:center">' + kicker("Begin with the end in mind") + h1(goal ? esc(goal) : "How much do you need?", "clamp(32px,5.2vw,64px)") + sub((goalUse ? esc(goalUse) + ". " : "") + "What does the business look like 6 to 12 months from now with this deployed?") + '<div style="margin-top:16px;max-width:200px" class="hair"></div></div>');
     }
     if (c === "S-05") {
-      return slide("S-05", "The assessment", kicker("Next step") + h1("See exactly what you qualify for.") + sub("One soft-pull assessment. The engine reads your profile the way funding partners do, before you commit to anything.") + stats([[price("SOFT_PULL"), "one-time assessment"], ["Soft inquiry", "no score impact"], ["60 seconds", "results on this call"]]));
+      return slide("S-05", "The assessment", kicker("Next step") + h1("See what your file says.") + sub("One soft-pull assessment. The status stays on this screen while your report is prepared.") + stats([[price("SOFT_PULL"), "one-time assessment"], ["Soft inquiry", "no score impact"], ["Live status", "while the report runs"]]));
     }
     if (c === "S-06") {
-      return slide("S-06", "UnderwriteIQ", '<div style="flex:1;display:flex;flex-direction:column;justify-content:center"><div style="display:flex;justify-content:space-between;align-items:center;max-width:600px">' + kicker("The engine") + '<span class="mono" style="color:var(--gray)">UnderwriteIQ · Operational</span></div><div style="border:1px solid var(--line);background:var(--soft);padding:12px 16px;max-width:600px;border-radius:10px">' +
-        TERMINAL.map(function (l, i) { return '<div style="font-family:var(--mono);font-size:clamp(10px,1.05vw,12px);color:' + (i === 0 ? "var(--ink)" : "var(--gray)") + ';line-height:1.85">' + esc(l) + "</div>"; }).join("") +
-        '<div style="font-family:var(--mono);font-size:clamp(10px,1.05vw,12px);color:var(--gray2);line-height:1.85">&gt; monitoring for updates _</div></div>' +
-        /* Row 13: the two facts the offers document gives (page 1), in place of
-           the dollar total and the lender count the script took out. */
-        stats([["About 10 years", "doing this work"], ["Hundreds", "of client files built UnderwriteIQ"]]) + "</div>");
+      return slide("S-06", "UnderwriteIQ", pullProgressHtml());
     }
     if (c === "S-07") {
       if (funding) {
@@ -750,7 +764,7 @@
            engine estimate, the same one the client's portal shows, and the line
            under it says out loud what the money covers so nobody has to guess
            whether business funding is in it. */
-        return slide("S-07", "Your results", kicker("How much you qualify for today") + h1(money(d.total), "clamp(32px,5.2vw,64px)") + sub("Based on where you're at right now, across multiple credit lines. Lenders make the final call.") + fine(basisLine(d)) + scores(d.fico) + sampleLine(d));
+        return slide("S-07", "Your results", kicker("Today's funding estimate") + h1(money(d.total), "clamp(32px,5.2vw,64px)") + sub("An estimate from your report across multiple credit lines. Each lender makes the final decision.") + fine(basisLine(d)) + scores(d.fico) + sampleLine(d));
       }
       /* engine.visual first (a real pull has no afterFix or negItems), the old
          fields as the fallback. No amount, no projection line. */
@@ -793,7 +807,7 @@
     }
     if (c === "S-10") {
       if (edu) return slide("S-10", "Course two", kicker("The full program") + h1("Funding Mastery. A to Z.") + bars(["The complete Fundhub credit and funding system, taught start to finish.", "Credit, optimization, and funding execution — the whole picture, not pieces.", "Paired with your own file, so you're working on real data, not theory."]));
-      if (funding) return slide("S-10", "Step 1 of 3", kicker("Step 1 of 3") + h1("AI Lender Matching.") + bars(["UnderwriteIQ, the same system that just read your file, matches it to the banks that fit it.", "Every bank is picked from your file, not from one list used for every client.", "You only apply where your file makes sense."]));
+      if (funding) return slide("S-10", "Step 1 of 3", kicker("Step 1 of 3 · your file") + h1("The order starts with your evidence.") + scores(d.fico) + '<div style="margin-top:14px;max-width:700px">' + reasonsList(d, false) + '</div>' + sub("The funding advisor uses these findings to review lender fit and application order. No lender decision is made on this screen."));
       return slide("S-10", "Already generated", kicker("FCRA · Metro 2") + h1("The law is on your side.") + '<div style="margin-top:8px;max-width:620px">' +
         row("Maximum possible accuracy", "FCRA §607", "Bureaus are required by federal law to report your file accurately") +
         row("Every dispute investigated", "30–45 days", "FCRA §611 — they must investigate and respond, every round") +
@@ -832,14 +846,14 @@
          fallback. */
       var journey = visualHtml("journey");
       if (journey) return slide("S-15", "Your journey", journey);
-      return slide("S-15", "The timeline", kicker("Already built from today's pull") + h1("It's sitting in the queue.") + lettersGrid() + '<div style="margin-top:6px">' + row("All that's left", "The button", "Say the word and Round 1 is out today", true) + "</div>");
+      return slide("S-15", "The timeline", kicker("Planned sequence") + h1("Here is how the rounds work.") + stepsHtml([["Round 1", "prepare and send after agreement"], ["Response", "record the bureau or creditor reply"], ["Next round", "build from the actual response"]], 0) + sub("Letters appear in your dashboard when they have actually been generated and staged."));
     }
     if (c === "S-16") {
       if (!funding && !edu) {
         return slide("S-16", "The wrong way", kicker("What we will never do") + h1("Two wrongs don't make a right.") + '<div style="margin-top:8px;max-width:620px">' +
           row('So-called "credit sweeps"', "Fraud", "Fake FTC identity-theft and police reports to wipe a file — a federal crime, up to 5 years") +
           row('Even when it "works"', "It bounces", "The creditor just re-reports the account next month. Fraud deletions don't stick.") +
-          row("Real deletions stick", "FCRA §611", "Reinsertion without 5-day written notice and certification is itself a violation", true) + "</div>" +
+          row("Documented response", "FCRA §611", "We track what the bureau says and any reinsertion notice", true) + "</div>" +
           sub("That's the difference. Disputes filed here are documented and FCRA-grounded, so what comes off stays off — and if a bureau ever slips one back in, the law puts them in deep trouble, not you.") +
           fine("Not to be confused with Fundhub Inquiry Sweeps — documented inquiry disputes filed on the record as part of funding rounds."));
       }
@@ -877,19 +891,19 @@
     }
     if (c === "S-20") {
       if (edu) return slide("S-20", "Two courses", fill(kicker("Side by side") + h1("Two courses. One skill set.") + '<div style="margin-top:10px;max-width:620px">' + row("Course 1 — UWIQ deliverables + bank list", price("UWIQ_DELIVERABLES"), "Everything from your file. You execute it with the how-to course.") + row("Course 2 — Funding Mastery, A to Z", price("FUNDING_MASTERY"), "The complete program, start to finish, on your own data", true) + "</div>"));
-      if (funding) return slide("S-20", "The math", fill(kicker("Line by line") + h1("We only make money when you get funded.") + '<div style="margin-top:10px;max-width:560px">' + row("Your funding", money(d.total), "How much you qualify for today. Lenders make the final call.") + row("Total success fee, " + feePct + " percent", money(fee)) + row("Your deposit, credited", deposit != null ? ("- " + money(deposit)) : "—") + row("Back end balance", money(backEnd), "Only charged once the capital is actually in your hands", true) + "</div>" + sub("Our success is literally tied to yours.")));
+      if (funding) return slide("S-20", "The math", fill(kicker("Illustration · not a bill") + h1("See how the deposit is credited.") + '<div style="margin-top:10px;max-width:560px">' + row("Today's file estimate", money(d.total), "A planning figure. A lender decides actual approvals.") + row("Illustrative success fee, " + feePct + " percent", money(fee), "Based on this estimate only") + row("Deposit credited once", deposit != null ? ("- " + money(deposit)) : "—") + row("Illustrative remaining fee", money(backEnd), "Actual fee uses confirmed approved limits or amounts", true) + "</div>" + sub("If no funding is secured, no back-end success fee is due. The agreement sets the final terms.")));
       if (costN > 0) return slide("S-20", "Then we fund you", '<div style="flex:1;display:flex;flex-direction:column;justify-content:center">' + kicker("What staying stuck costs") + h1(money(costN) + " a month.", "clamp(28px,4.4vw,52px)") + '<div style="margin-top:10px;max-width:560px">' + row("Every month this file sits", money(costN), "What you said it costs you, earlier on this call") + row("Over a year", money(costN * 12), "Gone, without the file moving an inch", true) + row("The fix", "Starts today", "Cleaned up first, funded second, strongest position") + "</div></div>");
       return slide("S-20", "Then we fund you", '<div style="flex:1;display:flex;flex-direction:column;justify-content:center">' + kicker("What staying stuck costs") + h1("Cleaned up first. Funded second.", "clamp(24px,3.6vw,44px)") + sub("We get your credit cleaned up first, so when we run the full funding process you're in the strongest possible position and we can maximize your approval amount.") + "</div>");
     }
     if (c === "S-21") {
       if (edu) return slide("S-21", "When we start", kicker("Set up on this call") + h1("You leave with it today.") + '<div style="margin-top:10px;max-width:620px">' + row("On this call", "Access", "Account and access squared away before we hang up") + row("Today", "Your file", "Deliverables generate from the pull we just ran") + row("When you're ready", "Funding", "Run the full funding process whenever you want") + "</div>");
-      if (funding) return slide("S-21", "Three guarantees. In writing.", kicker("Guarantees") + h1("You're protected three ways.") + '<div style="display:flex;gap:9px;margin-top:12px">' + GUARANTEES.map(function (g) {
+      if (funding) return slide("S-21", "Two action guarantees", kicker("From the funding agreement · section 3") + h1("Two deadlines. In writing.") + '<div style="display:flex;gap:9px;margin-top:12px">' + GUARANTEES.map(function (g) {
         return '<div style="flex:1;min-width:0;border:1px solid var(--line);background:var(--soft);padding:11px 13px;border-radius:10px"><div class="hair"></div><div style="margin-top:9px"><span class="mono" style="color:var(--gray)">' + g[0] + '</span></div><div style="font-size:clamp(11.5px,1.2vw,13.5px);font-weight:700;margin-top:5px;letter-spacing:-.01em;line-height:1.2">' + g[1] + '</div><div style="font-size:clamp(9.5px,1vw,11px);color:var(--gray);margin-top:5px;line-height:1.45">' + g[2] + "</div></div>";
-      }).join("") + "</div>" + fine("These guarantees are not a guarantee of credit approval, funding amounts, rates, or terms, which are determined by funding partners."));
-      return slide("S-21", "When we start", kicker("What happens when we start") + h1("Round one goes out today.") + '<div style="margin-top:10px;max-width:620px">' + row("Today", "Letters out", "Generated from the pull we just ran, in your email") + row("Your dashboard", "Live", "Track every dispute and every response") + row("Round by round", "Escalate", "Until the file is where it needs to be") + "</div>");
+      }).join("") + "</div>" + sub("If Fundhub misses either deadline, you may request return of the deposit. If both are met, lack of funding alone does not return it.") + fine("No approval, funding amount, rate, or term is promised. No back-end success fee is due without funding."));
+      return slide("S-21", "When we start", kicker("What happens when we start") + h1("Track the work as it happens.") + '<div style="margin-top:10px;max-width:620px">' + row("After you sign", "Round 1", "Prepare the first round from the completed report") + row("Your dashboard", "Live", "See sent disputes and responses after they are recorded") + row("Round by round", "Review", "The next step follows the actual response") + "</div>");
     }
     if (c === "S-22") {
-      return slide("S-22", "Ready when you are", '<div style="flex:1;display:flex;flex-direction:column;justify-content:center">' + h1("Ready when you are.", "clamp(28px,4.6vw,56px)") + '<div class="mono" style="margin-top:12px;letter-spacing:.06em">' + (funding ? "Customer-initiated · Three guarantees · Done for you" : "Customer-initiated · Starts today · Tracked live") + '</div><div style="margin-top:16px;max-width:200px" class="hair"></div></div>');
+      return slide("S-22", "Ready when you are", '<div style="flex:1;display:flex;flex-direction:column;justify-content:center">' + h1("Ready when you are.", "clamp(28px,4.6vw,56px)") + '<div class="mono" style="margin-top:12px;letter-spacing:.06em">' + (funding ? "Customer-initiated · Two action guarantees · Done for you" : "Customer-initiated · Tracked live") + '</div><div style="margin-top:16px;max-width:200px" class="hair"></div></div>');
     }
     if (c === "S-23") {
       /* "Advisor contact" is not true on every sale. The rows follow the offer
@@ -1195,7 +1209,7 @@
         h1("The system around your file.", "clamp(26px,3.8vw,46px)") +
         sub("Most people get a plan and then get stuck. This one stays on the plan with you, for 12 months.") +
         '<div style="margin-top:12px;max-width:760px">' +
-          row("Capital Blueprint", "The plan", "Makes your plan and runs the credit side, then brings in a closer when your file is ready.") +
+          row("Capital Blueprint", "The plan", "Makes your plan and runs the credit side, then brings in the Fundhub team when your file is ready.") +
           row("FinanceOS", "Your money", "Watches your money every day: every account, card, and due date on one page. 12 months included.") +
         "</div>" + fine(NO_PROMISE)));
     }
@@ -1458,6 +1472,9 @@
 
   function cockpit() {
     var t = closeTalk(code()) || TALK[code()] || STACK_TALK[code()] || { title: "", lines: [], watch: "" };
+    if (!realResultReady() && (code() === "S-06" || code() === "S-07")) {
+      t = { title: "Assessment status", lines: [pullStage().detail, "Keep the client on the status screen. Review the actual file when the result is ready."], watch: "Do not describe a result, staged work, or a lender match before it exists." };
+    }
     if (code() === "B-03" && visualHtml("blueprintDemo")) t = DEMO_TALK;
     if (state.showMoney) t = MONEY;
     var d = state.engine || {};
@@ -1837,6 +1854,11 @@
     return true;
   }
   function go(n) {
+    if (n > 0 && code() === "S-06" && !realResultReady()) {
+      state.toast = "Wait for the real assessment result before the reveal.";
+      render();
+      return;
+    }
     state.obj = null; state.showRef = false; state.showMoney = false;
     var from = code();
     var j = Math.max(0, Math.min(DECK.length - 1, state.idx + n));
@@ -1967,6 +1989,19 @@
     if (!r || !r.ok) return false;
     applyDeck(r.data || r);
     return true;
+  }
+
+  var pullRefreshBusy = false;
+  async function refreshPullOnScreen() {
+    if (pullRefreshBusy || !state.loaded || !contactId || ["S-05", "S-06", "S-07"].indexOf(code()) < 0) return;
+    pullRefreshBusy = true;
+    try {
+      var oldStatus = JSON.stringify({ pull: state.softPull, available: state.engine && state.engine.available });
+      if (await refreshDeck()) {
+        var newStatus = JSON.stringify({ pull: state.softPull, available: state.engine && state.engine.available });
+        if (newStatus !== oldStatus) render();
+      }
+    } finally { pullRefreshBusy = false; }
   }
 
   async function stampIncorporated(i) {
@@ -2335,6 +2370,7 @@
     state.loaded = true;
     render();
     loadSharedContext();
+    if (typeof setInterval === "function") setInterval(refreshPullOnScreen, 3000);
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);

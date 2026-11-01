@@ -64,16 +64,17 @@ test("lead-source panel: every call counts, so a call without a company client i
 // ---------------------------------------------------------------------------------------------
 // Sales floor: floor discipline (calls not logged, calls not recorded)
 const task = (s, over = {}) => s.insert("tasks", {
-  id: id("t"), org_id: ORG, assignee_role: "closer", title: "Strategy session booked", body: id("BK"),
+  id: id("t"), org_id: ORG, client_id: C1, assignee_role: "closer", title: "Strategy session booked", body: id("BK"),
   due_at: ago(1), done: false, is_demo: false, ...over,
 });
 const call = (s, over = {}) => s.insert("call_outcomes", {
   id: id("o"), org_id: ORG, client_id: C1, staff_id: S1, outcome: "deposit", logged_at: ago(0, 2), is_demo: false, ...over,
 });
-const DISC_TABLES = ["tasks", "call_outcomes", "brain_drive_sync"];
+const DISC_TABLES = ["tasks", "clients", "call_outcomes", "brain_drive_sync"];
 
 test("floor discipline: past-due booking tasks with no disposition and held calls with no tape are the panel's numbers, and right", () => {
   const seed = (s) => {
+    s.insert("clients", { id: C1, org_id: ORG, custom_fields: "{}" });
     task(s, { id: "t-open-1", body: "BK-1" });
     task(s, { id: "t-open-2", body: "BK-2" });
     task(s, { id: "t-logged", body: "BK-3" });
@@ -88,8 +89,11 @@ test("floor discipline: past-due booking tasks with no disposition and held call
   assert.deepEqual(run(DISCIPLINE_SQL, DISC_TABLES, () => {}), { sample_count: 0, bad_count: 0 });
 });
 
-test("floor discipline: a call logged by booking reference alone is still counted as not logged, and that is wrong", () => {
+test("floor discipline: booking-reference dispositions and archived clients stay out of the unlogged sample", () => {
   const seed = (s) => {
+    s.insert("clients", { id: C1, org_id: ORG, custom_fields: "{}" });
+    s.insert("clients", { id: C2, org_id: OTHER, custom_fields: "{}" });
+    s.insert("clients", { id: "c-arch", org_id: ORG, custom_fields: JSON.stringify({ crm_archived_at: ago(2) }) });
     task(s, { id: "t-1", body: "BK-100" });
     s.insert("call_outcomes", { id: id("o"), org_id: ORG, task_id: null, booking_ref: "BK-100", client_id: C1, staff_id: S1, outcome: "deposit", recording_url: "https://drive.google.com/file/d/x/view" });
     s.insert("call_outcomes", { id: id("o"), org_id: ORG, task_id: null, booking_ref: "BK-100", client_id: C1, staff_id: S1, outcome: "callback", recording_url: "https://drive.google.com/file/d/x/view" });
@@ -99,16 +103,18 @@ test("floor discipline: a call logged by booking reference alone is still counte
     task(s, { id: "t-4", body: "   " });                                        // a blank one: nothing to match
     s.insert("call_outcomes", { id: id("o"), org_id: ORG, task_id: null, booking_ref: "", client_id: C1, staff_id: S1, outcome: "callback", recording_url: "https://drive.google.com/file/d/x/view" });
     s.insert("call_outcomes", { id: id("o"), org_id: ORG, task_id: null, booking_ref: "   ", client_id: C1, staff_id: S1, outcome: "callback", recording_url: "https://drive.google.com/file/d/x/view" });
-    task(s, { id: "t-5", body: "BK-100", org_id: OTHER });                       // another company's task
-    task(s, { id: "t-demo", body: "BK-100", is_demo: true });                   // a demo task is never judged
+    task(s, { id: "t-5", body: "BK-100", org_id: OTHER, client_id: C2 });      // another company's task
+    task(s, { id: "t-arch", body: "BK-300", client_id: "c-arch" });           // archived client
+    task(s, { id: "t-done", body: "BK-400", done: true });                      // finished task
   };
-  // t-1 is wrong (one task however many dispositions share its reference); t-2, t-3, t-4 are plain unlogged tasks
-  assert.deepEqual(run(DISCIPLINE_SQL, DISC_TABLES, seed), { sample_count: 4, bad_count: 1 });
-  assert.equal(run(without(DISCIPLINE_SQL, "d.booking_ref = t.body"), DISC_TABLES, seed).bad_count, 0, "no reference match, no wrong row");
-  assert.ok(run(loosen(DISCIPLINE_SQL, "d.booking_ref = t.body"), DISC_TABLES, seed).bad_count > 1, "the reference match is what narrows it to one");
-  assert.equal(run(loosen(DISCIPLINE_SQL, "d.org_id = t.org_id"), DISC_TABLES, seed).bad_count, 2, "a booking reference of another company must not count");
-  assert.ok(run(loosen(DISCIPLINE_SQL, "NULLIF(BTRIM(t.body), '') IS NOT NULL"), DISC_TABLES, seed).bad_count > 1, "a blank body must not match a blank reference");
-  assert.deepEqual(run(loosen(DISCIPLINE_SQL, "COALESCE(t.is_demo, false) = false"), DISC_TABLES, seed), { sample_count: 5, bad_count: 2 }, "the demo filter is what leaves it out");
+  // t-1 has a same-client disposition by reference; only t-2, t-3 and t-4 are unlogged.
+  assert.deepEqual(run(DISCIPLINE_SQL, DISC_TABLES, seed), { sample_count: 3, bad_count: 0 });
+  assert.deepEqual(run(without(DISCIPLINE_SQL, "o.booking_ref = t.body"), DISC_TABLES, seed),
+    { sample_count: 4, bad_count: 1 }, "without the reference exclusion, the proof catches t-1");
+  assert.equal(run(loosen(DISCIPLINE_SQL, "c.custom_fields->>'crm_archived_at' IS NULL"), DISC_TABLES, seed).sample_count, 4,
+    "the archived-client filter is what leaves t-arch out");
+  assert.equal(run(loosen(DISCIPLINE_SQL, "t.done IS NOT TRUE"), DISC_TABLES, seed).sample_count, 4,
+    "a finished task is not an overdue call");
 });
 
 test("floor discipline: transcript-only calls do not cause false unrecorded alerts; missing both recording and transcript does", () => {

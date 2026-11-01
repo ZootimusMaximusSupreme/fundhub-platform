@@ -536,7 +536,7 @@ export async function listBookings(db, {
   requireOrg(orgId, "listBookings");
 
   const params = [orgId];
-  const where = ["b.org_id = $1"];
+  const where = ["b.org_id = $1", "(b.client_id IS NULL OR c.id IS NOT NULL)"];
 
   const fromTs = toTimestamp(from, "listBookings: from");
   if (fromTs) { params.push(fromTs); where.push(`b.starts_at >= $${params.length}`); }
@@ -564,6 +564,7 @@ export async function listBookings(db, {
        -- The join carries org_id as well as id: a client row is only ever this
        -- company's, even if a stray client_id ever pointed elsewhere.
        LEFT JOIN clients c ON c.id = b.client_id AND c.org_id = b.org_id
+         AND c.custom_fields->>'crm_archived_at' IS NULL
       WHERE ${where.join(" AND ")}
       ORDER BY b.starts_at ASC NULLS LAST, b.created_at ASC
       LIMIT $${params.length}`,

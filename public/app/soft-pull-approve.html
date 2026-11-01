@@ -45,6 +45,24 @@ ol.next li:last-child{margin-bottom:0}
 .biz-rm{border:0;background:transparent;color:var(--gray);font:600 11px var(--sans);cursor:pointer;padding:4px}
 .total{font-size:14px;font-weight:700;margin-top:14px;padding:12px;border-radius:10px;background:var(--paper);border:1px solid var(--line)}
 .total span{color:var(--gray);font-weight:500;font-size:12px}
+.pull-progress{margin:24px 0;padding:24px;border:1px solid var(--line);border-radius:10px;background:var(--soft)}
+.pull-orbit{width:68px;height:68px;border:2px solid var(--line);border-radius:50%;display:grid;place-items:center;margin-bottom:18px;position:relative}
+.pull-orbit::before{content:"";position:absolute;inset:-2px;border:2px solid transparent;border-top-color:var(--ink);border-radius:50%;animation:pull-turn 1.5s linear infinite}
+.pull-orbit::after{content:"";width:22px;height:22px;border-radius:50%;background:var(--ink);animation:pull-breathe 1.8s ease-in-out infinite}
+.pull-progress.done .pull-orbit::before,.pull-progress.failed .pull-orbit::before{animation:none;border-color:var(--ink)}
+.pull-progress.done .pull-orbit::after,.pull-progress.failed .pull-orbit::after{animation:none}
+.pull-progress h1{font-size:24px;line-height:1.2;margin:0 0 8px}
+.pull-progress p{font-size:16px;line-height:1.5;margin:0}
+.pull-steps{list-style:none;padding:0;margin:22px 0 0}
+.pull-steps li{display:flex;gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--line);font-size:16px}
+.pull-steps .mark{display:grid;place-items:center;flex:0 0 28px;height:28px;border:1px solid var(--line);border-radius:50%;font-size:13px;font-weight:700}
+.pull-steps .done .mark{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.pull-steps .active .mark{border-color:var(--ink);box-shadow:0 0 0 4px rgba(35,45,56,.1)}
+.pull-foot{margin-top:16px;font-size:16px;line-height:1.5}
+.pull-foot a,.pull-foot button{display:inline-flex;align-items:center;font-size:16px;min-height:44px}
+@keyframes pull-turn{to{transform:rotate(360deg)}}
+@keyframes pull-breathe{50%{transform:scale(.72);opacity:.6}}
+@media(prefers-reduced-motion:reduce){.pull-orbit::before,.pull-orbit::after{animation:none}}
 </style>
 <link rel="stylesheet" href="client-ios.css">
 <link rel="stylesheet" href="soft-pull-approve-ios.css">
@@ -63,10 +81,12 @@ ol.next li:last-child{margin-bottom:0}
 (function () {
   var q = new URLSearchParams(location.search);
   var token = { org: q.get("org"), client: q.get("client"), exp: q.get("exp"), sig: q.get("sig") };
+  var portalMode = q.get("portal") === "1";
   var root = document.getElementById("app");
   var pricing = { base_cents: 3200, business_addon_cents: 1000, max_businesses: 20, base_display: "$32", business_addon_display: "$10" };
   var bizCount = 0;
   var bizDrafts = [];
+  var progressTimer = null;
 
   function esc(s) {
     return String(s == null ? "" : s)
@@ -79,10 +99,22 @@ ol.next li:last-child{margin-bottom:0}
   }
 
   function apiUrl() {
+    if (portalMode) return "/api/soft-pull-approve?portal=1";
     return "/api/soft-pull-approve?org=" + encodeURIComponent(token.org || "") +
       "&client=" + encodeURIComponent(token.client || "") +
       "&exp=" + encodeURIComponent(token.exp || "") +
       "&sig=" + encodeURIComponent(token.sig || "");
+  }
+
+  function authHeaders() {
+    var headers = { "content-type": "application/json", accept: "application/json" };
+    if (portalMode) {
+      try {
+        var session = localStorage.getItem("fh_token");
+        if (session) headers.authorization = "Bearer " + session;
+      } catch (_e) { /* HttpOnly session cookie remains available */ }
+    }
+    return headers;
   }
 
   function showErr(msg) {
@@ -90,7 +122,69 @@ ol.next li:last-child{margin-bottom:0}
       '<div class="mono">Fundhub · soft pull</div>' +
       '<h1>Link problem</h1>' +
       '<div class="err">' + esc(msg) + "</div>" +
-      '<p class="lede">Stay on the call and ask your advisor to send a fresh link.</p>';
+      (portalMode
+        ? '<p class="lede"><a href="/portal-login.html?mode=claim">Sign in to your portal</a> and open Soft pull again.</p>'
+        : '<p class="lede">Stay on the call and ask your advisor to send a fresh link.</p>');
+  }
+
+  function needsAccount(body) {
+    if (!body || body.error !== "account_required") return false;
+    location.replace("/portal-login.html?mode=claim");
+    return true;
+  }
+
+  function showProgress(data, opts) {
+    opts = opts || {};
+    var pull = data.pull || {};
+    var paid = data.paid === true;
+    var consent = !!(data.consent && data.consent.valid);
+    var review = opts.review === true;
+    var status = review ? "review" : pull.result_ready ? "complete" : (pull.status || "not_started");
+    var title = status === "complete" ? "Your assessment is ready" :
+      status === "failed" ? "Your assessment needs attention" :
+      review ? "Your payment needs review" :
+      !paid ? "Authorization saved" :
+      status === "processing" ? "Your report is being prepared" :
+      status === "queued" ? "Your report request is in line" :
+      "Your assessment is starting";
+    var detail = status === "complete" ? "Your report is on file. Your Fundhub advisor can walk through the actual results with you." :
+      status === "failed" ? "The report did not finish. Your advisor can check the request and tell you the next step." :
+      review ? "Your earlier payment does not cover the updated assessment total. Your advisor needs to review it before another request." :
+      !paid ? (opts.pay ? "The assessment starts after payment clears. You can keep this screen open while you finish payment." : "The assessment starts after payment clears. Ask your advisor for the payment link.") :
+      status === "processing" ? "The request is being processed. This screen updates when the report is ready." :
+      status === "queued" ? "Your request is saved. We are waiting for the report provider to begin." :
+      "Your authorization and payment are saved. We are waiting for the report request to start.";
+    var step = status === "complete" ? 4 : status === "processing" ? 3 :
+      status === "queued" ? 2 : paid && !review ? 2 : consent ? 1 : 0;
+    var labels = ["Authorization saved", "Payment recorded", status === "not_started" ? "Waiting for report request" : "Report requested", "Result ready"];
+    var steps = labels.map(function (label, i) {
+      var done = (i === 0 && consent) || (i === 1 && paid && !review) ||
+        (i === 2 && ["queued", "processing", "complete"].indexOf(status) >= 0) ||
+        (i === 3 && status === "complete");
+      var active = !done && i === step && !review && status !== "failed";
+      return '<li class="' + (done ? "done" : active ? "active" : "") + '"><span class="mark">' + (done ? "✓" : i + 1) + "</span>" + label + "</li>";
+    }).join("");
+    root.innerHTML = '<div class="mono">Fundhub · soft pull</div>' +
+      '<div class="pull-progress ' + (status === "complete" ? "done" : status === "failed" || review ? "failed" : "") + '" role="status" aria-live="polite">' +
+      '<div class="pull-orbit" aria-hidden="true"></div><h1>' + title + '</h1><p>' + detail +
+      '</p><ol class="pull-steps">' + steps + '</ol></div>' +
+      (opts.pay && !paid && !review ? '<a class="btn-pay" href="' + esc(opts.pay) + '">Pay ' + esc(opts.total || pricing.base_display) + ' assessment</a>' : "") +
+      '<div class="pull-foot"><a href="/app/client-portal.html">Back to my portal</a></div>';
+    if (progressTimer) clearTimeout(progressTimer);
+    if (consent && !review && status !== "complete" && status !== "failed") {
+      progressTimer = setTimeout(function () { refreshProgress(opts); }, 3000);
+    }
+  }
+
+  function refreshProgress(opts) {
+    fetch(apiUrl(), { credentials: "include", headers: authHeaders() })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (needsAccount(data)) return;
+        if (data && data.ok) showProgress(data, opts);
+        else progressTimer = setTimeout(function () { refreshProgress(opts); }, 5000);
+      })
+      .catch(function () { progressTimer = setTimeout(function () { refreshProgress(opts); }, 5000); });
   }
 
   function updateTotal() {
@@ -224,17 +318,20 @@ ol.next li:last-child{margin-bottom:0}
     root.innerHTML =
       '<div class="mono">Fundhub · soft pull</div>' +
       "<h1>Approve your soft-pull assessment</h1>" +
-      '<p class="lede">Hi ' + esc(name) + ". Fill this out while you stay on the Google Meet. " +
-      "It is a soft inquiry — it does not hurt your score. Authorize first, then pay the total shown below.</p>" +
-      (already ? '<div class="ok">Consent is already on file. You can update your details below if needed, then pay.</div><br>' : "") +
+      '<p class="lede">Hi ' + esc(name) + ". You can authorize now, even before your call. " +
+      "Your information is saved securely. This is a soft inquiry and does not hurt your score. " +
+      "The pull starts only after your authorization and payment are both on file.</p>" +
+      (data.paid ? '<div class="ok">A previous assessment payment is on file. If you add businesses or change the total, your advisor may need to review the amount.</div><br>' : "") +
+      (already ? '<div class="ok">Your authorization is saved. You can update your details below if needed.</div><br>' : "") +
       '<div class="approval-layout"><aside class="approval-guidance" aria-label="Authorization details"><div class="card"><h2>Soft pull authorization</h2>' +
       '<div class="disc">' + esc((data.disclosure && data.disclosure.text) || "") + "</div>" +
       '<p class="fine">Version ' + esc((data.disclosure && data.disclosure.version) || "—") + "</p></div>" +
       '<div class="card"><h2>What happens next</h2><ol class="next">' +
-      "<li>You fill this in (optional businesses at the bottom) and submit. Your advisor never sees your Social Security number.</li>" +
+      "<li>Your information is sent securely and saved for this authorization. Your advisor never sees your Social Security number.</li>" +
+      (data.paid ? "<li>A previous payment is on file. Any changed total must be reviewed before another pull.</li>" :
       "<li>You pay the total shown — " + esc(pricing.base_display) + " soft pull plus " +
-      esc(pricing.business_addon_display) + " per business.</li>" +
-      "<li>Once that payment clears, we request the report. Nothing else is needed from you.</li>" +
+      esc(pricing.business_addon_display) + " per business.</li>") +
+      "<li>When authorization and payment are both on file, we request the report. Nothing else is needed from you.</li>" +
       "</ol></div></aside>" +
       '<form id="f"><h2>Your details</h2><p class="form-intro">Enter your legal information to authorize the assessment.</p>' +
       '<label for="granted_name">Full legal name</label>' +
@@ -312,10 +409,6 @@ ol.next li:last-child{margin-bottom:0}
       }
 
       var body = {
-        org: token.org,
-        client: token.client,
-        exp: token.exp,
-        sig: token.sig,
         granted_name: document.getElementById("granted_name").value,
         ssn: document.getElementById("ssn").value,
         dob: document.getElementById("dob").value,
@@ -325,12 +418,20 @@ ol.next li:last-child{margin-bottom:0}
         postal_code: addr.postal_code,
         businesses: businesses
       };
+      if (!portalMode) {
+        body.org = token.org;
+        body.client = token.client;
+        body.exp = token.exp;
+        body.sig = token.sig;
+      }
       fetch("/api/soft-pull-approve", {
         method: "POST",
-        headers: { "content-type": "application/json", accept: "application/json" },
+        credentials: "include",
+        headers: authHeaders(),
         body: JSON.stringify(body)
       }).then(function (r) { return r.json().then(function (j) { return { status: r.status, body: j }; }); })
         .then(function (r) {
+          if (needsAccount(r.body)) return;
           if (!r.body || !r.body.ok) {
             btn.disabled = false;
             msg.innerHTML = '<div class="err">' + esc((r.body && (r.body.message || r.body.error)) || "Could not save") + "</div>";
@@ -339,15 +440,8 @@ ol.next li:last-child{margin-bottom:0}
           var pay = r.body.checkout && r.body.checkout.checkout_url;
           var total = (r.body.pricing && r.body.pricing.total_display) ||
             (r.body.checkout && r.body.checkout.amount_display) || pricing.base_display;
-          root.innerHTML =
-            '<div class="mono">Fundhub · soft pull</div>' +
-            "<h1>Consent saved</h1>" +
-            '<div class="ok">Your soft-pull authorization is on file. ' +
-            esc(r.body.next || ("Pay " + total + " next.")) + "</div>" +
-            (pay
-              ? '<a class="btn-pay" href="' + esc(pay) + '">Pay ' + esc(total) + " assessment</a>"
-              : '<p class="lede" style="margin-top:14px">Ask your advisor for the pay link for ' + esc(total) + ".</p>") +
-            '<p class="lede" style="margin-top:14px">After payment clears, the soft pull runs automatically. Stay on the Meet.</p>';
+          showProgress(r.body, { pay: pay, total: total, review: r.body.payment_review_required });
+          if (!r.body.payment_review_required) refreshProgress({ pay: pay, total: total });
         })
         .catch(function () {
           btn.disabled = false;
@@ -356,19 +450,21 @@ ol.next li:last-child{margin-bottom:0}
     });
   }
 
-  if (!token.org || !token.client || !token.exp || !token.sig) {
+  if (!portalMode && (!token.org || !token.client || !token.exp || !token.sig)) {
     showErr("This page needs a full link from your advisor.");
     return;
   }
 
-  fetch(apiUrl(), { headers: { accept: "application/json" } })
+  fetch(apiUrl(), { credentials: "include", headers: authHeaders() })
     .then(function (r) { return r.json().then(function (j) { return { status: r.status, body: j }; }); })
     .then(function (r) {
+      if (needsAccount(r.body)) return;
       if (!r.body || !r.body.ok) {
         showErr((r.body && (r.body.message || r.body.error)) || "Could not open this link.");
         return;
       }
-      renderForm(r.body);
+      if (r.body.consent && r.body.consent.valid) showProgress(r.body);
+      else renderForm(r.body);
     })
     .catch(function () { showErr("Could not reach the server."); });
 })();

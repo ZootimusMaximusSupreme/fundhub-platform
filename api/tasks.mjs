@@ -92,6 +92,8 @@ export default async function handler(req, res) {
     // Always scope to the session org. Without this, ?client_id=<foreign uuid>
     // and unfiltered queue reads leaked other companies' work.
     add("t.org_id = ?", orgId);
+    // Keep staff-only tasks, but hide work attached to archived clients.
+    where.push("(t.client_id IS NULL OR c.id IS NOT NULL)");
 
     const done = (q.done ?? "false").toLowerCase();
     if (done === "false") where.push("t.done = false");
@@ -140,7 +142,8 @@ export default async function handler(req, res) {
              s.name AS assignee_name,
              TRIM(COALESCE(c.first_name,'') || ' ' || COALESCE(c.last_name,'')) AS client_name
         FROM tasks t
-        LEFT JOIN clients c ON c.id = t.client_id
+        LEFT JOIN clients c ON c.id = t.client_id AND c.org_id = t.org_id
+          AND c.custom_fields->>'crm_archived_at' IS NULL
         LEFT JOIN staff   s ON s.id = t.assignee_staff_id
        ${where.length ? "WHERE " + where.join(" AND ") : ""}
        ORDER BY t.due_at ASC NULLS LAST, t.created_at DESC

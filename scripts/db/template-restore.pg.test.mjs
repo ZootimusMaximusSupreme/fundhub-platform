@@ -64,14 +64,15 @@ test("497 carries exactly the seed copy it originally restored", { skip: SKIP },
   });
 });
 
-test("seed 298 updates the booking email after the historical restore", { skip: SKIP }, async () => {
+test("seed 300 replaces the web detour with a first-party portal claim", { skip: SKIP }, async () => {
   await inRollback(async (client) => {
     const staged = await stageSeedRows(client, { root: ROOT });
     const email = staged.find((row) => row.template_key === "EMAIL-S04-01-CONFIRM");
     assert.ok(email);
     assert.match(email.body, /\{\{app_download\.url\}\}/);
     assert.match(email.body, /\{\{call_confirm\.url\}\}/);
-    assert.match(email.body, /\{\{web_portal\.url\}\}/);
+    assert.doesNotMatch(email.body, /\{\{web_portal\.url\}\}/, "the old web sign-in detour is gone");
+    assert.match(email.body, /Set up my portal and confirm my call/, "the claim action remains");
     assert.notEqual(email.body, ROWS.find((row) => row.template_key === email.template_key).body);
   });
 });

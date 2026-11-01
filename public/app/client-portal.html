@@ -403,6 +403,9 @@ a.btn-unlock{display:inline-block;text-decoration:none}
 .tab.on{background:transparent;border-color:var(--ink);color:var(--text);box-shadow:inset 0 -2px 0 var(--ink)}
 .tabpane{display:none}
 .tabpane.on{display:block}
+.soft-pull-entry{display:inline-flex;align-items:center;min-height:48px;margin-top:12px;padding:10px 16px;border-radius:8px;background:var(--ink);color:var(--paper);text-decoration:none;font-size:var(--fs-body);font-weight:700}
+.soft-pull-entry[hidden]{display:none}
+#acct-tabs .tab[hidden],#acct .tabpane[hidden]{display:none}
 .pay-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);font-size:var(--fs-body)}
 .pay-row:last-child{border-bottom:none}
 .pay-row .pn{font-weight:600}
@@ -1015,15 +1018,22 @@ footer.statusbar{flex-shrink:0;height:26px;background:var(--ink);display:flex;al
         <summary>
           <span class="ac-chev">›</span>
           <span class="ac-t">Account &amp; history</span>
-          <span class="ac-s">Payments · Agreements · Documents · Activity · Messages</span>
+          <span class="ac-s">Soft pull · Payments · Agreements · Documents · Activity · Messages</span>
         </summary>
         <div class="acct-bd">
           <div class="tabs" id="acct-tabs" role="tablist" aria-label="Account and history">
+            <button class="tab" type="button" role="tab" aria-selected="false" aria-controls="tp-soft-pull" data-tab="soft-pull">Soft pull</button>
             <button class="tab on" type="button" role="tab" aria-selected="true"  aria-controls="tp-pay"  data-tab="pay">Payments</button>
             <button class="tab"    type="button" role="tab" aria-selected="false" aria-controls="tp-agree" data-tab="agree">Agreements</button>
             <button class="tab"    type="button" role="tab" aria-selected="false" aria-controls="tp-docs" data-tab="docs">Documents</button>
             <button class="tab"    type="button" role="tab" aria-selected="false" aria-controls="tp-act"  data-tab="act">Activity</button>
             <button class="tab"    type="button" role="tab" aria-selected="false" aria-controls="tp-msg"  data-tab="msg">Messages</button>
+          </div>
+
+          <div class="tabpane" id="tp-soft-pull" role="tabpanel" data-pane="soft-pull">
+            <h2>Soft-pull authorization</h2>
+            <p id="soft-pull-entry-status">You can authorize now. Your information is sent securely and saved. The pull starts when authorization and payment are both on file.</p>
+            <a class="soft-pull-entry" id="soft-pull-entry-link" href="/app/soft-pull-approve.html?portal=1">Authorize my soft pull</a>
           </div>
 
           <div class="tabpane on" id="tp-pay" role="tabpanel" data-pane="pay">
@@ -3149,6 +3159,12 @@ document.addEventListener("DOMContentLoaded", async function () {
     var whoRole = who && who.staff && who.staff.role;
     if (whoRole) sessionRole = String(whoRole).trim().toLowerCase();
   }
+  if (STAFF_ROLES[roleHint()]) {
+    var softPullTab = document.querySelector('#acct-tabs [data-tab="soft-pull"]');
+    var softPullPane = document.getElementById('tp-soft-pull');
+    if (softPullTab) softPullTab.hidden = true;
+    if (softPullPane) softPullPane.hidden = true;
+  }
 
   /* ══ THE PROGRESS LINK HAS TO SAY WHOSE FILE IT MEANS ════════════════════
      Walk finding 15, 2026-09-06: "See exactly where your file stands" opened a
@@ -3249,6 +3265,29 @@ document.addEventListener("DOMContentLoaded", async function () {
       paintCallConfirm(data.upcoming_call);
       docsOnFile = Array.isArray(data.documents) ? data.documents : [];
       softPullDone = data.soft_pull_complete === true;
+      var softPullStatus = document.getElementById("soft-pull-entry-status");
+      var softPullLink = document.getElementById("soft-pull-entry-link");
+      if (!STAFF_ROLES[roleHint()] && softPullStatus && softPullLink) {
+        var softHeaders = { accept: "application/json" };
+        try {
+          var softToken = localStorage.getItem("fh_token");
+          if (softToken) softHeaders.authorization = "Bearer " + softToken;
+        } catch (_e) { /* the session cookie may still be available */ }
+        fetch("/api/soft-pull-approve?portal=1", { credentials: "include", headers: softHeaders })
+          .then(function (r) { return r.json(); })
+          .then(function (s) {
+            if (!s || !s.ok) return;
+            var pull = s.pull || {};
+            if (pull.result_ready) softPullStatus.textContent = "Your assessment result is on file. Open it to see the current status.";
+            else if (pull.status === "failed") softPullStatus.textContent = "Your report request needs attention. Your advisor can check it.";
+            else if (pull.status === "processing") softPullStatus.textContent = "Your report is being prepared. Open this screen to watch its status.";
+            else if (pull.status === "queued") softPullStatus.textContent = "Your report is requested. Open this screen to watch its status.";
+            else if (s.consent && s.consent.valid) softPullStatus.textContent = s.paid
+              ? "Authorization and payment are saved. We are waiting for the report request to start."
+              : "Authorization saved. Payment is the next step before the report request.";
+            softPullLink.textContent = s.consent && s.consent.valid ? "View my assessment status" : "Authorize my soft pull";
+          }).catch(function () { /* leave the authorization action available */ });
+      }
       sloPaid = data.slo_paid === true;
       if (!STAFF_ROLES[roleHint()]) paintDocs(docsOnFile);
       /* THE PAYMENTS TAB, FOR THE PERSON WHOSE MONEY IT IS. Staff already have

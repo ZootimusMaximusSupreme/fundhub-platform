@@ -79,9 +79,9 @@ function payload(tier, visual, businesses) {
     engine: {
       available: true, tier, label: tier, fico: { ex: 650, tu: 640, eq: 655 },
       total: visual.todayTotal, afterFix: null, negItems: null, reasons: [], plan: [],
-      totalBasis: businesses.length ? "personal_plus_business" : "personal_only", sample: true, visual,
+      totalBasis: businesses.length ? "personal_plus_business" : "personal_only", sample: false, visual,
     },
-    soft_pull: null,
+    soft_pull: { consent_valid: true, diagnostic_paid: true, pull_status: "complete", crs_result_id: "visual-proof-result", sample: false },
     offers: offersForClient(),
   };
 }

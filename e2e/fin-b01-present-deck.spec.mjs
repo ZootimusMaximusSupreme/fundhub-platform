@@ -63,6 +63,28 @@ async function open(page, { tier, deck, invoices, outbound } = {}) {
 
 const toast = (page) => page.locator(".toast");
 
+test("client Present shows live assessment progress at phone width and waits for a real result", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  let pull = { consent_valid: false, diagnostic_paid: false, pull_status: null, crs_result_id: null, sample: false };
+  await openScreen(page, `/app/present.html?contact=${CLIENT_ID}`, CLOSER, {
+    "/api/read/closer-deck": (route) => json(route, { ...DECK("FULL_FUNDING"), soft_pull: pull }),
+    "/api/read/agent-context": { ok: true, context: {} }
+  });
+  await page.locator('[data-act="phase:03"]').click();
+  await page.locator('[data-act="next"]').click();
+  await expect(page.locator(".client .h1")).toHaveText("Waiting for your authorization");
+  await expect(page.locator(".client")).not.toContainText("scanning experian");
+  await page.locator('[data-act="next"]').click();
+  await expect(page.locator(".client .slide-hd")).toContainText("S-06");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  pull = { consent_valid: true, diagnostic_paid: true, pull_status: "processing", crs_result_id: null, sample: false };
+  await expect(page.locator(".client .h1")).toHaveText("Your report is being prepared", { timeout: 7000 });
+  pull = { ...pull, pull_status: "complete", crs_result_id: "crs-test" };
+  await expect(page.locator(".client .h1")).toHaveText("Your report is ready", { timeout: 7000 });
+  await page.locator('[data-act="next"]').click();
+  await expect(page.locator(".client .slide-hd")).toContainText("S-07");
+});
+
 test.describe("closer deck: Send pay link", () => {
   test("it sends this client with the offer the deck chose and no sale motion, once", async ({ page }) => {
     const calls = await open(page);

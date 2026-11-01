@@ -762,6 +762,7 @@ export const CLIENTS_LIST_SQL = `
   LEFT JOIN messages     m   ON m.client_id  = c.id AND m.org_id = c.org_id
   WHERE c.org_id = $1
     AND ($3::boolean OR COALESCE(c.is_demo, false) = false)
+    AND c.custom_fields->>'crm_archived_at' IS NULL
   GROUP BY c.id
   ORDER BY c.created_at DESC
   LIMIT $2

@@ -105,8 +105,9 @@ const LOOKS_LIKE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     PORTAL_BASE_URL names the site. Netlify sets URL on a production build and
     DEPLOY_PRIME_URL on a preview, so a deploy that sets neither of ours still
     mails a link to itself rather than to the wrong host. */
-export function magicLinkUrl(token, env = process.env) {
-  return `${portalBase(env)}/portal-login.html?t=${encodeURIComponent(token)}`;
+export function magicLinkUrl(token, env = process.env, { bookingClaim = false } = {}) {
+  return `${portalBase(env)}/portal-login.html?t=${encodeURIComponent(token)}` +
+    (bookingClaim ? "&booking_claim=1" : "");
 }
 
 /** portalLoginUrl — the same page with NO token on it.
@@ -128,7 +129,7 @@ export function portalLoginUrl(env = process.env) {
 /* PORTAL_BASE_URL names the site. Netlify sets URL on a production build and
    DEPLOY_PRIME_URL on a preview, so a deploy that sets neither of ours still
    points at itself rather than at the wrong host. */
-function portalBase(env = process.env) {
+export function portalBase(env = process.env) {
   return String(
     env.PORTAL_BASE_URL || env.DEPLOY_PRIME_URL || env.URL || "https://fundhub.ai"
   ).replace(/\/+$/, "");
@@ -148,6 +149,7 @@ export async function requestMagicLink(db, {
   email, ip, userAgent, orgId, env = process.env,
   ttlMinutes = LINK_TTL_MINUTES,
   queueEmail = true,
+  bookingClaim = false,
   /* Optional stable id for sendTemplated's provider_ref. Pay / webhook
      callers pass one so a replayed event cannot queue a second mail.
      Self-service leave this unset — each request is its own send. */
@@ -206,7 +208,7 @@ export async function requestMagicLink(db, {
      The rendered body carries the URL, and therefore the cleartext token. That
      is what an email is; it is the one place the token is written down, and it
      is why the link expires in minutes and dies on first use. */
-  const url = magicLinkUrl(token, env);
+  const url = magicLinkUrl(token, env, { bookingClaim });
   let sent = false;
   if (queueEmail) {
     const queued = await sendTemplated(db, {
