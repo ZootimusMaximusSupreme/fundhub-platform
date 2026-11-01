@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
 <title>Fundhub, Prime Data</title>
-<meta name="description" content="A bank reads layers of your file that a consumer credit site report never prints. Fundhub pulls those layers from the bureaus and LexisNexis directly, and handles them the way that access requires.">
+<meta name="description" content="A bank reads layers of your file that a consumer credit site report never prints. Fundhub pulls those layers from the bureaus and LexisNexis, reads your business file too, and handles your data the way that access requires.">
 <!--
   Deck PD · Prime data (the file keeps its name, your-data-is-safe)
   Lane: Every lane (Funding, and Blueprint and Repair)
@@ -16,6 +16,10 @@
           deeper data, and handles that data the way that access requires.
 
   Rewritten 2026-10-31 on Chris's slide framework (see pre-underwriting.html).
+  Fix round 2026-10-31 (copy reviewer): PD-07 (the parties) cut, so the old PD-08 is now PD-07.
+  PD-02 keeps the four names, without the section 4 clause (who-we-are shows it). PD-03 circles the
+  one late. PD-04 is the Experian Business check's own rows and fixes. PD-05 shows the sample's
+  items under the three letters, labeled Sample. No code size on this deck.
 
   Chris's direction (2026-10-31, second pass, saved on the board, section 6e):
   "It's about trust, but you're also selling them." Direct relationships with
@@ -796,9 +800,9 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
   <section class="slide dark">
     <p class="eyebrow">PD-01 / Prime data</p>
     <h2>A bank reads your file several layers deeper than a consumer credit site report goes.</h2>
-    <p class="lede">Most funding companies stop at that site report, and there's a way to read your own file at the bank's depth first.</p>
+    <p class="lede">Most funding companies stop at that site report. You can read your own file at the bank's depth first.</p>
     <ul class="lines">
-      <li>Here's the first layer on a sample TransUnion report: a 706, with the bureau's own reasons printed under it.</li>
+      <li>This sample TransUnion report shows the first layer: a 706, with the bureau's own reasons printed under it.</li>
       <li>A bank weighs those reason lines when it decides on you, and its denial letter repeats them.</li>
     </ul>
     <figure class="pic">
@@ -822,11 +826,10 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
   </section>
 
   <section class="slide">
-    <p class="eyebrow">PD-02 / Where it comes from</p>
-    <h2>Your file comes straight from all three bureaus, with LexisNexis on the business side.</h2>
+    <p class="eyebrow">PD-02 / Who we pull from</p>
+    <h2>We have direct relationships with Experian, Equifax, TransUnion and LexisNexis.</h2>
     <ul class="lines">
-      <li>Each bureau sends its own FICO 9 report on you, through relationships we hold directly.</li>
-      <li>That access comes with fraud checks and compliance checks, and section 4 of your agreement names both.</li>
+      <li>Your report from each bureau is a FICO 9 report, and LexisNexis matches your business.</li>
       <li>You see the same file a bank pulls, from the same sources, before any bank pulls it.</li>
     </ul>
     <figure class="pic">
@@ -844,40 +847,29 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
           <text class="lb" x="142" y="82">TOP BUSINESS MATCH</text>
         </svg>
       </div>
-      <div class="real" role="img" aria-label="Section 4 of the Fundhub funding agreement. Marked: request available LexisNexis information, perform soft credit inquiries, and use analytics, fraud checks, and compliance checks needed for this engagement. Marked: Fundhub will use and protect your information for the service and related security checks.">
-        <div class="rh2">Funding Agreement · Section 4</div>
-        <p class="clause">You authorize Fundhub to review your business profile and records in its system, <mark>request available LexisNexis information, perform soft credit inquiries, and use analytics, fraud checks, and compliance checks needed for this engagement</mark>. A hard inquiry or another action that needs separate consent still requires that consent. <mark>Fundhub will use and protect your information for the service and related security checks.</mark></p>
-        <span class="chip on"><span class="cd"></span>Written in your agreement</span>
-      </div>
-      <p class="real-src">The funding agreement, word for word.</p>
     </figure>
   </section>
 
   <section class="slide">
-    <p class="eyebrow">PD-03 / The cost</p>
-    <h2>One 30-day late sits inside this sample's payment pattern, month by month.</h2>
+    <p class="eyebrow">PD-03 / The full record</p>
+    <h2>A dispute letter names the month and code of a late, and only the full record shows both.</h2>
     <ul class="lines">
-      <li>The full record shows the month of the late, the subscriber code and the rating code, and a dispute has to name fields like these.</li>
-      <li>Each inquiry arrives tagged with its bureau and the company that pulled it, and public records come through too.</li>
+      <li>On this sample, one month of a closed auto loan carries a 1, the code for a 30-day late.</li>
       <li>With only a summary, you're guessing at the line a bank holds against you.</li>
     </ul>
     <figure class="pic">
-      <div class="real" role="img" aria-label="Account 2 of the TransUnion section of a sample Fundhub credit report. Toyota Motor Credit, closed, as agreed, account identifier SAMPLE-TOYO-7714. Subscriber code 621AU00318, rating code C, one 30-day late, 60 months reviewed, a 60-month term. The payment pattern, month by month, shows every month paid as agreed except one, marked: the one late, month by month.">
+      <div class="real" role="img" aria-label="Account 2 of the TransUnion section of a sample Fundhub credit report. Toyota Motor Credit, closed, as agreed, account identifier SAMPLE-TOYO-7714. The payment pattern runs month by month: every month is C, paid as agreed, except one month, circled, with a 1: the month and the code of the 30-day late. Subscriber code 621AU00318, rating code C, one 30-day late.">
         <div class="rh2">TransUnion · Account 2</div>
         <p class="model">TOYOTA MOTOR CREDIT · Closed · As Agreed · Account identifier SAMPLE-TOYO-7714</p>
+        <p class="clause" style="font-family:var(--mono);font-size:.875rem;overflow-wrap:anywhere">Payment pattern: CCCCCCCCCCCC<wbr>CCCCCCCCCCCCC<strong style="display:inline-block;min-width:1.6em;margin:0 2px;text-align:center;border:2px solid var(--ink);border-radius:50%;background:var(--ss-flag)">1</strong><wbr>CCCCCCCCCCC<wbr>CCCCCCCCCCC</p>
+        <span class="chip bad"><span class="cd"></span>The month and code of the late</span>
         <table>
           <tbody>
             <tr><td>Subscriber code</td><td>621AU00318</td></tr>
             <tr><td>Rating code</td><td>C</td></tr>
             <tr><td>30-day lates</td><td>1</td></tr>
-            <tr><td>Months reviewed</td><td>60</td></tr>
-            <tr><td>Term (months)</td><td>60</td></tr>
           </tbody>
         </table>
-        <ul>
-          <li class="flag">Payment pattern: CCCCCCCCCCCC<wbr>CCCCCCCCCCCCC<strong>1</strong><wbr>CCCCCCCCCCC<wbr>CCCCCCCCCCC<br><span class="chip bad"><span class="cd"></span>The one late, month by month</span></li>
-        </ul>
-        <span class="chip on"><span class="cd"></span>Past the summary</span>
       </div>
       <p class="real-src">Sample report. Simulated file, no bureau contacted.</p>
     </figure>
@@ -887,57 +879,47 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     <p class="eyebrow">PD-04 / Your business</p>
     <h2>What does a bank see when it looks up your business?</h2>
     <ul class="lines">
-      <li>We look up your company in LexisNexis Top Business, and you pick it from the match list, so no one guesses which company is yours.</li>
-      <li>Experian Business shows your business score, blemishes, card balances, and the code and name flags a lender checks, each with its exact fix.</li>
-      <li>Your personal file goes first, and then each business gets weighed separately, on its own record.</li>
+      <li>We look up your company in LexisNexis Top Business. You pick it from the match list, so no one guesses which company is yours.</li>
+      <li>The Experian Business check reads five things a lender looks at, and each one comes with its exact fix.</li>
     </ul>
     <figure class="pic">
-      <div class="sheet">
-        <svg class="bv" viewBox="0 0 320 244" role="img" aria-label="A flowchart. Your personal file from Experian, Equifax and TransUnion, and your business file from LexisNexis Top Business and Experian Business, both go into one read the way a bank reads it. Then only the banks that fit your file. Before any application goes out.">
-          <rect class="pn" x="1" y="1" width="152" height="86" rx="10"/>
-          <text class="lb" x="13" y="21">PERSONAL FILE</text>
-          <text class="caps" x="13" y="43">EXPERIAN</text>
-          <text class="caps" x="13" y="60">EQUIFAX</text>
-          <text class="caps" x="13" y="77">TRANSUNION</text>
-          <rect class="pn" x="167" y="1" width="152" height="86" rx="10"/>
-          <text class="lb" x="179" y="21">BUSINESS FILE</text>
-          <text class="caps" x="179" y="43">LEXISNEXIS</text>
-          <text class="caps" x="179" y="60">TOP BUSINESS</text>
-          <text class="caps" x="179" y="77">EXPERIAN BUSINESS</text>
-          <path class="cn ink" d="M77 88V108" marker-end="url(#fh-arrow)"/>
-          <path class="cn ink" d="M243 88V108" marker-end="url(#fh-arrow)"/>
-          <rect class="pn-ink" x="20" y="112" width="280" height="44" rx="8"/>
-          <text class="on-ink" x="160" y="138" text-anchor="middle">Read the way a bank reads it</text>
-          <rect x="32" y="150" width="256" height="3" rx="1.5" fill="url(#fh-spectrum)"/>
-          <path class="cn ink" d="M160 157V177" marker-end="url(#fh-arrow)"/>
-          <rect class="tint-fit edge-fit" x="20" y="181" width="280" height="42" rx="8"/>
-          <text x="160" y="207" text-anchor="middle">Only the banks that fit your file</text>
-          <text class="lb" x="160" y="241" text-anchor="middle">BEFORE ANY APPLICATION GOES OUT</text>
-        </svg>
+      <div class="real" role="img" aria-label="The Experian Business check from Fundhub's business report, in its own words. What it reads, and the fix it gives. Business credit score: pay every business account on time. Blemishes: have the release filed so Experian Business updates it. Business balances: pay it down under 10% before you apply. NAICS code: use the code that matches what you sell, from the low-risk list. Business name: one exact name everywhere.">
+        <div class="rh2">Experian Business check</div>
+        <table>
+          <thead><tr><th>What it reads</th><th>The fix it gives</th></tr></thead>
+          <tbody>
+            <tr><td>Business credit score</td><td>Pay every business account on time.</td></tr>
+            <tr><td>Blemishes</td><td>Have the release filed so Experian Business updates it.</td></tr>
+            <tr><td>Business balances</td><td>Pay it down under 10% before you apply.</td></tr>
+            <tr><td>NAICS code</td><td>Use the code that matches what you sell, from the low-risk list.</td></tr>
+            <tr><td>Business name</td><td>One exact name everywhere.</td></tr>
+          </tbody>
+        </table>
+        <span class="chip on"><span class="cd"></span>What a bank sees on your business</span>
       </div>
+      <p class="real-src">The Experian Business check in Fundhub's business report, in its own words.</p>
     </figure>
   </section>
 
   <section class="slide">
-    <p class="eyebrow">PD-05 / The after</p>
+    <p class="eyebrow">PD-05 / Three letters</p>
     <h2>When every letter names the exact field, your file gets ready for funding quicker.</h2>
     <ul class="lines">
-      <li>Our own code sorts every finding into a tradeline dispute, a personal information cleanup or an inquiry removal, straight from the bureau's fields.</li>
+      <li>Our own code sorts each finding into one of three letters, built from the bureau's own fields.</li>
       <li>I built it on deeper data because it gets inquiries, accounts, addresses and names off faster.</li>
-      <li>A file that's ready earlier gets your hiring, your jobs and your ads paid for with credit sooner, and your savings stay put.</li>
     </ul>
     <figure class="pic">
-      <div class="real" role="img" aria-label="Lines from Fundhub's letter catalog code, word for word. The letter types personal info and inquiry removal. Then the sort: a finding with a personal information rule goes to the personal letter, a finding with an inquiry rule goes to the inquiry letter, and everything else goes to the tradeline letter. It returns tradeline, personal and inquiry.">
-        <div class="rh2">letter-catalog.mjs · Fundhub's own code</div>
-        <p class="clause"><code style="font-family:var(--mono)">PERSONAL_INFO: "personal_info",</code></p>
-        <p class="clause"><code style="font-family:var(--mono)">INQUIRY_REMOVAL: "inquiry_removal"</code></p>
-        <p class="clause"><code style="font-family:var(--mono)"><mark>if (PERSONAL_RULES.has(v.ruleId)) personal.push(v);</mark></code></p>
-        <p class="clause"><code style="font-family:var(--mono)"><mark>else if (INQUIRY_RULES.has(v.ruleId)) inquiry.push(v);</mark></code></p>
-        <p class="clause"><code style="font-family:var(--mono)"><mark>else tradeline.push(v);</mark></code></p>
-        <p class="clause"><code style="font-family:var(--mono)">return { tradeline, personal, inquiry };</code></p>
-        <span class="chip on"><span class="cd"></span>Three letters, from the fields</span>
+      <div class="real" role="img" aria-label="Fundhub's three letters, with sample items. Round 1 Metro 2 dispute, for accounts: Toyota Motor Credit, subscriber code 621AU00318, one 30-day late. Personal information cleanup, for names and old addresses. Inquiry removal, for inquiries: JPMCB Card Services on Equifax.">
+        <div class="rh2">Three letters, sorted by our own code</div>
+        <ul>
+          <li><b>Round 1 Metro 2 dispute</b> · accounts</li>
+          <li class="flag">TOYOTA MOTOR CREDIT · 621AU00318 · one 30-day late</li>
+          <li><b>Personal information cleanup</b> · names and old addresses</li>
+          <li><b>Inquiry removal</b> · inquiries</li>
+          <li class="flag">JPMCB CARD SERVICES · Equifax</li>
+        </ul>
       </div>
-      <p class="real-src">Fundhub's letter catalog code, word for word.</p>
+      <p class="real-src">Sample items, simulated file. Each sits under its kind of letter.</p>
     </figure>
   </section>
 
@@ -945,9 +927,8 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     <p class="eyebrow">PD-06 / Handled right</p>
     <h2>Your most sensitive identifier gets stripped out before your report is ever saved.</h2>
     <ul class="lines">
-      <li>Only the last four stay, masked, and the full identifier is locked away encrypted, with every read of it logged.</li>
-      <li>Our privacy policy says your data is encrypted with AES-256 while it moves and while it's stored, on SOC 2 audited providers.</li>
-      <li>We don't sell your personal information, and that's written in two places.</li>
+      <li>Only the last four stay, masked. The full identifier is locked away encrypted, and every read of it is logged.</li>
+      <li>Our privacy policy says your data is encrypted with AES-256, both while it moves and while it's stored.</li>
     </ul>
     <figure class="pic">
       <div class="real" role="img" aria-label="Section 6 of the Fundhub privacy policy. Marked: data is encrypted in transit and at rest using AES-256 across the platform and its infrastructure, which is built on SOC 2 audited providers. Then: no method of transmission or storage is completely secure, and we cannot guarantee absolute security. And section 11.2 of the Capital Blueprint agreement, marked: we do not sell your personal information.">
@@ -961,35 +942,14 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
   </section>
 
-  <section class="slide">
-    <p class="eyebrow">PD-07 / Who signs</p>
-    <h2>Fundhub LLC signs your agreement from a street address, under Arizona law.</h2>
-    <ul class="lines">
-      <li>The first line of the agreement names us, a Florida company operating in Arizona, with our street address next to it.</li>
-      <li>Section 8 says your calls with us get recorded and kept, and that AI tools and AI agents work on your file.</li>
-      <li>You know who you're dealing with, where to find us and which law covers the deal, before you pay.</li>
-    </ul>
-    <figure class="pic">
-      <div class="real" role="img" aria-label="The Fundhub funding agreement. The parties, marked: Fundhub LLC, a Florida limited liability company operating in Arizona, 218 Bostick Rd 64, Bowling Green, FL 33834. Section 7, marked: Arizona law governs this agreement to the extent permitted by law. Section 8, marked: calls between you and Fundhub may be recorded and kept; Fundhub uses artificial intelligence in its service. AI tools analyze your credit file, your funding file and the documents you give us. AI agents work on your file.">
-        <div class="rh2">Funding Agreement · The parties</div>
-        <p class="clause">Between: <mark>Fundhub LLC, a Florida limited liability company operating in Arizona, 218 Bostick Rd 64, Bowling Green, FL 33834</mark></p>
-        <div class="rh2">Sections 7 and 8</div>
-        <p class="clause"><mark>Arizona law governs this agreement to the extent permitted by law.</mark></p>
-        <p class="clause">Recorded calls. <mark>Calls between you and Fundhub may be recorded and kept.</mark></p>
-        <p class="clause">Artificial intelligence. <mark>Fundhub uses artificial intelligence (AI) in its service.</mark> AI tools analyze your credit file, your funding file and the documents you give us. AI agents work on your file.</p>
-        <span class="chip on"><span class="cd"></span>Read together before you pay</span>
-      </div>
-      <p class="real-src">The funding agreement, word for word.</p>
-    </figure>
-  </section>
+  
 
   <section class="slide dark">
-    <p class="eyebrow">PD-08 / Your call</p>
+    <p class="eyebrow">PD-07 / Your call</p>
     <h2>Your strategy call puts your own file on the screen, at the depth a bank reads.</h2>
     <ul class="lines">
       <li>We pull your report only once you join the call, with one soft pull that leaves your score alone.</li>
-      <li>That one pull gets matched against the banks that lend to files like yours, on the same data feeds they use.</li>
-      <li>Whatever you decide, you keep the reports.</li>
+      <li>Your file then gets matched to the banks that lend to files like yours, on the same data feeds they use.</li>
     </ul>
     <figure class="pic">
       <div class="real" role="img" aria-label="The soft pull authorization form. Marked: this is a soft pull. It does not lower my credit score and lenders do not see it as an application for credit. Marked: I am giving permission for one pull, for the purpose written above. Then: a copy of what I signed, and the time I signed it, is kept on file and I can ask for it at any time.">

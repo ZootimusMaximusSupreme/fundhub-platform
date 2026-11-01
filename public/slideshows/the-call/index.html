@@ -9,6 +9,7 @@
 <!--
   Deck TC · The call
   Rewritten 2026-10-31 on Chris's slide framework (see pre-underwriting.html).
+  Fix round 2026-10-31 (copy reviewer): TC-02 and TC-03 now use the red-flag sample (marketing/slideshows/samples/red-flag-file.result.json); TC-01 flow shortened so step 6 shows; TC-06 drawing shows your path.
   Lane: every lane (Funding, Blueprint and Repair)
   Hammer Them pillar: Question ("What is this call, really?")
   Belief: My call is a working call on my real file. The file gets pulled
@@ -771,78 +772,80 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
 
   <section class="slide dark">
     <p class="eyebrow">TC-01 / How it runs</p>
-    <h2>Your own credit file picks your path on this call before anyone mentions a price.</h2>
-    <p class="lede">Money comes up near the end of the call, and the reason it waits that long protects you.</p>
+    <h2>Your file picks your path before anyone mentions a price.</h2>
+    <p class="lede">Money comes up near the end of your call, and the reason it waits protects you.</p>
     <figure class="pic">
-      <ol class="flow" role="img" aria-label="The call in six parts, in order. One: what you're going for, and what's been in the way. Two: we pull your file together, right on the call, a soft pull, so your score does not move. Three: how much you qualify for based on where you're at right now, and what's holding the rest back. Four: the path that fits your file: fund what's there now, fix the file first, or both. Five: how that path runs, step by step. Six: the price for that path, then your answer. A yes is great. A no is fine.">
-        <li>What you're going for, and what's been in the way.</li>
-        <li><span>We pull your file together, right on the call.<span class="sub">A soft pull, so your score does not move.</span></span></li>
-        <li>How much you qualify for based on where you're at right now, and what's holding the rest back.</li>
-        <li><span>The path that fits your file.<span class="sub">Fund what's there now, fix the file first, or both.</span></span></li>
+      <ol class="flow" role="img" aria-label="The call in six parts, in order. One: your goal, and what's in the way. Two: we pull your file on the call, a soft pull, so your score does not move. Three: how much you qualify for today, and what's holding the rest back. Four: the path your file fits: fund now, fix the file first, or both. Five: how that path runs, step by step. Six, marked: the price for that path, then your answer, yes or no.">
+        <li>Your goal, and what's in the way.</li>
+        <li><span>We pull your file on the call.<span class="sub">A soft pull. Your score does not move.</span></span></li>
+        <li><span>How much you qualify for today.<span class="sub">And what's holding the rest back.</span></span></li>
+        <li><span>The path your file fits.<span class="sub">Fund now, fix the file first, or both.</span></span></li>
         <li>How that path runs, step by step.</li>
-        <li><span>The price for that path, then your answer.<span class="sub">A yes is great. A no is fine.</span></span></li>
+        <li style="background:var(--ss-yes)"><span>The price for that path.<span class="sub">Then your answer, yes or no.</span></span></li>
       </ol>
     </figure>
   </section>
 
   <section class="slide">
     <p class="eyebrow">TC-02 / Your report</p>
-    <h2>This sample scores over 700 at all three bureaus, and the bank reads its 40% card first.</h2>
+    <h2>This sample scores over 700 at every bureau, and cards at 88% used still cut its funding.</h2>
     <ul class="lines">
       <li>Your advisor pulls all three bureaus with you on the line and puts the report on one shared screen.</li>
-      <li>Each bank chooses which bureau it pulls, so your details have to match on all three reports.</li>
-      <li>In this sample, the scores sit in the low 700s, and one card is using 40% of its limit.</li>
+      <li>This sample's four cards owe $37,100 on $42,000 of limits, which is 88% of the limits in use.</li>
     </ul>
     <figure class="pic">
-      <div class="real" role="img" aria-label="The cover of a sample Fundhub tri-bureau credit report: TransUnion 706, Experian 702, Equifax 709. Under it, the first account, First Platypus Bank, a credit card, open and paid as agreed. Marked: balance $4,000, 40% of the credit limit. The bank reads this first.">
+      <div class="real" role="img" aria-label="The cover of a sample Fundhub tri-bureau credit report: TransUnion 702, Experian 711, Equifax 706, marked good scores. Under it, the four credit cards: American Express, balance $17,700, 89% used; JPMCB Card Services, balance $10,600, 88% used; Capital One, balance $5,300, 88% used; Discovercard, balance $3,500, 88% used. Marked: critical card use.">
         <div class="rh1">Tri-bureau credit report</div>
         <div style="display:flex;justify-content:space-between;gap:8px;margin:8px 0 10px;padding-bottom:8px;border-bottom:2px solid var(--ink)">
-          <div><div style="font-size:.8125rem;font-weight:700">TransUnion</div><div class="num" style="font-size:1.6rem;font-weight:700;line-height:1.1">706</div></div>
-          <div><div style="font-size:.8125rem;font-weight:700">Experian</div><div class="num" style="font-size:1.6rem;font-weight:700;line-height:1.1">702</div></div>
-          <div><div style="font-size:.8125rem;font-weight:700">Equifax</div><div class="num" style="font-size:1.6rem;font-weight:700;line-height:1.1">709</div></div>
+          <div><div style="font-size:.8125rem;font-weight:700">TransUnion</div><div class="num" style="font-size:1.6rem;font-weight:700;line-height:1.1">702</div></div>
+          <div><div style="font-size:.8125rem;font-weight:700">Experian</div><div class="num" style="font-size:1.6rem;font-weight:700;line-height:1.1">711</div></div>
+          <div><div style="font-size:.8125rem;font-weight:700">Equifax</div><div class="num" style="font-size:1.6rem;font-weight:700;line-height:1.1">706</div></div>
           <span class="chip on" style="align-self:flex-start"><span class="cd"></span>Good scores</span>
         </div>
-        <div class="rh2">Account 1 · FIRST PLATYPUS BANK</div>
-        <p class="model">Credit Card · Open · As Agreed</p>
-        <ul>
-          <li class="flag">Balance $4,000 · 40% of the credit limit<br><span class="chip bad"><span class="cd"></span>The bank reads this first</span></li>
-        </ul>
+        <div class="rh2">Credit cards (4)</div>
+        <table>
+          <thead><tr><th>Card</th><th>Balance</th><th>Used</th></tr></thead>
+          <tbody>
+            <tr><td>AMERICAN EXPRESS</td><td>$17,700</td><td style="background:var(--ss-flag);font-weight:700">89%</td></tr>
+            <tr><td>JPMCB CARD SERVICES</td><td>$10,600</td><td style="background:var(--ss-flag);font-weight:700">88%</td></tr>
+            <tr><td>CAPITAL ONE</td><td>$5,300</td><td style="background:var(--ss-flag);font-weight:700">88%</td></tr>
+            <tr><td>DISCOVERCARD</td><td>$3,500</td><td style="background:var(--ss-flag);font-weight:700">88%</td></tr>
+          </tbody>
+        </table>
+        <span class="chip bad"><span class="cd"></span>Critical card use</span>
       </div>
       <p class="real-src">Sample report. Simulated file, no bureau contacted.</p>
     </figure>
   </section>
 
   <section class="slide">
-    <p class="eyebrow">TC-03 / What it costs</p>
-    <h2>How much is your file leaving on the table right now?</h2>
+    <p class="eyebrow">TC-03 / Left on the table</p>
+    <h2>Today this sample qualifies for $46,560, and after its fixes it qualifies for $174,600.</h2>
     <ul class="lines">
-      <li>This sample screen leaves the amount blank, because that figure only ever comes from a real file.</li>
-      <li>Right after it, a second screen shows what each fix adds, and the difference is money left on the table.</li>
-      <li>The bank still makes the final call, and the reports are yours to keep either way.</li>
+      <li>That's $128,040 left on the table until the fixes are done.</li>
+      <li>Its fixes: cards paid to 10%, and five pulls with no account behind them disputed.</li>
     </ul>
     <figure class="pic">
-      <div class="real" style="font-family:var(--sans)" role="img" aria-label="The results screen your advisor shares. How much you qualify for today. The amount is left blank, marked your amount, from your file. Based on where you're at right now, across multiple credit lines. Lenders make the final call. Three sample scores: Experian 702, TransUnion 706, Equifax 709. Sample scores. Not a real credit pull.">
+      <div class="real" style="font-family:var(--sans)" role="img" aria-label="The results screen your advisor shares, filled from the sample file. How much you qualify for today: $46,560. Based on where you're at right now, across multiple credit lines. Lenders make the final call.">
         <p class="eyebrow" style="margin:0 0 8px">How much you qualify for today</p>
-        <div style="display:flex;align-items:center;gap:10px;min-height:48px;padding:8px 12px;border:2px dashed var(--line);border-radius:8px;background:var(--soft)"><span style="font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.12em;text-transform:uppercase;color:var(--gray)">Your amount · from your file</span></div>
-        <p style="margin:10px 0 0;font-size:.9375rem;line-height:1.4">Based on where you're at right now, across multiple credit lines. <mark style="background:var(--ss-yes);padding:1px 3px;border-radius:4px;font-weight:700">Lenders make the final call.</mark></p>
-        <div style="display:flex;gap:9px;margin-top:12px;flex-wrap:wrap">
-          <div style="flex:1;min-width:80px;padding:8px 10px;border:1px solid var(--line);border-radius:8px"><span style="font-family:var(--mono);font-size:var(--fs-caption);color:var(--gray)">Experian</span><div style="font-size:1.4rem;font-weight:700;line-height:1.1">702</div></div>
-          <div style="flex:1;min-width:80px;padding:8px 10px;border:1px solid var(--line);border-radius:8px"><span style="font-family:var(--mono);font-size:var(--fs-caption);color:var(--gray)">TransUnion</span><div style="font-size:1.4rem;font-weight:700;line-height:1.1">706</div></div>
-          <div style="flex:1;min-width:80px;padding:8px 10px;border:1px solid var(--line);border-radius:8px"><span style="font-family:var(--mono);font-size:var(--fs-caption);color:var(--gray)">Equifax</span><div style="font-size:1.4rem;font-weight:700;line-height:1.1">709</div></div>
-        </div>
-        <p class="model" style="margin:10px 0 0">Sample scores. Not a real credit pull.</p>
+        <div style="font-size:2.25rem;font-weight:700;line-height:1.05;letter-spacing:-.02em">$46,560</div>
+        <p style="margin:8px 0 0;font-size:.9375rem;line-height:1.4">Based on where you're at right now, across multiple credit lines. <mark style="background:var(--ss-yes);padding:1px 3px;border-radius:4px;font-weight:700">Lenders make the final call.</mark></p>
       </div>
-      <p class="real-src">The screen your advisor shares, filled from the sample file.</p>
+      <div class="panel bars" style="padding:12px 14px" role="img" aria-label="The same sample file, run through UnderwriteIQ twice. Today it qualifies for $46,560. After its fixes it qualifies for $174,600. Marked: $128,040 left on the table.">
+        <div class="bar alt" style="--v:.267"><span class="l">Today</span><span class="v">$46,560</span><span class="t"><span></span></span></div>
+        <div class="bar" style="--v:1"><span class="l">After its fixes</span><span class="v">$174,600</span><span class="t"><span></span></span></div>
+        <span class="chip bad" style="align-self:flex-start"><span class="cd"></span>$128,040 left on the table</span>
+      </div>
+      <p class="real-src">Sample file, run through UnderwriteIQ as it stands and again with its fixes. Simulated, no bureau contacted.</p>
     </figure>
   </section>
 
   <section class="slide">
-    <p class="eyebrow">TC-04 / The order</p>
-    <h2>Every price on your call is for a plan you have already seen on your own file.</h2>
+    <p class="eyebrow">TC-04 / Price last</p>
+    <h2>Before a dollar moves, you read every promise for your path in the agreement, on screen.</h2>
     <ul class="lines">
       <li>Your advisor names the path your file fits: funding now, fixing the file first, or both at once.</li>
       <li>You agree the path fits before any price comes up, and the price you hear is only for that path.</li>
-      <li>Before a dollar moves, you and your advisor read the agreement together on screen.</li>
     </ul>
     <figure class="pic">
       <div class="real" style="font-family:var(--sans)" role="img" aria-label="The nine parts of your call, in order, from the screen your advisor shares: 1 Open, 2 Your goal, 3 The pull, 4 Your file, 5 Your path, 6 The plan, 7 The ask, 8 Money, 9 Paperwork. Your file and your path are marked. Money is marked: after your file and your path.">
@@ -865,12 +868,11 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
   </section>
 
   <section class="slide">
-    <p class="eyebrow">TC-05 / The after</p>
-    <h2>Funding in your company's name starts with three details you bring to the call.</h2>
+    <p class="eyebrow">TC-05 / Come ready</p>
+    <h2>Three details let your advisor map funding in your company's name.</h2>
     <ul class="lines">
-      <li>Have a computer in a quiet spot and a card nearby, because the report goes on a shared screen and the pull happens live.</li>
-      <li>For the business, bring the company's legal name, how long it's been open, and what it brings in each month.</li>
-      <li>If you make money decisions with a spouse or business partner, bring them so you both see the same report.</li>
+      <li>For the business, bring its legal name, how long it's been open, and what it brings in each month.</li>
+      <li>Sit at a computer somewhere quiet with a card nearby, because your report goes up on a shared screen.</li>
     </ul>
     <figure class="pic">
       <div class="panel doc" role="img" aria-label="A checklist card: a computer, somewhere quiet, pen and paper, a card for the file pull; your entity name, business; how long in business, business; average monthly revenue, business; your spouse or business partner, if they decide with you.">
@@ -885,12 +887,11 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
   </section>
 
   <section class="slide dark">
-    <p class="eyebrow">TC-06 / Your call</p>
-    <h2>You leave your strategy call knowing which path your file fits, and how it runs.</h2>
+    <p class="eyebrow">TC-06 / Path picked</p>
+    <h2>The only price on your strategy call is for a path your file is ready for.</h2>
     <ul class="lines">
       <li>Your advisor puts your real report on one shared screen and goes through it with you.</li>
       <li>The call is recorded, so every detail about your file and your path is kept.</li>
-      <li>You leave knowing how much you qualify for based on where you're at right now, and which path your file fits.</li>
     </ul>
     <figure class="pic">
       <div class="sheet">

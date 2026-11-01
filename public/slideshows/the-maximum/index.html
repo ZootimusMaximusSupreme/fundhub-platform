@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
 <title>Fundhub, The Maximum</title>
-<meta name="description" content="Your personal file sets what every company you own qualifies for, through one card on it. How far one file goes, and where your funding starts.">
+<meta name="description" content="Your personal file sets what every company you own qualifies for, through one card on it. How that card sizes each company, and what your business runs on once the file is primed.">
 <!--
   Deck MX · The maximum
   Rewritten 2026-10-31 on Chris's slide framework (see pre-underwriting.html).
@@ -773,41 +773,35 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
   </svg>
 
   <section class="slide dark">
-    <p class="eyebrow">MX-01 / One file</p>
+    <p class="eyebrow">MX-01 / One card</p>
     <h2>Your personal file sets what every company you own qualifies for, through one card on it.</h2>
     <p class="lede">Which card it is, its limit and how long it's been open are printed on your report today.</p>
     <ul class="lines">
-      <li>Off my own personal file, four different companies each got a $100,000 line.</li>
-      <li>The banks approved all four on stated income, with no income documents.</li>
+      <li>Our system picks your highest-limit card that's been open two years or more.</li>
+      <li>A newer card with a bigger limit gets passed over until it turns two.</li>
     </ul>
     <figure class="pic">
       <div class="sheet">
-        <svg class="bv" viewBox="0 0 320 300" role="img" aria-label="Chris's own record as a map. One personal file at the top, on stated income with no income docs. Four companies under it, company one to company four, each with a one hundred thousand dollar line. A line from the file to each company means that file fed it.">
-          <rect class="pn-ink" x="10" y="2" width="300" height="48" rx="9"/>
-          <text class="on-ink" x="160" y="23" text-anchor="middle">ONE PERSONAL FILE</text>
-          <text class="lb on-ink" x="160" y="40" text-anchor="middle">STATED INCOME · NO INCOME DOCS</text>
-          <path class="cn ink" d="M58 50V262"/>
-          <path class="cn ink" d="M58 94H86" marker-end="url(#fh-arrow)"/>
-          <rect class="tint-fit edge-fit" x="90" y="72" width="226" height="44" rx="8"/>
-          <use href="#fh-bank" x="100" y="82" width="24" height="24"/>
-          <text x="132" y="90">Company one</text>
-          <text class="h" x="132" y="107">$100,000 line</text>
-          <path class="cn ink" d="M58 150H86" marker-end="url(#fh-arrow)"/>
-          <rect class="tint-fit edge-fit" x="90" y="128" width="226" height="44" rx="8"/>
-          <use href="#fh-bank" x="100" y="138" width="24" height="24"/>
-          <text x="132" y="146">Company two</text>
-          <text class="h" x="132" y="163">$100,000 line</text>
-          <path class="cn ink" d="M58 206H86" marker-end="url(#fh-arrow)"/>
-          <rect class="tint-fit edge-fit" x="90" y="184" width="226" height="44" rx="8"/>
-          <use href="#fh-bank" x="100" y="194" width="24" height="24"/>
-          <text x="132" y="202">Company three</text>
-          <text class="h" x="132" y="219">$100,000 line</text>
-          <path class="cn ink" d="M58 262H86" marker-end="url(#fh-arrow)"/>
-          <rect class="tint-fit edge-fit" x="90" y="240" width="226" height="44" rx="8"/>
-          <use href="#fh-bank" x="100" y="250" width="24" height="24"/>
-          <text x="132" y="258">Company four</text>
-          <text class="h" x="132" y="275">$100,000 line</text>
-          <text class="lb" x="160" y="297" text-anchor="middle">CHRIS'S RECORD · FOUR COMPANIES</text>
+        <svg class="bv" viewBox="0 0 320 254" role="img" aria-label="How our system picks the one card on your report. Three open cards. Card A has the longest limit bar but is under 2 years old, so it is passed over. Card B, marked in ink, has the highest limit among cards open 2 years or more, so Card B sizes every company you own. Card C is open 2 years or more with a smaller limit.">
+          <rect class="pn" x="1" y="1" width="318" height="252" rx="10"/>
+          <text class="lb" x="14" y="24">YOUR REPORT · OPEN CARDS</text>
+          <text class="lb" x="18" y="50">CARD</text>
+          <text class="lb" x="104" y="50">LIMIT</text>
+          <text class="lb" x="232" y="50">OPEN</text>
+          <rect class="tint-flag" x="8" y="60" width="304" height="40" rx="6"/>
+          <text x="18" y="85">Card A</text>
+          <rect class="pn-ink" x="104" y="75" width="118" height="10" rx="3"/>
+          <text class="caps" x="232" y="85">Under 2 yrs</text>
+          <rect class="pn-ink" x="8" y="108" width="304" height="40" rx="6"/>
+          <text class="on-ink" x="18" y="133">Card B</text>
+          <rect x="104" y="123" width="92" height="10" rx="3" fill="#fff"/>
+          <text class="caps on-ink" x="232" y="133">2+ years</text>
+          <rect class="pn-soft" x="8" y="156" width="304" height="40" rx="6"/>
+          <text x="18" y="181">Card C</text>
+          <rect class="pn-ink" x="104" y="171" width="50" height="10" rx="3"/>
+          <text class="caps" x="232" y="181">2+ years</text>
+          <text class="caps" x="160" y="222" text-anchor="middle">Card B sizes every company you own.</text>
+          <text class="caps" x="160" y="240" text-anchor="middle">Card A's bigger limit is too new to count.</text>
         </svg>
       </div>
     </figure>
@@ -817,31 +811,28 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     <p class="eyebrow">MX-02 / The order</p>
     <h2>Your personal file gets primed first, before any company you own applies for credit.</h2>
     <ul class="lines">
-      <li>Our system sizes every company off one card: your highest-limit card that's two years old or more.</li>
-      <li>Your file gets primed and your personal funding goes out first. Then business one applies, then business two, each read on its own.</li>
-      <li>The applying never stops, and a business round can bring personal funding along with it.</li>
+      <li>Every company you own gets its business amount from that one card on your personal file.</li>
+      <li>With no card like that, no company gets a business amount at all.</li>
     </ul>
     <figure class="pic">
       <div class="sheet">
-        <svg class="bv" viewBox="0 0 320 306" role="img" aria-label="The order as a flow. Prime your personal file. Then personal funding, which comes before business. Then business one, its own file, judged on its own. Then business two, its own file, after business one. Then keep applying, round after round.">
-          <rect class="pn-ink" x="20" y="2" width="280" height="44" rx="9"/>
-          <text class="on-ink" x="160" y="22" text-anchor="middle">Prime your personal file</text>
-          <text class="lb on-ink" x="160" y="38" text-anchor="middle">NOTHING ELSE COMES FIRST</text>
-          <path class="cn ink" d="M160 46V62" marker-end="url(#fh-arrow)"/>
-          <rect class="tint-fit edge-fit" x="20" y="66" width="280" height="44" rx="9"/>
-          <text x="160" y="86" text-anchor="middle">Personal funding</text>
-          <text class="lb" x="160" y="102" text-anchor="middle">COMES BEFORE BUSINESS</text>
-          <path class="cn ink" d="M160 110V126" marker-end="url(#fh-arrow)"/>
-          <rect class="pn" x="20" y="130" width="280" height="44" rx="9"/>
-          <text x="160" y="150" text-anchor="middle">Business one</text>
-          <text class="lb" x="160" y="166" text-anchor="middle">JUDGED ON ITS OWN</text>
-          <path class="cn ink" d="M160 174V190" marker-end="url(#fh-arrow)"/>
-          <rect class="pn" x="20" y="194" width="280" height="44" rx="9"/>
-          <text x="160" y="214" text-anchor="middle">Business two</text>
-          <text class="lb" x="160" y="230" text-anchor="middle">AFTER BUSINESS ONE</text>
-          <path class="cn ink" d="M160 238V254" marker-end="url(#fh-arrow)"/>
-          <rect class="pn-soft" x="20" y="258" width="280" height="44" rx="9"/>
-          <text x="160" y="285" text-anchor="middle">Keep applying, round after round</text>
+        <svg class="bv" viewBox="0 0 320 240" role="img" aria-label="Why your personal file goes first. Your highest-limit card, open 2 years or more, sits on your personal file. Arrows run from it to Business one and Business two, and each is marked sized off this card. With no card like this, no company gets a business amount. Each company is read on its own.">
+          <rect class="pn-ink" x="30" y="2" width="260" height="58" rx="9"/>
+          <text class="on-ink" x="160" y="27" text-anchor="middle">Your highest-limit card</text>
+          <text class="lb on-ink" x="160" y="47" text-anchor="middle">OPEN 2+ YEARS · PERSONAL</text>
+          <path class="cn ink" d="M100 60L82 96" marker-end="url(#fh-arrow)"/>
+          <path class="cn ink" d="M220 60L238 96" marker-end="url(#fh-arrow)"/>
+          <rect class="tint-fit edge-fit" x="8" y="100" width="148" height="70" rx="9"/>
+          <text x="82" y="126" text-anchor="middle">Business one</text>
+          <text class="lb ink" x="82" y="146" text-anchor="middle">SIZED OFF</text>
+          <text class="lb ink" x="82" y="161" text-anchor="middle">THIS CARD</text>
+          <rect class="tint-fit edge-fit" x="164" y="100" width="148" height="70" rx="9"/>
+          <text x="238" y="126" text-anchor="middle">Business two</text>
+          <text class="lb ink" x="238" y="146" text-anchor="middle">SIZED OFF</text>
+          <text class="lb ink" x="238" y="161" text-anchor="middle">THIS CARD</text>
+          <text class="caps" x="160" y="196" text-anchor="middle">No card like this on your file means</text>
+          <text class="caps" x="160" y="213" text-anchor="middle">no business amount for any company.</text>
+          <text class="lb" x="160" y="236" text-anchor="middle">EACH COMPANY READ ON ITS OWN</text>
         </svg>
       </div>
     </figure>
@@ -851,12 +842,11 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     <p class="eyebrow">MX-03 / Company age</p>
     <h2>A company's age changes its amount: half in year one, double once it's two years old.</h2>
     <ul class="lines">
-      <li>Each company you own applies for its own business credit, and our system reads it by its age.</li>
-      <li>An LLC you already own has its age on the state record.</li>
-      <li>Each company left sitting is business credit nobody has asked a bank for yet.</li>
+      <li>Our system reads each company you own by its age, and each one applies for its own business credit.</li>
+      <li>A company you formed and forgot about is business credit nobody has asked a bank for yet.</li>
     </ul>
     <figure class="pic">
-      <div class="real" role="img" aria-label="The companies screen from a Fundhub call, in its own words, with the amounts left off. More companies, more funding. Today, all your files: how much you qualify for today. Tabs: Personal, Business 1, Business 2, and add a company. Marked: each one still applies for its own business credit. The added companies, as they age: year 1, year 2, after 2 years. A picture of what's possible, never added to today.">
+      <div class="real" role="img" aria-label="The companies screen from a Fundhub call, in its own words. More companies, more funding. Tabs: Personal, Business 1, Business 2, and add a company. Marked: each one still applies for its own business credit. Marked: each company you add grows as it ages, half in year 1, the full amount in year 2, double after 2 years. A picture of what's possible, never added to today.">
         <div class="rh2">More companies, more funding</div>
         <p class="model">Today, all your files · How much you qualify for today.</p>
         <ul>
@@ -864,30 +854,43 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
           <li><span class="chip"><span class="cd"></span>+ Add a company</span> <span class="model">if you add a company</span></li>
           <li class="yes">Each one still applies for its own business credit.<br><span class="chip on"><span class="cd"></span>Each company on its own</span></li>
         </ul>
-        <p class="model">The added companies, as they age · Year 1 · Year 2 · After 2 years</p>
+        <p class="clause"><mark>Each company you add grows as it ages: half in year 1, the full amount in year 2, double after 2 years.</mark></p>
         <p class="model">A picture of what's possible. Never added to today.</p>
       </div>
-      <p class="real-src">Fundhub's companies screen, its own words. Amounts left off.</p>
+      <p class="real-src">Fundhub's companies screen, its own words.</p>
     </figure>
   </section>
 
   <section class="slide">
-    <p class="eyebrow">MX-04 / The circle</p>
-    <h2>The Blueprint includes one partner file, and that partner's amount is added to yours.</h2>
+    <p class="eyebrow">MX-04 / Growth on credit</p>
+    <h2>Once your file is primed, business credit pays for your growth and your savings stay put.</h2>
     <ul class="lines">
-      <li>The Capital Blueprint comes with one partner file, for a spouse or business partner who applies alongside you.</li>
-      <li>Their file runs only after they give their own consent, and it gets its own checklist.</li>
-      <li>With more files behind you, the bigger job and the next hire get paid for with credit, and your savings stay put.</li>
+      <li>Every company you add applies for its own business credit, on top of what you have.</li>
+      <li>Your growth gets paid for out of that credit, and your own savings stay right where they are.</li>
     </ul>
     <figure class="pic">
-      <div class="real" role="img" aria-label="The Blueprint screen's own partner line, marked. Credit partner file: one spouse or business partner can join as a second applicant. They give their own consent, and their file gets its own checklist. Your advisor's line on the call: is there a spouse or business partner who would apply with you? One partner file is included.">
-        <div class="rh2">Your Capital Blueprint · Credit partner file</div>
-        <p class="clause"><mark>One spouse or business partner can join as a second applicant.</mark> They give their own consent, and their file gets its own checklist.</p>
-        <div class="rh2">Your advisor, on the call</div>
-        <p class="clause">Is there a spouse or business partner who would apply with you? <mark>One partner file is included.</mark></p>
-        <span class="chip on"><span class="cd"></span>Included with the Blueprint</span>
+      <div class="sheet">
+        <svg class="bv" viewBox="0 0 320 262" role="img" aria-label="What your business runs on once your file is primed. Your personal file, primed, at the top. Business 1 and Business 2 each with their own credit. Arrows from both companies run to your growth, paid for on business credit. Your savings sit apart, with no arrow, marked stays put.">
+          <rect class="pn-ink" x="40" y="2" width="240" height="42" rx="9"/>
+          <text class="on-ink" x="160" y="28" text-anchor="middle">Your personal file, primed</text>
+          <path class="cn ink" d="M118 44L88 66" marker-end="url(#fh-arrow)"/>
+          <path class="cn ink" d="M202 44L232 66" marker-end="url(#fh-arrow)"/>
+          <rect class="tint-fit edge-fit" x="8" y="70" width="148" height="52" rx="9"/>
+          <text x="82" y="92" text-anchor="middle">Business 1</text>
+          <text class="lb ink" x="82" y="111" text-anchor="middle">OWN CREDIT</text>
+          <rect class="tint-fit edge-fit" x="164" y="70" width="148" height="52" rx="9"/>
+          <text x="238" y="92" text-anchor="middle">Business 2</text>
+          <text class="lb ink" x="238" y="111" text-anchor="middle">OWN CREDIT</text>
+          <path class="cn ink" d="M82 122L130 148" marker-end="url(#fh-arrow)"/>
+          <path class="cn ink" d="M238 122L190 148" marker-end="url(#fh-arrow)"/>
+          <rect class="tint-fit edge-fit" x="40" y="152" width="240" height="48" rx="9"/>
+          <text class="h" x="160" y="174" text-anchor="middle">Your growth</text>
+          <text class="lb ink" x="160" y="192" text-anchor="middle">ON BUSINESS CREDIT</text>
+          <rect class="pn" x="40" y="210" width="240" height="48" rx="9"/>
+          <text class="h" x="160" y="232" text-anchor="middle">Your savings</text>
+          <text class="lb ink" x="160" y="250" text-anchor="middle">STAYS PUT</text>
+        </svg>
       </div>
-      <p class="real-src">Fundhub's Blueprint screen and the call line, word for word.</p>
     </figure>
   </section>
 
@@ -897,7 +900,6 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     <ul class="lines">
       <li>Chase Ink Business Cash, with the limit printed right on the approval: $74,000.</li>
       <li>The client's name is blurred, and the bank and the limit are exactly what the bank sent.</li>
-      <li>That's one card for one company, and every company you add asks for its own.</li>
     </ul>
     <figure class="pic">
       <div class="real shot" role="img" aria-label="A real approval screenshot. Welcome to Chase Ink Business Cash. Your credit limit is seventy-four thousand dollars. The name is blurred.">
@@ -908,12 +910,11 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
   </section>
 
   <section class="slide">
-    <p class="eyebrow">MX-06 / Your call</p>
+    <p class="eyebrow">MX-06 / Where you start</p>
     <h2>Your strategy call reads your file live, that card included, and shows where you start.</h2>
     <ul class="lines">
       <li>Your file gets read live on the call, and a soft pull leaves your score exactly as it is.</li>
       <li>You see how much you qualify for based on where you're at right now, and that's where your sequence starts.</li>
-      <li>About six rounds make up a funding sequence, and when it's done, your next funding sequence picks up from your file.</li>
     </ul>
     <figure class="pic">
       <div class="sheet">

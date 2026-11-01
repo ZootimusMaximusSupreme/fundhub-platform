@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
 <title>Fundhub Soft Pull</title>
-<meta name="description" content="A hard pull from one bank stays on your report for the next bank to read. A soft pull reads your whole file first, and your score stays where it is.">
+<meta name="description" content="Each bank picks which of your three bureaus it pulls. A soft pull reads all three first, and your score stays where it is.">
 <!--
   Deck SP · Soft pull
   Lane: Every lane (Funding, and Blueprint and Repair)
@@ -14,6 +14,8 @@
           and a hard pull only ever happens later, with my own consent.
 
   Rewritten 2026-10-31 on Chris's slide framework (see pre-underwriting.html).
+  Fix round 2026-10-31 (copy reviewer): the hook is the bureau each bank picks; clause 4 is cropped
+  off the form; SP-02's lender view shows the same lines with no soft pull on them.
 
   Chris's direction (2026-10-31): his call-slide style (a coded label, a big
   headline, full lines of copy with the pastel stripe), more copy, real first
@@ -742,17 +744,16 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
 
   <section class="slide dark">
     <p class="eyebrow">SP-01 / The pull</p>
-    <h2>Every no from a bank comes with a hard pull that sits on your report after the letter.</h2>
-    <p class="lede">Your file can be read top to bottom, all three bureaus, without a single bank seeing it happen.</p>
+    <h2>Each bank picks which of your bureaus it pulls, and a soft pull reads all three first.</h2>
+    <p class="lede">On this sample file, the three bureaus give three different scores.</p>
     <ul class="lines">
       <li>This is the form you sign for it, and line one says what it is in plain words.</li>
     </ul>
     <figure class="pic">
-      <div class="real" role="img" aria-label="The soft pull authorization form. Clause 1 is marked: This is a soft pull. It does not lower my credit score and lenders do not see it as an application for credit. Clause 4: No promise of funding has been made to me. What I qualify for is decided later, by the lender, not by this form.">
+      <div class="real" role="img" aria-label="The soft pull authorization form. Clause 1 is marked: This is a soft pull. It does not lower my credit score and lenders do not see it as an application for credit.">
         <div class="rh2">Soft Pull Authorization</div>
         <p class="clause">I understand all of the following.</p>
         <p class="clause"><mark>1. This is a soft pull. It does not lower my credit score and lenders do not see it as an application for credit.</mark></p>
-        <p class="clause">4. No promise of funding has been made to me. What I qualify for is decided later, by the lender, not by this form.</p>
         <span class="chip on"><span class="cd"></span>What you sign</span>
       </div>
       <p class="real-src">The soft pull form, word for word.</p>
@@ -763,12 +764,12 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     <p class="eyebrow">SP-02 / Who sees it</p>
     <h2>Who else can see a soft pull on your report?</h2>
     <ul class="lines">
-      <li>You're the only one who sees it: it shows on your own copy, and a lender's view of your report shows no application from it.</li>
+      <li>You're the only one who sees it. It shows on your own copy, and a lender pulls the same report with no soft pull on it.</li>
       <li>A hard pull gets its own separate consent from you, so a soft pull can never turn into one.</li>
     </ul>
     <figure class="pic">
       <div class="sheet">
-        <svg class="bv" viewBox="0 0 320 214" role="img" aria-label="Two views of the same report. Your copy shows the soft pull by Fundhub. A lender's view shows the same accounts and no application.">
+        <svg class="bv" viewBox="0 0 320 214" role="img" aria-label="Two views of the same report. Your copy shows the soft pull from your call. A lender pulls the same report, with the same lines and no soft pull on it.">
           <rect class="pn" x="1" y="1" width="152" height="178" rx="10"/>
           <text class="lb" x="14" y="24">YOUR COPY</text>
           <use href="#fh-person" x="14" y="34" width="22" height="22"/>
@@ -781,14 +782,11 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
           <rect class="bar" x="14" y="150" width="96" height="5" rx="2.5"/>
           <rect class="bar" x="14" y="162" width="70" height="5" rx="2.5"/>
           <rect class="pn" x="167" y="1" width="152" height="178" rx="10"/>
-          <text class="lb" x="180" y="24">A LENDER'S VIEW</text>
+          <text class="lb" x="180" y="24">A LENDER'S PULL</text>
           <use class="mute" href="#fh-bank" x="180" y="34" width="22" height="22"/>
           <text x="210" y="50">A lender</text>
           <rect class="bar" x="180" y="70" width="104" height="5" rx="2.5"/>
           <rect class="bar" x="180" y="82" width="80" height="5" rx="2.5"/>
-          <rect class="cn dash" x="178" y="96" width="130" height="40" rx="6"/>
-          <text class="lb" x="243" y="113" text-anchor="middle">NOT AN</text>
-          <text class="lb" x="243" y="128" text-anchor="middle">APPLICATION</text>
           <rect class="bar" x="180" y="150" width="96" height="5" rx="2.5"/>
           <rect class="bar" x="180" y="162" width="70" height="5" rx="2.5"/>
           <text class="lb" x="160" y="206" text-anchor="middle">ONLY ON YOUR OWN COPY</text>
@@ -798,7 +796,7 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
   </section>
 
   <section class="slide">
-    <p class="eyebrow">SP-03 / The cost</p>
+    <p class="eyebrow">SP-03 / Soft against hard</p>
     <h2>Three hard pulls stack up fast when you apply at three banks to see who says yes.</h2>
     <ul class="lines">
       <li>Each one costs you, the next bank reads it, and stack enough of them and the banks start saying no.</li>
@@ -839,7 +837,7 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     <p class="eyebrow">SP-04 / Three bureaus</p>
     <h2>This sample file reads 706, 702 and 709, three different scores from one soft pull.</h2>
     <ul class="lines">
-      <li>Every bank picks one bureau to pull, and each bureau keeps its own record of you.</li>
+      <li>Every bank picks the bureau it pulls, and each bureau keeps its own record of you.</li>
       <li>One soft pull gets all three, and UnderwriteIQ reads each one the way a bank does, with your score left alone.</li>
     </ul>
     <figure class="pic">
@@ -866,7 +864,6 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     <ul class="lines">
       <li>You sign the soft pull form on the call, and the pull runs while you're there with us.</li>
       <li>You see how much you qualify for based on where you're at right now, and exactly what on your file is holding the rest back.</li>
-      <li>The reports are yours to keep, whatever you decide.</li>
     </ul>
     <figure class="pic">
       <ol class="flow" aria-label="The order on your call: you sign the soft pull form, one soft pull reads three bureaus, our system reads it the way a bank does, you see how much you qualify for.">

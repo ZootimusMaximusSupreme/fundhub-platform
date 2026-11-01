@@ -33,5 +33,5 @@ export const DECK_PAGES = Object.freeze([
   Object.freeze({ slug: "thirteen-points", path: "/slideshows/thirteen-points/", slides: 6, code: "TP", title: "Fundhub 13 Optimization Points" }),
   Object.freeze({ slug: "tried-before", path: "/slideshows/tried-before/", slides: 6, code: "TB", title: "Fundhub, If You Tried Before" }),
   Object.freeze({ slug: "who-we-are", path: "/slideshows/who-we-are/", slides: 8, code: "WW", title: "Fundhub, Who We Are" }),
-  Object.freeze({ slug: "your-data-is-safe", path: "/slideshows/your-data-is-safe/", slides: 8, code: "PD", title: "Fundhub, Prime Data" })
+  Object.freeze({ slug: "your-data-is-safe", path: "/slideshows/your-data-is-safe/", slides: 7, code: "PD", title: "Fundhub, Prime Data" })
 ]);
