@@ -585,6 +585,7 @@ export const BOARD_STAGES_SQL = `
 `;
 
 export const BOARD_CARDS_SQL = `
+  SELECT * FROM (
   SELECT
     cd.id,
     cd.stage_id,
@@ -612,6 +613,28 @@ export const BOARD_CARDS_SQL = `
                 b.starts_at DESC, b.created_at DESC
        LIMIT 1
     ) ELSE NULL END AS booked_starts_at,
+    CASE WHEN p.key = 'sales' THEN (
+      SELECT CASE
+               WHEN b.status = 'rescheduled' THEN 'rescheduled'
+               WHEN EXISTS (
+                 SELECT 1 FROM bookings previous
+                  WHERE previous.org_id = b.org_id
+                    AND previous.client_id = b.client_id
+                    AND previous.id <> b.id
+                    AND previous.created_at < b.created_at
+               ) THEN 'rebooked'
+               ELSE 'booked'
+             END
+        FROM bookings b
+       WHERE b.org_id = p.org_id
+         AND b.client_id = c.id
+         AND b.status IN ('booked', 'rescheduled')
+         AND b.starts_at IS NOT NULL
+       ORDER BY (b.starts_at >= NOW()) DESC,
+                CASE WHEN b.starts_at >= NOW() THEN b.starts_at END ASC NULLS LAST,
+                b.starts_at DESC, b.created_at DESC
+       LIMIT 1
+    ) ELSE NULL END AS booked_kind,
     (c.custom_fields->>'total_funding_estimate') AS total_funding_estimate,
     c.custom_fields->>'cf_svy_self_reported_fico' AS survey_fico_raw,
     c.custom_fields->>'cf_svy_self_reported_fico_label' AS survey_fico_label,
@@ -673,7 +696,14 @@ export const BOARD_CARDS_SQL = `
     AND (c.id IS NOT NULL OR pr.id IS NOT NULL)
     AND ($4::boolean OR COALESCE(c.is_demo, false) = false)
     AND (c.custom_fields->>'crm_archived_at' IS NULL)
-  ORDER BY cd.entered_at DESC
+  ) board_rows
+  ORDER BY
+    CASE WHEN $1 = 'sales' AND booked_starts_at >= NOW() THEN 0
+         WHEN $1 = 'sales' AND booked_starts_at IS NOT NULL THEN 1
+         ELSE 2 END ASC,
+    CASE WHEN $1 = 'sales' AND booked_starts_at >= NOW() THEN booked_starts_at END ASC NULLS LAST,
+    CASE WHEN $1 = 'sales' AND booked_starts_at < NOW() THEN booked_starts_at END DESC NULLS LAST,
+    entered_at DESC
   LIMIT $3
 `;
 

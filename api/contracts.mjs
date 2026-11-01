@@ -1,8 +1,8 @@
 // POST /api/contracts — the staff write surface of the contract generator.
 //
-//   { action: "create_template",  ... }  → new contract copy          (owner/admin)
-//   { action: "save_template",    id, ...}→ edit contract copy        (owner/admin)
-//   { action: "archive_template", id, active? } → take it out of use  (owner/admin)
+//   { action: "create_template",  ... }  → new contract copy          (owner)
+//   { action: "save_template",    id, ...}→ edit contract copy        (owner)
+//   { action: "archive_template", id, active? } → take it out of use  (owner)
 //   { action: "create_draft", client_id, template_id, values }        (staff)
 //   { action: "save_draft",   id, values, title }                     (staff)
 //   { action: "preview", template_id, client_id, values }             (staff)
@@ -24,7 +24,7 @@
 // WRITING THE WORDS is not. Contract copy carries legal weight, and unlike
 // message copy there is no second approval step downstream to catch a bad edit —
 // the words go straight onto a document somebody signs. So authoring, editing
-// and archiving a template are owner/admin, and so is voiding.
+// and archiving a template are owner-only. Voiding stays owner/admin.
 //
 // This is the same one-screen-two-gates arrangement api/message-templates.mjs
 // uses (saving is STAFF, approving is owner/admin) and that
@@ -61,17 +61,16 @@ import {
 import { runChase } from "../src/workflows/contract-chaser.mjs";
 import { demoFlagForEmail } from "../src/demo/test-identity.mjs";
 
-/* Which actions need owner or admin. hasRole() treats "owner" as passing every
-   gate (SUPER_ROLES), so naming "admin" here covers both. */
+/* Template authoring is owner-only. Keep the exact role check below: hasRole()
+   treats owners as a super role, and an admin is not allowed to edit wording. */
+const OWNER_TEMPLATE_ACTIONS = new Set([
+  "create_template", "save_template", "archive_template", "upload_template", "save_fields"
+]);
+
+/* Voiding an individual contract and running a batch reminder remain available
+   to owner/admin. Neither action changes template wording. */
 const OWNER_ADMIN_ACTIONS = new Set([
-  "create_template", "save_template", "archive_template", "void",
-  // Uploading a document and deciding where it gets signed IS writing contract
-  // wording — the same act, arriving as a file instead of as typed copy. It
-  // carries the same gate for the same reason.
-  "upload_template", "save_fields",
-  // Reminders go to real people. Deciding that a batch of clients gets chased
-  // today is a narrower act than sending one contract to one of them.
-  "run_reminders"
+  "void", "run_reminders"
 ]);
 
 const ALL_ACTIONS = [
@@ -133,12 +132,19 @@ export default async function handler(req, res) {
     });
   }
 
+  if (OWNER_TEMPLATE_ACTIONS.has(action) && String(staff.role || "").trim().toLowerCase() !== "owner") {
+    return res.status(403).json({
+      ok: false, error: "forbidden", required: ["owner"],
+      message: "Only the owner can create or change agreement templates."
+    });
+  }
+
   if (OWNER_ADMIN_ACTIONS.has(action) && !hasRole(staff, ["admin"])) {
     return res.status(403).json({
       ok: false, error: "forbidden", required: ["owner", "admin"],
       message: action === "void"
         ? "Only an owner or an admin can void a contract."
-        : "Only an owner or an admin can write or change contract wording."
+        : "Only an owner or an admin can run batch reminders."
     });
   }
 
@@ -555,5 +561,5 @@ export default async function handler(req, res) {
 }
 
 // Exported for the endpoint tests, which assert the gates rather than re-deriving them.
-export { OWNER_ADMIN_ACTIONS, ALL_ACTIONS };
+export { OWNER_TEMPLATE_ACTIONS, OWNER_ADMIN_ACTIONS, ALL_ACTIONS };
 export const __test = { baseUrlFrom, getContract };

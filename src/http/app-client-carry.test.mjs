@@ -132,6 +132,7 @@ async function runShell({ role = "owner", page = "finance-os.html", search = "",
     console,
     URLSearchParams,
     setTimeout: (fn) => { /* the 4s reveal net; never load-bearing here */ return 0; },
+    setInterval: (fn) => { /* the staff presence heartbeat does not fire during nav checks */ return 0; },
     localStorage: {
       getItem: (k) => (Object.prototype.hasOwnProperty.call(store, k) ? store[k] : null),
       setItem: (k, v) => { store[k] = String(v); },

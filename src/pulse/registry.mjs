@@ -150,6 +150,7 @@ const API_KEYS = [
   "commission-rules",
   "commissions",
   "company-brain/reviews",
+  "company-brain/library",
   "company-brain/sync",
   "company-brain/threads",
   "company-brain/upload",
@@ -308,6 +309,10 @@ const API_KEYS = [
   /* The /roadmap widget's status read after the soft pull. A plain GET with no
      ref or client_id answers 400, which counts as up, and reads nothing. */
   "public/slo-status",
+  /* The come-back link's door (S-00 and S-02 messages, the /apply page). A plain GET
+     with no link code answers 400 token_required and reads nothing, which counts as up.
+     The 6 a.m. deep check survey:resume-link-opens proves a real code opens nothing (gap-survey-resume.mjs). */
+  "public/survey-resume",
   "public/survey-submit",
   "public/unsubscribe",
   /* Web push for the client portal. Both answer a plain GET — push/key with the

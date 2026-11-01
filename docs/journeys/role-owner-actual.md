@@ -26,7 +26,7 @@ flowchart TD
     CAN --> A_campaigns[Campaigns — 10 routes]
     CAN --> A_chat[chat — 3 routes]
     CAN --> A_climate[climate — 2 routes]
-    CAN --> A_company_brain[company-brain — 4 routes]
+    CAN --> A_company_brain[company-brain — 5 routes]
     CAN --> A_consent[consent — 1 route]
     CAN --> A_content[content — 3 routes]
     CAN --> A_contracts[contracts — 1 route]
@@ -47,7 +47,8 @@ flowchart TD
     CAN --> A_partners[partners — 1 route]
     CAN --> A_privacy[privacy — 1 route]
     CAN --> A_proxy[proxy — 2 routes]
-    CAN --> A_public[public — 19 routes]
+    CAN --> A_public[public — 20 routes]
+    CAN --> A_push[push — 1 route]
     CAN --> A_read[Reading data — 70 routes]
     CAN --> A_repair[repair — 5 routes]
     CAN --> A_scripts[scripts — 2 routes]
@@ -56,18 +57,18 @@ flowchart TD
     CAN --> A_top_level[Everything else — 45 routes]
     CAN --> A_trials[trials — 4 routes]
     CAN --> A_webhooks[Incoming webhooks — 1 route]
-    WHO -->|Yes| CANT[Blocked — 11 routes]
+    WHO -->|Yes| CANT[Blocked — 10 routes]
     CANT --> B_affiliates[affiliates — 2 blocked]
     CANT --> B_auth[Signing in and out — 1 blocked]
     CANT --> B_chat[chat — 1 blocked]
-    CANT --> B_push[push — 5 blocked]
+    CANT --> B_push[push — 4 blocked]
     CANT --> B_read[Reading data — 1 blocked]
     CANT --> B_top_level[Everything else — 1 blocked]
 ```
 
 ## What they can reach
 
-**325 of 336 routes.**
+**328 of 338 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -128,9 +129,10 @@ flowchart TD
 | `/api/closer-deck` | POST | closer, sales_manager, owner, admin |
 | `/api/commission-rules` | GET, POST | owner, admin, sales_manager |
 | `/api/commissions` | POST | owner, admin, sales_manager |
+| `/api/company-brain/library` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/company-brain/reviews` | GET, POST | owner |
 | `/api/company-brain/sync` | GET, POST | owner, admin, sales_manager |
-| `/api/company-brain/threads` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
+| `/api/company-brain/threads` | DELETE, GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/company-brain/upload` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/consent/capture` | GET, POST | employees: owner, admin, closer, funding_advisor<br>plus: client |
 | `/api/content/tiles` | GET, POST | owner, admin |
@@ -295,9 +297,11 @@ flowchart TD
 | `/api/public/slo-pull` | POST | anyone |
 | `/api/public/slo-repair-checkout` | — | anyone |
 | `/api/public/slo-status` | — | anyone |
+| `/api/public/survey-resume` | — | anyone |
 | `/api/public/survey-submit` | POST | anyone |
 | `/api/public/unsubscribe` | — | **not a sign-in** — signed link |
 | `/api/public/vsl-watch` | OPTIONS, POST | anyone |
+| `/api/push/native-device` | DELETE, GET, POST | client, staff |
 | `/api/read/ad-attribution` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/ad-books` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/ad-spine` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
@@ -401,12 +405,12 @@ flowchart TD
 
 - **1 route is open to any signed-in employee, whatever their role.** That is not a gate on this journey specifically — anyone who can sign in reaches it: `/api/staff/avatar`.
 - **7 routes also accept a shared secret instead of a sign-in** (`DASHBOARD_SECRET`), so a caller holding that value reaches them without being anybody in particular: `/api/dashboard/client`, `/api/dashboard/client-archive`, `/api/dashboard/clients`, `/api/dashboard/kpis`, `/api/dashboard/pipeline`, `/api/dashboard/pipeline-counts`, `/api/dashboard/seed`.
-- **32 routes are genuinely open** — no sign-in needed, reachable by anyone and not by this journey in particular: `/api/auth/login`, `/api/auth/logout`, `/api/auth/magic-link`, `/api/auth/magic-link-verify`, `/api/auth/reset`, `/api/auth/session`, `/api/climate`, `/api/climate/config`, `/api/climate/geocode`, `/api/health`, `/api/hiring/apply`, `/api/merchant/events`, `/api/ops/notify-owner`, `/api/public/ad-video-approve`, `/api/public/affiliate-click`, `/api/public/climate-match`, `/api/public/education-enroll`, `/api/public/eeo-survey`, `/api/public/funnel-checkout`, `/api/public/morning-brief`, `/api/public/optimize`, `/api/public/partner-apply`, `/api/public/partner-page`, `/api/public/rb2b-webhook`, `/api/public/slo-checkout`, `/api/public/slo-interest`, `/api/public/slo-pull`, `/api/public/slo-repair-checkout`, `/api/public/slo-status`, `/api/public/survey-submit`, `/api/public/vsl-watch`, `/api/trials/eligibility`. These are the sign-in routes and the health check.
+- **33 routes are genuinely open** — no sign-in needed, reachable by anyone and not by this journey in particular: `/api/auth/login`, `/api/auth/logout`, `/api/auth/magic-link`, `/api/auth/magic-link-verify`, `/api/auth/reset`, `/api/auth/session`, `/api/climate`, `/api/climate/config`, `/api/climate/geocode`, `/api/health`, `/api/hiring/apply`, `/api/merchant/events`, `/api/ops/notify-owner`, `/api/public/ad-video-approve`, `/api/public/affiliate-click`, `/api/public/climate-match`, `/api/public/education-enroll`, `/api/public/eeo-survey`, `/api/public/funnel-checkout`, `/api/public/morning-brief`, `/api/public/optimize`, `/api/public/partner-apply`, `/api/public/partner-page`, `/api/public/rb2b-webhook`, `/api/public/slo-checkout`, `/api/public/slo-interest`, `/api/public/slo-pull`, `/api/public/slo-repair-checkout`, `/api/public/slo-status`, `/api/public/survey-resume`, `/api/public/survey-submit`, `/api/public/vsl-watch`, `/api/trials/eligibility`. These are the sign-in routes and the health check.
 - **7 routes need no sign-in but are NOT open.** `/api/content/welcome-video` (signed link), `/api/contracts/sign` (signed link), `/api/documents/:id` (signed link), `/api/inngest` (Inngest request signing), `/api/public/unsubscribe` (signed link), `/api/soft-pull-approve` (signed link), `/api/webhooks/:provider` (provider signature). Anyone can call these, but a caller without the right signature is refused.
 
 ## What they are blocked from
 
-**11 of 336 routes.**
+**10 of 338 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -415,7 +419,6 @@ flowchart TD
 | `/api/auth/authorized-rep-file` | GET, POST | client |
 | `/api/chat/portal-message` | GET, POST | client |
 | `/api/push/key` | GET | client |
-| `/api/push/native-device` | DELETE, GET, POST | client |
 | `/api/push/preferences` | GET, PUT | client |
 | `/api/push/subscribe` | GET, POST | client |
 | `/api/push/unsubscribe` | DELETE, POST | client |

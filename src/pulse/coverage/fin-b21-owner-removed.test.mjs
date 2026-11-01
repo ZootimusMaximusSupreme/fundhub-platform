@@ -38,8 +38,9 @@ function shippedSite({ edit = (p, text) => text, status = {}, boom = {}, calls =
 const withEdit = (pathname, change) => shippedSite({ edit: (p, text) => (p === pathname ? change(text) : text) });
 const append = (extra) => (text) => `${text}\n${extra}\n`;
 
-const EDIT_BAR = OWNER_REMOVED[0];
-const HEADER_BAR = OWNER_REMOVED[1];
+const EDIT_BAR = OWNER_REMOVED.find((item) => item.control.startsWith("Edit bar while"));
+const HEADER_BAR = OWNER_REMOVED.find((item) => item.control.startsWith("Header bar:"));
+const BOOKED_SWITCH = OWNER_REMOVED.find((item) => item.surface === "staff-teams.html");
 const idOf = (rc) => `catalog-display:${rc.sourceFile}:${rc.surface}:${rc.control}`;
 
 /* The row the real display lane prints for one control, with this fake live site. */
@@ -51,11 +52,11 @@ async function judge(rc, ctx) {
 }
 
 test("each owner-removed control is one exact map row and one exact lane row", () => {
-  assert.equal(OWNER_REMOVED.length, 2);
+  assert.equal(OWNER_REMOVED.length, 3);
   for (const rc of OWNER_REMOVED) {
     const rows = MAP.filter((r) => r.surface === rc.surface && r.control === rc.control);
     assert.equal(rows.length, 1, rc.control);
-    assert.equal(rc.surface, SURFACE);
+    assert.ok([SURFACE, "staff-teams.html"].includes(rc.surface));
     const entries = DISPLAY_TRACKING_CASES.filter((e) => e.sourceFile === rc.sourceFile && e.surface === rc.surface && e.control === rc.control);
     assert.equal(entries.length, 1, `${rc.control} is not one row of the display lane`);
     assert.equal(ownerRemovedFor(entries[0]), rc);
@@ -72,7 +73,7 @@ test("the Settings sheet and the This shoot list are NOT owner-removed: nothing 
   }
 });
 
-test("with the shipped files, both controls are nothing to judge", async () => {
+test("with the shipped files, all removed controls are nothing to judge", async () => {
   const calls = [];
   const ctx = { fetchImpl: shippedSite({ calls }) };
   for (const rc of OWNER_REMOVED) {
@@ -134,10 +135,11 @@ test("the header bar comes back: the hide rule gone, a rule that shows it, or an
 
 test("a file that cannot be read is skipped, never nothing-to-judge", async () => {
   for (const rc of OWNER_REMOVED) {
+    const firstPath = rc.pages[0].path;
     for (const ctx of [
-      { fetchImpl: shippedSite({ boom: { [CSS]: "offline", [JS]: "offline" } }) },
-      { fetchImpl: shippedSite({ status: { [HTML]: 503 } }) },
-      { fetchImpl: shippedSite({ status: { [CSS]: 404, [JS]: 404 } }) },
+      { fetchImpl: shippedSite({ boom: { [firstPath]: "offline" } }) },
+      { fetchImpl: shippedSite({ status: { [firstPath]: 503 } }) },
+      { fetchImpl: shippedSite({ status: { [firstPath]: 404 } }) },
       { fetchImpl: null },
       { fetchImpl: shippedSite(), baseUrl: "not a URL" },
     ]) {
@@ -156,7 +158,7 @@ test("a file that reads fine but no longer looks like the file is red, not nothi
   }
 });
 
-test("the lane: both rows are na with the owner-removed code on the shipped files, and each file is read once", async () => {
+test("the lane: removed rows are na with the owner-removed code, and each file is read once", async () => {
   const calls = [];
   const rows = await gapChecks({ fetchImpl: shippedSite({ calls }) });
   for (const rc of OWNER_REMOVED) {
@@ -171,6 +173,7 @@ test("the lane: both rows are na with the owner-removed code on the shipped file
   }
   // Both rows share the page script, the page and the stylesheet: each is fetched once, not twice.
   for (const file of [JS, HTML, CSS]) assert.equal(calls.filter((p) => p === file).length, 1, file);
+  assert.equal(calls.filter((p) => p === "/app/staff-teams.html").length, 1);
 });
 
 test("the lane: the day a control is back its row is red and the claim no longer verifies", async () => {
@@ -190,6 +193,13 @@ test("the lane: the day a control is back its row is red and the claim no longer
   assert.equal(await naVerify[OWNER_REMOVED_CODE]({ sourceFile: HEADER_BAR.sourceFile, surface: HEADER_BAR.surface, control: HEADER_BAR.control }, { fetchImpl: cssSite() }), false);
   assert.equal(rows2.find((r) => r.id === idOf(EDIT_BAR)).status, "na");
 
+  const switchSite = () => withEdit("/app/staff-teams.html", append('<input id="ed_booked_sms" type="checkbox">'));
+  const rows3 = await gapChecks({ fetchImpl: switchSite() });
+  assert.equal(rows3.find((r) => r.id === idOf(BOOKED_SWITCH)).status, "FAIL");
+  assert.equal(await naVerify[OWNER_REMOVED_CODE]({ sourceFile: BOOKED_SWITCH.sourceFile,
+    surface: BOOKED_SWITCH.surface, control: BOOKED_SWITCH.control }, { fetchImpl: switchSite() }), false);
+  assert.equal(rows3.find((r) => r.id === idOf(EDIT_BAR)).status, "na");
+
   // A claim about a control that is not on the list never verifies.
   assert.equal(await naVerify[OWNER_REMOVED_CODE]({ sourceFile: "desks-f.json", surface: SURFACE, control: "invented" }, { fetchImpl: shippedSite() }), false);
   assert.equal(await naVerify[OWNER_REMOVED_CODE]({ sourceFile: "desks-f.json", surface: SURFACE, control: SETTINGS }, { fetchImpl: shippedSite() }), false);
@@ -204,7 +214,7 @@ test("the lane: the now-wired Settings sheet and This shoot proofs no longer app
   }
 });
 
-test("a run with no GET client skips both rows and invents no pass", async () => {
+test("a run with no GET client skips removed rows and invents no pass", async () => {
   const rows = await gapChecks({ fetchImpl: null });
   for (const rc of OWNER_REMOVED) {
     const row = rows.find((r) => r.id === idOf(rc));

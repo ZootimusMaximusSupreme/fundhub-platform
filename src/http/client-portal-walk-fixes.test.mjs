@@ -58,16 +58,24 @@ describe("client portal — the 2026-09-03 walk findings", () => {
       "the card must not be gated on repair_path — that refuses every funding client");
   });
 
-  test("F36 — one empty row in the Messages tab, not two", () => {
-    // ONE static empty row in the pane, never a second.
-    assert.equal((html.match(/id="msg-empty"/g) || []).length, 1, "there must be exactly one static empty row");
-    assert.ok(!html.includes('id="msg-live-empty"'), "the duplicate row must be gone");
-    /* Walkthrough-4 defect 18: the static row no longer says "No messages
-       yet." — a client is never given a messages read, so that sentence stood
-       forever. Only paintMessages() (the staff read, which really answered)
-       may say it. Rendered rows only — comments name the sentence too. */
-    const empties = html.match(/>No messages yet\.</g) || [];
-    assert.equal(empties.length, 1, "only paintMessages' replacement markup may say No messages yet.");
+  test("F36 — one honest starting row, then authenticated saved-chat read", () => {
+    // The new client Messages tab reads its OWN saved portal conversation.
+    // A permanent 'no messages' row would falsely hide a buyer's saved replies.
+    const at = html.indexOf('id="tp-msg"');
+    assert.ok(at > 0, "Messages tab must exist");
+    const initialPane = html.slice(at, at + 450);
+    assert.equal((initialPane.match(/class="timeline-item"/g) || []).length, 1,
+      "exactly one starting message row before the authenticated response");
+    assert.match(initialPane, /Messages from your portal chat appear here/);
+    assert.ok(!html.includes('id="msg-live-empty"'), "no duplicated stale empty row");
+    assert.match(html, /session\.principal !== "client"/,
+      "client chat read must be guarded by an authenticated client session");
+    assert.match(html, /fetch\("\/api\/chat\/portal-message"/,
+      "Messages tab must actually read saved portal chat");
+    assert.match(html, /No saved portal chat messages yet/,
+      "a real empty read must show a scoped honest empty state");
+    assert.match(html, /We could not load your saved chat messages/,
+      "a failed read must not masquerade as an empty history");
   });
 
   test("F37 — an owned offer is not priced as a locked upsell", () => {

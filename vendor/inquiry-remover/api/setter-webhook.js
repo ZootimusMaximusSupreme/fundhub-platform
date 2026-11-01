@@ -361,7 +361,7 @@ function buildActivityNote({ call_id, outcome, summary, call_length, metadata })
   const closerName = metadata?.closer_name || "N/A";
 
   const lines = [
-    `AI Setter Call (Josh) — ${outcomeLabel(outcome)}`,
+    `AI Setter Call (Chris) — ${outcomeLabel(outcome)}`,
     `Outcome: ${outcome}`,
     `Duration: ${durationStr}`,
     `Grade: ${grade}`,

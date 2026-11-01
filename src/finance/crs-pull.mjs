@@ -600,24 +600,25 @@ export async function runCrsPull(db, {
     });
   }
 
-  /* CLAIM BEFORE ANY PROVIDER CALL. A fresh call cannot know who owns an
-     existing processing row, so it must not order on another worker's claim. */
-  if (ledger.status === "queued") {
-    const claim = await claimSoftPull(db, { requestId, orgId, clientId });
-    if (!claim.claimed && claim.reason === "already_claimed") {
-      throw new SoftPullError("soft pull request is already claimed", {
-        status: 409, code: "request_already_claimed"
-      });
-    }
-    if (!claim.claimed) {
-      throw new SoftPullError(`soft pull request is already ${claim.reason}`, { status: 409 });
-    }
-  } else if (ledger.status === "processing") {
-    throw new SoftPullError("soft pull request is already claimed", {
-      status: 409, code: "request_already_claimed"
+  /* EXCLUSIVE CLAIM BEFORE ANY PROVIDER CALL. A SELECT of QUEUED is only
+     a snapshot: another worker may win the atomic UPDATE before this one.
+     ONLY the queued -> processing UPDATE winner may cross the bureau fence.
+     A losing or preexisting processing request needs manual reconciliation,
+     not a second credit order. No automatic retry of ambiguous provider work. */
+  if (ledger.status !== "queued") {
+    throw new SoftPullError(`soft pull request is already ${ledger.status}`, {
+      status: 409,
+      code: ledger.status === "processing" && ledger.requested_by_kind === "system"
+        ? "request_already_claimed" : null
     });
-  } else {
-    throw new SoftPullError(`soft pull request is already ${ledger.status}`, { status: 409 });
+  }
+  const claim = await claimSoftPull(db, { requestId, orgId, clientId });
+  if (!claim.claimed) {
+    throw new SoftPullError(`soft pull request is already ${claim.reason}`, {
+      status: 409,
+      code: claim.reason === "already_claimed" && ledger.requested_by_kind === "system"
+        ? "request_already_claimed" : null
+    });
   }
 
   const crs = client || createCrsClient({ env, fetchImpl });

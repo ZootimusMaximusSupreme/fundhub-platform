@@ -141,17 +141,23 @@ export async function importLendersCsv(db, { orgId, text, staff, logoByExternalI
           [orgId, row.external_row_id]
         );
         if (existing.rows[0]) {
+          // Blank CSV cells mean unknown, not a staff-authorized deletion.
+          // Preserve existing Apply URLs and inactive state on partial imports.
+          // Staff may still clear a URL intentionally with updateLender.
+          const patch = { ...payload };
+          if (patch.application_url == null) delete patch.application_url;
+          if (patch.active == null) delete patch.active;
           await updateLender(db, {
             orgId,
             id: existing.rows[0].id,
-            patch: payload,
+            patch,
             staff
           });
           updated++;
           continue;
         }
       }
-      await createLender(db, { orgId, row: payload, staff });
+      await createLender(db, { orgId, row: { ...payload, active: payload.active ?? true }, staff });
       imported++;
     } catch (e) {
       errors.push(`${row.name}: ${e.message || e.code || "failed"}`);
