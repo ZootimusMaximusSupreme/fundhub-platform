@@ -4,13 +4,13 @@
 
 
 
-Your own credit file picks your path on this call. So the first half is your FILE, read with you on the line, before anyone says a word about price.
+Your own credit file picks your path on this call. The first half is your FILE, read with you on the line, before anyone says a word about price.
 
 
 
 
 
-Money comes up near the very end, and the reason it waits that long protects you. Here's how the call runs, part by part, so nothing on it surprises you.
+Money comes up near the very end, and the reason it waits that long protects you. The call runs in a set order, so nothing on it surprises you.
 
 
 
@@ -34,7 +34,7 @@ Then you see what your file says: how much you qualify for based on where you're
 
 
 
-Last, your advisor names the path that fits and shows you how it runs, step by step. Then comes your answer. Yes or no, all we ask is a straight one.
+Your advisor names the path that fits and walks you through it. The price for that path comes last, and all we ask for is a straight answer.
 
 
 
@@ -46,37 +46,37 @@ Last, your advisor names the path that fits and shows you how it runs, step by s
 
 
 
-Look at what comes up on the screen once your report gets pulled. Three scores run across the top. Under them sits every account the banks are going to read.
+Three scores run across the top of the report once it's pulled. This sample reads 702, 711 and 706, which is GOOD credit at all three bureaus.
 
 
 
 
 
-This is a sample file. The scores come in at 706, 702 and 709. So on paper, this person has GOOD credit with all three bureaus.
+Under the scores sit the accounts. This file has four credit cards, and together those cards owe $37,100 against $42,000 of combined limits.
 
 
 
 
 
-Now drop to the first account. One card has $4,000 on it, which is 40% of its limit. That balance is what the bank reads first.
+That's 88% of the limits in use. UnderwriteIQ reads 88% as CRITICAL, and that one reading cuts what this file qualifies for, good scores and all.
 
 
 
 
 
-The share of your limit you use is part of what sets how much you qualify for. So one heavy balance holds back a file that scores well.
+Card use is part of what sets how much you qualify for. A file can score well and still get held back by balances like these.
 
 
 
 
 
-We pull all THREE bureaus because each bank picks which one it reads. Your name, your address and your other details have to match on every report.
+A bank can pull any one of the three bureaus. Your advisor pulls all THREE and checks that your name, address and accounts match on each one.
 
 
 
 
 
-For you, that means you see the same report the bank sees. Every choice after this point gets made on facts from your own file.
+You end up looking at the same report the bank reads, and every choice after this point gets made on facts from your own file.
 
 
 
@@ -88,37 +88,37 @@ For you, that means you see the same report the bank sees. Every choice after th
 
 
 
-Here's what it's costing you right now. Once the pull is done, this screen comes up. The first thing on it is how much your file supports TODAY.
+The cost shows up the moment the pull is done. This screen opens with how much your file supports TODAY, and on this sample that's $46,560.
 
 
 
 
 
-The amount is blank on this sample because it only ever comes from a real file. On your call, it's YOUR amount, straight off your own report.
+UnderwriteIQ then runs the same file a second time with the fixes in place. Same scores, same accounts, and this time it qualifies for $174,600.
 
 
 
 
 
-Then you see the fixes one at a time, and what each one adds. The gap between today and the fixed file is money sitting on the table right now.
+That gap is $128,040, and it's money sitting on the table right now. The cards at 88% used are the BIGGEST reason it's still sitting there.
 
 
 
 
 
-That gap is real money for your business. It covers your next hire, a larger job, and ads paid with credit instead of your savings.
+Put $128,040 to work and it covers the crew you've been short on, the job you had to turn down, and ads that run every single week.
 
 
 
 
 
-Every figure on that screen comes off your own report. Nobody on the call is guessing, and nobody rounds anything up to make it look better.
+Every figure on that screen comes off the report. Nobody on the call guesses, and nobody rounds a figure up to make it look better.
 
 
 
 
 
-The bank still makes the final call. The reports stay with you no matter what you decide, and you leave knowing what your file supports right now.
+The bank still makes the final call, and the reports stay with you whatever you decide, so the read on your file is yours to keep.
 
 
 
@@ -130,7 +130,7 @@ The bank still makes the final call. The reports stay with you no matter what yo
 
 
 
-How does Fundhub keep this call straight? Look at the screen your advisor shares. Your file and your path are marked, and money sits after both.
+Fundhub keeps this call straight with a fixed order. On the screen your advisor shares, your file and your path are marked, and money comes after both.
 
 
 
@@ -172,13 +172,7 @@ That order is how we keep our word. We fulfill, and you see every promise in wri
 
 
 
-Picture your business once the capital is in. You make the next hire, you say yes to the bigger job, and your ads run without touching your savings.
-
-
-
-
-
-That's why your business details matter on this call. Funding can go in your own name, your company's name, or BOTH. Every company is judged on its OWN.
+Your business details matter on this call. Funding can go in your own name, your company's name, or BOTH, and every company is judged on its OWN.
 
 
 
@@ -208,7 +202,7 @@ If you make money decisions with a spouse or business partner, bring them along.
 
 
 
-Here's why money waits until the end. By then you've seen your report and agreed on your path. So the only price you hear is for YOUR path.
+Money waits until the end for a reason. By then you've seen your report and agreed on your path, so the only price you hear is for YOUR path.
 
 
 
@@ -232,10 +226,10 @@ The call is recorded, so every detail about your file and your path is kept. Sto
 
 
 
-You leave knowing how much you qualify for based on where you're at right now, what's standing in the way, and which path your file fits.
+Fundhub is built for action takers, not shoppers. The agreement and the first payment both happen on the call, with your advisor still on the line.
 
 
 
 
 
-Fundhub is built for action takers, not shoppers. You can move the same day you see your file, with every fact right in front of you.
+Because you can start the same day, you leave the call with your path picked and your next step waiting in your portal.

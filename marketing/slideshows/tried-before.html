@@ -8,6 +8,7 @@
 <!--
   Deck TB · If you tried before
   Rewritten 2026-10-31 on Chris's slide framework (see pre-underwriting.html).
+  Fix round 2026-10-31 (copy reviewer): TB-01 shows the red-flag sample's five declined applications; TB-02 is a drawing of one round; TB-04 shows sections 4 and 6 only.
   Lane: Every lane (Funding, and Blueprint and Repair)
   Hammer Them pillar: Objection ("I've been burned before", "I got told no
   before", "How do I know this is legit")
@@ -785,9 +786,9 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
   <section class="slide dark" data-src="The picture is five of the six inquiries on the red-flag sample file, word for word from its fields, each one a declined application: marketing/slideshows/samples/red-flag-file.result.json person.inquiries (who pulled, bureau, date), pulled 2026-10-30 (_meta.clock); UnderwriteIQ counts five pulls in the last six months: today.signals.inquiries (last6Mo 5); simulated, no bureau contacted: _meta.notice. Inquiries count most inside 6 months, stop counting after 12 and drop off at 24: Fundhub inquiry-age rule, src/blueprint/next-sequence-math.mjs:87-88; the bureau factor TOO MANY INQUIRIES LAST 12 MONTHS: src/blueprint/decline-analyze.mjs:155. Too many recent inquiries read as risk: same file :144. Chris: they logged into Experian, pulled up a list of lenders they use for every single client, and started blasting out applications: marketing/ads/VOICE.md:89 (Pair 2). Almost every application you send is a hard pull: docs/sops/weekend-2026-10-24/04-sales-call-script.md:160. The banks see the inquiries stack: public/app/present.js:108. The question to ask any company: 04-sales-call-script.md:437. Hook form: marketing/ads/RULES.md 2.2 and Part 0 rules 26, 27 and 32.">
     <p class="eyebrow">TB-01 / What's still there</p>
     <h2>A company that blasts your file leaves hard pulls that count against you for 12 months.</h2>
-    <p class="lede">One question, asked before you pay anyone, tells you if the next company works the same way.</p>
+    <p class="lede">One question, asked before you pay, shows how the next company works.</p>
     <ul class="lines">
-      <li>Every bank they applied to pulled your report, and the next bank reads each pull before it decides.</li>
+      <li>Every bank they tried pulled your report, and the next bank reads each pull.</li>
       <li>This sample holds five declined applications across all three bureaus, all inside six months.</li>
     </ul>
     <figure class="pic">
