@@ -30,6 +30,8 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { FILE_OVERLAP_CUTOVER } from "./release-control.mjs";
+
 const BASE = "origin/main";
 
 function run(cmd, args, opts = {}) {
@@ -212,10 +214,52 @@ export function findOverlaps(mine, sources) {
   return { withMine, hot };
 }
 
-export function blockingOverlaps(withMine, sources) {
+export function stackAncestorNumbers(openPrs, currentHead) {
+  const byHead = new Map(openPrs.map((pr) => [pr.headRefName, pr]));
+  const current = byHead.get(currentHead);
+  if (!current) return new Set();
+  const ancestors = new Set();
+  let baseRef = current.baseRefName;
+  const seen = new Set();
+  while (baseRef && baseRef !== "main" && !seen.has(baseRef)) {
+    seen.add(baseRef);
+    const parent = byHead.get(baseRef);
+    if (!parent) break;
+    ancestors.add(parent.number);
+    baseRef = parent.baseRefName;
+  }
+  return ancestors;
+}
+
+export function isOlderOpenPr(peer, currentCreatedMs, currentNumber) {
+  const peerCreated = Date.parse(peer.createdAt ?? "");
+  if (!Number.isFinite(peerCreated) || !Number.isFinite(currentCreatedMs)) return true;
+  if (peerCreated < currentCreatedMs) return true;
+  if (peerCreated === currentCreatedMs && peer.number < currentNumber) return true;
+  return false;
+}
+
+// Align local exit codes with scripts/release-control.mjs FILE_OVERLAP_CUTOVER.
+export function blockingOverlaps(withMine, sources, { currentPr = null, openPrs = [] } = {}) {
   const active = new Set(sources.filter((source) => source.kind !== "branch" || source.active)
     .map((source) => source.label));
-  return withMine.filter((overlap) => active.has(overlap.label));
+  const prByLabel = new Map(sources.filter((s) => s.kind === "pr").map((s) => [s.label, s]));
+  const currentCreated = currentPr ? Date.parse(currentPr.createdAt ?? "") : NaN;
+  const overlapCutover = Date.parse(FILE_OVERLAP_CUTOVER);
+  const overlapGateActive = Number.isFinite(currentCreated) && currentCreated >= overlapCutover;
+  const legacyOverlapExempt = Number.isFinite(currentCreated) && currentCreated < overlapCutover;
+  const ancestors = currentPr ? stackAncestorNumbers(openPrs, currentPr.headRefName) : new Set();
+
+  return withMine.filter((overlap) => {
+    if (!active.has(overlap.label)) return false;
+    const source = prByLabel.get(overlap.label);
+    if (!source || source.kind !== "pr") return true;
+    if (!currentPr) return true;
+    if (legacyOverlapExempt || !overlapGateActive) return false;
+    const peer = { number: source.prNumber, createdAt: source.prCreatedAt };
+    if (ancestors.has(peer.number)) return false;
+    return isOlderOpenPr(peer, currentCreated, currentPr.number);
+  });
 }
 
 function parseArgs(argv) {
@@ -327,7 +371,7 @@ export function main(argv = process.argv.slice(2)) {
 
   // 3. Open pull requests on GitHub.
   const prJson = run("gh", ["pr", "list", "--state", "open", "--limit", "100",
-    "--json", "number,title,headRefName,baseRefName,files,labels,body"], { cwd: top });
+    "--json", "number,title,headRefName,baseRefName,files,labels,body,createdAt"], { cwd: top });
   let openPrs = [];
   if (prJson === null) {
     notes.push("GitHub PR list was unavailable; open pull requests were not checked.");
@@ -337,7 +381,14 @@ export function main(argv = process.argv.slice(2)) {
       if (pr.headRefName === current) continue;
       const files = (pr.files || []).map((f) => f.path);
       if (files.length) {
-        sources.push({ label: `PR #${pr.number} ${pr.headRefName}`, refName: pr.headRefName, kind: "pr", files });
+        sources.push({
+          label: `PR #${pr.number} ${pr.headRefName}`,
+          refName: pr.headRefName,
+          kind: "pr",
+          prNumber: pr.number,
+          prCreatedAt: pr.createdAt,
+          files
+        });
       }
     }
   }
@@ -374,7 +425,8 @@ export function main(argv = process.argv.slice(2)) {
     if (!notes.includes(note)) notes.push(note);
   }
   const { withMine, hot } = findOverlaps(mine, handoff.sources);
-  const blocking = blockingOverlaps(withMine, handoff.sources);
+  const currentPr = openPrs.find((pr) => pr.headRefName === current) ?? null;
+  const blocking = blockingOverlaps(withMine, handoff.sources, { currentPr, openPrs });
   const report = { current, behind, comparisonBase, localMain: { behindBefore: mainBehind, updated: mainUpdated, reason: mainUpdateReason }, openBranches: openNames.size, chain, myFiles: mine.length, scanned: handoff.sources.length, withMine, blocking, hot, notes };
 
   if (args.json) {
