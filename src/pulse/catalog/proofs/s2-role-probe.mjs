@@ -11,7 +11,8 @@
 //   - An empty POST body is refused for being empty on some routes BEFORE their
 //     later role check. Those routes look reachable here and are named, one by
 //     one, in the test that uses this file. They are never counted as proved.
-import { fakeDb, useSharedDb, staffSession, accountSession } from "../../../testing/handler-harness.mjs";
+import { fakeDb, useSharedDb, staffSession, accountSession, ORG_ID } from "../../../testing/handler-harness.mjs";
+import { BLUEPRINT_PRODUCT_CODE } from "../../../waypoints/purchase.mjs";
 
 const CLIENT_ID = "c1000000-0000-4000-8000-000000000001";
 const PARTNER_ID = "b1000000-0000-4000-8000-000000000001";
@@ -63,9 +64,16 @@ async function oneCall(handler, path, method, rules, anonymous) {
 }
 
 /** What happened to one person on one route key. */
-export async function probeRoute(handler, key, principalName) {
+export async function probeRoute(handler, key, principalName, { paidBlueprint = true } = {}) {
   const path = PATH_FOR[key] || key;
   const rules = principalName ? PRINCIPALS[principalName]() : [];
+  // The client journey's FinanceOS reads are for a paid Blueprint client.
+  // Keep the real entitlement and route gates; only the saved paid grant is a fixture.
+  if (principalName === "client" && paidBlueprint && ["money/banks", "money/overview"].includes(key)) {
+    rules.push([/FROM entitlements e/, (_sql, params) =>
+      params[0] === ORG_ID && params[1] === CLIENT_ID && params[3] === BLUEPRINT_PRODUCT_CODE
+        ? [{ id: "paid-blueprint-fixture" }] : []]);
+  }
   // This client-only door checks that the signed-in client has a file before
   // returning the saved switch. Give the probe that one file; other roles get none.
   if (key === "push/preferences" && principalName === "client") {

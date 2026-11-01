@@ -154,6 +154,14 @@ describe("the probe and the written gates", () => {
     }
   });
 
+  test("paid Blueprint clients reach FinanceOS reads while unpaid clients stay blocked", async () => {
+    for (const key of ["money/banks", "money/overview"]) {
+      assert.equal(state.verdicts.client[key], "reach", `paid client: ${key}`);
+      const unpaid = await probeRoute(api, key, "client", { paidBlueprint: false });
+      assert.deepEqual(unpaid.GET, { status: 403, code: "finance_os_not_entitled" }, `unpaid client: ${key}`);
+    }
+  });
+
   test("native device registration denies other staff roles", () => {
     assert.equal(state.verdicts["role-sales-manager"]["push/native-device"], "blocked");
     assert.equal(state.verdicts["role-funding-advisor"]["push/native-device"], "blocked");
