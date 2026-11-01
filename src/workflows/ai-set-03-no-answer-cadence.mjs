@@ -37,6 +37,12 @@
 // from the run's own trigger event. The old check looked at the person's whole
 // history, so anyone who had ever booked stopped after text 1 — which would end
 // the "call booked" words after one text.
+//
+// The "call booked" words ask the person to keep their call, so texts 2 and 3 of
+// that set also stop when the call is no longer ahead of them: cancelled, or its
+// start time has come (held or missed). Asked at the same planned moment, with the
+// same booking rule as upcomingCall (review 2026-10-31). The opt-in words ask the
+// person to book, so having no call ahead never stops them.
 
 import { inngest } from "./client.mjs";
 import { db } from "../db.mjs";
@@ -96,13 +102,23 @@ export async function rebookedSince(db, clientId, eventId) {
    reads it before each text. "Tried calling, missed you" must not follow a real
    conversation (second read-only review of PR #346, 2026-10-31). */
 export const REACHED_DISPOSITIONS = Object.freeze(["reached", "booked_on_call"]);
-export async function setterReached(db, orgId, clientId) {
+export async function setterReached(db, orgId, clientId, eventId, eventName) {
   const r = await db.query(
-    `SELECT custom_fields FROM clients WHERE id = $1 AND org_id = $2 LIMIT 1`,
-    [clientId, orgId]
+    `SELECT c.custom_fields, e.created_at AS trigger_created_at
+       FROM clients c JOIN events e ON e.id = $3 AND e.org_id = c.org_id
+      WHERE c.id = $1 AND c.org_id = $2 LIMIT 1`,
+    [clientId, orgId, eventId]
   );
-  const handoff = r.rows[0]?.custom_fields?.setter_handoff;
-  return REACHED_DISPOSITIONS.includes(handoff && typeof handoff === "object" ? handoff.disposition : null);
+  const row = r.rows[0];
+  const handoff = row?.custom_fields?.setter_handoff;
+  if (!handoff || typeof handoff !== "object" || !REACHED_DISPOSITIONS.includes(handoff.disposition)) return false;
+  // Human no-answer saves its result before emitting. A later legacy reached save
+  // may lack disposition_at; it still belongs to this run because the initial
+  // no-answer save replaced any older result. Voice-call events lack that ordering.
+  if (!handoff.disposition_at && eventName === "setter.no_answer") return true;
+  const dispositionAt = Date.parse(handoff.disposition_at);
+  const triggerAt = new Date(row.trigger_created_at).getTime();
+  return Number.isFinite(dispositionAt) && Number.isFinite(triggerAt) && dispositionAt >= triggerAt;
 }
 
 export async function handle({ event, db, step, now = () => new Date() }) {
@@ -121,6 +137,7 @@ export async function handle({ event, db, step, now = () => new Date() }) {
      should stop ("rebooked", "replied" or "reached"), or null to send. The moment is
      planned in a step; text 1 is due now, texts 2 and 3 after the text before them. */
   let plannedMs = 0;
+  let callAt = null;
   async function waitAndCheck(n) {
     const planned = await step.run(`plan-msg${n}`, () => {
       const due = n === 1 ? now().getTime() : plannedMs + TEXT_GAP_MS[n];
@@ -130,7 +147,7 @@ export async function handle({ event, db, step, now = () => new Date() }) {
     await step.sleepUntil(`wait-until-msg${n}`, new Date(planned));
     if (await step.run(`check-rebooked-${n}`, () => rebookedSince(db, clientId, eventId))) return "rebooked";
     if (await step.run(`check-replied-${n}`, replied)) return "replied";
-    if (await step.run(`check-reached-${n}`, () => setterReached(db, orgId, clientId))) return "reached";
+    if (await step.run(`check-reached-${n}`, () => setterReached(db, orgId, clientId, eventId, event.name))) return "reached";
     return null;
   }
   // A rebook is named by where the cadence stood; a reply or a reached person by why.
@@ -139,7 +156,7 @@ export async function handle({ event, db, step, now = () => new Date() }) {
   const stop1 = await waitAndCheck(1);
   if (stop1) return { done: true, exitedAt: exitFor(stop1, "before-msg1") };
 
-  const callAt = await step.run("find-upcoming-call", () => upcomingCall(db, orgId, clientId));
+  callAt = await step.run("find-upcoming-call", () => upcomingCall(db, orgId, clientId));
   const keys = callAt ? CALL_BOOKED_KEYS : NO_CALL_KEYS;
   const context = callAt ? { appointment: { start_time: callAt } } : {};
   const send = (n) => sendTemplated(db, {

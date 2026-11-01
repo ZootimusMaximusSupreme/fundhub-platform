@@ -19,9 +19,11 @@ import { test, before, after } from "node:test";
 import assert from "node:assert";
 import { db, close } from "../db.mjs";
 import {
-  handle, lastCompletedSequenceAt, resumePlan, sequenceInFlight, stopReason, surveyCompleted, RESUME_TEMPLATE_KEYS, TOUCHES
+  handle, lastCompletedSequenceAt, resumePlan, sequenceInFlight, stopReason, surveyCompleted,
+  touchSendKey, RESUME_TEMPLATE_KEYS, TOUCHES
 } from "./s-02-incomplete-survey-nudge.mjs";
 import { inngestSim } from "./inngest-sim.mjs";
+import { nextHourStrike, SEND_WINDOW_TZ } from "../messaging/send-window.mjs";
 import { isLocalScratchDatabaseUrl } from "../verification/scratch-guard.mjs";
 
 // Writes and deletes its own rows, so it runs only on a loopback scratch or CI database.
@@ -40,6 +42,10 @@ const saved = {};
 let seq = 0;
 
 const iso = (ms) => new Date(ms).toISOString();
+const expectedTouchRefs = (clientId, startedAt) => RESUME_TEMPLATE_KEYS.map((templateKey) => {
+  const touch = Number(templateKey.slice(-1));
+  return `workflow:${templateKey}:${touchSendKey(clientId, resumePlan(startedAt)[touch - 1])}`;
+});
 
 async function makeClient(org, { email = `lead${++seq}@${DOMAIN}`, phone = `+1555010${String(1000 + seq).slice(-4)}`, answers = {} } = {}) {
   return (await db.query(
@@ -287,7 +293,9 @@ test("a lead who never finishes: six queued messages on real rows, each with the
     assert.deepEqual(rows.map((r) => r.template_key).sort(), KEYS6);
     for (const r of rows) {
       assert.equal(r.status, "queued", "queued for the dispatcher; this test sends nothing");
-      assert.equal(r.provider_ref, `workflow:${r.template_key}:${event.id}`, "one send key per touch, per channel, per opt-in");
+      const touch = Number(r.template_key.slice(-1));
+      assert.equal(r.provider_ref, `workflow:${r.template_key}:${touchSendKey(clientId, resumePlan(start)[touch - 1])}`,
+        "one send key per touch, per channel, per person and Arizona day");
       assert.ok(r.rendered_body.endsWith("here: https://apply.fundhub.ai/apply"), r.rendered_body);
       assert.ok(!r.rendered_body.includes("?r="), "containment 2026-10-31: no resume code in a follow-up");
       assert.ok(!r.rendered_body.includes("Pat"), "neutral copy carries no saved name");
@@ -354,7 +362,7 @@ test("a reply and a booking each stop the run", { skip: !HAS_DB }, async () => {
   assert.equal((await messagesOf(booker)).length, 2, "touch 1 went, nothing after");
 });
 
-test("two posts of one application share the first post's send key and queue six messages, not twelve",
+test("two posts of one application share one send key per touch and queue six messages, not twelve",
   { skip: !HAS_DB }, async () => {
     const email = `twice${++seq}@${DOMAIN}`;
     const clientId = await makeClient(orgId, { email });
@@ -367,7 +375,27 @@ test("two posts of one application share the first post's send key and queue six
     assert.equal(b.stoppedBecause, undefined);
     const rows = await messagesOf(clientId);
     assert.equal(rows.length, 6);
-    assert.ok(rows.every((r) => r.provider_ref.endsWith(`:${first.id}`)), "both runs keyed on the first post");
+    assert.ok(rows.every((r) => r.provider_ref.includes(`:${clientId}:`)), "both runs keyed on the person and the day");
+  });
+
+// Review 2026-10-31 (P1), on real rows: two opt-ins more than six hours apart are two runs with two
+// different opt-in events. Both sleep to the same 9 a.m., so neither has sent anything when the other
+// starts. The messages table's unique send key is what lets only one of each touch through.
+test("two opt-ins 6.5 hours apart that both wait for the same 9 a.m. queue six messages, not twelve",
+  { skip: !HAS_DB }, async () => {
+    const email = `night${++seq}@${DOMAIN}`;
+    const clientId = await makeClient(orgId, { email, answers: ANSWERED_THREE });
+    const night = nextHourStrike(new Date(), SEND_WINDOW_TZ, 22).getTime(); // the next 10 p.m. Arizona
+    const dawn = night + 6.5 * HOUR; // 4:30 a.m., past the adapter's six-hour repeat guard
+    const sim = inngestSim(iso(night));
+    const first = await optIn(clientId, night, email);
+    const second = await optIn(clientId, dawn, email);
+    const [a, b] = await sim.runAll([spec(sim, first), spec(sim, second)]);
+    assert.equal(a.stoppedBecause, undefined);
+    assert.equal(b.stoppedBecause, undefined);
+    assert.equal(resumePlan(night)[0].getTime(), resumePlan(dawn)[0].getTime(), "both runs plan touch 1 for the same 9 a.m.");
+    const rows = await messagesOf(clientId);
+    assert.deepEqual(rows.map((r) => r.template_key).sort(), KEYS6, "each touch once, a text and an email");
   });
 
 /* Independent review of PR #346 (2026-10-31): a visit at 6 p.m. and another at 1 a.m. Arizona are seven
@@ -390,7 +418,8 @@ test("two visits seven hours apart overnight (6 p.m. and 1 a.m. Arizona) queue s
     assert.equal(b.done, true);
     const rows = await messagesOf(clientId);
     assert.deepEqual(rows.map((r) => r.template_key).sort(), KEYS6, "one sequence, three touches, no doubles");
-    assert.ok(rows.every((r) => r.provider_ref.endsWith(`:${first.id}`)), "both runs keyed on the first visit");
+    assert.deepEqual(rows.map((r) => r.provider_ref).sort(), expectedTouchRefs(clientId, evening).sort(),
+      "both runs share the person-and-day send keys");
   });
 
 test("a lead who comes back through touch 2's link and stops again is not started a second sequence",
@@ -427,8 +456,9 @@ test("a new opt-in after touch 3 gets a new send key inside the four-day window"
     assert.equal(b.stoppedBecause, undefined);
     const rows = await messagesOf(clientId);
     assert.equal(rows.length, 12, "the completed prior sequence cannot suppress a fresh opt-in");
-    assert.equal(rows.filter((r) => r.provider_ref.endsWith(`:${first.id}`)).length, 6);
-    assert.equal(rows.filter((r) => r.provider_ref.endsWith(`:${fresh.id}`)).length, 6);
+    assert.deepEqual(rows.map((r) => r.provider_ref).sort(),
+      [...expectedTouchRefs(clientId, start), ...expectedTouchRefs(clientId, start + 3 * DAY)].sort(),
+      "the two completed sequences have separate person-and-day send keys");
   });
 
 test("a queued old touch 3 blocks a new opt-in inside the four-day window",

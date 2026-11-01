@@ -339,6 +339,34 @@ test("AI-SET-03: moving the call while text 2 waited for 9 a.m. stops it; a book
     assert.deepEqual((await queued(clientId)).map((m) => m.template_key), [MSG1_KEY]);
   });
 
+// Review 2026-10-31 (P2), on real rows: the call-booked texts stop once there is no call to keep.
+test("AI-SET-03: a call cancelled while text 2 waited stops texts 2 and 3; a call whose time has come stops text 3",
+  { skip: !HAS_DB }, async () => {
+    const cancels = await makeClient();
+    await insertBooking(cancels, { startsAt: new Date(Date.now() + 3 * 86_400_000).toISOString() });
+    let event = await trigger("setter.no_answer", cancels, AT_4_50_PM, PRESSED);
+    let step = recordingStep({
+      wake: async (id) => {
+        if (id === "wait-until-msg2") await db.query(`UPDATE bookings SET status = 'cancelled' WHERE org_id = $1 AND client_id = $2`, [orgId, cancels]);
+      }
+    });
+    let res = await runCadence({ event, db, step, now: () => new Date(AT_4_50_PM) });
+    assert.equal(res.exitedAt, "call-gone-after-msg1");
+    assert.deepEqual((await queued(cancels)).map((m) => m.template_key), [MSG1_KEY]);
+
+    const held = await makeClient();
+    await insertBooking(held, { startsAt: new Date(Date.now() + 3 * 86_400_000).toISOString() });
+    event = await trigger("setter.no_answer", held, AT_4_50_PM, PRESSED);
+    step = recordingStep({
+      wake: async (id) => {
+        if (id === "wait-until-msg3") await db.query(`UPDATE bookings SET starts_at = now() - interval '5 minutes' WHERE org_id = $1 AND client_id = $2`, [orgId, held]);
+      }
+    });
+    res = await runCadence({ event, db, step, now: () => new Date(AT_4_50_PM) });
+    assert.equal(res.exitedAt, "call-gone-after-msg2");
+    assert.deepEqual((await queued(held)).map((m) => m.template_key), [MSG1_KEY, MSG2_KEY]);
+  });
+
 /* ── The setter desk ───────────────────────────────────────────────────────── */
 
 const OWNER_ID = "22222222-2222-4222-8222-222222222222";

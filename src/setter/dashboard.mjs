@@ -458,16 +458,25 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
       ? previous.setter_name || ""
       : staff.name || staff.first_name || ""
   };
-  if (action === "log_dial") {
-    const dialedAt = (deps.now || (() => new Date()))();
-    const dialedDate = dialedAt instanceof Date ? dialedAt : new Date(dialedAt);
-    if (!Number.isFinite(dialedDate.getTime())) {
+  // The UI includes the currently selected result on unrelated autosaves. Only
+  // a changed result records a new conversation; restamping an old "reached"
+  // would suppress texts after a newer unanswered voice call.
+  const dispositionSaved = Object.hasOwn(validated.patch, "disposition")
+    && validated.patch.disposition !== previous.disposition;
+  let actionDate = null;
+  if (dispositionSaved || action === "log_dial") {
+    const at = (deps.now || (() => new Date()))();
+    actionDate = at instanceof Date ? at : new Date(at);
+    if (!Number.isFinite(actionDate.getTime())) {
       return { status: 500, body: { ok: false, error: "dial_time_unavailable" } };
     }
-    const day = phoenixDay(dialedDate);
+  }
+  if (dispositionSaved) next.disposition_at = actionDate.toISOString();
+  if (action === "log_dial") {
+    const day = phoenixDay(actionDate);
     const days = jsonObject(previous.dial_attempt_days);
     next.call_attempts = Number(previous.call_attempts || 0) + 1;
-    next.dialed_at = previous.dialed_at || dialedDate.toISOString();
+    next.dialed_at = previous.dialed_at || actionDate.toISOString();
     next.dial_attempt_days = { ...days, [day]: Number(days[day] || 0) + 1 };
   }
   if (action === "complete") next.complete_at = previous.complete_at || new Date().toISOString();

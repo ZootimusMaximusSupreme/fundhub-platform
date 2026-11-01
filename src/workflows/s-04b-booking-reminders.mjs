@@ -162,7 +162,7 @@ export async function handle({
       context: { ...context, portal_claim: { url: claimUrl } }
     }));
 
-  // Owner decision 2026-08-22: booked stage is one text + Josh dial + one email,
+  // Owner decision 2026-08-22: booked stage is one text + AI setter dial + one email,
   // all immediate. Text first, email second; the AI setter dials on its own leg.
   // The confirmation email uses the same permanent entry page as the text.
   // Neither message contains a credential that can expire in the inbox.

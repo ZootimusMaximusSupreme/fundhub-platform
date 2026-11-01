@@ -1,6 +1,6 @@
-// AI-SET-01 — Josh Setter.
+// AI-SET-01 — Chris Setter.
 // Source: the CRM system map AI SETTER section / vendor setter-prompt.js.
-// Trigger: booking.created. Dials Josh to confirm the Strategy Session.
+// Trigger: booking.created. The AI setter dials the lead to confirm the Strategy Session.
 //
 // THE SCRIPT IS NOT REWRITTEN HERE. Prefer the AG-04 row (Agent Editor).
 // If that row is missing, Bland's task is SETTER_TASK from
@@ -28,7 +28,7 @@ export const VENDOR_SETTER_TASK = setterPrompt.SETTER_TASK;
 function vendorJoshAgent() {
   return {
     code: JOSH_CODE,
-    name: "Setter Josh",
+    name: "Setter Chris",
     status: "live",
     runtime: "bland",
     prompt: VENDOR_SETTER_TASK
@@ -104,7 +104,7 @@ export async function handle({ event, db: database, step, placeCallImpl = placeC
 export const aiSet01JoshSetter = inngest.createFunction(
   {
     id: "ai-set-01-josh-setter",
-    name: "AI-SET-01 — Josh Setter",
+    name: "AI-SET-01 — Chris Setter",
     cancelOn: [
       {
         event: "booking.cancelled",
