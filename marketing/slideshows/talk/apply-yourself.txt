@@ -4,7 +4,7 @@
 
 
 
-Our system checks every personal file for hard inquiries, and the target is ZERO. So the first application you send on your own already counts against you.
+Our system checks every personal file for hard inquiries, and the target is ZERO. That means the first application you send on your own already counts against you.
 
 
 
@@ -76,7 +76,7 @@ I set that rule inside the system myself. Inquiries cost fundability, and every 
 
 
 
-So between rounds, we dispute every new inquiry. That way the next bank looks at a report we've already started cleaning up.
+Between rounds, every new inquiry on your file gets disputed. That way the next bank looks at a report we've already started cleaning up.
 
 
 
@@ -190,7 +190,7 @@ A hard pull needs your separate consent, written into the agreement. It only hap
 
 
 
-So you find out what's holding your file back, and what gets fixed first, without adding a single inquiry to the count.
+That way you find out what's holding your file back, and what gets fixed first, without adding a single inquiry to the count.
 
 
 

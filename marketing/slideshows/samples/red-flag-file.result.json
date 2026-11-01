@@ -1,0 +1,623 @@
+{
+  "_meta": {
+    "simulated": true,
+    "notice": "SIMULATED — Fundhub slideshow sample (red-flag file). No credit bureau was contacted.",
+    "what": "One simulated person, one credit file, run through the real UnderwriteIQ CRS engine for today and again with the fixes applied. Every dollar figure below is printed by the engine. None is typed in.",
+    "sample_file": "marketing/slideshows/samples/red-flag-file.mjs",
+    "runner": "marketing/slideshows/samples/run-red-flag-file.mjs",
+    "engine": "vendor/underwriteiq-full/api/lite/crs/engine.js runCRSEngine, through src/finance/crs-tier.mjs runTierEngineFromCrsResult and src/finance/crs-pull.mjs scoreBuyerTotal",
+    "clock": "Pinned to the pull day, 2026-10-30T16:00:00.000Z, so the result is the same on every run.",
+    "reproduce": [
+      "node marketing/slideshows/samples/run-red-flag-file.mjs",
+      "node marketing/slideshows/samples/run-red-flag-file.mjs --check"
+    ]
+  },
+  "headline": {
+    "today": 46560,
+    "after": 174600,
+    "difference": 128040,
+    "times_larger": 3.75,
+    "tier_today": "FUNDING_PLUS_REPAIR",
+    "tier_after": "FULL_FUNDING",
+    "method": "Today: the engine on the file as it stands. After: the engine run a second time on the same file with only the fixes below applied."
+  },
+  "person": {
+    "name": "Jordan Avery",
+    "name_note": "Made up. Sample address and employer.",
+    "address": "418 Sample St, Mesa, AZ 85201",
+    "employer": "SAMPLE EMPLOYER CO",
+    "has_llc": false,
+    "scores": {
+      "experian": 671,
+      "equifax": 668,
+      "transunion": 664,
+      "median": 668
+    },
+    "scores_note": "Scores are inputs on the file. The engine does not compute a new score, so the fixed-file run keeps the same scores.",
+    "cards": [
+      {
+        "creditor": "AMERICAN EXPRESS",
+        "opened": "2014-04-18",
+        "limit": 20000,
+        "balance_today": 17700,
+        "pct_used_today": 89,
+        "paydown_target": 2000,
+        "pct_used_after": 10,
+        "amount_to_pay": 15700,
+        "bureaus": "Experian, Equifax, TransUnion"
+      },
+      {
+        "creditor": "JPMCB CARD SERVICES",
+        "opened": "2016-08-09",
+        "limit": 12000,
+        "balance_today": 10600,
+        "pct_used_today": 88,
+        "paydown_target": 1200,
+        "pct_used_after": 10,
+        "amount_to_pay": 9400,
+        "bureaus": "Experian, Equifax, TransUnion"
+      },
+      {
+        "creditor": "CAPITAL ONE",
+        "opened": "2012-11-03",
+        "limit": 6000,
+        "balance_today": 5300,
+        "pct_used_today": 88,
+        "paydown_target": 600,
+        "pct_used_after": 10,
+        "amount_to_pay": 4700,
+        "bureaus": "Experian, Equifax, TransUnion"
+      },
+      {
+        "creditor": "DISCOVERCARD",
+        "opened": "2018-02-21",
+        "limit": 4000,
+        "balance_today": 3500,
+        "pct_used_today": 88,
+        "paydown_target": 400,
+        "pct_used_after": 10,
+        "amount_to_pay": 3100,
+        "bureaus": "Experian, Equifax, TransUnion"
+      }
+    ],
+    "cards_total": {
+      "limit": 42000,
+      "balance_today": 37100,
+      "pct_used_today": 88,
+      "balance_after": 4200,
+      "pct_used_after": 10,
+      "amount_to_pay": 32900
+    },
+    "installment": {
+      "creditor": "TOYOTA MOTOR CREDIT",
+      "status": "Closed, paid in full",
+      "opened": "2019-06-14",
+      "closed": "2024-06-14",
+      "original_amount": 28000,
+      "late_payments": 0,
+      "bureaus": "Experian, Equifax, TransUnion"
+    },
+    "inquiries": [
+      {
+        "who_pulled": "JPMCB CARD SERVICES",
+        "bureau": "Experian",
+        "date": "2026-03-26",
+        "why": "a credit line increase request on the Chase card",
+        "disputed": false,
+        "dispute_rule": "Kept. The Chase card on the file explains it."
+      },
+      {
+        "who_pulled": "BARCLAYS BANK DELAWARE",
+        "bureau": "TransUnion",
+        "date": "2026-05-19",
+        "why": "a credit card application, declined",
+        "disputed": true,
+        "dispute_rule": "No account from this company is on the file (personal-info-floor.mjs PI-INQUIRY-UNMATCHED)."
+      },
+      {
+        "who_pulled": "WELLS FARGO CARD SER",
+        "bureau": "Equifax",
+        "date": "2026-06-23",
+        "why": "a credit card application, declined",
+        "disputed": true,
+        "dispute_rule": "No account from this company is on the file (personal-info-floor.mjs PI-INQUIRY-UNMATCHED)."
+      },
+      {
+        "who_pulled": "LIGHTSTREAM",
+        "bureau": "Experian",
+        "date": "2026-07-28",
+        "why": "a personal loan application, declined",
+        "disputed": true,
+        "dispute_rule": "No account from this company is on the file (personal-info-floor.mjs PI-INQUIRY-UNMATCHED)."
+      },
+      {
+        "who_pulled": "SOFI LENDING CORP",
+        "bureau": "TransUnion",
+        "date": "2026-08-25",
+        "why": "a personal loan application, declined",
+        "disputed": true,
+        "dispute_rule": "No account from this company is on the file (personal-info-floor.mjs PI-INQUIRY-UNMATCHED)."
+      },
+      {
+        "who_pulled": "GOLDMAN SACHS BANK USA",
+        "bureau": "Equifax",
+        "date": "2026-09-29",
+        "why": "a credit card application, declined",
+        "disputed": true,
+        "dispute_rule": "No account from this company is on the file (personal-info-floor.mjs PI-INQUIRY-UNMATCHED)."
+      }
+    ],
+    "negatives": [],
+    "negatives_note": "No late payments, collections, charge-offs or public records. The engine reads every bureau as clean.",
+    "late_payments": 0
+  },
+  "fixes_applied": [
+    {
+      "fix": "Pay each card down to 10% of its limit",
+      "rule": "src/waypoints/definitions.mjs PAYDOWN_TARGET_FRACTION = 0.1",
+      "changes": [
+        {
+          "creditor": "AMERICAN EXPRESS",
+          "balance_from": 17700,
+          "balance_to": 2000
+        },
+        {
+          "creditor": "JPMCB CARD SERVICES",
+          "balance_from": 10600,
+          "balance_to": 1200
+        },
+        {
+          "creditor": "CAPITAL ONE",
+          "balance_from": 5300,
+          "balance_to": 600
+        },
+        {
+          "creditor": "DISCOVERCARD",
+          "balance_from": 3500,
+          "balance_to": 400
+        }
+      ]
+    },
+    {
+      "fix": "Dispute the inquiries with no account behind them, taken off the fixed file",
+      "rule": "src/metro2/diy/personal-info-floor.mjs inquiryHasAccount",
+      "removed": [
+        {
+          "who_pulled": "BARCLAYS BANK DELAWARE",
+          "bureau": "TU",
+          "date": "2026-05-19"
+        },
+        {
+          "who_pulled": "WELLS FARGO CARD SER",
+          "bureau": "EQ",
+          "date": "2026-06-23"
+        },
+        {
+          "who_pulled": "LIGHTSTREAM",
+          "bureau": "EX",
+          "date": "2026-07-28"
+        },
+        {
+          "who_pulled": "SOFI LENDING CORP",
+          "bureau": "TU",
+          "date": "2026-08-25"
+        },
+        {
+          "who_pulled": "GOLDMAN SACHS BANK USA",
+          "bureau": "EQ",
+          "date": "2026-09-29"
+        }
+      ],
+      "kept": [
+        {
+          "who_pulled": "JPMCB CARD SERVICES",
+          "bureau": "EX",
+          "date": "2026-03-26"
+        }
+      ],
+      "effect_on_funding": "None. The engine's amount moves only on card use, the tier and a thin file (estimate-preapprovals.js). The engine says it itself: inquiries are cleanup only and do not affect funding."
+    }
+  ],
+  "nothing_else_changed": "Same person, same scores, same accounts, same limits, same dates, same pull day.",
+  "why_the_jump": [
+    "Today the cards are 88% used. The engine puts that in its critical band and cuts the amount to 0.4.",
+    "Card use of 30% or more also keeps the file out of full funding, so it lands in funding plus repair, which cuts it to 0.6. Together that is 0.24 of the file's base.",
+    "At 10% the engine reads card use as good (0.9) and the clean file routes to full funding (1.0).",
+    "The base is the file's own: the $20,000 American Express limit times 5.5, plus the $28,000 Toyota loan times 3 (estimate-preapprovals.js)."
+  ],
+  "today": {
+    "outcome": "FUNDING_PLUS_REPAIR",
+    "decision_label": "Conditionally Approved",
+    "decision_explanation": "You are conditionally approved for funding. Addressing a few remaining items could increase your funding amount.",
+    "fundable": false,
+    "funding_total": 46560,
+    "funding": {
+      "personal_card": {
+        "base": 110000,
+        "final": 26400,
+        "offer_band": "moderate"
+      },
+      "personal_loan": {
+        "base": 84000,
+        "final": 20160,
+        "offer_band": "starter"
+      },
+      "business": {
+        "final": 0,
+        "cap_reason": "not_applicable"
+      },
+      "total_personal": 46560,
+      "total_combined": 46560,
+      "modifiers": {
+        "outcome": 0.6,
+        "utilization": 0.4,
+        "thinFile": 1
+      },
+      "confidence_band": "low"
+    },
+    "per_bureau_funding": "The CRS engine prints one funding figure for the whole file, not one per bureau.",
+    "signals": {
+      "median_score": 668,
+      "scores": {
+        "tu": 664,
+        "ex": 671,
+        "eq": 668
+      },
+      "card_use": {
+        "total_balance": 111300,
+        "total_limit": 126000,
+        "pct": 88,
+        "band": "critical"
+      },
+      "card_use_note": "The engine sums every bureau copy of each card, so its dollar totals are three times one account's. The percent is right. See black-report-client.mjs F43.",
+      "anchors": {
+        "revolving": {
+          "creditor": "AMERICAN EXPRESS",
+          "limit": 20000,
+          "openedDate": "2014-04-18",
+          "months": 150
+        },
+        "installment": {
+          "creditor": "TOYOTA MOTOR CREDIT",
+          "amount": 28000,
+          "openedDate": "2019-06-14",
+          "months": 88
+        }
+      },
+      "inquiries": {
+        "total": 6,
+        "last6Mo": 5,
+        "last12Mo": 6,
+        "pressure": "moderate"
+      },
+      "negatives_by_bureau": {
+        "transunion": {
+          "clean": true,
+          "count": 0
+        },
+        "experian": {
+          "clean": true,
+          "count": 0
+        },
+        "equifax": {
+          "clean": true,
+          "count": 0
+        }
+      },
+      "thin_file": false
+    },
+    "reason_codes": [
+      "VERY_HIGH_UTILIZATION"
+    ],
+    "consumer_summary": "Credit score: 668 (fair). Utilization at 88% (critical). No active derogatories.",
+    "engine_suggestions_note": "As printed. The engine repeats each card sentence once per bureau copy, and its overall card-use line counts the dollars three times (the percent is right). Quote the per-card sentences once, and take overall dollars from person.cards_total. NO_INSTALLMENT counts only OPEN loans; the paid-off Toyota loan is on the file, so do not put that sentence on a slide.",
+    "engine_suggestions": [
+      {
+        "code": "UTIL_CARD_OVER_10",
+        "severity": "critical",
+        "problem": "Your AMERICAN EXPRESS card is at 89% utilization. You owe $17,700 on a $20,000 limit.",
+        "why_it_matters": "Lenders see this and think you are relying too much on credit. High utilization on individual cards drags your score down.",
+        "action": "Pay it down to $2,000 or less. That puts you at 10%, which is the ideal range for maximum scores and the best funding offers."
+      },
+      {
+        "code": "UTIL_CARD_OVER_10",
+        "severity": "critical",
+        "problem": "Your JPMCB CARD SERVICES card is at 88% utilization. You owe $10,600 on a $12,000 limit.",
+        "why_it_matters": "Lenders see this and think you are relying too much on credit. High utilization on individual cards drags your score down.",
+        "action": "Pay it down to $1,200 or less. That puts you at 10%, which is the ideal range for maximum scores and the best funding offers."
+      },
+      {
+        "code": "UTIL_CARD_OVER_10",
+        "severity": "critical",
+        "problem": "Your CAPITAL ONE card is at 88% utilization. You owe $5,300 on a $6,000 limit.",
+        "why_it_matters": "Lenders see this and think you are relying too much on credit. High utilization on individual cards drags your score down.",
+        "action": "Pay it down to $600 or less. That puts you at 10%, which is the ideal range for maximum scores and the best funding offers."
+      },
+      {
+        "code": "UTIL_CARD_OVER_10",
+        "severity": "critical",
+        "problem": "Your DISCOVERCARD card is at 88% utilization. You owe $3,500 on a $4,000 limit.",
+        "why_it_matters": "Lenders see this and think you are relying too much on credit. High utilization on individual cards drags your score down.",
+        "action": "Pay it down to $400 or less. That puts you at 10%, which is the ideal range for maximum scores and the best funding offers."
+      },
+      {
+        "code": "UTIL_CARD_OVER_10",
+        "severity": "critical",
+        "problem": "Your AMERICAN EXPRESS card is at 89% utilization. You owe $17,700 on a $20,000 limit.",
+        "why_it_matters": "Lenders see this and think you are relying too much on credit. High utilization on individual cards drags your score down.",
+        "action": "Pay it down to $2,000 or less. That puts you at 10%, which is the ideal range for maximum scores and the best funding offers."
+      },
+      {
+        "code": "UTIL_CARD_OVER_10",
+        "severity": "critical",
+        "problem": "Your JPMCB CARD SERVICES card is at 88% utilization. You owe $10,600 on a $12,000 limit.",
+        "why_it_matters": "Lenders see this and think you are relying too much on credit. High utilization on individual cards drags your score down.",
+        "action": "Pay it down to $1,200 or less. That puts you at 10%, which is the ideal range for maximum scores and the best funding offers."
+      },
+      {
+        "code": "UTIL_CARD_OVER_10",
+        "severity": "critical",
+        "problem": "Your CAPITAL ONE card is at 88% utilization. You owe $5,300 on a $6,000 limit.",
+        "why_it_matters": "Lenders see this and think you are relying too much on credit. High utilization on individual cards drags your score down.",
+        "action": "Pay it down to $600 or less. That puts you at 10%, which is the ideal range for maximum scores and the best funding offers."
+      },
+      {
+        "code": "UTIL_CARD_OVER_10",
+        "severity": "critical",
+        "problem": "Your DISCOVERCARD card is at 88% utilization. You owe $3,500 on a $4,000 limit.",
+        "why_it_matters": "Lenders see this and think you are relying too much on credit. High utilization on individual cards drags your score down.",
+        "action": "Pay it down to $400 or less. That puts you at 10%, which is the ideal range for maximum scores and the best funding offers."
+      },
+      {
+        "code": "UTIL_CARD_OVER_10",
+        "severity": "critical",
+        "problem": "Your AMERICAN EXPRESS card is at 89% utilization. You owe $17,700 on a $20,000 limit.",
+        "why_it_matters": "Lenders see this and think you are relying too much on credit. High utilization on individual cards drags your score down.",
+        "action": "Pay it down to $2,000 or less. That puts you at 10%, which is the ideal range for maximum scores and the best funding offers."
+      },
+      {
+        "code": "UTIL_CARD_OVER_10",
+        "severity": "critical",
+        "problem": "Your JPMCB CARD SERVICES card is at 88% utilization. You owe $10,600 on a $12,000 limit.",
+        "why_it_matters": "Lenders see this and think you are relying too much on credit. High utilization on individual cards drags your score down.",
+        "action": "Pay it down to $1,200 or less. That puts you at 10%, which is the ideal range for maximum scores and the best funding offers."
+      },
+      {
+        "code": "UTIL_CARD_OVER_10",
+        "severity": "critical",
+        "problem": "Your CAPITAL ONE card is at 88% utilization. You owe $5,300 on a $6,000 limit.",
+        "why_it_matters": "Lenders see this and think you are relying too much on credit. High utilization on individual cards drags your score down.",
+        "action": "Pay it down to $600 or less. That puts you at 10%, which is the ideal range for maximum scores and the best funding offers."
+      },
+      {
+        "code": "UTIL_CARD_OVER_10",
+        "severity": "critical",
+        "problem": "Your DISCOVERCARD card is at 88% utilization. You owe $3,500 on a $4,000 limit.",
+        "why_it_matters": "Lenders see this and think you are relying too much on credit. High utilization on individual cards drags your score down.",
+        "action": "Pay it down to $400 or less. That puts you at 10%, which is the ideal range for maximum scores and the best funding offers."
+      },
+      {
+        "code": "UTIL_OVERALL_HIGH",
+        "severity": "critical",
+        "problem": "Across all your credit cards, you are using 88% of your available credit. That is $111,300 in balances against $126,000 in limits.",
+        "why_it_matters": "For the best scores and highest funding amounts, you want to be under 10% total.",
+        "action": "Get your total balances down to about $12,600. The lower your utilization, the higher your pre-approval amount and the better your approval odds."
+      },
+      {
+        "code": "FUNDING_FIRST",
+        "severity": "high",
+        "problem": "You qualify for funding. Do NOT open new accounts before applying.",
+        "why_it_matters": "Every new card or loan you open drops your average account age, adds a hard inquiry, and can trigger automatic declines from lenders.",
+        "action": "Get your funding locked in first while your file looks its best. After your funding is secured, then you can open new accounts to build depth for future rounds."
+      },
+      {
+        "code": "INQUIRY_REMOVAL",
+        "severity": "medium",
+        "problem": "You have 6 hard inquiry(ies) on your credit report.",
+        "why_it_matters": "Inquiries are cleanup only — this does not affect funding. However, removing them keeps your report clean and tidy for lenders.",
+        "action": "We prioritize Experian first for inquiry removal. Your inquiry removal letters target any that did not result in an account. Send them out and do not apply for new credit until funding is secured."
+      },
+      {
+        "code": "NO_INSTALLMENT",
+        "severity": "low",
+        "problem": "You do not have any installment loans on your credit.",
+        "why_it_matters": "Having a mix of credit types helps your score.",
+        "action": "If you are planning to get funding, do NOT open a new loan right now. Apply for funding first. After that, a small credit builder loan from Self or a local credit union is a great way to add an installment tradeline."
+      },
+      {
+        "code": "NO_BUSINESS_ENTITY",
+        "severity": "low",
+        "problem": "You do not have a registered business entity on file.",
+        "why_it_matters": "Business credit programs require an LLC or corporation. Without one, you are limited to personal credit funding only.",
+        "action": "Forming an LLC is straightforward — most states allow you to do it online for under $100. Once formed, we can help you build your business credit profile."
+      },
+      {
+        "code": "DONT_CLOSE_OLDEST",
+        "severity": "info",
+        "problem": "Your oldest account is your CAPITAL ONE, open for 167 months.",
+        "why_it_matters": "This account is building your credit history every month.",
+        "action": "Whatever you do, do not close this card. If you are worried about annual fees, call and ask to downgrade to a no-fee version."
+      },
+      {
+        "code": "STRONG_ANCHOR",
+        "severity": "info",
+        "problem": "Your AMERICAN EXPRESS with a $20,000 limit and 150 months of history is your strongest card.",
+        "why_it_matters": "This is your anchor — lenders use it as a starting point for offers.",
+        "action": "Keep it in good standing. Consider calling AMERICAN EXPRESS for a limit increase. A higher limit here directly increases your funding number."
+      }
+    ],
+    "engine_cta": "You have clean bureaus ready for funding now. Apply on those while we repair the rest in parallel."
+  },
+  "after_fixed_file": {
+    "outcome": "FULL_FUNDING",
+    "decision_label": "Approved for Funding",
+    "decision_explanation": "Congratulations! Your credit profile qualifies for our full funding programs.",
+    "fundable": true,
+    "funding_total": 174600,
+    "funding": {
+      "personal_card": {
+        "base": 110000,
+        "final": 99000,
+        "offer_band": "strong"
+      },
+      "personal_loan": {
+        "base": 84000,
+        "final": 75600,
+        "offer_band": "strong"
+      },
+      "business": {
+        "final": 0,
+        "cap_reason": "not_applicable"
+      },
+      "total_personal": 174600,
+      "total_combined": 174600,
+      "modifiers": {
+        "outcome": 1,
+        "utilization": 0.9,
+        "thinFile": 1
+      },
+      "confidence_band": "high"
+    },
+    "per_bureau_funding": "The CRS engine prints one funding figure for the whole file, not one per bureau.",
+    "signals": {
+      "median_score": 668,
+      "scores": {
+        "tu": 664,
+        "ex": 671,
+        "eq": 668
+      },
+      "card_use": {
+        "total_balance": 12600,
+        "total_limit": 126000,
+        "pct": 10,
+        "band": "good"
+      },
+      "card_use_note": "The engine sums every bureau copy of each card, so its dollar totals are three times one account's. The percent is right. See black-report-client.mjs F43.",
+      "anchors": {
+        "revolving": {
+          "creditor": "AMERICAN EXPRESS",
+          "limit": 20000,
+          "openedDate": "2014-04-18",
+          "months": 150
+        },
+        "installment": {
+          "creditor": "TOYOTA MOTOR CREDIT",
+          "amount": 28000,
+          "openedDate": "2019-06-14",
+          "months": 88
+        }
+      },
+      "inquiries": {
+        "total": 1,
+        "last6Mo": 0,
+        "last12Mo": 1,
+        "pressure": "low"
+      },
+      "negatives_by_bureau": {
+        "transunion": {
+          "clean": true,
+          "count": 0
+        },
+        "experian": {
+          "clean": true,
+          "count": 0
+        },
+        "equifax": {
+          "clean": true,
+          "count": 0
+        }
+      },
+      "thin_file": false
+    },
+    "reason_codes": [],
+    "consumer_summary": "Credit score: 668 (fair). Utilization at 10% (good). No active derogatories.",
+    "engine_suggestions_note": "As printed. The engine repeats each card sentence once per bureau copy, and its overall card-use line counts the dollars three times (the percent is right). Quote the per-card sentences once, and take overall dollars from person.cards_total. NO_INSTALLMENT counts only OPEN loans; the paid-off Toyota loan is on the file, so do not put that sentence on a slide.",
+    "engine_suggestions": [
+      {
+        "code": "FUNDING_FIRST",
+        "severity": "high",
+        "problem": "You qualify for funding. Do NOT open new accounts before applying.",
+        "why_it_matters": "Every new card or loan you open drops your average account age, adds a hard inquiry, and can trigger automatic declines from lenders.",
+        "action": "Get your funding locked in first while your file looks its best. After your funding is secured, then you can open new accounts to build depth for future rounds."
+      },
+      {
+        "code": "INQUIRY_REMOVAL",
+        "severity": "medium",
+        "problem": "You have 1 hard inquiry(ies) on your credit report.",
+        "why_it_matters": "Inquiries are cleanup only — this does not affect funding. However, removing them keeps your report clean and tidy for lenders.",
+        "action": "We prioritize Experian first for inquiry removal. Your inquiry removal letters target any that did not result in an account. Send them out and do not apply for new credit until funding is secured."
+      },
+      {
+        "code": "NO_INSTALLMENT",
+        "severity": "low",
+        "problem": "You do not have any installment loans on your credit.",
+        "why_it_matters": "Having a mix of credit types helps your score.",
+        "action": "If you are planning to get funding, do NOT open a new loan right now. Apply for funding first. After that, a small credit builder loan from Self or a local credit union is a great way to add an installment tradeline."
+      },
+      {
+        "code": "NO_BUSINESS_ENTITY",
+        "severity": "low",
+        "problem": "You do not have a registered business entity on file.",
+        "why_it_matters": "Business credit programs require an LLC or corporation. Without one, you are limited to personal credit funding only.",
+        "action": "Forming an LLC is straightforward — most states allow you to do it online for under $100. Once formed, we can help you build your business credit profile."
+      },
+      {
+        "code": "DONT_CLOSE_OLDEST",
+        "severity": "info",
+        "problem": "Your oldest account is your CAPITAL ONE, open for 167 months.",
+        "why_it_matters": "This account is building your credit history every month.",
+        "action": "Whatever you do, do not close this card. If you are worried about annual fees, call and ask to downgrade to a no-fee version."
+      },
+      {
+        "code": "STRONG_ANCHOR",
+        "severity": "info",
+        "problem": "Your AMERICAN EXPRESS with a $20,000 limit and 150 months of history is your strongest card.",
+        "why_it_matters": "This is your anchor — lenders use it as a starting point for offers.",
+        "action": "Keep it in good standing. Consider calling AMERICAN EXPRESS for a limit increase. A higher limit here directly increases your funding number."
+      }
+    ],
+    "engine_cta": "You qualify for full funding. Start your application today while your file is in great shape."
+  },
+  "other_after_figures": {
+    "note": "The product's two projection functions print different 'after' figures for this file. Both are engine output. Do not mix them with the headline on one slide.",
+    "engine_projection": {
+      "total": 116400,
+      "what": "engine.js projectedPreapproval. Assumes 9% card use, keeps today's tier (0.6). The client's funding snapshot prints this as 'after optimization'.",
+      "client_report_prints": {
+        "preapproval_now": 46560,
+        "preapproval_after": 116400,
+        "util_pct": "88%",
+        "util_total_balance": 37100,
+        "util_total_limit": 42000,
+        "util_target_balance": 4200
+      }
+    },
+    "present_deck_projection": {
+      "total": 194000,
+      "today_total": 46560,
+      "tier_now": "FUNDING_PLUS_REPAIR",
+      "tier_after": "FULL_FUNDING",
+      "levers": [
+        {
+          "key": "paydown",
+          "label": "Pay the cards down",
+          "applies": true,
+          "totalAfter": 194000
+        },
+        {
+          "key": "clean",
+          "label": "Clean the file",
+          "applies": false,
+          "totalAfter": 194000
+        },
+        {
+          "key": "accounts",
+          "label": "Add accounts",
+          "applies": false,
+          "totalAfter": 194000
+        }
+      ],
+      "what": "src/sales/deck-visual-data.mjs. Assumes 9% card use and re-checks the tier. Paying the cards to under 9.5% overall (the engine rounds the percent) is what this figure needs."
+    }
+  }
+}

@@ -238,7 +238,7 @@ Look at the line between the circles. That's the SWEEP. Before the next round le
 
 
 
-So each round reaches the banks on a cleaner report than the round before it did, and every round runs the same way: submitted, decided, then the next one.
+Each round reaches the banks on a cleaner report than the round before it did, and every round runs the same way: submitted, decided, then the next one.
 
 
 
@@ -256,4 +256,4 @@ You see which business follows your personal file, and what gets fixed before ro
 
 
 
-So by the time you say yes, every step after it is already on the screen in front of you, built from your own file.
+By the time you say yes, every step after it is already on the screen in front of you, built from your own file.

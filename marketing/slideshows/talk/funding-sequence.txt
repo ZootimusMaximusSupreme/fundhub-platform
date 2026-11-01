@@ -4,7 +4,7 @@
 
 
 
-Every bank you apply to reads the applications that went out before it. So the ORDER you send them in decides how much funding you walk away with.
+Whichever bank sees your file first changes what every bank after it sees. That's why the ORDER your applications go out in sets how much funding you end up with.
 
 
 
@@ -100,7 +100,7 @@ When a bank sees that many fresh pulls at once, it starts declining. Rule three 
 
 
 
-So one application goes out, and we WAIT for that bank's answer before the next one goes anywhere. The bank's decision sets the pace.
+With us, one application goes out, and we WAIT for that bank's answer before the next one goes anywhere. The bank's decision sets the pace.
 
 
 
@@ -118,7 +118,7 @@ For you, every bank in the round reads your file with as few new pulls on it as 
 
 
 
-So which banks make your list? Our system builds it from your file in three bands, and it reads top to bottom in that exact ORDER.
+Which banks make your list? Our system builds it from your file in three bands, and it reads top to bottom in that exact ORDER.
 
 
 
@@ -172,7 +172,7 @@ Once a sequence wraps up, our system marks the day your file can start the next 
 
 
 
-So the employee you've been waiting to hire, the larger contract and the ads you want running get paid with funding, and your savings stay out of it.
+That means the employee you've been waiting to hire, the larger contract and the ads you want running get paid with funding, and your savings stay out of it.
 
 
 

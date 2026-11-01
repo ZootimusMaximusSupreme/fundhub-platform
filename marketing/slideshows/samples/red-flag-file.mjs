@@ -26,10 +26,10 @@
 // THE RED FLAGS, AND WHY EACH ONE IS THERE.
 //   1. Card balances run up to 88% of the limits. Jordan paid for a business
 //      start-up out of pocket on the four personal cards. The engine puts 88%
-//      in its "critical" band (80% and up). That band cuts the funding amount
-//      to 0.4, and because card use is 30% or more, the file also misses
-//      the full-funding tier and lands in funding-plus-repair, which cuts it to
-//      0.6 again (route-outcome.js isFullFunding, estimate-preapprovals.js). The fix is
+//      in its "critical" band (80% and up), which multiplies the funding amount
+//      by 0.4. Because card use is 30% or more, the file also misses the
+//      full-funding tier and lands in funding-plus-repair, which multiplies it
+//      by 0.6 on top (route-outcome.js isFullFunding, estimate-preapprovals.js). The fix is
 //      the plan's own: each card paid down to 10% of its limit
 //      (src/waypoints/definitions.mjs PAYDOWN_TARGET_FRACTION).
 //   2. Six hard inquiries in seven months. With the cards that full, Jordan
