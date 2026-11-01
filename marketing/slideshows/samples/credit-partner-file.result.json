@@ -1,0 +1,216 @@
+{
+  "_meta": {
+    "simulated": true,
+    "notice": "SIMULATED — Fundhub slideshow sample (credit-partner pair). No credit bureau was contacted.",
+    "what": "Two simulated people, one credit file each, run one at a time through the real UnderwriteIQ CRS engine. Each figure is the engine's. The total is the Capital Blueprint's own credit partner rule adding the two stored figures. Nothing is typed in by hand.",
+    "sample_file": "marketing/slideshows/samples/credit-partner-file.mjs",
+    "runner": "marketing/slideshows/samples/run-credit-partner-file.mjs",
+    "engine": "src/finance/vendor/crs-engine.cjs runCRSEngine, through src/finance/crs-tier.mjs runTierEngineFromCrsResult and src/finance/crs-pull.mjs scoreBuyerTotal",
+    "combine_rule": "src/blueprint/credit-partner.mjs combinedPrequalAmount, reading the field src/handlers/client-lifecycle.mjs stores the engine's figure in (analyzer_prequal_amount)",
+    "clock": "Pinned to the pull day, 2026-10-30T16:00:00.000Z, so the result is the same on every run.",
+    "reproduce": [
+      "node marketing/slideshows/samples/run-credit-partner-file.mjs",
+      "node marketing/slideshows/samples/run-credit-partner-file.mjs --check"
+    ]
+  },
+  "headline": {
+    "owner_alone": 5280,
+    "partner_alone": 233500,
+    "together": 238780,
+    "times_the_owner_alone": 45.22,
+    "method": "Each file through the engine on its own, then the credit partner rule adds the two."
+  },
+  "owner": {
+    "name": "Casey Reed",
+    "name_note": "Made up. Sample address and employer.",
+    "role": "owner",
+    "scores": {
+      "experian": 648,
+      "equifax": 641,
+      "transunion": 655,
+      "median": 648
+    },
+    "funding_total": 5280,
+    "outcome": "FUNDING_PLUS_REPAIR",
+    "decision_label": "Conditionally Approved",
+    "funding": {
+      "personal_card": {
+        "base": 22000,
+        "final": 5280
+      },
+      "personal_loan": {
+        "base": 0,
+        "final": 0
+      },
+      "business": {
+        "final": 0
+      },
+      "modifiers": {
+        "outcome": 0.6,
+        "utilization": 0.4,
+        "thinFile": 1
+      }
+    },
+    "card_use": {
+      "band": "critical",
+      "pct": 86
+    },
+    "cards": [
+      {
+        "creditor": "CAPITAL ONE",
+        "opened": "2017-05-12",
+        "limit": 4000,
+        "balance": 3450,
+        "pct_used": 86
+      },
+      {
+        "creditor": "DISCOVERCARD",
+        "opened": "2019-09-03",
+        "limit": 2500,
+        "balance": 2150,
+        "pct_used": 86
+      }
+    ],
+    "cards_total": {
+      "limit": 6500,
+      "balance": 5600,
+      "pct_used": 86
+    },
+    "loans": [],
+    "collections": [
+      {
+        "creditor": "MIDLAND CREDIT MGMT",
+        "balance": 1240,
+        "opened": "2025-03-01",
+        "reported_to": [
+          "Equifax",
+          "TransUnion"
+        ]
+      }
+    ],
+    "negatives_by_bureau": {
+      "transunion": {
+        "clean": false,
+        "count": 1
+      },
+      "experian": {
+        "clean": true,
+        "count": 0
+      },
+      "equifax": {
+        "clean": false,
+        "count": 1
+      }
+    },
+    "inquiries": [
+      {
+        "who_pulled": "BARCLAYS BANK DELAWARE",
+        "bureau": "EX",
+        "date": "2026-06-11",
+        "why": "a credit card application, declined"
+      }
+    ],
+    "reason_codes": [
+      "ACTIVE_COLLECTION",
+      "VERY_HIGH_UTILIZATION",
+      "MIXED_BUREAU_STATUS"
+    ]
+  },
+  "partner": {
+    "name": "Jordan Reed",
+    "name_note": "Made up. Sample address and employer.",
+    "role": "partner",
+    "scores": {
+      "experian": 748,
+      "equifax": 741,
+      "transunion": 752,
+      "median": 748
+    },
+    "funding_total": 233500,
+    "outcome": "FULL_FUNDING",
+    "decision_label": "Approved for Funding",
+    "funding": {
+      "personal_card": {
+        "base": 137500,
+        "final": 137500
+      },
+      "personal_loan": {
+        "base": 96000,
+        "final": 96000
+      },
+      "business": {
+        "final": 0
+      },
+      "modifiers": {
+        "outcome": 1,
+        "utilization": 1,
+        "thinFile": 1
+      }
+    },
+    "card_use": {
+      "band": "excellent",
+      "pct": 6
+    },
+    "cards": [
+      {
+        "creditor": "AMERICAN EXPRESS",
+        "opened": "2013-02-11",
+        "limit": 25000,
+        "balance": 1500,
+        "pct_used": 6
+      },
+      {
+        "creditor": "JPMCB CARD SERVICES",
+        "opened": "2016-07-19",
+        "limit": 14000,
+        "balance": 900,
+        "pct_used": 6
+      },
+      {
+        "creditor": "CITIBANK",
+        "opened": "2018-03-30",
+        "limit": 8000,
+        "balance": 400,
+        "pct_used": 5
+      }
+    ],
+    "cards_total": {
+      "limit": 47000,
+      "balance": 2800,
+      "pct_used": 6
+    },
+    "loans": [
+      {
+        "creditor": "TOYOTA MOTOR CREDIT",
+        "status": "Closed, paid in full",
+        "opened": "2019-04-15",
+        "closed": "2024-04-15",
+        "original_amount": 32000
+      }
+    ],
+    "collections": [],
+    "negatives_by_bureau": {
+      "transunion": {
+        "clean": true,
+        "count": 0
+      },
+      "experian": {
+        "clean": true,
+        "count": 0
+      },
+      "equifax": {
+        "clean": true,
+        "count": 0
+      }
+    },
+    "inquiries": [
+      {
+        "who_pulled": "JPMCB CARD SERVICES",
+        "bureau": "EQ",
+        "date": "2026-02-17",
+        "why": "a credit line increase request on the Chase card"
+      }
+    ],
+    "reason_codes": []
+  }
+}

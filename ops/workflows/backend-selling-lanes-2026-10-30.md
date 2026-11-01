@@ -647,6 +647,32 @@ Chris, 18:40: "I trust you. Spin up a lot of agents." He waived the review of th
 
 **Writer prompt (the lead session starts the writers; Chris pastes nothing).** Each writer gets this prompt with its deck list: read Copybot and its references, `marketing/ads/RULES.md` Part 0 and 1, the copy reviewer, the model deck and this section; write each deck as JSON for `set-copy.mjs`; keep every picture, slide count, lane and fact; add a source to `data-src` for any new fact; script 850 to 1,000 words, blocks of 25 to 30 words, CAPS punch words; every line fresh; `check.mjs` must PASS; build film and talk; touch only its own decks; no git.
 
+**Reviews (2026-10-31, 20:40 to 21:55).** Seven fresh reviewers (R1 to R7) read all 22 decks with the copy reviewer. Every deck passed `check.mjs` and the parrot check; none was READY. Each got 4 to 7 exact fixes (invented or overstated facts, effect-first headlines, weak or blank pictures, framework labels read out loud, promised results). Across the batch they found one shared skeleton: the same after ("the hire, the bigger job, the ads", "your savings stay put") in 8 or more decks, talk blocks opening "Here's...", the same eyebrows on slides 3, 5 and 6, and the same stories retold in several decks. The fixes went back to each deck's writer, with one table that gives each shared story one home per lane (`CROSS-DECK-HOMES.md` in the lead's scratch folder; copied into the PR description at the end).
+
+#### 6e.2 Live tonight: the decks on the site, plugged into the booked-call sends (Chris, 2026-10-31, 21:25)
+
+Chris: "ship it live when it's done and make sure that the backend system, like this SMS shit... actually distribution system for this backend system is plugged in as well... you're going to need to make some augmentations unless it's already shipped for the 22." Nothing sent the decks yet: the handoff above gave chat 2 the job, and chat 2 is on other work (#354, #355). So this chat builds it.
+
+**Release state, looked up 21:30.** The Ship to live workflow is off (`disabled_manually` at 15:46 Arizona). The release gate cancelled #346's ship and put main on release hold after the #346 review found the come-back link leak (#352: a stranger who types a lead's email and their own phone gets a signed `?r=` code that opened the lead's saved answers). Main still holds #346. So the order is: containment first (#352 merged onto main, conflicts resolved, `claude/release-containment`), then the slideshow PR, then the ship turned back on and run once from main, then live proof. #350, #353 and #355 stay with their owners and the release gate; #354 is chat 2's.
+
+| Unit | Owner | What it owns | Status |
+|---|---|---|---|
+| Fixes | W1 to W7 (resumed) | the reviewers' fixes, each in its own decks, plus the homes table | running |
+| Pages | agent (Sonnet), worktree `claude/slideshow-pages` | `build.mjs --publish` writes `public/slideshows/<slug>/index.html` and `src/slideshows/deck-pages.mjs`; `check.mjs` fails a stale copy; `_headers` no-stale rule; pulse rows and the deep check `slideshows:pages-live` | running |
+| Sends | agent (Sonnet), worktree `claude/slideshow-sends` | BS-01 sends the decks (below); `send-window.mjs` treats `EMAIL-DECK-*` and `SMS-DECK-*` as drips; `messages-seed.mjs` writes `db/seed/306_slideshow_deck_messages.sql` from `marketing/slideshows/messages.json`; deep check `slideshows:booked-leads-got-a-deck`; journeys | running |
+| Messages | agent (Opus) | one text and one email per deck (44), Copybot, Chris's voice, parrot-checked | running |
+| Messages review | a separate agent (Opus) | the copy reviewer on the 44 messages | waits on Messages |
+| Release | this chat | containment merge, integration, CI, the ship, live proof | containment merged locally; CI next |
+
+**What a booked person gets (the design, decided here).** BS-01 already runs on every booking, stops when the call is held, and is cancelled and restarted when the call moves. Its old email grid sent nothing (no approved rows), so the deck plan replaces it and the one real pre-call text stays. A plan table and sweeper (section 3) stays the later design; this reuses the workflow that already runs, with fewer steps per booking than the old grid.
+- Lane: the post-pull outcome tier when it says funding or repair; else the survey's `credit_tier` ("qualified" is Funding, "unqualified" is Blueprint and Repair); else every-lane decks only. Re-read before each send, so a setter's score fix switches the lane.
+- When: 9:00 a.m. email and 1:00 p.m. text, Arizona, each day before the call. A slot counts when it is at least 2 hours after the booking, at least 3 hours before the call, and not within 2 hours of the 48-hour pre-call text or the 24-hour reminder. A call too soon gets no deck. This is section 3's rhythm (email morning, text midday) inside Chris's 9-to-5 window; decision 4 (cap and rhythm) stays his, and the natural cap is the lane's deck list.
+- Which: each lane's decks in order, never one already sent to this person by either channel; the lane's expectations deck goes in the last slot before the call. Funding: the-call, pre-underwriting, funding-sequence, soft-pull, apply-yourself, money-on-the-table, who-we-are, your-data-is-safe, the-maximum, cost-of-waiting, tried-before, the-money-talk; last after-you-say-yes. Blueprint and Repair: the-call, bank-said-no, thirteen-points, soft-pull, card-paydown, credit-optimization, business-one-two, credit-partner, blueprint-value, who-we-are, your-data-is-safe, blueprint-in-action, cost-of-waiting, the-maximum, tried-before, the-money-talk; last blueprint-12-months. No tier: the-call, soft-pull, who-we-are, your-data-is-safe, the-maximum, cost-of-waiting, tried-before, the-money-talk.
+- Stops: the call held for this booking, no live booking at this time, a move or cancel (BS-01's existing stops), opt-out (the gate). Push stays off: nothing sets `marketing_push_enabled` yet (leftover).
+- Link: `https://fundhub.ai/slideshows/<slug>/`. Keys: `EMAIL-DECK-<SLUG>` and `SMS-DECK-<SLUG>`.
+
+**Prompts.** Each unit's full prompt is the one this chat gave its agent on 2026-10-31 at 21:40, summarized in the table above: the worktree and branch, the files it owns, the design above, the heartbeat law, the tests (one PASS and one FAIL per check, real Postgres for the send path), no live database, no sends, no pushes to main.
+
 ### 7. Heartbeat (required in the same change)
 
 - Ping row for the new sweeper in `src/pulse/heartbeats.mjs` and the sorting in `src/pulse/tripwires.mjs`.
