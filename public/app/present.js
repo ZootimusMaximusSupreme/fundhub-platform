@@ -1853,10 +1853,15 @@
     if (c === "C-01") return isFunding() && !state.edu && visualHtml("companies") !== null;
     return true;
   }
+  function holdForResult() {
+    state.idx = DECK.findIndex(function (slide) { return slide.code === "S-06"; });
+    state.obj = null; state.showRef = false; state.showMoney = false;
+    state.toast = "Wait for the real assessment result before the reveal.";
+    render();
+  }
   function go(n) {
-    if (n > 0 && code() === "S-06" && !realResultReady()) {
-      state.toast = "Wait for the real assessment result before the reveal.";
-      render();
+    if (n > 0 && (code() === "S-06" || code() === "S-07") && !realResultReady()) {
+      holdForResult();
       return;
     }
     state.obj = null; state.showRef = false; state.showMoney = false;
@@ -1883,6 +1888,10 @@
   function jumpTo(c) {
     for (var i = 0; i < DECK.length; i++) {
       if (DECK[i].code === c) {
+        if (!realResultReady() && i > DECK.findIndex(function (slide) { return slide.code === "S-07"; })) {
+          holdForResult();
+          return;
+        }
         state.idx = i; state.obj = null; state.showRef = false; state.showMoney = false;
         if (!isStackCode(c)) state.stackFrom = null;
         render();

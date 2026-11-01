@@ -76,6 +76,13 @@ test("client Present shows live assessment progress at phone width and waits for
   await expect(page.locator(".client")).not.toContainText("scanning experian");
   await page.locator('[data-act="next"]').click();
   await expect(page.locator(".client .slide-hd")).toContainText("S-06");
+  await page.locator('[data-act="phase:05"]').click();
+  await expect(page.locator(".client .slide-hd")).toContainText("S-06");
+  await expect(page.locator(".client")).not.toContainText("Recommended path");
+  await page.locator('[data-act="phase:04"]').click();
+  await expect(page.locator(".client .slide-hd")).toContainText("S-07");
+  await page.locator('[data-act="next"]').click();
+  await expect(page.locator(".client .slide-hd")).toContainText("S-06");
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   pull = { consent_valid: true, diagnostic_paid: true, pull_status: "processing", crs_result_id: null, sample: false };
   await expect(page.locator(".client .h1")).toHaveText("Your report is being prepared", { timeout: 7000 });

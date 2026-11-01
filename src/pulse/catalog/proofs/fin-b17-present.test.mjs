@@ -1146,8 +1146,8 @@ test("the soft pull panel says consent, payment and pull status in words from wh
     assert.equal(waiting.slide(), "S-07");
     assert.ok(panel(waiting));
     waiting.press("next");
-    assert.equal(waiting.slide(), "S-08");
-    assert.equal(panel(waiting), null);
+    assert.equal(waiting.slide(), "S-06", "Next returns to live status until the real report is ready");
+    assert.ok(panel(waiting));
 
     const ask = await openDeck("FULL_FUNDING");
     ask.press("phase:03");
@@ -1430,6 +1430,18 @@ test("the client screens carry the 2026-10-29 words", async () => {
   assert.equal(stack.slide(), "B-04");
   assert.ok(!/member fee/i.test(stack.client()), "row 10: no member fee after 12 months");
   assert.ok(stack.cockpitText().includes("There is no renewal charge after the 12 months"));
+});
+
+test("a missing report keeps the closer on the live status screen", async () => {
+  const deck = await openDeck("REPAIR_ONLY", { deck: payload({ tier: "REPAIR_ONLY", available: false, softPull: null }) });
+  deck.press("phase:04");
+  assert.equal(deck.slide(), "S-07");
+  deck.press("next");
+  assert.equal(deck.slide(), "S-06");
+  deck.press("phase:05");
+  assert.equal(deck.slide(), "S-06");
+  assert.ok(deck.client().includes("Waiting for your authorization"));
+  assert.ok(!deck.client().includes("Recommended path"));
 });
 
 test("every listed row was exercised", () => {
