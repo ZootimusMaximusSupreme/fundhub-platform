@@ -1,4 +1,4 @@
-// Real SQL and task insert proof on disposable GitHub Actions Postgres only.
+// Real SQL and task insert proof on disposable loopback Postgres only.
 // All fixtures shadow production tables in one transaction and roll back.
 import { after, test } from "node:test";
 import assert from "node:assert/strict";
@@ -11,7 +11,7 @@ const SCRATCH = (() => {
   try {
     const url = new URL(process.env.DATABASE_URL);
     return ["localhost", "127.0.0.1", "::1", "[::1]"].includes(url.hostname)
-      && url.pathname === "/fundhub_ci";
+      && (url.pathname === "/fundhub_ci" || /^\/fundhub_pr318_[a-z0-9]+$/.test(url.pathname));
   } catch { return false; }
 })();
 const pool = SCRATCH
