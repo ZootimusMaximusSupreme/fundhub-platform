@@ -93,6 +93,7 @@ import { parsePct } from "../deliverables/format.mjs";
 const require = createRequire(import.meta.url);
 const { estimatePreapprovals } = require("../../vendor/underwriteiq-full/api/lite/crs/estimate-preapprovals.js");
 const { routeOutcome } = require("../../vendor/underwriteiq-full/api/lite/crs/route-outcome.js");
+const { matchLenders } = require("../../vendor/underwriteiq-full/api/lite/crs/lender-matrix.js");
 
 const FULL = "FULL_FUNDING";
 const FUNDING_PLUS_REPAIR = "FUNDING_PLUS_REPAIR";
@@ -129,7 +130,11 @@ function numberOrNull(v) {
 export function emptyDeckVisual({ source = "none", todayTotal = null, companies = [] } = {}) {
   return {
     source,
+    pulledOn: null,
     todayTotal,
+    availableCredit: null,
+    reportedEmployers: [],
+    lenderReach: null,
     levers: DECK_VISUAL_LEVERS.map(({ key, label }) => ({ key, label, applies: false, totalAfter: null })),
     optimizedTotal: null,
     tierNow: null,
@@ -255,6 +260,21 @@ function cardsOf(reportClient) {
   return cards;
 }
 
+/** Reported headroom on open revolving cards only. An unknown balance or limit
+ *  withholds the whole total, including when the card has no preset limit. */
+function availableCreditOf(reportClient) {
+  const open = openRevolving({ revolving: rankedRevolving(reportClient) });
+  if (!open.length) return null;
+  let total = 0;
+  for (const row of open) {
+    const limit = numberOrNull(row[3]);
+    const balance = numberOrNull(row[2]);
+    if (limit == null || balance == null || limit < 0 || balance < 0) return null;
+    total += Math.max(0, limit - balance);
+  }
+  return total;
+}
+
 function plainCreditor(name) {
   const s = String(name ?? "").trim();
   return !s || s.toLowerCase() === "unknown" ? "Unnamed creditor" : s;
@@ -355,6 +375,27 @@ function mismatchesOf(engineResult) {
   return out;
 }
 
+/** Employer names as reported by the bureaus. These can be old; the client must
+ * confirm the current employer before entering one on a financing application. */
+function reportedEmployersOf(engineResult) {
+  const entries = engineResult.normalized?.identity?.employers;
+  if (!Array.isArray(entries)) return [];
+  const byName = new Map();
+  for (const entry of entries) {
+    const name = known(entry?.name);
+    const bureau = BUREAU_CODE[entry?.source];
+    if (!name || !bureau) continue;
+    const key = name.toLowerCase();
+    if (!byName.has(key)) byName.set(key, { name, bureaus: [] });
+    const row = byName.get(key);
+    if (!row.bureaus.includes(bureau)) row.bureaus.push(bureau);
+  }
+  return [...byName.values()].map((row) => ({
+    name: row.name,
+    bureaus: orderedBureaus(new Set(row.bureaus))
+  }));
+}
+
 function companyRows(businesses, amountOf) {
   return (Array.isArray(businesses) ? businesses : []).map((b) => ({
     name: b?.name ?? null,
@@ -424,6 +465,7 @@ export function buildDeckVisualData({ crs = null, engine = null, name = "", busi
     const todayTotal = storedTotal != null ? storedTotal : (chain ? today.fundingEstimate : null);
 
     const visual = emptyDeckVisual({ source: engine.sample ? "sample" : "engine", todayTotal });
+    visual.pulledOn = referenceDate ? referenceDate.toISOString().slice(0, 10) : null;
 
     // The lists come from the same engine run and do not depend on the chain.
     const reportClient = buildBlackReportClient({
@@ -431,6 +473,8 @@ export function buildDeckVisualData({ crs = null, engine = null, name = "", busi
       personal: { name: submittedName }
     });
     visual.cards = cardsOf(reportClient);
+    visual.availableCredit = availableCreditOf(reportClient);
+    visual.reportedEmployers = reportedEmployersOf(personalRun);
     visual.items = itemsOf(personalRun);
     visual.mismatches = mismatchesOf(personalRun);
 
@@ -443,6 +487,17 @@ export function buildDeckVisualData({ crs = null, engine = null, name = "", busi
     });
 
     if (!chain) return visual;
+
+    // Same engine matcher used by build-closer-result.js. Its after bucket is
+    // additional lenders behind a condition, not a total that includes today.
+    try {
+      const reach = matchLenders(personalRun.consumerSignals, personalRun.businessSignals, personalRun.outcome);
+      if (Array.isArray(reach?.availableNow) && Array.isArray(reach?.afterOptimization)) {
+        visual.lenderReach = { now: reach.availableNow.length, after: reach.afterOptimization.length };
+      }
+    } catch {
+      // A failed match is unknown, not zero lenders.
+    }
 
     const steps = [today, totalAt(1), totalAt(2), totalAt(3)];
     visual.levers = DECK_VISUAL_LEVERS.map(({ key, label }, i) => {

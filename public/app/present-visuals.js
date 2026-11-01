@@ -3,7 +3,7 @@
 // 2026-10-29). Board: ops/workflows/weekend-2026-10-24.md sections 10.3 to 10.8.
 //
 // WHAT THIS IS. A plain browser script. It adds three functions to
-// window.FHDeckVisuals — yourPath(ctx), moneyLevers(ctx) and companies(ctx) —
+// window.FHDeckVisuals — yourPath(ctx), moneyLevers(ctx), lenderWall(ctx) and companies(ctx) —
 // and each one returns the HTML for a slide body. present.js calls them where
 // the script places each visual (10.0) and falls back to today's content when
 // this file or engine.visual is missing.
@@ -37,8 +37,8 @@
   const V = root.FHDeckVisuals = root.FHDeckVisuals || {};
 
   /* ── state: per visual, per client ─────────────────────────────────────── */
-  const state = { path: {}, levers: {}, findings: {}, companies: {} };
-  const lastCtx = { path: {}, levers: {}, findings: {}, companies: {} };
+  const state = { path: {}, levers: {}, findings: {}, wall: {}, companies: {} };
+  const lastCtx = { path: {}, levers: {}, findings: {}, wall: {}, companies: {} };
   /* The amounts last drawn, so a number counts from what the screen showed. */
   const shown = {};
 
@@ -680,6 +680,61 @@
     }
   };
 
+  /* ════════════════════════════════════════════════════════════════════════
+     F-02. LENDER WALL — the engine's current matches and its additional
+     after-optimization matches. No lender identity is in this data contract.
+     ════════════════════════════════════════════════════════════════════════ */
+  function wallState(client) { return state.wall[client] || (state.wall[client] = { step: 0 }); }
+
+  function renderWallInner(ctx, st) {
+    const visual = obj(ctx && ctx.visual);
+    const reach = visual && obj(visual.lenderReach);
+    const now = reach ? num(reach.now) : null;
+    const after = reach ? num(reach.after) : null;
+    if (!visual) return head(ctx, "Lender reach") + note("No credit pull on this file yet", "Lender matches show after the pull.");
+    if (!Number.isInteger(now) || now < 0 || !Number.isInteger(after) || after < 0) {
+      return head(ctx, "Lender reach") + note("Not on this file yet", "The lender match count is not on this file yet.");
+    }
+
+    const maxStep = Math.min(3, after);
+    const step = Math.max(0, Math.min(maxStep, num(st.step) || 0));
+    const litAfter = maxStep ? Math.floor(after * step / maxStep) : 0;
+    const tiles = [];
+    for (let i = 0; i < now + after; i++) {
+      const current = i < now;
+      const lit = current || i - now < litAfter;
+      const status = current ? "Today" : "After";
+      const fullStatus = current ? "Today" : "More after optimization";
+      tiles.push('<div class="fhv-wall-tile' + (current ? " is-today" : lit ? " is-lit" : " is-waiting") +
+        '" role="listitem" aria-label="Lender ' + (i + 1) + ", " + fullStatus + (lit && !current ? ", shown" : "") + '">' +
+        '<span class="fhv-wall-index">' + (i + 1) + '</span><span class="fhv-wall-label">Lender</span>' +
+        '<span class="fhv-wall-status">' + status + '</span></div>');
+    }
+    const basis = text(visual.pulledOn);
+    const counts = '<div class="fhv-wall-counts"><div class="fhv-wall-count"><span class="fhv-ui-eyebrow">Matches today</span><strong class="fhv-ui-num">' + now +
+      '</strong></div><div class="fhv-wall-count is-after"><span class="fhv-ui-eyebrow">More after optimization</span><strong class="fhv-ui-num">' + after + '</strong></div></div>';
+    const controls = after ? '<div class="fhv-wall-controls"><button type="button" class="fhv-ui-ghost" data-fhv-act="wall:next"' +
+      (step === maxStep ? " disabled" : "") + '>' + (step === maxStep ? "All additional matches shown" : "Show more matches") + '</button>' +
+      '<button type="button" class="fhv-ui-ghost" data-fhv-act="wall:reset"' + (step === 0 ? " disabled" : "") +
+      '>Back to today</button><span class="fhv-ui-cap">' + litAfter + ' of ' + after + ' more shown</span></div>' : "";
+    return head(ctx, "Lender reach") + counts +
+      (tiles.length ? '<div class="fhv-wall-grid" role="list" aria-label="Lender matches">' + tiles.join("") + "</div>"
+        : note("No matches on this file", "The engine found no lender matches today or after optimization.")) +
+      controls + (basis ? '<p class="fhv-ui-cap">From your soft pull on ' + ownEsc(basis) + ".</p>" : "");
+  }
+
+  V.lenderWall = function (ctx) {
+    try {
+      ensureStyle();
+      const client = clientOf(ctx);
+      lastCtx.wall[client] = ctx;
+      return wrap("wall", client, renderWallInner(ctx, wallState(client)));
+    } catch (err) {
+      warn("lenderWall", err);
+      return fallback("wall");
+    }
+  };
+
   const MAX_ADDED = 4;
   const YEARS = [["year1", "Year 1"], ["year2", "Year 2"], ["after2", "After 2 years"]];
   const COMPANIES_EYEBROW = "More companies, more funding";
@@ -907,8 +962,8 @@
   };
 
   /* ── taps: one listener, scoped by [data-fhv] ──────────────────────────── */
-  const inner = { path: renderPathInner, levers: renderLeversInner, findings: renderFindingsInner, companies: renderCompaniesInner };
-  const stateFor = { path: pathState, levers: leversState, findings: findingsState, companies: companiesState };
+  const inner = { path: renderPathInner, levers: renderLeversInner, findings: renderFindingsInner, wall: renderWallInner, companies: renderCompaniesInner };
+  const stateFor = { path: pathState, levers: leversState, findings: findingsState, wall: wallState, companies: companiesState };
   /* Each reducer returns true when the tap changed something worth redrawing. */
   const reducers = {
     path(st, parts) {
@@ -931,6 +986,15 @@
       if (!Number.isInteger(n) || n < 0 || n >= rows.length) return false;
       st.open = st.open === n ? null : n;
       return true;
+    },
+    wall(st, parts, ctx) {
+      const reach = obj(obj(ctx.visual)?.lenderReach);
+      const after = num(reach?.after);
+      if (!Number.isInteger(after) || after <= 0) return false;
+      const maxStep = Math.min(3, after);
+      if (parts[1] === "next" && st.step < maxStep) { st.step += 1; return true; }
+      if (parts[1] === "reset" && st.step > 0) { st.step = 0; return true; }
+      return false;
     },
     companies(st, parts) {
       if (parts[1] === "tab") { st.tab = parts[2] || "personal"; return true; }
@@ -1053,6 +1117,7 @@
   const CSS = [
     /* shared */
     ".fhv-ui-root{position:relative;display:flex;flex-direction:column;gap:16px;min-width:0;flex:1 1 auto;container-type:inline-size;font-family:var(--sans);color:var(--ink);font-size:16px;line-height:1.45}",
+    "[data-fhv=companies]{gap:12px}",
     ".fhv-ui-root *{box-sizing:border-box;min-width:0}",
     ".fhv-ui-head{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:28px}",
     ".fhv-ui-eyebrow{display:block;font-family:var(--mono);font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--gray);line-height:1.4}",
@@ -1167,6 +1232,21 @@
     ".fhv-findings-target{position:absolute;left:10%;top:-4px;bottom:-4px;width:2px;background:var(--warn)}",
     ".fhv-findings-barlabels{display:flex;justify-content:space-between;gap:8px;font-variant-numeric:tabular-nums}",
     ".fhv-findings-step{display:block;border-top:1px solid var(--line);padding-top:8px;font-size:16px;line-height:1.35}",
+    /* F-02 lender wall */
+    ".fhv-wall-counts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}",
+    ".fhv-wall-count{display:flex;flex-direction:column;gap:4px;padding:16px 24px}",
+    ".fhv-wall-count+.fhv-wall-count{border-left:1px solid var(--line)}",
+    ".fhv-wall-count.is-after{background:color-mix(in srgb,var(--ok) 10%,white)}",
+    ".fhv-wall-count .fhv-ui-num{font-size:32px;font-weight:750}",
+    ".fhv-wall-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(74px,1fr));gap:8px;min-width:0}",
+    ".fhv-wall-tile{display:flex;flex-direction:column;gap:2px;align-items:center;justify-content:center;min-height:68px;padding:8px 4px;text-align:center;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--gray)}",
+    ".fhv-wall-tile.is-today{background:var(--ink);border-color:var(--ink);color:var(--paper)}",
+    ".fhv-wall-tile.is-lit{background:color-mix(in srgb,var(--ok) 10%,white);border-color:var(--ok);color:var(--ink)}",
+    ".fhv-wall-tile.is-waiting{border-style:dashed}",
+    ".fhv-wall-index{font-size:18px;font-weight:750;font-variant-numeric:tabular-nums;line-height:1}",
+    ".fhv-wall-label,.fhv-wall-status{font-size:13px;font-weight:650;line-height:1.1}",
+    ".fhv-wall-status{font-weight:400}",
+    ".fhv-wall-controls{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px}",
     /* B. companies */
     ".fhv-companies-tabs{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch}",
     ".fhv-companies-tab{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;min-height:56px;min-width:44px;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);text-align:left;cursor:pointer;transition:background .2s,border-color .2s}",
@@ -1178,7 +1258,7 @@
     ".fhv-companies-tabs .fhv-ui-ghost{align-self:center}",
     ".fhv-companies-tabname{font-size:16px;font-weight:650;letter-spacing:-.01em;line-height:1.2}",
     ".fhv-companies-tabamt{font-size:13px;color:var(--gray);font-variant-numeric:tabular-nums}",
-    ".fhv-companies-chart{display:flex;flex-direction:column;gap:16px}",
+    ".fhv-companies-chart{display:flex;flex-direction:column;gap:12px}",
     ".fhv-companies-heads{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}",
     ".fhv-companies-headcell{display:flex;flex-direction:column;gap:6px}",
     ".fhv-companies-bar{display:flex;gap:3px;height:64px;width:100%}",

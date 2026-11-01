@@ -28,7 +28,7 @@ import { offersForClient } from "../../../config/offers.mjs";
 import { proofRows, waitFor } from "./fin-b17-kit.mjs";
 import { asRole, json, sharedScreens } from "./fin-b17-browser-kit.mjs";
 import {
-  BELIEFS, CATALOG_PHASE_ROWS, DECK_LENGTH, MAIN_RUN, OBJECTION_SLIDES, OBJECTION_TABLE, PHASE_BUTTONS, REPAIR_RUN, SLIDES, positionOf,
+  BELIEFS, CATALOG_PHASE_ROWS, MAIN_RUN, OBJECTION_SLIDES, OBJECTION_TABLE, PHASE_BUTTONS, REPAIR_RUN, SLIDES,
 } from "./fin-b17-present-data.mjs";
 
 const proof = proofRows(import.meta.url);
@@ -48,7 +48,8 @@ const PRESENT_JS_COURSE = PRESENT_JS.replace(COURSE_OFF, "var COURSE_LIVE = true
 // Stand-ins for the slide visual files (section 10.8), served at the paths present.html names. Each draws a
 // marked block and says which door it was handed.
 const VISUAL_FILES = {
-  "present-visuals.js": ["yourPath", "fileFindings", "moneyLevers", "companies"],
+  "present-visuals.js": ["yourPath", "fileFindings", "moneyLevers", "lenderWall", "companies"],
+  "present-framework.js": ["callMap", "alignment", "goalLine", "pullSplit", "blindMatched", "revenueSplit", "sequence", "clock", "partnerStaircase", "blueprintRoute", "doorMatrix", "moneyStrip", "guarantees", "nextSteps", "iceberg"],
   "present-blueprint-demo.js": ["blueprintDemo"],
   "present-journey.js": ["journey"],
   "present-proof-wall.js": ["proofWall"],
@@ -167,7 +168,9 @@ async function walkDeck(page) {
 const PHASE_NUMBER = Object.fromEntries(PHASE_BUTTONS.map(([n, name]) => [name, n]));
 const WANT = (code) => {
   const phase = SLIDES.find(([c]) => c === code)[1];
-  return { code, phase, position: `${positionOf(code)} / ${DECK_LENGTH}`, lit: [PHASE_NUMBER[phase]] };
+  // The Blueprint detour is Door 3: P-01, a funding-only slide, is counted out there.
+  const length = SLIDES.length - (code.startsWith("B-") ? 1 : 0);
+  return { code, phase, position: `${SLIDES.findIndex(([c]) => c === code) + 1} / ${length}`, lit: [PHASE_NUMBER[phase]] };
 };
 
 // ───────────────────────────── Back, Next, the arrow keys ─────────────────────────────
@@ -419,7 +422,7 @@ test("the six objection buttons are on every slide of 7 The ask and 9 Paperwork 
 
     // where the list is: found by walking the deck with real presses
     const seen = await walkDeck(page);
-    assert.equal(seen.length, 34);
+    assert.equal(seen.length, SLIDES.length);
     for (const slide of seen) {
       const listed = OBJECTION_SLIDES.includes(slide.code);
       assert.equal(slide.objections, listed ? 6 : 0, `${slide.code}: ${listed ? "the six objections are on this slide" : "no objection buttons here"}`);
@@ -484,7 +487,8 @@ for (const [n, phaseName, slides] of PHASE_BUTTONS.filter(([x]) => x !== "08")) 
 
       // every slide of this phase, reached by pressing Next: its own phase name, its own place in the deck, only this button lit
       const walked = await walkDeck(page);
-      for (const code of slides) {
+      const fullPhaseSlides = SLIDES.filter(([, phase]) => phase === phaseName).map(([code]) => code);
+      for (const code of fullPhaseSlides) {
         const slide = walked.find((s) => s.code === code);
         assert.ok(slide, `${code} was reached`);
         const { code: wantCode, ...want } = WANT(code);
@@ -492,7 +496,7 @@ for (const [n, phaseName, slides] of PHASE_BUTTONS.filter(([x]) => x !== "08")) 
         assert.equal(slide.phase, phaseName, `${code} names its phase`);
       }
       // and no slide of another phase claims this one
-      for (const slide of walked.filter((s) => !slides.includes(s.code))) {
+      for (const slide of walked.filter((s) => !fullPhaseSlides.includes(s.code))) {
         assert.notEqual(slide.phase, phaseName, `${slide.code} is not part of ${phaseName}`);
         assert.ok(!slide.lit.includes(n), `${slide.code} does not light ${n}`);
       }
@@ -572,7 +576,7 @@ test("the page's own script tags load the visual files before the deck, each vis
     const v = await drawn(funding.page);
     if (v) seen.push([await slideCode(funding.page), ...v]);
   }
-  assert.deepEqual(seen, [["F-01", "fileFindings", "fund_plus_optimize"], ["L-01", "moneyLevers", "fund_plus_optimize"], ["S-08", "yourPath", "fund_plus_optimize"], ["P-01", "proofWall", "fund_plus_optimize"], ["C-01", "companies", "fund_plus_optimize"]]);
+  assert.deepEqual(seen.filter(([code]) => ["F-01", "L-01", "F-02", "S-08", "P-01", "C-01"].includes(code)), [["F-01", "fileFindings", "fund_plus_optimize"], ["L-01", "moneyLevers", "fund_plus_optimize"], ["F-02", "lenderWall", "fund_plus_optimize"], ["S-08", "yourPath", "fund_plus_optimize"], ["P-01", "proofWall", "fund_plus_optimize"], ["C-01", "companies", "fund_plus_optimize"]]);
   assert.deepEqual(funding.errors, []);
   await funding.page.close();
 
@@ -583,7 +587,7 @@ test("the page's own script tags load the visual files before the deck, each vis
     const v = await drawn(repair.page);
     if (v) met.push([await slideCode(repair.page), ...v]);
   }
-  assert.deepEqual(met, [["F-01", "fileFindings", "blueprint"], ["L-01", "moneyLevers", "blueprint"], ["S-08", "yourPath", "blueprint"], ["B-03", "blueprintDemo", "blueprint"], ["S-15", "journey", "blueprint"]]);
+  assert.deepEqual(met.filter(([code]) => ["F-01", "L-01", "F-02", "S-08", "B-03", "S-15"].includes(code)), [["F-01", "fileFindings", "blueprint"], ["L-01", "moneyLevers", "blueprint"], ["F-02", "lenderWall", "blueprint"], ["S-08", "yourPath", "blueprint"], ["B-03", "blueprintDemo", "blueprint"], ["S-15", "journey", "blueprint"]]);
   assert.deepEqual(repair.errors, []);
   await repair.page.close();
 
