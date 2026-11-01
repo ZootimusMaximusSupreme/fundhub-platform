@@ -600,16 +600,23 @@ export async function runCrsPull(db, {
     });
   }
 
-  /* CLAIM BEFORE ANY PROVIDER CALL. coordinateCrsResult only fulfils a
-     processing row, and claiming here is what makes a concurrent second runner
-     lose the race instead of ordering the same consumer twice. A row already
-     claimed by this worker is fine to continue; any other open state is not. */
+  /* CLAIM BEFORE ANY PROVIDER CALL. A fresh call cannot know who owns an
+     existing processing row, so it must not order on another worker's claim. */
   if (ledger.status === "queued") {
     const claim = await claimSoftPull(db, { requestId, orgId, clientId });
-    if (!claim.claimed && claim.reason !== "already_claimed") {
+    if (!claim.claimed && claim.reason === "already_claimed") {
+      throw new SoftPullError("soft pull request is already claimed", {
+        status: 409, code: "request_already_claimed"
+      });
+    }
+    if (!claim.claimed) {
       throw new SoftPullError(`soft pull request is already ${claim.reason}`, { status: 409 });
     }
-  } else if (ledger.status !== "processing") {
+  } else if (ledger.status === "processing") {
+    throw new SoftPullError("soft pull request is already claimed", {
+      status: 409, code: "request_already_claimed"
+    });
+  } else {
     throw new SoftPullError(`soft pull request is already ${ledger.status}`, { status: 409 });
   }
 

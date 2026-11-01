@@ -177,6 +177,7 @@ test("unknown real provider outcome leaves the queued ledger before another swee
     await conn.query("BEGIN");
     try {
       await conn.query("CREATE TEMP TABLE soft_pull_requests (LIKE public.soft_pull_requests INCLUDING ALL) ON COMMIT DROP");
+      await conn.query("CREATE TEMP TABLE tasks (LIKE public.tasks INCLUDING ALL) ON COMMIT DROP");
       await conn.query("SET LOCAL search_path TO pg_temp, public");
       const org = randomUUID(), client = randomUUID(), subscription = randomUUID();
       const request = (await conn.query(
@@ -198,6 +199,20 @@ test("unknown real provider outcome leaves the queued ledger before another swee
       assert.equal(first.errored.length, 0);
       assert.equal((await conn.query("SELECT status FROM soft_pull_requests WHERE id=$1", [request])).rows[0].status, "failed");
       assert.equal((await fulfilQueuedSystemPulls(conn, options)).checked, 0);
+      assert.equal(providerCalls, 1);
+      const unreconciled = (await conn.query(
+        `INSERT INTO soft_pull_requests
+          (org_id,client_id,subscription_id,idempotency_key,requested_by_kind,reason,status)
+         VALUES ($1,$2,$3,$4,'system','Monthly refresh','queued') RETURNING id`,
+        [org, client, subscription, `finance-os-monthly:${subscription}:1:real`]
+      )).rows[0].id;
+      await conn.query(
+        `INSERT INTO tasks (org_id,client_id,title,body,source_workflow,assignee_role,done)
+         VALUES ($1,$2,'Reconcile provider outcome',$3,'finance-os-monthly-provider-exception','owner',true)`,
+        [org, client, `finance-os-monthly-provider:${unreconciled}`]
+      );
+      assert.equal((await fulfilQueuedSystemPulls(conn, options)).checked, 0,
+        "a saved provider incident excludes its original queued request even after the task is done");
       assert.equal(providerCalls, 1);
     } finally {
       await conn.query("ROLLBACK");
