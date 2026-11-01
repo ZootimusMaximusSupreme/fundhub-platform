@@ -129,7 +129,7 @@ Pick the order:
 
 No business yet: "You do not need a business to work with us. Funding can come in your own name, a business name, or both."
 
-If the goal is small next to what they need: "Is that what you need, or what you think you can get?"
+If the goal is small next to what they need: "Is that what you need, or what you think you can get?" Do not assume a bigger loan is better. Ask how much they will use now, what they can repay, and whether unused credit would help them keep card use low. Use the small-target talk-off in section 9 only if the file supports more.
 
 **Listen for the door.** Write these down when you hear them.
 
@@ -214,7 +214,7 @@ Every door has the same shape. First the promise: the steps that get them from w
 ### Door 1. Fund it
 
 **Who:** S-07 says FULL FUNDING, or FUNDING PLUS REPAIR.
-**Offer:** Funding, done for you. **$3,000 today.** It counts toward the 10% fee. The 10% is only on money that actually gets funded.
+**Offer:** Funding, done for you. **$3,000 today.** It counts once toward the 10% success fee. When funding is secured, the fee base is confirmed approved limits or amounts, including credit access the client has not drawn. The remaining fee is due as approved funds or credit access are received. If no funding is secured, no back-end success fee is due. Read the agreement's exact terms on the call.
 **Slides:** L-01 (the money levers) and S-08 (your path), then S-09 to S-16 and C-01 (more companies, more funding), then S-17 to S-22.
 
 1. **The promise.** "Here's the plan. Three steps to get you in front of the banks that match your file, in the right order. Want me to walk you through it?"
@@ -231,12 +231,12 @@ Every door has the same shape. First the promise: the steps that get them from w
 
 **Funding plus credit optimization.** For FUNDING PLUS REPAIR files. "Part of your file is ready now. We fund from the clean side, and we clean up the rest at the same time, so your next round is bigger." $3,000 plus $1,000, cash. On S-23, send the $3,000 link, then the second button, **Send credit optimization pay link · $1,000**.
 
-**The math, only with a real amount.** Read it off S-20. Example only, not a promise: $75,000 funded, 10% is $7,500, $3,000 already paid, $4,500 due after funding. If 10% of what gets funded comes out under the $3,000 they paid, do not promise a refund on the call. Ask Chris.
+**The math, only with a real amount.** Read it off S-20 and the agreement. Example only, not a promise: $75,000 in confirmed approved limits or amounts, 10% is $7,500, $3,000 already paid, $4,500 remaining as approved funds or credit access are received. The fee is not limited to what the client draws. Do not promise a deposit refund when the success fee is smaller; read the signed terms.
 
 ### Door 2. Revenue funding (run by hand for now)
 
 **Who:** steady revenue through a business bank account, 6 months or more in business, and 3 months of business bank statements. Credit not ready: fund the business now, and fix the file. Credit ready: fund it all, cards and revenue.
-**Offer:** funding, done for you, on the same funding agreement. **$3,000 today plus 10% of what gets funded.**
+**Offer:** funding, done for you, on the same funding agreement. **$3,000 today plus a 10% success fee based on confirmed approved limits or amounts when funding is secured; the deposit counts toward that fee.**
 **How it runs for now:** the client uploads bank statements or tax returns in the portal. The team packages the file and emails it to the lender. The lenders are in `FUNDING SHEET (business).xlsx`. The button that sends it automatically is on hold.
 
 1. **The promise.** "Two moves at once. Funding based on your business revenue now, and your personal file fixed so your next funding sequence is bigger."
@@ -288,7 +288,7 @@ They keep the $32 report. Go to **If they do not buy today**.
 3. **What happens next, before the price.** Say the first step of their door from section 6. They should picture day one before they hear a price.
 4. **The guarantees (S-21).** Funding only: read G-01 and G-02 word for word. They are the two in the agreement in the CRM. Blueprint and credit optimization: no guarantees from S-21.
 5. **The ask (S-19 to S-22).** One line that ties the price to their goal. Then: "Want to get started?"
-   - Funding: "To get you in front of the right banks in the right order, it's $3,000 today. That's not extra. It counts toward the 10%, and the 10% is only on money you actually get. Want to get started?"
+   - Funding: "To get you in front of the right banks in the right order, it's $3,000 today. That counts toward the 10% success fee. The fee is based on the bank limits or amounts we confirm as approved, even if you don't draw the whole line. The rest comes due as that credit becomes available. Want to get started?"
    - Blueprint: "For the whole 12-month plan, built from your file, it's [price]. Want to get started?"
    - Credit optimization: "For all six rounds, done for you, it's $1,000. Want to get started?"
 6. **Stop talking.** Count to four in your head. Let them talk first.
