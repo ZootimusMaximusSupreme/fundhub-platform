@@ -1,11 +1,4 @@
-// Capital Blueprint / FinanceOS acceptance: current *policy observation*.
-//
-// These tests deliberately document that GET overview/banks presently grant
-// every authenticated client access to their OWN data without checking for a
-// paid FinanceOS subscription or active Blueprint entitlement. They do NOT
-// decide whether those reads should be free previews or paid-only features.
-// An approved policy change must update these assertions and cover both buyers
-// and expired/non-buyer clients. All data is synthetic; no provider or DB IO.
+// Capital Blueprint / FinanceOS client GET policy. Synthetic sessions only.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import overview from "../../api/money/overview.mjs";
@@ -14,6 +7,7 @@ import banks from "../../api/money/banks.mjs";
 const ORG = "org-synthetic";
 const MINE = "11111111-2222-4333-8444-555555555555";
 const OTHER = "99999999-8888-4777-8666-555555555555";
+const AT = new Date("2026-10-29T00:00:00Z");
 
 function response() {
   return {
@@ -24,53 +18,42 @@ function response() {
   };
 }
 
-const principal = {
-  kind: "client", accountId: "account-synthetic",
-  orgId: ORG, clientId: MINE
-};
-const session = async () => principal;
+const session = async () => ({
+  kind: "client", accountId: "account-synthetic", orgId: ORG, clientId: MINE
+});
 const noDatabase = {
-  async query() {
-    throw new Error("Unplanned database access: a paid-entitlement query was not expected by the baseline");
-  }
+  async query() { throw new Error("Unexpected database query"); }
 };
 
-test("KNOWN BP-07 policy: client GET overview returns their own file without a paid-entitlement check", async () => {
-  const res = response();
-  let requested = null;
-  await overview(
-    { method: "GET", query: { client_id: OTHER } }, res,
-    {
-      db: noDatabase, requirePrincipal: session,
-      moneyOverview: async (_db, args) => {
-        requested = args;
-        return { ok: true, clientId: args.clientId, preview: "synthetic" };
-      },
-      now: () => new Date("2026-10-29T00:00:00Z"), env: {}
-    }
-  );
-  assert.equal(res.statusCode, 200);
-  assert.equal(requested.orgId, ORG);
-  assert.equal(requested.clientId, MINE, "URL client_id must not override the session");
-  assert.equal(res.body.clientId, MINE);
-});
-
-test("KNOWN BP-07 policy: client GET bank plan returns their own file without a paid-entitlement check", async () => {
-  const res = response();
-  let requested = null;
-  await banks(
-    { method: "GET", query: { client_id: OTHER } }, res,
-    {
-      db: noDatabase, requirePrincipal: session,
-      bankStrategy: async (_db, args) => {
-        requested = args;
-        return { ok: true, clientId: args.clientId, recommended_banks: [], next_sequence: { suggestion: null } };
-      },
-      now: () => new Date("2026-10-29T00:00:00Z")
-    }
-  );
-  assert.equal(res.statusCode, 200);
-  assert.equal(requested.orgId, ORG);
-  assert.equal(requested.clientId, MINE);
-  assert.equal(res.body.clientId, MINE);
-});
+for (const [name, route, buildKey, payload] of [
+  ["overview", overview, "moneyOverview", { ok: true, balances: ["synthetic"] }],
+  ["banks", banks, "bankStrategy", { ok: true, recommended_banks: [], next_sequence: { suggestion: null } }]
+]) {
+  for (const [access, entitled] of [["nonbuyer", false], ["expired Blueprint", false],
+    ["paid monthly", true], ["active Blueprint year", true]]) {
+    test(`${name} client GET ${access}: gate uses session identity and ${entitled ? "returns" : "denies"} data`, async () => {
+      const res = response();
+      let built = 0;
+      let checked = null;
+      await route({ method: "GET", query: { client_id: OTHER } }, res, {
+        db: noDatabase, requirePrincipal: session,
+        financeOsEntitlement: async (_db, args) => {
+          checked = args;
+          return { entitled, subscriptionId: entitled ? "synthetic-access" : null };
+        },
+        [buildKey]: async (_db, args) => {
+          built += 1;
+          assert.equal(args.orgId, ORG);
+          assert.equal(args.clientId, MINE);
+          return { ...payload, clientId: args.clientId };
+        },
+        now: () => AT, env: {}
+      });
+      assert.deepEqual(checked, { orgId: ORG, clientId: MINE, asOf: AT });
+      assert.equal(res.statusCode, entitled ? 200 : 403);
+      assert.equal(built, entitled ? 1 : 0, "denied clients never reach premium data builders");
+      if (entitled) assert.equal(res.body.clientId, MINE);
+      else assert.equal(res.body.error, "finance_os_not_entitled");
+    });
+  }
+}

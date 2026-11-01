@@ -8,8 +8,8 @@
 //
 // TWO CALLERS.
 //
-//   * A signed-in CLIENT (an account session, src/auth/account-session.mjs) sees
-//     their own file and nothing else. The client_id comes off the SESSION. A
+//   * A signed-in CLIENT with paid FinanceOS access sees their own file.
+//     The client_id comes off the SESSION. A
 //     `client_id` in the query string is never read on this branch — not
 //     validated and ignored, just never consulted.
 //   * STAFF: a staff session (resolved by the same authenticate() requireAuth
@@ -24,12 +24,14 @@ import { requirePrincipal } from "../../src/http/middleware/requirePrincipal.mjs
 import { ROLE_SETS, requireRole, isUuid, CLIENT_DATA_ERRORS } from "../../src/http/read-api.mjs";
 import { requireClientInOrg } from "../../src/http/client-scope.mjs";
 import { moneyOverview } from "../../src/finance/money-overview.mjs";
+import { financeOsEntitlement } from "../../src/finance/finance-os-entitlement.mjs";
 import { dbDown } from "../../src/http/db-down.mjs";
 
 export default async function handler(req, res, deps = {}) {
   const database = deps.db || db;
   const gate = deps.requirePrincipal || requirePrincipal;
   const build = deps.moneyOverview || moneyOverview;
+  const entitlement = deps.financeOsEntitlement || financeOsEntitlement;
   const clock = deps.now || (() => new Date());
   const env = deps.env || process.env;
 
@@ -68,7 +70,12 @@ export default async function handler(req, res, deps = {}) {
   }
 
   try {
-    const payload = await build(database, { orgId, clientId, env, asOf: clock() });
+    const now = clock();
+    if (principal.kind === "client") {
+      const access = await entitlement(database, { orgId, clientId, asOf: now });
+      if (!access.entitled) return res.status(403).json({ ok: false, error: "finance_os_not_entitled" });
+    }
+    const payload = await build(database, { orgId, clientId, env, asOf: now });
     if (!payload) return res.status(404).json({ ok: false, error: "not_found" });
     return res.status(200).json(payload);
   } catch (e) {
