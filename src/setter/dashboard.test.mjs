@@ -60,7 +60,26 @@ function fakeDb(booked = true) {
 test("handoff input refuses unsupported claims and keeps only checklist fields", () => {
   assert.match(sanitizeHandoffPatch({ goal: "Pre-approved for $100,000" }).error, /unsupported/);
   assert.match(sanitizeHandoffPatch({ problem: "SSN 123-45-6789" }).error, /unsupported/);
-  assert.deepEqual(sanitizeHandoffPatch({ goal: "Growth", forged_timestamp: "now" }).patch, { goal: "Growth" });
+  assert.deepEqual(sanitizeHandoffPatch({ goal: "Growth", disposition_at: "2099-01-01T00:00:00Z" }).patch, { goal: "Growth" });
+});
+
+test("saving a disposition records when it happened; unrelated saves keep that time", async () => {
+  const { db, client } = fakeDb();
+  const first = "2026-10-31T19:00:00.000Z";
+  const later = "2026-10-31T20:00:00.000Z";
+  await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save",
+    handoff: { disposition: "reached" } }, { now: () => new Date(first) });
+  assert.equal(client.custom_fields.setter_handoff.disposition_at, first);
+  await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save",
+    handoff: { goal: "Growth" } }, { now: () => new Date(later) });
+  assert.equal(client.custom_fields.setter_handoff.disposition_at, first);
+  await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save",
+    handoff: { disposition: "reached", goal: "Growth" } }, { now: () => new Date(later) });
+  assert.equal(client.custom_fields.setter_handoff.disposition_at, first,
+    "autosave of the same result must not make an old conversation look new");
+  await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save",
+    handoff: { disposition: "booked_on_call" } }, { now: () => new Date(later) });
+  assert.equal(client.custom_fields.setter_handoff.disposition_at, later);
 });
 
 test("setter can save both funding paths and personal work facts without changing the survey", async () => {

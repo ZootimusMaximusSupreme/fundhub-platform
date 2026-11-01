@@ -220,8 +220,8 @@ export async function placeCall({
     task: taskWithRecordingNotice(agent.prompt),
     /* NO first_sentence ON A REAL CALL, and this is the AI setter's whole bug.
        Bland speaks first_sentence VERBATIM before anything else. Deriving it from
-       the prompt (firstSentenceFromPrompt) meant Josh opened every call by reading
-       his own instruction sheet out loud — "You are a Fundhub voice agent." — which
+       the prompt (firstSentenceFromPrompt) meant the setter opened every call by reading
+       its own instruction sheet out loud — "You are a Fundhub voice agent." — which
        is what "the setter does not work AT ALL" looked like on the 2026-09-03 walk.
        Introduced 2026-08-26.
 
