@@ -1,6 +1,6 @@
 // /api/chat/portal-message — client portal chat widget.
 //
-//   GET  — signed-in client reads THEIR OWN portal thread (sms preferred)
+//   GET  — signed-in client reads THEIR OWN messages across channels
 //   POST — client → staff note; lands on the existing sms/email conversation
 //
 // Threaded on the client's conversation — not a separate silo (spec §4.3).
@@ -26,7 +26,8 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === "GET") {
-      /* Prefer the sms thread the widget posts to; else most recent client thread. */
+      /* Keep the legacy conversation id for the widget. History spans all of
+         this client's channels, even when an older SMS thread is selected. */
       const convo = await db.query(
         `SELECT id FROM conversations
           WHERE org_id = $1 AND client_id = $2
@@ -35,13 +36,13 @@ export default async function handler(req, res) {
           LIMIT 1`,
         [orgId, clientId]
       );
-      if (!convo.rows[0]) {
-        return res.status(200).json({ ok: true, conversation_id: null, messages: [] });
-      }
-      const conversationId = convo.rows[0].id;
+      const conversationId = convo.rows[0]?.id || null;
       /* The generic staff helper returns the OLDEST 100 first. That leaves
          a long-running buyer unable to see new replies after 100 messages.
-         Only show this authenticated client's rows, latest N chronologically.
+         Only show this authenticated client's SMS and email rows. Staff alerts
+         also carry a client_id for context, so exclude their known receipt
+         keys before limiting; they were addressed to employees, not clients.
+         Show the latest N chronologically across both channels.
          Stable id tiebreakers keep concurrent equal-timestamp notes ordered. */
       const limit = Math.min(500, Math.max(1, Number(req.query?.limit) || 100));
       const recent = await db.query(
@@ -51,11 +52,16 @@ export default async function handler(req, res) {
                   s.name AS sender_name
              FROM messages m
              LEFT JOIN staff s ON s.id = m.sender_staff_id
-            WHERE m.org_id = $1 AND m.client_id = $2 AND m.conversation_id = $3
+            WHERE m.org_id = $1 AND m.client_id = $2
+              AND m.channel IN ('sms', 'email')
+              AND COALESCE(m.provider_ref, '') NOT LIKE 'staff-alert:%'
+              AND COALESCE(m.provider_ref, '') NOT LIKE 'setter:%:closer:%'
+              AND COALESCE(m.template_key, '') NOT IN
+                  ('SMS-S04C-STAFF-BOOKED', 'SMS-DEAL-CLOSE-WIN')
             ORDER BY m.created_at DESC, m.id DESC
-            LIMIT $4
+            LIMIT $3
          ) recent ORDER BY recent.created_at ASC, recent.id ASC`,
-        [orgId, clientId, conversationId, limit]
+        [orgId, clientId, limit]
       );
       const messages = recent.rows;
       return res.status(200).json({
