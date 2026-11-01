@@ -16,12 +16,14 @@
 -- Code that reads a reply is unchanged: a reply still stops a chase and still gets
 -- answered. Only the asks go.
 --
--- 1. Seven texts, rewritten whole and signed Chris (no Josh, owner order
---    2026-10-31). The no-Josh branch (seed 303) leaves these five keys to this file:
+-- 1. Seven texts. The three booking texts keep seed 295's words and change only
+--    the reply-CONFIRM sentence (src/workflows/booked-lane.pg.test.mjs pins the rest).
+--    The no-Josh seed (303) leaves these five keys to this file:
 --    SMS-S04-01-CONFIRM, SMS-S04-02-REMIND-24H, SMS-S04-03-REMIND-2H,
---    SMS-BS01-01-CONFIRMATION-HUB, SMS-BS01-02-PRECALL-NUDGE; the two AI-SET-03
---    texts are seed 301's words with the YES asks taken out. The two BS-01 texts are
---    on the heartbeat's list of templates nothing sends today
+--    SMS-BS01-01-CONFIRMATION-HUB, SMS-BS01-02-PRECALL-NUDGE; the two BS-01 texts
+--    are signed Chris (no Josh, owner order 2026-10-31). The two AI-SET-03 texts are
+--    seed 301's words with the YES asks taken out. The two BS-01 texts are on the
+--    heartbeat's list of templates nothing sends today
 --    (src/pulse/coverage/msg-dead-templates.mjs); their words change anyway.
 -- 2. The booking confirmation email: its "we'll text you to confirm" line.
 -- 3. Seven older emails that nothing sends (the same dead list): their reply
@@ -37,14 +39,11 @@ UPDATE message_templates AS t
        updated_at        = now()
   FROM (VALUES
   ('SMS-S04-01-CONFIRM',
-$c$Hey {{contact.first_name}}, it's Chris with Fundhub. You're booked for {{appointment.start_time}}. Accept the calendar invite in your email to lock in your time. Can't make it? Move it here: {{custom_values.booking_link}}
-Reply STOP to opt out.$c$),
+$c$You're booked, {{contact.first_name}}. {{appointment.start_time}} with a Fundhub funding advisor, about 20 minutes. Accept the calendar invite in your email to lock in your time, or move it here: {{custom_values.booking_link}} Reply STOP to opt out.$c$),
   ('SMS-S04-02-REMIND-24H',
-$c$Fundhub reminder, {{contact.first_name}}: your call is tomorrow at {{appointment.start_time}}. If you haven't yet, accept the calendar invite in your email. Need a new time? {{custom_values.booking_link}}
-- Chris at Fundhub. Reply STOP to opt out.$c$),
+$c${{contact.first_name}} — your Fundhub call is tomorrow, at {{appointment.start_time}}. Bring your business details; your advisor goes through your numbers with you live. If you haven't yet, accept the calendar invite in your email, or move it: {{custom_values.booking_link}} Reply STOP to opt out.$c$),
   ('SMS-S04-03-REMIND-2H',
-$c$Fundhub reminder, {{contact.first_name}}: your call starts at {{appointment.start_time}}. The meeting link is in your calendar invite. Need a new time? {{custom_values.booking_link}}
-- Chris at Fundhub. Reply STOP to opt out.$c$),
+$c${{contact.first_name}} — your Fundhub call is in about two hours, at {{appointment.start_time}}. The meeting link is in your calendar invite. Need to move it? {{custom_values.booking_link}} Reply STOP to opt out.$c$),
   ('SMS-AISET03-MSG1',
 $c$Hey {{contact.first_name}}, it's Chris at Fundhub. Tried calling about your strategy call. To lock in your time, accept the calendar invite in your email. Need a new time? {{custom_values.booking_link}}
 Reply STOP to opt out.$c$),

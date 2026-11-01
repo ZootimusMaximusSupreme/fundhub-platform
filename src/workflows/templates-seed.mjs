@@ -120,17 +120,17 @@ export const KNOWN_TEMPLATES = [
   {
     template_key: "SMS-S04-01-CONFIRM",
     channel: "sms",
-    body: "Hey {{contact.first_name}}, it's Chris with Fundhub. You're booked for {{appointment.start_time}}. Accept the calendar invite in your email to lock in your time. Can't make it? Move it here: {{custom_values.booking_link}}\nReply STOP to opt out."
+    body: "You're booked, {{contact.first_name}}. {{appointment.start_time}} with a Fundhub funding advisor, about 20 minutes. Accept the calendar invite in your email to lock in your time, or move it here: {{custom_values.booking_link}} Reply STOP to opt out."
   },
   {
     template_key: "SMS-S04-02-REMIND-24H",
     channel: "sms",
-    body: "Fundhub reminder, {{contact.first_name}}: your call is tomorrow at {{appointment.start_time}}. If you haven't yet, accept the calendar invite in your email. Need a new time? {{custom_values.booking_link}}\n- Chris at Fundhub. Reply STOP to opt out."
+    body: "{{contact.first_name}} — your Fundhub call is tomorrow, at {{appointment.start_time}}. Bring your business details; your advisor goes through your numbers with you live. If you haven't yet, accept the calendar invite in your email, or move it: {{custom_values.booking_link}} Reply STOP to opt out."
   },
   {
     template_key: "SMS-S04-03-REMIND-2H",
     channel: "sms",
-    body: "Fundhub reminder, {{contact.first_name}}: your call starts at {{appointment.start_time}}. The meeting link is in your calendar invite. Need a new time? {{custom_values.booking_link}}\n- Chris at Fundhub. Reply STOP to opt out."
+    body: "{{contact.first_name}} — your Fundhub call is in about two hours, at {{appointment.start_time}}. The meeting link is in your calendar invite. Need to move it? {{custom_values.booking_link}} Reply STOP to opt out."
   },
   {
     template_key: "SMS-NOBOOK-01",
