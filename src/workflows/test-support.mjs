@@ -406,10 +406,22 @@ export function pgFake(seed = {}) {
         const orgScoped = /org_id\s*=\s*\$1/.test(sql);
         const clientId = params[orgScoped ? 1 : 0];
         const includeRescheduled = /booking\.rescheduled/.test(sql);
+        /* s-05a's starting count stops at the earlier of the missed call's start ($3) and
+           the no-show event's own moment ($4). Rows with no created_at are older fixtures
+           and count as before both. */
+        let cutoff = null;
+        if (/LEAST\(/.test(sql)) {
+          const cuts = [];
+          if (params[2] && Number.isFinite(Date.parse(params[2]))) cuts.push(Date.parse(params[2]));
+          const upTo = params[3] ? events.find((e) => e.id === params[3] && (!e.org_id || e.org_id === params[0])) : null;
+          if (upTo?.created_at) cuts.push(Date.parse(upTo.created_at));
+          cutoff = cuts.length ? Math.min(...cuts) : null;
+        }
         const n = events.filter((e) =>
           e.client_id === clientId
           && (!orgScoped || e.org_id === params[0])
           && (e.name === "booking.created" || (includeRescheduled && e.name === "booking.rescheduled"))
+          && (cutoff === null || !e.created_at || Date.parse(e.created_at) <= cutoff)
         ).length;
         return { rows: [{ n }] };
       }
@@ -438,17 +450,19 @@ export function pgFake(seed = {}) {
         return { rows: hit ? [{ booked: 1 }] : [] };
       }
       if (/WITH source AS \([\s\S]*SELECT e\.id[\s\S]*FROM events e, source s/.test(sql)) {
-        const [eventId, orgId, clientId, name] = params;
+        const [eventId, orgId, clientId, name, windowSeconds] = params;
         const source = events.find((e) => e.id === eventId && e.org_id === orgId && e.name === name);
         if (!source) return { rows: [] };
         const sourceAt = new Date(source.created_at).getTime();
+        // messageCohortId's window ($5, seconds); six hours when a caller passes none.
+        const windowMs = windowSeconds == null ? 6 * 60 * 60 * 1000 : Number(windowSeconds) * 1000;
         const sourceFunnel = String(source.payload?.funnel || "");
         const sourceEmail = String(source.payload?.email || "").toLowerCase();
         const hit = events
           .filter((e) => e.org_id === orgId && e.name === name)
           .filter((e) => {
             const at = new Date(e.created_at).getTime();
-            return at <= sourceAt && at > sourceAt - 6 * 60 * 60 * 1000;
+            return at <= sourceAt && at > sourceAt - windowMs;
           })
           .filter((e) => e.client_id === clientId || (!e.client_id && sourceEmail && String(e.payload?.email || "").toLowerCase() === sourceEmail))
           .filter((e) => !sourceFunnel || !e.payload?.funnel || e.payload.funnel === sourceFunnel)
