@@ -167,6 +167,16 @@ export async function logCallOutcome(db, input) {
     }
   }
 
+  // A task and a booking may each belong to the right buyer but describe
+  // DIFFERENT calls. Never finish call A with call B's reference.
+  if (verifiedRef && ownedTask && ownedTask.assignee_role === "closer"
+      && String(ownedTask.title || "").startsWith("Strategy session")
+      && String(ownedTask.body || "").trim() !== verifiedRef) {
+    throw new CallOutcomeError("Booking does not match the selected call.", {
+      status: 409, code: "booking_task_mismatch"
+    });
+  }
+
   let existing = null;
   if (taskId || verifiedRef) {
     const previous = await db.query(
@@ -265,8 +275,8 @@ export async function logCallOutcome(db, input) {
   if (taskId) {
     await db.query(
       `UPDATE tasks SET done = true, updated_at = now()
-        WHERE id = $1 AND org_id = $2`,
-      [taskId, orgId]
+        WHERE id = $1 AND org_id = $2 AND client_id = $3`,
+      [taskId, orgId, clientId]
     );
   }
 
@@ -322,7 +332,10 @@ async function emitCloserCallCompleted(db, row, { offerKey, repairReferral }) {
    to send the webhook, which is not what "a closer owes a call outcome" means. */
 const BOOKING_TASK_TITLE_LIKE = "Strategy session%";
 
-/** Closer tasks past due with no disposition row. */
+/** Closer tasks past due with no disposition row.
+ * A closer can save directly from a booking UID without a taskId. A matching
+ * same-client booking disposition must close the task's unlogged chip too.
+ */
 export async function listUnloggedCalls(db, { orgId, staffId = null, limit = 50 } = {}) {
   if (!orgId) throw new CallOutcomeError("orgId is required", { status: 403 });
   const params = [orgId];
@@ -348,8 +361,13 @@ export async function listUnloggedCalls(db, { orgId, staffId = null, limit = 50 
             COALESCE(NULLIF(trim(c.first_name || ' ' || c.last_name), ''), c.email, 'Client') AS client_name
        FROM tasks t
        LEFT JOIN clients c ON c.id = t.client_id AND c.org_id = t.org_id
-       LEFT JOIN call_outcomes o ON o.task_id = t.id AND o.org_id = t.org_id
+       LEFT JOIN call_outcomes o ON o.org_id = t.org_id AND o.client_id = t.client_id
+         AND (o.task_id = t.id OR
+              (NULLIF(btrim(t.body), '') IS NOT NULL AND o.booking_ref = t.body))
       WHERE t.org_id = $1
+        AND t.done IS NOT TRUE
+        AND c.id IS NOT NULL
+        AND c.custom_fields->>'crm_archived_at' IS NULL
         AND t.assignee_role = 'closer'
         AND t.title LIKE ${titleParam}
         AND t.due_at IS NOT NULL
@@ -381,13 +399,21 @@ export async function countUnlogged(db, { orgId, staffId = null } = {}) {
     `SELECT count(*)::int AS n
        FROM tasks t
       WHERE t.org_id = $1
+        AND t.done IS NOT TRUE
+        AND EXISTS (
+          SELECT 1 FROM clients c
+           WHERE c.id = t.client_id AND c.org_id = t.org_id
+             AND c.custom_fields->>'crm_archived_at' IS NULL
+        )
         AND t.assignee_role = 'closer'
         AND t.title LIKE ${titleParam}
         AND t.due_at IS NOT NULL
         AND t.due_at < now()
         AND NOT EXISTS (
           SELECT 1 FROM call_outcomes o
-           WHERE o.task_id = t.id AND o.org_id = t.org_id
+           WHERE o.org_id = t.org_id AND o.client_id = t.client_id
+             AND (o.task_id = t.id OR
+                  (NULLIF(btrim(t.body), '') IS NOT NULL AND o.booking_ref = t.body))
         )
         ${staffClause}`,
     params

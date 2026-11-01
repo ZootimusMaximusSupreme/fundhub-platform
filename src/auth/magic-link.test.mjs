@@ -64,6 +64,13 @@ describe("magic link — no database needed", () => {
       assert.ok(url.endsWith("?t=a%2Bb%2Fc%3Dd%26e"), url);
     });
 
+    test("a booking claim survives the emailed sign-in step", () => {
+      assert.equal(
+        magicLinkUrl("tok", { PORTAL_BASE_URL: "https://x.test" }, { bookingClaim: true }),
+        "https://x.test/portal-login.html?t=tok&booking_claim=1"
+      );
+    });
+
     test("a trailing slash on the base does not double up", () => {
       assert.equal(
         magicLinkUrl("t", { PORTAL_BASE_URL: "https://x.test/" }),

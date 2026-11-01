@@ -94,6 +94,63 @@ test("paidTransactionForLink only accepts the call's paid checkout link", async 
   assert.equal(db.calls.length, 1);
 });
 
+test("logCallOutcome: two owned but different booking/task references cannot complete the wrong call", async () => {
+  const org = "11111111-1111-4111-8111-111111111111";
+  const client = "22222222-2222-4222-8222-222222222222";
+  const staff = "33333333-3333-4333-8333-333333333333";
+  const taskId = "44444444-4444-4444-8444-444444444444";
+  const db = stubDb([
+    [/FROM clients WHERE/, () => ({ rows: [{ id: client, custom_fields: {} }] })],
+    [/FROM tasks/, () => ({ rows: [{
+      id: taskId, body: "booking-A", title: "Strategy session booked", assignee_role: "closer"
+    }] })],
+    [/FROM bookings/, () => ({ rows: [{ client_id: client }] })],
+    [/INSERT INTO call_outcomes|UPDATE tasks|INSERT INTO events/, () => {
+      throw new Error("Must reject mismatched booking before any write or event");
+    }]
+  ]);
+  await assert.rejects(
+    () => logCallOutcome(db, {
+      orgId: org, clientId: client, staffId: staff, taskId,
+      bookingRef: "booking-B", outcome: "callback"
+    }),
+    (err) => err instanceof CallOutcomeError
+      && err.status === 409 && err.code === "booking_task_mismatch"
+  );
+  assert.equal(db.calls.some(({ sql }) => /INSERT INTO call_outcomes|UPDATE tasks|INSERT INTO events/.test(sql)), false);
+  assert.equal(db.calls.some(({ sql }) => /FROM bookings/.test(sql)), false,
+    "Reject before trusting even a separately owned booking.");
+});
+
+test("logCallOutcome: matching task/booking still saves one scoped disposition", async () => {
+  const org = "11111111-1111-4111-8111-111111111111";
+  const client = "22222222-2222-4222-8222-222222222222";
+  const staff = "33333333-3333-4333-8333-333333333333";
+  const taskId = "44444444-4444-4444-8444-444444444444";
+  let emitted = 0;
+  const db = stubDb([
+    [/FROM clients WHERE/, () => ({ rows: [{ id: client, custom_fields: {} }] })],
+    [/FROM tasks/, () => ({ rows: [{
+      id: taskId, body: "booking-A", title: "Strategy session booked", assignee_role: "closer"
+    }] })],
+    [/FROM bookings/, () => ({ rows: [{ client_id: client }] })],
+    [/INSERT INTO call_outcomes/, (params) => ({ rows: [{
+      id: "saved-outcome", org_id: org, client_id: client,
+      staff_id: staff, task_id: taskId, booking_ref: params[4], outcome: "callback"
+    }] })],
+    [/INSERT INTO events/, () => { emitted += 1; return { rows: [{ id: "evt-1" }] }; }]
+  ]);
+  const outcome = await logCallOutcome(db, {
+    orgId: org, clientId: client, staffId: staff, taskId,
+    bookingRef: "booking-A", outcome: "callback"
+  });
+  assert.equal(outcome.created, true);
+  assert.equal(outcome.row.booking_ref, "booking-A");
+  assert.equal(db.calls.filter(({ sql }) => /INSERT INTO call_outcomes/.test(sql)).length, 1);
+  assert.equal(db.calls.filter(({ sql }) => /UPDATE tasks SET done = true/.test(sql)).length, 1);
+  assert.equal(emitted, 1);
+});
+
 test("logCallOutcome: refuses typed cash by never reading amount from input", async () => {
   const org = "11111111-1111-4111-8111-111111111111";
   const client = "22222222-2222-4222-8222-222222222222";
@@ -311,6 +368,45 @@ test("logCallOutcome cannot close a same-org task that belongs to another custom
   assert.equal(inserted, 0, "never write a cross-customer call outcome");
   assert.equal(db.calls.some((c) => /UPDATE tasks/.test(c.sql)), false,
     "never mark the other customer's task complete");
+});
+
+
+test("logCallOutcome cannot finish a task reassigned after the initial ownership read", async () => {
+  const org = "11111111-1111-4111-8111-111111111111";
+  const client = "22222222-2222-4222-8222-222222222222";
+  const other = "55555555-5555-4555-8555-555555555555";
+  const staff = "33333333-3333-4333-8333-333333333333";
+  const taskId = "44444444-4444-4444-8444-444444444444";
+
+  async function scenario(reassigned) {
+    let ownerNow = client;
+    let markedDone = false;
+    const db = stubDb([
+      [/FROM clients/, () => ({ rows: [{ id: client, custom_fields: {} }] })],
+      [/SELECT id, body, assignee_role, title FROM tasks/, () => {
+        // A different staff member can reassign the task after this read.
+        if (reassigned) ownerNow = other;
+        return { rows: [{ id: taskId, body: null, assignee_role: "closer", title: "Strategy session" }] };
+      }],
+      [/INSERT INTO call_outcomes/, () => ({
+        rows: [{ id: "out-stale-task", org_id: org, client_id: client, task_id: taskId, outcome: "callback" }]
+      })],
+      [/UPDATE tasks SET done/, (params, sql) => {
+        const stillOwned = params[0] === taskId && params[1] === org
+          && (!/client_id = \$3/.test(sql) || params[2] === ownerNow);
+        markedDone = stillOwned;
+        return { rows: [], rowCount: stillOwned ? 1 : 0 };
+      }]
+    ]);
+    await logCallOutcome(db, { orgId: org, clientId: client, staffId: staff, taskId, outcome: "callback" });
+    const update = db.calls.find(({ sql }) => /UPDATE tasks SET done/.test(sql));
+    assert.match(update.sql, /client_id = \$3/);
+    assert.deepEqual(update.params, [taskId, org, client]);
+    return markedDone;
+  }
+
+  assert.equal(await scenario(false), true, "same-buyer task may be completed");
+  assert.equal(await scenario(true), false, "reassigned buyer's task must remain open");
 });
 
 test("logCallOutcome does not reuse another customer's matching booking reference", async () => {

@@ -75,8 +75,10 @@ export async function listCases(db, {
             cl.email AS client_email,
             trim(both ' ' FROM concat_ws(' ', cl.first_name, cl.last_name)) AS client_name
        FROM inquiry_removal_cases c
-       LEFT JOIN clients cl ON cl.id = c.client_id
+       LEFT JOIN clients cl ON cl.id = c.client_id AND cl.org_id = c.org_id
+         AND cl.custom_fields->>'crm_archived_at' IS NULL
       WHERE ${where.join(" AND ")}
+        AND cl.id IS NOT NULL
       ORDER BY c.requested_at ASC NULLS LAST, c.created_at ASC
       LIMIT $${params.length - 1} OFFSET $${params.length}`,
     params
@@ -100,6 +102,12 @@ export async function getActiveCaseForClient(db, { orgId, clientId }) {
       WHERE org_id = $1::uuid
         AND client_id = $2::uuid
         AND case_status::text = ANY($3::text[])
+        AND EXISTS (
+          SELECT 1 FROM clients cl
+           WHERE cl.id = inquiry_removal_cases.client_id
+             AND cl.org_id = inquiry_removal_cases.org_id
+             AND cl.custom_fields->>'crm_archived_at' IS NULL
+        )
       ORDER BY requested_at DESC
       LIMIT 1`,
     [orgId, clientId, [...ACTIVE]]
