@@ -1,0 +1,1002 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Fundhub Business One, Two</title>
+<meta name="description" content="Every business gets read by its age, and the age only starts counting the day you file it. On the Blueprint, your business ages while your credit work runs.">
+<!--
+  Deck BZ · Business one, business two
+  Lane: Blueprint and Repair (everyone under 700)
+  Hammer Them pillar: 2nd-layer question
+  Belief: Each business is judged on its own, after my personal file is
+          ready. The clock on a business starts the day I file it, so I
+          start it now and let it season while my credit is optimized.
+
+  Rewritten 2026-10-31 on Chris's slide framework (see pre-underwriting.html).
+
+  Chris's direction (2026-10-31): his call-slide style, more copy, real first
+  (the engine's own sentence, the engine's own checks, a real product screen),
+  branded diagrams only where nothing real shows the point.
+
+  What this deck says and does not say (the fact bank, section 10)
+  - Each company is read on its own and listed on its own, never added up
+    into one score or one dollar figure (src/finance/fundability.mjs:73-75).
+  - Business one gets ready first, then business two: Chris's own list
+    (.ai/rules/ad-know-the-offer.md:33-35) and the call script
+    (docs/sops/weekend-2026-10-24/04-sales-call-script.md:258). The code has
+    no rule that business two waits for business one; the deck says the
+    order the way Chris says it.
+  - The engine reads age in bands: half under 12 months, full under 24,
+    double at 24 and up (src/underwrite/business-funding.mjs:5-9). The deck
+    labels that as how the engine reads a business, and the bank still
+    decides. It never says two companies double your funding.
+  - Never EIN, DUNS, net-30 or gas cards (RULES.md Part 0 rule 5). The
+    checklist's EIN step is left off the slide and cropped out of the screen.
+  - Never "you must have an LLC". You do not need a business to work with us
+    (04-sales-call-script.md:401).
+  - Fundhub does not file the LLC or open the bank account for you
+    (db/migrations/362_waypoint_definitions_seed.sql:33-35); the deck says
+    both steps are yours.
+  - The anchor-card check's dollar limit is left off BZ-02 (check.mjs reads
+    that figure as a Fundhub price).
+
+  Rules this deck follows (marketing/ads/RULES.md)
+  - Hook = slide 1's headline and line. Cause first: the bank reads age, and
+    the clock starts the day you file (2.2 check 1). No ask, no question,
+    first subject is the bank. It tells them something they don't know
+    (Part 0 rule 26): file it now, during the credit work. Line 2 opens the
+    loop (why now) and BZ-02 to BZ-04 pay it off.
+  - Full sentences, certain words, no price, no call to action.
+  - Evergreen spine (3.13): the mistake (waiting to file, BZ-01), why the
+    engine reads it that way (BZ-02, BZ-03), the order (BZ-04), the proof on
+    a real screen (BZ-05), the soft door (BZ-06).
+
+  Copybot (marketing/copy-skills/copybot/)
+  - One central idea: the belief above.
+  - The reader's question: "Do I need a business, and when?"
+  - Chris's voice from owner-voice.md and chris-voice-profile.md. "Primed and
+    ready" and "more fundability" are his words.
+
+  Visual Thinking (marketing/copy-skills/visual-thinking/), every step.
+  - Real first (law: show-real-proof): BZ-01 shows the engine's own sentence
+    in the engine card. BZ-02 shows the engine's own five business checks.
+    BZ-05 shows the sample client's real Blueprint checklist (two business
+    steps, cropped from the month-6 screen, stamped SIMULATION on the full
+    screen). BZ-03, BZ-04 and BZ-06 are branded diagrams, because nothing real
+    shows the age bands, the order, or what to have ready.
+  - The sample is one file: the FinanceOS sample client whose Blueprint screens
+    were recorded (ops/workflows/build-evidence/blueprint-timelapse-2026-10-21).
+    Its business name is never shown.
+  - Show, by Dan Roam's six ways of seeing (methods.md):
+    BZ-01 what, real: the engine's own line, marked "The engine's own words".
+    BZ-02 what, real: the five checks, the age check marked.
+    BZ-03 how much, bars: half, full, double, by age band.
+    BZ-04 when, a numbered flow: personal file, business one, business two,
+      more fundability (the call-slide steps row is unreadable on a dark
+      slide, so the flow carries the order here).
+    BZ-05 what, real: the two business steps on the sample checklist, done
+      in the sample's first days.
+    BZ-06 who/what, a list: what to have ready on the call.
+  - Truth check (applications.md): the bars show the engine's reading, not a
+    bank's promise, and the caption says the bank still decides. The sample
+    says Sample.
+  - Display check: every slide viewed at 390 pixels wide before it shipped.
+
+  Talking points (aside.talk, hidden from viewers; open with #notes or N):
+  about 45 to 60 seconds a slide, one insight each, in Chris's spoken voice.
+  A "Your story" cue asks Chris for his own real story; nothing is invented.
+
+  Each slide's data-src names the file and line its facts come from.
+  The shared design is copied in by build.mjs. Edit _shell/, not this copy.
+-->
+<!-- fh:shell:head -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Nunito:wght@500..800&display=swap">
+<style data-fh="doc">:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}[hidden]{display:none!important}</style>
+<style data-fh="brand">
+/* public/app/fundhub-brand.css */
+/* Fundhub workspace tokens — native welcome reference, October 2026.
+   Tenant branding still paints through shell.js; semantic status tokens stay fixed. */
+
+:root{
+  /* THE spectrum. Pastel. Coral -> peach -> butter -> sage -> powder -> lavender. */
+  --spectrum:linear-gradient(90deg,#F2A69B 0%,#F5CE8F 20%,#F2E39B 40%,#A8D8B0 60%,#A9C6E8 80%,#C4B3E5 100%);
+
+  --paper:#F8F8F6; --ink:#0D1113; --ink2:#252A2D;
+  --gray:#626968; --gray2:#858C89;
+  --line:#E3E5E0; --soft:#F0F1ED;
+  --card:#111113; --cardline:#26262B; --cardtext:#E4E4E7;
+
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,monospace;
+  --sans:ui-rounded,'SF Pro Rounded',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+
+  /* Status colors are spectrum stops. Do not invent others. */
+  --ok:#A8D8B0;      /* sage    - active, on pace, success, healthy */
+  --warn:#F5CE8F;    /* peach   - in progress, behind, warning */
+  --alert:#F2A69B;   /* coral   - blocked, failed, alert */
+  --info:#A9C6E8;    /* blue    - informational */
+  --accent:#C4B3E5;  /* lavender- accent */
+
+  --logo:url(data:image/svg+xml;base64,PHN2ZyB2ZXJzaW9uPSIxLjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgd2lkdGg9IjI2OTguMTQ4NDcxcHQiIGhlaWdodD0iNTQyLjk3ODc1OXB0IiB2aWV3Qm94PSIwIDAgMjY5OC4xNDg0NzEgNTQyLjk3ODc1OSIgcHJlc2VydmVBc3BlY3RSYXRpbz0ieE1pZFlNaWQgbWVldCI+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTE0Mi4wMDAwMDAsNjkxLjkwMjU0NSkgc2NhbGUoMC4xMDAwMDAsLTAuMTAwMDAwKSIgZmlsbD0iIzBBMEEwQSIgc3Ryb2tlPSJub25lIj48cGF0aCBkPSJNMjc4MCA2OTA1IGMtMTAxIC0yMyAtMTg3IC01MyAtMjc1IC05NiAtMjY3IC0xMzMgLTQ1MyAtMzQyIC01NTYgLTYyNCAtNTQgLTE1MCAtNjEgLTIxMiAtNjYgLTU2NSAtMyAtMjMzIC03IC0zMTYgLTE2IC0zMjIgLTcgLTQgLTEwMiAtOCAtMjEzIC04IC0xODIgMCAtMjAyIC0yIC0yMTcgLTE4IC0xNSAtMTcgLTE3IC02NiAtMTcgLTQ5MyAwIC0zNTYgMyAtNDc4IDEyIC00ODcgOSAtOSA3MSAtMTIgMjE4IC0xMiAxNDcgMCAyMDkgLTMgMjE4IC0xMiA5IC05IDEyIC0zMTYgMTIgLTEzMTcgMSAtMTA3MCAzIC0xMzA5IDE0IC0xMzIzIDEyIC0xNyA1MCAtMTggNTMzIC0xOCAzOTAgMCA1MjIgMyA1MzEgMTIgOSA5IDEyIDMxNSAxMiAxMzE2IDAgODc5IDMgMTMxMCAxMCAxMzIzIDEwIDE4IDIzIDE5IDIyNSAxOSAyMTAgMCAyMTQgMCAyMjkgMjIgMTQgMjAgMTYgODIgMTYgNDg0IGwwIDQ2MyAtMjYgMjAgYy0yNSAyMCAtMzkgMjEgLTIzMCAyMSAtMTkxIDAgLTIwNCAxIC0yMTQgMTkgLTYgMTIgLTEwIDEwMCAtMTAgMjE2IDAgMzAxIC01IDI5NSAyNjEgMjk1IDE2NyAwIDE4OCAyIDIwMiAxOCAxNSAxNyAxNyA2OCAxNyA1MzMgLTEgNDEyIC0zIDUxNyAtMTQgNTMyIC0xMiAxNiAtMzggMTcgLTMwNyAxNiAtMTkxIC0xIC0zMTMgLTYgLTM0OSAtMTR6Ii8+PHBhdGggZD0iTTE0MDUxIDY0MDcgYy04IC0xMCAtMTIgLTE5NiAtMTMgLTYzMiAtMyAtNTY4IC00IC02MTkgLTIwIC02MjggLTEzIC05IC0yMSAtNyAtMzUgNSAtMTggMTYgLTE4NSAxMDIgLTI1MyAxMzEgLTIyOSA5NyAtNTQ2IDEzNiAtODI1IDEwMyAtMTk4IC0yNCAtMjY0IC0zOSAtNDE0IC05OCAtMjUwIC05OCAtNDI5IC0yMTUgLTYyNSAtNDExIC03OCAtNzggLTE2MyAtMTY5IC0xODggLTIwMiAtNjMgLTg0IC0xMTggLTE2NCAtMTE4IC0xNzEgMCAtMyAtOCAtMTggLTE5IC0zMiAtNjUgLTk0IC0xNzIgLTM0MyAtMjEwIC00ODkgLTMwIC0xMTcgLTMxIC0xMjIgLTYwIC0zMzMgLTE3IC0xMjAgLTQgLTQzNyAyNCAtNjAwIDUzIC0zMDkgMjI3IC02NzIgNDM2IC05MTEgMjQwIC0yNzUgNDM4IC00MjEgNzM0IC01NDIgMTMwIC01MyAyMTggLTc1IDM4MCAtOTYgOTAgLTEyIDQ0OCAtNyA1MDAgNyAyMiA2IDY1IDE2IDk1IDIzIDEzNiAzMCAzNTkgMTIyIDQ5MiAyMDIgMjAgMTIgNTcgMzUgODIgNTAgNzIgNDQgODAgMzcgODQgLTYzIDIgLTQ2IDggLTkwIDE0IC05NyAxNSAtMTggOTc4IC0xOSA5OTYgLTEgMTcgMTcgMTcgNDc2OSAwIDQ3ODYgLTE5IDE5IC0xMDQxIDE3IC0xMDU3IC0xeiBtLTYzMCAtMjAzNSBjMTMgLTYgNDQgLTE2IDY5IC0yMyA1MyAtMTYgMTYxIC03MSAyMTAgLTEwNyAxNzAgLTEyNyAzMTkgLTMzOSAzNjggLTUyNyAyMiAtODMgMjYgLTEyNCAyNiAtMjcwIDAgLTE1NCAtMTAgLTI2MSAtMjUgLTI3MSAtNSAtMyAtOSAtMTYgLTkgLTMwIDAgLTEzIC00IC0zMiAtOCAtNDIgLTU3IC0xMTkgLTEwNCAtMjA1IC0xMzYgLTI0NiAtNjggLTg4IC0xNTkgLTE3NiAtMjMxIC0yMjUgLTc2IC01MCAtOTIgLTU5IC0xOTcgLTEwMCAtMTI0IC00OCAtMzg2IC00NiAtNTMzIDQgLTEyNSA0MyAtMjM3IDExNyAtMzM0IDIyMyAtOTAgOTggLTExOSAxNDAgLTE2NiAyMzIgLTUwIDk5IC00NyA5MCAtODQgMjM1IC0yOCAxMTEgLTMyIDI0NiAtMTEgMzgwIDE4IDExOSAyMiAxMzUgMzEgMTQxIDUgMyA5IDEzIDkgMjMgMCAzMSA3MCAxNjMgMTI1IDIzNiA2NyA4OSAxNTUgMTgwIDIyNSAyMzIgNjYgNDkgMTY1IDEwMyAxOTAgMTAzIDExIDAgMjEgNCAyNCA5IDYgOSAyOSAxNSAxMjEgMzEgNjEgMTEgMzAzIDUgMzM2IC04eiIvPjxwYXRoIGQ9Ik0xNTU0NyA2NDAyIGMtMTYgLTE3IC0xNyAtMTk3IC0xNyAtMjM4NiAwIC0xNjEzIDMgLTIzNzMgMTAgLTIzODcgMTAgLTE4IDI3IC0xOSA1MzUgLTE5IDMyMSAwIDUyNiA0IDUzMCAxMCAzIDUgNSA0MjcgNSA5MzcgMCA4OTMgNSAxMDg1IDMyIDEyNTggNDMgMjc4IDE0NiA0NTQgMzEzIDUzNiBsNzAgMzQgMTUyIDAgYzEwOCAwIDE1NiAtNCAxNjUgLTEyIDYgLTcgMjAgLTEzIDI5IC0xMyAyNiAwIDkyIC0zOCAxMzcgLTc5IDU5IC01MiAxMDUgLTEyNyAxNDUgLTIzMyAzNCAtOTAgNDIgLTExOSA2OCAtMjU4IDkgLTQ4IDE0IC0zMzggMTYgLTExMTAgMyAtNzE1IDggLTEwNDggMTUgLTEwNTcgOCAtMTAgMTIwIC0xMyA1MjggLTEzIDQzOSAwIDUxOSAyIDUzMCAxNCAxNiAyMSA5IDIzNjAgLTggMjQ1NiAtNyAzNiAtMTcgOTIgLTIzIDEyNSAtMjggMTY1IC03MiAzMDQgLTEzNCA0MzAgLTEyMiAyNDYgLTM3NiA0ODEgLTY3MCA2MTkgLTE1MiA3MiAtMTY5IDc4IC0zMjUgMTE2IC03OSAyMCAtMjUxIDMyIC0zNDYgMjYgLTIzMiAtMTYgLTM3MCAtNTEgLTU0OCAtMTQxIC0xNjEgLTgxIC0xNDcgLTEzNyAtMTQ2IDU2MSAxIDQyNiAtMiA1NzkgLTExIDU5MCAtMTAgMTIgLTk1IDE0IC01MjQgMTQgLTQ4MyAwIC01MTMgLTEgLTUyOCAtMTh6Ii8+PHBhdGggZD0iTTIyOTYyIDY0MDggYy05IC05IC0xMiAtNTU0IC0xMiAtMjM4OSAwIC0xMzA4IDMgLTIzODQgNiAtMjM5MyA1IC0xNCA1OSAtMTYgNTA0IC0xNiAzOTYgMCA1MDAgMyA1MDggMTMgNiA3IDEyIDUxIDE0IDk3IDMgODEgNCA4NSAyNSA4MyAxMiAtMiA1NSAtMjUgOTUgLTUyIDE4NCAtMTIzIDM2MCAtMTk1IDU5OCAtMjQzIDg4IC0xOCA1MTMgLTE4IDU5NSAwIDMzIDcgODMgMTggMTEwIDIzIDIyOSA0OCA1MDMgMTg2IDcwNyAzNTYgMTQ3IDEyMiAzMzcgMzQyIDQxNCA0NzggNTIgOTMgMTE4IDIyNiAxNDAgMjgyIDE0IDM3IDI5IDc3IDM0IDg4IDQgMTEgMTMgNDAgMjAgNjUgNyAyNSAxNiA1NiAyMSA3MCAxMSAzMyAzNCAxMzggNTEgMjI1IDE3IDkyIDE4IDU4OCAxIDY2NSAtNiAzMCAtMTcgODIgLTIzIDExNSAtMTYgODIgLTY2IDI1NiAtOTAgMzEwIC01IDExIC0yNiA1OCAtNDcgMTA1IC01NSAxMjMgLTEyNyAyNDcgLTIwMSAzNDYgLTExOSAxNTkgLTMyMSAzNTkgLTQ0NiA0NDMgLTIwNSAxMzggLTQxMCAyMzAgLTU5NiAyNzEgLTMwIDYgLTY4IDE1IC04NSAyMCAtOTEgMjUgLTQzMSAzMiAtNTg1IDEyIC0xMjIgLTE3IC0yMjcgLTM5IC0zMDQgLTY3IC05NiAtMzMgLTI0OCAtMTA3IC0zMTIgLTE1MCAtNDAgLTI3IC01MCAtMzAgLTU5IC0xNSAtMyA1IC02IDI4MyAtNSA2MTcgMCA1MzggLTEgNjExIC0xNSA2MzEgbC0xNiAyMiAtNTE4IDAgYy0zODkgMCAtNTIwIC0zIC01MjkgLTEyeiBtMjEyMCAtMjA0MSBjMjYgLTcgNTAgLTE2IDU0IC0yMCA0IC00IDE2IC03IDI2IC03IDEwIDAgMjcgLTQgMzggLTEwIDExIC01IDI5IC0xNCA0MCAtMjAgMTc1IC04NyAzNDYgLTI4MCA0MjAgLTQ3MSA0NyAtMTIzIDUzIC0xNTggNTcgLTM2OSA2IC0yMzYgLTEwIC0zMzAgLTgyIC00ODUgLTEwMyAtMjIxIC0yOTUgLTM5OCAtNDk1IC00NTMgLTE5IC02IC01MiAtMTYgLTc0IC0yMiAtODUgLTI3IC0zOTMgLTEyIC00NTggMjEgLTEwIDUgLTI1IDkgLTMzIDkgLTggMCAtMjMgNCAtMzMgOSAtOSA1IC00NiAyMyAtODIgNDEgLTg0IDQyIC0xMzAgNzggLTIwOCAxNTkgLTE0OSAxNTYgLTIxNCAyODEgLTI2MiA1MTEgLTE0IDY2IC04IDM3NSA4IDQzNSA2IDIyIDE0IDU0IDE4IDcwIDExIDUyIDgwIDE5MCAxMjQgMjUxIDU0IDczIDE3MCAxODkgMjMwIDIzMCAxMDIgNjggMjM3IDEyMSAzNTUgMTM4IDU2IDggMzEwIC00IDM1NyAtMTd6Ii8+PHBhdGggZD0iTTkyMTAgNTM4OCBjLTQxIC01IC05MyAtMTQgLTExNSAtMTkgLTIyIC02IC01OCAtMTUgLTgwIC0yMSAtNzggLTIwIC0yMjEgLTgzIC0zMTAgLTEzNSAtNDkgLTMwIC05NiAtNTIgLTEwNSAtNTEgLTEwIDIgLTE2IDE3IC0xOCA0MyAtNyA3OSAyNCA3NSAtNTEyIDc1IC00NDkgMCAtNDc4IC0xIC00OTMgLTE4IC0xNiAtMTcgLTE3IC0xNTggLTE3IC0xODI0IDAgLTE0OTEgMiAtMTgwNyAxMyAtMTgxNyAxOSAtMTUgMTAzNCAtMTYgMTA1MyAwIDExIDkgMTQgMTg4IDE4IDEwMzcgNCA5ODAgOCAxMTMxIDM2IDEyNjYgNDAgMTk5IDE0OCAzMzcgMzMwIDQyMiAxOSA5IDQ2IDIxIDU5IDI4IDE0IDYgNzcgMTEgMTU1IDExIDEyNyAwIDEzMyAtMSAxOTcgLTMyIDExNCAtNTYgMTk4IC0xNTAgMjQ0IC0yNzMgOSAtMjUgMjAgLTU0IDI1IC02NSAxNiAtNDMgMjkgLTkzIDQwIC0xNjAgNiAtMzggMTYgLTk0IDIxIC0xMjQgNSAtMzEgOSAtNDkzIDkgLTEwNzAgMSAtODI5IDMgLTEwMTkgMTQgLTEwMzMgMTIgLTE3IDUwIC0xOCA1MzMgLTE4IDQ0MiAwIDUyMiAyIDUzMyAxNCAxNyAyMSA4IDIzMTcgLTkgMjQyNiAtNjEgMzgyIC0xMDEgNDk4IC0yNDQgNzE1IC03NCAxMTIgLTI2MiAzMDAgLTM3MiAzNzQgLTc5IDUyIC0yOTkgMTY0IC0zNTkgMTgzIC0yMTIgNjYgLTQ0NSA5MCAtNjQ2IDY2eiIvPjxwYXRoIGQ9Ik0zODU1IDUyNjQgYy0xNSAtMTUgLTE2IC0xMTYgLTEyIC0xMTk4IDIgLTg4OCA2IC0xMTk3IDE2IC0xMjQ2IDcgLTM2IDE3IC05MCAyMiAtMTIwIDI3IC0xNDggNzcgLTI5NiAxNTAgLTQ0NSAxNTEgLTMwNyA0NjggLTU3MSA4MzQgLTY5MyAxMzcgLTQ1IDI0MSAtNjIgNDM1IC03MCAzMjggLTE0IDUyMyAzMiA3MjYgMTcwIDM5IDI2IDc3IDQ4IDg1IDQ4IDkgMCAyNCAtMjIgMzYgLTUwIGwyMSAtNTAgNDgxIDAgYzQ2NSAwIDQ4MSAxIDQ5MSAxOSA3IDEzIDEwIDU5OCAxMCAxODE5IDAgMTczMCAtMSAxODAwIC0xOCAxODE1IC0xNyAxNSAtNjggMTcgLTUyMyAxNyAtNDIwIDAgLTUwOCAtMiAtNTI1IC0xNCAtMTkgLTE0IC0xOSAtNDAgLTI1IC0xMDkzIC01IC0xMDQ5IC02IC0xMDgwIC0yNiAtMTE2MyAtNDkgLTE5OSAtOTMgLTI5MSAtMTgzIC0zODAgLTEwNCAtMTA0IC0xODIgLTEzMyAtMzY2IC0xMzIgLTEzNSAwIC0yMTIgMTkgLTI5MSA3MyAtOTcgNjcgLTE4NiAyMTkgLTIyNSAzODQgLTI4IDEyMCAtMzEgMjAyIC0zNyAxMjI2IC01IDg4MiAtOCAxMDY5IC0yMCAxMDgyIC0xMiAxNSAtNjIgMTcgLTUyNyAxNyAtNDYwIDAgLTUxNCAtMiAtNTI5IC0xNnoiLz48cGF0aCBkPSJNMTkyNDcgNTI2MiBjLTE2IC0xNyAtMTcgLTEwOSAtMTcgLTExMTggMCAtMTA1MiA1IC0xMjQ5IDMxIC0xMzg0IDM1IC0xODIgNjEgLTI3NiAxMDIgLTM3NSA0NCAtMTA3IDc4IC0xNzYgMTA5IC0yMjIgMTUgLTIzIDI4IC00NSAyOCAtNDggMCAtMTQgMTIyIC0xNTQgMTkxIC0yMjAgMjAwIC0xODkgNDk1IC0zMzUgNzc0IC0zODQgMjA1IC0zNiA1NTcgLTI2IDY3MyAyMCAxMyA1IDMwIDkgMzkgOSAzNyAwIDI4OSAxMzggMzA4IDE2OSAxMSAxOCA0NSAtNyA0NSAtMzMgMCAtMTIgMTAgLTMyIDIzIC00NCAyMyAtMjIgMjQgLTIyIDQ5NSAtMjIgNDU2IDAgNDcyIDEgNDgyIDE5IDcgMTMgMTAgNTk4IDEwIDE4MTkgMCAxNzMwIC0xIDE4MDAgLTE4IDE4MTUgLTE3IDE1IC02OCAxNyAtNTIzIDE3IC00MjAgMCAtNTA4IC0yIC01MjUgLTE0IC0xOSAtMTQgLTE5IC00MCAtMjUgLTEwODggLTcgLTExMTkgLTYgLTExMDAgLTQ4IC0xMjQ4IC01IC0xOSAtMTMgLTQ2IC0xNiAtNjAgLTI5IC0xMTIgLTExMyAtMjM3IC0xOTYgLTI5MiAtOTUgLTYyIC0xNjYgLTgxIC0zMDkgLTgxIC0xNDcgMCAtMjIzIDIxIC0zMDYgODQgLTEyNiA5NiAtMTkzIDIzNSAtMjM5IDQ5NCAtMTIgNjYgLTE1IDI2NiAtMTUgMTEyMCAwIDkyNSAtMiAxMDQzIC0xNiAxMDYzIGwtMTUgMjIgLTUxMyAwIGMtNDg0IDAgLTUxNCAtMSAtNTI5IC0xOHoiLz48cGF0aCBkPSJNMjc1NDAgMzAxNSBjLTk4IC0yMyAtMTg3IC02MCAtMjYwIC0xMDkgLTk5IC02NiAtMjA4IC0xODkgLTI0OSAtMjgxIC03IC0xNiAtMTcgLTM4IC0yMiAtNDcgLTUgLTEwIC05IC0yNSAtOSAtMzMgMCAtOCAtNCAtMjMgLTkgLTMzIC0yOCAtNTUgLTQxIC0yNTggLTIwIC0zMzYgNiAtMjIgMTUgLTU5IDIxIC04MSAxNyAtNjYgODQgLTE5NyAxMzEgLTI1MyA1MiAtNjMgMTcwIC0xNTQgMjQyIC0xODggMTE3IC01NCAxODIgLTY4IDMyMCAtNjggMTA3IDAgMTQyIDQgMjAwIDIyIDE2NiA1MyAzMDAgMTUwIDM5MiAyODQgOTkgMTQzIDEyNCAyMjcgMTI0IDQxMyAxIDE4NCAtMjQgMjY5IC0xMjQgNDEzIC01MyA3NyAtMTQ0IDE2NyAtMTkzIDE5MiAtMTYgOCAtNDAgMjIgLTU0IDMxIC0xMTEgNzMgLTM0MiAxMDggLTQ5MCA3NHoiLz48L2c+PC9zdmc+);
+}
+
+/* logo: background-image, no external file */
+.logo{display:inline-block;background:var(--logo) no-repeat center/contain}
+.inv{filter:invert(1)}  /* logo on dark chrome */
+
+/* ghost mark - footer, full width, barely there */
+.ghost-mark .logo{display:block;width:96vw;aspect-ratio:2698/543;margin:0 auto;
+  filter:invert(1);opacity:.05}
+
+/* coded mono eyebrow - the brand signature. E-01 / INTAKE, A-02 / STATUS, F-03 */
+.eyebrow{font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.16em;
+  text-transform:uppercase;color:var(--gray)}
+.eyebrow::before{content:"";display:inline-block;width:16px;height:2px;
+  background:var(--spectrum);border-radius:1px;margin-right:9px;vertical-align:middle}
+
+/* status chip */
+.chip{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);
+  font-size:var(--fs-caption);letter-spacing:.12em;text-transform:uppercase;padding:4px 9px;
+  border:1px solid var(--line);border-radius:20px;color:var(--gray)}
+.chip .cd{width:6px;height:6px;border-radius:50%}
+.chip.on .cd{background:var(--ok)}
+.chip.wip .cd{background:var(--warn)}
+.chip.bad .cd{background:var(--alert)}
+
+/* pulsing dot - "systems nominal" footer */
+.pulse{width:8px;height:8px;border-radius:50%;background:var(--ok);
+  position:relative;flex:0 0 auto}
+.pulse::after{content:"";position:absolute;inset:-4px;border-radius:50%;
+  border:1px solid var(--ok);animation:pulse 2s ease-out infinite}
+@keyframes pulse{to{transform:scale(1.9);opacity:0}}
+
+/* grid overlay on dark surfaces */
+.gridbg::before{content:"";position:absolute;inset:0;pointer-events:none;
+  background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);
+  background-size:56px 56px}
+
+/* Readable semantic defaults in rem. Screens can add a local type hierarchy;
+   these tokens no longer impose four sizes on every descendant. */
+html{font-size:100%}
+:root{
+  --fs-metric:2rem;       /* 32px */
+  --fs-title:1.375rem;    /* 22px */
+  --fs-body:.9375rem;     /* 15px */
+  --fs-caption:.8125rem;  /* 13px */
+}
+
+/* UI-STANDARDS.md §1 CONTENT WIDTH — FULL WIDTH, no cap.
+   Owner-set 2026-08-27, and UI-STANDARDS §1 updated in the same commit.
+   History: 1280px, raised to 1800px on 2026-08-17, removed now. Both earlier
+   values failed the same test. The owner zooms out on a 2560px monitor to get
+   more room and gets none, because the content stops growing and every extra
+   pixel becomes empty side margin: with the fixed 228px rail, a 1800px cap
+   leaves 532px dead at 2560 and 1412px dead at 3440. Reading measure belongs
+   on the text blocks that need it, not on every table, card grid and two-pane
+   layout in the app. Do not reinstate a cap here.
+
+   --fh-maxw IS STILL DEFINED ON PURPOSE. It is no longer an app-wide cap, but
+   client-portal.html:67 reads it as `min(780px, var(--fh-maxw))` to hold that
+   page's 780px reading column. Deleting the token makes the min() invalid at
+   computed-value time, which drops max-width to none and blows the client's
+   portal full width. Leave the token; it is a bound, not a layout. */
+/* --fh-statusbar reserves room for the fixed status strip at the bottom of the
+   page. It used to start at 0px and be overwritten at runtime by data.js:497
+   with the strip's measured height, which grew the page ~29px AFTER first paint
+   on every single load. Reserving the space up front removes that reflow; the
+   strip is position:fixed so this only ever reserves, never pushes twice. */
+/* This branch set the token to `none`. main got to the same fluid CRM a
+   different and better way — see the block above — and `none` breaks the one
+   place that still reads it: client-portal.html:67 asks for
+   `min(780px, var(--fh-maxw))`, and min() with a keyword is invalid, which
+   would silently drop the portal's reading measure. Keeping main's value; the
+   CRM is uncapped by the shell rule, not by emptying this token.
+   src/ui/shell-is-fluid.test.mjs fails if it is deleted. */
+:root{ --fh-maxw:1800px; --fh-statusbar:32px; }
+
+/* ── SURFACE — panels sit ON the page, on purpose (owner-set 2026-08-17) ─────
+   Measured before this change: panels were #FFFFFF on a #FCFCFC page. That is
+   a 9-point step out of 255, contrast 1.03:1, on 41 elements across six
+   screens — too small to read as deliberate layering, too large to be
+   invisible, so every panel edge looked like a smudge rather than an edge.
+   There was also no resting shadow anywhere in the app: every box-shadow in
+   the screen files fires only on hover, focus or the mobile drawer.
+   Fix is two parts and needs no screen file touched: put the page on the
+   existing --soft token (#F4F4F5, an 11-point step under white) and give the
+   panels one soft resting shadow. --paper is deliberately NOT changed: the
+   sidebar uses it for text (crm-sidebar.css --dark-text), so moving it would
+   tint the rail. */
+:root{
+  --field:var(--paper,#F8F8F6);        /* the page BEHIND the panels */
+  --panel-shadow:0 1px 2px rgba(13,17,19,.025);
+}
+/* Conservative on purpose, and MEASURED rather than guessed: each class below
+   was found by rendering the screens and collecting every sizeable block that
+   paints its own light background and carries a border or a radius. Buttons,
+   inputs, avatars, chat bubbles and table rows are white too and are
+   deliberately excluded — a resting shadow on those reads as broken, not
+   expensive. Naming screen-level classes here follows what this file already
+   does elsewhere (.kpi .vl, .band .bv, .fos-value, .un-mins). */
+:is(.app, .app-shell) :is(
+  .card, .stat, .panel, .tabs, .editor, .fos-panel,   /* staff-teams, finance-os */
+  .kpi-tile,                                          /* command-center */
+  .big-tile, .calc-panel,                             /* closer-dashboard */
+  .compose, .ctx-card                                 /* messaging */
+){
+  box-shadow:var(--panel-shadow);
+}
+/* Put .fh-maxw on the content column only, never on a table or its scroll wrapper — tables stay wider inside their own overflow-x container (§1). */
+
+/* WIDTH:100% IS LOAD-BEARING. Do not drop it.
+   This class is almost always put on a flex item of a column-direction flex
+   container (.main{display:flex;flex-direction:column}, or .stage). Per
+   flexbox, an item with an AUTO margin on the cross axis is not stretched — so
+   margin-inline:auto quietly cancelled the stretch and left the wrapper sized
+   by its own content instead of by the column it sits in. Measured 2026-08-18:
+   that produced BOTH halves of the width complaint at once.
+     Too NARROW on a wide monitor: at 2560 the cap says 1800, but agent-editor
+     shrink-wrapped to 755px, template-editor 1186, brand-studio 1420,
+     campaign-manager 1598 — every one of them carrying this class.
+     Too WIDE on a phone: at 390 the widest thing inside is a table, so the
+     wrapper grew to the table instead — Documents painted 1484px and Campaigns
+     1449px and the whole page slid sideways, against UI-STANDARDS §11 ("No
+     sideways page scroll"). The table's own .fh-scroll-x box was working the
+     whole time; the wrapper AROUND it was the thing overflowing.
+   hiring.html, products-commissions.html and staff-teams.html had each already
+   added exactly this declaration by hand to their own .content. This moves that
+   one-line workaround to the one place the class is defined. */
+/* 2026-08-27: max-width and the auto inline margin are gone (owner-set,
+   §1 above). width:100% stays — read the note above, it is still the thing
+   that keeps this wrapper sized by its column instead of by its widest child.
+   margin-inline is pinned to 0 rather than dropped: several screens set their
+   own `margin:0 auto`, and an auto cross-axis margin on a flex item cancels
+   the stretch, which would shrink-wrap them right back down. */
+.fh-maxw{max-width:none;margin-inline:0;width:100%}
+
+/* Semantic typography. Screens own their local hierarchy; descendants are
+   never forced to inherit a size. The shared shell provides readable defaults
+   without preventing a heading, a field label, or a dense table from differing. */
+:is(.app, .app-shell, .shell, .main, .fh-maxw){
+  font-size:var(--fs-body);
+  font-family:var(--sans);
+}
+:where(.app, .app-shell, .shell, .main, .fh-maxw) :where(h1){
+  font-size:1.75rem;line-height:1.15;letter-spacing:-.035em;font-weight:650;
+}
+:where(.app, .app-shell, .shell, .main, .fh-maxw) :where(h2){
+  font-size:var(--fs-title);line-height:1.25;letter-spacing:-.025em;font-weight:650;
+}
+:where(.app, .app-shell, .shell, .main, .fh-maxw) :where(h3,h4){
+  font-size:1.0625rem;line-height:1.35;letter-spacing:-.015em;font-weight:650;
+}
+:where(.app, .app-shell) :where(.sv,.vl,.big,.big-tile .val,.kpi .vl,
+  .band .bv,.un-mins,.fh-num,.fos-value,.rf-value){
+  font-size:var(--fs-metric);font-variant-numeric:tabular-nums;
+}
+:where(.app, .app-shell) :where(.chip,.eyebrow,.badge,.tag,.stat-label,
+  .kpi .lb,.kpi .sb,.band .bl,.sd,.cmp,.note,.hint,.statusline,.statusbar,
+  label,th,.caption,.sub,.rail-code){font-size:var(--fs-caption)}
+:where(button,input,select,textarea){font-family:inherit}
+:where(button,a,input,select,textarea,summary):focus-visible{
+  outline:2px solid var(--ink);outline-offset:3px;
+}
+
+/* ── UI-STANDARDS.md §5 TAP TARGETS — 40px floor ───────────────────────────
+   min-height is a different property than later padding rules, so it sticks
+   without !important on most screens. !important wins where a screen sets height. */
+button, [type="button"], [type="submit"], .btn,
+.seg span, .link-btn, .tab, .ctab, .filter-btn, .fchip,
+.rail-tab, .group-title.tog, .rail-open, .un-join, a.btn,
+.navbtn, .today-btn{
+  min-height:40px;
+  min-width:40px;
+  box-sizing:border-box;
+}
+input[type="checkbox"]{
+  width:20px;
+  height:20px;
+}
+label:has(> input[type="checkbox"]){
+  min-height:40px;
+  display:inline-flex;
+  align-items:center;
+}
+
+/* ── UI-STANDARDS.md §2 — never five tiles in one row. Fifth wraps. ──────── */
+.stats, .kpi-grid, #stateLegend, .funnel, .stat-tiles{
+  grid-template-columns:repeat(4, 1fr) !important;
+}
+.stat-tiles{
+  display:grid !important;
+}
+
+/* ── UI-STANDARDS.md §5 — coming-soon / inert placeholders do not render ─── */
+.soon,
+.card:has(.tag-soon),
+#demozone,
+.demozone,
+button.link-btn:disabled,
+#unJoin:disabled{
+  display:none !important;
+}
+
+/* Empty welcome-video block: one line, not a 410px hole */
+.player:has(.video-empty:not([hidden])){
+  aspect-ratio:auto;
+  max-height:none;
+  min-height:0;
+  height:auto;
+  padding:16px;
+  background:var(--soft, #F4F4F5);
+}
+.player:has(.video-empty:not([hidden])) .ghost{display:none}
+
+/* Money columns — right-align tabular figures (§7) */
+td.money, th.money, td .age, th[data-s="age"]{
+  text-align:right;
+  font-variant-numeric:tabular-nums;
+}
+
+/* Empty Next Action is not an alert — coral only when a blocker list has rows */
+.blockers-panel:has(#ccp-blocker-list:empty){
+  background:var(--soft,#F4F4F5);
+  border-color:var(--line);
+}
+
+/* data.js status strip is fixed; pad the page so it cannot cover controls */
+body{padding-bottom:var(--fh-statusbar)}
+
+/* Shared client file: keep long call history reachable above the call footer. */
+.fh-context-lines{max-height:320px;overflow:auto;overflow-wrap:anywhere}
+.fh-blueprint-price{width:100%;min-height:40px;padding:8px;background:var(--paper);color:var(--ink);border:1px solid var(--line);font:inherit}
+@media(max-width:600px){.fh-context-lines{max-height:180px}}
+
+/* Phone law (UI-STANDARDS §11) — 390px. Present, KPI rows, and two-pane
+   screens stack. Tables keep their own scroll box via .fh-scroll-x. */
+@media (max-width: 390px) {
+  html, body { max-width: 100%; }
+  .kpi-grid, .stats, .stat-tiles, .stat-head, .row-bottom, .grid2, .layout,
+  .record-fields, .holds-panel, .stage {
+    grid-template-columns: 1fr !important;
+    flex-direction: column !important;
+  }
+  .stage { display: flex !important; }
+  .cockpit, .client {
+    flex: 1 1 auto !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+}
+</style>
+<style data-fh="font">
+/* public/app/fundhub-font.css: local rounded faces */
+@font-face{font-family:"Fundhub Rounded Local";src:local("SF Pro Rounded Regular"),local("SFProRounded-Regular"),local(".SFNSRounded-Regular");font-style:normal;font-weight:400;font-display:swap}
+@font-face{font-family:"Fundhub Rounded Local";src:local("SF Pro Rounded Medium"),local("SFProRounded-Medium"),local(".SFNSRounded-Medium");font-style:normal;font-weight:500;font-display:swap}
+@font-face{font-family:"Fundhub Rounded Local";src:local("SF Pro Rounded Semibold"),local("SFProRounded-Semibold"),local(".SFNSRounded-Semibold");font-style:normal;font-weight:600;font-display:swap}
+@font-face{font-family:"Fundhub Rounded Local";src:local("SF Pro Rounded Bold"),local("SFProRounded-Bold"),local(".SFNSRounded-Bold");font-style:normal;font-weight:700;font-display:swap}
+</style>
+<style data-fh="slideshow">
+/* Fundhub slideshow shell.
+   Layout: one phone screen per slide. A coded eyebrow, one headline, one or two
+   lines, one picture, with Back and Next at the thumb. Paper slides do the
+   teaching. Plain ink slides open the deck and land the payoff. No grids
+   (Chris, 2026-10-31).
+   Colors, faces and parts come from public/app/fundhub-brand.css, which
+   build.mjs embeds above this file. This file maps them to slideshow roles and
+   never invents a color. Status colors keep their meaning and always ride with
+   a word (UI-STANDARDS 12.6). */
+
+:root{
+  /* The brand's rounded face: Apple's native rounded design, then SF Pro
+     Rounded by local name (fundhub-font.css), then the brand's licensed web
+     fallback Nunito, loaded from Google Fonts because each deck ships alone. */
+  --fh-rounded-font:ui-rounded,"Fundhub Rounded Local","Nunito",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --sans:var(--fh-rounded-font);
+
+  --ss-bg:var(--paper);
+  --ss-fg:var(--ink);
+  --ss-sub:var(--ink2);
+  --ss-muted:var(--gray);
+  --ss-rule:var(--line);
+  --ss-panel:#fff;                 /* UI-STANDARDS 12.1 resting container */
+  --ss-dark:var(--card);
+  --ss-dark-rule:var(--cardline);
+  --ss-dark-fg:#fff;
+  --ss-dark-sub:var(--cardtext);
+  --ss-dark-muted:var(--gray2);
+  --ss-flag:color-mix(in srgb,var(--alert) 26%,#fff);   /* a tint of coral, never a new hue */
+  --ss-yes:color-mix(in srgb,var(--ok) 30%,#fff);       /* a tint of sage */
+  --ss-col:30rem;                  /* the phone column */
+  color-scheme:light;
+}
+
+/* ── Page ──────────────────────────────────────────────────────────────── */
+html{height:100%;box-sizing:border-box;-webkit-text-size-adjust:100%}
+*,*::before,*::after{box-sizing:inherit}
+body{height:100%;margin:0;padding-bottom:0;background:var(--ss-bg);color:var(--ss-fg);
+  font-family:var(--sans);font-size:1rem;line-height:1.45;-webkit-font-smoothing:antialiased;
+  transition:background-color .3s ease,color .3s ease}
+html[data-tone="dark"] body{background:var(--ss-dark);color:var(--ss-dark-fg)}
+
+.ss{position:relative;z-index:1;height:100%;max-width:var(--ss-col);margin-inline:auto;
+  display:flex;flex-direction:column;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px))}
+.ss-title{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ── Top bar: wordmark and the spectrum progress ────────────────────────── */
+.ss-top{display:flex;align-items:center;gap:16px;padding-block:14px 6px}
+.ss-top .logo{width:5.25rem;aspect-ratio:2698/543;flex:0 0 auto}
+html[data-tone="dark"] .ss-top .logo{filter:invert(1)}
+.ss-progress{flex:1;min-width:0;display:flex;gap:4px}
+.ss-progress i{flex:1;height:3px;border-radius:2px;background-color:var(--ss-rule);transition:background-color .3s ease}
+.ss-progress i.on{background-image:var(--spectrum);
+  background-size:calc(var(--n) * 100%) 100%;
+  background-position:calc(var(--k) / (var(--n) - 1) * 100%) 0}
+html[data-tone="dark"] .ss-progress i{background-color:var(--ss-dark-rule)}
+
+/* ── Slides ────────────────────────────────────────────────────────────── */
+.ss-stage{flex:1;min-height:0;position:relative;touch-action:pan-y}
+.slide{display:flex;flex-direction:column;gap:14px;padding-block:18px 20px;min-width:0}
+html.ss-js .slide{position:absolute;inset:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none}
+html.ss-js .slide::-webkit-scrollbar{display:none}
+html.ss-js .slide:not(.is-on){visibility:hidden}
+/* Only the arriving slide moves. The leaving one is gone at once, so two
+   slides of text never sit on top of each other. */
+html.ss-js .slide.enter{animation:ss-in .32s ease both}
+@keyframes ss-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+html:not(.ss-js) .slide + .slide{border-top:1px solid var(--ss-rule)}
+html:not(.ss-js) .slide.dark{background:var(--ss-dark);color:var(--ss-dark-fg);
+  margin-inline:-16px;padding-inline:16px}
+
+.slide .eyebrow{margin:0}
+.slide h2{margin:0;font-size:clamp(1.85rem,8.2vw,2.6rem);line-height:1.06;letter-spacing:-.032em;
+  font-weight:700;text-wrap:balance;color:var(--ss-fg)}
+.slide .lede{margin:0;font-size:1.125rem;line-height:1.45;color:var(--ss-sub);max-width:36ch;text-wrap:pretty}
+.slide .lede strong{color:var(--ss-fg);font-weight:700}
+.slide.dark .eyebrow{color:var(--ss-dark-muted)}
+.slide.dark h2{color:var(--ss-dark-fg)}
+.slide.dark .lede{color:var(--ss-dark-sub)}
+.slide.dark .lede strong{color:var(--ss-dark-fg)}
+
+/* ── Script: what Chris reads while recording the video ─────────────────
+   Hidden from every viewer. Open them with #notes on the link or the N key.
+   About 45 seconds of talk per slide, so a deck runs about five minutes and
+   each slide chops into its own short clip (Hammer Them SOP). */
+.talk{display:none}
+html.ss-notes .talk{display:block;margin-top:4px;padding:12px 14px;border:1px dashed var(--ss-rule);
+  border-radius:10px;background:var(--soft);color:var(--ink)}
+html.ss-notes .slide.dark .talk{background:var(--card);border-color:var(--cardline);color:var(--cardtext)}
+.talk::before{content:"Script";display:block;margin-bottom:6px;font-family:var(--mono);
+  font-size:var(--fs-caption);letter-spacing:.12em;text-transform:uppercase;color:var(--gray)}
+.talk ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:.9375rem;line-height:1.45}
+
+/* ── Bottom bar: Back and Next ─────────────────────────────────────────── */
+.ss-nav{display:flex;gap:10px;padding-block:10px 14px}
+.ss-btn{flex:1;min-height:52px;padding:0 18px;border-radius:8px;border:1px solid var(--ss-rule);
+  background:transparent;color:var(--ss-fg);font:650 1.0625rem/1 var(--sans);cursor:pointer;
+  -webkit-tap-highlight-color:transparent}
+.ss-btn.back{flex:0 0 34%}
+.ss-btn.primary{background:var(--ink);border-color:var(--ink);color:#fff}
+html[data-tone="dark"] .ss-btn{border-color:var(--ss-dark-rule);color:#fff}
+html[data-tone="dark"] .ss-btn.primary{background:#fff;border-color:#fff;color:var(--ink)}
+html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
+.ss-live{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ── Picture kit ───────────────────────────────────────────────────────────
+   Visual Thinking picks the picture from the slide's question:
+   what (a document), how (.flow), when (.tl, .span, .metric),
+   how much (.bars), compare (.compare), why (.eq). These parts only draw it.
+   No grids of tiles and no grid texture (Chris, 2026-10-31). */
+/* The words stay pinned at the top so the headline never jumps between
+   slides. The picture centers in the room that is left. */
+.pic{margin:auto 0;padding-block:8px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.pic-cap{margin:0;font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.04em;color:var(--ss-muted)}
+.slide.dark .pic-cap{color:var(--ss-dark-muted)}
+
+.panel{background:var(--ss-panel);border:1px solid var(--ss-rule);border-radius:10px;
+  box-shadow:var(--panel-shadow);color:var(--ss-fg)}
+.chip{background:var(--ss-panel);white-space:nowrap}
+.slide.dark .chip{background:transparent;border-color:var(--ss-dark-rule);color:var(--ss-dark-muted)}
+.slide.dark .panel .chip{background:var(--ss-panel);border-color:var(--ss-rule);color:var(--ss-muted)}
+
+/* Chris's slide style, from the slides he shares on calls (public/app/present.html
+   .bar and present.js bars()): full lines of copy, each with the pastel stripe
+   on its left and a hairline under it. Most of a slide's words live here. */
+.lines{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.lines li{display:flex;gap:12px;padding:11px 0;border-bottom:1px solid var(--ss-rule);
+  font-size:1.0625rem;line-height:1.45;color:var(--ss-fg)}
+.lines li::before{content:"";flex:0 0 3px;align-self:stretch;border-radius:2px;background:var(--spectrum);opacity:.85}
+.slide.dark .lines li{border-color:var(--ss-dark-rule);color:var(--ss-dark-sub)}
+
+/* Steps in order, from the call slides (present.js stepsHtml). Used only
+   when the order is the point. */
+.steps{list-style:none;margin:0;padding:0;display:flex;counter-reset:st}
+.steps li{flex:1;min-width:0;position:relative;text-align:center;counter-increment:st;
+  font-size:.875rem;font-weight:650;line-height:1.25;color:var(--ss-fg)}
+.steps li::before{content:counter(st);position:relative;z-index:1;display:flex;align-items:center;justify-content:center;
+  width:30px;height:30px;margin:0 auto 8px;border-radius:50%;border:2px solid var(--ink);background:var(--ss-panel);
+  font-family:var(--mono);font-size:var(--fs-caption);font-weight:500;color:var(--ink)}
+.steps li + li::after{content:"";position:absolute;top:14px;left:-50%;width:100%;height:2px;background:var(--ink)}
+.steps li.is-hot::before{background:var(--ink);color:#fff}
+.slide.dark .steps li{color:var(--ss-dark-fg)}
+.slide.dark .steps li::before{background:var(--ss-dark);border-color:#fff;color:#fff}
+.slide.dark .steps li + li::after{background:#fff}
+.slide.dark .steps li.is-hot::before{background:#fff;color:var(--ink)}
+
+/* The real credit report's "Why this score" block, the way Fundhub's tri-bureau
+   report prints it: the bureau, the score and model, then the bureau's own
+   reason lines in its own capitals. Filled only from a sample file. */
+.crs{background:var(--ss-panel);border:1px solid var(--ss-rule);border-radius:10px;box-shadow:var(--panel-shadow);
+  padding:12px 14px 14px;color:var(--ink)}
+.crs-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;
+  border-bottom:2px solid var(--ink);padding-bottom:8px;margin-bottom:10px}
+.crs-bureau{font-size:1.25rem;font-weight:700;letter-spacing:-.02em;line-height:1.1}
+.crs-bureau small{display:block;margin-top:4px;font-family:var(--mono);font-size:var(--fs-caption);
+  font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--gray)}
+.crs-score{text-align:right}
+.crs-score b{display:block;font-size:2rem;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.crs-score span{font-family:var(--mono);font-size:var(--fs-caption);color:var(--gray)}
+.crs h3{margin:0 0 8px;font-size:1rem;font-weight:700}
+.crs ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.crs li{padding:7px 9px;border-radius:6px;background:var(--soft);font-size:.8125rem;line-height:1.35;letter-spacing:.01em}
+.crs li.flag{background:var(--ss-flag);font-weight:650}
+.crs li .chip{margin-top:6px}
+.crs-note{margin:10px 0 0;font-family:var(--mono);font-size:var(--fs-caption);color:var(--gray)}
+
+/* Branded drawings (Visual Thinking, Dan Roam's six ways of seeing). Chris
+   liked the napkin layouts (2026-10-31) and asked for them in Fundhub's own
+   style: a white sheet, hairline panels, pastel status tints, mono labels,
+   ink for the one thing that matters. Every line in a drawing means one
+   thing: an order, a flow, a match or "reads this". */
+.sheet{background:var(--ss-panel);border:1px solid var(--ss-rule);border-radius:12px;
+  box-shadow:var(--panel-shadow);padding:12px;color:var(--ink)}
+.slide.dark .sheet{border-color:var(--ss-panel)}
+.bv{display:block;width:100%;height:auto;overflow:visible}
+.bv .pn{fill:var(--ss-panel);stroke:var(--line);stroke-width:1}
+.bv .pn-soft{fill:var(--soft)}
+.bv .pn-ink{fill:var(--ink)}
+.bv .tint-flag{fill:var(--ss-flag)}
+.bv .tint-fit{fill:var(--ss-yes)}
+.bv .edge-fit{stroke:var(--ok);stroke-width:1.5}
+.bv .bar{fill:var(--line)}
+.bv .rule-ink{stroke:var(--ink);stroke-width:2;stroke-linecap:round}
+.bv .cn{fill:none;stroke:var(--gray2);stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.bv .cn.ink{stroke:var(--ink)}
+.bv .cn.dash{stroke-dasharray:4 5}
+.bv text{font-family:var(--sans);font-size:13px;font-weight:650;fill:var(--ink)}
+.bv text.h{font-size:16px;font-weight:700;letter-spacing:-.01em}
+.bv text.num{font-size:28px;font-weight:700;letter-spacing:-.02em}
+.bv text.lb{font-family:var(--mono);font-size:12.5px;font-weight:500;letter-spacing:.12em;fill:var(--gray)}
+.bv text.lb.ink{fill:var(--ink)}
+.bv text.caps{font-size:12.5px;font-weight:650;letter-spacing:.01em}
+.bv text.on-ink{fill:#fff}
+.bv use{color:var(--ink)}
+.bv use.mute{color:var(--gray2)}
+/* Shared drawing parts (a bank, an arrowhead, the spectrum) live in one
+   hidden sprite per deck. The stops are fundhub-brand.css --spectrum. */
+.vt-defs{position:absolute;width:0;height:0;overflow:hidden}
+.vt-defs .ink{fill:var(--ink)}
+.vt-defs .s1{stop-color:#F2A69B}.vt-defs .s2{stop-color:#F5CE8F}.vt-defs .s3{stop-color:#F2E39B}
+.vt-defs .s4{stop-color:#A8D8B0}.vt-defs .s5{stop-color:#A9C6E8}.vt-defs .s6{stop-color:#C4B3E5}
+
+/* Real documents (law: show-real-proof). A section of Fundhub's tri-bureau
+   report exactly as scripts/render-crs-standard-report.mjs prints it for the
+   sample file, kept in the report's own plain document face so it reads as
+   the real thing, and a real clause of the agreement. Our branded marks
+   (.chip, the tints) sit on top to point at what matters. */
+.real{background:var(--ss-panel);border:1px solid var(--ss-rule);border-radius:10px;box-shadow:var(--panel-shadow);
+  padding:14px;color:var(--ink);font-family:Helvetica,Arial,sans-serif;line-height:1.4}
+.real .bureau-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;
+  border-bottom:2px solid var(--ink);padding-bottom:8px;margin-bottom:8px}
+.real .rh1{margin:0;font-size:1.25rem;font-weight:700;letter-spacing:-.02em}
+.real .score{text-align:right}
+.real .score .num{font-size:1.75rem;font-weight:700;line-height:1.05}
+.real .score .model{font-size:.8125rem;color:var(--gray)}
+.real .rh2{margin:10px 0 4px;font-size:1rem;font-weight:700}
+.real > .rh2:first-child{margin-top:0}
+.real p.model{margin:0 0 6px;font-size:.8125rem;color:var(--gray)}
+.real ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px;font-size:.8125rem}
+.real li{padding:2px 0}
+.real li.flag{margin:0 -6px;padding:7px 6px;border-radius:6px;background:var(--ss-flag);font-weight:700}
+.real li.yes{margin:0 -6px;padding:7px 6px;border-radius:6px;background:var(--ss-yes);font-weight:700}
+.real .chip{display:inline-flex;margin-top:6px;font-family:var(--mono)}
+.real table{width:100%;border-collapse:collapse;font-size:.8125rem}
+.real th{text-align:left;font-size:.8125rem;text-transform:uppercase;color:var(--gray);border-bottom:1px solid var(--line);padding:4px 6px 4px 0}
+.real td{border-bottom:1px solid var(--soft);padding:7px 6px 7px 0;vertical-align:top}
+.real td .chip{margin-top:4px}
+.real .clause{margin:0;font-size:.9375rem;line-height:1.5}
+.real .nw{white-space:nowrap}
+.real .clause mark{background:var(--ss-yes);color:inherit;padding:1px 3px;border-radius:4px;font-weight:700}
+.real img{display:block;width:100%;height:auto;border-radius:6px}
+/* A real crop of code (law: show-real-proof), in the brand's mono face. */
+.real .code{margin:0;padding:0;font-family:var(--mono);font-size:.8125rem;font-weight:500;line-height:1.55;
+  white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ink)}
+.real .code .l{display:block;padding-left:3em;text-indent:-3em}
+.real .code .ln{display:inline-block;width:3em;text-indent:0;color:var(--gray)}
+.real.shot{padding:0;overflow:hidden}
+.real.shot img{border-radius:0}
+.real-src{margin:8px 2px 0;font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.04em;color:var(--ss-muted)}
+.slide.dark .real-src{color:var(--ss-dark-muted)}
+
+/* One reason, two places: the report and the bank's letter. */
+.match{display:flex;flex-direction:column;gap:6px}
+.match .who{font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.1em;text-transform:uppercase;color:var(--ss-muted)}
+.match .reason{padding:9px 11px;border-radius:8px;background:var(--ss-flag);font-size:.8125rem;font-weight:650;line-height:1.35;color:var(--ink)}
+.match .same{align-self:flex-start;margin:4px 0}
+
+/* A document: a credit report, a bank letter, a file. */
+.doc{display:flex;flex-direction:column;overflow:hidden}
+.doc-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;
+  border-bottom:1px solid var(--ss-rule);font-family:var(--mono);font-size:var(--fs-caption);
+  letter-spacing:.1em;text-transform:uppercase;color:var(--ss-muted)}
+.doc-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;
+  font-size:1rem;line-height:1.3;min-width:0}
+.doc-row + .doc-row{border-top:1px solid var(--ss-rule)}
+.doc-row > span:first-child{min-width:0}
+.doc-row .v{font-weight:700;font-variant-numeric:tabular-nums;text-align:right}
+.doc-row.flag{background:var(--ss-flag);font-weight:650}
+.doc-row.yes{background:var(--ss-yes);font-weight:650}
+
+/* Two documents tied by the same line. */
+.tie{display:flex;align-items:center;gap:10px;padding-left:22px;font-family:var(--mono);
+  font-size:var(--fs-caption);letter-spacing:.1em;text-transform:uppercase;color:var(--ss-muted)}
+.tie::before{content:"";width:2px;height:28px;background:var(--ink);border-radius:1px}
+.slide.dark .tie{color:var(--ss-dark-muted)}
+.slide.dark .tie::before{background:#fff}
+
+/* The engine card: ink and mono, the way the brand shows UnderwriteIQ. */
+.term{position:relative;overflow:hidden;background:var(--card);border:1px solid var(--cardline);
+  border-radius:10px;color:var(--cardtext);font-family:var(--mono);line-height:1.45}
+.term > *{position:relative}
+.term-head{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--cardline);
+  font-size:var(--fs-caption);letter-spacing:.12em;text-transform:uppercase;color:var(--gray2)}
+.term-head .pulse{margin-inline:4px 6px}
+.term-line{display:flex;gap:10px;align-items:baseline;padding:10px 14px;font-size:.875rem}
+.term-line + .term-line{border-top:1px dashed var(--cardline)}
+.term-line .k{flex:0 0 auto;color:var(--ok)}
+
+/* How: a real sequence. Numbering is shown because the order is the point. */
+.flow{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:14px;counter-reset:fl}
+.flow > li{position:relative;counter-increment:fl;display:flex;align-items:center;gap:12px;padding:12px 14px;
+  background:var(--ss-panel);border:1px solid var(--ss-rule);border-radius:10px;box-shadow:var(--panel-shadow);
+  font-weight:650;line-height:1.3;color:var(--ss-fg)}
+.flow > li::before{content:counter(fl,decimal-leading-zero);flex:0 0 auto;font-family:var(--mono);
+  font-size:var(--fs-caption);font-weight:500;color:var(--ss-muted)}
+.flow > li + li::after{content:"";position:absolute;left:24px;top:-15px;width:2px;height:14px;background:var(--gray2)}
+.flow.plain > li::before{content:none}          /* a narrowing, not a count */
+.flow > li.is-hot{background:var(--ink);border-color:var(--ink);color:#fff}
+.flow > li.is-hot::before{color:var(--gray2)}
+.flow .sub{display:block;font-weight:500;font-size:.875rem;color:var(--ss-muted)}
+.flow > li.is-hot .sub{color:var(--gray2)}
+.slide.dark .flow > li.is-hot{background:#fff;border-color:#fff;color:var(--ink)}
+
+/* When: who does what, in order. */
+.tl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.tl > li{position:relative;padding:0 0 18px 30px;min-width:0}
+.tl > li:last-child{padding-bottom:0}
+.tl > li::before{content:"";position:absolute;left:5px;top:5px;width:14px;height:14px;border-radius:50%;
+  background:var(--ss-bg);border:2px solid var(--ink)}
+.tl > li::after{content:"";position:absolute;left:11px;top:23px;bottom:3px;width:2px;background:var(--ss-rule)}
+.tl > li:last-child::after{content:none}
+.tl .when{display:block;font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.1em;
+  text-transform:uppercase;color:var(--ss-muted)}
+.tl .what{display:block;font-size:1.0625rem;font-weight:650;line-height:1.3}
+.tl .chip{margin-top:6px}
+.tl > li.bad::before{background:var(--alert);border-color:var(--alert)}
+.tl > li.good::before{background:var(--ok);border-color:var(--ok)}
+.slide.dark .tl > li::before{background:var(--ss-dark);border-color:#fff}
+.slide.dark .tl > li::after{background:var(--ss-dark-rule)}
+.slide.dark .tl .when{color:var(--ss-dark-muted)}
+
+/* When: one stretch of time between two events. */
+.span{display:flex;flex-direction:column;gap:8px}
+.span-bar{height:10px;border-radius:5px;background:var(--spectrum)}
+.span-ends{display:flex;justify-content:space-between;gap:12px;font-family:var(--mono);
+  font-size:var(--fs-caption);letter-spacing:.1em;text-transform:uppercase;color:var(--ss-muted)}
+.slide.dark .span-ends{color:var(--ss-dark-muted)}
+
+/* A hero figure. */
+.metric{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.metric .n{font-size:clamp(4.75rem,26vw,7.5rem);font-weight:700;letter-spacing:-.05em;line-height:.85;
+  font-variant-numeric:tabular-nums}
+.metric .u{padding-bottom:6px;font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.14em;
+  text-transform:uppercase;color:var(--ss-muted)}
+.slide.dark .metric .u{color:var(--ss-dark-muted)}
+
+/* How much: bars drawn to one scale. Set --v to value ÷ the largest value. */
+.bars{display:flex;flex-direction:column;gap:14px}
+.bar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;align-items:baseline}
+.bar .l{font-size:.9375rem;font-weight:650}
+.bar .v{font-weight:700;font-variant-numeric:tabular-nums}
+.bar .t{grid-column:1/-1;height:12px;border-radius:6px;background:var(--soft);overflow:hidden}
+.bar .t > span{display:block;height:100%;width:calc(var(--v) * 100%);border-radius:6px;background:var(--ink)}
+.bar.alt .t > span{background:var(--gray2)}
+
+/* Compare: two columns side by side. */
+.compare{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.compare > .panel{padding:12px;min-width:0}
+.compare h3{margin:0 0 8px;font-family:var(--mono);font-size:var(--fs-caption);font-weight:500;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--ss-muted)}
+.compare ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px;font-size:.9375rem;line-height:1.3}
+
+/* Why: a visual equation. */
+.eq{display:flex;align-items:stretch;gap:8px}
+.eq > .panel{flex:1 1 0;min-width:0;padding:12px 10px;text-align:center;font-weight:650;line-height:1.25}
+.eq .op{align-self:center;font-family:var(--mono);font-size:1.5rem;color:var(--ss-muted)}
+.eq > .panel.is-hot{background:var(--ink);border-color:var(--ink);color:#fff}
+
+@media (max-width:359px){
+  .eq{flex-direction:column}
+  .eq .op{align-self:flex-start;padding-left:12px}
+}
+@media (prefers-reduced-motion:reduce){
+  body,.ss-progress i{transition:none!important}
+  html.ss-js .slide.enter{animation:none}
+}
+</style>
+<!-- /fh:shell:head -->
+</head>
+<body>
+<main class="ss" data-deck="BZ" data-lane="Blueprint and Repair" data-pillar="2nd-layer question">
+  <h1 class="ss-title">Business one, business two</h1>
+  <svg class="vt-defs" aria-hidden="true" focusable="false">
+    <defs>
+      <symbol id="fh-bank" viewBox="0 0 28 28"><path fill="currentColor" d="M1 9.5L14 2l13 7.5V11H1z"/><rect fill="currentColor" x="4" y="13" width="3.5" height="9" rx="1"/><rect fill="currentColor" x="12.25" y="13" width="3.5" height="9" rx="1"/><rect fill="currentColor" x="20.5" y="13" width="3.5" height="9" rx="1"/><rect fill="currentColor" x="1" y="23.5" width="26" height="3" rx="1.5"/></symbol>
+      <symbol id="fh-person" viewBox="0 0 28 28"><circle fill="currentColor" cx="14" cy="9" r="5.5"/><path fill="currentColor" d="M4 25.5c0-5.5 4.5-9 10-9s10 3.5 10 9z"/></symbol>
+      <marker id="fh-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path class="ink" d="M0 0L10 5L0 10z"/></marker>
+      <linearGradient id="fh-spectrum" x1="0" x2="1" y1="0" y2="0"><stop offset="0" class="s1"/><stop offset=".2" class="s2"/><stop offset=".4" class="s3"/><stop offset=".6" class="s4"/><stop offset=".8" class="s5"/><stop offset="1" class="s6"/></linearGradient>
+    </defs>
+  </svg>
+
+  <section class="slide dark">
+    <p class="eyebrow">BZ-01 / The clock</p>
+    <h2>Every business gets read by its age, and its age starts counting the day you file it.</h2>
+    <p class="lede">How old yours is on the day your personal file is ready decides what the business side adds.</p>
+    <ul class="lines">
+      <li>Our engine prints this line for a file that still has credit work ahead of it.</li>
+    </ul>
+    <figure class="pic">
+      <div class="term" role="img" aria-label="The UnderwriteIQ engine's own suggestion line: You don't have an LLC yet. Form an LLC now so it can season while your credit is being repaired.">
+        <div class="term-head"><span class="pulse"></span>UnderwriteIQ · Suggestions</div>
+        <div class="term-line"><span class="k">01</span><span>You don’t have an LLC yet. Form an LLC now so it can season while your credit is being repaired.</span></div>
+      </div>
+      <p class="real-src">The engine's own words, as it prints them for a file still being optimized.</p>
+    </figure>
+  </section>
+
+  <section class="slide">
+    <p class="eyebrow">BZ-02 / Five checks</p>
+    <h2>Of the five checks on a business, age is the only one that grows on its own.</h2>
+    <ul class="lines">
+      <li>Two of the five read your personal file, so those pass when your own file is ready.</li>
+      <li>The name and the industry code go on file once, as part of setting the business up.</li>
+      <li>Age keeps counting up from the filing date, and the engine's top band starts at 24 months.</li>
+    </ul>
+    <figure class="pic">
+      <div class="real" role="img" aria-label="The engine's five business checks: personal file is fundable; a personal card two or more years old with a high limit; business 24 or more months old, marked start the clock now; business name on file; industry code on file.">
+        <div class="rh2">Fundability · Business one</div>
+        <ul>
+          <li>Personal file is fundable</li>
+          <li>A personal card 2+ years old with a high limit</li>
+          <li class="yes">Business 24+ months old<br><span class="chip on"><span class="cd"></span>Start the clock now</span></li>
+          <li>Business name on file</li>
+          <li>Industry code (NAICS) on file</li>
+        </ul>
+      </div>
+      <p class="real-src">The engine's own five checks for one business.</p>
+    </figure>
+  </section>
+
+  <section class="slide">
+    <p class="eyebrow">BZ-03 / The cost</p>
+    <h2>A business 24 months or older counts four times what a brand new one counts.</h2>
+    <ul class="lines">
+      <li>Under 12 months, the business side counts at half. From 12 to 24 months, it counts in full. At 24 months and up, it counts double.</li>
+      <li>With no filing date on record, the business side counts at zero.</li>
+      <li>Age is how our engine sizes the business side, and every bank still rules on its own applications.</li>
+    </ul>
+    <figure class="pic">
+      <div class="bars" role="img" aria-label="Three bars drawn to one scale. Under 12 months: half. 12 to 24 months: full. 24 months and up: double.">
+        <div class="bar" style="--v:.25"><span class="l">Under 12 months</span><span class="v">Half</span><span class="t"><span></span></span></div>
+        <div class="bar" style="--v:.5"><span class="l">12 to 24 months</span><span class="v">Full</span><span class="t"><span></span></span></div>
+        <div class="bar" style="--v:1"><span class="l">24 months and up</span><span class="v">Double</span><span class="t"><span></span></span></div>
+      </div>
+      <p class="pic-cap">HOW THE ENGINE READS BUSINESS AGE</p>
+    </figure>
+  </section>
+
+  <section class="slide dark">
+    <p class="eyebrow">BZ-04 / The order</p>
+    <h2>Business one gets primed first, then business two, once your personal file is ready.</h2>
+    <ul class="lines">
+      <li>Each business keeps its own count and its own place on your plan, never blended into one figure.</li>
+      <li>Business one gets primed and ready first, then business two, and each one adds fundability.</li>
+      <li>File early, and each business already has age behind it when its turn comes.</li>
+    </ul>
+    <figure class="pic">
+      <ol class="flow" aria-label="Four steps in order: personal file ready, business one, business two, more fundability.">
+        <li class="is-hot">Personal file ready<span class="sub">nothing else counts until it is</span></li>
+        <li>Business one<span class="sub">its own five checks</span></li>
+        <li>Business two<span class="sub">its own five checks</span></li>
+        <li>More fundability<span class="sub">each one listed on its own</span></li>
+      </ol>
+    </figure>
+  </section>
+
+  <section class="slide">
+    <p class="eyebrow">BZ-05 / The step</p>
+    <h2>Two days in, this sample file had its LLC filed and its business checking open.</h2>
+    <ul class="lines">
+      <li>The step asks you to file with your Secretary of State, then send the confirmation to the Fundhub team.</li>
+      <li>The second business step is a checking account opened in the LLC's name.</li>
+      <li>Both steps are yours to do, and the checklist marks each one as you finish it.</li>
+    </ul>
+    <figure class="pic">
+      <div class="real shot" role="img" aria-label="Two rows of a sample Blueprint checklist. File your LLC, tagged you, done 19 October 2026. Open a business checking account, tagged you, done 19 October 2026.">
+        <img src="data:image/jpeg;base64,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gYwcofKwWjWko0peq+/0zIq+wySQ1kcB9GRzRkFmex22MrQiq9cVVmGoG6itcMz4vKI7R5O10fDjiDDLxcXERjcbZ7F52vSVzu+j9UG7xNoa/Ucr52wuOfJ2gfgg8jtGAT4Hv2UfRs0/RW6GjvPRXUPusTBHIKa1NmjmeNi5sg2wTvkkc+1D3St71vcBp7Sd4sNO1zrxVxROp5Mb8TT+D4uz0sDi8PkrbZKS/wBPHNJf7rT10spBbHT0/VMh7wCSS7O257lUtQ22qng0OKGwvoWU11hllpIGBwpW4JOeDYAd/JdFUWa+dlz7pDlF+moNCW/8LXVs0c9SWf8AVadjgS8nsJIGP3jNh1jeLpY9Mz1lltFRdK9xEcUMMRk4SQfTcBuWjH6hsqVpa902naSWSfSera67Vjutra6S1O4pn9w32aOQCRamNT/znpY0TRzDMDBVVHCeRe2P0T8QRlbHSrE2ToxusueGSn6qaN4OCx4kbgjx5/emraG5VfmDV1koZZq60yGbyOT8HJJDIzEjMHk/GNvj2qHv9wuWv6KLS9u07drdS1MzDX1Vwp+obFE1wcWtyTxOJA2H6jkGXR6OY1FBTzvGDJG15B7MjKoeqZRqbW9i0vbT1jrVWR3Ovmbu2nDAeBhP2nZO3MbHvUpru8Xqyaejj05aautrKh3UtkpoHTClbjd5aOZA5DlnnywYDTV9t2m7WKKl0dq6WWVxkqKqW1uL6iQ83uOUar61hdW0vSpYIpKaWudTUUs9LSR4zNUPd1bRvsMDJJPsgE9ik/44X61XSig1XpuOgo6+YQRVdNVde2KQ+yx44RjJ2zyWNZ2i4x6hsWs7RQur6m1OeyekZs+WF7SCWd7m5O3blR15ra/X3m+yUGnbpQUYqo6msq7jT9QI2MIPCwbkuPLbl8MkVHTERFloREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREDtWjdf7Km/N/xBby8KqDyilkh29IYHx7FnlN42LPLRReMEvE0sf6MrNnNPNexXn8t4hNVWI6m0xW2MV0lC2rDWOmjaHENDgSMeIBHzUjb6GmtltpbdRxiOnpYmwxt7mtGB/cFtIpk8rvwwUCzhMKjGyLOEwqCJlfEkrImF73AAKJj0tv8AXaz8z9RUoOS0LbE9sT55G8L5XcWD2DsW+u3Tn+LF8sYWcIi6IwBhMYWUQYwfBMLKIMYTCyiBhYwsphBjCYPesogxwrKIgxhMLKIMYTGyyiDGCmFlEGMJhZRBjBTCyiDGN1lEQY3WURBjCYOOayiDGFlEQYI2TCyiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIg1qiip6k8T24eOTmnBWubVH+VVP6T9ykUWLwl+F2o/zVH+VVP6T9yeao/yqp/SfuUhum6np8fo2o/zVH+VVP6T9yeao/wAqqf0n7lIbpunp8fo2o/zVH+VVP6T9yeao/wAqqf0n7lIbpunp8fo2o/zVH+VVP6T9y+4rZTRyCR3HK8cnSHOFuor2cfo2mERFtBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERB//Z" width="620" height="291" alt="">
+      </div>
+      <p class="real-src">Sample checklist, month 6. Simulated client, stamped SIMULATION on the screen. Day 0 was 17 October.</p>
+    </figure>
+  </section>
+
+  <section class="slide">
+    <p class="eyebrow">BZ-06 / Your call</p>
+    <h2>On your strategy call, your business gets read right next to your personal file.</h2>
+    <ul class="lines">
+      <li>Have your company's legal name, its months in business and its monthly revenue ready. Then the business side gets read on the call too.</li>
+      <li>If you don't have a business yet, you still work with us, because your personal file goes first either way.</li>
+      <li>You leave knowing which age band your business sits in, and whether filing now is your next step.</li>
+    </ul>
+    <figure class="pic">
+      <div class="panel doc" role="img" aria-label="Have this ready for your call: your entity name, how long you have been in business, your average monthly revenue.">
+        <div class="doc-head"><span>Have this ready</span><span>Your call</span></div>
+        <div class="doc-row"><span>Your entity name</span><span class="v">1</span></div>
+        <div class="doc-row"><span>How long you've been in business</span><span class="v">2</span></div>
+        <div class="doc-row"><span>Your average monthly revenue</span><span class="v">3</span></div>
+      </div>
+    </figure>
+  </section>
+</main>
+<!-- fh:shell:script -->
+<script data-fh="slideshow">
+/* Fundhub slideshow engine. One slide at a time, with Back and Next at the
+   thumb, swipe, and the arrow keys. A link ending in #s3 opens slide 3. It
+   reads and sends nothing: no network, no storage, no tracking. Without
+   script, every slide stays readable as one long page. */
+(function () {
+  "use strict";
+  var deck = document.querySelector(".ss");
+  if (!deck) return;
+  var slides = Array.prototype.slice.call(deck.querySelectorAll(".slide"));
+  if (!slides.length) return;
+  var root = document.documentElement;
+  var last = slides.length - 1;
+  var index = 0;
+
+  function el(tag, cls, text) {
+    var node = document.createElement(tag);
+    if (cls) node.className = cls;
+    if (text) node.textContent = text;
+    return node;
+  }
+
+  var top = el("header", "ss-top");
+  var logo = el("span", "logo");
+  logo.setAttribute("role", "img");
+  logo.setAttribute("aria-label", "Fundhub");
+  var progress = el("div", "ss-progress");
+  progress.setAttribute("aria-hidden", "true");
+  var segments = slides.map(function (_, k) {
+    var seg = el("i");
+    seg.style.setProperty("--k", String(k));
+    seg.style.setProperty("--n", String(slides.length));
+    progress.appendChild(seg);
+    return seg;
+  });
+  top.appendChild(logo);
+  top.appendChild(progress);
+
+  var stage = el("div", "ss-stage");
+  slides.forEach(function (slide, k) {
+    slide.setAttribute("role", "group");
+    slide.setAttribute("aria-roledescription", "slide");
+    slide.setAttribute("aria-label", (k + 1) + " of " + slides.length);
+    stage.appendChild(slide);
+  });
+
+  var nav = el("nav", "ss-nav");
+  nav.setAttribute("aria-label", "Slides");
+  var back = el("button", "ss-btn back", "Back");
+  var next = el("button", "ss-btn primary", "Next");
+  back.type = "button";
+  next.type = "button";
+  nav.appendChild(back);
+  nav.appendChild(next);
+
+  var live = el("p", "ss-live");
+  live.setAttribute("aria-live", "polite");
+
+  var title = deck.querySelector(".ss-title");
+  deck.insertBefore(top, title ? title.nextSibling : deck.firstChild);
+  deck.appendChild(stage);
+  deck.appendChild(nav);
+  deck.appendChild(live);
+  root.classList.add("ss-js");
+
+  function go(n, still) {
+    index = Math.max(0, Math.min(last, n));
+    slides.forEach(function (slide, k) {
+      var on = k === index;
+      slide.classList.toggle("is-on", on);
+      // Only a slide you move to slides in. The first one is still at rest.
+      slide.classList.remove("enter");
+      if (on && !still) {
+        void slide.offsetWidth;
+        slide.classList.add("enter");
+      }
+      slide.setAttribute("aria-hidden", on ? "false" : "true");
+      if (on) slide.removeAttribute("inert");
+      else slide.setAttribute("inert", "");
+    });
+    segments.forEach(function (seg, k) { seg.classList.toggle("on", k <= index); });
+    root.setAttribute("data-tone", slides[index].classList.contains("dark") ? "dark" : "light");
+    back.hidden = index === 0;
+    next.textContent = index === last ? "Start over" : "Next";
+    slides[index].scrollTop = 0;
+    var heading = slides[index].querySelector("h2");
+    live.textContent = (index + 1) + " of " + slides.length + (heading ? ". " + heading.textContent : "");
+    if (!root.classList.contains("ss-notes")) {
+      try { history.replaceState(null, "", "#s" + (index + 1)); } catch (e) { /* a sandboxed frame may refuse */ }
+    }
+  }
+
+  back.addEventListener("click", function () { go(index - 1); });
+  next.addEventListener("click", function () { go(index === last ? 0 : index + 1); });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.altKey || e.ctrlKey || e.metaKey) return;
+    if (e.key === "ArrowRight" || e.key === "PageDown") { e.preventDefault(); go(index + 1); }
+    else if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); go(index - 1); }
+    else if (e.key === "Home") { e.preventDefault(); go(0); }
+    else if (e.key === "End") { e.preventDefault(); go(last); }
+    else if (e.key === "n" || e.key === "N") { root.classList.toggle("ss-notes"); }
+  });
+
+  var x0 = null;
+  var y0 = null;
+  stage.addEventListener("pointerdown", function (e) {
+    if (e.pointerType === "mouse") return;
+    x0 = e.clientX;
+    y0 = e.clientY;
+  });
+  stage.addEventListener("pointercancel", function () { x0 = null; });
+  stage.addEventListener("pointerup", function (e) {
+    if (x0 === null) return;
+    var dx = e.clientX - x0;
+    var dy = e.clientY - y0;
+    x0 = null;
+    if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.5) go(index + (dx < 0 ? 1 : -1));
+  });
+
+  // #notes opens the talking points for recording; viewers never see them.
+  if (/^#notes$/.test(location.hash || "")) root.classList.add("ss-notes");
+  function fromHash() {
+    var match = /^#s(\d+)$/.exec(location.hash || "");
+    return match ? Number(match[1]) - 1 : null;
+  }
+  window.addEventListener("hashchange", function () {
+    var n = fromHash();
+    if (n !== null && n !== index) go(n);
+  });
+  go(fromHash() || 0, true);
+})();
+</script>
+<!-- /fh:shell:script -->
+</body>
+</html>
