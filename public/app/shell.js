@@ -2244,7 +2244,7 @@
     "calendar.html": [
       {
         "selector": ".rail-title",
-        "match": "Appointment details",
+        "match": ["Appointment details", "Task details"],
         "topic": "appointments",
         "label": "Booking SOP"
       }
@@ -2293,7 +2293,9 @@
       specs.forEach(function (spec) {
         var elements = document.querySelectorAll(spec.selector);
         Array.prototype.forEach.call(elements, function (el) {
-          if (spec.match && el.textContent.trim().indexOf(spec.match) !== 0) return;
+          if (spec.match && ![].concat(spec.match).some(function (label) {
+            return el.textContent.trim().indexOf(label) === 0;
+          })) return;
           var headingSibling = PAGE === "consent-capture.html" || PAGE === "documents.html" || PAGE === "pipeline.html" || PAGE === "closer-dashboard.html";
           if (headingSibling ?
               (el.nextElementSibling && el.nextElementSibling.classList.contains("fh-step-sop")) :

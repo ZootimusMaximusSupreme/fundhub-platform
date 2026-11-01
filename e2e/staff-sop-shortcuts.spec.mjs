@@ -65,6 +65,19 @@ test("all eighteen working desks have a discoverable SOP link; existing refresh 
   await expect(page.locator("#qRefresh")).toBeVisible();
 });
 
+test("Calendar task SOP survives the later Task details heading", async ({ page }) => {
+  await setup(page);
+  await page.route("**/app/calendar.html", async (route) => {
+    const response = await route.fetch();
+    const html = (await response.text()).replace(">Appointment details</h3>", ">Task details</h3>");
+    await route.fulfill({ response, body: html });
+  });
+  await page.goto("/app/calendar.html");
+  await expect(page.locator('.rail-title:has-text("Task details") .fh-step-sop')).toHaveAttribute(
+    "href", "company-brain.html?sop=appointments"
+  );
+});
+
 test("staff clicks document icon, gets contextual Knowledge Base search, then Back returns to dashboard", async ({ page }) => {
   const asks = [];
   // The existing Company Brain API grants setter tier-filtered STAFF access.

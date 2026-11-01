@@ -60,6 +60,11 @@ test("every staff workstep shortcut points to a finite approved-document search 
   assert.match(shell, /class="fh-sop-label">SOPs<\/span>/);
 });
 
+test("Calendar SOP survives the appointment-to-task heading rename", () => {
+  const calendar = workSteps["calendar.html"].find((spec) => spec.topic === "appointments");
+  assert.deepEqual(calendar.match, ["Appointment details", "Task details"]);
+});
+
 test("shortcut is gated to the exact existing Company Brain STAFF roles, never external principals", () => {
   const expected = ["owner", "admin", "funding_advisor", "closer",
     "inquiry_specialist", "setter", "sales_manager", "csm"];
