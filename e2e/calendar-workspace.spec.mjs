@@ -43,7 +43,7 @@ async function openCalendar(page, state = "full") {
   });
   await gotoScreen(page, "calendar.html");
   if (state === "full" || state === "partial") await expect(page.locator("#unClient")).toHaveText("Dana Whitfield");
-  else if (state === "empty") await expect(page.locator(".day-wrap")).toContainText("Nothing booked.");
+  else if (state === "empty") await expect(page.locator(".day-wrap")).toContainText("No tasks due.");
   else if (state === "error") await expect(page.locator(".day-wrap")).toContainText("Schedule did not load.");
   else await expect(page.locator(".day-wrap")).toContainText("Loading the schedule");
 }
@@ -154,8 +154,8 @@ test("partial schedule keeps truthful counts and an accessible warning", async (
   await expect(page.locator("#statBooked")).toHaveText("—");
   await expect(page.locator("#statDone")).toHaveText("—");
   await expect(page.locator("#statLeft")).toHaveText("2");
-  await expect(page.locator(".live-pill")).toContainText("Completed calls unavailable");
-  await expect(page.locator(".day-wrap")).toContainText("Completed calls did not load.");
+  await expect(page.locator(".live-pill")).toContainText("Completed tasks unavailable");
+  await expect(page.locator(".day-wrap")).toContainText("Completed tasks did not load.");
 });
 
 test("week navigation moves seven days and day totals stay tied to the selected date", async ({ page }) => {

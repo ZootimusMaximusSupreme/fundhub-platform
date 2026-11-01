@@ -27,7 +27,7 @@ import assert from "node:assert";
 import { db } from "../db.mjs";
 import handler from "../../api/consent/capture.mjs";
 import { CURRENT_SOFT_PULL_VERSION, SOFT_PULL_DISCLOSURES } from "../consent/disclosures.mjs";
-import { verifySoftPullApproveToken } from "../consent/approve-token.mjs";
+import { verifySoftPullApproveToken, signature as softPullApproveSignature } from "../consent/approve-token.mjs";
 import { encryptSsn } from "../pii/index.mjs";
 
 const ORG = "11111111-1111-1111-1111-111111111111";
@@ -746,6 +746,69 @@ function everyKey(value, out = []) {
   return out;
 }
 
+/* The deny-list scans JSON.stringify(body). Staff soft-pull GETs include
+   approval_link.url with a 64-hex HMAC sig; that digest is unrelated to identity
+   but can contain any four hex digits by chance (e.g. FAKE.last4). Before any
+   masking, require exactly ONE sig= on that url, verify it against org, client,
+   exp and DOCUMENT_URL_SECRET, and confirm org/client match the expected scope.
+   Mask ONLY that verified digest — never a blind regex over every 64-hex run,
+   which could redact a forged second sig and hide an identity leak in the same
+   response while the link-authenticity test still passes on the first sig. */
+function verifiedApprovalLinkSigForMasking(url, { orgId, clientId, secret, now } = {}) {
+  if (typeof url !== "string" || !url) {
+    throw new Error("approval_link.url must be a non-empty string before identity deny-list masking");
+  }
+  const u = new URL(url);
+  const sigParams = u.searchParams.getAll("sig");
+  if (sigParams.length !== 1) {
+    throw new Error(
+      `approval_link.url must carry exactly one sig query parameter, found ${sigParams.length}`
+    );
+  }
+  const org = u.searchParams.get("org");
+  const client = u.searchParams.get("client");
+  const exp = u.searchParams.get("exp");
+  if (org !== orgId || client !== clientId) {
+    throw new Error("approval_link.url org/client do not match the expected session scope");
+  }
+  const sig = sigParams[0];
+  if (!/^[0-9a-f]{64}$/.test(sig)) {
+    throw new Error("approval_link.url sig must be a 64-character lowercase hex HMAC digest");
+  }
+  const verifyOpts = { orgId: org, clientId: client, exp, sig, secret };
+  if (now !== undefined) verifyOpts.now = now;
+  const payload = verifySoftPullApproveToken(verifyOpts);
+  if (!payload) {
+    throw new Error("approval_link.url sig does not verify against org, client, exp and secret");
+  }
+  return sig;
+}
+
+function serializedConsentBodyForIdentityDenyList(body, scanOpts = {}) {
+  const orgId = scanOpts.orgId ?? ORG;
+  const clientId = scanOpts.clientId ?? CLIENT;
+  const secret = scanOpts.secret ?? APPROVE_SECRET;
+  const link = body?.approval_link;
+  let forScan = body;
+  if (link && typeof link.url === "string") {
+    const maskOpts = { orgId, clientId, secret };
+    if (scanOpts.now !== undefined) maskOpts.now = scanOpts.now;
+    const verifiedSig = verifiedApprovalLinkSigForMasking(link.url, maskOpts);
+    const needle = `sig=${verifiedSig}`;
+    const url = link.url.includes(needle)
+      ? link.url.replace(needle, "sig=__redacted_hmac_sig__")
+      : link.url;
+    if (url !== link.url) forScan = { ...body, approval_link: { ...link, url } };
+  }
+  return JSON.stringify(forScan);
+}
+
+function mintValidApprovalLinkUrl({ exp, secret = APPROVE_SECRET, base = "https://fundhub.ai" } = {}) {
+  const expiresAt = exp ?? Math.floor(Date.now() / 1000) + 3600;
+  const sig = softPullApproveSignature({ orgId: ORG, clientId: CLIENT, expiresAt, secret });
+  return `${base}/app/soft-pull-approve.html?org=${ORG}&client=${CLIENT}&exp=${expiresAt}&sig=${sig}`;
+}
+
 describe("the client approval link", () => {
   test("a staff GET carries a link that really opens the client's approval form", async () => {
     const body = await withEnv(
@@ -968,7 +1031,12 @@ describe("no identity data leaves this endpoint", () => {
     assert.equal(body.identity && body.identity.on_file, true,
       "the identity record was never read, so this test proves nothing");
 
-    const serialized = JSON.stringify(body);
+    const linkUrl = body.approval_link?.url;
+    assert.ok(typeof linkUrl === "string" && linkUrl.length > 0,
+      "staff GET with identity on file must carry an approval link for the deny-list pre-check");
+    verifiedApprovalLinkSigForMasking(linkUrl, { orgId: ORG, clientId: CLIENT, secret: APPROVE_SECRET });
+
+    const serialized = serializedConsentBodyForIdentityDenyList(body);
 
     for (const [what, value] of Object.entries(FAKE)) {
       if (what === "state") continue; // two letters — see the note on FAKE
@@ -984,6 +1052,107 @@ describe("no identity data leaves this endpoint", () => {
       assert.ok(!FORBIDDEN_KEY.test(key),
         `the response grew a field named ${JSON.stringify(key)} — identity data must not leave this endpoint`);
     }
+  });
+
+  test("HMAC sig hex in approval_link.url cannot false-trigger the identity value scan", () => {
+    let hit = null;
+    for (let t = 0; t < 500_000 && !hit; t++) {
+      const exp = 1_700_000_000 + t;
+      const sig = softPullApproveSignature({
+        orgId: ORG, clientId: CLIENT, expiresAt: exp, secret: APPROVE_SECRET
+      });
+      if (!sig.includes(FAKE.last4)) continue;
+      hit = {
+        url: `https://fundhub.ai/app/soft-pull-approve.html?org=${ORG}&client=${CLIENT}&exp=${exp}&sig=${sig}`,
+        exp
+      };
+    }
+    assert.ok(hit, "expected an HMAC sig containing the fake last4 within the search window");
+
+    const body = {
+      identity: { on_file: true },
+      approval_link: { url: hit.url, expires_at: null, unavailable_reason: null }
+    };
+    const raw = JSON.stringify(body);
+    assert.ok(raw.includes(FAKE.last4), "sanity: the unredacted body would have false-triggered");
+
+    const verifyNow = hit.exp * 1000;
+    const serialized = serializedConsentBodyForIdentityDenyList(body, { now: () => verifyNow });
+    assert.ok(!serialized.includes(FAKE.last4),
+      "sig redaction must drop accidental last4 matches from the HMAC digest");
+    assert.ok(serialized.includes(String(hit.exp)), "exp must stay in the scan payload");
+    assert.ok(serialized.includes(ORG), "org must stay in the scan payload");
+    assert.ok(serialized.includes(CLIENT), "client must stay in the scan payload");
+  });
+
+  test("identity value scan still catches a real last4 after sig redaction", () => {
+    const body = {
+      identity: { on_file: true, ssn_last4: FAKE.last4 },
+      approval_link: {
+        url: mintValidApprovalLinkUrl(),
+        expires_at: null,
+        unavailable_reason: null
+      }
+    };
+    const serialized = serializedConsentBodyForIdentityDenyList(body);
+    assert.ok(serialized.includes(FAKE.last4),
+      "a real identity leak must not be hidden by sig redaction");
+  });
+
+  test("last4 in another string with ?sig= is not masked and still triggers the value scan", () => {
+    const leak = `audit note: ref=/docs?sig=${FAKE.last4}beef`;
+    const validUrl = mintValidApprovalLinkUrl();
+    const body = {
+      identity: { on_file: true },
+      history: [{ id: CONSENT_ID, note: leak }],
+      approval_link: {
+        url: validUrl,
+        expires_at: null,
+        unavailable_reason: null
+      }
+    };
+    const serialized = serializedConsentBodyForIdentityDenyList(body);
+    assert.ok(serialized.includes(leak),
+      "history must stay byte-for-byte; broad ?sig= masking would hide this leak");
+    assert.ok(serialized.includes(FAKE.last4),
+      "the deny-list value scan must still see last4 outside approval_link.url");
+    assert.ok(!serialized.includes(validUrl.split("sig=")[1]),
+      "only the verified approval_link.url sig digest is redacted");
+    assert.ok(serialized.includes("__redacted_hmac_sig__"));
+  });
+
+  test("a valid first sig plus a forged second 64-hex sig carrying last4 is refused before masking", () => {
+    const exp = Math.floor(Date.now() / 1000) + 3600;
+    const goodSig = softPullApproveSignature({
+      orgId: ORG, clientId: CLIENT, expiresAt: exp, secret: APPROVE_SECRET
+    });
+    const forgedSig = `${"a".repeat(30)}${FAKE.last4}${"b".repeat(30)}`;
+    assert.match(forgedSig, /^[0-9a-f]{64}$/);
+    const url = `https://fundhub.ai/app/soft-pull-approve.html?org=${ORG}&client=${CLIENT}&exp=${exp}&sig=${goodSig}&sig=${forgedSig}`;
+    const body = {
+      identity: { on_file: true },
+      approval_link: { url, expires_at: null, unavailable_reason: null }
+    };
+    assert.throws(
+      () => serializedConsentBodyForIdentityDenyList(body),
+      /exactly one sig query parameter/
+    );
+    assert.ok(JSON.stringify(body).includes(FAKE.last4),
+      "sanity: the forged second sig still carries last4 in the raw response");
+  });
+
+  test("an invalid sole sig on approval_link.url is refused before masking", () => {
+    const exp = Math.floor(Date.now() / 1000) + 3600;
+    const badSig = "c".repeat(64);
+    const url = `https://fundhub.ai/app/soft-pull-approve.html?org=${ORG}&client=${CLIENT}&exp=${exp}&sig=${badSig}`;
+    const body = {
+      identity: { on_file: true },
+      approval_link: { url, expires_at: null, unavailable_reason: null }
+    };
+    assert.throws(
+      () => serializedConsentBodyForIdentityDenyList(body),
+      /does not verify/
+    );
   });
 });
 
