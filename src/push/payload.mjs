@@ -90,7 +90,7 @@ export const APPROVED_BODIES = Object.freeze({
   payment_past_due: "A payment needs your attention. Open FundHub.",
   statement_close:  "Something on your file needs a look. Open FundHub.",
   document_needed:  "We need a document from you. Open FundHub.",
-  check_in:         "Time for your check-in. Open FundHub.",
+  check_in:         "Time for your check-in. Open Fundhub.",
   call_confirmation: "Please confirm your upcoming call in FundHub.",
   update:           "There is an update on your file. Open FundHub.",
   test:             "Test notification from FundHub."
@@ -122,7 +122,17 @@ export const APPROVED_TITLES = Object.freeze([TITLE]);
     to read. With the flag off it must be one of these exactly, so a client's
     identifiers cannot be smuggled out in a query string either. */
 export const DEFAULT_URL = "/app/client-portal.html";
-export const APPROVED_URLS = Object.freeze([DEFAULT_URL]);
+const LESSON_SLUGS = [
+  "pre-underwriting", "funding-sequence", "apply-yourself", "money-on-the-table",
+  "after-you-say-yes", "bank-said-no", "thirteen-points", "card-paydown",
+  "credit-optimization", "credit-partner", "business-one-two", "blueprint-12-months",
+  "soft-pull", "the-call", "who-we-are", "cost-of-waiting", "the-maximum",
+  "the-money-talk", "tried-before", "blueprint-value", "blueprint-in-action",
+  "your-data-is-safe"
+];
+export const APPROVED_URLS = Object.freeze([
+  DEFAULT_URL, ...LESSON_SLUGS.map((slug) => `/slideshows/${slug}.html`)
+]);
 
 // Staff work alerts use a separate fixed vocabulary. A client ID travels only
 // as tap metadata; names, phone numbers, and survey answers stay in the signed-in

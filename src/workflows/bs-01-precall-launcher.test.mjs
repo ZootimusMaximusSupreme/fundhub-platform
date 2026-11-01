@@ -1,11 +1,16 @@
 import { test } from "node:test";
 import assert from "node:assert";
 import {
-  handle, gridCells, resolveCellKey,
+  handle as actualHandle, gridCells, resolveCellKey, runDeckDrip as actualRunDeckDrip,
+  currentDeckBooking, deckContentReady, deckTime, DECK_SLOTS, DECK_TITLES,
   FUNDING_PREFIX, REPAIR_PREFIX, DAYS, SLOTS, DAILY_SLOTS, KICKOFF_SLOT, KICKOFF_WAIT,
   SMS_BS01_BOOKED, SMS_BS01_PRECALL, SMS_BS01_DAYOF
 } from "./bs-01-precall-launcher.mjs";
 import { pgFake, fakeStep, ev } from "./test-support.mjs";
+
+const handle = (args) => actualHandle({ lessonsEnabled: true, bookingCurrent: async () => true,
+  sendPush: async () => ({ sent: false, reason: "push_not_enabled" }), ...args });
+const runDeckDrip = (args) => actualRunDeckDrip({ enabled: true, bookingCurrent: async () => true, ...args });
 
 // The docs spell each cell `{prefix}-{day}-{slot}-{name}`; the trailing word is
 // theirs, so tests seed a plausible one and the code must find it by prefix rather
@@ -25,8 +30,241 @@ const fundingClient = () => ({ id: "cl-1", org_id: "org-1", email: "a@b.com", ou
 const repairClient = () => ({ id: "cl-1", org_id: "org-1", email: "a@b.com", outcome_tier: "REPAIR_ONLY", custom_fields: {} });
 
 // Far enough that T-48h and the +71h grid are both still in the future.
-const farStart = () => new Date(Date.now() + 80 * 60 * 60 * 1000).toISOString();
+const farStart = () => {
+  const date = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
+  date.setUTCHours(9, 0, 0, 0);
+  return date.toISOString();
+};
 const soonStart = () => new Date(Date.now() + 36 * 60 * 60 * 1000).toISOString();
+
+test("deck plan covers both lanes and selects a distinct lesson for each slot", () => {
+  assert.equal(DECK_SLOTS.length, 17);
+  for (const lane of ["funding", "blueprint"]) {
+    const slugs = DECK_SLOTS.map((slot) => slot[lane]).filter(Boolean);
+    assert.equal(new Set(slugs).size, slugs.length, "a person never sees the same lesson twice");
+    for (const slug of slugs) assert.ok(DECK_TITLES[slug], slug);
+  }
+  assert.equal(new Set(DECK_SLOTS.flatMap((slot) => [slot.funding, slot.blueprint]).filter(Boolean)).size, 22);
+  assert.equal(DECK_SLOTS.filter((slot) => slot.channel === "push").length, 3);
+  const times = DECK_SLOTS.map((_, i) => deckTime("2026-11-10T17:00:00.000Z", i).getTime());
+  assert.ok(times.every((time, i) => !i || time - times[i - 1] >= 60 * 60 * 1000));
+});
+
+test("deck emails use the saved survey lane and live URL", async () => {
+  const db = pgFake({
+    clients: [{ ...fundingClient(), custom_fields: { cf_svy_self_reported_fico: "700-759" } }],
+    templates: [
+      { org_id: "org-1", template_key: "EMAIL-BS-DECK-LESSON", channel: "email",
+        subject: "{{deck_title}}", body: "{{deck_url}}", compliance_passed: true },
+      { org_id: "org-1", template_key: "SMS-BS-DECK", channel: "sms",
+        body: "{{deck_url}}", compliance_passed: true }
+    ]
+  });
+  const pushes = [];
+  const result = await runDeckDrip({ db, step: fakeStep(), orgId: "org-1", clientId: "cl-1",
+    eventId: "evt-decks", startTime: farStart(),
+    sendPush: async (_db, args) => { pushes.push(args.slug); return { sent: true }; } });
+  assert.equal(result.sent.length, 13);
+  assert.equal(db.messages.length, 10);
+  assert.equal(pushes.length, 3);
+  assert.ok(db.messages.some((message) => /\/slideshows\/pre-underwriting\.html/.test(message.rendered_body)));
+  assert.ok(db.messages.some((message) => /\/slideshows\/funding-sequence\.html/.test(message.rendered_body)));
+});
+
+test("push lessons fall back to email when app push is unavailable", async () => {
+  const db = pgFake({ clients: [{ ...fundingClient(), custom_fields: { cf_svy_self_reported_fico: "700-759" } }],
+    templates: [
+      { org_id: "org-1", template_key: "EMAIL-BS-DECK-LESSON", channel: "email",
+        body: "{{deck_url}}", compliance_passed: true },
+      { org_id: "org-1", template_key: "SMS-BS-DECK", channel: "sms",
+        body: "{{deck_url}}", compliance_passed: true }
+    ] });
+  const result = await runDeckDrip({ db, step: fakeStep(), orgId: "org-1", clientId: "cl-1",
+    eventId: "evt-fallback", startTime: farStart(),
+    sendPush: async () => ({ sent: false, reason: "push_not_enabled" }) });
+  assert.equal(result.sent.length, 13);
+  assert.equal(db.messages.length, 13);
+  assert.equal(db.messages.filter((m) => m.channel === "email").length, 11);
+  assert.equal(new Set(db.messages.map((m) => m.rendered_body)).size, 13);
+  assert.equal(result.sent.filter((m) => m.channel === "email").length, 11);
+});
+
+test("a setter correction changes the remaining lane at the next deck wake", async () => {
+  const client = { ...fundingClient(), custom_fields: { cf_svy_self_reported_fico: "700-759" } };
+  const db = pgFake({ clients: [client], templates: [
+    { org_id: "org-1", template_key: "EMAIL-BS-DECK-LESSON",
+      channel: "email", body: "{{deck_url}}", compliance_passed: true },
+    { org_id: "org-1", template_key: "SMS-BS-DECK",
+      channel: "sms", body: "{{deck_url}}", compliance_passed: true }
+  ] });
+  const step = fakeStep();
+  const original = step.sleepUntil;
+  let wakes = 0;
+  step.sleepUntil = async (...args) => {
+    wakes++;
+    if (wakes === 3) client.custom_fields.setter_survey_edits = { cf_svy_self_reported_fico: "500-619" };
+    return original(...args);
+  };
+  await runDeckDrip({ db, step, orgId: "org-1", clientId: "cl-1", eventId: "evt-switch",
+    startTime: farStart(), sendPush: async () => ({ sent: true }) });
+  assert.ok(db.messages.some((message) => /\/slideshows\/thirteen-points\.html/.test(message.rendered_body)));
+  assert.ok(!db.messages.some((message) => /\/slideshows\/pre-underwriting\.html/.test(message.rendered_body)));
+});
+
+test("short notice bookings skip past deck slots and a held call stops remaining sends", async () => {
+  const client = { ...fundingClient(), custom_fields: { cf_svy_self_reported_fico: "700-759" } };
+  const templates = [
+    { org_id: "org-1", template_key: "EMAIL-BS-DECK-LESSON", channel: "email",
+      body: "{{deck_url}}", compliance_passed: true },
+    { org_id: "org-1", template_key: "SMS-BS-DECK", channel: "sms",
+      body: "{{deck_url}}", compliance_passed: true }
+  ];
+  const shortDb = pgFake({ clients: [client], templates });
+  const shortStart = soonStart();
+  const short = await runDeckDrip({ db: shortDb, step: fakeStep(), orgId: "org-1", clientId: "cl-1",
+    eventId: "evt-short", startTime: shortStart, sendPush: async () => ({ sent: true }) });
+  assert.ok(short.sent.length > 0 && short.sent.length <
+    DECK_SLOTS.filter((slot) => slot.funding).length);
+  for (const lesson of short.sent) {
+    assert.ok(deckTime(shortStart, lesson.slot).getTime() - Date.now() >= 60 * 60 * 1000);
+  }
+
+  const heldDb = pgFake({ clients: [client], templates,
+    events: [{ client_id: "cl-1", name: "call.completed" }] });
+  const held = await runDeckDrip({ db: heldDb, step: fakeStep(), orgId: "org-1", clientId: "cl-1",
+    eventId: "evt-held", startTime: farStart(), sendPush: async () => ({ sent: true }) });
+  assert.equal(held.stoppedBecause, "call_held");
+  assert.equal(heldDb.messages.length, 0);
+});
+
+test("approved deck template replaces the old filler email grid", async () => {
+  const db = pgFake({
+    clients: [{ ...fundingClient(), custom_fields: { cf_svy_self_reported_fico: "700-759" } }],
+    templates: [
+      { org_id: "org-1", template_key: "EMAIL-BS-DECK-LESSON", channel: "email",
+        subject: "{{deck_title}}", body: "{{deck_url}}", compliance_passed: true },
+      { org_id: "org-1", template_key: "SMS-BS-DECK", channel: "sms",
+        body: "{{deck_url}}", compliance_passed: true },
+      { org_id: "org-1", template_key: SMS_BS01_PRECALL, channel: "sms",
+        body: "Your call is coming up", compliance_passed: true },
+      ...templatesFor(FUNDING_PREFIX, allCells(FUNDING_PREFIX))
+    ]
+  });
+  const result = await handle({ event: ev("booking.created", {
+    email: "a@b.com", startTime: farStart() }), db, step: fakeStep() });
+  assert.equal(result.decks.sent.length, 13);
+  assert.equal(result.gaps.length, 0);
+  assert.equal(db.messages.filter((m) => m.template_key.startsWith("BS-FUND-")).length, 0);
+  assert.equal(db.messages.filter((m) => m.template_key === "EMAIL-BS-DECK-LESSON").length, 11);
+  assert.equal(db.messages.filter((m) => m.template_key === "SMS-BS-DECK").length, 2);
+});
+
+test("deck lessons stay off and the existing BS-01 grid continues until activation", async () => {
+  const db = pgFake({
+    clients: [{ ...fundingClient(), custom_fields: { cf_svy_self_reported_fico: "700-759" } }],
+    templates: [
+      { org_id: "org-1", template_key: "EMAIL-BS-DECK-LESSON", channel: "email",
+        subject: "{{deck_title}}", body: "{{deck_url}}", compliance_passed: true },
+      { org_id: "org-1", template_key: "SMS-BS-DECK", channel: "sms",
+        body: "{{deck_url}}", compliance_passed: true },
+      { org_id: "org-1", template_key: SMS_BS01_PRECALL, channel: "sms",
+        body: "precall", compliance_passed: true },
+      ...templatesFor(FUNDING_PREFIX, allCells(FUNDING_PREFIX))
+    ]
+  });
+  const result = await actualHandle({ event: ev("booking.created", {
+    email: "a@b.com", startTime: farStart() }), db, step: fakeStep(), lessonsEnabled: false });
+  assert.equal(result.decks.skipped, "deck_lessons_disabled");
+  assert.equal(db.messages.filter((m) => m.template_key.startsWith("BS-FUND-")).length, 18);
+  assert.equal(db.messages.filter((m) => m.template_key === "EMAIL-BS-DECK-LESSON" || m.template_key === "SMS-BS-DECK").length, 0);
+  assert.equal(db.messages.filter((m) => m.channel === "push").length, 0);
+});
+
+test("deck activation needs both approved email and SMS copy", async () => {
+  for (const sms of [null, { org_id: "org-1", template_key: "SMS-BS-DECK",
+    channel: "sms", body: "draft", compliance_passed: false }]) {
+    const db = pgFake({ clients: [{ ...fundingClient(), custom_fields: { cf_svy_self_reported_fico: "700-759" } }],
+      templates: [
+        { org_id: "org-1", template_key: "EMAIL-BS-DECK-LESSON", channel: "email",
+          body: "{{deck_url}}", compliance_passed: true },
+        ...(sms ? [sms] : []),
+        ...templatesFor(FUNDING_PREFIX, allCells(FUNDING_PREFIX))
+      ] });
+    assert.equal(await deckContentReady(db, "org-1"), false);
+    const result = await handle({ event: ev("booking.created", { email: "a@b.com",
+      startTime: farStart() }), db, step: fakeStep() });
+    assert.equal(result.decks.skipped, "deck_template_pending");
+    assert.equal(db.messages.filter((m) => m.template_key.startsWith("BS-FUND-")).length, 18);
+    assert.equal(db.messages.filter((m) => m.template_key === "EMAIL-BS-DECK-LESSON").length, 0);
+  }
+});
+
+test("old booking run stops when the current call has moved or cancelled", async () => {
+  const oldStart = farStart();
+  const movedStart = new Date(new Date(oldStart).getTime() + 60 * 60 * 1000).toISOString();
+  let booking = { status: "rescheduled", starts_at: movedStart, provider_uid: "booking-uid-1" };
+  const db = { async query(sql, params) {
+    assert.match(sql, /FROM bookings/);
+    assert.deepEqual(params, ["org-1", "cl-1"]);
+    return { rows: [booking] };
+  } };
+  const check = () => currentDeckBooking(db, { orgId: "org-1", clientId: "cl-1",
+    bookingUid: "booking-uid-1", startTime: oldStart });
+  assert.equal(await check(), false);
+  booking = { status: "cancelled", starts_at: oldStart, provider_uid: "booking-uid-1" };
+  assert.equal(await check(), false);
+  booking = { status: "booked", starts_at: oldStart, provider_uid: "new-booking-uid" };
+  assert.equal(await check(), false);
+  booking = { status: "booked", starts_at: oldStart, provider_uid: "booking-uid-1" };
+  assert.equal(await check(), true);
+});
+
+test("a moved call is checked before any old-run deck message queues", async () => {
+  const db = pgFake({ clients: [{ ...fundingClient(), custom_fields: { cf_svy_self_reported_fico: "700-759" } }],
+    templates: [{ org_id: "org-1", template_key: "EMAIL-BS-DECK-LESSON",
+      channel: "email", body: "{{deck_url}}", compliance_passed: true }] });
+  const result = await runDeckDrip({ db, step: fakeStep(), orgId: "org-1", clientId: "cl-1",
+    eventId: "old-event", startTime: farStart(), bookingUid: "old-uid",
+    bookingCurrent: async () => false });
+  assert.equal(result.stoppedBecause, "booking_changed");
+  assert.equal(db.messages.length, 0);
+});
+
+test("a push booking change cannot fall back into a stale email", async () => {
+  const db = pgFake({ clients: [{ ...fundingClient(), custom_fields: { cf_svy_self_reported_fico: "700-759" } }],
+    templates: [{ org_id: "org-1", template_key: "EMAIL-BS-DECK-LESSON",
+      channel: "email", body: "{{deck_url}}", compliance_passed: true }] });
+  const result = await runDeckDrip({ db, step: fakeStep(), orgId: "org-1", clientId: "cl-1",
+    eventId: "old-event", startTime: farStart(),
+    sendPush: async () => ({ sent: false, reason: "booking_changed" }) });
+  assert.equal(result.stoppedBecause, "booking_changed");
+  assert.equal(db.messages.length, 0);
+});
+
+test("noon and 3 p.m. calls keep all lane lessons clear of reminders", async () => {
+  for (const [hour, lane, expected] of [[19, "funding", 13], [22, "blueprint", 17]]) {
+    const start = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
+    start.setUTCHours(hour, 0, 0, 0);
+    const db = pgFake({ clients: [{ ...(lane === "funding" ? fundingClient() : repairClient()),
+      custom_fields: { cf_svy_self_reported_fico: lane === "funding" ? "700-759" : "500-619" } }],
+      templates: [
+        { org_id: "org-1", template_key: "EMAIL-BS-DECK-LESSON", channel: "email",
+          body: "{{deck_url}}", compliance_passed: true },
+        { org_id: "org-1", template_key: "SMS-BS-DECK", channel: "sms",
+          body: "{{deck_url}}", compliance_passed: true }
+      ] });
+    const result = await runDeckDrip({ db, step: fakeStep(), orgId: "org-1",
+      clientId: "cl-1", eventId: `evt-spaced-${lane}`, startTime: start.toISOString(),
+      sendPush: async () => ({ sent: true }) });
+    assert.equal(result.sent.length, expected);
+    for (const lesson of result.sent) {
+      const at = deckTime(start, lesson.slot).getTime();
+      for (const lead of [48, 24, 2]) {
+        assert.ok(Math.abs(at - (start.getTime() - lead * 60 * 60 * 1000)) >= 60 * 60 * 1000);
+      }
+    }
+  }
+});
 
 // --- grid shape -------------------------------------------------------------
 
