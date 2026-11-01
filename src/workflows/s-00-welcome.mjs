@@ -1,8 +1,12 @@
 // S-00 — Welcome. Spec 4.1 (2026-08-22).
 // Trigger: entry.captured. Immediate EMAIL-S00-WELCOME + SMS-S00-WELCOME.
 // at-01, s-01, af-02 keep running alongside, and s-02 follows up if the survey stalls.
-// Both messages carry {{survey_resume_link}} (owner-set 2026-10-31): the signed link
+// The email carries {{survey_resume_link}} (owner-set 2026-10-31): the signed link
 // that opens /apply on the question the person is up to (src/survey/resume-link.mjs).
+// The text never does. The link opens the person's saved answers, and the public
+// form can put any phone on an existing lead's email, so a text can reach someone
+// else. The email address is the lead's identity, so the email reaches the owner
+// (review 2026-10-31). sendTemplated drops the link from every text as well.
 
 import { inngest } from "./client.mjs";
 import { db } from "../db.mjs";
@@ -25,11 +29,13 @@ export async function handle({ event, db, step }) {
 
   const orgId = event.orgId;
   const eventId = event.id;
-  const context = () => ({ survey_resume_link: surveyResumeUrl({ orgId, clientId }) });
   const email = await step.run("send-email", () =>
-    sendTemplated(db, { orgId, clientId, channel: "email", templateKey: EMAIL_TEMPLATE_KEY, eventId, context: context() }));
+    sendTemplated(db, {
+      orgId, clientId, channel: "email", templateKey: EMAIL_TEMPLATE_KEY, eventId,
+      context: { survey_resume_link: surveyResumeUrl({ orgId, clientId }) }
+    }));
   const sms = await step.run("send-sms", () =>
-    sendTemplated(db, { orgId, clientId, channel: "sms", templateKey: SMS_TEMPLATE_KEY, eventId, context: context() }));
+    sendTemplated(db, { orgId, clientId, channel: "sms", templateKey: SMS_TEMPLATE_KEY, eventId, context: {} }));
 
   return { done: true, email, sms };
 }
