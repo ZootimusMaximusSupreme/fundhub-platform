@@ -24,15 +24,14 @@ export const SLIDES = Object.freeze([
   ["S-23", "9 Paperwork"], ["S-24", "9 Paperwork"],
 ].map((pair) => Object.freeze(pair)));
 
-/** The legacy practice harness loads no new framework visuals and counts those three slots out. */
-const NEW_VISUAL_ONLY = ["F-01", "F-02", "P-01"];
+/** This harness omits the lender-wall visual; the other new slots draw in its fixture. */
+const NEW_VISUAL_ONLY = ["F-02"];
 export const DECK_LENGTH = SLIDES.length - NEW_VISUAL_ONLY.length;
 
 /** Where a slide sits in the deck as the cockpit header counts it: "<position> / 34". */
-export const positionOf = (code) => SLIDES.findIndex(([c]) => c === code) + 1;
+export const positionOf = (code) => SLIDES.filter(([c]) => c !== "F-02").findIndex(([c]) => c === code) + 1;
 
-/** Slides that show only when their visual draws. The practice tests load no visual file, so a
- *  walker steps over them. */
+/** Slides that show only when their visual draws. */
 export const VISUAL_ONLY = Object.freeze(["F-01", "L-01", "F-02", "P-01", "C-01"]);
 
 /** The slides a funding walker meets: Blueprint and visual-only slides are stepped over. */
