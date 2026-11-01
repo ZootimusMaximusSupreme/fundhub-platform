@@ -32,7 +32,7 @@ Want to reactivate your affiliate stream?
 
  {{cta-link}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -74,7 +74,7 @@ AF1 — Affiliate Activation
 
  – {{sender_name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -128,7 +128,7 @@ AF2 — Affiliate Quickstart
 
  – {{sender_name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -180,7 +180,7 @@ AF3 – Commission Pending Review
 
  – {{sender_name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -230,7 +230,7 @@ AF4 – Affiliate Payout Sent
 
  – {{sender_name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -286,7 +286,7 @@ AF1 – You’re Now an Affiliate
 
  – {{sender_name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -321,7 +321,7 @@ AR-PP1 — Payment Plan Option
 
  – {{sender_name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -355,7 +355,7 @@ AR-PP2 — Payment Plan Confirmed
 
  – {{sender_name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -385,7 +385,7 @@ AR-PP3 — Upcoming Payment Reminder
 
  – {{sender_name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -417,7 +417,7 @@ AR-PP4 — Payment Failed
 
  – {{sender_name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -455,7 +455,7 @@ AR-PP5 — Partial Payment Receipt
 
  – {{sender_name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -499,7 +499,7 @@ AR-PP6 — Paid in Full
 
  – {{sender_name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -533,7 +533,7 @@ AR1 — Invoice Sent
 
  – {{sender_name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -567,7 +567,7 @@ AR2 — Friendly Reminder
 
  – {{sender_name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -601,7 +601,7 @@ AR3 — Firm Reminder
 
  – {{sender_name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -632,7 +632,7 @@ AR4 — Final Notice
 
  – {{sender_name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -699,7 +699,7 @@ Discount Light
 
  Privacy          Unsubscribe
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -766,7 +766,7 @@ Discount Light
 
  Privacy          Unsubscribe
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -833,7 +833,7 @@ Discount Light
 
  Privacy          Unsubscribe
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -900,7 +900,7 @@ Discount Light
 
  Privacy          Unsubscribe
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -967,7 +967,7 @@ Discount Light
 
  Privacy          Unsubscribe
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -1034,7 +1034,7 @@ Discount Light
 
  Privacy          Unsubscribe
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -1101,7 +1101,7 @@ Discount Light
 
  Privacy          Unsubscribe
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -1168,7 +1168,7 @@ Discount Light
 
  Privacy          Unsubscribe
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -1235,7 +1235,7 @@ Discount Light
 
  Privacy          Unsubscribe
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -1302,7 +1302,7 @@ Discount Light
 
  Privacy          Unsubscribe
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -1369,7 +1369,7 @@ Discount Light
 
  Privacy          Unsubscribe
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -1436,7 +1436,7 @@ Discount Light
 
  Privacy          Unsubscribe
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -1503,7 +1503,7 @@ Discount Light
 
  Privacy          Unsubscribe
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -1570,7 +1570,7 @@ Discount Light
 
  Privacy          Unsubscribe
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -1637,7 +1637,7 @@ Discount Light
 
  Privacy          Unsubscribe
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -1704,7 +1704,7 @@ Discount Light
 
  Privacy          Unsubscribe
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -1771,7 +1771,7 @@ Discount Light
 
  Privacy          Unsubscribe
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -1838,7 +1838,7 @@ Discount Light
 
  Privacy          Unsubscribe
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -1905,7 +1905,7 @@ Discount Light
 
  Privacy          Unsubscribe
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -1972,7 +1972,7 @@ Discount Light
 
  Privacy          Unsubscribe
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -2039,7 +2039,7 @@ Discount Light
 
  Privacy          Unsubscribe
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -2106,7 +2106,7 @@ Discount Light
 
  Privacy          Unsubscribe
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -2173,7 +2173,7 @@ Discount Light
 
  Privacy          Unsubscribe
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -2240,7 +2240,7 @@ Discount Light
 
  Privacy          Unsubscribe
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -2307,7 +2307,7 @@ Discount Light
 
  Privacy          Unsubscribe
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -2374,7 +2374,7 @@ Discount Light
 
  Privacy          Unsubscribe
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -2441,7 +2441,7 @@ Discount Light
 
  Privacy          Unsubscribe
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -2508,7 +2508,7 @@ Discount Light
 
  Privacy          Unsubscribe
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -2575,7 +2575,7 @@ Discount Light
 
  Privacy          Unsubscribe
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -2642,7 +2642,7 @@ Discount Light
 
  Privacy          Unsubscribe
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -2709,7 +2709,7 @@ Discount Light
 
  Privacy          Unsubscribe
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -2755,7 +2755,7 @@ LT-Cold-2 – Cold Nurture Email #2
 
  – {{sender_name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -2801,7 +2801,7 @@ RC3 – 2-Hour Reminder (Repair Review)
 
  FundHub.ai
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -2838,7 +2838,7 @@ FundHub.ai
 
  FundHub.ai — Document Verification Department
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -2882,7 +2882,7 @@ FundHub.ai
 
  FundHub.ai • Document Verification Team
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -2927,11 +2927,11 @@ D3 – Urgent Reminder (File On Hold)
  Thanks for your quick attention,
 
  {{sender_name}}
-Josh at Fundhub
+Chris at Fundhub
 
  FundHub.ai • Document Verification Department
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -2972,11 +2972,11 @@ D4 – Final Document Request
  Thanks for your quick attention,
 
  {{sender_name}}
-Josh at Fundhub
+Chris at Fundhub
 
  FundHub.ai • Document Verification Department
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -3004,7 +3004,7 @@ FundHub.ai • Funding Intelligence for Entrepreneurs
 
  This is a mechanical control alert (72-hour rule). Do not leave records idle.
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -3027,7 +3027,7 @@ FundHub.ai • Funding Intelligence for Entrepreneurs
  {{user.name}}
  {{location.name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -3055,7 +3055,7 @@ One quick step before we can begin
 
  {{PORTAL_ONBOARDING_LINK}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -3083,7 +3083,7 @@ Funding Round {{custom_fields.funding_round_number}} has been submitted
 
  {{CLIENT_PORTAL_URL}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -3113,7 +3113,7 @@ Approvals are in for Funding Round {{custom_fields.funding_round_number}}
 
  {{CLIENT_PORTAL_URL}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -3143,7 +3143,7 @@ Funding is now locked — here’s what happens next
 
  {{CLIENT_PORTAL_URL}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -3169,7 +3169,7 @@ One item is required to continue
 
  {{UPLOAD_LINK}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -3203,7 +3203,7 @@ Your funding inbox is ready
 
  Once forwarding is set, your file can move faster with fewer missed steps.
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -3251,7 +3251,7 @@ F2 – How Much You Could Actually Get
 
  – {{sender_name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -3304,7 +3304,7 @@ F3 – Roadmap Execution Push
 
  {{sender_name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -3355,7 +3355,7 @@ FC2 – 24-Hour Reminder
 
  {{sender_name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -3395,7 +3395,7 @@ FC3 – 2-Hour Reminder
 
  {{sender_name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -3445,7 +3445,7 @@ FR10 – Round 5 Submitted
 
  FundHub.ai
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -3494,7 +3494,7 @@ FR11 – Round 5 Approvals
 
  FundHub.ai
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -3546,7 +3546,7 @@ FR12 – Round 6 Submitted
 
  FundHub.ai
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -3596,7 +3596,7 @@ FR13 – Round 6 Approvals
 
  FundHub.ai
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -3649,7 +3649,7 @@ FR14 – Round 7 Submitted
 
  FundHub.ai
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -3703,7 +3703,7 @@ FR15 – Round 7 Approvals
 
  FundHub.ai
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -3754,7 +3754,7 @@ FR16 – Round 8 Submitted
 
  FundHub.ai
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -3812,7 +3812,7 @@ FR17 – Round 8 Approvals
 
  FundHub.ai
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -3863,7 +3863,7 @@ FR18 – Round 9 Submitted
 
  FundHub.ai
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -3914,7 +3914,7 @@ FR19 – Round 9 Approvals
 
  – {{sender_name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -3961,7 +3961,7 @@ FR1 – Welcome To Funding Intake
 
  FundHub.ai
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -4013,7 +4013,7 @@ FR20 – Round 10 Submitted
 
  FundHub.ai
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -4068,7 +4068,7 @@ FR21 – Round 10 Approvals
 
  FundHub.ai
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -4126,7 +4126,7 @@ FR22 – Total Funding Locked
 
  FundHub.ai
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -4201,7 +4201,7 @@ FR23 – Post-Funding Monitoring
 
  FundHub.ai
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -4247,7 +4247,7 @@ FR2 – Round 1 Submitted
 
  {{sender_name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -4295,7 +4295,7 @@ FR3 – Round 1 Approvals
 
  FundHub.ai
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -4338,7 +4338,7 @@ FR4 – Round 2 Submitted
 
  – {{sender_name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -4389,7 +4389,7 @@ FR5 – Round 2 Approvals
 
  FundHub.ai
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -4437,7 +4437,7 @@ FR6 – Round 3 Submitted
 
  FundHub.ai
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -4488,7 +4488,7 @@ FR7 – Round 3 Approvals
 
  FundHub.ai
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -4538,7 +4538,7 @@ FR8 – Round 4 Submitted
 
  FundHub.ai
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -4589,7 +4589,7 @@ FR9 – Round 4 Approvals
 
  FundHub.ai
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -4612,7 +4612,7 @@ Funding paused — action needed
  Note: this can extend your timeline until resolved. We’ll confirm next steps on the call.
  {{unsubscribe}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -4644,7 +4644,7 @@ GE1 – Quick Check-In
 
  {{sender_name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -4668,7 +4668,7 @@ GE2 – A Lot Has Changed
  A lot of entrepreneurs are getting approved right now 
  simply because the timing and lender criteria are in their favor.
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -4714,7 +4714,7 @@ LT-Cold-2 – Cold Nurture Email #2
 
  – {{sender_name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -4760,7 +4760,7 @@ LT-Hot-3 – Last Call Before Calendar Purge
 
  – {{sender_name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -4812,7 +4812,7 @@ LT-Warm-1 – Warm Nurture #1
 
  {{sender_name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -4861,7 +4861,7 @@ LT-Warm-3 – Warm Nurture #3
 
  – {{sender_name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -4886,7 +4886,7 @@ A quick insight most people miss
 
  No pressure — just insight you can use when you’re ready.
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -4910,7 +4910,7 @@ A small shift that makes a big difference
 
  No rush — this is here whenever you want to explore further.
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -4940,7 +4940,7 @@ Knowing when to move forward
 
  Whether you act now or later, understanding the landscape is always the first step.
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -4968,7 +4968,7 @@ What comes after funding
 
  Small decisions now shape what’s possible later.
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -4996,7 +4996,7 @@ Protect what you just built
 
  Small habits keep your profile strong long-term.
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -5024,7 +5024,7 @@ When “second-wave” funding makes sense
 
  The right timing can change everything — this is about strategy, not speed.
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -5046,7 +5046,7 @@ Quick check-in
 
  No pressure — just a clean next step when you want it.
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -5068,7 +5068,7 @@ Quick Analyzer refresh
 
  If now isn’t the time, no worries — you can re-run it anytime when you’re ready.
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -5106,7 +5106,7 @@ NS3 – Last Chance To Rebook
 
  – {{sender_name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -5151,7 +5151,7 @@ OA1 – Your Approvals Are Sitting Here Waiting
 
  {{sender_name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -5207,7 +5207,7 @@ OA2 – You're Leaving Money On The Table
 
  {{sender_name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -5233,7 +5233,7 @@ P1 — ID Needed
 
  – {{sender_name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -5261,7 +5261,7 @@ P2 — ID / Portal Still Missing
 
  – {{sender_name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -5287,7 +5287,7 @@ P3 — Final Notice (ID / Portal)
 
  – {{sender_name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -5337,7 +5337,7 @@ PC1 – Accepted Offer (Funding)
 
  FundHub.ai
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -5389,7 +5389,7 @@ PC2 – Funding Intake Instructions
 
  FundHub.ai
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -5442,7 +5442,7 @@ PC3 – Didn’t Buy Funding
 
  FundHub.ai
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -5478,7 +5478,7 @@ PC4 – Funding Contract Not Signed
 
  FundHub.ai
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -5526,7 +5526,7 @@ PCR1 – Accepted Repair Offer
 
  FundHub.ai
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -5579,7 +5579,7 @@ PCR2 – Repair Intake Instructions
 
  FundHub.ai
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -5627,7 +5627,7 @@ PCR3 – Didn’t Buy Repair
 
  FundHub.ai
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -5671,7 +5671,7 @@ PCR4 – Repair Contract Not Signed
 
  FundHub.ai
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -5699,7 +5699,7 @@ Repair Round {{custom_fields.repair_round_number}} is in motion
 
  {{CLIENT_PORTAL_URL}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -5723,7 +5723,7 @@ Repair Round {{custom_fields.repair_round_number}} is underway
 
  {{CLIENT_PORTAL_URL}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -5747,7 +5747,7 @@ Repair Round {{custom_fields.repair_round_number}} is underway
 
  {{CLIENT_PORTAL_URL}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -5771,7 +5771,7 @@ Repair Round {{custom_fields.repair_round_number}} is underway
 
  {{CLIENT_PORTAL_URL}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -5795,7 +5795,7 @@ Repair Round {{custom_fields.repair_round_number}} is underway
 
  {{CLIENT_PORTAL_URL}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -5819,7 +5819,7 @@ Repair Round {{custom_fields.repair_round_number}} is underway
 
  {{CLIENT_PORTAL_URL}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -5845,7 +5845,7 @@ Your file has entered legal review
 
  Updates will appear in your portal as your file progresses.
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -5868,7 +5868,7 @@ Your legal case has concluded
 
  Please keep an eye on your portal for any final notes tied to completion.
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -5906,7 +5906,7 @@ RC1 – Repair Call Confirmed
 
  {{sender_name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -5954,7 +5954,7 @@ RC2 – 24-Hour Reminder (Repair Review)
 
  FundHub.ai
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -6006,7 +6006,7 @@ RER2 – A Lot Has Changed Since Your Last Analysis
 
  – {{sender_name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -6050,7 +6050,7 @@ RER3 – Final Notice Before Archive
 
  {{sender_name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -6097,7 +6097,7 @@ RNS1 – Missed Repair Strategy Call
 
  {{sender_name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -6149,7 +6149,7 @@ RNS2 – Your Credit File Can't Sit Like This
 
  FundHub.ai
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -6194,7 +6194,7 @@ RNS3 – Last Chance To Get Back On Track
 
  FundHub.ai
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -6250,7 +6250,7 @@ OA3 – Your File Is Expiring Soon
 
  {{sender_name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -6297,7 +6297,7 @@ RP2 – What's Blocking Your Funding Right Now
 
  FundHub.ai
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -6347,7 +6347,7 @@ S-01 – New Lead Intake
 
  FundHub.ai
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -6359,7 +6359,7 @@ FundHub.ai • Funding Intelligence for Entrepreneurs
 
 [DRAFT — KILLED] Owner 2026-08-14: S-02 incomplete nudge retired. Underwrite IQ is a CRS soft-pull engine — there is no customer “incomplete Underwrite IQ” state. Do not approve or send.
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -6400,7 +6400,7 @@ S-03 – Incomplete Booking
 
  {{sender_name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -6433,7 +6433,7 @@ Reminder: Your call is coming up
  Need to cancel?
  Cancel Appointment
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -6474,7 +6474,7 @@ S-04 – Appointment Confirmation
 
  {{sender_name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -6515,7 +6515,7 @@ S-05 – No-Show Recovery
 
  FundHub.ai
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -6556,7 +6556,7 @@ S-06 – Application Push
 
  FundHub.ai
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -6590,7 +6590,7 @@ S-07 – Not a Fit Right Now
 
  {{sender_name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -6646,7 +6646,7 @@ S-08 – Long-Term Nurture (Cold 1)
 
  FundHub.ai
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -6690,7 +6690,7 @@ NS2 – Here’s Why You Can’t Ignore This
 
  {{sender_name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -6715,7 +6715,7 @@ Funding paused — action needed
  Note: this may extend your timeline until resolved. We’ll confirm next steps on the call.
  {{unsubscribe}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -6749,7 +6749,7 @@ T1 – Testimonial Request
 
  {{sender_name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -6795,7 +6795,7 @@ T2 – Your Story Matters
 
  {{sender_name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -6832,7 +6832,7 @@ T3 – Final Testimonial Nudge
 
  {{sender_name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -6893,7 +6893,7 @@ Your Fundhub file is complete — audit, letters, roadmap, and portal access ins
  — The Fundhub Team
  (HTML send body lives in db/seed/009_u02_funding_delivery_template.sql — table layout + button for Gmail/Outlook/Apple Mail.)
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -6951,7 +6951,7 @@ EMAIL — UnderwriteIQ Repair Delivery
 
  FundHub.ai
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -6973,7 +6973,7 @@ Quick action needed to finish your results
 
  {{cta-link}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -7040,7 +7040,7 @@ Discount Light
 
  Privacy          Unsubscribe
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -7085,7 +7085,7 @@ LT-Cold-3 – Cold Nurture #3
 
  – {{sender_name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -7142,7 +7142,7 @@ F1 – Fundable Roadmap
 
  FundHub.ai
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -7179,7 +7179,7 @@ FundHub.ai
 
  FundHub.ai • Smart Funding for Entrepreneurs
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -7228,7 +7228,7 @@ LT-Hot-2 – Hot Nurture #2
 
  – {{sender_name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -7272,7 +7272,7 @@ RER1 – Analyzer Re-Run Required
 
  {{sender_name}}
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -7316,7 +7316,7 @@ RP3 – Fix This → Unlock Funding Faster
 
  FundHub.ai
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -7340,7 +7340,7 @@ Your advisor will walk you through what that looks like and what your projected 
 
 {{sender_name}} FundHub.ai
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -7368,7 +7368,7 @@ Get started here: {{custom_values.booking_link}}
 
 {{sender_name}} FundHub.ai
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -7400,7 +7400,7 @@ And if at any point you'd rather have our team run this instead of doing it your
 
 {{sender_name}} FundHub.ai
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs
@@ -7424,7 +7424,7 @@ If your situation changed and now isn't the right time, just reply and let me kn
 
 {{sender_name}} FundHub.ai
 
-– Josh
+– Chris
 FundHub.ai
 
 FundHub.ai • Funding Intelligence for Entrepreneurs

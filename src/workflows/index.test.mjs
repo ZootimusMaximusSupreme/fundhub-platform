@@ -406,7 +406,7 @@ test("index serves exactly the workflows on disk, and the count is pinned", asyn
      (2026-08-24). Was 62 since S-04C staff booked-call text (2026-08-23). Was 61
      since section 4 (welcome, portal-invite, offer-bucket, doc-collection,
      ar-collections). Was 56 since ghl-doc-document-check (section 2.2). Was 55
-     after repair-bureau-response-reader (WS-C). Was 54 after AI-SET-01 Josh
+     after repair-bureau-response-reader (WS-C). Was 54 after AI-SET-01 Chris
      setter was registered (2026-08-21). Was 53 after the incomplete-survey
      nudge and the inquiry call sweeper were switched on (2026-08-19).
 

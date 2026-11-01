@@ -35,16 +35,18 @@ You do not fix the agent in the same pass. Score. Write the board. Stop.
 
 1. Pick the named live agent (code + name). If Chris did not name one, pick the one this thread already touched. Do not mint a new agent.
 2. Read the Agent Editor row: `agents.prompt` for that `code` (via `src/agents/registry.mjs` `byCode`, or `GET /api/read/agents` / Agent Editor). That string is the script.
-3. If the live row is empty or not ready, say so. A vendor fallback (`vendor/inquiry-remover/src/agents/*.js`) may be what production actually dials (Josh does this in `src/workflows/ai-set-01-josh-setter.mjs`). Load that file only as the **fallback the code uses**, and write `source: vendor_prompt` on the board. Do not paste a script from memory.
+3. If the live row is empty or not ready, say so. A vendor fallback (`vendor/inquiry-remover/src/agents/*.js`) may be what production actually dials (the AI setter does this in `src/workflows/ai-set-01-josh-setter.mjs`). Load that file only as the **fallback the code uses**, and write `source: vendor_prompt` on the board. Do not paste a script from memory.
 4. Read `src/agents` for how this agent is selected, triggered, and sent (`runtime.mjs`, `select.mjs`, the workflow that fires it). Trigger order is code + intended journey, not a guess.
 
 Common map (still read the intended file — do not skip it):
 
 | Agent | Code | Intended journey |
 |---|---|---|
-| Setter Josh | `AG-04` | `docs/journeys/client-intended.md` |
+| Setter Chris | `AG-04` | `docs/journeys/client-intended.md` |
 | Inquiry Removal AI | `AG-09` | `docs/journeys/role-inquiry-remover-intended.md` |
 | Doc-chase / Document Check | `GHL-DOC` / `AG-06` / `f-02-doc-chase` | `docs/journeys/client-intended.md` |
+
+The setter's name is Chris on every screen, text, email and call. Law: no-josh-chris-everywhere (.ai/rules/no-josh-chris-everywhere.md).
 
 If the intended file has **no talk or event sequence** for this agent, journey-sequence is **UNVERIFIED**. Overall cannot be PASS. Write that gap. Do not invent steps to make a green score.
 

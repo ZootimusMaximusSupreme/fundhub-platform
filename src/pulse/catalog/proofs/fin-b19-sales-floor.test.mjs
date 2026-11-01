@@ -39,7 +39,7 @@ const FLOOR = {
       { belief: "doubt", label: 'Doubt \u00b7 "I could do this myself"', this_count: 1, last_count: 0 },
     ],
     sources: [
-      { lead_source: "meta", setter_key: "josh", held: 4, close_rate: 0.5, desire: 2 },
+      { lead_source: "meta", setter_key: "chris", held: 4, close_rate: 0.5, desire: 2 },
       { lead_source: "referral", setter_key: "mia", held: 9, close_rate: 0.3, desire: 1 },
       { lead_source: "organic", setter_key: "unknown", held: 1, close_rate: 0, desire: 0 },
     ],
@@ -155,7 +155,7 @@ test("the Flag button stores the top belief by the top source for marketing, and
     assert.equal(page.apiCalls.filter((c) => c.path === "/api/marketing-flags").length, 1);
     assert.equal(post.bearer, "Bearer fake-token");
     assert.deepEqual(JSON.parse(post.body), {
-      belief: "cost", lead_source: "meta", setter_label: "josh", outcome_count: 5,
+      belief: "cost", lead_source: "meta", setter_label: "chris", outcome_count: 5,
       period_start: PERIOD.start, period_end: PERIOD.end,
       note: 'Flagged from sales floor \u2014 Cost \u00b7 "not right now" this period 5 vs last 2',
     });
