@@ -8,7 +8,6 @@ import { pgFake } from "./test-support.mjs";
 import { withReplyRead } from "./stop-on-reply.test-support.mjs";
 import { inngestSim } from "./inngest-sim.mjs";
 import { DRIP_LAST_PLAN_MINUTE, inDripWindow, SEND_WINDOW_TZ } from "../messaging/send-window.mjs";
-import { readSurveyResumeToken } from "../survey/resume-link.mjs";
 
 /* ── The database ───────────────────────────────────────────────────────────────────────────────
    pgFake answers the shared reads (clients, templates, messages, the cohort, bookings), and
@@ -21,18 +20,32 @@ function withReads(inner, sim) {
   wrapped.sentLog = [];
   wrapped.query = async (sql, params = []) => {
     const text = String(sql);
+    if (/SELECT MAX\(m.created_at\)::text AS completed_at/.test(text)) {
+      const [eventId, orgId, clientId, keys, allKeys] = params;
+      const source = inner.events.find((e) => e.id === eventId && e.org_id === orgId);
+      const sourceAt = Date.parse(source?.created_at);
+      const pending = wrapped.sentLog.some((m) => m.client_id === clientId && allKeys.includes(m.template_key)
+        && m.at < sourceAt && m.at > sourceAt - SEQUENCE_WINDOW_MS
+        && (m.status == null || ["queued", "sending"].includes(m.status)
+          || (["sent", "delivered"].includes(m.status) && m.lastAttemptAt >= sourceAt)));
+      const prior = wrapped.sentLog
+        .filter((m) => !pending && m.client_id === clientId && keys.includes(m.template_key)
+          && ["sent", "delivered"].includes(m.status) && (m.lastAttemptAt ?? m.at) < sourceAt)
+        .sort((a, b) => b.at - a.at)[0];
+      return { rows: [{ completed_at: prior ? iso(prior.at) : null }] };
+    }
     if (/template_key = ANY\(\$3\)/.test(text)) {
-      const [, clientId, keys, since, notLike] = params;
-      const suffix = notLike.replace(/^%/, "");
+      // Any resume message sent in the window, by any run (sequenceInFlight, review of PR #346).
+      const [, clientId, keys, since] = params;
       const hit = wrapped.sentLog.some((m) =>
-        m.client_id === clientId && keys.includes(m.template_key) && m.at > Date.parse(since) && !m.provider_ref.endsWith(suffix));
+        m.client_id === clientId && keys.includes(m.template_key) && m.at > Date.parse(since));
       return { rows: hit ? [{ x: 1 }] : [] };
     }
     if (/INSERT INTO messages/.test(text)) {
       const before = inner.messages.length;
       const out = await inner.query(sql, params);
       if (inner.messages.length > before) {
-        wrapped.sentLog.push({ client_id: params[1], template_key: params[3], provider_ref: params[5], at: sim.now() });
+        wrapped.sentLog.push({ client_id: params[1], template_key: params[3], provider_ref: params[5], status: "queued", at: sim.now() });
       }
       return out;
     }
@@ -66,7 +79,7 @@ after(() => { if (savedSecret === undefined) delete process.env.UNSUBSCRIBE_TOKE
 const template = (key) => ({
   org_id: ORG, template_key: key, channel: key.startsWith("SMS") ? "sms" : "email",
   subject: key.startsWith("EMAIL") ? `Subject for ${key}` : null,
-  body: `${key}: Hi {{contact.first_name}}, you stopped at {{survey_stopped_at}}, {{survey_taps_left}} to go: {{survey_resume_link}}`,
+  body: `${key}: Start your questions here: {{survey_resume_link}}`,
   compliance_passed: true
 });
 const lead = (over = {}) => ({
@@ -130,18 +143,19 @@ test("plan: an 11 p.m. opt-in waits for 9 a.m., and the touches still come one a
 
 test("plan: the edges of the window", () => {
   const plan = (iso8601) => resumePlan(Date.parse(iso8601)).map((d) => d.toISOString());
-  // A drip is planned no later than 4:55 p.m. (DRIP_LAST_PLAN_MINUTE in send-window.mjs): the sender sweeps
+  // A drip is planned no later than 4:50 p.m. (DRIP_LAST_PLAN_MINUTE in send-window.mjs): the sender sweeps
   // every 5 minutes, and one swept after 5:00 would be held to 9 a.m. with no new check.
-  // 4:35 p.m. + 20 minutes = 4:55, still inside; 4:36 + 20 = 4:56, the next morning.
-  assert.equal(plan("2026-10-28T23:35:00Z")[0], "2026-10-28T23:55:00.000Z");
-  assert.equal(plan("2026-10-28T23:36:00Z")[0], NINE_AM(29));
+  // 4:30 p.m. + 20 minutes = 4:50, still inside; 4:31 + 20 = 4:51, the next morning.
+  assert.equal(plan("2026-10-28T23:30:00Z")[0], "2026-10-28T23:50:00.000Z");
+  assert.equal(plan("2026-10-28T23:31:00Z")[0], NINE_AM(29));
+  assert.equal(plan("2026-10-28T23:35:00Z")[0], NINE_AM(29), "4:55 p.m. is past the edge now");
   assert.equal(plan("2026-10-28T23:39:00Z")[0], NINE_AM(29), "4:59 p.m.");
   assert.equal(plan("2026-10-28T23:40:00Z")[0], NINE_AM(29), "5:00 p.m.");
   // 8:39 a.m. + 20 = 8:59, outside, so 9:00 today; 8:40 + 20 = 9:00:00, inside.
   assert.equal(plan("2026-10-28T15:39:00Z")[0], NINE_AM(28));
   assert.equal(plan("2026-10-28T15:40:00Z")[0], NINE_AM(28));
   // Touches 2 and 3 are the next two 9 a.m. after touch 1, even when touch 1 is late in the afternoon.
-  assert.deepEqual(plan("2026-10-28T23:35:00Z").slice(1), [NINE_AM(29), NINE_AM(30)]);
+  assert.deepEqual(plan("2026-10-28T23:30:00Z").slice(1), [NINE_AM(29), NINE_AM(30)]);
 });
 
 test("plan: whatever hour they sign up, every touch is inside the drip window and the days are consecutive", () => {
@@ -326,32 +340,25 @@ test("finished is checked first, then a reply, then a booking", async () => {
 
 // ── the words the message carries ────────────────────────────────────────────────────────────────
 
-test("every text and email carries the signed resume link for this person", async () => {
+test("every text and email carries the plain /apply link and never a resume code, even with a signing key", async () => {
+  // Containment (2026-10-31): /apply lets a new phone onto an existing lead's email, so a come-back
+  // text can reach a stranger. The signing key is set (before()), so a code COULD be minted, and is not.
   const w = world({ start: AT_10AM });
   await run(w, optIn(w));
   assert.equal(w.db.messages.length, 6);
-  w.db.messages.forEach((m, i) => {
-    const link = m.rendered_body.match(/https:\/\/apply\.fundhub\.ai\/apply\?r=([A-Za-z0-9_-]+)/);
-    assert.ok(link, `${m.template_key} has the link: ${m.rendered_body}`);
-    assert.deepEqual(
-      readSurveyResumeToken(link[1], { now: () => w.db.sentLog[i].at, secret: SECRET }),
-      { clientId: CLIENT },
-      `${m.template_key}: the token opens this person's file`
-    );
+  for (const m of w.db.messages) {
+    assert.ok(m.rendered_body.endsWith("here: https://apply.fundhub.ai/apply"), `${m.template_key}: ${m.rendered_body}`);
+    assert.ok(!m.rendered_body.includes("?r="), `${m.template_key} carries no resume code`);
     assert.ok(!m.rendered_body.includes("{{"), "no merge tag is left over");
-    assert.ok(m.rendered_body.includes("Hi Pat"), "the other merge tags still work");
-    assert.ok(!m.rendered_body.includes(EMAIL) && !m.rendered_body.includes("5551234567"), "the link holds no email or phone");
-  });
+    assert.ok(!m.rendered_body.includes("Pat"), "the neutral copy carries no saved name");
+  }
 });
 
-test("with no signing key the touches still go, with the plain apply link, and the gap is logged", async () => {
+test("with no signing key the touches still go, with the same plain apply link", async () => {
   const saved = process.env.UNSUBSCRIBE_TOKEN_SECRET;
   const savedDoc = process.env.DOCUMENT_URL_SECRET;
   delete process.env.UNSUBSCRIBE_TOKEN_SECRET;
   delete process.env.DOCUMENT_URL_SECRET;
-  const realWarn = console.warn;
-  const warnings = [];
-  console.warn = (...a) => warnings.push(a.join(" "));
   try {
     const w = world({ start: AT_10AM });
     await run(w, optIn(w));
@@ -360,9 +367,7 @@ test("with no signing key the touches still go, with the plain apply link, and t
       assert.ok(m.rendered_body.includes("https://apply.fundhub.ai/apply"), m.rendered_body);
       assert.ok(!m.rendered_body.includes("?r="), "and it is the plain link");
     }
-    assert.ok(warnings.some((x) => /survey-resume/.test(x)), String(warnings));
   } finally {
-    console.warn = realWarn;
     process.env.UNSUBSCRIBE_TOKEN_SECRET = saved;
     if (savedDoc !== undefined) process.env.DOCUMENT_URL_SECRET = savedDoc;
   }
@@ -375,7 +380,7 @@ test("a key with no approved template row is a no-op for that message, and the r
   assert.deepEqual(keys(w), TOUCH_KEYS.filter((k) => k !== "EMAIL-S02-RESUME-2"));
 });
 
-// ── where they stopped, in words ─────────────────────────────────────────────────────────────────
+// ── saved progress controls stopping, never outbound detail ──────────────────────────────────────
 
 const ANSWERED_THREE = {
   cf_svy_funding_target_amount: "$50k - $100k",
@@ -389,45 +394,49 @@ const ALL_EIGHT = {
 };
 const bodyOf = (w, key) => w.db.messages.find((m) => m.template_key === key).rendered_body;
 
-test("every text and email carries all three tags, worked out from what this person has saved", async () => {
-  const w = world({ start: AT_10AM, clients: [lead({ custom_fields: { ...ANSWERED_THREE } })] });
+test("even a stale template cannot render saved survey progress into a message", async () => {
+  const staleTemplate = (key) => ({ ...template(key),
+    body: `${key}: {{survey_stopped_at}} {{survey_taps_left}} {{survey_resume_link}}` });
+  const w = world({ start: AT_10AM, clients: [lead({ custom_fields: { ...ANSWERED_THREE } })],
+    templates: RESUME_TEMPLATE_KEYS.map(staleTemplate) });
   await run(w, optIn(w));
   assert.equal(w.db.messages.length, 6);
   for (const m of w.db.messages) {
-    assert.ok(m.rendered_body.includes("you stopped at the credit score question, 5 more taps to go:"), m.rendered_body);
-    assert.match(m.rendered_body, /https:\/\/apply\.fundhub\.ai\/apply\?r=[A-Za-z0-9_-]+$/);
+    assert.ok(!m.rendered_body.includes("credit score question"), m.rendered_body);
+    assert.ok(!m.rendered_body.includes("5 more taps"), m.rendered_body);
+    assert.match(m.rendered_body, /https:\/\/apply\.fundhub\.ai\/apply$/, "the plain link (containment 2026-10-31)");
     assert.ok(!m.rendered_body.includes("{{"), "no merge tag is left over");
   }
 });
 
-test("someone who answered nothing is told the first question and all eight taps", async () => {
+test("someone who answered nothing gets the neutral link without saved progress", async () => {
   const w = world({ start: AT_10AM });
   await run(w, optIn(w));
-  assert.ok(bodyOf(w, "SMS-S02-RESUME-1").includes("you stopped at the first question, 8 more taps to go:"), bodyOf(w, "SMS-S02-RESUME-1"));
+  assert.equal(w.db.messages.length, 6);
+  assert.ok(bodyOf(w, "SMS-S02-RESUME-1").includes("Start your questions here: https://apply.fundhub.ai/apply"));
+  assert.ok(!bodyOf(w, "SMS-S02-RESUME-1").includes("first question"));
 });
 
-test("one question left is '1 more tap', and it is the last question", async () => {
+test("one question left still gets a neutral message", async () => {
   const sevenAnswered = { ...ALL_EIGHT };
   delete sevenAnswered.cf_svy_available_capital;
   const w = world({ start: AT_10AM, clients: [lead({ custom_fields: sevenAnswered })] });
   await run(w, optIn(w));
-  assert.ok(bodyOf(w, "EMAIL-S02-RESUME-1").includes("you stopped at the last question, 1 more tap to go:"), bodyOf(w, "EMAIL-S02-RESUME-1"));
-  assert.ok(!bodyOf(w, "EMAIL-S02-RESUME-1").includes("1 more taps"));
+  assert.equal(w.db.messages.length, 6);
+  assert.ok(bodyOf(w, "EMAIL-S02-RESUME-1").includes("Start your questions here: https://apply.fundhub.ai/apply"));
+  assert.ok(!bodyOf(w, "EMAIL-S02-RESUME-1").includes("last question"));
 });
 
-test("the words are worked out when each touch goes out: answers saved in between show in the next one", async () => {
+test("new answers before a later touch still stop a completed survey", async () => {
   const w = world({ start: AT_10AM });
-  // 1:00 a.m. on day 2: three more answered. 1:00 a.m. on day 3: the score, the business question and income.
+  // 1:00 a.m. on day 2: three more answered. 1:00 a.m. on day 3: all remaining answers.
   w.sim.at("2026-10-29T08:00:00Z", () => Object.assign(w.db.clients[0].custom_fields, ANSWERED_THREE));
-  w.sim.at("2026-10-30T08:00:00Z", () => Object.assign(w.db.clients[0].custom_fields, {
-    cf_svy_self_reported_fico: "Not sure", cf_svy_has_business: "No, personal funding only", cf_svy_annual_income_range: "$50k-$99k"
-  }));
-  await run(w, optIn(w));
-  assert.ok(bodyOf(w, "SMS-S02-RESUME-1").includes("you stopped at the first question, 8 more taps to go:"));
-  assert.ok(bodyOf(w, "SMS-S02-RESUME-2").includes("you stopped at the credit score question, 5 more taps to go:"));
-  assert.ok(bodyOf(w, "SMS-S02-RESUME-3").includes("you stopped at the question about showing your income, 2 more taps to go:"));
-  // The text and the email of one touch say the same thing.
-  assert.ok(bodyOf(w, "EMAIL-S02-RESUME-2").includes("you stopped at the credit score question, 5 more taps to go:"));
+  w.sim.at("2026-10-30T08:00:00Z", () => Object.assign(w.db.clients[0].custom_fields, ALL_EIGHT));
+  const res = await run(w, optIn(w));
+  assert.equal(res.stoppedAt, "before-touch-3");
+  assert.equal(res.stoppedBecause, "all_answered");
+  assert.equal(w.db.messages.length, 4);
+  assert.ok(w.db.messages.every((m) => !m.rendered_body.includes("credit score question")));
 });
 
 test("every question answered and no finish on record: nothing is sent, the sequence stops, the person is tagged", async () => {
@@ -514,6 +523,42 @@ test("a lead who comes back long after the last sequence is followed up again", 
   assert.equal(b.done, true);
   assert.equal(b.stoppedBecause, undefined);
   assert.equal(w.db.messages.length, 12, "a fresh sequence of three touches, text and email");
+});
+
+test("a fresh opt-in after touch 3 starts a new sequence even inside the four-day duplicate window", async () => {
+  const w = world({ start: AT_10AM });
+  const first = optIn(w, { id: "evt-a", at: AT_10AM });
+  const fresh = optIn(w, { id: "evt-fresh", at: "2026-10-31T17:00:00.000Z" });
+  const a = await run(w, first);
+  w.db.sentLog.forEach((m) => { m.status = "sent"; });
+  const b = await run(w, fresh);
+  assert.equal(a.stoppedBecause, undefined);
+  assert.equal(b.stoppedBecause, undefined);
+  assert.equal(w.db.messages.length, 12, "the completed old sequence cannot suppress the new opt-in");
+  assert.deepEqual([...new Set(w.db.messages.map((m) => m.provider_ref.split(":").pop()))], ["evt-a", "evt-fresh"]);
+});
+
+test("a queued old touch 3 still blocks a fresh sequence until the old outbox clears", async () => {
+  const w = world({ start: AT_10AM });
+  const first = optIn(w, { id: "evt-a", at: AT_10AM });
+  const fresh = optIn(w, { id: "evt-fresh", at: "2026-10-31T17:00:00.000Z" });
+  await run(w, first);
+  const b = await run(w, fresh);
+  assert.deepEqual(b, { done: false, reason: "sequence_in_flight" });
+  assert.equal(w.db.messages.length, 6, "the old queued touches are the only sequence");
+});
+
+test("an old touch 3 dispatched after the fresh opt-in cannot unlock a second sequence", async () => {
+  const w = world({ start: AT_10AM });
+  const first = optIn(w, { id: "evt-a", at: AT_10AM });
+  const fresh = optIn(w, { id: "evt-fresh", at: "2026-10-31T17:00:00.000Z" });
+  await run(w, first);
+  w.db.sentLog.forEach((m) => { m.status = "sent"; });
+  const oldTouch3 = w.db.sentLog.find((m) => m.template_key === TOUCHES[2].sms);
+  oldTouch3.lastAttemptAt = Date.parse("2026-10-31T17:01:00.000Z");
+  const b = await run(w, fresh);
+  assert.deepEqual(b, { done: false, reason: "sequence_in_flight" });
+  assert.equal(w.db.messages.length, 6);
 });
 
 test("no client means no follow-up", async () => {

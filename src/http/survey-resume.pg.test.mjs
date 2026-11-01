@@ -1,10 +1,10 @@
 /* GET /api/public/survey-resume against a real Postgres.
  *
- * WHY A DATABASE TEST AND NOT ONLY THE FAKE. survey-resume.test.mjs proves what the door
- * decides; it cannot prove the SQL, and the SQL is the company scope: a client id under
- * the wrong company must be a 404, not somebody else's file. A fake that answers the way
- * its author expected proves the author. This goes through netlify/functions/api.mjs, the
- * real front door, so it proves the ROUTES entry as well (a handler file is not a route).
+ * CONTAINMENT (2026-10-31): the door is closed. A good link to a real row is the same 404
+ * with nothing in it as a forged one. /apply lets a new phone onto an existing lead's email
+ * (resolveClient), so a signed code can reach a stranger; the last test replays that on
+ * real rows. This goes through netlify/functions/api.mjs, the real front door, so it
+ * proves the ROUTES entry as well (a handler file is not a route).
  *
  * Every row is built by the test and removed after. The company, the clients and their
  * answers are made up; nothing here touches an existing company.
@@ -14,10 +14,10 @@
  */
 import { test, before, after } from "node:test";
 import assert from "node:assert";
-import pg from "pg";
 import { db, close } from "../db.mjs";
 import { readSurveyResume } from "../../api/public/survey-resume.mjs";
 import { surveyResumeToken } from "../survey/resume-link.mjs";
+import { resolveClient } from "../handlers/client-lifecycle.mjs";
 import { isLocalScratchDatabaseUrl } from "../verification/scratch-guard.mjs";
 
 // Writes and deletes its own rows, so it runs only on a loopback scratch or CI database.
@@ -94,44 +94,35 @@ after(async () => {
   await close();
 });
 
-test("the route is live: a good link is a 200 from the real front door, with the saved contact and answers",
+const PRIVATE = ["pat.resume@survey-resume.test", "5551230001", "Pat", "Lee", "$50k", "Growth", "Stability", "a private note",
+  "facebook", "native.resume", "$100k", "Fresh start", "Olive", "other.resume", "cf_svy"];
+function assertNothingLeaks(text, what) {
+  for (const word of PRIVATE) assert.ok(!text.includes(word), `${what}: "${word}" must not leave the door`);
+}
+
+test("the route is live and closed: the bare GET is the door's own 400, and a good link is a 404 with nothing in it",
   { skip: !HAS_DB }, async () => {
+    const bare = await door("", {});
+    assert.equal(bare.status, 400, "public/survey-resume is missing from the ROUTES map in netlify/functions/api.mjs");
+    assert.deepEqual(await json(bare), { ok: false, error: "token_required" });
+
     const res = await door(`?r=${mint()}`);
-    assert.notEqual(res.status, 404, "public/survey-resume is missing from the ROUTES map in netlify/functions/api.mjs");
-    assert.equal(res.status, 200);
-    assert.equal(res.headers.get("access-control-allow-origin"), PAGE);
+    assert.equal(res.status, 404);
+    assert.equal(res.headers.get("access-control-allow-origin"), PAGE, "the door's own answer, not the router's");
     assert.equal(res.headers.get("cache-control"), "no-store");
-    assert.deepEqual(await json(res), {
-      ok: true,
-      contact: { first_name: "Pat", last_name: "Lee", email: "pat.resume@survey-resume.test", phone: "+15551230001" },
-      answers: {
-        cf_svy_funding_target_amount: "$50k - $100k",
-        cf_svy_planned_use: "Growth (marketing, inventory, hiring)",
-        cf_svy_money_change_now: ["Stability (cover bills / buffer slow weeks)"]
-      },
-      next_key: "cf_svy_self_reported_fico"
-    });
+    const text = await res.text();
+    assert.deepEqual(JSON.parse(text), { ok: false });
+    assertNothingLeaks(text, "a good link");
   });
 
-test("a ClickFunnels lead's answers come back as the words they picked, never as option ids",
-  { skip: !HAS_DB }, async () => {
-    const res = await door(`?r=${mint({ clientId: nativeLead })}`);
-    assert.equal(res.status, 200);
-    const body = await json(res);
-    assert.deepEqual(body.answers, {
-      cf_svy_funding_target_amount: "$100k - $200k",
-      cf_svy_money_change_now: ["Fresh start (new business / startup launch)"]
-    });
-    assert.equal(body.next_key, "cf_svy_planned_use", "planned use has only an id saved, so it is asked again");
-    assert.deepEqual(body.contact, { first_name: "Nat", last_name: "", email: "native.resume@survey-resume.test", phone: "" });
-    assert.ok(!JSON.stringify(body).includes("2078") && !JSON.stringify(body).includes("2079"), "no option id in the body");
-  });
-
-test("nothing but the contact and the answers leaves the door", { skip: !HAS_DB }, async () => {
-  const text = await (await door(`?r=${mint()}`)).text();
-  assert.ok(!text.includes("a private note"));
-  assert.ok(!text.includes("facebook"));
-  assert.deepEqual(Object.keys(JSON.parse(text)).sort(), ["answers", "contact", "next_key", "ok"]);
+test("no client's good link opens anything: a ClickFunnels lead, another company's person", { skip: !HAS_DB }, async () => {
+  for (const [what, clientId] of [["the ClickFunnels lead", nativeLead], ["the other company's person", otherOrgClient]]) {
+    const res = await door(`?r=${mint({ clientId })}`);
+    assert.equal(res.status, 404, what);
+    const text = await res.text();
+    assert.deepEqual(JSON.parse(text), { ok: false }, what);
+    assertNothingLeaks(text, what);
+  }
 });
 
 test("no token is a 400, a bad one is a 404 — and the pulse's bare GET sees the 400", { skip: !HAS_DB }, async () => {
@@ -156,28 +147,7 @@ test("no token is a 400, a bad one is a 404 — and the pulse's bare GET sees th
   }
 });
 
-test("each link opens the client it names, in whichever company they are in; a made-up client is a 404",
-  { skip: !HAS_DB }, async () => {
-    const mine = await door(`?r=${mint()}`);
-    assert.equal((await json(mine)).contact.first_name, "Pat");
-    // The token holds no company. The other company's person has their own link, and it finds their own row.
-    const hers = await door(`?r=${mint({ clientId: otherOrgClient })}`);
-    assert.equal(hers.status, 200);
-    const body = await json(hers);
-    assert.equal(body.contact.first_name, "Olive");
-    assert.equal(body.contact.email, "other.resume@survey-resume.test");
-    assert.deepEqual(body.answers, { cf_svy_planned_use: "Not sure yet" });
-    // Pat's link with the other person's id swapped in is no link at all.
-    const spliced = Buffer.from(otherOrgClient.replace(/-/g, ""), "hex").toString("base64url") + mint().slice(22);
-    const bad = await door(`?r=${spliced}`);
-    assert.equal(bad.status, 404);
-    assert.deepEqual(await json(bad), { ok: false });
-    // A client that was removed after the text went out.
-    const gone = await door(`?r=${mint({ clientId: "11111111-2222-4333-8444-555555555555" })}`);
-    assert.equal(gone.status, 404);
-  });
-
-test("it only reads: the same records, byte for byte, after the calls", { skip: !HAS_DB }, async () => {
+test("it changes nothing: the same records, byte for byte, after the calls", { skip: !HAS_DB }, async () => {
   const snapshot = async () => (await db.query(
     `SELECT id, updated_at, custom_fields, email, phone FROM clients WHERE org_id = ANY($1) ORDER BY id`,
     [[orgId, otherOrgId]])).rows;
@@ -189,27 +159,37 @@ test("it only reads: the same records, byte for byte, after the calls", { skip: 
   assert.deepEqual([await snapshot(), await eventCount()], before);
 });
 
-test("readSurveyResume gives the pulse the same answer with no HTTP, and null for a bad link",
-  { skip: !HAS_DB }, async () => {
-    const found = await readSurveyResume(db, mint(), { secret: SECRET });
-    assert.equal(found.ok, true);
-    assert.equal(found.contact.first_name, "Pat");
-    assert.equal(found.next_key, "cf_svy_self_reported_fico");
-    assert.equal(await readSurveyResume(db, mint({ clientId: "11111111-2222-4333-8444-555555555555" }), { secret: SECRET }), null);
-    assert.equal(await readSurveyResume(db, "nope", { secret: SECRET }), null);
-  });
+test("readSurveyResume gives the pulse null for every link, real rows included", { skip: !HAS_DB }, async () => {
+  for (const t of [mint(), mint({ clientId: nativeLead }), mint({ clientId: otherOrgClient }), "nope"]) {
+    assert.equal(await readSurveyResume(db, t, { secret: SECRET }), null);
+  }
+});
 
-test("the database role the app runs as can make the read the door makes",
-  { skip: !HAS_DB || !process.env.APP_DATABASE_URL }, async () => {
-    // Production connects as fundhub_app, not as the owner that built this fixture. A read the owner can
-    // make and the app cannot would be a door that answers 500 in production and 200 here.
-    const pool = new pg.Pool({ connectionString: process.env.APP_DATABASE_URL, max: 1 });
-    try {
-      const found = await readSurveyResume(pool, mint(), { secret: SECRET });
-      assert.equal(found?.ok, true);
-      assert.equal(found.contact.email, "pat.resume@survey-resume.test");
-      assert.equal(await readSurveyResume(pool, mint({ clientId: "11111111-2222-4333-8444-555555555555" }), { secret: SECRET }), null);
-    } finally {
-      await pool.end();
+test("collision on real rows: a stranger's /apply with a lead's email takes the phone, and the lead's code still opens nothing",
+  { skip: !HAS_DB }, async () => {
+    const lead = await makeClient(orgId, {
+      email: "dana.collision@survey-resume.test", phone: "+15551230009", first: "Dana", last: "Lead",
+      custom: { cf_svy_funding_target_amount: "$100k - $200k", cf_svy_planned_use: "Payroll or rent", cf_svy_self_reported_fico: "580-649" }
+    });
+    // A CRM link already on file, so resolveClient makes no outside call.
+    await db.query(`UPDATE clients SET ghl_contact_id = 'crm-collision-test' WHERE id = $1`, [lead]);
+
+    const id = await resolveClient(db, {
+      orgId, name: "entry.captured",
+      payload: { email: "DANA.COLLISION@survey-resume.test", phone: "(555) 999-0009", name: "Mallory Stranger",
+        source: "clickfunnels", funnel: "apply-survey" }
+    });
+    assert.equal(id, lead, "the email matched the existing lead");
+    const row = (await db.query(`SELECT phone, custom_fields FROM clients WHERE id = $1`, [lead])).rows[0];
+    assert.equal(row.phone, "+15559990009", "the precondition: the lead's texts now go to the stranger's phone");
+    assert.equal(row.custom_fields.cf_svy_planned_use, "Payroll or rent", "the lead's answers are still saved");
+
+    // The exact link the old S-00/S-02 put in that text.
+    const res = await door(`?r=${mint({ clientId: lead })}`);
+    assert.equal(res.status, 404);
+    const text = await res.text();
+    assert.deepEqual(JSON.parse(text), { ok: false });
+    for (const word of ["dana.collision", "5551230009", "5559990009", "Dana", "Mallory", "$100k", "Payroll", "580-649", "cf_svy"]) {
+      assert.ok(!text.includes(word), `"${word}" must not leave the door`);
     }
   });

@@ -40,7 +40,7 @@ Legend: **both homes** = one real file in `.ai/rules`, linked for Cursor and for
 - `finish-the-requested-job` (both homes): Finish approved work through required checks, including the launch release checks; holds the stuck rule and the scope-creep line.
 - `ground-rules` (both homes): Repo-only work, look it up, never invent, and owner decisions are final.
 - `everything-in-the-repo` (both homes): Every approved deliverable is saved in this repository in the same session.
-- `orchestration` (both homes): How parallel workflows coordinate on a shared board after the split.
+- `orchestration` (both homes): Shared-board coordination, one PR owner per file, intake across chats, protected CI/Ship gate.
 - `guardrails` (both homes): Standing engineering guardrails for scope, branches, reuse, and conventions.
 - `journey-documentation` (both homes): Every flow has a hand-authored intended journey and a code-generated actual journey.
 - `owner-authorized-account-ops` (both homes): Use available accounts and tools for approved work without asking again.

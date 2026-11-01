@@ -56,10 +56,12 @@ describe("the 9 a.m. to 5 p.m. Arizona window", () => {
     assert.equal(nextDripWindowOpen(az("2026-12-01T01:00:00Z")).toISOString(), "2026-12-01T16:00:00.000Z");
   });
 
-  test("a drip is planned no later than 4:55 p.m., so the 5-minute sweep sends it before 5", () => {
-    assert.equal(dripSendTime(az("2026-08-01T23:55:00Z")).toISOString(), "2026-08-01T23:55:00.000Z", "4:55 p.m. stays");
-    assert.equal(dripSendTime(az("2026-08-01T23:56:00Z")).toISOString(), "2026-08-02T16:00:00.000Z", "4:56 p.m. waits for 9 a.m.");
+  test("a drip is planned no later than 4:50 p.m., so the 4:55 sweep sends it before 5", () => {
     assert.equal(dripSendTime(az("2026-08-01T23:50:00Z")).toISOString(), "2026-08-01T23:50:00.000Z", "4:50 p.m. stays");
+    assert.equal(dripSendTime(az("2026-08-01T23:50:59Z")).toISOString(), "2026-08-01T23:50:59.000Z", "4:50:59 p.m. stays: the 4:55 sweep sends it");
+    assert.equal(dripSendTime(az("2026-08-01T23:51:00Z")).toISOString(), "2026-08-02T16:00:00.000Z", "4:51 p.m. waits for 9 a.m.");
+    // Review of PR #346: 4:55:59 used to be kept, and the 5:00 sweep held it to 9 a.m. with no new check.
+    assert.equal(dripSendTime(az("2026-08-01T23:55:59Z")).toISOString(), "2026-08-02T16:00:00.000Z", "4:55:59 p.m. waits for 9 a.m.");
   });
 
   test("dripSendTime keeps a time inside the window and moves one outside it", () => {

@@ -19,10 +19,9 @@ import { test, before, after } from "node:test";
 import assert from "node:assert";
 import { db, close } from "../db.mjs";
 import {
-  handle, resumePlan, sequenceInFlight, stopReason, surveyCompleted, RESUME_TEMPLATE_KEYS
+  handle, lastCompletedSequenceAt, resumePlan, sequenceInFlight, stopReason, surveyCompleted, RESUME_TEMPLATE_KEYS, TOUCHES
 } from "./s-02-incomplete-survey-nudge.mjs";
 import { inngestSim } from "./inngest-sim.mjs";
-import { readSurveyResumeToken } from "../survey/resume-link.mjs";
 import { isLocalScratchDatabaseUrl } from "../verification/scratch-guard.mjs";
 
 // Writes and deletes its own rows, so it runs only on a loopback scratch or CI database.
@@ -97,7 +96,7 @@ before(async () => {
       `INSERT INTO message_templates (org_id, template_key, channel, subject, body, compliance_passed)
        VALUES ($1,$2,$3,$4,$5,true)`,
       [orgId, key, key.startsWith("SMS") ? "sms" : "email", key.startsWith("EMAIL") ? `Subject ${key}` : null,
-        `${key}: Hi {{contact.first_name}}, you stopped at {{survey_stopped_at}}, {{survey_taps_left}} to go: {{survey_resume_link}}`]
+        `${key}: Start your questions here: {{survey_resume_link}}`]
     );
   }
 });
@@ -189,11 +188,13 @@ test("replied: a text (no person on the event, the number in the payload) or an 
 
 // ── already running? ─────────────────────────────────────────────────────────────────────────────
 
-test("already running: resume messages from a different opt-in in the last four days, and no others",
+test("already running: resume messages sent in the last four days by any run, and no others",
   { skip: !HAS_DB }, async () => {
     const now = Date.now();
     const since = iso(now - 4 * DAY);
-    const ask = (clientId, cohortId, org = orgId) => sequenceInFlight(db, { orgId: org, clientId, cohortId, since });
+    // The send key no longer matters: the check runs before this run sends anything, so whatever it
+    // finds came from another run (independent review of PR #346, 2026-10-31).
+    const ask = (clientId, _key, org = orgId) => sequenceInFlight(db, { orgId: org, clientId, since });
 
     const fresh = await makeClient(orgId);
     assert.equal(await ask(fresh, "evt-mine"), false, "nothing sent yet");
@@ -201,7 +202,7 @@ test("already running: resume messages from a different opt-in in the last four 
     const sent = await makeClient(orgId);
     await addMessage(orgId, sent, { templateKey: "EMAIL-S02-RESUME-1", providerRef: "workflow:EMAIL-S02-RESUME-1:evt-theirs", at: iso(now - DAY) });
     assert.equal(await ask(sent, "evt-mine"), true, "sent from another opt-in a day ago");
-    assert.equal(await ask(sent, "evt-theirs"), false, "that opt-in is this one: its own messages do not count");
+    assert.equal(await ask(sent, "evt-theirs"), true, "sent under the same send key by an earlier run of this application: still running");
 
     const old = await makeClient(orgId);
     await addMessage(orgId, old, { templateKey: "SMS-S02-RESUME-3", providerRef: "workflow:SMS-S02-RESUME-3:evt-old", at: iso(now - 5 * DAY) });
@@ -271,7 +272,7 @@ const ALL_EIGHT = {
 };
 const KEYS6 = ["EMAIL-S02-RESUME-1", "EMAIL-S02-RESUME-2", "EMAIL-S02-RESUME-3", "SMS-S02-RESUME-1", "SMS-S02-RESUME-2", "SMS-S02-RESUME-3"];
 
-test("a lead who never finishes: six queued messages on real rows, each with a link that opens their file",
+test("a lead who never finishes: six queued messages on real rows, each with the plain /apply link and no resume code",
   { skip: !HAS_DB }, async () => {
     const email = `quits${++seq}@${DOMAIN}`;
     const clientId = await makeClient(orgId, { email, phone: "(555) 010-2001", answers: ANSWERED_THREE });
@@ -287,11 +288,10 @@ test("a lead who never finishes: six queued messages on real rows, each with a l
     for (const r of rows) {
       assert.equal(r.status, "queued", "queued for the dispatcher; this test sends nothing");
       assert.equal(r.provider_ref, `workflow:${r.template_key}:${event.id}`, "one send key per touch, per channel, per opt-in");
-      const link = r.rendered_body.match(/https:\/\/apply\.fundhub\.ai\/apply\?r=([A-Za-z0-9_-]+)/);
-      assert.ok(link, r.rendered_body);
-      assert.deepEqual(readSurveyResumeToken(link[1], { secret: SECRET, now: () => start + 3 * DAY }), { clientId });
-      assert.ok(r.rendered_body.includes("Hi Pat"));
-      assert.ok(r.rendered_body.includes("you stopped at the credit score question, 5 more taps to go:"), r.rendered_body);
+      assert.ok(r.rendered_body.endsWith("here: https://apply.fundhub.ai/apply"), r.rendered_body);
+      assert.ok(!r.rendered_body.includes("?r="), "containment 2026-10-31: no resume code in a follow-up");
+      assert.ok(!r.rendered_body.includes("Pat"), "neutral copy carries no saved name");
+      assert.ok(!r.rendered_body.includes("credit score question"), "neutral copy carries no saved progress");
     }
     assert.ok(rows.filter((r) => r.channel === "sms").every((r) => /^\+1555/.test(r.to_address)), "texts are addressed in E.164");
     assert.deepEqual(sim.sleeps.map((s) => s.until), resumePlan(start).map((d) => d.toISOString()));
@@ -370,6 +370,29 @@ test("two posts of one application share the first post's send key and queue six
     assert.ok(rows.every((r) => r.provider_ref.endsWith(`:${first.id}`)), "both runs keyed on the first post");
   });
 
+/* Independent review of PR #346 (2026-10-31): a visit at 6 p.m. and another at 1 a.m. Arizona are seven
+   hours apart, so they used to fall in different six-hour cohorts. Neither run had sent anything when the
+   other one started, so both passed the in-flight check, slept to 9 a.m. and both sent: twelve messages. */
+test("two visits seven hours apart overnight (6 p.m. and 1 a.m. Arizona) queue six messages, not twelve",
+  { skip: !HAS_DB }, async () => {
+    const email = `overnight${++seq}@${DOMAIN}`;
+    const clientId = await makeClient(orgId, { email, answers: ANSWERED_THREE });
+    // The next 6:00 p.m. Arizona (01:00 UTC, no daylight saving) at least an hour away.
+    const sixPm = new Date(Date.now() + HOUR);
+    sixPm.setUTCMinutes(0, 0, 0);
+    while (sixPm.getUTCHours() !== 1) sixPm.setTime(sixPm.getTime() + HOUR);
+    const evening = sixPm.getTime();
+    const sim = inngestSim(iso(evening));
+    const first = await optIn(clientId, evening, email);
+    const second = await optIn(clientId, evening + 7 * HOUR, email);
+    const [a, b] = await sim.runAll([spec(sim, first), spec(sim, second)]);
+    assert.equal(a.done, true);
+    assert.equal(b.done, true);
+    const rows = await messagesOf(clientId);
+    assert.deepEqual(rows.map((r) => r.template_key).sort(), KEYS6, "one sequence, three touches, no doubles");
+    assert.ok(rows.every((r) => r.provider_ref.endsWith(`:${first.id}`)), "both runs keyed on the first visit");
+  });
+
 test("a lead who comes back through touch 2's link and stops again is not started a second sequence",
   { skip: !HAS_DB }, async () => {
     const email = `returns${++seq}@${DOMAIN}`;
@@ -384,7 +407,65 @@ test("a lead who comes back through touch 2's link and stops again is not starte
     assert.deepEqual((await messagesOf(clientId)).map((r) => r.template_key).sort(), KEYS6, "one sequence, three touches");
   });
 
-test("the words are worked out when each touch goes out, from the answers saved in the real record by then",
+test("a new opt-in after touch 3 gets a new send key inside the four-day window",
+  { skip: !HAS_DB }, async () => {
+    const email = `fresh${++seq}@${DOMAIN}`;
+    const clientId = await makeClient(orgId, { email });
+    const start = Date.now();
+    const sim = inngestSim(iso(start));
+    const first = await optIn(clientId, start, email);
+    const fresh = await optIn(clientId, start + 3 * DAY, email);
+    const [a] = await sim.runAll([spec(sim, first)]);
+    await db.query(`UPDATE messages SET status = 'sent' WHERE org_id = $1 AND client_id = $2 AND template_key = ANY($3)`,
+      [orgId, clientId, RESUME_TEMPLATE_KEYS]);
+    const completedAt = await lastCompletedSequenceAt(db, { eventId: fresh.id, orgId, clientId });
+    assert.ok(completedAt, "the prior touch 3 is fully sent before the fresh opt-in");
+    assert.equal(await sequenceInFlight(db, { orgId, clientId, since: completedAt }), false,
+      "no older sequence message was queued after the completed boundary");
+    const [b] = await sim.runAll([spec(sim, fresh)]);
+    assert.equal(a.stoppedBecause, undefined);
+    assert.equal(b.stoppedBecause, undefined);
+    const rows = await messagesOf(clientId);
+    assert.equal(rows.length, 12, "the completed prior sequence cannot suppress a fresh opt-in");
+    assert.equal(rows.filter((r) => r.provider_ref.endsWith(`:${first.id}`)).length, 6);
+    assert.equal(rows.filter((r) => r.provider_ref.endsWith(`:${fresh.id}`)).length, 6);
+  });
+
+test("a queued old touch 3 blocks a new opt-in inside the four-day window",
+  { skip: !HAS_DB }, async () => {
+    const email = `queued${++seq}@${DOMAIN}`;
+    const clientId = await makeClient(orgId, { email });
+    const start = Date.now();
+    const sim = inngestSim(iso(start));
+    const first = await optIn(clientId, start, email);
+    const fresh = await optIn(clientId, start + 3 * DAY, email);
+    const [a] = await sim.runAll([spec(sim, first)]);
+    const [b] = await sim.runAll([spec(sim, fresh)]);
+    assert.equal(a.stoppedBecause, undefined);
+    assert.deepEqual(b, { done: false, reason: "sequence_in_flight" });
+    assert.equal((await messagesOf(clientId)).length, 6);
+  });
+
+test("an old touch 3 sent after fresh opt-in blocks a second sequence",
+  { skip: !HAS_DB }, async () => {
+    const email = `lateold${++seq}@${DOMAIN}`;
+    const clientId = await makeClient(orgId, { email });
+    const start = Date.now();
+    const sim = inngestSim(iso(start));
+    const first = await optIn(clientId, start, email);
+    const fresh = await optIn(clientId, start + 3 * DAY, email);
+    const [a] = await sim.runAll([spec(sim, first)]);
+    await db.query(`UPDATE messages SET status = 'sent' WHERE org_id = $1 AND client_id = $2 AND template_key = ANY($3)`,
+      [orgId, clientId, RESUME_TEMPLATE_KEYS]);
+    await db.query(`UPDATE messages SET last_attempt_at = $3 WHERE org_id = $1 AND client_id = $2 AND template_key = $4`,
+      [orgId, clientId, iso(start + 3 * DAY + 60_000), TOUCHES[2].sms]);
+    const [b] = await sim.runAll([spec(sim, fresh)]);
+    assert.equal(a.stoppedBecause, undefined);
+    assert.deepEqual(b, { done: false, reason: "sequence_in_flight" });
+    assert.equal((await messagesOf(clientId)).length, 6);
+  });
+
+test("new answers before a later touch still stop a completed survey in Postgres",
   { skip: !HAS_DB }, async () => {
     const email = `progress${++seq}@${DOMAIN}`;
     const clientId = await makeClient(orgId, { email });
@@ -395,15 +476,14 @@ test("the words are worked out when each touch goes out, from the answers saved 
       await db.query(`UPDATE clients SET custom_fields = custom_fields || $2::jsonb WHERE id = $1`, [clientId, JSON.stringify(ANSWERED_THREE)]);
     });
     sim.at(iso(plan[2].getTime() - HOUR), async () => {
-      await db.query(`UPDATE clients SET custom_fields = custom_fields || $2::jsonb WHERE id = $1`, [clientId, JSON.stringify({
-        cf_svy_self_reported_fico: "Not sure", cf_svy_has_business: "Yes, 5+ years", cf_svy_business_revenue: "$500k - $999k"
-      })]);
+      await db.query(`UPDATE clients SET custom_fields = custom_fields || $2::jsonb WHERE id = $1`, [clientId, JSON.stringify(ALL_EIGHT)]);
     });
-    await sim.runAll([spec(sim, await optIn(clientId, start, email))]);
-    const body = async (key) => (await messagesOf(clientId)).find((r) => r.template_key === key).rendered_body;
-    assert.ok((await body("SMS-S02-RESUME-1")).includes("you stopped at the first question, 8 more taps to go:"));
-    assert.ok((await body("EMAIL-S02-RESUME-2")).includes("you stopped at the credit score question, 5 more taps to go:"));
-    assert.ok((await body("SMS-S02-RESUME-3")).includes("you stopped at the question about showing your revenue, 2 more taps to go:"));
+    const [res] = await sim.runAll([spec(sim, await optIn(clientId, start, email))]);
+    assert.equal(res.stoppedAt, "before-touch-3");
+    assert.equal(res.stoppedBecause, "all_answered");
+    const rows = await messagesOf(clientId);
+    assert.equal(rows.length, 4);
+    assert.ok(rows.every((r) => !r.rendered_body.includes("credit score question")));
   });
 
 test("every question answered and no finish on record: nothing is queued, and the person is tagged",

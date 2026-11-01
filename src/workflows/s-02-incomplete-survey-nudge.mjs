@@ -14,16 +14,20 @@
 //   touch 2  9:00 a.m. Arizona on the day after touch 1 really goes out
 //   touch 3  9:00 a.m. Arizona on the day after touch 2
 //
-// Every message carries three merge tags: {{survey_resume_link}}, a signed link that
-// opens /apply on the question where the person stopped (src/survey/resume-link.mjs),
-// {{survey_stopped_at}} ("the credit score question") and {{survey_taps_left}} ("5
-// more taps"), which say it the way a person would (surveyProgressWords in
-// src/survey/resume-state.mjs). The words are the seed's (SMS-S02-RESUME-1..3,
-// EMAIL-S02-RESUME-1..3); this file only sends the keys.
+// The messages link to the plain /apply page. surveyProgressWords still decides
+// whether any questions remain, but progress details are not sent to an unproved
+// phone. The words live in the SMS-S02-RESUME-1..3 and EMAIL-S02-RESUME-1..3
+// templates; this file only sends their keys.
 //
-// THE TWO PROGRESS TAGS ARE WORKED OUT AT SEND TIME, from the answers saved by then,
-// because a person can answer more questions between one touch and the next. A touch
+// Progress is checked at send time from the answers saved by then, because a person
+// can answer more questions between one touch and the next. A touch
 // that finds nothing left to answer does not send: the survey is done.
+//
+// CONTAINMENT (2026-10-31): no signed ?r= code goes in these messages. /apply accepts
+// an existing lead's email with a new phone and writes that phone onto the record
+// (resolveClient), so a come-back text can reach a number nobody has proved belongs to
+// the lead, and a code in it would open that lead's saved answers. The link stays the
+// plain /apply page until a link can prove the person opening it owns the record.
 //
 // EMAIL-S02-FINISH-APPLICATION, the old one-email nudge whose link went to the
 // calendar, is not sent any more. Its template row is left alone.
@@ -48,13 +52,14 @@
 // clock and every touch would slide. A step's answer is recorded on the first pass
 // and handed back unchanged on every replay.
 //
-// ONE SEQUENCE AT A TIME. A person who comes back through the resume link and
+// ONE SEQUENCE AT A TIME. A person who comes back through plain /apply and
 // answers another question fires a new entry.captured (the adapter's six-hour
 // repeat guard has run out), which starts a second run. Its send keys are
 // different (messageCohortId looks back six hours), so without a guard the person
 // would get a second touch 1 on top of the first run's touch 2. A run that finds
 // resume messages already sent to the person in the last four days, from another
-// opt-in, steps aside.
+// opt-in, steps aside. A new opt-in after the prior sequence's final touch starts
+// a new sequence even inside that window.
 //
 // Duplicate runs for ONE opt-in (several ClickFunnels posts, a replayed event)
 // share messageCohortId, so they share one message per touch: the send key is
@@ -67,7 +72,7 @@ import { messageCohortId, sendTemplated } from "./messaging.mjs";
 import { addTags } from "./tags.mjs";
 import { hasBooked } from "./s-nobook-chase.mjs";
 import { hasReplied } from "./stop-on-reply.mjs";
-import { surveyResumeUrl } from "../survey/resume-link.mjs";
+import { RESUME_BASE_URL } from "../survey/resume-link.mjs";
 import { surveyProgressWords } from "../survey/resume-state.mjs";
 import { DRIP_START_HOUR, SEND_WINDOW_TZ, dripSendTime, nextHourStrike } from "../messaging/send-window.mjs";
 
@@ -84,8 +89,35 @@ export const RESUME_TEMPLATE_KEYS = Object.freeze(TOUCHES.flatMap((t) => [t.sms,
 
 export const FIRST_TOUCH_WAIT_MS = 20 * 60 * 1000;
 /* Longer than a whole sequence (the last touch lands at most 2 days and 17 hours
-   after the opt-in), so "sent in the last four days" means "still running". */
+   after the opt-in). The completed-sequence boundary below lets a later fresh
+   opt-in start even while an old touch is inside this duplicate window. */
 export const SEQUENCE_WINDOW_MS = 4 * 24 * 60 * 60 * 1000;
+
+/** The last sent S-02 sequence before this opt-in, with no older touch still pending. */
+export async function lastCompletedSequenceAt(db, { eventId, orgId, clientId }) {
+  const r = await db.query(
+    `SELECT MAX(m.created_at)::text AS completed_at
+       FROM events s
+       JOIN messages m ON m.org_id = s.org_id AND m.client_id = $3
+      WHERE s.id = $1 AND s.org_id = $2 AND s.name = 'entry.captured'
+        AND m.direction = 'outbound'
+        AND m.template_key = ANY($4)
+        AND m.status IN ('sent', 'delivered')
+        AND COALESCE(m.last_attempt_at, m.created_at) < s.created_at
+        AND NOT EXISTS (
+          SELECT 1 FROM messages pending
+           WHERE pending.org_id = s.org_id AND pending.client_id = $3
+             AND pending.direction = 'outbound'
+             AND pending.template_key = ANY($5)
+             AND pending.created_at < s.created_at
+             AND pending.created_at > s.created_at - interval '4 days'
+             AND (pending.status IS NULL OR pending.status IN ('queued', 'sending')
+               OR (pending.status IN ('sent', 'delivered') AND pending.last_attempt_at >= s.created_at))
+        )`,
+    [eventId, orgId, clientId, [TOUCHES[2].sms, TOUCHES[2].email], RESUME_TEMPLATE_KEYS]
+  );
+  return r.rows[0]?.completed_at || null;
+}
 
 /* resumePlan — WHEN each touch really goes out, from the moment of the opt-in.
 
@@ -118,19 +150,21 @@ export async function surveyCompleted(db, clientId, email, orgId = null) {
   return r.rows.some((row) => row.name === "survey.completed");
 }
 
-/* Resume messages already sent to this person from a DIFFERENT opt-in, newer than
-   `since`. Messages of this run's own cohort do not count: their send key ends in
-   `:<cohortId>`. */
-export async function sequenceInFlight(db, { orgId, clientId, cohortId, since }) {
+/* Resume messages already sent to this person, newer than `since`, from any run.
+   It is asked once, before this run sends anything, so a message it finds came from
+   another run: that sequence is already going and this run steps aside. Two runs
+   that both start before either has sent (two visits the same evening) share one
+   send key instead (messageCohortId over SEQUENCE_WINDOW_MS), so the database drops
+   the second copy of each touch. Independent review of PR #346, 2026-10-31. */
+export async function sequenceInFlight(db, { orgId, clientId, since }) {
   const r = await db.query(
     `SELECT 1 FROM messages
       WHERE org_id = $1 AND client_id = $2
         AND direction = 'outbound'
         AND template_key = ANY($3)
         AND created_at > $4
-        AND COALESCE(provider_ref, '') NOT LIKE $5
       LIMIT 1`,
-    [orgId, clientId, RESUME_TEMPLATE_KEYS, since, `%:${cohortId}`]
+    [orgId, clientId, RESUME_TEMPLATE_KEYS, since]
   );
   return r.rows.length > 0;
 }
@@ -166,17 +200,25 @@ export async function handle({ event, db, step, now = () => Date.now() }) {
 
   const plan = await step.run("plan-resume-touches", async () => {
     const startMs = now();
+    const completedAt = await lastCompletedSequenceAt(db, { eventId: event.id, orgId, clientId });
     return {
       startedAt: new Date(startMs).toISOString(),
+      completedAt,
       goesOutAt: resumePlan(startMs).map((at) => at.toISOString()),
-      cohortId: await messageCohortId(db, { eventId: event.id, orgId, clientId, name: "entry.captured" })
+      // One send key for every visit inside the sequence window, so two runs never both send a touch.
+      cohortId: await messageCohortId(db, { eventId: event.id, orgId, clientId, name: "entry.captured", windowMs: SEQUENCE_WINDOW_MS, after: completedAt })
     };
   });
 
+  // Keep Postgres's microseconds for the completed boundary. Date truncates to
+  // milliseconds and would count the final email as still in flight.
+  const windowStart = new Date(Date.parse(plan.startedAt) - SEQUENCE_WINDOW_MS).toISOString();
+  const since = plan.completedAt && Date.parse(plan.completedAt) >= Date.parse(windowStart)
+    ? plan.completedAt : windowStart;
   const crowded = await step.run("check-sequence-in-flight", () =>
     sequenceInFlight(db, {
-      orgId, clientId, cohortId: plan.cohortId,
-      since: new Date(Date.parse(plan.startedAt) - SEQUENCE_WINDOW_MS).toISOString()
+      orgId, clientId,
+      since
     }));
   if (crowded) return { done: false, reason: "sequence_in_flight" };
 
@@ -197,9 +239,7 @@ export async function handle({ event, db, step, now = () => Date.now() }) {
       // Every question is answered: there is nothing to come back to, so nothing goes.
       if (progress.left === 0) return { skipped: "all_answered" };
       const context = {
-        survey_resume_link: surveyResumeUrl({ orgId, clientId, now }),
-        survey_stopped_at: progress.stoppedAt,
-        survey_taps_left: progress.tapsLeft
+        survey_resume_link: RESUME_BASE_URL
       };
       return {
         sms: await sendTemplated(db, {
