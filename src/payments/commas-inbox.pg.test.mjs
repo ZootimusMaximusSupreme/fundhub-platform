@@ -283,6 +283,14 @@ describe("commas inbox (real Postgres)", { skip: !HAS_DB ? "no DATABASE_URL" : f
         assert.equal(replay.deduped, true);
         assert.equal(replay.inboxId, legacy.id);
       }
+      // An older pending row must not swallow the later settled callback.
+      const pendingId = `${tag}_legacy_pending`;
+      const pendingBody = JSON.parse(raw(pendingId, `${tag}_pendingDelivery`, 10));
+      pendingBody.data.status = "pending";
+      const pending = await enqueue(conn, { orgId, paymentId, eventType: "refund.created", rawBody: JSON.stringify(pendingBody) });
+      const settled = await receive(raw(pendingId, `${tag}_settledDelivery`, 10));
+      assert.equal(settled.deduped, false, "a pending legacy refund cannot consume a settled refund");
+      assert.notEqual(settled.inboxId, pending.id);
       assert.equal((await conn.query(
         `SELECT count(*)::int AS n FROM transactions WHERE org_id=$1 AND client_id=$2 AND status='succeeded' AND amount_paid=100`,
         [orgId, clientId]

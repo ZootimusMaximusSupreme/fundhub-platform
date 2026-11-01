@@ -122,7 +122,7 @@ export async function enqueue(db, {
   // bytes are deliberately retained and must not break a JSON cast in SQL.
   if (refundId && String(eventType || "").includes("refund")) {
     const legacy = await db.query(
-      `SELECT id, raw_body, dedupe_key FROM commas_inbox
+      `SELECT id, raw_body, event_type, dedupe_key FROM commas_inbox
         WHERE org_id = $1 AND event_type LIKE '%refund%'
           AND dedupe_key NOT LIKE 'refund:%'`,
       [orgId]
@@ -131,7 +131,8 @@ export async function enqueue(db, {
       try {
         const body = JSON.parse(row.raw_body);
         const data = (body?.data && (body.data.object || body.data)) || body;
-        if (typeof data?.refund_id === "string" && data.refund_id.trim() === refundId) {
+        if (typeof data?.refund_id === "string" && data.refund_id.trim() === refundId &&
+            isSettledRefund(row.event_type, data.status)) {
           return { id: row.id, deduped: true, dedupeKey: row.dedupe_key };
         }
       } catch { /* Retain malformed legacy bytes; they cannot prove identity. */ }
