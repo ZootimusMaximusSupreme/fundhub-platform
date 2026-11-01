@@ -913,7 +913,15 @@ test("a live pull row: the old fields stay empty, engine.visual carries the engi
   const v = out.engine.visual;
   assert.ok(v, "engine.visual must exist");
   assert.equal(v.source, "engine");
+  assert.equal(v.pulledOn, "2026-03-11");
   assert.equal(v.todayTotal, out.engine.total, "todayTotal is the existing engine.total");
+  const closerResult = createRequire(import.meta.url)("../../vendor/underwriteiq-full/api/lite/crs/build-closer-result.js")
+    .buildCloserResult(priced.tierResult);
+  assert.deepEqual(v.lenderReach, {
+    now: closerResult.lenderReach.availableNow,
+    after: closerResult.lenderReach.afterOptimization
+  });
+  assert.equal(v.availableCredit, null, "an open card without a limit withholds the card headroom total");
   assert.equal(v.tierNow, "FUNDING_PLUS_REPAIR");
   assert.equal(v.tierAfter, "FULL_FUNDING");
   assert.ok(v.optimizedTotal > v.todayTotal, "the once-fixed amount the old fields cannot give");
@@ -924,6 +932,9 @@ test("a live pull row: the old fields stay empty, engine.visual carries the engi
 test("engine.visual is present on every deck, and empty when there is no pull", async () => {
   const none = await buildCloserDeck(fakeDb({ client: CLIENT }), { orgId: ORG, clientId: CID });
   assert.equal(none.engine.visual.source, "none");
+  assert.equal(none.engine.visual.pulledOn, null);
+  assert.equal(none.engine.visual.availableCredit, null);
+  assert.equal(none.engine.visual.lenderReach, null);
   assert.equal(none.engine.visual.todayTotal, null);
   assert.equal(none.engine.visual.optimizedTotal, null);
   assert.deepEqual(none.engine.visual.cards, []);
@@ -946,6 +957,9 @@ test("engine.visual is present on every deck, and empty when there is no pull", 
   }), { orgId: ORG, clientId: CID });
   assert.equal(stored.engine.afterFix, 214000, "the old field is left as it was");
   assert.equal(stored.engine.visual.source, "none");
+  assert.equal(stored.engine.visual.pulledOn, null);
+  assert.equal(stored.engine.visual.availableCredit, null);
+  assert.equal(stored.engine.visual.lenderReach, null);
   assert.equal(stored.engine.visual.todayTotal, 127500);
   assert.equal(stored.engine.visual.optimizedTotal, null);
 });
