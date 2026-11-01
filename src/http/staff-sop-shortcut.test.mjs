@@ -21,13 +21,15 @@ function objectBetween(text, begin, end) {
 const pages = objectBetween(shell, "var SOP_CONTEXT_BY_SCREEN = ", ";\n  var SOP_STAFF_ROLES");
 const guides = objectBetween(brain, "var SOP_GUIDES = ", ";\n  var sopTopic");
 const roles = objectBetween(shell, "var SOP_STAFF_ROLES = ", ";\n\n  function mountSopShortcut");
+const workSteps = objectBetween(shell, "var SOP_TASK_LINKS = ", ";\n\n  function mountSopAtWorksteps");
 
 test("every named staff working desk has a matching Company Brain SOP topic and real shell", () => {
   const expected = [
     "setter-dashboard.html", "closer-dashboard.html", "bank-outreach.html",
     "lenders.html", "inquiry-remover.html", "client-control-panel.html",
     "csm-queue.html", "pipeline.html", "sales-floor.html", "ops-admin.html",
-    "finance-os.html", "messaging.html"
+    "finance-os.html", "messaging.html", "calendar.html", "documents.html",
+    "my-numbers.html", "staff-teams.html", "contracts.html", "consent-capture.html"
   ];
   assert.deepEqual(Object.keys(pages).sort(), expected.sort());
   for (const [screen, topic] of Object.entries(pages)) {
@@ -37,6 +39,25 @@ test("every named staff working desk has a matching Company Brain SOP topic and 
     assert.ok(guides[topic].title && guides[topic].description && guides[topic].prompt);
   }
   assert.equal(new Set(Object.values(pages)).size, Object.keys(pages).length, "ambiguous shared SOP keys");
+});
+
+test("every staff workstep shortcut points to a finite approved-document search topic", () => {
+  assert.deepEqual(Object.keys(workSteps).sort(), Object.keys(pages).sort());
+  let count = 0;
+  for (const [screen, specs] of Object.entries(workSteps)) {
+    assert.ok(Array.isArray(specs) && specs.length > 0, screen + " needs real work links");
+    for (const spec of specs) {
+      count++;
+      assert.ok(typeof spec.selector === "string" && spec.selector.length > 2);
+      assert.ok(typeof spec.topic === "string" && guides[spec.topic], "missing SOP guide " + spec.topic);
+      assert.ok(typeof spec.label === "string" && /SOP$/.test(spec.label));
+      assert.ok(!/[?&#]/.test(spec.topic), "no arbitrary query strings");
+    }
+  }
+  assert.ok(count >= 25, "show SOPs beside the actual employee work");
+  assert.match(shell, /mountSopAtWorksteps\(\)/);
+  assert.match(shell, /\.fh-step-sop/);
+  assert.match(shell, /class="fh-sop-label">SOPs<\/span>/);
 });
 
 test("shortcut is gated to the exact existing Company Brain STAFF roles, never external principals", () => {
