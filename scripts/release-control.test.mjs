@@ -50,6 +50,28 @@ test('new overlapping PR is blocked, legacy Monday queue is not',()=>{
   assert.equal(prOwnershipDecision({...input,peers:[{...older,state:'closed'},later]}).ok,true);
   assert.equal(prOwnershipDecision({...input,files:['src/new.mjs']}).ok,true);
 });
+test('stack parent and grandparent may share files; unrelated older PR still blocks',()=>{
+  const repo={full_name:'ZootimusMaximusSupreme/fundhub-platform'};
+  const current={number:460,state:'open',created_at:'2026-11-03T13:00:00Z',
+    body:'Owner lane: ci',base:{ref:'second-change',repo}};
+  const parent={number:459,state:'open',created_at:'2026-11-03T12:00:00Z',
+    head:{ref:'second-change',repo},base:{ref:'first-change',repo}};
+  const grandparent={number:458,state:'open',created_at:'2026-11-03T11:00:00Z',
+    head:{ref:'first-change',repo},base:{ref:'main',repo}};
+  const unrelated={number:457,state:'open',created_at:'2026-11-03T10:00:00Z',
+    head:{ref:'other-change',repo},base:{ref:'main',repo}};
+  const input={current,files:['scripts/shared.mjs'],
+    peers:[parent,grandparent,unrelated],
+    peerFiles:{459:['scripts/shared.mjs'],458:['scripts/shared.mjs'],457:['scripts/shared.mjs']}};
+  assert.equal(prOwnershipDecision({...input,peers:[parent]}).ok,true);
+  assert.equal(prOwnershipDecision({...input,peers:[parent,grandparent]}).ok,true);
+  assert.deepEqual(prOwnershipDecision(input).blockers.map(x=>x.number),[457]);
+  assert.equal(prOwnershipDecision(input).ok,false);
+  assert.deepEqual(prOwnershipDecision({...input,peers:[{...parent,state:'closed'},grandparent]})
+    .blockers.map(x=>x.number),[458]);
+  assert.deepEqual(prOwnershipDecision({...input,peers:[{...parent,head:{...parent.head,
+    repo:{full_name:'someone/fork'}}}]}).blockers.map(x=>x.number),[459]);
+});
 test('workflow source keeps PR guard read-only and ship behind CI',()=>{
   const root=fileURLToPath(new URL('../',import.meta.url));
   const ship=readFileSync(root+'/.github/workflows/ship.yml','utf8');

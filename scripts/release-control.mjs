@@ -49,16 +49,28 @@ export function prOwnershipDecision({current,files,peers,peerFiles,cutover=NEW_P
   const isNew=Date.parse(current?.created_at??'')>=Date.parse(cutover);
   const lane=ownerLane(current?.body);
   const fileSet=new Set((files||[]).filter(f=>typeof f==='string'&&f.length));
+  const openPeers=(peers||[]).filter(pr=>pr?.state==='open'&&pr.number!==current?.number);
+  const ancestors=new Set(), visited=new Set();
+  const repo=current?.base?.repo?.full_name;
+  let baseRef=current?.base?.ref;
+  while(baseRef&&baseRef!=='main'&&!visited.has(baseRef)) {
+    visited.add(baseRef);
+    const matches=openPeers.filter(pr=>pr.head?.ref===baseRef&&
+      (!repo||pr.head?.repo?.full_name===repo));
+    if(matches.length!==1)break;
+    const parent=matches[0];
+    ancestors.add(parent.number);
+    baseRef=parent.base?.ref;
+  }
   const overlaps=[];
-  for(const pr of peers||[]) {
-    if(!pr||pr.number===current?.number||pr.state!=='open')continue;
+  for(const pr of openPeers) {
     const shared=(peerFiles?.[pr.number]||[]).filter(p=>fileSet.has(p));
     if(!shared.length)continue;
     const isOlder=Date.parse(pr.created_at??'')<Date.parse(current?.created_at??'')||
       (pr.created_at===current?.created_at&&pr.number<current.number);
     overlaps.push({number:pr.number,title:pr.title||'',files:[...new Set(shared)].sort(),isOlder});
   }
-  const blockers=isNew?overlaps.filter(x=>x.isOlder):[];
+  const blockers=isNew?overlaps.filter(x=>x.isOlder&&!ancestors.has(x.number)):[];
   const problems=[];
   if(isNew&&!lane)problems.push('Add Owner lane: <team-name> to PR description');
   if(blockers.length)problems.push('Files are already claimed by older open PRs');
