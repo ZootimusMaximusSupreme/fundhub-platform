@@ -37,6 +37,8 @@ export async function onPaymentReceivedForLink(event, db) {
   // Whop settles its own saved link after checking the signed checkout identity.
   // Its pay_ reference must never enter the Commas session column.
   if (event.source === "whop" || p.source === "whop" || p.provider === "whop") return;
+  // A paid checkout transition requires its canonical tenant.
+  if (!event.orgId) return;
   const paidAmountCents = p.amount != null ? toCents(p.amount) : null;
   /* Commas ids only. p.productId is OUR products.id, copied off the link by
      processCommasInboxRow — every deposit link shares one. Writing it into
@@ -47,6 +49,7 @@ export async function onPaymentReceivedForLink(event, db) {
 
   if (p.ref) {
     const byRef = await markPaid(db, {
+      orgId: event.orgId,
       linkRef: p.ref,
       commasSessionId: sessionId || p.providerRef || null,
       paidAmountCents
@@ -60,6 +63,7 @@ export async function onPaymentReceivedForLink(event, db) {
 
   if (sessionId) {
     const bySession = await markPaidBySession(db, {
+      orgId: event.orgId,
       commasSessionId: sessionId,
       paidAmountCents
     });
@@ -75,7 +79,9 @@ export async function onPaymentReceivedForLink(event, db) {
      above. Read the link and finish the grant; it is a no-op if already done. */
   if (p.ref) {
     const link = await getByLinkRef(db, { linkRef: p.ref });
-    if (link && link.status === "paid") await turnOnFinanceOsIfSetup(db, link);
+    if (link && String(link.org_id) === String(event.orgId) && link.status === "paid") {
+      await turnOnFinanceOsIfSetup(db, link);
+    }
   }
 }
 

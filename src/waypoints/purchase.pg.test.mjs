@@ -20,7 +20,7 @@ import { db, close } from "../db.mjs";
 import { emit, _resetOrgCache } from "../events/bus.mjs";
 import { clearHandlers } from "../events/registry.mjs";
 import { register as registerLifecycle } from "../handlers/client-lifecycle.mjs";
-import { register as registerMoneyChain } from "../handlers/money-chain.mjs";
+import { register as registerMoneyChain, ensureSale } from "../handlers/money-chain.mjs";
 import { resolveDefaultOrg } from "../auth/org.mjs";
 import { buildPayload } from "../../scripts/sim/push-credit.mjs";
 
@@ -76,21 +76,25 @@ async function deleteClients(ids) {
      idx_entitlements_grant_unique. Measured, not guessed: that is the error
      this ordering fixes. */
   const guarded = ["entitlements", "commission_ledger"];
-  const ordered = [
-    ...kids.filter((k) => guarded.includes(k.tbl.replace(/^public\./, ""))),
-    ...kids.filter((k) => !guarded.includes(k.tbl.replace(/^public\./, "")))
-  ];
-  for (const k of ordered) {
+  // Clear protected client ledgers before their referenced sale/transaction rows.
+  for (const k of kids.filter((x) => guarded.includes(x.tbl.replace(/^public\./, "")))) {
     const tbl = k.tbl.replace(/^public\./, "");
-    if (guarded.includes(tbl)) {
-      await db.query(`ALTER TABLE ${tbl} DISABLE TRIGGER USER`);
-      try {
-        await db.query(`DELETE FROM ${k.tbl} WHERE ${k.col} = ANY($1::uuid[])`, [ids]);
-      } finally {
-        await db.query(`ALTER TABLE ${tbl} ENABLE TRIGGER USER`);
-      }
-      continue;
+    await db.query(`ALTER TABLE ${tbl} DISABLE TRIGGER USER`);
+    try {
+      await db.query(`DELETE FROM ${k.tbl} WHERE ${k.col} = ANY($1::uuid[])`, [ids]);
+    } finally {
+      await db.query(`ALTER TABLE ${tbl} ENABLE TRIGGER USER`);
     }
+  }
+  // Synthetic receipts have no direct client FK; preserve transaction/sale FK order.
+  await db.query(`DELETE FROM sale_payments WHERE
+    sale_id IN (SELECT id FROM sales WHERE client_id = ANY($1::uuid[])) OR
+    transaction_id IN (SELECT id FROM transactions WHERE client_id = ANY($1::uuid[]))`, [ids]);
+  await db.query(`DELETE FROM sale_attributions WHERE
+    sale_id IN (SELECT id FROM sales WHERE client_id = ANY($1::uuid[]))`, [ids]);
+  await db.query(`DELETE FROM funding_round_sales WHERE
+    sale_id IN (SELECT id FROM sales WHERE client_id = ANY($1::uuid[]))`, [ids]);
+  for (const k of kids.filter((x) => !guarded.includes(x.tbl.replace(/^public\./, "")))) {
     await db.query(`DELETE FROM ${k.tbl} WHERE ${k.col} = ANY($1::uuid[])`, [ids]);
   }
   await db.query(`DELETE FROM clients WHERE id = ANY($1::uuid[])`, [ids]);
@@ -158,15 +162,27 @@ describe("paying for the Capital Blueprint creates the checklist", {
     await close();
   });
 
-  const buy = async (email, { ref, amount = 5000, productName = BLUEPRINT_TITLE }) =>
-    emit(db, "payment.received", {
-      email,
-      name: "Blueprint Buyer",
-      productName,
-      amount,
-      providerRef: ref,
-      source: "commas"
-    }, { orgId: org, idempotencyKey: `${MARK}:${ref}` });
+  const buy = async (email, { ref, amount = 5000, productName = BLUEPRINT_TITLE }) => {
+    // The checkout already has a canonical sale before a paid webhook arrives.
+    // Do not simulate success by unlocking an orphan receipt with no sale.
+    let clientId = await clientByEmail(email);
+    if (!clientId) {
+      clientId = (await db.query(
+        `INSERT INTO clients (org_id, first_name, last_name, email)
+         VALUES ($1,'Blueprint','Buyer',$2) RETURNING id`,
+        [org, email]
+      )).rows[0].id;
+    }
+    const { sale } = await ensureSale(db, {
+      name: "checkout.accepted", orgId: org, clientId,
+      payload: { email, productName, amount, providerRef: ref }
+    }, { productBucket: "unmatched" });
+    assert.ok(sale, "checkout must create the exact buyer/product sale before a paid receipt");
+    return emit(db, "payment.received", {
+      email, name: "Blueprint Buyer", productName, amount,
+      saleId: sale.id, providerRef: ref, source: "commas"
+    }, { orgId: org, clientId, idempotencyKey: `${MARK}:${ref}` });
+  };
 
   const clientByEmail = async (email) => (await db.query(
     `SELECT id FROM clients WHERE email = $1`, [email]

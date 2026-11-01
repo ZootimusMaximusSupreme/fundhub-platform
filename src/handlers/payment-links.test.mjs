@@ -4,7 +4,11 @@ import { test, describe } from "node:test";
 import assert from "node:assert";
 import { onPaymentReceivedForLink } from "./payment-links.mjs";
 
+const TEST_ORG = "11111111-1111-4111-8111-111111111111";
+const OTHER_ORG = "22222222-2222-4222-8222-222222222222";
+
 function fakeDb(rows) {
+  for (const row of rows) row.org_id ||= TEST_ORG;
   const calls = [];
   return {
     calls,
@@ -15,8 +19,8 @@ function fakeDb(rows) {
         return { rows: rows.filter((r) => r.link_ref === params[0]) };
       }
       if (/link_ref = \$1/i.test(text)) {
-        const [link_ref, , commas_session_id, paid_amount_cents, openStatuses] = params;
-        const row = rows.find((r) => r.link_ref === link_ref && openStatuses.includes(r.status));
+        const [link_ref, , commas_session_id, paid_amount_cents, openStatuses, org_id] = params;
+        const row = rows.find((r) => r.link_ref === link_ref && r.org_id === org_id && openStatuses.includes(r.status));
         if (!row) return { rows: [] };
         // The live unique index payment_links_commas_session (119), so a
         // fake cannot pass a write the real table refuses.
@@ -30,8 +34,8 @@ function fakeDb(rows) {
         return { rows: [row] };
       }
       if (/commas_session_id = \$1/i.test(text)) {
-        const [session_id, , paid_amount_cents, openStatuses] = params;
-        const row = rows.find((r) => r.commas_session_id === session_id && openStatuses.includes(r.status));
+        const [session_id, , paid_amount_cents, openStatuses, org_id] = params;
+        const row = rows.find((r) => r.commas_session_id === session_id && r.org_id === org_id && openStatuses.includes(r.status));
         if (!row) return { rows: [] };
         row.status = "paid";
         row.paid_amount_cents = paid_amount_cents;
@@ -45,14 +49,14 @@ function fakeDb(rows) {
 describe("onPaymentReceivedForLink", () => {
   test("no ref and no itemId: does nothing", async () => {
     const db = fakeDb([]);
-    await onPaymentReceivedForLink({ payload: { amount: 50, providerRef: "txn_1" } }, db);
+    await onPaymentReceivedForLink({ orgId: TEST_ORG, payload: { amount: 50, providerRef: "txn_1" } }, db);
     assert.equal(db.calls.length, 0);
   });
 
   test("a matching ref settles the link with the processor's own session id, amount converted to cents", async () => {
     const rows = [{ link_ref: "pl_1", status: "created" }];
     const db = fakeDb(rows);
-    await onPaymentReceivedForLink({ payload: { ref: "pl_1", amount: 32, providerRef: "txn_abc" } }, db);
+    await onPaymentReceivedForLink({ orgId: TEST_ORG, payload: { ref: "pl_1", amount: 32, providerRef: "txn_abc" } }, db);
     assert.equal(rows[0].status, "paid");
     assert.equal(rows[0].commas_session_id, "txn_abc");
     assert.equal(rows[0].paid_amount_cents, 3200);
@@ -61,7 +65,7 @@ describe("onPaymentReceivedForLink", () => {
   test("itemId settles when link_ref is missing", async () => {
     const rows = [{ link_ref: "pl_wrong", commas_session_id: "8YZPo", status: "sent" }];
     const db = fakeDb(rows);
-    await onPaymentReceivedForLink({ payload: { amount: 1, itemId: "8YZPo" } }, db);
+    await onPaymentReceivedForLink({ orgId: TEST_ORG, payload: { amount: 1, itemId: "8YZPo" } }, db);
     assert.equal(rows[0].status, "paid");
     assert.equal(rows[0].paid_amount_cents, 100);
   });
@@ -69,7 +73,7 @@ describe("onPaymentReceivedForLink", () => {
   test("no amount on the event records an unknown paid amount, not zero", async () => {
     const rows = [{ link_ref: "pl_1", status: "sent" }];
     const db = fakeDb(rows);
-    await onPaymentReceivedForLink({ payload: { ref: "pl_1", providerRef: "txn_abc" } }, db);
+    await onPaymentReceivedForLink({ orgId: TEST_ORG, payload: { ref: "pl_1", providerRef: "txn_abc" } }, db);
     assert.equal(rows[0].paid_amount_cents, null);
   });
 
@@ -85,7 +89,7 @@ describe("onPaymentReceivedForLink", () => {
     ];
     const db = fakeDb(rows);
     await onPaymentReceivedForLink(
-      { payload: { ref: "pl_second", amount: 3000, productId: PRODUCT, providerRef: "sim-pay-1" } }, db);
+      { orgId: TEST_ORG, payload: { ref: "pl_second", amount: 3000, productId: PRODUCT, providerRef: "sim-pay-1" } }, db);
     assert.equal(rows[1].status, "paid");
     assert.equal(rows[1].paid_amount_cents, 300000);
     assert.equal(rows[1].commas_session_id, "sim-pay-1");
@@ -96,7 +100,7 @@ describe("onPaymentReceivedForLink", () => {
     const PRODUCT = "0e4087cf-4a2f-4af4-b1a9-ce2f6319bdaa";
     const rows = [{ link_ref: "pl_other", status: "sent", commas_session_id: PRODUCT }];
     const db = fakeDb(rows);
-    await onPaymentReceivedForLink({ payload: { amount: 1000, productId: PRODUCT, providerRef: "txn_9" } }, db);
+    await onPaymentReceivedForLink({ orgId: TEST_ORG, payload: { amount: 1000, productId: PRODUCT, providerRef: "txn_9" } }, db);
     assert.equal(rows[0].status, "sent");
     assert.equal(db.calls.length, 0);
   });
@@ -104,7 +108,7 @@ describe("onPaymentReceivedForLink", () => {
   test("a ref matching nothing is a safe no-op when no itemId", async () => {
     const rows = [{ link_ref: "pl_other", status: "created" }];
     const db = fakeDb(rows);
-    await onPaymentReceivedForLink({ payload: { ref: "pl_missing", amount: 10 } }, db);
+    await onPaymentReceivedForLink({ orgId: TEST_ORG, payload: { ref: "pl_missing", amount: 10 } }, db);
     assert.equal(rows[0].status, "created");
   });
 
@@ -124,8 +128,8 @@ describe("onPaymentReceivedForLink", () => {
         db.calls.push({ sql: String(sql), params });
         const text = String(sql);
         if (/link_ref = \$1/i.test(text)) {
-          const [link_ref, , commas_session_id, paid_amount_cents, openStatuses] = params;
-          const row = rows.find((r) => r.link_ref === link_ref && openStatuses.includes(r.status));
+          const [link_ref, , commas_session_id, paid_amount_cents, openStatuses, org_id] = params;
+          const row = rows.find((r) => r.link_ref === link_ref && r.org_id === org_id && openStatuses.includes(r.status));
           if (!row) return { rows: [] };
           row.status = "paid";
           row.commas_session_id = commas_session_id ?? row.commas_session_id;
@@ -147,7 +151,7 @@ describe("onPaymentReceivedForLink", () => {
       }
     };
     await onPaymentReceivedForLink(
-      { payload: { ref: "slo_abcdef0123456789abcdef", amount: 297, providerRef: "txn_slo" } },
+      { orgId: TEST_ORG, payload: { ref: "slo_abcdef0123456789abcdef", amount: 297, providerRef: "txn_slo" } },
       db
     );
     assert.equal(rows[0].status, "paid");
@@ -165,7 +169,7 @@ describe("onPaymentReceivedForLink", () => {
     }];
     const db = fakeDb(rows);
     await onPaymentReceivedForLink(
-      { payload: { ref: "pl_softpull1", amount: 32, providerRef: "txn_32" } },
+      { orgId: TEST_ORG, payload: { ref: "pl_softpull1", amount: 32, providerRef: "txn_32" } },
       db
     );
     assert.equal(rows[0].status, "paid");
@@ -220,7 +224,7 @@ describe("onPaymentReceivedForLink", () => {
   test("a paid Finance OS setup link turns Finance OS on for that client", async () => {
     const links = [setupLink()];
     const db = setupDb(links);
-    await onPaymentReceivedForLink({ payload: { ref: "pl_setup1", amount: 500, providerRef: "txn_s" } }, db);
+    await onPaymentReceivedForLink({ orgId: TEST_ORG, payload: { ref: "pl_setup1", amount: 500, providerRef: "txn_s" } }, db);
     assert.equal(links[0].status, "paid");
     assert.equal(db.subs.length, 1);
     assert.equal(db.subs[0].tier, "finance-os");
@@ -232,7 +236,7 @@ describe("onPaymentReceivedForLink", () => {
   test("a replayed setup payment does not open a second subscription", async () => {
     const links = [setupLink()];
     const db = setupDb(links);
-    const evt = { payload: { ref: "pl_setup1", amount: 500, providerRef: "txn_s" } };
+    const evt = { orgId: TEST_ORG, payload: { ref: "pl_setup1", amount: 500, providerRef: "txn_s" } };
     await onPaymentReceivedForLink(evt, db);
     await onPaymentReceivedForLink(evt, db);
     await onPaymentReceivedForLink(evt, db);
@@ -242,7 +246,7 @@ describe("onPaymentReceivedForLink", () => {
   test("a replay heals a setup link that was marked paid but never granted", async () => {
     const links = [setupLink({ status: "paid", paid_at: new Date("2026-10-06T12:00:00Z") })];
     const db = setupDb(links);
-    await onPaymentReceivedForLink({ payload: { ref: "pl_setup1", amount: 500 } }, db);
+    await onPaymentReceivedForLink({ orgId: TEST_ORG, payload: { ref: "pl_setup1", amount: 500 } }, db);
     assert.equal(db.subs.length, 1);
   });
 
@@ -252,11 +256,46 @@ describe("onPaymentReceivedForLink", () => {
       setupLink({ id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc", link_ref: "pl_custom", description: "Something else" })
     ];
     const db = setupDb(links);
-    await onPaymentReceivedForLink({ payload: { ref: "pl_soft", amount: 32 } }, db);
-    await onPaymentReceivedForLink({ payload: { ref: "pl_custom", amount: 10 } }, db);
+    await onPaymentReceivedForLink({ orgId: TEST_ORG, payload: { ref: "pl_soft", amount: 32 } }, db);
+    await onPaymentReceivedForLink({ orgId: TEST_ORG, payload: { ref: "pl_custom", amount: 10 } }, db);
     assert.equal(links[0].status, "paid");
     assert.equal(links[1].status, "paid");
     assert.equal(db.subs.length, 0);
     assert.equal(db.calls.filter((c) => /subscriptions/.test(c.sql)).length, 0);
+  });
+
+  test("A77: foreign-org ref and session cannot settle another tenant's checkout", async () => {
+    for (const payload of [
+      { ref: "pl_foreign", amount: 500 },
+      { itemId: "session_foreign", amount: 500 }
+    ]) {
+      const rows = [{
+        link_ref: "pl_foreign", commas_session_id: "session_foreign",
+        org_id: OTHER_ORG, status: "sent"
+      }];
+      const db = fakeDb(rows);
+      await onPaymentReceivedForLink({ orgId: TEST_ORG, payload }, db);
+      assert.equal(rows[0].status, "sent");
+      assert.equal(rows[0].paid_amount_cents, undefined);
+    }
+  });
+
+  test("A77: foreign-org already-paid replay cannot create Finance OS access", async () => {
+    const rows = [setupLink({
+      org_id: OTHER_ORG, link_ref: "pl_foreign_replay", status: "paid"
+    })];
+    const db = setupDb(rows);
+    await onPaymentReceivedForLink({
+      orgId: TEST_ORG, payload: { ref: "pl_foreign_replay", amount: 500 }
+    }, db);
+    assert.equal(db.subs.length, 0);
+  });
+
+  test("A77: missing org cannot settle a link", async () => {
+    const rows = [{ link_ref: "pl_no_org", status: "sent" }];
+    const db = fakeDb(rows);
+    await onPaymentReceivedForLink({ payload: { ref: "pl_no_org", amount: 500 } }, db);
+    assert.equal(rows[0].status, "sent");
+    assert.equal(db.calls.length, 0);
   });
 });

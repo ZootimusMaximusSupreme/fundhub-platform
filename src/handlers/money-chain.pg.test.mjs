@@ -6,11 +6,12 @@
 
 import { test, before, after, describe } from "node:test";
 import assert from "node:assert";
-import { db, close } from "../db.mjs";
+import { db, close, pool } from "../db.mjs";
+import { randomUUID } from "node:crypto";
 import { emit, replay, _resetOrgCache } from "../events/bus.mjs";
 import { clearHandlers } from "../events/registry.mjs";
-import { register as registerLifecycle } from "./client-lifecycle.mjs";
-import { register as registerMoneyChain, onPaymentReceivedMoney } from "./money-chain.mjs";
+import { register as registerLifecycle, onPaymentReceived, onPaymentFailed } from "./client-lifecycle.mjs";
+import { register as registerMoneyChain, onPaymentReceivedMoney, onDepositPaidMoney, ensureSale, ensureSalePayment } from "./money-chain.mjs";
 import { createSession } from "../auth/session.mjs";
 import { resolveDefaultOrg } from "../auth/org.mjs";
 
@@ -478,6 +479,117 @@ describe("money-chain writers", { skip: !HAS_DB ? "no DATABASE_URL" : false }, (
     assert.equal(await held(), 1, "a replayed webhook must not grant a second time");
   });
 
+  test("a foreign buyer's or failed provider transaction cannot be credited to this sale", async () => {
+    const foreignEmail = `${MARK}.foreign_ref@example.com`;
+    const buyerEmail = `${MARK}.owned_ref@example.com`;
+    const foreign = (await db.query(
+      `INSERT INTO clients (org_id, email, first_name, last_name)
+       VALUES ($1,$2,$3,'Foreign') RETURNING id`, [org, foreignEmail, MARK]
+    )).rows[0];
+    const buyer = (await db.query(
+      `INSERT INTO clients (org_id, email, first_name, last_name)
+       VALUES ($1,$2,$3,'Owned') RETURNING id`, [org, buyerEmail, MARK]
+    )).rows[0];
+    const { sale } = await ensureSale(db, {
+      orgId: org, clientId: buyer.id, name: "checkout.accepted",
+      payload: { productId: fundingProductId, amount: 3000 }
+    }, { productBucket: "deposit" });
+    assert.ok(sale);
+    for (const scenario of [
+      { owner: foreign.id, status: "succeeded", amount: 3000 },
+      { owner: buyer.id, status: "failed", amount: 3000 },
+      { owner: buyer.id, status: "succeeded", amount: 2400 }
+    ]) {
+      const providerRef = `${MARK}_scope_${scenario.status}_${scenario.amount}_${scenario.owner}`;
+      await db.query(
+        `INSERT INTO transactions (org_id, client_id, product_name, amount_paid,
+                                  status, provider, provider_ref, raw_payload)
+         VALUES ($1,$2,'Consulting Services Deposit',$3,$4,'commas',$5,'{}'::jsonb)`,
+        [org, scenario.owner, scenario.amount, scenario.status, providerRef]
+      );
+      const result = await ensureSalePayment(db, {
+        id: "00000000-0000-4000-8000-000000000e64", orgId: org, clientId: buyer.id,
+        name: "payment.received", payload: { amount: 3000, providerRef }
+      }, {
+        clientId: buyer.id, saleId: sale.id, productId: fundingProductId, kind: "deposit"
+      });
+      assert.equal(result.payment, null, "conflicted processor reference is not cash");
+      assert.equal(result.reason, "transaction_source_conflict");
+    }
+    const n = (await db.query(
+      `SELECT count(*)::int n FROM sale_payments WHERE sale_id = $1`, [sale.id]
+    )).rows[0].n;
+    assert.equal(n, 0, "none of the foreign/failed/incorrect-amount receipts may credit buyer");
+  });
+
+  test("a succeeded orphan provider receipt never credits the buyer's newest funding sale", async () => {
+    const buyerEmail = `${MARK}.orphan_fee@example.com`;
+    const buyer = (await db.query(
+      `INSERT INTO clients (org_id, email, first_name, last_name)
+       VALUES ($1,$2,$3,'Orphan') RETURNING id`, [org, buyerEmail, MARK]
+    )).rows[0];
+    const origin = await ensureSale(db, {
+      orgId: org, clientId: buyer.id, name: "checkout.accepted",
+      payload: { productId: fundingProductId, amount: 3000 }
+    }, { productBucket: "deposit" });
+    assert.ok(origin.sale, "this fixture needs an actual existing funding sale");
+    const providerRef = `${MARK}_orphan_fee_ref`;
+    await db.query(
+      `INSERT INTO transactions (org_id, client_id, product_name, amount_paid,
+                                status, provider, provider_ref, raw_payload)
+       VALUES ($1,$2,'Unmatched provider payment',2500,'succeeded','commas',$3,'{}'::jsonb)`,
+      [org, buyer.id, providerRef]
+    );
+    const result = await onPaymentReceivedMoney({
+      id: "00000000-0000-4000-8000-000000000e65", name: "payment.received",
+      orgId: org, clientId: buyer.id,
+      payload: { product: "unmatched", productName: null, amount: 2500, providerRef }
+    }, db);
+    assert.equal(result.done, false, "unassigned payment cannot settle a guessed contract");
+    assert.equal(result.reason, "no_sale_yet");
+    const n = (await db.query(
+      `SELECT count(*)::int n FROM sale_payments WHERE sale_id = $1`, [origin.sale.id]
+    )).rows[0].n;
+    assert.equal(n, 0, "orphan receipt must not inflate installment or success-fee balances");
+  });
+
+
+  test("a recorded buyer payment with a foreign or unknown invoice ID cannot credit even an explicit owned sale", async () => {
+    const buyerEmail = `${MARK}.unowned_invoice@example.invalid`;
+    const buyer = (await db.query(
+      `INSERT INTO clients (org_id, email, first_name, last_name)
+       VALUES ($1,$2,$3,'Unowned Invoice') RETURNING id`,
+      [org, buyerEmail, MARK]
+    )).rows[0];
+    const origin = await ensureSale(db, {
+      orgId: org, clientId: buyer.id, name: "checkout.accepted",
+      payload: { productId: fundingProductId, amount: 3000 }
+    }, { productBucket: "deposit" });
+    assert.ok(origin.sale);
+    const providerRef = `${MARK}_unowned_invoice_ref`;
+    await db.query(
+      `INSERT INTO transactions (org_id, client_id, product_name, amount_paid,
+                                 status, provider, provider_ref, raw_payload)
+       VALUES ($1,$2,'Unmatched invoice receipt',2500,'succeeded','commas',$3,'{}'::jsonb)`,
+      [org, buyer.id, providerRef]
+    );
+    const result = await onPaymentReceivedMoney({
+      id: "00000000-0000-4000-8000-000000000e69", name: "payment.received",
+      orgId: org, clientId: buyer.id,
+      payload: {
+        invoiceId: "00000000-0000-4000-8000-000000000f69",
+        saleId: origin.sale.id, product: "unmatched",
+        productName: null, purpose: null, amount: 2500, providerRef
+      }
+    }, db);
+    assert.equal(result.done, false);
+    assert.equal(result.reason, "invoice_identity_conflict");
+    assert.equal((await db.query(
+      `SELECT count(*)::int n FROM sale_payments WHERE sale_id = $1`,
+      [origin.sale.id]
+    )).rows[0].n, 0, "unknown invoice must never inflate a real sale balance");
+  });
+
   test("a payment we cannot pin to a client refuses and names the reason", async () => {
     const out = await onPaymentReceivedMoney(
       { id: null, name: "payment.received", orgId: org, payload: { amount: 100 } },
@@ -498,10 +610,24 @@ describe("money-chain writers", { skip: !HAS_DB ? "no DATABASE_URL" : false }, (
 
     // 'Inquiry Removal' is a real product. 180 deliberately does NOT map it,
     // because no shipped code says what an inquiry removal delivers.
+    // An owned checkout sale and an actual stored transaction are both required
+    // before this test can assert the separate missing entitlement mapping.
+    const origin = await ensureSale(db, {
+      orgId: org, clientId, name: "checkout.accepted",
+      payload: { productName: "Inquiry Removal", amount: 500, providerRef: `${MARK}_inq_1` }
+    }, { productBucket: "unmatched" });
+    assert.ok(origin.sale, "an unmapped but real product still has a canonical sale");
+    await db.query(
+      `INSERT INTO transactions (org_id, client_id, product_name, amount_paid,
+                                status, provider, provider_ref, raw_payload)
+       VALUES ($1,$2,'Inquiry Removal',500,'succeeded','commas',$3,'{}'::jsonb)`,
+      [org, clientId, `${MARK}_inq_1`]
+    );
     const unmapped = await onPaymentReceivedMoney({
       id: null, name: "payment.received", orgId: org, clientId,
-      payload: { productName: "Inquiry Removal", amount: 500, providerRef: `${MARK}_inq_1` }
+      payload: { saleId: origin.sale.id, productName: "Inquiry Removal", amount: 500, providerRef: `${MARK}_inq_1` }
     }, db);
+    assert.equal(unmapped.done, true, "the stored sale and payment were accepted");
     assert.equal(unmapped.entitlements.unmapped, true);
     assert.equal(unmapped.entitlements.reason, "no_mapping");
     assert.equal(unmapped.entitlements.productCode, "inquiry-removal");
@@ -511,8 +637,10 @@ describe("money-chain writers", { skip: !HAS_DB ? "no DATABASE_URL" : false }, (
       id: null, name: "payment.received", orgId: org, clientId,
       payload: { productName: "Nothing We Sell", amount: 10, providerRef: `${MARK}_np_1` }
     }, db);
-    assert.equal(noProduct.entitlements.unmapped, true);
-    assert.equal(noProduct.entitlements.reason, "no_product");
+    // A product with no original sale is not paid and cannot grant access.
+    assert.equal(noProduct.done, false);
+    assert.equal(noProduct.reason, "no_sale_yet");
+    assert.equal(noProduct.entitlements, undefined);
 
     assert.equal(
       (await db.query(
@@ -521,5 +649,114 @@ describe("money-chain writers", { skip: !HAS_DB ? "no DATABASE_URL" : false }, (
       0,
       "nothing may be granted on a guess"
     );
+  });
+
+  test("invoice pair guards and failed capture recovery hold in real Postgres", async () => {
+    const conn = await pool().connect();
+    try {
+      await conn.query("BEGIN");
+      const clientId = (await conn.query(
+        `INSERT INTO clients (org_id, email, first_name, ghl_contact_id)
+         VALUES ($1,$2,$3,'existing-local-link') RETURNING id`,
+        [org, `${MARK}.pair-${randomUUID()}@example.invalid`, MARK]
+      )).rows[0].id;
+      const otherClient = (await conn.query(
+        `INSERT INTO clients (org_id, email, first_name, ghl_contact_id)
+         VALUES ($1,$2,$3,'existing-local-link') RETURNING id`,
+        [org, `${MARK}.pair-other-${randomUUID()}@example.invalid`, MARK]
+      )).rows[0].id;
+      const providerRef = `pair-${randomUUID()}`;
+      const payload = { product: "deposit", productId: fundingProductId,
+        productName: "Consulting Services Deposit", amount: 3000,
+        providerRef, source: "commas" };
+      const event = (name, extra = {}, buyer = clientId) => ({
+        // Direct handler calls have no persisted bus event; the stored provider
+        // transaction supplies their durable replay identity.
+        id: null, name, orgId: org, clientId: buyer, payload: { ...payload, ...extra }
+      });
+      const readTransaction = async (ref = providerRef) => (await conn.query(
+        "SELECT * FROM transactions WHERE org_id=$1 AND provider_ref=$2", [org, ref]
+      )).rows[0];
+
+      // The upsert itself must enforce identity, not a mock of its SQL.
+      for (const [label, change, buyer] of [
+        ["amount", { amount: 2999 }, clientId],
+        ["product", { productName: "Another purchase" }, clientId],
+        ["provider", { source: "another-provider" }, clientId],
+        ["buyer", {}, otherClient],
+        ["unknown-buyer", {}, randomUUID()]
+      ]) {
+        const ref = `${providerRef}-${label}`;
+        await onPaymentFailed(event("payment.failed", { providerRef: ref }), conn);
+        await onPaymentReceived(event("payment.received", { providerRef: ref, ...change }, buyer), conn);
+        const held = await readTransaction(ref);
+        assert.equal(held.status, "failed", `${label} cannot replace the original failed attempt`);
+        assert.equal(held.client_id, clientId);
+        assert.equal(Number(held.amount_paid), 3000);
+      }
+
+      const origin = await ensureSale(conn, event("checkout.accepted"), { productBucket: "deposit" });
+      assert.ok(origin.sale);
+      const invoiceId = (await conn.query(
+        `INSERT INTO invoices (org_id, client_id, sale_id, invoice_type, source, status, amount_due)
+         VALUES ($1,$2,$3,'deposit','other','sent',3000) RETURNING id`,
+        [org, clientId, origin.sale.id]
+      )).rows[0].id;
+      const linkId = (await conn.query(
+        `INSERT INTO payment_links (org_id, client_id, product_id, sale_id, invoice_id,
+          purpose, amount_cents, link_ref, checkout_url)
+         VALUES ($1,$2,$3,$4,$5,'deposit',300000,$6,'https://example.invalid/checkout') RETURNING id`,
+        [org, clientId, fundingProductId, origin.sale.id, invoiceId, randomUUID()]
+      )).rows[0].id;
+      const bound = { paymentLinkId: linkId, invoiceId, saleId: origin.sale.id };
+      for (const [label, change] of [
+        ["provider", { source: "another-provider" }],
+        ["product", { productName: "Another purchase" }]
+      ]) {
+        const ref = `${providerRef}-captured-${label}`;
+        await onPaymentReceived(event("payment.received", { ...bound, providerRef: ref }), conn);
+        const conflicting = event("payment.received", { ...bound, providerRef: ref, ...change });
+        await onPaymentReceived(conflicting, conn);
+        for (const handler of [onPaymentReceivedMoney, onDepositPaidMoney]) {
+          const refused = await handler(conflicting, conn);
+          assert.equal(refused.reason, "transaction_source_conflict", `${label} cannot repurpose captured money`);
+        }
+      }
+      // The adapter now preserves its link-derived deposit bucket on both
+      // callbacks even when the provider omits a display title.
+      const titleless = { ...bound, providerRef: `${providerRef}-titleless`, productName: null };
+      await onPaymentFailed(event("payment.failed", titleless), conn);
+      await onPaymentReceived(event("payment.received", titleless), conn);
+      assert.equal((await readTransaction(titleless.providerRef)).status, "succeeded");
+      assert.equal((await readTransaction(titleless.providerRef)).product_name, "deposit");
+      await onPaymentFailed(event("payment.failed", bound), conn);
+      const transactionId = (await readTransaction()).id;
+      const received = event("payment.received", { ...bound, invoiceId: randomUUID() });
+      await onPaymentReceived(received, conn);
+      assert.equal((await readTransaction()).status, "succeeded");
+      assert.equal((await readTransaction()).id, transactionId, "capture settles the existing attempt");
+      assert.equal((await onPaymentReceivedMoney(received, conn)).reason, "payment_link_invoice_conflict");
+      assert.equal((await onDepositPaidMoney({ ...received, name: "deposit.paid" }, conn)).reason,
+        "payment_link_invoice_conflict");
+      for (const table of ["sale_payments", "commission_ledger", "entitlements", "cards"]) {
+        const clause = table === "sale_payments" ? "sale_id=$1" : "client_id=$1";
+        const key = table === "sale_payments" ? origin.sale.id : clientId;
+        assert.equal((await conn.query(`SELECT count(*)::int n FROM ${table} WHERE ${clause}`, [key])).rows[0].n,
+          0, `conflicting event pair cannot write ${table}`);
+      }
+      const paid = event("payment.received", bound);
+      assert.equal((await onPaymentReceivedMoney(paid, conn)).done, true);
+      const deposit = event("deposit.paid", bound);
+      assert.equal((await onDepositPaidMoney(deposit, conn)).done, true);
+      assert.equal((await onDepositPaidMoney({ ...deposit }, conn)).done, true);
+      await onPaymentFailed(event("payment.failed", bound), conn);
+      assert.equal((await readTransaction()).status, "succeeded", "late decline cannot downgrade captured money");
+      assert.equal((await conn.query("SELECT count(*)::int n FROM sale_payments WHERE sale_id=$1", [origin.sale.id])).rows[0].n, 1);
+      assert.equal((await conn.query("SELECT count(*)::int n FROM entitlements WHERE client_id=$1", [clientId])).rows[0].n, 1);
+      assert.equal((await conn.query("SELECT count(*)::int n FROM cards WHERE client_id=$1", [clientId])).rows[0].n, 1);
+    } finally {
+      await conn.query("ROLLBACK").catch(() => {});
+      conn.release();
+    }
   });
 });

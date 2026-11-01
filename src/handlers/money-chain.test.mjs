@@ -6,9 +6,14 @@ import {
   BUCKET_TO_CODE, paymentKindFor, nothingUnlockedReason, NOTHING_UNLOCKED,
   ensureAttributions, ensureSalePayment, resolveProductId,
   onRoundFundedMoney, syncClientFunded, SQL_SYNC_CLIENT_FUNDED,
-  onPaymentReceivedMoney
+  onPaymentReceivedMoney, onDepositPaidMoney, onDiagnosticPaidMoney, onSaleClosedMoney
 } from "./money-chain.mjs";
 import { OFFERS } from "../config/offers.mjs";
+import { randomUUID } from "node:crypto";
+import { processCommasInboxRow } from "../adapters/commas.mjs";
+import { onPaymentReceived, onPaymentFailed } from "./client-lifecycle.mjs";
+import { on, clearHandlers } from "../events/registry.mjs";
+import { inngest } from "../workflows/client.mjs";
 
 describe("money-chain helpers", () => {
   test("BUCKET_TO_CODE maps Commas semantic buckets to product codes", () => {
@@ -197,6 +202,75 @@ describe("ensureSalePayment", () => {
     assert.match(ins.sql, /product_id/, "INSERT must include product_id (live NOT NULL)");
     assert.equal(ins.params[3], "prod-from-sale");
   });
+  test("same-org foreign buyer, failed transaction, and wrong amount cannot settle a sale", async () => {
+    const variants = [
+      { clientId: "client-foreign", status: "succeeded", amount: 3000 },
+      { clientId: "client-owned", status: "failed", amount: 3000 },
+      { clientId: "client-owned", status: "succeeded", amount: 2000 }
+    ];
+    for (const v of variants) {
+      const queries = [];
+      const db = {
+        query: async (sql, params = []) => {
+          const text = String(sql);
+          queries.push({ text, params });
+          if (/SELECT id FROM transactions/.test(text) && /provider_ref/.test(text)) {
+            return { rows: [{ id: "tx-existing" }] };
+          }
+          if (/SELECT id FROM transactions/.test(text) && /client_id = \$3/.test(text)) {
+            const matches = params[2] === v.clientId && v.status === "succeeded" && params[3] === v.amount;
+            return { rows: matches ? [{ id: "tx-existing" }] : [] };
+          }
+          throw new Error("transaction ownership refusal must precede any financial write: " + text);
+        }
+      };
+      const result = await ensureSalePayment(db, {
+        id: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee", orgId: "org-owned",
+        name: "payment.received", payload: { amount: 3000, providerRef: "shared-provider-ref" }
+      }, { saleId: "sale-owned", clientId: "client-owned", productId: "product-owned", kind: "deposit" });
+      assert.equal(result.payment, null);
+      assert.equal(result.reason, "transaction_source_conflict");
+      assert.equal(queries.length, 2, "neither ledger, accrual nor entitlement may run");
+    }
+  });
+
+  test("a conflicting replay cannot credit a second sale or produce partner accrual", async () => {
+    const ORG = "org-primary", SALE = "sale-primary", PRODUCT = "product-primary";
+    const payment = {
+      id: "original-payment", org_id: ORG, sale_id: SALE, product_id: PRODUCT,
+      transaction_id: "tx-primary", kind: "deposit", amount: "3000.00"
+    };
+    const conflicting = [
+      { sale_id: "sale-other" }, { org_id: "org-other" },
+      { product_id: "product-other" }, { kind: "success_fee" },
+      { amount: "2900.00" }, { transaction_id: "tx-other" }
+    ];
+    for (const mismatch of conflicting) {
+      const calls = [];
+      const db = {
+        query: async (sql) => {
+          const text = String(sql);
+          calls.push(text);
+          if (/FROM transactions/.test(text)) return { rows: [{ id: "tx-primary", client_id: "client-primary", status: "succeeded", amount_paid: "3000.00" }] };
+          if (/INSERT INTO sale_payments/.test(text)) return { rows: [] };
+          if (/FROM sale_payments/.test(text)) return { rows: [{ ...payment, ...mismatch }] };
+          throw new Error("unexpected downstream query after conflicting receipt: " + text);
+        }
+      };
+      const result = await ensureSalePayment(db, {
+        id: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee", orgId: ORG,
+        name: "deposit.paid", payload: { amount: 3000, providerRef: "synthetic-ref" }
+      }, { saleId: SALE, clientId: "client-primary", productId: PRODUCT, kind: "deposit" });
+      assert.equal(result.payment, null, JSON.stringify(mismatch));
+      assert.equal(result.reason, "receipt_conflict", JSON.stringify(mismatch));
+      // A verified source read precedes the idempotent insert and replay lookup.
+      // These four statements cannot accrue a partner or grant customer access.
+      assert.equal(calls.length, 4, "only receipt verification and replay lookup may execute");
+      assert.equal(calls.filter((sql) => /FROM transactions/.test(sql)).length, 2);
+      assert.equal(calls.filter((sql) => /INSERT INTO sale_payments/.test(sql)).length, 1);
+      assert.equal(calls.filter((sql) => /FROM sale_payments/.test(sql)).length, 1);
+    }
+  });
 });
 
 describe("resolveProductId matches product codes, not just display names", () => {
@@ -337,7 +411,15 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
   const NEWEST_SALE = "00000000-0000-4000-8000-0000000000b2"; // a later funding sale, same client
   const PRODUCT = "00000000-0000-4000-8000-0000000000f1";
 
-  function feeDb({ invoice = { id: INVOICE, sale_id: BILLED_SALE } } = {}) {
+  function feeDb({
+    invoice = { id: INVOICE, sale_id: BILLED_SALE, status: "sent" },
+    paidReceiptRef = null,
+    paidReceiptEventId = null,
+    linkedInvoiceId = INVOICE,
+    paidAmount = 0,
+    currentAppliedAmount = 0,
+    transactionAmount = 2500
+  } = {}) {
     const queries = [];
     const sale = (id) => ({ id, org_id: ORG, client_id: CLIENT, product_id: PRODUCT, sale_motion: null, status: "active" });
     return {
@@ -347,23 +429,40 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
         queries.push({ text, params });
         // The receipt belongs to this fixture's one existing org/client.
         // Model resolveClient's tenant check rather than accepting arbitrary IDs.
-        if (/SELECT 1 FROM clients WHERE id = \$1 AND org_id = \$2 LIMIT 1/.test(text)) {
-          return { rows: params[0] === CLIENT && params[1] === ORG ? [{ exists: 1 }] : [] };
+        if (/SELECT (?:1|id) FROM clients WHERE id = \$1 AND org_id = \$2 LIMIT 1/.test(text)) {
+          return { rows: params[0] === CLIENT && params[1] === ORG ? [{ id: CLIENT }] : [] };
+        }
+        if (/SELECT id FROM clients WHERE org_id = \$1 AND lower\(email\) = \$2 LIMIT 1/.test(text)) {
+          return { rows: [] };
         }
         if (/FROM payment_links/.test(text) && /WHERE id = \$1 AND org_id = \$2 AND client_id = \$3/.test(text)) {
-          return { rows: [{ id: LINK, product_id: null, sale_id: null, sale_motion: null,
-            closer_staff_id: null, sales_manager_staff_id: null }] };
+          return { rows: [{ id: LINK, product_id: null, sale_id: null, invoice_id: linkedInvoiceId,
+            sale_motion: null, closer_staff_id: null, sales_manager_staff_id: null }] };
+        }
+        if (/FROM invoice_payments/.test(text)) {
+          if (text.includes("COALESCE(SUM")) return { rows: [{ applied: paidAmount, current_applied: currentAppliedAmount }] };
+          const replayMatched = params[0] === ORG && params[1] === INVOICE &&
+            ((paidReceiptRef !== null && params[2] === paidReceiptRef) ||
+             (paidReceiptEventId !== null && params[3] === paidReceiptEventId));
+          return { rows: replayMatched ? [{ matched: 1 }] : [] };
         }
         if (/FROM invoices/.test(text)) {
-          const ok = invoice && params[0] === invoice.id && params[1] === ORG && params[2] === CLIENT;
-          return { rows: ok ? [invoice] : [] };
+          const feeOnly = /source = 'funding_success_fee'/.test(text);
+          const isFee = !invoice?.source && !invoice?.invoice_type ||
+            invoice?.source === "funding_success_fee" || invoice?.invoice_type === "success_fee";
+          const ok = invoice && params[0] === invoice.id && params[1] === ORG && params[2] === CLIENT &&
+            (!feeOnly || isFee);
+          return { rows: ok ? [{ amount_due: 2500, ...invoice }] : [] };
         }
-        if (/SELECT \* FROM sales WHERE id = \$1 AND org_id = \$2 AND client_id = \$3/.test(text)) {
-          return { rows: params[0] === BILLED_SALE ? [sale(BILLED_SALE)] : [] };
+        if (/SELECT \* FROM sales\s+WHERE id = \$1 AND org_id = \$2 AND client_id = \$3/.test(text)) {
+          const ownedSale = params[0] === BILLED_SALE && params[1] === ORG && params[2] === CLIENT;
+          const productMatches = params.length < 4 || params[3] == null || params[3] === PRODUCT;
+          const motionMatches = params.length < 5 || params[4] == null;
+          return { rows: ownedSale && productMatches && motionMatches ? [sale(BILLED_SALE)] : [] };
         }
         // The old guess: the client's newest active funding sale.
         if (/pr\.category = 'funding'/.test(text)) return { rows: [sale(NEWEST_SALE)] };
-        if (/FROM transactions/.test(text)) return { rows: [{ id: "tx-fee" }] };
+        if (/FROM transactions/.test(text)) return { rows: [{ id: "tx-fee", client_id: CLIENT, status: "succeeded", amount_paid: String(transactionAmount) }] };
         if (/INSERT INTO sale_payments/.test(text)) {
           return { rows: [{ id: "sp-fee", sale_id: params[1], transaction_id: params[2],
             product_id: params[3], kind: params[6], amount: params[7] }] };
@@ -387,6 +486,40 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
 
   const salePaymentInsert = (db) => db.queries.find((q) => /INSERT INTO sale_payments/.test(q.text));
 
+  test("invoice payment never uses lead capture to edit a buyer's contact", async () => {
+    const db = feeDb();
+    const out = await onPaymentReceivedMoney(feeReceipt({
+      name: "Forged Contact", phone: "+15550001111"
+    }), db);
+    assert.equal(out.done, true, JSON.stringify(out));
+    assert.ok(db.queries.some(q => /SELECT id FROM clients WHERE id = \$1 AND org_id = \$2/.test(q.text)),
+      "a fee receipt requires an owned read-only client lookup");
+    assert.ok(!db.queries.some(q => /^\s*(UPDATE|INSERT INTO) clients\b/i.test(q.text)),
+      "reconciliation cannot rewrite contact fields or create a new lead");
+  });
+
+  test("an invoiced receipt from an unknown email cannot mint a phantom buyer", async () => {
+    const db = feeDb();
+    const event = feeReceipt({ email: "unknown+invoice@example.invalid", name: "Injected Lead" });
+    event.clientId = null;
+    const out = await onPaymentReceivedMoney(event, db);
+    assert.equal(out.done, false);
+    assert.equal(out.reason, "no_client");
+    assert.ok(db.queries.some(q => /SELECT id FROM clients WHERE org_id = \$1 AND lower\(email\)/.test(q.text)));
+    assert.ok(!db.queries.some(q => /^\s*(UPDATE|INSERT INTO) clients\b|INSERT INTO sale_payments/i.test(q.text)));
+  });
+
+  test("a fee receipt naming a foreign buyer cannot alter client or credit a sale", async () => {
+    const db = feeDb();
+    const event = feeReceipt({ email: "local+buyer@example.invalid" });
+    event.clientId = "00000000-0000-4000-8000-00000000ffff";
+    const out = await onPaymentReceivedMoney(event, db);
+    assert.equal(out.done, false);
+    assert.equal(out.reason, "no_client");
+    assert.ok(!db.queries.some(q => /^\s*(UPDATE|INSERT INTO) clients\b|INSERT INTO sale_payments/i.test(q.text)));
+  });
+
+
   test("it is kind success_fee on the invoice's own sale, never front-end money on a guessed sale", async () => {
     const db = feeDb();
     const out = await onPaymentReceivedMoney(feeReceipt(), db);
@@ -401,6 +534,233 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
     assert.equal(out.saleId, BILLED_SALE);
   });
 
+
+
+  test("a fee invoice cannot credit a different funding round", async () => {
+    const db = feeDb({ invoice: { id: INVOICE, sale_id: BILLED_SALE, status: "sent",
+      funding_round_id: "00000000-0000-4000-8000-0000000000f5" } });
+    const out = await onPaymentReceivedMoney(feeReceipt({
+      fundingRoundId: "00000000-0000-4000-8000-0000000000f6"
+    }), db);
+    assert.equal(out.done, false);
+    assert.equal(out.reason, "invoice_round_conflict");
+    assert.equal(salePaymentInsert(db), undefined);
+    assert.equal(out.entitlements, undefined);
+  });
+
+  test("a generic sale link with no invoice identity cannot pay a fee invoice", async () => {
+    const db = feeDb({ linkedInvoiceId: null });
+    const out = await onPaymentReceivedMoney(feeReceipt(), db);
+    assert.equal(out.done, false);
+    assert.equal(out.reason, "payment_link_invoice_conflict");
+    assert.equal(salePaymentInsert(db), undefined);
+    assert.equal(out.entitlements, undefined);
+  });
+
+  test("one invoice cannot use a same-buyer link for another invoice", async () => {
+    const db = feeDb({ linkedInvoiceId: "00000000-0000-4000-8000-0000000000e2" });
+    const out = await onPaymentReceivedMoney(feeReceipt(), db);
+    assert.equal(out.done, false);
+    assert.equal(out.reason, "payment_link_invoice_conflict");
+    assert.equal(salePaymentInsert(db), undefined);
+    assert.equal(out.entitlements, undefined);
+  });
+
+  test("a matching invoice link can supply the missing invoice identifier", async () => {
+    const db = feeDb({ linkedInvoiceId: INVOICE });
+    const out = await onPaymentReceivedMoney(feeReceipt({ invoiceId: null }), db);
+    assert.equal(out.done, true, JSON.stringify(out));
+    assert.equal(salePaymentInsert(db)?.params[6], "success_fee");
+    assert.equal(salePaymentInsert(db)?.params[1], BILLED_SALE);
+  });
+
+  test("a success-fee invoice cannot be redirected to another same-buyer sale", async () => {
+    const db = feeDb();
+    const out = await onPaymentReceivedMoney(feeReceipt({ saleId: NEWEST_SALE }), db);
+    assert.equal(out.done, false);
+    assert.equal(out.reason, "success_fee_sale_conflict");
+    assert.equal(salePaymentInsert(db), undefined, "conflicted fee must not enter sale_payments");
+  });
+
+  test("a success-fee invoice with no original sale is held for reconciliation", async () => {
+    const db = feeDb({ invoice: { id: INVOICE, sale_id: null, status: "sent" } });
+    const out = await onPaymentReceivedMoney(feeReceipt(), db);
+    assert.equal(out.done, false);
+    assert.equal(out.reason, "unlinked_success_fee_invoice");
+    assert.equal(salePaymentInsert(db), undefined);
+  });
+
+  for (const invoiceStatus of ["draft", "void", "written_off"]) {
+    test(`a ${invoiceStatus} success-fee invoice cannot post cash or paid access`, async () => {
+      const db = feeDb({ invoice: { id: INVOICE, sale_id: BILLED_SALE, status: invoiceStatus } });
+      const out = await onPaymentReceivedMoney(feeReceipt(), db);
+      assert.equal(out.done, false);
+      assert.equal(out.reason, "success_fee_invoice_not_collectible");
+      assert.equal(salePaymentInsert(db), undefined);
+      assert.equal(out.entitlements, undefined);
+    });
+  }
+
+  test("overpaid success fee never posts PSP surplus as sale cash", async () => {
+    const db = feeDb();
+    const out = await onPaymentReceivedMoney(feeReceipt({ amount: 3000 }), db);
+    assert.equal(out.done, false);
+    assert.equal(out.reason, "success_fee_overpayment_unallocated");
+    assert.equal(salePaymentInsert(db), undefined);
+    assert.equal(out.entitlements, undefined);
+    assert.ok(db.queries.some(q => q.text.includes("COALESCE(SUM")));
+  });
+
+  test("previous partial fee receipts reduce collectible balance", async () => {
+    const db = feeDb({ paidAmount: 2000,
+      invoice: { id: INVOICE, sale_id: BILLED_SALE, amount_due: 2500, status: "partially_paid" } });
+    const out = await onPaymentReceivedMoney(feeReceipt({ amount: 600 }), db);
+    assert.equal(out.done, false);
+    assert.equal(out.reason, "success_fee_overpayment_unallocated");
+    assert.equal(salePaymentInsert(db), undefined);
+  });
+
+  test("exact remaining partial fee receipt still credits original sale", async () => {
+    const db = feeDb({ paidAmount: 2000, transactionAmount: 500,
+      invoice: { id: INVOICE, sale_id: BILLED_SALE, amount_due: 2500, status: "partially_paid" } });
+    const out = await onPaymentReceivedMoney(feeReceipt({ amount: 500 }), db);
+    assert.equal(out.done, true, JSON.stringify(out));
+    assert.equal(salePaymentInsert(db)?.params[1], BILLED_SALE);
+    assert.equal(salePaymentInsert(db)?.params[6], "success_fee");
+    assert.equal(salePaymentInsert(db)?.params[7], 500);
+  });
+
+  test("the allocator may apply this event first without falsely rejecting a valid partial payment", async () => {
+    // $400 older cash + $500 from THIS event already allocated, $100 still due.
+    // Without excluding the matching current PSP receipt, a $500 event sees
+    // only $100 remaining and erroneously skips its sale/payment credit.
+    const db = feeDb({ paidAmount: 900, currentAppliedAmount: 500, transactionAmount: 500,
+      invoice: { id: INVOICE, sale_id: BILLED_SALE, amount_due: 1000, status: "partially_paid" } });
+    const out = await onPaymentReceivedMoney(feeReceipt({ amount: 500 }), db);
+    assert.equal(out.done, true, JSON.stringify(out));
+    assert.equal(salePaymentInsert(db)?.params[6], "success_fee");
+    assert.equal(salePaymentInsert(db)?.params[7], 500);
+  });
+
+  test("allocator-first partial overpayment is still held before commission", async () => {
+    // An allocator may have already applied $500 of the $600 current PSP event
+    // against a $500 remaining debt. The extra $100 is not earned fee revenue.
+    const db = feeDb({ paidAmount: 2500, currentAppliedAmount: 500,
+      paidReceiptRef: "sim-pay-fee", transactionAmount: 600,
+      invoice: { id: INVOICE, sale_id: BILLED_SALE, amount_due: 2500, status: "paid" } });
+    const out = await onPaymentReceivedMoney(feeReceipt({ amount: 600 }), db);
+    assert.equal(out.done, false);
+    assert.equal(out.reason, "success_fee_overpayment_unallocated");
+    assert.equal(salePaymentInsert(db), undefined);
+    assert.equal(out.entitlements, undefined);
+  });
+
+  test("a paid success-fee invoice holds a second, different processor receipt", async () => {
+    const db = feeDb({
+      invoice: { id: INVOICE, sale_id: BILLED_SALE, status: "paid" },
+      paidReceiptRef: "sim-pay-fee"
+    });
+    const out = await onPaymentReceivedMoney(
+      feeReceipt({ paymentId: "sim-pay-second", providerRef: "sim-pay-second",
+        amount: 2500, product: "unmatched" }), db
+    );
+    assert.equal(out.done, false);
+    assert.equal(out.reason, "paid_success_fee_new_receipt");
+    assert.equal(salePaymentInsert(db), undefined, "a new provider payment cannot over-credit a paid invoice's sale");
+    assert.equal(out.entitlements, undefined);
+  });
+
+  test("a paid success-fee invoice permits the original identical provider replay", async () => {
+    const db = feeDb({
+      invoice: { id: INVOICE, sale_id: BILLED_SALE, status: "paid" },
+      paidReceiptRef: "sim-pay-fee"
+    });
+    const out = await onPaymentReceivedMoney(feeReceipt(), db);
+    assert.equal(out.done, true, JSON.stringify(out));
+    assert.equal(out.saleId, BILLED_SALE);
+    assert.equal(salePaymentInsert(db)?.params[6], "success_fee");
+    assert.ok(db.queries.some((q) => /FROM invoice_payments/.test(q.text)),
+      "a paid invoice's original applied merchant receipt must be proved");
+  });
+
+  test("a paid invoice without a recorded matching receipt never counts as paid sale cash", async () => {
+    const db = feeDb({ invoice: { id: INVOICE, sale_id: BILLED_SALE, status: "paid" } });
+    const out = await onPaymentReceivedMoney(feeReceipt(), db);
+    assert.equal(out.done, false);
+    assert.equal(out.reason, "paid_success_fee_new_receipt");
+    assert.equal(salePaymentInsert(db), undefined);
+  });
+
+  test("a zero-dollar payment cannot grant paid access", async () => {
+    const db = feeDb();
+    const out = await onPaymentReceivedMoney(feeReceipt({ amount: 0 }), db);
+    assert.equal(out.done, false);
+    assert.equal(out.reason, "unrecorded_payment");
+    assert.equal(salePaymentInsert(db), undefined);
+  });
+
+  test("an invalid payment amount cannot grant access or post commissions", async () => {
+    const db = feeDb();
+    const out = await onPaymentReceivedMoney(feeReceipt({ amount: -25 }), db);
+    assert.equal(out.done, false);
+    assert.equal(out.reason, "unrecorded_payment");
+    assert.equal(out.entitlements, undefined);
+    assert.equal(salePaymentInsert(db), undefined);
+  });
+
+  test("unrecorded invoice cash cannot bind a payment link or staff attribution", async () => {
+    const closerId = "00000000-0000-4000-8000-00000000a1a1";
+    const withCloser = () => {
+      const fixture = feeDb();
+      const originalQuery = fixture.query.bind(fixture);
+      fixture.query = async (sql, params = []) => {
+        const text = String(sql);
+        if (/FROM staff\b/.test(text)) {
+          return { rows: params[0] === closerId && params[1] === ORG
+            ? [{ id: closerId, role: "closer" }] : [] };
+        }
+        if (/SELECT 1 FROM sale_attributions/.test(text)) return { rows: [] };
+        if (/SUM\(split_percent\)/.test(text)) return { rows: [{ s: 0 }] };
+        if (/INSERT INTO sale_attributions/.test(text)) {
+          fixture.queries.push({ text, params });
+          return { rows: [{ id: "synthetic-attribution" }] };
+        }
+        return originalQuery(sql, params);
+      };
+      return fixture;
+    };
+
+    const rejected = withCloser();
+    const unpaid = await onPaymentReceivedMoney(feeReceipt({ amount: 0, closerId }), rejected);
+    assert.equal(unpaid.done, false);
+    assert.equal(unpaid.reason, "unrecorded_payment");
+    assert.ok(!rejected.queries.some(q => /UPDATE payment_links|INSERT INTO sale_attributions/.test(q.text)),
+      "failed capture must not attach a checkout to a sale or create commission credit");
+    assert.equal(salePaymentInsert(rejected), undefined);
+
+    const accepted = withCloser();
+    const paid = await onPaymentReceivedMoney(feeReceipt({ closerId }), accepted);
+    assert.equal(paid.done, true, JSON.stringify(paid));
+    const paymentAt = accepted.queries.findIndex(q => /INSERT INTO sale_payments/.test(q.text));
+    const linkAt = accepted.queries.findIndex(q => /UPDATE payment_links/.test(q.text));
+    const staffAt = accepted.queries.findIndex(q => /INSERT INTO sale_attributions/.test(q.text));
+    assert.ok(paymentAt >= 0 && linkAt > paymentAt && staffAt > paymentAt,
+      "valid payment must persist before checkout binding and staff attribution");
+  });
+
+  test("an unidentified sale does not pretend to finish checkout or unlock service", async () => {
+    const db = feeDb({ invoice: null });
+    const query = db.query.bind(db);
+    db.query = async (sql, params) => /pr\.category = 'funding'/.test(String(sql))
+      ? { rows: [] } : query(sql, params);
+    const out = await onPaymentReceivedMoney(
+      feeReceipt({ invoiceId: null, paymentLinkId: null, product: "unmatched", productName: null }), db
+    );
+    assert.equal(out.done, false);
+    assert.equal(out.reason, "no_sale_yet");
+    assert.equal(out.entitlements, undefined);
+    assert.equal(salePaymentInsert(db), undefined);
+  });
   test("the invoice is looked up inside this client and org only", async () => {
     const db = feeDb();
     await onPaymentReceivedMoney(feeReceipt(), db);
@@ -410,20 +770,340 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
     assert.match(inv.text, /success_fee/, "only a success-fee invoice makes a receipt a success fee");
   });
 
-  test("an invoice id that is not this client's success-fee bill changes nothing", async () => {
+  test("a success-fee receipt with an unverified invoice cannot become a sale installment", async () => {
     const db = feeDb({ invoice: null });
-    await onPaymentReceivedMoney(feeReceipt(), db);
-    const ins = salePaymentInsert(db);
-    assert.ok(ins);
-    assert.equal(ins.params[6], "installment", "an unrecognised invoice id must not re-label money");
+    const out = await onPaymentReceivedMoney(feeReceipt(), db);
+    assert.equal(out.done, false);
+    assert.equal(out.reason, "invoice_identity_conflict");
+    assert.equal(salePaymentInsert(db), undefined);
+    assert.equal(out.entitlements, undefined);
   });
 
-  test("a receipt with no invoice never reads invoices and keeps its own kind", async () => {
+  test("a success-fee receipt without invoice identity or invoice link is held", async () => {
     const db = feeDb();
-    await onPaymentReceivedMoney(feeReceipt({ invoiceId: null }), db);
-    assert.ok(!db.queries.some((q) => /FROM invoices/.test(q.text)), "a receipt with no invoice went looking for one");
+    const out = await onPaymentReceivedMoney(feeReceipt({ invoiceId: null, paymentLinkId: null }), db);
+    assert.ok(!db.queries.some((q) => /FROM invoices/.test(q.text)), "a receipt with no invoice should not guess a bill");
+    assert.equal(out.done, false);
+    assert.equal(out.reason, "success_fee_invoice_unresolved");
+    assert.equal(salePaymentInsert(db), undefined);
+  });
+
+  test("an unmatched receipt with no original sale never chooses this buyer's latest funding sale", async () => {
+    const db = feeDb({ invoice: null });
+    const out = await onPaymentReceivedMoney(feeReceipt({
+      invoiceId: null, paymentLinkId: null, purpose: null,
+      product: "unmatched", productName: null
+    }), db);
+    assert.equal(out.done, false);
+    assert.equal(out.reason, "no_sale_yet");
+    assert.equal(salePaymentInsert(db), undefined);
+    assert.equal(out.entitlements, undefined);
+    assert.ok(!db.queries.some((q) => /pr\.category = 'funding'/.test(q.text)),
+      "an unlinked receipt must never guess the latest funding contract");
+  });
+
+  test("a generic unmatched receipt with an explicit original sale still records that sale only", async () => {
+    const db = feeDb({ invoice: null });
+    const out = await onPaymentReceivedMoney(feeReceipt({
+      invoiceId: null, paymentLinkId: null, purpose: null,
+      product: "unmatched", productName: null, saleId: BILLED_SALE
+    }), db);
+    assert.equal(out.done, true, JSON.stringify(out));
+    const ins = salePaymentInsert(db);
+    assert.ok(ins, "the explicitly linked payment was not recorded");
+    assert.equal(ins.params[1], BILLED_SALE);
+    assert.equal(ins.params[6], "installment");
+    assert.ok(!db.queries.some((q) => /pr\.category = 'funding'/.test(q.text)));
+  });
+
+
+  test("an explicit unknown invoice cannot redirect a real buyer payment onto an otherwise valid sale", async () => {
+    const db = feeDb({ invoice: null });
+    const out = await onPaymentReceivedMoney(feeReceipt({
+      invoiceId: INVOICE, paymentLinkId: null, product: "unmatched",
+      productName: null, purpose: null, saleId: BILLED_SALE
+    }), db);
+    assert.equal(out.done, false);
+    assert.equal(out.reason, "invoice_identity_conflict");
+    assert.equal(salePaymentInsert(db), undefined);
+    assert.equal(out.entitlements, undefined);
+  });
+
+
+  test("snake_case unknown invoice cannot become an installment on a different sale", async () => {
+    const db = feeDb({ invoice: null });
+    const out = await onPaymentReceivedMoney(feeReceipt({
+      invoiceId: null, invoice_id: INVOICE, paymentLinkId: null,
+      product: "unmatched", productName: null, purpose: null, saleId: BILLED_SALE
+    }), db);
+    assert.equal(out.done, false);
+    assert.equal(out.reason, "invoice_identity_conflict");
+    assert.equal(salePaymentInsert(db), undefined);
+    assert.equal(out.entitlements, undefined);
+  });
+
+  test("snake_case invoice and checkout link retain the original fee and buyer", async () => {
+    const db = feeDb();
+    const out = await onPaymentReceivedMoney(feeReceipt({
+      invoiceId: null, paymentLinkId: null, invoice_id: INVOICE, payment_link_id: LINK
+    }), db);
+    assert.equal(out.done, true, JSON.stringify(out));
     const ins = salePaymentInsert(db);
     assert.ok(ins);
-    assert.equal(ins.params[6], "installment", "a receipt that names no bill must keep the kind its product gives it");
+    assert.equal(ins.params[1], BILLED_SALE);
+    assert.equal(ins.params[6], "success_fee");
+    const link = db.queries.find(q => /FROM payment_links/.test(q.text));
+    assert.ok(link);
+    assert.equal(link.params[0], LINK);
   });
+
+  test("conflicting camelCase and snake_case payment identities stop before accounting", async () => {
+    for (const [extra, reason] of [
+      [{ invoice_id: NEWEST_SALE }, "invoice_identity_conflict"],
+      [{ payment_link_id: NEWEST_SALE }, "payment_link_context_conflict"]
+    ]) {
+      const db = feeDb();
+      const out = await onPaymentReceivedMoney(feeReceipt(extra), db);
+      assert.equal(out.done, false);
+      assert.equal(out.reason, reason);
+      assert.equal(salePaymentInsert(db), undefined);
+      assert.equal(out.entitlements, undefined);
+      assert.ok(!db.queries.some(q => /FROM invoices|FROM payment_links|INSERT INTO sale_payments/.test(q.text)));
+    }
+  });
+
+  test("a non-fee invoice can credit only its own issued sale", async () => {
+    const invoice = { id: INVOICE, sale_id: BILLED_SALE, status: "sent",
+      source: "other", invoice_type: "platform_fee" };
+    const receipt = { product: "unmatched", productName: null, purpose: null, paymentLinkId: null };
+    const wrong = feeDb({ invoice });
+    const rejected = await onPaymentReceivedMoney(feeReceipt({
+      ...receipt, saleId: NEWEST_SALE
+    }), wrong);
+    assert.equal(rejected.done, false);
+    assert.equal(rejected.reason, "invoice_sale_conflict");
+    assert.equal(salePaymentInsert(wrong), undefined);
+
+    const valid = feeDb({ invoice });
+    const accepted = await onPaymentReceivedMoney(feeReceipt({
+      ...receipt, saleId: BILLED_SALE
+    }), valid);
+    assert.equal(accepted.done, true, JSON.stringify(accepted));
+    assert.equal(salePaymentInsert(valid)?.params[1], BILLED_SALE);
+    assert.equal(salePaymentInsert(valid)?.params[6], "installment");
+  });
+
+  test("void non-fee invoices and new payments to already-paid non-fee invoices cannot unlock", async () => {
+    const receipt = { product: "unmatched", productName: null,
+      purpose: null, paymentLinkId: null, saleId: BILLED_SALE };
+    const voided = feeDb({ invoice: { id: INVOICE, sale_id: BILLED_SALE, status: "void",
+      source: "other", invoice_type: "platform_fee" } });
+    const result = await onPaymentReceivedMoney(feeReceipt(receipt), voided);
+    assert.equal(result.done, false);
+    assert.equal(result.reason, "invoice_not_collectible");
+    assert.equal(salePaymentInsert(voided), undefined);
+
+    const paid = feeDb({ invoice: { id: INVOICE, sale_id: BILLED_SALE, status: "paid",
+      source: "other", invoice_type: "platform_fee" } });
+    const novel = await onPaymentReceivedMoney(feeReceipt(receipt), paid);
+    assert.equal(novel.done, false);
+    assert.equal(novel.reason, "paid_success_fee_new_receipt");
+    assert.equal(salePaymentInsert(paid), undefined);
+  });
+
+  test("an explicit original sale with conflicting product identity is held", async () => {
+    const db = feeDb({ invoice: null });
+    const out = await onPaymentReceivedMoney(feeReceipt({
+      invoiceId: null, paymentLinkId: null, purpose: null,
+      product: "unmatched", productName: null,
+      saleId: BILLED_SALE, productId: NEWEST_SALE
+    }), db);
+    assert.equal(out.done, false);
+    assert.equal(out.reason, "sale_context_conflict");
+    assert.equal(salePaymentInsert(db), undefined);
+  });
+});
+
+// Exercise the adapter's actual event pair, not just payment.received alone.
+// These tables model receipt/entitlement uniqueness; providers are never called.
+describe("Commas purchase events share the invoice receipt gate", () => {
+  const ORG = "00000000-0000-4000-8000-0000000000a1";
+  const CLIENT = "00000000-0000-4000-8000-0000000000c1";
+  const LINK = "00000000-0000-4000-8000-0000000000d1";
+  const INVOICE = "00000000-0000-4000-8000-0000000000e1";
+  const OTHER_INVOICE = "00000000-0000-4000-8000-0000000000e2";
+  const SALE = "00000000-0000-4000-8000-0000000000b1";
+  const PRODUCT = "00000000-0000-4000-8000-0000000000f1";
+
+  function purchaseDb({ linked = true } = {}) {
+    const queries = [], events = [], transactions = [], payments = [], grants = [], cards = [];
+    const client = { id: CLIENT, org_id: ORG, email: "pair@example.invalid", ghl_contact_id: "existing-local-link" };
+    const sale = { id: SALE, org_id: ORG, client_id: CLIENT, product_id: PRODUCT, sale_motion: null, status: "active" };
+    const product = { id: PRODUCT, org_id: ORG, code: "card-stacking-dfy", name: "Consulting Services Deposit", category: "funding" };
+    const link = { id: LINK, org_id: ORG, client_id: CLIENT, product_id: PRODUCT, sale_id: SALE,
+      invoice_id: INVOICE, purpose: "deposit", sale_motion: null, link_ref: "pair-link" };
+    return { queries, events, transactions, payments, grants, cards, async query(sql, params = []) {
+      const text = String(sql);
+      queries.push({ text, params });
+      if (/FROM payment_links/.test(text)) {
+        const matches = /client_id = \$3/.test(text)
+          ? params[0] === LINK && params[1] === ORG && params[2] === CLIENT
+          : params[0] === link.link_ref;
+        return { rows: linked && matches ? [link] : [] };
+      }
+      if (/FROM clients/.test(text)) {
+        const matches = /lower\(email\)/.test(text)
+          ? params[0] === ORG && params[1] === client.email
+          : params[0] === CLIENT && params[1] === ORG;
+        return { rows: matches ? [client] : [] };
+      }
+      if (/INSERT INTO events/.test(text)) {
+        if (events.some(e => e.key === params[3])) return { rows: [] };
+        const event = { id: randomUUID(), name: params[1], payload: params[5], key: params[3] };
+        events.push(event);
+        return { rows: [event] };
+      }
+      if (/INSERT INTO transactions/.test(text)) {
+        const [org_id, client_id, product_name, amount_paid, status, provider, provider_ref, raw_payload] = params;
+        const incoming = { org_id, client_id, product_name, amount_paid, status, provider, provider_ref, raw_payload };
+        const old = transactions.find(t => t.org_id === org_id && t.provider_ref === provider_ref);
+        if (!old) transactions.push({ id: randomUUID(), ...incoming });
+        else if (/DO UPDATE SET/.test(text) && old.status === "failed" && status === "succeeded" &&
+          client_id && old.client_id === client_id && old.provider === provider &&
+          old.product_name === product_name && old.amount_paid === amount_paid) {
+          old.status = status; old.raw_payload = raw_payload;
+        }
+        return { rows: [] };
+      }
+      if (/FROM transactions/.test(text)) {
+        const hit = /WHERE id = \$1/.test(text)
+          ? transactions.find(t => t.id === params[0] && t.org_id === params[1] && t.client_id === params[2] && t.status === "succeeded" && Number(t.amount_paid) === params[3] &&
+            (!/provider = \$5/.test(text) || t.provider === params[4]) &&
+            (!/product_name = \$6/.test(text) || t.product_name === params[5]))
+          : transactions.find(t => t.org_id === params[0] && t.provider_ref === params[1]);
+        return { rows: hit ? [hit] : [] };
+      }
+      if (/FROM invoices/.test(text)) {
+        const matches = params[0] === INVOICE && params[1] === ORG && params[2] === CLIENT;
+        return { rows: matches && !/source = 'funding_success_fee'/.test(text)
+          ? [{ id: INVOICE, sale_id: SALE, status: "sent", funding_round_id: null }] : [] };
+      }
+      if (/SELECT \* FROM sales/.test(text)) return { rows: [sale] };
+      if (/FROM products WHERE/.test(text)) return { rows: [product] };
+      if (/INSERT INTO sale_payments/.test(text)) {
+        if (payments.some(p => p.org_id === params[0] && p.transaction_id === params[2])) return { rows: [] };
+        const payment = { id: randomUUID(), org_id: params[0], sale_id: params[1], transaction_id: params[2],
+          product_id: params[3], payment_link_id: params[4], sale_motion: params[5], kind: params[6],
+          amount: params[7], source_event_id: params[10] };
+        payments.push(payment);
+        return { rows: [payment] };
+      }
+      if (/FROM sale_payments sp/.test(text)) return { rows: payments.some(p => p.kind === "deposit") ? [{ paid: 1 }] : [] };
+      if (/FROM sale_payments WHERE org_id/.test(text)) return { rows: payments.filter(p => p.org_id === params[0] && p.transaction_id === params[1]) };
+      if (/FROM product_entitlements/.test(text)) return { rows: [{ entitlement_code: "funding-snapshot", duration_days: null }] };
+      if (/INSERT INTO entitlements/.test(text)) {
+        if (grants.some(g => g.source_transaction_id === params[3] && g.entitlement_code === params[2])) return { rows: [] };
+        const grant = { id: randomUUID(), entitlement_code: params[2], source_transaction_id: params[3] };
+        grants.push(grant); return { rows: [grant] };
+      }
+      if (/SELECT id, revoked_at FROM entitlements/.test(text)) return { rows: grants.filter(g => g.source_transaction_id === params[3]) };
+      if (/FROM pipeline_stages/.test(text)) return { rows: [{ stage_id: "closed-won", pipeline_id: "sales" }] };
+      if (/SELECT id FROM cards/.test(text)) return { rows: cards };
+      if (/INSERT INTO cards/.test(text)) { cards.push({ id: "card", client_id: params[1], stage_id: params[3] }); return { rows: [] }; }
+      return { rows: [], rowCount: 0 };
+    } };
+  }
+
+  function inboxRow({ invoiceId = INVOICE, linked = true, type = "payment.succeeded", key = type, titleless = false } = {}) {
+    return { org_id: ORG, dedupe_key: `pair:${key}`, raw_body: JSON.stringify({
+      id: `delivery-${key}`, type, data: { payment_id: "pair-receipt", amount: 3000,
+        ...(titleless ? {} : { product: { title: "Consulting Services Deposit" } }), fan: { email: "pair@example.invalid" },
+        metadata: { client_id: CLIENT, ...(linked ? { link_ref: "pair-link" } : {}),
+          ...(invoiceId ? { invoice_id: invoiceId } : {}) } }
+    }) };
+  }
+
+  function registerPair(t) {
+    clearHandlers();
+    t.after(() => clearHandlers());
+    t.mock.method(inngest, "send", async () => ({ ids: [] }));
+    const results = [];
+    on("payment.received", onPaymentReceived);
+    on("payment.failed", onPaymentFailed);
+    for (const [name, handler] of [["payment.received", onPaymentReceivedMoney], ["deposit.paid", onDepositPaidMoney]]) {
+      on(name, async (event, db) => { results.push({ name, out: await handler(event, db) }); });
+    }
+    return results;
+  }
+
+  test("a conflicting invoice is refused by both events before any paid effect", async (t) => {
+    const results = registerPair(t), db = purchaseDb();
+    await processCommasInboxRow(inboxRow({ invoiceId: OTHER_INVOICE }), db);
+    assert.deepEqual(results.map(r => [r.name, r.out.reason]), [
+      ["payment.received", "payment_link_invoice_conflict"], ["deposit.paid", "payment_link_invoice_conflict"]
+    ]);
+    assert.equal(db.transactions.length, 1, "the original provider receipt remains available for reconciliation");
+    assert.equal(db.payments.length, 0); assert.equal(db.grants.length, 0); assert.equal(db.cards.length, 0);
+    assert.ok(!db.queries.some(q => /INSERT INTO sales|INSERT INTO sale_attributions|FROM commission_rules|INSERT INTO commission_ledger/.test(q.text)));
+    for (const handler of [onDiagnosticPaidMoney, onSaleClosedMoney]) {
+      const out = await handler({ id: randomUUID(), orgId: ORG, clientId: CLIENT,
+        payload: { product: "deposit", paymentLinkId: LINK, invoiceId: OTHER_INVOICE, amount: 3000 } }, db);
+      assert.equal(out.reason, "payment_link_invoice_conflict", "every semantic purchase handler must share the guard");
+    }
+  });
+
+  for (const linked of [true, false]) {
+    test(`a valid ${linked ? "invoice-linked" : "invoice-free"} deposit pair records and grants exactly once`, async (t) => {
+      const results = registerPair(t), db = purchaseDb({ linked });
+      const row = inboxRow({ linked, invoiceId: linked ? INVOICE : null });
+      await processCommasInboxRow(row, db);
+      assert.deepEqual(results.map(r => r.name), ["payment.received", "deposit.paid"]);
+      assert.ok(results.every(r => r.out.done), JSON.stringify(results));
+      assert.equal(db.payments.length, 1); assert.equal(db.payments[0].kind, "deposit");
+      assert.equal(db.grants.length, 1); assert.equal(db.cards.length, 1);
+      assert.equal(results[1].out.clientId, CLIENT);
+      await processCommasInboxRow(row, db);
+      assert.equal(results.length, 2, "adapter redelivery must not dispatch duplicate events");
+      assert.equal(db.payments.length, 1); assert.equal(db.grants.length, 1);
+    });
+  }
+
+  for (const titleless of [false, true]) {
+  test(`failed then succeeded settles the same ${titleless ? "titleless" : "titled"} receipt; late failures and replay cannot undo or duplicate it`, async (t) => {
+    const results = registerPair(t), db = purchaseDb();
+    await processCommasInboxRow(inboxRow({ type: "payment.failed", titleless }), db);
+    assert.equal(db.transactions[0].status, "failed");
+    assert.equal(db.payments.length, 0); assert.equal(db.grants.length, 0);
+    const transactionId = db.transactions[0].id;
+    await processCommasInboxRow(inboxRow({ titleless }), db);
+    assert.equal(db.transactions.length, 1); assert.equal(db.transactions[0].id, transactionId);
+    assert.equal(db.transactions[0].status, "succeeded");
+    assert.ok(results.every(r => r.out.done), JSON.stringify(results));
+    assert.equal(db.payments.length, 1); assert.equal(db.grants.length, 1); assert.equal(db.cards.length, 1);
+    await processCommasInboxRow(inboxRow({ type: "payment.failed", key: "late-failed", titleless }), db);
+    await processCommasInboxRow(inboxRow({ key: "capture-replay", titleless }), db);
+    assert.equal(db.transactions[0].status, "succeeded");
+    assert.equal(db.payments.length, 1); assert.equal(db.grants.length, 1);
+  });
+  }
+
+  test("a titleless linked capture succeeds without a prior failure", async (t) => {
+    const results = registerPair(t), db = purchaseDb();
+    await processCommasInboxRow(inboxRow({ titleless: true }), db);
+    assert.ok(results.every(r => r.out.done), JSON.stringify(results));
+    assert.equal(db.payments.length, 1); assert.equal(db.grants.length, 1); assert.equal(db.cards.length, 1);
+  });
+
+  for (const conflict of [{ provider: "other-provider" }, { product_name: "Another purchase" }]) {
+    test(`a captured receipt with conflicting ${Object.keys(conflict)[0]} cannot fund the adapter pair`, async (t) => {
+      const results = registerPair(t), db = purchaseDb();
+      db.transactions.push({ id: randomUUID(), org_id: ORG, client_id: CLIENT,
+        product_name: "Consulting Services Deposit", amount_paid: 3000, status: "succeeded",
+        provider: "commas", provider_ref: "pair-receipt", ...conflict });
+      await processCommasInboxRow(inboxRow(), db);
+      assert.deepEqual(results.map(r => r.out.reason), ["transaction_source_conflict", "transaction_source_conflict"]);
+      assert.equal(db.payments.length, 0); assert.equal(db.grants.length, 0); assert.equal(db.cards.length, 0);
+    });
+  }
+
 });

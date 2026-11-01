@@ -514,7 +514,8 @@ export function mapToCanonical(evt) {
   }
 
   if (t.includes("failed")) {
-    out.push({ name: "payment.failed", product: null });
+    // Keep the same title/link-derived identity on decline and capture.
+    out.push({ name: "payment.failed", product: productOf(evt) });
     return out;
   }
   if (!t.includes("succeeded")) return out; // pending/other — ignore
