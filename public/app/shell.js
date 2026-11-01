@@ -2000,7 +2000,13 @@
     "csm-queue.html": "client-success",
     "ops-admin.html": "operations",
     "finance-os.html": "finance",
-    "messaging.html": "communications"
+    "messaging.html": "communications",
+    "calendar.html": "appointments",
+    "documents.html": "documents",
+    "my-numbers.html": "performance",
+    "staff-teams.html": "staff-operations",
+    "contracts.html": "agreements",
+    "consent-capture.html": "consent"
   };
   var SOP_STAFF_ROLES = ["owner", "admin", "funding_advisor", "closer",
     "inquiry_specialist", "setter", "sales_manager", "csm"];
@@ -2021,6 +2027,33 @@
       "#fh-sop-shortcut:hover{background:#F4F4F5;border-color:#A1A1AA}" +
       "#fh-sop-shortcut:focus-visible{outline:2px solid #4866D7;outline-offset:3px}" +
       "#fh-sop-shortcut svg{display:block;width:19px;height:19px}" +
+      "#fh-sop-shortcut .fh-sop-label{font-size:var(--fs-body,14px);font-weight:700}" +
+      "@media(max-width:480px){#fh-sop-shortcut .fh-sop-label{display:none}}" +
+      ".fh-step-sop{display:inline-flex;align-items:center;justify-content:center;" +
+      "min-height:44px;box-sizing:border-box;padding:6px 9px;margin-left:8px;" +
+      "border:1px solid var(--line,#E4E4E7);border-radius:8px;" +
+      "background:var(--surface,#fff);color:var(--ink2,#18181B);" +
+      "font:700 var(--fs-caption,13px)/1.2 var(--sans,system-ui);text-decoration:none;" +
+      "vertical-align:middle;white-space:nowrap;cursor:pointer}" +
+      ".fh-step-sop:hover{border-color:var(--gray2,#A1A1AA);text-decoration:underline}" +
+      ".fh-step-sop:focus-visible{outline:2px solid #4866D7;outline-offset:2px}" +
+      "body.documents-page .documents-intro>div:first-child{position:relative}" +
+      "body.documents-page .documents-intro .fh-step-sop{" +
+        "position:absolute;top:-5px;left:min(280px,calc(100% - 64px));margin-left:0;padding-inline:9px}" +
+      "@media(max-width:480px){" +
+        /* Keep a source label, visible SOP and full 44px target on one row. */
+        "body.closer-workspace .funding-estimate .sech{align-items:center;gap:6px}" +
+        "body.closer-workspace .funding-estimate .sech h2{font-size:17px!important;white-space:nowrap;min-width:0}" +
+        "body.closer-workspace .funding-estimate .sech .source-label{font-size:11px!important}" +
+        "body.closer-workspace .funding-estimate .sech .fh-step-sop{" +
+          "min-width:44px;width:44px;margin-left:0;padding:0;font-size:0;flex:0 0 44px}" +
+        "body.closer-workspace .funding-estimate .sech .fh-step-sop::after{" +
+          "content:'SOP';font-size:11px}" +
+      "}" +
+      "@media(max-width:350px){" +
+        "body.closer-workspace .funding-estimate .sech{margin-bottom:4px}" +
+        "body.closer-workspace .funding-estimate .band+.band{padding-top:12px}" +
+      "}" +
       /* The 44px icon must not add a second row to the 320px shared
          workspace header: doing so hides the first client card below the
          viewport. Keep touch targets full-sized and truncate only the title. */
@@ -2053,8 +2086,256 @@
     a.setAttribute("data-fh-sop-topic", topic);
     a.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
       '<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6Z"/>' +
-      '<path d="M14 3v6h6M8 13h8M8 17h6"/></svg>';
+      '<path d="M14 3v6h6M8 13h8M8 17h6"/></svg><span class="fh-sop-label">SOPs</span>';
     tools.appendChild(a);
+    mountSopAtWorksteps();
+  }
+
+  /* Additional small, task-specific SOP links use the SAME role-cleared Brain.
+     Work links are only created after session-based Company Brain access passes.
+     These are finite topic names, not stored prompts or client data. */
+  var SOP_TASK_LINKS = {
+    "setter-dashboard.html": [
+      {
+        "selector": "#setter-detail .setter-section h3",
+        "match": "Call result",
+        "topic": "setter-calls",
+        "label": "Call SOP"
+      },
+      {
+        "selector": "#setter-detail .setter-section h3",
+        "match": "Triage and book",
+        "topic": "setter-calls",
+        "label": "Booking SOP"
+      },
+      {
+        "selector": "#setter-detail .setter-section h3",
+        "match": "Confirm and warm",
+        "topic": "setter-calls",
+        "label": "Confirm SOP"
+      },
+      {
+        "selector": "#setter-detail .setter-section h3",
+        "match": "Closer handoff",
+        "topic": "setter-handoff",
+        "label": "Handoff SOP"
+      }
+    ],
+    "closer-dashboard.html": [
+      {
+        "selector": "#closer-funding-title",
+        "topic": "closer-call",
+        "label": "Sales SOP"
+      },
+      {
+        "selector": "#calcTitle",
+        "topic": "closer-call",
+        "label": "Call SOP"
+      }
+    ],
+    "client-control-panel.html": [
+      {
+        "selector": "#ccp-view-funding .workspace-section-head h2",
+        "topic": "funding-round",
+        "label": "Funding SOP"
+      },
+      {
+        "selector": "#ccp-view-credit .workspace-section-head h2",
+        "topic": "inquiry-case",
+        "label": "Credit SOP"
+      }
+    ],
+    "csm-queue.html": [
+      {
+        "selector": "#qTitle",
+        "topic": "csm-followup",
+        "label": "Follow-up SOP"
+      },
+      {
+        "selector": ".q-form-heading",
+        "topic": "csm-followup",
+        "label": "Notes SOP"
+      }
+    ],
+    "inquiry-remover.html": [
+      {
+        "selector": ".section-title",
+        "match": "Inquiry removal cases",
+        "topic": "inquiry-case",
+        "label": "Inquiry SOP"
+      },
+      {
+        "selector": ".section-title",
+        "match": "Work queue",
+        "topic": "inquiry-case",
+        "label": "Work SOP"
+      },
+      {
+        "selector": ".section-title",
+        "match": "Repair desk",
+        "topic": "inquiry-case",
+        "label": "Repair SOP"
+      }
+    ],
+    "lenders.html": [
+      {
+        "selector": "#tab-list h2",
+        "topic": "bank-product",
+        "label": "Lender SOP"
+      }
+    ],
+    "bank-outreach.html": [
+      {
+        "selector": "#queue-title",
+        "topic": "bank-product",
+        "label": "Outreach SOP"
+      },
+      {
+        "selector": "#team-title",
+        "topic": "bank-product",
+        "label": "Verification SOP"
+      }
+    ],
+    "sales-floor.html": [
+      {
+        "selector": "#fh-floor-team-title",
+        "topic": "sales",
+        "label": "Coaching SOP"
+      },
+      {
+        "selector": "#fh-floor-focus-title",
+        "topic": "sales",
+        "label": "Quality SOP"
+      }
+    ],
+    "pipeline.html": [
+      {
+        "selector": "#fhDrawerName",
+        "topic": "onboarding",
+        "label": "Handoff SOP"
+      }
+    ],
+    "ops-admin.html": [
+      {
+        "selector": "#ops-pulse .section-title",
+        "topic": "ops-reconciliation",
+        "label": "Ops SOP"
+      }
+    ],
+    "finance-os.html": [
+      {
+        "selector": ".fos-page-heading h2",
+        "topic": "finance",
+        "label": "Finance SOP"
+      },
+      {
+        "selector": "#fosWrap #banking h2",
+        "topic": "finance",
+        "label": "Banking SOP"
+      }
+    ],
+    "messaging.html": [
+      {
+        "selector": "#inboxTitle",
+        "topic": "communications",
+        "label": "Reply SOP"
+      }
+    ],
+    "calendar.html": [
+      {
+        "selector": ".rail-title",
+        "match": "Appointment details",
+        "topic": "appointments",
+        "label": "Booking SOP"
+      }
+    ],
+    "documents.html": [
+      {
+        "selector": ".documents-intro h2",
+        "topic": "documents",
+        "label": "SOP"
+      }
+    ],
+    "my-numbers.html": [
+      {
+        "selector": "#monthTitle",
+        "topic": "performance",
+        "label": "Metrics SOP"
+      }
+    ],
+    "staff-teams.html": [
+      {
+        "selector": ".team-heading h2",
+        "topic": "staff-operations",
+        "label": "Team SOP"
+      }
+    ],
+    "contracts.html": [
+      {
+        "selector": "#editorTitle",
+        "topic": "agreements",
+        "label": "Contract SOP"
+      }
+    ],
+    "consent-capture.html": [
+      {
+        "selector": "#ccTitle",
+        "topic": "consent",
+        "label": "Consent SOP"
+      }
+    ]
+  };
+
+  function mountSopAtWorksteps() {
+    var specs = SOP_TASK_LINKS[PAGE] || [];
+    if (!specs.length) return;
+    function paint() {
+      specs.forEach(function (spec) {
+        var elements = document.querySelectorAll(spec.selector);
+        Array.prototype.forEach.call(elements, function (el) {
+          if (spec.match && el.textContent.trim().indexOf(spec.match) !== 0) return;
+          var headingSibling = PAGE === "consent-capture.html" || PAGE === "documents.html" || PAGE === "pipeline.html" || PAGE === "closer-dashboard.html";
+          if (headingSibling ?
+              (el.nextElementSibling && el.nextElementSibling.classList.contains("fh-step-sop")) :
+              el.querySelector(".fh-step-sop")) return;
+          var link = document.createElement("a");
+          link.className = "fh-step-sop";
+          link.href = "company-brain.html?sop=" + encodeURIComponent(spec.topic);
+          link.setAttribute("data-fh-sop-step", spec.topic);
+          link.setAttribute("aria-label", "Open approved " + spec.label + " in Company Brain");
+          link.title = "Find approved " + spec.label + " in Company Brain";
+          link.textContent = spec.label;
+          // Preserve exact heading text, including consent titles.
+          if (headingSibling && el.parentNode) el.parentNode.insertBefore(link, el.nextSibling);
+          else el.appendChild(link);
+        });
+      });
+    }
+    paint();
+    // The selected setter and Finance OS details are redrawn asynchronously.
+    // Watch ONLY their content area; never observe the entire live dashboard.
+    var dynamicRoot = ({
+      "setter-dashboard.html": "#setter-detail",
+      "csm-queue.html": "#qList",
+      "finance-os.html": "#fosWrap",
+      "pipeline.html": "#fhDrawerName",
+      "documents.html": ".documents-intro",
+      "contracts.html": "#editorTitle",
+      "consent-capture.html": "#ccTitle"
+    })[PAGE];
+    var root = dynamicRoot && document.querySelector(dynamicRoot);
+    if (root && typeof MutationObserver !== "undefined") {
+      var queued = false;
+      var observer = new MutationObserver(function () {
+        if (queued) return;
+        queued = true;
+        Promise.resolve().then(function () {
+          queued = false;
+          paint();
+        });
+      });
+      observer.observe(root, { childList: true, subtree: true });
+    }
   }
 
   /* Shared staff identity and context are normal layout, rather than floating
