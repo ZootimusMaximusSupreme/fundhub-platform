@@ -33,6 +33,7 @@ import {
   MAX_IN_FLIGHT_READS, TIMEOUT_MS, check, checkCardBox, checkOrderPrice, clip, errText, fail, fileName, is2xx,
   makeGetter, pathOf, readPage, scriptProblem, scriptSrcs, siteOf, skip, videoFiles
 } from "../beats/lib/funnel-pages-truth.mjs";
+import { PUBLIC_STATIC_FILES } from "../registry.mjs";
 
 export {
   MIN_CARD_BOX_BYTES,
@@ -45,6 +46,24 @@ export {
 
 export const DEFAULT_FUNNEL_BASE_URL = "https://apply.fundhub.ai";
 export const DEFAULT_APP_BASE_URL = "https://fundhub.ai";
+export const SLIDESHOW_PAGES = PUBLIC_STATIC_FILES.filter((file) => /^slideshows\/[^/]+\.html$/.test(file));
+
+async function checkSlideshows(get, origins) {
+  const id = "funnel:slideshows-content";
+  const problems = (await Promise.all(SLIDESHOW_PAGES.map(async (file) => {
+    const url = `${origins.app}/${file}`;
+    const read = await readPage(get, url);
+    if (read.why) return read.why;
+    const body = read.page.text;
+    const slides = (body.match(/<section\s+class="slide\b/g) || []).length;
+    if (!/<title>Fundhub\b/.test(body) || slides < 5 || !/<main\s+class="ss"\s+data-deck=/.test(body)) {
+      return `${url} lost its deck title, body, or slides`;
+    }
+    return null;
+  }))).filter(Boolean);
+  if (problems.length) return fail(id, problems.join("; "), "Restore the missing slideshow page from marketing/slideshows and ship it.");
+  return check(id, "PASS", `${SLIDESHOW_PAGES.length} live phone decks have a title, body and at least five slides`);
+}
 
 const FIX =
   "Restore the missing offer copy, checkout hook, or form post on that live page. " +
@@ -664,6 +683,7 @@ async function checkCrossSite(get, origins) {
 
 /** The Tier 1 checks, in the order they report. */
 export const GAP_WIDGET_CHECKS = Object.freeze([
+  Object.freeze({ id: "funnel:slideshows-content", run: checkSlideshows }),
   Object.freeze({ id: "funnel:card-box-script-loads", run: checkCardBox }),
   Object.freeze({ id: "funnel:book-and-order-pages-live", run: checkBookAndOrder }),
   Object.freeze({ id: "funnel:order-price-matches-till", run: checkOrderPrice }),

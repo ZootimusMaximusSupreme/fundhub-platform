@@ -5,6 +5,7 @@ import {
   GAP_DOORS,
   GAP_WIDGET_CHECKS,
   MIN_CARD_BOX_BYTES,
+  SLIDESHOW_PAGES,
   TRACKING_SCRIPTS,
   WIDGET_DOORS,
   cardBoxScriptUrl,
@@ -72,6 +73,8 @@ function orderHtml(cents = 14700, { form = true, price = true } = {}) {
 }
 
 const GOOD = {
+  ...Object.fromEntries(SLIDESHOW_PAGES.map((file) => [`/${file}`,
+    '<title>Fundhub Deck</title><main class="ss" data-deck="test">' + '<section class="slide"><h2>Point</h2></section>'.repeat(5) + '</main>'])),
   "/roadmap": roadmapHtml(APP),
   "/api/public/slo-checkout": { body: TILL, cors: "GET, POST, OPTIONS" },
   "/api/public/slo-pull": { status: 405, body: '{"ok":false,"error":"method_not_allowed"}', cors: "POST, OPTIONS" },
@@ -183,7 +186,7 @@ test("gap funnels: every live door passes when markers are present", async () =>
   // unqualified-credit calendar (owner-set 2026-10-29).
   assert.equal(rows.length, GAP_DOORS.length + GAP_WIDGET_CHECKS.length);
   assert.equal(GAP_DOORS.length, 22);
-  assert.equal(GAP_WIDGET_CHECKS.length, 6);
+  assert.equal(GAP_WIDGET_CHECKS.length, 7);
   for (const row of rows) {
     assert.deepEqual(Object.keys(row).sort(), ["detail", "id", "status", "suggestedFix"]);
     assert.equal(row.status, "PASS", `${row.id} ${row.detail}`);
@@ -197,6 +200,19 @@ test("gap funnels: every live door passes when markers are present", async () =>
   assert.ok(calls.every((call) => call.url.startsWith(FUNNEL) || call.url.startsWith(APP) || call.url.startsWith(VENDOR)));
   // One call per address: the till is read once for the page, not once per reader.
   assert.equal(new Set(calls.map((c) => c.url)).size, calls.length);
+});
+
+test("gap funnels: a missing or blank phone deck fails the shared slideshow tripwire", async () => {
+  assert.equal(SLIDESHOW_PAGES.length, 22);
+  const missing = { ...GOOD };
+  delete missing[`/${SLIDESHOW_PAGES[0]}`];
+  const missingRow = byId(await gapChecks(ctx(missing)), "funnel:slideshows-content");
+  assert.equal(missingRow.status, "FAIL");
+  assert.match(missingRow.detail, new RegExp(SLIDESHOW_PAGES[0]));
+  const blank = { ...GOOD, [`/${SLIDESHOW_PAGES[1]}`]: "<title>Fundhub Deck</title>" };
+  const blankRow = byId(await gapChecks(ctx(blank)), "funnel:slideshows-content");
+  assert.equal(blankRow.status, "FAIL");
+  assert.match(blankRow.detail, /lost its deck title, body, or slides/);
 });
 
 test("gap funnels: live reads stay bounded so roadmap pull and optimize finish", async () => {
@@ -475,7 +491,7 @@ async function runWith(change, calls = []) {
 }
 
 test("tier 1: six new ids, none repeated, none a door id", () => {
-  const ids = GAP_WIDGET_CHECKS.map((c) => c.id);
+  const ids = GAP_WIDGET_CHECKS.map((c) => c.id).filter((id) => id !== "funnel:slideshows-content");
   assert.deepEqual([...ids].sort(), Object.values(ID).sort());
   assert.equal(new Set(ids).size, ids.length);
   assert.ok(ids.every((id) => !GAP_DOORS.some((d) => d.id === id)));
