@@ -47,6 +47,15 @@
    ]
   },
   {
+   "key": "EMAIL-BS-DECK-LESSON",
+   "channel": "email",
+   "approvedBySeed": true,
+   "inactive": false,
+   "files": [
+    "db/seed/305_pre_call_deck_email.sql"
+   ]
+  },
+  {
    "key": "EMAIL-CANDIDATE-EEO-INVITE",
    "channel": "email",
    "approvedBySeed": true,
@@ -902,6 +911,15 @@
    "inactive": false,
    "files": [
     "db/migrations/488_blueprint_coach_agents.sql"
+   ]
+  },
+  {
+   "key": "SMS-BS-DECK",
+   "channel": "sms",
+   "approvedBySeed": true,
+   "inactive": false,
+   "files": [
+    "db/seed/305_pre_call_deck_email.sql"
    ]
   },
   {
