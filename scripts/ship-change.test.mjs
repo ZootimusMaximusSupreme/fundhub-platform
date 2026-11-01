@@ -48,6 +48,7 @@ function fakeCommands(prs) {
         return calls.some(call => call[0] === 'git' && call[1] === 'add') ? 'scripts/new.mjs\0' : '';
       }
       if (args[0] === 'merge-base') return 'parent-head\n';
+      if (args[0] === 'ls-remote' && args[1] === '--heads') return `parent-head\trefs/heads/${args[3]}\n`;
       return '';
     }
     if (program === 'gh') {
@@ -82,6 +83,19 @@ test('child change targets the preceding PR and does not merge into it', async (
   assert(calls.some(call => call.join(' ').includes('pr edit 42 --repo ZootimusMaximusSupreme/fundhub-platform --add-label ship-order/2')));
   assert(calls.some(call => call.join(' ') === 'npm run preflight -- --expected-base origin/codex/previous-change'));
   assert(!calls.some(call => call[0] === 'gh' && call[1] === 'pr' && call[2] === 'merge'));
+});
+
+test('a parent branch that moves during preflight stops before child push or PR creation', async () => {
+  const { command, calls } = fakeCommands([member(41, 'codex/previous-change', 'main', 1)]);
+  const moved = async (program, args, options) => {
+    if (program === 'git' && args[0] === 'ls-remote' && args[1] === '--heads') {
+      return `new-parent-head\trefs/heads/${args[3]}\n`;
+    }
+    return command(program, args, options);
+  };
+  await assert.rejects(runShipChange({ message: 'Next change', ownerLane: 'sales', files: ['scripts/new.mjs'] }, moved), /Stack parent .* advanced/);
+  assert(!calls.some(call => call[0] === 'git' && call[1] === 'push'));
+  assert(!calls.some(call => call[0] === 'gh' && call[1] === 'pr' && call[2] === 'create'));
 });
 
 test('refuses unselected staged files before committing or pushing', async () => {

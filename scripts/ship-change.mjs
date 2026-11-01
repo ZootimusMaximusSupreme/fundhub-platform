@@ -165,10 +165,11 @@ export async function runShipChange(options, command = defaultCommand) {
     throw new Error('--resume needs a change commit ahead of origin/main.');
   }
 
+  let parentHead = null;
   if (parent) {
-    await rootGit(['fetch', 'origin', parent.headRefName]);
+    await rootGit(['fetch', 'origin', `refs/heads/${parent.headRefName}:refs/remotes/origin/${parent.headRefName}`]);
     const ancestor = await rootGit(['merge-base', 'HEAD', `origin/${parent.headRefName}`]);
-    const parentHead = (await rootGit(['rev-parse', `origin/${parent.headRefName}`])).trim();
+    parentHead = (await rootGit(['rev-parse', `origin/${parent.headRefName}`])).trim();
     if (ancestor.trim() !== parentHead) {
       const basePoint = ancestor.trim();
       if (!basePoint) throw new Error('Could not identify the branch base for ordered rebase.');
@@ -183,6 +184,12 @@ export async function runShipChange(options, command = defaultCommand) {
   await scoped('npm', parent
     ? ['run', 'preflight', '--', '--expected-base', `origin/${parent.headRefName}`]
     : ['run', 'preflight']);
+  if (parent) {
+    const remoteParent = (await rootGit(['ls-remote', '--heads', 'origin', parent.headRefName])).split(/\s+/)[0];
+    if (remoteParent !== parentHead) {
+      throw new Error(`Stack parent ${parent.headRefName} advanced during shipping. Rerun with --resume after fetching it.`);
+    }
+  }
   const remoteBranch = await rootGit(['ls-remote', '--heads', 'origin', branch]);
   await rootGit(remoteBranch.trim()
     ? ['push', '--force-with-lease', 'origin', `HEAD:refs/heads/${branch}`]
