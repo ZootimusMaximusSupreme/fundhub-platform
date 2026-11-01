@@ -185,10 +185,50 @@
       try {
         const host = doc.querySelector('[data-fhv="' + name + '"][data-fhv-client="' + cssEsc(client) + '"]');
         if (host) animateIn(host, ctx);
+        if (host && name === "companies") fitToSlide(host);
       } catch (e) { /* the slide moved on */ }
     });
   }
   function cssEsc(s) { return String(s).replace(/["\\]/g, "\\$&"); }
+
+  /* C-01 is the tallest slide. On a laptop screen "Funding partners for life"
+     and the proof used to sit below the edge (2026-10-30). The layout is
+     tighter on a short screen; when it is still taller than the slide, it
+     shrinks to fit, never below 80 percent. Outside the deck's slide (a test
+     page) and on a phone nothing changes. */
+  const FIT_MIN = 0.8;
+  function fitToSlide(host) {
+    if (!host || !host.style || typeof host.getBoundingClientRect !== "function") return;
+    const box = closest(host, ".slide-body");
+    if (!box || typeof box.clientHeight !== "number") return;
+    host.style.zoom = "";
+    // A narrow slide (a phone) stacks and scrolls on purpose; it never shrinks.
+    if (host.getBoundingClientRect().width <= 680) return;
+    let zoom = 1;
+    // Twice: a shrunk slide also gets wider, so its text wraps less.
+    for (let pass = 0; pass < 2; pass++) {
+      const over = box.scrollHeight - box.clientHeight;
+      if (over <= 1) break;
+      const tall = host.getBoundingClientRect().height;
+      if (!(tall > 0)) break;
+      zoom = Math.max(FIT_MIN, zoom * (tall - over) / tall);
+      host.style.zoom = String(Math.floor(zoom * 1000) / 1000);
+      if (zoom <= FIT_MIN) break;
+    }
+  }
+  if (root && typeof root.addEventListener === "function" && !V.__visualsFitBound) {
+    let pending = false;
+    root.addEventListener("resize", function () {
+      if (pending || !raf || !doc || typeof doc.querySelectorAll !== "function") return;
+      pending = true;
+      raf(function () {
+        pending = false;
+        const hosts = doc.querySelectorAll('[data-fhv="companies"]');
+        for (let i = 0; i < hosts.length; i++) fitToSlide(hosts[i]);
+      });
+    });
+    V.__visualsFitBound = true;
+  }
 
   /* ── shared markup ─────────────────────────────────────────────────────── */
   function sampleTag(ctx) {
@@ -429,7 +469,7 @@
     const rightCap = !isNum(optimized)
       ? "The optimized amount is not on this file yet."
       : maxStep === 0 ? "Fully optimized."
-        : step === 0 ? "Nothing applied yet. Tap each lever to build the climb."
+        : step === 0 ? (maxStep === 1 ? "Nothing applied yet. Tap the lever to build the climb." : "Nothing applied yet. Tap each lever to build the climb.")
           : step === maxStep ? "Fully optimized, with " + (maxStep === 1 ? "the one lever" : maxStep === 2 ? "both levers" : "all three levers") + " on."
             : "After lever " + step + " of " + maxStep + ".";
     const heads = '<div class="fhv-levers-heads">' +
@@ -488,7 +528,7 @@
       stepsInner = note("The levers", "Nothing to optimize today. This file is already at its optimized amount.");
     } else {
       const count = levers.length === 1 ? "One lever" : levers.length === 2 ? "Two levers" : "Three levers";
-      stepsInner = '<span class="fhv-ui-eyebrow">' + count + " · tap each one</span>" +
+      stepsInner = '<span class="fhv-ui-eyebrow">' + count + (levers.length === 1 ? " · tap it" : " · tap each one") + "</span>" +
         '<div class="fhv-levers-list">' + levers.map(function (l, i) {
           const n = i + 1;
           const on = n <= step;
@@ -610,7 +650,7 @@
       return head(ctx, COMPANIES_EYEBROW) +
         note("No credit pull on this file yet", "The companies picture shows after the pull.") +
         (companies.length ? '<div class="fhv-companies-legend">' + companies.map(function (c, i) {
-          return '<span class="fhv-companies-key is-biz"><b>Business ' + (i + 1) + "</b>" + (c.name ? " · " + esc(c.name) : "") + "</span>";
+          return '<span class="fhv-companies-key ' + bizCls(i) + '"><b>Business ' + (i + 1) + "</b>" + (c.name ? " · " + esc(c.name) : "") + "</span>";
         }).join("") + "</div>" : "") + proofCard();
     }
     const today = num(visual.todayTotal);
@@ -632,7 +672,7 @@
     const segs = [];
     if (isNum(personal) && personal > 0) segs.push({ cls: "is-personal", label: "Personal", short: "P", amount: personal, key: "p" });
     companies.forEach(function (c, i) {
-      if (isNum(c.amount) && c.amount > 0) segs.push({ cls: "is-biz" + (i % 2 ? " is-alt" : ""), label: "Business " + (i + 1), short: "B" + (i + 1), amount: c.amount, key: "b" + i });
+      if (isNum(c.amount) && c.amount > 0) segs.push({ cls: bizCls(i), label: "Business " + (i + 1), short: "B" + (i + 1), amount: c.amount, key: "b" + i });
     });
     if (priced) for (let k = 0; k < added; k++) segs.push({ cls: "is-added", label: "If you add a company", short: "+1", amount: perAdded, key: "a" + k });
     const todayShare = pct(today, scale);
@@ -734,7 +774,7 @@
     const keys = [];
     if (isNum(personal) && personal > 0) keys.push('<span class="fhv-companies-key is-personal"><b>Personal</b> · ' + esc(amt(personal)) + "</span>");
     companies.forEach(function (c, i) {
-      keys.push('<span class="fhv-companies-key is-biz"><b>Business ' + (i + 1) + "</b>" + (c.name ? " · " + esc(c.name) : "") +
+      keys.push('<span class="fhv-companies-key ' + bizCls(i) + '"><b>Business ' + (i + 1) + "</b>" + (c.name ? " · " + esc(c.name) : "") +
         (isNum(c.amount) ? " · " + esc(amt(c.amount)) : " · needs the company report") + "</span>");
     });
     if (added) keys.push('<span class="fhv-companies-key is-added"><b>+' + added + "</b> if you add a company" + (priced ? " · " + esc(amt(perAdded)) + " each" : "") + "</span>");
@@ -744,7 +784,7 @@
     const fileChips = function (withAdded) {
       const chips = ['<span class="fhv-companies-chip is-personal">Personal</span>'];
       companies.forEach(function (c, i) {
-        chips.push('<span class="fhv-companies-chip' + (isNum(c.amount) ? " is-biz" : " is-dim") + '">Business ' + (i + 1) + (isNum(c.amount) ? "" : " · needs the report") + "</span>");
+        chips.push('<span class="fhv-companies-chip ' + (isNum(c.amount) ? bizCls(i) : "is-dim") + '">Business ' + (i + 1) + (isNum(c.amount) ? "" : " · needs the report") + "</span>");
       });
       for (let k = 0; k < withAdded; k++) chips.push('<span class="fhv-companies-chip is-added">+1 company</span>');
       return chips.join("");
@@ -755,10 +795,17 @@
       '<div class="fhv-companies-seq"><span class="fhv-companies-seqname">The one after</span><span class="fhv-ui-cap">About 3 months more</span><div class="fhv-companies-chips">' + fileChips(added) + "</div></div>" +
       '</div><p class="fhv-ui-cap">Fundhub can run a new funding sequence about every 3 months. Each company applies for its own business credit, so every company you add brings in more.</p></div>';
 
+    /* The tab's card and the proof sit side by side on a wide slide, so the
+       whole slide fits a laptop screen (2026-10-30). */
     return head(ctx, COMPANIES_EYEBROW) +
       '<div class="fhv-companies-tabs" role="group" aria-label="Your files">' + tabs.join("") + "</div>" +
-      '<div class="fhv-companies-chart">' + heads + bar + legend + "</div>" + years + detail + seq + proofCard();
+      '<div class="fhv-companies-chart">' + heads + bar + legend + "</div>" + years +
+      '<div class="fhv-companies-pair">' + detail + proofCard() + "</div>" + seq;
   }
+
+  /* Every place a business shows its color (layer, key, chip) uses this, so
+     Business 2 is the same color everywhere on the slide. */
+  function bizCls(i) { return "is-biz" + (i % 2 ? " is-alt" : ""); }
 
   function proofCard() {
     return '<div class="fhv-companies-proof"><span class="fhv-ui-eyebrow">Chris\'s own result. Not a promise.</span>' +
@@ -844,6 +891,7 @@
       if (typeof e.preventDefault === "function") e.preventDefault();
       host.innerHTML = inner[name](ctx, st);
       animateIn(host, ctx);
+      if (name === "companies") fitToSlide(host);
     } catch (err) {
       warn("tap", err);
     }
@@ -886,11 +934,33 @@
     ".fhv-path-branch{margin-left:58px;align-items:flex-start;width:auto}",
     ".fhv-path-branchline{width:18px;height:2px}",
     ".fhv-path-side{flex-direction:row;width:auto}",
-    ".fhv-levers-grid,.fhv-levers-heads,.fhv-levers-reports,.fhv-companies-seqs,.fhv-companies-heads{grid-template-columns:1fr}",
+    ".fhv-levers-grid,.fhv-levers-heads,.fhv-levers-reports,.fhv-companies-seqs,.fhv-companies-heads,.fhv-companies-pair{grid-template-columns:1fr}",
     ".fhv-levers-bars{height:220px}",
     ".fhv-companies-bar{height:56px}",
     ".fhv-companies-switch{display:flex;flex-wrap:wrap}",
     ".fhv-companies-year{flex:1 1 33%;border-right:0;border-bottom:1px solid var(--line)}"
+  ].join("");
+  /* A short screen (a laptop, 2026-10-30): the companies slide packs tighter
+     so it fits without a scroll. Touch targets stay 48px. */
+  const SHORT = [
+    ".fhv-ui-root[data-fhv=\"companies\"]{gap:12px}",
+    ".fhv-companies-tab{min-height:48px;padding:7px 12px}",
+    ".fhv-companies-chart{gap:12px}",
+    ".fhv-companies-bar{height:56px}",
+    ".fhv-companies-year{min-height:48px;padding:6px 14px}",
+    ".fhv-companies-pair{gap:12px}",
+    ".fhv-companies-detail,.fhv-companies-proof{padding:12px 14px;gap:6px}",
+    ".fhv-companies-timeline{gap:8px;padding-top:12px}",
+    ".fhv-companies-seqs{gap:10px}",
+    ".fhv-companies-seq{padding:10px 12px}",
+    ".fhv-companies-seqname{font-size:16px}",
+    ".fhv-companies-chips{margin-top:4px}",
+    ".fhv-companies-chip{font-size:12px;padding:3px 8px}"
+  ].join("");
+  /* On a wide slide the years switch and its line share one row. */
+  const SHORT_WIDE = [
+    ".fhv-companies-years{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:6px 16px}",
+    ".fhv-companies-years>.fhv-ui-eyebrow{grid-column:1/-1}"
   ].join("");
 
   const CSS = [
@@ -1037,6 +1107,7 @@
     ".fhv-companies-key::before{content:\"\";width:12px;height:12px;border-radius:3px;flex:0 0 auto;margin-top:2px;background:var(--soft);border:1px solid var(--line)}",
     ".fhv-companies-key.is-personal::before{background:var(--ink);border-color:var(--ink)}",
     ".fhv-companies-key.is-biz::before{background:var(--info);border-color:var(--info)}",
+    ".fhv-companies-key.is-biz.is-alt::before{background:var(--ok);border-color:var(--ok)}",
     ".fhv-companies-key.is-added::before{background:#fff;border:2px dashed var(--gray2)}",
     ".fhv-companies-years{display:flex;flex-direction:column;gap:8px}",
     ".fhv-companies-switch{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff;align-self:flex-start;max-width:100%}",
@@ -1045,6 +1116,9 @@
     ".fhv-companies-year.is-on{background:var(--ink);color:var(--paper)}",
     ".fhv-companies-year.is-on .fhv-ui-cap{color:var(--line)}",
     ".fhv-companies-detail{border:1px solid var(--line);background:#fff;border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:8px}",
+    ".fhv-companies-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:stretch}",
+    ".fhv-companies-pair>:only-child{grid-column:1/-1}",
+    ".fhv-companies-pair .fhv-companies-proof{max-width:none}",
     ".fhv-companies-timeline{display:flex;flex-direction:column;gap:12px;border-top:1px solid var(--line);padding-top:16px}",
     ".fhv-companies-seqs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}",
     ".fhv-companies-seq{border:1px solid var(--line);border-radius:10px;background:var(--soft);padding:16px;display:flex;flex-direction:column;gap:4px}",
@@ -1054,12 +1128,14 @@
     ".fhv-companies-chip{display:inline-flex;align-items:center;font-family:var(--mono);font-size:13px;letter-spacing:.1em;text-transform:uppercase;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--gray);white-space:nowrap;line-height:1.2}",
     ".fhv-companies-chip.is-personal{background:var(--ink);color:var(--paper);border-color:var(--ink)}",
     ".fhv-companies-chip.is-biz{background:var(--info);border-color:var(--info);color:var(--ink)}",
+    ".fhv-companies-chip.is-biz.is-alt{background:var(--ok);border-color:var(--ok)}",
     ".fhv-companies-chip.is-dim{color:var(--gray)}",
     ".fhv-companies-chip.is-added{border:1px dashed var(--gray2);color:var(--ink2)}",
     ".fhv-companies-proof{border:1px solid var(--line);border-left:3px solid var(--ink);border-radius:10px;background:#fff;padding:16px;display:flex;flex-direction:column;gap:8px;max-width:760px}",
     /* narrow: one column, nothing sideways. Container query first, viewport fallback second. */
     "@container (max-width:680px){" + NARROW + "}",
     "@media (max-width:680px){" + NARROW + "}",
+    "@media (max-height:1000px){" + SHORT + "@container (min-width:681px){" + SHORT_WIDE + "}}",
     "@media (prefers-reduced-motion:reduce){.fhv-ui-root *{transition:none!important}}"
   ].join("\n");
 

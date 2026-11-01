@@ -173,3 +173,54 @@ test("the shipped visual files draw on their slides inside the real deck, with r
   assert.deepEqual(phone.errors, []);
   await phone.page.close();
 });
+
+test("on a laptop screen the companies slide fits with nothing below the edge, before and after + Add a company; Business 2 keeps one color; a phone never shrinks", { timeout: 180_000 }, async () => {
+  const businesses = [
+    { id: "b1", name: "Cedar Mesa Consulting LLC", age_months: 55, incorporated_date: "2021-03-01" },
+    { id: "b2", name: "Bright Mesa Marketing LLC", age_months: 20, incorporated_date: "2025-02-01" },
+  ];
+  // The three laptop screens the live look found the bottom of C-01 hidden on (2026-10-30).
+  for (const viewport of [{ width: 1280, height: 900 }, { width: 1440, height: 900 }, { width: 1536, height: 864 }]) {
+    const { page, errors } = await openDeck({ tier: "FUNDING_PLUS_REPAIR", visual: FUNDING_VISUAL, businesses, viewport });
+    while ((await slideCode(page)) !== "C-01") await page.locator('[data-act="next"]').click();
+    for (const when of ["first", "added"]) {
+      if (when === "added") await page.locator(".client button", { hasText: "Add a company" }).first().click();
+      await page.waitForTimeout(900);
+      const fit = await page.evaluate(() => {
+        const body = document.querySelector(".client .slide-body");
+        const host = body.querySelector('[data-fhv="companies"]');
+        return {
+          hidden: body.scrollHeight - body.clientHeight,
+          zoom: Number(host.style.zoom || 1),
+          partners: !!host.querySelector(".fhv-companies-timeline"),
+          proof: !!host.querySelector(".fhv-companies-proof"),
+        };
+      });
+      const where = `${viewport.width}x${viewport.height}, ${when === "first" ? "at first" : "after + Add a company"}`;
+      assert.ok(fit.partners && fit.proof, `${where}: Funding partners for life and the proof are on the slide`);
+      assert.ok(fit.hidden <= 1, `${where}: ${fit.hidden}px of the slide sits below the edge`);
+      assert.ok(fit.zoom >= 0.8, `${where}: shrunk to ${fit.zoom}, below 80 percent`);
+      await page.locator(".client").screenshot({ path: path.join(SHOTS, `fit-C-01-${viewport.width}x${viewport.height}-${when}.png`) });
+    }
+    const colors = await page.evaluate(() => {
+      const host = document.querySelector('.client [data-fhv="companies"]');
+      const key = [...host.querySelectorAll(".fhv-companies-key")].find((k) => /Business 2/.test(k.textContent));
+      const seg = [...host.querySelectorAll(".fhv-companies-seg")].find((s) => /^Business 2/.test(s.getAttribute("title") || ""));
+      const chip = [...host.querySelectorAll(".fhv-companies-chip")].find((c) => /^Business 2/.test(c.textContent));
+      return { key: getComputedStyle(key, "::before").backgroundColor, seg: getComputedStyle(seg).backgroundColor, chip: getComputedStyle(chip).backgroundColor };
+    });
+    assert.equal(colors.key, colors.seg, "Business 2's key is the color of its layer");
+    assert.equal(colors.chip, colors.seg, "Business 2's chips are the color of its layer");
+    assert.deepEqual(errors, []);
+    await page.close();
+  }
+
+  const phone = await openDeck({ tier: "FUNDING_PLUS_REPAIR", visual: FUNDING_VISUAL, businesses, viewport: { width: 390, height: 844 } });
+  while ((await slideCode(phone.page)) !== "C-01") await phone.page.locator('[data-act="next"]').click();
+  await phone.page.waitForTimeout(900);
+  const zoom = await phone.page.evaluate(() => document.querySelector('.client [data-fhv="companies"]').style.zoom);
+  assert.equal(zoom, "", "a phone stacks and scrolls; the slide never shrinks there");
+  assert.equal(await sideways(phone.page), false);
+  assert.deepEqual(phone.errors, []);
+  await phone.page.close();
+});
