@@ -397,13 +397,17 @@ test("booking.rescheduled: updates the existing open task's due_at + meeting_url
     clientId: db.clients[0].id, bookingUid: "bk_2", startTime: "2026-08-02T15:00:00Z",
     meetingUrl: "https://meet.example.com/new", source: "clickfunnels"
   }, { clientId: db.clients[0].id });
-  await onBookingRescheduled(rescheduled, db);
+  const alerts = [];
+  await onBookingRescheduled(rescheduled, db, async (_db, args) => { alerts.push(args); });
   assert.equal(db.tasks.length, 1, "no second task created — the open one was updated");
   assert.equal(db.tasks[0].due_at, "2026-08-02T15:00:00Z");
   assert.equal(db.tasks[0].meeting_url, "https://meet.example.com/new");
   assert.equal(db.tasks[0].title, "Strategy session rescheduled");
   assert.equal(db.clients[0].custom_fields.call_outcome, "rescheduled");
   assert.equal(db.clients[0].custom_fields.call_confirmed, false, "a moved call needs a fresh confirmation");
+  assert.equal(alerts.length, 1);
+  assert.equal(alerts[0].eventName, "booking.rescheduled");
+  assert.equal(alerts[0].payload.startTime, "2026-08-02T15:00:00Z");
 });
 
 test("a moved call drops its old Meet link but a same-slot replay preserves the refreshed one", async () => {
@@ -504,7 +508,7 @@ test("foreign buyer cannot reschedule an existing provider UID or create a wrong
   const result = await onBookingRescheduled(ev("booking.rescheduled", {
     email: b.email, clientId: b.id, bookingUid: "uid-protected-a",
     startTime: "2026-11-19T20:00:00Z", source: "clickfunnels"
-  }, { clientId: b.id }), db);
+  }, { clientId: b.id }), db, async () => { throw new Error("refused booking must not alert"); });
   assert.equal(result?.skipped, "booking_client_mismatch");
   assert.deepEqual(db.tasks, before, "wrong buyer's closer task or original task cannot change");
   assert.equal(db.bookings.find(x => x.client_id === a.id).status, "booked");

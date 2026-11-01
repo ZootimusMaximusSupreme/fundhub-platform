@@ -34,6 +34,7 @@ import { isInterviewBooking } from "../insights/meet.mjs";
 import { addTags } from "../workflows/tags.mjs";
 import { mergeCustomFields } from "../workflows/custom-fields.mjs";
 import { advanceCardToStage } from "../workflows/cards.mjs";
+import { queueStaffBookedAlerts } from "../staff/booked-call-alert.mjs";
 import { threadMessage as threadStoredMessage } from "../conversations/store.mjs";
 import { completedCallBody } from "../lib/outbound-calls.mjs";
 // One phone-matching rule for the whole repo — see the note on the export.
@@ -687,9 +688,10 @@ function bookingChangeLock(db, event, p, handler) {
   return withBookingUidLock(db, event.orgId, identity, handler);
 }
 
-export async function onBookingRescheduled(event, db) {
+export async function onBookingRescheduled(event, db, alertImpl = db === platformDb ? queueStaffBookedAlerts : null) {
   const p = event.payload || {};
-  return bookingChangeLock(db, event, p, async (tx) => {
+  let alertClientId = null;
+  const result = await bookingChangeLock(db, event, p, async (tx) => {
     const gate = await bookingChangeIdentity(tx, event, p);
     if (gate) return gate;
     const clientId = await resolveClient(tx, event);
@@ -700,6 +702,7 @@ export async function onBookingRescheduled(event, db) {
     if (!accepted || String(accepted.client_id) !== String(clientId)) {
       return { skipped: "booking_not_accepted" };
     }
+    alertClientId = clientId;
     const uid = bookingUid(p);
     if (uid) {
       const upd = await tx.query(
@@ -731,6 +734,12 @@ export async function onBookingRescheduled(event, db) {
     await mergeCustomFields(tx, clientId, { call_outcome: "rescheduled", call_confirmed: false });
     await advanceCardToStage(tx, { orgId: event.orgId, clientId, pipelineKey: "sales", stageKey: "booked", allowRebookFromLost: true });
   });
+  // The booking transaction has committed before a provider can receive a text.
+  if (alertClientId && alertImpl) {
+    await alertImpl(db, { orgId: event.orgId, clientId: alertClientId,
+      eventId: event.id, eventName: "booking.rescheduled", payload: p });
+  }
+  return result;
 }
 
 // Cancellation and no-show must never update another buyer's appointment or

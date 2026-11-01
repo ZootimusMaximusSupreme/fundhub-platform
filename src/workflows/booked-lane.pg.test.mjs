@@ -672,7 +672,7 @@ describe("booked lane", () => {
     const replay = await queueStaffBookedAlerts(db, args);
     assert.equal(replay.queued, 0, "a replay of the same booking texts nobody again");
     assert.equal(drain.calls.length, 1);
-    assert.deepEqual(triggersOf(s04cStaffBookedAlert), ["booking.created", "booking.rescheduled"]);
+    assert.deepEqual(triggersOf(s04cStaffBookedAlert), ["booking.created"]);
   });
 
   check("(a) the setter's booking task: one open task per person, a new one only after the first is done", async () => {
