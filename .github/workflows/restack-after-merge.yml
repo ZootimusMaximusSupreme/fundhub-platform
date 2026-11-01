@@ -18,7 +18,9 @@ permissions:
 
 jobs:
   restack:
-    if: (github.event_name == 'pull_request' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.repo.full_name == github.repository) || (github.event_name == 'push' && startsWith(github.event.head_commit.message, 'ship: '))
+    if: >-
+      (github.event_name == 'pull_request' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.repo.full_name == github.repository) ||
+      (github.event_name == 'push' && startsWith(github.event.head_commit.message, 'ship: '))
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
