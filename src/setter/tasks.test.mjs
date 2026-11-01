@@ -39,6 +39,11 @@ test("setter task groups repeat opt-ins and booking posts but keeps separate wor
     payload: { startTime: "2026-10-29T23:00:00.000Z" } }, db)).created, false);
   assert.equal((await createSetterTaskForEvent(event("entry.captured", "event-2"), db)).created, true);
   assert.equal((await createSetterTaskForEvent(event("entry.captured", "event-4"), db)).created, false);
+  assert.deepEqual(await createSetterTaskForEvent({ ...booking, id: "event-5",
+    payload: { startTime: "2026-10-30T23:00:00Z" } }, db),
+    { created: false, id: "task-1", reason: "open_task" });
+  assert.equal(rows.length, 2);
+  rows[0].done = true;
   assert.equal((await createSetterTaskForEvent({ ...booking, id: "event-5",
     payload: { startTime: "2026-10-30T23:00:00Z" } }, db)).created, true);
   assert.equal(rows.length, 3);
