@@ -97,7 +97,7 @@ function fakeDb({ dedupEvents = false, store = [], inbox = [], links = [], clien
       }
 
       // --- commas_inbox -----------------------------------------------------
-      if (/SELECT id, raw_body, dedupe_key FROM commas_inbox/.test(sql)) {
+      if (/SELECT id, raw_body, event_type, dedupe_key FROM commas_inbox/.test(sql)) {
         return { rows: inbox.filter((r) => r.org_id === params[0] && r.event_type.includes("refund") &&
           !r.dedupe_key.startsWith("refund:")) };
       }
