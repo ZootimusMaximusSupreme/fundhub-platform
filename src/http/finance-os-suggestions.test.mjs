@@ -210,7 +210,7 @@ describe("what is read", () => {
     const business = routed.reads.find((r) => /FROM businesses/.test(r.sql));
     if (business) assertSqlHas(business.sql, { "this client's companies, oldest first": "WHERE client_id = $1 ORDER BY created_at ASC" });
     assertSqlHas(sqlOf(/FROM subscriptions/), {
-      "this company's client, the finance-os tier, live today inside its paid period, the latest": "WHERE org_id = $1 AND client_id = $2 AND tier = $3 AND status = 'active' AND effective_from <= $4 AND (effective_to IS NULL OR effective_to > $4) AND (current_period_start IS NULL OR current_period_start <= $4) AND (current_period_end IS NULL OR current_period_end > $4) ORDER BY effective_from DESC LIMIT 1"
+      "this company's client, the finance-os tier, live today inside its paid period, the latest": "WHERE org_id = $1 AND client_id = $2 AND tier = $3 AND status = 'active' AND effective_from <= $4 AND (effective_to IS NULL OR effective_to > $4) AND current_period_start IS NOT NULL AND current_period_end IS NOT NULL AND current_period_start <= $4 AND current_period_end > $4 ORDER BY effective_from DESC LIMIT 1"
     });
   });
 });

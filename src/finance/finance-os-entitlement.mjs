@@ -39,8 +39,8 @@ export const FINANCE_OS_BLUEPRINT_NOTE = "Capital Blueprint purchase — Finance
  * ACTIVE MEANS: status = 'active' (not 'past_due' — 075's own header says
  * status only records the money state, and a lapsed card should not silently
  * keep handing out a paid feature), effective_from <= asOf, effective_to is
- * NULL or after asOf, and any known paid period covers asOf. The included
- * year must not remain open forever merely because status is still active.
+ * NULL or after asOf, and a recorded paid period covers asOf. A row without
+ * period dates cannot keep premium access open after a Blueprint year ends.
  * The row with the latest effective_from that matches wins,
  * matching how 075 finds "the live row".
  */
@@ -50,8 +50,10 @@ async function activeFinanceOsSubscription(conn, { orgId, clientId, asOf }) {
       WHERE org_id = $1 AND client_id = $2 AND tier = $3 AND status = 'active'
         AND effective_from <= $4
         AND (effective_to IS NULL OR effective_to > $4)
-        AND (current_period_start IS NULL OR current_period_start <= $4)
-        AND (current_period_end IS NULL OR current_period_end > $4)
+        AND current_period_start IS NOT NULL
+        AND current_period_end IS NOT NULL
+        AND current_period_start <= $4
+        AND current_period_end > $4
       ORDER BY effective_from DESC LIMIT 1`,
     [orgId, clientId, FINANCE_OS_TIER, asOf]
   );

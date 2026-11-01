@@ -239,6 +239,29 @@ test("paid Blueprint year survives the shorter FinanceOS monthly term, but not a
       const noPeriodDue = await dueClients(db, new Date("2026-11-30T00:00:00Z"));
       assert.equal(noPeriodDue.find(row => row.client_id === noPeriodClient)?.subscription_id,
         noPeriodGrant, "a null-period row cannot hide a paid Blueprint monthly refresh");
+      assert.equal((await financeOsEntitlement(db, { orgId: org, clientId: noPeriodClient,
+        asOf: new Date("2026-11-30T00:00:00Z") })).subscriptionId, noPeriodGrant,
+      "a null-period row is not a separately paid FinanceOS plan");
+      assert.equal((await financeOsEntitlement(db, { orgId: org, clientId: noPeriodClient,
+        asOf: new Date("2027-10-29T00:00:00Z") })).entitled, false,
+      "a null-period row cannot extend the paid Blueprint year");
+      const noPeriodRefund = await onPaymentRefundedMoney({ name: "payment.refunded", orgId: org,
+        payload: { providerRef: "bp-null-period", amount: 5000 } }, refundDb);
+      assert.equal(noPeriodRefund.blueprintIncludedEnded, true);
+      assert.equal((await financeOsEntitlement(db, { orgId: org, clientId: noPeriodClient,
+        asOf: new Date("2026-11-30T00:00:00Z") })).entitled, false,
+      "a null-period row cannot preserve premium reads after a full refund");
+
+      const billedClient = randomUUID();
+      const billedSub = (await db.query("INSERT INTO subscriptions "
+        + "(org_id,client_id,tier,status,effective_from,current_period_start,current_period_end) "
+        + "VALUES ($1,$2,'finance-os','active','2026-11-01','2026-11-01','2026-12-01') RETURNING id",
+      [org, billedClient])).rows[0].id;
+      assert.equal((await financeOsEntitlement(db, { orgId: org, clientId: billedClient,
+        asOf: new Date("2026-11-30T00:00:00Z") })).subscriptionId, billedSub,
+      "a separately billed FinanceOS plan works within its saved paid period");
+      assert.equal((await financeOsEntitlement(db, { orgId: org, clientId: billedClient,
+        asOf: new Date("2026-12-01T00:00:00Z") })).entitled, false);
     } finally {
       await db.query("ROLLBACK");
       db.release();
