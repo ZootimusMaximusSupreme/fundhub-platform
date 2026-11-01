@@ -109,6 +109,22 @@ test('a parent branch that moves during preflight stops before child push or PR 
   assert(!calls.some(call => call[0] === 'gh' && call[1] === 'pr' && call[2] === 'create'));
 });
 
+test('another PR claiming the next position during preflight stops before push', async () => {
+  const first = member(41, 'codex/previous-change', 'main', 1);
+  const { command, calls } = fakeCommands([first]);
+  let lists = 0;
+  const raced = async (program, args, options) => {
+    if (program === 'gh' && args[0] === 'pr' && args[1] === 'list' && ++lists === 2) {
+      return JSON.stringify([first, member(42, 'codex/other-change', 'codex/previous-change', 2)]);
+    }
+    return command(program, args, options);
+  };
+  await assert.rejects(runShipChange({ message: 'Next change', ownerLane: 'sales',
+    files: ['scripts/new.mjs'] }, raced), /Ordered queue advanced/);
+  assert(!calls.some(call => call[0] === 'git' && call[1] === 'push'));
+  assert(!calls.some(call => call[0] === 'gh' && call[1] === 'pr' && call[2] === 'create'));
+});
+
 test('resume rebases only child commits when a stacked parent was rewritten', async () => {
   const { command, calls } = fakeCommands([member(41, 'codex/previous-change', 'main', 1)]);
   const moved = async (program, args, options) => {

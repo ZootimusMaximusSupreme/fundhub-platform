@@ -205,6 +205,16 @@ export async function runShipChange(options, command = defaultCommand) {
   await scoped('npm', parent
     ? ['run', 'preflight', '--', '--expected-base', `origin/${parent.headRefName}`]
     : ['run', 'preflight']);
+  // Another agent may have opened the next PR while preflight was running.
+  // Stop before pushing a duplicate chain position; resume against its head.
+  if (!existing) {
+    const latestPrs = JSON.parse(await rootGh(['pr', 'list', '--repo', REPO, '--state', 'open',
+      '--limit', '200', '--json', 'number,headRefName,baseRefName,labels,isDraft,body']));
+    const latest = chooseBase(latestPrs);
+    if (latest.base !== base || latest.position !== position) {
+      throw new Error(`Ordered queue advanced to ${latest.base} at position ${latest.position}; rerun --resume before pushing.`);
+    }
+  }
   if (parent) {
     const remoteParent = (await rootGit(['ls-remote', '--heads', 'origin', parent.headRefName])).split(/\s+/)[0];
     if (remoteParent !== parentHead) {
