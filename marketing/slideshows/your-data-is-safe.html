@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Fundhub, Prime Data</title>
-<meta name="description" content="We pull your file from the bureaus and LexisNexis directly, see past a consumer credit site report, build your optimization from that deeper data, and handle it the way that access requires.">
+<meta name="description" content="A bank reads layers of your file that a consumer credit site report never prints. Fundhub pulls those layers from the bureaus and LexisNexis directly, and handles them the way that access requires.">
 <!--
   Deck PD · Prime data (the file keeps its name, your-data-is-safe)
   Lane: Every lane (Funding, and Blueprint and Repair)
@@ -13,6 +13,8 @@
   Belief: Fundhub pulls my file from the bureaus and LexisNexis directly, sees
           past a consumer credit site report, builds my optimization from that
           deeper data, and handles that data the way that access requires.
+
+  Rewritten 2026-10-31 on Chris's slide framework (see pre-underwriting.html).
 
   Chris's direction (2026-10-31, second pass, saved on the board, section 6e):
   "It's about trust, but you're also selling them." Direct relationships with
@@ -790,13 +792,13 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </defs>
   </svg>
 
-  <section class="slide dark" data-src="Most funding companies are checking a consumer credit site report; we have multiple layers of credit information and can show them exactly what we can see past that; we pre-vet with the same data feeds the banks use: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:532. The bank's letter gives the same reasons the report lists: Chris 2026-10-31, same board :209. The picture is the TransUnion 'Why this score' block of Fundhub's tri-bureau report as scripts/render-crs-standard-report.mjs printed it on 2026-10-31 for the FinanceOS sample file: the score, the model and the bureau's own reason lines are src/finance/sample-credit-file.mjs:75-86 (simulated, no bureau contacted). No competitor product or site by name: marketing/ads/RULES.md:205 (1.4).">
+  <section class="slide dark" data-src="Most funding companies are checking a consumer credit site report; we have multiple layers of credit information and can show them exactly what we can see past that; we pre-vet with the same data feeds the banks use: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:532. The bank's letter gives the same reasons the report lists: Chris 2026-10-31, same board :209. The picture is the TransUnion 'Why this score' block of Fundhub's tri-bureau report as scripts/render-crs-standard-report.mjs printed it on 2026-10-31 for the FinanceOS sample file: the score, the model and the bureau's own reason lines are src/finance/sample-credit-file.mjs:75-86 (simulated, no bureau contacted). No competitor product or site by name: marketing/ads/RULES.md:205 (1.4). A consumer site never prints the full tradeline fields: ops/workflows/backend-selling-lanes-2026-10-30.md:532 (Chris's second pass and the sourced layers). The bank's denial letter repeats the report's reasons: same board :209.">
     <p class="eyebrow">PD-01 / Prime data</p>
-    <h2>Most funding companies read a consumer credit site report. A bank reads deeper.</h2>
-    <p class="lede">So your file gets judged on data they never saw.</p>
+    <h2>A bank reads your file several layers deeper than a consumer credit site report goes.</h2>
+    <p class="lede">Most funding companies stop at that site report, and there's a way to read your own file at the bank's depth first.</p>
     <ul class="lines">
-      <li>We read the bureau's own file, the same data the banks read. This sample shows it: the score, and under it the reasons in the bureau's own words. A bank reads those lines first.</li>
-      <li>We have multiple layers of credit information. We can show you exactly what we see past that report.</li>
+      <li>Here's the first layer on a sample TransUnion report: a 706, with the bureau's own reasons printed under it.</li>
+      <li>A bank weighs those reason lines when it decides on you, and its denial letter repeats them.</li>
     </ul>
     <figure class="pic">
       <div class="real" role="img" aria-label="The TransUnion section of a sample Fundhub credit report. The score is 706, FICO Score 9. Under Why this score, the first of four bureau reasons is marked: ratio of balance to limit on bank revolving or other revolving accounts too high. A bank reads this first. The block is marked the bureau's own file.">
@@ -818,28 +820,27 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Most funding companies are checking a consumer credit site report. A bank reads deeper than that. So your file gets judged on data they never saw.</li>
-        <li>We don't work off a summary. We pull the bureau's own file, from all three bureaus. That's the same data the banks read.</li>
-        <li>Look at this sample. TransUnion, FICO Score 9, a 706. Right under the score, the bureau prints its reasons in its own words.</li>
-        <li>A bank reads those lines first. When it says no, the letter it sends gives the same reasons.</li>
-        <li>We have multiple layers of credit information. I'm going to show you exactly what we can see past that consumer site report.</li>
-        <li>Access to prime data means better results. That's what this is about.</li>
+        <li>A bank reads your file several layers deeper than a consumer credit site report goes. Most funding companies stop at that site report and call it your credit.</li>
+        <li>There's a way to read your own file at the bank's DEPTH first. That's the file your approval gets decided on.</li>
+        <li>Here's the first layer, on a sample TransUnion report. The score reads 706, and under it sit four reasons in the bureau's own capital letters.</li>
+        <li>The first reason is about card balances: they sit too high next to the limits. A bank weighs that line when it decides on you.</li>
+        <li>When a company works off the summary, the bank still judges the full file. You find out what the summary missed from the DENIAL letter.</li>
       </ul>
     </aside>
   </section>
 
   <section class="slide" data-src="We have direct relationships with the bureaus, LexisNexis, Experian, TransUnion, Equifax; show them: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:532. The pull is one prequal FICO 9 product per bureau, TransUnion, Experian and Equifax: src/finance/crs-client.mjs:112-136. The engine reads all three: src/underwrite/vendor/underwriter.cjs:241-245. Different banks pull different bureaus, so your information has to match on every report: marketing/vsl/direct-book-thank-you-2026-10-15.md:27 (green-lit). The picture is section 4 of the funding agreement, word for word: db/migrations/493_funding_and_repair_agreement_text.sql:53. No logo files in the repo, so the four names are set in the brand's own style.">
-    <p class="eyebrow">PD-02 / Who we pull from</p>
-    <h2>We pull from all three bureaus and LexisNexis. It is in your agreement.</h2>
+    <p class="eyebrow">PD-02 / Where it comes from</p>
+    <h2>Your file comes straight from all three bureaus, with LexisNexis on the business side.</h2>
     <ul class="lines">
-      <li>We have direct relationships with Experian, Equifax, TransUnion and LexisNexis. Your pull is a FICO 9 report from each bureau.</li>
-      <li>Section 4 names it: available LexisNexis information, soft credit inquiries, and the fraud checks and compliance checks that come with that access.</li>
-      <li>Different banks pull different bureaus, so we read all three. A hard inquiry still needs your separate consent.</li>
+      <li>Each bureau sends its own FICO 9 report on you, through relationships we hold directly.</li>
+      <li>That access comes with fraud checks and compliance checks, and section 4 of your agreement names both.</li>
+      <li>You see the same file a bank pulls, from the same sources, before any bank pulls it.</li>
     </ul>
     <figure class="pic">
       <div class="sheet">
         <svg class="bv" viewBox="0 0 320 94" role="img" aria-label="Who we pull from. The bureaus: Experian, Equifax and TransUnion, a FICO 9 pull from each. And LexisNexis: the Top Business match.">
-          <text class="lb" x="0" y="12">THE BUREAUS · A FICO 9 PULL FROM EACH</text>
+          <text class="lb" x="0" y="12">THREE BUREAUS · FICO 9 EACH</text>
           <rect class="pn-ink" x="0" y="20" width="98" height="32" rx="8"/>
           <text class="on-ink" x="49" y="41" text-anchor="middle">Experian</text>
           <rect class="pn-ink" x="106" y="20" width="98" height="32" rx="8"/>
@@ -860,23 +861,21 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Who we pull from is written in your agreement. I'll show you the clause.</li>
-        <li>We have direct relationships with the bureaus and LexisNexis. Experian, Equifax and TransUnion. The pull is a FICO 9 report from each one, with the bureau's own file behind it.</li>
-        <li>Different banks pull different bureaus. So your information has to match on every report, and we read all three.</li>
-        <li>Then LexisNexis. Section 4 says we can request available LexisNexis information. It names the analytics, fraud checks and compliance checks that come with that access.</li>
-        <li>That's what a direct relationship requires on our side. It's compliance, and it's in writing.</li>
-        <li>Read the last line with me. A hard inquiry still needs your separate consent. Nothing goes to a bank without you saying so.</li>
+        <li>Here's what's really going on underneath. Fundhub holds direct relationships with Experian, Equifax and TransUnion, and with LexisNexis for the business side.</li>
+        <li>Each bureau sends us its own FICO 9 report on you. That's the bureau's full file, from the same feeds a bank pulls.</li>
+        <li>Relationships like that come with RULES. Section 4 of your agreement names the fraud checks and compliance checks that go along with this access.</li>
+        <li>For you, it means the file we read on your call is the file a bank reads, from the same SOURCES, before any bank sees it.</li>
       </ul>
     </aside>
   </section>
 
   <section class="slide" data-src="Full tradeline fields (account identifiers, subscriber codes, lates, patterns) for Metro 2 / dispute work: the tri-bureau report renderer's header, scripts/render-crs-standard-report.mjs:4-5 (main checkout, printed 2026-10-31). Every bureau's lines are carried through, each inquiry carries its bureau, public records are kept: src/finance/crs-map.mjs:14-16, 152-200. We can show exactly what we can see past a consumer credit site report: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:532. The picture is Account 2 of the TransUnion section of the rendered sample report (the FinanceOS sample file, src/finance/sample-credit-file.mjs; simulated, no bureau contacted), the fields without their date columns; the printed label 'Account number' is shown as 'Account identifier', the renderer's own word (outcome-first-copy).">
-    <p class="eyebrow">PD-03 / Past the summary</p>
-    <h2>We see every field on every account of your file.</h2>
+    <p class="eyebrow">PD-03 / The cost</p>
+    <h2>One 30-day late sits inside this sample's payment pattern, month by month.</h2>
     <ul class="lines">
-      <li>Every account comes to us with its account identifier, subscriber code and rating code. It comes with each 30, 60 and 90-day late, the months reviewed, and the payment pattern, month by month.</li>
-      <li>Every inquiry comes with the bureau it sits on and who pulled it. Public records come through too. Those are the fields our dispute work runs on.</li>
-      <li>This is one account from the sample report, exactly as our report prints it. A consumer site report is a summary. This is the file.</li>
+      <li>The full record shows the month of the late, the subscriber code and the rating code, and a dispute has to name fields like these.</li>
+      <li>Each inquiry arrives tagged with its bureau and the company that pulled it, and public records come through too.</li>
+      <li>With only a summary, you're guessing at the line a bank holds against you.</li>
     </ul>
     <figure class="pic">
       <div class="real" role="img" aria-label="Account 2 of the TransUnion section of a sample Fundhub credit report. Toyota Motor Credit, closed, as agreed, account identifier SAMPLE-TOYO-7714. Subscriber code 621AU00318, rating code C, one 30-day late, 60 months reviewed, a 60-month term. The payment pattern, month by month, shows every month paid as agreed except one, marked: the one late, month by month.">
@@ -900,27 +899,26 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Here's what we see past that consumer site report. This is one account from the sample, exactly as our report prints it.</li>
-        <li>Every account comes to us with the full record. The account identifier, the subscriber code, the rating code, each 30, 60 and 90-day late, the months reviewed, and the payment pattern, month by month.</li>
-        <li>Look at the pattern on this one. Every month is a C, paid as agreed, except one. That one is the 30-day late, and we can see exactly where it sits.</li>
-        <li>Every inquiry comes with the bureau it's on and who pulled it. Public records come through too.</li>
-        <li>Those are the fields our dispute work runs on. You can't dispute a field you've never seen.</li>
-        <li>That's the difference between a summary and the file. We work from the file.</li>
+        <li>Here's what that summary costs you. This is one account from the sample report, a Toyota auto loan, closed and paid as agreed.</li>
+        <li>Look at the payment pattern. Month after month of C, which means paid on time, and ONE month with a 1. That's a single 30-day late.</li>
+        <li>The record also shows the subscriber code and the rating code. A dispute has to name fields like these, and a summary never shows them.</li>
+        <li>Each inquiry comes tagged with its bureau and the company that pulled it. Public records come through on the same file.</li>
+        <li>With only a summary, you're GUESSING at your file. With the full record, you work on the exact line a bank holds against you.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide" data-src="We have access to Experian Business as well: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:532. The business side is the Experian Business check: business credit scores, blemishes, business card balances, NAICS code flags, name flags, and the exact fixes so a lender sees a credible business; Experian Business only for now: owner-set 2026-09-29, marketing/landing-pages/slo/preview/reorg-draft-build.mjs:354-358; the check in code, with each blemish and its exact fix: src/deliverables/business-duplication-map.mjs:12, 29, 225; the lender book names Experian Business as a bureau banks pull: src/finance/bank-strategy.mjs:94-95. The business search and the LexisNexis Top Business match, business-only fields, the caller shows the match list and never guesses the firm: src/finance/crs-client.mjs:190-200, 543-561. Each business is judged on its own, after the personal file: .ai/rules/ad-know-the-offer.md:42. Checked against the banks that fit it, so you only apply where your file makes sense: public/app/present.js:99 (closer line).">
-    <p class="eyebrow">PD-04 / Business file</p>
-    <h2>Your business gets read too, before a bank reads it.</h2>
+  <section class="slide" data-src="We have access to Experian Business as well: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:532. The business side is the Experian Business check: business credit scores, blemishes, business card balances, NAICS code flags, name flags, and the exact fixes so a lender sees a credible business; Experian Business only for now: owner-set 2026-09-29, marketing/landing-pages/slo/preview/reorg-draft-build.mjs:354-358; the check in code, with each blemish and its exact fix: src/deliverables/business-duplication-map.mjs:12, 29, 225; the lender book names Experian Business as a bureau banks pull: src/finance/bank-strategy.mjs:94-95. The business search and the LexisNexis Top Business match, business-only fields, the caller shows the match list and never guesses the firm: src/finance/crs-client.mjs:190-200, 543-561. Each business is judged on its own, after the personal file: .ai/rules/ad-know-the-offer.md:42. Checked against the banks that fit it, so you only apply where your file makes sense: public/app/present.js:99 (closer line). So a lender sees a credible business: marketing/landing-pages/slo/preview/reorg-draft-build.mjs:354-358.">
+    <p class="eyebrow">PD-04 / Your business</p>
+    <h2>What does a bank see when it looks up your business?</h2>
     <ul class="lines">
-      <li>We find your business and match it in LexisNexis Top Business, business-only fields. You pick from the match list, so nobody guesses which company is yours.</li>
-      <li>We have access to Experian Business: your business credit score, blemishes, card balances, and the code and name flags a lender looks at, each with its exact fix.</li>
-      <li>Both files get read the way a bank reads them, before any application goes out. Each business is judged on its own.</li>
+      <li>We look up your company in LexisNexis Top Business, and you pick it from the match list, so no one guesses which company is yours.</li>
+      <li>Experian Business shows your business score, blemishes, card balances, and the code and name flags a lender checks, each with its exact fix.</li>
+      <li>Your personal file goes first, and then each business gets weighed separately, on its own record.</li>
     </ul>
     <figure class="pic">
       <div class="sheet">
-        <svg class="bv" viewBox="0 0 320 244" role="img" aria-label="A flowchart. Your personal file, Experian, Equifax and TransUnion, and your business file, LexisNexis Top Business and Experian Business, both go into one read the way a bank reads it. Then only the banks that fit your file. Before any application goes out.">
+        <svg class="bv" viewBox="0 0 320 244" role="img" aria-label="A flowchart. Your personal file from Experian, Equifax and TransUnion, and your business file from LexisNexis Top Business and Experian Business, both go into one read the way a bank reads it. Then only the banks that fit your file. Before any application goes out.">
           <rect class="pn" x="1" y="1" width="152" height="86" rx="10"/>
           <text class="lb" x="13" y="21">PERSONAL FILE</text>
           <text class="caps" x="13" y="43">EXPERIAN</text>
@@ -929,7 +927,7 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
           <rect class="pn" x="167" y="1" width="152" height="86" rx="10"/>
           <text class="lb" x="179" y="21">BUSINESS FILE</text>
           <text class="caps" x="179" y="43">LEXISNEXIS</text>
-          <text class="caps" x="179" y="60">TOP BUSINESS MATCH</text>
+          <text class="caps" x="179" y="60">TOP BUSINESS</text>
           <text class="caps" x="179" y="77">EXPERIAN BUSINESS</text>
           <path class="cn ink" d="M77 88V108" marker-end="url(#fh-arrow)"/>
           <path class="cn ink" d="M243 88V108" marker-end="url(#fh-arrow)"/>
@@ -945,23 +943,22 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Your business gets read too, and it gets read before a bank reads it.</li>
-        <li>First we find your business. We search it and match it in LexisNexis Top Business, which is business-only fields. You pick from the match list, so nobody guesses which company is yours.</li>
-        <li>Then the Experian Business check. We have access to Experian Business: your business credit score, blemishes, business card balances, and the industry code and name flags a lender looks at. Each one comes with its exact fix, so a lender sees a credible business.</li>
-        <li>Walk the drawing with me. Your personal file on the left, your business file on the right. Both go through the same read a bank does.</li>
-        <li>Then your file goes only to the banks that fit it. Each business is judged on its own, after the personal file.</li>
-        <li>A consumer credit site report is your personal credit. The business side isn't in it. We read both.</li>
+        <li>What does a bank see when it looks up your BUSINESS? Your business has a file of its own, and we read it the same way we read yours.</li>
+        <li>First comes the match. We look up your company in LexisNexis Top Business, and you pick it from the list, so your file never lands on the wrong business.</li>
+        <li>Then Experian Business. That's your business score, any blemishes, your business card balances, and the code and name flags a lender checks.</li>
+        <li>Each one comes with its exact FIX, so the business gets cleaned up before it applies. A bank sees a company it can lend to.</li>
+        <li>Your personal file goes first, and then each business gets weighed separately, on its own record.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide" data-src="Deeper data builds the algorithms that optimize your file quicker and better; when we build the optimization letters, deeper data gets inquiries, accounts, addresses and names off faster; access to prime data means better results: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:532. UnderwriteIQ's engine measured on 2026-10-31: 37,097 lines in 145 files (vendor/underwriteiq-full), about 90,000 with the Fundhub engines around it: same board :537. The picture is the letter catalog's own code, word for word: src/pulse/beats/lib/letter-catalog.mjs:16-17 (the personal information and inquiry removal letter types) and :244-248 (every finding sorted into a tradeline, a personal information or an inquiry letter); the letter titles, Round 1 Metro 2 dispute, Personal information cleanup, Inquiry removal: :157, :205, :213. Nothing promises a deletion: db/migrations/493_funding_and_repair_agreement_text.sql:65." data-figures="the engine's measured size, 37,097 lines in 145 files (board 6e, 2026-10-31)">
-    <p class="eyebrow">PD-05 / What it does</p>
-    <h2>Access to prime data means better results.</h2>
+  <section class="slide" data-src="Deeper data builds the algorithms that optimize your file quicker and better; when we build the optimization letters, deeper data gets inquiries, accounts, addresses and names off faster; access to prime data means better results: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:532. UnderwriteIQ's engine measured on 2026-10-31: 37,097 lines in 145 files (vendor/underwriteiq-full), about 90,000 with the Fundhub engines around it: same board :537. The picture is the letter catalog's own code, word for word: src/pulse/beats/lib/letter-catalog.mjs:16-17 (the personal information and inquiry removal letter types) and :244-248 (every finding sorted into a tradeline, a personal information or an inquiry letter); the letter titles, Round 1 Metro 2 dispute, Personal information cleanup, Inquiry removal: :157, :205, :213. Nothing promises a deletion: db/migrations/493_funding_and_repair_agreement_text.sql:65. The hire, the bigger job, the ads: docs/sops/weekend-2026-10-24/04-sales-call-script.md:112." data-figures="the engine's measured size, 37,097 lines in 145 files (board 6e, 2026-10-31)">
+    <p class="eyebrow">PD-05 / The after</p>
+    <h2>When every letter names the exact field, your file gets ready for funding quicker.</h2>
     <ul class="lines">
-      <li>Deeper data builds the algorithms that optimize your file quicker and better. UnderwriteIQ is 37,097 lines of code in 145 files, and it reads every one of those fields.</li>
-      <li>When we build your optimization letters, that deeper data gets inquiries, accounts, addresses and names off faster. Each letter points at the exact field the bureau reported.</li>
-      <li>Every finding is sorted into one of three letters: tradeline, personal information, or inquiry removal. That is our own code, right here.</li>
+      <li>Our own code sorts every finding into a tradeline dispute, a personal information cleanup or an inquiry removal, straight from the bureau's fields.</li>
+      <li>I built it on deeper data because it gets inquiries, accounts, addresses and names off faster.</li>
+      <li>A file that's ready earlier gets your hiring, your jobs and your ads paid for with credit sooner, and your savings stay put.</li>
     </ul>
     <figure class="pic">
       <div class="real" role="img" aria-label="Lines from Fundhub's letter catalog code, word for word. The letter types personal info and inquiry removal. Then the sort: a finding with a personal information rule goes to the personal letter, a finding with an inquiry rule goes to the inquiry letter, and everything else goes to the tradeline letter. It returns tradeline, personal and inquiry.">
@@ -978,23 +975,22 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Access to prime data means better results. Here's why.</li>
-        <li>Deeper data builds the algorithms that optimize your file quicker and better. UnderwriteIQ is 37,097 lines of code in 145 files. It reads every one of those fields you just saw, on every bureau.</li>
-        <li>When we build your optimization letters, that deeper data gets inquiries, accounts, addresses and names off faster. Each letter points at the exact field the bureau reported.</li>
-        <li>This is our own code. Every finding gets sorted into one of three letters: a tradeline dispute, a personal information cleanup for names and addresses, or an inquiry removal.</li>
-        <li>You can't build that letter from a summary. The field it points at isn't in the summary.</li>
-        <li>That's what the data is for: a quicker, better optimization of your file, built from the file itself.</li>
+        <li>When every letter names the exact field, your file gets ready for funding QUICKER. That's what all this deeper data is for.</li>
+        <li>This is our own code. It sorts every finding on your file into one of three letters: a tradeline dispute, a personal information cleanup, or an inquiry removal.</li>
+        <li>Names and old addresses go in one letter, inquiries in another, and accounts in the third. Each points at the field the bureau reported.</li>
+        <li>I built it on deeper data because it gets inquiries, accounts, addresses and names off FASTER. UnderwriteIQ alone runs 37,097 lines of code.</li>
+        <li>Each month your file gets ready sooner is a month your hiring, your jobs and your ads run on the bank's money instead of YOURS.</li>
       </ul>
     </aside>
   </section>
 
   <section class="slide" data-src="Access to this data means we handle it correctly: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:532. The picture is section 6 of the published privacy policy, word for word: public/privacy/index.html:102 (live at fundhub.ai/privacy), and the Capital Blueprint agreement 11.2: db/migrations/288_real_contract_text.sql:287. The report is stored with the most sensitive identifier removed and only the last four kept, masked: src/finance/crs-map.mjs:110-124. That identifier is kept encrypted (AES-256-GCM) and read only through a logged reveal with a reason, for the pull: src/pii/index.mjs:10-25, 216-243; src/finance/crs-pull.mjs:40-41, 436-470. 'Your most sensitive identifier' wording: .ai/rules/no-ssn-before-checkout-step-3.md. The policy says no method is completely secure, and the deck says no more than the policy says.">
     <p class="eyebrow">PD-06 / Handled right</p>
-    <h2>Access to this data means we handle it correctly.</h2>
+    <h2>Your most sensitive identifier gets stripped out before your report is ever saved.</h2>
     <ul class="lines">
-      <li>Our published privacy policy says it: your data is encrypted while it moves and while it sits, across the platform and what it is built on, which is built on SOC 2 audited providers.</li>
-      <li>Your report is stored with your most sensitive identifier removed, and only the last four digits kept, masked. The identifier itself is kept encrypted, and every read of it is logged.</li>
-      <li>We do not sell your personal information. That is in the privacy policy and in the Capital Blueprint agreement.</li>
+      <li>Only the last four stay, masked, and the full identifier is locked away encrypted, with every read of it logged.</li>
+      <li>Our privacy policy says your data is encrypted with AES-256 while it moves and while it's stored, on SOC 2 audited providers.</li>
+      <li>We don't sell your personal information, and that's written in two places.</li>
     </ul>
     <figure class="pic">
       <div class="real" role="img" aria-label="Section 6 of the Fundhub privacy policy. Marked: data is encrypted in transit and at rest using AES-256 across the platform and its infrastructure, which is built on SOC 2 audited providers. Then: no method of transmission or storage is completely secure, and we cannot guarantee absolute security. And section 11.2 of the Capital Blueprint agreement, marked: we do not sell your personal information.">
@@ -1008,23 +1004,22 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Access to this data means we handle it correctly, and our published privacy policy says how. This is it, word for word.</li>
-        <li>Your data is encrypted while it moves and while it sits, using AES-256. That covers the platform and what it's built on, and what it's built on is SOC 2 audited.</li>
-        <li>Read the next sentence too. No method of storage is completely secure, and we say so, because that's the truth.</li>
-        <li>Your report is stored with your most sensitive identifier removed from it. Only the last four digits stay, masked. The identifier itself sits encrypted in a separate place. Every read of it is logged, with who read it and why.</li>
-        <li>And we do not sell your personal information. That's in the privacy policy, and again in the Capital Blueprint agreement, 11.2.</li>
-        <li>That's what handling it correctly looks like. It's what working with the bureaus directly requires of us.</li>
+        <li>Handing a funding company the details a bureau needs to find your file takes TRUST. Here's what happens to those details after you do.</li>
+        <li>Your most sensitive identifier gets stripped out before your report is ever saved. Only the last four stay, and those are MASKED.</li>
+        <li>The full identifier is locked away encrypted, in a separate place. Each time anyone reads it, the read gets logged with who did it and why.</li>
+        <li>Our published privacy policy puts it in writing. Your data is encrypted with AES-256 while it moves and while it's stored, on SOC 2 audited providers.</li>
+        <li>We don't sell your personal information. That's in the privacy policy and the Capital Blueprint agreement, so you get back to running your business.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide" data-src="Before you pay, we read the agreement together on the screen: docs/sops/weekend-2026-10-24/04-sales-call-script.md:419; everything is in the agreement, in writing: :416. The picture is the funding agreement, word for word: the parties and the address, section 7 (Arizona law) and section 8 (recorded calls, artificial intelligence): db/migrations/493_funding_and_repair_agreement_text.sql:53. Retention, and your state rights with where to send a privacy request: public/privacy/index.html:105, 108. The same address at the bottom of the policy: :117.">
-    <p class="eyebrow">PD-07 / In writing</p>
-    <h2>Calls, AI, your rights and who we are: all in writing.</h2>
+  <section class="slide" data-src="Before you pay, we read the agreement together on the screen: docs/sops/weekend-2026-10-24/04-sales-call-script.md:419; everything is in the agreement, in writing: :416. The picture is the funding agreement, word for word: the parties and the address, section 7 (Arizona law) and section 8 (recorded calls, artificial intelligence): db/migrations/493_funding_and_repair_agreement_text.sql:53. Retention, and your state rights with where to send a privacy request: public/privacy/index.html:105, 108. The same address at the bottom of the policy: :117. Your calls get recorded: docs/sops/weekend-2026-10-24/04-sales-call-script.md:68.">
+    <p class="eyebrow">PD-07 / Who signs</p>
+    <h2>Fundhub LLC signs your agreement from a street address, under Arizona law.</h2>
     <ul class="lines">
-      <li>Section 8 says calls between you and Fundhub may be recorded and kept, and that AI tools analyze your file and AI agents work on it.</li>
-      <li>The privacy policy says how long we keep your information, that it is then deleted or de-identified, and the rights your state gives you over it.</li>
-      <li>You sign with Fundhub LLC, a Florida limited liability company operating in Arizona, at a street address, under Arizona law. We read the agreement together before you pay.</li>
+      <li>The first line of the agreement names us, a Florida company operating in Arizona, with our street address next to it.</li>
+      <li>Section 8 says your calls with us get recorded and kept, and that AI tools and AI agents work on your file.</li>
+      <li>You know who you're dealing with, where to find us and which law covers the deal, before you pay.</li>
     </ul>
     <figure class="pic">
       <div class="real" role="img" aria-label="The Fundhub funding agreement. The parties, marked: Fundhub LLC, a Florida limited liability company operating in Arizona, 218 Bostick Rd 64, Bowling Green, FL 33834. Section 7, marked: Arizona law governs this agreement to the extent permitted by law. Section 8, marked: calls between you and Fundhub may be recorded and kept; Fundhub uses artificial intelligence in its service. AI tools analyze your credit file, your funding file and the documents you give us. AI agents work on your file.">
@@ -1040,23 +1035,22 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Everything we do with your file is in writing before you pay. We read the agreement together on the screen.</li>
-        <li>Section 8, word for word: calls between you and Fundhub may be recorded and kept. Fundhub uses artificial intelligence. AI tools analyze your credit file and your funding file, and AI agents work on your file.</li>
-        <li>The privacy policy covers how long we keep your information, and that it's then deleted or de-identified. It lists the rights your state gives you over it, with where to send a privacy request.</li>
-        <li>Now look at who you're signing with. Fundhub LLC, a Florida limited liability company operating in Arizona, with the street address right in the first line, under Arizona law.</li>
-        <li>The same address sits at the bottom of the privacy policy. You know who we are, where we are, and which law we answer to.</li>
-        <li>That's what a legitimate company looks like on paper. It's all there before you pay a dollar.</li>
+        <li>Fundhub LLC signs your agreement from a street address, under Arizona LAW. That's the first thing to check about anyone reading your file.</li>
+        <li>The first line of the agreement names us, a Florida company that operates in Arizona, with our street address right next to it.</li>
+        <li>Section 7 puts the agreement under Arizona law. Section 8 says your calls get recorded and kept, and that AI tools and AI agents work on your file.</li>
+        <li>That same address sits at the bottom of our privacy policy, with how long your information is kept and the rights your state gives you.</li>
+        <li>You know who you're dealing with, where to find us, and which law covers the deal, all BEFORE you pay a dollar.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide dark" data-src="We pre-vet with the same data feeds the banks use; banks want to do business with people like that: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:532. Pre-underwriting: marketing/copy-skills/copybot/references/chris-voice-profile.md:29, said here as 'the way a bank reads it' and 'the banks that fit your file' (Part 0 rule 8, marketing/ads/RULES.md:44). It checks your file against the banks that fit it, so you only apply where your file makes sense: public/app/present.js:99 (closer line). We have not pulled anything yet; your score does not move: docs/sops/weekend-2026-10-24/02-setter.md:94. The picture is the soft pull form, word for word: db/migrations/287_contract_seller_signature_and_real_text.sql:146-148, 155-156. The reports are yours either way: 04-sales-call-script.md:160. Action takers, not shoppers: marketing/copy-skills/copybot/references/owner-voice.md:15.">
+  <section class="slide dark" data-src="We pre-vet with the same data feeds the banks use; banks want to do business with people like that: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:532. Pre-underwriting: marketing/copy-skills/copybot/references/chris-voice-profile.md:29, said here as 'the way a bank reads it' and 'the banks that fit your file' (Part 0 rule 8, marketing/ads/RULES.md:44). It checks your file against the banks that fit it, so you only apply where your file makes sense: public/app/present.js:99 (closer line). We have not pulled anything yet; your score does not move: docs/sops/weekend-2026-10-24/02-setter.md:94. The picture is the soft pull form, word for word: db/migrations/287_contract_seller_signature_and_real_text.sql:146-148, 155-156. The reports are yours either way: 04-sales-call-script.md:160. Action takers, not shoppers: marketing/copy-skills/copybot/references/owner-voice.md:15. Banks that approve files like yours: marketing/ads/scripts/2026-10-14.md:63 (green-lit).">
     <p class="eyebrow">PD-08 / Your call</p>
-    <h2>On your call, we pre-vet your file on the same data the banks read.</h2>
+    <h2>Your strategy call puts your own file on the screen, at the depth a bank reads.</h2>
     <ul class="lines">
-      <li>Then your file goes only to the banks that fit it. Banks want to do business with people like that, because we pre-vet with the same data feeds they use.</li>
-      <li>Nothing is pulled until you are on the call with us. It is one soft pull, with you on the line, and your score does not move.</li>
-      <li>The reports are yours either way.</li>
+      <li>We pull your report only once you join the call, with one soft pull that leaves your score alone.</li>
+      <li>That one pull gets matched against the banks that lend to files like yours, on the same data feeds they use.</li>
+      <li>Whatever you decide, you keep the reports.</li>
     </ul>
     <figure class="pic">
       <div class="real" role="img" aria-label="The soft pull authorization form. Marked: this is a soft pull. It does not lower my credit score and lenders do not see it as an application for credit. Marked: I am giving permission for one pull, for the purpose written above. Then: a copy of what I signed, and the time I signed it, is kept on file and I can ask for it at any time.">
@@ -1070,12 +1064,11 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Here's what happens on your call. We pre-vet your file on the same data the banks read, the way a bank reads it, with you on the line.</li>
-        <li>Then your file goes only to the banks that fit it. Banks want to do business with people like that, because we pre-vet with the same data feeds they use.</li>
-        <li>Nothing is pulled until you're on the call with us. We have not pulled anything yet.</li>
-        <li>It's one soft pull. This is the form you sign for it, word for word. It does not lower your credit score, and lenders do not see it as an application for credit.</li>
-        <li>A copy of what you signed, with the time you signed it, is kept on file. You can ask for it any time. The reports are yours either way.</li>
-        <li>You've now seen exactly what we see and exactly how we handle it. We're looking for action takers, not shoppers. That's who this call is built for.</li>
+        <li>Remember those layers under the summary? On your strategy call, your OWN file comes up on the screen at that depth, before a single bank reads it.</li>
+        <li>We pull your report only once you join the call. It's one soft pull, you sign the form for it, and your score stays put.</li>
+        <li>We read every layer with you: the bureau's reasons, the full account record, and your business file if you have one.</li>
+        <li>Then your file gets matched to the banks that lend to files like yours. Banks want files that come in pre-vetted on the same data feeds they use.</li>
+        <li>Whatever you decide, you keep the reports, and you walk away knowing exactly what a bank sees when it pulls your name.</li>
       </ul>
     </aside>
   </section>

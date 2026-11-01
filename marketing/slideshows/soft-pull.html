@@ -4,13 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Fundhub Soft Pull</title>
-<meta name="description" content="Reading your file on your call is a soft pull. Your score does not move, and only you see it.">
+<meta name="description" content="A hard pull from one bank stays on your report for the next bank to read. A soft pull reads your whole file first, and your score stays where it is.">
 <!--
   Deck SP · Soft pull
   Lane: Every lane (Funding, and Blueprint and Repair)
   Hammer Them pillar: 2nd-layer question
   Belief: Reading my file does not move my score. Only I can see a soft pull,
           and a hard pull only ever happens later, with my own consent.
+
+  Rewritten 2026-10-31 on Chris's slide framework (see pre-underwriting.html).
 
   Chris's direction (2026-10-31): his call-slide style (a coded label, a big
   headline, full lines of copy with the pastel stripe), more copy, real first
@@ -739,8 +741,11 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
 
   <section class="slide dark" data-src="Almost every application you send is a hard pull, and each one costs you: docs/sops/weekend-2026-10-24/04-sales-call-script.md:160; when we apply for funding, each application is a hard pull: :428. The banks see the inquiries stack: public/app/present.js:108 (closer line). The picture is the soft pull form every client signs, word for word: db/migrations/287_contract_seller_signature_and_real_text.sql:146-147 (clause 1) and :153-154 (clause 4). Opener form: .ai/rules/copy-certainty.md.">
     <p class="eyebrow">SP-01 / The pull</p>
-    <h2>When you apply at a bank, that bank does a hard pull, and the next bank sees it.</h2>
-    <p class="lede">Reading your file with you on your call is a soft pull. It does not lower your credit score, and lenders do not see it as an application for credit.</p>
+    <h2>Every no from a bank comes with a hard pull that sits on your report after the letter.</h2>
+    <p class="lede">Your file can be read top to bottom, all three bureaus, without a single bank seeing it happen.</p>
+    <ul class="lines">
+      <li>This is the form you sign for it, and line one says what it is in plain words.</li>
+    </ul>
     <figure class="pic">
       <div class="real" role="img" aria-label="The soft pull authorization form. Clause 1 is marked: This is a soft pull. It does not lower my credit score and lenders do not see it as an application for credit. Clause 4: No promise of funding has been made to me. What I qualify for is decided later, by the lender, not by this form.">
         <div class="rh2">Soft Pull Authorization</div>
@@ -753,23 +758,22 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Every time you apply at a bank, that bank does a hard pull, and the next bank you apply to sees it sitting on your report.</li>
-        <li>Reading your file on your call is a different thing. It's a soft pull.</li>
-        <li>Look at the form. This is the actual permission you sign before we pull anything, and I want you to read line one with me.</li>
-        <li>It says it in plain words: this is a soft pull, it does not lower my credit score, and lenders do not see it as an application for credit.</li>
-        <li>Then look at line four. No promise of funding is made by this form. What you qualify for gets decided by the lender, later.</li>
-        <li>That's how we read your file the way a bank does, with no hard inquiry on your report.</li>
+        <li>A bank that says no still leaves its HARD pull on your report. The no goes in a letter, and the pull sits right where the next bank finds it.</li>
+        <li>Your file can be read top to bottom, all three bureaus, without a single bank seeing it happen. It's the first thing that happens on your call.</li>
+        <li>This is the form you sign for it, word for word. Line one says it plainly: this is a soft pull, and it does not lower your credit score.</li>
+        <li>The same line says lenders do not see it as an application for credit. No bank reads it as you shopping for money.</li>
+        <li>Line four says the form itself promises you no funding. The lender makes that call later, once an application actually goes in.</li>
+        <li>You sign for one pull, for one purpose, and the form says exactly what that purpose is. You know what you're agreeing to before a single report gets pulled.</li>
       </ul>
     </aside>
   </section>
 
   <section class="slide" data-src="Only you can see a soft pull on your report: marketing/offers/fundhub-offers-2026-10-10.pdf p.9 (Chris's offers overview). It's a soft look; your score does not move, and no lender sees it: docs/sops/weekend-2026-10-24/04-sales-call-script.md:156 (closer line). Hard inquiries only ever happen later, with your consent, when an actual funding application goes out: marketing/landing-pages/slo/slo-03-thank-you.html:151. A hard inquiry needs its own separate consent: db/migrations/493_funding_and_repair_agreement_text.sql:53 (section 4).">
     <p class="eyebrow">SP-02 / Who sees it</p>
-    <h2>Only you can see a soft pull on your report.</h2>
+    <h2>Who else can see a soft pull on your report?</h2>
     <ul class="lines">
-      <li>It's a soft look. Your score does not move, and no lender sees it.</li>
-      <li>Hard inquiries only ever happen later, with your consent, when an actual funding application goes out.</li>
-      <li>A hard inquiry needs its own separate consent from you. That's written in the agreement.</li>
+      <li>You're the only one who sees it: it shows on your own copy, and a lender's view of your report shows no application from it.</li>
+      <li>A hard pull gets its own separate consent from you, so a soft pull can never turn into one.</li>
     </ul>
     <figure class="pic">
       <div class="sheet">
@@ -802,22 +806,22 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Only you can see a soft pull on your report. That's the whole point of it.</li>
-        <li>Walk the picture with me. On the left is your own copy of your report, and the soft pull shows there, so you know it happened.</li>
-        <li>On the right is what a lender sees. They do not see a soft pull as an application for credit.</li>
-        <li>Hard inquiries only ever happen later, with your consent, when an actual funding application goes out.</li>
-        <li>And that consent is its own step. The soft pull permission does not cover a hard pull, and the agreement says so.</li>
+        <li>Who else can see a soft pull on your report? The answer is nobody but YOU, and nobody tells you that while you're shopping for funding.</li>
+        <li>On the left of this picture is your own copy of your report. The soft pull shows up there, so you can see it happened and when.</li>
+        <li>On the right is what a lender sees. A lender does not read a soft pull as an application, so it never counts against you when you apply.</li>
+        <li>A hard pull is a different step, and it needs a separate yes from you. The soft pull form covers one soft pull, and nothing else.</li>
+        <li>Here's what that means for you. Your file gets read all the way through, every bureau and every line, and no bank sees you ASKING.</li>
+        <li>Your next application goes out on a file that looks exactly the way it did before we read it, with nothing new on it for the next bank.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide" data-src="Soft pull: db/migrations/287_contract_seller_signature_and_real_text.sql:146-147; it pulls your file from the bureaus and our system reads it the way a bank does; applications come later, on a plan: docs/sops/weekend-2026-10-24/04-sales-call-script.md:156. Hard pull: when we apply for funding, each application is a hard pull: :428; almost every application you send is a hard pull, and each one costs you: :160; a hard inquiry needs separate consent: db/migrations/493_funding_and_repair_agreement_text.sql:53 (section 4). The banks see the inquiries stack: public/app/present.js:108. Only you see a soft pull: marketing/offers/fundhub-offers-2026-10-10.pdf p.9.">
-    <p class="eyebrow">SP-03 / Soft against hard</p>
-    <h2>A soft pull and a hard pull are two different things.</h2>
+  <section class="slide" data-src="Soft pull: db/migrations/287_contract_seller_signature_and_real_text.sql:146-147; it pulls your file from the bureaus and our system reads it the way a bank does; applications come later, on a plan: docs/sops/weekend-2026-10-24/04-sales-call-script.md:156. Hard pull: when we apply for funding, each application is a hard pull: :428; almost every application you send is a hard pull, and each one costs you: :160; a hard inquiry needs separate consent: db/migrations/493_funding_and_repair_agreement_text.sql:53 (section 4). The banks see the inquiries stack: public/app/present.js:108. Only you see a soft pull: marketing/offers/fundhub-offers-2026-10-10.pdf p.9. Stack enough inquiries and the banks start denying you: public/app/present.js:108.">
+    <p class="eyebrow">SP-03 / The cost</p>
+    <h2>Three hard pulls stack up fast when you apply at three banks to see who says yes.</h2>
     <ul class="lines">
-      <li>A soft pull happens on your call. You sign for it, only you see it, and your score does not move.</li>
-      <li>A hard pull happens when a funding application goes out, with your separate consent, and each one costs you.</li>
-      <li>That's why the applications come later, on a plan, and never on the call.</li>
+      <li>Each one costs you, the next bank reads it, and stack enough of them and the banks start saying no.</li>
+      <li>A soft pull reads your file without adding a single line, and your applications go out later, in order, on a plan.</li>
     </ul>
     <figure class="pic">
       <div class="sheet">
@@ -850,22 +854,23 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Here's the difference in one picture. A soft pull and a hard pull are two different things.</li>
-        <li>A soft pull happens on your call. You sign for it, only you see it, and your score does not move.</li>
-        <li>A hard pull happens when a real funding application goes out. You give separate consent for that, and each one costs you.</li>
-        <li>Almost every application you have ever sent was a hard pull. That's the kind the next bank sees.</li>
-        <li>So the soft pull is how we read your file first, and the applications come later, on a plan.</li>
+        <li>Here's what shopping for funding really costs. When you apply at three banks to see who says yes, that's three hard pulls sitting on your report.</li>
+        <li>Every one of them COSTS you. The next bank reads each one before it decides, and when enough of them stack up, banks start saying no to a good score.</li>
+        <li>Three nos cost you more than three letters. The job you wanted that money for has to WAIT, and every bank after that reads all three pulls first.</li>
+        <li>Look at the two columns. A soft pull happens on your call, you sign for it, only you see it, and your score stays where it is.</li>
+        <li>A hard pull happens when a funding application goes out. It needs your separate consent, the banks you apply to next can see it, and each one costs you.</li>
+        <li>Most people run it in the wrong order. The applications go out FIRST, and the file gets read after the damage is done.</li>
+        <li>Flip it, and your file gets read first with a soft pull. The applications go out later, in order, on a plan built from what the soft pull found.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide dark" data-src="We pull all three bureaus for a reason; different banks pull different bureaus, so your information has to match on every report: marketing/vsl/direct-book-thank-you-2026-10-15.md:27 (green-lit). Our UnderwriteIQ system is pulling your file from all three bureaus and reading it the way a bank does: public/app/present.js:99 (closer line). The picture is the cover of Fundhub's tri-bureau report as scripts/render-crs-standard-report.mjs printed it on 2026-10-31 for the FinanceOS sample file: TransUnion 706, Experian 702, Equifax 709, src/finance/sample-credit-file.mjs:75-86 (simulated, no bureau contacted, :53-54). Your score does not move: db/migrations/287_contract_seller_signature_and_real_text.sql:146-147.">
+  <section class="slide dark" data-src="We pull all three bureaus for a reason; different banks pull different bureaus, so your information has to match on every report: marketing/vsl/direct-book-thank-you-2026-10-15.md:27 (green-lit). Our UnderwriteIQ system is pulling your file from all three bureaus and reading it the way a bank does: public/app/present.js:99 (closer line). The picture is the cover of Fundhub's tri-bureau report as scripts/render-crs-standard-report.mjs printed it on 2026-10-31 for the FinanceOS sample file: TransUnion 706, Experian 702, Equifax 709, src/finance/sample-credit-file.mjs:75-86 (simulated, no bureau contacted, :53-54). Your score does not move: db/migrations/287_contract_seller_signature_and_real_text.sql:146-147. Each bank pulls its own bureau: src/finance/bank-strategy.mjs:551-553 (the bureaus each bank pulls, from the bank book).">
     <p class="eyebrow">SP-04 / Three bureaus</p>
-    <h2>One soft pull reads all three bureaus, because different banks pull different bureaus.</h2>
+    <h2>This sample file reads 706, 702 and 709, three different scores from one soft pull.</h2>
     <ul class="lines">
-      <li>Your information has to match on every report, so we read all three.</li>
-      <li>Our UnderwriteIQ system reads each one the way a bank does.</li>
-      <li>One soft pull. Three reports. Your score does not move on any of them.</li>
+      <li>Every bank picks one bureau to pull, and each bureau keeps its own record of you.</li>
+      <li>One soft pull gets all three, and UnderwriteIQ reads each one the way a bank does, with your score left alone.</li>
     </ul>
     <figure class="pic">
       <div class="real" role="img" aria-label="The cover of a sample Fundhub tri-bureau credit report. TransUnion 706, FICO Score 9. Experian 702, Experian Fair Isaac Risk Model V9. Equifax 709, FICO Score 9. Marked: one soft pull.">
@@ -885,23 +890,24 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>One soft pull reads all three bureaus, and here's why that matters.</li>
-        <li>Different banks pull different bureaus. Some pull Experian, some Equifax, some TransUnion.</li>
-        <li>So your information has to match on every report, and we read all three to check that.</li>
-        <li>Look at this sample report. TransUnion 706, Experian 702, Equifax 709. Three reports from one soft pull.</li>
-        <li>Our UnderwriteIQ system reads each one the way a bank does.</li>
-        <li>And the score does not move on any of them. That's the soft pull doing its job.</li>
+        <li>This sample file reads three DIFFERENT scores. TransUnion says 706, Experian says 702, and Equifax says 709, all from one soft pull.</li>
+        <li>Each bank picks the bureau it pulls. One goes to Experian, another goes to Equifax, and each bureau keeps its own record of you.</li>
+        <li>That's why one soft pull gets all THREE. A problem that only shows up on one bureau still costs you, the day a bank pulls that bureau.</li>
+        <li>Our UnderwriteIQ system reads each of the three reports the way a bank does, and your score doesn't move on any of them.</li>
+        <li>For you, that means no bureau surprises you after you apply. Whatever is sitting on Experian, Equifax or TransUnion, you see it first.</li>
+        <li>Your applications then go out on a file nobody has dinged yet. That's how the people you want to hire, the larger contracts and your ads get paid for with credit.</li>
+        <li>Your savings stay where they are, and the bank's money does the growing, on a file that went in clean on every bureau.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide" data-src="We pull your file together right on the call; it's a soft pull, so your score does not move; you see how much you qualify for based on where you're at right now, and what's holding the rest back: docs/sops/weekend-2026-10-24/04-sales-call-script.md:69. The reports are yours either way: :160. Why the form asks for your details: :159. A computer and a quiet spot; we pull your credit with you on the line: docs/sops/weekend-2026-10-24/02-setter.md:92. One pull, for the purpose written on the form: db/migrations/287_contract_seller_signature_and_real_text.sql:148-149.">
+  <section class="slide" data-src="We pull your file together right on the call; it's a soft pull, so your score does not move; you see how much you qualify for based on where you're at right now, and what's holding the rest back: docs/sops/weekend-2026-10-24/04-sales-call-script.md:69. The reports are yours either way: :160. Why the form asks for your details: :159. A computer and a quiet spot; we pull your credit with you on the line: docs/sops/weekend-2026-10-24/02-setter.md:92. One pull, for the purpose written on the form: db/migrations/287_contract_seller_signature_and_real_text.sql:148-149. Join from a computer, because your advisor shares the screen: marketing/vsl/direct-book-thank-you-2026-10-15.md:37 (green-lit).">
     <p class="eyebrow">SP-05 / Your call</p>
-    <h2>On your call, we pull your file together with you on the line.</h2>
+    <h2>One signature on your call starts the pull, and you watch it run.</h2>
     <ul class="lines">
-      <li>You sign the soft pull form, and the pull runs while you watch. Your score does not move.</li>
-      <li>You see how much you qualify for based on where you're at right now, and what's holding the rest back.</li>
-      <li>The reports are yours either way.</li>
+      <li>You sign the soft pull form on the call, and the pull runs while you're there with us.</li>
+      <li>You see how much you qualify for based on where you're at right now, and exactly what on your file is holding the rest back.</li>
+      <li>The reports are yours to keep, whatever you decide.</li>
     </ul>
     <figure class="pic">
       <ol class="flow" aria-label="The order on your call: you sign the soft pull form, one soft pull reads three bureaus, our system reads it the way a bank does, you see how much you qualify for.">
@@ -913,12 +919,13 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>On your call, we pull your file together with you on the line.</li>
-        <li>Walk the steps with me. You sign the soft pull form, and the form says what it's for: one pull, to see what you qualify for.</li>
-        <li>Then the pull runs, all three bureaus, while you watch. Your score does not move.</li>
-        <li>Our system reads it the way a bank does, and you see how much you qualify for based on where you're at right now, and what's holding the rest back.</li>
-        <li>Be at a computer somewhere quiet, because we go through the file together on one screen.</li>
-        <li>And the reports are yours either way.</li>
+        <li>Remember the file that gets read top to bottom without a single bank seeing it? That happens on your strategy call, with you on the LINE.</li>
+        <li>You sign the soft pull form right there on the call, and the form spells out what it's for: one pull, to see what you qualify for.</li>
+        <li>Then the pull runs, all three bureaus, while you're with us, and your score stays where it is.</li>
+        <li>UnderwriteIQ goes to work next, and we review your file the way a lender does, line by line, together.</li>
+        <li>You see how much you qualify for based on where you're at right now, and exactly what on your file is holding the rest BACK.</li>
+        <li>Be at a computer, somewhere quiet. We go through your file together on one screen, and seeing it big is the reason for the call.</li>
+        <li>The reports are yours to keep, whatever you decide. You walk away knowing your file the way a bank knows it, before any bank pulls it.</li>
       </ul>
     </aside>
   </section>
