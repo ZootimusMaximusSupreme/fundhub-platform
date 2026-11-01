@@ -472,6 +472,9 @@ The ClickFunnels appointment still creates a saved Fundhub booking. The
 `cortana-booking-feed` clock reads confirmed ClickFunnels booking rows created
 after its cutover and posts each one to the existing **Funding Call** conversion
 through `src/messaging/providers/cortana-booking-webhook.mjs`. The
+payload includes the booking's saved `qualification_bucket` (`funding_qualified`
+or `funding_unqualified`, or null when the survey has no score answer). It keeps
+the existing `funding_call_booked` event name and Funding Call conversion.
 `cortana_booking_sends` row records success or a retryable failure, so a browser
 leaving the thank-you page cannot lose the server-side conversion. Company,
 demo, and simulated buyer bookings are marked skipped. This is a vendor event,
