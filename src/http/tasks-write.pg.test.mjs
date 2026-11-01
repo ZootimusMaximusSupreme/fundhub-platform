@@ -50,7 +50,7 @@ const res = () => {
 };
 
 describe("PATCH /api/tasks — active-shift gate", { skip: !HAVE_DB ? "no DATABASE_URL" : false }, () => {
-  let handler, org, staffId, mateId, token, closerToken, taskId;
+  let handler, org, staffId, mateId, token, mateToken, closerToken, taskId;
 
   /* The handler runs the real requirePrincipal against the real sessions table,
      so every call carries a token minted for a real staff row. There is no
@@ -124,6 +124,7 @@ describe("PATCH /api/tasks — active-shift gate", { skip: !HAVE_DB ? "no DATABA
       [org, "Taskgate Pgtest Closer", CLOSER_EMAIL])).rows[0].id;
 
     token = (await createSession(db, { staffId, orgId: org })).token;
+    mateToken = (await createSession(db, { staffId: mateId, orgId: org })).token;
     closerToken = (await createSession(db, { staffId: closerId, orgId: org })).token;
 
     // Unclaimed, in a role queue — exactly what a person picks from.
@@ -238,14 +239,14 @@ describe("PATCH /api/tasks — active-shift gate", { skip: !HAVE_DB ? "no DATABA
       assert.ok(r.body.tasks.some((t) => t.id === taskId));
     });
 
-    test("GET exposes setter link permission only to a setter role", async () => {
+    test("GET keeps unlinked and other-assignee setter tasks from opening a lead", async () => {
       const setterRead = await call("GET", { token, query: { q: TITLE, limit: "1" } });
       const closerRead = await call("GET", { token: closerToken, query: { q: TITLE, limit: "1" } });
       assert.equal(setterRead.code, 200);
       assert.equal(closerRead.code, 200);
       assert.equal(setterRead.body.can_open_setter, true);
       assert.equal(closerRead.body.can_open_setter, false);
-      assert.equal(setterRead.body.tasks[0].can_open_setter, true);
+      assert.equal(setterRead.body.tasks[0].can_open_setter, false);
       await db.query(`UPDATE tasks SET assignee_staff_id = $2 WHERE id = $1`, [taskId, mateId]);
       try {
         const assignedRead = await call("GET", { token, query: { q: TITLE, limit: "1" } });
@@ -284,6 +285,60 @@ describe("PATCH /api/tasks — active-shift gate", { skip: !HAVE_DB ? "no DATABA
       } finally {
         await db.query("DELETE FROM tasks WHERE client_id = ANY($1::uuid[])", [clients]);
         await db.query("DELETE FROM clients WHERE id = ANY($1::uuid[])", [clients]);
+      }
+    });
+
+    test("a newer task assigned to B hides A's old setter link and exact card", async () => {
+      const clientId = (await db.query(
+        `INSERT INTO clients (org_id, email, first_name, last_name)
+         VALUES ($1,'taskgate_setter_transfer@example.com','Current','Setter') RETURNING id`,
+        [org])).rows[0].id;
+      try {
+        await db.query(
+          `UPDATE clients SET custom_fields = jsonb_build_object('setter_handoff',
+             jsonb_build_object('setter_staff_id',$2::text,'setter_name','Old Setter','call_attempts',0))
+           WHERE id = $1`, [clientId, staffId]);
+        const tasks = (await db.query(
+          `INSERT INTO tasks
+             (org_id, client_id, title, body, assignee_role, assignee_staff_id,
+              source_workflow, created_at)
+           VALUES
+             ($1,$2,$3,'old-A','setter',$4,'setter-entry','2026-11-01T01:00:00Z'),
+             ($1,$2,$3,'new-B','setter',$5,'setter-booking','2026-11-01T02:00:00Z')
+           RETURNING id, body`, [org, clientId, TITLE, staffId, mateId])).rows;
+        const oldId = tasks.find(row => row.body === "old-A").id;
+        const newId = tasks.find(row => row.body === "new-B").id;
+        const a = { id: staffId, org_id: org, role: "setter" };
+        const b = { id: mateId, org_id: org, role: "setter", name: "Taskgate Pgtest Mate" };
+        assert.equal((await listSetterQueue(db, a, { clientId, limit: 1 })).items.length, 0);
+        const bQueue = await listSetterQueue(db, b, { clientId, limit: 1 });
+        assert.deepEqual(bQueue.items.map(item => item.client_id), [clientId]);
+        assert.equal(bQueue.items[0].setter_staff_id, mateId);
+
+        const aRead = await call("GET", { token, query: { client_id: clientId, done: "false" } });
+        const bRead = await call("GET", { token: mateToken, query: { client_id: clientId, done: "false" } });
+        assert.equal(aRead.code, 200, JSON.stringify(aRead.body));
+        assert.equal(bRead.code, 200, JSON.stringify(bRead.body));
+        assert.deepEqual(aRead.body.tasks.map(row => [row.id, row.can_open_setter]).sort(),
+          [[oldId, false], [newId, false]].sort());
+        assert.deepEqual(bRead.body.tasks.map(row => [row.id, row.can_open_setter]).sort(),
+          [[oldId, false], [newId, true]].sort());
+
+        const aSave = await updateSetterHandoff(db, a, {
+          client_id: clientId, action: "save", handoff: { call_attempts: 1 }
+        });
+        assert.equal(aSave.status, 403);
+        const bSave = await updateSetterHandoff(db, b, {
+          client_id: clientId, action: "save", handoff: { call_attempts: 1 }
+        });
+        assert.equal(bSave.status, 200, JSON.stringify(bSave.body));
+        const saved = (await db.query("SELECT custom_fields FROM clients WHERE id = $1", [clientId])).rows[0];
+        assert.equal(saved.custom_fields.setter_handoff.setter_staff_id, mateId);
+        assert.equal(saved.custom_fields.setter_handoff.setter_name, "Taskgate Pgtest Mate");
+        assert.equal(saved.custom_fields.setter_handoff.call_attempts, 1);
+      } finally {
+        await db.query("DELETE FROM tasks WHERE client_id = $1", [clientId]);
+        await db.query("DELETE FROM clients WHERE id = $1", [clientId]);
       }
     });
 

@@ -93,6 +93,52 @@ test("an exact lead link loads a permitted lead beyond the first 50 queue rows",
   expect(exactRead).toBe(true);
 });
 
+test("A's old assignment cannot reopen a lead after its latest task moves to B", async ({ page }) => {
+  const clientId = "bbbbbbbb-2222-4222-8222-222222222222";
+  let exactRead = false;
+  await openScreen(page, "/app/setter-dashboard.html?client_id=" + clientId, SETTER, {
+    "/api/read/setter-dashboard": (route, { url }) => {
+      if (new URL(url).searchParams.get("client_id") === clientId) {
+        exactRead = true;
+        return { ...queue, count: 0, items: [] };
+      }
+      return queue;
+    }
+  });
+  await expect(page.locator("#setter-detail")).toContainText("This lead is not in your call queue");
+  await expect(page.locator("#setter-detail")).not.toContainText("Transferred Lead");
+  expect(exactRead).toBe(true);
+});
+
+test("B's newer assignment opens the exact lead and saves its handoff", async ({ page }) => {
+  const clientId = "bbbbbbbb-2222-4222-8222-222222222222";
+  const setterB = { ...SETTER, staff: { ...SETTER.staff, id: "staff-setter-b", name: "B Setter" } };
+  const transferred = { ...queue.items[0], client_id: clientId, client_name: "Transferred Lead",
+    setter_staff_id: setterB.staff.id, setter_handoff: {} };
+  let exactRead = false;
+  const writes = [];
+  await openScreen(page, "/app/setter-dashboard.html?client_id=" + clientId, setterB, {
+    "/api/read/setter-dashboard": (route, { url }) => {
+      if (new URL(url).searchParams.get("client_id") === clientId) {
+        exactRead = true;
+        return { ...queue, count: 1, items: [transferred] };
+      }
+      return queue;
+    },
+    "/api/setter-dashboard": async (route) => {
+      const body = route.request().postDataJSON();
+      writes.push(body);
+      await route.fulfill({ status: 200, contentType: "application/json",
+        body: JSON.stringify({ ok: true, item: transferred }) });
+    }
+  });
+  await expect(page.locator("#setter-detail h2")).toHaveText("Transferred Lead");
+  await page.getByRole("button", { name: "Save setter details" }).click();
+  await expect(page.locator("#setter-details-status")).toHaveText("Setter details saved.");
+  expect(exactRead).toBe(true);
+  expect(writes.some(body => body.client_id === clientId && body.action === "save")).toBe(true);
+});
+
 test("setter can correct survey answers during a call and see saved edits after reload", async ({ page }) => {
   const item = structuredClone(queue.items[0]);
   item.survey = [

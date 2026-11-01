@@ -233,20 +233,45 @@ test.describe("Calendar is today's week, not July sample", () => {
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
   });
 
-  test("another setter's assigned lead opens the client file instead of an inaccessible desk", async ({ page }) => {
+  test("an older task for A cannot open the setter desk after B receives a newer task", async ({ page }) => {
     await wireApi(page, { session: SETTER, handlers: {
       "/api/tasks": (route, { url }) => ({ ok: true, can_open_setter: true,
         tasks: new URL(url).searchParams.get("done") === "true" ? [] : [{
-          id: "other-setter-task", client_id: CLIENT_ID, client_name: "Assigned Lead",
+          id: "old-A-task", client_id: CLIENT_ID, client_name: "Transferred Lead",
+          source_workflow: "setter-entry", assignee_role: "setter",
+          assignee_staff_id: SETTER.staff.id, can_open_setter: false,
+          title: "Setter: call new opt-in", due_at: todayAt(11, 0), done: false
+        }, {
+          id: "new-B-task", client_id: CLIENT_ID, client_name: "Transferred Lead",
           source_workflow: "setter-entry", assignee_role: "setter",
           assignee_staff_id: "another-setter", can_open_setter: false,
-          title: "Setter: call new opt-in", due_at: todayAt(11, 0), done: false
+          title: "Setter: confirm booking", due_at: todayAt(17, 0), done: false
         }] })
     } });
     await gotoScreen(page, "calendar.html", "", SETTER);
     await expect(page.locator(".day-wrap").getByRole("link", { name: "Open setter" })).toHaveCount(0);
-    await expect(page.locator(".day-wrap").getByRole("link", { name: "Open client file" }))
-      .toHaveAttribute("href", "client-control-panel.html?client_id=" + CLIENT_ID);
+    await expect(page.locator(".day-wrap").getByRole("link", { name: "Open client file" })).toHaveCount(2);
+  });
+
+  test("the current assignee B can open the exact setter lead from Calendar", async ({ page }) => {
+    const setterB = { ...SETTER, staff: { ...SETTER.staff, id: "another-setter" } };
+    await wireApi(page, { session: setterB, handlers: {
+      "/api/tasks": (route, { url }) => ({ ok: true, can_open_setter: true,
+        tasks: new URL(url).searchParams.get("done") === "true" ? [] : [{
+          id: "old-A-task", client_id: CLIENT_ID, client_name: "Transferred Lead",
+          source_workflow: "setter-entry", assignee_role: "setter",
+          assignee_staff_id: SETTER.staff.id, can_open_setter: false,
+          title: "Setter: call new opt-in", due_at: todayAt(11, 0), done: false
+        }, {
+          id: "new-B-task", client_id: CLIENT_ID, client_name: "Transferred Lead",
+          source_workflow: "setter-booking", assignee_role: "setter",
+          assignee_staff_id: setterB.staff.id, can_open_setter: true,
+          title: "Setter: confirm booking", due_at: todayAt(17, 0), done: false
+        }] })
+    } });
+    await gotoScreen(page, "calendar.html", "", setterB);
+    await expect(page.locator(".day-wrap").getByRole("link", { name: "Open setter" }))
+      .toHaveAttribute("href", "setter-dashboard.html?client_id=" + CLIENT_ID);
   });
 
   test("failure on the second task page never paints a safe empty schedule", async ({ page }) => {
@@ -341,6 +366,24 @@ test.describe("Calendar Up Next / Then / briefing", () => {
     await expect(page.locator("#unBody")).toHaveText("Strategy session", { timeout: 10_000 });
     await expect(page.locator("#unBody")).not.toContainText(uid);
     await expect(page.locator("#upNext")).not.toContainText(uid);
+  });
+
+  test("task detail is readable in Calendar and escaped as text on a phone", async ({ page }) => {
+    await page.clock.setFixedTime(todayAt9am());
+    await page.setViewportSize({ width: 390, height: 844 });
+    await wireApi(page, { session: CLOSER, handlers: {
+      "/api/tasks": () => ({ ok: true, tasks: [{
+        id: "manager-coaching-task", client_id: CLIENT_ID, client_name: "Coaching Review",
+        title: "Review KPI counts", detail: "3 of 5 calls held; ask for 2 more <script>window.calendarInjected = true</script>",
+        due_at: todayAt(10, 0), done: false
+      }] })
+    } });
+    await gotoScreen(page, "calendar.html");
+    await expect(page.locator("#unBody")).toContainText("3 of 5 calls held; ask for 2 more");
+    await expect(page.locator(".evt-meta")).toContainText("3 of 5 calls held; ask for 2 more");
+    expect(await page.evaluate(() => window.calendarInjected)).toBeUndefined();
+    await expect(page.locator("#upNext script, .evt script")).toHaveCount(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
   });
 });
 

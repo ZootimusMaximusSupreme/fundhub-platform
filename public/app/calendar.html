@@ -358,12 +358,13 @@ function displayName(t) {
 }
 function briefingText(t) {
   var title = String(t && t.title || "").trim();
-  if (title && !isUuid(title)) {
-    var repeats = (t.repeat_count || 1) - 1;
-    return title + (repeats > 0 ? " · " + repeats +
-      (repeats === 1 ? " repeat entry grouped" : " repeat entries grouped") : "");
-  }
-  return "No briefing on file.";
+  var detail = String(t && t.detail || "").trim();
+  var parts = [];
+  if (title && !isUuid(title)) parts.push(title);
+  if (detail && !isUuid(detail) && detail !== title) parts.push(detail);
+  var repeats = ((t && t.repeat_count) || 1) - 1;
+  return (parts.join(" · ") || "No briefing on file.") + (repeats > 0 ? " · " + repeats +
+    (repeats === 1 ? " repeat entry grouped" : " repeat entries grouped") : "");
 }
 function meetingUrl(t) {
   return (t && (t.meeting_url || t.join_url)) || "";

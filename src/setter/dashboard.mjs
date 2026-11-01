@@ -152,7 +152,7 @@ function mapItem(row, staff) {
     survey: surveySummary(cf),
     survey_edits: jsonObject(cf.setter_survey_edits),
     setter_handoff: handoff,
-    setter_staff_id: handoff.setter_staff_id || row.setter_staff_id || staff.id,
+    setter_staff_id: row.setter_staff_id || handoff.setter_staff_id || staff.id,
     closer_staff_id: handoff.closer_staff_id || row.closer_staff_id || (staff.role === "owner" ? staff.id : null)
   });
 }
@@ -225,14 +225,18 @@ export async function listSetterQueue(db, staff, { limit = 50, offset = 0, clien
   const roleScoped = staff.role === "setter";
   const page = pageParams({ limit, offset });
   const result = await db.query(
-    `WITH queue AS (
-       SELECT DISTINCT ON (c.id)
+    `WITH latest_setter AS (
+       SELECT DISTINCT ON (client_id) * FROM tasks
+        WHERE org_id = $1 AND assignee_role = 'setter' AND client_id IS NOT NULL
+        ORDER BY client_id, created_at DESC, id DESC
+     ), queue AS (
+       SELECT
             c.id AS client_id, c.first_name, c.last_name, c.email, c.phone, c.custom_fields,
             t.created_at, t.done,
             t.assignee_staff_id AS setter_staff_id,
             b.created_at AS booked_at, b.starts_at AS booking_time,
             ct.assignee_staff_id AS closer_staff_id
-       FROM tasks t
+       FROM latest_setter t
        JOIN clients c ON c.id = t.client_id AND c.org_id = t.org_id
        LEFT JOIN LATERAL (
          SELECT created_at, starts_at FROM bookings
@@ -250,12 +254,11 @@ export async function listSetterQueue(db, staff, { limit = 50, offset = 0, clien
           c.custom_fields->'setter_handoff'->>'complete_at' IS NOT NULL
           AND t.created_at >= now() - interval '7 days'
         ))
-        AND ($2::boolean = false OR t.assignee_staff_id IS NULL OR t.assignee_staff_id = $3)
         AND ($6::uuid IS NULL OR c.id = $6)
-      ORDER BY c.id, t.created_at DESC
      )
      SELECT * FROM queue
-      ORDER BY COALESCE(booked_at, created_at) DESC
+      WHERE ($2::boolean = false OR setter_staff_id IS NULL OR setter_staff_id = $3)
+      ORDER BY COALESCE(booked_at, created_at) DESC, client_id DESC
       LIMIT $4 OFFSET $5`,
     [staff.org_id, roleScoped, staff.id, Math.min(page.limit, 100), page.offset, clientId]
   );
@@ -276,7 +279,7 @@ export async function getSetterClient(db, orgId, clientId) {
        LEFT JOIN LATERAL (
          SELECT created_at, starts_at FROM bookings
           WHERE org_id = c.org_id AND client_id = c.id AND status IN ('booked','rescheduled')
-          ORDER BY created_at DESC LIMIT 1
+          ORDER BY created_at DESC, id DESC LIMIT 1
        ) b ON true
        LEFT JOIN LATERAL (
          SELECT assignee_staff_id FROM tasks
@@ -286,7 +289,7 @@ export async function getSetterClient(db, orgId, clientId) {
        LEFT JOIN LATERAL (
          SELECT created_at, done, assignee_staff_id FROM tasks
           WHERE org_id = c.org_id AND client_id = c.id AND assignee_role = 'setter'
-          ORDER BY created_at DESC LIMIT 1
+          ORDER BY created_at DESC, id DESC LIMIT 1
        ) st ON true
       WHERE c.id = $1 AND c.org_id = $2
         AND c.custom_fields->>'crm_archived_at' IS NULL
@@ -365,7 +368,7 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
     const assigned = await db.query(
       `SELECT assignee_staff_id FROM tasks
         WHERE org_id = $1 AND client_id = $2 AND assignee_role = 'setter'
-        ORDER BY created_at DESC LIMIT 1`,
+        ORDER BY created_at DESC, id DESC LIMIT 1`,
       [staff.org_id, client_id]
     );
     if (!assigned.rows[0] || (assigned.rows[0].assignee_staff_id && assigned.rows[0].assignee_staff_id !== staff.id)) {
@@ -374,9 +377,6 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
   }
   if (action === "save_survey") {
     const previous = jsonObject(jsonObject(client.custom_fields).setter_handoff);
-    if (staff.role === "setter" && previous.setter_staff_id && previous.setter_staff_id !== staff.id) {
-      return { status: 403, body: { ok: false, error: "assigned_to_other_setter" } };
-    }
     if (!survey_edits || typeof survey_edits !== "object" || Array.isArray(survey_edits)) {
       return { status: 400, body: { ok: false, error: "invalid_survey_edits" } };
     }
@@ -437,11 +437,8 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
   const validated = sanitizeHandoffPatch(input);
   if (validated.error) return { status: 400, body: { ok: false, error: validated.error } };
   const previous = jsonObject(jsonObject(client.custom_fields).setter_handoff);
-  if (staff.role === "setter" && previous.setter_staff_id && previous.setter_staff_id !== staff.id) {
-    return { status: 403, body: { ok: false, error: "assigned_to_other_setter" } };
-  }
   const leadType = previous.lead_type || (client.booked_at ? "booked" : "opt_in");
-  const setterStaffId = previous.setter_staff_id || staff.id;
+  const setterStaffId = staff.role === "setter" ? staff.id : previous.setter_staff_id || staff.id;
   let closerStaffId = previous.closer_staff_id || client.closer_staff_id || (staff.role === "owner" ? staff.id : null);
   if (!closerStaffId) {
     const owner = await db.query(
@@ -455,7 +452,7 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
     lead_type: leadType,
     setter_staff_id: setterStaffId,
     closer_staff_id: closerStaffId,
-    setter_name: previous.setter_staff_id && previous.setter_staff_id !== staff.id
+    setter_name: staff.role !== "setter" && previous.setter_staff_id && previous.setter_staff_id !== staff.id
       ? previous.setter_name || ""
       : staff.name || staff.first_name || ""
   };

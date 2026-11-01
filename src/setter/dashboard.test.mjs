@@ -248,7 +248,8 @@ test("exact setter lead read applies the same org, assignment, archive and task 
     assert.equal(params[1], true);
     assert.equal(params[5], CLIENT_ID);
     assert.match(sql, /c\.custom_fields->>'crm_archived_at' IS NULL/);
-    assert.match(sql, /t\.assignee_staff_id IS NULL OR t\.assignee_staff_id = \$3/);
+    assert.match(sql, /WITH latest_setter AS \([\s\S]*ORDER BY client_id, created_at DESC, id DESC/);
+    assert.match(sql, /SELECT \* FROM queue\s+WHERE \(\$2::boolean = false OR setter_staff_id IS NULL OR setter_staff_id = \$3\)/);
     assert.match(sql, /\$6::uuid IS NULL OR c\.id = \$6/);
     checked = true;
     return { rows: [{ client_id: CLIENT_ID, first_name: "Older", last_name: "Lead",

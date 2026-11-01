@@ -156,12 +156,22 @@ export default async function handler(req, res) {
              t.assignee_role, t.assignee_staff_id,
              t.meeting_url,
              ${detailColumn} AS detail,
+             latest_setter.id AS latest_setter_task_id,
+             latest_setter.assignee_staff_id AS latest_setter_staff_id,
+             latest_setter.done AS latest_setter_done,
              s.name AS assignee_name,
              TRIM(COALESCE(c.first_name,'') || ' ' || COALESCE(c.last_name,'')) AS client_name
         FROM tasks t
         LEFT JOIN clients c ON c.id = t.client_id AND c.org_id = t.org_id
           AND c.custom_fields->>'crm_archived_at' IS NULL
         LEFT JOIN staff   s ON s.id = t.assignee_staff_id
+        LEFT JOIN LATERAL (
+          SELECT st.id, st.assignee_staff_id, st.done
+            FROM tasks st
+           WHERE st.org_id = t.org_id AND st.client_id = t.client_id
+             AND st.assignee_role = 'setter'
+           ORDER BY st.created_at DESC, st.id DESC LIMIT 1
+        ) latest_setter ON t.assignee_role = 'setter'
        ${where.length ? "WHERE " + where.join(" AND ") : ""}
        ORDER BY t.due_at ASC NULLS LAST, t.created_at DESC, t.id DESC
        LIMIT $${params.length}`;
@@ -206,13 +216,17 @@ export default async function handler(req, res) {
         }
       }
       return res.status(200).json({
-        ok: true, count: rows.length, tasks: rows.map(row => ({
-          ...row,
-          can_open_setter: row.assignee_role === "setter" &&
-            (["owner", "admin"].includes(String(staff.role || "").toLowerCase()) ||
-              (String(staff.role || "").toLowerCase() === "setter" &&
-                (!row.assignee_staff_id || row.assignee_staff_id === staff.id)))
-        })),
+        ok: true, count: rows.length, tasks: rows.map(row => {
+          const { latest_setter_task_id: latestId, latest_setter_staff_id: latestStaffId,
+            latest_setter_done: latestDone, ...task } = row;
+          return {
+            ...task,
+            can_open_setter: task.assignee_role === "setter" && task.id === latestId && !latestDone &&
+              (["owner", "admin"].includes(String(staff.role || "").toLowerCase()) ||
+                (String(staff.role || "").toLowerCase() === "setter" &&
+                  (!latestStaffId || latestStaffId === staff.id)))
+          };
+        }),
         ...(stable ? { revision, next_after: rows.length === limit ? rows[rows.length - 1].id : null } : {}),
         can_open_setter: ["owner", "admin", "setter"].includes(String(staff.role || "").toLowerCase())
       });
