@@ -428,7 +428,9 @@ test("a moved call drops its old Meet link but a same-slot replay preserves the 
     clientId: db.clients[0].id, bookingUid: uid,
     startTime: moved, meetingUrl: null, source: "clickfunnels"
   }, { clientId: db.clients[0].id });
-  await onBookingRescheduled(rescheduled, db);
+  const alerts = [];
+  const alertImpl = async (_db, args) => { alerts.push(args); };
+  await onBookingRescheduled(rescheduled, db, alertImpl);
   assert.equal(db.tasks[0].meeting_url, null, "closer Join must not open the old slot's room");
   assert.equal(db.bookings[0].meeting_url, null, "saved booking must await new slot's calendar");
   assert.equal(db.tasks.length, 1);
@@ -438,9 +440,10 @@ test("a moved call drops its old Meet link but a same-slot replay preserves the 
   // re-delivering the same rescheduled slot without a meetingUrl field.
   db.tasks[0].meeting_url = newMeet;
   db.bookings[0].meeting_url = newMeet;
-  await onBookingRescheduled(rescheduled, db);
+  await onBookingRescheduled(rescheduled, db, alertImpl);
   assert.equal(db.tasks[0].meeting_url, newMeet, "same-slot replay overwrote refreshed task URL");
   assert.equal(db.bookings[0].meeting_url, newMeet, "same-slot replay overwrote refreshed booking URL");
+  assert.equal(alerts.length, 1, "a same-time replay must not text staff again");
 });
 
 test("booking.rescheduled: no open task found → creates one (rescheduled before created seen)", async () => {

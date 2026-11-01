@@ -698,12 +698,16 @@ export async function onBookingRescheduled(event, db, alertImpl = db === platfor
     if (!clientId) return;
     // Persist/validate appointment ownership before touching closer tasks.
     // A rejected UID conflict or failed booking write cannot invent a handoff.
+    const uid = bookingUid(p);
+    const previous = uid ? await findByProviderUid(tx, { orgId: event.orgId, providerUid: uid }) : null;
+    const previousStartMs = previous ? new Date(previous.starts_at).getTime() : null;
     const accepted = await recordBooking(tx, event, p, clientId, BOOKING_STATUS.RESCHEDULED, { strict: true });
     if (!accepted || String(accepted.client_id) !== String(clientId)) {
       return { skipped: "booking_not_accepted" };
     }
-    alertClientId = clientId;
-    const uid = bookingUid(p);
+    if (p.startTime && (!previous || previousStartMs !== new Date(p.startTime).getTime())) {
+      alertClientId = clientId;
+    }
     if (uid) {
       const upd = await tx.query(
         `UPDATE tasks
