@@ -553,6 +553,16 @@ person as `custom_fields.credit_tier` when the survey answer arrives and when a
 setter corrects it. On the page, the same 700-and-up rule picks the framed calendar
 and the `credit_tier` the tracker turns into QualifiedLead / UnqualifiedLead.
 
+**Saved call bucket.** A survey score also writes `clients.qualification_bucket`
+as `funding_qualified` or `funding_unqualified` using the same `creditTierFor`
+rule as calendar links and `credit_tier`. A setter score correction updates the
+client's bucket. `bookings.qualification_bucket` copies the client's bucket
+when the booking is saved and keeps the first known bucket (migration 508);
+bookings without a readable score remain NULL until one is saved. The Cortana
+booking event carries this saved value without changing `funding_call_booked`.
+Blueprint versus repair is decided on the call; both use the unqualified bucket.
+
+
 ## 8. Known gaps, not fixed here
 
 * **The workflow engine's fan-out is fire-and-forget and its failure is
