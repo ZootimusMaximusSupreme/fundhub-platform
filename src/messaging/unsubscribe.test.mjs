@@ -125,7 +125,7 @@ test("a soft-pull consent link can never be replayed as an unsubscribe link", ()
 
 /* ── the footer ──────────────────────────────────────────────────────────── */
 
-test("a plain-text body becomes a branded HTML email with Josh footer + quiet Unsubscribe", () => {
+test("a plain-text body becomes a branded HTML email with Chris footer + quiet Unsubscribe", () => {
   const out = withUnsubscribeFooter(
     "Hello there.",
     "https://fundhub.ai/unsubscribe.html?x=1",
@@ -138,13 +138,13 @@ test("a plain-text body becomes a branded HTML email with Josh footer + quiet Un
   assert.ok(out.includes("border:1px solid #d1d5db"), "outlined control, not a filled black button");
   assert.ok(!out.includes("background:#111827"), "no giant black Unsubscribe brick");
   assert.ok(!/text-transform:uppercase/i.test(out), "title stays sentence case — not ALL CAPS");
-  assert.ok(!/Georgia|'Times New Roman'/i.test(out), "Josh is normal weight sans, not giant serif");
-  assert.ok(out.includes("font:400 14px/1.3 'Inter'"), "Josh uses brand Inter sans");
+  assert.ok(!/Georgia|'Times New Roman'/i.test(out), "Chris is normal weight sans, not giant serif");
+  assert.ok(out.includes("font:400 14px/1.3 'Inter'"), "Chris uses brand Inter sans");
   assert.ok(out.includes("fonts.googleapis.com/css2?family=Inter"), "shell loads Inter for email clients");
   assert.ok(out.includes("Funding Intelligence for Entrepreneurs"), "tagline rides with the footer");
   assert.ok(out.includes(EMAIL_TAGLINE), "tagline uses Fundhub.ai brand casing");
   assert.ok(!out.includes("FundHub"), "never the wrong brand casing");
-  assert.ok(out.includes(EMAIL_SIGNER_NAME), "signed by Josh");
+  assert.ok(out.includes(EMAIL_SIGNER_NAME), "signed by Chris");
   assert.ok(out.includes(EMAIL_SIGNER_TITLE), "executive title with Fundhub.ai");
   assert.ok(EMAIL_SIGNER_TITLE.includes("Fundhub.ai"), "title uses Fundhub.ai, not FundHub");
   assert.ok(!/client care|customer service|support/i.test(out), "no support-desk framing");
@@ -207,7 +207,7 @@ test("the link source is recorded apart from a STOP reply and a provider signal"
 });
 
 /* ── F18: the signature must not sit on the template's own background ──────
-   Reported on the 2026-09-03 walk: the wordmark and the handwritten "Josh"
+   Reported on the 2026-09-03 walk: the wordmark and the handwritten "Chris"
    showed as white rectangles in the soft-pull email and rendered cleanly in
    the e-book email. Both carry this same footer. The soft-pull body is HTML
    with a #F4F4F5 page ground, the e-book body is plain text — so the footer

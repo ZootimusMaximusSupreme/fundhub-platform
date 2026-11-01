@@ -36,7 +36,7 @@ const QUESTION_TREE = [
 const TREES = {
   client: { name: "Client", start: "A form is filled in", end: "A diagnostic is ready", desc: "What a business owner goes through.", nodes: QUESTION_TREE },
   setter: { name: "Setter", start: "A lead lands in the queue", end: "A call is booked", desc: "The first contact.", nodes: [
-    step("n7", "agent", "Voice agent calls them", { agent: "Setter Josh", note: "Three tries in the first hour." }),
+    step("n7", "agent", "Voice agent calls them", { agent: "Setter Chris", note: "Three tries in the first hour." }),
     step("n8", "stage", "Move them to Booked", { stage: "Booked", pipeline: "Sales" }),
   ] },
   closer: { name: "Closer", start: "A booked call is assigned", end: "The client is routed", desc: "Owns the call.", nodes: [
@@ -451,7 +451,7 @@ test("step fields: every kind of step shows its own boxes with what is saved in 
     await pick("k6");
     assert.deepEqual(await options("role"), ["Client", "Setter", "Closer", "Funding Advisor", "Inquiry Specialist", "Owner", "Affiliate", "Partner"]);
     await pick("k8");
-    assert.deepEqual(await options("agent"), ["UnderwriteIQ", "Setter Josh", "Brand Studio", "Inquiry Voice", "Alerts Engine"]);
+    assert.deepEqual(await options("agent"), ["UnderwriteIQ", "Setter Chris", "Brand Studio", "Inquiry Voice", "Alerts Engine"]);
 
     // 3. type into every kind
     await pick("k1");

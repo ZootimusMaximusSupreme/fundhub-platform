@@ -49,7 +49,7 @@ const NARROW = {
   "contracts.html": OWNER_ADMIN,
   "galaxy.html": OWNER_ADMIN,
   "finance-os.html": OWNER_ADMIN,
-  "company-brain.html": OWNER_ADMIN,
+  "company-brain.html": STAFF,             // approved staff source search; owner-tier stays server-restricted
   "agent-editor.html": OWNER_ADMIN,
   "ops-admin.html": OWNER_ADMIN,
   "content-admin.html": OWNER_ADMIN,

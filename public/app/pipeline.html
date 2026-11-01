@@ -384,6 +384,9 @@
 
   .c-top{display:flex;align-items:center;gap:6px;}
   .c-name{font-size:var(--fs-body);font-weight:700;color:var(--text);line-height:1.25;flex:1;min-width:0;}
+  .c-booked-when{display:inline-block;margin-top:4px;padding:3px 7px;border-radius:5px;
+    background:var(--info-bg);color:var(--ink2);border:1px solid var(--info-line);
+    font-size:var(--fs-caption);font-weight:700;}
   .c-scores{font-family:var(--mono);font-size:var(--fs-body);color:var(--text);margin:4px 0 0;letter-spacing:.02em;font-weight:600;}
   /* controls ride in on hover — a resting card carries fields, not buttons */
   .c-tools{display:flex;align-items:center;gap:3px;flex-shrink:0;margin-left:auto;
@@ -398,6 +401,8 @@
   .c-amt{font-family:var(--mono);font-size:var(--fs-body);font-weight:700;color:var(--text);margin-top:3px;}
   .c-amt .unit{font-size:var(--fs-caption);font-weight:400;color:var(--text-faint);}
   .c-age{font-family:var(--mono);font-size:var(--fs-caption);color:var(--text-faint);margin-top:2px;}
+  .c-call-confirmed{display:inline-flex;align-items:center;gap:4px;margin-top:4px;padding:2px 8px;border-radius:999px;
+    background:var(--ok-bg);color:var(--ink2);border:1px solid var(--ok-line);font-size:var(--fs-caption);font-weight:700;}
   .c-age.old{color:var(--ink2);font-weight:700;}
   /* "A bank said yes, nobody has said how much." Literal amber, not a brand
      variable: paintBrand in shell.js overwrites --alert / --warn / --info from
@@ -1478,7 +1483,8 @@ syncChips();
     goBtn.disabled=false;
     goBtn.textContent='Save';
     modal.classList.add('open');
-    setTimeout(function(){ nameEl.focus(); }, 0);
+    // Focus now: a delayed timer can steal fast typing from Email or Phone.
+    nameEl.focus();
   }
   function reloadBoard(){
     var t=document.querySelector('.rail-tab.active');
@@ -1899,9 +1905,19 @@ restore();
     return Math.round(mins / 1440) + "d in stage";
   }
 
+  function formatBookedWhen(iso) {
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return null;
+    return new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Phoenix",
+      weekday: "short", month: "short", day: "numeric", year: "numeric",
+      hour: "numeric", minute: "2-digit", timeZoneName: "short"
+    }).format(d);
+  }
+
   /* Built with createElement and textContent throughout: card names and owners
      are client data and must never be interpreted as markup. */
-  function cardEl(c, stageKey) {
+  function cardEl(c, stageKey, pipelineKey) {
     function div(cls, text) {
       var d = document.createElement("div");
       d.className = cls;
@@ -1946,6 +1962,13 @@ restore();
     grip.className = "grip"; grip.textContent = "⠿"; grip.setAttribute("aria-hidden", "true"); grip.title = "Drag to another stage";
     tools.appendChild(move); tools.appendChild(delBtn); tools.appendChild(grip);
     card.appendChild(top);
+    if (pipelineKey === "sales" && c.booked_starts_at) {
+      var bookedWhen = formatBookedWhen(c.booked_starts_at);
+      if (bookedWhen) card.appendChild(div("c-booked-when", "Booked · " + bookedWhen));
+    }
+    if (pipelineKey === "sales" && c.call_confirmed === true) {
+      card.appendChild(div("c-call-confirmed", "✓ Call confirmed"));
+    }
     card.appendChild(div("c-scores", formatScores(c)));
     card.appendChild(msgLine("sms", c.phone, c.client_id, c.sms_needs_reply));
     card.appendChild(msgLine("email", c.email, c.client_id, c.email_needs_reply));
@@ -2371,6 +2394,12 @@ restore();
     creditMore.appendChild(rowAlways("Business FSR", biz.fsr));
     drawerBody.appendChild(creditMore);
 
+    var survey = sec("Survey");
+    surveyRowsFor(cf).forEach(function (pair) {
+      survey.appendChild(rowAlways(pair[0], pair[1]));
+    });
+    drawerBody.appendChild(survey);
+
     var bizList = Array.isArray(biz.businesses) ? biz.businesses : [];
     var bizSec = sec("Businesses");
     if (!bizList.length) {
@@ -2411,12 +2440,6 @@ restore();
     attr.appendChild(rowAlways("Magnet", cf.lead_magnet_type || null));
     drawerBody.appendChild(attr);
     paintAdRouting(attr, clientId);
-
-    var survey = sec("Survey");
-    surveyRowsFor(cf).forEach(function (pair) {
-      survey.appendChild(rowAlways(pair[0], pair[1]));
-    });
-    drawerBody.appendChild(survey);
 
     var box = document.createElement("div");
     box.className = "fh-drawer-links";
@@ -2677,7 +2700,7 @@ restore();
     var body = document.createElement("div");
     body.className = "col-body";
     (stage.cards || []).forEach(function (c, index) {
-      var card = cardEl(c, stage.key);
+      var card = cardEl(c, stage.key, pipelineKey);
       card.dataset.manualOrder = String(index);
       body.appendChild(card);
     });
@@ -3043,10 +3066,19 @@ restore();
     var arr = client && client.active_blockers;
     if (!Array.isArray(arr)) return [];
     var out = [];
+    var seenSetter = Object.create(null);
     arr.forEach(function (b) {
       if (!isObj(b)) return;
       var label = str(b.label) || str(b.key);
       if (!label) return;
+      // Older funnel screen posts left several open tasks for one setter job.
+      // Keep those records in the task list, but show the action once here.
+      var source = str(b.source);
+      if (b.kind === "task" && (source === "setter-entry" || source === "setter-booking")) {
+        var setterKey = source + ":" + label;
+        if (seenSetter[setterKey]) return;
+        seenSetter[setterKey] = true;
+      }
       out.push({ label: label, severity: b.severity === "high" ? "high" : "normal" });
     });
     return out;

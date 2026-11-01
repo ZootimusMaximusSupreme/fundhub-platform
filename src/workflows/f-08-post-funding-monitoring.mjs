@@ -18,26 +18,36 @@ import { createTask } from "../lib/create-task.mjs";
 
 const SOURCE_WORKFLOW = "f-08-post-funding-monitoring";
 const TASK_TITLE = "30-day check-in + prep for next wave";
+export const CHECKIN_DAYS = 30;
 
-async function createCheckinTask(db, { orgId, clientId, eventId }) {
-  const dup = await db.query(`SELECT 1 FROM tasks WHERE client_id = $1 AND source_workflow = $2 AND body = $3`, [clientId, SOURCE_WORKFLOW, eventId]);
-  if (dup.rows[0]) return { created: false };
-  await createTask(db, {
-      orgId: orgId,
-      clientId: clientId,
-      title: TASK_TITLE,
-      sourceWorkflow: SOURCE_WORKFLOW,
-      assigneeRole: "funding_advisor",
-      eventId: eventId
-    });
-  return { created: true };
+// Calendar excludes tasks without due_at. A real 30-day check-in therefore
+// needs its own date, not merely "30-day" in a title. Use the first successful
+// handling time; the unique event key prevents later replays from shifting it.
+export function checkinDueAt(now = new Date()) {
+  const at = new Date(now);
+  if (!Number.isFinite(at.getTime())) throw new TypeError("invalid check-in start date");
+  return new Date(at.getTime() + CHECKIN_DAYS * 24 * 60 * 60 * 1000);
 }
 
-export async function handle({ event, db, step }) {
+async function createCheckinTask(db, { orgId, clientId, eventId, now = new Date() }) {
+  // createTask owns the dedupe key and has an atomic INSERT ... ON CONFLICT.
+  // Return its real outcome: a concurrent replay may lose the insert race.
+  return createTask(db, {
+    orgId,
+    clientId,
+    title: TASK_TITLE,
+    sourceWorkflow: SOURCE_WORKFLOW,
+    assigneeRole: "funding_advisor",
+    eventId,
+    dueAt: checkinDueAt(now)
+  });
+}
+
+export async function handle({ event, db, step, now = new Date() }) {
   const clientId = await step.run("resolve-client", () => findClient(db, event));
   if (!clientId) return { done: false, reason: "no_client" };
 
-  const task = await step.run("create-checkin-task", () => createCheckinTask(db, { orgId: event.orgId, clientId, eventId: event.id }));
+  const task = await step.run("create-checkin-task", () => createCheckinTask(db, { orgId: event.orgId, clientId, eventId: event.id, now }));
   return { done: true, task };
 }
 

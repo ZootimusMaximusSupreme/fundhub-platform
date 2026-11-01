@@ -93,8 +93,9 @@ test("Save month / year posts the date for that business, re-reads the deck and 
 test("Stage letters enrolls then stages round one; Send letters now mails exactly the staged letters", { timeout: 60_000 }, async (t) => {
   const { open } = await startScreens(t);
   const { page, calls } = await openDeck(open);
-  await page.waitForSelector('[data-act="phase:07"]');
-  await page.locator('[data-act="phase:07"]').click();
+  // 9 Paperwork: the agreement, the pay link and the letters (S-23)
+  await page.waitForSelector('[data-act="phase:09"]');
+  await page.locator('[data-act="phase:09"]').click();
   await page.waitForSelector('[data-act="stage-letters"]');
 
   await proof.check(/^Repair offers: 'Stage letters'/, async () => {
@@ -126,8 +127,8 @@ test("the repair referral tick is kept in the deck and sent with the disposition
   const { open } = await startScreens(t);
   await proof.check(/^'Repair referral' checkbox/, async () => {
     const { page, calls } = await openDeck(open);
-    await page.waitForSelector('[data-act="phase:07"]');
-    await page.locator('[data-act="phase:07"]').click();
+    await page.waitForSelector('[data-act="phase:09"]');
+    await page.locator('[data-act="phase:09"]').click();
     await page.locator('[data-act="more"]').click();
     await page.locator("#fh-repair-referral").check();
     // closing and reopening the panel does not lose the tick

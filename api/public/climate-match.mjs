@@ -32,7 +32,7 @@ import { db } from "../../src/db.mjs";
 import { pullCrmLenders } from "../../src/climate/connectors.mjs";
 import { matchLenders } from "../../src/lenders/match.mjs";
 import { runSurveySubmit } from "./survey-submit.mjs";
-import { FICO_BANDS } from "../../src/config/survey-qualification.mjs";
+import { FICO_BANDS, LEGACY_FICO_BANDS } from "../../src/config/survey-qualification.mjs";
 import { normalizePhone } from "../../src/messaging/providers/bland-voice.mjs";
 import { safeError } from "../../src/http/health.mjs";
 
@@ -107,7 +107,8 @@ export function parseClimateMatchBody(body) {
     homeState,
     businessState: businessState && businessState !== homeState ? businessState : null,
     hasBusiness: triState(body.has_business ?? body.hasBusiness),
-    scoreBand: FICO_BANDS.includes(band) ? band : null,
+    // A page built before 2026-10-31 may still send an older range; keep it.
+    scoreBand: FICO_BANDS.includes(band) || LEGACY_FICO_BANDS.includes(band) ? band : null,
     name: cleanStr(body.name || body.full_name, 120),
     email: cleanStr(body.email, 160).toLowerCase(),
     phone: normalizePhone(rawPhone) || rawPhone,

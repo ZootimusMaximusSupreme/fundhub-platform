@@ -1,4 +1,4 @@
-// Closer deck (present.html), section 07 Close: "Send pay link",
+// Closer deck (present.html), part 9 Paperwork (S-23; it was "07 Close" before 2026-10-29): "Send pay link",
 // "Invoice this client" and "Log disposition and close" (finish-the-853, batch 01).
 //
 // Each is pressed in the real page against fake answers and judged on the exact
@@ -55,8 +55,8 @@ async function open(page, { tier, deck, invoices, outbound } = {}) {
       return outbound ? outbound(route) : json(route, { ok: true });
     },
   });
-  await page.waitForSelector('[data-act="phase:07"]');
-  await page.locator('[data-act="phase:07"]').click();
+  await page.waitForSelector('[data-act="phase:09"]');
+  await page.locator('[data-act="phase:09"]').click();
   await page.waitForSelector('[data-act="pay"]');
   return calls;
 }
@@ -71,7 +71,8 @@ test.describe("closer deck: Send pay link", () => {
     const body = calls.deck[0];
     expect(body.action).toBe("send_pay_link");
     expect(body.client_id).toBe(CLIENT_ID);
-    expect(body.offer_key).toBe("REPAIR_DFY");
+    // a file that is not ready leads with the most expensive door that fits: the Capital Blueprint (2026-10-29)
+    expect(body.offer_key).toBe("UWIQ_DELIVERABLES");
     expect(body.sale_motion).toBe(null);
     await expect(toast(page)).toHaveText("Pay link sent.");
     expect(calls.context[0].client_id).toBe(CLIENT_ID);
@@ -89,7 +90,7 @@ test.describe("closer deck: Send pay link", () => {
     const calls = await open(page);
     // Descend to the Blueprint rung: an alternate offer, so a motion is asked for.
     await page.locator('[data-act="desc:diy"]').click();
-    await page.locator('[data-act="phase:07"]').click();
+    await page.locator('[data-act="phase:09"]').click();
     await page.waitForSelector("#fh-sale-motion");
     await page.locator("#fh-sale-motion").selectOption("upsell");
     await page.locator('[data-act="pay"]').click();
@@ -103,11 +104,11 @@ test.describe("closer deck: Send pay link", () => {
   test("a downsell or upsell chosen for an alternate offer is dropped when the deck goes back to a primary offer", async ({ page }) => {
     const calls = await open(page);
     await page.locator('[data-act="desc:diy"]').click();
-    await page.locator('[data-act="phase:07"]').click();
+    await page.locator('[data-act="phase:09"]').click();
     await page.waitForSelector("#fh-sale-motion");
     await page.locator("#fh-sale-motion").selectOption("downsell");
     await page.locator('[data-act="desc:dfy"]').click();
-    await page.locator('[data-act="phase:07"]').click();
+    await page.locator('[data-act="phase:09"]').click();
     await page.waitForSelector('[data-act="pay"]');
     await expect(page.locator("#fh-sale-motion")).toHaveCount(0);
     await page.locator('[data-act="pay"]').click();
@@ -237,7 +238,7 @@ test.describe("closer deck: Log disposition and close", () => {
     await expect.poll(() => calls.deck.length).toBe(1);
     await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem(`fh_call_payment_link:${new URLSearchParams(location.search).get("contact")}`) || "null")?.id)).toBe("link-this-call");
     await page.reload();
-    await page.locator('[data-act="phase:07"]').click();
+    await page.locator('[data-act="phase:09"]').click();
     await page.locator('[data-act="disp"]').click();
     await expect.poll(() => calls.deck.length).toBe(2);
     expect(calls.deck[1].payment_link_id).toBe("link-this-call");
@@ -263,12 +264,12 @@ test.describe("closer deck: Log disposition and close", () => {
     await page.locator('[data-act="check:Pain"]').click();
     await page.locator('[data-act="check:Trust"]').click();
     await page.locator("#fh-cost").fill("$4,000 a month");
-    // Commit: their number out of ten (S-18 is the second slide of that phase).
-    await page.locator('[data-act="phase:05"]').click();
+    // The ask: their number out of ten (S-18 is the second slide of that part).
+    await page.locator('[data-act="phase:07"]').click();
     await page.keyboard.press("ArrowRight");
     await page.waitForSelector('[data-act="temp:9"]');
     await page.locator('[data-act="temp:9"]').click();
-    await page.locator('[data-act="phase:07"]').click();
+    await page.locator('[data-act="phase:09"]').click();
     await page.waitForSelector('[data-act="disp"]');
     await page.locator('[data-act="disp"]').click();
     await expect.poll(() => calls.deck.length).toBe(1);
@@ -301,7 +302,7 @@ test.describe("closer deck: Log disposition and close", () => {
   test("a downsell to the trial rung writes that offer, not the first one", async ({ page }) => {
     const calls = await open(page);
     await page.locator('[data-act="desc:trial"]').click();
-    await page.locator('[data-act="phase:07"]').click();
+    await page.locator('[data-act="phase:09"]').click();
     await page.waitForSelector('[data-act="disp"]');
     await page.locator('[data-act="disp"]').click();
     await expect.poll(() => calls.deck.length).toBe(1);

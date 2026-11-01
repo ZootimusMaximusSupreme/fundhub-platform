@@ -220,10 +220,10 @@ export async function listInternalThreads(db, { orgId, staffId, limit = 30 } = {
                'id', s.id, 'name', s.name, 'email', s.email, 'role', s.role
              ) ORDER BY s.name)
                FROM conversation_participants cp
-               JOIN staff s ON s.id = cp.staff_id
+               JOIN staff s ON s.id = cp.staff_id AND s.org_id = c.org_id
               WHERE cp.conversation_id = c.id) AS participants,
             (SELECT m.rendered_body FROM messages m
-              WHERE m.conversation_id = c.id
+              WHERE m.conversation_id = c.id AND m.org_id = c.org_id
               ORDER BY m.created_at DESC LIMIT 1) AS last_body
        FROM conversations c
        JOIN conversation_participants me
@@ -245,7 +245,7 @@ export async function listThreadMessages(db, { orgId, conversationId, limit = 10
             m.sender_staff_id, m.sender_kind, m.created_at,
             s.name AS sender_name
        FROM messages m
-       LEFT JOIN staff s ON s.id = m.sender_staff_id
+       LEFT JOIN staff s ON s.id = m.sender_staff_id AND s.org_id = m.org_id
       WHERE m.org_id = $1 AND m.conversation_id = $2
       ORDER BY m.created_at ASC
       LIMIT $3`,

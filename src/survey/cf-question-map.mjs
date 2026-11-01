@@ -74,7 +74,9 @@ export const CF_SURVEY_QUESTIONS = Object.freeze([
     title: "Your Current Score",
     payloadKey: "cf_svy_self_reported_fico",
     type: "single",
-    options: ["500-579", "580-649", "650-699", "700-749", "750+", "Not sure"],
+    // Owner-set 2026-10-30, live 2026-10-31. Answers saved before then use the
+    // old ranges; src/config/survey-qualification.mjs still reads them.
+    options: ["500-619", "620-699", "700-759", "760-850", "Not sure"],
   },
   {
     id: "has_business",
@@ -158,6 +160,18 @@ export const CF_SURVEY_QUESTIONS = Object.freeze([
     ],
   },
 ]);
+
+/** The last question on every path (business and personal). A survey is
+    finished only when this one is answered. */
+export const SURVEY_FINAL_KEY = "cf_svy_available_capital";
+
+/** True when an answers object (keyed by payloadKey) holds the last answer. */
+export function surveyIsComplete(answers) {
+  if (!answers || typeof answers !== "object" || Array.isArray(answers)) return false;
+  const v = answers[SURVEY_FINAL_KEY];
+  if (Array.isArray(v)) return v.some((x) => x != null && String(x).trim() !== "");
+  return v != null && String(v).trim() !== "";
+}
 
 /**
  * Homepage order: same questions/options/branch, contact LAST.

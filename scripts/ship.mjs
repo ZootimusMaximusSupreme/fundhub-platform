@@ -28,8 +28,8 @@
 //      and local merges. So: `git pull --ff-only` first; if that cannot fast-forward,
 //      `git pull --rebase=merges --autostash` (local merges keep their shape); if that
 //      clashes, `git rebase --abort`, one plain line naming the file, and the ship goes
-//      on with this Mac's main exactly as before. A pull NEVER stops the ship
-//      (CLAUDE.md §11: no guard ever blocks npm run ship). No prompts, and a time limit,
+//      on with this Mac's main exactly as before. A pull never stops a Mac ship
+//      (CLAUDE.md §11); GitHub Ship stops if the pull changes its CI-approved SHA. No prompts, and a time limit,
 //      so it never hangs. The one stop: if the pull could not be undone and the folder
 //      is left half way through a pull, deploying it would ship a broken tree.
 //   3. skip when nothing but the ship log and the machine-only folders
@@ -71,6 +71,10 @@ export const PULL_TIMEOUT_MS = 90_000;
 export const PUSH_TIMEOUT_MS = 10 * 60_000;
 /** Git must never wait for a person: no password prompt, no editor. */
 export const GIT_NO_PROMPT = Object.freeze({ GIT_TERMINAL_PROMPT: "0", GCM_INTERACTIVE: "never", GIT_EDITOR: "true" });
+/** GitHub Ship must deploy only files that passed the approved commit's tests. */
+export function mayRegenerateCatalog(env = process.env) {
+  return env.GITHUB_ACTIONS !== "true" && !String(env.EXPECTED_RELEASE_SHA ?? "").trim();
+}
 /** New live surfaces must carry their pulse row, tripwire, and beat before ship. */
 export const PULSE_SHIP_GUARDS = Object.freeze([
   "src/pulse/registry.test.mjs",
@@ -137,6 +141,19 @@ export function morningOnlySlow(output) {
 export function migrationOwnerConnection(env = process.env) {
   const value = String(env.MIGRATION_DATABASE_URL || "").trim();
   return value && !value.includes("*") ? value : null;
+}
+
+/** Pin GitHub Ship to the exact main commit whose 14 checks passed. */
+export function approvedReleaseHead({ expectedSha, actualSha, githubActions = false }) {
+  const expected = String(expectedSha ?? "").trim();
+  if (!expected && !githubActions) return { ok: true };
+  if (!/^[a-f0-9]{40}$/.test(expected)) {
+    return { ok: false, reason: "GitHub Ship has no exact approved commit." };
+  }
+  if (actualSha !== expected) {
+    return { ok: false, reason: "Main moved after CI; wait for its own 14/14 success." };
+  }
+  return { ok: true };
 }
 
 /** The one line worth showing from a failed git or push run. */
@@ -272,6 +289,13 @@ async function main() {
   const head = git("rev-parse", "--short=8", "HEAD");
 
   // ── 3. anything to ship? ────────────────────────────────────────────────────
+  const approval = approvedReleaseHead({
+    expectedSha: process.env.EXPECTED_RELEASE_SHA,
+    actualSha: git("rev-parse", "HEAD"),
+    githubActions: process.env.GITHUB_ACTIONS === "true"
+  });
+  if (!approval.ok) fail(approval.reason);
+
   function lastShipped() {
     if (!fs.existsSync(LOG)) return null;
     const rows = fs.readFileSync(LOG, "utf8").split("\n").filter((l) => /^\| \d{4}-\d{2}-\d{2}/.test(l));
@@ -304,11 +328,12 @@ async function main() {
     console.error("Pulse coverage failures:\n" + redact(details.slice(0, 12000)));
     fail(`a pulse coverage guard failed: run node --test ${PULSE_SHIP_GUARDS.join(" ")}`);
   }
-  // Compile the catalog from the currently committed proof recipes. A proof
-  // improvement legitimately changes this generated artifact; an out-of-date
-  // copy must not deadlock every release. Rebuild reproducibly, check the
-  // exact generated content, then run BOTH bundle proofs as normal.
+  // GitHub Ship may deploy only the exact catalog tested at the approved SHA.
+  // A local manual ship may still rebuild it from committed proof recipes.
   if (!run("node", ["scripts/pulse/compile-catalog.mjs", "--check"]).ok) {
+    if (!mayRegenerateCatalog()) {
+      fail("coverage catalog is stale; commit the regenerated catalog and rerun the 14/14 tests.");
+    }
     const rebuilt = run("node", ["scripts/pulse/compile-catalog.mjs"], { quiet: true });
     if (!rebuilt.ok) fail("the coverage catalog could not be generated: " + reasonLine(rebuilt.out));
     const valid = run("node", ["scripts/pulse/compile-catalog.mjs", "--check"], { quiet: true });

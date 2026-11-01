@@ -59,6 +59,19 @@ describe("/api/chat/messages", () => {
     assert.deepEqual(q.params, [ORG_ID, 100]);
   });
 
+  test("GET client threads hides a mismatched foreign-company client and last message", async () => {
+    const foreign = { id: CONVO, client_name: "Foreign Client", client_email: "foreign@example.test", last_body: "Private note" };
+    const { res, fake } = await call(
+      req("GET", { query: { kind: "client" } }),
+      [staffSession(), [/FROM conversations c\s+JOIN clients cl/, (sql) =>
+        /JOIN clients cl ON cl\.id = c\.client_id AND cl\.org_id = c\.org_id/.test(sql) ? [] : [foreign]]]
+    );
+    assert.equal(res.statusCode, 200);
+    assert.deepEqual(res.body.threads, []);
+    const [q] = fake.find(/FROM conversations c\s+JOIN clients cl/);
+    assert.match(q.sql, /m\.org_id = c\.org_id/, "a foreign-company message must not be previewed");
+  });
+
   test("GET a thread from another company: 404", async () => {
     const { res } = await call(req("GET", { query: { conversation_id: CONVO } }), [staffSession()]);
     assert.equal(res.statusCode, 404);

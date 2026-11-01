@@ -322,6 +322,11 @@ test("logCallOutcome does not reuse another customer's matching booking referenc
   const oldOutcome = { id: "foreign-outcome", org_id: org, client_id: other, outcome: "callback" };
   const db = stubDb([
     [/FROM clients/, () => ({ rows: [{ id: client, custom_fields: {} }] })],
+    [/SELECT client_id FROM bookings/, (params, sql) => {
+      assert.match(sql, /org_id = \$1 AND provider_uid = \$2/);
+      assert.deepEqual(params, [org, bookingRef]);
+      return { rows: [{ client_id: client }] };
+    }],
     [/SELECT \* FROM call_outcomes/, (params, sql) => {
       const scoped = /client_id = \$4/.test(sql);
       return { rows: (!scoped || params[3] === other) ? [oldOutcome] : [] };
@@ -341,4 +346,69 @@ test("logCallOutcome does not reuse another customer's matching booking referenc
   const lookup = db.calls.find((c) => /SELECT \* FROM call_outcomes/.test(c.sql));
   assert.match(lookup.sql, /client_id = \$4/);
   assert.deepEqual(lookup.params, [org, null, bookingRef, client]);
+});
+
+test("booking UID cannot write or emit a different client's call outcome", async () => {
+  const org = "11111111-1111-4111-8111-111111111111";
+  const a = "22222222-2222-4222-8222-222222222222";
+  const b = "33333333-3333-4333-8333-333333333333";
+  const staff = "44444444-4444-4444-8444-444444444444";
+  const bookingRef = "provider-A";
+  const run = async (bookingOwner, prior = false, legacyTask = false) => {
+    let inserts = 0, events = 0;
+    const db = stubDb([
+      [/FROM clients/, () => ({ rows: [{ id: b, custom_fields: {} }] })],
+      [/SELECT \* FROM call_outcomes/, () => ({ rows: prior ? [{
+        id: "prior", org_id: org, client_id: b, outcome: "callback"
+      }] : [] })],
+      [/SELECT client_id FROM bookings/, (params, sql) => {
+        assert.match(sql, /org_id = \$1 AND provider_uid = \$2/);
+        assert.deepEqual(params, [org, bookingRef]);
+        return { rows: bookingOwner === undefined ? [] : [{ client_id: bookingOwner }] };
+      }],
+      [/FROM tasks/, (params, sql) => ({
+        rows: legacyTask && /body = \$3/.test(sql)
+          && params[0] === org && params[1] === b && params[2] === bookingRef
+          ? [{ id: "legacy-task" }] : []
+      })],
+      [/INSERT INTO call_outcomes/, (p) => {
+        inserts++;
+        return { rows: [{ id: "new", org_id: org, client_id: b,
+          booking_ref: p[4], outcome: "callback" }] };
+      }],
+      [/INSERT INTO events/, () => {
+        events++;
+        return { rows: [{ id: "synthetic-event" }] };
+      }]
+    ]);
+    let value, error;
+    try {
+      value = await logCallOutcome(db, {
+        orgId: org, clientId: b, staffId: staff, bookingRef, outcome: "callback"
+      });
+    } catch (e) { error = e; }
+    return { value, error, inserts, events };
+  };
+  const cross = await run(a);
+  assert.equal(cross.error?.code, "booking_not_found");
+  assert.equal(cross.inserts, 0);
+  assert.equal(cross.events, 0);
+  const wrongReplay = await run(a, true);
+  assert.equal(wrongReplay.error?.code, "booking_not_found");
+  assert.equal(wrongReplay.events, 0);
+  const own = await run(b);
+  assert.equal(own.value.created, true);
+  assert.equal(own.inserts, 1);
+  assert.equal(own.events, 1);
+  const unknown = await run(undefined);
+  assert.equal(unknown.error?.code, "booking_not_found");
+  assert.equal(unknown.events, 0);
+  const ownerless = await run(null);
+  assert.equal(ownerless.error?.code, "booking_not_found");
+  const legacy = await run(undefined, false, true);
+  assert.equal(legacy.value.created, true);
+  const replay = await run(undefined, true);
+  assert.equal(replay.value.created, false);
+  assert.equal(replay.inserts, 0);
+  assert.equal(replay.events, 1);
 });

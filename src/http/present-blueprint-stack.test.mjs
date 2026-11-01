@@ -3,11 +3,15 @@
 // Owner, 2026-10-06: "Add these items into our offer stack so they show up when
 // we're doing presentations for clients. When they hop on a call with the sales
 // rep, there should be a whole presentation section with the buttons and logic."
-// public/app/present.js now carries six slides, B-01 to B-06, that a rep opens on
-// purpose: the phase strip's 06, or "Show the full Blueprint stack" on S-19.
+// public/app/present.js carries six slides, B-01 to B-06. Since 2026-10-29 the
+// slides follow the call script (ops/workflows/weekend-2026-10-24.md section
+// 10.0): the Blueprint is Door 3, inside part 6, so a file that is not ready
+// walks B-01 to B-04 with Next. A funding file opens it on purpose: "Show the
+// full Blueprint stack" on S-19.
 //
 // What is pinned here:
-//   - the section sits between S-22 and S-23, and Next/Back never fall into it
+//   - the section sits between S-08 and S-09; a funding file's Next and Back
+//     never fall into it, and B-05 and B-06 stay out of every walk
 //   - the stack starts from what the deck knows about this caller, and the rep's
 //     toggles change what the caller sees
 //   - every price is the catalog's (src/config/offers.mjs) or "$X" when the owner
@@ -35,6 +39,11 @@ import { ROLE_SETS } from "./read-api.mjs";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const PRESENT = path.join(ROOT, "public/app/present.js");
 const JS = fs.readFileSync(PRESENT, "utf8");
+/* The course is off until it is filmed (COURSE_LIVE). The education route runs
+   on the same file with the one switch on. */
+const COURSE_OFF = "var COURSE_LIVE = false;";
+assert.ok(JS.includes(COURSE_OFF), "present.js lost its one course switch");
+const JS_COURSE = JS.replace(COURSE_OFF, "var COURSE_LIVE = true;");
 const FOS_JS = fs.readFileSync(path.join(ROOT, "public/app/financeos.js"), "utf8");
 const FOS_HTML = fs.readFileSync(path.join(ROOT, "public/app/financeos.html"), "utf8");
 
@@ -79,7 +88,7 @@ function payload({ tier = "REPAIR_ONLY", negItems = 3, available = true, busines
 const flush = () => new Promise((r) => setImmediate(r));
 
 /* The real present.js, run whole against a stand-in page. */
-async function openDeck(data, { role = "owner", contracts = null } = {}) {
+async function openDeck(data, { role = "owner", contracts = null, course = false } = {}) {
   let markup = "";
   let elements = {};
   const root = {
@@ -121,7 +130,7 @@ async function openDeck(data, { role = "owner", contracts = null } = {}) {
   sandbox.window = sandbox;
   sandbox.addEventListener = (type, fn) => { if (type === "keydown") onKey = fn; };
   vm.createContext(sandbox);
-  vm.runInContext(JS, sandbox, { filename: PRESENT });
+  vm.runInContext(course ? JS_COURSE : JS, sandbox, { filename: PRESENT });
   await flush();
   await flush();
   assert.ok(onClick && onKey, "present.js registered no click or key listener");
@@ -187,56 +196,66 @@ function toggle(deck, key) {
   assert.equal(m[1] === "true", m[3] === "On", key + ": aria-pressed and the On/Off word disagree");
   return { on: m[1] === "true", why: text(m[2]) };
 }
-/* Every slide in the section, client and cockpit, as text. */
+/* Every slide in the section, client and cockpit, as text: in by the stack's
+   own door, B-01 to B-04 with the arrow key, then B-05 and B-06 by their
+   buttons (they are out of the walk). */
 async function allStackText(data, opts) {
   const deck = await openDeck(data, opts);
-  deck.click("phase:06");
+  deck.click("stack-open");
   const out = [];
   for (const c of STACK_CODES) {
+    if (c === "B-05" || c === "B-06") deck.click("stack-go:" + c);
     assert.equal(current(deck), c);
     out.push({ code: c, client: parts(deck.html()).client, cockpit: ownCockpit(parts(deck.html()).cockpit), say: sayLines(deck), watch: watchOf(deck) });
-    deck.key("ArrowRight");
+    if (c < "B-04") deck.key("ArrowRight");
   }
   return out;
 }
 
-describe("section 06 is a section the rep opens, never one they fall into", () => {
-  test("the six slides sit between S-22 and S-23 in the deck", () => {
+describe("section 06 is Door 3: a repair file walks into it, a funding file never falls into it", () => {
+  test("the six slides sit between S-08 and S-09 in the deck", () => {
     const codes = [...JS.slice(JS.indexOf("var DECK = ["), JS.indexOf("var EDU_SKIP")).matchAll(/code: "([A-Z]-\d\d)"/g)].map((m) => m[1]);
-    const at = codes.indexOf("S-22");
-    assert.deepEqual(codes.slice(at, at + 8), ["S-22", ...STACK_CODES, "S-23"]);
+    const at = codes.indexOf("S-08");
+    assert.deepEqual(codes.slice(at, at + 8), ["S-08", ...STACK_CODES, "S-09"]);
     assert.equal(codes[codes.length - 1], "S-24", "the wrap is still the last slide");
   });
 
-  test("the phase strip has 06, and it opens B-01", async () => {
+  test("the phase strip's part 6 opens B-01 on a repair file, and S-09 on a funding file", async () => {
     const deck = await openDeck(payload());
-    assert.match(parts(deck.html()).cockpit, /data-act="phase:06" title="Capital Blueprint \+ FinanceOS"/);
+    assert.match(parts(deck.html()).cockpit, /data-act="phase:06"[^>]*>6 The plan<\/button>/);
     deck.click("phase:06");
     assert.equal(current(deck), "B-01");
-    assert.ok(parts(deck.html()).cockpit.includes("06 Blueprint"), "the cockpit names the phase");
+    assert.ok(parts(deck.html()).cockpit.includes("6 The plan"), "the cockpit names the phase");
+    const funding = await openDeck(payload({ tier: "FULL_FUNDING", negItems: 0 }));
+    funding.click("phase:06");
+    assert.equal(current(funding), "S-09");
   });
 
-  test("from outside, Next and Back step over the stack; inside, they walk it", async () => {
+  test("a funding file's Next and Back step over the stack; a repair file walks B-01 to B-04 and goes on to S-09", async () => {
+    const funding = await openDeck(payload({ tier: "FULL_FUNDING", negItems: 0 }));
+    funding.click("phase:05");
+    assert.equal(current(funding), "S-08");
+    funding.key("ArrowRight");
+    assert.equal(current(funding), "S-09", "Next on S-08 must go to the funding plan, not into the stack");
+    funding.key("ArrowLeft");
+    assert.equal(current(funding), "S-08", "Back on S-09 must skip the stack too");
+
     const deck = await openDeck(payload());
     deck.click("phase:05");
-    assert.equal(current(deck), "S-17");
-    deck.key("ArrowRight", 5);
-    assert.equal(current(deck), "S-22");
+    assert.equal(current(deck), "S-08");
     deck.key("ArrowRight");
-    assert.equal(current(deck), "S-23", "Next on S-22 must go to the close, not into the stack");
+    assert.equal(current(deck), "B-01", "a repair file walks into Door 3");
+    deck.key("ArrowRight", 3);
+    assert.equal(current(deck), "B-04");
+    deck.key("ArrowRight");
+    assert.equal(current(deck), "S-09", "after the Blueprint comes Door 4, not B-05");
     deck.key("ArrowLeft");
-    assert.equal(current(deck), "S-22", "Back on S-23 must skip the stack too");
-
-    deck.click("phase:06");
-    deck.key("ArrowRight", 5);
-    assert.equal(current(deck), "B-06");
-    deck.key("ArrowRight");
-    assert.equal(current(deck), "S-23", "the end of the stack leads to the close");
+    assert.equal(current(deck), "B-04", "B-05 and B-06 stay out of the walk");
   });
 
   test("Leave the stack goes back to the slide it was opened from", async () => {
     const deck = await openDeck(payload());
-    deck.click("phase:05");
+    deck.click("phase:07");
     deck.click("phase:06").key("ArrowRight");
     assert.equal(current(deck), "B-02");
     assert.ok(parts(deck.html()).cockpit.includes("Leave the stack: back to S-17"));
@@ -246,8 +265,10 @@ describe("section 06 is a section the rep opens, never one they fall into", () =
 
   test("S-19's Blueprint rung opens the stack, and only that rung", async () => {
     const deck = await openDeck(payload({ tier: "REPAIR_ONLY" }));
-    deck.click("phase:05").key("ArrowRight", 2);
+    deck.click("phase:07").key("ArrowRight", 2);
     assert.equal(current(deck), "S-19");
+    assert.ok(parts(deck.html()).cockpit.includes('data-act="stack-open"'), "a file that is not ready starts on the Blueprint rung");
+    deck.click("rung:0");
     assert.ok(!parts(deck.html()).cockpit.includes('data-act="stack-open"'), "the done-for-you rung shows no stack door");
     deck.click("rung:2");
     assert.ok(parts(deck.html()).cockpit.includes('data-act="stack-open"'), "the Blueprint rung shows the stack door");
@@ -272,7 +293,7 @@ describe("the stack starts from this caller's file", () => {
 
   test("a clean funding file: no dispute rounds, no ready-to-fund wait", async () => {
     const deck = await openDeck(payload({ tier: "FULL_FUNDING", negItems: 0 }));
-    deck.click("phase:06").key("ArrowRight");
+    deck.click("stack-open").key("ArrowRight");
     assert.deepEqual(toggle(deck, "disputes"), { on: false, why: "No negative items on this file. Nothing to dispute." });
     assert.equal(toggle(deck, "ready").on, false);
     assert.match(toggle(deck, "ready").why, /Sorted to funding today/);
@@ -303,7 +324,7 @@ describe("the stack starts from this caller's file", () => {
 describe("the rep's toggles change what the caller sees", () => {
   test("turning items on and off redraws the caller's stack; Reset puts the file's answer back", async () => {
     const deck = await openDeck(payload({ tier: "FULL_FUNDING", negItems: 0 }));
-    deck.click("phase:06").key("ArrowRight");
+    deck.click("stack-open").key("ArrowRight");
     assert.ok(!parts(deck.html()).cockpit.includes('data-act="stack-reset"'), "nothing to reset yet");
 
     deck.click("stack:partner");
@@ -336,7 +357,7 @@ describe("the rep's toggles change what the caller sees", () => {
     const b04 = text(parts(deck.html()).client);
     assert.ok(!b04.includes("File-protection alerts"));
     assert.ok(b04.includes("Credit partner file"));
-    deck.key("ArrowRight");
+    deck.click("stack-go:B-05");
     assert.equal(current(deck), "B-05");
     const cols = parts(deck.html()).client.split('<span class="mono">The Blueprint adds</span>');
     assert.equal(cols.length, 2);
@@ -370,7 +391,7 @@ describe("prices, words, and the watch notes", () => {
     const slides = await allStackText(payload());
     const b04 = text(slides[3].client);
     assert.ok(b04.includes(BLUEPRINT.priceDisplay), "B-04 must show the catalog's Blueprint price");
-    assert.ok(b04.includes("Monthly member fee · $X"), "the member fee is not set and must say $X");
+    assert.ok(!/member fee/i.test(b04), "there is no renewal charge (owner, 2026-10-29), so B-04 names no member fee");
     assert.ok(text(slides[3].cockpit).includes("Yes: close the Blueprint · " + BLUEPRINT.priceDisplay));
     const b05 = text(slides[4].client);
     assert.match(b05, /Setup, one time \$X/);
@@ -417,7 +438,7 @@ describe("prices, words, and the watch notes", () => {
     assert.match(b04, /S-21/);
     assert.match(b04, /word for word/);
     assert.match(b04, /never for the Blueprint/);
-    assert.match(b04, /\$X/);
+    assert.match(b04, /no renewal charge/);
   });
 
   test("the funding guarantees on S-21 are word for word what they were", () => {
@@ -436,7 +457,8 @@ describe("prices, words, and the watch notes", () => {
     const deck = await openDeck(payload());
     deck.click("phase:06").key("ArrowRight").click("stack:partner");
     const slides = [];
-    for (let i = 0; i < 5; i++) { slides.push(text(deck.html())); deck.key("ArrowRight"); }
+    for (let i = 0; i < 3; i++) { slides.push(text(deck.html())); deck.key("ArrowRight"); }
+    for (const c of ["B-05", "B-06"]) { deck.click("stack-go:" + c); slides.push(text(deck.html())); }
     const all = slides.join(" ") + " " + SECTION_CODE;
     assert.doesNotMatch(all, /welcome kit|mailed package|\bquiz|letter.mailing|pre-application check/i);
   });
@@ -449,10 +471,10 @@ describe("prices, words, and the watch notes", () => {
 });
 
 describe("Yes on the price slide sells the Blueprint", () => {
-  async function closeFrom(data, setup) {
-    const deck = await openDeck(data);
+  async function closeFrom(data, setup, opts) {
+    const deck = await openDeck(data, opts);
     if (setup) setup(deck);
-    deck.click("phase:06").key("ArrowRight", 3);
+    deck.click("stack-open").key("ArrowRight", 3);
     assert.equal(current(deck), "B-04");
     deck.click("stack-close");
     return deck;
@@ -467,12 +489,12 @@ describe("Yes on the price slide sells the Blueprint", () => {
     });
   }
 
-  test("education route: S-23 opens with the Capital Blueprint chosen", async () => {
+  test("education route (course switch on): S-23 opens with the Capital Blueprint chosen", async () => {
     const deck = await closeFrom(payload({ tier: "REPAIR_ONLY" }), (d) => {
       d.click("phase:03").key("ArrowRight", 2);
       assert.equal(current(d), "S-07");
       d.click("edu");
-    });
+    }, { course: true });
     assert.equal(current(deck), "S-23");
     assert.ok(text(parts(deck.html()).cockpit).includes(chosen));
   });
@@ -543,7 +565,7 @@ describe("the Blueprint price chosen on Present reaches payment and agreement", 
 
   test("fixed-price offers keep their original payload and show no Blueprint controls", async () => {
     const deck = await openDeck(payload({ tier: "FULL_FUNDING", negItems: 0 }));
-    deck.click("phase:07");
+    deck.click("phase:09");
     assert.ok(!deck.html().includes('id="fh-blueprint-amount"'));
     assert.ok(!deck.html().includes('id="fh-blueprint-provider"'));
     deck.click("pay");

@@ -23,6 +23,7 @@ function priorClient(overrides = {}) {
     id: "ee000000-0000-4000-8000-000000000001",
     org_id: ORG, client_id: CLIENT_A, conversation_id: THREAD_A,
     channel: "sms", rendered_body: TEXT, status: "sent",
+    to_address: "+16025550101", subject: null, attachments: [],
     sender_staff_id: STAFF_A, direction: "outbound", sender_kind: "staff",
     provider_ref: "staff:" + KEY, ...overrides
   };
@@ -76,6 +77,9 @@ test("staff to client: a reused key with another client, thread, author or words
     priorClient({ conversation_id: THREAD_B }),
     priorClient({ sender_staff_id: STAFF_B }),
     priorClient({ rendered_body: "Private previous note" }),
+    priorClient({ to_address: "+16025550102" }),
+    priorClient({ subject: "Changed subject" }),
+    priorClient({ attachments: [{ asset: "private-file" }] }),
     priorClient({ channel: "email" }),
     priorClient({ sender_kind: "agent" }),
     priorClient({ direction: "inbound" })

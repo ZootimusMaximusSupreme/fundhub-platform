@@ -33,7 +33,7 @@ const APP_CARD_JS = read("public/funnel/fundhub-prompter-download.js");
 const ALLOWED = {
   /* last: true on the final question only (docs/tracking/meta-events.md, Phase 4 map:
      the shared tracker turns it into Meta Lead). */
-  survey_answer: ["survey", "step_num", "question_id", "last"],
+  survey_answer: ["survey", "step_num", "question_id", "last", "credit_tier"],
   survey_route: ["survey", "offer"],
   field_focus: ["form", "field"],
   field_complete: ["form", "field"],
@@ -246,14 +246,14 @@ function storage(init = {}) {
 }
 
 /** Runs one page script against `doc`. Timers are fake: flush() runs every pending one. */
-function makePage(doc, { hostname, pathname, local = {}, fhTrack, fetchImpl } = {}) {
+function makePage(doc, { hostname, pathname, search = "", local = {}, fhTrack, fetchImpl } = {}) {
   let now = 0;
   let seq = 0;
   let queue = [];
   const win = {
     document: doc,
     location: {
-      protocol: "https:", hostname, pathname, href: `https://${hostname}${pathname}`,
+      protocol: "https:", hostname, pathname, search, href: `https://${hostname}${pathname}${search}`,
       assign(u) { win.__assigned = u; },
     },
     navigator: {},
@@ -276,6 +276,9 @@ function makePage(doc, { hostname, pathname, local = {}, fhTrack, fetchImpl } = 
   win.self = win;
   win.top = win;
   if (fhTrack) win.fhTrack = fhTrack;
+  // Only a page opened with a query string gets URLSearchParams, so every older
+  // page test runs exactly as before.
+  if (search) win.URLSearchParams = URLSearchParams;
   vm.createContext(win);
   return {
     win,
@@ -334,6 +337,26 @@ function openApply(opts = {}) {
 
 const APPLY_CONTACT = { first: "Testfirst", last: "Testlast", email: "tester.qa@example.com", phone: "4155550123" };
 
+/* A follow-up link: /apply?r=<token>. The page asks the server what is saved, then
+   opens on the first question still unanswered (src/survey/resume-link.mjs). */
+async function openApplyResume(reply, { search = "?r=tok123" } = {}) {
+  const body = APPLY_HTML.slice(APPLY_HTML.indexOf("<body>") + 6, APPLY_HTML.indexOf("<script>"));
+  const script = APPLY_HTML.slice(APPLY_HTML.indexOf("<script>") + 8, APPLY_HTML.lastIndexOf("</script>"));
+  const doc = makeDocument(body);
+  const asked = [];
+  const fetchImpl = async (url) => { asked.push(String(url)); return reply; };
+  const page = makePage(doc, { hostname: "apply.fundhub.ai", pathname: "/apply", search, fetchImpl }).run(script);
+  for (let i = 0; i < 5; i++) await new Promise((r) => setImmediate(r));
+  page.flush();
+  const byId = (id) => doc.getElementById(id);
+  const option = (label) => doc.getElementById("body").querySelectorAll(".opt").find((b) => b.textContent === label);
+  const title = () => doc.getElementById("body").querySelector("h2")?.textContent;
+  return { page, doc, byId, asked, title, pick: (label) => page.click(option(label)) };
+}
+
+const RESUME_CONTACT = { first_name: "Dana", last_name: "Rivers", email: "dana.rivers@example.com", phone: "+14155550123" };
+const savedReply = (answers) => ({ ok: true, json: async () => ({ ok: true, contact: RESUME_CONTACT, answers, next_key: null }) });
+
 function fillApplyContact(a, c = APPLY_CONTACT) {
   a.page.type(a.byId("f-first"), c.first);
   a.page.type(a.byId("f-last"), c.last);
@@ -346,7 +369,7 @@ const APPLY_COMMON = [
   ["cf_svy_funding_target_amount", "$100k - $200k"],
   ["cf_svy_planned_use", "Equipment or buildout"],
   ["cf_svy_money_change_now", "Stability (cover bills / buffer slow weeks)"],
-  ["cf_svy_self_reported_fico", "700-749"],
+  ["cf_svy_self_reported_fico", "700-759"],
 ];
 const APPLY_BIZ = [
   ["cf_svy_has_business", "Yes, 2-5 years"],
@@ -380,10 +403,11 @@ const APPLY_CONTACT_EVENTS = [
   ev("survey_answer", { survey: "apply", step_num: 1, question_id: "contact" }),
 ];
 
-/* The final question (cf_svy_available_capital) carries last: true; no other screen does. */
-const answersOf = (path) =>
+/* The final question (cf_svy_available_capital) carries last: true; no other screen does.
+   It also carries the owner's credit bucket (2026-10-29); APPLY_COMMON answers 700-759. */
+const answersOf = (path, tier = "qualified") =>
   path.map(([key], i) => ev("survey_answer", {
-    survey: "apply", step_num: i + 2, question_id: key, ...(i === path.length - 1 ? { last: true } : {}),
+    survey: "apply", step_num: i + 2, question_id: key, ...(i === path.length - 1 ? { last: true, credit_tier: tier } : {}),
   }));
 
 describe("/apply survey hooks (apply-survey.html)", () => {
@@ -403,10 +427,75 @@ describe("/apply survey hooks (apply-survey.html)", () => {
     assertShape(got);
   });
 
+  test("the two calendars: qualified credit frames /funding-book-call; every other score answer frames the copy", () => {
+    // The score answers owner-set 2026-10-31: 700 and up books the first calendar.
+    const want = { "700-759": "https://apply.fundhub.ai/funding-book-call", "760-850": "https://apply.fundhub.ai/funding-book-call",
+      "620-699": "https://apply.fundhub.ai/funding-book-call--02424", "500-619": "https://apply.fundhub.ai/funding-book-call--02424",
+      "Not sure": "https://apply.fundhub.ai/funding-book-call--02424" };
+    for (const [score, src] of Object.entries(want)) {
+      const a = openApply();
+      fillApplyContact(a);
+      for (const [key, label] of [...APPLY_COMMON, ...APPLY_BIZ]) a.pick(key === "cf_svy_self_reported_fico" ? score : label);
+      a.page.flush();
+      assert.equal(a.byId("fh-book-frame").src, src, score);
+      assert.ok(a.doc.body.textContent.includes("You're qualified. Pick a time below."), `${score}: the page words do not change`);
+    }
+  });
+
+  test("the credit bucket: 700-759 and 760-850 are qualified; every other score answer, Not sure too, is unqualified", () => {
+    const tiers = { "500-619": "unqualified", "620-699": "unqualified",
+      "700-759": "qualified", "760-850": "qualified", "Not sure": "unqualified" };
+    for (const [score, tier] of Object.entries(tiers)) {
+      const a = openApply();
+      fillApplyContact(a);
+      for (const [key, label] of [...APPLY_COMMON, ...APPLY_BIZ]) a.pick(key === "cf_svy_self_reported_fico" ? score : label);
+      const got = a.page.events().filter((e) => e[1].credit_tier !== undefined);
+      assert.deepEqual(got, [ev("survey_answer", { survey: "apply", step_num: 9, question_id: "cf_svy_available_capital", last: true, credit_tier: tier })], score);
+      assert.ok(a.doc.body.textContent.includes("You're qualified. Pick a time below."), `${score}: the page words do not change`);
+      assert.ok(!JSON.stringify(a.page.events()).includes(score), `${score}: the score itself is never queued`);
+    }
+  });
+
+  test("a follow-up link opens the first question they have not answered, with their info kept", async () => {
+    const a = await openApplyResume(savedReply({
+      cf_svy_funding_target_amount: "$100k - $200k", cf_svy_planned_use: "Equipment or buildout"
+    }));
+    assert.deepEqual(a.asked, ["https://fundhub.ai/api/public/survey-resume?r=tok123"], "asks once, with the token only");
+    assert.equal(a.title(), "What Would This Money Change Right Now?");
+    for (const [key, label] of [...APPLY_COMMON, ...APPLY_BIZ]) {
+      if (key === "cf_svy_funding_target_amount" || key === "cf_svy_planned_use") continue;
+      a.pick(label);
+    }
+    a.page.flush();
+    const done = JSON.parse(JSON.stringify(a.page.win.FH_SURVEY_PAYLOAD));
+    assert.equal(done.email, "dana.rivers@example.com", "the finished survey carries the saved contact");
+    assert.equal(done.answers.cf_svy_funding_target_amount, "$100k - $200k", "earlier answers are kept");
+    assert.equal(done.answers.cf_svy_available_capital, "$5k - $25k");
+  });
+
+  test("a saved answer that is no longer a choice is asked again", async () => {
+    const a = await openApplyResume(savedReply({
+      cf_svy_funding_target_amount: "$100k - $200k", cf_svy_planned_use: "Equipment or buildout",
+      cf_svy_money_change_now: ["Stability (cover bills / buffer slow weeks)"], cf_svy_self_reported_fico: "700-749"
+    }));
+    assert.equal(a.title(), "Your Current Score", "an old score range is picked again from the new five");
+  });
+
+  test("a bad link starts the survey at the top, as before", async () => {
+    const a = await openApplyResume({ ok: false, json: async () => ({ ok: false }) });
+    assert.equal(a.title(), "Let's Start With Your Info");
+  });
+
+  test("no token: the page never asks the server", async () => {
+    const a = await openApplyResume(savedReply({}), { search: "?utm_source=meta" });
+    assert.deepEqual(a.asked, []);
+    assert.equal(a.title(), "Let's Start With Your Info");
+  });
+
   test("only the final question (available capital, step 9) carries last: true, on both paths", () => {
     for (const rest of [APPLY_BIZ, APPLY_PERSONAL]) {
       const lasts = walkApply(rest).page.events().filter((e) => e[1].last !== undefined);
-      assert.deepEqual(lasts, [ev("survey_answer", { survey: "apply", step_num: 9, question_id: "cf_svy_available_capital", last: true })]);
+      assert.deepEqual(lasts, [ev("survey_answer", { survey: "apply", step_num: 9, question_id: "cf_svy_available_capital", last: true, credit_tier: "qualified" })]);
     }
   });
 
@@ -538,7 +627,7 @@ const HOME_COMMON = [
   ["funding_target_amount", "$50k - $100k"],
   ["planned_use", "Debt consolidation"],
   ["money_change_now", "Peace of mind (stop stressing about cash)"],
-  ["current_score", "650-699"],
+  ["current_score", "620-699"],
   ["has_negatives", "No"],
 ];
 const HOME_BIZ = [

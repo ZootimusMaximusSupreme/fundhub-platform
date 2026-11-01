@@ -36,6 +36,7 @@ import { incomeEstimates, isSampleResult } from "../http/client-detail.mjs";
 import { prequalFromCustomFields } from "../http/portal-prequal.mjs";
 import { getLatestPull } from "../finance/soft-pulls.mjs";
 import { isSloPostPurchaseEnabled } from "../slo/purchase.mjs";
+import { buildDeckVisualData } from "./deck-visual-data.mjs";
 
 /* COMPLIANCE REVIEW REQUIRED — credit-pull type/reuse.
    Owner-set 2026-09-19: when SLO_POST_PURCHASE_ENABLED is on, a closer does
@@ -192,6 +193,18 @@ function ficoFrom(result) {
   };
 }
 
+/** One bureau per pull row is normal; Present needs all three on one deck. */
+function mergeFicoFromCrsRows(rows) {
+  const merged = { ex: null, tu: null, eq: null };
+  for (const row of rows || []) {
+    const f = ficoFrom(row?.result);
+    if (f.ex != null) merged.ex = f.ex;
+    if (f.tu != null) merged.tu = f.tu;
+    if (f.eq != null) merged.eq = f.eq;
+  }
+  return merged;
+}
+
 function reasonsFrom(result) {
   const raw = result?.reasonCodes
     || result?.reason_codes
@@ -340,7 +353,7 @@ export async function buildCloserDeck(db, { orgId, clientId }) {
       `SELECT result, outcome_tier, created_at
          FROM crs_results
         WHERE client_id = $1 AND org_id = $2
-        ORDER BY created_at DESC LIMIT 1`,
+        ORDER BY created_at DESC LIMIT 6`,
       [clientId, orgId]
     ),
     /* The columns the payload actually maps. Two earlier goes at this were both
@@ -368,6 +381,9 @@ export async function buildCloserDeck(db, { orgId, clientId }) {
 
   const name = [client.first_name, client.last_name].filter(Boolean).join(" ").trim() || "Client";
   const engine = engineFromRow(crsRes.rows[0], client.outcome_tier);
+  if (engine.available && crsRes.rows.length > 0) {
+    engine.fico = mergeFicoFromCrsRows(crsRes.rows);
+  }
 
   /* COMPLIANCE REVIEW REQUIRED — the client-facing pre-approval figure.
      F15, owner-set 2026-09-03: ONE stored number, no second calculation.
@@ -401,6 +417,29 @@ export async function buildCloserDeck(db, { orgId, clientId }) {
      "Your results" slide (live hole 23). */
   engine.sample = isSampleResult(crsRes.rows[0]?.result);
 
+  /* Every company on the file, so the deck can ask for a missing
+     incorporation month/year instead of guessing the age. */
+  const businesses = bizRes.rows.map((b) => ({
+    id: b.id,
+    name: b.name || null,
+    age_months: numOrNull(b.age_months),
+    incorporated_date: b.incorporated_date || null
+  }));
+
+  /* ONE NEW FIELD (sales-slides build, 2026-10-29, board 10.2 and 10.8). A live
+     pull stores the reports, the scores, the tier and one estimate; it does not
+     store the once-fixed amount, the reasons or the negative items, so the fields
+     above are empty on a real call. engine.visual carries the numbers the new
+     slide visuals draw, worked out by the engine itself from this same stored
+     pull. Every field above is left exactly as it was. The builder never throws,
+     and a file it cannot read comes back as source "none". */
+  engine.visual = buildDeckVisualData({
+    crs: crsRes.rows[0] || null,
+    engine,
+    name: [client.first_name, client.last_name].filter(Boolean).join(" ").trim(),
+    businesses
+  });
+
   const softPull = await softPullStatus(db, { orgId, clientId });
   const income = incomeEstimates(crsRes.rows);
 
@@ -423,14 +462,7 @@ export async function buildCloserDeck(db, { orgId, clientId }) {
       capital: surveyAnswer(client, "cf_svy_available_capital"),
       motivation: surveyAnswer(client, "cf_svy_money_change_now")
     },
-    /* Every company on the file, so the deck can ask for a missing
-       incorporation month/year instead of guessing the age. */
-    businesses: bizRes.rows.map((b) => ({
-      id: b.id,
-      name: b.name || null,
-      age_months: numOrNull(b.age_months),
-      incorporated_date: b.incorporated_date || null
-    })),
+    businesses,
     /* Bureau income guesses for closer leverage — not paystubs, not bank balances. */
     income_estimates: income,
     engine,

@@ -426,6 +426,33 @@
    ]
   },
   {
+   "key": "EMAIL-S02-RESUME-1",
+   "channel": "email",
+   "approvedBySeed": true,
+   "inactive": false,
+   "files": [
+    "db/seed/301_followup_flows_copy.sql"
+   ]
+  },
+  {
+   "key": "EMAIL-S02-RESUME-2",
+   "channel": "email",
+   "approvedBySeed": true,
+   "inactive": false,
+   "files": [
+    "db/seed/301_followup_flows_copy.sql"
+   ]
+  },
+  {
+   "key": "EMAIL-S02-RESUME-3",
+   "channel": "email",
+   "approvedBySeed": true,
+   "inactive": false,
+   "files": [
+    "db/seed/301_followup_flows_copy.sql"
+   ]
+  },
+  {
    "key": "EMAIL-S04-01-CONFIRM",
    "channel": "email",
    "approvedBySeed": true,
@@ -784,6 +811,33 @@
    "inactive": false,
    "files": [
     "db/seed/015_live_template_backfill.sql"
+   ]
+  },
+  {
+   "key": "SMS-AISET03-OPTIN-1",
+   "channel": "sms",
+   "approvedBySeed": true,
+   "inactive": false,
+   "files": [
+    "db/seed/301_followup_flows_copy.sql"
+   ]
+  },
+  {
+   "key": "SMS-AISET03-OPTIN-2",
+   "channel": "sms",
+   "approvedBySeed": true,
+   "inactive": false,
+   "files": [
+    "db/seed/301_followup_flows_copy.sql"
+   ]
+  },
+  {
+   "key": "SMS-AISET03-OPTIN-3",
+   "channel": "sms",
+   "approvedBySeed": true,
+   "inactive": false,
+   "files": [
+    "db/seed/301_followup_flows_copy.sql"
    ]
   },
   {
@@ -1150,6 +1204,33 @@
    "files": [
     "db/seed/013_section4_message_templates.sql",
     "db/seed/295_sms_copy_2026_09.sql"
+   ]
+  },
+  {
+   "key": "SMS-S02-RESUME-1",
+   "channel": "sms",
+   "approvedBySeed": true,
+   "inactive": false,
+   "files": [
+    "db/seed/301_followup_flows_copy.sql"
+   ]
+  },
+  {
+   "key": "SMS-S02-RESUME-2",
+   "channel": "sms",
+   "approvedBySeed": true,
+   "inactive": false,
+   "files": [
+    "db/seed/301_followup_flows_copy.sql"
+   ]
+  },
+  {
+   "key": "SMS-S02-RESUME-3",
+   "channel": "sms",
+   "approvedBySeed": true,
+   "inactive": false,
+   "files": [
+    "db/seed/301_followup_flows_copy.sql"
    ]
   },
   {
