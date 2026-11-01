@@ -46,6 +46,13 @@ export function ownerLane(body) {
   return match?.[1]?.toLowerCase()??null;
 }
 
+export function handedOffFiles(body, targetBranch) {
+  return new Set(String(body??'').split('\n').flatMap(line=>{
+    const match=/^File handoff: ([A-Za-z0-9][A-Za-z0-9/_.-]*) -> ([A-Za-z0-9][A-Za-z0-9/_-]*)\s*$/.exec(line.trim());
+    return match&&match[2]===targetBranch&&!match[1].split('/').includes('..')?[match[1]]:[];
+  }));
+}
+
 export function prOwnershipDecision({current,files,peers,peerFiles,
   laneCutover=NEW_PR_CUTOVER,overlapCutover=FILE_OVERLAP_CUTOVER}) {
   const created=Date.parse(current?.created_at??'');
@@ -72,9 +79,11 @@ export function prOwnershipDecision({current,files,peers,peerFiles,
     if(!shared.length)continue;
     const isOlder=Date.parse(pr.created_at??'')<Date.parse(current?.created_at??'')||
       (pr.created_at===current?.created_at&&pr.number<current.number);
-    overlaps.push({number:pr.number,title:pr.title||'',files:[...new Set(shared)].sort(),isOlder});
+    const handedOff=handedOffFiles(pr.body,current?.head?.ref);
+    overlaps.push({number:pr.number,title:pr.title||'',files:[...new Set(shared)].sort(),isOlder,
+      blockingFiles:shared.filter(file=>!handedOff.has(file))});
   }
-  const blockers=overlapGateActive?overlaps.filter(x=>x.isOlder&&!ancestors.has(x.number)):[];
+  const blockers=overlapGateActive?overlaps.filter(x=>x.isOlder&&!ancestors.has(x.number)&&x.blockingFiles.length):[];
   const problems=[];
   if(isNew&&!lane)problems.push('Add Owner lane: <team-name> to PR description');
   if(blockers.length)problems.push('Files are already claimed by older open PRs');
