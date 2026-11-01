@@ -4,39 +4,60 @@
 // would pass whatever the page said. The page is the thing being judged; this file is the answer key.
 // Nothing here is imported by the live bundle.
 
-/** Every slide of the deck, in deck order, with the phase name the cockpit header and the strip must show. */
+/** Every slide of the deck, in deck order, with the phase name the cockpit header and the strip must show.
+ *  The order is the call script's (ops/workflows/weekend-2026-10-24.md section 10.0, 2026-10-29): the
+ *  Blueprint (B-01..B-06) is Door 3 inside part 6, L-01 is the money levers right after S-07, and C-01 is
+ *  more companies in Door 1. Part 8, Money, has no slide. */
 export const SLIDES = Object.freeze([
-  ["S-01", "01 Intro"], ["S-02", "01 Intro"],
-  ["S-03", "02 Discovery"], ["S-04", "02 Discovery"],
-  ["S-05", "03 Soft pull"], ["S-06", "03 Soft pull"], ["S-07", "03 Soft pull"],
-  ["S-08", "04 Pitch"], ["S-09", "04 Pitch"], ["S-10", "04 Pitch"], ["S-11", "04 Pitch"], ["S-12", "04 Pitch"],
-  ["S-13", "04 Pitch"], ["S-14", "04 Pitch"], ["S-15", "04 Pitch"], ["S-16", "04 Pitch"],
-  ["S-17", "05 Commit"], ["S-18", "05 Commit"], ["S-19", "05 Commit"], ["S-20", "05 Commit"],
-  ["S-21", "05 Commit"], ["S-22", "05 Commit"],
-  ["B-01", "06 Blueprint"], ["B-02", "06 Blueprint"], ["B-03", "06 Blueprint"], ["B-04", "06 Blueprint"],
-  ["B-05", "06 Blueprint"], ["B-06", "06 Blueprint"],
-  ["S-23", "07 Close"], ["S-24", "07 Close"],
+  ["S-01", "1 Open"], ["S-02", "1 Open"],
+  ["S-03", "2 Your goal"], ["S-04", "2 Your goal"],
+  ["S-05", "3 The pull"], ["S-06", "3 The pull"],
+  ["S-07", "4 Your file"], ["L-01", "4 Your file"],
+  ["S-08", "5 Your path"],
+  ["B-01", "6 The plan"], ["B-02", "6 The plan"], ["B-03", "6 The plan"], ["B-04", "6 The plan"],
+  ["B-05", "6 The plan"], ["B-06", "6 The plan"],
+  ["S-09", "6 The plan"], ["S-10", "6 The plan"], ["S-11", "6 The plan"], ["S-12", "6 The plan"],
+  ["S-13", "6 The plan"], ["S-14", "6 The plan"], ["S-15", "6 The plan"], ["S-16", "6 The plan"],
+  ["C-01", "6 The plan"],
+  ["S-17", "7 The ask"], ["S-18", "7 The ask"], ["S-19", "7 The ask"], ["S-20", "7 The ask"],
+  ["S-21", "7 The ask"], ["S-22", "7 The ask"],
+  ["S-23", "9 Paperwork"], ["S-24", "9 Paperwork"],
 ].map((pair) => Object.freeze(pair)));
 
 export const DECK_LENGTH = SLIDES.length;
 
-/** Where a slide sits in the deck as the cockpit header counts it: "<position> / 30". */
+/** Where a slide sits in the deck as the cockpit header counts it: "<position> / 32". */
 export const positionOf = (code) => SLIDES.findIndex(([c]) => c === code) + 1;
 
-/** The slides a main-run walker meets: the six Blueprint slides are stepped over. */
-export const MAIN_RUN = SLIDES.filter(([code]) => !code.startsWith("B-")).map(([code]) => code);
-export const STACK_RUN = SLIDES.filter(([code]) => code.startsWith("B-")).map(([code]) => code);
+/** The two slides that show only when their visual draws. The practice tests load no visual file, so a
+ *  walker steps over them. */
+export const VISUAL_ONLY = Object.freeze(["L-01", "C-01"]);
 
-/** The seven strip buttons: the number on the button, the phase it opens, and the slides that belong to it. */
+/** The slides a funding walker meets: the six Blueprint slides and the two visual-only slides are stepped over. */
+export const MAIN_RUN = SLIDES.filter(([code]) => !code.startsWith("B-") && !VISUAL_ONLY.includes(code)).map(([code]) => code);
+export const STACK_RUN = SLIDES.filter(([code]) => code.startsWith("B-")).map(([code]) => code);
+/** The slides a repair walker meets: Door 3 (B-01..B-04) inside part 6, then Door 4 from S-09. B-05 and B-06
+ *  stay out of the walk until FinanceOS has a price and a checkout. */
+export const REPAIR_RUN = SLIDES.filter(([code]) => !VISUAL_ONLY.includes(code) && code !== "B-05" && code !== "B-06").map(([code]) => code);
+
+/** The nine strip buttons: the number on the button, the name it shows, and the slides that belong to it.
+ *  The strip shows the script's part names (row 19). 08, Money, has no slide: it opens the money steps. */
 export const PHASE_BUTTONS = Object.freeze([
-  ["01", "01 Intro", ["S-01", "S-02"]],
-  ["02", "02 Discovery", ["S-03", "S-04"]],
-  ["03", "03 Soft pull", ["S-05", "S-06", "S-07"]],
-  ["04", "04 Pitch", ["S-08", "S-09", "S-10", "S-11", "S-12", "S-13", "S-14", "S-15", "S-16"]],
-  ["05", "05 Commit", ["S-17", "S-18", "S-19", "S-20", "S-21", "S-22"]],
-  ["06", "06 Blueprint", ["B-01", "B-02", "B-03", "B-04", "B-05", "B-06"]],
-  ["07", "07 Close", ["S-23", "S-24"]],
+  ["01", "1 Open", ["S-01", "S-02"]],
+  ["02", "2 Your goal", ["S-03", "S-04"]],
+  ["03", "3 The pull", ["S-05", "S-06"]],
+  ["04", "4 Your file", ["S-07", "L-01"]],
+  ["05", "5 Your path", ["S-08"]],
+  ["06", "6 The plan", ["B-01", "B-02", "B-03", "B-04", "B-05", "B-06", "S-09", "S-10", "S-11", "S-12", "S-13", "S-14", "S-15", "S-16", "C-01"]],
+  ["07", "7 The ask", ["S-17", "S-18", "S-19", "S-20", "S-21", "S-22"]],
+  ["08", "8 Money", []],
+  ["09", "9 Paperwork", ["S-23", "S-24"]],
 ].map((row) => Object.freeze(row)));
+
+/** The catalog (fin-b17-rows.json, desks-f.json, generated.json) still lists the seven strip buttons the deck had
+ *  before 2026-10-29, by number. A row is the button with that number; its old part name in the row text is
+ *  history. Buttons 08 and 09 are new and have no catalog row yet. */
+export const CATALOG_PHASE_ROWS = Object.freeze(["01", "02", "03", "04", "05", "06", "07"]);
 
 /** The seven belief boxes: the word on the box, and the question under it. */
 export const BELIEFS = Object.freeze([
@@ -64,15 +85,15 @@ export const OBJECTION_TABLE = Object.freeze([
     lines: [
       "Isolate: finances aside, anything else keeping you from being 100 percent certain?",
       "Should vs how: you're not in a SHOULD I place, you're in a HOW can I place. Right?",
-      "Context: you just saw the system pre-approve you for [Amount]. The $3,000 is an advance on a fee you'd pay anyway. Is $3,000 a lot compared to [Amount] deployed in two weeks?",
+      "Context: you just saw how much your file qualifies for: [Amount]. The $3,000 counts toward the 10 percent, and the 10 percent is only on money you actually get. Too much compared to what? You told me waiting costs you [cost] a month.",
     ],
   },
   {
     title: "What if it fails", jumpLabel: "Show guarantees", target: "S-21",
     lines: [
-      "We ran the soft-pull together. You saw the pre-approval with your own eyes. We're not guessing.",
-      "Our fee is 10 percent of what we actually secure. No funding, no money for us. Zero incentive to take you on unless we're certain.",
-      "And if we don't hit your target, we keep working your file at no additional cost. So what specifically are you worried won't work?",
+      "We ran the soft pull together. You saw your file with your own eyes. We're not guessing.",
+      "Our fee is 10 percent of the money you actually get. The bank decides, not us. We pick the banks and the order.",
+      "Here's what the agreement guarantees: we start on your file within 24 business hours, and your first applications go out within 72. So what specifically are you worried won't work?",
     ],
   },
   {
@@ -80,26 +101,26 @@ export const OBJECTION_TABLE = Object.freeze([
     lines: [
       "Aside from letting your spouse know, anything else keeping you from 100 percent?",
       "Respect vs permission: doing it regardless and letting them know? Or need their sign-off?",
-      "If respect: 'this company wants $3K, thoughts?' versus 'I found the company getting us [Amount] in two weeks, I've decided, wanted you to know first.' Which one gets them on board? If permission: book the 3-way.",
+      "If respect: 'this company wants $3K, thoughts?' versus 'I found the company that pulled my file and showed me exactly what to do next. I've decided, and I wanted you to know first.' Which one gets them on board? If permission: book the 3-way, inside one day.",
     ],
   },
   {
     title: "Burned before", jumpLabel: "Show the system", target: "S-10",
     lines: [
       "I'm sorry that happened. What exactly went wrong with the last company? Listen.",
-      "That's way too common, and it's exactly why we built Fundhub this way. Most companies are manual, guessing, no score protection, no accountability.",
-      "The question isn't whether to trust a funding company again. It's whether to trust THIS one: different process, hundreds funded, $25 million deployed.",
+      "That's way too common. It's fair to go slow. That's why we started with your file, not a pitch.",
+      "You see the fee in dollars before you pay, and everything is in the agreement, in writing. And the 10 percent is only on money you actually get.",
     ],
   },
   {
     title: "DIY", jumpLabel: "Show the rounds", target: "S-12",
     lines: [
       "You absolutely can. How long have you been trying? And how much capital have you secured in that time?",
-      "Our clients get 2 to 3x more because of the AI matching and the sweeps between rounds. You'd need our lender network, our AI, and the sweep expertise.",
-      "Is saving $3,000 worth another [X months] stuck? Or invest it today and have [Amount] in two weeks?",
+      "Almost every application is a hard pull, and each one costs fundability. Our system matches your file to the banks that fit it, in the right order.",
+      "If you want to do it yourself the right way, that's the Capital Blueprint: the plan from your own file, step by step.",
     ],
   },
 ].map((row) => Object.freeze({ ...row, lines: Object.freeze(row.lines) })));
 
-/** The slides that show the objection list: every slide of 05 Commit and 07 Close, and nothing else. */
-export const OBJECTION_SLIDES = Object.freeze(SLIDES.filter(([, phase]) => phase === "05 Commit" || phase === "07 Close").map(([code]) => code));
+/** The slides that show the objection list: every slide of 7 The ask and 9 Paperwork, and nothing else. */
+export const OBJECTION_SLIDES = Object.freeze(SLIDES.filter(([, phase]) => phase === "7 The ask" || phase === "9 Paperwork").map(([code]) => code));

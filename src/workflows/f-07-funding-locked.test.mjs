@@ -80,19 +80,36 @@ test("duplicate delivery: replaying the same event does not double-send or doubl
   assert.equal(db.invoices.length, 1, "the same round must never be invoiced twice");
 });
 
-test("two funded rounds create two separate bills and a replay creates no third", async () => {
+test("two verified funded rounds create two separate bills and a replay creates no third", async () => {
   const db = pgFake({ clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", custom_fields: {} }], templates: withTemplates() });
+  const saleId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  const round1 = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+  const round2 = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+  // The new ownership gate requires the genuine same-sale round linkage.
+  // This stub is only for this legacy invoice/replay fixture; the separate
+  // fee-source PG suite exercises its full SQL against disposable Postgres.
+  const query = db.query.bind(db);
+  db.query = async (sql, params) => {
+    // Only intercept the standalone funding-round lookup. createInvoice now
+    // embeds a nested funding_rounds ownership SELECT inside an INSERT; that
+    // must reach pgFake's invoice writer instead of this round-query stub.
+    if (/^\s*SELECT\b[\s\S]*?\bFROM funding_rounds fr\b/i.test(sql)) {
+      assert.deepEqual(params.slice(1), ["org-1", "cl-1", saleId]);
+      return { rows: [round1, round2].includes(params[0]) ? [{ id: params[0] }] : [] };
+    }
+    return query(sql, params);
+  };
   const first = ev("round.funded", {
-    approvedAmount: 10000, feePercent: 10, saleId: "sale-1", fundingRoundId: "round-1"
+    approvedAmount: 10000, feePercent: 10, saleId, fundingRoundId: round1, rail: "card_stacking"
   }, { id: "evt-round-1", clientId: "cl-1" });
   const second = ev("round.funded", {
-    approvedAmount: 20000, feePercent: 10, saleId: "sale-1", fundingRoundId: "round-2"
+    approvedAmount: 20000, feePercent: 10, saleId, fundingRoundId: round2, rail: "card_stacking"
   }, { id: "evt-round-2", clientId: "cl-1" });
   await handle({ event: first, db, step: fakeStep() });
   await handle({ event: second, db, step: fakeStep() });
   await handle({ event: first, db, step: fakeStep() });
   assert.deepEqual(db.invoices.map((row) => [row.funding_round_id, row.amount_due]), [
-    ["round-1", "1000.00"], ["round-2", "2000.00"]
+    [round1, "1000.00"], [round2, "2000.00"]
   ]);
   assert.notEqual(db.invoices[0].idempotency_key, db.invoices[1].idempotency_key);
 });

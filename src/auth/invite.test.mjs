@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert";
 import {
   inviteStaff, acceptInvite, resetPassword, requestPasswordReset,
-  setPasswordWithToken, suspendStaff, setStaffRole, updateStaffProfile, roleIsKnown, INVITER_ROLES
+  setPasswordWithToken, suspendStaff, removeStaff, setStaffRole, updateStaffProfile, roleIsKnown, INVITER_ROLES
 } from "./invite.mjs";
 import { hashToken } from "./session.mjs";
 import { verifyPassword } from "./hash.mjs";
@@ -11,7 +11,7 @@ import { _resetOrgCache } from "./org.mjs";
 const OWNER = { id: "owner-1", org_id: "org-1", role: "owner" };
 const PASSWORD = "a perfectly fine passphrase";
 
-function fakeDb({ existingStaff = null, existingAccount = null, catalogShape = true, roleKnown = true, consumed = undefined } = {}) {
+function fakeDb({ existingStaff = null, existingAccount = null, catalogShape = true, roleKnown = true, consumed = undefined, openTasks = 0 } = {}) {
   const calls = [];
   return {
     calls,
@@ -19,6 +19,7 @@ function fakeDb({ existingStaff = null, existingAccount = null, catalogShape = t
     async query(sql, params = []) {
       calls.push({ sql, params });
       if (/FROM orgs/.test(sql)) return { rows: [{ id: "org-1" }] };
+      if (/SELECT count\(\*\)::int AS n FROM tasks/.test(sql)) return { rows: [{ n: openTasks }] };
       if (/information_schema\.columns/.test(sql)) return { rows: [{ ok: catalogShape }] };
       if (/FROM staff_roles/.test(sql)) return { rows: roleKnown ? [{ "?column?": 1 }] : [] };
       if (/SELECT id, role, email, name FROM staff/.test(sql) || /SELECT id, role(?:, email)? FROM staff/.test(sql)) {
@@ -81,6 +82,7 @@ function fakeDb({ existingStaff = null, existingAccount = null, catalogShape = t
         return { rows: [{ id: "staff-1", org_id: "org-1", email: "a@b.c", name: "A", role: "closer", status: "active" }] };
       }
       if (/UPDATE staff SET status = 'suspended'/.test(sql)) {
+        if (sql.includes("removed_at") && existingStaff?.role === "owner") return { rows: [] };
         return { rows: existingStaff === null ? [] : [{ id: params[0], email: "a@b.c", status: "suspended" }] };
       }
       return { rows: [] };
@@ -413,6 +415,24 @@ test("suspendStaff requires owner/admin, refuses self, and kills sessions", asyn
 
   const missing = await suspendStaff(fakeDb({ existingStaff: null }), { actor: OWNER, staffId: "nope" });
   assert.equal(missing.status, 404);
+});
+
+test("removeStaff is owner-only, protects owner rows, and retains linked history", async () => {
+  assert.equal((await removeStaff(fakeDb(), { actor: { role: "admin", org_id: "org-1" }, staffId: "staff-9" })).status, 403);
+  assert.equal((await removeStaff(fakeDb(), { actor: OWNER, staffId: OWNER.id })).error, "cannot_remove_self");
+  assert.equal((await removeStaff(fakeDb({ existingStaff: { role: "owner" } }), { actor: OWNER, staffId: "another-owner" })).status, 404);
+  const busy = fakeDb({ existingStaff: { id: "staff-9", role: "closer" }, openTasks: 2 });
+  assert.equal((await removeStaff(busy, { actor: OWNER, staffId: "staff-9" })).error, "staff_has_open_tasks");
+  assert.ok(!busy.stmts().some((sql) => /UPDATE staff SET status = 'suspended'/.test(sql)));
+  const db = fakeDb({ existingStaff: { id: "staff-9", role: "closer" } });
+  const out = await removeStaff(db, { actor: OWNER, staffId: "staff-9" });
+  assert.equal(out.ok, true);
+  const update = db.calls.find((call) => call.sql.includes("removed_at = now()"));
+  assert.deepEqual(update.params, ["staff-9", OWNER.org_id]);
+  assert.match(update.sql, /role <> 'owner'/);
+  assert.ok(!db.stmts().some((sql) => /DELETE FROM staff/.test(sql)));
+  assert.ok(db.stmts().some((sql) => /UPDATE shifts SET ended_at = now\(\)/.test(sql)));
+  assert.ok(db.stmts().some((sql) => /UPDATE sessions/.test(sql)));
 });
 
 test("setStaffRole requires owner/admin, refuses owner rows, and writes the new job", async () => {

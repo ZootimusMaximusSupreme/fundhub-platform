@@ -29,11 +29,14 @@ flowchart TD
     ENTRY --> ANS{Survey answers present?}
     ANS -->|Yes| SURV[survey.submitted as well]
     ANS -->|No| ONLYENTRY[entry.captured alone]
+    SURV --> LAST{Last answer, cf_svy_available_capital, in this post?}
+    LAST -->|Yes| DONE[survey.completed as well, since 2026-10-31]
 
     BOOK --> RESOLVE
     MOVE --> RESOLVE
     CXL --> RESOLVE
     SURV --> RESOLVE
+    DONE --> RESOLVE
     ONLYENTRY --> RESOLVE
     RESOLVE[Resolve the customer ONCE for the whole delivery<br/>resolveClient, src/handlers/client-lifecycle.mjs<br/>appointment booking id = the call's own id, data.id;<br/>repeat-delivery key = the message's event_id]
 
@@ -74,6 +77,17 @@ only. This keeps the confirmation text aimed at the number on the latest form.
 `booking.created` is deliberately **not** repeat-suppressed: it already has
 slot-level dedupe, and a second booking is a real second appointment.
 
+**One booking, two messages, one moment (2026-10-29).** ClickFunnels posts the
+calendar form and the scheduled event for one booking a fraction of a second
+apart. Each looked for a saved booking at that time before the other had saved
+it, so 2 calls were stored twice on 2026-10-29 (two closer tasks, two Cortana
+sends each). The slot check and the save now run one at a time for one person at
+one call time (`withBookingSlotLock`, `src/adapters/clickfunnels.mjs`); the
+second message finds the saved booking and emits nothing. A saved booking is only
+ever re-keyed **to** the call's own id, so a form post that lands second no
+longer swaps it back. The booking payload also carries the calendar page id
+(`calendarPageId`, the message's top-level `page.id`) and the event type name.
+
 **One call, one booking id (2026-10-05).** A real ClickFunnels appointment
 message has no top-level `id`. It carries `event_id` (new on every message) and
 the call itself in `data`, whose `id` is the call's own id (it equals
@@ -95,34 +109,108 @@ one live upcoming ClickFunnels booking. Anything less certain is left alone.
 
 | Event | Workflows woken | File |
 |---|---|---|
-| `entry.captured` | welcome text, new-lead intake, incomplete-survey nudge, first-touch capture, referral ownership, event-deduped human setter task | `s-00-welcome`, `s-01`, `s-02`, `at-01`, `af-02`, `src/setter/tasks.mjs` |
-| `survey.submitted` | the never-booked chase, and nothing else | `s-nobook-chase` |
-| `booking.created` | confirm + reminders, event-deduped human setter task, the legacy 15-minute handoff, staff alert including enabled setter role, pre-call launcher, call-outcome enforcement, portal invite, no-show recovery | `s-04b`, `src/setter/tasks.mjs`, `ai-set-04`, `s-04c`, `bs-01`, `dpc-02`, `s-portal-invite`, `s-05a` |
+| `entry.captured` | welcome text and email, new-lead intake and immediate owner/setter SMS and native push, assigned closer native push, the come-back flow for an unfinished survey, first-touch capture, referral ownership, one open human setter task per client | `s-00-welcome`, `s-01`, `src/staff/lead-alerts.mjs`, `s-02`, `at-01`, `af-02`, `src/setter/tasks.mjs` |
+| `survey.submitted` | no workflow. Fires on every answered survey screen; its answers are saved on the client, and the client's `credit_tier` with them (`onSurveySubmitted`, `src/handlers/client-lifecycle.mjs`) | — |
+| `survey.completed` | the never-booked chase and its setter call task. Fires once, when the answers include the last question (`cf_svy_available_capital`, `surveyIsComplete` in `src/survey/cf-question-map.mjs`) | `s-nobook-chase` |
+| `setter.no_answer` | the no-answer texts. Fires when a setter saves "No answer" on the setter desk, once per lead per Arizona day | `ai-set-03` |
+| `booking.created` | confirm + reminders, one open booking-confirmation setter task per client, the 15-minute handoff, booked-call owner/setter text and push plus assigned closer push, pre-call launcher, call-outcome enforcement, portal invite, no-show recovery | `s-04b`, `src/setter/tasks.mjs`, `ai-set-04`, `s-04c`, `bs-01`, `dpc-02`, `s-portal-invite`, `s-05a` |
 | `booking.rescheduled` | confirm + reminders, pre-call launcher, the 15-minute handoff, call-outcome enforcement (each restarts for the new time; the run for the old time is cancelled) | `s-04b`, `bs-01`, `ai-set-04`, `dpc-02` |
+
+The setter dashboard shows the submitted `cf_svy_*` survey answers with stable question keys. During a call, the assigned setter can save corrected answers through `POST /api/setter-dashboard` with `action: "save_survey"`. The corrections live in `clients.custom_fields.setter_survey_edits`; the submitted answers remain unchanged. The dashboard reloads the saved corrections, and the generated closer handoff uses them. Editing a completed handoff refreshes its saved text without resending a message.
+
+**Staff alerts added 2026-10-30.** `s-01` sends each active setter and owner one short lead SMS and native app alert as the lead enters. The text shows first name, phone, email, booking status and available survey answers. The assigned closer gets an app alert on lead entry or booking, without an immediate SMS. Completing the setter handoff sends the closer a text and app alert with the saved setter details and corrected survey answers, including when the owner is both setter and closer. At the current call's 15-minute handoff, the assigned closer (or owner fallback) gets the next-call text and app alert. Internal lead, set, and upcoming staff SMS send immediately, including overnight; client texts and other staff texts keep their existing contact hours. The existing SMS outbox and verified-staff gate still apply. Stable message and push keys prevent replay duplicates. Native app delivery still requires a registered staff device and a live phone test.
+
+The call screen also asks which funding paths were discussed (business, personal, or both), employment, annual personal income, and whether income can be verified. These answers save through the existing checklist action in `clients.custom_fields.setter_handoff`, separately from the submitted survey and its corrections. The funding-path answer is required for an opt-in handoff; the personal employment and income answers are optional. The outgoing handoff text does not include the new personal details.
+
+The event bus keeps each distinct funnel event, including separate survey-screen posts. The local setter handler now reuses an open task for the same client and task type. Once that task is done, a later opt-in or booking can create a new task. The Sales Fulfillment view shows one pill for repeated older setter tasks of the same type; the underlying tasks remain in the task list.
 
 ## 3. The never-booked chase
 
 `src/workflows/s-nobook-chase.mjs`
 
+**Since 2026-10-31 the chase starts on `survey.completed`, not `survey.submitted`.**
+The `/apply` page posts after every screen, so `survey.submitted` fired after the
+first answer and a person who answered one question was chased as if they had
+finished. Each message waits for the follow-up hours (9 a.m. to 5 p.m. Arizona,
+section 6), and the stop checks run at the moment it really goes out, so a person
+who books or replies overnight never gets the 9 a.m. message.
+
 ```mermaid
 flowchart TD
-    S[survey.submitted] --> C{Customer resolved?}
+    S[survey.completed] --> C{Customer resolved?}
     C -->|No| STOP0[Stop]
     C -->|Yes| B0{Booked already?}
     B0 -->|Yes| E0[Exit: already booked]
-    B0 -->|No| W1[Wait 2 hours]
-    W1 --> B1{Booked?}
+    B0 -->|No| W0[Wait 15 minutes]
+    W0 --> B00{Booked or replied?}
+    B00 -->|Yes| E00[Exit]
+    B00 -->|No| TASK[Setter task: call, finished the survey, no call booked]
+    TASK --> W1[Wait until 2 hours after the survey,<br/>or 9 a.m. Arizona if that is outside 9 to 5]
+    W1 --> B1{Booked or replied?}
     B1 -->|Yes| E1[Exit]
     B1 -->|No| M1[Text + email 1]
-    M1 --> W2[Wait 24 hours]
-    W2 --> B2{Booked?}
+    M1 --> W2[Wait 24 hours, same 9-to-5 rule]
+    W2 --> B2{Booked or replied?}
     B2 -->|Yes| E2[Exit]
     B2 -->|No| M2[Text + email 2]
-    M2 --> W3[Wait 72 hours]
-    W3 --> B3{Booked?}
+    M2 --> W3[Wait 72 hours, same 9-to-5 rule]
+    W3 --> B3{Booked or replied?}
     B3 -->|Yes| E3[Exit]
     B3 -->|No| M3[Text + email 3]
 ```
+
+Every link in these messages is `{{custom_values.booking_link}}`, which opens the
+person's own calendar (section 7c).
+
+## 3b. The come-back flow for an unfinished survey (2026-10-31)
+
+`src/workflows/s-02-incomplete-survey-nudge.mjs`, `src/survey/resume-link.mjs`,
+`api/public/survey-resume.mjs`, `marketing/landing-pages/apply-survey.html`
+
+The `/apply` survey asks for name, email and phone on its first screen, which saves
+the lead (`entry.captured`). The welcome text and email go out at once, at any hour,
+and send the person back to the survey. Their words no longer say "your application
+is in", because the person has not finished.
+
+```mermaid
+flowchart TD
+    E[entry.captured] --> W[Welcome text + email, right away, any hour<br/>link: survey_resume_link]
+    E --> P[Plan three touches, written down once]
+    P --> T1[Touch 1: 20 minutes after the sign-up,<br/>or 9 a.m. Arizona if that is outside 9 to 5]
+    T1 --> K1{Finished, replied or booked by then?}
+    K1 -->|Yes| X1[Stop]
+    K1 -->|No| M1[Come-back text + email 1]
+    M1 --> T2[Touch 2: 9 a.m. Arizona the next day]
+    T2 --> K2{Finished, replied or booked?}
+    K2 -->|Yes| X2[Stop]
+    K2 -->|No| M2[Come-back text + email 2]
+    M2 --> T3[Touch 3: 9 a.m. Arizona the day after]
+    T3 --> K3{Finished, replied or booked?}
+    K3 -->|Yes| X3[Stop]
+    K3 -->|No| M3[Come-back text + email 3]
+```
+
+**The link is the plain survey page (containment, 2026-10-31).** The welcome and
+come-back templates link to `https://apply.fundhub.ai/apply`, with no `?r=` code,
+and the survey starts at the top. Their copy says this plainly. S-02 uses saved
+answers only to decide whether more questions remain; its texts include no saved
+progress detail. `/apply` takes an existing lead's email with a new phone and
+writes that phone onto the lead (`resolveClient`), so a welcome or come-back text can
+reach a phone nobody proved is the lead's. The signed code those texts used to carry
+opened the lead's saved contact and answers at `GET /api/public/survey-resume`. That
+door now answers every code with the same 404 and reads nothing, so the codes already
+sent open nothing; the page treats the 404 as "start at the top". Opening the survey
+where the person stopped waits for a link that proves the person opening it owns the
+record. UNVERIFIED on live until this ships.
+
+"Finished" means `survey.completed`. A reply means a `message.inbound` event for
+the client after the flow started.
+
+**One of each touch a day, whatever runs.** Each touch's send key is the person and
+the Arizona day it goes out (`touchSendKey`), and the messages table lets one row per
+key through. Two opt-ins more than six hours apart that both wait for the same 9 a.m.
+are two runs; each touch still goes once (review 2026-10-31; before, every touch went
+twice).
 
 **"Booked?" is the question that could only ever answer no.** It asked for
 booking events belonging to the customer, and no booking event belonged to
@@ -352,7 +440,115 @@ workflow → sendTemplated (src/workflows/messaging.mjs)
           → only after a sent booking-confirmation text, optional native APNs alert
 ```
 
-## 7. Known gaps, not fixed here
+**Customer send hours (owner-set 2026-10-31).** `src/messaging/send-window.mjs`
+sorts every template key into one of three kinds, and both the dispatcher and the
+gate read it:
+
+| Kind | Keys | When it goes out |
+|---|---|---|
+| instant | `SMS-S00-WELCOME`, `EMAIL-S00-WELCOME`, `SMS-S04-01-CONFIRM`, `EMAIL-S04-01-CONFIRM` | right away, at any hour, even midnight |
+| drip | the come-back flow (`*-S02-RESUME-*`), the never-booked chase (`*-NOBOOK-*`), the no-answer texts (`SMS-AISET03-*`), no-show recovery (`*-S05A-*`), the pre-call text (`SMS-BS01-02-PRECALL`) | 9 a.m. to 5 p.m. Arizona, text and email; one that comes due outside waits on the queue for 9 a.m. |
+| standard | everything else, including the 24-hour and 2-hour call reminders | as before: texts 8 a.m. to 8 p.m. Arizona, email any hour |
+
+The call reminders stay standard on purpose: holding a 2-hour reminder for a 9:30
+a.m. call until 9 a.m. would put it after the call. One clock for everybody; there
+are no per-person time zones. Plus-tag test files (`+sim-`, `e2e+`) skip both
+windows so a night proof can run.
+
+## 7. Cortana's confirmed-booking receipt (2026-10-29)
+
+The ClickFunnels appointment still creates a saved Fundhub booking. The
+`cortana-booking-feed` clock reads confirmed ClickFunnels booking rows created
+after its cutover and posts each one to the existing **Funding Call** conversion
+through `src/messaging/providers/cortana-booking-webhook.mjs`. The
+`cortana_booking_sends` row records success or a retryable failure, so a browser
+leaving the thank-you page cannot lose the server-side conversion. Company,
+demo, and simulated buyer bookings are marked skipped. This is a vendor event,
+not a customer text or an eligibility decision; the call copy is unchanged.
+
+## 7b. Set is the setter handoff; call confirmation is separate
+
+`booking.created` moves the Sales card to Booked (`src/workflows/s-04-call-booked.mjs`).
+The setter dashboard's **Mark handoff complete** action checks the booking,
+call result, call time, problem, goal, and warm-up facts, then saves
+`setter_handoff.complete_at` and advances the Sales card to the stage displayed
+as **Set** (`src/setter/dashboard.mjs`). A completed handoff already on a later
+Sales stage stays there. Migration 507 renames the existing column and moves
+older completed handoffs that are still before Set.
+
+A customer's **YES/CONFIRM** text or portal **Confirm my call** click sets
+`custom_fields.call_confirmed`; it never moves the Sales card. The Sales card
+shows **✓ Call confirmed** only while that flag is true
+(`api/dashboard/pipeline.mjs`, `public/app/pipeline.html`). A new or moved
+booking clears the flag, so the check disappears until that call is confirmed.
+The board's hourly check reports a card on Set without a completed handoff.
+
+## 7c. Two funding calendars (2026-10-29)
+
+`/apply` frames `/funding-book-call` for a 700-and-up score answer (700-759 or
+760-850 since 2026-10-31; 700-749 or 750+ on answers saved before then) and the
+copy calendar page `/funding-book-call--02424` (funnel 994750, page 25820226) for
+every other answer (`showCal`, `marketing/landing-pages/apply-survey.html`). Both
+pages show the same words, load the same tracker and one Meta pixel, relay the
+booking to `/apply` and move to `/thank-you`. `/funding-book-call` runs event type
+14234; the copy runs event type 14959 (set in the ClickFunnels builder 2026-10-30).
+Each booking message names its page (`page.id`), which is how the two calendars are
+told apart.
+
+**Text and email links (2026-10-30).** Every text and email link to a call is
+`{{custom_values.booking_link}}`, filled by `clientContext` in
+`src/workflows/messaging.mjs`. It reads the lead's saved score answer
+(`cf_svy_self_reported_fico`, or its label): 700 and up (700-759, 760-850, or the
+older 700-749 and 750+) gets `/funding-book-call?fh_tier=q`; every other answer,
+"Not sure" too, gets
+`/funding-book-call--02424?fh_tier=u`; no readable answer keeps
+`/funding-book-call` with no mark. A link saved on the lead's file still wins.
+Opened straight from a text, either calendar page keeps the mark for that tab, so
+its booking sends Schedule plus QualifiedSchedule or UnqualifiedSchedule, browser
+and server under one id. The second calendar is on the tracker's and the server's
+page lists as step 3 of the watch funnel, and counts the same Cortana booking
+steps as the first.
+
+**Setter desk links (2026-10-31).** The setter desk uses the same rule. Each lead
+in `GET /api/read/setter-dashboard` carries its own `booking_url`
+(`listSetterQueue` in `src/setter/dashboard.mjs`, via `tierBookingLink`), and that
+lead's **Open booking calendar** and **Move call time** links open it. A lead with
+no readable answer keeps the plain `/funding-book-call` link. So a link a setter
+copies into a text sends the lead to their own calendar.
+
+**After a direct booking on the second calendar, and setter corrections
+(2026-10-31).** ClickFunnels sends a booker on `/funding-book-call--02424` to the
+next step of its own funnel, `/thank-you--80c5a`, a copy of `/thank-you`. The
+tracker counts that copy as `/thank-you`, and its booking check accepts the second
+calendar as the page the booker came from. When a setter corrects the score answer
+on the call (`setter_survey_edits.cf_svy_self_reported_fico`), the correction picks
+the calendar: in texts and emails, on the setter desk, and right after the survey
+save, which answers with the new `booking_url`.
+
+```mermaid
+flowchart TD
+    A[Text or email to a lead] --> B{Saved score answer}
+    B -->|700-759 or 760-850, older 700-749 or 750+| C[/funding-book-call?fh_tier=q/]
+    B -->|Any other answer, Not sure too| D[/funding-book-call--02424?fh_tier=u/]
+    B -->|None readable| E[/funding-book-call, no mark/]
+    C --> F[Booking: Schedule + QualifiedSchedule]
+    D --> G[Booking: Schedule + UnqualifiedSchedule]
+    E --> H[Booking: Schedule only]
+```
+
+**The score answers (owner-set 2026-10-30, live 2026-10-31).** The survey offers
+500-619, 620-699, 700-759, 760-850 and Not sure (`FICO_BANDS`,
+`src/config/survey-qualification.mjs`; the same list in `src/survey/cf-question-map.mjs`,
+`marketing/landing-pages/apply-survey.html` and `public/js/homepage-survey.js`). A
+score of exactly 620 or exactly 700 starts a range, so both lane lines sit on an
+edge. One rule, `creditTierFor`, turns the answer into the owner's two buckets:
+"qualified" for 700 and up, "unqualified" for everything else. A setter's correction
+wins over the typed answer. It picks the calendar in links, and it is saved on the
+person as `custom_fields.credit_tier` when the survey answer arrives and when a
+setter corrects it. On the page, the same 700-and-up rule picks the framed calendar
+and the `credit_tier` the tracker turns into QualifiedLead / UnqualifiedLead.
+
+## 8. Known gaps, not fixed here
 
 * **The workflow engine's fan-out is fire-and-forget and its failure is
   swallowed** (`src/events/bus.mjs`). If the hand-off fails, nothing anywhere

@@ -36,16 +36,13 @@ const orgOf = (staff) => (staff && staff.org_id) || null;
    a column headed "Client". COALESCE falls back to the client code and then to
    NULL — never to a dash or a placeholder name. A screen that cannot name
    somebody has to say so itself; this endpoint will not invent one. */
-const run = readHandler({
-  roles: ROLE_SETS.FINANCE,
-  fetch: (db, { limit, offset, query, staff }) => {
-    const filter = invoiceStatusFilter(query.status);
-    if (!filter.valid) {
-      const err = new Error(filter.message);
-      err.code = "BAD_REQUEST";
-      throw err;
-    }
-    return db.query(`SELECT v.invoice_id AS id, v.client_id, v.client_code,
+/* 031's v_invoice_balance builds client_code from a client join by ID alone.
+   A legacy invoice can have org=A and client=B (the original FK is not
+   org-scoped); a LEFT JOIN here would still return B's client_code and ID to
+   company A even when the separate name join returns NULL. This owned-client
+   INNER JOIN deliberately refuses that inconsistent row on all finance reads.
+   Export the exact production query for rollback-only real-Postgres checks. */
+export const AR_INVOICE_LIST_SQL = `SELECT v.invoice_id AS id, v.client_id, v.client_code,
            NULLIF(BTRIM(CONCAT_WS(' ', c.first_name, c.last_name)), '') AS client_name,
            NULLIF(BTRIM(s.name), '') AS owner_name,
            pay.payment_method,
@@ -56,7 +53,7 @@ const run = readHandler({
            v.days_overdue, v.is_overdue, v.aging_bucket
       FROM v_invoice_aging v
       JOIN invoices i ON i.id = v.invoice_id
-      LEFT JOIN clients c ON c.id = v.client_id AND c.org_id = v.org_id
+      JOIN clients c ON c.id = v.client_id AND c.org_id = v.org_id
       LEFT JOIN staff s ON s.id = c.assigned_csm_staff_id AND s.org_id = c.org_id
       LEFT JOIN LATERAL (
         SELECT NULLIF(BTRIM(p.method), '') AS payment_method
@@ -68,7 +65,11 @@ const run = readHandler({
      WHERE v.org_id = $5::uuid
        AND ($3::uuid IS NULL OR v.client_id = $3)
        AND ($4::text IS NULL OR v.status = $4)
-       AND ($6::boolean IS NOT TRUE OR v.open_balance > 0)
+       -- The A/R 'open' queue is for ISSUED debt only; drafts have a
+       -- positive provisional balance in v_invoice_aging but no payment demand.
+       -- Keep drafts discoverable through ?status=draft and the all-history view.
+       AND ($6::boolean IS NOT TRUE OR
+            (v.open_balance > 0 AND v.status IN ('sent', 'reminded', 'escalated', 'partially_paid')))
        AND COALESCE(i.is_demo, false) = false
      -- "Oldest Unpaid First" is the heading on the screen that asks for this, so
      -- the OPEN filter is ordered that way at the server too. LIMIT applies
@@ -79,7 +80,18 @@ const run = readHandler({
      ORDER BY CASE WHEN $6::boolean IS TRUE THEN v.due_at END ASC NULLS LAST,
               CASE WHEN $6::boolean IS TRUE THEN v.created_at END ASC,
               v.created_at DESC
-     LIMIT $1 OFFSET $2`, [
+     LIMIT $1 OFFSET $2`;
+
+const run = readHandler({
+  roles: ROLE_SETS.FINANCE,
+  fetch: (db, { limit, offset, query, staff }) => {
+    const filter = invoiceStatusFilter(query.status);
+    if (!filter.valid) {
+      const err = new Error(filter.message);
+      err.code = "BAD_REQUEST";
+      throw err;
+    }
+    return db.query(AR_INVOICE_LIST_SQL, [
       limit + 1,
       offset,
       query.client_id || null,

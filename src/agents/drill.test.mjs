@@ -7,7 +7,7 @@ import {
   runDrill
 } from "./drill.mjs";
 
-test("only the closer-drill ops agent may run, never Josh or inquiry", () => {
+test("only the closer-drill ops agent may run, never the setter or inquiry", () => {
   assert.equal(isDrillAgent({
     code: "OP-06", agent_class: "ops", channel: "internal", status: "live"
   }), true);

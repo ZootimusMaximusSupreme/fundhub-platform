@@ -32,7 +32,7 @@
 // fail from one shared cause, or guard the same door, sit in the same shift, so one cause is still one text:
 //   - text-path, email-path, vendor-keys, message-health: the message templates, the send keys and the queue;
 //   - apply-links, bank-links, bank-outreach: the bank links (apply-links is the one that needs the saved list);
-//   - lead-pipe, lead-handoff, call-bookings: the lead pipe and what follows it;
+//   - lead-pipe, lead-handoff, call-bookings, survey-resume: the lead pipe and what follows it;
 //   - money-checkout, checkout-doors, pay-links, pay-webhook: the checkout doors and the pay links;
 //   - money-funding, funding-trip, partner-trip, partner-pages: the funding and partner money and pages (they share
 //     pipeline-cards, read/affiliates and partners/approve);
@@ -84,6 +84,7 @@ export const SHIFTS = Object.freeze({
     beats: Object.freeze([
       "auth-links",
       "call-bookings",
+      "cortana-booking",
       "checkout-doors",
       "client-portal",
       "client-progress",
@@ -92,7 +93,8 @@ export const SHIFTS = Object.freeze({
       "money-alerts",
       "money-checkout",
       "pay-links",
-      "pay-webhook"
+      "pay-webhook",
+      "survey-resume"
     ])
   }),
   "pulse-hourly-c": Object.freeze({

@@ -1,6 +1,6 @@
 # SOP — Setter
 
-Written 2026-10-26 from Cole Gordon’s two courses in Google Drive, then rewritten for Fundhub. Chris is the setter right now. He is also the closer. The AI setter (Josh) stays off.
+Written 2026-10-26 from Cole Gordon’s two courses in Google Drive, then rewritten for Fundhub. Chris is the setter right now. He is also the closer. The AI setter stays off.
 
 ## Where this came from
 
@@ -70,6 +70,8 @@ Film Chris, to camera, under a minute. Send the same video by text after the voi
 
 ## Text right after the missed call
 
+**Since 2026-10-31 this text goes out by itself.** Save "No answer" on the setter desk and Fundhub sends three short texts from the Chris at Fundhub voice: right away, 30 minutes later, and 2 hours after that, between 9 a.m. and 5 p.m. Arizona time. There is one set for a person with a call booked and one for a person without one. They stop if the person books, moves the call, or texts back. Do not also text the person by hand. The lines below are the old hand-sent versions, kept for a person you are texting from your own phone for another reason.
+
 **They booked:**
 
 > Hey [Name], it’s Chris at Fundhub. Just tried you about your strategy call on [day and time]. You good for that time? Be at a computer. I also sent a short video so you know who I am.
@@ -91,9 +93,10 @@ Say it like a person. Do not read it like a form.
 3. **If the time is bad.** Move it. Then stop. Do not pitch.
 4. **Frame.** “On that call we pull your credit with you on the line and map what you qualify for based on where you are right now. We have not pulled anything yet. Your score does not move. You will want a computer and a quiet spot.”
 5. **Warm, from what they already said.** Use the survey. Do not invent. Pick one or two. “You said you are looking at about [their target] for [what they said they need it for]. Still the main thing?” “You said this would change [what they wrote]. Still true?”
-6. **One pain question.** “What is the part that is stuck right now?” Let them talk. Do not fix it on this call. Write it down for the closer.
-7. **Edify the call.** “Come ready. We will look at your file together and you will leave knowing the next move. Anything that would stop you from being there at [time]?”
-8. **Close the loop.** “Perfect. I will text you the time. See you then.”
+6. **Confirm the funding paths.** If they listed a business: “I see you listed a business, about [age] old, with [revenue] in sales. Is that still right?” Then: “Business can be the main goal. We can look at personal funding too, even if you are not sure you want it. Want me to note a few details so we have that option?” If yes, ask: “Are you working now? About how much do you make in a year? Can you verify that income with pay stubs, W-2s, or tax returns?” If they only listed personal funding, ask whether they are working now, then confirm their income and how they can verify it. Record what they say as setter notes; do not change the answers they submitted. Keep this brief and skip it if they decline.
+7. **One pain question.** “What is the part that is stuck right now?” Let them talk. Do not fix it on this call. Write it down for the closer.
+8. **Edify the call.** “Come ready. We will look at your file together and you will leave knowing the next move. Anything that would stop you from being there at [time]?”
+9. **Close the loop.** “Perfect. I will text you the time. See you then.”
 
 If they ask the price: “We walk the options on the strategy call after we see the file. The only charge before that call is the $32 soft pull, and your score does not move.”
 
@@ -115,7 +118,7 @@ This is Cole’s triage, in Fundhub words. Sell the strategy call. Do not sell a
    Stay here until you can say their problem, why it matters, and their goal in one sentence each. This part stays under 10 minutes.
 6. **Sell the call, then book.** “I can get you on the calendar. You will be at a computer. We pull the file live with you, and your score does not move. I have [time] or [time]. Which one works?”
 7. **Lock it.** They accept the calendar invite before you hang up.
-8. **Help-me qualify.** “The person on that call needs a short note so you two can start fast. You good if I confirm a couple things?” Confirm only what they already said: the goal, personal or business, and that they can be at a computer. Do not ask for a Social Security number. Do not ask them to read a card number.
+8. **Help-me qualify.** “The person on that call needs a short note so you two can start fast. You good if I confirm a couple things?” Confirm their goal, business details if they listed a business, and that they can be at a computer. “I see your business is [age] old and does about [revenue]. Is that still right?” Then offer the other path: “We can look at personal funding too, even if business is your main goal. Want me to note a few details so we have that option?” If yes, ask whether they are working, about how much they make in a year, and whether they can verify it with pay stubs, W-2s, or tax returns. If they only listed personal funding, ask whether they are working now, confirm their income details, and ask whether they also have a business. Record the answers as setter notes without changing the submitted survey. Skip extra questions if they decline. Do not ask for a Social Security number or card number.
 
 ## Handoff text to the lead and closer
 
@@ -124,6 +127,8 @@ Send this the minute the time is locked. Fundhub sends two one-to-one messages b
 > Hey [Name] — Chris at Fundhub. You are set for [day and time]. Be at a computer. We pull your credit live on that call. Your score does not move.
 >
 > [Closer first name], [Name] is looking at [their goal, in their words]. The stuck part is [one sentence]. Survey said [one useful fact]. They can be at a computer.
+
+Save the extra funding-path, employment, income, and verification answers in the setter call record. They are not part of this outgoing text.
 
 **While Chris is both setter and closer:** send that text to the lead only. Paste the same note on the CRM card. Do not text yourself.
 
@@ -185,7 +190,7 @@ These lines sit on top of Cole’s shape. They match owner law in the repo.
 
 **App download.** After a good booked call, tell them to get **Fundhub Portal** on their phone (App Store: `https://apps.apple.com/us/app/fundhub-portal/id6823985032`). If they will join from a laptop, they still need a computer for the strategy call; the app is for their file and next steps, not a substitute for the computer on the call.
 
-**AI setter.** Josh (AG-04) stays **retired**. No outbound AI dial after book.
+**AI setter.** AG-04 stays **retired**. No outbound AI dial after book.
 
 **Setter dashboard.** Use **Setter Dashboard** (`/app/setter-dashboard.html`) instead of only free-form notes on the pipeline card. The dashboard holds the checklist, the handoff block the closer reads, today’s self-scoped dial, book and show numbers, and buttons for “send intro video” and “send handoff text.”
 
@@ -198,6 +203,8 @@ These lines sit on top of Cole’s shape. They match owner law in the repo.
 | Problem (one sentence) | setter call |
 | Goal (one sentence) | setter call |
 | Survey echo | CRM `custom_fields` — never invent |
+| Business details and personal option | setter confirms survey details; business and personal can both apply |
+| Employment, annual income, income verification | optional setter call answers, kept separate from submitted survey |
 | Computer ready | yes / no |
 | App on phone | yes / no / n/a |
 | Handoff text | three-way template filled in |

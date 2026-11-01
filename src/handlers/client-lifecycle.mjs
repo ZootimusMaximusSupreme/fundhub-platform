@@ -25,16 +25,13 @@ import { evaluateWaypoints } from "../waypoints/verify.mjs";
 // The one E.164 converter in the repo. Reused, not re-written (CLAUDE.md §8).
 import { normalizePhone } from "../messaging/providers/bland-voice.mjs";
 import { syncSloClickfunnelsContact } from "../slo/cf-contact.mjs";
+import { surveyIsComplete } from "../survey/cf-question-map.mjs";
+import { creditTierFor } from "../config/survey-qualification.mjs";
 
 // Last question on the CF apply survey (Available Capital).
 // marketing/landing-pages/clickfunnels/cf-survey-ground-truth.md — Survey Complete only when this lands.
-const CF_SURVEY_COMPLETE_KEY = "cf_svy_available_capital";
-
-function answersIncludeSurveyComplete(answers) {
-  if (!answers || typeof answers !== "object") return false;
-  const v = answers[CF_SURVEY_COMPLETE_KEY];
-  return v != null && String(v).trim() !== "";
-}
+// The same rule decides when the ClickFunnels adapter emits survey.completed.
+const answersIncludeSurveyComplete = surveyIsComplete;
 
 // --- helpers ----------------------------------------------------------------
 
@@ -336,6 +333,7 @@ export async function onSurveySubmitted(event, db) {
     if (event.orgId) {
       await upsertSurveyCarbonCopy(db, { clientId, orgId: event.orgId, answers });
     }
+    await saveCreditTier(db, clientId, answers);
   }
   if (clientId && event.orgId && answersIncludeSurveyComplete(answers)) {
     await mergeCustomFields(db, clientId, { lifecycle_status: "Survey Complete" });
@@ -346,6 +344,20 @@ export async function onSurveySubmitted(event, db) {
       stageKey: "survey_complete"
     });
   }
+}
+
+/* credit_tier — the owner's two buckets (2026-10-29), saved on the person so every
+   screen and report reads one word: "qualified" (700 and up) or "unqualified".
+   Worked out by creditTierFor from the saved fields, so a setter's earlier score
+   fix still wins. Booking links do not read this copy; they run the same rule on
+   the live answer (tierBookingLink), so the two cannot disagree for long. */
+async function saveCreditTier(db, clientId, answers) {
+  if (!Object.prototype.hasOwnProperty.call(answers, "cf_svy_self_reported_fico")
+    && !Object.prototype.hasOwnProperty.call(answers, "cf_svy_self_reported_fico_label")) return;
+  const r = await db.query(`SELECT custom_fields FROM clients WHERE id = $1`, [clientId]);
+  const fields = r.rows[0]?.custom_fields || {};
+  const tier = creditTierFor(fields);
+  if (tier && fields.credit_tier !== tier) await mergeCustomFields(db, clientId, { credit_tier: tier });
 }
 
 // Record a transaction row (deduped by provider_ref). Shared by the paid + failed

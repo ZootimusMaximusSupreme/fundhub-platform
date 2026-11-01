@@ -70,6 +70,9 @@ const PERCENT = int(0, 100);
 const FORM = slug(40);
 const FIELD = slug(64);
 const CALENDAR = { calendar: slug(64) };
+// The owner's two buckets (2026-10-29): /apply's last answer says which, never
+// the score; booking_confirmed carries the same tab's tier (src/meta/map.mjs).
+const CREDIT_TIER = oneOf("qualified", "unqualified");
 // Which /roadmap buy box sent the event (2 = phone on step 3 and the
 // "Step 1 of 3" line, owner-set 2026-10-02). Only the buy box sends it; the
 // survey pages that share field_focus / field_complete / validation_error
@@ -124,7 +127,7 @@ export const TRACK_EVENTS = Object.freeze({
   // A tap on the Apple link of the /thank-you app card. No props: the page, the
   // session and the UTMs already say who and where, and nothing typed is read.
   app_download_tap: {},
-  survey_answer: { survey: slug(40), step_num: int(0, 100), question_id: slug(64), last: bool() },
+  survey_answer: { survey: slug(40), step_num: int(0, 100), question_id: slug(64), last: bool(), credit_tier: CREDIT_TIER },
   survey_route: { survey: slug(40), offer: slug(40) },
   buybox_tab: { tab: int(1, 3), bbv: BBV },
   field_focus: { form: FORM, field: FIELD, bbv: BBV },
@@ -136,7 +139,7 @@ export const TRACK_EVENTS = Object.freeze({
   softpull_submit: { businesses: int(0, 50), bbv: BBV },
   calendar_view: CALENDAR,
   time_selected: CALENDAR,
-  booking_confirmed: CALENDAR,
+  booking_confirmed: { ...CALENDAR, credit_tier: CREDIT_TIER },
   preview_opened: { deliverable: DELIVERABLE, bbv: BBV },
   preview_closed: { deliverable: DELIVERABLE, open_ms: int(0, 600_000), bbv: BBV },
 });

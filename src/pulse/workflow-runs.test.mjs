@@ -364,15 +364,15 @@ test("c: the repeat-post rule in the runs read matches the adapter that makes re
   assert.deepEqual([...REPEAT_SUPPRESSED_EVENTS].sort(), inAdapter);
   assert.match(cf, /FUNNEL_REPEAT_WINDOW_MINUTES = 6 \* 60/);
   assert.equal(FUNNEL_REPEAT_WINDOW_MINUTES, 6 * 60);
-  // The adapter asks: same org, same name, same address (any case), same funnel, an earlier row inside the window.
-  assert.match(cf, /org_id = \$1[\s\S]*?name = \$2[\s\S]*?lower\(payload->>'email'\) = \$3[\s\S]*?COALESCE\(payload->>'funnel', ''\) = \$4[\s\S]*?created_at > now\(\) - make_interval/);
+  // The adapter asks: same org, name, address and compatible funnel, inside the window.
+  assert.match(cf, /org_id = \$1[\s\S]*?name = \$2[\s\S]*?lower\(payload->>'email'\) = \$3[\s\S]*?COALESCE\(payload->>'funnel', ''\) = \$4[\s\S]*?OR \$4 = ''[\s\S]*?created_at > now\(\) - make_interval/);
   // Both are trigger names, and they are the only skipInngest events that are (so nothing else can be missing a run on purpose).
   assert.ok(REPEAT_SUPPRESSED_EVENTS.includes("entry.captured") && REPEAT_SUPPRESSED_EVENTS.includes("survey.submitted"));
 });
 
 test("c: the miss read leaves out a repeat funnel post, and only that", () => {
   const miss = RUNS_SQL.slice(RUNS_SQL.indexOf("SELECT 'miss'"), RUNS_SQL.indexOf("SELECT 'meta'"));
-  assert.match(miss, /AND NOT \(e\.name IN \('survey\.submitted', 'entry\.captured'\)/);
+  assert.match(miss, /AND NOT \(e\.name IN \('survey\.submitted', 'survey\.completed', 'entry\.captured'\)/);
   assert.match(miss, /COALESCE\(e\.payload->>'email', ''\) <> ''/, "no address is never a repeat");
   assert.match(miss, /p\.org_id = e\.org_id/);
   assert.match(miss, /p\.name = e\.name/);
@@ -380,6 +380,8 @@ test("c: the miss read leaves out a repeat funnel post, and only that", () => {
   assert.match(miss, /p\.created_at > e\.created_at - make_interval\(mins => 360\)/, "inside six hours");
   assert.match(miss, /lower\(p\.payload->>'email'\) = lower\(e\.payload->>'email'\)/);
   assert.match(miss, /COALESCE\(p\.payload->>'funnel', ''\) = COALESCE\(e\.payload->>'funnel', ''\)/);
+  assert.match(miss, /OR COALESCE\(p\.payload->>'funnel', ''\) = ''/);
+  assert.match(miss, /OR COALESCE\(e\.payload->>'funnel', ''\) = ''/);
   // the run branch and the meta branch do not carry it
   assert.doesNotMatch(RUNS_SQL.slice(0, RUNS_SQL.indexOf("SELECT 'miss'")), /make_interval\(mins => 360\)/);
   assert.equal((RUNS_SQL.match(/make_interval\(mins => 360\)/g) || []).length, 1);
@@ -432,9 +434,10 @@ test("d: a sleeper is NOT failed at 30 minutes (that rule is for workflows that 
     runs: [runRow("s-02-incomplete-survey-nudge", { started: ago(45 * MIN), finished: null })]
   });
   assert.equal(r.status, "PASS");
-  assert.equal(SLEEPERS["s-02-incomplete-survey-nudge"], 1 * HOUR);
+  // Three touches over up to three days, each held for 9 a.m. Arizona after 5 p.m.
+  assert.equal(SLEEPERS["s-02-incomplete-survey-nudge"], 4 * 24 * HOUR);
   const lost = await one(ev("s-02-incomplete-survey-nudge", "entry.captured"), {
-    runs: [runRow("s-02-incomplete-survey-nudge", { started: ago(1 * HOUR + SLEEPER_SLACK_MS + MIN), finished: null })]
+    runs: [runRow("s-02-incomplete-survey-nudge", { started: ago(4 * 24 * HOUR + SLEEPER_SLACK_MS + MIN), finished: null })]
   });
   assert.equal(lost.status, "FAIL");
 });
@@ -886,14 +889,16 @@ test("today's bundle with a missed round.started event: exactly the round.starte
   assert.equal(rows.length, 65);
 });
 
-test("today's bundle: two reads, under a second against a fake database, 22 trigger names", async () => {
+test("today's bundle: two reads, under a second against a fake database, 23 trigger names", async () => {
   const { functions } = await import("../workflows/index.mjs");
   const db = fakeDb();
   const t0 = Date.now();
   await checkWorkflowRuns({ db, now: NOW, functions });
   assert.equal(db.calls.length, 2);
   assert.ok(Date.now() - t0 < 1000);
-  assert.equal(db.calls.find((c) => c.sql === EVENTS_SQL).params[0].length, 22, "22 distinct trigger names in the bundle today");
+  // 2026-10-31: survey.submitted left (the chase keys on survey.completed); survey.completed
+  // and setter.no_answer came in.
+  assert.equal(db.calls.find((c) => c.sql === EVENTS_SQL).params[0].length, 23, "23 distinct trigger names in the bundle today");
 });
 
 /* ═════ the audit agrees with every nothing-to-judge row ═════ */

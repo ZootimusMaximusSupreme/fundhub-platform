@@ -146,11 +146,14 @@ describe("setter and staff contact hours", () => {
     assert.strictEqual(res.state, "allowed", JSON.stringify(codes(res)));
   });
 
-  test("staff alert needs the exact active opted-in staff phone", async () => {
+  test("setter alert ignores the old optional switch but needs the exact active staff phone", async () => {
     const res = await gate(fakeDb({ staff: { ...enabledStaff, notify_booked_call_sms: false } }), ALERT,
       { now: MIDDAY });
-    assert.strictEqual(res.state, "blocked");
-    assert.ok(codes(res).includes("recipient_unknown"));
+    assert.strictEqual(res.state, "allowed");
+    const wrongPhone = await gate(fakeDb({ staff: enabledStaff }), { ...ALERT, toAddress: "+14805550000" },
+      { now: MIDDAY });
+    assert.strictEqual(wrongPhone.state, "blocked");
+    assert.ok(codes(wrongPhone).includes("recipient_unknown"));
   });
 
   test("staff alert at 10 p.m. is held until 6 a.m.", async () => {
@@ -158,6 +161,18 @@ describe("setter and staff contact hours", () => {
       { now: () => new Date("2026-08-02T05:00:00Z") });
     assert.strictEqual(res.state, "blocked");
     assert.ok(codes(res).includes("quiet_hours"));
+  });
+
+  test("verified internal lead alert sends at 10 p.m. while a wrong staff phone still blocks", async () => {
+    const leadAlert = { ...ALERT, templateKey: null,
+      providerRef: `staff-alert:lead:${CLIENT}:${STAFF_ID}` };
+    const overnight = { now: () => new Date("2026-08-02T05:00:00Z") };
+    const allowed = await gate(fakeDb({ staff: enabledStaff }), leadAlert, overnight);
+    assert.strictEqual(allowed.state, "allowed", JSON.stringify(codes(allowed)));
+    const wrongPhone = await gate(fakeDb({ staff: enabledStaff }),
+      { ...leadAlert, toAddress: "+14805550000" }, overnight);
+    assert.strictEqual(wrongPhone.state, "blocked");
+    assert.ok(codes(wrongPhone).includes("recipient_unknown"));
   });
 
   test("different closer leg reads closer staff consent, not client STOP", async () => {
@@ -794,5 +809,47 @@ describe("prove/sim identity", () => {
     assert.equal(isProveSimRecipient({
       email: "stanbridgejchris+sim-fund@gmail.com", phone: "+16616054248"
     }), true);
+  });
+});
+
+// Customer send hours (owner-set 2026-10-31, src/messaging/send-window.mjs).
+// 01:00Z = 6 p.m. Arizona, 09:00Z = 2 a.m. Arizona.
+describe("customer send hours in the gate", () => {
+  const at = (iso) => ({ now: () => new Date(iso) });
+
+  test("a follow-up text at 6 p.m. is held until 9 a.m., and the hold clears itself", async () => {
+    const res = await gate(fakeDb(), { ...base, templateKey: "SMS-NOBOOK-01" }, at("2026-08-02T01:00:00Z"));
+    assert.strictEqual(res.state, "blocked");
+    const hold = res.reasons.find((x) => x.code === "drip_hours");
+    assert.ok(hold, "the reason names the follow-up window");
+    assert.strictEqual(hold.retryable, true);
+    assert.strictEqual(res.task, null, "a held follow-up is not a job for a person");
+  });
+
+  test("a follow-up email at 6 p.m. is held too: the window covers email", async () => {
+    const res = await gate(fakeDb(), { ...base, channel: "email", templateKey: "EMAIL-S02-RESUME-2" }, at("2026-08-02T01:00:00Z"));
+    assert.deepStrictEqual(codes(res), ["drip_hours"]);
+  });
+
+  test("a follow-up inside the window is allowed", async () => {
+    const res = await gate(fakeDb(), { ...base, templateKey: "SMS-S02-RESUME-1" }, { now: MIDDAY });
+    assert.strictEqual(res.state, "allowed");
+  });
+
+  test("the booking confirmation text is allowed at 2 a.m.", async () => {
+    const res = await gate(fakeDb(), { ...base, templateKey: "SMS-S04-01-CONFIRM" }, at("2026-08-01T09:00:00Z"));
+    assert.strictEqual(res.state, "allowed");
+  });
+
+  test("a text with no follow-up key keeps the 8 p.m. to 8 a.m. quiet hours", async () => {
+    const res = await gate(fakeDb(), { ...base, templateKey: "SMS-S04-03-REMIND-2H" }, at("2026-08-01T09:00:00Z"));
+    assert.deepStrictEqual(codes(res), ["quiet_hours"]);
+  });
+
+  test("an opt-out still blocks an instant message at any hour", async () => {
+    const res = await gate(fakeDb({ optedOut: new Set([`${CLIENT}:sms`]) }),
+      { ...base, templateKey: "SMS-S00-WELCOME" }, at("2026-08-01T09:00:00Z"));
+    assert.strictEqual(res.state, "blocked");
+    assert.ok(codes(res).includes("opted_out"));
   });
 });

@@ -61,6 +61,50 @@ export const SMS_TEMPLATE_KEY = "SMS-F07-FUNDING-LOCKED";
 const INVOICE_TASK_SOURCE = "f-07-funding-locked";
 const FEE_FIX_TASK_SOURCE = "f-07-funding-locked-fee-not-ready";
 
+/**
+ * F-07 is an independent subscriber to round.funded. The money-chain handler's
+ * ownership checks do NOT gate this handler: the event bus invokes each
+ * subscriber separately. Never send a funding-locked message or create an
+ * invoice using a sale/round ID taken on faith from a separate event payload.
+ *
+ * The Card Stacking rail always provides both IDs. Older provider integrations
+ * may supply neither; retain that legacy behavior until their adapter carries
+ * verifiable IDs, and keep that gap explicitly NOT LIVE PROVED on the board.
+ */
+const FEE_REF_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+export async function validateFundedFeeSource(db, { orgId, clientId, saleId, fundingRoundId, rail } = {}) {
+  const hasRef = Boolean(saleId || fundingRoundId);
+  if (!hasRef && rail !== "card_stacking") {
+    return { ok: true, legacyUnverified: true };
+  }
+  if (!orgId || !clientId || !saleId || !fundingRoundId) {
+    return { ok: false, reason: "fee_source_missing" };
+  }
+  if (!FEE_REF_UUID.test(String(saleId)) || !FEE_REF_UUID.test(String(fundingRoundId))) {
+    return { ok: false, reason: "fee_source_invalid_ref" };
+  }
+  const { rows } = await db.query(
+    `SELECT fr.id
+       FROM funding_rounds fr
+       JOIN funding_round_sales frs
+         ON frs.funding_round_id = fr.id AND frs.org_id = fr.org_id
+       JOIN sales s
+         ON s.id = frs.sale_id AND s.org_id = fr.org_id
+        AND s.client_id = fr.client_id
+       JOIN products pr
+         ON pr.id = s.product_id AND pr.org_id = s.org_id
+        AND pr.category = 'funding'
+      WHERE fr.id = $1::uuid AND fr.org_id = $2::uuid AND fr.client_id = $3::uuid
+        AND s.id = $4::uuid AND s.status = 'active'
+      LIMIT 1`,
+    [fundingRoundId, orgId, clientId, saleId]
+  );
+  return rows[0]
+    ? { ok: true, legacyUnverified: false }
+    : { ok: false, reason: "fee_source_mismatch" };
+}
+
+
 async function createTaskOnce(db, { orgId, clientId, eventId, source, title }) {
   const dup = await db.query(`SELECT 1 FROM tasks WHERE client_id = $1 AND source_workflow = $2 AND body = $3`, [clientId, source, eventId]);
   if (dup.rows[0]) return { created: false };
@@ -131,6 +175,20 @@ export async function handle({ event, db, step }) {
 
   const orgId = event.orgId;
   const eventId = event.id;
+
+  // A valid customer ID alone is insufficient: a funded event with someone
+  // else's round or sale must not notify this buyer or raise a bill. Verify
+  // before ANY messaging, status, task, invoice or external-facing mutation.
+  const p = event.payload || {};
+  const feeSource = await step.run("verify-owned-fee-source", () =>
+    validateFundedFeeSource(db, {
+      orgId, clientId, saleId: p.saleId, fundingRoundId: p.fundingRoundId,
+      rail: p.rail || p.source
+    }));
+  if (!feeSource.ok) {
+    console.error(`[f-07] refused unowned or incomplete fee source: ${feeSource.reason} (event=${eventId || "?"})`);
+    return { done: false, feeReady: false, reason: feeSource.reason };
+  }
   const fee = await step.run("resolve-success-fee", () => resolveFee(db, event));
 
   if (!fee.ok) {

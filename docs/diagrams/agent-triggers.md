@@ -3,7 +3,7 @@
 # Agent trigger map
 
 Which canonical event wakes which automation. "Agent" here means a registered Inngest function —
-the 104 workflow ports in `src/workflows/`, read off their real `createFunction` triggers.
+the 105 workflow ports in `src/workflows/`, read off their real `createFunction` triggers.
 (The AG-xx prompt-driven agents in `wireframes/agent-editor.html` are a UI mock with no code behind
 them yet, and are deliberately not drawn here.)
 
@@ -96,13 +96,15 @@ flowchart LR
   e_round_started --> w_round_started_client_notify["round-started-client-notify"]
   e_round_submitted(["round.submitted"])
   e_round_submitted --> w_f_03_round_submitted["f-03-round-submitted"]
+  e_setter_no_answer(["setter.no_answer"])
+  e_setter_no_answer --> w_ai_set_03_no_answer_cadence["ai-set-03-no-answer-cadence"]
   e_slo_checkout_started(["slo.checkout_started"])
   e_slo_checkout_started --> w_slo_genuine_checkout_sms["slo-genuine-checkout-sms"]
   e_slo_contact_started(["slo.contact_started"])
   e_slo_contact_started --> w_slo_genuine_followup["slo-genuine-followup"]
   e_slo_contact_started --> w_slo_no_reply_197["slo-no-reply-197"]
-  e_survey_submitted(["survey.submitted"])
-  e_survey_submitted --> w_s_nobook_chase["s-nobook-chase"]
+  e_survey_completed(["survey.completed"])
+  e_survey_completed --> w_s_nobook_chase["s-nobook-chase"]
 ```
 
 ## Fan-out per event
@@ -128,14 +130,16 @@ flowchart LR
 | `round.funded` | 4 | `f-07-funding-locked`, `f-08-post-funding-monitoring`, `n-06-renewal-second-wave`, `sys-01-ltv-calculator` |
 | `round.started` | 7 | `bc-01-customer-responsiveness`, `bc-02-customer-friction`, `c-05-pre-funding-review`, `f-01-funding-intake`, `f-02-portal-id-missing`, `f-10-client-funding-inbox-provisioner`, `round-started-client-notify` |
 | `round.submitted` | 1 | `f-03-round-submitted` |
+| `setter.no_answer` | 1 | `ai-set-03-no-answer-cadence` |
 | `slo.checkout_started` | 1 | `slo-genuine-checkout-sms` |
 | `slo.contact_started` | 2 | `slo-genuine-followup`, `slo-no-reply-197` |
-| `survey.submitted` | 1 | `s-nobook-chase` |
+| `survey.completed` | 1 | `s-nobook-chase` |
 
 ## Canonical events that trigger nothing
 
 Declared in `canonical.mjs`, emitted or emittable, with no Inngest function listening:
 
+- `survey.submitted`
 - `booking.cancelled`
 - `decision.rendered`
 - `sale.closed`
@@ -203,6 +207,7 @@ commission and billing events are proposed-but-unbuilt. Either way, nothing dura
 | function | events |
 |---|---|
 | `af-02-referral-ownership-capture` | `entry.captured`, `diagnostic.paid`, `analysis.completed` |
+| `ai-set-03-no-answer-cadence` | `call.completed`, `setter.no_answer` |
 | `ai-set-04-3way-handoff` | `booking.created`, `booking.rescheduled` |
 | `ar-collections` | `invoice.sent`, `payment.received` |
 | `bs-01-precall-launcher` | `booking.created`, `booking.rescheduled` |

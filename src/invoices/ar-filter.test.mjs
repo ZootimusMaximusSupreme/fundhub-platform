@@ -69,10 +69,12 @@ test("an invented status is a 400 that names the real ones, not an empty table",
   for (const status of INVOICE_STATUSES) assert.ok(f.message.includes(status));
 });
 
-test("the endpoint binds the open filter as its own parameter and raises BAD_REQUEST", () => {
+test("the endpoint binds issued-only open debt and raises BAD_REQUEST", () => {
   assert.match(ENDPOINT, /invoiceStatusFilter/);
   assert.match(ENDPOINT, /err\.code = "BAD_REQUEST"/);
-  assert.match(ENDPOINT, /\$6::boolean IS NOT TRUE OR v\.open_balance > 0/);
+  // Both a positive net balance AND an issued invoice state are required.
+  // Unissued drafts remain available only via ?status=draft or history.
+  assert.match(ENDPOINT, /\$6::boolean IS NOT TRUE OR\s*\(\s*v\.open_balance > 0 AND v\.status IN \('sent', 'reminded', 'escalated', 'partially_paid'\)\s*\)/);
 });
 
 test("the endpoint reads the aging view, so days overdue is not re-derived in the browser", () => {
@@ -87,8 +89,10 @@ test("the endpoint reads the aging view, so days overdue is not re-derived in th
 test("the org still comes from the session, and demo rows are still excluded", () => {
   assert.match(ENDPOINT, /v\.org_id = \$5::uuid/);
   assert.match(ENDPOINT, /COALESCE\(i\.is_demo, false\) = false/);
-  // The client name join must be scoped to the same org as the invoice.
-  assert.match(ENDPOINT, /LEFT JOIN clients c ON c\.id = v\.client_id AND c\.org_id = v\.org_id/);
+  // This is an ownership gate, not an optional name lookup: an invoice
+  // referencing another organization's buyer must be excluded altogether.
+  assert.match(ENDPOINT, /JOIN clients c ON c\.id = v\.client_id AND c\.org_id = v\.org_id/);
+  assert.doesNotMatch(ENDPOINT, /LEFT JOIN clients c ON c\.id = v\.client_id/);
 });
 
 test("a client with no name comes back NULL — the endpoint never invents one", () => {

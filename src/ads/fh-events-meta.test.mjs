@@ -143,6 +143,123 @@ describe("the same eventID on fbq and on the database post", () => {
   });
 });
 
+describe("qualified vs unqualified credit (owner-set 2026-10-29)", () => {
+  const lastAnswer = (tier) => ({ survey: "apply", step_num: 9, question_id: "cf_svy_available_capital", last: true, credit_tier: tier });
+  function relayBooking(p) {
+    const frame = p.node("iframe", { id: "fh-book-frame" });
+    frame.contentWindow = {};
+    p.add(frame);
+    p.fireWin("message", { origin: "https://apply.fundhub.ai", source: frame.contentWindow,
+      data: { fh: "track", event: "booking_confirmed", props: { calendar: "funding-book-call" } } });
+    return p.events("booking_confirmed")[0];
+  }
+
+  for (const [tier, name] of [["qualified", "Qualified"], ["unqualified", "Unqualified"]]) {
+    test(`${tier}: the last answer adds ${name}Lead and the framed booking adds ${name}Schedule, each on the post's one id`, () => {
+      const p = page({ pathname: "/apply" }).run();
+      p.fbqCalls.length = 0;
+      p.win.fhTrack("survey_answer", lastAnswer(tier));
+      const last = p.events("survey_answer")[0];
+      assert.equal(last.props.credit_tier, tier);
+      assert.deepEqual(fbqs(p), [
+        ["track", "Lead", { content_name: "apply" }, last.meta_event_id],
+        ["trackCustom", "SurveyStep", { survey: "apply", step: 9 }, last.meta_event_id],
+        ["trackCustom", `${name}Lead`, { content_name: "apply" }, last.meta_event_id],
+      ]);
+      p.fbqCalls.length = 0;
+      const booking = relayBooking(p);
+      assert.equal(booking.props.credit_tier, tier, "the booking carries the tab's tier for the server copy");
+      assert.deepEqual(fbqs(p), [
+        ["track", "Schedule", { content_name: "funding-book-call" }, booking.meta_event_id],
+        ["trackCustom", `${name}Schedule`, { content_name: "funding-book-call" }, booking.meta_event_id],
+      ]);
+    });
+  }
+
+  test("a booking on a later page of the same tab still carries the tier", () => {
+    const apply = page({ pathname: "/apply" }).run();
+    apply.win.fhTrack("survey_answer", lastAnswer("qualified"));
+    const direct = page({ pathname: "/funding-book-call", storage: apply.store }).run();
+    direct.fbqCalls.length = 0;
+    direct.win.fhTrack("booking_confirmed", { calendar: "funding-book-call" });
+    assert.equal(direct.events("booking_confirmed")[0].props.credit_tier, "qualified");
+    assert.deepEqual(named(direct, "QualifiedSchedule").length, 1);
+  });
+
+  test("no /apply survey in this tab: Schedule only and no tier on the post", () => {
+    const p = page({ pathname: "/apply" }).run();
+    p.fbqCalls.length = 0;
+    const booking = relayBooking(p);
+    assert.equal("credit_tier" in booking.props, false);
+    assert.deepEqual(fbqs(p).map((c) => c[1]), ["Schedule"]);
+  });
+
+  test("a junk tier is never posted, kept or turned into a Meta event", () => {
+    const p = page({ pathname: "/apply" }).run();
+    p.fbqCalls.length = 0;
+    p.win.fhTrack("survey_answer", lastAnswer("maybe"));
+    assert.equal("credit_tier" in p.events("survey_answer")[0].props, false);
+    assert.deepEqual(fbqs(p).map((c) => c[1]), ["Lead", "SurveyStep"]);
+    const booking = relayBooking(p);
+    assert.equal("credit_tier" in booking.props, false);
+  });
+
+  // Text and email links (owner-set 2026-10-30): the server picks the calendar and the
+  // one-letter fh_tier from the lead's saved score answer (src/workflows/messaging.mjs).
+  test("a text link to the first calendar, marked q: the direct booking adds QualifiedSchedule", () => {
+    const p = page({ pathname: "/funding-book-call", search: "?fh_tier=q" }).run();
+    p.fbqCalls.length = 0;
+    p.win.fhTrack("booking_confirmed", { calendar: "funding-book-call" });
+    const booking = p.events("booking_confirmed")[0];
+    assert.equal(booking.page, "/funding-book-call");
+    assert.equal(booking.props.credit_tier, "qualified", "the server copy gets the tier too");
+    assert.ok(!booking.url.includes("fh_tier"), "the mark never rides in the posted url");
+    assert.deepEqual(fbqs(p), [
+      ["track", "Schedule", { content_name: "funding-book-call" }, booking.meta_event_id],
+      ["trackCustom", "QualifiedSchedule", { content_name: "funding-book-call" }, booking.meta_event_id],
+    ]);
+  });
+
+  test("a text link to the second calendar, marked u: that page sends, and the booking adds UnqualifiedSchedule", () => {
+    const p = page({ pathname: "/funding-book-call--02424", search: "?fh_tier=u" }).run();
+    assert.ok(p.events("page_view").length >= 1, "the second calendar is on the page list");
+    p.fbqCalls.length = 0;
+    p.win.fhTrack("booking_confirmed", { calendar: "funding-book-call" });
+    const booking = p.events("booking_confirmed")[0];
+    assert.equal(booking.page, "/funding-book-call--02424");
+    assert.equal(booking.props.credit_tier, "unqualified");
+    assert.deepEqual(fbqs(p).map((c) => c[1]), ["Schedule", "UnqualifiedSchedule"]);
+  });
+
+  test("a calendar link with no mark, a junk mark, or a mark on another page keeps no tier", () => {
+    for (const [pathname, search] of [["/funding-book-call", ""], ["/funding-book-call", "?fh_tier=x"],
+      ["/funding-book-call--02424", "?fh_tier=qualified"], ["/watch", "?fh_tier=q"]]) {
+      const p = page({ pathname, search }).run();
+      assert.equal(p.store.fh_credit_tier_v1, undefined, pathname + search);
+      if (pathname === "/watch") continue;
+      p.fbqCalls.length = 0;
+      p.win.fhTrack("booking_confirmed", { calendar: "funding-book-call" });
+      assert.equal("credit_tier" in p.events("booking_confirmed")[0].props, false, pathname + search);
+      assert.deepEqual(fbqs(p).map((c) => c[1]), ["Schedule"], pathname + search);
+    }
+  });
+
+  test("inside the /apply frame the calendar still says nothing, mark or not", () => {
+    const p = page({ pathname: "/funding-book-call--02424", search: "?fh_tier=u", framed: true }).run();
+    p.win.fhTrack && p.win.fhTrack("booking_confirmed", { calendar: "funding-book-call" });
+    assert.equal(p.events("booking_confirmed").length, 0);
+    assert.equal(p.store.fh_credit_tier_v1, undefined);
+  });
+
+  test("a tier on an earlier answer is not a tier Lead and is not kept", () => {
+    const p = page({ pathname: "/apply" }).run();
+    p.fbqCalls.length = 0;
+    p.win.fhTrack("survey_answer", { survey: "apply", step_num: 3, question_id: "cf_svy_planned_use", credit_tier: "qualified" });
+    assert.deepEqual(fbqs(p).map((c) => c[1]), ["SurveyStep"]);
+    assert.equal("credit_tier" in relayBooking(p).props, false);
+  });
+});
+
 describe("Lead", () => {
   test("continue on /roadmap step 1 is Lead, every press", () => {
     const p = page({ pathname: "/roadmap" }).run();

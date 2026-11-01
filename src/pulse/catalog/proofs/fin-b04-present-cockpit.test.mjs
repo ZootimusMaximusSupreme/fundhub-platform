@@ -7,8 +7,18 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { OWNER, json, startScreens } from "./s4-screen-harness.mjs";
+
+// The course is off until it is filmed (COURSE_LIVE in present.js). The education route is judged on the real page
+// with the one switch turned on in the script the browser is served.
+const PRESENT_JS = fs.readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../../public/app/present.js"), "utf8");
+const COURSE_OFF = "var COURSE_LIVE = false;";
+assert.ok(PRESENT_JS.includes(COURSE_OFF), "present.js lost its one course switch");
+const PRESENT_JS_COURSE = PRESENT_JS.replace(COURSE_OFF, "var COURSE_LIVE = true;");
 
 const CLOSER = { ok: true, staff: { ...OWNER.staff, role: "closer" } };
 const CLIENT = "aaaaaaaa-1111-4111-8111-111111111111";
@@ -31,10 +41,13 @@ const deckFor = (tier, name = "Dana Whitfield") => ({
   soft_pull: null
 });
 
-async function openDeck(open, tier, name) {
+async function openDeck(open, tier, name, { course = false } = {}) {
   const opened = await open(`/app/present.html?contact=${CLIENT}`, {
     session: CLOSER,
-    handlers: { "/api/read/closer-deck": async (route) => json(route, deckFor(tier, name)) }
+    handlers: { "/api/read/closer-deck": async (route) => json(route, deckFor(tier, name)) },
+    before: course
+      ? (page) => page.route("**/app/present.js", (route) => route.fulfill({ status: 200, contentType: "text/javascript", body: PRESENT_JS_COURSE }))
+      : null
   });
   await opened.page.waitForSelector('[data-act="phase:03"]');
   return opened;
@@ -51,20 +64,20 @@ async function toReveal(page) {
 }
 
 async function toWrap(page) {
-  await page.locator('[data-act="phase:07"]').click();
+  await page.locator('[data-act="phase:09"]').click();
   await page.locator('[data-act="next"]').first().click();
   await page.waitForFunction(() => /Wrap/.test(document.querySelector(".cockpit .ck-hd .t")?.textContent || ""));
 }
 
-const FUND = "Alright Dana, the results are in. We can get you pre-approved for approximately [Amount] across multiple credit lines with 0 percent introductory rates.";
-const REPAIR = "The results came back, and here's what the AI found. Some factors are limiting your approval potential. The good news: all fixable.";
+const FUND = "Here's how much you qualify for based on where you're at right now: [Amount]. That's what your file supports today. The bank still decides.";
+const REPAIR = "Here's what's holding your file back. Cleaned up, it shows the higher amount on screen. That difference is what's left on the table right now.";
 const EDU = "If their ask is 'teach me to do this myself', route Education below. The sort still gets named first.";
 
 test("the reveal slide says the funding line to a funding client and nothing from the other two routes", { timeout: 90_000 }, async (t) => {
   const { open } = await startScreens(t);
   const { page } = await openDeck(open, "FULL_FUNDING");
   await toReveal(page);
-  assert.deepEqual(await saysNow(page), [FUND, "Pause. Let the number land. Then: how does that sound?"]);
+  assert.deepEqual(await saysNow(page), [FUND, "Pause. Let it land. Then: what jumps out at you?"]);
   await page.close();
 });
 
@@ -76,12 +89,21 @@ test("the reveal slide says the repair line to a repair client and nothing from 
   await page.close();
 });
 
-test("the education path button swaps the cockpit to the education line only", { timeout: 90_000 }, async (t) => {
+test("with the course off there is no education path button on the reveal slide", { timeout: 90_000 }, async (t) => {
   const { open } = await startScreens(t);
   const { page } = await openDeck(open, "FULL_FUNDING");
   await toReveal(page);
+  assert.equal(await page.locator('[data-act="edu"]').count(), 0);
+  assert.equal(await page.locator('[data-act="tier:FULL_FUNDING"]').count(), 1, "the three route buttons stay");
+  await page.close();
+});
+
+test("the education path button (course switch on) swaps the cockpit to the education line only", { timeout: 90_000 }, async (t) => {
+  const { open } = await startScreens(t);
+  const { page } = await openDeck(open, "FULL_FUNDING", undefined, { course: true });
+  await toReveal(page);
   await page.locator('[data-act="edu"]').click();
-  await page.waitForFunction(() => !/pre-approved for approximately/.test(document.querySelector(".cockpit")?.textContent || ""));
+  await page.waitForFunction(() => !/That's what your file supports today/.test(document.querySelector(".cockpit")?.textContent || ""));
   assert.deepEqual(await saysNow(page), [EDU]);
   await page.close();
 });
@@ -106,13 +128,25 @@ test("the closing wrap follows the offer that was chosen, not the funding wrap f
   assert.match((await saysNow(funding.page)).at(-1), /Congratulations, Dana\. You made a great decision\./);
   await funding.page.close();
 
+  // a file that is not ready leads with the Capital Blueprint (row 2): its own wrap, no funding promise
+  const blueprint = await openDeck(open, "REPAIR_ONLY");
+  await toWrap(blueprint.page);
+  assert.match((await saysNow(blueprint.page))[0], /^Your deliverables generate from the pull we just ran and land in your email today\.$/);
+  assert.equal((await saysNow(blueprint.page)).some((l) => /funding advisor|applications are submitted|how-to course/.test(l)), false);
+  await blueprint.page.close();
+
+  // stepped down to credit optimization on S-19: the repair wrap
   const repair = await openDeck(open, "REPAIR_ONLY");
+  await repair.page.locator('[data-act="phase:07"]').click();
+  await repair.page.locator('[data-act="next"]').first().click();
+  await repair.page.locator('[data-act="next"]').first().click();
+  await repair.page.locator('[data-act="rung:0"]').click();
   await toWrap(repair.page);
   assert.match((await saysNow(repair.page))[0], /^Round one goes out today, built from the pull we just ran\./);
   assert.equal((await saysNow(repair.page)).some((l) => /funding advisor|applications are submitted/.test(l)), false);
   await repair.page.close();
 
-  const education = await openDeck(open, "FULL_FUNDING");
+  const education = await openDeck(open, "FULL_FUNDING", undefined, { course: true });
   await toReveal(education.page);
   await education.page.locator('[data-act="edu"]').click();
   await toWrap(education.page);
@@ -175,9 +209,11 @@ const WRAPS = {
     ],
     watch: "One round, then their decision. Do not describe it as the full program. Never promise a deletion, a score, or a result."
   },
+  // with the course off the wrap does not promise the how-to course (row 4); wrapLines() adds it back for the
+  // education rungs, which are judged with the course switch on
   UWIQ_DELIVERABLES: {
     lines: [
-      "Your deliverables generate from the pull we just ran and land in your email today, with the how-to course.",
+      "Your deliverables generate from the pull we just ran and land in your email today.",
       "You run it at your own pace. Nobody is working the file for you on this one — that's the whole point of it.",
       "Whenever you want us to run the process for you instead, we're here. Any questions before we wrap?"
     ],
@@ -196,10 +232,10 @@ const WRAPS = {
 // What the investment slide (S-19) says to the closer on each of the three routes.
 const INVESTMENT = {
   FUND: [
-    "Based on your pre-approval, I genuinely believe we get you to [Amount] in two weeks. To activate the system today, it's a $3,000 deposit.",
+    "To get you in front of the right banks in the right order, it's a $3,000 deposit today.",
     "That $3,000 is not an additional fee. It goes directly toward your 10 percent success fee on the back end."
   ],
-  REPAIR: ["Top down. Onboard now, full done-for-you, $1,000, letters fire today. If that's a no: trial round, we run your first round so you see it work, $200. Still a no: $1,000, the full deliverables plus course, you execute it."],
+  REPAIR: ["Most expensive first. Lead with the Capital Blueprint button: the whole 12-month plan from their file, price off the screen. If that's a no: onboard now, all six rounds done for you, $1,000. Still a no: round one for $200, and the $200 counts toward the $1,000."],
   EDU: ["Lead with the $5,000 full program. Only if that's a no: the $1,000 deliverables package plus the how-to course."]
 };
 const INVESTMENT_WATCH = "Rung buttons below on repair. Do NOT lead with the cheaper one.";
@@ -208,17 +244,20 @@ const INVESTMENT_WATCH = "Rung buttons below on repair. Do NOT lead with the che
  * Every way a closer can reach a sale, and what the cockpit must then say.
  * `setup` runs from the first slide and ends on S-19 ("The investment").
  * `fund` / `repair` / `edu` is which line bucket that slide must show.
+ * `course` runs the route with the course switch on (the education rungs only).
  */
 const ROUTES = [
   { name: "funding, full funding tier", offer: "FUNDING_DFY", tier: "FULL_FUNDING", bucket: "FUND",
     setup: async () => {} },
   { name: "funding plus repair tier", offer: "FUNDING_DFY", tier: "FULL_FUNDING", bucket: "FUND",
     setup: async (page) => { await walkTo(page, /The reveal/); await page.locator('[data-act="tier:FUNDING_PLUS_REPAIR"]').click(); } },
-  { name: "repair only, top rung", offer: "REPAIR_DFY", tier: "REPAIR_ONLY", bucket: "REPAIR",
+  { name: "repair only, lead rung (the Capital Blueprint)", offer: "UWIQ_DELIVERABLES", tier: "REPAIR_ONLY", bucket: "REPAIR",
+    setup: async () => {} },
+  { name: "repair only, done-for-you rung", offer: "REPAIR_DFY", tier: "REPAIR_ONLY", bucket: "REPAIR", rung: 0,
     setup: async () => {} },
   { name: "repair only, trial rung", offer: "REPAIR_TRIAL", tier: "REPAIR_ONLY", bucket: "REPAIR", rung: 1,
     setup: async () => {} },
-  { name: "repair only, DIY rung", offer: "UWIQ_DELIVERABLES", tier: "REPAIR_ONLY", bucket: "REPAIR", rung: 2,
+  { name: "repair only, Capital Blueprint rung pressed", offer: "UWIQ_DELIVERABLES", tier: "REPAIR_ONLY", bucket: "REPAIR", rung: 2,
     setup: async () => {} },
   { name: "funding client sent down the descent to repair", offer: "REPAIR_DFY", tier: "FULL_FUNDING", bucket: "REPAIR",
     setup: async (page) => { await walkTo(page, /Temperature check/); await page.locator('[data-act="desc:dfy"]').click(); } },
@@ -226,22 +265,30 @@ const ROUTES = [
     setup: async (page) => { await walkTo(page, /Temperature check/); await page.locator('[data-act="desc:trial"]').click(); } },
   { name: "funding client sent down the descent to DIY", offer: "UWIQ_DELIVERABLES", tier: "FULL_FUNDING", bucket: "REPAIR",
     setup: async (page) => { await walkTo(page, /Temperature check/); await page.locator('[data-act="desc:diy"]').click(); } },
-  { name: "education path, Funding Mastery", offer: "FUNDING_MASTERY", tier: "FULL_FUNDING", bucket: "EDU",
+  { name: "education path, Funding Mastery", offer: "FUNDING_MASTERY", tier: "FULL_FUNDING", bucket: "EDU", course: true,
     setup: async (page) => { await walkTo(page, /The reveal/); await page.locator('[data-act="edu"]').click(); } },
-  { name: "education path, deliverables rung", offer: "UWIQ_DELIVERABLES", tier: "FULL_FUNDING", bucket: "EDU", rung: 1,
+  { name: "education path, deliverables rung", offer: "UWIQ_DELIVERABLES", tier: "FULL_FUNDING", bucket: "EDU", rung: 1, course: true,
     setup: async (page) => { await walkTo(page, /The reveal/); await page.locator('[data-act="edu"]').click(); } },
-  { name: "descent to the education top rung", offer: "FUNDING_MASTERY", tier: "FULL_FUNDING", bucket: "EDU",
+  { name: "descent to the education top rung", offer: "FUNDING_MASTERY", tier: "FULL_FUNDING", bucket: "EDU", course: true,
     setup: async (page) => { await walkTo(page, /Temperature check/); await page.locator('[data-act="desc:eduTop"]').click(); } },
-  { name: "descent to the education low rung", offer: "UWIQ_DELIVERABLES", tier: "FULL_FUNDING", bucket: "EDU",
+  { name: "descent to the education low rung", offer: "UWIQ_DELIVERABLES", tier: "FULL_FUNDING", bucket: "EDU", course: true,
     setup: async (page) => { await walkTo(page, /Temperature check/); await page.locator('[data-act="desc:eduLow"]').click(); } }
 ];
+
+/** The wrap for an offer. The Blueprint's first line names the how-to course only while the course is live. */
+function wrapLines(offer, course) {
+  const lines = [...WRAPS[offer].lines];
+  if (offer === "UWIQ_DELIVERABLES" && course) lines[0] = lines[0].replace(/\.$/, ", with the how-to course.");
+  return lines;
+}
 
 for (const route of ROUTES) {
   test(`${route.name}: the investment slide, the close and the wrap are the ${route.offer} ones`, { timeout: 120_000 }, async (t) => {
     const { open } = await startScreens(t);
-    const { page } = await openDeck(open, route.tier);
+    const { page } = await openDeck(open, route.tier, undefined, { course: !!route.course });
     await route.setup(page);
-    await walkTo(page, /The investment/);
+    // exact: B-04, the Blueprint's own price slide ("The investment."), sits on a repair file's walk first
+    await walkTo(page, /^The investment$/);
 
     // the lines for this route's bucket, and none from the other two
     const says = await saysNow(page);
@@ -259,7 +306,7 @@ for (const route of ROUTES) {
     await page.locator('[data-act="next"]').first().click();
     assert.equal(await nextTitle(page), "Wrap");
     const wrap = WRAPS[route.offer];
-    assert.deepEqual(await saysNow(page), wrap.lines, `${route.name}: the wrap words`);
+    assert.deepEqual(await saysNow(page), wrapLines(route.offer, !!route.course), `${route.name}: the wrap words`);
     assert.equal(await watchNow(page), wrap.watch, `${route.name}: the watch-for words`);
     await page.close();
   });

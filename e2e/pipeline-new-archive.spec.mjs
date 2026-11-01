@@ -93,66 +93,39 @@ test.describe("pipeline: New Client", () => {
     expect(creates).toEqual([]);
   });
 
-  for (const initialFocusReady of [false, true]) {
-    test(initialFocusReady ? "waiting for the real initial focus preserves the exact save, close and board reload" : "a pending initial focus can steal Email fill; the unchanged save guard refuses it", async ({ page }) => {
-      // Hold the app's actual callback, not a replacement focus handler. This
-      // exposes the gap between fill() focusing Email and inserting its text.
-      await page.addInitScript((ready) => {
-        const nativeTimeout = window.setTimeout.bind(window);
-        window.__newSaveClicks = 0;
-        window.__newFocusRuns = 0;
-        window.setTimeout = function (callback, delay, ...args) {
-          if (delay === 0 && typeof callback === "function" && String(callback).includes("nameEl.focus()")) {
-            window.__heldNewFocus = () => callback(...args);
-            return 0;
-          }
-          return nativeTimeout(callback, delay, ...args);
-        };
-        window.__runNewFocus = () => {
-          const callback = window.__heldNewFocus;
-          window.__heldNewFocus = null;
-          if (callback) { window.__newFocusRuns++; callback(); }
-        };
-        document.addEventListener("focusin", event => {
-          if (!ready && event.target.id === "fhNewEmail" && window.__heldNewFocus) queueMicrotask(() => window.__runNewFocus());
-        }, true);
-        document.addEventListener("click", event => { if (event.target.id === "fhNewGo") window.__newSaveClicks++; }, true);
-      }, initialFocusReady);
-      const { creates, boardReads } = await board(page);
-      const before = boardReads();
-      await page.locator("#fhNewClient").click();
-      expect(await page.evaluate(() => typeof window.__heldNewFocus)).toBe("function");
-      await expect(page.locator("#fhNewName")).not.toBeFocused();
-      if (initialFocusReady) {
-        const focused = expect(page.locator("#fhNewName")).toBeFocused();
-        await page.evaluate(() => window.__runNewFocus());
-        await focused;
-      }
-      await page.locator("#fhNewName").fill("  Riley Stone ");
-      await page.locator("#fhNewEmail").fill("riley@example.com");
-      await page.locator("#fhNewPhone").fill("6025550101");
-      await page.locator("#fhNewProduct").selectOption("card-stacking-dfy");
-      expect(await page.evaluate(() => typeof window.FHData.write)).toBe("function");
-      await expect(page.locator("#fhNewName")).toHaveValue(initialFocusReady ? "  Riley Stone " : "  Riley Stone riley@example.com");
-      await expect(page.locator("#fhNewEmail")).toHaveValue(initialFocusReady ? "riley@example.com" : "");
-      await expect(page.locator("#fhNewPhone")).toHaveValue("6025550101");
-      await expect(page.locator("#fhNewProduct")).toHaveValue("card-stacking-dfy");
-      await page.locator("#fhNewGo").click();
-      if (initialFocusReady) {
-        await expect.poll(() => creates.length).toBe(1);
-        expect(creates[0]).toEqual({ name: "Riley Stone", email: "riley@example.com", phone: "6025550101", product: "card-stacking-dfy" });
-        await expect(page.locator("#fhNewModal")).not.toHaveClass(/open/);
-        await expect.poll(() => boardReads()).toBeGreaterThan(before);
-      } else {
-        await expect(page.locator("#fhNewErr")).toHaveText("Fill in name, email, phone, and product.");
-        await expect(page.locator("#fhNewModal")).toHaveClass(/open/);
-        await expect(page.locator("#fhNewGo")).toBeEnabled();
-        await expect(page.locator("#fhNewGo")).toHaveText("Save");
-        expect(creates).toEqual([]);
-      }
-      expect(await page.evaluate(() => [window.__newSaveClicks, window.__newFocusRuns])).toEqual([1, 1]);
+  test("New Client focus is immediate, never steals Email typing, and save stays exact", async ({ page }) => {
+    await page.addInitScript(() => {
+      const originalSetTimeout = window.setTimeout.bind(window);
+      window.__lateNewClientFocuses = 0;
+      window.setTimeout = function(callback, delay, ...args) {
+        if (delay === 0 && typeof callback === "function" && String(callback).includes("nameEl.focus()")) {
+          window.__lateNewClientFocuses++;
+        }
+        return originalSetTimeout(callback, delay, ...args);
+      };
     });
-  }
+    const { creates, boardReads } = await board(page);
+    const before = boardReads();
+    await page.locator("#fhNewClient").click();
+    await expect(page.locator("#fhNewModal")).toHaveClass(/open/);
+    await expect(page.locator("#fhNewName")).toBeFocused();
+    await page.locator("#fhNewName").fill("  Riley Stone ");
+    await page.locator("#fhNewEmail").fill("riley@example.com");
+    // A later timer must never move focus back to Name or corrupt email text.
+    await page.waitForTimeout(25);
+    await expect(page.locator("#fhNewEmail")).toBeFocused();
+    await expect(page.locator("#fhNewName")).toHaveValue("  Riley Stone ");
+    await expect(page.locator("#fhNewEmail")).toHaveValue("riley@example.com");
+    await page.locator("#fhNewPhone").fill("6025550101");
+    await page.locator("#fhNewProduct").selectOption("card-stacking-dfy");
+    expect(await page.evaluate(() => window.__lateNewClientFocuses)).toBe(0);
+    await page.locator("#fhNewGo").click();
+    await expect.poll(() => creates.length).toBe(1);
+    expect(creates[0]).toEqual({ name: "Riley Stone", email: "riley@example.com", phone: "6025550101", product: "card-stacking-dfy" });
+    await expect(page.locator("#fhNewModal")).not.toHaveClass(/open/);
+    await expect.poll(() => boardReads()).toBeGreaterThan(before);
+  });
+
 });
 
 test.describe("pipeline: Archive", () => {

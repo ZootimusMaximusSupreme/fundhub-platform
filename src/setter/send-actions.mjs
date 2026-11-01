@@ -19,7 +19,15 @@ function clean(value, fallback = "") {
 function surveyFact(client) {
   const cf = client?.custom_fields || {};
   const survey = client?.survey || {};
-  for (const key of ["cf_svy_money_change_now", "cf_svy_planned_use", "cf_svy_funding_target_amount"]) {
+  const edits = cf.setter_survey_edits || {};
+  const keys = ["cf_svy_money_change_now", "cf_svy_planned_use", "cf_svy_funding_target_amount"];
+  for (const key of keys) {
+    if (!Object.hasOwn(edits, key)) continue;
+    const value = clean(edits[key]);
+    if (value && !/^\d{5,}$/.test(value)) return value;
+  }
+  for (const key of keys) {
+    if (Object.hasOwn(edits, key)) continue;
     const value = clean(survey[key] || cf[`${key}_label`] || cf[key]);
     if (value && !/^\d{5,}$/.test(value)) return value;
   }
