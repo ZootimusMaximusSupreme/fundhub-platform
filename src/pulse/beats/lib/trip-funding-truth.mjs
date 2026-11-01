@@ -48,11 +48,23 @@ const DIAG_LATERAL = `
              AND COALESCE(e.is_demo, false) = false
         ) q
     ) d ON true`;
-const DEP_LATERAL = `
+// A signed sale is NOT a collected deposit. Only a real same-org, same-sale
+// deposit with positive outstanding front-end cash can start the funding-card
+// obligation. The timestamp is the payment time, not the agreement time.
+export const FUNDING_DEPOSIT_LATERAL_SQL = `
     LEFT JOIN LATERAL (
-      SELECT min(s.sold_at) AS at
+      SELECT min(p.first_deposit_at) AS at
         FROM sales s
-        JOIN products pr ON pr.id = s.product_id
+        JOIN products pr ON pr.id = s.product_id AND pr.org_id = s.org_id
+        JOIN LATERAL (
+          SELECT min(sp.paid_at) FILTER (WHERE sp.kind = 'deposit' AND sp.amount > 0) AS first_deposit_at,
+                 COALESCE(sum(CASE
+                   WHEN sp.kind IN ('deposit', 'installment') THEN sp.amount
+                   WHEN sp.kind = 'refund' THEN -sp.amount
+                   ELSE 0 END), 0) AS net_front_end_cash
+            FROM sale_payments sp
+           WHERE sp.org_id = s.org_id AND sp.sale_id = s.id
+        ) p ON p.first_deposit_at IS NOT NULL AND p.net_front_end_cash > 0
        WHERE s.org_id = $1::uuid AND s.client_id = t.id AND s.status = 'active'
          AND COALESCE(s.is_demo, false) = false AND pr.category = 'funding'
     ) dep ON true`;
@@ -76,7 +88,7 @@ export const TRIP_SQL = `
        WHERE c.org_id = $1::uuid AND ${realClientSql("c", "$3")}
     ) t
 ${DIAG_LATERAL}
-${DEP_LATERAL}
+${FUNDING_DEPOSIT_LATERAL_SQL}
     LEFT JOIN LATERAL (
       SELECT cd.entered_at, ps.key AS stage FROM cards cd
         JOIN pipelines p ON p.id = cd.pipeline_id AND p.org_id = cd.org_id AND p.key = 'sales'

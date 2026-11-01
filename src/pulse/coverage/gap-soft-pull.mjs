@@ -136,12 +136,28 @@ export async function checkApproveSignedRead(ctx = {}) {
         READ_FIX
       );
     }
+    // The live Pulse run has no buyer session. A matching identity supplied by
+    // this background process would only prove the handler in isolation, not
+    // that the buyer can open the page. Keep the live verdict unverified.
+    if (typeof ctx.approveHandler !== "function") {
+      return check(id, "skip",
+        "signed consent page requires a real client login; background GET cannot verify buyer access — NEEDS LIVE RECEIPT");
+    }
     const res = mockRes();
     await handler(req, res, {
       db, env, secret,
       resolvePrincipal: async () => ({ kind: "client", orgId, clientId, accountId: "pulse-read-only" })
     });
     const status = Number(res.statusCode) || 0;
+    // Portal account claim now gates the signed credit-consent page. A Pulse
+    // background GET deliberately has NO buyer session. A legitimate
+    // account_required refusal is NOT a broken link and cannot become PASS
+    // through a fabricated principal: user-visible consent needs a separate
+    // authorized, real account receipt. Other 401 errors remain failures.
+    if (status === 401 && res.body?.error === "account_required") {
+      return check(id, "skip",
+        "signed consent page requires a real client login; background GET cannot verify buyer access — NEEDS LIVE RECEIPT");
+    }
     if (signedReadShape(status, res.body)) {
       return check(id, "PASS", "signed-out link refused; in-process client read answered 200 with the words, the price and the consent state");
     }

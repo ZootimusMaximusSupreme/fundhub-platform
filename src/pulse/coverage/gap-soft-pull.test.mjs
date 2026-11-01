@@ -265,6 +265,15 @@ test("the fetch alias still works, and each GET carries a timeout", async () => 
 });
 
 // ---- the signed read. The REAL handler runs; only the database is made up. ----
+// A newer client-account gate requires the real buyer to sign in. Pulse must
+// never invent that session in a live check to claim a customer PASS.
+const ACCOUNT_GATED_APPROVE = fs.readFileSync(
+  path.join(HERE, "../../../api/soft-pull-approve.mjs"), "utf8"
+).includes('error: "account_required"');
+
+// ONLY for an isolated synthetic test: the handler under test gets the exact
+// buyer account identity. This is NEVER passed into the production Pulse run.
+const syntheticBuyerHandler = (req, res, deps) => approveHandler(req, res, deps);
 
 function signedDb({ client = [{ id: CLIENT, first_name: "Pat", last_name: "Doe", email: "pat@example.test" }], pick = [{ id: CLIENT }], fail = null } = {}) {
   const calls = [];
@@ -284,26 +293,54 @@ function signedDb({ client = [{ id: CLIENT, first_name: "Pat", last_name: "Doe",
   };
 }
 
-test("the signed read opens the real handler with a link it signed, and passes", async () => {
+test("the unauthenticated signed read never fakes buyer login as a PASS", async () => {
   const db = signedDb();
   const row = await checkApproveSignedRead({ db, orgId: ORG, env: ENV });
-  assert.equal(row.status, "PASS");
-  assert.match(row.detail, /the words, the price and the consent state/);
-  assert.match(row.detail, /signed-out link refused; in-process client read/);
+  assert.equal(row.status, ACCOUNT_GATED_APPROVE ? "skip" : "PASS");
+  if (ACCOUNT_GATED_APPROVE) {
+    assert.match(row.detail, /real client login/);
+    assert.match(row.detail, /NEEDS LIVE RECEIPT/);
+  } else {
+    assert.match(row.detail, /the words, the price and the consent state/);
+  }
   assert.equal(row.suggestedFix, null);
-  // Both reads use the real handler; the account gate prevents consent/payment
-  // reads until the matching identity is supplied. No write or transaction.
-  assert.deepEqual(db.calls.map((c) => c.sql.includes("gap:soft-pull-client") ? "pick"
-    : /FROM clients/.test(c.sql) ? "client"
-    : /FROM client_consents/.test(c.sql) ? "consent"
-    : /FROM events/.test(c.sql) ? "paid-event" : "paid-link"),
-  ["pick", "client", "client", "consent", "paid-event", "paid-link"]);
+  // The real handler reads a client before its account gate; it must not
+  // forge a session or touch consent data after rejecting the caller.
+  assert.deepEqual(db.calls.map((c) => c.sql.includes("gap:soft-pull-client") ? "pick" : /clients/.test(c.sql) ? "client" : "consent"),
+    ACCOUNT_GATED_APPROVE ? ["pick", "client"] : ["pick", "client", "consent"]);
   assert.deepEqual(db.calls[0].params, [ORG]);
   for (const call of db.calls) {
     assert.match(call.sql.replace(/\/\*[\s\S]*?\*\//g, "").trim(), /^SELECT\b/);
     assert.doesNotMatch(call.sql, /\b(INSERT|UPDATE|DELETE|BEGIN|COMMIT|ROLLBACK)\b/i);
   }
   assert.deepEqual(db.calls[1].params, [CLIENT, ORG]);
+});
+
+test("a real client-account gate needs separate proof; synthetic signed-in buyer still gets the read", async () => {
+  const db = signedDb();
+  const result = await checkApproveSignedRead({
+    db, orgId: ORG, env: ENV, approveHandler: syntheticBuyerHandler
+  });
+  assert.equal(result.status, "PASS", "synthetic authenticated handler must render consent data");
+  assert.match(result.detail, /words, the price/);
+  assert.ok(db.calls.some((c) => c.sql.includes("FROM client_consents")));
+  // This is a test fixture, NOT a live recipient/session receipt.
+});
+
+test("account_required is NOT_CHECKED, not red or a fabricated PASS; other 401 stays red", async () => {
+  const gate = await checkApproveSignedRead({
+    db: signedDb(), orgId: ORG, env: ENV,
+    approveHandler: async (_req, res) =>
+      res.status(401).json({ ok: false, error: "account_required" })
+  });
+  assert.equal(gate.status, "skip");
+  assert.match(gate.detail, /NEEDS LIVE RECEIPT/);
+  const invalid = await checkApproveSignedRead({
+    db: signedDb(), orgId: ORG, env: ENV,
+    approveHandler: async (_req, res) =>
+      res.status(401).json({ ok: false, error: "invalid_or_expired" })
+  });
+  assert.equal(invalid.status, "FAIL");
 });
 
 test("the link it signs is a real one the handler's own check accepts", async () => {
@@ -348,7 +385,7 @@ test("the link it signs is a real one the handler's own check accepts", async ()
 });
 
 test("a database that fails inside the handler is a FAIL, not a quiet pass", async () => {
-  const row = await checkApproveSignedRead({ db: signedDb({ fail: /FROM client_consents/ }), orgId: ORG, env: ENV });
+  const row = await checkApproveSignedRead({ db: signedDb({ fail: /FROM client_consents/ }), orgId: ORG, env: ENV, approveHandler: syntheticBuyerHandler });
   assert.equal(row.status, "FAIL");
   assert.match(row.detail, /signed approve read answered 5\d\d/);
   assert.match(row.detail, /not the approval read shape/);
@@ -357,7 +394,7 @@ test("a database that fails inside the handler is a FAIL, not a quiet pass", asy
 });
 
 test("a client the handler cannot find is a FAIL", async () => {
-  const row = await checkApproveSignedRead({ db: signedDb({ client: [] }), orgId: ORG, env: ENV });
+  const row = await checkApproveSignedRead({ db: signedDb({ client: [] }), orgId: ORG, env: ENV, approveHandler: syntheticBuyerHandler });
   assert.equal(row.status, "FAIL");
   assert.match(row.detail, /answered 404 \(not_found\)/);
 });
@@ -448,7 +485,8 @@ test("all six rows go out together in the lane", async () => {
   const both = laneDb();
   const rows = await gapChecks({ fetchImpl, db: both, scope: (fn) => fn(both), orgId: ORG, env: ENV, now: NOW });
   assertShape(rows);
-  assert.deepEqual(rows.map((r) => r.status), ["PASS", "PASS", "PASS", "PASS", "PASS", "PASS"]);
+  assert.deepEqual(rows.map((r) => r.status),
+    ["PASS", "PASS", ACCOUNT_GATED_APPROVE ? "skip" : "PASS", "PASS", "PASS", "PASS"]);
 });
 
 test("the unsigned and plain 200 shapes need every part", () => {
@@ -1283,7 +1321,7 @@ test("the lane returns the door rows and then the ledger rows, red ones carry a 
   });
   const rows = await gapChecks({ fetchImpl, db: both, scope: (fn) => fn(both), orgId: ORG, env: ENV, now: NOW });
   assertShape(rows);
-  assert.deepEqual(rows.map((r) => r.status), ["PASS", "PASS", "PASS", "FAIL", "FAIL", "FAIL"]);
+  assert.deepEqual(rows.map((r) => r.status), ["PASS", "PASS", "skip", "FAIL", "FAIL", "FAIL"]);
   assert.deepEqual(rows.map((r) => r.id), [...ALL_CHECK_IDS]);
 });
 

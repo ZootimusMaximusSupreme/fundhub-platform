@@ -44,3 +44,37 @@ test("repair-sla: isBreached gives the same answer on a grid of stages, ages and
   }).breached)));
   assert.deepEqual([...both].sort(), [false, true]);
 });
+
+
+test("repair-sla: intake's three business-day deadline matches repair's task calendar", async () => {
+  const { addBusinessDays } = await import("../../../repair/croa.mjs");
+  const cases = [
+    // Friday intake must not be called overdue on Monday; Wednesday is due.
+    ["2026-10-30T16:00:00.000Z", "2026-11-04T16:00:00.000Z"],
+    // Thursday counts Friday, Monday and Tuesday.
+    ["2026-10-29T12:15:00.000Z", "2026-11-03T12:15:00.000Z"],
+    // A weekend intake starts counting on Monday.
+    ["2026-10-31T09:00:00.000Z", "2026-11-04T09:00:00.000Z"]
+  ];
+  for (const [enteredAt, expectedDue] of cases) {
+    assert.equal(addBusinessDays(enteredAt.slice(0, 10), 3), expectedDue.slice(0, 10));
+    const before = new Date(Date.parse(expectedDue) - 1).toISOString();
+    const after = new Date(Date.parse(expectedDue) + 1).toISOString();
+    for (const asOf of [enteredAt, before, expectedDue]) {
+      assert.equal(copy.isBreached({ stageKey: "intake", enteredAt, asOf }).breached, false, `${enteredAt} asOf ${asOf}`);
+    }
+    assert.deepEqual(
+      { breached: copy.isBreached({ stageKey: "intake", enteredAt, asOf: after }).breached,
+        task: copy.isBreached({ stageKey: "intake", enteredAt, asOf: after }).task },
+      { breached: true, task: "chase_contract" }
+    );
+  }
+  // No business-day flag here: 14 calendar days must remain 14 calendar days.
+  const enteredAt = cases[0][0];
+  const calendarDue = "2026-11-13T16:00:00.000Z";
+  assert.equal(copy.isBreached({ stageKey: "awaiting_documents", enteredAt, asOf: calendarDue }).breached, false);
+  assert.equal(copy.isBreached({ stageKey: "awaiting_documents", enteredAt, asOf: "2026-11-13T16:00:00.001Z" }).breached, true);
+  // Hourly clocks remain real elapsed hours, including the weekend.
+  assert.equal(copy.isBreached({ stageKey: "analysis", enteredAt, asOf: "2026-10-30T17:00:00.000Z" }).breached, false);
+  assert.equal(copy.isBreached({ stageKey: "analysis", enteredAt, asOf: "2026-10-30T17:00:00.001Z" }).breached, true);
+});
