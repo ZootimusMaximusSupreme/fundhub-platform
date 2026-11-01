@@ -26,6 +26,7 @@
 
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -130,6 +131,51 @@ export function excludeExpectedBase(sources, expectedBase) {
   if (!expectedBase) return sources;
   const name = expectedBase.replace(/^origin\//, "");
   return sources.filter((source) => source.refName !== name);
+}
+
+// A prior PR may hand one file to this branch. The handoff is exact, and Git
+// must be able to combine both versions of that file without a conflict.
+export function fileHandoffs(body, branch) {
+  return new Set((body || "").split("\n").flatMap((line) => {
+    const match = /^File handoff: ([A-Za-z0-9][A-Za-z0-9/_.-]*) -> ([A-Za-z0-9][A-Za-z0-9/_-]*)\s*$/.exec(line.trim());
+    return match && match[2] === branch && !match[1].split("/").includes("..") ? [match[1]] : [];
+  }));
+}
+
+export function resolveFileHandoffs(sources, prs, branch, canMerge) {
+  const byHead = new Map(prs.map((pr) => [pr.headRefName, pr]));
+  const accepted = [];
+  const filtered = sources.map((source) => {
+    if (source.kind !== "branch" && source.kind !== "pr") return source;
+    const owner = byHead.get(source.refName);
+    if (!owner) return source;
+    const handoffs = fileHandoffs(owner.body, branch);
+    const files = source.files.filter((file) => {
+      if (!handoffs.has(file) || !canMerge(file, source.refName)) return true;
+      accepted.push({ file, owner: owner.number, branch: source.refName });
+      return false;
+    });
+    return { ...source, files };
+  }).filter((source) => source.files.length);
+  return { sources: filtered, accepted };
+}
+
+function canMergeFile(file, ownerBranch) {
+  const owner = `origin/${ownerBranch}`;
+  const base = git(["merge-base", "HEAD", owner]);
+  if (!base) return false;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "fundhub-handoff-"));
+  try {
+    for (const [name, ref] of [["ours", "HEAD"], ["base", base], ["theirs", owner]]) {
+      const content = execFileSync("git", ["show", `${ref}:${file}`], { stdio: ["ignore", "pipe", "ignore"] });
+      fs.writeFileSync(path.join(dir, name), content);
+    }
+    return run("git", ["merge-file", "--quiet", path.join(dir, "ours"), path.join(dir, "base"), path.join(dir, "theirs")]) !== null;
+  } catch {
+    return false;
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 }
 
 // mine: string[]; sources: [{ label, files: string[] }]
@@ -263,7 +309,7 @@ export function main(argv = process.argv.slice(2)) {
 
   // 3. Open pull requests on GitHub.
   const prJson = run("gh", ["pr", "list", "--state", "open", "--limit", "100",
-    "--json", "number,title,headRefName,baseRefName,files,labels"], { cwd: top });
+    "--json", "number,title,headRefName,baseRefName,files,labels,body"], { cwd: top });
   let openPrs = [];
   if (prJson === null) {
     notes.push("GitHub PR list was unavailable; open pull requests were not checked.");
@@ -298,8 +344,13 @@ export function main(argv = process.argv.slice(2)) {
   if (childRefs.size) notes.push(`Excluded ${childRefs.size} ordered child branch(es); their inherited files are already in this branch.`);
   const collisionSources = excludeExpectedBase(sources, args.expectedBase)
     .filter((source) => !childRefs.has(source.refName));
-  const { withMine, hot } = findOverlaps(mine, collisionSources);
-  const report = { current, behind, comparisonBase, localMain: { behindBefore: mainBehind, updated: mainUpdated, reason: mainUpdateReason }, openBranches: openNames.size, chain, myFiles: mine.length, scanned: collisionSources.length, withMine, hot, notes };
+  const handoff = resolveFileHandoffs(collisionSources, openPrs, current, canMergeFile);
+  for (const item of handoff.accepted) {
+    const note = `PR #${item.owner} handed ${item.file} to ${current}; both file versions merge cleanly.`;
+    if (!notes.includes(note)) notes.push(note);
+  }
+  const { withMine, hot } = findOverlaps(mine, handoff.sources);
+  const report = { current, behind, comparisonBase, localMain: { behindBefore: mainBehind, updated: mainUpdated, reason: mainUpdateReason }, openBranches: openNames.size, chain, myFiles: mine.length, scanned: handoff.sources.length, withMine, hot, notes };
 
   if (args.json) {
     console.log(JSON.stringify(report, null, 2));

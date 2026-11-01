@@ -3,7 +3,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { chooseMainUpdate, excludeExpectedBase, findOverlaps, orderChain, orderPrChain, orderedChildRefs, parsePorcelain, parseWorktrees } from "./preflight-collisions.mjs";
+import { chooseMainUpdate, excludeExpectedBase, fileHandoffs, findOverlaps, orderChain, orderPrChain, orderedChildRefs, parsePorcelain, parseWorktrees, resolveFileHandoffs } from "./preflight-collisions.mjs";
 
 test("parsePorcelain keeps the new path on a rename and strips quotes", () => {
   const text = " M src/a.mjs\n?? docs/new.md\nR  old.mjs -> src/b.mjs\n M \"has space.md\"";
@@ -77,6 +77,25 @@ test("an expected stack parent is excluded while unrelated collisions remain", (
   ];
   const { withMine } = findOverlaps(["src/shared.mjs"], excludeExpectedBase(sources, "origin/parent"));
   assert.deepEqual(withMine, [{ label: "PR #3 other", files: ["src/shared.mjs"] }]);
+});
+
+test("exact PR file handoff needs the target branch and a clean merge", () => {
+  const body = "File handoff: src/pulse/registry.mjs -> codex/slideshow-live-pages\n";
+  assert.deepEqual([...fileHandoffs(body, "codex/slideshow-live-pages")], ["src/pulse/registry.mjs"]);
+  assert.deepEqual([...fileHandoffs(body, "codex/other")], []);
+  const sources = [
+    { refName: "older", kind: "branch", label: "branch older", files: ["src/pulse/registry.mjs", "src/other.mjs"] },
+    { refName: "older", kind: "pr", label: "PR #355 older", files: ["src/pulse/registry.mjs"] },
+    { refName: "unrelated", kind: "pr", label: "PR #356 unrelated", files: ["src/other.mjs"] }
+  ];
+  const prs = [{ number: 355, headRefName: "older", body }];
+  const allowed = resolveFileHandoffs(sources, prs, "codex/slideshow-live-pages", (file) => file === "src/pulse/registry.mjs");
+  assert.equal(allowed.accepted.length, 2);
+  assert.deepEqual(findOverlaps(["src/pulse/registry.mjs", "src/other.mjs"], allowed.sources).withMine.map((item) => item.label),
+    ["branch older", "PR #356 unrelated"]);
+  const conflicted = resolveFileHandoffs(sources, prs, "codex/slideshow-live-pages", () => false);
+  assert.deepEqual(findOverlaps(["src/pulse/registry.mjs"], conflicted.sources).withMine.map((item) => item.label),
+    ["branch older", "PR #355 older"]);
 });
 
 test("PR base metadata keeps chain order even when a parent head moved", () => {
