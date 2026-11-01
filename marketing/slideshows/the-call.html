@@ -7,6 +7,7 @@
 <meta name="description" content="On your strategy call, your own file gets read first and picks your path, and money comes up near the end, after you agree the path fits.">
 <!--
   Deck TC · The call
+  Rewritten 2026-10-31 on Chris's slide framework (see pre-underwriting.html).
   Lane: every lane (Funding, Blueprint and Repair)
   Hammer Them pillar: Question ("What is this call, really?")
   Belief: My call is a working call on my real file. The file gets pulled
@@ -772,13 +773,13 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     <h2>Your own credit file picks your path on this call before anyone mentions a price.</h2>
     <p class="lede">Money comes up near the end of the call, and the reason it waits that long protects you.</p>
     <figure class="pic">
-      <ol class="flow" role="img" aria-label="The call in six parts, in order. One: what you're going for, and what's been in the way. Two: we pull your file together, right on the call, a soft pull, so your score does not move. Three: how much you qualify for based on where you're at right now, and what's holding the rest back. Four: the path that fits your file: fund what's there now, fix the file first, or both. Five: how that path runs, step by step. Six: your answer. A yes is great. A no is fine.">
+      <ol class="flow" role="img" aria-label="The call in six parts, in order. One: what you're going for, and what's been in the way. Two: we pull your file together, right on the call, a soft pull, so your score does not move. Three: how much you qualify for based on where you're at right now, and what's holding the rest back. Four: the path that fits your file: fund what's there now, fix the file first, or both. Five: how that path runs, step by step. Six: the price for that path, then your answer. A yes is great. A no is fine.">
         <li>What you're going for, and what's been in the way.</li>
         <li><span>We pull your file together, right on the call.<span class="sub">A soft pull, so your score does not move.</span></span></li>
         <li>How much you qualify for based on where you're at right now, and what's holding the rest back.</li>
         <li><span>The path that fits your file.<span class="sub">Fund what's there now, fix the file first, or both.</span></span></li>
         <li>How that path runs, step by step.</li>
-        <li><span>Your answer.<span class="sub">A yes is great. A no is fine.</span></span></li>
+        <li><span>The price for that path, then your answer.<span class="sub">A yes is great. A no is fine.</span></span></li>
       </ol>
     </figure>
     <aside class="talk" aria-hidden="true">
@@ -835,7 +836,7 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     <h2>How much is your file leaving on the table right now?</h2>
     <ul class="lines">
       <li>This sample screen leaves the amount blank, because that figure only ever comes from a real file.</li>
-      <li>Next to it, you see what each fix adds, and the difference is money left on the table.</li>
+      <li>Right after it, a second screen shows what each fix adds, and the difference is money left on the table.</li>
       <li>The bank still makes the final call, and the reports are yours to keep either way.</li>
     </ul>
     <figure class="pic">
@@ -933,7 +934,7 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
 
   <section class="slide dark" data-src="Join from a computer, because your advisor shares their screen and goes through your file with you; your advisor meets with you on a Google Meet and runs a 3-bureau report: marketing/vsl/direct-book-thank-you-2026-10-15.md:25, :37 (green-lit; the price on :25 is not used). This call is recorded, so nothing gets missed: docs/sops/weekend-2026-10-24/04-sales-call-script.md:68. Come ready; we look at your file together and you leave knowing the next move: docs/sops/weekend-2026-10-24/02-setter.md:96. Action takers, not shoppers: Chris 2026-10-31, marketing/copy-skills/copybot/references/chris-voice-profile.md:33. Recordings are kept as an accurate record of what was said: db/migrations/493_funding_and_repair_agreement_text.sql:53 (section 8). Why money waits (the payoff of TC-01): docs/sops/weekend-2026-10-24/04-sales-call-script.md:7, :204; Fundhub never takes a file that doesn't qualify: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:207. Paid on the call, the same day: 04-sales-call-script.md:446-448. How much you qualify for: same file :69.">
     <p class="eyebrow">TC-06 / Your call</p>
-    <h2>You leave your strategy call with the path your own file picked, read line by line.</h2>
+    <h2>You leave your strategy call knowing which path your file fits, and how it runs.</h2>
     <ul class="lines">
       <li>Your advisor puts your real report on one shared screen and goes through it with you.</li>
       <li>The call is recorded, so every detail about your file and your path is kept.</li>
@@ -941,23 +942,25 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </ul>
     <figure class="pic">
       <div class="sheet">
-        <svg class="bv" viewBox="0 0 320 180" role="img" aria-label="You and your advisor both look at one shared screen. The screen shows your real file, with what's holding it back and how much you qualify for.">
-          <rect class="pn" x="84" y="4" width="152" height="112" rx="8"/>
-          <text class="lb" x="96" y="26">YOUR FILE</text>
-          <rect class="bar" x="96" y="36" width="96" height="5" rx="2.5"/>
-          <rect class="tint-flag" x="96" y="48" width="128" height="24" rx="5"/>
-          <text class="lb ink" x="106" y="64">HOLDING IT BACK</text>
-          <rect class="tint-fit edge-fit" x="96" y="80" width="128" height="24" rx="5"/>
-          <text class="lb ink" x="106" y="96">YOUR AMOUNT</text>
-          <path class="cn ink" d="M160 116V130M140 130H180"/>
-          <circle class="pn" cx="34" cy="62" r="26"/><use href="#fh-person" x="20" y="48" width="28" height="28"/>
-          <path class="cn dash" d="M60 58L82 46"/>
-          <text class="lb ink" x="34" y="108" text-anchor="middle">YOU</text>
-          <circle class="pn" cx="286" cy="62" r="26"/><use href="#fh-person" x="272" y="48" width="28" height="28"/>
-          <path class="cn dash" d="M260 58L238 46"/>
-          <text class="lb ink" x="286" y="108" text-anchor="middle">YOUR</text>
-          <text class="lb ink" x="286" y="124" text-anchor="middle">ADVISOR</text>
-          <text class="lb" x="160" y="168" text-anchor="middle">ONE SHARED SCREEN · YOUR REAL FILE</text>
+        <svg class="bv" viewBox="0 0 320 200" role="img" aria-label="You and your advisor both look at one shared screen. The screen shows your real file: what's holding it back, your amount, and, marked in ink, your path.">
+          <rect class="pn" x="72" y="4" width="176" height="142" rx="8"/>
+          <text class="lb" x="84" y="26">YOUR FILE</text>
+          <rect class="bar" x="84" y="36" width="100" height="5" rx="2.5"/>
+          <rect class="tint-flag" x="84" y="50" width="152" height="24" rx="5"/>
+          <text class="lb ink" x="94" y="66">HOLDING IT BACK</text>
+          <rect class="tint-fit edge-fit" x="84" y="82" width="152" height="24" rx="5"/>
+          <text class="lb ink" x="94" y="98">YOUR AMOUNT</text>
+          <rect class="pn-ink" x="84" y="114" width="152" height="24" rx="5"/>
+          <text class="lb on-ink" x="94" y="130">YOUR PATH</text>
+          <path class="cn ink" d="M160 146V160M140 160H180"/>
+          <circle class="pn" cx="34" cy="76" r="24"/><use href="#fh-person" x="20" y="62" width="28" height="28"/>
+          <path class="cn dash" d="M58 70L70 62"/>
+          <text class="lb ink" x="34" y="118" text-anchor="middle">YOU</text>
+          <circle class="pn" cx="286" cy="76" r="24"/><use href="#fh-person" x="272" y="62" width="28" height="28"/>
+          <path class="cn dash" d="M262 70L250 62"/>
+          <text class="lb ink" x="286" y="118" text-anchor="middle">YOUR</text>
+          <text class="lb ink" x="286" y="134" text-anchor="middle">ADVISOR</text>
+          <text class="lb" x="160" y="190" text-anchor="middle">ONE SHARED SCREEN · YOUR REAL FILE</text>
         </svg>
       </div>
     </figure>

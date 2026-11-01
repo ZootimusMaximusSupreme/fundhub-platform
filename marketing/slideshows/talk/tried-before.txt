@@ -1,85 +1,247 @@
-Fundhub, If You Tried Before
+[Slide 1]
 
-1. TB-01 / What they left — You paid a company, nothing got funded, and its inquiries still sit on your report.
 
-If you paid a company and nothing got funded, here's how that game gets played.
 
-They logged into Experian, pulled up a list of lenders they use for every single client, and started blasting out applications.
 
-Every one of those was a hard pull. The company is gone, and the inquiries are still sitting on your report.
 
-Look at this sample report. Three hard inquiries, one on each bureau. That's what blasting leaves behind, and the next bank sees every one of them.
+A company that blasts your file to its lender list leaves a HARD pull from each bank that checks your report. Those pulls count against you for a full 12 months.
 
-Nobody read the file first, so nobody knew which of those banks fit it. That's the whole problem, and it's fixable.
 
-Your story: a client who came to you after a company blasted their file, and what their report looked like when they got to you.
 
-2. TB-02 / The cracks — A broker's bad system is where people slip through the cracks.
 
-Brokers sell shady, inefficient products with bad systems, so people slip through the cracks. We don't let people slip through the cracks.
 
-A crack is simple: a file goes in, applications go out, and nobody is watching what comes back, so the person falls through.
+The company moves on, and the pulls stay behind. They sit on your report for two years, and every bank you apply to next reads them before it decides.
 
-Look at the two rows. Nobody calls you back after you pay, against: after you pay, you have a portal and a team you can reach.
 
-Someone cuts corners with your file and puts you at risk, against: we dispute only items that really show on your report, and every application uses your true information.
 
-The Fundhub team runs every application and every follow-up with the banks. You don't fill out a single application, and you can reach us the whole way.
 
-We fulfill. We keep our word. That's the whole reason Fundhub exists.
 
-3. TB-03 / Read first — Nobody checked your file against what each bank approves first.
+Look at this sample report. Three hard inquiries sit on it, one with each bureau, and a blast to a whole lender list leaves rows exactly like these.
 
-Here's what was different the last time. Nobody checked your file against what each bank approves before the applications went out.
 
-That one missing step is why you paid and walked away with a report full of hard inquiries.
 
-Look at the two columns. Last time: your file went to the list, the inquiries stacked, and nothing funded.
 
-This time: we review your file the way a lender does before a single application goes out. That's pre-underwriting.
 
-If the review finds a red flag, we fix it first. Then your applications go only to the banks that fit your file.
+Here's what that costs you. A bank reads a stack of recent pulls as RISK, so your next application starts out behind, no matter how good the score looks.
 
-Most banks approve good credit. The whole game is catching the one red flag that gets you denied, before you apply.
 
-4. TB-04 / Never — What we never do is in the agreement.
 
-If you got burned, you want to know what a company will never do with your file. Ours is written into the agreement.
 
-Read it with me. Section 4: our authority does not let us sign a loan or credit agreement for you, accept funds for you, change your account, or make a false statement for you.
 
-Section 6: we will not submit an inaccurate claim, and we will not stop you from making your own dispute.
+If you paid for that blast, the fee bought nothing your business can use. The new hire and the ad budget you planned on are both still waiting.
 
-Section 3: Fundhub does not promise approval, a funding amount, a lender rate, or a particular financial outcome. The bank decides.
 
-A promise of an approval is a promise about what a bank does, and no company controls that.
 
-Every application uses your true information, and every dispute names a real item on your report. That's how we work.
 
-5. TB-05 / We fulfill — We fulfill, and the funding agreement says when.
 
-We fulfill. We keep our word. And on funding, the agreement says when.
+There's one question that tells you, before you pay anyone a dollar, whether the next company works the SAME way as the last one did.
+
+
+
+
+
+[Slide 2]
+
+
+
+
+
+Here's what's really going on when a file gets blasted. The broker's system runs every client through ONE lender list, no matter what's on the file.
+
+
+
+
+
+Nobody on that system checks what each bank sends back. A no comes in, the next application goes out anyway, and the client falls through the cracks.
+
+
+
+
+
+We don't let people slip through the cracks. After ten years in this industry, I built Fundhub to be the system I wished I'd had when I started.
+
+
+
+
+
+Look at the two rows on the screen. The left side is what you hear about other companies. The right side is what Fundhub does instead, from our own offers guide.
+
+
+
+
+
+Once you pay, you log in to your portal and see every round. The Fundhub team handles each bank follow-up, so nothing on your file sits UNWATCHED.
+
+
+
+
+
+For you, that means your file goes only where it fits, every application holds only your true information, and somebody reads every answer that comes back.
+
+
+
+
+
+[Slide 3]
+
+
+
+
+
+Here's how Fundhub handles your file differently. BEFORE any application goes out, we review your file the way a lender does. We call that pre-underwriting.
+
+
+
+
+
+Look at the two columns. On the left, your file goes to one list built for everyone, the hard pulls stack up, and the money's gone with nothing funded.
+
+
+
+
+
+On the right, your file gets reviewed first. If the review turns up a RED flag, that gets fixed before a single bank ever sees your application.
+
+
+
+
+
+Most banks approve good credit. The review hunts for the one red flag that gets a good file DENIED, and catches it while there's still time to fix it.
+
+
+
+
+
+Then each application is aimed at a bank your file fits. Fundhub chooses the banks and the order they hear from you, and the yes or no stays with each bank.
+
+
+
+
+
+For you, that means every pull on your report had a REASON to be there, aimed at a bank that approves files like yours.
+
+
+
+
+
+[Slide 4]
+
+
+
+
+
+If a company burned you before, you want to know what the next one will NEVER do with your file. Ours is written into the agreement you sign.
+
+
+
+
+
+Read section 4 with me. It bars Fundhub from signing a loan or credit agreement for you, accepting your funds, changing your account, or saying anything false for you.
+
+
+
+
+
+Section 6 says we will never send an inaccurate claim about your file, and we can never stop you from sending your own dispute.
+
+
+
+
+
+Section 3 puts every approval decision with the bank. That's exactly why your file gets matched to banks that fit it before any application goes out.
+
+
+
+
+
+Every application is filled out with your true information, and every dispute targets an item that really shows on your report. Your file stays HONEST with every bank.
+
+
+
+
+
+Honest applications protect you past this round too. Those same banks read your file again when your next funding sequence goes out, so every past application has to hold up.
+
+
+
+
+
+[Slide 5]
+
+
+
+
+
+Picture your business once the funding is in. Payroll for a new hire, a larger job and steady ads all run on CREDIT, and your savings stay put.
+
+
+
+
+
+Getting there starts with two clocks in the funding agreement. Both start the moment you sign, and both are written into the clause on the screen.
+
+
+
+
 
 Applications go out within 72 business hours. That's our guarantee, and it's in your contract. That typically means approvals come very shortly after.
 
-This is the actual clause. The clock starts when you sign, and within 24 business hours a funding advisor is working your file.
 
-Your delay or error does not pause either clock. That's written in there too, and it's on us, not you.
 
-That's the funding agreement. The credit optimization and Blueprint agreements say what they promise and what they don't, the same way, and we read whichever one is yours together on the screen before you pay.
 
-I built what I wish I had, and this clause is a big part of it.
 
-6. TB-06 / Your call — On your call, you see your file before any offer, and the fee in dollars before you pay.
+The first clock gives your funding advisor 24 business hours to start on your file. Both clocks keep ticking through any delay on your side, and the agreement says so.
 
-If you've been burned before, it's fair to go slow, and the call is built for that.
 
-Look at the sheet. The first thing your advisor does when you say you've been burned is ask what happened last time, and then listen to the whole story.
 
-Then the answer, word for word: you saw your file before any offer, you see the fee in dollars before you pay, and everything is in the agreement, in writing.
 
-We pull your file together right on the call. It's a soft pull, so your score does not move.
 
-You agree with the path before you ever hear a price, and we read the agreement together on the screen before you pay anything.
+That's the funding agreement. Credit optimization and the Blueprint come with their own written promises, and you read yours on screen before you pay.
 
-The reports are yours either way. We're looking for action takers, not shoppers, and we fulfill.
+
+
+
+
+We keep our word on both clocks. I still fund myself this way TODAY, and I hold my team to the same clocks I'd want on my own file.
+
+
+
+
+
+[Slide 6]
+
+
+
+
+
+Here's the question that tells you whether a company works like the last one. Ask if they'll read your report and explain it to you BEFORE anything goes out.
+
+
+
+
+
+A company that blasts files skips that step, since every file goes to the same list. On your strategy call, reading your file comes FIRST.
+
+
+
+
+
+If you've been burned, your advisor starts by asking what happened last time, and then listens to the WHOLE story before saying anything about your file.
+
+
+
+
+
+Your report is pulled with you on the line. It's a soft pull, which leaves your score right where it is, and you read every line of it together.
+
+
+
+
+
+Your file comes before any offer. The fee shows in dollars before you pay, the agreement goes up on screen, and taking it slow is completely fine.
+
+
+
+
+
+The reports stay yours either way. We work best with action takers, not shoppers, and the whole call is built around facts from your own file.
