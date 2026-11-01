@@ -1,5 +1,9 @@
 # TODO — unfinished work
 
+## Think about (owner-set 2026-10-31, not a build)
+
+- [ ] **What the client portal teaches.** Chris, 22:15: "I don't want you to build this yet." Think about whether the portal should hold the proof of how the system works (the backend-selling slideshows), which may feel corny there, or free education instead. Decide first; nothing gets built until he says so.
+
 ## Build line, owner-set 2026-10-30
 
 Chris: put these at the back of the line, behind the builds already running. Do not start them early.
