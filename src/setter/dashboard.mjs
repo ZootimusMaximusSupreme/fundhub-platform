@@ -509,9 +509,8 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
     if (staff.role === "setter" && !(await claimLatestSetterTask(writer, staff, client_id))) {
       return { status: 403, body: { ok: false, error: "assigned_to_other_setter" } };
     }
-    let savedFields = await persistHandoff(writer, client_id, staff.org_id, next);
-    let saved = jsonObject(savedFields.setter_handoff);
-    let send = null;
+    const savedFields = await persistHandoff(writer, client_id, staff.org_id, next);
+    const saved = jsonObject(savedFields.setter_handoff);
     if (action === "send_intro_video" || action === "send_handoff") {
       if (action === "send_handoff" && !saved.complete_at) {
         return { status: 400, body: { ok: false, error: "handoff_incomplete", missing: ["complete_at"] } };
@@ -519,14 +518,6 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
       if (action === "send_handoff") {
         const missing = missingForCompletion(saved, client);
         if (missing.length) return { status: 400, body: { ok: false, error: "handoff_incomplete", missing } };
-      }
-      send = await (deps.sendAction || performSetterSendAction)({
-        action, client: { ...client, booking_time: client.booking_time, booked_at: client.booked_at },
-        handoff: saved, staff, db: writer, orgId: staff.org_id, setterStaffId, closerStaffId
-      });
-      if (send?.handoffPatch && typeof send.handoffPatch === "object") {
-        savedFields = await persistHandoff(writer, client_id, staff.org_id, send.handoffPatch);
-        saved = jsonObject(savedFields.setter_handoff);
       }
     }
     if (action === "complete") {
@@ -551,10 +542,24 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
         [staff.org_id, client_id]
       );
     }
-    return { status: 200, body: { ok: true, item: { ...mapItem({ ...client, done: !!saved.complete_at, setter_staff_id: setterStaffId, closer_staff_id: closerStaffId, custom_fields: savedFields }, staff), booking_url: tierBookingLink(savedFields) }, ...(send ? { send } : {}) } };
+    return { status: 200, body: { ok: true, item: { ...mapItem({ ...client, done: !!saved.complete_at, setter_staff_id: setterStaffId, closer_staff_id: closerStaffId, custom_fields: savedFields }, staff), booking_url: tierBookingLink(savedFields) } } };
   };
   const result = action === "complete" || staff.role === "setter"
     ? await withTransaction(db, save) : await save(db);
+  if (result.status === 200 && (action === "send_intro_video" || action === "send_handoff")) {
+    // Provider delivery must happen after the claim and saved handoff commit.
+    // A failed COMMIT then cannot send an SMS whose idempotency row rolls back.
+    const send = await (deps.sendAction || performSetterSendAction)({
+      action, client: { ...client, booking_time: client.booking_time, booked_at: client.booked_at },
+      handoff: result.body.item.setter_handoff, staff, db, orgId: staff.org_id, setterStaffId, closerStaffId
+    });
+    result.body.send = send;
+    if (send?.handoffPatch && typeof send.handoffPatch === "object") {
+      const savedFields = await persistHandoff(db, client_id, staff.org_id, send.handoffPatch);
+      result.body.item.setter_handoff = jsonObject(savedFields.setter_handoff);
+      result.body.item.booking_url = tierBookingLink(savedFields);
+    }
+  }
   if (result.status === 200) {
     await startNoAnswerCadence(db, {
       orgId: staff.org_id, clientId: client_id, previous, next, patch: validated.patch, setterStaffId

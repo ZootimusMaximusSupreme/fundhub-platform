@@ -401,6 +401,84 @@ describe("PATCH /api/tasks — active-shift gate", { skip: !HAVE_DB ? "no DATABA
       }
     });
 
+    test("setter sends run only after commit and never after a rolled-back commit", async () => {
+      const handoff = {
+        lead_type: "booked", setter_staff_id: staffId, closer_staff_id: staffId,
+        dialed_at: "2026-11-01T19:00:00Z", call_attempts: 1, disposition: "reached",
+        time_confirmed: true, frame_warmed: true, problem: "Working capital",
+        goal: "Original goal", computer_ready: true, app_on_phone: false,
+        complete_at: "2026-11-01T19:10:00Z"
+      };
+      const clientId = (await db.query(
+        `INSERT INTO clients (org_id, email, first_name, last_name, custom_fields)
+         VALUES ($1,'taskgate_send_order@example.com','Send','Order',$2::jsonb) RETURNING id`,
+        [org, JSON.stringify({ setter_handoff: handoff })])).rows[0].id;
+      try {
+        await db.query(
+          `INSERT INTO bookings (org_id, client_id, source, starts_at, status)
+           VALUES ($1,$2,'sim','2026-11-03T19:00:00Z','booked')`, [org, clientId]);
+        await db.query(
+          `INSERT INTO tasks (org_id, client_id, title, body, assignee_role, assignee_staff_id, source_workflow)
+           VALUES ($1,$2,$3,'send-order','setter',$4,'setter-booking')`,
+          [org, clientId, TITLE, staffId]);
+
+        const transactionalDb = (onCommit, failCommit = false) => ({
+          query: (...args) => db.query(...args),
+          connect: async () => {
+            const client = await pool().connect();
+            return {
+              query: async (...args) => {
+                if (args[0] === "COMMIT" && failCommit) throw new Error("injected_commit_failure");
+                const result = await client.query(...args);
+                if (args[0] === "COMMIT") onCommit();
+                return result;
+              },
+              release: () => client.release()
+            };
+          }
+        });
+        const setter = { id: staffId, org_id: org, role: "setter", name: "A Setter" };
+        for (const action of ["send_intro_video", "send_handoff"]) {
+          let committed = false;
+          let sends = 0;
+          const wrapped = transactionalDb(() => { committed = true; });
+          const result = await updateSetterHandoff(wrapped, setter,
+            { client_id: clientId, action, handoff: { goal: action + " saved" } }, {
+              sendAction: async args => {
+                sends++;
+                assert.equal(committed, true, "provider callback ran before COMMIT");
+                assert.equal(args.db, wrapped, "send must use the committed database handle");
+                const visible = (await db.query(
+                  `SELECT custom_fields->'setter_handoff'->>'goal' AS goal
+                     FROM clients WHERE id = $1`, [clientId])).rows[0].goal;
+                assert.equal(visible, action + " saved", "a separate connection must see the saved handoff");
+                return { outcome: "sent", handoffPatch: { video_sent_at: "2026-11-01T20:00:00Z" } };
+              }
+            });
+          assert.equal(result.status, 200, JSON.stringify(result.body));
+          assert.equal(sends, 1);
+          assert.equal(result.body.send.outcome, "sent");
+        }
+
+        let sendsAfterFailure = 0;
+        await assert.rejects(
+          updateSetterHandoff(transactionalDb(() => {}, true), setter,
+            { client_id: clientId, action: "send_intro_video", handoff: { goal: "Must roll back" } },
+            { sendAction: async () => { sendsAfterFailure++; return { outcome: "sent" }; } }),
+          /injected_commit_failure/
+        );
+        assert.equal(sendsAfterFailure, 0);
+        const afterFailure = (await db.query(
+          `SELECT custom_fields->'setter_handoff'->>'goal' AS goal
+             FROM clients WHERE id = $1`, [clientId])).rows[0].goal;
+        assert.equal(afterFailure, "send_handoff saved");
+      } finally {
+        await db.query("DELETE FROM tasks WHERE client_id = $1", [clientId]);
+        await db.query("DELETE FROM bookings WHERE client_id = $1", [clientId]);
+        await db.query("DELETE FROM clients WHERE id = $1", [clientId]);
+      }
+    });
+
     // The document vault (Capital Blueprint B3) puts one readable sentence on the
     // closing prep call and the closer alert: tasks.detail, migration 472.
     test("GET returns each task's readable note (tasks.detail), null when there is none", async () => {
