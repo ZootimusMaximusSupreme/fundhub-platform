@@ -977,13 +977,13 @@ html[data-tone="dark"] .film-n{color:var(--ss-dark-muted)}
     </aside>
   </section>
 
-  <section class="slide" data-src="The checklist step 'Pay {creditor} down to {target}' and its detail, word for word: db/migrations/362_waypoint_definitions_seed.sql:83-84; the row closes itself when a re-pull reports the balance at the target: :86; 'The task checks itself off when a new credit pull shows the lower balance.': marketing/offers/fundhub-offers-2026-10-10.pdf p.4. Filled from the REPAIR-FULL sample: Credit One Bank, target $150 (engine output, see CP-02). An AI coach watches the open step, and the Fundhub team does what a person must do: .ai/rules/ad-know-the-offer.md:41 and docs/journeys/capital-blueprint-intended.md:10. Card use helps set how much you qualify for: docs/sops/weekend-2026-10-24/04-sales-call-script.md:335. At the targets the file reads 10% used, $450 of $4,500 (the engine's util_target_balance).">
+  <section class="slide" data-src="The checklist step 'Pay {creditor} down to {target}' and its detail, word for word: db/migrations/362_waypoint_definitions_seed.sql:83-84; the row closes itself when a re-pull reports the balance at the target: :86; 'The task checks itself off when a new credit pull shows the lower balance.': marketing/offers/fundhub-offers-2026-10-10.pdf p.4. Filled from the REPAIR-FULL sample: Credit One Bank, target $150 (engine output, see CP-02). An AI coach watches the open step, and the Fundhub team does what a person must do: .ai/rules/ad-know-the-offer.md:41 and docs/journeys/capital-blueprint-intended.md:10. At the targets the file reads 10% used, $450 of $4,500 (the engine's util_target_balance), which passes the card check, cards used 30% or less: src/finance/fundability.mjs:147. No amount is claimed: the engine's paydown lever adds $0 on this file (src/sales/deck-visual-data.mjs levers, run on profile repair-full).">
     <p class="eyebrow">CP-05 / The step closes itself</p>
     <h2>The step reads pay Credit One down to $150, and it closes once a pull shows $150.</h2>
     <ul class="lines">
       <li>Split it into as many payments as you want, because every dollar moves the balance down toward $150.</li>
       <li>An AI coach watches the open step, and the Fundhub team steps in when it takes a person.</li>
-      <li>With every card at its target, your whole file reports low card use, and a bank weighs that when it decides how much to approve.</li>
+      <li>With every card at its target, this file passes our card check on payments alone.</li>
     </ul>
     <figure class="pic">
       <div class="real" role="img" aria-label="A checklist step in the words the Fundhub checklist uses, filled from the sample file: Pay Credit One Bank down to $150, open, $1,490 today. Detail: You do not have to do it in one payment. Anything you put against this card moves the balance toward the target. Marked: checks itself off on a new pull.">
@@ -1002,8 +1002,8 @@ html[data-tone="dark"] .film-n{color:var(--ss-dark-muted)}
         <li>You split it into as many payments as you want. Every dollar moves the balance down toward the target, and nothing waits on one big check.</li>
         <li>You don't even have to report it. When a fresh pull shows the balance at $150 or less, the checklist closes that step on its own.</li>
         <li>While the step is open, an AI coach watches it and reminds you. The Fundhub team steps in whenever it takes a person.</li>
-        <li>Now picture both cards at their targets. The file that read 97% used reads 10%, and that's the card use a bank sees on your next application.</li>
-        <li>A bank weighs your card use when it decides how much to approve. Low use across every card is the part of your file you change with nothing but payments.</li>
+        <li>Picture both cards at their targets. The file that read 97% used reads 10%, and that's the card use a bank sees on your next application.</li>
+        <li>Low use across every card is the part of your file you change with nothing but payments, one statement at a time.</li>
       </ul>
     </aside>
   </section>

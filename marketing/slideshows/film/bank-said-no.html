@@ -76,8 +76,8 @@
       loop back for more fixing, and once the file passes, the capital split
       into a new hire, ads that run and bigger jobs. Redrawn 2026-10-31.
     BN-06 who/what, real: the call's money levers screen (L-01) with its own
-      labels, filled with the engine's figures for the same sample: $0 today,
-      $8,250 projected once cleaned up. Rebuilt 2026-10-31.
+      labels for the same sample, the one lever that applies
+      marked as the only lever that applies, with no dollar compare. Rebuilt 2026-10-31.
   - Truth check (applications.md): no picture implies an approval, an amount,
     a deletion or a speed the agreements do not promise. Samples say Sample.
     No bank is named as one that will approve.
@@ -884,7 +884,7 @@ html[data-tone="dark"] .film-n{color:var(--ss-dark-muted)}
         <li>Each reason on that report points to one FIX. Every fix happens before a bank sees your file again, so the next bank reads a cleaner file.</li>
         <li>This is a sample Experian report. The score reads 541. Right below it, the bureau lists four reasons for that score, in its own words.</li>
         <li>The top reason reads serious delinquency and a collection filed. When a bank turns this file down, its letter hands that same line right back.</li>
-        <li>Now read the accounts underneath. Midland placed a debt for collection. Synchrony charged off an account. And Capital One shows a payment 30 days late.</li>
+        <li>Read the accounts underneath. Midland placed a debt for collection. Synchrony charged off an account. And Capital One shows a payment 30 days late.</li>
         <li>Those three accounts put that top line on the report. Each one is a specific item with a specific FIX, and each fix is a step you can take.</li>
       </ul>
     </aside>
@@ -998,13 +998,12 @@ html[data-tone="dark"] .film-n{color:var(--ss-dark-muted)}
     </aside>
   </section>
 
-  <section class="slide dark" data-src="The same three checks: src/finance/fundability.mjs:146-149. Whenever Fundhub runs a new soft pull, your tasks are checked again and your letters are rebuilt from the new report, and the rounds run up to six: marketing/offers/fundhub-offers-2026-10-10.pdf p.5 and db/migrations/493_funding_and_repair_agreement_text.sql:69. A denial is based on how your file looked that day: marketing/offers/fundhub-offers-2026-10-10.pdf p.8. Your own bank and lender match list and the order to apply: src/config/offers.mjs (Capital Blueprint deliverables) and .ai/rules/ad-know-the-offer.md:38; the client funds themselves once the file is ready: marketing/ads/scripts/2026-10-13.md:10. The hire, the ads, the jobs: docs/sops/weekend-2026-10-24/04-sales-call-script.md:112. Chris's track record: marketing/ads/RULES.md Part 0 rule 38. No approval promise: db/migrations/493_funding_and_repair_agreement_text.sql:53 (section 3)." data-figures="Chris's own track record (marketing/ads/RULES.md Part 0 rule 38)">
+  <section class="slide dark" data-src="The same three checks: src/finance/fundability.mjs:146-149. Whenever Fundhub runs a new soft pull, your tasks are checked again and your letters are rebuilt from the new report, and the rounds run up to six: marketing/offers/fundhub-offers-2026-10-10.pdf p.5 and db/migrations/493_funding_and_repair_agreement_text.sql:69. A denial is based on how your file looked that day: marketing/offers/fundhub-offers-2026-10-10.pdf p.8. Your own bank and lender match list and the order to apply: src/config/offers.mjs (Capital Blueprint deliverables) and .ai/rules/ad-know-the-offer.md:38; the client funds themselves once the file is ready: marketing/ads/scripts/2026-10-13.md:10. The hire, the ads, the jobs: docs/sops/weekend-2026-10-24/04-sales-call-script.md:112. No approval promise: db/migrations/493_funding_and_repair_agreement_text.sql:53 (section 3).">
     <p class="eyebrow">BN-05 / Where the money goes</p>
     <h2>Where does the money go when a file passes all three checks?</h2>
     <ul class="lines">
       <li>A file that passes goes to the banks that match it. You fund yourself off that file, one bank at a time.</li>
       <li>The capital pays for the hire, the ads and the bigger job.</li>
-      <li>Off one personal file, I've pulled $100,000 lines on four different companies, so I know what a prime file opens up.</li>
     </ul>
     <figure class="pic">
       <div class="sheet">
@@ -1038,15 +1037,14 @@ html[data-tone="dark"] .film-n{color:var(--ss-dark-muted)}
       <ul>
         <li>The cards sit at their targets and the rounds have run. Then the whole file goes back through those same THREE checks.</li>
         <li>Anything that still misses goes back on the fix list for the next round. A bank's no only describes the file on the day it read it.</li>
-        <li>A file that passes goes to the banks that fit it, in order, off your own bank and lender list. That's you funding yourself, off your own file.</li>
+        <li>A file that passes goes to the banks that fit it, in order. That's you funding yourself, off your own file.</li>
         <li>The capital goes where the business needs it. That's the hire you've been putting off, an ad budget that actually runs, and the jobs you can't take today.</li>
-        <li>And the business stops leaning on your personal savings to grow. That's the whole REASON to fix the file before anything else.</li>
-        <li>I know what a prime file opens up because I've lived it. Off one personal file, I've pulled $100,000 lines on four different companies, on stated income.</li>
+        <li>That capital is the REASON to fix the file first. Every bank on your list gets picked from that file.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide" data-src="We pull your file together right on the call; it's a soft pull, so your score does not move; you see how much you qualify for based on where you're at right now and what's holding the rest back: docs/sops/weekend-2026-10-24/04-sales-call-script.md:69. Only you see a soft pull, and no lender sees it: marketing/offers/fundhub-offers-2026-10-10.pdf p.9 and 04-sales-call-script.md:156. On a repair file the screen shows what's holding the file back and what the cleaned-up file shows: 04-sales-call-script.md:171-173 and public/app/present.js:100. Fund now, fix first, or both: 04-sales-call-script.md:176. Action takers, not shoppers: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:213. The picture is the call's money levers screen (L-01) with its own labels (public/app/present-visuals.js:355, :433-438 and :444), filled with the engine's figures for the same REPAIR-FULL sample: scripts/sim/push-credit.mjs buildPayload('repair-full') run through src/finance/crs-pull.mjs scoreBuyerTotal and src/sales/deck-visual-data.mjs buildDeckVisualData, clock pinned to 2026-10-31: today $0 (REPAIR_ONLY), optimized $8,250 (FULL_FUNDING), and the one lever that applies is Clean the file.">
+  <section class="slide" data-src="We pull your file together right on the call; it's a soft pull, so your score does not move; you see how much you qualify for based on where you're at right now and what's holding the rest back: docs/sops/weekend-2026-10-24/04-sales-call-script.md:69. Only you see a soft pull, and no lender sees it: marketing/offers/fundhub-offers-2026-10-10.pdf p.9 and 04-sales-call-script.md:156. On a repair file the screen shows what's holding the file back and what the cleaned-up file shows: 04-sales-call-script.md:171-173 and public/app/present.js:100. Fund now, fix first, or both: 04-sales-call-script.md:176. Action takers, not shoppers: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:213. The picture is the call's money levers screen (L-01) with its own labels (public/app/present-visuals.js:355, :433-438 and :444), showing only the one lever that applies to the same REPAIR-FULL sample: scripts/sim/push-credit.mjs buildPayload('repair-full') run through src/finance/crs-pull.mjs scoreBuyerTotal and src/sales/deck-visual-data.mjs buildDeckVisualData, clock pinned to 2026-10-31, returns Clean the file as the only lever that applies (Pay the cards down and Add accounts do not). Dollar figures are left off: the compare is small on this sample (Chris 2026-10-31, compares must be drastic).">
     <p class="eyebrow">BN-06 / Your strategy call</p>
     <h2>Your strategy call shows what your file gets today next to what it gets cleaned up.</h2>
     <ul class="lines">
@@ -1055,17 +1053,12 @@ html[data-tone="dark"] .film-n{color:var(--ss-dark-muted)}
       <li>You see how much you qualify for based on where you're at right now, next to what the same file projects to once it's cleaned up.</li>
     </ul>
     <figure class="pic">
-      <div class="real" role="img" aria-label="A sample of the strategy call screen called once your file is optimized, for the same simulated file. Today: $0, how much you qualify for today. Projects to: $8,250, fully optimized, with the one lever on. The one lever that applies: clean the file, $8,250. Marked: $8,250 left on the table. The difference is what the fixes are worth.">
+      <div class="real" role="img" aria-label="A sample of the strategy call screen called once your file is optimized, for the same simulated file. Of the three fixes on that screen, the only one that applies to this file is marked: clean the file, the one fix that changes what it gets.">
         <div class="rh2">Your call screen · Once your file is optimized</div>
-        <header class="bureau-head">
-          <div class="score" style="text-align:left"><div class="model">Today</div><div class="num">$0</div><div class="model">How much you qualify for today.</div></div>
-          <div class="score"><div class="model">Projects to</div><div class="num">$8,250</div><div class="model">Fully optimized, with the one lever on.</div></div>
-        </header>
         <ul>
-          <li class="yes">Clean the file<br><span class="chip on"><span class="cd"></span>$8,250</span></li>
+          <li class="yes">Clean the file<br><span class="chip on"><span class="cd"></span>Applies to this file</span></li>
         </ul>
-        <p class="clause"><mark>$8,250 left on the table</mark></p>
-        <p class="model">THE DIFFERENCE IS WHAT THE FIXES ARE WORTH</p>
+        <p class="clause">The one fix that changes what this file gets.</p>
       </div>
       <p class="real-src">Sample screen. The same simulated file as the report, run through our system. No bureau contacted.</p>
     </figure>
@@ -1073,7 +1066,7 @@ html[data-tone="dark"] .film-n{color:var(--ss-dark-muted)}
       <ul>
         <li>Every reason on your report points to one fix. Your strategy call shows which of your fixes comes FIRST, before a bank reads your file again.</li>
         <li>The pull on the call is a soft one, so your score doesn't budge and no bank sees it. Then we open your report together on one screen.</li>
-        <li>This is that screen for the sample file. Today it shows $0. Cleaned up, the same file projects to $8,250, and the difference is what the fixes are worth.</li>
+        <li>This is that screen for the sample file. On the sample, cleaning the file is the one fix that changes what it gets.</li>
         <li>On your own file, you see how much you qualify for based on where you're at right now, and right beside it, what the cleaned-up file projects to.</li>
         <li>Then you get the path for your file: fund what's there, fix it first, or both. Whichever it is, you leave with the next step set.</li>
         <li>We take on action takers, not shoppers. This call is built for the person who's ready to start on that first fix.</li>

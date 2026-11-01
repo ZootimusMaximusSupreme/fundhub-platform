@@ -28,7 +28,7 @@ The top reason reads serious delinquency and a collection filed. When a bank tur
 
 
 
-Now read the accounts underneath. Midland placed a debt for collection. Synchrony charged off an account. And Capital One shows a payment 30 days late.
+Read the accounts underneath. Midland placed a debt for collection. Synchrony charged off an account. And Capital One shows a payment 30 days late.
 
 
 
@@ -184,7 +184,7 @@ Anything that still misses goes back on the fix list for the next round. A bank'
 
 
 
-A file that passes goes to the banks that fit it, in order, off your own bank and lender list. That's you funding yourself, off your own file.
+A file that passes goes to the banks that fit it, in order. That's you funding yourself, off your own file.
 
 
 
@@ -196,13 +196,7 @@ The capital goes where the business needs it. That's the hire you've been puttin
 
 
 
-And the business stops leaning on your personal savings to grow. That's the whole REASON to fix the file before anything else.
-
-
-
-
-
-I know what a prime file opens up because I've lived it. Off one personal file, I've pulled $100,000 lines on four different companies, on stated income.
+That capital is the REASON to fix the file first. Every bank on your list gets picked from that file.
 
 
 
@@ -226,7 +220,7 @@ The pull on the call is a soft one, so your score doesn't budge and no bank sees
 
 
 
-This is that screen for the sample file. Today it shows $0. Cleaned up, the same file projects to $8,250, and the difference is what the fixes are worth.
+This is that screen for the sample file. On the sample, cleaning the file is the one fix that changes what it gets.
 
 
 
