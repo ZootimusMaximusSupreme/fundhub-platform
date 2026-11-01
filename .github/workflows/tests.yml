@@ -8,18 +8,12 @@
 # by hand and reporting what they saw. Nothing has ever caught a regression
 # automatically, and a branch could merge red without anyone noticing.
 #
-# THREE OF THE SIX GATES IN CLAUDE.md SECTION 6 CANNOT RUN HERE, and this file does
-# not pretend otherwise:
-#   * `npx tsc --noEmit` — there is no TypeScript in this repository. `tsc` with no
-#                          tsconfig and no inputs prints its help text and exits 0,
-#                          which is the exact "green that never ran" this file
-#                          refuses to add.
-# Adding a step that silently passes because the tool is absent would be worse than
-# having no step: it would report a gate as green that was never run. When that
-# tool lands, add it here.
+# TypeScript is installed and tsconfig.json includes the source tree. Keep its
+# exact-head check on one blocking unit shard so a regression cannot merge green.
 #
-# TWO OF THE THREE HAVE NOW LANDED.
+# ALL THREE HAVE NOW LANDED.
 #   * `npm run lint` (scripts/lint.mjs) — wired into the blocking job below.
+#   * `npx --no-install tsc --noEmit` — wired into one blocking unit shard below.
 #   * Playwright — playwright.config.mjs plus e2e/, added with the staff reply
 #     inbox, which rewrote a thousand-line screen that until then had never been
 #     opened in a browser by anything. It runs as its own BLOCKING job further
@@ -126,6 +120,10 @@ jobs:
       - name: Lint
         if: matrix.shard == 0
         run: npm run lint
+
+      - name: TypeScript
+        if: matrix.shard == 0
+        run: npx --no-install tsc --noEmit
 
       # DATABASE_URL is deliberately NOT set. Every unit file runs in exactly one
       # of the six shards; the pg files run with a real database below.

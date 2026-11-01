@@ -37,6 +37,21 @@ function phoenixDay(value) {
   return `${part.year}-${part.month}-${part.day}`;
 }
 
+function dialHistory(handoff) {
+  if (jsonObject(handoff.dial_attempts_by_setter) === handoff.dial_attempts_by_setter) {
+    return handoff.dial_attempts_by_setter;
+  }
+  const setterId = handoff.setter_staff_id;
+  if (!setterId) return {};
+  const days = jsonObject(handoff.dial_attempt_days);
+  if (Object.keys(days).length) return { [setterId]: { ...days } };
+  // Older records only know the first dial date and their aggregate attempt count.
+  const firstDial = handoff.dialed_at ? new Date(handoff.dialed_at) : new Date(NaN);
+  const attempts = Number(handoff.call_attempts || 0);
+  return Number.isFinite(firstDial.getTime()) && attempts > 0
+    ? { [setterId]: { [phoenixDay(firstDial)]: attempts } } : {};
+}
+
 export function targetDialBy(createdAt) {
   const first = new Date(createdAt);
   if (!Number.isFinite(first.getTime())) return null;
@@ -164,26 +179,32 @@ export async function setterNumbers(db, staff, { now = new Date(), includeDemo =
                 AT TIME ZONE 'America/Phoenix' AS day_start,
               (date_trunc('day', $4::timestamptz AT TIME ZONE 'America/Phoenix') + interval '1 day')
                 AT TIME ZONE 'America/Phoenix' AS day_end
-     ), attributed AS (
+     ), leads AS (
        SELECT c.id, c.custom_fields->'setter_handoff' AS handoff
          FROM clients c
         WHERE c.org_id = $1
-          AND c.custom_fields->'setter_handoff'->>'setter_staff_id' = $2::text
           AND c.custom_fields->>'crm_archived_at' IS NULL
           AND ($3::boolean OR COALESCE(c.is_demo, false) = false)
+     ), attributed AS (
+       SELECT id, handoff FROM leads WHERE handoff->>'setter_staff_id' = $2::text
      )
      SELECT
        COALESCE((
          SELECT sum(CASE
-           WHEN jsonb_typeof(a.handoff->'dial_attempt_days') = 'object'
+           WHEN jsonb_typeof(a.handoff->'dial_attempts_by_setter') = 'object'
+             THEN COALESCE(NULLIF((a.handoff->'dial_attempts_by_setter'->$2::text)->>
+               to_char(x.day_start AT TIME ZONE 'America/Phoenix', 'YYYY-MM-DD'), '')::int, 0)
+           WHEN a.handoff->>'setter_staff_id' = $2::text
+            AND jsonb_typeof(a.handoff->'dial_attempt_days') = 'object'
              THEN COALESCE(NULLIF(a.handoff->'dial_attempt_days'->>
                to_char(x.day_start AT TIME ZONE 'America/Phoenix', 'YYYY-MM-DD'), '')::int, 0)
-           WHEN NULLIF(a.handoff->>'dialed_at', '')::timestamptz >= x.day_start
+           WHEN a.handoff->>'setter_staff_id' = $2::text
+            AND NULLIF(a.handoff->>'dialed_at', '')::timestamptz >= x.day_start
             AND NULLIF(a.handoff->>'dialed_at', '')::timestamptz < x.day_end
              THEN COALESCE(NULLIF(a.handoff->>'call_attempts', '')::int, 0)
            ELSE 0
          END)
-           FROM attributed a, bounds x
+           FROM leads a, bounds x
        ), 0)::int AS dials,
        COALESCE((
          SELECT count(DISTINCT b.id)
@@ -516,6 +537,29 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
     if (staff.role === "setter" && !(await claimLatestSetterTask(writer, staff, client_id))) {
       return { status: 403, body: { ok: false, error: "assigned_to_other_setter" } };
     }
+    // Read after the client lock. A stale autosave or another dial must not move
+    // a former setter's counts to whoever owns the lead now.
+    const current = await writer.query(
+      `SELECT custom_fields FROM clients WHERE id = $1 AND org_id = $2
+        AND custom_fields->>'crm_archived_at' IS NULL FOR UPDATE`,
+      [client_id, staff.org_id]
+    );
+    if (!current.rows.length) return { status: 404, body: { ok: false, error: "client_not_found" } };
+    const liveHandoff = jsonObject(jsonObject(current.rows[0].custom_fields).setter_handoff);
+    const history = dialHistory(liveHandoff);
+    if (action === "log_dial") {
+      const day = phoenixDay(actionDate);
+      const days = jsonObject(liveHandoff.dial_attempt_days);
+      const setterDays = jsonObject(history[setterStaffId]);
+      next.call_attempts = Number(liveHandoff.call_attempts || 0) + 1;
+      next.dialed_at = liveHandoff.dialed_at || actionDate.toISOString();
+      next.dial_attempt_days = { ...days, [day]: Number(days[day] || 0) + 1 };
+      next.dial_attempts_by_setter = {
+        ...history, [setterStaffId]: { ...setterDays, [day]: Number(setterDays[day] || 0) + 1 }
+      };
+    } else if (Object.keys(history).length || liveHandoff.dial_attempts_by_setter) {
+      next.dial_attempts_by_setter = history;
+    }
     const savedFields = await persistHandoff(writer, client_id, staff.org_id, next);
     const saved = jsonObject(savedFields.setter_handoff);
     if (action === "send_intro_video" || action === "send_handoff") {
@@ -551,8 +595,7 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
     }
     return { status: 200, body: { ok: true, item: { ...mapItem({ ...client, done: !!saved.complete_at, setter_staff_id: setterStaffId, closer_staff_id: closerStaffId, custom_fields: savedFields }, staff), booking_url: tierBookingLink(savedFields) } } };
   };
-  const result = action === "complete" || staff.role === "setter"
-    ? await withTransaction(db, save) : await save(db);
+  const result = await withTransaction(db, save);
   if (result.status === 200 && (action === "send_intro_video" || action === "send_handoff")) {
     // Provider delivery must happen after the claim and saved handoff commit.
     // A failed COMMIT then cannot send an SMS whose idempotency row rolls back.
