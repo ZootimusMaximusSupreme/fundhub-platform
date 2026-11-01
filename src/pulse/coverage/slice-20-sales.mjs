@@ -39,7 +39,7 @@ export const CHECKS = [
   ),
   workflow("s-04c-staff-booked-alert", "booking.created", "event booking.created"),
   workflow("s-portal-invite", "booking.created", "event booking.created (retired; still registered)"),
-  workflow("s-nobook-chase", "survey.submitted", "event survey.submitted"),
+  workflow("s-nobook-chase", "survey.completed", "event survey.completed"),
   workflow("s-05a-no-show-recovery", "booking.noshow", "event booking.noshow"),
   workflow("s-06-post-call-funding-purchased", "deposit.paid", "event deposit.paid"),
   workflow("s-doc-collection", "deposit.paid", "event deposit.paid"),

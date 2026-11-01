@@ -23,7 +23,7 @@
  *
  * SMS Templates (from SOP + addendum):
  *   SMS #1 (Min 7):
- *     "Hey {{first_name}}, it's Josh from FundHub! I just tried giving you a call
+ *     "Hey {{first_name}}, it's Chris from FundHub! I just tried giving you a call
  *      about your Strategy Session. Looking at your file — you've been pre-approved
  *      for ${{prequal_amount}} in funding. Just want to make sure your appointment
  *      on {{appointment_time}} still works? 💰"
@@ -37,7 +37,7 @@
  *     "Hey {{first_name}}, I noticed we haven't been able to connect. Your
  *      pre-approval for ${{prequal_amount}} is still active but I can't hold
  *      your advisor's slot much longer. If you're still interested, just reply
- *      YES and I'll get you rebooked. — Josh"
+ *      YES and I'll get you rebooked. — Chris"
  *
  * NOTE: The GHL workflow (AI-SET-03) must use these SMS templates. The merge tags
  * are passed as payload fields so GHL can render them inline.
@@ -48,7 +48,7 @@ const { buildSetterCallConfig } = require("../agents/setter-prompt");
 
 // Voicemail drop message — from setter-prompt VOICEMAIL SCRIPT section
 const VOICEMAIL_MESSAGE =
-  "Hey {{first_name}}, it's Josh over at FundHub. I was just reviewing your " +
+  "Hey {{first_name}}, it's Chris over at FundHub. I was just reviewing your " +
   "UnderwriteIQ file and saw your pre-approval for ${{prequal_amount}}. I saw " +
   "you booked a Strategy Session and wanted to give you a quick call to make " +
   "sure you're all set. Give me a call back or shoot me a text when you get a " +
@@ -268,11 +268,11 @@ async function fireSmsCadence({
       // merge tags directly from contact custom fields in the SMS steps.
       sms_templates: {
         sms_1_value_first:
-          `Hey ${firstName || "{{first_name}}"}, it's Josh from FundHub! I just tried giving you a call about your Strategy Session. Looking at your file — you've been pre-approved for $${prequalAmount || "{{prequal_amount}}"} in funding. Just want to make sure your appointment on ${appointmentTime || "{{appointment_time}}"} still works? 💰`,
+          `Hey ${firstName || "{{first_name}}"}, it's Chris from FundHub! I just tried giving you a call about your Strategy Session. Looking at your file — you've been pre-approved for $${prequalAmount || "{{prequal_amount}}"} in funding. Just want to make sure your appointment on ${appointmentTime || "{{appointment_time}}"} still works? 💰`,
         sms_2_follow_up:
           `Hey ${firstName || "{{first_name}}"}, just checking in — we have your UnderwriteIQ results ready and your Senior Advisor is prepped for your call. Want to confirm your spot?`,
         sms_3_break_up:
-          `Hey ${firstName || "{{first_name}}"}, I noticed we haven't been able to connect. Your pre-approval for $${prequalAmount || "{{prequal_amount}}"} is still active but I can't hold your advisor's slot much longer. If you're still interested, just reply YES and I'll get you rebooked. — Josh`
+          `Hey ${firstName || "{{first_name}}"}, I noticed we haven't been able to connect. Your pre-approval for $${prequalAmount || "{{prequal_amount}}"} is still active but I can't hold your advisor's slot much longer. If you're still interested, just reply YES and I'll get you rebooked. — Chris`
       }
     };
 
@@ -316,7 +316,7 @@ async function fireSmsCadence({
  * then send the handoff SMS adding the Closer to the thread.
  *
  * SMS template (from SOP addendum):
- *   "Hey {{first_name}}, it's Josh from FundHub. Your Funding Strategy Session
+ *   "Hey {{first_name}}, it's Chris from FundHub. Your Funding Strategy Session
  *    is starting in 15 minutes! I've briefed your Senior Advisor, {{closer_name}},
  *    on your UnderwriteIQ results and they are ready to review your
  *    ${{prequal_amount}} pre-approval. Here is the Zoom link: {{zoom_link}}.
@@ -352,7 +352,7 @@ async function triggerThreeWayHandoff({
 
   try {
     const handoffSms =
-      `Hey ${firstName || "{{first_name}}"}, it's Josh from FundHub. Your Funding Strategy Session ` +
+      `Hey ${firstName || "{{first_name}}"}, it's Chris from FundHub. Your Funding Strategy Session ` +
       `is starting in 15 minutes! I've briefed your Senior Advisor, ${closerName || "{{closer_name}}"}, ` +
       `on your UnderwriteIQ results and they are ready to review your ` +
       `$${prequalAmount || "{{prequal_amount}}"} pre-approval. ` +

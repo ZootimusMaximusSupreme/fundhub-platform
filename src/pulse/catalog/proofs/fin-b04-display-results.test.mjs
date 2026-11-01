@@ -241,15 +241,15 @@ test("only the dispatcher ever sets messages.scheduled_at", () => {
   assert.deepEqual(writers, ["src/messaging/dispatch.mjs"]);
 });
 
-test("the shift exemption is the owner alone, and the gate's clearing codes are the four the query lists", async () => {
+test("the shift exemption is the owner alone, and the gate's clearing codes are the five the query lists", async () => {
   const { SUPER_ROLES } = await import("../../../http/middleware/requireRole.mjs");
   assert.deepEqual([...SUPER_ROLES], ["owner"]);
   const gate = read("src/messaging/gate.mjs");
   const clearing = new Set();
   for (const m of gate.matchAll(/\br\(\s*"([a-z_]+)"\s*,\s*"(consent|tcpa|engine)"/g)) clearing.add(m[1]);
   if (/code:\s*"gate_error"/.test(gate)) clearing.add("gate_error");
-  assert.deepEqual([...clearing].sort(), ["gate_error", "opted_out", "quiet_hours", "recipient_unknown"]);
-  assert.match(SQL_BY_KEY.get("message-blocked"), /\(opted_out\|quiet_hours\|recipient_unknown\|gate_error\)/);
+  assert.deepEqual([...clearing].sort(), ["drip_hours", "gate_error", "opted_out", "quiet_hours", "recipient_unknown"]);
+  assert.match(SQL_BY_KEY.get("message-blocked"), /\(opted_out\|quiet_hours\|drip_hours\|recipient_unknown\|gate_error\)/);
   assert.match(gate, /export const GATE_SOURCE = "messaging-gate"/);
 });
 

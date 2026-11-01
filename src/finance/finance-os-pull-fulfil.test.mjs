@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   systemPullUsesSimulation,
+  savedSystemPullIntent,
   fulfilQueuedSystemPulls
 } from "./finance-os-pull-fulfil.mjs";
 
@@ -101,12 +102,14 @@ test("Blueprint monthly aftercare never delivers a simulated CRS result", async 
   const db = {
     async query(sql) {
       if (/FROM soft_pull_requests/.test(sql)) return { rows: [row] };
-      throw new Error("Simulated acceptance test must perform no database writes");
+      if (/UPDATE soft_pull_requests/.test(sql)) return { rows: [{ id: row.id }] };
+      throw new Error("Simulated acceptance fixture only permits the scoped hold write");
     }
   };
   let aftercareRuns = 0;
   const run = async (env) => fulfilQueuedSystemPulls(db, {
     env,
+    createTaskImpl: async () => ({ id: "held" }),
     runPull: async (_db, opts) => ({
       ok: true,
       simulated: true,
@@ -124,8 +127,13 @@ test("Blueprint monthly aftercare never delivers a simulated CRS result", async 
     const out = await run(env);
     assert.equal(out.checked, 1);
     assert.equal(out.fulfilled, 0, "simulated reports cannot count as real CRS fulfillment");
-    assert.equal(out.simulatedFulfilled, 1);
-    assert.equal(out.skipped[0]?.reason, "simulated_result_not_customer_delivery");
+    if (systemPullUsesSimulation(env)) {
+      assert.equal(out.simulatedFulfilled, 1);
+      assert.equal(out.skipped[0]?.reason, "simulated_result_not_customer_delivery");
+    } else {
+      assert.equal(out.simulatedFulfilled, 0);
+      assert.equal(out.authorizationHolds[0]?.reason, "request_not_explicitly_real");
+    }
     assert.deepEqual(out.deliveryExceptions, []);
     assert.equal(out.errored.length, 0);
   }
@@ -133,7 +141,8 @@ test("Blueprint monthly aftercare never delivers a simulated CRS result", async 
 });
 
 test("actual successful CRS result still runs Blueprint aftercare", async () => {
-  const row = { id: "request-real", org_id: "org-real", client_id: "client-real" };
+  const row = { id: "request-real", org_id: "org-real", client_id: "client-real",
+    subscription_id: "plan-real", idempotency_key: "finance-os-monthly:plan-real:0:real" };
   const db = {
     async query(sql) {
       if (/FROM soft_pull_requests/.test(sql)) return { rows: [row] };
@@ -143,6 +152,8 @@ test("actual successful CRS result still runs Blueprint aftercare", async () => 
   const calls = [];
   const tally = await fulfilQueuedSystemPulls(db, {
     env: { FINANCE_OS_SYSTEM_PULL_LIVE: "1", CRS_ALLOW_LIVE: "1" },
+    consentCheck: async () => ({ valid: true }),
+    entitlementCheck: async () => ({ entitled: true, subscriptionId: "plan-real" }),
     runPull: async (_conn, input) => {
       assert.equal(input.simulate, false);
       return { ok: true, simulated: false, crsResultId: "provider-crs-id" };
@@ -158,4 +169,92 @@ test("actual successful CRS result still runs Blueprint aftercare", async () => 
   assert.deepEqual(calls, [{
     orgId: "org-real", clientId: "client-real", crsResultId: "provider-crs-id"
   }]);
+});
+
+test("persisted mode, tenant scope, consent, and paid term all fail closed before real provider", async () => {
+  const LIVE = { CRS_ALLOW_LIVE: "1", FINANCE_OS_SYSTEM_PULL_LIVE: "1" };
+  const row = { id: "q1", org_id: "org", client_id: "client", subscription_id: "plan", idempotency_key: "finance-os-monthly:plan:1:real" };
+  const db = { query: async () => ({ rows: [row] }) };
+  let sends = 0, holds = [];
+  const run = (options = {}) => fulfilQueuedSystemPulls(db, {
+    env: LIVE,
+    runPull: async () => { sends++; return { ok: true, simulated: false, crsResultId: "report" }; },
+    aftercare: async () => ({ ok: true }),
+    createTaskImpl: async (_db, task) => { holds.push(task); return { id: "task" }; },
+    consentCheck: async () => ({ valid: true }),
+    entitlementCheck: async () => ({ entitled: true, subscriptionId: "plan" }),
+    ...options
+  });
+  assert.equal(savedSystemPullIntent(row), "real");
+  row.idempotency_key = "finance-os-monthly:plan:1";
+  assert.equal(savedSystemPullIntent(row), "simulated");
+  assert.equal((await run()).authorizationHolds[0].reason, "request_not_explicitly_real");
+  row.idempotency_key = "finance-os-monthly:plan:1:real";
+  assert.equal((await run({ consentCheck: async () => ({ valid: false, reason: "revoked" }) })).authorizationHolds[0].reason, "consent_no_longer_valid");
+  assert.equal((await run({ entitlementCheck: async () => ({ entitled: false }) })).authorizationHolds[0].reason, "paid_access_no_longer_valid");
+  assert.equal((await run({ entitlementCheck: async () => ({ entitled: true, subscriptionId: "foreign-plan" }) })).authorizationHolds[0].reason, "paid_access_no_longer_valid");
+  assert.equal((await run({ env: {} })).authorizationHolds[0].reason, "live_flags_disabled_for_real_request");
+  row.idempotency_key = "finance-os-monthly:another-plan:1:real";
+  assert.equal(savedSystemPullIntent(row), "unknown");
+  assert.equal((await run()).authorizationHolds[0].reason, "request_not_explicitly_real");
+  assert.equal(sends, 0);
+  assert.equal(holds.length, 6);
+  row.idempotency_key = "finance-os-monthly:plan:1:real";
+  const accepted = await run();
+  assert.equal(accepted.fulfilled, 1);
+  assert.equal(accepted.ok, true);
+  assert.equal(sends, 1);
+});
+
+test("revoked monthly consent closes queued request so later renewal cannot auto-pull", async () => {
+  const row = { id: "pending", org_id: "org", client_id: "client",
+    subscription_id: "plan", idempotency_key: "finance-os-monthly:plan:0:real" };
+  let queued = true, consentValid = false, providerCalls = 0, tasks = 0;
+  const db = { async query(sql, params = []) {
+    if (/FROM soft_pull_requests/.test(sql)) return { rows: queued ? [row] : [] };
+    if (/UPDATE soft_pull_requests/.test(sql)) {
+      assert.deepEqual(params.slice(0, 3), ["pending", "org", "client"]);
+      assert.match(params[3], /consent_no_longer_valid/);
+      if (!queued) return { rows: [] };
+      queued = false;
+      return { rows: [{ id: row.id }] };
+    }
+    throw new Error(`unexpected SQL ${sql}`);
+  } };
+  const run = () => fulfilQueuedSystemPulls(db, {
+    env: { FINANCE_OS_SYSTEM_PULL_LIVE: "1", CRS_ALLOW_LIVE: "1" },
+    consentCheck: async () => ({ valid: consentValid }),
+    entitlementCheck: async () => ({ entitled: true, subscriptionId: "plan" }),
+    createTaskImpl: async () => { tasks++; return { id: "task" }; },
+    runPull: async () => { providerCalls++; return { ok: true, crsResultId: "credit" }; }
+  });
+  const held = await run();
+  assert.equal(held.authorizationHolds[0].reason, "consent_no_longer_valid");
+  assert.equal(held.ok, false, "Pulse/consumer must report a held customer outcome RED");
+  assert.equal(queued, false, "hold must resolve the saved queued request");
+  consentValid = true;
+  assert.equal((await run()).checked, 0, "later authorization must require a NEW request");
+  assert.equal(providerCalls, 0);
+  assert.equal(tasks, 1);
+});
+
+test("failed hold ledger write reports RED and cannot call bureau or claim task saved", async () => {
+  const row = { id: "foreign", org_id: "org-A", client_id: "client",
+    subscription_id: "plan", idempotency_key: "finance-os-monthly:plan:0:real" };
+  const db = { async query(sql) {
+    if (/FROM soft_pull_requests/.test(sql)) return { rows: [row] };
+    if (/UPDATE soft_pull_requests/.test(sql)) return { rows: [] };
+    throw new Error("unexpected SQL");
+  } };
+  let calls = 0, tasks = 0;
+  const out = await fulfilQueuedSystemPulls(db, {
+    env: { CRS_ALLOW_LIVE: "1", FINANCE_OS_SYSTEM_PULL_LIVE: "1" },
+    consentCheck: async () => ({ valid: false }),
+    createTaskImpl: async () => { tasks++; return { id: "task" }; },
+    runPull: async () => { calls++; return { ok: true }; }
+  });
+  assert.equal(out.ok, false);
+  assert.equal(out.errored[0]?.phase, "authorization_hold_persist");
+  assert.equal(calls, 0);
+  assert.equal(tasks, 0);
 });

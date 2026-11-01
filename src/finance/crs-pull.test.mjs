@@ -703,3 +703,74 @@ test("a business report that fails does not fail the personal pull", async () =>
   assert.equal(out.ok, true);
   assert.equal(db.results[0].result.businessReports, undefined);
 });
+
+
+test("two workers reading queued concurrently order a bureau only for the successful claim", async () => {
+  const requestId = "request-exclusive-claim";
+  const raceDb = fakeDb(request(requestId));
+  const originalQuery = raceDb.query.bind(raceDb);
+  let readCount = 0;
+  let releaseReads;
+  const bothRead = new Promise((resolve) => { releaseReads = resolve; });
+  raceDb.query = async (sql, params) => {
+    if (String(sql).includes("FROM soft_pull_requests WHERE id = $1") && readCount < 2) {
+      const snapshot = (await originalQuery(sql, params)).rows.map((row) => ({ ...row }));
+      if (++readCount === 2) releaseReads();
+      await bothRead;
+      return { rows: snapshot };
+    }
+    return originalQuery(sql, params);
+  };
+
+  let releaseProvider;
+  const providerHold = new Promise((resolve) => { releaseProvider = resolve; });
+  let signalProviderStarted;
+  const providerStarted = new Promise((resolve) => { signalProviderStarted = resolve; });
+  const bureau = fakeClient({ TU: { ok: true, requestId: "REQ-CLAIM-ONLY", report: report(717) } });
+  bureau.orderPrequal = async ({ bureau: name }) => {
+    bureau.calls.push(name);
+    if (bureau.calls.length === 1) {
+      signalProviderStarted();
+      await providerHold;
+    }
+    return { ok: true, requestId: "REQ-CLAIM-ONLY", report: report(717) };
+  };
+  const opts = { orgId: ORG, clientId: CLIENT, requestId, client: bureau, bureaus: ["TU"] };
+  const promises = [runCrsPull(raceDb, opts), runCrsPull(raceDb, opts)];
+  const settled = promises.map((p) => p.then(
+    (value) => ({ ok: true, value }),
+    (error) => ({ ok: false, error })
+  ));
+  try {
+    await providerStarted;
+    const loser = await Promise.race(settled);
+    assert.equal(loser.ok, false, "the second worker must lose the claim, not call the bureau");
+    assert.equal(loser.error.status, 409);
+  } finally {
+    releaseProvider?.();
+  }
+  const outcomes = await Promise.all(settled);
+  assert.equal(readCount, 2, "both workers had the same queued snapshot");
+  assert.equal(outcomes.filter((out) => out.ok).length, 1);
+  assert.equal(outcomes.filter((out) => !out.ok && out.error.status === 409).length, 1);
+  assert.deepEqual(bureau.calls, ["TU"], "provider must receive exactly one order");
+  assert.equal(raceDb.results.length, 1);
+  assert.equal(raceDb.requests.get(requestId).status, "fulfilled");
+  assert.deepEqual(raceDb.events.map((event) => event.name), ["analysis.completed", "decision.rendered"]);
+});
+
+test("a pre-claimed processing request never starts another bureau order", async () => {
+  const requestId = "request-previously-processing";
+  const raceDb = fakeDb(request(requestId, { status: "processing" }));
+  const bureau = fakeClient({ TU: { ok: true, requestId: "SHOULD-NOT-ORDER", report: report(710) } });
+  await assert.rejects(
+    () => runCrsPull(raceDb, {
+      orgId: ORG, clientId: CLIENT, requestId, client: bureau, bureaus: ["TU"]
+    }),
+    (error) => error.status === 409 && /processing/.test(error.message)
+  );
+  assert.deepEqual(bureau.calls, []);
+  assert.equal(raceDb.requests.get(requestId).status, "processing", "preserve manual reconciliation evidence");
+  assert.equal(raceDb.results.length, 0);
+  assert.equal(raceDb.events.length, 0);
+});

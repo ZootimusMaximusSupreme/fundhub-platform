@@ -161,7 +161,7 @@ function setterMissing(item, handoff) {
   if (item && (item.lead_type === "opt_in" || h.lead_type === "opt_in")) {
     if (!String(h.triage_problem || "").trim()) missing.push("triage problem");
     if (!String(h.triage_goal || "").trim()) missing.push("triage goal");
-    if (h.triage_personal_or_business !== "personal" && h.triage_personal_or_business !== "business") missing.push("personal or business");
+    if (!["personal", "business", "both"].includes(h.triage_personal_or_business)) missing.push("funding path");
   }
   return missing;
 }
@@ -178,6 +178,7 @@ function setterSorted(items) {
 
   var queue = [];
   var selected = null;
+  var requestedClientId = new URLSearchParams(location.search).get("client_id");
   var bookingUrl = "";
   var appStoreUrl = "";
   var introVideoAvailable = false;
@@ -243,6 +244,13 @@ function setterSorted(items) {
     el.className = "setter-status" + (tone ? " " + tone : "");
   }
 
+  function sayDetails(text, tone) {
+    var el = document.getElementById("setter-details-status");
+    if (!el) return;
+    el.textContent = text;
+    el.className = "setter-status" + (tone ? " " + tone : "");
+  }
+
   function selectedId() { return selected && selected.client_id; }
   function currentItem() { return queue.find(function (row) { return row.client_id === selectedId(); }) || selected; }
   function handoffOf(item) { return item && item.setter_handoff && typeof item.setter_handoff === "object" ? item.setter_handoff : {}; }
@@ -266,9 +274,13 @@ function setterSorted(items) {
     h.goal = value("goal");
     h.computer_ready = answer("computer_ready");
     h.app_on_phone = answer("app_on_phone");
-    h.triage_problem = value("triage_problem");
-    h.triage_goal = value("triage_goal");
+    h.triage_problem = field("triage_problem") ? value("triage_problem") : h.triage_problem || "";
+    h.triage_goal = field("triage_goal") ? value("triage_goal") : h.triage_goal || "";
     h.triage_personal_or_business = value("triage_personal_or_business");
+    h.employment_status = value("employment_status");
+    h.employment_details = value("employment_details");
+    h.annual_personal_income = value("annual_personal_income");
+    h.income_verification = value("income_verification");
     return h;
   }
 
@@ -304,7 +316,8 @@ function setterSorted(items) {
     if (!survey) return '<p>No survey answers on this record.</p>';
     if (typeof survey === "string") return '<p>' + setterEsc(survey) + '</p>';
     var entries = Array.isArray(survey) ? survey.map(function (row) {
-      return { key: row.key, label: row.question || "Survey answer", answer: row.answer };
+      return { key: row.key, label: row.question || "Survey answer", answer: row.answer,
+        answerValues: row.answer_values, type: row.type, options: row.options };
     }) : Object.entries(survey).map(function (entry) {
       return { key: entry[0], label: entry[0], answer: entry[1] };
     });
@@ -315,15 +328,45 @@ function setterSorted(items) {
       var label = entry.label.replace(/[_-]+/g, " ").replace(/([a-z])([A-Z])/g, "$1 $2");
       var original = surveyAnswerText(entry.answer);
       var edited = edits && Object.prototype.hasOwnProperty.call(edits, entry.key) ? String(edits[entry.key]) : original;
-      if (!entry.key) return '<div><b>' + setterEsc(label) + '</b>' + setterEsc(original) + '</div>';
+      var options = Array.isArray(entry.options) ? entry.options : [];
+      if (!entry.key || !options.length) return '<div><b>' + setterEsc(label) + '</b>' + setterEsc(original) + '</div>';
       canEdit = true;
+      if (entry.type === "multi") {
+        var current = edits && Object.prototype.hasOwnProperty.call(edits, entry.key)
+          ? edited.split(", ").filter(Boolean) : Array.isArray(entry.answerValues) ? entry.answerValues : [original];
+        var extra = current.filter(function (answer) { return !options.includes(answer); });
+        return '<fieldset class="setter-survey-field setter-survey-multi" data-survey-key="' + setterEsc(entry.key) + '" data-original="' + setterEsc(original) + '"><legend>' + setterEsc(label) + '</legend>' +
+          '<div class="setter-survey-options">' + options.map(function (choice) {
+            return '<label><input type="checkbox" value="' + setterEsc(choice) + '"' + (current.includes(choice) ? ' checked' : '') + '><span>' + setterEsc(choice) + '</span></label>';
+          }).join("") + '</div>' +
+          (extra.length ? '<small>Saved answer: ' + setterEsc(extra.join(", ")) + '</small>' : '') +
+          (edited !== original ? '<small>Original answer: ' + setterEsc(original) + '</small>' : '') + '</fieldset>';
+      }
+      var choices = options.slice();
+      if (!choices.includes(edited)) choices.unshift(edited);
       return '<div class="setter-survey-field"><label for="setter-survey-' + index + '">' + setterEsc(label) + '</label>' +
-        '<textarea id="setter-survey-' + index + '" data-survey-key="' + setterEsc(entry.key) + '" data-original="' + setterEsc(original) + '" maxlength="1000">' + setterEsc(edited) + '</textarea>' +
+        '<select id="setter-survey-' + index + '" data-survey-key="' + setterEsc(entry.key) + '" data-original="' + setterEsc(original) + '">' + choices.map(function (choice) {
+          return option(choice, options.includes(choice) ? choice : 'Saved answer: ' + (choice || '(blank)'), edited);
+        }).join("") + '</select>' +
         (edited !== original ? '<small>Original answer: ' + setterEsc(original) + '</small>' : '') + '</div>';
     }).join("");
     return '<div class="setter-survey">' + fields + '</div>' + (canEdit ?
       '<div class="setter-actions"><button type="button" class="fh-astra-action" data-action="save-survey">Save survey answers</button></div>' +
       '<div class="setter-status" id="setter-survey-status" role="status" aria-live="polite"></div>' : '');
+  }
+
+  // The lead's own calendar (picked by its survey score), else the plain one.
+  function leadBookingUrl(item) {
+    return item && /^https:\/\//.test(item.booking_url || "") ? item.booking_url : bookingUrl;
+  }
+
+  /* A saved score correction can move the lead to the other calendar. */
+  function paintBookingLinks() {
+    var url = leadBookingUrl(currentItem());
+    detailEl.querySelectorAll("[data-booking-link]").forEach(function (a) {
+      a.setAttribute("href", url || "calendar.html");
+      if (url) { a.setAttribute("target", "_blank"); a.setAttribute("rel", "noopener"); }
+    });
   }
 
   function paintDetail() {
@@ -342,19 +385,25 @@ function setterSorted(items) {
       '<section class="setter-section"><h3>Call result</h3><div class="setter-fields"><div class="setter-field"><label for="setter-disposition">Disposition</label><select id="setter-disposition" name="disposition">' +
       option("", "Choose a result", h.disposition || "") + option("reached", "Reached", h.disposition) + option("no_answer", "No answer", h.disposition) + option("reschedule", "Reschedule", h.disposition) + option("booked_on_call", "Booked on this call", h.disposition) + '</select></div>' +
       '<div class="setter-field"><label for="setter-attempts">Dial attempts</label><input id="setter-attempts" name="call_attempts" type="number" min="0" max="99" value="' + Number(h.call_attempts || 0) + '" readonly></div></div>' +
-      '<div id="setter-no-answer"' + (h.disposition === "no_answer" ? '' : ' hidden') + '><p>Double dial right away. Then leave voicemail, send the missed-call text, and send the intro video.</p>' +
+      '<div id="setter-no-answer"' + (h.disposition === "no_answer" ? '' : ' hidden') + '><p>Double dial right away. Then leave voicemail and send the intro video. Saving No answer sends the missed-call texts for you, so do not text them by hand.</p>' +
       '<div class="setter-checks">' + box("voicemail_left", "Voicemail left", h.voicemail_left) + box("missed_text_sent", "Missed-call text sent", h.missed_text_sent) + '</div>' +
       document.getElementById("setter-script-help").innerHTML +
       '<button type="button" class="fh-astra-action" data-action="send_intro_video"' + (h.video_sent_at || !introVideoAvailable ? ' disabled' : '') + '>' + (h.video_sent_at ? 'Intro video sent' : introVideoAvailable ? 'Send intro video' : 'Intro video waiting to film') + '</button></div></section>';
 
     if (!booked) html += '<section class="setter-section"><h3>Triage and book</h3><p>Find the problem and goal, then book the strategy call. Keep the call under 10 minutes.</p>' +
       '<div class="setter-fields"><div class="setter-field wide"><label for="setter-triage-problem">Problem in their words</label><textarea id="setter-triage-problem" name="triage_problem">' + setterEsc(h.triage_problem || "") + '</textarea></div>' +
-      '<div class="setter-field wide"><label for="setter-triage-goal">Goal in their words</label><textarea id="setter-triage-goal" name="triage_goal">' + setterEsc(h.triage_goal || "") + '</textarea></div>' +
-      '<div class="setter-field"><label for="setter-use">Personal or business?</label><select id="setter-use" name="triage_personal_or_business">' + option("", "Choose one", h.triage_personal_or_business || "") + option("personal", "Personal", h.triage_personal_or_business) + option("business", "Business", h.triage_personal_or_business) + '</select></div></div>' +
-      (bookingUrl ? '<a class="setter-link" href="' + setterEsc(bookingUrl) + '" target="_blank" rel="noopener">Open booking calendar ↗</a>' : '<a class="setter-link" href="calendar.html">Open booking calendar</a>') +
+      '<div class="setter-field wide"><label for="setter-triage-goal">Goal in their words</label><textarea id="setter-triage-goal" name="triage_goal">' + setterEsc(h.triage_goal || "") + '</textarea></div></div>' +
+      (leadBookingUrl(item) ? '<a class="setter-link" data-booking-link href="' + setterEsc(leadBookingUrl(item)) + '" target="_blank" rel="noopener">Open booking calendar ↗</a>' : '<a class="setter-link" href="calendar.html">Open booking calendar</a>') +
       '<p>After the booking webhook arrives, refresh this queue and finish the handoff.</p></section>';
 
     html += '<section class="setter-section"><h3>Survey · edit during the call</h3>' + surveyHtml(item.survey, item.survey_edits) + '</section>' +
+      '<section class="setter-section" id="setter-details-section"><h3>Setter questions · during the call</h3><p>Confirm the business answers above when they apply. Offer personal funding too, even when they have a business. These call notes do not change the survey.</p>' +
+      '<div class="setter-fields"><div class="setter-field"><label for="setter-use">Funding paths discussed</label><select id="setter-use" name="triage_personal_or_business">' + option("", "Not discussed yet", h.triage_personal_or_business || "") + option("business", "Business", h.triage_personal_or_business) + option("personal", "Personal", h.triage_personal_or_business) + option("both", "Business and personal", h.triage_personal_or_business) + '</select></div>' +
+      '<div class="setter-field"><label for="setter-employment">Employment</label><select id="setter-employment" name="employment_status">' + option("", "Not asked yet", h.employment_status || "") + option("w2", "W-2 employee", h.employment_status) + option("self_employed", "Self-employed", h.employment_status) + option("retired", "Retired", h.employment_status) + option("not_working", "Not working", h.employment_status) + option("other", "Other income", h.employment_status) + option("not_shared", "Declined to share", h.employment_status) + '</select></div>' +
+      '<div class="setter-field wide"><label for="setter-employment-details">Employer or type of work (optional)</label><input id="setter-employment-details" name="employment_details" maxlength="1000" value="' + setterEsc(h.employment_details || "") + '"></div>' +
+      '<div class="setter-field"><label for="setter-personal-income">Annual personal income</label><select id="setter-personal-income" name="annual_personal_income">' + option("", "Not asked yet", h.annual_personal_income || "") + option("Less than $50k", "Less than $50k", h.annual_personal_income) + option("$50k-$99k", "$50k-$99k", h.annual_personal_income) + option("$100k-$199k", "$100k-$199k", h.annual_personal_income) + option("$200k-$499k", "$200k-$499k", h.annual_personal_income) + option("$500k+", "$500k+", h.annual_personal_income) + option("not_shared", "Declined to share", h.annual_personal_income) + '</select></div>' +
+      '<div class="setter-field"><label for="setter-income-proof">Can they verify income?</label><select id="setter-income-proof" name="income_verification">' + option("", "Not asked yet", h.income_verification || "") + option("Yes, pay stubs", "Yes, pay stubs", h.income_verification) + option("Yes, W-2 or tax returns", "Yes, W-2 or tax returns", h.income_verification) + option("Yes, both", "Yes, both", h.income_verification) + option("Not right now", "Not right now", h.income_verification) + option("not_shared", "Declined to share", h.income_verification) + '</select></div></div>' +
+      '<div class="setter-actions"><button type="button" class="fh-astra-action" data-action="save-details">Save setter details</button></div><div class="setter-status" id="setter-details-status" role="status" aria-live="polite"></div></section>' +
       '<section class="setter-section"><h3>Confirm and warm</h3><p>Use the saved survey answers. Keep a booked lead’s call short; do not run a second discovery call.</p>' +
       '<div class="setter-checks">' + box("time_confirmed", "Call time confirmed", h.time_confirmed) + box("frame_warmed", "Framed the call and warmed from survey", h.frame_warmed) + '</div>' +
       '<div class="setter-fields"><div class="setter-field wide"><label for="setter-problem">Stuck part · one sentence</label><textarea id="setter-problem" name="problem">' + setterEsc(h.problem || "") + '</textarea></div>' +
@@ -362,7 +411,7 @@ function setterSorted(items) {
       '<div class="setter-field"><label for="setter-computer">Computer ready?</label><select id="setter-computer" name="computer_ready">' + option("", "Choose one", h.computer_ready == null ? "" : h.computer_ready ? "yes" : "no") + option("yes", "Yes", h.computer_ready === true ? "yes" : "") + option("no", "No", h.computer_ready === false ? "no" : "") + '</select></div>' +
       '<div class="setter-field"><label for="setter-app">Fundhub Portal on phone?</label><select id="setter-app" name="app_on_phone">' + option("", "Choose one", h.app_on_phone == null ? "" : h.app_on_phone === true ? "yes" : "no") + option("yes", "Yes", h.app_on_phone === true ? "yes" : "") + option("no", "No", h.app_on_phone === false ? "no" : "") + '</select></div></div>' +
       '<p>Ask about the app for their file and next steps. They still need a computer for the strategy call. If asked about price: “We walk the options on the strategy call after we see the file. The only charge before that call is the $32 soft pull, and your score does not move.”</p>' +
-      '<div class="setter-actions"><a class="setter-link" href="' + setterEsc(bookingUrl || "calendar.html") + '"' + (bookingUrl ? ' target="_blank" rel="noopener"' : '') + '>Move call time</a><span id="setter-app-slot">' + (appStoreUrl ? '<a class="setter-link" href="' + setterEsc(appStoreUrl) + '" target="_blank" rel="noopener">Fundhub Portal App Store ↗</a>' : '') + '</span></div></section>' +
+      '<div class="setter-actions"><a class="setter-link" data-booking-link href="' + setterEsc(leadBookingUrl(item) || "calendar.html") + '"' + (leadBookingUrl(item) ? ' target="_blank" rel="noopener"' : '') + '>Move call time</a><span id="setter-app-slot">' + (appStoreUrl ? '<a class="setter-link" href="' + setterEsc(appStoreUrl) + '" target="_blank" rel="noopener">Fundhub Portal App Store ↗</a>' : '') + '</span></div></section>' +
       '<section class="setter-section"><h3>Closer handoff</h3><p>' + (sameStaff ? 'Chris is setter and closer. Text the lead only; save the full note on the client.' : 'Send the booking confirmation to the lead and the full handoff to the closer as separate messages.') + '</p>' +
       '<div class="setter-script" id="setter-handoff-note">' + setterEsc(h.handoff_text || 'Save the checklist to generate the handoff note.') + '</div>' +
       '<div class="setter-actions"><button type="button" class="fh-astra-action" data-action="save">Save checklist</button>' +
@@ -376,9 +425,14 @@ function setterSorted(items) {
   function readSurveyEdits() {
     var item = currentItem();
     var edits = Object.assign({}, item && item.survey_edits || {});
-    detailEl.querySelectorAll('[data-survey-key]').forEach(function (el) {
+    detailEl.querySelectorAll('select[data-survey-key]').forEach(function (el) {
       if (el.value === el.dataset.original) delete edits[el.dataset.surveyKey];
       else edits[el.dataset.surveyKey] = el.value;
+    });
+    detailEl.querySelectorAll('fieldset[data-survey-key][data-survey-changed="true"]').forEach(function (el) {
+      var answer = Array.from(el.querySelectorAll('input:checked')).map(function (input) { return input.value; }).join(", ");
+      if (answer === el.dataset.original) delete edits[el.dataset.surveyKey];
+      else edits[el.dataset.surveyKey] = answer;
     });
     return edits;
   }
@@ -393,7 +447,7 @@ function setterSorted(items) {
     var fields = detailEl.querySelectorAll('[data-survey-key]');
     if (status) { status.textContent = "Saving survey answers…"; status.className = "setter-status"; }
     if (button) button.disabled = true;
-    fields.forEach(function (el) { el.readOnly = true; });
+    fields.forEach(function (el) { el.disabled = true; });
     surveySavePromise = request("/api/setter-dashboard", { method: "POST", body: { client_id: clientId, action: "save_survey", survey_edits: edits } })
       .then(function (result) {
         if (result.status < 200 || result.status >= 300 || !result.body || !result.body.ok) {
@@ -403,6 +457,11 @@ function setterSorted(items) {
         var item = queue.find(function (row) { return row.client_id === clientId; });
         if (item) item.survey_edits = result.body.survey_edits || edits;
         if (selectedId() === clientId && selected) selected.survey_edits = result.body.survey_edits || edits;
+        if ("booking_url" in result.body) {
+          if (item) item.booking_url = result.body.booking_url;
+          if (selectedId() === clientId && selected) selected.booking_url = result.body.booking_url;
+          paintBookingLinks();
+        }
         surveyVersion += 1;
         surveyDirty = false;
         if (status) { status.textContent = "Survey answers saved."; status.className = "setter-status success"; }
@@ -412,7 +471,7 @@ function setterSorted(items) {
         return false;
       }).finally(function () {
         if (button) button.disabled = false;
-        fields.forEach(function (el) { el.readOnly = false; });
+        fields.forEach(function (el) { el.disabled = false; });
         surveySavePromise = null;
       });
     return surveySavePromise;
@@ -458,10 +517,16 @@ function setterSorted(items) {
       }).catch(function () { say(messageFor(null), "error"); return false; }).finally(function () { busy = false; });
   }
 
-  function saveSoon() {
+  function saveSoon(isDetails) {
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(function () { saveTimer = 0; sendAction("save", readHandoff()); }, 700);
+    saveTimer = setTimeout(function () {
+      saveTimer = 0;
+      sendAction("save", readHandoff()).then(function (ok) {
+        if (isDetails) sayDetails(ok ? "Setter details saved." : "Could not save setter details. Try again.", ok ? "success" : "error");
+      });
+    }, 700);
     say("Unsaved changes…");
+    if (isDetails) sayDetails("Unsaved setter details…");
   }
 
   function load() {
@@ -478,8 +543,12 @@ function setterSorted(items) {
       paintNumbers(result.body.numbers);
       introVideoAvailable = result.body.intro_video_available === true;
       bookingUrl = /^https:\/\//.test(result.body.booking_url || "") ? result.body.booking_url : "";
-      selected = queue.find(function (row) { return row.client_id === selectedId(); }) || queue[0] || null;
+      var wanted = selectedId() || requestedClientId;
+      var index = wanted ? queue.findIndex(function (row) { return row.client_id === wanted; }) : -1;
+      selected = index >= 0 ? queue[index] : wanted ? null : queue[0] || null;
+      if (index >= 0) page = Math.floor(index / 25);
       paintQueue(); paintDetail();
+      if (wanted && index < 0) detailEl.innerHTML = '<div class="setter-state">This lead is not in your call queue. Choose another lead or refresh.</div>';
     }).catch(function () {
       queueEl.innerHTML = '<div class="setter-state fh-astra-state"><h2>Could not load the call queue</h2><p>Check your connection and try again.</p><button type="button" class="fh-astra-action" data-action="retry">Try again</button></div>';
       detailEl.innerHTML = '<div class="setter-state">The checklist will appear when the queue loads.</div>';
@@ -510,27 +579,38 @@ function setterSorted(items) {
     }
   });
   detailEl.addEventListener("input", function (event) {
-    if (event.target.matches('[data-survey-key]')) {
+    var surveyControl = event.target.closest('[data-survey-key]');
+    if (surveyControl) {
+      if (surveyControl.tagName === "FIELDSET") surveyControl.dataset.surveyChanged = "true";
       surveyDirty = true;
       var status = document.getElementById("setter-survey-status");
       if (status) { status.textContent = "Unsaved survey changes…"; status.className = "setter-status"; }
       return;
     }
-    saveSoon();
+    saveSoon(!!event.target.closest("#setter-details-section"));
   });
   detailEl.addEventListener("change", function (event) {
-    if (event.target.matches('[data-survey-key]')) return;
+    if (event.target.closest('[data-survey-key]')) return;
     if (event.target.name === "disposition") {
       var noAnswer = document.getElementById("setter-no-answer");
       if (noAnswer) noAnswer.hidden = event.target.value !== "no_answer";
     }
-    saveSoon();
+    saveSoon(!!event.target.closest("#setter-details-section"));
   });
   detailEl.addEventListener("click", function (event) {
     var button = event.target.closest("[data-action]");
     if (!button) return;
     var action = button.dataset.action;
     if (action === "save-survey") { saveSurvey(); return; }
+    if (action === "save-details") {
+      clearTimeout(saveTimer);
+      saveTimer = 0;
+      sayDetails("Saving setter details…");
+      sendAction("save", readHandoff()).then(function (ok) {
+        sayDetails(ok ? "Setter details saved." : "Could not save setter details. Try again.", ok ? "success" : "error");
+      });
+      return;
+    }
     clearTimeout(saveTimer);
     saveTimer = 0;
     var h = readHandoff();

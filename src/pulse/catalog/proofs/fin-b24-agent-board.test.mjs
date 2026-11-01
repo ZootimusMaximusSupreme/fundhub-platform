@@ -49,8 +49,8 @@ after(() => {
 beforeEach(() => { wire.length = 0; process.env.MESSAGING_DRY_RUN = "0"; process.env.BLAND_API_KEY = blandKey; clearRuleCache(); });
 
 const agentRow = (over = {}) => ({
-  code: AGENT, name: "Josh", status: "live", channel: "voice", agent_class: "client_facing",
-  runtime: "bland", runtime_ref: null, prompt: "You are Josh. Ask when the client wants to book a call.", ...over,
+  code: AGENT, name: "Chris", status: "live", channel: "voice", agent_class: "client_facing",
+  runtime: "bland", runtime_ref: null, prompt: "You are Chris. Ask when the client wants to book a call.", ...over,
 });
 const clientRow = (over = {}) => ({ id: CLIENT, first_name: "Dana", last_name: "Whitfield", phone: "(602) 555-0100", dnd_voice: false, ...over });
 
@@ -79,8 +79,8 @@ test("agent-call check says a live phone agent could call this client, and dials
   assert.equal(ready.body.placed, false);
   assert.equal(ready.body.ready, true);
   assert.equal(ready.body.reason, "ready");
-  assert.match(ready.body.message, /Josh is ready to call Dana Whitfield\. Nothing has been dialled\./);
-  assert.deepEqual(ready.body.agent, { code: AGENT, name: "Josh", status: "live", runtime: "bland" });
+  assert.match(ready.body.message, /Chris is ready to call Dana Whitfield\. Nothing has been dialled\./);
+  assert.deepEqual(ready.body.agent, { code: AGENT, name: "Chris", status: "live", runtime: "bland" });
   assert.deepEqual(wire, [], "no call and no outbound request");
   assert.equal(sqlCalls(ready, /INSERT INTO outbound_calls/).length, 0);
   assert.equal(ready.db.calls.filter((c) => /^\s*(INSERT|UPDATE|DELETE)/i.test(c.sql)).length, 0, "a check writes nothing");

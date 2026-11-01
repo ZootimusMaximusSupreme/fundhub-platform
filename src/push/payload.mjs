@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 // What a push notification is allowed to say. The lock-screen gate.
 //
 // COMPLIANCE REVIEW REQUIRED (CLAUDE.md §7) — credit-repair messaging. This
@@ -121,6 +123,33 @@ export const APPROVED_TITLES = Object.freeze([TITLE]);
     identifiers cannot be smuggled out in a query string either. */
 export const DEFAULT_URL = "/app/client-portal.html";
 export const APPROVED_URLS = Object.freeze([DEFAULT_URL]);
+
+// Staff work alerts use a separate fixed vocabulary. A client ID travels only
+// as tap metadata; names, phone numbers, and survey answers stay in the signed-in
+// workspace rather than on the lock screen.
+export const STAFF_PUSH_PATH = "/app/staff-alert";
+export const STAFF_PUSH_BODIES = Object.freeze({
+  lead: "A new lead is ready. Open Fundhub to call.",
+  set: "A lead is set. Open Fundhub for the handoff.",
+  upcoming: "Your next call is coming up. Open Fundhub."
+});
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function buildStaffPushPayload(notification = {}) {
+  const kind = String(notification.kind || "");
+  const clientId = String(notification.clientId || "").toLowerCase();
+  const key = String(notification.key || "").trim();
+  if (notification.title != null || notification.body != null || notification.url != null || notification.tag != null) {
+    throw refuse("staff push copy and tap target are fixed", "not_approved");
+  }
+  if (!Object.hasOwn(STAFF_PUSH_BODIES, kind)) throw refuse("unknown staff push kind", "unknown_kind");
+  if (!UUID.test(clientId)) throw refuse("staff push needs a client UUID", "bad_client_id");
+  if (!key || key.length > 200) throw refuse("staff push needs a stable key", "bad_key");
+  // Use a distinct collapse ID per event, so two new leads do not replace one another.
+  const tag = `staff-${kind}-${createHash("sha256").update(`${clientId}:${key}`).digest("hex").slice(0, 24)}`;
+  return JSON.stringify({ kind, clientId, title: "Fundhub", body: STAFF_PUSH_BODIES[kind],
+    url: STAFF_PUSH_PATH, tag });
+}
 
 /** The collapse key. Two "payment due" notifications should replace one another
     rather than stack; the browser does that by tag. It is not displayed, but it
@@ -261,6 +290,7 @@ export function buildPushPayload(notification = {}, { allowDetail = false } = {}
 
 export default {
   buildPushPayload,
+  buildStaffPushPayload,
   assertLockScreenSafe,
   APPROVED_BODIES,
   APPROVED_BODY_KEYS,

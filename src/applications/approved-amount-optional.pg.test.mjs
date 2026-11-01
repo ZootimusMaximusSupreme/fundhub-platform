@@ -272,23 +272,32 @@ describe("approval now, amount later (pg)", { skip: !HAS_DB ? "no DATABASE_URL" 
       staff
     });
 
+    // Approved limit $45,000 is not proof of available funding. After the
+    // unpriced application is excluded, approval-only still cannot fund.
+    const approvalOnly = await moveCardToStage(db, {
+      orgId, clientId, pipelineKey: "funding_card_stacking", stageKey: "funded"
+    });
+    assert.equal(approvalOnly.moved, false);
+    assert.equal(approvalOnly.reason, "funded_amount_required");
+
+    // Synthetic operator-verified funding is separately recorded at $40,000,
+    // distinct from the $45,000 confirmed-approval fee basis.
     const move = await moveCardToStage(db, {
       orgId,
       clientId,
       pipelineKey: "funding_card_stacking",
-      stageKey: "funded"
+      stageKey: "funded",
+      fundedAmount: 40000
     });
     assert.equal(move.moved, true, move.message);
-    // Prefilled from the ONE approval that has an amount. The unpriced one
-    // contributes nothing — not a zero, nothing.
-    assert.equal(move.fundedAmount, 45000);
+    assert.equal(move.fundedAmount, 40000);
 
     const round = (await db.query(
       `SELECT id, status, funded_amount FROM funding_rounds WHERE client_id = $1`,
       [clientId]
     )).rows[0];
     assert.equal(round.status, "funded");
-    assert.equal(Number(round.funded_amount), 45000);
+    assert.equal(Number(round.funded_amount), 40000, "funded cash differs from approved limit");
 
     /* money-chain links the round to the client's sale at round.started; this
        file deliberately runs with an empty bus, so the link is made here. The

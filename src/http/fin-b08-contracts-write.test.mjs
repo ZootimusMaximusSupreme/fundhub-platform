@@ -283,7 +283,7 @@ describe("POST /api/contracts: void", () => {
       if (t.res.statusCode !== 403) letIn.create_template.push(role);
     }
     assert.deepEqual(letIn.void.sort(), ["admin", "owner"]);
-    assert.deepEqual(letIn.create_template.sort(), ["admin", "owner"]);
+    assert.deepEqual(letIn.create_template.sort(), ["owner"]);
   });
 });
 
