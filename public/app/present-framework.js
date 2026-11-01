@@ -169,10 +169,10 @@
     var deposit = c.offerAmount ? c.offerAmount("FUNDING_DFY") : null;
     var feePct = c.feePercent;
     var fee = funding && v && N(v.todayTotal) && N(feePct) ? Math.round(v.todayTotal * feePct / 100) : null;
-    return panel(c, "moneyStrip", ["Pay today", "Credited once", "Funding comes", "Balance then"], function (i) {
+    return panel(c, "moneyStrip", ["Pay today", "Credited once", "Funding estimate", "Example balance"], function (i) {
       if (!funding) return track([node("Capital Blueprint", E(c.price ? c.price("UWIQ_DELIVERABLES") : ""), i === 0), node("12 months", "Your own plan", i >= 1), node("Your steps", "In the dashboard", i >= 2)]);
-      return track([node("Today", N(deposit) ? amount(c, deposit) : "Deposit", i === 0), node("Credited", "Dollar for dollar", i === 1), node("Funding", v && N(v.todayTotal) ? amount(c, v.todayTotal) : "Lender decides", i === 2), node("Then", N(fee) && N(deposit) ? amount(c, Math.max(0, fee - deposit)) : "Balance, if funded", i === 3)])
-        + '<div class="fhw-note">The deposit counts toward the success fee on money you receive.</div>';
+      return track([node("Today", N(deposit) ? amount(c, deposit) : "Deposit", i === 0), node("Credited", "Dollar for dollar", i === 1), node("Estimated funding", v && N(v.todayTotal) ? amount(c, v.todayTotal) : "Lender decides", i === 2), node("Illustrative balance", N(fee) && N(deposit) ? amount(c, Math.max(0, fee - deposit)) : "Balance, if funded", i === 3)])
+        + '<div class="fhw-note">Example only. The lender decides the amount; the actual success fee follows the signed agreement. The deposit is credited once.</div>';
     });
   });
 

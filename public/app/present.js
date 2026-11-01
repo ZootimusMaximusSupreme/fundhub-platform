@@ -939,13 +939,13 @@
       return slide("S-22", "Ready when you are", '<div style="flex:1;display:flex;flex-direction:column;justify-content:center">' + h1("Ready when you are.", "clamp(28px,4.6vw,56px)") + '<div class="mono" style="margin-top:12px;letter-spacing:.06em">' + (funding ? "Customer-initiated · Two action guarantees · Done for you" : "Customer-initiated · Tracked live") + '</div><div style="margin-top:16px;max-width:200px" class="hair"></div></div>');
     }
     if (c === "S-23") {
-      if (!edu) return slide("S-23", "Starting today", kicker("Paperwork") + h1("You are in. Here is what happens next, starting today.") + (visualHtml("nextSteps") || unavail()));
+      if (!edu) return slide("S-23", "Agreement and payment", kicker("Paperwork") + h1("Review the agreement and payment step. Then we can start.") + (visualHtml("nextSteps") || unavail()));
       /* "Advisor contact" is not true on every sale. The rows follow the offer
          the closer actually chose, the same way the wrap script does (F23). */
-      var setup = row("Agreement", "Sent", "Review it while we handle billing")
-        + row("Billing", "On this call", "Secure payment, processed now");
+      var setup = row("Agreement", "Review", "Read it before you sign")
+        + row("Billing", "Next", "Complete payment on this call");
       if (edu) {
-        setup += row("Your access", "Today", "Set up on this call, with everything from today's pull");
+        setup += row("Your access", "After checkout", "Set up on this call, with everything from today's pull");
       } else if (funding) {
         setup += row("Welcome email", "Incoming", "Advisor contact, timeline, and what we need from you");
       } else {
@@ -954,13 +954,13 @@
       return slide("S-23", "Getting you set up", fill(kicker("Right now, on this call") + h1("Let's get this going.") + '<div style="margin-top:10px;max-width:620px">' + setup + "</div>"));
     }
     if (c === "S-24") {
-      if (!edu) return slide("S-24", "Welcome aboard", kicker("After checkout") + h1("Your next steps are in your portal, starting today.") + (visualHtml("nextSteps") || unavail()));
+      if (!edu) return slide("S-24", "After checkout", kicker("Once payment is complete") + h1("Your next steps will appear in your portal after checkout.") + (visualHtml("nextSteps") || unavail()));
       var next = edu
         ? row("Today", "Deliverables", "Everything from your file lands in your email") + row("Your pace", "Program", "Work through it on your own schedule") + row("When you're ready", "Funding", "We run the full process whenever you want")
         : funding
           ? row("Within 24 business hours", "Advisor", "Your dedicated funding advisor reaches out and starts on your file") + row("Within 72 business hours", "Round 1", "Your first round of applications is submitted") + row("After each round", "Updates", "Every application and every answer shows in your portal")
           : row("Today", "Round 1", "Your letters generate from this pull and land in your email") + row("Your dashboard", "Live", "Track every dispute and every response") + row("When it's clean", "Funding", "We run the full process at maximum strength");
-      return slide("S-24", "Welcome aboard", '<div style="flex:1;display:flex;flex-direction:column;justify-content:center">' + h1("Here's what happens next.", "clamp(22px,3.4vw,42px)") + '<div style="margin-top:10px;max-width:560px">' + next + '</div><div style="margin-top:16px;display:flex;align-items:center;gap:12px"><span class="brand">fundhub<span>.</span></span><div style="flex:1;max-width:140px" class="hair"></div><span class="mono">systems nominal</span></div></div>');
+      return slide("S-24", "After checkout", '<div style="flex:1;display:flex;flex-direction:column;justify-content:center">' + h1("After checkout, here is what happens next.", "clamp(22px,3.4vw,42px)") + '<div style="margin-top:10px;max-width:560px">' + next + '</div><div style="margin-top:16px;display:flex;align-items:center;gap:12px"><span class="brand">fundhub<span>.</span></span><div style="flex:1;max-width:140px" class="hair"></div><span class="mono">systems nominal</span></div></div>');
     }
     return needsEngine && !d.available ? slide(c, "Session", unavail()) : "";
   }

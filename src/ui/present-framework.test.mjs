@@ -56,6 +56,15 @@ test("door matrix only identifies the selected door and reads prices from the ca
   assert.doesNotMatch(html, /\$3,000/); // Price is the final tap.
 });
 
+test("money strip labels projected funding and fee balance as examples", () => {
+  const html = window.FHDeckVisuals.moneyStrip({ ...ctx("full"), offerAmount: () => 3000, feePercent: 10 });
+  assert.match(html, /Estimated funding/);
+  assert.match(html, /Illustrative balance/);
+  assert.match(html, /The lender decides the amount/);
+  assert.match(html, /actual success fee follows the signed agreement/);
+  assert.doesNotMatch(html, /<strong>Funding<\/strong>|<strong>Then<\/strong>/);
+});
+
 test("the action listener redraws a tapped picture without sending or saving", () => {
   const context = ctx("full");
   const first = window.FHDeckVisuals.callMap(context);
