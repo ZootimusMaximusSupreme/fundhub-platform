@@ -1,7 +1,10 @@
 // GET /api/public/survey-resume — the door behind the resume link.
-// Handler tests with a fake database; the SQL itself is read against Postgres in
-// survey-resume.pg.test.mjs. The route map entry is held by routes.test.mjs and by the
-// first test here.
+// CONTAINMENT (2026-10-31): the door is closed. Every token, good or bad, is the same
+// 404 with nothing in it, and the database is never asked. /apply lets a new phone onto
+// an existing lead's email, so a signed code can reach a stranger; it must open nothing.
+// The answer-shaping logic the door used is still held by src/survey/resume-state.test.mjs.
+// The email/phone collision itself is replayed in survey-resume-collision.test.mjs.
+// The route map entry is held by routes.test.mjs and by the first test here.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import handler, { readSurveyResume } from "../../api/public/survey-resume.mjs";
@@ -66,119 +69,40 @@ test("the door is routed", () => {
   assert.equal(ROUTES["public/survey-resume"], handler);
 });
 
-test("someone who only filled in the contact screen starts at the first question", async () => {
-  const res = await getToken(token());
-  assert.equal(res.statusCode, 200);
-  assert.deepEqual(res.body, {
-    ok: true,
-    contact: { first_name: "Pat", last_name: "Lee", email: "pat@example.com", phone: "+15551234567" },
-    answers: {},
-    next_key: "cf_svy_funding_target_amount"
-  });
-});
-
-test("the saved answers come back as words, and next_key is the first one not answered", async () => {
-  const db = fakeDb([pat({
-    cf_svy_funding_target_amount: "$50k - $100k",
-    cf_svy_planned_use: "Growth (marketing, inventory, hiring)"
-  })]);
-  const res = await getToken(token(), { db });
-  assert.equal(res.statusCode, 200);
-  assert.deepEqual(res.body.answers, {
-    cf_svy_funding_target_amount: "$50k - $100k",
-    cf_svy_planned_use: "Growth (marketing, inventory, hiring)"
-  });
-  assert.equal(res.body.next_key, "cf_svy_money_change_now");
-});
-
-test("the multi question comes back as a list, whichever way it was saved", async () => {
-  const forms = [
-    { cf_svy_money_change_now: ["Stability (cover bills / buffer slow weeks)"] },
-    { cf_svy_money_change_now: '["Stability (cover bills / buffer slow weeks)"]' },
-    { cf_svy_money_change_now: "Stability (cover bills / buffer slow weeks)" },
-    { cf_svy_money_change_now: "207883", cf_svy_money_change_now_labels: '["Stability (cover bills / buffer slow weeks)"]' },
-    { cf_svy_money_change_now_labels: '["[\\"Stability (cover bills / buffer slow weeks)\\"]"]' }
-  ];
-  for (const form of forms) {
-    const res = await getToken(token(), { db: fakeDb([pat(form)]) });
-    assert.deepEqual(res.body.answers.cf_svy_money_change_now, ["Stability (cover bills / buffer slow weeks)"], JSON.stringify(form));
-  }
-});
-
-test("a ClickFunnels option id is never an answer: the words win, and an id alone is asked again", async () => {
-  const withWords = pat({
-    cf_svy_funding_target_amount: "207883",
-    cf_svy_funding_target_amount_label: "$100k - $200k"
-  });
-  let res = await getToken(token(), { db: fakeDb([withWords]) });
-  assert.equal(res.body.answers.cf_svy_funding_target_amount, "$100k - $200k");
-  assert.equal(res.body.next_key, "cf_svy_planned_use");
-
-  const idOnly = pat({ cf_svy_funding_target_amount: "207883", cf_svy_planned_use: 207891 });
-  res = await getToken(token(), { db: fakeDb([idOnly]) });
-  assert.deepEqual(res.body.answers, {}, "ids are not answers");
-  assert.equal(res.body.next_key, "cf_svy_funding_target_amount", "the first empty question is asked again");
-  assert.ok(!JSON.stringify(res.body).includes("2078"), "no id anywhere in the body");
-});
-
-test("the business answer picks the next questions, and an answer that picks neither is asked again", async () => {
-  const base = {
-    cf_svy_funding_target_amount: "Less than $50k",
-    cf_svy_planned_use: "Not sure yet",
-    cf_svy_money_change_now: ["Fresh start (new business / startup launch)"],
-    cf_svy_self_reported_fico: "700-749"
-  };
-  const next = async (extra) => (await getToken(token(), { db: fakeDb([pat({ ...base, ...extra })]) })).body.next_key;
-
-  assert.equal(await next({}), "cf_svy_has_business");
-  assert.equal(await next({ cf_svy_has_business: "Yes, 1-2 years" }), "cf_svy_business_revenue");
-  assert.equal(await next({ cf_svy_has_business: "Yes, 1-2 years", cf_svy_business_revenue: "$1M+" }), "cf_svy_revenue_verifiable");
-  assert.equal(await next({
-    cf_svy_has_business: "Yes, 1-2 years", cf_svy_business_revenue: "$1M+", cf_svy_revenue_verifiable: "Yes, both"
-  }), "cf_svy_available_capital");
-
-  assert.equal(await next({ cf_svy_has_business: "No, personal funding only" }), "cf_svy_annual_income_range");
-  assert.equal(await next({ cf_svy_has_business: "No, personal funding only", cf_svy_annual_income_range: "$100k-$199k" }), "cf_svy_income_verifiable");
-
-  // Not one of the two ways to answer: the page cannot know which pair to show, so it asks again.
-  const odd = (await getToken(token(), { db: fakeDb([pat({ ...base, cf_svy_has_business: "Maybe" })]) })).body;
-  assert.equal(odd.next_key, "cf_svy_has_business");
-  assert.ok(!("cf_svy_has_business" in odd.answers));
-});
-
-test("a finished survey has no next question, on either path", async () => {
-  const business = pat({
+const DATA_SHAPES = {
+  "only the contact screen": {},
+  "half answered": { cf_svy_funding_target_amount: "$50k - $100k", cf_svy_planned_use: "Growth (marketing, inventory, hiring)" },
+  "finished": {
     cf_svy_funding_target_amount: "$400k+", cf_svy_planned_use: "Equipment or buildout",
     cf_svy_money_change_now: ["Grow faster (more customers / more reach)"], cf_svy_self_reported_fico: "750+",
     cf_svy_has_business: "Yes, 5+ years", cf_svy_business_revenue: "$1M+", cf_svy_revenue_verifiable: "Yes, both",
     cf_svy_available_capital: "$100k+"
-  });
-  const personal = pat({
-    cf_svy_funding_target_amount: "$50k - $100k", cf_svy_planned_use: "Debt consolidation",
-    cf_svy_money_change_now: ["Peace of mind (stop stressing about cash)"], cf_svy_self_reported_fico: "580-649",
-    cf_svy_has_business: "No, personal funding only", cf_svy_annual_income_range: "$50k-$99k",
-    cf_svy_income_verifiable: "Yes, pay stubs", cf_svy_available_capital: "$5k - $25k"
-  });
-  for (const row of [business, personal]) {
-    const res = await getToken(token(), { db: fakeDb([row]) });
-    assert.equal(res.statusCode, 200);
-    assert.equal(res.body.next_key, null);
-    assert.equal(Object.keys(res.body.answers).length, 8);
+  },
+  "private fields too": { setter_handoff: { problem: "private note" }, ssn_last4: "1234", cf_svy_planned_use: "Not sure yet" }
+};
+
+test("containment: a good, freshly signed token is the same 404 with nothing in it, and nothing is read", async () => {
+  for (const [what, fields] of Object.entries(DATA_SHAPES)) {
+    const db = fakeDb([pat(fields)]);
+    const res = await getToken(token(), { db });
+    assert.equal(res.statusCode, 404, what);
+    assert.deepEqual(res.body, { ok: false }, `${what}: no contact, no answers, no next question`);
+    assert.equal(db.calls.length, 0, `${what}: the closed door never asks the database`);
+    const body = JSON.stringify(res.body);
+    for (const leak of ["pat@example.com", "5551234567", "Pat", "$", "cf_svy", "private note", "1234"]) {
+      assert.ok(!body.includes(leak), `${what}: ${leak} must not leave the door`);
+    }
   }
 });
 
-test("only the four contact fields and the survey answers leave the door", async () => {
-  const db = fakeDb([pat({
-    cf_svy_planned_use: "Not sure yet",
-    setter_handoff: { problem: "private note" }, setter_survey_edits: { cf_svy_self_reported_fico: "700-749" },
-    utm_source: "facebook", lifecycle_status: "New Lead", employee_next_action: "Call", ssn_last4: "1234"
-  }, { email: null, phone: null, last_name: null })]);
-  const res = await getToken(token(), { db });
-  assert.deepEqual(Object.keys(res.body).sort(), ["answers", "contact", "next_key", "ok"]);
-  assert.deepEqual(res.body.contact, { first_name: "Pat", last_name: "", email: "", phone: "" });
-  assert.deepEqual(res.body.answers, { cf_svy_planned_use: "Not sure yet" });
-  assert.ok(!JSON.stringify(res.body).includes("private note"));
-  assert.ok(!JSON.stringify(res.body).includes("1234"));
+test("containment: a good token answers exactly like a forged one, so the door says nothing about who exists", async () => {
+  const good = await getToken(token());
+  const forged = await getToken("hello");
+  const gone = await getToken(token({ clientId: GONE }));
+  for (const res of [good, forged, gone]) {
+    assert.equal(res.statusCode, 404);
+    assert.deepEqual(res.body, { ok: false });
+  }
 });
 
 test("no token at all is a 400, so the morning ping counts the door as up", async () => {
@@ -223,34 +147,25 @@ test("a token that does not verify never reaches the database", async () => {
   }
 });
 
-test("the token names the client: each client's link opens that client and nobody else", async () => {
+test("containment: no client's token opens anything, in any company", async () => {
   const db = fakeDb([
     pat({ cf_svy_planned_use: "Not sure yet" }),
     pat({ cf_svy_planned_use: "Payroll or rent" }, { id: GONE, org_id: OTHER_ORG, first_name: "Olive", email: "olive@example.com" })
   ]);
-  const mine = await getToken(token(), { db });
-  assert.equal(mine.body.contact.email, "pat@example.com");
-  assert.equal(mine.body.answers.cf_svy_planned_use, "Not sure yet");
-  assert.deepEqual(db.calls.at(-1).params, [CLIENT], "the read is by the id in the token, and by nothing else");
-  // The other company's person has their own link, and it opens their file in their company.
-  const hers = await getToken(token({ clientId: GONE }), { db });
-  assert.equal(hers.body.contact.first_name, "Olive");
-  assert.equal(hers.body.answers.cf_svy_planned_use, "Payroll or rent");
-  // Splicing the other client's id into my link breaks the signature and never reaches the database.
-  const calls = db.calls.length;
-  const spliced = Buffer.from(GONE.replace(/-/g, ""), "hex").toString("base64url") + token().slice(22);
-  assert.equal((await getToken(spliced, { db })).statusCode, 404);
-  assert.equal(db.calls.length, calls);
+  for (const t of [token(), token({ clientId: GONE })]) {
+    const res = await getToken(t, { db });
+    assert.equal(res.statusCode, 404);
+    assert.deepEqual(res.body, { ok: false });
+  }
+  assert.equal(db.calls.length, 0);
 });
 
-test("it only ever reads", async () => {
+test("it never reads or writes", async () => {
   const db = fakeDb([pat({ cf_svy_planned_use: "Not sure yet" })]);
   await getToken(token(), { db });
   await getToken("junk", { db });
   await get({}, { db });
-  assert.ok(db.calls.length >= 1);
-  for (const c of db.calls) assert.match(c.sql.trim(), /^SELECT\b/i);
-  assert.ok(!db.calls.some((c) => /\b(INSERT|UPDATE|DELETE)\b/i.test(c.sql)));
+  assert.equal(db.calls.length, 0);
 });
 
 test("cross-site: the answer is allowed for apply.fundhub.ai and never for a stranger", async () => {
@@ -277,50 +192,21 @@ test("only GET is allowed", async () => {
   }
 });
 
-test("a database failure is a 500 that says nothing about the database", async () => {
-  const quiet = console.error;
-  const logged = [];
-  console.error = (...a) => logged.push(a.join(" "));
-  try {
-    const res = await getToken(token(), { db: fakeDb([pat()], { fail: true }) });
-    assert.equal(res.statusCode, 500);
-    assert.deepEqual(res.body, { ok: false, error: "unavailable" });
-    assert.ok(!JSON.stringify(res.body).includes("secret"));
-  } finally { console.error = quiet; }
-  assert.ok(logged.some((l) => /survey-resume: read failed/.test(l)));
-  assert.ok(!logged.join("\n").includes("u:secret"), "the log is scrubbed too");
+test("a broken database cannot turn a good token into an answer or an error: still the plain 404", async () => {
+  const db = fakeDb([pat()], { fail: true });
+  const res = await getToken(token(), { db });
+  assert.equal(res.statusCode, 404);
+  assert.deepEqual(res.body, { ok: false });
+  assert.equal(db.calls.length, 0);
 });
 
 // readSurveyResume is the same read without HTTP, for the pulse to call in-process.
-test("readSurveyResume returns the door's answer as an object, or null for any bad link", async () => {
-  const db = fakeDb([pat({ cf_svy_planned_use: "Not sure yet" })]);
+test("readSurveyResume is null for every token, good or bad, and never asks the database", async () => {
+  const db = fakeDb([pat({ cf_svy_planned_use: "Not sure yet" })], { fail: true });
   const opts = { now: () => NOW, secret: SECRET };
-  const found = await readSurveyResume(db, token(), opts);
-  assert.deepEqual(found, {
-    ok: true,
-    contact: { first_name: "Pat", last_name: "Lee", email: "pat@example.com", phone: "+15551234567" },
-    answers: { cf_svy_planned_use: "Not sure yet" },
-    next_key: "cf_svy_funding_target_amount"
-  });
-  const viaDoor = await getToken(token(), { db });
-  assert.deepEqual(viaDoor.body, found, "the door answers with exactly this object");
-
-  for (const bad of ["", "nope", token({ clientId: GONE }), token({ now: () => NOW - 31 * DAY }), null, undefined]) {
-    assert.equal(await readSurveyResume(db, bad, opts), null, String(bad).slice(0, 12));
+  for (const t of [token(), token({ clientId: GONE }), "", "nope", token({ now: () => NOW - 31 * DAY }), null, undefined]) {
+    assert.equal(await readSurveyResume(db, t, opts), null, String(t).slice(0, 12));
   }
-});
-
-test("readSurveyResume lets a database failure through, so a caller can tell 'bad link' from 'cannot look'", async () => {
-  await assert.rejects(
-    readSurveyResume(fakeDb([pat()], { fail: true }), token(), { now: () => NOW, secret: SECRET }),
-    /ECONNREFUSED/
-  );
-});
-
-test("readSurveyResume reads the signing key from the environment when none is passed", async () => {
-  const env = { UNSUBSCRIBE_TOKEN_SECRET: SECRET };
-  const found = await readSurveyResume(fakeDb([pat()]), token(), { now: () => NOW, env });
-  assert.equal(found.ok, true);
-  assert.equal(await readSurveyResume(fakeDb([pat()]), token(), { now: () => NOW, env: {} }), null,
-    "no key to check against: the link cannot be proved, so it is not served");
+  assert.equal(await readSurveyResume(db, token(), { now: () => NOW, env: { UNSUBSCRIBE_TOKEN_SECRET: SECRET } }), null);
+  assert.equal(db.calls.length, 0);
 });
