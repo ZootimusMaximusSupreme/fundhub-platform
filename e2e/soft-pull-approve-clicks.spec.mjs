@@ -7,6 +7,7 @@
 // placeholder numbers the page itself shows (never a real person's).
 
 import { test, expect } from "@playwright/test";
+import fs from "node:fs";
 
 const LINK = "?org=org-1&client=c-1&exp=1999999999&sig=test-signature";
 const READ = {
@@ -69,6 +70,12 @@ test.describe("soft-pull approval page", () => {
     await expect(page.locator("#f")).toHaveCount(0);
   });
 
+  test("a signed link for someone without an account opens the lasting claim page", async ({ page }) => {
+    await open(page, { read: { ok: false, error: "account_required", create_account_url: "/portal-login.html?mode=claim" } });
+    await page.waitForURL("**/portal-login.html?mode=claim");
+    await expect(page.getByRole("heading", { name: "Set up your Fundhub portal." })).toBeVisible();
+  });
+
   test("the running total adds $10 per business and drops it when one is removed", async ({ page }) => {
     await open(page);
     await expect(page.locator("#total_line")).toContainText("Total due: $32");
@@ -127,7 +134,8 @@ test.describe("soft-pull approval page", () => {
         ein: "12-3456789", incorporated_date: "2021-03", extra_owner_name: ""
       }]
     });
-    await expect(page.locator("h1")).toHaveText("Consent saved");
+    await expect(page.locator("h1")).toHaveText("Authorization saved");
+    await expect(page.locator(".pull-steps")).toContainText("Waiting for report request");
     await expect(page.locator(".btn-pay")).toHaveText("Pay $42 assessment");
     await expect(page.locator(".btn-pay")).toHaveAttribute("href", "https://pay.example.test/c/abc");
   });
@@ -136,9 +144,70 @@ test.describe("soft-pull approval page", () => {
     await open(page, { postAnswer: () => ({ status: 200, body: { ok: true, pricing: { total_display: "$32" }, checkout: null, checkout_error: "commas_down" } }) });
     await fillPerson(page);
     await page.locator("#go").click();
-    await expect(page.locator("h1")).toHaveText("Consent saved");
-    await expect(page.locator(".lede").first()).toHaveText("Ask your advisor for the pay link for $32.");
+    await expect(page.locator("h1")).toHaveText("Authorization saved");
+    await expect(page.locator(".pull-progress")).toContainText("Ask your advisor for the payment link.");
     await expect(page.locator(".btn-pay")).toHaveCount(0);
+  });
+
+  test("a prior payment below the new total does not promise a report or charge", async ({ page }) => {
+    await open(page, {
+      read: { ...READ, paid: true },
+      postAnswer: () => ({ status: 201, body: {
+        ok: true, paid: true, payment_review_required: true, checkout: null,
+        pricing: { total_display: "$42" },
+        next: "Your earlier payment does not cover the updated assessment total. Contact your advisor to review the difference."
+      } })
+    });
+    await expect(page.getByText(/previous assessment payment is on file/i)).toBeVisible();
+    await fillPerson(page);
+    await page.locator("#go").click();
+    await expect(page.locator("h1")).toHaveText("Your payment needs review");
+    await expect(page.locator(".pull-progress")).toContainText("earlier payment does not cover");
+    await expect(page.locator(".btn-pay")).toHaveCount(0);
+    await expect(page.getByText(/credit report will appear/i)).toHaveCount(0);
+    await expect(page.locator(".pull-progress")).toContainText("advisor needs to review");
+  });
+
+  test("phone status follows queued, processing and a real completed result", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    let stage = "queued";
+    await open(page, { read: () => ({ ...READ, consent: { valid: true }, paid: true,
+      pull: { status: stage, result_ready: stage === "complete" } }) });
+    await expect(page.locator("h1")).toHaveText("Your report request is in line");
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+    expect(await page.getByText(/scanning experian|matching against partner/i).count()).toBe(0);
+    if (process.env.CLOSER_EVIDENCE === "1") {
+      await page.evaluate(() => {
+        const title = document.querySelector(".pull-progress h1").getBoundingClientRect();
+        const step = document.querySelector(".pull-steps li:nth-child(3)").getBoundingClientRect();
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.id = "review-markers";
+        svg.setAttribute("viewBox", `0 0 ${innerWidth} ${innerHeight}`);
+        svg.style.cssText = "position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:9999";
+        const tx = title.left + title.width / 2;
+        const ty = title.top + title.height / 2;
+        const sx = step.left + step.width / 2;
+        const sy = step.top + step.height / 2;
+        svg.innerHTML = `<ellipse cx="${tx}" cy="${ty}" rx="${title.width / 2 + 10}" ry="${title.height / 2 + 9}" fill="none" stroke="#e11d48" stroke-width="4"/>` +
+          `<path d="M ${innerWidth - 30} ${ty + 65} Q ${innerWidth - 15} ${sy - 25} ${sx + 8} ${sy}" fill="none" stroke="#facc15" stroke-width="5"/>` +
+          `<path d="M ${sx + 8} ${sy} l 13 -8 m -13 8 l 12 9" fill="none" stroke="#facc15" stroke-width="5"/>`;
+        document.body.appendChild(svg);
+        const caption = document.createElement("div");
+        caption.id = "review-caption";
+        caption.textContent = "Saved request. Waiting for provider. No result shown yet.";
+        caption.style.cssText = "position:fixed;left:12px;right:12px;bottom:12px;background:#111827;color:white;padding:10px 12px;border-radius:8px;font:600 14px sans-serif;z-index:9999";
+        document.body.appendChild(caption);
+      });
+      const dir = "ops/workflows/build-evidence/closer-present";
+      fs.mkdirSync(dir, { recursive: true });
+      await page.screenshot({ path: `${dir}/phone-wait-marked.png` });
+      await page.evaluate(() => { document.getElementById("review-markers").remove(); document.getElementById("review-caption").remove(); });
+    }
+    stage = "processing";
+    await expect(page.locator("h1")).toHaveText("Your report is being prepared", { timeout: 6000 });
+    stage = "complete";
+    await expect(page.locator("h1")).toHaveText("Your assessment is ready", { timeout: 6000 });
+    await expect(page.locator(".pull-steps .done")).toHaveCount(4);
   });
 
   test("a refusal from the server is shown and the button comes back", async ({ page }) => {

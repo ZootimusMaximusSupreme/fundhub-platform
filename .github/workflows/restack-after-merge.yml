@@ -1,0 +1,39 @@
+name: Restack ordered pull requests
+
+on:
+  pull_request:
+    types: [closed]
+
+concurrency:
+  group: ordered-pr-restack
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  restack:
+    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      # SHIP_GITHUB_TOKEN is the existing repo token. A push with it starts CI for
+      # the rebased PR, unlike a push made with the default GITHUB_TOKEN.
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.SHIP_GITHUB_TOKEN }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Set restack commit identity
+        run: |
+          git config user.name "Fundhub restack"
+          git config user.email "ship@fundhub.ai"
+      - name: Rebase the next PR or report a conflict
+        env:
+          GH_TOKEN: ${{ secrets.SHIP_GITHUB_TOKEN }}
+        run: node scripts/restack-after-merge.mjs

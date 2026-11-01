@@ -59,6 +59,7 @@ export async function listAssignedClients(db, { orgId, staffId, limit = 200 } = 
       WHERE c.org_id = $1
         AND c.assigned_csm_staff_id = $2
         AND COALESCE(c.is_demo, false) = false
+        AND c.custom_fields->>'crm_archived_at' IS NULL
       ORDER BY name ASC NULLS LAST, c.client_code ASC NULLS LAST
       LIMIT $3`,
     [orgId, staffId, limit]
