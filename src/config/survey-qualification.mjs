@@ -63,7 +63,11 @@ export function ficoGatePasses(fico) {
 export function creditTierFor(fields = {}) {
   const cf = fields && typeof fields === "object" ? fields : {};
   const edits = cf.setter_survey_edits && typeof cf.setter_survey_edits === "object" ? cf.setter_survey_edits : {};
-  const band = surveyFicoBand({ cf_svy_self_reported_fico_label: edits.cf_svy_self_reported_fico }) || surveyFicoBand(cf);
+  const band = surveyFicoBand({ cf_svy_self_reported_fico_label: normalizeBand(edits.cf_svy_self_reported_fico) })
+    || surveyFicoBand({ ...cf,
+      cf_svy_self_reported_fico_label: normalizeBand(cf.cf_svy_self_reported_fico_label),
+      cf_svy_self_reported_fico: normalizeBand(cf.cf_svy_self_reported_fico) })
+    || surveyFicoBand({ cf_svy_self_reported_fico: normalizeBand(cf.svy_self_reported_fico) });
   const pass = ficoGatePasses(band);
   if (pass === null) return null;
   return pass ? "qualified" : "unqualified";
@@ -93,6 +97,50 @@ export function classifySurvey(fields = {}) {
   if (fico === false || neg === false) return DOWNSELL;
   if (fico === null || neg === null) return MANUAL_REVIEW;
   return PASS;
+}
+
+// The funding call bucket (owner-set 2026-10-29). Two values, internal only.
+// Capital Blueprint and credit repair share the unqualified bucket. The same people
+// take both kinds of call. Stored on clients and bookings by migration 508.
+export const FUNDING_QUALIFIED = "funding_qualified";
+export const FUNDING_UNQUALIFIED = "funding_unqualified";
+export const QUALIFICATION_BUCKETS = Object.freeze([FUNDING_QUALIFIED, FUNDING_UNQUALIFIED]);
+
+// Use the same score and setter-correction rule as calendar links and Meta routing.
+// The separate Stage 2 negative-mark gate does not split pre-call calendars.
+export function qualificationBucket(fields = {}) {
+  const tier = creditTierFor(fields);
+  if (tier === null) return null;
+  return tier === "qualified" ? FUNDING_QUALIFIED : FUNDING_UNQUALIFIED;
+}
+
+// stampQualificationBucket — save the client's bucket from their saved answers, then
+// give it to current/upcoming bookings that have none yet. A booking that already has a
+// bucket keeps it (the 508 trigger holds that even against this update).
+export async function stampQualificationBucket(db, clientId, orgId) {
+  if (!clientId) return null;
+  if (!orgId) throw new Error("qualification bucket requires an org ID");
+  const r = await db.query(
+    `SELECT custom_fields FROM clients WHERE id = $1 AND org_id = $2`,
+    [clientId, orgId]
+  );
+  if (!r.rows[0]) return null;
+  const bucket = qualificationBucket(r.rows[0].custom_fields || {});
+  if (!bucket) return null;
+  await db.query(
+    `UPDATE clients SET qualification_bucket = $3
+      WHERE id = $1 AND org_id = $2 AND qualification_bucket IS DISTINCT FROM $3`,
+    [clientId, orgId, bucket]
+  );
+  await db.query(
+    `UPDATE bookings b SET qualification_bucket = $3
+      WHERE b.client_id = $1 AND b.org_id = $2 AND b.qualification_bucket IS NULL
+        AND b.status IN ('booked', 'rescheduled')
+        AND b.starts_at IS NOT NULL
+        AND (b.starts_at >= now() OR b.ends_at > now())`,
+    [clientId, orgId, bucket]
+  );
+  return bucket;
 }
 
 // currentQualification — read the survey answers off the client and classify.

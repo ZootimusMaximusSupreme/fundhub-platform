@@ -38,7 +38,16 @@ function fakeDb(booked = true) {
     // copy the code holds is what the row looked like when it was read.
     if (sql.includes("FROM clients c")) return { rows: [structuredClone(client)] };
     if (sql.includes("SELECT id, name FROM staff")) return { rows: [{ id: "staff-2", name: "Closer" }] };
+    if (sql.includes("SELECT custom_fields FROM clients WHERE id = $1 AND org_id = $2")) {
+      return { rows: params[0] === CLIENT_ID && params[1] === STAFF.org_id
+        ? [{ custom_fields: structuredClone(client.custom_fields) }] : [] };
+    }
+    if (sql.includes("UPDATE bookings b SET qualification_bucket")) return { rows: [] };
     if (sql.includes("UPDATE clients")) {
+      if (sql.includes("SET qualification_bucket")) {
+        client.qualification_bucket = params[2];
+        return { rows: [] };
+      }
       if (sql.includes("'credit_tier'")) {
         client.custom_fields.credit_tier = params[2];
         return { rows: [] };
@@ -293,10 +302,12 @@ test("fixing the score on the call moves credit_tier, and clearing the fix moves
     survey_edits: { cf_svy_self_reported_fico: "760-850" } });
   assert.equal(up.status, 200);
   assert.equal(client.custom_fields.credit_tier, "qualified");
+  assert.equal(client.qualification_bucket, "funding_qualified");
   const down = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save_survey",
     survey_edits: { cf_svy_self_reported_fico: "500-619" } });
   assert.equal(down.status, 200);
   assert.equal(client.custom_fields.credit_tier, "unqualified");
+  assert.equal(client.qualification_bucket, "funding_unqualified");
   const cleared = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save_survey", survey_edits: {} });
   assert.equal(cleared.status, 200);
   assert.equal(client.custom_fields.credit_tier, "unqualified", "back to the typed 620-699");

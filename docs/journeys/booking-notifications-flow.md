@@ -472,10 +472,20 @@ The ClickFunnels appointment still creates a saved Fundhub booking. The
 `cortana-booking-feed` clock reads confirmed ClickFunnels booking rows created
 after its cutover and posts each one to the existing **Funding Call** conversion
 through `src/messaging/providers/cortana-booking-webhook.mjs`. The
+payload includes the booking's saved `qualification_bucket` (`funding_qualified`
+or `funding_unqualified`, or null when the survey has no score answer). It keeps
+the existing `funding_call_booked` event name and Funding Call conversion.
 `cortana_booking_sends` row records success or a retryable failure, so a browser
 leaving the thank-you page cannot lose the server-side conversion. Company,
 demo, and simulated buyer bookings are marked skipped. This is a vendor event,
 not a customer text or an eligibility decision; the call copy is unchanged.
+Bookings without a known start time wait in the feed. After a claim, a current
+or upcoming booking with a known client score and no saved bucket is stamped
+and re-read within its org before sending. A stamp error or still-missing
+bucket records a retryable failure instead of a conversion with a null bucket.
+An ended call with a readable client score and no saved booking bucket also
+stays retryable; its current client score is never copied into past booking
+history. An explicit booking reconciliation can release that send.
 
 ## 7b. Set is the setter handoff; call confirmation is separate
 
@@ -558,6 +568,18 @@ wins over the typed answer. It picks the calendar in links, and it is saved on t
 person as `custom_fields.credit_tier` when the survey answer arrives and when a
 setter corrects it. On the page, the same 700-and-up rule picks the framed calendar
 and the `credit_tier` the tracker turns into QualifiedLead / UnqualifiedLead.
+
+**Saved call bucket.** A survey score also writes `clients.qualification_bucket`
+as `funding_qualified` or `funding_unqualified` using the same `creditTierFor`
+rule as calendar links and `credit_tier`. A setter score correction updates the
+client's bucket. `bookings.qualification_bucket` copies the client's bucket
+when the booking is saved and keeps the first known bucket (migration 508).
+An active or upcoming booking with no bucket can receive a later survey or
+setter score. A no-time booking copies the first known org-matched bucket when
+its valid time arrives; past bookings with no at-booking evidence stay NULL. The Cortana
+booking event carries this saved value without changing `funding_call_booked`.
+Blueprint versus repair is decided on the call; both use the unqualified bucket.
+
 
 ## 8. Known gaps, not fixed here
 

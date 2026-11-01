@@ -3,6 +3,7 @@
 import { inngest } from "./client.mjs";
 import { db } from "../db.mjs";
 import { classifyVisitor } from "../slo/visitor.mjs";
+import { qualificationBucket, stampQualificationBucket } from "../config/survey-qualification.mjs";
 import { bookingFeedEnabled, sendCortanaBooking } from "../messaging/providers/cortana-booking-webhook.mjs";
 
 export const SOURCE_WORKFLOW = "cortana-booking-feed";
@@ -12,15 +13,17 @@ export const MAX_BOOKINGS_PER_SWEEP = 25;
 export const STALE_CLAIM_MINUTES = 10;
 
 const CANDIDATES_SQL = `
-  SELECT b.id, b.org_id, b.provider_uid, b.created_at, b.attendee_name,
+  SELECT b.id, b.org_id, b.client_id, b.provider_uid, b.created_at, b.attendee_name,
+         b.starts_at, b.ends_at, b.qualification_bucket,
          b.attendee_email, COALESCE(NULLIF(b.raw->>'phone', ''), c.phone) AS phone,
-         c.is_demo, c.custom_fields,
+         c.id AS matched_client_id, c.is_demo, c.custom_fields,
          a.utm_source, a.utm_medium, a.utm_campaign, a.utm_content
     FROM bookings b
     LEFT JOIN clients c ON c.id = b.client_id AND c.org_id = b.org_id
     LEFT JOIN client_ad_attribution a ON a.client_id = b.client_id AND a.org_id = b.org_id
    WHERE b.source = 'clickfunnels'
      AND b.status IN ('booked', 'rescheduled')
+     AND b.starts_at IS NOT NULL
      AND b.created_at >= $1::timestamptz
      AND NULLIF(btrim(b.attendee_email), '') IS NOT NULL
      AND NOT EXISTS (
@@ -73,6 +76,42 @@ export async function sweepCortanaBookingFeed(conn = db, {
       continue;
     }
     const cf = row.custom_fields && typeof row.custom_fields === "object" ? row.custom_fields : {};
+    if (row.client_id && !row.matched_client_id) {
+      await finish(conn, row.id, "failed", "booking client is outside its org");
+      out.failed += 1;
+      continue;
+    }
+    const currentOrUpcoming = new Date(row.starts_at).getTime() >= Date.now() ||
+      (row.ends_at && new Date(row.ends_at).getTime() > Date.now());
+    if (row.qualification_bucket == null && row.client_id) {
+      try {
+        // A past call needs its own at-booking evidence; today's score cannot
+        // be copied backward. Still hold a known-score NULL for reconciliation.
+        const stamped = currentOrUpcoming
+          ? await stampQualificationBucket(conn, row.client_id, row.org_id)
+          : null;
+        const fresh = await conn.query(
+          `SELECT b.qualification_bucket, c.qualification_bucket AS client_qualification_bucket,
+                  c.custom_fields
+             FROM bookings b
+             LEFT JOIN clients c ON c.id = b.client_id AND c.org_id = b.org_id
+            WHERE b.id = $1 AND b.org_id = $2`,
+          [row.id, row.org_id]
+        );
+        if (!fresh.rows[0]) throw new Error("claimed booking disappeared before send");
+        row.qualification_bucket = fresh.rows[0].qualification_bucket ?? null;
+        const currentFields = fresh.rows[0].custom_fields || {};
+        const knownBucket = stamped || qualificationBucket(currentFields) ||
+          fresh.rows[0].client_qualification_bucket;
+        if (knownBucket && row.qualification_bucket == null) {
+          throw new Error("known client score has no saved booking bucket");
+        }
+      } catch (err) {
+        await finish(conn, row.id, "failed", String(err?.message || err));
+        out.failed += 1;
+        continue;
+      }
+    }
     const fbc = String(cf.fbc || cf._fbc || "");
     const fbclid = String(cf.fbclid || "") ||
       (fbc.startsWith("fb.1.") ? fbc.split(".").slice(3).join(".") : "");
