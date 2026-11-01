@@ -263,6 +263,15 @@
    ]
   },
   {
+   "key": "EMAIL-NOBOOK-02-B",
+   "channel": "email",
+   "approvedBySeed": true,
+   "inactive": false,
+   "files": [
+    "db/seed/304_followup_proof_variants.sql"
+   ]
+  },
+  {
    "key": "EMAIL-NOBOOK-03",
    "channel": "email",
    "approvedBySeed": true,
@@ -441,6 +450,15 @@
    "inactive": false,
    "files": [
     "db/seed/301_followup_flows_copy.sql"
+   ]
+  },
+  {
+   "key": "EMAIL-S02-RESUME-2-B",
+   "channel": "email",
+   "approvedBySeed": true,
+   "inactive": false,
+   "files": [
+    "db/seed/304_followup_proof_variants.sql"
    ]
   },
   {
@@ -1168,6 +1186,15 @@
    ]
   },
   {
+   "key": "SMS-NOBOOK-02-B",
+   "channel": "sms",
+   "approvedBySeed": true,
+   "inactive": false,
+   "files": [
+    "db/seed/304_followup_proof_variants.sql"
+   ]
+  },
+  {
    "key": "SMS-NOBOOK-03",
    "channel": "sms",
    "approvedBySeed": true,
@@ -1222,6 +1249,15 @@
    "inactive": false,
    "files": [
     "db/seed/301_followup_flows_copy.sql"
+   ]
+  },
+  {
+   "key": "SMS-S02-RESUME-2-B",
+   "channel": "sms",
+   "approvedBySeed": true,
+   "inactive": false,
+   "files": [
+    "db/seed/304_followup_proof_variants.sql"
    ]
   },
   {

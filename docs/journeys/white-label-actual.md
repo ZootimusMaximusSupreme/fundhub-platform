@@ -37,7 +37,7 @@ flowchart TD
     CAN --> A_top_level[Everything else — 7 routes]
     CAN --> A_trials[trials — 2 routes]
     CAN --> A_webhooks[Incoming webhooks — 1 route]
-    WHO -->|Yes| CANT[Blocked — 257 routes]
+    WHO -->|Yes| CANT[Blocked — 258 routes]
     CANT --> B_affiliates[affiliates — 3 blocked]
     CANT --> B_analytics[analytics — 4 blocked]
     CANT --> B_auth[Signing in and out — 8 blocked]
@@ -60,7 +60,7 @@ flowchart TD
     CANT --> B_privacy[privacy — 1 blocked]
     CANT --> B_proxy[proxy — 2 blocked]
     CANT --> B_push[push — 5 blocked]
-    CANT --> B_read[Reading data — 66 blocked]
+    CANT --> B_read[Reading data — 67 blocked]
     CANT --> B_repair[repair — 5 blocked]
     CANT --> B_scripts[scripts — 1 blocked]
     CANT --> B_social[social — 1 blocked]
@@ -71,7 +71,7 @@ flowchart TD
 
 ## What they can reach
 
-**81 of 338 routes.**
+**81 of 339 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -164,7 +164,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**257 of 338 routes.**
+**258 of 339 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -386,6 +386,7 @@ flowchart TD
 | `/api/read/lender-observations` | GET | owner, admin, funding_advisor |
 | `/api/read/lenders` | GET | owner, admin, funding_advisor |
 | `/api/read/message-templates` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
+| `/api/read/message-tests` | GET | owner, admin |
 | `/api/read/messages` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/money-map` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/morning-brief` | GET | owner, admin |

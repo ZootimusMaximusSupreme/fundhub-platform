@@ -1123,6 +1123,28 @@ describe("customer send hours: instant any hour, drips 9 a.m. to 5 p.m. Arizona"
     assert.equal(res.detail, "2026-08-01T15:00:00.000Z");
   });
 
+  test("a version B follow-up is held exactly like version A: an email at 6 p.m., a text at 8:30 a.m.", async () => {
+    const email = await dispatchOne(fakeDb(), claimed({ channel: "email", template_key: "EMAIL-NOBOOK-02-B" }), {
+      fetchImpl: spy(), env: ENV, now: () => new Date("2026-08-02T01:00:00Z")
+    });
+    assert.equal(email.outcome, OUTCOME.DEFERRED);
+    assert.equal(email.detail, "2026-08-02T16:00:00.000Z");
+    const text = await dispatchOne(fakeDb(), claimed({ channel: "sms", template_key: "SMS-S02-RESUME-2-B" }), {
+      fetchImpl: spy(), env: ENV, now: () => new Date("2026-08-01T15:30:00Z")
+    });
+    assert.equal(text.outcome, OUTCOME.DEFERRED);
+    assert.equal(text.detail, "2026-08-01T16:00:00.000Z");
+  });
+
+  test("a version B follow-up text inside the window goes out", async () => {
+    const f = spy();
+    const res = await dispatchOne(twilioDb(), claimed({ channel: "sms", template_key: "SMS-NOBOOK-02-B" }), {
+      fetchImpl: f, env: TWILIO_ENV, now: MIDDAY
+    });
+    assert.equal(res.outcome, OUTCOME.SENT);
+    assert.equal(f.calls.length, 1);
+  });
+
   test("a +sim- test person's follow-up is not held, so a night proof can run", async () => {
     const f = spy();
     const res = await dispatchOne(twilioDb({ email: "stanbridgejchris+sim-fund@gmail.com", phone: "+16616054248" }),

@@ -74,3 +74,12 @@ UPDATE message_templates
        approved_body_sha = NULL,
        updated_at = now()
  WHERE template_key = 'EMAIL-S02-RESUME-3';
+
+-- Version B of the second come-back message (seed 304) still names saved progress
+-- ({{survey_taps_left}}) and a link that "picks up where you stopped". Containment sends
+-- neither, so B is held back and everyone gets version A (sendTemplated falls back to A
+-- when B has not passed). The no-book test (NOBOOK-02-B) is untouched. New B copy for
+-- the plain /apply link turns it back on.
+UPDATE message_templates
+   SET compliance_passed = false, updated_at = now()
+ WHERE template_key IN ('SMS-S02-RESUME-2-B', 'EMAIL-S02-RESUME-2-B');

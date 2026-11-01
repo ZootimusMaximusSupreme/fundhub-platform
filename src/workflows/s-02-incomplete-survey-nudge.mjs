@@ -81,6 +81,7 @@ import { hasReplied } from "./stop-on-reply.mjs";
 import { RESUME_BASE_URL } from "../survey/resume-link.mjs";
 import { surveyProgressWords } from "../survey/resume-state.mjs";
 import { DRIP_START_HOUR, SEND_WINDOW_TZ, dripSendTime, nextHourStrike } from "../messaging/send-window.mjs";
+import { withVariants } from "../messaging/experiments.mjs";
 
 // Touch 1 under the names the old nudge used (the pulse reads EMAIL_TEMPLATE_KEY from this file).
 export const SMS_TEMPLATE_KEY = "SMS-S02-RESUME-1";
@@ -146,7 +147,9 @@ export async function surveyCompleted(db, clientId, email, orgId = null) {
    another run: that sequence is already going and this run steps aside. Two runs
    that both start before either has sent (two visits the same evening) share one
    send key instead (messageCohortId over SEQUENCE_WINDOW_MS), so the database drops
-   the second copy of each touch. Independent review of PR #346, 2026-10-31. */
+   the second copy of each touch. Independent review of PR #346, 2026-10-31.
+   Touch 2 is a message test (src/messaging/experiments.mjs): a sent version B counts
+   the same as a sent version A, so both keys are looked for. */
 export async function sequenceInFlight(db, { orgId, clientId, since }) {
   const r = await db.query(
     `SELECT 1 FROM messages
@@ -155,7 +158,7 @@ export async function sequenceInFlight(db, { orgId, clientId, since }) {
         AND template_key = ANY($3)
         AND created_at > $4
       LIMIT 1`,
-    [orgId, clientId, RESUME_TEMPLATE_KEYS, since]
+    [orgId, clientId, withVariants(RESUME_TEMPLATE_KEYS), since]
   );
   return r.rows.length > 0;
 }

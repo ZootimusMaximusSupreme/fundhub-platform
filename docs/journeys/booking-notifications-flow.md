@@ -465,6 +465,24 @@ a.m. call until 9 a.m. would put it after the call. One clock for everybody; the
 are no per-person time zones. Plus-tag test files (`+sim-`, `e2e+`) skip both
 windows so a night proof can run.
 
+**Message tests (owner GO 2026-10-31).** Four follow-up messages can be split into
+version A (today's words) and version B (the same step with one real client win
+added): the second come-back message (`SMS-S02-RESUME-2`, `EMAIL-S02-RESUME-2`) and
+the second never-booked message (`SMS-NOBOOK-02`, `EMAIL-NOBOOK-02`). Version B is its
+own template row with `-B` on the end of the key. `sendTemplated` gives each person a
+fixed version by a coin flip on their id and the test's name
+(`src/messaging/experiments.mjs`), so the text and the email of one step match and a
+replay picks the same one. B goes only when its row exists, is not draft copy and has
+passed compliance; otherwise the person gets A, never a blank, and the `messages` row
+keeps the key that really went. The send key that stops a double send stays on the
+base key. A `-B` key is held, gated, de-duplicated and counted exactly like its base
+key, so a person's customer steps do not change. The read-only report
+(`GET /api/read/message-tests`, owner and admin; `scripts/message-tests-report.mjs`)
+counts the people in each version and how many finished the survey (come-back test) or
+booked (never-booked test) within 7 days of their first message in the test. The count
+starts when the first B message goes out. It names a winner only when each side has 30
+people and the gap passes a 95% check, and it never switches a version by itself.
+
 ## 7. Cortana's confirmed-booking receipt (2026-10-29)
 
 The ClickFunnels appointment still creates a saved Fundhub booking. The
