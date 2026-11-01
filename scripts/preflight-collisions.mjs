@@ -21,8 +21,8 @@
 //   npm run preflight -- --no-fetch   skip `git fetch origin`
 //   npm run preflight -- --expected-base <branch>  verify a planned stack parent
 //
-// Exit code: 0 = no shared files with this branch, 1 = shared files found
-// (read the report before opening the PR), 2 = could not run.
+// Exit code: 0 = no active shared work (unattached local refs still warn),
+// 1 = shared files with an open PR or active worktree, 2 = could not run.
 
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
@@ -201,6 +201,12 @@ export function findOverlaps(mine, sources) {
   return { withMine, hot };
 }
 
+export function blockingOverlaps(withMine, sources) {
+  const active = new Set(sources.filter((source) => source.kind !== "branch" || source.active)
+    .map((source) => source.label));
+  return withMine.filter((overlap) => active.has(overlap.label));
+}
+
 function parseArgs(argv) {
   const a = { days: 14, json: false, fetch: true, expectedBase: null };
   for (let i = 0; i < argv.length; i++) {
@@ -290,7 +296,8 @@ export function main(argv = process.argv.slice(2)) {
     // This drops work that already landed, e.g. a squash-merged branch never deleted.
     const stillDiffers = new Set(lines(git(["diff", "--name-only", BASE, name])));
     const files = lines(git(["diff", "--name-only", `${BASE}...${name}`])).filter((f) => stillDiffers.has(f));
-    if (files.length) sources.push({ label: `branch ${name}`, refName: name, kind: "branch", files });
+    if (files.length) sources.push({ label: `branch ${name}`, refName: name, kind: "branch",
+      active: worktrees.some((wt) => wt.branch === name && !wt.prunable), files });
   }
 
   // 2. Other worktrees: unsaved changes only (their commits are covered by step 1).
@@ -350,7 +357,8 @@ export function main(argv = process.argv.slice(2)) {
     if (!notes.includes(note)) notes.push(note);
   }
   const { withMine, hot } = findOverlaps(mine, handoff.sources);
-  const report = { current, behind, comparisonBase, localMain: { behindBefore: mainBehind, updated: mainUpdated, reason: mainUpdateReason }, openBranches: openNames.size, chain, myFiles: mine.length, scanned: handoff.sources.length, withMine, hot, notes };
+  const blocking = blockingOverlaps(withMine, handoff.sources);
+  const report = { current, behind, comparisonBase, localMain: { behindBefore: mainBehind, updated: mainUpdated, reason: mainUpdateReason }, openBranches: openNames.size, chain, myFiles: mine.length, scanned: handoff.sources.length, withMine, blocking, hot, notes };
 
   if (args.json) {
     console.log(JSON.stringify(report, null, 2));
@@ -364,8 +372,9 @@ export function main(argv = process.argv.slice(2)) {
     if (chain.length) console.log(`- Built on an unmerged branch; chain order: ${[BASE, ...chain, current].join(" -> ")}`);
     if (openNames.size > 10) console.log(`- Warning: ${openNames.size} branches have commits outside ${BASE}; review the open chain before adding more.`);
     if (mine.length && !withMine.length) console.log("- No shared files with any other branch, worktree or open PR.");
+    const blockedLabels = new Set(blocking.map((overlap) => overlap.label));
     for (const o of withMine) {
-      console.log(`- Shares ${o.files.length} file(s) with ${o.label}:`);
+      console.log(`- ${blockedLabels.has(o.label) ? "Shares" : "Warning: shares"} ${o.files.length} file(s) with ${o.label}:`);
       for (const f of o.files.slice(0, 15)) console.log(`    ${f}`);
       if (o.files.length > 15) console.log(`    ...and ${o.files.length - 15} more`);
     }
@@ -381,7 +390,7 @@ export function main(argv = process.argv.slice(2)) {
     }
     for (const n of notes) console.log(`- Note: ${n}`);
   }
-  return withMine.length ? 1 : 0;
+  return blocking.length ? 1 : 0;
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
