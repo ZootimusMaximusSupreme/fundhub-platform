@@ -131,6 +131,7 @@ export const SHIFTS = Object.freeze({
       "roadmap-delivery",
       "roadmap-pages",
       "sales-totals",
+      "slideshows",
       "soft-pull"
     ])
   })
