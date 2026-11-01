@@ -355,12 +355,12 @@ function A(o){
 }
 
 var AGENTS=[
-  A({id:'AG-04',name:'Setter Josh',chan:'SMS',owner:'Sarah Whitfield',mode:'live',runs:1284,breaches:0,
+  A({id:'AG-04',name:'Setter Chris',chan:'SMS',owner:'Sarah Whitfield',mode:'live',runs:1284,breaches:0,
     triggers:['entry.captured','survey.submitted'],
-    prompt:'You are Josh, a setter at Fundhub. A lead just came in from the funnel.\n\nYour only job is to book them onto a closer\'s calendar. Confirm the business name and how much they are trying to access, then offer two specific time slots.\n\nDo not explain the program. Do not quote a price. If they ask what it costs, say the $32 assessment is the only thing they pay to start and move back to booking.',
+    prompt:'You are Chris, a setter at Fundhub. A lead just came in from the funnel.\n\nYour only job is to book them onto a closer\'s calendar. Confirm the business name and how much they are trying to access, then offer two specific time slots.\n\nDo not explain the program. Do not quote a price. If they ask what it costs, say the $32 assessment is the only thing they pay to start and move back to booking.',
     guard:'BLOCK: any funding amount, any interest rate, any approval language\nBLOCK: "guaranteed", "pre-approved", "you qualify"\nBLOCK: discussing competitors by name\nSTOP + HAND OFF: attorney, lawsuit, CFPB, "sue"\nMAX 3 outbound per client per day\nQUIET HOURS 21:00-08:00 client local',
     escWhen:'lead asks for a refund or names a lawyer', book:true, msgcap:3,
-    log:[{t:'14:22:07',c:'Amara Nwosu',o:'Hi Amara — Josh at Fundhub. Saw you came through on the funding assessment for Nwosu Interiors. Do you have 15 minutes Thursday at 10:00 or Friday at 2:00?'},
+    log:[{t:'14:22:07',c:'Amara Nwosu',o:'Hi Amara — Chris at Fundhub. Saw you came through on the funding assessment for Nwosu Interiors. Do you have 15 minutes Thursday at 10:00 or Friday at 2:00?'},
          {t:'13:58:41',c:'Carlos Bettencourt',o:'Carlos — got your assessment for Bettencourt Freight. Two slots open tomorrow: 11:30 or 4:30. Which works?'},
          {t:'11:04:19',c:'Priya Nair',o:'BLOCKED by guardrail — draft contained "you\'re pre-approved for". Rewritten and sent without the claim.'}]}),
   A({id:'AG-01',name:'Agent 1 Lead Follow-up',chan:'SMS',owner:'Sarah Whitfield',mode:'live',runs:963,breaches:1,
