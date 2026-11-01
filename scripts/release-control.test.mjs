@@ -45,7 +45,9 @@ test('new overlapping PR is blocked, legacy Monday queue is not',()=>{
     peerFiles:{449:['tools/fundhub-ios/App.swift'],451:['src/a.mjs']}};
   assert.deepEqual(prOwnershipDecision(input).blockers.map(x=>x.number),[449]);
   assert.equal(prOwnershipDecision(input).ok,false);
-  assert.equal(prOwnershipDecision({...input,current:{...current,created_at:'2026-11-02T20:00:00Z'}}).ok,true);
+  assert.equal(prOwnershipDecision({...input,current:{...current,created_at:'2026-11-01T07:02:59Z'}}).ok,true);
+  assert.equal(prOwnershipDecision({...input,current:{...current,created_at:'2026-11-01T07:03:37Z'},
+    peers:[{...older,created_at:'2026-11-01T07:02:00Z'}]}).ok,false);
   assert.equal(prOwnershipDecision({...input,current:{...current,body:'No owner'}}).ok,false);
   assert.equal(prOwnershipDecision({...input,peers:[{...older,state:'closed'},later]}).ok,true);
   assert.equal(prOwnershipDecision({...input,files:['src/new.mjs']}).ok,true);
@@ -85,7 +87,8 @@ test('new PRs can merge only at the front of the declared chain',()=>{
   assert.match(prOrderDecision({current:{...next,labels:[]},peers:[base]}).reason,/label/);
   assert.match(prOrderDecision({current:{...next,base:{ref:'main'}},peers:[{...base,labels:[{name:'ship-order/2'}]}]}).reason,/already used/);
   assert.equal(prOrderDecision({current:{...next,base:{ref:'main'}},peers:[]}).ok,true);
-  assert.equal(prOrderDecision({current:{...next,created_at:'2026-11-02T10:00:00Z',labels:[]},peers:[base]}).ok,true);
+  assert.equal(prOrderDecision({current:{...next,created_at:'2026-11-01T07:02:59Z',labels:[]},peers:[base]}).ok,true);
+  assert.equal(prOrderDecision({current:{...next,created_at:'2026-11-01T07:03:37Z',labels:[]},peers:[base]}).ok,false);
 });
 test('workflow source keeps PR guard read-only and ship behind CI',()=>{
   const root=fileURLToPath(new URL('../',import.meta.url));

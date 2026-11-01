@@ -4,7 +4,7 @@ export const REQUIRED_CI_JOBS = Object.freeze([
   ...Array.from({length:6}, (_,i)=>'suite (real Postgres — unit shard '+i+'/6)'),
   'suite (real Postgres — blocks)', 'screens (real browser)'
 ]);
-export const NEW_PR_CUTOVER = '2026-11-03T08:00:00.000Z';
+export const NEW_PR_CUTOVER = '2026-11-01T07:03:00.000Z';
 
 export function checkRequiredJobs(jobs) {
   if(!Array.isArray(jobs)) return {ok:false,reason:'Missing CI job list'};
