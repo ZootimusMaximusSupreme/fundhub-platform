@@ -90,7 +90,7 @@ export const APPROVED_BODIES = Object.freeze({
   payment_past_due: "A payment needs your attention. Open FundHub.",
   statement_close:  "Something on your file needs a look. Open FundHub.",
   document_needed:  "We need a document from you. Open FundHub.",
-  check_in:         "Time for your check-in. Open FundHub.",
+  check_in:         "Time for your check-in. Open Fundhub.",
   call_confirmation: "Please confirm your upcoming call in FundHub.",
   update:           "There is an update on your file. Open FundHub.",
   test:             "Test notification from FundHub."
