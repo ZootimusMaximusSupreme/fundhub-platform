@@ -1,5 +1,5 @@
 // S-04C — optional staff text when a call is booked.
-// Trigger: booking.created only. Does not touch S-04 / S-04B client jobs.
+// Trigger: booking.created and booking.rescheduled. Does not touch S-04 / S-04B client jobs.
 // Owner-set 2026-08-23: Staff & Teams switch, default off.
 
 import { inngest } from "./client.mjs";
@@ -16,6 +16,7 @@ export async function handle({ event, db, step }) {
       orgId: event.orgId,
       clientId,
       eventId: event.id,
+      eventName: event.name,
       payload: event.payload || {}
     }));
 
@@ -24,6 +25,6 @@ export async function handle({ event, db, step }) {
 
 export const s04cStaffBookedAlert = inngest.createFunction(
   { id: "s-04c-staff-booked-alert", name: "S-04C — Staff booked-call text" },
-  { event: "booking.created" },
+  [{ event: "booking.created" }, { event: "booking.rescheduled" }],
   ({ event, step }) => handle({ event: event.data, db, step })
 );

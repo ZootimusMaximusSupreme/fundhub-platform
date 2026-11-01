@@ -605,7 +605,8 @@ async function onBookingCreatedLocked(event, db, p, uid) {
       orgId: event.orgId,
       clientId,
       pipelineKey: "sales",
-      stageKey: "booked"
+      stageKey: "booked",
+      allowRebookFromLost: true
     });
   }
   if (isSloPostPurchaseEnabled()) {
@@ -718,6 +719,7 @@ export async function onBookingRescheduled(event, db) {
       );
       if (upd.rows[0]) {
         await mergeCustomFields(tx, clientId, { call_outcome: "rescheduled", call_confirmed: false });
+        await advanceCardToStage(tx, { orgId: event.orgId, clientId, pipelineKey: "sales", stageKey: "booked", allowRebookFromLost: true });
         return;
       }
     }
@@ -727,6 +729,7 @@ export async function onBookingRescheduled(event, db) {
       dueAt: p.startTime || null, eventId: uid, meetingUrl: p.meetingUrl || null
     });
     await mergeCustomFields(tx, clientId, { call_outcome: "rescheduled", call_confirmed: false });
+    await advanceCardToStage(tx, { orgId: event.orgId, clientId, pipelineKey: "sales", stageKey: "booked", allowRebookFromLost: true });
   });
 }
 
