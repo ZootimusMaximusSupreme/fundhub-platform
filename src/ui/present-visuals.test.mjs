@@ -82,7 +82,7 @@ const clientAmounts = (html) => (words(html)
   .match(/\$\d[\d,]*/g) || []);
 
 const BANNED = /\b(number|pre-approved|funding gap|funding snapshot|credit repair|guaranteed|your score will go up|we think|might|maybe|could|probably|3 to 6 rounds|about every 3 months)\b/i;
-const RENDERERS = ["yourPath", "moneyLevers", "fileFindings", "companies"];
+const RENDERERS = ["yourPath", "moneyLevers", "fileFindings", "lenderWall", "companies"];
 
 describe("the three functions, on the full file", () => {
   let T;
@@ -222,7 +222,7 @@ describe("no data yet, sample and bad data", () => {
     assert.equal(T.dom.styles.length, 1, "one <style> element");
     const css = T.dom.styles[0].textContent;
     const classes = [...css.matchAll(/\.([a-zA-Z][\w-]*)/g)].map((m) => m[1]).filter((c) => !/^\d/.test(c));
-    const stray = [...new Set(classes)].filter((c) => !/^fhv-(path|levers|findings|companies|ui)-/.test(c) && !/^is-/.test(c));
+    const stray = [...new Set(classes)].filter((c) => !/^fhv-(path|levers|findings|wall|companies|ui)-/.test(c) && !/^is-/.test(c));
     assert.deepEqual(stray, [], "every class starts with fhv-<name>- (is-* are state flags on those)");
     assert.ok(!/box-shadow:[^;}]*--spectrum/.test(css), "the spectrum is never a shadow colour");
   });
@@ -579,5 +579,47 @@ describe("File findings and waterfall", () => {
     assert.ok(withheld.includes("The optimized amount is not on this file yet."));
   });
 
+  test("F-02 full file shows today's matches and additional matches with no bank names", () => {
+    const T = load();
+    const ctx = T.ctxFor("full");
+    ctx.visual.lenderReach = { now: 3, after: 4 };
+    ctx.visual.pulledOn = "2026-03-11";
+    const html = T.V.lenderWall(ctx);
+    assert.match(html, /data-fhv="wall"/);
+    assert.equal((html.match(/fhv-wall-tile/g) || []).length, 7);
+    assert.equal((html.match(/fhv-wall-tile is-today/g) || []).length, 3);
+    assert.equal((html.match(/fhv-wall-tile is-waiting/g) || []).length, 4);
+    assert.ok(html.includes("More after optimization") && html.includes("From your soft pull on 2026-03-11."));
+    assert.ok(!html.includes("FIRST PLATYPUS") && !html.includes("Cedar Mesa"), "no names from the card or business file become lenders");
+    const h = T.host("wall", html);
+    const one = T.tap(h, "wall:next");
+    assert.ok(one.prevented);
+    assert.equal((one.html.match(/fhv-wall-tile is-lit/g) || []).length, 1);
+    T.tap(h, "wall:next");
+    const all = T.tap(h, "wall:next").html;
+    assert.equal((all.match(/fhv-wall-tile is-lit/g) || []).length, 4);
+    assert.match(T.V.lenderWall(ctx), /4 of 4 more shown/, "the build survives a re-render");
+    const reset = T.tap(h, "wall:reset").html;
+    assert.equal((reset.match(/fhv-wall-tile is-waiting/g) || []).length, 4);
+  });
 
+  test("F-02 sample, no pull, repair-only and withheld counts", () => {
+    const T = load();
+    const sampleCtx = T.ctxFor("sample");
+    sampleCtx.visual.lenderReach = { now: 2, after: 1 };
+    const sample = T.V.lenderWall(sampleCtx);
+    assert.match(sample, /fhv-ui-tag[^>]*>Sample/);
+    assert.equal((sample.match(/fhv-wall-tile/g) || []).length, 3);
+    const none = T.V.lenderWall(T.ctxFor("nodata"));
+    assert.ok(none.includes("No credit pull on this file yet"));
+    assert.ok(!none.includes("fhv-wall-tile"));
+    const repairCtx = T.ctxFor("repair");
+    repairCtx.visual.lenderReach = { now: 0, after: 2 };
+    const repair = T.V.lenderWall(repairCtx);
+    assert.ok(repair.includes("Matches today</span><strong class=\"fhv-ui-num\">0"));
+    assert.equal((repair.match(/fhv-wall-tile is-waiting/g) || []).length, 2);
+    const withheld = T.V.lenderWall(T.ctxFor("withheld"));
+    assert.ok(withheld.includes("The lender match count is not on this file yet."));
+    assert.ok(!withheld.includes("fhv-wall-tile") && !withheld.includes("Lender 1"));
+  });
 });
