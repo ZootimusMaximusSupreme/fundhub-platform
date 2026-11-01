@@ -21,10 +21,10 @@ function withReads(inner, sim) {
   wrapped.query = async (sql, params = []) => {
     const text = String(sql);
     if (/template_key = ANY\(\$3\)/.test(text)) {
-      const [, clientId, keys, since, notLike] = params;
-      const suffix = notLike.replace(/^%/, "");
+      // Any resume message sent in the window, by any run (sequenceInFlight, review of PR #346).
+      const [, clientId, keys, since] = params;
       const hit = wrapped.sentLog.some((m) =>
-        m.client_id === clientId && keys.includes(m.template_key) && m.at > Date.parse(since) && !m.provider_ref.endsWith(suffix));
+        m.client_id === clientId && keys.includes(m.template_key) && m.at > Date.parse(since));
       return { rows: hit ? [{ x: 1 }] : [] };
     }
     if (/INSERT INTO messages/.test(text)) {
@@ -129,18 +129,19 @@ test("plan: an 11 p.m. opt-in waits for 9 a.m., and the touches still come one a
 
 test("plan: the edges of the window", () => {
   const plan = (iso8601) => resumePlan(Date.parse(iso8601)).map((d) => d.toISOString());
-  // A drip is planned no later than 4:55 p.m. (DRIP_LAST_PLAN_MINUTE in send-window.mjs): the sender sweeps
+  // A drip is planned no later than 4:50 p.m. (DRIP_LAST_PLAN_MINUTE in send-window.mjs): the sender sweeps
   // every 5 minutes, and one swept after 5:00 would be held to 9 a.m. with no new check.
-  // 4:35 p.m. + 20 minutes = 4:55, still inside; 4:36 + 20 = 4:56, the next morning.
-  assert.equal(plan("2026-10-28T23:35:00Z")[0], "2026-10-28T23:55:00.000Z");
-  assert.equal(plan("2026-10-28T23:36:00Z")[0], NINE_AM(29));
+  // 4:30 p.m. + 20 minutes = 4:50, still inside; 4:31 + 20 = 4:51, the next morning.
+  assert.equal(plan("2026-10-28T23:30:00Z")[0], "2026-10-28T23:50:00.000Z");
+  assert.equal(plan("2026-10-28T23:31:00Z")[0], NINE_AM(29));
+  assert.equal(plan("2026-10-28T23:35:00Z")[0], NINE_AM(29), "4:55 p.m. is past the edge now");
   assert.equal(plan("2026-10-28T23:39:00Z")[0], NINE_AM(29), "4:59 p.m.");
   assert.equal(plan("2026-10-28T23:40:00Z")[0], NINE_AM(29), "5:00 p.m.");
   // 8:39 a.m. + 20 = 8:59, outside, so 9:00 today; 8:40 + 20 = 9:00:00, inside.
   assert.equal(plan("2026-10-28T15:39:00Z")[0], NINE_AM(28));
   assert.equal(plan("2026-10-28T15:40:00Z")[0], NINE_AM(28));
   // Touches 2 and 3 are the next two 9 a.m. after touch 1, even when touch 1 is late in the afternoon.
-  assert.deepEqual(plan("2026-10-28T23:35:00Z").slice(1), [NINE_AM(29), NINE_AM(30)]);
+  assert.deepEqual(plan("2026-10-28T23:30:00Z").slice(1), [NINE_AM(29), NINE_AM(30)]);
 });
 
 test("plan: whatever hour they sign up, every touch is inside the drip window and the days are consecutive", () => {

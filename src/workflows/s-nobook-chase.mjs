@@ -34,6 +34,7 @@ import { createTask } from "../lib/create-task.mjs";
 import { messageCohortId, sendTemplated } from "./messaging.mjs";
 import { hasReplied } from "./stop-on-reply.mjs";
 import { dripSendTime } from "../messaging/send-window.mjs";
+import { surveyCompleted } from "./s-02-incomplete-survey-nudge.mjs";
 
 export const TRIGGER_EVENT = "survey.completed";
 
@@ -124,6 +125,21 @@ async function startedAt(db, { eventId, orgId }) {
   return at && Number.isFinite(at.getTime()) ? at : null;
 }
 
+/* How far back a text counts as already sent to this person (see stepsAside below). */
+export const RECENT_SEND_MS = 7 * 24 * 60 * 60 * 1000;
+
+/* Did this person get any of `keys` from us since `sinceMs`, from any run? */
+export async function sentRecently(db, { orgId, clientId, keys, sinceMs }) {
+  const r = await db.query(
+    `SELECT 1 FROM messages
+      WHERE org_id = $1 AND client_id = $2 AND direction = 'outbound'
+        AND template_key = ANY($3) AND created_at > $4
+      LIMIT 1`,
+    [orgId, clientId, keys, new Date(sinceMs).toISOString()]
+  );
+  return r.rows.length > 0;
+}
+
 export async function handle({ event, db, step, now = () => new Date() }) {
   const clientId = await step.run("resolve-client", () => resolveClient(db, event));
   if (!clientId) return { done: false, reason: "no_client" };
@@ -143,6 +159,21 @@ export async function handle({ event, db, step, now = () => new Date() }) {
   const trigger = event.name || TRIGGER_EVENT;
   const finished = trigger === TRIGGER_EVENT;
   const replied = () => hasReplied(db, { clientId, eventId });
+
+  /* THE SWITCH FROM survey.submitted TO survey.completed (independent review of PR #346,
+     2026-10-31). A run that started on the old trigger can still be asleep when the
+     person finishes, and the finish starts a survey.completed run with its own send
+     keys, so both would send. An old-trigger run steps aside once the person has a
+     survey.completed (the new run owns the chase from there). A survey.completed run
+     skips a text whose keys this person already got in the last 7 days. */
+  const leadEmail = (event.payload || {}).email || null;
+  const stepsAside = async (n) => !finished
+    && step.run(`check-handed-over-${n}`, () => surveyCompleted(db, clientId, leadEmail, orgId));
+  const alreadyGot = async (n, keys) => finished
+    && step.run(`check-already-sent-${n}`, () =>
+      sentRecently(db, { orgId, clientId, keys, sinceMs: now().getTime() - RECENT_SEND_MS }));
+  const HANDED_OVER = "handed-to-finished-chase";
+  const SKIPPED = Object.freeze({ skipped: "sent_by_an_earlier_run" });
 
   /* 15 minutes in: a finished survey with no booking gets a person on the phone.
      Skipped when they booked or wrote back in the meantime. This is a task for a
@@ -197,7 +228,8 @@ export async function handle({ event, db, step, now = () => new Date() }) {
   if (await step.run("check-replied-1", replied)) {
     return { done: true, exitedAt: "replied", task };
   }
-  const msg1 = await step.run("send-nobook-1", async () => {
+  if (await stepsAside(1)) return { done: true, exitedAt: HANDED_OVER, task };
+  const msg1 = await alreadyGot(1, [SMS_NOBOOK_01, EMAIL_NOBOOK_01]) ? SKIPPED : await step.run("send-nobook-1", async () => {
     const cohortId = await messageCohortId(db, { eventId, orgId, clientId, name: trigger });
     return {
     sms: await sendTemplated(db, {
@@ -218,7 +250,8 @@ export async function handle({ event, db, step, now = () => new Date() }) {
   if (await step.run("check-replied-2", replied)) {
     return { done: true, exitedAt: "replied", task, msg1 };
   }
-  const msg2 = await step.run("send-nobook-2", async () => {
+  if (await stepsAside(2)) return { done: true, exitedAt: HANDED_OVER, task, msg1 };
+  const msg2 = await alreadyGot(2, [SMS_NOBOOK_02, EMAIL_NOBOOK_02]) ? SKIPPED : await step.run("send-nobook-2", async () => {
     const cohortId = await messageCohortId(db, { eventId, orgId, clientId, name: trigger });
     return {
     sms: await sendTemplated(db, {
@@ -239,7 +272,8 @@ export async function handle({ event, db, step, now = () => new Date() }) {
   if (await step.run("check-replied-3", replied)) {
     return { done: true, exitedAt: "replied", task, msg1, msg2 };
   }
-  const msg3 = await step.run("send-nobook-3", async () => {
+  if (await stepsAside(3)) return { done: true, exitedAt: HANDED_OVER, task, msg1, msg2 };
+  const msg3 = await alreadyGot(3, [SMS_NOBOOK_03, EMAIL_NOBOOK_03]) ? SKIPPED : await step.run("send-nobook-3", async () => {
     const cohortId = await messageCohortId(db, { eventId, orgId, clientId, name: trigger });
     return {
     sms: await sendTemplated(db, {

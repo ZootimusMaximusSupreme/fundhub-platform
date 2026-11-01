@@ -189,11 +189,13 @@ test("replied: a text (no person on the event, the number in the payload) or an 
 
 // ── already running? ─────────────────────────────────────────────────────────────────────────────
 
-test("already running: resume messages from a different opt-in in the last four days, and no others",
+test("already running: resume messages sent in the last four days by any run, and no others",
   { skip: !HAS_DB }, async () => {
     const now = Date.now();
     const since = iso(now - 4 * DAY);
-    const ask = (clientId, cohortId, org = orgId) => sequenceInFlight(db, { orgId: org, clientId, cohortId, since });
+    // The send key no longer matters: the check runs before this run sends anything, so whatever it
+    // finds came from another run (independent review of PR #346, 2026-10-31).
+    const ask = (clientId, _key, org = orgId) => sequenceInFlight(db, { orgId: org, clientId, since });
 
     const fresh = await makeClient(orgId);
     assert.equal(await ask(fresh, "evt-mine"), false, "nothing sent yet");
@@ -201,7 +203,7 @@ test("already running: resume messages from a different opt-in in the last four 
     const sent = await makeClient(orgId);
     await addMessage(orgId, sent, { templateKey: "EMAIL-S02-RESUME-1", providerRef: "workflow:EMAIL-S02-RESUME-1:evt-theirs", at: iso(now - DAY) });
     assert.equal(await ask(sent, "evt-mine"), true, "sent from another opt-in a day ago");
-    assert.equal(await ask(sent, "evt-theirs"), false, "that opt-in is this one: its own messages do not count");
+    assert.equal(await ask(sent, "evt-theirs"), true, "sent under the same send key by an earlier run of this application: still running");
 
     const old = await makeClient(orgId);
     await addMessage(orgId, old, { templateKey: "SMS-S02-RESUME-3", providerRef: "workflow:SMS-S02-RESUME-3:evt-old", at: iso(now - 5 * DAY) });
@@ -389,6 +391,33 @@ test("two opt-ins 6.5 hours apart that both wait for the same 9 a.m. queue six m
     assert.equal(resumePlan(night)[0].getTime(), resumePlan(dawn)[0].getTime(), "both runs plan touch 1 for the same 9 a.m.");
     const rows = await messagesOf(clientId);
     assert.deepEqual(rows.map((r) => r.template_key).sort(), KEYS6, "each touch once, a text and an email");
+  });
+
+/* Independent review of PR #346 (2026-10-31): a visit at 6 p.m. and another at 1 a.m. Arizona are seven
+   hours apart, so they used to fall in different six-hour cohorts. Neither run had sent anything when the
+   other one started, so both passed the in-flight check, slept to 9 a.m. and both sent: twelve messages. */
+test("two visits seven hours apart overnight (6 p.m. and 1 a.m. Arizona) queue six messages, not twelve",
+  { skip: !HAS_DB }, async () => {
+    const email = `overnight${++seq}@${DOMAIN}`;
+    const clientId = await makeClient(orgId, { email, answers: ANSWERED_THREE });
+    // The next 6:00 p.m. Arizona (01:00 UTC, no daylight saving) at least an hour away.
+    const sixPm = new Date(Date.now() + HOUR);
+    sixPm.setUTCMinutes(0, 0, 0);
+    while (sixPm.getUTCHours() !== 1) sixPm.setTime(sixPm.getTime() + HOUR);
+    const evening = sixPm.getTime();
+    const sim = inngestSim(iso(evening));
+    const first = await optIn(clientId, evening, email);
+    const second = await optIn(clientId, evening + 7 * HOUR, email);
+    const [a, b] = await sim.runAll([spec(sim, first), spec(sim, second)]);
+    assert.equal(a.done, true);
+    assert.equal(b.done, true);
+    const rows = await messagesOf(clientId);
+    assert.deepEqual(rows.map((r) => r.template_key).sort(), KEYS6, "one sequence, three touches, no doubles");
+    const plan = resumePlan(evening);
+    assert.ok(rows.every((r) => {
+      const touchIndex = Number(r.template_key.at(-1)) - 1;
+      return r.provider_ref === `workflow:${r.template_key}:${touchSendKey(clientId, plan[touchIndex])}`;
+    }), "both runs keyed by person and Arizona send day for each touch");
   });
 
 test("a lead who comes back through touch 2's link and stops again is not started a second sequence",
