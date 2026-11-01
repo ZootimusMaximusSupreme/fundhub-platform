@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { pool, close } from "../db.mjs";
 import { resolveDefaultOrg } from "../auth/org.mjs";
-import { onPaymentDisputed, onPaymentRefunded } from "./commas-disputes.mjs";
+import { onPaymentDisputed, onPaymentRefunded, knownReversalClient } from "./commas-disputes.mjs";
 
 const SCRATCH = (() => {
   if (process.env.CI !== "true" || !process.env.DATABASE_URL) return false;
@@ -73,6 +73,18 @@ describe("A/R reversal owner and no phantom buyer (rollback-only PostgreSQL)",
       assert.equal(String(rows.rows[0].client_id), String(original));
       assert.equal(rows.rows[0].assignee_role, "owner");
       assert.equal(new Date(rows.rows[0].due_at).toISOString(), "2026-11-07T23:00:00.000Z");
+    });
+
+    test("shared refund handler resolves the event provider even when another provider has the same reference", async () => {
+      await conn.query(
+        `INSERT INTO transactions (org_id,client_id,product_name,amount_paid,status,provider,provider_ref,raw_payload)
+         VALUES ($1,$2,'CI consulting payment',125.25,'succeeded','whop',$3,'{}')`,
+        [orgId, other, `${paymentRef}-whop`]
+      );
+      const event = { orgId, payload: { originalProviderRef: `${paymentRef}-whop`, providerRef: 'refund-own-id', source: 'whop' } };
+      assert.equal(await knownReversalClient(conn, event), other);
+      assert.equal(await knownReversalClient(conn, { orgId, payload: { paymentId: paymentRef, source: 'whop' } }), null);
+      assert.equal(await knownReversalClient(conn, { orgId, payload: { paymentId: paymentRef, source: 'commas' } }), original);
     });
 
     test("refund on original receipt assigns original customer and never changes sale/commission totals", async () => {

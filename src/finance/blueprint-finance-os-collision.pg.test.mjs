@@ -7,7 +7,7 @@ import pg from "pg";
 import { financeOsEntitlement, addUtcMonths } from "./finance-os-entitlement.mjs";
 import { isBlueprintCoachClient } from "../blueprint/coach.mjs";
 import { dueClients } from "../workflows/finance-os-pull-sweeper.mjs";
-import { onPaymentRefundedMoney } from "../handlers/money-chain.mjs";
+import { onPaymentRefundedMoney, ensureSalePayment } from "../handlers/money-chain.mjs";
 import { FINANCE_OS_BLUEPRINT_NOTE } from "./finance-os-entitlement.mjs";
 
 const connectionString = process.env.BLUEPRINT_TEST_DATABASE_URL || process.env.DATABASE_URL;
@@ -19,6 +19,70 @@ try {
 } catch { /* refuse unknown and production databases */ }
 const pool = safe ? new pg.Pool({ connectionString, max: 1, connectionTimeoutMillis: 5000 }) : null;
 after(async () => { if (pool) await pool.end(); });
+
+test("refund receipt lookup and cumulative amounts stay inside the original provider", { skip: !safe }, async () => {
+  const conn = await pool.connect();
+  await conn.query("BEGIN");
+  try {
+    for (const table of ["transactions", "products", "product_aliases", "sales", "sale_payments",
+      "entitlements", "subscriptions", "events", "partner_revenue"]) {
+      await conn.query(`CREATE TEMP TABLE ${table} (LIKE public.${table} INCLUDING ALL) ON COMMIT DROP`);
+    }
+    await conn.query("SET LOCAL search_path TO pg_temp, public");
+    const org = randomUUID(), grants = {}, clients = {};
+    const product = (await conn.query("INSERT INTO products (org_id,code,name,category) VALUES ($1,'consulting-package','Consulting Services Package','consulting') RETURNING id", [org])).rows[0].id;
+    for (const provider of ["whop", "commas"]) {
+      const client = randomUUID();
+      clients[provider] = client;
+      const payment = (await conn.query(
+        `INSERT INTO transactions (org_id,client_id,product_name,amount_paid,status,provider,provider_ref)
+         VALUES ($1,$2,'Consulting Services Package',100,'succeeded',$3,$4) RETURNING id`,
+        [org, client, provider, `${provider}-original`]
+      )).rows[0].id;
+      grants[provider] = (await conn.query(
+        `INSERT INTO entitlements (org_id,client_id,entitlement_code,source_transaction_id,grant_reason)
+         VALUES ($1,$2,'credit-optimization-roadmap',$3,'purchase:consulting-package') RETURNING id`,
+        [org, client, payment]
+      )).rows[0].id;
+    }
+    const refund = async (source, amount, ref = `${source}-original`) => {
+      const payload = { originalProviderRef: ref, providerRef: randomUUID(), source, amount };
+      const id = (await conn.query(
+        "INSERT INTO events (org_id,name,version,idempotency_key,payload) VALUES ($1,'payment.refunded',1,$2,$3) RETURNING id",
+        [org, randomUUID(), payload]
+      )).rows[0].id;
+      return onPaymentRefundedMoney({ id, name: "payment.refunded", orgId: org, payload }, { query: conn.query.bind(conn) });
+    };
+    const revoked = async provider => (await conn.query("SELECT revoked_at FROM entitlements WHERE id=$1", [grants[provider]])).rows[0].revoked_at;
+    const sale = (await conn.query(
+      "INSERT INTO sales (org_id,client_id,product_id,agreed_price) VALUES ($1,$2,$3,100) RETURNING id",
+      [org, clients.commas, product]
+    )).rows[0].id;
+    const purchase = await ensureSalePayment({ query: conn.query.bind(conn) }, {
+      id: randomUUID(), orgId: org, payload: { source: "commas", providerRef: "whop-original",
+        productName: "Consulting Services Package", amount: 100 }
+    }, { saleId: sale, clientId: clients.commas, productId: product, kind: "deposit" });
+    assert.equal(purchase.reason, "transaction_source_conflict",
+      "provider lookup must preserve purchase refusal rather than fall back to an event-only payment");
+    assert.equal((await conn.query("SELECT count(*)::int n FROM sale_payments")).rows[0].n, 0);
+    assert.equal((await refund("commas", 100, "whop-original")).reason, "no_original_payment",
+      "a callback's provider must match the receipt, even when its reference exists in the same org");
+    assert.equal((await refund("whop", 40, "commas-original")).reason, "no_original_payment");
+    assert.equal((await refund("commas", 60)).blueprintIncludedEnded, false,
+      "another provider's unowned refund event cannot complete this provider's refund");
+    assert.equal(await revoked("whop"), null);
+    assert.equal(await revoked("commas"), null);
+    assert.equal((await refund("commas", 40)).blueprintIncludedEnded, true);
+    assert.notEqual(await revoked("commas"), null);
+    assert.equal(await revoked("whop"), null, "Commas refund cannot revoke the colliding Whop purchase");
+    assert.equal((await refund("whop", 60)).blueprintIncludedEnded, false);
+    assert.equal((await refund("whop", 40)).blueprintIncludedEnded, true);
+    assert.notEqual(await revoked("whop"), null);
+  } finally {
+    await conn.query("ROLLBACK");
+    conn.release();
+  }
+});
 
 test("paid Blueprint year survives the shorter FinanceOS monthly term, but not a refund or month 13",
   { skip: safe ? false : "requires a local test/scratch PostgreSQL database" }, async () => {

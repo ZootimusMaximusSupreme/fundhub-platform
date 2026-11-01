@@ -10,6 +10,8 @@ The [official Commas schemas](https://apidocs.fan/) identify `refund_transaction
 
 ## Purchase and service flow
 
+Refund lookup, cumulative refund totals and owner-task routing now match the event's provider as well as company and original payment reference. A Commas callback cannot revoke a Whop purchase with the same reference, and a wrong-provider canonical event cannot contribute toward a full refund. Legacy events with no source retain the existing Commas default. Purchase conflicts still refuse payment rather than falling through to an event-only receipt. Local PostgreSQL fixtures preserve the real `(org_id, provider_ref)` uniqueness constraint and prove collisions between an incoming callback and the other provider's recorded receipt; no schema or live data was changed.
+
 - CB-01: existing Present price/provider controls carry validated whole-dollar $5,000–$10,000 Blueprint amounts through `api/closer-deck.mjs` and `sendDeckPayLink`. Other offers retain catalog prices.
 - CB-02: shared contract sender forwards a price snapshot. Contract drafts validate/store `_blueprint_amount_cents` and `package_fee`; save/preview/send preserve it. Custom-price sends refuse old fixed-price templates. Migration483 parameterizes two fee clauses; draft migration485 brings three scope clauses into line with the 12-month program. Neither changes previously sent/signed rows.
 - CB-03: both provider checkout paths require the latest sent/viewed/signed Blueprint agreement at the exact price with matching frozen hash. Whop reserves the local order before its provider call and verifies returned checkout and variant identity before returning a URL.
