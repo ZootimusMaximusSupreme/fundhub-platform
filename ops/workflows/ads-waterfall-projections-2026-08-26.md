@@ -21,6 +21,25 @@ Internal money model. Fees, course finance payouts, and credit-score lanes. **No
 
 ---
 
+## Update 2026-10-31 — per 100 booked calls, with the slideshow sends and the back-end fee
+
+Chris's numbers from the 2026-10-31 chat replace the older guesses below where they differ. Inputs:
+
+- Cost per booked call: about **$30** (Chris; this file used $33). 100 booked calls = **$3,000** of ads.
+- Show rate today: **70 to 75%** with the confirm step (Chris). Model uses 72%.
+- Close rate: a high-ticket closer runs **40% to 60-70%**, set by lead quality and how well the lead is set (Chris). Model uses 40% today.
+- Money per sale: Funding **$3,000** deposit up front plus **$10,000 to $15,000** on the back end per fundable client (Chris; model uses $12,500). Capital Blueprint **$5,000** default (`src/config/offers.mjs`). Credit optimization $1,000, or the $200 one-round downsell, is left out of the model.
+- Assumed mix: half Funding, half Blueprint. Not measured.
+- The closer gets 20% of the funding deposit (`.ai/rules/funding-deal-pay.md`), shown as its own line. If the $3,000 deposit is part of the back-end fee and not on top of it, subtract $3,000 per Funding sale.
+
+| Case | Shows | Sales | Up front | Back end | Total | Up front per $1 of ads | Total per $1 of ads | Closer 20% of deposits |
+|---|---|---|---|---|---|---|---|---|
+| A — today (72% show, 40% close) | 72 | 28.8 | $115,200 | $180,000 | $295,200 | $38 | $98 | $8,640 |
+| B — slideshows add 3 show and 5 close points (75%, 45%) | 75 | 33.8 | $135,000 | $210,938 | $345,938 | $45 | $115 | $10,125 |
+| C — well set and prepped (75%, 60%) | 75 | 45 | $180,000 | $281,250 | $461,250 | $60 | $154 | $13,500 |
+
+The slideshow sends (board `backend-selling-lanes-2026-10-30.md` 6e.2) move close rate more than show rate. The pixel learning from shows and payments (the Cortana item) moves the cost per booked call. Measure with the touch-point tracking item in `TODO.md`: close rate for leads who opened 2 or more slideshows against leads who opened none.
+
 ## Math check — what was wrong, what changed
 
 The old version of this file used one **18%** close on every booked person, then multiplied the Aug 24 **buy mix** (3/17 funding, 5/17 Mastery, and so on). That shape had real errors.
