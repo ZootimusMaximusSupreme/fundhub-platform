@@ -1,6 +1,6 @@
 import {test,expect} from '@playwright/test';
 const query='?org=mock&client=mock&exp=1999999999&sig=mock';
-const data={ok:true,contact:{first_name:'Dana'},consent:{valid:true},disclosure:{text:'I authorize Fundhub to request a soft credit inquiry for my funding assessment.',version:'2.1'}};
+const data={ok:true,contact:{first_name:'Dana'},consent:{valid:false},disclosure:{text:'I authorize Fundhub to request a soft credit inquiry for my funding assessment.',version:'2.1'}};
 for(const width of [1440,390,320]) test(`approval professional states and keyboard at ${width}`,async({page})=>{
  await page.route('https://**',route=>route.abort());
  await page.setViewportSize({width,height:1000});

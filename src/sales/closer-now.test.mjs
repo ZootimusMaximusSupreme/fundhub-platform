@@ -29,7 +29,11 @@ function fakeDb(rows) {
       assert.match(sql, /t\.org_id = \$1/);
       assert.match(sql, /assignee_role = 'closer'/);
       assert.match(sql, /date_trunc\('day'/);
-      assert.match(sql, /o\.id IS NULL/);
+      assert.match(sql, /NOT EXISTS\s*\(\s*SELECT 1 FROM call_outcomes o/);
+      assert.match(sql, /o\.org_id = t\.org_id AND o\.client_id = t\.client_id/);
+      assert.match(sql, /o\.task_id = t\.id/);
+      assert.match(sql, /NULLIF\(btrim\(t\.body\), ''\) IS NOT NULL AND o\.booking_ref = t\.body/);
+      assert.doesNotMatch(sql, /LEFT JOIN call_outcomes o/);
       assert.equal(params[0], ORG);
       assert.equal(params[1], STAFF);
       assert.equal(params[2], NOW.toISOString());

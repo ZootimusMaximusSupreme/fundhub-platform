@@ -398,6 +398,7 @@ test("normalizeClickFunnelsEvent: appointment reads data.primary_contact + slot 
     data: {
       start_on: "2026-08-10T15:00:00Z",
       end_on: "2026-08-10T15:30:00Z",
+      updated_at: "2026-08-09T20:30:00Z",
       tzid: "America/Los_Angeles",
       event_type: { name: "Strategy Session" },
       primary_contact: {
@@ -417,6 +418,7 @@ test("normalizeClickFunnelsEvent: appointment reads data.primary_contact + slot 
   assert.equal(evt.tzid, "America/Los_Angeles");
   assert.equal(evt.funnel, "Strategy Session");
   assert.equal(evt.bookingUid, "appt_99");
+  assert.equal(evt.providerOccurredAt, "2026-08-09T20:30:00.000Z");
   assert.equal(evt.answers, null);
 });
 
@@ -804,6 +806,7 @@ test("handleClickFunnelsWebhook: appointment created => booking.created, no entr
   const payload = store.find((r) => r.name === "booking.created")?.payload;
   assert.deepEqual(payload, {
     bookingUid: "cf_appt_1",
+    providerOccurredAt: null,
     startTime: "2026-08-12T18:00:00Z",
     endTime: "2026-08-12T18:30:00Z",
     email: "appt@example.com",

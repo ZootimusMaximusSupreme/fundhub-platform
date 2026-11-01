@@ -32,8 +32,10 @@ const run = readHandler({
               i.cleared_at, i.confirmed_at, i.created_at, i.updated_at,
               TRIM(COALESCE(c.first_name,'') || ' ' || COALESCE(c.last_name,'')) AS client_name
          FROM inquiry_log i
-         LEFT JOIN clients c ON c.id = i.client_id
+         LEFT JOIN clients c ON c.id = i.client_id AND c.org_id = i.org_id
+           AND c.custom_fields->>'crm_archived_at' IS NULL
         WHERE i.org_id = $6::uuid
+          AND (i.client_id IS NULL OR c.id IS NOT NULL)
           AND ($3::uuid IS NULL OR i.client_id = $3)
           AND ($4::text IS NULL OR i.bureau = $4)
           AND ($5::text IS NULL OR i.status = $5)

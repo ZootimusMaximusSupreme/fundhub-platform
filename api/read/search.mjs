@@ -132,6 +132,7 @@ async function searchClients(database, orgId, pattern, limit) {
        FROM clients c
        LEFT JOIN businesses b ON b.client_id = c.id AND b.org_id = c.org_id
       WHERE c.org_id = $1::uuid
+        AND c.custom_fields->>'crm_archived_at' IS NULL
         AND (
           c.first_name ILIKE $2 ESCAPE '\\'
           OR c.last_name ILIKE $2 ESCAPE '\\'
@@ -156,6 +157,7 @@ async function searchContracts(database, orgId, pattern, limit) {
        FROM contracts ct
        JOIN clients c ON c.id = ct.client_id AND c.org_id = ct.org_id
       WHERE ct.org_id = $1::uuid
+        AND c.custom_fields->>'crm_archived_at' IS NULL
         AND (
           ct.title ILIKE $2 ESCAPE '\\'
           OR ct.template_key ILIKE $2 ESCAPE '\\'
@@ -179,6 +181,7 @@ async function searchDocuments(database, orgId, pattern, limit) {
        FROM documents d
        LEFT JOIN clients c ON c.id = d.client_id AND c.org_id = d.org_id
       WHERE d.org_id = $1::uuid
+        AND (d.client_id IS NULL OR (c.id IS NOT NULL AND c.custom_fields->>'crm_archived_at' IS NULL))
         AND (
           d.title ILIKE $2 ESCAPE '\\'
           OR d.document_key ILIKE $2 ESCAPE '\\'
@@ -213,6 +216,7 @@ async function searchConversations(database, orgId, pattern, limit) {
        FROM conversations c
        JOIN clients cl ON cl.id = c.client_id AND cl.org_id = c.org_id
       WHERE c.org_id = $1::uuid
+        AND cl.custom_fields->>'crm_archived_at' IS NULL
         AND (
           c.summary ILIKE $2 ESCAPE '\\'
           OR cl.first_name ILIKE $2 ESCAPE '\\'
@@ -246,6 +250,7 @@ async function searchCards(database, orgId, pattern, limit) {
        JOIN pipeline_stages s ON s.id = cd.stage_id
        JOIN pipelines p ON p.id = cd.pipeline_id
       WHERE cd.org_id = $1::uuid
+        AND (cd.client_id IS NULL OR (c.id IS NOT NULL AND c.custom_fields->>'crm_archived_at' IS NULL))
         AND (
           c.first_name ILIKE $2 ESCAPE '\\'
           OR c.last_name ILIKE $2 ESCAPE '\\'

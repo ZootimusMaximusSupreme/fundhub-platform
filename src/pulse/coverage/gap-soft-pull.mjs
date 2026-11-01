@@ -79,10 +79,9 @@ export function signedReadShape(status, body) {
 
 /**
  * The approve read, with a link signed for a real client, run in-process.
- * The signed-out GET only ever sees the first refusal, which is answered before
- * the database or the words are touched. This one gets past it: it signs a link
- * the same way the closer's Present cockpit does, hands it to the real handler
- * with the pulse's database, and checks the 200 has the words and the price.
+ * A signed link without a client account must be refused. Then an in-process
+ * matching client identity gets past that gate so the real handler can read
+ * the words, price and consent state. This does not prove a live login.
  * GET only. The handler writes nothing on a GET.
  */
 export async function checkApproveSignedRead(ctx = {}) {
@@ -124,11 +123,27 @@ export async function checkApproveSignedRead(ctx = {}) {
       : (await import("../../../api/soft-pull-approve.mjs")).default;
     const signed = signSoftPullApproveUrl({ orgId, clientId, ttlSeconds: 300, secret });
     const query = Object.fromEntries(new URL(signed.path, "https://link.invalid").searchParams);
+    const req = { method: "GET", headers: {}, query, body: null };
+    const signedOut = mockRes();
+    await handler(req, signedOut, { db, env, secret, resolvePrincipal: async () => null });
+    if (signedOut.statusCode !== 401 || signedOut.body?.error !== "account_required") {
+      const code = signedOut.body && typeof signedOut.body.error === "string"
+        ? ` (${clip(signedOut.body.error, 60)})` : "";
+      return check(
+        id,
+        "FAIL",
+        `signed-out approval read answered ${signedOut.statusCode || "nothing"}${code}, expected account_required`,
+        READ_FIX
+      );
+    }
     const res = mockRes();
-    await handler({ method: "GET", headers: {}, query, body: null }, res, { db, env, secret });
+    await handler(req, res, {
+      db, env, secret,
+      resolvePrincipal: async () => ({ kind: "client", orgId, clientId, accountId: "pulse-read-only" })
+    });
     const status = Number(res.statusCode) || 0;
     if (signedReadShape(status, res.body)) {
-      return check(id, "PASS", "signed approve read answered 200 with the words, the price and the consent state");
+      return check(id, "PASS", "signed-out link refused; in-process client read answered 200 with the words, the price and the consent state");
     }
     const code = res.body && typeof res.body.error === "string" ? ` (${clip(res.body.error, 60)})` : "";
     return check(

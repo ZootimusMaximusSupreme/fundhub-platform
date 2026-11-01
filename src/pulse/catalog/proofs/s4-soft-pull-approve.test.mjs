@@ -143,7 +143,7 @@ test("the person's boxes and the business boxes are sent exactly, and the total 
         ein: "12-3456789", incorporated_date: "2021-03", extra_owner_name: "",
       }],
     });
-    await page.waitForFunction(() => document.querySelector("h1")?.textContent === "Consent saved");
+    await page.waitForFunction(() => document.querySelector("h1")?.textContent === "Authorization saved");
     assert.equal(await page.locator(".btn-pay").innerText(), "Pay $42 assessment");
   });
   await page.close();

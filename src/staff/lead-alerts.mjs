@@ -114,7 +114,7 @@ export async function queueStaffAlert(db, {
   return { queued: messageId ? 1 : 0, sent, messageId, push };
 }
 
-export async function queueNewLeadAlerts(db, { orgId, clientId, eventId = clientId, drainNowImpl, pushImpl } = {}) {
+export async function queueNewLeadAlerts(db, { orgId, clientId, drainNowImpl, pushImpl } = {}) {
   if (!orgId || !clientId) return { queued: 0, reason: "missing_context" };
   const client = (await db.query(
     `SELECT first_name, last_name, phone, email, custom_fields FROM clients
@@ -133,10 +133,10 @@ export async function queueNewLeadAlerts(db, { orgId, clientId, eventId = client
   const body = buildStaffLeadText({ client, startTime: booking?.starts_at });
   const results = [];
   for (const person of staff) results.push(await queueStaffAlert(db, {
-    orgId, clientId, staffId: person.id, kind: "lead", key: eventId, body,
+    orgId, clientId, staffId: person.id, kind: "lead", key: clientId, body,
     drainNowImpl, pushImpl
   }));
-  const closerPush = await pushAssignedCloserLead(db, { orgId, clientId, key: eventId, pushImpl });
+  const closerPush = await pushAssignedCloserLead(db, { orgId, clientId, key: clientId, pushImpl });
   return { queued: results.reduce((n, item) => n + item.queued, 0), results, closerPush };
 }
 

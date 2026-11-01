@@ -2,7 +2,6 @@ import { test } from "node:test";
 import assert from "node:assert";
 import { handle, SMS_CONFIRM, EMAIL_CONFIRM, SMS_REMIND_24H, SMS_REMIND_2H } from "./s-04b-booking-reminders.mjs";
 import { pgFake, fakeStep, ev } from "./test-support.mjs";
-import { BOOKING_CONFIRM_LINK_TTL_MINUTES } from "../auth/magic-link.mjs";
 
 const portalStub = async () => ({
   ok: true, outcome: "issued", token: "booking-portal-tok", sent: false
@@ -31,7 +30,7 @@ function clockStep() {
 }
 
 const sms = () => [
-  { org_id: "org-1", template_key: SMS_CONFIRM, channel: "sms", body: "confirm {{appointment.start_time}}", compliance_passed: true },
+  { org_id: "org-1", template_key: SMS_CONFIRM, channel: "sms", body: "confirm {{appointment.start_time}} {{portal_claim.url}}", compliance_passed: true },
   { org_id: "org-1", template_key: SMS_REMIND_24H, channel: "sms", body: "24h {{appointment.start_time}}", compliance_passed: true },
   { org_id: "org-1", template_key: SMS_REMIND_2H, channel: "sms", body: "2h {{appointment.start_time}}", compliance_passed: true },
   { org_id: "org-1", template_key: EMAIL_CONFIRM, channel: "email", subject: "You're booked", body: "confirmed for {{appointment.start_time}}. Download Fundhub Portal: {{app_download.url}}. Confirm my call: {{call_confirm.url}}. Web portal: {{web_portal.url}}", compliance_passed: true }
@@ -112,63 +111,59 @@ test("s-04b: booked stage sends exactly one text and one email, immediately", as
   assert.equal(immediate.filter((m) => m.channel === "email").length, 1);
 });
 
-test("s-04b: confirm email carries an app download link and a 365-day confirm link", async () => {
+test("s-04b: booking creates a pending account and sends lasting claim links", async () => {
   const db = pgFake({
     clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", phone: "+15551234567", custom_fields: {} }],
     templates: sms()
   });
-  const calls = [];
-  await handle({
+  const result = await handle({
     event: ev("booking.created", { startTime: "2026-08-20T18:00:00Z", email: "a@b.com" }, { clientId: "cl-1" }),
     db,
-    step: fakeStep(),
-    requestMagicLinkImpl: async (_db, args) => {
-      calls.push(args);
-      return { ok: true, outcome: "issued", token: "booking-portal-tok", sent: false };
-    }
+    step: fakeStep()
   });
-  assert.equal(calls.length, 1);
-  assert.equal(calls[0].queueEmail, false);
-  assert.equal(calls[0].ttlMinutes, BOOKING_CONFIRM_LINK_TTL_MINUTES);
+  assert.equal(result.portalAccount.created, true);
+  assert.equal(result.portalAccountTask, null);
+  assert.equal(db.tasks.length, 0);
+  assert.equal(db.accounts.length, 1);
+  assert.equal(db.accounts[0].status, "invited");
   assert.ok(!db.messages.some((m) => m.template_key === "EMAIL-PORTAL-MAGIC-LINK"));
+  const text = db.messages.find((m) => m.template_key === SMS_CONFIRM);
+  assert.match(text.rendered_body, /portal-login\.html\?mode=claim/);
   const email = db.messages.find((m) => m.template_key === EMAIL_CONFIRM);
   assert.ok(email);
   assert.match(email.rendered_body, /portal-login\.html#download/);
-  assert.match(email.rendered_body, /portal-login\.html\?t=booking-portal-tok#call-confirm-card/);
+  assert.match(email.rendered_body, /portal-login\.html\?mode=claim/);
+  assert.doesNotMatch(email.rendered_body, /\?t=/);
   assert.match(email.rendered_body, /Confirm my call/);
   assert.match(email.rendered_body, /Web portal: https:\/\/fundhub\.ai\/portal-login\.html/);
 });
 
-test("s-04b: no token still puts a real confirm path in the email", async () => {
-  // Walk finding F2, 2026-09-03. The magic_link context used to be spread in
-  // only when a token existed, and renderTemplate replaces an absent tag with
-  // the empty string — so the email said "Here is your link to sign in to your
-  // Fundhub portal:" and then showed <a href=""></a>. The client was told to
-  // click something that was not there.
+test("s-04b: account conflict still leaves a lasting sign-in door", async () => {
   const db = pgFake({
     clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", phone: "+15551234567", custom_fields: {} }],
     templates: sms()
   });
-  await handle({
+  const result = await handle({
     event: ev("booking.created", { startTime: "2026-08-20T18:00:00Z", email: "a@b.com" }, { clientId: "cl-1" }),
     db,
     step: fakeStep(),
-    // Every shape that yields no token: an outright refusal, the rate limiter,
-    // and an address that matched nobody.
-    requestMagicLinkImpl: async () => ({ ok: true, limited: false, outcome: "no_account" })
+    ensurePendingClientAccountImpl: async () => ({ ok: false, reason: "email_belongs_to_another_account" })
   });
+  assert.equal(result.portalAccountTask.created, true);
+  assert.equal(db.tasks.length, 1);
+  assert.equal(db.tasks[0].assignee_role, "setter");
   const email = db.messages.find((m) => m.template_key === EMAIL_CONFIRM);
   assert.ok(email);
   assert.doesNotMatch(email.rendered_body, /href=""/);
   assert.match(email.rendered_body, /portal-login\.html#download/);
-  assert.match(email.rendered_body, /portal-login\.html#call-confirm-card/);
+  assert.match(email.rendered_body, /portal-login\.html\?mode=claim/);
   assert.doesNotMatch(email.rendered_body, /\{\{call_confirm|\{\{app_download|\{\{web_portal/);
 });
 
-test("s-04b: a refused or rate-limited link request still ships the sign-in page", async () => {
+test("s-04b: a pending-account failure does not create a dead email link", async () => {
   for (const stub of [
-    async () => ({ ok: false, error: "email_required" }),
-    async () => ({ ok: true, limited: true, retryAfterMinutes: 15 })
+    async () => ({ ok: false, reason: "no_email" }),
+    async () => ({ ok: false, reason: "email_belongs_to_another_account" })
   ]) {
     const db = pgFake({
       clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", custom_fields: {} }],
@@ -176,7 +171,7 @@ test("s-04b: a refused or rate-limited link request still ships the sign-in page
     });
     await handle({
       event: ev("booking.created", {}, { clientId: "cl-1" }),
-      db, step: fakeStep(), requestMagicLinkImpl: stub
+      db, step: fakeStep(), ensurePendingClientAccountImpl: stub
     });
     const email = db.messages.find((m) => m.template_key === EMAIL_CONFIRM);
     assert.ok(email);

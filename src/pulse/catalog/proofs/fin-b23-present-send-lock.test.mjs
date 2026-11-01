@@ -35,7 +35,7 @@ const deck = (tier) => ({
   income_estimates: {},
   engine: { available: true, tier, fico: { experian: 700, equifax: 702, transunion: 698 }, reasons: [], total: 40000 },
   offers: OFFERS,
-  soft_pull: null,
+  soft_pull: { consent_valid: true, diagnostic_paid: true, pull_status: "complete", crs_result_id: "send-lock-proof-result", sample: false },
 });
 
 /** A POST the test holds open until it says go, so "Sending…" can be seen. */

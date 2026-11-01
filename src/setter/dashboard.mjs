@@ -167,6 +167,7 @@ export async function setterNumbers(db, staff) {
          FROM clients c
         WHERE c.org_id = $1
           AND c.custom_fields->'setter_handoff'->>'setter_staff_id' = $2::text
+          AND c.custom_fields->>'crm_archived_at' IS NULL
      )
      SELECT
        COALESCE((
@@ -244,6 +245,7 @@ export async function listSetterQueue(db, staff, { limit = 50, offset = 0 } = {}
           ORDER BY created_at DESC LIMIT 1
        ) ct ON true
       WHERE t.org_id = $1 AND t.assignee_role = 'setter'
+        AND c.custom_fields->>'crm_archived_at' IS NULL
         AND (t.done = false OR (
           c.custom_fields->'setter_handoff'->>'complete_at' IS NOT NULL
           AND t.created_at >= now() - interval '7 days'
@@ -285,7 +287,9 @@ export async function getSetterClient(db, orgId, clientId) {
           WHERE org_id = c.org_id AND client_id = c.id AND assignee_role = 'setter'
           ORDER BY created_at DESC LIMIT 1
        ) st ON true
-      WHERE c.id = $1 AND c.org_id = $2 LIMIT 1`,
+      WHERE c.id = $1 AND c.org_id = $2
+        AND c.custom_fields->>'crm_archived_at' IS NULL
+      LIMIT 1`,
     [clientId, orgId]
   );
   return result.rows[0] || null;

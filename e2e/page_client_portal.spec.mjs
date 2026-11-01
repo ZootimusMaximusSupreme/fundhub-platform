@@ -56,6 +56,8 @@ test('staff does not inherit client Home heading or client styling',async({page}
  await page.route('**/api/**',route=>route.request().url().includes('/api/auth/session')?json(route,{ok:true,principal:'staff',staff:{id:'safe-staff',role:'owner',name:'Safe Staff',status:'active'}}):json(route,{ok:true,items:[]}));
  await page.goto(`/app/client-portal.html?id=${CLIENT_ID}`);
  await expect(page.locator('.cp-home-heading')).toBeHidden();
+ await expect(page.locator('#acct-tabs [data-tab="soft-pull"]')).toBeHidden();
+ await expect(page.locator('#tp-soft-pull')).toBeHidden();
  await expect(page.locator('body')).not.toHaveAttribute('data-client-ios',/.*/);
 });
 
@@ -74,6 +76,14 @@ for(const view of ['documents','agreements'])test(`shared navigation ${view} ope
  const tab=view==='documents'?'docs':'agree';
  await expect(page.locator(`#acct-tabs [data-tab="${tab}"]`)).toHaveAttribute('aria-selected','true');
  await expect(page.locator(`#tp-${tab}`)).toBeVisible();
+});
+test('client can open the Soft pull tab and reach secure portal authorization',async({page})=>{
+ await open(page,{state:'empty'});
+ await page.locator('#acct').evaluate(e=>{e.open=true});
+ await page.getByRole('tab',{name:'Soft pull'}).click();
+ await expect(page.locator('#tp-soft-pull')).toBeVisible();
+ await expect(page.locator('#soft-pull-entry-status')).toContainText('sent securely and saved');
+ await expect(page.locator('#soft-pull-entry-link')).toHaveAttribute('href','/app/soft-pull-approve.html?portal=1');
 });
 for(const width of [1440,390,320])test(`professional canonical status and next action ${width}`,async({page})=>{
  const height=width===320?568:844;await page.setViewportSize({width,height});

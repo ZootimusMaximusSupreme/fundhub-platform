@@ -1,0 +1,1 @@
+../../.ai/rules/ship-in-order.md

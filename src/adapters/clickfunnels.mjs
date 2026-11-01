@@ -456,6 +456,12 @@ export function normalizeClickFunnelsEvent(body) {
     : null;
   const callId = callIdRaw != null && String(callIdRaw).trim() !== "" ? String(callIdRaw).trim() : null;
   const bookingUid = callId || (id ? String(id) : null);
+  // The appointment's update time survives a delayed webhook delivery. The
+  // envelope arrival time does not describe when the call actually moved.
+  const providerOccurredAtRaw = d.updated_at || d.updatedAt || b.created_at || b.createdAt || null;
+  const providerOccurredAtMs = Date.parse(String(providerOccurredAtRaw || ""));
+  const providerOccurredAt = Number.isFinite(providerOccurredAtMs)
+    ? new Date(providerOccurredAtMs).toISOString() : null;
   /* Which booking page took the call. Both messages for one funnel booking (the
      calendar form and the scheduled event) carry it at the top level; a
      standalone /schedule page sends none. The scheduled event names its event
@@ -480,6 +486,7 @@ export function normalizeClickFunnelsEvent(body) {
     metaClickIds,
     callId,
     bookingUid,
+    providerOccurredAt,
     eventType: eventTypeName || null,
     calendarPageId,
     startTime,
@@ -1019,6 +1026,7 @@ export async function handleClickFunnelsWebhook({
       // Same booking payload shape the handlers already read.
       payload = {
         bookingUid: evt.bookingUid,
+        providerOccurredAt: evt.providerOccurredAt,
         startTime: evt.startTime,
         endTime: evt.endTime,
         email: evt.email,

@@ -249,7 +249,9 @@ test.describe("teleprompter, the end of a script and the remote", () => {
     const posts = [];
     const one = { ...SHOOT, shoot: { ...SHOOT.shoot, scripts: [ONE, THREE] } };
     await open(page, { get: one, posts });
+    await expect(page.locator("#s-title")).toHaveText("Your file is worth more");
     await page.evaluate(() => window.__fhtp.finish());
+    await expect(page.locator("#end")).toBeVisible();
     await page.getByRole("button", { name: "Got it" }).click();
     await expect(page.getByText("Every script is marked Got it.")).toBeVisible();
     await expect(page.getByRole("link", { name: "Open SLO Ads" })).toHaveAttribute("href", "https://drive.google.com/drive/folders/13ZOjA56MNuM-PHSRK5fQK0bovRwR8raZ");

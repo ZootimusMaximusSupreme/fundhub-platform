@@ -4,8 +4,30 @@ Generated from the code on 2026-09-04, branch `fix/r2-w10-deliverables`.
 Not a spec. If you cannot trace a box to a line of code, it is marked
 `UNVERIFIED`.
 
+## 2026-10-31 addition: phone and Present status while a pull runs
+
+The signed-in phone form (`public/app/soft-pull-approve.html`) keeps the client on a status panel after authorization. Its existing authenticated `GET /api/soft-pull-approve` now returns a small `pull` state from the latest `soft_pull_requests` row and a real, non-demo `crs_results` row. It polls while waiting and distinguishes authorization, payment, request queued, processing, failure, and a saved result. Payment alone never means the report is complete. The client portal's Soft pull tab uses this same read, rather than the older `portal-summary.soft_pull_complete` flag, for its status words.
+
+The closer's shared Present S-06 polls `closer-deck.soft_pull` while that slide is open. It shows the saved state instead of a fixed scanning terminal and holds the normal Next walk at S-06 until a real result and engine data exist. The two browser screens do not claim a lender match or a result before the result is stored. Local unit and browser checks cover the state mapping; a live provider response remains a separate proof.
+
 **COMPLIANCE REVIEW REQUIRED** (CLAUDE.md §7) — credit-repair messaging and
 projected-score adjacent. Marker only.
+
+## 2026-10-29 addition: complete source credit report (code, not live-proved)
+
+The five interpreted funding deliverables below remain separate. After a real,
+stored `crs_softview` production result, the additional
+`src/handlers/crs-full-report.mjs` path builds one source-report PDF from the
+saved CRS data, registers it as a client deliverable, and queues one attachment
+email keyed to that CRS result. A replay of the same result reuses the saved
+document/email identity. The closer's report button opens a fresh authorized
+document link; the client portal's Documents area shows the same saved item.
+The report ends with a book-another-call link. Simulated or absent bureau data
+must not be presented as a real report. Local tests do not prove a production
+CRS result, PDF storage, email delivery, or client portal visibility.
+
+The older diagram and five-file table below describe the interpreted package,
+not this additional complete source report.
 
 ## The states a client's deliverables move through
 
