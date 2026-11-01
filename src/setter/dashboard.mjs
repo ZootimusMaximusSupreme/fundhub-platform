@@ -4,6 +4,9 @@ import { buildSetterHandoffText, performSetterSendAction } from "./send-actions.
 import { advanceCardToStage } from "../workflows/cards.mjs";
 import { withTransaction } from "../db/with-transaction.mjs";
 import { queueCloserSetAlert } from "../staff/lead-alerts.mjs";
+import { tierBookingLink } from "../workflows/messaging.mjs";
+import { creditTierFor } from "../config/survey-qualification.mjs";
+import { emit } from "../events/bus.mjs";
 
 const HANDOFF_FIELDS = new Set([
   "lead_type", "dialed_at", "call_attempts", "disposition", "voicemail_left",
@@ -253,7 +256,9 @@ export async function listSetterQueue(db, staff, { limit = 50, offset = 0 } = {}
       LIMIT $4 OFFSET $5`,
     [staff.org_id, roleScoped, staff.id, Math.min(page.limit, 100), page.offset]
   );
-  const items = result.rows.map(row => mapItem(row, staff));
+  // Each lead's own calendar, by the same score rule as its texts. Null = no answer
+  // yet, so the screen falls back to the plain booking_url below.
+  const items = result.rows.map(row => ({ ...mapItem(row, staff), booking_url: tierBookingLink(jsonObject(row.custom_fields)) }));
   const numbers = await setterNumbers(db, staff);
   return { items, count: items.length, numbers, booking_url: "https://apply.fundhub.ai/funding-book-call" };
 }
@@ -311,6 +316,43 @@ async function persistSurveyEdits(db, clientId, orgId, edits) {
   return jsonObject(result.rows[0]?.survey_edits);
 }
 
+/* credit_tier on the person: "qualified" or "unqualified", the one word every
+   screen and report reads (written when the survey is taken by
+   src/handlers/client-lifecycle.mjs, and again here when a setter fixes the score). */
+async function persistCreditTier(db, clientId, orgId, tier) {
+  await db.query(
+    `UPDATE clients
+        SET custom_fields = COALESCE(custom_fields, '{}'::jsonb) || jsonb_build_object('credit_tier', $3::text)
+      WHERE id = $1 AND org_id = $2`,
+    [clientId, orgId, tier]
+  );
+}
+
+/* "No answer" starts the no-answer text cadence (AI-SET-03, trigger setter.no_answer).
+   It starts when a save sets that result for the first time, or when the dial count
+   went up (a fresh dial that again got no answer). Saving the same screen again
+   changes neither, so it starts nothing. One event per lead per Arizona day: the
+   second dial the same day finds the key taken and starts no second cadence.
+   Runs after the save has succeeded, and a failure here logs a warning and never
+   fails the save. */
+async function startNoAnswerCadence(db, { orgId, clientId, previous, next, patch, setterStaffId }, deps) {
+  if (patch.disposition !== "no_answer") return null;
+  const attempts = Number(next.call_attempts || 0);
+  if (previous.disposition === "no_answer" && !(attempts > Number(previous.call_attempts || 0))) return null;
+  try {
+    const at = (deps.now || (() => new Date()))();
+    return await (deps.emit || emit)(
+      db,
+      "setter.no_answer",
+      { disposition: "no_answer", setter_staff_id: setterStaffId, call_attempts: attempts },
+      { orgId, clientId, idempotencyKey: `setter.no_answer:${clientId}:${phoenixDay(at instanceof Date ? at : new Date(at))}` }
+    );
+  } catch (error) {
+    console.warn(`[setter] no-answer text cadence not started: ${error.message}`);
+    return null;
+  }
+}
+
 export async function updateSetterHandoff(db, staff, { client_id, action, handoff: input = {}, survey_edits }, deps = {}) {
   const client = await getSetterClient(db, staff.org_id, client_id);
   if (!client) return { status: 404, body: { ok: false, error: "client_not_found" } };
@@ -363,6 +405,13 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
     }
     return withTransaction(db, async writer => {
       const saved = await persistSurveyEdits(writer, client_id, staff.org_id, edits);
+      // A corrected score moves the person's credit_tier. creditTierFor reads the fix
+      // first; no readable score anywhere (null) leaves what is saved.
+      const savedFields = jsonObject(client.custom_fields);
+      const creditTier = creditTierFor({ ...savedFields, setter_survey_edits: saved });
+      if (creditTier && savedFields.credit_tier !== creditTier) {
+        await persistCreditTier(writer, client_id, staff.org_id, creditTier);
+      }
       if (previous.complete_at) {
         const closerStaffId = previous.closer_staff_id || client.closer_staff_id || (staff.role === "owner" ? staff.id : null);
         const closer = closerStaffId === staff.id ? staff : (await writer.query(
@@ -375,7 +424,9 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
         });
         await persistHandoff(writer, client_id, staff.org_id, { handoff_text: handoffText });
       }
-      return { status: 200, body: { ok: true, survey_edits: saved } };
+      // A corrected score can move the lead to the other calendar.
+      const bookingUrl = tierBookingLink({ ...jsonObject(client.custom_fields), setter_survey_edits: saved });
+      return { status: 200, body: { ok: true, survey_edits: saved, booking_url: bookingUrl } };
     });
   }
   const validated = sanitizeHandoffPatch(input);
@@ -478,9 +529,14 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
         [staff.org_id, client_id]
       );
     }
-    return { status: 200, body: { ok: true, item: { ...mapItem({ ...client, done: !!saved.complete_at, setter_staff_id: setterStaffId, closer_staff_id: closerStaffId, custom_fields: savedFields }, staff) }, ...(send ? { send } : {}) } };
+    return { status: 200, body: { ok: true, item: { ...mapItem({ ...client, done: !!saved.complete_at, setter_staff_id: setterStaffId, closer_staff_id: closerStaffId, custom_fields: savedFields }, staff), booking_url: tierBookingLink(savedFields) }, ...(send ? { send } : {}) } };
   };
   const result = action === "complete" ? await withTransaction(db, save) : await save(db);
+  if (result.status === 200) {
+    await startNoAnswerCadence(db, {
+      orgId: staff.org_id, clientId: client_id, previous, next, patch: validated.patch, setterStaffId
+    }, deps);
+  }
   if (action === "complete" && result.status === 200) {
     try {
       const updatedClient = await getSetterClient(db, staff.org_id, client_id);

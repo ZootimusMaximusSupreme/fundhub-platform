@@ -21,9 +21,9 @@ import {
 const LIVE = { MESSAGING_DRY_RUN: "0", BLAND_API_KEY: "bland-test-key" };
 
 const goodAgent = {
-  code: "AG-04", name: "Setter Josh", status: "live",
+  code: "AG-04", name: "Setter Chris", status: "live",
   channel: "voice", agent_class: "client_facing", runtime: "bland",
-  prompt: "You are Josh, an AI setter for Fundhub. Book a call with the client."
+  prompt: "You are Chris, an AI setter for Fundhub. Book a call with the client."
 };
 
 function response(body = { status: "queued", call_id: "call-abc" }, status = 200) {
@@ -134,8 +134,8 @@ test("the task Bland speaks is the agent's stored prompt, not a vendor file", as
     "the notice is the ONLY thing allowed in front of the stored prompt");
   /* NO first_sentence on a consumer call. This assertion used to be its exact
      opposite — it pinned first_sentence === firstSentenceFromPrompt(prompt) — and
-     that is precisely the defect: Bland speaks first_sentence verbatim, so Josh
-     opened every call by reading his own instruction sheet out loud ("You are a
+     that is precisely the defect: Bland speaks first_sentence verbatim, so the setter
+     opened every call by reading its own instruction sheet out loud ("You are a
      Fundhub voice agent."). That is what "the setter does not work AT ALL" was on
      the 2026-09-03 walk. It also meant the recording notice, which taskWithRecordingNotice
      puts in front of `task`, was never the first thing said on a recorded call.
@@ -225,8 +225,8 @@ test("the agent prove line does not wait for a greeting", async () => {
 
 test("firstSentenceFromPrompt takes the first spoken line", () => {
   assert.equal(
-    firstSentenceFromPrompt("You are Josh, an AI setter for Fundhub. Book a call with the client."),
-    "You are Josh, an AI setter for Fundhub."
+    firstSentenceFromPrompt("You are Chris, an AI setter for Fundhub. Book a call with the client."),
+    "You are Chris, an AI setter for Fundhub."
   );
   assert.equal(firstSentenceFromPrompt(""), "Hey — can you hear me?");
 });

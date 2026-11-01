@@ -12,7 +12,7 @@ import { inngest } from "./client.mjs";
 import { db } from "../db.mjs";
 import { resolveClient } from "../handlers/client-lifecycle.mjs";
 import { sendTemplated } from "./messaging.mjs";
-import { callHappened } from "./dpc-02-call-outcome-enforcement.mjs";
+import { callHeldFor } from "./dpc-02-call-outcome-enforcement.mjs";
 import { drainMessageNow } from "../messaging/outbox.mjs";
 import {
   requestMagicLink, magicLinkUrl, portalLoginUrl, BOOKING_CONFIRM_LINK_TTL_MINUTES
@@ -182,7 +182,7 @@ export async function handle({
     };
   });
 
-  // Owner decision 2026-08-22: booked stage is one text + Josh dial + one email,
+  // Owner decision 2026-08-22: booked stage is one text + AI setter dial + one email,
   // all immediate. Text first, email second; the AI setter dials on its own leg.
   // THE CONTEXT IS NEVER CONDITIONAL. It used to be spread in only when a token
   // was minted, and an absent {{magic_link.url}} renders as the empty string —
@@ -272,7 +272,7 @@ export async function handle({
       wakeRefusal(plan.startMs, plan.t24.getTime(), now()));
     if (refused24) {
       out.skipped24h = refused24;
-    } else if (await step.run("recheck-24h", () => callHappened(db, clientId))) {
+    } else if (await step.run("recheck-24h", () => callHeldFor(db, clientId, eventId))) {
       return { ...out, stoppedAt: "before-24h", stoppedBecause: "call_held" };
     } else {
       out.remind24 = await step.run("send-remind-24h", () =>
@@ -291,7 +291,7 @@ export async function handle({
       wakeRefusal(plan.startMs, plan.t2.getTime(), now()));
     if (refused2) {
       out.skipped2h = refused2;
-    } else if (await step.run("recheck-2h", () => callHappened(db, clientId))) {
+    } else if (await step.run("recheck-2h", () => callHeldFor(db, clientId, eventId))) {
       return { ...out, stoppedAt: "before-2h", stoppedBecause: "call_held" };
     } else {
       out.remind2 = await step.run("send-remind-2h", () =>

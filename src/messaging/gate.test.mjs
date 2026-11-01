@@ -811,3 +811,45 @@ describe("prove/sim identity", () => {
     }), true);
   });
 });
+
+// Customer send hours (owner-set 2026-10-31, src/messaging/send-window.mjs).
+// 01:00Z = 6 p.m. Arizona, 09:00Z = 2 a.m. Arizona.
+describe("customer send hours in the gate", () => {
+  const at = (iso) => ({ now: () => new Date(iso) });
+
+  test("a follow-up text at 6 p.m. is held until 9 a.m., and the hold clears itself", async () => {
+    const res = await gate(fakeDb(), { ...base, templateKey: "SMS-NOBOOK-01" }, at("2026-08-02T01:00:00Z"));
+    assert.strictEqual(res.state, "blocked");
+    const hold = res.reasons.find((x) => x.code === "drip_hours");
+    assert.ok(hold, "the reason names the follow-up window");
+    assert.strictEqual(hold.retryable, true);
+    assert.strictEqual(res.task, null, "a held follow-up is not a job for a person");
+  });
+
+  test("a follow-up email at 6 p.m. is held too: the window covers email", async () => {
+    const res = await gate(fakeDb(), { ...base, channel: "email", templateKey: "EMAIL-S02-RESUME-2" }, at("2026-08-02T01:00:00Z"));
+    assert.deepStrictEqual(codes(res), ["drip_hours"]);
+  });
+
+  test("a follow-up inside the window is allowed", async () => {
+    const res = await gate(fakeDb(), { ...base, templateKey: "SMS-S02-RESUME-1" }, { now: MIDDAY });
+    assert.strictEqual(res.state, "allowed");
+  });
+
+  test("the booking confirmation text is allowed at 2 a.m.", async () => {
+    const res = await gate(fakeDb(), { ...base, templateKey: "SMS-S04-01-CONFIRM" }, at("2026-08-01T09:00:00Z"));
+    assert.strictEqual(res.state, "allowed");
+  });
+
+  test("a text with no follow-up key keeps the 8 p.m. to 8 a.m. quiet hours", async () => {
+    const res = await gate(fakeDb(), { ...base, templateKey: "SMS-S04-03-REMIND-2H" }, at("2026-08-01T09:00:00Z"));
+    assert.deepStrictEqual(codes(res), ["quiet_hours"]);
+  });
+
+  test("an opt-out still blocks an instant message at any hour", async () => {
+    const res = await gate(fakeDb({ optedOut: new Set([`${CLIENT}:sms`]) }),
+      { ...base, templateKey: "SMS-S00-WELCOME" }, at("2026-08-01T09:00:00Z"));
+    assert.strictEqual(res.state, "blocked");
+    assert.ok(codes(res).includes("opted_out"));
+  });
+});

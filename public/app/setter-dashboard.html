@@ -355,6 +355,20 @@ function setterSorted(items) {
       '<div class="setter-status" id="setter-survey-status" role="status" aria-live="polite"></div>' : '');
   }
 
+  // The lead's own calendar (picked by its survey score), else the plain one.
+  function leadBookingUrl(item) {
+    return item && /^https:\/\//.test(item.booking_url || "") ? item.booking_url : bookingUrl;
+  }
+
+  /* A saved score correction can move the lead to the other calendar. */
+  function paintBookingLinks() {
+    var url = leadBookingUrl(currentItem());
+    detailEl.querySelectorAll("[data-booking-link]").forEach(function (a) {
+      a.setAttribute("href", url || "calendar.html");
+      if (url) { a.setAttribute("target", "_blank"); a.setAttribute("rel", "noopener"); }
+    });
+  }
+
   function paintDetail() {
     var item = currentItem();
     if (!item) { detailEl.innerHTML = '<div class="setter-state">Choose a lead to start.</div>'; return; }
@@ -371,7 +385,7 @@ function setterSorted(items) {
       '<section class="setter-section"><h3>Call result</h3><div class="setter-fields"><div class="setter-field"><label for="setter-disposition">Disposition</label><select id="setter-disposition" name="disposition">' +
       option("", "Choose a result", h.disposition || "") + option("reached", "Reached", h.disposition) + option("no_answer", "No answer", h.disposition) + option("reschedule", "Reschedule", h.disposition) + option("booked_on_call", "Booked on this call", h.disposition) + '</select></div>' +
       '<div class="setter-field"><label for="setter-attempts">Dial attempts</label><input id="setter-attempts" name="call_attempts" type="number" min="0" max="99" value="' + Number(h.call_attempts || 0) + '" readonly></div></div>' +
-      '<div id="setter-no-answer"' + (h.disposition === "no_answer" ? '' : ' hidden') + '><p>Double dial right away. Then leave voicemail, send the missed-call text, and send the intro video.</p>' +
+      '<div id="setter-no-answer"' + (h.disposition === "no_answer" ? '' : ' hidden') + '><p>Double dial right away. Then leave voicemail and send the intro video. Saving No answer sends the missed-call texts for you, so do not text them by hand.</p>' +
       '<div class="setter-checks">' + box("voicemail_left", "Voicemail left", h.voicemail_left) + box("missed_text_sent", "Missed-call text sent", h.missed_text_sent) + '</div>' +
       document.getElementById("setter-script-help").innerHTML +
       '<button type="button" class="fh-astra-action" data-action="send_intro_video"' + (h.video_sent_at || !introVideoAvailable ? ' disabled' : '') + '>' + (h.video_sent_at ? 'Intro video sent' : introVideoAvailable ? 'Send intro video' : 'Intro video waiting to film') + '</button></div></section>';
@@ -379,7 +393,7 @@ function setterSorted(items) {
     if (!booked) html += '<section class="setter-section"><h3>Triage and book</h3><p>Find the problem and goal, then book the strategy call. Keep the call under 10 minutes.</p>' +
       '<div class="setter-fields"><div class="setter-field wide"><label for="setter-triage-problem">Problem in their words</label><textarea id="setter-triage-problem" name="triage_problem">' + setterEsc(h.triage_problem || "") + '</textarea></div>' +
       '<div class="setter-field wide"><label for="setter-triage-goal">Goal in their words</label><textarea id="setter-triage-goal" name="triage_goal">' + setterEsc(h.triage_goal || "") + '</textarea></div></div>' +
-      (bookingUrl ? '<a class="setter-link" href="' + setterEsc(bookingUrl) + '" target="_blank" rel="noopener">Open booking calendar ↗</a>' : '<a class="setter-link" href="calendar.html">Open booking calendar</a>') +
+      (leadBookingUrl(item) ? '<a class="setter-link" data-booking-link href="' + setterEsc(leadBookingUrl(item)) + '" target="_blank" rel="noopener">Open booking calendar ↗</a>' : '<a class="setter-link" href="calendar.html">Open booking calendar</a>') +
       '<p>After the booking webhook arrives, refresh this queue and finish the handoff.</p></section>';
 
     html += '<section class="setter-section"><h3>Survey · edit during the call</h3>' + surveyHtml(item.survey, item.survey_edits) + '</section>' +
@@ -397,7 +411,7 @@ function setterSorted(items) {
       '<div class="setter-field"><label for="setter-computer">Computer ready?</label><select id="setter-computer" name="computer_ready">' + option("", "Choose one", h.computer_ready == null ? "" : h.computer_ready ? "yes" : "no") + option("yes", "Yes", h.computer_ready === true ? "yes" : "") + option("no", "No", h.computer_ready === false ? "no" : "") + '</select></div>' +
       '<div class="setter-field"><label for="setter-app">Fundhub Portal on phone?</label><select id="setter-app" name="app_on_phone">' + option("", "Choose one", h.app_on_phone == null ? "" : h.app_on_phone === true ? "yes" : "no") + option("yes", "Yes", h.app_on_phone === true ? "yes" : "") + option("no", "No", h.app_on_phone === false ? "no" : "") + '</select></div></div>' +
       '<p>Ask about the app for their file and next steps. They still need a computer for the strategy call. If asked about price: “We walk the options on the strategy call after we see the file. The only charge before that call is the $32 soft pull, and your score does not move.”</p>' +
-      '<div class="setter-actions"><a class="setter-link" href="' + setterEsc(bookingUrl || "calendar.html") + '"' + (bookingUrl ? ' target="_blank" rel="noopener"' : '') + '>Move call time</a><span id="setter-app-slot">' + (appStoreUrl ? '<a class="setter-link" href="' + setterEsc(appStoreUrl) + '" target="_blank" rel="noopener">Fundhub Portal App Store ↗</a>' : '') + '</span></div></section>' +
+      '<div class="setter-actions"><a class="setter-link" data-booking-link href="' + setterEsc(leadBookingUrl(item) || "calendar.html") + '"' + (leadBookingUrl(item) ? ' target="_blank" rel="noopener"' : '') + '>Move call time</a><span id="setter-app-slot">' + (appStoreUrl ? '<a class="setter-link" href="' + setterEsc(appStoreUrl) + '" target="_blank" rel="noopener">Fundhub Portal App Store ↗</a>' : '') + '</span></div></section>' +
       '<section class="setter-section"><h3>Closer handoff</h3><p>' + (sameStaff ? 'Chris is setter and closer. Text the lead only; save the full note on the client.' : 'Send the booking confirmation to the lead and the full handoff to the closer as separate messages.') + '</p>' +
       '<div class="setter-script" id="setter-handoff-note">' + setterEsc(h.handoff_text || 'Save the checklist to generate the handoff note.') + '</div>' +
       '<div class="setter-actions"><button type="button" class="fh-astra-action" data-action="save">Save checklist</button>' +
@@ -443,6 +457,11 @@ function setterSorted(items) {
         var item = queue.find(function (row) { return row.client_id === clientId; });
         if (item) item.survey_edits = result.body.survey_edits || edits;
         if (selectedId() === clientId && selected) selected.survey_edits = result.body.survey_edits || edits;
+        if ("booking_url" in result.body) {
+          if (item) item.booking_url = result.body.booking_url;
+          if (selectedId() === clientId && selected) selected.booking_url = result.body.booking_url;
+          paintBookingLinks();
+        }
         surveyVersion += 1;
         surveyDirty = false;
         if (status) { status.textContent = "Survey answers saved."; status.className = "setter-status success"; }
