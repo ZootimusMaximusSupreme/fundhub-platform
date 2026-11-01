@@ -23,11 +23,17 @@ test("ordered child selection ignores unrelated and foreign PRs", () => {
   assert.deepEqual(directChildren([foreign, wrongBase, legacy, child], merged, repo).map((pr) => pr.number), [41]);
 });
 
-function runner({ rebaseConflict = false, current = child, fetched = childSha } = {}) {
+function runner({ rebaseConflict = false, current = child, fetched = childSha,
+  parentAncestor = true, mainAncestor = true } = {}) {
   const calls = [];
   const run = (program, args) => {
     calls.push([program, ...args]);
     if (program === "git" && args[0] === "rev-parse") return fetched;
+    if (program === "git" && args[0] === "merge-base" && args[1] === "--is-ancestor") {
+      if ((args[2] === parentSha && !parentAncestor) || (args[2] === "origin/main" && !mainAncestor)) {
+        throw new Error("not an ancestor");
+      }
+    }
     if (program === "git" && args[0] === "rebase" && args[1] === "--onto" && rebaseConflict) {
       throw new Error("conflict");
     }
@@ -74,6 +80,21 @@ test("automatic base retarget still rebases an unchanged child", () => {
   assert.equal(restackChild({ child: retargeted, merged, repo, run }).state, "restacked");
   assert.ok(calls.some((call) => call[1] === "push"));
   assert.equal(calls.some((call) => call.includes("base=main")), false);
+});
+
+test("GitHub-native restack queues an exact child already based on current main", () => {
+  const retargeted = { ...child, base: { ref: "main" } };
+  const { run, calls } = runner({ current: retargeted, parentAncestor: false });
+  assert.equal(restackChild({ child: retargeted, merged, repo, run }).state, "already-restacked");
+  assert.ok(calls.some((call) => call[0] === "gh" && call[1] === "pr" && call[2] === "merge"));
+  assert.equal(calls.some((call) => call[1] === "push" || call[1] === "rebase"), false);
+});
+
+test("retargeted child without merged parent or current main is left open", () => {
+  const retargeted = { ...child, base: { ref: "main" } };
+  const { run, calls } = runner({ current: retargeted, parentAncestor: false, mainAncestor: false });
+  assert.equal(restackChild({ child: retargeted, merged, repo, run }).state, "not-stacked");
+  assert.equal(calls.some((call) => call[1] === "push" || (call[0] === "gh" && call[1] === "pr" && call[2] === "merge")), false);
 });
 
 test("forked ordered chain is reported without rewriting either child", () => {

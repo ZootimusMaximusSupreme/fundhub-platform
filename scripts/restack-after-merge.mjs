@@ -57,14 +57,23 @@ export function restackChild({ child, merged, repo, run = command }) {
     `refs/heads/${branch}:refs/remotes/origin/${branch}`]);
   const fetchedHead = run("git", ["rev-parse", `refs/remotes/origin/${branch}`]);
   if (fetchedHead !== oldHead) return { number: child.number, state: "changed" };
-  try {
-    run("git", ["merge-base", "--is-ancestor", parentHead, fetchedHead]);
-  } catch {
-    return { number: child.number, state: "not-stacked" };
-  }
   const current = latestPr(repo, child.number, run);
   if (![merged.head.ref, "main"].includes(current.base?.ref) || current.head?.sha !== oldHead) {
     return { number: child.number, state: "already-moved" };
+  }
+  try {
+    run("git", ["merge-base", "--is-ancestor", parentHead, fetchedHead]);
+  } catch {
+    // GitHub can rebase a native stack before this workflow starts. The exact
+    // child head must already contain current main before it enters the queue.
+    if (current.base?.ref !== "main") return { number: child.number, state: "not-stacked" };
+    try {
+      run("git", ["merge-base", "--is-ancestor", "origin/main", fetchedHead]);
+    } catch {
+      return { number: child.number, state: "not-stacked" };
+    }
+    run("gh", ["pr", "merge", String(child.number), "--repo", repo, "--auto", "--squash"]);
+    return { number: child.number, state: "already-restacked" };
   }
 
   run("git", ["switch", "-C", `restack-pr-${child.number}`, fetchedHead]);
