@@ -5,7 +5,7 @@ import { advanceCardToStage } from "../workflows/cards.mjs";
 import { withTransaction } from "../db/with-transaction.mjs";
 import { queueCloserSetAlert } from "../staff/lead-alerts.mjs";
 import { tierBookingLink } from "../workflows/messaging.mjs";
-import { creditTierFor } from "../config/survey-qualification.mjs";
+import { creditTierFor, stampQualificationBucket } from "../config/survey-qualification.mjs";
 import { emit } from "../events/bus.mjs";
 
 const HANDOFF_FIELDS = new Set([
@@ -268,7 +268,7 @@ export async function listSetterQueue(db, staff, { limit = 50, offset = 0 } = {}
 export async function getSetterClient(db, orgId, clientId) {
   const result = await db.query(
     `SELECT c.id AS client_id, c.first_name, c.last_name, c.email, c.phone, c.custom_fields,
-            c.qualification_bucket, b.created_at AS booked_at, b.starts_at AS booking_time,
+            b.created_at AS booked_at, b.starts_at AS booking_time,
             ct.assignee_staff_id AS closer_staff_id,
             st.created_at, st.done, st.assignee_staff_id AS setter_staff_id
        FROM clients c
@@ -326,11 +326,7 @@ async function persistSurveyEdits(db, clientId, orgId, edits) {
 async function persistCreditTier(db, clientId, orgId, tier) {
   await db.query(
     `UPDATE clients
-        SET custom_fields = COALESCE(custom_fields, '{}'::jsonb) || jsonb_build_object('credit_tier', $3::text),
-            qualification_bucket = CASE $3::text
-              WHEN 'qualified' THEN 'funding_qualified'
-              WHEN 'unqualified' THEN 'funding_unqualified'
-            END
+        SET custom_fields = COALESCE(custom_fields, '{}'::jsonb) || jsonb_build_object('credit_tier', $3::text)
       WHERE id = $1 AND org_id = $2`,
     [clientId, orgId, tier]
   );
@@ -417,10 +413,10 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
       // first; no readable score anywhere (null) leaves what is saved.
       const savedFields = jsonObject(client.custom_fields);
       const creditTier = creditTierFor({ ...savedFields, setter_survey_edits: saved });
-      if (creditTier && (savedFields.credit_tier !== creditTier
-        || client.qualification_bucket !== `funding_${creditTier}`)) {
+      if (creditTier && savedFields.credit_tier !== creditTier) {
         await persistCreditTier(writer, client_id, staff.org_id, creditTier);
       }
+      if (creditTier) await stampQualificationBucket(writer, client_id, staff.org_id);
       if (previous.complete_at) {
         const closerStaffId = previous.closer_staff_id || client.closer_staff_id || (staff.role === "owner" ? staff.id : null);
         const closer = closerStaffId === staff.id ? staff : (await writer.query(

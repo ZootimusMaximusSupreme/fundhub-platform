@@ -25,26 +25,26 @@ test("bookings keep the bucket their client had when booked (real Postgres)", {
   try {
     await conn.query("BEGIN");
     const orgId = await resolveDefaultOrg(conn);
-    async function customer(label, fico) {
+    async function customer(label, fico, customerOrgId = orgId) {
       const row = await conn.query(
         `INSERT INTO clients (org_id, first_name, last_name, email, custom_fields)
          VALUES ($1, 'Bucket', $2, $3, $4::jsonb) RETURNING id`,
-        [orgId, label, `ci-bucket+${label}-${randomUUID()}@example.invalid`,
+        [customerOrgId, label, `ci-bucket+${label}-${randomUUID()}@example.invalid`,
           JSON.stringify(fico ? { cf_svy_self_reported_fico: fico } : {})]
       );
       return row.rows[0].id;
     }
     const bucketOf = async (table, id) =>
       (await conn.query(`SELECT qualification_bucket FROM ${table} WHERE id = $1`, [id])).rows[0].qualification_bucket;
-    const book = async (clientId, label) => (await upsertBooking(conn, {
+    const book = async (clientId, label, startsAt = new Date(Date.now() + 86400000).toISOString()) => (await upsertBooking(conn, {
       orgId, clientId, source: "ci-synthetic",
       providerUid: `ci-bucket-${label}-${randomUUID()}`,
-      startsAt: "2026-11-18T20:00:00.000Z", status: "booked",
+      startsAt, status: "booked",
     })).id;
 
     // Survey first, then the booking: the booking copies the client's bucket.
     const high = await customer("high", "750+");
-    assert.equal(await stampQualificationBucket(conn, high), "funding_qualified");
+    assert.equal(await stampQualificationBucket(conn, high, orgId), "funding_qualified");
     assert.equal(await bucketOf("clients", high), "funding_qualified");
     const highBooking = await book(high, "high");
     assert.equal(await bucketOf("bookings", highBooking), "funding_qualified");
@@ -54,7 +54,7 @@ test("bookings keep the bucket their client had when booked (real Postgres)", {
       `UPDATE clients SET custom_fields = custom_fields || '{"cf_svy_self_reported_fico":"Not sure"}'::jsonb WHERE id = $1`,
       [high]
     );
-    assert.equal(await stampQualificationBucket(conn, high), "funding_unqualified");
+    assert.equal(await stampQualificationBucket(conn, high, orgId), "funding_unqualified");
     assert.equal(await bucketOf("clients", high), "funding_unqualified");
     assert.equal(await bucketOf("bookings", highBooking), "funding_qualified");
     await conn.query(`UPDATE bookings SET qualification_bucket = 'funding_unqualified' WHERE id = $1`, [highBooking]);
@@ -68,10 +68,36 @@ test("bookings keep the bucket their client had when booked (real Postgres)", {
       `UPDATE clients SET custom_fields = custom_fields || '{"cf_svy_self_reported_fico":"580-649"}'::jsonb WHERE id = $1`,
       [later]
     );
-    assert.equal(await stampQualificationBucket(conn, later), "funding_unqualified");
+    assert.equal(await stampQualificationBucket(conn, later, orgId), "funding_unqualified");
     assert.equal(await bucketOf("bookings", laterBooking), "funding_unqualified");
 
-    // Run the migration's backfill on saved current/legacy answers and edits.
+    // A past call without at-booking evidence stays unknown, including after
+    // unrelated booking updates and a later client score.
+    const historical = await customer("historical", null);
+    const pastBooking = await book(historical, "past", new Date(Date.now() - 86400000).toISOString());
+    await conn.query(`UPDATE clients SET custom_fields = '{"cf_svy_self_reported_fico":"760-850"}'::jsonb WHERE id = $1`, [historical]);
+    assert.equal(await stampQualificationBucket(conn, historical, orgId), "funding_qualified");
+    assert.equal(await bucketOf("bookings", pastBooking), null);
+    await conn.query(`UPDATE bookings SET raw = '{"later_update":true}'::jsonb WHERE id = $1`, [pastBooking]);
+    assert.equal(await bucketOf("bookings", pastBooking), null, "generic updates cannot stamp a past call");
+    const delayedPastBooking = await book(historical, "delayed-past", new Date(Date.now() - 86400000).toISOString());
+    assert.equal(await bucketOf("bookings", delayedPastBooking), null, "a delayed import cannot label an old call from today's score");
+
+    // A booking with an org/client mismatch must never copy another org's score.
+    const otherOrg = (await conn.query(`INSERT INTO orgs (slug, name) VALUES ($1, 'Other Bucket Test') RETURNING id`,
+      [`ci-bucket-other-${randomUUID()}`])).rows[0].id;
+    const otherClient = await customer("other-org", "760-850", otherOrg);
+    assert.equal(await stampQualificationBucket(conn, otherClient, otherOrg), "funding_qualified");
+    const wrongOrgBooking = (await conn.query(
+      `INSERT INTO bookings (org_id, client_id, source, provider_uid, starts_at, status)
+       VALUES ($1,$2,'ci-synthetic',$3,$4,'booked') RETURNING id`,
+      [orgId, otherClient, `ci-bucket-wrong-org-${randomUUID()}`, new Date(Date.now() + 86400000).toISOString()]
+    )).rows[0].id;
+    assert.equal(await bucketOf("bookings", wrongOrgBooking), null);
+    assert.equal(await stampQualificationBucket(conn, otherClient, orgId), null);
+    assert.equal(await bucketOf("bookings", wrongOrgBooking), null);
+
+    // Replay the migration's data backfill against existing bookings and saved answers.
     const cases = [
       ["current-high", { cf_svy_self_reported_fico: "700-759", cf_svy_has_negatives: "Yes" }, "funding_qualified"],
       ["legacy-high", { cf_svy_self_reported_fico: "750+" }, "funding_qualified"],
@@ -95,6 +121,7 @@ test("bookings keep the bucket their client had when booked (real Postgres)", {
     for (let i = 0; i < cases.length; i += 1) {
       assert.equal(await bucketOf("clients", ids[i]), cases[i][2], cases[i][0]);
     }
+    assert.equal(await bucketOf("bookings", pastBooking), null, "migration replay does not backfill old calls");
 
     // Only the two values are allowed.
     await conn.query("SAVEPOINT bad_value");

@@ -566,8 +566,9 @@ and the `credit_tier` the tracker turns into QualifiedLead / UnqualifiedLead.
 as `funding_qualified` or `funding_unqualified` using the same `creditTierFor`
 rule as calendar links and `credit_tier`. A setter score correction updates the
 client's bucket. `bookings.qualification_bucket` copies the client's bucket
-when the booking is saved and keeps the first known bucket (migration 508);
-bookings without a readable score remain NULL until one is saved. The Cortana
+when the booking is saved and keeps the first known bucket (migration 508).
+An active or upcoming booking with no bucket can receive a later survey or
+setter score; past bookings with no at-booking evidence stay NULL. The Cortana
 booking event carries this saved value without changing `funding_call_booked`.
 Blueprint versus repair is decided on the call; both use the unqualified bucket.
 

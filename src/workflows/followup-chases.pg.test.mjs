@@ -105,13 +105,14 @@ async function trigger(name, clientId, at, payload = {}) {
   return { id, orgId, clientId, name, payload };
 }
 
-async function insertBooking(clientId, { status = "booked", startsAt }) {
+async function insertBooking(clientId, { status = "booked", startsAt, qualificationBucket = null }) {
   seq += 1;
-  await db.query(
-    `INSERT INTO bookings (org_id, client_id, source, provider_uid, starts_at, status)
-     VALUES ($1,$2,'followup-test',$3,$4,$5)`,
-    [orgId, clientId, `followup-${seq}-${Date.now()}`, startsAt, status]
+  const result = await db.query(
+    `INSERT INTO bookings (org_id, client_id, source, provider_uid, starts_at, status, qualification_bucket)
+     VALUES ($1,$2,'followup-test',$3,$4,$5,$6) RETURNING id`,
+    [orgId, clientId, `followup-${seq}-${Date.now()}`, startsAt, status, qualificationBucket]
   );
+  return result.rows[0].id;
 }
 
 const queued = async (clientId) => (await db.query(
@@ -421,6 +422,11 @@ test("setter desk: any other result writes no event",
 test("setter desk: fixing the score on the call writes credit_tier on the person; clearing the fix puts it back",
   { skip: !HAS_DB }, async () => {
     const clientId = await makeClient({ customFields: { cf_svy_self_reported_fico_label: "620-699", cf_svy_planned_use_label: "Open a shop" } });
+    const futureId = await insertBooking(clientId, { startsAt: new Date(Date.now() + 86400000).toISOString() });
+    const pastId = await insertBooking(clientId, { startsAt: new Date(Date.now() - 86400000).toISOString() });
+    const savedId = await insertBooking(clientId, { startsAt: new Date(Date.now() + 86400000).toISOString(),
+      qualificationBucket: "funding_unqualified" });
+    const bucketOf = async (id) => (await db.query(`SELECT qualification_bucket FROM bookings WHERE id = $1`, [id])).rows[0].qualification_bucket;
     const up = await updateSetterHandoff(db, desk(), { client_id: clientId, action: "save_survey",
       survey_edits: { cf_svy_self_reported_fico: "700-759" } });
     assert.equal(up.status, 200);
@@ -428,6 +434,9 @@ test("setter desk: fixing the score on the call writes credit_tier on the person
     assert.equal(cf.credit_tier, "qualified");
     assert.equal((await db.query(`SELECT qualification_bucket FROM clients WHERE id = $1`, [clientId])).rows[0].qualification_bucket,
       "funding_qualified");
+    assert.equal(await bucketOf(futureId), "funding_qualified", "the upcoming empty booking gets the correction");
+    assert.equal(await bucketOf(pastId), null, "a past booking remains unknown");
+    assert.equal(await bucketOf(savedId), "funding_unqualified", "a saved at-booking snapshot never changes");
     assert.deepEqual(cf.setter_survey_edits, { cf_svy_self_reported_fico: "700-759" });
     assert.equal(cf.cf_svy_self_reported_fico_label, "620-699", "what the person typed is left alone");
     assert.equal(cf.cf_svy_planned_use_label, "Open a shop", "the rest of the file is kept");
@@ -436,6 +445,7 @@ test("setter desk: fixing the score on the call writes credit_tier on the person
     assert.equal(cf.credit_tier, "unqualified");
     assert.equal((await db.query(`SELECT qualification_bucket FROM clients WHERE id = $1`, [clientId])).rows[0].qualification_bucket,
       "funding_unqualified");
+    assert.equal(await bucketOf(futureId), "funding_qualified", "the first known call bucket remains immutable");
   });
 
 test("setter desk: with no readable score anywhere credit_tier is left exactly as it was",

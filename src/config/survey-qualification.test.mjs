@@ -205,7 +205,7 @@ function stampFake(clients) {
     writes,
     async query(sql, params) {
       if (/SELECT custom_fields FROM clients/.test(sql)) {
-        const c = clients.find((x) => x.id === params[0]);
+        const c = clients.find((x) => x.id === params[0] && x.org_id === params[1]);
         return { rows: c ? [{ custom_fields: c.custom_fields }] : [] };
       }
       writes.push({ sql: sql.replace(/\s+/g, " ").trim(), params });
@@ -215,18 +215,22 @@ function stampFake(clients) {
 }
 
 test("stampQualificationBucket: saves the client's bucket, then fills only bookings with none", async () => {
-  const db = stampFake([{ id: "cl-1", custom_fields: { cf_svy_self_reported_fico: "650-699" } }]);
-  assert.equal(await stampQualificationBucket(db, "cl-1"), FUNDING_UNQUALIFIED);
+  const db = stampFake([{ id: "cl-1", org_id: "org-1", custom_fields: { cf_svy_self_reported_fico: "650-699" } }]);
+  assert.equal(await stampQualificationBucket(db, "cl-1", "org-1"), FUNDING_UNQUALIFIED);
   assert.equal(db.writes.length, 2);
-  assert.match(db.writes[0].sql, /^UPDATE clients SET qualification_bucket = \$2 WHERE id = \$1/);
-  assert.match(db.writes[1].sql, /^UPDATE bookings SET qualification_bucket = \$2 WHERE client_id = \$1 AND qualification_bucket IS NULL$/);
-  assert.deepEqual(db.writes.map((w) => w.params), [["cl-1", FUNDING_UNQUALIFIED], ["cl-1", FUNDING_UNQUALIFIED]]);
+  assert.match(db.writes[0].sql, /^UPDATE clients SET qualification_bucket = \$3 WHERE id = \$1 AND org_id = \$2/);
+  assert.match(db.writes[1].sql, /^UPDATE bookings b SET qualification_bucket = \$3 WHERE b.client_id = \$1 AND b.org_id = \$2 AND b.qualification_bucket IS NULL/);
+  assert.match(db.writes[1].sql, /b.status IN \('booked', 'rescheduled'\)/);
+  assert.match(db.writes[1].sql, /b.starts_at >= now\(\) OR b.ends_at > now\(\)/);
+  assert.deepEqual(db.writes.map((w) => w.params), [["cl-1", "org-1", FUNDING_UNQUALIFIED], ["cl-1", "org-1", FUNDING_UNQUALIFIED]]);
 });
 
 test("stampQualificationBucket: no score, no client, or no id writes nothing", async () => {
-  const db = stampFake([{ id: "cl-2", custom_fields: { cf_svy_planned_use: "Growth" } }]);
-  assert.equal(await stampQualificationBucket(db, "cl-2"), null);
-  assert.equal(await stampQualificationBucket(db, "cl-missing"), null);
+  const db = stampFake([{ id: "cl-2", org_id: "org-1", custom_fields: { cf_svy_planned_use: "Growth" } }]);
+  assert.equal(await stampQualificationBucket(db, "cl-2", "org-1"), null);
+  assert.equal(await stampQualificationBucket(db, "cl-missing", "org-1"), null);
+  assert.equal(await stampQualificationBucket(db, "cl-2", "org-2"), null);
+  await assert.rejects(stampQualificationBucket(db, "cl-2"), /requires an org ID/);
   assert.equal(await stampQualificationBucket(db, null), null);
   assert.deepEqual(db.writes, []);
 });

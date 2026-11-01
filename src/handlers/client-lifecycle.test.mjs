@@ -26,17 +26,17 @@ function pgFake({ openShift = null, failOn = null, smsRouting = null, pipelineSt
     clients, transactions, crs, events, requests, pipelineStages, cards, bookingBuckets,
     async query(sql, params = []) {
       if (failOn && failOn.test(sql)) throw Object.assign(new Error("simulated outage"), { code: "08006" });
-      if (/^SELECT custom_fields FROM clients WHERE id = \$1$/.test(sql.trim())) {
-        const c = clients.find((c) => c.id === params[0]);
+      if (/^SELECT custom_fields FROM clients WHERE id = \$1 AND org_id = \$2$/.test(sql.trim())) {
+        const c = clients.find((c) => c.id === params[0] && c.org_id === params[1]);
         return { rows: c ? [{ custom_fields: c.custom_fields }] : [] };
       }
       if (/UPDATE clients SET qualification_bucket/.test(sql)) {
-        const c = clients.find((c) => c.id === params[0]);
-        if (c) c.qualification_bucket = params[1];
+        const c = clients.find((c) => c.id === params[0] && c.org_id === params[1]);
+        if (c) c.qualification_bucket = params[2];
         return { rows: [] };
       }
-      if (/UPDATE bookings SET qualification_bucket/.test(sql)) {
-        bookingBuckets.push({ client_id: params[0], qualification_bucket: params[1] });
+      if (/UPDATE bookings b SET qualification_bucket/.test(sql)) {
+        bookingBuckets.push({ client_id: params[0], org_id: params[1], qualification_bucket: params[2] });
         return { rows: [] };
       }
       // advanceCardToStage / moveCardToStage
@@ -402,7 +402,7 @@ test("survey.submitted with a score stamps the funding call bucket on the client
   }), db);
   const c = db.clients[0];
   assert.equal(c.qualification_bucket, "funding_qualified");
-  assert.deepEqual(db.bookingBuckets, [{ client_id: c.id, qualification_bucket: "funding_qualified" }]);
+  assert.deepEqual(db.bookingBuckets, [{ client_id: c.id, org_id: c.org_id, qualification_bucket: "funding_qualified" }]);
 
   await onSurveySubmitted(ev("survey.submitted", {
     email: "score@b.com", answers: { cf_svy_self_reported_fico: "Not sure" }
@@ -410,15 +410,16 @@ test("survey.submitted with a score stamps the funding call bucket on the client
   assert.equal(c.qualification_bucket, "funding_unqualified", "the client follows the newest score answer");
 });
 
-test("a failed bucket stamp never stops the survey save or the stage move", async () => {
+test("a failed bucket stamp surfaces for retry after saving the survey answer", async () => {
   const db = pgFake({ pipelineStages: SALES_STAGES, failOn: /qualification_bucket/ });
   await onEntryCaptured(ev("entry.captured", { email: "safe@b.com", name: "Safe" }), db);
-  await onSurveySubmitted(ev("survey.submitted", {
+  await assert.rejects(onSurveySubmitted(ev("survey.submitted", {
     email: "safe@b.com",
     answers: { cf_svy_self_reported_fico: "750+", cf_svy_available_capital: "Less than $1k" }
-  }), db);
+  }), db), /simulated outage/);
   assert.equal(db.clients[0].custom_fields.cf_svy_self_reported_fico, "750+");
-  assert.equal(db.cards[0].stage_id, "st-survey");
+  assert.equal(db.clients[0].custom_fields.credit_tier, "qualified");
+  assert.equal(db.cards[0].stage_id, "st-new", "the failed event does not advance as if complete");
 });
 
 test("survey.submitted with no score answer leaves the bucket alone", async () => {

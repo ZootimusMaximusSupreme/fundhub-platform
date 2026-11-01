@@ -341,13 +341,9 @@ export async function onSurveySubmitted(event, db) {
       await upsertSurveyCarbonCopy(db, { clientId, orgId: event.orgId, answers });
     }
     await saveCreditTier(db, clientId, answers);
-    // Bucket persistence cannot block survey answers or the stage move.
+    // A failed bucket write must fail the handler so the event can retry.
     if (answersTouchBucket(answers)) {
-      try {
-        await stampQualificationBucket(db, clientId);
-      } catch (err) {
-        console.warn(`[client-lifecycle] qualification bucket not stamped for ${clientId}: ${String(err?.message || err)}`);
-      }
+      await stampQualificationBucket(db, clientId, event.orgId);
     }
   }
   if (clientId && event.orgId && answersIncludeSurveyComplete(answers)) {

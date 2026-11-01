@@ -10,6 +10,7 @@
 -- onSurveySubmitted (src/handlers/client-lifecycle.mjs) stamps clients.qualification_bucket
 -- from the effective score, including setter corrections. A booking copies its client's bucket when it is saved and
 -- keeps it from then on, so a later survey answer never rewrites a booked call.
+-- Historical calls without an at-booking score remain unknown.
 --
 -- Same people take both kinds of call. Customers never see this value.
 
@@ -27,14 +28,16 @@ DO $$ BEGIN
   END IF;
 END $$;
 
--- A booking takes its client's bucket once, then keeps it.
+-- A current/upcoming booking takes its client's bucket once, then keeps it.
 CREATE OR REPLACE FUNCTION bookings_keep_qualification_bucket() RETURNS trigger AS $$
 BEGIN
   IF TG_OP = 'UPDATE' AND OLD.qualification_bucket IS NOT NULL THEN
     NEW.qualification_bucket := OLD.qualification_bucket;
-  ELSIF NEW.qualification_bucket IS NULL AND NEW.client_id IS NOT NULL THEN
+  ELSIF TG_OP = 'INSERT' AND NEW.qualification_bucket IS NULL AND NEW.client_id IS NOT NULL
+        AND NEW.status IN ('booked', 'rescheduled') AND NEW.starts_at IS NOT NULL
+        AND (NEW.starts_at >= now() OR NEW.ends_at > now()) THEN
     SELECT c.qualification_bucket INTO NEW.qualification_bucket
-      FROM clients c WHERE c.id = NEW.client_id;
+      FROM clients c WHERE c.id = NEW.client_id AND c.org_id = NEW.org_id;
   END IF;
   RETURN NEW;
 END $$ LANGUAGE plpgsql;
@@ -48,7 +51,7 @@ CREATE TRIGGER trg_bookings_qualification_bucket
 -- credit_tier already includes setter corrections; it wins over an old raw answer.
 -- Unknown CF option IDs and absent scores stay NULL rather than being guessed.
 WITH answers AS (
-  SELECT id,
+  SELECT id, org_id,
          custom_fields->>'credit_tier' AS tier,
          translate(btrim(coalesce(
            nullif(custom_fields->'setter_survey_edits'->>'cf_svy_self_reported_fico', ''),
@@ -58,7 +61,7 @@ WITH answers AS (
          )), '‒–—―', '----') AS score
     FROM clients
 ), classified AS (
-  SELECT id,
+  SELECT id, org_id,
          CASE
            WHEN tier = 'qualified' THEN 'funding_qualified'
            WHEN tier = 'unqualified' THEN 'funding_unqualified'
@@ -73,14 +76,9 @@ UPDATE clients c
    SET qualification_bucket = scored.bucket
   FROM classified scored
  WHERE c.id = scored.id
+   AND c.org_id = scored.org_id
    AND c.qualification_bucket IS NULL
    AND scored.bucket IS NOT NULL;
 
--- Older bookings have no saved at-booking score. Use the known client bucket for
--- rows still missing one; after this, the trigger prevents later rewrites.
-UPDATE bookings b
-   SET qualification_bucket = c.qualification_bucket
-  FROM clients c
- WHERE b.client_id = c.id
-   AND b.qualification_bucket IS NULL
-   AND c.qualification_bucket IS NOT NULL;
+-- Older bookings have no saved at-booking score. Keep them NULL rather than
+-- assigning today's client score to a historical call.

@@ -38,10 +38,18 @@ function fakeDb(booked = true) {
     // copy the code holds is what the row looked like when it was read.
     if (sql.includes("FROM clients c")) return { rows: [structuredClone(client)] };
     if (sql.includes("SELECT id, name FROM staff")) return { rows: [{ id: "staff-2", name: "Closer" }] };
+    if (sql.includes("SELECT custom_fields FROM clients WHERE id = $1 AND org_id = $2")) {
+      return { rows: params[0] === CLIENT_ID && params[1] === STAFF.org_id
+        ? [{ custom_fields: structuredClone(client.custom_fields) }] : [] };
+    }
+    if (sql.includes("UPDATE bookings b SET qualification_bucket")) return { rows: [] };
     if (sql.includes("UPDATE clients")) {
+      if (sql.includes("SET qualification_bucket")) {
+        client.qualification_bucket = params[2];
+        return { rows: [] };
+      }
       if (sql.includes("'credit_tier'")) {
         client.custom_fields.credit_tier = params[2];
-        client.qualification_bucket = `funding_${params[2]}`;
         return { rows: [] };
       }
       if (sql.includes("'{setter_survey_edits}'")) {

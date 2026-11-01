@@ -115,23 +115,30 @@ export function qualificationBucket(fields = {}) {
 }
 
 // stampQualificationBucket — save the client's bucket from their saved answers, then
-// give it to any of their bookings that have none yet. A booking that already has a
+// give it to current/upcoming bookings that have none yet. A booking that already has a
 // bucket keeps it (the 508 trigger holds that even against this update).
-export async function stampQualificationBucket(db, clientId) {
+export async function stampQualificationBucket(db, clientId, orgId) {
   if (!clientId) return null;
-  const r = await db.query(`SELECT custom_fields FROM clients WHERE id = $1`, [clientId]);
+  if (!orgId) throw new Error("qualification bucket requires an org ID");
+  const r = await db.query(
+    `SELECT custom_fields FROM clients WHERE id = $1 AND org_id = $2`,
+    [clientId, orgId]
+  );
   if (!r.rows[0]) return null;
   const bucket = qualificationBucket(r.rows[0].custom_fields || {});
   if (!bucket) return null;
   await db.query(
-    `UPDATE clients SET qualification_bucket = $2
-      WHERE id = $1 AND qualification_bucket IS DISTINCT FROM $2`,
-    [clientId, bucket]
+    `UPDATE clients SET qualification_bucket = $3
+      WHERE id = $1 AND org_id = $2 AND qualification_bucket IS DISTINCT FROM $3`,
+    [clientId, orgId, bucket]
   );
   await db.query(
-    `UPDATE bookings SET qualification_bucket = $2
-      WHERE client_id = $1 AND qualification_bucket IS NULL`,
-    [clientId, bucket]
+    `UPDATE bookings b SET qualification_bucket = $3
+      WHERE b.client_id = $1 AND b.org_id = $2 AND b.qualification_bucket IS NULL
+        AND b.status IN ('booked', 'rescheduled')
+        AND b.starts_at IS NOT NULL
+        AND (b.starts_at >= now() OR b.ends_at > now())`,
+    [clientId, orgId, bucket]
   );
   return bucket;
 }
