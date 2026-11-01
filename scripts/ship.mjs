@@ -71,6 +71,10 @@ export const PULL_TIMEOUT_MS = 90_000;
 export const PUSH_TIMEOUT_MS = 10 * 60_000;
 /** Git must never wait for a person: no password prompt, no editor. */
 export const GIT_NO_PROMPT = Object.freeze({ GIT_TERMINAL_PROMPT: "0", GCM_INTERACTIVE: "never", GIT_EDITOR: "true" });
+/** GitHub Ship must deploy only files that passed the approved commit's tests. */
+export function mayRegenerateCatalog(env = process.env) {
+  return env.GITHUB_ACTIONS !== "true" && !String(env.EXPECTED_RELEASE_SHA ?? "").trim();
+}
 /** New live surfaces must carry their pulse row, tripwire, and beat before ship. */
 export const PULSE_SHIP_GUARDS = Object.freeze([
   "src/pulse/registry.test.mjs",
@@ -324,11 +328,12 @@ async function main() {
     console.error("Pulse coverage failures:\n" + redact(details.slice(0, 12000)));
     fail(`a pulse coverage guard failed: run node --test ${PULSE_SHIP_GUARDS.join(" ")}`);
   }
-  // Compile the catalog from the currently committed proof recipes. A proof
-  // improvement legitimately changes this generated artifact; an out-of-date
-  // copy must not deadlock every release. Rebuild reproducibly, check the
-  // exact generated content, then run BOTH bundle proofs as normal.
+  // GitHub Ship may deploy only the exact catalog tested at the approved SHA.
+  // A local manual ship may still rebuild it from committed proof recipes.
   if (!run("node", ["scripts/pulse/compile-catalog.mjs", "--check"]).ok) {
+    if (!mayRegenerateCatalog()) {
+      fail("coverage catalog is stale; commit the regenerated catalog and rerun the 14/14 tests.");
+    }
     const rebuilt = run("node", ["scripts/pulse/compile-catalog.mjs"], { quiet: true });
     if (!rebuilt.ok) fail("the coverage catalog could not be generated: " + reasonLine(rebuilt.out));
     const valid = run("node", ["scripts/pulse/compile-catalog.mjs", "--check"], { quiet: true });

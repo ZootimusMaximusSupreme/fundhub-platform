@@ -123,6 +123,7 @@ jobs:
         env:
           PRIVATE_LEADS_PAGE_B64: ${{ secrets.PRIVATE_LEADS_PAGE_B64 }}
         run: |
+          test -n "$PRIVATE_LEADS_PAGE_B64" || { echo "Private leads page secret is missing; ship stopped."; exit 1; }
           if [ -n "$PRIVATE_LEADS_PAGE_B64" ]; then
             mkdir -p public/leads/c01cb7592c8bb994130158e897e99bf1
             git update-index --assume-unchanged -- public/leads/c01cb7592c8bb994130158e897e99bf1/index.html

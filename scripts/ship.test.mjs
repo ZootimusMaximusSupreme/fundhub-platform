@@ -24,6 +24,7 @@ import {
   pushToGitHub,
   hasShippableChange,
   shipDiffPathspecs,
+  mayRegenerateCatalog,
   isDirectRun,
   redact,
   reasonLine,
@@ -40,6 +41,16 @@ import { MACHINE_ONLY_PATHS, isMachineOnlyChange, isMachinePath, skipDiffPathspe
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SHIP = path.join(HERE, "ship.mjs");
 const SRC = fs.readFileSync(SHIP, "utf8");
+
+test("GitHub Ship never regenerates tracked catalog after exact-head approval", () => {
+  assert.equal(mayRegenerateCatalog({ GITHUB_ACTIONS: "true" }), false);
+  assert.equal(mayRegenerateCatalog({ EXPECTED_RELEASE_SHA: "abc123" }), false);
+  assert.equal(mayRegenerateCatalog({}), true);
+  const stale = SRC.indexOf('if (!run("node", ["scripts/pulse/compile-catalog.mjs", "--check"]).ok)');
+  const stop = SRC.indexOf('if (!mayRegenerateCatalog())', stale);
+  const rebuild = SRC.indexOf('const rebuilt = run("node", ["scripts/pulse/compile-catalog.mjs"]', stale);
+  assert.ok(stale > 0 && stop > stale && rebuild > stop);
+});
 
 test("ship never uses the restricted app connection for migrations", () => {
   const appOnly = { DATABASE_URL: "postgres://fundhub_app:secret@db.example/postgres" };
