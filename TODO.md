@@ -4,6 +4,10 @@
 
 - [ ] **What the client portal teaches.** Chris, 22:15: "I don't want you to build this yet." Think about whether the portal should hold the proof of how the system works (the backend-selling slideshows), which may feel corny there, or free education instead. Decide first; nothing gets built until he says so.
 
+## Added 2026-10-31
+
+- [ ] **Track opens and clicks on the slideshow sends.** Not built yet (looked up 2026-10-31): email opens and clicks are dropped on purpose (`IGNORED_RESEND_EVENTS` in `src/adapters/resend-events.mjs`, same list in `src/adapters/mailgun.mjs`), and clicks on links in texts and emails are not recorded. The full "track every touch point" item (owner-set 2026-10-31) is item 3 of the TODO on the A/B branch (#355); when it ships, the booked-call deck messages (`EMAIL-DECK-*`, `SMS-DECK-*`, links to `fundhub.ai/slideshows/<deck>/`) get the tracked link too, so close rate can be compared for people who opened 2 or more decks against people who opened none. Do not over-build it before then (Chris, 22:23).
+
 ## Build line, owner-set 2026-10-30
 
 Chris: put these at the back of the line, behind the builds already running. Do not start them early.
