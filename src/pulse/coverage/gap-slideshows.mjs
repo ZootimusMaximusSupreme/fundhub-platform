@@ -2,10 +2,10 @@
 // The page registry pings every phone and film URL; this checks that each
 // customer-facing phone URL still contains a real presentation.
 
-import { PUBLIC_STATIC_FILES } from "../registry.mjs";
 import { check, fail, makeGetter, readPage, skip } from "../beats/lib/funnel-pages-truth.mjs";
+import { SLIDESHOW_PAGES } from "../beats/lib/slideshows-pages.mjs";
 
-export const SLIDESHOW_PAGES = PUBLIC_STATIC_FILES.filter((file) => /^slideshows\/[^/]+\.html$/.test(file));
+export { SLIDESHOW_PAGES };
 
 export async function gapChecks(ctx = {}) {
   const id = "slideshows:content";
