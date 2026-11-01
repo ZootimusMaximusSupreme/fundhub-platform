@@ -622,7 +622,7 @@ describe("reads", () => {
     assert.equal(list[0].id, mine.id);
   });
 });
-  
+
 test("A77: only the owning tenant can mark a checkout paid", async () => {
   const db = fakeDb();
   const link = await mint(db, {
