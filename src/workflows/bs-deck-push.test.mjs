@@ -3,7 +3,9 @@ import assert from "node:assert/strict";
 import { sendDeckPush } from "./bs-deck-push.mjs";
 import { APPROVED_URLS, buildPushPayload } from "../push/payload.mjs";
 
-function fixture({ enabled = true, optedOut = false, booked = true, count = 0, paused = false } = {}) {
+function fixture({ enabled = true, optedOut = false, booked = true, moved = false,
+  replaced = false,
+  count = 0, paused = false } = {}) {
   const rows = [];
   const db = { async query(sql, params) {
     if (sql.includes("FROM messaging_settings")) {
@@ -13,7 +15,10 @@ function fixture({ enabled = true, optedOut = false, booked = true, count = 0, p
       return { rows: [{ enabled: String(enabled) }] };
     }
     if (sql.includes("FROM opt_outs")) return { rows: optedOut ? [{ one: 1 }] : [] };
-    if (sql.includes("FROM bookings")) return { rows: booked ? [{ one: 1 }] : [] };
+    if (sql.includes("FROM bookings")) return { rows: booked ? [{
+      status: "booked", provider_uid: replaced ? "new-booking-uid" : "booking-uid-1",
+      starts_at: moved ? "2026-11-13T18:00:00Z" : "2026-11-12T18:00:00Z"
+    }] : [] };
     if (sql.includes("count(*)::int AS n")) return { rows: [{ n: count }] };
     if (sql.includes("INSERT INTO messages")) {
       if (rows.length) return { rows: [] };
@@ -32,6 +37,7 @@ function fixture({ enabled = true, optedOut = false, booked = true, count = 0, p
 const args = {
   orgId: "org-1", clientId: "client-1", eventId: "event-1",
   slug: "the-call", now: new Date("2026-11-10T18:00:00Z"),
+  startTime: "2026-11-12T18:00:00Z", bookingUid: "booking-uid-1",
   env: { MESSAGING_DRY_RUN: "off" }
 };
 
@@ -57,7 +63,9 @@ for (const [name, values, reason] of [
   ["outbound paused", { paused: true }, "outbound_paused"],
   ["no permission", { enabled: false }, "push_not_enabled"],
   ["opted out", { optedOut: true }, "opted_out"],
-  ["no future call", { booked: false }, "no_future_booking"],
+  ["no future call", { booked: false }, "booking_changed"],
+  ["moved call", { moved: true }, "booking_changed"],
+  ["replaced call", { replaced: true }, "booking_changed"],
   ["daily cap", { count: 1 }, "daily_push_cap"]
 ]) {
   test(`lesson push stays quiet with ${name}`, async () => {

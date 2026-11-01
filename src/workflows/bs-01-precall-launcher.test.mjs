@@ -1,14 +1,16 @@
 import { test } from "node:test";
 import assert from "node:assert";
 import {
-  handle as actualHandle, gridCells, resolveCellKey, runDeckDrip as actualRunDeckDrip, deckTime, DECK_SLOTS, DECK_TITLES,
+  handle as actualHandle, gridCells, resolveCellKey, runDeckDrip as actualRunDeckDrip,
+  currentDeckBooking, deckContentReady, deckTime, DECK_SLOTS, DECK_TITLES,
   FUNDING_PREFIX, REPAIR_PREFIX, DAYS, SLOTS, DAILY_SLOTS, KICKOFF_SLOT, KICKOFF_WAIT,
   SMS_BS01_BOOKED, SMS_BS01_PRECALL, SMS_BS01_DAYOF
 } from "./bs-01-precall-launcher.mjs";
 import { pgFake, fakeStep, ev } from "./test-support.mjs";
 
-const handle = (args) => actualHandle({ lessonsEnabled: true, ...args });
-const runDeckDrip = (args) => actualRunDeckDrip({ enabled: true, ...args });
+const handle = (args) => actualHandle({ lessonsEnabled: true, bookingCurrent: async () => true,
+  sendPush: async () => ({ sent: false, reason: "push_not_enabled" }), ...args });
+const runDeckDrip = (args) => actualRunDeckDrip({ enabled: true, bookingCurrent: async () => true, ...args });
 
 // The docs spell each cell `{prefix}-{day}-{slot}-{name}`; the trailing word is
 // theirs, so tests seed a plausible one and the code must find it by prefix rather
@@ -176,6 +178,67 @@ test("deck lessons stay off and the existing BS-01 grid continues until activati
   assert.equal(db.messages.filter((m) => m.template_key.startsWith("BS-FUND-")).length, 18);
   assert.equal(db.messages.filter((m) => m.template_key === "EMAIL-BS-DECK-LESSON" || m.template_key === "SMS-BS-DECK").length, 0);
   assert.equal(db.messages.filter((m) => m.channel === "push").length, 0);
+});
+
+test("deck activation needs both approved email and SMS copy", async () => {
+  for (const sms of [null, { org_id: "org-1", template_key: "SMS-BS-DECK",
+    channel: "sms", body: "draft", compliance_passed: false }]) {
+    const db = pgFake({ clients: [{ ...fundingClient(), custom_fields: { cf_svy_self_reported_fico: "700-759" } }],
+      templates: [
+        { org_id: "org-1", template_key: "EMAIL-BS-DECK-LESSON", channel: "email",
+          body: "{{deck_url}}", compliance_passed: true },
+        ...(sms ? [sms] : []),
+        ...templatesFor(FUNDING_PREFIX, allCells(FUNDING_PREFIX))
+      ] });
+    assert.equal(await deckContentReady(db, "org-1"), false);
+    const result = await handle({ event: ev("booking.created", { email: "a@b.com",
+      startTime: farStart() }), db, step: fakeStep() });
+    assert.equal(result.decks.skipped, "deck_template_pending");
+    assert.equal(db.messages.filter((m) => m.template_key.startsWith("BS-FUND-")).length, 18);
+    assert.equal(db.messages.filter((m) => m.template_key === "EMAIL-BS-DECK-LESSON").length, 0);
+  }
+});
+
+test("old booking run stops when the current call has moved or cancelled", async () => {
+  const oldStart = farStart();
+  const movedStart = new Date(new Date(oldStart).getTime() + 60 * 60 * 1000).toISOString();
+  let booking = { status: "rescheduled", starts_at: movedStart, provider_uid: "booking-uid-1" };
+  const db = { async query(sql, params) {
+    assert.match(sql, /FROM bookings/);
+    assert.deepEqual(params, ["org-1", "cl-1"]);
+    return { rows: [booking] };
+  } };
+  const check = () => currentDeckBooking(db, { orgId: "org-1", clientId: "cl-1",
+    bookingUid: "booking-uid-1", startTime: oldStart });
+  assert.equal(await check(), false);
+  booking = { status: "cancelled", starts_at: oldStart, provider_uid: "booking-uid-1" };
+  assert.equal(await check(), false);
+  booking = { status: "booked", starts_at: oldStart, provider_uid: "new-booking-uid" };
+  assert.equal(await check(), false);
+  booking = { status: "booked", starts_at: oldStart, provider_uid: "booking-uid-1" };
+  assert.equal(await check(), true);
+});
+
+test("a moved call is checked before any old-run deck message queues", async () => {
+  const db = pgFake({ clients: [{ ...fundingClient(), custom_fields: { cf_svy_self_reported_fico: "700-759" } }],
+    templates: [{ org_id: "org-1", template_key: "EMAIL-BS-DECK-LESSON",
+      channel: "email", body: "{{deck_url}}", compliance_passed: true }] });
+  const result = await runDeckDrip({ db, step: fakeStep(), orgId: "org-1", clientId: "cl-1",
+    eventId: "old-event", startTime: farStart(), bookingUid: "old-uid",
+    bookingCurrent: async () => false });
+  assert.equal(result.stoppedBecause, "booking_changed");
+  assert.equal(db.messages.length, 0);
+});
+
+test("a push booking change cannot fall back into a stale email", async () => {
+  const db = pgFake({ clients: [{ ...fundingClient(), custom_fields: { cf_svy_self_reported_fico: "700-759" } }],
+    templates: [{ org_id: "org-1", template_key: "EMAIL-BS-DECK-LESSON",
+      channel: "email", body: "{{deck_url}}", compliance_passed: true }] });
+  const result = await runDeckDrip({ db, step: fakeStep(), orgId: "org-1", clientId: "cl-1",
+    eventId: "old-event", startTime: farStart(),
+    sendPush: async () => ({ sent: false, reason: "booking_changed" }) });
+  assert.equal(result.stoppedBecause, "booking_changed");
+  assert.equal(db.messages.length, 0);
 });
 
 test("noon and 3 p.m. calls keep all lane lessons clear of reminders", async () => {

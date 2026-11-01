@@ -6,7 +6,8 @@ import { APPROVED_URLS } from "../push/payload.mjs";
 // A lesson push is claimed in the existing message ledger before transmission.
 // This keeps an Inngest retry or a replayed booking from buzzing the same phone.
 export async function sendDeckPush(database, {
-  orgId, clientId, eventId, slug, now = new Date(), env = process.env,
+  orgId, clientId, eventId, slug, bookingUid = null, startTime,
+  now = new Date(), env = process.env,
   sendNative = sendNativeToClient, sendWeb = sendToClient
 }) {
   if (!fenceVerdict(MESSAGING_DRY_RUN, env).allowed) return { sent: false, reason: "dry_run" };
@@ -27,12 +28,20 @@ export async function sendDeckPush(database, {
        AND channel IN ('sms','email') AND opted_in_at IS NULL LIMIT 1`, [orgId, clientId]
   );
   if (optOut.rows.length) return { sent: false, reason: "opted_out" };
+  const expected = new Date(startTime).getTime();
+  if (!Number.isFinite(expected) || expected <= now.getTime()) {
+    return { sent: false, reason: "no_future_booking" };
+  }
   const booking = await database.query(
-    `SELECT 1 FROM bookings WHERE org_id = $1 AND client_id = $2
-       AND status IN ('booked','rescheduled') AND starts_at > $3::timestamptz LIMIT 1`,
-    [orgId, clientId, now.toISOString()]
+    `SELECT status, starts_at, provider_uid FROM bookings WHERE org_id = $1 AND client_id = $2
+       ORDER BY created_at DESC LIMIT 1`, [orgId, clientId]
   );
-  if (!booking.rows.length) return { sent: false, reason: "no_future_booking" };
+  const current = booking.rows[0];
+  if (!["booked", "rescheduled"].includes(current?.status)
+    || (bookingUid && current.provider_uid !== bookingUid)
+    || new Date(current.starts_at).getTime() !== expected) {
+    return { sent: false, reason: "booking_changed" };
+  }
   const cap = await database.query(
     `SELECT count(*)::int AS n FROM messages
        WHERE org_id = $1 AND client_id = $2 AND status = 'sent'

@@ -135,6 +135,31 @@ export async function currentDeckLane(database, clientId) {
   return creditTierFor(r.rows[0]?.custom_fields || {});
 }
 
+export async function deckContentReady(database, orgId) {
+  for (const key of ["EMAIL-BS-DECK-LESSON", "SMS-BS-DECK"]) {
+    const result = await database.query(
+      `SELECT body, subject, compliance_passed FROM message_templates
+        WHERE org_id = $1 AND template_key = $2 LIMIT 1`, [orgId, key]
+    );
+    if (!result.rows[0]?.compliance_passed) return false;
+  }
+  return true;
+}
+
+export async function currentDeckBooking(database, { orgId, clientId, bookingUid = null,
+  startTime, now = new Date() }) {
+  const expected = new Date(startTime).getTime();
+  if (!Number.isFinite(expected) || expected <= new Date(now).getTime()) return false;
+  const result = await database.query(
+    `SELECT status, starts_at, provider_uid FROM bookings WHERE org_id = $1 AND client_id = $2
+      ORDER BY created_at DESC LIMIT 1`, [orgId, clientId]
+  );
+  const booking = result.rows[0];
+  return ["booked", "rescheduled"].includes(booking?.status)
+    && (!bookingUid || booking.provider_uid === bookingUid)
+    && new Date(booking.starts_at).getTime() === expected;
+}
+
 // Arizona stays UTC-7 all year. Lessons occupy the three full days before the
 // appointment, 9 a.m.–4 p.m. local, at least an hour apart. A late booking
 // skips elapsed slots; it never flushes a backlog of lessons at once.
@@ -158,7 +183,9 @@ export function deckTime(startTime, index) {
 }
 
 export async function runDeckDrip({ db: database, step, orgId, clientId, eventId, startTime,
-  sendPush = sendDeckPush, enabled = process.env.BS_DECK_LESSONS_ENABLED === "true" }) {
+  bookingUid = null, sendPush = sendDeckPush,
+  bookingCurrent = currentDeckBooking,
+  enabled = process.env.BS_DECK_LESSONS_ENABLED === "true" }) {
   if (!enabled) return { sent: [], skipped: "deck_lessons_disabled" };
   if (!startTime) return { sent: [], skipped: "no_start_time" };
   const startMs = new Date(startTime).getTime();
@@ -180,9 +207,16 @@ export async function runDeckDrip({ db: database, step, orgId, clientId, eventId
     const slug = slot[lane === "qualified" ? "funding" : "blueprint"];
     if (!slug) continue;
     const result = await step.run(`send-deck-${i}`, async () => {
+      if (!await bookingCurrent(database, { orgId, clientId, bookingUid, startTime })) {
+        return { sent: false, reason: "booking_changed" };
+      }
       if (slot.channel === "push") {
-        const pushed = await sendPush(database, { orgId, clientId, eventId, slug });
+        const pushed = await sendPush(database, { orgId, clientId, eventId, slug,
+          bookingUid, startTime });
         if (pushed.sent) return { ...pushed, channel: "push" };
+        if (!["push_not_enabled", "no_device_delivered", "daily_push_cap"].includes(pushed.reason)) {
+          return { ...pushed, channel: "push" };
+        }
       }
       const channel = slot.channel === "push" ? "email" : slot.channel;
       return { ...await sendTemplated(database, {
@@ -192,6 +226,9 @@ export async function runDeckDrip({ db: database, step, orgId, clientId, eventId
         context: { deck_title: DECK_TITLES[slug], deck_url: `https://fundhub.ai/slideshows/${slug}.html` }
       }), channel };
     });
+    if (["booking_changed", "no_future_booking", "opted_out", "outbound_paused", "dry_run"].includes(result.reason)) {
+      return { sent, stoppedBecause: result.reason };
+    }
     sent.push({ slot: i, slug, ...result });
   }
   return { sent };
@@ -372,7 +409,8 @@ async function runSmsDrip({ db, step, orgId, clientId, eventId, startTime }) {
 }
 
 export async function handle({ event, db, step,
-  lessonsEnabled = process.env.BS_DECK_LESSONS_ENABLED === "true" }) {
+  lessonsEnabled = process.env.BS_DECK_LESSONS_ENABLED === "true",
+  bookingCurrent = currentDeckBooking, sendPush = sendDeckPush }) {
   const clientId = await step.run("resolve-client", () => resolveClient(db, event));
   if (!clientId) return { done: false, reason: "no_client" };
 
@@ -390,11 +428,11 @@ export async function handle({ event, db, step,
     db, step, orgId, clientId, eventId,
     startTime
   });
-  const deckTemplate = await step.run("deck-template-ready", () =>
-    resolveCellKey(db, orgId, "EMAIL-BS-DECK")
-  );
+  const deckTemplate = await step.run("deck-template-ready", () => deckContentReady(db, orgId));
   const decksPromise = deckTemplate && lessonsEnabled
-    ? runDeckDrip({ db, step, orgId, clientId, eventId, startTime, enabled: true })
+    ? runDeckDrip({ db, step, orgId, clientId, eventId, startTime,
+      bookingUid: event.payload?.bookingUid || event.payload?.booking_uid || null,
+      bookingCurrent, sendPush, enabled: true })
     : Promise.resolve({ sent: [], skipped: deckTemplate ? "deck_lessons_disabled" : "deck_template_pending" });
 
   let prefix;
