@@ -1,8 +1,4 @@
 import { test, expect } from "@playwright/test";
-import fs from "node:fs";
-
-const OUT = "/private/tmp/closer-visual-review";
-fs.mkdirSync(OUT, { recursive: true });
 
 async function open(page, width) {
   await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
@@ -21,7 +17,7 @@ async function open(page, width) {
 }
 
 for (const width of [1440, 390]) {
-  test(`P-01 ${width}px opens a readable verified crop and returns to the wall`, async ({ page }) => {
+  test(`P-01 ${width}px opens a readable verified crop and returns to the wall`, async ({ page }, testInfo) => {
     await open(page, width);
     const trigger = page.locator('[data-fhv-proof-act="show:2"]');
     await trigger.click();
@@ -40,7 +36,7 @@ for (const width of [1440, 390]) {
       await dialog.getByRole("button", { name: "Show readable size" }).click();
       expect(await shot.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
     }
-    await dialog.screenshot({ path: `${OUT}/P-01-open-${width}.png`, animations: "disabled" });
+    await dialog.screenshot({ path: testInfo.outputPath(`P-01-open-${width}.png`), animations: "disabled" });
     await page.keyboard.press("Escape");
     await expect(dialog).toHaveCount(0);
     await expect(trigger).toBeFocused();
