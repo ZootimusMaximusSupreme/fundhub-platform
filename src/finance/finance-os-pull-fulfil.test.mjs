@@ -6,6 +6,7 @@ import {
   savedSystemPullIntent,
   fulfilQueuedSystemPulls
 } from "./finance-os-pull-fulfil.mjs";
+import { SoftPullError } from "./soft-pulls.mjs";
 
 describe("systemPullUsesSimulation", () => {
   test("defaults to simulation when live is not explicitly named", () => {
@@ -351,6 +352,31 @@ test("an unpersisted provider hold stays red while still creating owner recovery
   assert.equal(out.errored[0].phase, "provider_exception_hold");
   assert.equal(out.providerExceptions.length, 1);
   assert.equal(tasks, 1);
+});
+
+test("a concurrent claim is skipped without closing the first worker's request", async () => {
+  const row = { id: "req-active", org_id: "org-A", client_id: "buyer-A",
+    subscription_id: "plan-A", idempotency_key: "finance-os-monthly:plan-A:0:real" };
+  let taskCalls = 0, holdWrites = 0;
+  const db = { query: async (sql) => {
+    if (/FROM soft_pull_requests/.test(sql)) return { rows: [row] };
+    if (/UPDATE soft_pull_requests/.test(sql)) { holdWrites++; return { rows: [] }; }
+    throw Error("unexpected SQL");
+  } };
+  const out = await fulfilQueuedSystemPulls(db, {
+    env: { FINANCE_OS_SYSTEM_PULL_LIVE: "1", CRS_ALLOW_LIVE: "1" },
+    consentCheck: async () => ({ valid: true }),
+    entitlementCheck: async () => ({ entitled: true, subscriptionId: "plan-A" }),
+    runPull: async () => { throw new SoftPullError("already claimed", {
+      status: 409, code: "request_already_claimed"
+    }); },
+    createTaskImpl: async () => { taskCalls++; return { id: "unexpected" }; }
+  });
+  assert.equal(out.failed, 0);
+  assert.equal(out.errored.length, 0);
+  assert.equal(out.skipped[0]?.reason, "request_already_claimed");
+  assert.equal(holdWrites, 0, "second worker cannot close the first worker's ledger");
+  assert.equal(taskCalls, 0, "second worker did not contact the provider");
 });
 
 test("provider-exception task failure remains RED and simulations create no live owner task", async () => {

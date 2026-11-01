@@ -9,6 +9,7 @@ import { runBlueprintMonthlyPullAftercare } from "../blueprint/monthly-pull-afte
 import { createTask } from "../lib/create-task.mjs";
 import { consentStatus } from "../consent/index.mjs";
 import { financeOsEntitlement } from "./finance-os-entitlement.mjs";
+import { SoftPullError } from "./soft-pulls.mjs";
 
 export const FINANCE_OS_SYSTEM_PULL_LIVE = "FINANCE_OS_SYSTEM_PULL_LIVE";
 export const MONTHLY_DELIVERY_EXCEPTION_SOURCE = "blueprint-monthly-delivery";
@@ -76,13 +77,19 @@ export function systemPullUsesSimulation(env = process.env) {
 export async function queuedSystemPulls(conn, { limit = 50 } = {}) {
   const cap = Math.max(1, Math.min(Number(limit) || 50, 200));
   const res = await conn.query(
-    `SELECT id, org_id, client_id, subscription_id, idempotency_key, requested_at
-       FROM soft_pull_requests
-      WHERE status = 'queued'
-        AND requested_by_kind = 'system'
-      ORDER BY requested_at ASC
+    `SELECT r.id, r.org_id, r.client_id, r.subscription_id, r.idempotency_key, r.requested_at
+       FROM soft_pull_requests r
+      WHERE r.status = 'queued'
+        AND r.requested_by_kind = 'system'
+        AND NOT EXISTS (
+          SELECT 1 FROM tasks incident
+           WHERE incident.org_id = r.org_id AND incident.client_id = r.client_id
+             AND incident.source_workflow = $2
+             AND incident.body = 'finance-os-monthly-provider:' || r.id::text
+        )
+      ORDER BY r.requested_at ASC
       LIMIT $1`,
-    [cap]
+    [cap, MONTHLY_PROVIDER_EXCEPTION_SOURCE]
   );
   return res.rows;
 }
@@ -254,6 +261,11 @@ export async function fulfilQueuedSystemPulls(conn, {
         }
       }
     } catch (e) {
+      if (e instanceof SoftPullError && e.code === "request_already_claimed") {
+        tally.skipped.push({ clientId: row.client_id, requestId: row.id,
+          reason: e.code });
+        continue;
+      }
       tally.errored.push({
         clientId: row.client_id,
         requestId: row.id,
