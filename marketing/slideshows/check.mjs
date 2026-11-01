@@ -19,7 +19,7 @@ import { fileURLToPath } from "node:url";
 import { checkScriptText } from "../../scripts/ads/check-script.mjs";
 import { deckSegments, findRecycled, loadCorpus } from "../../scripts/copy/recycled-lines.mjs";
 import {
-  applyShell, deckFiles, listCopyText, listModuleText, LIST_COPY_FILE, LIST_FILE, PUBLIC_DIR, publishedDecks, slugOf, toPublic
+  applyShell, deckFiles, isDraft, listCopyText, listModuleText, LIST_COPY_FILE, LIST_FILE, PUBLIC_DIR, publishedDecks, slugOf, toPublic
 } from "./build.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -270,7 +270,9 @@ function listProblems() {
   if (existsSync(PUBLIC_DIR)) {
     for (const entry of readdirSync(PUBLIC_DIR, { withFileTypes: true })) {
       if (entry.isDirectory() && !slugs.has(entry.name) && existsSync(join(PUBLIC_DIR, entry.name, "index.html"))) {
-        problems.push(`public/slideshows/${entry.name}/index.html has no deck behind it (marketing/slideshows/${entry.name}.html). Remove the page, or restore the deck`);
+        problems.push(isDraft(entry.name)
+          ? `public/slideshows/${entry.name}/index.html is a draft, and a draft is never published. Remove the page`
+          : `public/slideshows/${entry.name}/index.html has no deck behind it (marketing/slideshows/${entry.name}.html). Remove the page, or restore the deck`);
       }
     }
   }

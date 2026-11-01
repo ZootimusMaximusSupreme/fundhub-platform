@@ -159,6 +159,11 @@ const SOURCE_NOTES = /\s+data-(?:src|figures)=(?:"[^"]*"|'[^']*')/g;
 
 export const slugOf = (file) => basename(file).replace(/\.html$/, "");
 
+/** An old draft kept in the folder for reference, like pre-underwriting-draft-1.html. A draft is never one of the decks
+ *  that go live: --publish, the published list and the pulse all skip any file whose name has "-draft" in it, even if
+ *  someone later gives it shell markers. */
+export const isDraft = (file) => /-draft/i.test(basename(file));
+
 /** The page a lead opens (Chris, 2026-10-31, through the lead): the built deck, minus what only Chris uses.
  *  Taken out: every <aside class="talk"> block (his teleprompter script) and the data-src and data-figures notes on the
  *  slides (where each fact came from). Put in: <meta name="robots" content="noindex">, unless the deck has one, so a
@@ -238,11 +243,13 @@ export function localRefs(page) {
   return out;
 }
 
-/** Every deck that has shell markers, in file-name order: { slug, file, page, slides, code, title }. Throws, naming
- *  the deck, when one cannot be published, so a broken deck never reaches the list quietly. */
+/** Every deck that has shell markers, in file-name order: { slug, file, page, slides, code, title }. A file with
+ *  "-draft" in its name is never a deck (see isDraft). Throws, naming the deck, when one cannot be published, so a
+ *  broken deck never reaches the list quietly. */
 export function publishedDecks() {
   const out = [];
   for (const file of deckFiles()) {
+    if (isDraft(file)) continue;
     const slug = slugOf(file);
     const page = toPublic(readFileSync(file, "utf8"));
     if (page === null) continue;
@@ -310,6 +317,11 @@ function publish(named) {
   } catch (err) {
     console.error(`cannot publish: ${err.message}`);
     process.exit(1);
+  }
+  const drafts = named.filter((a) => isDraft(a));
+  if (drafts.length) {
+    console.error(`a draft is never published: ${drafts.map((a) => slugOf(a)).join(", ")}`);
+    process.exit(2);
   }
   const want = named.length ? named.map((a) => slugOf(a)) : decks.map((d) => d.slug);
   const unknown = want.filter((slug) => !decks.some((d) => d.slug === slug));
