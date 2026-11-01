@@ -12,12 +12,12 @@ export const SLIDES = Object.freeze([
   ["S-01", "1 Open"], ["S-02", "1 Open"],
   ["S-03", "2 Your goal"], ["S-04", "2 Your goal"],
   ["S-05", "3 The pull"], ["S-06", "3 The pull"],
-  ["S-07", "4 Your file"], ["L-01", "4 Your file"],
+  ["S-07", "4 Your file"], ["F-01", "4 Your file"], ["L-01", "4 Your file"],
   ["S-08", "5 Your path"],
   ["B-01", "6 The plan"], ["B-02", "6 The plan"], ["B-03", "6 The plan"], ["B-04", "6 The plan"],
   ["B-05", "6 The plan"], ["B-06", "6 The plan"],
   ["S-09", "6 The plan"], ["S-10", "6 The plan"], ["S-11", "6 The plan"], ["S-12", "6 The plan"],
-  ["S-13", "6 The plan"], ["S-14", "6 The plan"], ["S-15", "6 The plan"], ["S-16", "6 The plan"],
+  ["S-13", "6 The plan"], ["S-14", "6 The plan"], ["S-15", "6 The plan"], ["S-16", "6 The plan"], ["P-01", "6 The plan"],
   ["C-01", "6 The plan"],
   ["S-17", "7 The ask"], ["S-18", "7 The ask"], ["S-19", "7 The ask"], ["S-20", "7 The ask"],
   ["S-21", "7 The ask"], ["S-22", "7 The ask"],
@@ -26,12 +26,12 @@ export const SLIDES = Object.freeze([
 
 export const DECK_LENGTH = SLIDES.length;
 
-/** Where a slide sits in the deck as the cockpit header counts it: "<position> / 32". */
+/** Where a slide sits in the deck as the cockpit header counts it: "<position> / 34". */
 export const positionOf = (code) => SLIDES.findIndex(([c]) => c === code) + 1;
 
 /** The two slides that show only when their visual draws. The practice tests load no visual file, so a
  *  walker steps over them. */
-export const VISUAL_ONLY = Object.freeze(["L-01", "C-01"]);
+export const VISUAL_ONLY = Object.freeze(["F-01", "L-01", "P-01", "C-01"]);
 
 /** The slides a funding walker meets: the six Blueprint slides and the two visual-only slides are stepped over. */
 export const MAIN_RUN = SLIDES.filter(([code]) => !code.startsWith("B-") && !VISUAL_ONLY.includes(code)).map(([code]) => code);
@@ -46,9 +46,9 @@ export const PHASE_BUTTONS = Object.freeze([
   ["01", "1 Open", ["S-01", "S-02"]],
   ["02", "2 Your goal", ["S-03", "S-04"]],
   ["03", "3 The pull", ["S-05", "S-06"]],
-  ["04", "4 Your file", ["S-07", "L-01"]],
+  ["04", "4 Your file", ["S-07", "F-01", "L-01"]],
   ["05", "5 Your path", ["S-08"]],
-  ["06", "6 The plan", ["B-01", "B-02", "B-03", "B-04", "B-05", "B-06", "S-09", "S-10", "S-11", "S-12", "S-13", "S-14", "S-15", "S-16", "C-01"]],
+  ["06", "6 The plan", ["B-01", "B-02", "B-03", "B-04", "B-05", "B-06", "S-09", "S-10", "S-11", "S-12", "S-13", "S-14", "S-15", "S-16", "P-01", "C-01"]],
   ["07", "7 The ask", ["S-17", "S-18", "S-19", "S-20", "S-21", "S-22"]],
   ["08", "8 Money", []],
   ["09", "9 Paperwork", ["S-23", "S-24"]],

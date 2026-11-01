@@ -26,7 +26,7 @@
     { code: "S-01", phase: "01" }, { code: "S-02", phase: "01" },
     { code: "S-03", phase: "02" }, { code: "S-04", phase: "02" },
     { code: "S-05", phase: "03" }, { code: "S-06", phase: "03" },
-    { code: "S-07", phase: "04" },
+    { code: "S-07", phase: "04" }, { code: "F-01", phase: "04" },
     /* L-01: the money levers (visual A), right after the reveal. It shows only
        when its visual draws; otherwise Next goes S-07 to S-08 as before. */
     { code: "L-01", phase: "04" },
@@ -45,6 +45,7 @@
     { code: "S-11", phase: "06" }, { code: "S-12", phase: "06" },
     { code: "S-13", phase: "06" }, { code: "S-14", phase: "06" },
     { code: "S-15", phase: "06" }, { code: "S-16", phase: "06" },
+    { code: "P-01", phase: "06" },
     /* C-01: more companies, more funding (visual B). Door 1 only, and only
        when its visual draws. */
     { code: "C-01", phase: "06" },
@@ -94,7 +95,9 @@
     "S-07": { title: "The reveal + the sort", lines: ["FUND: Here is today's estimate from your file: [Amount]. A lender still decides each application.", "FUND: Pause. Let it land. Then: what jumps out at you?", "REPAIR: Here are the specific items the report found. If a higher amount is shown, that is a projection after changes, not a promised approval.", "EDU: If their ask is 'teach me to do this myself', route Education below. The sort still gets named first."], watch: "Name the sort from the actual report. Never say approved or pre-approved, and never name a bank that the report did not match." + (COURSE_LIVE ? "" : " Education is off until Capital Academy is filmed.") },
     /* L-01 and C-01 are visual slides (section 10.4, A and B). The words are
        the script's (sections 4 and 6) and the plan's. */
-    "L-01": { title: "How much more. Tap each lever.", lines: ["The difference between today and the fully optimized file is what's left on the table right now.", "Let me show you what each fix does for your file, one at a time."], watch: "Tap one lever at a time. Every amount is the engine's own, for this file. Read it off the screen. Never round up, never say approved, and never promise a score or a removal." },
+    "L-01": { title: "How the estimate changes. Tap each lever.", lines: ["The engine shows how this estimate changes if these steps are completed.", "Let me show you what each step changes for your file, one at a time."], watch: "Tap one lever at a time. Every amount is the engine's own estimate for this file. Never say approved or promise a score, removal, or lender result." },
+    "F-01": { title: "Your file findings", lines: ["These are the cards, reported items and mismatches this pull actually found.", "Tap each finding to show the next step for this file."], watch: "Read the actual pull. A next step is not a promised change or approval." },
+    "P-01": { title: "Real client approvals", lines: ["These are three approval crops from other client files.", "Their approved amounts show what happened for them; your file and each lender determine what happens for you."], watch: "Show only the verified crops. Do not connect another client's approval to this client's projection or promise the same result." },
     "C-01": { title: "More companies, more funding.", lines: ["Each business is judged on its own, after your personal file is ready.", "This is what one more company adds as it gets older. It's a picture of what's possible. It never changes what you qualify for today."], watch: "Read the amounts off the screen. 'If you add a company' is never part of today's total. Only show wins Chris has given you in writing." },
     "S-08": { title: "Permission, then the map", lines: ["FUND: Where do you want to go from here? I can walk you through exactly how we get you in front of the banks that match your file, in the right order. But you tell me.", "FUND: Everything is completely done-for-you. Three steps. Cool?", "REPAIR: I'd recommend we clean your credit up first, so when we run the full funding process you're in the strongest position. Want me to walk you through it?", "EDU: Two ways to own this: your complete file deliverables with the ranked bank list, or the Funding Mastery program, A to Z. Which sounds more like you?"], watch: "Sort-acceptance gate. Reverse Selling: ask permission. If they push back on the sort itself, handle it HERE, never at the price." },
     "S-09": { title: "Pitch. The problem.", lines: ["FUND: You know how you tried applying on your own and got denied or didn't know which banks to go to? You applied blind, to banks that never matched your file.", "FUND: Most people, and most funding companies, are guessing. Every application is a hard pull, and every denial costs you.", "REPAIR: Walk the flags one at a time. Read each item. Don't editorialize, the screen is the proof.", "EDU: Course one is everything the system built from your file today. Walk the six items on screen, one by one."], watch: "Slow down. The contrast here is what sells the system." },
@@ -773,9 +776,15 @@
       var fixed = visualAmount("optimizedTotal", d.afterFix);
       return slide("S-07", "Your results", kicker(dash(found) + " negative items found · read the way lenders read it") + h1("Here's what the AI found.") + scoreBars(d.fico) + sampleLine(d) + '<div style="margin-top:8px">' + reasonsList(d, false) + "</div>" + (fixed != null ? sub("Cleaned up, this file projects to " + money(fixed) + ".") : ""));
     }
+    if (c === "F-01") {
+      return slide("F-01", "Your file findings", kicker("What the pull found") + h1("Your report shows where to start.") + (visualHtml("fileFindings") || unavail()));
+    }
     if (c === "L-01") {
       /* Visual A, the money levers. Next only lands here when it draws (go()). */
-      return slide("L-01", "How much more", visualHtml("moneyLevers") || unavail());
+      var climb = deckVisual();
+      var gap = climb && Number.isFinite(climb.todayTotal) && Number.isFinite(climb.optimizedTotal)
+        ? climb.optimizedTotal - climb.todayTotal : null;
+      return slide("L-01", "How much more", kicker("What changes the estimate") + h1(gap == null ? "The projected change is not on this file yet." : gap > 0 ? "The engine projects " + money(gap) + " more if these steps are completed." : "The engine shows no projected increase from these steps.") + sub("This is an estimate from your report. Each lender decides the actual amount.") + (visualHtml("moneyLevers") || unavail()));
     }
     if (c === "S-08") {
       if (edu) {
@@ -865,6 +874,9 @@
           return '<li><span class="n">' + String(i + 1).padStart(2, "0") + '</span><span class="t">' + esc(t) + "</span></li>";
         }).join("") + "</ol></div>" +
         fine("Intro APR offers are set by card issuers, apply for limited promotional periods, and revert to issuer standard rates. All amounts, rates, and terms are determined by funding partners based on qualification."));
+    }
+    if (c === "P-01") {
+      return slide("P-01", "Client approvals", kicker("Proof from client files") + h1("Real approvals from other Fundhub clients.") + (visualHtml("proofWall") || unavail()));
     }
     if (c === "C-01") {
       /* Visual B, more companies, more funding. Door 1 only, and Next only
@@ -1849,7 +1861,9 @@
     if (state.edu && EDU_SKIP.indexOf(c) >= 0) return false;
     if (OFF_WALK.indexOf(c) >= 0) return OFF_WALK.indexOf(from) >= 0;
     if (isStackCode(c)) return isStackCode(from) || (!isFunding() && !state.edu);
+    if (c === "F-01") return visualHtml("fileFindings") !== null;
     if (c === "L-01") return visualHtml("moneyLevers") !== null;
+    if (c === "P-01") return isFunding() && !state.edu && visualHtml("proofWall") !== null;
     if (c === "C-01") return isFunding() && !state.edu && visualHtml("companies") !== null;
     return true;
   }
