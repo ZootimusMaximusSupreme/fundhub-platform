@@ -85,6 +85,33 @@ export const TRIPWIRES = Object.freeze({
   "send:src/push/native-send.mjs": { impact: "customer", checks: ["native-push:recent-delivery-failure", "native-push:configured"] },
   "route:read/client-progress": { impact: "customer", checks: ["portal:progress-read-real-client"] },
   "page:progress.html": { impact: "customer", checks: ["portal:progress-read-real-client"] },
+  // Phone slideshows, 2026-10-31: a lead who books a call is texted and emailed a link to one of these 22 pages.
+  // The deep check slideshows:pages-live (src/pulse/coverage/gap-slideshow-pages.mjs) opens every page the way a lead
+  // does and goes red when one is gone, short of a slide or showing another deck. The hourly beat slideshow-pages
+  // asks the same question. The rows are written from src/slideshows/deck-pages.mjs; src/slideshows/deck-pages.test.mjs
+  // fails when they and the published pages differ.
+  "page:slideshows/after-you-say-yes/index.html": { impact: "customer", checks: ["slideshows:pages-live"] },
+  "page:slideshows/apply-yourself/index.html": { impact: "customer", checks: ["slideshows:pages-live"] },
+  "page:slideshows/bank-said-no/index.html": { impact: "customer", checks: ["slideshows:pages-live"] },
+  "page:slideshows/blueprint-12-months/index.html": { impact: "customer", checks: ["slideshows:pages-live"] },
+  "page:slideshows/blueprint-in-action/index.html": { impact: "customer", checks: ["slideshows:pages-live"] },
+  "page:slideshows/blueprint-value/index.html": { impact: "customer", checks: ["slideshows:pages-live"] },
+  "page:slideshows/business-one-two/index.html": { impact: "customer", checks: ["slideshows:pages-live"] },
+  "page:slideshows/card-paydown/index.html": { impact: "customer", checks: ["slideshows:pages-live"] },
+  "page:slideshows/cost-of-waiting/index.html": { impact: "customer", checks: ["slideshows:pages-live"] },
+  "page:slideshows/credit-optimization/index.html": { impact: "customer", checks: ["slideshows:pages-live"] },
+  "page:slideshows/credit-partner/index.html": { impact: "customer", checks: ["slideshows:pages-live"] },
+  "page:slideshows/funding-sequence/index.html": { impact: "customer", checks: ["slideshows:pages-live"] },
+  "page:slideshows/money-on-the-table/index.html": { impact: "customer", checks: ["slideshows:pages-live"] },
+  "page:slideshows/pre-underwriting/index.html": { impact: "customer", checks: ["slideshows:pages-live"] },
+  "page:slideshows/soft-pull/index.html": { impact: "customer", checks: ["slideshows:pages-live"] },
+  "page:slideshows/the-call/index.html": { impact: "customer", checks: ["slideshows:pages-live"] },
+  "page:slideshows/the-maximum/index.html": { impact: "customer", checks: ["slideshows:pages-live"] },
+  "page:slideshows/the-money-talk/index.html": { impact: "customer", checks: ["slideshows:pages-live"] },
+  "page:slideshows/thirteen-points/index.html": { impact: "customer", checks: ["slideshows:pages-live"] },
+  "page:slideshows/tried-before/index.html": { impact: "customer", checks: ["slideshows:pages-live"] },
+  "page:slideshows/who-we-are/index.html": { impact: "customer", checks: ["slideshows:pages-live"] },
+  "page:slideshows/your-data-is-safe/index.html": { impact: "customer", checks: ["slideshows:pages-live"] },
   "route:read/entitlements": { impact: "customer", checks: ["payments:paid-no-entitlement", "portal:paid-entitlement"] },
   "route:contracts/sign": { impact: "customer", checks: ["contracts:sent-unsignable", "contracts:signed-not-stored"] },
   "route:documents-upload": { impact: "customer", checks: ["documents:upload-store", "documents:stuck-processing"] },

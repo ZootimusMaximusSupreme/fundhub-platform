@@ -112,6 +112,7 @@ export const GAP_FILES = Object.freeze([
   ["gap-records.mjs", () => import("./gap-records.mjs")],
   ["gap-repair.mjs", () => import("./gap-repair.mjs")],
   ["gap-sales-manager.mjs", () => import("./gap-sales-manager.mjs")],
+  ["gap-slideshow-pages.mjs", () => import("./gap-slideshow-pages.mjs")],
   ["gap-sms.mjs", () => import("./gap-sms.mjs")],
   ["gap-social.mjs", () => import("./gap-social.mjs")],
   ["gap-soft-pull.mjs", () => import("./gap-soft-pull.mjs")],

@@ -620,6 +620,32 @@ const PUBLIC_STATIC_FILES = [
   "reset-password.html",
   "roadmap/pay.html",
   "roadmap/pull.html",
+  /* The 22 phone slideshows a booked lead is texted and emailed a link to (2026-10-31). Written by
+     marketing/slideshows/build.mjs --publish; the list is src/slideshows/deck-pages.mjs. The deep check
+     slideshows:pages-live and the hourly beat slideshow-pages read each page; src/slideshows/deck-pages.test.mjs
+     fails when this list and the published pages differ. */
+  "slideshows/after-you-say-yes/index.html",
+  "slideshows/apply-yourself/index.html",
+  "slideshows/bank-said-no/index.html",
+  "slideshows/blueprint-12-months/index.html",
+  "slideshows/blueprint-in-action/index.html",
+  "slideshows/blueprint-value/index.html",
+  "slideshows/business-one-two/index.html",
+  "slideshows/card-paydown/index.html",
+  "slideshows/cost-of-waiting/index.html",
+  "slideshows/credit-optimization/index.html",
+  "slideshows/credit-partner/index.html",
+  "slideshows/funding-sequence/index.html",
+  "slideshows/money-on-the-table/index.html",
+  "slideshows/pre-underwriting/index.html",
+  "slideshows/soft-pull/index.html",
+  "slideshows/the-call/index.html",
+  "slideshows/the-maximum/index.html",
+  "slideshows/the-money-talk/index.html",
+  "slideshows/thirteen-points/index.html",
+  "slideshows/tried-before/index.html",
+  "slideshows/who-we-are/index.html",
+  "slideshows/your-data-is-safe/index.html",
   "start.html",
   "terms/index.html",
   "unsubscribe.html"

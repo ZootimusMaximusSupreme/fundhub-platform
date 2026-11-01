@@ -57,6 +57,7 @@ export const BEAT_FILES = Object.freeze([
   ["beat-roadmap-delivery.mjs", () => import("./beat-roadmap-delivery.mjs")],
   ["beat-roadmap-pages.mjs", () => import("./beat-roadmap-pages.mjs")],
   ["beat-sales-totals.mjs", () => import("./beat-sales-totals.mjs")],
+  ["beat-slideshow-pages.mjs", () => import("./beat-slideshow-pages.mjs")],
   ["beat-soft-pull.mjs", () => import("./beat-soft-pull.mjs")],
   ["beat-survey-resume.mjs", () => import("./beat-survey-resume.mjs")],
   ["beat-text-path.mjs", () => import("./beat-text-path.mjs")],
