@@ -185,8 +185,15 @@ export async function runShipChange(options, command = defaultCommand) {
     const ancestor = await rootGit(['merge-base', 'HEAD', `origin/${parent.headRefName}`]);
     parentHead = (await rootGit(['rev-parse', `origin/${parent.headRefName}`])).trim();
     if (ancestor.trim() !== parentHead) {
-      const basePoint = ancestor.trim();
+      // A parent can be rebased while this branch waits. The ordinary merge
+      // base then falls back to main and would replay the parent's old commits.
+      const forkPoint = await rootGit(['merge-base', '--fork-point',
+        `origin/${parent.headRefName}`, 'HEAD']).catch(() => '');
+      const basePoint = forkPoint.trim() || ancestor.trim();
       if (!basePoint) throw new Error('Could not identify the branch base for ordered rebase.');
+      if (!forkPoint.trim() && (resume || existing)) {
+        throw new Error(`Could not identify the previous tip of ${parent.headRefName}; leave this branch open for a safe restack.`);
+      }
       await rootGit(['rebase', '--onto', parentHead, basePoint, branch]);
     }
   } else {
