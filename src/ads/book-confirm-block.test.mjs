@@ -27,6 +27,7 @@ const ROOT = fileURLToPath(new URL("../..", import.meta.url));
 const read = (p) => fs.readFileSync(path.join(ROOT, p), "utf8");
 
 const CONFIRM = "marketing/landing-pages/04e-book-confirm.html";
+const CLOSE_TODAY = "marketing/landing-pages/04g-book-close-today.html";
 const BOOKING = "marketing/landing-pages/slo/slo-02-booking.html";
 const KEY = "fh_booking_v1";
 const PARENT = "https://apply.fundhub.ai";
@@ -34,6 +35,7 @@ const SCHED = '[data-page-element="AppointmentScheduler/V1"]';
 
 const scriptsOf = (html) => [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
 const BLOCK = read(CONFIRM);
+const CLOSE_TODAY_BLOCK = read(CLOSE_TODAY);
 const BLOCK_JS = scriptsOf(BLOCK)[0];
 
 // The fh_booking_v1 writer live in the /funding-book-call body (a Custom HTML element
@@ -577,41 +579,62 @@ describe("the apply-book push carries the block in the same whole-footer write",
   // live footer_code of page 25062844, read by API 2026-10-02
   const LIVE_FOOT = [tag(FH_ATTRIBUTION_SRC), tag(FH_EVENTS_SRC), tag(CLARITY_SRC)].join("\n");
 
-  test("apply-book names the fragment and its own marker", () => {
+  test("apply-book carries both acceptance and same-day booking protection", () => {
     const row = ROW["apply-book"];
     assert.deepEqual(row.footerBlocks, [
       { fragment: CONFIRM, marker: "fh-book-confirm" },
-      { fragment: "marketing/landing-pages/04g-book-close-today.html", marker: "fh-book-close-today" },
+      { fragment: CLOSE_TODAY, marker: "fh-book-close-today" },
     ]);
     assert.equal(row.strategy, "head_footer_append_only", "never a full replace");
     assert.deepEqual(row.extraFooterScripts, [FH_EVENTS_SRC, CLARITY_SRC]);
     for (const k of ["apply-book-framed", "apply-book-fit"]) {
       assert.equal(ROW[k].pageId, row.pageId);
       assert.notEqual(ROW[k].marker, "fh-book-confirm");
+      assert.notEqual(ROW[k].marker, "fh-book-close-today");
     }
     assert.equal(PUSH_MANIFEST.filter((r) => r.footerBlocks).length, 1, "only the calendar page carries a footer block");
   });
 
   test("first push appends the block once after the scripts; the next push sends nothing", () => {
-    const blocks = [{ block: BLOCK, marker: "fh-book-confirm" }];
+    // Use the exact manifest inventory; neither block may silently disappear.
+    const blocks = ROW["apply-book"].footerBlocks.map(({ fragment, marker }) => ({
+      block: read(fragment), marker,
+    }));
     const opts = { extraSrcs: [FH_EVENTS_SRC, CLARITY_SRC], blocks };
     const first = nextFooterCode(LIVE_FOOT, opts);
     assert.equal(first.changed, true);
     assert.deepEqual(first.added, []);
-    assert.deepEqual(first.blocks, [{ marker: "fh-book-confirm", action: "append" }]);
-    assert.equal(first.next, `${LIVE_FOOT}\n${BLOCK.trim()}`, "scripts byte for byte, block at the end");
+    assert.deepEqual(first.blocks, [
+      { marker: "fh-book-confirm", action: "append" },
+      { marker: "fh-book-close-today", action: "append" },
+    ]);
+    assert.equal(first.next, `${LIVE_FOOT}\n${BLOCK.trim()}\n${CLOSE_TODAY_BLOCK.trim()}`,
+      "scripts byte for byte; both safety blocks appended in manifest order");
     const again = nextFooterCode(first.next, { ...opts, existing: first.next });
     assert.equal(again.changed, false);
-    assert.deepEqual(again.blocks, [{ marker: "fh-book-confirm", action: "none" }]);
+    assert.deepEqual(again.blocks, [
+      { marker: "fh-book-confirm", action: "none" },
+      { marker: "fh-book-close-today", action: "none" },
+    ]);
     const v2 = BLOCK.replace("fh-book-confirm:start v1", "fh-book-confirm:start v2");
-    const swap = nextFooterCode(first.next, { ...opts, blocks: [{ block: v2, marker: "fh-book-confirm" }] });
-    assert.equal(swap.next, `${LIVE_FOOT}\n${v2.trim()}`, "swapped in place");
+    const swap = nextFooterCode(first.next, { ...opts, blocks: [
+      { block: v2, marker: "fh-book-confirm" },
+      { block: CLOSE_TODAY_BLOCK, marker: "fh-book-close-today" },
+    ] });
+    assert.equal(swap.next, `${LIVE_FOOT}\n${v2.trim()}\n${CLOSE_TODAY_BLOCK.trim()}`,
+      "confirmation updated in place without deleting the same-day booking guard");
+    assert.deepEqual(swap.blocks, [
+      { marker: "fh-book-confirm", action: "replace" },
+      { marker: "fh-book-close-today", action: "none" },
+    ]);
   });
 
-  test("an empty footer still gets every script and the block", () => {
-    const r = nextFooterCode("", { extraSrcs: [FH_EVENTS_SRC, CLARITY_SRC], blocks: [{ block: BLOCK, marker: "fh-book-confirm" }] });
+  test("an empty footer still gets every script and both safety blocks", () => {
+    const blocks = ROW["apply-book"].footerBlocks.map(({ fragment, marker }) => ({ block: read(fragment), marker }));
+    const r = nextFooterCode("", { extraSrcs: [FH_EVENTS_SRC, CLARITY_SRC], blocks });
     for (const src of [FH_ATTRIBUTION_SRC, FH_EVENTS_SRC, CLARITY_SRC]) assert.ok(hasScriptSrc(r.next, src), src);
     assert.equal(r.next.split("<!-- fh-book-confirm:start").length - 1, 1);
+    assert.equal(r.next.split("<!-- fh-book-close-today:start").length - 1, 1);
   });
 
   test("the push script reads footerBlocks into the builder-page footer plan", () => {

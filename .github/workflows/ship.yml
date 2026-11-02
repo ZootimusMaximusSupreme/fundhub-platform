@@ -171,6 +171,7 @@ jobs:
       - name: Ship
         env:
           CI: "true"
+          FUNDHUB_SHIP_EXPECTED_SHA: ${{ needs.release_gate.outputs.sha }}
           NODE_OPTIONS: "--dns-result-order=ipv4first"
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
@@ -189,18 +190,21 @@ jobs:
       - name: Verify published CRM and portal assets match this release
         env:
           NODE_OPTIONS: "--dns-result-order=ipv4first"
+          FUNDHUB_SHIP_EXPECTED_SHA: ${{ needs.release_gate.outputs.sha }}
         run: |
           node --input-type=module <<'JS'
           import fs from 'node:fs';
           import crypto from 'node:crypto';
           import {execFileSync} from 'node:child_process';
-          const source=execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim();
+          const source=process.env.FUNDHUB_SHIP_EXPECTED_SHA||'';
+          if(!/^[a-f0-9]{40}$/.test(source))throw Error('Missing exact CI-approved release SHA');
+          execFileSync('git',['merge-base','--is-ancestor',source,'HEAD']);
           const paths=['/app/my-numbers.html','/app/my-numbers.css','/app/pipeline.html','/app/sales-floor.html','/app/sales-floor.css','/app/finance-os.html','/app/csm-queue.html','/app/contracts.html','/app/lenders.html','/app/client-portal.html','/portal-login.html','/app/fundhub-font.css','/app/fundhub-font.js','/app/client-ios.css','/app/client-ios.js','/app/shell.js','/app/crm-sidebar.css','/app/workspace-ui.css','/assets/fonts/nunito-latin-variable.woff2'];
           const hash=data=>crypto.createHash('sha256').update(data).digest('hex');
           const results=[];
           for(let offset=0;offset<paths.length;offset+=4){
             const batch=await Promise.all(paths.slice(offset,offset+4).map(async path=>{
-              const expected=hash(fs.readFileSync('public'+path));let last;
+              const expected=hash(execFileSync('git',['show',source+':public'+path]));let last;
               for(let attempt=0;attempt<3;attempt++){
                 try{
                   const response=await fetch('https://fundhub.ai'+path+'?release='+source,{headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(15000)});

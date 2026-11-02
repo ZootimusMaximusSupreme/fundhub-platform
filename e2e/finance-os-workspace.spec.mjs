@@ -140,7 +140,9 @@ test('no selection: choose a client with keyboard; no financial reads',async ({p
   await page.keyboard.type('Dana');
   await page.keyboard.press('Tab');
   await expect(page.locator('#fosClient')).toBeFocused();
-  await page.keyboard.press('ArrowDown');
+  await expect(page.locator('#fosClient option[value="'+ID+'"]')).toHaveCount(1);
+  // Native select type-ahead commits on both Mac and Linux without a popup.
+  await page.keyboard.press('d');
   await page.keyboard.press('Tab');
   await expect(page.locator('#fosClient')).toHaveValue(ID);
   await expect(page.locator('#fosOpen')).toBeFocused();

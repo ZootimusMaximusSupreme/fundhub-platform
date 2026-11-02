@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert";
 import {
   handle as actualHandle, gridCells, resolveCellKey, runDeckDrip as actualRunDeckDrip,
-  currentDeckBooking, deckContentReady, deckTime, DECK_SLOTS, DECK_TITLES,
+  currentDeckBooking, deckContentReady, deckTime, DECK_SLOTS, DECK_TITLES, DECK_INTROS,
   FUNDING_PREFIX, REPAIR_PREFIX, DAYS, SLOTS, DAILY_SLOTS, KICKOFF_SLOT, KICKOFF_WAIT,
   SMS_BS01_BOOKED, SMS_BS01_PRECALL, SMS_BS01_DAYOF
 } from "./bs-01-precall-launcher.mjs";
@@ -42,10 +42,13 @@ test("deck plan covers both lanes and selects a distinct lesson for each slot", 
   for (const lane of ["funding", "blueprint"]) {
     const slugs = DECK_SLOTS.map((slot) => slot[lane]).filter(Boolean);
     assert.equal(new Set(slugs).size, slugs.length, "a person never sees the same lesson twice");
-    for (const slug of slugs) assert.ok(DECK_TITLES[slug], slug);
+    for (const slug of slugs) {
+      assert.ok(DECK_TITLES[slug], slug);
+      assert.ok(DECK_INTROS[slug], slug);
+    }
   }
   assert.equal(new Set(DECK_SLOTS.flatMap((slot) => [slot.funding, slot.blueprint]).filter(Boolean)).size, 22);
-  assert.equal(DECK_SLOTS.filter((slot) => slot.channel === "push").length, 3);
+  assert.equal(DECK_SLOTS.filter((slot) => slot.channel === "push").length, 0);
   const times = DECK_SLOTS.map((_, i) => deckTime("2026-11-10T17:00:00.000Z", i).getTime());
   assert.ok(times.every((time, i) => !i || time - times[i - 1] >= 60 * 60 * 1000));
 });
@@ -55,7 +58,7 @@ test("deck emails use the saved survey lane and live URL", async () => {
     clients: [{ ...fundingClient(), custom_fields: { cf_svy_self_reported_fico: "700-759" } }],
     templates: [
       { org_id: "org-1", template_key: "EMAIL-BS-DECK-LESSON", channel: "email",
-        subject: "{{deck_title}}", body: "{{deck_url}}", compliance_passed: true },
+        subject: "{{deck_title}}", body: "{{deck_intro}}\n{{deck_url}}", compliance_passed: true },
       { org_id: "org-1", template_key: "SMS-BS-DECK", channel: "sms",
         body: "{{deck_url}}", compliance_passed: true }
     ]
@@ -65,13 +68,14 @@ test("deck emails use the saved survey lane and live URL", async () => {
     eventId: "evt-decks", startTime: farStart(),
     sendPush: async (_db, args) => { pushes.push(args.slug); return { sent: true }; } });
   assert.equal(result.sent.length, 13);
-  assert.equal(db.messages.length, 10);
-  assert.equal(pushes.length, 3);
+  assert.equal(db.messages.length, 13);
+  assert.equal(pushes.length, 0);
   assert.ok(db.messages.some((message) => /\/slideshows\/pre-underwriting\.html/.test(message.rendered_body)));
   assert.ok(db.messages.some((message) => /\/slideshows\/funding-sequence\.html/.test(message.rendered_body)));
+  assert.ok(db.messages.some((message) => /strong score can still meet a bank rule/.test(message.rendered_body)));
 });
 
-test("push lessons fall back to email when app push is unavailable", async () => {
+test("deck lessons send email without direct marketing push", async () => {
   const db = pgFake({ clients: [{ ...fundingClient(), custom_fields: { cf_svy_self_reported_fico: "700-759" } }],
     templates: [
       { org_id: "org-1", template_key: "EMAIL-BS-DECK-LESSON", channel: "email",
@@ -81,7 +85,7 @@ test("push lessons fall back to email when app push is unavailable", async () =>
     ] });
   const result = await runDeckDrip({ db, step: fakeStep(), orgId: "org-1", clientId: "cl-1",
     eventId: "evt-fallback", startTime: farStart(),
-    sendPush: async () => ({ sent: false, reason: "push_not_enabled" }) });
+    sendPush: async () => { throw new Error("deck lessons must not send direct push"); } });
   assert.equal(result.sent.length, 13);
   assert.equal(db.messages.length, 13);
   assert.equal(db.messages.filter((m) => m.channel === "email").length, 11);
@@ -230,15 +234,19 @@ test("a moved call is checked before any old-run deck message queues", async () 
   assert.equal(db.messages.length, 0);
 });
 
-test("a push booking change cannot fall back into a stale email", async () => {
-  const db = pgFake({ clients: [{ ...fundingClient(), custom_fields: { cf_svy_self_reported_fico: "700-759" } }],
+test("a moved call stops email at the former push slot", async () => {
+  const db = pgFake({ clients: [{ ...repairClient(), custom_fields: { cf_svy_self_reported_fico: "500-619" } }],
     templates: [{ org_id: "org-1", template_key: "EMAIL-BS-DECK-LESSON",
       channel: "email", body: "{{deck_url}}", compliance_passed: true }] });
+  let checks = 0;
   const result = await runDeckDrip({ db, step: fakeStep(), orgId: "org-1", clientId: "cl-1",
     eventId: "old-event", startTime: farStart(),
-    sendPush: async () => ({ sent: false, reason: "booking_changed" }) });
+    bookingCurrent: async () => ++checks === 1,
+    sendPush: async () => { throw new Error("deck lessons must not send direct push"); } });
   assert.equal(result.stoppedBecause, "booking_changed");
-  assert.equal(db.messages.length, 0);
+  assert.equal(result.sent.length, 1);
+  assert.equal(db.messages.length, 1);
+  assert.match(db.messages[0].rendered_body, /bank-said-no/);
 });
 
 test("noon and 3 p.m. calls keep all lane lessons clear of reminders", async () => {

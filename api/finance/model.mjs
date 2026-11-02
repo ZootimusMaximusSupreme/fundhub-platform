@@ -25,20 +25,9 @@
 // (src/finance/os-grid.mjs:3). deal-model.html renders what this returns and
 // decides nothing.
 //
-// *** THE DEPOSIT LOWERS NET CASH. IT IS NOT A DISCOUNT ON THE FEE. ***
-// This was wrong until the scaffold pass fixed it, and it is the single number
-// on this screen most likely to be read out loud to a client. calcDeal used to
-// compute the fee taken from proceeds as `max(0, fee - downPayment)`, which
-// treated the deposit as prepayment of the success fee — so paying MORE up front
-// made net cash go UP. The two places that actually move money disagree:
-// src/workflows/f-07-funding-locked.mjs:74 invoices the success fee as
-// `approvedAmount * feePercent` with no deposit term at all, and
-// db/migrations/011_sales.sql:82 makes `deposit` and `success_fee` separate,
-// co-existing values of sale_payments.kind — the front end and the back end. So
-// the deposit is money ON TOP of the fee, net cash is funding − fee − deposit,
-// and on the worked example the old formula overstated it by $6,000. The
-// regression test is 'a larger deposit LOWERS net cash to the client' in
-// src/calculators/deal-math.test.mjs. Do not reintroduce the offset.
+// Funding Agreement section 2 credits the deposit once toward the success fee.
+// calcDeal subtracts the paid deposit and remaining fee from lifetime cash;
+// the deposit is never charged a second time on top of the total fee.
 //
 // *** THE GUARDRAIL MEASURES THE DELTA, NOT THE ABSOLUTE. *** calcFunding's hard
 // stop fires when THIS DRAW pushes utilization across the threshold, not when

@@ -10,6 +10,7 @@
 //   * that 042_partners.sql's trigger really is still there and really raises,
 //   * that db/migrations/283_partner_license_template.sql really put a
 //     PARTNER-LICENSE row in the database this application runs on,
+//     and 530_decommission_unused_agreements.sql retired it *without deletion*,
 //   * that stamping through the module really does release the same payout that
 //     was refused a moment earlier.
 //
@@ -17,9 +18,14 @@
 //
 //   partner active, nothing signed  → payout refused by the database
 //                                   → stampPartnerAgreement refuses too
-//   a real PARTNER-LICENSE signed   → stamped from the moment on the document
+//   a real HISTORIC signed licence → stamped from the moment on the document
 //                                   → the same payout goes through
 //   somebody else's signed licence  → does nothing for this partner
+//
+// 530 deliberately removed PARTNER-LICENSE from new drafting choices. Do not
+// re-activate it to make a test pass: look up its retained historical wording
+// with activeOnly:false, prove active-only issuance is blocked, then independently
+// prove that real previously signed copies still unlock existing payout holds.
 //
 // SKIPS unless DATABASE_URL is set, with the reason printed, so an unset database
 // reads as skipped and never as green. That is exactly why the stub file exists
@@ -171,21 +177,19 @@ after(async () => {
 /* ═════════════════════════════════════════════════════════════════════════ */
 
 describe("the document 042's gate holds out for", { skip: SKIP }, () => {
-  test("migration 283 seeded the partner licence and 530 retired new sends", async () => {
+  test("283 seeded a partner licence; 530 retired it but preserved historical copy", async () => {
     const tpl = await getPartnerLicenseTemplate(db, { orgId, activeOnly: false });
     assert.ok(
       tpl,
-      "there is no PARTNER-LICENSE template in this database. Every partner payout is " +
-      "held on partners.agreement_signed_at (042_partners.sql) and this is the document " +
-      "that stamps it — without the row, a partner can be approved, produce, and never " +
-      "be paid.");
+      "the historical PARTNER-LICENSE wording disappeared from this database, " +
+      "breaking existing signed-document lookup and partner payout evidence.");
     assert.equal(tpl.template_key, PARTNER_LICENSE_TEMPLATE_KEY);
     assert.equal(tpl.subtype, PARTNER_LICENSE_SUBTYPE);
     assert.equal(tpl.signature_required, true);
     assert.equal(tpl.source_kind, "text");
-    assert.equal(tpl.active, false, "retired partner licences must stay unavailable for new sends");
+    assert.equal(tpl.active, false, "migration 530 deliberately decommissioned new partner-license drafts");
     assert.equal(await getPartnerLicenseTemplate(db, { orgId }), null,
-      "an archived partner licence must not be offered for a new send");
+      "the archived partner license was offered as new agreement wording");
     assert.ok(tpl.body && tpl.body.length > 2000, "the seeded licence has no words in it");
   });
 
