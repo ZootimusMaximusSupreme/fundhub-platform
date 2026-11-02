@@ -518,6 +518,13 @@ test("step fields: every kind of step shows its own boxes with what is saved in 
     await page.locator('#pbody [data-k="role"]').selectOption("Funding Advisor");
     // a trailing space is kept as typed: nothing trims a box on the way in
     await page.locator('#pbody [data-k="stage"]').fill("File Received ");
+    // An already-visible save bar must stay in its final slot while another field is edited.
+    // Replaying its entrance can cover the next step between a real pointer press and release.
+    const saveBar = await page.locator('#canvas > .bar').evaluate((bar) => ({
+      bottom: bar.getBoundingClientRect().bottom, viewport: window.innerHeight,
+    }));
+    assert.ok(Math.abs(saveBar.bottom - saveBar.viewport) < 1,
+      `editing again must not slide the existing save bar over the canvas: ${JSON.stringify(saveBar)}`);
 
     await pick("k8");
     assert.deepEqual(await fieldKeys(), ["title", "agent", "note"]);
