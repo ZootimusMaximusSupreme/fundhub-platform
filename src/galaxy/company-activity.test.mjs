@@ -56,7 +56,7 @@ test("companyActivity maps open-shift staff to active nodes and respects demo to
     {
       match: (sql) => /FROM agents/.test(sql),
       result: () => ({ rows: [
-        { code: "AG-04", name: "Setter Josh", agent_class: "client_facing", channel: "voice", status: "live", runtime: "bland", went_live_at: new Date(), sort_order: 1, runs_today: 7, runs_15m: 2, blocked_15m: 1 },
+        { code: "AG-04", name: "Setter Chris", agent_class: "client_facing", channel: "voice", status: "live", runtime: "bland", went_live_at: new Date(), sort_order: 1, runs_today: 7, runs_15m: 2, blocked_15m: 1 },
         { code: "OP-06", name: "Quiet Ops", agent_class: "ops", channel: "internal", status: "shadow", runtime: "internal", went_live_at: null, sort_order: 2, runs_today: 0, runs_15m: 0, blocked_15m: 0 }
       ] })
     },

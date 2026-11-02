@@ -652,3 +652,55 @@ test("N11: no signing secret — the email still queues, the gap is logged", asy
   assert.ok(!db.messages[0].rendered_body.includes("{{"));
   assert.ok(warnings.some((w) => /\{\{unsubscribe\}\} left blank in EMAIL-NOBOOK-01/.test(w)), String(warnings));
 });
+
+// Text and email links pick the funding calendar from the saved score answer
+// (owner-set 2026-10-30). /apply frames the first calendar for 700-749 or 750+ and the
+// second for every other answer; a text link opens in a tab that never saw /apply.
+const BOOK_TPL = "Pick a time: {{custom_values.booking_link}}";
+async function bookingLinkFor(cf) {
+  const db = pgFake({ templates: [tpl("SMS-NOBOOK-01", BOOK_TPL)], clients: [client({ custom_fields: cf })] });
+  await withEnv({ SALES_MEET_BOOKING_URL: null }, () => sendTemplated(db, { ...BASE, templateKey: "SMS-NOBOOK-01" }));
+  return db.messages[0].rendered_body.replace("Pick a time: ", "");
+}
+
+test("a 700+ score answer gets the first calendar, marked q", async () => {
+  assert.equal(await bookingLinkFor({ cf_svy_self_reported_fico: "750+" }), "https://apply.fundhub.ai/funding-book-call?fh_tier=q");
+  assert.equal(await bookingLinkFor({ cf_svy_self_reported_fico: "700-749" }), "https://apply.fundhub.ai/funding-book-call?fh_tier=q");
+  assert.equal(await bookingLinkFor({ cf_svy_self_reported_fico: 1234567, cf_svy_self_reported_fico_label: "700-749" }),
+    "https://apply.fundhub.ai/funding-book-call?fh_tier=q", "the saved label wins over a ClickFunnels option id");
+});
+
+test("every other score answer, Not sure too, gets the second calendar, marked u", async () => {
+  for (const band of ["650-699", "580-649", "500-579", "Not sure"]) {
+    assert.equal(await bookingLinkFor({ cf_svy_self_reported_fico: band }),
+      "https://apply.fundhub.ai/funding-book-call--02424?fh_tier=u", band);
+  }
+});
+
+test("no readable score answer keeps today's link with no mark", async () => {
+  assert.equal(await bookingLinkFor({}), "https://apply.fundhub.ai/funding-book-call");
+  assert.equal(await bookingLinkFor({ cf_svy_self_reported_fico: "" }), "https://apply.fundhub.ai/funding-book-call");
+  assert.equal(await bookingLinkFor({ cf_svy_self_reported_fico: 1234567 }), "https://apply.fundhub.ai/funding-book-call",
+    "a ClickFunnels option id is not a band, so no calendar is guessed");
+});
+
+test("a setter's corrected score on the call picks the calendar", async () => {
+  assert.equal(await bookingLinkFor({ cf_svy_self_reported_fico: "650-699", setter_survey_edits: { cf_svy_self_reported_fico: "700-749" } }),
+    "https://apply.fundhub.ai/funding-book-call?fh_tier=q");
+  assert.equal(await bookingLinkFor({ cf_svy_self_reported_fico: "750+", setter_survey_edits: { cf_svy_self_reported_fico: "Not sure" } }),
+    "https://apply.fundhub.ai/funding-book-call--02424?fh_tier=u");
+  assert.equal(await bookingLinkFor({ setter_survey_edits: { cf_svy_self_reported_fico: "580-649" } }),
+    "https://apply.fundhub.ai/funding-book-call--02424?fh_tier=u", "a correction counts with no typed answer");
+  assert.equal(await bookingLinkFor({ cf_svy_self_reported_fico: "750+", setter_survey_edits: { cf_svy_self_reported_fico: "junk", cf_svy_planned_use: "Equipment" } }),
+    "https://apply.fundhub.ai/funding-book-call?fh_tier=q", "an unreadable correction leaves the typed answer");
+});
+
+test("a link saved on the lead's file still wins over the score", async () => {
+  assert.equal(await bookingLinkFor({ cf_svy_self_reported_fico: "580-649", calendar_booking_link: "https://example.com/own" }),
+    "https://example.com/own");
+});
+
+test("the score never rides in the link, only the one-letter mark", async () => {
+  const link = await bookingLinkFor({ cf_svy_self_reported_fico: "580-649" });
+  assert.ok(!/580|649|unqualified|score|credit/i.test(link), link);
+});

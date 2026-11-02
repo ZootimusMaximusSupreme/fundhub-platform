@@ -106,12 +106,12 @@ export const EVENT_EMITTERS = {
     ],
     note: "Busiest event on the system: 400 rows on file as of the verification date."
   },
-  "survey.submitted": {
+  "survey.completed": {
     emitters: [
-      { how: "The public survey form on the website posts it (api/public/survey-submit.mjs), in the same request that emits entry.captured.", gate: null },
-      { how: "The ClickFunnels order webhook.", gate: "CLICKFUNNELS_WEBHOOK_SECRET" }
+      { how: "The public survey form on the website posts it (api/public/survey-submit.mjs), in the same request as survey.submitted, once the last answer is in.", gate: null },
+      { how: "The ClickFunnels order webhook, on the post that carries the last survey answer (cf_svy_available_capital).", gate: "CLICKFUNNELS_WEBHOOK_SECRET" }
     ],
-    note: "267 rows on file as of the verification date."
+    note: "Once per finished survey. Starts the never-booked chase (S-NOBOOK). survey.submitted fires after every answered screen and no longer starts a workflow (owner-set 2026-10-31)."
   },
   "analysis.completed": {
     emitters: [
@@ -143,6 +143,12 @@ export const EVENT_EMITTERS = {
       { how: "A closer saves a call outcome (src/sales/call-outcomes.mjs). No secret gates this.", gate: null }
     ],
     note: "Closer payloads use disposition: \"closer\" so the no-answer SMS cadence does not fire."
+  },
+  "setter.no_answer": {
+    emitters: [
+      { how: "A setter saves \"No answer\" on the setter desk (src/setter/dashboard.mjs). Sent once per lead per Arizona day; a second dial the same day starts no second cadence.", gate: null }
+    ],
+    note: "Starts AI-SET-03, the no-answer text cadence. New 2026-10-31, so no rows on file before then."
   },
   "diagnostic.paid": {
     emitters: [

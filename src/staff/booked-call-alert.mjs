@@ -193,16 +193,16 @@ export function buildAlertBody({ client = {}, booking = {}, commissionRules = []
   return lines.join("\n");
 }
 
-export function buildSetterAlertBody({ client = {}, booking = {} } = {}) {
+export function buildSetterAlertBody({ client = {}, booking = {}, label = "Booked call" } = {}) {
   return buildStaffLeadText({
     client: { ...client, first_name: client.first_name || clean(booking.name).split(/\s+/)[0],
-      phone: client.phone || booking.phone, email: client.email || booking.email },
+      phone: client.phone || booking.phone, email: client.email || booking.email, custom_fields: {} },
     startTime: booking.startTime
-  });
+  }).replace(/^New lead:/, `${label}:`);
 }
 
 export async function queueStaffBookedAlerts(db, {
-  orgId, clientId, eventId, payload = {}, drainNowImpl = drainMessageNow,
+  orgId, clientId, eventId, eventName = "booking.created", payload = {}, drainNowImpl = drainMessageNow,
   pushImpl = sendNativeToStaff
 } = {}) {
   if (!orgId || !eventId) return { queued: 0, reason: "missing_ids" };
@@ -250,7 +250,14 @@ export async function queueStaffBookedAlerts(db, {
     startTime: payload.startTime || payload.start_time,
     timezone: payload.timezone || payload.tzid || payload.tz
   };
-  const setterBody = renderTemplate(row.body, { alert_body: buildSetterAlertBody({ client, booking }) });
+  const prior = eventName === "booking.created" && clientId && booking.startTime
+    ? (await db.query(`SELECT 1 FROM bookings WHERE org_id = $1 AND client_id = $2
+        AND starts_at IS DISTINCT FROM $3::timestamptz LIMIT 1`,
+      [orgId, clientId, booking.startTime])).rows.length > 0
+    : false;
+  const label = eventName === "booking.rescheduled" ? "Rescheduled call"
+    : prior ? "Rebooked call" : "Booked call";
+  const setterBody = renderTemplate(row.body, { alert_body: buildSetterAlertBody({ client, booking, label }) });
 
   let queued = 0;
   let sent = 0;

@@ -57,8 +57,8 @@ Each event: `{ event_name, event_time, event_id, event_source_url, action_source
 | softpull_submit | SoftPullSubmitted (custom) | step-3 submit | businesses |
 | survey_answer on the last question, credit_tier qualified (/apply) | QualifiedLead (custom) | survey submit, score answer 700+ | content_name = survey |
 | survey_answer on the last question, credit_tier unqualified (/apply) | UnqualifiedLead (custom) | survey submit, any other score answer | content_name = survey |
-| booking_confirmed with credit_tier qualified | QualifiedSchedule (custom) | booking from a qualified /apply tab | content_name = calendar |
-| booking_confirmed with credit_tier unqualified | UnqualifiedSchedule (custom) | booking from an unqualified /apply tab | content_name = calendar |
+| booking_confirmed with credit_tier qualified | QualifiedSchedule (custom) | booking from a qualified /apply tab, or from a text or email link marked `fh_tier=q` | content_name = calendar |
+| booking_confirmed with credit_tier unqualified | UnqualifiedSchedule (custom) | booking from an unqualified /apply tab, or from a text or email link marked `fh_tier=u` | content_name = calendar |
 
 The old `InitiateCheckout` on the Pay press in `fh-attribution.js` and the hand-written `Lead`/`Schedule` calls in `apply-survey.html` are replaced by this map (no double counting).
 

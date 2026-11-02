@@ -24,7 +24,7 @@ function withAgents(db, agents) {
   return db;
 }
 
-test("booking.created would call placeCall with Josh prompt + client phone", async () => {
+test("booking.created would call placeCall with the setter prompt + client phone", async () => {
   // Dry-run: no real person called.
   const placed = [];
   const db = pgFake({
@@ -41,20 +41,20 @@ test("booking.created would call placeCall with Josh prompt + client phone", asy
   assert.equal(placed.length, 1);
   assert.equal(placed[0].phone, CLIENT_PHONE);
   assert.equal(placed[0].agent.prompt, VENDOR_SETTER_TASK);
-  assert.match(placed[0].agent.prompt, /You are Josh/);
+  assert.match(placed[0].agent.prompt, /You are Chris/);
   assert.equal(placed[0].clientId, "cl-1");
 });
 
 test("AG-04 row wins over the vendor file when it is ready", async () => {
   // Dry-run: no real person called.
   const placed = [];
-  const dbPrompt = "You are Josh. Confirm the Strategy Session from the Agent Editor.";
+  const dbPrompt = "You are Chris. Confirm the Strategy Session from the Agent Editor.";
   const db = withAgents(pgFake({
     clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", phone: CLIENT_PHONE }]
   }), [{
     org_id: "org-1",
     code: JOSH_CODE,
-    name: "Setter Josh",
+    name: "Setter Chris",
     status: "live",
     channel: "voice",
     agent_class: "client_facing",
@@ -80,12 +80,12 @@ test("retired AG-04 does not placeCall and does not fall back to vendor", async 
   }), [{
     org_id: "org-1",
     code: JOSH_CODE,
-    name: "Setter Josh",
+    name: "Setter Chris",
     status: "retired",
     channel: "voice",
     agent_class: "client_facing",
     runtime: "bland",
-    prompt: "You are Josh. Still has a script, but retired must not dial."
+    prompt: "You are Chris. Still has a script, but retired must not dial."
   }]);
   const res = await handle({
     event: ev("booking.created", {}, { clientId: "cl-1" }),
@@ -99,7 +99,7 @@ test("retired AG-04 does not placeCall and does not fall back to vendor", async 
   assert.equal(placed.length, 0);
 });
 
-test("quiet-hours-blocks-or-delays-josh: 8pm Arizona waits until 8am, then dials once", async () => {
+test("quiet-hours-blocks-or-delays-setter: 8pm Arizona waits until 8am, then dials once", async () => {
   const placed = [];
   const sleeps = [];
   const night = new Date("2026-08-02T03:00:00Z"); // 8pm Arizona
@@ -124,7 +124,7 @@ test("quiet-hours-blocks-or-delays-josh: 8pm Arizona waits until 8am, then dials
   assert.equal(placed.length, 1, "one call after the wait, not two");
 });
 
-test("quiet-hours-blocks-or-delays-josh: daytime Arizona dials once with no wait", async () => {
+test("quiet-hours-blocks-or-delays-setter: daytime Arizona dials once with no wait", async () => {
   const placed = [];
   const sleeps = [];
   const afternoon = new Date("2026-08-02T18:00:00Z"); // 11am Arizona
@@ -164,11 +164,11 @@ test("successful placeCall writes outbound_calls as ai-set-01-josh-setter", asyn
     event: ev("booking.created", {}, { clientId: "cl-1" }),
     db,
     step: fakeStep(),
-    placeCallImpl: async () => ({ status: "sent", callId: "bland-josh-1", reason: "placed" })
+    placeCallImpl: async () => ({ status: "sent", callId: "bland-setter-1", reason: "placed" })
   });
   assert.equal(res.done, true);
   assert.equal(inserts.length, 1);
-  assert.deepEqual(inserts[0], ["bland-josh-1", "cl-1", "org-1", JOSH_CALL_KIND]);
+  assert.deepEqual(inserts[0], ["bland-setter-1", "cl-1", "org-1", JOSH_CALL_KIND]);
 });
 
 test("prove sim skips quiet hours and dials once at night", async () => {

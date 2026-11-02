@@ -321,8 +321,8 @@ These rules apply to every script in this concept.
 - **Length:** SLO ads run about a minute (around 150 words, up to about 1:15). Sorting hat ads run
   115 to 125 words with no introduction.
 - Law: RULES Part 0 (marketing/ads/RULES.md) - every rule there applies to these scripts: cause-first hook, certainty, second person, the banned words and constructions.
-- **Refund line:** "If you're not happy with what you get, email us and we'll refund you." Never
-  state a day count.
+- **Refund line:** "If you're not happy with what you get, email us and we'll refund you." A day
+  count is allowed when it matches the written guarantee (owner-set 2026-10-31, `.ai/rules/copy-certainty.md`).
 - Law: funding-sequence-term (.ai/rules/funding-sequence-term.md) - say next funding sequence, never round two; a funding sequence holds several rounds.
 - **Handoff for filming:** Notes ads are bullet cues (Part 0 rule 43). Plain text, no markdown, so
   it pastes into BigVU in one go.

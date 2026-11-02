@@ -7,7 +7,7 @@
 // the message (or task) that should exist, minus the people it should skip.
 //
 // Five tripwires, one per place a customer would feel it:
-//   handoff:lead-first-touches-missing   welcome email, finish-application nudge, never-booked chase
+//   handoff:lead-first-touches-missing   welcome email, first come-back message, never-booked chase
 //   handoff:contact-no-followup          the 15-minute note and the $197 offer after /roadmap contact
 //   handoff:booking-no-confirm           the booking confirm email (it carries portal access)
 //   handoff:reminder-missing             the 24-hour and 2-hour reminder texts
@@ -50,14 +50,38 @@ export const LOOKBACK_DAYS = 7;
 
 /** Welcome email goes at once. 30 minutes is the owner's grace. */
 export const WELCOME_GRACE_MIN = 30;
-/** S-02 waits 20 minutes, then nudges. 25 minutes is the grace. */
+/** S-02's first come-back message is due 20 minutes after the sign-up. */
+export const NUDGE_DUE_MIN = 20;
+/** 25 minutes is the grace: the message is a miss 5 minutes after it was due. */
 export const NUDGE_GRACE_MIN = 25;
-/** A survey that lands this long after the sign-up still counts as "finished" (S-02 checks at 20). */
-export const NUDGE_SURVEY_SLACK_MIN = 25;
-/** S-NOBOOK waits 2 hours. Another 30 minutes of grace so a run in flight is not a miss. */
+/** S-NOBOOK's first message is due 2 hours after the survey is finished. */
+export const NOBOOK_DUE_MIN = 120;
+/** Another 30 minutes of grace so a run in flight is not a miss. */
 export const NOBOOK_GRACE_MIN = 150;
-/** A booking made up to 2 hours 10 minutes after the survey stops the chase before message 1. */
-export const NOBOOK_BOOKED_SLACK_MIN = 130;
+/** A booking or a reply this soon after the due time still stopped message 1 (the run checks, then sends). */
+export const STOP_SLACK_MIN = 10;
+/** S-NOBOOK files the setter's call task 15 minutes after the survey is finished (a task, not a drip). */
+export const SETTER_TASK_DUE_MIN = 15;
+/** 25 minutes is the grace for that task. */
+export const SETTER_TASK_GRACE_MIN = 25;
+/** The task S-NOBOOK files (src/workflows/s-nobook-chase.mjs). */
+export const SETTER_TASK_SOURCE = "setter-survey-done";
+
+/* The follow-up hours (owner-set 2026-10-31, src/messaging/send-window.mjs): a drip that
+   comes due outside 9 a.m. to 5 p.m. Arizona goes out at the next 9 a.m., and the
+   workflow waits until then before it checks and sends. So "when was it due" is the
+   same rule in SQL: the moment itself inside the window, else the next 9 a.m. there. */
+export const DRIP_TZ = "America/Phoenix";
+export function dripAtSql(t) {
+  const local = `((${t}) AT TIME ZONE '${DRIP_TZ}')`;
+  /* Minutes past midnight there, against the planning edges: 9:00 a.m. (540) to
+     4:55 p.m. (1015), the same as dripSendTime. */
+  const minute = `(extract(hour FROM ${local}) * 60 + extract(minute FROM ${local}))`;
+  return `(CASE WHEN ${minute} >= 540 AND ${minute} <= 1015 THEN (${t})
+    ELSE ((date_trunc('day', ${local})
+           + CASE WHEN ${minute} > 1015 THEN interval '1 day' ELSE interval '0 days' END
+           + interval '9 hours') AT TIME ZONE '${DRIP_TZ}') END)`;
+}
 /** The first /roadmap follow-up waits 15 minutes. 30 minutes is the grace. */
 export const CONTACT_M1_GRACE_MIN = 30;
 /** Paid within this long of the contact: the first follow-up correctly does not go. */
@@ -87,8 +111,10 @@ export const OFFER_GRACE_MIN = 30;
 
 export const TEMPLATES = Object.freeze({
   welcome: "EMAIL-S00-WELCOME",
-  nudge: "EMAIL-S02-FINISH-APPLICATION",
+  nudge: "EMAIL-S02-RESUME-1",
+  nudgeSms: "SMS-S02-RESUME-1",
   nobook: "EMAIL-NOBOOK-01",
+  nobookSms: "SMS-NOBOOK-01",
   confirmEmail: "EMAIL-S04-01-CONFIRM",
   confirmSms: "SMS-S04-01-CONFIRM",
   remind24h: "SMS-S04-02-REMIND-24H",
@@ -212,6 +238,8 @@ function tail(from = "lead l") {
   FROM ${from}`;
 }
 
+const keyList = (keys) => `IN (${keys.map((k) => `'${k}'`).join(", ")})`;
+
 /** A message of this key, to this person, written at or after the event. */
 function messageAfter(keysSql, alias = "l") {
   return `EXISTS (
@@ -253,23 +281,45 @@ const IS_SUPPRESSED_REPEAT = `(
          )
      )`;
 
-const SURVEY_WITHIN = (minutes) => `EXISTS (
+/** The survey was finished (survey.completed, the last answer) by `beforeSql`. */
+const SURVEY_DONE_BY = (beforeSql) => `EXISTS (
        SELECT 1 FROM events s
         WHERE s.org_id = l.org_id
-          AND s.name = 'survey.submitted'
-          AND s.created_at <= l.created_at + interval '${minutes} minutes'
+          AND s.name = 'survey.completed'
+          AND s.created_at <= ${beforeSql}
           AND (
             (l.cid IS NOT NULL AND s.client_id = l.cid)
             OR (l.em <> '' AND lower(btrim(COALESCE(s.payload->>'email', ''))) = l.em)
           )
      )`;
 
+/** They wrote back (message.inbound) after the event and by `beforeSql`: the chase stops.
+    Same two shapes as hasReplied (src/workflows/stop-on-reply.mjs): an email reply carries
+    the person; a text reply carries only the sender's number (payload.from), matched on the
+    last ten digits of the person's phone. */
+const REPLIED_BY = (beforeSql) => `EXISTS (
+       SELECT 1 FROM events r
+        WHERE r.org_id = l.org_id
+          AND r.name = 'message.inbound'
+          AND r.created_at > l.created_at
+          AND r.created_at <= ${beforeSql}
+          AND l.cid IS NOT NULL
+          AND (
+               r.client_id = l.cid
+            OR (r.client_id IS NULL
+                AND COALESCE(r.payload->>'channel', 'sms') = 'sms'
+                AND length(regexp_replace(COALESCE(l.cphone, ''), '\\D', '', 'g')) >= 10
+                AND right(regexp_replace(COALESCE(r.payload->>'from', ''), '\\D', '', 'g'), 10)
+                  = right(regexp_replace(l.cphone, '\\D', '', 'g'), 10))
+          )
+     )`;
+
 /** Same booking test as s-nobook-chase hasBooked(), limited to bookings that came before message 1. */
-const BOOKED_WITHIN = (minutes) => `EXISTS (
+const BOOKED_BY = (beforeSql) => `EXISTS (
        SELECT 1 FROM events b
         WHERE b.org_id = l.org_id
           AND b.name = 'booking.created'
-          AND b.created_at <= l.created_at + interval '${minutes} minutes'
+          AND b.created_at <= ${beforeSql}
           AND (
             (l.cid IS NOT NULL AND b.client_id = l.cid)
             OR (b.client_id IS NULL AND l.em <> ''
@@ -290,23 +340,52 @@ WITH ${leadCte()}
 ${tail()}
  WHERE NOT ${messageEver(`= '${TEMPLATES.welcome}'`)}`.trim();
 
-/** $1 org, $2 ['entry.captured'], $3 window start, $4 cutoff. */
+/* When message 1 was really due: the drip rule applied to sign-up + 20 minutes, or
+   finished survey + 2 hours. Read past the grace only: due + (grace - due offset). */
+const NUDGE_DUE = dripAtSql(`l.created_at + interval '${NUDGE_DUE_MIN} minutes'`);
+const NOBOOK_DUE = dripAtSql(`l.created_at + interval '${NOBOOK_DUE_MIN} minutes'`);
+const STOP_BY = (due) => `${due} + interval '${STOP_SLACK_MIN} minutes'`;
+
+/** $1 org, $2 ['entry.captured'], $3 window start, $4 cutoff (now minus the grace). */
 export const NUDGE_SQL = `
 /* gap:handoff-nudge */
 WITH ${leadCte()}
 ${tail()}
- WHERE NOT ${IS_SUPPRESSED_REPEAT}
-   AND NOT ${SURVEY_WITHIN(NUDGE_SURVEY_SLACK_MIN)}
-   AND NOT ${messageAfter(`= '${TEMPLATES.nudge}'`)}`.trim();
+ WHERE ${NUDGE_DUE} <= $4::timestamptz + interval '${NUDGE_DUE_MIN} minutes'
+   AND NOT ${IS_SUPPRESSED_REPEAT}
+   AND NOT ${SURVEY_DONE_BY(STOP_BY(NUDGE_DUE))}
+   AND NOT ${REPLIED_BY(STOP_BY(NUDGE_DUE))}
+   AND NOT ${BOOKED_BY(STOP_BY(NUDGE_DUE))}
+   AND NOT ${messageAfter(keyList([TEMPLATES.nudge, TEMPLATES.nudgeSms]))}`.trim();
 
-/** $1 org, $2 ['survey.submitted'], $3 window start, $4 cutoff. */
+/** $1 org, $2 ['survey.completed'], $3 window start, $4 cutoff (now minus the grace). */
 export const NOBOOK_SQL = `
 /* gap:handoff-nobook */
 WITH ${leadCte()}
 ${tail()}
+ WHERE ${NOBOOK_DUE} <= $4::timestamptz + interval '${NOBOOK_DUE_MIN} minutes'
+   AND NOT ${IS_SUPPRESSED_REPEAT}
+   AND NOT ${BOOKED_BY(STOP_BY(NOBOOK_DUE))}
+   AND NOT ${REPLIED_BY(STOP_BY(NOBOOK_DUE))}
+   AND NOT ${messageAfter(keyList([TEMPLATES.nobook, TEMPLATES.nobookSms]))}`.trim();
+
+/** $1 org, $2 ['survey.completed'], $3 window start, $4 cutoff (now minus the grace).
+    Finished, not booked and not replied 15 minutes later, and no setter got a call task. */
+export const SETTER_TASK_SQL = `
+/* gap:handoff-setter-task */
+WITH ${leadCte()}
+${tail()}
  WHERE NOT ${IS_SUPPRESSED_REPEAT}
-   AND NOT ${BOOKED_WITHIN(NOBOOK_BOOKED_SLACK_MIN)}
-   AND NOT ${messageAfter(`= '${TEMPLATES.nobook}'`)}`.trim();
+   AND NOT ${BOOKED_BY(`l.created_at + interval '${SETTER_TASK_DUE_MIN} minutes'`)}
+   AND NOT ${REPLIED_BY(`l.created_at + interval '${SETTER_TASK_DUE_MIN} minutes'`)}
+   AND l.cid IS NOT NULL
+   AND NOT EXISTS (
+       SELECT 1 FROM tasks t
+        WHERE t.org_id = l.org_id
+          AND t.client_id = l.cid
+          AND t.source_workflow = '${SETTER_TASK_SOURCE}'
+          AND t.created_at >= l.created_at
+     )`.trim();
 
 /* ------------------------------------------------------------------ check 2: /roadmap contact */
 
@@ -349,7 +428,6 @@ const PAID_WITHIN = (interval) => `EXISTS (
           AND ((l.cid IS NOT NULL AND pl.client_id = l.cid) OR lower(pc.email) = l.em)
      )`;
 
-const keyList = (keys) => `IN (${keys.map((k) => `'${k}'`).join(", ")})`;
 
 /**
  * $1 org, $2 window start, $3 cutoff.
@@ -593,6 +671,7 @@ export const ALL_SQL = Object.freeze({
   WELCOME_SQL,
   NUDGE_SQL,
   NOBOOK_SQL,
+  SETTER_TASK_SQL,
   CONTACT_M1_SQL,
   CONTACT_197_SQL,
   CONFIRM_SQL,
@@ -769,7 +848,7 @@ function checkFirstTouches(env) {
   const { now } = env;
   const start = windowStart(now);
   const entry = ["entry.captured"];
-  const survey = ["survey.submitted"];
+  const survey = ["survey.completed"];
   return finish({
     ...env,
     id: "handoff:lead-first-touches-missing",
@@ -783,26 +862,33 @@ function checkFirstTouches(env) {
         keys: [TEMPLATES.welcome]
       },
       {
-        label: "finish-application nudge",
+        label: "first come-back message",
         sql: NUDGE_SQL,
         params: [env.orgId, entry, start, cutoff(now, NUDGE_GRACE_MIN * MIN)],
         noun: "lead",
-        said: `had not finished the survey after ${NUDGE_GRACE_MIN} minutes and got no nudge email (${TEMPLATES.nudge})`,
-        keys: [TEMPLATES.nudge]
+        said: `stopped partway through the survey and got no come-back text or email (${TEMPLATES.nudge}) when it was due (${NUDGE_DUE_MIN} minutes after signing up, or 9 a.m. Arizona after a night sign-up)`,
+        keys: [TEMPLATES.nudge, TEMPLATES.nudgeSms]
       },
       {
         label: "never-booked chase",
         sql: NOBOOK_SQL,
         params: [env.orgId, survey, start, cutoff(now, NOBOOK_GRACE_MIN * MIN)],
         noun: "lead",
-        said: `finished the survey, never booked, and got no chase email (${TEMPLATES.nobook}) after ${NOBOOK_GRACE_MIN / 60} hours`,
-        keys: [TEMPLATES.nobook]
+        said: `finished the survey, never booked or replied, and got no chase message (${TEMPLATES.nobook}) when it was due (${NOBOOK_DUE_MIN / 60} hours after the survey, or 9 a.m. Arizona after a night survey)`,
+        keys: [TEMPLATES.nobook, TEMPLATES.nobookSms]
+      },
+      {
+        label: "setter call task",
+        sql: SETTER_TASK_SQL,
+        params: [env.orgId, survey, start, cutoff(now, SETTER_TASK_GRACE_MIN * MIN)],
+        noun: "lead",
+        said: `finished the survey, did not book in ${SETTER_TASK_DUE_MIN} minutes, and no setter got a call task (${SETTER_TASK_SOURCE})`
       }
     ],
     passDetail:
-      "every new lead from the last 7 days got the welcome email, and the finish-application nudge and never-booked chase went to everyone who needed them",
+      "every new lead from the last 7 days got the welcome email, and the first come-back message, the never-booked chase and the setter call task went to everyone who needed them",
     fixLead:
-      "A new lead got nothing after signing up. Read the lead's entry.captured or survey.submitted event, then the s-00-welcome, s-02-incomplete-survey-nudge or s-nobook-chase run in Inngest. A saved event with no run means the hand-off to Inngest broke (INNGEST_EVENT_KEY, or Inngest itself)."
+      "A new lead got nothing after signing up. Read the lead's entry.captured or survey.completed event, then the s-00-welcome, s-02-incomplete-survey-nudge or s-nobook-chase run in Inngest. A saved event with no run means the hand-off to Inngest broke (INNGEST_EVENT_KEY, or Inngest itself)."
   });
 }
 

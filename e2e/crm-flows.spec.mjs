@@ -270,7 +270,7 @@ test.describe("persist edge cases", () => {
     await openScreen(page, "/app/galaxy.html", OWNER, {
       "/api/read/agents": {
         ok: true, items: [{
-          code: "AG-04", name: "Setter Josh", status: "live",
+          code: "AG-04", name: "Setter Chris", status: "live",
           agent_class: "client_facing", channel: "voice",
           prompt_missing: true, guardrails_missing: true
         }]

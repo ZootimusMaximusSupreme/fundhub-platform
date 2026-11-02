@@ -22,7 +22,8 @@ const context = {
 context.as_prompt_block = formatPromptBlock(context);
 const offers = offersForClient();
 const deck = { ok: true, survey: { name: "Fixture Blueprint" }, offers, businesses: [],
-  engine: { available: false, tier: "REPAIR_ONLY", fico: {}, reasons: [], plan: [] } };
+  engine: { available: true, tier: "REPAIR_ONLY", fico: {}, reasons: [], plan: [], sample: false },
+  soft_pull: { consent_valid: true, diagnostic_paid: true, pull_status: "complete", crs_result_id: "blueprint-price-proof-result", sample: false } };
 
 function handlers(writes) {
   return {

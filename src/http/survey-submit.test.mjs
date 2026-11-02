@@ -94,6 +94,19 @@ test("runSurveySubmit emits entry + survey and returns PASS redirect", async () 
   assert.equal(names[1].payload.answers.cf_svy_has_negatives, "No");
 });
 
+test("runSurveySubmit: a homepage survey with the last answer also emits survey.completed", async () => {
+  const seen = [];
+  const emit = async (_db, name, payload, opts) => { seen.push({ name, payload, opts }); return { id: name, deduped: false }; };
+  await runSurveySubmit(
+    { name: "Ada", email: "ada@example.com", phone: "555", source: "website:home",
+      answers: { cf_svy_self_reported_fico: "700-759", cf_svy_available_capital: "$5k - $25k" } },
+    { emit, ensureRegistered: () => {}, db: {} }
+  );
+  assert.deepEqual(seen.map((e) => e.name), ["entry.captured", "survey.submitted", "survey.completed"]);
+  assert.equal(seen[2].payload.answers.cf_svy_available_capital, "$5k - $25k");
+  assert.match(seen[2].opts.idempotencyKey, /:completed$/);
+});
+
 test("runSurveySubmit score without negatives → MANUAL_REVIEW", async () => {
   const result = await runSurveySubmit(
     {

@@ -32,8 +32,8 @@ after(() => {
 beforeEach(() => { wire.length = 0; delete process.env.MESSAGING_DRY_RUN; clearRuleCache(); });
 
 const agentRow = (over = {}) => ({
-  code: AGENT, name: "Josh", status: "live", channel: "voice", agent_class: "client_facing",
-  runtime: "bland", runtime_ref: null, prompt: "You are Josh. Ask when the client wants to book a call.", ...over,
+  code: AGENT, name: "Chris", status: "live", channel: "voice", agent_class: "client_facing",
+  runtime: "bland", runtime_ref: null, prompt: "You are Chris. Ask when the client wants to book a call.", ...over,
 });
 const clientRow = (over = {}) => ({ id: CLIENT, first_name: "Dana", last_name: "Whitfield", phone: "(602) 555-0100", dnd_voice: false, ...over });
 
@@ -80,7 +80,7 @@ describe("POST /api/agent-call action=call", () => {
     assert.equal(res.body.placed, true);
     assert.equal(res.body.call_id, "call-proof-0001");
     assert.equal(res.body.attributed, true);
-    assert.match(res.body.message, /Josh is calling Dana Whitfield\./);
+    assert.match(res.body.message, /Chris is calling Dana Whitfield\./);
 
     assert.equal(wire.length, 1);
     assert.match(wire[0].url, /\/calls$/);

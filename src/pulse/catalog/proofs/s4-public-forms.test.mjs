@@ -114,7 +114,7 @@ test("homepage survey: each answer is kept, the contact step is last, the answer
     await answerNext("Growth (marketing, inventory, hiring)");
     await page.locator("#appform .sv-opt", { hasText: "Stability" }).click();
     await page.locator('#appform [data-act="next"]').click();
-    await answerNext("650-699");
+    await answerNext("620-699");
     await answerNext("No");
     await answerNext("Yes, 1-2 years");
     await answerNext("$250k - $499k");
@@ -138,7 +138,7 @@ test("homepage survey: each answer is kept, the contact step is last, the answer
     assert.equal(sent.source, "website:home");
     assert.deepEqual(sent.answers, {
       cf_svy_funding_target_amount: "$100k - $200k", cf_svy_planned_use: "Growth (marketing, inventory, hiring)",
-      cf_svy_money_change_now: ["Stability (cover bills / buffer slow weeks)"], cf_svy_self_reported_fico: "650-699",
+      cf_svy_money_change_now: ["Stability (cover bills / buffer slow weeks)"], cf_svy_self_reported_fico: "620-699",
       cf_svy_has_negatives: "No", cf_svy_has_business: "Yes, 1-2 years", cf_svy_business_revenue: "$250k - $499k",
       cf_svy_revenue_verifiable: "Yes, bank statements", cf_svy_available_capital: "$5k - $25k",
     });

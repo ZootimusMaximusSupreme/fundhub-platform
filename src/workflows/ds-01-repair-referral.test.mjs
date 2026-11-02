@@ -156,7 +156,9 @@ test("one simulated client routes closer referral, offer, and no-show rebook sep
       if (id === "send-touch-1") db.events.push({ org_id: "org-1", client_id: "cl-1", name: "booking.created" });
       return result;
     },
-    sleep: async () => {}
+    sleep: async () => {},
+    // S-05A waits for each touch's planned moment (9 a.m. to 5 p.m. Arizona) with sleepUntil.
+    sleepUntil: async () => {}
   };
   const rebook = await handleRebook({
     event: ev("booking.noshow", {}, { id: "sim-noshow", clientId: "cl-1" }),

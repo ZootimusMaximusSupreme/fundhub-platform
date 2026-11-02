@@ -94,7 +94,6 @@
   "job:s-06-post-call-funding-purchased",
   "job:s-08-post-call-funding-declined",
   "job:s-doc-collection",
-  "job:s-nobook-chase",
   "job:s-offer-bucket",
   "job:s-portal-invite",
   "job:slo-genuine-reply",

@@ -6,7 +6,8 @@ import { pgFake } from "./test-support.mjs";
 const SALES = [
   { org_id: "org-1", pipeline_key: "sales", stage_key: "new_lead", pipeline_id: "pipe-sales", stage_id: "st-new", sort_order: 0 },
   { org_id: "org-1", pipeline_key: "sales", stage_key: "survey_complete", pipeline_id: "pipe-sales", stage_id: "st-survey", sort_order: 1 },
-  { org_id: "org-1", pipeline_key: "sales", stage_key: "booked", pipeline_id: "pipe-sales", stage_id: "st-booked", sort_order: 2 }
+  { org_id: "org-1", pipeline_key: "sales", stage_key: "booked", pipeline_id: "pipe-sales", stage_id: "st-booked", sort_order: 2 },
+  { org_id: "org-1", pipeline_key: "sales", stage_key: "lost", pipeline_id: "pipe-sales", stage_id: "st-lost", sort_order: 9 }
 ];
 
 test("Closed Won requires a paid funding deposit", async () => {
@@ -69,6 +70,16 @@ test("advanceCardToStage: refuses to demote booked → new_lead", async () => {
   });
   assert.equal(res.moved, false);
   assert.equal(res.reason, "already_at_or_past");
+  assert.equal(db.cards[0].stage_id, "st-booked");
+});
+
+test("a new booking returns a Lost card to Booked, while ordinary advances do not", async () => {
+  const db = pgFake({ pipelineStages: SALES,
+    cards: [{ id: "card-1", org_id: "org-1", client_id: "cl-1", pipeline_id: "pipe-sales", stage_id: "st-lost" }] });
+  const args = { orgId: "org-1", clientId: "cl-1", pipelineKey: "sales", stageKey: "booked" };
+  assert.equal((await advanceCardToStage(db, args)).reason, "already_at_or_past");
+  assert.equal(db.cards[0].stage_id, "st-lost");
+  assert.equal((await advanceCardToStage(db, { ...args, allowRebookFromLost: true })).moved, true);
   assert.equal(db.cards[0].stage_id, "st-booked");
 });
 

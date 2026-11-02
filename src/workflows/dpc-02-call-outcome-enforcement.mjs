@@ -8,11 +8,10 @@
 // client) — Showed moves the sales card to "showed" and tags call_held; No-Show
 // moves it to "downsell" no-show handling.
 //
-// Simplification (logged in workflow-migration-table.md): "did the call happen" is
-// checked as "has this client fired call.completed at all", not matched to this
-// specific booking — the schema has no booking<->call correlation column. Fine for
-// the common one-booking-in-flight case; could misfire if a client has two
-// concurrent bookings.
+// "Did the call happen" is callHeldFor: a call.completed for this client, saved
+// after this booking was made, that is not a closer's "No show". It is still not
+// matched to the booking by id (a call.completed carries the closer's task, not
+// the booking), so a call from an earlier booking that is saved late would count.
 //
 // Stage mapping (also logged): db/seed/002_pipelines.sql's sales pipeline has no
 // distinct "no_show" stage (the CRM's "S4 No Show") — mapped to the closest existing
@@ -35,6 +34,52 @@ import { CANCEL_RULES, RESCHEDULE_CANCEL_RULES } from "./booking-cancel-rules.mj
 export async function callHappened(db, clientId) {
   const r = await db.query(`SELECT DISTINCT name FROM events WHERE client_id = $1 AND name = ANY($2)`, [clientId, ["call.completed"]]);
   return r.rows.some((row) => row.name === "call.completed");
+}
+
+/* callHeldFor — was the call for THIS booking held?
+ *
+ * callHappened above answers "has this person ever had a call.completed", and is
+ * left exactly as it was for BS-01's blunt gate. Asked about one booking it is
+ * wrong in two ways, both measured on a scratch database 2026-10-31
+ * (booked-lane.pg.test.mjs):
+ *   1. A closer who saves "No show" writes a call.completed with outcome
+ *      no_show. Counted as a held call, DPC-02 marked the person Showed, moved
+ *      the card to Showed and never emitted booking.noshow, so S-05A never
+ *      started and nobody who missed a call that the closer had already logged
+ *      heard from us.
+ *   2. A person whose first call was held and who books a second one (the
+ *      closer's "callback") had every reminder for the second call stop at its
+ *      first wake, and DPC-02 marked the second call Showed with no call at all.
+ * So a saved No show does not count, and only a call saved after this booking
+ * was made counts. `bookingEventId` is the id of the booking.created or
+ * booking.rescheduled event this run started on. If that event cannot be found
+ * for this person (a test double, an old row with no person on it) the answer
+ * is the old one, never a guess. */
+export async function callHeldFor(db, clientId, bookingEventId) {
+  let answer = null;
+  if (bookingEventId) {
+    try {
+      /* The booking event's time is compared inside the database. Read out into
+         a JS Date it loses its microseconds, and a call saved a hair before the
+         booking then compared as after it (259 of 300 back-to-back pairs). */
+      const r = await db.query(
+        `SELECT b.id IS NOT NULL AS known,
+                EXISTS (
+                  SELECT 1 FROM events c
+                   WHERE c.client_id = $2 AND c.name = 'call.completed'
+                     AND COALESCE(c.payload->>'outcome', '') <> 'no_show'
+                     AND c.created_at >= b.created_at
+                ) AS held
+           FROM (SELECT 1) AS one
+           LEFT JOIN events b ON b.id = $1 AND b.client_id = $2`,
+        [bookingEventId, clientId]
+      );
+      if (r.rows[0]?.known === true) answer = r.rows[0].held === true;
+    } catch {
+      answer = null; // not an event id this table can hold
+    }
+  }
+  return answer === null ? callHappened(db, clientId) : answer;
 }
 
 export async function handle({ event, db, step }) {
@@ -66,7 +111,7 @@ export async function handle({ event, db, step }) {
     return { done: false, reason: `call_${slot}` };
   }
 
-  const showed = await step.run("check-call-happened", () => callHappened(db, clientId));
+  const showed = await step.run("check-call-happened", () => callHeldFor(db, clientId, event.id));
 
   if (showed) {
     await step.run("set-call-outcome-showed", () => mergeCustomFields(db, clientId, { call_outcome: "showed", last_progress_action: "call_held" }));

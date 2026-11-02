@@ -190,8 +190,8 @@ describe("the door accepts exactly what the script sends", () => {
   test("the script's page map is the spec's page map, row for row", () => {
     const spec = fs.readFileSync(path.join(ROOT, "docs/tracking/tracking-spec.md"), "utf8");
     const table = spec.slice(spec.indexOf("## Pages → funnel and step"), spec.indexOf("## Events"));
-    const want = [...table.matchAll(/^\| (\/[a-z-]+) \| ([a-z-]+) \| (\d+) \|$/gm)].map((m) => [m[1], m[2], Number(m[3])]);
-    const got = [...SRC.match(/var PAGES = \{([\s\S]*?)\};/)[1].matchAll(/"(\/[a-z-]+)": \["([a-z-]+)", (\d+)\]/g)].map((m) => [m[1], m[2], Number(m[3])]);
+    const want = [...table.matchAll(/^\| (\/[a-z0-9-]+) \| ([a-z-]+) \| (\d+) \|$/gm)].map((m) => [m[1], m[2], Number(m[3])]);
+    const got = [...SRC.match(/var PAGES = \{([\s\S]*?)\};/)[1].matchAll(/"(\/[a-z0-9-]+)": \["([a-z-]+)", (\d+)\]/g)].map((m) => [m[1], m[2], Number(m[3])]);
     assert.ok(want.length >= 9, "the spec table was read");
     assert.deepEqual(got, want);
   });
