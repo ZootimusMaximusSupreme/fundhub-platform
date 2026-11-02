@@ -65,7 +65,10 @@ after(() => { if (savedSecret === undefined) delete process.env.UNSUBSCRIBE_TOKE
 const template = (key) => ({
   org_id: ORG, template_key: key, channel: key.startsWith("SMS") ? "sms" : "email",
   subject: key.startsWith("EMAIL") ? `Subject for ${key}` : null,
-  body: `${key}: Start your questions here: {{survey_resume_link}}`,
+  // SMS never carries {{survey_resume_link}} (P1 hotfix); seed 302 uses the plain /apply URL.
+  body: key.startsWith("SMS")
+    ? `${key}: Start your questions here: https://apply.fundhub.ai/apply`
+    : `${key}: Start your questions here: {{survey_resume_link}}`,
   compliance_passed: true
 });
 const lead = (over = {}) => ({
@@ -390,7 +393,11 @@ test("even a stale template cannot render saved survey progress into a message",
   for (const m of w.db.messages) {
     assert.ok(!m.rendered_body.includes("credit score question"), m.rendered_body);
     assert.ok(!m.rendered_body.includes("5 more taps"), m.rendered_body);
-    assert.match(m.rendered_body, /https:\/\/apply\.fundhub\.ai\/apply$/, "the plain link (containment 2026-10-31)");
+    if (m.channel === "sms") {
+      assert.doesNotMatch(m.rendered_body, /https?:\/\//, "a stale SMS merge tag renders no link");
+    } else {
+      assert.match(m.rendered_body, /https:\/\/apply\.fundhub\.ai\/apply$/, "the plain email link (containment 2026-10-31)");
+    }
     assert.ok(!m.rendered_body.includes("{{"), "no merge tag is left over");
   }
 });
