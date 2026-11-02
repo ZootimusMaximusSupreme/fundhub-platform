@@ -217,7 +217,7 @@
   },
   {
     "surface": "company-brain.html",
-    "control": "Documents button (opens right-hand panel) and its Close button",
+    "control": "Manage files tab opens file view; Ask & browse tab closes it",
     "kind": "button",
     "calls": [],
     "tables": [],
@@ -272,7 +272,7 @@
   },
   {
     "surface": "company-brain.html",
-    "control": "Owner: Approve a waiting file (button on the file row and in the review list)",
+    "control": "Owner: Approve a waiting file in the review list",
     "kind": "card-action",
     "calls": [
       "POST /api/company-brain/reviews {review_id, decision:approve}"
