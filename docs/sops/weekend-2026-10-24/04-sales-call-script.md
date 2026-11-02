@@ -486,7 +486,11 @@ If the item is accurate, a dispute alone won't erase it. Let's check the dates, 
 
 ### A Removed Item Returns
 
-If the same item came back after it was deleted, that's a reinsertion. We've handled those. We compare the old and new reports, get the bureau's notice, check the required certification and notice date, and challenge any error using that record. We don't use sweeps. Let's look at the item and the notices together.
+First, show me the report where it was removed and the report where it came back. Was it the same item, the same balance, and the same creditor? Did the bureau send you a notice when it returned? [Look at both reports and the notice.]
+
+If the same item was deleted and then returned, that's a reinsertion. We've handled that before. Our credit specialist checks the dates, whether the bureau got the required certification before putting it back, and whether it sent the required notice. If something in that process or the reporting is wrong, we challenge that specific issue with the record in front of us. If the item is accurate and the bureau followed the process, I won't tell you it disappears just because it disappeared once.
+
+Some companies use mass-dispute or sweep tactics that make a deletion look like a permanent win until the item comes back. We don't run those. We keep the first deletion, the new report, the notice, and each response together so the next step is based on what actually happened. Let's pull up your two reports now. What did the last company tell you when it returned?
 
 ### How Long Does Credit Work Take?
 
@@ -514,11 +518,19 @@ Here is what the Blueprint agreement buys: twelve months of a roadmap built from
 
 ### Is Done-For-You Funding Included After Blueprint?
 
-No. The Blueprint includes the plan and its support. Having our team apply for you later is a separate funding service with a separate 10% fee on confirmed approved limits or amounts. We'll show you that agreement before you choose it.
+The Blueprint pays for the twelve-month plan and support that gets your file ready. When that work has put you in a position to apply, you can use the plan and apply yourself, or you can ask our funding team to handle the applications and bank follow-up. Those are two separate services. I don't want you finding out about a second fee at the end of the year.
+
+If you choose our done-for-you funding service after the Blueprint, there is no new deposit to start that funding work. The separate fee is 10% of the confirmed approved limits or amounts we help secure, and it comes due as the approved funds or credit access arrive. We put the full calculation and the funding agreement in front of you before you choose that service. [Show the Blueprint agreement and later funding terms side by side.]
+
+Does that answer what is included today and what you would pay only if you later choose our team to apply for you? Which part did you expect to be included in the Blueprint price?
 
 ### Who Helps In The First Month?
 
-For funding, your funding advisor takes the file through the applications you authorize and bank follow-up. For credit work, a credit specialist reviews the items, prepares the rounds and tracks replies. For the Blueprint, AI agents help with the checklist and the Fundhub team handles questions that need a person. Here is your first step for the path we've picked.
+The first month of which service? I want to show you the person and work for the path you're actually buying. [Listen.]
+
+For funding, your funding advisor reviews the file, prepares the applications you authorize, sends the approved sequence, and handles the bank follow-up. You're giving us true information and approving what goes out; you are not spending the month filling out twenty bank forms. For credit work, a credit specialist reviews the specific items, prepares and sends the agreed round, and tracks the bureau replies. You see the letters and responses in the portal. For the Blueprint, the AI agents keep the next tasks in front of you, and the Fundhub team handles questions or a stuck step that needs a person. [Open the relevant first task and contact path.]
+
+Here is what happens first on your file: [actual task and owner]. Here is what we need from you: [actual information or proof]. If that gets stuck, this is where you ask for help: [actual contact path]. Does that answer who will be doing the work in your first thirty days?
 
 ### I Don'T Have Time
 
