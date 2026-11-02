@@ -4,6 +4,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
+import { recordedParentHead } from './restack-after-merge.mjs';
 
 const execFileAsync = promisify(execFile);
 const REPO = 'ZootimusMaximusSupreme/fundhub-platform';
@@ -108,6 +109,17 @@ async function archiveHead(rootGit, branch) {
   const head = (await rootGit(['rev-parse', 'HEAD'])).trim();
   const old = (await rootGit(['ls-remote', '--tags', 'origin', ref])).split(/\s+/)[0];
   if (old === head) return;
+  if (old) {
+    const historyRef = `refs/tags/${tag}-${old.slice(0, 8)}`;
+    const history = (await rootGit(['ls-remote', '--tags', 'origin', historyRef])).split(/\s+/)[0];
+    if (history && history !== old) throw new Error(`Archive history differs for ${branch}.`);
+    if (!history) {
+      await rootGit(['tag', '-f', `${tag}-${old.slice(0, 8)}`, old]);
+      await rootGit(['push', 'origin', historyRef]);
+      const preserved = (await rootGit(['ls-remote', '--tags', 'origin', historyRef])).split(/\s+/)[0];
+      if (preserved !== old) throw new Error(`Could not preserve original archive for ${branch}.`);
+    }
+  }
   await rootGit(['tag', '-f', tag, head]);
   await rootGit(old
     ? ['push', `--force-with-lease=${ref}:${old}`, 'origin', ref]
@@ -183,6 +195,7 @@ export async function runShipChange(options, command = defaultCommand) {
   }
 
   let parentHead = null;
+  let fallbackRemoteHead = null;
   if (parent) {
     await rootGit(['fetch', 'origin', `refs/heads/${parent.headRefName}:refs/remotes/origin/${parent.headRefName}`]);
     const ancestor = await rootGit(['merge-base', 'HEAD', `origin/${parent.headRefName}`]);
@@ -192,14 +205,50 @@ export async function runShipChange(options, command = defaultCommand) {
       // base then falls back to main and would replay the parent's old commits.
       const forkPoint = adoptingLegacy ? '' : await rootGit(['merge-base', '--fork-point',
         `origin/${parent.headRefName}`, 'HEAD']).catch(() => '');
+      const recorded = !adoptingLegacy && !forkPoint.trim() ? recordedParentHead(existing || {}) : null;
+      if (recorded) {
+        await rootGit(['merge-base', '--is-ancestor', recorded, 'HEAD']);
+      }
       const basePoint = adoptingLegacy
         ? (await rootGit(['merge-base', 'HEAD', 'origin/main'])).trim()
-        : forkPoint.trim() || ancestor.trim();
+        : forkPoint.trim() || recorded || ancestor.trim();
       if (!basePoint) throw new Error('Could not identify the branch base for ordered rebase.');
-      if (!adoptingLegacy && !forkPoint.trim() && (resume || existing)) {
+      if (!adoptingLegacy && !forkPoint.trim() && !recorded && (resume || existing)) {
         throw new Error(`Could not identify the previous tip of ${parent.headRefName}; leave this branch open for a safe restack.`);
       }
-      await rootGit(['rebase', '--onto', parentHead, basePoint, branch]);
+      const sourceHead = (await rootGit(['rev-parse', 'HEAD'])).trim();
+      const deltaBase = recorded || (adoptingLegacy ? basePoint : null);
+      try {
+        await rootGit(['rebase', '--onto', parentHead, basePoint, branch]);
+      } catch (error) {
+        await rootGit(['rebase', '--abort']).catch(() => {});
+        if (!existing || !deltaBase || (await rootGit(['status', '--porcelain'])).trim()) throw error;
+        await rootGit(['merge-base', '--is-ancestor', deltaBase, sourceHead]);
+        fallbackRemoteHead = (await rootGit(['rev-parse', `refs/remotes/origin/${branch}`])).trim();
+        if (!/^[a-f0-9]{40}$/i.test(fallbackRemoteHead)) throw error;
+        await rootGit(['merge-base', '--is-ancestor', fallbackRemoteHead, sourceHead]);
+        const archived = (await rootGit(['ls-remote', '--tags', 'origin', `refs/tags/archive/${branch}`])).split(/\s+/)[0];
+        if (archived !== fallbackRemoteHead) throw new Error('Original remote child archive is missing; branch was not pushed.');
+        await scoped('npm', ['run', 'preflight', '--', '--expected-base', deltaBase]);
+        const sourcePr = JSON.parse(await rootGh(['pr', 'view', String(existing.number), '--repo', REPO, '--json', 'headRefOid,baseRefName']));
+        const sourceParent = (await rootGit(['ls-remote', '--heads', 'origin', parent.headRefName])).split(/\s+/)[0];
+        if (sourcePr.headRefOid !== fallbackRemoteHead || sourcePr.baseRefName !== existing.baseRefName
+          || sourceParent !== parentHead || (await rootGit(['rev-parse', 'HEAD'])).trim() !== sourceHead
+          || (await rootGit(['status', '--porcelain'])).trim()) {
+          throw new Error('Source or parent moved during preflight; archive and branch were not pushed.');
+        }
+        await archiveHead(rootGit, branch);
+        const helperUrl = new URL('./restack-after-merge.mjs', import.meta.url).href;
+        try {
+          await scoped(process.execPath, ['--input-type=module', '-e',
+            'const {restackMergedDelta}=await import(process.argv[2]); if(!restackMergedDelta(JSON.parse(process.argv[1]))) process.exitCode=1;',
+            JSON.stringify({ base: deltaBase, head: sourceHead, branch, number: existing.number, target: parentHead }), helperUrl]);
+        } catch (deltaError) {
+          if (!(await rootGit(['status', '--porcelain'])).trim()) await rootGit(['switch', branch]);
+          throw deltaError;
+        }
+        await rootGit(['switch', '-C', branch, 'HEAD']);
+      }
     }
   } else {
     // Keep the bottom PR current before required checks and squash auto-merge.
@@ -226,10 +275,18 @@ export async function runShipChange(options, command = defaultCommand) {
       throw new Error(`Stack parent ${parent.headRefName} advanced during shipping. Rerun with --resume after fetching it.`);
     }
   }
+  if (fallbackRemoteHead) {
+    const current = JSON.parse(await rootGh(['pr', 'view', String(existing.number), '--repo', REPO, '--json', 'headRefOid,baseRefName']));
+    if (current.headRefOid !== fallbackRemoteHead || current.baseRefName !== existing.baseRefName) {
+      throw new Error('Child PR moved during delta preparation; branch was not pushed.');
+    }
+  }
   // Archive the exact new head before it can be pushed and later auto-deleted.
   await archiveHead(rootGit, branch);
   const remoteBranch = await rootGit(['ls-remote', '--heads', 'origin', branch]);
-  await rootGit(remoteBranch.trim()
+  await rootGit(fallbackRemoteHead
+    ? ['push', `--force-with-lease=refs/heads/${branch}:${fallbackRemoteHead}`, 'origin', `HEAD:refs/heads/${branch}`]
+    : remoteBranch.trim()
     ? ['push', '--force-with-lease', 'origin', `HEAD:refs/heads/${branch}`]
     : ['push', '-u', 'origin', `HEAD:refs/heads/${branch}`]);
 

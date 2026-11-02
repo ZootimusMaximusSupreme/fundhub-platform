@@ -606,11 +606,19 @@ export async function runCrsPull(db, {
      A losing or preexisting processing request needs manual reconciliation,
      not a second credit order. No automatic retry of ambiguous provider work. */
   if (ledger.status !== "queued") {
-    throw new SoftPullError(`soft pull request is already ${ledger.status}`, { status: 409 });
+    throw new SoftPullError(`soft pull request is already ${ledger.status}`, {
+      status: 409,
+      code: ledger.status === "processing" && ledger.requested_by_kind === "system"
+        ? "request_already_claimed" : null
+    });
   }
   const claim = await claimSoftPull(db, { requestId, orgId, clientId });
   if (!claim.claimed) {
-    throw new SoftPullError(`soft pull request is already ${claim.reason}`, { status: 409 });
+    throw new SoftPullError(`soft pull request is already ${claim.reason}`, {
+      status: 409,
+      code: claim.reason === "already_claimed" && ledger.requested_by_kind === "system"
+        ? "request_already_claimed" : null
+    });
   }
 
   const crs = client || createCrsClient({ env, fetchImpl });

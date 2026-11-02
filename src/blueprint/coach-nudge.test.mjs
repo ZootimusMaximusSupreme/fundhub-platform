@@ -13,7 +13,11 @@ const ctx = { client: { id: "client-a", flags: {} }, blueprint: { access_active:
   checklist: { open_step: { key: "mail", title: "Mail letters", state: "in_progress", owner: "client", verify_kind: "dispute_mail_receipt" } },
   as_prompt_block: "Last call: receipt saved" };
 const agent = { code: "BP-COACH", status: "live", agent_class: "client_facing", channel: "sms", runtime: "internal", prompt: "AI coach" };
-const dbFor = (row = agent) => fakeDb([[/FROM agents/, (_sql, p) => p[0] === scope.orgId && p[1] === "BP-COACH" ? [row] : []]]);
+const dbFor = (row = agent) => fakeDb([
+  [/FROM agents/, (_sql, p) => p[0] === scope.orgId && p[1] === "BP-COACH" ? [row] : []],
+  // Mock the correlated same-transaction, within-year grant; no provider called.
+  [/FROM entitlements e/, (_sql, p) => p[0] === scope.orgId && p[1] === scope.clientId ? [{ id: "blueprint-year" }] : []]
+]);
 const livePlan = async () => ({ mode: "live", text: JSON.stringify({ intent: "ask_progress", action: null }) });
 const coachOptions = { callModelFn: livePlan, env: {} };
 
@@ -29,6 +33,22 @@ test("nonBlueprint reminders use the original approved-template path with unchan
     sendTemplatedImpl: async (_db, input) => { assert.equal(input, spec); return { sent: true, messageId: "original" }; } });
   assert.equal(out.messageId, "original");
   assert.equal(db.calls.length, 0);
+});
+
+test("expired historical Blueprint buyers never fall through to an ordinary SMS send", async () => {
+  const db = dbFor();
+  const query = db.query;
+  db.query = async (sql, params) =>
+    /FROM entitlements e/.test(sql) ? { rows: [] } : query(sql, params);
+  let sends = 0;
+  const result = await sendBlueprintCoachNudge(db, spec, {
+    ...coachOptions, isBuyerImpl: async () => true, fetchContextImpl: async () => ctx,
+    sendTemplatedImpl: async () => { sends++; return { sent: true }; }
+  });
+  assert.equal(result.sent, false);
+  assert.equal(result.reason, "blueprint_access_inactive");
+  assert.equal(sends, 0);
+  assert.equal(db.find(/INSERT INTO messages|INSERT INTO tasks|UPDATE client_waypoints/).length, 0);
 });
 
 test("Blueprint uses real saved current title/proof and existing claim key through the approved-template sender", async () => {
@@ -113,6 +133,7 @@ function runnerFixture({ draft = false } = {}) {
     [/FROM agents/, () => [state.agent]],
     [/FROM transactions/, [{ id: "paid", status: "succeeded" }]],
     [/FROM v_client_entitlements/, [{ active: true }]],
+    [/FROM entitlements e/, [{ id: "blueprint-year" }]],
     [/FROM clients c/, []],
     [/FROM clients/, [{ id: "client-a", org_id: "org-a", phone: "+16025550100", email: "e2e+aff-coach@example.com", custom_fields: { timezone: "America/Phoenix" } }]],
     [/FROM message_templates/, [{ body: "{{coach.reminder}} Reply STOP to opt out.", compliance_passed: true }]],

@@ -4,7 +4,7 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { archiveHead, catchUpAfterShip, directChildren, main, nextQueuedPr, orderOf, recordedParentHead, restackChild } from "./restack-after-merge.mjs";
+import { archiveHead, catchUpAfterShip, directChildren, main, mainBaseBody, nextQueuedPr, orderOf, recordedParentHead, restackChild, restackMergedDelta } from "./restack-after-merge.mjs";
 
 const repo = "ZootimusMaximusSupreme/fundhub-platform";
 const parentSha = "a".repeat(40);
@@ -37,6 +37,12 @@ test("recorded parent tip must be one exact SHA", () => {
   assert.equal(recordedParentHead({ body: `Release manifest\nStack parent head: ${marker}\n` }), marker);
   assert.equal(recordedParentHead({ body: `Stack parent head: ${marker}\nStack parent head: ${marker}` }), null);
   assert.equal(recordedParentHead({ body: "Stack parent head: not-a-sha" }), null);
+});
+
+test("main retarget metadata preserves ownership and evidence but removes the old parent receipt", () => {
+  const body = `Ordered change 2.\nBase: codex/parent\nOwner lane: ar\nStack parent head: ${parentSha}\n\nScope and evidence remain here.`;
+  assert.equal(mainBaseBody(body), "Ordered change 2.\nBase: main\nOwner lane: ar\n\nScope and evidence remain here.");
+  assert.equal(mainBaseBody("Owner lane: ci\nEvidence remains."), "Owner lane: ci\nEvidence remains.\n\nBase: main");
 });
 
 test("moving the exact archive tag preserves its prior tip first", () => {
@@ -338,3 +344,150 @@ test("a merge into a feature branch never triggers restack onto main", () => {
   assert.deepEqual(main({ eventPath, repo, run }), []);
   fs.rmSync(path.dirname(eventPath), { recursive: true });
 });
+
+for (const scenario of ["clean delta", "exact bytes", "real content conflict", "changed remote head", "missing archive", "dirty index", "open parent target"]) {
+  test(`real Git duplicate merged child history: ${scenario}`, () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "restack-duplicate-"));
+    const origin = path.join(root, "origin.git");
+    const work = path.join(root, "work");
+    const git = (...args) => execFileSync("git", args, {
+      cwd: work, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"]
+    }).trim();
+    const write = (file, text) => fs.writeFileSync(path.join(work, file), text);
+    try {
+      fs.mkdirSync(work);
+      execFileSync("git", ["init", "--bare", origin], { stdio: "ignore" });
+      git("init", "-b", "main");
+      git("config", "user.name", "Restack test");
+      git("config", "user.email", "restack@test.invalid");
+      git("remote", "add", "origin", origin);
+      write("base.txt", "base\n");
+      git("add", ".");
+      git("commit", "-m", "base");
+      git("switch", "-c", "parent");
+      write("parent.txt", "approved parent\n");
+      if (scenario === "real content conflict") write("child.txt", "shared parent line\n");
+      git("add", ".");
+      git("commit", "-m", "parent feature");
+      const parentHead = git("rev-parse", "HEAD");
+
+      git("switch", "-c", "original-child");
+      write("child.txt", "initial child draft\n");
+      git("add", ".");
+      git("commit", "-m", "original child change");
+      const originalFirst = git("rev-parse", "HEAD");
+      write("child.txt", scenario === "exact bytes" ? "approved child delta  " : "approved child delta\n");
+      if (scenario === "exact bytes") write("binary.bin", Buffer.from([0, 255, 13, 10, 32, 0, 1]));
+      git("add", ".");
+      git("commit", "-m", "final child wording");
+      const originalChild = git("rev-parse", "HEAD");
+      git("switch", "-c", "child", parentHead);
+      git("cherry-pick", "--no-commit", originalFirst);
+      git("commit", "-m", "replayed child change");
+      git("cherry-pick", "--no-commit", originalChild);
+      git("commit", "-m", "replayed final child wording");
+      git("merge", "--no-edit", "original-child");
+      const childHead = git("rev-parse", "HEAD");
+      git("push", "origin", "child");
+
+      if (scenario !== "missing archive") {
+        git("tag", "archive/child", childHead);
+        git("push", "origin", "refs/tags/archive/child");
+      }
+
+      git("switch", "main");
+      git("merge", "--squash", "parent");
+      git("commit", "-m", "squashed parent");
+      write("main-only.txt", "keep unrelated main work\n");
+      if (scenario === "real content conflict") write("child.txt", "different main decision\n");
+      git("add", ".");
+      git("commit", "-m", "later main work");
+      git("push", "origin", "main");
+      if (scenario === "exact bytes") git("config", "apply.whitespace", "fix");
+      if (scenario === "open parent target") {
+        git("switch", "-c", "new-parent");
+        write("open-parent.txt", "keep the unmerged parent delta\n");
+        git("add", ".");
+        git("commit", "-m", "unmerged parent work");
+        const target = git("rev-parse", "HEAD");
+        assert.equal(restackMergedDelta({ base: parentHead, head: childHead,
+          branch: "child", number: 41, target, run: (program, args) => {
+            assert.equal(program, "git");
+            return git(...args);
+          } }), true);
+        assert.equal(git("show", "HEAD:open-parent.txt"), "keep the unmerged parent delta");
+        assert.equal(git("show", "HEAD:main-only.txt"), "keep unrelated main work");
+        assert.equal(git("rev-parse", "HEAD:child.txt"), git("rev-parse", `${childHead}:child.txt`));
+        assert.equal(git("diff", "--name-only", `${target}..HEAD`), "child.txt");
+        git("merge-base", "--is-ancestor", target, "HEAD");
+        assert.equal(git("rev-parse", "origin/child"), childHead, "the helper itself never pushes");
+        return;
+      }
+
+      const current = { ...child, head: { ...child.head, ref: "child", sha: childHead },
+        base: { ref: "parent" } };
+      const mergedParent = { ...merged, head: { ...merged.head, ref: "parent", sha: parentHead } };
+      const calls = [];
+      let reads = 0;
+      let rebaseFailed = false;
+      const run = (program, args) => {
+        calls.push([program, ...args]);
+        if (program === "gh") {
+          if (args[0] === "api" && args[1] === `repos/${repo}/pulls/41`) {
+            reads += 1;
+            return JSON.stringify(scenario === "changed remote head" && reads > 1
+              ? { ...current, head: { ...current.head, sha: "f".repeat(40) } } : current);
+          }
+          return "";
+        }
+        try {
+          const result = git(...args);
+          if (scenario === "dirty index" && args[0] === "rebase" && args[1] === "--abort") {
+            write("staged.txt", "keep unrelated staged work\n");
+            git("add", "staged.txt");
+            write("base.txt", "keep unrelated unstaged work\n");
+          }
+          return result;
+        } catch (error) {
+          if (args[0] === "rebase" && args[1] === "--onto") rebaseFailed = true;
+          throw error;
+        }
+      };
+      const result = restackChild({ child: current, merged: mergedParent, repo, run });
+      assert.equal(rebaseFailed, true, "the fixture must reproduce the original linear-rebase failure");
+      git("fetch", "origin", "child");
+      if (scenario === "clean delta" || scenario === "exact bytes") {
+        assert.equal(result.state, "restacked");
+        assert.equal(git("show", "origin/child:main-only.txt"), "keep unrelated main work");
+        assert.equal(git("show", "origin/child:parent.txt"), "approved parent");
+        assert.equal(git("show", "origin/child:child.txt"), "approved child delta");
+        assert.equal(git("rev-parse", "origin/child:child.txt"), git("rev-parse", `${childHead}:child.txt`), "exact original child bytes");
+        if (scenario === "exact bytes") {
+          assert.equal(git("rev-parse", "origin/child:binary.bin"), git("rev-parse", `${childHead}:binary.bin`));
+        }
+        assert.equal(git("diff", "--name-only", "origin/main..origin/child"), scenario === "exact bytes" ? "binary.bin\nchild.txt" : "child.txt");
+        assert.equal(git("rev-list", "--count", "origin/main..origin/child"), "1");
+        assert.equal(git("rev-parse", "refs/tags/archive/child"), git("rev-parse", "origin/child"));
+        assert.equal(git("rev-parse", `refs/tags/archive/child-${childHead.slice(0, 8)}`), childHead);
+        const archive = calls.findIndex((call) => call[0] === "git" && call[1] === "push" && call.at(-1) === "refs/tags/archive/child");
+        const push = calls.findIndex((call) => call[0] === "git" && call[1] === "push" && call.includes(`--force-with-lease=refs/heads/child:${childHead}`));
+        const retarget = calls.findIndex((call) => call.includes("base=main"));
+        const arm = calls.findIndex((call) => call[0] === "gh" && call[1] === "pr" && call[2] === "merge");
+        assert.ok(archive >= 0 && archive < push && push < retarget && retarget < arm);
+        assert.ok(calls[retarget].some((value) => value.startsWith("body=") && value.includes("Base: main")), "one API patch updates base and body together");
+        assert.ok(calls[arm].includes("--auto"));
+      } else {
+        assert.equal(result.state, scenario === "changed remote head" ? "already-moved" : "conflict");
+        assert.equal(git("rev-parse", "origin/child"), childHead);
+        assert.equal(calls.some((call) => call[1] === "push" || call.includes("base=main") || call[1] === "pr"), false);
+        if (scenario === "dirty index") {
+          assert.equal(fs.readFileSync(path.join(work, "base.txt"), "utf8"), "keep unrelated unstaged work\n");
+          assert.equal(git("show", ":staged.txt"), "keep unrelated staged work");
+          assert.equal(calls.some((call) => call[0] === "git" && call[1] === "commit"), false);
+        }
+      }
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+}

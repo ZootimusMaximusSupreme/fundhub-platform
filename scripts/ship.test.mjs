@@ -18,9 +18,10 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   pullMain,
+  verifyShipPin,
   pushToGitHub,
   hasShippableChange,
   shipDiffPathspecs,
@@ -35,6 +36,7 @@ import {
   PUSH_TIMEOUT_MS
 } from "./ship.mjs";
 import { MACHINE_ONLY_PATHS, isMachineOnlyChange, isMachinePath, skipDiffPathspecs } from "./ship-machine-paths.mjs";
+import { publicationPushes } from "./github-push-plan.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SHIP = path.join(HERE, "ship.mjs");
@@ -96,6 +98,97 @@ function tempRepo(branch = "main") {
   const cleanup = () => fs.rmSync(dir, { recursive: true, force: true });
   return { dir, env, must, write, commit, gitFn, cleanup };
 }
+
+test("GitHub Ship requires a full approved SHA before reading or changing Git", () => {
+  for (const env of [
+    { GITHUB_ACTIONS: "true" },
+    { GITHUB_ACTIONS: "true", FUNDHUB_SHIP_EXPECTED_SHA: "" },
+    { GITHUB_ACTIONS: "true", FUNDHUB_SHIP_EXPECTED_SHA: "abc12345" },
+    { FUNDHUB_SHIP_EXPECTED_SHA: "g".repeat(40) }
+  ]) {
+    let called = false;
+    const result = verifyShipPin({ env, git: () => { called = true; return { ok: true, out: "" }; } });
+    assert.equal(result.ok, false);
+    assert.equal(result.pinned, true);
+    assert.equal(called, false);
+  }
+  assert.deepEqual(verifyShipPin({ env: {}, git: () => { throw Error("manual mode must use its original pull path"); } }),
+    { ok: true, pinned: false });
+});
+
+test("inherited GitHub Actions environment without a pin fails closed", () => {
+  const env = cleanGitEnv({ GITHUB_ACTIONS: "true" });
+  delete env.FUNDHUB_SHIP_EXPECTED_SHA;
+  const result = spawnSync(process.execPath, ["--input-type=module", "-e", `
+    const {verifyShipPin}=await import(${JSON.stringify(pathToFileURL(SHIP).href)});
+    let called=false;
+    const result=verifyShipPin({git:()=>{called=true;return {ok:true,out:''};}});
+    if(result.ok||called)process.exitCode=1;
+    console.log(result.line);
+  `], { encoding: "utf8", env });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /exact CI-approved Ship SHA is required/);
+});
+
+test("approved Ship pin rejects a different local head and an unverifiable remote", () => {
+  const expected = "a".repeat(40);
+  const env = { GITHUB_ACTIONS: "true", FUNDHUB_SHIP_EXPECTED_SHA: expected };
+  const calls = [];
+  const wrongHead = verifyShipPin({ env, git: args => { calls.push(args); return { ok: true, out: "b".repeat(40) }; } });
+  assert.equal(wrongHead.ok, false);
+  assert.equal(calls.some(args => args[0] === "ls-remote"), false);
+  const unavailable = verifyShipPin({ env, git: args => args[0] === "rev-parse"
+    ? { ok: true, out: expected } : { ok: false, out: "network unavailable" } });
+  assert.equal(unavailable.ok, false);
+  assert.match(unavailable.line, /could not be verified/);
+});
+
+for (const advances of [false, true]) {
+  test(`real Git approved Ship stays pinned when remote advances after gate: ${advances}`, () => {
+    const local = tempRepo();
+    const origin = fs.mkdtempSync(path.join(os.tmpdir(), "ship-pin-origin-"));
+    try {
+      const init = spawnSync("git", ["init", "--bare", origin], { encoding: "utf8", env: local.env });
+      assert.equal(init.status, 0, init.stderr);
+      local.write("public/source.txt", "approved source\n");
+      const expected = local.commit("CI-approved source");
+      local.must(["remote", "add", "origin", origin]);
+      local.must(["push", "origin", "main"]);
+      const env = { GITHUB_ACTIONS: "true", FUNDHUB_SHIP_EXPECTED_SHA: expected };
+      assert.equal(verifyShipPin({ git: local.gitFn, env }).ok, true, "initial CI-gated snapshot matches");
+      if (advances) {
+        local.must(["switch", "-c", "later-writer"]);
+        local.write("public/source.txt", "unverified newer source\n");
+        local.commit("main advanced after its release gate");
+        local.must(["push", "origin", "HEAD:refs/heads/main"]);
+        local.must(["switch", "main"]);
+      }
+      const calls = [];
+      const result = verifyShipPin({ env, git: (args, options) => { calls.push(args); return local.gitFn(args, options); } });
+      assert.equal(result.ok, !advances);
+      assert.equal(result.pinned, true);
+      if (advances) assert.match(result.line, /Main moved after CI/);
+      assert.equal(local.must(["rev-parse", "HEAD"]), expected);
+      assert.equal(fs.readFileSync(path.join(local.dir, "public/source.txt"), "utf8"), "approved source\n");
+      assert.equal(calls.some(args => ["pull", "fetch", "checkout", "switch", "merge", "rebase"].includes(args[0])), false);
+    } finally {
+      local.cleanup();
+      fs.rmSync(origin, { recursive: true, force: true });
+    }
+  });
+}
+
+test("pinned Ship gates initial execution and migrations; live asset receipt uses the approved commit", () => {
+  const main = SRC.slice(SRC.indexOf("async function main()"));
+  assert.ok(main.indexOf("verifyShipPin({ git: gitRun })") < main.indexOf("pullMain({ git: gitRun })"));
+  assert.match(main, /if \(!pin.ok\) fail\(pin.line\)/);
+  assert.ok(main.indexOf("const confirmedPin = verifyShipPin") < main.indexOf('say("\\n→ database")'));
+  assert.match(main, /if \(!confirmedPin.ok\) fail\(confirmedPin.line\)/);
+  const workflow = fs.readFileSync(path.join(HERE, "../.github/workflows/ship.yml"), "utf8");
+  assert.equal((workflow.match(/FUNDHUB_SHIP_EXPECTED_SHA: \$\{\{ needs.release_gate.outputs.sha \}\}/g) || []).length, 2);
+  assert.ok(workflow.includes("const source=process.env.FUNDHUB_SHIP_EXPECTED_SHA||''"));
+  assert.ok(workflow.includes("execFileSync('git',['show',source+':public'+path])"));
+});
 
 /** One repo: a base commit holding every file the cases touch, then one commit per case. */
 function shipCase(change) {
@@ -428,9 +521,9 @@ describe("pull before the checks: ff-only, then rebase --autostash, then abort �
     for (const text of failures) assert.equal(morningOnlySlow(text), false, text);
   });
 
-  test("ship.mjs: between the pull and the deploy, the pull can stop the ship only when the folder was left mid-pull", () => {
+  test("ship.mjs: the manual pull stops only when the folder was left mid-pull", () => {
     const main = SRC.slice(SRC.indexOf("async function main()"));
-    const pullBlock = main.slice(main.indexOf("// ── 2. in step with GitHub"), main.indexOf("// ── 3. anything to ship?"));
+    const pullBlock = main.slice(main.indexOf('say("→ pulling GitHub\'s main")'), main.indexOf("// ── 3. anything to ship?"));
     const stops = pullBlock.match(/fail\([^)]*\)|process\.exit\(\d\)/g) || [];
     assert.deepEqual(stops, ["fail(pull.line)"]);
     assert.match(pullBlock, /if \(pull\.restored === false\) fail\(pull\.line\);/);
@@ -481,7 +574,7 @@ function fakePush({ fetch = "ok", inside = "yes", push = "ok", pushOut = "", thr
 describe("push after the ship-log commit, through github-push-whole-repo.mjs — never undoes the deploy", () => {
   test("it pushes with node scripts/github-push-whole-repo.mjs, no prompt, with a time limit", () => {
     const f = fakePush();
-    const r = pushToGitHub({ git: f.git, runCmd: f.runCmd });
+    const r = pushToGitHub({ git: f.git, runCmd: f.runCmd, env: { GITHUB_ACTIONS: "false" } });
     assert.equal(r.ok, true);
     assert.equal(r.pushed, true);
     const push = f.calls.find((c) => c.kind === "run");
@@ -513,11 +606,11 @@ describe("push after the ship-log commit, through github-push-whole-repo.mjs —
 
   test("a push that cannot even start, or runs out of time, is still one line", () => {
     const thrown = fakePush({ throwOnPush: true });
-    const r1 = pushToGitHub({ git: thrown.git, runCmd: thrown.runCmd });
+    const r1 = pushToGitHub({ git: thrown.git, runCmd: thrown.runCmd, env: { GITHUB_ACTIONS: "false" } });
     assert.equal(r1.ok, false);
     assert.match(r1.line, /ENOENT/);
     const slow = fakePush({ push: "timeout" });
-    const r2 = pushToGitHub({ git: slow.git, runCmd: slow.runCmd });
+    const r2 = pushToGitHub({ git: slow.git, runCmd: slow.runCmd, env: { GITHUB_ACTIONS: "false" } });
     assert.match(r2.line, /no answer within 10 minutes/);
   });
 
@@ -559,7 +652,7 @@ describe("push after the ship-log commit, through github-push-whole-repo.mjs —
  */
 function fakeGitHub() {
   const top = fs.mkdtempSync(path.join(os.tmpdir(), "ship-u08-gh-"));
-  const env = cleanGitEnv();
+  const env = { ...cleanGitEnv(), GITHUB_ACTIONS: "false" };
   const at = (dir) => (args) => {
     const r = spawnSync("git", args, { cwd: dir, encoding: "utf8", env });
     assert.equal(r.status, 0, `git ${args.join(" ")} in ${path.basename(dir)} failed: ${r.stderr}`);
@@ -686,6 +779,63 @@ describe("real git: the pull order and the push check do what the fakes say", ()
 });
 
 // ── small pieces ─────────────────────────────────────────────────────────────
+
+describe("GitHub release logger owns only main", () => {
+  test("a stale PR archive does not block main or publish other owners' refs", () => {
+    const gh = fakeGitHub();
+    try {
+      const base = gh.at(gh.mac)(["rev-parse", "HEAD"]);
+      gh.at(gh.app)(["checkout", "-q", "-b", "ready-owner"]);
+      gh.write(gh.app, "src/ready.mjs", "export const ready = true;\n");
+      const owner = gh.commit(gh.app, "owner's prepared work");
+      gh.at(gh.app)(["tag", "archive/ready-owner", owner]);
+      gh.at(gh.app)(["push", "-q", "origin", "ready-owner", "refs/tags/archive/ready-owner"]);
+      gh.at(gh.mac)(["tag", "archive/ready-owner", base]);
+      gh.at(gh.mac)(["tag", "-a", "local-only-annotation", "-m", "must stay local", base]);
+      gh.at(gh.mac)(["config", "push.followTags", "true"]);
+      gh.at(gh.mac)(["branch", "unpublished-owner", base]);
+      gh.write(gh.mac, "ops/ship-log.md", "| checked release |\n");
+      const ship = gh.commit(gh.mac, "ship: checked source is live");
+      const runCmd = (program, args, options) => {
+        assert.equal(program, "node");
+        assert.deepEqual(args, ["scripts/github-push-whole-repo.mjs", "--main-only"]);
+        return gh.macGit(publicationPushes("origin", ["unpublished-owner"], { mainOnly: true })[0], options);
+      };
+      const r = pushToGitHub({ git: gh.macGit, runCmd,
+        env: { ...gh.env, GITHUB_ACTIONS: "true" } });
+      assert.equal(r.pushed, true, r.line);
+      assert.equal(gh.at(gh.app)(["ls-remote", "origin", "refs/heads/main"]).split(/\s/)[0], ship);
+      assert.equal(gh.at(gh.app)(["ls-remote", "origin", "refs/tags/archive/ready-owner"]).split(/\s/)[0], owner);
+      assert.equal(gh.at(gh.app)(["ls-remote", "origin", "refs/heads/ready-owner"]).split(/\s/)[0], owner);
+      assert.equal(gh.at(gh.app)(["ls-remote", "origin", "refs/heads/unpublished-owner", "refs/tags/local-only-annotation"]), "");
+      assert.equal(gh.at(gh.mac)(["rev-parse", "archive/ready-owner"]), base);
+    } finally { gh.cleanup(); }
+  });
+
+  test("a concurrent main advance is refused without replacing either side", () => {
+    const gh = fakeGitHub();
+    try {
+      gh.write(gh.mac, "ops/ship-log.md", "| checked release |\n");
+      const local = gh.commit(gh.mac, "ship: checked source is live");
+      let remote;
+      const runCmd = (program, args, opts) => {
+          assert.equal(program, "node");
+          assert.deepEqual(args, ["scripts/github-push-whole-repo.mjs", "--main-only"]);
+          gh.write(gh.app, "src/next.mjs", "export const next = true;\n");
+          remote = gh.commit(gh.app, "next owner's change");
+          gh.at(gh.app)(["push", "-q", "origin", "main"]);
+        return gh.macGit(publicationPushes("origin", [], { mainOnly: true })[0], opts);
+      };
+      const r = pushToGitHub({ git: gh.macGit, runCmd,
+        env: { ...gh.env, GITHUB_ACTIONS: "true" } });
+      assert.equal(r.pushed, false);
+      assert.match(r.line, /rejected|fetch first|non-fast-forward/);
+      assert.equal(gh.at(gh.app)(["ls-remote", "origin", "refs/heads/main"]).split(/\s/)[0], remote);
+      assert.equal(gh.at(gh.mac)(["rev-parse", "HEAD"]), local);
+      assert.equal(gh.at(gh.mac)(["status", "--porcelain"]), "");
+    } finally { gh.cleanup(); }
+  });
+});
 
 describe("helpers", () => {
   test("redact hides GitHub tokens however they appear", () => {

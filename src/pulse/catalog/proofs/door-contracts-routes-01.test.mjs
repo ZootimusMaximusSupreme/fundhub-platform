@@ -101,9 +101,9 @@ async function proveFinanceModel() {
     note: null,
   });
   assert.deepEqual(response.body.deal.cashPosition, {
-    netCashToClient: 222000,
+    netCashToClient: 225000,
     deposit: 3000,
-    fee: { total: 25000, paidDown: 0, fromProceeds: 25000 },
+    fee: { total: 25000, paidDown: 3000, fromProceeds: 22000 },
   });
   assert.deepEqual(response.body.deal.monthly, {
     intro: {
@@ -143,13 +143,13 @@ async function proveFinanceModel() {
   assert.deepEqual(response.body.net, {
     approved_funding: 250000,
     success_fee: 25000,
-    fee_from_proceeds: 25000,
-    fee_paid_out_of_pocket: 0,
+    fee_from_proceeds: 22000,
+    fee_paid_out_of_pocket: 3000,
     deposit: 3000,
-    net_cash_to_client: 222000,
+    net_cash_to_client: 225000,
     existing_debts: 12000,
     existing_debts_source: "entered_on_this_screen",
-    net_cash_after_debts: 210000,
+    net_cash_after_debts: 213000,
   });
   assert.deepEqual(response.body.funding.allocation, {
     requestedAmount: 18000,
