@@ -110,6 +110,7 @@ function diagram(journey, allowed, refused, unverified, specificCount) {
    signature-verified webhook showed "anyone". Roles and principal kinds are
    different axes and both get printed when both apply. */
 function who(gate) {
+  if (gate.kind === "staff-challenge") return "staff with a password-authenticated MFA challenge";
   if (gate.kind === "verified-other") return `**not a sign-in** — ${gate.verifiedBy}`;
   if (gate.kind === "open") return "anyone";
 

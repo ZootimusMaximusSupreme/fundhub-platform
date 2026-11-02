@@ -31,11 +31,11 @@ flowchart TD
     CAN --> A_top_level[Everything else — 5 routes]
     CAN --> A_trials[trials — 1 route]
     CAN --> A_webhooks[Incoming webhooks — 1 route]
-    WHO -->|Yes| CANT[Blocked — 299 routes]
+    WHO -->|Yes| CANT[Blocked — 300 routes]
     CANT --> B_adintel[adintel — 1 blocked]
     CANT --> B_affiliates[affiliates — 2 blocked]
     CANT --> B_analytics[analytics — 4 blocked]
-    CANT --> B_auth[Signing in and out — 8 blocked]
+    CANT --> B_auth[Signing in and out — 9 blocked]
     CANT --> B_banking[banking — 7 blocked]
     CANT --> B_blueprint[blueprint — 2 blocked]
     CANT --> B_brand[brand — 1 blocked]
@@ -71,7 +71,7 @@ flowchart TD
 
 ## What they can reach
 
-**46 of 345 routes.**
+**46 of 346 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -129,7 +129,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**299 of 345 routes.**
+**300 of 346 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -149,6 +149,7 @@ flowchart TD
 | `/api/auth/authorized-rep` | GET, POST | owner, admin |
 | `/api/auth/authorized-rep-file` | GET, POST | client |
 | `/api/auth/invite` | POST | owner, admin |
+| `/api/auth/mfa` | POST | staff with a password-authenticated MFA challenge |
 | `/api/auth/send-portal-link` | POST | owner, admin |
 | `/api/auth/staff-role` | POST | owner, admin |
 | `/api/auth/staff-update` | POST | owner, admin |

@@ -192,6 +192,7 @@ export function wrapperGates() {
  *   "explicit-roles" a hand-written Set of role names in the handler
  *   "principal"      requirePrincipal, gated by KIND rather than role
  *   "wrapper"        gate lives in a shared wrapper, traced above
+ *   "staff-challenge" a password-authenticated MFA challenge token, not a session
  *   "open"           no session gate at all, by design
  *   "unverified"     the parser does not recognise the shape — a finding
  */
@@ -204,6 +205,22 @@ function primaryGate(file, { sets, wrappers }) {
     return { kind: "unverified", roles: null, principals: null, note: `handler file ${file || "?"} not found on disk` };
   }
   const src = code(read(file));
+
+  // An MFA challenge is not an open public route and not an existing staff
+  // session. The token is minted only after a staff password check, expires,
+  // and must be paired with an authenticator or recovery code to mint a session.
+  if (file === "api/auth/mfa.mjs") {
+    const model = exists("src/auth/mfa.mjs") ? code(read("src/auth/mfa.mjs")) : "";
+    const known = /mfaToken\s*=\s*body\.mfa_token/.test(src) &&
+      /beginMfaSetup/.test(src) && /verifyMfaChallenge/.test(src) &&
+      /mfa_token_required/.test(src) && /hashToken\(token\)/.test(model) &&
+      /c\.expires_at>now\(\)/.test(model) && /s\.status='active'/.test(model);
+    return known
+      ? { kind: "staff-challenge", roles: null, principals: ["staff"],
+        note: "short-lived password-authenticated staff MFA challenge; setup requires its token, and session creation also requires an authenticator or recovery code" }
+      : { kind: "unverified", roles: null, principals: null,
+        note: "staff MFA challenge gate changed and must be traced again" };
+  }
 
   // Shared wrappers first: the handler delegates and has no gate of its own.
   for (const [name, gate] of Object.entries(wrappers)) {
