@@ -20,11 +20,16 @@ const token = "ab".repeat(32);
 
 function memoryDB() {
   const rows = [];
+  const staffRetirements = [];
   const revokedSessions = new Set();
   return {
-    rows,
+    rows, staffRetirements,
     revokeSession: (id) => revokedSessions.add(id),
     async query(sql, params) {
+      if (sql.includes("UPDATE staff_apns_devices SET revoked_at")) {
+        staffRetirements.push({ sql, params });
+        return { rows: [] };
+      }
       if (sql.includes("SELECT id, org_id, client_id, token_hash")) {
         return { rows: rows.filter((row) => !row.revoked_at && !row.expired_at
           && ((row.token_hash === params[0] && row.apns_environment === params[1])
@@ -146,4 +151,20 @@ test("native client aggregate retains uncertain transport count without inventin
  }
  const denied=await sendNativeToClient(db,{orgId,clientId:firstClient,notification:{kind:'test'},env,send:async()=>({status:'failed',gone:false})});
  assert.equal(denied.sent,0);assert.equal(denied.failed,1);assert.equal(denied.unknown || 0,0);
+});
+
+
+test("client creation and its same-client fast return both retire only matching physical staff registrations", async () => {
+  const db = memoryDB();
+  const input = { orgId, clientId: firstClient, accountId: firstAccount, sessionId: firstSession,
+    installationId, token, environment: "development", env };
+  assert.equal((await registerNativeDevice(db, input)).created, true);
+  assert.equal((await registerNativeDevice(db, input)).created, false);
+  assert.equal(db.staffRetirements.length, 2);
+  for (const { sql, params } of db.staffRetirements) {
+    assert.match(sql, /token_hash = \$1 AND apns_environment = \$2/);
+    assert.match(sql, /OR installation_id = \$3/);
+    assert.match(sql, /expired_at IS NULL AND revoked_at IS NULL/);
+    assert.deepEqual(params, [crypto.createHash("sha256").update(token).digest("hex"), "development", installationId]);
+  }
 });

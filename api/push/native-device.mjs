@@ -21,7 +21,8 @@ export default async function handler(req, res) {
   const principal = await requirePrincipal(req, res, ["client", "staff"], { db });
   if (!principal) return;
   if (principal.kind === "staff") {
-    if (!["owner", "setter", "closer"].includes(principal.role)) {
+    if (!["owner", "admin", "sales_manager", "setter", "closer", "outbound_rep",
+      "inquiry_specialist", "funding_advisor", "csm"].includes(principal.role)) {
       return res.status(403).json({ ok: false, error: "forbidden" });
     }
     // requirePrincipal resolves the staff identity but does not return the

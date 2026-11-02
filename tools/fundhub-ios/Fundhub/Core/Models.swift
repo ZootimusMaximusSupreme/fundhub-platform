@@ -86,6 +86,13 @@ struct NativePushWriteReply: Decodable {
 }
 
 enum FundhubRole {
+    static func canRegisterNativePush(principal: String, role: String?) -> Bool {
+        if principal == "client" { return true }
+        guard principal == "staff", let role else { return false }
+        return ["owner", "admin", "sales_manager", "setter", "closer", "outbound_rep",
+                "inquiry_specialist", "funding_advisor", "csm"].contains(role)
+    }
+
     static func workspacePath(principal: String, role: String?) -> String {
         guard principal == "staff" else { return "/app/client-portal.html" }
         switch role {

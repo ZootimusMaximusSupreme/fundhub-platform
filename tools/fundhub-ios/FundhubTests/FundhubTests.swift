@@ -48,6 +48,23 @@ final class FundhubTests: XCTestCase {
         XCTAssertEqual(purpose, "Use Face ID to unlock your saved Fundhub sign-in.")
     }
 
+    func testNativePushEligibilityUsesOnlyKnownPrimaryStaffRoles() {
+        let roles = ["owner", "admin", "sales_manager", "setter", "closer", "outbound_rep",
+                     "inquiry_specialist", "funding_advisor", "csm"]
+        for role in roles {
+            XCTAssertTrue(FundhubRole.canRegisterNativePush(principal: "staff", role: role), role)
+        }
+        let unsupported: [String?] = [nil, "", "unknown_job", "Owner", "setter,closer"]
+        for role in unsupported {
+            XCTAssertFalse(FundhubRole.canRegisterNativePush(principal: "staff", role: role))
+        }
+        XCTAssertTrue(FundhubRole.canRegisterNativePush(principal: "client", role: nil))
+        XCTAssertTrue(FundhubRole.canRegisterNativePush(principal: "client", role: "unknown_job"))
+        for principal in ["partner", "affiliate", "unknown", ""] {
+            XCTAssertFalse(FundhubRole.canRegisterNativePush(principal: principal, role: "owner"))
+        }
+    }
+
     func testRoleHomesAreSeparate() {
         XCTAssertEqual(FundhubRole.workspacePath(principal: "client", role: "owner"), "/app/client-portal.html")
         XCTAssertEqual(FundhubRole.workspacePath(principal: "staff", role: "setter"), "/app/setter-dashboard.html")

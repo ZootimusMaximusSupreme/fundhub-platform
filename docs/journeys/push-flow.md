@@ -26,6 +26,10 @@ Tapping it opens the signed-in setter or closer dashboard with that client
 selected; the existing call link can dial the client's phone. This is source
 behavior until a released iPhone app and real-device delivery are verified.
 
+Owner-approved 2026-11-02: primary owner, admin, sales_manager, setter, closer, outbound_rep, inquiry_specialist, funding_advisor and csm roles may register, read and remove only their own installation through the live bearer session. Unknown primary roles and partner sessions do not gain staff-device access from additional jobs or body fields. The outbound seat retains read-only Dock access and only the exact own-device GET/POST/DELETE route. The iPhone uses the same known-primary-role eligibility. This changes device enrollment, not alert recipients or message content.
+
+A later verified sign-in on the same installation retires matching prior staff and client registrations in both directions, including a same-client reattach and token rotation. Invalid token, environment or installation input must change nothing; a different foreign installation and token must remain active. Device registration does not prove a real phone received an alert.
+
 ## Native Fundhub iPhone app (built in source; delivery not proved)
 
 The native app has a separate APNs pipe. Its client Home card checks `/api/push/native-device`

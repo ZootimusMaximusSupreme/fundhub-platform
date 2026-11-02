@@ -143,7 +143,7 @@ final class FundhubSessionStore: ObservableObject {
                 await loadSummary()
                 guard self.token == token, phase == .signedIn else { return }
                 await NativePushCenter.shared.attach(bearer: token)
-            } else if ["owner", "setter", "closer"].contains(result.staff.role ?? "") {
+            } else if FundhubRole.canRegisterNativePush(principal: result.principal, role: result.staff.role) {
                 await NativePushCenter.shared.attach(bearer: token)
             }
         } catch {
@@ -581,8 +581,7 @@ private struct HomeView: View {
                 )
                 .id(reloadId)
                 .safeAreaInset(edge: .top, spacing: 0) {
-                    if identity.principal == "client" ||
-                        (identity.principal == "staff" && ["owner", "setter", "closer"].contains(identity.staff.role ?? "")) {
+                    if FundhubRole.canRegisterNativePush(principal: identity.principal, role: identity.staff.role) {
                         HStack {
                             if ClientPortalNavigation.showsBackButton(
                                 path: clientAlertPath, bearerAtOpen: clientAlertBearer,
