@@ -1,0 +1,14 @@
+Sales script and 22-video objection update — 2026-11-01
+
+Owner: codex/sales-script-objections. The shared weekend board belongs to another open PR; this task uses this text board to avoid file overlap.
+
+Done in this branch: replaced the sales script's section 9 with spoken universal, funding, credit optimization and Blueprint answers; clarified the approved-limit 10% fee, $3,000 credit, first-month help, partial approvals, direct lender offers, accurate items and reinsertion. Replaced all 22 recording-kit click-through decks with the newer November 1 originals, corrected three buyer-facing contradictions, regenerated 22 film boards and 22 talk scripts, and exported all 66 deliverables to the Desktop kit. Original Desktop kit backup: /private/tmp/fundhub-video-recording-kit-before-objections-2026-11-01.tar.gz.
+
+Chris's separate product decisions: a Blueprint graduate who later buys done-for-you funding pays a separate 10% success fee with no new deposit. Each Blueprint buyer should have a named success manager. Current funding checkout and agreement still charge the $3,000 deposit to all funding buyers, and the Blueprint journey has a Fundhub team queue instead of a named manager. Buyer-facing copy uses current terms until those product paths are changed.
+
+Build queue (Chris, 2026-11-01):
+1. Add a Blueprint-graduate done-for-you funding path: separate agreement, 10% success fee on confirmed approved limits or amounts, no new $3,000 deposit. Check graduate status and show the actual amount due before any payment or application.
+2. Assign a named success manager when a Blueprint buyer joins, show the person and contact route in the portal, and route first-month questions to that person. Update the Blueprint journey and buyer-facing script only after this works.
+3. Prove both paths with focused checkout, agreement, portal and live user-path checks before a closer promises them.
+
+Present closer-line alignment and 73 focused tests pass. The 22-deck checker passes. Preflight found no file overlap, but the branch needs the latest six main commits before PR. Remaining: finish lint, rebase through the ordered shipping command, rerun preflight, open the ordered PR, and verify GitHub result. Do not claim live publication from local tests or Desktop export.

@@ -1,85 +1,79 @@
 Fundhub, The Cost of Waiting
 
-1. CW-01 / The cost — Nobody reads your file while you wait, so nothing on it changes.
+1. CW-01 / The same file — Until somebody works on your file, every bank you try reads the same one.
 
-Nobody reads your file while you wait, so nothing on it changes.
+Until somebody works on your file, every bank you try reads the SAME one, with the same balances, the same inquiries and the same reasons printed on it.
 
-Look at this. It's the actual question sheet your advisor runs on the call, and one line on it is about the cost of waiting.
+Each month the file stays that way has a price. This is the question sheet your advisor works from, and one question on it finds that price.
 
-What is this costing you each month? Jobs you can't take, ads you can't run, a hire you can't make.
+It asks what the stuck part costs you every month, and your answer gets written down in DOLLARS, right there on the call.
 
-Your advisor writes that amount down, because that is the real price of leaving the file the way it is.
+If that cost repeats, put it beside the work and decide what waiting means for you.
 
-It keeps running every month the file stays the same, whether anybody is working on it or not.
+The next question is where you will be in a year if nothing changes. Use the cost you told us, not a made-up loss.
 
-Your story: a client who put a real monthly cost on the stuck part, and what every month of waiting cost them.
+There's a second cost too, and it's printed right on your report. It came from the last time you or anybody else sent your file to a bank.
 
-2. CW-02 / The inquiries — The hard inquiries from the last time you applied are still on your report.
+2. CW-02 / Inquiries — Almost every bank you try while the file sits leaves one more inquiry for the next bank.
 
-Here's one thing waiting leaves exactly where it is: the hard inquiries from the last time you applied.
+Almost every bank you try while the file sits leaves one more inquiry behind, and the next bank you try reads that one too, on top of the rest.
 
-Almost every application you send is a hard pull, and a no from the bank still leaves the inquiry sitting on your report.
+This sample report shows three of them, one on each bureau. Two came from card applications, and the third came from a request for a higher limit.
 
-Look at this sample report. Three hard inquiries, one on each bureau, and every one of them is still there for the next bank to see.
+The next bank reads ALL of them before it decides, and our system counts every one of them against your fundability before a single application goes out.
 
-The banks see the inquiries stack, and they start denying you.
+While the file sits, nobody disputes them. If you keep applying in the meantime, the list the next bank reads gets LONGER every time.
 
-Inquiries cost fundability. Any more than zero should come off, and nobody works on them while the file sits.
+When we work a funding file, the new inquiries get disputed between rounds, which only happens once the work on your file has started.
 
-When we run a file, we dispute the new hard inquiries between rounds. That only happens once somebody is working the file.
+3. CW-03 / Round one — Credit optimization sends round one the day you sign, and every later round follows it.
 
-3. CW-03 / The clock — Each round of credit optimization waits 30 to 45 days on the bureaus.
+Credit optimization sends round one the day you sign. Every later round follows it in line, because each one waits for the answer to the round before it.
 
-Credit optimization runs on the bureaus' clock, not ours.
+That's in the agreement word for word. The marked lines tie round one to the day you sign, and they make every later round wait on the one before it.
 
-Read the agreement with me. Round one goes out the day you sign, and the bureaus have 30 to 45 days to answer each round.
+Funding works the same way. Applications go out a round at a time, with the new inquiries from each round disputed before the next one goes out.
 
-The next round goes out once they answer or their time runs out, and there are up to six rounds, each one waiting on the one before it.
+That's why waiting reaches every round, on both sides. The day you start sets the day round one goes out, and every round behind it moves with it.
 
-That window belongs to the law and the bureaus, and it only starts once a round goes out.
+Every letter that goes out and every answer that comes back shows up in your dashboard, so you see which round your file is on at any time.
 
-So every month the file sits, those 30 to 45 days haven't started, and every round behind it slides later with it.
+4. CW-04 / Start the work — Start the work your file needs; the next funding sequence is planned from the updated file.
 
-You watch every dispute and every response in your dashboard, so you always know which round the clock is on.
+The next funding sequence depends on your updated file, the banks that fit it, and whether the business can carry the credit.
 
-4. CW-04 / Funding rounds — Funding goes out in rounds, and each round waits on the one before it.
+The work begins with the file in front of us. We decide on applications only after we see what has changed.
 
-Funding has its own clock too. We apply in rounds, and each round waits on the one before it.
+The picture shows starting now beside waiting six months. The circles are work milestones, not promised approvals.
 
-One funding sequence is about six rounds: your personal file first, then each business on its own.
+If waiting has a real cost in your business, put that cost on the call plan.
 
-Between rounds we dispute the new hard inquiries, so the next round starts from a cleaner file.
+Each bank decides on its own. The next application depends on your updated file and the terms available then.
 
-Look at the two tracks. Same six rounds on both. The bottom one starts after a wait, so every single round lands later, and the last three land past where the top track already finished.
+Once the file is ready, we plan the first sequence. We review the file again before any later sequence.
 
-The wait adds itself to every round after it. The whole sequence moves down the road by that much.
+5. CW-05 / That day's file — A bank's no was its answer to how your file looked that day, at that bank.
 
-The clock on our side starts when you sign. Nothing in the sequence starts before that.
+If a bank told you no before, that no was its answer to your file the way it looked on THAT day, at that one bank.
 
-5. CW-05 / That day's file — A no from a bank was a fact about your file on that day.
+Fundhub's own guide answers it in writing: a denial depends on how your file looked on that day, and on which bank you picked.
 
-If you got told no before, that no was a fact about your file on that day.
+The same issues may still matter to the next bank. Let's check your current file before another application.
 
-Read the line. A denial is based on how your file looked that day and which bank you chose.
+We read your current file and choose banks whose stated criteria fit it. Each bank decides.
 
-The file only changes when something gets done to it: a card paid down, an inquiry disputed, a negative item disputed.
+Each bank decides for itself, and our agreement puts that in writing. That's why we check your file first, before a single bank gets a look at it.
 
-Waiting leaves the file the way that bank saw it, so waiting is the one thing that does nothing to the no.
+The work on the file is the part you control. A card paid down or an inquiry disputed changes what the next bank reads, and waiting changes none of it.
 
-We look at your file as it is now and pick the banks that match it. That's what changes between that day and this one.
+6. CW-06 / Your dollar amount — Waiting gets a real dollar amount on your call, next to what's holding your file back.
 
-The bank still decides. We pick the banks and the order, and that's written in the agreement.
+The monthly cost from the question sheet is the first thing your strategy call puts on paper, as a real dollar amount, next to your OWN file.
 
-6. CW-06 / Your call — Worst case, you leave the call knowing where you stand and the next move.
+Your file gets read with you right there on the line. We use a soft pull for that, so your score stays put the whole time.
 
-Here's the worst case on the call: you leave knowing exactly where you stand and the next move.
+You see how much you qualify for based on where you're at right now, and you see the exact items keeping you from more.
 
-Look at the sheet. Come ready. We will look at your file together and you will leave knowing the next move. That's the setter's own script, word for word.
+Your advisor tells you straight whether Fundhub fits your file. When it does, you see exactly how the work goes, and when it doesn't, you hear where to go instead.
 
-We pull your file together right there on the call. It's a soft pull, so your score does not move.
-
-You see how much you qualify for based on where you're at right now, and what's holding the rest back.
-
-If we can help, your advisor shows you exactly how. If we can't, you hear that too, and you get pointed the right way.
-
-The reports are yours either way, and the cost of waiting stops being a guess. Right now, we're both guessing.
+The reports stay yours either way, and the cost of waiting goes on your plan as a dollar amount per month, right next to the first step.

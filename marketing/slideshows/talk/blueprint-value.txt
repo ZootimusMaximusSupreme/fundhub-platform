@@ -1,111 +1,95 @@
 Blueprint, Why It Works
 
-1. BV-01 / Courses — A course teaches the funding game in general. It never reads your file.
+1. BV-01 / The first fix — Your next move in funding is already written on your report, in the bureau's own words.
 
-A course teaches the funding game in general, and it never reads your file.
+Your next move in funding is already WRITTEN on your report, in the bureau's own words. It's sitting there before you ever apply.
 
-So you can spend a thousand hours watching courses and still not know the next step for your own file.
+This is a sample report. Under the score, the bureau prints its reasons, and the top one names the first fix: the card balance is too high for its limit.
 
-Look at these two lines. They're from our own Blueprint script, and I stand behind both of them.
+You can sit through a thousand hours of courses and still not know which card to pay first, while this one line on your report names it.
 
-Instead of watching a course about the process, you go through the process on your own file. That's how you actually learn it.
+Our engine checks your personal file SIX ways. Your report already shows which of the six you pass today, and which ones hold you back.
 
-And only about 1 in 8 people finish an online course they sign up for. That's a real stat from a study of 221 courses.
+The Blueprint starts from your file, so every hour you put in goes into the exact file a bank reads.
 
-The Blueprint reads your file first, and every step comes off your own report. There's nothing general about it.
+2. BV-02 / What it rests on — What does a repeatable funding plan rest on, and what comes first?
 
-2. BV-02 / What you want — What you want is unlimited funding, and it comes from three things.
+The goal is to make your next move clear, then review your file again before another funding sequence.
 
-You don't want a course. What you want is unlimited funding.
+It rests on three things set up right: your personal credit, your businesses, and a clear roadmap from where you are today to where you're going.
 
-It comes from three things: your personal credit set up right, your businesses set up right, and a clear roadmap from where you are to where you want to be.
+The ORDER matters most. Your personal credit comes first, then each business, and the roadmap from your own file tells you which move is next.
 
-Unlimited funding over time is real. You build aged companies set up right, five to ten of them, and each one needs its own revenue.
+An application sent before your file is ready spends a hard inquiry. The next bank sees that inquiry the moment it pulls your report.
 
-It takes time, and that's exactly why the order matters.
+Your roadmap tells you when the file is ready for its first application, and each company gets its own turn after that.
 
-The roadmap is built from your own file, so it starts where you are, with your cards, your items and your business.
+3. BV-03 / The code — About 90,000 lines of code build your roadmap, and the six checks start in this block.
 
-Your story: the companies you set up and funded off your own file, in your own words.
+When a company says it has an algorithm, you should get to see it. This is real code, straight from the engine that reads your file.
 
-3. BV-03 / The code — It's a real algorithm, and this is a piece of its code.
+UnderwriteIQ runs on 37,097 lines of code across 145 files. With the Fundhub engines around it, that's about 90,000 lines, and the whole app is close to 580,000.
 
-People hear algorithm and think it's a sales word. So here's the code.
+This block lists the engine's six personal checks. On screen are the first three: a score of 700 or higher, cards used at 30 percent or less, and no negative items.
 
-UnderwriteIQ is 37,097 lines of code in 145 files. With the Fundhub engines around it, it's about 90,000 lines in 323 files, and the whole app is about 580,000 lines.
+The other three are your main card, your hard inquiries, and how deep your file runs. Every check weighs EXACTLY the same.
 
-This block is from the file that scores a credit file. These are the engine's own personal checks, exactly as they are written.
+Those first three work as a gate. Pass all three and the engine calls your personal file fundable, and only then does a dollar figure show up at all.
 
-A credit score of 700 or higher. Cards used at 30 percent or less. No negative items. Then your main card, your hard inquiries and the depth of your file.
+4. BV-04 / Your roadmap — Your roadmap works 13 optimization points in a set order, filled in from your own file.
 
-Every check weighs the same, and the first three are the engine's fundable gate taken apart.
+Your roadmap works 13 optimization points in a set ORDER, and your own file fills in what goes into each step.
 
-Every client file at Fundhub goes through this. A course has no engine. This one reads your file.
+Cards to pay down and items to dispute come first. Then accounts to add, banks to open, where your deposits sit, and how your business gets set up.
 
-4. BV-04 / Your roadmap — Your roadmap comes off your own file: 13 optimization points, in the right order.
+This is a sample checklist on its first day. It opens with the card step and the letter steps, and each target and letter is built from that sample file.
 
-Here's your roadmap, and it comes off your own file.
+The letters are due in your first two weeks, so the bureaus are already working on them while you pay your cards down.
 
-Your file has 13 optimization points, and fixing them only works in the right order.
+5. BV-05 / Your businesses — The engine reads every company you add by itself, with five checks of its own.
 
-Which cards to pay down. Which items to remove. Which items to add. Which banks to open. Where to put the money. And how to set up your business so a bank sees it as established.
+Every company you add in the app gets five checks of its own. The Fundability screen lists each company by itself.
 
-Look at this sample checklist on day 0. The first step is one card, paid down to a target the engine read off the file.
+The screen says it in plain words: each business is read on its own, and they are never added together.
 
-Then the letters: print and mail them, upload your mailing proof, and upload what the bureaus send back.
+The five checks are simple. Your personal file is fundable, and you have a seasoned main card. The company is 24 months old, and its name and industry code are on file.
 
-The paydown step closes itself when your next credit report shows the new balance. Nobody ticks that box by hand. The next report closes it.
+That means you always know which company is ready for its own rounds, and EXACTLY which one needs one more thing before it gets there.
 
-5. BV-05 / Your businesses — Each business is judged on its own. Add business one, then business two.
+Your personal file gets ready first. Then business one, then business two, and you don't need a company at all to get started.
 
-Now the businesses, because this is where the funding keeps growing.
+6. BV-06 / It keeps going — After your first funding sequence, the date of the next one goes right on your plan.
 
-After your personal file is ready, you add a business right in the app, and the engine reads it on its own.
+After your first funding sequence, the planner reads your file again and puts a suggested date for the next sequence right on your plan.
 
-This is the real screen. Read the line with me: each business is read on its own, and they are never added together.
+The capital from that first sequence goes into the business you run NOW, while the next one is already dated on your plan.
 
-That's straight out of the engine's code too. Each company is read on its own and listed on its own, with its own five checks.
+Each sequence runs about six rounds. Your personal file goes up front, and every company takes its own turn after it.
 
-So business one gets ready first. Then business two. Then more fundability.
+Walk up the picture with me: your personal file, the first sequence, the next one, then more companies, each one read on its own.
 
-You don't need a business to start. The personal file comes first, and the businesses come after.
+Each real business has its own file and revenue. Review one funding sequence at a time.
 
-6. BV-06 / It keeps going — It keeps going: the next funding sequence, and more companies over time.
+7. BV-07 / In writing — Here is what the Blueprint agreement says you receive for 12 months.
 
-And it keeps going. That's the part a course never shows you.
+The Blueprint agreement says what you receive: a plan built from your file, a checklist, and support for twelve months.
 
-One funding sequence is about six rounds. Your personal file goes first, then each business on its own.
+You still do your card, letter, and business steps. We put them in order and help you through them.
 
-After funding, the planner reads your file and suggests when it's ready for the next funding sequence, and that date goes on your plan.
+What have you tried so far, and which step still leaves you stuck? Let me show you where it sits on your plan.
 
-Then you add a company, and it gets read on its own and goes through its own rounds.
+You can work on your file yourself. This gives you an ordered plan and a team to help you follow it for twelve months.
 
-Walk the stairs with me: personal file, funding sequence, next funding sequence, more companies. Over time.
+The goal is a file and a business plan ready for the right funding applications. Each lender decides the result.
 
-That's what unlimited funding over time looks like on a real plan. It's an order, and the rounds never stop.
+8. BV-08 / Your call — Your file passes some of the six checks today, and your strategy call shows you which.
 
-7. BV-07 / The guarantee — We GUARANTEE it's the last tool you'll ever use to learn the funding game.
+Six checks run on every personal file, and your strategy call is where you watch YOUR file go through all six.
 
-Here's my guarantee, in my own words. We guarantee it's the last tool you'll ever use to learn the funding game.
+Your file comes up through a soft pull, and your score holds steady while we look.
 
-You learn funding by taking action on your own file, and the Blueprint's job is to get your file ready to fund.
+You see how much you qualify for based on where you're at right now, and the exact checks holding the rest back.
 
-It's built for anyone who wants the maximum amount of funding from their next round of applications.
+Whatever your file misses becomes the first steps on your roadmap, in the set order from earlier.
 
-I put my name on that line because the Blueprint is what I wish I'd had ten years ago, when I was learning this the hard way.
-
-That's the guarantee. Everything else on this deck is the proof behind it: the code, the checklist, the businesses, the sequence.
-
-8. BV-08 / Your call — On your call, you see your own file, and the steps for it, before any price.
-
-On your call, you see your own file and the steps for it before you hear any price.
-
-We pull your file together right there on the call. It's a soft pull, so your score does not move.
-
-Then you see how much you qualify for based on where you're at right now.
-
-If we can help, we show you exactly how. If we can't, we tell you that too, and point you the right way.
-
-Three steps, in this order: your file, your path, then the price. You agree on the path first.
-
-Join from a computer somewhere quiet, because we share the screen and go through your file with you. We're looking for action takers, not shoppers.
+Your path gets settled before price. Ask every question you need before you decide.

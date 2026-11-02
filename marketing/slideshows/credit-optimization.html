@@ -4,13 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Fundhub Credit Optimization</title>
-<meta name="description" content="The letters go out in order, each round waits on the answer to the one before it, and each one stands on stronger law.">
+<meta name="description" content="Credit optimization starts with your report, round one on signing day, and tracked follow-up for up to six rounds.">
 <!--
   Deck CO · Credit optimization
   Lane: Blueprint and credit optimization (everyone under 700)
   Hammer Them pillar: 2nd-layer question
   Belief: The letters go out in order, each round waits on the answer to the
           one before it, and each one stands on stronger law than the last.
+
+  Rewritten 2026-10-31 on Chris's slide framework (see pre-underwriting.html).
 
   Chris's direction (2026-10-31): his call-slide style (a coded label, a big
   headline, full lines of copy with the pastel stripe), more copy, real first
@@ -23,7 +25,7 @@
     question, and the first subject is the banks, not us.
   - It tells them something they don't know: round one goes out the day you
     sign, and each round stands on stronger law (Part 0 rule 26). Line 2
-    opens the loop ("stronger law") and CO-02 to CO-05 pay it off (rules 27,
+    opens the loop ("stronger law") and CO-03 to CO-06 pay it off (rules 27,
     28).
   - "Credit optimization", never the banned two words (Part 0 rule 1). The
     agreement text is quoted only where it carries none of them.
@@ -48,8 +50,8 @@
     fit.
 
   Visual Thinking (marketing/copy-skills/visual-thinking/), every step.
-  - Real first (law: show-real-proof): CO-01, CO-04 and CO-05 are the
-    agreement's own words with a mark on top. CO-02, CO-03 and CO-06 are
+  - Real first (law: show-real-proof): CO-01, CO-02 and CO-05 are the
+    agreement's own words with a mark on top. CO-03, CO-04 and CO-06 are
     diagrams, because a ladder of rounds, who gets a letter and the call are
     things nothing real shows better.
   - Look: the facts came first, each with its source in data-src. No sample
@@ -63,18 +65,19 @@
   - Show, by Dan Roam's six ways of seeing (methods.md):
     CO-01 why, real: section 2 of the agreement, "Round one goes out the day
       you sign" marked "In your agreement".
-    CO-02 how many, a chart: six bars rising left to right, one per round,
-      with the law each stands on under the bar.
-    CO-03 where, a map: your file in the middle, letters to the three bureaus
-      and straight to the company that reported the item, and its answer
-      going back to all three.
-    CO-04 when, real: the agreement's "Each round waits on the answer to the
-      one before it" marked.
+    CO-02 when, real: the agreement's "Each round waits on the answer to the
+      one before it", cropped to the marked sentence "sends the next round once
+      they answer or their time to answer has passed". Moved to slot two 2026-10-31.
+    CO-03 how many, a chart: six bars, rounds one to five rising, round six at
+      round three's height because it reuses that letter. Redrawn 2026-10-31.
+    CO-04 where, a map: your dispute pack, letters to all three bureaus as one
+      bracket, a letter down to the company that reported the item, and its
+      answer back up to the bracket. Redrawn 2026-10-31.
     CO-05 what, real: section 1's "copies of the work and the responses, or
-      access to them in your dashboard" marked, with the no-promise sentence
-      left in full view.
-    CO-06 who/what, a portrait of the call: the items on your file and the
-      rounds that go after them, on one shared screen.
+      access to them in your dashboard", cropped to that sentence.
+    CO-06 who/what, the call screen: round one's list from your report
+      (collections, charge-offs, lates, inquiries), then the two ways in.
+      Redrawn 2026-10-31.
   - Truth check (applications.md): no picture implies a deletion, a score
     change, a speed or a result the agreement does not promise. No mail
     carrier is named. The complaints show the client's signature.
@@ -755,12 +758,13 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </defs>
   </svg>
 
-  <section class="slide dark" data-src="The banks are careless and would rather ignore than take the time to respond; the goal is to show with proof and then escalate as quickly as possible: Chris 2026-09-09, marketing/copy-skills/copybot/references/chris-voice-profile.md:35-36. The picture is the agreement's own words, copied exactly from section 2 of the credit optimization agreement the CRM sends: db/migrations/493_funding_and_repair_agreement_text.sql:69. We just use more aggressive law as we go: Chris 2026-08-28, src/pulse/beats/lib/letter-catalog.mjs:29-31.">
+  <section class="slide dark" data-src="A file-based dispute needs a record, a tracked bureau answer and scheduled follow-up: Chris 2026-09-09, marketing/copy-skills/copybot/references/chris-voice-profile.md:35-36. The picture is the agreement's own words, copied exactly from section 2 of the credit optimization agreement the CRM sends: db/migrations/493_funding_and_repair_agreement_text.sql:69. We just use more aggressive law as we go: Chris 2026-08-28, src/pulse/beats/lib/letter-catalog.mjs:29-31. Each item on a report names the company that reported it: scripts/sim/push-credit.mjs:642-658 (creditor on each tradeline). The next round goes out once they answer or their time has passed: 493...sql:69.">
     <p class="eyebrow">CO-01 / The dispute they ignore</p>
-    <h2>Banks would rather ignore a dispute than take the time to answer it.</h2>
-    <p class="lede">So round one goes out the day you sign, and each round after it stands on stronger law than the one before.</p>
+    <h2>A dispute needs a clear record and follow-up when the bureau answers.</h2>
+    <p class="lede">Your own report already lists the items round one goes after.</p>
     <ul class="lines">
-      <li>The goal is to show them proof, then escalate as quickly as possible.</li>
+      <li>Round one is mailed the same day you sign, and that sentence sits right here in your agreement.</li>
+      <li>It's the first of up to six rounds.</li>
     </ul>
     <figure class="pic">
       <div class="real" role="img" aria-label="Section 2 of the Fundhub credit optimization agreement, the rounds and how long they take. Marked: Round one goes out the day you sign this agreement. Then: Fundhub then carries out up to six dispute rounds.">
@@ -771,40 +775,67 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Banks would rather ignore a dispute than take the time to answer it. They're careless. I've seen it for a decade.</li>
-        <li>So the first round goes out the day you sign. Here it is, in the agreement, word for word.</li>
-        <li>Then Fundhub carries out up to six rounds. Each one stands on stronger law than the one before.</li>
-        <li>The goal is to show them proof, and then escalate as quickly as possible.</li>
-        <li>That's the method. Proof first, then a stronger letter each round.</li>
+        <li>One letter sent once gives you no plan for the bureau's answer. We build the dispute from the item on your actual report, track the reply and set the next step from it.</li>
+        <li>Your own report already lists the items round one goes after. The name of the company that reported each one is printed right beside it.</li>
+        <li>Round one goes out the SAME day you sign. That sentence sits right here in your agreement, word for word, and it's the first of up to six rounds.</li>
+        <li>The method is simple. Show them proof first, then escalate as fast as the law allows, and keep going round after round.</li>
+        <li>Your file gets worked on from day one. When the bureau answers, the next round follows the schedule in your agreement.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide" data-src="The six rounds in order and what each one stands on, R1 Round 1 Metro 2 dispute (the bureau must reinvestigate), R2 method of verification (the bureau must show its work), R3 final notice (delete what you cannot verify), R4 CFPB complaint (a federal regulator), R5 state attorney general complaint (state consumer-protection law), R6 final notice, reissued: src/pulse/beats/lib/letter-catalog.mjs:36-41 and :99-108. The CFPB and attorney general complaints carry the client's own signature and the client files them: :192-202 and :60-64. Your letters are built on FCRA and Metro 2: public/app/present.js:107 (closer line). Up to six rounds: db/migrations/493_funding_and_repair_agreement_text.sql:69.">
-    <p class="eyebrow">CO-02 / Six rounds, stronger each time</p>
-    <h2>Up to six rounds go out, and each one stands on stronger law than the last.</h2>
+  <section class="slide" data-src="The agreement's own words, copied exactly from section 2 of the credit optimization agreement the CRM sends: db/migrations/493_funding_and_repair_agreement_text.sql:69 (cropped to the sentence about sending the next round). While negative items remain, lenders can read the same report: marketing/offers/fundhub-offers-2026-10-10.pdf p.3. Round one goes out the day you sign: 493...sql:69. You watch every dispute and every response in your dashboard: same section.">
+    <p class="eyebrow">CO-02 / One more month</p>
+    <h2>What does one more month of waiting cost a file with negative items on it?</h2>
     <ul class="lines">
-      <li>The first round is the dispute, and the bureau must reinvestigate. The second round asks for its method of verification, so it has to show its work.</li>
-      <li>The third round is a final notice: delete what you cannot verify.</li>
-      <li>After that, the complaints go to the Consumer Financial Protection Bureau, the CFPB, and to your state attorney general, with your own signature on them. Then the final notice goes out again.</li>
+      <li>While those items stay on the report, a lender can read them on an application. Your own file shows which items need review first.</li>
+      <li>The rounds go in order, so the sooner round one goes out, the sooner every round after it can follow.</li>
+      <li>Your dashboard keeps all of it: each letter as it leaves, and each answer as it arrives.</li>
+    </ul>
+    <figure class="pic">
+      <div class="real" role="img" aria-label="Section 2 of the Fundhub credit optimization agreement, cropped to one sentence. Marked: Fundhub sends the next round once they answer or their time to answer has passed.">
+        <div class="rh2">Agreement · 2. The rounds and how long they take</div>
+        <p class="clause"><mark>Fundhub sends the next round once they answer or their time to answer has passed.</mark></p>
+        <span class="chip on"><span class="cd"></span>Next round goes right out</span>
+      </div>
+    </figure>
+    <aside class="talk" aria-hidden="true">
+      <ul>
+        <li>One more month with the same negative items means a lender reads the same report. Let's look at your own denial or quote to see what waiting has cost you.</li>
+        <li>The rounds run in order. Each one waits on the bureau's answer before the next letter goes out. Your agreement says exactly when the next one leaves.</li>
+        <li>The highlighted line is the part that matters. Once the bureau answers, or its time to answer runs out, the next round goes RIGHT out.</li>
+        <li>That's why round one leaves the day you sign. Every day round one waits pushes back every round behind it, so the work starts when you do.</li>
+        <li>You never have to guess what happened. Your dashboard keeps each letter as it leaves and each answer as it arrives.</li>
+        <li>Round one starts the review. The bureau's replies and your next report tell us what work remains before we discuss funding.</li>
+      </ul>
+    </aside>
+  </section>
+
+  <section class="slide" data-src="The six rounds in order and what each one stands on, R1 Round 1 Metro 2 dispute (the bureau must reinvestigate), R2 method of verification (the bureau must show its work), R3 final notice (delete what you cannot verify), R4 CFPB complaint (a federal regulator), R5 state attorney general complaint (state consumer-protection law), R6 final notice, reissued, which reuses the round three letter: src/pulse/beats/lib/letter-catalog.mjs:36-41, :48-56 and :99-112. Round three goes out after round two still verified: letter-catalog.mjs LETTER_META R3 sendWhen. The CFPB and attorney general complaints carry the client's own signature and the client files them: :192-202 and :60-64. Up to six rounds: db/migrations/493_funding_and_repair_agreement_text.sql:69.">
+    <p class="eyebrow">CO-03 / What each round does</p>
+    <h2>The rounds climb from a bureau recheck up to complaints with a federal regulator.</h2>
+    <ul class="lines">
+      <li>An item that stays after one letter gets a different follow-up in the next scheduled round.</li>
+      <li>Round one is the dispute, the second round asks how the bureau checked, the third is a final notice, and the fourth and fifth are complaints you sign.</li>
+      <li>The sixth sends the final notice one more time, after the two complaints.</li>
     </ul>
     <figure class="pic">
       <div class="sheet">
-        <svg class="bv" viewBox="0 0 320 230" role="img" aria-label="Six bars rising from left to right, one per round. One, dispute: the bureau must reinvestigate. Two, verify: the bureau must show its work. Three, final notice: delete what it cannot verify. Four, CFPB: a federal regulator. Five, state attorney general: state law. Six, final notice, reissued. Stronger law each round.">
-          <text class="lb" x="2" y="14">STRONGER LAW EACH ROUND</text>
-          <path class="cn ink" d="M14 150L306 36" marker-end="url(#fh-arrow)"/>
+        <svg class="bv" viewBox="0 0 320 230" role="img" aria-label="Six bars, one per round. Rounds one to five rise from left to right, each citing more law than the one before: one, the dispute; two, show how it checked; three, a final notice; four, a complaint to the Consumer Financial Protection Bureau; five, a complaint to your state attorney general. Round six, the final notice sent again, stands at round three's height because it reuses the round three letter. You sign rounds four and five.">
+          <text class="lb" x="2" y="14">HOW MUCH LAW EACH ROUND CITES</text>
+          <path class="cn ink" d="M14 150L252 58" marker-end="url(#fh-arrow)"/>
           <rect class="pn" x="6" y="140" width="42" height="40" rx="6"/>
           <rect class="pn" x="59" y="122" width="42" height="58" rx="6"/>
           <rect class="pn" x="112" y="104" width="42" height="76" rx="6"/>
           <rect class="tint-flag" x="165" y="86" width="42" height="94" rx="6"/>
           <rect class="tint-flag" x="218" y="68" width="42" height="112" rx="6"/>
-          <rect class="pn-ink" x="271" y="50" width="42" height="130" rx="6"/>
+          <rect class="pn" x="271" y="104" width="42" height="76" rx="6"/>
           <text class="lb ink" x="27" y="166" text-anchor="middle">1</text>
           <text class="lb ink" x="80" y="166" text-anchor="middle">2</text>
           <text class="lb ink" x="133" y="166" text-anchor="middle">3</text>
           <text class="lb ink" x="186" y="166" text-anchor="middle">4</text>
           <text class="lb ink" x="239" y="166" text-anchor="middle">5</text>
-          <text class="lb on-ink" x="292" y="166" text-anchor="middle">6</text>
+          <text class="lb ink" x="292" y="166" text-anchor="middle">6</text>
           <text class="caps" x="27" y="198" text-anchor="middle">DISPUTE</text>
           <text class="caps" x="80" y="198" text-anchor="middle">VERIFY</text>
           <text class="caps" x="133" y="198" text-anchor="middle">FINAL</text>
@@ -813,155 +844,140 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
           <text class="caps" x="239" y="198" text-anchor="middle">STATE AG</text>
           <text class="caps" x="292" y="198" text-anchor="middle">FINAL</text>
           <text class="caps" x="292" y="211" text-anchor="middle">AGAIN</text>
-          <text class="lb" x="160" y="228" text-anchor="middle">4 AND 5 CARRY YOUR OWN SIGNATURE</text>
+          <text class="lb" x="160" y="228" text-anchor="middle">YOU SIGN ROUNDS 4 AND 5</text>
         </svg>
       </div>
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Up to six rounds. Each one stands on stronger law than the last. Walk the chart with me.</li>
-        <li>The first round is the dispute. The bureau must reinvestigate. The second round asks for the method of verification. Now it has to show its work.</li>
-        <li>The third round is a final notice. Delete what you cannot verify.</li>
-        <li>The fourth round goes to the CFPB, a federal regulator. The fifth goes to your state attorney general. Those two carry your own signature.</li>
-        <li>The sixth round is the final notice again, after the complaints.</li>
-        <li>We just use more aggressive law as we go. That's the ladder.</li>
+        <li>An item that stays after one letter gets a different follow-up in the next scheduled round. A dispute runs that way for up to six rounds.</li>
+        <li>Round one is the Metro 2 dispute, and the bureau has to recheck the item. The second round asks how it checked, so the bureau has to show its work.</li>
+        <li>Round three is a final notice. It tells the bureau to delete what it can't verify, and it goes out when the second round didn't settle the item.</li>
+        <li>Round four is a complaint to the Consumer Financial Protection Bureau, a federal regulator. Round five goes to your state attorney general. You sign those two YOURSELF.</li>
+        <li>Round six sends the final notice one more time, after the two complaints. It's the same final notice from round three, sent again.</li>
+        <li>Those are up to six steps for reviewing and following up on disputed items. The bureau and creditor decide how they answer; we keep the record for you.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide" data-src="Some letters go to the credit bureaus, and others go straight to the company that reported the item; the work covers negative items, inquiries, and old addresses on your report: marketing/offers/fundhub-offers-2026-10-10.pdf p.3. The letter types beyond the ladder, debt validation straight to the furnisher, personal information cleanup, inquiry removal by mail: src/pulse/beats/lib/letter-catalog.mjs:183-219. Their response becomes the proof, and it goes back to all three bureaus: public/app/present.js:108 (closer line). Your letters are built on FCRA and Metro 2; the law does the heavy lifting: present.js:107.">
-    <p class="eyebrow">CO-03 / Who gets a letter</p>
-    <h2>Letters go to the bureaus, and straight to the company that reported the item.</h2>
+  <section class="slide" data-src="Some letters go to the credit bureaus, and others go straight to the company that reported the item; the work covers negative items, inquiries, and old addresses on your report: marketing/offers/fundhub-offers-2026-10-10.pdf p.3. The letter types beyond the ladder, debt validation straight to the furnisher, personal information cleanup, inquiry removal by mail: src/pulse/beats/lib/letter-catalog.mjs:180-219. Their response becomes the proof, and it goes back to all three bureaus: public/app/present.js:108 (closer line). Your letters are built on FCRA and Metro 2, and the law puts duties on the creditors themselves: present.js:107.">
+    <p class="eyebrow">CO-04 / Who gets a letter</p>
+    <h2>Some letters skip the bureau and go to the company that put the item on your report.</h2>
     <ul class="lines">
-      <li>The company's answer becomes the proof, and it goes back to all three bureaus.</li>
-      <li>The work covers negative items, inquiries, and old addresses on your report.</li>
-      <li>Every letter is built on the Fair Credit Reporting Act and Metro 2, so the law does the heavy lifting.</li>
+      <li>We send the dispute to each bureau that reports the item.</li>
+      <li>The company's response joins your record and helps set the next step.</li>
+      <li>We review negative items, inquiries and old addresses, then prepare letters where the facts support a dispute.</li>
     </ul>
     <figure class="pic">
       <div class="sheet">
-        <svg class="bv" viewBox="0 0 320 250" role="img" aria-label="A map. Your file sits in the middle. Letters go up to Experian, Equifax and TransUnion, and down to the company that reported the item. A dashed line brings that company's answer back up to all three bureaus as proof.">
-          <rect class="pn" x="2" y="2" width="92" height="40" rx="8"/>
-          <text class="caps" x="48" y="26" text-anchor="middle">EXPERIAN</text>
-          <rect class="pn" x="104" y="2" width="92" height="40" rx="8"/>
-          <text class="caps" x="150" y="26" text-anchor="middle">EQUIFAX</text>
-          <rect class="pn" x="206" y="2" width="92" height="40" rx="8"/>
-          <text class="caps" x="252" y="26" text-anchor="middle">TRANSUNION</text>
-          <path class="cn ink" d="M112 110L48 46" marker-end="url(#fh-arrow)"/>
-          <path class="cn ink" d="M150 100V46" marker-end="url(#fh-arrow)"/>
-          <path class="cn ink" d="M188 110L252 46" marker-end="url(#fh-arrow)"/>
-          <text class="lb" x="150" y="78" text-anchor="middle">LETTERS</text>
-          <rect class="pn-ink" x="94" y="100" width="112" height="44" rx="8"/>
-          <text class="lb on-ink" x="150" y="127" text-anchor="middle">YOUR FILE</text>
-          <path class="cn ink" d="M150 144V176" marker-end="url(#fh-arrow)"/>
-          <text class="lb" x="160" y="164">A LETTER</text>
-          <rect class="tint-flag" x="30" y="180" width="240" height="40" rx="8"/>
-          <text class="caps" x="150" y="198" text-anchor="middle">THE COMPANY THAT</text>
-          <text class="caps" x="150" y="212" text-anchor="middle">REPORTED THE ITEM</text>
-          <path class="cn ink dash" d="M270 200H312V50" marker-end="url(#fh-arrow)"/>
-          <text class="lb" x="160" y="244" text-anchor="middle">ITS ANSWER GOES BACK TO ALL THREE</text>
+        <svg class="bv" viewBox="0 0 320 268" role="img" aria-label="A map. Your dispute pack sends letters up to Experian, Equifax and TransUnion, drawn as one bracket under all three bureaus. It also sends a letter down to the company that reported the item. That company's answer goes back up, dashed, to the same bracket, so it reaches all three bureaus.">
+          <rect class="pn" x="2" y="2" width="100" height="40" rx="8"/>
+          <text class="caps" x="52" y="26" text-anchor="middle">EXPERIAN</text>
+          <rect class="pn" x="110" y="2" width="100" height="40" rx="8"/>
+          <text class="caps" x="160" y="26" text-anchor="middle">EQUIFAX</text>
+          <rect class="pn" x="218" y="2" width="100" height="40" rx="8"/>
+          <text class="caps" x="268" y="26" text-anchor="middle">TRANSUNION</text>
+          <path class="cn ink" d="M52 42V54M160 42V54M268 42V54M52 54H268"/>
+          <text class="lb" x="160" y="72" text-anchor="middle">ALL THREE</text>
+          <rect class="pn-ink" x="20" y="104" width="170" height="44" rx="8"/>
+          <text class="caps on-ink" x="105" y="131" text-anchor="middle">YOUR DISPUTE PACK</text>
+          <path class="cn ink" d="M105 104V58" marker-end="url(#fh-arrow)"/>
+          <text class="lb" x="113" y="92">LETTERS</text>
+          <path class="cn ink" d="M105 148V222H146" marker-end="url(#fh-arrow)"/>
+          <text class="lb" x="24" y="196">A LETTER</text>
+          <rect class="tint-flag" x="150" y="200" width="166" height="44" rx="8"/>
+          <text class="caps" x="233" y="218" text-anchor="middle">THE COMPANY THAT</text>
+          <text class="caps" x="233" y="234" text-anchor="middle">REPORTED THE ITEM</text>
+          <path class="cn ink dash" d="M233 200V58" marker-end="url(#fh-arrow)"/>
+          <text class="lb" x="226" y="164" text-anchor="end">ITS ANSWER</text>
+          <text class="lb" x="160" y="262" text-anchor="middle">ITS ANSWER GOES BACK TO ALL THREE</text>
         </svg>
       </div>
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Who gets a letter? Look at the map. Some letters go up to the three bureaus.</li>
-        <li>Others go straight to the company that reported the item. A debt buyer, a card company.</li>
-        <li>That company's answer becomes the proof, and it goes back to all three bureaus.</li>
-        <li>The work covers negative items, inquiries, and old addresses on your report.</li>
-        <li>Every letter is built on the Fair Credit Reporting Act and Metro 2. The law does the heavy lifting.</li>
+        <li>We send a dispute to each bureau that reports the item, then track each answer. The letters go to all three bureaus, plus one more place.</li>
+        <li>Letters go up to Experian, Equifax and TransUnion. One more goes DOWN to the company that put the item on your report.</li>
+        <li>That's the debt buyer or the card company that reported the account. The law puts duties on them too, and their letter asks them to back the item up.</li>
+        <li>What that company sends back becomes part of your record. We use the response where it matters for the bureaus reporting the item.</li>
+        <li>The rounds also reach past late payments and collections. Hard inquiries and old addresses on your report get their own letters too.</li>
+        <li>Each of these letters stands on the Fair Credit Reporting Act. Each one is written in Metro 2, the same reporting language the bureaus use themselves.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide" data-src="The agreement's own words, copied exactly from section 2 of the credit optimization agreement the CRM sends: db/migrations/493_funding_and_repair_agreement_text.sql:69. The law forces an investigation of every dispute in 30 to 45 days: public/app/present.js:107 (closer line). The portal's older '30 days' line is superseded by the agreement's 30 to 45 (src/pulse/beats/lib/repair-portal.mjs:13-14).">
-    <p class="eyebrow">CO-04 / Each round waits</p>
-    <h2>Each round waits on the answer to the one before it.</h2>
+  <section class="slide dark" data-src="The agreement's own words, copied exactly from section 1 of the credit optimization agreement the CRM sends: db/migrations/493_funding_and_repair_agreement_text.sql:65 (cropped to the marked sentence). FCRA investigation and reinsertion requirements: https://uscode.house.gov/us/usc/119-120/t15/s1681i/ section (a)(5)(B). Once the file is ready, the team reviews the funding options it supports: marketing/offers/fundhub-offers-2026-10-10.pdf p.3; the program's goal is a file ready to apply for funding: same PDF p.2. Each letter uses the account on the report and the facts the client confirms: marketing/ads/RULES.md Part 0 rule 35.">
+    <p class="eyebrow">CO-05 / In writing</p>
+    <h2>Your agreement puts the work in writing, and you get a copy of every letter and answer.</h2>
     <ul class="lines">
-      <li>The bureaus have 30 to 45 days to answer each round, and the law forces that investigation.</li>
-      <li>Fundhub sends the next round once they answer, or once their time to answer has passed.</li>
-      <li>You watch every dispute and every response in your dashboard.</li>
+      <li>Those copies are your proof that every round went out.</li>
+      <li>The bureau investigates a dispute and reports its result.</li>
+      <li>When the file is ready, we review funding options the file supports; a bank still decides.</li>
     </ul>
     <figure class="pic">
-      <div class="real" role="img" aria-label="Section 2 of the Fundhub credit optimization agreement. Marked: Each round waits on the answer to the one before it: the bureaus have 30 to 45 days to answer each round, and Fundhub sends the next round once they answer or their time to answer has passed. Then: You watch every dispute and every response in your dashboard.">
-        <div class="rh2">Agreement · 2. The rounds and how long they take</div>
-        <p class="clause"><mark>Each round waits on the answer to the one before it: the bureaus have 30 to 45 days to answer each round, and Fundhub sends the next round once they answer or their time to answer has passed.</mark> You watch every dispute and every response in your dashboard.</p>
-        <span class="chip wip"><span class="cd"></span>30 to 45 days a round</span>
-      </div>
-    </figure>
-    <aside class="talk" aria-hidden="true">
-      <ul>
-        <li>Each round waits on the answer to the one before it. That's in the agreement too.</li>
-        <li>The bureaus have 30 to 45 days to answer each round. The law forces that investigation.</li>
-        <li>Once they answer, or once their time has passed, Fundhub sends the next round.</li>
-        <li>You watch every dispute and every response in your dashboard. Every letter and every answer sits right there.</li>
-        <li>Your story: a bureau that let the clock run out, and what the next round did.</li>
-      </ul>
-    </aside>
-  </section>
-
-  <section class="slide dark" data-src="The agreement's own words, copied exactly from section 1 of the credit optimization agreement the CRM sends: db/migrations/493_funding_and_repair_agreement_text.sql:65. Fundhub disputes only items that really show on your report, and every application uses your true information: marketing/offers/fundhub-offers-2026-10-10.pdf p.8. FCRA requires accuracy, forces an investigation and pays damages when they violate: public/app/present.js:107 (closer line). So-called credit sweeps, fake identity-theft reports and fake police reports, are federal crimes, and the creditor re-reports the account next month: present.js:113 (closer line).">
-    <p class="eyebrow">CO-05 / What's promised, in writing</p>
-    <h2>You get copies of the work and every answer, and the agreement says what is promised.</h2>
-    <ul class="lines">
-      <li>Only items that really show on your report get disputed, and every application uses your true information.</li>
-      <li>Accurate, current information may remain. The bureaus and the creditors decide the outcome, and the letters are built on the law that makes them answer.</li>
-      <li>Here it is, word for word, in the agreement you sign.</li>
-    </ul>
-    <figure class="pic">
-      <div class="real" role="img" aria-label="Section 1 of the Fundhub credit optimization agreement, What Fundhub does. Marked: Fundhub will give you copies of the work and the responses, or access to them in your dashboard. Then, in full view: Accurate, current information may remain; no score change, deletion, or particular result is promised.">
+      <div class="real" role="img" aria-label="Section 1 of the Fundhub credit optimization agreement, What Fundhub does, cropped to one sentence. Marked: Fundhub will give you copies of the work and the responses, or access to them in your dashboard.">
         <div class="rh2">Agreement · 1. What Fundhub does</div>
-        <p class="clause"><mark>Fundhub will give you copies of the work and the responses, or access to them in your dashboard.</mark> Accurate, current information may remain; no score change, deletion, or particular result is promised.</p>
+        <p class="clause"><mark>Fundhub will give you copies of the work and the responses, or access to them in your dashboard.</mark></p>
         <span class="chip on"><span class="cd"></span>In your dashboard</span>
       </div>
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Here's what's promised, in writing. You get copies of the work and every response, right in your dashboard.</li>
-        <li>Only items that really show on your report get disputed. Every application uses your true information.</li>
-        <li>Accurate, current information may remain. The agreement says it straight. The bureaus and the creditors decide the outcome.</li>
-        <li>What the letters do is force the answer. The law makes them investigate, and the law pays damages when they violate.</li>
-        <li>The shortcuts you hear about, fake identity theft reports and fake police reports, are federal crimes, and the account gets re-reported next month.</li>
+        <li>This clause is the proof. Fundhub gives you a COPY of every letter and every reply, or access to all of it in your dashboard.</li>
+        <li>Those copies are your proof that every round went out. You keep the whole record for your file, round by round, with nothing hidden.</li>
+        <li>The bureau investigates a dispute and reports its result. Each letter is built from the account on your report and the facts you confirm.</li>
+        <li>If a deleted item returns, that's a reinsertion. We check the old and new reports and the bureau's notice, then challenge any error with the record. No sweeps.</li>
+        <li>When your file is ready, we review the funding choices it supports. Each lender still decides.</li>
+        <li>Every round on this page works toward one thing: a file that's ready to apply for funding, from the first letter to the last.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide" data-src="We pull your file together right on the call; it's a soft pull, so your score does not move; you see how much you qualify for based on where you're at right now and what's holding the rest back: docs/sops/weekend-2026-10-24/04-sales-call-script.md:69. Done for you, or you run the same pack yourself: public/app/present.js:108 (closer line). On the Capital Blueprint you print and mail the letters and upload the proof: db/migrations/400_blueprint_dispute_waypoint_definitions.sql:20-36. We diagnose and tell you exactly what to do; action takers, not shoppers: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:213.">
-    <p class="eyebrow">CO-06 / Your call</p>
-    <h2>On your call, you see every item the rounds go after, on your real report.</h2>
+  <section class="slide" data-src="We pull your file together right on the call; it's a soft pull, so your score does not move; you see how much you qualify for based on where you're at right now and what's holding the rest back: docs/sops/weekend-2026-10-24/04-sales-call-script.md. Only you see a soft pull: marketing/offers/fundhub-offers-2026-10-10.pdf p.9. Done for you, Fundhub mails the letters: same PDF p.3; round one goes out the day you sign: db/migrations/493_funding_and_repair_agreement_text.sql:69. On the Capital Blueprint you print and mail the letters and upload the proof: db/migrations/400_blueprint_dispute_waypoint_definitions.sql:20-36. The client signs and files the CFPB and attorney general complaints: src/pulse/beats/lib/letter-catalog.mjs:192-202. Inquiry removal letters and the tradeline disputes go out in round one: letter-catalog.mjs LETTER_META (INQUIRY_REMOVAL round R1) and :36. Action takers, not shoppers: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:213.">
+    <p class="eyebrow">CO-06 / Your strategy call</p>
+    <h2>Your strategy call opens on round one's list, built from your own report.</h2>
     <ul class="lines">
-      <li>We pull your file together right on the call, with a soft pull, so your score does not move.</li>
-      <li>You see how much you qualify for based on where you're at right now, and the items that are holding the rest back.</li>
-      <li>Done for you, or the same pack on the Capital Blueprint, and the call sorts which one fits your file.</li>
+      <li>We run a soft pull while you're on, and only you can see it, so your score holds right where it is.</li>
+      <li>You see how much you qualify for based on where you're at right now, and what each of those items holds back.</li>
+      <li>Dispute it yourself for free, or have our team prepare and track the rounds. You give the facts and sign. In the Blueprint, you mail the letters.</li>
     </ul>
     <figure class="pic">
       <div class="sheet">
-        <svg class="bv" viewBox="0 0 320 176" role="img" aria-label="One shared screen with your real file on it: the items holding it back on the left, and the rounds that go after them on the right.">
-          <rect class="pn" x="1" y="1" width="318" height="140" rx="10"/>
-          <text class="lb" x="14" y="22">YOUR FILE</text>
-          <rect class="tint-flag" x="12" y="34" width="140" height="94" rx="8"/>
-          <text class="lb ink" x="22" y="54">THE ITEMS</text>
-          <rect class="bar" x="22" y="64" width="110" height="5" rx="2.5"/>
-          <rect class="bar" x="22" y="76" width="92" height="5" rx="2.5"/>
-          <rect class="bar" x="22" y="88" width="118" height="5" rx="2.5"/>
-          <rect class="bar" x="22" y="100" width="84" height="5" rx="2.5"/>
-          <path class="cn ink" d="M156 81H168" marker-end="url(#fh-arrow)"/>
-          <rect class="tint-fit edge-fit" x="168" y="34" width="140" height="94" rx="8"/>
-          <text class="lb ink" x="178" y="54">THE ROUNDS</text>
-          <text class="caps" x="178" y="76">1 · 2 · 3</text>
-          <text class="caps" x="178" y="94">4 · 5 · 6</text>
-          <text class="lb" x="178" y="118">EACH STRONGER</text>
-          <text class="lb" x="160" y="168" text-anchor="middle">ONE SHARED SCREEN · YOUR REAL FILE</text>
+        <svg class="bv" viewBox="0 0 320 258" role="img" aria-label="Your strategy call screen. Round one's list, built from your own report: collections, charge-offs, late payments and hard inquiries, each one marked round one. At the bottom, the two ways in: the Fundhub team runs the rounds and you sign rounds four and five, or you mail the whole pack yourself on the Capital Blueprint.">
+          <rect class="pn" x="1" y="1" width="318" height="166" rx="10"/>
+          <text class="lb" x="14" y="22">ROUND ONE · FROM YOUR REPORT</text>
+          <rect class="tint-flag" x="12" y="32" width="296" height="28" rx="6"/>
+          <text class="caps" x="22" y="51">COLLECTIONS</text>
+          <text class="lb ink" x="298" y="51" text-anchor="end">ROUND 1</text>
+          <rect class="tint-flag" x="12" y="64" width="296" height="28" rx="6"/>
+          <text class="caps" x="22" y="83">CHARGE-OFFS</text>
+          <text class="lb ink" x="298" y="83" text-anchor="end">ROUND 1</text>
+          <rect class="tint-flag" x="12" y="96" width="296" height="28" rx="6"/>
+          <text class="caps" x="22" y="115">LATE PAYMENTS</text>
+          <text class="lb ink" x="298" y="115" text-anchor="end">ROUND 1</text>
+          <rect class="tint-flag" x="12" y="128" width="296" height="28" rx="6"/>
+          <text class="caps" x="22" y="147">HARD INQUIRIES</text>
+          <text class="lb ink" x="298" y="147" text-anchor="end">ROUND 1</text>
+          <path class="cn ink" d="M80 167V182M240 167V182"/>
+          <rect class="pn-ink" x="4" y="186" width="152" height="68" rx="8"/>
+          <text class="caps on-ink" x="80" y="207" text-anchor="middle">THE TEAM RUNS</text>
+          <text class="caps on-ink" x="80" y="224" text-anchor="middle">THE ROUNDS</text>
+          <text class="caps on-ink" x="80" y="241" text-anchor="middle">YOU SIGN 4 AND 5</text>
+          <rect class="pn" x="164" y="186" width="152" height="68" rx="8"/>
+          <text class="caps" x="240" y="207" text-anchor="middle">YOU MAIL THE</text>
+          <text class="caps" x="240" y="224" text-anchor="middle">WHOLE PACK ON</text>
+          <text class="caps" x="240" y="241" text-anchor="middle">THE BLUEPRINT</text>
         </svg>
       </div>
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>On your call, you see every item the rounds go after, on your real report.</li>
-        <li>We pull your file together right on the call. It's a soft pull, so your score does not move.</li>
-        <li>You see how much you qualify for based on where you're at right now, and the items that are holding the rest back.</li>
-        <li>Look at the screen. Left side, the items. Right side, the rounds that go after them, each one stronger.</li>
-        <li>Done for you, or the same pack on the Capital Blueprint, where you print and mail the letters yourself. The call sorts which one fits your file.</li>
-        <li>We want action takers who need a solution, not shoppers.</li>
+        <li>Your strategy call starts with a list. It's the items on YOUR report that round one goes after, each one named, with the company that reported it.</li>
+        <li>We run a soft pull while you're on. Only you can see it on your report, and your score holds right where it is.</li>
+        <li>We go down the report together, item by item. We review the collections, charge-offs, late payments and inquiries on your report, then dispute the items the facts support.</li>
+        <li>You also see how much you qualify for based on where you're at right now, and what each of those items is holding back.</li>
+        <li>Then you choose the way in. You can dispute inaccurate items yourself for free. With our credit optimization service, the team prepares and tracks up to six rounds; you give accurate facts and sign where needed. On the Capital Blueprint, you mail the letter pack yourself and upload proof.</li>
+        <li>Done for you, round one goes out the day you sign. The list you see on the call is the same list those first letters go after.</li>
       </ul>
     </aside>
   </section>

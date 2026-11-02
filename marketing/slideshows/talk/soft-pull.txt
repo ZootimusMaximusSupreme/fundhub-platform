@@ -1,67 +1,87 @@
 Soft Pull
 
-1. SP-01 / The pull — When you apply at a bank, that bank does a hard pull, and the next bank sees it.
+1. SP-01 / The pull — Each bank picks which of your bureaus it pulls, and a soft pull reads all three first.
 
-Every time you apply at a bank, that bank does a hard pull, and the next bank you apply to sees it sitting on your report.
+Each bank picks which of your three bureaus it PULLS. A soft pull reads all three first, so you know what every bank is going to find.
 
-Reading your file on your call is a different thing. It's a soft pull.
+On this sample file, the three bureaus give three different scores, and which one a bank pulls changes what it sees.
 
-Look at the form. This is the actual permission you sign before we pull anything, and I want you to read line one with me.
+This is the form you sign for it, word for word. Line one says it plainly: this is a soft pull, and it does not lower your credit score.
 
-It says it in plain words: this is a soft pull, it does not lower my credit score, and lenders do not see it as an application for credit.
+The same line says lenders do not see it as an application for credit, so it never shows up as you asking a bank for money.
 
-Then look at line four. No promise of funding is made by this form. What you qualify for gets decided by the lender, later.
+You sign for one pull, for one purpose, and the form says exactly what that purpose is. You know what you're agreeing to before a single report gets pulled.
 
-That's how we read your file the way a bank does, with no hard inquiry on your report.
+You can take that permission back any time, in writing, and the form tells you exactly where to send it.
 
-2. SP-02 / Who sees it — Only you can see a soft pull on your report.
+A copy of what you sign, and the time you signed it, stays on file, and it's yours to ask for.
 
-Only you can see a soft pull on your report. That's the whole point of it.
+2. SP-02 / Who sees it — Who else can see a soft pull on your report?
 
-Walk the picture with me. On the left is your own copy of your report, and the soft pull shows there, so you know it happened.
+Lenders do not see this soft pull as an application for credit.
 
-On the right is what a lender sees. They do not see a soft pull as an application for credit.
+On the left of this picture is your own copy of your report. The soft pull shows up there, so you can see it happened and when.
 
-Hard inquiries only ever happen later, with your consent, when an actual funding application goes out.
+On the right is the same report the way a lender pulls it, with no soft pull on it, so it never counts against you.
 
-And that consent is its own step. The soft pull permission does not cover a hard pull, and the agreement says so.
+The soft pull leaves no mark for a bank to read, so reading your file first costs your next application nothing.
 
-3. SP-03 / Soft against hard — A soft pull and a hard pull are two different things.
+A hard pull is a different step, and it needs a separate yes from you. The soft pull form covers one soft pull, and nothing else.
 
-Here's the difference in one picture. A soft pull and a hard pull are two different things.
+Your file gets read all the way through, every bureau and every line, and no bank sees any of it.
 
-A soft pull happens on your call. You sign for it, only you see it, and your score does not move.
+The soft pull does not add a hard inquiry. We still review any changes before an application.
 
-A hard pull happens when a real funding application goes out. You give separate consent for that, and each one costs you.
+3. SP-03 / Soft against hard — Three hard pulls stack up fast when you apply at three banks to see who says yes.
 
-Almost every application you have ever sent was a hard pull. That's the kind the next bank sees.
+Three applications at three banks leave three hard pulls on your report, whether any of them says yes or not.
 
-So the soft pull is how we read your file first, and the applications come later, on a plan.
+Every one of them COSTS you. The next bank reads each one before it decides, and when enough of them stack up, banks start saying no to a good score.
 
-4. SP-04 / Three bureaus — One soft pull reads all three bureaus, because different banks pull different bureaus.
+When three banks say no, you're left with three new pulls on your report and nothing to show for them.
 
-One soft pull reads all three bureaus, and here's why that matters.
+The two columns show the difference. A soft pull happens on your call, you sign for it, only you see it, and your score stays where it is.
 
-Different banks pull different bureaus. Some pull Experian, some Equifax, some TransUnion.
+A hard pull happens when a funding application goes out. It needs your separate consent, the banks you apply to next can see it, and each one costs you.
 
-So your information has to match on every report, and we read all three to check that.
+When the applications go out FIRST, the file gets read after the damage is done.
 
-Look at this sample report. TransUnion 706, Experian 702, Equifax 709. Three reports from one soft pull.
+Flip it, and your file gets read first with a soft pull. The applications go out later, in order, on a plan built from what the soft pull found.
 
-Our UnderwriteIQ system reads each one the way a bank does.
+4. SP-04 / Three bureaus — This sample file reads 706, 702 and 709, three different scores from one soft pull.
 
-And the score does not move on any of them. That's the soft pull doing its job.
+This sample file reads three DIFFERENT scores. TransUnion says 706, Experian says 702, and Equifax says 709, all from one soft pull.
 
-5. SP-05 / Your call — On your call, we pull your file together with you on the line.
+Each bank picks the bureau it pulls. One goes to Experian, another goes to Equifax, and each bureau keeps its own record of you.
 
-On your call, we pull your file together with you on the line.
+On this sample, each bureau even carries a different inquiry: American Express on Experian, First Platypus Bank on TransUnion, and JPMCB on Equifax.
 
-Walk the steps with me. You sign the soft pull form, and the form says what it's for: one pull, to see what you qualify for.
+That's why one soft pull gets all THREE. A problem that only shows up on one bureau still costs you, the day a bank pulls that bureau.
 
-Then the pull runs, all three bureaus, while you watch. Your score does not move.
+Our UnderwriteIQ system reads each of the three reports the way a bank does, and your score doesn't move on any of them.
 
-Our system reads it the way a bank does, and you see how much you qualify for based on where you're at right now, and what's holding the rest back.
+We review differences across Experian, Equifax and TransUnion with you before an application.
 
-Be at a computer somewhere quiet, because we go through the file together on one screen.
+On this sample, a bank that pulls Experian sees 702, the lowest of the three scores.
 
-And the reports are yours either way.
+Knowing which bureau your next bank pulls tells you which of those three scores it judges you on.
+
+5. SP-05 / Your call — One signature on your call starts the pull, and you watch it run.
+
+The soft pull you just saw happens on your strategy call, with you on the LINE.
+
+You sign the soft pull form right there on the call, and the form spells out what it's for: one pull, to see what you qualify for.
+
+Then the pull runs, all three bureaus, while you're with us, and your score stays where it is.
+
+All three scores land side by side on your screen, the way this sample's did, so you see which bureau runs lowest.
+
+UnderwriteIQ goes to work next, and we review your file the way a lender does, line by line, together.
+
+You see how much you qualify for based on where you're at right now, and exactly what on your file is holding the rest BACK.
+
+Be at a computer, somewhere quiet. We go through your file together on one screen, and seeing it big is the reason for the call.
+
+The reports from that pull are yours to keep, whatever you decide.
+
+Your file stays just the way a bank would find it, and now you know what every one of them is going to see.
