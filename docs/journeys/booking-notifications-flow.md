@@ -556,6 +556,19 @@ through `src/messaging/providers/cortana-booking-webhook.mjs`. The
 payload includes the booking's saved `qualification_bucket` (`funding_qualified`
 or `funding_unqualified`, or null when the survey has no score answer). It keeps
 the existing `funding_call_booked` event name and Funding Call conversion.
+The same payload also carries `offer_financing_screen` and
+`available_capital_band` for reporting. `review_620_plus` means the saved score
+places the lead in the owner's 620+ screen for financing the high-ticket Fundhub
+offer through providers such as Clarity or Sezzle; it is not business funding
+qualification or a financing approval. Known lower score bands say `below_620`;
+unknown answers and the older 580-649 band say `score_unconfirmed`. A valid setter
+correction takes precedence. Capital retains the readable selected current or
+legacy band, including `$0`, and unknown values stay null. Raw credit scores and
+unrelated survey/customer fields are not added. Existing booking IDs, event name,
+funding bucket, destination and replay ledger stay unchanged; old successful
+bookings are not replayed to populate these fields. Actual Cortana receipt of
+these new fields requires the next eligible real booking after deployment.
+
 `cortana_booking_sends` row records success or a retryable failure, so a browser
 leaving the thank-you page cannot lose the server-side conversion. Company,
 demo, and simulated buyer bookings are marked skipped. This is a vendor event,
