@@ -443,12 +443,12 @@ test("Past chats: the list, click to reopen, and the hamburger on a narrow scree
   });
 });
 
-test("Documents: open and close, Files you added with Refresh", { timeout: 90_000 }, async () => {
+test("Manage files: open and close, Files you added with Refresh", { timeout: 90_000 }, async () => {
   const { page, log, st } = await openBrain({ session: ADMIN });
   await clearShellOverlays(page);
   const docsOpen = () => page.locator("#docs").isVisible();
 
-  await proof.check(/^Documents button/, async () => {
+  await proof.check(/^Manage files tab opens file view; Ask & browse tab closes it$/, async () => {
     assert.equal(await docsOpen(), false);
     assert.equal(await page.locator("#docs").isVisible(), false, "the Manage panel starts closed");
     await page.locator("#tabManage").click();
