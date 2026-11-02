@@ -24,8 +24,12 @@ test("one real KPI miss reaches the named manager's dated calendar once", async 
   const created = [];
   const db = { async query(sql, params) {
     if (/FROM staff s/.test(sql)) {
-      assert.match(sql, /EXISTS \(SELECT 1 FROM clients c/);
-      assert.match(sql, /COALESCE\(c\.is_demo, false\) = false/);
+      assert.doesNotMatch(sql, /FROM clients c/);
+      assert.match(sql, /COALESCE\(o\.is_demo, false\) = false/);
+      assert.match(sql, /lower\(btrim\(s\.role\)\) = 'closer'/);
+      assert.match(sql, /lower\(btrim\(s\.email\)\) = \$4/);
+      assert.match(sql, /lower\(btrim\(s\.name\)\) = \$5/);
+      assert.deepEqual(params.slice(3), ["chris@fundhub.ai", "chris stanbridge"]);
       return { rows: [
       { org_id: ORG, staff_id: STAFF, name: "Real Closer", email: "rep@fundhub.ai", role: "closer", is_demo: false, held: 10, deposits: 2 },
       { org_id: ORG, staff_id: "demo", name: "DEMO Closer", email: "demo@example.com", role: "closer", is_demo: true, held: 12, deposits: 0 }
@@ -55,6 +59,26 @@ test("one real KPI miss reaches the named manager's dated calendar once", async 
   assert.equal(created[0].dueAt.toISOString(), "2026-11-02T17:00:00.000Z");
   assert.match(created[0].detail, /2 deposits from 10 held calls/);
   assert.match(created[0].detail, /decide whether coaching or a PIP is needed/);
+});
+
+test("the owner-set closer's Sales Floor KPI miss reaches the manager", async () => {
+  const created = [];
+  const db = { async query(sql) {
+    if (/FROM staff s/.test(sql)) return { rows: [
+      { org_id: ORG, staff_id: STAFF, name: "Chris Stanbridge", email: "chris@fundhub.ai", role: "owner", is_demo: false, held: 10, deposits: 2 }
+    ] };
+    if (/SELECT id FROM staff WHERE id/.test(sql)) return { rows: [{ id: MANAGER }] };
+    if (/FROM tasks/.test(sql)) return { rows: [] };
+    throw new Error(`unexpected SQL: ${sql}`);
+  } };
+  const result = await runManagerKpiReview(db, {
+    now: NOW,
+    assigneeFor: async () => ({ assigneeRole: "sales_manager", assigneeStaffId: MANAGER }),
+    createTask: async (_db, spec) => { created.push(spec); return { created: true, id: "task-owner" }; }
+  });
+  assert.equal(result.created, 1);
+  assert.equal(created[0].assigneeStaffId, MANAGER);
+  assert.equal(created[0].title, "Review closer KPI: Chris Stanbridge");
 });
 
 test("a missing named hiring role resolves the sole active sales manager", async () => {

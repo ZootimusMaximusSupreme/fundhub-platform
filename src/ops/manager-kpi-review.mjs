@@ -4,7 +4,7 @@
 import { createTask as defaultCreateTask } from "../lib/create-task.mjs";
 import { assigneeFor as defaultAssigneeFor } from "../hiring/owner.mjs";
 import { monthWindow } from "../pulse/beats/lib/sales-totals-truth.mjs";
-import { isBlockedCloserIdentity } from "../sales/metrics.mjs";
+import { isBlockedCloserIdentity, OWNER_SET_CLOSER } from "../sales/metrics.mjs";
 
 export const SOURCE_WORKFLOW = "ops-manager-kpi-review";
 export const CLOSE_RATE_MIN_CALLS = 10;
@@ -79,13 +79,14 @@ export async function runManagerKpiReview(db, {
        LEFT JOIN call_outcomes o ON o.org_id = s.org_id AND o.staff_id = s.id
          AND o.logged_at >= $2 AND o.logged_at < $3
          AND COALESCE(o.is_demo, false) = false
-         AND EXISTS (SELECT 1 FROM clients c WHERE c.id = o.client_id
-           AND c.org_id = o.org_id AND COALESCE(c.is_demo, false) = false)
-      WHERE s.status = 'active' AND s.role = 'closer'
+      WHERE s.status = 'active'
+        AND (lower(btrim(s.role)) = 'closer'
+          OR lower(btrim(s.email)) = $4 OR lower(btrim(s.name)) = $5)
         AND COALESCE(s.is_demo, false) = false
         AND ($1::uuid IS NULL OR s.org_id = $1)
       GROUP BY s.org_id, s.id, s.name, s.email, s.role, s.is_demo`,
-    [orgId, window.start.toISOString(), window.end.toISOString()]
+    [orgId, window.start.toISOString(), window.end.toISOString(),
+      OWNER_SET_CLOSER.email.toLowerCase(), OWNER_SET_CLOSER.name.toLowerCase()]
   );
 
   const tally = { checked: 0, flagged: 0, created: 0, routed: 0, failures: [] };
