@@ -29,7 +29,7 @@ const CLIENT = id(1);
 const LENDER = id(60);
 const LENDER_URL = "https://bank.example/apply";
 const ENV = { OXYLABS_USERNAME: "acct", OXYLABS_PASSWORD: "secret" };
-const TABLES = ["proxy_sessions", "clients", "businesses", "lenders", "applications"];
+const TABLES = ["proxy_sessions", "clients", "businesses", "lenders", "applications", "inquiry_removal_cases", "inquiry_log"];
 const DEFAULTS = {
   proxy_sessions: {
     id: UUID_DEFAULT, status: "'verifying'", verification: "'{}'",
@@ -48,9 +48,18 @@ function world() {
 /** The Oxylabs call, answered with a place. */
 const exitAt = (city, region) => async () => ({ status: 200, body: "{}", json: { ip: "198.51.100.7", city, region, country: "US" } });
 
-const launch = (standIn, fetchFn) => launchProxySession(standIn.pg(), {
-  orgId: ORG, staffId: STAFF, clientId: CLIENT, lenderId: LENDER, env: ENV, fetchFn,
-});
+const launch = (standIn, fetchFn) => {
+  const pg = standIn.pg();
+  const query = pg.query.bind(pg);
+  pg.query = (sql, params) => {
+    // This clean fixture has no active cases. SQLite cannot parse Postgres ANY(text[]).
+    if (/FROM inquiry_removal_cases/.test(sql) && /= ANY\(/.test(sql)) return { rows: [], rowCount: 0 };
+    return query(sql, params);
+  };
+  return launchProxySession(pg, {
+    orgId: ORG, staffId: STAFF, clientId: CLIENT, lenderId: LENDER, env: ENV, fetchFn,
+  });
+};
 
 const judged = (standIn, key) => standIn.run(contractSql(key), ORG);
 
