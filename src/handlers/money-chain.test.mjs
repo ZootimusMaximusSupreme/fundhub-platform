@@ -967,11 +967,24 @@ describe("Commas purchase events share the invoice receipt gate", () => {
         const [org_id, client_id, product_name, amount_paid, status, provider, provider_ref, raw_payload] = params;
         const incoming = { org_id, client_id, product_name, amount_paid, status, provider, provider_ref, raw_payload };
         const old = transactions.find(t => t.org_id === org_id && t.provider_ref === provider_ref);
-        if (!old) transactions.push({ id: randomUUID(), ...incoming });
-        else if (/DO UPDATE SET/.test(text) && old.status === "failed" && status === "succeeded" &&
+        if (!old) {
+          const row = { id: randomUUID(), ...incoming };
+          transactions.push(row);
+          return { rows: /RETURNING/.test(text) ? [row] : [] };
+        }
+        if (/DO NOTHING/.test(text)) return { rows: [] };
+        if (/DO UPDATE SET/.test(text) && old.status === "failed" && status === "succeeded" &&
           client_id && old.client_id === client_id && old.provider === provider &&
           old.product_name === product_name && old.amount_paid === amount_paid) {
           old.status = status; old.raw_payload = raw_payload;
+        }
+        return { rows: [] };
+      }
+      if (/UPDATE transactions/.test(text) && /SET status = 'succeeded'/.test(text)) {
+        const row = transactions.find(t => t.id === params[0]);
+        if (row) {
+          row.status = "succeeded";
+          if (params[1]) row.raw_payload = { ...(row.raw_payload || {}), ...params[1] };
         }
         return { rows: [] };
       }
