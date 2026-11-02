@@ -26,6 +26,12 @@ Tapping it opens the signed-in setter or closer dashboard with that client
 selected; the existing call link can dial the client's phone. This is source
 behavior until a released iPhone app and real-device delivery are verified.
 
+Owner-approved 2026-11-02: primary owner, admin, sales_manager, setter, closer, outbound_rep, inquiry_specialist, funding_advisor and csm roles may register, read and remove only their own installation through the live bearer session. Unknown primary roles and partner sessions do not gain staff-device access from additional jobs or body fields. The outbound seat retains read-only Dock access and only the exact own-device GET/POST/DELETE route. The iPhone uses the same known-primary-role eligibility. This changes device enrollment, not alert recipients or message content.
+
+A later verified sign-in on the same installation retires matching prior staff and client registrations in both directions, including a same-client reattach and token rotation. Invalid token, environment or installation input must change nothing; a different foreign installation and token must remain active. Device registration does not prove a real phone received an alert.
+
+**Staff payout alert added in source 2026-11-02.** A `commission.paid` receipt may send the attributed closer or sales manager a fixed, amount-free iPhone alert after the ledger is marked paid. It uses the registered staff device and one-alert receipt. The alert says “marked paid” because the current ledger action records a payment made outside Fundhub; it does not verify bank settlement or move money. No device or missing client attribution means no push. Real-device delivery still needs proof.
+
 ## Native Fundhub iPhone app (built in source; delivery not proved)
 
 The native app has a separate APNs pipe. Its client Home card checks `/api/push/native-device`
@@ -226,3 +232,13 @@ the above):
   `scripts/push/send-test-push.mjs` is the tool for it.
 - The iPhone branch is written from Apple's documented rules (iOS 16.4, home screen
   required) and tested as a code path. It has not been run on an iPhone.
+
+## Staff SMS opens the selected lead in the iPhone app (source; release/device proof pending)
+
+The existing staff text links use only `https://fundhub.ai/app/setter-dashboard.html?client_id=<UUID>` or the matching closer page. The URL carries no sign-in token, survey answers or write action. The app accepts only that exact host, one of those two paths and one UUID query; other query items, fragments, credentials, ports and malformed targets are refused. The existing dashboard APIs remain responsible for tenant, assignment and role permission.
+
+A signed-out tap keeps a validated target in memory for at most five minutes while the person signs in. After identity refresh, the app checks the same bearer, request generation, current staff principal and existing primary desk role again before loading its authenticated WebView. Owner/admin retain their existing desk access; setters open the setter desk, and closers/sales managers the closer desk. The URL grants no secondary-role rights. A request is consumed once; logout/account changes clear it before network waits. Existing client lesson taps, payout alerts, notification consent and logout behavior remain separate and unchanged.
+
+The host entitlements declare only `applinks:fundhub.ai`. The static `/.well-known/apple-app-site-association` names only app `8VDXL37RR6.ai.fundhub.app` and the two exact dashboard paths. The hourly native-push beat checks the association JSON without signing in or writing data. This check does not prove that an installed iPhone opens a text link. A newly signed app with the Associated Domains profile, deployed association and a real Messages tap are still required; older installed builds use the existing authenticated website fallback.
+
+Source proof: 38 actual simulator XCTest cases and 26 focused Node guards pass, including parser rejection, queued sign-in, role refusal, expiry, one-use and post-await account/generation changes. No staff SMS or APNs notification was sent as this proof, and no App Store upload or physical-device link result is claimed.

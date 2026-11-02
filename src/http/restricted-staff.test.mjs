@@ -54,13 +54,23 @@ test("the same real outbound session authenticates for its own workspace", async
 });
 
 
-test("outreach companion access stays read-only without widening native-push rights", () => {
+test("outreach companion stays read-only except its own native-device registration", () => {
   assert.equal(restrictedStaffAllowed(request("/api/read/dock"),rep),true);
   assert.equal(restrictedStaffAllowed(request("/api/read/dock","POST"),rep),false);
   for(const method of ["GET","POST","DELETE"]) {
-    assert.equal(restrictedStaffAllowed(request("/api/push/native-device",method),rep),false);
+    assert.equal(restrictedStaffAllowed(request("/api/push/native-device",method),rep),true);
   }
   for(const url of ["/api/tasks","/api/auth/staff-role","/api/read/company","/api/read/staff"]) {
     assert.equal(restrictedStaffAllowed(request(url,"POST"),rep),false);
+  }
+});
+
+
+test("outreach device access refuses other methods and lookalike routes", () => {
+  for (const method of ["PUT", "PATCH", "HEAD"]) {
+    assert.equal(restrictedStaffAllowed(request("/api/push/native-device", method), rep), false);
+  }
+  for (const path of ["/api/push/native-device/other", "/api/push/native-device-admin", "/api/push/subscribe", "/api/push/unsubscribe"]) {
+    assert.equal(restrictedStaffAllowed(request(path, "POST"), rep), false, path);
   }
 });

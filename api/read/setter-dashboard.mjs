@@ -15,6 +15,9 @@ export default async function handler(req, res, deps = {}) {
   const staff = await requireAuth(req, res, { db: database });
   if (!staff || !requireRole(res, staff, ROLE_SETS.SETTER)) return;
   if (!isUuid(staff.org_id)) return res.status(403).json({ ok: false, error: "forbidden" });
+  if (req.query?.client_id != null && !isUuid(req.query.client_id)) {
+    return res.status(400).json({ ok: false, error: "invalid_client_id" });
+  }
   try {
     const data = await listSetterQueue(database, staff, req.query || {});
     const latest_undoable_dial = await latestUndoableDial(database, staff);

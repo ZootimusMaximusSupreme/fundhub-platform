@@ -1,0 +1,92 @@
+{
+  "task": "Fundhub owner cash view and Plaid readiness",
+  "owner_lane": "finance",
+  "status": "employee_payout_bank_build_in_progress",
+  "approved_2026_11_02": "Chris approved the employee account-menu Plaid placement and owner People status placement; he also requested a payout push notification. He wants distribution available after money clears but has not set a new payout rate or authorized an automatic money transfer.",
+  "placement_draft": "ops/workflows/finance-os-payout-bank-placement-2026-11-02.html",
+  "dots_comma_account_note": {
+    "source": "Chris, 2026-11-02",
+    "current": "Dots from Commas is connected to a personal account",
+    "required": "Integrate Dots with the business account",
+    "status": "recorded_only_no_connection_changed"
+  },
+  "release_coordination": {
+    "state": "root_integrated_same_next_protected_release",
+    "owner": "UNCLOG root release coordinator",
+    "released_paths": [
+      "docs/journeys/push-flow.md",
+      "tools/fundhub-ios/FundhubTests/FundhubTests.swift",
+      "tools/fundhub-ios/Fundhub/Core/NativePush.swift",
+      "public/app/shell.js"
+    ],
+    "saved_patch": "ops/workflows/finance-os-release-handoff-2026-11-02.patch",
+    "saved_patch_sha256": "efa70a31df172f6a20ee4a599dccd6d4b645405bfe74b1cfccec992840775f2f",
+    "shell_patch": "ops/workflows/finance-os-shell-handoff-2026-11-02.patch",
+    "native_patch": "ops/workflows/finance-os-native-handoff-2026-11-02.patch",
+    "resume_after": "Finance source handed off and frozen; root owns combined checks, protected GitHub delivery and live verification",
+    "dots_note_scope": "Record only; do not change the live Commas Dots connection",
+    "preserved_handoff_artifacts": [
+      {
+        "path": "ops/workflows/build-evidence/finance-release-20261102/finance-os-native-handoff-2026-11-02.patch",
+        "sha256": "fdb14e7cb5ca923b7093aa5bc27925e03f0c82ed7e41d5c244015b6f34b60e75"
+      },
+      {
+        "path": "ops/workflows/build-evidence/finance-release-20261102/finance-os-shell-handoff-2026-11-02.patch",
+        "sha256": "16948336ee0b1a9faae9bc3b2ac4d8d6c9377850df41054ad222a409894eb6ed"
+      },
+      {
+        "path": "ops/workflows/build-evidence/finance-release-20261102/finance-os-release-handoff-2026-11-02.patch",
+        "sha256": "efa70a31df172f6a20ee4a599dccd6d4b645405bfe74b1cfccec992840775f2f"
+      }
+    ]
+  },
+  "current_split": [
+    "finance_os_map: staff payout account data, self-link API, owner masked status API; no UI or money sends",
+    "employee_ui: signed-in closer/sales-manager account menu and owner People status after PR #378 ownership clears",
+    "root: commission.paid iPhone push and integration/release checks after backend and UI"
+  ],
+  "shared_context": "Chris wants Finance OS for his own internal use, tracking Commas, WAP, and financing receipts into Arizona Financial, a monthly CRS soft-pull reserve, Colin ad funding, tech subscriptions, and available cash. Existing FinanceOS is client-facing; its roll-up is client cash, not company treasury. Chrome confirms the Plaid team matching local keys has an unfinished full-production request. The free Trial form is open for real bank data; it includes Transactions and Balance but not Transfer.",
+  "owner_cash_spec": {
+    "role": "Fundhub owner",
+    "one_job": "See actual company cash, what must be reserved or paid, and the remaining amount that can safely be used.",
+    "first_question": "How much company cash is available after CRS, ad funding, and tech bills?",
+    "source_of_truth": [
+      "Arizona Financial posted deposits and debits through a company-owned Plaid connection",
+      "Fundhub Commas and financing settlement records matched to bank deposits without double-counting",
+      "Successful CRS pulls from soft_pull_requests, priced with the actual CRS invoice and state surcharges",
+      "Meta ad spend and Colin reimbursements as distinct entries",
+      "Posted bank charges tagged as tech subscriptions, with manual corrections and recurring detection"
+    ],
+    "calculation": "Available company cash = posted bank cash minus unpaid CRS reserve minus approved but unpaid ad funding minus due tech bills; processor payouts in flight are shown separately, not counted as bank cash.",
+    "transfer_rule": "Do not submit a company transfer until live Transfer access, recipient account, exact amount, authorization, and idempotent reconciliation are verified. Existing client transfer engine is not the company payout workflow.",
+    "scope": "Owner-only company view and data path; keep client FinanceOS separate. Build in order: verify source records, back end, then UI."
+  },
+  "workflows": [
+    {
+      "id": "plaid_status",
+      "owner": "plaid_status agent",
+      "status": "done",
+      "prompt": "Read-only: inspect Plaid configuration and official product terms. Determine which status is evidenced and which needs dashboard access. Never display secrets or initiate a transfer.",
+      "manifest": "No files changed. Local Plaid sandbox is configured; live transfer flag is absent. Plaid dashboard is not accessible from this session."
+    },
+    {
+      "id": "finance_os_map",
+      "owner": "finance_os_map agent",
+      "status": "done",
+      "prompt": "Read-only: map existing FinanceOS, cash receipt, CRS pull cost, ad spend and subscription sources. Identify the smallest owner cash workflow and exact source files. Do not change files.",
+      "manifest": "No files changed. Client FinanceOS and client transfers cannot represent company cash. Commas receipts exist; CRS pull count exists but per-request cost is null; Meta spend data exists. Arizona Financial company connection and actual invoice pricing are not observed."
+    },
+    {
+      "id": "owner_cash_spec",
+      "owner": "root",
+      "status": "waiting_for_account_facts",
+      "prompt": "Use the map and owner request to record the owner cash workflow, define source-of-truth fields and states, then implement only verified in-scope changes. Run required checks and use the protected PR release path. Do not move real money without exact recipient, amount, and owner authorization.",
+      "manifest": "This board only; spec recorded before back-end work."
+    }
+  ],
+  "decisions_needed": [
+    "Plaid Dashboard for the same client ID as local .env shows one team, Fundub LLC. Production onboarding is unfinished, no products are selected, and Transfer is not enabled. Actual contract quote remains unknown.",
+    "Actual CRS wholesale rate per soft pull and billing terms",
+    "Colin ad funding account and replenishment rule before automating payment"
+  ]
+}

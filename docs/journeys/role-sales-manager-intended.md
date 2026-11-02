@@ -85,3 +85,7 @@ diff between the two files — CLAUDE.md §4 describes intended vs. actual as a 
 comparison, and this repository has never built a machine check for it. Read both,
 side by side, and treat any difference between them as a finding to report, not
 something to silently fix in either file.
+
+## Payout bank (owner-approved 2026-11-02)
+
+A signed-in sales manager may see and link only their own masked payout bank from the account menu when production Plaid Transfer is available. The owner sees bank-link status in People. A paid commission event may send a fixed, amount-free iPhone alert to the manager's registered device; the alert opens the sales workspace. Linking never sends money or changes a commission rate.

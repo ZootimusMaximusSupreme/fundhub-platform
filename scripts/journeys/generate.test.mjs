@@ -18,7 +18,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { build, stale, OUT_DIR } from "./generate.mjs";
-import { extractAll, routes, roleSets, code, gateFor, JOURNEYS, REPO } from "./extract.mjs";
+import { extractAll, routes, roleSets, code, gateFor, reaches, JOURNEYS, REPO } from "./extract.mjs";
 
 const data = extractAll();
 const files = build();
@@ -151,6 +151,33 @@ describe("the extraction is faithful to the code", () => {
     const unverified = data.endpoints.filter((e) => e.gate.kind === "unverified");
     assert.deepEqual(unverified.map((e) => `${e.key}: ${e.gate.note}`), [],
       "these routes' gates could not be traced from the code");
+  });
+
+  test("staff payout gates trace the real shared duty helper and preserve the owner read-only branch", () => {
+    const read = data.endpoints.find((endpoint) => endpoint.key === "read/staff-payout-account");
+    const write = data.endpoints.find((endpoint) => endpoint.key === "staff/payout-account");
+    assert.equal(read.gate.kind, "explicit-roles");
+    assert.equal(write.gate.kind, "explicit-roles");
+    assert.ok(read.gate.roles.includes("owner"));
+    assert.ok(!write.gate.roles.includes("owner"));
+    for (const role of ["admin", "partner", "client", "affiliate", "outbound_rep"]) {
+      assert.ok(!read.gate.roles.includes(role));
+      assert.ok(!write.gate.roles.includes(role));
+    }
+    for (const role of ["closer", "sales_manager"]) {
+      assert.ok(write.gate.roles.includes(role));
+      assert.ok(!write.gate.conditionalStaffRoles.includes(role));
+    }
+    assert.ok(write.gate.conditionalStaffRoles.includes("setter"));
+    assert.match(write.gate.note, /self only/);
+    assert.match(read.gate.note, /same-org.*masked bank/);
+    assert.equal(reaches({ type: "role", subject: "setter" }, write.gate).reachable, false);
+    assert.match(reaches({ type: "role", subject: "setter" }, write.gate).why, /primary role alone.*requires an active closer or sales_manager duty/);
+    assert.equal(reaches({ type: "role", subject: "setter", roles: ["setter", "closer"] }, write.gate).reachable, true);
+    assert.equal(reaches({ type: "role", subject: "owner" }, write.gate).reachable, false);
+    assert.equal(reaches({ type: "role", subject: "owner" }, read.gate).reachable, true);
+    assert.equal(reaches({ type: "principal", subject: "client" }, read.gate).reachable, false);
+    assert.match(files["role-funding-advisor-actual.md"], /only with an active closer or sales_manager duty/);
   });
 
   test("a dependency-injected requirePrincipal alias keeps its real role gate", () => {

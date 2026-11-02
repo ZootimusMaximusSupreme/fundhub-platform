@@ -39,6 +39,7 @@ final class FundhubSessionStore: ObservableObject {
     @Published var summaryLoading = false
     @Published var signingIn = false
     @Published var message: String?
+    @Published private(set) var staffLinks = StaffDashboardLink.Queue()
 
     private let api = FundhubAPI()
     private(set) var token: String?
@@ -46,6 +47,24 @@ final class FundhubSessionStore: ObservableObject {
     var savedSessionUnlockLabel: String { SessionKeychain.unlockLabel }
 
     init() { Task { await restore() } }
+
+    func receiveStaffLink(_ url: URL) {
+        staffLinks.receive(url, bearer: token)
+    }
+
+    func resolvePendingStaffLink() async -> StaffDashboardLink.Resolution? {
+        guard let request = staffLinks.pending, let bearerAtStart = token,
+              phase == .signedIn else { return nil }
+        let generation = staffLinks.generation
+        await refreshSession()
+        // No await may follow these final account, request and role checks.
+        return staffLinks.consume(
+            requestId: request.id, generation: generation,
+            bearerAtStart: bearerAtStart, bearerAfterRefresh: token,
+            principal: identity?.principal, role: identity?.staff.role,
+            verified: phase == .signedIn, taskCancelled: Task.isCancelled
+        )
+    }
 
     func restore() async {
         // A cached widget is not a verified session on a new app launch.
@@ -102,7 +121,10 @@ final class FundhubSessionStore: ObservableObject {
         guard reply.ok, let newToken = reply.token, !newToken.isEmpty else {
             throw FundhubAPIError.refused(reply.message ?? "That sign-in did not work.")
         }
-        if token != newToken { DockWidgetSnapshot.clear() }
+        if token != newToken {
+            DockWidgetSnapshot.clear()
+            if token != nil { staffLinks.clear() }
+        }
         let savedForQuickSignIn = SessionKeychain.save(newToken)
         token = newToken
         await refreshSession()
@@ -143,7 +165,7 @@ final class FundhubSessionStore: ObservableObject {
                 await loadSummary()
                 guard self.token == token, phase == .signedIn else { return }
                 await NativePushCenter.shared.attach(bearer: token)
-            } else if ["owner", "setter", "closer"].contains(result.staff.role ?? "") {
+            } else if FundhubRole.canRegisterNativePush(principal: result.principal, role: result.staff.role) {
                 await NativePushCenter.shared.attach(bearer: token)
             }
         } catch {
@@ -182,6 +204,7 @@ final class FundhubSessionStore: ObservableObject {
     func signOut(revoke: Bool = true) async {
         // Invalidate in-flight identity/summary replies before any network await.
         let outgoingToken = token
+        staffLinks.clear()
         token = nil
         DockWidgetSnapshot.clear()
         phase = .checking
@@ -235,6 +258,10 @@ private struct RootView: View {
                     Button("Sign out") { Task { await store.signOut() } }
                 }
             }
+        }
+        .onOpenURL { url in store.receiveStaffLink(url) }
+        .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+            if let url = activity.webpageURL { store.receiveStaffLink(url) }
         }
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active, store.phase == .signedIn else { return }
@@ -562,6 +589,7 @@ private struct HomeView: View {
     @ObservedObject private var push = NativePushCenter.shared
     @State private var reloadId = UUID()
     @State private var staffAlertPath: String?
+    @State private var staffAlertBearer: String?
     @State private var clientAlertPath: String?
     @State private var clientAlertBearer: String?
     @State private var showingNotifications = false
@@ -576,13 +604,12 @@ private struct HomeView: View {
                     identity: identity.staff,
                     path: identity.principal == "client"
                         ? ((clientAlertBearer == token ? clientAlertPath : nil) ?? NativePushTap.portalPath)
-                        : (staffAlertPath ?? FundhubRole.workspacePath(principal: identity.principal, role: identity.staff.role)),
+                        : ((staffAlertBearer == token ? staffAlertPath : nil) ?? FundhubRole.workspacePath(principal: identity.principal, role: identity.staff.role)),
                     onWebSignOut: { Task { await store.signOut() } }
                 )
                 .id(reloadId)
                 .safeAreaInset(edge: .top, spacing: 0) {
-                    if identity.principal == "client" ||
-                        (identity.principal == "staff" && ["owner", "setter", "closer"].contains(identity.staff.role ?? "")) {
+                    if FundhubRole.canRegisterNativePush(principal: identity.principal, role: identity.staff.role) {
                         HStack {
                             if ClientPortalNavigation.showsBackButton(
                                 path: clientAlertPath, bearerAtOpen: clientAlertBearer,
@@ -630,9 +657,19 @@ private struct HomeView: View {
                 ProgressView("Connecting to Fundhub")
             }
         }
-        .onChange(of: store.token) { _, _ in staffAlertPath = nil; clientAlertPath = nil; clientAlertBearer = nil }
-        .onChange(of: store.identity?.principal) { _, _ in staffAlertPath = nil; clientAlertPath = nil; clientAlertBearer = nil }
-        .onChange(of: store.identity?.staff) { _, _ in staffAlertPath = nil; clientAlertPath = nil; clientAlertBearer = nil }
+        .onChange(of: store.token) { _, _ in staffAlertPath = nil; staffAlertBearer = nil; clientAlertPath = nil; clientAlertBearer = nil }
+        .onChange(of: store.identity?.principal) { _, _ in staffAlertPath = nil; staffAlertBearer = nil; clientAlertPath = nil; clientAlertBearer = nil }
+        .onChange(of: store.identity?.staff) { _, _ in staffAlertPath = nil; staffAlertBearer = nil; clientAlertPath = nil; clientAlertBearer = nil }
+        .task(id: store.staffLinks.generation) {
+            guard let resolved = await store.resolvePendingStaffLink(),
+                  resolved.isCurrent(bearer: store.token, generation: store.staffLinks.generation,
+                                     principal: store.identity?.principal, role: store.identity?.staff.role,
+                                     verified: store.phase == .signedIn,
+                                     taskCancelled: Task.isCancelled) else { return }
+            staffAlertPath = resolved.path
+            staffAlertBearer = resolved.bearer
+            reloadId = UUID()
+        }
         .task(id: push.openRequestId) {
             if store.identity?.principal == "client",
                let bearerAtTap = store.token, !bearerAtTap.isEmpty,
@@ -662,6 +699,7 @@ private struct HomeView: View {
                 taskCancelled: Task.isCancelled
             ) else { return }
             staffAlertPath = path
+            staffAlertBearer = bearerAtTap
             reloadId = UUID()
         }
     }

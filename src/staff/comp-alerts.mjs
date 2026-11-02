@@ -8,6 +8,7 @@
 import { renderTemplate } from "../lib/render-template.mjs";
 import { isDraftTemplateRow } from "../messaging/draft-guard.mjs";
 import { send as sendResend } from "../messaging/providers/resend.mjs";
+import { sendNativeToStaff } from "../push/native-send.mjs";
 
 export const EMAIL_COMMISSION_PAID = "EMAIL-COMMISSION-PAID";
 export const SMS_DEAL_CLOSE_WIN = "SMS-DEAL-CLOSE-WIN";
@@ -130,6 +131,36 @@ export async function notifyCommissionPaid(db, event, { fetchImpl, env } = {}) {
     to,
     staffId
   };
+}
+
+// A paid ledger event is the only trigger. The client id is needed by the
+// existing staff push receipt and native tap path; never substitute another
+// person's client or send for an unassociated manual ledger line.
+export async function notifyCommissionPaidPush(db, event, { pushImpl = sendNativeToStaff } = {}) {
+  const orgId = event?.orgId;
+  const clientId = event?.clientId;
+  const payload = event?.payload || {};
+  const staffId = payload.staff_id || payload.staffId;
+  const ledgerId = payload.ledger_id || payload.ledgerId;
+  if (!orgId || !staffId || !ledgerId || !clientId) {
+    return { sent: 0, reason: "missing_ids" };
+  }
+  const recipient = (await db.query(
+    `SELECT s.id FROM staff s
+      WHERE s.id=$1 AND s.org_id=$2 AND s.status='active'
+        AND lower(btrim(s.role)) NOT IN
+          ('owner','admin','partner','client','affiliate','outbound_rep')
+        AND (lower(btrim(s.role)) IN ('closer','sales_manager') OR EXISTS (
+          SELECT 1 FROM staff_role_assignments a
+          JOIN staff_roles sr ON sr.id=a.role_id AND sr.org_id=a.org_id
+          WHERE a.staff_id=s.id AND a.org_id=s.org_id AND sr.active
+            AND sr.key IN ('closer','sales_manager')))`,
+    [staffId, orgId]
+  )).rows[0];
+  if (!recipient) return { sent: 0, reason: "not_eligible" };
+  return pushImpl(db, {
+    orgId, staffId, clientId, kind: "payout", key: `commission.paid:${ledgerId}`
+  });
 }
 
 async function resolveSaleId(db, event) {

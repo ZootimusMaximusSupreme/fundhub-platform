@@ -75,6 +75,13 @@ enum NativePushTap {
         let clientId: String
 
         func workspacePath(role: String?) -> String? {
+            if kind == "payout" {
+                switch role {
+                case "closer": return "/app/closer-dashboard.html"
+                case "sales_manager": return "/app/sales-floor.html"
+                default: return nil
+                }
+            }
             let page: String
             switch role {
             case "setter" where kind == "lead": page = "/app/setter-dashboard.html"
@@ -111,7 +118,7 @@ enum NativePushTap {
     static func staffAlert(_ userInfo: [AnyHashable: Any]) -> StaffAlert? {
         guard (userInfo["path"] as? String) == staffPath,
               let kind = userInfo["kind"] as? String,
-              ["lead", "set", "upcoming"].contains(kind),
+              ["lead", "set", "upcoming", "payout"].contains(kind),
               let rawId = userInfo["client_id"] as? String,
               let id = UUID(uuidString: rawId) else { return nil }
         return StaffAlert(kind: kind, clientId: id.uuidString.lowercased())

@@ -49,7 +49,7 @@ flowchart TD
     CAN --> A_proxy[proxy — 2 routes]
     CAN --> A_public[public — 20 routes]
     CAN --> A_push[push — 1 route]
-    CAN --> A_read[Reading data — 74 routes]
+    CAN --> A_read[Reading data — 75 routes]
     CAN --> A_repair[repair — 5 routes]
     CAN --> A_scripts[scripts — 2 routes]
     CAN --> A_social[social — 7 routes]
@@ -57,19 +57,20 @@ flowchart TD
     CAN --> A_top_level[Everything else — 45 routes]
     CAN --> A_trials[trials — 4 routes]
     CAN --> A_webhooks[Incoming webhooks — 1 route]
-    WHO -->|Yes| CANT[Blocked — 11 routes]
+    WHO -->|Yes| CANT[Blocked — 12 routes]
     CANT --> B_affiliates[affiliates — 2 blocked]
     CANT --> B_auth[Signing in and out — 1 blocked]
     CANT --> B_chat[chat — 1 blocked]
     CANT --> B_native[native — 1 blocked]
     CANT --> B_push[push — 4 blocked]
     CANT --> B_read[Reading data — 1 blocked]
+    CANT --> B_staff[staff — 1 blocked]
     CANT --> B_top_level[Everything else — 1 blocked]
 ```
 
 ## What they can reach
 
-**332 of 343 routes.**
+**333 of 345 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -371,6 +372,7 @@ flowchart TD
 | `/api/read/setter-dashboard` | GET | owner, admin, setter |
 | `/api/read/slo-connections` | GET | owner, admin |
 | `/api/read/staff` | GET | owner, admin, sales_manager |
+| `/api/read/staff-payout-account` | GET | owner, closer, sales_manager<br>funding_advisor, inquiry_specialist, setter, csm only with an active closer or sales_manager duty |
 | `/api/read/tradelines` | — | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/transactions` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/underwrite` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
@@ -415,7 +417,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**11 of 343 routes.**
+**12 of 345 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -429,6 +431,7 @@ flowchart TD
 | `/api/push/subscribe` | GET, POST | client |
 | `/api/push/unsubscribe` | DELETE, POST | client |
 | `/api/read/company-brain-affiliate` | POST | employees: affiliate, partner<br>plus: affiliate, partner |
+| `/api/staff/payout-account` | POST | closer, sales_manager<br>funding_advisor, inquiry_specialist, setter, csm only with an active closer or sales_manager duty |
 | `/api/waypoint-tick` | POST | client |
 
 ## UNVERIFIED

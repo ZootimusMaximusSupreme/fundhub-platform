@@ -45,12 +45,17 @@ function bookingLine(startTime) {
     : "Booked: Yes";
 }
 
-export function buildStaffLeadText({ client = {}, startTime = null } = {}) {
-  return [`New lead: ${firstName(client)}`, ...contactLines(client), bookingLine(startTime),
-    ...surveyLines(client.custom_fields || {})].join("\n");
+function dashboardLine(desk, clientId) {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(clientId || ""))) return [];
+  return [`Open ${desk}: https://fundhub.ai/app/${desk}-dashboard.html?client_id=${String(clientId).toLowerCase()}`];
 }
 
-export function buildCloserSetText({ client = {}, handoff = {}, startTime = null } = {}) {
+export function buildStaffLeadText({ client = {}, clientId = client.client_id || client.id, startTime = null } = {}) {
+  return [`New lead: ${firstName(client)}`, ...contactLines(client), bookingLine(startTime),
+    ...surveyLines(client.custom_fields || {}), ...dashboardLine("setter", clientId)].join("\n");
+}
+
+export function buildCloserSetText({ client = {}, clientId = client.client_id || client.id, handoff = {}, startTime = null } = {}) {
   const details = [
     handoff.goal && `Goal: ${clean(handoff.goal)}`,
     handoff.problem && `Problem: ${clean(handoff.problem)}`,
@@ -59,11 +64,12 @@ export function buildCloserSetText({ client = {}, handoff = {}, startTime = null
     typeof handoff.app_on_phone === "boolean" && `App on phone: ${handoff.app_on_phone ? "Yes" : "No"}`
   ].filter(Boolean);
   return [`Lead set: ${firstName(client)}`, ...contactLines(client), bookingLine(startTime),
-    ...details, ...surveyLines(client.custom_fields || {})].join("\n");
+    ...details, ...surveyLines(client.custom_fields || {}), ...dashboardLine("closer", clientId)].join("\n");
 }
 
-export function buildCloserUpcomingText({ client = {}, startTime } = {}) {
-  return [`Next call: ${firstName(client)}`, ...contactLines(client), bookingLine(startTime)].join("\n");
+export function buildCloserUpcomingText({ client = {}, clientId = client.client_id || client.id, startTime } = {}) {
+  return [`Next call: ${firstName(client)}`, ...contactLines(client), bookingLine(startTime),
+    ...dashboardLine("closer", clientId)].join("\n");
 }
 
 async function activeStaff(db, orgId, staffId, roles) {
@@ -130,7 +136,7 @@ export async function queueNewLeadAlerts(db, { orgId, clientId, drainNowImpl, pu
     `SELECT id FROM staff WHERE org_id = $1 AND status = 'active'
       AND lower(role) = ANY($2::text[])`, [orgId, ALERT_ROLES.lead]
   )).rows;
-  const body = buildStaffLeadText({ client, startTime: booking?.starts_at });
+  const body = buildStaffLeadText({ client, clientId, startTime: booking?.starts_at });
   const results = [];
   for (const person of staff) results.push(await queueStaffAlert(db, {
     orgId, clientId, staffId: person.id, kind: "lead", key: clientId, body,
@@ -165,7 +171,7 @@ export async function queueCloserSetAlert(db, {
 } = {}) {
   if (!closerStaffId) return { queued: 0, reason: "closer_unassigned" };
   return queueStaffAlert(db, { orgId, clientId, staffId: closerStaffId, kind: "set",
-    key: clientId, body: buildCloserSetText({ client, handoff, startTime }),
+    key: clientId, body: buildCloserSetText({ client, clientId, handoff, startTime }),
     drainNowImpl, pushImpl, drain });
 }
 
@@ -193,5 +199,5 @@ export async function queueCloserUpcomingAlert(db, {
   if (!closerStaffId) return { queued: 0, reason: "closer_unassigned" };
   return queueStaffAlert(db, { orgId, clientId, staffId: closerStaffId, kind: "upcoming",
     key: `${clientId}:${new Date(startTime).toISOString()}`,
-    body: buildCloserUpcomingText({ client, startTime }), drainNowImpl, pushImpl });
+    body: buildCloserUpcomingText({ client, clientId, startTime }), drainNowImpl, pushImpl });
 }

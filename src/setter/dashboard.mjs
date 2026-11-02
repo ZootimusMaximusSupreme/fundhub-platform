@@ -232,7 +232,7 @@ export async function setterNumbers(db, staff, { now = new Date(), includeDemo =
   };
 }
 
-export async function listSetterQueue(db, staff, { limit = 50, offset = 0 } = {}) {
+export async function listSetterQueue(db, staff, { limit = 50, offset = 0, client_id = null } = {}) {
   const roleScoped = needsSetterAssignment(staff);
   const page = pageParams({ limit, offset });
   const result = await db.query(
@@ -267,9 +267,10 @@ export async function listSetterQueue(db, staff, { limit = 50, offset = 0 } = {}
       ORDER BY c.id, t.created_at DESC
      )
      SELECT * FROM queue
-      ORDER BY COALESCE(booked_at, created_at) DESC
+      ORDER BY CASE WHEN client_id = $6::uuid THEN 0 ELSE 1 END,
+               COALESCE(booked_at, created_at) DESC
       LIMIT $4 OFFSET $5`,
-    [staff.org_id, roleScoped, staff.id, Math.min(page.limit, 100), page.offset]
+    [staff.org_id, roleScoped, staff.id, Math.min(page.limit, 100), page.offset, client_id]
   );
   // Each lead's own calendar, by the same score rule as its texts. Null = no answer
   // yet, so the screen falls back to the plain booking_url below.

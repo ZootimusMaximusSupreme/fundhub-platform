@@ -836,3 +836,18 @@ test("a secondary setter cannot edit another setter's lead or emit a follow-up",
   assert.equal(emitted,false);
   assert.equal(queries.some(sql=>sql.includes("UPDATE")),false);
 });
+
+
+test("a linked client is prioritized inside the same role-scoped queue before the page limit", async () => {
+  const calls = [];
+  const staff = { ...STAFF, role: "setter" };
+  const db = { async query(sql, params) { calls.push({ sql, params }); return { rows: [] }; } };
+  await listSetterQueue(db, staff, { client_id: CLIENT_ID });
+  const query = calls[0];
+  assert.deepEqual(query.params, [STAFF.org_id, true, STAFF.id, 50, 0, CLIENT_ID]);
+  assert.match(query.sql, /WHERE t.org_id = \$1/);
+  assert.match(query.sql, /t.assignee_staff_id = \$3/);
+  assert.match(query.sql, /crm_archived_at/);
+  assert.match(query.sql, /setter_handoff'->>'setter_staff_id' = \$3::text/);
+  assert.match(query.sql, /ORDER BY CASE WHEN client_id = \$6::uuid THEN 0 ELSE 1 END,[\s\S]*LIMIT \$4 OFFSET \$5/);
+});

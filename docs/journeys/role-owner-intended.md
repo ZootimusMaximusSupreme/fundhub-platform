@@ -73,3 +73,7 @@ diff between the two files — CLAUDE.md §4 describes intended vs. actual as a 
 comparison, and this repository has never built a machine check for it. Read both,
 side by side, and treat any difference between them as a finding to report, not
 something to silently fix in either file.
+
+## Staff payout destinations (owner-approved 2026-11-02)
+
+The People editor shows masked payout-bank status for an eligible closer or sales manager. Each employee links their own destination from their signed-in account menu. The owner view never shows Plaid credentials or changes the employee's bank. A bank link is not a money transfer, and the current commission Mark paid action only records a payout made outside Fundhub.

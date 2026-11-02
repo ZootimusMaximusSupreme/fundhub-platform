@@ -5,6 +5,8 @@ export const title = "Money plans transfers and ad spend agree";
 export const kind = "probe";
 export const covers = [
   "route:money/setup",
+  "route:read/staff-payout-account",
+  "route:staff/payout-account",
   "route:money/payments",
   "route:money/transfers",
   "route:finance/subscriptions",
@@ -42,7 +44,8 @@ export const fixGuide = [
   "- Run node scripts/pulse/run-beat.mjs money-operations and read the first red step.",
   "- Compare the saved row with its source. Meta is read with GET only; the beat never syncs an ad or moves money.",
   "- Repair the one writer or setting named by the result and add a failing test for that exact condition.",
-  "Files: src/pulse/coverage/gap-finance-os-setup.mjs, src/pulse/coverage/gap-money-moves.mjs, src/pulse/coverage/gap-ads-meta.mjs"
+  "- staff-payout-destination-integrity checks saved self/org ownership and bank fields only; inspect the writer, never auto-change a destination or send a payment.",
+  "Files: src/pulse/coverage/gap-finance-os-setup.mjs, src/pulse/coverage/gap-money-moves.mjs, src/pulse/coverage/gap-ads-meta.mjs, src/pulse/coverage/gap-staff-payout-account.mjs, src/staff/payout-account.mjs"
 ].join("\n");
 
 export const selfTest = {

@@ -88,3 +88,8 @@
 # header the browser blocks the read and the card never draws.
 /funnel/fundhub-prompter-download.json
   Access-Control-Allow-Origin: https://apply.fundhub.ai
+
+# Exact public iOS association; the app validates every SMS URL independently.
+/.well-known/apple-app-site-association
+  Content-Type: application/json
+  Cache-Control: public, max-age=0, must-revalidate

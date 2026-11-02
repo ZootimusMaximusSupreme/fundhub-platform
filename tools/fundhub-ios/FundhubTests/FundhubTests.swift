@@ -48,6 +48,23 @@ final class FundhubTests: XCTestCase {
         XCTAssertEqual(purpose, "Use Face ID to unlock your saved Fundhub sign-in.")
     }
 
+    func testNativePushEligibilityUsesOnlyKnownPrimaryStaffRoles() {
+        let roles = ["owner", "admin", "sales_manager", "setter", "closer", "outbound_rep",
+                     "inquiry_specialist", "funding_advisor", "csm"]
+        for role in roles {
+            XCTAssertTrue(FundhubRole.canRegisterNativePush(principal: "staff", role: role), role)
+        }
+        let unsupported: [String?] = [nil, "", "unknown_job", "Owner", "setter,closer"]
+        for role in unsupported {
+            XCTAssertFalse(FundhubRole.canRegisterNativePush(principal: "staff", role: role))
+        }
+        XCTAssertTrue(FundhubRole.canRegisterNativePush(principal: "client", role: nil))
+        XCTAssertTrue(FundhubRole.canRegisterNativePush(principal: "client", role: "unknown_job"))
+        for principal in ["partner", "affiliate", "unknown", ""] {
+            XCTAssertFalse(FundhubRole.canRegisterNativePush(principal: principal, role: "owner"))
+        }
+    }
+
     func testRoleHomesAreSeparate() {
         XCTAssertEqual(FundhubRole.workspacePath(principal: "client", role: "owner"), "/app/client-portal.html")
         XCTAssertEqual(FundhubRole.workspacePath(principal: "staff", role: "setter"), "/app/setter-dashboard.html")
@@ -289,6 +306,11 @@ final class FundhubTests: XCTestCase {
                                             "kind": "set", "client_id": id])
         XCTAssertEqual(set?.workspacePath(role: "owner"), "/app/closer-dashboard.html?client_id=\(id)")
         XCTAssertNil(set?.workspacePath(role: "setter"))
+        let payout = NativePushTap.staffAlert(["path": NativePushTap.staffPath,
+                                               "kind": "payout", "client_id": id])
+        XCTAssertEqual(payout?.workspacePath(role: "closer"), "/app/closer-dashboard.html")
+        XCTAssertEqual(payout?.workspacePath(role: "sales_manager"), "/app/sales-floor.html")
+        XCTAssertNil(payout?.workspacePath(role: "setter"))
         XCTAssertNil(NativePushTap.staffAlert(["path": NativePushTap.staffPath,
                                               "kind": "lead", "client_id": "not-an-id"]))
         XCTAssertNil(NativePushTap.staffAlert(["path": "https://evil.example",
@@ -605,6 +627,125 @@ final class FundhubTests: XCTestCase {
         XCTAssertFalse(WorkspaceNavigation.isSignOutDestination(URL(string: "https://fundhub.ai/app/client-portal.html")!))
         XCTAssertFalse(WorkspaceNavigation.isSignOutDestination(URL(string: "https://evil.example/login.html")!))
     }
+
+    func testStaffSMSLinkParserAcceptsOnlyExactDashboardUUIDLinks() {
+        let id = "56a40391-e541-4a89-873b-37eab9d6d953"
+        for desk in ["setter", "closer"] {
+            let link = StaffDashboardLink.parse(URL(string: "https://fundhub.ai/app/\(desk)-dashboard.html?client_id=\(id)")!)
+            XCTAssertEqual(link?.workspacePath, "/app/\(desk)-dashboard.html?client_id=\(id)")
+        }
+        for invalid in [
+            "http://fundhub.ai/app/setter-dashboard.html?client_id=\(id)",
+            "https://evil.example/app/setter-dashboard.html?client_id=\(id)",
+            "https://fundhub.ai.evil.example/app/setter-dashboard.html?client_id=\(id)",
+            "https://staff@fundhub.ai/app/setter-dashboard.html?client_id=\(id)",
+            "https://fundhub.ai:443/app/setter-dashboard.html?client_id=\(id)",
+            "https://fundhub.ai/app/setter-dashboard.html/extra?client_id=\(id)",
+            "https://fundhub.ai/app/%73etter-dashboard.html?client_id=\(id)",
+            "https://fundhub.ai/app/../app/setter-dashboard.html?client_id=\(id)",
+            "https://fundhub.ai/app/client-portal.html?client_id=\(id)",
+            "https://fundhub.ai/app/setter-dashboard.html?client_id=\(id)#private",
+            "https://fundhub.ai/app/setter-dashboard.html?client_id=\(id)#",
+            "https://fundhub.ai/app/setter-dashboard.html?client_id=\(id)&client_id=\(id)",
+            "https://fundhub.ai/app/setter-dashboard.html?client_id=\(id)&token=secret",
+            "https://fundhub.ai/app/setter-dashboard.html?client_id=\(id)&task_id=\(id)",
+            "https://fundhub.ai/app/setter-dashboard.html?client_id=\(id)&returnTo=https://evil.example",
+            "https://fundhub.ai/app/setter-dashboard.html?client_id=not-a-uuid",
+            "https://fundhub.ai/app/setter-dashboard.html?client_id=",
+            "https://fundhub.ai/app/setter-dashboard.html?client%5Fid=\(id)",
+            "https://fundhub.ai/app/setter-dashboard.html"
+        ] { XCTAssertNil(StaffDashboardLink.parse(URL(string: invalid)!), invalid) }
+    }
+
+    func testStaffSMSLinksUseOnlyExistingPrimaryDeskRoles() {
+        let setter = StaffDashboardLink.parse(URL(string: "https://fundhub.ai/app/setter-dashboard.html?client_id=56a40391-e541-4a89-873b-37eab9d6d953")!)!
+        let closer = StaffDashboardLink.parse(URL(string: "https://fundhub.ai/app/closer-dashboard.html?client_id=56a40391-e541-4a89-873b-37eab9d6d953")!)!
+        for role in ["owner", "admin", "setter", "closer", "sales_manager", "csm", "outbound_rep", "funding_advisor", "inquiry_specialist", "unknown", ""] {
+            XCTAssertEqual(setter.permits(principal: "staff", role: role), ["owner", "admin", "setter"].contains(role), role)
+            XCTAssertEqual(closer.permits(principal: "staff", role: role), ["owner", "admin", "sales_manager", "closer"].contains(role), role)
+        }
+        for principal in ["client", "partner", "affiliate", "unknown", ""] {
+            XCTAssertFalse(setter.permits(principal: principal, role: "owner"))
+            XCTAssertFalse(closer.permits(principal: principal, role: "closer"))
+        }
+        XCTAssertFalse(setter.permits(principal: "staff", role: nil))
+    }
+
+    func testSignedOutStaffSMSLinkQueuesUntilVerifiedSignInThenConsumesOnce() {
+        var queue = StaffDashboardLink.Queue()
+        let now = Date(), url = URL(string: "https://fundhub.ai/app/setter-dashboard.html?client_id=56a40391-e541-4a89-873b-37eab9d6d953")!
+        XCTAssertTrue(queue.receive(url, bearer: nil, now: now))
+        let request = queue.pending!, generation = queue.generation
+        let opened = queue.consume(requestId: request.id, generation: generation,
+            bearerAtStart: "new-staff-session", bearerAfterRefresh: "new-staff-session",
+            principal: "staff", role: "setter", verified: true, taskCancelled: false, now: now.addingTimeInterval(60))
+        XCTAssertEqual(opened?.path, "/app/setter-dashboard.html?client_id=56a40391-e541-4a89-873b-37eab9d6d953")
+        XCTAssertTrue(opened!.isCurrent(bearer: "new-staff-session", generation: generation,
+            principal: "staff", role: "setter", verified: true, taskCancelled: false))
+        XCTAssertNil(queue.pending)
+        XCTAssertNil(queue.consume(requestId: request.id, generation: generation,
+            bearerAtStart: "new-staff-session", bearerAfterRefresh: "new-staff-session",
+            principal: "staff", role: "setter", verified: true, taskCancelled: false))
+    }
+
+    func testStaffSMSQueueExpiresRefusesWrongAccountAndDeduplicatesBothDeliveryHooks() {
+        let now = Date(), url = URL(string: "https://fundhub.ai/app/setter-dashboard.html?client_id=56a40391-e541-4a89-873b-37eab9d6d953")!
+        for mode in ["expired", "future", "changed-bearer", "wrong-role", "client", "cancelled", "unverified"] {
+            var queue = StaffDashboardLink.Queue()
+            queue.receive(url, bearer: "session-A", now: now)
+            let request = queue.pending!, generation = queue.generation
+            XCTAssertNil(queue.consume(requestId: request.id, generation: generation,
+                bearerAtStart: "session-A", bearerAfterRefresh: mode == "changed-bearer" ? "session-B" : "session-A",
+                principal: mode == "client" ? "client" : "staff", role: mode == "wrong-role" ? "closer" : "setter",
+                verified: mode != "unverified", taskCancelled: mode == "cancelled",
+                now: mode == "expired" ? now.addingTimeInterval(301) : mode == "future" ? now.addingTimeInterval(-1) : now))
+            XCTAssertNil(queue.pending, mode)
+        }
+        var queue = StaffDashboardLink.Queue()
+        queue.receive(url, bearer: "session-A", now: now)
+        let first = queue.pending!, generation = queue.generation
+        queue.receive(url, bearer: "session-A", now: now.addingTimeInterval(0.1))
+        XCTAssertEqual(queue.pending?.id, first.id)
+        XCTAssertEqual(queue.generation, generation)
+        queue.receive(url, bearer: "session-B", now: now.addingTimeInterval(0.2))
+        XCTAssertNotEqual(queue.pending?.id, first.id)
+        XCTAssertNil(queue.consume(requestId: first.id, generation: generation,
+            bearerAtStart: "session-A", bearerAfterRefresh: "session-A", principal: "staff", role: "setter",
+            verified: true, taskCancelled: false, now: now))
+        XCTAssertNotNil(queue.pending, "an old continuation cannot discard a newer link")
+        queue.clear()
+        XCTAssertNil(queue.pending)
+    }
+
+    @MainActor
+    func testStaffSMSFinalNavigationRechecksBearerGenerationAndRoleAfterLastAwait() async {
+        let gate = DelayedIdentityGate()
+        let simulated = SimulatedStaffState(bearer: "session-A")
+        var queue = StaffDashboardLink.Queue()
+        let now = Date(), url = URL(string: "https://fundhub.ai/app/setter-dashboard.html?client_id=56a40391-e541-4a89-873b-37eab9d6d953")!
+        queue.receive(url, bearer: "session-A", now: now)
+        let request = queue.pending!, generation = queue.generation
+        let resolved = queue.consume(requestId: request.id, generation: generation,
+            bearerAtStart: "session-A", bearerAfterRefresh: "session-A", principal: "staff", role: "setter",
+            verified: true, taskCancelled: false, now: now)!
+        let delayedCheck = Task { @MainActor in
+            await gate.pause()
+            return resolved.isCurrent(bearer: simulated.bearer, generation: generation,
+                principal: "staff", role: "setter", verified: true, taskCancelled: Task.isCancelled)
+        }
+        await gate.waitUntilPaused()
+        simulated.bearer = "session-B"
+        await gate.release()
+        let opened = await delayedCheck.value
+        XCTAssertFalse(opened, "a completed refresh result cannot navigate under a changed account")
+        XCTAssertFalse(resolved.isCurrent(bearer: "session-A", generation: generation + 1,
+            principal: "staff", role: "setter", verified: true, taskCancelled: false))
+        XCTAssertFalse(resolved.isCurrent(bearer: "session-A", generation: generation,
+            principal: "staff", role: "closer", verified: true, taskCancelled: false))
+        XCTAssertFalse(resolved.isCurrent(bearer: nil, generation: generation,
+            principal: nil, role: nil, verified: false, taskCancelled: false))
+    }
+
 }
 
 // Controlled synthetic delay: never calls a real identity provider or session.

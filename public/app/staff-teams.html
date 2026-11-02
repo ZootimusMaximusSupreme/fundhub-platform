@@ -372,6 +372,11 @@ table.perm tbody tr:hover td.pl{background:var(--soft)}
       <div class="eyebrow" style="margin-bottom:6px">Role access</div>
       <div id="edRoleNote" style="font-size:var(--fs-body);color:var(--gray);margin-bottom:9px">Access follows this person’s role. The server checks each action; the permission list is not shown here.</div>
     </div>
+    <div id="edPayoutBankWrap" class="fh-staff-payout" hidden>
+      <div class="eyebrow fh-staff-payout-label">Payout bank</div>
+      <div id="edPayoutBankStatus" role="status">Checking payout bank…</div>
+      <div class="hint fh-staff-payout-hint">This person connects their own bank from their account menu. Only the bank name and last four digits appear here.</div>
+    </div>
     <div style="margin-top:18px" id="edAgreementsWrap">
       <div class="eyebrow" style="margin-bottom:6px">Agreements</div>
       <div style="font-size:var(--fs-body);color:var(--gray);margin-bottom:9px">Open this person’s saved agreements.</div>
@@ -606,6 +611,7 @@ function openEditor(id){
   document.getElementById('scrim').classList.add('on');
   renderRoster();
   loadStaffAgreements(p.staffId || p.id);
+  loadStaffPayoutBank(p);
 }
 function openNew(){
   selId=null;
@@ -628,6 +634,7 @@ function openNew(){
   document.getElementById('edDeact').style.display='none';   // nothing to revoke yet
   document.getElementById('edRemove').hidden=true;
   document.getElementById('edAgreements').textContent='Save / invite first — agreements attach after hire.';
+  document.getElementById('edPayoutBankWrap').hidden=true;
   document.getElementById('editor').classList.add('open');
   document.getElementById('scrim').classList.add('on');
 }
@@ -635,6 +642,36 @@ function closeEditor(){
   document.getElementById('editor').classList.remove('open');
   document.getElementById('scrim').classList.remove('on');
   selId=null; renderRoster();
+}
+
+/* The owner sees only a masked payout destination. The employee links their
+   own bank in the shared account menu; this drawer cannot change it. */
+function loadStaffPayoutBank(p){
+  var wrap=document.getElementById('edPayoutBankWrap');
+  var status=document.getElementById('edPayoutBankStatus');
+  var roles=Array.isArray(p.roles)?p.roles:[];
+  var eligible=p.role!=='Owner' && p.role!=='Admin' &&
+    (p.role==='Closer' || p.role==='Sales Manager' || roles.indexOf('closer')>=0 || roles.indexOf('sales_manager')>=0);
+  wrap.hidden=!(window.__FH_IS_OWNER && p.staffId && eligible);
+  if(wrap.hidden) return;
+  status.textContent='Checking payout bank…';
+  var selected=String(p.staffId);
+  var token='';
+  try{token=localStorage.getItem('fh_token')||''}catch(e){}
+  fetch('/api/read/staff-payout-account?staff_id='+encodeURIComponent(selected),{
+    headers:{accept:'application/json',authorization:'Bearer '+token}
+  }).then(function(r){return r.json()}).then(function(result){
+    if(String(selId)!==String(p.id)) return;
+    if(!result || !result.ok){status.textContent='Could not check this payout bank. Reopen this person to try again.';return;}
+    var a=result.account;
+    if(!a){status.textContent='No payout bank linked yet.';return;}
+    var name=(a.institution||'Bank')+(a.mask?' ··'+a.mask:'');
+    status.textContent=a.environment==='sandbox'
+      ? 'Test bank saved: '+name+'. No real payout can use it.'
+      : 'Payout destination saved: '+name+'.';
+  }).catch(function(){
+    if(String(selId)===String(p.id)) status.textContent='Could not check this payout bank. Reopen this person to try again.';
+  });
 }
 
 /* Employment agreements for this roster person. Stored in contracts +

@@ -1388,6 +1388,14 @@
         ? "/portal-login.html?email=" + encodeURIComponent(email)
         : "/portal-login.html";
     }
+    // Keep only the selected staff work item through password sign-in.
+    // Never carry arbitrary query data or credentials into a return URL.
+    if (withNext && /^(setter|closer)-dashboard\.html$/.test(PAGE)) {
+      var clientIds = new URLSearchParams(location.search).getAll("client_id");
+      if (clientIds.length === 1 && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clientIds[0])) {
+        return "/login.html?next=" + encodeURIComponent("/app/" + PAGE + "?client_id=" + clientIds[0].toLowerCase());
+      }
+    }
     return withNext ? "/login.html?next=/app/" + PAGE : "/login.html";
   }
 
@@ -2506,17 +2514,29 @@
     var name = staff.name || staff.email || "Your account";
     var initials = name.split(/\s+/).slice(0, 2).map(function (part) { return part.charAt(0); }).join("").toUpperCase();
     var roleLabel = role.replace(/_/g, " ");
+    var staffRoles = Array.isArray(staff.roles) ? staff.roles.map(normRole) : [];
+    var canLinkPayoutBank = !demo && role !== "owner" && role !== "admin" &&
+      (role === "closer" || role === "sales_manager" ||
+       staffRoles.indexOf("closer") >= 0 || staffRoles.indexOf("sales_manager") >= 0);
+    var payoutBankHtml = canLinkPayoutBank
+      ? '<div class="fh-account-payout" id="fh-account-payout"><strong>Payout bank</strong>' +
+        '<p id="fh-account-payout-status" role="status">Checking your payout bank…</p>' +
+        '<button id="fh-account-payout-link" type="button" hidden>Link payout bank with Plaid</button>' +
+        '<div id="fh-account-payout-choices" hidden></div></div>'
+      : '';
     el.innerHTML = '<summary id="fh-shell-chip-show" aria-label="Open account menu" title="Your account">' +
       '<span class="fh-account-initials" aria-hidden="true">' + esc(initials) + '</span>' +
       '<span class="fh-account-shortname">' + esc(name.split(/\s+/)[0]) + '</span></summary>' +
       '<div class="fh-account-menu"><div class="fh-account-person">' + (role === "outbound_rep" ? '' : avatarChipHtml(staff.avatarUrl)) +
       '<div><strong>' + esc(name) + '</strong><span class="fh-account-role">' + esc(roleLabel) + '</span></div></div>' +
+      payoutBankHtml +
       '<button id="fh-shell-out" type="button">Sign out</button>' +
       '<details class="fh-account-technical" id="fh-shell-account-diagnostics"><summary>Technical details</summary>' +
       '<p>' + esc(staff.email || "") + '</p><p>Arizona time · <span id="fh-workspace-clock"></span></p>' +
       '<p id="fh-shell-status-hint">Checking connection…</p><span id="fh-shell-src"></span></details></div>';
     placeInHeader(el);
     document.getElementById("fh-shell-out").addEventListener("click", signOut);
+    if (canLinkPayoutBank) wireStaffPayoutBank(el);
     if (role !== "outbound_rep") wireAvatarUpload(el, demo);
     wireWorkspaceDisclosure(el);
     var clock = document.getElementById("fh-workspace-clock");
@@ -2542,6 +2562,173 @@
       source.style.color = "#0D1113";
       hint.textContent = (demo ? "Sample session. " : "") + state.hint;
       source.title = hint.textContent;
+    });
+  }
+
+  function wireStaffPayoutBank(menu) {
+    var status = menu.querySelector("#fh-account-payout-status");
+    var button = menu.querySelector("#fh-account-payout-link");
+    var choices = menu.querySelector("#fh-account-payout-choices");
+    var plaidScript = null;
+    var pendingToken = null;
+    var linkingAvailable = false;
+    var linkingMessage = "Payout bank linking is unavailable until Plaid Transfer is enabled.";
+    function currentBearer() {
+      try { return localStorage.getItem("fh_token") || ""; } catch (e) { return ""; }
+    }
+    var expectedBearer = currentBearer();
+    var activeFlow = null;
+    function current(flow) {
+      var sameAccount = expectedBearer && currentBearer() === expectedBearer &&
+        menu.isConnected && document.getElementById("fh-shell-chip") === menu;
+      if (!sameAccount) {
+        pendingToken = null;
+        activeFlow = null;
+        choices.hidden = true;
+        choices.replaceChildren();
+        button.hidden = true;
+        button.disabled = true;
+        if (menu.isConnected && document.getElementById("fh-shell-chip") === menu) {
+          status.textContent = "Your sign-in changed. Reload this page before linking a payout bank.";
+        }
+        return false;
+      }
+      return !flow || flow === activeFlow;
+    }
+    function request(url, body, flow) {
+      if (!current(flow)) return Promise.resolve(null);
+      var headers = { accept: "application/json", "content-type": "application/json", authorization: "Bearer " + expectedBearer };
+      return fetch(url, body ? { method: "POST", headers: headers, body: JSON.stringify(body) }
+        : { headers: headers })
+        .then(function (response) { return response.json().catch(function () { return { ok: false }; }); })
+        .then(function (result) { return current(flow) ? result : null; })
+        .catch(function () { return current(flow) ? { ok: false, message: "Could not reach Fundhub. Check your connection and try again." } : null; });
+    }
+    function paint(account) {
+      choices.hidden = true;
+      choices.replaceChildren();
+      button.hidden = !linkingAvailable;
+      if (!account) {
+        status.textContent = linkingAvailable ? "No payout bank linked yet." : linkingMessage;
+        button.textContent = "Link payout bank with Plaid";
+        return;
+      }
+      var label = (account.institution || "Bank") + (account.mask ? " ··" + account.mask : "");
+      status.textContent = account.environment === "sandbox"
+        ? "Test bank saved: " + label + ". No real payouts can use it."
+        : "Payout destination saved: " + label + ".";
+      if (!linkingAvailable) status.textContent += " " + linkingMessage;
+      button.textContent = "Change payout bank";
+    }
+    function loadPlaid() {
+      if (window.Plaid && typeof window.Plaid.create === "function") return Promise.resolve();
+      if (plaidScript) return plaidScript;
+      plaidScript = new Promise(function (resolve, reject) {
+        var script = document.createElement("script");
+        script.src = "https://cdn.plaid.com/link/v2/stable/link-initialize.js";
+        script.async = true;
+        script.onload = resolve;
+        script.onerror = function () { plaidScript = null; reject(new Error("Plaid did not load")); };
+        document.head.appendChild(script);
+      });
+      return plaidScript;
+    }
+    function saveBank(publicToken, accountId, institution, flow) {
+      if (!current(flow) || flow.exchanging) return;
+      flow.exchanging = true;
+      pendingToken = null;
+      choices.hidden = true;
+      choices.replaceChildren();
+      button.hidden = false;
+      button.disabled = true;
+      button.textContent = "Saving payout bank…";
+      status.textContent = "Saving your payout bank…";
+      return request("/api/staff/payout-account", {
+        action: "exchange", public_token: publicToken, account_id: accountId,
+        institution: institution || null
+      }, flow).then(function (result) {
+        if (!current(flow)) return;
+        button.disabled = false;
+        if (result && result.ok) { paint(result.account); return; }
+        status.textContent = (result && result.message) || "The bank did not save. Open Plaid again.";
+        button.textContent = "Link payout bank with Plaid";
+      });
+    }
+    function chooseBank(publicToken, accounts, institution, flow) {
+      if (!current(flow) || flow.exchanging) return;
+      pendingToken = publicToken;
+      button.hidden = true;
+      status.textContent = "Choose the account that should receive your payouts.";
+      choices.replaceChildren();
+      accounts.forEach(function (account) {
+        var pick = document.createElement("button");
+        pick.type = "button";
+        pick.textContent = (account.name || "Account") + (account.mask ? " ··" + account.mask : "");
+        pick.addEventListener("click", function () {
+          if (!current(flow) || !pendingToken) return;
+          saveBank(pendingToken, account.id, institution, flow);
+        });
+        choices.appendChild(pick);
+      });
+      choices.hidden = false;
+    }
+    button.addEventListener("click", function () {
+      if (!current() || !linkingAvailable || button.disabled) return;
+      var flow = { exchanging: false };
+      activeFlow = flow;
+      pendingToken = null;
+      button.disabled = true;
+      button.textContent = "Opening your bank…";
+      status.textContent = "Opening Plaid…";
+      request("/api/staff/payout-account", { action: "link_token" }, flow).then(function (result) {
+        if (!current(flow)) return;
+        if (!result || !result.ok || !result.link_token) {
+          button.disabled = false;
+          button.textContent = "Link payout bank with Plaid";
+          status.textContent = (result && result.message) || "Bank linking is unavailable right now. Try again later.";
+          return;
+        }
+        return loadPlaid().then(function () {
+          if (!current(flow)) return;
+          var handler = window.Plaid.create({
+            token: result.link_token,
+            onSuccess: function (publicToken, metadata) {
+              if (!current(flow)) return;
+              var inst = metadata && metadata.institution ? { name: metadata.institution.name || null } : null;
+              var accounts = metadata && Array.isArray(metadata.accounts) ? metadata.accounts.filter(function (a) { return a && a.id; }) : [];
+              if (accounts.length === 1) saveBank(publicToken, accounts[0].id, inst, flow);
+              else if (accounts.length > 1) chooseBank(publicToken, accounts, inst, flow);
+              else {
+                button.textContent = "Link payout bank with Plaid";
+                status.textContent = "No account was selected. Open Plaid again to choose one.";
+              }
+            },
+            onExit: function (error) {
+              if (!current(flow)) return;
+              if (!choices.hidden || button.disabled) return;
+              button.disabled = false;
+              button.textContent = "Link payout bank with Plaid";
+              if (error) status.textContent = "The bank window closed before it finished. Nothing was saved.";
+            }
+          });
+          if (!current(flow)) return;
+          button.disabled = false;
+          handler.open();
+        }, function () {
+          if (!current(flow)) return;
+          button.disabled = false;
+          button.textContent = "Link payout bank with Plaid";
+          status.textContent = "Plaid did not load. Check your connection and try again.";
+        });
+      });
+    });
+    request("/api/read/staff-payout-account").then(function (result) {
+      if (!current()) return;
+      if (result && result.ok) {
+        linkingAvailable = result.linking_available === true;
+        if (result.linking_message) linkingMessage = result.linking_message;
+        paint(result.account);
+      } else status.textContent = (result && result.message) || "Could not check your payout bank. Reload this page to try again.";
     });
   }
 

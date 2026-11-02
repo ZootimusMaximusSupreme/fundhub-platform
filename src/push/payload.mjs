@@ -141,7 +141,8 @@ export const STAFF_PUSH_PATH = "/app/staff-alert";
 export const STAFF_PUSH_BODIES = Object.freeze({
   lead: "A new lead is ready. Open Fundhub to call.",
   set: "A lead is set. Open Fundhub for the handoff.",
-  upcoming: "Your next call is coming up. Open Fundhub."
+  upcoming: "Your next call is coming up. Open Fundhub.",
+  payout: "Your payout was marked paid. Open Fundhub."
 });
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 

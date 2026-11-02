@@ -6,6 +6,8 @@ const OUTBOUND_ROUTES = new Map([
   ["read/bank-outreach", new Set(["GET"])],
   // This read-only companion resolves only the employee's own outreach feed.
   ["read/dock", new Set(["GET"])],
+  // Own-device handler derives org, staff and live session from the bearer.
+  ["push/native-device", new Set(["GET", "POST", "DELETE"])],
   ["bank-outreach", new Set(["POST"])]
 ]);
 

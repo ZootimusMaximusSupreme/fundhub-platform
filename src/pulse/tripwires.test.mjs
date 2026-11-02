@@ -8,7 +8,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { NOT_CUSTOMER_FACING, TRIPWIRES, TRIPWIRE_IMPACTS, isPingId } from "./tripwires.mjs";
-import { SEND_PATHS } from "./registry.mjs";
+import { SEND_PATHS, ALLOWED_UNMONITORED, PULSE_REGISTRY } from "./registry.mjs";
 import { ROUTES } from "../../netlify/functions/api.mjs";
 import { functions } from "../workflows/index.mjs";
 
@@ -124,4 +124,28 @@ test("tripwires: a ping id is never counted as a tripwire", () => {
   assert.equal(isPingId("job:message-dispatch-sweeper"), true);
   assert.equal(isPingId("health"), true);
   assert.equal(isPingId("payments:paid-no-entitlement"), false);
+});
+
+
+test("staff payout bank setup has deep money integrity coverage and never probes bank-link writes", async () => {
+  for (const route of ["read/staff-payout-account", "staff/payout-account"]) {
+    assert.equal(typeof ROUTES[route], "function");
+    assert.deepEqual(TRIPWIRES[`route:${route}`], { impact: "money", checks: ["staff-payout:destination-integrity"] });
+    assert.equal(NOT_CUSTOMER_FACING[`route:${route}`], undefined);
+  }
+  assert.ok(PULSE_REGISTRY.some(row => row.kind === "api" && row.path === "/api/read/staff-payout-account"));
+  assert.equal(PULSE_REGISTRY.some(row => row.kind === "api" && row.path === "/api/staff/payout-account"), false);
+  assert.match(ALLOWED_UNMONITORED["staff/payout-account"], /POST only/);
+  assert.match(ALLOWED_UNMONITORED["staff/payout-account"], /read\/staff-payout-account/);
+  const response = () => ({ statusCode: null, headers: {},
+    status(code) { this.statusCode = code; return this; },
+    setHeader(name, value) { this.headers[name.toLowerCase()] = value; },
+    json(body) { this.body = body; return this; } });
+  const read = response();
+  await ROUTES["read/staff-payout-account"]({ method: "GET", headers: {}, query: {}, url: "/api/read/staff-payout-account" }, read);
+  assert.equal(read.statusCode, 401, "unsigned reads reveal no employee payout-bank state");
+  const write = response();
+  await ROUTES["staff/payout-account"]({ method: "GET", headers: {}, url: "/api/staff/payout-account" }, write);
+  assert.equal(write.statusCode, 405, "a GET cannot start Plaid Link or exchange a token");
+  assert.equal(write.headers.allow, "POST");
 });

@@ -37,7 +37,7 @@ flowchart TD
     CAN --> A_top_level[Everything else — 7 routes]
     CAN --> A_trials[trials — 2 routes]
     CAN --> A_webhooks[Incoming webhooks — 1 route]
-    WHO -->|Yes| CANT[Blocked — 262 routes]
+    WHO -->|Yes| CANT[Blocked — 264 routes]
     CANT --> B_affiliates[affiliates — 3 blocked]
     CANT --> B_analytics[analytics — 4 blocked]
     CANT --> B_auth[Signing in and out — 8 blocked]
@@ -61,18 +61,18 @@ flowchart TD
     CANT --> B_privacy[privacy — 1 blocked]
     CANT --> B_proxy[proxy — 2 blocked]
     CANT --> B_push[push — 5 blocked]
-    CANT --> B_read[Reading data — 70 blocked]
+    CANT --> B_read[Reading data — 71 blocked]
     CANT --> B_repair[repair — 5 blocked]
     CANT --> B_scripts[scripts — 1 blocked]
     CANT --> B_social[social — 1 blocked]
-    CANT --> B_staff[staff — 3 blocked]
+    CANT --> B_staff[staff — 4 blocked]
     CANT --> B_top_level[Everything else — 39 blocked]
     CANT --> B_trials[trials — 2 blocked]
 ```
 
 ## What they can reach
 
-**81 of 343 routes.**
+**81 of 345 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -165,7 +165,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**262 of 343 routes.**
+**264 of 345 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -407,6 +407,7 @@ flowchart TD
 | `/api/read/setter-dashboard` | GET | owner, admin, setter |
 | `/api/read/slo-connections` | GET | owner, admin |
 | `/api/read/staff` | GET | owner, admin, sales_manager |
+| `/api/read/staff-payout-account` | GET | owner, closer, sales_manager<br>funding_advisor, inquiry_specialist, setter, csm only with an active closer or sales_manager duty |
 | `/api/read/tradelines` | — | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/transactions` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/underwrite` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
@@ -425,6 +426,7 @@ flowchart TD
 | `/api/social/oauth` | — | owner, admin, partner |
 | `/api/staff/avatar` | GET, POST | any signed-in employee |
 | `/api/staff/monitoring-consent` | POST | owner |
+| `/api/staff/payout-account` | POST | closer, sales_manager<br>funding_advisor, inquiry_specialist, setter, csm only with an active closer or sales_manager duty |
 | `/api/staff/telemetry` | GET | owner, admin, sales_manager |
 | `/api/tasks` | GET, PATCH | staff |
 | `/api/training-progress` | POST | owner, admin |

@@ -15,7 +15,7 @@ const STAFF = [
 function fakeDb({ booked = false, assigned = false } = {}) {
   const refs = new Set();
   const messages = [];
-  const client = { first_name: "Pat", last_name: "Lee", phone: "+14805550333",
+  const client = { id: CLIENT, first_name: "Pat", last_name: "Lee", phone: "+14805550333",
     email: "pat@example.com", custom_fields: {
       cf_svy_planned_use_label: "Open a shop",
       setter_survey_edits: { cf_svy_planned_use: "Buy equipment" },
@@ -48,6 +48,7 @@ test("new lead text has only first name, contact, booking state and current surv
   assert.match(text, /Booked: No/);
   assert.match(text, /Planned Use: Buy equipment/);
   assert.doesNotMatch(text, /Open a shop/);
+  assert.ok(text.endsWith(`Open setter: https://fundhub.ai/app/setter-dashboard.html?client_id=${CLIENT}`));
 });
 
 test("only setters and owner get the first SMS and push, once per client", async () => {
@@ -90,6 +91,7 @@ test("set text includes saved setter corrections, including when the owner is se
   assert.equal(messages.length, 2);
   assert.equal(messages[0].to, STAFF[0].phone);
   assert.equal(messages[1].to, STAFF[2].phone);
+  for (const row of messages) assert.ok(row.body.endsWith(`Open closer: https://fundhub.ai/app/closer-dashboard.html?client_id=${CLIENT}`));
 });
 
 test("upcoming alert goes only to assigned closer for this call time", async () => {
@@ -101,6 +103,7 @@ test("upcoming alert goes only to assigned closer for this call time", async () 
   assert.equal((await queueCloserUpcomingAlert(db, opts)).queued, 0);
   assert.equal(messages.length, 1);
   assert.equal(messages[0].to, STAFF[2].phone);
+  assert.ok(messages[0].body.endsWith(`Open closer: https://fundhub.ai/app/closer-dashboard.html?client_id=${CLIENT}`));
 });
 
 test("an assigned closer gets a new-lead push without an immediate closer SMS", async () => {
@@ -111,4 +114,18 @@ test("an assigned closer gets a new-lead push without an immediate closer SMS", 
     pushImpl: async (_db, args) => { pushes.push(args); return { sent: 1 }; } });
   assert.deepEqual(messages.map(row => row.to), [STAFF[0].phone, STAFF[1].phone]);
   assert.deepEqual(pushes.map(row => row.staffId), ["owner-1", "setter-2", "closer-3"]);
+});
+
+
+test("staff desk links require a client UUID and carry no arbitrary query data", () => {
+  for (const clientId of [undefined, "not-a-uuid", "https://evil.invalid", CLIENT + "&token=secret"]) {
+    const client = { first_name: "Pat" };
+    assert.doesNotMatch(buildStaffLeadText({ client, clientId }), /https:/);
+    assert.doesNotMatch(buildCloserSetText({ client, clientId }), /https:/);
+    assert.doesNotMatch(buildCloserUpcomingText({ client, clientId }), /https:/);
+  }
+  const text = buildStaffLeadText({ client: { id: CLIENT, first_name: "Pat" } });
+  const url = new URL(text.split("Open setter: ")[1]);
+  assert.equal(url.origin, "https://fundhub.ai");
+  assert.deepEqual([...url.searchParams], [["client_id", CLIENT]]);
 });

@@ -52,6 +52,14 @@ export async function registerNativeDevice(db, {
   const environment = normalizeAPNSEnvironment(inputEnvironment);
   const installationId = normalizeInstallationId(inputInstallationId);
   const hash = tokenHash(token);
+  // This physical installation now belongs to a verified client session.
+  // Retire prior work alerts before either reusing or creating its client row.
+  await db.query(
+    `UPDATE staff_apns_devices SET revoked_at = now(), updated_at = now()
+      WHERE ((token_hash = $1 AND apns_environment = $2) OR installation_id = $3)
+        AND expired_at IS NULL AND revoked_at IS NULL`,
+    [hash, environment, installationId]
+  );
   const existing = await db.query(
     `SELECT id, org_id, client_id, token_hash, apns_environment, installation_id
        FROM client_apns_devices

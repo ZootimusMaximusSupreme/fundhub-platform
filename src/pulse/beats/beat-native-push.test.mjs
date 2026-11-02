@@ -110,3 +110,24 @@ test("native push beat catches a missing route and an unusable signing key", asy
   assert.equal(signingFail.ok, false);
   assert.equal(signingFail.step, "signing-ready");
 });
+
+
+test("staff link association hourly proof requires the exact deployed static scope, not device-open claims", async () => {
+  assert.ok(beat.steps.includes("staff-link-association"));
+  assert.ok(beat.covers.includes("route:push/native-device"));
+  assert.equal(beat.covers.includes("page:.well-known/apple-app-site-association"), false,
+    "association JSON is checked metadata, not an invented HTML surface");
+  const key = "GET https://fundhub.ai/.well-known/apple-app-site-association";
+  const good = selfTest.pass();
+  assert.equal((await check(good)).ok, true);
+  for (const response of [
+    { status: 404, body: "Not found" },
+    { status: 200, body: "<html>Not JSON</html>" },
+    { status: 200, body: JSON.stringify({ applinks: { details: [{ appIDs: ["8VDXL37RR6.ai.fundhub.app"], components: [{ "/": "*" }] }] } }) },
+    { status: 200, body: JSON.stringify({ applinks: { details: [] } }) }
+  ]) {
+    const scenario = selfTest.pass(); scenario.http[key] = response;
+    const result = await check(scenario);
+    assert.equal(result.ok, false); assert.equal(result.step, "staff-link-association");
+  }
+});

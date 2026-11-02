@@ -29,6 +29,7 @@ import {
   AFFILIATE_SQL, CHECK_IDS as PARTNER_TRIP_IDS, PAGE_CAP, PARTNER_SQL, ROW_CAP,
   judgePartner, pickPages, readPage, tripParams as partnerTripParams
 } from "./trip-partner-truth.mjs";
+import { CHECK_IDS as STAFF_PAYOUT_IDS, STAFF_PAYOUT_INTEGRITY_SQL, HEALTHY_STAFF_PAYOUT_COUNTS, readStaffPayoutTruth } from "./money-staff-payout-truth.mjs";
 import { clip, row } from "./money-truth-utils.mjs";
 
 export const DEFAULT_ORG_SQL = "SELECT id FROM orgs WHERE is_default ORDER BY created_at LIMIT 1";
@@ -160,6 +161,7 @@ const runOperations = async (io) => (await Promise.all([
   readUnmatchedTruth(io),
   readSubscriptionsTruth(io),
   readMoneyMovesTruth(io),
+  readStaffPayoutTruth(io),
   readAdsMetaTruth(io)
 ])).flat();
 
@@ -185,7 +187,7 @@ export const MONEY_CHECKOUT_LANES = descriptor(CHECKOUT_IDS, readCheckoutTruth, 
 });
 
 export const MONEY_OPERATIONS_LANES = descriptor(
-  [...SETUP_IDS, ...UNMATCHED_IDS, ...SUBSCRIPTION_IDS, ...MOVE_IDS, ...ADS_IDS],
+  [...SETUP_IDS, ...UNMATCHED_IDS, ...SUBSCRIPTION_IDS, ...MOVE_IDS, ...STAFF_PAYOUT_IDS, ...ADS_IDS],
   runOperations,
   {
     passRows: [
@@ -194,7 +196,8 @@ export const MONEY_OPERATIONS_LANES = descriptor(
       [LATE_NO_FLAG_SQL, [{}]],
       [ADDON_PAID_NO_PLAN_SQL, [{}]],
       [MOVE_STUCK_SQL, [{ judged_n: 1, live_n: 1, unsent_n: 0, unsettled_n: 0, task_open_n: 0 }]],
-      [LOAD_JOBS_SQL, [{}]]
+      [LOAD_JOBS_SQL, [{}]],
+      [STAFF_PAYOUT_INTEGRITY_SQL, [{ ...HEALTHY_STAFF_PAYOUT_COUNTS }]]
     ],
     passEnv: { FINANCE_OS_SETUP_FEE_CENTS: "10000" },
     failRows: [[LOAD_JOBS_SQL, [{ total_n: 1, failed_n: 1 }]]]

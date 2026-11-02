@@ -83,7 +83,7 @@ test('real PG canonical17 plan replay/reschedule/cancel and owner approvals rema
  await db.query("UPDATE clients SET custom_fields=jsonb_set(custom_fields,'{setter_handoff}',$1::jsonb)",[JSON.stringify({setter_staff_id:setter})]);
  assert.equal((await db.query(queueSQL,queueArgs)).rows.length,1);
  await db.query("UPDATE clients SET custom_fields=jsonb_set(custom_fields,'{setter_handoff}',$1::jsonb)",[JSON.stringify({setter_staff_id:foreignSetter})]);
- assert.equal((await db.query(queueSQL,[org,false,setter,50,0])).rows.length,1);
+ assert.equal((await db.query(queueSQL,[org,false,setter,50,0,null])).rows.length,1);
  const approvals=await ownerApprovals(org,fn=>fn(db));assert.equal(approvals.total,3);assert.deepEqual(new Set(approvals.rows.map(r=>r.source)),new Set(['video','campaign','social']));
  }finally{await db.query('ROLLBACK');db.release();await close();}
 });
