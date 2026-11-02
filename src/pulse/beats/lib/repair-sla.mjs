@@ -29,6 +29,18 @@ export function isBreached({ stageKey, enteredAt, asOf, responseDueAt }) {
     const due = new Date(responseDueAt).getTime() + sla.daysAfterDue * 86400000;
     return { breached: now > due, task: sla.task, sla };
   }
+  if (sla.businessDays && sla.days) {
+    // Match repair/croa.mjs::addBusinessDays: count Mon–Fri using UTC dates.
+    // Preserve the actual entered time; weekends are not elapsed SLA days.
+    // The existing CROA helper does not exclude public holidays either.
+    const due = new Date(start);
+    for (let remaining = sla.days; remaining > 0;) {
+      due.setUTCDate(due.getUTCDate() + 1);
+      const day = due.getUTCDay();
+      if (day !== 0 && day !== 6) remaining -= 1;
+    }
+    return { breached: now > due.getTime(), task: sla.task, sla };
+  }
   let ms = 0;
   if (sla.minutes) ms = sla.minutes * 60000;
   else if (sla.hours) ms = sla.hours * 3600000;
