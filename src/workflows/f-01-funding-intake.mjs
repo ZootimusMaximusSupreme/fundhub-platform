@@ -20,6 +20,7 @@ import { findClient, purchasedCategories } from "../handlers/purchase-routing.mj
 import { addTags } from "./tags.mjs";
 import { mergeCustomFields } from "./custom-fields.mjs";
 import { createTask } from "../lib/create-task.mjs";
+import { assignFundingAdvisor } from "../funding/assign-advisor.mjs";
 
 const POD_TASK_SOURCE = "f-01-funding-intake";
 const POD_TASK_TITLE = "Assign pod roles for funding client";
@@ -35,13 +36,14 @@ async function podAssigned(db, clientId) {
 // generated repeated identical advisor tasks for a still-unassigned client.
 // Use one stable key per org/client. createTask's unique index also wins races
 // between different event deliveries; return its actual insert result.
-export async function createPodTask(db, { orgId, clientId }) {
+export async function createPodTask(db, { orgId, clientId, advisorStaffId = null }) {
   return createTask(db, {
     orgId,
     clientId,
     title: POD_TASK_TITLE,
     sourceWorkflow: POD_TASK_SOURCE,
     assigneeRole: "funding_advisor",
+    assigneeStaffId: advisorStaffId,
     dueAt: new Date(Date.now() + POD_TASK_DUE_HOURS * 60 * 60 * 1000),
     eventId: `pod-assignment:${orgId}:${clientId}`
   });
@@ -65,12 +67,20 @@ export async function handle({ event, db, step }) {
 
   await step.run("tag-client-funding", () => addTags(db, clientId, ["client:funding"]));
   await step.run("set-lifecycle-status", () => mergeCustomFields(db, clientId, { lifecycle_status: "Funding Client" }));
+  const paidForAssignment = await step.run("check-paid-funding-for-assignment", () =>
+    purchasedCategories(db, event.orgId, clientId));
+  const advisor = paidForAssignment.funding
+    ? await step.run("assign-funding-advisor", () =>
+      assignFundingAdvisor(db, { orgId: event.orgId, clientId }))
+    : { assigned: false, reason: "no_verified_funding_purchase" };
 
   const hasPod = await step.run("check-pod-assigned", () => podAssigned(db, clientId));
   let podTask = { created: false };
   if (!hasPod) {
     await step.run("tag-ops-action-required", () => addTags(db, clientId, ["ops:action-required"]));
-    podTask = await step.run("create-pod-task", () => createPodTask(db, { orgId: event.orgId, clientId }));
+    podTask = await step.run("create-pod-task", () => createPodTask(db, {
+      orgId: event.orgId, clientId, advisorStaffId: advisor.staffId || null
+    }));
   }
 
   await step.run("set-next-action", () => mergeCustomFields(db, clientId, { employee_next_action: "Collect Documents" }));

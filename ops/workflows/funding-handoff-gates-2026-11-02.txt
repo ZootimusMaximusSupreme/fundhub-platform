@@ -1,0 +1,15 @@
+Funding handoff and gate repair — owner lane: fulfillment
+
+Role: funding advisor; inquiry specialist owns a blocker until resolved.
+Job: give each paid funding file a named advisor and return cleared files to that advisor.
+First question: Who owns this file, what blocks Apply, and what is next?
+Reuse: S-06/F-01 tasks, task claim, client advisor link, inquiry cases, per-bureau lender gate, proxy Apply.
+Data: verified funding sale, active staff, current holds/cases, lender bureau, application and proxy session.
+Files: funding assignment/claim, C-03 inquiry handback, proxy launch gate, focused tests, existing actual journey/changelog.
+Risk: wrong advisor or premature bank Apply. Proof: org/role/race tests, case hold tests, scratch DB, Chrome role path, preflight and ship-change.
+
+Funding ownership lane prompt: Make funding intake task ownership match the client's named advisor, including concurrent claims and a visible no-advisor state. Do not change sales attribution, payment, or other task roles.
+Inquiry gate lane prompt: Keep inquiry/fraud/document holds until evidenced resolution; return cleared work to the same advisor; recheck lender-specific gates on Apply. Do not submit a lender application during tests.
+
+2026-11-02 local implementation: S-06/F-01 assign a verified paid file to one active advisor and attach open funding work; C-03 returns cleared work to that advisor; proxy Apply rechecks current holds and per-bureau protection. Closer file displays the owner or unassigned state. Focused Node: 43/43 pass. Browser: 2/2 pass. Lint and TypeScript pass. Preflight found no shared files. Database proof needs a scratch DATABASE_URL; none is configured in this worktree.
+Leftovers outside this repair: application form action capture/AI training; staff fraud-resolution action; audit receipt for proxy launches refused before a proxy session starts. These are not claimed as shipped.

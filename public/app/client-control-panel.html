@@ -998,6 +998,7 @@
     </section>
     <section class="workspace-view" id="ccp-view-funding" role="tabpanel" aria-labelledby="ccp-tab-funding" tabindex="0" hidden>
       <div class="workspace-section-head"><h2>Funding</h2><p>Track lender applications, bank answers and Capital Blueprint work.</p></div>
+<p id="ccp-funding-advisor" class="fact-note" hidden></p>
 <div class="group">
         <div class="group-title card-title">Applications &amp; bank answers</div>
         <!-- THE COUNT LIVES HERE NOW — owner-set 2026-09-06.
@@ -2624,6 +2625,14 @@ document.addEventListener("DOMContentLoaded", function () {
       String(c.outcome_tier) === sampleDec.tier;
     setText("ccp-tier", sampleTier ? c.outcome_tier + " · sample" : c.outcome_tier);
     setText("ccp-path", cf.analyzer_path || cf.product_path);
+    var advisorLine = $("ccp-funding-advisor");
+    if (advisorLine) {
+      var fundingFile = cf.product_path === "Funding" || (d.funding_rounds || []).length > 0;
+      advisorLine.hidden = !fundingFile;
+      advisorLine.textContent = d.funding_advisor && d.funding_advisor.name
+        ? "Funding advisor: " + d.funding_advisor.name
+        : "Funding advisor: Not assigned yet — the owner must assign one before work starts.";
+    }
 
     var status = c.funded ? "Funded"
       : cf.lifecycle_status ? cf.lifecycle_status
