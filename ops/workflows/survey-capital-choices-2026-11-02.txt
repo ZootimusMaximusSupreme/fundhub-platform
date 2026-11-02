@@ -1,0 +1,6 @@
+Survey capital choices — 2026-11-02
+
+Shared board: ops/workflows/survey-capital-choices-2026-11-02.txt
+
+
+2026-11-02 SURVEY CAPITAL CHOICE REPAIR — Owner clarified the named changes are Available Capital and FICO brackets, not extra questions. Root owns integration/GitHub/ClickFunnels/live proof; survey_source_trace owns only cf-question-map, homepage-survey.js, apply-survey.html and focused tests; independent source_proof_review checks zero/legacy handling. Copy-paste source task: replace only Available Capital choices across shared map and both public forms with $0; $1 - $199; $200 - $999; $1k - $4,999; $5k - $9,999; $10k - $19,999; $20k - $49,999; $50k+. Keep FICO 500-619/620-699/700-759/760-850/Not sure; keep prior stored answers unchanged and readable. Test actual edited form locally with external writes blocked. Root task: preflight, focused tests/lint/types, ordered ship-change, protected PR/main checks and Ship; then snapshot/update only existing apply survey through official Custom HTML API and read back exact options. No calendar, messaging, role, payment, ad-audience or customer-record changes. Shared board is this file. Until receipts exist this is not live.

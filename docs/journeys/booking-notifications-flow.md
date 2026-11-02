@@ -36,6 +36,16 @@ flowchart TD
     SEND --> WAKE
 ```
 
+## Available Capital answer choices (2026-11-02)
+
+The shared survey map, homepage form and ClickFunnels `/apply` form offer eight
+non-overlapping choices: `$0`, `$1 - $199`, `$200 - $999`, `$1k - $4,999`,
+`$5k - $9,999`, `$10k - $19,999`, `$20k - $49,999`, and `$50k+`. The Setter
+Dashboard inherits these choices from the same map. Existing saved answers remain
+unchanged and readable; an older broad range cannot identify a new narrower one.
+The field stays `cf_svy_available_capital`, the last-answer completion event and
+score-based calendar routes stay the same, and `$0` is a real completed answer.
+
 ## 1. From the funnel to an event
 
 `src/adapters/clickfunnels.mjs` → `src/events/bus.mjs`
