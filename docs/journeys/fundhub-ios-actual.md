@@ -27,3 +27,10 @@ both staff and client queued opens. A cold-start tap reads the saved sign-in
 before queuing the link; without one, the tap fails closed. The queued link is
 single-use and expires after five minutes. The workspace clears its selected
 staff contact path when the token or signed-in identity changes.
+
+Client portal notification taps are bound to the saved bearer at receipt and
+again when dequeued. After the asynchronous session refresh, the app reloads
+the portal only if the same bearer is still signed in as a client and the task
+has not been cancelled. A tap for another account is consumed without opening
+the portal. This is source behavior; a signed iPhone tap and APNs delivery are
+still not verified.

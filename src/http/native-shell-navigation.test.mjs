@@ -195,3 +195,48 @@ test("Mac client/staff workspace is a single-instance scene, not two shared-cook
   assert.match(mac, /@StateObject private var browser = FundhubBrowser\(\)/);
   assert.match(mac, /func goHome\(\) async/);
 });
+
+test("staff alert navigation rechecks the accepted bearer after asynchronous identity refresh", () => {
+  const home = iosApp.split("private struct HomeView: View {")[1]?.split("private struct BrandMark: View {")[0];
+  assert.ok(home, "authenticated iPhone HomeView must exist");
+  const oldUnsafeSource = 'await store.refreshSession()\\n guard store.token != nil; staffAlertPath = alert.workspacePath(role: store.identity?.staff.role)';
+  const safe = text => text.includes("let bearerAtTap = store.token") &&
+    text.includes("takeStaffOpenRequest(currentBearer: bearerAtTap)") &&
+    text.includes("bearerAfterRefresh: store.token") &&
+    text.includes("taskCancelled: Task.isCancelled") &&
+    text.includes("StaffAlertNavigation.verifiedPath(") &&
+    text.indexOf("let bearerAtTap = store.token") < text.lastIndexOf("await store.refreshSession()") &&
+    text.lastIndexOf("await store.refreshSession()") < text.indexOf("StaffAlertNavigation.verifiedPath(");
+  assert.equal(safe(oldUnsafeSource), false, "the pre-fix post-refresh check must fail");
+  assert.equal(safe(home), true, "staff tap cannot navigate without a post-await bearer guard");
+  const helper = iosApp.split("enum StaffAlertNavigation {")[1]?.split("private struct HomeView: View {")[0];
+  assert.ok(helper, "shared, Swift-testable staff alert decision helper must exist");
+  assert.match(helper, /!taskCancelled, bearerAfterRefresh == bearerAtTap, staffSessionVerified/);
+  const tests = readFileSync(new URL("../../tools/fundhub-ios/FundhubTests/FundhubTests.swift", import.meta.url), "utf8");
+  assert.match(tests, /testDelayedStaffAlertRejectsAccountSwitchAfterIdentityRefresh/);
+  assert.match(tests, /await gate\.waitUntilPaused\(\)/);
+  assert.match(tests, /simulated\.bearer = "session-B"/);
+  assert.match(tests, /XCTAssertNil\(stalePath/);
+});
+
+test("client portal notification reload stays bound to the verified bearer", () => {
+  const home = iosApp.split("private struct HomeView: View {")[1]?.split("private struct BrandMark: View {")[0];
+  assert.ok(home, "authenticated iPhone HomeView must exist");
+  const oldUnsafeSource = 'if store.identity?.principal == "client", push.takePortalOpenRequest() { await store.refreshSession(); reloadId = UUID() }';
+  const safe = text => text.includes("let bearerAtTap = store.token") &&
+    text.includes("takePortalOpenRequest(currentBearer: bearerAtTap)") &&
+    text.includes("ClientPortalNavigation.shouldOpen(") &&
+    text.includes("bearerAfterRefresh: store.token") &&
+    text.includes("taskCancelled: Task.isCancelled");
+  assert.equal(safe(oldUnsafeSource), false, "the old unbound portal reload must fail this guard");
+  assert.equal(safe(home), true, "a portal tap must recheck the bearer after identity refresh");
+  const helper = iosApp.split("enum ClientPortalNavigation {")[1]?.split("private struct HomeView: View {")[0];
+  assert.ok(helper, "Swift-testable client portal decision helper must exist");
+  assert.match(helper, /!taskCancelled && bearerAfterRefresh == bearerAtTap && clientSessionVerified/);
+  const push = readFileSync(new URL("../../tools/fundhub-ios/Fundhub/Core/NativePush.swift", import.meta.url), "utf8");
+  assert.match(push, /pendingPortalOpen: \(at: Date, bearer: String\)/);
+  assert.match(push, /currentBearer == pending\.bearer/);
+  const tests = readFileSync(new URL("../../tools/fundhub-ios/FundhubTests/FundhubTests.swift", import.meta.url), "utf8");
+  assert.match(tests, /testClientPortalTapCannotCrossSessions/);
+  assert.match(tests, /testDelayedClientPortalTapRejectsAccountSwitchAfterIdentityRefresh/);
+});
