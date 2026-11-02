@@ -9,6 +9,7 @@ const BOOKING = {
   id: "123e4567-e89b-12d3-a456-426614174000",
   org_id: "123e4567-e89b-12d3-a456-426614174001",
   provider_uid: "75827",
+  qualification_bucket: "funding_unqualified",
   created_at: "2026-10-29T20:00:00Z",
   attendee_name: "Buyer Person",
   attendee_email: "buyer@otherdomain.com",
@@ -34,10 +35,28 @@ test("provider posts one confirmed booking with attribution through the adapter 
   const body = JSON.parse(seen.init.body);
   assert.equal(body.event_id, `fundhub_booking_${BOOKING.id}`);
   assert.equal(body.email, BOOKING.attendee_email);
+  assert.equal(body.qualification_bucket, "funding_unqualified");
+  assert.equal(body.event_name, "funding_call_booked");
   assert.equal(body.utm_source, "facebook");
   assert.equal(body.utm_ad_id, null);
   assert.equal(body.value, 0);
   assert.equal(body.conversion_date, "2026-10-29T20:00:00.000Z");
+});
+
+test("Cortana receives the saved booking bucket without changing its conversion", async () => {
+  const seen = [];
+  const fetchImpl = async (_url, init) => {
+    seen.push(JSON.parse(init.body));
+    return { ok: true, status: 200, headers: new Headers(), text: async () => "{}" };
+  };
+  for (const qualification_bucket of ["funding_qualified", "funding_unqualified", null]) {
+    const result = await sendCortanaBooking({ ...BOOKING, qualification_bucket }, { env: ENV, fetchImpl });
+    assert.equal(result.ok, true);
+  }
+  assert.deepEqual(seen.map((body) => body.qualification_bucket),
+    ["funding_qualified", "funding_unqualified", null]);
+  assert.ok(seen.every((body) => body.event_name === "funding_call_booked"));
+  assert.ok(seen.every((body) => body.event_id === `fundhub_booking_${BOOKING.id}`));
 });
 
 test("provider refuses a different destination and an unopened adapter fence", async () => {
