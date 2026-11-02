@@ -34,15 +34,15 @@ The soft pull does not add a hard inquiry. We still review any changes before an
 
 3. SP-03 / Soft against hard — Three hard pulls stack up fast when you apply at three banks to see who says yes.
 
-Three applications at three banks leave three hard pulls on your report, whether any of them says yes or not.
+Three applications that trigger hard inquiries can leave three pulls, even if the banks say no.
 
-Every one of them COSTS you. The next bank reads each one before it decides, and when enough of them stack up, banks start saying no to a good score.
+Recent hard inquiries can affect a lender's decision. That is why we read your file before choosing the application order.
 
-When three banks say no, you're left with three new pulls on your report and nothing to show for them.
+A denial can follow a hard inquiry, leaving that inquiry on the report without an approval.
 
 The two columns show the difference. A soft pull happens on your call, you sign for it, only you see it, and your score stays where it is.
 
-A hard pull happens when a funding application goes out. It needs your separate consent, the banks you apply to next can see it, and each one costs you.
+A funding application can trigger a hard inquiry. You authorize the application first, and a later lender can weigh the inquiry.
 
 When the applications go out FIRST, the file gets read after the damage is done.
 

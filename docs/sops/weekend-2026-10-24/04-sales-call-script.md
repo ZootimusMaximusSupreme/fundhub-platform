@@ -362,103 +362,187 @@ The money steps come from a payment-plan video that sits in Cole's folder. The s
 
 ## 9. Objections
 
-Use these as spoken lines. Name the offer and answer what the buyer actually asked. A fee, rate, timeline or agreement question needs a direct answer.
+Read these aloud after you have shown the buyer their file and the right offer. Answer a question directly; for a true objection, ask about their past result, show the relevant work, and return to the decision.
 
-**When they hesitate.** "What part doesn't sit right yet?" Listen. "If we solve [their concern], does this plan get you toward [their goal]?" If no, fix the plan or stop. If yes, answer with their file, the agreement or a real screen. "What else would you need to know before deciding?" If nothing: "Do you want to start?" Use the cockpit beliefs to diagnose the call, not as words to recite.
+### I Need To Think
 
-### Concerns with every offer
+Of course. What part needs thought: is this the right plan, do you trust the work, or is the payment the part that needs to fit? [Listen.]
 
-**"I need to think about it."** "Of course. What part needs thought: the plan, what it costs, the work on your side, or whether you trust us?" Answer that part. "What do you still need to see to make a clear decision?" If they need time, set a real follow-up.
+You told me [their goal] has been held up by [their actual stuck point], and you've already tried [their prior effort]. If the question is how this works, let's answer it now. If someone else decides with you, let's bring them in. If it's the payment, we'll look at the real terms. What is the one thing you still need to see to make a clear decision?
 
-**"It's too expensive."** "Is the price outside your budget, or do you need to see why this is worth it?" For value, use the actual problem and cost they named. For cash flow, use section 8 and the real payment terms. "After seeing the work and price together, does it fit?"
+[After answering] Does that clear it up, or is there something else behind the pause? If they need time for a real reason, set [real date and time].
 
-**"I need to talk to my spouse or partner."** "Do you want their input, or do you need a joint decision? What will they want to know?" Answer what you can now. Book a call with both people.
+### Too Expensive
 
-**"I've been burned. How do I know you're real?"** "What happened?" Listen. "Here is your file and the work we propose. Here is the agreement with the price and steps. Here is where you see the work and reach us after you sign. Which part should I show you again?" Show approved, real client proof when available.
+Money aside for a moment, is this the right plan for [their goal]? [Listen.] If it is, tell me what is too high: the total price, what is due today, or the monthly payment on an actual financing offer?
 
-**"Will you disappear after I pay?"** "Let's open the portal and agreement together. The agreement names the work. The portal shows your next step and the work as it happens. Here's how you reach the team. What would you need to see to feel comfortable?"
+You told me [their actual stuck point] has cost you [a cost or delay they confirmed]. Let's put that next to the work, the full price and what you would have to do on your own. I'm not asking you to guess. Based on those actual figures, is the value the issue, or is it how you would pay?
 
-**"Send me something" or "I want to compare options."** "What do you want to compare: the work, price, timing, or proof?" Show the relevant agreement, file or portal screen now and send the real material afterward. Compare actual scopes and set a follow-up if needed.
+### Spouse Or Partner
 
-**"I don't have time" or "I'll wait."** "Which part of the work worries you, and what do you have time for?" Show their first task and the team's part. If waiting: "What will change, and when should we check it?" Set a check-in tied to that answer.
+Of course. Do they need to make this decision with you, or do you want their opinion before you make it? What will they ask when you show them the file and price? [Listen.] Let's answer that now, and if it's a joint decision, put both of you on a call so nobody has to relay this secondhand.
 
-### Credit optimization
+### I Can Apply For Funding Myself
 
-**"Why pay $1,000 when I can dispute this myself for free?"** "You can dispute inaccurate information yourself for free. You're paying us to review your exact file, put the work in order, prepare and track up to six rounds, and show you the letters and replies. You still give us accurate facts and sign where needed. Which part would you rather handle yourself?"
+Yeah, you can apply yourself. Let me ask you: how many applications have you sent, what was the total approved, and what was your highest limit from one bank? What did you change after a bank said no or came in low? [Listen.]
 
-**"What if nothing comes off?"** "I can show you the service we commit to: round one on signing day, the agreed rounds on schedule, and a record of the work in your portal. If we miss those service steps, the agreement lets you request your fee back. Is your concern the work we do, or the bureau's result?"
+You booked this call because [their stated goal] still isn't handled. Filling out applications is the easy part. Choosing where to apply, in what order, and what to do after each answer is the work. We track those bank requirements and have a team that works these files every day. Here is the bank sequence I would use for your file: [show actual sequence and reason]. What part of your last approach gets you that result? [Listen.] If we handle that work and the full fee fits, what else stands between you and starting?
 
-**"Bad credit is already costing me. Why pay more?"** "Let's use your situation. You told me [real denial, higher quote, deposit, or missed opportunity]. What did that cost you? Here is what your report shows and what this work covers. Is that worth $1,000 to you?" Use only a cost the buyer confirms or a written quote.
+### I Can Dispute My Credit Myself
 
-**"I was scammed before. Prove this is different."** "Show me what they promised and delivered. I'll show you exactly what our agreement says, the work on your file, and where each round appears in your portal. What proof would help you judge the work itself?"
+You can dispute an inaccurate item yourself for free. What have you already sent, what did the bureau say, and what did you do after that reply? [Listen.]
 
-**"Will disputing hurt my score or affect a loan application?"** "A bureau investigates and reports its result. A lender decides how it treats your file. Let's look at the items we would work on and any application already in progress before choosing the timing."
+The form is free. Reading the response and deciding the next supported step is where people get stuck. Our credit specialist reads the actual item and facts, puts the agreed rounds in order, prepares the letters and tracks the bureau's replies. You provide accurate facts and sign where needed; you see the work in the portal. Here is the first item and why we would start there: [show actual finding]. If you send another round on your own, what will you change from the last one? [Listen.] Do you want to own that process, or have our specialist take the agreed work from here?
 
-**"What if the negative item is accurate, or a removed item comes back?"** "An accurate item isn't erased just because we dispute it. If a deleted item comes back, that's a reinsertion. We've handled those. We get the old and new reports and the bureau's notice, check the furnisher's accuracy certification and the notice date, then challenge any error with the record. We don't use sweeps. Show me the item you're worried about." The reinsertion steps are in [15 U.S.C. § 1681i(a)(5)(B)](https://uscode.house.gov/us/usc/119-120/t15/s1681i/).
+### I Can Build The Blueprint Myself
 
-**"How long will this take?"** "We start round one when you sign. Each bureau round takes about 30 to 45 days. Your file and the replies decide what comes next. I can show you the first step and round schedule."
+You can learn this yourself. How many courses have you bought, how many groups have you joined, and what has that produced on your file so far? [Listen.] If doing it alone was working, what made you book this call?
 
-**"Can I start with $200? Can I finance the $1,000?"** "Round one is $200 and counts toward the $1,000 if you continue. Credit optimization has no financing option."
+Another course gives you more information. It doesn't tell you which task this file needs first. Your Blueprint starts with this file and your goal. It puts the next steps in order, changes as the file changes, and gives you AI help with the checklist and the Fundhub team for questions that need a person. Here are your first three steps: [show actual roadmap]. Which one would you have done first on your own? [Listen.] If you want that order and support, is there anything else you need before deciding?
 
-### Funding
+### I Only Need $10,000 Or $20,000
 
-**"I only need $10,000 or $20,000."** "Is that what you need to spend now, or the total credit you want available?" Listen. "If your file supports more, extra available credit lets you use less of each card and leaves room for the next six to twelve months. One planned bank sequence also avoids applying again right after new accounts and inquiries. Let's put your immediate use, repayment, and available capacity side by side. What amount fits?"
+Totally. Is $20,000 what you need to spend now, or all the credit you want available for the next six to twelve months? [Listen.]
 
-**"Why do you get 10%? I can apply myself."** "You can. Our fee pays for reading your file, checking current bank criteria, choosing the banks and order, preparing authorized applications, and handling bank communication and follow-up. You told me [what happened when they tried or why they came to us]. Which part would you do on your own?"
+If you spend $20,000 on a $20,000 line, it is full. If your file supports $60,000 to $80,000 in total access, the same $20,000 use leaves room for the next expense and uses a much smaller share of the available credit. We also plan the bank sequence now because new accounts and inquiries can change the next application cycle. More approved access also means a larger Fundhub fee, so let's put the access, total fee and payment plan side by side. What amount actually fits your business?
 
-**"Is the 10% on cash I use, or the full line?"** "It's on the approved access we help secure, including an available line you haven't used. Your $3,000 counts once toward the 10% fee, and the rest comes due as approved funds or credit access arrive. You can pay us from a separate account or loan proceeds you choose to use; you don't have to take a card cash advance to pay us. Let's put the actual approved amount and fee on the same page."
+### Why 10%?
 
-**"Why pay $3,000 if approval isn't guaranteed?"** "The deposit starts the work and counts toward the success fee if funding is secured. The agreement says an advisor starts your file within 24 business hours and we submit your first authorized applications within 72 business hours. If we miss either deadline, you can request the deposit back. If lenders approve nothing after we do the work, there is no back-end success fee, but the deposit isn't returned for that reason alone. Is that clear?"
+You are paying for bank intelligence and execution on your file. We read the details, keep the bank criteria current, choose the order, prepare the applications you authorize, and handle each bank's questions and follow-up. You told me [what happened when they tried]. Here is what we would do differently on your file: [one actual change]. The 10% is on confirmed approved limits or amounts we help secure, and the $3,000 you pay to start counts once toward it. Now that you see the work and the full fee, what part still doesn't make sense?
 
-**"What if the banks approve less than I asked for?"** "We keep it real from the first file review. If approval comes in below your goal, we show you what was approved, what changed in your file, and what a later funding sequence can address. A new negative item or lender rule can change the result. We review the 13 optimization points and plan the next sequence from what banks actually said. The fee follows confirmed approved amounts or limits, not the amount you asked for. Which part of your project needs funding first?"
+### Is 10% On Unused Credit?
 
-**"I already have a lender offer. Why bring you in?"** "Good. Show me the offer. Let's read the amount, every fee, payment frequency, full payback, and any guarantee or collateral. Some direct offers are merchant cash advances with daily withdrawals; others may fit. If yours works at a cost your business can carry, use it. If there's a gap, our team can check other funding paths. What part of that offer doesn't work for your plan?"
+Yes. The fee is on confirmed approved access we help secure, not just the cash you spend today. If a bank makes a line available, that full limit is in the fee calculation. Your $3,000 deposit counts once toward it. We'll show the amount and fee together before you decide.
 
-**"The rate is too high" or "I only want 0%."** "Let's read the actual lender offer. What will this money pay for, what will it bring back, and can the business make every payment if that return is late? If the cost or payment doesn't fit, let's look at another real offer or stop."
+### How Do I Pay The Success Fee?
 
-**"What is the full cost, including lender fees or early payoff?"** "Let's add it up from the offer: amount available, every fee, payment schedule, total paid back, and what happens if you pay early. Then add our fee from the approved amount. If payments come out of your business account, let's read how often. Does that full cost fit your project?"
+You can use a separate account or loan proceeds you choose to use. You don't have to take a cash advance from a card to pay Fundhub. Let's read the actual approved products and the fee due date before choosing how to pay it.
 
-**"How many applications will you send?"** "We choose a sequence from your file and review the applications you authorize. Each lender decides its inquiry and approval. I'll show you the planned order and applications before we start. Is your concern the inquiries, timing, or who sees your information?"
+### Why Deposit Without A Guaranteed Approval?
 
-**"I already have cards, my own cash, or don't want debt."** "Then let's check why you booked. Is there a project that needs credit, or are you looking to improve the file and keep options open? If you don't need or can't carry funding, we don't apply."
+The $3,000 starts the work and counts toward the success fee if funding is secured. The agreement commits us to starting your file within 24 business hours and sending your first authorized applications within 72 business hours. If we miss either deadline, you can request the deposit back. If we complete the work and lenders approve nothing, no back-end success fee is due, but the deposit is not returned for that reason alone. Is that clear?
 
-**"Will applications affect my credit? Do business cards have a personal guarantee?"** "The $32 file pull was soft. Funding applications can make hard inquiries, and new accounts or balances can change your file. Business cards carry a personal guarantee. That's why we review the order and each offer before you authorize an application."
+### Approved For Less Than I Asked
 
-**"Can you guarantee an amount or date?"** "The bank decides approval, amount, rate and timing. Our written action deadlines are 24 business hours to begin the file and 72 business hours for the first authorized applications. Here's what your file supports today and the next step we control."
+We start with an honest file review and a target based on what it shows. If the approvals come in below the amount you asked for, we lay every bank response next to that target. A new item on the file or a bank rule can change the result. We work through what changed, adjust what the record supports, and map the next funding sequence. Your fee is based on what was actually approved, not the amount you asked for. Which part of your project needs capital first, and what amount makes that step possible?
 
-**"Can we use my other business or a credit partner?"** "We can review each business and a willing partner separately. The person applying has to understand and authorize their own obligation. Let's start with who owns each business and who would sign."
+### I Already Have A Lender Offer
 
-### Capital Blueprint
+Good. Put the offer on screen. What do you receive, what does it cost in total, how often do they take payment, and is there a guarantee or collateral? [Read the actual terms.] Some direct offers take a daily share of revenue; others have a different schedule. If this offer fits your cash flow, we will say so. What you are hiring us to do is compare the full cost with the other paths your file supports and handle the bank sequence. What part of this offer made you keep looking?
 
-**"Why is a plan $5,000? I can buy a course or watch free videos."** "A course gives everyone the same lessons. This is a 12-month roadmap built from your file and business goals, with next steps in order and a team to guide the work. What have you already tried? What question did it leave unanswered?" Open their roadmap and show that answer. "Is that difference worth [price on screen] to you?"
+### Rate Or Payment Is Too High
 
-**"Is this just a dashboard? Who actually helps me?"** "The dashboard shows your plan and next step. AI agents help track the checklist, and the Fundhub team handles questions and anything that gets stuck. Let's open your first step and show who takes each action."
+Let's use the actual offer, not a headline rate. What is this money going into, when does that project bring cash back, and what are the full payment and payback? If this is ad spend, show me the campaign that already works and its margin. Then we can see whether the credit helps the business or squeezes it. We will compare the offers your file supports, including a lower-rate option when it is there. Which number in this offer is the problem for you?
 
-**"I can build the plan myself."** "You can. You came here with [their stated stuck point]. Here are the first steps your file calls for, in order, and what changes when a new report comes in. Which part would you want guidance on?"
+### How Many Applications?
 
-**"What if I fall behind or don't have time?"** "Let's show your first step. You do [actual task or proof upload]; the coach and team do [actual review or follow-up]. You can see the next step in the dashboard. How much time can you set aside each week?"
+We choose the sequence from your file and review the applications you authorize. Each lender decides whether it makes a hard inquiry and whether it approves you. I can show you the planned order before we start. Is your concern the inquiries, the timing, or who sees your information?
 
-**"What if the plan doesn't get me funded?"** "The Blueprint gives you the 12-month plan and support in its agreement. The bank still makes a later funding decision. Let's read the deliverables and your first milestone together. Is a guided plan what you want?"
+### What If Nothing Comes Off My Report?
 
-**"Can I finance it, and will that affect my credit?"** "You can check financing options on screen with a soft pre-check. Before accepting one, read its rate, payment and term. Accepting a loan can create a hard inquiry and a new account. Do you want to see the actual options?"
+That is the right question. Let me show you the item we would start with and what is wrong or incomplete in the record: [actual finding]. Our specialist prepares the agreed work, tracks the bureau's reply, and uses that reply to decide the next step. Here is where you see the letters and responses in your portal. The agreement tells you exactly which service steps we owe you. What result from your past attempts made you worry this item would stay the same?
 
-**"The lender declined me, or the payment is too high."** "That's the option offered on today's file. Let's look at the other displayed plans. If none fits, we can review the real cash split or a smaller service that fits your goal. Which payment can you carry?"
+### The Negative Item Is Accurate
 
-**"I want to finance it later."** "That's your call. What do you still need to know before checking your options?" Answer. If they need time, set a real follow-up.
+If the item is accurate, a dispute alone won't erase it. Let's check the dates, amount, ownership and status against your records. If those facts are right, I'll tell you that. Then we focus on the parts of the file you can change, like card balances and what gets paid on time. Show me the item so we can decide whether a dispute belongs in your plan at all.
 
-### Direct answers to process questions
+### A Removed Item Returns
 
-**"When the Blueprint has me ready to fund, is the funding service included?"** "The Blueprint includes the 12-month plan and its support. Having our team apply for you later is a separate funding service with a separate 10% fee on confirmed approved limits or amounts. We would show you that agreement before you choose it." Chris's no-new-deposit rule for Blueprint graduates is a product change still to be wired; do not quote it as a current checkout term.
+If the same item came back after it was deleted, that's a reinsertion. We've handled those. We compare the old and new reports, get the bureau's notice, check the required certification and notice date, and challenge any error using that record. We don't use sweeps. Let's look at the item and the notices together.
 
-**"Who works with me in the first month?"** "For funding, your funding advisor takes the file through authorized applications and bank follow-up. For credit optimization, a credit specialist reviews items, prepares rounds and tracks replies. For the Blueprint, AI agents help with the checklist and the Fundhub team handles questions or blockers that need a person. Here's the first step for the offer we picked."
+### How Long Does Credit Work Take?
 
-**"I don't have a business."** "You can work on your personal file first. The Blueprint also shows business setup steps if that's part of your goal. Funding in your own name is a separate lender decision."
+Round one starts when you sign. A bureau round usually takes about 30 to 45 days. The replies and your file tell us what comes next. I can show you the schedule for the work we control.
 
-**"Can I get cash from a credit card?"** "A card is useful for business purchases. Cash advances carry their own fees and rate, so let's read the card terms before using one. If your plan needs cash in the bank, let's compare the loan or line-of-credit offers your file supports."
+### Can I Start Credit Work For $200 Or Finance The $1,000?
 
-**"I got denied before."** "What did the lender say, and when? Let's compare that file with what your report shows today. A past denial doesn't tell us the next lender's decision."
+Yes, the $200 offer covers one done-for-you round. The full credit service is $1,000 when you sign and covers up to six rounds. We do not have a financing option for credit work. Which option fits the work you want done now?
 
-**"What proof do you have?"** "I can show real client work approved for sharing, the written service steps, and your own file. Which one do you want to see first?" If no approved proof is available, say so.
+### Blueprint Is Just A Course Or Dashboard
+
+The dashboard is how you see the work; it is not the whole service. A course gives everyone the same lessons. Your Blueprint starts with this file and the goal you gave me, puts the next steps in order, and changes when the file changes. AI agents help with the checklist, and the Fundhub team handles questions that need a person. Let me open your first step and show you exactly what you do, what the team does, and what changes after the next report.
+
+### Blueprint Doesn'T Get Me Funded
+
+The Blueprint gets your file and business ready for a funding decision. It gives you the plan, the next steps and support for twelve months. When the file is ready, we show you the funding paths available then; a bank makes the approval decision. Here is your first milestone and what it takes to reach it: [actual steps]. Is the concern that you want us to do the work for you now, or that you need to see how this plan leads to the funding step?
+
+### Is Done-For-You Funding Included After Blueprint?
+
+No. The Blueprint includes the plan and its support. Having our team apply for you later is a separate funding service with a separate 10% fee on confirmed approved limits or amounts. We'll show you that agreement before you choose it.
+
+### Who Helps In The First Month?
+
+For funding, your funding advisor takes the file through the applications you authorize and bank follow-up. For credit work, a credit specialist reviews the items, prepares the rounds and tracks replies. For the Blueprint, AI agents help with the checklist and the Fundhub team handles questions that need a person. Here is your first step for the path we've picked.
+
+### I Don'T Have Time
+
+Which part are you worried will land on your calendar? [Listen.] For funding, your advisor prepares the authorized applications and handles bank follow-up; your part is the information and approvals only you can give. For credit work, the specialist prepares and tracks the rounds; your part is accurate facts and signatures when needed. For the Blueprint, the system gives you the next task and the team handles [actual review]. Let's put your first task and ours side by side. What part of that would you be unable to do this week?
+
+### I'Ve Been Burned Or You'Ll Disappear
+
+What did the last company promise, and what did it actually do? [Listen.] I can see why you would check that before paying anyone again. Judge us by the work you can inspect: this is your file, this is the agreement and price, and this is where each step appears in the portal. Here is how you reach the team when something is stuck. I can show you approved examples of actual client work and approvals. Which piece of proof would answer the concern you came in with?
+
+### Send Me Something
+
+I will. Before I send a pile of material, what is the thing you want to verify: the work, the result, the price, or who is doing it? [Listen.] Let's pull up that exact proof while we are together, so you can tell me whether it answers the question. I'll send the same material after the call. What would still be unresolved if this checks out?
+
+### I Want To Wait
+
+Okay. What are you waiting to change: the file, the business, the cash you have available, or how you feel about this decision? [Listen.] You told me [their goal] matters because [their reason]. If the file needs a real change first, let's name it and set a date to review it. If the plan works today and the concern is still unanswered, tell me what I missed. What would waiting solve?
+
+### I Want To Compare Another Company
+
+You should compare the actual work and price. Show me what they put in writing. Who reviews your file, who prepares the applications or credit rounds, what support is included, what is charged now, and what is charged later? [Compare the real terms.] Which part of their offer do you like better? [Listen.] Now let me show you how we handle that part here: [actual agreement or screen]. Which path fits your goal?
+
+### What Proof Do You Have?
+
+Fair question. Here is approved client work we can share: [show actual proof]. Here is the work and price in your agreement, and here is how you will see progress on your own file. Which of those speaks to your concern? [Listen.] If you need a different kind of proof, tell me exactly what you need.
+
+### I Don'T Have A Business
+
+We can work on your personal file first. If business setup is part of your goal, the Blueprint puts those steps in order. Funding in your own name is a separate bank decision.
+
+### I Don'T Want Debt Or Already Have Cash
+
+Then let's use this call to decide whether funding serves your plan at all. What made you book? [Listen.] If you want to keep your own cash available for [project], let's compare the actual cost of credit with using that cash. If you don't need funding or the payments don't fit, we don't apply. Which is true for you?
+
+### Can I Use My Other Business Or A Credit Partner?
+
+We can review each business and a willing partner separately. Each applicant needs to understand and authorize their own obligation. Let's start with who owns each business, who would apply, and who would sign.
+
+### Can I Get Cash From A Credit Card?
+
+A card is built for purchases. Cash advances have their own fees and rate. If you need cash in the bank, let's compare the loan or line-of-credit offers your file supports and the full cost of each. How much of your plan needs cash rather than purchase capacity?
+
+### What Is The Total Cost?
+
+Let's add every part before you sign: what the lender makes available, lender fees and interest, payment amount and schedule, full payback, early payoff terms, and Fundhub's fee on approved access. [Show actual offer and fee math.] Which part of that total needs to fit better?
+
+### Will Applications Hurt My Credit Or Require A Personal Guarantee?
+
+The $32 file review is a soft pull. A funding application can create a hard inquiry, and a new account or balance can change your file. A business-card application can require a personal guarantee; we'll read the terms of the one in front of us. I'll show the proposed applications before you authorize them. Which part concerns you most?
+
+### Can You Guarantee An Amount Or Date?
+
+The bank decides the amount, rate, approval and timing. What we commit to in writing is starting your file within 24 business hours and sending the first applications you authorize within 72 business hours. This is what your file supports today: [show actual review]. What part of your plan depends on a fixed amount or date?
+
+### Will A Credit Dispute Affect My Open Loan Application?
+
+Let's look at the loan application already in progress, the item you want reviewed, and when the lender will pull the file. A bureau investigates the dispute and reports its result; your lender decides how to treat the file. We can choose the work order with that timing in front of us. When is the lender making its decision?
+
+### Blueprint Financing Is Declined Or Payment Is Too High
+
+That's the lender's offer on today's file. Let's read the actual monthly payment, rate and term, and see whether another displayed option fits. If none does, we can talk through the cash price or the smaller service that handles your immediate issue. What payment fits without straining the business?
+
+### I Was Denied Before
+
+Which bank was it, when did you apply, and what reason did they give? [Listen.] A no gives us information. Let's compare that application with the file in front of us: what has changed, what still needs work, and which banks fit now. That is how we build the next sequence instead of sending the same file again. Does that address the part that made you hesitant to try again?
+
+### No Today
+
+Thanks for telling me straight. If a later date makes sense, let's set one based on what needs to change. One last thing: is there another business owner who would value seeing their file and options this clearly? If so, you can introduce us.
+
+Credit accuracy and reinsertion: [CFPB on accurate negative information](https://www.consumerfinance.gov/ask-cfpb/is-it-possible-to-remove-accurate-negative-information-from-my-credit-report-en-1249/) and [15 U.S.C. § 1681i(a)(5)(B)](https://uscode.house.gov/us/usc/119-120/t15/s1681i/).
 
 ## 10. Paperwork
 

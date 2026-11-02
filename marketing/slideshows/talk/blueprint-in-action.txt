@@ -18,7 +18,7 @@ Thirty point six percent of this sample's card limits are in use, and the screen
 
 A bank reads that same figure. While it stays over thirty percent, the engine won't call this file fundable, so this tile costs you funding today.
 
-Next to it are hard inquiries, three on this sample, one per bureau, and every bank you apply to sees those.
+Next to it are three hard inquiries on this sample, one per bureau. A bank sees the inquiries on the bureau it reads.
 
 Under the tiles, UnderwriteIQ writes what to work on for this exact file, in plain sentences.
 

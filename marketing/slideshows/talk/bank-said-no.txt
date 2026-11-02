@@ -22,7 +22,7 @@ The score has to sit at 700 or higher. The cards have to be 30% used or less. An
 
 This sample misses all three. The scores are in the 500s. Credit One is at $1,490 of $1,500. And there are two collections, a charge-off and a late.
 
-Every application sent on this file today is a HARD pull. The file isn't fundable yet, and that inquiry stays on the report after the no.
+An application on this file can leave a hard inquiry. It fails the checks we use to choose banks, so we work on the file first.
 
 That's why this file goes to credit optimization first, before a single application. The personal file gets ready before anything else gets built on it.
 
