@@ -154,6 +154,29 @@ async function requireInvoiceBuyerOwned(db, invoice) {
   if (!owned.rows[0]) throw new Error("ar_invoice_buyer_not_owned_by_org");
 }
 
+// Lifecycle may reject a conflicting capture while sibling payment handlers
+// still run. An existing transaction is authoritative; callback metadata must
+// never turn its failed or mismatched receipt into an invoice payment. Legacy
+// invoice-only provider receipts have no transaction and remain supported.
+async function transactionReceiptMatches(db, event, invoice) {
+  const p = event.payload || {};
+  const ref = p.providerRef || p.paymentId;
+  if (!ref) return true;
+  const receipt = (await db.query(
+    `SELECT org_id, client_id, provider, product_name, status, amount_paid
+       FROM transactions WHERE org_id = $1 AND provider_ref = $2 LIMIT 1`,
+    [event.orgId, String(ref)]
+  )).rows[0];
+  if (!receipt) return true;
+  return String(receipt.org_id) === String(event.orgId)
+    && String(receipt.client_id || "") === String(invoice.client_id)
+    && receipt.provider === (p.source || "commas")
+    && receipt.product_name === (p.productName || p.product || "unknown")
+    && receipt.status === "succeeded"
+    && knownCents(receipt.amount_paid) !== null
+    && knownCents(receipt.amount_paid) === knownCents(p.amount);
+}
+
 function partialEventKey(invoiceId, paymentKey) {
   if (!paymentKey) throw new Error(`Partial invoice ${invoiceId} has no stable receipt identity`);
   return `invoice.partially_paid:${invoiceId}:${paymentKey}`;
@@ -174,10 +197,11 @@ async function replayRecordedPayment(db, prior) {
 
 // A provider payment ID is immutable. A replay may reannounce the original
 // invoice event, but it cannot confirm somebody else's invoice or client.
-async function replayIdentityMatches(db, prior, { orgId, clientId, hintedId, roundId, paymentLinkId, ref }) {
+async function replayIdentityMatches(db, prior, { orgId, clientId, hintedId, roundId, paymentLinkId, ref, event }) {
   const original = await getInvoice(db, { invoiceId: prior.invoice_id });
   if (!original || String(original.org_id) !== String(orgId)) return false;
   await requireInvoiceBuyerOwned(db, original);
+  if (!await transactionReceiptMatches(db, event, original)) return false;
   if (clientId && String(original.client_id) !== String(clientId)) return false;
   if (hintedId && String(original.id) !== String(hintedId)) return false;
   if (roundId && String(original.funding_round_id || "") !== String(roundId)) return false;
@@ -192,17 +216,22 @@ async function replayIdentityMatches(db, prior, { orgId, clientId, hintedId, rou
   return true;
 }
 
-async function conflictingReplay(db, { orgId, clientId, eventId, providerPaymentId, originalInvoiceId = null }) {
+async function conflictingReplay(db, { orgId, eventId, providerPaymentId, originalInvoiceId = null }) {
   // The original provider receipt, not an untrusted replay customer locator,
   // owns any review task. Never create a task on another tenant's client.
   const original = originalInvoiceId ? await getInvoice(db, { invoiceId: originalInvoiceId }) : null;
   const reviewClientId = original && String(original.org_id) === String(orgId)
-    ? original.client_id : clientId;
-  await staffTask(db, {
+    ? original.client_id : null;
+  const task = await staffTask(db, {
     orgId, clientId: reviewClientId, eventId,
     title: "Conflicting payment reference — review original receipt",
     body: providerPaymentId ? `receipt-conflict:${providerPaymentId}` : eventId
   });
+  // Never route a replay conflict to an untrusted envelope buyer. Without
+  // the original same-org invoice owner, retain the event for retry/DLQ.
+  if (!task || (!task.id && task.reason !== "duplicate_race")) {
+    throw new Error("ar_receipt_replay_conflict_unroutable");
+  }
   return { done: true, allocated: false, replay: false, reason: "receipt_reference_mismatch", path: "unresolved" };
 }
 
@@ -237,7 +266,7 @@ async function markPartiallyPaid(db, { invoiceId }) {
   return r.rows[0] || null;
 }
 
-async function staffTask(db, { orgId, clientId, eventId, title, body }) {
+async function staffTask(db, { orgId, clientId, eventId, title, body, detail = null }) {
   if (!orgId || !clientId) return null;
   // The tasks table's client foreign key is not an org+client ownership check.
   // An untrusted receipt must not mint a review task for another company's buyer.
@@ -253,7 +282,8 @@ async function staffTask(db, { orgId, clientId, eventId, title, body }) {
     sourceWorkflow: SOURCE,
     assigneeRole: "funding_advisor",
     eventId,
-    body
+    body,
+    detail
   });
 }
 
@@ -271,6 +301,19 @@ export async function allocatePayment(db, event) {
   const hintedId = payload.invoiceId || payload.invoice_id || null;
   const roundId = payload.fundingRoundId || payload.funding_round_id || null;
 
+  // Both invoice aliases are authoritative. Conflicting identifiers must not
+  // be resolved to whichever bill happens to appear first in the envelope.
+  if (payload.invoiceId && payload.invoice_id &&
+      String(payload.invoiceId) !== String(payload.invoice_id)) {
+    const task = await staffTask(db, {
+      orgId, clientId, eventId: event.id,
+      title: "Unallocated payment — conflicting explicit invoice identifiers",
+      body: providerPaymentId ? `invoice-identity-conflict:${providerPaymentId}` : event.id
+    });
+    if (!task) throw new Error("ar_invoice_locator_conflict_unroutable");
+    return { done: true, allocated: false, reason: "invoice_identity_conflict", path: "unresolved" };
+  }
+
   // Deposit and diagnostic receipts never pay a funding success fee, even if
   // their webhook accidentally carries a stale invoice identifier.
   if (["deposit", "diagnostic"].includes(String(payload.purpose || "").toLowerCase()) ||
@@ -280,7 +323,7 @@ export async function allocatePayment(db, event) {
 
   const replayContext = {
     orgId, clientId, hintedId, roundId,
-    paymentLinkId: payload.paymentLinkId, ref: payload.ref
+    paymentLinkId: payload.paymentLinkId, ref: payload.ref, event
   };
   if (orgId && providerPaymentId) {
     const prior = await alreadyRecorded(db, { orgId, providerPaymentId });
@@ -297,7 +340,18 @@ export async function allocatePayment(db, event) {
 
   if (hintedId) {
     invoice = await getInvoice(db, { invoiceId: hintedId });
-    if (invoice) path = "provider_ref";
+    if (!invoice) {
+      // An explicit invoice ID cannot be rescued by a separate checkout link,
+      // provider reference or round; that would credit a different receivable.
+      const task = await staffTask(db, {
+        orgId, clientId, eventId: event.id,
+        title: "Unallocated payment — explicit invoice not found",
+        body: providerPaymentId ? `explicit-invoice-unknown:${providerPaymentId}` : event.id
+      });
+      if (!task) throw new Error("ar_explicit_invoice_unknown_unroutable");
+      return { done: true, allocated: false, reason: "invoice_mismatch", path: "unresolved" };
+    }
+    path = "provider_ref";
   }
   let linkedInvoice = null;
   if (payload.paymentLinkId || payload.ref) {
@@ -311,6 +365,17 @@ export async function allocatePayment(db, event) {
   // A foreign or unknown checkout cannot be ignored merely because the same
   // envelope also carries a perfectly valid local invoice ID.
   if (payload.paymentLinkId && !linkedInvoice) {
+    // A signed PSP receipt with an unknown, foreign or contradictory checkout
+    // must not be acknowledged and silently lost. Review belongs to the
+    // original owned invoice buyer, never an untrusted event client.
+    const reviewClientId = invoice && String(invoice.org_id) === String(orgId)
+      ? invoice.client_id : clientId;
+    const task = await staffTask(db, {
+      orgId, clientId: reviewClientId, eventId: event.id,
+      title: "Unallocated payment — checkout identity mismatch",
+      body: providerPaymentId ? `checkout-identity-mismatch:${providerPaymentId}` : event.id
+    });
+    if (!task) throw new Error("ar_explicit_checkout_mismatch_unroutable");
     return { done: true, allocated: false, reason: "invoice_mismatch", path: "unresolved" };
   }
   if (!invoice) {
@@ -341,13 +406,18 @@ export async function allocatePayment(db, event) {
       return { done: true, skipped: true, reason: "not_invoice_payment" };
     }
     console.warn(`[ar-allocate] path=unresolved payment=${providerPaymentId || "none"} client=${clientId || "none"}`);
-    await staffTask(db, {
+    const task = await staffTask(db, {
       orgId,
       clientId,
       eventId: event.id,
       title: "Unallocated payment — no matching invoice",
       body: providerPaymentId ? `unallocated:${providerPaymentId}` : event.id
     });
+    // A signed success-fee receipt is never resolved simply because a review
+    // was attempted. Without an owned task, retain the event for retry/DLQ.
+    if (!task || (!task.id && task.reason !== "duplicate_race")) {
+      throw new Error("ar_unmatched_success_fee_unroutable");
+    }
     return { done: true, allocated: false, reason: "unresolved", path: "unresolved" };
   }
 
@@ -355,6 +425,16 @@ export async function allocatePayment(db, event) {
   // create a review task on that tenant's buyer or reveal invoice metadata.
   // Check BEFORE invoice source/type/status and before the task fallback.
   if (!orgId || String(invoice.org_id) !== String(orgId)) {
+    // A foreign invoice is not evidence of its buyer's ownership. Only a
+    // separately verified same-org event customer can own the review task.
+    const task = await staffTask(db, {
+      orgId, clientId, eventId: event.id,
+      title: "Unallocated payment — invoice organization mismatch",
+      body: providerPaymentId ? `foreign-invoice:${providerPaymentId}` : event.id
+    });
+    if (!task || (!task.id && task.reason !== "duplicate_race")) {
+      throw new Error("ar_foreign_invoice_unroutable");
+    }
     return { done: true, allocated: false, reason: "invoice_mismatch", path: "unresolved" };
   }
   // Invoice org/client columns are not a tenant-ownership guarantee. Missing
@@ -430,6 +510,9 @@ export async function allocatePayment(db, event) {
     // Re-check under the invoice lock; a buyer could have changed since the
     // initial read. This lookup makes no writes to client or provider rows.
     await requireInvoiceBuyerOwned(tx, locked);
+    if (!await transactionReceiptMatches(tx, event, locked)) {
+      return { reason: "transaction_receipt_mismatch" };
+    }
 
     // Two webhook envelopes can carry the same Commas payment ID but different
     // event IDs. Both may pass the early replay lookup. Recheck only after the
@@ -479,6 +562,22 @@ export async function allocatePayment(db, event) {
       partialRow = await markPartiallyPaid(tx, { invoiceId: locked.id });
       if (!partialRow) throw new Error(`Could not mark invoice ${locked.id} partially paid after recording its receipt`);
     }
+    if (surplusCents > 0) {
+      // Record the unapplied remainder and review task atomically with the
+      // applied receipt. A post-commit task failure cannot be recovered by a
+      // PSP replay: the existing receipt makes replay exit before task creation.
+      const review = await staffTask(tx, {
+        orgId: locked.org_id,
+        clientId: locked.client_id,
+        eventId: event.id,
+        title: "Overpayment leftover — do not apply to another invoice",
+        body: providerPaymentId ? `overpay:${providerPaymentId}` : event.id,
+        detail: `Invoice ${locked.id}; reported $${Number(fromCents(payCents)).toFixed(2)}; applied $${Number(fromCents(applyCents)).toFixed(2)}; unapplied $${Number(fromCents(surplusCents)).toFixed(2)}. Verify processor settlement and manually resolve the credit/refund; never redirect to another invoice.`
+      });
+      if (!review || (!review.id && review.reason !== "duplicate_race")) {
+        throw new Error("ar_overpayment_review_unroutable");
+      }
+    }
     return {
       applyCents, surplusCents, newRemaining, paidRow, partialRow,
       receiptKey: providerPaymentId || event.id || inserted?.id || null
@@ -521,13 +620,6 @@ export async function allocatePayment(db, event) {
 
   if (surplusCents > 0) {
     console.warn(`[ar-allocate] path=overpay surplus_cents=${surplusCents} invoice=${invoice.id}`);
-    await staffTask(db, {
-      orgId,
-      clientId: invoice.client_id,
-      eventId: event.id,
-      title: "Overpayment leftover — do not apply to another invoice",
-      body: providerPaymentId ? `overpay:${providerPaymentId}` : event.id
-    });
   }
 
   if (applyCents <= 0 && surplusCents > 0) {

@@ -4,8 +4,8 @@
    WHAT IT IS. A clickable copy of the client's own Blueprint screens (Home,
    Progress, Money) filled with this client's file from today's pull
    (ctx.visual), or the deck's labeled sample. The closer taps "Next step" and
-   the checklist walks in the order of its own due windows; the screens change
-   as steps complete. It shows a journey over time, step by step. It saves
+   five visible builds group the checklist in Chris's paydown-first order;
+   the screens change as steps complete. It shows a journey over time. It saves
    nothing, sends nothing and charges nothing.
 
    WHERE THE STEPS COME FROM. The same catalog the real checklist is seeded
@@ -13,7 +13,8 @@
    the EIN, business checking), 400 (mail the letters, upload the mailing
    proof, upload the bureaus' answers) and 498 (the words say "the Fundhub
    team"). Due windows are those rows' due_offset_days. The order of the walk
-   is Chris's Blueprint order (.ai/rules/ad-know-the-offer.md).
+   is Chris's Blueprint order (.ai/rules/ad-know-the-offer.md), even though
+   the tasks retain their original due-day reminder labels.
 
    AMOUNTS. Every amount is ctx.visual's (the engine's own) and is printed with
    ctx.money. A null prints nothing. Anything past today says "projects to".
@@ -70,20 +71,13 @@
   };
   var BUREAU_WORDS = { EX: "Experian", EQ: "Equifax", TU: "TransUnion" };
 
-  /* ── the steps, from the catalog, in the order of their due windows ───── */
+  /* ── the catalog tasks in the owner's call walkthrough order ─────────── */
 
   function buildSteps(ctx) {
     var v = ctx.visual || null;
     var money = ctx.money;
     var cards = v ? list(v.cards) : [];
     var steps = [];
-
-    steps.push({ key: "mail", kind: "task", file: true, owner: "you", day: 14, chip: "Mail",
-      title: "Print and mail your dispute letters",
-      detail: "Print the letters from your pack, sign where marked, and mail a copy to each bureau. Keep your post office receipt." });
-    steps.push({ key: "proof", kind: "task", file: true, owner: "you", day: 21, chip: "Proof",
-      title: "Upload your mailing proof",
-      detail: "Take a clear photo of your post office receipt or the stamped envelopes and upload it." });
 
     if (cards.length) {
       cards.forEach(function (card, i) {
@@ -99,14 +93,20 @@
         detail: "One task per card, from your own pull. Anything you put against a card moves it toward the target." });
     }
 
+    steps.push({ key: "mail", kind: "task", file: true, owner: "you", day: 14, chip: "Mail",
+      title: "Print and mail your dispute letters",
+      detail: "Print the letters from your pack, sign where marked, and mail a copy to each bureau. Keep your post office receipt." });
+    steps.push({ key: "proof", kind: "task", file: true, owner: "you", day: 21, chip: "Proof",
+      title: "Upload your mailing proof",
+      detail: "Take a clear photo of your post office receipt or the stamped envelopes and upload it." });
+    steps.push({ key: "bureaus", kind: "task", file: true, owner: "you", day: 45, chip: "Bureaus",
+      title: "Upload bureau responses when they arrive",
+      detail: "When a bureau writes back, photograph or scan the letter and upload it." });
+
     steps.push({ key: "business", kind: "task", file: false, owner: "you", day: 30, chip: "Business",
       title: "Set up your business",
       subs: ["File your LLC", "Get your EIN from the IRS", "Open a business checking account"],
       detail: "File with the Secretary of State. Get your EIN on IRS.gov at no cost. Open the checking account in the LLC name with the EIN." });
-
-    steps.push({ key: "bureaus", kind: "task", file: true, owner: "you", day: 45, chip: "Bureaus",
-      title: "Upload bureau responses when they arrive",
-      detail: "When a bureau writes back, photograph or scan the letter and upload it." });
 
     /* Business 1 and 2: the client's own companies first, then "if you add a
        company" from the engine's new-company rule. */
@@ -300,8 +300,37 @@
     var pct = total ? Math.round((done / total) * 100) : 0;
     return '<section class="' + c("card") + '">' + eyebrow("Where you are") +
       '<div class="' + c("title") + '">' + ctx.esc(line) + "</div>" +
+      orderDiagram(st) +
       '<div class="' + c("meter") + '" role="img" aria-label="' + done + " of " + total + ' steps done"><i style="width:' + pctCss(pct) + '"></i></div>' +
       '<p class="' + c("caption") + '">' + done + " of " + total + " steps done. Step by step.</p></section>";
+  }
+
+  function orderDiagram(st) {
+    var cardKeys = st.steps.filter(function (s) { return s.card != null || s.key === "cards"; }).map(function (s) { return s.key; });
+    var phases = [
+      { key: "paydown", label: "Pay cards down", keys: cardKeys },
+      { key: "disputes", label: "Dispute items", keys: ["mail", "proof", "bureaus"] },
+      { key: "business1", label: "Business 1", keys: ["business", "biz1"] },
+      { key: "business2", label: "Business 2", keys: ["biz2"] },
+      { key: "fundability", label: "More fundability", keys: ["sequence"] }
+    ];
+    var firstOpen = phases.findIndex(function (phase) { return !phase.keys.every(function (key) { return doneByKey(st, key); }); });
+    return '<ol class="' + c("order") + '" aria-label="Your plan in order">' + phases.map(function (phase, i) {
+      var done = phase.keys.every(function (key) { return doneByKey(st, key); });
+      var active = i === firstOpen;
+      return '<li class="' + c("orderstep") + (done ? " " + c("orderdone") : "") + (active ? " " + c("orderactive") : "") +
+        '" data-bd-phase="' + phase.key + '"' + (active ? ' aria-current="step"' : "") + '><span class="' + c("ordernum") + '">' +
+        (done ? "✓" : i + 1) + '</span><span class="' + c("orderlabel") + '">' + phase.label + "</span></li>";
+    }).join("") + "</ol>";
+  }
+
+  function phaseEnds(st) {
+    var indexOf = function (key) {
+      for (var i = 0; i < st.steps.length; i++) if (st.steps[i].key === key) return i + 1;
+      return 0;
+    };
+    var cards = st.steps.filter(function (s) { return s.card != null || s.key === "cards"; });
+    return [indexOf(cards[cards.length - 1].key), indexOf("bureaus"), indexOf("biz1"), indexOf("biz2"), indexOf("sequence")];
   }
 
   function homePanel(st, fv) {
@@ -343,7 +372,7 @@
     return html + pinCard();
   }
 
-  /* Progress: the checklist, in due order, each row a button. */
+  /* Progress: the checklist in the call walkthrough order, each row a button. */
   function progressPanel(st) {
     var ctx = st.ctx;
     var html = stageCard(st) + '<section class="' + c("card") + '">' + eyebrow("Your checklist") +
@@ -545,20 +574,19 @@
 
   /* The strip and the Next step button. */
   function footer(st) {
-    var ctx = st.ctx;
-    var total = st.steps.length;
-    var chips = st.steps.map(function (s, i) {
-      var done = isDone(st, i), current = i === st.step;
+    var ends = phaseEnds(st);
+    var labels = ["Cards", "Items", "Business 1", "Business 2", "Fundability"];
+    var chips = labels.map(function (label, i) {
+      var start = i ? ends[i - 1] : 0;
+      var done = st.step >= ends[i], current = st.step >= start && st.step < ends[i];
       return '<button type="button" class="' + c("chip") + (done ? " " + c("done") : "") + (current ? " " + c("current") : "") +
-        '" data-bd-act="goto:' + i + '" aria-label="Step ' + (i + 1) + ": " + ctx.esc(s.title) + (done ? ", done" : "") + '"' + (current ? ' aria-current="step"' : "") + ">" +
-        '<span class="' + c("chipn") + '">' + (done ? "✓" : (i + 1)) + "</span>" + ctx.esc(s.chip) + "</button>";
+        '" data-bd-act="goto:' + start + '" aria-label="Build ' + (i + 1) + ": " + label + (done ? ", walked" : "") + '"' + (current ? ' aria-current="step"' : "") + ">" +
+        '<span class="' + c("chipn") + '">' + (done ? "✓" : (i + 1)) + "</span>" + label + "</button>";
     }).join("");
-    chips += '<button type="button" class="' + c("chip") + (atEnd(st) ? " " + c("current") : "") + '" data-bd-act="goto:' + total + '"' + (atEnd(st) ? ' aria-current="step"' : "") + '>' +
-      '<span class="' + c("chipn") + '">' + (total + 1) + "</span>12 months</button>";
     return '<div class="' + c("foot") + '"><div class="' + c("strip") + '">' + chips + "</div>" +
       '<div class="' + c("acts") + '">' +
       '<button type="button" class="' + c("ghost") + '" data-bd-act="back"' + (st.step === 0 ? " disabled" : "") + ">Back</button>" +
-      '<button type="button" class="' + c("nextbtn") + '" data-bd-act="' + (atEnd(st) ? "restart" : "next") + '">' + (atEnd(st) ? "Start over" : "Next step") + "</button></div></div>";
+      '<button type="button" class="' + c("nextbtn") + '" data-bd-act="' + (atEnd(st) ? "restart" : "build") + '">' + (atEnd(st) ? "Start over" : "Next step") + "</button></div></div>";
   }
 
   function inner(st) {
@@ -584,7 +612,16 @@
     var parts = String(act || "").split(":");
     var kind = parts[0], arg = parts.slice(1).join(":");
     if (kind === "next") { if (!atEnd(st)) st.step += 1; st.open = null; }
-    else if (kind === "back") { if (st.step > 0) st.step -= 1; st.open = null; }
+    else if (kind === "build") {
+      var forward = phaseEnds(st).filter(function (end) { return end > st.step; });
+      if (forward.length) st.step = forward[0];
+      st.open = null;
+    }
+    else if (kind === "back") {
+      var prior = [0].concat(phaseEnds(st)).filter(function (end) { return end < st.step; });
+      if (prior.length) st.step = prior[prior.length - 1];
+      st.open = null;
+    }
     else if (kind === "restart") { st.step = 0; st.open = null; st.panel = "home"; }
     else if (kind === "goto") { var i = Number(arg); if (isNum(i) && i >= 0 && i <= st.steps.length) st.step = i; st.open = null; }
     else if (kind === "panel") { st.panel = arg || "home"; st.open = null; }
@@ -704,6 +741,12 @@
     ".@@caption{font-size:13px;color:var(--gray);margin:8px 0 0;line-height:1.45}",
     ".@@meter{height:8px;border-radius:4px;background:var(--soft);margin:12px 0 0;overflow:hidden}",
     ".@@meter i{display:block;height:100%;background:var(--ink);transition:width .7s cubic-bezier(.2,.7,.3,1)}",
+    ".@@order{list-style:none;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin:12px 0 0;padding:0}",
+    ".@@orderstep{display:flex;flex-direction:column;align-items:flex-start;gap:5px;min-height:64px;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--soft);color:var(--gray)}",
+    ".@@orderstep.@@orderactive{border-color:var(--ink);background:#fff;color:var(--ink)}",
+    ".@@orderstep.@@orderdone{background:var(--ok);border-color:var(--ok);color:var(--ink)}",
+    ".@@ordernum{font-family:var(--mono);font-size:13px;font-weight:700;line-height:1}",
+    ".@@orderlabel{font-size:13px;font-weight:650;line-height:1.2;overflow-wrap:anywhere}",
     ".@@heroline{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin:0 0 6px}",
     ".@@big{font-family:var(--sans);font-size:clamp(28px,4.4cqi,46px);font-weight:700;letter-spacing:-.03em;line-height:1.05;font-variant-numeric:tabular-nums;color:var(--ink)}",
     ".@@of{font-size:16px;color:var(--gray)}",
@@ -764,10 +807,8 @@
     ".@@bubble.@@mail{border-radius:8px;background:var(--soft)}.@@bubble.@@mail b{display:block;margin-bottom:3px}",
     ".@@bubble.@@team{background:var(--ink);color:var(--paper);border-color:var(--ink)}",
     ".@@foot{display:flex;gap:12px;align-items:center;flex-wrap:wrap}",
-    ".@@strip{flex:1;min-width:0;display:flex;gap:6px;overflow-x:auto;padding:2px;scroll-snap-type:x proximity;scrollbar-width:none;-webkit-mask-image:linear-gradient(90deg,var(--ink) calc(100% - 36px),transparent);mask-image:linear-gradient(90deg,var(--ink) calc(100% - 36px),transparent)}",
-    ".@@strip::-webkit-scrollbar{display:none}",
-    ".@@strip.@@fits{-webkit-mask-image:none;mask-image:none}",
-    ".@@chip{flex:0 0 auto;display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 12px 0 5px;font-size:16px;font-weight:600;color:var(--gray);background:#fff;border:1px solid var(--line);border-radius:999px;scroll-snap-align:start;white-space:nowrap}",
+    ".@@strip{flex:1;min-width:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;padding:2px}",
+    ".@@chip{min-width:0;display:inline-flex;align-items:center;justify-content:flex-start;gap:6px;min-height:44px;padding:4px 8px 4px 5px;font-size:13px;font-weight:650;line-height:1.15;color:var(--gray);background:#fff;border:1px solid var(--line);border-radius:8px;overflow-wrap:anywhere;text-align:left}",
     ".@@chipn{width:30px;height:30px;border-radius:50%;background:var(--soft);display:inline-flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:13px;color:var(--ink)}",
     ".@@chip.@@done{color:var(--ink);background:var(--soft)}.@@chip.@@done .@@chipn{background:var(--ok)}",
     ".@@chip.@@current{color:var(--paper);background:var(--ink);border-color:var(--ink)}.@@chip.@@current .@@chipn{background:var(--paper);color:var(--ink)}",
@@ -776,7 +817,7 @@
     ".@@nextbtn{min-height:48px;padding:0 24px;font-size:16px;font-weight:700;color:var(--paper);background:var(--ink);border:1px solid var(--ink);border-radius:8px}",
     ".@@fallback{padding:16px;border:1px solid var(--line);border-radius:10px;background:var(--soft);font-size:16px;color:var(--ink2)}",
     "@media (prefers-reduced-motion: reduce){.@@fill,.@@meter i{transition:none}}",
-    "@container (max-width: 640px){.@@frame{flex-direction:column}.@@rail{flex:0 0 auto;flex-direction:row;border-right:0;border-bottom:1px solid var(--line);padding:8px}.@@railbtn{flex:1;text-align:center;padding:0 6px}.@@banner{flex-direction:column;align-items:flex-start;gap:8px}.@@panel{padding:12px;gap:12px}.@@strip{flex:1 1 100%}.@@acts{width:100%}.@@acts .@@nextbtn{flex:1}.@@row{flex-direction:column;align-items:flex-start;gap:2px}.@@rowr{text-align:left}.@@items li,.@@walk li{flex-direction:column;align-items:flex-start;gap:6px}.@@status{align-items:flex-start;text-align:left}}"
+    "@container (max-width: 640px){.@@frame{flex-direction:column}.@@rail{flex:0 0 auto;flex-direction:row;border-right:0;border-bottom:1px solid var(--line);padding:8px}.@@railbtn{flex:1;text-align:center;padding:0 6px}.@@banner{flex-direction:column;align-items:flex-start;gap:8px}.@@panel{padding:12px;gap:12px}.@@strip{flex:1 1 100%;grid-template-columns:repeat(3,minmax(0,1fr))}.@@acts{width:100%}.@@acts .@@nextbtn{flex:1}.@@row{flex-direction:column;align-items:flex-start;gap:2px}.@@rowr{text-align:left}.@@items li,.@@walk li{flex-direction:column;align-items:flex-start;gap:6px}.@@status{align-items:flex-start;text-align:left}}"
   ].join("\n").replace(/@@/g, P);
 
   function ensureStyle() {
@@ -789,7 +830,7 @@
   }
 
   function fallback() {
-    return '<div class="' + c("fallback") + '" data-fhv="' + NAME + '">The Blueprint dashboard preview is not available right now. Walk the plan in words: mail the letters, upload the proof, pay each card down to 10% of its limit, set up the business, upload the bureaus’ answers, then Business 1, Business 2 and the next funding sequence.</div>';
+    return '<div class="' + c("fallback") + '" data-fhv="' + NAME + '">The Blueprint dashboard preview is not available right now. Walk the plan in words: pay each card down to 10% of its limit, mail the letters, upload the proof and bureau answers, set up the business, then Business 1, Business 2 and the next funding sequence.</div>';
   }
 
   var listening = false;

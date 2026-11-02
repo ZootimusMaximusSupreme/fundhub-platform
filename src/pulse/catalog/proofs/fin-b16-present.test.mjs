@@ -55,7 +55,7 @@ async function openDeck(tier, { copyWorks = true, wordings = null, sendAnswer = 
   const writes = [];
   const reads = [];
   const copied = [];
-  let onClick = null;
+  const onClicks = [];
   const sandbox = {
     console,
     URLSearchParams,
@@ -76,7 +76,7 @@ async function openDeck(tier, { copyWorks = true, wordings = null, sendAnswer = 
       readyState: "complete",
       getElementById: (id) => (id === "app" && PAGE_IDS.has("app") ? root : null),
       querySelectorAll: () => [],
-      addEventListener: (type, fn) => { if (type === "click") onClick = fn; },
+      addEventListener: (type, fn) => { if (type === "click") onClicks.push(fn); },
     },
     localStorage: { getItem: (k) => (k === "fh_role" ? "owner" : null) },
     FHData: {
@@ -114,12 +114,13 @@ async function openDeck(tier, { copyWorks = true, wordings = null, sendAnswer = 
   }
   await flush();
   await flush();
-  assert.ok(onClick, "present.js registered no click listener");
+  const presentClick = onClicks.find((fn) => fn.toString().includes("sendLocked(a)"));
+  assert.ok(presentClick, "present.js registered no click listener");
   const deck = {
     writes, reads, copied,
     html: () => root.innerHTML,
     text: () => root.innerHTML.replace(/<[^>]+>/g, " ").replace(/\s+/g, " "),
-    click(act) { onClick({ target: { closest: () => ({ getAttribute: () => act }) } }); return deck; },
+    click(act) { presentClick({ target: { closest: () => ({ getAttribute: () => act }) } }); return deck; },
     slide() {
       const m = /<div class="slide-hd"><span class="mono">([A-Z]-\d\d) \/ /.exec(root.innerHTML);
       return m ? m[1] : null;
@@ -137,7 +138,7 @@ async function openDeck(tier, { copyWorks = true, wordings = null, sendAnswer = 
 test("Other actions opens a second row of actions on the close slide and Hide the other actions closes it", async () => {
   await proof.check(/^'Other actions' open\/close toggle \(S-23\)/, async () => {
     const deck = await openDeck("FULL_FUNDING");
-    deck.click("stack-go:S-23");
+    deck.click("phase:09");
     assert.equal(deck.slide(), "S-23");
     assert.equal(deck.label("more"), "Other actions");
     for (const word of ["Invoice this client", "Send contract", "Repair referral"]) {
@@ -161,7 +162,7 @@ test("Other actions opens a second row of actions on the close slide and Hide th
 test("Copy the sign link appears only once a contract was sent, with the link in a read-only box", async () => {
   await proof.check(/^'Copy the sign link' and the read-only sign-link box/, async () => {
     const deck = await openDeck("FULL_FUNDING");
-    deck.click("stack-go:S-23").click("more");
+    deck.click("phase:09").click("more");
     assert.equal(deck.has("contract-copy"), false, "no link, no copy button");
     assert.ok(!deck.html().includes('id="fh-contract-link"'));
 
@@ -201,7 +202,7 @@ test("Copy the sign link appears only once a contract was sent, with the link in
     const deck = await openDeck("FULL_FUNDING", { sendAnswer: async (url, body) => (body.action === "create_draft"
       ? { ok: true, data: { contract: { id: "contract-2" } } }
       : { ok: true, data: { links: [{ url: odd }], message: "Sent." } }) });
-    deck.click("stack-go:S-23").click("more").click("contract");
+    deck.click("phase:09").click("more").click("contract");
     await deck.settle();
     assert.ok(deck.html().includes('value="https://sign.example.test/c/a&quot;b&lt;c&gt;&amp;d"'), "the box value is escaped");
     assert.ok(!deck.html().includes('value="https://sign.example.test/c/a"b'), "no raw quote breaks out of the box");
@@ -211,7 +212,7 @@ test("Copy the sign link appears only once a contract was sent, with the link in
   await proof.check(/^'Copy the sign link' and the read-only sign-link box/, async () => {
     // A browser that refuses the clipboard is told so, and the link is still there to select.
     const deck = await openDeck("FULL_FUNDING", { copyWorks: false });
-    deck.click("stack-go:S-23").click("more").click("contract");
+    deck.click("phase:09").click("more").click("contract");
     await deck.settle();
     assert.ok(deck.html().includes(`value="${LINK}"`));
     deck.click("contract-copy");
@@ -223,7 +224,7 @@ test("Copy the sign link appears only once a contract was sent, with the link in
   await proof.check(/^'Copy the sign link' and the read-only sign-link box/, async () => {
     // A send the server refused leaves no link and no copy button.
     const deck = await openDeck("FULL_FUNDING", { sendAnswer: async () => ({ ok: false, error: "No such agreement." }) });
-    deck.click("stack-go:S-23").click("more").click("contract");
+    deck.click("phase:09").click("more").click("contract");
     await deck.settle();
     assert.equal(deck.has("contract-copy"), false);
     assert.ok(!deck.html().includes('id="fh-contract-link"'));
@@ -234,7 +235,7 @@ test("Copy the sign link appears only once a contract was sent, with the link in
 test("Show the full Blueprint stack opens section 06 from the Blueprint rung, and from no other offer", async () => {
   await proof.check(/^'Show the full Blueprint stack'/, async () => {
     const repair = await openDeck("REPAIR_ONLY");
-    repair.click("stack-go:S-19");
+    repair.click("phase:07").click("next").click("next");
     assert.equal(repair.slide(), "S-19");
     // The repair route starts on the Capital Blueprint rung, the most expensive door that fits (row 2).
     assert.equal(repair.has("rung:2"), true);
@@ -262,7 +263,7 @@ test("Show the full Blueprint stack opens section 06 from the Blueprint rung, an
 
     // A funding sale has no Blueprint rung at all.
     const funding = await openDeck("FULL_FUNDING");
-    funding.click("stack-go:S-19");
+    funding.click("phase:07").click("next").click("next");
     assert.equal(funding.slide(), "S-19");
     assert.equal(funding.has("stack-open"), false);
   });

@@ -169,6 +169,11 @@ for (const target of [PAGE, FRAME]) {
       await form.locator('[data-act="accept-send"]').click();
       await waitFor(() => posts.length === 2);
       assert.deepEqual(last(), { action: "accept", document_id: sepStatement.id, covers: 1, period_end: "2026-09-30", client_id: CLIENT_ID });
+      // The request is logged before its response redraws the vault. Wait for
+      // this paper's saved answer so that redraw cannot close the reject form.
+      await page.waitForFunction((slot) =>
+        document.querySelector(`.vt-msg[data-msg="${slot}"]`)?.textContent.includes("Accepted."),
+      statements.slot);
     }, surface);
 
     // The frame lists the reject form under 'Change' (below); the page lists it as its own row.

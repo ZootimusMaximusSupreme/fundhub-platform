@@ -64,3 +64,24 @@ test("withTransaction releases the client on the success path too", async () => 
   assert.equal(out, "ok");
   assert.deepEqual(client.calls, ["BEGIN", "COMMIT", "RELEASE"]);
 });
+
+test("withTransaction reuses a checked-out client inline without calling connect again", async () => {
+  const calls = [];
+  const checkedOut = {
+    calls,
+    query: async (sql) => { calls.push(sql); },
+    release: () => { calls.push("RELEASE"); },
+    connect: async () => {
+      throw new Error("Client has already been connected. You cannot reuse a client.");
+    }
+  };
+
+  const out = await withTransaction(checkedOut, async (tx) => {
+    assert.equal(tx, checkedOut);
+    await tx.query("SELECT 1");
+    return "inline";
+  });
+
+  assert.equal(out, "inline");
+  assert.deepEqual(calls, ["SELECT 1"]);
+});

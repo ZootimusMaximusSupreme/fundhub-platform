@@ -338,6 +338,64 @@ test("AR: overpay settles the matched invoice and leaves leftover unallocated", 
   assert.match(db.tasks[0].title, /Overpayment leftover/);
 });
 
+test("AR: a failed overpayment review rolls back the receipt, allowing a safe retry", async () => {
+  const db = pgFake({
+    clients: [{ id: "cl-1", org_id: "org-1", email: "ar-overpay+rollback@example.invalid" }],
+    invoices: [openInvoice({ amount_due: 100 })]
+  });
+  let failReview = true;
+  let savedDetail = null;
+  // Transaction-capable fake: roll back every changed row on task failure.
+  db.connect = async () => {
+    const snapshot = {
+      invoices: structuredClone(db.invoices),
+      payments: structuredClone(db.invoicePayments),
+      tasks: structuredClone(db.tasks)
+    };
+    return {
+      async query(sql, params) {
+        if (sql === "BEGIN" || sql === "COMMIT") return { rows: [] };
+        if (sql === "ROLLBACK") {
+          db.invoices.splice(0, db.invoices.length, ...snapshot.invoices);
+          db.invoicePayments.splice(0, db.invoicePayments.length, ...snapshot.payments);
+          db.tasks.splice(0, db.tasks.length, ...snapshot.tasks);
+          return { rows: [] };
+        }
+        if (/INSERT INTO tasks/.test(sql)) {
+          if (failReview) {
+            failReview = false;
+            throw new Error("synthetic overpayment task insert failed");
+          }
+          if (/meeting_url, detail/.test(sql)) savedDetail = params.at(-1);
+        }
+        return db.query(sql, params);
+      },
+      release() {}
+    };
+  };
+  const event = ev("payment.received", {
+    invoiceId: "inv-1", product: "success_fee", amount: 150,
+    paymentId: "ar-overpay-atomic-psp-1"
+  }, { clientId: "cl-1" });
+  const args = { event, db, step: fakeStep() };
+  await assert.rejects(handle(args), /synthetic overpayment task insert failed/);
+  assert.equal(db.invoices[0].status, "sent", "invoice cannot settle before exception task commits");
+  assert.equal(db.invoicePayments.length, 0, "no orphan receipt on a failed staff task");
+  assert.equal(db.tasks.length, 0);
+
+  const retried = await handle(args);
+  assert.equal(retried.allocated, true);
+  assert.equal(retried.surplusCents, 5000);
+  assert.equal(db.invoicePayments.length, 1);
+  assert.equal(db.invoices[0].status, "paid");
+  assert.equal(db.tasks.filter((t) => t.title.startsWith("Overpayment leftover")).length, 1);
+  assert.match(savedDetail, /unapplied \$50\.00/);
+  const replay = await handle(args);
+  assert.equal(replay.replay, true);
+  assert.equal(db.invoicePayments.length, 1, "same provider reference cannot double-credit");
+  assert.equal(db.tasks.length, 1, "same overpayment cannot duplicate the review");
+});
+
 test("AR: two open invoices — payment with a round lands on that round only", async () => {
   const db = pgFake({
     clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", custom_fields: {} }],
@@ -1079,4 +1137,72 @@ test("AR tenant isolation: CSM escalation repeats ownership verification before 
   assert.equal(db.invoices[0].status, "sent", "invoice not falsely escalated");
   assert.equal(db.tasks.length, 0, "no task targeting former owner");
   assert.equal(db.clients[0].tags?.length || 0, 0);
+});
+
+test("AR receipt identity: unresolved buyer cannot create a task for a foreign-org invoice client", async () => {
+  const db = pgFake({
+    clients: [{ id: "cl-foreign", org_id: "org-2", email: "foreign+a78@example.invalid" }],
+    invoices: [openInvoice({ client_id: "cl-foreign" })]
+  });
+  await assert.rejects(handle({
+    event: ev("payment.received", {
+      invoiceId: "inv-1", product: "success_fee",
+      email: "unmatched+a78@example.invalid", amount: 1250, paymentId: "a78-foreign"
+    }),
+    db, step: fakeStep()
+  }), /ar_unmatched_invoice_buyer_not_owned_by_org/);
+  assert.equal(db.tasks.length, 0, "no cross-tenant advisor task or client reference");
+  assert.equal(db.invoicePayments.length, 0, "the merchant amount remains unallocated");
+});
+
+test("AR receipt identity: unresolved sender still gets a task on a verified same-org invoice owner", async () => {
+  const db = pgFake({
+    clients: [{ id: "cl-1", org_id: "org-1", email: "owner+a78@example.invalid" }],
+    invoices: [openInvoice()]
+  });
+  const result = await handle({
+    event: ev("payment.received", {
+      invoiceId: "inv-1", product: "success_fee",
+      email: "unmatched+a78@example.invalid", amount: 1250, paymentId: "a78-owned"
+    }),
+    db, step: fakeStep()
+  });
+  assert.equal(result.reason, "client_not_owned");
+  assert.equal(result.reviewTaskCreated, true);
+  assert.equal(db.tasks.length, 1);
+  assert.equal(db.tasks[0].org_id, "org-1");
+  assert.equal(db.tasks[0].client_id, "cl-1");
+  assert.equal(db.invoicePayments.length, 0, "a review task never allocates money");
+});
+
+
+test("AR receipt A81: signed payment without an org must retry instead of claiming handled", async () => {
+  const db = pgFake({ clients: [], invoices: [] });
+  const event = ev("payment.received", {
+    email: "missing-org+a81@example.invalid",
+    product: "success_fee", paymentId: "a81-missing-org", amount: 1250
+  });
+  delete event.orgId;
+  await assert.rejects(handle({ event, db, step: fakeStep() }),
+    /ar_payment_missing_org_unroutable/);
+  assert.equal(db.invoicePayments.length, 0);
+  assert.equal(db.tasks.length, 0);
+});
+
+test("AR receipt A81: unknown email without a safe invoice owner must retry, not silently drop a receipt", async () => {
+  const db = pgFake({ clients: [], invoices: [] });
+  for (const invoiceId of [null, "missing-invoice-a81"]) {
+    const payload = {
+      email: "unknown-buyer+a81@example.invalid", product: "success_fee",
+      paymentId: invoiceId ? "a81-unknown-invoice" : "a81-no-invoice",
+      amount: 1250, ...(invoiceId ? { invoiceId } : {})
+    };
+    await assert.rejects(handle({
+      event: ev("payment.received", payload),
+      db, step: fakeStep()
+    }), /ar_payment_customer_unroutable/);
+  }
+  assert.equal(db.clients.length, 0, "reconciliation never creates a lead");
+  assert.equal(db.invoicePayments.length, 0, "no invoice may be miscredited");
+  assert.equal(db.tasks.length, 0, "no fake or foreign buyer task may be emitted");
 });

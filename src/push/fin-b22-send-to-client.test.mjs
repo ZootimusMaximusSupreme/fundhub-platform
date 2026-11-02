@@ -23,6 +23,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { sendToClient } from "./send.mjs";
+import { sendDeckPush } from "../workflows/bs-deck-push.mjs";
 import { dispatchOne, OUTCOME } from "../messaging/dispatch.mjs";
 import { saveSubscription, revokeSubscription, endpointHash } from "./store.mjs";
 import { b64u, generateVapidKeys, decryptPayload } from "./crypto.mjs";
@@ -442,7 +443,7 @@ function importersOf(target) {
 
 describe("who calls the sender", () => {
   test("the dispatcher and the hand-run script call sendToClient; only the sender calls the provider", () => {
-    assert.deepEqual(importersOf("src/push/send.mjs"), ["scripts/push/send-test-push.mjs", "src/messaging/dispatch.mjs"],
+    assert.deepEqual(importersOf("src/push/send.mjs"), ["scripts/push/send-test-push.mjs", "src/messaging/dispatch.mjs", "src/workflows/bs-deck-push.mjs"],
       "A new sender caller needs its own trigger-to-device proof and a live-device rule update.");
     // api/push/key.mjs only reads the public VAPID key (vapidConfig); it never calls send().
     assert.deepEqual(importersOf("src/messaging/providers/web-push.mjs"),
@@ -453,4 +454,43 @@ describe("who calls the sender", () => {
   test("the scanner sees a real importer (it is not passing by finding nothing)", () => {
     assert.ok(importersOf("src/push/store.mjs").includes("src/push/send.mjs"));
   });
+});
+
+test("an enabled deck lesson reaches one registered browser through the real web sender", async () => {
+  const w = world();
+  try {
+    const phone = browser("deck-lesson");
+    await w.register(phone);
+    const messageRows = [];
+    const db = { async query(sql, params = []) {
+      if (sql.includes("client_push_subscriptions")) return w.db.query(sql, params);
+      if (sql.includes("FROM messaging_settings")) return { rows: [{ outbound_enabled: true }] };
+      if (sql.includes("marketing_push_enabled")) return { rows: [{ enabled: "true" }] };
+      if (sql.includes("FROM opt_outs")) return { rows: [] };
+      if (sql.includes("FROM bookings")) return { rows: [{ status: "booked",
+        starts_at: "2026-11-12T18:00:00Z", provider_uid: "booking-1" }] };
+      if (sql.includes("count(*)::int AS n")) return { rows: [{ n: 0 }] };
+      if (sql.includes("INSERT INTO messages")) {
+        messageRows.push({ id: "push-message-1", status: "sending" });
+        return { rows: [{ id: "push-message-1" }] };
+      }
+      if (sql.includes("UPDATE messages SET status")) {
+        messageRows[0].status = params[1];
+        return { rows: [] };
+      }
+      throw new Error(`unexpected deck query: ${sql}`);
+    } };
+    const result = await sendDeckPush(db, { orgId: ORG, clientId: CLIENT,
+      eventId: "booking-event-1", bookingUid: "booking-1",
+      startTime: "2026-11-12T18:00:00Z", slug: "the-call",
+      now: new Date("2026-11-10T18:00:00Z"), env: { ...ENV, MESSAGING_DRY_RUN: "off" },
+      sendNative: async () => ({ sent: 0 }),
+      sendWeb: (pushDb, target) => sendToClient(pushDb, { ...target, fetchImpl: w.fetchImpl }) });
+    assert.equal(result.sent, true);
+    assert.equal(messageRows[0].status, "sent");
+    assert.equal(w.calls.length, 1);
+    assert.equal(shown(w.calls[0], phone).url, "/slideshows/the-call.html");
+  } finally {
+    w.close();
+  }
 });

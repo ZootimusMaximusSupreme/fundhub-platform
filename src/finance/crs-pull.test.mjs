@@ -243,7 +243,9 @@ test("runCrsPull stores one tri-bureau result and replays without another order"
 });
 
 test("a second worker cannot order on an active claim while the first stores its result", async () => {
-  const db = fakeDb(request("request-concurrent"));
+  const db = fakeDb(request("request-concurrent", {
+    requested_by_kind: "system", requested_by_staff_id: null
+  }));
   let entered, release;
   const providerEntered = new Promise((resolve) => { entered = resolve; });
   const providerRelease = new Promise((resolve) => { release = resolve; });
@@ -271,7 +273,9 @@ test("a second worker cannot order on an active claim while the first stores its
 });
 
 test("a claim lost between reading queued and claiming cannot order a bureau", async () => {
-  const db = fakeDb(request("request-claim-race"));
+  const db = fakeDb(request("request-claim-race", {
+    requested_by_kind: "system", requested_by_staff_id: null
+  }));
   const query = db.query.bind(db);
   let firstRead = true;
   db.query = async (sql, params) => {
@@ -815,7 +819,7 @@ test("a pre-claimed processing request never starts another bureau order", async
     () => runCrsPull(raceDb, {
       orgId: ORG, clientId: CLIENT, requestId, client: bureau, bureaus: ["TU"]
     }),
-    (error) => error.status === 409 && /processing/.test(error.message)
+    (error) => error.status === 409 && error.code === null && /processing/.test(error.message)
   );
   assert.deepEqual(bureau.calls, []);
   assert.equal(raceDb.requests.get(requestId).status, "processing", "preserve manual reconciliation evidence");

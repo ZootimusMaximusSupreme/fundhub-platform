@@ -368,6 +368,7 @@ export const EXPECTED_MIGRATIONS = Object.freeze([
   "migrations/505_chris_setter_booking_alert.sql",
   "migrations/506_cortana_booking_feed.sql",
   "migrations/507_sales_set_stage.sql",
+  "migrations/508_qualification_bucket.sql",
   "migrations/520_ar_client_balance_issued_only.sql",
   "migrations/521_staff_roster_removal.sql",
   "migrations/522_staff_apns_devices.sql",
