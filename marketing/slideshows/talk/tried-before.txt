@@ -1,6 +1,8 @@
 Fundhub, If You Tried Before
 
-1. TB-01 / What's still there — A rushed series of applications can leave hard inquiries on your file.
+1. TB-01 / What's still there — If funding failed before, we read what is still on your file first.
+
+If a funding attempt failed before, we read the old applications, the banks' answers and the hard pulls still on your file before the next application goes out.
 
 A company that blasts your file to its lender list leaves a HARD pull from every bank on that list. Those pulls count against you for a full 12 months.
 

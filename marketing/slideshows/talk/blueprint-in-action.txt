@@ -1,10 +1,10 @@
 Blueprint, In Action
 
-1. BA-01 / Day 0 — Your report writes your first step, so on day 0 the screen already says Waiting on you.
+1. BA-01 / Day 0 — Your report gives you a first step, a target and a way to prove it is done.
 
-Your report writes your first step before you ever log in, so on day zero the screen already says waiting on YOU.
+Your Blueprint reads your report and puts your first card step on the dashboard before you log in. It names the target and the proof that closes the step.
 
-The engine read the report and set that step's target straight off the file itself.
+On this sample file, that first job is a card paydown set from the card's own limit.
 
 This is a sample file. Up top it says in progress, then waiting on you. Under that sit your scores, one card per bureau.
 

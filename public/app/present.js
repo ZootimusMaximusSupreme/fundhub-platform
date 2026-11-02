@@ -1084,7 +1084,7 @@
         "The dashboard shows your next action. You do the tasks and proof uploads; AI agents guide routine steps, and the Fundhub team handles questions and blockers. FinanceOS is included for 12 months.",
         "What have you tried already, and what is still unresolved? Let me show you where your plan starts."
       ],
-      watch: "Open the first real step from this file. Explain buyer work and team support."
+      watch: "Open the first real step from this file. Explain buyer work and team support. Never promise an approval, an amount, a score, or a removal."
     },
     "B-02": {
       title: "The stack. Walk each line.",
@@ -1093,7 +1093,7 @@
         "For each step, I'll show what you do, what the AI agents track, and when the Fundhub team steps in.",
         "If a spouse or partner wants to participate, we review their own file and consent separately. One partner file is included."
       ],
-      watch: "Use only items shown for this client. After payment, set up any agreed partner file and bank tracker in Client Control Panel."
+      watch: "Use only items shown for this client. After payment, set up any agreed partner file and bank tracker in Client Control Panel. Never promise an approval, an amount, a score, or a removal."
     },
     "B-03": {
       title: "FinanceOS. Show it live.",
@@ -1112,7 +1112,7 @@
         "A financing pre-check is soft; accepting a loan can add a hard inquiry and a new account. Read the rate and payment before you choose.",
         "Does this plan fit your goal, and do you want to start?"
       ],
-      watch: "Read the displayed price and the Blueprint agreement. Its 12 months do not automatically renew; S-21's funding action deadlines apply only to a funding sale."
+      watch: "Read the displayed price and the Blueprint agreement. There is no renewal charge after 12 months. S-21's funding action deadlines belong to a funding sale: read G-01 and G-02 there word for word, never for the Blueprint. Never promise an approval, an amount, a score, or a removal."
     },
     "B-05": {
       title: "Downsell. Start with FinanceOS.",
