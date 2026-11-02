@@ -26,7 +26,7 @@
  *      another org must be refused before a card is read, so the tests assert on
  *      THE PARAMETERS ACTUALLY BOUND, not just on the status code.
  *
- *   3. A DEPOSIT THAT RAISES NET CASH. The calculator's own test pins the
+ *   3. A DEPOSIT CHARGED TWICE. The calculator's own test pins the
  *      arithmetic; this pins that the ENDPOINT does not undo it on the way out,
  *      because the number it returns is the one a closer reads to a client.
  *
@@ -253,22 +253,19 @@ describe("net cash — the number somebody reads out loud", () => {
     assert.equal(n.approved_funding, 250000);
     assert.equal(n.success_fee, 25000);
     assert.equal(n.deposit, 3000);
-    assert.equal(n.net_cash_to_client, 222000);
+    assert.equal(n.net_cash_to_client, 225000);
+    assert.equal(n.fee_from_proceeds, 22000);
+    assert.equal(n.fee_paid_out_of_pocket, 3000);
   });
 
-  test("a LARGER deposit lowers net cash — through the endpoint, not just in the module", async () => {
+  test("a larger deposit credits the fee once through the endpoint", async () => {
     const small = await post({ approved_funding: 250000, fee_pct: 0.10, down_payment: 3000 });
     const large = await post({ approved_funding: 250000, fee_pct: 0.10, down_payment: 9000 });
-    assert.ok(
-      large.body.net.net_cash_to_client < small.body.net.net_cash_to_client,
-      "paying more up front left the client with MORE cash — the defect is back on the wire: " +
-      `${large.body.net.net_cash_to_client} for $9k down vs ${small.body.net.net_cash_to_client} for $3k`
-    );
-    assert.equal(
-      small.body.net.net_cash_to_client - large.body.net.net_cash_to_client, 6000,
-      "a $6,000 larger deposit must lower net cash by exactly $6,000");
-    assert.equal(large.body.net.success_fee, small.body.net.success_fee,
-      "the success fee shrank because a deposit was paid — f-07 does not bill it that way");
+    assert.equal(small.body.net.net_cash_to_client, 225000);
+    assert.equal(large.body.net.net_cash_to_client, 225000);
+    assert.equal(large.body.net.success_fee, 25000);
+    assert.equal(large.body.net.fee_from_proceeds, 16000);
+    assert.equal(large.body.net.fee_paid_out_of_pocket, 9000);
   });
 
   test("debts entered are a separate visible line and a separate subtraction", async () => {
@@ -277,7 +274,7 @@ describe("net cash — the number somebody reads out loud", () => {
     });
     const n = r.body.net;
     assert.equal(n.existing_debts, 12000);
-    assert.equal(n.net_cash_after_debts, 210000, "222,000 − 12,000");
+    assert.equal(n.net_cash_after_debts, 213000, "225,000 − 12,000");
     assert.equal(n.existing_debts_source, "entered_on_this_screen",
       "a typed assumption must not read as a stored deal term");
   });

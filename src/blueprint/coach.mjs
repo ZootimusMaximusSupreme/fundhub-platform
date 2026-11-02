@@ -1,6 +1,8 @@
 // Shared Blueprint coach hooks. No registry activation, provider calls or new cadence.
 import { fetchContext } from "../agents/context.mjs";
 import { isCapitalBlueprintBuyer } from "./coach-exception.mjs";
+import { BLUEPRINT_PRODUCT_CODE } from "../waypoints/purchase.mjs";
+import { PAID_TRANSACTION_STATUS } from "../entitlements/entitlements.mjs";
 import { evaluateWaypoints } from "../waypoints/verify.mjs";
 import { createTask } from "../lib/create-task.mjs";
 import { BLUEPRINT_COACH_INSTRUCTIONS, parseBlueprintCoachReply, validBlueprintCoachAction, blueprintCoachQuestion } from "./coach-prompt.mjs";
@@ -9,24 +11,41 @@ export { BLUEPRINT_COACH_INSTRUCTIONS, parseBlueprintCoachReply, blueprintCoachQ
 export const BLUEPRINT_COACH_CODE = "BP-COACH";
 export const BLUEPRINT_COACH_VOICE_CODE = "BP-COACH-VOICE";
 
-export async function isBlueprintCoachClient(db, { orgId, clientId } = {}) {
-  if (!orgId || !clientId || !await isCapitalBlueprintBuyer(db, { orgId, clientId })) return false;
-  const result = await db.query(
-    `SELECT 1 FROM v_client_entitlements e
-      JOIN clients c ON c.id = e.client_id AND c.org_id = e.org_id
-      WHERE e.org_id = $1 AND e.client_id = $2
-        AND e.entitlement_code = 'credit-optimization-roadmap' AND e.active LIMIT 1`,
-    [orgId, clientId]
+export async function isBlueprintCoachClient(db, { orgId, clientId, asOf = new Date() } = {}) {
+  const at = new Date(asOf);
+  if (!orgId || !clientId || Number.isNaN(at.getTime())) return false;
+  // The roadmap tile's legacy grant is perpetual. Coaching is not: it must
+  // attach to the SAME successful paid Blueprint transaction in its first year.
+  const { rows } = await db.query(
+    `SELECT 1 FROM entitlements e
+       JOIN transactions t ON t.id = e.source_transaction_id
+         AND t.org_id = e.org_id AND t.client_id = e.client_id
+       JOIN products p ON p.id = resolve_product_id(t.org_id, t.product_name)
+         AND p.org_id = t.org_id
+      WHERE e.org_id = $1::uuid AND e.client_id = $2::uuid
+        AND e.entitlement_code = 'credit-optimization-roadmap'
+        AND e.revoked_at IS NULL
+        AND (e.expires_at IS NULL OR e.expires_at > $3::timestamptz)
+        AND lower(btrim(p.code)) = $4
+        AND lower(btrim(COALESCE(t.status, ''))) = $5
+        AND t.created_at <= $3::timestamptz
+        AND (t.created_at + interval '12 months') > $3::timestamptz
+      LIMIT 1`,
+    [orgId, clientId, at.toISOString(), BLUEPRINT_PRODUCT_CODE, PAID_TRANSACTION_STATUS]
   );
-  return !!result.rows[0];
+  return rows.length > 0;
 }
 
 export async function prepareBlueprintCoachTurn(db, {
   orgId, clientId, conversationId = null, channel = "sms"
-} = {}, { fetchContextImpl = fetchContext, isBuyerImpl = isCapitalBlueprintBuyer } = {}) {
+} = {}, { fetchContextImpl = fetchContext, isBuyerImpl = isCapitalBlueprintBuyer,
+  serviceYearActiveImpl = isBlueprintCoachClient } = {}) {
   if (!orgId || !clientId) return { ok: false, reason: "missing_ids" };
   if (!["sms", "email", "voice"].includes(channel)) return { ok: false, reason: "unsupported_channel" };
   if (!await isBuyerImpl(db, { orgId, clientId })) return { ok: false, reason: "not_blueprint_buyer" };
+  // A historical paid buyer and a still-unlocked course tile alone cannot
+  // authorize new SMS, voice calls, or progress actions after month 12.
+  if (!await serviceYearActiveImpl(db, { orgId, clientId })) return { ok: false, reason: "blueprint_access_inactive" };
   const context = await fetchContextImpl(db, { orgId, clientId, conversationId, channel });
   if (context?.client?.id !== clientId || !context.as_prompt_block) return { ok: false, reason: "client_context_unavailable" };
   if (!context.blueprint?.access_active) return { ok: false, reason: "blueprint_access_inactive" };

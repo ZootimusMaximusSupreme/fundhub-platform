@@ -69,15 +69,15 @@ async function toWrap(page) {
   await page.waitForFunction(() => /Wrap/.test(document.querySelector(".cockpit .ck-hd .t")?.textContent || ""));
 }
 
-const FUND = "Here is today's estimate from your file: [Amount]. A lender still decides each application.";
-const REPAIR = "Here are the specific items the report found. If a higher amount is shown, that is a projection after changes, not a promised approval.";
-const EDU = "If their ask is 'teach me to do this myself', route Education below. The sort still gets named first.";
+const FUND = "Here is what your file supports today: [amount on screen]. A lender still decides each application.";
+const REPAIR = "These are the specific items the report found. The higher amount is a projection after those changes, not a bank approval.";
+const EDU = "If they ask to learn, name the file's path first. The Capital Blueprint is the guided plan; Capital Academy stays off until it is filmed.";
 
 test("the reveal slide says the funding line to a funding client and nothing from the other two routes", { timeout: 90_000 }, async (t) => {
   const { open } = await startScreens(t);
   const { page } = await openDeck(open, "FULL_FUNDING");
   await toReveal(page);
-  assert.deepEqual(await saysNow(page), [FUND, "Pause. Let it land. Then: what jumps out at you?"]);
+  assert.deepEqual(await saysNow(page), [FUND, "Here is what holds the rest back: [items on screen]. What stands out to you?"]);
   await page.close();
 });
 
@@ -112,10 +112,10 @@ test("[First Name] is the client's first word, and stays as written when no name
   const { open } = await startScreens(t);
   const named = await openDeck(open, "FULL_FUNDING", "Dana Whitfield");
   assert.equal(await titleNow(named.page), "Rapport");
-  assert.match((await saysNow(named.page))[0], /^Hey Dana! It's \[Your Name\] over at Fundhub\./);
+  assert.match((await saysNow(named.page))[0], /^Hey Dana, it's \[Your Name\] with Fundhub\./);
   await named.page.close();
   const nameless = await openDeck(open, "FULL_FUNDING", "");
-  assert.match((await saysNow(nameless.page))[0], /^Hey \[First Name\]! It's \[Your Name\] over at Fundhub\./);
+  assert.match((await saysNow(nameless.page))[0], /^Hey \[First Name\], it's \[Your Name\] with Fundhub\./);
   await nameless.page.close();
 });
 
@@ -124,14 +124,14 @@ test("the closing wrap follows the offer that was chosen, not the funding wrap f
 
   const funding = await openDeck(open, "FULL_FUNDING");
   await toWrap(funding.page);
-  assert.match((await saysNow(funding.page))[0], /^Within 24 business hours your funding advisor reaches out and starts on your file\./);
-  assert.match((await saysNow(funding.page)).at(-1), /Congratulations, Dana\. You made a great decision\./);
+  assert.match((await saysNow(funding.page))[0], /^Your funding advisor begins the file within 24 business hours/);
+  assert.match((await saysNow(funding.page)).at(-1), /The lender decides the result/);
   await funding.page.close();
 
   // a file that is not ready leads with the Capital Blueprint (row 2): its own wrap, no funding promise
   const blueprint = await openDeck(open, "REPAIR_ONLY");
   await toWrap(blueprint.page);
-  assert.match((await saysNow(blueprint.page))[0], /^Your deliverables generate from the pull we just ran and land in your email today\.$/);
+  assert.match((await saysNow(blueprint.page))[0], /^Your Capital Blueprint is built from the file we just reviewed\./);
   assert.equal((await saysNow(blueprint.page)).some((l) => /funding advisor|applications are submitted|how-to course/.test(l)), false);
   await blueprint.page.close();
 
@@ -142,7 +142,7 @@ test("the closing wrap follows the offer that was chosen, not the funding wrap f
   await repair.page.locator('[data-act="next"]').first().click();
   await repair.page.locator('[data-act="rung:0"]').click();
   await toWrap(repair.page);
-  assert.match((await saysNow(repair.page))[0], /^Round one goes out today, built from the pull we just ran\./);
+  assert.match((await saysNow(repair.page))[0], /^Your credit specialist prepares round one from the file we just reviewed\./);
   assert.equal((await saysNow(repair.page)).some((l) => /funding advisor|applications are submitted/.test(l)), false);
   await repair.page.close();
 
@@ -179,45 +179,51 @@ async function walkTo(page, title) {
 }
 
 const CLOSE_LOGISTICS = [
-  "Awesome. Let's get this going. I'm sending the agreement right now. Best email for that?",
-  "Review it while I get your billing info. What's your billing address?",
-  "Collect the card. Fire the pay link. Keep them on the line until it posts."
+  "Let's read the agreement and price together. What's the best email for your copy?",
+  "After you review it, I'll send the matching payment link.",
+  "Stay on until the payment shows paid, then show the first step in the portal."
 ];
-const CLOSE_LOGISTICS_WATCH = "Do not celebrate. Do not over-explain. No time to second-guess.";
+const CLOSE_LOGISTICS_WATCH = "Confirm the agreement and payment before ending the call.";
 
 const WRAPS = {
   FUNDING_DFY: {
     lines: [
-      "Within 24 business hours your funding advisor reaches out and starts on your file. Within 72 business hours your first applications are submitted.",
-      "Any questions before we wrap? ... Congratulations, Dana. You made a great decision. We're going to get to work on this. Talk soon."
+      "Your funding advisor begins the file within 24 business hours and submits the first authorized applications within 72 business hours.",
+      "The lender decides the result. Let's open your first portal step. Any questions before we wrap?"
     ],
     watch: "Confirm the payment posted before ending the call. Then log the disposition."
   },
   REPAIR_DFY: {
     lines: [
-      "Round one goes out today, built from the pull we just ran. It lands in your email and in your dashboard.",
-      "The bureaus have 30 to 45 days to answer each round, and you watch every dispute and every response happen live.",
-      "Any questions before we wrap? ... Congratulations, Dana. Talk soon."
+      "Your credit specialist prepares round one from the file we just reviewed. You will see the letters in your portal when they are sent.",
+      "The specialist tracks each bureau reply, usually 30 to 45 days per round, and plans the next agreed step from the record.",
+      "Let's open your first portal step. Any questions before we wrap?"
     ],
     watch: "No advisor and no applications on this sale — it is credit repair. Never promise a deletion, a score, or a result. Confirm the payment posted, then log the disposition."
   },
   REPAIR_TRIAL: {
     lines: [
-      "We run your first full round today, bureaus and creditors, built from the pull we just ran.",
-      "You watch every dispute and every response in your dashboard. After the round you decide whether to keep going.",
-      "Any questions before we wrap? ... Talk soon, Dana."
+      "Your credit specialist prepares the first round from your file. You will see the letters and replies in your portal as they are recorded.",
+      "After that round, you decide whether to continue. Let's open your first portal step.",
+      "Any questions before we wrap?"
     ],
     watch: "One round, then their decision. Do not describe it as the full program. Never promise a deletion, a score, or a result."
   },
-  // with the course off the wrap does not promise the how-to course (row 4); wrapLines() adds it back for the
-  // education rungs, which are judged with the course switch on
   UWIQ_DELIVERABLES: {
     lines: [
-      "Your deliverables generate from the pull we just ran and land in your email today.",
-      "You run it at your own pace. Nobody is working the file for you on this one — that's the whole point of it.",
-      "Whenever you want us to run the process for you instead, we're here. Any questions before we wrap?"
+      "Your Capital Blueprint is built from the file we just reviewed. Let's open the first step in your portal.",
+      "You do the tasks and proof uploads; AI agents help track the checklist, and the Fundhub team handles questions and blockers.",
+      "FinanceOS is included for 12 months. Any questions before we wrap?"
     ],
-    watch: "This is a do-it-yourself purchase. No advisor, no applications submitted, no funding promised."
+    watch: "This is the guided 12-month Blueprint. Name the buyer's next task and the Fundhub team's support."
+  },
+  EDU_DELIVERABLES: {
+    lines: [
+      "Your file deliverables and how-to course are available from today's pull.",
+      "You work through those lessons on your own file at your own pace.",
+      "Let's open your first lesson. Any questions before we wrap?"
+    ],
+    watch: "This is the course offer. Show only material included in the sale."
   },
   FUNDING_MASTERY: {
     lines: [
@@ -232,13 +238,13 @@ const WRAPS = {
 // What the investment slide (S-19) says to the closer on each of the three routes.
 const INVESTMENT = {
   FUND: [
-    "To get you in front of the right banks in the right order, it's a $3,000 deposit today.",
-    "That $3,000 is not an additional fee. It goes directly toward your 10 percent success fee on the back end."
+    "To start the funding work, the deposit is $3,000 today. It counts once toward the 10 percent success fee on confirmed approved limits or amounts.",
+    "The fee includes approved credit access you do not draw. Let's read the agreement's example and payment timing together."
   ],
-  REPAIR: ["Most expensive first. Lead with the Capital Blueprint button: the whole 12-month plan from their file, price off the screen. If that's a no: onboard now, all six rounds done for you, $1,000. Still a no: round one for $200, and the $200 counts toward the $1,000."],
-  EDU: ["Lead with the $5,000 full program. Only if that's a no: the $1,000 deliverables package plus the how-to course."]
+  REPAIR: ["Offer the 12-month Capital Blueprint first when that plan fits. If they decline, show the $1,000 done-for-you optimization or $200 first round at its actual terms."],
+  EDU: ["If a course offer is live, use only the price and deliverables on its screen. Keep it separate from the Blueprint."]
 };
-const INVESTMENT_WATCH = "Rung buttons below on repair. Do NOT lead with the cheaper one.";
+const INVESTMENT_WATCH = "Name one offer, its full price and its written terms before payment.";
 
 /**
  * Every way a closer can reach a sale, and what the cockpit must then say.
@@ -275,11 +281,9 @@ const ROUTES = [
     setup: async (page) => { await walkTo(page, /Temperature check/); await page.locator('[data-act="desc:eduLow"]').click(); } }
 ];
 
-/** The wrap for an offer. The Blueprint's first line names the how-to course only while the course is live. */
-function wrapLines(offer, course) {
-  const lines = [...WRAPS[offer].lines];
-  if (offer === "UWIQ_DELIVERABLES" && course) lines[0] = lines[0].replace(/\.$/, ", with the how-to course.");
-  return lines;
+/** The course route uses a different wrap from the Blueprint for the same underlying offer key. */
+function wrapKey(offer, bucket) {
+  return offer === "UWIQ_DELIVERABLES" && bucket === "EDU" ? "EDU_DELIVERABLES" : offer;
 }
 
 for (const route of ROUTES) {
@@ -305,8 +309,8 @@ for (const route of ROUTES) {
 
     await page.locator('[data-act="next"]').first().click();
     assert.equal(await nextTitle(page), "Wrap");
-    const wrap = WRAPS[route.offer];
-    assert.deepEqual(await saysNow(page), wrapLines(route.offer, !!route.course), `${route.name}: the wrap words`);
+    const wrap = WRAPS[wrapKey(route.offer, route.bucket)];
+    assert.deepEqual(await saysNow(page), wrap.lines, `${route.name}: the wrap words`);
     assert.equal(await watchNow(page), wrap.watch, `${route.name}: the watch-for words`);
     await page.close();
   });

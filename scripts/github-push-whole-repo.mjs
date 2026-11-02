@@ -14,7 +14,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadEnv } from "./load-env.mjs";
-import { planBranchPushes, requireMainFastForward } from "./github-push-plan.mjs";
+import { planBranchPushes, requireMainFastForward, publicationPushes } from "./github-push-plan.mjs";
+
+const mainOnly = process.argv.includes("--main-only");
 import { spawnSync } from "node:child_process";
 
 loadEnv();
@@ -104,7 +106,8 @@ try {
   const remoteUrl = remoteUrlFor(repo);
   console.log(`pushing as ${who.login} to ${repo} ...`);
 
-  const dryRun = spawnSync("git", ["push", "--dry-run", remoteUrl, "main"], {
+  const [pushCommand, ...dryTarget] = publicationPushes(remoteUrl, [], { mainOnly })[0];
+  const dryRun = spawnSync("git", [pushCommand, "--dry-run", ...dryTarget], {
     encoding: "utf8",
   });
   const dryText = `${dryRun.stderr || ""}${dryRun.stdout || ""}`;
@@ -129,7 +132,7 @@ try {
     }
   }
 
-  const branches = run("git", ["for-each-ref", "--format=%(refname:short)", "refs/heads/"])
+  const branches = mainOnly ? ["main"] : run("git", ["for-each-ref", "--format=%(refname:short)", "refs/heads/"])
     .split("\n")
     .map((b) => b.trim())
     .filter(Boolean);
@@ -156,13 +159,8 @@ try {
     if (check.status === 1) return false;
     throw new Error(`git merge-base failed for ${branch}: ${(check.stderr || "").trim().slice(0, 300)}`);
   });
-  const mainArgs = ["push", remoteUrl];
-  mainArgs.push("main");
-  run("git", mainArgs, { stdio: "inherit" });
-  run("git", ["push", remoteUrl, "--tags"], { stdio: "inherit" });
-
-  for (const branch of branchesToPush) {
-    run("git", ["push", remoteUrl, branch], { stdio: "inherit" });
+  for (const args of publicationPushes(remoteUrl, branchesToPush, { mainOnly })) {
+    run("git", args, { stdio: "inherit" });
   }
 
   for (const branch of branchesToPush) {
@@ -186,12 +184,13 @@ try {
   console.log(`main matches GitHub ${localMain}`);
 
   const remoteLines = run("git", ["remote"]).split("\n").map((l) => l.trim()).filter(Boolean);
-  if (remoteLines.includes("gitlab")) {
+  if (!mainOnly && remoteLines.includes("gitlab")) {
     run("git", ["remote", "remove", "gitlab"]);
     console.log("removed GitLab remote gitlab");
   }
 
-  console.log(`done — ${branchesToPush.length + 1} branch(es) and tags on GitHub (${repo}); ${mergedBranches.length} merged local branch(es) skipped`);
+  console.log(mainOnly ? `done — main only on GitHub (${repo}); PR branches and tags untouched`
+    : `done — ${branchesToPush.length + 1} branch(es) and tags on GitHub (${repo}); ${mergedBranches.length} merged local branch(es) skipped`);
 } catch (err) {
   console.error(String(err.message || err));
   process.exit(1);

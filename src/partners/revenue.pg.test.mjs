@@ -388,7 +388,7 @@ describe("partner revenue accrual", { skip: !HAVE_DB ? "no DATABASE_URL" : false
     await db.query(
       `INSERT INTO transactions (org_id, client_id, product_name, amount_paid, status,
                                  provider, provider_ref, raw_payload)
-       VALUES ($1,$2,'card-stacking-dfy','3000.00','paid','test',$3,'{}'::jsonb)`,
+       VALUES ($1,$2,'card-stacking-dfy','3000.00','succeeded','test',$3,'{}'::jsonb)`,
       [org, partnerClient, tag]);
     const eventId = (await db.query(
       `INSERT INTO events (org_id, name, client_id, payload, idempotency_key)
@@ -397,10 +397,10 @@ describe("partner revenue accrual", { skip: !HAVE_DB ? "no DATABASE_URL" : false
 
     const event = {
       id: eventId, orgId: org, name: "deposit.paid",
-      payload: { amount: 3000, providerRef: tag, notes: tag }
+      payload: { amount: 3000, providerRef: tag, source: "test", productName: "card-stacking-dfy", notes: tag }
     };
     const first = await ensureSalePayment(db, event, {
-      saleId, productId: products["card-stacking-dfy"], kind: "deposit"
+      saleId, clientId: partnerClient, productId: products["card-stacking-dfy"], kind: "deposit"
     });
     assert.equal(first.created, true);
     assert.equal(first.partnerRevenue?.accrued, true,
@@ -408,7 +408,7 @@ describe("partner revenue accrual", { skip: !HAVE_DB ? "no DATABASE_URL" : false
 
     // The same webhook re-delivered: one payment row, one accrual row.
     const replay = await ensureSalePayment(db, event, {
-      saleId, productId: products["card-stacking-dfy"], kind: "deposit"
+      saleId, clientId: partnerClient, productId: products["card-stacking-dfy"], kind: "deposit"
     });
     assert.equal(replay.created, false);
     assert.equal(replay.partnerRevenue?.reason, "already_accrued");
@@ -432,7 +432,7 @@ describe("partner revenue accrual", { skip: !HAVE_DB ? "no DATABASE_URL" : false
     const out = await ensureSalePayment(db, {
       id: eventId, orgId: org, name: "deposit.paid",
       payload: { amount: 3000, notes: tag }
-    }, { saleId, productId: products["card-stacking-dfy"], kind: "deposit" });
+    }, { saleId, clientId: directClient, productId: products["card-stacking-dfy"], kind: "deposit" });
 
     assert.equal(out.created, true, "the payment itself must still be recorded");
     assert.equal(out.partnerRevenue?.accrued, false);

@@ -155,7 +155,7 @@ const DECIDED_BY_AN_OWNER = `NOT EXISTS (SELECT 1 FROM staff s
 
 check({
   key: "brain-review-approved",
-  control: "Owner: Approve a waiting file (button on the file row and in the review list)",
+  control: "Owner: Approve a waiting file in the review list",
   requirement: "Every approved review that is still the file's newest must be stamped with the time and an owner of this company, and its file must be approved at exactly the tier asked for (file and every chunk), with an affiliate allowlist row for an affiliate approval and none for any other tier.",
   from: "brain_classification_reviews r LEFT JOIN brain_files f ON f.id = r.file_id AND f.org_id = r.org_id",
   where: `r.org_id = $1::uuid AND r.status = 'approved' AND r.updated_at >= ${DAYS(90)}
@@ -471,10 +471,10 @@ export const FIN_B11_ROWS = Object.freeze([
   ["Past chats list: click a chat to reopen it", BRAIN, "brain-past-chats", FIN_B11_BRAIN_TEST],
   ["Files you added: list and Refresh button", BRAIN, "brain-uploads", FIN_B11_BRAIN_TEST, [FIN_B11_BRAIN_LISTS_TEST]],
   ["Owner: 'Waiting for your approval' panel and its Refresh button", BRAIN, "brain-review-queue", FIN_B11_BRAIN_TEST, [FIN_B11_BRAIN_LISTS_TEST]],
-  ["Owner: Approve a waiting file (button on the file row and in the review list)", BRAIN, "brain-review-approved", FIN_B11_BRAIN_TEST, [FIN_B11_BRAIN_LISTS_TEST]],
+  ["Owner: Approve a waiting file in the review list", BRAIN, "brain-review-approved", FIN_B11_BRAIN_TEST, [FIN_B11_BRAIN_LISTS_TEST]],
   ["Owner: Turn down a waiting file", BRAIN, "brain-review-rejected", FIN_B11_BRAIN_TEST, [FIN_B11_BRAIN_LISTS_TEST]],
   ["Class quiz: answer boxes and 'Check answers' (scored in the browser, nothing saved)", BRAIN, null, FIN_B11_BRAIN_TEST],
-  ["Documents button (opens right-hand panel) and its Close button", BRAIN, null, FIN_B11_BRAIN_TEST],
+  ["Manage files tab opens file view; Ask & browse tab closes it", BRAIN, null, FIN_B11_BRAIN_TEST],
   ["New chat button", BRAIN, null, FIN_B11_BRAIN_TEST],
   ["Page itself: staff-only chat screen loads (shell, ramp-quizzes.js, data.js)", BRAIN, null, FIN_B11_BRAIN_TEST],
   ["Past chats rail toggle (hamburger, narrow screens)", BRAIN, null, FIN_B11_BRAIN_TEST],

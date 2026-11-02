@@ -107,6 +107,13 @@ const CHROMIUM = preinstalledChromium();
 const PORT = Number(process.env.E2E_PORT || 43117);
 
 export default defineConfig({
+  // Node's unit shards launch several independent Playwright CLIs at once.
+  // If they share the default test-results outputDir, one CLI can remove that
+  // directory while another is creating .playwright-artifacts-0 (ENOENT).
+  // Each CLI config process owns its own subdirectory; failed-run artifacts
+  // still live under test-results/ for GitHub Actions upload-artifact.
+  // Do not serialize, skip, or retry real browser assertions to hide the race.
+  outputDir: path.join("test-results", `run-${process.pid}`),
   testDir: "./e2e",
   /* The live specs sign in to the real fundhub.ai. They belong to
      playwright.live.config.mjs (testMatch "**\/live-*.spec.mjs") and never to

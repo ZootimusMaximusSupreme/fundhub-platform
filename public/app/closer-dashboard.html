@@ -335,7 +335,7 @@
               <div class="bd-sub" style="margin-top:14px;">D-03b / How the net cash is arrived at</div>
               <table class="pm">
                 <tr><td>Funded Amount</td><td id="oFunded">—</td></tr>
-                <tr><td id="oFeeLabel">Deposit + 10% Success Fee</td><td id="oFees">—</td></tr>
+                <tr><td id="oFeeLabel">10% Success Fee · deposit credited</td><td id="oFees">—</td></tr>
                 <tr><td>Debts they must clear first</td><td id="oDebts">—</td></tr>
               </table>
             </div>
@@ -528,9 +528,9 @@ function recompute(){
   });
 
   /* ---------- 1b: net cash + monthly ---------- */
-  var fees = deposit + drawn*feePct/100;
+  var fees = deposit + Math.max(0, drawn*feePct/100 - deposit);
   $('oFunded').textContent = usd(drawn);
-  $('oFeeLabel').textContent = 'Deposit + '+(feePct%1?feePct:feePct.toFixed(0))+'% Success Fee';
+  $('oFeeLabel').textContent = (feePct%1?feePct:feePct.toFixed(0))+'% Success Fee · deposit credited';
   $('oFees').textContent  = '−'+usd(fees);
   $('oDebts').textContent = '−'+usd(debts);
   $('oNet').textContent   = usd(drawn-fees-debts);

@@ -186,7 +186,9 @@ test("Blueprint real mode can recover from a completed simulation without replay
   const db = fakeDb([[]]);
   await dueClients(db, now, { realPull: true });
   assert.equal(db.calls[0].params[3], true);
-  assert.match(db.calls[0].text, /cr\.provider = 'crs_softview_simulated'/);
+  assert.match(db.calls[0].text, /COALESCE\(cr\.provider, ''\) = 'crs_softview_simulated'/);
+  assert.match(db.calls[0].text, /LOWER\(COALESCE\(cr\.result->>'simulated', ''\)\) IN \('true', '1'\)/);
+  assert.match(db.calls[0].text, /LOWER\(COALESCE\(cr\.result->>'environment', ''\)\) IN \('sandbox', 'simulated'\)/);
   assert.match(db.calls[0].text, /cr\.org_id = r\.org_id AND cr\.client_id = r\.client_id/);
   assert.match(db.calls[0].text, /r\.status <> 'fulfilled'/);
   const row = { subscription_id: SUB_A, current_period_start: now };
