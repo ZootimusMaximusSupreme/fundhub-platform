@@ -520,7 +520,7 @@ Here is what the Blueprint agreement buys: twelve months of a roadmap built from
 
 The Blueprint pays for the twelve-month plan and support that gets your file ready. When that work has put you in a position to apply, you can use the plan and apply yourself, or you can ask our funding team to handle the applications and bank follow-up. Those are two separate services. I don't want you finding out about a second fee at the end of the year.
 
-If you choose our done-for-you funding service after the Blueprint, we will show you the separate funding agreement before you decide. Today's funding agreement has a $3,000 deposit and a 10% success fee on the confirmed approved limits or amounts we help secure. We are preparing a graduate offer without another deposit, but that offer is not available yet. I will only quote the terms in the agreement you can actually sign. [Show the Blueprint agreement and current funding terms side by side.]
+If you choose our done-for-you funding service after the Blueprint, we will show you the separate funding agreement before you decide. Today's funding agreement has a $3,000 deposit, credited once toward the 10% success fee on confirmed approved limits or amounts we help secure. The remainder comes due as approved funds or credit access arrive. [Show the Blueprint agreement and current funding terms side by side.]
 
 Does that answer what is included today and what you would pay only if you later choose our team to apply for you? Which part did you expect to be included in the Blueprint price?
 
