@@ -118,14 +118,14 @@ test("nobook: distinct events for one application share all three send keys", as
 });
 
 test("nobook: a new survey more than six hours later starts a new cadence", async () => {
-  const db = makeDb({
+  const db = withRecentSends(makeDb({
     clients: [{ ...PERSON }],
     templates: templates(),
     events: [
       { id: "evt-first", org_id: "org-1", client_id: "cl-1", name: "survey.completed", payload: { email: "a@b.com" }, created_at: "2026-10-30T04:00:00Z" },
       { id: "evt-new", org_id: "org-1", client_id: "cl-1", name: "survey.completed", payload: { email: "a@b.com" }, created_at: "2026-10-30T12:00:00Z" }
     ]
-  });
+  }));
   for (const id of ["evt-first", "evt-new"]) {
     await handle({ event: ev("survey.completed", { email: "a@b.com" }, { id, clientId: "cl-1" }), db, step: fakeStep() });
   }
@@ -470,10 +470,17 @@ test("nobook: a run that started under survey.submitted keeps its old waits, sen
 function withRecentSends(inner) {
   const wrapped = Object.create(inner);
   wrapped.query = async (sql, params = []) => {
-    if (/FROM messages[\s\S]*template_key = ANY\(\$3\)/.test(String(sql))) {
-      const [, clientId, keys] = params;
-      // The fake keeps no send time, so every row it holds counts as recent.
-      const hit = inner.messages.some((m) => m.client_id === clientId && keys.includes(m.template_key));
+    const query = String(sql);
+    if (/FROM messages[\s\S]*template_key = ANY\(\$3\)/.test(query)) {
+      const [orgId, clientId, keys, since] = params;
+      const oldTriggerOnly = /JOIN events/.test(query);
+      const hit = inner.messages.some((m) => {
+        if (m.org_id !== orgId || m.client_id !== clientId || !keys.includes(m.template_key)) return false;
+        if (m.created_at && Date.parse(m.created_at) <= Date.parse(since)) return false;
+        if (!oldTriggerOnly) return true;
+        const cohortId = m.provider_ref?.split(":")[2];
+        return inner.events.some((e) => e.org_id === orgId && e.id === cohortId && e.name === "survey.submitted");
+      });
       return { rows: hit ? [{ x: 1 }] : [] };
     }
     return inner.query(sql, params);
@@ -493,7 +500,10 @@ test("nobook: a run asleep under survey.submitted steps aside once the person fi
 });
 
 test("nobook: a survey.completed run skips a text the person already got from an earlier run, and sends the rest", async () => {
-  const db = withRecentSends(makeDb({ clients: [{ ...PERSON }], templates: templates() }));
+  const db = withRecentSends(makeDb({
+    clients: [{ ...PERSON }], templates: templates(),
+    events: [{ id: "evt-old", org_id: "org-1", client_id: "cl-1", name: "survey.submitted", payload: {}, created_at: "2026-10-30T10:00:00Z" }]
+  }));
   // The old-trigger run sent text 1 (and its email) before the person finished.
   db.messages.push({ org_id: "org-1", client_id: "cl-1", channel: "sms", template_key: SMS_NOBOOK_01, provider_ref: "workflow:SMS-NOBOOK-01:evt-old:1" });
   db.messages.push({ org_id: "org-1", client_id: "cl-1", channel: "email", template_key: EMAIL_NOBOOK_01, provider_ref: "workflow:EMAIL-NOBOOK-01:evt-old:1e" });

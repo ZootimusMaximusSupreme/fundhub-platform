@@ -125,15 +125,18 @@ async function startedAt(db, { eventId, orgId }) {
   return at && Number.isFinite(at.getTime()) ? at : null;
 }
 
-/* How far back a text counts as already sent to this person (see stepsAside below). */
+/* How far back an old-trigger text counts during the trigger handoff. */
 export const RECENT_SEND_MS = 7 * 24 * 60 * 60 * 1000;
 
-/* Did this person get any of `keys` from us since `sinceMs`, from any run? */
+/* Did a run started by the retired survey.submitted trigger send these keys?
+   A later survey.completed run is a new chase after the six-hour event window. */
 export async function sentRecently(db, { orgId, clientId, keys, sinceMs }) {
   const r = await db.query(
-    `SELECT 1 FROM messages
-      WHERE org_id = $1 AND client_id = $2 AND direction = 'outbound'
-        AND template_key = ANY($3) AND created_at > $4
+    `SELECT 1 FROM messages m
+      JOIN events e ON e.org_id = m.org_id AND e.id::text = split_part(m.provider_ref, ':', 3)
+      WHERE m.org_id = $1 AND m.client_id = $2 AND m.direction = 'outbound'
+        AND m.template_key = ANY($3) AND m.created_at > $4
+        AND e.name = 'survey.submitted'
       LIMIT 1`,
     [orgId, clientId, keys, new Date(sinceMs).toISOString()]
   );
@@ -165,7 +168,8 @@ export async function handle({ event, db, step, now = () => new Date() }) {
      person finishes, and the finish starts a survey.completed run with its own send
      keys, so both would send. An old-trigger run steps aside once the person has a
      survey.completed (the new run owns the chase from there). A survey.completed run
-     skips a text whose keys this person already got in the last 7 days. */
+     skips a text the old trigger already sent in the last 7 days, while a new
+     finished survey more than six hours later keeps its own chase. */
   const leadEmail = (event.payload || {}).email || null;
   const stepsAside = async (n) => !finished
     && step.run(`check-handed-over-${n}`, () => surveyCompleted(db, clientId, leadEmail, orgId));
