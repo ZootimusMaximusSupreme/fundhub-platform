@@ -100,12 +100,12 @@ test.describe("pipeline board", () => {
     const card = page.locator('.card[data-client-id]');
     await expect(card.locator(".c-booked-when")).toHaveText("Rescheduled · Wed, May 1, 2030, 10:00 AM MST");
     await expect(card.locator(".c-call-confirmed")).toHaveText("✓ Call confirmed");
-    await expect(card.locator(".c-app-opened")).toHaveText("✓ App downloaded");
+    await expect(card.locator(".c-app-opened")).toHaveText("✓ App opened");
     const order = await card.locator(".c-call-confirmed, .c-app-opened").allTextContents();
-    expect(order).toEqual(["✓ Call confirmed", "✓ App downloaded"]);
+    expect(order).toEqual(["✓ Call confirmed", "✓ App opened"]);
   });
 
-  test("does not invent an app download when no authenticated native open exists", async ({ page }) => {
+  test("does not invent an app open when no authenticated native open exists", async ({ page }) => {
     const stages = structuredClone(STAGES);
     stages.stages[0].cards[0].call_confirmed = true;
     await openScreen(page, "/app/pipeline.html", OWNER, {

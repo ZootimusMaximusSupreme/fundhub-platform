@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { PULSE_REGISTRY } from "../registry.mjs";
 import { unpricedApprovalConditions } from "../../funding/success-fee.mjs";
 import {
+  BOARD_APP_OPENS_SQL,
   BOARD_CARDS_SQL,
   BOARD_KEY,
   BOARD_LIMIT,
@@ -33,6 +34,7 @@ import {
   isBadLogoPath,
   isOwnLogoPath,
   judgeBoard,
+  judgeBoardAppOpens,
   judgeClientsList,
   judgePipelineCards,
   judgeRailCounts,
@@ -831,6 +833,34 @@ test("route reads: board, rail counts and client list all PASS, and pass the rou
   assert.deepEqual(param(BOARD_CARDS_SQL), [BOARD_KEY, ORG, BOARD_LIMIT, false]);
   assert.deepEqual(param(COUNTS_SQL), [ORG, false]);
   assert.deepEqual(param(CLIENTS_LIST_SQL), [ORG, CLIENTS_LIST_LIMIT, false]);
+});
+
+test("native receipt tripwire: a saved open missing from the Sales result goes red", async () => {
+  const timestamp = "2026-10-30T12:00:00.000Z";
+  const card = { id: "c1", client_id: CLIENT, stage_id: "s1" };
+  const saved = { client_id: CLIENT, first_authenticated_at: timestamp };
+  const run = (shown) => gapChecks({
+    db: fakeDb(dbMap({
+      [BOARD_CARDS_SQL]: { rows: [{ ...card, app_first_authenticated_at: shown }] },
+      [BOARD_APP_OPENS_SQL]: { rows: [saved] }
+    })), orgId: ORG, now: NOW, sources: [], crmReaders: readers()
+  });
+  const missing = byId(await run(null), "crm-data:pipeline");
+  assert.equal(missing.status, "FAIL");
+  assert.match(missing.detail, /saved iPhone app open/);
+  assert.equal(byId(await run("2026-10-31T12:00:00.000Z"), "crm-data:pipeline").status, "FAIL");
+  const shown = byId(await run(timestamp), "crm-data:pipeline");
+  assert.equal(shown.status, "PASS");
+  assert.match(shown.detail, /1 saved iPhone app opens match/);
+  assert.equal(judgeBoardAppOpens([card], [saved]).status, "FAIL");
+  assert.equal(judgeBoardAppOpens([{ ...card, app_first_authenticated_at: timestamp }], []).status, "FAIL");
+  const readError = await gapChecks({
+    db: fakeDb(dbMap({
+      [BOARD_CARDS_SQL]: { rows: [{ ...card, app_first_authenticated_at: timestamp }] },
+      [BOARD_APP_OPENS_SQL]: new Error('relation "native_client_app_opens" does not exist')
+    })), orgId: ORG, now: NOW, sources: [], crmReaders: readers()
+  });
+  assert.equal(byId(readError, "crm-data:pipeline").status, "FAIL");
 });
 
 test("route reads: the company's demo mode setting is read first and handed to every route", async () => {
