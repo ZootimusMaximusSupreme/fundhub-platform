@@ -21,6 +21,7 @@ import { register as registerCommasDisputes } from "./handlers/commas-disputes.m
 import { register as registerCommasSubscriptions } from "./handlers/commas-subscriptions.mjs";
 import { register as registerDiagnosticSoftPull } from "./handlers/diagnostic-soft-pull.mjs";
 import { register as registerCrsDeliverables } from "./handlers/crs-deliverables.mjs";
+import { register as registerCrsFullReport } from "./handlers/crs-full-report.mjs";
 import { register as registerContractSigned } from "./handlers/contract-signed.mjs";
 import { register as registerContractConsent } from "./handlers/contract-consent.mjs";
 import { register as registerAgentRuntime } from "./agents/runtime.mjs";
@@ -88,6 +89,7 @@ export function registerAll() {
      onAnalysisCompleted creates the client row this one delivers to, and
      handler order on the bus is registration order. */
   registerCrsDeliverables();
+  registerCrsFullReport();
   registerContractSigned();
   registerContractConsent();
   // After comms: the inbound message row must exist before the runtime

@@ -5,7 +5,7 @@ import { advanceCardToStage } from "../workflows/cards.mjs";
 import { withTransaction } from "../db/with-transaction.mjs";
 import { queueCloserSetAlert } from "../staff/lead-alerts.mjs";
 import { tierBookingLink } from "../workflows/messaging.mjs";
-import { creditTierFor } from "../config/survey-qualification.mjs";
+import { creditTierFor, stampQualificationBucket } from "../config/survey-qualification.mjs";
 import { emit } from "../events/bus.mjs";
 
 const HANDOFF_FIELDS = new Set([
@@ -167,6 +167,7 @@ export async function setterNumbers(db, staff) {
          FROM clients c
         WHERE c.org_id = $1
           AND c.custom_fields->'setter_handoff'->>'setter_staff_id' = $2::text
+          AND c.custom_fields->>'crm_archived_at' IS NULL
      )
      SELECT
        COALESCE((
@@ -244,6 +245,7 @@ export async function listSetterQueue(db, staff, { limit = 50, offset = 0 } = {}
           ORDER BY created_at DESC LIMIT 1
        ) ct ON true
       WHERE t.org_id = $1 AND t.assignee_role = 'setter'
+        AND c.custom_fields->>'crm_archived_at' IS NULL
         AND (t.done = false OR (
           c.custom_fields->'setter_handoff'->>'complete_at' IS NOT NULL
           AND t.created_at >= now() - interval '7 days'
@@ -285,7 +287,9 @@ export async function getSetterClient(db, orgId, clientId) {
           WHERE org_id = c.org_id AND client_id = c.id AND assignee_role = 'setter'
           ORDER BY created_at DESC LIMIT 1
        ) st ON true
-      WHERE c.id = $1 AND c.org_id = $2 LIMIT 1`,
+      WHERE c.id = $1 AND c.org_id = $2
+        AND c.custom_fields->>'crm_archived_at' IS NULL
+      LIMIT 1`,
     [clientId, orgId]
   );
   return result.rows[0] || null;
@@ -412,6 +416,9 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
       if (creditTier && savedFields.credit_tier !== creditTier) {
         await persistCreditTier(writer, client_id, staff.org_id, creditTier);
       }
+      // Keep the saved call bucket in step with a setter correction. The booking
+      // trigger and stamp preserve every booking that already has a bucket.
+      await stampQualificationBucket(writer, client_id);
       if (previous.complete_at) {
         const closerStaffId = previous.closer_staff_id || client.closer_staff_id || (staff.role === "owner" ? staff.id : null);
         const closer = closerStaffId === staff.id ? staff : (await writer.query(

@@ -36,6 +36,8 @@ GitHub is canonical. GitLab is retired (owner-set 2026-10-05). Same law: `.ai/ru
 Teleprompter speed (owner-set 2026-10-10). Same law: `.ai/rules/teleprompter-speed.md`
 Teleprompter camera locked (owner-set 2026-10-13). Same law: `.ai/rules/teleprompter-camera.md`
 GitHub ships main (owner-set 2026-10-09). Same law: `.ai/rules/github-ships-main.md`
+Preflight before every pull request (owner-set 2026-10-31). Same law: `.ai/rules/preflight-before-pr.md`
+Ship finished changes in order (owner-set 2026-10-31). Same law: `.ai/rules/ship-in-order.md`
 Never ask permission to run a tool (owner-set 2026-09-08). Same law: `.ai/rules/ground-rules.md`
 Agents run the work (owner-set 2026-09-16). Chris checks the shipped teleprompter on a real iPhone (owner-set 2026-10-13). Same law: `.ai/rules/agents-run-ops-not-chris.md`
 Direct URL only (owner-set 2026-09-21). Same law: `.ai/rules/ux-guidance-urls-first.md`

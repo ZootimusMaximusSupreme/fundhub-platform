@@ -38,7 +38,7 @@ const deckFor = (tier, name = "Dana Whitfield") => ({
   income_estimates: {},
   engine: { available: true, tier, fico: { experian: 700, equifax: 700, transunion: 700 }, reasons: [], total: 0 },
   offers: OFFERS,
-  soft_pull: null
+  soft_pull: { consent_valid: true, diagnostic_paid: true, pull_status: "complete", crs_result_id: "crs-test", sample: false }
 });
 
 async function openDeck(open, tier, name, { course = false } = {}) {
@@ -69,8 +69,8 @@ async function toWrap(page) {
   await page.waitForFunction(() => /Wrap/.test(document.querySelector(".cockpit .ck-hd .t")?.textContent || ""));
 }
 
-const FUND = "Here's how much you qualify for based on where you're at right now: [Amount]. That's what your file supports today. The bank still decides.";
-const REPAIR = "Here's what's holding your file back. Cleaned up, it shows the higher amount on screen. That difference is what's left on the table right now.";
+const FUND = "Here is today's estimate from your file: [Amount]. A lender still decides each application.";
+const REPAIR = "Here are the specific items the report found. If a higher amount is shown, that is a projection after changes, not a promised approval.";
 const EDU = "If their ask is 'teach me to do this myself', route Education below. The sort still gets named first.";
 
 test("the reveal slide says the funding line to a funding client and nothing from the other two routes", { timeout: 90_000 }, async (t) => {

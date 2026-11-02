@@ -29,8 +29,10 @@ const run = readHandler({
            d.signer_name, d.expires_at, d.created_at,
            TRIM(COALESCE(c.first_name,'') || ' ' || COALESCE(c.last_name,'')) AS client_name
       FROM documents d
-      LEFT JOIN clients c ON c.id = d.client_id
+      LEFT JOIN clients c ON c.id = d.client_id AND c.org_id = d.org_id
+        AND c.custom_fields->>'crm_archived_at' IS NULL
      WHERE d.org_id = $5::uuid
+       AND (d.client_id IS NULL OR c.id IS NOT NULL)
        AND ($3::uuid IS NULL OR d.client_id = $3)
        AND ($4::text IS NULL OR d.kind = $4)
      ORDER BY d.created_at DESC

@@ -40,7 +40,7 @@ Legend: **both homes** = one real file in `.ai/rules`, linked for Cursor and for
 - `finish-the-requested-job` (both homes): Finish approved work through required checks, including the launch release checks; holds the stuck rule and the scope-creep line.
 - `ground-rules` (both homes): Repo-only work, look it up, never invent, and owner decisions are final.
 - `everything-in-the-repo` (both homes): Every approved deliverable is saved in this repository in the same session.
-- `orchestration` (both homes): How parallel workflows coordinate on a shared board after the split.
+- `orchestration` (both homes): Shared-board coordination, one PR owner per file, intake across chats, protected CI/Ship gate.
 - `guardrails` (both homes): Standing engineering guardrails for scope, branches, reuse, and conventions.
 - `journey-documentation` (both homes): Every flow has a hand-authored intended journey and a code-generated actual journey.
 - `owner-authorized-account-ops` (both homes): Use available accounts and tools for approved work without asking again.
@@ -90,6 +90,8 @@ Legend: **both homes** = one real file in `.ai/rules`, linked for Cursor and for
 - `deployment-and-infrastructure` (both homes): How Fundhub deploys, sets env, and applies database changes.
 - `agents-run-ops-not-chris` (both homes): Agents run git push, auth, env, and cloud prep — not Chris in Terminal.
 - `github-push` (both homes): GitHub is canonical and public; push only `main` and PR branches, no backup branches; env names.
+- `preflight-before-pr` (both homes): Run `npm run preflight` before opening a pull request or shipping; resolve shared files first.
+- `ship-in-order` (both homes): Finished changes use `npm run ship-change` and follow the PR chain in order.
 - `github-ships-main` (both homes): A push to `main` ships live through GitHub Actions; Netlify has no linked repo so it cannot auto build.
 - `repo-hygiene-vc-router` (both homes): Repo clean-up and "things keep getting lost" are their own doors; load the hygiene or version-control skill first.
 

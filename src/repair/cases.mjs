@@ -126,6 +126,8 @@ SELECT c.id AS card_id,
        AND client_id = c.client_id
   ) dl ON TRUE
  WHERE c.org_id = $1::uuid
+   AND cl.id IS NOT NULL
+   AND cl.custom_fields->>'crm_archived_at' IS NULL
 `;
 
 async function attachSignals(db, orgId, rows) {

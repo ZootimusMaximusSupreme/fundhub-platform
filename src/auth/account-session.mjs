@@ -172,6 +172,50 @@ export async function createAccount(db, {
   return r.rows[0];
 }
 
+/* A booked client already has a client row, but may not have a portal login.
+   Create the account now in the existing invited state; accepting the emailed
+   sign-in link activates it through verifyMagicLink. A replay or two booking
+   events must not create a second account or take over another person's email. */
+export async function ensurePendingClientAccount(db, { orgId, clientId } = {}) {
+  if (!orgId || !clientId) return { ok: false, reason: "client_required" };
+  const found = await db.query(
+    `SELECT id, email, first_name, last_name FROM clients
+      WHERE id = $1 AND org_id = $2 LIMIT 1`, [clientId, orgId]
+  );
+  const client = found.rows[0];
+  const email = String(client?.email || "").trim().toLowerCase();
+  if (!email) return { ok: false, reason: "no_email" };
+
+  const existing = await db.query(
+    `SELECT id, kind, client_id, status FROM accounts
+      WHERE org_id = $1 AND lower(email) = $2 LIMIT 1`, [orgId, email]
+  );
+  const account = existing.rows[0];
+  if (account) {
+    return account.kind === "client" && account.client_id === clientId && account.status !== "suspended"
+      ? { ok: true, accountId: account.id, created: false }
+      : { ok: false, reason: "email_belongs_to_another_account" };
+  }
+
+  try {
+    const created = await createAccount(db, {
+      orgId, kind: "client", clientId, email,
+      name: [client.first_name, client.last_name].filter(Boolean).join(" ") || null
+    });
+    return { ok: true, accountId: created.id, created: true };
+  } catch (error) {
+    if (error?.code !== "23505") throw error;
+    const raced = await db.query(
+      `SELECT id, kind, client_id, status FROM accounts
+        WHERE org_id = $1 AND lower(email) = $2 LIMIT 1`, [orgId, email]
+    );
+    const row = raced.rows[0];
+    return row?.kind === "client" && row.client_id === clientId && row.status !== "suspended"
+      ? { ok: true, accountId: row.id, created: false }
+      : { ok: false, reason: "email_belongs_to_another_account" };
+  }
+}
+
 /* loginAccount — email + password → session, or a refusal.
 
    Deliberately returns the SAME error for an unknown email and a wrong password.

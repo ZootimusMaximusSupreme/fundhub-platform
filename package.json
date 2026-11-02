@@ -10,6 +10,8 @@
   "scripts": {
     "lint": "node scripts/lint.mjs",
     "rules:check": "node scripts/rules-drift-check.mjs",
+    "preflight": "node scripts/preflight-collisions.mjs",
+    "ship-change": "node scripts/ship-change.mjs",
     "migrate": "node db/migrate.mjs",
     "ship": "node scripts/ship.mjs",
     "migrations:manifest": "node scripts/db/expected-migrations.mjs",

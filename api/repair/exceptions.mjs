@@ -34,8 +34,10 @@ export default async function handler(req, res) {
            FROM cards c
            JOIN pipeline_stages ps ON ps.id = c.stage_id
            JOIN pipelines p ON p.id = c.pipeline_id AND p.key = 'optimization'
-           LEFT JOIN clients cl ON cl.id = c.client_id
+           LEFT JOIN clients cl ON cl.id = c.client_id AND cl.org_id = c.org_id
+             AND cl.custom_fields->>'crm_archived_at' IS NULL
           WHERE c.org_id = $1 AND ps.key = 'stalled'
+            AND cl.id IS NOT NULL
           ORDER BY c.updated_at DESC LIMIT 100`,
         [orgId]
       );
@@ -58,6 +60,12 @@ export default async function handler(req, res) {
                 COALESCE(parse_json->>'heldForEscalation', 'false') = 'true' AS held_for_escalation
            FROM dispute_responses
           WHERE org_id = $1 AND COALESCE(confirmed, false) = false
+            AND EXISTS (
+              SELECT 1 FROM clients active_client
+               WHERE active_client.id = dispute_responses.client_id
+                 AND active_client.org_id = dispute_responses.org_id
+                 AND active_client.custom_fields->>'crm_archived_at' IS NULL
+            )
             AND (
               (confidence IS NOT NULL AND confidence < 0.85)
               OR COALESCE(parse_json->>'heldForEscalation', 'false') = 'true'

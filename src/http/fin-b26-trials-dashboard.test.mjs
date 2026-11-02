@@ -184,7 +184,7 @@ describe("GET /api/trials/dashboard", () => {
     pinned(q(/FROM ad_metrics_daily/), "spend: this company and this partner, by day, inside the window",
       "WHERE org_id = $1 AND partner_id = $2 AND date >= $3::date AND ($4::timestamptz IS NULL OR date <= $4::date)");
     pinned(q(/FROM bookings b/), "bookings: reached through this partner's clients, this company",
-      "JOIN clients c ON c.id = b.client_id AND c.org_id = b.org_id WHERE b.org_id = $1 AND c.partner_id = $2 AND b.created_at >= $3");
+      "JOIN clients c ON c.id = b.client_id AND c.org_id = b.org_id WHERE b.org_id = $1 AND c.partner_id = $2 AND c.custom_fields->>'crm_archived_at' IS NULL AND b.created_at >= $3");
     pinned(q(/FROM bookings b/), "bookings: soonest call first", "ORDER BY b.starts_at ASC NULLS LAST, b.created_at ASC");
     pinned(q(/FROM live_trials WHERE/), "the trial is this company's and this partner's", "WHERE org_id = $1 AND partner_id = $2 LIMIT 1");
     pinned(q(/FROM live_trial_events/), "events: this company, this trial, newest first",

@@ -13,9 +13,11 @@
 // added business; extra owner is optional. Age months are stored on the row.
 // Live CRS / Experian Business in this repo does not return that date.
 
-import { db } from "../src/db.mjs";
+import { db, pool } from "../src/db.mjs";
 import { isUuid, ROLE_SETS, requireRole } from "../src/http/read-api.mjs";
 import { requireAuth } from "../src/http/middleware/requireAuth.mjs";
+import { requirePrincipal, resolvePrincipal } from "../src/http/middleware/requirePrincipal.mjs";
+import { AUTH_UNAVAILABLE } from "../src/http/middleware/requireAuth.mjs";
 import { requireClientInOrg } from "../src/http/client-scope.mjs";
 import { requireSessionOrg } from "../src/http/session-org.mjs";
 import { dbDown } from "../src/http/db-down.mjs";
@@ -30,9 +32,6 @@ import {
   ConsentError
 } from "../src/consent/index.mjs";
 import { storeIdentity, PiiError } from "../src/pii/index.mjs";
-import { hashPassword } from "../src/auth/hash.mjs";
-import { newToken } from "../src/auth/session.mjs";
-import { issuePortalLinkForClient } from "../src/auth/magic-link.mjs";
 import { getOffer, formatCents } from "../src/config/offers.mjs";
 import {
   softPullTotalCents,
@@ -49,54 +48,54 @@ import {
   normalizeSoftPullEin,
   parseIncorporatedDate
 } from "../src/slo/businesses.mjs";
+import { paidDiagnosticEventForClient, resumePaidDiagnosticSoftPull } from "../src/handlers/diagnostic-soft-pull.mjs";
+import { isSampleResult } from "../src/http/client-detail.mjs";
 
 const KIND = "soft_pull_consent";
 const BIZ_SOURCE = "soft_pull_approve";
 const OPEN = ["created", "sent"];
 
+// Client-safe progress for the same authorized form. Payment alone is never a
+// completed pull, and a sample report is never a client result.
+export async function clientPullProgress(database, { orgId, clientId }) {
+  const [requests, results] = await Promise.all([
+    database.query(
+      `SELECT id, status, requested_at, crs_result_id
+         FROM soft_pull_requests
+        WHERE org_id = $1 AND client_id = $2
+        ORDER BY requested_at DESC LIMIT 1`,
+      [orgId, clientId]
+    ),
+    database.query(
+      `SELECT id, created_at, result, is_demo
+         FROM crs_results
+        WHERE org_id = $1 AND client_id = $2
+        ORDER BY created_at DESC LIMIT 1`,
+      [orgId, clientId]
+    )
+  ]);
+  const request = requests.rows[0] || null;
+  const result = results.rows[0] || null;
+  const real = result && result.is_demo !== true && !isSampleResult(result.result);
+  const current = real && (!request || request.crs_result_id === result.id ||
+    (request.requested_at && result.created_at &&
+      new Date(result.created_at) >= new Date(request.requested_at)));
+  if (current) return { status: "complete", result_ready: true };
+  const status = String(request?.status || "").toLowerCase();
+  if (["failed", "cancelled", "canceled"].includes(status)) {
+    return { status: "failed", result_ready: false };
+  }
+  if (["processing", "in_progress", "running", "complete", "completed", "fulfilled", "resolved"].includes(status)) {
+    return { status: "processing", result_ready: false };
+  }
+  if (request) return { status: "queued", result_ready: false };
+  return { status: "not_started", result_ready: false };
+}
+
 function clientIp(req) {
   const xf = req.headers?.["x-forwarded-for"];
   if (xf) return String(xf).split(",")[0].trim();
   return req.headers?.["x-real-ip"] || null;
-}
-
-async function provisionClientAccount(database, { orgId, clientId, email, name }) {
-  const existing = await database.query(
-    `SELECT id FROM accounts
-      WHERE client_id = $1 AND kind = 'client'
-      ORDER BY created_at LIMIT 1`,
-    [clientId]
-  );
-  if (existing.rows[0]) return existing.rows[0].id;
-
-  if (!email) {
-    throw new ConsentError(
-      "This contact has no email on file — we cannot attribute soft-pull consent.",
-      { status: 409, code: "no_email_for_account" }
-    );
-  }
-
-  await database.query(
-    `INSERT INTO accounts
-       (org_id, kind, email, name, password_hash, status, client_id, activated_at)
-     VALUES ($1,'client',$2,$3,$4,'active',$5, now())
-     ON CONFLICT DO NOTHING`,
-    [orgId, email, name || null, await hashPassword(newToken()), clientId]
-  );
-
-  const again = await database.query(
-    `SELECT id FROM accounts
-      WHERE client_id = $1 AND kind = 'client'
-      ORDER BY created_at LIMIT 1`,
-    [clientId]
-  );
-  if (!again.rows[0]) {
-    throw new ConsentError(
-      "Could not open a portal account to attribute this consent.",
-      { status: 500, code: "account_provision_failed" }
-    );
-  }
-  return again.rows[0].id;
 }
 
 function tokenFrom(req) {
@@ -283,33 +282,67 @@ async function stampIncorporatedAsStaff(req, res, { database, requireAuth: auth,
 }
 
 export async function replaceSoftPullBusinesses(database, { orgId, clientId, businesses }) {
-  await database.query(
-    `DELETE FROM businesses
-      WHERE org_id = $1 AND client_id = $2
-        AND COALESCE(entity_data->>'source', '') = $3`,
-    [orgId, clientId, BIZ_SOURCE]
-  );
-  for (const b of businesses) {
-    await database.query(
-      `INSERT INTO businesses (org_id, client_id, name, age_months, entity_data)
-       VALUES ($1, $2, $3, $4, $5::jsonb)`,
-      [
-        orgId,
-        clientId,
-        b.name,
-        b.age_months,
-        JSON.stringify({
-          source: BIZ_SOURCE,
-          address_line1: b.address_line1,
-          city: b.city,
-          state: b.state,
-          postal_code: b.postal_code,
-          ein: b.ein,
-          extra_owner_name: b.extra_owner_name || null,
-          incorporated_date: b.incorporated_date || null
-        })
-      ]
+  // A partial replacement must never erase the customer's existing companies.
+  // The live db export is a pool.query wrapper; BEGIN on that wrapper would run
+  // on unrelated connections, so obtain one pinned connection for every write.
+  // A supplied Pool can be used as well; injected query-only test doubles keep
+  // their existing contract, while production always uses the pinned pool.
+  const transactionalPool = database === db ? pool()
+    : (database && typeof database.connect === "function"
+       && typeof database.release !== "function" ? database : null);
+  const connection = transactionalPool ? await transactionalPool.connect() : null;
+  const writer = connection || database;
+  let transactionStarted = false;
+  try {
+    if (connection) {
+      await writer.query("BEGIN");
+      transactionStarted = true;
+      // Serialize replacements on this exact buyer to avoid interleaved
+      // DELETE+INSERT sequences from simultaneous portal submissions.
+      const owned = await writer.query(
+        `SELECT id FROM clients WHERE id = $1 AND org_id = $2 FOR UPDATE`,
+        [clientId, orgId]
+      );
+      if (!owned.rows[0]) {
+        throw new ConsentError("This contact was not found.", {
+          status: 404, code: "not_found"
+        });
+      }
+    }
+    await writer.query(
+      `DELETE FROM businesses
+        WHERE org_id = $1 AND client_id = $2
+          AND COALESCE(entity_data->>'source', '') = $3`,
+      [orgId, clientId, BIZ_SOURCE]
     );
+    for (const b of businesses) {
+      await writer.query(
+        `INSERT INTO businesses (org_id, client_id, name, age_months, entity_data)
+         VALUES ($1, $2, $3, $4, $5::jsonb)`,
+        [
+          orgId, clientId, b.name, b.age_months,
+          JSON.stringify({
+            source: BIZ_SOURCE,
+            address_line1: b.address_line1,
+            city: b.city,
+            state: b.state,
+            postal_code: b.postal_code,
+            ein: b.ein,
+            extra_owner_name: b.extra_owner_name || null,
+            incorporated_date: b.incorporated_date || null
+          })
+        ]
+      );
+    }
+    if (connection) await writer.query("COMMIT");
+  } catch (error) {
+    if (transactionStarted) {
+      try { await writer.query("ROLLBACK"); }
+      catch { /* the original failure takes priority */ }
+    }
+    throw error;
+  } finally {
+    connection?.release();
   }
 }
 
@@ -320,6 +353,17 @@ export async function replaceSoftPullBusinesses(database, { orgId, clientId, bus
 export async function ensureSoftPullCheckout(database, {
   orgId, clientId, amountCents, description, env, checkoutBaseUrl, fetchImpl
 }) {
+  // A paid diagnostic is never replaced by another checkout from this form.
+  const paid = await database.query(
+    `SELECT * FROM payment_links
+      WHERE org_id = $1 AND client_id = $2 AND purpose = 'diagnostic'
+        AND status = 'paid'
+      ORDER BY paid_at DESC NULLS LAST, created_at DESC
+      LIMIT 1`,
+    [orgId, clientId]
+  );
+  if (paid.rows[0]) return paid.rows[0];
+
   const existing = await database.query(
     `SELECT * FROM payment_links
       WHERE org_id = $1 AND client_id = $2 AND purpose = 'diagnostic'
@@ -377,28 +421,39 @@ export default async function handler(req, res, deps = {}) {
   }
 
   try {
-    const raw = tokenFrom(req);
-    if (!isUuid(raw.orgId) || !isUuid(raw.clientId)) {
-      return res.status(400).json({ ok: false, error: "bad_token", message: "This link is missing required fields." });
-    }
-
-    const verified = verifySoftPullApproveToken({
-      orgId: String(raw.orgId).trim(),
-      clientId: String(raw.clientId).trim(),
-      exp: raw.exp,
-      sig: raw.sig,
-      secret: deps.secret,
-      now: deps.now
-    });
-    if (!verified) {
-      return res.status(401).json({
-        ok: false,
-        error: "invalid_or_expired",
-        message: "This approval link is invalid or has expired. Ask your advisor to send a new one."
+    let portalPrincipal = null;
+    let orgId;
+    let clientId;
+    if (String(req.query?.portal || "") === "1") {
+      portalPrincipal = await (deps.requirePrincipal ?? requirePrincipal)(req, res, ["client"], { db: database, env });
+      if (!portalPrincipal) return;
+      orgId = portalPrincipal.orgId;
+      clientId = portalPrincipal.clientId;
+      if (!isUuid(orgId) || !isUuid(clientId) || !portalPrincipal.accountId) {
+        return res.status(403).json({ ok: false, error: "client_account_required" });
+      }
+    } else {
+      const raw = tokenFrom(req);
+      if (!isUuid(raw.orgId) || !isUuid(raw.clientId)) {
+        return res.status(400).json({ ok: false, error: "bad_token", message: "This link is missing required fields." });
+      }
+      const verified = verifySoftPullApproveToken({
+        orgId: String(raw.orgId).trim(),
+        clientId: String(raw.clientId).trim(),
+        exp: raw.exp,
+        sig: raw.sig,
+        secret: deps.secret,
+        now: deps.now
       });
+      if (!verified) {
+        return res.status(401).json({
+          ok: false,
+          error: "invalid_or_expired",
+          message: "This approval link is invalid or has expired. Ask your advisor to send a new one."
+        });
+      }
+      ({ orgId, clientId } = verified);
     }
-
-    const { orgId, clientId } = verified;
 
     const clientRes = await database.query(
       `SELECT id, first_name, last_name, email
@@ -410,11 +465,37 @@ export default async function handler(req, res, deps = {}) {
       return res.status(404).json({ ok: false, error: "not_found", message: "This contact was not found." });
     }
 
+    if (!portalPrincipal) {
+      const principal = await (deps.resolvePrincipal ?? resolvePrincipal)(req, { db: database, env });
+      if (principal === AUTH_UNAVAILABLE) {
+        return res.status(503).json({ ok: false, error: "auth_unavailable", db: "down" });
+      }
+      if (principal?.kind !== "client" || principal.orgId !== orgId || principal.clientId !== clientId || !principal.accountId) {
+        return res.status(401).json({
+          ok: false,
+          error: "account_required",
+          message: "Set up or sign in to your Fundhub portal to continue.",
+          create_account_url: "/portal-login.html?mode=claim"
+        });
+      }
+      portalPrincipal = principal;
+    }
+
     const disclosure = SOFT_PULL_DISCLOSURES[CURRENT_SOFT_PULL_VERSION];
     const status = await consentStatus(database, { orgId, clientId, kind: KIND });
     const pricing = softPullPricingPublic();
 
     if (req.method === "GET") {
+      const [paidEvent, pull] = await Promise.all([paidDiagnosticEventForClient(database, {
+        orgId, clientId, amountCents: softPullTotalCents(0)
+      }), clientPullProgress(database, { orgId, clientId })]);
+      const paidLink = await database.query(
+        `SELECT id FROM payment_links
+          WHERE org_id = $1 AND client_id = $2 AND purpose = 'diagnostic'
+            AND status = 'paid'
+          LIMIT 1`,
+        [orgId, clientId]
+      );
       return res.status(200).json({
         ok: true,
         kind: KIND,
@@ -425,6 +506,8 @@ export default async function handler(req, res, deps = {}) {
           bullets: disclosure.bullets || null
         },
         consent: { valid: !!status.valid, reason: status.reason || null },
+        paid: !!paidEvent || paidLink.rows.length > 0,
+        pull,
         pricing,
         contact: {
           first_name: client.first_name || null,
@@ -500,13 +583,7 @@ export default async function handler(req, res, deps = {}) {
       ? `${offer?.name || "UnderwriteIQ soft-pull assessment"} (+${n} business${n === 1 ? "" : "es"})`
       : (offer?.name || "UnderwriteIQ soft-pull assessment");
 
-    const name = [client.first_name, client.last_name].filter(Boolean).join(" ") || grantedName;
-    const accountId = await provisionClientAccount(database, {
-      orgId,
-      clientId,
-      email: client.email,
-      name
-    });
+    const accountId = portalPrincipal.accountId;
 
     await storeIdentity(database, {
       orgId,
@@ -524,31 +601,7 @@ export default async function handler(req, res, deps = {}) {
 
     await replaceSoftPullBusinesses(database, { orgId, clientId, businesses });
 
-    /* THE CLIENT IS TOLD HOW TO GET IN, IN THE SAME BREATH AS THE ACCOUNT.
-       provisionClientAccount() above writes an ACTIVE `accounts` row with a
-       password hash of 32 discarded random bytes — a credential nobody holds,
-       including us (see the same pattern in src/auth/magic-link.mjs). Until
-       2026-09-03 nothing then sent that person anything, so every buyer walked
-       away with a live portal account they could not open and a reset screen
-       telling them to ask an admin. Walk finding F31.
-
-       NON-FATAL, DELIBERATELY. The consent, the identity and the checkout are
-       what this request is for; a mail-queue failure must not lose them. The
-       outcome is reported in the response instead, so the closer on the phone
-       can see the link did not go and say so. */
-    let portalLink = { sent: false, reason: null };
-    try {
-      const link = await issuePortalLinkForClient(database, {
-        orgId, clientId, ip: clientIp(req),
-        userAgent: req.headers?.["user-agent"] || null,
-        env
-      });
-      portalLink = link.ok
-        ? { sent: link.sent === true, reason: link.sent ? null : (link.limited ? "rate_limited" : link.outcome || "not_queued") }
-        : { sent: false, reason: link.reason || "not_queued" };
-    } catch (e) {
-      portalLink = { sent: false, reason: String(e && e.message ? e.message : e).slice(0, 120) };
-    }
+    const portalLink = { sent: false, reason: "already_signed_in" };
 
     const consent = await captureConsent(database, {
       orgId,
@@ -563,24 +616,46 @@ export default async function handler(req, res, deps = {}) {
       capturedUserAgent: req.headers?.["user-agent"] || null
     });
 
+    // Payment and consent can happen in either order. A payment event is only
+    // accepted from the verified Commas webhook; replay its original ID so a
+    // paid client gets exactly one pull after authorization is saved.
+    let paidResult = { paid: false, pull: null };
+    let pullError = null;
+    try {
+      paidResult = await resumePaidDiagnosticSoftPull(database, {
+        orgId, clientId, amountCents, env,
+        runPaidPull: deps.runPaidPull
+      });
+      pullError = paidResult.error || null;
+    } catch (err) {
+      pullError = String(err?.message || err).slice(0, 160);
+    }
+
+    // A previous paid diagnostic must not trigger an automatic extra charge,
+    // but a changed business count must not be shown as already fully paid.
+    let paymentReviewRequired = paidResult.reason === "paid_amount_mismatch";
     let checkout = null;
     let checkoutError = null;
     try {
-      const link = await ensureSoftPullCheckout(database, {
-        orgId,
-        clientId,
-        amountCents,
-        description,
-        env,
-        checkoutBaseUrl: deps.checkoutBaseUrl,
-        fetchImpl: deps.fetchImpl
-      });
-      checkout = {
-        id: link.id,
-        checkout_url: link.checkout_url,
-        amount_cents: Number(link.amount_cents),
-        amount_display: formatCents(link.amount_cents) || amountDisplay
-      };
+      if (!paidResult.paid) {
+        const link = await ensureSoftPullCheckout(database, {
+          orgId,
+          clientId,
+          amountCents,
+          description,
+          env,
+          checkoutBaseUrl: deps.checkoutBaseUrl,
+          fetchImpl: deps.fetchImpl
+        });
+        if (link.status === "paid") {
+          paidResult.paid = true;
+          if (Number(link.amount_cents) !== amountCents) paymentReviewRequired = true;
+        } else checkout = {
+          id: link.id, checkout_url: link.checkout_url,
+          amount_cents: Number(link.amount_cents),
+          amount_display: formatCents(link.amount_cents) || amountDisplay
+        };
+      }
     } catch (err) {
       checkoutError = String(err && err.message ? err.message : err).slice(0, 160);
     }
@@ -590,15 +665,26 @@ export default async function handler(req, res, deps = {}) {
       consent: { id: consent.id, valid: true, version: CURRENT_SOFT_PULL_VERSION },
       businesses: { count: n },
       pricing: { ...pricing, total_cents: amountCents, total_display: amountDisplay },
+      paid: paidResult.paid,
+      payment_review_required: paymentReviewRequired,
+      pull: paidResult.pull,
+      pull_reason: paidResult.reason || paidResult.pull?.reason || null,
+      pull_error: pullError,
       checkout,
       checkout_error: checkoutError,
       // Whether the sign-in email was queued. Never the link itself: this reply
       // goes to a browser on a public signed link, and a portal token in it
       // would be a second credential sitting in a response body.
       portal_link: portalLink,
-      next: checkout?.checkout_url
-        ? `Pay ${amountDisplay} next — use the Pay button below.`
-        : `Consent saved. Ask your advisor for the ${amountDisplay} pay link.`
+      next: paymentReviewRequired
+        ? "Your earlier payment does not cover the updated assessment total. No additional charge or new credit pull was started. Contact your advisor to review the difference."
+        : paidResult.paid
+        ? (paidResult.pull?.pulled
+          ? "Payment and consent are complete. Your credit report is being prepared."
+          : "Your payment is saved. The credit pull has not completed; your advisor can check its status.")
+        : checkout?.checkout_url
+          ? `Pay ${amountDisplay} next — use the Pay button below.`
+          : `Consent saved. Ask your advisor for the ${amountDisplay} pay link.`
     });
   } catch (err) {
     if (err instanceof ConsentError || err instanceof PiiError) {

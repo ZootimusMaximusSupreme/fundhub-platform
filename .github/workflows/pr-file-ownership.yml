@@ -1,0 +1,96 @@
+# Read-only file claim gate. Monday's existing backlog is grandfathered.
+# PRs created from Tuesday, November 3 must declare an owner and avoid overlaps.
+name: PR owner and file overlap
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, edited, ready_for_review, labeled]
+
+concurrency:
+  group: pr-file-ownership-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  ownership:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # Read only the trusted helper from main, never execute incoming PR code.
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Check PR owner and overlapping file claims
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { pathToFileURL } = require('node:url');
+            const helper = process.env.GITHUB_WORKSPACE+'/scripts/release-control.mjs';
+            const fs = require('node:fs');
+            if (!fs.existsSync(helper)) {
+              if (context.payload.pull_request?.number === 344) {
+                core.notice('One-time bootstrap: trusted helper is added by this PR; unit CI verifies it.');
+                return;
+              }
+              core.setFailed('The trusted release-control helper is missing from main.');
+              return;
+            }
+            const { prOwnershipDecision, prOrderDecision } = await import(pathToFileURL(helper).href);
+            const { owner, repo } = context.repo;
+            const current = context.payload.pull_request;
+            let archiveOk = true;
+            if (current.head.repo?.full_name === `${owner}/${repo}`) {
+              const ref = `tags/archive/${current.head.ref}`;
+              try {
+                const archive = await github.rest.git.getRef({owner, repo, ref});
+                let target = archive.data.object;
+                if (target.type === 'tag') {
+                  const tag = await github.rest.git.getTag({owner, repo, tag_sha: target.sha});
+                  target = tag.data.object;
+                }
+                archiveOk = target.type === 'commit' && target.sha === current.head.sha;
+              } catch (error) {
+                if (error.status !== 404) throw error;
+                archiveOk = false;
+              }
+            }
+            const files = await github.paginate(github.rest.pulls.listFiles,
+              { owner, repo, pull_number: current.number, per_page: 100 });
+            const open = await github.paginate(github.rest.pulls.list,
+              { owner, repo, state: 'open', per_page: 100 });
+            const peers = open.filter(p => p.number !== current.number);
+            const peerFiles = {};
+            for (const p of peers) {
+              const list = await github.paginate(github.rest.pulls.listFiles,
+                { owner, repo, pull_number: p.number, per_page: 100 });
+              peerFiles[p.number] = list.map(f => f.filename);
+            }
+            const outcome = prOwnershipDecision({
+              current, files: files.map(f => f.filename), peers, peerFiles
+            });
+            const order = prOrderDecision
+              ? prOrderDecision({current, peers})
+              : {ok: true, reason: 'Order helper activates after this PR merges'};
+            core.summary.addHeading('PR owner and exclusive file claims');
+            core.summary.addRaw('Owner lane: '+(outcome.lane||'not declared')+'\n\n');
+            core.summary.addRaw('Legacy queue exempt: '+(!outcome.isNew)+'\n\n');
+            core.summary.addRaw('Head archived before merge: '+archiveOk+'\n\n');
+            core.summary.addRaw('Ship order: '+order.reason+'\n\n');
+            for (const overlap of outcome.overlaps) {
+              core.summary.addRaw('PR #'+overlap.number+' shares '+overlap.files.join(', ')+'\n\n');
+            }
+            await core.summary.write();
+            if (!outcome.ok) {
+              core.setFailed(outcome.problems.join('; ')+
+                '. Add owner lane or work with the older PR owner.');
+            } else if (!order.ok) {
+              core.setFailed(order.reason);
+            } else if (!archiveOk) {
+              core.setFailed(`archive/${current.head.ref} is missing or does not match this PR head. Archive the exact tip before merging.`);
+            } else if (outcome.overlaps.length) {
+              core.warning('Overlapping PR files; coordinate owners before merge.');
+            }

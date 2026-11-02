@@ -43,7 +43,7 @@ async function open(page, fx, { width, height }) {
    Every check and every screenshot waits for the last frame. */
 const settled = (page) => page.waitForFunction(() => !document.querySelector("[data-bd-busy]"));
 const shot = async (page, name) => { await settled(page); await page.screenshot({ path: path.join(OUT, name + ".png"), fullPage: false }); };
-const next = (page) => page.locator('[data-bd-act="next"]').click();
+const next = (page) => page.locator('[data-bd-act="build"]').click();
 const rootText = (page) => page.locator(ROOT).innerText();
 
 /* No sideways scroll: the page and the visual's own root are no wider than the window. */
@@ -90,7 +90,8 @@ test("1440: the full file walks the journey, screen by screen", async ({ page })
   await expect(root).toContainText("Your plan, step by step. A preview built from today’s pull.");
   await expect(root).toContainText("$64,000");
   await expect(root.locator(".fhv-blueprint-demo-hero")).toContainText("Today");
-  await expect(root).toContainText("Step 1 of 9: Print and mail your dispute letters");
+  await expect(root).toContainText("Step 1 of 9: Pay Capital One Quicksilver down to $1,600");
+  expect(await root.locator('[data-bd-act^="goto:"]').count()).toBe(5);
   await expect(root).toContainText("Do not open new credit while we work on your file.");
   // The hero amount is set in the deck's sans, not the mono face.
   const heroFont = await page.evaluate(() => getComputedStyle(document.querySelector(".fhv-blueprint-demo-big")).fontFamily);
@@ -104,7 +105,7 @@ test("1440: the full file walks the journey, screen by screen", async ({ page })
   await page.evaluate(() => window.FHV_RENDER());
   expect(await page.locator("style#fhv-blueprint-demo-style").count()).toBe(1);
 
-  // Progress: the checklist in due order.
+  // Progress: the full checklist in the owner's paydown-first order.
   await page.locator('[data-bd-act="panel:progress"]').click();
   await expect(root).toContainText("Your checklist");
   await expect(root).toContainText("Pay Capital One Quicksilver down to $1,600");
@@ -129,12 +130,9 @@ test("1440: the full file walks the journey, screen by screen", async ({ page })
   await expect(root).toContainText("On your file");
   await shot(page, "full-1440-04-money-credit-before");
 
-  // Walk: letters, proof, both cards.
+  // Build one: both cards are paid down first. The items remain on the file.
   await next(page);
-  await expect(root).toContainText("Disputed");
-  await next(page);
-  await next(page);
-  await next(page);
+  await expect(root).toContainText("On your file");
   await settled(page);
   // Every card's words, bar and badge agree: both cards sit at their targets.
   await expect(root).toContainText("$1,600 of $16,000");
@@ -160,11 +158,10 @@ test("1440: the full file walks the journey, screen by screen", async ({ page })
   await expect(hero).toContainText("Fully optimized: projects to $121,000.");
   await expect(hero).not.toContainText("Today");
   expect(((await hero.innerText()).match(/projects to/gi) || []).length).toBe(1);
-  await expect(root).toContainText("Step 5 of 9: Set up your business");
+  await expect(root).toContainText("Step 3 of 9: Print and mail your dispute letters");
   await shot(page, "full-1440-06-home-after-paydown");
 
-  // Business, then the bureaus answer: the clean lever's figure.
-  await next(page);
+  // Build two: the dispute steps and bureau answer show the clean lever's figure.
   await next(page);
   await settled(page);
   await expect(hero).toContainText("$121,000");
@@ -191,7 +188,7 @@ test("1440: the full file walks the journey, screen by screen", async ({ page })
   await expect(root).toContainText("The lender list");
   await shot(page, "full-1440-10-money-banks");
 
-  // Business 1, Business 2, the next sequence, then the last screen.
+  // Builds three through five: Business 1, Business 2, the next sequence.
   await next(page);
   await next(page);
   await next(page);
@@ -247,7 +244,7 @@ test("390: one column, no sideways scroll, real tap targets", async ({ page }) =
   await expectTapTargets(page);
   await shot(page, "full-390-04-money-credit");
 
-  for (let i = 0; i < 9; i++) await next(page);
+  for (let i = 0; i < 5; i++) await next(page);
   await page.locator('[data-bd-act="panel:home"]').click();
   await expect(root).toContainText("Your next 12 months");
   await expectNoSidewaysScroll(page, 390);
@@ -282,7 +279,7 @@ test("a repair-only file shows $0 today and climbs when the bureaus answer", asy
   await expect(hero).toContainText("Today");
   await expect(hero).toContainText("Fully optimized: projects to $41,000.");
   await shot(page, "repair-1440-01-home");
-  for (let i = 0; i < 5; i++) await next(page); // letters, proof, the card, business, bureaus
+  for (let i = 0; i < 2; i++) await next(page); // paydown, then dispute steps and bureau answers
   await settled(page);
   await expect(hero).toContainText("$41,000");
   await expect(hero).toContainText("If the disputed items come off.");
@@ -300,7 +297,7 @@ test("when the engine holds the money, no qualify amount shows and the cards sti
   await expect(root).toContainText("$5,100 of $12,000");
   await expect(root).toContainText("LVNV Funding");
   await shot(page, "hold-1440-02-money-credit");
-  for (let i = 0; i < 9; i++) await next(page);
+  for (let i = 0; i < 5; i++) await next(page);
   await page.locator('[data-bd-act="panel:home"]').click();
   await expect(root).toContainText("Your next 12 months");
   expect(await root.locator(".fhv-blueprint-demo-hero").count()).toBe(0);
