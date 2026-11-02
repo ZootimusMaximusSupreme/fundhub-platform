@@ -55,4 +55,5 @@ Chris made this skill and Copybot the foundation of Fundhub marketing on 2026-10
 - Reference files: `references/methods.md`, `references/applications.md`, `references/delivery-and-collaboration.md`, `references/sources-and-conflicts.md`.
 - "Copybot" in the handoff list is the `copybot` skill beside this one. Sequence Maker, Positioning, Story Writing and Marketing Evaluation are not installed; continue without them as the delivery file says.
 - Video animation overlays still follow `.ai/rules/animation-rules.md` and the `fundhub-video-animation-overlay` skill.
+- Law: show-real-proof (`.ai/rules/show-real-proof.md`, owner-set 2026-10-31) - real first: show the real report, screen, clause or approval; merge it with a little diagram when a point needs explaining; a diagram alone only when nothing real shows the point. Every diagram and mark uses Fundhub's own style.
 - Staged in `marketing/copy-skills/` on 2026-10-31; the move into `.agents/skills/` waits on the new-markdown guard allowing that folder.

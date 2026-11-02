@@ -955,6 +955,32 @@ test("progress: the real read, run for the newest paying client, is a PASS when 
   for (const c of db.calls) assert.ok(isPlainRead(c.sql), c.sql.slice(0, 60));
 });
 
+test("progress: row count starts while the page read is pending", async () => {
+  const db = fakeDb();
+  const query = db.query.bind(db);
+  let releaseReport;
+  const heldReport = new Promise((resolve) => { releaseReport = resolve; });
+  let countStarted = false;
+  let reportStarted = false;
+  db.query = async (sql, params) => {
+    if (/gap:portal-progress-rows/.test(sql)) countStarted = true;
+    if (/FROM crs_results/i.test(sql)) {
+      reportStarted = true;
+      await heldReport;
+    }
+    return query(sql, params);
+  };
+  const pending = checkProgressRead({ run: runOn(db), orgId: ORG });
+  try {
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(reportStarted, true);
+    assert.equal(countStarted, true, "the count waited for the page read");
+  } finally {
+    releaseReport();
+  }
+  assert.equal((await pending).status, "PASS");
+});
+
 test("progress: a read that fails underneath is a FAIL, even though the page code hides it", async (t) => {
   t.mock.method(console, "warn", () => {});
   // readClientProgress catches this and hands back an empty list. A page built
@@ -966,8 +992,8 @@ test("progress: a read that fails underneath is a FAIL, even though the page cod
   assert.match(row.detail, /read behind the page failed and the page would show an empty section: boom/);
   assert.match(row.suggestedFix, /client-progress/);
   assert.match(row.suggestedFix, /Do not auto-fix from this pulse/);
-  // The cross-check is not reached once a read has failed.
-  assert.ok(!db.calls.some((c) => /gap:portal-progress-rows/.test(c.sql)));
+  // The independent read-only cross-check can run in parallel; the failure stays red.
+  assert.ok(db.calls.some((c) => /gap:portal-progress-rows/.test(c.sql)));
 });
 
 test("progress: every swallowed read is counted, and the first one is named", async (t) => {

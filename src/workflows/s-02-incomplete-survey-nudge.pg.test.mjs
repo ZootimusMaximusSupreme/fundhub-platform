@@ -19,10 +19,10 @@ import { test, before, after } from "node:test";
 import assert from "node:assert";
 import { db, close } from "../db.mjs";
 import {
-  handle, resumePlan, sequenceInFlight, stopReason, surveyCompleted, RESUME_TEMPLATE_KEYS
+  handle, resumePlan, sequenceInFlight, stopReason, surveyCompleted, touchSendKey, RESUME_TEMPLATE_KEYS
 } from "./s-02-incomplete-survey-nudge.mjs";
 import { inngestSim } from "./inngest-sim.mjs";
-import { readSurveyResumeToken } from "../survey/resume-link.mjs";
+import { nextHourStrike, SEND_WINDOW_TZ } from "../messaging/send-window.mjs";
 import { isLocalScratchDatabaseUrl } from "../verification/scratch-guard.mjs";
 
 // Writes and deletes its own rows, so it runs only on a loopback scratch or CI database.
@@ -97,7 +97,7 @@ before(async () => {
       `INSERT INTO message_templates (org_id, template_key, channel, subject, body, compliance_passed)
        VALUES ($1,$2,$3,$4,$5,true)`,
       [orgId, key, key.startsWith("SMS") ? "sms" : "email", key.startsWith("EMAIL") ? `Subject ${key}` : null,
-        `${key}: Hi {{contact.first_name}}, you stopped at {{survey_stopped_at}}, {{survey_taps_left}} to go: {{survey_resume_link}}`]
+        `${key}: Start your questions here: {{survey_resume_link}}`]
     );
   }
 });
@@ -189,11 +189,13 @@ test("replied: a text (no person on the event, the number in the payload) or an 
 
 // ── already running? ─────────────────────────────────────────────────────────────────────────────
 
-test("already running: resume messages from a different opt-in in the last four days, and no others",
+test("already running: resume messages sent in the last four days by any run, and no others",
   { skip: !HAS_DB }, async () => {
     const now = Date.now();
     const since = iso(now - 4 * DAY);
-    const ask = (clientId, cohortId, org = orgId) => sequenceInFlight(db, { orgId: org, clientId, cohortId, since });
+    // The send key no longer matters: the check runs before this run sends anything, so whatever it
+    // finds came from another run (independent review of PR #346, 2026-10-31).
+    const ask = (clientId, _key, org = orgId) => sequenceInFlight(db, { orgId: org, clientId, since });
 
     const fresh = await makeClient(orgId);
     assert.equal(await ask(fresh, "evt-mine"), false, "nothing sent yet");
@@ -201,7 +203,7 @@ test("already running: resume messages from a different opt-in in the last four 
     const sent = await makeClient(orgId);
     await addMessage(orgId, sent, { templateKey: "EMAIL-S02-RESUME-1", providerRef: "workflow:EMAIL-S02-RESUME-1:evt-theirs", at: iso(now - DAY) });
     assert.equal(await ask(sent, "evt-mine"), true, "sent from another opt-in a day ago");
-    assert.equal(await ask(sent, "evt-theirs"), false, "that opt-in is this one: its own messages do not count");
+    assert.equal(await ask(sent, "evt-theirs"), true, "sent under the same send key by an earlier run of this application: still running");
 
     const old = await makeClient(orgId);
     await addMessage(orgId, old, { templateKey: "SMS-S02-RESUME-3", providerRef: "workflow:SMS-S02-RESUME-3:evt-old", at: iso(now - 5 * DAY) });
@@ -271,7 +273,7 @@ const ALL_EIGHT = {
 };
 const KEYS6 = ["EMAIL-S02-RESUME-1", "EMAIL-S02-RESUME-2", "EMAIL-S02-RESUME-3", "SMS-S02-RESUME-1", "SMS-S02-RESUME-2", "SMS-S02-RESUME-3"];
 
-test("a lead who never finishes: six queued messages on real rows, each with a link that opens their file",
+test("a lead who never finishes: six queued messages on real rows, each with the plain /apply link and no resume code",
   { skip: !HAS_DB }, async () => {
     const email = `quits${++seq}@${DOMAIN}`;
     const clientId = await makeClient(orgId, { email, phone: "(555) 010-2001", answers: ANSWERED_THREE });
@@ -286,12 +288,13 @@ test("a lead who never finishes: six queued messages on real rows, each with a l
     assert.deepEqual(rows.map((r) => r.template_key).sort(), KEYS6);
     for (const r of rows) {
       assert.equal(r.status, "queued", "queued for the dispatcher; this test sends nothing");
-      assert.equal(r.provider_ref, `workflow:${r.template_key}:${event.id}`, "one send key per touch, per channel, per opt-in");
-      const link = r.rendered_body.match(/https:\/\/apply\.fundhub\.ai\/apply\?r=([A-Za-z0-9_-]+)/);
-      assert.ok(link, r.rendered_body);
-      assert.deepEqual(readSurveyResumeToken(link[1], { secret: SECRET, now: () => start + 3 * DAY }), { clientId });
-      assert.ok(r.rendered_body.includes("Hi Pat"));
-      assert.ok(r.rendered_body.includes("you stopped at the credit score question, 5 more taps to go:"), r.rendered_body);
+      const touch = Number(r.template_key.slice(-1));
+      assert.equal(r.provider_ref, `workflow:${r.template_key}:${touchSendKey(clientId, resumePlan(start)[touch - 1])}`,
+        "one send key per touch, per channel, per person and Arizona day");
+      assert.ok(r.rendered_body.endsWith("here: https://apply.fundhub.ai/apply"), r.rendered_body);
+      assert.ok(!r.rendered_body.includes("?r="), "containment 2026-10-31: no resume code in a follow-up");
+      assert.ok(!r.rendered_body.includes("Pat"), "neutral copy carries no saved name");
+      assert.ok(!r.rendered_body.includes("credit score question"), "neutral copy carries no saved progress");
     }
     assert.ok(rows.filter((r) => r.channel === "sms").every((r) => /^\+1555/.test(r.to_address)), "texts are addressed in E.164");
     assert.deepEqual(sim.sleeps.map((s) => s.until), resumePlan(start).map((d) => d.toISOString()));
@@ -354,7 +357,7 @@ test("a reply and a booking each stop the run", { skip: !HAS_DB }, async () => {
   assert.equal((await messagesOf(booker)).length, 2, "touch 1 went, nothing after");
 });
 
-test("two posts of one application share the first post's send key and queue six messages, not twelve",
+test("two posts of one application share one send key per touch and queue six messages, not twelve",
   { skip: !HAS_DB }, async () => {
     const email = `twice${++seq}@${DOMAIN}`;
     const clientId = await makeClient(orgId, { email });
@@ -367,7 +370,54 @@ test("two posts of one application share the first post's send key and queue six
     assert.equal(b.stoppedBecause, undefined);
     const rows = await messagesOf(clientId);
     assert.equal(rows.length, 6);
-    assert.ok(rows.every((r) => r.provider_ref.endsWith(`:${first.id}`)), "both runs keyed on the first post");
+    assert.ok(rows.every((r) => r.provider_ref.includes(`:${clientId}:`)), "both runs keyed on the person and the day");
+  });
+
+// Review 2026-10-31 (P1), on real rows: two opt-ins more than six hours apart are two runs with two
+// different opt-in events. Both sleep to the same 9 a.m., so neither has sent anything when the other
+// starts. The messages table's unique send key is what lets only one of each touch through.
+test("two opt-ins 6.5 hours apart that both wait for the same 9 a.m. queue six messages, not twelve",
+  { skip: !HAS_DB }, async () => {
+    const email = `night${++seq}@${DOMAIN}`;
+    const clientId = await makeClient(orgId, { email, answers: ANSWERED_THREE });
+    const night = nextHourStrike(new Date(), SEND_WINDOW_TZ, 22).getTime(); // the next 10 p.m. Arizona
+    const dawn = night + 6.5 * HOUR; // 4:30 a.m., past the adapter's six-hour repeat guard
+    const sim = inngestSim(iso(night));
+    const first = await optIn(clientId, night, email);
+    const second = await optIn(clientId, dawn, email);
+    const [a, b] = await sim.runAll([spec(sim, first), spec(sim, second)]);
+    assert.equal(a.stoppedBecause, undefined);
+    assert.equal(b.stoppedBecause, undefined);
+    assert.equal(resumePlan(night)[0].getTime(), resumePlan(dawn)[0].getTime(), "both runs plan touch 1 for the same 9 a.m.");
+    const rows = await messagesOf(clientId);
+    assert.deepEqual(rows.map((r) => r.template_key).sort(), KEYS6, "each touch once, a text and an email");
+  });
+
+/* Independent review of PR #346 (2026-10-31): a visit at 6 p.m. and another at 1 a.m. Arizona are seven
+   hours apart, so they used to fall in different six-hour cohorts. Neither run had sent anything when the
+   other one started, so both passed the in-flight check, slept to 9 a.m. and both sent: twelve messages. */
+test("two visits seven hours apart overnight (6 p.m. and 1 a.m. Arizona) queue six messages, not twelve",
+  { skip: !HAS_DB }, async () => {
+    const email = `overnight${++seq}@${DOMAIN}`;
+    const clientId = await makeClient(orgId, { email, answers: ANSWERED_THREE });
+    // The next 6:00 p.m. Arizona (01:00 UTC, no daylight saving) at least an hour away.
+    const sixPm = new Date(Date.now() + HOUR);
+    sixPm.setUTCMinutes(0, 0, 0);
+    while (sixPm.getUTCHours() !== 1) sixPm.setTime(sixPm.getTime() + HOUR);
+    const evening = sixPm.getTime();
+    const sim = inngestSim(iso(evening));
+    const first = await optIn(clientId, evening, email);
+    const second = await optIn(clientId, evening + 7 * HOUR, email);
+    const [a, b] = await sim.runAll([spec(sim, first), spec(sim, second)]);
+    assert.equal(a.done, true);
+    assert.equal(b.done, true);
+    const rows = await messagesOf(clientId);
+    assert.deepEqual(rows.map((r) => r.template_key).sort(), KEYS6, "one sequence, three touches, no doubles");
+    const plan = resumePlan(evening);
+    assert.ok(rows.every((r) => {
+      const touchIndex = Number(r.template_key.at(-1)) - 1;
+      return r.provider_ref === `workflow:${r.template_key}:${touchSendKey(clientId, plan[touchIndex])}`;
+    }), "both runs keyed by person and Arizona send day for each touch");
   });
 
 test("a lead who comes back through touch 2's link and stops again is not started a second sequence",
@@ -384,7 +434,7 @@ test("a lead who comes back through touch 2's link and stops again is not starte
     assert.deepEqual((await messagesOf(clientId)).map((r) => r.template_key).sort(), KEYS6, "one sequence, three touches");
   });
 
-test("the words are worked out when each touch goes out, from the answers saved in the real record by then",
+test("new answers before a later touch still stop a completed survey in Postgres",
   { skip: !HAS_DB }, async () => {
     const email = `progress${++seq}@${DOMAIN}`;
     const clientId = await makeClient(orgId, { email });
@@ -395,15 +445,14 @@ test("the words are worked out when each touch goes out, from the answers saved 
       await db.query(`UPDATE clients SET custom_fields = custom_fields || $2::jsonb WHERE id = $1`, [clientId, JSON.stringify(ANSWERED_THREE)]);
     });
     sim.at(iso(plan[2].getTime() - HOUR), async () => {
-      await db.query(`UPDATE clients SET custom_fields = custom_fields || $2::jsonb WHERE id = $1`, [clientId, JSON.stringify({
-        cf_svy_self_reported_fico: "Not sure", cf_svy_has_business: "Yes, 5+ years", cf_svy_business_revenue: "$500k - $999k"
-      })]);
+      await db.query(`UPDATE clients SET custom_fields = custom_fields || $2::jsonb WHERE id = $1`, [clientId, JSON.stringify(ALL_EIGHT)]);
     });
-    await sim.runAll([spec(sim, await optIn(clientId, start, email))]);
-    const body = async (key) => (await messagesOf(clientId)).find((r) => r.template_key === key).rendered_body;
-    assert.ok((await body("SMS-S02-RESUME-1")).includes("you stopped at the first question, 8 more taps to go:"));
-    assert.ok((await body("EMAIL-S02-RESUME-2")).includes("you stopped at the credit score question, 5 more taps to go:"));
-    assert.ok((await body("SMS-S02-RESUME-3")).includes("you stopped at the question about showing your revenue, 2 more taps to go:"));
+    const [res] = await sim.runAll([spec(sim, await optIn(clientId, start, email))]);
+    assert.equal(res.stoppedAt, "before-touch-3");
+    assert.equal(res.stoppedBecause, "all_answered");
+    const rows = await messagesOf(clientId);
+    assert.equal(rows.length, 4);
+    assert.ok(rows.every((r) => !r.rendered_body.includes("credit score question")));
   });
 
 test("every question answered and no finish on record: nothing is queued, and the person is tagged",

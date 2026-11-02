@@ -2,7 +2,6 @@ import { test } from "node:test";
 import assert from "node:assert";
 import { handle, EMAIL_TEMPLATE_KEY, SMS_TEMPLATE_KEY } from "./s-00-welcome.mjs";
 import { pgFake, fakeStep, ev } from "./test-support.mjs";
-import { readSurveyResumeToken } from "../survey/resume-link.mjs";
 
 const templates = () => [
   { org_id: "org-1", template_key: EMAIL_TEMPLATE_KEY, channel: "email", body: "welcome", compliance_passed: true },
@@ -64,9 +63,10 @@ test("s-00: two pings at once still send welcome only once", async () => {
   assert.equal(db.messages.length, 2);
 });
 
-// ── the resume link (owner-set 2026-10-31) ───────────────────────────────────────────────────────
-// The welcome text and email carry {{survey_resume_link}}: a signed link that opens /apply on the
-// question the person is up to. The token is only minted for real uuids, so these use them.
+// ── the resume link (owner-set 2026-10-31; containment 2026-10-31) ────────────────────────────────
+// The welcome text and email carry {{survey_resume_link}}. It is the plain /apply page, never a
+// signed ?r= code: /apply lets a new phone onto an existing lead's email, so this text can reach a
+// stranger. Real uuids and a real key are used so a code COULD be minted, and is not.
 const ORG = "0f8fad5b-d9cb-469f-a165-70867728950e";
 const CLIENT = "c3b1a9d2-5f4e-4c1a-8b7d-2e6f9a0b1c3d";
 const SECRET = "unit-test-resume-secret-0123456789abcdef0123456789";
@@ -91,7 +91,7 @@ async function withSecret(secret, fn) {
   }
 }
 
-test("s-00: the text and the email both carry a resume link that opens this person's file", async () => {
+test("s-00: the text and the email carry the plain /apply link and never a resume code, even with a signing key", async () => {
   const db = pgFake({ clients: [pat()], templates: linkTemplates() });
   const { value: res } = await withSecret(SECRET, () => handle({
     event: ev("entry.captured", {}, { orgId: ORG, clientId: CLIENT }), db, step: fakeStep()
@@ -99,22 +99,19 @@ test("s-00: the text and the email both carry a resume link that opens this pers
   assert.equal(res.done, true);
   assert.deepEqual(db.messages.map((m) => m.template_key), [EMAIL_TEMPLATE_KEY, SMS_TEMPLATE_KEY]);
   for (const m of db.messages) {
-    const link = m.rendered_body.match(/https:\/\/apply\.fundhub\.ai\/apply\?r=([A-Za-z0-9_-]+)/);
-    assert.ok(link, `${m.template_key} carries the link: ${m.rendered_body}`);
-    assert.deepEqual(readSurveyResumeToken(link[1], { secret: SECRET }), { clientId: CLIENT }, m.template_key);
-    assert.ok(!m.rendered_body.includes("{{"), "no merge tag left over");
+    assert.equal(m.rendered_body, "Welcome. Pick up here: https://apply.fundhub.ai/apply", m.template_key);
+    assert.ok(!m.rendered_body.includes("?r="), `${m.template_key} carries no resume code`);
   }
 });
 
-test("s-00: no signing key — the welcome still goes, with the plain apply link, and the gap is logged", async () => {
+test("s-00: no signing key — the welcome still goes, with the same plain apply link", async () => {
   const db = pgFake({ clients: [pat()], templates: linkTemplates() });
-  const { value: res, warnings } = await withSecret(null, () => handle({
+  const { value: res } = await withSecret(null, () => handle({
     event: ev("entry.captured", {}, { orgId: ORG, clientId: CLIENT }), db, step: fakeStep()
   }));
   assert.equal(res.done, true, "a missing key must not cost a lead their welcome");
   assert.equal(db.messages.length, 2);
   for (const m of db.messages) assert.equal(m.rendered_body, "Welcome. Pick up here: https://apply.fundhub.ai/apply");
-  assert.ok(warnings.some((w) => /survey-resume/.test(w)), String(warnings));
 });
 
 test("s-00: a second opt-in sends nothing more, so the person is not welcomed (or linked) twice", async () => {

@@ -1,5 +1,17 @@
 // GET/OPTIONS /api/public/survey-resume?r=<token> — where a lead stopped on /apply.
 //
+// CONTAINMENT (2026-10-31): CLOSED. Every token is the same 404 `{ ok: false }` and
+// nothing is read. The signed token proves only that a link was minted for a client,
+// not that the person holding it is that client: /apply accepts an existing lead's
+// email with a new phone, writes the phone onto the record, and S-00/S-02 then texted
+// the token to that phone, which opened the lead's saved contact and answers here.
+// The senders now carry the plain /apply link (no token), and this door refuses the
+// tokens already sent. It stays closed until a link can prove ownership of the record.
+// The 400 for a missing token is kept so the pulse ping still counts the door as up.
+// The /apply page treats the 404 as "start at the top" (marketing/landing-pages/apply-survey.html).
+//
+// What the door used to do, kept for the redesign:
+//
 // The text and the email that go to a lead who opted in and did not finish carry
 // https://apply.fundhub.ai/apply?r=<token>. The page hands the token here and
 // gets back who they are, what they already answered, and the question to show:
@@ -37,47 +49,18 @@
 
 import { db as defaultDb } from "../../src/db.mjs";
 import { safeError } from "../../src/http/health.mjs";
-import { readSurveyResumeToken } from "../../src/survey/resume-link.mjs";
-import { nextSurveyKey, savedSurveyAnswers } from "../../src/survey/resume-state.mjs";
 import { answerPreflight, applySloCors } from "../../src/slo/cors.mjs";
 
 const METHODS = "GET, OPTIONS";
 
 /**
- * readSurveyResume — the saved record behind one token, in the shape the door
- * answers with: { ok: true, contact, answers, next_key }. Null for every kind of
- * bad link: a token that is forged, tampered, expired or malformed, or a client
- * that no longer exists. A database failure throws, so the caller can tell
- * "bad link" from "cannot look".
- *
- * The token names the client and nothing else; the company is whatever the
- * client's own row says, so there is no company in the link to get wrong.
- * `now`, `secret` and `env` are for tests and for the pulse; they reach the token check.
+ * readSurveyResume — CONTAINED (2026-10-31): null for every token, valid or not,
+ * and the database is never asked. A token proves a link was minted, not that the
+ * holder owns the record, so no saved contact or answer leaves through it. The
+ * pulse check survey:resume-link-opens goes red if this ever answers again.
  */
-export async function readSurveyResume(db, token, { now, secret, env } = {}) {
-  const ids = readSurveyResumeToken(token, { now, secret, env });
-  if (!ids) return null;
-  const r = await db.query(
-    `SELECT first_name, last_name, email, phone, custom_fields
-       FROM clients
-      WHERE id = $1
-      LIMIT 1`,
-    [ids.clientId]
-  );
-  const row = r.rows[0];
-  if (!row) return null;
-  const answers = savedSurveyAnswers(row.custom_fields);
-  return {
-    ok: true,
-    contact: {
-      first_name: row.first_name || "",
-      last_name: row.last_name || "",
-      email: row.email || "",
-      phone: row.phone || ""
-    },
-    answers,
-    next_key: nextSurveyKey(answers)
-  };
+export async function readSurveyResume(_db, _token, _opts = {}) {
+  return null;
 }
 
 export default async function handler(req, res, deps = {}) {

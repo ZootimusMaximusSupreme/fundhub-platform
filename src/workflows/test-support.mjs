@@ -9,6 +9,7 @@
 
 export function pgFake(seed = {}) {
   const clients = seed.clients || [];
+  const accounts = seed.accounts || [];
   const events = seed.events || [];
   const templates = seed.templates || [];
   const bookings = seed.bookings || [];
@@ -32,8 +33,24 @@ export function pgFake(seed = {}) {
     clients.find((c) => c.org_id === org && String(c.email || "").toLowerCase() === String(email).toLowerCase());
 
   return {
-    clients, events, templates, bookings, messages, tasks, fundingRounds, applications, inquiryLog, pipelineStages, cards, behaviorScores, invoices, invoicePayments, paymentLinks, crsResults,
+    clients, accounts, events, templates, bookings, messages, tasks, fundingRounds, applications, inquiryLog, pipelineStages, cards, behaviorScores, invoices, invoicePayments, paymentLinks, crsResults,
     async query(sql, params = []) {
+      if (/SELECT self_signup FROM account_signup_policy/.test(sql)) {
+        return { rows: [{ self_signup: true }] };
+      }
+      if (/SELECT id, email, first_name, last_name FROM clients/.test(sql)) {
+        const c = clients.find((row) => row.id === params[0] && row.org_id === params[1]);
+        return { rows: c ? [{ id: c.id, email: c.email, first_name: c.first_name, last_name: c.last_name }] : [] };
+      }
+      if (/SELECT id, kind, client_id, status FROM accounts/.test(sql)) {
+        const a = accounts.find((row) => row.org_id === params[0] && String(row.email).toLowerCase() === params[1]);
+        return { rows: a ? [{ id: a.id, kind: a.kind, client_id: a.client_id, status: a.status }] : [] };
+      }
+      if (/INSERT INTO accounts/.test(sql)) {
+        const row = { id: "acct-" + ++n, org_id: params[0], kind: params[1], email: params[2], name: params[3], status: params[5], client_id: params[6] };
+        accounts.push(row);
+        return { rows: [{ id: row.id, kind: row.kind, email: row.email, status: row.status }] };
+      }
       if (/SELECT starts_at FROM bookings/.test(sql)) {
         const row = bookings
           .filter((b) => b.org_id === params[0] && b.client_id === params[1] &&
@@ -422,10 +439,22 @@ export function pgFake(seed = {}) {
         const orgScoped = /org_id\s*=\s*\$1/.test(sql);
         const clientId = params[orgScoped ? 1 : 0];
         const includeRescheduled = /booking\.rescheduled/.test(sql);
+        /* s-05a's starting count stops at the earlier of the missed call's start ($3) and
+           the no-show event's own moment ($4). Rows with no created_at are older fixtures
+           and count as before both. */
+        let cutoff = null;
+        if (/LEAST\(/.test(sql)) {
+          const cuts = [];
+          if (params[2] && Number.isFinite(Date.parse(params[2]))) cuts.push(Date.parse(params[2]));
+          const upTo = params[3] ? events.find((e) => e.id === params[3] && (!e.org_id || e.org_id === params[0])) : null;
+          if (upTo?.created_at) cuts.push(Date.parse(upTo.created_at));
+          cutoff = cuts.length ? Math.min(...cuts) : null;
+        }
         const n = events.filter((e) =>
           e.client_id === clientId
           && (!orgScoped || e.org_id === params[0])
           && (e.name === "booking.created" || (includeRescheduled && e.name === "booking.rescheduled"))
+          && (cutoff === null || !e.created_at || Date.parse(e.created_at) <= cutoff)
         ).length;
         return { rows: [{ n }] };
       }
@@ -454,17 +483,19 @@ export function pgFake(seed = {}) {
         return { rows: hit ? [{ booked: 1 }] : [] };
       }
       if (/WITH source AS \([\s\S]*SELECT e\.id[\s\S]*FROM events e, source s/.test(sql)) {
-        const [eventId, orgId, clientId, name] = params;
+        const [eventId, orgId, clientId, name, windowSeconds] = params;
         const source = events.find((e) => e.id === eventId && e.org_id === orgId && e.name === name);
         if (!source) return { rows: [] };
         const sourceAt = new Date(source.created_at).getTime();
+        // messageCohortId's window ($5, seconds); six hours when a caller passes none.
+        const windowMs = windowSeconds == null ? 6 * 60 * 60 * 1000 : Number(windowSeconds) * 1000;
         const sourceFunnel = String(source.payload?.funnel || "");
         const sourceEmail = String(source.payload?.email || "").toLowerCase();
         const hit = events
           .filter((e) => e.org_id === orgId && e.name === name)
           .filter((e) => {
             const at = new Date(e.created_at).getTime();
-            return at <= sourceAt && at > sourceAt - 6 * 60 * 60 * 1000;
+            return at <= sourceAt && at > sourceAt - windowMs;
           })
           .filter((e) => e.client_id === clientId || (!e.client_id && sourceEmail && String(e.payload?.email || "").toLowerCase() === sourceEmail))
           .filter((e) => !sourceFunnel || !e.payload?.funnel || e.payload.funnel === sourceFunnel)

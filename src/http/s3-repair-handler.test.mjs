@@ -30,7 +30,7 @@ describe("GET /api/repair/exceptions", () => {
     assert.match(fake.find(/FROM dispute_responses/)[0].sql, /confidence < 0\.85/);
     assertSqlHas(fake.find(/FROM cards c/)[0].sql, {
       "only optimization pipelines": "JOIN pipelines p ON p.id = c.pipeline_id AND p.key = 'optimization'",
-      "this company, the stalled stage, newest first, a page": "WHERE c.org_id = $1 AND ps.key = 'stalled' ORDER BY c.updated_at DESC LIMIT 100"
+      "this company, the stalled stage, newest first, a page": "WHERE c.org_id = $1 AND ps.key = 'stalled' AND cl.id IS NOT NULL ORDER BY c.updated_at DESC LIMIT 100"
     });
     assertSqlHas(fake.find(/FROM dispute_responses/)[0].sql, {
       "this company, not yet confirmed": "WHERE org_id = $1 AND COALESCE(confirmed, false) = false",

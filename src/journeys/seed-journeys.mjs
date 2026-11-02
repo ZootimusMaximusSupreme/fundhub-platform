@@ -121,7 +121,7 @@ export const SEED_JOURNEYS = {
           ],
           [
             "Agent",
-            "Setter Josh picks up the reply thread"
+            "Setter Chris picks up the reply thread"
           ],
           [
             "Rule",
@@ -143,7 +143,7 @@ export const SEED_JOURNEYS = {
           ],
           [
             "Agent",
-            "Setter Josh dials within 5 minutes"
+            "Setter Chris dials within 5 minutes"
           ],
           [
             "Screen",
@@ -360,13 +360,13 @@ export const SEED_JOURNEYS = {
         "type": "agent",
         "title": "Voice agent calls them",
         "cfg": {
-          "agent": "Setter Josh",
+          "agent": "Setter Chris",
           "note": "Three attempts across the first hour."
         },
         "touches": [
           [
             "Agent",
-            "Setter Josh (Bland)"
+            "Setter Chris (Bland)"
           ],
           [
             "Rule",

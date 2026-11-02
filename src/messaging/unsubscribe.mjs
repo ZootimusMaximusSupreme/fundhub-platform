@@ -193,7 +193,7 @@ export function verifyUnsubscribeRequest(source, { secret = undefined, env = pro
    dispatch, and the provider still sends exactly what it is handed.
 
    ONE HTML FOOTER for every outbound email: a tight personal signature card
-   (handwritten Josh first, name, title, phone, tagline) plus a quiet
+   (handwritten Chris first, name, title, phone, tagline) plus a quiet
    Unsubscribe control — not a raw URL under the copy, not a marketing dump.
 
    Plain-text bodies are wrapped into a simple HTML shell so Resend sends
@@ -203,14 +203,14 @@ const FOOTER_MARK = "<!-- fundhub-email-footer -->";
 
 /** Brand line shown under every outbound email footer. */
 export const EMAIL_TAGLINE = "Fundhub.ai · Funding Intelligence for Entrepreneurs";
-export const EMAIL_SIGNER_NAME = "Josh";
+export const EMAIL_SIGNER_NAME = "Chris";
 export const EMAIL_SIGNER_TITLE = "Funding Executive · Fundhub.ai";
 /** Compact text wordmark casing (Fundhub.ai brand law — never FundHub). */
 export const EMAIL_WORDMARK = "fundhub.ai";
 /** Hosted Fundhub wordmark (footer). */
 export const EMAIL_LOGO_PATH = "/assets/email/fundhub-logo.png";
-/** Handwritten Josh signature (Ms Madi PNG, #111827 on white). */
-export const EMAIL_SIGNATURE_PATH = "/assets/email/josh-signature.png";
+/** Handwritten Chris signature (script PNG, #111827 on white). The old josh-signature files stay on the server only because emails already sent load them by address. */
+export const EMAIL_SIGNATURE_PATH = "/assets/email/chris-signature.png";
 /*
   Brand body face from public/app/fundhub-brand.css --sans.
   Inter is a Google font (same stack the app loads). Linked in the shell <head>
@@ -252,7 +252,7 @@ export function emailRepTelHref(env = process.env) {
 
 /* THE SIGNATURE IMAGES NEED A WHITE GROUND UNDER THEM — F18, 2026-09-03.
    ═══════════════════════════════════════════════════════════════════════════
-   The wordmark and the handwritten "Josh" are PNGs with a solid white
+   The wordmark and the handwritten "Chris" are PNGs with a solid white
    background. They looked clean in the e-book email and showed as two white
    rectangles in the soft-pull email, which reads like an image problem and is
    not one: BOTH emails carry this one footer, and neither template contains a
@@ -289,7 +289,7 @@ function footerCard(inner) {
 }
 
 /**
- * Premium personal-signature footer (HTML). Handwritten Josh first, then
+ * Premium personal-signature footer (HTML). Handwritten Chris first, then
  * name / title / phone / tagline as one tight block, plus a quiet outlined
  * Unsubscribe control (still a real link).
  *

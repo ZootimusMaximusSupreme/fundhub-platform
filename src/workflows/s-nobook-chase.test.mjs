@@ -494,6 +494,18 @@ const FINISH = "2026-10-30T20:00:00Z";    // the finish, after the ship
 const oldTriggerEvent = () => ev("survey.submitted", {}, { id: "evt-first-answer", clientId: "cl-1", createdAt: OLD_START });
 const finishEvent = () => ev("survey.completed", {}, { id: "evt-finished", clientId: "cl-1", createdAt: FINISH });
 
+test("nobook: an old-trigger run stops after its first text when the survey finishes during its wait", async () => {
+  const db = makeDb({ clients: [{ ...PERSON }], templates: templates() });
+  const step = recordingStep({ wake: (id) => {
+    if (id === "wait-24h") {
+      db.events.push({ org_id: "org-1", client_id: "cl-1", name: "survey.completed", payload: {}, created_at: "2026-11-01T10:00:00Z" });
+    }
+  } });
+  const res = await handle({ event: ev("survey.submitted", {}, { id: "evt-old-handover", clientId: "cl-1" }), db, step });
+  assert.equal(res.exitedAt, "handed-to-finished-chase");
+  assert.deepEqual(db.messages.map((m) => m.template_key).sort(), [EMAIL_NOBOOK_01, SMS_NOBOOK_01].sort());
+});
+
 test("nobook: a first-answer chase already sent each text, then they finish: no text goes twice, the setter task still does", async () => {
   const db = makeDb({ clients: [{ ...PERSON }], templates: templates() });
   const old = await handle({ event: oldTriggerEvent(), db, step: fakeStep() });
@@ -512,7 +524,7 @@ test("nobook: the finished-survey chase sent first, then the first-answer run wa
   const db = makeDb({ clients: [{ ...PERSON }], templates: templates() });
   await handle({ event: finishEvent(), db, step: fakeStep() });
   const old = await handle({ event: oldTriggerEvent(), db, step: fakeStep() });
-  assert.equal(old.exitedAt, "completed");
+  assert.equal(old.exitedAt, "handed-to-finished-chase");
   assert.equal(db.messages.length, 6);
   assert.ok(db.messages.every((m) => m.provider_ref.includes("evt-finished")));
 });

@@ -114,6 +114,16 @@ describe("pipeline.html drawer — survey rows follow the survey's branch", () =
     );
   });
 
+  test("double-encoded ClickFunnels lists render as readable choices", () => {
+    const d = loadDrawer();
+    const rows = d.surveyRowsFor({
+      cf_svy_money_change_now_labels: '["[\\"Grow faster (more customers / more reach)\\"]"]',
+      cf_svy_planned_use_label: "Buy equipment"
+    });
+    assert.equal(byLabel(rows, "What money changes"), "Grow faster (more customers / more reach)");
+    assert.equal(byLabel(rows, "Planned use"), "Buy equipment");
+  });
+
   test("with no branch answer it shows the side that carries data, and neither when both are empty", () => {
     const d = loadDrawer();
     assert.equal(d.surveyBranch({ cf_svy_business_revenue_label: "$1M+" }), "business");
@@ -124,6 +134,27 @@ describe("pipeline.html drawer — survey rows follow the survey's branch", () =
     // The questions every client is asked still show, blank, so a missing
     // answer to one of them stays visible as a missing answer.
     assert.ok(bare.includes("Target amount") && bare.includes("Available capital"));
+  });
+});
+
+describe("pipeline.html drawer — survey stays above credit until a genuine credit result", () => {
+  test("missing scores, a sample result, and a self-reported survey score never promote Credit", () => {
+    const d = loadDrawer();
+    assert.equal(d.hasVerifiedCredit(null), false);
+    assert.equal(d.hasVerifiedCredit({ experian: null, source: null }), false);
+    assert.equal(d.hasVerifiedCredit({ experian: 740, source: "crs_results", sample: true }), false);
+    assert.equal(d.hasVerifiedCredit({ experian: 740, source: "survey", sample: false }), false);
+  });
+
+  test("only a dated, complete, genuine three-bureau result promotes Credit", () => {
+    const d = loadDrawer();
+    const scores = { experian: 746, equifax: 711, transunion: 735,
+      source: "crs_results", asOf: "2026-10-30T12:00:00Z", sample: false };
+    assert.equal(d.hasVerifiedCredit(scores), true);
+    assert.equal(d.hasVerifiedCredit({ ...scores, transunion: null }), false);
+    assert.equal(d.hasVerifiedCredit({ ...scores, asOf: null }), false);
+    assert.equal(d.hasVerifiedCredit({ ...scores, experian: "unknown" }), false);
+    assert.equal(d.hasVerifiedCredit({ ...scores, source: "survey" }), false);
   });
 });
 

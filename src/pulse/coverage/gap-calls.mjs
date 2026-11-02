@@ -80,7 +80,7 @@ function nextQuietOpen(from, timeZone = QUIET_HOURS_TZ) {
   return new Date(ts);
 }
 
-/* Josh (AG-04) dials only when his row is live, on the phone runtime, with a
+/* The AI setter (AG-04) dials only when its row is live, on the phone runtime, with a
    prompt. Same three tests as agentReadiness in the voice provider, copied so
    this file does not load the sender. */
 export function joshReady(agent) {
@@ -224,9 +224,9 @@ async function bookingWebhook({ db, orgId, now }) {
   }
 }
 
-/* A new booking should make Josh (AG-04) dial. The voice provider never throws,
+/* A new booking should make the AI setter (AG-04) dial. The voice provider never throws,
    so a dial that did not happen leaves no error anywhere: the proof of a dial is
-   the outbound_calls row. Not a miss: Josh is not live, the outbound fence is up,
+   the outbound_calls row. Not a miss: the setter is not live, the outbound fence is up,
    the booking was cancelled, the client has no phone, or quiet hours. */
 async function aiDialNoFailure({ db, orgId, now, env }) {
   const id = "calls:ai-dial-no-failure";
@@ -247,7 +247,7 @@ async function aiDialNoFailure({ db, orgId, now, env }) {
     if (agent) {
       const ready = joshReady({ status: agent.agent_status, runtime: agent.agent_runtime, has_prompt: agent.has_prompt });
       if (!ready.ok) {
-        return check(id, "PASS", `Josh (${JOSH_CODE}) ${ready.why}, so no AI call is expected`);
+        return check(id, "PASS", `Setter Chris (${JOSH_CODE}) ${ready.why}, so no AI call is expected`);
       }
     }
     if (env && typeof env === "object" && !fenceVerdict(MESSAGING_DRY_RUN, env).allowed) {
@@ -306,13 +306,13 @@ async function aiDialNoFailure({ db, orgId, now, env }) {
     );
     const missed = rowsOf(res).filter((row) => dialIsLate(row, now) && !truthy(row.dialed) && !truthy(row.has_failure));
     const n = missed.length;
-    if (n === 0) return check(id, "PASS", `no AI call is late without a dial or a failure row${agent ? "" : " (Josh runs from the vendor script)"}`);
+    if (n === 0) return check(id, "PASS", `no AI call is late without a dial or a failure row${agent ? "" : " (Setter Chris runs from the vendor script)"}`);
     const word = n === 1 ? "call" : "calls";
     return check(
       id,
       "FAIL",
       `${n} AI ${word} should have dialed and left no dial row and no failure row`,
-      `Check AI-SET-01 (Josh, ${JOSH_CODE}): his row, BLAND_API_KEY, and ${MESSAGING_DRY_RUN}. Do not place a call from this pulse. ${RECON}`
+      `Check AI-SET-01 (Setter Chris, ${JOSH_CODE}): its row, BLAND_API_KEY, and ${MESSAGING_DRY_RUN}. Do not place a call from this pulse. ${RECON}`
     );
   } catch (err) {
     return check(id, "FAIL", `AI-call read failed: ${clip(err)}`, `Do not place a call from this pulse. ${RECON}`);

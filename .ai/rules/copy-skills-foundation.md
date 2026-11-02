@@ -14,6 +14,7 @@ alwaysApply: true
 - Fundhub's rules still own the facts, the banned words and certainty. The list is in `marketing/copy-skills/copybot/references/voice-and-quality.md`. Law: ad-know-the-offer (.ai/rules/ad-know-the-offer.md) - read the offer first.
 - Ad scripts still go through the `fundhub-ad-writer` checker before Chris sees them. The ad writer writes the Copybot way.
 - One idea per piece. Every big claim has its support right next to it, or it gets smaller, or it goes.
+- Law: show-real-proof (.ai/rules/show-real-proof.md) - show the real thing whenever we have it, or merge it with a little diagram; the picture and the words prove each other (owner-set 2026-10-31).
 
 ## Never
 

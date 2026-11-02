@@ -1,4 +1,4 @@
-// The thing that actually sends a held staff reply once the window opens.
+// Send held staff replies and retry new credit-report emails.
 //
 // ═══════════════════════════════════════════════════════════════════════════
 // THE HOLE THIS CLOSES.
@@ -32,10 +32,9 @@
 //
 // *** WHAT IT WILL AND WILL NOT SEND. READ THIS BEFORE WIDENING IT. ***
 //
-// `senderStaffOnly: true`. It releases ONLY messages with a sender_staff_id —
-// rows written by src/messaging/compose.mjs, which means a named employee typed
-// them and pressed Send. Those are the messages the hold was applied to and the
-// ones somebody is waiting on.
+// `senderStaffOnly: true`. It releases messages with a sender_staff_id —
+// rows written by src/messaging/compose.mjs — plus the narrowly prefixed
+// `workflow:crs-full-report:` email cohort, whose failed sends need retry.
 //
 // It deliberately does NOT drain the several thousand rows queued by workflows
 // over the past months (110_messages_outbound.sql documents them). Those have

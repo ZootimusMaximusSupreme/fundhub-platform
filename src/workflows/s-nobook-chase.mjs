@@ -34,6 +34,7 @@ import { createTask } from "../lib/create-task.mjs";
 import { messageCohortId, sendTemplated } from "./messaging.mjs";
 import { hasReplied } from "./stop-on-reply.mjs";
 import { dripSendTime } from "../messaging/send-window.mjs";
+import { surveyCompleted } from "./s-02-incomplete-survey-nudge.mjs";
 
 export const TRIGGER_EVENT = "survey.completed";
 
@@ -186,6 +187,13 @@ export async function handle({ event, db, step, now = () => new Date() }) {
     return sendTemplated(db, { orgId, clientId, channel, templateKey, eventId: `${cohortId}:${n}` });
   }
 
+  // A run started by the old trigger yields once this person finishes the survey.
+  // The completed-survey run owns the remaining chase and the setter task.
+  const leadEmail = (event.payload || {}).email || null;
+  const stepsAside = async (n) => !finished
+    && step.run(`check-handed-over-${n}`, () => surveyCompleted(db, clientId, leadEmail, orgId));
+  const HANDED_OVER = "handed-to-finished-chase";
+
   /* 15 minutes in: a finished survey with no booking gets a person on the phone.
      Skipped when they booked or wrote back in the meantime. This is a task for a
      person, not a message, so it keeps its 15 minutes whatever the hour. */
@@ -239,6 +247,7 @@ export async function handle({ event, db, step, now = () => new Date() }) {
   if (await step.run("check-replied-1", replied)) {
     return { done: true, exitedAt: "replied", task };
   }
+  if (await stepsAside(1)) return { done: true, exitedAt: HANDED_OVER, task };
   const msg1 = await step.run("send-nobook-1", async () => {
     const cohortId = await messageCohortId(db, { eventId, orgId, clientId, name: trigger });
     return {
@@ -254,6 +263,7 @@ export async function handle({ event, db, step, now = () => new Date() }) {
   if (await step.run("check-replied-2", replied)) {
     return { done: true, exitedAt: "replied", task, msg1 };
   }
+  if (await stepsAside(2)) return { done: true, exitedAt: HANDED_OVER, task, msg1 };
   const msg2 = await step.run("send-nobook-2", async () => {
     const cohortId = await messageCohortId(db, { eventId, orgId, clientId, name: trigger });
     return {
@@ -269,6 +279,7 @@ export async function handle({ event, db, step, now = () => new Date() }) {
   if (await step.run("check-replied-3", replied)) {
     return { done: true, exitedAt: "replied", task, msg1, msg2 };
   }
+  if (await stepsAside(3)) return { done: true, exitedAt: HANDED_OVER, task, msg1, msg2 };
   const msg3 = await step.run("send-nobook-3", async () => {
     const cohortId = await messageCohortId(db, { eventId, orgId, clientId, name: trigger });
     return {

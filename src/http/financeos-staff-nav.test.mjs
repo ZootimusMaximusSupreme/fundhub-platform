@@ -82,9 +82,12 @@ test("the money pages stay off the sidebar list (ALL)", () => {
 });
 
 test("a staff viewer's FinanceOS card carries the client they are looking at", () => {
-  const block = PORTAL.match(/if \(STAFF_ROLES\[roleHint\(\)\]\) \{[\s\S]*?\n {2}\}/);
-  assert.ok(block, "staff block in client-portal.html");
-  assert.match(block[0], /getElementById\("money-link"\)/);
-  assert.match(block[0], /"\/app\/financeos\.html\?client_id=" \+ encodeURIComponent\(clientId\)/);
-  assert.match(block[0], /setAttribute\("data-fh-href", moneyHref\)/, "gateLinks rebuilds hrefs from data-fh-href");
+  // The newer staff-only soft-pull block comes before the FinanceOS block.
+  // Select the real money-link block; don't mistake a neighboring gate for it.
+  const blocks = [...PORTAL.matchAll(/if \(STAFF_ROLES\[roleHint\(\)\]\) \{[\s\S]*?\n {2}\}/g)];
+  const block = blocks.map((m) => m[0]).find((body) => body.includes('getElementById("money-link")'));
+  assert.ok(block, "FinanceOS staff link block in client-portal.html");
+  assert.match(block, /getElementById\("money-link"\)/);
+  assert.match(block, /"\/app\/financeos\.html\?client_id=" \+ encodeURIComponent\(clientId\)/);
+  assert.match(block, /setAttribute\("data-fh-href", moneyHref\)/, "gateLinks rebuilds hrefs from data-fh-href");
 });

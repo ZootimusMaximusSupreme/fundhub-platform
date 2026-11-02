@@ -26,45 +26,35 @@ function fakeDb({ lead = { id: CLIENT, client_code: "FH-000901", email: "dana@re
 }
 const ctxOf = (db, extra = {}) => ({ db, orgId: ORG, now: NOW, env: ENV, ...extra });
 
-test("survey resume: the newest lead's own link opens their survey at their next question", async () => {
+test("survey resume: the newest lead's real code opens nothing, and the database is asked only for the lead", async () => {
   const db = fakeDb();
   const [r] = await gapChecks(ctxOf(db));
   assert.equal(r.id, CHECK_ID);
   assert.deepEqual(CHECK_IDS, [CHECK_ID]);
   assert.equal(r.status, "PASS", r.detail);
-  assert.match(r.detail, /FH-000901 opens their own survey at cf_svy_money_change_now/);
+  assert.match(r.detail, /resume code for FH-000901 opens nothing/);
   assert.equal(r.suggestedFix, null);
   assert.doesNotMatch(r.detail, /dana|realmail/i, "the detail never names the person or their address");
   assert.deepEqual(db.calls[0].params, [ORG, "2026-10-24T18:00:00.000Z"], "seven days back");
+  assert.equal(db.calls.length, 1, "the closed door never reads the client's row");
 });
 
-test("survey resume: a finished survey's link opens at the end and still passes", async () => {
-  const done = { ...HALF_DONE, cf_svy_money_change_now: ["Grow faster (more customers / more reach)"],
-    cf_svy_self_reported_fico: "700-759", cf_svy_has_business: "No, personal funding only",
-    cf_svy_annual_income_range: "$100k-$199k", cf_svy_income_verifiable: "Yes, both", cf_svy_available_capital: "$5k - $25k" };
-  const [r] = await gapChecks(ctxOf(fakeDb({ lead: { id: CLIENT, client_code: "FH-000902", email: "a@realmail.com", custom_fields: done },
-    doorRow: { first_name: "A", email: "a@realmail.com", custom_fields: done } })));
-  assert.equal(r.status, "PASS", r.detail);
-  assert.match(r.detail, /every question answered/);
+test("survey resume: a door that hands back the lead's record again is RED", async () => {
+  const reopened = async () => ({ ok: true, contact: { email: "dana@realmail.com" }, answers: HALF_DONE, next_key: "cf_svy_money_change_now" });
+  let [r] = await gapChecks(ctxOf(fakeDb()), { readSurveyResume: reopened });
+  assert.equal(r.status, "FAIL");
+  assert.match(r.detail, /FH-000901 opened their saved record/);
+  assert.match(r.suggestedFix, /readSurveyResume must answer null/);
+  assert.doesNotMatch(r.detail, /dana|realmail/i);
+  // Any answer at all counts, even one with no contact in it.
+  [r] = await gapChecks(ctxOf(fakeDb()), { readSurveyResume: async () => ({ ok: true }) });
+  assert.equal(r.status, "FAIL");
 });
 
-test("survey resume: no signing key on the server is RED, because every link falls back to the top", async () => {
+test("survey resume: no signing key is a skip that says why, never a PASS", async () => {
   const [r] = await gapChecks(ctxOf(fakeDb(), { env: {} }));
-  assert.equal(r.status, "FAIL");
-  assert.match(r.detail, /no key to sign come-back links/);
-  assert.match(r.suggestedFix, /UNSUBSCRIBE_TOKEN_SECRET/);
-});
-
-test("survey resume: a link that opens someone else, or the wrong question, is RED", async () => {
-  let [r] = await gapChecks(ctxOf(fakeDb({ doorRow: { email: "someone@else.com", custom_fields: HALF_DONE } })));
-  assert.equal(r.status, "FAIL");
-  assert.match(r.detail, /different person/);
-  [r] = await gapChecks(ctxOf(fakeDb(), { }), { readSurveyResume: async () => ({ ok: true, contact: { email: "dana@realmail.com" }, next_key: "cf_svy_available_capital" }) });
-  assert.equal(r.status, "FAIL");
-  assert.match(r.detail, /opens at cf_svy_available_capital, but the file says cf_svy_money_change_now/);
-  [r] = await gapChecks(ctxOf(fakeDb()), { readSurveyResume: async () => null });
-  assert.equal(r.status, "FAIL");
-  assert.match(r.detail, /turned its own fresh link away/);
+  assert.equal(r.status, "skip");
+  assert.match(r.detail, /no signing key/);
 });
 
 test("survey resume: no lead, no database or a failed read is a skip that says why, never a PASS", async () => {

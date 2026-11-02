@@ -113,7 +113,7 @@ one live upcoming ClickFunnels booking. Anything less certain is left alone.
 | `survey.submitted` | no workflow. Fires on every answered survey screen; its answers are saved on the client, and the client's `credit_tier` with them (`onSurveySubmitted`, `src/handlers/client-lifecycle.mjs`) | — |
 | `survey.completed` | the never-booked chase and its setter call task. Fires once, when the answers include the last question (`cf_svy_available_capital`, `surveyIsComplete` in `src/survey/cf-question-map.mjs`) | `s-nobook-chase` |
 | `setter.no_answer` | the no-answer texts. Fires when a setter saves "No answer" on the setter desk, once per lead per Arizona day | `ai-set-03` |
-| `booking.created` | confirm + reminders, one open booking-confirmation setter task per client, the 15-minute handoff, booked-call owner/setter text and push plus assigned closer push, pre-call launcher, call-outcome enforcement, portal invite, no-show recovery | `s-04b`, `src/setter/tasks.mjs`, `ai-set-04`, `s-04c`, `bs-01`, `dpc-02`, `s-portal-invite`, `s-05a` |
+| `booking.created` | confirm + reminders, one human setter task per normalized appointment slot, the 15-minute handoff, booked-call owner/setter text and push plus assigned closer push, pre-call launcher, call-outcome enforcement, portal invite, no-show recovery | `s-04b`, `src/setter/tasks.mjs`, `ai-set-04`, `s-04c`, `bs-01`, `dpc-02`, `s-portal-invite`, `s-05a` |
 | `booking.rescheduled` | confirm + reminders, pre-call launcher, the 15-minute handoff, call-outcome enforcement (each restarts for the new time; the run for the old time is cancelled) | `s-04b`, `bs-01`, `ai-set-04`, `dpc-02` |
 
 The setter dashboard shows the submitted `cf_svy_*` survey answers with stable question keys. During a call, the assigned setter can save corrected answers through `POST /api/setter-dashboard` with `action: "save_survey"`. The corrections live in `clients.custom_fields.setter_survey_edits`; the submitted answers remain unchanged. The dashboard reloads the saved corrections, and the generated closer handoff uses them. Editing a completed handoff refreshes its saved text without resending a message.
@@ -122,7 +122,7 @@ The setter dashboard shows the submitted `cf_svy_*` survey answers with stable q
 
 The call screen also asks which funding paths were discussed (business, personal, or both), employment, annual personal income, and whether income can be verified. These answers save through the existing checklist action in `clients.custom_fields.setter_handoff`, separately from the submitted survey and its corrections. The funding-path answer is required for an opt-in handoff; the personal employment and income answers are optional. The outgoing handoff text does not include the new personal details.
 
-The event bus keeps each distinct funnel event, including separate survey-screen posts. The local setter handler now reuses an open task for the same client and task type. Once that task is done, a later opt-in or booking can create a new task. The Sales Fulfillment view shows one pill for repeated older setter tasks of the same type; the underlying tasks remain in the task list.
+The event bus keeps each distinct funnel event, including separate survey-screen posts. The local setter handler locks the client row, reuses an open task for the same client and task type, and for bookings compares the normalized call start time including older tasks whose body still holds an event ID. Stable task keys stop concurrent copies of one open opt-in cycle or the same booked slot. Once an entry task is completed, a later opt-in can create a new task. The Calendar pages through the full task queue and groups older open same-client, same-day setter-entry rows for display only; completed rows remain visible, and the underlying rows stay intact until the setter completes the handoff. The Sales Fulfillment view shows one pill for repeated older setter tasks of the same type; the underlying tasks remain in the task list.
 
 ## 3. The never-booked chase
 
@@ -170,7 +170,8 @@ before each text or email, a chase skips it when the other trigger's chase alrea
 sent that same message to the person in the 5 days before it started
 (`sentByOtherTrigger`). The setter task and the later checks still run. Two chases
 of the same trigger are not touched: a new finished survey more than six hours
-later still starts a new chase. This lasts only as long as the old-trigger runs.
+later still starts a new chase. An old-trigger run also steps aside once the
+finished-survey event is saved. This lasts only as long as the old-trigger runs.
 
 ## 3b. The come-back flow for an unfinished survey (2026-10-31)
 
@@ -200,17 +201,27 @@ flowchart TD
     K3 -->|No| M3[Come-back text + email 3]
 ```
 
-**The link opens the survey where they stopped.** Every message carries
-`{{survey_resume_link}}`: `https://apply.fundhub.ai/apply?r=<token>`. The token is
-signed, names the client and the company and nothing else, and lasts 30 days. The
-page asks `GET /api/public/survey-resume?r=<token>` for the contact details and the
-answers already saved, fills them in, and opens on the first question with no
-answer. An answer that is no longer a choice on the page (an older score range) is
-asked again. No token, a bad one, or no answer in 3 seconds: the survey starts at
-the top, as before.
+**The link is the plain survey page (containment, 2026-10-31).** The welcome and
+come-back templates link to `https://apply.fundhub.ai/apply`, with no `?r=` code,
+and the survey starts at the top. Their copy says this plainly. S-02 uses saved
+answers only to decide whether more questions remain; its texts include no saved
+progress detail. `/apply` takes an existing lead's email with a new phone and
+writes that phone onto the lead (`resolveClient`), so a welcome or come-back text can
+reach a phone nobody proved is the lead's. The signed code those texts used to carry
+opened the lead's saved contact and answers at `GET /api/public/survey-resume`. That
+door now answers every code with the same 404 and reads nothing, so the codes already
+sent open nothing; the page treats the 404 as "start at the top". Opening the survey
+where the person stopped waits for a link that proves the person opening it owns the
+record. UNVERIFIED on live until this ships.
 
 "Finished" means `survey.completed`. A reply means a `message.inbound` event for
 the client after the flow started.
+
+**One of each touch a day, whatever runs.** Each touch's send key is the person and
+the Arizona day it goes out (`touchSendKey`), and the messages table lets one row per
+key through. Two opt-ins more than six hours apart that both wait for the same 9 a.m.
+are two runs; each touch still goes once (review 2026-10-31; before, every touch went
+twice).
 
 **"Booked?" is the question that could only ever answer no.** It asked for
 booking events belonging to the customer, and no booking event belonged to
@@ -234,7 +245,7 @@ flowchart TD
     B[booking.created] --> C{Customer resolved?}
     C -->|No| STOP0[Stop]
     C -->|Yes| CONF[Confirmation text]
-    CONF --> LINK[Mint a 365-day portal sign-in link<br/>falls back to the sign-in page]
+    CONF --> LINK[Give a durable portal entry link<br/>short-lived sign-in credential can be reissued]
     LINK --> MAIL[Confirmation email]
     MAIL --> NOW[Ask the sender to work BOTH rows now, by id<br/>drainMessageNow, src/messaging/outbox.mjs]
     NOW --> ST{Start time?}
@@ -291,13 +302,18 @@ by id, through the same sender. The company pause switch, the daily cap, quiet
 hours, opt-out and the compliance screen all still run; the sweep is unchanged
 and remains the backstop for these two rows and for everything else.
 
-**The booking email (2026-10-26 branch).** S-04B supplies three distinct paths:
-the iPhone app download page, a regular web portal sign-in for Android or a
-browser, and a magic sign-in link that opens the portal at its **Confirm my
-call** card. The customer presses that card to save the confirmation. The email
-does not show an empty meeting-location row when the host's Meet link has not
-yet been read. The first-party app page records an Apple-link tap only when the
-customer actually presses the Apple button.
+**Booking account and confirmation (2026-10-29 code, not live-proved).** The
+booking makes a pending client account and immediately sends text and email to
+the durable `/portal-login.html?mode=claim` entry. The entry itself carries no
+bearer credential and does not expire. It issues a short-lived email credential
+that can always be requested again. When the client verifies it, the account is
+claimed, the next booked call is confirmed on the client record, and the client
+lands on the signed-in soft-pull page. The iPhone app download stays optional;
+a tap is not proof of installation. The email does not show an empty meeting
+location while the host's Meet link is unavailable. If the pending account
+cannot be created because the email is missing or belongs to another account,
+the setter gets a task to resolve it before the call; the booking message still
+contains a durable sign-in entry, but that exception is not called complete.
 
 In current source, after the confirmation **text** is marked sent, the sender
 also tries one native iPhone alert with fixed, detail-free wording: “Please
@@ -433,7 +449,8 @@ Now each touch asks for a `booking.created` or `booking.rescheduled` saved after
 the missed call started, or after the `booking.noshow` was saved if the start time
 is missing (`rebookedSinceMiss`). A booking made during the missed call, or in the
 5 minutes before the no-show is saved, counts too. The closer's task is still made
-at once.
+at once. If neither missed-call time is saved, a booking added after the run starts
+still stops later touches through the saved starting count.
 
 ## 6. Where a message actually goes out
 
@@ -479,6 +496,9 @@ The ClickFunnels appointment still creates a saved Fundhub booking. The
 `cortana-booking-feed` clock reads confirmed ClickFunnels booking rows created
 after its cutover and posts each one to the existing **Funding Call** conversion
 through `src/messaging/providers/cortana-booking-webhook.mjs`. The
+payload includes the booking's saved `qualification_bucket` (`funding_qualified`
+or `funding_unqualified`, or null when the survey has no score answer). It keeps
+the existing `funding_call_booked` event name and Funding Call conversion.
 `cortana_booking_sends` row records success or a retryable failure, so a browser
 leaving the thank-you page cannot lose the server-side conversion. Company,
 demo, and simulated buyer bookings are marked skipped. This is a vendor event,
@@ -565,6 +585,15 @@ wins over the typed answer. It picks the calendar in links, and it is saved on t
 person as `custom_fields.credit_tier` when the survey answer arrives and when a
 setter corrects it. On the page, the same 700-and-up rule picks the framed calendar
 and the `credit_tier` the tracker turns into QualifiedLead / UnqualifiedLead.
+
+**Saved call bucket.** A survey score also writes `clients.qualification_bucket`
+as `funding_qualified` or `funding_unqualified` using the same `creditTierFor`
+rule as calendar links and `credit_tier`. A setter score correction updates the
+client's bucket. `bookings.qualification_bucket` copies the client's bucket
+when the booking is saved and keeps the first known bucket (migration 508);
+bookings without a readable score remain NULL until one is saved. The Cortana
+booking event carries this saved value without changing `funding_call_booked`.
+Blueprint versus repair is decided on the call; both use the unqualified bucket.
 
 ## 8. Known gaps, not fixed here
 

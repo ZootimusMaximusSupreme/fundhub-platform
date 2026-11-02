@@ -1,0 +1,778 @@
+{
+  "snapshotUtc": "2026-11-01T06:52:39.722Z",
+  "originMain": "320b9b123ffa0d2706a873ae3b48adc6fad18560",
+  "method": "MERGED means all ahead commits patch-match main; SUPERSEDED means the exact tip is an ancestor of another ahead ref; LIVE means neither was proved. Open PR heads are retained for their owner even if contained.",
+  "branchRefs": [
+    {
+      "ref": "audit/ar-payment-ledger-entitlement-gates-20261030",
+      "sha": "c1f8ae659772a86edaca17539147012f8766da97",
+      "status": "SUPERSEDED",
+      "unmatchedCommits": 31,
+      "containedBy": "codex/e2e-e927-report",
+      "openPr": 300,
+      "prBase": "main"
+    },
+    {
+      "ref": "audit/blueprint-financeos-12mo-collision-20261030",
+      "sha": "c5a47bc5a17494744f5a5fee1a0dc4eee849fab4",
+      "status": "SUPERSEDED",
+      "unmatchedCommits": 16,
+      "containedBy": "codex/e2e-e927-report",
+      "openPr": 301,
+      "prBase": "main"
+    },
+    {
+      "ref": "audit/fulfillment-stuck-claim-cas-20261031",
+      "sha": "ec158fb24ae3e6e24f99ebcd36a304d90955860a",
+      "status": "SUPERSEDED",
+      "unmatchedCommits": 1,
+      "containedBy": "codex/e2e-e927-report",
+      "openPr": 345,
+      "prBase": "main"
+    },
+    {
+      "ref": "claude/confirm-on-calendar",
+      "sha": "3b9b449b67775622a61e504f1c4aa1036661ed3e",
+      "status": "SUPERSEDED",
+      "unmatchedCommits": 5,
+      "containedBy": "origin/claude/confirm-on-calendar",
+      "openPr": null,
+      "prBase": null
+    },
+    {
+      "ref": "claude/followup-abtest",
+      "sha": "b944c7808df2b1f13fadf964c5c2297bedfa9faf",
+      "status": "SUPERSEDED",
+      "unmatchedCommits": 8,
+      "containedBy": "origin/claude/followup-merge-chain",
+      "openPr": 355,
+      "prBase": "main"
+    },
+    {
+      "ref": "claude/followup-fixes",
+      "sha": "0e6510884a7c9779a1f4813e3284cc0731358d66",
+      "status": "SUPERSEDED",
+      "unmatchedCommits": 2,
+      "containedBy": "codex/e2e-e927-report",
+      "openPr": 350,
+      "prBase": "main"
+    },
+    {
+      "ref": "claude/followup-sms-no-token",
+      "sha": "46e839fc1263123b51317cd42d5938213c3fbd8c",
+      "status": "SUPERSEDED",
+      "unmatchedCommits": 2,
+      "containedBy": "claude/followup-abtest",
+      "openPr": 351,
+      "prBase": "main"
+    },
+    {
+      "ref": "claude/no-josh",
+      "sha": "36393abf410c880ba6c1c81a91d05c14041ffafa",
+      "status": "LIVE",
+      "unmatchedCommits": 1,
+      "containedBy": null,
+      "openPr": null,
+      "prBase": null
+    },
+    {
+      "ref": "codex/agreement-library-cleanup",
+      "sha": "509a4f75a116568a8524fc1acfca811fe65fce79",
+      "status": "LIVE",
+      "unmatchedCommits": 3,
+      "containedBy": null,
+      "openPr": null,
+      "prBase": null
+    },
+    {
+      "ref": "codex/ai-coo-kpi",
+      "sha": "24766c07725d16e3ed69010c236b93f1cdf5b9e8",
+      "status": "SUPERSEDED",
+      "unmatchedCommits": 4,
+      "containedBy": "codex/monday-all-integration",
+      "openPr": 318,
+      "prBase": "main"
+    },
+    {
+      "ref": "codex/blueprint-portal-map",
+      "sha": "92ebee86f6355abe6bb975a876d030534c2abfaa",
+      "status": "SUPERSEDED",
+      "unmatchedCommits": 1,
+      "containedBy": "codex/pr157-refresh",
+      "openPr": 291,
+      "prBase": "main"
+    },
+    {
+      "ref": "codex/calendar-task-dedupe",
+      "sha": "7b7fd59e60c0fc97f62ce4015dcb43d81f0b489c",
+      "status": "LIVE",
+      "unmatchedCommits": 1,
+      "containedBy": null,
+      "openPr": 270,
+      "prBase": "main"
+    },
+    {
+      "ref": "codex/client-portal-refresh",
+      "sha": "fee4851866ebba35e65e97d3d76a23bd77863ec5",
+      "status": "LIVE",
+      "unmatchedCommits": 1,
+      "containedBy": null,
+      "openPr": 323,
+      "prBase": "main"
+    },
+    {
+      "ref": "codex/closer-present-visuals",
+      "sha": "71b8a4cd5dcc73bc25ebadcd691e88eddeff337b",
+      "status": "LIVE",
+      "unmatchedCommits": 32,
+      "containedBy": null,
+      "openPr": 358,
+      "prBase": "main"
+    },
+    {
+      "ref": "codex/cortana-booking-bucket",
+      "sha": "8a4d3029650c1ec73b9b4cbbbafcf1fdf3c2302b",
+      "status": "SUPERSEDED",
+      "unmatchedCommits": 3,
+      "containedBy": "codex/monday-all-integration",
+      "openPr": 279,
+      "prBase": "main"
+    },
+    {
+      "ref": "codex/crm-phone-formatting",
+      "sha": "a22ec2b449f5dfee8e26399adaf25f3dc4fc9675",
+      "status": "SUPERSEDED",
+      "unmatchedCommits": 2,
+      "containedBy": "codex/monday-all-integration",
+      "openPr": 325,
+      "prBase": "main"
+    },
+    {
+      "ref": "codex/e2e-e927-report",
+      "sha": "f9c4bcfd0618c6033fc69727a6e41aedc74d5d25",
+      "status": "LIVE",
+      "unmatchedCommits": 282,
+      "containedBy": null,
+      "openPr": null,
+      "prBase": null
+    },
+    {
+      "ref": "codex/e2e-harness-synthetic",
+      "sha": "54fbf564aff66f59101f4f22afb763d3def9acaf",
+      "status": "LIVE",
+      "unmatchedCommits": 263,
+      "containedBy": null,
+      "openPr": null,
+      "prBase": null
+    },
+    {
+      "ref": "codex/knowledge-base-cleanup",
+      "sha": "645655a6a5ab78e1fe6dd2eb1de48c63045d75cc",
+      "status": "LIVE",
+      "unmatchedCommits": 2,
+      "containedBy": null,
+      "openPr": null,
+      "prBase": null
+    },
+    {
+      "ref": "codex/messaging-send-stays-open",
+      "sha": "a4e14c06e49b8ee15182400680be1be9e9514b96",
+      "status": "LIVE",
+      "unmatchedCommits": 2,
+      "containedBy": null,
+      "openPr": null,
+      "prBase": null
+    },
+    {
+      "ref": "codex/monday-all-integration",
+      "sha": "048b187680e3cf6b53ca7c27c30844efc773aeaf",
+      "status": "LIVE",
+      "unmatchedCommits": 314,
+      "containedBy": null,
+      "openPr": null,
+      "prBase": null
+    },
+    {
+      "ref": "codex/monday-sales-board",
+      "sha": "e11915d5f04c115c8e9356c4b931f6b2ec14088d",
+      "status": "SUPERSEDED",
+      "unmatchedCommits": 9,
+      "containedBy": "codex/e2e-e927-report",
+      "openPr": null,
+      "prBase": null
+    },
+    {
+      "ref": "codex/native-staff-alert-post-refresh-session-2026-10-30",
+      "sha": "f2806373faea6a5b9ffa4a71259a00701d33cfd5",
+      "status": "SUPERSEDED",
+      "unmatchedCommits": 2,
+      "containedBy": "codex/monday-all-integration",
+      "openPr": 332,
+      "prBase": "main"
+    },
+    {
+      "ref": "codex/pipeline-duplicate-setter-pills",
+      "sha": "bf94d4b36d1c117f441fcfa96aa50ae308c637c6",
+      "status": "LIVE",
+      "unmatchedCommits": 2,
+      "containedBy": null,
+      "openPr": null,
+      "prBase": null
+    },
+    {
+      "ref": "codex/pr157-refresh",
+      "sha": "1fa2a26b756fd4bbd585e63ba9078d3143244cb2",
+      "status": "LIVE",
+      "unmatchedCommits": 2,
+      "containedBy": null,
+      "openPr": null,
+      "prBase": null
+    },
+    {
+      "ref": "codex/pr291-refresh",
+      "sha": "5d9596130e1e6dcc001a84a6b56e463fa7edaec2",
+      "status": "SUPERSEDED",
+      "unmatchedCommits": 1,
+      "containedBy": "codex/pr157-refresh",
+      "openPr": null,
+      "prBase": null
+    },
+    {
+      "ref": "codex/sales-floor-setter",
+      "sha": "f8b7a2f43b45398e8504321a1319b347d7f9ba81",
+      "status": "SUPERSEDED",
+      "unmatchedCommits": 1,
+      "containedBy": "codex/monday-all-integration",
+      "openPr": 315,
+      "prBase": "main"
+    },
+    {
+      "ref": "codex/seamless-soft-pull",
+      "sha": "e9cf744be11eecf152f55905a579adaa2ba1dd2d",
+      "status": "SUPERSEDED",
+      "unmatchedCommits": 4,
+      "containedBy": "codex/closer-present-visuals",
+      "openPr": 278,
+      "prBase": "main"
+    },
+    {
+      "ref": "codex/setter-ci-proof",
+      "sha": "0b27dc323222c9b5e9e0ba8449de66d7ad0cbb6b",
+      "status": "LIVE",
+      "unmatchedCommits": 2,
+      "containedBy": null,
+      "openPr": null,
+      "prBase": null
+    },
+    {
+      "ref": "codex/setter-dashboard",
+      "sha": "b49b69a2415d53e81624280d05d622c0d7261df8",
+      "status": "LIVE",
+      "unmatchedCommits": 8,
+      "containedBy": null,
+      "openPr": null,
+      "prBase": null
+    },
+    {
+      "ref": "codex/setter-survey-display",
+      "sha": "d376a1be487d57b49eb3dd0692f467220309909b",
+      "status": "LIVE",
+      "unmatchedCommits": 1,
+      "containedBy": null,
+      "openPr": null,
+      "prBase": null
+    },
+    {
+      "ref": "codex/ship-in-order",
+      "sha": "8335b35964ff80e132d1cd9dbd1aa3cd7837bfc9",
+      "status": "LIVE",
+      "unmatchedCommits": 3,
+      "containedBy": null,
+      "openPr": null,
+      "prBase": null
+    },
+    {
+      "ref": "codex/simulated-call-cleanup-board",
+      "sha": "a22629d654884edd3fb3ae12ee35c1c63a2793d7",
+      "status": "LIVE",
+      "unmatchedCommits": 2,
+      "containedBy": null,
+      "openPr": null,
+      "prBase": null
+    },
+    {
+      "ref": "codex/simulated-call-dashboards",
+      "sha": "e13b54bc020c943fd2d14a36273860f06b143966",
+      "status": "LIVE",
+      "unmatchedCommits": 12,
+      "containedBy": null,
+      "openPr": null,
+      "prBase": null
+    },
+    {
+      "ref": "codex/simulated-call-disposition",
+      "sha": "6acb3c67ebc4f6142eb985c41382286702706331",
+      "status": "LIVE",
+      "unmatchedCommits": 3,
+      "containedBy": null,
+      "openPr": null,
+      "prBase": null
+    },
+    {
+      "ref": "codex/slides-framework-v2",
+      "sha": "43563acc6b3720f3eee804ae79355b21a50dc6d5",
+      "status": "LIVE",
+      "unmatchedCommits": 6,
+      "containedBy": null,
+      "openPr": 327,
+      "prBase": "main"
+    },
+    {
+      "ref": "codex/survey-answer-display",
+      "sha": "1ef363b61aed5fe25ee469717953b0759a22d021",
+      "status": "LIVE",
+      "unmatchedCommits": 2,
+      "containedBy": null,
+      "openPr": null,
+      "prBase": null
+    },
+    {
+      "ref": "feat/qualification-bucket",
+      "sha": "b8578ff581a273908804239cea8ed3e9ad18bb40",
+      "status": "SUPERSEDED",
+      "unmatchedCommits": 1,
+      "containedBy": "codex/monday-all-integration",
+      "openPr": 280,
+      "prBase": "main"
+    },
+    {
+      "ref": "feat/two-funding-calendars",
+      "sha": "6312a51a6dab2cdabc57f8317c2a844a32dcb9d3",
+      "status": "LIVE",
+      "unmatchedCommits": 3,
+      "containedBy": null,
+      "openPr": 285,
+      "prBase": "feat/qualification-bucket"
+    },
+    {
+      "ref": "fix/manual-e2e-items-4-6",
+      "sha": "76e2a267d91847def7b28d34c5efb1379491c92e",
+      "status": "LIVE",
+      "unmatchedCommits": 1,
+      "containedBy": null,
+      "openPr": null,
+      "prBase": null
+    },
+    {
+      "ref": "fix/s05a-nobook-send-window",
+      "sha": "461b1005d5a4407e801da8453c666c7ca66ec406",
+      "status": "LIVE",
+      "unmatchedCommits": 4,
+      "containedBy": null,
+      "openPr": 353,
+      "prBase": "main"
+    },
+    {
+      "ref": "fix/slides-three-small",
+      "sha": "a9320016f9e17ef1f25fda8f0f1f0b0a0c363591",
+      "status": "SUPERSEDED",
+      "unmatchedCommits": 2,
+      "containedBy": "codex/monday-all-integration",
+      "openPr": 310,
+      "prBase": "main"
+    },
+    {
+      "ref": "fix/staff-sop-workstep-shortcuts-20261030",
+      "sha": "c1ab9a112f2d5198527a900859d915b46c0db2ec",
+      "status": "SUPERSEDED",
+      "unmatchedCommits": 9,
+      "containedBy": "codex/e2e-e927-report",
+      "openPr": 312,
+      "prBase": "main"
+    },
+    {
+      "ref": "local/s02-earlier-optin-backup",
+      "sha": "75df88012f80036ef96d63d189049df9942815b9",
+      "status": "LIVE",
+      "unmatchedCommits": 1,
+      "containedBy": null,
+      "openPr": null,
+      "prBase": null
+    },
+    {
+      "ref": "release/reliable-intake-ci-gate-20261031",
+      "sha": "681025a87814115f5720172204b5cdc8932c8ff9",
+      "status": "LIVE",
+      "unmatchedCommits": 3,
+      "containedBy": null,
+      "openPr": 344,
+      "prBase": "main"
+    },
+    {
+      "ref": "origin/audit/ar-payment-ledger-entitlement-gates-20261030",
+      "sha": "1ab33f4748e5e98d31b3224acb228bc8a3423a6b",
+      "status": "LIVE",
+      "unmatchedCommits": 41,
+      "containedBy": null,
+      "openPr": 300,
+      "prBase": "main"
+    },
+    {
+      "ref": "origin/audit/blueprint-financeos-12mo-collision-20261030",
+      "sha": "c5a47bc5a17494744f5a5fee1a0dc4eee849fab4",
+      "status": "SUPERSEDED",
+      "unmatchedCommits": 16,
+      "containedBy": "codex/e2e-e927-report",
+      "openPr": 301,
+      "prBase": "main"
+    },
+    {
+      "ref": "origin/audit/chat-idempotency-recipient-safety-20261029",
+      "sha": "45b004c09a41bc593682c91cfc1170c5ddd0d387",
+      "status": "SUPERSEDED",
+      "unmatchedCommits": 4,
+      "containedBy": "codex/e2e-e927-report",
+      "openPr": 272,
+      "prBase": "main"
+    },
+    {
+      "ref": "origin/audit/front-house-pr151-receipt-20261027",
+      "sha": "99d6b56a9ffa49e76fc552f9c7bd1cf8315e438c",
+      "status": "SUPERSEDED",
+      "unmatchedCommits": 1,
+      "containedBy": "codex/pr157-refresh",
+      "openPr": 157,
+      "prBase": "main"
+    },
+    {
+      "ref": "origin/audit/fulfillment-f01-pod-task-dedupe-20261028",
+      "sha": "1df9d0a7bd97a7a49dbad6e1c53c146a7b16300d",
+      "status": "LIVE",
+      "unmatchedCommits": 4,
+      "containedBy": null,
+      "openPr": null,
+      "prBase": null
+    },
+    {
+      "ref": "origin/audit/fulfillment-f05-stale-approval-gate-20261028",
+      "sha": "12ea73246ae747f02fb8b35ed641527eaf006a98",
+      "status": "LIVE",
+      "unmatchedCommits": 5,
+      "containedBy": null,
+      "openPr": null,
+      "prBase": null
+    },
+    {
+      "ref": "origin/audit/fulfillment-stuck-claim-cas-20261031",
+      "sha": "9e51bfdd26ccf26b5083b911189d7dc93bf55489",
+      "status": "LIVE",
+      "unmatchedCommits": 1,
+      "containedBy": null,
+      "openPr": 345,
+      "prBase": "main"
+    },
+    {
+      "ref": "origin/audit/pulse-ab-trace-contract-20261030-0701",
+      "sha": "647e92d469586b21f4d0e7a4b320eaaaa952f981",
+      "status": "SUPERSEDED",
+      "unmatchedCommits": 146,
+      "containedBy": "codex/e2e-e927-report",
+      "openPr": 293,
+      "prBase": "main"
+    },
+    {
+      "ref": "origin/ci/unowned-contracts-manifest-20261030",
+      "sha": "40ae89500239b1c60d6fbd1ce306821b74bb2607",
+      "status": "LIVE",
+      "unmatchedCommits": 7,
+      "containedBy": null,
+      "openPr": 328,
+      "prBase": "main"
+    },
+    {
+      "ref": "origin/claude/confirm-on-calendar",
+      "sha": "c98724b7d245ed1235070af13812f64c2ae1561f",
+      "status": "LIVE",
+      "unmatchedCommits": 7,
+      "containedBy": null,
+      "openPr": null,
+      "prBase": null
+    },
+    {
+      "ref": "origin/claude/followup-abtest",
+      "sha": "b944c7808df2b1f13fadf964c5c2297bedfa9faf",
+      "status": "SUPERSEDED",
+      "unmatchedCommits": 8,
+      "containedBy": "origin/claude/followup-merge-chain",
+      "openPr": 355,
+      "prBase": "main"
+    },
+    {
+      "ref": "origin/claude/followup-fixes",
+      "sha": "e1229fc8697842c741521d6e4e7a4cc932ebf335",
+      "status": "LIVE",
+      "unmatchedCommits": 3,
+      "containedBy": null,
+      "openPr": 350,
+      "prBase": "main"
+    },
+    {
+      "ref": "origin/claude/followup-merge-chain",
+      "sha": "bd1004ac53f2ee23006ab06b301346492db72e10",
+      "status": "LIVE",
+      "unmatchedCommits": 10,
+      "containedBy": null,
+      "openPr": null,
+      "prBase": null
+    },
+    {
+      "ref": "origin/claude/followup-sms-no-token",
+      "sha": "46e839fc1263123b51317cd42d5938213c3fbd8c",
+      "status": "SUPERSEDED",
+      "unmatchedCommits": 2,
+      "containedBy": "claude/followup-abtest",
+      "openPr": 351,
+      "prBase": "main"
+    },
+    {
+      "ref": "origin/claude/slideshow-pages",
+      "sha": "06b8a6a1770f7341b6fa2727609f6f5d1d3df57e",
+      "status": "LIVE",
+      "unmatchedCommits": 15,
+      "containedBy": null,
+      "openPr": null,
+      "prBase": null
+    },
+    {
+      "ref": "origin/claude/slideshow-rewrite",
+      "sha": "bcba60cf379c1a1fa09b7ebc74451ea8e4dd746b",
+      "status": "LIVE",
+      "unmatchedCommits": 26,
+      "containedBy": null,
+      "openPr": null,
+      "prBase": null
+    },
+    {
+      "ref": "origin/codex/ai-coo-kpi",
+      "sha": "24766c07725d16e3ed69010c236b93f1cdf5b9e8",
+      "status": "SUPERSEDED",
+      "unmatchedCommits": 4,
+      "containedBy": "codex/monday-all-integration",
+      "openPr": 318,
+      "prBase": "main"
+    },
+    {
+      "ref": "origin/codex/blueprint-portal-map",
+      "sha": "5d9596130e1e6dcc001a84a6b56e463fa7edaec2",
+      "status": "SUPERSEDED",
+      "unmatchedCommits": 1,
+      "containedBy": "codex/pr157-refresh",
+      "openPr": 291,
+      "prBase": "main"
+    },
+    {
+      "ref": "origin/codex/calendar-task-dedupe",
+      "sha": "7b7fd59e60c0fc97f62ce4015dcb43d81f0b489c",
+      "status": "LIVE",
+      "unmatchedCommits": 1,
+      "containedBy": null,
+      "openPr": 270,
+      "prBase": "main"
+    },
+    {
+      "ref": "origin/codex/client-portal-refresh",
+      "sha": "fee4851866ebba35e65e97d3d76a23bd77863ec5",
+      "status": "LIVE",
+      "unmatchedCommits": 1,
+      "containedBy": null,
+      "openPr": 323,
+      "prBase": "main"
+    },
+    {
+      "ref": "origin/codex/closer-present-visuals",
+      "sha": "71b8a4cd5dcc73bc25ebadcd691e88eddeff337b",
+      "status": "LIVE",
+      "unmatchedCommits": 32,
+      "containedBy": null,
+      "openPr": 358,
+      "prBase": "main"
+    },
+    {
+      "ref": "origin/codex/cortana-booking-bucket",
+      "sha": "8a4d3029650c1ec73b9b4cbbbafcf1fdf3c2302b",
+      "status": "SUPERSEDED",
+      "unmatchedCommits": 3,
+      "containedBy": "codex/monday-all-integration",
+      "openPr": 279,
+      "prBase": "main"
+    },
+    {
+      "ref": "origin/codex/crm-phone-formatting",
+      "sha": "a22ec2b449f5dfee8e26399adaf25f3dc4fc9675",
+      "status": "SUPERSEDED",
+      "unmatchedCommits": 2,
+      "containedBy": "codex/monday-all-integration",
+      "openPr": 325,
+      "prBase": "main"
+    },
+    {
+      "ref": "origin/codex/native-app-audit-backup-2026-10-29-cde2d75c",
+      "sha": "cde2d75c981e4fda2facd4278f407b7e88091c3c",
+      "status": "LIVE",
+      "unmatchedCommits": 8,
+      "containedBy": null,
+      "openPr": null,
+      "prBase": null
+    },
+    {
+      "ref": "origin/codex/native-staff-alert-post-refresh-session-2026-10-30",
+      "sha": "ac5150761b16b73babb469d5cdb278ba48dc00cb",
+      "status": "SUPERSEDED",
+      "unmatchedCommits": 1,
+      "containedBy": "codex/monday-all-integration",
+      "openPr": 332,
+      "prBase": "main"
+    },
+    {
+      "ref": "origin/codex/pr148-recording-proof-ci-align-20261027",
+      "sha": "3384a56cb154788e763b3c52ee14a4c4b899054d",
+      "status": "LIVE",
+      "unmatchedCommits": 1,
+      "containedBy": null,
+      "openPr": null,
+      "prBase": null
+    },
+    {
+      "ref": "origin/codex/sales-floor-setter",
+      "sha": "f8b7a2f43b45398e8504321a1319b347d7f9ba81",
+      "status": "SUPERSEDED",
+      "unmatchedCommits": 1,
+      "containedBy": "codex/monday-all-integration",
+      "openPr": 315,
+      "prBase": "main"
+    },
+    {
+      "ref": "origin/codex/seamless-soft-pull",
+      "sha": "1854ae0bffb3d9dcf37d6b626168f742febc4319",
+      "status": "SUPERSEDED",
+      "unmatchedCommits": 27,
+      "containedBy": "codex/closer-present-visuals",
+      "openPr": 278,
+      "prBase": "main"
+    },
+    {
+      "ref": "origin/codex/setter-survey-display",
+      "sha": "d376a1be487d57b49eb3dd0692f467220309909b",
+      "status": "LIVE",
+      "unmatchedCommits": 1,
+      "containedBy": null,
+      "openPr": null,
+      "prBase": null
+    },
+    {
+      "ref": "origin/codex/slides-framework-v2",
+      "sha": "43563acc6b3720f3eee804ae79355b21a50dc6d5",
+      "status": "LIVE",
+      "unmatchedCommits": 6,
+      "containedBy": null,
+      "openPr": 327,
+      "prBase": "main"
+    },
+    {
+      "ref": "origin/feat/qualification-bucket",
+      "sha": "b8578ff581a273908804239cea8ed3e9ad18bb40",
+      "status": "SUPERSEDED",
+      "unmatchedCommits": 1,
+      "containedBy": "codex/monday-all-integration",
+      "openPr": 280,
+      "prBase": "main"
+    },
+    {
+      "ref": "origin/feat/two-funding-calendars",
+      "sha": "6312a51a6dab2cdabc57f8317c2a844a32dcb9d3",
+      "status": "LIVE",
+      "unmatchedCommits": 3,
+      "containedBy": null,
+      "openPr": 285,
+      "prBase": "feat/qualification-bucket"
+    },
+    {
+      "ref": "origin/fix/pipeline-survey-first-booking-state-20261030",
+      "sha": "19b1f77f36576ceb415deafc58aad29c87dbf9bf",
+      "status": "SUPERSEDED",
+      "unmatchedCommits": 10,
+      "containedBy": "codex/e2e-e927-report",
+      "openPr": null,
+      "prBase": null
+    },
+    {
+      "ref": "origin/fix/s05a-nobook-send-window",
+      "sha": "461b1005d5a4407e801da8453c666c7ca66ec406",
+      "status": "LIVE",
+      "unmatchedCommits": 4,
+      "containedBy": null,
+      "openPr": 353,
+      "prBase": "main"
+    },
+    {
+      "ref": "origin/fix/sales-kanban-appointment-priority-native-proof-20261030",
+      "sha": "ca78e648d18721e369170d097f538c9efbeb488c",
+      "status": "LIVE",
+      "unmatchedCommits": 16,
+      "containedBy": null,
+      "openPr": 307,
+      "prBase": "main"
+    },
+    {
+      "ref": "origin/fix/slides-three-small",
+      "sha": "60af09af95b703f0f26462134964a175dd2e45e4",
+      "status": "SUPERSEDED",
+      "unmatchedCommits": 2,
+      "containedBy": "codex/monday-all-integration",
+      "openPr": 310,
+      "prBase": "main"
+    },
+    {
+      "ref": "origin/fix/staff-sop-workstep-shortcuts-20261030",
+      "sha": "c1ab9a112f2d5198527a900859d915b46c0db2ec",
+      "status": "SUPERSEDED",
+      "unmatchedCommits": 9,
+      "containedBy": "codex/e2e-e927-report",
+      "openPr": 312,
+      "prBase": "main"
+    },
+    {
+      "ref": "origin/release/reliable-intake-ci-gate-20261031",
+      "sha": "681025a87814115f5720172204b5cdc8932c8ff9",
+      "status": "LIVE",
+      "unmatchedCommits": 3,
+      "containedBy": null,
+      "openPr": 344,
+      "prBase": "main"
+    }
+  ],
+  "livePrChains": [
+    [
+      280,
+      285
+    ],
+    [
+      310,
+      327
+    ],
+    [
+      351,
+      355
+    ],
+    [
+      278,
+      358
+    ]
+  ],
+  "archivedAndDeletedLocalByThisChat": 26,
+  "notes": [
+    "PR #344 is an independent live gate; the process branch is independent and awaits #344.",
+    "The PR-resolution chat owns existing backlog PR merges; the closer chat owns PR #358.",
+    "This snapshot follows six patch-equivalent and twenty ancestor local branch archives/deletions."
+  ]
+}

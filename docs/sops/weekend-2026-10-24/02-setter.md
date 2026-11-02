@@ -1,6 +1,6 @@
 # SOP — Setter
 
-Written 2026-10-26 from Cole Gordon’s two courses in Google Drive, then rewritten for Fundhub. Chris is the setter right now. He is also the closer. The AI setter (Josh) stays off.
+Written 2026-10-26 from Cole Gordon’s two courses in Google Drive, then rewritten for Fundhub. Chris is the setter right now. He is also the closer. The AI setter stays off.
 
 ## Where this came from
 
@@ -190,7 +190,7 @@ These lines sit on top of Cole’s shape. They match owner law in the repo.
 
 **App download.** After a good booked call, tell them to get **Fundhub Portal** on their phone (App Store: `https://apps.apple.com/us/app/fundhub-portal/id6823985032`). If they will join from a laptop, they still need a computer for the strategy call; the app is for their file and next steps, not a substitute for the computer on the call.
 
-**AI setter.** Josh (AG-04) stays **retired**. No outbound AI dial after book.
+**AI setter.** AG-04 stays **retired**. No outbound AI dial after book.
 
 **Setter dashboard.** Use **Setter Dashboard** (`/app/setter-dashboard.html`) instead of only free-form notes on the pipeline card. The dashboard holds the checklist, the handoff block the closer reads, today’s self-scoped dial, book and show numbers, and buttons for “send intro video” and “send handoff text.”
 

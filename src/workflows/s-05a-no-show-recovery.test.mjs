@@ -248,6 +248,31 @@ test("s-05a: rescheduling the missed booking stops later recovery touches", asyn
   }
 });
 
+test("s-05a: when both missed-call times are missing, a later rebook still stops recovery", async () => {
+  const db = noShowDb({
+    clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", custom_fields: {} }],
+    events: [missedBooking()],
+    templates: allTemplates()
+  });
+  const step = {
+    run: async (id, fn) => {
+      const result = await fn();
+      if (id === "send-touch-1") {
+        db.events.push({ org_id: "org-1", client_id: "cl-1", name: "booking.created", created_at: afterNoShow(1) });
+      }
+      return result;
+    },
+    sleep: async () => {},
+    sleepUntil: async () => {}
+  };
+  const res = await handle({
+    event: ev("booking.noshow", { bookingUid: "b1" }, { id: "missing-no-show-event", clientId: "cl-1" }),
+    db, step
+  });
+  assert.equal(res.stoppedAt, "before-touch-2");
+  assert.equal(db.messages.length, 2, "only the first email and text were queued");
+});
+
 test("s-05a: a reschedule from another company cannot stop recovery", async () => {
   const db = noShowDb({
     clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", custom_fields: {} }],

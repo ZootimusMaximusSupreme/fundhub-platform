@@ -17,7 +17,7 @@ async function call(request, rules) {
 }
 
 const GOOD = {
-  belief: "cost", lead_source: "meta", setter_label: "Josh", outcome_count: "4",
+  belief: "cost", lead_source: "meta", setter_label: "Chris", outcome_count: "4",
   period_start: "2026-10-01", period_end: "2026-10-07", note: "price came up on 4 calls"
 };
 
@@ -53,7 +53,7 @@ describe("POST /api/marketing-flags", () => {
     assert.equal(res.body.ok, true);
     assert.equal(res.body.flag.belief, "cost");
     const [ins] = fake.find(/INSERT INTO marketing_flags/);
-    assert.deepEqual(ins.params, [ORG_ID, STAFF_ID, "cost", "meta", "Josh", 4, "2026-10-01", "2026-10-07", "price came up on 4 calls"]);
+    assert.deepEqual(ins.params, [ORG_ID, STAFF_ID, "cost", "meta", "Chris", 4, "2026-10-01", "2026-10-07", "price came up on 4 calls"]);
   });
 
   test("a belief that is not on the list is refused: 400, nothing stored", async () => {

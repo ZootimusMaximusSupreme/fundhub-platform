@@ -14,16 +14,20 @@
 //   touch 2  9:00 a.m. Arizona on the day after touch 1 really goes out
 //   touch 3  9:00 a.m. Arizona on the day after touch 2
 //
-// Every message carries three merge tags: {{survey_resume_link}}, a signed link that
-// opens /apply on the question where the person stopped (src/survey/resume-link.mjs),
-// {{survey_stopped_at}} ("the credit score question") and {{survey_taps_left}} ("5
-// more taps"), which say it the way a person would (surveyProgressWords in
-// src/survey/resume-state.mjs). The words are the seed's (SMS-S02-RESUME-1..3,
-// EMAIL-S02-RESUME-1..3); this file only sends the keys.
+// The messages link to the plain /apply page. surveyProgressWords still decides
+// whether any questions remain, but progress details are not sent to an unproved
+// phone. The words live in the SMS-S02-RESUME-1..3 and EMAIL-S02-RESUME-1..3
+// templates; this file only sends their keys.
 //
 // THE TWO PROGRESS TAGS ARE WORKED OUT AT SEND TIME, from the answers saved by then,
 // because a person can answer more questions between one touch and the next. A touch
 // that finds nothing left to answer does not send: the survey is done.
+//
+// CONTAINMENT (2026-10-31): no signed ?r= code goes in these messages. /apply accepts
+// an existing lead's email with a new phone and writes that phone onto the record
+// (resolveClient), so a come-back text can reach a number nobody has proved belongs to
+// the lead, and a code in it would open that lead's saved answers. The link stays the
+// plain /apply page until a link can prove the person opening it owns the record.
 //
 // EMAIL-S02-FINISH-APPLICATION, the old one-email nudge whose link went to the
 // calendar, is not sent any more. Its template row is left alone.
@@ -56,9 +60,16 @@
 // resume messages already sent to the person in the last four days, from another
 // opt-in, steps aside.
 //
-// Duplicate runs for ONE opt-in (several ClickFunnels posts, a replayed event)
-// share messageCohortId, so they share one message per touch: the send key is
-// `workflow:<template key>:<cohort event id>` and the insert is a no-op the second time.
+// That check runs once, at the start, so it cannot see a run that has not sent
+// yet. Two opt-ins more than six hours apart that both sleep to the same 9 a.m.
+// (10 p.m. and 4:30 a.m.) both pass it, and both would send (review 2026-10-31).
+// So a touch's send key is the PERSON and the ARIZONA DAY it goes out:
+// `workflow:<template key>:<client id>:<YYYY-MM-DD>` (touchSendKey). The messages
+// insert is ON CONFLICT (org_id, provider_ref) DO NOTHING, so whichever run sends
+// a touch first, the other run's insert of the same touch that day is a no-op. The
+// database settles it; there is no moment where both runs can get through. The
+// same key covers duplicate runs for ONE opt-in (several ClickFunnels posts, a
+// replayed event): one message per touch.
 
 import { inngest } from "./client.mjs";
 import { db } from "../db.mjs";
@@ -67,7 +78,7 @@ import { messageCohortId, sendTemplated } from "./messaging.mjs";
 import { addTags } from "./tags.mjs";
 import { hasBooked } from "./s-nobook-chase.mjs";
 import { hasReplied } from "./stop-on-reply.mjs";
-import { surveyResumeUrl } from "../survey/resume-link.mjs";
+import { RESUME_BASE_URL } from "../survey/resume-link.mjs";
 import { surveyProgressWords } from "../survey/resume-state.mjs";
 import { DRIP_START_HOUR, SEND_WINDOW_TZ, dripSendTime, nextHourStrike } from "../messaging/send-window.mjs";
 
@@ -100,6 +111,18 @@ export function resumePlan(startMs) {
   return [touch1, touch2, touch3];
 }
 
+const ARIZONA_DAY = new Intl.DateTimeFormat("en-CA", {
+  timeZone: SEND_WINDOW_TZ, year: "numeric", month: "2-digit", day: "2-digit"
+});
+
+/* touchSendKey — the send key for one touch: the person and the Arizona day the touch
+   goes out ("<client id>:2026-10-29"). sendTemplated makes it the provider_ref
+   `workflow:<template key>:<this>`, so one person gets each come-back touch at most once
+   a day, however many runs try (see ONE SEQUENCE AT A TIME above). */
+export function touchSendKey(clientId, goesOutAt) {
+  return `${clientId}:${ARIZONA_DAY.format(new Date(goesOutAt))}`;
+}
+
 // Match on client_id OR on the email inside the event payload. Capture sources
 // that predate T14-11 wrote survey events with client_id NULL, which made the
 // client_id-only check unsatisfiable — so this job nudged people who had in fact
@@ -118,19 +141,21 @@ export async function surveyCompleted(db, clientId, email, orgId = null) {
   return r.rows.some((row) => row.name === "survey.completed");
 }
 
-/* Resume messages already sent to this person from a DIFFERENT opt-in, newer than
-   `since`. Messages of this run's own cohort do not count: their send key ends in
-   `:<cohortId>`. */
-export async function sequenceInFlight(db, { orgId, clientId, cohortId, since }) {
+/* Resume messages already sent to this person, newer than `since`, from any run.
+   It is asked once, before this run sends anything, so a message it finds came from
+   another run: that sequence is already going and this run steps aside. Two runs
+   that both start before either has sent (two visits the same evening) share one
+   send key instead (messageCohortId over SEQUENCE_WINDOW_MS), so the database drops
+   the second copy of each touch. Independent review of PR #346, 2026-10-31. */
+export async function sequenceInFlight(db, { orgId, clientId, since }) {
   const r = await db.query(
     `SELECT 1 FROM messages
       WHERE org_id = $1 AND client_id = $2
         AND direction = 'outbound'
         AND template_key = ANY($3)
         AND created_at > $4
-        AND COALESCE(provider_ref, '') NOT LIKE $5
       LIMIT 1`,
-    [orgId, clientId, RESUME_TEMPLATE_KEYS, since, `%:${cohortId}`]
+    [orgId, clientId, RESUME_TEMPLATE_KEYS, since]
   );
   return r.rows.length > 0;
 }
@@ -169,13 +194,14 @@ export async function handle({ event, db, step, now = () => Date.now() }) {
     return {
       startedAt: new Date(startMs).toISOString(),
       goesOutAt: resumePlan(startMs).map((at) => at.toISOString()),
-      cohortId: await messageCohortId(db, { eventId: event.id, orgId, clientId, name: "entry.captured" })
+      // One send key for every visit inside the sequence window, so two runs never both send a touch.
+      cohortId: await messageCohortId(db, { eventId: event.id, orgId, clientId, name: "entry.captured", windowMs: SEQUENCE_WINDOW_MS })
     };
   });
 
   const crowded = await step.run("check-sequence-in-flight", () =>
     sequenceInFlight(db, {
-      orgId, clientId, cohortId: plan.cohortId,
+      orgId, clientId,
       since: new Date(Date.parse(plan.startedAt) - SEQUENCE_WINDOW_MS).toISOString()
     }));
   if (crowded) return { done: false, reason: "sequence_in_flight" };
@@ -197,16 +223,15 @@ export async function handle({ event, db, step, now = () => Date.now() }) {
       // Every question is answered: there is nothing to come back to, so nothing goes.
       if (progress.left === 0) return { skipped: "all_answered" };
       const context = {
-        survey_resume_link: surveyResumeUrl({ orgId, clientId, now }),
-        survey_stopped_at: progress.stoppedAt,
-        survey_taps_left: progress.tapsLeft
+        survey_resume_link: RESUME_BASE_URL
       };
+      const sendKey = touchSendKey(clientId, plan.goesOutAt[touch.n - 1]);
       return {
         sms: await sendTemplated(db, {
-          orgId, clientId, channel: "sms", templateKey: touch.sms, eventId: plan.cohortId, context
+          orgId, clientId, channel: "sms", templateKey: touch.sms, eventId: sendKey, context
         }),
         email: await sendTemplated(db, {
-          orgId, clientId, channel: "email", templateKey: touch.email, eventId: plan.cohortId, context
+          orgId, clientId, channel: "email", templateKey: touch.email, eventId: sendKey, context
         })
       };
     });

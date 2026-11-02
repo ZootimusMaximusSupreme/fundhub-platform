@@ -30,7 +30,8 @@ import * as M from "./gap-handoff.mjs";
 
 const HAS_DB = !!process.env.DATABASE_URL;
 const ORG = crypto.randomUUID();
-const NOW = new Date();
+// Keep due-time fixtures inside Arizona contact hours, independent of the test runner's clock.
+const NOW = new Date("2026-10-31T22:00:00.000Z"); // 3 p.m. Phoenix
 const ago = (min) => new Date(NOW.getTime() - min * 60000).toISOString();
 const uuid = () => crypto.randomUUID();
 
@@ -150,7 +151,8 @@ function msg(key, minutesAgo, cl) {
 
 const WIN = ago(7 * 24 * 60);
 const first = (cut) => [ORG, ["entry.captured"], WIN, ago(cut)];
-const survey = (cut) => [ORG, ["survey.submitted"], WIN, ago(cut)];
+const survey = (cut) => [ORG, ["survey.completed"], WIN, ago(cut)];
+const atClock = (name, clock, graceMin) => [ORG, [name], WIN, new Date(Date.parse(clock) - graceMin * 60000).toISOString()];
 
 /* ------------------------------------------------------------------ the harness itself */
 
@@ -231,14 +233,19 @@ test("handoff SQL: finish-application nudge", { skip: !HAS_DB }, async (t) => {
   await expectN(t, "RED: the nudge must come AFTER the sign-up (an older nudge does not count)", N, first(25), {
     clients: [x], events: [e], messages: [msg(M.TEMPLATES.nudge, 60 * 24 * 2, x)]
   }, 1);
+  const earlyEntry = { ...ev("entry.captured", 0, x), created_at: "2026-10-31T14:30:00.000Z" }; // 7:30 a.m. Phoenix
+  await expectN(t, "GREEN: 7:30 a.m. entry waits until 9 a.m. Arizona", N,
+    atClock("entry.captured", "2026-10-31T15:59:00.000Z", 25), { clients: [x], events: [earlyEntry] }, 0);
+  await expectN(t, "RED: 7:30 a.m. entry still has no nudge after 9 a.m. Arizona plus grace", N,
+    atClock("entry.captured", "2026-10-31T16:05:00.000Z", 25), { clients: [x], events: [earlyEntry] }, 1);
 });
 
 test("handoff SQL: never-booked chase", { skip: !HAS_DB }, async (t) => {
   const x = client();
-  const s = ev("survey.submitted", 240, x);
+  const s = ev("survey.completed", 240, x);
   const B = M.NOBOOK_SQL;
   await expectN(t, "RED: survey 4h old, never booked, no chase", B, survey(150), { clients: [x], events: [s] }, 1);
-  await expectN(t, "GREEN: survey 90 min old (chase not due)", B, survey(150), { clients: [x], events: [ev("survey.submitted", 90, x)] }, 0);
+  await expectN(t, "GREEN: survey 90 min old (chase not due)", B, survey(150), { clients: [x], events: [ev("survey.completed", 90, x)] }, 0);
   await expectN(t, "GREEN: chase row exists", B, survey(150), { clients: [x], events: [s], messages: [msg(M.TEMPLATES.nobook, 120, x)] }, 0);
   await expectN(t, "GREEN: booked 30 min after the survey (client id)", B, survey(150), { clients: [x], events: [s, ev("booking.created", 210, x)] }, 0);
   await expectN(t, "GREEN: booked, event has no client id (email match)", B, survey(150), {
@@ -246,10 +253,15 @@ test("handoff SQL: never-booked chase", { skip: !HAS_DB }, async (t) => {
   }, 0);
   const bphone = { id: uuid(), org_id: ORG, name: "booking.created", client_id: null, payload: { phone: "(520) 555-0142", email: "other@x.com" }, created_at: ago(210), is_demo: false };
   await expectN(t, "GREEN: booked, matched by the last 10 digits of the phone", B, survey(150), { clients: [x], events: [s, bphone] }, 0);
-  const s2 = ev("survey.submitted", 600, x);
+  const s2 = ev("survey.completed", 600, x);
   await expectN(t, "RED: booked 8h AFTER the survey (past the 2h10m slack) and no chase row", B, survey(150), {
     clients: [x], events: [s2, ev("booking.created", 100, x)]
   }, 1);
+  const earlySurvey = { ...ev("survey.completed", 0, x), created_at: "2026-10-31T13:00:00.000Z" }; // 6 a.m. Phoenix
+  await expectN(t, "GREEN: 6 a.m. survey waits until 9 a.m. Arizona plus grace", B,
+    atClock("survey.completed", "2026-10-31T16:29:00.000Z", 150), { clients: [x], events: [earlySurvey] }, 0);
+  await expectN(t, "RED: 6 a.m. survey still has no chase after 9 a.m. Arizona plus grace", B,
+    atClock("survey.completed", "2026-10-31T16:30:00.000Z", 150), { clients: [x], events: [earlySurvey] }, 1);
 });
 
 /* ------------------------------------------------------------------ check 2: /roadmap contact */

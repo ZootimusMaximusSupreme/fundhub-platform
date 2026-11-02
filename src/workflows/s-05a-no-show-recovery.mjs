@@ -60,9 +60,25 @@ export async function rebookedSinceMiss(db, { orgId, clientId, eventId, missedAt
   return r.rows.length > 0;
 }
 
+// When neither saved time is available, keep the older run-start count as a
+// fallback so a later booking still stops the remaining recovery touches.
+async function bookingActivityCount(db, { orgId, clientId, callStartIso = null, upToEventId = null }) {
+  const r = await db.query(
+    `SELECT COUNT(*)::int AS n
+       FROM events
+      WHERE org_id = $1 AND client_id = $2
+        AND name IN ('booking.created', 'booking.rescheduled')
+        AND created_at <= LEAST(
+              COALESCE($3::timestamptz, 'infinity'::timestamptz),
+              COALESCE((SELECT s.created_at FROM events s WHERE s.id = $4::uuid AND s.org_id = $1), 'infinity'::timestamptz))`,
+    [orgId, clientId, callStartIso, upToEventId]
+  );
+  return Number(r.rows[0]?.n || 0);
+}
+
 /* The missed call's start time as an ISO string, or null when the payload has none. */
 function missedCallAt(payload = {}) {
-  const ms = Date.parse(payload.startTime);
+  const ms = Date.parse(payload.startTime ?? payload.start_time ?? "");
   return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
 }
 
@@ -112,6 +128,9 @@ export async function handle({ event, db, step, now = () => Date.now() }) {
   const eventId = event.id;
   const context = appointmentContext(event.payload || {});
   const missedAt = missedCallAt(event.payload || {});
+  const priorBookings = await step.run("snapshot-bookings", () => bookingActivityCount(db, {
+    orgId, clientId, callStartIso: missedAt, upToEventId: eventId
+  }));
 
   await step.run("tag-no-show", () => addTags(db, clientId, ["call:no_show"]));
 
@@ -141,7 +160,9 @@ export async function handle({ event, db, step, now = () => Date.now() }) {
     await step.sleepUntil(`wait-touch-${n}`, new Date(plan.at[i]));
     // After the wait and before the write: a person who booked again after the
     // miss, whether before this run began or while the touch waited, gets nothing.
-    if (await step.run(`check-booked-${n}`, () => rebookedSinceMiss(db, { orgId, clientId, eventId, missedAt }))) {
+    if (await step.run(`check-booked-${n}`, async () =>
+      await rebookedSinceMiss(db, { orgId, clientId, eventId, missedAt }) ||
+      (await bookingActivityCount(db, { orgId, clientId })) > priorBookings)) {
       return { done: true, stoppedAt: `before-touch-${n}`, ...sent, task };
     }
     sent[`touch${n}`] = await step.run(`send-touch-${n}`, () =>

@@ -340,11 +340,12 @@ test("Join call button: one call with a link and one without are counted apart, 
   try {
     // Two clients of the same company. Client A has a linked task, client B has none.
     for (const [n, taskUrl] of [["a", GOOD_TASK], ["b", null]]) {
+      const startsAt = ahead(24);
       s.insert("bookings", {
         id: `booking-${n}`, org_id: ORG, client_id: `client-${n}`, source: "clickfunnels", provider_uid: `uid-${n}`,
-        starts_at: ahead(24), status: "booked", meeting_url: null, attendee_email: `${n}@acme.test`,
+        starts_at: startsAt, status: "booked", meeting_url: null, attendee_email: `${n}@acme.test`,
       });
-      s.insert("tasks", { id: `task-${n}`, org_id: ORG, client_id: `client-${n}`, meeting_url: taskUrl, due_at: ahead(24) });
+      s.insert("tasks", { id: `task-${n}`, org_id: ORG, client_id: `client-${n}`, meeting_url: taskUrl, due_at: startsAt });
     }
     assert.deepEqual(s.run(contract.sql, ORG), { sample_count: 2, bad_count: 1 });
   } finally { s.close(); }

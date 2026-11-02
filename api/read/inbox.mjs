@@ -117,6 +117,12 @@ export const run = readHandler({
                 c.last_pulse_at, c.created_at
            FROM conversations c
           WHERE c.org_id = $3::uuid
+            AND EXISTS (
+              SELECT 1 FROM clients active_client
+               WHERE active_client.id = c.client_id
+                 AND active_client.org_id = c.org_id
+                 AND active_client.custom_fields->>'crm_archived_at' IS NULL
+            )
             AND ($4::boolean IS NOT TRUE OR (
                   -- "the newest message on this thread came from the client",
                   -- asked per-thread against idx_messages_thread rather than by
