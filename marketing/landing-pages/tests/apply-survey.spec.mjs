@@ -1,4 +1,24 @@
 import { test, expect } from "@playwright/test";
+import { readFileSync } from "node:fs";
+
+const APPLY_SOURCE = readFileSync(new URL("../apply-survey.html", import.meta.url), "utf8");
+const CAPITAL_OPTIONS = [
+  "$0", "$1 - $199", "$200 - $999", "$1k - $4,999",
+  "$5k - $9,999", "$10k - $19,999", "$20k - $49,999", "$50k+"
+];
+
+test.beforeEach(async ({ page }) => {
+  // Exercise the actual source fragment, never the separate historical harness copy.
+  // No real contact, calendar, font or provider request leaves this local test.
+  await page.route("**/*", async route => {
+    const url = new URL(route.request().url());
+    if (url.origin !== "http://127.0.0.1:4177") return route.abort();
+    if (url.pathname === "/apply-survey.html") {
+      return route.fulfill({ status: 200, contentType: "text/html", body: APPLY_SOURCE });
+    }
+    return route.continue();
+  });
+});
 
 const BUSINESS_OPTS = [
   "Yes, less than 6 months old",
@@ -62,7 +82,8 @@ async function finishToCalendar(page) {
   await expect(page.getByRole("heading", { name: "Available Capital", exact: true })).toBeVisible();
   await expect(page.locator("#count")).toContainText("Question 9 of 9");
   await expect(page.locator("#count")).toContainText("80%");
-  await page.getByRole("radio", { name: "Less than $1k", exact: true }).click();
+  await expect(page.getByRole("radio")).toHaveText(CAPITAL_OPTIONS);
+  await page.getByRole("radio", { name: "$0", exact: true }).click();
   await expect(page.getByRole("heading", { name: "You're qualified. Pick a time below." })).toBeVisible();
   const cal = page.locator("#cal");
   await expect(cal).toBeVisible();
@@ -121,7 +142,7 @@ test.describe("apply-survey smoke", () => {
     expect(payload.answers.cf_svy_has_business).toBe("No, personal funding only");
     expect(payload.answers.cf_svy_annual_income_range).toBe("$50k-$99k");
     expect(payload.answers.cf_svy_income_verifiable).toBe("Yes, pay stubs");
-    expect(payload.answers.cf_svy_available_capital).toBe("Less than $1k");
+    expect(payload.answers.cf_svy_available_capital).toBe("$0");
     expect(payload.answers.cf_svy_business_revenue).toBeUndefined();
     expect(payload.answers.cf_svy_revenue_verifiable).toBeUndefined();
     expect(errors).toEqual([]);
@@ -141,7 +162,7 @@ test.describe("apply-survey smoke", () => {
     expect(payload.answers.cf_svy_has_business).toBe("Yes, 5+ years");
     expect(payload.answers.cf_svy_business_revenue).toBe("Under $100k");
     expect(payload.answers.cf_svy_revenue_verifiable).toBe("Yes, bank statements");
-    expect(payload.answers.cf_svy_available_capital).toBe("Less than $1k");
+    expect(payload.answers.cf_svy_available_capital).toBe("$0");
     expect(payload.answers.cf_svy_annual_income_range).toBeUndefined();
     expect(payload.answers.cf_svy_income_verifiable).toBeUndefined();
     expect(errors).toEqual([]);
