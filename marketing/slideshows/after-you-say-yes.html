@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Fundhub After You Say Yes</title>
-<meta name="description" content="What happens after you sign: two clocks start, the Fundhub team runs every application, and every stage and every message is spelled out.">
+<meta name="description" content="Signing starts two clocks that your own delays cannot pause. Here is what Fundhub does after you say yes, what you do, and what every stage and email means.">
 <!--
   Deck AY · After you say yes
   Lane: Funding (700 and up)
@@ -50,7 +50,7 @@
     and the sources it lists: chris-voice-profile.md, ads/VOICE.md,
     ads/RULES.md Part 0). Closer lines reused only where they are
     approved for the call (present.js:109, :111, :112;
-    04-sales-call-script.md:227-229, :419, :451).
+    04-sales-call-script.md).
   - Every claim sits next to its support: the clause, the stage list, the
     email. A claim bigger than its source got smaller (no first week day
     by day: no source has one).
@@ -89,6 +89,8 @@
     order, not duration; no wait time is drawn or named.
   - Display check (delivery-and-collaboration.md): every slide viewed at
     390 pixels wide before it shipped.
+
+  Rewritten 2026-10-31 on Chris's slide framework (see pre-underwriting.html).
 
   Talking points (aside.talk, hidden from viewers; open with #notes or N):
   about 45 to 60 seconds a slide, so the video runs about five minutes and
@@ -763,36 +765,39 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </defs>
   </svg>
 
-  <section class="slide dark" data-src="The guarantee clocks begin when you sign; a Fundhub funding advisor begins working your file within 24 business hours (G-01); first authorized applications within 72 business hours (G-02); your delay or error does not pause either clock: db/migrations/493_funding_and_repair_agreement_text.sql:53 (section 3), copied exactly. The same two clocks as the closer says them: public/app/present.js:112. We don't let people slip through the cracks: Chris 2026-10-31, marketing/copy-skills/copybot/references/chris-voice-profile.md:26.">
+  <section class="slide dark" data-src="The guarantee clocks begin when you sign; a Fundhub funding advisor begins working your file within 24 business hours (G-01); first authorized applications within 72 business hours (G-02); your delay or error does not pause either clock: db/migrations/493_funding_and_repair_agreement_text.sql:53 (section 3), copied exactly. The same two clocks as the closer says them: public/app/present.js:112. The agreement sets action deadlines and the portal shows next steps: Chris 2026-10-31, marketing/copy-skills/copybot/references/chris-voice-profile.md:26. Rewrite 2026-10-31. Brokers' bad systems let people slip through the cracks: Chris 2026-10-31, marketing/copy-skills/copybot/references/chris-voice-profile.md:26. The second clock, applications within 72 business hours: db/migrations/493_funding_and_repair_agreement_text.sql:53 (section 3).">
     <p class="eyebrow">AY-01 / The two clocks</p>
-    <h2>Two clocks start the minute you sign, and your delay does not pause either one.</h2>
-    <p class="lede">Within 24 business hours a funding advisor is working your file. That's G-01, and it's written into the agreement you sign.</p>
+    <h2>Signing starts two clocks on Fundhub, and nothing you do or forget can pause them.</h2>
+    <p class="lede">The second clock is the one that gets your applications to the banks.</p>
+    <ul class="lines">
+      <li>The first one puts a funding advisor on your file before 24 business hours have passed.</li>
+      <li>If you send something late or get something wrong, both of them keep counting, and the clause says so.</li>
+    </ul>
     <figure class="pic">
       <div class="real" role="img" aria-label="Section 3 of the Fundhub funding agreement. Marked: the guarantee clocks begin when you sign this agreement, and a Fundhub funding advisor will begin working your file within 24 business hours, G-01. Also marked: your delay or error does not pause either clock.">
         <div class="rh2">Funding Agreement · Section 3</div>
-        <p class="clause"><mark>The guarantee clocks begin when you sign this agreement.</mark> <mark>A Fundhub funding advisor will begin working your file within 24 business hours <span class="nw">(G-01)</span>.</mark> Fundhub will submit your first authorized applications within 72 business hours <span class="nw">(G-02)</span>. <mark>Your delay or error does not pause either clock.</mark></p>
+        <p class="clause"><mark>The guarantee clocks begin when you sign this agreement.</mark> <mark>A Fundhub funding advisor will begin working your file within 24 business hours <span class="nw">(G-01)</span>.</mark> &hellip; <mark>Your delay or error does not pause either clock.</mark></p>
         <span class="chip on"><span class="cd"></span>The first clock</span>
       </div>
       <p class="real-src">The agreement you sign, word for word.</p>
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>The minute you sign, two clocks start. That's the first thing to know about saying yes.</li>
-        <li>This is the actual section of the agreement. Within 24 business hours, a funding advisor is working your file. That's G-01.</li>
-        <li>Read the last line with me. Your delay or error does not pause either clock. We put that on us, in writing.</li>
-        <li>Brokers sell shady, inefficient products with bad systems, so people slip through the cracks. We don't let people slip through the cracks, and the clocks are how.</li>
-        <li>There's a second clock in that same section, and it's the one that gets your applications out the door.</li>
-        <li>Your story: the first client you signed under these clocks, and what the first 24 business hours looked like on your side.</li>
+        <li>The moment you sign, two clocks start on US, and nothing you do on your side can stop them. The agreement you sign says that in plain words.</li>
+        <li>The second clock is the one that gets your applications to the banks, and it sits in the very same section of the agreement as the first.</li>
+        <li>The first clock is written in the clause on your screen. Before 24 business hours have passed since you signed, a funding advisor is working on your file.</li>
+        <li>Read the last sentence with me. If you send something late, or you get something wrong, both clocks keep COUNTING, and the pressure stays on our side.</li>
+        <li>We don't let people slip through the cracks, so both clocks are written right into the agreement.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide" data-src="Before you pay, we read the agreement together on the screen; after you pay, you're in the portal with your next step: docs/sops/weekend-2026-10-24/04-sales-call-script.md:419. The Fundhub Portal app: same file :451. The eight stages, word for word and in order, from the portal's All file stages list: public/app/client-portal.html:676-686. The reminder a few hours into the round when the ID or the portal setup is still missing: src/workflows/f-02-portal-id-missing.mjs:6-12. Decisions are posted to your file: src/workflows/templates-seed.mjs:45.">
+  <section class="slide" data-src="Before you pay, we read the agreement together on the screen; after you pay, you're in the portal with your next step: docs/sops/weekend-2026-10-24/04-sales-call-script.md. The Fundhub Portal app: same file. The eight stages, word for word and in order, from the portal's All file stages list: public/app/client-portal.html:676-686. The reminder a few hours into the round when the ID or the portal setup is still missing: src/workflows/f-02-portal-id-missing.mjs:6-12. Decisions are posted to your file: src/workflows/templates-seed.mjs:45. If still missing after a further wait, a follow-up touch goes out: src/workflows/f-02-portal-id-missing.mjs:9-11. The Fundhub Portal app is for your file and next steps: docs/sops/weekend-2026-10-24/02-setter.md:191 and 04-sales-call-script.md.">
     <p class="eyebrow">AY-02 / Your portal</p>
-    <h2>After you pay, you're in the portal, and every stage shows there.</h2>
+    <h2>Your portal shows the exact stage your file is in, from booked to finalized.</h2>
     <ul class="lines">
-      <li>Before you pay, we read the agreement together on the screen. After you pay, you're in the portal with your next step.</li>
-      <li>Your first step is your ID and the portal setup. From there you watch every stage, and the Fundhub Portal app puts the same list on your phone.</li>
+      <li>Your first job after paying is to upload your ID and finish setting up the portal.</li>
+      <li>If either one is still missing a few hours after your round starts, you get a reminder, so your file never sits.</li>
     </ul>
     <figure class="pic">
       <div class="real" style="font-family:var(--sans);padding-block:8px" role="img" aria-label="The portal's All file stages list, in its own order: Booked, Diagnostic Paid, Docs Received, Round Started, Round Submitted, Round Approved, Round Funded, File Finalized. Docs Received is marked ID and setup. Round Submitted is marked applications out. Round Approved is marked on your file.">
@@ -812,23 +817,21 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Here's what you see after you say yes. Before you pay, we read the agreement together on the screen. After you pay, you're in the portal with your next step.</li>
-        <li>This is the portal's own stage list, in its own order. Booked, paid, docs, then round started, submitted, approved, funded, then your file finalized.</li>
-        <li>Your first step is on you: your ID and the portal setup. If either one is still missing a few hours into the round, the system reminds you, so nothing stalls.</li>
-        <li>Everything after that shows up stage by stage, so you never wonder where your file is.</li>
-        <li>The Fundhub Portal app puts the same list on your phone.</li>
-        <li>We don't let people slip through the cracks. The portal is one of the ways we make sure of it.</li>
+        <li>After you pay, the question that matters is where your file is right now. Your PORTAL answers it, so you never have to call anyone and ask.</li>
+        <li>The list on screen is the portal's own. It runs from booked and paid, through documents and each round, all the way to funded and a finalized file.</li>
+        <li>Your one job at the start is your ID and the portal setup. That's stage three, and it's on you, because only you can upload it.</li>
+        <li>If either one is still missing a few hours after your round starts, the system sends you a REMINDER. Another one goes out if the gap stays open.</li>
+        <li>The Fundhub Portal app puts your file and your next step on your phone, so you can see what stage you're in at any time.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide" data-src="The Fundhub team runs every application and every follow-up with the banks; you don't fill out a single application; you run the business, we handle the capital side: public/app/present.js:111 (closer line). What you authorize Fundhub to do, and what its authority does not include: db/migrations/493_funding_and_repair_agreement_text.sql:53 (section 4). Your part: same line, section 5. A confirmed approval is one Fundhub has recorded: same line, section 2. Between rounds we dispute the new hard inquiries: present.js:109. You follow directions, you get there: Chris 2026-10-31, marketing/copy-skills/copybot/references/chris-voice-profile.md:32.">
+  <section class="slide" data-src="The Fundhub team runs every application and every follow-up with the banks; you don't fill out a single application; you run the business, we handle the capital side: public/app/present.js:111 (closer line). What you authorize Fundhub to do, and what its authority does not include: db/migrations/493_funding_and_repair_agreement_text.sql:53 (section 4). Your part: same line, section 5. A confirmed approval is one Fundhub has recorded: same line, section 2. Between rounds we dispute the new hard inquiries: present.js:109. You follow directions, you get there: Chris 2026-10-31, marketing/copy-skills/copybot/references/chris-voice-profile.md:32. What the authority does not include, signing a loan, accepting funds, a false statement: db/migrations/493_funding_and_repair_agreement_text.sql:53 (section 4).">
     <p class="eyebrow">AY-03 / Who does what</p>
-    <h2>The Fundhub team runs every application and every <span style="white-space:nowrap">follow-up</span>.</h2>
+    <h2>Every application and bank follow-up is ours, and your part comes down to four things.</h2>
     <ul class="lines">
-      <li>You don't fill out a single application. You run the business, and we handle the capital side, every follow-up with the banks included.</li>
-      <li>Your part is in writing too: complete, accurate information, a quick fix on any error, and a heads-up when funds arrive.</li>
-      <li>Only you sign a loan or credit agreement, and only you receive the funds.</li>
+      <li>Yours: true information, a quick fix if something's off, word when funds arrive, and your own signature.</li>
+      <li>The agreement also limits us: we never sign a loan for you, and we never accept the funds.</li>
     </ul>
     <figure class="pic">
       <div class="compare" role="img" aria-label="Two columns. The Fundhub team: submits the applications you authorize, every follow-up with the banks, disputes inquiries between rounds, records every confirmed approval. You: complete, accurate, current information; a quick fix on any error; a heads-up when funds arrive; your own signature on any loan.">
@@ -851,27 +854,25 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
           </ul>
         </div>
       </div>
-      <p class="pic-cap">In the agreement's own words: sections 2, 4 and 5.</p>
+      <p class="pic-cap">From sections 2, 4 and 5 of the agreement and our round plan.</p>
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Who does the work? The Fundhub team runs every application and every follow-up with the banks. You don't fill out a single application.</li>
-        <li>You run the business. We handle the capital side.</li>
-        <li>Your side is short, and it's in the agreement: give us complete, accurate, current information, fix an error fast, and tell us when approved funds or credit access arrive.</li>
-        <li>One more thing that's in writing: only you sign a loan or credit agreement, and only you receive the funds. Our authority stops there.</li>
-        <li>Between rounds, we dispute the new hard inquiries, so the next round starts from a cleaner file. That's ours too.</li>
-        <li>You follow directions, you get there.</li>
+        <li>Applying on your own takes hours of forms and bank follow-ups, and with us those hours go back into your business.</li>
+        <li>The Fundhub team sends every application you authorize and handles every follow-up with the banks. The inquiry disputes between rounds are ours as well.</li>
+        <li>Your part comes down to four things: true, current information, a fast fix on anything that's off, word when approved funds come in, and your own signature.</li>
+        <li>The agreement also limits our authority to protect you. It stops before your signature on any loan, and before the money itself, which only ever goes to YOU.</li>
+        <li>You give us the true information and approvals we need; we handle the authorized applications and bank follow-up. So you keep running the jobs and serving your customers while the capital side gets done for you.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide dark" data-src="Guarantee line, word for word: marketing/copy-skills/copybot/references/owner-voice.md:18; settled by Chris 2026-10-31: ops/workflows/backend-selling-lanes-2026-10-30.md:216. The clause, copied exactly from section 3 of the funding agreement the CRM sends: db/migrations/493_funding_and_repair_agreement_text.sql:53 (G-01 and G-02). The closer's timeline line: public/app/present.js:112. We fulfill, we keep our word: Chris 2026-10-31, marketing/copy-skills/copybot/references/chris-voice-profile.md:27. The bank decides, not us: docs/sops/weekend-2026-10-24/04-sales-call-script.md:229." data-figures="the contract's 24 and 72 business hours">
+  <section class="slide dark" data-src="Guarantee line, word for word: marketing/copy-skills/copybot/references/owner-voice.md:18; settled by Chris 2026-10-31: ops/workflows/backend-selling-lanes-2026-10-30.md:216. The clause, copied exactly from section 3 of the funding agreement the CRM sends: db/migrations/493_funding_and_repair_agreement_text.sql:53 (G-01 and G-02). The closer's timeline line: public/app/present.js:112. We fulfill, we keep our word: Chris 2026-10-31, marketing/copy-skills/copybot/references/chris-voice-profile.md:27. The bank decides, not us: docs/sops/weekend-2026-10-24/04-sales-call-script.md. If Fundhub misses either action deadline, you may request return of the deposit; financing sources decide application results: db/migrations/493_funding_and_repair_agreement_text.sql:53 (section 3)." data-figures="the contract's 24 and 72 business hours">
     <p class="eyebrow">AY-04 / The guarantee</p>
     <h2>Applications go out within 72 business hours.</h2>
-    <p class="lede">That's our guarantee, and it's in your contract. That typically means approvals come very shortly after.</p>
+    <p class="lede">That's our guarantee, and it's in your contract. Each bank sets its own decision date.</p>
     <ul class="lines">
-      <li>That's the second clock, G-02, and it starts the same minute as the first one.</li>
-      <li>We put it in writing because we fulfill. We keep our word.</li>
+      <li>G-02 is the second clock, and it started the minute you signed, right alongside the first.</li>
     </ul>
     <figure class="pic">
       <div class="real" role="img" aria-label="Section 3 of the Fundhub funding agreement. A funding advisor begins working your file within 24 business hours. Marked: Fundhub will submit your first authorized applications within 72 business hours, G-02. Our guarantee.">
@@ -883,22 +884,20 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Here's the second clock.</li>
-        <li>Applications go out within 72 business hours. That's our guarantee, and it's in your contract. That typically means approvals come very shortly after.</li>
-        <li>This is the clause, word for word. G-02. Both clocks start the minute you sign, and your delay doesn't pause them. We carry that.</li>
-        <li>The bank decides, not us. We pick the banks and the order. They say yes or no.</li>
-        <li>We put it in writing because we fulfill. We keep our word.</li>
+        <li>Applications go out within 72 business hours. That's our guarantee, and it's in your contract. The bank sets the approval timeline after that.</li>
+        <li>That's G-02 in the clause on your screen. Both clocks start the minute you sign, and your delay never pauses either one.</li>
+        <li>Banks decide every approval themselves, and the agreement says that too. What's on us is sending the right applications, in the right order, on time.</li>
+        <li>Our side of the deal sits in writing right next to yours, and you read every word of it before you pay anything.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide" data-src="The three live emails of one funding round, word for word: round submitted src/workflows/templates-seed.mjs:33-34; approvals in :44-45; locked in :55-56. They come from hello@fundhub.ai: :50. The bank decides when the money lands, never promised: public/app/present.js:112 (watch note) and db/migrations/493_funding_and_repair_agreement_text.sql:53 (section 3).">
+  <section class="slide" data-src="The three live emails of one funding round, word for word: round submitted src/workflows/templates-seed.mjs:33-34; approvals in :44-45; locked in :55-56. They come from hello@fundhub.ai: :50. The bank decides when the money lands, never promised: public/app/present.js:112 (watch note) and db/migrations/493_funding_and_repair_agreement_text.sql:53 (section 3). Post-funding instructions protect your profile: src/workflows/templates-seed.mjs:56. If anything is needed to finalize the round, you're told as soon as it's requested: :34.">
     <p class="eyebrow">AY-05 / Your inbox</p>
-    <h2>Every round sends three emails: submitted, approvals in, locked in.</h2>
+    <h2>You get an email when a round goes in, when approvals post, and when funding locks.</h2>
     <ul class="lines">
-      <li>Round submitted: lenders review it and return decisions on their timelines.</li>
-      <li>Approvals in: posted to your file, with the activation instructions tied to each one.</li>
-      <li>Locked in: do not activate any cards yet. Your post-funding instructions come first.</li>
+      <li>The first two tell you the round went in, then that approvals posted to your file, with the steps for each one.</li>
+      <li>The last one tells you to hold off on activating any cards until your post-funding steps arrive.</li>
     </ul>
     <figure class="pic">
       <div class="real" role="img" aria-label="Three emails from hello@fundhub.ai, in order. Email 1, round submitted: lenders review the submission and return decisions on their timelines. Email 2, approvals in: posted to your file, marked; review the approved offers and follow the activation and access instructions tied to each approval. Email 3, locked in, marked: do not activate any cards yet.">
@@ -913,22 +912,21 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Here's what lands in your inbox, round by round. These are the real emails, word for word.</li>
-        <li>Email one: the round is submitted. Lenders review it and return decisions on their own timelines. If anything is needed to finalize the round, we tell you the moment it's requested.</li>
-        <li>Email two: approvals are in, and they're posted to your file. You review the approved offers, finish any lender verification steps, and follow the activation instructions tied to each one.</li>
-        <li>Email three: you're locked in. Read the first line twice. Do not activate any cards yet. Your post-funding instructions come first, and that order sets up the next round.</li>
-        <li>None of these emails is a date for the money. The bank decides when the money lands, and we never guess it for you.</li>
+        <li>Three moments send you an email, word for word from our system, and each one tells you the exact next move.</li>
+        <li>Email one says the round went in. The banks answer on their own timelines, and if a bank asks for anything, you hear about it the moment it's requested.</li>
+        <li>Email two lands when approvals post to your file. It walks you through reviewing each offer, any checks the bank asks for, and how to turn each one on.</li>
+        <li>Email three says to HOLD. Don't activate any cards yet, because your post-funding instructions come first, and they protect your profile.</li>
+        <li>The bank sets the day the money lands, and these emails keep your next step clear until then.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide" data-src="A confirmed approval means a financing source approved a positive dollar amount that Fundhub has recorded: db/migrations/493_funding_and_repair_agreement_text.sql:53 (section 2). Fundhub does not promise approval, a funding amount, a lender rate, or a particular financial outcome; financing sources decide application results: same line, section 3. The three lines your advisor says before you pay: docs/sops/weekend-2026-10-24/04-sales-call-script.md:227-229 and :444. The live menu (business cards, personal cards, personal loans, lines of credit, term loans, revenue-based funding; SBA and equipment loans not live): public/app/present.js:113 (closer line).">
-    <p class="eyebrow">AY-06 / What approved means</p>
-    <h2>An approval is a dollar amount a bank approved, and the bank sets the rules.</h2>
+  <section class="slide" data-src="A confirmed approval means a financing source approved a positive dollar amount that Fundhub has recorded: db/migrations/493_funding_and_repair_agreement_text.sql:53 (section 2). Fundhub does not promise approval, a funding amount, a lender rate, or a particular financial outcome; financing sources decide application results: same line, section 3. The three lines your advisor says before you pay: docs/sops/weekend-2026-10-24/04-sales-call-script.md. The live menu (business cards, personal cards, personal loans, lines of credit, term loans, revenue-based funding; SBA and equipment loans not live): public/app/present.js:113 (closer line). A confirmed approval is a positive dollar amount a financing source approved that Fundhub has recorded; financing sources decide application results: db/migrations/493_funding_and_repair_agreement_text.sql:53 (sections 2 and 3). Funding gives you real credit in your name: marketing/offers/fundhub-offers-2026-10-10.pdf p.9. Personal guarantee, intro rates end, said before you pay: docs/sops/weekend-2026-10-24/04-sales-call-script.md. What the capital pays for: :112. Funding gives you real credit in your name, and you decide how much of it to use: marketing/offers/fundhub-offers-2026-10-10.pdf p.9.">
+    <p class="eyebrow">AY-06 / Credit in your name</p>
+    <h2>Each approval puts credit in your name to work for your business, on terms you know.</h2>
     <ul class="lines">
-      <li>Business cards carry a personal guarantee. If the business can't pay, you're on the hook. The bank sets that rule.</li>
-      <li>Intro rates end. Each card's terms show the month. We plan for that month before you spend.</li>
-      <li>The bank decides, not us. We pick the banks and the order. They say yes or no.</li>
+      <li>A confirmed approval is a dollar amount a bank approved, and Fundhub records it on your file.</li>
+      <li>Each card's intro rate has an end month in its terms, and your plan is built around that month before you spend.</li>
     </ul>
     <figure class="pic">
       <div class="real" role="img" aria-label="Two sentences from the Fundhub funding agreement. Section 2, marked: a confirmed approval means a financing source approved a positive dollar amount that Fundhub has recorded. Section 3: Fundhub does not promise approval, a funding amount, a lender rate, or a particular financial outcome. Marked: financing sources decide application results.">
@@ -940,58 +938,37 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Let's be exact about the word approved, because the agreement is. A confirmed approval means a bank approved a dollar amount, and Fundhub recorded it on your file.</li>
-        <li>Three things the bank sets, and your advisor says all three before you pay.</li>
-        <li>Business cards carry a personal guarantee. If the business can't pay, you're on the hook. The bank sets that rule.</li>
-        <li>Intro rates end. Each card's terms show the month. We plan for that month before you spend.</li>
-        <li>The bank decides, not us. We pick the banks and the order. They say yes or no.</li>
-        <li>What we open today is business cards, personal cards and personal loans, plus lines of credit, term loans and revenue-based funding off your bank statements or tax returns.</li>
+        <li>The agreement spells out what an approval is: a dollar amount a bank approved, recorded by Fundhub on your file.</li>
+        <li>That's real credit in your name, and you decide how much of it to use, and when, as your business takes on more.</li>
+        <li>Intro rates end, and the month they end is printed in each card's terms. Your plan is built around that month BEFORE any money gets spent.</li>
+        <li>We read the month the intro rate ends before you use the credit, so your payment plan includes the rate that follows.</li>
+        <li>Each bank decides its own applications, and the agreement says that in plain words. What we decide is which banks get your file, and in what order.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide" data-src="We apply in rounds; one funding sequence is about six rounds; your personal file first, then each business on its own; between rounds we dispute the new hard inquiries, so the next round starts from a cleaner file: public/app/present.js:109 (closer line) and docs/sops/weekend-2026-10-24/04-sales-call-script.md:221-222. Lenders return decisions on their timelines and approvals are posted to your file: src/workflows/templates-seed.mjs:34, :45. Funding sequence, never round two: .ai/rules/funding-sequence-term.md. Your advisor goes through your file with you: marketing/vsl/direct-book-thank-you-2026-10-15.md:37 (green-lit).">
-    <p class="eyebrow">AY-07 / The funding sequence</p>
-    <h2>We apply in rounds, and one funding sequence is about six of them.</h2>
+  <section class="slide" data-src="Before you pay, the agreement is read together on the screen: docs/sops/weekend-2026-10-24/04-sales-call-script.md. The bank's rules said before you pay, a personal guarantee on business cards, intro rates end, the bank decides: same file. Your part: db/migrations/493_funding_and_repair_agreement_text.sql:53 (section 5); signing any loan stays yours: same line, section 4. The soft pull, and how much you qualify for based on where you're at right now: 04-sales-call-script.md. Fund now, fix first, or both: same file. Personal first, then each business: public/app/present.js:109. Financing sources decide: 493...sql:53 (section 3)." data-figures="the 24 and 72 business-hour deadlines come from funding agreement section 3">
+    <p class="eyebrow">AY-07 / The agreement on screen</p>
+    <h2>You and your advisor read the agreement together before any payment.</h2>
     <ul class="lines">
-      <li>Your personal file goes first, then each business on its own.</li>
-      <li>Between rounds, we dispute the new hard inquiries, so the next round starts from a cleaner file.</li>
-      <li>Each round runs the same way: submitted, decisions posted to your file, then the next round goes out.</li>
+      <li>Both clocks, your part and the bank's own rules are on that shared screen before you decide.</li>
     </ul>
     <figure class="pic">
-      <div class="sheet">
-        <svg class="bv" viewBox="0 0 320 206" role="img" aria-label="A timeline. Six rounds sit on one line, personal file first, then each business on its own. Between every two rounds there is a sweep: we dispute the new hard inquiries. About six rounds make one funding sequence.">
-          <text class="lb" x="160" y="16" text-anchor="middle">PERSONAL FILE FIRST,</text>
-          <text class="lb" x="160" y="31" text-anchor="middle">THEN EACH BUSINESS ON ITS OWN</text>
-          <rect x="16" y="74" width="288" height="4" rx="2" fill="url(#fh-spectrum)"/>
-          <path class="cn dash" d="M56 92V118M108 92V118M160 92V118M212 92V118M264 92V118"/>
-          <line class="rule-ink" x1="56" y1="80" x2="56" y2="92"/>
-          <line class="rule-ink" x1="108" y1="80" x2="108" y2="92"/>
-          <line class="rule-ink" x1="160" y1="80" x2="160" y2="92"/>
-          <line class="rule-ink" x1="212" y1="80" x2="212" y2="92"/>
-          <line class="rule-ink" x1="264" y1="80" x2="264" y2="92"/>
-          <circle class="pn-ink" cx="30" cy="76" r="16"/><text class="on-ink" x="30" y="81" text-anchor="middle">1</text>
-          <circle class="pn" style="stroke:var(--ink);stroke-width:2" cx="82" cy="76" r="16"/><text x="82" y="81" text-anchor="middle">2</text>
-          <circle class="pn" style="stroke:var(--ink);stroke-width:2" cx="134" cy="76" r="16"/><text x="134" y="81" text-anchor="middle">3</text>
-          <circle class="pn" style="stroke:var(--ink);stroke-width:2" cx="186" cy="76" r="16"/><text x="186" y="81" text-anchor="middle">4</text>
-          <circle class="pn" style="stroke:var(--ink);stroke-width:2" cx="238" cy="76" r="16"/><text x="238" y="81" text-anchor="middle">5</text>
-          <circle class="pn" style="stroke:var(--ink);stroke-width:2" cx="290" cy="76" r="16"/><text x="290" y="81" text-anchor="middle">6</text>
-          <text class="lb" x="30" y="56" text-anchor="middle">ROUND</text>
-          <rect class="tint-flag" x="20" y="118" width="280" height="44" rx="8"/>
-          <text class="lb ink" x="160" y="136" text-anchor="middle">BETWEEN ROUNDS, THE SWEEP</text>
-          <text x="160" y="153" text-anchor="middle">We dispute the new hard inquiries</text>
-          <text class="lb" x="160" y="196" text-anchor="middle">ABOUT SIX ROUNDS · ONE FUNDING SEQUENCE</text>
-        </svg>
-      </div>
+      <ul class="flow" role="img" aria-label="What happens on your call before any payment, in order. One: your file, read with a soft pull. Two: the agreement, on a shared screen. Three: the bank's own rules, said out loud. Four: then you decide.">
+        <li><div>Your file, read with a soft pull<span class="sub">Your score stays where it is.</span></div></li>
+        <li><div>The agreement, on a shared screen<span class="sub">Both clocks and your part, read together.</span></div></li>
+        <li><div>The bank's own rules, said out loud<span class="sub">The personal guarantee and when intro rates end.</span></div></li>
+        <li class="is-hot"><div>Then you decide<span class="sub">Every step after your yes is already in front of you.</span></div></li>
+      </ul>
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Here's the shape of what comes next. We apply in rounds, and one funding sequence is about six rounds.</li>
-        <li>Your personal file goes first. Then each business, on its own.</li>
-        <li>Between rounds, we dispute the new hard inquiries, so the next round starts from a cleaner file. That's the sweep in the picture, between every two rounds.</li>
-        <li>Every round runs the same way. It's submitted, the lenders decide on their own timelines, the decisions post to your file, and the next round goes out.</li>
-        <li>On your call, your advisor lays this out on your own file, with the banks and the order that fit it.</li>
-        <li>Your story: a file where the sweep between rounds changed what the next round came back with.</li>
+        <li>During your call, your advisor puts the agreement on a shared screen, and the two of you read it through BEFORE you pay anything.</li>
+        <li>Both clocks are in it, and so is your part: true information, quick fixes, word when funds arrive, and your own signature on any loan.</li>
+        <li>Your advisor also says the bank's own rules out loud before you pay. Business cards come with a PERSONAL guarantee, and that rule comes from the bank.</li>
+        <li>You also see how much you qualify for based on where you're at right now, and the funding sequence your file starts with, personal first, then each business.</li>
+        <li>Approval stays with each bank, and the agreement says that too. What's on us is the banks, the order, and both deadlines.</li>
+        <li>The deposit counts once toward the service fee. The agreement explains that the fee uses confirmed approved limits or amounts, including credit access you have not drawn. We read the exact terms together before you decide.</li>
       </ul>
     </aside>
   </section>

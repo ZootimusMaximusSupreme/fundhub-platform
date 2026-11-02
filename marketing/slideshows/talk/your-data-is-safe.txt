@@ -1,113 +1,91 @@
 Fundhub, Prime Data
 
-1. PD-01 / Prime data — Most funding companies read a consumer credit site report. A bank reads deeper.
+1. PD-01 / Prime data — A bank reads your file several layers deeper than a consumer credit site report goes.
 
-Most funding companies are checking a consumer credit site report. A bank reads deeper than that. So your file gets judged on data they never saw.
+A bank reads your file several layers deeper than a consumer credit site report goes. Most funding companies stop at that site report and call it your credit.
 
-We don't work off a summary. We pull the bureau's own file, from all three bureaus. That's the same data the banks read.
+There's a way to read your own file at the bank's DEPTH first. That's the file your approval gets decided on.
 
-Look at this sample. TransUnion, FICO Score 9, a 706. Right under the score, the bureau prints its reasons in its own words.
+The first layer sits on this sample TransUnion report. The score reads 706, and under it sit four reasons in the bureau's own capital letters.
 
-A bank reads those lines first. When it says no, the letter it sends gives the same reasons.
+The first reason is about card balances: they sit too high next to the limits. A bank weighs that line when it decides on you.
 
-We have multiple layers of credit information. I'm going to show you exactly what we can see past that consumer site report.
+When a company works off the summary, the bank still judges the full file. You find out what the summary missed from the DENIAL letter.
 
-Access to prime data means better results. That's what this is about.
+2. PD-02 / Who we pull from — We review your reports from all three bureaus and your business record when available.
 
-2. PD-02 / Who we pull from — We pull from all three bureaus and LexisNexis. It is in your agreement.
+We review reports from all three bureaus and, when available, your business record from LexisNexis.
 
-Who we pull from is written in your agreement. I'll show you the clause.
+Each bureau's report on you is a FICO 9 report. We read the fields in the report and show the items that matter to your plan.
 
-We have direct relationships with the bureaus and LexisNexis. Experian, Equifax and TransUnion. The pull is a FICO 9 report from each one, with the bureau's own file behind it.
+We show you the source records on your call before we plan any applications.
 
-Different banks pull different bureaus. So your information has to match on every report, and we read all three.
+If you run a business, it gets read on the same call as your personal file.
 
-Then LexisNexis. Section 4 says we can request available LexisNexis information. It names the analytics, fraud checks and compliance checks that come with that access.
+3. PD-03 / The full record — A dispute letter names the month and code of a late, and only the full record shows both.
 
-That's what a direct relationship requires on our side. It's compliance, and it's in writing.
+A dispute letter has to name the exact month and the code of a late, and only the full record shows you BOTH.
 
-Read the last line with me. A hard inquiry still needs your separate consent. Nothing goes to a bank without you saying so.
+This is one account from the sample report, a Toyota auto loan, closed and paid as agreed.
 
-3. PD-03 / Past the summary — We see every field on every account of your file.
+Every month in its payment pattern is a C, which means paid on time, except ONE month with a 1. That's a single 30-day late.
 
-Here's what we see past that consumer site report. This is one account from the sample, exactly as our report prints it.
+The record also shows the subscriber code, the bureau's ID for the company that reported the late.
 
-Every account comes to us with the full record. The account identifier, the subscriber code, the rating code, each 30, 60 and 90-day late, the months reviewed, and the payment pattern, month by month.
+Each inquiry shows its bureau and the company that pulled it. Public records come through on the same file.
 
-Look at the pattern on this one. Every month is a C, paid as agreed, except one. That one is the 30-day late, and we can see exactly where it sits.
+The full record shows you the exact line a bank holds against you, so you fix that line and nothing else.
 
-Every inquiry comes with the bureau it's on and who pulled it. Public records come through too.
+4. PD-04 / Your business — What does a bank see when it looks up your business?
 
-Those are the fields our dispute work runs on. You can't dispute a field you've never seen.
+What does a bank see when it looks up your BUSINESS? Your business has a file of its own, and we read it the same way we read yours.
 
-That's the difference between a summary and the file. We work from the file.
+First comes the match. We look up your company in LexisNexis Top Business. You pick it from the list, so your file lands on the right business.
 
-4. PD-04 / Business file — Your business gets read too, before a bank reads it.
+The Experian Business check reads five things. It reads your business score, any blemishes, your business balances, your industry code and your business name.
 
-Your business gets read too, and it gets read before a bank reads it.
+Each one comes with its exact FIX. Balances get paid down under 10% before you apply, and the name matches everywhere the company is listed.
 
-First we find your business. We search it and match it in LexisNexis Top Business, which is business-only fields. You pick from the match list, so nobody guesses which company is yours.
+The industry code a lender reads has to come off the low-risk list, and the check flags any other code.
 
-Then the Experian Business check. We have access to Experian Business: your business credit score, blemishes, business card balances, and the industry code and name flags a lender looks at. Each one comes with its exact fix, so a lender sees a credible business.
+A business that clears those five rows shows a bank a company it can lend to.
 
-Walk the drawing with me. Your personal file on the left, your business file on the right. Both go through the same read a bank does.
+5. PD-05 / Three letters — Each dispute letter names the field we need the bureau to review.
 
-Then your file goes only to the banks that fit it. Each business is judged on its own, after the personal file.
+When every letter names the exact field, your file gets ready for funding QUICKER. That's what all this deeper data is for.
 
-A consumer credit site report is your personal credit. The business side isn't in it. We read both.
+Each thing we find on your file goes into one of three letters. One is for accounts, one for your name and old addresses, and one for inquiries.
 
-5. PD-05 / What it does — Access to prime data means better results.
+On this sample, the Toyota late is the kind of item the account letter covers. The Chase inquiry on Equifax is the kind the inquiry letter covers.
 
-Access to prime data means better results. Here's why.
+Each letter goes where it can change the line: to the bureau that printed it, or straight to the company that reported it.
 
-Deeper data builds the algorithms that optimize your file quicker and better. UnderwriteIQ is 37,097 lines of code in 145 files. It reads every one of those fields you just saw, on every bureau.
+I built it to name the exact field in question and track the answer.
 
-When we build your optimization letters, that deeper data gets inquiries, accounts, addresses and names off faster. Each letter points at the exact field the bureau reported.
+The bureau decides its response. We review the updated file before planning an application.
 
-This is our own code. Every finding gets sorted into one of three letters: a tradeline dispute, a personal information cleanup for names and addresses, or an inquiry removal.
+6. PD-06 / Handled right — Your most sensitive identifier gets stripped out before your report is ever saved.
 
-You can't build that letter from a summary. The field it points at isn't in the summary.
+Handing a funding company the details a bureau needs to find your file takes TRUST. This is what happens to those details after you do.
 
-That's what the data is for: a quicker, better optimization of your file, built from the file itself.
+Your most sensitive identifier gets stripped out before your report is ever saved. Only the last four stay, and those are MASKED.
 
-6. PD-06 / Handled right — Access to this data means we handle it correctly.
+The full identifier is locked away encrypted, in a separate place. Each time anyone reads it, the read gets logged with who did it and why.
 
-Access to this data means we handle it correctly, and our published privacy policy says how. This is it, word for word.
+It gets unlocked for your pull, and the log keeps who unlocked it and the reason they gave.
 
-Your data is encrypted while it moves and while it sits, using AES-256. That covers the platform and what it's built on, and what it's built on is SOC 2 audited.
+Our published privacy policy puts it in writing. Your data is encrypted with AES-256 while it moves and while it's stored, on SOC 2 audited providers.
 
-Read the next sentence too. No method of storage is completely secure, and we say so, because that's the truth.
+We don't sell your personal information. The privacy policy says so, and so does the Capital Blueprint agreement.
 
-Your report is stored with your most sensitive identifier removed from it. Only the last four digits stay, masked. The identifier itself sits encrypted in a separate place. Every read of it is logged, with who read it and why.
+7. PD-07 / Your call — Your strategy call puts your own file on the screen, at the depth a bank reads.
 
-And we do not sell your personal information. That's in the privacy policy, and again in the Capital Blueprint agreement, 11.2.
+The layers under that consumer summary come up on your strategy call, on your OWN file, before a single bank reads it.
 
-That's what handling it correctly looks like. It's what working with the bureaus directly requires of us.
+We pull your report only once you join the call. It's one soft pull, you sign the form for it, and your score stays put.
 
-7. PD-07 / In writing — Calls, AI, your rights and who we are: all in writing.
+We read every layer with you: the bureau's reasons, the full account record, and your business file if you have one.
 
-Everything we do with your file is in writing before you pay. We read the agreement together on the screen.
+Then your file gets matched to the banks that lend to files like yours. The lender makes its own decision after an authorized application.
 
-Section 8, word for word: calls between you and Fundhub may be recorded and kept. Fundhub uses artificial intelligence. AI tools analyze your credit file and your funding file, and AI agents work on your file.
-
-The privacy policy covers how long we keep your information, and that it's then deleted or de-identified. It lists the rights your state gives you over it, with where to send a privacy request.
-
-Now look at who you're signing with. Fundhub LLC, a Florida limited liability company operating in Arizona, with the street address right in the first line, under Arizona law.
-
-The same address sits at the bottom of the privacy policy. You know who we are, where we are, and which law we answer to.
-
-That's what a legitimate company looks like on paper. It's all there before you pay a dollar.
-
-8. PD-08 / Your call — On your call, we pre-vet your file on the same data the banks read.
-
-Here's what happens on your call. We pre-vet your file on the same data the banks read, the way a bank reads it, with you on the line.
-
-Then your file goes only to the banks that fit it. Banks want to do business with people like that, because we pre-vet with the same data feeds they use.
-
-Nothing is pulled until you're on the call with us. We have not pulled anything yet.
-
-It's one soft pull. This is the form you sign for it, word for word. It does not lower your credit score, and lenders do not see it as an application for credit.
-
-A copy of what you signed, with the time you signed it, is kept on file. You can ask for it any time. The reports are yours either way.
-
-You've now seen exactly what we see and exactly how we handle it. We're looking for action takers, not shoppers. That's who this call is built for.
+The details you give us for that pull get handled exactly the way the privacy policy says, from the moment you share them.
