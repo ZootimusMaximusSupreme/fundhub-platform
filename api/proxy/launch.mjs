@@ -24,6 +24,9 @@ const NEXT_STEP = {
   client_not_found: "Open a client that exists in this account, then try Apply again.",
   application_not_found: "Open an application that exists, then try Apply again.",
   client_mismatch: "This application belongs to a different client. Open the right client and try again.",
+  funding_on_hold: "Resolve the fraud, document, or funding hold on this file before applying.",
+  lender_bureau_unknown: "Confirm which bureau this lender pulls before applying while an inquiry is protected.",
+  lender_bureau_on_hold: "Pick a lender that pulls a clean bureau, or wait until this bureau clears.",
   // One code, two real causes: the exit answered from the wrong place, OR it never
   // answered at all (timeout / refused). src/adapters/oxylabs.mjs collapses both into
   // `geo_unavailable`, so this line must be true of both. There is deliberately no

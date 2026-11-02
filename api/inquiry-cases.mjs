@@ -136,6 +136,10 @@ export default async function handler(req, res, deps = {}) {
     }
 
     if (action === "update") {
+      if (body.case_status === "Completed") {
+        return res.status(400).json({ ok: false, error: "use_mark_cleared",
+          message: "Clear each inquiry, then use Mark cleared so funding receives the handback." });
+      }
       const c = await updateCase(database, { orgId, id: body.id, patch: body });
       if (!c) return res.status(404).json({ ok: false, error: "not_found" });
       return res.status(200).json({ ok: true, case: c });
@@ -257,6 +261,19 @@ export default async function handler(req, res, deps = {}) {
     const status = action === "mark_cleared" ? "Completed" : (body.case_status || "Completed");
     if (!CASE_STATUSES.includes(status)) {
       return res.status(400).json({ ok: false, error: "invalid_case_status" });
+    }
+    if (status === "Completed") {
+      const open = await database.query(
+        `SELECT id FROM inquiry_log
+          WHERE org_id = $1::uuid
+            AND (case_id = $2::uuid OR inquiry_removal_case_id = $2::uuid)
+            AND is_open = true LIMIT 1`,
+        [orgId, body.id]
+      );
+      if (open.rows.length) {
+        return res.status(409).json({ ok: false, error: "inquiries_still_open",
+          message: "Clear each open inquiry before marking this case cleared." });
+      }
     }
     const c = await closeCase(database, {
       orgId,

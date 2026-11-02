@@ -78,6 +78,21 @@ export async function launchProxySession(db, {
     );
   }
 
+  const denyBeforeLaunch = async (code, message) => {
+    const loc = resolveClientLocation(client.custom_fields, client.businesses);
+    const row = await insertProxySession(db, {
+      orgId, clientId, staffId, lenderId: lender?.id || null,
+      applicationId: application?.id || null, applicationUrl,
+      requestedCity: loc.city, requestedState: loc.state,
+      sessid: generateSessid(), status: "failed", errorCode: code,
+      errorMessage: message, verification: { gate: "pre_launch" },
+      endedAt: new Date().toISOString()
+    });
+    const err = new ProxySessionError(code, message, 409);
+    err.sessionId = row.id;
+    throw err;
+  };
+
   // The card's Apply Now stage is work state, not permission to open every
   // lender form. Recheck the selected lender against live bureau and hold data.
   const hold = String(client.custom_fields?.round_hold_reason || "");
@@ -93,7 +108,7 @@ export async function launchProxySession(db, {
   );
   if (isBlockingFundingHold(hold) || hold === "Fraud Alert"
       || (tags.rows[0]?.tags || []).includes("fraud:alert-present") || fraud.rows.length) {
-    throw new ProxySessionError("funding_on_hold", "Resolve the funding hold before opening a bank application", 409);
+    await denyBeforeLaunch("funding_on_hold", "Resolve the funding hold before opening a bank application");
   }
 
   const [cases, inquiryLog] = await Promise.all([
@@ -115,11 +130,11 @@ export async function launchProxySession(db, {
       : { rows: [] };
     const pulled = parseBureaus(bureau.rows[0]?.bureaus_pulled);
     if (!pulled.length) {
-      throw new ProxySessionError("lender_bureau_unknown", "Confirm the lender's credit bureau before opening its application", 409);
+      await denyBeforeLaunch("lender_bureau_unknown", "Confirm the lender's credit bureau before opening its application");
     }
     const overlap = pulled.filter((code) => hot.has(code));
     if (overlap.length) {
-      throw new ProxySessionError("lender_bureau_on_hold", `This lender pulls a protected bureau: ${overlap.join(", ")}`, 409);
+      await denyBeforeLaunch("lender_bureau_on_hold", `This lender pulls a protected bureau: ${overlap.join(", ")}`);
     }
   }
 

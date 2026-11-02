@@ -268,6 +268,10 @@ describe("/api/read/portal-summary — stage, advisor, dispute consent",
     body = await load();
     assert.equal(body.advisor.name, "Marcus Hale");
     assert.equal(body.advisor.source, "staff_link");
+
+    await db.query(`UPDATE staff SET active = false WHERE id = $1`, [advisorStaffId]);
+    body = await load();
+    assert.equal(body.advisor, null, "a departed advisor must not appear from a stale typed name");
   });
 
   test("a client with nobody on the file gets null, not an invented name", async () => {

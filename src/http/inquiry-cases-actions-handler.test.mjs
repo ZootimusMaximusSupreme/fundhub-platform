@@ -46,6 +46,7 @@ const caseRow = (over = {}) => ({
 const closeAnswer = (status) => [/UPDATE inquiry_removal_cases\s+SET case_status = \$3::inquiry_case_status/, (_s, p) => (
   p[1] === CASE ? [caseRow({ case_status: status })] : []
 )];
+const noOpenInquiry = [/SELECT id FROM inquiry_log\s+WHERE org_id = \$1::uuid/, []];
 const caseLookup = (over) => [/SELECT \* FROM inquiry_removal_cases\s+WHERE id = \$1::uuid AND org_id = \$2::uuid/, [caseRow(over)]];
 const fullPacket = [
   [/FROM documents\s+WHERE org_id = \$1::uuid\s+AND client_id = \$2::uuid/, [
@@ -87,7 +88,7 @@ describe("POST /api/inquiry-cases — mark_cleared and close", () => {
   test("Mark cleared: the case is Completed in this company, and inquiry.removed fires once, keyed to the case", async () => {
     const { res, fake, events } = await call(
       { action: "mark_cleared", id: CASE, case_status: "Canceled", notes: "EX removed it" },
-      [closeAnswer("Completed")]
+      [noOpenInquiry, closeAnswer("Completed")]
     );
     assert.equal(res.statusCode, 200);
     assert.equal(res.body.case.case_status, "Completed");
@@ -105,6 +106,23 @@ describe("POST /api/inquiry-cases — mark_cleared and close", () => {
     assert.equal(events[0].opts.orgId, ORG_ID);
     assert.equal(events[0].opts.clientId, CLIENT);
     assert.equal(events[0].opts.idempotencyKey, `inquiry.removed:case:${CASE}`);
+  });
+
+  test("Mark cleared refuses while a case inquiry is still open", async () => {
+    const openInquiryRow = [/SELECT id FROM inquiry_log\s+WHERE org_id = \$1::uuid/, [{ id: INQ }]];
+    const { res, fake, events } = await call({ action: "mark_cleared", id: CASE }, [openInquiryRow]);
+    assert.equal(res.statusCode, 409);
+    assert.equal(res.body.error, "inquiries_still_open");
+    assert.equal(fake.find(/UPDATE inquiry_removal_cases/).length, 0);
+    assert.equal(events.length, 0);
+  });
+
+  test("Update cannot silently complete a case without the handback event", async () => {
+    const { res, fake, events } = await call({ action: "update", id: CASE, case_status: "Completed" }, []);
+    assert.equal(res.statusCode, 400);
+    assert.equal(res.body.error, "use_mark_cleared");
+    assert.equal(fake.find(/UPDATE inquiry_removal_cases/).length, 0);
+    assert.equal(events.length, 0);
   });
 
   test("Close: the case is Canceled and inquiry.removed does NOT fire (funding must not resume on a cancel)", async () => {
@@ -127,7 +145,7 @@ describe("POST /api/inquiry-cases — mark_cleared and close", () => {
   });
 
   test("a case from another company (or no such case): 404 and no event", async () => {
-    const { res, events } = await call({ action: "mark_cleared", id: "1e000000-0000-4000-8000-0000000000ff" }, [closeAnswer("Completed")]);
+    const { res, events } = await call({ action: "mark_cleared", id: "1e000000-0000-4000-8000-0000000000ff" }, [noOpenInquiry, closeAnswer("Completed")]);
     assert.equal(res.statusCode, 404);
     assert.equal(events.length, 0);
   });

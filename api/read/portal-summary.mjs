@@ -599,11 +599,13 @@ function readAdvisor(orgId, clientId, cf) {
     if (linked) {
       const r = await db.query(
         `SELECT name, role FROM staff
-          WHERE id::text = $1 AND org_id = $2 AND status <> 'suspended'`,
+          WHERE id::text = $1 AND org_id = $2 AND role = 'funding_advisor'
+            AND status = 'active' AND active = true AND is_demo = false`,
         [linked, orgId]
       );
       const s = r.rows[0];
       if (s && s.name) return { name: s.name, role: s.role || null, source: "staff_link" };
+      return null;
     }
 
     const typed = firstNonEmpty([

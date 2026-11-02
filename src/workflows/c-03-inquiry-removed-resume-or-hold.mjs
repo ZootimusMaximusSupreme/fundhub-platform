@@ -126,10 +126,16 @@ export async function handle({ event, db, step }) {
 
   const advisor = await step.run("assign-funding-advisor", () =>
     assignFundingAdvisor(db, { orgId, clientId }));
+  if (!advisor.staffId) {
+    await step.run("keep-unassigned-file-unready", () => mergeCustomFields(db, clientId, {
+      ready_for_next_round: false, employee_next_action: "Assign Funding Advisor"
+    }));
+    return { done: true, branch: "advisor_unassigned", advisor };
+  }
   await step.run("set-ready-for-next-round", () => mergeCustomFields(db, clientId, { ready_for_next_round: true, employee_next_action: "Apply for Funding" }));
   const task = await step.run("create-next-round-task", () => createTaskOnce(db, {
     orgId, clientId, eventId, title: "Start next funding round — check clean bureaus",
-    assigneeRole: "funding_advisor", assigneeStaffId: advisor.staffId || null
+    assigneeRole: "funding_advisor", assigneeStaffId: advisor.staffId
   }));
   return { done: true, branch: "resume", task, advisor, protectedBureaus: [...protectedBureaus] };
 }
