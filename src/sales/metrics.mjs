@@ -8,6 +8,7 @@ import { countUnrecorded, listUnrecordedCalls } from "./unrecorded.mjs";
 import { isDemoEmail } from "../auth/demo-logins.mjs";
 import { demoClause, orgDemoModeEnabled } from "../demo/exclude-demo.mjs";
 import { listRecentRecordings } from "./recordings.mjs";
+import { setterNumbers } from "../setter/dashboard.mjs";
 import { closerOfferStack, floorOfferStack, zeroStackFrom } from "./offer-stack.mjs";
 /* The floor's team totals (team cash, the funnel, deposit to funded) and the month they cover live in the beat
    library, so the hourly pulse beat sales-totals runs the same SQL and math this page runs (a beat may import
@@ -426,11 +427,12 @@ export async function salesFloor(db, { orgId, now = new Date(), env = process.en
   const window = monthWindow(now);
 
   const todayYmd = localDateString(now);
-  const [totals, todayFunnel, closers, beliefs, unlogged, unrecordedList, unrecordedCount, cold, shiftsLate, recordings, offer] = await Promise.all([
+  const [totals, todayFunnel, closers, setters, beliefs, unlogged, unrecordedList, unrecordedCount, cold, shiftsLate, recordings, offer] = await Promise.all([
     // Team cash, the funnel and deposit to funded (src/pulse/beats/lib/sales-totals-truth.mjs).
     floorTotals(db, { orgId, ...window }),
     floorFunnelDay(db, { orgId, day: todayYmd }),
     closerRoster(db, { orgId, ...window, now }),
+    setterRoster(db, { orgId, now }),
     beliefAnalytics(db, { orgId, ...window }),
     countUnlogged(db, { orgId }),
     listUnrecordedCalls(db, { orgId, now, limit: 20 }),
@@ -504,6 +506,7 @@ export async function salesFloor(db, { orgId, now = new Date(), env = process.en
     offer_stack: offer.stack,
     offer_stack_unattributed: offer.unattributed,
     closers: closersWithStack,
+    setters,
     beliefs,
     recordings,
     unrecorded: {
@@ -617,6 +620,35 @@ export function belongsOnCloserBoard(staff = {}, opts = {}) {
 
 export function filterCloserRoster(rows, opts) {
   return (rows || []).filter((row) => belongsOnCloserBoard(row, opts));
+}
+
+export function belongsOnSetterBoard(staff = {}, opts = {}) {
+  if (isBlockedCloserIdentity(staff, opts)) return false;
+  if (isOwnerSetCloser(staff)) return true;
+  return String(staff.role || "").trim().toLowerCase() === "setter";
+}
+
+export function filterSetterRoster(rows, opts) {
+  return (rows || []).filter((row) => belongsOnSetterBoard(row, opts));
+}
+
+export async function setterRoster(db, { orgId, now = new Date() }) {
+  const demoMode = await orgDemoModeEnabled(db, orgId);
+  const result = await db.query(
+    `SELECT s.id AS staff_id, s.name, s.email, s.role, s.is_demo
+       FROM staff s
+      WHERE s.org_id = $1 AND s.status = 'active'
+        AND (lower(btrim(s.role)) = 'setter'
+          OR lower(btrim(s.email)) = $2
+          OR lower(btrim(s.name)) = $3)
+      ORDER BY s.name`,
+    [orgId, OWNER_SET_CLOSER.email.toLowerCase(), OWNER_SET_CLOSER.name.toLowerCase()]
+  );
+  return Promise.all(filterSetterRoster(result.rows, { demoMode }).map(async row => ({
+    staff_id: row.staff_id,
+    name: row.name,
+    ...(await setterNumbers(db, { org_id: orgId, id: row.staff_id }, { now, includeDemo: demoMode }))
+  })));
 }
 
 async function closerRoster(db, { orgId, start, end, now }) {
