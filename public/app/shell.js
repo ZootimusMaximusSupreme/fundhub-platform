@@ -2531,6 +2531,7 @@
       '<div><strong>' + esc(name) + '</strong><span class="fh-account-role">' + esc(roleLabel) + '</span></div></div>' +
       payoutBankHtml +
       '<button id="fh-shell-out" type="button">Sign out</button>' +
+      '<a class="fh-account-privacy" href="/privacy/">Privacy policy</a>' +
       '<details class="fh-account-technical" id="fh-shell-account-diagnostics"><summary>Technical details</summary>' +
       '<p>' + esc(staff.email || "") + '</p><p>Arizona time · <span id="fh-workspace-clock"></span></p>' +
       '<p id="fh-shell-status-hint">Checking connection…</p><span id="fh-shell-src"></span></details></div>';

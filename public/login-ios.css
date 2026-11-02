@@ -15,6 +15,15 @@ body[data-client-page="login"] { --login-ink:#101416; --login-muted:#666b6b; mar
 [data-client-page="login"] :is(.sub,.note) { color:var(--login-muted); font:inherit; font-size:13px; line-height:1.6; letter-spacing:0; overflow-wrap:anywhere; }
 [data-client-page="login"] .sub { font-size:15px; }
 [data-client-page="login"] form { display:flex; flex-direction:column; gap:8px; margin:32px 0 16px; }
+[data-client-page="login"] form[hidden], [data-client-page="login"] #fh-mfa-recovery[hidden], [data-client-page="login"] #fh-mfa-setup[hidden], [data-client-page="login"] #fh-mfa-open[hidden] { display:none; }
+[data-client-page="login"] :is(#fh-mfa-form,#fh-mfa-recovery) h2 { margin:0 0 8px; font:700 24px/1.2 var(--sans); }
+[data-client-page="login"] #fh-mfa-setup { padding:16px; border:1px solid #d9dcda; border-radius:11px; background:#fff; }
+[data-client-page="login"] #fh-mfa-secret { display:block; margin:12px 0; padding:12px; border-radius:8px; background:#f1f2ee; font-size:16px; letter-spacing:.06em; overflow-wrap:anywhere; user-select:all; }
+[data-client-page="login"] #fh-mfa-open { display:inline-flex; min-height:44px; align-items:center; margin-top:8px; }
+[data-client-page="login"] #fh-mfa-recovery { margin:32px 0 16px; }
+[data-client-page="login"] #fh-mfa-recovery-codes { padding:16px; border:1px solid #d9dcda; border-radius:11px; background:#fff; font-size:16px; line-height:1.7; white-space:pre-wrap; overflow-wrap:anywhere; user-select:all; }
+[data-client-page="login"] :is(#fh-mfa-verify,#fh-mfa-continue) { margin-top:16px; border-color:var(--login-ink); background:var(--login-ink); color:#fff; }
+[data-client-page="login"] #fh-mfa-copy-recovery { margin:8px 0; }
 [data-client-page="login"] .client-login-label { display:block; margin:0; color:#323838; font-size:13px; font-weight:600; }
 [data-client-page="login"] label[for="pw"] { margin-top:8px; }
 [data-client-page="login"] input { width:100%; min-width:0; min-height:50px; padding:12px 14px; border:1px solid #d9dcda; border-radius:11px; color:var(--login-ink); background:#fff; font:inherit; font-size:16px; box-shadow:0 1px 2px #10141603; }
