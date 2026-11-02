@@ -21,6 +21,13 @@ export function recordedParentHead(pr) {
   return matches.length === 1 ? matches[0][1].toLowerCase() : null;
 }
 
+export function mainBaseBody(body = "") {
+  const cleaned = (body || "").replace(/^Stack parent head: [a-f0-9]{40}[ \t]*\r?\n?/gim, "");
+  return /^Base: .*$/m.test(cleaned)
+    ? cleaned.replace(/^Base: .*$/m, "Base: main").trim()
+    : `${cleaned.trim()}\n\nBase: main`.trim();
+}
+
 export function directChildren(prs, merged, repo) {
   const parentOrder = orderOf(merged);
   const nextOrder = parentOrder === null ? null : parentOrder + 1;
@@ -83,12 +90,15 @@ export function archiveHead(branch, run) {
 // replays both, even though its final delta is unambiguous. Apply only that
 // delta to main, with Git's strict index/context checks; never choose a side
 // of a content conflict or copy the old child's whole tree over main.
-export function restackMergedDelta({ base, head, branch, number, run = command }) {
+export function restackMergedDelta({ base, head, branch, number, target = "origin/main", run = command }) {
   if (run("git", ["status", "--porcelain"])) return false;
+  if (target !== "origin/main" && !/^[a-f0-9]{40}$/i.test(target)) return false;
   const mergeCount = Number(run("git", ["rev-list", "--count", "--min-parents=2", `${base}..${head}`]));
   if (!Number.isSafeInteger(mergeCount) || mergeCount < 1) return false;
   const archived = run("git", ["ls-remote", "--tags", "origin", `refs/tags/archive/${branch}`]).split(/\s+/)[0];
   if (archived !== head) return false;
+  const targetCommit = run("git", ["rev-parse", "--verify", `${target}^{commit}`]);
+  if (!/^[a-f0-9]{40}$/i.test(targetCommit)) return false;
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "fundhub-restack-delta-"));
   try {
     const patchFile = path.join(directory, "child.patch");
@@ -96,7 +106,7 @@ export function restackMergedDelta({ base, head, branch, number, run = command }
     // missing final newlines and binary payloads survive byte for byte.
     run("git", ["diff", "--binary", "--full-index", "--no-ext-diff", "--no-textconv", `--output=${patchFile}`, base, head, "--"]);
     if (fs.statSync(patchFile).size === 0) return false;
-    run("git", ["switch", "-C", `restack-pr-${number}`, "origin/main"]);
+    run("git", ["switch", "-C", `restack-pr-${number}`, targetCommit]);
     run("git", ["apply", "--check", "--index", "--whitespace=nowarn", patchFile]);
     run("git", ["apply", "--index", "--whitespace=nowarn", patchFile]);
     run("git", ["commit", "-m", `Restack PR #${number} delta after merged-history replay conflict`]);
@@ -181,7 +191,8 @@ export function restackChild({ child, merged, repo, run = command }) {
   archiveHead(branch, run);
   run("git", ["push", `--force-with-lease=refs/heads/${branch}:${oldHead}`, "origin", `HEAD:refs/heads/${branch}`]);
   if (beforePush.base.ref !== "main") {
-    run("gh", ["api", "--method", "PATCH", `repos/${repo}/pulls/${child.number}`, "-f", "base=main"]);
+    run("gh", ["api", "--method", "PATCH", `repos/${repo}/pulls/${child.number}`,
+      "-f", "base=main", "-f", `body=${mainBaseBody(beforePush.body)}`]);
   }
   run("gh", ["pr", "merge", String(child.number), "--repo", repo, "--auto", "--squash"]);
   return { number: child.number, state: "restacked" };

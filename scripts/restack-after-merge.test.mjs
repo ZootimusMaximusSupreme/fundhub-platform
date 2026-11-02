@@ -4,7 +4,7 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { archiveHead, catchUpAfterShip, directChildren, main, nextQueuedPr, orderOf, recordedParentHead, restackChild } from "./restack-after-merge.mjs";
+import { archiveHead, catchUpAfterShip, directChildren, main, mainBaseBody, nextQueuedPr, orderOf, recordedParentHead, restackChild, restackMergedDelta } from "./restack-after-merge.mjs";
 
 const repo = "ZootimusMaximusSupreme/fundhub-platform";
 const parentSha = "a".repeat(40);
@@ -37,6 +37,12 @@ test("recorded parent tip must be one exact SHA", () => {
   assert.equal(recordedParentHead({ body: `Release manifest\nStack parent head: ${marker}\n` }), marker);
   assert.equal(recordedParentHead({ body: `Stack parent head: ${marker}\nStack parent head: ${marker}` }), null);
   assert.equal(recordedParentHead({ body: "Stack parent head: not-a-sha" }), null);
+});
+
+test("main retarget metadata preserves ownership and evidence but removes the old parent receipt", () => {
+  const body = `Ordered change 2.\nBase: codex/parent\nOwner lane: ar\nStack parent head: ${parentSha}\n\nScope and evidence remain here.`;
+  assert.equal(mainBaseBody(body), "Ordered change 2.\nBase: main\nOwner lane: ar\n\nScope and evidence remain here.");
+  assert.equal(mainBaseBody("Owner lane: ci\nEvidence remains."), "Owner lane: ci\nEvidence remains.\n\nBase: main");
 });
 
 test("moving the exact archive tag preserves its prior tip first", () => {
@@ -339,7 +345,7 @@ test("a merge into a feature branch never triggers restack onto main", () => {
   fs.rmSync(path.dirname(eventPath), { recursive: true });
 });
 
-for (const scenario of ["clean delta", "exact bytes", "real content conflict", "changed remote head", "missing archive", "dirty index"]) {
+for (const scenario of ["clean delta", "exact bytes", "real content conflict", "changed remote head", "missing archive", "dirty index", "open parent target"]) {
   test(`real Git duplicate merged child history: ${scenario}`, () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "restack-duplicate-"));
     const origin = path.join(root, "origin.git");
@@ -398,6 +404,25 @@ for (const scenario of ["clean delta", "exact bytes", "real content conflict", "
       git("commit", "-m", "later main work");
       git("push", "origin", "main");
       if (scenario === "exact bytes") git("config", "apply.whitespace", "fix");
+      if (scenario === "open parent target") {
+        git("switch", "-c", "new-parent");
+        write("open-parent.txt", "keep the unmerged parent delta\n");
+        git("add", ".");
+        git("commit", "-m", "unmerged parent work");
+        const target = git("rev-parse", "HEAD");
+        assert.equal(restackMergedDelta({ base: parentHead, head: childHead,
+          branch: "child", number: 41, target, run: (program, args) => {
+            assert.equal(program, "git");
+            return git(...args);
+          } }), true);
+        assert.equal(git("show", "HEAD:open-parent.txt"), "keep the unmerged parent delta");
+        assert.equal(git("show", "HEAD:main-only.txt"), "keep unrelated main work");
+        assert.equal(git("rev-parse", "HEAD:child.txt"), git("rev-parse", `${childHead}:child.txt`));
+        assert.equal(git("diff", "--name-only", `${target}..HEAD`), "child.txt");
+        git("merge-base", "--is-ancestor", target, "HEAD");
+        assert.equal(git("rev-parse", "origin/child"), childHead, "the helper itself never pushes");
+        return;
+      }
 
       const current = { ...child, head: { ...child.head, ref: "child", sha: childHead },
         base: { ref: "parent" } };
@@ -449,6 +474,7 @@ for (const scenario of ["clean delta", "exact bytes", "real content conflict", "
         const retarget = calls.findIndex((call) => call.includes("base=main"));
         const arm = calls.findIndex((call) => call[0] === "gh" && call[1] === "pr" && call[2] === "merge");
         assert.ok(archive >= 0 && archive < push && push < retarget && retarget < arm);
+        assert.ok(calls[retarget].some((value) => value.startsWith("body=") && value.includes("Base: main")), "one API patch updates base and body together");
         assert.ok(calls[arm].includes("--auto"));
       } else {
         assert.equal(result.state, scenario === "changed remote head" ? "already-moved" : "conflict");
