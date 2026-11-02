@@ -61,18 +61,25 @@ test("real provider refusal and ambiguous error leave one tenant-bound owner tas
       assert.equal(thrown.ok, false);
       assert.equal(thrown.errored.length, 1);
       assert.equal(thrown.providerExceptions.length, 1);
-      const tasks = (await db.query(`SELECT org_id,client_id,assignee_role,source_workflow,body,detail
+      const tasks = (await db.query(`SELECT org_id,client_id,assignee_role,source_workflow,body,detail,done
         FROM tasks WHERE source_workflow='finance-os-monthly-provider-exception' ORDER BY body`)).rows;
       assert.equal(tasks.length, 2);
       assert.ok(tasks.every(t => t.org_id === org && t.client_id === buyer && t.assignee_role === "owner"));
       assert.deepEqual(tasks.map(t => t.body).sort(),
         [`finance-os-monthly-provider:${refusedId}`, `finance-os-monthly-provider:${unknownId}`].sort());
       assert.ok(tasks.every(t => /Do not automatically redial or re-pull/.test(t.detail)));
+      assert.ok(tasks.every(t => t.done === false), "provider outcomes remain unresolved owner work");
       assert.equal((await db.query("SELECT count(*)::int AS n FROM tasks WHERE org_id=$1", [otherOrg])).rows[0].n, 0);
-      assert.equal((await db.query("SELECT status FROM soft_pull_requests WHERE id=$1", [unknownId])).rows[0].status,
-        "processing", "ambiguous provider outcome stays held for human reconciliation");
+      const held = (await db.query(`SELECT status,state_reason,resolved_at FROM soft_pull_requests
+        WHERE id=$1 AND org_id=$2 AND client_id=$3`, [unknownId,org,buyer])).rows[0];
+      assert.equal(held.status, "failed", "ambiguous provider outcome leaves the active queue for owner reconciliation");
+      assert.match(held.state_reason, /^Provider outcome requires owner reconciliation:/);
+      assert.ok(held.resolved_at, "the uncertain request is terminal, not left active for another worker");
       assert.equal((await fulfilQueuedSystemPulls(db, { ...active,
-        runPull: async () => { throw Error("must not re-order processing request"); } })).checked, 0);
+        runPull: async () => { throw Error("must not re-order unresolved provider request"); } })).checked, 0);
+      assert.equal((await db.query(`SELECT count(*)::int AS n FROM tasks
+        WHERE org_id=$1 AND client_id=$2 AND source_workflow='finance-os-monthly-provider-exception'`,
+        [org,buyer])).rows[0].n, 2, "replay keeps the same two unresolved owner tasks");
     } finally {
       await db.query("ROLLBACK");
       db.release();

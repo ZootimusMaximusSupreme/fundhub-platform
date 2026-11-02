@@ -4,10 +4,10 @@ import { test, after } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import pg from "pg";
-import { dueClients } from "./finance-os-pull-sweeper.mjs";
+import { dueClients, monthlyPullKey } from "./finance-os-pull-sweeper.mjs";
 import { financeOsEntitlement } from "../finance/finance-os-entitlement.mjs";
 import { assignCsmForBlueprintPurchase, pickCsmStaffId } from "../blueprint/assign-csm.mjs";
-import { fulfilQueuedSystemPulls } from "../finance/finance-os-pull-fulfil.mjs";
+import { fulfilQueuedSystemPulls, MONTHLY_PROVIDER_EXCEPTION_SOURCE } from "../finance/finance-os-pull-fulfil.mjs";
 
 const connectionString = process.env.BLUEPRINT_TEST_DATABASE_URL || process.env.DATABASE_URL;
 let safe = false;
@@ -127,25 +127,59 @@ test("a saved successful pull with failed delivery creates owner work and is not
 });
 
 test("Blueprint: a fulfilled rehearsal cannot consume a real monthly refresh, but genuine and unresolved requests still block", options, async () => {
-  await fixture([], async (db) => {
-    // Minimal transaction-local shadows run the actual dueClients SQL on Postgres.
-    // No migrated production tables are changed and no bureau can be contacted.
+  await fixture(["soft_pull_requests", "tasks", "entitlements"], async (db) => {
+    // Keep the request/review columns, defaults and constraints schema-faithful.
+    // All writes stay in these transaction-local shadows; no bureau is contacted.
+    await db.query("SET LOCAL search_path TO pg_temp, public");
+    // This case owns one paid subscription; unrelated Blueprint grants must not
+    // add other due clients when the clock advances beyond the 30-day window.
     await db.query("CREATE TEMP TABLE subscriptions (id uuid,org_id uuid,client_id uuid,tier text,status text,effective_from timestamptz,effective_to timestamptz,current_period_start timestamptz,current_period_end timestamptz) ON COMMIT DROP");
-    await db.query("CREATE TEMP TABLE soft_pull_requests (org_id uuid,client_id uuid,requested_by_kind text,requested_at timestamptz,status text,crs_result_id uuid) ON COMMIT DROP");
     await db.query("CREATE TEMP TABLE crs_results (id uuid,org_id uuid,client_id uuid,provider text,result jsonb) ON COMMIT DROP");
     const org = randomUUID(), client = randomUUID(), sub = randomUUID(), sim = randomUUID(), genuine = randomUUID();
     await db.query("INSERT INTO subscriptions (id,org_id,client_id,tier,status,effective_from,current_period_start,current_period_end) VALUES ($1,$2,$3,'finance-os','active','2026-10-01','2026-10-01','2026-12-31')", [sub,org,client]);
     await db.query("INSERT INTO crs_results (id,org_id,client_id,provider,result) VALUES ($1,$2,$3,'crs_softview_simulated',$4::jsonb)", [sim,org,client,JSON.stringify({ simulated:true, environment:"sandbox" })]);
-    await db.query("INSERT INTO soft_pull_requests (org_id,client_id,requested_by_kind,requested_at,status,crs_result_id) VALUES ($1,$2,'system','2026-10-10','fulfilled',$3)",[org,client,sim]);
+    const request = async (status, requestedAt, resultId = null, key = null) => (await db.query(`
+      INSERT INTO soft_pull_requests
+        (org_id,client_id,subscription_id,idempotency_key,requested_by_kind,reason,
+         requested_at,status,resolved_at,crs_result_id)
+      VALUES ($1,$2,$3,$4,'system','Included monthly refresh',$5,$6,$5,$7) RETURNING id`,
+    [org,client,sub,key,requestedAt,status,resultId])).rows[0].id;
+    await request("fulfilled", "2026-10-10", sim);
     const at = new Date("2026-10-12T00:00:00Z");
     assert.deepEqual(await dueClients(db,at), [], "rehearsal mode must not create repeated simulations every day");
     assert.deepEqual((await dueClients(db,at,{realPull:true})).map(r=>r.subscription_id),[sub], "real request due despite past simulated fulfillment");
     await db.query("INSERT INTO crs_results (id,org_id,client_id,provider,result) VALUES ($1,$2,$3,'crs_softview',$4::jsonb)",[genuine,org,client,JSON.stringify({ simulated:false, environment:"production" })]);
-    await db.query("INSERT INTO soft_pull_requests (org_id,client_id,requested_by_kind,requested_at,status,crs_result_id) VALUES ($1,$2,'system','2026-10-11','fulfilled',$3)",[org,client,genuine]);
+    await request("fulfilled", "2026-10-11", genuine);
     assert.deepEqual(await dueClients(db,at,{realPull:true}),[], "one actual fresh result prevents duplicate bureau requests");
     await db.query("DELETE FROM soft_pull_requests WHERE crs_result_id = $1",[genuine]);
-    await db.query("INSERT INTO soft_pull_requests (org_id,client_id,requested_by_kind,requested_at,status,crs_result_id) VALUES ($1,$2,'system','2026-10-11','failed',NULL)",[org,client]);
+    const failedKey = monthlyPullKey({ subscription_id: sub, current_period_start: "2026-10-01" },
+      new Date("2026-10-11T00:00:00Z"), { realPull: true });
+    const failed = await request("failed", "2026-10-11", null, failedKey);
     assert.deepEqual(await dueClients(db,at,{realPull:true}),[], "failed outcome demands recovery instead of silent redial");
+    const later = new Date("2026-11-12T00:00:00Z");
+    assert.deepEqual(await dueClients(db,later,{realPull:true}),[], "an unresolved real monthly failure still blocks after 30 days");
+    const review = async ({ orgId = org, clientId = client, workflow = MONTHLY_PROVIDER_EXCEPTION_SOURCE,
+      requestId = failed, done = true } = {}) => (await db.query(`INSERT INTO tasks
+      (org_id,client_id,title,source_workflow,body,done,assignee_role)
+      VALUES ($1,$2,'Reconcile monthly provider outcome',$3,$4,$5,'owner') RETURNING id`,
+    [orgId,clientId,workflow,`finance-os-monthly-provider:${requestId}`,done])).rows[0].id;
+    for (const [label, overrides] of [
+      ["another tenant's", { orgId: randomUUID() }],
+      ["another client's", { clientId: randomUUID() }],
+      ["another workflow's", { workflow: "unrelated-provider-review" }],
+      ["another request's", { requestId: randomUUID() }]
+    ]) {
+      const task = await review(overrides);
+      assert.deepEqual(await dueClients(db,later,{realPull:true}),[], `${label} completed task cannot release this request`);
+      // The real task dedupe key omits org_id; isolate each negative without weakening it.
+      await db.query("DELETE FROM tasks WHERE id=$1", [task]);
+    }
+    const matching = await review({ done: false });
+    assert.deepEqual(await dueClients(db,later,{realPull:true}),[], "the exact unfinished review still blocks redial");
+    await db.query("UPDATE tasks SET done=true WHERE id=$1", [matching]);
+    assert.deepEqual((await dueClients(db,later,{realPull:true})).map(r=>r.subscription_id),[sub],
+      "only the completed same-org/client/workflow/request review releases the old failure");
+    assert.deepEqual(await dueClients(db,at,{realPull:true}),[], "completed review does not waive the 30-day cadence");
     await db.query("DELETE FROM soft_pull_requests WHERE status='failed'");
     assert.deepEqual((await dueClients(db,at,{realPull:true})).map(r=>r.subscription_id),[sub]);
     assert.deepEqual(await dueClients(db,new Date("2027-01-01T00:00:00Z"),{realPull:true}),[], "expired included access cannot order next year's pull");
