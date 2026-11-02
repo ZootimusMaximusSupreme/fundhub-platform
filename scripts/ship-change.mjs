@@ -163,7 +163,10 @@ export async function runShipChange(options, command = defaultCommand) {
   }
   const chain = orderedChain(prs);
   const currentMember = chain.find(pr => pr.number === existing?.number);
-  if (existing && !currentMember) throw new Error(`Existing PR #${existing.number} has no ship-order label.`);
+  const adoptingLegacy = Boolean(existing && !currentMember);
+  if (adoptingLegacy && existing.baseRefName !== 'main') {
+    throw new Error(`Existing PR #${existing.number} is already stacked on ${existing.baseRefName}; preserve that older chain before adopting it.`);
+  }
   const choice = currentMember
     ? { parent: chain.find(pr => pr.position < currentMember.position && pr.headRefName === currentMember.baseRefName) || null,
         base: currentMember.baseRefName, position: currentMember.position }
@@ -185,8 +188,17 @@ export async function runShipChange(options, command = defaultCommand) {
     const ancestor = await rootGit(['merge-base', 'HEAD', `origin/${parent.headRefName}`]);
     parentHead = (await rootGit(['rev-parse', `origin/${parent.headRefName}`])).trim();
     if (ancestor.trim() !== parentHead) {
-      const basePoint = ancestor.trim();
+      // A parent can be rebased while this branch waits. The ordinary merge
+      // base then falls back to main and would replay the parent's old commits.
+      const forkPoint = adoptingLegacy ? '' : await rootGit(['merge-base', '--fork-point',
+        `origin/${parent.headRefName}`, 'HEAD']).catch(() => '');
+      const basePoint = adoptingLegacy
+        ? (await rootGit(['merge-base', 'HEAD', 'origin/main'])).trim()
+        : forkPoint.trim() || ancestor.trim();
       if (!basePoint) throw new Error('Could not identify the branch base for ordered rebase.');
+      if (!adoptingLegacy && !forkPoint.trim() && (resume || existing)) {
+        throw new Error(`Could not identify the previous tip of ${parent.headRefName}; leave this branch open for a safe restack.`);
+      }
       await rootGit(['rebase', '--onto', parentHead, basePoint, branch]);
     }
   } else {
@@ -198,6 +210,16 @@ export async function runShipChange(options, command = defaultCommand) {
   await scoped('npm', parent
     ? ['run', 'preflight', '--', '--expected-base', `origin/${parent.headRefName}`]
     : ['run', 'preflight']);
+  // Another agent may have opened the next PR while preflight was running.
+  // Stop before pushing a duplicate chain position; resume against its head.
+  if (!existing) {
+    const latestPrs = JSON.parse(await rootGh(['pr', 'list', '--repo', REPO, '--state', 'open',
+      '--limit', '200', '--json', 'number,headRefName,baseRefName,labels,isDraft,body']));
+    const latest = chooseBase(latestPrs);
+    if (latest.base !== base || latest.position !== position) {
+      throw new Error(`Ordered queue advanced to ${latest.base} at position ${latest.position}; rerun --resume before pushing.`);
+    }
+  }
   if (parent) {
     const remoteParent = (await rootGit(['ls-remote', '--heads', 'origin', parent.headRefName])).split(/\s+/)[0];
     if (remoteParent !== parentHead) {
@@ -213,11 +235,25 @@ export async function runShipChange(options, command = defaultCommand) {
 
   let pr = existing;
   if (!pr) {
-    const body = `Ordered change ${position}.\nBase: ${base}.\nOwner lane: ${ownerLane}`;
+    const body = `Ordered change ${position}.\nBase: ${base}.\nOwner lane: ${ownerLane}`
+      + (parentHead ? `\nStack parent head: ${parentHead}` : '');
     const url = (await rootGh(['pr', 'create', '--repo', REPO, '--base', base, '--head', branch, '--title', message, '--body', body])).trim();
     pr = JSON.parse(await rootGh(['pr', 'view', url, '--repo', REPO, '--json', 'number,headRefName,baseRefName,labels']));
-  } else if (!existingLane) {
-    await rootGh(['pr', 'edit', String(pr.number), '--repo', REPO, '--body', `${(existing.body || '').trim()}\n\nOwner lane: ${ownerLane}`.trim()]);
+  } else {
+    let body = (existing.body || '').trim();
+    if (!existingLane) body = `${body}\n\nOwner lane: ${ownerLane}`.trim();
+    if (parentHead) {
+      const marker = `Stack parent head: ${parentHead}`;
+      body = /^Stack parent head: .*$/m.test(body)
+        ? body.replace(/^Stack parent head: .*$/m, marker)
+        : `${body}\n\n${marker}`.trim();
+    }
+    if (body !== (existing.body || '').trim()) {
+      await rootGh(['pr', 'edit', String(pr.number), '--repo', REPO, '--body', body]);
+    }
+    if (existing.baseRefName !== base) {
+      await rootGh(['pr', 'edit', String(pr.number), '--repo', REPO, '--base', base]);
+    }
   }
   const label = `ship-order/${position}`;
   await rootGh(['label', 'create', label, '--repo', REPO, '--color', '5319E7', '--description', 'Position in the ordered shipping chain', '--force']);

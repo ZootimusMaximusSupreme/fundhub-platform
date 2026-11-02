@@ -7,6 +7,7 @@ import {
   onSurveySubmitted,
   onPaymentReceived,
   onPaymentFailed,
+  PaymentProviderRefConflictError,
   onDiagnosticPaid,
   onDecisionRendered,
   onAnalysisCompleted,
@@ -17,15 +18,28 @@ import { getHandlers } from "../events/registry.mjs";
 
 // In-memory Postgres fake: interprets the exact queries the handlers issue.
 function pgFake({ openShift = null, failOn = null, smsRouting = null, pipelineStages = [], cards = [] } = {}) {
-  const clients = [], transactions = [], crs = [], events = [], requests = [];
+  const clients = [], transactions = [], crs = [], events = [], requests = [], bookingBuckets = [];
   let n = 0;
   const findClient = (org, email) =>
     clients.find((c) => c.org_id === org && String(c.email || "").toLowerCase() === String(email).toLowerCase());
   const routingFor = (orgId) => (typeof smsRouting === "string" ? smsRouting : smsRouting?.[orgId]) ?? null;
   return {
-    clients, transactions, crs, events, requests, pipelineStages, cards,
+    clients, transactions, crs, events, requests, pipelineStages, cards, bookingBuckets,
     async query(sql, params = []) {
       if (failOn && failOn.test(sql)) throw Object.assign(new Error("simulated outage"), { code: "08006" });
+      if (/^SELECT custom_fields FROM clients WHERE id = \$1$/.test(sql.trim())) {
+        const c = clients.find((c) => c.id === params[0]);
+        return { rows: c ? [{ custom_fields: c.custom_fields }] : [] };
+      }
+      if (/UPDATE clients SET qualification_bucket/.test(sql)) {
+        const c = clients.find((c) => c.id === params[0]);
+        if (c) c.qualification_bucket = params[1];
+        return { rows: [] };
+      }
+      if (/UPDATE bookings SET qualification_bucket/.test(sql)) {
+        bookingBuckets.push({ client_id: params[0], qualification_bucket: params[1] });
+        return { rows: [] };
+      }
       // advanceCardToStage / moveCardToStage
       if (/SELECT ps\.id AS stage_id, ps\.pipeline_id/.test(sql) && /FROM pipeline_stages/.test(sql)) {
         const [pipelineKey, stageKey, orgId] = params;
@@ -162,11 +176,53 @@ function pgFake({ openShift = null, failOn = null, smsRouting = null, pipelineSt
         if (c) c.outcome_tier = params[1];
         return { rows: [] };
       }
-      if (/INSERT INTO transactions/.test(sql)) {
-        const ref = params[6];
-        if (ref && transactions.find((t) => t.org_id === params[0] && t.provider_ref === ref)) return { rows: [] };
-        transactions.push({ org_id: params[0], client_id: params[1], product_name: params[2], amount_paid: params[3], provider_ref: ref });
+      if (/FROM transactions[\s\S]*FOR UPDATE/.test(sql)) {
+        const row = transactions.find((t) => t.org_id === params[0] && t.provider_ref === params[1]);
+        if (!row) return { rows: [] };
+        return {
+          rows: [{
+            id: row.id,
+            org_id: row.org_id,
+            client_id: row.client_id,
+            product_name: row.product_name,
+            amount_paid: row.amount_paid,
+            status: row.status,
+            provider: row.provider,
+            provider_ref: row.provider_ref,
+            raw_payload: row.raw_payload
+          }]
+        };
+      }
+      if (/UPDATE transactions[\s\S]*SET status = 'succeeded'/.test(sql)) {
+        const row = transactions.find((t) => t.id === params[0]);
+        if (row) {
+          row.status = "succeeded";
+          row.raw_payload = { ...row.raw_payload, ...JSON.parse(params[1]) };
+        }
         return { rows: [] };
+      }
+      if (/INSERT INTO transactions/.test(sql)) {
+        const incoming = {
+          org_id: params[0],
+          client_id: params[1],
+          product_name: params[2],
+          amount_paid: params[3],
+          status: params[4],
+          provider: params[5],
+          provider_ref: params[6],
+          raw_payload: JSON.parse(params[7] || "{}")
+        };
+        const dupIdx = incoming.provider_ref
+          ? transactions.findIndex((t) => t.org_id === incoming.org_id && t.provider_ref === incoming.provider_ref)
+          : -1;
+        if (/ON CONFLICT/.test(sql) && dupIdx !== -1) return { rows: [] };
+        n += 1;
+        const row = { id: `tx-${n}`, ...incoming };
+        transactions.push(row);
+        if (/RETURNING/.test(sql)) {
+          return { rows: [{ ...row }] };
+        }
+        return { rows: [{ id: row.id }] };
       }
       if (/SELECT id, org_id, client_id FROM crs_results WHERE id/.test(sql)) {
         const row = crs.find((r) => r.id === params[0]);
@@ -297,6 +353,116 @@ test("payment.failed: records a failed transaction (not lost)", async () => {
   assert.equal(db.transactions.length, 1);
 });
 
+test("payment.failed then payment.received with same providerRef upgrades to succeeded", async () => {
+  const db = pgFake();
+  const ref = "txn_fail_then_ok";
+  const base = { email: "a@b.com", productName: "Consulting Services Deposit", amount: 3000, providerRef: ref, source: "commas" };
+  await onPaymentFailed(ev("payment.failed", base), db);
+  await onPaymentReceived(ev("payment.received", { ...base, paidAt: "2026-10-31T18:00:00.000Z" }), db);
+  assert.equal(db.transactions.length, 1);
+  assert.equal(db.transactions[0].status, "succeeded");
+  assert.equal(db.transactions[0].raw_payload?.provider_paid_at, "2026-10-31T18:00:00.000Z");
+});
+
+test("payment.received after succeeded keeps succeeded when a failed replay arrives", async () => {
+  const db = pgFake();
+  const ref = "txn_ok_then_fail";
+  const base = { email: "a@b.com", productName: "Consulting Services Deposit", amount: 3000, providerRef: ref, source: "commas" };
+  await onPaymentReceived(ev("payment.received", base), db);
+  await onPaymentFailed(ev("payment.failed", base), db);
+  assert.equal(db.transactions.length, 1);
+  assert.equal(db.transactions[0].status, "succeeded");
+});
+
+test("failed replay after succeeded throws when amount disagrees", async () => {
+  const db = pgFake();
+  const ref = "txn_settled_failed_mismatch";
+  const base = { email: "a@b.com", productName: "Consulting Services Deposit", amount: 3000, providerRef: ref, source: "commas", currency: "USD" };
+  await onPaymentReceived(ev("payment.received", base), db);
+  await assert.rejects(
+    () => onPaymentFailed(ev("payment.failed", { ...base, amount: 3001 }), db),
+    (err) => err instanceof PaymentProviderRefConflictError
+  );
+  assert.equal(db.transactions[0].status, "succeeded");
+});
+
+test("same providerRef in two orgs stays isolated", async () => {
+  const db = pgFake();
+  const ref = "txn_two_orgs";
+  const payload = { email: "a@b.com", productName: "Consulting Services Deposit", amount: 3000, providerRef: ref, source: "commas" };
+  await onPaymentReceived(ev("payment.received", payload, { orgId: "org-1" }), db);
+  await onPaymentReceived(ev("payment.received", payload, { orgId: "org-2" }), db);
+  assert.equal(db.transactions.length, 2);
+  assert.equal(db.transactions.filter((t) => t.org_id === "org-1").length, 1);
+  assert.equal(db.transactions.filter((t) => t.org_id === "org-2").length, 1);
+});
+
+test("failed then succeeded with a conflicting buyer throws payment_ref_conflict", async () => {
+  const db = pgFake();
+  const ref = "txn_conflict_buyer";
+  await onEntryCaptured(ev("entry.captured", { email: "first@b.com", name: "First" }), db);
+  const firstId = db.clients[0].id;
+  await onPaymentFailed(ev("payment.failed", {
+    email: "first@b.com", productName: "Consulting Services Deposit", amount: 3000, providerRef: ref, source: "commas", currency: "USD"
+  }), db);
+  await onEntryCaptured(ev("entry.captured", { email: "second@b.com", name: "Second" }), db);
+  await assert.rejects(
+    () => onPaymentReceived(ev("payment.received", {
+      email: "second@b.com", productName: "Consulting Services Deposit", amount: 3000, providerRef: ref, source: "commas", currency: "USD"
+    }), db),
+    (err) => err instanceof PaymentProviderRefConflictError && err.code === "payment_ref_conflict"
+  );
+  assert.equal(db.transactions.length, 1);
+  assert.equal(db.transactions[0].status, "failed");
+  assert.equal(db.transactions[0].client_id, firstId);
+});
+
+test("failed then succeeded with conflicting product throws payment_ref_conflict", async () => {
+  const db = pgFake();
+  const ref = "txn_conflict_product";
+  const base = { email: "a@b.com", productName: "Consulting Services Deposit", amount: 3000, providerRef: ref, source: "commas", currency: "USD" };
+  await onPaymentFailed(ev("payment.failed", base), db);
+  await assert.rejects(
+    () => onPaymentReceived(ev("payment.received", { ...base, productName: "Consulting Services Standard" }), db),
+    (err) => err instanceof PaymentProviderRefConflictError
+  );
+  assert.equal(db.transactions[0].status, "failed");
+});
+
+test("failed then succeeded with conflicting amount throws payment_ref_conflict", async () => {
+  const db = pgFake();
+  const ref = "txn_conflict_amount";
+  const base = { email: "a@b.com", productName: "Consulting Services Deposit", amount: 3000, providerRef: ref, source: "commas" };
+  await onPaymentFailed(ev("payment.failed", base), db);
+  await assert.rejects(
+    () => onPaymentReceived(ev("payment.received", { ...base, amount: 3001 }), db),
+    (err) => err instanceof PaymentProviderRefConflictError
+  );
+});
+
+test("failed then succeeded with conflicting currency throws payment_ref_conflict", async () => {
+  const db = pgFake();
+  const ref = "txn_conflict_currency";
+  await onPaymentFailed(ev("payment.failed", {
+    email: "a@b.com", productName: "Consulting Services Deposit", amount: 3000, providerRef: ref, source: "commas", currency: "USD"
+  }), db);
+  await assert.rejects(
+    () => onPaymentReceived(ev("payment.received", {
+      email: "a@b.com", productName: "Consulting Services Deposit", amount: 3000, providerRef: ref, source: "commas", currency: "EUR"
+    }), db),
+    (err) => err instanceof PaymentProviderRefConflictError
+  );
+});
+
+test("payment.received ignores event occurredAt for provider_paid_at", async () => {
+  const db = pgFake();
+  const ref = "txn_no_ingest_paid_at";
+  await onPaymentReceived(ev("payment.received", {
+    email: "a@b.com", productName: "Consulting Services Deposit", amount: 3000, providerRef: ref, source: "commas"
+  }, { occurredAt: "2026-11-01T12:00:00.000Z" }), db);
+  assert.equal(db.transactions[0].raw_payload?.provider_paid_at, undefined);
+});
+
 const SALES_STAGES = [
   { org_id: "org-1", pipeline_key: "sales", stage_key: "new_lead", pipeline_id: "pipe-sales", stage_id: "st-new", sort_order: 0 },
   { org_id: "org-1", pipeline_key: "sales", stage_key: "survey_complete", pipeline_id: "pipe-sales", stage_id: "st-survey", sort_order: 1 },
@@ -378,6 +544,43 @@ test("survey.submitted with cf_svy_available_capital advances to survey_complete
   }), db);
   assert.equal(db.cards[0].stage_id, "st-survey");
   assert.equal(db.clients[0].custom_fields.lifecycle_status, "Survey Complete");
+});
+
+test("survey.submitted with a score stamps the funding call bucket on the client and its bookings", async () => {
+  const db = pgFake({ pipelineStages: SALES_STAGES });
+  await onEntryCaptured(ev("entry.captured", { email: "score@b.com", name: "Score" }), db);
+  await onSurveySubmitted(ev("survey.submitted", {
+    email: "score@b.com", answers: { cf_svy_self_reported_fico: "750+" }
+  }), db);
+  const c = db.clients[0];
+  assert.equal(c.qualification_bucket, "funding_qualified");
+  assert.deepEqual(db.bookingBuckets, [{ client_id: c.id, qualification_bucket: "funding_qualified" }]);
+
+  await onSurveySubmitted(ev("survey.submitted", {
+    email: "score@b.com", answers: { cf_svy_self_reported_fico: "Not sure" }
+  }), db);
+  assert.equal(c.qualification_bucket, "funding_unqualified", "the client follows the newest score answer");
+});
+
+test("a failed bucket stamp never stops the survey save or the stage move", async () => {
+  const db = pgFake({ pipelineStages: SALES_STAGES, failOn: /qualification_bucket/ });
+  await onEntryCaptured(ev("entry.captured", { email: "safe@b.com", name: "Safe" }), db);
+  await onSurveySubmitted(ev("survey.submitted", {
+    email: "safe@b.com",
+    answers: { cf_svy_self_reported_fico: "750+", cf_svy_available_capital: "Less than $1k" }
+  }), db);
+  assert.equal(db.clients[0].custom_fields.cf_svy_self_reported_fico, "750+");
+  assert.equal(db.cards[0].stage_id, "st-survey");
+});
+
+test("survey.submitted with no score answer leaves the bucket alone", async () => {
+  const db = pgFake({ pipelineStages: SALES_STAGES });
+  await onEntryCaptured(ev("entry.captured", { email: "noscore@b.com", name: "No Score" }), db);
+  await onSurveySubmitted(ev("survey.submitted", {
+    email: "noscore@b.com", answers: { cf_svy_funding_target_amount: "Less than $50k" }
+  }), db);
+  assert.equal(db.clients[0].qualification_bucket, undefined);
+  assert.deepEqual(db.bookingBuckets, []);
 });
 
 test("entry.captured after survey_complete does not demote the card", async () => {

@@ -661,7 +661,8 @@ function setCfg(id,k,v){const f=findNode(id);if(!f)return;
   bump();syncHeader();renderCanvas();
   clearTimeout(editTimer);
   editTimer=setTimeout(()=>{ undoStack.push(editBefore);
-    record('you','Edited '+f.node.title,editBefore); editBefore=null; renderPanel(); },900);
+    record('you','Edited '+f.node.title,editBefore); editBefore=null;
+    if(selId===id) renderPanel(); },900);
 }
 function undo(){if(!undoStack.length)return;J[active]=JSON.parse(undoStack.pop());
   const own=dirtyByJourney[active]||0;

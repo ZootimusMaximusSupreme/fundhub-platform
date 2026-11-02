@@ -2,7 +2,7 @@ import {strict as assert} from 'node:assert';
 import {test} from 'node:test';
 import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
-import {REQUIRED_CI_JOBS,checkRequiredJobs,releaseDecision,ownerLane,prOwnershipDecision,prOrderDecision} from './release-control.mjs';
+import {REQUIRED_CI_JOBS,checkRequiredJobs,releaseDecision,handedOffFiles,ownerLane,prOwnershipDecision,prOrderDecision} from './release-control.mjs';
 
 const a='a'.repeat(40), b='b'.repeat(40);
 const jobs=REQUIRED_CI_JOBS.map(name=>({name,status:'completed',conclusion:'success'}));
@@ -47,10 +47,34 @@ test('new overlapping PR is blocked, legacy Monday queue is not',()=>{
   assert.equal(prOwnershipDecision(input).ok,false);
   assert.equal(prOwnershipDecision({...input,current:{...current,created_at:'2026-11-01T07:02:59Z'}}).ok,true);
   assert.equal(prOwnershipDecision({...input,current:{...current,created_at:'2026-11-01T07:03:37Z'},
-    peers:[{...older,created_at:'2026-11-01T07:02:00Z'}]}).ok,false);
+    peers:[{...older,created_at:'2026-11-01T07:02:00Z'}]}).ok,true);
+  const earlierPeer={...older,created_at:'2026-11-03T07:00:00Z'};
+  assert.equal(prOwnershipDecision({...input,current:{...current,created_at:'2026-11-03T07:59:59Z'},
+    peers:[earlierPeer]}).overlapGateActive,false);
+  assert.equal(prOwnershipDecision({...input,current:{...current,created_at:'2026-11-03T08:00:00Z'},
+    peers:[earlierPeer]}).ok,false);
+  assert.equal(prOwnershipDecision({...input,current:{...current,created_at:'2026-11-01T07:03:37Z',
+    body:'No owner'},peers:[]}).ok,false);
   assert.equal(prOwnershipDecision({...input,current:{...current,body:'No owner'}}).ok,false);
   assert.equal(prOwnershipDecision({...input,peers:[{...older,state:'closed'},later]}).ok,true);
   assert.equal(prOwnershipDecision({...input,files:['src/new.mjs']}).ok,true);
+});
+test('older PR can hand off one exact file to one branch while other overlaps stay blocked',()=>{
+  const current={number:470,state:'open',created_at:'2026-11-03T10:00:00Z',
+    body:'Owner lane: front-house',head:{ref:'codex/slideshow-live-pages'},base:{ref:'main'}};
+  const older={number:355,state:'open',created_at:'2026-11-01T07:00:00Z',title:'Older',
+    body:'File handoff: src/pulse/registry.mjs -> codex/slideshow-live-pages'};
+  const files=['src/pulse/registry.mjs','src/other.mjs'];
+  assert.deepEqual([...handedOffFiles(older.body,current.head.ref)],['src/pulse/registry.mjs']);
+  assert.deepEqual([...handedOffFiles(older.body,'codex/another')],[]);
+  assert.deepEqual(prOwnershipDecision({current,files,peers:[older],
+    peerFiles:{355:['src/pulse/registry.mjs']}}).blockers,[]);
+  const withOther=prOwnershipDecision({current,files,peers:[older],
+    peerFiles:{355:files}});
+  assert.deepEqual(withOther.blockers[0].blockingFiles,['src/other.mjs']);
+  assert.equal(withOther.ok,false);
+  assert.equal(prOwnershipDecision({current:{...current,head:{ref:'codex/another'}},files,
+    peers:[older],peerFiles:{355:['src/pulse/registry.mjs']}}).ok,false);
 });
 test('stack parent and grandparent may share files; unrelated older PR still blocks',()=>{
   const repo={full_name:'ZootimusMaximusSupreme/fundhub-platform'};

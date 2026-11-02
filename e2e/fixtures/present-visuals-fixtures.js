@@ -26,7 +26,10 @@
 
   var SAMPLE_PERSON_VISUAL = {
     source: "engine",
+    pulledOn: "2026-03-02",
     todayTotal: 96524,
+    availableCredit: 6000,
+    lenderReach: { now: 6, after: 9 },
     levers: [
       { key: "paydown", label: "Pay the cards down", applies: true, totalAfter: 104775 },
       { key: "clean", label: "Clean the file", applies: true, totalAfter: 174625 },
@@ -185,7 +188,10 @@
     engine: { available: true, total: null, outcome: "REPAIR_ONLY", tier: "REPAIR_ONLY", fico: { ex: 541, eq: 566, tu: 552 }, reasons: [] },
     visual: {
       source: "engine",
+      pulledOn: "2026-03-02",
       todayTotal: 0,
+      availableCredit: 140,
+      lenderReach: { now: 0, after: 15 },
       levers: [
         { key: "paydown", label: "Pay the cards down", applies: false, totalAfter: 0 },
         { key: "clean", label: "Clean the file", applies: true, totalAfter: 8250 },
