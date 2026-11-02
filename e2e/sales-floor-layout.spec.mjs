@@ -49,6 +49,10 @@ const FLOOR = {
       },
     },
   ],
+  setters: [
+    { staff_id: "s-chris", name: "Chris Stanbridge", dials: 8, booked: 2, showed: 3, no_shows: 1, show_rate: 0.75 },
+    { staff_id: "s-taylor", name: "Taylor Setter", dials: 12, booked: 1, showed: 0, no_shows: 0, show_rate: null },
+  ],
   beliefs: { beliefs: [], sources: [], period: {}, prior: {} },
   compliance: { available: false, reason: "Call recording flags are not scored yet.", items: [] },
   cold_deals: [
@@ -66,7 +70,7 @@ const emptyFloor = {
   today: { booked: 0, held: 0, deposits: 0, target_reason: "No daily target has been set." },
   hero: { deposit_to_funded: null },
   funnel: { booked: 0, held: 0, deposits: 0, funded: 0, downsells: 0, downsell_cash_cents: 0 },
-  closers: [], cold_deals: [],
+  closers: [], setters: [], cold_deals: [],
   offer_stack: { available: true, items: [], reason: "No offers sold this month." },
   offer_stack_unattributed: null,
 };
@@ -114,6 +118,27 @@ async function evidence(page, name, selector, caption) {
   await page.screenshot({ path: path.join(EVIDENCE, name + ".png") });
   await page.locator("#floor-review-mark").evaluate(el => el.remove());
 }
+async function setterEvidence(page, width) {
+  await page.locator("#fh-floor-setters").evaluate(el => el.scrollIntoView({ block: "start" }));
+  await page.evaluate(() => {
+    const targets = ["Opt-in booked", "Show rate"].map(label =>
+      document.querySelector(`#fh-floor-setters .setter-row [data-label="${label}"]`).getBoundingClientRect());
+    const mark = document.createElement("div");
+    mark.id = "setter-review-mark";
+    mark.style.cssText = "position:fixed;inset:0;z-index:99999;pointer-events:none";
+    const shapes = targets.map((r, i) => {
+      const x = r.left + r.width / 2, y = r.top + r.height / 2;
+      return `<ellipse cx="${x}" cy="${y}" rx="${Math.max(40, r.width / 2)}" ry="${Math.max(28, r.height / 2)}" fill="none" stroke="#d93025" stroke-width="4"/>` +
+        `<circle cx="${Math.max(16, r.left + 4)}" cy="${Math.max(16, r.top - 8)}" r="14" fill="#d93025"/>` +
+        `<text x="${Math.max(16, r.left + 4)}" y="${Math.max(16, r.top - 8) + 5}" fill="white" text-anchor="middle" font-size="15" font-weight="700">${i + 1}</text>` +
+        `<path d="M ${Math.min(innerWidth - 6, x + 60)} ${Math.max(8, y - 66)} L ${x + 18} ${y - 20}" stroke="#eab308" stroke-width="5" fill="none" marker-end="url(#setter-arrow)"/>`;
+    }).join("");
+    mark.innerHTML = `<svg width="100%" height="100%"><defs><marker id="setter-arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0 0 L8 3 L0 6" fill="none" stroke="#eab308" stroke-width="2"/></marker></defs>${shapes}</svg><div style="position:fixed;bottom:8px;left:8px;padding:8px 12px;background:white;border:2px solid #d93025;color:#222;font:600 14px system-ui">1 Booked opt-ins · 2 Show rate, from logged outcomes</div>`;
+    document.body.appendChild(mark);
+  });
+  await page.screenshot({ path: path.join(EVIDENCE, width + "-setters-marked.png") });
+  await page.locator("#setter-review-mark").evaluate(el => el.remove());
+}
 for (const width of [1440, 390, 320]) {
   for (const state of ["full", "empty", "loading", "error"]) {
     test(width + "px " + state + ": clear state, contained layout and real controls", async ({ page }) => {
@@ -143,6 +168,8 @@ for (const width of [1440, 390, 320]) {
         await expect(page.locator("#fh-floor-status")).toBeHidden();
         if (state === "full") {
           await expect(page.locator(".rost .rrow.pick")).toHaveCount(27);
+          await expect(page.locator("#fh-floor-setters .setter-row")).toHaveCount(2);
+          await expect(page.locator("#fh-floor-setters .setter-row").first()).toContainText("75%");
           await expect(page.locator(".hero .big").first()).toHaveText("1");
           await expect(page.locator(".hero .big").nth(1)).toHaveText("67%");
           await expect(page.locator("#fh-floor-on-shift")).toContainText("closers on shift");
@@ -151,13 +178,19 @@ for (const width of [1440, 390, 320]) {
           await expect(page.locator(".hero .big").first()).toHaveText("0");
           await expect(page.locator(".hero .big").nth(1)).toHaveText("—");
           await expect(page.locator(".rost")).toContainText("No closers on this board");
+          await expect(page.locator("#fh-floor-setters")).toContainText("No active setters yet");
           await expect(page.locator("#fh-offer-stack")).toContainText("No offers sold this month.");
           await expect(page.locator("#fh-flag-mkt")).toHaveCount(0);
         }
       }
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
       await evidence(page, width + "-" + state, state === "error" || state === "loading" ? "#fh-floor-status" : ".hero", width + "px · " + state + " fixture · explicit state and readable overview");
+      if (state === "full" && width !== 320) await setterEvidence(page, width);
       if (state === "full" && width < 600) {
+        const setter = page.locator("#fh-floor-setters .setter-row").first();
+        await setter.scrollIntoViewIfNeeded();
+        await expect(setter.locator(".num")).toHaveCount(5);
+        expect(await setter.locator(".num").first().evaluate(el => getComputedStyle(el, "::before").content)).toContain("Logged dials");
         const row = page.locator(".rost .rrow.pick").first();
         await row.scrollIntoViewIfNeeded();
         for (const cls of [".c2", ".c4", ".c5"]) await expect(row.locator(cls)).toBeVisible();
