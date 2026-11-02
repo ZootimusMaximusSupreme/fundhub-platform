@@ -21,6 +21,8 @@ function database({ agent = coach(), assignment = "BP-COACH", halted = false, pa
     [/FROM agents WHERE org_id = \$1 AND code = \$2/, (_sql, p) => p[0] === ORG && p[1] === agent.code ? [agent] : []],
     [/FROM agents/, [agent]],
     [/FROM transactions/, (_sql, p) => paid && p[0] === ORG && p[1] === CLIENT ? [{ id: "paid", status: "succeeded", amount_paid: "7500.00" }] : []],
+    // The service-year gate independently checks the source-linked grant.
+    [/FROM entitlements e/, (_sql, p) => paid && active && p[0] === ORG && p[1] === CLIENT ? [{ id: "paid-blueprint-year" }] : []],
     [/FROM v_client_entitlements/, (_sql, p) => active && p[0] === ORG && p[1] === CLIENT ? [{ active: true }] : []],
     [/FROM clients c/, [{ assigned_csm_staff_id: "human", staff_id: "human", name: "Alex", status: "active", is_demo: false }]],
     [/FROM clients\s+WHERE id = \$1 AND org_id = \$2/, (_sql, p) => p[0] === CLIENT && p[1] === ORG ? [{ id: clientId, first_name: "Pat", phone: "+16025550100" }] : []],
