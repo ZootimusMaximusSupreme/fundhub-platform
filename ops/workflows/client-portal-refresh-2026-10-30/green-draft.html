@@ -12,7 +12,9 @@
   figure{margin:0;background:white;border:1px solid #d5d9de;border-radius:12px;overflow:hidden}
   .shot{position:relative;line-height:0}.shot img{width:100%;display:block}
   .shot svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
-  .good{fill:rgba(34,197,94,.07);stroke:#16a34a;stroke-width:5}.num{fill:#16a34a}
+  .good{fill:rgba(220,38,38,.06);stroke:#dc2626;stroke-width:5}.num{fill:#dc2626}
+  .arrow{fill:none;stroke:#facc15;stroke-width:9;stroke-linecap:round;filter:drop-shadow(0 1px 1px #111827)}
+  .arrowhead{fill:#facc15;stroke:#111827;stroke-width:2}
   .numtext{fill:white;font:700 26px system-ui;text-anchor:middle;dominant-baseline:central}
   figcaption{padding:14px 18px;font-weight:600;color:#293135}
   .hide-marks svg{display:none}
@@ -20,25 +22,25 @@
 </style>
 <main>
   <h1>Client portal refresh · marked draft</h1>
-  <p>This is the local browser build. Green marks show the changed view; the button lets you see it clean. Dana, Safe Staff, and the dollar amount are fictional test data.</p>
+  <p>This is the local browser build. Numbered red circles and yellow arrows point to the changed view; the button lets you see it clean. Dana, Safe Staff, and the dollar amount are fictional test data.</p>
   <div class="tools"><button id="toggle" type="button">Hide marks</button><a href="red-draft.html">See the marked old screen</a></div>
   <div class="order">New order: file status → next action → account and downloads → welcome video → offers.</div>
   <h2>Staff opens the portal without a client</h2>
   <div class="grid">
     <figure><div class="shot"><img src="page_client_portal-staff-choose-1440.png" alt="Desktop staff portal with choose-client action">
-      <svg viewBox="0 0 1440 900" aria-hidden="true"><rect class="good" x="5" y="5" width="1430" height="80" rx="8"/><circle class="num" cx="90" cy="92" r="24"/><text class="numtext" x="90" y="92">1</text><rect class="good" x="30" y="255" width="724" height="266" rx="10"/><circle class="num" cx="60" cy="250" r="24"/><text class="numtext" x="60" y="250">2</text></svg>
+      <svg viewBox="0 0 1440 900" aria-hidden="true"><rect class="good" x="5" y="5" width="1430" height="80" rx="8"/><circle class="num" cx="90" cy="92" r="24"/><text class="numtext" x="90" y="92">1</text><path class="arrow" d="M90 65 L90 42"/><path class="arrowhead" d="M90 33 L74 56 L106 56 Z"/><rect class="good" x="30" y="255" width="724" height="266" rx="10"/><circle class="num" cx="60" cy="250" r="24"/><text class="numtext" x="60" y="250">2</text><path class="arrow" d="M78 265 L117 299"/><path class="arrowhead" d="M129 309 L100 301 L119 280 Z"/></svg>
     </div><figcaption>1 · CRM-style white header. 2 · One clear action; no false file or offer cards.</figcaption></figure>
     <figure><div class="shot"><img src="page_client_portal-staff-choose-390.png" alt="Phone staff portal with choose-client action">
-      <svg viewBox="0 0 390 900" aria-hidden="true"><rect class="good" x="14" y="278" width="361" height="240" rx="10"/><circle class="num" cx="44" cy="270" r="19"/><text class="numtext" x="44" y="270">2</text></svg>
+      <svg viewBox="0 0 390 900" aria-hidden="true"><rect class="good" x="14" y="278" width="361" height="240" rx="10"/><circle class="num" cx="44" cy="270" r="19"/><text class="numtext" x="44" y="270">2</text><path class="arrow" d="M57 285 L92 324"/><path class="arrowhead" d="M102 335 L73 324 L95 305 Z"/></svg>
     </div><figcaption>The same action stays readable on a phone.</figcaption></figure>
   </div>
   <h2>Staff opens a selected client’s portal</h2>
   <div class="grid">
     <figure><div class="shot"><img src="page_client_portal-staff-preview-1440.png" alt="Desktop selected-client portal with status and next action first">
-      <svg viewBox="0 0 1440 900" aria-hidden="true"><rect class="good" x="30" y="177" width="910" height="360" rx="10"/><circle class="num" cx="60" cy="170" r="24"/><text class="numtext" x="60" y="170">3</text><rect class="good" x="962" y="177" width="447" height="221" rx="10"/><circle class="num" cx="992" cy="170" r="24"/><text class="numtext" x="992" y="170">4</text></svg>
+      <svg viewBox="0 0 1440 900" aria-hidden="true"><rect class="good" x="30" y="177" width="910" height="360" rx="10"/><circle class="num" cx="60" cy="170" r="24"/><text class="numtext" x="60" y="170">3</text><path class="arrow" d="M78 185 L128 243"/><path class="arrowhead" d="M138 255 L110 242 L134 226 Z"/><rect class="good" x="962" y="177" width="447" height="221" rx="10"/><circle class="num" cx="992" cy="170" r="24"/><text class="numtext" x="992" y="170">4</text><path class="arrow" d="M1010 185 L1055 238"/><path class="arrowhead" d="M1065 250 L1037 237 L1060 221 Z"/></svg>
     </div><figcaption>3 · File facts lead. 4 · The next action is beside them. The video and offers move lower.</figcaption></figure>
     <figure><div class="shot"><img src="page_client_portal-staff-preview-390.png" alt="Phone selected-client portal with next action and file status">
-      <svg viewBox="0 0 390 900" aria-hidden="true"><rect class="good" x="14" y="293" width="363" height="240" rx="10"/><circle class="num" cx="42" cy="287" r="19"/><text class="numtext" x="42" y="287">4</text><rect class="good" x="14" y="538" width="363" height="358" rx="10"/><circle class="num" cx="42" cy="530" r="19"/><text class="numtext" x="42" y="530">3</text></svg>
+      <svg viewBox="0 0 390 900" aria-hidden="true"><rect class="good" x="14" y="293" width="363" height="240" rx="10"/><circle class="num" cx="42" cy="287" r="19"/><text class="numtext" x="42" y="287">4</text><path class="arrow" d="M55 301 L90 337"/><path class="arrowhead" d="M101 348 L72 337 L95 318 Z"/><rect class="good" x="14" y="538" width="363" height="358" rx="10"/><circle class="num" cx="42" cy="530" r="19"/><text class="numtext" x="42" y="530">3</text><path class="arrow" d="M55 544 L90 585"/><path class="arrowhead" d="M101 597 L72 585 L96 566 Z"/></svg>
     </div><figcaption>On a phone, the next action comes before the file detail.</figcaption></figure>
   </div>
 </main>
