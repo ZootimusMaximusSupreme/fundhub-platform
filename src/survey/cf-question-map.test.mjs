@@ -7,6 +7,8 @@ import {
   visibleQuestions,
   answersByPayloadKey,
   surveyFicoBand,
+  surveyIsComplete,
+  SURVEY_FINAL_KEY
 } from "./cf-question-map.mjs";
 
 test("CF order has contact first; homepage has contact last", () => {
@@ -63,4 +65,15 @@ test("surveyFicoBand prefers the label and never paints a CF option id", () => {
   assert.equal(surveyFicoBand({ cf_svy_self_reported_fico: "700-749" }), "700-749");
   assert.equal(surveyFicoBand({ cf_svy_self_reported_fico: "207907" }), null);
   assert.equal(surveyFicoBand({}), null);
+});
+
+test("surveyIsComplete: only the last answer (available capital) finishes the survey", () => {
+  assert.equal(SURVEY_FINAL_KEY, "cf_svy_available_capital");
+  assert.equal(surveyIsComplete({ cf_svy_available_capital: "$5k - $25k" }), true);
+  assert.equal(surveyIsComplete({ cf_svy_available_capital: ["$5k - $25k"] }), true);
+  assert.equal(surveyIsComplete({ cf_svy_funding_target_amount: "$50k - $100k" }), false);
+  assert.equal(surveyIsComplete({ cf_svy_available_capital: "   " }), false);
+  assert.equal(surveyIsComplete({ cf_svy_available_capital: [] }), false);
+  assert.equal(surveyIsComplete(null), false);
+  assert.equal(surveyIsComplete([]), false);
 });

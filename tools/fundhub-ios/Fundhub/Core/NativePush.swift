@@ -62,12 +62,38 @@ enum NativePushConsent {
 
 enum NativePushTap {
     static let portalPath = "/app/client-portal.html"
+    static let staffPath = "/app/staff-alert"
     static let requestLifetime: TimeInterval = 5 * 60
+
+    struct StaffAlert: Equatable {
+        let kind: String
+        let clientId: String
+
+        func workspacePath(role: String?) -> String? {
+            let page: String
+            switch role {
+            case "setter" where kind == "lead": page = "/app/setter-dashboard.html"
+            case "closer": page = "/app/closer-dashboard.html"
+            case "owner": page = kind == "lead" ? "/app/setter-dashboard.html" : "/app/closer-dashboard.html"
+            default: return nil
+            }
+            return "\(page)?client_id=\(clientId)"
+        }
+    }
 
     static func opensClientPortal(_ userInfo: [AnyHashable: Any]) -> Bool {
         // APNs supplies this path from our server's approved payload. Never
         // navigate to a URL, query string, or client ID supplied by a push.
         (userInfo["path"] as? String) == portalPath
+    }
+
+    static func staffAlert(_ userInfo: [AnyHashable: Any]) -> StaffAlert? {
+        guard (userInfo["path"] as? String) == staffPath,
+              let kind = userInfo["kind"] as? String,
+              ["lead", "set", "upcoming"].contains(kind),
+              let rawId = userInfo["client_id"] as? String,
+              let id = UUID(uuidString: rawId) else { return nil }
+        return StaffAlert(kind: kind, clientId: id.uuidString.lowercased())
     }
 }
 
@@ -80,20 +106,31 @@ final class NativePushCenter: ObservableObject {
     }
 
     @Published private(set) var state: State = .checking
-    @Published private(set) var portalOpenRequestId = 0
+    @Published private(set) var openRequestId = 0
     private var bearer: String?
     private var pendingPortalOpenAt: Date?
+    private var pendingStaffOpen: (alert: NativePushTap.StaffAlert, at: Date, bearer: String)?
     private let api = FundhubAPI()
     private let registeredKey = "fundhub.nativePush.registered"
 
     private init() {}
 
+    var hasAttachedSession: Bool { bearer != nil }
+
     @discardableResult
-    func recordNotificationTap(userInfo: [AnyHashable: Any], now: Date = Date()) -> Bool {
-        guard NativePushTap.opensClientPortal(userInfo) else { return false }
-        pendingPortalOpenAt = now
-        portalOpenRequestId &+= 1
-        return true
+    func recordNotificationTap(userInfo: [AnyHashable: Any], now: Date = Date(), sessionBearer: String? = nil) -> Bool {
+        if NativePushTap.opensClientPortal(userInfo) {
+            pendingPortalOpenAt = now
+            openRequestId &+= 1
+            return true
+        }
+        if let alert = NativePushTap.staffAlert(userInfo) {
+            guard let expectedBearer = sessionBearer ?? bearer, !expectedBearer.isEmpty else { return false }
+            pendingStaffOpen = (alert, now, expectedBearer)
+            openRequestId &+= 1
+            return true
+        }
+        return false
     }
 
     func takePortalOpenRequest(now: Date = Date()) -> Bool {
@@ -103,13 +140,26 @@ final class NativePushCenter: ObservableObject {
         return age >= 0 && age <= NativePushTap.requestLifetime
     }
 
+    func takeStaffOpenRequest(now: Date = Date(), currentBearer: String? = nil) -> NativePushTap.StaffAlert? {
+        guard let pending = pendingStaffOpen else { return nil }
+        guard let currentBearer = currentBearer ?? bearer else { return nil }
+        pendingStaffOpen = nil
+        guard currentBearer == pending.bearer else { return nil }
+        let age = now.timeIntervalSince(pending.at)
+        return age >= 0 && age <= NativePushTap.requestLifetime ? pending.alert : nil
+    }
+
     func attach(bearer: String) async {
         // A different account cannot inherit another session's local consent.
         if let prior = self.bearer, prior != bearer {
             NativePushConsent.setEnabled(false)
+            pendingPortalOpenAt = nil
+            pendingStaffOpen = nil
         }
+        if let pending = pendingStaffOpen, pending.bearer != bearer { pendingStaffOpen = nil }
         NativePushConsent.bind(to: bearer)
         self.bearer = bearer
+        if pendingStaffOpen != nil { openRequestId &+= 1 }
         await refresh()
     }
 
@@ -234,6 +284,8 @@ final class NativePushCenter: ObservableObject {
         UIApplication.shared.unregisterForRemoteNotifications()
         UserDefaults.standard.set(false, forKey: registeredKey)
         self.bearer = nil
+        pendingPortalOpenAt = nil
+        pendingStaffOpen = nil
         state = .off
     }
 
@@ -242,6 +294,8 @@ final class NativePushCenter: ObservableObject {
         UIApplication.shared.unregisterForRemoteNotifications()
         UserDefaults.standard.set(false, forKey: registeredKey)
         bearer = nil
+        pendingPortalOpenAt = nil
+        pendingStaffOpen = nil
         state = .off
     }
 }
@@ -310,7 +364,15 @@ final class FundhubPushDelegate: NSObject, UIApplicationDelegate, UNUserNotifica
             return
         }
         Task { @MainActor in
-            NativePushCenter.shared.recordNotificationTap(userInfo: response.notification.request.content.userInfo)
+            let push = NativePushCenter.shared
+            let savedBearer: String?
+            if push.hasAttachedSession {
+                savedBearer = nil
+            } else {
+                savedBearer = await Task.detached(priority: .userInitiated) { SessionKeychain.read() }.value
+            }
+            push.recordNotificationTap(userInfo: response.notification.request.content.userInfo,
+                                       sessionBearer: savedBearer)
             completionHandler()
         }
     }

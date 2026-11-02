@@ -485,7 +485,7 @@ var NODES = [
      ['1:47 PM','Retry 3 failed — halted, queue handed to Alvin']]},
 
 /* ---- CLIENT-FACING AGENTS ---- */
-{id:'josh', c:'cfa', name:'Setter Josh', ini:'SJ', role:'Voice Setter', kind:'agent',
+{id:'setter', c:'cfa', name:'Setter Chris', ini:'SC', role:'Voice Setter', kind:'agent',
  state:'active', tempo:.92, out:34, pace:1.20, unit:'bookings',
  act:'On a call with Kayla Whitmore',
  pool:['On a call with {C}','Dialing {C}','Booked {C} — 4:30 with Jordan','Left voicemail — {C}','Re-dialing no-answer queue'],
@@ -499,12 +499,12 @@ var NODES = [
 {id:'a1', c:'cfa', name:'Agent 1', ini:'A1', role:'Lead Follow-up & Booking', kind:'agent',
  state:'active', tempo:.88, out:112, pace:1.12, unit:'conversations',
  act:'Texting Tomás Reyes',
- pool:['Texting {C}','Following up — {C}, day 3','Answering {C}’s question on the diagnostic','Handing {C} to Setter Josh','Working the 24h no-reply list'],
+ pool:['Texting {C}','Following up — {C}, day 3','Answering {C}’s question on the diagnostic','Handing {C} to Setter Chris','Working the 24h no-reply list'],
  shift:'12:00 AM', on:'14h 47m',
- stats:[['Conversations','112'],['Replies received','47'],['Handed to Josh','9'],['Blocked by Gate','1']],
+ stats:[['Conversations','112'],['Replies received','47'],['Handed to Chris','9'],['Blocked by Gate','1']],
  files:['Tomás Reyes','Courtney Vance','+18 active threads'],
  tl:[['12:00','Runtime start'],['7:30','Morning follow-up burst — 41 sent'],
-     ['11:20','Handed 4 warm leads to Setter Josh'],['2:40 PM','Texting Tomás Reyes']]},
+     ['11:20','Handed 4 warm leads to Setter Chris'],['2:40 PM','Texting Tomás Reyes']]},
 
 {id:'a2', c:'cfa', name:'Agent 2', ini:'A2', role:'Billing & AR', kind:'agent',
  state:'idle', tempo:.30, out:14, pace:0.93, unit:'invoices',
@@ -549,11 +549,11 @@ var NODES = [
 {id:'cf', c:'cfa', name:'Context Fetcher', ini:'CF', role:'Agent', kind:'agent',
  state:'active', tempo:.66, out:48, pace:0.96, unit:'context pulls',
  act:'Prepping context — Courtney Vance call',
- pool:['Prepping context — {C} call','Summarizing {C}’s thread','Pulling snapshot state — {C}','Serving context to Setter Josh'],
+ pool:['Prepping context — {C} call','Summarizing {C}’s thread','Pulling snapshot state — {C}','Serving context to Setter Chris'],
  shift:'12:00 AM', on:'14h 47m',
  stats:[['Context pulls','48 of 50'],['Avg latency','340ms'],['Cache hits','71%'],['Misses','3']],
  files:['Courtney Vance','Kayla Whitmore','Priya Nair'],
- tl:[['12:00','Runtime start'],['8:20','Served 12 pulls to Setter Josh'],
+ tl:[['12:00','Runtime start'],['8:20','Served 12 pulls to Setter Chris'],
      ['1:05 PM','Rebuilt summary — Priya Nair'],['2:44 PM','Prepping context — Courtney Vance']]},
 
 /* ---- OPS AGENTS ---- */
@@ -618,11 +618,11 @@ var ND = {}; NODES.forEach(function(n){ND[n.id]=n;});
 
 /* handoff routes that actually happen at Fundhub */
 var ROUTES = [
-  ['a1','josh','{C} warmed — handed off for booking'],
+  ['a1','setter','{C} warmed — handed off for booking'],
   ['a3','a1','{C} re-engaged after 21 days'],
-  ['josh','jordan','{C} booked — 3:30 slot'],
-  ['josh','nina','{C} booked — 4:00 slot'],
-  ['cf','josh','context prepped for {C}’s call'],
+  ['setter','jordan','{C} booked — 3:30 slot'],
+  ['setter','nina','{C} booked — 4:00 slot'],
+  ['cf','setter','context prepped for {C}’s call'],
   ['cf','jordan','{C}’s survey + thread summary'],
   ['a5','dc','{C}’s docs uploaded — ready to check'],
   ['dc','marcus','{C}’s file cleared for funding'],
@@ -639,7 +639,7 @@ var ROUTES = [
 ];
 
 /* threads that just sit there — two workers on the same file */
-var STANDING = [['marcus','dc'],['alvin','irai'],['josh','cf'],['a1','a3'],['recon','fixer'],['sarah','jordan']];
+var STANDING = [['marcus','dc'],['alvin','irai'],['setter','cf'],['a1','a3'],['recon','fixer'],['sarah','jordan']];
 
 /* ---------- the seven rails ---------- */
 var RAILS = [

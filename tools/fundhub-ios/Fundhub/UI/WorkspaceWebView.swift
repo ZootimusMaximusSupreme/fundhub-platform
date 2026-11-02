@@ -33,7 +33,9 @@ struct WorkspaceWebView: UIViewRepresentable {
         webView.navigationDelegate = context.coordinator
         webView.uiDelegate = context.coordinator
         webView.allowsBackForwardNavigationGestures = true
-        webView.load(URLRequest(url: FundhubAPI.base.appendingPathComponent(String(path.dropFirst()))))
+        if let destination = URL(string: path, relativeTo: FundhubAPI.base)?.absoluteURL {
+            webView.load(URLRequest(url: destination))
+        }
         return webView
     }
 

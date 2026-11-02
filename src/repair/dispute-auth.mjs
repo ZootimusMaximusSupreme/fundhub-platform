@@ -9,21 +9,48 @@
 // Generate and Stage may write letters only when a signed repair agreement
 // is on file. Staff consent or enroll alone is not that paper.
 
-import { hasValidConsent } from "../consent/index.mjs";
+import { hasValidConsent, CONSENT_VALID_SQL } from "../consent/index.mjs";
 
-const SIGNED_REPAIR_SQL = `
-  SELECT 1
+function signedRepairSql(orgPos = 1, clientPos = 2) {
+  if (![orgPos, clientPos].every(n => Number.isInteger(n) && n >= 1 && n <= 9))
+    throw new TypeError("invalid bind position");
+  return `SELECT 1
     FROM contracts c
     LEFT JOIN contract_templates t
       ON t.org_id = c.org_id AND t.template_key = c.template_key
-   WHERE c.org_id = $1::uuid
-     AND c.client_id = $2::uuid
+   WHERE c.org_id = $${orgPos}::uuid
+     AND c.client_id = $${clientPos}::uuid
      AND c.status = 'signed'
      AND (
        t.subtype = 'credit_repair'
        OR c.template_key ILIKE '%REPAIR%'
      )
    LIMIT 1`;
+}
+const SIGNED_REPAIR_SQL = signedRepairSql(1, 2);
+
+// Recheck paper/consent in the claim's own SQL snapshot. This uses the same
+// signed-contract check and canonical revocation/expiry predicate as preflight.
+export function currentRepairMailAuthorizationSql(orgPos = 2, clientPos = 3) {
+  if (![orgPos, clientPos].every(n => Number.isInteger(n) && n >= 1 && n <= 9))
+    throw new TypeError("invalid bind position");
+  return `(EXISTS (${signedRepairSql(orgPos, clientPos)})
+    OR EXISTS (
+      SELECT 1 FROM client_consents
+       WHERE org_id = $${orgPos}::uuid AND client_id = $${clientPos}::uuid
+         AND kind = 'dispute_authorization'
+         AND (${CONSENT_VALID_SQL})
+    ))`;
+}
+
+export async function hasCurrentRepairMailAuthorization(db, { orgId, clientId } = {}) {
+  if (!db?.query || !orgId || !clientId) return false;
+  try {
+    const r = await db.query(`SELECT ${currentRepairMailAuthorizationSql(1, 2)} AS authorized`, [orgId, clientId]);
+    return r.rows?.[0]?.authorized === true;
+  } catch { return false; }
+}
+
 
 export async function hasDisputeAuthorization(db, { orgId, clientId } = {}) {
   return hasValidConsent(db, { orgId, clientId, kind: "dispute_authorization" });

@@ -1,0 +1,1 @@
+../../.ai/rules/funding-deal-pay.md

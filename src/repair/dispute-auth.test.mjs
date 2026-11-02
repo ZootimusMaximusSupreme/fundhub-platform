@@ -1,6 +1,6 @@
 import { test, describe } from "node:test";
 import assert from "node:assert";
-import { hasDisputeAuthorization, hasRepairAgreement } from "./dispute-auth.mjs";
+import { hasDisputeAuthorization, hasRepairAgreement, currentRepairMailAuthorizationSql, hasCurrentRepairMailAuthorization } from "./dispute-auth.mjs";
 
 function fakeDb(rows = []) {
   const calls = [];
@@ -64,5 +64,29 @@ describe("hasRepairAgreement", () => {
   test("false when nothing is on file", async () => {
     const db = fakeDb([{ rows: [] }]);
     assert.equal(await hasRepairAgreement(db, { orgId: "o", clientId: "c" }), false);
+  });
+});
+
+
+describe("final same-statement dispute-mail authorization", () => {
+  test("reuses signed repair and canonical current consent validity with scoped binds", () => {
+    const sql = currentRepairMailAuthorizationSql(2, 3);
+    for (const term of ["c.org_id = $2::uuid", "c.client_id = $3::uuid",
+      "c.status = 'signed'", "t.subtype = 'credit_repair'",
+      "org_id = $2::uuid AND client_id = $3::uuid", "kind = 'dispute_authorization'",
+      "revoked_at IS NULL", "expires_at > now()", "granted_at <= now()"])
+      assert.ok(sql.includes(term), term);
+    assert.throws(() => currentRepairMailAuthorizationSql(0, 3), TypeError);
+  });
+  test("final authorization read fails closed on invalid input or database error", async () => {
+    const db = { query: async (sql, params) => {
+      assert.match(sql, /SELECT \(EXISTS/);
+      assert.deepEqual(params, ["org", "client"]);
+      return { rows: [{ authorized: true }] };
+    } };
+    assert.equal(await hasCurrentRepairMailAuthorization(db, { orgId: "org", clientId: "client" }), true);
+    assert.equal(await hasCurrentRepairMailAuthorization(db, { orgId: "org" }), false);
+    assert.equal(await hasCurrentRepairMailAuthorization({ query: async () => { throw Error("db offline"); } },
+      { orgId: "org", clientId: "client" }), false);
   });
 });

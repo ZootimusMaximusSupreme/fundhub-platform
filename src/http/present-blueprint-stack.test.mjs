@@ -78,9 +78,9 @@ function payload({ tier = "REPAIR_ONLY", negItems = 3, available = true, busines
       available, tier, label: tier, fico: { ex: 650, tu: 640, eq: 655 },
       total: available ? 20000 : null, afterFix: available ? 60000 : null,
       negItems: available ? negItems : null, reasons: [], plan: [],
-      totalBasis: available ? "personal_only" : null, sample: true
+      totalBasis: available ? "personal_only" : null, sample: false
     },
-    soft_pull: null,
+    soft_pull: available ? { consent_valid: true, diagnostic_paid: true, pull_status: "complete", crs_result_id: "crs-test" } : null,
     offers: OFFERS
   };
 }
@@ -279,6 +279,30 @@ describe("section 06 is Door 3: a repair file walks into it, a funding file neve
   });
 });
 
+test("Present's assessment screen follows real pull state and holds the reveal until a result", async () => {
+  const waiting = payload();
+  waiting.soft_pull = { consent_valid: false, diagnostic_paid: false, pull_status: null, crs_result_id: null };
+  const deck = await openDeck(waiting);
+  deck.click("phase:03").key("ArrowRight");
+  assert.equal(current(deck), "S-06");
+  assert.match(text(parts(deck.html()).client), /Waiting for your authorization/);
+  assert.doesNotMatch(text(parts(deck.html()).client), /scanning experian|matching against partner lender network/i);
+  deck.key("ArrowRight");
+  assert.equal(current(deck), "S-06", "Next must wait for a real result");
+
+  const processing = payload();
+  processing.soft_pull = { consent_valid: true, diagnostic_paid: true, pull_status: "processing", crs_result_id: null };
+  const running = await openDeck(processing);
+  running.click("phase:03").key("ArrowRight");
+  assert.match(text(parts(running.html()).client), /Your report is being prepared/);
+  running.key("ArrowRight");
+  assert.equal(current(running), "S-06");
+
+  const ready = await openDeck(payload());
+  ready.click("phase:03").key("ArrowRight", 2);
+  assert.equal(current(ready), "S-07");
+});
+
 describe("the stack starts from this caller's file", () => {
   test("a repair file with negative items: dispute rounds on, ready on, partner off", async () => {
     const deck = await openDeck(payload({ tier: "REPAIR_ONLY", negItems: 3 }));
@@ -302,12 +326,12 @@ describe("the stack starts from this caller's file", () => {
     assert.ok(!names.includes("Ready to get funded"));
   });
 
-  test("no credit file yet: dispute rounds wait for the report", async () => {
+  test("no credit file yet: the offer stack waits for the report", async () => {
     const deck = await openDeck(payload({ available: false, tier: null }));
     deck.click("phase:06").key("ArrowRight");
-    assert.deepEqual(toggle(deck, "disputes"), {
-      on: false, why: "No credit file on this deck yet. Turn on only if the report shows negative items."
-    });
+    assert.equal(current(deck), "S-06");
+    assert.match(text(parts(deck.html()).client), /Waiting for your authorization/);
+    assert.ok(!parts(deck.html()).cockpit.includes('data-act="stack:disputes"'), "no offer toggle before the report");
   });
 
   test("a business on the file: its papers and its container are named", async () => {
@@ -371,8 +395,7 @@ describe("the rep's toggles change what the caller sees", () => {
 describe("prices, words, and the watch notes", () => {
   const STATES = [
     payload({ tier: "REPAIR_ONLY", negItems: 3 }),
-    payload({ tier: "FULL_FUNDING", negItems: 0, businesses: [{ id: "b1", name: "Co", age_months: 12, incorporated_date: "2025-01" }] }),
-    payload({ available: false, tier: null })
+    payload({ tier: "FULL_FUNDING", negItems: 0, businesses: [{ id: "b1", name: "Co", age_months: 12, incorporated_date: "2025-01" }] })
   ];
 
   test("every dollar figure in the section is the catalog's or $X", async () => {
@@ -441,15 +464,15 @@ describe("prices, words, and the watch notes", () => {
     assert.match(b04, /no renewal charge/);
   });
 
-  test("the funding guarantees on S-21 are word for word what they were", () => {
+  test("S-21 shows the agreement's two action guarantees without a third funding promise", () => {
     const g = JS.slice(JS.indexOf("var GUARANTEES = ["), JS.indexOf("var MENU = ["));
     for (const line of [
-      '["G-01 / 24 HOURS", "24-Hour Action Guarantee", "Once you\'re signed on, a funding advisor begins working your file within 24 business hours. If we don\'t act in that window, you\'re protected and you don\'t pay."]',
-      '["G-02 / 72 HOURS", "72-Hour Application Guarantee", "Once you\'re signed on, your applications go out within 72 business hours. If we don\'t act in that window, you\'re protected and you don\'t pay."]',
-      '["G-03 / FUNDING", "Funding Guarantee", "If you qualify and we don\'t secure funding for you, you don\'t pay. If you get nothing, we earn nothing."]'
+      '["G-01 / 24 BUSINESS HOURS", "Work begins", "A funding advisor begins working your file within 24 business hours after you sign."]',
+      '["G-02 / 72 BUSINESS HOURS", "First applications", "Fundhub submits your first authorized applications within 72 business hours after you sign."]'
     ]) {
       assert.ok(g.includes(line), "a guarantee changed: " + line.slice(0, 40));
     }
+    assert.doesNotMatch(g, /G-03|Funding Guarantee/);
     assert.doesNotMatch(SECTION_CODE, /GUARANTEES/, "the Blueprint section must not show the funding guarantees");
   });
 

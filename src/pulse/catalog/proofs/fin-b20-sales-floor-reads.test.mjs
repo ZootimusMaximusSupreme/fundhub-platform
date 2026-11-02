@@ -169,14 +169,19 @@ test("lead-source panel: a call is cut by campaign first, then source, then chan
 // ---------------------------------------------------------------------------------------------
 test("floor discipline: calls not logged are past-due closer booking tasks with no disposition", async () => {
   const db = standIn(["tasks", "call_outcomes", "clients"]);
-  const t = (over) => db.insert("tasks", { id: id("t"), org_id: ORG, assignee_role: "closer", title: "Strategy session booked", body: id("BK"), due_at: day(1), done: false, ...over });
+  db.insert("clients", { id: "c1", org_id: ORG, custom_fields: "{}" });
+  db.insert("clients", { id: "c-arch", org_id: ORG, custom_fields: JSON.stringify({ crm_archived_at: day(2) }) });
+  const t = (over) => db.insert("tasks", { id: id("t"), org_id: ORG, client_id: "c1", assignee_role: "closer", title: "Strategy session booked", body: id("BK"), due_at: day(1), done: false, ...over });
   t({ id: "t-a" }); t({ id: "t-b", title: "Strategy session rescheduled" });
   t({ id: "t-logged" });
   db.insert("call_outcomes", { id: id("o"), org_id: ORG, task_id: "t-logged", client_id: "c1", staff_id: "s1", outcome: "deposit" });
+  t({ id: "t-ref", body: "BK-REF" });
+  db.insert("call_outcomes", { id: id("o"), org_id: ORG, booking_ref: "BK-REF", client_id: "c1", staff_id: "s1", outcome: "callback" });
   t({ id: "t-future", due_at: "2099-01-01T00:00:00.000Z" });
   t({ id: "t-setter", assignee_role: "setter" });
   t({ id: "t-other", org_id: OTHER });
   t({ id: "t-title", title: "Chase the contract" });
+  t({ id: "t-arch", client_id: "c-arch" });
   const rows = await listUnloggedCalls(db, { orgId: ORG, limit: 50 });
   assert.deepEqual(rows.map((r) => r.task_id).sort(), ["t-a", "t-b"]);
   assert.equal(await countUnlogged(db, { orgId: ORG }), 2);
@@ -268,6 +273,8 @@ test("floor discipline: the chip and live check both exclude a call that already
   const ago = (minutes) => new Date(now.getTime() - minutes * 60_000).toISOString();
   const build = (withSync) => {
     const db = standIn(["call_outcomes", "clients", "brain_drive_sync", "tasks"], now);
+    db.insert("clients", { id: "c1", org_id: ORG, custom_fields: "{}" });
+    db.insert("clients", { id: "c-arch", org_id: ORG, custom_fields: JSON.stringify({ crm_archived_at: ago(180) }) });
     const c = (over) => db.insert("call_outcomes", { id: id("o"), org_id: ORG, client_id: "c1", staff_id: "s1", outcome: "deposit", logged_at: ago(120), is_demo: false, ...over });
     c({ id: "u-plain" });
     c({ id: "u-words", transcript: "We talked about the deposit and agreed on the plan." });
@@ -279,12 +286,15 @@ test("floor discipline: the chip and live check both exclude a call that already
     c({ id: "u-demo", is_demo: true });
     c({ id: "u-old", logged_at: ago(20 * 24 * 60) });
     c({ id: "u-other", org_id: OTHER });
-    const t = (over) => db.insert("tasks", { id: id("t"), org_id: ORG, assignee_role: "closer", title: "Strategy session booked", body: id("BK"), due_at: ago(60), done: false, ...over });
+    const t = (over) => db.insert("tasks", { id: id("t"), org_id: ORG, client_id: "c1", assignee_role: "closer", title: "Strategy session booked", body: id("BK"), due_at: ago(60), done: false, ...over });
     t({ id: "t-a" }); t({ id: "t-b", title: "Strategy session rescheduled" });
     t({ id: "t-logged" });
     db.insert("call_outcomes", { id: id("o"), org_id: ORG, task_id: "t-logged", client_id: "c1", staff_id: "s1", outcome: "deposit", recording_url: "https://drive.google.com/file/d/q/view", logged_at: ago(30) });
+    t({ id: "t-ref", body: "BK-REF" });
+    db.insert("call_outcomes", { id: id("o"), org_id: ORG, booking_ref: "BK-REF", client_id: "c1", staff_id: "s1", outcome: "callback", recording_url: "https://drive.google.com/file/d/r/view", logged_at: ago(30) });
     t({ id: "t-future", due_at: ago(-600) });
     t({ id: "t-setter", assignee_role: "setter" });
+    t({ id: "t-arch", client_id: "c-arch" });
     if (withSync) db.insert("brain_drive_sync", { org_id: ORG, last_sync_at: ago(2) });
     return db;
   };

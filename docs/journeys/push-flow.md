@@ -13,6 +13,16 @@ its specific approved alert; other service messages use a generic update.
 Promotional sequences are held except the opted-in, capped BS pre-call text.
 No live APNs delivery has been proved.
 
+**Staff work alerts added in source 2026-10-30.** A staff session can register an
+iPhone installation through `/api/push/native-device`; its encrypted token lives
+in `staff_apns_devices`. `src/push/native-send.mjs` sends fixed lead, set, and
+upcoming alert bodies to registered staff devices. The unique
+`staff_apns_alerts` key prevents a replay from buzzing the same person twice.
+The payload carries the client id, not contact details on the lock screen.
+Tapping it opens the signed-in setter or closer dashboard with that client
+selected; the existing call link can dial the client's phone. This is source
+behavior until a released iPhone app and real-device delivery are verified.
+
 ## Native Fundhub iPhone app (built in source; delivery not proved)
 
 The native app has a separate APNs pipe. Its client Home card checks `/api/push/native-device`

@@ -5,13 +5,13 @@ import {
   fundingPayFromRules
 } from "./booked-call-alert.mjs";
 
-test("pickRecipients: switch off, no phone, or wrong role is skipped; same person once", () => {
+test("pickRecipients: active setter/owner phones are included regardless of old switch", () => {
   assert.deepEqual(pickRecipients([
     { id: "o", role: "owner", phone: "5551111", notify_booked_call_sms: true },
     { id: "o", role: "closer", phone: "5551111", notify_booked_call_sms: true },
     { id: "c", role: "closer", phone: "5552222", notify_booked_call_sms: false },
     { id: "s", role: "sales_manager", phone: "", notify_booked_call_sms: true },
-    { id: "t", role: "setter", phone: "5554444", notify_booked_call_sms: true },
+    { id: "t", role: "setter", phone: "5554444", notify_booked_call_sms: false },
     { id: "a", role: "admin", phone: "5553333", notify_booked_call_sms: true }
   ]), [
     { id: "o", role: "owner", phone: "5551111" },
@@ -84,9 +84,28 @@ test("setter booking alert gives call facts without closer price or commission c
     booking: { startTime: "2026-10-28T21:00:00Z", timezone: "America/Phoenix" }
   });
   assert.match(body, /Pat/);
-  assert.match(body, /Dial within 60 seconds/);
-  assert.match(body, /Expansion/);
+  assert.match(body, /Booked call: Pat/);
+  assert.match(body, /Booked:/);
+  assert.doesNotMatch(body, /Expansion/);
   assert.doesNotMatch(body, /deposit|commission|Funding, done-for-you/i);
+});
+
+test("rebook and reschedule alerts name the changed call", async () => {
+  const sent = [];
+  const db = { async query(sql, params = []) {
+    if (/FROM message_templates/.test(sql)) return { rows: [{ body: "{{alert_body}}", compliance_passed: true }] };
+    if (/FROM staff/.test(sql)) return { rows: [{ id: "owner-1", role: "owner", phone: "+15551234567" }] };
+    if (/FROM clients/.test(sql)) return { rows: [{ first_name: "Richard", custom_fields: {} }] };
+    if (/FROM bookings/.test(sql)) return { rows: [{ id: "earlier-call" }] };
+    if (/INSERT INTO messages/.test(sql)) { sent.push(params[3]); return { rows: [{ id: `msg-${sent.length}` }] }; }
+    return { rows: [] };
+  } };
+  const common = { orgId: "org-1", clientId: "cl-1", payload: { startTime: "2026-11-01T17:00:00Z" },
+    drainNowImpl: async () => ({ sent: 1 }), pushImpl: async () => ({ sent: 1 }) };
+  await queueStaffBookedAlerts(db, { ...common, eventId: "new-slot" });
+  await queueStaffBookedAlerts(db, { ...common, eventId: "moved-slot", eventName: "booking.rescheduled" });
+  assert.match(sent[0], /^Rebooked call: Richard/);
+  assert.match(sent[1], /^Rescheduled call: Richard/);
 });
 
 test("fundingPayFromRules uses live closer deposit percent", () => {
@@ -96,7 +115,7 @@ test("fundingPayFromRules uses live closer deposit percent", () => {
   assert.equal(pay.closerDepositCents, 50000);
 });
 
-test("queueStaffBookedAlerts: enabled owner and setter each get one role-safe alert", async () => {
+test("queueStaffBookedAlerts: owner and setter get contact-only booking alerts, never the closer", async () => {
   const messages = [];
   const drains = [];
   const refs = new Set();
@@ -109,7 +128,7 @@ test("queueStaffBookedAlerts: enabled owner and setter each get one role-safe al
         return { rows: [
           { id: "st-1", role: "owner", phone: "+15551111", notify_booked_call_sms: true },
           { id: "st-2", role: "closer", phone: "+15552222", notify_booked_call_sms: false },
-          { id: "st-3", role: "setter", phone: "+15553333", notify_booked_call_sms: true }
+          { id: "st-3", role: "setter", phone: "+15553333", notify_booked_call_sms: false }
         ] };
       }
       if (/FROM clients/.test(sql)) {
@@ -152,10 +171,11 @@ test("queueStaffBookedAlerts: enabled owner and setter each get one role-safe al
   assert.equal(messages.length, 2);
   assert.equal(messages[0].template, STAFF_BOOKED_TEMPLATE);
   assert.equal(messages[0].to, "+15551111");
-  assert.match(messages[0].body, /Pat Lee/);
+  assert.match(messages[0].body, /Booked call: Pat/);
   assert.match(messages[0].ref, /st-1/);
   assert.equal(messages[1].to, "+15553333");
-  assert.match(messages[1].body, /Dial within 60 seconds/);
+  assert.match(messages[1].body, /Booked call: Pat/);
+  assert.match(messages[1].body, /Booked:/);
   assert.doesNotMatch(messages[1].body, /deposit|commission/i);
   assert.match(messages[1].ref, /st-3/);
 

@@ -45,7 +45,7 @@ async function open(page, { templates = [TEXT_TEMPLATE, PDF_TEMPLATE], writeAnsw
       return route.fulfill({ status: out.status, contentType: "application/json", body: JSON.stringify(out.body) });
     }
   });
-  await expect(page.locator("#tplList tr[data-tid]")).toHaveCount(templates.length);
+  await expect(page.locator("#tplList tr[data-tid]")).toHaveCount(templates.filter((template) => template.active !== false).length);
   return { writes };
 }
 
@@ -90,13 +90,14 @@ test.describe("contracts: the wording editor", () => {
     expect(writes[0]).not.toHaveProperty("template_key");
   });
 
-  test("Archive turns a wording off; on an archived one the button says Turn back on", async ({ page }) => {
+  test("Decommission turns a wording off; on an archived one the button says Turn back on", async ({ page }) => {
     const { writes } = await open(page, { templates: [TEXT_TEMPLATE, { ...TEXT_TEMPLATE, id: "7e000000-0000-4000-8000-000000000009", template_key: "OLD", active: false }] });
     await page.locator(`tr[data-tid="${TPL}"]`).click();
-    await expect(page.locator("#btnArchive")).toHaveText("Archive");
+    await expect(page.locator("#btnArchive")).toHaveText("Decommission");
     await page.locator("#btnArchive").click();
     await expect.poll(() => writes.length).toBe(1);
     expect(writes[0]).toEqual({ action: "archive_template", id: TPL, active: false });
+    await page.locator("#tabDecommissioned").click();
     await page.locator('tr[data-tid="7e000000-0000-4000-8000-000000000009"]').click();
     await expect(page.locator("#btnArchive")).toHaveText("Turn back on");
     await page.locator("#btnArchive").click();

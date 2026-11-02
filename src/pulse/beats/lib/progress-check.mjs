@@ -137,7 +137,15 @@ export async function checkProgressRead({
   }
   if (!clientId) return check(id, "skip", "no real paying client on file — progress read not run");
 
-  // 2. The real read, behind the guard. Errors it swallows are counted.
+  // 2. The real read and its independent row-count cross-check run together.
+  // Both are read-only; the count no longer adds a round trip after the page read.
+  const rowsTask = raceTimeout(run(async (tx) => {
+    const r = await tx.query(PROGRESS_ROWS_SQL, [orgId, clientId, mods.REPAIR_PIPELINE]);
+    return r && r.rows ? r.rows[0] || null : null;
+  }), left()).then(
+    (rows) => ({ rows, error: null }),
+    (error) => ({ rows: null, error })
+  );
   let outcome;
   try {
     outcome = await raceTimeout(run(async (tx) => {
@@ -177,14 +185,9 @@ export async function checkProgressRead({
   let rows = null;
   let rowsError = null;
   if (!outcome.threw && !outcome.errors.length) {
-    try {
-      rows = await raceTimeout(run(async (tx) => {
-        const r = await tx.query(PROGRESS_ROWS_SQL, [orgId, clientId, mods.REPAIR_PIPELINE]);
-        return r && r.rows ? r.rows[0] || null : null;
-      }), left());
-    } catch (err) {
-      rowsError = err;
-    }
+    const checkedRows = await rowsTask;
+    rows = checkedRows.rows;
+    rowsError = checkedRows.error;
   }
   const payload = outcome.payload;
   if (rows && payload && !problems.length) {

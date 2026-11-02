@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import http2 from "node:http2";
-import { buildPushPayload } from "./payload.mjs";
+import { buildPushPayload, buildStaffPushPayload } from "./payload.mjs";
 
 const TOPIC = "ai.fundhub.app";
 const HOST = Object.freeze({
@@ -80,7 +80,9 @@ export async function sendAPNS({ token, environment, notification, ttlSeconds = 
   if (!/^(?:[0-9a-f]{2}){16,256}$/.test(String(token || ""))) {
     throw new APNSError("Invalid APNs device token.");
   }
-  const approved = JSON.parse(buildPushPayload(notification));
+  const staffAlert = notification?.audience === "staff";
+  const approved = JSON.parse(staffAlert
+    ? buildStaffPushPayload(notification) : buildPushPayload(notification));
   const path = `/3/device/${token}`;
   const url = new URL(path, HOST[environment]);
   const expiration = Math.floor(now / 1000) + Math.max(0, Math.min(86_400, Number(ttlSeconds) || 0));
@@ -95,7 +97,8 @@ export async function sendAPNS({ token, environment, notification, ttlSeconds = 
   };
   const payload = JSON.stringify({
     aps: { alert: { title: approved.title, body: approved.body }, sound: "default" },
-    path: approved.url
+    path: approved.url,
+    ...(staffAlert ? { kind: approved.kind, client_id: approved.clientId } : {})
   });
   try {
     const reply = await post(url, headers, payload);

@@ -2340,7 +2340,7 @@
     "tables": [],
     "impact": "staffOnly",
     "coverage": "ping",
-    "evidence": "reg:staff-teams pings the HTML only; the sender is src/staff/booked-call-alert.mjs (src/staff/booked-call-alert.test.mjs), not in SEND_PATHS and not on any lane"
+    "evidence": "Owner retired the per-person booked-call text switch in favor of fixed setter and owner alerts; checked as owner-removed in the live display lane"
   },
   {
     "surface": "staff-teams.html",
@@ -2360,10 +2360,10 @@
   },
   {
     "surface": "staff-teams.html",
-    "control": "Editor 'Save' for an EXISTING person: name, email, phone, start date, booked-call text switch",
+    "control": "Editor 'Save' for an EXISTING person: name, email, phone, start date",
     "kind": "button",
     "calls": [
-      "POST /api/auth/staff-update {staff_id, name, email, phone, start_date, notify_booked_call_sms}"
+      "POST /api/auth/staff-update {staff_id, name, email, phone, start_date}"
     ],
     "tables": [
       "staff"

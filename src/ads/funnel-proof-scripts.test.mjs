@@ -402,6 +402,16 @@ describe("fhIsBooked — the thank-you page claims a booking only when one exist
     }
   });
 
+  test("the second calendar's page counts as the booking page; other copies do not", () => {
+    const rec = { ...base, capturedAt: now - 60e3 };
+    for (const ref of ["https://apply.fundhub.ai/funding-book-call--02424", "https://apply.fundhub.ai/funding-book-call--02424?fh_tier=u"]) {
+      assert.equal(fhIsBooked(rec, now, ref), true, `referrer ${ref}`);
+    }
+    for (const ref of ["https://apply.fundhub.ai/funding-book-call--99999", "https://apply.fundhub.ai/funding-book-call--024245"]) {
+      assert.equal(fhIsBooked(rec, now, ref), false, `referrer ${ref}`);
+    }
+  });
+
   test("/apply needs a matching accepted booking relay, not just a filled form", () => {
     const ref = "https://apply.fundhub.ai/apply";
     const rec = { ...base, capturedAt: now - 60e3, submittedAt: now - 10e3 };

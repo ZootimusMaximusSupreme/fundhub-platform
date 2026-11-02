@@ -55,7 +55,10 @@ export default async function handler(req, res) {
 
   let out;
   try {
-    out = await requestMagicLink(db, { email, ip, userAgent });
+    out = await requestMagicLink(db, {
+      email, ip, userAgent,
+      bookingClaim: req.body?.booking_claim === true
+    });
   } catch (err) {
     /* Same pattern as api/auth/login.mjs and for the same reason: the adapter
        catches, scrubs and answers a generic internal_error, which leaves the

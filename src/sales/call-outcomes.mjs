@@ -118,6 +118,14 @@ export async function logCallOutcome(db, input) {
   if (!orgId) throw new CallOutcomeError("orgId is required", { status: 403, code: "forbidden" });
   if (!staffId) throw new CallOutcomeError("staffId is required", { status: 401, code: "unauthorized" });
   if (!clientId) throw new CallOutcomeError("client_id is required");
+  const verifiedRef = bookingRef == null ? null
+    : (typeof bookingRef === "string" ? bookingRef.trim() : null);
+  if (bookingRef != null && (!verifiedRef || verifiedRef.length > 512)) {
+    throw new CallOutcomeError("invalid booking reference", {
+      status: 400, code: "invalid_booking_ref"
+    });
+  }
+
 
   const outcome = normalizeOutcome(rawOutcome);
   if (!outcome) {
@@ -145,36 +153,88 @@ export async function logCallOutcome(db, input) {
   const offerKey = rawOfferKey || storedOffer || null;
   const isRepairReferral = repairReferral === true;
 
-  // A same-company task can still belong to another customer. Never close it
-  // or attach its outcome to this customer through a mismatched task ID.
+  // A task and a booking UID require independent org/client ownership proof.
+  let ownedTask = null;
   if (taskId) {
-    const t = await db.query(
-      `SELECT id FROM tasks WHERE id = $1 AND org_id = $2 AND client_id = $3`,
+    const task = await db.query(
+      `SELECT id, body, assignee_role, title FROM tasks
+         WHERE id = $1 AND org_id = $2 AND client_id = $3`,
       [taskId, orgId, clientId]
     );
-    if (!t.rows[0]) {
+    ownedTask = task.rows[0] || null;
+    if (!ownedTask) {
       throw new CallOutcomeError("task not found", { status: 404, code: "not_found" });
     }
   }
 
-  if (taskId || bookingRef) {
-    const existing = await db.query(
+  // A task and a booking may each belong to the right buyer but describe
+  // DIFFERENT calls. Never finish call A with call B's reference.
+  if (verifiedRef && ownedTask && ownedTask.assignee_role === "closer"
+      && String(ownedTask.title || "").startsWith("Strategy session")
+      && String(ownedTask.body || "").trim() !== verifiedRef) {
+    throw new CallOutcomeError("Booking does not match the selected call.", {
+      status: 409, code: "booking_task_mismatch"
+    });
+  }
+
+  let existing = null;
+  if (taskId || verifiedRef) {
+    const previous = await db.query(
       `SELECT * FROM call_outcomes
-        WHERE org_id = $1
-          AND client_id = $4
-          AND (
-            ($2::uuid IS NOT NULL AND task_id = $2)
-            OR ($3::text IS NOT NULL AND booking_ref = $3)
-          )
+        WHERE org_id = $1 AND client_id = $4
+          AND (($2::uuid IS NOT NULL AND task_id = $2)
+            OR ($3::text IS NOT NULL AND booking_ref = $3))
         LIMIT 1`,
-      [orgId, taskId, bookingRef, clientId]
+      [orgId, taskId, verifiedRef, clientId]
     );
-    if (existing.rows[0]) {
-      await emitCloserCallCompleted(db, existing.rows[0], {
-        offerKey, repairReferral: isRepairReferral
+    existing = previous.rows[0] || null;
+  }
+
+  if (verifiedRef) {
+    // Unique (org_id,provider_uid) is canonical. A NULL booking client is
+    // unverified, not permission to attach this booking to any buyer.
+    const savedBooking = await db.query(
+      `SELECT client_id FROM bookings
+        WHERE org_id = $1 AND provider_uid = $2 LIMIT 1`,
+      [orgId, verifiedRef]
+    );
+    const known = savedBooking.rows[0] || null;
+    if (known && String(known.client_id || "") !== String(clientId)) {
+      throw new CallOutcomeError("booking not found for this client", {
+        status: 404, code: "booking_not_found"
       });
-      return { row: existing.rows[0], created: false };
     }
+    if (!known) {
+      // Explicit legacy policy: exact same-client closer booking task, or a
+      // prior same-client disposition being replayed, is required.
+      let scopedLegacy = Boolean(existing) || Boolean(
+        ownedTask && ownedTask.body === verifiedRef
+          && ownedTask.assignee_role === "closer"
+          && String(ownedTask.title || "").startsWith("Strategy session")
+      );
+      if (!scopedLegacy) {
+        const task = await db.query(
+          `SELECT id FROM tasks
+            WHERE org_id = $1 AND client_id = $2 AND body = $3
+              AND assignee_role = 'closer' AND title LIKE $4 LIMIT 1`,
+          [orgId, clientId, verifiedRef, BOOKING_TASK_TITLE_LIKE]
+        );
+        scopedLegacy = Boolean(task.rows[0]);
+      }
+      if (!scopedLegacy) {
+        throw new CallOutcomeError("booking not found for this client", {
+          status: 404, code: "booking_not_found"
+        });
+      }
+    }
+  }
+
+  // Validate before replay too: never re-emit an old wrong-buyer call.completed.
+  if (existing) {
+    await emitCloserCallCompleted(db, existing, {
+      offerKey, repairReferral: isRepairReferral
+    });
+    return { row: existing, created: false };
   }
 
   const cash = await resolveCashCollected(db, {
@@ -200,7 +260,7 @@ export async function logCallOutcome(db, input) {
       )
       RETURNING *`,
     [
-      orgId, clientId, staffId, taskId, bookingRef || null,
+      orgId, clientId, staffId, taskId, verifiedRef,
       outcome, beliefFailed, cash.cashCollectedCents, cash.transactionId,
       recordingUrl || null,
       durationSeconds == null ? null : Number(durationSeconds),
@@ -215,8 +275,8 @@ export async function logCallOutcome(db, input) {
   if (taskId) {
     await db.query(
       `UPDATE tasks SET done = true, updated_at = now()
-        WHERE id = $1 AND org_id = $2`,
-      [taskId, orgId]
+        WHERE id = $1 AND org_id = $2 AND client_id = $3`,
+      [taskId, orgId, clientId]
     );
   }
 
@@ -272,7 +332,10 @@ async function emitCloserCallCompleted(db, row, { offerKey, repairReferral }) {
    to send the webhook, which is not what "a closer owes a call outcome" means. */
 const BOOKING_TASK_TITLE_LIKE = "Strategy session%";
 
-/** Closer tasks past due with no disposition row. */
+/** Closer tasks past due with no disposition row.
+ * A closer can save directly from a booking UID without a taskId. A matching
+ * same-client booking disposition must close the task's unlogged chip too.
+ */
 export async function listUnloggedCalls(db, { orgId, staffId = null, limit = 50 } = {}) {
   if (!orgId) throw new CallOutcomeError("orgId is required", { status: 403 });
   const params = [orgId];
@@ -298,8 +361,13 @@ export async function listUnloggedCalls(db, { orgId, staffId = null, limit = 50 
             COALESCE(NULLIF(trim(c.first_name || ' ' || c.last_name), ''), c.email, 'Client') AS client_name
        FROM tasks t
        LEFT JOIN clients c ON c.id = t.client_id AND c.org_id = t.org_id
-       LEFT JOIN call_outcomes o ON o.task_id = t.id AND o.org_id = t.org_id
+       LEFT JOIN call_outcomes o ON o.org_id = t.org_id AND o.client_id = t.client_id
+         AND (o.task_id = t.id OR
+              (NULLIF(btrim(t.body), '') IS NOT NULL AND o.booking_ref = t.body))
       WHERE t.org_id = $1
+        AND t.done IS NOT TRUE
+        AND c.id IS NOT NULL
+        AND c.custom_fields->>'crm_archived_at' IS NULL
         AND t.assignee_role = 'closer'
         AND t.title LIKE ${titleParam}
         AND t.due_at IS NOT NULL
@@ -331,13 +399,21 @@ export async function countUnlogged(db, { orgId, staffId = null } = {}) {
     `SELECT count(*)::int AS n
        FROM tasks t
       WHERE t.org_id = $1
+        AND t.done IS NOT TRUE
+        AND EXISTS (
+          SELECT 1 FROM clients c
+           WHERE c.id = t.client_id AND c.org_id = t.org_id
+             AND c.custom_fields->>'crm_archived_at' IS NULL
+        )
         AND t.assignee_role = 'closer'
         AND t.title LIKE ${titleParam}
         AND t.due_at IS NOT NULL
         AND t.due_at < now()
         AND NOT EXISTS (
           SELECT 1 FROM call_outcomes o
-           WHERE o.task_id = t.id AND o.org_id = t.org_id
+           WHERE o.org_id = t.org_id AND o.client_id = t.client_id
+             AND (o.task_id = t.id OR
+                  (NULLIF(btrim(t.body), '') IS NOT NULL AND o.booking_ref = t.body))
         )
         ${staffClause}`,
     params

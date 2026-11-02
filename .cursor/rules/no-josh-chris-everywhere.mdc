@@ -1,0 +1,1 @@
+../../.ai/rules/no-josh-chris-everywhere.md

@@ -1,5 +1,12 @@
 # TODO — unfinished work
 
+## Build line, owner-set 2026-10-30
+
+Chris: put these at the back of the line, behind the builds already running. Do not start them early.
+
+1. [ ] **Survey score ranges.** Last build of the day it is reached. New options: 500-619, 620-699, 700-759, 760-850, Not sure. In the same change, move everything that reads the old ranges: the two-calendar split (PR #308: 700+ to `/funding-book-call`, the rest to `/funding-book-call--02424`), the Qualified/Unqualified pixel events Cortana sees, `classifySurvey`, and `surveyFicoBand`. Spec: `ops/workflows/backend-selling-lanes-2026-10-30.md` (leftovers).
+2. [ ] **Backend selling lanes.** After the survey. Email, text, and push for app users, by lane (Funding, Blueprint, Repair and partners). Mapping first, no building yet (Chris, 2026-10-30), from survey to call, then wired to Cortana. Spec: `ops/workflows/backend-selling-lanes-2026-10-30.md`.
+
 ## Sunday, 2026-10-25 — launch-eve checklist
 
 Owner status at 7:31 PM Arizona time: **animations still in progress / not finished**. All items below remain unchecked until verified. Focus on the live customer journey before Monday's ads; log bugs without silently treating them as fixed.
@@ -15,7 +22,7 @@ Owner is very tired and intends to sleep; no completion claimed. This is the **o
 
 - [ ] **Client:** On a phone with own phone number and fresh plus-tag email, go `https://apply.fundhub.ai/watch` → `/apply` (nine survey screens) → `/funding-book-call` → `/thank-you`; verify lead identity and event/campaign attribution where visible.
 - [ ] **Booking and app:** Verify welcome/booking texts and emails, real booking on `https://fundhub.ai/app/calendar.html`, portal login (`https://fundhub.ai/portal-login`), app download link, upcoming call card and **Confirm my call** button in `https://fundhub.ai/app/client-portal.html`, and 60-second call alert if configured. Check that the day-before and two-hour reminders are scheduled correctly if they cannot fire within this run.
-- [ ] **Manual setter, NOT AI:** Follow the lead in `https://fundhub.ai/app/pipeline.html` (New Lead → Survey Complete → Booked → Confirmed), check two-way texts in `https://fundhub.ai/app/messaging.html`, and make sure the file appears for the closer in `https://fundhub.ai/app/closer-dashboard.html`. Do not create a duplicate client if the funnel already created one. Setter Josh (AG-04) was retired in the documented 2026-10-24 live read.
+- [ ] **Manual setter, NOT AI:** Follow the lead in `https://fundhub.ai/app/pipeline.html` (New Lead → Survey Complete → Booked → Confirmed), check two-way texts in `https://fundhub.ai/app/messaging.html`, and make sure the file appears for the closer in `https://fundhub.ai/app/closer-dashboard.html`. Do not create a duplicate client if the funnel already created one. Setter Chris (AG-04) was retired in the documented 2026-10-24 live read.
 - [ ] **Sales:** Open `https://fundhub.ai/app/closer-call.html` and `https://fundhub.ai/app/present.html`, practice the call on the Brio, send **soft-pull consent**, then the real **$32** Commas payment link, and confirm the CRS pull and recorded result on own file. The pull automation is gated by valid consent plus `diagnostic.paid`; a missing client portal account blocks the pull. Record if/why it fails.
 - [ ] **Four offer branches (inspect each without paying four times):** $200 repair trial, $1,000 full repair, $5,000–$10,000 Capital Blueprint, and funding deposit. Confirm exact offer price, matching agreement, pay link, call outcome, sales stage, and department/client entitlement/task handoff. The current `src/config/offers.mjs` funding deposit is **fixed $3,000**, while another marketing document says $1,000–$3,000: flag the mismatch, do not assume variable is live.
 - [ ] **Payment methods:** Cash links use Commas; **Whop/ClarityPay financing is documented as Blueprint-only**, with no verified financed sale yet. The code's financing flag on repair offers does not establish a live ClarityPay route. Avoid completing a real financing application or extra charges solely for testing.

@@ -117,7 +117,7 @@ export async function runDrill(db, {
     return {
       ok: false,
       error: "not_a_drill",
-      message: "This coach is not the closer drill. Do not run Setter Josh or Inquiry Removal as a drill."
+      message: "This coach is not the closer drill. Do not run Setter Chris or Inquiry Removal as a drill."
     };
   }
   const status = String(agent.status || "");
