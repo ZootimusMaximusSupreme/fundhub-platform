@@ -8,6 +8,7 @@ async function openLogin(page, { setup = false, recovery = false, unavailable = 
   const calls = [];
   await page.route("**/api/auth/login", (route) => {
     if (route.request().method() === "GET") return reply(route, { demo: { enabled: false } });
+    calls.loginBody = JSON.parse(route.request().postData() || "{}");
     if (unavailable) return reply(route, { ok: false, error: "mfa_unavailable" }, 503);
     return reply(route, { ok: true, mfa_required: true, mfa_setup_required: setup, mfa_token: "short-lived-challenge" });
   });
@@ -35,6 +36,7 @@ async function openLogin(page, { setup = false, recovery = false, unavailable = 
 
 test("new staff member enrolls without receiving a session before MFA and sees recovery codes once", async ({ page }) => {
   const calls = await openLogin(page, { setup: true, recovery: true });
+  expect(calls.loginBody.mfa_for_payout).toBe(true);
   await expect(page.locator("#f")).toBeHidden();
   await expect(page.locator("#fh-mfa-form")).toBeVisible();
   await expect(page.locator("#fh-mfa-secret")).toHaveText("TESTSETUPKEY123456");
@@ -53,6 +55,7 @@ test("new staff member enrolls without receiving a session before MFA and sees r
 
 test("enrolled staff must finish authenticator challenge before sign-in", async ({ page }) => {
   const calls = await openLogin(page);
+  expect(calls.loginBody.mfa_for_payout).toBe(true);
   await expect(page.locator("#fh-mfa-form")).toBeVisible();
   await expect(page.locator("#fh-mfa-setup")).toBeHidden();
   expect(await page.evaluate(() => localStorage.getItem("fh_token"))).toBeNull();
@@ -67,4 +70,16 @@ test("missing MFA key shows a clear error and never starts a session", async ({ 
   await expect(page.locator("#err")).toHaveText("Security check is unavailable right now. Try again later.");
   await expect(page.locator("#f")).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem("fh_token"))).toBeNull();
+});
+
+test("leaving MFA setup clears secrets before browser back restores the page", async ({ page }) => {
+  await openLogin(page, { setup: true });
+  await expect(page.locator("#fh-mfa-secret")).toHaveText("TESTSETUPKEY123456");
+  await page.goto("/portal-login.html");
+  await page.goBack();
+  await expect(page.locator("#fh-mfa-secret")).toBeEmpty();
+  await expect(page.locator("#fh-mfa-open")).not.toHaveAttribute("href", /^otpauth:/);
+  await expect(page.locator("#fh-mfa-form")).toBeHidden();
+  await expect(page.locator("#f")).toBeVisible();
+  expect(await page.evaluate(() => localStorage.getItem("mfa_token"))).toBeNull();
 });
