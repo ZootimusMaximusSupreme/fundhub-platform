@@ -26,6 +26,38 @@ const STAGES = {
 
 test.describe("pipeline board", () => {
 
+  test("formats the card and drawer phone while keeping the raw search and text target", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    const stages = structuredClone(STAGES);
+    stages.stages[0].cards[0].phone = "+14702920106";
+    stages.stages[0].cards[0].email = "dana@example.com";
+    await openScreen(page, "/app/pipeline.html", OWNER, {
+      "/api/dashboard/pipeline": stages,
+      "/api/dashboard/client": { ok: true, client: { id: CLIENT_ID, phone: "+14702920106", email: "dana@example.com", custom_fields: {} } }
+    });
+
+    const card = page.locator('.card[data-client-id="' + CLIENT_ID + '"]').first();
+    const phone = card.locator('.c-msg-link[href*="channel=sms"]');
+    await expect(phone).toHaveText("(470) 292-0106");
+    await expect(phone).toHaveAttribute("href", "messaging.html?client_id=" + CLIENT_ID + "&channel=sms");
+    await expect(card).toHaveAttribute("data-search", /\+14702920106/);
+    expect(await phone.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+    if (process.env.CRM_PHONE_EVIDENCE) {
+      await phone.scrollIntoViewIfNeeded();
+      await page.evaluate(() => {
+        const box = document.querySelector('.card[data-client-id] .c-msg-link[href*="channel=sms"]').getBoundingClientRect();
+        const mark = document.createElement("div");
+        mark.innerHTML = '<svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><defs><marker id="tip" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 L9 4.5 L0 9" fill="none" stroke="#eab308" stroke-width="2"/></marker></defs><ellipse cx="' + (box.left + box.width / 2) + '" cy="' + (box.top + box.height / 2) + '" rx="' + (box.width / 2 + 8) + '" ry="' + (box.height / 2 + 8) + '" fill="none" stroke="#dc2626" stroke-width="4"/><line x1="' + (box.right + 65) + '" y1="' + (box.top - 33) + '" x2="' + (box.right + 8) + '" y2="' + box.top + '" stroke="#eab308" stroke-width="4" marker-end="url(#tip)"/><circle cx="' + (box.left - 16) + '" cy="' + (box.top - 17) + '" r="14" fill="#dc2626"/><text x="' + (box.left - 16) + '" y="' + (box.top - 12) + '" text-anchor="middle" fill="white" font-size="16" font-weight="700">1</text></svg><div style="position:absolute;bottom:12px;left:12px;right:12px;padding:8px;background:white;color:#111;border:2px solid #dc2626;font:14px system-ui">1. US phone numbers are now easy to read on every CRM contact view.</div>';
+        Object.assign(mark.style, { position: "fixed", inset: "0", zIndex: "999999", pointerEvents: "none" });
+        document.body.appendChild(mark);
+      });
+      await page.screenshot({ path: "ops/workflows/crm-phone-formatting-2026-10-30-MARKED.png" });
+    }
+    await card.locator(".c-name").click();
+    await expect(page.locator('#fhDrawerBody .fh-drawer-row').filter({ hasText: "Phone" }))
+      .toContainText("(470) 292-0106");
+  });
+
   test("renders live cards with client ids", async ({ page }) => {
     await openScreen(page, "/app/pipeline.html", OWNER, {
       "/api/dashboard/pipeline": STAGES
