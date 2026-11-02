@@ -70,6 +70,7 @@ export const CLOCK_JOBS = Object.freeze([
 
 export const NETLIFY_JOBS = Object.freeze([
   ["staff-message-sweeper", "*/5 * * * *"],
+  ["precall-plan-sweeper", "*/5 * * * *"],
   ["social-publish-sweeper", "*/5 * * * *"],
   ["creative-job-runner", "*/2 * * * *"],
   ["hubstaff-poll-sweeper", "*/10 * * * *"],

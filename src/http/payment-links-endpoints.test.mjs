@@ -83,7 +83,7 @@ const ROUTES = {
   optOuts: { re: /FROM\s+opt_outs/i, rows: () => [] }
 };
 
-function stubDb({ role = "owner", orgId = ORG_A, authenticated = true, ownsClient = true, handlers = {} } = {}) {
+function stubDb({ role = "owner", roles = [role], orgId = ORG_A, authenticated = true, ownsClient = true, handlers = {} } = {}) {
   const queries = [];
   db.query = async (sql, params) => {
     const text = String(sql);
@@ -93,7 +93,7 @@ function stubDb({ role = "owner", orgId = ORG_A, authenticated = true, ownsClien
       return {
         rows: [{
           session_id: "sess-1", expires_at: new Date(Date.now() + 3600_000).toISOString(),
-          staff_id: "staff-1", org_id: orgId, role, email: `${role}@fundhub.ai`, name: role,
+          staff_id: "staff-1", org_id: orgId, role, roles, email: `${role}@fundhub.ai`, name: role,
           status: "active", active_flag: "true"
         }]
       };
@@ -447,4 +447,13 @@ describe("method + action guards", () => {
     assert.equal(r.status, 400);
     assert.equal(r.body.error, "invalid_action");
   });
+});
+
+
+test("an assigned closer cannot inherit finance list/send/expire operations", async () => {
+  for (const [method,body] of [["GET",{}],["POST",{action:"send",id:LINK_ID}],["POST",{action:"expire",id:LINK_ID}]]) {
+    const r=await call({method,body,query:{client_id:CID},role:"setter",roles:["setter","closer"]});
+    assert.equal(r.status,403);
+    assert.equal(r.queries.some(c=>/payment_links|INSERT INTO messages/.test(c.sql)),false);
+  }
 });

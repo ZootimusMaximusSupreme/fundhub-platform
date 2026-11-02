@@ -8,8 +8,11 @@ SELECT count(*)::int AS active,
          OR (a.kind = 'authorized_rep' AND s.active_client_id IS DISTINCT FROM d.client_id)
          OR s.id IS NULL OR s.account_id IS DISTINCT FROM d.account_id
          OR s.org_id IS DISTINCT FROM d.org_id)::int AS wrong_owner,
-       count(*) FILTER (WHERE d.failure_count > 0
-         AND d.updated_at >= now() - interval '2 hours')::int AS recent_failed
+       (count(*) FILTER (WHERE d.failure_count > 0
+         AND d.updated_at >= now() - interval '2 hours')
+         + (SELECT count(*) FROM messages WHERE channel = 'push'
+           AND template_key = 'BS-COMPANION-PUSH' AND status = 'sending'
+           AND updated_at < now() - interval '15 minutes'))::int AS recent_failed
   FROM client_apns_devices d
   LEFT JOIN accounts a ON a.id = d.account_id
   LEFT JOIN account_sessions s ON s.id = d.session_id
@@ -65,9 +68,9 @@ export async function gapChecks(ctx = {}) {
         suggestedFix: wrong ? "Revoke the mismatched device rows; do not send to them." : null },
       { id: "native-push:recent-delivery-failure", status: !Number.isFinite(recentFailed) ? "skip" : recentFailed ? "FAIL" : "PASS",
         detail: !Number.isFinite(recentFailed) ? "The recent APNs failure count was not returned."
-          : recentFailed ? `${recentFailed} active iPhone devices reported an APNs send failure in the last two hours.`
+          : recentFailed ? `${recentFailed} recent device failures or interrupted push attempts need review.`
             : "No recent APNs failure is recorded. This does not prove a booking alert reached an iPhone.",
-        suggestedFix: recentFailed ? "Check APNs rejection and the affected device without exposing its token." : null },
+        suggestedFix: recentFailed ? "Inspect the device or interrupted push receipt. Do not resend an unknown provider outcome automatically." : null },
       preference,
       configured
     ];

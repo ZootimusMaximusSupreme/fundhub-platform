@@ -111,7 +111,7 @@
     "S-16": { title: "The menu. Take their order.", lines: ["FUND: Which products fit what you are building: business cards, personal cards or loans, or a revenue-based offer from bank statements? Let's look at the actual terms for each.", "FUND: What will you spend now, what can the business repay, and how much available credit would keep card use low for the next six to twelve months?", "FUND: If the file supports another product or business, do you want us to include it in the plan? You approve each application.", "REPAIR: We prepare disputes from accurate facts and show each filing and response in your portal.", "REPAIR: If an item returns, we compare the old and new reports and the bureau notice before choosing the next step."], watch: "Choose products and amounts from the real file, budget and lender terms." },
     "S-17": { title: "Temperature check", lines: ["Money aside, does this plan fit your file and your goal?", "What part still needs work before we discuss price?"], watch: "Resolve plan fit before showing payment options." },
     "S-18": { title: "Scale of 1 to 10", lines: ["On a scale of 1 to 10, how sure are you this is the right plan for your file?", "What would make the plan clearer for you?"], watch: "If the plan is unclear, answer that before price." },
-    "S-19": { title: "The investment", lines: ["FUND: To start the funding work, the deposit is $3,000 today. It counts once toward the 10 percent success fee on confirmed approved limits or amounts.", "FUND: The fee includes approved credit access you do not draw. Let's read the agreement's example and payment timing together.", "REPAIR: Offer the 12-month Capital Blueprint first when that plan fits. If they decline, show the $1,000 done-for-you optimization or $200 first round at its actual terms.", "EDU: If a course offer is live, use only the price and deliverables on its screen. Keep it separate from the Blueprint."], watch: "Name one offer, its full price and its written terms before payment." },
+    "S-19": { title: "The investment", lines: ["FUND: To start the funding work, the deposit is $3,000 today. It counts once toward the 10 percent success fee on confirmed approved limits or amounts.", "FUND: The fee includes approved credit access you do not draw. Let's read the agreement's example and payment timing together.", "REPAIR: Offer the 12-month Capital Blueprint first when that plan fits. If they decline, show the $1,000 done-for-you optimization or $200 two-round test run at its actual terms.", "EDU: If a course offer is live, use only the price and deliverables on its screen. Keep it separate from the Blueprint."], watch: "Name one offer, its full price and its written terms before payment." },
     "S-20": { title: "The math", lines: ["FUND: This is an illustration using today's estimate, not a bill. The deposit is credited once against the success fee if funding is secured.", "FUND: The agreement bases the fee on confirmed approved limits or amounts, including credit access you do not draw. No back-end success fee is due if no funding is secured.", "REPAIR: You told me this costs you [$X] a month. Is that still accurate? Let's compare that real cost with the work and price on this screen.", "EDU: Show what their file-specific plan includes before discussing its actual price."], watch: "Read the signed agreement. The final fee uses confirmed approvals, not this estimate." },
     "S-21": { title: "The guarantees", lines: ["FUND: These are the two action deadlines in the agreement. If Fundhub misses either, the client may request the deposit back.", "REPAIR: Round one is scheduled under the signed agreement. The dashboard tracks work and responses as they happen.", "EDU: Access gets set up on this call, and deliverables are generated from the completed pull."], watch: "Read the actual agreement before quoting terms. No approval or outcome is guaranteed." },
     "S-22": { title: "The ask", lines: ["FUND: Do you want the team to start on this funding plan?", "REPAIR: Do you want us to start the credit work in your agreement?", "EDU: Do you want to start the Blueprint plan?", "Then wait for their answer."], watch: "Ask plainly after the plan and price are clear." },
@@ -171,11 +171,11 @@
       "S-24": {
         title: "Wrap",
         lines: [
-          "Your credit specialist prepares the first round from your file. You will see the letters and replies in your portal as they are recorded.",
-          "After that round, you decide whether to continue. Let's open your first portal step.",
+          "Your $200 test run covers two done-for-you rounds. Your credit specialist prepares the first from your file, then uses a newer credit pull for the second. You will see the letters and replies in your portal as they are recorded.",
+          "After those two rounds, you decide whether to continue. Let's open your first portal step.",
           "Any questions before we wrap?"
         ],
-        watch: "One round, then their decision. Do not describe it as the full program. Never promise a deletion, a score, or a result."
+        watch: "Two rounds, then their decision. Do not describe it as the full program. Never promise a deletion, a score, or a result."
       }
     },
     UWIQ_DELIVERABLES: {
@@ -250,6 +250,8 @@
 
   var q = new URLSearchParams(location.search);
   var contactId = q.get("contact") || q.get("client_id") || q.get("id") || q.get("client") || "";
+  // A launch contract, not a visibility toggle: never render private controls.
+  var audienceOnly = q.get("audience") === "1";
   var paymentStoreKey = "fh_call_payment_link:" + contactId;
   function savedPaymentLink(offerKey) {
     try {
@@ -263,7 +265,7 @@
   }
   var state = {
     idx: 0, tier: null, edu: false, forceRepair: false, rung: 0, temp: 0,
-    checks: {}, costNum: "", obj: null, showRef: false, showMoney: false, showRevenue: false, toast: "", clientOnly: false,
+    checks: {}, costNum: "", obj: null, showRef: false, showMoney: false, showRevenue: false, toast: "", clientOnly: audienceOnly,
     survey: {}, engine: { available: false, reason: "engine data unavailable", fico: {}, reasons: [] },
     offers: [], softPull: null, saleMotion: "", paymentLinkId: null, loaded: false, error: null,
     contractLink: "", contractMsg: "", blueprintAmountDollars: null, blueprintProvider: "commas",
@@ -919,7 +921,7 @@
         return slide("S-19", "The investment", '<div style="flex:1;display:flex;flex-direction:column;justify-content:center">' + kicker("Funding agreement") + '<div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">' + h1(price("FUNDING_DFY"), "clamp(32px,5.2vw,60px)") + '<span style="font-family:var(--mono);font-size:clamp(12px,1.3vw,15px);color:var(--gray)">deposit</span></div>' + sub("Credited once toward the 10 percent fee on confirmed approved limits or amounts, including unused credit access.") + '<div style="margin-top:14px;max-width:200px" class="hair"></div></div>');
       }
       if (rung === 0) return slide("S-19", "The investment", fill(kicker("Credit optimization, done for you") + h1(price("REPAIR_DFY"), "clamp(28px,4.4vw,52px)") + '<div style="margin-top:8px;max-width:560px">' + row("File review", "Included", "Your reported items and agreed plan") + row("Credit specialist", "Agreed rounds", "Prepares letters and tracks replies") + row("Your dashboard", "Work record", "See letters and replies as recorded") + "</div>" + financingNote("REPAIR_DFY")));
-      if (rung === 1) return slide("S-19", "The investment", fill(kicker("First credit round") + h1(price("REPAIR_TRIAL"), "clamp(28px,4.4vw,52px)") + '<div style="margin-top:8px;max-width:560px">' + row("Round 1", "Specialist", "Prepares the first agreed round from your file") + row("Track", "Dashboard", "Letters and replies as recorded") + row("Then decide", "Your call", "Continue the full program or stop after this round") + "</div>" + financingNote("REPAIR_TRIAL")));
+      if (rung === 1) return slide("S-19", "The investment", fill(kicker("Two credit rounds") + h1(price("REPAIR_TRIAL"), "clamp(28px,4.4vw,52px)") + '<div style="margin-top:8px;max-width:560px">' + row("Round 1", "Specialist", "Prepares the first round from your file") + row("Round 2", "Specialist", "Uses a newer pull after Round 1 letters") + row("Track", "Dashboard", "Letters and replies as recorded") + row("Then decide", "Your call", "Continue the full program or stop after two rounds") + "</div>" + financingNote("REPAIR_TRIAL")));
       return slide("S-19", "The investment", fill(kicker("Capital Blueprint") + h1(price("UWIQ_DELIVERABLES"), "clamp(24px,3.8vw,44px)") + '<div style="margin-top:6px;max-width:580px">' + deliverableRows() + "</div>" + financingNote("UWIQ_DELIVERABLES")));
     }
     if (c === "S-20") {
@@ -1416,7 +1418,7 @@
   function sendLocked(act) {
     var m = sendMark(act);
     if (!m) return false;
-    if (m.busy) return true;
+    if (m.busy || m.needsReview) return true;
     return m.coolUntil != null && Date.now() < m.coolUntil;
   }
   function clockTime(d) {
@@ -1454,12 +1456,19 @@
     }, SEND_COOLDOWN_MS);
   }
 
+  function markSendNeedsReview(act) {
+    var prev = sendMark(act) || {};
+    state.sends[act] = { busy: false, needsReview: true, sentAt: prev.sentAt || null, count: prev.count || 0, coolUntil: null };
+    render();
+  }
+
   function sendBtn(label, action, primary, blocked) {
     var m = sendMark(action);
     var busy = !!(m && m.busy);
-    var cooling = !busy && sendLocked(action);
-    var off = busy || cooling || !!blocked;
-    var text = busy ? "Sending…" : (cooling ? "Sent — hold on" : label);
+    var needsReview = !!(m && m.needsReview);
+    var cooling = !busy && !needsReview && sendLocked(action);
+    var off = busy || needsReview || cooling || !!blocked;
+    var text = busy ? "Sending…" : (needsReview ? "Check mailing record" : (cooling ? "Sent — hold on" : label));
     var html = ckBtn(text, action, primary && !off, off ? " disabled" : "");
     if (m && m.sentAt) {
       html += '<div class="sent-at">Sent at ' + esc(m.sentAt)
@@ -1690,7 +1699,7 @@
              rung. Each button keeps its rung number (leadRung). */
           html += ckBtn("Capital Blueprint  " + price("UWIQ_DELIVERABLES"), "rung:2", state.rung === 2);
           html += ckBtn("Onboard now: full done-for-you  " + price("REPAIR_DFY"), "rung:0", state.rung === 0);
-          html += ckBtn("Trial: first round done-for-you  " + price("REPAIR_TRIAL"), "rung:1", state.rung === 1);
+          html += ckBtn("Trial: two rounds done-for-you  " + price("REPAIR_TRIAL"), "rung:1", state.rung === 1);
         }
         /* The education hint READS the two prices instead of asserting a drop
            between them. Capital Blueprint moved to $5,000 on 2026-09-03 (owner-set,
@@ -1829,7 +1838,7 @@
           ["fund", "Funding · " + price("FUNDING_DFY") + " deposit", "desc:fund", funding && !state.edu],
           ["diy", "Capital Blueprint · " + price("UWIQ_DELIVERABLES"), "desc:diy", !funding && !state.edu && state.rung === 2],
           ["dfy", "Repair DFY · " + price("REPAIR_DFY"), "desc:dfy", !funding && !state.edu && state.rung === 0],
-          ["trial", "Repair trial round · " + price("REPAIR_TRIAL"), "desc:trial", !funding && !state.edu && state.rung === 1]
+          ["trial", "Repair trial · two rounds · " + price("REPAIR_TRIAL"), "desc:trial", !funding && !state.edu && state.rung === 1]
         ];
         if (COURSE_LIVE) {
           ladder.push(["eduTop", "Funding Mastery · " + price("FUNDING_MASTERY"), "desc:eduTop", state.edu && state.rung === 0]);
@@ -1900,10 +1909,13 @@
     var markup;
     try {
       markup =
-        '<div class="topbar"><span class="mono">' + esc((state.survey && state.survey.name) || "Present") + "</span>" +
+        '<div class="topbar"><span class="mono">' + esc(audienceOnly ? "Fundhub" : ((state.survey && state.survey.name) || "Present")) + "</span>" +
         (state.engine && !state.engine.available ? '<span class="mono" style="color:var(--gray)">' + NOT_IN_YET + "</span>" : "") +
-        '<div class="sp"></div><button type="button" class="btn-ghost" data-act="client-only">' +
-        (state.clientOnly ? "Show cockpit" : "Client screen only") + "</button></div>" +
+        '<div class="sp"></div>' + (audienceOnly
+          ? '<button type="button" class="btn-ghost" data-act="back"' + (state.idx === 0 ? " disabled" : "") + '>Back</button>' +
+            '<button type="button" class="btn-ghost" data-act="next"' + (state.idx === DECK.length - 1 ? " disabled" : "") + '>Next screen</button>'
+          : '<button type="button" class="btn-ghost" data-act="client-only">' +
+            (state.clientOnly ? "Show cockpit" : "Client screen only") + "</button>") + "</div>" +
         '<div class="stage"><div class="client' + (state.clientOnly ? " solo" : "") + '">' + clientSlide() +
         '<div class="dots">' + dots + "</div></div>" +
         (state.clientOnly ? "" : '<div class="cockpit">' + cockpit() + "</div>") + "</div>";
@@ -2108,7 +2120,7 @@
      without re-reading the deck leaves the old price sitting there. */
   function applyDeck(d) {
     d = d || {};
-    state.setterHandoff = d.setter_handoff || null;
+    state.setterHandoff = audienceOnly ? null : (d.setter_handoff || null);
     state.survey = d.survey || {};
     state.businesses = Array.isArray(d.businesses) ? d.businesses : [];
     state.incomeEstimates = d.income_estimates || {};
@@ -2260,13 +2272,29 @@
     });
     state.repairBusy = false;
     if (!r.ok) {
-      state.repairMsg = (r.error && (r.error.message || r.error)) || "Send failed.";
+      state.repairMsg = "Could not confirm the mail result. Check the letter record before trying again. "
+        + ((r.error && (r.error.message || r.error)) || "");
       markSent("send-letters", false);
       return;
     }
-    state.repairMsg = "Sent. Letters are in the mail queue.";
+    var result = r.data || {};
+    var outcomes = Array.isArray(result.results) ? result.results : [];
+    var accepted = outcomes.filter(function (item) { return item && item.ok === true; }).length;
+    if ((Array.isArray(result.unrecordedMailings) && result.unrecordedMailings.length)
+      || outcomes.some(function (item) { return item && item.mailingRecorded === false; })) {
+      state.repairMsg = accepted + " letter(s) accepted by the mail provider, but the mailing record needs staff review. Do not send again.";
+      markSendNeedsReview("send-letters");
+      return;
+    }
+    if (accepted !== letters.length) {
+      state.repairMsg = accepted + " of " + letters.length + " letter(s) accepted by the mail provider. Review each letter before trying again.";
+      if (accepted > 0) markSendNeedsReview("send-letters");
+      else markSent("send-letters", false);
+      return;
+    }
+    state.repairMsg = "All " + accepted + " letter(s) accepted by the mail provider and placed in the mail queue.";
     markSent("send-letters", true);
-    toast("Repair letters sent.");
+    toast("Repair letters accepted by the mail provider.");
   }
 
   /* `act` is the button this came from, so the button can show that it is
@@ -2394,7 +2422,7 @@
        what produced two pay links for one sale on 2026-09-03, so the guard is
        here as well as on the element (F24). */
     if (sendLocked(a)) return;
-    if (a === "client-only") { state.clientOnly = !state.clientOnly; render(); return; }
+    if (a === "client-only") { if (!audienceOnly) state.clientOnly = !state.clientOnly; render(); return; }
     /* The course is off (COURSE_LIVE): its route and rungs do nothing, even from a stray click. */
     if (!COURSE_LIVE && (a === "edu" || a === "desc:eduTop" || a === "desc:eduLow")) return;
     if (a === "back") { go(-1); return; }
@@ -2509,7 +2537,7 @@
     state.rung = leadRung();
     state.loaded = true;
     render();
-    loadSharedContext();
+    if (!audienceOnly) loadSharedContext();
     if (typeof setInterval === "function") setInterval(refreshPullOnScreen, 3000);
   }
 

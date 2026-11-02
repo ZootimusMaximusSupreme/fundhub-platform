@@ -46,6 +46,7 @@ function fakeDb({
   client = { email: "person@example.com", ghl_contact_id: "crmContact123", phone: "+15551234567" },
   rules = [],
   subject = "Your file",
+  approvedDeck = false,
   due = [],
   marketingCounts = { last_day: 0, last_week: 0 },
   upcomingBooking = true,
@@ -77,7 +78,7 @@ function fakeDb({
         const r = routing[params[1]];
         return { rows: r ? [r] : [] };
       }
-      if (sql.includes("FROM message_templates")) return { rows: [{ subject }] };
+      if (sql.includes("FROM message_templates")) return { rows: [{ subject, ...(approvedDeck ? {body:"Approved lesson",compliance_passed:true}: {}) }] };
       if (sql.includes("SELECT id, to_address FROM messages")) return { rows: [] };
       if (sql.includes("ORDER BY created_at DESC OFFSET 1 LIMIT 1")) {
         const count = bouncedEmailAddresses.filter((address) =>
@@ -86,6 +87,10 @@ function fakeDb({
       }
       if (sql.includes("FROM bookings")) return { rows: upcomingBooking ? [{ one: 1 }] : [] };
       if (sql.includes("count(*) FILTER") && sql.includes("FROM messages")) return { rows: [marketingCounts] };
+      if (sql.includes("INSERT INTO messages") && sql.includes("BS-COMPANION-PUSH")) {
+        updates.push({ sql, params });
+        return { rows: [{ id: "push-receipt-1" }] };
+      }
       if (sql.includes("SELECT custom_fields FROM clients")) {
         return { rows: [{ custom_fields: customFields }] };
       }
@@ -349,6 +354,33 @@ describe("native alert after a gated booking confirmation", () => {
     }
   });
 
+  test("a selected deck email reaches push only after the real source send is saved", async () => {
+    const lesson = claimed({ template_key: "EMAIL-BS-DECK-LESSON",
+      provider_ref: `workflow:EMAIL-BS-DECK-LESSON:bs-deck:${CLIENT}:the-call`,
+      rendered_body: "Open the lesson: https://fundhub.ai/slideshows/the-call.html" });
+    for (const [options, expected] of [[{}, 2],
+      [{ optedOut: new Set([`${CLIENT}:email`]) }, 0]]) {
+      const db = fakeDb({ customFields: { marketing_push_enabled: true }, approvedDeck:true, ...options });
+      const calls = [];
+      const send = async (_db, target) => {
+        assert.ok(db.updates.some(({ sql }) => /SET status = 'sent'/.test(sql)),
+          "the source provider result must be saved before any push call");
+        calls.push(target.notification);
+        return { sent: 1 };
+      };
+      const result = await dispatchOne(db, lesson, {
+        fetchImpl: spy(), env: {...BOTH_PUSH_ENV,BS_DECK_LESSONS_ENABLED:"true"}, now: MIDDAY,
+        sendNative: send, sendWeb: send
+      });
+      assert.equal(calls.length, expected);
+      if (expected) {
+        assert.equal(result.outcome, OUTCOME.SENT);
+        assert.deepEqual(calls, Array.from({ length: 2 }, () =>
+          ({ kind: "check_in", url: "/slideshows/the-call.html" })));
+      } else assert.notEqual(result.outcome, OUTCOME.SENT);
+    }
+  });
+
   test("an APNs failure cannot turn the sent text into a retry", async () => {
     const db = bookingDb();
     const result = await dispatchOne(db, bookingText(), {
@@ -548,6 +580,25 @@ describe("nothing reaches a provider without the gate allowing it", () => {
 // ---------------------------------------------------------------------------
 
 describe("routing", () => {
+  test("omitted env uses the process environment and sends once through the routed provider", async () => {
+    const previous = new Map(Object.keys(ENV).map((key) => [key, process.env[key]]));
+    try {
+      Object.assign(process.env, ENV);
+      const f = spy();
+      const db = fakeDb();
+      const res = await dispatchOne(db, claimed(), { fetchImpl: f, now: MIDDAY });
+      assert.strictEqual(res.outcome, OUTCOME.SENT, res.detail);
+      assert.strictEqual(f.calls.length, 1);
+      assert.ok(f.calls[0].url.includes("mailgun.net"), f.calls[0].url);
+      assert.ok(db.updates.some(({ sql, params }) => /SET status = 'sent'/.test(sql) && params[0] === MSG && params[2] === "prov1"), "the provider send receipt is persisted for this message");
+    } finally {
+      for (const [key, value] of previous) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
+    }
+  });
+
   test("sends through the provider the org routed", async () => {
     const f = spy();
     const db = fakeDb();
@@ -1154,4 +1205,13 @@ describe("customer send hours: instant any hour, drips 9 a.m. to 5 p.m. Arizona"
     assert.equal(res.outcome, OUTCOME.SENT);
     assert.equal(f.calls.length, 1);
   });
+});
+
+test("companion transport uncertainty cannot free its claim or retry the delivered source message",async()=>{
+ for(const [sendNative,state] of [[async()=>{throw new Error('accepted then timeout');},'sending'],[async()=>undefined,'sending'],[async()=>({sent:0,unknown:1}),'sending'],[async()=>({sent:0,attempted:0}),'failed'],[async()=>({sent:1}),'sent']]){
+ const db=fakeDb({customFields:{marketing_push_enabled:true},routing:{sms:{provider:"twilio",enabled:true}}});
+ const out=await dispatchOne(db,claimed({channel:'sms',template_key:'SMS-BS01-02-PRECALL'}),{fetchImpl:spy(),env:APNS_ENV,now:MIDDAY,sendNative});
+ assert.equal(out.outcome,OUTCOME.SENT);
+ const receipt=db.updates.find(q=>q.sql.includes("provider = 'apns_web_push'"));assert.ok(receipt);assert.equal(receipt.params[1],state);
+ }
 });

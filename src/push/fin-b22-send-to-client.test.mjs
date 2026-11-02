@@ -494,3 +494,11 @@ test("an enabled deck lesson reaches one registered browser through the real web
     w.close();
   }
 });
+
+test("web timeout after possible acceptance survives the client aggregate as unknown",async()=>{
+ const b=browser('lost-reply'),w=world();await w.register(b);let accepted=false;
+ const out=await w.send({fetchImpl:async()=>{accepted=true;throw new Error('response lost after acceptance');}});
+ assert.equal(accepted,true);assert.equal(out.sent,0);assert.equal(out.unknown,1);assert.equal(out.expired,0);
+ const deny=await w.send({fetchImpl:async()=>new Response('',{status:403})});
+ assert.equal(deny.sent,0);assert.equal(deny.failed,1);assert.equal(deny.unknown || 0,0);w.close();
+});

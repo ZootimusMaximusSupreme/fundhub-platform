@@ -622,10 +622,10 @@ describe("the live defect, named", () => {
 
   test("the repair trial was checked too, and is a single payment", () => {
     // REPAIR_TRIAL fills `trial_fee` — verified, not assumed. Its sentence
-    // ("You pay {{field.trial_fee}} for the first done-for-you dispute round")
-    // states one payment for one round, and the blank carries the $200 price.
+    // states one $200 payment for the two rounds the program already allows.
     const tpl = TEMPLATES.get("REPAIR-TRIAL-AGREEMENT");
-    assert.match(tpl.body, /You pay \{\{field\.trial_fee\}\} for the first/);
+    assert.match(tpl.body, /You pay \{\{field\.trial_fee\}\} once for the two done-for-you dispute rounds/);
+    assert.match(defaultContractValues({ offerKey: "REPAIR_TRIAL" }).scope, /^Two done-for-you dispute rounds/);
     assert.equal(
       defaultContractValues({ offerKey: "REPAIR_TRIAL" }).trial_fee,
       formatCents(OFFERS.REPAIR_TRIAL.priceCents)

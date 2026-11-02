@@ -1,0 +1,7 @@
+// Existing Fundhub universal App Store record; ad-hoc defaults stay separate.
+PRODUCT_BUNDLE_IDENTIFIER = ai.fundhub.app
+PRODUCT_NAME = Fundhub Dock
+MARKETING_VERSION = 1.0
+CURRENT_PROJECT_VERSION = 6
+INFOPLIST_FILE = StoreInfo.plist
+CODE_SIGN_ENTITLEMENTS = FundhubMac.entitlements

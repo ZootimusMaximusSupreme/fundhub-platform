@@ -114,11 +114,91 @@ test("verifySession looks the session up by hash and slides expiry in one statem
   assert.match(q.sql, /UPDATE sessions/, "the lookup and the slide are the same statement");
   assert.match(q.sql, /expires_at > now\(\)/, "expired rows cannot match");
   assert.match(q.sql, /revoked_at IS NULL/, "revoked rows cannot match");
+  assert.match(q.sql, /a\.staff_id = s\.id AND a\.org_id = s\.org_id/, "extra roles must be org-scoped");
+  assert.match(q.sql, /sr\.active/, "inactive catalog roles must not grant access");
+  assert.match(q.sql, /sr\.key\)\) NOT IN \('owner', 'admin'\)/, "assigned privileged roles must not escalate access");
+  assert.match(q.sql, /s\.org_id = live\.org_id/, "the session's org must match the staff row");
   assert.equal(q.params[0], hashToken(token));
   assert.deepEqual(out.staff, {
-    id: "staff-1", org_id: "org-1", role: "closer", email: "a@b.com", name: "A", status: "active",
+    id: "staff-1", org_id: "org-1", role: "closer", roles: ["closer"],
+    email: "a@b.com", name: "A", status: "active",
     avatarUrl: null
   });
+});
+
+test("verifySession stacks active assigned roles while retaining the primary role", async () => {
+  const db = fakeDb([[/WITH live AS/, [{
+    session_id: "sess-1", expires_at: new Date(), staff_id: "staff-1", org_id: "org-1",
+    role: "closer", assigned_roles: ["SETTER", "closer", "funding_advisor", "owner", "admin"],
+    email: "a@b.com", name: "A", status: "active", active_flag: null
+  }]]]);
+  const out = await verifySession(db, newToken());
+  assert.equal(out.staff.role, "closer");
+  assert.deepEqual(out.staff.roles, ["closer", "setter", "funding_advisor"]);
+});
+
+test("a database awaiting only the role-assignment migration keeps primary-role login live", async () => {
+  const token = newToken();
+  const calls = [];
+  const db = { async query(sql, params) {
+    calls.push({ sql, params });
+    if (calls.length === 1) throw Object.assign(
+      new Error('relation "staff_role_assignments" does not exist'), { code: "42P01" });
+    return { rows: [{
+      session_id: "sess-1", expires_at: new Date(), staff_id: "staff-1", org_id: "org-1",
+      role: "closer", email: "a@b.com", name: "A", status: "active", active_flag: null
+    }] };
+  } };
+  const out = await verifySession(db, token);
+  assert.deepEqual(out.staff.roles, ["closer"]);
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0].params[0], hashToken(token));
+  assert.deepEqual(calls[1].params, calls[0].params);
+  assert.doesNotMatch(calls[1].sql, /staff_role_assignments/);
+  for (const sql of calls.map((call) => call.sql)) {
+    assert.match(sql, /revoked_at IS NULL/);
+    assert.match(sql, /expires_at > now\(\)/);
+    assert.match(sql, /s\.org_id = live\.org_id/);
+  }
+});
+
+test("missing-role-table fallback still rejects and revokes a suspended staff session", async () => {
+  const calls = [];
+  const db = { async query(sql) {
+    calls.push(sql);
+    if (calls.length === 1) throw Object.assign(
+      new Error('relation "staff_role_assignments" does not exist'), { code: "42P01" });
+    if (calls.length === 2) return { rows: [{
+      session_id: "sess-1", staff_id: "staff-1", org_id: "org-1", role: "closer",
+      status: "suspended", active_flag: null
+    }] };
+    return { rows: [{ id: "sess-1" }] };
+  } };
+  assert.equal(await verifySession(db, newToken()), null);
+  assert.match(calls[2], /UPDATE sessions SET revoked_at/);
+});
+
+test("missing other auth tables or a permission error never become primary-role fallback", async () => {
+  for (const [code, message] of [
+    ["42P01", 'relation "sessions" does not exist'],
+    ["42501", 'permission denied for table staff_role_assignments']
+  ]) {
+    let calls = 0;
+    const db = { async query() { calls++; throw Object.assign(new Error(message), { code }); } };
+    await assert.rejects(() => verifySession(db, newToken()), { code });
+    assert.equal(calls, 1);
+  }
+});
+
+test("external and restricted primary identities cannot stack an employee role", async () => {
+  for (const role of ["partner", "client", "affiliate", "outbound_rep"]) {
+    const db = fakeDb([[/WITH live AS/, [{
+      session_id: "sess-1", expires_at: new Date(), staff_id: "staff-1", org_id: "org-1",
+      role, assigned_roles: ["owner"], email: "a@b.com", name: "A",
+      status: "active", active_flag: null
+    }]]]);
+    assert.deepEqual((await verifySession(db, newToken())).staff.roles, [role]);
+  }
 });
 
 test("verifySession projects a set avatar_key into avatarUrl", async () => {

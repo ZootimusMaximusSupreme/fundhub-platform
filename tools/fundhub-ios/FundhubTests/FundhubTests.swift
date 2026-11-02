@@ -2,6 +2,47 @@ import XCTest
 @testable import Fundhub
 
 final class FundhubTests: XCTestCase {
+    @MainActor
+    func testWidgetSnapshotWritesOnlyKnownRoleCountsWithoutSecrets() throws {
+        let timestamp = ISO8601DateFormatter().string(from: Date())
+        let feed: [String: Any] = [
+            "ok": true, "generatedAt": timestamp,
+            "identity": ["kind": "staff", "roles": ["setter", "unknown"]],
+            "bearer": "never-write-this-bearer", "name": "Never write this name",
+            "sections": [
+                ["role": "setter", "metrics": [
+                    ["key": "booked", "unit": "count", "value": 2],
+                    ["key": "dials", "unit": "count", "value": -1],
+                    ["key": "token", "unit": "count", "value": 9]
+                ], "items": [["id": "client:private-name"]]],
+                ["role": "owner", "metrics": [["key": "booked_calls", "unit": "count", "value": 99]], "items": []]
+            ]
+        ]
+        let data = try DockWidgetSnapshot.sanitizedSnapshotData(from: JSONSerialization.data(withJSONObject: feed))
+        let result = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        XCTAssertEqual(result["roles"] as? [String], ["setter"])
+        let items = try XCTUnwrap(result["items"] as? [[String: Any]])
+        XCTAssertEqual(items.count, 1)
+        XCTAssertEqual(items.first?["kind"] as? String, "booked_today")
+        XCTAssertEqual(items.first?["count"] as? Int, 2)
+        let text = try XCTUnwrap(String(data: data, encoding: .utf8))
+        for forbidden in ["never-write-this-bearer", "Never write this name", "private-name", "booked_calls"] {
+            XCTAssertFalse(text.contains(forbidden), forbidden)
+        }
+    }
+
+    @MainActor
+    func testWidgetSnapshotRejectsExpiredOrUnrecognizedIdentity() throws {
+        for (kind, age) in [("staff", -7_200.0), ("unknown", 0.0)] {
+            let feed: [String: Any] = [
+                "ok": true,
+                "generatedAt": ISO8601DateFormatter().string(from: Date().addingTimeInterval(age)),
+                "identity": ["kind": kind, "roles": ["setter"]], "sections": []
+            ]
+            XCTAssertThrowsError(try DockWidgetSnapshot.sanitizedSnapshotData(from: JSONSerialization.data(withJSONObject: feed)))
+        }
+    }
+
     func testFaceIDPurposeIsPresentForTheApp() {
         let purpose = Bundle.main.object(forInfoDictionaryKey: "NSFaceIDUsageDescription") as? String
         XCTAssertEqual(purpose, "Use Face ID to unlock your saved Fundhub sign-in.")
@@ -106,6 +147,121 @@ final class FundhubTests: XCTestCase {
                                          environment: "development", installationId: installationId)
         try await api.unregisterNativePush(token: "test-session", installationId: installationId)
         XCTAssertEqual(methods, ["POST", "DELETE"])
+    }
+
+    func testClientPushAcceptsAll22ExactLessonsAndRejectsOtherDestinations() {
+        let slugs = [
+            "pre-underwriting", "funding-sequence", "apply-yourself", "money-on-the-table",
+            "after-you-say-yes", "bank-said-no", "thirteen-points", "card-paydown",
+            "credit-optimization", "credit-partner", "business-one-two", "blueprint-12-months",
+            "soft-pull", "the-call", "who-we-are", "cost-of-waiting", "the-maximum",
+            "the-money-talk", "tried-before", "blueprint-value", "blueprint-in-action", "your-data-is-safe"
+        ]
+        XCTAssertEqual(Set(slugs).count, 22)
+        for slug in slugs {
+            let path = "/slideshows/\(slug).html"
+            XCTAssertEqual(NativePushTap.clientPath(["path": path]), path)
+        }
+        for path in ["https://fundhub.ai/slideshows/the-call.html", "//evil.example/the-call.html",
+                     "/slideshows/the-call.html?client_id=other", "/slideshows/the-call.html#part2",
+                     "/slideshows/../app/pipeline.html", "/slideshows/film/the-call.html",
+                     "/slideshows/not-approved.html", "/app/pipeline.html"] {
+            XCTAssertNil(NativePushTap.clientPath(["path": path]), path)
+        }
+        XCTAssertNil(NativePushTap.clientPath(["path": 123]))
+    }
+
+    @MainActor
+    func testLessonTapPreservesPathWithSameSessionAndExpiresOrClearsOnce() {
+        let push = NativePushCenter.shared
+        push.resetAfterInvalidSession()
+        defer { push.resetAfterInvalidSession() }
+        let now = Date(timeIntervalSince1970: 2_000_000)
+        let path = "/slideshows/the-call.html"
+        let info = ["path": path]
+        XCTAssertFalse(push.recordNotificationTap(userInfo: info, now: now))
+        XCTAssertTrue(push.recordNotificationTap(userInfo: info, now: now, sessionBearer: "session-A"))
+        XCTAssertEqual(push.takeClientOpenRequest(now: now.addingTimeInterval(60), currentBearer: "session-A")?.path, path)
+        XCTAssertNil(push.takeClientOpenRequest(now: now, currentBearer: "session-A"))
+        XCTAssertTrue(push.recordNotificationTap(userInfo: info, now: now, sessionBearer: "session-A"))
+        XCTAssertNil(push.takeClientOpenRequest(now: now, currentBearer: "session-B"))
+        XCTAssertNil(push.takeClientOpenRequest(now: now, currentBearer: "session-A"))
+        XCTAssertTrue(push.recordNotificationTap(userInfo: info, now: now, sessionBearer: "session-A"))
+        XCTAssertNil(push.takeClientOpenRequest(now: now.addingTimeInterval(301), currentBearer: "session-A"))
+        XCTAssertTrue(push.recordNotificationTap(userInfo: info, now: now, sessionBearer: "session-A"))
+        push.resetAfterInvalidSession()
+        XCTAssertNil(push.takeClientOpenRequest(now: now, currentBearer: "session-A"))
+    }
+
+    @MainActor
+    func testLessonNavigationDropsAccountSwitchDuringIdentityRefresh() async {
+        let path = "/slideshows/the-call.html"
+        let request = NativePushTap.ClientOpenRequest(path: path, tappedAt: Date())
+        let gate = DelayedIdentityGate()
+        let simulated = SimulatedStaffState(bearer: "session-A")
+        let pending = Task { @MainActor in
+            let bearer = simulated.bearer!
+            await gate.pause()
+            return ClientPortalNavigation.verifiedPath(request, bearerAtTap: bearer,
+                bearerAfterRefresh: simulated.bearer, clientSessionVerified: true, taskCancelled: false)
+        }
+        await gate.waitUntilPaused()
+        simulated.bearer = "session-B"
+        await gate.release()
+        let stalePath = await pending.value
+        XCTAssertNil(stalePath)
+        XCTAssertEqual(ClientPortalNavigation.verifiedPath(request, bearerAtTap: "session-A",
+            bearerAfterRefresh: "session-A", clientSessionVerified: true, taskCancelled: false), path)
+        XCTAssertNil(ClientPortalNavigation.verifiedPath(request, bearerAtTap: "session-A",
+            bearerAfterRefresh: "session-A", clientSessionVerified: false, taskCancelled: false))
+        XCTAssertNil(ClientPortalNavigation.verifiedPath(request, bearerAtTap: "session-A",
+            bearerAfterRefresh: "session-A", clientSessionVerified: true, taskCancelled: true))
+        XCTAssertNil(ClientPortalNavigation.verifiedPath(.init(path: "/app/pipeline.html", tappedAt: Date()), bearerAtTap: "session-A",
+            bearerAfterRefresh: "session-A", clientSessionVerified: true, taskCancelled: false))
+    }
+
+    func testBackToFundhubAppearsOnlyForAnExactClientLessonUnderTheSameSession() {
+        let show: (String?, String?, String, String) -> Bool = { path, opened, current, principal in
+            ClientPortalNavigation.showsBackButton(path: path, bearerAtOpen: opened,
+                                                   currentBearer: current, principal: principal)
+        }
+        XCTAssertTrue(show("/slideshows/the-call.html", "session-A", "session-A", "client"))
+        XCTAssertFalse(show("/slideshows/the-call.html", "session-A", "session-B", "client"))
+        XCTAssertFalse(show("/slideshows/the-call.html", "session-A", "session-A", "staff"))
+        XCTAssertFalse(show("/app/client-portal.html", "session-A", "session-A", "client"))
+        XCTAssertFalse(show("/slideshows/the-call.html?client_id=other", "session-A", "session-A", "client"))
+        XCTAssertFalse(show("https://fundhub.ai/slideshows/the-call.html", "session-A", "session-A", "client"))
+        XCTAssertFalse(show("/slideshows/the-call.html", nil, "session-A", "client"))
+        XCTAssertFalse(show("/slideshows/the-call.html", "", "", "client"))
+        XCTAssertFalse(show(nil, "session-A", "session-A", "client"))
+    }
+
+    @MainActor
+    func testLessonTapExpiresWhileIdentityRefreshIsSuspended() async {
+        let push = NativePushCenter.shared
+        push.resetAfterInvalidSession()
+        defer { push.resetAfterInvalidSession() }
+        let tappedAt = Date(timeIntervalSince1970: 3_000_000)
+        let path = "/slideshows/the-call.html"
+        XCTAssertTrue(push.recordNotificationTap(userInfo: ["path": path], now: tappedAt, sessionBearer: "session-A"))
+        let request = push.takeClientOpenRequest(now: tappedAt.addingTimeInterval(1), currentBearer: "session-A")!
+        XCTAssertEqual(ClientPortalNavigation.verifiedPath(request, bearerAtTap: "session-A",
+            bearerAfterRefresh: "session-A", clientSessionVerified: true, taskCancelled: false,
+            now: tappedAt.addingTimeInterval(1)), path)
+        let gate = DelayedIdentityGate()
+        let pending = Task { @MainActor in
+            await gate.pause()
+            return ClientPortalNavigation.verifiedPath(request, bearerAtTap: "session-A",
+                bearerAfterRefresh: "session-A", clientSessionVerified: true, taskCancelled: false,
+                now: tappedAt.addingTimeInterval(301))
+        }
+        await gate.waitUntilPaused()
+        await gate.release()
+        let expiredPath = await pending.value
+        XCTAssertNil(expiredPath, "A tap valid before identity refresh may expire while it awaits the server.")
+        XCTAssertNil(ClientPortalNavigation.verifiedPath(request, bearerAtTap: "session-A",
+            bearerAfterRefresh: "session-A", clientSessionVerified: true, taskCancelled: false,
+            now: tappedAt.addingTimeInterval(-1)))
     }
 
     func testNotificationTapAcceptsOnlyTheClientPortalPath() {

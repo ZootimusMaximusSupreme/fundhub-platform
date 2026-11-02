@@ -1,0 +1,88 @@
+:root{--dock-width:58px;--dock-peek-width:280px;--dock-line:#E3E5E0;--dock-ink:#0D1113;--dock-paper:#F8F8F6;--dock-muted:#626968;--dock-spectrum:linear-gradient(90deg,#2A99E3 0 16.67%,#2CB9AD 16.67% 33.33%,#84C663 33.33% 50%,#ECC54E 50% 66.67%,#EF8F55 66.67% 83.33%,#D86092 83.33% 100%)}
+*{box-sizing:border-box}
+html,body{width:100%;height:100%;margin:0;overflow:hidden;background:transparent;color:var(--dock-ink);font-family:var(--fh-rounded-font,var(--sans),ui-rounded,system-ui,sans-serif)}
+button,a{font:inherit}
+button:focus-visible,a:focus-visible{outline:3px solid var(--dock-ink);outline-offset:2px}
+.dock{position:relative;width:100%;height:100%}
+.rail{position:absolute;right:0;top:0;width:var(--dock-width);height:100%;display:flex;flex-direction:column;align-items:center;gap:8px;padding:8px 7px 12px;background:var(--dock-paper);border:1px solid var(--dock-line);border-right:0;border-radius:14px 0 0 14px;overflow:hidden}
+.rail::after,.peek::after{content:"";position:absolute;bottom:0;left:0;right:0;height:4px;background:var(--dock-spectrum)}
+.rail button{position:relative;width:44px;height:44px;border:1px solid transparent;border-radius:10px;background:transparent;color:var(--dock-ink);display:grid;place-items:center;cursor:pointer}
+.rail button[hidden]{display:none}
+.rail button[aria-pressed="true"]{background:#fff;border-color:var(--dock-line)}
+.meta-mark{font-size:28px;line-height:1;font-weight:900;letter-spacing:-.08em}
+.rail img{width:42px;height:42px;border-radius:10px}
+.dock-mark{width:42px;height:42px;border-radius:10px;display:grid;place-items:center;background:var(--dock-ink);color:#fff;font-size:24px;font-weight:900;letter-spacing:-.08em}
+.peek-head .dock-mark{width:28px;height:28px;border-radius:7px;font-size:16px;flex:none}
+.rail svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.badge{position:absolute;top:0;right:0;min-width:18px;height:18px;padding:0 3px;border-radius:9px;border:1px solid #fff;background:#F2A69B;display:grid;place-items:center;font-size:12px;font-weight:800}
+.badge[hidden]{display:none}
+.peek{display:none;position:absolute;right:calc(var(--dock-width) + 8px);top:0;width:var(--dock-peek-width);max-height:100%;background:var(--dock-paper);border:1px solid var(--dock-line);border-radius:12px;overflow:hidden;flex-direction:column}
+body[data-expanded="true"] .peek{display:flex}
+.peek-head{display:flex;align-items:center;gap:9px;min-height:56px;padding:9px 12px;border-bottom:1px solid var(--dock-line)}
+.peek-head img{width:28px;height:28px;border-radius:7px}
+.peek-head strong{font-size:16px;letter-spacing:-.04em}
+.peek-head span{font-size:13px;color:var(--dock-muted);margin-left:auto;text-align:right}
+.peek-head button{width:44px;height:44px;margin:-8px -10px -8px 0;border:0;background:transparent;font-size:22px;cursor:pointer;color:var(--dock-muted)}
+.states{flex:1;min-height:0;overflow:auto;scrollbar-width:thin}
+.state{display:none;padding:13px}.state[data-active="true"]{display:block}
+.state p{font-size:14px;line-height:1.4;margin:6px 0 0;color:var(--dock-muted)}
+.state strong{font-size:16px}
+.state .retry{min-height:44px;margin-top:12px;padding:0 12px;border:1px solid var(--dock-line);border-radius:8px;background:#fff;color:var(--dock-ink);cursor:pointer;font-weight:800}
+.section{padding:10px 12px 14px;border-bottom:1px solid var(--dock-line)}
+.section:last-child{border-bottom:0}
+.section p{font-size:13px;color:var(--dock-muted);margin:4px 0}
+.section-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding-bottom:8px}
+.section-head h2{font-size:15px;line-height:1.2;margin:0}
+.section-head span{font-size:13px;color:var(--dock-muted);white-space:nowrap}
+.metric-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0 0 9px}
+.metric{min-width:0;padding:6px 8px;background:#fff;border:1px solid var(--dock-line);border-radius:8px}
+.metric strong{display:block;font-size:18px;line-height:1.1;font-variant-numeric:tabular-nums}
+.metric span{display:block;font-size:13px;color:var(--dock-muted);line-height:1.2;margin-top:2px}
+.item{border-top:1px solid var(--dock-line)}
+.item-toggle{width:100%;min-height:48px;padding:6px 0;border:0;background:transparent;display:flex;align-items:center;gap:8px;text-align:left;cursor:pointer}
+.item-dot{width:8px;height:8px;flex:none;border-radius:50%;background:#A9C6E8}
+.item[data-urgency="urgent"] .item-dot{background:#F2A69B}
+.item[data-urgency="due"] .item-dot{background:#F5CE8F}
+.item-label{min-width:0;flex:1;font-size:14px;font-weight:800;line-height:1.25}
+.item-due{font-size:12px;color:var(--dock-muted);white-space:nowrap}
+.item-chevron{font-size:19px;color:var(--dock-muted);line-height:1}
+.item-toggle[aria-expanded="true"] .item-chevron{transform:rotate(90deg)}
+.item-detail{display:none;padding:0 0 12px 16px;font-size:13px;line-height:1.35;color:var(--dock-muted)}
+.item-toggle[aria-expanded="true"]+.item-detail{display:block}
+.item-detail p{margin:0 0 8px}
+.item-detail a{display:inline-flex;align-items:center;min-height:44px;padding:0 12px;background:var(--dock-ink);color:white;border-radius:8px;text-decoration:none;font-size:13px;font-weight:800}
+.peek-foot{border-top:1px solid var(--dock-line);padding:5px 12px 9px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.peek-foot small{font-size:12px;color:var(--dock-muted)}
+.peek-foot a{color:var(--dock-muted);font-size:13px;min-height:44px;display:flex;align-items:center;text-decoration:none}
+body[data-side="left"] .rail{left:0;right:auto;border-left:0;border-right:1px solid var(--dock-line);border-radius:0 14px 14px 0}
+body[data-side="left"] .peek{left:calc(var(--dock-width) + 8px);right:auto}
+
+/* The compact companion retains the shared 16px body / 13px caption floors. */
+.state p,.item-label,.item-detail p{font-size:16px}
+.item-due,.peek-foot small{font-size:13px}
+.sop-link{display:inline-flex;align-items:center;min-height:44px;font-size:13px;color:var(--dock-ink);margin-bottom:4px}
+
+/* Personal call work stays in the same compact, role-scoped companion. */
+:root{--dock-peek-width:min(280px,calc(100vw - var(--dock-width) - 8px))}
+.closer-calendar{margin-bottom:16px;min-width:0}
+.closer-calendar h3{margin:0 0 8px;font-size:18px}
+.closer-calendar h4{margin:16px 0 8px;font-size:16px}
+.calendar-call{border-top:1px solid var(--dock-line);padding:8px 0}
+.call-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:48px;padding:4px 0;background:none;border:0;color:var(--dock-ink);text-align:left;cursor:pointer}
+.call-heading{min-width:0;display:grid;gap:4px;overflow-wrap:anywhere}
+.call-heading strong{font-size:16px}.call-time{font-size:13px;color:var(--dock-muted)}
+.call-chevron{font-size:20px}.call-toggle[aria-expanded=true] .call-chevron{transform:rotate(180deg)}
+.call-details[hidden]{display:none!important}
+.section .call-countdown{font-size:16px;font-variant-numeric:tabular-nums;margin:4px 0 8px}
+.call-actions{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+.calendar-button{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:8px 12px;border:1px solid var(--dock-line);border-radius:8px;background:transparent;color:var(--dock-ink);font-size:16px;text-decoration:none;cursor:pointer}
+.calendar-present{background:var(--dock-ink);color:#fff}
+.call-facts{margin:0;display:grid;gap:4px;overflow-wrap:anywhere}
+.call-facts dt{font-size:13px;color:var(--dock-muted);margin-top:8px}
+.call-facts dd{font-size:16px;margin:0;line-height:1.4;white-space:pre-wrap}
+.section .call-presence,.section .call-notice,.section .calendar-state{font-size:13px;line-height:1.4;overflow-wrap:anywhere}
+.presentation-timer{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0 16px}
+.presentation-timer span{font-size:13px}.presentation-timer strong{font-size:20px;font-variant-numeric:tabular-nums}
+.presentation-timer p{font-size:13px;line-height:1.4}
+
+.meet-checked{display:block;margin-top:4px;font-size:13px;color:var(--dock-muted)}

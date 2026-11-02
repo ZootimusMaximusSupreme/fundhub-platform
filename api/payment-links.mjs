@@ -81,7 +81,7 @@ const CLOSER_ACTIONS = new Set(["create"]);
 /* closerRefused — true when a closer is reaching for an action that is not
    theirs. Answered before anything is read, so a refused role touches no data. */
 function closerRefused(staff, req) {
-  if (!staff || staff.role !== "closer") return false;
+  if (!staff || ["owner", "admin", "sales_manager"].includes(staff.role)) return false;
   if (!req || req.method !== "POST") return true;
   const action = String((req.body || {}).action || "").trim();
   return !CLOSER_ACTIONS.has(action);

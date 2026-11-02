@@ -286,7 +286,7 @@ test("Send letters now locks after the staged letters are mailed", { timeout: 90
     handlers: {
       "/api/repair/enroll": { ok: true },
       "/api/repair/generate": { ok: true, letters: [{ bureau: "Experian", itemCount: 2, body_text: "Dear Experian, remove these.", letter_id: "L-1" }] },
-      "/api/repair/send": gate.handler((body) => { sends.push(body); return { body: { ok: true } }; }),
+      "/api/repair/send": gate.handler((body) => { sends.push(body); return { body: { ok: true, results: [{ ok: true, letterId: "L-1" }] } }; }),
     },
   });
   // a file that is not ready starts on the Capital Blueprint (2026-10-29): step down to credit optimization
@@ -302,3 +302,43 @@ test("Send letters now locks after the staged letters are mailed", { timeout: 90
   assert.equal(sends[0].mail, true);
   await page.close();
 });
+
+for (const unrecorded of [true, false]) {
+  test(`mail accepted ${unrecorded ? "without recorded receipt" : "in a partial batch"} stays locked for review`, { timeout: 90_000 }, async (t) => {
+    const { open } = await startPages(t);
+    const sends = [];
+    const { page, errors } = await openDeck(open, {
+      tier: "REPAIR_ONLY",
+      handlers: {
+        "/api/repair/enroll": { ok: true },
+        "/api/repair/generate": { ok: true, letters: [
+          { bureau: "Experian", body_text: "Dear Experian, remove these.", letter_id: "L-1" },
+          { bureau: "Equifax", body_text: "Dear Equifax, remove these.", letter_id: "L-2" },
+        ] },
+        "/api/repair/send": async (route) => {
+          sends.push(bodyOf(route));
+          return json(route, { ok: true, results: [
+            { ok: true, letterId: "L-1", ...(unrecorded ? { mailingRecorded: false } : {}) },
+            { ok: false, letterId: "L-2" },
+          ] });
+        },
+      },
+    });
+    await page.locator('[data-act="desc:dfy"]').click();
+    await page.locator('[data-act="phase:09"]').click();
+    await page.locator("#fh-repair-paid").fill("500");
+    await page.locator('[data-act="stage-letters"]').click();
+    await page.waitForFunction(() => /Staged 2 letter\(s\)/.test(document.body.innerText));
+    const send = page.locator('[data-act="send-letters"]');
+    await send.click();
+    await page.waitForFunction(() => /Check mailing record/.test(document.querySelector('[data-act="send-letters"]')?.textContent || ""));
+    assert.equal(await send.isDisabled(), true);
+    assert.equal(await page.locator(".sent-at").count(), 0, "partial or unrecorded acceptance is not full success");
+    await page.clock.fastForward(60_000);
+    await send.dispatchEvent("click");
+    assert.equal(sends.length, 1, "review lock prevents a second batch even after cooldown and synthetic click");
+    assert.equal(await send.isDisabled(), true);
+    assert.deepEqual(errors, []);
+    await page.close();
+  });
+}

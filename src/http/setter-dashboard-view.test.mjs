@@ -11,6 +11,7 @@ const html = fs.readFileSync(path.resolve(here, "../../public/app/setter-dashboa
 const source = fs.readFileSync(path.join(here, "setter-dashboard-view.mjs"), "utf8");
 const shell = fs.readFileSync(path.resolve(here, "../../public/app/shell.js"), "utf8");
 const writeApi = fs.readFileSync(path.resolve(here, "../../api/setter-dashboard.mjs"), "utf8");
+const readApi = fs.readFileSync(path.resolve(here, "../../api/read/setter-dashboard.mjs"), "utf8");
 
 test("the page's pure view rules match the tested source", () => {
   const browser = html.split("/* FH-SETTER-VIEW-BEGIN */\n")[1]?.split("\n  /* FH-SETTER-VIEW-END */")[0];
@@ -70,4 +71,14 @@ test("setter nav is role scoped with setter home", () => {
   assert.match(shell, /SETTER_DESK_ONLY\.indexOf\(s\) === -1/);
   assert.match(shell, /if \(role === "setter"\) return staffTabs\(\)\.concat\(SETTER_DESK_ONLY\)/);
   assert.match(shell, /setter: "setter-dashboard\.html"/);
+});
+
+test("dial Undo is routed through the setter role gate and requires a real event ID", () => {
+  assert.match(writeApi, /requireRole\(res, staff, ROLE_SETS\.SETTER\)/);
+  assert.match(writeApi, /"undo_dial"/);
+  assert.match(writeApi, /input\.action === "undo_dial" && !isUuid\(input\.event_id\)/);
+  assert.match(writeApi, /invalid_event_id/);
+  assert.match(writeApi, /input\.operation_id != null && !isUuid\(input\.operation_id\)/);
+  assert.match(readApi, /requireRole\(res, staff, ROLE_SETS\.SETTER\)/);
+  assert.match(readApi, /latest_undoable_dial/);
 });

@@ -3,7 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import portalMessage from "../../api/chat/portal-message.mjs";
 import {
-  accountSession, fakeDb, makeRes, req, runWithSharedDb, ORG_ID
+  accountSession, fakeDb, makeRes, req, runWithSharedDb, ORG_ID, OTHER_ORG_ID
 } from "../testing/handler-harness.mjs";
 
 const A = "c1000000-0000-4000-8000-000000000001";
@@ -106,7 +106,7 @@ test("malformed key refuses before a message write; older clients without a key 
 });
 
 
-test("portal GET returns the latest 100 own-client messages, not the first 100 or another buyer's", async () => {
+test("portal GET returns the latest 100 own-client messages across conversations, not another buyer's", async () => {
   const own = Array.from({ length: 125 }, (_, i) => ({
     id: "note-" + String(i + 1).padStart(3, "0"),
     org_id: ORG_ID, client_id: A, conversation_id: "conv-A",
@@ -116,6 +116,14 @@ test("portal GET returns the latest 100 own-client messages, not the first 100 o
   }));
   const foreign = { ...own[own.length - 1], client_id: B,
     rendered_body: "Other person's private reply" };
+  const email = { ...own[own.length - 1], id: "email-latest", conversation_id: "conv-email",
+    channel: "email", direction: "outbound", sender_kind: "staff",
+    rendered_body: "Newest email reply", created_at: "2026-10-29T15:00:00.000Z" };
+  const otherOrg = { ...email, id: "other-org", org_id: OTHER_ORG_ID,
+    rendered_body: "Another company's private email" };
+  const staffAlert = { ...email, id: "staff-alert", channel: "sms",
+    provider_ref: "staff-alert:lead:booking:staff-id",
+    rendered_body: "Private setter alert" };
   const fake = fakeDb([
     ...accountSession({ kind: "client", clientId: A }),
     [/SELECT id FROM conversations/, (_sql, params) => {
@@ -123,14 +131,20 @@ test("portal GET returns the latest 100 own-client messages, not the first 100 o
       return [{ id: "conv-A" }];
     }],
     [/SELECT \* FROM \(\s*SELECT m\.id/, (sql, params) => {
-      assert.deepEqual(params, [ORG_ID, A, "conv-A", 100]);
-      assert.match(sql, /m\.org_id = \$1 AND m\.client_id = \$2 AND m\.conversation_id = \$3/);
-      assert.match(sql, /ORDER BY m\.created_at DESC, m\.id DESC\s+LIMIT \$4/);
+      assert.deepEqual(params, [ORG_ID, A, 100]);
+      assert.match(sql, /m\.org_id = \$1 AND m\.client_id = \$2/);
+      assert.doesNotMatch(sql, /m\.conversation_id\s*=/);
+      assert.match(sql, /m\.channel IN \('sms', 'email'\)/);
+      assert.match(sql, /NOT LIKE 'staff-alert:%'/);
+      assert.match(sql, /NOT LIKE 'setter:%:closer:%'/);
+      assert.match(sql, /'SMS-S04C-STAFF-BOOKED', 'SMS-DEAL-CLOSE-WIN'/);
+      assert.match(sql, /ORDER BY m\.created_at DESC, m\.id DESC\s+LIMIT \$3/);
       assert.match(sql, /ORDER BY recent\.created_at ASC, recent\.id ASC/);
-      return [...own, foreign]
-        .filter((m) => m.org_id === params[0] && m.client_id === params[1] && m.conversation_id === params[2])
+      return [...own, foreign, email, otherOrg, staffAlert]
+        .filter((m) => m.org_id === params[0] && m.client_id === params[1] &&
+          ["sms", "email"].includes(m.channel) && !m.provider_ref?.startsWith("staff-alert:"))
         .sort((a, b) => b.created_at.localeCompare(a.created_at))
-        .slice(0, params[3])
+        .slice(0, params[2])
         .sort((a, b) => a.created_at.localeCompare(b.created_at));
     }]
   ]);
@@ -139,8 +153,10 @@ test("portal GET returns the latest 100 own-client messages, not the first 100 o
     await portalMessage(req("GET", { query: { limit: "100" } }), res);
     assert.equal(res.statusCode, 200);
     assert.equal(res.body.messages.length, 100);
-    assert.equal(res.body.messages[0].rendered_body, "Note 26");
-    assert.equal(res.body.messages[99].rendered_body, "Note 125");
+    assert.equal(res.body.messages[0].rendered_body, "Note 27");
+    assert.equal(res.body.messages[99].rendered_body, "Newest email reply");
     assert.equal(res.body.messages.some((row) => row.rendered_body.includes("private reply")), false);
+    assert.equal(res.body.messages.some((row) => row.rendered_body.includes("private email")), false);
+    assert.equal(res.body.messages.some((row) => row.rendered_body.includes("setter alert")), false);
   });
 });

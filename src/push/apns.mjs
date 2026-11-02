@@ -108,7 +108,7 @@ export async function sendAPNS({ token, environment, notification, ttlSeconds = 
     const gone = reply.status === 410 || ["BadDeviceToken", "DeviceTokenNotForTopic", "Unregistered"].includes(reason);
     return { status: "failed", gone, reason };
   } catch (error) {
-    return { status: "failed", gone: false, reason: error instanceof APNSError ? error.message : "APNs was unavailable" };
+    return { status: "failed", gone: false, unknown: true, reason: error instanceof APNSError ? error.message : "APNs was unavailable" };
   }
 }
 

@@ -52,3 +52,15 @@ test("the same real outbound session authenticates for its own workspace", async
   const result = await requireAuth(r, makeRes(), { db: database() });
   assert.equal(result.role, "outbound_rep");
 });
+
+
+test("outreach companion access stays read-only without widening native-push rights", () => {
+  assert.equal(restrictedStaffAllowed(request("/api/read/dock"),rep),true);
+  assert.equal(restrictedStaffAllowed(request("/api/read/dock","POST"),rep),false);
+  for(const method of ["GET","POST","DELETE"]) {
+    assert.equal(restrictedStaffAllowed(request("/api/push/native-device",method),rep),false);
+  }
+  for(const url of ["/api/tasks","/api/auth/staff-role","/api/read/company","/api/read/staff"]) {
+    assert.equal(restrictedStaffAllowed(request(url,"POST"),rep),false);
+  }
+});

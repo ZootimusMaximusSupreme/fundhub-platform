@@ -3,6 +3,7 @@
 // Finish one change without pulling unrelated files into a public repository.
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { recordedParentHead } from './restack-after-merge.mjs';
 
@@ -103,10 +104,10 @@ function assertOnlySelected(staged, files) {
   if (extras.length) throw new Error(`Unrelated files are staged: ${extras.join(', ')}. Unstage them before shipping.`);
 }
 
-async function archiveHead(rootGit, branch) {
+async function archiveHead(rootGit, branch, expectedHead = null, assertFresh = async () => {}) {
   const tag = `archive/${branch}`;
   const ref = `refs/tags/${tag}`;
-  const head = (await rootGit(['rev-parse', 'HEAD'])).trim();
+  const head = expectedHead || (await rootGit(['rev-parse', 'HEAD'])).trim();
   const old = (await rootGit(['ls-remote', '--tags', 'origin', ref])).split(/\s+/)[0];
   if (old === head) return;
   if (old) {
@@ -114,18 +115,99 @@ async function archiveHead(rootGit, branch) {
     const history = (await rootGit(['ls-remote', '--tags', 'origin', historyRef])).split(/\s+/)[0];
     if (history && history !== old) throw new Error(`Archive history differs for ${branch}.`);
     if (!history) {
+      await assertFresh();
       await rootGit(['tag', '-f', `${tag}-${old.slice(0, 8)}`, old]);
-      await rootGit(['push', 'origin', historyRef]);
+      await assertFresh();
+      await rootGit(['push', 'origin', `${old}:${historyRef}`]);
       const preserved = (await rootGit(['ls-remote', '--tags', 'origin', historyRef])).split(/\s+/)[0];
       if (preserved !== old) throw new Error(`Could not preserve original archive for ${branch}.`);
     }
   }
+  await assertFresh();
   await rootGit(['tag', '-f', tag, head]);
+  await assertFresh();
   await rootGit(old
-    ? ['push', `--force-with-lease=${ref}:${old}`, 'origin', ref]
-    : ['push', 'origin', ref]);
+    ? ['push', `--force-with-lease=${ref}:${old}`, 'origin', `${head}:${ref}`]
+    : ['push', 'origin', `${head}:${ref}`]);
   const verified = (await rootGit(['ls-remote', '--tags', 'origin', ref])).split(/\s+/)[0];
   if (verified !== head) throw new Error(`Could not verify remote archive tag ${tag}; branch was not pushed.`);
+}
+
+// Programmatic operator proof only: PR-body text never enables this path.
+export function sourceDeltaManifest(raw) {
+  const parts = String(raw).split('\0');
+  const manifest = [];
+  for (let i = 0; i < parts.length && parts[i]; i += 2) {
+    const match = /^:(\d{6}) (\d{6}) ([a-f0-9]{40}) ([a-f0-9]{40}) ([AMDT])$/.exec(parts[i]);
+    const name = parts[i + 1];
+    if (!match || !name || name.startsWith('/') || name.split('/').includes('..') || /[\0\r\n]/.test(name)) {
+      throw new Error('Invalid source-boundary path/blob manifest.');
+    }
+    manifest.push({ path: name, beforeMode: match[1], afterMode: match[2], beforeBlob: match[3], afterBlob: match[4] });
+  }
+  return manifest.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+}
+
+function canonicalSourceManifest(manifest) {
+  if (!Array.isArray(manifest) || !manifest.length) throw new Error('A complete approved source manifest is required.');
+  const rows = manifest.map(row => {
+    if (!row || typeof row.path !== 'string' || !row.path || row.path.startsWith('/') ||
+      row.path.split('/').includes('..') || /[\0\r\n]/.test(row.path) ||
+      !/^\d{6}$/.test(row.beforeMode) || !/^\d{6}$/.test(row.afterMode) ||
+      !/^[a-f0-9]{40}$/.test(row.beforeBlob) || !/^[a-f0-9]{40}$/.test(row.afterBlob)) {
+      throw new Error('Invalid approved source manifest.');
+    }
+    return [row.path, row.beforeMode, row.afterMode, row.beforeBlob, row.afterBlob];
+  }).sort((a, b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0);
+  if (new Set(rows.map(row => row[0])).size !== rows.length) throw new Error('Duplicate approved source path.');
+  return JSON.stringify(rows);
+}
+
+export function sourceManifestDigest(manifest) {
+  return createHash('sha256').update(canonicalSourceManifest(manifest)).digest('hex');
+}
+
+async function verifiedSourceBoundary(proof, approval, { existing, rootGit, rootGh }) {
+  if (!proof || proof.version !== 1 || !Number.isSafeInteger(proof.ownerPr) || proof.ownerPr < 1 ||
+    proof.ownerPr === existing.number || !/^[a-f0-9]{40}$/.test(proof.head || '') ||
+    !/^[a-f0-9]{40}$/.test(proof.base || '') || !/^[a-f0-9]{40}$/.test(proof.ownerArchiveHead || '') ||
+    !/^[a-f0-9]{64}$/.test(approval || '')) throw new Error('Invalid reviewed source-boundary proof.');
+  if (typeof proof.ownerBranch !== 'string') throw new Error('A source owner branch is required.');
+  await rootGit(['check-ref-format', '--branch', proof.ownerBranch]);
+  const archive = `refs/tags/archive/${proof.ownerBranch}`;
+  if (![archive, `${archive}-${proof.ownerArchiveHead.slice(0, 8)}`].includes(proof.ownerArchiveRef)) {
+    throw new Error('Source-owner archive does not belong to the declared branch.');
+  }
+  if ((await rootGit(['rev-parse', 'HEAD'])).trim() !== proof.head ||
+    (await rootGit(['status', '--porcelain'])).trim()) throw new Error('Reviewed source head changed or is dirty.');
+  if (/^Stack parent head:/im.test(existing.body || '') && recordedParentHead(existing) !== proof.base) {
+    throw new Error('PR source-parent marker does not match its reviewed boundary.');
+  }
+  await rootGit(['merge-base', '--is-ancestor', proof.base, proof.head]);
+  const actual = sourceDeltaManifest(await rootGit(['diff', '--raw', '--no-abbrev', '--no-renames',
+    '--no-ext-diff', '--no-textconv', '-z', proof.base, proof.head, '--']));
+  if (canonicalSourceManifest(actual) !== canonicalSourceManifest(proof.manifest) ||
+    sourceManifestDigest(actual) !== approval) throw new Error('Reviewed source path/blob manifest does not match the complete delta.');
+  const remoteHead = (await rootGit(['rev-parse', `refs/remotes/origin/${existing.headRefName}`])).trim();
+  if (!/^[a-f0-9]{40}$/.test(remoteHead)) throw new Error('Original remote source child is missing.');
+  await rootGit(['merge-base', '--is-ancestor', remoteHead, proof.head]);
+  const childArchive = (await rootGit(['ls-remote', '--tags', 'origin',
+    `refs/tags/archive/${existing.headRefName}`])).split(/\s+/)[0];
+  if (childArchive !== remoteHead) throw new Error('Original source child archive is missing or changed.');
+  const owner = JSON.parse(await rootGh(['api', `repos/${REPO}/pulls/${proof.ownerPr}`]));
+  if (owner.head?.ref !== proof.ownerBranch || owner.head?.repo?.full_name !== REPO) {
+    throw new Error('The archived source owner does not match its GitHub PR.');
+  }
+  const published = (await rootGit(['ls-remote', '--tags', 'origin', proof.ownerArchiveRef])).split(/\s+/)[0];
+  if (published !== proof.ownerArchiveHead) throw new Error('Reviewed source-owner archive is missing or changed.');
+  await rootGit(['fetch', '--no-tags', 'origin', proof.ownerArchiveRef]);
+  if ((await rootGit(['rev-parse', 'FETCH_HEAD^{commit}'])).trim() !== proof.ownerArchiveHead) {
+    throw new Error('Fetched source-owner archive does not match its receipt.');
+  }
+  await rootGit(['merge-base', '--is-ancestor', proof.base, proof.ownerArchiveHead]);
+  if ((await rootGit(['rev-parse', 'HEAD'])).trim() !== proof.head ||
+    (await rootGit(['status', '--porcelain'])).trim()) throw new Error('Reviewed source changed during provenance verification.');
+  return { base: proof.base, remoteHead, head: proof.head };
 }
 
 export async function runShipChange(options, command = defaultCommand) {
@@ -144,6 +226,7 @@ export async function runShipChange(options, command = defaultCommand) {
   const scoped = (program, args) => command(program, args, { cwd: root });
   const rootGit = args => scoped('git', args);
   const rootGh = args => scoped('gh', args);
+  let immutableSourceHead = (await rootGit(['rev-parse', 'HEAD'])).trim();
 
   const remote = (await rootGit(['remote', 'get-url', 'origin'])).trim();
   if (!/(?:github\.com[:/])ZootimusMaximusSupreme\/fundhub-platform(?:\.git)?$/i.test(remote)) {
@@ -167,6 +250,13 @@ export async function runShipChange(options, command = defaultCommand) {
   assertOnlySelected(preStaged, files);
 
   await rootGit(['fetch', '--prune', 'origin']);
+  // Freeze the remote source before any local rewrite. A background fetch must
+  // never silently change which other writer's head a force-with-lease accepts.
+  const observedRemoteHead = (await rootGit(['ls-remote', '--heads', 'origin', `refs/heads/${branch}`])).split(/\s+/)[0];
+  const fetchedRemoteHead = (await rootGit(['rev-parse', `refs/remotes/origin/${branch}`]).catch(() => '')).trim();
+  if ((observedRemoteHead && !/^[a-f0-9]{40}$/i.test(observedRemoteHead)) || observedRemoteHead !== fetchedRemoteHead) {
+    throw new Error('Remote source changed while fetching; no source rewrite or archive was made.');
+  }
   const prs = JSON.parse(await rootGh(['pr', 'list', '--repo', REPO, '--state', 'open', '--limit', '200', '--json', 'number,headRefName,baseRefName,labels,isDraft,body']));
   const existing = prs.find(pr => pr.headRefName === branch);
   const existingLane = /^Owner lane:\s*([a-z][a-z0-9-]{1,40})\s*$/im.exec(existing?.body || '')?.[1]?.toLowerCase();
@@ -176,6 +266,17 @@ export async function runShipChange(options, command = defaultCommand) {
   const chain = orderedChain(prs);
   const currentMember = chain.find(pr => pr.number === existing?.number);
   const adoptingLegacy = Boolean(existing && !currentMember);
+  let reviewedSourceBase = null;
+  let reviewedSourceRemote = null;
+  if (options.sourceBoundaryProof || options.approvedSourceManifest) {
+    if (!resume || !adoptingLegacy) throw new Error('Reviewed source boundaries apply only to clean legacy adoption.');
+    const reviewed = await verifiedSourceBoundary(options.sourceBoundaryProof, options.approvedSourceManifest,
+      { existing, rootGit, rootGh });
+    reviewedSourceBase = reviewed.base;
+    reviewedSourceRemote = reviewed.remoteHead;
+    if (immutableSourceHead !== reviewed.head) throw new Error('Reviewed source did not match the starting source head.');
+
+  }
   if (adoptingLegacy && existing.baseRefName !== 'main') {
     throw new Error(`Existing PR #${existing.number} is already stacked on ${existing.baseRefName}; preserve that older chain before adopting it.`);
   }
@@ -184,76 +285,121 @@ export async function runShipChange(options, command = defaultCommand) {
         base: currentMember.baseRefName, position: currentMember.position }
     : chooseBase(prs);
   const { parent, base, position } = choice;
+  if (reviewedSourceBase && !parent) {
+    throw new Error('Reviewed source-boundary adoption requires an existing ordered target parent.');
+  }
 
+  if ((await rootGit(['rev-parse', 'HEAD'])).trim() !== immutableSourceHead) {
+    throw new Error('Local source head changed while loading the queue; no source rewrite or archive was made.');
+  }
   if (!resume) {
     await rootGit(['add', '--', ...files]);
     assertOnlySelected(await rootGit(['diff', '--cached', '--name-only', '-z']), files);
     await rootGit(['diff', '--cached', '--check']);
     await rootGit(['commit', '-m', message, '--', ...files]);
+    immutableSourceHead = (await rootGit(['rev-parse', 'HEAD'])).trim();
   } else if (Number((await rootGit(['rev-list', '--count', 'origin/main..HEAD'])).trim()) < 1) {
     throw new Error('--resume needs a change commit ahead of origin/main.');
   }
 
   let parentHead = null;
-  let fallbackRemoteHead = null;
+  let fallbackRemoteHead = reviewedSourceRemote;
+  let preparedCandidateHead = null;
+  let exactTarget = null;
+  async function assertState(head, expectedBranch = branch) {
+    const current = (await rootGit(['rev-parse', 'HEAD'])).trim();
+    const currentBranch = (await rootGit(['symbolic-ref', '--quiet', '--short', 'HEAD']).catch(() => '')).trim();
+    const dirty = (await rootGit(['status', '--porcelain'])).trim();
+    if (current !== head || currentBranch !== expectedBranch || dirty) {
+      throw new Error('Local source or candidate changed; all new local work was preserved and publication stopped.');
+    }
+  }
+  async function exactReplay(basePoint, targetHead, targetBranch) {
+    await assertState(immutableSourceHead);
+    fallbackRemoteHead = (await rootGit(['rev-parse', `refs/remotes/origin/${branch}`])).trim();
+    if (!/^[a-f0-9]{40}$/i.test(fallbackRemoteHead)) throw new Error('Original remote child head is missing.');
+    if (fallbackRemoteHead !== observedRemoteHead) throw new Error('Remote source tracking changed before delta preparation; branch was not pushed.');
+    await rootGit(['merge-base', '--is-ancestor', basePoint, immutableSourceHead]);
+    await rootGit(['merge-base', '--is-ancestor', fallbackRemoteHead, immutableSourceHead]);
+    const archived = (await rootGit(['ls-remote', '--tags', 'origin', `refs/tags/archive/${branch}`])).split(/\s+/)[0];
+    if (archived === immutableSourceHead && archived !== fallbackRemoteHead) {
+      // A prior attempt can have archived H before candidate preparation failed.
+      // Accept that retry only with the exact original R still independently archived.
+      const historyRef = `refs/tags/archive/${branch}-${fallbackRemoteHead.slice(0, 8)}`;
+      const history = (await rootGit(['ls-remote', '--tags', 'origin', historyRef])).split(/\s+/)[0];
+      if (history !== fallbackRemoteHead) throw new Error('Original remote child archive history is missing or changed; branch was not pushed.');
+    } else if (archived !== fallbackRemoteHead) {
+      throw new Error('Original remote child archive is missing; branch was not pushed.');
+    }
+    await scoped('npm', ['run', 'preflight', '--', '--expected-base', basePoint]);
+    const sourcePr = JSON.parse(await rootGh(['pr', 'view', String(existing.number), '--repo', REPO, '--json', 'headRefOid,baseRefName']));
+    const sourceTarget = (await rootGit(['ls-remote', '--heads', 'origin', targetBranch])).split(/\s+/)[0];
+    await assertState(immutableSourceHead);
+    if (sourcePr.headRefOid !== fallbackRemoteHead || sourcePr.baseRefName !== existing.baseRefName || sourceTarget !== targetHead) {
+      throw new Error('Source or target moved during preflight; archive and branch were not pushed.');
+    }
+    await archiveHead(rootGit, branch, immutableSourceHead, () => assertState(immutableSourceHead));
+    await assertState(immutableSourceHead);
+    const helperUrl = new URL('./restack-after-merge.mjs', import.meta.url).href;
+    const candidate = (await scoped(process.execPath, ['--input-type=module', '-e',
+      'const {createArchivedSourceDelta}=await import(process.argv[2]); const c=createArchivedSourceDelta(JSON.parse(process.argv[1])); if(!c)process.exitCode=1;else process.stdout.write(c);',
+      JSON.stringify({ base: basePoint, head: immutableSourceHead, branch, number: existing.number, target: targetHead, sourceBranch: branch }), helperUrl])).trim();
+    if (!/^[a-f0-9]{40}$/i.test(candidate)) throw new Error('No verified archived-delta candidate was produced.');
+    await assertState(immutableSourceHead);
+    // Checkout does not force/reset/clean; another writer's files must survive.
+    await rootGit(['switch', '--detach', candidate]);
+    await assertState(candidate, '');
+    await rootGit(['update-ref', `refs/heads/${branch}`, candidate, immutableSourceHead]);
+    await assertState(candidate, '');
+    await rootGit(['switch', branch]);
+    await assertState(candidate);
+    preparedCandidateHead = candidate;
+    exactTarget = { branch: targetBranch, head: targetHead };
+  }
   if (parent) {
     await rootGit(['fetch', 'origin', `refs/heads/${parent.headRefName}:refs/remotes/origin/${parent.headRefName}`]);
     const ancestor = await rootGit(['merge-base', 'HEAD', `origin/${parent.headRefName}`]);
     parentHead = (await rootGit(['rev-parse', `origin/${parent.headRefName}`])).trim();
+    await assertState(immutableSourceHead);
     if (ancestor.trim() !== parentHead) {
-      // A parent can be rebased while this branch waits. The ordinary merge
-      // base then falls back to main and would replay the parent's old commits.
       const forkPoint = adoptingLegacy ? '' : await rootGit(['merge-base', '--fork-point',
         `origin/${parent.headRefName}`, 'HEAD']).catch(() => '');
-      const recorded = !adoptingLegacy && !forkPoint.trim() ? recordedParentHead(existing || {}) : null;
-      if (recorded) {
-        await rootGit(['merge-base', '--is-ancestor', recorded, 'HEAD']);
-      }
+      const recorded = !adoptingLegacy ? recordedParentHead(existing || {}) : null;
+      if (recorded) await rootGit(['merge-base', '--is-ancestor', recorded, immutableSourceHead]);
       const basePoint = adoptingLegacy
-        ? (await rootGit(['merge-base', 'HEAD', 'origin/main'])).trim()
-        : forkPoint.trim() || recorded || ancestor.trim();
+        ? reviewedSourceBase || (await rootGit(['merge-base', immutableSourceHead, 'origin/main'])).trim()
+        : recorded || forkPoint.trim() || ancestor.trim();
       if (!basePoint) throw new Error('Could not identify the branch base for ordered rebase.');
       if (!adoptingLegacy && !forkPoint.trim() && !recorded && (resume || existing)) {
         throw new Error(`Could not identify the previous tip of ${parent.headRefName}; leave this branch open for a safe restack.`);
       }
-      const sourceHead = (await rootGit(['rev-parse', 'HEAD'])).trim();
-      const deltaBase = recorded || (adoptingLegacy ? basePoint : null);
-      try {
+      if (adoptingLegacy || recorded) {
+        await exactReplay(basePoint, parentHead, parent.headRefName);
+      } else {
         await rootGit(['rebase', '--onto', parentHead, basePoint, branch]);
-      } catch (error) {
-        await rootGit(['rebase', '--abort']).catch(() => {});
-        if (!existing || !deltaBase || (await rootGit(['status', '--porcelain'])).trim()) throw error;
-        await rootGit(['merge-base', '--is-ancestor', deltaBase, sourceHead]);
-        fallbackRemoteHead = (await rootGit(['rev-parse', `refs/remotes/origin/${branch}`])).trim();
-        if (!/^[a-f0-9]{40}$/i.test(fallbackRemoteHead)) throw error;
-        await rootGit(['merge-base', '--is-ancestor', fallbackRemoteHead, sourceHead]);
-        const archived = (await rootGit(['ls-remote', '--tags', 'origin', `refs/tags/archive/${branch}`])).split(/\s+/)[0];
-        if (archived !== fallbackRemoteHead) throw new Error('Original remote child archive is missing; branch was not pushed.');
-        await scoped('npm', ['run', 'preflight', '--', '--expected-base', deltaBase]);
-        const sourcePr = JSON.parse(await rootGh(['pr', 'view', String(existing.number), '--repo', REPO, '--json', 'headRefOid,baseRefName']));
-        const sourceParent = (await rootGit(['ls-remote', '--heads', 'origin', parent.headRefName])).split(/\s+/)[0];
-        if (sourcePr.headRefOid !== fallbackRemoteHead || sourcePr.baseRefName !== existing.baseRefName
-          || sourceParent !== parentHead || (await rootGit(['rev-parse', 'HEAD'])).trim() !== sourceHead
-          || (await rootGit(['status', '--porcelain'])).trim()) {
-          throw new Error('Source or parent moved during preflight; archive and branch were not pushed.');
-        }
-        await archiveHead(rootGit, branch);
-        const helperUrl = new URL('./restack-after-merge.mjs', import.meta.url).href;
-        try {
-          await scoped(process.execPath, ['--input-type=module', '-e',
-            'const {restackMergedDelta}=await import(process.argv[2]); if(!restackMergedDelta(JSON.parse(process.argv[1]))) process.exitCode=1;',
-            JSON.stringify({ base: deltaBase, head: sourceHead, branch, number: existing.number, target: parentHead }), helperUrl]);
-        } catch (deltaError) {
-          if (!(await rootGit(['status', '--porcelain'])).trim()) await rootGit(['switch', branch]);
-          throw deltaError;
-        }
-        await rootGit(['switch', '-C', branch, 'HEAD']);
       }
+    } else if (adoptingLegacy || reviewedSourceBase) {
+      await exactReplay(reviewedSourceBase || parentHead, parentHead, parent.headRefName);
     }
   } else {
-    // Keep the bottom PR current before required checks and squash auto-merge.
-    await rootGit(['rebase', 'origin/main']);
+    if (adoptingLegacy) {
+      const mainHead = (await rootGit(['rev-parse', 'origin/main'])).trim();
+      const basePoint = (await rootGit(['merge-base', immutableSourceHead, mainHead])).trim();
+      await exactReplay(basePoint, mainHead, 'main');
+    } else {
+      // Rebase flattens merge commits even when main is already inherited,
+      // potentially dropping reviewed merge-only resolution content.
+      let inheritsMain = false;
+      try {
+        await rootGit(['merge-base', '--is-ancestor', 'origin/main', immutableSourceHead]);
+        inheritsMain = true;
+      } catch (error) {
+        if ((error.code ?? error.status) !== 1) throw error;
+      }
+      if (!inheritsMain) await rootGit(['rebase', 'origin/main']);
+    }
   }
+  if (preparedCandidateHead) await assertState(preparedCandidateHead);
 
   // The repository rule requires preflight before opening or updating a PR.
   await scoped('npm', parent
@@ -281,14 +427,21 @@ export async function runShipChange(options, command = defaultCommand) {
       throw new Error('Child PR moved during delta preparation; branch was not pushed.');
     }
   }
+  if (preparedCandidateHead) {
+    await assertState(preparedCandidateHead);
+    const currentTarget = (await rootGit(['ls-remote', '--heads', 'origin', exactTarget.branch])).split(/\s+/)[0];
+    if (currentTarget !== exactTarget.head) throw new Error('Exact-delta target changed; branch was not pushed.');
+  }
   // Archive the exact new head before it can be pushed and later auto-deleted.
-  await archiveHead(rootGit, branch);
-  const remoteBranch = await rootGit(['ls-remote', '--heads', 'origin', branch]);
+  await archiveHead(rootGit, branch, preparedCandidateHead, preparedCandidateHead ? () => assertState(preparedCandidateHead) : undefined);
+  if (preparedCandidateHead) await assertState(preparedCandidateHead);
+  if (preparedCandidateHead) await assertState(preparedCandidateHead);
+  const publishedSource = preparedCandidateHead || 'HEAD';
   await rootGit(fallbackRemoteHead
-    ? ['push', `--force-with-lease=refs/heads/${branch}:${fallbackRemoteHead}`, 'origin', `HEAD:refs/heads/${branch}`]
-    : remoteBranch.trim()
-    ? ['push', '--force-with-lease', 'origin', `HEAD:refs/heads/${branch}`]
-    : ['push', '-u', 'origin', `HEAD:refs/heads/${branch}`]);
+    ? ['push', `--force-with-lease=refs/heads/${branch}:${fallbackRemoteHead}`, 'origin', `${publishedSource}:refs/heads/${branch}`]
+    : observedRemoteHead
+    ? ['push', `--force-with-lease=refs/heads/${branch}:${observedRemoteHead}`, 'origin', `${publishedSource}:refs/heads/${branch}`]
+    : ['push', '-u', `--force-with-lease=refs/heads/${branch}:`, 'origin', `${publishedSource}:refs/heads/${branch}`]);
 
   let pr = existing;
   if (!pr) {

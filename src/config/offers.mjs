@@ -117,7 +117,7 @@ export const OFFERS = Object.freeze({
     key: "REPAIR_DFY",
     name: "Credit repair, done-for-you",
     priceCents: 100000,
-    financing: true,
+    financing: false,
     letters: true,
     paymentPurpose: "repair",
     productCode: "repair-bundle",
@@ -126,9 +126,9 @@ export const OFFERS = Object.freeze({
   }),
   REPAIR_TRIAL: Object.freeze({
     key: "REPAIR_TRIAL",
-    name: "Repair test run (first round, done for you)",
+    name: "Repair test run (two rounds, done for you)",
     priceCents: 20000,
-    financing: true,
+    financing: false,
     letters: true,
     paymentPurpose: "repair",
     productCode: "repair-trial",
@@ -509,7 +509,7 @@ export function defaultContractValues({ offerKey = null, tier = null, templateKe
   if (key === "REPAIR-TRIAL-AGREEMENT") {
     return {
       trial_fee: price || "$200",
-      scope: "One done-for-you dispute round (bureaus and creditors on your file). You watch progress in your portal."
+      scope: "Two done-for-you dispute rounds (bureaus and creditors on your file). Round 2 uses a newer credit pull after the Round 1 letters. You watch progress in your portal."
     };
   }
   if (key === "CREDIT-REPAIR-AGREEMENT") {

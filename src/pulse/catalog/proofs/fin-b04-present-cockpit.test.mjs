@@ -203,11 +203,11 @@ const WRAPS = {
   },
   REPAIR_TRIAL: {
     lines: [
-      "Your credit specialist prepares the first round from your file. You will see the letters and replies in your portal as they are recorded.",
-      "After that round, you decide whether to continue. Let's open your first portal step.",
+      "Your $200 test run covers two done-for-you rounds. Your credit specialist prepares the first from your file, then uses a newer credit pull for the second. You will see the letters and replies in your portal as they are recorded.",
+      "After those two rounds, you decide whether to continue. Let's open your first portal step.",
       "Any questions before we wrap?"
     ],
-    watch: "One round, then their decision. Do not describe it as the full program. Never promise a deletion, a score, or a result."
+    watch: "Two rounds, then their decision. Do not describe it as the full program. Never promise a deletion, a score, or a result."
   },
   UWIQ_DELIVERABLES: {
     lines: [
@@ -241,7 +241,7 @@ const INVESTMENT = {
     "To start the funding work, the deposit is $3,000 today. It counts once toward the 10 percent success fee on confirmed approved limits or amounts.",
     "The fee includes approved credit access you do not draw. Let's read the agreement's example and payment timing together."
   ],
-  REPAIR: ["Offer the 12-month Capital Blueprint first when that plan fits. If they decline, show the $1,000 done-for-you optimization or $200 first round at its actual terms."],
+  REPAIR: ["Offer the 12-month Capital Blueprint first when that plan fits. If they decline, show the $1,000 done-for-you optimization or $200 two-round test run at its actual terms."],
   EDU: ["If a course offer is live, use only the price and deliverables on its screen. Keep it separate from the Blueprint."]
 };
 const INVESTMENT_WATCH = "Name one offer, its full price and its written terms before payment.";
@@ -310,8 +310,15 @@ for (const route of ROUTES) {
     await page.locator('[data-act="next"]').first().click();
     assert.equal(await nextTitle(page), "Wrap");
     const wrap = WRAPS[wrapKey(route.offer, route.bucket)];
-    assert.deepEqual(await saysNow(page), wrap.lines, `${route.name}: the wrap words`);
-    assert.equal(await watchNow(page), wrap.watch, `${route.name}: the watch-for words`);
+    const actualWrap = await saysNow(page);
+    const actualWatch = await watchNow(page);
+    assert.deepEqual(actualWrap, wrap.lines, `${route.name}: the wrap words`);
+    assert.equal(actualWatch, wrap.watch, `${route.name}: the watch-for words`);
+    if (route.offer === "REPAIR_TRIAL") {
+      assert.ok(actualWrap.some(line => line.includes("$200 test run covers two done-for-you rounds")));
+      assert.ok(!actualWrap.some(line => line.includes("After that round, you decide")), "the trial must not promise only one round");
+      assert.ok(!actualWatch.includes("One round, then their decision"));
+    }
     await page.close();
   });
 }

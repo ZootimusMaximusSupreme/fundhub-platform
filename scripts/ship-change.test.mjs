@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { chooseBase, orderedChain, parseArgs, runShipChange } from './ship-change.mjs';
+import { chooseBase, orderedChain, parseArgs, runShipChange, sourceDeltaManifest, sourceManifestDigest } from './ship-change.mjs';
 
 const member = (number, headRefName, baseRefName, position) => ({
   number, headRefName, baseRefName, isDraft: false,
@@ -45,18 +45,20 @@ function fakeCommands(prs) {
     if (program === 'git') {
       if (args[0] === 'symbolic-ref') return 'codex/new-change\n';
       if (args[0] === 'rev-parse' && args[1] === '--show-toplevel') return '/repo\n';
+      if (args[0] === 'rev-parse' && args[1] === 'refs/remotes/origin/codex/new-change') return `${'a'.repeat(40)}\n`;
       if (args[0] === 'rev-parse' && args[1]?.startsWith('origin/')) return 'parent-head\n';
       if (args[0] === 'rev-parse' && args[1] === 'HEAD') return `${'a'.repeat(40)}\n`;
       if (args[0] === 'remote') return 'https://github.com/ZootimusMaximusSupreme/fundhub-platform.git\n';
-      if (args[0] === 'status') return ' M scripts/new.mjs\0';
+      if (args[0] === 'status') return calls.some(c => c[0] === 'git' && c[1] === 'commit') ? '' : ' M scripts/new.mjs\0';
       if (args[0] === 'diff' && args[1] === '--cached' && args[2] === '--name-only') {
         return calls.some(call => call[0] === 'git' && call[1] === 'add') ? 'scripts/new.mjs\0' : '';
       }
       if (args[0] === 'merge-base') return 'parent-head\n';
+      if (args[0] === 'ls-remote' && args[1] === '--heads' && args[3] === 'refs/heads/codex/new-change') return `${'a'.repeat(40)}\t${args[3]}\n`;
       if (args[0] === 'ls-remote' && args[1] === '--heads') return `parent-head\trefs/heads/${args[3]}\n`;
       if (args[0] === 'ls-remote' && args[1] === '--tags') {
         return calls.some(call => call[0] === 'git' && call[1] === 'push' &&
-          call.at(-1) === 'refs/tags/archive/codex/new-change')
+          call.at(-1)?.endsWith(':refs/tags/archive/codex/new-change'))
           ? `${'a'.repeat(40)}\trefs/tags/archive/codex/new-change\n` : '';
       }
       return '';
@@ -82,7 +84,7 @@ test('root change runs preflight, opens a PR, and enables queue auto-merge', asy
   assert(calls.some(call => call.join(' ').includes('pr merge 42 --repo ZootimusMaximusSupreme/fundhub-platform --auto --squash')));
   assert(calls.some(call => call.join(' ') === 'npm run preflight'));
   const tagPush = calls.findIndex(call => call[0] === 'git' && call[1] === 'push' &&
-    call.at(-1) === 'refs/tags/archive/codex/new-change');
+    call.at(-1)?.endsWith(':refs/tags/archive/codex/new-change'));
   const branchPush = calls.findIndex(call => call[0] === 'git' && call[1] === 'push' &&
     call.at(-1) === 'HEAD:refs/heads/codex/new-change');
   assert.ok(tagPush >= 0 && tagPush < branchPush);
@@ -119,29 +121,6 @@ test('resume refreshes the recorded parent tip without changing the release mani
   assert.equal((edit.at(-1).match(/Stack parent head:/g) || []).length, 1);
 });
 
-test('adopts an existing main-based backlog PR into the next ordered position', async () => {
-  const legacy = { number: 42, headRefName: 'codex/new-change', baseRefName: 'main',
-    isDraft: false, labels: [], body: 'Owner lane: sales\n\nRelease manifest stays.' };
-  const { command, calls } = fakeCommands([member(41, 'codex/previous-change', 'main', 1), legacy]);
-  const resumed = async (program, args, options) => {
-    if (program === 'git' && args[0] === 'status') return '';
-    if (program === 'git' && args[0] === 'rev-list') return '1\n';
-    if (program === 'git' && args[0] === 'merge-base') return 'main-base\n';
-    return command(program, args, options);
-  };
-  const result = await runShipChange({ message: 'Backlog change', ownerLane: 'sales', files: [], resume: true }, resumed);
-  assert.equal(result.number, 42);
-  assert.equal(result.base, 'codex/previous-change');
-  assert.ok(calls.some(call => call[0] === 'git' && call[1] === 'rebase' &&
-    call[2] === '--onto' && call[3] === 'parent-head' && call[4] === 'main-base'));
-  assert.ok(calls.some(call => call[0] === 'gh' && call[1] === 'pr' && call[2] === 'edit' &&
-    call.includes('--base') && call.at(-1) === 'codex/previous-change'));
-  assert.ok(calls.some(call => call[0] === 'gh' && call[1] === 'pr' && call[2] === 'edit' &&
-    call.includes('--body') && call.at(-1).includes('Release manifest stays.')));
-  assert.ok(calls.some(call => call[0] === 'gh' && call[1] === 'pr' && call[2] === 'edit' &&
-    call.includes('--add-label') && call.at(-1) === 'ship-order/2'));
-});
-
 test('does not take a legacy PR out of its existing older stack', async () => {
   const legacy = { number: 42, headRefName: 'codex/new-change', baseRefName: 'older-branch',
     isDraft: false, labels: [], body: 'Owner lane: sales' };
@@ -154,7 +133,7 @@ test('does not take a legacy PR out of its existing older stack', async () => {
 test('a parent branch that moves during preflight stops before child push or PR creation', async () => {
   const { command, calls } = fakeCommands([member(41, 'codex/previous-change', 'main', 1)]);
   const moved = async (program, args, options) => {
-    if (program === 'git' && args[0] === 'ls-remote' && args[1] === '--heads') {
+    if (program === 'git' && args[0] === 'ls-remote' && args[1] === '--heads' && args[3] !== 'refs/heads/codex/new-change') {
       return `new-parent-head\trefs/heads/${args[3]}\n`;
     }
     return command(program, args, options);
@@ -191,7 +170,7 @@ test('resume rebases only child commits when a stacked parent was rewritten', as
     if (program === 'git' && args[0] === 'rev-parse' && args[1]?.startsWith('origin/')) {
       return 'new-parent-head\n';
     }
-    if (program === 'git' && args[0] === 'ls-remote' && args[1] === '--heads') {
+    if (program === 'git' && args[0] === 'ls-remote' && args[1] === '--heads' && args[3] !== 'refs/heads/codex/new-change') {
       return `new-parent-head\trefs/heads/${args[3]}\n`;
     }
     return command(program, args, options);
@@ -293,7 +272,7 @@ test('resume retries an existing clean commit without making a second commit', a
   assert(calls.some(call => call[0] === 'gh' && call[1] === 'pr' && call[2] === 'create'));
 });
 
-for (const scenario of ['clean', 'conflict', 'legacy clean', 'legacy conflict', 'changed head', 'late changed head', 'deleted branch', 'preflight refusal', 'missing archive', 'invalid parent']) {
+for (const scenario of ['clean', 'conflict', 'legacy clean', 'legacy conflict', 'proof clean', 'proof linear', 'proof conflict', 'proof wrong base', 'proof dropped manifest', 'proof wrong body', 'proof missing owner archive', 'proof foreign owner', 'proof changed source', 'proof missing approval', 'proof owner ancestry', 'proof no target', 'proof owner race', 'proof archive race', 'proof candidate race', 'proof CAS race', 'proof staged race', 'proof unstaged race', 'proof untracked race', 'proof push race', 'proof archive ref race', 'proof merge-only', 'ordered merge-only', 'changed head', 'late changed head', 'deleted branch', 'preflight refusal', 'missing archive', 'invalid parent', 'retry after helper failure', 'retry missing history', 'retry wrong history', 'retry foreign archive']) {
   test(`real Git open parent rewrite without reflog: ${scenario}`, async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ship-open-parent-'));
     const work = path.join(root, 'work');
@@ -301,22 +280,34 @@ for (const scenario of ['clean', 'conflict', 'legacy clean', 'legacy conflict', 
     fs.mkdirSync(work);
     const git = (...args) => execFileSync('git', args, { cwd: work, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
     const write = (name, text) => fs.writeFileSync(path.join(work, name), text);
-    const legacy = scenario.startsWith('legacy ');
-    const contentConflict = scenario === 'conflict' || scenario === 'legacy conflict';
+    const proofCase = scenario.startsWith('proof ');
+    const retryCase = scenario.startsWith('retry ');
+    const legacy = scenario.startsWith('legacy ') || proofCase || retryCase;
+    const contentConflict = scenario === 'conflict' || scenario === 'legacy conflict' || scenario === 'proof conflict';
     try {
       execFileSync('git', ['init', '--bare', origin], { stdio: 'ignore' });
       git('init', '-b', 'main'); git('config', 'user.name', 'Test'); git('config', 'user.email', 'test@example.invalid');
       git('remote', 'add', 'origin', origin);
       write('base.txt', 'base\n'); git('add', '.'); git('commit', '-m', 'base');
+      const mainBase = git('rev-parse', 'HEAD');
       git('switch', '-c', 'old-parent'); write('parent.txt', 'parent feature\n');
       if (contentConflict) write('child.txt', 'parent line\n');
       git('add', '.'); git('commit', '-m', 'old parent'); const oldParent = git('rev-parse', 'HEAD');
-      if (legacy) git('branch', '-f', 'main', oldParent);
+      if (legacy && !proofCase) git('branch', '-f', 'main', oldParent);
       git('switch', '-c', 'original-child'); write('child.txt', 'draft\n'); git('add', '.'); git('commit', '-m', 'draft');
       const first = git('rev-parse', 'HEAD'); write('child.txt', 'final  '); git('add', '.'); git('commit', '-m', 'final');
       const original = git('rev-parse', 'HEAD');
-      git('switch', '-c', 'child', oldParent); git('cherry-pick', '--no-commit', first); git('commit', '-m', 'copy draft');
-      git('cherry-pick', '--no-commit', original); git('commit', '-m', 'copy final'); git('merge', '--no-edit', 'original-child');
+      git('switch', '-c', 'child', oldParent);
+      if (scenario === 'proof linear') {
+        git('merge', '--ff-only', 'original-child');
+      } else {
+        git('cherry-pick', '--no-commit', first); git('commit', '-m', 'copy draft');
+        git('cherry-pick', '--no-commit', original); git('commit', '-m', 'copy final');
+        if (scenario.endsWith('merge-only')) {
+          git('merge', '--no-commit', '--no-ff', 'original-child');
+          write('merge-only.txt', 'reviewed merge resolution only\n'); git('add', '.'); git('commit', '-m', 'merge with approved resolution');
+        } else git('merge', '--no-edit', 'original-child');
+      }
       const remoteHead = git('rev-parse', 'HEAD'); git('push', 'origin', 'child');
       if (scenario !== 'missing archive') { git('tag', 'archive/child', remoteHead); git('push', 'origin', 'refs/tags/archive/child'); }
       write('local-fix.txt', 'reviewed CI fix\n'); git('add', '.'); git('commit', '-m', 'new unpublished fix');
@@ -326,20 +317,51 @@ for (const scenario of ['clean', 'conflict', 'legacy clean', 'legacy conflict', 
       if (contentConflict) write('child.txt', 'new parent decision\n');
       git('add', '.'); git('commit', '-m', 'rewritten open parent'); const parentHead = git('rev-parse', 'HEAD'); git('push', 'origin', 'parent');
       git('switch', 'child');
-      const prs = [member(41, 'parent', 'main', 1), { ...member(42, 'child', legacy ? 'main' : 'parent', 2),
+      const parentArchive = `refs/tags/archive/parent-${oldParent.slice(0, 8)}`;
+      if (proofCase && scenario !== 'proof missing owner archive') {
+        git('tag', parentArchive.replace('refs/tags/', ''), oldParent);
+        git('push', 'origin', parentArchive);
+      }
+      const manifest = sourceDeltaManifest(execFileSync('git', ['diff', '--raw', '--no-abbrev', '--no-renames',
+        '--no-ext-diff', '--no-textconv', '-z', oldParent, sourceHead, '--'], { cwd: work, encoding: 'utf8' }));
+      const proof = { version: 1, head: sourceHead, base: oldParent, ownerPr: 41,
+        ownerBranch: 'parent', ownerArchiveHead: oldParent, ownerArchiveRef: parentArchive, manifest };
+      let approval = sourceManifestDigest(manifest);
+      if (scenario === 'proof wrong base') proof.base = mainBase;
+      if (scenario === 'proof owner ancestry') {
+        proof.base = first;
+        proof.manifest = sourceDeltaManifest(execFileSync('git', ['diff', '--raw', '--no-abbrev', '--no-renames',
+          '--no-ext-diff', '--no-textconv', '-z', first, sourceHead, '--'], { cwd: work, encoding: 'utf8' }));
+        approval = sourceManifestDigest(proof.manifest);
+      }
+      if (scenario === 'proof dropped manifest') { proof.manifest = manifest.slice(1); approval = sourceManifestDigest(proof.manifest); }
+      if (scenario === 'proof changed source') proof.head = 'e'.repeat(40);
+      if (scenario === 'proof missing approval') approval = undefined;
+      const prs = [...(scenario === 'proof no target' ? [] : [member(41, 'parent', 'main', 1)]), { ...member(42, 'child', legacy ? 'main' : 'parent', 2),
         ...(legacy ? { labels: [] } : {}),
-        body: legacy ? 'Owner lane: ci' : `Owner lane: ci\nStack parent head: ${scenario === 'invalid parent' ? 'f'.repeat(40) : oldParent}` }];
+        body: proofCase ? `Owner lane: ci\nStack parent head: ${scenario === 'proof wrong body' ? mainBase : proof.base}` : legacy ? 'Owner lane: ci' : `Owner lane: ci\nStack parent head: ${scenario === 'invalid parent' ? 'f'.repeat(40) : oldParent}` }];
       const calls = [];
       let rebaseFailed = false;
+      let helperFailed = false;
       let prReads = 0;
+      let preflights = 0;
+      let actorHead = null;
+      const actorCommit = () => { write('actor.txt', 'new concurrent work\n'); git('add', 'actor.txt'); git('commit', '-m', 'concurrent actor'); actorHead = git('rev-parse', 'HEAD'); };
       const command = async (program, args) => {
         calls.push([program, ...args]);
+        if (retryCase && program === process.execPath && !helperFailed) { helperFailed = true; throw new Error('injected candidate helper failure'); }
         if (program === 'npm') {
+          preflights += 1;
+          if (scenario === 'proof candidate race' && preflights === 2) actorCommit();
           if (scenario === 'preflight refusal') throw new Error('preflight refused');
           return '';
         }
         if (program === 'gh') {
           if (args[0] === 'pr' && args[1] === 'list') return JSON.stringify(prs);
+          if (args[0] === 'api' && args[1] === 'repos/ZootimusMaximusSupreme/fundhub-platform/pulls/41') {
+            return JSON.stringify({ head: { ref: 'parent', repo: { full_name: scenario === 'proof foreign owner'
+              ? 'foreign/repo' : 'ZootimusMaximusSupreme/fundhub-platform' } } });
+          }
           if (args[0] === 'pr' && args[1] === 'view') {
             prReads += 1;
             if (scenario === 'deleted branch' && prReads === 2) git('push', 'origin', ':refs/heads/child');
@@ -348,13 +370,42 @@ for (const scenario of ['clean', 'conflict', 'legacy clean', 'legacy conflict', 
           return '';
         }
         if (program === 'git' && args[0] === 'remote') return 'https://github.com/ZootimusMaximusSupreme/fundhub-platform.git';
-        try { return execFileSync(program, args, { cwd: work, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }); }
+        if (scenario === 'proof CAS race' && program === 'git' && args[0] === 'update-ref') {
+          actorHead = git('commit-tree', git('rev-parse', `${sourceHead}^{tree}`), '-p', sourceHead, '-m', 'concurrent source commit');
+          git('update-ref', 'refs/heads/child', actorHead, sourceHead);
+        }
+        if (scenario === 'proof archive ref race' && program === 'git' && args[0] === 'push' && args.at(-1)?.endsWith(':refs/tags/archive/child')) git('tag', '-f', 'archive/child', remoteHead);
+        if (scenario === 'proof push race' && program === 'git' && args[0] === 'push' && args.at(-1)?.endsWith(':refs/heads/child')) actorCommit();
+        try {
+          const result = execFileSync(program, args, { cwd: work, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+          if (scenario === 'proof owner race' && program === 'git' && args[0] === 'fetch' && args.at(-1) === parentArchive) actorCommit();
+          if (scenario === 'proof archive race' && program === 'git' && args[0] === 'push' && args.at(-1)?.endsWith(':refs/tags/archive/child') && git('rev-parse', 'HEAD') === sourceHead) actorCommit();
+          if (/^proof (staged|unstaged|untracked) race$/.test(scenario) && program === process.execPath) {
+            if (scenario === 'proof unstaged race') write('base.txt', 'new unstaged work\n');
+            else { write('actor.txt', 'new concurrent work\n'); if (scenario === 'proof staged race') git('add', 'actor.txt'); }
+          }
+          return result;
+        }
         catch (error) { if (program === 'git' && args[0] === 'rebase') rebaseFailed = true; throw error; }
       };
-      const action = runShipChange({ message: 'CI fix', ownerLane: 'ci', files: [], resume: true }, command);
-      if (scenario === 'clean' || scenario === 'legacy clean') {
+      let action = runShipChange({ message: 'CI fix', ownerLane: 'ci', files: [], resume: true,
+        ...(proofCase ? { sourceBoundaryProof: proof, approvedSourceManifest: approval } : {}) }, command);
+      if (retryCase) {
+        await assert.rejects(action, /injected candidate helper failure/);
+        assert.equal(git('rev-parse', 'HEAD'), sourceHead);
+        assert.equal(git('ls-remote', '--heads', 'origin', 'child').split(/\s+/)[0], remoteHead);
+        assert.equal(git('ls-remote', '--tags', 'origin', 'refs/tags/archive/child').split(/\s+/)[0], sourceHead);
+        const oldArchive = `refs/tags/archive/child-${remoteHead.slice(0, 8)}`;
+        assert.equal(git('ls-remote', '--tags', 'origin', oldArchive).split(/\s+/)[0], remoteHead);
+        if (scenario === 'retry missing history') git('push', 'origin', `:${oldArchive}`);
+        if (scenario === 'retry wrong history') git('push', '--force', 'origin', `${mainBase}:${oldArchive}`);
+        if (scenario === 'retry foreign archive') git('push', '--force', 'origin', `${oldParent}:refs/tags/archive/child`);
+        calls.length = 0;
+        action = runShipChange({ message: 'CI fix', ownerLane: 'ci', files: [], resume: true }, command);
+      }
+      if (scenario === 'retry after helper failure' || scenario === 'clean' || scenario === 'legacy clean'  || scenario === 'proof clean' || scenario === 'proof linear' || scenario.endsWith('merge-only') || scenario === 'proof push race' || scenario === 'proof archive ref race') {
         assert.equal((await action).number, 42);
-        assert.equal(rebaseFailed, true);
+        assert.equal(rebaseFailed, false, 'verified final delta must never replay source history');
         const published = git('ls-remote', '--heads', 'origin', 'child').split(/\s+/)[0];
         assert.equal(git('rev-parse', `${published}:child.txt`), git('rev-parse', `${sourceHead}:child.txt`));
         assert.equal(git('show', `${published}:parent-new.txt`), 'keep new parent delta');
@@ -364,21 +415,197 @@ for (const scenario of ['clean', 'conflict', 'legacy clean', 'legacy conflict', 
         assert.equal(git('symbolic-ref', '--short', 'HEAD'), 'child');
         assert.equal(git('rev-parse', `refs/tags/archive/child-${remoteHead.slice(0, 8)}`), remoteHead);
         assert.equal(git('rev-parse', `refs/tags/archive/child-${sourceHead.slice(0, 8)}`), sourceHead);
-        const preflights = calls.filter(c => c[0] === 'npm');
-        assert.deepEqual(preflights.map(c => c.at(-1)), [oldParent, 'origin/parent']);
+        const preflightCalls = calls.filter(c => c[0] === 'npm');
+        assert.deepEqual(preflightCalls.map(c => c.at(-1)), [oldParent, 'origin/parent']);
         assert.ok(calls.some(c => c.includes(`--force-with-lease=refs/heads/child:${remoteHead}`)));
         if (legacy) assert.ok(calls.some(c => c[0] === 'gh' && c.includes('--base') && c.at(-1) === 'parent'));
+        if (scenario.endsWith('merge-only')) assert.equal(git('show', `${published}:merge-only.txt`), 'reviewed merge resolution only');
+        if (scenario === 'proof push race') {
+          assert.equal(git('rev-parse', 'HEAD'), actorHead);
+          assert.throws(() => git('cat-file', '-e', `${published}:actor.txt`));
+          assert.ok(calls.some(c => c[0] === 'git' && c[1] === 'push' && c.at(-1) === `${published}:refs/heads/child`));
+        }
+        if (proofCase) {
+          assert.equal(git('show', `${published}:parent.txt`), 'parent feature');
+          assert.ok(calls.some(c => c[0] === 'gh' && c.includes('--body') && c.at(-1).includes(`Stack parent head: ${parentHead}`)));
+        }
       } else {
         await assert.rejects(action);
         assert.equal(git('ls-remote', '--heads', 'origin', 'child').split(/\s+/)[0], scenario === 'deleted branch' ? '' : remoteHead);
-        assert.equal(calls.some(c => c[0] === 'git' && c[1] === 'push' && c.at(-1) === 'HEAD:refs/heads/child'), scenario === 'deleted branch');
+        assert.equal(calls.some(c => c[0] === 'git' && c[1] === 'push' && c.at(-1)?.endsWith(':refs/heads/child')), scenario === 'deleted branch');
         if (scenario === 'deleted branch') assert.ok(calls.some(c => c.includes(`--force-with-lease=refs/heads/child:${remoteHead}`)));
         assert.equal(calls.some(c => c[0] === 'gh' && (c.includes('--base') || c[1] === 'merge')), false);
         if (scenario === 'changed head' || scenario === 'preflight refusal') {
           assert.equal(calls.some(c => c[0] === 'git' && c[1] === 'push'), false, 'source preflight/freshness refusal must precede all archive pushes');
         }
         if (contentConflict) assert.equal(git('symbolic-ref', '--short', 'HEAD'), 'child');
+        if (proofCase && !contentConflict && !scenario.endsWith(' race')) assert.equal(calls.some(c => c[0] === 'git' && c[1] === 'push'), false,
+          'invalid source provenance/manifest must fail before any source archive push');
+        if (actorHead) assert.equal(git('rev-parse', 'refs/heads/child'), actorHead, 'concurrent committed work survives refusal');
+        if (scenario === 'proof staged race') assert.equal(git('show', ':actor.txt'), 'new concurrent work');
+        if (scenario === 'proof unstaged race') assert.equal(fs.readFileSync(path.join(work, 'base.txt'), 'utf8'), 'new unstaged work\n');
+        if (scenario === 'proof untracked race') assert.equal(fs.readFileSync(path.join(work, 'actor.txt'), 'utf8'), 'new concurrent work\n');
       }
     } finally { fs.rmSync(root, { recursive: true, force: true }); }
   });
 }
+
+for (const scenario of ['normal clean', 'remote moves during preflight', 'remote moves at push', 'fetch observation mismatch', 'new branch clean', 'new branch race']) {
+  test(`real Git source lease is frozen before rewrite: ${scenario}`, async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ship-frozen-lease-'));
+    const work = path.join(root, 'work');
+    const origin = path.join(root, 'origin.git');
+    fs.mkdirSync(work);
+    const git = (...args) => execFileSync('git', args, { cwd: work, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+    const isNew = scenario.startsWith('new branch');
+    try {
+      execFileSync('git', ['init', '--bare', origin], { stdio: 'ignore' });
+      git('init', '-b', 'main'); git('config', 'user.email', 'test@example.test'); git('config', 'user.name', 'Test');
+      git('remote', 'add', 'origin', origin);
+      fs.writeFileSync(path.join(work, 'base.txt'), 'base\n'); git('add', '.'); git('commit', '-m', 'base'); git('push', 'origin', 'main');
+      git('switch', '-c', 'child'); fs.writeFileSync(path.join(work, 'child.txt'), 'published child\n');
+      git('add', '.'); git('commit', '-m', 'published child'); const remoteHead = git('rev-parse', 'HEAD');
+      if (!isNew) { git('push', 'origin', 'child'); git('tag', 'archive/child'); git('push', 'origin', 'refs/tags/archive/child'); }
+      fs.writeFileSync(path.join(work, 'local.txt'), 'local intended fix\n'); git('add', '.'); git('commit', '-m', 'local fix');
+      const sourceHead = git('rev-parse', 'HEAD');
+      const otherHead = git('commit-tree', git('rev-parse', `${remoteHead}^{tree}`), '-p', remoteHead, '-m', 'another writer owns this commit');
+      const calls = [];
+      let raced = false;
+      const moveRemote = (fetchTracking) => {
+        raced = true;
+        const replacement = scenario === 'new branch race' ? remoteHead : otherHead;
+        git('push', 'origin', `${replacement}:refs/heads/child`);
+        if (fetchTracking) git('fetch', 'origin', 'refs/heads/child:refs/remotes/origin/child');
+        else {
+          // A different checkout's push cannot update this checkout's fetched ref.
+          git('update-ref', 'refs/remotes/origin/child', remoteHead);
+        }
+      };
+      const command = async (program, args) => {
+        calls.push([program, ...args]);
+        if (program === 'npm') {
+          if (scenario === 'remote moves during preflight' && !raced) moveRemote(true);
+          return '';
+        }
+        if (program === 'gh') {
+          if (args[1] === 'list') return JSON.stringify(isNew ? [] : [{ ...member(42, 'child', 'main', 1), body: 'Owner lane: ci' }]);
+          if (args[1] === 'create') return 'https://github.com/ZootimusMaximusSupreme/fundhub-platform/pull/42';
+          if (args[1] === 'view') return JSON.stringify(member(42, 'child', 'main', 1));
+          return '';
+        }
+        if (program === 'git' && args[0] === 'remote') return 'https://github.com/ZootimusMaximusSupreme/fundhub-platform.git';
+        if (scenario === 'fetch observation mismatch' && !raced && program === 'git' && args[0] === 'ls-remote' && args.at(-1) === 'refs/heads/child') moveRemote(false);
+        if ((scenario === 'remote moves at push' || scenario === 'new branch race') && !raced && program === 'git' && args[0] === 'push' && args.at(-1)?.endsWith(':refs/heads/child')) moveRemote(true);
+        return execFileSync(program, args, { cwd: work, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+      };
+      const action = runShipChange({ message: 'CI fix', ownerLane: 'ci', files: [], resume: true }, command);
+      const expectedLease = `--force-with-lease=refs/heads/child:${isNew ? '' : remoteHead}`;
+      if (scenario === 'normal clean' || scenario === 'new branch clean') {
+        await action;
+        assert.equal(git('ls-remote', '--heads', 'origin', 'child').split(/\s+/)[0], sourceHead);
+      } else {
+        await assert.rejects(action);
+        assert.equal(git('ls-remote', '--heads', 'origin', 'child').split(/\s+/)[0], scenario === 'new branch race' ? remoteHead : otherHead, 'the other writer must survive even if a background fetch updates origin/child');
+        assert.equal(git('rev-parse', 'HEAD'), sourceHead, 'local intended work also survives');
+        assert.equal(calls.some(c => c[0] === 'gh' && (c[1] === 'edit' || c[1] === 'merge')), false);
+      }
+      if (scenario === 'fetch observation mismatch') {
+        assert.equal(calls.some(c => c[0] === 'git' && ['rebase', 'push'].includes(c[1])), false);
+      } else {
+        assert.ok(calls.some(c => c[0] === 'git' && c[1] === 'push' && c.includes(expectedLease) && c.at(-1)?.endsWith(':refs/heads/child')));
+        assert.equal(calls.some(c => c.includes('--force-with-lease')), false, 'never use a tracking-ref-derived lease');
+      }
+      const observed = calls.findIndex(c => c[0] === 'git' && c[1] === 'ls-remote' && c.at(-1) === 'refs/heads/child');
+      const rewrite = calls.findIndex(c => c[0] === 'git' && c[1] === 'rebase');
+      assert.ok(observed >= 0 && (rewrite < 0 || observed < rewrite));
+    } finally { fs.rmSync(root, { recursive: true, force: true }); }
+  });
+}
+
+
+for (const scenario of ['three-parent reviewed merge already inherits main', 'diverged source still needs main']) {
+  test(`real Git ordinary main shipping preserves source history: ${scenario}`, async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ship-main-merge-preservation-'));
+    const work = path.join(root, 'work');
+    const origin = path.join(root, 'origin.git');
+    fs.mkdirSync(work);
+    const git = (...args) => execFileSync('git', args, { cwd: work, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+    try {
+      execFileSync('git', ['init', '--bare', origin], { stdio: 'ignore' });
+      git('init', '-b', 'main'); git('config', 'user.email', 'test@example.test'); git('config', 'user.name', 'Test');
+      git('remote', 'add', 'origin', origin);
+      fs.writeFileSync(path.join(work, 'shared.txt'), 'base\n');
+      git('add', '.'); git('commit', '-m', 'base'); const base = git('rev-parse', 'HEAD');
+      git('push', 'origin', 'main');
+      let originalParents;
+      const preservesMerge = scenario.startsWith('three-parent');
+      if (preservesMerge) {
+        git('switch', '-c', 'side-a'); fs.writeFileSync(path.join(work, 'shared.txt'), 'side A\n');
+        git('add', '.'); git('commit', '-m', 'side A'); const sideA = git('rev-parse', 'HEAD');
+        git('switch', '-c', 'side-b', base); fs.writeFileSync(path.join(work, 'shared.txt'), 'side B\n');
+        git('add', '.'); git('commit', '-m', 'side B'); const sideB = git('rev-parse', 'HEAD');
+        fs.writeFileSync(path.join(work, 'shared.txt'), 'reviewed resolution of A and B\n');
+        fs.writeFileSync(path.join(work, 'merge-only.txt'), 'approved content absent from every parent\n');
+        git('add', '.'); const tree = git('write-tree');
+        const head = git('commit-tree', tree, '-p', base, '-p', sideA, '-p', sideB, '-m', 'reviewed three-parent resolution');
+        git('reset', '--hard'); git('switch', '-c', 'child', head);
+        originalParents = [base, sideA, sideB].join(' ');
+      } else {
+        git('switch', '-c', 'child'); fs.writeFileSync(path.join(work, 'child.txt'), 'approved child\n');
+        git('add', '.'); git('commit', '-m', 'child');
+        git('switch', 'main'); fs.writeFileSync(path.join(work, 'new-main.txt'), 'new main\n');
+        git('add', '.'); git('commit', '-m', 'main advanced'); git('push', 'origin', 'main'); git('switch', 'child');
+      }
+      const source = git('rev-parse', 'HEAD'); const sourceTree = git('rev-parse', 'HEAD^{tree}');
+      const calls = [];
+      const command = async (program, args) => {
+        calls.push([program, ...args]);
+        if (program === 'npm') return '';
+        if (program === 'gh') {
+          if (args[1] === 'list') return '[]';
+          if (args[1] === 'create') return 'https://github.com/ZootimusMaximusSupreme/fundhub-platform/pull/42';
+          if (args[1] === 'view') return JSON.stringify(member(42, 'child', 'main', 1));
+          return '';
+        }
+        if (program === 'git' && args[0] === 'remote') return 'https://github.com/ZootimusMaximusSupreme/fundhub-platform.git';
+        return execFileSync(program, args, { cwd: work, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+      };
+      await runShipChange({ message: 'Preserve reviewed source', ownerLane: 'ci', files: [], resume: true }, command);
+      const published = git('ls-remote', '--heads', 'origin', 'child').split(/\s+/)[0];
+      assert.equal(published, git('rev-parse', 'HEAD'));
+      assert.equal(git('ls-remote', '--tags', 'origin', 'refs/tags/archive/child').split(/\s+/)[0], published);
+      const preflight = calls.findIndex(c => c[0] === 'npm' && c[1] === 'run' && c[2] === 'preflight');
+      const branchPush = calls.findIndex(c => c[0] === 'git' && c[1] === 'push' && c.at(-1)?.endsWith(':refs/heads/child'));
+      assert.ok(preflight >= 0 && branchPush > preflight);
+      assert.ok(calls[branchPush].includes('--force-with-lease=refs/heads/child:'));
+      if (preservesMerge) {
+        assert.equal(published, source, 'publish the exact reviewed merge head');
+        assert.equal(git('rev-parse', 'HEAD^{tree}'), sourceTree);
+        assert.equal(git('show', '-s', '--format=%P', 'HEAD'), originalParents);
+        assert.equal(fs.readFileSync(path.join(work, 'merge-only.txt'), 'utf8'), 'approved content absent from every parent\n');
+        assert.equal(calls.some(c => c[0] === 'git' && c[1] === 'rebase'), false);
+      } else {
+        assert.notEqual(published, source, 'a divergent source must still rebase');
+        git('merge-base', '--is-ancestor', 'origin/main', 'HEAD');
+        assert.equal(fs.readFileSync(path.join(work, 'new-main.txt'), 'utf8'), 'new main\n');
+        assert.equal(fs.readFileSync(path.join(work, 'child.txt'), 'utf8'), 'approved child\n');
+        assert.ok(calls.some(c => c[0] === 'git' && c[1] === 'rebase' && c[2] === 'origin/main'));
+      }
+    } finally { fs.rmSync(root, { recursive: true, force: true }); }
+  });
+}
+
+
+test('ordinary main ancestry inspection errors stop before preflight or publication', async () => {
+  const { command, calls } = fakeCommands([member(42, 'codex/new-change', 'main', 1)]);
+  const broken = async (program, args) => {
+    if (program === 'git' && args[0] === 'status') return '';
+    if (program === 'git' && args[0] === 'rev-list') return '1';
+    if (program === 'git' && args[0] === 'merge-base' && args[1] === '--is-ancestor') {
+      const error = new Error('ancestry object unavailable'); error.code = 128; throw error;
+    }
+    return command(program, args);
+  };
+  await assert.rejects(runShipChange({ message: 'Preserve source', ownerLane: 'ci', files: [], resume: true }, broken), /ancestry object unavailable/);
+  assert.equal(calls.some(c => c[0] === 'npm' || (c[0] === 'git' && ['rebase', 'push', 'tag'].includes(c[1]))), false);
+});

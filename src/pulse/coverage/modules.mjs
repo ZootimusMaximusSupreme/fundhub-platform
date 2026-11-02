@@ -47,6 +47,7 @@ export const SLICE_FILES = Object.freeze([
 ]);
 
 export const GAP_FILES = Object.freeze([
+  ["gap-meet-presence.mjs", () => import("./gap-meet-presence.mjs")],
   ["gap-ads-meta.mjs", () => import("./gap-ads-meta.mjs")],
   ["gap-ads.mjs", () => import("./gap-ads.mjs")],
   ["gap-ai-agents.mjs", () => import("./gap-ai-agents.mjs")],

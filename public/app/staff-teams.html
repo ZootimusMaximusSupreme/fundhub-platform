@@ -354,10 +354,15 @@ table.perm tbody tr:hover td.pl{background:var(--soft)}
       <div class="field"><label>Employee code</label><input id="ed_code" class="num" readonly style="background:var(--soft);color:var(--gray)"><span class="hint">Not issued by this system</span></div>
       <div class="field"><label>Role</label><select id="ed_role">
         <option>Owner</option><option>Admin</option><option>Sales Manager</option><option>Closer</option>
-        <option>Funding Advisor</option><option>Inquiry Specialist</option><option>Setter</option><option>Outbound Rep</option>
+        <option>Funding Advisor</option><option>Inquiry Specialist</option><option>Setter</option><option>Outbound Rep</option><option>Client Success</option>
       </select></div>
       <div class="field"><label>Start date</label><input id="ed_start" type="date"></div>
     </div>
+    <fieldset id="edAdditionalRoles" hidden style="margin-top:18px;border:0;padding:0">
+      <legend class="eyebrow">Additional jobs</legend>
+      <p class="hint">Assigned jobs add their work queue and Dock section. Owner and admin access stay separate.</p>
+      <div id="edAdditionalRoleChoices" class="grid2"></div>
+    </fieldset>
     <div style="margin-top:18px">
       <div class="eyebrow" style="margin-bottom:6px">Preferences</div>
       <div class="swrow"><div class="swl"><div class="n">Monitoring consent on file</div><div class="d">Owner only. On means a signed form is on file. Off stops monitoring data collection.</div></div><div class="sw" id="ed_consent"></div></div>
@@ -409,6 +414,7 @@ var ROLE_KEY={
   Setter:'setter',
   'Outbound Rep':'outbound_rep',
   'Sales Manager':'sales_manager',
+  'Client Success':'csm',
   Affiliate:null
 };
 /* There is deliberately no permission matrix in this file.
@@ -429,9 +435,28 @@ function initials(p){return (p.first[0]+p.last[0]).toUpperCase()}
    hand-written chart that used to sit above. Those numbers described the
    chart, not the system, so they are gone.                                 */
 function presetCell(p){
-  var name=p.role==='Owner' && String(p.email).toLowerCase()==='chris@fundhub.ai'
-    ? 'Owner · Setter · Closer' : p.role;
+  var labels=Object.keys(ROLE_KEY);
+  var names=(p.roles||[]).map(function(key){return key==='owner'?'Owner':(labels.filter(function(label){return ROLE_KEY[label]===key})[0]||key)});
+  var name=[p.role].concat(names.filter(function(label){return label!==p.role})).join(' · ');
   return '<div class="acc"><span class="badge '+(ROLE_CLS[p.role]||'b-gray')+'">'+esc(name)+'</span></div>';
+}
+function renderAdditionalRoles(p){
+  var wrap=document.getElementById('edAdditionalRoles');
+  wrap.hidden=!p;
+  var choices=document.getElementById('edAdditionalRoleChoices');
+  choices.replaceChildren();
+  if(!p)return;
+  Object.keys(ROLE_KEY).forEach(function(label){
+    var key=ROLE_KEY[label];
+    if(!key||key==='admin')return;
+    var row=document.createElement('label');
+    row.style.cssText='display:flex;align-items:center;gap:8px;min-height:44px';
+    var check=document.createElement('input');
+    check.type='checkbox';check.value=key;check.name='additional_role';
+    check.style.cssText='width:18px;height:18px;min-height:18px';
+    check.checked=(p.roles||[]).includes(key)&&ROLE_KEY[p.role]!==key;
+    row.append(check,document.createTextNode(label));choices.append(row);
+  });
 }
 
 /* ══ RENDER ══════════════════════════════════════════════════════════════ */
@@ -561,6 +586,8 @@ function openEditor(id){
   document.getElementById('ed_phone').value=p.phone;
   document.getElementById('ed_code').value=p.code;
   document.getElementById('ed_role').value=p.role;
+  document.getElementById('ed_role').disabled=p.role==='Owner';
+  renderAdditionalRoles(p);
   document.getElementById('edRoleNote').textContent=p.role==='Owner' && String(p.email).toLowerCase()==='chris@fundhub.ai'
     ? 'Chris is the owner and can do setter and closer work from this login.'
     : 'Access follows this person’s role. The server checks each action; the permission list is not shown here.';
@@ -589,6 +616,8 @@ function openNew(){
      the same unknown marker the roster uses instead of inventing one. */
   document.getElementById('ed_code').value='—';
   document.getElementById('ed_role').value='Closer';
+  document.getElementById('ed_role').disabled=false;
+  renderAdditionalRoles(null);
   document.getElementById('edRoleNote').textContent='Access follows this person’s role. The server checks each action; the permission list is not shown here.';
   document.getElementById('ed_start').value='';
   document.getElementById('ed_email').placeholder='inbox for the invite — login is name@fundhub.ai';
@@ -721,8 +750,10 @@ document.getElementById('edSave').addEventListener('click',function(){
       ||rec.email!==p.email
       ||rec.phone!==p.phone
       ||rec.start!==p.start;
-    var nextRole=ROLE_KEY[rec.role];
-    var roleChanged=nextRole && rec.role !== p.role;
+    var nextRole=rec.role==='Owner'?'owner':ROLE_KEY[rec.role];
+    var additional=Array.from(document.querySelectorAll('[name="additional_role"]:checked')).map(function(el){return el.value}).filter(function(key){return key!==nextRole}).sort();
+    var previous=(p.roles||[]).filter(function(key){return Object.values(ROLE_KEY).includes(key)&&key!=='admin'&&key!==(p.role==='Owner'?'owner':ROLE_KEY[p.role])}).sort();
+    var roleChanged=nextRole && (rec.role!==p.role || JSON.stringify(additional)!==JSON.stringify(previous));
     if(typeof FHData==='undefined'||!FHData.write){alert('Not available — the data layer has not loaded.');return}
     var saveBtn=document.getElementById('edSave');
     saveBtn.disabled=true; saveBtn.textContent='Saving…';
@@ -747,13 +778,14 @@ document.getElementById('edSave').addEventListener('click',function(){
     }
     if(roleChanged){
       chain=chain.then(function(){
-        return FHData.write('/api/auth/staff-role',{staff_id:p.staffId,role:nextRole});
+        return FHData.write('/api/auth/staff-role',{staff_id:p.staffId,role:nextRole,roles:additional});
       }).then(function(res){
         if(!res.ok){
           throw new Error('Could not save the job: '+(res.error||'unknown error')+
             (res.source==='unauthorized'?' — sign in as owner.':''));
         }
         p.role=rec.role;
+        p.roles=(res.data&&res.data.staff&&res.data.staff.roles)||[nextRole].concat(additional);
         return res;
       });
     }
@@ -907,6 +939,7 @@ renderAll();
     inquiry_specialist: "Inquiry Specialist",
     setter: "Setter",
     outbound_rep: "Outbound Rep",
+    csm: "Client Success",
     sales_manager: "Sales Manager"
   };
   var ROLE_KEY = {
@@ -1123,6 +1156,7 @@ renderAll();
         last:  sp > 0 ? name.slice(sp + 1) : "",
         code: s.employee_code || "—",
         role: role,
+        roles: Array.isArray(s.roles)?s.roles:[s.role],
         email: s.email || "",
         phone: s.phone || "—",
         start: s.start_date ? String(s.start_date).slice(0, 10) : "—",

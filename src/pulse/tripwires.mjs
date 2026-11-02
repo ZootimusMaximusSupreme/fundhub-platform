@@ -36,6 +36,7 @@ export function isPingId(id) {
 }
 
 export const TRIPWIRES = Object.freeze({
+  "route:read/meet-presence": { impact: "customer", checks: ["meet:read-door"] },
   ...Object.fromEntries(PUBLIC_STATIC_FILES.filter((file) => /^slideshows\/[^/]+\.html$/.test(file))
     .map((file) => [`page:${file}`, { impact: "customer", checks: ["slideshows:content"] }])),
   "route:bank-outreach": { impact: "money", checks: ["bank-outreach:verified-product", "bank-outreach:next-action"] },
@@ -85,6 +86,10 @@ export const TRIPWIRES = Object.freeze({
   "desk:client-portal.html": { impact: "customer", checks: ["portal:page-scripts-load", "portal:paid-entitlement", "portal:next-step"] },
   "route:read/portal-summary": { impact: "customer", checks: ["portal:summary"] },
   "route:native/client-activity": { impact: "customer", checks: ["crm-data:pipeline"] },
+  // The Dock is a read-only composition of the scoped portal progress and summary reads.
+  // Its API contract and role denial are covered separately by the Dock route tests.
+  "route:read/dock": { impact: "customer", checks: ["portal:progress-read-real-client", "portal:summary"] },
+  "desk:role-dock.html": { impact: "customer", checks: ["portal:page-scripts-load", "portal:progress-read-real-client"] },
   "route:push/native-device": { impact: "customer", checks: ["native-push:device-owner", "native-push:configured"] },
   "route:push/preferences": { impact: "customer", checks: ["marketing-push:preference-shape", "provider:web-push-and-client-push"] },
   "send:src/push/native-send.mjs": { impact: "customer", checks: ["native-push:recent-delivery-failure", "native-push:configured"] },
@@ -219,6 +224,8 @@ export const TRIPWIRES = Object.freeze({
 });
 
 export const NOT_CUSTOMER_FACING = Object.freeze({
+  "route:read/ad-preview":
+    "Staff-only read of the same-org client attribution and matched Meta ad preview; it is lazy and never sends a message or changes a customer or advertising record.",
   "job:ops-manager-review":
     "Staff-only KPI review creates a dated task for the routed sales manager or owner; it never sends to a customer. Its job receipt is monitored by the heartbeat.",
   "route:company-brain/library":

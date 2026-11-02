@@ -568,8 +568,8 @@ describe("booked lane", () => {
       assert.equal(sms.status, "queued", "the stub sender left it queued; nothing was sent");
       assert.match(sms.body, /You're booked, Wendy\./);
       assertArizonaTime(sms.body, startMs, `${tag} confirm text`);
-      assert.ok(sms.body.includes("Set up your Fundhub portal account and confirm your call here: https://fundhub.ai/portal-login.html?mode=claim"), `${tag}: lasting portal claim link`);
-      assert.ok(sms.body.includes(`Need to move it? ${spec.link} `), `${tag}: reschedule link, got ${sms.body}`);
+      assert.ok(sms.body.includes("Accept the calendar invite in your email to lock in your time"), `${tag}: calendar acceptance is the confirmation action`);
+      assert.ok(sms.body.includes(`or move it here: ${spec.link} `), `${tag}: reschedule link, got ${sms.body}`);
 
       const email = only(msgs, EMAIL_CONFIRM)[0];
       assert.equal(email.channel, "email");

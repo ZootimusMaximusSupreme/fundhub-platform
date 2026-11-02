@@ -167,7 +167,7 @@ test("marketing/flywheel/campaign makes the folder named for the offer and the o
     const cases = [
       ["UWIQ_DELIVERABLES", "capital-blueprint", "Capital Blueprint", "Capital Blueprint"],
       ["LIVE_TRIAL", "live-trial", "Live Trial — seven days under your brand", "Live Trial"],
-      ["REPAIR_TRIAL", "repair-test-run", "Repair test run (first round, done for you)", "Repair test run"],
+      ["REPAIR_TRIAL", "repair-test-run", "Repair test run (two rounds, done for you)", "Repair test run"],
       ["WINNERS_BOARD", "winner-s-board", "Winner's Board", "Winner's Board"],
     ];
     let n = 0;
@@ -184,6 +184,7 @@ test("marketing/flywheel/campaign makes the folder named for the offer and the o
       assert.equal(w.outbox[0].path, `marketing/flywheel/${folder}/00-OWNER-NOTES.md`);
       assert.equal(w.outbox[0].op_id, `flywheel-campaign:${folder}`);
       assert.equal(w.outbox[0].mode, "replace");
+      if (key === "REPAIR_TRIAL") assert.ok(!w.outbox[0].content.includes("first round, done for you"), "owner notes must preserve the two-round offer");
       assert.equal(w.outbox[0].content, [
         `# Owner notes — ${folder} flywheel`,
         "",

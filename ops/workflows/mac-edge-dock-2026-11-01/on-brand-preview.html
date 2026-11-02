@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fundhub edge Dock concept</title>
+<style>
+@font-face{font-family:FundhubRounded;src:url(../../../public/assets/fonts/nunito-latin-variable.woff2) format('woff2');font-weight:200 900}
+:root{--paper:#F8F8F6;--ink:#0D1113;--muted:#626968;--line:#E3E5E0;--soft:#F0F1ED;--alert:#F2A69B;--ok:#A8D8B0;--native-spectrum:linear-gradient(90deg,#2A99E3 0 16.67%,#2CB9AD 16.67% 33.33%,#84C663 33.33% 50%,#ECC54E 50% 66.67%,#EF8F55 66.67% 83.33%,#D86092 83.33% 100%)}
+*{box-sizing:border-box}html,body{margin:0}body{background:#E8EAE7;color:var(--ink);font-family:FundhubRounded,ui-rounded,system-ui,sans-serif}
+.sheet{width:2000px;min-height:780px;margin:auto;padding:42px 42px 35px;background:#fff}
+.eyebrow{font-size:14px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.eyebrow:before{content:'';display:inline-block;width:22px;height:3px;background:var(--native-spectrum);vertical-align:middle;margin-right:9px}
+h1{font-size:33px;letter-spacing:-1.1px;line-height:1;margin:0 0 12px;font-weight:850}
+.sub{font-size:16px;color:var(--muted);margin:0 0 27px}
+.views{display:grid;grid-template-columns:1fr 1fr;gap:30px}.view-title{display:flex;justify-content:space-between;align-items:baseline;margin:0 0 12px}.view-title b{font-size:18px}.view-title span{font-size:13px;color:var(--muted)}
+.screen{height:670px;position:relative;overflow:hidden;border:1px solid #CDD1CF;border-radius:18px;background:#DDE1DF;box-shadow:0 10px 32px rgba(13,17,19,.12)}
+.menubar{height:28px;background:#2A99E3;color:#fff;display:flex;align-items:center;gap:17px;padding:0 17px;font:600 11px -apple-system,BlinkMacSystemFont,sans-serif}.menubar .right{margin-left:auto}
+.desktop{height:calc(100% - 28px);background:linear-gradient(150deg,#DEE6E2,#B8C6C0 55%,#D8D9C8)}
+.app-window{position:absolute;left:62px;top:72px;width:660px;height:auto;border-radius:10px;box-shadow:0 22px 45px rgba(13,17,19,.19);opacity:.98}
+.dock{position:absolute;right:0;top:220px;width:58px;height:224px;display:flex;flex-direction:column;align-items:center;gap:8px;padding:9px 7px;background:var(--paper);border:1px solid var(--line);border-right:0;border-radius:15px 0 0 15px;box-shadow:-4px 8px 23px rgba(13,17,19,.13);z-index:4;overflow:hidden}
+.dock:after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--native-spectrum)}
+.dock .appicon{width:42px;height:42px;border-radius:10px}.dock .slot{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--ink);position:relative}.dock .slot.active{background:#fff;border:1px solid var(--line)}.dock .slot svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.badge{position:absolute;right:0;top:0;background:var(--alert);border:1px solid #fff;color:var(--ink);min-width:17px;height:17px;border-radius:9px;display:grid;place-items:center;font:800 11px FundhubRounded}
+.popover{position:absolute;right:68px;top:202px;width:329px;min-height:265px;background:var(--paper);border:1px solid var(--line);border-radius:14px;box-shadow:0 13px 34px rgba(13,17,19,.19);z-index:3;overflow:hidden}
+.popover:after{content:'';display:block;height:4px;background:var(--native-spectrum)}
+.pophead{display:flex;align-items:center;gap:10px;padding:16px 16px 13px}.pophead .appicon{width:31px;height:31px;border-radius:8px}.pophead .wordmark{width:86px;height:auto}.pophead .role{margin-left:auto;color:var(--muted);font-size:13px;font-weight:700}.pophead .role:before{content:'·';margin-right:6px}
+.priority{margin:0 12px 3px;padding:12px 12px;background:#fff;border:1px solid var(--line);border-radius:10px;display:flex;align-items:center;gap:9px;font-size:15px;font-weight:800}.priority .p-dot{width:10px;height:10px;background:var(--alert);border-radius:50%;flex:none}.priority small{margin-left:auto;font-size:12px;color:var(--muted);font-weight:700}
+.rows{margin:0 16px}.row{height:42px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:9px;font-size:14px;font-weight:700}.row:last-child{border-bottom:0}.row svg{width:16px;height:16px;fill:none;stroke:var(--ink);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.row .time{font-size:12px;color:var(--muted);font-weight:600;margin-left:auto}.row .chev{font-size:20px;color:var(--muted);font-weight:400;margin-left:5px}
+.open{height:38px;margin:9px 12px 12px;background:var(--ink);color:#fff;border-radius:9px;display:flex;align-items:center;justify-content:space-between;padding:0 13px;font-size:13px;font-weight:800}.open span:last-child{font-size:18px;font-weight:400}
+.popover.expanded{top:163px}.popover.expanded .open{height:44px;margin-top:4px;background:transparent;color:var(--muted);border-top:1px solid var(--line);border-radius:0}.expanded-head{height:44px;margin:0 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px;font-size:14px;font-weight:800}.expanded-head .time{margin-left:auto;font-size:12px;font-weight:600;color:var(--muted)}.expanded-head .chev{font-size:18px;font-weight:500;color:var(--ink)}.detail{margin:0 16px 3px;padding:11px 12px 13px;background:#fff;border:1px solid var(--line);border-top:0;border-radius:0 0 9px 9px}.detail-key{font-size:10px;font-weight:800;letter-spacing:.12em;color:var(--muted)}.detail-title{font-size:15px;font-weight:850;margin-top:3px}.detail-copy{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.35}.detail-actions{display:flex;gap:8px;margin-top:12px}.detail-actions button{border-radius:8px;height:44px;font:800 13px FundhubRounded,ui-rounded,sans-serif;padding:0 11px;white-space:nowrap}.detail-actions .main{background:var(--ink);border:1px solid var(--ink);color:#fff}.detail-actions .secondary{background:#fff;border:1px solid var(--line);color:var(--ink)}
+.foot{display:flex;justify-content:space-between;color:var(--muted);font-size:13px;padding-top:15px}.foot b{color:var(--ink)}
+</style>
+<div class="sheet">
+  <div class="eyebrow">Fundhub Mac · concept</div>
+  <h1 id="headline">The Fundhub Dock, in focus.</h1>
+  <p class="sub">The same ink, rounded type, off-white surface, and six-color edge from the Mac app. A short Dock sits on the screen edge; hover shows only the next few actions.</p>
+  <div class="views">
+    <div><div class="view-title"><b>Resting</b><span>58 × 224 px · about one third of screen height</span></div><div class="screen">
+      <div class="menubar">●&nbsp; Fundhub <span>File</span><span>Edit</span><span>View</span><span class="right">Sun Nov 1&nbsp; 9:42 PM</span></div><div class="desktop"></div>
+      <img class="app-window" src="brand-reference.png" alt="Existing Fundhub Mac welcome screen">
+      <div class="dock" aria-label="Fundhub Dock resting"><img class="appicon" src="../../../public/apple-touch-icon.png" alt="Fundhub"><div class="slot active"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg><i class="badge">2</i></div><div class="slot"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18"/></svg></div><div class="slot"><svg viewBox="0 0 24 24"><path d="M2 12h4l3-6 4 12 3-6h6"/></svg></div></div>
+    </div></div>
+    <div><div class="view-title"><b>Hover peek</b><span>Short, role-specific actions</span></div><div class="screen">
+      <div class="menubar">●&nbsp; Fundhub <span>File</span><span>Edit</span><span>View</span><span class="right">Sun Nov 1&nbsp; 9:42 PM</span></div><div class="desktop"></div>
+      <img class="app-window" src="brand-reference.png" alt="Existing Fundhub Mac welcome screen">
+      <div class="popover"><div class="pophead"><img class="appicon" src="../../../public/apple-touch-icon.png" alt=""><img class="wordmark" src="../../../public/assets/fundhub-wordmark.svg" alt="fundhub"><span class="role" id="role">Founder</span></div><div class="priority"><span class="p-dot"></span><span id="priority">2 need you now</span><small id="priority-time">Today</small></div><div class="rows" id="rows"></div><div class="open"><span id="open">Open workspace</span><span>↗</span></div></div>
+      <div class="dock" aria-label="Fundhub Dock hover"><img class="appicon" src="../../../public/apple-touch-icon.png" alt="Fundhub"><div class="slot active"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg><i class="badge" id="badge">2</i></div><div class="slot"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18"/></svg></div><div class="slot"><svg viewBox="0 0 24 24"><path d="M2 12h4l3-6 4 12 3-6h6"/></svg></div></div>
+    </div></div>
+  </div>
+  <div class="foot"><span><b>Concept · sample state.</b> Existing CRM and Mac brand assets used directly.</span><span>Left or right edge · hover to peek · click to pin · hotkey to open</span></div>
+</div>
+<script>
+const client=new URLSearchParams(location.search).get('role')==='client';
+const data=client?{role:'Client',priority:'Next action · send documents',time:'Due now',badge:'1',rows:[['Upload documents','Secure'],['Message your advisor','Chat'],['View progress','Latest']],open:'Open my portal'}:{role:'Founder',priority:'2 need you now',time:'Today',badge:'2',rows:[['Approval waiting','Due today'],['Client at risk','1 day'],['8 calls today','On track']],open:'Open workspace'};
+document.getElementById('role').textContent=data.role;document.getElementById('priority').textContent=data.priority;document.getElementById('priority-time').textContent=data.time;document.getElementById('badge').textContent=data.badge;document.getElementById('open').textContent=data.open;
+document.getElementById('rows').innerHTML=data.rows.map(([label,time])=>`<div class="row"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M9 12l2 2 4-4"/></svg><span>${label}</span><span class="time">${time}</span><span class="chev">›</span></div>`).join('');
+if(client){document.getElementById('headline').textContent='Your next step, within reach.';document.querySelectorAll('.badge').forEach(el=>el.textContent='1')}
+if(new URLSearchParams(location.search).get('state')==='expanded'){
+  const views=document.querySelectorAll('.view-title');
+  views[0].querySelector('b').textContent='Hover peek';views[0].querySelector('span').textContent='Scan the next few actions';
+  views[1].querySelector('b').textContent='Click an alert';views[1].querySelector('span').textContent='Detail and quick action, right here';
+  const original=document.querySelectorAll('.popover')[0];
+  document.querySelectorAll('.screen')[0].appendChild(original.cloneNode(true));
+  original.classList.add('expanded');
+  original.querySelector('.rows').innerHTML=client
+    ?'<div class="expanded-head"><span style="width:9px;height:9px;border-radius:50%;background:var(--alert)"></span><span>Upload documents</span><span class="time">Due now</span><span class="chev">⌃</span></div><div class="detail"><div class="detail-key">YOUR NEXT STEP</div><div class="detail-title">Two files needed</div><div class="detail-copy">Photo ID and proof of address.</div><div class="detail-actions"><button class="main" type="button">Choose files</button><button class="secondary" type="button">Ask advisor</button></div></div><div class="row"><span style="width:9px;height:9px;border-radius:50%;background:var(--info)"></span><span>View progress</span><span class="time">Latest</span><span class="chev">›</span></div>'
+    :'<div class="expanded-head"><span style="width:9px;height:9px;border-radius:50%;background:var(--alert)"></span><span>Approval waiting</span><span class="time">Due today</span><span class="chev">⌃</span></div><div class="detail"><div class="detail-key">SAMPLE DECISION</div><div class="detail-title">Funding offer ready to review</div><div class="detail-copy">Amount and terms need your sign-off.</div><div class="detail-actions"><button class="main" type="button">Review offer</button><button class="secondary" type="button">Send back</button></div></div><div class="row"><span style="width:9px;height:9px;border-radius:50%;background:var(--warn)"></span><span>Client at risk</span><span class="time">1 day</span><span class="chev">›</span></div>';
+  original.querySelector('.open span').textContent=client?'Open full portal':'Open full workspace';
+}
+</script>
+</html>

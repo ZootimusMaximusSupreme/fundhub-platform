@@ -33,7 +33,7 @@
 
 import crypto from "node:crypto";
 import { emit, defaultOrgId } from "../events/bus.mjs";
-import { enqueue } from "../payments/commas-inbox.mjs";
+import { enqueue, isSettledRefund } from "../payments/commas-inbox.mjs";
 import { assertCommasSafeCopy } from "../payments/commas-safe-copy.mjs";
 /* The SAME resolver every downstream money handler uses, imported rather than
    copied so the two can never drift. Checked for an import cycle before
@@ -158,6 +158,14 @@ export function paymentIdOf(body) {
   const d = inner(b);
   const id = d.payment_id ?? b.payment_id ?? d.paymentId ?? b.paymentId ?? null;
   return id ? String(id) : null;
+}
+
+/* Refund identity is separate from payment identity. The documented refund
+ * transaction hashid is NOT the payment.succeeded public order ID (ORD-...).
+ * https://apidocs.fan/ — refund.created and payment.succeeded schemas. */
+export function refundIdOf(body) {
+  const id = inner(body).refund_id;
+  return typeof id === "string" && id.trim() ? id.trim() : null;
 }
 
 /* A uuid, or nothing. Written out here rather than imported from
@@ -294,6 +302,9 @@ export function normalizeCommasEvent(body) {
   return {
     id: id ? String(id) : null,
     paymentId: paymentIdOf(body),
+    refundId: refundIdOf(body),
+    refundStatus: String(d.status || "").trim().toLowerCase(),
+    refundTransactionId: typeof d.refund_transaction_id === "string" ? d.refund_transaction_id : null,
     type,
     name: String(name),
     amount,
@@ -505,6 +516,7 @@ export function mapToCanonical(evt) {
      are emitted; a dispute additionally drives an urgent task, because it has
      a deadline (src/handlers/commas-disputes.mjs). */
   if (t.includes("refund")) {
+    if (!isSettledRefund(t, evt.refundStatus)) return out;
     out.push({ name: "payment.refunded", product: productOf(evt) });
     return out;
   }
@@ -597,6 +609,8 @@ export async function handleCommasWebhook({ db, rawBody, signatureHeader, secret
       rawBody: rawBody ?? "",
       headers,
       paymentId,
+      refundId: body ? refundIdOf(body) : null,
+      refundStatus: body ? inner(body).status : null,
       eventType,
       source: "webhook"
     });
@@ -785,7 +799,7 @@ export async function resolveInboxClientId(db, { orgId, evt, link, mayCreate = f
  * one stored row and puts its canonical events on the bus.
  *
  * IDEMPOTENCY IS THE ROW'S DEDUPE KEY, not a fresh guess. `row.dedupe_key` is
- * already anchored to data.payment_id, so re-running a row — which happens
+ * already anchored to data.payment_id or data.refund_id, so re-running a row — which happens
  * whenever a pass is retried — writes no second event and dispatches no second
  * handler.
  *
@@ -853,13 +867,16 @@ export async function processCommasInboxRow(row, db) {
       productName: evt.name,
       amount: evt.amount,
       email: evt.email,
-      /* providerRef prefers the payment id over the envelope id. Downstream
-         money handlers use this as the provider's stable reference for a
-         payment; the envelope id changes per delivery and never should have
-         been it. Falls back to the old value when no payment id is present, so
-         existing rows and older payloads behave exactly as before. */
-      providerRef: evt.paymentId || evt.id,
+      /* The original payment_id is the money reference. For non-refunds retain
+         the legacy envelope fallback. A refund's delivery UUID and transaction
+         hashid cannot identify the original ORD payment: without payment_id,
+         retain an unattributed event for the existing dead-letter review. */
+      providerRef: evt.paymentId || (c.name === "payment.refunded" ? null : evt.id),
       paymentId: evt.paymentId,
+      ...(c.name === "payment.refunded" ? {
+        refundId: evt.refundId,
+        refundTransactionId: evt.refundTransactionId
+      } : {}),
       ref: evt.ref, // our own reference, if the payment came from a payment_links checkout URL
       /* purpose — what the link was FOR, from our own payment_links row. Null
          when the payment did not come from a link of ours. Carried so the

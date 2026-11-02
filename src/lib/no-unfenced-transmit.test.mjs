@@ -135,6 +135,11 @@ const ALLOWED_RAW_FETCH = {
     + "the module exports no send function and issues no POST; gmailFetch() "
     + "defaults method to GET and every call site takes that default. Cannot "
     + "reach a client and cannot change a vendor record.",
+  "src/messaging/providers/google-meet-read.mjs":
+    "Reads only fixed Google Meet conferenceRecords, participants and participantSessions endpoints "
+    + "with GET after the call route proves staff/org/assignment scope. Refreshes the separately "
+    + "approved read-only token through company-brain/auth.mjs. No meeting, subscription, invite "
+    + "or client record is created or changed; GET-only/resource/unknown-state tests pin this.",
   "src/bookings/meet-link.mjs":
     "Reads the host's Google Calendar to find the Meet link Google already put on a "
     + "booked call (ClickFunnels' webhook carries none). One GET to calendar/v3 "

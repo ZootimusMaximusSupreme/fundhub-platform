@@ -23,11 +23,13 @@ function priorClient(overrides = {}) {
     id: "ee000000-0000-4000-8000-000000000001",
     org_id: ORG, client_id: CLIENT_A, conversation_id: THREAD_A,
     channel: "sms", rendered_body: TEXT, status: "sent",
+    to_address: "+16025550101", to_address_was_typed: true,
+    subject: null, attachments: [],
     sender_staff_id: STAFF_A, direction: "outbound", sender_kind: "staff",
     provider_ref: "staff:" + KEY, ...overrides
   };
 }
-function composeWorld(prior) {
+function composeWorld(prior, { channel = "sms", fallbackAddress = "+16025550101" } = {}) {
   const queries = [];
   const db = {
     async query(sql, params = []) {
@@ -36,9 +38,13 @@ function composeWorld(prior) {
         return { rows: [{
           id: params[0],
           client_id: params[0] === THREAD_A ? CLIENT_A : CLIENT_B,
-          channel: "sms"
+          channel
         }] };
       }
+      if (/SELECT (?:phone|email) AS address FROM clients/.test(sql)) {
+        return { rows: [{ address: fallbackAddress }] };
+      }
+      if (/FROM client_authorized_reps r/.test(sql)) return { rows: [] };
       if (/INSERT INTO messages/.test(sql)) {
         // Simulate the real Postgres unique key rejecting a duplicate.
         return { rows: [] };
@@ -52,7 +58,8 @@ function composeWorld(prior) {
   };
   const send = (overrides = {}) => composeAndSend(db, {
     orgId: ORG, staffId: STAFF_A, conversationId: THREAD_A,
-    body: TEXT, idempotencyKey: KEY, toAddress: "+16025550101",
+    body: TEXT, idempotencyKey: KEY,
+    toAddress: channel === "email" ? "person@example.com" : "+16025550101",
     ...overrides
   });
   return { send, queries };
@@ -78,7 +85,9 @@ test("staff to client: a reused key with another client, thread, author or words
     priorClient({ rendered_body: "Private previous note" }),
     priorClient({ channel: "email" }),
     priorClient({ sender_kind: "agent" }),
-    priorClient({ direction: "inbound" })
+    priorClient({ direction: "inbound" }),
+    priorClient({ to_address: "+16025550102" }),
+    priorClient({ attachments: [{ asset: "another-file" }] })
   ];
   for (const original of cases) {
     const w = composeWorld(original);
@@ -90,6 +99,42 @@ test("staff to client: a reused key with another client, thread, author or words
     });
     assert.equal(w.queries.length, 3);
   }
+});
+
+test("staff to client: a reused key with another email subject is refused", async () => {
+  const prior = priorClient({
+    channel: "email", to_address: "person@example.com", subject: "Original subject"
+  });
+  const w = composeWorld(prior, { channel: "email" });
+  await assert.rejects(w.send({ subject: "Changed subject" }), {
+    code: "IDEMPOTENCY_CONFLICT"
+  });
+  assert.equal(w.queries.length, 3);
+});
+
+test("staff to client: an untyped destination retry survives a later contact change", async () => {
+  const w = composeWorld(priorClient({ to_address_was_typed: false }), { fallbackAddress: "+16025550102" });
+  const result = await w.send({ toAddress: null });
+  assert.equal(result.deduped, true);
+  assert.equal(result.message.to_address, "+16025550101");
+  assert.equal(w.queries.filter(({ sql }) => /INSERT INTO messages/.test(sql)).length, 1);
+});
+
+test("staff to client: a typed key cannot be replayed with implicit recipient selection", async () => {
+  const w = composeWorld(priorClient());
+  await assert.rejects(w.send({ toAddress: null }), { code: "IDEMPOTENCY_CONFLICT" });
+  assert.equal(w.queries.find(({ sql }) => /INSERT INTO messages/.test(sql)).params.at(-1), false);
+});
+
+test("staff to client: an implicit key cannot be replayed as a typed send", async () => {
+  const w = composeWorld(priorClient({ to_address_was_typed: false }));
+  await assert.rejects(w.send(), { code: "IDEMPOTENCY_CONFLICT" });
+  assert.equal(w.queries.find(({ sql }) => /INSERT INTO messages/.test(sql)).params.at(-1), true);
+});
+
+test("staff to client: old rows with unknown recipient intent fail closed", async () => {
+  const w = composeWorld(priorClient({ to_address_was_typed: null }));
+  await assert.rejects(w.send(), { code: "IDEMPOTENCY_CONFLICT" });
 });
 
 test("staff to client: an index conflict with no readable prior fails closed", async () => {
@@ -188,4 +233,7 @@ test("HTTP handler advertises 409 for conflicting message retry keys", () => {
   const src = readFileSync(path.join(root, "api/chat/messages.mjs"), "utf8");
   assert.match(src, /code === "IDEMPOTENCY_CONFLICT"/);
   assert.match(src, /status\(409\)\.json\(\{ ok: false, error: "idempotency_key_reused" \}\)/);
+  const staff = readFileSync(path.join(root, "api/messages.mjs"), "utf8");
+  assert.match(staff, /code === "IDEMPOTENCY_CONFLICT"/);
+  assert.match(staff, /status\(409\)\.json\(\{ ok: false, error: "idempotency_key_reused" \}\)/);
 });

@@ -44,7 +44,8 @@ import { findRecentDuplicateSms, reserveSmsDedupBatch } from "./sms-dedup.mjs";
 import { destinationAddress } from "../auth/authorized-rep.mjs";
 import { sendNativeToClient } from "../push/native-send.mjs";
 import { sendToClient } from "../push/send.mjs";
-import { notificationForSentMessage } from "../push/message-policy.mjs";
+import { notificationForSentMessage, claimMarketingPush, recordMarketingPush } from "../push/message-policy.mjs";
+import { precallDispatchReason } from "../workflows/precall-plan.mjs";
 import { bankEnvelope } from "../outreach/mail.mjs";
 
 /* If the document-check agent is retired, leftover queued SMS-DOC-02 must not
@@ -387,7 +388,7 @@ export async function resolveDocumentAttachments(db, attachments, message, { sto
    `message` is a claimed row from claimDue(). */
 export async function dispatchOne(db, message, options = {}) {
   const {
-    fetchImpl, timeoutMs, signal, env, now,
+    fetchImpl, timeoutMs, signal, env = process.env, now,
     sendNative = sendNativeToClient,
     sendWeb = sendToClient,
     smsDedupBatchKeys = null
@@ -448,6 +449,11 @@ export async function dispatchOne(db, message, options = {}) {
     if (verdict.state !== "allowed") {
       // gateAndRecord already set status='blocked'. Nothing further to write.
       return { id: message.id, outcome: OUTCOME.BLOCKED, detail: verdict.reasons.map((x) => x.code) };
+    }
+
+    const stalePrecall = await precallDispatchReason(db, message, clock(), {enabled:env.BS_DECK_LESSONS_ENABLED === "true",durable:env.BS_DECK_LESSONS_ENABLED === "true" && env.BS_PRECALL_PLANNER_ENABLED === "true"});
+    if (stalePrecall) {
+      return await finalise(db, message, "blocked", OUTCOME.BLOCKED, stalePrecall, null);
     }
 
     // ---- 1b. DRAFT TEMPLATE HARD GUARD ------------------------------------
@@ -792,14 +798,16 @@ export async function dispatchOne(db, message, options = {}) {
           (message.channel === "email" || message.channel === "sms")) {
         try {
           const notification = await notificationForSentMessage(db, message, { now: clock() });
-          if (notification) {
+          if (notification && (nativePushReady(env) || webPushReady(env))) {
+            const marketing = notification.kind === "check_in";
+            const claimId = marketing ? await claimMarketingPush(db, message, notification, { now: clock() }) : null;
+            if (marketing && !claimId) return { id: message.id, outcome: OUTCOME.SENT, detail: result.providerMessageId };
             const target = { orgId: message.org_id, clientId: message.client_id, notification, env };
             const sends = [];
-            if (nativePushReady(env)) sends.push(Promise.resolve().then(() => sendNative(db, target))
-              .catch((error) => console.warn(`[dispatch] native alert failed for message ${message.id}: ${error?.name || "Error"}`)));
-            if (webPushReady(env)) sends.push(Promise.resolve().then(() => sendWeb(db, target))
-              .catch((error) => console.warn(`[dispatch] web alert failed for message ${message.id}: ${error?.name || "Error"}`)));
-            await Promise.all(sends);
+            if (nativePushReady(env)) sends.push(Promise.resolve().then(() => sendNative(db, target)));
+            if (webPushReady(env)) sends.push(Promise.resolve().then(() => sendWeb(db, target)));
+            const deliveries = await Promise.allSettled(sends);
+            if (marketing) await recordMarketingPush(db, claimId, deliveries);
           }
         } catch (error) {
           console.warn(`[dispatch] companion alert was skipped for message ${message.id}: ${error?.name || "Error"}`);

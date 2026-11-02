@@ -3,7 +3,7 @@ import { db } from "../../src/db.mjs";
 import { requireAuth } from "../../src/http/middleware/requireAuth.mjs";
 import { requireRole, isUuid, ROLE_SETS } from "../../src/http/read-api.mjs";
 import { dbDown } from "../../src/http/db-down.mjs";
-import { listSetterQueue } from "../../src/setter/dashboard.mjs";
+import { latestUndoableDial, listSetterQueue } from "../../src/setter/dashboard.mjs";
 import { hasSetterIntroVideo } from "../../src/setter/send-actions.mjs";
 
 export default async function handler(req, res, deps = {}) {
@@ -17,7 +17,8 @@ export default async function handler(req, res, deps = {}) {
   if (!isUuid(staff.org_id)) return res.status(403).json({ ok: false, error: "forbidden" });
   try {
     const data = await listSetterQueue(database, staff, req.query || {});
-    return res.status(200).json({ ok: true, ...data, intro_video_available: hasSetterIntroVideo(deps.env ?? process.env) });
+    const latest_undoable_dial = await latestUndoableDial(database, staff);
+    return res.status(200).json({ ok: true, ...data, latest_undoable_dial, intro_video_available: hasSetterIntroVideo(deps.env ?? process.env) });
   } catch (error) {
     if (dbDown(res, error)) return;
     throw error;

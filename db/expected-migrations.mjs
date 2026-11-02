@@ -376,6 +376,11 @@ export const EXPECTED_MIGRATIONS = Object.freeze([
   "migrations/531_owner_closer_funding_one_fifth_20261030.sql",
   "migrations/533_native_client_app_opens.sql",
   "migrations/534_backend_deck_lesson_templates.sql",
+  "migrations/535_repair_trial_two_round_copy.sql",
+  "migrations/536_staff_role_assignments.sql",
+  "migrations/537_precall_send_plans.sql",
+  "migrations/538_chat_typed_destination.sql",
+  "migrations/539_setter_dial_undo.sql",
   "seed/002_pipelines.sql",
   "seed/006_message_templates_source_doc.sql",
   "seed/007_contract_templates.sql",
@@ -421,7 +426,10 @@ export const EXPECTED_MIGRATIONS = Object.freeze([
   "seed/301_followup_flows_copy.sql",
   "seed/302_containment_plain_survey_copy.sql",
   "seed/303_no_josh_chris.sql",
-  "seed/304_followup_proof_variants.sql"
+  "seed/304_followup_proof_variants.sql",
+  "seed/305_confirm_on_calendar.sql",
+  "seed/306_pre_call_deck_email.sql",
+  "seed/307_repair_trial_two_round_copy.sql"
 ]);
 
 export default EXPECTED_MIGRATIONS;

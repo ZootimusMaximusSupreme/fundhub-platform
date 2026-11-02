@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fundhub Dock</title>
+  <link rel="stylesheet" href="/app/fundhub-font.css">
+  <link rel="stylesheet" href="/app/role-dock.css">
+  <script defer src="/app/fundhub-font.js"></script>
+  <script defer src="/app/role-dock.js"></script>
+</head>
+<body data-side="right" data-expanded="false">
+  <main class="dock" aria-label="Fundhub Dock">
+    <section class="peek" id="peek" aria-label="Your work">
+      <header class="peek-head">
+        <div class="dock-mark" aria-hidden="true">f.</div>
+        <strong>fundhub</strong>
+        <span id="identity">Your work</span>
+        <button type="button" id="close" aria-label="Collapse Dock">×</button>
+      </header>
+      <div class="states" id="states" aria-live="polite">
+        <div class="state" id="loading" data-active="true"><strong>Loading your work…</strong></div>
+        <div class="state" id="empty"><strong>You're caught up.</strong><p>New items will appear here when they need your attention.</p></div>
+        <div class="state" id="error"><strong>Dock could not update.</strong><p>Check your connection and try again.</p><button class="retry" id="retry" type="button">Try again</button></div>
+        <div id="sections"></div>
+      </div>
+      <footer class="peek-foot"><small id="updated">Updating…</small><a href="/app/" id="workspace">Open workspace ↗</a></footer>
+    </section>
+    <nav class="rail" aria-label="Dock controls">
+      <button type="button" id="toggle" aria-label="Expand Fundhub Dock" aria-expanded="false"><span class="dock-mark" aria-hidden="true">f.</span><span class="badge" id="badge" hidden>0</span></button>
+      <button type="button" id="refresh" aria-label="Refresh Dock" title="Refresh"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2 6M20 4v7h-7"/></svg></button>
+      <button type="button" id="meta-campaigns" aria-label="Open Meta campaigns" title="Meta campaigns" hidden><span class="meta-mark" aria-hidden="true">∞</span></button>
+      <button type="button" id="side" aria-label="Move Dock to left side" title="Move side"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM9 5v14"/></svg></button>
+    </nav>
+  </main>
+</body>
+</html>

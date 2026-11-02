@@ -18,6 +18,10 @@ function fakeDb({ staff = null, emailFails = 0, ipFails = 0 } = {}) {
       if (/FROM orgs/.test(sql)) return { rows: [{ id: "org-1" }] };
       if (/email_fails/.test(sql)) return { rows: [{ email_fails: emailFails, ip_fails: ipFails }] };
       if (/FROM staff s/.test(sql)) return { rows: staff ? [staff] : [] };
+      if (/WITH live AS/.test(sql)) return { rows: staff ? [{
+        ...staff, staff_id: staff.id, session_id: "sess-1",
+        assigned_roles: staff.assigned_roles || [], expires_at: new Date(Date.now() + 1000)
+      }] : [] };
       return { rows: [{ id: "sess-1", expires_at: new Date(Date.now() + 1000) }] };
     }
   };
@@ -47,10 +51,20 @@ test("login succeeds and returns a token plus the staff identity", async () => {
   assert.equal(out.ok, true);
   assert.match(out.token, /^[A-Za-z0-9_-]{43}$/);
   assert.deepEqual(out.staff, {
-    id: "staff-1", org_id: "org-1", role: "closer", email: "dana@fundhub.test", name: "Dana"
+    id: "staff-1", org_id: "org-1", role: "closer", roles: ["closer"],
+    email: "dana@fundhub.test", name: "Dana"
   });
   assert.ok(db.stmts().some((s) => /UPDATE staff SET last_login_at/.test(s)), "stamps last_login_at");
   assert.ok(db.stmts().some((s) => /INSERT INTO sessions/.test(s)), "mints a session");
+});
+
+test("login includes assigned roles immediately from the verified session", async () => {
+  _resetOrgCache();
+  const db = fakeDb({ staff: staffRow({ assigned_roles: ["setter", "closer"] }) });
+  const out = await login(db, { email: "dana@fundhub.test", password: PASSWORD });
+  assert.equal(out.ok, true);
+  assert.deepEqual(out.staff.roles, ["closer", "setter"]);
+  assert.ok(db.stmts().some((sql) => /FROM staff_role_assignments/.test(sql)));
 });
 
 test("the password never reaches the database in any statement", async () => {

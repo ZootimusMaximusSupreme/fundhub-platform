@@ -383,7 +383,7 @@ test("setter desk: saving No answer writes one setter.no_answer event per lead p
       [orgId, clientId]
     )).rows;
     const day1 = { now: () => new Date("2026-10-31T23:50:00Z") }; // 4:50 p.m. on the 31st in Arizona
-    const first = await updateSetterHandoff(db, desk(), { client_id: clientId, action: "save",
+    const first = await updateSetterHandoff(db, desk(), { client_id: clientId, action: "save", expected_call_attempts: 0,
       handoff: { disposition: "no_answer", call_attempts: 1 } }, day1);
     assert.equal(first.status, 200);
     const [saved, ...rest] = await events();
@@ -392,7 +392,7 @@ test("setter desk: saving No answer writes one setter.no_answer event per lead p
     assert.deepEqual(saved.payload, { disposition: "no_answer", setter_staff_id: OWNER_ID, call_attempts: 1 });
 
     // The same screen saved again, and another dial the same day: still one.
-    await updateSetterHandoff(db, desk(), { client_id: clientId, action: "save",
+    await updateSetterHandoff(db, desk(), { client_id: clientId, action: "save", expected_call_attempts: 1,
       handoff: { disposition: "no_answer", call_attempts: 1, goal: "Open a shop" } }, day1);
     await updateSetterHandoff(db, desk(), { client_id: clientId, action: "log_dial", handoff: { disposition: "no_answer" } }, day1);
     assert.equal((await events()).length, 1);
@@ -410,7 +410,8 @@ test("setter desk: any other result writes no event",
   { skip: !HAS_DB }, async () => {
     const clientId = await makeClient();
     for (const disposition of ["reached", "reschedule", "booked_on_call"]) {
-      const r = await updateSetterHandoff(db, desk(), { client_id: clientId, action: "save", handoff: { disposition, call_attempts: 1 } },
+      const expected = Number((await customFieldsOf(clientId)).setter_handoff?.call_attempts || 0);
+      const r = await updateSetterHandoff(db, desk(), { client_id: clientId, action: "save", expected_call_attempts: expected, handoff: { disposition, call_attempts: 1 } },
         { now: () => new Date("2026-10-31T19:00:00Z") });
       assert.equal(r.status, 200, disposition);
     }

@@ -279,6 +279,7 @@ const PROOF = {
   MAILGUN_SEND_BASE_URL: { "src/messaging/providers/mailgun.mjs": /env\.MAILGUN_SEND_BASE_URL \|\| DEFAULT_BASE_URL/ },
   META_ACCESS_TOKEN: { "api/campaigns/meta-agency.mjs": /message: "META_ACCESS_TOKEN is not set on the server\."/ },
   META_API_VERSION: {
+    "api/read/ad-preview.mjs": /process\.env\.META_API_VERSION \|\| "v26\.0"/,
     "api/campaigns/sync.mjs": /process\.env\.META_API_VERSION \|\| DEFAULT_META_API_VERSION/,
     "src/adplatforms/meta.mjs": /process\.env\.META_API_VERSION \|\| "v26\.0"/,
     "src/messaging/providers/meta-capi.mjs": /\? v : DEFAULT_API_VERSION;/,

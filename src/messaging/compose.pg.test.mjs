@@ -285,6 +285,29 @@ test("compose: the same idempotency key sends once and returns the first message
   assert.equal(recorded().length, 1, "the same key sent twice");
 });
 
+test("compose: retry cannot change between typed and contact-record recipient",
+  { skip: !HAS_DB }, async () => {
+  const address = "+15550000222";
+  const typedKey = `compose-test-${convoId}-typed-intent`;
+  const typed = await send({ conversationId: convoId, body: "typed intent",
+    toAddress: address, idempotencyKey: typedKey });
+  const typedRow = (await db.query(`SELECT to_address_was_typed FROM messages WHERE id=$1`,
+    [typed.message.id])).rows[0];
+  assert.equal(typedRow.to_address_was_typed, true);
+  await assert.rejects(() => send({ conversationId: convoId, body: "typed intent",
+    idempotencyKey: typedKey }), { code: "IDEMPOTENCY_CONFLICT" });
+
+  const implicitKey = `compose-test-${convoId}-implicit-intent`;
+  const implicit = await send({ conversationId: convoId, body: "implicit intent",
+    idempotencyKey: implicitKey });
+  const implicitRow = (await db.query(`SELECT to_address_was_typed FROM messages WHERE id=$1`,
+    [implicit.message.id])).rows[0];
+  assert.equal(implicitRow.to_address_was_typed, false);
+  await assert.rejects(() => send({ conversationId: convoId, body: "implicit intent",
+    toAddress: address, idempotencyKey: implicitKey }), { code: "IDEMPOTENCY_CONFLICT" });
+  assert.equal(recorded().length, 2, "changed recipient intent caused another send");
+});
+
 test("compose: without a key, two identical replies are two real messages",
   { skip: !HAS_DB }, async () => {
   const a = await send({ conversationId: convoId, body: "ok" });

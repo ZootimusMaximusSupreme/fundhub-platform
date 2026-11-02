@@ -5,7 +5,7 @@ import { requireRole, isUuid, ROLE_SETS } from "../src/http/read-api.mjs";
 import { dbDown } from "../src/http/db-down.mjs";
 import { updateSetterHandoff } from "../src/setter/dashboard.mjs";
 
-const ACTIONS = new Set(["save", "save_survey", "log_dial", "complete", "send_intro_video", "send_handoff"]);
+const ACTIONS = new Set(["save", "save_survey", "log_dial", "undo_dial", "complete", "send_intro_video", "send_handoff"]);
 
 export default async function handler(req, res, deps = {}) {
   if (req.method !== "POST") {
@@ -19,6 +19,8 @@ export default async function handler(req, res, deps = {}) {
   const input = req.body || {};
   if (!isUuid(input.client_id)) return res.status(400).json({ ok: false, error: "invalid_client_id" });
   if (!ACTIONS.has(input.action)) return res.status(400).json({ ok: false, error: "invalid_action" });
+  if (input.operation_id != null && !isUuid(input.operation_id)) return res.status(400).json({ ok: false, error: "invalid_operation_id" });
+  if (input.action === "undo_dial" && !isUuid(input.event_id)) return res.status(400).json({ ok: false, error: "invalid_event_id" });
   try {
     const result = await updateSetterHandoff(database, staff, input, deps);
     return res.status(result.status).json(result.body);

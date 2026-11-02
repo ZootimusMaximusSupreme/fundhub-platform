@@ -4,7 +4,7 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { archiveHead, catchUpAfterShip, directChildren, main, mainBaseBody, nextQueuedPr, orderOf, recordedParentHead, restackChild, restackMergedDelta } from "./restack-after-merge.mjs";
+import { archiveHead, catchUpAfterShip, createArchivedSourceDelta, directChildren, main, mainBaseBody, nextQueuedPr, orderOf, recordedParentHead, restackChild, restackMergedDelta } from "./restack-after-merge.mjs";
 
 const repo = "ZootimusMaximusSupreme/fundhub-platform";
 const parentSha = "a".repeat(40);
@@ -345,6 +345,127 @@ test("a merge into a feature branch never triggers restack onto main", () => {
   fs.rmSync(path.dirname(eventPath), { recursive: true });
 });
 
+for (const scenario of ["linear source", "merge-only content", "inherited Git environment",
+  "source head changed", "source branch changed", "source unstaged changed", "source staged changed",
+  "source untracked changed", "wrong entry head", "wrong entry branch", "dirty entry"]) {
+  test(`real Git private archived delta candidate: ${scenario}`, () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "archived-source-delta-"));
+    const work = path.join(root, "work");
+    const origin = path.join(root, "origin.git");
+    const git = (...args) => execFileSync("git", args, { cwd: work, encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"] }).trim();
+    const write = (file, value) => fs.writeFileSync(path.join(work, file), value);
+    try {
+      fs.mkdirSync(work);
+      execFileSync("git", ["init", "--bare", origin], { stdio: "ignore" });
+      git("init", "-b", "main");
+      git("config", "user.name", "Archived source test");
+      git("config", "user.email", "archived-source@test.invalid");
+      git("remote", "add", "origin", origin);
+      write("base.txt", "base\n");
+      git("add", "."); git("commit", "-m", "base");
+      const base = git("rev-parse", "HEAD");
+      git("switch", "-c", "child");
+      write("child.txt", "reviewed child bytes  ");
+      git("add", "."); git("commit", "-m", "linear source change");
+      if (scenario === "merge-only content") {
+        git("switch", "-c", "side", base);
+        write("side.txt", "reviewed side change\n");
+        git("add", "."); git("commit", "-m", "side change");
+        git("switch", "child");
+        git("merge", "--no-ff", "--no-commit", "side");
+        write("merge-only.txt", "reviewed content introduced by merge\n");
+        git("add", "."); git("commit", "-m", "merge with final reviewed content");
+      }
+      const head = git("rev-parse", "HEAD");
+      git("tag", "archive/child", head);
+      git("push", "origin", "child", "refs/tags/archive/child");
+      git("switch", "main");
+      write("target-only.txt", "preserve new target work\n");
+      git("add", "."); git("commit", "-m", "new target work");
+      const target = git("rev-parse", "HEAD");
+      git("switch", "child");
+      if (scenario === "wrong entry head") git("commit", "--allow-empty", "-m", "unreviewed entry head");
+      if (scenario === "wrong entry branch") git("switch", "-c", "another-source");
+      if (scenario === "dirty entry") write("base.txt", "preexisting unsaved work\n");
+      const snapshot = () => ({ head: git("rev-parse", "HEAD"), branch: git("symbolic-ref", "--short", "HEAD"),
+        status: git("status", "--porcelain"), indexTree: git("write-tree"),
+        refs: git("for-each-ref", "--format=%(refname) %(objectname)", "refs/heads", "refs/tags"),
+        base: fs.readFileSync(path.join(work, "base.txt"), "utf8") });
+      let expected = snapshot();
+      const inheritedIndex = path.join(root, "inherited.index");
+      const inheritedEnv = { ...process.env };
+      if (scenario === "inherited Git environment") {
+        fs.copyFileSync(path.join(work, ".git", "index"), inheritedIndex);
+        inheritedEnv.GIT_INDEX_FILE = inheritedIndex;
+        inheritedEnv.GIT_OBJECT_DIRECTORY = path.join(work, ".git", "objects");
+      }
+      let checkedPrivateTree = false;
+      let changed = false;
+      const calls = [];
+      const run = (program, args, options = {}) => {
+        assert.equal(program, "git");
+        calls.push(args);
+        const result = execFileSync(program, args, { cwd: work, encoding: "utf8",
+          stdio: ["ignore", "pipe", "pipe"], env: inheritedEnv, ...options }).trim();
+        if (args[0]?.startsWith("--git-dir=") && args.includes("write-tree")) {
+          if (scenario === "inherited Git environment") {
+            assert.throws(() => git("cat-file", "-e", result), "candidate tree must remain private until import");
+            checkedPrivateTree = true;
+          }
+          if (scenario.startsWith("source ") && !changed) {
+            changed = true;
+            if (scenario === "source head changed") {
+              write("concurrent.txt", "preserve concurrent committed work\n");
+              git("add", "."); git("commit", "-m", "concurrent source commit");
+            } else if (scenario === "source branch changed") {
+              git("switch", "-c", "concurrent-branch");
+            } else if (scenario === "source unstaged changed") {
+              write("base.txt", "preserve concurrent unsaved work\n");
+            } else if (scenario === "source staged changed") {
+              write("concurrent.txt", "preserve concurrent staged work\n");
+              git("add", "concurrent.txt");
+            } else {
+              write("concurrent.txt", "preserve concurrent untracked work\n");
+            }
+            expected = snapshot();
+          }
+        }
+        return result;
+      };
+      const candidate = createArchivedSourceDelta({ base, head, branch: "child", sourceBranch: "child",
+        number: 41, target, run });
+      const refuses = scenario.startsWith("source ") || scenario.startsWith("wrong entry") || scenario === "dirty entry";
+      if (refuses) {
+        assert.equal(candidate, null);
+        if (scenario.startsWith("source ")) assert.equal(changed, true, "mutation must occur during private build");
+      } else {
+        assert.match(candidate, /^[a-f0-9]{40}$/);
+        assert.equal(git("rev-parse", `${candidate}^`), target);
+        assert.equal(git("rev-parse", `${candidate}:child.txt`), git("rev-parse", `${head}:child.txt`));
+        assert.equal(git("show", `${candidate}:target-only.txt`), "preserve new target work");
+        assert.equal(git("rev-list", "--count", `${target}..${candidate}`), "1");
+        if (scenario === "merge-only content") {
+          assert.equal(git("show", `${candidate}:merge-only.txt`), "reviewed content introduced by merge");
+          assert.equal(git("show", `${candidate}:side.txt`), "reviewed side change");
+        } else assert.equal(git("rev-list", "--count", "--min-parents=2", `${base}..${head}`), "0");
+        if (scenario === "inherited Git environment") {
+          assert.equal(checkedPrivateTree, true);
+          assert.equal(execFileSync("git", ["write-tree"], { cwd: work, encoding: "utf8", env: inheritedEnv }).trim(), expected.indexTree);
+        }
+      }
+      assert.deepEqual(snapshot(), expected, "helper must preserve the exact current source state and branch refs");
+      assert.equal(git("ls-remote", "--heads", "origin", "child").split(/\s+/)[0], head);
+      assert.equal(calls.some(args => args[0] === "push" || args[0] === "switch" || args[0] === "reset"), false);
+      if (scenario === "source head changed" || scenario === "source staged changed" || scenario === "source untracked changed") {
+        assert.match(fs.readFileSync(path.join(work, "concurrent.txt"), "utf8"), /preserve concurrent/);
+      }
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+}
+
 for (const scenario of ["clean delta", "exact bytes", "real content conflict", "changed remote head", "missing archive", "dirty index", "open parent target"]) {
   test(`real Git duplicate merged child history: ${scenario}`, () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "restack-duplicate-"));
@@ -410,10 +531,12 @@ for (const scenario of ["clean delta", "exact bytes", "real content conflict", "
         git("add", ".");
         git("commit", "-m", "unmerged parent work");
         const target = git("rev-parse", "HEAD");
+        git("switch", "child");
         assert.equal(restackMergedDelta({ base: parentHead, head: childHead,
-          branch: "child", number: 41, target, run: (program, args) => {
+          branch: "child", number: 41, target, run: (program, args, options = {}) => {
             assert.equal(program, "git");
-            return git(...args);
+            return execFileSync(program, args, { cwd: work, encoding: "utf8",
+              stdio: ["ignore", "pipe", "pipe"], ...options }).trim();
           } }), true);
         assert.equal(git("show", "HEAD:open-parent.txt"), "keep the unmerged parent delta");
         assert.equal(git("show", "HEAD:main-only.txt"), "keep unrelated main work");
@@ -430,7 +553,7 @@ for (const scenario of ["clean delta", "exact bytes", "real content conflict", "
       const calls = [];
       let reads = 0;
       let rebaseFailed = false;
-      const run = (program, args) => {
+      const run = (program, args, options = {}) => {
         calls.push([program, ...args]);
         if (program === "gh") {
           if (args[0] === "api" && args[1] === `repos/${repo}/pulls/41`) {
@@ -441,7 +564,8 @@ for (const scenario of ["clean delta", "exact bytes", "real content conflict", "
           return "";
         }
         try {
-          const result = git(...args);
+          const result = execFileSync(program, args, { cwd: work, encoding: "utf8",
+            stdio: ["ignore", "pipe", "pipe"], ...options }).trim();
           if (scenario === "dirty index" && args[0] === "rebase" && args[1] === "--abort") {
             write("staged.txt", "keep unrelated staged work\n");
             git("add", "staged.txt");

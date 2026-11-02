@@ -591,6 +591,11 @@ export const CUSTOMER_PAGES = Object.freeze([
     needsScripts: true,
     needs: Object.freeze([{ re: /data-tile=/i, label: "its tiles" }])
   }),
+  Object.freeze({
+    path: "/app/role-dock.html",
+    needsScripts: true,
+    needs: Object.freeze([{ re: /id="sections"/i, label: "its role sections" }])
+  }),
   Object.freeze({ path: "/progress.html", needs: Object.freeze([]) }),
   Object.freeze({ path: "/app/payment-success.html", needs: Object.freeze([]) }),
   Object.freeze({ path: "/app/financeos.html", needsScripts: true, needs: Object.freeze([]) })

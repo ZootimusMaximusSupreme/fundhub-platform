@@ -185,8 +185,10 @@ self.addEventListener("notificationclick", (event) => {
     const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
     for (const c of windows) {
       if (c.url.indexOf(self.location.origin) === 0 && "focus" in c) {
-        try { await c.navigate(target); } catch (e) { /* cross-scope: just focus */ }
-        return c.focus();
+        try {
+          const navigated = await c.navigate(target);
+          if (navigated) return navigated.focus();
+        } catch (e) { /* open the lesson below if this window cannot navigate */ }
       }
     }
     if (self.clients.openWindow) return self.clients.openWindow(target);

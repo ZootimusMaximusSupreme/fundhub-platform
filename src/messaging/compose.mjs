@@ -308,7 +308,8 @@ export async function composeAndSend(db, input = {}, options = {}) {
      record answers as it always has. The fallback stays because most sends do
      not type anything, and losing it would break every reply that relies on
      the address already on file. */
-  const toAddress = typedAddress != null && String(typedAddress).trim() !== ""
+  const typedDestination = typedAddress != null && String(typedAddress).trim() !== "";
+  const toAddress = typedDestination
     ? validDestination(target.channel, typedAddress)
     : await addressFor(db, target.clientId, target.channel);
 
@@ -322,13 +323,13 @@ export async function composeAndSend(db, input = {}, options = {}) {
     `INSERT INTO messages (
        org_id, client_id, conversation_id, direction, channel, rendered_body,
        provider_ref, status, compliance_check_passed, to_address, subject,
-       sender_staff_id, sender_kind, attachments
+       sender_staff_id, sender_kind, attachments, to_address_was_typed
      )
-     VALUES ($1,$2,$3,'outbound',$4,$5,$6,'queued',false,$7,$8,$9,'staff',$10)
+     VALUES ($1,$2,$3,'outbound',$4,$5,$6,'queued',false,$7,$8,$9,'staff',$10,$11)
      ON CONFLICT (org_id, provider_ref) WHERE provider_ref IS NOT NULL DO NOTHING
      RETURNING id, created_at`,
     [orgId, target.clientId, target.conversationId, target.channel, text,
-     providerRef, toAddress, subjectLine, staffId, JSON.stringify(att || [])]
+     providerRef, toAddress, subjectLine, staffId, JSON.stringify(att || []), typedDestination]
   );
 
   /* A deduped send is not a failure and not a second message. The caller sent
@@ -338,11 +339,15 @@ export async function composeAndSend(db, input = {}, options = {}) {
   if (!ins.rows[0]) {
     const existing = await db.query(
       `SELECT id, conversation_id, client_id, channel, rendered_body, status,
-              created_at, sender_staff_id, sender_kind, direction
+              created_at, sender_staff_id, sender_kind, direction,
+              to_address, subject, attachments, to_address_was_typed
          FROM messages WHERE org_id = $1 AND provider_ref = $2 LIMIT 1`,
       [orgId, providerRef]
     );
     const prior = existing.rows[0];
+    const priorAttachments = prior?.attachments == null ? [] : prior.attachments;
+    const sameAttachments = Array.isArray(priorAttachments) &&
+      JSON.stringify(priorAttachments) === JSON.stringify(att || []);
     /* A key identifies ONE authored message to ONE client. A reused key must
        never return another client's note, claim that an unsent note was
        saved, or reveal a message from another staff member's thread. Keep
@@ -352,7 +357,11 @@ export async function composeAndSend(db, input = {}, options = {}) {
         String(prior.conversation_id) !== String(target.conversationId) ||
         String(prior.sender_staff_id) !== String(staffId) ||
         prior.direction !== "outbound" || prior.sender_kind !== "staff" ||
-        prior.channel !== target.channel || prior.rendered_body !== text) {
+        prior.channel !== target.channel || prior.rendered_body !== text ||
+        prior.to_address_was_typed !== typedDestination ||
+        (typedDestination && prior.to_address !== toAddress) ||
+        (prior.subject ?? null) !== subjectLine ||
+        !sameAttachments) {
       throw Object.assign(new Error("idempotency_key_reused"), {
         code: "IDEMPOTENCY_CONFLICT"
       });

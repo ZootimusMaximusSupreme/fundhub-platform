@@ -110,6 +110,57 @@ function handlers(over = {}) {
 
 const url = `/app/closer-dashboard.html?client_id=${CLIENT_ID}`;
 
+test("a closer can clock in without a current call", async ({ page }) => {
+  await freezeClock(page, NOW);
+  let onShift = false;
+  const actions = [];
+  await openScreen(page, "/app/closer-dashboard.html", CLOSER, handlers({
+    "/api/shifts": (route, { method }) => {
+      if (method === "POST") {
+        actions.push(route.request().postDataJSON().action);
+        onShift = true;
+      }
+      return { ok: true, shift: onShift ? { id: "shift-1", started_at: NOW } : null };
+    }
+  }));
+
+  await expect(page.locator("#ccp-who-name")).toHaveText("No call right now");
+  await expect(page.locator("[data-fh-call-head] .chip")).toContainText("Off shift");
+  const toggle = page.locator("#fh-shift-toggle");
+  await expect(toggle).toBeVisible();
+  await expect(toggle).toHaveText("Clock in");
+  await toggle.click();
+  await expect.poll(() => actions).toEqual(["clock_in"]);
+  await expect(toggle).toHaveText("Clock out");
+  await expect(page.locator("[data-fh-call-head] .chip")).toContainText("On shift");
+});
+
+test("an old unclosed shift stays visible without claiming days of active hours", async ({ page }) => {
+  await freezeClock(page, NOW);
+  let open = true;
+  const actions = [];
+  await openScreen(page, "/app/closer-dashboard.html", CLOSER, handlers({
+    "/api/shifts": (route, { method }) => {
+      if (method === "POST") {
+        actions.push(route.request().postDataJSON().action);
+        open = false;
+      }
+      return { ok: true, shift: open ? { id: "old-shift", started_at: "2026-08-16T16:40:00.000Z" } : null };
+    }
+  }));
+
+  await expect(page.locator("#ccp-who-name")).toHaveText("No call right now");
+  const chip = page.locator("[data-fh-call-head] .chip");
+  await expect(chip).toContainText("Shift open since Aug 16 — never clocked out");
+  await expect(chip).not.toContainText("On shift");
+  const toggle = page.locator("#fh-shift-toggle");
+  await expect(toggle).toHaveText("Clock out");
+  await toggle.click();
+  await expect.poll(() => actions).toEqual(["clock_out"]);
+  await expect(toggle).toHaveText("Clock in");
+  await expect(chip).toContainText("Off shift");
+});
+
 /* ── FULL ─────────────────────────────────────────────────────────────────── */
 
 test("the person on the call is the first thing on the page, with the time beside them", async ({ page }) => {
@@ -368,6 +419,8 @@ test("Save · next call sends the exact checkout link after a paid call", async 
   await page.locator('[data-outcome="deposit"]').click();
   await page.locator("#fh-save-next").click();
   await expect.poll(() => posted.length).toBe(1);
+  await expect(page).toHaveURL(/closer-dashboard\.html\?client_id=bbbb&task_id=task-2$/);
+  await expect(page.locator("#ccp-who-name")).toHaveText("Dana Whitfield");
   expect(posted[0].payment_link_id).toBe("link-this-call");
   expect(posted[0].offer_key).toBe("FUNDING_DFY");
   expect(posted[0].transaction_id).toBeUndefined();

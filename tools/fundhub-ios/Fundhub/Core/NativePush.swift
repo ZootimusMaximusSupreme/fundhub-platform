@@ -65,6 +65,11 @@ enum NativePushTap {
     static let staffPath = "/app/staff-alert"
     static let requestLifetime: TimeInterval = 5 * 60
 
+    struct ClientOpenRequest: Equatable {
+        let path: String
+        let tappedAt: Date
+    }
+
     struct StaffAlert: Equatable {
         let kind: String
         let clientId: String
@@ -79,6 +84,22 @@ enum NativePushTap {
             }
             return "\(page)?client_id=\(clientId)"
         }
+    }
+
+    // The exact same public lesson paths approved by the server payload gate.
+    // Never accept a URL, query, fragment, or arbitrary first-party path from push.
+    static func clientPath(_ userInfo: [AnyHashable: Any]) -> String? {
+        guard let path = userInfo["path"] as? String else { return nil }
+        if path == portalPath { return path }
+        let lessonSlugs = [
+            "pre-underwriting", "funding-sequence", "apply-yourself", "money-on-the-table",
+            "after-you-say-yes", "bank-said-no", "thirteen-points", "card-paydown",
+            "credit-optimization", "credit-partner", "business-one-two", "blueprint-12-months",
+            "soft-pull", "the-call", "who-we-are", "cost-of-waiting", "the-maximum",
+            "the-money-talk", "tried-before", "blueprint-value", "blueprint-in-action",
+            "your-data-is-safe"
+        ]
+        return lessonSlugs.contains(where: { path == "/slideshows/\($0).html" }) ? path : nil
     }
 
     static func opensClientPortal(_ userInfo: [AnyHashable: Any]) -> Bool {
@@ -108,7 +129,7 @@ final class NativePushCenter: ObservableObject {
     @Published private(set) var state: State = .checking
     @Published private(set) var openRequestId = 0
     private var bearer: String?
-    private var pendingPortalOpen: (at: Date, bearer: String)?
+    private var pendingPortalOpen: (path: String, at: Date, bearer: String)?
     private var pendingStaffOpen: (alert: NativePushTap.StaffAlert, at: Date, bearer: String)?
     private let api = FundhubAPI()
     private let registeredKey = "fundhub.nativePush.registered"
@@ -119,9 +140,9 @@ final class NativePushCenter: ObservableObject {
 
     @discardableResult
     func recordNotificationTap(userInfo: [AnyHashable: Any], now: Date = Date(), sessionBearer: String? = nil) -> Bool {
-        if NativePushTap.opensClientPortal(userInfo) {
+        if let path = NativePushTap.clientPath(userInfo) {
             guard let expectedBearer = sessionBearer ?? bearer, !expectedBearer.isEmpty else { return false }
-            pendingPortalOpen = (now, expectedBearer)
+            pendingPortalOpen = (path, now, expectedBearer)
             openRequestId &+= 1
             return true
         }
@@ -134,13 +155,18 @@ final class NativePushCenter: ObservableObject {
         return false
     }
 
-    func takePortalOpenRequest(now: Date = Date(), currentBearer: String? = nil) -> Bool {
-        guard let pending = pendingPortalOpen else { return false }
-        guard let currentBearer = currentBearer ?? bearer else { return false }
+    func takeClientOpenRequest(now: Date = Date(), currentBearer: String? = nil) -> NativePushTap.ClientOpenRequest? {
+        guard let pending = pendingPortalOpen else { return nil }
+        guard let currentBearer = currentBearer ?? bearer else { return nil }
         pendingPortalOpen = nil
-        guard currentBearer == pending.bearer else { return false }
+        guard currentBearer == pending.bearer else { return nil }
         let age = now.timeIntervalSince(pending.at)
         return age >= 0 && age <= NativePushTap.requestLifetime
+            ? NativePushTap.ClientOpenRequest(path: pending.path, tappedAt: pending.at) : nil
+    }
+
+    func takePortalOpenRequest(now: Date = Date(), currentBearer: String? = nil) -> Bool {
+        takeClientOpenRequest(now: now, currentBearer: currentBearer)?.path == NativePushTap.portalPath
     }
 
     func takeStaffOpenRequest(now: Date = Date(), currentBearer: String? = nil) -> NativePushTap.StaffAlert? {

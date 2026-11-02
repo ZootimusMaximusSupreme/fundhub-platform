@@ -113,6 +113,8 @@ When the rules settle a choice, make it and say what you did (owner-set 2026-10-
 Rules never drift (owner-set 2026-10-24). Same law: `.ai/rules/rules-no-drift.md`
 No new markdown files (owner-set 2026-10-24). Do not create new .md files unless I ask for one. Update an existing file instead. Same law: `.ai/rules/no-new-markdown.md`
 No Josh, it is Chris (owner-set 2026-10-31). Josh is gone. Everything a lead, client or staff member reads or hears says Chris, including the AI setter. Same law: `.ai/rules/no-josh-chris-everywhere.md`
+Check audience data before sharing (owner-set 2026-11-02). Read the list and the destination's allowed data, including selection rules and names; do not send Meta credit-score, income, financial-status or consumer-report segments as Custom Audience or lookalike seeds. Same law: `.ai/rules/audience-data-recipient-check.md`
+Confirm on the calendar, never by reply (owner-set 2026-10-31). No message asks a lead to reply CONFIRM or YES; the one action is accepting the calendar invite in their email. Same law: `.ai/rules/confirm-on-the-calendar.md`
 
 ## 3. Before writing any code
 

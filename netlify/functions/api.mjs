@@ -122,10 +122,12 @@ import readWorkflows from "../../api/read/workflows.mjs";
 import readTransactions from "../../api/read/transactions.mjs";
 import readCloserCall from "../../api/read/closer-call.mjs";
 import readCloserNow from "../../api/read/closer-now.mjs";
+import readMeetPresence from "../../api/read/meet-presence.mjs";
 import readDealMath from "../../api/read/deal-math.mjs";
 import readCloserDeck from "../../api/read/closer-deck.mjs";
 import readSetterDashboard from "../../api/read/setter-dashboard.mjs";
 import readAdAttribution from "../../api/read/ad-attribution.mjs";
+import readAdPreview from "../../api/read/ad-preview.mjs";
 import readAdBooks from "../../api/read/ad-books.mjs";
 import readAdSpine from "../../api/read/ad-spine.mjs";
 import scriptsWrite from "../../api/scripts/write.mjs";
@@ -301,6 +303,7 @@ import readContracts from "../../api/read/contracts.mjs";
 import readPortalContracts from "../../api/read/portal-contracts.mjs";
 import readPortalSummary from "../../api/read/portal-summary.mjs";
 import readClientProgress from "../../api/read/client-progress.mjs";
+import readDock from "../../api/read/dock.mjs";
 import contractsSign from "../../api/contracts/sign.mjs";
 import messagesOutbound from "../../api/messages-outbound.mjs";
 import agentsWrite from "../../api/agents.mjs";
@@ -705,6 +708,7 @@ export const ROUTES = {
   /* Sales dashboards — call cockpit, closer my-numbers, manager floor. */
   "read/closer-call": readCloserCall,
   "read/closer-now": readCloserNow,
+  "read/meet-presence": readMeetPresence,
   "read/deal-math": readDealMath,
   "read/closer-deck": readCloserDeck,
   "read/setter-dashboard": readSetterDashboard,
@@ -715,6 +719,7 @@ export const ROUTES = {
      handlers — an attribution panel whose endpoint 404s is exactly the failure
      this map exists to stop. */
   "read/ad-attribution": readAdAttribution,
+  "read/ad-preview": readAdPreview,
   "read/ad-books": readAdBooks,
   /* The label spine (377). One row per ad carrying the angle, hook, lane, offer
      and script type it inherited from its creative and that creative's script,
@@ -1348,6 +1353,7 @@ export const ROUTES = {
   "read/portal-contracts": readPortalContracts,
   "read/portal-summary": readPortalSummary,
   "read/client-progress": readClientProgress,
+  "read/dock": readDock,
   "contracts/sign": contractsSign,
 
   // ── The outbound queue ─────────────────────────────────────────────────────
