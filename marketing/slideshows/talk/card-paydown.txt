@@ -34,7 +34,7 @@ A full card costs you before any bank even looks. Our system checks whether your
 
 This sample's open cards report $4,360 against $4,500 in limits. That's 97% used, so the file fails that check before a single application goes out.
 
-Every application sent while the cards report that high gets read at that HIGH balance. And the inquiry it leaves stays on the report after.
+A lender can read the high reported balance, and an application can add a hard inquiry. We check both before applying.
 
 That's why the plan goes past 30%, all the way to 10% of each limit. On this sample, that's $450 or less in total.
 

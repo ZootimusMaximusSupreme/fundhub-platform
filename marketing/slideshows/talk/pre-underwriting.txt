@@ -34,7 +34,7 @@ A funding application can set off a HARD pull. Even when the bank says no, a har
 
 This sample file already shows three. One on Experian, one on TransUnion, one on Equifax, from two card applications and one ask for a higher limit.
 
-The next bank reads every one of them before it decides. Stack enough and the banks start saying no, even to a good score.
+A bank reads the inquiries on the bureau it pulls. A stack of recent inquiries can weigh against an otherwise strong file.
 
 That's why the order flips. Your file gets read and fixed FIRST, and only then does an application go out.
 

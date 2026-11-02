@@ -2,7 +2,7 @@ Funding Sequence
 
 1. FS-01 / The order — Whichever bank sees your file first changes what every bank after it sees.
 
-Whichever bank sees your file first changes what every bank after it sees. That's why the ORDER your applications go out in sets how much funding you end up with.
+A bank's inquiry or new account can change what a later lender sees. That's why we check the file and choose the application order before sending anything.
 
 Your own file already decides what has to happen before the first one goes out. This is section three of the lender list Fundhub builds for each client.
 
@@ -10,7 +10,7 @@ It lays out five rules. The card balance gets fixed first, the lowest score floo
 
 Then you work up the list, and personal goes before business. Flip that order around, and the later banks see the earlier applications on your file.
 
-Each of those denials still drops a hard inquiry on your report, and whichever bank comes next has all of them in front of it when it makes its call.
+Those denied applications can leave hard inquiries. A later bank sees the ones on the bureau it reads and weighs them with the file.
 
 Sent in the wrong order, a good file can collect fresh inquiries before the next bank makes its decision. That's why we set the order from your file first.
 
@@ -28,7 +28,7 @@ Every company you add later gets figured from that same personal file. So the wo
 
 3. FS-03 / One at a time — What happens when five applications land on your report the same afternoon?
 
-Five applications going out the same afternoon means five HARD inquiries on your report, and every bank after them can see all five.
+Five hard-pull applications in one afternoon can leave five inquiries. A later bank reads the ones on its chosen bureau.
 
 Each inquiry shows who pulled your file and on what date. So the next bank knows how many went out, and how recently they went.
 
@@ -52,7 +52,7 @@ The bank research, application order, communication and follow-up are our job. T
 
 5. FS-05 / The next stage — Every funding sequence you finish sets the start date for the next stage of your growth.
 
-Round one goes out with the pulls spread across all three bureaus. Before the next round leaves, every NEW inquiry from round one gets disputed.
+Round one goes out with the pulls spread across all three bureaus. Before the next round leaves, we review new inquiries and dispute errors the record supports.
 
 Before the next round, we review the new inquiries and dispute those that qualify. A funding sequence runs about six rounds.
 

@@ -87,12 +87,12 @@ const HOUR = 60 * 60 * 1000;
 // lane-specific. No person receives the same deck twice.
 export const DECK_SLOTS = Object.freeze([
   { funding: null, blueprint: "bank-said-no", channel: "email" },
-  { funding: "the-call", blueprint: "the-call", channel: "push" },
+  { funding: "the-call", blueprint: "the-call", channel: "email" },
   { funding: "pre-underwriting", blueprint: "thirteen-points", channel: "email" },
   { funding: "soft-pull", blueprint: "soft-pull", channel: "sms" },
   { funding: null, blueprint: "card-paydown", channel: "email" },
   { funding: "funding-sequence", blueprint: "credit-optimization", channel: "email" },
-  { funding: "who-we-are", blueprint: "who-we-are", channel: "push" },
+  { funding: "who-we-are", blueprint: "who-we-are", channel: "email" },
   { funding: "apply-yourself", blueprint: "blueprint-value", channel: "email" },
   { funding: "your-data-is-safe", blueprint: "your-data-is-safe", channel: "email" },
   { funding: null, blueprint: "business-one-two", channel: "email" },
@@ -101,7 +101,7 @@ export const DECK_SLOTS = Object.freeze([
   { funding: "the-maximum", blueprint: "the-maximum", channel: "email" },
   { funding: null, blueprint: "blueprint-12-months", channel: "email" },
   { funding: "tried-before", blueprint: "tried-before", channel: "email" },
-  { funding: "the-money-talk", blueprint: "the-money-talk", channel: "push" },
+  { funding: "the-money-talk", blueprint: "the-money-talk", channel: "email" },
   { funding: "after-you-say-yes", blueprint: "blueprint-in-action", channel: "email" }
 ]);
 
