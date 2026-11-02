@@ -52,6 +52,7 @@
    "approvedBySeed": true,
    "inactive": false,
    "files": [
+    "db/seed/306_pre_call_deck_email.sql",
     "db/migrations/534_backend_deck_lesson_templates.sql"
    ]
   },
@@ -937,6 +938,7 @@
    "approvedBySeed": true,
    "inactive": false,
    "files": [
+    "db/seed/306_pre_call_deck_email.sql",
     "db/migrations/534_backend_deck_lesson_templates.sql"
    ]
   },

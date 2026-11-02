@@ -5,7 +5,7 @@
 // requireAuth() wrapper touches a res object. That keeps it testable without a
 // fake HTTP layer and usable from any handler shape.
 //
-// Attaches req.staff = { id, role, org_id, email, name, status, avatarUrl } and
+// Attaches req.staff = { id, role, roles, org_id, email, name, status, avatarUrl } and
 // req.session = { id, expiresAt }.
 //
 // 401 is clean: { ok: false, error: "unauthorized" }. No detail about WHY —

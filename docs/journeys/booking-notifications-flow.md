@@ -9,6 +9,33 @@ half hours, 46 of them the same message, to customers who had already booked.
 Three separate faults stacked up, and no single document showed how the pieces
 connected, so nobody could see it coming.
 
+## Pre-call slideshow lessons (2026-11-01)
+
+BS-01 keeps its existing booking SMS. When both `EMAIL-BS-DECK-LESSON` and
+`SMS-BS-DECK` have approved copy and `BS_DECK_LESSONS_ENABLED=true` is set, the
+new deck sequence replaces the old filler email grid. The flag stays off while
+the approved templates are installed and live proof is collected. The sequence
+uses the saved survey or setter-corrected score to choose Funding or Blueprint
+and Repair decks. Each wake checks that the latest booking still has the same
+start time and provider booking ID, and stops after a moved, cancelled, started
+or held call. Email and text use the approved templates. Push requires the
+client's marketing-push setting and live device, and checks the exact booking
+again; a missing device can fall back to email, while a changed booking cannot.
+
+```mermaid
+flowchart TD
+    BOOK[Booking created or moved] --> COPY{Both deck templates approved?}
+    COPY -->|No| OLD[Existing BS-01 email grid]
+    COPY -->|Yes| FLAG{Deck lessons enabled?}
+    FLAG -->|No| OLD
+    FLAG -->|Yes| WAKE[Wait for next deck slot]
+    WAKE --> CURRENT{Same live booking and call not held?}
+    CURRENT -->|No| STOP[Stop old run]
+    CURRENT -->|Yes| LANE[Read current score lane]
+    LANE --> SEND[Queue email or text; check exact booking before push]
+    SEND --> WAKE
+```
+
 ## 1. From the funnel to an event
 
 `src/adapters/clickfunnels.mjs` → `src/events/bus.mjs`

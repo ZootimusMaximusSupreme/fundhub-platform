@@ -46,6 +46,7 @@ function fakeDb({
   client = { email: "person@example.com", ghl_contact_id: "crmContact123", phone: "+15551234567" },
   rules = [],
   subject = "Your file",
+  approvedDeck = false,
   due = [],
   marketingCounts = { last_day: 0, last_week: 0 },
   upcomingBooking = true,
@@ -77,7 +78,7 @@ function fakeDb({
         const r = routing[params[1]];
         return { rows: r ? [r] : [] };
       }
-      if (sql.includes("FROM message_templates")) return { rows: [{ subject }] };
+      if (sql.includes("FROM message_templates")) return { rows: [{ subject, ...(approvedDeck ? {body:"Approved lesson",compliance_passed:true}: {}) }] };
       if (sql.includes("SELECT id, to_address FROM messages")) return { rows: [] };
       if (sql.includes("ORDER BY created_at DESC OFFSET 1 LIMIT 1")) {
         const count = bouncedEmailAddresses.filter((address) =>
@@ -86,6 +87,10 @@ function fakeDb({
       }
       if (sql.includes("FROM bookings")) return { rows: upcomingBooking ? [{ one: 1 }] : [] };
       if (sql.includes("count(*) FILTER") && sql.includes("FROM messages")) return { rows: [marketingCounts] };
+      if (sql.includes("INSERT INTO messages") && sql.includes("BS-COMPANION-PUSH")) {
+        updates.push({ sql, params });
+        return { rows: [{ id: "push-receipt-1" }] };
+      }
       if (sql.includes("SELECT custom_fields FROM clients")) {
         return { rows: [{ custom_fields: customFields }] };
       }
@@ -346,6 +351,33 @@ describe("native alert after a gated booking confirmation", () => {
       assert.equal(result.outcome, OUTCOME.SENT);
       assert.equal(sent.length, expected * 2);
       if (expected) assert.deepEqual(sent, [["native", { kind: "check_in" }], ["web", { kind: "check_in" }]]);
+    }
+  });
+
+  test("a selected deck email reaches push only after the real source send is saved", async () => {
+    const lesson = claimed({ template_key: "EMAIL-BS-DECK-LESSON",
+      provider_ref: `workflow:EMAIL-BS-DECK-LESSON:bs-deck:${CLIENT}:the-call`,
+      rendered_body: "Open the lesson: https://fundhub.ai/slideshows/the-call.html" });
+    for (const [options, expected] of [[{}, 2],
+      [{ optedOut: new Set([`${CLIENT}:email`]) }, 0]]) {
+      const db = fakeDb({ customFields: { marketing_push_enabled: true }, approvedDeck:true, ...options });
+      const calls = [];
+      const send = async (_db, target) => {
+        assert.ok(db.updates.some(({ sql }) => /SET status = 'sent'/.test(sql)),
+          "the source provider result must be saved before any push call");
+        calls.push(target.notification);
+        return { sent: 1 };
+      };
+      const result = await dispatchOne(db, lesson, {
+        fetchImpl: spy(), env: {...BOTH_PUSH_ENV,BS_DECK_LESSONS_ENABLED:"true"}, now: MIDDAY,
+        sendNative: send, sendWeb: send
+      });
+      assert.equal(calls.length, expected);
+      if (expected) {
+        assert.equal(result.outcome, OUTCOME.SENT);
+        assert.deepEqual(calls, Array.from({ length: 2 }, () =>
+          ({ kind: "check_in", url: "/slideshows/the-call.html" })));
+      } else assert.notEqual(result.outcome, OUTCOME.SENT);
     }
   });
 

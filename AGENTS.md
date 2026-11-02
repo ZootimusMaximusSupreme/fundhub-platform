@@ -18,6 +18,7 @@ Before reading code or planning a new task, state the parallel workflows, what c
 - Make the change in GitHub and give a direct link. Do not ask the owner to copy source files or run terminal commands when you have a connected tool to do it.
 - Chris's standing authorization covers routine use of available accounts, sessions, APIs, CLIs, and credentials for the task he assigns, including Apple Developer and App Store Connect. The account access is standing for all later work. Owner-set 2026-10-24: standing, not tied to the launch. Do not repeat account-access permission questions. Keep actions in scope and honor any real tool-enforced confirmation. See `.ai/rules/owner-authorized-account-ops.md`.
 - Protect real recordings, money, and customer data. Do not loosen safety checks or claim success to make a status light green. Keep a failed proof red; repair the test or bug, or state the exact blocker.
+- Before sending a customer list or audience insight to any platform, check what that platform accepts, including the fields, who was selected, and the audience name. A hash does not make a disallowed selection acceptable. For Meta, never use credit-score, income, financial-status, or consumer-report segments as Custom Audience or lookalike seeds. Law: `.ai/rules/audience-data-recipient-check.md` (owner-set 2026-11-02).
 - **Remove before add.** Reuse working code and established naming and routing rules. Build a new feature only when the owner asks for it.
 
 ## Finish the requested outcome

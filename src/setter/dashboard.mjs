@@ -6,7 +6,12 @@ import { withTransaction } from "../db/with-transaction.mjs";
 import { queueCloserSetAlert } from "../staff/lead-alerts.mjs";
 import { tierBookingLink } from "../workflows/messaging.mjs";
 import { creditTierFor, stampQualificationBucket } from "../config/survey-qualification.mjs";
+import { refreshPrecallForScore } from "../workflows/precall-plan.mjs";
 import { emit } from "../events/bus.mjs";
+
+// Assigned setters have the same personal queue boundary as primary setters.
+// Only the existing owner/admin seats may use the management-wide view.
+const needsSetterAssignment = staff => !["owner", "admin"].includes(staff?.role);
 
 const HANDOFF_FIELDS = new Set([
   "lead_type", "dialed_at", "call_attempts", "disposition", "voicemail_left",
@@ -228,7 +233,7 @@ export async function setterNumbers(db, staff, { now = new Date(), includeDemo =
 }
 
 export async function listSetterQueue(db, staff, { limit = 50, offset = 0 } = {}) {
-  const roleScoped = staff.role === "setter";
+  const roleScoped = needsSetterAssignment(staff);
   const page = pageParams({ limit, offset });
   const result = await db.query(
     `WITH queue AS (
@@ -257,6 +262,8 @@ export async function listSetterQueue(db, staff, { limit = 50, offset = 0 } = {}
           AND t.created_at >= now() - interval '7 days'
         ))
         AND ($2::boolean = false OR t.assignee_staff_id IS NULL OR t.assignee_staff_id = $3)
+        AND ($2::boolean = false OR NULLIF(c.custom_fields->'setter_handoff'->>'setter_staff_id','') IS NULL
+          OR c.custom_fields->'setter_handoff'->>'setter_staff_id' = $3::text)
       ORDER BY c.id, t.created_at DESC
      )
      SELECT * FROM queue
@@ -269,6 +276,37 @@ export async function listSetterQueue(db, staff, { limit = 50, offset = 0 } = {}
   const items = result.rows.map(row => ({ ...mapItem(row, staff), booking_url: tierBookingLink(jsonObject(row.custom_fields)) }));
   const numbers = await setterNumbers(db, staff);
   return { items, count: items.length, numbers, booking_url: "https://apply.fundhub.ai/funding-book-call" };
+}
+
+export async function latestUndoableDial(db, staff) {
+  const result = await db.query(
+    `SELECT e.client_id, e.event_id, e.undo_until
+       FROM setter_dial_events e
+       JOIN clients c ON c.id = e.client_id AND c.org_id = e.org_id
+       LEFT JOIN LATERAL (
+         SELECT id, assignee_staff_id FROM tasks
+          WHERE org_id = e.org_id AND client_id = e.client_id AND assignee_role = 'setter'
+          ORDER BY created_at DESC LIMIT 1
+       ) t ON true
+      WHERE e.org_id = $1 AND e.setter_staff_id = $2
+        AND e.reversed_at IS NULL AND e.undo_blocked_at IS NULL AND e.undo_until > now()
+        AND c.custom_fields->>'crm_archived_at' IS NULL
+        AND c.custom_fields->'setter_handoff'->>'complete_at' IS NULL
+        AND c.custom_fields->'setter_handoff'->>'disposition' IS DISTINCT FROM 'no_answer'
+        AND COALESCE(NULLIF(c.custom_fields->'setter_handoff'->>'call_attempts', '')::int, 0) = e.attempt_after
+        AND COALESCE(NULLIF(c.custom_fields->'setter_handoff'->'dial_attempt_days'->>(e.phoenix_day::text), '')::int, 0) = e.day_after
+        AND NOT EXISTS (
+          SELECT 1 FROM setter_dial_events later
+           WHERE later.org_id = e.org_id AND later.client_id = e.client_id
+             AND later.event_order > e.event_order AND later.reversed_at IS NULL
+        )
+        AND ($3::boolean = false OR (t.id IS NOT NULL
+          AND (t.assignee_staff_id IS NULL OR t.assignee_staff_id = $2)
+          AND c.custom_fields->'setter_handoff'->>'setter_staff_id' = $2::text))
+      ORDER BY e.occurred_at DESC, e.event_id DESC LIMIT 1`,
+    [staff.org_id, staff.id, needsSetterAssignment(staff)]
+  );
+  return result.rows[0] || null;
 }
 
 export async function getSetterClient(db, orgId, clientId) {
@@ -301,17 +339,18 @@ export async function getSetterClient(db, orgId, clientId) {
   return result.rows[0] || null;
 }
 
-async function persistHandoff(db, clientId, orgId, patch) {
+async function persistHandoff(db, clientId, orgId, patch, expectedAttempts = null) {
   const result = await db.query(
     `UPDATE clients
         SET custom_fields = jsonb_set(
           COALESCE(custom_fields, '{}'::jsonb), '{setter_handoff}',
           COALESCE(custom_fields->'setter_handoff', '{}'::jsonb) || $3::jsonb, true)
       WHERE id = $1 AND org_id = $2
+        AND ($4::int IS NULL OR COALESCE(NULLIF(custom_fields->'setter_handoff'->>'call_attempts', '')::int, 0) = $4)
       RETURNING custom_fields`,
-    [clientId, orgId, JSON.stringify(patch)]
+    [clientId, orgId, JSON.stringify(patch), expectedAttempts]
   );
-  return jsonObject(result.rows[0]?.custom_fields);
+  return result.rows.length ? jsonObject(result.rows[0].custom_fields) : null;
 }
 
 async function persistSurveyEdits(db, clientId, orgId, edits) {
@@ -363,10 +402,32 @@ async function startNoAnswerCadence(db, { orgId, clientId, previous, next, patch
   }
 }
 
-export async function updateSetterHandoff(db, staff, { client_id, action, handoff: input = {}, survey_edits }, deps = {}) {
+export async function updateSetterHandoff(db, staff, { client_id, action, handoff: input = {}, survey_edits, operation_id, event_id, expected_call_attempts }, deps = {}) {
+  const transactionalDial = action === "undo_dial" || action === "log_dial";
+  if (transactionalDial && !deps.dialTransaction) {
+    const result = await withTransaction(db, writer => updateSetterHandoff(writer, staff,
+      { client_id, action, handoff: input, survey_edits, operation_id, event_id },
+      { ...deps, dialTransaction: true }));
+    if (action === "log_dial" && result.status === 200 && !result.body.dial_event?.replayed) {
+      await startNoAnswerCadence(db, {
+        orgId: staff.org_id, clientId: client_id, previous: {},
+        next: result.body.item.setter_handoff, patch: input,
+        setterStaffId: result.body.item.setter_staff_id
+      }, deps);
+    }
+    return result;
+  }
+  if (transactionalDial) {
+    const locked = await db.query(
+      `SELECT id FROM clients WHERE id = $1 AND org_id = $2
+         AND custom_fields->>'crm_archived_at' IS NULL FOR UPDATE`,
+      [client_id, staff.org_id]
+    );
+    if (!locked.rows.length) return { status: 404, body: { ok: false, error: "client_not_found" } };
+  }
   const client = await getSetterClient(db, staff.org_id, client_id);
   if (!client) return { status: 404, body: { ok: false, error: "client_not_found" } };
-  if (staff.role === "setter") {
+  if (needsSetterAssignment(staff)) {
     const assigned = await db.query(
       `SELECT assignee_staff_id FROM tasks
         WHERE org_id = $1 AND client_id = $2 AND assignee_role = 'setter'
@@ -377,9 +438,66 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
       return { status: 403, body: { ok: false, error: "assigned_to_other_setter" } };
     }
   }
+  if (action === "undo_dial") {
+    const eventResult = await db.query(
+      `SELECT *, phoenix_day::text AS phoenix_day_text FROM setter_dial_events
+        WHERE event_id = $1 AND org_id = $2 AND client_id = $3
+          AND setter_staff_id = $4 FOR UPDATE`,
+      [event_id, staff.org_id, client_id, staff.id]
+    );
+    const event = eventResult.rows[0];
+    if (!event) return { status: 404, body: { ok: false, error: "dial_event_not_found" } };
+    const fields = jsonObject(client.custom_fields);
+    const handoff = jsonObject(fields.setter_handoff);
+    if (needsSetterAssignment(staff) && handoff.setter_staff_id && handoff.setter_staff_id !== staff.id) {
+      return { status: 403, body: { ok: false, error: "assigned_to_other_setter" } };
+    }
+    const item = () => ({ ...mapItem(client, staff), booking_url: tierBookingLink(fields) });
+    if (event.reversed_at) return { status: 200, body: { ok: true, item: item(), dial_event: { event_id, undone: true } } };
+    if (handoff.complete_at) return { status: 409, body: { ok: false, error: "handoff_already_complete" } };
+    if (handoff.disposition === "no_answer" || event.undo_blocked_at) {
+      return { status: 409, body: { ok: false, error: "dial_undo_blocked_by_followup" } };
+    }
+    const now = (deps.now || (() => new Date()))();
+    if (new Date(now) >= new Date(event.undo_until)) {
+      return { status: 409, body: { ok: false, error: "dial_undo_expired" } };
+    }
+    const later = await db.query(
+      `SELECT 1 FROM setter_dial_events
+        WHERE org_id = $1 AND client_id = $2 AND event_order > $3
+          AND reversed_at IS NULL LIMIT 1`,
+      [staff.org_id, client_id, event.event_order]
+    );
+    const days = jsonObject(handoff.dial_attempt_days);
+    const day = event.phoenix_day_text;
+    if (later.rows.length || Number(handoff.call_attempts || 0) !== Number(event.attempt_after)
+        || Number(days[day] || 0) !== Number(event.day_after)) {
+      return { status: 409, body: { ok: false, error: "dial_undo_stale" } };
+    }
+    const restoredDays = { ...days };
+    if (Number(event.day_before) === 0) delete restoredDays[day];
+    else restoredDays[day] = Number(event.day_before);
+    const savedFields = await persistHandoff(db, client_id, staff.org_id, {
+      call_attempts: Number(event.attempt_before), dial_attempt_days: restoredDays,
+      dialed_at: Number(event.attempt_before) === 0 ? (event.prior_dialed_at || null) : handoff.dialed_at
+    });
+    await db.query(
+      `UPDATE setter_dial_events SET reversed_at = $2, reversed_by_staff_id = $3
+        WHERE event_id = $1`, [event_id, new Date(now), staff.id]
+    );
+    await db.query(
+      `INSERT INTO setter_dial_reversals (event_id, org_id, client_id, actor_staff_id, reversed_at)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [event_id, staff.org_id, client_id, staff.id, new Date(now)]
+    );
+    return { status: 200, body: { ok: true,
+      item: { ...mapItem({ ...client, custom_fields: savedFields }, staff), booking_url: tierBookingLink(savedFields) },
+      dial_event: { event_id, undone: true }
+    } };
+  }
   if (action === "save_survey") {
     const previous = jsonObject(jsonObject(client.custom_fields).setter_handoff);
-    if (staff.role === "setter" && previous.setter_staff_id && previous.setter_staff_id !== staff.id) {
+    if (needsSetterAssignment(staff) && previous.setter_staff_id && previous.setter_staff_id !== staff.id) {
       return { status: 403, body: { ok: false, error: "assigned_to_other_setter" } };
     }
     if (!survey_edits || typeof survey_edits !== "object" || Array.isArray(survey_edits)) {
@@ -403,7 +521,7 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
       }
       edits[key] = clean;
     }
-    if (staff.role === "setter") {
+    if (needsSetterAssignment(staff)) {
       const claim = await db.query(
         `UPDATE tasks SET assignee_staff_id = $3, updated_at = now()
           WHERE org_id = $1 AND client_id = $2 AND assignee_role = 'setter'
@@ -437,6 +555,10 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
         });
         await persistHandoff(writer, client_id, staff.org_id, { handoff_text: handoffText });
       }
+      if (creditTier && savedFields.credit_tier !== creditTier) {
+        await refreshPrecallForScore(writer,{orgId:staff.org_id,clientId:client_id,surveyEdits:saved},
+          {now:(deps.now || (()=>new Date()))()});
+      }
       // A corrected score can move the lead to the other calendar.
       const bookingUrl = tierBookingLink({ ...jsonObject(client.custom_fields), setter_survey_edits: saved });
       return { status: 200, body: { ok: true, survey_edits: saved, booking_url: bookingUrl } };
@@ -445,8 +567,44 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
   const validated = sanitizeHandoffPatch(input);
   if (validated.error) return { status: 400, body: { ok: false, error: validated.error } };
   const previous = jsonObject(jsonObject(client.custom_fields).setter_handoff);
-  if (staff.role === "setter" && previous.setter_staff_id && previous.setter_staff_id !== staff.id) {
+  if (expected_call_attempts != null && (!Number.isInteger(expected_call_attempts) || expected_call_attempts < 0 || expected_call_attempts > 20)) {
+    return { status: 400, body: { ok: false, error: "invalid_expected_call_attempts" } };
+  }
+  const countWasEdited = Object.hasOwn(validated.patch, "call_attempts")
+    && validated.patch.call_attempts !== (expected_call_attempts ?? Number(previous.call_attempts || 0));
+  // Cached clients lack the baseline needed to tell a manual edit from a
+  // stale echo. Reject divergent counts rather than erasing a logged dial.
+  if (action !== "log_dial" && countWasEdited && expected_call_attempts == null) {
+    return { status: 409, body: { ok: false, error: "handoff_dial_count_changed" } };
+  }
+  if (action !== "log_dial" && expected_call_attempts != null
+      && countWasEdited && Number(previous.call_attempts || 0) !== expected_call_attempts) {
+    return { status: 409, body: { ok: false, error: "handoff_dial_count_changed" } };
+  }
+  if (action === "complete" && expected_call_attempts != null
+      && Number(previous.call_attempts || 0) !== expected_call_attempts) {
+    return { status: 409, body: { ok: false, error: "handoff_dial_count_changed" } };
+  }
+  if (needsSetterAssignment(staff) && previous.setter_staff_id && previous.setter_staff_id !== staff.id) {
     return { status: 403, body: { ok: false, error: "assigned_to_other_setter" } };
+  }
+  if (action === "log_dial" && operation_id) {
+    const existing = await db.query(
+      `SELECT event_id, client_id, undo_until, reversed_at FROM setter_dial_events
+        WHERE org_id = $1 AND setter_staff_id = $2 AND operation_id = $3`,
+      [staff.org_id, staff.id, operation_id]
+    );
+    const event = existing.rows[0];
+    if (event) {
+      if (event.client_id !== client_id) {
+        return { status: 409, body: { ok: false, error: "dial_operation_conflict" } };
+      }
+      return { status: 200, body: { ok: true,
+        item: { ...mapItem(client, staff), booking_url: tierBookingLink(jsonObject(client.custom_fields)) },
+        dial_event: { event_id: event.event_id, undo_until: event.undo_until,
+          undone: !!event.reversed_at, replayed: true }
+      } };
+    }
   }
   const leadType = previous.lead_type || (client.booked_at ? "booked" : "opt_in");
   const setterStaffId = previous.setter_staff_id || staff.id;
@@ -467,16 +625,28 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
       ? previous.setter_name || ""
       : staff.name || staff.first_name || ""
   };
-  if (action === "log_dial") {
-    const dialedAt = (deps.now || (() => new Date()))();
-    const dialedDate = dialedAt instanceof Date ? dialedAt : new Date(dialedAt);
-    if (!Number.isFinite(dialedDate.getTime())) {
+  let dialEvent = null;
+  let dialDay = null;
+  // The UI includes the currently selected result on unrelated autosaves. Only
+  // a changed result records a new conversation; restamping an old "reached"
+  // would suppress texts after a newer unanswered voice call.
+  const dispositionSaved = Object.hasOwn(validated.patch, "disposition")
+    && validated.patch.disposition !== previous.disposition;
+  let actionDate = null;
+  if (dispositionSaved || action === "log_dial") {
+    const at = (deps.now || (() => new Date()))();
+    actionDate = at instanceof Date ? at : new Date(at);
+    if (!Number.isFinite(actionDate.getTime())) {
       return { status: 500, body: { ok: false, error: "dial_time_unavailable" } };
     }
-    const day = phoenixDay(dialedDate);
+  }
+  if (dispositionSaved) next.disposition_at = actionDate.toISOString();
+  if (action === "log_dial") {
+    const day = phoenixDay(actionDate);
+    dialDay = day;
     const days = jsonObject(previous.dial_attempt_days);
     next.call_attempts = Number(previous.call_attempts || 0) + 1;
-    next.dialed_at = previous.dialed_at || dialedDate.toISOString();
+    next.dialed_at = previous.dialed_at || actionDate.toISOString();
     next.dial_attempt_days = { ...days, [day]: Number(days[day] || 0) + 1 };
   }
   if (action === "complete") next.complete_at = previous.complete_at || new Date().toISOString();
@@ -489,7 +659,7 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
     )).rows[0];
     next.handoff_text = (deps.buildText || buildSetterHandoffText)({ client, handoff: next, booking: client, closer, setter: staff });
   }
-  if (staff.role === "setter") {
+  if (needsSetterAssignment(staff)) {
     const claim = await db.query(
       `UPDATE tasks SET assignee_staff_id = $3, updated_at = now()
         WHERE org_id = $1 AND client_id = $2 AND assignee_role = 'setter'
@@ -500,9 +670,56 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
     if (!claim.rows.length) return { status: 403, body: { ok: false, error: "assigned_to_other_setter" } };
   }
   const save = async (writer) => {
-    let savedFields = await persistHandoff(writer, client_id, staff.org_id, next);
+    const writePatch = action === "log_dial" ? next : {
+      ...validated.patch,
+      lead_type: leadType, setter_staff_id: setterStaffId,
+      closer_staff_id: closerStaffId, setter_name: next.setter_name,
+      ...(action === "complete" ? { complete_at: next.complete_at } : {}),
+      ...(next.handoff_text ? { handoff_text: next.handoff_text } : {})
+    };
+    if (dispositionSaved) writePatch.disposition_at = next.disposition_at;
+    // The checklist echoes the visible count on every Save. An unchanged echo
+    // must not overwrite a dial committed after the client was read above.
+    if (action !== "log_dial" && !countWasEdited) {
+      delete writePatch.call_attempts;
+    }
+    if (action !== "log_dial" && writePatch.dialed_at === previous.dialed_at) {
+      delete writePatch.dialed_at;
+    }
+    const countEdit = action !== "log_dial" && Object.hasOwn(writePatch, "call_attempts");
+    const noAnswerSave = action === "save" && validated.patch.disposition === "no_answer";
+    let savedFields = await persistHandoff(writer, client_id, staff.org_id, writePatch,
+      countEdit || noAnswerSave || action === "complete" ? Number(previous.call_attempts || 0) : null);
+    if (!savedFields) return { status: 409, body: { ok: false, error: "handoff_dial_count_changed" } };
+    if (action !== "log_dial" && validated.patch.disposition === "no_answer") {
+      // The text cadence runs after Save. Block Undo first and keep that fact
+      // even if the disposition is edited again later.
+      await writer.query(
+        `UPDATE setter_dial_events SET undo_blocked_at = now()
+          WHERE org_id = $1 AND client_id = $2 AND reversed_at IS NULL
+            AND undo_blocked_at IS NULL AND undo_until > now()`,
+        [staff.org_id, client_id]
+      );
+    }
     let saved = jsonObject(savedFields.setter_handoff);
     let send = null;
+    if (action === "log_dial" && operation_id) {
+      const inserted = await writer.query(
+        `INSERT INTO setter_dial_events
+          (org_id, client_id, setter_staff_id, operation_id, occurred_at, phoenix_day,
+           attempt_before, attempt_after, day_before, day_after, prior_dialed_at, undo_until)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
+                 CASE WHEN $12::boolean THEN '1970-01-01T00:00:00Z'::timestamptz
+                   ELSE $5::timestamptz + interval '10 minutes' END)
+         RETURNING event_id, undo_until`,
+        [staff.org_id, client_id, staff.id, operation_id, actionDate, dialDay,
+          Number(previous.call_attempts || 0), Number(next.call_attempts),
+          Number(jsonObject(previous.dial_attempt_days)[dialDay] || 0),
+          Number(jsonObject(next.dial_attempt_days)[dialDay]), previous.dialed_at || null,
+          next.disposition === "no_answer"]
+      );
+      dialEvent = inserted.rows[0];
+    }
     if (action === "send_intro_video" || action === "send_handoff") {
       if (action === "send_handoff" && !saved.complete_at) {
         return { status: 400, body: { ok: false, error: "handoff_incomplete", missing: ["complete_at"] } };
@@ -542,10 +759,11 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
         [staff.org_id, client_id]
       );
     }
-    return { status: 200, body: { ok: true, item: { ...mapItem({ ...client, done: !!saved.complete_at, setter_staff_id: setterStaffId, closer_staff_id: closerStaffId, custom_fields: savedFields }, staff), booking_url: tierBookingLink(savedFields) }, ...(send ? { send } : {}) } };
+    return { status: 200, body: { ok: true, item: { ...mapItem({ ...client, done: !!saved.complete_at, setter_staff_id: setterStaffId, closer_staff_id: closerStaffId, custom_fields: savedFields }, staff), booking_url: tierBookingLink(savedFields) }, ...(send ? { send } : {}), ...(dialEvent ? { dial_event: dialEvent } : {}) } };
   };
-  const result = action === "complete" ? await withTransaction(db, save) : await save(db);
-  if (result.status === 200) {
+  const result = action === "complete" || (action === "save" && validated.patch.disposition === "no_answer")
+    ? await withTransaction(db, save) : await save(db);
+  if (result.status === 200 && !transactionalDial) {
     await startNoAnswerCadence(db, {
       orgId: staff.org_id, clientId: client_id, previous, next, patch: validated.patch, setterStaffId
     }, deps);

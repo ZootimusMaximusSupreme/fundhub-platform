@@ -4,6 +4,8 @@ const OUTBOUND_ROUTES = new Map([
   ["auth/session", new Set(["GET"])],
   ["org-brand", new Set(["GET"])],
   ["read/bank-outreach", new Set(["GET"])],
+  // This read-only companion resolves only the employee's own outreach feed.
+  ["read/dock", new Set(["GET"])],
   ["bank-outreach", new Set(["POST"])]
 ]);
 

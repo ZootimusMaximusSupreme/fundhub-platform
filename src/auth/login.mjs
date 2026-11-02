@@ -13,7 +13,7 @@
 // and drop it.
 
 import { verifyPassword, verifyDecoy, needsRehash, hashPassword } from "./hash.mjs";
-import { createSession, normalizeIp } from "./session.mjs";
+import { createSession, normalizeIp, verifySession } from "./session.mjs";
 import { resolveDefaultOrg } from "./org.mjs";
 import { demoLoginRefusal } from "./demo-logins.mjs";
 
@@ -73,7 +73,7 @@ export async function recordAttempt(db, { orgId, email, ip, successful }) {
 }
 
 // login — the whole flow.
-//   → { ok: true,  token, expiresAt, staff: { id, org_id, role, email, name } }
+//   → { ok: true,  token, expiresAt, staff: { id, org_id, role, roles, email, name } }
 //   → { ok: false, status, error }
 export async function login(db, { email, password, ip, userAgent, orgId, env = process.env } = {}) {
   const org = orgId || (await resolveDefaultOrg(db));
@@ -162,11 +162,16 @@ export async function login(db, { email, password, ip, userAgent, orgId, env = p
   const session = await createSession(db, {
     staffId: staff.id, orgId: staff.org_id, ip, userAgent, env
   });
+  // Resolve the just-minted session through the same server-side role lookup
+  // used by every subsequent request, so the first login response is current.
+  const verified = await verifySession(db, session.token, { env });
+  if (!verified) return { ok: false, status: 403, error: "account_inactive" };
 
   return {
     ok: true,
     token: session.token,
     expiresAt: session.expiresAt,
-    staff: { id: staff.id, org_id: staff.org_id, role: staff.role, email: staff.email, name: staff.name }
+    staff: { id: staff.id, org_id: staff.org_id, role: staff.role, roles: verified.staff.roles,
+      email: staff.email, name: staff.name }
   };
 }

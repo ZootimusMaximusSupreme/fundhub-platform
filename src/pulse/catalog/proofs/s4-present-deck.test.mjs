@@ -45,7 +45,7 @@ async function openDeck(open, { query = `?contact=${CLIENT}` } = {}) {
       calls.generate.push(bodyOf(route));
       return json(route, { ok: true, letters: [LETTER("Experian"), LETTER("Equifax")] });
     },
-    "/api/repair/send": async (route) => { calls.send.push(bodyOf(route)); return json(route, { ok: true }); },
+    "/api/repair/send": async (route) => { const body = bodyOf(route); calls.send.push(body); return json(route, { ok: true, results: body.letters.map((letter) => ({ ok: true, letterId: letter.letter_id })) }); },
     "/api/closer-deck": async (route) => { calls.deckPost.push(bodyOf(route)); return json(route, { ok: true }); },
   };
   const opened = await open(`/app/present.html${query}`, { session: CLOSER, handlers });
@@ -118,7 +118,7 @@ test("Stage letters enrolls then stages round one; Send letters now mails exactl
         { bureau: "Equifax", html: "Dear Equifax, please remove these items.", letter_id: "L-Equifax" },
       ],
     });
-    await page.waitForFunction(() => /Sent\. Letters are in the mail queue\./.test(document.body.innerText));
+    await page.waitForFunction(() => /All 2 letter\(s\) accepted by the mail provider and placed in the mail queue\./.test(document.body.innerText));
   });
   await page.close();
 });

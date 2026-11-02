@@ -40,8 +40,11 @@ SELECT count(*)::int AS active,
          OR (a.kind = 'authorized_rep' AND s.active_client_id IS DISTINCT FROM d.client_id)
          OR s.id IS NULL OR s.account_id IS DISTINCT FROM d.account_id
          OR s.org_id IS DISTINCT FROM d.org_id)::int AS wrong_owner,
-       count(*) FILTER (WHERE d.failure_count > 0
-         AND d.updated_at >= now() - interval '2 hours')::int AS recent_failed
+       (count(*) FILTER (WHERE d.failure_count > 0
+         AND d.updated_at >= now() - interval '2 hours')
+         + (SELECT count(*) FROM messages WHERE channel = 'push'
+           AND template_key = 'BS-COMPANION-PUSH' AND status = 'sending'
+           AND updated_at < now() - interval '15 minutes'))::int AS recent_failed
   FROM client_apns_devices d
   LEFT JOIN accounts a ON a.id = d.account_id
   LEFT JOIN account_sessions s ON s.id = d.session_id
@@ -132,7 +135,7 @@ export async function run(ctx) {
       throw ctx.fail("recent-delivery-failure", "The recent APNs failure count was not returned.");
     }
     if (failed > 0) {
-      throw ctx.fail("recent-delivery-failure", `${failed} active iPhone devices reported an APNs send failure in the last two hours.`);
+      throw ctx.fail("recent-delivery-failure", `${failed} recent device failures or interrupted push attempts need review. Do not automatically resend an unknown provider outcome.`);
     }
   });
 
@@ -174,7 +177,7 @@ export const fixGuide = [
   "- signing-ready: an APNs ID, P-256 key, or encrypted device storage key is missing from the live app.",
   "- door-mounted: the native route was not shipped, fell out of the route map, or the app cannot read sign-in state.",
   "- device-owner: the device table is missing, cannot be read, or a live row belongs to another client.",
-  "- recent-delivery-failure: APNs rejected a send to a live device in the last two hours, or its receipt count could not be read.",
+  "- recent-delivery-failure: a recent device send failed, a companion push has no result after 15 minutes, or the count could not be read. Review unknown attempts before resending.",
   "- native-open-receipts: a saved app open is missing or wrong on the Sales card, or either read failed.",
   "Steps:",
   "- Run node scripts/pulse/run-beat.mjs native-push to see the first failed step.",

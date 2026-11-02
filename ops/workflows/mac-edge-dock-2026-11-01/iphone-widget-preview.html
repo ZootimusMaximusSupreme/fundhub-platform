@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Fundhub iPhone widget preview</title>
+<style>
+@font-face{font-family:Nunito;src:url(../../../public/assets/fonts/nunito-latin-variable.woff2) format('woff2');font-weight:200 900}
+:root{font-family:Nunito,-apple-system,BlinkMacSystemFont,sans-serif;color:#0d1113}
+*{box-sizing:border-box}body{margin:0;background:#f5f5f3}.canvas{width:1500px;height:850px;padding:55px 70px;background:#f8f8f6}
+.eyebrow{font-size:15px;font-weight:900;letter-spacing:.16em;color:#626968;text-transform:uppercase}.eyebrow:before{content:'';display:inline-block;width:28px;height:4px;margin:0 10px 3px 0;background:linear-gradient(90deg,#f2a69b,#f5ce8f,#f2e39b,#a8d8b0,#a9c6e8,#c4b3e5)}
+h1{font-size:48px;letter-spacing:-.055em;margin:10px 0 0;font-weight:900}p{font-size:19px;color:#626968;margin:10px 0 0}
+.row{display:flex;gap:48px;align-items:flex-start;margin-top:60px}.group{display:flex;flex-direction:column;gap:16px}.label{font-size:17px;font-weight:900}.hint{font-size:14px;color:#626968}
+.widget{position:relative;background:#f8f8f6;border-radius:25px;box-shadow:0 18px 50px #17202420,0 0 0 1px #d8dcd9;overflow:hidden;padding:18px 18px 17px;display:flex;flex-direction:column}
+.small{width:270px;height:270px}.medium{width:530px;height:270px}
+.top{display:flex;align-items:center;gap:8px;font-size:20px;font-weight:900;line-height:1}.logo{display:grid;place-items:center;width:40px;height:40px;border-radius:10px;background:#0d1113;color:#fff;font-size:28px;letter-spacing:-.08em;font-weight:900}.roles{margin-left:auto;font-size:13px;color:#626968;font-weight:700}
+.items{margin-top:19px;display:flex;flex-direction:column;gap:14px}.item{display:flex;align-items:center;gap:9px;font-size:17px;font-weight:700;white-space:nowrap}.symbol{width:21px;text-align:center;font-size:18px}.count{margin-left:auto;font-size:18px;font-weight:900}.medium .item{font-size:17px}
+.bottom{margin-top:auto;display:flex;align-items:center;justify-content:space-between;color:#626968;font-size:13px}.spectrum{position:absolute;left:0;right:0;bottom:0;height:5px;background:linear-gradient(90deg,#f2a69b,#f5ce8f,#f2e39b,#a8d8b0,#a9c6e8,#c4b3e5)}
+.lock-stage{margin-top:24px;background:linear-gradient(135deg,#9daac0,#485d77);border-radius:25px;padding:30px;width:430px;height:200px;box-shadow:0 18px 50px #17202420}.lock-time{font-size:35px;letter-spacing:-.04em;color:#fff;font-weight:700;text-align:center;opacity:.9}.lock{display:flex;gap:9px;align-items:center;width:370px;height:74px;margin-top:15px;background:#dce2e8cc;backdrop-filter:blur(18px);border-radius:18px;padding:12px 15px;color:#20262d}.lock-symbol{font-size:23px}.lock strong{display:block;font-size:15px}.lock span{display:block;font-size:13px}
+.foot{margin-top:50px;font-size:14px;color:#626968;font-weight:700}.foot b{color:#0d1113}
+</style>
+<div class="canvas">
+ <div class="eyebrow">Fundhub iPhone · source matched preview</div>
+ <h1>Your work, at a glance.</h1>
+ <p>Home Screen and Lock Screen widgets from the current WidgetKit layout.</p>
+ <div class="row">
+  <div class="group"><div class="label">Small Home Screen widget</div><div class="hint">Top two items for one role</div>
+   <div class="widget small"><div class="top"><div class="logo">f.</div><span>fundhub</span></div>
+    <div class="items"><div class="item"><span class="symbol">✦</span><span>AI ops alerts</span><span class="count">2</span></div><div class="item"><span class="symbol">✓</span><span>Approvals waiting</span><span class="count">3</span></div></div>
+    <div class="bottom">Updated just now</div><div class="spectrum"></div></div>
+  </div>
+  <div class="group"><div class="label">Medium Home Screen widget</div><div class="hint">Three top items, stacked across assigned roles</div>
+   <div class="widget medium"><div class="top"><div class="logo">f.</div><span>fundhub</span><span class="roles">2 roles</span></div>
+    <div class="items"><div class="item"><span class="symbol">✦</span><span>Founder · AI ops alerts</span><span class="count">2</span></div><div class="item"><span class="symbol">✓</span><span>Founder · Approvals waiting</span><span class="count">3</span></div><div class="item"><span class="symbol">◴</span><span>Closer · Calls coming up</span><span class="count">1</span></div></div>
+    <div class="bottom">Updated just now</div><div class="spectrum"></div></div>
+  </div>
+  <div class="group"><div class="label">Lock Screen widget</div><div class="hint">One private, high-priority summary</div>
+   <div class="lock-stage"><div class="lock-time">9:41</div><div class="lock"><div class="lock-symbol">▣</div><div><strong>Fundhub · 2 need action</strong><span>AI ops alerts</span></div></div></div>
+  </div>
+ </div>
+ <div class="foot"><b>Sample counts.</b> The installed widget needs the app’s session hookup and device proof before it can show live data.</div>
+</div>
+</html>

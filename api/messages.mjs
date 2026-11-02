@@ -147,6 +147,9 @@ export default async function handler(req, res) {
     if (err && err.code === "BAD_REQUEST") {
       return res.status(400).json({ ok: false, error: "bad_request", message: String(err.message).slice(0, 200) });
     }
+    if (err && err.code === "IDEMPOTENCY_CONFLICT") {
+      return res.status(409).json({ ok: false, error: "idempotency_key_reused" });
+    }
     // safeError scrubs the DSN, which err.message quotes on a connection
     // failure — the same treatment health.mjs and the Netlify adapter give it.
     return res.status(500).json({ ok: false, error: "send_failed", message: "Something went wrong sending that message. Try again in a moment.", detail: safeError(err) });

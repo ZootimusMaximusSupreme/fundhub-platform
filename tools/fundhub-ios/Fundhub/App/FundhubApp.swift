@@ -48,6 +48,8 @@ final class FundhubSessionStore: ObservableObject {
     init() { Task { await restore() } }
 
     func restore() async {
+        // A cached widget is not a verified session on a new app launch.
+        DockWidgetSnapshot.clear()
         let hadSavedSession = SessionKeychain.hasSavedSession
         guard hadSavedSession else { phase = .signedOut; return }
         phase = .checking
@@ -100,6 +102,7 @@ final class FundhubSessionStore: ObservableObject {
         guard reply.ok, let newToken = reply.token, !newToken.isEmpty else {
             throw FundhubAPIError.refused(reply.message ?? "That sign-in did not work.")
         }
+        if token != newToken { DockWidgetSnapshot.clear() }
         let savedForQuickSignIn = SessionKeychain.save(newToken)
         token = newToken
         await refreshSession()
@@ -109,7 +112,11 @@ final class FundhubSessionStore: ObservableObject {
     }
 
     func refreshSession() async {
-        guard let token else { phase = .signedOut; return }
+        guard let token else {
+            DockWidgetSnapshot.clear()
+            phase = .signedOut
+            return
+        }
         do {
             let result = try await api.identity(token: token)
             guard self.token == token else { return }
@@ -119,6 +126,12 @@ final class FundhubSessionStore: ObservableObject {
             identity = result
             phase = .signedIn
             message = nil
+            // Only this verified identity may refresh the sanitized App Group file.
+            // Recheck when the task starts; logout/account changes invalidate it.
+            Task { [weak self] in
+                guard let self, self.token == token, self.phase == .signedIn else { return }
+                try? await DockWidgetSnapshot.refresh(bearer: token)
+            }
             if result.principal == "client" {
                 // After a verified client session, report first authenticated app open.
                 // Never require notification permission or block login on telemetry.
@@ -167,6 +180,10 @@ final class FundhubSessionStore: ObservableObject {
     }
 
     func signOut(revoke: Bool = true) async {
+        // Invalidate in-flight identity/summary replies before any network await.
+        let outgoingToken = token
+        token = nil
+        DockWidgetSnapshot.clear()
         phase = .checking
         var pushRevokeFailed = false
         if (identity?.principal == "client" || identity?.principal == "staff") && revoke {
@@ -178,7 +195,7 @@ final class FundhubSessionStore: ObservableObject {
             NativePushCenter.shared.resetAfterInvalidSession()
         }
         var revokeFailed = false
-        if revoke, let token {
+        if revoke, let token = outgoingToken {
             do { try await api.logout(token: token) }
             catch FundhubAPIError.invalidSession { /* Already revoked by the web portal. */ }
             catch { revokeFailed = true }
@@ -200,6 +217,7 @@ final class FundhubSessionStore: ObservableObject {
 
 private struct RootView: View {
     @EnvironmentObject private var store: FundhubSessionStore
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         Group {
@@ -217,6 +235,11 @@ private struct RootView: View {
                     Button("Sign out") { Task { await store.signOut() } }
                 }
             }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active, store.phase == .signedIn else { return }
+            // Reopening the app refreshes the widget through a verified session.
+            Task { await store.refreshSession() }
         }
     }
 }
@@ -498,6 +521,31 @@ enum StaffAlertNavigation {
 }
 
 enum ClientPortalNavigation {
+    static func verifiedPath(
+        _ request: NativePushTap.ClientOpenRequest,
+        bearerAtTap: String,
+        bearerAfterRefresh: String?,
+        clientSessionVerified: Bool,
+        taskCancelled: Bool,
+        now: Date = Date()
+    ) -> String? {
+        // Identity refresh can outlast the tap's lifetime: recheck after its await.
+        let age = now.timeIntervalSince(request.tappedAt)
+        guard age >= 0, age <= NativePushTap.requestLifetime,
+              shouldOpen(bearerAtTap: bearerAtTap, bearerAfterRefresh: bearerAfterRefresh,
+                         clientSessionVerified: clientSessionVerified, taskCancelled: taskCancelled),
+              NativePushTap.clientPath(["path": request.path]) != nil else { return nil }
+        return request.path
+    }
+
+    static func showsBackButton(path: String?, bearerAtOpen: String?, currentBearer: String,
+                                principal: String) -> Bool {
+        guard principal == "client", let bearerAtOpen, !bearerAtOpen.isEmpty,
+              bearerAtOpen == currentBearer, let path,
+              path != NativePushTap.portalPath else { return false }
+        return NativePushTap.clientPath(["path": path]) == path
+    }
+
     // A client tap may reload the portal only under the same verified session.
     static func shouldOpen(
         bearerAtTap: String,
@@ -514,6 +562,8 @@ private struct HomeView: View {
     @ObservedObject private var push = NativePushCenter.shared
     @State private var reloadId = UUID()
     @State private var staffAlertPath: String?
+    @State private var clientAlertPath: String?
+    @State private var clientAlertBearer: String?
     @State private var showingNotifications = false
 
     var body: some View {
@@ -524,7 +574,9 @@ private struct HomeView: View {
                     token: token,
                     principal: identity.principal,
                     identity: identity.staff,
-                    path: staffAlertPath ?? FundhubRole.workspacePath(principal: identity.principal, role: identity.staff.role),
+                    path: identity.principal == "client"
+                        ? ((clientAlertBearer == token ? clientAlertPath : nil) ?? NativePushTap.portalPath)
+                        : (staffAlertPath ?? FundhubRole.workspacePath(principal: identity.principal, role: identity.staff.role)),
                     onWebSignOut: { Task { await store.signOut() } }
                 )
                 .id(reloadId)
@@ -532,6 +584,21 @@ private struct HomeView: View {
                     if identity.principal == "client" ||
                         (identity.principal == "staff" && ["owner", "setter", "closer"].contains(identity.staff.role ?? "")) {
                         HStack {
+                            if ClientPortalNavigation.showsBackButton(
+                                path: clientAlertPath, bearerAtOpen: clientAlertBearer,
+                                currentBearer: token, principal: identity.principal
+                            ) {
+                                Button {
+                                    clientAlertPath = nil
+                                    clientAlertBearer = nil
+                                    reloadId = UUID()
+                                } label: {
+                                    Label("Back to Fundhub", systemImage: "chevron.left")
+                                        .font(.subheadline.weight(.semibold))
+                                        .frame(minHeight: 44)
+                                }
+                                .accessibilityIdentifier("backToFundhubFromLesson")
+                            }
                             Spacer()
                             Button {
                                 showingNotifications = true
@@ -563,20 +630,22 @@ private struct HomeView: View {
                 ProgressView("Connecting to Fundhub")
             }
         }
-        .onChange(of: store.token) { _, _ in staffAlertPath = nil }
-        .onChange(of: store.identity?.principal) { _, _ in staffAlertPath = nil }
-        .onChange(of: store.identity?.staff) { _, _ in staffAlertPath = nil }
+        .onChange(of: store.token) { _, _ in staffAlertPath = nil; clientAlertPath = nil; clientAlertBearer = nil }
+        .onChange(of: store.identity?.principal) { _, _ in staffAlertPath = nil; clientAlertPath = nil; clientAlertBearer = nil }
+        .onChange(of: store.identity?.staff) { _, _ in staffAlertPath = nil; clientAlertPath = nil; clientAlertBearer = nil }
         .task(id: push.openRequestId) {
             if store.identity?.principal == "client",
                let bearerAtTap = store.token, !bearerAtTap.isEmpty,
-               push.takePortalOpenRequest(currentBearer: bearerAtTap) {
+               let request = push.takeClientOpenRequest(currentBearer: bearerAtTap) {
                 await store.refreshSession()
-                guard ClientPortalNavigation.shouldOpen(
-                    bearerAtTap: bearerAtTap,
+                guard let path = ClientPortalNavigation.verifiedPath(
+                    request, bearerAtTap: bearerAtTap,
                     bearerAfterRefresh: store.token,
                     clientSessionVerified: store.phase == .signedIn && store.identity?.principal == "client",
                     taskCancelled: Task.isCancelled
                 ) else { return }
+                clientAlertPath = path
+                clientAlertBearer = bearerAtTap
                 reloadId = UUID()
                 return
             }

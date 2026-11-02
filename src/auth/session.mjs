@@ -75,8 +75,14 @@ export async function createSession(db, { staffId, orgId, ip, userAgent, env = p
 export async function verifySession(db, token, { env = process.env } = {}) {
   if (!token || typeof token !== "string") return null;
   const ms = ttlMs(env);
-  const r = await db.query(
-    `WITH live AS (
+  const assignedRoles = `COALESCE((
+              SELECT array_agg(DISTINCT lower(btrim(sr.key)) ORDER BY lower(btrim(sr.key)))
+                FROM staff_role_assignments a
+                JOIN staff_roles sr ON sr.id = a.role_id AND sr.org_id = a.org_id
+               WHERE a.staff_id = s.id AND a.org_id = s.org_id AND sr.active
+                 AND lower(btrim(sr.key)) NOT IN ('owner', 'admin')
+            ), ARRAY[]::text[])`;
+  const sessionSql = (withAssignments) => `WITH live AS (
        UPDATE sessions
           SET expires_at   = now() + ($2::bigint * interval '1 millisecond'),
               last_seen_at = now()
@@ -87,10 +93,20 @@ export async function verifySession(db, token, { env = process.env } = {}) {
      )
      SELECT live.id AS session_id, live.expires_at,
             s.id AS staff_id, s.org_id, s.role, s.email, s.name, s.status, s.avatar_key,
+            ${withAssignments ? assignedRoles : "ARRAY[]::text[]"} AS assigned_roles,
             (to_jsonb(s) ->> 'active') AS active_flag
-       FROM live JOIN staff s ON s.id = live.staff_id`,
-    [hashToken(token), String(ms)]
-  );
+       FROM live JOIN staff s ON s.id = live.staff_id AND s.org_id = live.org_id`;
+  const params = [hashToken(token), String(ms)];
+  let r;
+  try {
+    r = await db.query(sessionSql(true), params);
+  } catch (err) {
+    // Ship can run before this additive migration. Only this missing table may
+    // fall back: all other auth/database failures stay unavailable, never 401.
+    if (err?.code !== "42P01" || !/\bstaff_role_assignments\b/i.test(
+      `${err.table || ""} ${err.message || ""}`)) throw err;
+    r = await db.query(sessionSql(false), params);
+  }
   if (!r.rows.length) return null;
   const row = r.rows[0];
 
@@ -101,11 +117,23 @@ export async function verifySession(db, token, { env = process.env } = {}) {
     return null;
   }
 
+  const role = String(row.role || "").trim().toLowerCase();
+  // External and restricted identities never gain employee privileges through
+  // a secondary assignment, including after a primary-role change.
+  const canStackRoles = role && !["partner", "client", "affiliate", "outbound_rep"].includes(role);
+  const roles = [...new Set([
+    role,
+    ...(canStackRoles && Array.isArray(row.assigned_roles)
+      ? row.assigned_roles.filter((assigned) => !["owner", "admin"].includes(String(assigned || "").trim().toLowerCase()))
+      : [])
+  ].map((value) => String(value || "").trim().toLowerCase()).filter(Boolean))];
+
   return {
     staff: {
       id: row.staff_id,
       org_id: row.org_id,
       role: row.role,
+      roles,
       email: row.email,
       name: row.name,
       status: row.status,

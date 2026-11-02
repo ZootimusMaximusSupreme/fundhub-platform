@@ -129,6 +129,22 @@ describe("read-api", () => {
     assert.match(r.body.message, /owner/);
   });
 
+  test("an assigned second role passes its role gate without changing the primary", () => {
+    const staff = { role: "closer", roles: ["closer", "setter"] };
+    assert.equal(requireRole(res(), staff, ROLE_SETS.SETTER), true);
+    assert.equal(staff.role, "closer");
+    assert.equal(requireRole(res(), staff, ROLE_SETS.FINANCE), false);
+    assert.equal(requireRole(res(), { role: "closer", roles: ["owner"] }, ROLE_SETS.OPS), false);
+  });
+
+  test("external and restricted primary identities cannot borrow employee roles", () => {
+    for (const role of ["client", "affiliate", "partner", "outbound_rep"]) {
+      const r = res();
+      assert.equal(requireRole(r, { role, roles: ["owner"] }, ROLE_SETS.FINANCE), false);
+      assert.equal(r.code, 403);
+    }
+  });
+
   // ── the wrapper ──
 
   const deps = (staff) => ({

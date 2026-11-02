@@ -90,32 +90,63 @@ export function archiveHead(branch, run) {
 // replays both, even though its final delta is unambiguous. Apply only that
 // delta to main, with Git's strict index/context checks; never choose a side
 // of a content conflict or copy the old child's whole tree over main.
-export function restackMergedDelta({ base, head, branch, number, target = "origin/main", run = command }) {
-  if (run("git", ["status", "--porcelain"])) return false;
-  if (target !== "origin/main" && !/^[a-f0-9]{40}$/i.test(target)) return false;
-  const mergeCount = Number(run("git", ["rev-list", "--count", "--min-parents=2", `${base}..${head}`]));
-  if (!Number.isSafeInteger(mergeCount) || mergeCount < 1) return false;
+// Build a final-delta candidate without touching the source worktree, index or refs.
+export function createArchivedSourceDelta({ base, head, branch, number, target = "origin/main", sourceBranch, run = command }) {
+  const currentBranch = () => { try { return run("git", ["symbolic-ref", "--quiet", "--short", "HEAD"]); } catch { return ""; } };
+  const observedBranch = currentBranch();
+  const sourceIsUnchanged = () => run("git", ["rev-parse", "HEAD"]) === head &&
+    !run("git", ["status", "--porcelain"]) && currentBranch() === observedBranch;
+  if (!/^[a-f0-9]{40}$/i.test(base) || !/^[a-f0-9]{40}$/i.test(head) ||
+      (sourceBranch !== undefined && observedBranch !== sourceBranch) || !sourceIsUnchanged()) return null;
+  if (target !== "origin/main" && !/^[a-f0-9]{40}$/i.test(target)) return null;
   const archived = run("git", ["ls-remote", "--tags", "origin", `refs/tags/archive/${branch}`]).split(/\s+/)[0];
-  if (archived !== head) return false;
+  if (archived !== head) return null;
   const targetCommit = run("git", ["rev-parse", "--verify", `${target}^{commit}`]);
-  if (!/^[a-f0-9]{40}$/i.test(targetCommit)) return false;
+  if (!/^[a-f0-9]{40}$/i.test(targetCommit)) return null;
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "fundhub-restack-delta-"));
   try {
     const patchFile = path.join(directory, "child.patch");
-    // command() trims stdout; write the patch directly so trailing spaces,
-    // missing final newlines and binary payloads survive byte for byte.
     run("git", ["diff", "--binary", "--full-index", "--no-ext-diff", "--no-textconv", `--output=${patchFile}`, base, head, "--"]);
-    if (fs.statSync(patchFile).size === 0) return false;
-    run("git", ["switch", "-C", `restack-pr-${number}`, targetCommit]);
-    run("git", ["apply", "--check", "--index", "--whitespace=nowarn", patchFile]);
-    run("git", ["apply", "--index", "--whitespace=nowarn", patchFile]);
-    run("git", ["commit", "-m", `Restack PR #${number} delta after merged-history replay conflict`]);
-    return true;
+    if (fs.statSync(patchFile).size === 0) return null;
+    const objects = run("git", ["rev-parse", "--path-format=absolute", "--git-path", "objects"]);
+    const identity = /^(.*) <([^<>]+)> \d+ [+-]\d{4}$/.exec(run("git", ["var", "GIT_COMMITTER_IDENT"]));
+    if (!identity) return null;
+    const repository = path.join(directory, "candidate.git");
+    const isolatedEnv = { ...process.env };
+    for (const key of ['GIT_DIR', 'GIT_COMMON_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE',
+      'GIT_OBJECT_DIRECTORY', 'GIT_ALTERNATE_OBJECT_DIRECTORIES']) delete isolatedEnv[key];
+    isolatedEnv.GIT_INDEX_FILE = path.join(repository, 'index');
+    isolatedEnv.GIT_OBJECT_DIRECTORY = path.join(repository, 'objects');
+    run("git", ["init", "--bare", "--object-format=sha1", repository], { env: isolatedEnv });
+    fs.writeFileSync(path.join(repository, "objects", "info", "alternates"), `${objects}\n`);
+    const isolated = args => run("git", [`--git-dir=${repository}`, ...args], { env: isolatedEnv });
+    isolated(["read-tree", targetCommit]);
+    isolated(["apply", "--check", "--cached", "--whitespace=nowarn", patchFile]);
+    isolated(["apply", "--cached", "--whitespace=nowarn", patchFile]);
+    const tree = isolated(["write-tree"]);
+    const candidate = isolated(["-c", `user.name=${identity[1]}`, "-c", `user.email=${identity[2]}`,
+      "commit-tree", tree, "-p", targetCommit, "-m", `Apply archived final source delta for PR #${number}`]);
+    if (!/^[a-f0-9]{40}$/i.test(candidate) || !sourceIsUnchanged()) return null;
+    isolated(["update-ref", "refs/heads/candidate", candidate]);
+    run("git", ["fetch", "--no-tags", repository, "refs/heads/candidate"]);
+    if (!sourceIsUnchanged()) return null;
+    return candidate;
   } catch {
-    return false;
+    return null;
   } finally {
     fs.rmSync(directory, { recursive: true, force: true });
   }
+}
+
+// Keep the automatic failed-replay fallback restricted to merged histories.
+export function restackMergedDelta(options) {
+  const run = options.run || command;
+  const mergeCount = Number(run("git", ["rev-list", "--count", "--min-parents=2", `${options.base}..${options.head}`]));
+  if (!Number.isSafeInteger(mergeCount) || mergeCount < 1) return false;
+  const candidate = createArchivedSourceDelta({ ...options, run });
+  if (!candidate) return false;
+  run("git", ["switch", "--detach", candidate]);
+  return true;
 }
 
 export function restackChild({ child, merged, repo, run = command }) {

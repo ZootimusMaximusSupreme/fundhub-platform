@@ -35,6 +35,10 @@ The client marketing-push switch is watched in both clocks. The morning `marketi
 
 The native app-open receipt route is also watched by the hourly `native-push` beat. For the default company, it compares each visible Sales card's app-open time, read with the board route's held SQL, with an independent company-scoped read of saved iPhone receipts. Missing or mismatched times and refused reads stay red. An absent receipt is valid only when the card also shows no open. This is stored-result proof, not an installed-app login or APNs delivery receipt.
 
+The three selected BS slide companions reuse the existing dispatcher and native/web push senders, so they remain under `provider:web-push-and-client-push`, the marketing preference check, and the native delivery-failure beat. Focused dispatcher, message-policy and service-worker tests cover provider-save-before-push, source delivery retention, fixed lesson targets, opt-out, daytime, held/cancelled call and the shared cap. These checks do not substitute for a real phone receipt and slide tap.
+
+The hourly and morning native delivery-failure checks also go red for a `BS-COMPANION-PUSH` receipt left in `sending` for more than 15 minutes. An unknown provider outcome is held for review instead of automatically retried. Known failed/no-device attempts are recorded as failed and do not use the delivered-push allowance.
+
 ## Whole-company catalog
 
 Claude's 20 map files hold 3,975 rows. Thirty-three rows clearly name another row they repeat, leaving 3,942 unique company items. The compiler gives every item one stable id and one recipe. It links existing tests, deep lanes, hourly beats and pings. A money or customer item needs deep proof. A staff-only item needs an end-to-end test. A claim with no executable proof stays red.

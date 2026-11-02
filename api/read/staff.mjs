@@ -56,7 +56,7 @@ async function hiddenCountFor(database, staff) {
   return row ? row.n : 0;
 }
 
-export default async function handler(req, res) {
+export default async function handler(req, res, deps = {}) {
   let hiddenCount = 0;
   const origJson = typeof res.json === "function" ? res.json.bind(res) : null;
   if (origJson) {
@@ -72,7 +72,21 @@ export default async function handler(req, res) {
       hiddenCount = await hiddenCountFor(database, staff);
       const demoOn = await orgDemoModeEnabled(database, orgOf(staff));
       const demoHide = demoHideSql(demoOn);
-      return database.query(`SELECT s.id, s.name, s.email, s.role, s.status, s.assignment_order,
+      const primaryRoles = `array_remove(ARRAY[NULLIF(lower(btrim(s.role)), '')], NULL)`;
+      const assignedRoles = `array_remove(ARRAY[NULLIF(lower(btrim(s.role)), '')] ||
+             CASE WHEN lower(btrim(s.role)) IN ('partner','client','affiliate','outbound_rep')
+               THEN ARRAY[]::text[]
+               ELSE COALESCE((
+                 SELECT array_agg(DISTINCT lower(btrim(sr.key)) ORDER BY lower(btrim(sr.key)))
+                   FROM staff_role_assignments a
+                   JOIN staff_roles sr ON sr.id = a.role_id AND sr.org_id = a.org_id
+                  WHERE a.staff_id = s.id AND a.org_id = s.org_id AND sr.active
+                    AND lower(btrim(sr.key)) NOT IN ('owner', 'admin')
+               ), ARRAY[]::text[])
+             END, NULL)`;
+      const rosterSql = (withAssignments) => `SELECT s.id, s.name, s.email, s.role,
+           ${withAssignments ? assignedRoles : primaryRoles} AS roles,
+           s.status, s.assignment_order,
            s.last_assigned_at, s.created_at, s.phone, s.start_date, s.employee_code,
            s.notify_booked_call_sms, s.monitoring_consent_at, s.hubstaff_user_id,
            (SELECT count(*)::int FROM tasks t
@@ -103,12 +117,20 @@ export default async function handler(req, res) {
              ${demoHide}
            ))
      ORDER BY s.name
-     LIMIT $1 OFFSET $2`, [
+     LIMIT $1 OFFSET $2`;
+      const params = [
         limit + 1, offset, query.role || null, orgOf(staff),
         seedEmails(), (staff && staff.id) || null
-      ]).then((r) => r.rows);
+      ];
+      try {
+        return (await database.query(rosterSql(true), params)).rows;
+      } catch (err) {
+        if (err?.code !== "42P01" || !/\bstaff_role_assignments\b/i.test(
+          `${err.table || ""} ${err.message || ""}`)) throw err;
+        return (await database.query(rosterSql(false), params)).rows;
+      }
     }
   });
 
-  return run(req, res, { db, requireAuth });
+  return run(req, res, { db: deps.db || db, requireAuth: deps.requireAuth || requireAuth });
 }

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { sanitizeHandoffPatch, missingForCompletion, updateSetterHandoff, listSetterQueue, setterNumbers, targetDialBy, surveySummary } from "./dashboard.mjs";
+import { sanitizeHandoffPatch, missingForCompletion, updateSetterHandoff, listSetterQueue, setterNumbers, targetDialBy, surveySummary, latestUndoableDial } from "./dashboard.mjs";
 
 const STAFF = { id: "staff-1", org_id: "org-1", role: "owner", name: "Chris" };
 const CLIENT_ID = "11111111-1111-1111-1111-111111111111";
@@ -38,6 +38,7 @@ function fakeDb(booked = true) {
     queries.push(sql);
     // A copy, as a real read returns: the row the writes below change is `client`, and the
     // copy the code holds is what the row looked like when it was read.
+    if (sql.includes("SELECT id FROM clients WHERE") && sql.includes("FOR UPDATE")) return { rows: [{ id: client.client_id }] };
     if (sql.includes("FROM clients c")) return { rows: [structuredClone(client)] };
     if (sql.includes("SELECT custom_fields FROM clients")) return { rows: [{ custom_fields: structuredClone(client.custom_fields) }] };
     if (sql.includes("SELECT id, name FROM staff")) return { rows: [{ id: "staff-2", name: "Closer" }] };
@@ -54,6 +55,9 @@ function fakeDb(booked = true) {
         client.custom_fields.setter_survey_edits = JSON.parse(params[2]);
         return { rows: [{ survey_edits: client.custom_fields.setter_survey_edits }] };
       }
+      if (params[3] != null && Number(client.custom_fields.setter_handoff?.call_attempts || 0) !== params[3]) {
+        return { rows: [] };
+      }
       client.custom_fields.setter_handoff = { ...(client.custom_fields.setter_handoff || {}), ...JSON.parse(params[2]) };
       return { rows: [{ custom_fields: client.custom_fields }] };
     }
@@ -62,6 +66,7 @@ function fakeDb(booked = true) {
       return { rows: [] };
     }
     if (sql.includes("UPDATE tasks")) return { rows: [] };
+    if (sql.includes("UPDATE setter_dial_events")) return { rows: [] };
     if (sql.includes("UPDATE cards")) return { rows: [] };
     throw new Error(`unexpected query: ${sql}`);
   } };
@@ -71,7 +76,26 @@ function fakeDb(booked = true) {
 test("handoff input refuses unsupported claims and keeps only checklist fields", () => {
   assert.match(sanitizeHandoffPatch({ goal: "Pre-approved for $100,000" }).error, /unsupported/);
   assert.match(sanitizeHandoffPatch({ problem: "SSN 123-45-6789" }).error, /unsupported/);
-  assert.deepEqual(sanitizeHandoffPatch({ goal: "Growth", forged_timestamp: "now" }).patch, { goal: "Growth" });
+  assert.deepEqual(sanitizeHandoffPatch({ goal: "Growth", disposition_at: "2099-01-01T00:00:00Z" }).patch, { goal: "Growth" });
+});
+
+test("saving a disposition records when it happened; unrelated saves keep that time", async () => {
+  const { db, client } = fakeDb();
+  const first = "2026-10-31T19:00:00.000Z";
+  const later = "2026-10-31T20:00:00.000Z";
+  await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save",
+    handoff: { disposition: "reached" } }, { now: () => new Date(first) });
+  assert.equal(client.custom_fields.setter_handoff.disposition_at, first);
+  await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save",
+    handoff: { goal: "Growth" } }, { now: () => new Date(later) });
+  assert.equal(client.custom_fields.setter_handoff.disposition_at, first);
+  await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save",
+    handoff: { disposition: "reached", goal: "Growth" } }, { now: () => new Date(later) });
+  assert.equal(client.custom_fields.setter_handoff.disposition_at, first,
+    "autosave of the same result must not make an old conversation look new");
+  await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save",
+    handoff: { disposition: "booked_on_call" } }, { now: () => new Date(later) });
+  assert.equal(client.custom_fields.setter_handoff.disposition_at, later);
 });
 
 test("setter can save both funding paths and personal work facts without changing the survey", async () => {
@@ -115,7 +139,7 @@ test("completion requires booked webhook, triage fields for opt-in, and handoff 
 test("saved checklist merges, completion is gated, and complete handoff is visible on client", async () => {
   const { db, client, queries } = fakeDb();
   const moves = [];
-  const saved = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save",
+  const saved = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save", expected_call_attempts: 0,
     handoff: { dialed_at: "2026-10-26T20:00:00Z", call_attempts: 1 } });
   assert.equal(saved.status, 200);
   assert.equal(saved.body.item.setter_handoff.call_attempts, 1);
@@ -139,7 +163,7 @@ test("saved checklist merges, completion is gated, and complete handoff is visib
 
 test("completing a handoff never moves a card back from a later Sales stage", async () => {
   const { db, queries } = fakeDb();
-  const result = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "complete",
+  const result = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "complete", expected_call_attempts: 0,
     handoff: completeHandoff() }, {
     advanceStage: async () => ({ moved: false, reason: "already_at_or_past", stageKey: "showed" })
   });
@@ -148,16 +172,39 @@ test("completing a handoff never moves a card back from a later Sales stage", as
   assert.equal(queries.some(q => q.includes("UPDATE tasks")), true);
 });
 
+test("Complete cannot confirm a handoff after Undo changes its dial count", async () => {
+  const { db, client } = fakeDb();
+  client.custom_fields.setter_handoff = completeHandoff();
+  const query = db.query;
+  db.query = async (sql, params) => {
+    if (sql.includes("UPDATE clients") && sql.includes("'{setter_handoff}'")) {
+      client.custom_fields.setter_handoff.call_attempts = 0;
+      client.custom_fields.setter_handoff.dialed_at = null;
+    }
+    return query(sql, params);
+  };
+  let advanced = false;
+  const result = await updateSetterHandoff(db, STAFF, {
+    client_id: CLIENT_ID, action: "complete", expected_call_attempts: 1, handoff: completeHandoff()
+  }, { advanceStage: async () => { advanced = true; return { moved: true }; } });
+  assert.equal(result.status, 409);
+  assert.equal(result.body.error, "handoff_dial_count_changed");
+  assert.equal(client.custom_fields.setter_handoff.call_attempts, 0);
+  assert.equal(client.custom_fields.setter_handoff.complete_at, undefined);
+  assert.equal(advanced, false);
+});
+
 test("completing a setter handoff alerts the different closer with saved facts", async () => {
   const { db, client } = fakeDb();
   client.closer_staff_id = "staff-2";
   const alerts = [];
-  const input = { client_id: CLIENT_ID, action: "complete", handoff: completeHandoff() };
+  const input = { client_id: CLIENT_ID, action: "complete", expected_call_attempts: 0, handoff: completeHandoff() };
   const deps = {
     advanceStage: async () => ({ moved: true }),
     closerAlert: async (_db, args) => { alerts.push(args); return { queued: 1 }; }
   };
   const first = await updateSetterHandoff(db, STAFF, input, deps);
+  input.expected_call_attempts = 1;
   const repeat = await updateSetterHandoff(db, STAFF, input, deps);
   assert.equal(first.status, 200);
   assert.equal(repeat.status, 200);
@@ -170,7 +217,7 @@ test("completing a setter handoff alerts the different closer with saved facts",
 
 test("opt-in cannot complete until booking webhook adds a booking", async () => {
   const { db } = fakeDb(false);
-  const result = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "complete",
+  const result = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "complete", expected_call_attempts: 0,
     handoff: { ...completeHandoff(), triage_problem: "Cash flow", triage_goal: "Expand",
       triage_personal_or_business: "business" } });
   assert.equal(result.status, 400);
@@ -257,7 +304,7 @@ test("each queued lead carries its own calendar link from its saved score", asyn
 test("a saved checklist keeps the lead's own calendar link", async () => {
   const { db, client } = fakeDb(false);
   client.custom_fields.cf_svy_self_reported_fico_label = "580-649";
-  const saved = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save",
+  const saved = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save", expected_call_attempts: 0,
     handoff: { dialed_at: "2026-10-26T20:00:00Z", call_attempts: 1 } });
   assert.equal(saved.status, 200);
   assert.equal(saved.body.item.booking_url, "https://apply.fundhub.ai/funding-book-call--02424?fh_tier=u");
@@ -355,7 +402,7 @@ test("no readable score anywhere leaves credit_tier exactly as it was", async ()
 test("saving the checklist never touches credit_tier", async () => {
   const { db, client, queries } = fakeDb(false);
   client.custom_fields.cf_svy_self_reported_fico_label = "760-850";
-  const result = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save", handoff: { call_attempts: 1 } });
+  const result = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save", expected_call_attempts: 0, handoff: { call_attempts: 1 } });
   assert.equal(result.status, 200);
   assert.equal(client.custom_fields.credit_tier, undefined);
   assert.equal(queries.some(sql => sql.includes("'credit_tier'")), false);
@@ -391,7 +438,7 @@ function emitSpy({ fail = false } = {}) {
 test("saving No answer starts the cadence: one setter.no_answer event, keyed by lead and Arizona day", async () => {
   const { db } = fakeDb();
   const { calls, emitFn } = emitSpy();
-  const result = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save",
+  const result = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save", expected_call_attempts: 0,
     handoff: { disposition: "no_answer", call_attempts: 1 } }, { emit: emitFn, now: NOON_PHOENIX });
   assert.equal(result.status, 200);
   assert.equal(calls.length, 1);
@@ -406,7 +453,8 @@ test("saving the same screen again starts nothing; a fresh dial that again got n
   const { db, client } = fakeDb();
   const { calls, emitFn } = emitSpy();
   const deps = { emit: emitFn, now: NOON_PHOENIX };
-  await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save", handoff: { disposition: "no_answer", call_attempts: 1 } }, deps);
+  await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save", expected_call_attempts: 0,
+    handoff: { disposition: "no_answer", call_attempts: 1 } }, deps);
   assert.equal(calls.length, 1);
   // The screen saves again with the same result and the same dial count.
   await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save", handoff: { disposition: "no_answer", call_attempts: 1, goal: "Open a shop" } }, deps);
@@ -437,7 +485,8 @@ test("no other result starts the cadence", async () => {
   const { db } = fakeDb();
   const { calls, emitFn } = emitSpy();
   for (const disposition of ["reached", "reschedule", "booked_on_call", ""]) {
-    const result = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save", handoff: { disposition, call_attempts: 1 } },
+    const result = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save", expected_call_attempts: disposition === "reached" ? 0 : 1,
+      handoff: { disposition, call_attempts: 1 } },
       { emit: emitFn, now: NOON_PHOENIX });
     assert.equal(result.status, 200, disposition);
   }
@@ -450,7 +499,8 @@ test("only a save that says No answer starts it, even when No answer was saved e
   const { db, client } = fakeDb();
   const { calls, emitFn } = emitSpy();
   const deps = { emit: emitFn, now: NOON_PHOENIX };
-  await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save", handoff: { disposition: "no_answer", call_attempts: 1 } }, deps);
+  await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save", expected_call_attempts: 0,
+    handoff: { disposition: "no_answer", call_attempts: 1 } }, deps);
   assert.equal(calls.length, 1);
   // A dial logged without naming a result: the saved No answer is not this save's word.
   await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "log_dial", handoff: {} }, deps);
@@ -463,7 +513,7 @@ test("a request that answers with an error starts nothing", async () => {
   const { db, client } = fakeDb();
   const { calls, emitFn } = emitSpy();
   // The send_handoff button needs a completed handoff, so this answers 400.
-  const result = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "send_handoff",
+  const result = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "send_handoff", expected_call_attempts: 0,
     handoff: { disposition: "no_answer", call_attempts: 1 } }, { emit: emitFn, now: NOON_PHOENIX });
   assert.equal(result.status, 400);
   assert.equal(client.custom_fields.setter_handoff.disposition, "no_answer", "the word was saved before the send was refused");
@@ -505,7 +555,7 @@ test("a cadence that cannot start logs a warning and the save still succeeds", a
   console.warn = (...args) => warnings.push(args.join(" "));
   let result;
   try {
-    result = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save",
+    result = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save", expected_call_attempts: 0,
       handoff: { disposition: "no_answer", call_attempts: 1 } }, { emit: emitFn, now: NOON_PHOENIX });
   } finally {
     console.warn = realWarn;
@@ -520,7 +570,8 @@ test("the setter's own name goes on the event, not the owner's who edited it", a
   const { db, client } = fakeDb();
   client.custom_fields.setter_handoff = { setter_staff_id: "staff-alex", setter_name: "Alex Setter", call_attempts: 0 };
   const { calls, emitFn } = emitSpy();
-  await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save", handoff: { disposition: "no_answer", call_attempts: 1 } },
+  await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save", expected_call_attempts: 0,
+    handoff: { disposition: "no_answer", call_attempts: 1 } },
     { emit: emitFn, now: NOON_PHOENIX });
   assert.equal(calls[0].payload.setter_staff_id, "staff-alex");
 });
@@ -536,7 +587,7 @@ test("survey save replaces edits, keeps submitted answers, and does not complete
   const second = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save_survey",
     survey_edits: { cf_svy_planned_use: "Growth (marketing, inventory, hiring)" } });
   assert.deepEqual(second.body.survey_edits, { cf_svy_planned_use: "Growth (marketing, inventory, hiring)" });
-  const checklist = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save",
+  const checklist = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save", expected_call_attempts: 0,
     handoff: { call_attempts: 1 } });
   assert.deepEqual(checklist.body.item.survey_edits, { cf_svy_planned_use: "Growth (marketing, inventory, hiring)" });
   assert.equal(client.custom_fields.cf_svy_planned_use_label, "Open a shop");
@@ -640,6 +691,82 @@ test("log dial keeps an exact server-owned count for the Phoenix day", async () 
   assert.equal(client.custom_fields.setter_handoff.dial_attempt_days["2026-10-27"], 2);
 });
 
+test("a Save started before a dial keeps the newly committed count and Phoenix day", async () => {
+  const { db, client } = fakeDb();
+  client.custom_fields.setter_handoff = { call_attempts: 1, dial_attempt_days: { "2026-10-31": 1 } };
+  const query = db.query;
+  db.query = async (sql, params) => {
+    if (sql.includes("UPDATE clients") && sql.includes("'{setter_handoff}'")) {
+      client.custom_fields.setter_handoff.call_attempts = 2;
+      client.custom_fields.setter_handoff.dial_attempt_days["2026-11-01"] = 1;
+    }
+    return query(sql, params);
+  };
+  const saved = await updateSetterHandoff(db, STAFF, {
+    client_id: CLIENT_ID, action: "save", expected_call_attempts: 1,
+    handoff: { call_attempts: 1, goal: "Keep this edit" }
+  });
+  assert.equal(saved.status, 200);
+  assert.equal(saved.body.item.setter_handoff.call_attempts, 2);
+  assert.equal(client.custom_fields.setter_handoff.call_attempts, 2);
+  assert.deepEqual(client.custom_fields.setter_handoff.dial_attempt_days, { "2026-10-31": 1, "2026-11-01": 1 });
+  assert.equal(client.custom_fields.setter_handoff.goal, "Keep this edit");
+});
+
+test("a manual count edit conflicts when a dial commits during Save", async () => {
+  const { db, client } = fakeDb();
+  client.custom_fields.setter_handoff = { call_attempts: 1, dial_attempt_days: { "2026-10-31": 1 } };
+  const query = db.query;
+  db.query = async (sql, params) => {
+    if (sql.includes("UPDATE clients") && sql.includes("'{setter_handoff}'")) {
+      client.custom_fields.setter_handoff.call_attempts = 2;
+      client.custom_fields.setter_handoff.dial_attempt_days["2026-11-01"] = 1;
+    }
+    return query(sql, params);
+  };
+  const saved = await updateSetterHandoff(db, STAFF, {
+    client_id: CLIENT_ID, action: "save", expected_call_attempts: 1,
+    handoff: { call_attempts: 3, goal: "Do not save on conflict" }
+  });
+  assert.equal(saved.status, 409);
+  assert.equal(saved.body.error, "handoff_dial_count_changed");
+  assert.equal(client.custom_fields.setter_handoff.call_attempts, 2);
+  assert.equal(client.custom_fields.setter_handoff.goal, undefined);
+});
+
+test("an older tab saves checklist facts after a dial without erasing the dial", async () => {
+  const { db, client } = fakeDb();
+  client.custom_fields.setter_handoff = {
+    call_attempts: 2, dial_attempt_days: { "2026-10-31": 1, "2026-11-01": 1 }
+  };
+  const saved = await updateSetterHandoff(db, STAFF, {
+    client_id: CLIENT_ID, action: "save", expected_call_attempts: 1,
+    handoff: { call_attempts: 1, goal: "Still safe to save" }
+  });
+  assert.equal(saved.status, 200);
+  assert.equal(client.custom_fields.setter_handoff.call_attempts, 2);
+  assert.deepEqual(client.custom_fields.setter_handoff.dial_attempt_days,
+    { "2026-10-31": 1, "2026-11-01": 1 });
+  assert.equal(client.custom_fields.setter_handoff.goal, "Still safe to save");
+});
+
+test("a cached legacy tab cannot overwrite the logged count without a baseline", async () => {
+  const { db, client } = fakeDb();
+  client.custom_fields.setter_handoff = {
+    call_attempts: 2, dial_attempt_days: { "2026-10-31": 1, "2026-11-01": 1 }
+  };
+  const saved = await updateSetterHandoff(db, STAFF, {
+    client_id: CLIENT_ID, action: "save",
+    handoff: { call_attempts: 1, goal: "Legacy checklist edit" }
+  });
+  assert.equal(saved.status, 409);
+  assert.equal(saved.body.error, "handoff_dial_count_changed");
+  assert.equal(client.custom_fields.setter_handoff.call_attempts, 2);
+  assert.deepEqual(client.custom_fields.setter_handoff.dial_attempt_days,
+    { "2026-10-31": 1, "2026-11-01": 1 });
+  assert.equal(client.custom_fields.setter_handoff.goal, undefined);
+});
+
 test("an owner edit preserves the human setter identity already on the handoff", async () => {
   const { db, client } = fakeDb();
   client.custom_fields.setter_handoff = {
@@ -667,7 +794,7 @@ test("setter can save only an assigned or unclaimed task and claims it", async (
     }
     return original(sql, params);
   };
-  const first = await updateSetterHandoff(db, setter, { client_id: CLIENT_ID, action: "save",
+  const first = await updateSetterHandoff(db, setter, { client_id: CLIENT_ID, action: "save", expected_call_attempts: 0,
     handoff: { call_attempts: 1 } });
   assert.equal(first.status, 200);
   assert.equal(assignee, setter.id);
@@ -676,4 +803,36 @@ test("setter can save only an assigned or unclaimed task and claims it", async (
     handoff: { call_attempts: 2 } });
   assert.equal(other.status, 403);
   assert.equal(client.custom_fields.setter_handoff.call_attempts, 1);
+});
+
+
+test("assigned setters keep personal queue and Undo boundaries even with another primary job", async () => {
+  for (const role of ["closer", "csm", "funding_advisor", "inquiry_specialist", "sales_manager"]) {
+    const staff={...STAFF,role,roles:[role,"setter"]};
+    const calls=[];
+    const db={async query(sql,args){calls.push({sql,args});return{rows:[]};}};
+    await listSetterQueue(db,staff);
+    assert.equal(calls[0].args[1],true,role);
+    assert.equal(calls[0].args[2],staff.id,role);
+    await latestUndoableDial(db,staff);
+    assert.equal(calls.at(-1).args[2],true,role);
+  }
+  for(const role of ["owner","admin"]){
+    const calls=[];
+    await listSetterQueue({async query(sql,args){calls.push({sql,args});return{rows:[]};}}, {...STAFF,role});
+    assert.equal(calls[0].args[1],false,role);
+  }
+});
+test("a secondary setter cannot edit another setter's lead or emit a follow-up", async () => {
+  const {db,queries}=fakeDb();
+  const original=db.query;
+  db.query=async(sql,args)=>sql.trim().startsWith("SELECT assignee_staff_id FROM tasks")
+    ? {rows:[{assignee_staff_id:"another-setter"}]}:original(sql,args);
+  let emitted=false;
+  const result=await updateSetterHandoff(db,{...STAFF,role:"closer",roles:["closer","setter"]},
+    {client_id:CLIENT_ID,action:"save",handoff:{disposition:"no_answer"}},
+    {emit:async()=>{emitted=true;}});
+  assert.equal(result.status,403);
+  assert.equal(emitted,false);
+  assert.equal(queries.some(sql=>sql.includes("UPDATE")),false);
 });

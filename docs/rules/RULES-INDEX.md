@@ -97,6 +97,7 @@ Legend: **both homes** = one real file in `.ai/rules`, linked for Cursor and for
 
 ## 6. Copy and ads
 
+- `confirm-on-the-calendar` (both homes): No message asks a lead to reply to confirm (no Reply CONFIRM, Reply YES, Text YES, no "for compliance"). The one action is accepting the calendar invite in their email (owner-set 2026-10-31).
 - `copy-certainty` (both homes): Scripts speak with 100% certainty. No we think, you might, maybe, could, likely. Day counts are allowed when they match the written guarantee (owner-set 2026-10-31).
 - `ad-know-the-offer` (both homes): Before an ad script or an animation overlay, read that offer. Pictures show the product steps, not only the last sentence. Capital Blueprint steps are in the rule.
 - `copy-skills-foundation` (both homes): Copybot and Visual Thinking are the foundation of all Fundhub marketing (owner-set 2026-10-31). Copybot builds the words in Chris's voice, Visual Thinking picks the picture, Fundhub rules own the facts. Staged in `marketing/copy-skills/`.
@@ -104,6 +105,7 @@ Legend: **both homes** = one real file in `.ai/rules`, linked for Cursor and for
 - `ad-no-recycled-lines` (both homes): Never copy lines between ads. Each ad is a test. Reuse only proven high-converting phrases.
 - `ad-second-line` (both homes): Sentence two of the hook does one job (win, proof, stakes, new detail, reassure).
 - `ad-watch-curve` (both homes): How to read Meta video watch numbers and what to fix when an ad dies.
+- `audience-data-recipient-check` (both homes): Read the list and the platform's accepted data before upload; selection criteria and names count as insights, even when identifiers are hashed. Never use Meta credit-score or income segments as Custom Audience or lookalike seeds (owner-set 2026-11-02).
 - `ad-naming` (both homes): Drive ad file names are Offer, ad number, angle name, then take number; ads are found by id, not by name.
 - `proof-cards-from-source` (both homes): Proof cards come from source screenshots — never invent amounts, quotes, or faces.
 - `page-edits-marked-draft` (both homes): Page edits — show Chris a marked draft (red, then green) before anything goes live.

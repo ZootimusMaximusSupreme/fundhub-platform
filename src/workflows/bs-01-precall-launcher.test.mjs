@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert";
 import {
   handle as actualHandle, gridCells, resolveCellKey, runDeckDrip as actualRunDeckDrip,
-  currentDeckBooking, deckContentReady, deckTime, DECK_SLOTS, DECK_TITLES, DECK_INTROS,
+  currentDeckBooking, deckContentReady, deckLessonsEnabled, deckTime, DECK_SLOTS, DECK_TITLES, DECK_INTROS,
   FUNDING_PREFIX, REPAIR_PREFIX, DAYS, SLOTS, DAILY_SLOTS, KICKOFF_SLOT, KICKOFF_WAIT,
   SMS_BS01_BOOKED, SMS_BS01_PRECALL, SMS_BS01_DAYOF
 } from "./bs-01-precall-launcher.mjs";
@@ -11,6 +11,12 @@ import { pgFake, fakeStep, ev } from "./test-support.mjs";
 const handle = (args) => actualHandle({ lessonsEnabled: true, bookingCurrent: async () => true,
   sendPush: async () => ({ sent: false, reason: "push_not_enabled" }), ...args });
 const runDeckDrip = (args) => actualRunDeckDrip({ enabled: true, bookingCurrent: async () => true, ...args });
+
+test("approved templates stay inactive until the release flag is on", () => {
+  assert.equal(deckLessonsEnabled({}), false);
+  assert.equal(deckLessonsEnabled({ BS_DECK_LESSONS_ENABLED: "false" }), false);
+  assert.equal(deckLessonsEnabled({ BS_DECK_LESSONS_ENABLED: "true" }), true);
+});
 
 // The docs spell each cell `{prefix}-{day}-{slot}-{name}`; the trailing word is
 // theirs, so tests seed a plausible one and the code must find it by prefix rather

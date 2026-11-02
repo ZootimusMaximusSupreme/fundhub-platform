@@ -10,7 +10,10 @@ What this is **not**: a copy of any email or text on a locked screen. Source now
 calls both browser push and native iPhone push after a gated client email or SMS
 is saved as sent by a transmitting provider. The booking-confirmation text uses
 its specific approved alert; other service messages use a generic update.
-Promotional sequences are held except the opted-in, capped BS pre-call text.
+Promotional sequences are held except the opted-in, capped BS pre-call text and
+the three selected BS lesson companions. A lesson alert follows a real sent
+email/SMS and carries its exact fixed slide path; it does not replace that source
+message. The library launches as clickable slides before filmed videos are added.
 No live APNs delivery has been proved.
 
 **Staff work alerts added in source 2026-10-30.** A staff session can register an
@@ -44,9 +47,13 @@ are normal. Native and browser sends are independent; either failure cannot
 retry or undo the original email or text. No alert has been delivered on a real
 iPhone yet.
 
-An approved native notification tap opens the signed-in client portal only. It
-does not follow a pushed URL, place a phone call, or open a meeting link. A real
-Join Call action still needs a current, validated booking link in the portal.
+The prepared slide-first native patch lets a verified client tap open the portal
+or one of the 22 exact approved lesson paths, under the same sign-in and
+five-minute request limit. A lesson has a **Back to Fundhub** action. Arbitrary
+URLs, query strings, fragments and staff paths are refused for client taps.
+The native patch still needs the app build, release and real-device tap proof;
+the deployed app currently opens only the portal. A real Join Call action still
+needs a current, validated booking link in the portal.
 
 The hourly `native-push` beat covers both device registration and the native send path.
 Its read-only check goes red for a failed APNs send on an active device in the last

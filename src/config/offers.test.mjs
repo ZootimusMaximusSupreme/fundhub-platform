@@ -67,8 +67,8 @@ test("every offer has a name, integer cents, and financing/letters flags", () =>
 test("soft pull and funding deposit do not offer financing", () => {
   assert.equal(OFFERS.SOFT_PULL.financing, false);
   assert.equal(OFFERS.FUNDING_DFY.financing, false);
-  assert.equal(OFFERS.REPAIR_DFY.financing, true);
-  assert.equal(OFFERS.REPAIR_TRIAL.financing, true);
+  assert.equal(OFFERS.REPAIR_DFY.financing, false);
+  assert.equal(OFFERS.REPAIR_TRIAL.financing, false);
   assert.equal(OFFERS.UWIQ_DELIVERABLES.financing, true);
   assert.equal(OFFERS.FUNDING_MASTERY.financing, true);
 });
@@ -118,5 +118,7 @@ test("repair and funding offers map to contract template keys", () => {
   assert.equal(resolveContractTemplateKey({ offerKey: "REPAIR_TRIAL" }), "REPAIR-TRIAL-AGREEMENT");
   assert.equal(resolveContractTemplateKey({ offerKey: "FUNDING_MASTERY" }), "FUNDING-MASTERY-AGREEMENT");
   assert.ok(defaultContractValues({ offerKey: "REPAIR_TRIAL" }).trial_fee);
+  assert.match(OFFERS.REPAIR_TRIAL.name, /two rounds, done for you/);
+  assert.match(defaultContractValues({ offerKey: "REPAIR_TRIAL" }).scope, /^Two done-for-you dispute rounds/);
   assert.equal(defaultContractValues({ offerKey: "FUNDING_MASTERY" }).program_fee, "$5,000");
 });

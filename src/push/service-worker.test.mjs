@@ -281,6 +281,36 @@ describe("client-portal-sw.js — what a push event puts on the lock screen", ()
     await w.dispatch("notificationclick", { notification });
     assert.deepEqual(w.state.openedWindows, ["/app/client-portal.html"]);
   });
+
+  test("a lesson tap opens the lesson when an existing portal cannot navigate outside its scope", async () => {
+    for (const failure of ["throws", "null"]) {
+      const current = loadWorker();
+      let focused = 0;
+      current.state.windows = [{ url: ORIGIN + "/app/client-portal.html",
+        focus: async () => { focused++; },
+        navigate: async () => { if (failure === "throws") throw new Error("outside worker scope"); return null; } }];
+      await current.dispatch("notificationclick", {
+        notification: { close() {}, data: { url: "/slideshows/the-call.html" } }
+      });
+      assert.deepEqual(current.state.openedWindows, ["/slideshows/the-call.html"]);
+      assert.equal(focused, 0, "do not focus the old portal as if it were the lesson");
+    }
+  });
+
+  test("a lesson tap reuses a window only after navigation succeeds", async () => {
+    let focused = 0;
+    w.state.windows = [{ url: ORIGIN + "/app/client-portal.html", focus: async () => {},
+      navigate: async (url) => {
+        w.state.navigations.push(url);
+        return { focus: async () => { focused++; } };
+      } }];
+    await w.dispatch("notificationclick", {
+      notification: { close() {}, data: { url: "/slideshows/the-call.html" } }
+    });
+    assert.deepEqual(w.state.navigations, ["/slideshows/the-call.html"]);
+    assert.deepEqual(w.state.openedWindows, []);
+    assert.equal(focused, 1);
+  });
 });
 
 describe("the registration in client-portal.html", () => {

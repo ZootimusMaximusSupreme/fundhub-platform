@@ -77,7 +77,7 @@ test.describe("Staff & Teams empty stats", () => {
 test("owner can remove a teammate while Chris keeps owner, setter and closer access", async ({ page }) => {
   const chris = {
     id: "chris-id", name: "Chris Stanbridge", email: "chris@fundhub.ai",
-    role: "owner", status: "active"
+    role: "owner", roles: ["owner", "setter", "closer"], status: "active"
   };
   const teammate = {
     id: "staff-9", name: "Admin E2E", email: "e2e+admin@fundhub.ai",
@@ -144,4 +144,48 @@ test("green dot follows current online presence without treating login access as
   await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
   await expect(jordanRow.locator(".online-dot")).toHaveCount(0);
   await expect(caseyRow.locator('.online-dot[aria-label="Online now"]')).toBeVisible();
+});
+
+
+test("owner saves explicit additional jobs and sees only the saved role stack", async ({ page }) => {
+  let saved;
+  const teammate = { ...STAFF_ROW, role: "closer", roles: ["closer"], phone: "", start_date: null };
+  await wireApi(page, { session: OWNER, handlers: {
+    "/api/read/staff": () => ({ ok: true, count: 1, items: [teammate] }),
+    "/api/auth/staff-role": route => {
+      saved = JSON.parse(route.request().postData());
+      return { ok: true, staff: { ...teammate, roles: ["closer", ...saved.roles] } };
+    }
+  } });
+  await gotoScreen(page, "staff-teams.html");
+  const row = page.locator("#rosterBody tr", { hasText: "Jordan Blake" });
+  await row.click();
+  await expect(page.locator('[name="additional_role"][value="owner"]')).toHaveCount(0);
+  await expect(page.locator('[name="additional_role"][value="admin"]')).toHaveCount(0);
+  await page.locator('[name="additional_role"][value="setter"]').check();
+  await page.locator("#edSave").click();
+  await expect(page.locator("#editor")).not.toHaveClass(/open/);
+  expect(saved).toEqual({ staff_id: teammate.id, role: "closer", roles: ["setter"] });
+  await expect(row).toContainText("Closer · Setter");
+  await row.click();
+  await expect(page.locator('[name="additional_role"][value="setter"]')).toBeChecked();
+});
+
+
+test("editing contact details preserves a saved duty this limited role editor cannot offer", async ({ page }) => {
+  const teammate={ ...STAFF_ROW, role:"closer", roles:["closer","existing_custom_duty"] };
+  let roleWrites=0;
+  await wireApi(page,{session:OWNER,handlers:{
+    "/api/read/staff":()=>({ok:true,count:1,items:[teammate]}),
+    "/api/auth/staff-update":route=>({ok:true,staff:{...teammate,...JSON.parse(route.request().postData())}}),
+    "/api/auth/staff-role":()=>{roleWrites++;return{ok:false,error:"unexpected_role_write"};}
+  }});
+  await gotoScreen(page,"staff-teams.html");
+  await page.locator("#rosterBody tr",{hasText:"Jordan Blake"}).click();
+  await page.locator("#ed_first").fill("Jordan Updated");
+  await page.locator("#edSave").click();
+  await expect(page.locator("#editor")).not.toHaveClass(/open/);
+  await expect(page.locator("#rosterBody")).toContainText("Jordan Updated Blake");
+  await expect(page.locator("#rosterBody")).toContainText("existing_custom_duty");
+  expect(roleWrites).toBe(0);
 });

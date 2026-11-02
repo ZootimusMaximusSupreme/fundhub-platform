@@ -45,7 +45,10 @@ export const RESTORE_SNAPSHOT_EXCLUDE_FILES = Object.freeze([
   "db/seed/301_followup_flows_copy.sql",
   "db/seed/302_containment_plain_survey_copy.sql",
   "db/seed/303_no_josh_chris.sql",
-  "db/seed/304_followup_proof_variants.sql"
+  "db/seed/304_followup_proof_variants.sql",
+  "db/seed/305_confirm_on_calendar.sql",
+  "db/seed/306_pre_call_deck_email.sql",
+  "db/seed/307_repair_trial_two_round_copy.sql"
 ]);
 const JSON_TAG = "$fh_tpl_restore$";
 

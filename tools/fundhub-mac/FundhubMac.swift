@@ -64,6 +64,7 @@ private final class FundhubBrowser: NSObject, ObservableObject, WKNavigationDele
     }
 
     func reload() {
+        guard !signingOut else { return }
         loadFailed = false
         loading = true
         if view.url == nil, let route {
@@ -78,6 +79,7 @@ private final class FundhubBrowser: NSObject, ObservableObject, WKNavigationDele
     func goHome() async {
         guard !signingOut else { return }
         signingOut = true
+        FundhubDock.shared.hide()
         view.stopLoading()
         // A server acknowledgement is best effort; we ALWAYS erase local data.
         let logoutAcknowledged = await revokeCurrentSession()
@@ -144,21 +146,29 @@ private final class FundhubBrowser: NSObject, ObservableObject, WKNavigationDele
     }
 
     func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+        guard !signingOut, webView === currentView else { return }
         loading = true
         loadFailed = false
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        guard !signingOut, webView === currentView else { return }
         loading = false
         loadedOnce = true
         canGoBack = webView.canGoBack
+        Task {
+            guard !signingOut, webView === currentView else { return }
+            await FundhubDock.shared.refreshVisibility(from: webView)
+        }
     }
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+        guard !signingOut, webView === currentView else { return }
         recordFailure(error)
     }
 
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        guard !signingOut, webView === currentView else { return }
         recordFailure(error)
     }
 
@@ -493,5 +503,14 @@ private struct FundhubMacApp: App {
             ContentView()
         }
         .windowStyle(.titleBar)
+        .commands {
+            CommandMenu("Dock shortcut") {
+                ForEach(["D", "K", "J"], id: \.self) { key in
+                    Button("Command–Option–Shift–\(key)") {
+                        FundhubDock.shared.setShortcut(key)
+                    }
+                }
+            }
+        }
     }
 }

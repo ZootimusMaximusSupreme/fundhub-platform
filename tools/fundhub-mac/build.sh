@@ -31,8 +31,8 @@ iconutil -c icns "$ICONSET" -o "$CONTENTS/Resources/Fundhub.icns"
 
 xcrun swiftc -swift-version 5 -O -parse-as-library \
   -target arm64-apple-macosx13.0 \
-  -framework AppKit -framework WebKit \
-  -o "$CONTENTS/MacOS/Fundhub" "$HERE/FundhubMac.swift"
+  -framework AppKit -framework WebKit -framework Carbon \
+  -o "$CONTENTS/MacOS/Fundhub" "$HERE/FundhubMac.swift" "$HERE/FundhubDock.swift"
 plutil -lint "$CONTENTS/Info.plist"
 codesign --sign - --force --deep "$STAGING/Fundhub.app"
 mv "$STAGING/Fundhub.app" "$APP"

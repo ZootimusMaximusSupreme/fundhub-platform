@@ -39,7 +39,7 @@ flowchart TD
     CAN --> A_ops[ops — 2 routes]
     CAN --> A_public[public — 20 routes]
     CAN --> A_push[push — 1 route]
-    CAN --> A_read[Reading data — 49 routes]
+    CAN --> A_read[Reading data — 51 routes]
     CAN --> A_repair[repair — 4 routes]
     CAN --> A_scripts[scripts — 2 routes]
     CAN --> A_social[social — 4 routes]
@@ -79,7 +79,7 @@ flowchart TD
 
 ## What they can reach
 
-**193 of 340 routes.**
+**195 of 342 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -212,6 +212,7 @@ flowchart TD
 | `/api/push/native-device` | DELETE, GET, POST | client, staff |
 | `/api/read/ad-attribution` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/ad-books` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
+| `/api/read/ad-preview` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/ad-spine` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/affiliate-portal` | GET | staff, affiliate, client |
 | `/api/read/agent-context` | — | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
@@ -232,6 +233,7 @@ flowchart TD
 | `/api/read/csm-queue` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/customer-insights` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/deal-math` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
+| `/api/read/dock` | GET | staff, client |
 | `/api/read/documents` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/entitlements` | GET | employees: owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm<br>plus: client |
 | `/api/read/finance-ask` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
@@ -286,7 +288,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**147 of 340 routes.**
+**147 of 342 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|

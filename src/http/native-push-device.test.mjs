@@ -59,10 +59,30 @@ test("staff revocation ignores a caller-chosen staff or client ID", async () => 
   assert.equal(fake.find(/client_apns_devices/).length, 0);
 });
 
-test("non-sales staff cannot register a work-alert device", async () => {
+test("unknown staff jobs cannot register a work-alert device", async () => {
   const { res, fake } = await callShared(nativeDevice, req("POST", {
     body: { installation_id: INSTALLATION, token: "ab".repeat(32), environment: "development" }
-  }), [staffSession({ role: "csm" })]);
+  }), [staffSession({ role: "unknown_job" })]);
   assert.equal(res.statusCode, 403);
   assert.equal(fake.find(/apns_devices/).length, 0);
+});
+
+
+test("work-alert registration keeps the existing three-role boundary", async () => {
+  for (const role of ["owner", "admin", "setter", "closer", "sales_manager",
+    "funding_advisor", "inquiry_specialist", "csm", "outbound_rep"]) {
+    const request = req("GET", { query: { installation_id: INSTALLATION, staff_id: OTHER } });
+    request.url = "/api/push/native-device";
+    const { res, fake } = await callShared(nativeDevice, request,
+      [staffSession({ role }), [/SELECT count\(\*\)::int AS count FROM staff_apns_devices/, [{ count: 1 }]]]);
+    if (!["owner", "setter", "closer"].includes(role)) {
+      assert.equal(res.statusCode, 403, role);
+      assert.equal(fake.find(/apns_devices/).length, 0, role);
+      continue;
+    }
+    assert.equal(res.statusCode, 200, role);
+    const [read] = fake.find(/SELECT count\(\*\)::int AS count FROM staff_apns_devices/);
+    assert.equal(read.params[1], STAFF_ID, role);
+    assert.equal(fake.find(/client_apns_devices/).length, 0, role);
+  }
 });

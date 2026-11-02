@@ -9,6 +9,10 @@ import { requireRole } from "../../src/http/middleware/requireRole.mjs";
 import { setStaffRole } from "../../src/auth/invite.mjs";
 import { staffRoleKey } from "../../src/auth/company-email.mjs";
 
+import { setStaffRoles } from "../../src/auth/staff-role-assignments.mjs";
+import { bearerToken } from "../../src/http/middleware/requireAuth.mjs";
+import { isUuid } from "../../src/http/read-api.mjs";
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
@@ -24,7 +28,10 @@ export default async function handler(req, res) {
   if (!staffId) return res.status(400).json({ ok: false, error: "staff_id_required" });
   if (!role) return res.status(400).json({ ok: false, error: "unknown_role" });
 
-  const result = await setStaffRole(db, { actor: staff, staffId, role });
+  if (!isUuid(staffId)) return res.status(400).json({ ok: false, error: "invalid_staff_id" });
+  const result = Object.prototype.hasOwnProperty.call(body, "roles")
+    ? await setStaffRoles(db, { actor: staff, token: bearerToken(req), staffId, role, roles: body.roles })
+    : await setStaffRole(db, { actor: staff, staffId, role });
   if (!result.ok) {
     return res.status(result.status || 400).json({ ok: false, error: result.error });
   }

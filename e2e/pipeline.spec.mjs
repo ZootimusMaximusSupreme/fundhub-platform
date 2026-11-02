@@ -395,3 +395,24 @@ test.describe("pipeline board", () => {
     await expect(page.locator(".card[data-client-id]")).toBeHidden();
   });
 });
+
+
+test("the exact linked ad preview loads only when expanded and clears when collapsed", async ({ page }) => {
+  let previewReads=0;
+  await openScreen(page,"/app/pipeline.html",OWNER,{
+    "/api/dashboard/pipeline":STAGES,
+    "/api/dashboard/client":{ok:true,client:{id:CLIENT_ID,custom_fields:{utm_content:"Ad linked to this lead"}}},
+    "/api/read/ad-preview":()=>{previewReads++;return{ok:true,preview_url:"https://www.facebook.com/ads/api/preview_iframe.php?id=fixture"};}
+  });
+  await page.route("https://www.facebook.com/ads/api/preview_iframe.php*",route=>route.fulfill({contentType:"text/html",body:"<p>Local preview fixture</p>"}));
+  await page.locator('.card[data-client-id="'+CLIENT_ID+'"] .c-name').first().click();
+  const summary=page.locator(".fh-ad-preview summary");
+  await expect(summary).toContainText("Ad linked to this lead");
+  expect(previewReads).toBe(0);
+  const box=await summary.boundingBox();expect(box.height).toBeGreaterThanOrEqual(44);
+  await summary.click();
+  await expect(page.locator(".fh-ad-preview iframe")).toHaveAttribute("src",/facebook\.com\/ads\/api\/preview_iframe/);
+  expect(previewReads).toBe(1);
+  await summary.click();
+  await expect(page.locator(".fh-ad-preview iframe")).toHaveCount(0);
+});

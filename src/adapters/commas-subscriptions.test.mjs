@@ -57,7 +57,8 @@ describe("subscription webhooks map to the right meaning", () => {
     assert.deepEqual(names("payment.succeeded"), ["payment.received"]);
     assert.deepEqual(names("payment.canceled"), ["payment.canceled"]);
     assert.deepEqual(names("payment.expired"), ["payment.expired"]);
-    assert.deepEqual(names("refund.created"), ["payment.refunded"]);
+    assert.deepEqual(mapToCanonical({ type: "refund.created", refundStatus: "success" }).map((e) => e.name),
+      ["payment.refunded"]);
   });
 });
 

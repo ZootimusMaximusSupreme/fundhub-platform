@@ -241,7 +241,11 @@ export function allowsRole(roleSet, role) {
    403, not 404: the caller is authenticated, so hiding the endpoint's existence
    buys nothing and makes a permissions bug undiagnosable. */
 export function requireRole(res, staff, roleSet) {
-  if (allowsRole(roleSet, staff && staff.role)) return true;
+  const primary = String(staff?.role || "").trim().toLowerCase();
+  const canStackRoles = primary && !["partner", "client", "affiliate", "outbound_rep"].includes(primary);
+  if (allowsRole(roleSet, primary) || (canStackRoles && Array.isArray(staff?.roles)
+    && staff.roles.some((role) => String(role || "").trim().toLowerCase() !== "owner"
+      && allowsRole(roleSet, role)))) return true;
   res.status(403).json({
     ok: false,
     error: "forbidden",

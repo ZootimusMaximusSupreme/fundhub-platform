@@ -41,7 +41,8 @@ export { HOURLY_CHECK_IDS };
 /** The deep checks a covered surface names that run hourly in another beat: check id -> [beat id, step]. */
 export const RUNS_ELSEWHERE = Object.freeze({
   "payments:paid-no-entitlement": Object.freeze(["pay-links", "payments-paid-no-entitlement"]),
-  "gap:auth-magic-link-dead": Object.freeze(["auth-links", "gap-auth-magic-link-dead"])
+  "gap:auth-magic-link-dead": Object.freeze(["auth-links", "gap-auth-magic-link-dead"]),
+  "portal:progress-read-real-client": Object.freeze(["client-progress", "portal-progress-read-real-client"])
 });
 
 const ONE = (row) => Object.freeze([Object.freeze(row)]);
@@ -51,7 +52,7 @@ const SITE = "https://fundhub.ai";
 /* A whole customer page for the self test: a title, the few things each page must keep, one script,
    one style file and the closing tag, padded past the 500-byte floor. Made-up text only. */
 function selfTestPage(path) {
-  const keeps = '<form><input type="email"><input type="password"></form><div data-tile="next"></div>';
+  const keeps = '<form><input type="email"><input type="password"></form><div data-tile="next"></div><div id="sections"></div>';
   return `<!doctype html><html><head><title>Fundhub ${path}</title>` +
     `<link rel="stylesheet" href="/app/self-test.css"><script src="/app/self-test.js"></script></head>` +
     `<body>${keeps}<p>${"Your portal. ".repeat(60)}</p></body></html>`;
@@ -94,6 +95,8 @@ export const title = "Client portal pages load and paid clients get in";
 export const kind = "probe";
 export const covers = [
   "desk:client-portal.html",
+  "desk:role-dock.html",
+  "route:read/dock",
   "route:read/portal-summary",
   "route:read/entitlements",
   "page:portal-login.html"

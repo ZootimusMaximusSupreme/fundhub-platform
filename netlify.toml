@@ -168,6 +168,9 @@
 [functions."staff-message-sweeper"]
   schedule = "*/5 * * * *"
 
+[functions."precall-plan-sweeper"]
+  schedule = "*/5 * * * *"
+
 [functions."social-publish-sweeper"]
   schedule = "*/5 * * * *"
 

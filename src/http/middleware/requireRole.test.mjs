@@ -41,6 +41,18 @@ test("owner passes every gate without being listed", () => {
   assert.equal(hasRole({ role: "owner" }, ["admin"]), true);
   assert.equal(hasRole({ role: "owner" }, ["inquiry_specialist"]), true);
   assert.equal(hasRole({ role: "OWNER" }, ["anything"]), true);
+  assert.equal(hasRole({ role: "closer", roles: ["closer", "owner"] }, ["anything"]), false);
+});
+
+test("an assigned role passes, but an unrelated role stays denied", () => {
+  assert.equal(hasRole({ role: "closer", roles: ["closer", "setter"] }, ["setter"]), true);
+  assert.equal(hasRole({ role: "closer", roles: ["closer", "setter"] }, ["admin"]), false);
+});
+
+test("external and restricted primary identities cannot borrow a staff role", () => {
+  for (const role of ["client", "affiliate", "partner", "outbound_rep"]) {
+    assert.equal(hasRole({ role, roles: ["owner"] }, ["admin"]), false);
+  }
 });
 
 test("a staff member with no role passes nothing", () => {
@@ -65,6 +77,20 @@ test("requireRole passes a matching role straight through", async () => {
   const res = fakeRes();
   const staff = await requireRole("closer")(authed(), res, { db: fakeDb({ role: "closer" }) });
   assert.equal(staff.role, "closer");
+  assert.equal(res.statusCode, null);
+});
+
+test("requireRole accepts an assigned role from the resolved session", async () => {
+  const res = fakeRes();
+  const db = fakeDb({ role: "closer" });
+  const original = db.query.bind(db);
+  db.query = async (sql, params) => {
+    const result = await original(sql, params);
+    if (/WITH live AS/.test(sql)) result.rows[0].assigned_roles = ["setter"];
+    return result;
+  };
+  const staff = await requireRole("setter")(authed(), res, { db });
+  assert.deepEqual(staff.roles, ["closer", "setter"]);
   assert.equal(res.statusCode, null);
 });
 

@@ -8,6 +8,12 @@
 .setter-page .setter-head{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;margin-bottom:24px}
 .setter-page .setter-head h1{font-size:var(--fs-metric);line-height:1.15;letter-spacing:-.03em}
 .setter-page .setter-head p{color:var(--gray);margin-top:8px}
+.setter-page #setter-undo-dial{display:inline-flex;align-items:center;justify-content:center;flex:none;width:44px;height:44px;margin-left:0;padding:10px;border:1px solid #E4E4E7;border-radius:10px;background:#fff;color:#18181B;cursor:pointer}
+.setter-page #setter-undo-dial[hidden]{display:none}
+.setter-page #setter-undo-dial:hover{background:#F4F4F5;border-color:#A1A1AA}
+.setter-page #setter-undo-dial:focus-visible{outline:2px solid #4866D7;outline-offset:3px}
+.setter-page #setter-undo-dial:disabled{opacity:.55;cursor:wait}
+.setter-page #setter-undo-dial svg{display:block;width:19px;height:19px}
 .setter-page .setter-numbers{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:1px;margin-bottom:24px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--line)}
 .setter-page .setter-numbers div{min-width:0;padding:14px 16px;background:var(--paper)}
 .setter-page .setter-numbers span{display:block;color:var(--gray);font-size:var(--fs-caption)}
@@ -70,3 +76,4 @@
 .setter-page .setter-pager button{width:auto;min-height:44px;border:1px solid var(--line);border-radius:8px;padding:8px 12px}
 @media(max-width:900px){.setter-page .setter-numbers{grid-template-columns:repeat(3,minmax(0,1fr))}.setter-page .setter-grid{grid-template-columns:1fr}.setter-page .setter-queue{max-height:320px}}
 @media(max-width:600px){.setter-page .setter-head{flex-direction:column}.setter-page .setter-numbers{grid-template-columns:repeat(2,minmax(0,1fr))}.setter-page .setter-detail{padding:16px}.setter-page .setter-fields,.setter-page .setter-checks,.setter-page .setter-survey{grid-template-columns:1fr}}
+@media(max-width:480px){.setter-page #fh-workspace-header:has(#setter-undo-dial:not([hidden])) #fh-shell-search-btn{min-width:44px;justify-content:center;padding-inline:8px}.setter-page #fh-workspace-header:has(#setter-undo-dial:not([hidden])) #fh-shell-search-btn :is(.fh-search-label,.fh-k){display:none}}

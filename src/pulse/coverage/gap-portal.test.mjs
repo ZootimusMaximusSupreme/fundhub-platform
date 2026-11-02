@@ -73,7 +73,7 @@ function assertShape(rows) {
   }
 }
 
-/* The six customer pages as the live site serves them, each with the files it
+/* The customer pages as the live site serves them, each with the files it
    names. `extra` is the part of the page the check reads for. Built from the
    real pages' shape (2026-10-09): relative names under /app/, absolute names at
    the root, and the portal's service worker named in a script line. */
@@ -97,6 +97,11 @@ const SITE_PAGES = {
     ],
     extra: '<article class="tile locked" data-tile="SOFT_PULL"></article><script>var SW_URL = "/app/client-portal-sw.js";</script>'
   },
+  "/app/role-dock.html": {
+    title: "Fundhub Dock",
+    assets: ['<link rel="stylesheet" href="role-dock.css">', '<script defer src="role-dock.js"></script>'],
+    extra: '<div id="sections"></div>'
+  },
   "/progress.html": { title: "Fundhub — Your progress", assets: [], extra: "<h1>Your progress</h1>" },
   "/app/payment-success.html": {
     title: "Fundhub · After checkout",
@@ -116,7 +121,8 @@ const SITE_PAGES = {
 };
 const SITE_FILES = [
   "/fh.css", "/pw-toggle.js", "/app/fundhub-brand.css", "/app/shell.js", "/app/data.js",
-  "/app/client-portal-sw.js", "/app/money-vault.css", "/app/money.js", "/app/financeos.js"
+  "/app/client-portal-sw.js", "/app/money-vault.css", "/app/money.js", "/app/financeos.js",
+  "/app/role-dock.css", "/app/role-dock.js"
 ];
 
 function pageText(pagePath, { drop = [], title } = {}) {
@@ -685,11 +691,11 @@ async function scripts(routes, extra = {}) {
 
 /* ── portal:page-scripts-load ───────────────────────────────────────────── */
 
-test("scripts: all six pages whole and every file they name answering is a PASS", async () => {
+test("scripts: all customer pages whole and every file they name answering is a PASS", async () => {
   const { row, calls } = await scripts(siteRoutes());
   assert.equal(row.id, "portal:page-scripts-load");
   assert.equal(row.status, "PASS");
-  assert.match(row.detail, /^6 customer pages answered whole and all 9 script and style files/);
+  assert.match(row.detail, /^7 customer pages answered whole and all 11 script and style files/);
   assert.equal(row.suggestedFix, null);
   const asked = new Set(calls.map((c) => new URL(c.url).pathname));
   assert.deepEqual([...asked].sort(), [...Object.keys(SITE_PAGES), ...SITE_FILES].sort());
@@ -778,8 +784,8 @@ test("scripts: a long list of problems is cut to four and counts the rest", asyn
     for (const file of SITE_FILES) r[file] = { status: 404, text: "x" };
   }));
   assert.equal(row.status, "FAIL");
-  assert.match(row.detail, /^9 problems on the customer pages: /);
-  assert.match(row.detail, /; and 5 more$/);
+  assert.match(row.detail, /^11 problems on the customer pages: /);
+  assert.match(row.detail, /; and 7 more$/);
   assert.ok(row.detail.length <= 500, "the detail must fit the 500 characters the pulse keeps");
 });
 
@@ -800,7 +806,7 @@ test("scripts: running out of time with nothing red is a skip, with a red it is 
   };
   const quiet = await checkPageScripts({ fetchImpl: slow(siteRoutes()), baseUrl: BASE });
   assert.equal(quiet.status, "skip");
-  assert.match(quiet.detail, /ran out of time \(14 s\) with 8 of 15 files not read; nothing red in the rest/);
+  assert.match(quiet.detail, /ran out of time \(14 s\) with 10 of 18 files not read; nothing red in the rest/);
   clock = 1_000_000;
   const red = await checkPageScripts({
     fetchImpl: slow(routesWith((r) => { r["/progress.html"] = { status: 500, text: "x" }; })),
@@ -839,7 +845,7 @@ test("scripts: the page list is the live registry's, and every file is in public
   }
   assert.deepEqual(CUSTOMER_PAGES.map((p) => p.path), [
     "/portal-login.html", "/reset-password.html", "/app/client-portal.html",
-    "/progress.html", "/app/payment-success.html", "/app/financeos.html"
+    "/app/role-dock.html", "/progress.html", "/app/payment-success.html", "/app/financeos.html"
   ]);
 });
 

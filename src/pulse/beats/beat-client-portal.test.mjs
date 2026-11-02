@@ -12,7 +12,7 @@ import { DEFAULT_ORG_SQL, SELF_TEST_ORG, laneSelfTest } from "./lib/money-hourly
 import { OWNER_HOLD_CLIENTS } from "../owner-hold.mjs";
 import { TRIPWIRES } from "../tripwires.mjs";
 
-const OTHER_BEATS = { "pay-links": payLinks, "auth-links": authLinks };
+const OTHER_BEATS = { "pay-links": payLinks, "auth-links": authLinks, "client-progress": clientProgress };
 const compact = (text) => String(text).trim().replaceAll(/\s+/g, " ");
 
 /** A fake read over the pass rows, with some SQL answered differently (rows, or an Error to throw). */
