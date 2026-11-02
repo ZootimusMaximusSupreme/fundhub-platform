@@ -4,9 +4,9 @@ Fundhub, If You Tried Before
 
 If a funding attempt failed before, we read the old applications, the banks' answers and the hard pulls still on your file before the next application goes out.
 
-A company that blasts your file to its lender list leaves a HARD pull from every bank on that list. Those pulls count against you for a full 12 months.
+A company that blasts your file to its lender list can leave several hard inquiries. Recent inquiries can affect the next lender's decision.
 
-A hard pull sits on your report for two years. Every bank you apply to next reads those pulls before it makes up its mind about you.
+A hard inquiry can stay on a report for two years. A lender sees the inquiries on the bureau it reads and weighs them with the rest of your file.
 
 This sample report shows five declined applications, spread over all three bureaus, and every one of them landed inside the last six months.
 

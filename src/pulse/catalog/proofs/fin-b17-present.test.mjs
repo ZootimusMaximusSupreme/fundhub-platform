@@ -1422,7 +1422,7 @@ test("the client screens carry the 2026-10-29 words", async () => {
   stack.press("next").press("next");
   assert.equal(stack.slide(), "B-04");
   assert.ok(!/member fee/i.test(stack.client()), "row 10: no member fee after 12 months");
-  assert.ok(stack.cockpitText().includes("Its 12 months do not automatically renew"));
+  assert.ok(stack.cockpitText().includes("There is no renewal charge after 12 months"));
 });
 
 test("a missing report keeps the closer on the live status screen", async () => {

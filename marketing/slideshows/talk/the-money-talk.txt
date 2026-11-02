@@ -32,7 +32,7 @@ We read the lender terms and your file together before you choose a payment meth
 
 Paying a big fee before anyone reads your file costs you TWICE. You pay the fee, and that money buys applications your file was never ready for.
 
-Those applications go to banks your file doesn't fit. Each one is a hard pull, and every pull stays on your report for the next bank to read.
+Applications sent to the wrong banks can leave hard inquiries without an approval. A later lender can weigh those inquiries with the rest of your file.
 
 Your file comes FIRST on your call. After that you hear the fee in dollars, and the two of you go through the agreement on screen before any money moves.
 

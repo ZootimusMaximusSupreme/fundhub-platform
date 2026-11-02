@@ -16,15 +16,15 @@ There's a second cost too, and it's printed right on your report. It came from t
 
 2. CW-02 / Inquiries — Almost every bank you try while the file sits leaves one more inquiry for the next bank.
 
-Almost every bank you try while the file sits leaves one more inquiry behind, and the next bank you try reads that one too, on top of the rest.
+Applying while the file sits can add a hard inquiry. A later lender that reads that bureau can see it alongside the rest of the file.
 
 This sample report shows three of them, one on each bureau. Two came from card applications, and the third came from a request for a higher limit.
 
-The next bank reads ALL of them before it decides, and our system counts every one of them against your fundability before a single application goes out.
+A bank reads the inquiries on the bureau it pulls. Our system flags recent inquiries before we choose where to apply.
 
-While the file sits, nobody disputes them. If you keep applying in the meantime, the list the next bank reads gets LONGER every time.
+If you keep applying without a plan, new hard inquiries can stack up. We review the report and any errors before the next sequence.
 
-When we work a funding file, the new inquiries get disputed between rounds, which only happens once the work on your file has started.
+When we work a funding file, we review new inquiries between rounds and dispute errors supported by the record.
 
 3. CW-03 / Round one — Credit optimization sends round one the day you sign, and every later round follows it.
 
@@ -32,7 +32,7 @@ Credit optimization sends round one the day you sign. Every later round follows 
 
 That's in the agreement word for word. The marked lines tie round one to the day you sign, and they make every later round wait on the one before it.
 
-Funding works the same way. Applications go out a round at a time, with the new inquiries from each round disputed before the next one goes out.
+Funding works the same way. Applications go out a round at a time. We review new inquiries and the updated file before planning the next round.
 
 That's why waiting reaches every round, on both sides. The day you start sets the day round one goes out, and every round behind it moves with it.
 

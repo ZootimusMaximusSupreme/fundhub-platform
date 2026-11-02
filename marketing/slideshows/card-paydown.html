@@ -821,7 +821,7 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </aside>
   </section>
 
-  <section class="slide" data-src="The engine's fundable line is cards used 30% or less: src/finance/fundability.mjs:147 and src/underwrite/vendor/underwriter.cjs:211. The sample's card use is the engine's own, 97%, $4,360 of $4,500 on the open cards, and the target for total card balances is $450 (src/underwrite/black-report-client.mjs util_pct, util_total_balance, util_total_limit and util_target_balance, run on scripts/sim/push-credit.mjs profile repair-full, 2026-10-31). Get every card under 10% of its limit before any application: src/underwrite/black-report-node.mjs:699-701. Every application is a hard pull, and each one costs you: docs/sops/weekend-2026-10-24/04-sales-call-script.md.">
+  <section class="slide" data-src="The engine's fundable line is cards used 30% or less: src/finance/fundability.mjs:147 and src/underwrite/vendor/underwriter.cjs:211. The sample's card use is the engine's own, 97%, $4,360 of $4,500 on the open cards, and the target for total card balances is $450 (src/underwrite/black-report-client.mjs util_pct, util_total_balance, util_total_limit and util_target_balance, run on scripts/sim/push-credit.mjs profile repair-full, 2026-10-31). Get every card under 10% of its limit before any application: src/underwrite/black-report-node.mjs:699-701. A funding application can create a hard inquiry, and each one costs you: docs/sops/weekend-2026-10-24/04-sales-call-script.md.">
     <p class="eyebrow">CP-03 / Card use at 97%</p>
     <h2>At 97% used, this sample's cards fail our card check before any bank looks.</h2>
     <ul class="lines">
@@ -853,7 +853,7 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
       <ul>
         <li>A full card costs you before any bank even looks. Our system checks whether your cards sit at 30% used or LESS, across the whole file.</li>
         <li>This sample's open cards report $4,360 against $4,500 in limits. That's 97% used, so the file fails that check before a single application goes out.</li>
-        <li>Every application sent while the cards report that high gets read at that HIGH balance. And the inquiry it leaves stays on the report after.</li>
+        <li>A lender can read the high reported balance, and an application can add a hard inquiry. We check both before applying.</li>
         <li>That's why the plan goes past 30%, all the way to 10% of each limit. On this sample, that's $450 or less in total.</li>
         <li>Read the two bars. The top one sits at 97%, far past the dashed 30% line. The bottom one sits at 10%, well under it.</li>
         <li>Every card on your file gets that same rule: 10% of its own limit. That gives each card its own target balance to pay toward.</li>

@@ -1,10 +1,10 @@
 Applying On Your Own
 
-1. AY-01 / The inquiry — You can apply yourself. The fee buys file review, bank order and follow-up.
+1. AY-01 / The inquiry — You can apply yourself. Did your bank order get you the access you need?
 
-You can apply yourself. Fundhub reads your file, chooses the lender order, prepares the applications you authorize and follows up. That's what the funding fee buys you.
+How many applications have you sent, what was approved, and what was your highest limit? If that handled your goal, what brought you to this call? Fundhub reads your file, chooses the lender order, prepares what you authorize and follows up.
 
-Our system checks every personal file for hard inquiries, and the target is ZERO. The first application you send on your own already counts against you.
+Our system checks your personal file for hard inquiries. Before another application, we review the ones already on your report.
 
 Your own report shows how many are counting against you right now, and what they're holding back. This one is a sample report, so you can see how it reads.
 
@@ -12,9 +12,9 @@ There's one on TransUnion, one on Experian and one on Equifax. Two came from bus
 
 That last one stands out. In this sample, even asking for a higher limit on a card the person already had left a HARD inquiry behind.
 
-Every one of them stays after the bank answers. Whichever bank you try next sees all of them, and it approves LESS because they're there.
+A hard inquiry can remain after the bank answers. A lender that reads that bureau can weigh it with the rest of your file.
 
-Every extra pull gives the next bank another recent application to weigh. That's the cost of applying without checking the order first.
+Each new hard inquiry gives a later lender another recent application to weigh. That's the cost of applying without checking the order first.
 
 2. AY-02 / The checks — A file can pass the three checks that make it fundable and still fail on inquiries.
 
@@ -26,27 +26,27 @@ The first three checks decide if our system calls your file fundable. A file can
 
 I set that rule inside the system myself. Inquiries cost fundability, and every one above zero gets reviewed before we plan the next application.
 
-Between rounds, every new inquiry on your file gets disputed. That way the next bank looks at a report we've already started cleaning up.
+Between rounds, we review new inquiries and dispute errors the record supports. Then we check the file before the next application.
 
 3. AY-03 / One bureau — Three applications on your own can all land on the one bureau the next bank reads.
 
-Every bank pulls its own bureau, and on your own you don't know which one it reads. Three banks that all read Experian put three fresh pulls on ONE report.
+Lenders choose which bureau or bureaus they read. Without checking first, you do not know where each inquiry will land. Three banks that all read Experian put three fresh pulls on ONE report.
 
 The next bank that reads Experian finds all three close together and weighs them with the rest of the file.
 
 Which bureau each bank reads decides where every pull lands, and on your own, that part happens blind.
 
-On a plan, the pulls get SPREAD across Experian, Equifax and TransUnion, and every bank on the list is one that fits your file.
+On a plan, we check which bureaus lenders use, choose banks that fit your file, and set the order before you authorize applications.
 
-When a bureau already shows a fresh pull, the bank that reads it waits until that bureau is clear, and the newest inquiries get disputed before the next round.
+When a bureau shows a fresh pull, we review that report before the next application and dispute an inquiry only if the facts support it.
 
 Both sides start with the same file and the same score, and on a plan, no bureau collects a stack of fresh pulls at once.
 
 4. AY-04 / After the round — On a plan, your file gets reviewed before the next round.
 
-Every no you collect on your own adds a pull that the next bank reads, and the next approval comes back SMALLER because of it.
+A denied application can still leave a hard inquiry. The next lender that reads that bureau weighs it with the rest of your file.
 
-On a plan, each round ends with your file in shape for the next one. The banks that read a fresh pull wait, and the new pulls get disputed.
+On a plan, we read the updated file after each round. A bank whose bureau has a fresh pull can wait while we check whether any inquiry is inaccurate.
 
 That gives us a current file to review before the next round of the funding sequence.
 

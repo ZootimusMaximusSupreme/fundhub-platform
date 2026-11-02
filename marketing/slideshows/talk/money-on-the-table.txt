@@ -54,7 +54,7 @@ This sample paid for a business start-up on four personal cards, then applied ar
 
 Three were credit card applications and two were personal loans, and every one of them came back declined, all inside the last six months.
 
-None of those five banks has an account on this file. Each of those inquiries gets disputed, and the one tied to the Chase card stays.
+This sample shows five inquiries without new accounts. We check each one against the application record; only an inaccurate inquiry belongs in a dispute.
 
 Our system's amount moves on card use, so the disputes clean up what the next bank reads, and the paydown moves the whole $128,040.
 
