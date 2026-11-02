@@ -235,7 +235,7 @@ export function hasShippableChange(prev, head, { git }) {
 }
 
 /**
- * Step 9: push to GitHub through scripts/github-push-whole-repo.mjs. Never throws and
+ * Step 9: use the existing authenticated push helper (main only on GitHub Actions). Never throws and
  * never stops the ship: the deploy is live and logged before this runs.
  * It pushes only when GitHub's main (fetched just now) is already inside this Mac's
  * main. The push script checks again and refuses a non-fast-forward main push.
@@ -257,11 +257,15 @@ export function pushToGitHub({ git, runCmd, env = process.env, timeout = PUSH_TI
   }
   let r;
   try {
-    r = runCmd("node", ["scripts/github-push-whole-repo.mjs"], { quiet: true, timeout, env: { ...env, ...GIT_NO_PROMPT } }) || {};
+    // The runner owns this ship-log commit; PR owners own their moving archives.
+    r = runCmd("node", ["scripts/github-push-whole-repo.mjs", ...(env.GITHUB_ACTIONS === "true" ? ["--main-only"] : [])],
+      { quiet: true, timeout, env: { ...env, ...GIT_NO_PROMPT } }) || {};
   } catch (e) {
     r = { ok: false, out: String(e?.message || e) };
   }
-  if (r.ok) return { ok: true, pushed: true, line: "Pushed to GitHub: main, unmerged local branches, and every tag." };
+  if (r.ok) return { ok: true, pushed: true, line: env.GITHUB_ACTIONS === "true"
+    ? "Pushed the ship-log commit to GitHub main."
+    : "Pushed to GitHub: main, unmerged local branches, and every tag." };
   const why = r.timedOut ? `no answer within ${Math.round(timeout / 60_000)} minutes` : reasonLine(r.out, env);
   return { ok: false, pushed: false, line: `The push to GitHub failed (${why}). ${live} the next ship pushes again.` };
 }
