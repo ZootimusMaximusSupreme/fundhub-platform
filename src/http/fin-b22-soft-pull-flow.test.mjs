@@ -109,7 +109,12 @@ async function post(body, { db = standIn(), token = link(), deps = {} } = {}) {
   await handler(
     { method: "POST", body: { ...token, ...body }, query: {}, headers: { "x-forwarded-for": "203.0.113.5", "user-agent": "test-browser" } },
     res,
-    { db: db.fake, env: ENV, secret: SECRET, now: NOW, checkoutBaseUrl: CHECKOUT_BASE, ...deps },
+    { db: db.fake, env: ENV, secret: SECRET, now: NOW, checkoutBaseUrl: CHECKOUT_BASE,
+      // A signed link is never a client session; prove the happy path with a
+      // separately authenticated client principal. Per-test overrides below
+      // still exercise unauthenticated/wrong-buyer refusals.
+      resolvePrincipal: async () => ({ kind: "client", orgId: ORG_ID, clientId: CLIENT, accountId: ACCOUNT }),
+      ...deps },
   );
   return { res, ...db };
 }
@@ -117,6 +122,35 @@ async function post(body, { db = standIn(), token = link(), deps = {} } = {}) {
 const at = (fake, re) => fake.calls.findIndex((c) => re.test(c.sql));
 const ran = (fake, re) => fake.calls.filter((c) => re.test(c.sql));
 const NO_PAY = /INSERT INTO payment_links/;
+
+describe("signed link is not a client session", () => {
+  test("an unsigned-in visitor cannot save consent or create a checkout, even with a valid link", async () => {
+    const { res, fake, minted } = await post({ ...person(), businesses: [] }, {
+      deps: { resolvePrincipal: async () => null }
+    });
+    assert.equal(res.statusCode, 401);
+    assert.equal(res.body.error, "account_required");
+    assert.equal(minted.length, 0);
+    assert.equal(ran(fake, /INSERT INTO (?:pii_identity|client_consents|businesses|payment_links)/).length, 0);
+  });
+
+  test("a session for a different buyer, company or staff role cannot use this signed link", async () => {
+    const wrongPrincipals = [
+      { kind: "client", orgId: ORG_ID, clientId: OTHER_CLIENT, accountId: ACCOUNT },
+      { kind: "client", orgId: "0b000000-0000-4000-8000-000000000002", clientId: CLIENT, accountId: ACCOUNT },
+      { kind: "staff", orgId: ORG_ID, clientId: CLIENT, accountId: ACCOUNT }
+    ];
+    for (const principal of wrongPrincipals) {
+      const { res, fake, minted } = await post({ ...person(), businesses: [] }, {
+        deps: { resolvePrincipal: async () => principal }
+      });
+      assert.equal(res.statusCode, 401, JSON.stringify(principal));
+      assert.equal(res.body.error, "account_required");
+      assert.equal(minted.length, 0);
+      assert.equal(ran(fake, /INSERT INTO (?:pii_identity|client_consents|businesses|payment_links)/).length, 0);
+    }
+  });
+});
 
 describe("authorize first, then pay", () => {
   test("the consent is written before the payment link is minted, and the answer carries both", async () => {
@@ -160,7 +194,10 @@ describe("authorize first, then pay", () => {
   test("the words the page is shown (GET) are the words that are recorded (POST), under the same version", async () => {
     const res = makeRes();
     const token = link();
-    await handler({ method: "GET", query: token, headers: {} }, res, { db: standIn().fake, env: ENV, secret: SECRET, now: NOW });
+    await handler({ method: "GET", query: token, headers: {} }, res, {
+      db: standIn().fake, env: ENV, secret: SECRET, now: NOW,
+      resolvePrincipal: async () => ({ kind: "client", orgId: ORG_ID, clientId: CLIENT, accountId: ACCOUNT })
+    });
     assert.equal(res.statusCode, 200);
     assert.equal(res.body.disclosure.text, SERVER_WORDS);
     assert.equal(res.body.disclosure.version, CURRENT_SOFT_PULL_VERSION);
@@ -325,6 +362,50 @@ describe("the same page then shows Pay for that total", () => {
       assert.equal(minted[0].amount_cents, res.body.checkout.amount_cents, `${n}: the saved link holds that amount`);
       assert.equal(minted[0].product_id, PRODUCT, "the link is for the soft-pull product (code diagnostic)");
     }
+  });
+
+  test("previous $32 event never covers a changed $42 assessment", async () => {
+    const db = standIn();
+    const prior = db.fake.query.bind(db.fake);
+    let pulls = 0;
+    db.fake.query = (sql, params) => {
+      if (/FROM events\s+WHERE org_id = \$1 AND client_id = \$2 AND name = 'diagnostic.paid'/.test(String(sql))) {
+        return Promise.resolve({ rows: [{ id: "old-event", org_id: ORG_ID, client_id: CLIENT,
+          payload: { source: "commas", product: "crs", amount: 32 } }] });
+      }
+      return prior(sql, params);
+    };
+    const { res, minted } = await post({ ...person(), businesses: [company(1)] }, {
+      db, deps: { runPaidPull: async () => { pulls++; throw Error("unexpected bureau request"); } }
+    });
+    assert.equal(res.statusCode, 201);
+    assert.equal(res.body.pricing.total_cents, 4200);
+    assert.equal(res.body.paid, true, "the old payment remains recorded");
+    assert.equal(res.body.payment_review_required, true);
+    assert.equal(res.body.pull, null);
+    assert.equal(res.body.checkout, null, "do not charge automatically");
+    assert.match(res.body.next, /earlier payment does not cover/);
+    assert.equal(pulls, 0);
+    assert.equal(minted.length, 0);
+  });
+
+  test("previous paid link for a smaller amount never promises a report", async () => {
+    const db = standIn();
+    const prior = db.fake.query.bind(db.fake);
+    db.fake.query = (sql, params) => {
+      if (/SELECT \* FROM payment_links/.test(String(sql)) && /status = 'paid'/.test(String(sql))) {
+        return Promise.resolve({ rows: [{ id: "settled-link", status: "paid", amount_cents: 3200 }] });
+      }
+      return prior(sql, params);
+    };
+    const { res, minted } = await post({ ...person(), businesses: [company(1)] }, { db });
+    assert.equal(res.statusCode, 201);
+    assert.equal(res.body.pricing.total_cents, 4200);
+    assert.equal(res.body.paid, true);
+    assert.equal(res.body.payment_review_required, true);
+    assert.match(res.body.next, /advisor to review/);
+    assert.equal(res.body.checkout, null);
+    assert.equal(minted.length, 0, "do not duplicate a settled checkout");
   });
 
   test("an open link at the same total is reused and no second link is minted", async () => {

@@ -26,7 +26,10 @@ test("unlogged KPI uses an uncapped SQL count, not the limited screen rows", asy
   assert.match(sql, /t\.due_at IS NOT NULL/);
   assert.match(sql, /t\.due_at < now\(\)/);
   assert.match(sql, /NOT EXISTS\s*\(\s*SELECT 1 FROM call_outcomes o/);
-  assert.match(sql, /o\.task_id = t\.id AND o\.org_id = t\.org_id/);
+  assert.match(sql, /o\.org_id = t\.org_id AND o\.client_id = t\.client_id/);
+  assert.match(sql, /o\.task_id = t\.id/);
+  assert.match(sql, /o\.booking_ref = t\.body/);
+  assert.match(sql, /c\.custom_fields->>'crm_archived_at' IS NULL/);
   assert.doesNotMatch(sql, /\bLIMIT\b/i);
   assert.deepEqual(params, [ORG, "Strategy session%"]);
 });

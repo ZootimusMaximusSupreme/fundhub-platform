@@ -1,0 +1,1089 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fundhub, Who We Are</title>
+<meta name="description" content="Fundhub keeps its word, in writing. Who Chris is, real approvals, and the funding agreement's own guarantees.">
+<!--
+  Deck WW · Who we are
+  Lane: Every lane (Funding, and Blueprint and Repair)
+  Hammer Them pillar: Objection ("is this a scam")
+  Belief: Fundhub keeps its word, in writing. Chris is real, the approvals
+          are real, and every agreement says what it promises and what it
+          does not, before I pay.
+
+  Chris's direction (2026-10-31): his call-slide style, more copy, real first
+  (real approval screenshots with the names blurred, the real agreement
+  clauses word for word), a branded diagram only where nothing real shows
+  the point.
+
+  What this deck says and does not say (the fact bank, section 14)
+  - Chris's allowed proof only (RULES.md Part 0 rules 35 to 38): a decade,
+    hundreds of files, a little over $1,000,000 funded for himself, four
+    companies. Never a client count, never a dollar total of approvals.
+  - No license claim: no license document is in the repo. The deck names the
+    three bureaus and LexisNexis the way the agreement names them.
+  - Never "we have relationships" with banks. No lender logos.
+  - Never "if we can't fund you, you don't pay": the agreement does not say
+    it. The guarantees shown are the two in the funding agreement, and the
+    deck says it is the funding agreement.
+  - The 72-hour line is the owner's exact line, word for word, funding only.
+    Approvals are never tied to 72 hours.
+  - The approvals come from Chris's own approvals folder, names and account
+    digits blurred, the amount read off the crop (proof-cards-from-source).
+    They are shown as approvals from files Chris has worked, not as a count
+    of Fundhub clients.
+
+  Rules this deck follows (marketing/ads/RULES.md)
+  - Hook = slide 1's headline and line. Cause first: brokers on bad systems
+    let people slip through the cracks (2.2 check 1, Chris's own words). No
+    ask, no question, the first subject is brokers, not us. The full intro
+    is used here because Chris is the proof (Part 0 rule 31).
+  - Full sentences, certain words, no price, no call to action.
+  - Evergreen spine (3.13): the mistake (brokers, WW-01), the proof (WW-02 to
+    WW-05), how we work (WW-06, WW-07), the soft door (WW-08).
+
+  Copybot (marketing/copy-skills/copybot/)
+  - One central idea: the belief above.
+  - The reader's question: "Why should I trust you?"
+  - Chris's voice from owner-voice.md and chris-voice-profile.md: "we don't
+    let people slip through the cracks", "we fulfill, we keep our word", "I
+    still fund myself", "action takers, not shoppers", used as he said them.
+
+  Visual Thinking (marketing/copy-skills/visual-thinking/), every step.
+  - Real first (law: show-real-proof): WW-02 and WW-03 each show one real
+    approval screenshot (one per slide, so each reads at phone size). WW-04,
+    WW-05, WW-06 and WW-07 show the funding agreement's own clauses, word for
+    word, with our marks. WW-01 and WW-08 are branded diagrams (Chris's record
+    as a timeline, the order of the call), because nothing real shows those.
+  - Show, by Dan Roam's six ways of seeing (methods.md):
+    WW-01 when, a timeline: ten years, one personal file, hundreds of files.
+    WW-02 what, real: a Truist business card approval, the bank's own words.
+    WW-03 what, real: a Chase Ink Business Unlimited approval letter.
+    WW-04 what, real: section 3, the two guarantees marked.
+    WW-05 what, real: section 3, the sentence that Fundhub does not promise
+      approval, marked the other way.
+    WW-06 what, real: section 4, what we are allowed to look at.
+    WW-07 what, real: sections 4 and 6, no false statement, no inaccurate
+      claim.
+    WW-08 how, a flow: your goal, your file, your path, the agreement, then
+      the price.
+  - Truth check (applications.md): no total, no count, no license, no bank
+    relationship. The guarantee is the funding agreement's and is labeled so.
+  - Display check: every slide viewed at 390 pixels wide before it shipped.
+
+  Talking points (aside.talk, hidden from viewers; open with #notes or N):
+  about 45 to 60 seconds a slide, one insight each, in Chris's spoken voice.
+
+  Each slide's data-src names the file and line its facts come from.
+  The shared design is copied in by build.mjs. Edit _shell/, not this copy.
+-->
+<!-- fh:shell:head -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Nunito:wght@500..800&display=swap">
+<style data-fh="doc">:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}[hidden]{display:none!important}</style>
+<style data-fh="brand">
+/* public/app/fundhub-brand.css */
+/* Fundhub workspace tokens — native welcome reference, October 2026.
+   Tenant branding still paints through shell.js; semantic status tokens stay fixed. */
+
+:root{
+  /* THE spectrum. Pastel. Coral -> peach -> butter -> sage -> powder -> lavender. */
+  --spectrum:linear-gradient(90deg,#F2A69B 0%,#F5CE8F 20%,#F2E39B 40%,#A8D8B0 60%,#A9C6E8 80%,#C4B3E5 100%);
+
+  --paper:#F8F8F6; --ink:#0D1113; --ink2:#252A2D;
+  --gray:#626968; --gray2:#858C89;
+  --line:#E3E5E0; --soft:#F0F1ED;
+  --card:#111113; --cardline:#26262B; --cardtext:#E4E4E7;
+
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,monospace;
+  --sans:ui-rounded,'SF Pro Rounded',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+
+  /* Status colors are spectrum stops. Do not invent others. */
+  --ok:#A8D8B0;      /* sage    - active, on pace, success, healthy */
+  --warn:#F5CE8F;    /* peach   - in progress, behind, warning */
+  --alert:#F2A69B;   /* coral   - blocked, failed, alert */
+  --info:#A9C6E8;    /* blue    - informational */
+  --accent:#C4B3E5;  /* lavender- accent */
+
+  --logo:url(data:image/svg+xml;base64,PHN2ZyB2ZXJzaW9uPSIxLjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgd2lkdGg9IjI2OTguMTQ4NDcxcHQiIGhlaWdodD0iNTQyLjk3ODc1OXB0IiB2aWV3Qm94PSIwIDAgMjY5OC4xNDg0NzEgNTQyLjk3ODc1OSIgcHJlc2VydmVBc3BlY3RSYXRpbz0ieE1pZFlNaWQgbWVldCI+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTE0Mi4wMDAwMDAsNjkxLjkwMjU0NSkgc2NhbGUoMC4xMDAwMDAsLTAuMTAwMDAwKSIgZmlsbD0iIzBBMEEwQSIgc3Ryb2tlPSJub25lIj48cGF0aCBkPSJNMjc4MCA2OTA1IGMtMTAxIC0yMyAtMTg3IC01MyAtMjc1IC05NiAtMjY3IC0xMzMgLTQ1MyAtMzQyIC01NTYgLTYyNCAtNTQgLTE1MCAtNjEgLTIxMiAtNjYgLTU2NSAtMyAtMjMzIC03IC0zMTYgLTE2IC0zMjIgLTcgLTQgLTEwMiAtOCAtMjEzIC04IC0xODIgMCAtMjAyIC0yIC0yMTcgLTE4IC0xNSAtMTcgLTE3IC02NiAtMTcgLTQ5MyAwIC0zNTYgMyAtNDc4IDEyIC00ODcgOSAtOSA3MSAtMTIgMjE4IC0xMiAxNDcgMCAyMDkgLTMgMjE4IC0xMiA5IC05IDEyIC0zMTYgMTIgLTEzMTcgMSAtMTA3MCAzIC0xMzA5IDE0IC0xMzIzIDEyIC0xNyA1MCAtMTggNTMzIC0xOCAzOTAgMCA1MjIgMyA1MzEgMTIgOSA5IDEyIDMxNSAxMiAxMzE2IDAgODc5IDMgMTMxMCAxMCAxMzIzIDEwIDE4IDIzIDE5IDIyNSAxOSAyMTAgMCAyMTQgMCAyMjkgMjIgMTQgMjAgMTYgODIgMTYgNDg0IGwwIDQ2MyAtMjYgMjAgYy0yNSAyMCAtMzkgMjEgLTIzMCAyMSAtMTkxIDAgLTIwNCAxIC0yMTQgMTkgLTYgMTIgLTEwIDEwMCAtMTAgMjE2IDAgMzAxIC01IDI5NSAyNjEgMjk1IDE2NyAwIDE4OCAyIDIwMiAxOCAxNSAxNyAxNyA2OCAxNyA1MzMgLTEgNDEyIC0zIDUxNyAtMTQgNTMyIC0xMiAxNiAtMzggMTcgLTMwNyAxNiAtMTkxIC0xIC0zMTMgLTYgLTM0OSAtMTR6Ii8+PHBhdGggZD0iTTE0MDUxIDY0MDcgYy04IC0xMCAtMTIgLTE5NiAtMTMgLTYzMiAtMyAtNTY4IC00IC02MTkgLTIwIC02MjggLTEzIC05IC0yMSAtNyAtMzUgNSAtMTggMTYgLTE4NSAxMDIgLTI1MyAxMzEgLTIyOSA5NyAtNTQ2IDEzNiAtODI1IDEwMyAtMTk4IC0yNCAtMjY0IC0zOSAtNDE0IC05OCAtMjUwIC05OCAtNDI5IC0yMTUgLTYyNSAtNDExIC03OCAtNzggLTE2MyAtMTY5IC0xODggLTIwMiAtNjMgLTg0IC0xMTggLTE2NCAtMTE4IC0xNzEgMCAtMyAtOCAtMTggLTE5IC0zMiAtNjUgLTk0IC0xNzIgLTM0MyAtMjEwIC00ODkgLTMwIC0xMTcgLTMxIC0xMjIgLTYwIC0zMzMgLTE3IC0xMjAgLTQgLTQzNyAyNCAtNjAwIDUzIC0zMDkgMjI3IC02NzIgNDM2IC05MTEgMjQwIC0yNzUgNDM4IC00MjEgNzM0IC01NDIgMTMwIC01MyAyMTggLTc1IDM4MCAtOTYgOTAgLTEyIDQ0OCAtNyA1MDAgNyAyMiA2IDY1IDE2IDk1IDIzIDEzNiAzMCAzNTkgMTIyIDQ5MiAyMDIgMjAgMTIgNTcgMzUgODIgNTAgNzIgNDQgODAgMzcgODQgLTYzIDIgLTQ2IDggLTkwIDE0IC05NyAxNSAtMTggOTc4IC0xOSA5OTYgLTEgMTcgMTcgMTcgNDc2OSAwIDQ3ODYgLTE5IDE5IC0xMDQxIDE3IC0xMDU3IC0xeiBtLTYzMCAtMjAzNSBjMTMgLTYgNDQgLTE2IDY5IC0yMyA1MyAtMTYgMTYxIC03MSAyMTAgLTEwNyAxNzAgLTEyNyAzMTkgLTMzOSAzNjggLTUyNyAyMiAtODMgMjYgLTEyNCAyNiAtMjcwIDAgLTE1NCAtMTAgLTI2MSAtMjUgLTI3MSAtNSAtMyAtOSAtMTYgLTkgLTMwIDAgLTEzIC00IC0zMiAtOCAtNDIgLTU3IC0xMTkgLTEwNCAtMjA1IC0xMzYgLTI0NiAtNjggLTg4IC0xNTkgLTE3NiAtMjMxIC0yMjUgLTc2IC01MCAtOTIgLTU5IC0xOTcgLTEwMCAtMTI0IC00OCAtMzg2IC00NiAtNTMzIDQgLTEyNSA0MyAtMjM3IDExNyAtMzM0IDIyMyAtOTAgOTggLTExOSAxNDAgLTE2NiAyMzIgLTUwIDk5IC00NyA5MCAtODQgMjM1IC0yOCAxMTEgLTMyIDI0NiAtMTEgMzgwIDE4IDExOSAyMiAxMzUgMzEgMTQxIDUgMyA5IDEzIDkgMjMgMCAzMSA3MCAxNjMgMTI1IDIzNiA2NyA4OSAxNTUgMTgwIDIyNSAyMzIgNjYgNDkgMTY1IDEwMyAxOTAgMTAzIDExIDAgMjEgNCAyNCA5IDYgOSAyOSAxNSAxMjEgMzEgNjEgMTEgMzAzIDUgMzM2IC04eiIvPjxwYXRoIGQ9Ik0xNTU0NyA2NDAyIGMtMTYgLTE3IC0xNyAtMTk3IC0xNyAtMjM4NiAwIC0xNjEzIDMgLTIzNzMgMTAgLTIzODcgMTAgLTE4IDI3IC0xOSA1MzUgLTE5IDMyMSAwIDUyNiA0IDUzMCAxMCAzIDUgNSA0MjcgNSA5MzcgMCA4OTMgNSAxMDg1IDMyIDEyNTggNDMgMjc4IDE0NiA0NTQgMzEzIDUzNiBsNzAgMzQgMTUyIDAgYzEwOCAwIDE1NiAtNCAxNjUgLTEyIDYgLTcgMjAgLTEzIDI5IC0xMyAyNiAwIDkyIC0zOCAxMzcgLTc5IDU5IC01MiAxMDUgLTEyNyAxNDUgLTIzMyAzNCAtOTAgNDIgLTExOSA2OCAtMjU4IDkgLTQ4IDE0IC0zMzggMTYgLTExMTAgMyAtNzE1IDggLTEwNDggMTUgLTEwNTcgOCAtMTAgMTIwIC0xMyA1MjggLTEzIDQzOSAwIDUxOSAyIDUzMCAxNCAxNiAyMSA5IDIzNjAgLTggMjQ1NiAtNyAzNiAtMTcgOTIgLTIzIDEyNSAtMjggMTY1IC03MiAzMDQgLTEzNCA0MzAgLTEyMiAyNDYgLTM3NiA0ODEgLTY3MCA2MTkgLTE1MiA3MiAtMTY5IDc4IC0zMjUgMTE2IC03OSAyMCAtMjUxIDMyIC0zNDYgMjYgLTIzMiAtMTYgLTM3MCAtNTEgLTU0OCAtMTQxIC0xNjEgLTgxIC0xNDcgLTEzNyAtMTQ2IDU2MSAxIDQyNiAtMiA1NzkgLTExIDU5MCAtMTAgMTIgLTk1IDE0IC01MjQgMTQgLTQ4MyAwIC01MTMgLTEgLTUyOCAtMTh6Ii8+PHBhdGggZD0iTTIyOTYyIDY0MDggYy05IC05IC0xMiAtNTU0IC0xMiAtMjM4OSAwIC0xMzA4IDMgLTIzODQgNiAtMjM5MyA1IC0xNCA1OSAtMTYgNTA0IC0xNiAzOTYgMCA1MDAgMyA1MDggMTMgNiA3IDEyIDUxIDE0IDk3IDMgODEgNCA4NSAyNSA4MyAxMiAtMiA1NSAtMjUgOTUgLTUyIDE4NCAtMTIzIDM2MCAtMTk1IDU5OCAtMjQzIDg4IC0xOCA1MTMgLTE4IDU5NSAwIDMzIDcgODMgMTggMTEwIDIzIDIyOSA0OCA1MDMgMTg2IDcwNyAzNTYgMTQ3IDEyMiAzMzcgMzQyIDQxNCA0NzggNTIgOTMgMTE4IDIyNiAxNDAgMjgyIDE0IDM3IDI5IDc3IDM0IDg4IDQgMTEgMTMgNDAgMjAgNjUgNyAyNSAxNiA1NiAyMSA3MCAxMSAzMyAzNCAxMzggNTEgMjI1IDE3IDkyIDE4IDU4OCAxIDY2NSAtNiAzMCAtMTcgODIgLTIzIDExNSAtMTYgODIgLTY2IDI1NiAtOTAgMzEwIC01IDExIC0yNiA1OCAtNDcgMTA1IC01NSAxMjMgLTEyNyAyNDcgLTIwMSAzNDYgLTExOSAxNTkgLTMyMSAzNTkgLTQ0NiA0NDMgLTIwNSAxMzggLTQxMCAyMzAgLTU5NiAyNzEgLTMwIDYgLTY4IDE1IC04NSAyMCAtOTEgMjUgLTQzMSAzMiAtNTg1IDEyIC0xMjIgLTE3IC0yMjcgLTM5IC0zMDQgLTY3IC05NiAtMzMgLTI0OCAtMTA3IC0zMTIgLTE1MCAtNDAgLTI3IC01MCAtMzAgLTU5IC0xNSAtMyA1IC02IDI4MyAtNSA2MTcgMCA1MzggLTEgNjExIC0xNSA2MzEgbC0xNiAyMiAtNTE4IDAgYy0zODkgMCAtNTIwIC0zIC01MjkgLTEyeiBtMjEyMCAtMjA0MSBjMjYgLTcgNTAgLTE2IDU0IC0yMCA0IC00IDE2IC03IDI2IC03IDEwIDAgMjcgLTQgMzggLTEwIDExIC01IDI5IC0xNCA0MCAtMjAgMTc1IC04NyAzNDYgLTI4MCA0MjAgLTQ3MSA0NyAtMTIzIDUzIC0xNTggNTcgLTM2OSA2IC0yMzYgLTEwIC0zMzAgLTgyIC00ODUgLTEwMyAtMjIxIC0yOTUgLTM5OCAtNDk1IC00NTMgLTE5IC02IC01MiAtMTYgLTc0IC0yMiAtODUgLTI3IC0zOTMgLTEyIC00NTggMjEgLTEwIDUgLTI1IDkgLTMzIDkgLTggMCAtMjMgNCAtMzMgOSAtOSA1IC00NiAyMyAtODIgNDEgLTg0IDQyIC0xMzAgNzggLTIwOCAxNTkgLTE0OSAxNTYgLTIxNCAyODEgLTI2MiA1MTEgLTE0IDY2IC04IDM3NSA4IDQzNSA2IDIyIDE0IDU0IDE4IDcwIDExIDUyIDgwIDE5MCAxMjQgMjUxIDU0IDczIDE3MCAxODkgMjMwIDIzMCAxMDIgNjggMjM3IDEyMSAzNTUgMTM4IDU2IDggMzEwIC00IDM1NyAtMTd6Ii8+PHBhdGggZD0iTTkyMTAgNTM4OCBjLTQxIC01IC05MyAtMTQgLTExNSAtMTkgLTIyIC02IC01OCAtMTUgLTgwIC0yMSAtNzggLTIwIC0yMjEgLTgzIC0zMTAgLTEzNSAtNDkgLTMwIC05NiAtNTIgLTEwNSAtNTEgLTEwIDIgLTE2IDE3IC0xOCA0MyAtNyA3OSAyNCA3NSAtNTEyIDc1IC00NDkgMCAtNDc4IC0xIC00OTMgLTE4IC0xNiAtMTcgLTE3IC0xNTggLTE3IC0xODI0IDAgLTE0OTEgMiAtMTgwNyAxMyAtMTgxNyAxOSAtMTUgMTAzNCAtMTYgMTA1MyAwIDExIDkgMTQgMTg4IDE4IDEwMzcgNCA5ODAgOCAxMTMxIDM2IDEyNjYgNDAgMTk5IDE0OCAzMzcgMzMwIDQyMiAxOSA5IDQ2IDIxIDU5IDI4IDE0IDYgNzcgMTEgMTU1IDExIDEyNyAwIDEzMyAtMSAxOTcgLTMyIDExNCAtNTYgMTk4IC0xNTAgMjQ0IC0yNzMgOSAtMjUgMjAgLTU0IDI1IC02NSAxNiAtNDMgMjkgLTkzIDQwIC0xNjAgNiAtMzggMTYgLTk0IDIxIC0xMjQgNSAtMzEgOSAtNDkzIDkgLTEwNzAgMSAtODI5IDMgLTEwMTkgMTQgLTEwMzMgMTIgLTE3IDUwIC0xOCA1MzMgLTE4IDQ0MiAwIDUyMiAyIDUzMyAxNCAxNyAyMSA4IDIzMTcgLTkgMjQyNiAtNjEgMzgyIC0xMDEgNDk4IC0yNDQgNzE1IC03NCAxMTIgLTI2MiAzMDAgLTM3MiAzNzQgLTc5IDUyIC0yOTkgMTY0IC0zNTkgMTgzIC0yMTIgNjYgLTQ0NSA5MCAtNjQ2IDY2eiIvPjxwYXRoIGQ9Ik0zODU1IDUyNjQgYy0xNSAtMTUgLTE2IC0xMTYgLTEyIC0xMTk4IDIgLTg4OCA2IC0xMTk3IDE2IC0xMjQ2IDcgLTM2IDE3IC05MCAyMiAtMTIwIDI3IC0xNDggNzcgLTI5NiAxNTAgLTQ0NSAxNTEgLTMwNyA0NjggLTU3MSA4MzQgLTY5MyAxMzcgLTQ1IDI0MSAtNjIgNDM1IC03MCAzMjggLTE0IDUyMyAzMiA3MjYgMTcwIDM5IDI2IDc3IDQ4IDg1IDQ4IDkgMCAyNCAtMjIgMzYgLTUwIGwyMSAtNTAgNDgxIDAgYzQ2NSAwIDQ4MSAxIDQ5MSAxOSA3IDEzIDEwIDU5OCAxMCAxODE5IDAgMTczMCAtMSAxODAwIC0xOCAxODE1IC0xNyAxNSAtNjggMTcgLTUyMyAxNyAtNDIwIDAgLTUwOCAtMiAtNTI1IC0xNCAtMTkgLTE0IC0xOSAtNDAgLTI1IC0xMDkzIC01IC0xMDQ5IC02IC0xMDgwIC0yNiAtMTE2MyAtNDkgLTE5OSAtOTMgLTI5MSAtMTgzIC0zODAgLTEwNCAtMTA0IC0xODIgLTEzMyAtMzY2IC0xMzIgLTEzNSAwIC0yMTIgMTkgLTI5MSA3MyAtOTcgNjcgLTE4NiAyMTkgLTIyNSAzODQgLTI4IDEyMCAtMzEgMjAyIC0zNyAxMjI2IC01IDg4MiAtOCAxMDY5IC0yMCAxMDgyIC0xMiAxNSAtNjIgMTcgLTUyNyAxNyAtNDYwIDAgLTUxNCAtMiAtNTI5IC0xNnoiLz48cGF0aCBkPSJNMTkyNDcgNTI2MiBjLTE2IC0xNyAtMTcgLTEwOSAtMTcgLTExMTggMCAtMTA1MiA1IC0xMjQ5IDMxIC0xMzg0IDM1IC0xODIgNjEgLTI3NiAxMDIgLTM3NSA0NCAtMTA3IDc4IC0xNzYgMTA5IC0yMjIgMTUgLTIzIDI4IC00NSAyOCAtNDggMCAtMTQgMTIyIC0xNTQgMTkxIC0yMjAgMjAwIC0xODkgNDk1IC0zMzUgNzc0IC0zODQgMjA1IC0zNiA1NTcgLTI2IDY3MyAyMCAxMyA1IDMwIDkgMzkgOSAzNyAwIDI4OSAxMzggMzA4IDE2OSAxMSAxOCA0NSAtNyA0NSAtMzMgMCAtMTIgMTAgLTMyIDIzIC00NCAyMyAtMjIgMjQgLTIyIDQ5NSAtMjIgNDU2IDAgNDcyIDEgNDgyIDE5IDcgMTMgMTAgNTk4IDEwIDE4MTkgMCAxNzMwIC0xIDE4MDAgLTE4IDE4MTUgLTE3IDE1IC02OCAxNyAtNTIzIDE3IC00MjAgMCAtNTA4IC0yIC01MjUgLTE0IC0xOSAtMTQgLTE5IC00MCAtMjUgLTEwODggLTcgLTExMTkgLTYgLTExMDAgLTQ4IC0xMjQ4IC01IC0xOSAtMTMgLTQ2IC0xNiAtNjAgLTI5IC0xMTIgLTExMyAtMjM3IC0xOTYgLTI5MiAtOTUgLTYyIC0xNjYgLTgxIC0zMDkgLTgxIC0xNDcgMCAtMjIzIDIxIC0zMDYgODQgLTEyNiA5NiAtMTkzIDIzNSAtMjM5IDQ5NCAtMTIgNjYgLTE1IDI2NiAtMTUgMTEyMCAwIDkyNSAtMiAxMDQzIC0xNiAxMDYzIGwtMTUgMjIgLTUxMyAwIGMtNDg0IDAgLTUxNCAtMSAtNTI5IC0xOHoiLz48cGF0aCBkPSJNMjc1NDAgMzAxNSBjLTk4IC0yMyAtMTg3IC02MCAtMjYwIC0xMDkgLTk5IC02NiAtMjA4IC0xODkgLTI0OSAtMjgxIC03IC0xNiAtMTcgLTM4IC0yMiAtNDcgLTUgLTEwIC05IC0yNSAtOSAtMzMgMCAtOCAtNCAtMjMgLTkgLTMzIC0yOCAtNTUgLTQxIC0yNTggLTIwIC0zMzYgNiAtMjIgMTUgLTU5IDIxIC04MSAxNyAtNjYgODQgLTE5NyAxMzEgLTI1MyA1MiAtNjMgMTcwIC0xNTQgMjQyIC0xODggMTE3IC01NCAxODIgLTY4IDMyMCAtNjggMTA3IDAgMTQyIDQgMjAwIDIyIDE2NiA1MyAzMDAgMTUwIDM5MiAyODQgOTkgMTQzIDEyNCAyMjcgMTI0IDQxMyAxIDE4NCAtMjQgMjY5IC0xMjQgNDEzIC01MyA3NyAtMTQ0IDE2NyAtMTkzIDE5MiAtMTYgOCAtNDAgMjIgLTU0IDMxIC0xMTEgNzMgLTM0MiAxMDggLTQ5MCA3NHoiLz48L2c+PC9zdmc+);
+}
+
+/* logo: background-image, no external file */
+.logo{display:inline-block;background:var(--logo) no-repeat center/contain}
+.inv{filter:invert(1)}  /* logo on dark chrome */
+
+/* ghost mark - footer, full width, barely there */
+.ghost-mark .logo{display:block;width:96vw;aspect-ratio:2698/543;margin:0 auto;
+  filter:invert(1);opacity:.05}
+
+/* coded mono eyebrow - the brand signature. E-01 / INTAKE, A-02 / STATUS, F-03 */
+.eyebrow{font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.16em;
+  text-transform:uppercase;color:var(--gray)}
+.eyebrow::before{content:"";display:inline-block;width:16px;height:2px;
+  background:var(--spectrum);border-radius:1px;margin-right:9px;vertical-align:middle}
+
+/* status chip */
+.chip{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);
+  font-size:var(--fs-caption);letter-spacing:.12em;text-transform:uppercase;padding:4px 9px;
+  border:1px solid var(--line);border-radius:20px;color:var(--gray)}
+.chip .cd{width:6px;height:6px;border-radius:50%}
+.chip.on .cd{background:var(--ok)}
+.chip.wip .cd{background:var(--warn)}
+.chip.bad .cd{background:var(--alert)}
+
+/* pulsing dot - "systems nominal" footer */
+.pulse{width:8px;height:8px;border-radius:50%;background:var(--ok);
+  position:relative;flex:0 0 auto}
+.pulse::after{content:"";position:absolute;inset:-4px;border-radius:50%;
+  border:1px solid var(--ok);animation:pulse 2s ease-out infinite}
+@keyframes pulse{to{transform:scale(1.9);opacity:0}}
+
+/* grid overlay on dark surfaces */
+.gridbg::before{content:"";position:absolute;inset:0;pointer-events:none;
+  background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);
+  background-size:56px 56px}
+
+/* Readable semantic defaults in rem. Screens can add a local type hierarchy;
+   these tokens no longer impose four sizes on every descendant. */
+html{font-size:100%}
+:root{
+  --fs-metric:2rem;       /* 32px */
+  --fs-title:1.375rem;    /* 22px */
+  --fs-body:.9375rem;     /* 15px */
+  --fs-caption:.8125rem;  /* 13px */
+}
+
+/* UI-STANDARDS.md §1 CONTENT WIDTH — FULL WIDTH, no cap.
+   Owner-set 2026-08-27, and UI-STANDARDS §1 updated in the same commit.
+   History: 1280px, raised to 1800px on 2026-08-17, removed now. Both earlier
+   values failed the same test. The owner zooms out on a 2560px monitor to get
+   more room and gets none, because the content stops growing and every extra
+   pixel becomes empty side margin: with the fixed 228px rail, a 1800px cap
+   leaves 532px dead at 2560 and 1412px dead at 3440. Reading measure belongs
+   on the text blocks that need it, not on every table, card grid and two-pane
+   layout in the app. Do not reinstate a cap here.
+
+   --fh-maxw IS STILL DEFINED ON PURPOSE. It is no longer an app-wide cap, but
+   client-portal.html:67 reads it as `min(780px, var(--fh-maxw))` to hold that
+   page's 780px reading column. Deleting the token makes the min() invalid at
+   computed-value time, which drops max-width to none and blows the client's
+   portal full width. Leave the token; it is a bound, not a layout. */
+/* --fh-statusbar reserves room for the fixed status strip at the bottom of the
+   page. It used to start at 0px and be overwritten at runtime by data.js:497
+   with the strip's measured height, which grew the page ~29px AFTER first paint
+   on every single load. Reserving the space up front removes that reflow; the
+   strip is position:fixed so this only ever reserves, never pushes twice. */
+/* This branch set the token to `none`. main got to the same fluid CRM a
+   different and better way — see the block above — and `none` breaks the one
+   place that still reads it: client-portal.html:67 asks for
+   `min(780px, var(--fh-maxw))`, and min() with a keyword is invalid, which
+   would silently drop the portal's reading measure. Keeping main's value; the
+   CRM is uncapped by the shell rule, not by emptying this token.
+   src/ui/shell-is-fluid.test.mjs fails if it is deleted. */
+:root{ --fh-maxw:1800px; --fh-statusbar:32px; }
+
+/* ── SURFACE — panels sit ON the page, on purpose (owner-set 2026-08-17) ─────
+   Measured before this change: panels were #FFFFFF on a #FCFCFC page. That is
+   a 9-point step out of 255, contrast 1.03:1, on 41 elements across six
+   screens — too small to read as deliberate layering, too large to be
+   invisible, so every panel edge looked like a smudge rather than an edge.
+   There was also no resting shadow anywhere in the app: every box-shadow in
+   the screen files fires only on hover, focus or the mobile drawer.
+   Fix is two parts and needs no screen file touched: put the page on the
+   existing --soft token (#F4F4F5, an 11-point step under white) and give the
+   panels one soft resting shadow. --paper is deliberately NOT changed: the
+   sidebar uses it for text (crm-sidebar.css --dark-text), so moving it would
+   tint the rail. */
+:root{
+  --field:var(--paper,#F8F8F6);        /* the page BEHIND the panels */
+  --panel-shadow:0 1px 2px rgba(13,17,19,.025);
+}
+/* Conservative on purpose, and MEASURED rather than guessed: each class below
+   was found by rendering the screens and collecting every sizeable block that
+   paints its own light background and carries a border or a radius. Buttons,
+   inputs, avatars, chat bubbles and table rows are white too and are
+   deliberately excluded — a resting shadow on those reads as broken, not
+   expensive. Naming screen-level classes here follows what this file already
+   does elsewhere (.kpi .vl, .band .bv, .fos-value, .un-mins). */
+:is(.app, .app-shell) :is(
+  .card, .stat, .panel, .tabs, .editor, .fos-panel,   /* staff-teams, finance-os */
+  .kpi-tile,                                          /* command-center */
+  .big-tile, .calc-panel,                             /* closer-dashboard */
+  .compose, .ctx-card                                 /* messaging */
+){
+  box-shadow:var(--panel-shadow);
+}
+/* Put .fh-maxw on the content column only, never on a table or its scroll wrapper — tables stay wider inside their own overflow-x container (§1). */
+
+/* WIDTH:100% IS LOAD-BEARING. Do not drop it.
+   This class is almost always put on a flex item of a column-direction flex
+   container (.main{display:flex;flex-direction:column}, or .stage). Per
+   flexbox, an item with an AUTO margin on the cross axis is not stretched — so
+   margin-inline:auto quietly cancelled the stretch and left the wrapper sized
+   by its own content instead of by the column it sits in. Measured 2026-08-18:
+   that produced BOTH halves of the width complaint at once.
+     Too NARROW on a wide monitor: at 2560 the cap says 1800, but agent-editor
+     shrink-wrapped to 755px, template-editor 1186, brand-studio 1420,
+     campaign-manager 1598 — every one of them carrying this class.
+     Too WIDE on a phone: at 390 the widest thing inside is a table, so the
+     wrapper grew to the table instead — Documents painted 1484px and Campaigns
+     1449px and the whole page slid sideways, against UI-STANDARDS §11 ("No
+     sideways page scroll"). The table's own .fh-scroll-x box was working the
+     whole time; the wrapper AROUND it was the thing overflowing.
+   hiring.html, products-commissions.html and staff-teams.html had each already
+   added exactly this declaration by hand to their own .content. This moves that
+   one-line workaround to the one place the class is defined. */
+/* 2026-08-27: max-width and the auto inline margin are gone (owner-set,
+   §1 above). width:100% stays — read the note above, it is still the thing
+   that keeps this wrapper sized by its column instead of by its widest child.
+   margin-inline is pinned to 0 rather than dropped: several screens set their
+   own `margin:0 auto`, and an auto cross-axis margin on a flex item cancels
+   the stretch, which would shrink-wrap them right back down. */
+.fh-maxw{max-width:none;margin-inline:0;width:100%}
+
+/* Semantic typography. Screens own their local hierarchy; descendants are
+   never forced to inherit a size. The shared shell provides readable defaults
+   without preventing a heading, a field label, or a dense table from differing. */
+:is(.app, .app-shell, .shell, .main, .fh-maxw){
+  font-size:var(--fs-body);
+  font-family:var(--sans);
+}
+:where(.app, .app-shell, .shell, .main, .fh-maxw) :where(h1){
+  font-size:1.75rem;line-height:1.15;letter-spacing:-.035em;font-weight:650;
+}
+:where(.app, .app-shell, .shell, .main, .fh-maxw) :where(h2){
+  font-size:var(--fs-title);line-height:1.25;letter-spacing:-.025em;font-weight:650;
+}
+:where(.app, .app-shell, .shell, .main, .fh-maxw) :where(h3,h4){
+  font-size:1.0625rem;line-height:1.35;letter-spacing:-.015em;font-weight:650;
+}
+:where(.app, .app-shell) :where(.sv,.vl,.big,.big-tile .val,.kpi .vl,
+  .band .bv,.un-mins,.fh-num,.fos-value,.rf-value){
+  font-size:var(--fs-metric);font-variant-numeric:tabular-nums;
+}
+:where(.app, .app-shell) :where(.chip,.eyebrow,.badge,.tag,.stat-label,
+  .kpi .lb,.kpi .sb,.band .bl,.sd,.cmp,.note,.hint,.statusline,.statusbar,
+  label,th,.caption,.sub,.rail-code){font-size:var(--fs-caption)}
+:where(button,input,select,textarea){font-family:inherit}
+:where(button,a,input,select,textarea,summary):focus-visible{
+  outline:2px solid var(--ink);outline-offset:3px;
+}
+
+/* ── UI-STANDARDS.md §5 TAP TARGETS — 40px floor ───────────────────────────
+   min-height is a different property than later padding rules, so it sticks
+   without !important on most screens. !important wins where a screen sets height. */
+button, [type="button"], [type="submit"], .btn,
+.seg span, .link-btn, .tab, .ctab, .filter-btn, .fchip,
+.rail-tab, .group-title.tog, .rail-open, .un-join, a.btn,
+.navbtn, .today-btn{
+  min-height:40px;
+  min-width:40px;
+  box-sizing:border-box;
+}
+input[type="checkbox"]{
+  width:20px;
+  height:20px;
+}
+label:has(> input[type="checkbox"]){
+  min-height:40px;
+  display:inline-flex;
+  align-items:center;
+}
+
+/* ── UI-STANDARDS.md §2 — never five tiles in one row. Fifth wraps. ──────── */
+.stats, .kpi-grid, #stateLegend, .funnel, .stat-tiles{
+  grid-template-columns:repeat(4, 1fr) !important;
+}
+.stat-tiles{
+  display:grid !important;
+}
+
+/* ── UI-STANDARDS.md §5 — coming-soon / inert placeholders do not render ─── */
+.soon,
+.card:has(.tag-soon),
+#demozone,
+.demozone,
+button.link-btn:disabled,
+#unJoin:disabled{
+  display:none !important;
+}
+
+/* Empty welcome-video block: one line, not a 410px hole */
+.player:has(.video-empty:not([hidden])){
+  aspect-ratio:auto;
+  max-height:none;
+  min-height:0;
+  height:auto;
+  padding:16px;
+  background:var(--soft, #F4F4F5);
+}
+.player:has(.video-empty:not([hidden])) .ghost{display:none}
+
+/* Money columns — right-align tabular figures (§7) */
+td.money, th.money, td .age, th[data-s="age"]{
+  text-align:right;
+  font-variant-numeric:tabular-nums;
+}
+
+/* Empty Next Action is not an alert — coral only when a blocker list has rows */
+.blockers-panel:has(#ccp-blocker-list:empty){
+  background:var(--soft,#F4F4F5);
+  border-color:var(--line);
+}
+
+/* data.js status strip is fixed; pad the page so it cannot cover controls */
+body{padding-bottom:var(--fh-statusbar)}
+
+/* Shared client file: keep long call history reachable above the call footer. */
+.fh-context-lines{max-height:320px;overflow:auto;overflow-wrap:anywhere}
+.fh-blueprint-price{width:100%;min-height:40px;padding:8px;background:var(--paper);color:var(--ink);border:1px solid var(--line);font:inherit}
+@media(max-width:600px){.fh-context-lines{max-height:180px}}
+
+/* Phone law (UI-STANDARDS §11) — 390px. Present, KPI rows, and two-pane
+   screens stack. Tables keep their own scroll box via .fh-scroll-x. */
+@media (max-width: 390px) {
+  html, body { max-width: 100%; }
+  .kpi-grid, .stats, .stat-tiles, .stat-head, .row-bottom, .grid2, .layout,
+  .record-fields, .holds-panel, .stage {
+    grid-template-columns: 1fr !important;
+    flex-direction: column !important;
+  }
+  .stage { display: flex !important; }
+  .cockpit, .client {
+    flex: 1 1 auto !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+}
+</style>
+<style data-fh="font">
+/* public/app/fundhub-font.css: local rounded faces */
+@font-face{font-family:"Fundhub Rounded Local";src:local("SF Pro Rounded Regular"),local("SFProRounded-Regular"),local(".SFNSRounded-Regular");font-style:normal;font-weight:400;font-display:swap}
+@font-face{font-family:"Fundhub Rounded Local";src:local("SF Pro Rounded Medium"),local("SFProRounded-Medium"),local(".SFNSRounded-Medium");font-style:normal;font-weight:500;font-display:swap}
+@font-face{font-family:"Fundhub Rounded Local";src:local("SF Pro Rounded Semibold"),local("SFProRounded-Semibold"),local(".SFNSRounded-Semibold");font-style:normal;font-weight:600;font-display:swap}
+@font-face{font-family:"Fundhub Rounded Local";src:local("SF Pro Rounded Bold"),local("SFProRounded-Bold"),local(".SFNSRounded-Bold");font-style:normal;font-weight:700;font-display:swap}
+</style>
+<style data-fh="slideshow">
+/* Fundhub slideshow shell.
+   Layout: one phone screen per slide. A coded eyebrow, one headline, one or two
+   lines, one picture, with Back and Next at the thumb. Paper slides do the
+   teaching. Plain ink slides open the deck and land the payoff. No grids
+   (Chris, 2026-10-31).
+   Colors, faces and parts come from public/app/fundhub-brand.css, which
+   build.mjs embeds above this file. This file maps them to slideshow roles and
+   never invents a color. Status colors keep their meaning and always ride with
+   a word (UI-STANDARDS 12.6). */
+
+:root{
+  /* The brand's rounded face: Apple's native rounded design, then SF Pro
+     Rounded by local name (fundhub-font.css), then the brand's licensed web
+     fallback Nunito, loaded from Google Fonts because each deck ships alone. */
+  --fh-rounded-font:ui-rounded,"Fundhub Rounded Local","Nunito",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --sans:var(--fh-rounded-font);
+
+  --ss-bg:var(--paper);
+  --ss-fg:var(--ink);
+  --ss-sub:var(--ink2);
+  --ss-muted:var(--gray);
+  --ss-rule:var(--line);
+  --ss-panel:#fff;                 /* UI-STANDARDS 12.1 resting container */
+  --ss-dark:var(--card);
+  --ss-dark-rule:var(--cardline);
+  --ss-dark-fg:#fff;
+  --ss-dark-sub:var(--cardtext);
+  --ss-dark-muted:var(--gray2);
+  --ss-flag:color-mix(in srgb,var(--alert) 26%,#fff);   /* a tint of coral, never a new hue */
+  --ss-yes:color-mix(in srgb,var(--ok) 30%,#fff);       /* a tint of sage */
+  --ss-col:30rem;                  /* the phone column */
+  color-scheme:light;
+}
+
+/* ── Page ──────────────────────────────────────────────────────────────── */
+html{height:100%;box-sizing:border-box;-webkit-text-size-adjust:100%}
+*,*::before,*::after{box-sizing:inherit}
+body{height:100%;margin:0;padding-bottom:0;background:var(--ss-bg);color:var(--ss-fg);
+  font-family:var(--sans);font-size:1rem;line-height:1.45;-webkit-font-smoothing:antialiased;
+  transition:background-color .3s ease,color .3s ease}
+html[data-tone="dark"] body{background:var(--ss-dark);color:var(--ss-dark-fg)}
+
+.ss{position:relative;z-index:1;height:100%;max-width:var(--ss-col);margin-inline:auto;
+  display:flex;flex-direction:column;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px))}
+.ss-title{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ── Top bar: wordmark and the spectrum progress ────────────────────────── */
+.ss-top{display:flex;align-items:center;gap:16px;padding-block:14px 6px}
+.ss-top .logo{width:5.25rem;aspect-ratio:2698/543;flex:0 0 auto}
+html[data-tone="dark"] .ss-top .logo{filter:invert(1)}
+.ss-progress{flex:1;min-width:0;display:flex;gap:4px}
+.ss-progress i{flex:1;height:3px;border-radius:2px;background-color:var(--ss-rule);transition:background-color .3s ease}
+.ss-progress i.on{background-image:var(--spectrum);
+  background-size:calc(var(--n) * 100%) 100%;
+  background-position:calc(var(--k) / (var(--n) - 1) * 100%) 0}
+html[data-tone="dark"] .ss-progress i{background-color:var(--ss-dark-rule)}
+
+/* ── Slides ────────────────────────────────────────────────────────────── */
+.ss-stage{flex:1;min-height:0;position:relative;touch-action:pan-y}
+.slide{display:flex;flex-direction:column;gap:14px;padding-block:18px 20px;min-width:0}
+html.ss-js .slide{position:absolute;inset:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none}
+html.ss-js .slide::-webkit-scrollbar{display:none}
+html.ss-js .slide:not(.is-on){visibility:hidden}
+/* Only the arriving slide moves. The leaving one is gone at once, so two
+   slides of text never sit on top of each other. */
+html.ss-js .slide.enter{animation:ss-in .32s ease both}
+@keyframes ss-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+html:not(.ss-js) .slide + .slide{border-top:1px solid var(--ss-rule)}
+html:not(.ss-js) .slide.dark{background:var(--ss-dark);color:var(--ss-dark-fg);
+  margin-inline:-16px;padding-inline:16px}
+
+.slide .eyebrow{margin:0}
+.slide h2{margin:0;font-size:clamp(1.85rem,8.2vw,2.6rem);line-height:1.06;letter-spacing:-.032em;
+  font-weight:700;text-wrap:balance;color:var(--ss-fg)}
+.slide .lede{margin:0;font-size:1.125rem;line-height:1.45;color:var(--ss-sub);max-width:36ch;text-wrap:pretty}
+.slide .lede strong{color:var(--ss-fg);font-weight:700}
+.slide.dark .eyebrow{color:var(--ss-dark-muted)}
+.slide.dark h2{color:var(--ss-dark-fg)}
+.slide.dark .lede{color:var(--ss-dark-sub)}
+.slide.dark .lede strong{color:var(--ss-dark-fg)}
+
+/* ── Talking points: Chris's notes for recording the video ─────────────────
+   Hidden from every viewer. Open them with #notes on the link or the N key.
+   About 45 seconds of talk per slide, so a deck runs about five minutes and
+   each slide chops into its own short clip (Hammer Them SOP). */
+.talk{display:none}
+html.ss-notes .talk{display:block;margin-top:4px;padding:12px 14px;border:1px dashed var(--ss-rule);
+  border-radius:10px;background:var(--soft);color:var(--ink)}
+html.ss-notes .slide.dark .talk{background:var(--card);border-color:var(--cardline);color:var(--cardtext)}
+.talk::before{content:"Talking points";display:block;margin-bottom:6px;font-family:var(--mono);
+  font-size:var(--fs-caption);letter-spacing:.12em;text-transform:uppercase;color:var(--gray)}
+.talk ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:.9375rem;line-height:1.45}
+
+/* ── Bottom bar: Back and Next ─────────────────────────────────────────── */
+.ss-nav{display:flex;gap:10px;padding-block:10px 14px}
+.ss-btn{flex:1;min-height:52px;padding:0 18px;border-radius:8px;border:1px solid var(--ss-rule);
+  background:transparent;color:var(--ss-fg);font:650 1.0625rem/1 var(--sans);cursor:pointer;
+  -webkit-tap-highlight-color:transparent}
+.ss-btn.back{flex:0 0 34%}
+.ss-btn.primary{background:var(--ink);border-color:var(--ink);color:#fff}
+html[data-tone="dark"] .ss-btn{border-color:var(--ss-dark-rule);color:#fff}
+html[data-tone="dark"] .ss-btn.primary{background:#fff;border-color:#fff;color:var(--ink)}
+html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
+.ss-live{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ── Picture kit ───────────────────────────────────────────────────────────
+   Visual Thinking picks the picture from the slide's question:
+   what (a document), how (.flow), when (.tl, .span, .metric),
+   how much (.bars), compare (.compare), why (.eq). These parts only draw it.
+   No grids of tiles and no grid texture (Chris, 2026-10-31). */
+/* The words stay pinned at the top so the headline never jumps between
+   slides. The picture centers in the room that is left. */
+.pic{margin:auto 0;padding-block:8px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.pic-cap{margin:0;font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.04em;color:var(--ss-muted)}
+.slide.dark .pic-cap{color:var(--ss-dark-muted)}
+
+.panel{background:var(--ss-panel);border:1px solid var(--ss-rule);border-radius:10px;
+  box-shadow:var(--panel-shadow);color:var(--ss-fg)}
+.chip{background:var(--ss-panel);white-space:nowrap}
+.slide.dark .chip{background:transparent;border-color:var(--ss-dark-rule);color:var(--ss-dark-muted)}
+.slide.dark .panel .chip{background:var(--ss-panel);border-color:var(--ss-rule);color:var(--ss-muted)}
+
+/* Chris's slide style, from the slides he shares on calls (public/app/present.html
+   .bar and present.js bars()): full lines of copy, each with the pastel stripe
+   on its left and a hairline under it. Most of a slide's words live here. */
+.lines{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.lines li{display:flex;gap:12px;padding:11px 0;border-bottom:1px solid var(--ss-rule);
+  font-size:1.0625rem;line-height:1.45;color:var(--ss-fg)}
+.lines li::before{content:"";flex:0 0 3px;align-self:stretch;border-radius:2px;background:var(--spectrum);opacity:.85}
+.slide.dark .lines li{border-color:var(--ss-dark-rule);color:var(--ss-dark-sub)}
+
+/* Steps in order, from the call slides (present.js stepsHtml). Used only
+   when the order is the point. */
+.steps{list-style:none;margin:0;padding:0;display:flex;counter-reset:st}
+.steps li{flex:1;min-width:0;position:relative;text-align:center;counter-increment:st;
+  font-size:.875rem;font-weight:650;line-height:1.25;color:var(--ss-fg)}
+.steps li::before{content:counter(st);position:relative;z-index:1;display:flex;align-items:center;justify-content:center;
+  width:30px;height:30px;margin:0 auto 8px;border-radius:50%;border:2px solid var(--ink);background:var(--ss-panel);
+  font-family:var(--mono);font-size:var(--fs-caption);font-weight:500;color:var(--ink)}
+.steps li + li::after{content:"";position:absolute;top:14px;left:-50%;width:100%;height:2px;background:var(--ink)}
+.steps li.is-hot::before{background:var(--ink);color:#fff}
+.slide.dark .steps li{color:var(--ss-dark-fg)}
+.slide.dark .steps li::before{background:var(--ss-dark);border-color:#fff;color:#fff}
+.slide.dark .steps li + li::after{background:#fff}
+.slide.dark .steps li.is-hot::before{background:#fff;color:var(--ink)}
+
+/* The real credit report's "Why this score" block, the way Fundhub's tri-bureau
+   report prints it: the bureau, the score and model, then the bureau's own
+   reason lines in its own capitals. Filled only from a sample file. */
+.crs{background:var(--ss-panel);border:1px solid var(--ss-rule);border-radius:10px;box-shadow:var(--panel-shadow);
+  padding:12px 14px 14px;color:var(--ink)}
+.crs-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;
+  border-bottom:2px solid var(--ink);padding-bottom:8px;margin-bottom:10px}
+.crs-bureau{font-size:1.25rem;font-weight:700;letter-spacing:-.02em;line-height:1.1}
+.crs-bureau small{display:block;margin-top:4px;font-family:var(--mono);font-size:var(--fs-caption);
+  font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--gray)}
+.crs-score{text-align:right}
+.crs-score b{display:block;font-size:2rem;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.crs-score span{font-family:var(--mono);font-size:var(--fs-caption);color:var(--gray)}
+.crs h3{margin:0 0 8px;font-size:1rem;font-weight:700}
+.crs ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.crs li{padding:7px 9px;border-radius:6px;background:var(--soft);font-size:.8125rem;line-height:1.35;letter-spacing:.01em}
+.crs li.flag{background:var(--ss-flag);font-weight:650}
+.crs li .chip{margin-top:6px}
+.crs-note{margin:10px 0 0;font-family:var(--mono);font-size:var(--fs-caption);color:var(--gray)}
+
+/* Branded drawings (Visual Thinking, Dan Roam's six ways of seeing). Chris
+   liked the napkin layouts (2026-10-31) and asked for them in Fundhub's own
+   style: a white sheet, hairline panels, pastel status tints, mono labels,
+   ink for the one thing that matters. Every line in a drawing means one
+   thing: an order, a flow, a match or "reads this". */
+.sheet{background:var(--ss-panel);border:1px solid var(--ss-rule);border-radius:12px;
+  box-shadow:var(--panel-shadow);padding:12px;color:var(--ink)}
+.slide.dark .sheet{border-color:var(--ss-panel)}
+.bv{display:block;width:100%;height:auto;overflow:visible}
+.bv .pn{fill:var(--ss-panel);stroke:var(--line);stroke-width:1}
+.bv .pn-soft{fill:var(--soft)}
+.bv .pn-ink{fill:var(--ink)}
+.bv .tint-flag{fill:var(--ss-flag)}
+.bv .tint-fit{fill:var(--ss-yes)}
+.bv .edge-fit{stroke:var(--ok);stroke-width:1.5}
+.bv .bar{fill:var(--line)}
+.bv .rule-ink{stroke:var(--ink);stroke-width:2;stroke-linecap:round}
+.bv .cn{fill:none;stroke:var(--gray2);stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.bv .cn.ink{stroke:var(--ink)}
+.bv .cn.dash{stroke-dasharray:4 5}
+.bv text{font-family:var(--sans);font-size:13px;font-weight:650;fill:var(--ink)}
+.bv text.h{font-size:16px;font-weight:700;letter-spacing:-.01em}
+.bv text.num{font-size:28px;font-weight:700;letter-spacing:-.02em}
+.bv text.lb{font-family:var(--mono);font-size:12.5px;font-weight:500;letter-spacing:.12em;fill:var(--gray)}
+.bv text.lb.ink{fill:var(--ink)}
+.bv text.caps{font-size:12.5px;font-weight:650;letter-spacing:.01em}
+.bv text.on-ink{fill:#fff}
+.bv use{color:var(--ink)}
+.bv use.mute{color:var(--gray2)}
+/* Shared drawing parts (a bank, an arrowhead, the spectrum) live in one
+   hidden sprite per deck. The stops are fundhub-brand.css --spectrum. */
+.vt-defs{position:absolute;width:0;height:0;overflow:hidden}
+.vt-defs .ink{fill:var(--ink)}
+.vt-defs .s1{stop-color:#F2A69B}.vt-defs .s2{stop-color:#F5CE8F}.vt-defs .s3{stop-color:#F2E39B}
+.vt-defs .s4{stop-color:#A8D8B0}.vt-defs .s5{stop-color:#A9C6E8}.vt-defs .s6{stop-color:#C4B3E5}
+
+/* Real documents (law: show-real-proof). A section of Fundhub's tri-bureau
+   report exactly as scripts/render-crs-standard-report.mjs prints it for the
+   sample file, kept in the report's own plain document face so it reads as
+   the real thing, and a real clause of the agreement. Our branded marks
+   (.chip, the tints) sit on top to point at what matters. */
+.real{background:var(--ss-panel);border:1px solid var(--ss-rule);border-radius:10px;box-shadow:var(--panel-shadow);
+  padding:14px;color:var(--ink);font-family:Helvetica,Arial,sans-serif;line-height:1.4}
+.real .bureau-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;
+  border-bottom:2px solid var(--ink);padding-bottom:8px;margin-bottom:8px}
+.real .rh1{margin:0;font-size:1.25rem;font-weight:700;letter-spacing:-.02em}
+.real .score{text-align:right}
+.real .score .num{font-size:1.75rem;font-weight:700;line-height:1.05}
+.real .score .model{font-size:.8125rem;color:var(--gray)}
+.real .rh2{margin:10px 0 4px;font-size:1rem;font-weight:700}
+.real > .rh2:first-child{margin-top:0}
+.real p.model{margin:0 0 6px;font-size:.8125rem;color:var(--gray)}
+.real ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px;font-size:.8125rem}
+.real li{padding:2px 0}
+.real li.flag{margin:0 -6px;padding:7px 6px;border-radius:6px;background:var(--ss-flag);font-weight:700}
+.real li.yes{margin:0 -6px;padding:7px 6px;border-radius:6px;background:var(--ss-yes);font-weight:700}
+.real .chip{display:inline-flex;margin-top:6px;font-family:var(--mono)}
+.real table{width:100%;border-collapse:collapse;font-size:.8125rem}
+.real th{text-align:left;font-size:.8125rem;text-transform:uppercase;color:var(--gray);border-bottom:1px solid var(--line);padding:4px 6px 4px 0}
+.real td{border-bottom:1px solid var(--soft);padding:7px 6px 7px 0;vertical-align:top}
+.real td .chip{margin-top:4px}
+.real .clause{margin:0;font-size:.9375rem;line-height:1.5}
+.real .nw{white-space:nowrap}
+.real .clause mark{background:var(--ss-yes);color:inherit;padding:1px 3px;border-radius:4px;font-weight:700}
+.real img{display:block;width:100%;height:auto;border-radius:6px}
+/* A real crop of code (law: show-real-proof), in the brand's mono face. */
+.real .code{margin:0;padding:0;font-family:var(--mono);font-size:.8125rem;font-weight:500;line-height:1.55;
+  white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ink)}
+.real .code .l{display:block;padding-left:3em;text-indent:-3em}
+.real .code .ln{display:inline-block;width:3em;text-indent:0;color:var(--gray)}
+.real.shot{padding:0;overflow:hidden}
+.real.shot img{border-radius:0}
+.real-src{margin:8px 2px 0;font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.04em;color:var(--ss-muted)}
+.slide.dark .real-src{color:var(--ss-dark-muted)}
+
+/* One reason, two places: the report and the bank's letter. */
+.match{display:flex;flex-direction:column;gap:6px}
+.match .who{font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.1em;text-transform:uppercase;color:var(--ss-muted)}
+.match .reason{padding:9px 11px;border-radius:8px;background:var(--ss-flag);font-size:.8125rem;font-weight:650;line-height:1.35;color:var(--ink)}
+.match .same{align-self:flex-start;margin:4px 0}
+
+/* A document: a credit report, a bank letter, a file. */
+.doc{display:flex;flex-direction:column;overflow:hidden}
+.doc-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;
+  border-bottom:1px solid var(--ss-rule);font-family:var(--mono);font-size:var(--fs-caption);
+  letter-spacing:.1em;text-transform:uppercase;color:var(--ss-muted)}
+.doc-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;
+  font-size:1rem;line-height:1.3;min-width:0}
+.doc-row + .doc-row{border-top:1px solid var(--ss-rule)}
+.doc-row > span:first-child{min-width:0}
+.doc-row .v{font-weight:700;font-variant-numeric:tabular-nums;text-align:right}
+.doc-row.flag{background:var(--ss-flag);font-weight:650}
+.doc-row.yes{background:var(--ss-yes);font-weight:650}
+
+/* Two documents tied by the same line. */
+.tie{display:flex;align-items:center;gap:10px;padding-left:22px;font-family:var(--mono);
+  font-size:var(--fs-caption);letter-spacing:.1em;text-transform:uppercase;color:var(--ss-muted)}
+.tie::before{content:"";width:2px;height:28px;background:var(--ink);border-radius:1px}
+.slide.dark .tie{color:var(--ss-dark-muted)}
+.slide.dark .tie::before{background:#fff}
+
+/* The engine card: ink and mono, the way the brand shows UnderwriteIQ. */
+.term{position:relative;overflow:hidden;background:var(--card);border:1px solid var(--cardline);
+  border-radius:10px;color:var(--cardtext);font-family:var(--mono);line-height:1.45}
+.term > *{position:relative}
+.term-head{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--cardline);
+  font-size:var(--fs-caption);letter-spacing:.12em;text-transform:uppercase;color:var(--gray2)}
+.term-head .pulse{margin-inline:4px 6px}
+.term-line{display:flex;gap:10px;align-items:baseline;padding:10px 14px;font-size:.875rem}
+.term-line + .term-line{border-top:1px dashed var(--cardline)}
+.term-line .k{flex:0 0 auto;color:var(--ok)}
+
+/* How: a real sequence. Numbering is shown because the order is the point. */
+.flow{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:14px;counter-reset:fl}
+.flow > li{position:relative;counter-increment:fl;display:flex;align-items:center;gap:12px;padding:12px 14px;
+  background:var(--ss-panel);border:1px solid var(--ss-rule);border-radius:10px;box-shadow:var(--panel-shadow);
+  font-weight:650;line-height:1.3;color:var(--ss-fg)}
+.flow > li::before{content:counter(fl,decimal-leading-zero);flex:0 0 auto;font-family:var(--mono);
+  font-size:var(--fs-caption);font-weight:500;color:var(--ss-muted)}
+.flow > li + li::after{content:"";position:absolute;left:24px;top:-15px;width:2px;height:14px;background:var(--gray2)}
+.flow.plain > li::before{content:none}          /* a narrowing, not a count */
+.flow > li.is-hot{background:var(--ink);border-color:var(--ink);color:#fff}
+.flow > li.is-hot::before{color:var(--gray2)}
+.flow .sub{display:block;font-weight:500;font-size:.875rem;color:var(--ss-muted)}
+.flow > li.is-hot .sub{color:var(--gray2)}
+.slide.dark .flow > li.is-hot{background:#fff;border-color:#fff;color:var(--ink)}
+
+/* When: who does what, in order. */
+.tl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.tl > li{position:relative;padding:0 0 18px 30px;min-width:0}
+.tl > li:last-child{padding-bottom:0}
+.tl > li::before{content:"";position:absolute;left:5px;top:5px;width:14px;height:14px;border-radius:50%;
+  background:var(--ss-bg);border:2px solid var(--ink)}
+.tl > li::after{content:"";position:absolute;left:11px;top:23px;bottom:3px;width:2px;background:var(--ss-rule)}
+.tl > li:last-child::after{content:none}
+.tl .when{display:block;font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.1em;
+  text-transform:uppercase;color:var(--ss-muted)}
+.tl .what{display:block;font-size:1.0625rem;font-weight:650;line-height:1.3}
+.tl .chip{margin-top:6px}
+.tl > li.bad::before{background:var(--alert);border-color:var(--alert)}
+.tl > li.good::before{background:var(--ok);border-color:var(--ok)}
+.slide.dark .tl > li::before{background:var(--ss-dark);border-color:#fff}
+.slide.dark .tl > li::after{background:var(--ss-dark-rule)}
+.slide.dark .tl .when{color:var(--ss-dark-muted)}
+
+/* When: one stretch of time between two events. */
+.span{display:flex;flex-direction:column;gap:8px}
+.span-bar{height:10px;border-radius:5px;background:var(--spectrum)}
+.span-ends{display:flex;justify-content:space-between;gap:12px;font-family:var(--mono);
+  font-size:var(--fs-caption);letter-spacing:.1em;text-transform:uppercase;color:var(--ss-muted)}
+.slide.dark .span-ends{color:var(--ss-dark-muted)}
+
+/* A hero figure. */
+.metric{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.metric .n{font-size:clamp(4.75rem,26vw,7.5rem);font-weight:700;letter-spacing:-.05em;line-height:.85;
+  font-variant-numeric:tabular-nums}
+.metric .u{padding-bottom:6px;font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.14em;
+  text-transform:uppercase;color:var(--ss-muted)}
+.slide.dark .metric .u{color:var(--ss-dark-muted)}
+
+/* How much: bars drawn to one scale. Set --v to value ÷ the largest value. */
+.bars{display:flex;flex-direction:column;gap:14px}
+.bar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;align-items:baseline}
+.bar .l{font-size:.9375rem;font-weight:650}
+.bar .v{font-weight:700;font-variant-numeric:tabular-nums}
+.bar .t{grid-column:1/-1;height:12px;border-radius:6px;background:var(--soft);overflow:hidden}
+.bar .t > span{display:block;height:100%;width:calc(var(--v) * 100%);border-radius:6px;background:var(--ink)}
+.bar.alt .t > span{background:var(--gray2)}
+
+/* Compare: two columns side by side. */
+.compare{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.compare > .panel{padding:12px;min-width:0}
+.compare h3{margin:0 0 8px;font-family:var(--mono);font-size:var(--fs-caption);font-weight:500;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--ss-muted)}
+.compare ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px;font-size:.9375rem;line-height:1.3}
+
+/* Why: a visual equation. */
+.eq{display:flex;align-items:stretch;gap:8px}
+.eq > .panel{flex:1 1 0;min-width:0;padding:12px 10px;text-align:center;font-weight:650;line-height:1.25}
+.eq .op{align-self:center;font-family:var(--mono);font-size:1.5rem;color:var(--ss-muted)}
+.eq > .panel.is-hot{background:var(--ink);border-color:var(--ink);color:#fff}
+
+@media (max-width:359px){
+  .eq{flex-direction:column}
+  .eq .op{align-self:flex-start;padding-left:12px}
+}
+@media (prefers-reduced-motion:reduce){
+  body,.ss-progress i{transition:none!important}
+  html.ss-js .slide.enter{animation:none}
+}
+</style>
+<!-- /fh:shell:head -->
+</head>
+<body>
+<main class="ss" data-deck="WW" data-lane="Every lane" data-pillar="Objection">
+  <h1 class="ss-title">Who we are</h1>
+  <svg class="vt-defs" aria-hidden="true" focusable="false">
+    <defs>
+      <symbol id="fh-bank" viewBox="0 0 28 28"><path fill="currentColor" d="M1 9.5L14 2l13 7.5V11H1z"/><rect fill="currentColor" x="4" y="13" width="3.5" height="9" rx="1"/><rect fill="currentColor" x="12.25" y="13" width="3.5" height="9" rx="1"/><rect fill="currentColor" x="20.5" y="13" width="3.5" height="9" rx="1"/><rect fill="currentColor" x="1" y="23.5" width="26" height="3" rx="1.5"/></symbol>
+      <symbol id="fh-person" viewBox="0 0 28 28"><circle fill="currentColor" cx="14" cy="9" r="5.5"/><path fill="currentColor" d="M4 25.5c0-5.5 4.5-9 10-9s10 3.5 10 9z"/></symbol>
+      <marker id="fh-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path class="ink" d="M0 0L10 5L0 10z"/></marker>
+      <linearGradient id="fh-spectrum" x1="0" x2="1" y1="0" y2="0"><stop offset="0" class="s1"/><stop offset=".2" class="s2"/><stop offset=".4" class="s3"/><stop offset=".6" class="s4"/><stop offset=".8" class="s5"/><stop offset="1" class="s6"/></linearGradient>
+    </defs>
+  </svg>
+
+  <section class="slide dark" data-src="Brokers sell shady, inefficient products with bad systems, so people slip through the cracks; we don't let people slip through the cracks; we fulfill, we keep our word; ten years of learning things the hard way; I built what I wish I had; I still fund myself: Chris 2026-10-31, marketing/copy-skills/copybot/references/chris-voice-profile.md:26-28. Allowed proof: a decade in the industry, hundreds of files; a little over $1,000,000 funded for himself, invested in cash-flowing companies for 10 years, with real losses along the way; learned stacking 10 years ago from the one person teaching it; $100,000 lines on four companies off one personal file, on stated income with no income docs: marketing/ads/RULES.md:83-86 (Part 0 rules 35 to 38). UnderwriteIQ built from what Fundhub learned on hundreds of client files: marketing/offers/fundhub-offers-2026-10-10.pdf p.1." data-figures="Chris's own allowed proof, RULES.md Part 0 rules 35 to 38">
+    <p class="eyebrow">WW-01 / Who we are</p>
+    <h2>Brokers sell shady products on bad systems, so people slip through the cracks.</h2>
+    <p class="lede">Fundhub is ten years of learning the funding game the hard way. I built what I wish I had, and I still fund myself.</p>
+    <figure class="pic">
+      <ol class="tl" aria-label="Chris's own record: ten years ago he learned stacking from the one person teaching it; since then a little over one million dollars funded for himself, invested in cash-flowing companies, with real losses along the way; one personal file, one hundred thousand dollar lines on four companies, on stated income with no income docs; hundreds of files, and UnderwriteIQ built from what we learned on them.">
+        <li><span class="when">Ten years ago</span><span class="what">Learned stacking from the one person teaching it</span></li>
+        <li><span class="when">Since then</span><span class="what">A little over $1,000,000 funded for myself, invested in cash-flowing companies, with real losses along the way</span></li>
+        <li><span class="when">One personal file</span><span class="what">$100,000 lines on four companies, on stated income with no income docs</span></li>
+        <li class="good"><span class="when">Hundreds of files</span><span class="what">UnderwriteIQ, built from what we learned on them</span></li>
+      </ol>
+      <p class="pic-cap">CHRIS'S OWN RECORD</p>
+    </figure>
+    <aside class="talk" aria-hidden="true">
+      <ul>
+        <li>Brokers sell shady, inefficient products on bad systems, so people slip through the cracks. We don't let people slip through the cracks.</li>
+        <li>Fundhub is ten years of learning the funding game the hard way. I built what I wish I had, and I still fund myself.</li>
+        <li>Walk the timeline with me. I learned stacking ten years ago from the one person teaching it.</li>
+        <li>Since then I've funded a little over $1,000,000 for myself and put it into cash-flowing companies, with real losses along the way.</li>
+        <li>Off one personal file, I pulled $100,000 lines on four companies, on stated income with no income docs.</li>
+        <li>And hundreds of files later, we built UnderwriteIQ from what we learned on them. We fulfill. We keep our word.</li>
+      </ul>
+    </aside>
+  </section>
+
+  <section class="slide" data-src="Two real approval screenshots from Chris's own approvals folder, names and account digits blurred, the amount read off the crop: marketing/landing-pages/slo/client-wins/deck.json (t-20k-truist: Truist business credit card, credit limit $20,000, Canva Client Wins deck crop s30-a.jpg; d-54k-ink: Chase Ink Business Unlimited, credit access line $54,500, Drive Fundhub ads/broll/approvals/54k-ink-business.jpg), crops in marketing/landing-pages/slo/client-wins/deck/. Rule: .ai/rules/proof-cards-from-source.md. No total: .ai/rules/animation-rules.md section 3. Only show wins Chris has given you in writing: docs/sops/weekend-2026-10-24/04-sales-call-script.md:422." data-figures="real approvals, the amounts read off the source screenshots (proof-cards-from-source)">
+    <p class="eyebrow">WW-02 / A real approval</p>
+    <h2>This is a real approval, the way the bank wrote it.</h2>
+    <ul class="lines">
+      <li>Truist, a business credit card, and the credit limit the bank set, in the bank's own words.</li>
+      <li>The account digits are blurred. The bank and the amount stay.</li>
+    </ul>
+    <figure class="pic">
+      <div class="real shot" role="img" aria-label="A real approval screenshot. Truist, business credit card account information, credit limit twenty thousand dollars, the account digits blurred.">
+        <img src="data:image/jpeg;base64,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" width="320" height="240" alt="">
+      </div>
+      <p class="real-src">A real approval from a file Chris has worked. Account digits blurred.</p>
+    </figure>
+    <aside class="talk" aria-hidden="true">
+      <ul>
+        <li>This is a real approval, the way the bank wrote it.</li>
+        <li>Look at it. Truist, a business credit card, the account information page, and the credit limit the bank set, in the bank's own words.</li>
+        <li>The account digits are blurred. The bank and the amount stay, because that's the part that proves it.</li>
+        <li>This comes from a file I've worked, and it stands on its own. I'm not going to add a pile of these into one big total, because a total proves nothing. The approval does.</li>
+      </ul>
+    </aside>
+  </section>
+
+  <section class="slide" data-src="A real approval letter from Chris's own approvals folder, the card digits blurred, the amount read off the crop: marketing/landing-pages/slo/client-wins/deck.json (d-54k-ink: Chase Ink Business Unlimited, credit access line $54,500, Drive Fundhub ads/broll/approvals/54k-ink-business.jpg), crop in marketing/landing-pages/slo/client-wins/deck/. Rule: .ai/rules/proof-cards-from-source.md. No total: .ai/rules/animation-rules.md section 3. Only show wins Chris has given you in writing: docs/sops/weekend-2026-10-24/04-sales-call-script.md:422." data-figures="a real approval, the amount read off the source letter (proof-cards-from-source)">
+    <p class="eyebrow">WW-03 / A second one</p>
+    <h2>This one came in the mail, from Chase.</h2>
+    <ul class="lines">
+      <li>An Ink Business Unlimited card, with the credit access line printed right on the letter.</li>
+      <li>The card digits are blurred. Each approval is its own proof, so there is no total.</li>
+    </ul>
+    <figure class="pic">
+      <div class="real shot" role="img" aria-label="A real approval letter. Your Ink Business Unlimited card, credit access line fifty-four thousand five hundred dollars, the card digits blurred.">
+        <img src="data:image/jpeg;base64,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" width="320" height="240" alt="">
+      </div>
+      <p class="real-src">A real approval letter from a file Chris has worked. Card digits blurred.</p>
+    </figure>
+    <aside class="talk" aria-hidden="true">
+      <ul>
+        <li>Here's a second one, and this one came in the mail, from Chase.</li>
+        <li>Look at the letter. An Ink Business Unlimited card, and the credit access line printed right on it.</li>
+        <li>The card digits are blurred. The bank and the amount are exactly as the bank printed them.</li>
+        <li>Each approval is its own proof, so there is no total. That's how I show proof: the real thing, nothing added.</li>
+      </ul>
+    </aside>
+  </section>
+
+  <section class="slide dark" data-src="Nobody honest guarantees what a bank does; lenders decide; here's what the agreement guarantees: docs/sops/weekend-2026-10-24/04-sales-call-script.md:425 (closer line). The guarantee line, word for word: marketing/copy-skills/copybot/references/owner-voice.md:18. The picture is section 3 of the funding agreement the CRM sends, word for word: db/migrations/493_funding_and_repair_agreement_text.sql:53 (G-01 and G-02). These guarantees belong to the funding agreement only: 04-sales-call-script.md:289; public/app/present.js:1065." data-figures="the funding agreement's own 24 and 72 business hours">
+    <p class="eyebrow">WW-04 / In writing</p>
+    <h2>Nobody honest guarantees what a bank does.</h2>
+    <p class="lede">So the funding agreement guarantees what we do. Applications go out within 72 business hours. That's our guarantee, and it's in your contract. That typically means approvals come very shortly after.</p>
+    <ul class="lines">
+      <li>A funding advisor starts on your file within 24 business hours, and your delay does not pause either clock.</li>
+    </ul>
+    <figure class="pic">
+      <div class="real" role="img" aria-label="Section 3 of the Fundhub funding agreement. The clocks begin when you sign. Marked: a Fundhub funding advisor will begin working your file within 24 business hours; Fundhub will submit your first authorized applications within 72 business hours. Your delay or error does not pause either clock.">
+        <div class="rh2">Funding Agreement · Section 3</div>
+        <p class="clause">The guarantee clocks begin when you sign this agreement. <mark>A Fundhub funding advisor will begin working your file within 24 business hours <span class="nw">(G-01)</span>.</mark> <mark>Fundhub will submit your first authorized applications within 72 business hours <span class="nw">(G-02)</span>.</mark> Your delay or error does not pause either clock.</p>
+        <span class="chip on"><span class="cd"></span>Our guarantees</span>
+      </div>
+      <p class="real-src">The funding agreement, word for word.</p>
+    </figure>
+    <aside class="talk" aria-hidden="true">
+      <ul>
+        <li>Nobody honest guarantees what a bank does. Lenders decide. So the funding agreement guarantees what we do.</li>
+        <li>Applications go out within 72 business hours. That's our guarantee, and it's in your contract. That typically means approvals come very shortly after.</li>
+        <li>Look at the clause. The clock starts when you sign. A funding advisor begins working your file within 24 business hours, and your delay or error does not pause either clock.</li>
+        <li>Those are the two guarantees in the funding agreement, and they are about what we do, because that's the part we control.</li>
+        <li>We put it in writing because we fulfill. We keep our word.</li>
+      </ul>
+    </aside>
+  </section>
+
+  <section class="slide" data-src="Fundhub does not promise approval, a funding amount, a lender rate, or a particular financial outcome; financing sources decide application results: db/migrations/493_funding_and_repair_agreement_text.sql:53 (section 3). The credit optimization agreement promises no score change, deletion or result: :65. The Blueprint agreement, section 3.1: db/migrations/288_real_contract_text.sql:257. Before you pay, we read the agreement together on the screen: docs/sops/weekend-2026-10-24/04-sales-call-script.md:419; everything is in the agreement, in writing: :416.">
+    <p class="eyebrow">WW-05 / What we do not promise</p>
+    <h2>The same section says what we do not promise.</h2>
+    <ul class="lines">
+      <li>Fundhub does not promise approval, a funding amount, a lender rate, or a particular financial outcome. Financing sources decide.</li>
+      <li>Every Fundhub agreement says what it promises and what it does not, and we read it together on the screen before you pay.</li>
+    </ul>
+    <figure class="pic">
+      <div class="real" role="img" aria-label="Section 3 of the Fundhub funding agreement, flagged: Fundhub does not promise approval, a funding amount, a lender rate, or a particular financial outcome. Financing sources decide application results.">
+        <div class="rh2">Funding Agreement · Section 3</div>
+        <ul>
+          <li class="flag">Fundhub does not promise approval, a funding amount, a lender rate, or a particular financial outcome. Financing sources decide application results.</li>
+        </ul>
+        <span class="chip bad"><span class="cd"></span>What nobody honest promises</span>
+      </div>
+      <p class="real-src">The funding agreement, word for word.</p>
+    </figure>
+    <aside class="talk" aria-hidden="true">
+      <ul>
+        <li>Now look right under the guarantees. The same section says what we do not promise.</li>
+        <li>Fundhub does not promise approval, a funding amount, a lender rate, or a particular financial outcome. Financing sources decide.</li>
+        <li>Anyone who promises you an approval or an amount is promising something a bank decides, and they know it.</li>
+        <li>The credit optimization agreement says the same kind of thing: no score change, no deletion, no result is promised. The Blueprint agreement too.</li>
+        <li>Every Fundhub agreement says what it promises and what it does not, and we read it together on the screen before you pay.</li>
+      </ul>
+    </aside>
+  </section>
+
+  <section class="slide" data-src="Fundhub works with LexisNexis, Experian, Equifax and TransUnion; there is a contract: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:207 (the license claim is left off: no license document is in the repo). We pull all three bureaus; different banks pull different bureaus, so your information has to match on every report: marketing/vsl/direct-book-thank-you-2026-10-15.md:27 (green-lit). The picture is section 4 of the funding agreement, word for word: db/migrations/493_funding_and_repair_agreement_text.sql:53.">
+    <p class="eyebrow">WW-06 / The data</p>
+    <h2>The agreement names what we are allowed to look at.</h2>
+    <ul class="lines">
+      <li>Experian, Equifax and TransUnion, because different banks pull different bureaus.</li>
+      <li>Your business records, available LexisNexis information, and soft credit inquiries.</li>
+      <li>A hard inquiry needs its own separate consent from you.</li>
+    </ul>
+    <figure class="pic">
+      <div class="real" role="img" aria-label="Section 4 of the Fundhub funding agreement. Marked: request available LexisNexis information, perform soft credit inquiries. Marked: a hard inquiry or another action that needs separate consent still requires that consent.">
+        <div class="rh2">Funding Agreement · Section 4</div>
+        <p class="clause">You authorize Fundhub to review your business profile and records in its system, <mark>request available LexisNexis information, perform soft credit inquiries</mark>, and use analytics, fraud checks, and compliance checks needed for this engagement. <mark>A hard inquiry or another action that needs separate consent still requires that consent.</mark></p>
+        <span class="chip on"><span class="cd"></span>What we are allowed to look at</span>
+      </div>
+      <p class="real-src">The funding agreement, word for word.</p>
+    </figure>
+    <aside class="talk" aria-hidden="true">
+      <ul>
+        <li>We read your file from all three bureaus: Experian, Equifax and TransUnion.</li>
+        <li>Different banks pull different bureaus, so your information has to match on every report, and we check all three.</li>
+        <li>Look at the agreement. Section 4 names what you allow us to look at: your business records, available LexisNexis information, and soft credit inquiries.</li>
+        <li>And read the last line with me. A hard inquiry or anything else that needs separate consent still needs your consent.</li>
+        <li>There's a contract behind every one of those words. That's how we work.</li>
+      </ul>
+    </aside>
+  </section>
+
+  <section class="slide" data-src="Fundhub disputes only items that really show on your report, and every application uses your true information: marketing/offers/fundhub-offers-2026-10-10.pdf p.8. The picture is the funding agreement, word for word: section 4, this limited authority does not let Fundhub make a false statement for you; section 6, Fundhub will not submit an inaccurate claim or prevent you from making your own dispute: db/migrations/493_funding_and_repair_agreement_text.sql:53. We do not sell your information or share it with third parties for marketing: public/index.html:612. We fulfill; we keep our word: marketing/copy-skills/copybot/references/chris-voice-profile.md:27. Someone cuts corners with your file: fundhub-offers-2026-10-10.pdf p.8.">
+    <p class="eyebrow">WW-07 / Honest files</p>
+    <h2>Every application uses your true information, and every dispute names a real item.</h2>
+    <ul class="lines">
+      <li>Fundhub disputes only items that really show on your report.</li>
+      <li>The agreement says we cannot make a false statement for you or submit an inaccurate claim.</li>
+      <li>You keep the right to make your own dispute. We do not sell your information.</li>
+    </ul>
+    <figure class="pic">
+      <div class="real" role="img" aria-label="Sections 4 and 6 of the Fundhub funding agreement. Marked: this limited authority does not let Fundhub make a false statement for you. Marked: Fundhub will not submit an inaccurate claim or prevent you from making your own dispute.">
+        <div class="rh2">Funding Agreement · Sections 4 and 6</div>
+        <p class="clause">This limited authority does not let Fundhub sign a loan or credit agreement, accept funds, change your account, or <mark>make a false statement for you</mark>.</p>
+        <p class="clause"><mark>Fundhub will not submit an inaccurate claim or prevent you from making your own dispute.</mark></p>
+        <span class="chip on"><span class="cd"></span>In writing</span>
+      </div>
+      <p class="real-src">The funding agreement, word for word.</p>
+    </figure>
+    <aside class="talk" aria-hidden="true">
+      <ul>
+        <li>Every application uses your true information, and every dispute names a real item that shows on your report.</li>
+        <li>Look at the agreement. Section 4 says our authority does not let us make a false statement for you.</li>
+        <li>Section 6 says we will not submit an inaccurate claim, and we will not stop you from making your own dispute.</li>
+        <li>We don't sell your information, and we don't share it with third parties for marketing.</li>
+        <li>You've heard the stories about people who cut corners with a file. We fulfill. We keep our word.</li>
+      </ul>
+    </aside>
+  </section>
+
+  <section class="slide" data-src="Your closer looks at your own file with you before you decide anything: marketing/offers/fundhub-offers-2026-10-10.pdf p.8. They have to agree with the door before they hear a price: docs/sops/weekend-2026-10-24/04-sales-call-script.md:204. Before you pay, we read the agreement together on the screen: :419. You saw your file before any pitch; everything is in the agreement, in writing: :416. The reports are yours either way: :160. Action takers, not shoppers: marketing/copy-skills/copybot/references/chris-voice-profile.md:33. Your advisor shares the screen: marketing/vsl/direct-book-thank-you-2026-10-15.md:37.">
+    <p class="eyebrow">WW-08 / Your call</p>
+    <h2>On your call, you see your own file before you decide anything.</h2>
+    <ul class="lines">
+      <li>Your advisor looks at your file with you, and you see your path before any price.</li>
+      <li>Before you pay anything, we read the agreement together on the screen.</li>
+      <li>The reports are yours either way.</li>
+    </ul>
+    <figure class="pic">
+      <ol class="flow" aria-label="The order on your call: your goal, your file with a soft pull, your path, the agreement read together on the screen, then the price.">
+        <li>Your goal<span class="sub">what you're going for, and what's been in the way</span></li>
+        <li>Your file<span class="sub">a soft pull, your score does not move</span></li>
+        <li>Your path<span class="sub">fund now, fix first, or both</span></li>
+        <li>The agreement<span class="sub">read together on the screen</span></li>
+        <li class="is-hot">Then the price<span class="sub">after you agree with the path</span></li>
+      </ol>
+    </figure>
+    <aside class="talk" aria-hidden="true">
+      <ul>
+        <li>On your call, you see your own file before you decide anything.</li>
+        <li>Walk the order with me. First, what you're going for. Then your file, with a soft pull. Then the path that fits it.</li>
+        <li>You agree with the path before you ever hear a price. That's how I run every call.</li>
+        <li>Then, before you pay anything, we read the agreement together on the screen. Everything is in writing.</li>
+        <li>And the reports are yours either way. We're looking for action takers, not shoppers.</li>
+      </ul>
+    </aside>
+  </section>
+</main>
+<!-- fh:shell:script -->
+<script data-fh="slideshow">
+/* Fundhub slideshow engine. One slide at a time, with Back and Next at the
+   thumb, swipe, and the arrow keys. A link ending in #s3 opens slide 3. It
+   reads and sends nothing: no network, no storage, no tracking. Without
+   script, every slide stays readable as one long page. */
+(function () {
+  "use strict";
+  var deck = document.querySelector(".ss");
+  if (!deck) return;
+  var slides = Array.prototype.slice.call(deck.querySelectorAll(".slide"));
+  if (!slides.length) return;
+  var root = document.documentElement;
+  var last = slides.length - 1;
+  var index = 0;
+
+  function el(tag, cls, text) {
+    var node = document.createElement(tag);
+    if (cls) node.className = cls;
+    if (text) node.textContent = text;
+    return node;
+  }
+
+  var top = el("header", "ss-top");
+  var logo = el("span", "logo");
+  logo.setAttribute("role", "img");
+  logo.setAttribute("aria-label", "Fundhub");
+  var progress = el("div", "ss-progress");
+  progress.setAttribute("aria-hidden", "true");
+  var segments = slides.map(function (_, k) {
+    var seg = el("i");
+    seg.style.setProperty("--k", String(k));
+    seg.style.setProperty("--n", String(slides.length));
+    progress.appendChild(seg);
+    return seg;
+  });
+  top.appendChild(logo);
+  top.appendChild(progress);
+
+  var stage = el("div", "ss-stage");
+  slides.forEach(function (slide, k) {
+    slide.setAttribute("role", "group");
+    slide.setAttribute("aria-roledescription", "slide");
+    slide.setAttribute("aria-label", (k + 1) + " of " + slides.length);
+    stage.appendChild(slide);
+  });
+
+  var nav = el("nav", "ss-nav");
+  nav.setAttribute("aria-label", "Slides");
+  var back = el("button", "ss-btn back", "Back");
+  var next = el("button", "ss-btn primary", "Next");
+  back.type = "button";
+  next.type = "button";
+  nav.appendChild(back);
+  nav.appendChild(next);
+
+  var live = el("p", "ss-live");
+  live.setAttribute("aria-live", "polite");
+
+  var title = deck.querySelector(".ss-title");
+  deck.insertBefore(top, title ? title.nextSibling : deck.firstChild);
+  deck.appendChild(stage);
+  deck.appendChild(nav);
+  deck.appendChild(live);
+  root.classList.add("ss-js");
+
+  function go(n, still) {
+    index = Math.max(0, Math.min(last, n));
+    slides.forEach(function (slide, k) {
+      var on = k === index;
+      slide.classList.toggle("is-on", on);
+      // Only a slide you move to slides in. The first one is still at rest.
+      slide.classList.remove("enter");
+      if (on && !still) {
+        void slide.offsetWidth;
+        slide.classList.add("enter");
+      }
+      slide.setAttribute("aria-hidden", on ? "false" : "true");
+      if (on) slide.removeAttribute("inert");
+      else slide.setAttribute("inert", "");
+    });
+    segments.forEach(function (seg, k) { seg.classList.toggle("on", k <= index); });
+    root.setAttribute("data-tone", slides[index].classList.contains("dark") ? "dark" : "light");
+    back.hidden = index === 0;
+    next.textContent = index === last ? "Start over" : "Next";
+    slides[index].scrollTop = 0;
+    var heading = slides[index].querySelector("h2");
+    live.textContent = (index + 1) + " of " + slides.length + (heading ? ". " + heading.textContent : "");
+    if (!root.classList.contains("ss-notes")) {
+      try { history.replaceState(null, "", "#s" + (index + 1)); } catch (e) { /* a sandboxed frame may refuse */ }
+    }
+  }
+
+  back.addEventListener("click", function () { go(index - 1); });
+  next.addEventListener("click", function () { go(index === last ? 0 : index + 1); });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.altKey || e.ctrlKey || e.metaKey) return;
+    if (e.key === "ArrowRight" || e.key === "PageDown") { e.preventDefault(); go(index + 1); }
+    else if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); go(index - 1); }
+    else if (e.key === "Home") { e.preventDefault(); go(0); }
+    else if (e.key === "End") { e.preventDefault(); go(last); }
+    else if (e.key === "n" || e.key === "N") { root.classList.toggle("ss-notes"); }
+  });
+
+  var x0 = null;
+  var y0 = null;
+  stage.addEventListener("pointerdown", function (e) {
+    if (e.pointerType === "mouse") return;
+    x0 = e.clientX;
+    y0 = e.clientY;
+  });
+  stage.addEventListener("pointercancel", function () { x0 = null; });
+  stage.addEventListener("pointerup", function (e) {
+    if (x0 === null) return;
+    var dx = e.clientX - x0;
+    var dy = e.clientY - y0;
+    x0 = null;
+    if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.5) go(index + (dx < 0 ? 1 : -1));
+  });
+
+  // #notes opens the talking points for recording; viewers never see them.
+  if (/^#notes$/.test(location.hash || "")) root.classList.add("ss-notes");
+  function fromHash() {
+    var match = /^#s(\d+)$/.exec(location.hash || "");
+    return match ? Number(match[1]) - 1 : null;
+  }
+  window.addEventListener("hashchange", function () {
+    var n = fromHash();
+    if (n !== null && n !== index) go(n);
+  });
+  go(fromHash() || 0, true);
+})();
+</script>
+<!-- /fh:shell:script -->
+</body>
+</html>

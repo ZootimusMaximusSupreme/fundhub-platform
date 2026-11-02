@@ -1,7 +1,7 @@
 // /api/tasks — the work queue the workflows have been writing into.
 //
 //   GET   ?done=false (default) | true | all
-//         ?client_id=<uuid>  ?q=<title search>  ?limit=<n, cap 200>
+//         ?client_id=<uuid>  ?q=<title search>  ?limit=<n, cap 200>  ?offset=<n>
 //         ?role=<employee role> | mine  — whose queue to read
 //         ?mine=1                       — shorthand for role=mine
 //         ?unclaimed=1                  — role queue only, nobody has picked it up
@@ -85,6 +85,9 @@ export default async function handler(req, res) {
   if (req.method === "GET") {
     const q = req.query || {};
     const limit = boundedLimit(q.limit, { fallback: 100, cap: 200 });
+    const offsetRaw = String(q.offset ?? "0");
+    if (!/^\d{1,7}$/.test(offsetRaw)) return res.status(400).json({ ok: false, error: "invalid_offset" });
+    const offset = Number(offsetRaw);
     const where = [];
     const params = [];
     const add = (sql, val) => { params.push(val); where.push(sql.replace("?", `$${params.length}`)); };
@@ -92,6 +95,8 @@ export default async function handler(req, res) {
     // Always scope to the session org. Without this, ?client_id=<foreign uuid>
     // and unfiltered queue reads leaked other companies' work.
     add("t.org_id = ?", orgId);
+    // Keep staff-only tasks, but hide work attached to archived clients.
+    where.push("(t.client_id IS NULL OR c.id IS NOT NULL)");
 
     const done = (q.done ?? "false").toLowerCase();
     if (done === "false") where.push("t.done = false");
@@ -125,7 +130,7 @@ export default async function handler(req, res) {
       where.push("t.assignee_staff_id IS NULL");
     }
 
-    params.push(limit);
+    params.push(limit, offset);
     /* tasks.detail (migration 472): a readable note. body is a dedupe key on many
        tasks; detail is the sentence the person should read. Null when none.
        The queue is how staff work, so it must not go down because a database has
@@ -140,11 +145,12 @@ export default async function handler(req, res) {
              s.name AS assignee_name,
              TRIM(COALESCE(c.first_name,'') || ' ' || COALESCE(c.last_name,'')) AS client_name
         FROM tasks t
-        LEFT JOIN clients c ON c.id = t.client_id
+        LEFT JOIN clients c ON c.id = t.client_id AND c.org_id = t.org_id
+          AND c.custom_fields->>'crm_archived_at' IS NULL
         LEFT JOIN staff   s ON s.id = t.assignee_staff_id
        ${where.length ? "WHERE " + where.join(" AND ") : ""}
-       ORDER BY t.due_at ASC NULLS LAST, t.created_at DESC
-       LIMIT $${params.length}`;
+       ORDER BY t.due_at ASC NULLS LAST, t.created_at DESC, t.id DESC
+       LIMIT $${params.length - 1} OFFSET $${params.length}`;
     try {
       let result;
       try {

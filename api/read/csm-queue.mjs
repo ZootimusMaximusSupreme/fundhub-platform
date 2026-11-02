@@ -87,6 +87,7 @@ const QUEUE_SQL = `
    WHERE t.org_id = $1
      AND t.assignee_role = 'csm'
      AND t.done = false
+     AND c.custom_fields->>'crm_archived_at' IS NULL
    ORDER BY t.due_at ASC NULLS LAST, t.created_at ASC
    /* $2 + 1, not $2. page() derives hasMore by seeing one row MORE than
       asked for and slicing it off, so a query that returns exactly the limit

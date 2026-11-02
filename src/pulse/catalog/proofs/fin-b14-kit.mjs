@@ -72,8 +72,8 @@ export function sharedScreens() {
   return { open: (...args) => screens.open(...args) };
 }
 
-/** Poll until the predicate is true. Fails with the label so a red run says what never happened. */
-export async function waitFor(predicate, label = "condition", ms = 8000) {
+/** Poll until the predicate is true. CI runs browser proofs beside database shards, so allow their renders more time while keeping the same assertion. */
+export async function waitFor(predicate, label = "condition", ms = process.env.CI ? 20_000 : 8000) {
   const end = Date.now() + ms;
   while (Date.now() < end) {
     if (await predicate()) return;

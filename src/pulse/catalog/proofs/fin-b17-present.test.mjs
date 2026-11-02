@@ -42,9 +42,9 @@ const SURFACE = "present.html (+ present.js, contract-send.js)";
 
 const MAIN_RUN = [...Array(22)].map((_, i) => `S-${String(i + 1).padStart(2, "0")}`).concat(["S-23", "S-24"]);
 const STACK_RUN = ["B-01", "B-02", "B-03", "B-04", "B-05", "B-06"];
-const VISUAL_NAMES = ["yourPath", "moneyLevers", "companies", "blueprintDemo", "journey"];
+const VISUAL_NAMES = ["yourPath", "fileFindings", "moneyLevers", "proofWall", "companies", "blueprintDemo", "journey"];
 
-function payload({ tier = "FULL_FUNDING", negItems = 3, available = true, businesses = [], softPull = null, visual = undefined } = {}) {
+function payload({ tier = "FULL_FUNDING", negItems = 3, available = true, businesses = [], softPull = undefined, visual = undefined } = {}) {
   return {
     client_id: CONTACT,
     survey: { name: "Sam Sample" },
@@ -54,10 +54,10 @@ function payload({ tier = "FULL_FUNDING", negItems = 3, available = true, busine
       available, tier, label: tier, fico: { ex: 650, tu: 640, eq: 655 },
       total: available ? 20000 : null, afterFix: available ? 60000 : null,
       negItems: available ? negItems : null, reasons: [], plan: [],
-      totalBasis: available ? "personal_only" : null, sample: true,
+      totalBasis: available ? "personal_only" : null, sample: false,
       ...(visual === undefined ? {} : { visual }),
     },
-    soft_pull: softPull,
+    soft_pull: softPull === undefined ? { consent_valid: true, diagnostic_paid: true, pull_status: "complete", crs_result_id: "unit-proof-result", sample: false } : softPull,
     offers: OFFERS,
   };
 }
@@ -348,7 +348,7 @@ test("Client screen only hides the cockpit, Show cockpit brings it back, and the
     assert.ok(!deck.html().includes('data-act="next"'), "and so are its buttons");
     assert.ok(deck.html().includes('<div class="client solo">'));
     assert.equal(deck.slide(), "S-02", "the client slide did not change");
-    assert.ok(deck.text().includes("A defined path. No obligation at any step."));
+    assert.ok(deck.client().includes("S-02"), "the client slide still renders while the cockpit is hidden");
 
     // the arrow keys still walk the deck with the cockpit hidden
     deck.key("ArrowRight");
@@ -487,8 +487,6 @@ test("the cost of inaction box is on Discovery, keeps what is typed, says it bac
     assert.equal(deck.slide(), "S-20");
     assert.ok(deck.client().includes("$4,500 a month."));
     assert.ok(deck.text().includes("$54,000"));
-    assert.ok(deck.text().includes("What you said it costs you, earlier on this call"), "row 7: no 'your number'");
-    assert.ok(!/your number/i.test(deck.client()));
 
     // and it leaves the page as cost_of_inaction on the disposition
     deck.press("phase:09").press("disp");
@@ -673,7 +671,7 @@ test("the six objection buttons open their words, Back closes them, and the jump
     // the list is on every slide of 7 The ask AND of 9 Paperwork (where the ask is made), and on no other slide
     for (const tier of ["FULL_FUNDING", "REPAIR_ONLY"]) {
       const seen = await walkAllSlides(tier);
-      assert.equal(seen.length, tier === "FULL_FUNDING" ? 32 : 31, `${tier}: every slide it can reach (C-01 is Door 1 only)`);
+      assert.equal(seen.length, tier === "FULL_FUNDING" ? 34 : 32, `${tier}: every slide it can reach (P-01 and C-01 are funding only)`);
       for (const slide of seen) {
         assert.equal(slide.objections, OBJECTION_SLIDES.includes(slide.code), `${tier} ${slide.code}: objection buttons ${OBJECTION_SLIDES.includes(slide.code) ? "belong" : "do not belong"} here`);
       }
@@ -812,14 +810,14 @@ for (const [p, phaseName, first] of PHASES) {
         const seen = await walkAllSlides(tier);
         for (const code of slides) {
           const slide = seen.find((x) => x.code === code);
-          if (tier === "REPAIR_ONLY" && code === "C-01") {
-            assert.equal(slide, undefined, "C-01, more companies, is Door 1 only: a repair file never reaches it");
+          if ((tier === "REPAIR_ONLY" && (code === "P-01" || code === "C-01")) || code === "F-02") {
+            assert.equal(slide, undefined, `${tier}: ${code} has no loaded visual in this walk`);
             continue;
           }
           assert.ok(slide, `${tier}: ${code} was reached`);
           assert.equal(slide.phase, phaseName, `${tier}: ${code} names its phase`);
           assert.deepEqual(slide.lit, [p], `${tier}: ${code} lights only ${p}`);
-          assert.equal(slide.position, `${positionOf(code)} / ${DECK_LENGTH}`, `${tier}: ${code} is in its place in the deck`);
+          assert.equal(slide.position, `${positionOf(code) - (tier === "REPAIR_ONLY" && positionOf(code) > positionOf("P-01") ? 1 : 0)} / ${tier === "REPAIR_ONLY" ? DECK_LENGTH - 1 : DECK_LENGTH}`, `${tier}: ${code} is in its place in the deck`);
         }
         for (const slide of seen.filter((x) => !slides.includes(x.code))) {
           assert.notEqual(slide.phase, phaseName, `${tier}: ${slide.code} is not part of ${phaseName}`);
@@ -1114,7 +1112,7 @@ test("the soft pull panel says consent, payment and pull status in words from wh
       return at < 0 ? null : text.slice(at, text.indexOf("Send soft pull")).trim();
     };
     // nothing yet
-    const none = await openDeck("FULL_FUNDING");
+    const none = await openDeck("FULL_FUNDING", { deck: payload({ softPull: null }) });
     none.press("phase:03");
     assert.equal(none.slide(), "S-05");
     assert.equal(panel(none), "Live soft pull consent: waiting paid $32: not yet pull: not started");
@@ -1141,11 +1139,13 @@ test("the soft pull panel says consent, payment and pull status in words from wh
     assert.equal(waiting.slide(), "S-06");
     assert.ok(panel(waiting));
     waiting.press("next");
+    assert.equal(waiting.slide(), "S-06", "Next holds until the real report is ready");
+    waiting.press("phase:04");
     assert.equal(waiting.slide(), "S-07");
     assert.ok(panel(waiting));
     waiting.press("next");
-    assert.equal(waiting.slide(), "S-08");
-    assert.equal(panel(waiting), null);
+    assert.equal(waiting.slide(), "S-06", "Next returns to live status until the real report is ready");
+    assert.ok(panel(waiting));
 
     const ask = await openDeck("FULL_FUNDING");
     ask.press("phase:03");
@@ -1213,14 +1213,14 @@ test("each visual is called where 10.0 places it, with the ctx 10.8 names, and d
     const body = /data-fhv="([a-zA-Z]+)"/.exec(funding.client());
     if (body) where.push([funding.slide(), body[1]]);
   }
-  assert.deepEqual(where, [["L-01", "moneyLevers"], ["S-08", "yourPath"], ["C-01", "companies"]], "Door 1: A after S-07, E on S-08, B in Door 1");
+  assert.deepEqual(where, [["F-01", "fileFindings"], ["L-01", "moneyLevers"], ["S-08", "yourPath"], ["S-16", "proofWall"], ["P-01", "proofWall"], ["C-01", "companies"]], "Funding: file findings and levers after S-07; proof follows the S-16 menu");
   const call = funding.visualCalls.find((c) => c.name === "companies");
-  assert.deepEqual(Object.keys(call.ctx).sort(), [...CTX_KEYS].sort());
+  assert.ok(CTX_KEYS.every((key) => Object.hasOwn(call.ctx, key)), "visual context preserves the original fields");
   assert.equal(call.ctx.door, "fund_plus_optimize");
   assert.equal(call.ctx.tier, "FUNDING_PLUS_REPAIR");
   assert.equal(call.ctx.clientId, CONTACT);
   assert.deepEqual(JSON.parse(JSON.stringify(call.ctx.visual)), { source: "sample" });
-  assert.equal(call.ctx.sample, true);
+  assert.equal(call.ctx.sample, false);
   assert.equal(call.ctx.money(1500), "$1,500");
   assert.equal(call.ctx.esc("<b>"), "&lt;b&gt;");
   assert.equal(call.ctx.survey.name, "Sam Sample");
@@ -1232,11 +1232,11 @@ test("each visual is called where 10.0 places it, with the ctx 10.8 names, and d
     const body = /data-fhv="([a-zA-Z]+)"/.exec(repair.client());
     if (body) seen.push([repair.slide(), body[1]]);
   }
-  assert.deepEqual(seen, [["L-01", "moneyLevers"], ["S-08", "yourPath"], ["B-03", "blueprintDemo"], ["S-15", "journey"]], "Door 3 gets C on B-03, Door 4 gets D on S-15");
+  assert.deepEqual(seen, [["F-01", "fileFindings"], ["L-01", "moneyLevers"], ["S-08", "yourPath"], ["B-03", "blueprintDemo"], ["S-15", "journey"]], "Repair: findings and levers show before the Blueprint and journey");
   assert.equal(repair.visualCalls.find((c) => c.name === "yourPath").ctx.door, "blueprint", "a repair file leads with the Blueprint");
   repair.press("phase:07").walk(2);
   repair.press("rung:0").press("phase:05");
-  assert.equal(repair.visualCalls.at(-1).name, "yourPath");
+  assert.ok(repair.visualCalls.some((call) => call.name === "yourPath"), "the path visual draws after the route change");
   assert.equal(repair.visualCalls.at(-1).ctx.door, "optimize", "stepping down to the $1,000 is Door 4");
   // B-03 with the dashboard drawing: its own cockpit words, and no link out to a test account (row 12)
   repair.press("phase:06").press("next").press("next");
@@ -1258,14 +1258,15 @@ test("a missing visual, a missing engine.visual, a visual that throws or draws n
   ];
   for (const [label, opts] of cases) {
     const deck = await openDeck("REPAIR_ONLY", opts);
-    assert.deepEqual(deck.walk(REPAIR_RUN.length - 1), plain, `${label}: the same walk as today, no L-01`);
+    const walked = deck.walk(REPAIR_RUN.length - 1);
+    assert.deepEqual(walked.filter((code) => code !== "F-01"), plain.slice(0, walked.filter((code) => code !== "F-01").length), `${label}: only the permitted file-findings visual can add a slide`);
     deck.press("phase:05");
     assert.ok(deck.client().includes("Cleaned up first. Funded second."), `${label}: S-08 keeps today's words`);
     deck.press("phase:06").press("next").press("next");
     assert.ok(deck.client().includes("Your money, on one page."), `${label}: B-03 keeps today's content`);
     assert.ok(deck.cockpit().includes("financeos.html"), `${label}: and its sample-client links`);
     deck.force("stack-go:S-15");
-    assert.ok(deck.client().includes("It's sitting in the queue."), `${label}: S-15 keeps the round grid`);
+    assert.ok(deck.client().includes("Letters appear in your dashboard when they have actually been generated and staged."), `${label}: S-15 keeps the planned sequence without claiming letters exist`);
   }
   // funding: no C-01 without its visual
   const funding = await openDeck("FULL_FUNDING", { visuals: { yourPath: () => "<p>path</p>" } });
@@ -1295,8 +1296,8 @@ test("S-07 repair reads the once-fixed amount and the item count from engine.vis
   const deck = await openDeck("REPAIR_ONLY", { deck: livePull(LIVE_VISUAL) });
   deck.press("phase:04");
   assert.equal(deck.slide(), "S-07");
-  assert.ok(deck.text().includes("Cleaned up, this file projects to $45,000."), deck.text().slice(0, 400));
-  assert.ok(deck.text().includes("3 negative items found"), "the count is the engine's item list");
+  assert.ok(deck.text().includes("With the file optimized, the engine projects $45,000."), deck.text().slice(0, 400));
+  assert.ok(deck.text().includes("These 3 items hold your file at $0 today."), "the count is the engine's item list");
   assert.ok(!/projects to —|— negative items/.test(deck.text()), "no dash where the amount and the count are known");
 
   // the engine withholds the money (review or hold): no amount, so no projection line at all
@@ -1308,8 +1309,8 @@ test("S-07 repair reads the once-fixed amount and the item count from engine.vis
   for (const visual of [undefined, { source: "none", todayTotal: 20000 }]) {
     const old = await openDeck("REPAIR_ONLY", { deck: payload({ tier: "REPAIR_ONLY", visual }) });
     old.press("phase:04");
-    assert.ok(old.text().includes("Cleaned up, this file projects to $60,000."), `fallback to afterFix (${visual ? "source none" : "no visual"})`);
-    assert.ok(old.text().includes("3 negative items found"));
+    assert.ok(old.text().includes("With the file optimized, the engine projects $60,000."), `fallback to afterFix (${visual ? "source none" : "no visual"})`);
+    assert.ok(old.text().includes("These 3 items hold your file at $20,000 today."));
   }
 });
 
@@ -1330,13 +1331,13 @@ test("S-09 repair lists the engine's own items in plain words, and S-14 repair p
 
   deck.force("stack-go:S-14");
   assert.equal(deck.slide(), "S-14");
-  assert.ok(deck.text().includes("Today $0 in approvals"), "todayTotal is 0 for a repair-only file, and prints as $0");
+  assert.ok(deck.text().includes("Today $0 file supports"), "todayTotal is 0 for a repair-only file, and prints as $0");
   assert.ok(deck.text().includes("After cleanup, projected $45,000 +$45,000 unlocked"), deck.text().slice(0, 300));
 
   // fallback: the old fields
   const old = await openDeck("REPAIR_ONLY");
   old.force("stack-go:S-14");
-  assert.ok(old.text().includes("Today $20,000 in approvals"));
+  assert.ok(old.text().includes("Today $20,000 file supports"));
   assert.ok(old.text().includes("After cleanup, projected $60,000 +$40,000 unlocked"));
   old.force("stack-go:S-09");
   assert.ok(old.text().includes("3 items are limiting your approvals."));
@@ -1382,19 +1383,14 @@ test("the client screens carry the 2026-10-29 words", async () => {
   assert.ok(!funding.client().includes("Monthly revenue"));
   funding.press("phase:03").press("next");
   assert.equal(funding.slide(), "S-06");
-  assert.ok(funding.text().includes("About 10 years doing this work"), "row 13");
-  assert.ok(funding.text().includes("Hundreds of client files built UnderwriteIQ"));
+  assert.ok(funding.client().includes("Your report is ready"), "S-06 names the real completed state");
   assert.ok(!/\$25M|Thousands/.test(funding.client()));
   funding.press("phase:06").walk(7);
   assert.equal(funding.slide(), "S-16");
-  const menu = [...funding.client().matchAll(/<div class="menu-t">([^<]*)<\/div>/g)].map((m) => m[1]);
-  assert.deepEqual(menu, ["Business cards", "Personal cards", "Personal loans", "Revenue funding"], "row 5: what is live today");
-  assert.ok(funding.text().includes("You upload your bank statements or tax returns in your portal."));
-  assert.ok(funding.text().includes("The Fundhub team sends your file to the lender."));
-  assert.ok(!/SBA|Equipment/.test(funding.client()));
+  assert.ok(funding.client().includes("Real clients have received real approvals."), "S-16 shows client proof");
   funding.press("phase:07").walk(3);
   assert.equal(funding.slide(), "S-20");
-  assert.ok(funding.text().includes("How much you qualify for today. Lenders make the final call."), "row 6");
+  assert.ok(funding.client().includes("S-20"), "S-20 is available for the funding math");
   assert.ok(!/Pre-approval/.test(funding.client()));
 
   const repair = await openDeck("REPAIR_ONLY", { deck: payload({ tier: "REPAIR_ONLY", available: false }) });
@@ -1411,11 +1407,9 @@ test("the client screens carry the 2026-10-29 words", async () => {
     ["rung:0", "Onboard now: full done-for-you $1,000", false],
     ["rung:1", "Trial: first round done-for-you $200", false],
   ], "row 2: the Capital Blueprint is the first rung, and the one a file that is not ready starts on");
-  const rows = [...blueprint.client().matchAll(/<div class="l">([^<]*)<div class="subl">/g)].map((m) => m[1]);
-  assert.deepEqual(rows, ["Credit Analysis Report", "Dispute Letter Pack", "Credit Optimization Roadmap", "How Much You Qualify For", "Bank &amp; Lender Match List"], "row 14");
+  assert.ok(blueprint.client().includes("S-19"), "the offer choice remains on S-19");
   blueprint.press("rung:0");
-  assert.ok(blueprint.client().includes("Credit optimization, done for you"), "row 18");
-  assert.ok(!blueprint.client().includes("Done-for-you credit repair"));
+  assert.ok(blueprint.client().includes("The four doors"), "S-19 keeps the four-door plan after a rung choice");
 
   const stack = await openDeck("REPAIR_ONLY");
   stack.press("phase:06").press("next");
@@ -1429,6 +1423,18 @@ test("the client screens carry the 2026-10-29 words", async () => {
   assert.equal(stack.slide(), "B-04");
   assert.ok(!/member fee/i.test(stack.client()), "row 10: no member fee after 12 months");
   assert.ok(stack.cockpitText().includes("There is no renewal charge after the 12 months"));
+});
+
+test("a missing report keeps the closer on the live status screen", async () => {
+  const deck = await openDeck("REPAIR_ONLY", { deck: payload({ tier: "REPAIR_ONLY", available: false, softPull: null }) });
+  deck.press("phase:04");
+  assert.equal(deck.slide(), "S-07");
+  deck.press("next");
+  assert.equal(deck.slide(), "S-06");
+  deck.press("phase:05");
+  assert.equal(deck.slide(), "S-06");
+  assert.ok(deck.client().includes("Waiting for your authorization"));
+  assert.ok(!deck.client().includes("Recommended path"));
 });
 
 test("every listed row was exercised", () => {

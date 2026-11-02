@@ -61,6 +61,8 @@ import { callHappened } from "./dpc-02-call-outcome-enforcement.mjs";
 import { sendTemplated } from "./messaging.mjs";
 import { mergeCustomFields } from "./custom-fields.mjs";
 import { addTags } from "./tags.mjs";
+import { creditTierFor } from "../config/survey-qualification.mjs";
+import { sendDeckPush } from "./bs-deck-push.mjs";
 
 export const FUNDING_PREFIX = "BS-FUND";
 export const REPAIR_PREFIX = "BS-REPAIR";
@@ -80,6 +82,157 @@ export const SMS_PRECALL_WAIT = "24h";
 export const SMS_DAYOF_OFFSET_MS = 2 * 60 * 60 * 1000;
 export const PRECALL_LEAD_MS = 48 * 60 * 60 * 1000;
 const HOUR = 60 * 60 * 1000;
+
+// One lesson per slot. Shared lessons reach both lanes; the remaining 14 are
+// lane-specific. No person receives the same deck twice.
+export const DECK_SLOTS = Object.freeze([
+  { funding: null, blueprint: "bank-said-no", channel: "email" },
+  { funding: "the-call", blueprint: "the-call", channel: "push" },
+  { funding: "pre-underwriting", blueprint: "thirteen-points", channel: "email" },
+  { funding: "soft-pull", blueprint: "soft-pull", channel: "sms" },
+  { funding: null, blueprint: "card-paydown", channel: "email" },
+  { funding: "funding-sequence", blueprint: "credit-optimization", channel: "email" },
+  { funding: "who-we-are", blueprint: "who-we-are", channel: "push" },
+  { funding: "apply-yourself", blueprint: "blueprint-value", channel: "email" },
+  { funding: "your-data-is-safe", blueprint: "your-data-is-safe", channel: "email" },
+  { funding: null, blueprint: "business-one-two", channel: "email" },
+  { funding: "money-on-the-table", blueprint: "credit-partner", channel: "email" },
+  { funding: "cost-of-waiting", blueprint: "cost-of-waiting", channel: "sms" },
+  { funding: "the-maximum", blueprint: "the-maximum", channel: "email" },
+  { funding: null, blueprint: "blueprint-12-months", channel: "email" },
+  { funding: "tried-before", blueprint: "tried-before", channel: "email" },
+  { funding: "the-money-talk", blueprint: "the-money-talk", channel: "push" },
+  { funding: "after-you-say-yes", blueprint: "blueprint-in-action", channel: "email" }
+]);
+
+export const DECK_TITLES = Object.freeze({
+  "the-call": "Your file picks the path before any price",
+  "soft-pull": "A soft pull does not move your score",
+  "pre-underwriting": "Why a bank can deny good credit",
+  "bank-said-no": "The reason a bank said no is on your report",
+  "funding-sequence": "The order of applications changes the result",
+  "thirteen-points": "The 13 points that shape funding readiness",
+  "who-we-are": "How Fundhub works with your file",
+  "apply-yourself": "What the next bank sees after an application",
+  "card-paydown": "Which card to pay first",
+  "your-data-is-safe": "How Fundhub handles your information",
+  "money-on-the-table": "What a strong score can leave on the table",
+  "credit-optimization": "Why the letters go out in order",
+  "cost-of-waiting": "What changes while you wait",
+  "after-you-say-yes": "What happens after you sign",
+  "blueprint-value": "A roadmap built from your own file",
+  "the-maximum": "How the maximum starts with your file",
+  "business-one-two": "Why each business is judged on its own",
+  "blueprint-12-months": "How the Blueprint guides your next 12 months",
+  "tried-before": "Why past attempts did not fund",
+  "the-money-talk": "The money talk happens on the call",
+  "credit-partner": "How a credit partner can help",
+  "blueprint-in-action": "Your Blueprint dashboard, start to finish"
+});
+
+export async function currentDeckLane(database, clientId) {
+  const r = await database.query("SELECT custom_fields FROM clients WHERE id = $1", [clientId]);
+  return creditTierFor(r.rows[0]?.custom_fields || {});
+}
+
+export async function deckContentReady(database, orgId) {
+  for (const key of ["EMAIL-BS-DECK-LESSON", "SMS-BS-DECK"]) {
+    const result = await database.query(
+      `SELECT body, subject, compliance_passed FROM message_templates
+        WHERE org_id = $1 AND template_key = $2 LIMIT 1`, [orgId, key]
+    );
+    if (!result.rows[0]?.compliance_passed) return false;
+  }
+  return true;
+}
+
+export async function currentDeckBooking(database, { orgId, clientId, bookingUid = null,
+  startTime, now = new Date() }) {
+  const expected = new Date(startTime).getTime();
+  if (!Number.isFinite(expected) || expected <= new Date(now).getTime()) return false;
+  const result = await database.query(
+    `SELECT status, starts_at, provider_uid FROM bookings WHERE org_id = $1 AND client_id = $2
+      ORDER BY created_at DESC LIMIT 1`, [orgId, clientId]
+  );
+  const booking = result.rows[0];
+  return ["booked", "rescheduled"].includes(booking?.status)
+    && (!bookingUid || booking.provider_uid === bookingUid)
+    && new Date(booking.starts_at).getTime() === expected;
+}
+
+// Arizona stays UTC-7 all year. Lessons occupy the three full days before the
+// appointment, 9 a.m.–4 p.m. local, at least an hour apart. A late booking
+// skips elapsed slots; it never flushes a backlog of lessons at once.
+export function deckTime(startTime, index) {
+  const startMs = new Date(startTime).getTime();
+  if (!Number.isFinite(startMs) || index < 0 || index >= DECK_SLOTS.length) return null;
+  const local = new Date(startMs - 7 * HOUR);
+  const day = index < 6 ? 3 : index < 12 ? 2 : 1;
+  const count = day === 1 ? 5 : 6;
+  const callHour = local.getUTCHours() + local.getUTCMinutes() / 60;
+  const hours = day === 3 ? [9, 10, 11, 13, 15, 16]
+    : [9, 10, 11, 12, 13, 14, 15, 16]
+      .filter((hour) => Math.abs(hour - callHour) >= 1);
+  const picks = count === 6
+    ? (hours.length === 8 ? [0, 1, 2, 4, 5, 7]
+      : hours.length === 7 ? [0, 1, 2, 3, 5, 6] : [0, 1, 2, 3, 4, 5])
+    : [0, 1, Math.floor(hours.length / 2), hours.length - 2, hours.length - 1];
+  const slot = index < 6 ? index : index < 12 ? index - 6 : index - 12;
+  return new Date(Date.UTC(local.getUTCFullYear(), local.getUTCMonth(),
+    local.getUTCDate() - day, hours[picks[slot]] + 7));
+}
+
+export async function runDeckDrip({ db: database, step, orgId, clientId, eventId, startTime,
+  bookingUid = null, sendPush = sendDeckPush,
+  bookingCurrent = currentDeckBooking,
+  enabled = process.env.BS_DECK_LESSONS_ENABLED === "true" }) {
+  if (!enabled) return { sent: [], skipped: "deck_lessons_disabled" };
+  if (!startTime) return { sent: [], skipped: "no_start_time" };
+  const startMs = new Date(startTime).getTime();
+  if (!Number.isFinite(startMs)) return { sent: [], skipped: "bad_start_time" };
+  const sent = [];
+  for (let i = 0; i < DECK_SLOTS.length; i++) {
+    const at = deckTime(startTime, i);
+    if (!at || at.getTime() - Date.now() < HOUR) continue;
+    // The appointment-hour slots are moved within the Arizona daytime window,
+    // leaving at least an hour around each transactional reminder.
+    if ([48, 24, 2].some((lead) =>
+      Math.abs(at.getTime() - (startMs - lead * HOUR)) < HOUR)) continue;
+    await step.sleepUntil(`wait-deck-${i}`, at);
+    const held = await step.run(`check-deck-held-${i}`, () => callHappened(database, clientId));
+    if (held || Date.now() >= startMs) return { sent, stoppedBecause: held ? "call_held" : "call_started" };
+    const lane = await step.run(`check-deck-lane-${i}`, () => currentDeckLane(database, clientId));
+    if (!lane) continue;
+    const slot = DECK_SLOTS[i];
+    const slug = slot[lane === "qualified" ? "funding" : "blueprint"];
+    if (!slug) continue;
+    const result = await step.run(`send-deck-${i}`, async () => {
+      if (!await bookingCurrent(database, { orgId, clientId, bookingUid, startTime })) {
+        return { sent: false, reason: "booking_changed" };
+      }
+      if (slot.channel === "push") {
+        const pushed = await sendPush(database, { orgId, clientId, eventId, slug,
+          bookingUid, startTime });
+        if (pushed.sent) return { ...pushed, channel: "push" };
+        if (!["push_not_enabled", "no_device_delivered", "daily_push_cap"].includes(pushed.reason)) {
+          return { ...pushed, channel: "push" };
+        }
+      }
+      const channel = slot.channel === "push" ? "email" : slot.channel;
+      return { ...await sendTemplated(database, {
+        orgId, clientId, channel,
+        templateKey: channel === "sms" ? "SMS-BS-DECK" : "EMAIL-BS-DECK-LESSON",
+        eventId: `bs-deck:${clientId}:${slug}`,
+        context: { deck_title: DECK_TITLES[slug], deck_url: `https://fundhub.ai/slideshows/${slug}.html` }
+      }), channel };
+    });
+    if (["booking_changed", "no_future_booking", "opted_out", "outbound_paused", "dry_run"].includes(result.reason)) {
+      return { sent, stoppedBecause: result.reason };
+    }
+    sent.push({ slot: i, slug, ...result });
+  }
+  return { sent };
+}
 
 function waitMs(after) {
   if (!after) return 0;
@@ -255,7 +408,9 @@ async function runSmsDrip({ db, step, orgId, clientId, eventId, startTime }) {
   return { sent, stoppedAt: null, stoppedBecause: null, skippedDayOf: "owned_by_s04b", skippedPrecall: null };
 }
 
-export async function handle({ event, db, step }) {
+export async function handle({ event, db, step,
+  lessonsEnabled = process.env.BS_DECK_LESSONS_ENABLED === "true",
+  bookingCurrent = currentDeckBooking, sendPush = sendDeckPush }) {
   const clientId = await step.run("resolve-client", () => resolveClient(db, event));
   if (!clientId) return { done: false, reason: "no_client" };
 
@@ -273,26 +428,38 @@ export async function handle({ event, db, step }) {
     db, step, orgId, clientId, eventId,
     startTime
   });
+  const deckTemplate = await step.run("deck-template-ready", () => deckContentReady(db, orgId));
+  const decksPromise = deckTemplate && lessonsEnabled
+    ? runDeckDrip({ db, step, orgId, clientId, eventId, startTime,
+      bookingUid: event.payload?.bookingUid || event.payload?.booking_uid || null,
+      bookingCurrent, sendPush, enabled: true })
+    : Promise.resolve({ sent: [], skipped: deckTemplate ? "deck_lessons_disabled" : "deck_template_pending" });
 
   let prefix;
   let drip;
   if (isFundingPath(outcomeTier)) { prefix = FUNDING_PREFIX; drip = "funding"; }
   else if (isRepairOnlyPath(outcomeTier)) { prefix = REPAIR_PREFIX; drip = "repair"; }
   else {
-    const sms = await smsPromise;
-    return { done: true, drip: "none", reason: `no_matching_path:${outcomeTier}`, sms };
+    const [sms, decks] = await Promise.all([smsPromise, decksPromise]);
+    return { done: true, drip: "none", reason: `no_matching_path:${outcomeTier}`, sms, decks };
   }
 
-  const [sms, { sent, gaps, skipped, stoppedAt, stoppedBecause }] = await Promise.all([
-    smsPromise,
-    runDrip({ db, step, orgId, clientId, eventId, prefix, startTime })
-  ]);
-
-  // Only tag the full run — a drip cut short by the call already happening did not
-  // complete the pre-call sequence, and DPC-02 owns the held/no-show outcome.
-  if (!stoppedAt) await step.run("tag-call-booked", () => addTags(db, clientId, ["call:booked"]));
-
-  return { done: true, drip, sent, gaps, skipped, stoppedAt, stoppedBecause, sms };
+  if (!deckTemplate || !lessonsEnabled) {
+    // Existing organizations without the new lesson template retain their
+    // historical flow until the seed is applied; the legacy copy gate still
+    // refuses the filler cells.
+    const [sms, decks, legacy] = await Promise.all([
+      smsPromise, decksPromise,
+      runDrip({ db, step, orgId, clientId, eventId, prefix, startTime })
+    ]);
+    if (!legacy.stoppedAt) await step.run("tag-call-booked", () => addTags(db, clientId, ["call:booked"]));
+    return { done: true, drip, ...legacy, sms, decks };
+  }
+  const [sms, decks] = await Promise.all([smsPromise, decksPromise]);
+  if (!decks.stoppedBecause) await step.run("tag-call-booked", () => addTags(db, clientId, ["call:booked"]));
+  return { done: true, drip, sent: decks.sent, gaps: [], skipped: [],
+    stoppedAt: decks.stoppedBecause ? "deck" : null,
+    stoppedBecause: decks.stoppedBecause || null, sms, decks };
 }
 
 export const bs01PrecallLauncher = inngest.createFunction(

@@ -123,6 +123,20 @@ test.describe("client portal go-live UX", () => {
     await expect(page.locator("#tp-docs")).not.toContainText("Open this client in Documents");
   });
 
+  test("real CRS credit report is available in the client's owned documents", async ({ page }) => {
+    await openPortal(page, CLIENT_SESSION, [], {
+      portalSummary: {
+        documents: [{
+          id: "report-1", kind: "deliverable", subtype: "crs_full_credit_report",
+          title: "Complete Credit Report", mime_type: "application/pdf",
+          download: { url: "/api/documents/report-1/download" }, created_at: "2026-10-29T12:00:00Z"
+        }]
+      }
+    });
+    await expect(page.locator("#own-list")).toContainText("Complete Credit Report");
+    await expect(page.locator("#own-list a[href='/api/documents/report-1/download']")).toBeVisible();
+  });
+
   test("unlock tiles hide list prices except the $32 soft pull", async ({ page }) => {
     await openPortal(page, CLIENT_SESSION, []);
     await expect(page.locator('[data-tile="SOFT_PULL"] .tp')).toHaveText("$32");

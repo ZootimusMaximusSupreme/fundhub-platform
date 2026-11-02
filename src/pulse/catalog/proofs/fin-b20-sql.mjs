@@ -114,11 +114,9 @@ SELECT count(*)::int AS sample_count,
 
 // The floor discipline panel's two counted lines, judged from the rows they are counted from.
 //
-// 1. "Calls not logged" (src/sales/call-outcomes.mjs listUnloggedCalls) counts every past-due closer
-//    booking task that has no disposition joined by task_id. logCallOutcome treats a booking_ref match
-//    as the same call, so a disposition that was logged by booking reference alone leaves its task
-//    counted as "not logged" forever. Each such task is a call the panel says nobody logged, which
-//    somebody did. A task with a blank body has no booking reference to match and is never wrong here.
+// 1. "Calls not logged" (src/sales/call-outcomes.mjs listUnloggedCalls) counts past-due closer
+//    booking tasks for active clients with no disposition by task_id or same-client booking_ref.
+//    The bad arm catches a reference match if that exclusion is ever lost. A blank body cannot match.
 // 2. "Calls not recorded" (src/sales/unrecorded.mjs listUnrecordedCalls) means no recording and no
 //    transcript. The rows judged are exactly the calls the chip counts: held, not demo, last 14 days,
 //    no recording address, no transcript, and older than the 20 minute grace window or logged before
@@ -128,13 +126,19 @@ SELECT count(*)::int AS sample_count,
        count(*) FILTER (WHERE r.bad = 1)::int AS bad_count
   FROM (
     SELECT CASE WHEN EXISTS (SELECT 1 FROM call_outcomes d
-                              WHERE d.org_id = t.org_id AND NULLIF(BTRIM(t.body), '') IS NOT NULL
+                              WHERE d.org_id = t.org_id AND d.client_id = t.client_id
+                                AND NULLIF(BTRIM(t.body), '') IS NOT NULL
                                 AND d.booking_ref = t.body)
                 THEN 1 ELSE 0 END AS bad
       FROM tasks t
+      JOIN clients c ON c.id = t.client_id AND c.org_id = t.org_id
      WHERE t.org_id = $1::uuid AND t.assignee_role = 'closer' AND t.title LIKE 'Strategy session%'
-       AND t.due_at IS NOT NULL AND t.due_at < now() AND COALESCE(t.is_demo, false) = false
-       AND NOT EXISTS (SELECT 1 FROM call_outcomes o WHERE o.task_id = t.id AND o.org_id = t.org_id)
+       AND t.done IS NOT TRUE AND c.custom_fields->>'crm_archived_at' IS NULL
+       AND t.due_at IS NOT NULL AND t.due_at < now()
+       AND NOT EXISTS (SELECT 1 FROM call_outcomes o
+                        WHERE o.org_id = t.org_id AND o.client_id = t.client_id
+                          AND (o.task_id = t.id OR
+                               (NULLIF(BTRIM(t.body), '') IS NOT NULL AND o.booking_ref = t.body)))
     UNION ALL
     SELECT 0 AS bad
       FROM call_outcomes u

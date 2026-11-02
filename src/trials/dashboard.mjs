@@ -91,6 +91,7 @@ async function readBookings(db, { orgId, partnerId, from, to, limit = 100 }) {
        JOIN clients c ON c.id = b.client_id AND c.org_id = b.org_id
       WHERE b.org_id = $1
         AND c.partner_id = $2
+        AND c.custom_fields->>'crm_archived_at' IS NULL
         AND b.created_at >= $3
         AND ($4::timestamptz IS NULL OR b.created_at <= $4)
       ORDER BY b.starts_at ASC NULLS LAST, b.created_at ASC

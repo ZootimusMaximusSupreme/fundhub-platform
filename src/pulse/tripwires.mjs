@@ -26,6 +26,8 @@
 // own checks (src/pulse/daily-pulse.mjs). The pulse may prefix a gap id with its lane on the
 // scorecard; the id named here is the one written in the lane file.
 
+import { PUBLIC_STATIC_FILES } from "./registry.mjs";
+
 export const TRIPWIRE_IMPACTS = Object.freeze(["money", "customer"]);
 
 /** Ids that only prove a door answers or a clock ran. Never enough on their own. */
@@ -34,6 +36,8 @@ export function isPingId(id) {
 }
 
 export const TRIPWIRES = Object.freeze({
+  ...Object.fromEntries(PUBLIC_STATIC_FILES.filter((file) => /^slideshows\/[^/]+\.html$/.test(file))
+    .map((file) => [`page:${file}`, { impact: "customer", checks: ["slideshows:content"] }])),
   "route:bank-outreach": { impact: "money", checks: ["bank-outreach:verified-product", "bank-outreach:next-action"] },
   "route:read/bank-outreach": { impact: "money", checks: ["bank-outreach:verified-product"] },
   "desk:bank-outreach.html": { impact: "money", checks: ["bank-outreach:verified-product", "bank-outreach:next-action"] },
@@ -236,6 +240,8 @@ export const NOT_CUSTOMER_FACING = Object.freeze({
     "Owner-only: the 5-minute watch texts Chris's own number when a critical door is down. It never reaches a customer. Its heartbeat is job pulse-instant-watch.",
   "send:src/pulse/notify.mjs":
     "Owner-only: the morning pulse texts Chris's own number its report. It never reaches a customer. Its heartbeat is job daily-pulse.",
+  ...Object.fromEntries(PUBLIC_STATIC_FILES.filter((file) => /^slideshows\/film\/[^/]+\.html$/.test(file))
+    .map((file) => [`page:${file}`, "Internal film board for Chris to screen-record under his camera video. Customers receive the phone deck instead."])),
   "send:src/staff/blake-lead-watch.mjs":
     "Owner-only: texts Chris the name and phone of a lead Blake referred. Its own header says it never texts the lead. Its heartbeat is job blake-lead-watch.",
   "send:src/auth/staff-mail.mjs":
