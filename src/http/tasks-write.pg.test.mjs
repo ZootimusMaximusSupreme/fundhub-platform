@@ -27,6 +27,7 @@ import assert from "node:assert";
 import { db, close } from "../db.mjs";
 import { resolveDefaultOrg } from "../auth/org.mjs";
 import { createSession } from "../auth/session.mjs";
+import { emit as emitEvent } from "../events/bus.mjs";
 
 const HAVE_DB = !!process.env.DATABASE_URL;
 
@@ -53,14 +54,14 @@ describe("PATCH /api/tasks — active-shift gate", { skip: !HAVE_DB ? "no DATABA
   /* The handler runs the real requirePrincipal against the real sessions table,
      so every call carries a token minted for a real staff row. There is no
      injection seam, deliberately. */
-  const call = async (method, { body, query, token: tok } = {}) => {
+  const call = async (method, { body, query, token: tok, deps = {} } = {}) => {
     const r = res();
     await handler({
       method,
       query: query || {},
       body,
       headers: tok ? { authorization: "Bearer " + tok } : {}
-    }, r);
+    }, r, deps);
     return r;
   };
 
@@ -250,12 +251,17 @@ describe("PATCH /api/tasks — active-shift gate", { skip: !HAVE_DB ? "no DATABA
           [org, `${emailBase}@example.com`, advisors[0]]
         )).rows[0].id;
         const created = (await db.query(
-          `INSERT INTO tasks (org_id, client_id, title, assignee_role, assignee_staff_id)
-           VALUES ($1,$2,$3,'funding_advisor',$4),($1,$2,$5,'funding_advisor',$4) RETURNING id`,
-          [org, clientId, `${emailBase} intake`, advisors[0], `${emailBase} next round`]
+          `INSERT INTO tasks (org_id, client_id, title, assignee_role, assignee_staff_id, source_workflow)
+           VALUES ($1,$2,$3,'funding_advisor',$4,'c-03-inquiry-removed-resume-or-hold'),
+                  ($1,$2,$5,'funding_advisor',$4,NULL) RETURNING id`,
+          [org, clientId, "Claim funding file and review clean bureaus", advisors[0], `${emailBase} next round`]
         )).rows;
-        const moved = await call("PATCH", { token, body: { id: created[0].id, assignee_staff_id: advisors[1] } });
+        const localEmit = (database, name, payload, opts) => emitEvent(database, name, payload, { ...opts, skipInngest: true });
+        const moved = await call("PATCH", { token, body: { id: created[0].id, assignee_staff_id: advisors[1] }, deps: { emit: localEmit } });
         assert.equal(moved.code, 200, JSON.stringify(moved.body));
+        const event = (await db.query(`SELECT payload FROM events WHERE client_id = $1 AND name = 'inquiry.removed'`, [clientId])).rows;
+        assert.equal(event.length, 1);
+        assert.equal(event[0].payload.source, "funding_advisor_claimed");
         assert.equal((await db.query(`SELECT custom_fields->>'cf_funding_advisor_user_id' AS id FROM clients WHERE id = $1`, [clientId])).rows[0].id, advisors[1]);
         assert.deepEqual((await db.query(`SELECT DISTINCT assignee_staff_id FROM tasks WHERE client_id = $1`, [clientId])).rows.map(x => x.assignee_staff_id), [advisors[1]]);
 
@@ -263,6 +269,47 @@ describe("PATCH /api/tasks — active-shift gate", { skip: !HAVE_DB ? "no DATABA
         assert.equal(handedBack.code, 200, JSON.stringify(handedBack.body));
         assert.equal((await db.query(`SELECT custom_fields->>'cf_funding_advisor_user_id' AS id FROM clients WHERE id = $1`, [clientId])).rows[0].id, null);
         assert.deepEqual((await db.query(`SELECT DISTINCT assignee_staff_id FROM tasks WHERE client_id = $1`, [clientId])).rows.map(x => x.assignee_staff_id), [null]);
+      } finally {
+        if (clientId) {
+          await db.query(`DELETE FROM events WHERE client_id = $1`, [clientId]);
+          await db.query(`DELETE FROM tasks WHERE client_id = $1`, [clientId]);
+          await db.query(`DELETE FROM clients WHERE id = $1`, [clientId]);
+        }
+        if (advisors.length) await db.query(`DELETE FROM staff WHERE id = ANY($1::uuid[])`, [advisors]);
+      }
+    });
+
+    test("two funding advisors claiming the same file leave one winner", async () => {
+      const emailBase = `funding-claim-race-${process.pid}`;
+      const advisors = [];
+      let clientId = null;
+      try {
+        const tokens = [];
+        for (const suffix of ["a", "b"]) {
+          const id = (await db.query(
+            `INSERT INTO staff (org_id, name, role, email, status)
+             VALUES ($1,$2,'funding_advisor',$3,'active') RETURNING id`,
+            [org, `Funding Claim ${suffix}`, `${emailBase}-${suffix}@example.com`]
+          )).rows[0].id;
+          advisors.push(id);
+          tokens.push((await createSession(db, { staffId: id, orgId: org })).token);
+          await db.query(`INSERT INTO shifts (org_id, staff_id) VALUES ($1,$2)`, [org, id]);
+        }
+        clientId = (await db.query(
+          `INSERT INTO clients (org_id, first_name, last_name, email)
+           VALUES ($1,'Funding','Race',$2) RETURNING id`, [org, `${emailBase}@example.com`]
+        )).rows[0].id;
+        const work = (await db.query(
+          `INSERT INTO tasks (org_id, client_id, title, assignee_role)
+           VALUES ($1,$2,$3,'funding_advisor') RETURNING id`,
+          [org, clientId, `${emailBase} intake`]
+        )).rows[0].id;
+        const results = await Promise.all(tokens.map(tok => call("PATCH", { token: tok, body: { id: work, claim: true } })));
+        assert.deepEqual(results.map(r => r.code).sort(), [200, 409], results.map(r => JSON.stringify(r.body)).join("; "));
+        const named = (await db.query(`SELECT custom_fields->>'cf_funding_advisor_user_id' AS id FROM clients WHERE id = $1`, [clientId])).rows[0].id;
+        const claimed = (await db.query(`SELECT assignee_staff_id FROM tasks WHERE id = $1`, [work])).rows[0].assignee_staff_id;
+        assert.equal(named, claimed);
+        assert.ok(advisors.includes(named));
       } finally {
         if (clientId) {
           await db.query(`DELETE FROM tasks WHERE client_id = $1`, [clientId]);
