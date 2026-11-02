@@ -153,11 +153,12 @@ describe("client portal — the staff view greets the client on the file (hole 1
     assert.deepEqual(r.calls.client, [ELEVEN]);
   });
 
-  test("staff with a saved role — unchanged, and no wait on the session first", async () => {
+  test("staff with a saved role — session still verifies the preview role", async () => {
     const r = await runPortal({ search: "?id=" + ELEVEN, session: STAFF_CHRIS, store: { fh_role: "owner" } });
     assert.equal(r.greeting, STAFF_PREVIEW_GREETING);
     assert.deepEqual(r.calls.client, [ELEVEN]);
-    assert.equal(r.calls.session, 0, "a saved role answers without asking the server");
+    assert.equal(r.calls.session, 1, "a saved role cannot override the verified session");
+    assert.deepEqual(r.calls.order.slice(0, 2), ["session", "client"]);
   });
 
   test("a client with no saved role on their own ?id= — greeted by their own name, no staff read", async () => {

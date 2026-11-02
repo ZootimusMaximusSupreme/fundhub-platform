@@ -122,13 +122,16 @@ body.fh-astra-portal #prog-link a{background:transparent;color:#24281e;border-co
 /* A missing client is a choice state, never an open file or an offer shelf. */
 body.fh-astra-portal[data-portal-state="loading"] #portal-home .page > :not(#greeting):not(#greeting-sub-pre),
 body.fh-astra-portal[data-portal-state="empty-staff"] #portal-home .page > :not(#greeting):not(#greeting-sub-pre):not(.cp-next-action),
+body.fh-astra-portal[data-portal-state="error-staff"] #portal-home .page > :not(#greeting):not(#greeting-sub-pre):not(.cp-next-action),
 body.fh-astra-portal[data-portal-state="empty-client"] #portal-home .page > :not(#greeting):not(#greeting-sub-pre):not(#portal-signin-door){display:none!important}
 body.fh-astra-portal[data-portal-state="loading"] #greeting-sub-pre,
 body.fh-astra-portal[data-portal-state="empty-staff"] #greeting-sub-pre,
+body.fh-astra-portal[data-portal-state="error-staff"] #greeting-sub-pre,
 body.fh-astra-portal[data-portal-state="empty-client"] #greeting-sub-pre,
 body.fh-astra-portal.no-funding #greeting-sub-pre{display:block!important;grid-column:1/-1}
-body.fh-astra.fh-astra-portal[data-portal-state="empty-staff"] #portal-home .cp-next-action{display:flex!important;grid-column:1/8;order:0;max-width:720px}
-@media(max-width:900px){body.fh-astra.fh-astra-portal[data-portal-state="empty-staff"] #portal-home .cp-next-action{grid-column:1/-1;max-width:none}}
+body.fh-astra.fh-astra-portal[data-portal-state="empty-staff"] #portal-home .cp-next-action,
+body.fh-astra.fh-astra-portal[data-portal-state="error-staff"] #portal-home .cp-next-action{display:flex!important;grid-column:1/8;order:0;max-width:720px}
+@media(max-width:900px){body.fh-astra.fh-astra-portal[data-portal-state="empty-staff"] #portal-home .cp-next-action,body.fh-astra.fh-astra-portal[data-portal-state="error-staff"] #portal-home .cp-next-action{grid-column:1/-1;max-width:none}}
 
 /* Give each offer enough room to read instead of making one six-card strip. */
 body.fh-astra-portal #tiles{grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}

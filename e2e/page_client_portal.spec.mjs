@@ -126,6 +126,65 @@ for (const width of [1440,390]) test(`selected staff preview uses the portal wor
  await expect(page.locator('#acct')).toHaveAttribute('open','');
 });
 
+for (const [failure,status] of [['unauthorized',403],['server',500],['database',503],['offline',0]]) {
+ test(`staff preview shows a usable ${failure} failure state`,async({page})=>{
+  await page.addInitScript(()=>{localStorage.setItem('fh_token','safe-mock-token');localStorage.setItem('fh_role','owner');});
+  await page.route('**/api/**',route=>{
+   const url=route.request().url();
+   if(url.includes('/api/auth/session'))return json(route,{ok:true,principal:'staff',staff:{id:'safe-staff',role:'owner',name:'Safe Staff',status:'active'}});
+   if(url.includes('/api/dashboard/client?'))return status===0?route.abort('failed'):json(route,{ok:false,error:'read_failed'},status);
+   return json(route,{ok:true,items:[]});
+  });
+  await page.goto(`/app/client-portal.html?id=${CLIENT_ID}`);
+  await expect(page.locator('body')).toHaveAttribute('data-portal-state','error-staff');
+  await expect(page.locator('#greeting')).toContainText('could not open this client file');
+  await expect(page.locator('#greeting-sub-pre')).toBeVisible();
+  await expect(page.locator('#cp-next-link')).toBeVisible();
+  await expect(page.locator('#cp-next-link')).toHaveAttribute('href',failure==='unauthorized'?'/login.html':`/app/client-portal.html?id=${CLIENT_ID}`);
+  await expect(page.locator('#portal-status-pre')).toBeHidden();
+  await expect(page.locator('#portal-status-funded')).toBeHidden();
+  await expect(page.locator('#tiles')).toBeHidden();
+ });
+}
+
+test('staff preview retry reloads the same file and can recover',async({page})=>{
+ let reads=0;
+ await page.addInitScript(()=>{localStorage.setItem('fh_token','safe-mock-token');localStorage.setItem('fh_role','owner');});
+ await page.route('**/api/**',route=>{
+  const url=route.request().url();
+  if(url.includes('/api/auth/session'))return json(route,{ok:true,principal:'staff',staff:{id:'safe-staff',role:'owner',name:'Safe Staff',status:'active'}});
+  if(url.includes('/api/dashboard/client?')){
+   reads++;
+   return reads===1?json(route,{ok:false,error:'read_failed'},500)
+    :json(route,{ok:true,client:{first_name:'Dana',last_name:'Whitfield',custom_fields:{}},latest_booking:null,messages:[],transactions:[]});
+  }
+  return json(route,{ok:true,items:[]});
+ });
+ await page.goto(`/app/client-portal.html?id=${CLIENT_ID}`);
+ await expect(page.locator('body')).toHaveAttribute('data-portal-state','error-staff');
+ await page.locator('#cp-next-link').click();
+ await expect(page.locator('body')).toHaveAttribute('data-portal-state','ready');
+ await expect(page.locator('#greeting')).toHaveText('Previewing Dana Whitfield’s portal');
+ expect(reads).toBe(2);
+});
+
+test('verified client session overrides a stale saved staff role',async({page})=>{
+ let staffDetailReads=0;
+ await page.addInitScript(()=>{localStorage.setItem('fh_token','safe-mock-token');localStorage.setItem('fh_role','owner');});
+ await page.route('**/api/**',route=>{
+  const url=route.request().url();
+  if(url.includes('/api/auth/session'))return json(route,{ok:true,principal:'client',staff:{id:CLIENT_ID,client_id:CLIENT_ID,role:'client',name:'Portal Sample',status:'active'}});
+  if(url.includes('/api/dashboard/client?'))staffDetailReads++;
+  return json(route,{ok:true,items:[]});
+ });
+ await page.goto('/app/client-portal.html?id=bbbbbbbb-2222-4222-8222-222222222222');
+ await expect(page.locator('body')).toHaveAttribute('data-portal-state','ready');
+ await expect(page.locator('body')).toHaveAttribute('data-client-ios',/.*/);
+ await expect(page.locator('.client-ios-nav')).toHaveCount(1);
+ expect(staffDetailReads).toBe(0);
+ await expect.poll(()=>page.evaluate(()=>window.__fhClientId)).toBe(CLIENT_ID);
+});
+
 test('canonical credit-pull summary controls hero current stage rather than legacy booking tick',async({page})=>{
  await open(page,{summary:sampleBundle.reads['/api/read/portal-summary']});
  await expect(page.locator('.cp-current-stage')).toHaveText('Current: Credit pull received');

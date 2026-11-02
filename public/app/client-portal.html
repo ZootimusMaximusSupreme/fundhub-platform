@@ -514,7 +514,7 @@ footer.statusbar{flex-shrink:0;height:26px;background:var(--ink);display:flex;al
 (function () {
   var started = false;
   function enhance() {
-    if (document.body.dataset.portalState === "empty-staff") return;
+    if (document.body.dataset.portalState === "empty-staff" || document.body.dataset.portalState === "error-staff") return;
     var details = document.querySelector(".cp-progress-disclosure");
     if (!started && details) { details.open = false; started = true; }
     var hero = document.getElementById(document.body.classList.contains("no-funding") ? "portal-status-pre" : "portal-status-funded");
@@ -2592,6 +2592,25 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
     setAdvisor("");
   }
+  function paintPreviewFailure(source) {
+    var denied = source === "unauthorized";
+    document.body.dataset.portalState = "error-staff";
+    setText("greeting", "We could not open this client file");
+    setText("greeting-sub-pre", denied
+      ? "This account may need to sign in again or may not have access to this file."
+      : "The file did not load. Try again in a moment.");
+    setText("cp-next-title", denied ? "Check your sign-in" : "Try the file again");
+    setText("cp-next-copy", denied
+      ? "If signing in again does not help, ask your team lead to check your access."
+      : "Your file details will appear here when the read succeeds.");
+    var link = document.getElementById("cp-next-link");
+    if (link) {
+      var href = denied ? "/login.html" : location.pathname + location.search;
+      link.href = href;
+      link.setAttribute("data-fh-href", href);
+      link.textContent = denied ? "Open sign-in →" : "Retry preview →";
+    }
+  }
   function advisorFromClient(c) {
     var cf = (c && c.custom_fields) || {};
     var n = cf.closer_name || cf.advisor_name || cf.assigned_advisor || cf.funding_advisor;
@@ -3121,14 +3140,19 @@ document.addEventListener("DOMContentLoaded", async function () {
     clientId = await window.__fhClientId;
   }
 
-  /* The file he is looking at lives on the session, not in the saved account.
-     The saved account still names the first file after he switches.
-     Only a client login can be an authorized representative, so a saved STAFF
-     role skips this read: hole 13 (2026-09-18) promises staff with a saved role
-     an answer with no wait on the session, and this read, added for
-     representatives on 2026-09-27, had quietly put that wait back. */
-  var savedStaffRole = (function () { var r = roleHint(); return !!r && r !== "client"; })();
-  var repSession = savedStaffRole ? null : await session();
+  /* A saved role is only a hint. Verify the session before choosing the staff
+     preview: a client using a browser that once held a staff role must never
+     be sent to the staff-only client-detail read. */
+  var repSession = await session();
+  if (repSession && repSession.principal === "staff" && repSession.staff) {
+    sessionRole = String(repSession.staff.role || "").toLowerCase();
+  } else if (repSession && repSession.principal === "client") {
+    sessionRole = "client";
+    if (repSession.staff && repSession.staff.client_id) {
+      clientId = String(repSession.staff.client_id);
+      window.__fhClientId = Promise.resolve(clientId);
+    }
+  }
   if (repSession && repSession.staff && repSession.staff.authorized_rep && repSession.staff.client_id) {
     clientId = String(repSession.staff.client_id);
     window.__fhClientId = Promise.resolve(clientId);
@@ -3140,11 +3164,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     } catch (e) {}
   }
 
-  if (!savedStaffRole) await paintRepFiles();
-
-  if (repSession && repSession.principal === "staff" && repSession.staff) {
-    sessionRole = String(repSession.staff.role || "").toLowerCase();
-  }
+  if (repSession && repSession.principal === "client") await paintRepFiles();
 
   if (!clientId) {
     paintEmptyIdentity();
@@ -3246,19 +3266,15 @@ document.addEventListener("DOMContentLoaded", async function () {
         return;
       }
       paintIdentity("", "");
-      if (res.source === "unauthorized") {
-        nameFromSession().then(function (nm) {
-          paintIdentity(nm, "");
-        });
-        return;
-      }
       /* No file at this id — none given, none found, or not an id at all. Say
          so (hole N14): the line under the greeting no longer STARTS as the
          refusal, so this is the only place a wrong or stale link learns it. */
       if (res.source === "nodata" || res.source === "notfound" || res.source === "badrequest") {
         paintEmptyIdentity();
         setText("greeting-sub-pre", "This client file could not be found. Choose another client in the CRM.");
+        return;
       }
+      paintPreviewFailure(res && res.source);
     });
   } else if (repSession && repSession.staff && repSession.staff.authorized_rep) {
     document.body.dataset.portalState = "ready";

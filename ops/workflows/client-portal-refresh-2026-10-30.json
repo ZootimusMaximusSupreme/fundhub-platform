@@ -17,7 +17,7 @@
     {
       "name": "Draft, repair, and proof",
       "prompt": "Build a marked portal draft, refresh portal scoped presentation, show an honest choose-client state, preserve client navigation gates, and verify desktop and phone views.",
-      "status": "draft_ready",
+      "status": "draft_ready_local_failure_state_repaired",
       "evidence": [
         "ops/workflows/client-portal-refresh-2026-10-30/red-draft.html",
         "ops/workflows/client-portal-refresh-2026-10-30/green-draft.html",
@@ -29,7 +29,7 @@
     "lint": "4424 files and inline scripts parse clean",
     "typescript": "npx tsc --noEmit passed",
     "focused_unit": "49 passed, 0 failed",
-    "portal_browser": "18 passed, 0 failed; final staff action rerun 4 passed"
+    "portal_browser": "25 passed, 0 failed locally; includes staff read errors, retry recovery and stale saved-role client session"
   },
-  "publication": "pending marked draft review; production unchanged"
+  "publication": "local draft only; pending signed-in staff no-client, same-org selected preview, client nav, denied/cross-org proof; production unchanged"
 }
