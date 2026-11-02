@@ -18,6 +18,7 @@ export const SHIPPED_OUTSIDE_GIT = Object.freeze({
 });
 
 export const ALLOWED_UNMONITORED = {
+  "auth/mfa": "POST only: setup and verify consume a short-lived staff challenge and may create a session or recovery codes. A GET ping cannot exercise MFA safely; focused auth tests cover this door, and the staff-payout destination tripwire watches its protected money path.",
   "bank-outreach": "POST only: a ping with a body would import banks, change assignments, log a touch, or promote a lender product. Its real GET sibling read/bank-outreach is the monitored door; the daily deep check and hourly beat read the saved result.",
   "inngest": "Inngest serve() is not a GET uptime door. Liveness is the daily-pulse cron itself.",
   "webhooks/[provider]": "Signed webhook POST only. A GET ping is not uptime and can look like a replay.",
