@@ -5,8 +5,9 @@ import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import {
   sendTiming, inDripWindow, nextDripWindowOpen, dripSendTime, nextHourStrike,
-  INSTANT_TEMPLATE_KEYS, DRIP_TEMPLATE_KEYS
+  INSTANT_TEMPLATE_KEYS, DRIP_TEMPLATE_KEYS, DRIP_LAST_PLAN_MINUTE
 } from "./send-window.mjs";
+import { dripAtSql } from "../pulse/beats/lib/handoff-truth.mjs";
 
 const az = (iso) => new Date(iso);
 
@@ -56,10 +57,22 @@ describe("the 9 a.m. to 5 p.m. Arizona window", () => {
     assert.equal(nextDripWindowOpen(az("2026-12-01T01:00:00Z")).toISOString(), "2026-12-01T16:00:00.000Z");
   });
 
-  test("a drip is planned no later than 4:55 p.m., so the 5-minute sweep sends it before 5", () => {
-    assert.equal(dripSendTime(az("2026-08-01T23:55:00Z")).toISOString(), "2026-08-01T23:55:00.000Z", "4:55 p.m. stays");
-    assert.equal(dripSendTime(az("2026-08-01T23:56:00Z")).toISOString(), "2026-08-02T16:00:00.000Z", "4:56 p.m. waits for 9 a.m.");
+  test("a drip is planned no later than 4:50 p.m., so it is written before the 4:55 sweep, the last one before 5", () => {
+    assert.equal(DRIP_LAST_PLAN_MINUTE, 16 * 60 + 50, "16:50");
+    assert.equal(dripSendTime(az("2026-08-01T23:45:00Z")).toISOString(), "2026-08-01T23:45:00.000Z", "4:45 p.m. stays");
     assert.equal(dripSendTime(az("2026-08-01T23:50:00Z")).toISOString(), "2026-08-01T23:50:00.000Z", "4:50 p.m. stays");
+    assert.equal(dripSendTime(az("2026-08-01T23:50:59Z")).toISOString(), "2026-08-01T23:50:59.000Z", "4:50:59 p.m. stays");
+    assert.equal(dripSendTime(az("2026-08-01T23:51:00Z")).toISOString(), "2026-08-02T16:00:00.000Z", "4:51 p.m. waits for 9 a.m.");
+    // The reviewer's case: planned at 4:55:59 it was written after the 4:55 sweep, swept at 5:00
+    // and held to 9 a.m. with no new check. It now goes at 9 a.m., where the workflow checks first.
+    assert.equal(dripSendTime(az("2026-08-01T23:55:59Z")).toISOString(), "2026-08-02T16:00:00.000Z", "4:55:59 p.m. waits for 9 a.m.");
+    assert.equal(dripSendTime(az("2026-08-01T23:55:00Z")).toISOString(), "2026-08-02T16:00:00.000Z", "4:55 p.m. waits for 9 a.m.");
+  });
+
+  test("the pulse's SQL copy of the planning edge is the same minute as DRIP_LAST_PLAN_MINUTE", () => {
+    const sql = dripAtSql("now()");
+    assert.ok(sql.includes(`<= ${DRIP_LAST_PLAN_MINUTE} THEN`), sql);
+    assert.ok(sql.includes(`> ${DRIP_LAST_PLAN_MINUTE} THEN`), sql);
   });
 
   test("dripSendTime keeps a time inside the window and moves one outside it", () => {

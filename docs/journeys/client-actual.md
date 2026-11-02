@@ -29,6 +29,7 @@ flowchart TD
     CAN --> A_hiring[Hiring — 1 route]
     CAN --> A_merchant[merchant — 1 route]
     CAN --> A_money[money — 17 routes]
+    CAN --> A_native[native — 1 route]
     CAN --> A_ops[ops — 1 route]
     CAN --> A_public[public — 20 routes]
     CAN --> A_push[push — 5 routes]
@@ -36,7 +37,7 @@ flowchart TD
     CAN --> A_top_level[Everything else — 10 routes]
     CAN --> A_trials[trials — 1 route]
     CAN --> A_webhooks[Incoming webhooks — 1 route]
-    WHO -->|Yes| CANT[Blocked — 257 routes]
+    WHO -->|Yes| CANT[Blocked — 258 routes]
     CANT --> B_adintel[adintel — 1 blocked]
     CANT --> B_affiliates[affiliates — 1 blocked]
     CANT --> B_analytics[analytics — 4 blocked]
@@ -62,7 +63,7 @@ flowchart TD
     CANT --> B_partners[partners — 1 blocked]
     CANT --> B_privacy[privacy — 1 blocked]
     CANT --> B_proxy[proxy — 2 blocked]
-    CANT --> B_read[Reading data — 65 blocked]
+    CANT --> B_read[Reading data — 66 blocked]
     CANT --> B_repair[repair — 5 blocked]
     CANT --> B_scripts[scripts — 2 blocked]
     CANT --> B_social[social — 7 blocked]
@@ -73,7 +74,7 @@ flowchart TD
 
 ## What they can reach
 
-**81 of 338 routes.**
+**82 of 340 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -120,6 +121,7 @@ flowchart TD
 | `/api/money/transfers` | GET, POST | employees: owner, admin, sales_manager, closer<br>plus: client |
 | `/api/money/trends` | GET | employees: owner, admin, sales_manager, closer<br>plus: client |
 | `/api/money/vault` | GET, POST | employees: owner, admin, sales_manager, closer<br>plus: client |
+| `/api/native/client-activity` | POST | client |
 | `/api/ops/notify-owner` | POST | anyone |
 | `/api/org-brand` | GET, PUT | staff, partner, affiliate, client |
 | `/api/paid-services` | GET, POST | employees: owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm<br>plus: client |
@@ -166,7 +168,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**257 of 338 routes.**
+**258 of 340 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -379,6 +381,7 @@ flowchart TD
 | `/api/read/lender-observations` | GET | owner, admin, funding_advisor |
 | `/api/read/lenders` | GET | owner, admin, funding_advisor |
 | `/api/read/message-templates` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
+| `/api/read/message-tests` | GET | owner, admin |
 | `/api/read/messages` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/money-map` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/morning-brief` | GET | owner, admin |

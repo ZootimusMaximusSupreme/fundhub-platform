@@ -31,6 +31,7 @@ const PORTAL = path.resolve(HERE, "../../public/app/client-portal.html");
 const html = fs.readFileSync(PORTAL, "utf8");
 
 const ELEVEN = "029964c5-4d8e-47ed-88c9-53ac13863fd4";
+const STAFF_PREVIEW_GREETING = "Previewing Sim Eleven-Blueprint’s portal";
 
 /* The script right after data.js is the portal's main one. */
 function mainScript() {
@@ -140,23 +141,24 @@ async function runPortal({ search = "", session = NOBODY, store = {} } = {}) {
 describe("client portal — the staff view greets the client on the file (hole 13)", () => {
   test("staff cookie, no saved role, ?id= — greets Sim, not the person signed in", async () => {
     const r = await runPortal({ search: "?id=" + ELEVEN, session: STAFF_CHRIS });
-    assert.equal(r.greeting, "Welcome back, Sim", "the greeting must name the client on the file");
+    assert.equal(r.greeting, STAFF_PREVIEW_GREETING, "the greeting must name the client on the file");
     assert.equal(r.pill, "Sim Eleven-Blueprint");
     assert.deepEqual(r.calls.client, [ELEVEN], "a staff session reads the client file");
   });
 
   test("staff cookie, no saved role, ?client_id= — same answer", async () => {
     const r = await runPortal({ search: "?client_id=" + ELEVEN, session: STAFF_CHRIS });
-    assert.equal(r.greeting, "Welcome back, Sim");
+    assert.equal(r.greeting, STAFF_PREVIEW_GREETING);
     assert.equal(r.pill, "Sim Eleven-Blueprint");
     assert.deepEqual(r.calls.client, [ELEVEN]);
   });
 
-  test("staff with a saved role — unchanged, and no wait on the session first", async () => {
+  test("staff with a saved role — session still verifies the preview role", async () => {
     const r = await runPortal({ search: "?id=" + ELEVEN, session: STAFF_CHRIS, store: { fh_role: "owner" } });
-    assert.equal(r.greeting, "Welcome back, Sim");
+    assert.equal(r.greeting, STAFF_PREVIEW_GREETING);
     assert.deepEqual(r.calls.client, [ELEVEN]);
-    assert.equal(r.calls.session, 0, "a saved role answers without asking the server");
+    assert.equal(r.calls.session, 1, "a saved role cannot override the verified session");
+    assert.deepEqual(r.calls.order.slice(0, 2), ["session", "client"]);
   });
 
   test("a client with no saved role on their own ?id= — greeted by their own name, no staff read", async () => {

@@ -20,7 +20,7 @@ const queue = {
   intro_video_available: false,
   items: [{
     client_id: "aaaaaaaa-1111-4111-8111-111111111111",
-    client_name: "Dana Whitfield", phone: "+15550100",
+    client_name: "Dana Whitfield", phone: "+14702920106",
     lead_type: "booked", created_at: "2026-10-27T16:00:00.000Z",
     booked_at: "2026-10-27T16:05:00.000Z", booking_time: "2026-10-28T17:00:00.000Z",
     target_dial_by: "2026-10-27T16:06:00.000Z", needs_work: true,
@@ -47,6 +47,8 @@ test("setter sees self-scoped dial, book and show numbers plus honest two-messag
   await expect(page.locator("#setter-number-book-rate")).toHaveText("20%");
   await expect(page.locator("#setter-number-shows")).toHaveText("3");
   await expect(page.locator("#setter-number-show-rate")).toHaveText("75%");
+  await expect(page.locator("#setter-queue")).toContainText("(470) 292-0106");
+  await expect(page.getByRole("link", { name: "Call (470) 292-0106" })).toHaveAttribute("href", "tel:+14702920106");
   await expect(page.locator("#setter-detail")).toContainText("booking confirmation to the lead");
   await expect(page.locator("#setter-detail")).toContainText("full handoff to the closer");
   await expect(page.getByRole("button", { name: "Send lead confirmation + closer handoff" })).toBeEnabled();

@@ -197,7 +197,7 @@ test("See exactly where your file stands link: goes to the progress page, and ca
     const client = await openPortal();
     const link = client.page.locator("#prog-link a");
     assert.equal(await link.isVisible(), true);
-    assert.match(await link.innerText(), /See exactly where your file stands/);
+    assert.equal(await link.innerText(), "View progress →");
     assert.equal(await link.getAttribute("href"), "/progress.html");
     await link.click();
     await client.page.waitForURL(/\/progress\.html$/);

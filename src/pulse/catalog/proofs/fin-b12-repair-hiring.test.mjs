@@ -233,7 +233,10 @@ test("Hiring: a card shows its person's own score, flags, source and video and r
       const sub = (await page.locator("#dwSub").textContent()).replace(/\s+/g, " ");
       assert.ok(sub.includes(a.application_id) && sub.includes(a.role_name) && sub.includes(a.stage_name) && sub.includes(`status ${a.status}`), `${a.full_name}: sub line ${sub}`);
       const body = (await page.locator("#dwBody").innerText()).replace(/\s+/g, " ");
-      assert.ok(body.includes(a.email) && body.includes(a.phone), `${a.full_name}: contact`);
+      const phoneDigits = a.phone.replace(/^\+1\s*/, "").replace(/\D/g, "");
+      assert.equal(phoneDigits.length, 10, "synthetic applicant has a full US phone number");
+      const phoneLabel = `(${phoneDigits.slice(0, 3)}) ${phoneDigits.slice(3, 6)}-${phoneDigits.slice(6)}`;
+      assert.ok(body.includes(a.email) && body.includes(phoneLabel), `${a.full_name}: exact applicant contact`);
       assert.ok(body.includes(a.source) && body.includes(a.source_detail), `${a.full_name}: source`);
       assert.ok(body.includes(a.has_video ? `https://video.example.com/${a.application_id}` : "none submitted"), `${a.full_name}: video`);
       assert.ok(body.includes(a.has_resume ? "resume ✓" : "resume ✗"), `${a.full_name}: resume`);

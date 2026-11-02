@@ -1,4 +1,4 @@
-// The Command Center's Numbers tab (Ads · Angles · Funnels) in a real browser.
+// The Command Center's Numbers tab (Ads · Angles · Funnels · Message tests) in a real browser.
 //
 // Until the frame (U34's cc-frame.js) lands, the tab loads in the stub frame
 // from e2e/helpers/cc-numbers-stub.mjs, which the tab contract allows
@@ -37,8 +37,30 @@ function angles() {
   return a;
 }
 
+/* GET read/message-tests, shaped as api/read/message-tests.mjs answers it
+   (src/messaging/experiment-report.mjs writes the verdict words). */
+function messageTests() {
+  return {
+    ok: true,
+    as_of: "2026-10-06T15:00:00.000Z",
+    tests: [
+      {
+        name: "resume-proof", label: "Come-back chase, message 2: real proof or not", goal: "survey.completed",
+        arms: { A: { people: 12, reached: 3, waiting: 2 }, B: { people: 11, reached: 5, waiting: 1 } },
+        verdict: { winner: null, p: null, text: "B is ahead: 5 of 11 finished the survey (45%) vs 3 of 12 (25%). Not enough people yet to call it." }
+      },
+      {
+        name: "nobook-proof", label: "Never-booked chase, message 2: real proof or not", goal: "booking.created",
+        arms: { A: { people: 40, reached: 4, waiting: 0 }, B: { people: 42, reached: 12, waiting: 0 } },
+        verdict: { winner: "B", p: 0.03, text: "B wins: 12 of 42 booked a call (29%) vs 4 of 40 (10%)." }
+      }
+    ]
+  };
+}
+
 function defaults() {
   return {
+    "GET read/message-tests": messageTests(),
     "GET marketing/ads": exampleResponse("GET marketing/ads"),
     "GET marketing/ad": exampleResponse("GET marketing/ad"),
     "GET marketing/angles": angles(),
@@ -376,6 +398,26 @@ for (const vp of VIEWPORTS) {
       await expect(road.locator("[data-step=page_views]")).toContainText("Click to page: unknown");
       await expect(page.locator("[data-test=funnel-unmapped]")).toContainText("unknown");
     });
+
+    test("Message tests: each test shows the server's verdict and both sides, the winner marked", async ({ page }) => {
+      const { calls } = await open(page, "#numbers/tests");
+      await expect(page.locator("[data-test=message-test]")).toHaveCount(2);
+      const nb = page.locator("[data-test=message-test][data-name=nobook-proof]");
+      await expect(nb).toContainText("Never-booked chase, message 2: real proof or not");
+      await expect(nb.locator("[data-test=message-test-verdict]")).toHaveText("B wins: 12 of 42 booked a call (29%) vs 4 of 40 (10%).");
+      await expect(nb.locator("[data-test=arm-A]")).toContainText("4 of 40 booked a call");
+      await expect(nb.locator("[data-test=arm-B]")).toContainText("12 of 42 booked a call");
+      await expect(nb.locator("[data-test=arm-B]")).toHaveClass(/\bwin\b/);
+      await expect(nb.locator("[data-test=arm-A]")).not.toHaveClass(/\bwin\b/);
+      const rp = page.locator("[data-test=message-test][data-name=resume-proof]");
+      await expect(rp.locator("[data-test=arm-A]")).toContainText("3 of 12 finished the survey");
+      await expect(rp.locator(".ccn-ab-side.win")).toHaveCount(0);
+      await expect(page.locator("[data-test=as-of]")).toHaveText(/^Message tests counted .+ Arizona time\.$/);
+      expect(calls.some((c) => c.key === "GET marketing/ads"), "the tests view reads only its own numbers").toBe(false);
+      await noSidewaysScroll(page);
+      expect(await smallestText(page)).toBeGreaterThanOrEqual(11);
+      expect(await filledButtons(page)).toBe(0);
+    });
   });
 }
 
@@ -413,7 +455,9 @@ test.describe("Numbers tab states at 390px", () => {
     { title: "The funnels fail in plain words; Try again brings them back", hash: "#numbers/funnels", route: "GET marketing/funnels/stats",
       good: () => exampleResponse("GET marketing/funnels/stats"), said: "The funnel numbers did not load. The rest of this page is current. Try again.", painted: "[data-test=funnel]", count: 2 },
     { title: "One ad's drawer fails in plain words; Try again brings it back", hash: "#numbers/ads/91", route: "GET marketing/ad",
-      good: () => exampleResponse("GET marketing/ad"), said: "This ad's numbers did not load. The rest of this page is current. Try again.", painted: "[data-test=diagnosis]", count: 1 }
+      good: () => exampleResponse("GET marketing/ad"), said: "This ad's numbers did not load. The rest of this page is current. Try again.", painted: "[data-test=diagnosis]", count: 1 },
+    { title: "The message tests fail in plain words; Try again brings them back", hash: "#numbers/tests", route: "GET read/message-tests",
+      good: () => messageTests(), said: "The message tests did not load. The rest of this page is current. Try again.", painted: "[data-test=message-test]", count: 2 }
   ]) {
     test(part.title, async ({ page }) => {
       const { calls } = await open(page, part.hash, {
@@ -460,8 +504,24 @@ test.describe("Numbers tab states at 390px", () => {
       name: tab.textContent.trim(),
       visible: getComputedStyle(tab).visibility === "visible",
       tallEnough: tab.getBoundingClientRect().height >= 44
-    }))), { message: "all three view tabs stay visible with 44px targets" }).toEqual(
-      ["Ads", "Angles", "Funnels"].map((name) => ({ name, visible: true, tallEnough: true }))
+    }))), { message: "all four view tabs stay visible with 44px targets" }).toEqual(
+      ["Ads", "Angles", "Funnels", "Message tests"].map((name) => ({ name, visible: true, tallEnough: true }))
     );
+  });
+
+  test("Message tests: a missing count is unknown, never 0, and no test running says so", async ({ page }) => {
+    const t = messageTests();
+    t.tests[0].arms.A.people = null;
+    await open(page, "#numbers/tests", { "GET read/message-tests": t });
+    const armA = page.locator("[data-test=message-test][data-name=resume-proof] [data-test=arm-A]");
+    await expect(armA).toContainText("unknown");
+    await expect(armA).not.toContainText("0 of");
+  });
+
+  test("Message tests: no test running says so, with nothing made up", async ({ page }) => {
+    await open(page, "#numbers/tests", { "GET read/message-tests": { ok: true, as_of: null, tests: [] } });
+    await expect(page.locator("[data-test=tests-empty]")).toContainText("No message test is running.");
+    await expect(page.locator("[data-test=as-of]")).toHaveText("Message tests: not counted yet.");
+    await expect(page.locator("[data-test=message-test]")).toHaveCount(0);
   });
 });

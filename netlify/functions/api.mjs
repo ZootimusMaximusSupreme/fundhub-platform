@@ -82,6 +82,7 @@ import readPartnerProduction from "../../api/read/partner-production.mjs";
 import readPartnerHomeTiles from "../../api/read/partner-home-tiles.mjs";
 import readPartnerTraining from "../../api/read/partner-training.mjs";
 import readMessageTemplates from "../../api/read/message-templates.mjs";
+import readMessageTests from "../../api/read/message-tests.mjs";
 import readStaff from "../../api/read/staff.mjs";
 import staffTelemetry from "../../api/staff/telemetry.mjs";
 import staffMonitoringConsent from "../../api/staff/monitoring-consent.mjs";
@@ -293,6 +294,7 @@ import pushKey from "../../api/push/key.mjs";
 import pushSubscribe from "../../api/push/subscribe.mjs";
 import pushUnsubscribe from "../../api/push/unsubscribe.mjs";
 import pushNativeDevice from "../../api/push/native-device.mjs";
+import nativeClientActivity from "../../api/native/client-activity.mjs";
 import pushPreferences from "../../api/push/preferences.mjs";
 import contracts from "../../api/contracts.mjs";
 import readContracts from "../../api/read/contracts.mjs";
@@ -544,6 +546,7 @@ export const ROUTES = {
      partner holds the two compliance certifications. */
   "read/partner-training": readPartnerTraining,
   "read/message-templates": readMessageTemplates,
+  "read/message-tests": readMessageTests,
   "read/staff": readStaff,
   "staff/telemetry": staffTelemetry,
   "staff/monitoring-consent": staffMonitoringConsent,
@@ -1302,6 +1305,7 @@ export const ROUTES = {
   "push/subscribe": pushSubscribe,
   "push/unsubscribe": pushUnsubscribe,
   "push/native-device": pushNativeDevice,
+  "native/client-activity": nativeClientActivity,
   "push/preferences": pushPreferences,
 
   // ── The contract generator (124_contracts.sql, src/contracts/) ─────────────

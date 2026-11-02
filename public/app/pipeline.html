@@ -5,6 +5,7 @@
 <link rel="preload" href="/assets/fonts/nunito-latin-variable.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/app/fundhub-font.css">
 <script defer src="/app/fundhub-font.js"></script>
+<script src="/app/phone-format.js"></script>
 
 <meta charset="UTF-8">
 <title>Fundhub — Pipeline</title>
@@ -402,6 +403,8 @@
   .c-amt .unit{font-size:var(--fs-caption);font-weight:400;color:var(--text-faint);}
   .c-age{font-family:var(--mono);font-size:var(--fs-caption);color:var(--text-faint);margin-top:2px;}
   .c-call-confirmed{display:inline-flex;align-items:center;gap:4px;margin-top:4px;padding:2px 8px;border-radius:999px;
+    background:var(--ok-bg);color:var(--ink2);border:1px solid var(--ok-line);font-size:var(--fs-caption);font-weight:700;}
+  .c-app-opened{display:table;margin-top:4px;padding:2px 8px;border-radius:999px;
     background:var(--ok-bg);color:var(--ink2);border:1px solid var(--ok-line);font-size:var(--fs-caption);font-weight:700;}
   .c-age.old{color:var(--ink2);font-weight:700;}
   /* "A bank said yes, nobody has said how much." Literal amber, not a brand
@@ -1973,6 +1976,13 @@ restore();
     if (pipelineKey === "sales" && c.call_confirmed === true) {
       card.appendChild(div("c-call-confirmed", "✓ Call confirmed"));
     }
+    // An authenticated native first-open is proof the app ran, unlike a download-link click.
+    // No event means unknown, never "not installed" or a made-up checkmark.
+    if (pipelineKey === "sales" && c.app_first_authenticated_at) {
+      var appOpened = div("c-app-opened", "✓ App opened");
+      appOpened.title = "Client signed in using the iPhone app: " + formatBookedWhen(c.app_first_authenticated_at);
+      card.appendChild(appOpened);
+    }
     card.appendChild(div("c-scores", formatScores(c)));
     card.appendChild(msgLine("sms", c.phone, c.client_id, c.sms_needs_reply));
     card.appendChild(msgLine("email", c.email, c.client_id, c.email_needs_reply));
@@ -2120,7 +2130,7 @@ restore();
     var a = document.createElement("a");
     a.className = "c-msg-link";
     a.href = messagingHref(clientId, channel);
-    a.textContent = String(value);
+    a.textContent = channel === "sms" ? FHFormatPhone(value) : String(value);
     a.addEventListener("click", function (ev) { ev.stopPropagation(); });
     wrap.appendChild(a);
     if (needsReply) {
@@ -2143,7 +2153,7 @@ restore();
     if (clientId && value) {
       var link = document.createElement("a");
       link.href = messagingHref(clientId, channel);
-      link.textContent = String(value);
+      link.textContent = channel === "sms" ? FHFormatPhone(value) : String(value);
       right.appendChild(link);
       if (needsReply) {
         var badge = document.createElement("span");

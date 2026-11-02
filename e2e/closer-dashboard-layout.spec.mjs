@@ -120,6 +120,7 @@ test("a phone can log an outcome from the disclosure with keyboard and save to t
   expect(posted[0].belief_failed).toBe("trust");
   expect(posted[0].repair_referral).toBe(true);
   expect(Object.values(posted[0].checklist)).toEqual([true, true, true, true, true]);
+  await page.waitForURL(`**/closer-dashboard.html?client_id=${call.next_call.client_id}&task_id=${call.next_call.task_id}`);
 });
 
 test("a long client and business name wrap without covering call tools", async ({ page }) => {

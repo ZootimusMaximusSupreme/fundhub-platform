@@ -278,10 +278,12 @@ test.describe("teleprompter, the end of a script and the remote", () => {
     const posts = [];
     let down = true;
     await open(page, { posts, markFails: () => down });
+    await expect(page.locator("#s-title")).toHaveText(THREE.title);
     await page.evaluate(() => window.__fhtp.finish());
     await page.keyboard.press(" ");
     await expect(page.locator("#pending")).toBeHidden();
     await expect(page.locator("#pending")).toContainText("saved on this phone");
+    await expect(page.locator("#pending")).toContainText("No connection.");
     expect(await page.evaluate(() => JSON.parse(localStorage.getItem("fhtp.queue")).length)).toBe(1);
     // The next script still loads; the shoot keeps going without a connection.
     await expect(page.locator("#s-ad")).toHaveText("Direct Book Ad 92 · Take 1 · 3 of 3");

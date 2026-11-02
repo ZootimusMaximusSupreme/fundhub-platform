@@ -162,6 +162,17 @@ flowchart TD
 Every link in these messages is `{{custom_values.booking_link}}`, which opens the
 person's own calendar (section 7c).
 
+**One chase across the trigger change (review 2026-10-31).** A person who answered
+one question before this shipped still has a chase asleep that started on
+`survey.submitted`. When they finish, `survey.completed` starts a second chase.
+The two key their sends on different events, so every text went twice. Now, just
+before each text or email, a chase skips it when the other trigger's chase already
+sent that same message to the person in the 5 days before it started
+(`sentByOtherTrigger`). The setter task and the later checks still run. Two chases
+of the same trigger are not touched: a new finished survey more than six hours
+later still starts a new chase. An old-trigger run also steps aside once the
+finished-survey event is saved. This lasts only as long as the old-trigger runs.
+
 ## 3b. The come-back flow for an unfinished survey (2026-10-31)
 
 `src/workflows/s-02-incomplete-survey-nudge.mjs`, `src/survey/resume-link.mjs`,
@@ -430,6 +441,17 @@ booking about its own call time first. If no saved booking speaks to that time,
 it decides as before. The `booking.noshow` key now carries the call time,
 because the booking id no longer changes when a call moves.
 
+**A rebook after the miss stops the no-show texts, even one made before they
+start (review 2026-10-31).** `s-05a` used to count the person's bookings when its
+run began and stop only on a higher count later. A rebook saved after the miss but
+before the run's first step was inside that count, so all four touches still went.
+Now each touch asks for a `booking.created` or `booking.rescheduled` saved after
+the missed call started, or after the `booking.noshow` was saved if the start time
+is missing (`rebookedSinceMiss`). A booking made during the missed call, or in the
+5 minutes before the no-show is saved, counts too. The closer's task is still made
+at once. If neither missed-call time is saved, a booking added after the run starts
+still stops later touches through the saved starting count.
+
 ## 6. Where a message actually goes out
 
 Nothing above sends anything. `sendTemplated` writes one queued row.
@@ -455,10 +477,36 @@ gate read it:
 | drip | the come-back flow (`*-S02-RESUME-*`), the never-booked chase (`*-NOBOOK-*`), the no-answer texts (`SMS-AISET03-*`), no-show recovery (`*-S05A-*`), the pre-call text (`SMS-BS01-02-PRECALL`) | 9 a.m. to 5 p.m. Arizona, text and email; one that comes due outside waits on the queue for 9 a.m. |
 | standard | everything else, including the 24-hour and 2-hour call reminders | as before: texts 8 a.m. to 8 p.m. Arizona, email any hour |
 
+**A drip is planned no later than 4:50 p.m. (review 2026-10-31).** The workflows
+sleep to the moment a drip goes out and check bookings and replies first, then
+write the row. The sweep's last pass before 5 p.m. is 4:55, so a drip planned at
+4:55 (the old edge, `DRIP_LAST_PLAN_MINUTE`) was written just after it, swept at
+5:00, held to 9 a.m. and sent with no fresh check. Planned by 4:50 it is written
+before the 4:55 pass. Later than that, it is planned for 9 a.m. and checked then.
+The heartbeat's copy of the edge (`dripAtSql`) moves with it.
+
 The call reminders stay standard on purpose: holding a 2-hour reminder for a 9:30
 a.m. call until 9 a.m. would put it after the call. One clock for everybody; there
 are no per-person time zones. Plus-tag test files (`+sim-`, `e2e+`) skip both
 windows so a night proof can run.
+
+**Message tests (owner GO 2026-10-31).** Four follow-up messages can be split into
+version A (today's words) and version B (the same step with one real client win
+added): the second come-back message (`SMS-S02-RESUME-2`, `EMAIL-S02-RESUME-2`) and
+the second never-booked message (`SMS-NOBOOK-02`, `EMAIL-NOBOOK-02`). Version B is its
+own template row with `-B` on the end of the key. `sendTemplated` gives each person a
+fixed version by a coin flip on their id and the test's name
+(`src/messaging/experiments.mjs`), so the text and the email of one step match and a
+replay picks the same one. B goes only when its row exists, is not draft copy and has
+passed compliance; otherwise the person gets A, never a blank, and the `messages` row
+keeps the key that really went. The send key that stops a double send stays on the
+base key. A `-B` key is held, gated, de-duplicated and counted exactly like its base
+key, so a person's customer steps do not change. The read-only report
+(`GET /api/read/message-tests`, owner and admin; `scripts/message-tests-report.mjs`)
+counts the people in each version and how many finished the survey (come-back test) or
+booked (never-booked test) within 7 days of their first message in the test. The count
+starts when the first B message goes out. It names a winner only when each side has 30
+people and the gap passes a 95% check, and it never switches a version by itself.
 
 ## 7. Cortana's confirmed-booking receipt (2026-10-29)
 

@@ -96,6 +96,21 @@ export async function rebookedSince(db, clientId, eventId) {
   return r.rows.length > 0;
 }
 
+/* Did a setter reach the person after the No answer? The setter desk keeps the latest
+   call result on the person (custom_fields.setter_handoff.disposition, src/setter/
+   dashboard.mjs) and emits no event for "reached" or "booked_on_call", so the cadence
+   reads it before each text. "Tried calling, missed you" must not follow a real
+   conversation (second read-only review of PR #346, 2026-10-31). */
+export const REACHED_DISPOSITIONS = Object.freeze(["reached", "booked_on_call"]);
+export async function setterReached(db, orgId, clientId) {
+  const r = await db.query(
+    `SELECT custom_fields FROM clients WHERE id = $1 AND org_id = $2 LIMIT 1`,
+    [clientId, orgId]
+  );
+  const handoff = r.rows[0]?.custom_fields?.setter_handoff;
+  return REACHED_DISPOSITIONS.includes(handoff && typeof handoff === "object" ? handoff.disposition : null);
+}
+
 export async function handle({ event, db, step, now = () => new Date() }) {
   if (!["no_answer", "no-answer", "voicemail"].includes(event.payload?.disposition)) {
     return { done: false, reason: "not_no_answer" };
@@ -109,8 +124,8 @@ export async function handle({ event, db, step, now = () => new Date() }) {
   const replied = () => hasReplied(db, { clientId, eventId });
 
   /* Wait for text n, then ask whether it should still go. Returns why the cadence
-     should stop ("rebooked", "replied" or "call_gone"), or null to send. The moment
-     is planned in a step; text 1 is due now, texts 2 and 3 after the text before them. */
+     should stop ("rebooked", "replied" or "reached"), or null to send. The moment is
+     planned in a step; text 1 is due now, texts 2 and 3 after the text before them. */
   let plannedMs = 0;
   let callAt = null;
   async function waitAndCheck(n) {
@@ -122,12 +137,14 @@ export async function handle({ event, db, step, now = () => new Date() }) {
     await step.sleepUntil(`wait-until-msg${n}`, new Date(planned));
     if (await step.run(`check-rebooked-${n}`, () => rebookedSince(db, clientId, eventId))) return "rebooked";
     if (await step.run(`check-replied-${n}`, replied)) return "replied";
-    if (n > 1 && callAt && !(await step.run(`check-call-ahead-${n}`, () => upcomingCall(db, orgId, clientId)))) return "call_gone";
+    if (await step.run(`check-reached-${n}`, () => setterReached(db, orgId, clientId))) return "reached";
     return null;
   }
+  // A rebook is named by where the cadence stood; a reply or a reached person by why.
+  const exitFor = (stop, where) => (stop === "rebooked" ? where : stop === "reached" ? "setter-reached" : "replied");
 
   const stop1 = await waitAndCheck(1);
-  if (stop1) return { done: true, exitedAt: stop1 === "replied" ? "replied" : "before-msg1" };
+  if (stop1) return { done: true, exitedAt: exitFor(stop1, "before-msg1") };
 
   callAt = await step.run("find-upcoming-call", () => upcomingCall(db, orgId, clientId));
   const keys = callAt ? CALL_BOOKED_KEYS : NO_CALL_KEYS;
@@ -138,12 +155,21 @@ export async function handle({ event, db, step, now = () => new Date() }) {
 
   const msg1 = await step.run("send-msg1", () => send(1));
 
+  /* Texts 2 and 3 to someone WITH a call ask them to keep it. If that call was cancelled
+     or has already happened by the time a text is due, there is nothing left to keep, so
+     the cadence ends (independent review of PR #346, 2026-10-31). upcomingCall reads the
+     live booking: a cancelled call is no longer 'booked', a held one is in the past. */
+  const callGone = async (n) => Boolean(callAt)
+    && !(await step.run(`check-call-still-on-${n}`, () => upcomingCall(db, orgId, clientId)));
+
   const stop2 = await waitAndCheck(2);
-  if (stop2) return { done: true, exitedAt: stop2 === "replied" ? "replied" : "after-msg1", msg1 };
+  if (stop2) return { done: true, exitedAt: exitFor(stop2, "after-msg1"), msg1 };
+  if (await callGone(2)) return { done: true, exitedAt: "call-gone-after-msg1", msg1 };
   const msg2 = await step.run("send-msg2", () => send(2));
 
   const stop3 = await waitAndCheck(3);
-  if (stop3) return { done: true, exitedAt: stop3 === "replied" ? "replied" : "after-msg2", msg1, msg2 };
+  if (stop3) return { done: true, exitedAt: exitFor(stop3, "after-msg2"), msg1, msg2 };
+  if (await callGone(3)) return { done: true, exitedAt: "call-gone-after-msg2", msg1, msg2 };
   const msg3 = await step.run("send-msg3", () => send(3));
 
   return { done: true, exitedAt: "completed", msg1, msg2, msg3 };
