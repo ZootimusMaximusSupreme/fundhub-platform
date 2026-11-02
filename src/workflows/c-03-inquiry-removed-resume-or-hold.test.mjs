@@ -3,7 +3,7 @@ import assert from "node:assert";
 import { handle } from "./c-03-inquiry-removed-resume-or-hold.mjs";
 import { pgFake, fakeStep, ev } from "./test-support.mjs";
 
-function c03Db({ client, cases = [], inquiries = [], paid = false, fraudCase = false }) {
+function c03Db({ client, cases = [], inquiries = [], paid = false, fraudCase = false, advisorId = "advisor-1" }) {
   const base = pgFake({ clients: [client] });
   const query = base.query.bind(base);
   base.query = async (sql, params) => {
@@ -16,7 +16,7 @@ function c03Db({ client, cases = [], inquiries = [], paid = false, fraudCase = f
       return { rows: [{ staff_id: id, active_staff_id: id }] };
     }
     if (sql.includes("FROM tasks t JOIN staff s")) return { rows: [] };
-    if (sql.includes("FROM staff s") && sql.includes("ORDER BY")) return { rows: paid ? [{ id: "advisor-1" }] : [] };
+    if (sql.includes("FROM staff s") && sql.includes("ORDER BY")) return { rows: paid && advisorId ? [{ id: advisorId }] : [] };
     if (sql.includes("UPDATE clients c") && sql.includes("cf_funding_advisor_user_id")) {
       client.custom_fields.cf_funding_advisor_user_id = params[2];
       return { rows: [{ id: client.id }] };
@@ -97,6 +97,16 @@ test("recent cleared inquiry hands clean bureaus back to the funding advisor", a
   assert.deepEqual(res.protectedBureaus, ["EX"]);
   assert.equal(db.tasks[0].assignee_role, "funding_advisor");
   assert.equal(db.tasks[0].assignee_staff_id, "advisor-1");
+});
+
+test("cleared inquiry does not invite Apply when no funding advisor is available", async () => {
+  const client = { id: "cl-1", org_id: "org-1", tags: ["inquiry:pending"], custom_fields: { round_hold_reason: "New Inquiries" } };
+  const db = c03Db({ client, paid: true, advisorId: null });
+  const res = await handle({ event: ev("inquiry.removed", {}, { clientId: client.id }), db, step: fakeStep() });
+  assert.equal(res.branch, "advisor_unassigned");
+  assert.equal(client.custom_fields.ready_for_next_round, false);
+  assert.equal(client.custom_fields.employee_next_action, "Assign Funding Advisor");
+  assert.equal(db.tasks.length, 0);
 });
 
 test("document hold and unpaid funding do not become Apply", async () => {

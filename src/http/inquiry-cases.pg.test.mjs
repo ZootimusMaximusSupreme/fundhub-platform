@@ -135,6 +135,22 @@ describe("POST /api/inquiry-cases", { skip: !HAVE_DB ? "no DATABASE_URL" : false
     assert.equal(after.case_status, "Completed");
   });
 
+  test("mark_cleared cannot strand an open inquiry before funding handback", async () => {
+    await wipeClient();
+    const { caseRow, inquiry } = await buildCase();
+    const refused = await post({ action: "mark_cleared", id: caseRow.id });
+    assert.equal(refused.code, 409);
+    assert.equal(refused.body.error, "inquiries_still_open");
+    assert.equal((await db.query(`SELECT case_status::text AS status FROM inquiry_removal_cases WHERE id = $1`, [caseRow.id])).rows[0].status, "Queued");
+    assert.equal((await db.query(`SELECT is_open FROM inquiry_log WHERE id = $1`, [inquiry.id])).rows[0].is_open, true);
+    assert.equal((await db.query(`SELECT count(*)::int AS n FROM events WHERE client_id = $1 AND name = 'inquiry.removed'`, [clientId])).rows[0].n, 0);
+
+    const cleared = await post({ action: "clear_inquiry", inquiry_id: inquiry.id });
+    assert.equal(cleared.code, 200);
+    assert.equal(cleared.body.case_cleared, true);
+    assert.equal((await db.query(`SELECT count(*)::int AS n FROM events WHERE client_id = $1 AND name = 'inquiry.removed'`, [clientId])).rows[0].n, 1);
+  });
+
   test("the write and the event agree — no partial write is left behind", async () => {
     await wipeClient();
     const { inquiry } = await buildCase();

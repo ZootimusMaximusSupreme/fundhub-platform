@@ -231,6 +231,47 @@ describe("PATCH /api/tasks — active-shift gate", { skip: !HAVE_DB ? "no DATABA
       assert.equal((await taskRow()).assignee_staff_id, mateId);
     });
 
+    test("funding task transfer moves the named advisor and all open work together", async () => {
+      const emailBase = `funding-task-handoff-${process.pid}`;
+      const advisors = [];
+      let clientId = null;
+      try {
+        for (const suffix of ["a", "b"]) {
+          const row = (await db.query(
+            `INSERT INTO staff (org_id, name, role, email, status)
+             VALUES ($1,$2,'funding_advisor',$3,'active') RETURNING id`,
+            [org, `Funding Handoff ${suffix}`, `${emailBase}-${suffix}@example.com`]
+          )).rows[0];
+          advisors.push(row.id);
+        }
+        clientId = (await db.query(
+          `INSERT INTO clients (org_id, first_name, last_name, email, custom_fields)
+           VALUES ($1,'Funding','Handoff',$2,jsonb_build_object('cf_funding_advisor_user_id',$3::text)) RETURNING id`,
+          [org, `${emailBase}@example.com`, advisors[0]]
+        )).rows[0].id;
+        const created = (await db.query(
+          `INSERT INTO tasks (org_id, client_id, title, assignee_role, assignee_staff_id)
+           VALUES ($1,$2,$3,'funding_advisor',$4),($1,$2,$5,'funding_advisor',$4) RETURNING id`,
+          [org, clientId, `${emailBase} intake`, advisors[0], `${emailBase} next round`]
+        )).rows;
+        const moved = await call("PATCH", { token, body: { id: created[0].id, assignee_staff_id: advisors[1] } });
+        assert.equal(moved.code, 200, JSON.stringify(moved.body));
+        assert.equal((await db.query(`SELECT custom_fields->>'cf_funding_advisor_user_id' AS id FROM clients WHERE id = $1`, [clientId])).rows[0].id, advisors[1]);
+        assert.deepEqual((await db.query(`SELECT DISTINCT assignee_staff_id FROM tasks WHERE client_id = $1`, [clientId])).rows.map(x => x.assignee_staff_id), [advisors[1]]);
+
+        const handedBack = await call("PATCH", { token, body: { id: created[0].id, assignee_staff_id: null } });
+        assert.equal(handedBack.code, 200, JSON.stringify(handedBack.body));
+        assert.equal((await db.query(`SELECT custom_fields->>'cf_funding_advisor_user_id' AS id FROM clients WHERE id = $1`, [clientId])).rows[0].id, null);
+        assert.deepEqual((await db.query(`SELECT DISTINCT assignee_staff_id FROM tasks WHERE client_id = $1`, [clientId])).rows.map(x => x.assignee_staff_id), [null]);
+      } finally {
+        if (clientId) {
+          await db.query(`DELETE FROM tasks WHERE client_id = $1`, [clientId]);
+          await db.query(`DELETE FROM clients WHERE id = $1`, [clientId]);
+        }
+        if (advisors.length) await db.query(`DELETE FROM staff WHERE id = ANY($1::uuid[])`, [advisors]);
+      }
+    });
+
     test("done:true closes the task", async () => {
       await resetTask();
       const r = await call("PATCH", { token, body: { id: taskId, done: true } });

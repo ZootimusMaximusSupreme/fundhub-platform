@@ -36,7 +36,10 @@ function fakeDb({ client, lender, application, businesses = [], cases = [], inqu
           requested_state: params[6],
           sessid: params[11],
           application_url: params[13],
-          status: params[14]
+          status: params[14],
+          error_code: params[15],
+          error_message: params[16],
+          ended_at: params[18]
         };
         sessions.push(row);
         return { rows: [row] };
@@ -224,8 +227,10 @@ const launch = (db) => launchProxySession(db, { orgId: "o1", staffId: "s1", clie
 
 test("direct Apply launch refuses a lender pulling an active bureau", async () => {
   const db = fakeDb({ client: baseClient(), lender: baseLender("EX"), cases: [{ selected_bureaus_raw: "EX", case_status: "In Progress" }] });
-  await assert.rejects(launch(db), (err) => err.code === "lender_bureau_on_hold" && err.status === 409);
-  assert.equal(db.sessions.length, 0);
+  await assert.rejects(launch(db), (err) => err.code === "lender_bureau_on_hold" && err.status === 409 && err.sessionId === "sess-row-1");
+  assert.equal(db.sessions.length, 1);
+  assert.equal(db.sessions[0].status, "failed");
+  assert.equal(db.sessions[0].error_code, "lender_bureau_on_hold");
 });
 
 test("clean bureau can start Apply while another bureau is protected", async () => {
@@ -238,7 +243,8 @@ test("multi-bureau lender and unmapped lender cannot bypass protection", async (
   for (const pulled of ["EX,TU", null]) {
     const db = fakeDb({ client: baseClient(), lender: baseLender(pulled), inquiries: [{ bureau: "EX", status: "Removed", created_at: new Date().toISOString() }] });
     await assert.rejects(launch(db), (err) => err.code === (pulled ? "lender_bureau_on_hold" : "lender_bureau_unknown"));
-    assert.equal(db.sessions.length, 0);
+    assert.equal(db.sessions.length, 1);
+    assert.equal(db.sessions[0].status, "failed");
   }
 });
 
@@ -254,7 +260,8 @@ test("fraud, document, and paused holds block Apply even on a clean bureau", asy
     client.custom_fields.round_hold_reason = reason;
     const db = fakeDb({ client, lender: baseLender("TU") });
     await assert.rejects(launch(db), (err) => err.code === "funding_on_hold");
-    assert.equal(db.sessions.length, 0);
+    assert.equal(db.sessions.length, 1);
+    assert.equal(db.sessions[0].error_code, "funding_on_hold");
   }
   const db = fakeDb({ client: baseClient(), lender: baseLender("TU"), fraudCase: true });
   await assert.rejects(launch(db), (err) => err.code === "funding_on_hold");
