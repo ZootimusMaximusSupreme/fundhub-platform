@@ -75,11 +75,11 @@ export const DRIP_TZ = "America/Phoenix";
 export function dripAtSql(t) {
   const local = `((${t}) AT TIME ZONE '${DRIP_TZ}')`;
   /* Minutes past midnight there, against the planning edges: 9:00 a.m. (540) to
-     4:55 p.m. (1015), the same as dripSendTime. */
+     4:50 p.m. (1010), the same as dripSendTime (DRIP_LAST_PLAN_MINUTE). */
   const minute = `(extract(hour FROM ${local}) * 60 + extract(minute FROM ${local}))`;
-  return `(CASE WHEN ${minute} >= 540 AND ${minute} <= 1015 THEN (${t})
+  return `(CASE WHEN ${minute} >= 540 AND ${minute} <= 1010 THEN (${t})
     ELSE ((date_trunc('day', ${local})
-           + CASE WHEN ${minute} > 1015 THEN interval '1 day' ELSE interval '0 days' END
+           + CASE WHEN ${minute} > 1010 THEN interval '1 day' ELSE interval '0 days' END
            + interval '9 hours') AT TIME ZONE '${DRIP_TZ}') END)`;
 }
 /** The first /roadmap follow-up waits 15 minutes. 30 minutes is the grace. */
