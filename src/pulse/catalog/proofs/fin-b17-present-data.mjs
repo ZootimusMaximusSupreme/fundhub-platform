@@ -74,51 +74,51 @@ export const BELIEFS = Object.freeze([
 /** The six objections: button words, the slide the jump button goes to and what it says, and the three lines to say. */
 export const OBJECTION_TABLE = Object.freeze([
   {
-    title: "Think about it", jumpLabel: "Show the process", target: "S-08",
+    title: "Think about it", jumpLabel: "Show the path", target: "S-08",
     lines: [
-      "I want you to make the best decision for your business. Can I ask, when you say you need to think about it, is it the process you're unsure about, or the $3,000 deposit?",
-      "Isolate it. 'Think about it' is never the real objection.",
-      "If they can't articulate it: you told me you're a 9 on the process, you need [Amount] for [goal], and this has held you back [X time]. What's really going on? Pause. Let them fill the silence.",
+      "Of course. What part needs thought: the plan, what it costs, the work on your side, or whether you trust us?",
+      "What do you still need to see to make a clear decision?",
+      "Let's answer that part. If you still need time, we'll set a real follow-up.",
     ],
   },
   {
     title: "$3K is a lot", jumpLabel: "Show the math", target: "S-20",
     lines: [
-      "Isolate: finances aside, anything else keeping you from being 100 percent certain?",
-      "Should vs how: you're not in a SHOULD I place, you're in a HOW can I place. Right?",
-      "Context: you just saw how much your file qualifies for: [Amount]. The $3,000 counts toward the 10 percent, and the 10 percent is only on money you actually get. Too much compared to what? You told me waiting costs you [cost] a month.",
+      "I hear you. Is the price outside your budget, or do you need to see why the work is worth it?",
+      "The $3,000 deposit counts once toward the success fee. The agreement uses confirmed approved limits or amounts, including credit you do not draw.",
+      "Let's read the full fee and the work together. Does this fit your plan and budget?",
     ],
   },
   {
-    title: "What if it fails", jumpLabel: "Show guarantees", target: "S-21",
+    title: "What if it fails", jumpLabel: "Show the agreement", target: "S-21",
     lines: [
-      "We ran the soft pull together. You saw your file with your own eyes. We're not guessing.",
-      "Our fee is 10 percent of the money you actually get. The bank decides, not us. We pick the banks and the order.",
-      "Here's what the agreement guarantees: we start on your file within 24 business hours, and your first applications go out within 72. So what specifically are you worried won't work?",
+      "The lender decides approval. Here is the work Fundhub commits to in writing.",
+      "An advisor starts your file within 24 business hours, and your first authorized applications go out within 72 business hours.",
+      "If we miss either deadline, you can request the deposit back. If no funding is secured, no back-end success fee is due. What part still worries you?",
     ],
   },
   {
-    title: "Spouse", jumpLabel: "Show guarantees", target: "S-21",
+    title: "Spouse", jumpLabel: "Show the path", target: "S-08",
     lines: [
-      "Aside from letting your spouse know, anything else keeping you from 100 percent?",
-      "Respect vs permission: doing it regardless and letting them know? Or need their sign-off?",
-      "If respect: 'this company wants $3K, thoughts?' versus 'I found the company that pulled my file and showed me exactly what to do next. I've decided, and I wanted you to know first.' Which one gets them on board? If permission: book the 3-way, inside one day.",
+      "That makes sense. Do you want their input, or do you need a joint decision?",
+      "What will they want to know about the plan or price? Let's answer that now.",
+      "Let's set a time when both of you can see the file and ask questions together.",
     ],
   },
   {
-    title: "Burned before", jumpLabel: "Show the system", target: "S-10",
+    title: "Burned before", jumpLabel: "Show the work", target: "S-10",
     lines: [
-      "I'm sorry that happened. What exactly went wrong with the last company? Listen.",
-      "That's way too common. It's fair to go slow. That's why we started with your file, not a pitch.",
-      "You see the fee in dollars before you pay, and everything is in the agreement, in writing. And the 10 percent is only on money you actually get.",
+      "What happened with the last company? I'll hear the whole story.",
+      "Here is your file, the work we propose, and the agreement with the price and service steps.",
+      "Here is where you will see the work and reach the team. Which part do you want me to show again?",
     ],
   },
   {
-    title: "DIY", jumpLabel: "Show the rounds", target: "S-12",
+    title: "DIY", jumpLabel: "Show the work", target: "S-12",
     lines: [
-      "You absolutely can. How long have you been trying? And how much capital have you secured in that time?",
-      "Almost every application is a hard pull, and each one costs fundability. Our system matches your file to the banks that fit it, in the right order.",
-      "If you want to do it yourself the right way, that's the Capital Blueprint: the plan from your own file, step by step.",
+      "You can do this yourself. Which part would you handle, and what brought you here for help?",
+      "For funding, our fee pays for bank research, application order, authorized submissions and follow-up. For credit optimization, we build and track the rounds from your file.",
+      "The Blueprint is the guided plan if you want to run the steps yourself. Which level of help fits you?",
     ],
   },
 ].map((row) => Object.freeze({ ...row, lines: Object.freeze(row.lines) })));

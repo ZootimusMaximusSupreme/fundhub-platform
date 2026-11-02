@@ -4,15 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Fundhub, The Maximum</title>
-<meta name="description" content="The maximum amount of funding comes from your file, the order and the companies, and it keeps going. Your personal file first, then each company on its own.">
+<meta name="description" content="Our model starts with your personal file and a seasoned card before checking each business. How that card sizes each company, and what your business runs on once the file is primed.">
 <!--
   Deck MX · The maximum
+  Rewritten 2026-10-31 on Chris's slide framework (see pre-underwriting.html).
   Lane: Every lane (Funding, and Blueprint and Repair)
   Hammer Them pillar: the 2nd-layer question ("how does funding really work")
   Belief: The maximum amount of funding comes from the file, the order and
           the companies, and it keeps going. The amount I see on the call is
           where my funding sequence starts.
-  The one missing belief it builds (04-sales-call-script.md:349-360): desire.
+  The one missing belief it builds (docs/sops/weekend-2026-10-24/04-sales-call-script.md (current)): desire.
 
   Chris's direction (2026-10-31): his call-slide style (a coded label, a big
   headline, full lines of copy with the pastel stripe), more copy; real first
@@ -25,8 +26,7 @@
     hundreds of files, thousands of data points, learned stacking ten years
     ago, $100K lines on four companies off one personal file on stated
     income. Never a client count, never a dollar total of approvals.
-  - "Unlimited funding over time" is the owner's claim (owner-set
-    2026-09-29) and stays, with no dollar amount next to it.
+  - The 2026-11-01 rewrite treats later funding as a new file and lender decision. It does not claim unlimited access or automatic funding for added businesses.
   - Never an approval promise, an amount a bank will give, or a date. The
     one real approval is shown on its own, with no total.
   - "Funding sequence" and "next funding sequence", never "round two".
@@ -58,8 +58,7 @@
   - Lead: promise, held to its support (Chris's own record, the engine's
     order, the agreement's limits), in Chris's voice from owner-voice.md and
     the sources it lists (chris-voice-profile.md, ads/VOICE.md, ads/RULES.md
-    Part 0): "I still fund myself", "the funding circle", "action takers,
-    not shoppers", used as he said them.
+    Part 0): "I still fund myself", "the funding circle", a clear decision based on the file and lender terms, used as he said them.
   - Every claim sits next to its support: the record next to the order, the
     screen next to "each company on its own", the approval next to "its own
     business credit".
@@ -770,111 +769,100 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </defs>
   </svg>
 
-  <section class="slide dark" data-src="Proof Chris allows: marketing/ads/RULES.md:83-86 (a decade in the industry, hundreds of files, thousands of data points; learned stacking 10 years ago from the one person teaching it; $100K lines on four companies off one personal file, on stated income with no income docs; four companies, not five). I still fund myself: Chris 2026-10-31, marketing/copy-skills/copybot/references/chris-voice-profile.md:28. The banks you use and the order you use them in decide how much money you get; Chris used this approach to get $100,000 credit lines for four different companies off one personal credit file: marketing/offers/fundhub-offers-2026-10-10.pdf p.7. Hook form: RULES.md 2.2 and Part 0 rules 21, 26, 27." data-figures="Chris's own record, RULES.md Part 0 rule 38: $100K lines on four companies off one personal file. His record, not a sample.">
-    <p class="eyebrow">MX-01 / The first yes</p>
-    <h2>Your file is worth more than the first yes, since nobody showed you where to apply first.</h2>
-    <p class="lede">Off one personal file, in the right order, I pulled $100,000 lines on four companies, on stated income with no income docs.</p>
+  <section class="slide dark" data-src="Proof Chris allows: marketing/ads/RULES.md:83-86 (a decade in the industry, hundreds of files, thousands of data points; learned stacking 10 years ago from the one person teaching it; $100K lines on four companies off one personal file, on stated income with no income docs; four companies, not five). I still fund myself: Chris 2026-10-31, marketing/copy-skills/copybot/references/chris-voice-profile.md:28. The banks you use and the order you use them in decide how much money you get; Chris used this approach to get $100,000 credit lines for four different companies off one personal credit file: marketing/offers/fundhub-offers-2026-10-10.pdf p.7. Hook form: RULES.md 2.2 and Part 0 rules 21, 26, 27. One card sizes each company: a company's business amount is the personal file's card funding times the company's age multiplier, and that card is the highest-limit open card 24 months or older, above a minimum limit: src/underwrite/vendor/underwriter.cjs:173-197 and :277-286; src/finance/fundability.mjs:73-78 and :149. The card, its limit and its open date are tradeline fields on the report: src/finance/crs-map.mjs:152-229. The banks you use and the order you use them in decide how much money you get: marketing/offers/fundhub-offers-2026-10-10.pdf p.7. A newer card is passed over until it is open 24 months: src/underwrite/vendor/underwriter.cjs:173-177. Every plan starts on the personal file (Nothing else is worth doing until the personal file is prime): src/underwrite/funding-sequence.mjs:3-6 and :24.">
+    <p class="eyebrow">MX-01 / One card</p>
+    <h2>Our model starts with your personal file and a seasoned card before checking each business.</h2>
+    <p class="lede">Which card it is, its limit and how long it's been open are printed on your report today.</p>
     <ul class="lines">
-      <li>The banks you use and the order you use them in decide how much money you get.</li>
-      <li>I learned stacking ten years ago from the one person teaching it. Hundreds of files and thousands of data points later, I still fund myself.</li>
+      <li>Our system picks your highest-limit card that's been open two years or more.</li>
+      <li>A newer card with a bigger limit gets passed over until it turns two.</li>
     </ul>
     <figure class="pic">
       <div class="sheet">
-        <svg class="bv" viewBox="0 0 320 300" role="img" aria-label="Chris's own record as a map. One personal file at the top, on stated income with no income docs. Four companies under it, company one to company four, each with a one hundred thousand dollar line. A line from the file to each company means that file fed it.">
-          <rect class="pn-ink" x="10" y="2" width="300" height="48" rx="9"/>
-          <text class="on-ink" x="160" y="23" text-anchor="middle">ONE PERSONAL FILE</text>
-          <text class="lb on-ink" x="160" y="40" text-anchor="middle">STATED INCOME · NO INCOME DOCS</text>
-          <path class="cn ink" d="M58 50V262"/>
-          <path class="cn ink" d="M58 94H86" marker-end="url(#fh-arrow)"/>
-          <rect class="tint-fit edge-fit" x="90" y="72" width="226" height="44" rx="8"/>
-          <use href="#fh-bank" x="100" y="82" width="24" height="24"/>
-          <text x="132" y="90">Company one</text>
-          <text class="h" x="132" y="107">$100,000 line</text>
-          <path class="cn ink" d="M58 150H86" marker-end="url(#fh-arrow)"/>
-          <rect class="tint-fit edge-fit" x="90" y="128" width="226" height="44" rx="8"/>
-          <use href="#fh-bank" x="100" y="138" width="24" height="24"/>
-          <text x="132" y="146">Company two</text>
-          <text class="h" x="132" y="163">$100,000 line</text>
-          <path class="cn ink" d="M58 206H86" marker-end="url(#fh-arrow)"/>
-          <rect class="tint-fit edge-fit" x="90" y="184" width="226" height="44" rx="8"/>
-          <use href="#fh-bank" x="100" y="194" width="24" height="24"/>
-          <text x="132" y="202">Company three</text>
-          <text class="h" x="132" y="219">$100,000 line</text>
-          <path class="cn ink" d="M58 262H86" marker-end="url(#fh-arrow)"/>
-          <rect class="tint-fit edge-fit" x="90" y="240" width="226" height="44" rx="8"/>
-          <use href="#fh-bank" x="100" y="250" width="24" height="24"/>
-          <text x="132" y="258">Company four</text>
-          <text class="h" x="132" y="275">$100,000 line</text>
-          <text class="lb" x="160" y="297" text-anchor="middle">CHRIS'S RECORD · FOUR COMPANIES</text>
+        <svg class="bv" viewBox="0 0 320 254" role="img" aria-label="How our system picks the one card on your report. Three open cards. Card A has the longest limit bar but is under 2 years old, so it is passed over. Card B, marked in ink, has the highest limit among cards open 2 years or more, so Card B sizes every company you own. Card C is open 2 years or more with a smaller limit.">
+          <rect class="pn" x="1" y="1" width="318" height="252" rx="10"/>
+          <text class="lb" x="14" y="24">YOUR REPORT · OPEN CARDS</text>
+          <text class="lb" x="18" y="50">CARD</text>
+          <text class="lb" x="104" y="50">LIMIT</text>
+          <text class="lb" x="232" y="50">OPEN</text>
+          <rect class="tint-flag" x="8" y="60" width="304" height="40" rx="6"/>
+          <text x="18" y="85">Card A</text>
+          <rect class="pn-ink" x="104" y="75" width="118" height="10" rx="3"/>
+          <text class="caps" x="232" y="85">Under 2 yrs</text>
+          <rect class="pn-ink" x="8" y="108" width="304" height="40" rx="6"/>
+          <text class="on-ink" x="18" y="133">Card B</text>
+          <rect x="104" y="123" width="92" height="10" rx="3" fill="#fff"/>
+          <text class="caps on-ink" x="232" y="133">2+ years</text>
+          <rect class="pn-soft" x="8" y="156" width="304" height="40" rx="6"/>
+          <text x="18" y="181">Card C</text>
+          <rect class="pn-ink" x="104" y="171" width="50" height="10" rx="3"/>
+          <text class="caps" x="232" y="181">2+ years</text>
+          <text class="caps" x="160" y="222" text-anchor="middle">Card B sizes every company you own.</text>
+          <text class="caps" x="160" y="240" text-anchor="middle">Card A's bigger limit is too new to count.</text>
         </svg>
       </div>
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Your file is worth more than the first yes. The reason most funding stops at one bank is simple: nobody showed you the order the banks go in.</li>
-        <li>Look at the picture. One personal file at the top. Four companies under it, and a $100,000 line on each one.</li>
-        <li>That's my own file. Stated income, no income docs. I learned stacking ten years ago from the one person teaching it, and I still fund myself.</li>
-        <li>The banks you use and the order you use them in decide how much money you get. That's the whole game.</li>
-        <li>Ten years in this industry, hundreds of files, thousands of data points. That's where the order comes from.</li>
-        <li>Your story: the day you took the second company through the same personal file, and what you set up first.</li>
+        <li>Your personal file sets what every company you own qualifies for. It does that through ONE card: your highest-limit card that's been open two years or more.</li>
+        <li>Which card that is, its limit and how long it's been open are all printed on your report right now, so the answer is already sitting on your file.</li>
+        <li>The picture shows how our system picks it. A newer card with a BIGGER limit gets passed over, because it hasn't been open two years yet.</li>
+        <li>Once a card qualifies, our system sizes each of your companies off that one card. The same rule let one personal file back four of my own companies.</li>
+        <li>Every company you add later gets sized off that same card, so the work you put into one personal file pays you back on each of them.</li>
+        <li>Every plan we build starts on your personal file, because that file sizes everything after it, all the way to the last company you add.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide" data-src="Chris's locked order: src/underwrite/funding-sequence.mjs:3-13 and :24 (Nothing else is worth doing until the personal file is prime), :29-31 (personal funding comes before business; the extra stack when someone has a business and wants more). Each business is judged on its own, after your personal file is ready; business one gets ready first, then business two: docs/sops/weekend-2026-10-24/04-sales-call-script.md:258; public/app/present.js:104 (C-01). Personal before business on the client's own lender list: src/underwrite/black-report-node.mjs:707. Keep applying round after round: funding-sequence.mjs:51-56.">
+  <section class="slide" data-src="Chris's locked order: src/underwrite/funding-sequence.mjs:3-13 and :24 (Nothing else is worth doing until the personal file is prime), :29-31 (personal funding comes before business; the extra stack when someone has a business and wants more). Each business is judged on its own, after your personal file is ready; business one gets ready first, then business two: docs/sops/weekend-2026-10-24/04-sales-call-script.md (current); public/app/present.js:104 (C-01). Personal before business on the client's own lender list: src/underwrite/black-report-node.mjs:707. Keep applying round after round: funding-sequence.mjs:51-56. Each business is judged after the personal file is ready: src/finance/fundability.mjs:156 (personal_fundable). No qualifying card, no business amount: src/finance/fundability.mjs:78; src/underwrite/vendor/underwriter.cjs:196-197 and :278. Companies are never added up into one score: src/finance/fundability.mjs:73-75. A business round can include personal funding: src/underwrite/funding-sequence.mjs:51-56. Each company's business amount is the personal file's card funding times its age multiplier, and revenue is not part of it: src/underwrite/vendor/underwriter.cjs:277-286 and src/underwrite/business-funding.mjs:5-8, :23-27." data-figures="no figure on this slide; the card rule is the engine's own (src/finance/fundability.mjs:149)">
     <p class="eyebrow">MX-02 / The order</p>
-    <h2>Your personal file goes first, then each company applies on its own.</h2>
+    <h2>Your personal file gets primed first, before any company you own applies for credit.</h2>
     <ul class="lines">
-      <li>Nothing else is worth doing until your personal file is prime.</li>
-      <li>Personal funding comes before business. When you have a business and want more, personal is the extra stack.</li>
-      <li>Then each business is judged on its own, after your personal file is ready. Business one gets ready first, then business two.</li>
+      <li>Every company you own gets its business amount from that one card on your personal file.</li>
+      <li>With no card like that, no company gets a business amount at all.</li>
     </ul>
     <figure class="pic">
       <div class="sheet">
-        <svg class="bv" viewBox="0 0 320 306" role="img" aria-label="The order as a flow. Prime your personal file. Then personal funding, which comes before business. Then business one, its own file, judged on its own. Then business two, its own file, after business one. Then keep applying, round after round.">
-          <rect class="pn-ink" x="20" y="2" width="280" height="44" rx="9"/>
-          <text class="on-ink" x="160" y="22" text-anchor="middle">Prime your personal file</text>
-          <text class="lb on-ink" x="160" y="38" text-anchor="middle">NOTHING ELSE COMES FIRST</text>
-          <path class="cn ink" d="M160 46V62" marker-end="url(#fh-arrow)"/>
-          <rect class="tint-fit edge-fit" x="20" y="66" width="280" height="44" rx="9"/>
-          <text x="160" y="86" text-anchor="middle">Personal funding</text>
-          <text class="lb" x="160" y="102" text-anchor="middle">COMES BEFORE BUSINESS</text>
-          <path class="cn ink" d="M160 110V126" marker-end="url(#fh-arrow)"/>
-          <rect class="pn" x="20" y="130" width="280" height="44" rx="9"/>
-          <text x="160" y="150" text-anchor="middle">Business one</text>
-          <text class="lb" x="160" y="166" text-anchor="middle">JUDGED ON ITS OWN</text>
-          <path class="cn ink" d="M160 174V190" marker-end="url(#fh-arrow)"/>
-          <rect class="pn" x="20" y="194" width="280" height="44" rx="9"/>
-          <text x="160" y="214" text-anchor="middle">Business two</text>
-          <text class="lb" x="160" y="230" text-anchor="middle">AFTER BUSINESS ONE</text>
-          <path class="cn ink" d="M160 238V254" marker-end="url(#fh-arrow)"/>
-          <rect class="pn-soft" x="20" y="258" width="280" height="44" rx="9"/>
-          <text x="160" y="285" text-anchor="middle">Keep applying, round after round</text>
+        <svg class="bv" viewBox="0 0 320 240" role="img" aria-label="Why your personal file goes first. Your highest-limit card, open 2 years or more, sits on your personal file. Arrows run from it to Business one and Business two, and each is marked sized off this card. With no card like this, no company gets a business amount. Each company is read on its own.">
+          <rect class="pn-ink" x="30" y="2" width="260" height="58" rx="9"/>
+          <text class="on-ink" x="160" y="27" text-anchor="middle">Your highest-limit card</text>
+          <text class="lb on-ink" x="160" y="47" text-anchor="middle">OPEN 2+ YEARS · PERSONAL</text>
+          <path class="cn ink" d="M100 60L82 96" marker-end="url(#fh-arrow)"/>
+          <path class="cn ink" d="M220 60L238 96" marker-end="url(#fh-arrow)"/>
+          <rect class="tint-fit edge-fit" x="8" y="100" width="148" height="70" rx="9"/>
+          <text x="82" y="126" text-anchor="middle">Business one</text>
+          <text class="lb ink" x="82" y="146" text-anchor="middle">SIZED OFF</text>
+          <text class="lb ink" x="82" y="161" text-anchor="middle">THIS CARD</text>
+          <rect class="tint-fit edge-fit" x="164" y="100" width="148" height="70" rx="9"/>
+          <text x="238" y="126" text-anchor="middle">Business two</text>
+          <text class="lb ink" x="238" y="146" text-anchor="middle">SIZED OFF</text>
+          <text class="lb ink" x="238" y="161" text-anchor="middle">THIS CARD</text>
+          <text class="caps" x="160" y="196" text-anchor="middle">No card like this on your file means</text>
+          <text class="caps" x="160" y="213" text-anchor="middle">no business amount for any company.</text>
+          <text class="lb" x="160" y="236" text-anchor="middle">EACH COMPANY READ ON ITS OWN</text>
         </svg>
       </div>
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Here's the order. Your personal file goes first, then each company applies on its own.</li>
-        <li>Walk the chart with me. Step one, prime your personal file. Nothing else is worth doing until that file is prime.</li>
-        <li>Step two, personal funding. Personal comes before business, and when you have a business and want more, personal is the extra stack.</li>
-        <li>Then business one. It's judged on its own, after your personal file is ready. Then business two, the same way.</li>
-        <li>And the last step never ends. You keep applying, round after round.</li>
-        <li>That's why the first yes is one step in an order, and the order keeps going.</li>
+        <li>Your personal file goes first for one reason. Every company you own gets its business amount from that one card, once your personal file is ready.</li>
+        <li>With no card like that on your file, no company gets a business amount at all, however old the company is or however much it brings in.</li>
+        <li>Our system walks it in a set order: prime your personal file, send out your personal funding, then business one applies, then business two.</li>
+        <li>The picture shows the why. Business one and business two each get sized off the SAME card, and each one is read by itself, never lumped into one score.</li>
+        <li>And the applying never closes out. It keeps going round after round, and a business round can bring personal funding right along with it.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide" data-src="Unlimited funding over time is true: structure aged companies right, run five to ten of them; it takes time and each one needs revenue: owner-set 2026-09-29, marketing/landing-pages/slo/preview/reorg-draft-build.mjs:350-351. Each company you own applies for its own business credit, so every company you add brings in more funding: marketing/offers/fundhub-offers-2026-10-10.pdf p.7. Each company is read on its own and never added up into one score or one dollar figure; 24 months or more is the engine's top band: src/finance/fundability.mjs:73-78. The picture is the companies screen's own words: public/app/present-visuals.js:566 (More companies, more funding), :665-671 (Today, all your files; How much you qualify for today; Each one still applies for its own business credit; A picture of what's possible. Never added to today), :676-692 (Personal, Business 1, Business 2, + Add a company, if you add a company), :565 and :700 (The added companies, as they age; Year 1, Year 2, After 2 years). Amounts left off: a null value prints no amount, :11-13.">
-    <p class="eyebrow">MX-03 / It keeps going</p>
-    <h2>Each company you add applies for its own business credit, so the funding keeps going.</h2>
+  <section class="slide" data-src="Each real business is reviewed separately; future funding depends on an updated file, lender terms, revenue and repayment fit: owner-set 2026-09-29, marketing/landing-pages/slo/preview/reorg-draft-build.mjs:350-351. Each business can be reviewed for credit; adding a business does not ensure an approval: marketing/offers/fundhub-offers-2026-10-10.pdf p.7. Each company is read on its own and never added up into one score or one dollar figure; 24 months or more is the engine's top band: src/finance/fundability.mjs:73-78. The picture is the companies screen's own words: public/app/present-visuals.js:566 (More companies, more funding), :665-671 (Today, all your files; How much you qualify for today; Each one still applies for its own business credit; A picture of what's possible. Never added to today), :676-692 (Personal, Business 1, Business 2, + Add a company, if you add a company), :565 and :700 (The added companies, as they age; Year 1, Year 2, After 2 years). Amounts left off: a null value prints no amount, :11-13. Half in year 1, the full amount in year 2, double after 2 years: public/app/present-visuals.js:705; the engine's age multiplier, src/underwrite/business-funding.mjs:5-8 and src/underwrite/vendor/underwriter.cjs:277-286. The company can be an LLC you already have: marketing/offers/fundhub-offers-2026-10-10.pdf p.7. The incorporation date on the state record: docs/sops/weekend-2026-10-24/04-sales-call-script.md (current). What capital is for (jobs, ads, a hire): docs/sops/weekend-2026-10-24/04-sales-call-script.md (current). Half your personal card funding in year 1, the full amount in year 2, double after 2 years: src/underwrite/business-funding.mjs:5-8 and :23-27 (business = card funding times the age multiplier).">
+    <p class="eyebrow">MX-03 / Company age</p>
+    <h2>A company's age changes its amount: half in year one, double once it's two years old.</h2>
     <ul class="lines">
-      <li>Unlimited funding over time is true: structure aged companies right, run five to ten of them, and give each one time and revenue.</li>
-      <li>The engine reads every company on its own, and it never adds them into one pile.</li>
-      <li>Age counts. For a company, 24 months or more is the engine's top band.</li>
+      <li>Our system reads each company you own by its age, and each one applies for its own business credit.</li>
+      <li>An older company can be reviewed for its own funding options.</li>
     </ul>
     <figure class="pic">
-      <div class="real" role="img" aria-label="The companies screen from a Fundhub call, in its own words, with the amounts left off. More companies, more funding. Today, all your files: how much you qualify for today. Tabs: Personal, Business 1, Business 2, and add a company. Marked: each one still applies for its own business credit. The added companies, as they age: year 1, year 2, after 2 years. A picture of what's possible, never added to today.">
+      <div class="real" role="img" aria-label="The companies screen from a Fundhub call, in its own words. More companies, more funding. Tabs: Personal, Business 1, Business 2, and add a company. Marked: each one still applies for its own business credit. Marked: each company you add grows as it ages, half in year 1, the full amount in year 2, double after 2 years. A picture of what's possible, never added to today.">
         <div class="rh2">More companies, more funding</div>
         <p class="model">Today, all your files · How much you qualify for today.</p>
         <ul>
@@ -882,60 +870,71 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
           <li><span class="chip"><span class="cd"></span>+ Add a company</span> <span class="model">if you add a company</span></li>
           <li class="yes">Each one still applies for its own business credit.<br><span class="chip on"><span class="cd"></span>Each company on its own</span></li>
         </ul>
-        <p class="model">The added companies, as they age · Year 1 · Year 2 · After 2 years</p>
+        <p class="clause"><mark>Each company you add grows as it ages: half in year 1, the full amount in year 2, double after 2 years.</mark></p>
         <p class="model">A picture of what's possible. Never added to today.</p>
       </div>
-      <p class="real-src">Fundhub's companies screen, its own words. Amounts left off.</p>
+      <p class="real-src">Fundhub's companies screen, its own words.</p>
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Each company you add applies for its own business credit. That's how the funding keeps going.</li>
-        <li>This is the companies screen from your call, in its own words. Personal, Business 1, Business 2, and a tab to add a company.</li>
-        <li>Read the line I marked: each one still applies for its own business credit. The engine reads every company on its own. It never adds them into one pile.</li>
-        <li>Unlimited funding over time is true. You structure aged companies right, you run five to ten of them, and you give each one time and revenue.</li>
-        <li>Age counts. The engine's top band for a company is 24 months or more. So a company set up now is older when its turn comes.</li>
-        <li>I run my own companies this way.</li>
+        <li>An idle company costs you real money. Each company you own applies for its own business credit, and our system reads each one by how OLD it is.</li>
+        <li>This is the companies screen from a Fundhub call. It shows personal, business one and business two, plus a button that adds one more company to the picture.</li>
+        <li>Age sets the amount. A company counts at half your personal card funding in its first year, the full amount in year two, and DOUBLE after two years.</li>
+        <li>That's the line marked on the screen. A company you formed two or more years ago already counts at DOUBLE the day it applies.</li>
+        <li>An older company may have options worth reviewing. We check its real file, revenue, and use for credit first.</li>
+        <li>More than one real business can be reviewed over time. Each needs its own file, revenue, and reason for credit.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide" data-src="Everyone should build a funding circle, an inner circle of partners who help fund their deals; I do it all the time: Chris 2026-10-31, marketing/copy-skills/copybot/references/chris-voice-profile.md:34; the client gets more than their own amount: ops/workflows/backend-selling-lanes-2026-10-30.md:212 (the referral fee is left off: :216). One partner file, included with the Capital Blueprint: src/blueprint/credit-partner.mjs:1, :46-47 (Blueprint buyers), :85-99 (the partner's own consent comes first), :8-14 (the two amounts add). The picture is the Blueprint screen's own partner line: public/app/present.js:987-988, and your advisor's line on the call: :1044.">
-    <p class="eyebrow">MX-04 / The circle</p>
-    <h2>Everyone should build a funding circle: partners who help fund their deals.</h2>
+  <section class="slide" data-src="Each business can be reviewed for credit; adding a business does not ensure an approval: marketing/offers/fundhub-offers-2026-10-10.pdf p.7. The personal file is primed first: src/underwrite/funding-sequence.mjs:3-6 and :24. Each company is read on its own: src/finance/fundability.mjs:73-75. Growth that stops coming out of your own savings is this deck's after (Chris's slide framework, ops/workflows/backend-selling-lanes-2026-10-30.md section 6e.1; this deck is the one home of the savings line). The maximum amount of funding: marketing/ads/RULES.md Part 0 rule 7. The drawing shows no amounts and no approval.">
+    <p class="eyebrow">MX-04 / Growth on credit</p>
+    <h2>Business credit can give a company room for planned growth when the payment fits.</h2>
     <ul class="lines">
-      <li>I do it all the time, and the Capital Blueprint includes one partner file.</li>
-      <li>One spouse or business partner joins your file as a second applicant. They give their own consent, and their file gets its own checklist.</li>
-      <li>The plan adds your partner's amount to yours, so it's built on more than your file alone.</li>
+      <li>Each business can be reviewed on its own if it has a real use and can carry the credit.</li>
+      <li>Compare the cost of credit with using cash before you choose.</li>
     </ul>
     <figure class="pic">
-      <div class="real" role="img" aria-label="The Blueprint screen's own partner line, marked. Credit partner file: one spouse or business partner can join as a second applicant. They give their own consent, and their file gets its own checklist. Your advisor's line on the call: is there a spouse or business partner who would apply with you? One partner file is included.">
-        <div class="rh2">Your Capital Blueprint · Credit partner file</div>
-        <p class="clause"><mark>One spouse or business partner can join as a second applicant.</mark> They give their own consent, and their file gets its own checklist.</p>
-        <div class="rh2">Your advisor, on the call</div>
-        <p class="clause">Is there a spouse or business partner who would apply with you? <mark>One partner file is included.</mark></p>
-        <span class="chip on"><span class="cd"></span>Included with the Blueprint</span>
+      <div class="sheet">
+        <svg class="bv" viewBox="0 0 320 262" role="img" aria-label="What your business runs on once your file is primed. Your personal file, primed, at the top. Business 1 and Business 2 each with their own credit. Arrows from both companies run to your growth, paid for on business credit. Your savings sit apart, with no arrow, marked stays put.">
+          <rect class="pn-ink" x="40" y="2" width="240" height="42" rx="9"/>
+          <text class="on-ink" x="160" y="28" text-anchor="middle">Your personal file, primed</text>
+          <path class="cn ink" d="M118 44L88 66" marker-end="url(#fh-arrow)"/>
+          <path class="cn ink" d="M202 44L232 66" marker-end="url(#fh-arrow)"/>
+          <rect class="tint-fit edge-fit" x="8" y="70" width="148" height="52" rx="9"/>
+          <text x="82" y="92" text-anchor="middle">Business 1</text>
+          <text class="lb ink" x="82" y="111" text-anchor="middle">OWN CREDIT</text>
+          <rect class="tint-fit edge-fit" x="164" y="70" width="148" height="52" rx="9"/>
+          <text x="238" y="92" text-anchor="middle">Business 2</text>
+          <text class="lb ink" x="238" y="111" text-anchor="middle">OWN CREDIT</text>
+          <path class="cn ink" d="M82 122L130 148" marker-end="url(#fh-arrow)"/>
+          <path class="cn ink" d="M238 122L190 148" marker-end="url(#fh-arrow)"/>
+          <rect class="tint-fit edge-fit" x="40" y="152" width="240" height="48" rx="9"/>
+          <text class="h" x="160" y="174" text-anchor="middle">Your growth</text>
+          <text class="lb ink" x="160" y="192" text-anchor="middle">ON BUSINESS CREDIT</text>
+          <rect class="pn" x="40" y="210" width="240" height="48" rx="9"/>
+          <text class="h" x="160" y="232" text-anchor="middle">Your savings</text>
+          <text class="lb ink" x="160" y="250" text-anchor="middle">STAYS PUT</text>
+        </svg>
       </div>
-      <p class="real-src">Fundhub's Blueprint screen and the call line, word for word.</p>
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Everyone should build a funding circle. An inner circle of partners who help fund their deals. I do it all the time.</li>
-        <li>The Capital Blueprint includes one partner file. Read the screen: one spouse or business partner can join as a second applicant.</li>
-        <li>They give their own consent, and their file gets its own checklist. Nobody's file gets run without that person saying yes.</li>
-        <li>The plan adds your partner's amount to yours, so it's built on more than your file alone.</li>
-        <li>Your advisor asks it on the call: is there a spouse or business partner who would apply with you? One partner file is included.</li>
-        <li>Your story: the first partner in your own funding circle, and what that deal looked like.</li>
+        <li>Once we review your personal and business files, we can look at credit for a specific growth plan.</li>
+        <li>Each company has its own lender decision. Add a business for a real business reason, then review whether credit fits.</li>
+        <li>Keep enough cash for the business, and use credit only when the plan can repay it.</li>
+        <li>The picture shows the whole setup: one primed personal file, each company with its own credit, your growth on top, and your savings off to the side.</li>
+        <li>That is the plan: compare each business's options, costs, and ability to repay before you use credit.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide dark" data-src="A real approval screenshot from Chris's own approvals folder, the name blurred, the amount read off the crop: marketing/landing-pages/slo/client-wins/deck.json (t-74k-chase-ink: Chase Ink Business Cash card, credit limit $74,000, Canva Client Wins deck crop s20-a.jpg), crop in marketing/landing-pages/slo/client-wins/deck/t-74k-chase-ink.jpg. Rule: .ai/rules/proof-cards-from-source.md. No total: .ai/rules/animation-rules.md section 3. Only show wins Chris has given in writing: docs/sops/weekend-2026-10-24/04-sales-call-script.md:422. Each company applies for its own business credit: marketing/offers/fundhub-offers-2026-10-10.pdf p.7." data-figures="a real approval's own amount, read off the crop (proof-cards-from-source). The bank's record, not a sample.">
+  <section class="slide dark" data-src="A real approval screenshot from Chris's own approvals folder, the name blurred, the amount read off the crop: marketing/landing-pages/slo/client-wins/deck.json (t-74k-chase-ink: Chase Ink Business Cash card, credit limit $74,000, Canva Client Wins deck crop s20-a.jpg), crop in marketing/landing-pages/slo/client-wins/deck/t-74k-chase-ink.jpg. Rule: .ai/rules/proof-cards-from-source.md. No total: .ai/rules/animation-rules.md section 3. Only show wins Chris has given in writing: docs/sops/weekend-2026-10-24/04-sales-call-script.md (current). Each company applies for its own business credit: marketing/offers/fundhub-offers-2026-10-10.pdf p.7." data-figures="a real approval's own amount, read off the crop (proof-cards-from-source). The bank's record, not a sample.">
     <p class="eyebrow">MX-05 / A real approval</p>
-    <h2>One company's business credit looks like this, in the bank's own words.</h2>
+    <h2>One company's Chase card came back with a $74,000 limit, in the bank's own words.</h2>
     <ul class="lines">
-      <li>Chase Ink Business Cash, and the credit limit the bank set: $74,000.</li>
-      <li>The name is blurred. The bank and the amount stay.</li>
-      <li>Each approval is its own proof, so there is no total.</li>
+      <li>Chase Ink Business Cash, with the limit printed right on the approval: $74,000.</li>
+      <li>The client's name is blurred, and the bank and the limit are exactly what the bank sent.</li>
     </ul>
     <figure class="pic">
       <div class="real shot" role="img" aria-label="A real approval screenshot. Welcome to Chase Ink Business Cash. Your credit limit is seventy-four thousand dollars. The name is blurred.">
@@ -945,22 +944,21 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>One company's business credit looks like this. This is the bank's own approval, the way the bank wrote it.</li>
-        <li>Chase Ink Business Cash, and the credit limit the bank set: $74,000.</li>
-        <li>The name is blurred. The bank and the amount stay, because that's the part that proves it.</li>
-        <li>That's one card, on one company. Add a second company, and it applies for its own business credit on its own file.</li>
-        <li>Each approval stands on its own, so there is no total. The approval is the proof.</li>
+        <li>Does one company really get credit this size? Here's a real approval, the way Chase sent it, so you can read every line yourself.</li>
+        <li>It's Chase Ink Business Cash. The line on it says the credit limit is $74,000, on a business card for one company.</li>
+        <li>The client's name is blurred out. The bank and the limit stay exactly as they came in, because those two are what you need to SEE.</li>
+        <li>That's one card for one company. A second company applies for its own business credit, and so does a third. Each one asks the banks on its own.</li>
+        <li>When I say each company applies for its own business credit, this is what I mean. It shows up on paper, ONE approval at a time.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide" data-src="How much you qualify for based on where you're at right now; that's what your file supports today; the bank still decides: public/app/present.js:100 (S-07). We apply in rounds; one funding sequence is about six rounds; your personal file first, then each business on its own; between rounds we dispute the new hard inquiries: public/app/present.js:109 (S-12); docs/sops/weekend-2026-10-24/04-sales-call-script.md:221-222. Keep applying round after round; the step never completes: src/underwrite/funding-sequence.mjs:51-56. You can get funded again after your first funding sequence ends; each company you add brings its own business credit: marketing/offers/fundhub-offers-2026-10-10.pdf p.7; public/app/present-visuals.js:256. Next funding sequence, never round two: .ai/rules/funding-sequence-term.md. Action takers, not shoppers; the goal is the maximum amount of funding: marketing/copy-skills/copybot/references/chris-voice-profile.md:33; ops/workflows/backend-selling-lanes-2026-10-30.md:203.">
-    <p class="eyebrow">MX-06 / Your call</p>
-    <h2>How much you qualify for based on where you're at right now is where the funding starts.</h2>
+  <section class="slide" data-src="How much you qualify for based on where you're at right now; that's what your file supports today; the bank still decides: public/app/present.js:100 (S-07). We apply in rounds; one funding sequence is about six rounds; your personal file first, then each business on its own; between rounds we dispute the new hard inquiries: public/app/present.js:109 (S-12); docs/sops/weekend-2026-10-24/04-sales-call-script.md (current). Review the updated file before each later funding sequence: src/underwrite/funding-sequence.mjs:51-56. You can get funded again after your first funding sequence ends; each company you add brings its own business credit: marketing/offers/fundhub-offers-2026-10-10.pdf p.7; public/app/present-visuals.js:256. Next funding sequence, never round two: .ai/rules/funding-sequence-term.md. Buyers can ask direct questions before deciding; the goal is the maximum amount of funding: marketing/copy-skills/copybot/references/chris-voice-profile.md:33; ops/workflows/backend-selling-lanes-2026-10-30.md:203. Soft pull, score does not move: public/app/present.js:95 (S-02). The plan after the reveal: public/app/present.js:105 (S-08).">
+    <p class="eyebrow">MX-06 / Where you start</p>
+    <h2>Your strategy call reads your file live, that card included, and shows where you start.</h2>
     <ul class="lines">
-      <li>On your call you see how much you qualify for based on where you're at right now. That's what your file supports today, and the bank still decides.</li>
-      <li>We apply in rounds. One funding sequence is about six rounds: your personal file first, then each business on its own.</li>
-      <li>Between rounds, we dispute the new hard inquiries. After your first funding sequence ends, the next funding sequence starts from your file.</li>
+      <li>Your file gets read live on the call, and a soft pull leaves your score exactly as it is.</li>
+      <li>You see how much you qualify for based on where you're at right now, and that's where your sequence starts.</li>
     </ul>
     <figure class="pic">
       <div class="sheet">
@@ -989,12 +987,12 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>On your call, you see how much you qualify for based on where you're at right now. That's what your file supports today, and the bank still decides.</li>
-        <li>That amount is where the funding starts. Look at the picture: your call, then one funding sequence, then the next one.</li>
-        <li>We apply in rounds. One funding sequence is about six rounds. Your personal file first, then each business on its own.</li>
-        <li>Between rounds, we dispute the new hard inquiries, so the next round starts from a cleaner file.</li>
-        <li>After your first funding sequence ends, the next funding sequence starts from your file, and each company you add brings its own business credit to it.</li>
-        <li>We're looking for action takers, not shoppers. If the maximum amount of funding is your goal, this is how it's built.</li>
+        <li>On your strategy call, YOUR whole file gets read with you, that one card included, and the soft pull leaves your score where it is.</li>
+        <li>You see how much you qualify for based on where you're at right now. That amount is where your funding sequence STARTS, and the bank still makes its own decision.</li>
+        <li>The timeline shows what comes after that. Your funding sequence runs about six rounds of applications, and the new inquiries get disputed after each one.</li>
+        <li>After that sequence, we review the updated file before deciding whether another one fits. Any company you've opened in the meantime applies with its own business credit.</li>
+        <li>The call gives you the starting point and the plan after it: your personal file first, then each company, then the next funding sequence.</li>
+        <li>You can see the plan and ask what each offer costs before you decide. If the maximum amount of funding is what you want, the call is where you see YOUR path to it.</li>
       </ul>
     </aside>
   </section>

@@ -1,4 +1,6 @@
-# Sales call script — the branch close
+# Sales call operating notes — the branch close
+
+**Read-aloud script:** [04-sales-call-script-spoken.txt](04-sales-call-script-spoken.txt). That file contains the words for the call and objection replies. This page is the staff reference behind it.
 
 Drafted 2026-10-29. It rebuilds the sheet a Cursor chat compiled earlier the same day. It is built from three places: Cole Gordon's closer course, Fundhub's own sales files, and the live Present deck. The steps are Cole's. The words are Fundhub. Nothing from Cole's course is copied here, because this repository is public.
 
@@ -6,7 +8,17 @@ The setter part is `02-setter.md`. This page starts when the setter hands off.
 
 **The idea:** find out where they are. Pull the file together. The file picks one door. Sell that door, and only that door.
 
-Live on fundhub.ai since 2026-10-29. Chris's calls are at the bottom, under **Open calls for Chris**.
+The 2026-10-29 version is live on fundhub.ai. This 2026-11-01 rewrite remains on the sales-script branch until shipped. Chris's decisions are at the bottom, under **Open calls for Chris**.
+
+## The call in spoken order
+
+1. "What are you trying to fund, and what has stopped you?" Get the goal, amount, use, timing and who decides.
+2. "What happened the last time you tried?" Get their actual cost of waiting and why they booked now.
+3. "Let's pull your file together, so we're working from what is there today." Send the $32 soft pull and stay on the call.
+4. "Here's what your file supports today, what is holding it back, and the order I'd work on it." Show the file, then pick one offer that fits.
+5. "Does that plan make sense for the goal you gave me?" Resolve plan questions before the price.
+6. State the price and agreement terms. Be quiet. If they hesitate, use section 9 for the concern they name.
+7. If they start, read the agreement, send the matching pay link, confirm payment, and give the first step. If they wait, book a real follow-up.
 
 ## The call on one page
 
@@ -39,9 +51,9 @@ flowchart TD
 
 | Door | Who | Offer | Price | How they pay |
 |---|---|---|---|---|
-| 1. Fund it | S-07 says FULL FUNDING | Funding, done for you | $3,000 today. It counts toward 10% of what gets funded. | Cash. No plan. |
+| 1. Fund it | S-07 says FULL FUNDING | Funding, done for you | $3,000 today. It counts once toward 10% of confirmed approved limits or amounts. | Cash. No plan. |
 | 1 plus repair | S-07 says FUNDING PLUS REPAIR | Funding plus credit optimization | $3,000 plus $1,000 | Cash. |
-| 2. Revenue funding | Steady revenue, 6 months or more in business, 3 months of bank statements | Funding, done for you, run by hand | $3,000 today plus 10% of what gets funded | Cash. |
+| 2. Revenue funding | Steady revenue, 6 months or more in business, 3 months of bank statements | Funding, done for you, run by hand | $3,000 today, credited once toward 10% of confirmed approved limits or amounts | Cash. |
 | 3. Capital Blueprint | File not ready. Always offered first. | Capital Blueprint, 12 months | $5,000 to $10,000, whole dollars, default $5,000 | Paid in full, or financing through Whop |
 | 4. Credit optimization | File not ready, and they said no to the Blueprint. | Up to six rounds, done for you | $1,000, or $200 for round one | Cash. The $200 counts toward the $1,000. |
 
@@ -129,7 +141,7 @@ Pick the order:
 
 No business yet: "You do not need a business to work with us. Funding can come in your own name, a business name, or both."
 
-If the goal is small next to what they need: "Is that what you need, or what you think you can get?"
+If the goal is small next to what they need: "Is that what you need, or what you think you can get?" Do not assume a bigger loan is better. Ask how much they will use now, what they can repay, and whether unused credit would help them keep card use low. Use the small-target talk-off in section 9 only if the file supports more.
 
 **Listen for the door.** Write these down when you hear them.
 
@@ -214,7 +226,7 @@ Every door has the same shape. First the promise: the steps that get them from w
 ### Door 1. Fund it
 
 **Who:** S-07 says FULL FUNDING, or FUNDING PLUS REPAIR.
-**Offer:** Funding, done for you. **$3,000 today.** It counts toward the 10% fee. The 10% is only on money that actually gets funded.
+**Offer:** Funding, done for you. **$3,000 today.** It counts once toward the 10% success fee. When funding is secured, the fee base is confirmed approved limits or amounts, including credit access the client has not drawn. The remaining fee is due as approved funds or credit access are received. If no funding is secured, no back-end success fee is due. Read the agreement's exact terms on the call.
 **Slides:** L-01 (the money levers) and S-08 (your path), then S-09 to S-16 and C-01 (more companies, more funding), then S-17 to S-22.
 
 1. **The promise.** "Here's the plan. Three steps to get you in front of the banks that match your file, in the right order. Want me to walk you through it?"
@@ -231,12 +243,12 @@ Every door has the same shape. First the promise: the steps that get them from w
 
 **Funding plus credit optimization.** For FUNDING PLUS REPAIR files. "Part of your file is ready now. We fund from the clean side, and we clean up the rest at the same time, so your next round is bigger." $3,000 plus $1,000, cash. On S-23, send the $3,000 link, then the second button, **Send credit optimization pay link · $1,000**.
 
-**The math, only with a real amount.** Read it off S-20. Example only, not a promise: $75,000 funded, 10% is $7,500, $3,000 already paid, $4,500 due after funding. If 10% of what gets funded comes out under the $3,000 they paid, do not promise a refund on the call. Ask Chris.
+**The math, only with a real amount.** Read it off S-20 and the agreement. Example only, not a promise: $75,000 in confirmed approved limits or amounts, 10% is $7,500, $3,000 already paid, $4,500 remaining as approved funds or credit access are received. The fee is not limited to what the client draws. Do not promise a deposit refund when the success fee is smaller; read the signed terms.
 
 ### Door 2. Revenue funding (run by hand for now)
 
 **Who:** steady revenue through a business bank account, 6 months or more in business, and 3 months of business bank statements. Credit not ready: fund the business now, and fix the file. Credit ready: fund it all, cards and revenue.
-**Offer:** funding, done for you, on the same funding agreement. **$3,000 today plus 10% of what gets funded.**
+**Offer:** funding, done for you, on the same funding agreement. **$3,000 today plus a 10% success fee based on confirmed approved limits or amounts when funding is secured; the deposit counts toward that fee.**
 **How it runs for now:** the client uploads bank statements or tax returns in the portal. The team packages the file and emails it to the lender. The lenders are in `FUNDING SHEET (business).xlsx`. The button that sends it automatically is on hold.
 
 1. **The promise.** "Two moves at once. Funding based on your business revenue now, and your personal file fixed so your next funding sequence is bigger."
@@ -288,7 +300,7 @@ They keep the $32 report. Go to **If they do not buy today**.
 3. **What happens next, before the price.** Say the first step of their door from section 6. They should picture day one before they hear a price.
 4. **The guarantees (S-21).** Funding only: read G-01 and G-02 word for word. They are the two in the agreement in the CRM. Blueprint and credit optimization: no guarantees from S-21.
 5. **The ask (S-19 to S-22).** One line that ties the price to their goal. Then: "Want to get started?"
-   - Funding: "To get you in front of the right banks in the right order, it's $3,000 today. That's not extra. It counts toward the 10%, and the 10% is only on money you actually get. Want to get started?"
+   - Funding: "To get you in front of the right banks in the right order, it's $3,000 today. That counts toward the 10% success fee. The fee is based on the bank limits or amounts we confirm as approved, even if you don't draw the whole line. The rest comes due as that credit becomes available. Want to get started?"
    - Blueprint: "For the whole 12-month plan, built from your file, it's [price]. Want to get started?"
    - Credit optimization: "For all six rounds, done for you, it's $1,000. Want to get started?"
 6. **Stop talking.** Count to four in your head. Let them talk first.
@@ -303,9 +315,9 @@ Quiet buyer who will not say yes or no: "If we lay out every step to get you to 
 **Lock the plan before you talk money.** Cole's order. Never skip it.
 
 1. "Money aside, is this the right plan for your file?"
-2. If yes: "So this is not about whether. It's about how to make it work. Right?"
-3. "Is money the only thing? Nothing else in the way?" Ask it twice, two different ways.
-4. "Can we talk openly about money? Then I'll find the right way in."
+2. If yes: "What about the cost or payment still needs to work for you?"
+3. "Is there anything else about the plan you want to clear up before we talk payment?"
+4. "Can we talk openly about what fits your budget?"
 5. "What do you have that you can use today?"
 
 If they can pay it all: "Then let's take care of it today and start right now." Stop talking.
@@ -316,7 +328,7 @@ If they want it and the hit today is too big: same offer, different pay terms. D
 2. **Half today, the rest later (Blueprint).** "When do you get paid next? Can you do half today and the rest that day?" If not: "What's the most you can put down today?" That today. The rest on payday.
 3. **Want check.** "Money's tight, I hear you. On a scale of 1 to 10, how bad do you want to fix this?" 8, 9 or 10: "Then we'll find a way that works." 7 or less: "Why not a 10?" Listen. The answer tells you if a smaller first step fits better.
 4. **Three pays (Blueprint).** One third today. One third next payday. One third the payday after.
-5. **A smaller first step.** Move down one door, at its real price: Blueprint, then the $1,000 credit optimization, then the $200 round one. Never make up a price.
+5. **A smaller first step.** If the full offer does not fit, discuss the next service that fits their goal: Blueprint, then $1,000 credit optimization, then $200 for round one. Use its real agreement and price.
 
 How each offer can be paid:
 
@@ -328,9 +340,11 @@ How each offer can be paid:
 | Credit optimization, $1,000 | Cash. No financing. |
 | Round one, $200 | Cash. It counts toward the $1,000. |
 
+**Funding fee math, only after the actual offer.** The 10% is on confirmed approved limits or amounts, including available credit the buyer does not draw. The $3,000 deposit is credited once. For illustration only, if $200,000 of access is approved, the total Fundhub fee is $20,000 and $17,000 remains after the deposit. A separate 12-month payment of $17,000 would be about $1,417/month at 0% APR or $1,495/month at 10% APR, including principal. Those are financing examples, not Fundhub payment terms or a lender offer. Show the actual terms and when the fee comes due before any decision.
+
 Never tell a client financing stays off their credit. The financing pre-check is soft. Taking the loan is a hard pull, and it can show on their credit.
 
-**When they won't say what they have.** "You told me money aside, this is the right plan. To find the right way in, I need to know what you can use today. What's stopping you from telling me?" A closed door on money means a trust worry. Find it with section 9, then come back here.
+**When they do not want to share a number.** "That's okay. I can show the payment choices and full cost, and you can tell me whether any fit." If none fits, set a follow-up or stop.
 
 **Before they put it on a card.** "Card use is one of the things that sets how much you qualify for. A big new balance raises yours." Say it, then let them choose.
 
@@ -348,96 +362,103 @@ The money steps come from a payment-plan video that sits in Cole's folder. The s
 
 ## 9. Objections
 
-**The method.** Same for every one.
+Use these as spoken lines. Name the offer and answer what the buyer actually asked. A fee, rate, timeline or agreement question needs a direct answer.
 
-1. Hear the whole thing. Do not jump in.
-2. Lock the plan: "[Their worry] aside, is this the right plan for your file?"
-3. Isolate it: "Is that the only thing? If we solve that, are you in?" Ask twice.
-4. Still not sure: "When someone's not sure, it's one of three things. The plan doesn't fit, they don't trust us yet, or it's the money. Which one is it for you?"
-5. Find the missing belief: pain, doubt, cost, desire, money, support or trust. Every objection is one of these seven. The cockpit tags the one that failed.
-6. Answer with their own words from section 2.
-7. Ask again.
+**When they hesitate.** "What part doesn't sit right yet?" Listen. "If we solve [their concern], does this plan get you toward [their goal]?" If no, fix the plan or stop. If yes, answer with their file, the agreement or a real screen. "What else would you need to know before deciding?" If nothing: "Do you want to start?" Use the cockpit beliefs to diagnose the call, not as words to recite.
 
-**"I need to think about it."** (or "later")
-"Totally fair. What part do you want to think about? Your file, the fee, or whether you trust us?" If they say they're nervous: "Good. That means it matters to you. What about it makes you nervous?" If it's risk: "Waiting is a risk too. You told me it's costing you [cost] a month." Later is allowed. No fake deadline.
+### Concerns with every offer
 
-**"I need to talk to my spouse"** (or partner)
-Best fix: get them on the call at the start (section 1). If they are not on: "Makes sense. If they said 'do what's best for us,' would you start today?" Then: "Is this about including them, or do you need their OK?" Either way, book a follow-up call they can join, inside one day, before you hang up. "What do you think they'll ask? Let's answer it now, so you have it."
+**"I need to think about it."** "Of course. What part needs thought: the plan, what it costs, the work on your side, or whether you trust us?" Answer that part. "What do you still need to see to make a clear decision?" If they need time, set a real follow-up.
 
-**"It's too much money."**
-"Too much compared to what?" Then their words: "You told me [stuck part] is costing you [cost] a month." Then section 8.
+**"It's too expensive."** "Is the price outside your budget, or do you need to see why this is worth it?" For value, use the actual problem and cost they named. For cash flow, use section 8 and the real payment terms. "After seeing the work and price together, does it fit?"
 
-**"$3,000 is a lot. Can I finance it?"**
-"The $3,000 is cash, and it's not extra. It counts toward the 10%." If cash is not there today, it is a different door, not a plan.
+**"I need to talk to my spouse or partner."** "Do you want their input, or do you need a joint decision? What will they want to know?" Answer what you can now. Book a call with both people.
 
-**"Can I finance the credit optimization, or the $200?"**
-"No. Financing is for the Blueprint only."
+**"I've been burned. How do I know you're real?"** "What happened?" Listen. "Here is your file and the work we propose. Here is the agreement with the price and steps. Here is where you see the work and reach us after you sign. Which part should I show you again?" Show approved, real client proof when available.
 
-**"What's the rate?"** (or "What's the monthly payment?")
-"The lender sets the rate and the payment from your file, not us. Checking your options is a soft check, and you see both before you accept anything. Let's look now, while I'm on." Then section 8, financing on the call.
+**"Will you disappear after I pay?"** "Let's open the portal and agreement together. The agreement names the work. The portal shows your next step and the work as it happens. Here's how you reach the team. What would you need to see to feel comfortable?"
 
-**"Will the financing hurt my credit?"**
-"Checking your options is soft. Taking the loan is a hard pull, and it can show on your credit. A big balance on a card raises your card use, and card use is one of the things that sets how much you qualify for." Then let them pick.
+**"Send me something" or "I want to compare options."** "What do you want to compare: the work, price, timing, or proof?" Show the relevant agreement, file or portal screen now and send the real material afterward. Compare actual scopes and set a follow-up if needed.
 
-**"The lender said no."**
-"That's the lender's call on today's file." Then section 8: half today and the rest on payday, three pays, or a smaller first step at its real price. Never make up a price.
+**"I don't have time" or "I'll wait."** "Which part of the work worries you, and what do you have time for?" Show their first task and the team's part. If waiting: "What will change, and when should we check it?" Set a check-in tied to that answer.
 
-**"The monthly payment is too high."**
-"What payment works for you?" Look at the other plans the lender shows, together. More months means a smaller payment. If none fits, go to section 8: the payday split, or a smaller first step.
+### Credit optimization
 
-**"I'll do the financing later."** (or "Just send me the link.")
-"Let's do it now while I'm here, so I can answer anything that comes up. Checking is a soft check." Still later: book a time inside one day, like the spouse rule. No fake deadline.
+**"Why pay $1,000 when I can dispute this myself for free?"** "You can dispute inaccurate information yourself for free. You're paying us to review your exact file, put the work in order, prepare and track up to six rounds, and show you the letters and replies. You still give us accurate facts and sign where needed. Which part would you rather handle yourself?"
 
-**"I don't want a loan for this."**
-"Then don't take one. Pay half today and the rest on your next payday." Then the rest of section 8.
+**"What if nothing comes off?"** "I can show you the service we commit to: round one on signing day, the agreed rounds on schedule, and a record of the work in your portal. If we miss those service steps, the agreement lets you request your fee back. Is your concern the work we do, or the bureau's result?"
 
-**"Other companies charge $8,000 to $10,000."**
-"That's their price. Ours is a $3,000 deposit that counts toward 10%, and the 10% is only on money you actually get."
+**"Bad credit is already costing me. Why pay more?"** "Let's use your situation. You told me [real denial, higher quote, deposit, or missed opportunity]. What did that cost you? Here is what your report shows and what this work covers. Is that worth $1,000 to you?" Use only a cost the buyer confirms or a written quote.
 
-**"I can do this myself."**
-"You can. Almost every application is a hard pull, and each one costs fundability. If you want to do it yourself the right way, that's exactly what the Capital Blueprint is: the plan from your own file, step by step."
+**"I was scammed before. Prove this is different."** "Show me what they promised and delivered. I'll show you exactly what our agreement says, the work on your file, and where each round appears in your portal. What proof would help you judge the work itself?"
 
-**"I don't have a business."**
-"You do not need a business to work with us."
+**"Will disputing hurt my score or affect a loan application?"** "A bureau investigates and reports its result. A lender decides how it treats your file. Let's look at the items we would work on and any application already in progress before choosing the timing."
 
-**"I already have cards," "I don't want more debt," or "I have my own cash."**
-"Then funding with us is not what you need today. None of this is free money." Do not push. Look at Door 3 or Door 4 if the file needs work.
+**"What if the negative item is accurate, or a removed item comes back?"** "An accurate item isn't erased just because we dispute it. If a deleted item comes back, that's a reinsertion. We've handled those. We get the old and new reports and the bureau's notice, check the furnisher's accuracy certification and the notice date, then challenge any error with the record. We don't use sweeps. Show me the item you're worried about." The reinsertion steps are in [15 U.S.C. § 1681i(a)(5)(B)](https://uscode.house.gov/us/usc/119-120/t15/s1681i/).
 
-**"What if I can't pay it back?"**
-"Every line comes with the lender's rules, and those become yours. If you can't carry a line right now, funding isn't the right door today."
+**"How long will this take?"** "We start round one when you sign. Each bureau round takes about 30 to 45 days. Your file and the replies decide what comes next. I can show you the first step and round schedule."
 
-**"Do I have to sign a personal guarantee?"**
-"The bank sets that rule. Business cards carry one. We can't promise you skip it."
+**"Can I start with $200? Can I finance the $1,000?"** "Round one is $200 and counts toward the $1,000 if you continue. Credit optimization has no financing option."
 
-**"I got told no before."**
-"That no was a fact about your file on that day. The $32 pull showed us what's true today."
+### Funding
 
-**"How do I know this is legit?" or "I've been burned before."**
-"What happened last time?" Listen to the whole story. "It's fair to go slow. You saw your file before any pitch. You see the fee in dollars before you pay, and everything is in the agreement, in writing." For funding: "And the 10% is only on money you actually get."
+**"I only need $10,000 or $20,000."** "Is that what you need to spend now, or the total credit you want available?" Listen. "If your file supports more, extra available credit lets you use less of each card and leaves room for the next six to twelve months. One planned bank sequence also avoids applying again right after new accounts and inquiries. Let's put your immediate use, repayment, and available capacity side by side. What amount fits?"
 
-**"How do I know you won't disappear?"**
-"Before you pay, we read the agreement together on the screen. After you pay, you're in the portal with your next step."
+**"Why do you get 10%? I can apply myself."** "You can. Our fee pays for reading your file, checking current bank criteria, choosing the banks and order, preparing authorized applications, and handling bank communication and follow-up. You told me [what happened when they tried or why they came to us]. Which part would you do on your own?"
 
-**"Prove it."**
-Only show wins Chris has given you in writing. If you have none to show, offer the file: "The proof I can give you today is your own file. Or start with round one for $200 and watch it work."
+**"Is the 10% on cash I use, or the full line?"** "It's on the approved access we help secure, including an available line you haven't used. Your $3,000 counts once toward the 10% fee, and the rest comes due as approved funds or credit access arrive. You can pay us from a separate account or loan proceeds you choose to use; you don't have to take a card cash advance to pay us. Let's put the actual approved amount and fee on the same page."
 
-**"Can you guarantee it?"** or **"What if I don't get funded?"**
-"Nobody honest guarantees what a bank does. Lenders decide. Here's what the agreement guarantees: we start on your file within 24 business hours, and your first applications go out within 72. If we miss either one, you can ask for the deposit back. If you need money guaranteed, don't put a deposit down."
+**"Why pay $3,000 if approval isn't guaranteed?"** "The deposit starts the work and counts toward the success fee if funding is secured. The agreement says an advisor starts your file within 24 business hours and we submit your first authorized applications within 72 business hours. If we miss either deadline, you can request the deposit back. If lenders approve nothing after we do the work, there is no back-end success fee, but the deposit isn't returned for that reason alone. Is that clear?"
 
-**"Will this hurt my credit?"**
-"The $32 pull did not move your score. When we apply for funding, each application is a hard pull. That's exactly why the order matters, and why we clean the file first."
+**"What if the banks approve less than I asked for?"** "We keep it real from the first file review. If approval comes in below your goal, we show you what was approved, what changed in your file, and what a later funding sequence can address. A new negative item or lender rule can change the result. We review the 13 optimization points and plan the next sequence from what banks actually said. The fee follows confirmed approved amounts or limits, not the amount you asked for. Which part of your project needs funding first?"
 
-**"I don't have time."**
-"How much time do you think it takes on your side?" Then say their part for their door. "You told me this was the main thing in the way. What's more important right now?"
+**"I already have a lender offer. Why bring you in?"** "Good. Show me the offer. Let's read the amount, every fee, payment frequency, full payback, and any guarantee or collateral. Some direct offers are merchant cash advances with daily withdrawals; others may fit. If yours works at a cost your business can carry, use it. If there's a gap, our team can check other funding paths. What part of that offer doesn't work for your plan?"
 
-**"Send me something to look at."**
-"Sure. What do you want to see in it that we didn't cover?" The answer is the real objection.
+**"The rate is too high" or "I only want 0%."** "Let's read the actual lender offer. What will this money pay for, what will it bring back, and can the business make every payment if that return is late? If the cost or payment doesn't fit, let's look at another real offer or stop."
 
-**"I want to shop around."**
-"Smart. When you compare, ask one thing: will they pull your file and show you why before they apply anywhere? That's the difference." Book a follow-up inside 24 hours.
+**"What is the full cost, including lender fees or early payoff?"** "Let's add it up from the offer: amount available, every fee, payment schedule, total paid back, and what happens if you pay early. Then add our fee from the approved amount. If payments come out of your business account, let's read how often. Does that full cost fit your project?"
 
-**"Why pay you 10%?"**
-"You pay it only on money you actually get. If nothing gets funded, there's no 10%."
+**"How many applications will you send?"** "We choose a sequence from your file and review the applications you authorize. Each lender decides its inquiry and approval. I'll show you the planned order and applications before we start. Is your concern the inquiries, timing, or who sees your information?"
+
+**"I already have cards, my own cash, or don't want debt."** "Then let's check why you booked. Is there a project that needs credit, or are you looking to improve the file and keep options open? If you don't need or can't carry funding, we don't apply."
+
+**"Will applications affect my credit? Do business cards have a personal guarantee?"** "The $32 file pull was soft. Funding applications can make hard inquiries, and new accounts or balances can change your file. Business cards carry a personal guarantee. That's why we review the order and each offer before you authorize an application."
+
+**"Can you guarantee an amount or date?"** "The bank decides approval, amount, rate and timing. Our written action deadlines are 24 business hours to begin the file and 72 business hours for the first authorized applications. Here's what your file supports today and the next step we control."
+
+**"Can we use my other business or a credit partner?"** "We can review each business and a willing partner separately. The person applying has to understand and authorize their own obligation. Let's start with who owns each business and who would sign."
+
+### Capital Blueprint
+
+**"Why is a plan $5,000? I can buy a course or watch free videos."** "A course gives everyone the same lessons. This is a 12-month roadmap built from your file and business goals, with next steps in order and a team to guide the work. What have you already tried? What question did it leave unanswered?" Open their roadmap and show that answer. "Is that difference worth [price on screen] to you?"
+
+**"Is this just a dashboard? Who actually helps me?"** "The dashboard shows your plan and next step. AI agents help track the checklist, and the Fundhub team handles questions and anything that gets stuck. Let's open your first step and show who takes each action."
+
+**"I can build the plan myself."** "You can. You came here with [their stated stuck point]. Here are the first steps your file calls for, in order, and what changes when a new report comes in. Which part would you want guidance on?"
+
+**"What if I fall behind or don't have time?"** "Let's show your first step. You do [actual task or proof upload]; the coach and team do [actual review or follow-up]. You can see the next step in the dashboard. How much time can you set aside each week?"
+
+**"What if the plan doesn't get me funded?"** "The Blueprint gives you the 12-month plan and support in its agreement. The bank still makes a later funding decision. Let's read the deliverables and your first milestone together. Is a guided plan what you want?"
+
+**"Can I finance it, and will that affect my credit?"** "You can check financing options on screen with a soft pre-check. Before accepting one, read its rate, payment and term. Accepting a loan can create a hard inquiry and a new account. Do you want to see the actual options?"
+
+**"The lender declined me, or the payment is too high."** "That's the option offered on today's file. Let's look at the other displayed plans. If none fits, we can review the real cash split or a smaller service that fits your goal. Which payment can you carry?"
+
+**"I want to finance it later."** "That's your call. What do you still need to know before checking your options?" Answer. If they need time, set a real follow-up.
+
+### Direct answers to process questions
+
+**"When the Blueprint has me ready to fund, is the funding service included?"** "The Blueprint includes the 12-month plan and its support. Having our team apply for you later is a separate funding service with a separate 10% fee on confirmed approved limits or amounts. We would show you that agreement before you choose it." Chris's no-new-deposit rule for Blueprint graduates is a product change still to be wired; do not quote it as a current checkout term.
+
+**"Who works with me in the first month?"** "For funding, your funding advisor takes the file through authorized applications and bank follow-up. For credit optimization, a credit specialist reviews items, prepares rounds and tracks replies. For the Blueprint, AI agents help with the checklist and the Fundhub team handles questions or blockers that need a person. Here's the first step for the offer we picked."
+
+**"I don't have a business."** "You can work on your personal file first. The Blueprint also shows business setup steps if that's part of your goal. Funding in your own name is a separate lender decision."
+
+**"Can I get cash from a credit card?"** "A card is useful for business purchases. Cash advances carry their own fees and rate, so let's read the card terms before using one. If your plan needs cash in the bank, let's compare the loan or line-of-credit offers your file supports."
+
+**"I got denied before."** "What did the lender say, and when? Let's compare that file with what your report shows today. A past denial doesn't tell us the next lender's decision."
+
+**"What proof do you have?"** "I can show real client work approved for sharing, the written service steps, and your own file. Which one do you want to see first?" If no approved proof is available, say so.
 
 ## 10. Paperwork
 
@@ -460,6 +481,7 @@ Do not celebrate. Do not over-explain. Confirm the payment posted before you end
 4. **Log it.** Callback in the cockpit, with the belief that failed. The cockpit makes a follow-up task due in 24 hours.
 5. **Follow-up lists.** Hot list: a date set, cleared every day. Everyone else: checked every week.
 6. **Come back with a new way in.** In 2 to 4 weeks, reach out with a way in that fixes what stopped them, at a real price: round one for $200, or Blueprint financing.
+7. **A clear no.** "Thanks for telling me straight. Is there another business owner who would value seeing their file and options this clearly? If so, you can introduce us." If no, thank them and end the call.
 
 ## Never say
 
@@ -505,7 +527,7 @@ Present's closer lines and the client slides follow this page as of 2026-10-29. 
 - Present's closer lines follow this page.
 - The closer sets the Blueprint price. There is no rule for it. Present takes any whole-dollar price from $5,000 to $10,000 today.
 
-Nothing is open.
+**Settled by Chris, 2026-11-01:** A Blueprint graduate who later buys done-for-you funding pays a separate 10% success fee with no new deposit. Chris also wants a named success manager for Blueprint buyers. The current funding checkout still charges a $3,000 deposit, and the current Blueprint journey routes people through a team queue. The closer uses current terms and says "Fundhub team" until those product paths are changed. This is recorded in `ops/workflows/sales-script-objections-2026-11-01.txt`.
 
 ## Where this came from
 

@@ -1,0 +1,26 @@
+Sales script and 22-video objection update — 2026-11-01
+
+Owner: codex/sales-script-objections. The shared weekend board belongs to another open PR; this task uses this text board to avoid file overlap.
+
+Done in this branch: replaced the sales script's section 9 with spoken universal, funding, credit optimization and Blueprint answers; clarified the approved-limit 10% fee, $3,000 credit, first-month help, partial approvals, direct lender offers, accurate items and reinsertion. Replaced all 22 recording-kit click-through decks with the newer November 1 originals, corrected three buyer-facing contradictions, regenerated 22 film boards and 22 talk scripts, and exported all 66 deliverables to the Desktop kit. Original Desktop kit backup: /private/tmp/fundhub-video-recording-kit-before-objections-2026-11-01.tar.gz.
+
+Chris's separate product decisions: a Blueprint graduate who later buys done-for-you funding pays a separate 10% success fee with no new deposit. Each Blueprint buyer should have a named success manager. Current funding checkout and agreement still charge the $3,000 deposit to all funding buyers, and the Blueprint journey has a Fundhub team queue instead of a named manager. Buyer-facing copy uses current terms until those product paths are changed.
+
+Build queue (Chris, 2026-11-01):
+1. Add a Blueprint-graduate done-for-you funding path: separate agreement, 10% success fee on confirmed approved limits or amounts, no new $3,000 deposit. Check graduate status and show the actual amount due before any payment or application.
+2. Assign a named success manager when a Blueprint buyer joins, show the person and contact route in the portal, and route first-month questions to that person. Update the Blueprint journey and buyer-facing script only after this works.
+3. Prove both paths with focused checkout, agreement, portal and live user-path checks before a closer promises them.
+
+Present closer-line alignment and 73 focused tests pass. The 22-deck checker, lint and rules check pass. Preflight found no file overlap. Ordered PR #374 is open at chain position 9, with CI queued at last check. Do not claim live publication from local tests or Desktop export.
+
+Chris clarified that the final must be a spoken script, not an operator guide. Added `docs/sops/weekend-2026-10-24/04-sales-call-script-spoken.txt` as read-aloud call and objection lines. The existing Markdown page is labeled as staff operating notes. Restored the 22 recording sets and put the spoken script plus an index in the Desktop folder `Fundhub - FINAL Sales Script and 22 Recording Kit - 2026-11-01`; all 68 files match staging. PR #374 must receive this final text update before it is considered current.
+
+November 1 delivery split: (1) Jeremy/Drive research owner mapped cold ad to VSL, application, scheduler, then booked-call follow-up; complete, read-only. (2) This branch owns the 22 clickable public lessons and booked-call email/SMS/push send path; work can run beside the research. (3) The existing integration coordinator owns the ordered GitHub release and live proof; it waits for this PR and earlier chain PRs. No second PR or competing edit to the same files.
+
+Copy-paste follow-up for release owner: "When ordered PR #374 reaches main, verify the exact-head CI and Ship run, confirm migration 534 installed both approved deck templates for the live org, then make an authenticated test booking and inspect provider sends plus the clickable public lesson URL. Do not call the lessons live from a PR or a public URL alone."
+
+Copy-paste follow-up for filmed-ad owner: "After Chris films the 22 scripts, build the $10/day initial Hammer content test. Start with recent booked-call leads; if targetable volume is too small, broaden the warm pool to recent funnel visitors and hot unclosed leads. Keep booked and unbooked groups separate: booked creative prepares for the call; unbooked creative asks them to book. Exclude clients and duplicate audience overlap. Measure reach and frequency before scaling."
+
+Activation work in this branch: all 22 corrected phone decks and 22 film boards now mirror the public pages. BS-01 has a distinct one-line intro for each deck. Migration 534 seeds the two missing templates for every existing org without overwriting owner-edited rows. Lessons run by default once both templates are ready; BS_DECK_LESSONS_ENABLED=false still disables them. The existing booking, opt-out, push fallback and call-stop checks stay in place. Focused workflow tests: 46 passed. Public phone/film checks: 44 pages at phone and desktop widths, no layout issues. Deck checker, rules check, lint and diff check passed. Local tests do not prove provider delivery or live deployment.
+
+Collision decision: required preflight found dormant local worktree codex/backend-deck-activation (edbadaa23), which changes the same BS-01 files and migration manifest but has no open GitHub PR, clean worktree and no live editor. Its earlier template seed and default-on experiment are superseded by the approved November 1 copy plus migration 534 here. Preserve that historical branch and its two commits; PR #374 is the sole active delivery owner. The other local branch migration 533 must reconcile the manifest when it later restacks.

@@ -704,11 +704,11 @@ test("Reframing patterns opens the five reframes and Back closes them", async ()
     deck.press("reframes");
     assert.ok(deck.cockpitText().includes("Reframing patterns"));
     for (const [name, words] of [
-      ["Truth Hammer", "You just told me [X], now you're saying [Y]. What's really going on?"],
-      ["Simple Decision", "Do you want to keep [pain] or do you want [outcome]?"],
-      ["Circumstance vs Vision", "Decisions from current circumstances, or from your vision?"],
-      ["Cost Reframe", "Too much compared to what? Compared to [Amount] and finally [goal]?"],
-      ["Risk Reframe", "Riskier: $3K into a plan built from your own file, or the same spot in 6 months?"],
+      ["Clarify", "Earlier you said [X]. Now I hear [Y]. What changed?"],
+      ["Plan fit", "Which part of this plan gets you to [goal], and which part does not fit?"],
+      ["Timing", "What changes in your file or business if you wait? When will you check it?"],
+      ["Value", "Which part of the work does not earn the fee for you?"],
+      ["Risk", "Which result worries you? Let's read the part of the agreement that covers our work."],
     ]) {
       assert.ok(deck.cockpitText().includes(`${name} ${words}`), name);
     }
@@ -845,10 +845,10 @@ for (const [p, phaseName, first] of PHASES) {
 test("phase strip button 08 (8 Money) opens the money steps in the cockpit and leaves the client's slide where it is", async () => {
   const MONEY_LINES = [
     "Money aside, is this the right plan for your file?",
-    "So this is not about whether. It's about how to make it work. Right?",
-    "Is money the only thing? Nothing else in the way?",
-    "Can we talk openly about money? Then I'll find the right way in.",
-    "What do you have that you can use today?",
+    "Okay. Let's see whether a way to pay fits without putting you under strain.",
+    "Is the payment the only concern, or is any part of the plan still unclear?",
+    "Can we talk openly about money? I'll show the actual terms.",
+    "You do not have to share a dollar amount. Which of these written options fits?",
   ];
   for (const tier of ["FULL_FUNDING", "REPAIR_ONLY"]) {
     const deck = await openDeck(tier);
@@ -861,7 +861,7 @@ test("phase strip button 08 (8 Money) opens the money steps in the cockpit and l
     assert.ok(deck.cockpitText().startsWith("8 Money"), deck.cockpitText().slice(0, 40));
     assert.deepEqual(litOf(deck), ["08"]);
     assert.deepEqual(deck.says(), MONEY_LINES, "script section 8: lock the plan before money");
-    assert.ok(deck.cockpitText().includes("Lock the plan before you talk money."));
+    assert.ok(deck.cockpitText().includes("Check the plan before price."));
     deck.press("phase:08");
     assert.equal(deck.slide(), "S-18", "pressing it again stays put");
     deck.press("money-back");
@@ -1168,7 +1168,7 @@ test("with the course off, no education button, rung, slide, course price or min
   assert.equal(deck.slide(), "S-07");
   assert.equal(deck.has("edu"), false, "no EDUCATION PATH button");
   assert.ok(!deck.cockpitText().includes("Education is client-driven"));
-  assert.ok(deck.cockpitText().includes("Education is off until Capital Academy is filmed."));
+  assert.ok(deck.cockpitText().includes("Capital Academy is off until filmed."));
   deck.force("edu").force("desc:eduTop").force("desc:eduLow");
   assert.equal(deck.slide(), "S-07", "the course rungs do not move the deck");
   assert.ok(!deck.cockpitText().includes("route EDU"), "and no education route was set");
@@ -1190,7 +1190,7 @@ test("with the one switch on, the education button, rungs, slides, prices and mi
   deck.press("phase:04");
   assert.equal(deck.label("edu"), "EDUCATION PATH");
   assert.ok(deck.cockpitText().includes("Education is client-driven"));
-  assert.ok(!deck.cockpitText().includes("Education is off until Capital Academy is filmed."));
+  assert.ok(!deck.cockpitText().includes("Capital Academy is off until filmed."));
   deck.press("edu").press("phase:05");
   assert.equal(deck.slide(), "S-08");
   assert.ok(deck.client().includes("Two ways to own this skill."));
@@ -1422,7 +1422,7 @@ test("the client screens carry the 2026-10-29 words", async () => {
   stack.press("next").press("next");
   assert.equal(stack.slide(), "B-04");
   assert.ok(!/member fee/i.test(stack.client()), "row 10: no member fee after 12 months");
-  assert.ok(stack.cockpitText().includes("There is no renewal charge after the 12 months"));
+  assert.ok(stack.cockpitText().includes("Its 12 months do not automatically renew"));
 });
 
 test("a missing report keeps the closer on the live status screen", async () => {
