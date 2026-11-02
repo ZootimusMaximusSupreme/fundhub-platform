@@ -1,5 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { chooseBase, orderedChain, parseArgs, runShipChange } from './ship-change.mjs';
 
 const member = (number, headRefName, baseRefName, position) => ({
@@ -288,3 +292,88 @@ test('resume retries an existing clean commit without making a second commit', a
   assert(!calls.some(call => call[0] === 'git' && ['add', 'commit'].includes(call[1])));
   assert(calls.some(call => call[0] === 'gh' && call[1] === 'pr' && call[2] === 'create'));
 });
+
+for (const scenario of ['clean', 'conflict', 'changed head', 'late changed head', 'deleted branch', 'preflight refusal', 'missing archive', 'invalid parent']) {
+  test(`real Git open parent rewrite without reflog: ${scenario}`, async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ship-open-parent-'));
+    const work = path.join(root, 'work');
+    const origin = path.join(root, 'origin.git');
+    fs.mkdirSync(work);
+    const git = (...args) => execFileSync('git', args, { cwd: work, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+    const write = (name, text) => fs.writeFileSync(path.join(work, name), text);
+    try {
+      execFileSync('git', ['init', '--bare', origin], { stdio: 'ignore' });
+      git('init', '-b', 'main'); git('config', 'user.name', 'Test'); git('config', 'user.email', 'test@example.invalid');
+      git('remote', 'add', 'origin', origin);
+      write('base.txt', 'base\n'); git('add', '.'); git('commit', '-m', 'base');
+      git('switch', '-c', 'old-parent'); write('parent.txt', 'parent feature\n');
+      if (scenario === 'conflict') write('child.txt', 'parent line\n');
+      git('add', '.'); git('commit', '-m', 'old parent'); const oldParent = git('rev-parse', 'HEAD');
+      git('switch', '-c', 'original-child'); write('child.txt', 'draft\n'); git('add', '.'); git('commit', '-m', 'draft');
+      const first = git('rev-parse', 'HEAD'); write('child.txt', 'final  '); git('add', '.'); git('commit', '-m', 'final');
+      const original = git('rev-parse', 'HEAD');
+      git('switch', '-c', 'child', oldParent); git('cherry-pick', '--no-commit', first); git('commit', '-m', 'copy draft');
+      git('cherry-pick', '--no-commit', original); git('commit', '-m', 'copy final'); git('merge', '--no-edit', 'original-child');
+      const remoteHead = git('rev-parse', 'HEAD'); git('push', 'origin', 'child');
+      if (scenario !== 'missing archive') { git('tag', 'archive/child', remoteHead); git('push', 'origin', 'refs/tags/archive/child'); }
+      write('local-fix.txt', 'reviewed CI fix\n'); git('add', '.'); git('commit', '-m', 'new unpublished fix');
+      const sourceHead = git('rev-parse', 'HEAD');
+      git('switch', 'main'); write('main-only.txt', 'current main\n'); git('add', '.'); git('commit', '-m', 'main update'); git('push', 'origin', 'main');
+      git('switch', '-c', 'parent'); write('parent.txt', 'parent feature\n'); write('parent-new.txt', 'keep new parent delta\n');
+      if (scenario === 'conflict') write('child.txt', 'new parent decision\n');
+      git('add', '.'); git('commit', '-m', 'rewritten open parent'); const parentHead = git('rev-parse', 'HEAD'); git('push', 'origin', 'parent');
+      git('switch', 'child');
+      const prs = [member(41, 'parent', 'main', 1), { ...member(42, 'child', 'parent', 2),
+        body: `Owner lane: ci\nStack parent head: ${scenario === 'invalid parent' ? 'f'.repeat(40) : oldParent}` }];
+      const calls = [];
+      let rebaseFailed = false;
+      let prReads = 0;
+      const command = async (program, args) => {
+        calls.push([program, ...args]);
+        if (program === 'npm') {
+          if (scenario === 'preflight refusal') throw new Error('preflight refused');
+          return '';
+        }
+        if (program === 'gh') {
+          if (args[0] === 'pr' && args[1] === 'list') return JSON.stringify(prs);
+          if (args[0] === 'pr' && args[1] === 'view') {
+            prReads += 1;
+            if (scenario === 'deleted branch' && prReads === 2) git('push', 'origin', ':refs/heads/child');
+            return JSON.stringify({ headRefOid: scenario === 'changed head' || (scenario === 'late changed head' && prReads > 1) ? 'e'.repeat(40) : remoteHead, baseRefName: 'parent' });
+          }
+          return '';
+        }
+        if (program === 'git' && args[0] === 'remote') return 'https://github.com/ZootimusMaximusSupreme/fundhub-platform.git';
+        try { return execFileSync(program, args, { cwd: work, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }); }
+        catch (error) { if (program === 'git' && args[0] === 'rebase') rebaseFailed = true; throw error; }
+      };
+      const action = runShipChange({ message: 'CI fix', ownerLane: 'ci', files: [], resume: true }, command);
+      if (scenario === 'clean') {
+        assert.equal((await action).number, 42);
+        assert.equal(rebaseFailed, true);
+        const published = git('ls-remote', '--heads', 'origin', 'child').split(/\s+/)[0];
+        assert.equal(git('rev-parse', `${published}:child.txt`), git('rev-parse', `${sourceHead}:child.txt`));
+        assert.equal(git('show', `${published}:parent-new.txt`), 'keep new parent delta');
+        assert.equal(git('show', `${published}:local-fix.txt`), 'reviewed CI fix');
+        assert.equal(git('show', `${published}:main-only.txt`), 'current main');
+        assert.equal(git('merge-base', published, parentHead), parentHead);
+        assert.equal(git('symbolic-ref', '--short', 'HEAD'), 'child');
+        assert.equal(git('rev-parse', `refs/tags/archive/child-${remoteHead.slice(0, 8)}`), remoteHead);
+        assert.equal(git('rev-parse', `refs/tags/archive/child-${sourceHead.slice(0, 8)}`), sourceHead);
+        const preflights = calls.filter(c => c[0] === 'npm');
+        assert.deepEqual(preflights.map(c => c.at(-1)), [oldParent, 'origin/parent']);
+        assert.ok(calls.some(c => c.includes(`--force-with-lease=refs/heads/child:${remoteHead}`)));
+      } else {
+        await assert.rejects(action);
+        assert.equal(git('ls-remote', '--heads', 'origin', 'child').split(/\s+/)[0], scenario === 'deleted branch' ? '' : remoteHead);
+        assert.equal(calls.some(c => c[0] === 'git' && c[1] === 'push' && c.at(-1) === 'HEAD:refs/heads/child'), scenario === 'deleted branch');
+        if (scenario === 'deleted branch') assert.ok(calls.some(c => c.includes(`--force-with-lease=refs/heads/child:${remoteHead}`)));
+        assert.equal(calls.some(c => c[0] === 'gh' && (c.includes('--base') || c[1] === 'merge')), false);
+        if (scenario === 'changed head' || scenario === 'preflight refusal') {
+          assert.equal(calls.some(c => c[0] === 'git' && c[1] === 'push'), false, 'source preflight/freshness refusal must precede all archive pushes');
+        }
+        if (scenario === 'conflict') assert.equal(git('symbolic-ref', '--short', 'HEAD'), 'child');
+      }
+    } finally { fs.rmSync(root, { recursive: true, force: true }); }
+  });
+}
