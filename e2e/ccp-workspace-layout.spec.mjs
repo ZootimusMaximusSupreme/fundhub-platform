@@ -28,6 +28,20 @@ async function noOverflow(page) {
   expect(sizes.scroll).toBeLessThanOrEqual(sizes.width);
 }
 
+test('the closer sees who owns a paid funding file', async ({ page }) => {
+  const file = { ...full, client: { ...CLIENT_ROW, custom_fields: { product_path: 'Funding' } }, funding_advisor: { name: 'Jordan Advisor' } };
+  await open(page, '#ccp-view-funding', { '/api/dashboard/client?': file }, CLOSER);
+  await expect(page.locator('#ccp-funding-advisor')).toHaveText('Funding advisor: Jordan Advisor');
+  await expect(page.locator('#ccp-funding-advisor')).toBeVisible();
+});
+
+test('a funding file without a named advisor says so', async ({ page }) => {
+  const file = { ...full, client: { ...CLIENT_ROW, custom_fields: { product_path: 'Funding' } }, funding_advisor: null };
+  await open(page, '#ccp-view-funding', { '/api/dashboard/client?': file }, CLOSER);
+  await expect(page.locator('#ccp-funding-advisor')).toContainText('Not assigned yet');
+  await expect(page.locator('#ccp-funding-advisor')).toBeVisible();
+});
+
 for (const width of [1440, 390, 320]) {
   test(`workspace fits ${width}px and keeps every section usable`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
