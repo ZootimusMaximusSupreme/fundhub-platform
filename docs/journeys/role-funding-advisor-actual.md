@@ -47,7 +47,7 @@ flowchart TD
     CAN --> A_top_level[Everything else — 27 routes]
     CAN --> A_trials[trials — 2 routes]
     CAN --> A_webhooks[Incoming webhooks — 1 route]
-    WHO -->|Yes| CANT[Blocked — 163 routes]
+    WHO -->|Yes| CANT[Blocked — 164 routes]
     CANT --> B_affiliates[affiliates — 3 blocked]
     CANT --> B_auth[Signing in and out — 8 blocked]
     CANT --> B_banking[banking — 6 blocked]
@@ -62,6 +62,7 @@ flowchart TD
     CANT --> B_journeys[journeys — 2 blocked]
     CANT --> B_marketing[marketing — 44 blocked]
     CANT --> B_money[money — 17 blocked]
+    CANT --> B_native[native — 1 blocked]
     CANT --> B_ops[ops — 1 blocked]
     CANT --> B_partner_brand[partner-brand — 1 blocked]
     CANT --> B_partner_marketing[partner-marketing — 5 blocked]
@@ -78,7 +79,7 @@ flowchart TD
 
 ## What they can reach
 
-**175 of 338 routes.**
+**175 of 339 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -267,7 +268,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**163 of 338 routes.**
+**164 of 339 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -383,6 +384,7 @@ flowchart TD
 | `/api/money/transfers` | GET, POST | employees: owner, admin, sales_manager, closer<br>plus: client |
 | `/api/money/trends` | GET | employees: owner, admin, sales_manager, closer<br>plus: client |
 | `/api/money/vault` | GET, POST | employees: owner, admin, sales_manager, closer<br>plus: client |
+| `/api/native/client-activity` | POST | client |
 | `/api/ops/hire-closer` | POST | owner, admin |
 | `/api/partner-addons` | GET, POST | owner, admin |
 | `/api/partner-brand` | GET, PUT | employees: owner, admin<br>plus: partner |

@@ -82,6 +82,13 @@ const CARDS_SQL = `
                 b.starts_at DESC, b.created_at DESC
        LIMIT 1
     ) ELSE NULL END AS booked_kind,
+    CASE WHEN p.key = 'sales' THEN (
+      SELECT a.first_authenticated_at
+        FROM native_client_app_opens a
+       WHERE a.org_id = p.org_id AND a.client_id = c.id AND a.platform = 'ios'
+       ORDER BY a.first_authenticated_at ASC
+       LIMIT 1
+    ) ELSE NULL END AS app_first_authenticated_at,
     (c.custom_fields->>'total_funding_estimate') AS total_funding_estimate,
     c.custom_fields->>'cf_svy_self_reported_fico' AS survey_fico_raw,
     c.custom_fields->>'cf_svy_self_reported_fico_label' AS survey_fico_label,
@@ -254,6 +261,7 @@ export default async function handler(req, res) {
         call_confirmed: r.call_confirmed === true,
         booked_starts_at: r.booked_starts_at ?? null,
         booked_kind: r.booked_kind ?? null,
+        app_first_authenticated_at: r.app_first_authenticated_at ?? null,
         survey_fico: surveyFicoBand({
           cf_svy_self_reported_fico: r.survey_fico_raw,
           cf_svy_self_reported_fico_label: r.survey_fico_label

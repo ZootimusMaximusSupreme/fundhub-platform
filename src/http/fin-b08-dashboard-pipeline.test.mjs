@@ -365,6 +365,16 @@ describe("GET /api/dashboard/pipeline, the board's own statements run by a SQL e
     assert.equal(funding.booked_starts_at, null);
     assert.equal(funding.booked_kind, null);
 
+    e.insert("native_client_app_opens", {
+      org_id: A, client_id: K.ann, platform: "ios", first_authenticated_at: past
+    });
+    e.insert("native_client_app_opens", {
+      org_id: B, client_id: K.ben, platform: "ios", first_authenticated_at: later
+    });
+    const opens = byId(await callEngine({ key: "sales" }, e));
+    assert.equal(opens["card-ann"].app_first_authenticated_at, past);
+    assert.equal(opens["card-ben"].app_first_authenticated_at, null);
+
     const pastOnly = engineBoard();
     pastOnly.insert("bookings", { id: "past", org_id: A, client_id: K.ann, starts_at: past, status: "booked", created_at: past });
     const previousCard = byId(await callEngine({ key: "sales" }, pastOnly))["card-ann"];
