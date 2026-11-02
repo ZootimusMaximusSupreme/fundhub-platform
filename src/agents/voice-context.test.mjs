@@ -35,7 +35,14 @@ test("Blueprint manual call requires paid active current client context and revi
   const options = { orgId: "org-a", clientId: "client-a", agent,
     isBuyerImpl: async (_db, ids) => { assert.deepEqual(ids, { orgId: "org-a", clientId: "client-a" }); return true; },
     fetchContextImpl: async (_db, ids) => { assert.deepEqual(ids, { orgId: "org-a", clientId: "client-a", conversationId: null, channel: "voice" }); return context; } };
-  const task = await voiceCallTask({}, options);
+  // The service-year gate now checks the purchased Blueprint grant before
+  // any text/voice context. Simulate a same-company active grant, not a live DB.
+  const coachDb = { query: async (sql, params) => {
+    assert.match(sql, /FROM entitlements e/);
+    assert.deepEqual(params.slice(0, 2), ["org-a", "client-a"]);
+    return { rows: [{ authorized: true }] };
+  } };
+  const task = await voiceCallTask(coachDb, options);
   assert.match(task, /Last SMS: I have the receipt/);
   assert.match(task, /You are an AI, not a person/);
   assert.doesNotMatch(task, /human advisor/);
@@ -45,6 +52,6 @@ test("Blueprint manual call requires paid active current client context and revi
     { fetchContextImpl: async () => ({ ...context, blueprint: { access_active: false } }) },
     { fetchContextImpl: async () => null }, { agent: { ...agent, status: "draft" } },
     { fetchContextImpl: async () => ({ ...context, conversation: { agent_halted_at: "today" } }) }]) {
-    await assert.rejects(() => voiceCallTask({}, { ...options, ...changed }), /No call was placed/);
+    await assert.rejects(() => voiceCallTask(coachDb, { ...options, ...changed }), /No call was placed/);
   }
 });
